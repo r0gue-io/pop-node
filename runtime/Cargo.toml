@@ -1,0 +1,180 @@
+[package]
+name = "pop-runtime"
+version = "0.1.0"
+authors = ["Anonymous"]
+description = "A new Cumulus FRAME-based Substrate Runtime, ready for hacking together a parachain."
+license = "Unlicense"
+homepage = "https://substrate.io"
+repository.workspace = true
+edition.workspace = true
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[build-dependencies]
+substrate-wasm-builder = { optional = true , workspace = true }
+
+[dependencies]
+codec = { workspace = true, default-features = false, features = ["derive"] }
+hex-literal = { workspace = true, optional = true }
+log = { workspace = true, default-features = false }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+smallvec = "1.11.0"
+
+# Substrate
+frame-benchmarking = { default-features = false, optional = true , workspace = true }
+frame-executive = { default-features = false , workspace = true }
+frame-support = { default-features = false , workspace = true }
+frame-system = { default-features = false , workspace = true }
+frame-system-benchmarking = { default-features = false, optional = true , workspace = true }
+frame-system-rpc-runtime-api = { default-features = false , workspace = true }
+frame-try-runtime = { default-features = false, optional = true , workspace = true }
+pallet-aura = { default-features = false, workspace = true }
+pallet-authorship = { default-features = false , workspace = true }
+pallet-balances = { default-features = false , workspace = true }
+pallet-message-queue = { default-features = false , workspace = true }
+pallet-session = { default-features = false , workspace = true }
+pallet-sudo = { default-features = false, workspace = true }
+pallet-timestamp = { default-features = false , workspace = true }
+pallet-transaction-payment = { default-features = false , workspace = true }
+pallet-transaction-payment-rpc-runtime-api = { default-features = false , workspace = true }
+sp-api = { default-features = false , workspace = true }
+sp-block-builder = { default-features = false , workspace = true }
+sp-consensus-aura = { default-features = false, workspace = true }
+sp-core = { default-features = false , workspace = true }
+sp-genesis-builder = { default-features = false , workspace = true }
+sp-inherents = { default-features = false , workspace = true }
+sp-offchain = { default-features = false , workspace = true }
+sp-runtime = { default-features = false , workspace = true }
+sp-session = { default-features = false , workspace = true }
+sp-std = { default-features = false , workspace = true }
+sp-transaction-pool = { default-features = false , workspace = true }
+sp-version = { default-features = false , workspace = true }
+
+# Polkadot
+pallet-xcm = { default-features = false, workspace = true }
+polkadot-parachain-primitives = { default-features = false, workspace = true }
+polkadot-runtime-common = { default-features = false, workspace = true }
+xcm = { default-features = false , workspace = true }
+xcm-executor = { default-features = false , workspace = true }
+xcm-builder = { default-features = false , workspace = true }
+
+# Cumulus
+cumulus-pallet-aura-ext = { default-features = false , workspace = true }
+cumulus-pallet-dmp-queue = { default-features = false , workspace = true }
+cumulus-pallet-parachain-system = { default-features = false, features = ["parameterized-consensus-hook",] , workspace = true }
+cumulus-pallet-session-benchmarking = { default-features = false, workspace = true }
+cumulus-pallet-xcm = { default-features = false , workspace = true }
+cumulus-pallet-xcmp-queue = { default-features = false , workspace = true }
+cumulus-primitives-core = { default-features = false , workspace = true }
+cumulus-primitives-utility = { default-features = false , workspace = true }
+pallet-collator-selection = { default-features = false , workspace = true }
+parachain-info = { default-features = false , workspace = true }
+parachains-common = { default-features = false , workspace = true }
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"cumulus-pallet-aura-ext/std",
+	"cumulus-pallet-dmp-queue/std",
+	"cumulus-pallet-parachain-system/std",
+	"cumulus-pallet-session-benchmarking/std",
+	"cumulus-pallet-xcm/std",
+	"cumulus-pallet-xcmp-queue/std",
+	"cumulus-primitives-core/std",
+	"cumulus-primitives-utility/std",
+	"frame-benchmarking?/std",
+	"frame-executive/std",
+	"frame-support/std",
+	"frame-system-benchmarking?/std",
+	"frame-system-rpc-runtime-api/std",
+	"frame-system/std",
+	"frame-try-runtime?/std",
+	"log/std",
+	"pallet-aura/std",
+	"pallet-authorship/std",
+	"pallet-balances/std",
+	"pallet-collator-selection/std",
+	"pallet-message-queue/std",
+	"pallet-session/std",
+	"pallet-sudo/std",
+	"pallet-timestamp/std",
+	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-transaction-payment/std",
+	"pallet-xcm/std",
+	"parachain-info/std",
+	"parachains-common/std",
+	"polkadot-parachain-primitives/std",
+	"polkadot-runtime-common/std",
+	"scale-info/std",
+	"sp-api/std",
+	"sp-block-builder/std",
+	"sp-consensus-aura/std",
+	"sp-core/std",
+	"sp-genesis-builder/std",
+	"sp-inherents/std",
+	"sp-offchain/std",
+	"sp-runtime/std",
+	"sp-session/std",
+	"sp-std/std",
+	"sp-transaction-pool/std",
+	"sp-version/std",
+	"substrate-wasm-builder",
+	"xcm-builder/std",
+	"xcm-executor/std",
+	"xcm/std",
+]
+
+runtime-benchmarks = [
+#	"cumulus-pallet-dmp-queue/runtime-benchmarks",
+	"cumulus-pallet-parachain-system/runtime-benchmarks",
+	"cumulus-pallet-session-benchmarking/runtime-benchmarks",
+	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
+#	"cumulus-primitives-core/runtime-benchmarks",
+	"cumulus-primitives-utility/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system-benchmarking/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"hex-literal",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-collator-selection/runtime-benchmarks",
+	"pallet-message-queue/runtime-benchmarks",
+	"pallet-sudo/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"pallet-xcm/runtime-benchmarks",
+	"parachains-common/runtime-benchmarks",
+	"polkadot-parachain-primitives/runtime-benchmarks",
+	"polkadot-runtime-common/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"xcm-builder/runtime-benchmarks",
+	"xcm-executor/runtime-benchmarks",
+]
+
+try-runtime = [
+	"cumulus-pallet-aura-ext/try-runtime",
+	"cumulus-pallet-dmp-queue/try-runtime",
+	"cumulus-pallet-parachain-system/try-runtime",
+	"cumulus-pallet-xcm/try-runtime",
+	"cumulus-pallet-xcmp-queue/try-runtime",
+	"frame-executive/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"frame-try-runtime/try-runtime",
+	"pallet-aura/try-runtime",
+	"pallet-authorship/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-collator-selection/try-runtime",
+	"pallet-message-queue/try-runtime",
+	"pallet-session/try-runtime",
+	"pallet-sudo/try-runtime",
+	"pallet-timestamp/try-runtime",
+	"pallet-transaction-payment/try-runtime",
+	"pallet-xcm/try-runtime",
+	"parachain-info/try-runtime",
+	"polkadot-runtime-common/try-runtime",
+	"sp-runtime/try-runtime",
+]
+
+experimental = ["pallet-aura/experimental"]
