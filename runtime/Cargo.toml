@@ -74,6 +74,7 @@ parachains-common = { default-features = false , workspace = true }
 
 # ISMP
 ismp = { path = "../ismp/core", default-features = false }
+ismp-demo = { path = "../pallets/demo", default-features = false }
 ismp-parachain = { path = "../ismp/parachain", default-features = false }
 ismp-parachain-runtime-api = { path = "../ismp/parachain/runtime-api", default-features = false }
 ismp-runtime-api = { path = "../ismp/runtime-api", default-features = false }

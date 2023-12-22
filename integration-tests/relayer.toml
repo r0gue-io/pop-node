@@ -1,0 +1,50 @@
+# NOTE: tesseract does not currently support para to para relaying, suggestion from Polytope Labs is to create a tiny relayer implementation for submitting state proofs
+# docker run polytopelabs/tesseract:latest --config ./relayer.toml
+
+# Pop
+[chain_a]
+# chain type
+type = "parachain"
+# hashing algorithm, options Blake2 | Keccak
+hashing = "Blake2"
+# relay chain ws url
+relay_chain = "ws://localhost:9944"
+# consensus client Id. "PARA" for parachains
+consensus_client = "PARA"
+# websocket url for the parachain
+ws_url = "ws://localhost:9945"
+# private key for the relayer account
+signer = "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"
+# optional height to start relaying from.
+#latest_state_machine_height = None,
+
+[chain_a.state_machine]
+# state machine id for this chain
+Polkadot = 909
+
+# Asset Hub
+[chain_b]
+# chain type
+type = "parachain"
+# hashing algorithm, options Blake2 | Keccak
+hashing = "Blake2"
+# relay chain ws url
+relay_chain = "ws://localhost:9944"
+# consensus client Id. "PARA" for parachains
+consensus_client = "PARA"
+# websocket url for the parachain
+ws_url = "ws://localhost:9946"
+# private key for the relayer account
+signer = "0xe5be9a5092b81bca64be81d212e7f2f9eba183bb7a90954f7b76361f6edb5c0a"
+# optional height to start relaying from.
+#latest_state_machine_height = None,
+
+[chain_b.state_machine]
+# state machine id for this chain
+Polkadot = 1000
+
+[relayer]
+# Message types to relay, possible options Consensus | PostRequest | PostResponse | GetResponse
+messages = ["PostRequest", "PostResponse", "GetResponse"]
+# filter relay messages by origin module Ids
+module_filter = []

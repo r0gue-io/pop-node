@@ -1,0 +1,41 @@
+[package]
+name = "ismp-demo"
+version = "0.1.0"
+edition = "2021"
+authors = ["Polytope Labs <hello@polytope.technology>"]
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+# crates.io
+codec = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+
+# polytope labs
+ismp = { path = "../../ismp/core", default-features = false }
+
+# substrate
+frame-support = { default-features = false, workspace = true }
+frame-system = { default-features = false, workspace = true }
+pallet-balances = { default-features = false, workspace = true }
+sp-runtime = { default-features = false, workspace = true }
+sp-core = { default-features = false, workspace = true }
+
+# local
+pallet-ismp = { path = "../../ismp/pallet", default-features = false }
+
+[dev-dependencies]
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "frame-support/std",
+    "frame-system/std",
+    "sp-runtime/std",
+    "scale-info/std",
+    "ismp/std",
+    "pallet-ismp/std",
+    "pallet-balances/std"
+]

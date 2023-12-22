@@ -15,10 +15,12 @@
 
 use crate::{
     alloc::{boxed::Box, string::ToString},
-    AccountId, Ismp, IsmpParachain, ParachainInfo, Runtime, RuntimeEvent, Timestamp,
+    AccountId, Balance, Balances, Ismp, IsmpParachain, ParachainInfo, Runtime, RuntimeEvent,
+    Timestamp,
 };
 use frame_support::pallet_prelude::Get;
 use frame_system::EnsureRoot;
+use ismp::consensus::StateMachineId;
 use ismp::{
     consensus::{ConsensusClient, ConsensusClientId},
     error::Error,
@@ -73,6 +75,14 @@ impl ismp_parachain::Config for Runtime {
     type RuntimeEvent = RuntimeEvent;
 }
 
+impl ismp_demo::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type Balance = Balance;
+    type NativeCurrency = Balances;
+    type IsmpDispatcher = pallet_ismp::dispatcher::Dispatcher<Runtime>;
+    type StateMachineHeight = StateMachineHeight;
+}
+
 impl IsmpModule for ProxyModule {
     fn on_accept(&self, request: Post) -> Result<(), Error> {
         if request.dest != StateMachineProvider::get() {
@@ -82,9 +92,9 @@ impl IsmpModule for ProxyModule {
         let pallet_id = ModuleId::from_bytes(&request.to)
             .map_err(|err| Error::ImplementationSpecific(err.to_string()))?;
         match pallet_id {
-            // ismp_demo::PALLET_ID => {
-            //     ismp_demo::IsmpModuleCallback::<Runtime>::default().on_accept(request)
-            // }
+            ismp_demo::PALLET_ID => {
+                ismp_demo::IsmpModuleCallback::<Runtime>::default().on_accept(request)
+            }
             _ => Err(Error::ImplementationSpecific(
                 "Destination module not found".to_string(),
             )),
@@ -105,9 +115,9 @@ impl IsmpModule for ProxyModule {
         let pallet_id = ModuleId::from_bytes(from)
             .map_err(|err| Error::ImplementationSpecific(err.to_string()))?;
         match pallet_id {
-            // ismp_demo::PALLET_ID => {
-            //     ismp_demo::IsmpModuleCallback::<Runtime>::default().on_response(response)
-            // }
+            ismp_demo::PALLET_ID => {
+                ismp_demo::IsmpModuleCallback::<Runtime>::default().on_response(response)
+            }
             _ => Err(Error::ImplementationSpecific(
                 "Destination module not found".to_string(),
             )),
@@ -123,9 +133,9 @@ impl IsmpModule for ProxyModule {
         let pallet_id = ModuleId::from_bytes(from)
             .map_err(|err| Error::ImplementationSpecific(err.to_string()))?;
         match pallet_id {
-            // ismp_demo::PALLET_ID => {
-            //     ismp_demo::IsmpModuleCallback::<Runtime>::default().on_timeout(request)
-            // }
+            ismp_demo::PALLET_ID => {
+                ismp_demo::IsmpModuleCallback::<Runtime>::default().on_timeout(request)
+            }
             _ => Err(Error::ImplementationSpecific(
                 "Destination module not found".to_string(),
             )),
@@ -139,5 +149,15 @@ pub struct Router;
 impl IsmpRouter for Router {
     fn module_for_id(&self, _bytes: Vec<u8>) -> Result<Box<dyn IsmpModule>, Error> {
         Ok(Box::new(ProxyModule::default()))
+    }
+}
+
+pub struct StateMachineHeight;
+impl ismp_demo::StateMachineHeight for StateMachineHeight {
+    fn get_latest_state_machine_height(id: StateMachine) -> Option<u64> {
+        Ismp::get_latest_state_machine_height(StateMachineId {
+            state_id: id,
+            consensus_state_id: ismp_parachain::PARACHAIN_CONSENSUS_ID,
+        })
     }
 }

@@ -524,6 +524,7 @@ construct_runtime!(
         // ISMP
         Ismp: pallet_ismp = 40,
         IsmpParachain: ismp_parachain = 41,
+        IsmpDemo: ismp_demo = 42,
     }
 );
 

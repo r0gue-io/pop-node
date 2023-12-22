@@ -4140,6 +4140,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ismp-demo"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "ismp",
+ "pallet-balances",
+ "pallet-ismp",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
 name = "ismp-parachain"
 version = "0.1.0"
 dependencies = [
@@ -8515,6 +8530,7 @@ dependencies = [
  "frame-try-runtime",
  "hex-literal",
  "ismp",
+ "ismp-demo",
  "ismp-parachain",
  "ismp-parachain-runtime-api",
  "ismp-runtime-api",

@@ -12,14 +12,6 @@ default_command = "./polkadot"
     validator = true
 
 [[parachains]]
-id = 1000
-chain = "asset-hub-rococo-local"
-
-    [parachains.collator]
-    args = ["--log=xcm=trace"]
-    command = "./polkadot-parachain"
-
-[[parachains]]
 id = 909
 
     [parachains.collator]
@@ -27,3 +19,12 @@ id = 909
     command = "../target/release/pop-node"
     name = "pop-collator"
     ws_port = 9945
+
+[[parachains]]
+id = 1000
+chain = "asset-hub-rococo-local"
+
+    [parachains.collator]
+    args = ["--log=xcm=trace"]
+    command = "./polkadot-parachain"
+    ws_port = 9946

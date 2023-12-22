@@ -10,6 +10,7 @@ resolver = "2"
 members = [
 	"ismp/*",
 	"node",
+	"pallets/*",
 	"runtime",
 ]
 
