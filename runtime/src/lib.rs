@@ -6,11 +6,21 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+extern crate alloc;
+
+mod ismp;
 mod weights;
 pub mod xcm_config;
 
+use ::ismp::{
+    consensus::{ConsensusClientId, StateMachineId},
+    mmr::{Leaf, LeafIndex},
+    router::{Request, Response},
+    LeafIndexQuery,
+};
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
 use cumulus_primitives_core::ParaId;
+use pallet_ismp::primitives::Proof;
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
@@ -510,6 +520,10 @@ construct_runtime!(
         PolkadotXcm: pallet_xcm = 31,
         CumulusXcm: cumulus_pallet_xcm = 32,
         DmpQueue: cumulus_pallet_dmp_queue = 33,
+
+        // ISMP
+        Ismp: pallet_ismp = 40,
+        IsmpParachain: ismp_parachain = 41,
     }
 );
 
@@ -746,6 +760,94 @@ impl_runtime_apis! {
 
         fn build_config(config: Vec<u8>) -> sp_genesis_builder::Result {
             build_config::<RuntimeGenesisConfig>(config)
+        }
+    }
+
+    impl ismp_runtime_api::IsmpRuntimeApi<Block, <Block as BlockT>::Hash> for Runtime {
+        /// Return the number of MMR leaves.
+        fn mmr_leaf_count() -> Result<LeafIndex, pallet_ismp::primitives::Error> {
+            Ok(Ismp::mmr_leaf_count())
+        }
+
+        /// Return the on-chain MMR root hash.
+        fn mmr_root() -> Result<<Block as BlockT>::Hash, pallet_ismp::primitives::Error> {
+            Ok(Ismp::mmr_root())
+        }
+
+        fn challenge_period(consensus_state_id: [u8; 4]) -> Option<u64> {
+            Ismp::get_challenge_period(consensus_state_id)
+        }
+
+        /// Generate a proof for the provided leaf indices
+        fn generate_proof(
+            leaf_positions: Vec<LeafIndex>
+        ) -> Result<(Vec<Leaf>, Proof<<Block as BlockT>::Hash>), pallet_ismp::primitives::Error> {
+            Ismp::generate_proof(leaf_positions)
+        }
+
+        /// Fetch all ISMP events
+        fn block_events() -> Vec<pallet_ismp::events::Event> {
+            let raw_events = frame_system::Pallet::<Self>::read_events_no_consensus().into_iter();
+            raw_events.filter_map(|e| {
+                let frame_system::EventRecord{ event, ..} = *e;
+
+                match event {
+                    RuntimeEvent::Ismp(event) => {
+                        pallet_ismp::events::to_core_protocol_event(event)
+                    },
+                    _ => None
+                }
+            }).collect()
+        }
+
+        /// Return the scale encoded consensus state
+        fn consensus_state(id: ConsensusClientId) -> Option<Vec<u8>> {
+            Ismp::consensus_states(id)
+        }
+
+        /// Return the timestamp this client was last updated in seconds
+        fn consensus_update_time(id: ConsensusClientId) -> Option<u64> {
+            Ismp::consensus_update_time(id)
+        }
+
+        /// Return the latest height of the state machine
+        fn latest_state_machine_height(id: StateMachineId) -> Option<u64> {
+            Ismp::get_latest_state_machine_height(id)
+        }
+
+        /// Return the latest height of the state machine at which we've processed requests
+        fn latest_messaging_height(id: StateMachineId) -> Option<u64> {
+            Ismp::latest_messaging_heights(id)
+        }
+
+        /// Get Request Leaf Indices
+        fn get_request_leaf_indices(leaf_queries: Vec<LeafIndexQuery>) -> Vec<(LeafIndex, LeafIndex)> {
+            Ismp::get_request_leaf_indices(leaf_queries)
+        }
+
+        /// Get Response Leaf Indices
+        fn get_response_leaf_indices(leaf_queries: Vec<LeafIndexQuery>) -> Vec<(LeafIndex, LeafIndex)> {
+            Ismp::get_response_leaf_indices(leaf_queries)
+        }
+
+        /// Get actual requests
+        fn get_requests(leaf_positions: Vec<LeafIndex>) -> Vec<Request> {
+            Ismp::get_requests(leaf_positions)
+        }
+
+        /// Get actual requests
+        fn get_responses(leaf_positions: Vec<LeafIndex>) -> Vec<Response> {
+            Ismp::get_responses(leaf_positions)
+        }
+
+        fn pending_get_requests() -> Vec<::ismp::router::Get> {
+            Ismp::pending_get_requests()
+        }
+    }
+
+    impl ismp_parachain_runtime_api::IsmpParachainApi<Block> for Runtime {
+        fn para_ids() -> Vec<u32> {
+            IsmpParachain::para_ids()
         }
     }
 }

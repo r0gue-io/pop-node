@@ -1,0 +1,43 @@
+[package]
+name = "substrate-state-machine"
+version = "0.1.0"
+edition = "2021"
+authors = ["Polytope Labs <hello@polytope.technology>"]
+
+[dependencies]
+# substrate
+frame-system = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+
+# polytope labs
+ismp = { path = "../core", default-features = false }
+pallet-ismp = { path = "../pallet", default-features = false }
+
+# crates.io
+merkle-mountain-range = { workspace = true, default-features = false }
+codec = { workspace = true, default-features = false }
+primitive-types = { workspace = true, default-features = false }
+serde = { workspace = true, features = ["derive"], optional = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+frame-support = { workspace = true, default-features = false }
+sp-core = { default-features = false, workspace = true }
+sp-trie = { default-features = false, workspace = true }
+hash-db = { workspace = true, default-features = false }
+
+[features]
+default = ["std"]
+std = [
+    "frame-system/std",
+    "ismp/std",
+    "merkle-mountain-range/std",
+    "codec/std",
+    "sp-runtime/std",
+    "primitive-types/std",
+    "scale-info/std",
+    "serde",
+    "frame-support/std",
+    "sp-core/std",
+    "pallet-ismp/std",
+    "sp-trie/std",
+    "hash-db/std"
+]

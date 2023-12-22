@@ -1,0 +1,27 @@
+[package]
+name = "ismp-parachain-inherent"
+version = "0.1.0"
+edition = "2021"
+authors = ["Polytope Labs <hello@polytope.technology>"]
+
+[dependencies]
+async-trait = { workspace = true }
+codec = { workspace = true, features = [ "derive" ] }
+anyhow = { workspace = true }
+
+# Substrate
+sp-inherents = { workspace = true }
+sp-api = { workspace = true }
+sp-blockchain = { workspace = true }
+sp-runtime = { workspace = true }
+
+# Cumulus
+cumulus-primitives-core = {  workspace = true }
+cumulus-relay-chain-interface = {  workspace = true }
+
+# polytope-labs
+ismp = { path = "../../core" }
+
+# local
+ismp-parachain = { path = ".." }
+ismp-parachain-runtime-api = { path = "../runtime-api" }

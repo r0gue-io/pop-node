@@ -72,6 +72,13 @@ pallet-collator-selection = { default-features = false , workspace = true }
 parachain-info = { default-features = false , workspace = true }
 parachains-common = { default-features = false , workspace = true }
 
+# ISMP
+ismp = { path = "../ismp/core", default-features = false }
+ismp-parachain = { path = "../ismp/parachain", default-features = false }
+ismp-parachain-runtime-api = { path = "../ismp/parachain/runtime-api", default-features = false }
+ismp-runtime-api = { path = "../ismp/runtime-api", default-features = false }
+pallet-ismp = { path = "../ismp/pallet", default-features = false }
+
 [features]
 default = ["std"]
 std = [
@@ -91,11 +98,15 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-try-runtime?/std",
+	"ismp-parachain/std",
+	"ismp-parachain-runtime-api/std",
+	"ismp-runtime-api/std",
 	"log/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
+	"pallet-ismp/std",
 	"pallet-message-queue/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
@@ -127,11 +138,9 @@ std = [
 ]
 
 runtime-benchmarks = [
-#	"cumulus-pallet-dmp-queue/runtime-benchmarks",
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-session-benchmarking/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
-#	"cumulus-primitives-core/runtime-benchmarks",
 	"cumulus-primitives-utility/runtime-benchmarks",
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",

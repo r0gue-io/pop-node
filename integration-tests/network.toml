@@ -1,0 +1,29 @@
+[relaychain]
+chain = "rococo-local"
+default_command = "./polkadot"
+
+    [[relaychain.nodes]]
+    name = "alice"
+    validator = true
+    ws_port = 9944
+
+    [[relaychain.nodes]]
+    name = "bob"
+    validator = true
+
+[[parachains]]
+id = 1000
+chain = "asset-hub-rococo-local"
+
+    [parachains.collator]
+    args = ["--log=xcm=trace"]
+    command = "./polkadot-parachain"
+
+[[parachains]]
+id = 909
+
+    [parachains.collator]
+    args = ["--log=xcm=trace"]
+    command = "../target/release/pop-node"
+    name = "pop-collator"
+    ws_port = 9945

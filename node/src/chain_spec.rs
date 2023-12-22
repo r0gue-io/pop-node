@@ -230,5 +230,10 @@ fn testnet_genesis(
         },
         transaction_payment: Default::default(),
         sudo: runtime::SudoConfig { key: Some(root) },
+        ismp_parachain: runtime::IsmpParachainConfig {
+            // Asset Hub
+            parachains: vec![1000],
+            ..Default::default()
+        },
     }
 }

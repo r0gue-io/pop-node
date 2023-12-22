@@ -1,0 +1,44 @@
+[package]
+name = "ismp"
+version = "0.1.0"
+edition = "2021"
+description = "Rust implementation of the ISMP protocol"
+authors = ["Polytope Labs <hello@polytope.technology>"]
+
+[dependencies]
+# substrate
+frame-system = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+
+# polytope labs
+
+# crates.io
+merkle-mountain-range = { workspace = true, default-features = false }
+codec = { workspace = true, default-features = false }
+primitive-types = { workspace = true, default-features = false }
+serde = { workspace = true, features = ["derive"], optional = true }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+frame-support = { workspace = true, default-features = false }
+sp-core = { default-features = false, workspace = true }
+sp-consensus-aura = { default-features = false, workspace = true }
+sp-io = { workspace = true, default-features = false }
+
+derive_more = { workspace = true, default-features = false, features = ["from", "into", "display"] }
+serde_json = { workspace = true, default-features = false, features = ["alloc"] }
+
+
+[features]
+default = ["std"]
+std = [
+    "frame-system/std",
+    "merkle-mountain-range/std",
+    "codec/std",
+    "sp-runtime/std",
+    "primitive-types/std",
+    "scale-info/std",
+    "serde",
+    "frame-support/std",
+    "sp-core/std",
+    "sp-consensus-aura/std",
+    "sp-io/std"
+]

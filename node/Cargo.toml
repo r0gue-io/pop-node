@@ -18,8 +18,10 @@ serde = { workspace = true, features = ["derive"] }
 jsonrpsee = { workspace = true, features = ["server"] }
 futures = { workspace = true }
 serde_json = { workspace = true }
+tracing = { workspace = true }
 
 # Local
+ismp-parachain-inherent = { path = "../ismp/parachain/inherent", default-features = false }
 runtime = { package = "pop-runtime", path = "../runtime" }
 
 # Substrate
@@ -33,6 +35,7 @@ sc-client-api = { workspace = true }
 sc-offchain = { workspace = true }
 sc-consensus = { workspace = true }
 sc-executor = { workspace = true }
+sp-inherents = { workspace = true }
 sc-network = { workspace = true }
 sc-network-sync = { workspace = true }
 sc-rpc = { workspace = true }
@@ -45,6 +48,7 @@ sc-transaction-pool-api = { workspace = true }
 sp-api = { workspace = true }
 sp-block-builder = { workspace = true }
 sp-blockchain = { workspace = true }
+sp-consensus = { workspace = true }
 sp-consensus-aura = { workspace = true }
 sp-core = { workspace = true }
 sp-keystore = { workspace = true }
@@ -56,6 +60,7 @@ substrate-prometheus-endpoint = { workspace = true }
 
 # Polkadot
 polkadot-cli = { features = ["rococo-native"], workspace = true }
+polkadot-node-primitives = { workspace = true }
 polkadot-primitives = { workspace = true }
 xcm = { default-features = false, workspace = true }
 

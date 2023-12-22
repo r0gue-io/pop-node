@@ -8,6 +8,7 @@ license = "GPL-3.0-only"
 resolver = "2"
 
 members = [
+	"ismp/*",
 	"node",
 	"runtime",
 ]
@@ -89,16 +90,18 @@ zeroize = { opt-level = 3 }
 
 [workspace.dependencies]
 clap = { version = "4.4.10", features = ["derive"] }
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+codec = { package = "parity-scale-codec", version = "3.2.2", default-features = false, features = ["derive"] }
 color-print = "0.3.4"
 futures = "0.3.28"
 hex-literal = { version = "0.4.1" }
 jsonrpsee = { version = "0.16.2", features = ["server"] }
 log = { version = "0.4.20", default-features = false }
-scale-info = { version = "2.10.0", default-features = false, features = ["derive"] }
+primitive-types = { version = "0.12.1", default-features = false }
+scale-info = { version = "2.1.1", default-features = false, features = ["derive"] }
 serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
+serde_json = { default-features = false, version = "1.0.108" }
 smallvec = "1.11.0"
+tracing = "0.1.37"
 
 # Substrate
 frame-benchmarking = { default-features = false, version = "25.0.0" }
@@ -138,11 +141,12 @@ sc-transaction-pool-api = { version = "25.0.0" }
 sp-api = { default-features = false , version = "23.0.0" }
 sp-block-builder = { default-features = false , version = "23.0.0" }
 sp-blockchain = { version = "25.0.0" }
+sp-consensus = { version = "0.29.0" }
 sp-consensus-aura = { default-features = false, version = "0.29.0" }
 sp-core = { default-features = false , version = "25.0.0" }
 sp-genesis-builder = { default-features = false , version = "0.4.0" }
 sp-inherents = { default-features = false , version = "23.0.0" }
-sp-io = { version = "27.0.0" }
+sp-io = { default-features = false, version = "27.0.0" }
 sp-keystore = { version = "0.31.0" }
 sp-offchain = { default-features = false , version = "23.0.0" }
 sp-runtime = { default-features = false , version = "28.0.0" }
@@ -150,6 +154,7 @@ sp-session = { default-features = false , version = "24.0.0" }
 sp-std = { default-features = false , version = "12.0.0" }
 sp-timestamp = { version = "23.0.0" }
 sp-transaction-pool = { default-features = false , version = "23.0.0" }
+sp-trie = { default-features = false, version = "26.0.0" }
 sp-version = { default-features = false , version = "26.0.0" }
 substrate-frame-rpc-system = { version = "25.0.0"}
 substrate-prometheus-endpoint = { version = "0.16.0" }
@@ -159,6 +164,7 @@ substrate-wasm-builder = { version = "14.0.0" }
 # Polkadot
 pallet-xcm = { default-features = false, version = "4.0.0" }
 polkadot-cli = { features = ["rococo-native"], version = "4.0.0" }
+polkadot-node-primitives = { version = "4.0.0" }
 polkadot-parachain-primitives = { default-features = false, version = "3.0.0" }
 polkadot-primitives = { version = "4.0.0" }
 polkadot-runtime-common = { default-features = false, version = "4.0.0" }
@@ -186,3 +192,12 @@ cumulus-relay-chain-interface = { version = "0.4.0"}
 pallet-collator-selection = { default-features = false , version = "6.0.0" }
 parachain-info = { package = "staging-parachain-info", default-features = false , version = "0.4.0" }
 parachains-common = { default-features = false , version = "4.0.0" }
+
+# ISMP
+anyhow = "1.0.57"
+async-trait = { version = "0.1.63" }
+merkle-mountain-range = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false }
+derive_more = { version = "0.99.17", default-features = false, features = ["from", "into", "display"] }
+mmr-lib = { package = "ckb-merkle-mountain-range", version = "0.5.2", default-features = false }
+enum-as-inner = "=0.5.1"
+hash-db = { version = "0.16.0", default-features = false }
