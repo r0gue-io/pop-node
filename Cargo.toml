@@ -1,0 +1,17 @@
+[profile.release]
+panic = "unwind"
+
+[workspace.package]
+authors = ["Anonymous"]
+edition = "2021"
+homepage = "https://substrate.io"
+license = "Unlicense"
+repository = "https://github.com/paritytech/extended-parachain-template/"
+
+[workspace]
+members = [
+	"node",
+	"pallets/*",
+	"runtime",
+]
+resolver = "2"
