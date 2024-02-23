@@ -1,0 +1,22 @@
+[settings]
+timeout = 1000
+node_spawn_timeout = 300
+
+[relaychain]
+chain = "rococo-local"
+default_command = "./bin/polkadot"
+
+    [[relaychain.nodes]]
+    name = "alice"
+    validator = true
+
+    [[relaychain.nodes]]
+    name = "bob"
+    validator = true
+
+[[parachains]]
+id = 909
+
+    [[parachains.collators]]
+    name = "pop"
+    command = "./target/release/pop-node"
