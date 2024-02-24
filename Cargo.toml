@@ -2,7 +2,7 @@
 panic = "unwind"
 
 [workspace.package]
-authors = ["contact@r0gue.io"]
+authors = ["R0GUE <go@r0gue.io>"]
 edition = "2021"
 homepage = "https://r0gue.io"
 license = "Unlicense"
