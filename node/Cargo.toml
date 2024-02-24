@@ -1,10 +1,10 @@
 [package]
-name = "parachain-template-node"
+name = "pop-node"
 version = "0.1.0"
-authors = ["Anonymous"]
-description = "A new Cumulus FRAME-based Substrate Node, ready for hacking together a parachain."
+authors = { workspace = true }
+description = "A new Cumulus FRAME-based Substrate Runtime, ready for hacking together a parachain."
 license = "Unlicense"
-homepage = "https://substrate.io"
+homepage = { workspace = true }
 repository.workspace = true
 edition.workspace = true
 build = "build.rs"
@@ -20,7 +20,7 @@ futures = { workspace = true }
 serde_json = { workspace = true }
 
 # Local
-parachain-template-runtime = { workspace = true }
+pop-runtime = { workspace = true }
 
 # Substrate
 frame-benchmarking = { workspace = true }
@@ -80,14 +80,14 @@ runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
 	"frame-benchmarking-cli/runtime-benchmarks",
 	"frame-benchmarking/runtime-benchmarks",
-	"parachain-template-runtime/runtime-benchmarks",
+	"pop-runtime/runtime-benchmarks",
 	"polkadot-cli/runtime-benchmarks",
 	"polkadot-primitives/runtime-benchmarks",
 	"sc-service/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
-	"parachain-template-runtime/try-runtime",
+	"pop-runtime/try-runtime",
 	"polkadot-cli/try-runtime",
 	"sp-runtime/try-runtime",
 ]
