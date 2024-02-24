@@ -1,10 +1,10 @@
 [package]
-name = "parachain-template-runtime"
-version = "0.7.0"
-authors = ["Anonymous"]
+name = "pop-runtime"
+version = "0.1.0"
+authors = { workspace = true }
 description = "A new Cumulus FRAME-based Substrate Runtime, ready for hacking together a parachain."
 license = "Unlicense"
-homepage = "https://substrate.io"
+homepage = { workspace = true }
 repository.workspace = true
 edition.workspace = true
 
@@ -21,8 +21,6 @@ log = { workspace = true }
 scale-info = { workspace = true }
 smallvec = { workspace = true }
 
-# Local
-pallet-parachain-template = { workspace = true }
 
 # Substrate
 frame-benchmarking = { workspace = true }
@@ -98,7 +96,6 @@ std = [
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
 	"pallet-message-queue/std",
-	"pallet-parachain-template/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
@@ -140,7 +137,6 @@ runtime-benchmarks = [
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
-	"pallet-parachain-template/runtime-benchmarks",
 	"pallet-sudo/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
@@ -166,7 +162,6 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
 	"pallet-message-queue/try-runtime",
-	"pallet-parachain-template/try-runtime",
 	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
 	"pallet-timestamp/try-runtime",

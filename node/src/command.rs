@@ -3,7 +3,7 @@ use std::net::SocketAddr;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
-use parachain_template_runtime::Block;
+use pop_runtime::Block;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
 	NetworkParams, Result, SharedParams, SubstrateCli,
@@ -20,7 +20,7 @@ use crate::{
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
 		"dev" => Box::new(chain_spec::development_config()),
-		"template-rococo" => Box::new(chain_spec::local_testnet_config()),
+		"pop-rococo" => Box::new(chain_spec::local_testnet_config()),
 		"" | "local" => Box::new(chain_spec::local_testnet_config()),
 		path => Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
 	})
@@ -28,7 +28,7 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 
 impl SubstrateCli for Cli {
 	fn impl_name() -> String {
-		"Parachain Collator Template".into()
+		"Pop Collator".into()
 	}
 
 	fn impl_version() -> String {
@@ -37,7 +37,7 @@ impl SubstrateCli for Cli {
 
 	fn description() -> String {
 		format!(
-			"Parachain Collator Template\n\nThe command-line arguments provided first will be \
+			"Pop Collator\n\nThe command-line arguments provided first will be \
 		passed to the parachain node, while the arguments provided after -- will be passed \
 		to the relay chain node.\n\n\
 		{} <parachain-args> -- <relay-chain-args>",
@@ -64,7 +64,7 @@ impl SubstrateCli for Cli {
 
 impl SubstrateCli for RelayChainCli {
 	fn impl_name() -> String {
-		"Parachain Collator Template".into()
+		"Pop Collator".into()
 	}
 
 	fn impl_version() -> String {
@@ -73,7 +73,7 @@ impl SubstrateCli for RelayChainCli {
 
 	fn description() -> String {
 		format!(
-			"Parachain Collator Template\n\nThe command-line arguments provided first will be \
+			"Pop Collator\n\nThe command-line arguments provided first will be \
 		passed to the parachain node, while the arguments provided after -- will be passed \
 		to the relay chain node.\n\n\
 		{} <parachain-args> -- <relay-chain-args>",
@@ -217,6 +217,7 @@ pub fn run() -> Result<()> {
 			}
 		},
 		Some(Subcommand::TryRuntime) => Err("The `try-runtime` subcommand has been migrated to a standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer being maintained here and will be removed entirely some time after January 2024. Please remove this subcommand from your runtime and use the standalone CLI.".into()),
+		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
 			let collator_options = cli.run.collator_options();

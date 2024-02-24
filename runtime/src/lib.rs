@@ -60,9 +60,6 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
-/// Import the template pallet.
-pub use pallet_parachain_template;
-
 /// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
 pub type Signature = MultiSignature;
 
@@ -137,7 +134,7 @@ impl WeightToFeePolynomial for WeightToFee {
 	type Balance = Balance;
 	fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
 		// in Rococo, extrinsic base weight (smallest non-zero weight) is mapped to 1 MILLIUNIT:
-		// in our template, we map to 1/10 of that, or 1/10 MILLIUNIT
+		// we map to 1/10 of that, or 1/10 MILLIUNIT
 		let p = MILLIUNIT / 10;
 		let q = 100 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
 		smallvec![WeightToFeeCoefficient {
@@ -179,10 +176,10 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("template-parachain"),
-	impl_name: create_runtime_str!("template-parachain"),
+	spec_name: create_runtime_str!("pop"),
+	impl_name: create_runtime_str!("pop"),
 	authoring_version: 1,
-	spec_version: 1,
+	spec_version: 00_01_00,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -485,11 +482,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = ();
 }
 
-/// Configure the pallet template in pallets/template.
-impl pallet_parachain_template::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-}
-
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime {
@@ -518,9 +510,6 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm = 31,
 		CumulusXcm: cumulus_pallet_xcm = 32,
 		MessageQueue: pallet_message_queue = 33,
-
-		// Template
-		TemplatePallet: pallet_parachain_template = 50,
 	}
 );
 

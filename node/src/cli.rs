@@ -42,17 +42,21 @@ pub enum Subcommand {
 	/// [CLI](<https://github.com/paritytech/try-runtime-cli>). The subcommand exists as a stub and
 	/// deprecation notice. It will be removed entirely some time after Janurary 2024.
 	TryRuntime,
+
+	/// Key management CLI utilities
+	#[command(subcommand)]
+	Key(sc_cli::KeySubcommand),
 }
 
 const AFTER_HELP_EXAMPLE: &str = color_print::cstr!(
 	r#"<bold><underline>Examples:</></>
-   <bold>parachain-template-node build-spec --disable-default-bootnode > plain-parachain-chainspec.json</>
+   <bold>pop-node build-spec --disable-default-bootnode > plain-parachain-chainspec.json</>
            Export a chainspec for a local testnet in json format.
-   <bold>parachain-template-node --chain plain-parachain-chainspec.json --tmp -- --chain rococo-local</>
+   <bold>pop-node --chain plain-parachain-chainspec.json --tmp -- --chain rococo-local</>
            Launch a full node with chain specification loaded from plain-parachain-chainspec.json.
-   <bold>parachain-template-node</>
+   <bold>pop-node</>
            Launch a full node with default parachain <italic>local-testnet</> and relay chain <italic>rococo-local</>.
-   <bold>parachain-template-node --collator</>
+   <bold>pop-node --collator</>
            Launch a collator with default parachain <italic>local-testnet</> and relay chain <italic>rococo-local</>.
  "#
 );

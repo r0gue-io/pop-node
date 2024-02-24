@@ -2,16 +2,15 @@
 panic = "unwind"
 
 [workspace.package]
-authors = ["Anonymous"]
+authors = ["R0GUE <go@r0gue.io>"]
 edition = "2021"
-homepage = "https://substrate.io"
+homepage = "https://r0gue.io"
 license = "Unlicense"
-repository = "https://github.com/paritytech/extended-parachain-template/"
+repository = "https://github.com/r0gue-io/pop-node/"
 
 [workspace]
 members = [
 	"node",
-	"pallets/*",
 	"runtime",
 ]
 resolver = "2"
@@ -28,14 +27,12 @@ jsonrpsee = { version = "0.20.3", features = ["server"] }
 futures = "0.3.28"
 serde_json = "1.0.111"
 
-
 # Build
 substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }
 
 # Local
-pallet-parachain-template = { path = "./pallets/template", default-features = false }
-parachain-template-runtime = { path = "./runtime" }
+pop-runtime = { path = "./runtime" }
 
 # Substrate
 sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }

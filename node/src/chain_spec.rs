@@ -1,5 +1,5 @@
 use cumulus_primitives_core::ParaId;
-use parachain_template_runtime::{AccountId, AuraId, Signature, EXISTENTIAL_DEPOSIT};
+use pop_runtime::{AccountId, AuraId, Signature, EXISTENTIAL_DEPOSIT};
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
@@ -56,8 +56,8 @@ where
 /// Generate the session keys from individual elements.
 ///
 /// The input must be a tuple of individual keys (a single arg for now since we have just one key).
-pub fn template_session_keys(keys: AuraId) -> parachain_template_runtime::SessionKeys {
-	parachain_template_runtime::SessionKeys { aura: keys }
+pub fn pop_session_keys(keys: AuraId) -> pop_runtime::SessionKeys {
+	pop_runtime::SessionKeys { aura: keys }
 }
 
 pub fn development_config() -> ChainSpec {
@@ -68,7 +68,7 @@ pub fn development_config() -> ChainSpec {
 	properties.insert("ss58Format".into(), 42.into());
 
 	ChainSpec::builder(
-		parachain_template_runtime::WASM_BINARY
+		pop_runtime::WASM_BINARY
 			.expect("WASM binary was not built, please build it!"),
 		Extensions {
 			relay_chain: "rococo-local".into(),
@@ -120,7 +120,7 @@ pub fn local_testnet_config() -> ChainSpec {
 
 	#[allow(deprecated)]
 	ChainSpec::builder(
-		parachain_template_runtime::WASM_BINARY
+		pop_runtime::WASM_BINARY
 			.expect("WASM binary was not built, please build it!"),
 		Extensions {
 			relay_chain: "rococo-local".into(),
@@ -160,7 +160,7 @@ pub fn local_testnet_config() -> ChainSpec {
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		1000.into(),
 	))
-	.with_protocol_id("template-local")
+	.with_protocol_id("pop-local")
 	.with_properties(properties)
 	.build()
 }
@@ -189,7 +189,7 @@ fn testnet_genesis(
 					(
 						acc.clone(),                 // account id
 						acc,                         // validator id
-						template_session_keys(aura), // session keys
+						pop_session_keys(aura),      // session keys
 					)
 				})
 			.collect::<Vec<_>>(),
