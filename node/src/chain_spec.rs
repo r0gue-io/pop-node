@@ -189,7 +189,7 @@ fn testnet_genesis(
 					(
 						acc.clone(),                 // account id
 						acc,                         // validator id
-						pop_session_keys(aura), // session keys
+						pop_session_keys(aura),      // session keys
 					)
 				})
 			.collect::<Vec<_>>(),
