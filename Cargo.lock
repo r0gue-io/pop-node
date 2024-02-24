@@ -8665,7 +8665,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime"
-version = "0.7.0"
+version = "0.1.0"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
