@@ -1,4 +1,4 @@
-//! Substrate Parachain Node Pop CLI
+//! Pop Parachain Node
 
 #![warn(missing_docs)]
 
