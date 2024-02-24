@@ -176,10 +176,10 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("pop-parachain"),
-	impl_name: create_runtime_str!("pop-parachain"),
+	spec_name: create_runtime_str!("pop"),
+	impl_name: create_runtime_str!("pop"),
 	authoring_version: 1,
-	spec_version: 0010,
+	spec_version: 00_01_00,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
