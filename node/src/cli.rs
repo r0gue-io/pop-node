@@ -42,6 +42,10 @@ pub enum Subcommand {
 	/// [CLI](<https://github.com/paritytech/try-runtime-cli>). The subcommand exists as a stub and
 	/// deprecation notice. It will be removed entirely some time after Janurary 2024.
 	TryRuntime,
+
+	/// Key management CLI utilities
+	#[command(subcommand)]
+	Key(sc_cli::KeySubcommand),
 }
 
 const AFTER_HELP_EXAMPLE: &str = color_print::cstr!(
