@@ -32,11 +32,17 @@ frame-system-rpc-runtime-api = { workspace = true }
 frame-try-runtime = { workspace = true }
 pallet-aura = { workspace = true }
 pallet-authorship = { workspace = true }
+pallet-assets = { workspace = true }
 pallet-balances = { workspace = true }
 pallet-contracts = { workspace = true }
 pallet-message-queue = { workspace = true }
+pallet-nft-fractionalization = { workspace = true }
+pallet-nfts = { workspace = true }
+pallet-nfts-runtime-api = { workspace = true }
+pallet-scheduler = { workspace = true }
 pallet-session = { workspace = true }
 pallet-sudo = { workspace = true }
+pallet-preimage = { workspace = true }
 pallet-timestamp = { workspace = true }
 pallet-transaction-payment = { workspace = true }
 pallet-transaction-payment-rpc-runtime-api = { workspace = true }
@@ -94,12 +100,18 @@ std = [
 	"log/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
+	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
 	"pallet-contracts/std",
 	"pallet-message-queue/std",
+	"pallet-nft-fractionalization/std",
+	"pallet-nfts/std",
+	"pallet-nfts-runtime-api/std",
+	"pallet-scheduler/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
+	"pallet-preimage/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
@@ -136,11 +148,16 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"frame-system-benchmarking/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
 	"pallet-contracts/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
+	"pallet-nft-fractionalization/runtime-benchmarks",
+	"pallet-nfts/runtime-benchmarks",
+	"pallet-scheduler/runtime-benchmarks",
 	"pallet-sudo/runtime-benchmarks",
+	"pallet-preimage/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"parachains-common/runtime-benchmarks",
@@ -162,12 +179,17 @@ try-runtime = [
 	"frame-try-runtime/try-runtime",
 	"pallet-aura/try-runtime",
 	"pallet-authorship/try-runtime",
+	"pallet-assets/try-runtime",
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
 	"pallet-contracts/try-runtime",
 	"pallet-message-queue/try-runtime",
+	"pallet-nft-fractionalization/try-runtime",
+	"pallet-nfts/try-runtime",
+	"pallet-scheduler/try-runtime",
 	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
+	"pallet-preimage/try-runtime",
 	"pallet-timestamp/try-runtime",
 	"pallet-transaction-payment/try-runtime",
 	"pallet-xcm/try-runtime",
