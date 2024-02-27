@@ -1,14 +1,9 @@
-use codec::{
-    Decode,
-    Encode,
-    MaxEncodedLen,
-};
 use frame_support::{
-    dispatch::RawOrigin,
+    dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
     pallet_prelude::*,
 };
 
-use log::{error, log, trace};
+use log;
 
 use pallet_contracts::chain_extension::{
     ChainExtension,
@@ -18,24 +13,23 @@ use pallet_contracts::chain_extension::{
     RetVal,
     SysConfig,
 };
+
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{
     traits::{
-        Dispatchable, Saturating, StaticLookup, Zero
+        Dispatchable
     },
     DispatchError,
 };
 
-use crate::{RuntimeCall, RuntimeOrigin};
-
-
+const LOG_TARGET: &str = "popapi::extension";
 #[derive(Default)]
 pub struct PopApiExtension;
 
 fn convert_err(err_msg: &'static str) -> impl FnOnce(DispatchError) -> DispatchError {
     move |err| {
-        trace!(
-            target: "runtime",
+        log::trace!(
+            target: LOG_TARGET,
             "Pop API failed:{:?}",
             err
         );
@@ -43,8 +37,6 @@ fn convert_err(err_msg: &'static str) -> impl FnOnce(DispatchError) -> DispatchE
     }
 }
 
-/// We're using enums for function IDs because contrary to raw u16 it enables
-/// exhaustive matching, which results in cleaner code.
 #[derive(Debug)]
 enum FuncId {
     CallRuntime
@@ -57,7 +49,7 @@ impl TryFrom<u16> for FuncId {
         let id = match func_id {
             0xfecb => Self::CallRuntime,
             _ => {
-                error!("Called an unregistered `func_id`: {:}", func_id);
+                log::error!("Called an unregistered `func_id`: {:}", func_id);
                 return Err(DispatchError::Other("Unimplemented func_id"))
             }
         };
@@ -65,30 +57,52 @@ impl TryFrom<u16> for FuncId {
         Ok(id)
     }
 }
-const LOG_TARGET: &str = "runtime::contracts";
-fn call_runtime<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+
+fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-    T: pallet_contracts::Config,
+    T: pallet_contracts::Config + frame_system::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
+    <T as SysConfig>::RuntimeCall: Parameter
+    + Dispatchable<
+        RuntimeOrigin = <T as SysConfig>::RuntimeOrigin,
+        PostInfo = PostDispatchInfo,
+    > + GetDispatchInfo
+    + From<frame_system::Call<T>>,
     E: Ext<T = T>,
 {
-    log::debug!(target:LOG_TARGET, "popapi call_runtime");
     let mut env = env.buf_in_buf_out();
 
-    // TODO: calculate weight and charge fees
+    // charge max weight before reading contract memory
+    // TODO: causing "1010: block limits exhausted" error
+    // let weight_limit = env.ext().gas_meter().gas_left();
+    // let charged_weight = env.charge_weight(weight_limit)?;
 
-    // let base_weight = <T as pallet_assets::Config>::WeightInfo::transfer();
-    // debug_message weight is a good approximation of the additional overhead of going
+    // TODO: debug_message weight is a good approximation of the additional overhead of going
     // from contract layer to substrate layer.
+    
+    // input length
     let len = env.in_len();
-    let mut call: RuntimeCall = env.read_as_unbounded(len)?;
-    log::debug!(target:LOG_TARGET, "popapi dispatch {:?}", call);
+    let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
+    
+    log::trace!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
 
-    //TODO: properly set the origin to the sender
     let sender = env.ext().caller();
-    let origin: RuntimeOrigin = RawOrigin::Root.into();
+    let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
+    
+    // TODO: uncomment once charged_weight is fixed 
+    // let actual_weight = call.get_dispatch_info().weight;
+    // env.adjust_weight(charged_weight, actual_weight);
+
     let result = call.dispatch(origin);
-    log::debug!(target:LOG_TARGET, "pop api trace {:?}", result);
+    match result {
+        Ok(info) => {
+            log::trace!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
+        }
+        Err(err) => {
+            log::trace!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
+            return Err(err.error);
+        }
+    }
     Ok(())
 }
 
@@ -97,6 +111,12 @@ impl<T> ChainExtension<T> for PopApiExtension
 where
     T: pallet_contracts::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
+    <T as SysConfig>::RuntimeCall: Parameter
+    + Dispatchable<
+        RuntimeOrigin = <T as SysConfig>::RuntimeOrigin,
+        PostInfo = PostDispatchInfo,
+    > + GetDispatchInfo
+    + From<frame_system::Call<T>>,
 {
     fn call<E: Ext>(
         &mut self,
@@ -107,11 +127,9 @@ where
         <E::T as SysConfig>::AccountId:
             UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
-        
         let func_id = FuncId::try_from(env.func_id())?;
-        log::debug!(target:LOG_TARGET, "popapi call_hit id: {:?}", func_id);
         match func_id {
-            FuncId::CallRuntime => call_runtime::<T, E>(env)?,
+            FuncId::CallRuntime => dispatch::<T, E>(env)?,
         }
 
         Ok(RetVal::Converging(0))

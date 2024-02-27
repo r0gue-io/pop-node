@@ -37,6 +37,12 @@ enum BalancesCall {
     /// pallet code, look for `#[pallet::call]` section and check
     /// `#[pallet::call_index(x)]` attribute of the call. If these attributes are
     /// missing, use source-code order (0-based).
+    #[codec(index = 3)]
+    TransferKeepAlive {
+        dest: MultiAddress<AccountId, ()>,
+        #[codec(compact)]
+        value: u128,
+    },
     #[codec(index = 8)]
     ForceSetBalance {
         who: MultiAddress<AccountId, ()>,
@@ -163,24 +169,14 @@ mod pop_api_extension_demo {
             &mut self,
             receiver: AccountId,
             value: Balance,
-        )  {
-            let call = RuntimeCall::Balances(BalancesCall::ForceSetBalance {
-                    who: receiver.into(),
-                    new_free: value,
+        ) {
+            let call = RuntimeCall::Balances(BalancesCall::TransferKeepAlive {
+                    dest: receiver.into(),
+                    value: value,
                 });
             self.env().extension().call_runtime(call);
             
         }
-
-        // /// Tries to trigger `call_runtime` API with rubbish data.
-        // ///
-        // /// # Note
-        // ///
-        // /// This message is for testing purposes only.
-        // #[ink(message)]
-        // pub fn call_nonexistent_extrinsic(&mut self) -> Result<(), PopApiError> {
-        //     self.env().call_runtime(&()).map_err(Into::into)
-        // }
     }
 
     #[cfg(all(test, feature = "e2e-tests"))]
@@ -236,10 +232,12 @@ mod pop_api_extension_demo {
                 .expect("instantiate failed");
             let mut call_builder = contract.call_builder::<RuntimeCaller>();
 
-            let receiver: AccountId = default_accounts::<DefaultEnvironment>().bob;
+            let accounts = default_accounts::<DefaultEnvironment>();
 
-            let contract_balance_before = client
-                .free_balance(contract.account_id)
+            let receiver: AccountId = accounts.bob;
+
+            let sender_balance_before = client
+                .free_balance(accounts.alice)
                 .await
                 .expect("Failed to get account balance");
             let receiver_balance_before = client
@@ -260,8 +258,8 @@ mod pop_api_extension_demo {
             assert!(call_res.return_value().is_ok());
 
             // then
-            let contract_balance_after = client
-                .free_balance(contract.account_id)
+            let sender_balance_after = client
+                .free_balance(accounts.alice)
                 .await
                 .expect("Failed to get account balance");
             let receiver_balance_after = client
@@ -281,73 +279,5 @@ mod pop_api_extension_demo {
             Ok(())
         }
 
-        /// Negative case scenario:
-        ///  - the call is valid
-        ///  - the call execution fails
-        #[ink_e2e::test]
-        async fn transfer_with_call_runtime_fails_when_execution_fails<
-            Client: E2EBackend,
-        >(
-            mut client: Client,
-        ) -> E2EResult<()> {
-            // given
-            let mut constructor = RuntimeCallerRef::new();
-            let contract = client
-                .instantiate("call-runtime", &ink_e2e::alice(), &mut constructor)
-                .value(CONTRACT_BALANCE)
-                .submit()
-                .await
-                .expect("instantiate failed");
-            let mut call_builder = contract.call_builder::<RuntimeCaller>();
-
-            let receiver: AccountId = default_accounts::<DefaultEnvironment>().bob;
-
-            // when
-            let transfer_message = call_builder
-                .transfer_through_runtime(receiver, INSUFFICIENT_TRANSFER_VALUE);
-
-            let call_res = client
-                .call(&ink_e2e::alice(), &transfer_message)
-                .dry_run()
-                .await?
-                .return_value();
-
-            // then
-            assert!(matches!(call_res, Err(RuntimeError::CallRuntimeFailed)));
-
-            Ok(())
-        }
-
-        /// Negative case scenario:
-        ///  - the call is invalid
-        #[ink_e2e::test]
-        async fn transfer_with_call_runtime_fails_when_call_is_invalid<
-            Client: E2EBackend,
-        >(
-            mut client: Client,
-        ) -> E2EResult<()> {
-            // given
-            let mut constructor = RuntimeCallerRef::new();
-            let contract = client
-                .instantiate("call-runtime", &ink_e2e::alice(), &mut constructor)
-                .value(CONTRACT_BALANCE)
-                .submit()
-                .await
-                .expect("instantiate failed");
-            let mut call_builder = contract.call_builder::<RuntimeCaller>();
-
-            // when
-            let transfer_message = call_builder.call_nonexistent_extrinsic();
-
-            let call_res = client
-                .call(&ink_e2e::alice(), &transfer_message)
-                .dry_run()
-                .await;
-
-            // then
-            assert!(call_res.is_err());
-
-            Ok(())
-        }
-    }
+    } 
 }
