@@ -604,16 +604,11 @@ construct_runtime!(
 mod benches {
     frame_benchmarking::define_benchmarks!(
         [frame_system, SystemBench::<Runtime>]
-        [pallet_assets, Local]
         [pallet_balances, Balances]
         [pallet_session, SessionBench::<Runtime>]
         [pallet_timestamp, Timestamp]
         [pallet_message_queue, MessageQueue]
-        [pallet_nfts, Nfts]
-        [pallet_nft_fractionalization, NftFractionalization]
-        [pallet_scheduler, Scheduler]
         [pallet_sudo, Sudo]
-        [pallet_preimage, Preimage]
         [pallet_collator_selection, CollatorSelection]
         [cumulus_pallet_parachain_system, ParachainSystem]
         [cumulus_pallet_xcmp_queue, XcmpQueue]
@@ -906,8 +901,6 @@ impl_runtime_apis! {
             use frame_system_benchmarking::Pallet as SystemBench;
             use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 
-            type Local = pallet_assets::Pallet::<Runtime, TrustBackedAssetsInstance>;
-
             let mut list = Vec::<BenchmarkList>::new();
             list_benchmarks!(list, extra);
 
@@ -937,8 +930,6 @@ impl_runtime_apis! {
 
             use frame_support::traits::WhitelistedStorageKeys;
             let whitelist = AllPalletsWithSystem::whitelisted_storage_keys();
-            
-            type Local = pallet_assets::Pallet::<Runtime, TrustBackedAssetsInstance>;
 
             let mut batches = Vec::<BenchmarkBatch>::new();
             let params = (&config, &whitelist);

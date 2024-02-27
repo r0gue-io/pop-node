@@ -92,7 +92,7 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
 	type NftId = <Self as pallet_nfts::Config>::ItemId;
 	type AssetBalance = <Self as pallet_balances::Config>::Balance;
-	type AssetId = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId;
+	type AssetId = <Self as pallet_assets::Config<TrustBackedAssets>>::AssetId;
 	type Assets = Assets;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
@@ -102,8 +102,8 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type BenchmarkHelper = ();
 }
 
-pub type TrustBackedAssetsInstance = pallet_assets::Instance1;
-impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
+pub type TrustBackedAssets = pallet_assets::Instance1;
+impl pallet_assets::Config<TrustBackedAssets> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type AssetId = AssetIdForTrustBackedAssets;
