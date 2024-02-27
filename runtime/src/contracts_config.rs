@@ -1,6 +1,6 @@
 use crate::{
-    Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
-    RuntimeHoldReason, Timestamp, deposit,
+    deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
+    RuntimeHoldReason, Timestamp,
 };
 use frame_support::{
     parameter_types,

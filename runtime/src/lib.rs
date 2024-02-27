@@ -6,8 +6,8 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-mod contracts_config;
 mod assets_config;
+mod contracts_config;
 mod weights;
 pub mod xcm_config;
 
@@ -35,9 +35,9 @@ use frame_support::{
     genesis_builder_helper::{build_config, create_default_config},
     parameter_types,
     traits::{
-        tokens::{nonfungibles_v2::Inspect},
-        fungible::{HoldConsideration},
-        LinearStoragePrice, ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, TransformOrigin, EqualPrivilegeOnly,
+        fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
+        ConstU64, ConstU8, EitherOfDiverse, EqualPrivilegeOnly, LinearStoragePrice,
+        TransformOrigin,
     },
     weights::{
         constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
@@ -512,47 +512,43 @@ impl pallet_collator_selection::Config for Runtime {
 }
 
 parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(60) *
-		RuntimeBlockWeights::get().max_block;
+    pub MaximumSchedulerWeight: Weight = Perbill::from_percent(60) *
+        RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_scheduler::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type PalletsOrigin = OriginCaller;
-	type RuntimeCall = RuntimeCall;
-	type MaximumWeight = MaximumSchedulerWeight;
-	type ScheduleOrigin = EnsureRoot<AccountId>;
-	#[cfg(feature = "runtime-benchmarks")]
-	type MaxScheduledPerBlock = ConstU32<512>;
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type MaxScheduledPerBlock = ConstU32<50>;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
-	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type Preimages = Preimage;
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeOrigin = RuntimeOrigin;
+    type PalletsOrigin = OriginCaller;
+    type RuntimeCall = RuntimeCall;
+    type MaximumWeight = MaximumSchedulerWeight;
+    type ScheduleOrigin = EnsureRoot<AccountId>;
+    #[cfg(feature = "runtime-benchmarks")]
+    type MaxScheduledPerBlock = ConstU32<512>;
+    #[cfg(not(feature = "runtime-benchmarks"))]
+    type MaxScheduledPerBlock = ConstU32<50>;
+    type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
+    type OriginPrivilegeCmp = EqualPrivilegeOnly;
+    type Preimages = Preimage;
 }
 
 parameter_types! {
-	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+    pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
     pub const BaseDeposit: Balance = 1 * UNIT;
     pub const ByteDeposit: Balance = UNIT / 100;
 }
 
 impl pallet_preimage::Config for Runtime {
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
-	type RuntimeEvent = RuntimeEvent;
-	type Currency = Balances;
-	type ManagerOrigin = EnsureRoot<AccountId>;
-	type Consideration = HoldConsideration<
-		AccountId,
-		Balances,
-		PreimageHoldReason,
-		LinearStoragePrice<
-			BaseDeposit,
-			ByteDeposit,
-			Balance,
-		>,
-	>;
+    type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+    type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type ManagerOrigin = EnsureRoot<AccountId>;
+    type Consideration = HoldConsideration<
+        AccountId,
+        Balances,
+        PreimageHoldReason,
+        LinearStoragePrice<BaseDeposit, ByteDeposit, Balance>,
+    >;
 }
 
 // Create the runtime by composing the FRAME pallets that were previously configured.
@@ -828,48 +824,48 @@ impl_runtime_apis! {
     }
 
     impl pallet_nfts_runtime_api::NftsApi<Block, AccountId, u32, u32> for Runtime {
-		fn owner(collection: u32, item: u32) -> Option<AccountId> {
-			<Nfts as Inspect<AccountId>>::owner(&collection, &item)
-		}
+        fn owner(collection: u32, item: u32) -> Option<AccountId> {
+            <Nfts as Inspect<AccountId>>::owner(&collection, &item)
+        }
 
-		fn collection_owner(collection: u32) -> Option<AccountId> {
-			<Nfts as Inspect<AccountId>>::collection_owner(&collection)
-		}
+        fn collection_owner(collection: u32) -> Option<AccountId> {
+            <Nfts as Inspect<AccountId>>::collection_owner(&collection)
+        }
 
-		fn attribute(
-			collection: u32,
-			item: u32,
-			key: Vec<u8>,
-		) -> Option<Vec<u8>> {
-			<Nfts as Inspect<AccountId>>::attribute(&collection, &item, &key)
-		}
+        fn attribute(
+            collection: u32,
+            item: u32,
+            key: Vec<u8>,
+        ) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::attribute(&collection, &item, &key)
+        }
 
-		fn custom_attribute(
-			account: AccountId,
-			collection: u32,
-			item: u32,
-			key: Vec<u8>,
-		) -> Option<Vec<u8>> {
-			<Nfts as Inspect<AccountId>>::custom_attribute(
-				&account,
-				&collection,
-				&item,
-				&key,
-			)
-		}
+        fn custom_attribute(
+            account: AccountId,
+            collection: u32,
+            item: u32,
+            key: Vec<u8>,
+        ) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::custom_attribute(
+                &account,
+                &collection,
+                &item,
+                &key,
+            )
+        }
 
-		fn system_attribute(
-			collection: u32,
-			item: Option<u32>,
-			key: Vec<u8>,
-		) -> Option<Vec<u8>> {
-			<Nfts as Inspect<AccountId>>::system_attribute(&collection, item.as_ref(), &key)
-		}
+        fn system_attribute(
+            collection: u32,
+            item: Option<u32>,
+            key: Vec<u8>,
+        ) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::system_attribute(&collection, item.as_ref(), &key)
+        }
 
-		fn collection_attribute(collection: u32, key: Vec<u8>) -> Option<Vec<u8>> {
-			<Nfts as Inspect<AccountId>>::collection_attribute(&collection, &key)
-		}
-	}
+        fn collection_attribute(collection: u32, key: Vec<u8>) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::collection_attribute(&collection, &key)
+        }
+    }
 
     #[cfg(feature = "try-runtime")]
     impl frame_try_runtime::TryRuntime<Block> for Runtime {
