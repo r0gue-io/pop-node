@@ -13,6 +13,10 @@ members = [
 	"node",
 	"runtime",
 ]
+exclude = [
+	"demo-contracts"
+]
+
 resolver = "2"
 
 [workspace.dependencies]
