@@ -6,6 +6,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+mod assets_config;
 mod contracts_config;
 mod weights;
 pub mod xcm_config;
@@ -33,7 +34,11 @@ use frame_support::{
     dispatch::DispatchClass,
     genesis_builder_helper::{build_config, create_default_config},
     parameter_types,
-    traits::{ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, TransformOrigin},
+    traits::{
+        fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
+        ConstU64, ConstU8, EitherOfDiverse, EqualPrivilegeOnly, LinearStoragePrice,
+        TransformOrigin,
+    },
     weights::{
         constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
         WeightToFeeCoefficients, WeightToFeePolynomial,
@@ -210,6 +215,12 @@ pub const DAYS: BlockNumber = HOURS * 24;
 pub const UNIT: Balance = 1_000_000_000_000;
 pub const MILLIUNIT: Balance = 1_000_000_000;
 pub const MICROUNIT: Balance = 1_000_000;
+
+// Deposits
+
+pub (crate) const fn deposit(items: u32, bytes: u32) -> Balance {
+    (items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
+}
 
 /// The existential deposit. Set to 1/10 of the Connected Relay Chain.
 pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
@@ -500,6 +511,46 @@ impl pallet_collator_selection::Config for Runtime {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub MaximumSchedulerWeight: Weight = Perbill::from_percent(60) *
+        RuntimeBlockWeights::get().max_block;
+}
+
+impl pallet_scheduler::Config for Runtime {
+    type RuntimeEvent = RuntimeEvent;
+    type RuntimeOrigin = RuntimeOrigin;
+    type PalletsOrigin = OriginCaller;
+    type RuntimeCall = RuntimeCall;
+    type MaximumWeight = MaximumSchedulerWeight;
+    type ScheduleOrigin = EnsureRoot<AccountId>;
+    #[cfg(feature = "runtime-benchmarks")]
+    type MaxScheduledPerBlock = ConstU32<512>;
+    #[cfg(not(feature = "runtime-benchmarks"))]
+    type MaxScheduledPerBlock = ConstU32<50>;
+    type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
+    type OriginPrivilegeCmp = EqualPrivilegeOnly;
+    type Preimages = Preimage;
+}
+
+parameter_types! {
+    pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+    pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+    pub const PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+    type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+    type RuntimeEvent = RuntimeEvent;
+    type Currency = Balances;
+    type ManagerOrigin = EnsureRoot<AccountId>;
+    type Consideration = HoldConsideration<
+        AccountId,
+        PreimageBalances,
+        PreimageHoldReason,
+        LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+    >;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
     pub enum Runtime {
@@ -523,13 +574,25 @@ construct_runtime!(
         Aura: pallet_aura = 23,
         AuraExt: cumulus_pallet_aura_ext = 24,
 
+        // Scheduler
+        Scheduler: pallet_scheduler = 28,
+
+        // Preimage
+        Preimage: pallet_preimage = 29,
+
         // XCM helpers.
         XcmpQueue: cumulus_pallet_xcmp_queue = 30,
         PolkadotXcm: pallet_xcm = 31,
         CumulusXcm: cumulus_pallet_xcm = 32,
         MessageQueue: pallet_message_queue = 33,
 
+        // Contracts
         Contracts: pallet_contracts = 40,
+
+        // Assets
+        Nfts: pallet_nfts = 50,
+        NftFractionalization: pallet_nft_fractionalization = 51,
+        Assets: pallet_assets::<Instance1> = 52,
     }
 );
 
@@ -549,6 +612,7 @@ mod benches {
 }
 
 impl_runtime_apis! {
+
     impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
         fn slot_duration() -> sp_consensus_aura::SlotDuration {
             sp_consensus_aura::SlotDuration::from_millis(Aura::slot_duration())
@@ -756,6 +820,50 @@ impl_runtime_apis! {
     impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
         fn collect_collation_info(header: &<Block as BlockT>::Header) -> cumulus_primitives_core::CollationInfo {
             ParachainSystem::collect_collation_info(header)
+        }
+    }
+
+    impl pallet_nfts_runtime_api::NftsApi<Block, AccountId, u32, u32> for Runtime {
+        fn owner(collection: u32, item: u32) -> Option<AccountId> {
+            <Nfts as Inspect<AccountId>>::owner(&collection, &item)
+        }
+
+        fn collection_owner(collection: u32) -> Option<AccountId> {
+            <Nfts as Inspect<AccountId>>::collection_owner(&collection)
+        }
+
+        fn attribute(
+            collection: u32,
+            item: u32,
+            key: Vec<u8>,
+        ) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::attribute(&collection, &item, &key)
+        }
+
+        fn custom_attribute(
+            account: AccountId,
+            collection: u32,
+            item: u32,
+            key: Vec<u8>,
+        ) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::custom_attribute(
+                &account,
+                &collection,
+                &item,
+                &key,
+            )
+        }
+
+        fn system_attribute(
+            collection: u32,
+            item: Option<u32>,
+            key: Vec<u8>,
+        ) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::system_attribute(&collection, item.as_ref(), &key)
+        }
+
+        fn collection_attribute(collection: u32, key: Vec<u8>) -> Option<Vec<u8>> {
+            <Nfts as Inspect<AccountId>>::collection_attribute(&collection, &key)
         }
     }
 

@@ -1,6 +1,6 @@
 use crate::{
-    Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
-    RuntimeHoldReason, Timestamp, MILLIUNIT, UNIT,
+    deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
+    RuntimeHoldReason, Timestamp,
 };
 use frame_support::{
     parameter_types,
@@ -17,10 +17,6 @@ impl frame_support::traits::Contains<RuntimeCall> for AllowBalancesCall {
             RuntimeCall::Balances(BalancesCall::transfer_allow_death { .. })
         )
     }
-}
-
-const fn deposit(items: u32, bytes: u32) -> Balance {
-    (items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
 }
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
