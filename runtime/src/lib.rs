@@ -534,8 +534,8 @@ impl pallet_scheduler::Config for Runtime {
 
 parameter_types! {
     pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
-    pub const BaseDeposit: Balance = 1 * UNIT;
-    pub const ByteDeposit: Balance = UNIT / 100;
+    pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+    pub const PreimageByteDeposit: Balance = deposit(0, 1);
 }
 
 impl pallet_preimage::Config for Runtime {
@@ -545,9 +545,9 @@ impl pallet_preimage::Config for Runtime {
     type ManagerOrigin = EnsureRoot<AccountId>;
     type Consideration = HoldConsideration<
         AccountId,
-        Balances,
+        PreimageBalances,
         PreimageHoldReason,
-        LinearStoragePrice<BaseDeposit, ByteDeposit, Balance>,
+        LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
     >;
 }
 
@@ -589,7 +589,7 @@ construct_runtime!(
         // Contracts
         Contracts: pallet_contracts = 40,
 
-        // Nfts
+        // Assets
         Nfts: pallet_nfts = 50,
         NftFractionalization: pallet_nft_fractionalization = 51,
         Assets: pallet_assets::<Instance1> = 52,

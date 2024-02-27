@@ -16,7 +16,7 @@ use sp_runtime::traits::Verify;
 pub type AssetsForceOrigin = EnsureRoot<AccountId>;
 
 parameter_types! {
-    pub const AssetDeposit: Balance = UNIT / 10; // 1 / 10 UNITS deposit to create asset
+    pub const AssetDeposit: Balance = 10 * UNIT;
     pub const AssetAccountDeposit: Balance = deposit(1, 16);
     pub const ApprovalDeposit: Balance = EXISTENTIAL_DEPOSIT;
     pub const AssetsStringLimit: u32 = 50;
@@ -28,8 +28,8 @@ parameter_types! {
 
 parameter_types! {
     pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
-    pub const NftsCollectionDeposit: Balance = UNIT / 10;
-    pub const NftsItemDeposit: Balance = UNIT / 1_000;
+    pub const NftsCollectionDeposit: Balance = 10 * UNIT;
+    pub const NftsItemDeposit: Balance = UNIT / 100;
     pub const NftsMetadataDepositBase: Balance = deposit(1, 129);
     pub const NftsAttributeDepositBase: Balance = deposit(1, 0);
     pub const NftsDepositPerByte: Balance = deposit(0, 1);
@@ -80,7 +80,7 @@ impl pallet_nft_fractionalization::Config for Runtime {
     type StringLimit = AssetsStringLimit;
     type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
     type NftId = <Self as pallet_nfts::Config>::ItemId;
-    type AssetBalance = <Self as pallet_balances::Config>::Balance;
+    type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssets>>::Balance;
     type AssetId = <Self as pallet_assets::Config<TrustBackedAssets>>::AssetId;
     type Assets = Assets;
     type Nfts = Nfts;
@@ -110,7 +110,7 @@ impl pallet_assets::Config<TrustBackedAssets> for Runtime {
     type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
     type CallbackHandle = ();
     type AssetAccountDeposit = AssetAccountDeposit;
-    type RemoveItemsLimit = frame_support::traits::ConstU32<1000>;
+    type RemoveItemsLimit = ConstU32<1000>;
     #[cfg(feature = "runtime-benchmarks")]
     type BenchmarkHelper = ();
 }
