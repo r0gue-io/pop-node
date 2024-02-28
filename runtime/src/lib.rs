@@ -218,7 +218,7 @@ pub const MICROUNIT: Balance = 1_000_000;
 
 // Deposits
 
-pub (crate) const fn deposit(items: u32, bytes: u32) -> Balance {
+pub(crate) const fn deposit(items: u32, bytes: u32) -> Balance {
     (items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
 }
 
@@ -545,7 +545,7 @@ impl pallet_preimage::Config for Runtime {
     type ManagerOrigin = EnsureRoot<AccountId>;
     type Consideration = HoldConsideration<
         AccountId,
-        PreimageBalances,
+        Balances,
         PreimageHoldReason,
         LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
     >;
