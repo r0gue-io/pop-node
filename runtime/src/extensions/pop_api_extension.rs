@@ -6,21 +6,11 @@ use frame_support::{
 use log;
 
 use pallet_contracts::chain_extension::{
-    ChainExtension,
-    Environment,
-    Ext,
-    InitState,
-    RetVal,
-    SysConfig,
+    ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
 
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{
-    traits::{
-        Dispatchable
-    },
-    DispatchError,
-};
+use sp_runtime::{traits::Dispatchable, DispatchError};
 
 const LOG_TARGET: &str = "popapi::extension";
 #[derive(Default)]
@@ -39,7 +29,7 @@ fn convert_err(err_msg: &'static str) -> impl FnOnce(DispatchError) -> DispatchE
 
 #[derive(Debug)]
 enum FuncId {
-    CallRuntime
+    CallRuntime,
 }
 
 impl TryFrom<u16> for FuncId {
@@ -50,7 +40,7 @@ impl TryFrom<u16> for FuncId {
             0xfecb => Self::CallRuntime,
             _ => {
                 log::error!("Called an unregistered `func_id`: {:}", func_id);
-                return Err(DispatchError::Other("Unimplemented func_id"))
+                return Err(DispatchError::Other("Unimplemented func_id"));
             }
         };
 
@@ -63,11 +53,9 @@ where
     T: pallet_contracts::Config + frame_system::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
     <T as SysConfig>::RuntimeCall: Parameter
-    + Dispatchable<
-        RuntimeOrigin = <T as SysConfig>::RuntimeOrigin,
-        PostInfo = PostDispatchInfo,
-    > + GetDispatchInfo
-    + From<frame_system::Call<T>>,
+        + Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
+        + GetDispatchInfo
+        + From<frame_system::Call<T>>,
     E: Ext<T = T>,
 {
     let mut env = env.buf_in_buf_out();
@@ -79,17 +67,17 @@ where
 
     // TODO: debug_message weight is a good approximation of the additional overhead of going
     // from contract layer to substrate layer.
-    
+
     // input length
     let len = env.in_len();
     let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
-    
+
     log::trace!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
 
     let sender = env.ext().caller();
     let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
-    
-    // TODO: uncomment once charged_weight is fixed 
+
+    // TODO: uncomment once charged_weight is fixed
     // let actual_weight = call.get_dispatch_info().weight;
     // env.adjust_weight(charged_weight, actual_weight);
     let result = call.dispatch(origin);
@@ -105,26 +93,19 @@ where
     Ok(())
 }
 
-
 impl<T> ChainExtension<T> for PopApiExtension
 where
     T: pallet_contracts::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
     <T as SysConfig>::RuntimeCall: Parameter
-    + Dispatchable<
-        RuntimeOrigin = <T as SysConfig>::RuntimeOrigin,
-        PostInfo = PostDispatchInfo,
-    > + GetDispatchInfo
-    + From<frame_system::Call<T>>,
+        + Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
+        + GetDispatchInfo
+        + From<frame_system::Call<T>>,
 {
-    fn call<E: Ext>(
-        &mut self,
-        env: Environment<E, InitState>,
-    ) -> Result<RetVal, DispatchError>
+    fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
         E: Ext<T = T>,
-        <E::T as SysConfig>::AccountId:
-            UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
         let func_id = FuncId::try_from(env.func_id())?;
         match func_id {
@@ -139,8 +120,8 @@ where
 mod tests {
     pub use super::*;
     pub use crate::*;
-    pub use sp_runtime::{AccountId32, traits::Hash};
     pub use pallet_contracts::Code;
+    pub use sp_runtime::{traits::Hash, AccountId32};
 
     pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::Skip;
 
@@ -199,9 +180,15 @@ mod tests {
                 vec![],
                 DEBUG_OUTPUT,
                 pallet_contracts::CollectEvents::Skip,
-            ).result.unwrap();
+            )
+            .result
+            .unwrap();
 
-            assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
+            assert!(
+                !result.result.did_revert(),
+                "deploying contract reverted {:?}",
+                result
+            );
 
             let addr = result.account_id;
 
@@ -209,7 +196,7 @@ mod tests {
             let value_to_send: u128 = 1_000_000_000_000_000;
             let params = [function, BOB.encode(), value_to_send.encode()].concat();
 
-            let bob_balance_before= Balances::free_balance(&BOB);
+            let bob_balance_before = Balances::free_balance(&BOB);
             assert_eq!(bob_balance_before, INITIAL_AMOUNT);
 
             let result = Contracts::bare_call(
@@ -233,9 +220,9 @@ mod tests {
             }
 
             // check for revert
-            assert!(! result.result.unwrap().did_revert(), "Contract reverted!");
+            assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 
-            let bob_balance_after= Balances::free_balance(&BOB);
+            let bob_balance_after = Balances::free_balance(&BOB);
             assert_eq!(bob_balance_before + value_to_send, bob_balance_after);
         });
     }
