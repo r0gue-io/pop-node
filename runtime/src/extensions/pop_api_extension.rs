@@ -6,19 +6,11 @@ use frame_support::{
 use log;
 
 use pallet_contracts::chain_extension::{
-    ChainExtension,
-    Environment,
-    Ext,
-    InitState,
-    RetVal,
-    SysConfig,
+    ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
 
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{
-    traits::Dispatchable,
-    DispatchError,
-};
+use sp_runtime::{traits::Dispatchable, DispatchError};
 
 const LOG_TARGET: &str = "popapi::extension";
 #[derive(Default)]
@@ -50,7 +42,7 @@ impl TryFrom<u16> for FuncId {
             0xfeca => Self::QueryState,
             _ => {
                 log::error!("Called an unregistered `func_id`: {:}", func_id);
-                return Err(DispatchError::Other("Unimplemented func_id"))
+                return Err(DispatchError::Other("Unimplemented func_id"));
             }
         };
 
@@ -63,11 +55,9 @@ where
     T: pallet_contracts::Config + frame_system::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
     <T as SysConfig>::RuntimeCall: Parameter
-    + Dispatchable<
-        RuntimeOrigin = <T as SysConfig>::RuntimeOrigin,
-        PostInfo = PostDispatchInfo,
-    > + GetDispatchInfo
-    + From<frame_system::Call<T>>,
+        + Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
+        + GetDispatchInfo
+        + From<frame_system::Call<T>>,
     E: Ext<T = T>,
 {
     let mut env = env.buf_in_buf_out();
@@ -79,17 +69,17 @@ where
 
     // TODO: debug_message weight is a good approximation of the additional overhead of going
     // from contract layer to substrate layer.
-    
+
     // input length
     let len = env.in_len();
     let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
-    
+
     log::trace!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
 
     let sender = env.ext().caller();
     let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
-    
-    // TODO: uncomment once charged_weight is fixed 
+
+    // TODO: uncomment once charged_weight is fixed
     // let actual_weight = call.get_dispatch_info().weight;
     // env.adjust_weight(charged_weight, actual_weight);
     let result = call.dispatch(origin);
@@ -110,20 +100,14 @@ where
     T: pallet_contracts::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
     <T as SysConfig>::RuntimeCall: Parameter
-    + Dispatchable<
-        RuntimeOrigin = <T as SysConfig>::RuntimeOrigin,
-        PostInfo = PostDispatchInfo,
-    > + GetDispatchInfo
-    + From<frame_system::Call<T>>,
+        + Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
+        + GetDispatchInfo
+        + From<frame_system::Call<T>>,
 {
-    fn call<E: Ext>(
-        &mut self,
-        env: Environment<E, InitState>,
-    ) -> Result<RetVal, DispatchError>
+    fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
     where
         E: Ext<T = T>,
-        <E::T as SysConfig>::AccountId:
-            UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+        <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
         let func_id = FuncId::try_from(env.func_id())?;
         match func_id {
@@ -139,9 +123,10 @@ where
 mod tests {
     pub use super::*;
     pub use crate::*;
-    pub use sp_runtime::{AccountId32, MultiAddress, traits::Hash};
-    pub use frame_support::traits::{Currency, GenesisBuild};
     pub use pallet_contracts::Code;
+    pub use sp_runtime::{traits::Hash, AccountId32};
+
+    pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::Skip;
 
     pub const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
     pub const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
@@ -174,55 +159,74 @@ mod tests {
         Ok((wasm_binary, code_hash))
     }
 
-    // pub fn call_contract_method<V: Decode>(
-    //     origin: AccountId32,
-    //     contract_id: AccountId32,
-    //     data: Vec<u8>,
-    // ) -> V {
-    //     let result = Contracts::bare_call(
-    //         origin,
-    //         contract_id,
-    //         0,
-    //         Weight::from_parts(10_000_000_000, 1024 * 1024),
-    //         None,
-    //         data,
-    //         false,
-    //         pallet_contracts::DebugInfo::Skip,
-    //         pallet_contracts::CollectEvents::Skip,
-    //     );
-    // }
+    pub fn function_selector(name: &str) -> Vec<u8> {
+        let hash = sp_io::hashing::blake2_256(name.as_bytes());
+        [hash[0..4].to_vec()].concat()
+    }
 
     #[test]
     fn test_dispatch() {
         new_test_ext().execute_with(|| {
-            let (wasm_binary, code_hash) = load_wasm_module::<Runtime>().unwrap();
+            let _ = env_logger::try_init();
 
-            let value = 100;
-            let to_send = 50;
+            let (wasm_binary, _) = load_wasm_module::<Runtime>().unwrap();
 
-            let addr = Contracts::bare_instantiate(
+            let init_value = 100;
+
+            let result = Contracts::bare_instantiate(
                 ALICE,
-                value,
+                init_value,
                 GAS_LIMIT,
                 None,
                 Code::Upload(wasm_binary),
+                function_selector("new"),
                 vec![],
-                vec![],
-                pallet_contracts::DebugInfo::Skip,
+                DEBUG_OUTPUT,
                 pallet_contracts::CollectEvents::Skip,
+            )
+            .result
+            .unwrap();
+
+            assert!(
+                !result.result.did_revert(),
+                "deploying contract reverted {:?}",
+                result
             );
 
-            // call_wasm_contract_method::<Result<(), ()>>(
-            //     ALICE,
-            //     contract_id.clone(),
-            //     [
-            //         b"transfer_through_runtime",
-            //         BOB,
-            //         to_send,
-            //     ]
-            //     .concat()
-            // );
-            
+            let addr = result.account_id;
+
+            let function = function_selector("transfer_through_runtime");
+            let value_to_send: u128 = 1_000_000_000_000_000;
+            let params = [function, BOB.encode(), value_to_send.encode()].concat();
+
+            let bob_balance_before = Balances::free_balance(&BOB);
+            assert_eq!(bob_balance_before, INITIAL_AMOUNT);
+
+            let result = Contracts::bare_call(
+                ALICE,
+                addr.clone(),
+                0,
+                Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+                None,
+                params,
+                DEBUG_OUTPUT,
+                pallet_contracts::CollectEvents::Skip,
+                pallet_contracts::Determinism::Enforced,
+            );
+
+            if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+                log::debug!(
+                    "Contract debug buffer - {:?}",
+                    String::from_utf8(result.debug_message.clone())
+                );
+                log::debug!("result: {:?}", result);
+            }
+
+            // check for revert
+            assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+
+            let bob_balance_after = Balances::free_balance(&BOB);
+            assert_eq!(bob_balance_before + value_to_send, bob_balance_after);
         });
     }
 }
