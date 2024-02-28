@@ -80,6 +80,18 @@ pub trait PopApi {
     /// operations.
     #[ink(extension = 0xfecb)]
     fn call_runtime(call: RuntimeCall) -> Result<Vec<u8>>;
+
+    // #[ink(extension = 0xfeca)]
+    // fn query_state(key: Vec<u8>) -> Result<Vec<u8>>; 
+    fn read_runtime(&self,
+        key: Vec<u8>
+    ) -> Result(Vec<u8>) {
+        ::ink::env::chain_extension::ChainExtensionMethod(0xfeca)
+            .input::<Vec<u8>>()
+            .output::<Result<Vec<u8>, false>()
+            .handle_error_code::<()>()
+            .call(&key)
+    }
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {
@@ -154,6 +166,15 @@ mod pop_api_extension_demo {
         #[ink(constructor, payable)]
         pub fn new() -> Self {
             Default::default()
+        }
+
+
+        #[ink(message)]
+        pub fn read_state_in_runtime(
+            &self,
+            key: Key
+        ) {
+            self.env().extension().read_runtime(key);
         }
 
         /// Tries to transfer `value` from the contract's balance to `receiver`.
