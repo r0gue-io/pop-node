@@ -92,7 +92,6 @@ where
     // TODO: uncomment once charged_weight is fixed 
     // let actual_weight = call.get_dispatch_info().weight;
     // env.adjust_weight(charged_weight, actual_weight);
-
     let result = call.dispatch(origin);
     match result {
         Ok(info) => {
@@ -133,5 +132,97 @@ where
         }
 
         Ok(RetVal::Converging(0))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    pub use super::*;
+    pub use crate::*;
+    pub use sp_runtime::{AccountId32, MultiAddress, traits::Hash};
+    pub use frame_support::traits::{Currency, GenesisBuild};
+    pub use pallet_contracts::Code;
+
+    pub const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
+    pub const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
+    pub const INITIAL_AMOUNT: u128 = 100_000 * UNIT;
+    pub const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
+
+    pub fn new_test_ext() -> sp_io::TestExternalities {
+        let mut t = frame_system::GenesisConfig::<Runtime>::default()
+            .build_storage()
+            .expect("Frame system builds valid default genesis config");
+
+        pallet_balances::GenesisConfig::<Runtime> {
+            balances: vec![(ALICE, INITIAL_AMOUNT), (BOB, INITIAL_AMOUNT)],
+        }
+        .assimilate_storage(&mut t)
+        .expect("Pallet balances storage can be assimilated");
+
+        let mut ext = sp_io::TestExternalities::new(t);
+        ext.execute_with(|| System::set_block_number(1));
+        ext
+    }
+
+    pub fn load_wasm_module<T>() -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
+    where
+        T: frame_system::Config,
+    {
+        let fixture_path = "../demo-contracts/target/ink/pop_api_extension_demo.wasm";
+        let wasm_binary = std::fs::read(fixture_path)?;
+        let code_hash = T::Hashing::hash(&wasm_binary);
+        Ok((wasm_binary, code_hash))
+    }
+
+    // pub fn call_contract_method<V: Decode>(
+    //     origin: AccountId32,
+    //     contract_id: AccountId32,
+    //     data: Vec<u8>,
+    // ) -> V {
+    //     let result = Contracts::bare_call(
+    //         origin,
+    //         contract_id,
+    //         0,
+    //         Weight::from_parts(10_000_000_000, 1024 * 1024),
+    //         None,
+    //         data,
+    //         false,
+    //         pallet_contracts::DebugInfo::Skip,
+    //         pallet_contracts::CollectEvents::Skip,
+    //     );
+    // }
+
+    #[test]
+    fn test_dispatch() {
+        new_test_ext().execute_with(|| {
+            let (wasm_binary, code_hash) = load_wasm_module::<Runtime>().unwrap();
+
+            let value = 100;
+            let to_send = 50;
+
+            let addr = Contracts::bare_instantiate(
+                ALICE,
+                value,
+                GAS_LIMIT,
+                None,
+                Code::Upload(wasm_binary),
+                vec![],
+                vec![],
+                pallet_contracts::DebugInfo::Skip,
+                pallet_contracts::CollectEvents::Skip,
+            );
+
+            // call_wasm_contract_method::<Result<(), ()>>(
+            //     ALICE,
+            //     contract_id.clone(),
+            //     [
+            //         b"transfer_through_runtime",
+            //         BOB,
+            //         to_send,
+            //     ]
+            //     .concat()
+            // );
+            
+        });
     }
 }
