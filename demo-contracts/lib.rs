@@ -79,7 +79,7 @@ pub trait PopApi {
     /// and the chain-side chain extension will get the `func_id` to do further
     /// operations.
     #[ink(extension = 0xfecb)]
-    fn call_runtime(call: RuntimeCall) -> Result<Vec<u8>>;
+    fn dispatch(call: RuntimeCall) -> Result<Vec<u8>>;
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {
@@ -148,33 +148,27 @@ mod pop_api_extension_demo {
     // }
 
     impl PopApiExtensionDemo {
-        /// The constructor is `payable`, so that during instantiation it can be given
-        /// some tokens that will be further transferred with
-        /// `transfer_through_runtime` message.
         #[ink(constructor, payable)]
         pub fn new() -> Self {
+            ink::env::debug_println!("PopApiExtensionDemo::new");
             Default::default()
         }
 
-        /// Tries to transfer `value` from the contract's balance to `receiver`.
-        ///
-        /// Fails if:
-        ///  - called in the off-chain environment
-        ///  - the chain forbids contracts to call `Balances::transfer` (`CallFilter` is
-        ///    too restrictive)
-        ///  - after the transfer, `receiver` doesn't have at least existential deposit
-        ///  - the contract doesn't have enough balance
         #[ink(message)]
         pub fn transfer_through_runtime(
             &mut self,
             receiver: AccountId,
             value: Balance,
         ) {
+            ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime: \nreceiver: {:?}, \nvalue: {:?}", receiver, value);
+
             let call = RuntimeCall::Balances(BalancesCall::TransferKeepAlive {
                     dest: receiver.into(),
                     value: value,
                 });
-            self.env().extension().call_runtime(call);
+            self.env().extension().dispatch(call);
+
+            ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime end");
             
         }
     }
