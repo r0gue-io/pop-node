@@ -16,9 +16,7 @@ use pallet_contracts::chain_extension::{
 
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{
-    traits::{
-        Dispatchable
-    },
+    traits::Dispatchable,
     DispatchError,
 };
 
@@ -39,7 +37,8 @@ fn convert_err(err_msg: &'static str) -> impl FnOnce(DispatchError) -> DispatchE
 
 #[derive(Debug)]
 enum FuncId {
-    CallRuntime
+    CallRuntime,
+    QueryState
 }
 
 impl TryFrom<u16> for FuncId {
@@ -48,6 +47,7 @@ impl TryFrom<u16> for FuncId {
     fn try_from(func_id: u16) -> Result<Self, Self::Error> {
         let id = match func_id {
             0xfecb => Self::CallRuntime,
+            0xfeca => Self::QueryState,
             _ => {
                 log::error!("Called an unregistered `func_id`: {:}", func_id);
                 return Err(DispatchError::Other("Unimplemented func_id"))
@@ -105,7 +105,6 @@ where
     Ok(())
 }
 
-
 impl<T> ChainExtension<T> for PopApiExtension
 where
     T: pallet_contracts::Config,
@@ -129,6 +128,7 @@ where
         let func_id = FuncId::try_from(env.func_id())?;
         match func_id {
             FuncId::CallRuntime => dispatch::<T, E>(env)?,
+            FuncId::QueryState => query::<T, E>(env)?,
         }
 
         Ok(RetVal::Converging(0))
