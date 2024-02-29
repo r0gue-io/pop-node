@@ -54,6 +54,8 @@ jobs:
   clippy:
     needs: lint
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
     env:
       SKIP_WASM_BUILD: 1
     steps:
