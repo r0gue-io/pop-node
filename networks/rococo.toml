@@ -4,7 +4,7 @@ node_spawn_timeout = 300
 
 [relaychain]
 chain = "rococo-local"
-default_command = "./bin/polkadot"
+default_command = "./cache/polkadot-v1.7.1"
 
     [[relaychain.nodes]]
     name = "alice"

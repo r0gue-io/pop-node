@@ -1,12 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-
 use ink::{
     env::Environment,
     prelude::vec::Vec,
 };
 
-use ink::primitives::AccountId;
+use ink::primitives::{AccountId, Key};
 use sp_runtime::MultiAddress;
 
 /// A part of the runtime dispatchable API.
@@ -51,6 +50,14 @@ enum BalancesCall {
     },
 }
 
+// SAFE_KEYS should live in pop-api repo, both this runtime and the contract
+// can depend on pop-api to be able to interface with each other.
+// Right now is just impl in both sides, contract and extension until this
+// is merged into pop-api
+enum SafeKeys {
+    RelayBlockNumber,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum PopApiError {
@@ -81,15 +88,9 @@ pub trait PopApi {
     #[ink(extension = 0xfecb)]
     fn dispatch(call: RuntimeCall) -> Result<Vec<u8>>;
 
-    fn read_runtime_state(&self,
-        key: Vec<u8>
-    ) -> Result(Vec<u8>) {
-        ::ink::env::chain_extension::ChainExtensionMethod(0xfeca)
-            .input::<Vec<u8>>()
-            .output::<Result<Vec<u8>, false>()
-            .handle_error_code::<()>()
-            .call(&key)
-    }
+    #[ink(extension = 0xfeca)]
+    fn read_state(key: SafeKeys) -> Result<Vec<u8>>;
+
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {
@@ -162,6 +163,15 @@ mod pop_api_extension_demo {
         pub fn new() -> Self {
             ink::env::debug_println!("PopApiExtensionDemo::new");
             Default::default()
+        }
+
+        #[ink(message)]
+        pub fn read_runtime_state(
+            &self,
+            key: SAFE_KEYS
+        ) {
+            let state = self.env().extension().read_state(key);
+            ink::env::debug_println!("{:?}", state);
         }
 
         #[ink(message)]
