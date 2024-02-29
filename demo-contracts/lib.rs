@@ -5,7 +5,7 @@ use ink::{
     prelude::vec::Vec,
 };
 
-use ink::primitives::{AccountId, Key};
+use ink::primitives::AccountId;
 use sp_runtime::MultiAddress;
 
 /// A part of the runtime dispatchable API.
