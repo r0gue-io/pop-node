@@ -6,6 +6,9 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
+
+pop-api-primitives = { path = "./primitives" }
+
 ink = { version = "4.3.0", default-features = false }
 pallet-nfts = {version = "22.0.0", default-features = false}
 sp-runtime = { version = "24.0.0", default-features = false }

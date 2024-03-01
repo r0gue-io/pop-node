@@ -21,6 +21,9 @@ log = { workspace = true }
 scale-info = { workspace = true }
 smallvec = { workspace = true }
 
+# Local
+pop-api-primitives = { workspace = true }
+
 
 # Substrate
 frame-benchmarking = { workspace = true }
