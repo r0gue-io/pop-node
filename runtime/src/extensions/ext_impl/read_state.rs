@@ -16,10 +16,13 @@ where
     E: Ext<T = T>,
 {
     let mut env = env.buf_in_buf_out();
+    // TODO: Substitue len u32 with pop-api::src::impls::pop_network::StringLimit.
+    // Move StringLimit to pop_api_primitives first.
     let len = env.in_len();
-    let key: SafeKeys = env.read_as_unbounded(len)?;
+    let key: RuntimeStateKeys::ParachainSystemKeys = env.read_as_unbounded(len)?;
+    
     match key {
-        ParachainSystem(LastRelayChainBlockNumber) => {
+        LastRelayChainBlockNumber => {
             let relay_block_num: BlockNumber = last_relay_block_number();
             log::debug!(
                 target:LOG_TARGET,

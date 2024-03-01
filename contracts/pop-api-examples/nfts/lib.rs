@@ -14,23 +14,12 @@ use pop_api::impls::pop_network::PopApiError;
 mod pop_api_extension_demo {
 
     use super::PopApiError;
-
+    use scale::Encode;
     use ink::env::Error as EnvError;
 
-    /// A trivial contract with a single message, that uses `call-runtime` API for
-    /// performing native token transfer.
     #[ink(storage)]
     #[derive(Default)]
     pub struct PopApiExtensionDemo;
-
-    // impl From<EnvError> for PopApiError {
-    //     fn from(e: EnvError) -> Self {
-    //         match e {
-    //             EnvError::CallRuntimeFailed => PopApiError::PlaceholderError,
-    //             _ => panic!("Unexpected error from `pallet-contracts`."),
-    //         }
-    //     }
-    // }
 
     impl PopApiExtensionDemo {
         #[ink(constructor, payable)]
@@ -40,20 +29,18 @@ mod pop_api_extension_demo {
         }
 
         #[ink(message)]
-        pub fn transfer_through_runtime(
+        pub fn mint_through_runtime(
             &mut self,
+            collection_id: u32,
+            item_id: u32,
             receiver: AccountId,
-            value: Balance,
         ) {
-            ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime: \nreceiver: {:?}, \nvalue: {:?}", receiver, value);
+            ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime: collection_id: {:?} \nitem_id {:?} \nreceiver: {:?}, ", collection_id, item_id, receiver);
 
-            // let call = RuntimeCall::Balances(BalancesCall::TransferKeepAlive {
-            //         dest: receiver.into(),
-            //         value: value,
-            //     });
-            // self.env().extension().dispatch(call);
+            let call = pop_api::impls::pop_network::Nfts::mint(collection_id, item_id, receiver);
+            self.env().extension().dispatch(call);
 
-            ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime end");
+            ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime end");
             
         }
     }

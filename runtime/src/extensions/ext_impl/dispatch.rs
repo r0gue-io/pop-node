@@ -9,7 +9,7 @@ use sp_runtime::{traits::Dispatchable, DispatchError};
 
 const LOG_TARGET: &str = "popapi::extension::dispatch";
 
-pub(crate) fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+fn(crate) dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
     T: pallet_contracts::Config + frame_system::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
@@ -33,7 +33,7 @@ where
     let len = env.in_len();
     let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
 
-    log::trace!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
+    log::debug!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
 
     let sender = env.ext().caller();
     let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
@@ -44,10 +44,10 @@ where
     let result = call.dispatch(origin);
     match result {
         Ok(info) => {
-            log::trace!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
+            log::debug!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
         }
         Err(err) => {
-            log::trace!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
+            log::debug!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
             return Err(err.error);
         }
     }
