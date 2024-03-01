@@ -9,6 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod assets_config;
 mod contracts_config;
 mod weights;
+mod nonfungibles_pop;
 pub mod xcm_config;
 
 use cumulus_pallet_parachain_system::RelayNumberStrictlyIncreases;
@@ -590,9 +591,10 @@ construct_runtime!(
         Contracts: pallet_contracts = 40,
 
         // Assets
-        Nfts: pallet_nfts = 50,
+        Nfts: pallet_nfts::<Instance1> = 50,
         NftFractionalization: pallet_nft_fractionalization = 51,
         Assets: pallet_assets::<Instance1> = 52,
+        ForeignNfts: pallet_nfts::<Instance2> = 53,
     }
 );
 

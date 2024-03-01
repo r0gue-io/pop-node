@@ -1,5 +1,8 @@
+use crate::nonfungibles_pop::{NonFungiblesAdapterPop, MultiLocationCollectionId};
+use pallet_nfts::ItemConfig;
+
 use super::{
-    AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
+    AccountId, AllPalletsWithSystem, Balances, ForeignNfts, ParachainInfo, ParachainSystem, PolkadotXcm,
     Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 use frame_support::{
@@ -12,17 +15,15 @@ use pallet_xcm::XcmPassthrough;
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
 use xcm::latest::prelude::*;
+use xcm::opaque::v3::MultiLocation;
 #[allow(deprecated)]
 use xcm_builder::CurrencyAdapter;
 use xcm_builder::{
-    AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowTopLevelPaidExecutionFrom,
-    DenyReserveTransferToRelayChain, DenyThenTry, EnsureXcmOrigin, FixedWeightBounds,
-    FrameTransactionalProcessor, IsConcrete, NativeAsset, ParentIsPreset, RelayChainAsNative,
-    SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-    SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId,
-    UsingComponents, WithComputedOrigin, WithUniqueTopic,
+    Account32Hash, AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowTopLevelPaidExecutionFrom, DenyReserveTransferToRelayChain, DenyThenTry, EnsureXcmOrigin, FixedWeightBounds, FrameTransactionalProcessor, IsConcrete, NativeAsset, NoChecking, ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic
 };
-use xcm_executor::XcmExecutor;
+use xcm_executor::{XcmExecutor, 
+    traits::{Error as MatchError, MatchesNonFungibles}
+};
 
 parameter_types! {
     pub const RelayLocation: Location = Location::parent();
@@ -34,6 +35,7 @@ parameter_types! {
 /// Type for specifying how a `Location` can be converted into an `AccountId`. This is used
 /// when determining ownership of accounts for asset transacting and when attempting to use XCM
 /// `Transact` in order to determine the dispatch Origin.
+//
 pub type LocationToAccountId = (
     // The parent (Relay-chain) origin converts to the parent `AccountId`.
     ParentIsPreset<AccountId>,
@@ -41,6 +43,8 @@ pub type LocationToAccountId = (
     SiblingParachainConvertsVia<Sibling, AccountId>,
     // Straight up local `AccountId32` origins just alias directly to `AccountId`.
     AccountId32Aliases<RelayNetwork, AccountId>,
+    // TODO: understand
+    Account32Hash<(), AccountId>,
 );
 
 /// Means for transacting assets on this chain.
@@ -57,6 +61,43 @@ pub type LocalAssetTransactor = CurrencyAdapter<
     // We don't track any teleports.
     (),
 >;
+
+pub struct MultiAssetToNftsConverter;
+impl MatchesNonFungibles<MultiLocationCollectionId, AssetInstance> for MultiAssetToNftsConverter {
+    fn matches_nonfungibles(a: &Asset) -> Result<(MultiLocationCollectionId, AssetInstance), MatchError> {
+        let (location, instance) = match (&a.id, &a.fun) {
+            (AssetId(location), NonFungible(instance)) => (location, instance),
+            _ => return Err(MatchError::AssetNotHandled),
+        };
+
+        let collection_id = MultiLocationCollectionId(MultiLocation {
+            parents: location.parents,
+            interior: location.interior.clone().try_into().unwrap(),
+        });
+
+        let item_id = instance;
+
+        Ok((collection_id, *item_id))
+    }
+}
+
+pub type NonFungiblesTransactor = NonFungiblesAdapterPop<
+    // Use the nfts pallet:
+    ForeignNfts,
+    MultiAssetToNftsConverter,
+    LocationToAccountId,
+    AccountId,
+    // We don't support teleport so no need to check any assets.
+    NoChecking,
+    // We don't support teleport so this is just a dummy account.
+    (),
+    ItemConfig,
+>;
+
+pub type AssetTransactors = (
+    LocalAssetTransactor,
+    NonFungiblesTransactor,
+);
 
 /// This is the type we use to convert an (incoming) XCM origin into a local `Origin` instance,
 /// ready for dispatching a transaction with Xcm's `Transact`. There is an `OriginKind` which can
@@ -126,7 +167,7 @@ impl xcm_executor::Config for XcmConfig {
     type RuntimeCall = RuntimeCall;
     type XcmSender = XcmRouter;
     // How to withdraw and deposit an asset.
-    type AssetTransactor = LocalAssetTransactor;
+    type AssetTransactor = AssetTransactors;
     type OriginConverter = XcmOriginToTransactDispatchOrigin;
     type IsReserve = NativeAsset;
     type IsTeleporter = (); // Teleporting is disabled.
