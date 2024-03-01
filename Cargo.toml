@@ -15,7 +15,7 @@ members = [
 	"pop-api",
 ]
 exclude = [
-	"demo-contracts"
+	"contracts"
 ]
 
 resolver = "2"
