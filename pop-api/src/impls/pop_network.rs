@@ -1,5 +1,4 @@
 use crate::interfaces::nfts::NftCalls;
-use pallet_nfts::CollectionConfig;
 use sp_runtime::{MultiAddress, MultiSignature};
 use ink::prelude::vec::Vec;
 use scale;
@@ -31,24 +30,24 @@ pub struct Api {
     nft: Nfts 
 }
 
-pub type NftCallsOf = NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimit, StringLimit, MaxTips, Signature>;
+pub type NftCallsOf = NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  StringLimit, >;
 
 pub struct Nfts;
 
 impl Nfts {
-    pub fn create(&self, admin: MultiAddress<AccountId, ()>, config: CollectionConfig<Balance, BlockNumber, CollectionId>) -> RuntimeCall {
-        RuntimeCall::Nfts(NftCallsOf::Create { admin, config })
-    }
+    // pub fn create(&self, admin: MultiAddress<AccountId, ()>, config: CollectionConfig<Balance, BlockNumber, CollectionId>) -> RuntimeCall {
+    //     RuntimeCall::Nfts(NftCallsOf::Create { admin, config })
+    // }
 
-   pub fn mint(&self, collection: CollectionId, item: ItemId, mint_to: MultiAddress<AccountId, ()>) -> RuntimeCall {
-        RuntimeCall::Nfts(NftCallsOf::Mint { collection, item, mint_to })
+   pub fn mint(collection: CollectionId, item: ItemId, mint_to: impl Into< MultiAddress<AccountId, ()> >) -> RuntimeCall {
+        RuntimeCall::Nfts(NftCallsOf::Mint { collection, item, mint_to: mint_to.into(), witness_data: None})
     }
 }
 
 #[derive(scale::Encode)]
 pub enum RuntimeCall {
     #[codec(index = 50)]
-    Nfts(NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimit, StringLimit, MaxTips, Signature>)
+    Nfts(NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  StringLimit>)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]

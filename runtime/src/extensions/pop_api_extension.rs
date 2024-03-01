@@ -72,7 +72,7 @@ where
     let len = env.in_len();
     let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
 
-    log::trace!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
+    log::debug!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
 
     let sender = env.ext().caller();
     let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
@@ -83,10 +83,10 @@ where
     let result = call.dispatch(origin);
     match result {
         Ok(info) => {
-            log::trace!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
+            log::debug!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
         }
         Err(err) => {
-            log::trace!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
+            log::debug!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
             return Err(err.error);
         }
     }
@@ -107,6 +107,7 @@ where
         E: Ext<T = T>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
+        log::debug!(target:LOG_TARGET, " extension called ");
         let func_id = FuncId::try_from(env.func_id())?;
         match func_id {
             FuncId::CallRuntime => dispatch::<T, E>(env)?,
@@ -123,7 +124,7 @@ mod tests {
     pub use pallet_contracts::Code;
     pub use sp_runtime::{traits::Hash, AccountId32};
 
-    pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::Skip;
+    pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 
     pub const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
     pub const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
@@ -146,12 +147,11 @@ mod tests {
         ext
     }
 
-    pub fn load_wasm_module<T>() -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
+    pub fn load_wasm_module<T>(path: &str) -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
     where
         T: frame_system::Config,
     {
-        let fixture_path = "../demo-contracts/target/ink/pop_api_extension_demo.wasm";
-        let wasm_binary = std::fs::read(fixture_path)?;
+        let wasm_binary = std::fs::read(path)?;
         let code_hash = T::Hashing::hash(&wasm_binary);
         Ok((wasm_binary, code_hash))
     }
@@ -166,7 +166,7 @@ mod tests {
         new_test_ext().execute_with(|| {
             let _ = env_logger::try_init();
 
-            let (wasm_binary, _) = load_wasm_module::<Runtime>().unwrap();
+            let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/balance-transfer/target/ink/pop_api_extension_demo.wasm").unwrap();
 
             let init_value = 100;
 

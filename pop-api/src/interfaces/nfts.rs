@@ -1,14 +1,13 @@
-use pallet_nfts::{AttributeNamespace, CollectionConfig, CollectionSettings, ItemTip, MintSettings, PreSignedAttributes, PreSignedMint, PriceWithDirection};
 use sp_runtime::{BoundedVec, MultiAddress};
 use ink::prelude::vec::Vec;
 
 #[derive(scale::Encode)]
-pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimit, StringLimit, MaxTips, OffchainSignature> {
-    #[codec(index = 0)]
-    Create {
-        admin: MultiAddress<AccountId, ()>,
-        config: CollectionConfig<Balance, BlockNumber, CollectionId>
-    },
+pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  StringLimit, > {
+    // #[codec(index = 0)]
+    // Create {
+    //     admin: MultiAddress<AccountId, ()>,
+    //     config: CollectionConfig<Balance, BlockNumber, CollectionId>
+    // },
     #[codec(index = 2)]
     Destroy {
         collection: CollectionId
@@ -17,7 +16,8 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimi
     Mint {
         collection: CollectionId,
         item: ItemId,
-        mint_to: MultiAddress<AccountId, ()>
+        mint_to: MultiAddress<AccountId, ()>,
+        witness_data: Option<()>
     },
     #[codec(index = 5)]
     Burn {
@@ -45,11 +45,11 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimi
         collection: CollectionId,
         item: ItemId,
     },
-    #[codec(index = 10)]
-    LockCollection {
-        collection: CollectionId,
-        lock_settings: CollectionSettings,
-    },
+    // #[codec(index = 10)]
+    // LockCollection {
+    //     collection: CollectionId,
+    //     lock_settings: CollectionSettings,
+    // },
     #[codec(index = 11)]
     TransferOwnership {
         collection: CollectionId,
@@ -87,21 +87,21 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimi
         lock_metadata: bool,
         lock_attributes: bool,
     },
-    #[codec(index = 19)]
-    SetAttribute {
-        collection: CollectionId,
-        maybe_item: Option<ItemId>,
-        namespace: AttributeNamespace<AccountId>,
-        key: BoundedVec<u8, KeyLimit>,
-        value: BoundedVec<u8, KeyLimit>,
-    },
-    #[codec(index = 21)]
-    ClearAttribute {
-        collection: CollectionId,
-        maybe_item: Option<ItemId>,
-        namespace: AttributeNamespace<AccountId>,
-        key: BoundedVec<u8, KeyLimit>,
-    },
+    // #[codec(index = 19)]
+    // SetAttribute {
+    //     collection: CollectionId,
+    //     maybe_item: Option<ItemId>,
+    //     namespace: AttributeNamespace<AccountId>,
+    //     key: BoundedVec<u8, KeyLimit>,
+    //     value: BoundedVec<u8, KeyLimit>,
+    // },
+    // #[codec(index = 21)]
+    // ClearAttribute {
+    //     collection: CollectionId,
+    //     maybe_item: Option<ItemId>,
+    //     namespace: AttributeNamespace<AccountId>,
+    //     key: BoundedVec<u8, KeyLimit>,
+    // },
     #[codec(index = 22)]
     ApproveItemAttribute {
         collection: CollectionId,
@@ -144,11 +144,11 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimi
         collection: CollectionId,
         max_supply: u32,
     },
-    #[codec(index = 30)]
-    UpdateMintSettings {
-        collection: CollectionId,
-        mint_settings: MintSettings<Balance, BlockNumber, CollectionId>,
-    },
+    // #[codec(index = 30)]
+    // UpdateMintSettings {
+    //     collection: CollectionId,
+    //     mint_settings: MintSettings<Balance, BlockNumber, CollectionId>,
+    // },
     #[codec(index = 31)]
     Price {
         collection: CollectionId,
@@ -161,19 +161,19 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimi
         item: ItemId,
         bid_price: Balance,
     },
-    #[codec(index = 33)]
-    PayTips {
-        tips: BoundedVec<ItemTip<CollectionId, ItemId, AccountId, Balance>, MaxTips>
-    },
-    #[codec(index = 34)]
-    CreateSwap {
-        offered_collection: CollectionId,
-        offered_item: ItemId,
-        desired_collection: CollectionId,
-        maybe_desired_item: Option<ItemId>,
-        maybe_price: Option<PriceWithDirection<Balance>>,
-        duration: BlockNumber,
-    },
+    // #[codec(index = 33)]
+    // PayTips {
+    //     tips: BoundedVec<ItemTip<CollectionId, ItemId, AccountId, Balance>, MaxTips>
+    // },
+    // #[codec(index = 34)]
+    // CreateSwap {
+    //     offered_collection: CollectionId,
+    //     offered_item: ItemId,
+    //     desired_collection: CollectionId,
+    //     maybe_desired_item: Option<ItemId>,
+    //     maybe_price: Option<PriceWithDirection<Balance>>,
+    //     duration: BlockNumber,
+    // },
     #[codec(index = 35)]
     CancelSwap {
         offered_collection: CollectionId,
@@ -186,16 +186,16 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, KeyLimi
         receive_collection: CollectionId,
         receive_item: ItemId,
     },
-    #[codec(index = 37)]
-    MintPreSigned {
-        mint_data: PreSignedMint<CollectionId, ItemId, AccountId, BlockNumber, Balance>,
-        signature: OffchainSignature,
-        signer: AccountId
-    },
-    #[codec(index = 38)]
-    SetAttributesPreSigned {
-        data: PreSignedAttributes<CollectionId, ItemId, AccountId, BlockNumber>,
-        signature: OffchainSignature,
-        signer: AccountId,
-    }
+    // #[codec(index = 37)]
+    // MintPreSigned {
+    //     mint_data: PreSignedMint<CollectionId, ItemId, AccountId, BlockNumber, Balance>,
+    //     signature: OffchainSignature,
+    //     signer: AccountId
+    // },
+    // #[codec(index = 38)]
+    // SetAttributesPreSigned {
+    //     data: PreSignedAttributes<CollectionId, ItemId, AccountId, BlockNumber>,
+    //     signature: OffchainSignature,
+    //     signer: AccountId,
+    // }
 }
