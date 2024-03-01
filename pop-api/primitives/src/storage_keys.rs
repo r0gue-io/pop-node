@@ -1,4 +1,4 @@
-use scale::{Encode, Decode};
+use scale::{Decode, Encode};
 
 #[derive(Encode, Decode, Debug)]
 pub enum RuntimeStateKeys {
@@ -7,5 +7,5 @@ pub enum RuntimeStateKeys {
 
 #[derive(Encode, Decode, Debug)]
 pub enum ParachainSystemKeys {
-    LastRelayChainBlockNumber
+    LastRelayChainBlockNumber,
 }

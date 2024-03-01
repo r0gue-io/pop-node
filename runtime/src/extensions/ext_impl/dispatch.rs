@@ -9,7 +9,7 @@ use sp_runtime::{traits::Dispatchable, DispatchError};
 
 const LOG_TARGET: &str = "popapi::extension::dispatch";
 
-fn(crate) dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+pub(crate) fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
     T: pallet_contracts::Config + frame_system::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,

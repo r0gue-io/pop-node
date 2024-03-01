@@ -1,7 +1,7 @@
 use crate::interfaces::nfts::NftCalls;
-use sp_runtime::{MultiAddress, MultiSignature};
 use ink::prelude::vec::Vec;
 use scale;
+use sp_runtime::{MultiAddress, MultiSignature};
 
 use ink::env::Environment;
 
@@ -21,16 +21,15 @@ type StringLimit = u32;
 type KeyLimit = u32;
 type MaxTips = u32;
 
-
 pub struct Pop {
-   pub api: Api 
+    pub api: Api,
 }
 
 pub struct Api {
-    nft: Nfts 
+    nft: Nfts,
 }
 
-pub type NftCallsOf = NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  StringLimit, >;
+pub type NftCallsOf = NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, StringLimit>;
 
 pub struct Nfts;
 
@@ -39,15 +38,24 @@ impl Nfts {
     //     RuntimeCall::Nfts(NftCallsOf::Create { admin, config })
     // }
 
-   pub fn mint(collection: CollectionId, item: ItemId, mint_to: impl Into< MultiAddress<AccountId, ()> >) -> RuntimeCall {
-        RuntimeCall::Nfts(NftCallsOf::Mint { collection, item, mint_to: mint_to.into(), witness_data: None})
+    pub fn mint(
+        collection: CollectionId,
+        item: ItemId,
+        mint_to: impl Into<MultiAddress<AccountId, ()>>,
+    ) -> RuntimeCall {
+        RuntimeCall::Nfts(NftCallsOf::Mint {
+            collection,
+            item,
+            mint_to: mint_to.into(),
+            witness_data: None,
+        })
     }
 }
 
 #[derive(scale::Encode)]
 pub enum RuntimeCall {
     #[codec(index = 50)]
-    Nfts(NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  StringLimit>)
+    Nfts(NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId, StringLimit>),
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -87,8 +95,7 @@ impl From<scale::Error> for PopApiError {
 pub enum PopEnv {}
 
 impl Environment for PopEnv {
-    const MAX_EVENT_TOPICS: usize =
-        <ink::env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
+    const MAX_EVENT_TOPICS: usize = <ink::env::DefaultEnvironment as Environment>::MAX_EVENT_TOPICS;
 
     type AccountId = <ink::env::DefaultEnvironment as Environment>::AccountId;
     type Balance = <ink::env::DefaultEnvironment as Environment>::Balance;
