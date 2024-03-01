@@ -12,9 +12,10 @@ repository = "https://github.com/r0gue-io/pop-node/"
 members = [
 	"node",
 	"runtime",
+	"pop-api",
 ]
 exclude = [
-	"demo-contracts"
+	"contracts"
 ]
 
 resolver = "2"

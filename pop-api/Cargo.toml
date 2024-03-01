@@ -1,0 +1,32 @@
+[package]
+name = "pop-api"
+description = "Reserved crate for pop-api."
+license = "GPL-3.0-only"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+ink = { version = "4.3.0", default-features = false }
+pallet-nfts = {version = "22.0.0", default-features = false}
+sp-runtime = { version = "24.0.0", default-features = false }
+
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+
+[lib]
+name = "pop_api"
+path = "src/lib.rs"
+crate-type = [
+    "rlib",
+]
+
+
+[features]
+default = ["std"]
+std = [
+    "ink/std",
+    "pallet-nfts/std",
+    "sp-runtime/std",
+    "scale/std",
+    "scale-info/std",
+]
