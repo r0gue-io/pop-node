@@ -9,9 +9,16 @@ edition = "2021"
 ink = { version = "4.3.0", default-features = false }
 pallet-nfts = {version = "22.0.0", default-features = false}
 sp-runtime = { version = "24.0.0", default-features = false }
-pop-runtime = {git = "https://github.com/r0gue-io/pop-node/", branch = "feat/pub-consts", default-features = false}
-parachains-common = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
-# parachains-common = { version = "7.0.0", default-features = false }
+
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+
+[lib]
+name = "pop_api"
+path = "src/lib.rs"
+crate-type = [
+    "rlib",
+]
 
 
 [features]
@@ -20,6 +27,6 @@ std = [
     "ink/std",
     "pallet-nfts/std",
     "sp-runtime/std",
-    "pop-runtime/std",
-    "parachains-common/std"
+    "scale/std",
+    "scale-info/std",
 ]
