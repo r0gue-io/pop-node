@@ -8,7 +8,7 @@ use pallet_contracts::chain_extension::{
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
-use pop_api_primitives::storage_keys::RuntimeStateKeys;
+use pop_api_primitives::storage_keys::RuntimeStateKeys::ParachainSystemKeys;
 
 use crate::extensions::ext_impl::{dispatch::dispatch, read_state::read_state};
 
