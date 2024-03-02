@@ -1,10 +1,9 @@
-use cumulus_pallet_parachain_system::LastRelayChainBlockNumber;
 use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::pallet_prelude::*;
 use pallet_contracts::chain_extension::{
     Environment, Ext, InitState
 };
-use pop_api_primitives::storage_keys::RuntimeStateKeys;
+use pop_api_primitives::storage_keys::ParachainSystemKeys;
 use log;
 use codec::Decode;
 
@@ -16,18 +15,19 @@ where
     E: Ext<T = T>,
 {
     let mut env = env.buf_in_buf_out();
-    // TODO: Substitue len u32 with pop-api::src::impls::pop_network::StringLimit.
+    // TODO: Substitue len u32 with pop_api::src::impls::pop_network::StringLimit.
     // Move StringLimit to pop_api_primitives first.
-    let len = env.in_len();
-    let key: RuntimeStateKeys::ParachainSystemKeys = env.read_as_unbounded(len)?;
+    let len: u32 = env.in_len();
+    let key: ParachainSystemKeys = env.read_as_unbounded(len)?;
     
     match key {
         LastRelayChainBlockNumber => {
-            let relay_block_num: BlockNumber = last_relay_block_number();
+            let relay_block_num: BlockNumber = cumulus_pallet_parachain_system::LastRelayChainBlockNumber::get();
             log::debug!(
                 target:LOG_TARGET,
                 "Last Relay Chain Block Number is: {:?}.", relay_block_num
             );
+            //Ok(relay_block_num)
             Ok(())
         },
         _ => Err(DispatchError::Other("Unable to read provided key.")),
