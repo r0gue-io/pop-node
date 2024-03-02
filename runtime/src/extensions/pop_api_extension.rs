@@ -105,7 +105,9 @@ mod tests {
         ext
     }
 
-    pub fn load_wasm_module<T>(path: &str) -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
+    pub fn load_wasm_module<T>(
+        path: &str,
+    ) -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
     where
         T: frame_system::Config,
     {
@@ -184,5 +186,4 @@ mod tests {
             assert_eq!(bob_balance_before + value_to_send, bob_balance_after);
         });
     }
-
 }
