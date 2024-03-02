@@ -72,7 +72,7 @@ where
     let len = env.in_len();
     let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
 
-    log::trace!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
+    log::debug!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
 
     let sender = env.ext().caller();
     let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
@@ -83,10 +83,10 @@ where
     let result = call.dispatch(origin);
     match result {
         Ok(info) => {
-            log::trace!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
+            log::debug!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
         }
         Err(err) => {
-            log::trace!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
+            log::debug!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
             return Err(err.error);
         }
     }
@@ -107,6 +107,7 @@ where
         E: Ext<T = T>,
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
+        log::debug!(target:LOG_TARGET, " extension called ");
         let func_id = FuncId::try_from(env.func_id())?;
         match func_id {
             FuncId::CallRuntime => dispatch::<T, E>(env)?,
@@ -120,10 +121,13 @@ where
 mod tests {
     pub use super::*;
     pub use crate::*;
+    use enumflags2::BitFlags;
     pub use pallet_contracts::Code;
+    use pallet_nfts::{CollectionConfig, CollectionSetting, CollectionSettings, MintSettings};
+    use parachains_common::CollectionId;
     pub use sp_runtime::{traits::Hash, AccountId32};
 
-    pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::Skip;
+    pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 
     pub const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
     pub const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
@@ -146,12 +150,13 @@ mod tests {
         ext
     }
 
-    pub fn load_wasm_module<T>() -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
+    pub fn load_wasm_module<T>(
+        path: &str,
+    ) -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
     where
         T: frame_system::Config,
     {
-        let fixture_path = "../demo-contracts/target/ink/pop_api_extension_demo.wasm";
-        let wasm_binary = std::fs::read(fixture_path)?;
+        let wasm_binary = std::fs::read(path)?;
         let code_hash = T::Hashing::hash(&wasm_binary);
         Ok((wasm_binary, code_hash))
     }
@@ -161,12 +166,27 @@ mod tests {
         [hash[0..4].to_vec()].concat()
     }
 
+    // NFT helper functions
+    fn collection_config_from_disabled_settings(
+        settings: BitFlags<CollectionSetting>,
+    ) -> CollectionConfig<Balance, BlockNumber, CollectionId> {
+        CollectionConfig {
+            settings: CollectionSettings::from_disabled(settings),
+            max_supply: None,
+            mint_settings: MintSettings::default(),
+        }
+    }
+
+    fn default_collection_config() -> CollectionConfig<Balance, BlockNumber, CollectionId> {
+        collection_config_from_disabled_settings(CollectionSetting::DepositRequired.into())
+    }
+
     #[test]
     fn test_dispatch() {
         new_test_ext().execute_with(|| {
             let _ = env_logger::try_init();
 
-            let (wasm_binary, _) = load_wasm_module::<Runtime>().unwrap();
+            let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/balance-transfer/target/ink/pop_api_extension_demo.wasm").unwrap();
 
             let init_value = 100;
 
@@ -224,6 +244,94 @@ mod tests {
 
             let bob_balance_after = Balances::free_balance(&BOB);
             assert_eq!(bob_balance_before + value_to_send, bob_balance_after);
+        });
+    }
+
+    #[test]
+    fn test_nfts_mint() {
+        new_test_ext().execute_with(|| {
+            let _ = env_logger::try_init();
+
+            let (wasm_binary, _) = load_wasm_module::<Runtime>(
+                "../contracts/pop-api-examples/nfts/target/ink/pop_api_nft_example.wasm",
+            )
+            .unwrap();
+
+            let init_value = 100;
+
+            let result = Contracts::bare_instantiate(
+                ALICE,
+                init_value,
+                GAS_LIMIT,
+                None,
+                Code::Upload(wasm_binary),
+                function_selector("new"),
+                vec![],
+                DEBUG_OUTPUT,
+                pallet_contracts::CollectEvents::Skip,
+            )
+            .result
+            .unwrap();
+
+            assert!(
+                !result.result.did_revert(),
+                "deploying contract reverted {:?}",
+                result
+            );
+
+            let addr = result.account_id;
+
+            let collection_id: u32 = 0;
+            let item_id: u32 = 1;
+
+            // create nft collection
+            assert_eq!(
+                Nfts::force_create(
+                    RuntimeOrigin::root(),
+                    ALICE.into(),
+                    default_collection_config()
+                ),
+                Ok(())
+            );
+
+            assert_eq!(Nfts::collection_owner(collection_id), Some(ALICE.into()));
+            // assert that the item does not exist yet
+            assert_eq!(Nfts::owner(collection_id, item_id), None);
+
+            let function = function_selector("mint_through_runtime");
+
+            let params = [
+                function,
+                collection_id.encode(),
+                item_id.encode(),
+                BOB.encode(),
+            ]
+            .concat();
+
+            let result = Contracts::bare_call(
+                ALICE,
+                addr.clone(),
+                0,
+                Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+                None,
+                params,
+                DEBUG_OUTPUT,
+                pallet_contracts::CollectEvents::Skip,
+                pallet_contracts::Determinism::Enforced,
+            );
+
+            if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+                log::debug!(
+                    "Contract debug buffer - {:?}",
+                    String::from_utf8(result.debug_message.clone())
+                );
+                log::debug!("result: {:?}", result);
+            }
+
+            // check for revert
+            assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+
+            assert_eq!(Nfts::owner(collection_id, item_id), Some(BOB.into()));
         });
     }
 }
