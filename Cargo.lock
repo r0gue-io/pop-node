@@ -9035,6 +9035,16 @@ version = "0.0.0"
 dependencies = [
  "ink",
  "parity-scale-codec",
+ "pop-api-primitives",
+ "scale-info",
+ "sp-runtime 24.0.0",
+]
+
+[[package]]
+name = "pop-api-primitives"
+version = "0.0.0"
+dependencies = [
+ "parity-scale-codec",
  "scale-info",
  "sp-runtime 24.0.0",
 ]
@@ -9108,6 +9118,7 @@ dependencies = [
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-utility",
+ "enumflags2",
  "env_logger 0.11.2",
  "frame-benchmarking",
  "frame-executive",
@@ -9141,6 +9152,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
+ "pop-api-primitives",
  "scale-info",
  "smallvec",
  "sp-api",

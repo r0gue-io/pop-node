@@ -20,8 +20,7 @@ where
 
     match key {
         ParachainSystemKeys::LastRelayChainBlockNumber => {
-            let relay_block_num: BlockNumber =
-                crate::ParachainSystem::last_relay_block_number();
+            let relay_block_num: BlockNumber = crate::ParachainSystem::last_relay_block_number();
             log::debug!(
                 target:LOG_TARGET,
                 "Last Relay Chain Block Number is: {:?}.", relay_block_num

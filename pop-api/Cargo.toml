@@ -10,7 +10,6 @@ edition = "2021"
 pop-api-primitives = { path = "./primitives" }
 
 ink = { version = "4.3.0", default-features = false }
-# pallet-nfts = {version = "22.0.0", default-features = false}
 sp-runtime = { version = "24.0.0", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
@@ -23,12 +22,10 @@ crate-type = [
     "rlib",
 ]
 
-
 [features]
 default = ["std"]
 std = [
     "ink/std",
-    # "pallet-nfts/std",
     "sp-runtime/std",
     "scale/std",
     "scale-info/std",

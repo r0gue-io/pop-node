@@ -1,21 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{
-    env::Environment,
-    prelude::vec::Vec,
-};
+use pop_api::PopApiError;
 
-use ink::primitives::AccountId;
-use sp_runtime::MultiAddress;
-use pop_api::impls::pop_network::PopEnv;
-use pop_api::impls::pop_network::PopApiError;
+#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum ContractError {
+    SomeError,
+}
 
-#[ink::contract(env = crate::PopEnv)]
+impl From<PopApiError> for ContractError {
+    fn from(_value: PopApiError) -> Self {
+        ContractError::SomeError
+    }
+}
+
+#[ink::contract(env = pop_api::PopEnv)]
 mod pop_api_extension_demo {
-
-    use super::PopApiError;
-    use scale::Encode;
-    use ink::env::Error as EnvError;
+    use super::ContractError;
 
     #[ink(storage)]
     #[derive(Default)]
@@ -34,14 +35,24 @@ mod pop_api_extension_demo {
             collection_id: u32,
             item_id: u32,
             receiver: AccountId,
-        ) {
+        ) -> Result<(), ContractError> {
             ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime: collection_id: {:?} \nitem_id {:?} \nreceiver: {:?}, ", collection_id, item_id, receiver);
 
-            let call = pop_api::impls::pop_network::Nfts::mint(collection_id, item_id, receiver);
-            self.env().extension().dispatch(call);
+            // simplified API call
+            pop_api::nfts::mint(collection_id, item_id, receiver)?;
 
             ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime end");
-            
+            Ok(())
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[ink::test]
+        fn default_works() {
+            PopApiExtensionDemo::new();
         }
     }
 }
