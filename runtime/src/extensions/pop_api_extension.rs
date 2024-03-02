@@ -32,7 +32,7 @@ pub mod v0 {
     pub enum FuncId {
         Dispatch,
         ReadState,
-    } 
+    }
 }
 
 impl TryFrom<u16> for v0::FuncId {
@@ -67,13 +67,24 @@ where
         <E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
     {
         log::debug!(target:LOG_TARGET, " extension called ");
-        let func_id = v0::FuncId::try_from(env.func_id())?;
-        match func_id {
-            v0::FuncId::Dispatch => dispatch::<T, E>(env)?,
-            v0::FuncId::ReadState => read_state::<T, E>(env)?,
+        match v0::FuncId::try_from(env.func_id())? {
+            v0::FuncId::Dispatch => {
+                match dispatch::<T, E>(env) {
+                    Ok(()) => Ok(RetVal::Converging(0)),
+                    Err(DispatchError::Module(error)) => {
+                        // encode status code = pallet index in runtime + error index, allowing for 999 errors
+                        Ok(RetVal::Converging(
+                            (error.index as u32 * 1_000) + u32::from_le_bytes(error.error),
+                        ))
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            v0::FuncId::ReadState => {
+                read_state::<T, E>(env)?;
+                Ok(RetVal::Converging(0))
+            }
         }
-
-        Ok(RetVal::Converging(0))
     }
 }
 
@@ -292,6 +303,79 @@ mod tests {
             assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 
             assert_eq!(Nfts::owner(collection_id, item_id), Some(BOB.into()));
+        });
+    }
+
+    #[test]
+    fn test_nfts_mint_surfaces_error() {
+        new_test_ext().execute_with(|| {
+            let _ = env_logger::try_init();
+
+            let (wasm_binary, _) = load_wasm_module::<Runtime>(
+                "../contracts/pop-api-examples/nfts/target/ink/pop_api_nft_example.wasm",
+            )
+            .unwrap();
+
+            let init_value = 100;
+
+            let result = Contracts::bare_instantiate(
+                ALICE,
+                init_value,
+                GAS_LIMIT,
+                None,
+                Code::Upload(wasm_binary),
+                function_selector("new"),
+                vec![],
+                DEBUG_OUTPUT,
+                pallet_contracts::CollectEvents::Skip,
+            )
+            .result
+            .unwrap();
+
+            assert!(
+                !result.result.did_revert(),
+                "deploying contract reverted {:?}",
+                result
+            );
+
+            let addr = result.account_id;
+
+            let collection_id: u32 = 0;
+            let item_id: u32 = 1;
+
+            let function = function_selector("mint_through_runtime");
+
+            let params = [
+                function,
+                collection_id.encode(),
+                item_id.encode(),
+                BOB.encode(),
+            ]
+            .concat();
+
+            let result = Contracts::bare_call(
+                ALICE,
+                addr.clone(),
+                0,
+                Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+                None,
+                params,
+                DEBUG_OUTPUT,
+                pallet_contracts::CollectEvents::Skip,
+                pallet_contracts::Determinism::Enforced,
+            );
+
+            if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+                log::debug!(
+                    "Contract debug buffer - {:?}",
+                    String::from_utf8(result.debug_message.clone())
+                );
+                log::debug!("result: {:?}", result);
+            }
+
+            // check for revert with expected error
+            let result = result.result.unwrap();
+            assert!(result.did_revert());
         });
     }
 }

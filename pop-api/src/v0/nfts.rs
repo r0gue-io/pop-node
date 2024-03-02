@@ -3,21 +3,23 @@ use crate::*;
 use ink::prelude::vec::Vec;
 use sp_runtime::{BoundedVec, MultiAddress};
 
+type Result<T> = core::result::Result<T, Error>;
+
 pub fn mint(
     collection: CollectionId,
     item: ItemId,
     mint_to: impl Into<MultiAddress<AccountId, ()>>,
 ) -> Result<()> {
-    crate::call_runtime(RuntimeCall::Nfts(NftCalls::Mint {
+    Ok(dispatch(RuntimeCall::Nfts(NftCalls::Mint {
         collection,
         item,
         mint_to: mint_to.into(),
         witness_data: None,
-    }))?;
-    Ok(())
+    }))?)
 }
 
 #[derive(scale::Encode)]
+#[allow(dead_code)]
 pub(crate) enum NftCalls {
     // #[codec(index = 0)]
     // Create {
@@ -210,4 +212,162 @@ pub(crate) enum NftCalls {
     //     signature: OffchainSignature,
     //     signer: AccountId,
     // }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum Error {
+    /// The signing account has no permission to do the operation.
+    NoPermission,
+    /// The given item ID is unknown.
+    UnknownCollection,
+    /// The item ID has already been used for an item.
+    AlreadyExists,
+    /// The approval had a deadline that expired, so the approval isn't valid anymore.
+    ApprovalExpired,
+    /// The owner turned out to be different to what was expected.
+    WrongOwner,
+    /// The witness data given does not match the current state of the chain.
+    BadWitness,
+    /// Collection ID is already taken.
+    CollectionIdInUse,
+    /// Items within that collection are non-transferable.
+    ItemsNonTransferable,
+    /// The provided account is not a delegate.
+    NotDelegate,
+    /// The delegate turned out to be different to what was expected.
+    WrongDelegate,
+    /// No approval exists that would allow the transfer.
+    Unapproved,
+    /// The named owner has not signed ownership acceptance of the collection.
+    Unaccepted,
+    /// The item is locked (non-transferable).
+    ItemLocked,
+    /// Item's attributes are locked.
+    LockedItemAttributes,
+    /// Collection's attributes are locked.
+    LockedCollectionAttributes,
+    /// Item's metadata is locked.
+    LockedItemMetadata,
+    /// Collection's metadata is locked.
+    LockedCollectionMetadata,
+    /// All items have been minted.
+    MaxSupplyReached,
+    /// The max supply is locked and can't be changed.
+    MaxSupplyLocked,
+    /// The provided max supply is less than the number of items a collection already has.
+    MaxSupplyTooSmall,
+    /// The given item ID is unknown.
+    UnknownItem,
+    /// Swap doesn't exist.
+    UnknownSwap,
+    /// The given item has no metadata set.
+    MetadataNotFound,
+    /// The provided attribute can't be found.
+    AttributeNotFound,
+    /// Item is not for sale.
+    NotForSale,
+    /// The provided bid is too low.
+    BidTooLow,
+    /// The item has reached its approval limit.
+    ReachedApprovalLimit,
+    /// The deadline has already expired.
+    DeadlineExpired,
+    /// The duration provided should be less than or equal to `MaxDeadlineDuration`.
+    WrongDuration,
+    /// The method is disabled by system settings.
+    MethodDisabled,
+    /// The provided setting can't be set.
+    WrongSetting,
+    /// Item's config already exists and should be equal to the provided one.
+    InconsistentItemConfig,
+    /// Config for a collection or an item can't be found.
+    NoConfig,
+    /// Some roles were not cleared.
+    RolesNotCleared,
+    /// Mint has not started yet.
+    MintNotStarted,
+    /// Mint has already ended.
+    MintEnded,
+    /// The provided Item was already used for claiming.
+    AlreadyClaimed,
+    /// The provided data is incorrect.
+    IncorrectData,
+    /// The extrinsic was sent by the wrong origin.
+    WrongOrigin,
+    /// The provided signature is incorrect.
+    WrongSignature,
+    /// The provided metadata might be too long.
+    IncorrectMetadata,
+    /// Can't set more attributes per one call.
+    MaxAttributesLimitReached,
+    /// The provided namespace isn't supported in this call.
+    WrongNamespace,
+    /// Can't delete non-empty collections.
+    CollectionNotEmpty,
+    /// The witness data should be provided.
+    WitnessRequired,
+}
+
+impl From<u32> for Error {
+    fn from(value: u32) -> Self {
+        use Error::*;
+        match value {
+            0 => NoPermission,
+            1 => UnknownCollection,
+            2 => AlreadyExists,
+            3 => ApprovalExpired,
+            4 => WrongOwner,
+            5 => BadWitness,
+            6 => CollectionIdInUse,
+            7 => ItemsNonTransferable,
+            8 => NotDelegate,
+            9 => WrongDelegate,
+            10 => Unapproved,
+            11 => Unaccepted,
+            12 => ItemLocked,
+            13 => LockedItemAttributes,
+            14 => LockedCollectionAttributes,
+            15 => LockedItemMetadata,
+            16 => LockedCollectionMetadata,
+            17 => MaxSupplyReached,
+            18 => MaxSupplyLocked,
+            19 => MaxSupplyTooSmall,
+            20 => UnknownItem,
+            21 => UnknownSwap,
+            22 => MetadataNotFound,
+            23 => AttributeNotFound,
+            24 => NotForSale,
+            25 => BidTooLow,
+            26 => ReachedApprovalLimit,
+            27 => DeadlineExpired,
+            28 => WrongDuration,
+            29 => MethodDisabled,
+            30 => WrongSetting,
+            31 => InconsistentItemConfig,
+            32 => NoConfig,
+            33 => RolesNotCleared,
+            34 => MintNotStarted,
+            35 => MintEnded,
+            36 => AlreadyClaimed,
+            37 => IncorrectData,
+            38 => WrongOrigin,
+            39 => WrongSignature,
+            40 => IncorrectMetadata,
+            41 => MaxAttributesLimitReached,
+            42 => WrongNamespace,
+            43 => CollectionNotEmpty,
+            44 => WitnessRequired,
+            _ => panic!("encountered unknown status code"),
+        }
+    }
+}
+
+impl From<PopApiError> for Error {
+    fn from(error: PopApiError) -> Self {
+        match error {
+            PopApiError::Nfts(e) => e,
+            _ => panic!("expected nfts error"),
+        }
+    }
 }
