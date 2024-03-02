@@ -19,9 +19,9 @@ where
     let key: ParachainSystemKeys = env.read_as_unbounded(len)?;
 
     match key {
-        LastRelayChainBlockNumber => {
+        ParachainSystemKeys::LastRelayChainBlockNumber => {
             let relay_block_num: BlockNumber =
-                cumulus_pallet_parachain_system::LastRelayChainBlockNumber::get();
+                crate::ParachainSystem::last_relay_block_number();
             log::debug!(
                 target:LOG_TARGET,
                 "Last Relay Chain Block Number is: {:?}.", relay_block_num
