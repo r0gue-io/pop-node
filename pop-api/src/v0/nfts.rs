@@ -1,23 +1,37 @@
-use sp_runtime::{BoundedVec, MultiAddress};
+use super::RuntimeCall;
+use crate::*;
 use ink::prelude::vec::Vec;
+use sp_runtime::{BoundedVec, MultiAddress};
+
+pub fn mint(
+    collection: CollectionId,
+    item: ItemId,
+    mint_to: impl Into<MultiAddress<AccountId, ()>>,
+) -> Result<()> {
+    crate::call_runtime(RuntimeCall::Nfts(NftCalls::Mint {
+        collection,
+        item,
+        mint_to: mint_to.into(),
+        witness_data: None,
+    }))?;
+    Ok(())
+}
 
 #[derive(scale::Encode)]
-pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  StringLimit, > {
+pub(crate) enum NftCalls {
     // #[codec(index = 0)]
     // Create {
     //     admin: MultiAddress<AccountId, ()>,
     //     config: CollectionConfig<Balance, BlockNumber, CollectionId>
     // },
     #[codec(index = 2)]
-    Destroy {
-        collection: CollectionId
-    },
+    Destroy { collection: CollectionId },
     #[codec(index = 3)]
     Mint {
         collection: CollectionId,
         item: ItemId,
         mint_to: MultiAddress<AccountId, ()>,
-        witness_data: Option<()>
+        witness_data: Option<()>,
     },
     #[codec(index = 5)]
     Burn {
@@ -28,12 +42,12 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  String
     Transfer {
         collection: CollectionId,
         item: ItemId,
-        dest: MultiAddress<AccountId, ()>
+        dest: MultiAddress<AccountId, ()>,
     },
     #[codec(index = 7)]
     Redeposit {
         collection: CollectionId,
-        items: Vec<ItemId>
+        items: Vec<ItemId>,
     },
     #[codec(index = 8)]
     LockItemTransfer {
@@ -53,7 +67,7 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  String
     #[codec(index = 11)]
     TransferOwnership {
         collection: CollectionId,
-        new_owner: MultiAddress<AccountId, ()>
+        new_owner: MultiAddress<AccountId, ()>,
     },
     #[codec(index = 12)]
     SetTeam {
@@ -131,9 +145,7 @@ pub enum NftCalls<AccountId, Balance, BlockNumber, CollectionId, ItemId,  String
         data: BoundedVec<u8, StringLimit>,
     },
     #[codec(index = 27)]
-    ClearCollectionMetadata {
-        collection: CollectionId,
-    },
+    ClearCollectionMetadata { collection: CollectionId },
     #[codec(index = 28)]
     SetAcceptOwnership {
         collection: CollectionId,

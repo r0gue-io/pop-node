@@ -9034,6 +9034,7 @@ name = "pop-api"
 version = "0.0.0"
 dependencies = [
  "ink",
+ "ink_env",
  "parity-scale-codec",
  "scale-info",
  "sp-runtime 24.0.0",
@@ -9108,6 +9109,7 @@ dependencies = [
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-utility",
+ "enumflags2",
  "env_logger 0.11.2",
  "frame-benchmarking",
  "frame-executive",
