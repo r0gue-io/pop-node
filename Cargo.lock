@@ -9109,6 +9109,7 @@ dependencies = [
  "cumulus-pallet-xcmp-queue",
  "cumulus-primitives-core",
  "cumulus-primitives-utility",
+ "enumflags2",
  "env_logger 0.11.2",
  "frame-benchmarking",
  "frame-executive",

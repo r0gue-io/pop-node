@@ -121,7 +121,10 @@ where
 mod tests {
     pub use super::*;
     pub use crate::*;
+    use enumflags2::BitFlags;
     pub use pallet_contracts::Code;
+    use pallet_nfts::{CollectionConfig, CollectionSetting, CollectionSettings, MintSettings};
+    use parachains_common::CollectionId;
     pub use sp_runtime::{traits::Hash, AccountId32};
 
     pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
@@ -161,6 +164,21 @@ mod tests {
     pub fn function_selector(name: &str) -> Vec<u8> {
         let hash = sp_io::hashing::blake2_256(name.as_bytes());
         [hash[0..4].to_vec()].concat()
+    }
+
+    // NFT helper functions
+    fn collection_config_from_disabled_settings(
+        settings: BitFlags<CollectionSetting>,
+    ) -> CollectionConfig<Balance, BlockNumber, CollectionId> {
+        CollectionConfig {
+            settings: CollectionSettings::from_disabled(settings),
+            max_supply: None,
+            mint_settings: MintSettings::default(),
+        }
+    }
+
+    fn default_collection_config() -> CollectionConfig<Balance, BlockNumber, CollectionId> {
+        collection_config_from_disabled_settings(CollectionSetting::DepositRequired.into())
     }
 
     #[test]
@@ -263,9 +281,25 @@ mod tests {
 
             let addr = result.account_id;
 
-            let function = function_selector("mint_through_runtime");
-            let collection_id: u32 = 1;
+            let collection_id: u32 = 0;
             let item_id: u32 = 1;
+
+            // create nft collection
+            assert_eq!(
+                Nfts::force_create(
+                    RuntimeOrigin::root(),
+                    ALICE.into(),
+                    default_collection_config()
+                ),
+                Ok(())
+            );
+
+            assert_eq!(Nfts::collection_owner(collection_id), Some(ALICE.into()));
+            // assert that the item does not exist yet
+            assert_eq!(Nfts::owner(collection_id, item_id), None);
+
+            let function = function_selector("mint_through_runtime");
+
             let params = [
                 function,
                 collection_id.encode(),
@@ -273,9 +307,6 @@ mod tests {
                 BOB.encode(),
             ]
             .concat();
-
-            let bob_balance_before = Balances::free_balance(&BOB);
-            assert_eq!(bob_balance_before, INITIAL_AMOUNT);
 
             let result = Contracts::bare_call(
                 ALICE,
@@ -299,6 +330,8 @@ mod tests {
 
             // check for revert
             assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+
+            assert_eq!(Nfts::owner(collection_id, item_id), Some(BOB.into()));
         });
     }
 }
