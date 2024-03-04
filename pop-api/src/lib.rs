@@ -68,9 +68,13 @@ impl Environment for PopEnv {
 pub trait PopApi {
     type ErrorCode = PopApiError;
 
-    #[ink(extension = 0xfecb)]
+    #[ink(extension = 0)]
     #[allow(private_interfaces)]
     fn dispatch(call: RuntimeCall) -> crate::Result<Vec<u8>>;
+
+    #[ink(extension = 1)]
+    #[allow(private_interfaces)]
+    fn read_state(call: RuntimeCall) -> crate::Result<Vec<u8>>;
 }
 
 fn call_runtime(call: RuntimeCall) -> Result<Vec<u8>> {
