@@ -1,7 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use pop_api_primitives::storage_keys;
 pub mod v0;
+
+pub use pop_api_primitives as primitives;
 
 use ink::{env::Environment, prelude::vec::Vec, ChainExtensionInstance};
 use scale;

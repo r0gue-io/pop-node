@@ -8,7 +8,6 @@ use ink::{
 use ink::primitives::AccountId;
 use sp_runtime::MultiAddress;
 use scale::{Encode, Decode};
-use scale_info::TypeInfo;
 
 /// A part of the runtime dispatchable API.
 ///
@@ -20,7 +19,7 @@ use scale_info::TypeInfo;
 /// You can investigate the full `RuntimeCall` definition by either expanding
 /// `construct_runtime!` macro application or by using secondary tools for reading chain
 /// metadata, like `subxt`.
-#[derive(Encode, Decode, TypeInfo)]
+#[derive(Encode)]
 enum RuntimeCall {
     /// This index can be found by investigating runtime configuration. You can check the
     /// pallet order inside `construct_runtime!` block and read the position of your
@@ -81,10 +80,6 @@ pub trait PopApi {
     /// operations.
     #[ink(extension = 0xfecb)]
     fn dispatch(call: RuntimeCall) -> Result<Vec<u8>>;
-
-    #[ink(extension = 0xfeca)]
-    fn read_state(key: SafeKeys) -> Result<Vec<u8>>;
-
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {

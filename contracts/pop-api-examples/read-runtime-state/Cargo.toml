@@ -28,6 +28,7 @@ std = [
     "scale-info/std",
     "sp-runtime/std",
     "sp-io/std",
+    "pop-api/std",
 ]
 ink-as-dependency = []
 e2e-tests = []
