@@ -21,14 +21,6 @@ where
 {
     let mut env = env.buf_in_buf_out();
 
-    // charge max weight before reading contract memory
-    // TODO: causing "1010: block limits exhausted" error
-    // let weight_limit = env.ext().gas_meter().gas_left();
-    // let charged_weight = env.charge_weight(weight_limit)?;
-
-    // TODO: debug_message weight is a good approximation of the additional overhead of going
-    // from contract layer to substrate layer.
-
     // input length
     let len = env.in_len();
     let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
@@ -47,9 +39,6 @@ where
     let sender = env.ext().caller();
     let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
 
-    // TODO: uncomment once charged_weight is fixed
-    // let actual_weight = call.get_dispatch_info().weight;
-    // env.adjust_weight(charged_weight, actual_weight);
     let result = call.dispatch(origin);
     match result {
         Ok(info) => {
