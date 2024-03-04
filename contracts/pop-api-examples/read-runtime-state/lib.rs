@@ -7,50 +7,8 @@ use ink::{
 
 use ink::primitives::AccountId;
 use sp_runtime::MultiAddress;
-use scale::{Encode, Decode};
-use scale_info::TypeInfo;
+use pop_api::storage_keys::RuntimeStateKeys::ParachainSystemKeys;
 
-/// A part of the runtime dispatchable API.
-///
-/// For now, `ink!` doesn't provide any support for exposing the real `RuntimeCall` enum,
-/// which fully describes the composed API of all the pallets present in runtime. Hence,
-/// in order to use `call-runtime` functionality, we have to provide at least a partial
-/// object, which correctly encodes the target extrinsic.
-///
-/// You can investigate the full `RuntimeCall` definition by either expanding
-/// `construct_runtime!` macro application or by using secondary tools for reading chain
-/// metadata, like `subxt`.
-#[derive(Encode, Decode, TypeInfo)]
-enum RuntimeCall {
-    /// This index can be found by investigating runtime configuration. You can check the
-    /// pallet order inside `construct_runtime!` block and read the position of your
-    /// pallet (0-based).
-    ///
-    ///
-    /// [See here for more.](https://substrate.stackexchange.com/questions/778/how-to-get-pallet-index-u8-of-a-pallet-in-runtime)
-    #[codec(index = 10)]
-    Balances(BalancesCall),
-}
-
-#[derive(scale::Encode)]
-enum BalancesCall {
-    /// This index can be found by investigating the pallet dispatchable API. In your
-    /// pallet code, look for `#[pallet::call]` section and check
-    /// `#[pallet::call_index(x)]` attribute of the call. If these attributes are
-    /// missing, use source-code order (0-based).
-    #[codec(index = 3)]
-    TransferKeepAlive {
-        dest: MultiAddress<AccountId, ()>,
-        #[codec(compact)]
-        value: u128,
-    },
-    #[codec(index = 8)]
-    ForceSetBalance {
-        who: MultiAddress<AccountId, ()>,
-        #[codec(compact)]
-        new_free: u128,
-    },
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -79,11 +37,9 @@ pub trait PopApi {
     /// Note: this gives the operation a corresponding `func_id` (1101 in this case),
     /// and the chain-side chain extension will get the `func_id` to do further
     /// operations.
-    #[ink(extension = 0xfecb)]
-    fn dispatch(call: RuntimeCall) -> Result<Vec<u8>>;
 
     #[ink(extension = 0xfeca)]
-    fn read_state(key: SafeKeys) -> Result<Vec<u8>>;
+    fn read_relay_block_number(key: LastRelayChainBlockNumber) -> Result<BlockNumber>;
 
 }
 
@@ -125,6 +81,11 @@ mod pop_api_extension_demo {
 
     use ink::env::Error as EnvError;
 
+    #[ink(event)]
+    pub struct RelayBlockNumberRead {
+        value: BlockNumber
+    }
+
     /// A trivial contract with a single message, that uses `call-runtime` API for
     /// performing native token transfer.
     #[ink(storage)]
@@ -140,18 +101,6 @@ mod pop_api_extension_demo {
         }
     }
 
-    // impl From<EnvError> for RuntimeError {
-    //     fn from(e: EnvError) -> Self {
-    //         use ink::env::ReturnErrorCode;
-    //         match e {
-    //             EnvError::ReturnError(ReturnErrorCode::CallRuntimeFailed) => {
-    //                 RuntimeError::CallRuntimeFailed
-    //             }
-    //             _ => panic!("Unexpected error from `pallet-contracts`."),
-    //         }
-    //     }
-    // }
-
     impl PopApiExtensionDemo {
         #[ink(constructor, payable)]
         pub fn new() -> Self {
@@ -160,21 +109,14 @@ mod pop_api_extension_demo {
         }
 
         #[ink(message)]
-        pub fn transfer_through_runtime(
-            &mut self,
-            receiver: AccountId,
-            value: Balance,
+        pub fn read_relay_block_number(
+            &self
         ) {
-            ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime: \nreceiver: {:?}, \nvalue: {:?}", receiver, value);
-
-            let call = RuntimeCall::Balances(BalancesCall::TransferKeepAlive {
-                    dest: receiver.into(),
-                    value: value,
-                });
-            self.env().extension().dispatch(call);
-
-            ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime end");
-            
+            let state = self.env().extension().read_state(LastRelayChainBlockNumber);
+            ink::env::debug_println!("{:?}", state);
+            ink::env().emit_event(
+                RelayBlockNumberRead {value: state}
+            );
         }
     }
 

@@ -1,18 +1,18 @@
 use frame_support::{
-    dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
+    dispatch::{GetDispatchInfo, PostDispatchInfo},
     pallet_prelude::*,
 };
-
 use log;
-
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
-
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 
+use crate::extensions::ext_impl::{dispatch::dispatch, read_state::read_state};
+
 const LOG_TARGET: &str = "popapi::extension";
+
 #[derive(Default)]
 pub struct PopApiExtension;
 
@@ -30,6 +30,7 @@ fn convert_err(err_msg: &'static str) -> impl FnOnce(DispatchError) -> DispatchE
 #[derive(Debug)]
 enum FuncId {
     CallRuntime,
+    QueryState,
 }
 
 impl TryFrom<u16> for FuncId {
@@ -38,6 +39,7 @@ impl TryFrom<u16> for FuncId {
     fn try_from(func_id: u16) -> Result<Self, Self::Error> {
         let id = match func_id {
             0xfecb => Self::CallRuntime,
+            0xfeca => Self::QueryState,
             _ => {
                 log::error!("Called an unregistered `func_id`: {:}", func_id);
                 return Err(DispatchError::Other("Unimplemented func_id"));
@@ -48,52 +50,9 @@ impl TryFrom<u16> for FuncId {
     }
 }
 
-fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
-where
-    T: pallet_contracts::Config + frame_system::Config,
-    <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
-    <T as SysConfig>::RuntimeCall: Parameter
-        + Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
-        + GetDispatchInfo
-        + From<frame_system::Call<T>>,
-    E: Ext<T = T>,
-{
-    let mut env = env.buf_in_buf_out();
-
-    // input length
-    let len = env.in_len();
-    let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
-
-    // conservative weight estimate for deserializing the input. The actual weight is less and should utilize a custom benchmark
-    let base_weight: Weight = T::DbWeight::get().reads(len.into());
-
-    // weight for dispatching the call
-    let dispatch_weight = call.get_dispatch_info().weight;
-
-    // charge weight for the cost of the deserialization and the dispatch
-    let _ = env.charge_weight(base_weight.saturating_add(dispatch_weight))?;
-
-    log::debug!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
-
-    let sender = env.ext().caller();
-    let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
-
-    let result = call.dispatch(origin);
-    match result {
-        Ok(info) => {
-            log::debug!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
-        }
-        Err(err) => {
-            log::debug!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
-            return Err(err.error);
-        }
-    }
-    Ok(())
-}
-
 impl<T> ChainExtension<T> for PopApiExtension
 where
-    T: pallet_contracts::Config,
+    T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config,
     <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
     <T as SysConfig>::RuntimeCall: Parameter
         + Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
@@ -109,6 +68,7 @@ where
         let func_id = FuncId::try_from(env.func_id())?;
         match func_id {
             FuncId::CallRuntime => dispatch::<T, E>(env)?,
+            FuncId::QueryState => read_state::<T, E>(env)?,
         }
 
         Ok(RetVal::Converging(0))

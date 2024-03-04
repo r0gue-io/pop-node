@@ -1,31 +1,27 @@
 [package]
-name = "pop-api"
-description = "Reserved crate for pop-api."
+name = "pop-api-primitives"
+description = "Reserved crate for pop-api-primitives."
 license = "GPL-3.0-only"
 version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-
-pop-api-primitives = { path = "./primitives" }
-
-ink = { version = "4.3.0", default-features = false }
 sp-runtime = { version = "24.0.0", default-features = false }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
 
 [lib]
-name = "pop_api"
+name = "pop_api_primitives"
 path = "src/lib.rs"
 crate-type = [
     "rlib",
 ]
 
+
 [features]
 default = ["std"]
 std = [
-    "ink/std",
     "sp-runtime/std",
     "scale/std",
     "scale-info/std",
