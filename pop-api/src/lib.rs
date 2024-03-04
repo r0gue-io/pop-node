@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use pop_api_primitives::storage_keys;
 pub mod v0;
 
 use ink::{env::Environment, prelude::vec::Vec, ChainExtensionInstance};
