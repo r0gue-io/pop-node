@@ -24,7 +24,6 @@ smallvec = { workspace = true }
 # Local
 pop-api-primitives = { workspace = true }
 
-
 # Substrate
 frame-benchmarking = { workspace = true }
 frame-executive = { workspace = true }

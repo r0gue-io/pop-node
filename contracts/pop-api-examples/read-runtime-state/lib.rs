@@ -7,7 +7,7 @@ use ink::{
 
 use ink::primitives::AccountId;
 use sp_runtime::MultiAddress;
-use pop_api::storage_keys::RuntimeStateKeys::ParachainSystemKeys;
+use pop_api::primitives::storage_keys::ParachainSystemKeys;
 
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -39,7 +39,7 @@ pub trait PopApi {
     /// operations.
 
     #[ink(extension = 0xfeca)]
-    fn read_relay_block_number(key: LastRelayChainBlockNumber) -> Result<BlockNumber>;
+    fn read_state(key: ParachainSystemKeys) -> Result<<ink::env::DefaultEnvironment as Environment>::BlockNumber>;
 
 }
 
@@ -73,8 +73,7 @@ impl Environment for CustomEnvironment {
 #[ink::contract(env = crate::CustomEnvironment)]
 mod pop_api_extension_demo {
     use crate::{
-        BalancesCall,
-        RuntimeCall,
+        ParachainSystemKeys,
     };
 
     use super::PopApiError;
@@ -86,8 +85,7 @@ mod pop_api_extension_demo {
         value: BlockNumber
     }
 
-    /// A trivial contract with a single message, that uses `call-runtime` API for
-    /// performing native token transfer.
+
     #[ink(storage)]
     #[derive(Default)]
     pub struct PopApiExtensionDemo;
@@ -112,113 +110,11 @@ mod pop_api_extension_demo {
         pub fn read_relay_block_number(
             &self
         ) {
-            let state = self.env().extension().read_state(LastRelayChainBlockNumber);
-            ink::env::debug_println!("{:?}", state);
-            ink::env().emit_event(
-                RelayBlockNumberRead {value: state}
+            let result = self.env().extension().read_state(ParachainSystemKeys::LastRelayChainBlockNumber);
+            ink::env::debug_println!("{:?}", result);
+            self.env().emit_event(
+                RelayBlockNumberRead {value: result.expect("Failed to read relay block number.")}
             );
         }
     }
-
-    #[cfg(all(test, feature = "e2e-tests"))]
-    mod e2e_tests {
-        use super::*;
-        use ink_e2e::{
-            ChainBackend,
-            ContractsBackend,
-        };
-
-        use ink::{
-            env::{
-                test::default_accounts,
-                DefaultEnvironment,
-            },
-            primitives::AccountId,
-        };
-
-        type E2EResult<T> = Result<T, Box<dyn std::error::Error>>;
-
-        /// The base number of indivisible units for balances on the
-        /// `substrate-contracts-node`.
-        const UNIT: Balance = 1_000_000_000_000;
-
-        /// The contract will be given 1000 tokens during instantiation.
-        const CONTRACT_BALANCE: Balance = 1_000 * UNIT;
-
-        /// The receiver will get enough funds to have the required existential deposit.
-        ///
-        /// If your chain has this threshold higher, increase the transfer value.
-        const TRANSFER_VALUE: Balance = 1 / 10 * UNIT;
-
-        /// An amount that is below the existential deposit, so that a transfer to an
-        /// empty account fails.
-        ///
-        /// Must not be zero, because such an operation would be a successful no-op.
-        const INSUFFICIENT_TRANSFER_VALUE: Balance = 1;
-
-        /// Positive case scenario:
-        ///  - the call is valid
-        ///  - the call execution succeeds
-        #[ink_e2e::test]
-        async fn transfer_with_call_runtime_works<Client: E2EBackend>(
-            mut client: Client,
-        ) -> E2EResult<()> {
-            // given
-            let mut constructor = RuntimeCallerRef::new();
-            let contract = client
-                .instantiate("call-runtime", &ink_e2e::alice(), &mut constructor)
-                .value(CONTRACT_BALANCE)
-                .submit()
-                .await
-                .expect("instantiate failed");
-            let mut call_builder = contract.call_builder::<RuntimeCaller>();
-
-            let accounts = default_accounts::<DefaultEnvironment>();
-
-            let receiver: AccountId = accounts.bob;
-
-            let sender_balance_before = client
-                .free_balance(accounts.alice)
-                .await
-                .expect("Failed to get account balance");
-            let receiver_balance_before = client
-                .free_balance(receiver)
-                .await
-                .expect("Failed to get account balance");
-
-            // when
-            let transfer_message =
-                call_builder.transfer_through_runtime(receiver, TRANSFER_VALUE);
-
-            let call_res = client
-                .call(&ink_e2e::alice(), &transfer_message)
-                .submit()
-                .await
-                .expect("call failed");
-
-            assert!(call_res.return_value().is_ok());
-
-            // then
-            let sender_balance_after = client
-                .free_balance(accounts.alice)
-                .await
-                .expect("Failed to get account balance");
-            let receiver_balance_after = client
-                .free_balance(receiver)
-                .await
-                .expect("Failed to get account balance");
-
-            assert_eq!(
-                contract_balance_before,
-                contract_balance_after + TRANSFER_VALUE
-            );
-            assert_eq!(
-                receiver_balance_before,
-                receiver_balance_after - TRANSFER_VALUE
-            );
-
-            Ok(())
-        }
-
-    } 
 }
