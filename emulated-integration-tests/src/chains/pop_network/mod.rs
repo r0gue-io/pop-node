@@ -38,5 +38,6 @@ decl_test_parachains! {
 impl_accounts_helpers_for_parachain!(PopNetwork);
 impl_assert_events_helpers_for_parachain!(PopNetwork);
 impl_assets_helpers_for_parachain!(PopNetwork, Rococo);
+// For foreign assets:
 // impl_foreign_assets_helpers_for_parachain!(PopNetwork, Rococo);
 impl_xcm_helpers_for_parachain!(PopNetwork);
