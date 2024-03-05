@@ -2,9 +2,9 @@
 
 pub mod v0;
 
-pub use pop_api_primitives as primitives;
-use crate::PopApiError::Nfts;
+use crate::PopApiError::{Nfts, UnknownStatusCode};
 use ink::{env::Environment, ChainExtensionInstance};
+pub use pop_api_primitives as primitives;
 use scale;
 use sp_runtime::MultiSignature;
 pub use v0::nfts;
@@ -29,7 +29,7 @@ pub type Result<T> = core::result::Result<T, PopApiError>;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum PopApiError {
-    RuntimeError,
+    UnknownStatusCode(u32),
     Nfts(nfts::Error),
 }
 
@@ -37,11 +37,8 @@ impl ink::env::chain_extension::FromStatusCode for PopApiError {
     fn from_status_code(status_code: u32) -> core::result::Result<(), Self> {
         match status_code {
             0 => Ok(()),
-            1 => Err(Self::RuntimeError),
-            50_000..=50_999 => {
-                return Err(Nfts((status_code - 50_000).into()));
-            }
-            _ => panic!("encountered unknown status code"),
+            50_000..=50_999 => Err(Nfts((status_code - 50_000).try_into()?)),
+            _ => Err(UnknownStatusCode(status_code)),
         }
     }
 }
