@@ -9041,6 +9041,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "pop-api-extensions"
+version = "0.0.0"
+dependencies = [
+ "cumulus-pallet-parachain-system",
+ "cumulus-primitives-core",
+ "enumflags2",
+ "env_logger 0.11.2",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "frame-system-benchmarking",
+ "frame-system-rpc-runtime-api",
+ "hex",
+ "hex-literal",
+ "log",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-nfts",
+ "pallet-nfts-runtime-api",
+ "parachains-common",
+ "parity-scale-codec",
+ "pop-api-primitives",
+ "pop-runtime",
+ "scale-info",
+ "smallvec",
+ "sp-core 28.0.0",
+ "sp-io 30.0.0",
+ "sp-runtime 31.0.1",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.1)",
+]
+
+[[package]]
 name = "pop-api-primitives"
 version = "0.0.0"
 dependencies = [
@@ -9152,6 +9184,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
+ "pop-api-extensions",
  "pop-api-primitives",
  "scale-info",
  "smallvec",

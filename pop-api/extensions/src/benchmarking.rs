@@ -12,11 +12,11 @@ pub struct Pallet<T> {
 pub type PopApiExtensionBenchmarking<T> = Pallet<T>;
 
 #[benchmarks]
-mod benchmarks {
+pub mod benchmarks {
     use super::*;
     use codec::{Encode, Decode};
     #[benchmark]
-    fn decode(n: Linear<0, 1000>) {
+    fn decode(n: Linear<0, 1_000_000>) {
         #[derive(Encode, Decode)]
         struct TestStruct {
             pub data: String

@@ -1,3 +1,13 @@
+
+#![cfg_attr(not(feature = "std"), no_main, no_std)]
+
+mod ext_impl;
+
+#[cfg(feature = "runtime-benchmarks")]
+pub mod benchmarking;
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::benchmarks;
+
 use frame_support::{
     dispatch::{GetDispatchInfo, PostDispatchInfo},
     pallet_prelude::*,
@@ -9,7 +19,7 @@ use pallet_contracts::chain_extension::{
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 
-use crate::extensions::ext_impl::{dispatch::dispatch, read_state::read_state};
+use ext_impl::{dispatch::dispatch, read_state::read_state};
 
 const LOG_TARGET: &str = "popapi::extension";
 
@@ -80,7 +90,7 @@ where
 #[cfg(test)]
 mod tests {
     pub use super::*;
-    pub use crate::*;
+    use pop_runtime::*;
     use enumflags2::BitFlags;
     pub use pallet_contracts::Code;
     use pallet_nfts::{CollectionConfig, CollectionSetting, CollectionSettings, MintSettings};
@@ -146,7 +156,7 @@ mod tests {
         new_test_ext().execute_with(|| {
             let _ = env_logger::try_init();
 
-            let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/balance-transfer/target/ink/pop_api_extension_demo.wasm").unwrap();
+            let (wasm_binary, _) = load_wasm_module::<Runtime>("../../contracts/pop-api-examples/balance-transfer/target/ink/pop_api_extension_demo.wasm").unwrap();
 
             let init_value = 100;
 
@@ -213,7 +223,7 @@ mod tests {
             let _ = env_logger::try_init();
 
             let (wasm_binary, _) = load_wasm_module::<Runtime>(
-                "../contracts/pop-api-examples/nfts/target/ink/pop_api_nft_example.wasm",
+                "../../contracts/pop-api-examples/nfts/target/ink/pop_api_nft_example.wasm",
             )
             .unwrap();
 

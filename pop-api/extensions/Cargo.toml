@@ -1,0 +1,100 @@
+[package]
+name = "pop-api-extensions"
+version = "0.0.0"
+authors = { workspace = true }
+description = "Reserved crate for pop-api-primitives."
+license = "Unlicense"
+homepage = { workspace = true }
+repository.workspace = true
+edition.workspace = true
+
+[dependencies]
+codec = { workspace = true }
+hex-literal = { workspace = true }
+log = { workspace = true }
+scale-info = { workspace = true }
+smallvec = { workspace = true }
+
+# Substrate
+frame-benchmarking = { workspace = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+frame-system-benchmarking = { workspace = true }
+frame-system-rpc-runtime-api = { workspace = true }
+pallet-balances = { workspace = true }
+pallet-contracts = { workspace = true }
+pallet-nfts = { workspace = true }
+pallet-nfts-runtime-api = { workspace = true }
+
+sp-core = { workspace = true }
+sp-io = { workspace = true }
+sp-runtime = { workspace = true }
+sp-std = { workspace = true }
+
+cumulus-primitives-core = { workspace = true }
+cumulus-pallet-parachain-system = { workspace = true }
+parachains-common = { workspace = true }
+
+pop-api-primitives = { workspace = true }
+
+[dev-dependencies]
+env_logger = "0.11.2"
+hex = "0.4.3"
+enumflags2 = "0.7.9"
+pop-runtime = { workspace = true }
+
+[lib]
+name = "pop_api_extensions"
+path = "src/lib.rs"
+crate-type = [
+    "rlib",
+]
+
+[features]
+default = ["std"]
+std = [
+	"codec/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system-benchmarking/std",
+	"frame-system-rpc-runtime-api/std",
+	"frame-system/std",
+	"log/std",
+	"pallet-balances/std",
+	"pallet-contracts/std",
+	"pallet-nfts/std",
+	"pallet-nfts-runtime-api/std",
+	"scale-info/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"cumulus-primitives-core/std",
+	"cumulus-pallet-parachain-system/std",
+	"parachains-common/std",
+	"pop-api-primitives/std",
+]
+
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system-benchmarking/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-contracts/runtime-benchmarks",
+	"pallet-nfts/runtime-benchmarks",
+	"cumulus-primitives-core/runtime-benchmarks",
+	"cumulus-pallet-parachain-system/runtime-benchmarks",
+	"parachains-common/runtime-benchmarks",
+]
+
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-contracts/try-runtime",
+	"pallet-nfts/try-runtime",
+	"sp-runtime/try-runtime",
+	"cumulus-pallet-parachain-system/try-runtime",
+]
+

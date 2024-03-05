@@ -13,6 +13,8 @@ members = [
 	"node",
 	"runtime",
 	"pop-api",
+	"pop-api/extensions",
+	"pop-api/primitives",
 ]
 exclude = [
 	"contracts"
@@ -40,6 +42,7 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-s
 
 pop-runtime = { path = "./runtime" }
 pop-api-primitives = { path = "./pop-api/primitives"}
+pop-api-extensions = { path = "./pop-api/extensions"}
 
 # Substrate
 sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }

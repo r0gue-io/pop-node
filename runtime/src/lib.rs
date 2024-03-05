@@ -8,7 +8,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod assets_config;
 mod contracts_config;
-mod extensions;
 mod weights;
 pub mod xcm_config;
 
@@ -605,7 +604,7 @@ mod benches {
         [pallet_session, SessionBench::<Runtime>]
         [pallet_timestamp, Timestamp]
         [pallet_message_queue, MessageQueue]
-        [pop_runtime, PopApiExtensionBenchmarking]
+        [pop_api_extensions, pop_api_extensions::benchmarking::PopApiExtensionBenchmarking<Runtime>]
         [pallet_sudo, Sudo]
         [pallet_collator_selection, CollatorSelection]
         [cumulus_pallet_parachain_system, ParachainSystem]

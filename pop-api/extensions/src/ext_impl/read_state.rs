@@ -1,4 +1,3 @@
-use codec::Decode;
 use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::pallet_prelude::*;
 use log;
@@ -9,7 +8,7 @@ const LOG_TARGET: &str = "popapi::extension::read_state";
 
 pub(crate) fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-    T: pallet_contracts::Config + frame_system::Config,
+    T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config + frame_system::Config,
     E: Ext<T = T>,
 {
     let mut env = env.buf_in_buf_out();
@@ -20,7 +19,7 @@ where
 
     match key {
         ParachainSystemKeys::LastRelayChainBlockNumber => {
-            let relay_block_num: BlockNumber = crate::ParachainSystem::last_relay_block_number();
+            let relay_block_num: BlockNumber = cumulus_pallet_parachain_system::Pallet::<T>::last_relay_block_number();
             log::debug!(
                 target:LOG_TARGET,
                 "Last Relay Chain Block Number is: {:?}.", relay_block_num
