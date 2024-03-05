@@ -1,7 +1,7 @@
 use super::RuntimeCall;
 use crate::{PopApiError::UnknownStatusCode, *};
 use ink::prelude::vec::Vec;
-use sp_runtime::{BoundedVec, MultiAddress};
+use primitives::{BoundedVec, MultiAddress};
 
 type Result<T> = core::result::Result<T, Error>;
 

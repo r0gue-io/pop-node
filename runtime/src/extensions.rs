@@ -1,56 +1,20 @@
+use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::{
-    dispatch::{GetDispatchInfo, PostDispatchInfo},
+    dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
     pallet_prelude::*,
 };
 use log;
 use pallet_contracts::chain_extension::{
     ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
+use pop_api_primitives::storage_keys::ParachainSystemKeys;
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 
-use crate::extensions::ext_impl::{dispatch::dispatch, read_state::read_state};
-
-const LOG_TARGET: &str = "popapi::extension";
+const LOG_TARGET: &str = "pop-api::extension";
 
 #[derive(Default)]
 pub struct PopApiExtension;
-
-fn convert_err(err_msg: &'static str) -> impl FnOnce(DispatchError) -> DispatchError {
-    move |err| {
-        log::trace!(
-            target: LOG_TARGET,
-            "Pop API failed:{:?}",
-            err
-        );
-        DispatchError::Other(err_msg)
-    }
-}
-
-pub mod v0 {
-    #[derive(Debug)]
-    pub enum FuncId {
-        Dispatch,
-        ReadState,
-    }
-}
-
-impl TryFrom<u16> for v0::FuncId {
-    type Error = DispatchError;
-
-    fn try_from(func_id: u16) -> Result<Self, Self::Error> {
-        let id = match func_id {
-            0x0 => Self::Dispatch,
-            0x1 => Self::ReadState,
-            _ => {
-                log::error!("Called an unregistered `func_id`: {:}", func_id);
-                return Err(DispatchError::Other("Unimplemented func_id"));
-            }
-        };
-
-        Ok(id)
-    }
-}
 
 impl<T> ChainExtension<T> for PopApiExtension
 where
@@ -86,6 +50,118 @@ where
             }
         }
     }
+}
+
+pub mod v0 {
+    #[derive(Debug)]
+    pub enum FuncId {
+        Dispatch,
+        ReadState,
+    }
+}
+
+impl TryFrom<u16> for v0::FuncId {
+    type Error = DispatchError;
+
+    fn try_from(func_id: u16) -> Result<Self, Self::Error> {
+        let id = match func_id {
+            0x0 => Self::Dispatch,
+            0x1 => Self::ReadState,
+            _ => {
+                log::error!("called an unregistered `func_id`: {:}", func_id);
+                return Err(DispatchError::Other("unimplemented func_id"));
+            }
+        };
+
+        Ok(id)
+    }
+}
+
+pub(crate) fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+where
+    T: pallet_contracts::Config + frame_system::Config,
+    <T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
+    <T as SysConfig>::RuntimeCall: Parameter
+        + Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
+        + GetDispatchInfo
+        + From<frame_system::Call<T>>,
+    E: Ext<T = T>,
+{
+    const LOG_TARGET: &str = "pop-api::extension::dispatch";
+
+    let mut env = env.buf_in_buf_out();
+
+    // charge max weight before reading contract memory
+    // TODO: causing "1010: block limits exhausted" error
+    // let weight_limit = env.ext().gas_meter().gas_left();
+    // let charged_weight = env.charge_weight(weight_limit)?;
+
+    // TODO: debug_message weight is a good approximation of the additional overhead of going
+    // from contract layer to substrate layer.
+
+    // input length
+    let len = env.in_len();
+    let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
+
+    // conservative weight estimate for deserializing the input. The actual weight is less and should utilize a custom benchmark
+    let base_weight: Weight = T::DbWeight::get().reads(len.into());
+
+    // weight for dispatching the call
+    let dispatch_weight = call.get_dispatch_info().weight;
+
+    // charge weight for the cost of the deserialization and the dispatch
+    let _ = env.charge_weight(base_weight.saturating_add(dispatch_weight))?;
+
+    log::debug!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
+
+    let sender = env.ext().caller();
+    let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
+
+    // TODO: uncomment once charged_weight is fixed
+    // let actual_weight = call.get_dispatch_info().weight;
+    // env.adjust_weight(charged_weight, actual_weight);
+    let result = call.dispatch(origin);
+    match result {
+        Ok(info) => {
+            log::debug!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
+        }
+        Err(err) => {
+            log::debug!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
+            return Err(err.error);
+        }
+    }
+    Ok(())
+}
+
+pub(crate) fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+where
+    T: pallet_contracts::Config + frame_system::Config,
+    E: Ext<T = T>,
+{
+    const LOG_TARGET: &str = "pop-api::extension::read_state";
+
+    let mut env = env.buf_in_buf_out();
+
+    // TODO: Substitute len u32 with pop_api::src::impls::pop_network::StringLimit.
+    // Move StringLimit to pop_api_primitives first.
+    let len: u32 = env.in_len();
+    let key: ParachainSystemKeys = env.read_as_unbounded(len)?;
+
+    let result = match key {
+        ParachainSystemKeys::LastRelayChainBlockNumber => {
+            let relay_block_num: BlockNumber = crate::ParachainSystem::last_relay_block_number();
+            log::debug!(
+                target:LOG_TARGET,
+                "last relay chain block number is: {:?}.", relay_block_num
+            );
+            relay_block_num
+        }
+    }
+    .encode();
+    env.write(&result, false, None).map_err(|e| {
+        log::trace!(target: LOG_TARGET, "{:?}", e);
+        DispatchError::Other("unable to write results to contract memory")
+    })
 }
 
 #[cfg(test)]
@@ -140,7 +216,7 @@ mod tests {
     // NFT helper functions
     fn collection_config_from_disabled_settings(
         settings: BitFlags<CollectionSetting>,
-    ) -> CollectionConfig<Balance, BlockNumber, CollectionId> {
+    ) -> CollectionConfig<Balance, crate::BlockNumber, CollectionId> {
         CollectionConfig {
             settings: CollectionSettings::from_disabled(settings),
             max_supply: None,
@@ -148,7 +224,7 @@ mod tests {
         }
     }
 
-    fn default_collection_config() -> CollectionConfig<Balance, BlockNumber, CollectionId> {
+    fn default_collection_config() -> CollectionConfig<Balance, crate::BlockNumber, CollectionId> {
         collection_config_from_disabled_settings(CollectionSetting::DepositRequired.into())
     }
 
@@ -172,8 +248,8 @@ mod tests {
                 DEBUG_OUTPUT,
                 pallet_contracts::CollectEvents::Skip,
             )
-            .result
-            .unwrap();
+                .result
+                .unwrap();
 
             assert!(
                 !result.result.did_revert(),

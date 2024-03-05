@@ -5,16 +5,16 @@ use pop_api::nfts;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
-    MintError(nfts::Error),
+    NftsError(nfts::Error),
 }
 
 impl From<nfts::Error> for ContractError {
     fn from(value: nfts::Error) -> Self {
-        ContractError::MintError(value)
+        ContractError::NftsError(value)
     }
 }
 
-#[ink::contract(env = pop_api::PopEnv)]
+#[ink::contract(env = pop_api::Environment)]
 mod pop_api_extension_demo {
     use super::ContractError;
 

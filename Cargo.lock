@@ -9037,6 +9037,7 @@ dependencies = [
  "parity-scale-codec",
  "pop-api-primitives",
  "scale-info",
+ "sp-io 23.0.0",
  "sp-runtime 24.0.0",
 ]
 
@@ -9046,7 +9047,6 @@ version = "0.0.0"
 dependencies = [
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 24.0.0",
 ]
 
 [[package]]

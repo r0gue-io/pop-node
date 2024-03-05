@@ -6,13 +6,9 @@ edition = "2021"
 
 [dependencies]
 ink = { version = "4.3.0", default-features = false }
+pop-api = { path = "../../../pop-api", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
-
-pop-api = { path = "../../../pop-api", default-features = false }
-
-sp-io = { version = "23.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
-sp-runtime = { version = "24.0.0", default-features = false }
 
 [dev-dependencies]
 ink_e2e = "4.3.0"
@@ -24,11 +20,9 @@ path = "lib.rs"
 default = ["std"]
 std = [
     "ink/std",
+    "pop-api/std",
     "scale/std",
     "scale-info/std",
-    "sp-runtime/std",
-    "sp-io/std",
-    "pop-api/std",
 ]
 ink-as-dependency = []
 e2e-tests = []

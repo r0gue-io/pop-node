@@ -5,13 +5,12 @@ license = "GPL-3.0-only"
 version = "0.0.0"
 edition = "2021"
 
-members = ["primitives/"]
-
 [dependencies]
 ink = { version = "4.3.0", default-features = false }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
-sp-runtime = { version = "24.0.0", default-features = false }
+sp-io = { version = "23.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
+sp-runtime = { version = "24.0", default-features = false }
 
 pop-api-primitives = { path = "./primitives", default-features = false }
 
@@ -24,8 +23,9 @@ crate-type = ["rlib"]
 default = ["std"]
 std = [
     "ink/std",
-    "sp-runtime/std",
+    "pop-api-primitives/std",
     "scale/std",
     "scale-info/std",
-    "pop-api-primitives/std",
+    "sp-io/std",
+    "sp-runtime/std",
 ]
