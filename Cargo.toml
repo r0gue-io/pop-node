@@ -11,7 +11,7 @@ repository = "https://github.com/r0gue-io/pop-node/"
 [workspace]
 members = [
     "node",
-    "runtime",
+    "runtime", "emulated-integration-tests",
     "pop-api",
 ]
 exclude = [
