@@ -153,7 +153,7 @@ mod tests {
     }
 
     #[test]
-    fn test_dispatch() {
+    fn dispatch_balance_transfer_from_contract_works() {
         new_test_ext().execute_with(|| {
             let _ = env_logger::try_init();
 
@@ -219,7 +219,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nfts_mint() {
+    fn dispatch_nfts_mint_from_contract_works() {
         new_test_ext().execute_with(|| {
             let _ = env_logger::try_init();
 
@@ -307,7 +307,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nfts_mint_surfaces_error() {
+    fn nfts_mint_surfaces_error() {
         new_test_ext().execute_with(|| {
             let _ = env_logger::try_init();
 

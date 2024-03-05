@@ -1,4 +1,3 @@
-use codec::Decode;
 use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::pallet_prelude::*;
 use log;
