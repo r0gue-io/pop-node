@@ -9,7 +9,6 @@ repository.workspace = true
 
 [dependencies]
 codec = { workspace = true }
-#assert_matches = "1.5.0"
 
 # Substrate
 frame-support = { workspace = true }
@@ -45,9 +44,6 @@ default = ["std"]
 std = [
     "asset-hub-rococo-runtime/std",
     "asset-test-utils/std",
-    "pallet-assets/std",
-    "pallet-balances/std",
-    "pallet-message-queue/std", 
     "pop-runtime/std",
     "rococo-runtime/std",
     "rococo-runtime-constants/std",
