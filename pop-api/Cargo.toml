@@ -8,11 +8,12 @@ edition = "2021"
 [dependencies]
 ink = { version = "4.3.0", default-features = false }
 sp-runtime = { version = "24.0.0", default-features = false }
+xcm = { workspace = true }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
 
-pop-api-primitives = {path = "./primitives", default-features = false}
+pop-api-primitives = { path = "./primitives", default-features = false }
 
 [lib]
 name = "pop_api"
