@@ -110,8 +110,8 @@ mod pop_api_extension_demo {
         pub fn read_relay_block_number(
             &self
         ) {
-            let result = self.env().extension().read_state(ParachainSystemKeys::LastRelayChainBlockNumber);
-            ink::env::debug_println!("{:?}", result);
+            let result: BlockNumber = self.env().extension().read_state(ParachainSystemKeys::LastRelayChainBlockNumber);
+            ink::env::debug_println!("[Contract] Last relay chain block# : {:?}", result);
             self.env().emit_event(
                 RelayBlockNumberRead {value: result.expect("Failed to read relay block number.")}
             );

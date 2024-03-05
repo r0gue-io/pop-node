@@ -1,7 +1,7 @@
-use codec::Decode;
 use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::pallet_prelude::*;
 use log;
+use codec::Encode;
 use pallet_contracts::chain_extension::{Environment, Ext, InitState};
 use pop_api_primitives::storage_keys::ParachainSystemKeys;
 
@@ -25,7 +25,11 @@ where
                 target:LOG_TARGET,
                 "Last Relay Chain Block Number is: {:?}.", relay_block_num
             );
-            //Ok(relay_block_num)
+            let return_buffer = relay_block_num.encode();
+            env.write(&return_buffer, false, None)
+                .map_err(|_| {
+                    DispatchError::Other("PopApi Extension failed reading last relay chain block number.")
+                })?;
             Ok(())
         }
         _ => Err(DispatchError::Other("Unable to read provided key.")),
