@@ -5,8 +5,6 @@ mod ext_impl;
 
 #[cfg(feature = "runtime-benchmarks")]
 pub mod benchmarking;
-#[cfg(feature = "runtime-benchmarks")]
-pub use benchmarking::benchmarks;
 
 use frame_support::{
     dispatch::{GetDispatchInfo, PostDispatchInfo},

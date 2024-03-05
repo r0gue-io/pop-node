@@ -599,16 +599,7 @@ construct_runtime!(
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
     frame_benchmarking::define_benchmarks!(
-        [frame_system, SystemBench::<Runtime>]
-        [pallet_balances, Balances]
-        [pallet_session, SessionBench::<Runtime>]
-        [pallet_timestamp, Timestamp]
-        [pallet_message_queue, MessageQueue]
         [pop_api_extensions, pop_api_extensions::benchmarking::PopApiExtensionBenchmarking<Runtime>]
-        [pallet_sudo, Sudo]
-        [pallet_collator_selection, CollatorSelection]
-        [cumulus_pallet_parachain_system, ParachainSystem]
-        [cumulus_pallet_xcmp_queue, XcmpQueue]
     );
 }
 
@@ -893,13 +884,14 @@ impl_runtime_apis! {
             Vec<frame_benchmarking::BenchmarkList>,
             Vec<frame_support::traits::StorageInfo>,
         ) {
-            use frame_benchmarking::{Benchmarking, BenchmarkList};
+            use frame_benchmarking::{Benchmarking, BenchmarkList, list_benchmark};
             use frame_support::traits::StorageInfoTrait;
             use frame_system_benchmarking::Pallet as SystemBench;
             use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
 
             let mut list = Vec::<BenchmarkList>::new();
             list_benchmarks!(list, extra);
+            // list_benchmark!(list, extra, pop_api_extensions, pop_api_extensions::benchmarking::PopApiExtensionBenchmarking<Runtime>);
 
             let storage_info = AllPalletsWithSystem::storage_info();
             (list, storage_info)
