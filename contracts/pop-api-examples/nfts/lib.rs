@@ -14,7 +14,6 @@ impl From<nfts::Error> for ContractError {
     }
 }
 
-#[ink::contract(env = pop_api::Environment)]
 mod pop_api_extension_demo {
     use super::ContractError;
 
