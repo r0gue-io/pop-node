@@ -1,0 +1,22 @@
+[package]
+name = "pop-api-primitives"
+description = "Reserved crate for pop-api-primitives."
+license = "GPL-3.0-only"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
+scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+
+[lib]
+name = "pop_api_primitives"
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[features]
+default = ["std"]
+std = [
+    "scale/std",
+    "scale-info/std",
+]

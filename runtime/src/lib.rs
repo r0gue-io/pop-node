@@ -8,6 +8,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod assets_config;
 mod contracts_config;
+mod extensions;
 mod weights;
 pub mod xcm_config;
 
