@@ -77,7 +77,7 @@ impl TryFrom<u16> for v0::FuncId {
 	}
 }
 
-pub(crate) fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config + frame_system::Config,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
@@ -133,7 +133,7 @@ where
 	Ok(())
 }
 
-pub(crate) fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config + frame_system::Config,
 	E: Ext<T = T>,
@@ -142,13 +142,14 @@ where
 
 	let mut env = env.buf_in_buf_out();
 
-	// TODO: Substitute len u32 with pop_api::src::impls::pop_network::StringLimit.
-	// Move StringLimit to pop_api_primitives first.
-	let len: u32 = env.in_len();
-	let key: ParachainSystemKeys = env.read_as_unbounded(len)?;
+	// TODO: replace with benchmark once available
+	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+
+	let key: ParachainSystemKeys = env.read_as()?;
 
 	let result = match key {
 		ParachainSystemKeys::LastRelayChainBlockNumber => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			let relay_block_num: BlockNumber = crate::ParachainSystem::last_relay_block_number();
 			log::debug!(
 				target:LOG_TARGET,
@@ -157,7 +158,13 @@ where
 			relay_block_num
 		},
 	}
+	.encode()
+	// Double-encode result for extension return type of bytes
 	.encode();
+	log::trace!(
+		target:LOG_TARGET,
+		"read state result: {:?}.", result
+	);
 	env.write(&result, false, None).map_err(|e| {
 		log::trace!(target: LOG_TARGET, "{:?}", e);
 		DispatchError::Other("unable to write results to contract memory")
@@ -174,14 +181,14 @@ mod tests {
 	use parachains_common::CollectionId;
 	pub use sp_runtime::{traits::Hash, AccountId32};
 
-	pub const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
+	const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 
-	pub const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
-	pub const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
-	pub const INITIAL_AMOUNT: u128 = 100_000 * UNIT;
-	pub const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
+	const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
+	const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
+	const INITIAL_AMOUNT: u128 = 100_000 * UNIT;
+	const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
 
-	pub fn new_test_ext() -> sp_io::TestExternalities {
+	fn new_test_ext() -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::<Runtime>::default()
 			.build_storage()
 			.expect("Frame system builds valid default genesis config");
@@ -197,9 +204,7 @@ mod tests {
 		ext
 	}
 
-	pub fn load_wasm_module<T>(
-		path: &str,
-	) -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
+	fn load_wasm_module<T>(path: &str) -> std::io::Result<(Vec<u8>, <T::Hashing as Hash>::Output)>
 	where
 		T: frame_system::Config,
 	{
@@ -208,7 +213,7 @@ mod tests {
 		Ok((wasm_binary, code_hash))
 	}
 
-	pub fn function_selector(name: &str) -> Vec<u8> {
+	fn function_selector(name: &str) -> Vec<u8> {
 		let hash = sp_io::hashing::blake2_256(name.as_bytes());
 		[hash[0..4].to_vec()].concat()
 	}
@@ -437,6 +442,66 @@ mod tests {
 			// check for revert with expected error
 			let result = result.result.unwrap();
 			assert!(result.did_revert());
+		});
+	}
+
+	#[test]
+	#[ignore]
+	fn reading_last_relay_chain_block_number_works() {
+		new_test_ext().execute_with(|| {
+			let _ = env_logger::try_init();
+
+			let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/read-runtime-state/target/ink/pop_api_extension_demo.wasm").unwrap();
+
+			let init_value = 100;
+
+			let contract = Contracts::bare_instantiate(
+				ALICE,
+				init_value,
+				GAS_LIMIT,
+				None,
+				Code::Upload(wasm_binary),
+				function_selector("new"),
+				vec![],
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+			)
+				.result
+				.unwrap();
+
+			assert!(
+				!contract.result.did_revert(),
+				"deploying contract reverted {:?}",
+				contract
+			);
+
+			let addr = contract.account_id;
+
+			let function = function_selector("read_relay_block_number");
+			let params = [function].concat();
+
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+				None,
+				params,
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::UnsafeCollect,
+				pallet_contracts::Determinism::Relaxed,
+			);
+
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+                    "Contract debug buffer - {:?}",
+                    String::from_utf8(result.debug_message.clone())
+                );
+				log::debug!("result: {:?}", result);
+			}
+
+			// check for revert
+			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 		});
 	}
 }
