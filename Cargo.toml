@@ -10,12 +10,12 @@ repository = "https://github.com/r0gue-io/pop-node/"
 
 [workspace]
 members = [
-	"node",
-	"runtime",
-	"pop-api",
+    "node",
+    "runtime",
+    "pop-api",
 ]
 exclude = [
-	"contracts"
+    "contracts"
 ]
 
 resolver = "2"
@@ -39,7 +39,7 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-s
 # Local
 
 pop-runtime = { path = "./runtime" }
-pop-api-primitives = { path = "./pop-api/primitives"}
+pop-api-primitives = { path = "./pop-api/primitives", default-features = false }
 
 # Substrate
 sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }

@@ -1,20 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use pop_api::PopApiError;
+use pop_api::nfts;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
-    SomeError,
+    NftsError(nfts::Error),
 }
 
-impl From<PopApiError> for ContractError {
-    fn from(_value: PopApiError) -> Self {
-        ContractError::SomeError
+impl From<nfts::Error> for ContractError {
+    fn from(value: nfts::Error) -> Self {
+        ContractError::NftsError(value)
     }
 }
 
-#[ink::contract(env = pop_api::PopEnv)]
 mod pop_api_extension_demo {
     use super::ContractError;
 
@@ -39,7 +38,16 @@ mod pop_api_extension_demo {
             ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime: collection_id: {:?} \nitem_id {:?} \nreceiver: {:?}, ", collection_id, item_id, receiver);
 
             // simplified API call
-            pop_api::nfts::mint(collection_id, item_id, receiver)?;
+            let result = pop_api::nfts::mint(collection_id, item_id, receiver);
+            ink::env::debug_println!(
+                "PopApiExtensionDemo::mint_through_runtime result: {result:?}"
+            );
+            if let Err(pop_api::nfts::Error::NoConfig) = result {
+                ink::env::debug_println!(
+                    "PopApiExtensionDemo::mint_through_runtime expected error received"
+                );
+            }
+            result?;
 
             ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime end");
             Ok(())
