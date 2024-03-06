@@ -135,7 +135,7 @@ where
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config + frame_system::Config,
+	T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config + frame_system::Config,
 	E: Ext<T = T>,
 {
 	const LOG_TARGET: &str = "pop-api::extension::read_state";
@@ -150,7 +150,7 @@ where
 	let result = match key {
 		ParachainSystemKeys::LastRelayChainBlockNumber => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			let relay_block_num: BlockNumber = crate::ParachainSystem::last_relay_block_number();
+			let relay_block_num: BlockNumber = cumulus_pallet_parachain_system::Pallet::<T>::last_relay_block_number();
 			log::debug!(
 				target:LOG_TARGET,
 				"last relay chain block number is: {:?}.", relay_block_num
