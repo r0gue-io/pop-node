@@ -17,9 +17,9 @@ pub type CollectionId = u32;
 // Id used for identifying non-fungible items.
 pub type ItemId = u32;
 
-type AccountId = <ink::env::DefaultEnvironment as ink::env::Environment>::AccountId;
-type Balance = <ink::env::DefaultEnvironment as ink::env::Environment>::Balance;
-type BlockNumber = <ink::env::DefaultEnvironment as ink::env::Environment>::BlockNumber;
+type AccountId = <Environment as ink::env::Environment>::AccountId;
+type Balance = <Environment as ink::env::Environment>::Balance;
+type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
 type StringLimit = u32;
 type KeyLimit = u32;
 type MaxTips = u32;
