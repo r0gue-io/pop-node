@@ -89,7 +89,7 @@ where
 		+ From<frame_system::Call<T>>,
 	E: Ext<T = T>,
 {
-	const LOG_TARGET: &str = "pop-api::extension::dispatch";
+	const LOG_PREFIX: &str = " dispatch |";
 
 	let mut env = env.buf_in_buf_out();
 	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
@@ -106,14 +106,15 @@ where
 	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
     let overhead = contract_host_weight.debug_message;
 
-	let _ = env.charge_weight(base_weight.saturating_add(overhead))?;
+	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
+	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
 
 	// read the input as RuntimeCall
 	let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
 
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
-	log::debug!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
+	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
 
 	let sender = env.ext().caller();
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
@@ -121,7 +122,7 @@ where
 	let result = call.dispatch(origin);
 	match result {
 		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
 
 			// refund weight if the actual weight is less than the charged weight
 			if let Some(actual_weight) = info.actual_weight {
@@ -129,7 +130,7 @@ where
 			}
 		},
 		Err(err) => {
-			log::debug!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
 			return Err(err.error);
 		},
 	}
@@ -141,7 +142,7 @@ where
 	T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config + frame_system::Config,
 	E: Ext<T = T>,
 {
-	const LOG_TARGET: &str = "pop-api::extension::read_state";
+	const LOG_PREFIX: &str = " read_state |";
 
 	let mut env = env.buf_in_buf_out();
 
@@ -149,7 +150,9 @@ where
 	// However, charge weight is not strictly necessary here as reading a fixed value's weight is included in the contract call.
 	// Source: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L563
 	let base_weight: Weight = ContractSchedule::<T>::get().host_fn_weights.return_per_byte.saturating_mul(env.in_len().into());
-	let _ = env.charge_weight(base_weight)?;
+	let charged_weight = env.charge_weight(base_weight)?;
+
+	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
 
 	let key: ParachainSystemKeys = env.read_as()?;
 
@@ -159,7 +162,7 @@ where
 			let relay_block_num: BlockNumber = cumulus_pallet_parachain_system::Pallet::<T>::last_relay_block_number();
 			log::debug!(
 				target:LOG_TARGET,
-				"last relay chain block number is: {:?}.", relay_block_num
+				"{} last relay chain block number is: {:?}.", LOG_PREFIX, relay_block_num
 			);
 			relay_block_num
 		},
@@ -169,7 +172,7 @@ where
 	.encode();
 	log::trace!(
 		target:LOG_TARGET,
-		"read state result: {:?}.", result
+		"{} result: {:?}.", LOG_PREFIX, result
 	);
 	env.write(&result, false, None).map_err(|e| {
 		log::trace!(target: LOG_TARGET, "{:?}", e);
