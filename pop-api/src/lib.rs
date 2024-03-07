@@ -9,7 +9,7 @@ use primitives::storage_keys::*;
 use scale;
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
-pub use v0::{balances, nfts, state};
+pub use v0::{balances, nfts, relay_chain_block_number, state};
 
 type AccountId = <Environment as ink::env::Environment>::AccountId;
 type Balance = <Environment as ink::env::Environment>::Balance;

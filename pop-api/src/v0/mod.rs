@@ -1,6 +1,17 @@
+use crate::{
+	primitives::storage_keys::{ParachainSystemKeys, RuntimeStateKeys},
+	BlockNumber, PopApiError,
+};
+
 pub mod balances;
 pub mod nfts;
 pub mod state;
+
+pub fn relay_chain_block_number() -> Result<BlockNumber, PopApiError> {
+	Ok(state::read(RuntimeStateKeys::ParachainSystem(
+		ParachainSystemKeys::LastRelayChainBlockNumber,
+	))?)
+}
 
 #[derive(scale::Encode)]
 pub(crate) enum RuntimeCall {
