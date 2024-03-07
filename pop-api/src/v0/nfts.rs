@@ -3,7 +3,7 @@ use crate::{PopApiError::UnknownStatusCode, *};
 use ink::prelude::vec::Vec;
 use primitives::{ApprovalsLimit, BoundedBTreeMap, CollectionId, ItemId, KeyLimit, MultiAddress};
 use scale::Encode;
-use types::*;
+pub use types::*;
 
 type Result<T> = core::result::Result<T, Error>;
 
