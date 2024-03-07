@@ -1,7 +1,8 @@
 use super::RuntimeCall;
 use crate::{PopApiError::UnknownStatusCode, *};
 use ink::prelude::vec::Vec;
-use primitives::{ApprovalsLimit, BoundedBTreeMap, CollectionId, ItemId, KeyLimit, MultiAddress};
+use primitives::{ApprovalsLimit, BoundedBTreeMap, KeyLimit, MultiAddress};
+pub use primitives::{CollectionId, ItemId};
 use scale::Encode;
 pub use types::*;
 
@@ -675,7 +676,7 @@ mod types {
 	}
 
 	/// Information about a collection.
-	#[derive(Decode)]
+	#[derive(Decode, Debug, Encode, Eq, PartialEq)]
 	pub struct CollectionDetails {
 		/// Collection's owner.
 		pub owner: AccountId,
@@ -715,7 +716,7 @@ mod types {
 	}
 
 	/// Information concerning the ownership of a single unique item.
-	#[derive(Decode)]
+	#[derive(Decode, Debug, Encode, Eq, PartialEq)]
 	pub struct ItemDetails {
 		/// The owner of this item.
 		pub owner: AccountId,
