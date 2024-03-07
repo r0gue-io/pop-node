@@ -14,6 +14,7 @@ use pop_api_primitives::{
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
+use sp_std::vec::Vec;
 
 const LOG_TARGET: &str = "pop-api::extension";
 
