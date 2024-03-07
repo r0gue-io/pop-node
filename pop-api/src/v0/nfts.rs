@@ -1,7 +1,7 @@
 use super::RuntimeCall;
 use crate::{PopApiError::UnknownStatusCode, *};
 use ink::prelude::vec::Vec;
-use primitives::MultiAddress;
+use primitives::{ApprovalsLimit, BoundedBTreeMap, CollectionId, ItemId, KeyLimit, MultiAddress};
 use scale::Encode;
 use types::*;
 
@@ -300,6 +300,66 @@ pub fn claim_swap(
 	}))?)
 }
 
+/// Get the owner of the item, if the item exists.
+pub fn owner(collection: CollectionId, item: ItemId) -> Result<Option<AccountId>> {
+	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Owner(collection, item)))?)
+}
+
+/// Get the owner of the collection, if the collection exists.
+pub fn collection_owner(collection: CollectionId) -> Result<Option<AccountId>> {
+	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CollectionOwner(collection)))?)
+}
+
+/// Get the attribute value of `item` of `collection` corresponding to `key`.
+pub fn attribute(
+	collection: CollectionId,
+	item: ItemId,
+	key: BoundedVec<u8, KeyLimit>,
+) -> Result<Option<Vec<u8>>> {
+	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Attribute(collection, item, key)))?)
+}
+
+// /// Get the custom attribute value of `item` of `collection` corresponding to `key`.
+// pub fn custom_attribute(
+// 	account: AccountId,
+// 	collection: CollectionId,
+// 	item: ItemId,
+// 	key: BoundedVec<u8, KeyLimit>,
+// ) -> Result<Option<Vec<u8>>> {
+// 	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CustomAttribute(
+// 		account, collection, item, key,
+// 	)))?)
+// }
+
+/// Get the system attribute value of `item` of `collection` corresponding to `key` if
+/// `item` is `Some`. Otherwise, returns the system attribute value of `collection`
+/// corresponding to `key`.
+pub fn system_attribute(
+	collection: CollectionId,
+	item: Option<ItemId>,
+	key: BoundedVec<u8, KeyLimit>,
+) -> Result<Option<Vec<u8>>> {
+	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::SystemAttribute(collection, item, key)))?)
+}
+
+/// Get the attribute value of `item` of `collection` corresponding to `key`.
+pub fn collection_attribute(
+	collection: CollectionId,
+	key: BoundedVec<u8, KeyLimit>,
+) -> Result<Option<Vec<u8>>> {
+	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CollectionAttribute(collection, key)))?)
+}
+
+/// Get the details of a collection.
+pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>> {
+	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Collection(collection)))?)
+}
+
+/// Get the details of an item.
+pub fn item(collection: CollectionId, item: ItemId) -> Result<Option<ItemDetails>> {
+	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Item(collection, item)))?)
+}
+
 #[derive(Encode)]
 pub(crate) enum NftCalls {
 	#[codec(index = 0)]
@@ -582,7 +642,10 @@ impl From<PopApiError> for Error {
 // Local implementations of pallet-nfts types
 mod types {
 	use super::*;
-	use crate::{Balance, BlockNumber, CollectionId};
+	use crate::{
+		primitives::{CollectionId, ItemId},
+		Balance, BlockNumber,
+	};
 	use enumflags2::{bitflags, BitFlags};
 	use scale::{Decode, EncodeLike, MaxEncodedLen};
 	use scale_info::{build::Fields, meta_type, prelude::vec, Path, Type, TypeInfo, TypeParameter};
@@ -611,6 +674,24 @@ mod types {
 		pub mint_settings: MintSettings,
 	}
 
+	/// Information about a collection.
+	#[derive(Decode)]
+	pub struct CollectionDetails {
+		/// Collection's owner.
+		pub owner: AccountId,
+		/// The total balance deposited by the owner for all the storage data associated with this
+		/// collection. Used by `destroy`.
+		pub owner_deposit: Balance,
+		/// The total number of outstanding items of this collection.
+		pub items: u32,
+		/// The total number of outstanding item metadata of this collection.
+		pub item_metadatas: u32,
+		/// The total number of outstanding item configs of this collection.
+		pub item_configs: u32,
+		/// The total number of attributes for this collection.
+		pub attributes: u32,
+	}
+
 	/// Wrapper type for `BitFlags<CollectionSetting>` that implements `Codec`.
 	pub struct CollectionSettings(pub BitFlags<CollectionSetting>);
 
@@ -631,6 +712,18 @@ mod types {
 		UnlockedMaxSupply,
 		/// When this isn't set then the deposit is required to hold the items of this collection.
 		DepositRequired,
+	}
+
+	/// Information concerning the ownership of a single unique item.
+	#[derive(Decode)]
+	pub struct ItemDetails {
+		/// The owner of this item.
+		pub owner: AccountId,
+		/// The approved transferrer of this item, if one is set.
+		pub approvals: BoundedBTreeMap<AccountId, Option<BlockNumber>, ApprovalsLimit>,
+		/// The amount held in the pallet's default account for this item. Free-hold items will have
+		/// this as zero.
+		pub deposit: Balance,
 	}
 
 	/// Support for up to 64 user-enabled features on an item.

@@ -11,17 +11,10 @@ pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
 pub use v0::{balances, nfts, state};
 
-// Id used for identifying non-fungible collections.
-pub type CollectionId = u32;
-
-// Id used for identifying non-fungible items.
-pub type ItemId = u32;
-
 type AccountId = <Environment as ink::env::Environment>::AccountId;
 type Balance = <Environment as ink::env::Environment>::Balance;
 type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
 type StringLimit = u32;
-type KeyLimit = u32;
 type MaxTips = u32;
 
 pub type Result<T> = core::result::Result<T, PopApiError>;

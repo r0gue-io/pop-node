@@ -9046,6 +9046,7 @@ dependencies = [
 name = "pop-api-primitives"
 version = "0.0.0"
 dependencies = [
+ "bounded-collections 0.1.9",
  "parity-scale-codec",
  "scale-info",
 ]

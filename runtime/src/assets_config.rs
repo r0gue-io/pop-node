@@ -38,7 +38,9 @@ parameter_types! {
 
 impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
+	// TODO: source from primitives
 	type CollectionId = CollectionId;
+	// TODO: source from primitives
 	type ItemId = ItemId;
 	type Currency = Balances;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
@@ -50,8 +52,10 @@ impl pallet_nfts::Config for Runtime {
 	type AttributeDepositBase = NftsAttributeDepositBase;
 	type DepositPerByte = NftsDepositPerByte;
 	type StringLimit = ConstU32<256>;
+	// TODO: source from primitives
 	type KeyLimit = ConstU32<64>;
 	type ValueLimit = ConstU32<256>;
+	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type ItemAttributesApprovalsLimit = ConstU32<30>;
 	type MaxTips = ConstU32<10>;

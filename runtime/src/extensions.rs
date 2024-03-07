@@ -8,7 +8,10 @@ use log;
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
-use pop_api_primitives::storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys};
+use pop_api_primitives::{
+	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
+	CollectionId, ItemId,
+};
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 
@@ -21,7 +24,10 @@ pub struct PopApiExtension;
 
 impl<T> ChainExtension<T> for PopApiExtension
 where
-	T: pallet_contracts::Config + pallet_nfts::Config + cumulus_pallet_parachain_system::Config,
+	T: pallet_contracts::Config
+		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
+		+ cumulus_pallet_parachain_system::Config
+		+ frame_system::Config,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 	<T as SysConfig>::RuntimeCall: Parameter
 		+ Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
@@ -138,94 +144,10 @@ where
 	}
 }
 
-fn read_nfts_state<T, E>(
-	key: NftsKeys,
-	env: &mut Environment<E, BufInBufOutState>,
-) -> Result<Vec<u8>, DispatchError>
-where
-	T: pallet_contracts::Config + pallet_nfts::Config + frame_system::Config,
-	E: Ext<T = T>,
-{
-	match key {
-		NftsKeys::Owner => {
-			let (collection, item): (
-				<T as pallet_nfts::Config>::CollectionId,
-				<T as pallet_nfts::Config>::ItemId,
-			) = env.read_as()?;
-
-			let maybe_owner = pallet_nfts::Pallet::<T>::owner(collection, item);
-			Ok(maybe_owner.encode())
-		},
-		NftsKeys::CollectionOwner => {
-			let collection: <T as pallet_nfts::Config>::CollectionId = env.read_as()?;
-
-			let maybe_owner = pallet_nfts::Pallet::<T>::collection_owner(collection);
-
-			Ok(maybe_owner.encode())
-		},
-		NftsKeys::Attribute => {
-			// TODO: charge weight
-			let len = env.in_len();
-
-			let (collection, item, key): (
-				<T as pallet_nfts::Config>::CollectionId,
-				<T as pallet_nfts::Config>::ItemId,
-				Vec<u8>,
-			) = env.read_as_unbounded(len)?;
-
-			let maybe_attribute = pallet_nfts::Pallet::<T>::attribute(&collection, &item, &key);
-
-			Ok(maybe_attribute.encode())
-		},
-		NftsKeys::CustomAttribute => {
-			// TODO: charge weight
-			let len = env.in_len();
-
-			let (account, collection, item, key): (
-				<T as SysConfig>::AccountId,
-				<T as pallet_nfts::Config>::CollectionId,
-				<T as pallet_nfts::Config>::ItemId,
-				Vec<u8>,
-			) = env.read_as_unbounded(len)?;
-
-			let maybe_attribute =
-				pallet_nfts::Pallet::<T>::custom_attribute(&account, &collection, &item, &key);
-
-			Ok(maybe_attribute.encode())
-		},
-		NftsKeys::SystemAttribute => {
-			// TODO: charge weight
-			let len = env.in_len();
-
-			let (collection, maybe_item, key): (
-				<T as pallet_nfts::Config>::CollectionId,
-				Option<<T as pallet_nfts::Config>::ItemId>,
-				Vec<u8>,
-			) = env.read_as_unbounded(len)?;
-
-			let maybe_attribute =
-				pallet_nfts::Pallet::<T>::system_attribute(&collection, maybe_item.as_ref(), &key);
-
-			Ok(maybe_attribute.encode())
-		},
-		NftsKeys::CollectionAttribute => {
-			// TODO: charge weight
-			let len = env.in_len();
-
-			let (collection, key): (<T as pallet_nfts::Config>::CollectionId, Vec<u8>) =
-				env.read_as_unbounded(len)?;
-
-			let maybe_attribute = pallet_nfts::Pallet::<T>::collection_attribute(&collection, &key);
-
-			Ok(maybe_attribute.encode())
-		},
-	}
-}
-
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
-		+ pallet_nfts::Config
+		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
 		+ frame_system::Config,
 	E: Ext<T = T>,
@@ -259,7 +181,7 @@ where
 				Ok(relay_block_num.encode())
 			},
 		},
-	}
+	}?
 	.encode();
 
 	log::trace!(
@@ -270,6 +192,52 @@ where
 		log::trace!(target: LOG_TARGET, "{:?}", e);
 		DispatchError::Other("unable to write results to contract memory")
 	})
+}
+
+fn read_nfts_state<T, E>(
+	key: NftsKeys,
+	env: &mut Environment<E, BufInBufOutState>,
+) -> Result<Vec<u8>, DispatchError>
+where
+	T: pallet_contracts::Config + pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>,
+	E: Ext<T = T>,
+{
+	match key {
+		NftsKeys::Collection(collection) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Collection::<T>::get(collection).encode())
+		},
+		NftsKeys::CollectionOwner(collection) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::collection_owner(collection).encode())
+		},
+		NftsKeys::Item(collection, item) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Item::<T>::get(collection, item).encode())
+		},
+		NftsKeys::Owner(collection, item) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::owner(collection, item).encode())
+		},
+		NftsKeys::Attribute(collection, item, key) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::attribute(&collection, &item, &key).encode())
+		},
+		// NftsKeys::CustomAttribute(account, collection, item, key) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(pallet_nfts::Pallet::<T>::custom_attribute(&account, &collection, &item, &key)
+		// 		.encode())
+		// },
+		NftsKeys::SystemAttribute(collection, item, key) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::system_attribute(&collection, item.as_ref(), &key)
+				.encode())
+		},
+		NftsKeys::CollectionAttribute(collection, key) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::collection_attribute(&collection, &key).encode())
+		},
+	}
 }
 
 #[cfg(test)]

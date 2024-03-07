@@ -5,7 +5,10 @@ use pop_api::nfts;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
+	InvalidCollection,
+	ItemAlreadyExists,
 	NftsError(nfts::Error),
+	NotOwner,
 }
 
 impl From<nfts::Error> for ContractError {
@@ -25,7 +28,7 @@ mod pop_api_extension_demo {
 	impl PopApiExtensionDemo {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("PopApiExtensionDemo::new");
+			ink::env::debug_println!("Contract::new");
 			Default::default()
 		}
 
@@ -36,21 +39,35 @@ mod pop_api_extension_demo {
 			item_id: u32,
 			receiver: AccountId,
 		) -> Result<(), ContractError> {
-			ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime: collection_id: {:?} \nitem_id {:?} \nreceiver: {:?}, ", collection_id, item_id, receiver);
-
-			// simplified API call
-			let result = pop_api::nfts::mint(collection_id, item_id, receiver);
 			ink::env::debug_println!(
-				"PopApiExtensionDemo::mint_through_runtime result: {result:?}"
+				"Contract::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
+				collection_id,
+				item_id,
+				receiver
 			);
-			if let Err(pop_api::nfts::Error::NoConfig) = result {
-				ink::env::debug_println!(
-					"PopApiExtensionDemo::mint_through_runtime expected error received"
-				);
-			}
-			result?;
 
-			ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime end");
+			// Check if item already exists (demo purposes only, unnecessary as would expect check in mint call)
+			if pop_api::nfts::item(collection_id, item_id)?.is_some() {
+				return Err(ContractError::ItemAlreadyExists);
+			}
+
+			// mint api
+			pop_api::nfts::mint(collection_id, item_id, receiver)?;
+			ink::env::debug_println!("Contract::mint_through_runtime: item minted successfully");
+
+			// check owner
+			match pop_api::nfts::owner(collection_id, item_id)? {
+				Some(owner) if owner == receiver => {
+					ink::env::debug_println!(
+						"Contract::mint_through_runtime success: minted item belongs to receiver"
+					);
+				},
+				_ => {
+					return Err(ContractError::NotOwner);
+				},
+			}
+
+			ink::env::debug_println!("Contract::mint_through_runtime end");
 			Ok(())
 		}
 	}
