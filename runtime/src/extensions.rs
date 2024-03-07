@@ -98,7 +98,7 @@ where
 	let len = env.in_len();
 
 	// calculate weight for reading bytes of `len`
-	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L2159
+	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
 	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
 
 	// debug_message weight is a good approximation of the additional overhead of going
@@ -146,9 +146,7 @@ where
 
 	let mut env = env.buf_in_buf_out();
 
-	// To be conservative, we charge the weight for reading the input bytes.
-	// However, charge weight is not strictly necessary here as reading a fixed value's weight is included in the contract call.
-	// Source: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L563
+	// To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
 	let base_weight: Weight = ContractSchedule::<T>::get()
 		.host_fn_weights
 		.return_per_byte
