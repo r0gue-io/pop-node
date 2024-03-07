@@ -1,22 +1,13 @@
-# Substrate Cumulus Parachain Template
+![pop-net-banner](https://github.com/r0gue-io/pop-node/assets/23270067/b4318113-214b-4073-833b-07c6082f54ff)
 
-A new [Cumulus](https://github.com/paritytech/polkadot-sdk/tree/master/cumulus)-based Substrate node, ready for hacking ☁️..
+<div align="center">
 
-This project is originally a fork of the
-[Substrate Node Template](https://github.com/substrate-developer-hub/substrate-node-template)
-modified to include dependencies required for registering this node as a **parathread** or
-**parachain** to a **relay chain**.
+[![Twitter URL](https://img.shields.io/twitter/follow/Pop?style=social)](https://twitter.com/pop_web3)
+[![Twitter URL](https://img.shields.io/twitter/follow/R0GUE?style=social)](https://twitter.com/gor0gue)
+[![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/PlasmOfficial](https://t.me/Pop_Network)https://t.me/Pop_Network)
 
-The stand-alone version of this template is hosted on the
-[Substrate Devhub Parachain Template](https://github.com/substrate-developer-hub/substrate-parachain-template/)
-for each release of Polkadot. It is generated directly to the upstream
-[Parachain Template in Cumulus](https://github.com/paritytech/polkadot-sdk/tree/master/cumulus/parachain-template)
-at each release branch using the
-[Substrate Template Generator](https://github.com/paritytech/substrate-template-generator/).
+</div>
 
-👉 Learn more about parachains [here](https://wiki.polkadot.network/docs/learn-parachains), and
-parathreads [here](https://wiki.polkadot.network/docs/learn-parathreads).
+Pop Network makes it easy for smart contract developers to use the Power of Polkadot. Through curated runtime primitives, smart contract developers can spend less time learning the complexities of Polkadot, and more time buidling awesome things. 
 
-
-🧙 Learn about how to use this template and run your own parachain testnet for it in the
-[Devhub Cumulus Tutorial](https://docs.substrate.io/tutorials/v3/cumulus/start-relay/).
+Pop supports Polkadot native contracts (pallet-contracts), enabling developers to build with more performant and secure smart contract lanuages (such as ink!).
