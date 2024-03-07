@@ -13,6 +13,8 @@ use sp_runtime::{traits::Dispatchable, DispatchError};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
+type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
+
 #[derive(Default)]
 pub struct PopApiExtension;
 
@@ -90,40 +92,41 @@ where
 	const LOG_TARGET: &str = "pop-api::extension::dispatch";
 
 	let mut env = env.buf_in_buf_out();
-
-	// charge max weight before reading contract memory
-	// TODO: causing "1010: block limits exhausted" error
-	// let weight_limit = env.ext().gas_meter().gas_left();
-	// let charged_weight = env.charge_weight(weight_limit)?;
-
-	// TODO: debug_message weight is a good approximation of the additional overhead of going
-	// from contract layer to substrate layer.
+	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
 
 	// input length
 	let len = env.in_len();
+
+	// calculate weight for reading bytes of `len`
+	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L2159
+	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
+
+    // debug_message weight is a good approximation of the additional overhead of going
+    // from contract layer to substrate layer.
+	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
+    let overhead = contract_host_weight.debug_message;
+
+	let _ = env.charge_weight(base_weight.saturating_add(overhead))?;
+
+	// read the input as RuntimeCall
 	let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
 
-	// conservative weight estimate for deserializing the input. The actual weight is less and should utilize a custom benchmark
-	let base_weight: Weight = T::DbWeight::get().reads(len.into());
-
-	// weight for dispatching the call
-	let dispatch_weight = call.get_dispatch_info().weight;
-
-	// charge weight for the cost of the deserialization and the dispatch
-	let _ = env.charge_weight(base_weight.saturating_add(dispatch_weight))?;
+	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
 	log::debug!(target:LOG_TARGET, " dispatch inputted RuntimeCall: {:?}", call);
 
 	let sender = env.ext().caller();
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
 
-	// TODO: uncomment once charged_weight is fixed
-	// let actual_weight = call.get_dispatch_info().weight;
-	// env.adjust_weight(charged_weight, actual_weight);
 	let result = call.dispatch(origin);
 	match result {
 		Ok(info) => {
 			log::debug!(target:LOG_TARGET, "dispatch success, actual weight: {:?}", info.actual_weight);
+
+			// refund weight if the actual weight is less than the charged weight
+			if let Some(actual_weight) = info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
 		},
 		Err(err) => {
 			log::debug!(target:LOG_TARGET, "dispatch failed: error: {:?}", err.error);
@@ -142,8 +145,11 @@ where
 
 	let mut env = env.buf_in_buf_out();
 
-	// TODO: replace with benchmark once available
-	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+	// To be conservative, we charge the weight for reading the input bytes.
+	// However, charge weight is not strictly necessary here as reading a fixed value's weight is included in the contract call.
+	// Source: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L563
+	let base_weight: Weight = ContractSchedule::<T>::get().host_fn_weights.return_per_byte.saturating_mul(env.in_len().into());
+	let _ = env.charge_weight(base_weight)?;
 
 	let key: ParachainSystemKeys = env.read_as()?;
 
