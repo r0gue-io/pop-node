@@ -119,8 +119,7 @@ where
 	let sender = env.ext().caller();
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
 
-	let result = call.dispatch(origin);
-	match result {
+	match call.dispatch(origin) {
 		Ok(info) => {
 			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
 
@@ -128,13 +127,14 @@ where
 			if let Some(actual_weight) = info.actual_weight {
 				env.adjust_weight(charged_dispatch_weight, actual_weight);
 			}
+
+			Ok(())
 		},
 		Err(err) => {
 			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
-			return Err(err.error);
+			Err(err.error)
 		},
 	}
-	Ok(())
 }
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
