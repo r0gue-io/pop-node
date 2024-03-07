@@ -8,6 +8,9 @@
 
 </div>
 
-Pop Network makes it easy for smart contract developers to use the Power of Polkadot. Through curated runtime primitives, smart contract developers can spend less time learning the complexities of Polkadot, and more time buidling awesome things. 
+Pop Network makes it easy for smart contract developers to use the Power of Polkadot. Through curated runtime
+primitives, smart contract developers can spend less time learning the complexities of Polkadot, and more time buidling
+awesome things.
 
-Pop supports Polkadot native contracts (pallet-contracts), enabling developers to build with more performant and secure smart contract lanuages (such as ink!).
+Pop supports Polkadot native contracts (`pallet-contracts`), enabling developers to build with more performant and
+secure smart contract languages (such as [ink!](https://use.ink/)).
