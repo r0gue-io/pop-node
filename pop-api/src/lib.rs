@@ -9,7 +9,7 @@ use primitives::storage_keys::*;
 use scale;
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
-pub use v0::{balances, nfts, state};
+pub use v0::{balances, nfts, state, cross_chain};
 
 // Id used for identifying non-fungible collections.
 pub type CollectionId = u32;
@@ -33,6 +33,7 @@ pub enum PopApiError {
 	DecodingFailed,
 	Balances(balances::Error),
 	Nfts(nfts::Error),
+	Xcm(cross_chain::Error),
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {
