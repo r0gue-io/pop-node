@@ -27,6 +27,6 @@ cargo install --git https://github.com/r0gue-io/pop-cli
 ## Spawn Network
 You can spawn a local network as follows:
 ```shell
-pop up -c ./networks/rococo.toml
+pop up parachain -f ./networks/rococo.toml
 ```
 Note: `pop` will automatically source the necessary `polkadot` binaries. Currently, these will have to be built if on a non-linux system.
