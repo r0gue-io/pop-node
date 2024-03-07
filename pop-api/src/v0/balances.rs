@@ -24,12 +24,6 @@ pub(crate) enum BalancesCall {
 		#[codec(compact)]
 		value: u128,
 	},
-	#[codec(index = 8)]
-	ForceSetBalance {
-		who: MultiAddress<AccountId, ()>,
-		#[codec(compact)]
-		new_free: u128,
-	},
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
