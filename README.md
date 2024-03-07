@@ -6,6 +6,7 @@
 [![Twitter URL](https://img.shields.io/twitter/follow/Pop?style=social)](https://twitter.com/pop_web3)
 [![Twitter URL](https://img.shields.io/twitter/follow/R0GUE?style=social)](https://twitter.com/gor0gue)
 [![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/PlasmOfficial](https://t.me/Pop_Network)https://t.me/Pop_Network)
+[![Build, test and lint](https://github.com/r0gue-io/pop-node/actions/workflows/build.yml/badge.svg)](https://github.com/r0gue-io/pop-node/actions/workflows/build.yml)
 
 </div>
 
