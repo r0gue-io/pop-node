@@ -1,16 +1,11 @@
-// Substrate
+use emulated_integration_tests_common::{accounts, build_genesis_storage, collators};
+use pop_node::chain_spec::{PARA_ID, SAFE_XCM_VERSION};
+use pop_runtime::Balance;
 use sp_core::storage::Storage;
 
-// Cumulus
-use emulated_integration_tests_common::{
-    accounts, build_genesis_storage, collators, SAFE_XCM_VERSION,
-};
-use parachains_common::Balance;
+pub(crate) const ED: Balance = pop_runtime::EXISTENTIAL_DEPOSIT;
 
-pub const PARA_ID: u32 = 909;
-pub const ED: Balance = rococo_runtime_constants::currency::EXISTENTIAL_DEPOSIT / 10;
-
-pub fn genesis() -> Storage {
+pub(crate) fn genesis() -> Storage {
     let genesis_config = pop_runtime::RuntimeGenesisConfig {
         system: pop_runtime::SystemConfig::default(),
         balances: pop_runtime::BalancesConfig {

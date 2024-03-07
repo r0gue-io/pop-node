@@ -1,22 +1,17 @@
-// Substrate
+use emulated_integration_tests_common::{
+    accounts, build_genesis_storage, get_account_id_from_seed, get_from_seed, get_host_config,
+    validators,
+};
+use pop_runtime::Balance;
+use polkadot_primitives::{AssignmentId, ValidatorId};
+use rococo_runtime_constants::currency::UNITS as ROC;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_beefy::ecdsa_crypto::AuthorityId as BeefyId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::{sr25519, storage::Storage};
 
-// Polkadot
-use polkadot_primitives::{AssignmentId, ValidatorId};
-
-// Cumulus
-use emulated_integration_tests_common::{
-    accounts, build_genesis_storage, get_account_id_from_seed, get_from_seed, get_host_config,
-    validators,
-};
-use parachains_common::Balance;
-use rococo_runtime_constants::currency::UNITS as ROC;
-
-pub const ED: Balance = rococo_runtime_constants::currency::EXISTENTIAL_DEPOSIT;
+pub(crate) const ED: Balance = rococo_runtime_constants::currency::EXISTENTIAL_DEPOSIT;
 const ENDOWMENT: u128 = 1_000_000 * ROC;
 
 fn session_keys(
@@ -37,7 +32,7 @@ fn session_keys(
     }
 }
 
-pub fn genesis() -> Storage {
+pub(crate) fn genesis() -> Storage {
     let genesis_config = rococo_runtime::RuntimeGenesisConfig {
         system: rococo_runtime::SystemConfig::default(),
         balances: rococo_runtime::BalancesConfig {

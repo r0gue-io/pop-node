@@ -1,6 +1,5 @@
-pub mod genesis;
+pub(crate) mod genesis;
 
-// Cumulus
 use emulated_integration_tests_common::{
     impl_accounts_helpers_for_relay_chain, impl_assert_events_helpers_for_relay_chain,
     impl_hrmp_channels_helpers_for_relay_chain, impl_send_transact_helpers_for_relay_chain,
@@ -22,8 +21,6 @@ decl_test_relay_chains! {
             Sudo: rococo_runtime::Sudo,
             Balances: rococo_runtime::Balances,
             Hrmp: rococo_runtime::Hrmp,
-            Identity: rococo_runtime::Identity,
-            IdentityMigrator: rococo_runtime::IdentityMigrator,
         }
     },
 }

@@ -1,66 +1,76 @@
+#[cfg(test)]
 mod chains;
-mod rococo_network;
-
-// Substrate
-pub use frame_support::{
-    assert_err,
-    pallet_prelude::Weight,
-    sp_runtime::{DispatchError, DispatchResult},
-    traits::fungibles::Inspect,
-};
-
-// Polkadot
-pub use xcm::prelude::{AccountId32 as AccountId32Junction, *};
-
-// Cumulus
-pub use crate::rococo_network::{
-    asset_hub_rococo::{
-        genesis::ED as ASSET_HUB_ROCOCO_ED, AssetHubRococoParaPallet as AssetHubRococoPallet,
-    },
-    pop_network::PopNetworkParaPallet as PopNetworkPallet,
-    rococo::{genesis::ED as ROCOCO_ED, RococoRelayPallet as RococoPallet},
-    AssetHubRococoPara as AssetHubRococo, AssetHubRococoParaReceiver as AssetHubRococoReceiver,
-    AssetHubRococoParaSender as AssetHubRococoSender, PopNetworkPara as PopNetwork,
-    PopNetworkParaReceiver as PopNetworkReceiver, PopNetworkParaSender as PopNetworkSender,
-    RococoRelay as Rococo, RococoRelayReceiver as RococoReceiver,
-    RococoRelaySender as RococoSender,
-};
-pub use asset_test_utils::xcm_helpers;
-pub use emulated_integration_tests_common::xcm_emulator::{
-    assert_expected_events, bx, Chain, Parachain as Para, RelayChain as Relay, Test, TestArgs,
-    TestContext, TestExt,
-};
-pub use parachains_common::Balance;
-
-pub const ASSET_ID: u32 = 1;
-pub const ASSET_MIN_BALANCE: u128 = 1000;
-// `Assets` pallet index
-pub const ASSETS_PALLET_ID: u8 = 50;
-
-pub type RelayToParaTest = Test<Rococo, PopNetwork>;
-pub type SystemParaToParaTest = Test<AssetHubRococo, PopNetwork>;
-pub type ParaToSystemParaTest = Test<PopNetwork, AssetHubRococo>;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
+    use crate::chains::{
+        asset_hub_rococo::{
+            genesis::ED as ASSET_HUB_ROCOCO_ED, AssetHubRococo, AssetHubRococoParaPallet,
+        },
+        pop_network::{PopNetwork, PopNetworkParaPallet},
+        rococo::{genesis::ED as ROCOCO_ED, Rococo, RococoRelayPallet},
+    };
     use asset_hub_rococo_runtime::xcm_config::XcmConfig as AssetHubRococoXcmConfig;
-    use pop_runtime::xcm_config::XcmConfig as PopNetworkXcmConfig;
+    use asset_test_utils::xcm_helpers;
+    use emulated_integration_tests_common::{
+        accounts::{ALICE, BOB},
+        xcm_emulator::{
+            assert_expected_events, bx, decl_test_networks,
+            decl_test_sender_receiver_accounts_parameter_types, Chain, Parachain as Para,
+            RelayChain as Relay, Test, TestArgs, TestContext, TestExt,
+        },
+    };
+    use frame_support::{
+        assert_err,
+        pallet_prelude::Weight,
+        sp_runtime::{DispatchError, DispatchResult},
+        traits::fungibles::Inspect,
+    };
+    use pop_runtime::{xcm_config::XcmConfig as PopNetworkXcmConfig, Balance};
     use rococo_runtime::xcm_config::XcmConfig as RococoXcmConfig;
+    use xcm::prelude::{AccountId32 as AccountId32Junction, *};
+
+    decl_test_networks! {
+        // `pub` mandatory for the macro
+        pub struct RococoMockNet {
+            relay_chain = Rococo,
+            parachains = vec![
+                AssetHubRococo,
+                PopNetwork,
+            ],
+            bridge = ()
+        },
+    }
+
+    decl_test_sender_receiver_accounts_parameter_types! {
+        RococoRelay { sender: ALICE, receiver: BOB },
+        AssetHubRococoPara { sender: ALICE, receiver: BOB },
+        PopNetworkPara { sender: ALICE, receiver: BOB}
+    }
+
+    const ASSET_ID: u32 = 1;
+    const ASSET_MIN_BALANCE: u128 = 1000;
+    const ASSETS_PALLET_ID: u8 = 50;
+
+    type RelayToParaTest = Test<RococoRelay, PopNetworkPara>;
+    type SystemParaToParaTest = Test<AssetHubRococoPara, PopNetworkPara>;
+    type ParaToSystemParaTest = Test<PopNetworkPara, AssetHubRococoPara>;
 
     fn relay_to_para_sender_assertions(t: RelayToParaTest) {
-        type RuntimeEvent = <Rococo as Chain>::RuntimeEvent;
-        Rococo::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(864_610_000, 8_799)));
+        type RuntimeEvent = <RococoRelay as Chain>::RuntimeEvent;
+        RococoRelay::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+            864_610_000,
+            8_799,
+        )));
         assert_expected_events!(
-            Rococo,
+            RococoRelay,
             vec![
                 // Amount to reserve transfer is transferred to Parachain's Sovereign account
                 RuntimeEvent::Balances(
                     pallet_balances::Event::Transfer { from, to, amount }
                 ) => {
                     from: *from == t.sender.account_id,
-                    to: *to == Rococo::sovereign_account_id_of(
+                    to: *to == RococoRelay::sovereign_account_id_of(
                         t.args.dest.clone()
                     ),
                     amount: *amount == t.args.amount,
@@ -70,20 +80,20 @@ mod tests {
     }
 
     fn system_para_to_para_sender_assertions(t: SystemParaToParaTest) {
-        type RuntimeEvent = <AssetHubRococo as Chain>::RuntimeEvent;
-        AssetHubRococo::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+        type RuntimeEvent = <AssetHubRococoPara as Chain>::RuntimeEvent;
+        AssetHubRococoPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
             864_610_000,
             8_799,
         )));
         assert_expected_events!(
-            AssetHubRococo,
+            AssetHubRococoPara,
             vec![
                 // Amount to reserve transfer is transferred to Parachain's Sovereign account
                 RuntimeEvent::Balances(
                     pallet_balances::Event::Transfer { from, to, amount }
                 ) => {
                     from: *from == t.sender.account_id,
-                    to: *to == AssetHubRococo::sovereign_account_id_of(
+                    to: *to == AssetHubRococoPara::sovereign_account_id_of(
                         t.args.dest.clone()
                     ),
                     amount: *amount == t.args.amount,
@@ -93,9 +103,9 @@ mod tests {
     }
 
     fn para_receiver_assertions<Test>(_: Test) {
-        type RuntimeEvent = <PopNetwork as Chain>::RuntimeEvent;
+        type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
         assert_expected_events!(
-            PopNetwork,
+            PopNetworkPara,
             vec![
                 RuntimeEvent::Balances(pallet_balances::Event::Deposit { .. }) => {},
                 RuntimeEvent::MessageQueue(
@@ -106,13 +116,13 @@ mod tests {
     }
 
     fn para_to_system_para_sender_assertions(t: ParaToSystemParaTest) {
-        type RuntimeEvent = <PopNetwork as Chain>::RuntimeEvent;
-        PopNetwork::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+        type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+        PopNetworkPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
             864_610_000,
             8_799,
         )));
         assert_expected_events!(
-            PopNetwork,
+            PopNetworkPara,
             vec![
                 // Amount to reserve transfer is transferred to Parachain's Sovereign account
                 RuntimeEvent::Balances(
@@ -126,12 +136,12 @@ mod tests {
     }
 
     fn para_to_system_para_receiver_assertions(t: ParaToSystemParaTest) {
-        type RuntimeEvent = <AssetHubRococo as Chain>::RuntimeEvent;
-        let sov_pop_net_on_ahr = AssetHubRococo::sovereign_account_id_of(
-            AssetHubRococo::sibling_location_of(PopNetwork::para_id()),
+        type RuntimeEvent = <AssetHubRococoPara as Chain>::RuntimeEvent;
+        let sov_pop_net_on_ahr = AssetHubRococoPara::sovereign_account_id_of(
+            AssetHubRococoPara::sibling_location_of(PopNetworkPara::para_id()),
         );
         assert_expected_events!(
-            AssetHubRococo,
+            AssetHubRococoPara,
             vec![
                 // Amount to reserve transfer is withdrawn from Parachain's Sovereign account
                 RuntimeEvent::Balances(
@@ -149,13 +159,13 @@ mod tests {
     }
 
     fn system_para_to_para_assets_sender_assertions(t: SystemParaToParaTest) {
-        type RuntimeEvent = <AssetHubRococo as Chain>::RuntimeEvent;
-        AssetHubRococo::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+        type RuntimeEvent = <AssetHubRococoPara as Chain>::RuntimeEvent;
+        AssetHubRococoPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
             864_610_000,
             8799,
         )));
         assert_expected_events!(
-            AssetHubRococo,
+            AssetHubRococoPara,
             vec![
                 // Amount to reserve transfer is transferred to Parachain's Sovereign account
                 RuntimeEvent::Assets(
@@ -163,7 +173,7 @@ mod tests {
                 ) => {
                     asset_id: *asset_id == ASSET_ID,
                     from: *from == t.sender.account_id,
-                    to: *to == AssetHubRococo::sovereign_account_id_of(
+                    to: *to == AssetHubRococoPara::sovereign_account_id_of(
                         t.args.dest.clone()
                     ),
                     amount: *amount == t.args.amount,
@@ -173,9 +183,9 @@ mod tests {
     }
 
     fn system_para_to_para_assets_receiver_assertions<Test>(_: Test) {
-        type RuntimeEvent = <PopNetwork as Chain>::RuntimeEvent;
+        type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
         assert_expected_events!(
-            PopNetwork,
+            PopNetworkPara,
             vec![
                 RuntimeEvent::Balances(pallet_balances::Event::Deposit { .. }) => {},
                 RuntimeEvent::Assets(pallet_assets::Event::Issued { .. }) => {},
@@ -187,7 +197,7 @@ mod tests {
     }
 
     fn relay_to_para_reserve_transfer_assets(t: RelayToParaTest) -> DispatchResult {
-        <Rococo as RococoPallet>::XcmPallet::limited_reserve_transfer_assets(
+        <RococoRelay as RococoRelayPallet>::XcmPallet::limited_reserve_transfer_assets(
             t.signed_origin,
             bx!(t.args.dest.into()),
             bx!(t.args.beneficiary.into()),
@@ -198,7 +208,7 @@ mod tests {
     }
 
     fn system_para_to_para_reserve_transfer_assets(t: SystemParaToParaTest) -> DispatchResult {
-        <AssetHubRococo as AssetHubRococoPallet>::PolkadotXcm::limited_reserve_transfer_assets(
+        <AssetHubRococoPara as AssetHubRococoParaPallet>::PolkadotXcm::limited_reserve_transfer_assets(
             t.signed_origin,
             bx!(t.args.dest.into()),
             bx!(t.args.beneficiary.into()),
@@ -209,7 +219,7 @@ mod tests {
     }
 
     fn para_to_system_para_reserve_transfer_assets(t: ParaToSystemParaTest) -> DispatchResult {
-        <PopNetwork as PopNetworkPallet>::PolkadotXcm::limited_reserve_transfer_assets(
+        <PopNetworkPara as PopNetworkParaPallet>::PolkadotXcm::limited_reserve_transfer_assets(
             t.signed_origin,
             bx!(t.args.dest.into()),
             bx!(t.args.beneficiary.into()),
@@ -222,11 +232,12 @@ mod tests {
     /// Reserve Transfers of native asset from Relay Chain to the System Parachain shouldn't work
     #[test]
     fn reserve_transfer_native_asset_from_relay_to_system_para_fails() {
-        let signed_origin = <Rococo as Chain>::RuntimeOrigin::signed(RococoSender::get().into());
-        let destination = Rococo::child_location_of(AssetHubRococo::para_id());
+        let signed_origin =
+            <RococoRelay as Chain>::RuntimeOrigin::signed(RococoRelaySender::get().into());
+        let destination = RococoRelay::child_location_of(AssetHubRococoPara::para_id());
         let beneficiary: Location = AccountId32Junction {
             network: None,
-            id: AssetHubRococoReceiver::get().into(),
+            id: AssetHubRococoParaReceiver::get().into(),
         }
         .into();
         let amount_to_send: Balance = ROCOCO_ED * 1000;
@@ -234,15 +245,16 @@ mod tests {
         let fee_asset_item = 0;
 
         // this should fail
-        Rococo::execute_with(|| {
-            let result = <Rococo as RococoPallet>::XcmPallet::limited_reserve_transfer_assets(
-                signed_origin,
-                bx!(destination.into()),
-                bx!(beneficiary.into()),
-                bx!(assets.into()),
-                fee_asset_item,
-                WeightLimit::Unlimited,
-            );
+        RococoRelay::execute_with(|| {
+            let result =
+                <RococoRelay as RococoRelayPallet>::XcmPallet::limited_reserve_transfer_assets(
+                    signed_origin,
+                    bx!(destination.into()),
+                    bx!(beneficiary.into()),
+                    bx!(assets.into()),
+                    fee_asset_item,
+                    WeightLimit::Unlimited,
+                );
             assert_err!(
                 result,
                 DispatchError::Module(sp_runtime::ModuleError {
@@ -258,10 +270,11 @@ mod tests {
     #[test]
     fn reserve_transfer_native_asset_from_system_para_to_relay_fails() {
         // Init values for System Parachain
-        let signed_origin =
-            <AssetHubRococo as Chain>::RuntimeOrigin::signed(AssetHubRococoSender::get().into());
-        let destination = AssetHubRococo::parent_location();
-        let beneficiary_id = RococoReceiver::get();
+        let signed_origin = <AssetHubRococoPara as Chain>::RuntimeOrigin::signed(
+            AssetHubRococoParaSender::get().into(),
+        );
+        let destination = AssetHubRococoPara::parent_location();
+        let beneficiary_id = RococoRelayReceiver::get();
         let beneficiary: Location = AccountId32Junction {
             network: None,
             id: beneficiary_id.into(),
@@ -273,9 +286,9 @@ mod tests {
         let fee_asset_item = 0;
 
         // this should fail
-        AssetHubRococo::execute_with(|| {
+        AssetHubRococoPara::execute_with(|| {
             let result =
-                <AssetHubRococo as AssetHubRococoPallet>::PolkadotXcm::limited_reserve_transfer_assets(
+                <AssetHubRococoPara as AssetHubRococoParaPallet>::PolkadotXcm::limited_reserve_transfer_assets(
                     signed_origin,
                     bx!(destination.into()),
                     bx!(beneficiary.into()),
@@ -298,13 +311,13 @@ mod tests {
     #[test]
     fn reserve_transfer_native_asset_from_relay_to_para() {
         // Init values for Relay
-        let destination = Rococo::child_location_of(PopNetwork::para_id());
-        let beneficiary_id = PopNetworkReceiver::get();
+        let destination = RococoRelay::child_location_of(PopNetworkPara::para_id());
+        let beneficiary_id = PopNetworkParaReceiver::get();
         let amount_to_send: Balance = ROCOCO_ED * 1000;
 
         let test_args = TestContext {
-            sender: RococoSender::get(),
-            receiver: PopNetworkReceiver::get(),
+            sender: RococoRelaySender::get(),
+            receiver: PopNetworkParaReceiver::get(),
             args: TestArgs::new_relay(destination, beneficiary_id, amount_to_send),
         };
 
@@ -313,12 +326,12 @@ mod tests {
         let sender_balance_before = test.sender.balance;
         let receiver_balance_before = test.receiver.balance;
 
-        test.set_assertion::<Rococo>(relay_to_para_sender_assertions);
-        test.set_assertion::<PopNetwork>(para_receiver_assertions);
-        test.set_dispatchable::<Rococo>(relay_to_para_reserve_transfer_assets);
+        test.set_assertion::<RococoRelay>(relay_to_para_sender_assertions);
+        test.set_assertion::<PopNetworkPara>(para_receiver_assertions);
+        test.set_dispatchable::<RococoRelay>(relay_to_para_reserve_transfer_assets);
         test.assert();
 
-        let delivery_fees = Rococo::execute_with(|| {
+        let delivery_fees = RococoRelay::execute_with(|| {
             xcm_helpers::transfer_assets_delivery_fees::<
                 <RococoXcmConfig as xcm_executor::Config>::XcmSender,
             >(
@@ -350,14 +363,14 @@ mod tests {
     #[test]
     fn reserve_transfer_native_asset_from_system_para_to_para() {
         // Init values for System Parachain
-        let destination = AssetHubRococo::sibling_location_of(PopNetwork::para_id());
-        let beneficiary_id = PopNetworkReceiver::get();
+        let destination = AssetHubRococoPara::sibling_location_of(PopNetworkPara::para_id());
+        let beneficiary_id = PopNetworkParaReceiver::get();
         let amount_to_send: Balance = ASSET_HUB_ROCOCO_ED * 1000;
         let assets = (Parent, amount_to_send).into();
 
         let test_args = TestContext {
-            sender: AssetHubRococoSender::get(),
-            receiver: PopNetworkReceiver::get(),
+            sender: AssetHubRococoParaSender::get(),
+            receiver: PopNetworkParaReceiver::get(),
             args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
         };
 
@@ -366,15 +379,15 @@ mod tests {
         let sender_balance_before = test.sender.balance;
         let receiver_balance_before = test.receiver.balance;
 
-        test.set_assertion::<AssetHubRococo>(system_para_to_para_sender_assertions);
-        test.set_assertion::<PopNetwork>(para_receiver_assertions);
-        test.set_dispatchable::<AssetHubRococo>(system_para_to_para_reserve_transfer_assets);
+        test.set_assertion::<AssetHubRococoPara>(system_para_to_para_sender_assertions);
+        test.set_assertion::<PopNetworkPara>(para_receiver_assertions);
+        test.set_dispatchable::<AssetHubRococoPara>(system_para_to_para_reserve_transfer_assets);
         test.assert();
 
         let sender_balance_after = test.sender.balance;
         let receiver_balance_after = test.receiver.balance;
 
-        let delivery_fees = AssetHubRococo::execute_with(|| {
+        let delivery_fees = AssetHubRococoPara::execute_with(|| {
             xcm_helpers::transfer_assets_delivery_fees::<
                 <AssetHubRococoXcmConfig as xcm_executor::Config>::XcmSender,
             >(
@@ -403,14 +416,14 @@ mod tests {
     #[test]
     fn reserve_transfer_native_asset_from_para_to_system_para() {
         // Init values for Pop Network Parachain
-        let destination = PopNetwork::sibling_location_of(AssetHubRococo::para_id());
-        let beneficiary_id = AssetHubRococoReceiver::get();
+        let destination = PopNetworkPara::sibling_location_of(AssetHubRococoPara::para_id());
+        let beneficiary_id = AssetHubRococoParaReceiver::get();
         let amount_to_send: Balance = ASSET_HUB_ROCOCO_ED * 1000;
         let assets = (Parent, amount_to_send).into();
 
         let test_args = TestContext {
-            sender: PopNetworkSender::get(),
-            receiver: AssetHubRococoReceiver::get(),
+            sender: PopNetworkParaSender::get(),
+            receiver: AssetHubRococoParaReceiver::get(),
             args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
         };
 
@@ -420,22 +433,22 @@ mod tests {
         let receiver_balance_before = test.receiver.balance;
 
         let pop_net_location_as_seen_by_ahr =
-            AssetHubRococo::sibling_location_of(PopNetwork::para_id());
+            AssetHubRococoPara::sibling_location_of(PopNetworkPara::para_id());
         let sov_pop_net_on_ahr =
-            AssetHubRococo::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
+            AssetHubRococoPara::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
 
         // fund the Pop Network's SA on AHR with the native tokens held in reserve
-        AssetHubRococo::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount_to_send * 2)]);
+        AssetHubRococoPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount_to_send * 2)]);
 
-        test.set_assertion::<PopNetwork>(para_to_system_para_sender_assertions);
-        test.set_assertion::<AssetHubRococo>(para_to_system_para_receiver_assertions);
-        test.set_dispatchable::<PopNetwork>(para_to_system_para_reserve_transfer_assets);
+        test.set_assertion::<PopNetworkPara>(para_to_system_para_sender_assertions);
+        test.set_assertion::<AssetHubRococoPara>(para_to_system_para_receiver_assertions);
+        test.set_dispatchable::<PopNetworkPara>(para_to_system_para_reserve_transfer_assets);
         test.assert();
 
         let sender_balance_after = test.sender.balance;
         let receiver_balance_after = test.receiver.balance;
 
-        let delivery_fees = PopNetwork::execute_with(|| {
+        let delivery_fees = PopNetworkPara::execute_with(|| {
             xcm_helpers::transfer_assets_delivery_fees::<
                 <PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
             >(
@@ -464,27 +477,27 @@ mod tests {
     /// should work
     #[test]
     fn reserve_transfer_assets_from_system_para_to_para() {
-        // Force create asset on AssetHubRococo and PopNetwork from Relay Chain
-        AssetHubRococo::force_create_and_mint_asset(
+        // Force create asset on AssetHubRococoPara and PopNetworkPara from Relay Chain
+        AssetHubRococoPara::force_create_and_mint_asset(
             ASSET_ID,
             ASSET_MIN_BALANCE,
             false,
-            AssetHubRococoSender::get(),
+            AssetHubRococoParaSender::get(),
             Some(Weight::from_parts(1_019_445_000, 200_000)),
             ASSET_MIN_BALANCE * 1_000_000,
         );
-        PopNetwork::force_create_and_mint_asset(
+        PopNetworkPara::force_create_and_mint_asset(
             ASSET_ID,
             ASSET_MIN_BALANCE,
             false,
-            PopNetworkSender::get(),
+            PopNetworkParaSender::get(),
             None,
             0,
         );
 
         // Init values for System Parachain
-        let destination = AssetHubRococo::sibling_location_of(PopNetwork::para_id());
-        let beneficiary_id = PopNetworkReceiver::get();
+        let destination = AssetHubRococoPara::sibling_location_of(PopNetworkPara::para_id());
+        let beneficiary_id = PopNetworkParaReceiver::get();
         let fee_amount_to_send = ASSET_HUB_ROCOCO_ED * 1000;
         let asset_amount_to_send = ASSET_MIN_BALANCE * 1000;
         let assets: Assets = vec![
@@ -506,8 +519,8 @@ mod tests {
             .unwrap() as u32;
 
         let para_test_args = TestContext {
-            sender: AssetHubRococoSender::get(),
-            receiver: PopNetworkReceiver::get(),
+            sender: AssetHubRococoParaSender::get(),
+            receiver: PopNetworkParaReceiver::get(),
             args: TestArgs::new_para(
                 destination,
                 beneficiary_id,
@@ -521,25 +534,25 @@ mod tests {
         let mut test = SystemParaToParaTest::new(para_test_args);
 
         // Create SA-of-Pop Network-on-AHR with ED.
-        let pop_net_location = AssetHubRococo::sibling_location_of(PopNetwork::para_id());
-        let sov_pop_net_on_ahr = AssetHubRococo::sovereign_account_id_of(pop_net_location);
-        AssetHubRococo::fund_accounts(vec![(sov_pop_net_on_ahr.into(), ROCOCO_ED)]);
+        let pop_net_location = AssetHubRococoPara::sibling_location_of(PopNetworkPara::para_id());
+        let sov_pop_net_on_ahr = AssetHubRococoPara::sovereign_account_id_of(pop_net_location);
+        AssetHubRococoPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), ROCOCO_ED)]);
 
         let sender_balance_before = test.sender.balance;
         let receiver_balance_before = test.receiver.balance;
 
-        let sender_assets_before = AssetHubRococo::execute_with(|| {
-            type Assets = <AssetHubRococo as AssetHubRococoPallet>::Assets;
-            <Assets as Inspect<_>>::balance(ASSET_ID, &AssetHubRococoSender::get())
+        let sender_assets_before = AssetHubRococoPara::execute_with(|| {
+            type Assets = <AssetHubRococoPara as AssetHubRococoParaPallet>::Assets;
+            <Assets as Inspect<_>>::balance(ASSET_ID, &AssetHubRococoParaSender::get())
         });
-        let receiver_assets_before = PopNetwork::execute_with(|| {
-            type Assets = <PopNetwork as PopNetworkPallet>::Assets;
-            <Assets as Inspect<_>>::balance(ASSET_ID, &PopNetworkReceiver::get())
+        let receiver_assets_before = PopNetworkPara::execute_with(|| {
+            type Assets = <PopNetworkPara as PopNetworkParaPallet>::Assets;
+            <Assets as Inspect<_>>::balance(ASSET_ID, &PopNetworkParaReceiver::get())
         });
 
-        test.set_assertion::<AssetHubRococo>(system_para_to_para_assets_sender_assertions);
-        test.set_assertion::<PopNetwork>(system_para_to_para_assets_receiver_assertions);
-        test.set_dispatchable::<AssetHubRococo>(system_para_to_para_reserve_transfer_assets);
+        test.set_assertion::<AssetHubRococoPara>(system_para_to_para_assets_sender_assertions);
+        test.set_assertion::<PopNetworkPara>(system_para_to_para_assets_receiver_assertions);
+        test.set_dispatchable::<AssetHubRococoPara>(system_para_to_para_reserve_transfer_assets);
         test.assert();
 
         let sender_balance_after = test.sender.balance;
@@ -554,13 +567,13 @@ mod tests {
         // but should be non-zero
         assert!(receiver_balance_after < receiver_balance_before + fee_amount_to_send);
 
-        let sender_assets_after = AssetHubRococo::execute_with(|| {
-            type Assets = <AssetHubRococo as AssetHubRococoPallet>::Assets;
-            <Assets as Inspect<_>>::balance(ASSET_ID, &AssetHubRococoSender::get())
+        let sender_assets_after = AssetHubRococoPara::execute_with(|| {
+            type Assets = <AssetHubRococoPara as AssetHubRococoParaPallet>::Assets;
+            <Assets as Inspect<_>>::balance(ASSET_ID, &AssetHubRococoParaSender::get())
         });
-        let receiver_assets_after = PopNetwork::execute_with(|| {
-            type Assets = <PopNetwork as PopNetworkPallet>::Assets;
-            <Assets as Inspect<_>>::balance(ASSET_ID, &PopNetworkReceiver::get())
+        let receiver_assets_after = PopNetworkPara::execute_with(|| {
+            type Assets = <PopNetworkPara as PopNetworkParaPallet>::Assets;
+            <Assets as Inspect<_>>::balance(ASSET_ID, &PopNetworkParaReceiver::get())
         });
 
         // Sender's balance is reduced by exact amount

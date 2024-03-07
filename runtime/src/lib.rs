@@ -77,7 +77,7 @@ pub type Signature = MultiSignature;
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
 /// Balance of an account.
-pub type Balance = u128;
+pub type Balance = parachains_common::Balance;
 
 /// Index of a transaction in the chain.
 pub type Nonce = u32;

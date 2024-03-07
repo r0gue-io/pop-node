@@ -1,3 +1,3 @@
-pub mod asset_hub_rococo;
-pub mod pop_network;
-pub mod rococo;
+pub(crate) mod asset_hub_rococo;
+pub(crate) mod pop_network;
+pub(crate) mod rococo;
