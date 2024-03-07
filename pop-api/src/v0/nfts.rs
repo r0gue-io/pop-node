@@ -54,21 +54,6 @@ pub fn redeposit(collection: CollectionId, items: Vec<ItemId>) -> Result<()> {
 	Ok(dispatch(RuntimeCall::Nfts(NftCalls::Redeposit { collection, items }))?)
 }
 
-/// Disallow further unprivileged transfer of an item.
-pub fn lock_item_transfer(collection: CollectionId, item: ItemId) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::LockItemTransfer { collection, item }))?)
-}
-
-/// Re-allow unprivileged transfer of an item.
-pub fn unlock_item_transfer(collection: CollectionId, item: ItemId) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::UnlockItemTransfer { collection, item }))?)
-}
-
-/// Disallows specified settings for the whole collection.
-pub fn lock_colelction(collection: CollectionId, lock_settings: CollectionSettings) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::LockCollection { collection, lock_settings }))?)
-}
-
 /// Change the Owner of a collection.
 pub fn transfer_ownership(
 	collection: CollectionId,
@@ -78,154 +63,6 @@ pub fn transfer_ownership(
 		collection,
 		new_owner: new_owner.into(),
 	}))?)
-}
-
-/// Change the Issuer, Admin and Freezer of a collection.
-pub fn set_team(
-	collection: CollectionId,
-	issuer: Option<impl Into<MultiAddress<AccountId, ()>>>,
-	admin: Option<impl Into<MultiAddress<AccountId, ()>>>,
-	freezer: Option<impl Into<MultiAddress<AccountId, ()>>>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetTeam {
-		collection,
-		issuer: issuer.map(|i| i.into()),
-		admin: admin.map(|i| i.into()),
-		freezer: freezer.map(|i| i.into()),
-	}))?)
-}
-
-/// Approve an item to be transferred by a delegated third-party account.
-pub fn approve_transfer(
-	collection: CollectionId,
-	item: ItemId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
-	maybe_deadline: Option<BlockNumber>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveTransfer {
-		collection,
-		item,
-		delegate: delegate.into(),
-		maybe_deadline,
-	}))?)
-}
-
-/// Cancel one of the transfer approvals for a specific item.
-pub fn cancel_approval(
-	collection: CollectionId,
-	item: ItemId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelApproval {
-		collection,
-		item,
-		delegate: delegate.into(),
-	}))?)
-}
-
-/// Cancel all the approvals of a specific item.
-pub fn clear_all_transfer_approvals(collection: CollectionId, item: ItemId) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearAllTransferApprovals { collection, item }))?)
-}
-
-/// Disallows changing the metadata or attributes of the item.
-pub fn lock_item_properties(
-	collection: CollectionId,
-	item: ItemId,
-	lock_metadata: bool,
-	lock_attributes: bool,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::LockItemProperties {
-		collection,
-		item,
-		lock_metadata,
-		lock_attributes,
-	}))?)
-}
-
-/// Set an attribute for a collection or item.
-pub fn set_attribute(
-	collection: CollectionId,
-	maybe_item: Option<ItemId>,
-	namespace: AttributeNamespace<AccountId>,
-	key: BoundedVec<u8, KeyLimit>,
-	value: BoundedVec<u8, KeyLimit>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetAttribute {
-		collection,
-		maybe_item,
-		namespace,
-		key,
-		value,
-	}))?)
-}
-
-/// Clear an attribute for a collection or item.
-pub fn clear_attribute(
-	collection: CollectionId,
-	maybe_item: Option<ItemId>,
-	namespace: AttributeNamespace<AccountId>,
-	key: BoundedVec<u8, KeyLimit>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearAttribute {
-		collection,
-		maybe_item,
-		namespace,
-		key,
-	}))?)
-}
-
-/// Approve item's attributes to be changed by a delegated third-party account.
-pub fn approve_item_attribute(
-	collection: CollectionId,
-	item: ItemId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveItemAttribute {
-		collection,
-		item,
-		delegate: delegate.into(),
-	}))?)
-}
-
-/// Cancel the previously provided approval to change item's attributes.
-pub fn cancel_item_attributes_approval(
-	collection: CollectionId,
-	item: ItemId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelItemAttributesApproval {
-		collection,
-		item,
-		delegate: delegate.into(),
-	}))?)
-}
-
-/// Set the metadata for an item.
-pub fn set_metadata(
-	collection: CollectionId,
-	item: ItemId,
-	data: BoundedVec<u8, StringLimit>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetMetadata { collection, item, data }))?)
-}
-
-/// Clear the metadata for an item.
-pub fn clear_metadata(collection: CollectionId, item: ItemId) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearMetadata { collection, item }))?)
-}
-
-/// Set the metadata for a collection.
-pub fn set_collection_metadata(
-	collection: CollectionId,
-	data: BoundedVec<u8, StringLimit>,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetCollectionMetadata { collection, data }))?)
-}
-
-/// Clear the metadata for a collection.
-pub fn clear_collection_metadata(collection: CollectionId) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearCollectionMetadata { collection }))?)
 }
 
 /// Set (or reset) the acceptance of ownership for a particular account.
@@ -246,61 +83,6 @@ pub fn update_mint_settings(collection: CollectionId, mint_settings: MintSetting
 	Ok(dispatch(RuntimeCall::Nfts(NftCalls::UpdateMintSettings { collection, mint_settings }))?)
 }
 
-/// Set (or reset) the price for an item.
-pub fn price(collection: CollectionId, item: ItemId, price: Option<Balance>) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::Price { collection, item, price }))?)
-}
-
-/// Allows to buy an item if it's up for sale.
-pub fn buy_item(collection: CollectionId, item: ItemId, bid_price: Balance) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::BuyItem { collection, item, bid_price }))?)
-}
-
-/// Allows to pay the tips.
-pub fn pay_tips(tips: BoundedVec<ItemTip, MaxTips>) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::PayTips { tips }))?)
-}
-
-/// Register a new atomic swap, declaring an intention to send an `item` in exchange for
-/// `desired_item` from origin to target on the current chain.
-pub fn create_swap(
-	offered_collection: CollectionId,
-	offered_item: ItemId,
-	desired_collection: CollectionId,
-	maybe_desired_item: Option<ItemId>,
-	maybe_price: Option<PriceWithDirection>,
-	duration: BlockNumber,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::CreateSwap {
-		offered_collection,
-		offered_item,
-		desired_collection,
-		maybe_desired_item,
-		maybe_price,
-		duration,
-	}))?)
-}
-
-/// Cancel an atomic swap.
-pub fn cancel_swap(offered_collection: CollectionId, offered_item: ItemId) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelSwap { offered_collection, offered_item }))?)
-}
-
-/// Claim an atomic swap.
-pub fn claim_swap(
-	send_collection: CollectionId,
-	send_item: ItemId,
-	receive_collection: CollectionId,
-	receive_item: ItemId,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClaimSwap {
-		send_collection,
-		send_item,
-		receive_collection,
-		receive_item,
-	}))?)
-}
-
 /// Get the owner of the item, if the item exists.
 pub fn owner(collection: CollectionId, item: ItemId) -> Result<Option<AccountId>> {
 	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Owner(collection, item)))?)
@@ -311,46 +93,6 @@ pub fn collection_owner(collection: CollectionId) -> Result<Option<AccountId>> {
 	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CollectionOwner(collection)))?)
 }
 
-/// Get the attribute value of `item` of `collection` corresponding to `key`.
-pub fn attribute(
-	collection: CollectionId,
-	item: ItemId,
-	key: BoundedVec<u8, KeyLimit>,
-) -> Result<Option<Vec<u8>>> {
-	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Attribute(collection, item, key)))?)
-}
-
-// /// Get the custom attribute value of `item` of `collection` corresponding to `key`.
-// pub fn custom_attribute(
-// 	account: AccountId,
-// 	collection: CollectionId,
-// 	item: ItemId,
-// 	key: BoundedVec<u8, KeyLimit>,
-// ) -> Result<Option<Vec<u8>>> {
-// 	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CustomAttribute(
-// 		account, collection, item, key,
-// 	)))?)
-// }
-
-/// Get the system attribute value of `item` of `collection` corresponding to `key` if
-/// `item` is `Some`. Otherwise, returns the system attribute value of `collection`
-/// corresponding to `key`.
-pub fn system_attribute(
-	collection: CollectionId,
-	item: Option<ItemId>,
-	key: BoundedVec<u8, KeyLimit>,
-) -> Result<Option<Vec<u8>>> {
-	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::SystemAttribute(collection, item, key)))?)
-}
-
-/// Get the attribute value of `item` of `collection` corresponding to `key`.
-pub fn collection_attribute(
-	collection: CollectionId,
-	key: BoundedVec<u8, KeyLimit>,
-) -> Result<Option<Vec<u8>>> {
-	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CollectionAttribute(collection, key)))?)
-}
-
 /// Get the details of a collection.
 pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>> {
 	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Collection(collection)))?)
@@ -359,6 +101,298 @@ pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>>
 /// Get the details of an item.
 pub fn item(collection: CollectionId, item: ItemId) -> Result<Option<ItemDetails>> {
 	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Item(collection, item)))?)
+}
+
+pub mod approvals {
+	use super::*;
+
+	/// Approve an item to be transferred by a delegated third-party account.
+	pub fn approve_transfer(
+		collection: CollectionId,
+		item: ItemId,
+		delegate: impl Into<MultiAddress<AccountId, ()>>,
+		maybe_deadline: Option<BlockNumber>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveTransfer {
+			collection,
+			item,
+			delegate: delegate.into(),
+			maybe_deadline,
+		}))?)
+	}
+
+	/// Cancel one of the transfer approvals for a specific item.
+	pub fn cancel_approval(
+		collection: CollectionId,
+		item: ItemId,
+		delegate: impl Into<MultiAddress<AccountId, ()>>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelApproval {
+			collection,
+			item,
+			delegate: delegate.into(),
+		}))?)
+	}
+
+	/// Cancel all the approvals of a specific item.
+	pub fn clear_all_transfer_approvals(collection: CollectionId, item: ItemId) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearAllTransferApprovals { collection, item }))?)
+	}
+}
+
+pub mod attributes {
+	use super::*;
+
+	/// Approve item's attributes to be changed by a delegated third-party account.
+	pub fn approve_item_attribute(
+		collection: CollectionId,
+		item: ItemId,
+		delegate: impl Into<MultiAddress<AccountId, ()>>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveItemAttribute {
+			collection,
+			item,
+			delegate: delegate.into(),
+		}))?)
+	}
+
+	/// Cancel the previously provided approval to change item's attributes.
+	pub fn cancel_item_attributes_approval(
+		collection: CollectionId,
+		item: ItemId,
+		delegate: impl Into<MultiAddress<AccountId, ()>>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelItemAttributesApproval {
+			collection,
+			item,
+			delegate: delegate.into(),
+		}))?)
+	}
+
+	/// Set an attribute for a collection or item.
+	pub fn set_attribute(
+		collection: CollectionId,
+		maybe_item: Option<ItemId>,
+		namespace: AttributeNamespace<AccountId>,
+		key: BoundedVec<u8, KeyLimit>,
+		value: BoundedVec<u8, KeyLimit>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetAttribute {
+			collection,
+			maybe_item,
+			namespace,
+			key,
+			value,
+		}))?)
+	}
+
+	/// Clear an attribute for a collection or item.
+	pub fn clear_attribute(
+		collection: CollectionId,
+		maybe_item: Option<ItemId>,
+		namespace: AttributeNamespace<AccountId>,
+		key: BoundedVec<u8, KeyLimit>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearAttribute {
+			collection,
+			maybe_item,
+			namespace,
+			key,
+		}))?)
+	}
+
+	/// Get the attribute value of `item` of `collection` corresponding to `key`.
+	pub fn attribute(
+		collection: CollectionId,
+		item: ItemId,
+		key: BoundedVec<u8, KeyLimit>,
+	) -> Result<Option<Vec<u8>>> {
+		Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::Attribute(collection, item, key)))?)
+	}
+
+	// /// Get the custom attribute value of `item` of `collection` corresponding to `key`.
+	// pub fn custom_attribute(
+	// 	account: AccountId,
+	// 	collection: CollectionId,
+	// 	item: ItemId,
+	// 	key: BoundedVec<u8, KeyLimit>,
+	// ) -> Result<Option<Vec<u8>>> {
+	// 	Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CustomAttribute(
+	// 		account, collection, item, key,
+	// 	)))?)
+	// }
+
+	/// Get the system attribute value of `item` of `collection` corresponding to `key` if
+	/// `item` is `Some`. Otherwise, returns the system attribute value of `collection`
+	/// corresponding to `key`.
+	pub fn system_attribute(
+		collection: CollectionId,
+		item: Option<ItemId>,
+		key: BoundedVec<u8, KeyLimit>,
+	) -> Result<Option<Vec<u8>>> {
+		Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::SystemAttribute(collection, item, key)))?)
+	}
+
+	/// Get the attribute value of `item` of `collection` corresponding to `key`.
+	pub fn collection_attribute(
+		collection: CollectionId,
+		key: BoundedVec<u8, KeyLimit>,
+	) -> Result<Option<Vec<u8>>> {
+		Ok(state::read(RuntimeStateKeys::Nfts(NftsKeys::CollectionAttribute(collection, key)))?)
+	}
+}
+
+pub mod locking {
+	use super::*;
+
+	/// Disallows changing the metadata or attributes of the item.
+	pub fn lock_item_properties(
+		collection: CollectionId,
+		item: ItemId,
+		lock_metadata: bool,
+		lock_attributes: bool,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::LockItemProperties {
+			collection,
+			item,
+			lock_metadata,
+			lock_attributes,
+		}))?)
+	}
+
+	/// Disallow further unprivileged transfer of an item.
+	pub fn lock_item_transfer(collection: CollectionId, item: ItemId) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::LockItemTransfer { collection, item }))?)
+	}
+
+	/// Re-allow unprivileged transfer of an item.
+	pub fn unlock_item_transfer(collection: CollectionId, item: ItemId) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::UnlockItemTransfer { collection, item }))?)
+	}
+
+	/// Disallows specified settings for the whole collection.
+	pub fn lock_collection(
+		collection: CollectionId,
+		lock_settings: CollectionSettings,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::LockCollection { collection, lock_settings }))?)
+	}
+}
+
+pub mod metadata {
+	use super::*;
+
+	/// Set the metadata for an item.
+	pub fn set_metadata(
+		collection: CollectionId,
+		item: ItemId,
+		data: BoundedVec<u8, StringLimit>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetMetadata { collection, item, data }))?)
+	}
+
+	/// Clear the metadata for an item.
+	pub fn clear_metadata(collection: CollectionId, item: ItemId) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearMetadata { collection, item }))?)
+	}
+
+	/// Set the metadata for a collection.
+	pub fn set_collection_metadata(
+		collection: CollectionId,
+		data: BoundedVec<u8, StringLimit>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetCollectionMetadata { collection, data }))?)
+	}
+
+	/// Clear the metadata for a collection.
+	pub fn clear_collection_metadata(collection: CollectionId) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClearCollectionMetadata { collection }))?)
+	}
+}
+
+pub mod roles {
+	use super::*;
+
+	/// Change the Issuer, Admin and Freezer of a collection.
+	pub fn set_team(
+		collection: CollectionId,
+		issuer: Option<impl Into<MultiAddress<AccountId, ()>>>,
+		admin: Option<impl Into<MultiAddress<AccountId, ()>>>,
+		freezer: Option<impl Into<MultiAddress<AccountId, ()>>>,
+	) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetTeam {
+			collection,
+			issuer: issuer.map(|i| i.into()),
+			admin: admin.map(|i| i.into()),
+			freezer: freezer.map(|i| i.into()),
+		}))?)
+	}
+}
+
+pub mod trading {
+	use super::*;
+
+	/// Allows to pay the tips.
+	pub fn pay_tips(tips: BoundedVec<ItemTip, MaxTips>) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::PayTips { tips }))?)
+	}
+
+	/// Set (or reset) the price for an item.
+	pub fn price(collection: CollectionId, item: ItemId, price: Option<Balance>) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::Price { collection, item, price }))?)
+	}
+
+	/// Allows to buy an item if it's up for sale.
+	pub fn buy_item(collection: CollectionId, item: ItemId, bid_price: Balance) -> Result<()> {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::BuyItem { collection, item, bid_price }))?)
+	}
+
+	pub mod swaps {
+		use super::*;
+
+		/// Register a new atomic swap, declaring an intention to send an `item` in exchange for
+		/// `desired_item` from origin to target on the current chain.
+		pub fn create_swap(
+			offered_collection: CollectionId,
+			offered_item: ItemId,
+			desired_collection: CollectionId,
+			maybe_desired_item: Option<ItemId>,
+			maybe_price: Option<PriceWithDirection>,
+			duration: BlockNumber,
+		) -> Result<()> {
+			Ok(dispatch(RuntimeCall::Nfts(NftCalls::CreateSwap {
+				offered_collection,
+				offered_item,
+				desired_collection,
+				maybe_desired_item,
+				maybe_price,
+				duration,
+			}))?)
+		}
+
+		/// Cancel an atomic swap.
+		pub fn cancel_swap(offered_collection: CollectionId, offered_item: ItemId) -> Result<()> {
+			Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelSwap {
+				offered_collection,
+				offered_item,
+			}))?)
+		}
+
+		/// Claim an atomic swap.
+		pub fn claim_swap(
+			send_collection: CollectionId,
+			send_item: ItemId,
+			receive_collection: CollectionId,
+			receive_item: ItemId,
+		) -> Result<()> {
+			Ok(dispatch(RuntimeCall::Nfts(NftCalls::ClaimSwap {
+				send_collection,
+				send_item,
+				receive_collection,
+				receive_item,
+			}))?)
+		}
+	}
 }
 
 #[derive(Encode)]
