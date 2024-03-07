@@ -129,7 +129,7 @@ impl From<PopApiError> for Error {
 	fn from(error: PopApiError) -> Self {
 		match error {
 			PopApiError::Xcm(e) => e,
-			_ => panic!("expected nfts error"),
+			_ => panic!("expected xcm error"),
 		}
 	}
 }
