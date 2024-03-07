@@ -5,63 +5,80 @@ use pop_api::nfts;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
-    NftsError(nfts::Error),
+	InvalidCollection,
+	ItemAlreadyExists,
+	NftsError(nfts::Error),
+	NotOwner,
 }
 
 impl From<nfts::Error> for ContractError {
-    fn from(value: nfts::Error) -> Self {
-        ContractError::NftsError(value)
-    }
+	fn from(value: nfts::Error) -> Self {
+		ContractError::NftsError(value)
+	}
 }
 
 #[ink::contract(env = pop_api::Environment)]
 mod pop_api_extension_demo {
-    use super::ContractError;
+	use super::ContractError;
 
-    #[ink(storage)]
-    #[derive(Default)]
-    pub struct PopApiExtensionDemo;
+	#[ink(storage)]
+	#[derive(Default)]
+	pub struct PopApiExtensionDemo;
 
-    impl PopApiExtensionDemo {
-        #[ink(constructor, payable)]
-        pub fn new() -> Self {
-            ink::env::debug_println!("PopApiExtensionDemo::new");
-            Default::default()
-        }
+	impl PopApiExtensionDemo {
+		#[ink(constructor, payable)]
+		pub fn new() -> Self {
+			ink::env::debug_println!("Contract::new");
+			Default::default()
+		}
 
-        #[ink(message)]
-        pub fn mint_through_runtime(
-            &mut self,
-            collection_id: u32,
-            item_id: u32,
-            receiver: AccountId,
-        ) -> Result<(), ContractError> {
-            ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime: collection_id: {:?} \nitem_id {:?} \nreceiver: {:?}, ", collection_id, item_id, receiver);
+		#[ink(message)]
+		pub fn mint_through_runtime(
+			&mut self,
+			collection_id: u32,
+			item_id: u32,
+			receiver: AccountId,
+		) -> Result<(), ContractError> {
+			ink::env::debug_println!(
+				"Contract::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
+				collection_id,
+				item_id,
+				receiver
+			);
 
-            // simplified API call
-            let result = pop_api::nfts::mint(collection_id, item_id, receiver);
-            ink::env::debug_println!(
-                "PopApiExtensionDemo::mint_through_runtime result: {result:?}"
-            );
-            if let Err(pop_api::nfts::Error::NoConfig) = result {
-                ink::env::debug_println!(
-                    "PopApiExtensionDemo::mint_through_runtime expected error received"
-                );
-            }
-            result?;
+			// Check if item already exists (demo purposes only, unnecessary as would expect check in mint call)
+			if pop_api::nfts::item(collection_id, item_id)?.is_some() {
+				return Err(ContractError::ItemAlreadyExists);
+			}
 
-            ink::env::debug_println!("PopApiExtensionDemo::mint_through_runtime end");
-            Ok(())
-        }
-    }
+			// mint api
+			pop_api::nfts::mint(collection_id, item_id, receiver)?;
+			ink::env::debug_println!("Contract::mint_through_runtime: item minted successfully");
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
+			// check owner
+			match pop_api::nfts::owner(collection_id, item_id)? {
+				Some(owner) if owner == receiver => {
+					ink::env::debug_println!(
+						"Contract::mint_through_runtime success: minted item belongs to receiver"
+					);
+				},
+				_ => {
+					return Err(ContractError::NotOwner);
+				},
+			}
 
-        #[ink::test]
-        fn default_works() {
-            PopApiExtensionDemo::new();
-        }
-    }
+			ink::env::debug_println!("Contract::mint_through_runtime end");
+			Ok(())
+		}
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use super::*;
+
+		#[ink::test]
+		fn default_works() {
+			PopApiExtensionDemo::new();
+		}
+	}
 }

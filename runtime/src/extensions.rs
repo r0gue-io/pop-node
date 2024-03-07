@@ -2,14 +2,18 @@ use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
 	pallet_prelude::*,
+	traits::nonfungibles_v2::Inspect,
 };
-use log;
 use pallet_contracts::chain_extension::{
-	ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
+	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
-use pop_api_primitives::storage_keys::ParachainSystemKeys;
+use pop_api_primitives::{
+	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
+	CollectionId, ItemId,
+};
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
+use sp_std::vec::Vec;
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -20,7 +24,10 @@ pub struct PopApiExtension;
 
 impl<T> ChainExtension<T> for PopApiExtension
 where
-	T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config,
+	T: pallet_contracts::Config
+		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
+		+ cumulus_pallet_parachain_system::Config
+		+ frame_system::Config,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 	<T as SysConfig>::RuntimeCall: Parameter
 		+ Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
@@ -139,7 +146,10 @@ where
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config + frame_system::Config,
+	T: pallet_contracts::Config
+		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
+		+ cumulus_pallet_parachain_system::Config
+		+ frame_system::Config,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " read_state |";
@@ -155,23 +165,25 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
 
-	let key: ParachainSystemKeys = env.read_as()?;
+	let key: RuntimeStateKeys = env.read_as()?;
 
 	let result = match key {
-		ParachainSystemKeys::LastRelayChainBlockNumber => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			let relay_block_num: BlockNumber =
-				cumulus_pallet_parachain_system::Pallet::<T>::last_relay_block_number();
-			log::debug!(
-				target:LOG_TARGET,
-				"{} last relay chain block number is: {:?}.", LOG_PREFIX, relay_block_num
-			);
-			relay_block_num
+		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, &mut env),
+		RuntimeStateKeys::ParachainSystem(key) => match key {
+			ParachainSystemKeys::LastRelayChainBlockNumber => {
+				env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+				let relay_block_num: BlockNumber =
+					cumulus_pallet_parachain_system::Pallet::<T>::last_relay_block_number();
+				log::debug!(
+					target:LOG_TARGET,
+					"{} last relay chain block number is: {:?}.", LOG_PREFIX, relay_block_num
+				);
+				Ok(relay_block_num.encode())
+			},
 		},
-	}
-	.encode()
-	// Double-encode result for extension return type of bytes
+	}?
 	.encode();
+
 	log::trace!(
 		target:LOG_TARGET,
 		"{} result: {:?}.", LOG_PREFIX, result
@@ -180,6 +192,52 @@ where
 		log::trace!(target: LOG_TARGET, "{:?}", e);
 		DispatchError::Other("unable to write results to contract memory")
 	})
+}
+
+fn read_nfts_state<T, E>(
+	key: NftsKeys,
+	env: &mut Environment<E, BufInBufOutState>,
+) -> Result<Vec<u8>, DispatchError>
+where
+	T: pallet_contracts::Config + pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>,
+	E: Ext<T = T>,
+{
+	match key {
+		NftsKeys::Collection(collection) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Collection::<T>::get(collection).encode())
+		},
+		NftsKeys::CollectionOwner(collection) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::collection_owner(collection).encode())
+		},
+		NftsKeys::Item(collection, item) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Item::<T>::get(collection, item).encode())
+		},
+		NftsKeys::Owner(collection, item) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::owner(collection, item).encode())
+		},
+		NftsKeys::Attribute(collection, item, key) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::attribute(&collection, &item, &key).encode())
+		},
+		// NftsKeys::CustomAttribute(account, collection, item, key) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(pallet_nfts::Pallet::<T>::custom_attribute(&account, &collection, &item, &key)
+		// 		.encode())
+		// },
+		NftsKeys::SystemAttribute(collection, item, key) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::system_attribute(&collection, item.as_ref(), &key)
+				.encode())
+		},
+		NftsKeys::CollectionAttribute(collection, key) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_nfts::Pallet::<T>::collection_attribute(&collection, &key).encode())
+		},
+	}
 }
 
 #[cfg(test)]

@@ -6,22 +6,14 @@ pub mod v0;
 use crate::PopApiError::{Balances, Nfts, UnknownStatusCode};
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
 use primitives::storage_keys::*;
-use scale;
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
-pub use v0::{balances, nfts, state};
+pub use v0::{balances, nfts, relay_chain_block_number, state};
 
-// Id used for identifying non-fungible collections.
-pub type CollectionId = u32;
-
-// Id used for identifying non-fungible items.
-pub type ItemId = u32;
-
-type AccountId = <ink::env::DefaultEnvironment as ink::env::Environment>::AccountId;
-type Balance = <ink::env::DefaultEnvironment as ink::env::Environment>::Balance;
-type BlockNumber = <ink::env::DefaultEnvironment as ink::env::Environment>::BlockNumber;
+type AccountId = <Environment as ink::env::Environment>::AccountId;
+type Balance = <Environment as ink::env::Environment>::Balance;
+type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
 type StringLimit = u32;
-type KeyLimit = u32;
 type MaxTips = u32;
 
 pub type Result<T> = core::result::Result<T, PopApiError>;

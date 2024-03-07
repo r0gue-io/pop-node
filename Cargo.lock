@@ -9033,6 +9033,7 @@ dependencies = [
 name = "pop-api"
 version = "0.0.0"
 dependencies = [
+ "enumflags2",
  "ink",
  "parity-scale-codec",
  "pop-api-primitives",
@@ -9045,6 +9046,7 @@ dependencies = [
 name = "pop-api-primitives"
 version = "0.0.0"
 dependencies = [
+ "bounded-collections 0.1.9",
  "parity-scale-codec",
  "scale-info",
 ]
