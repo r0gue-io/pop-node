@@ -1,4 +1,5 @@
-![pop-net-banner](https://github.com/r0gue-io/pop-node/assets/23270067/b4318113-214b-4073-833b-07c6082f54ff)
+![pop-net-banner](https://github.com/r0gue-io/pop-node/assets/60948618/e13ec7e6-1aaf-44bc-8ab3-c7b1b876ea3f)
+
 
 <div align="center">
 
