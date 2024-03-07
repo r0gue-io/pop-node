@@ -8,7 +8,7 @@ use ink::{prelude::vec::Vec, ChainExtensionInstance};
 use primitives::storage_keys::*;
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
-pub use v0::{balances, nfts, relay_chain_block_number, state};
+pub use v0::{balances, nfts, relay_chain_block_number, state, cross_chain};
 
 type AccountId = <Environment as ink::env::Environment>::AccountId;
 type Balance = <Environment as ink::env::Environment>::Balance;
@@ -25,6 +25,7 @@ pub enum PopApiError {
 	DecodingFailed,
 	Balances(balances::Error),
 	Nfts(nfts::Error),
+	Xcm(cross_chain::Error),
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {

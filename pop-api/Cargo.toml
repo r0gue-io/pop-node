@@ -12,6 +12,7 @@ scale = { package = "parity-scale-codec", version = "3", default-features = fals
 scale-info = { version = "2.6", default-features = false, features = ["derive"] }
 sp-io = { version = "23.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
 sp-runtime = { version = "24.0", default-features = false }
+xcm = { workspace = true }
 
 pop-api-primitives = { path = "./primitives", default-features = false }
 
@@ -30,4 +31,5 @@ std = [
     "scale-info/std",
     "sp-io/std",
     "sp-runtime/std",
+    "xcm/std"
 ]
