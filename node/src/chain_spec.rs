@@ -12,7 +12,7 @@ pub type ChainSpec = sc_service::GenericChainSpec<(), Extensions>;
 /// The default XCM version to set in genesis config.
 pub const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
-/// The para ID of Pop Network.
+/// The local para ID of Pop Network.
 pub const PARA_ID: u32 = 909;
 
 /// Helper function to generate a crypto pair from seed
@@ -108,7 +108,7 @@ pub fn development_config() -> ChainSpec {
             get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
         ],
         get_account_id_from_seed::<sr25519::Public>("Alice"),
-        1000.into(),
+        PARA_ID.into(),
     ))
     .build()
 }
@@ -159,7 +159,7 @@ pub fn local_testnet_config() -> ChainSpec {
             get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
         ],
         get_account_id_from_seed::<sr25519::Public>("Alice"),
-        1000.into(),
+        PARA_ID.into(),
     ))
     .with_protocol_id("pop-local")
     .with_properties(properties)

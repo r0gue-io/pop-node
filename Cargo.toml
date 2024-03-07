@@ -38,9 +38,8 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", b
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }
 
 # Local
-
-pop-runtime = { path = "./runtime" }
-pop-api-primitives = { path = "./pop-api/primitives", default-features = false }
+pop-runtime = { path = "./runtime", default-features = false }
+pop-node = { path = "./node", default-features = false }
 
 # Substrate
 sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }

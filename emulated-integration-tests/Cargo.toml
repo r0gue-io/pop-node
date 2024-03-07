@@ -35,8 +35,8 @@ cumulus-primitives-core.workspace = true
 emulated-integration-tests-common.workspace = true
 
 # Local
-pop-runtime = { path = "../runtime", default-features = false }
-pop-node = { path = "../node", default-features = false }
+pop-runtime.workspace = true
+pop-node.workspace = true
 
 [features]
 default = ["std"]
