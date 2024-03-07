@@ -6,7 +6,6 @@ pub mod v0;
 use crate::PopApiError::{Balances, Nfts, UnknownStatusCode};
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
 use primitives::storage_keys::*;
-use scale;
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
 pub use v0::{balances, nfts, relay_chain_block_number, state};

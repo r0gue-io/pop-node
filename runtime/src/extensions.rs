@@ -4,7 +4,6 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::nonfungibles_v2::Inspect,
 };
-use log;
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };

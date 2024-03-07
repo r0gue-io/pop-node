@@ -8,9 +8,7 @@ pub mod nfts;
 pub mod state;
 
 pub fn relay_chain_block_number() -> Result<BlockNumber, PopApiError> {
-	Ok(state::read(RuntimeStateKeys::ParachainSystem(
-		ParachainSystemKeys::LastRelayChainBlockNumber,
-	))?)
+	state::read(RuntimeStateKeys::ParachainSystem(ParachainSystemKeys::LastRelayChainBlockNumber))
 }
 
 #[derive(scale::Encode)]
