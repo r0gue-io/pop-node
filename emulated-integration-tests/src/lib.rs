@@ -9,6 +9,7 @@ mod tests {
 		},
 		pop_network::{PopNetwork, PopNetworkParaPallet},
 		rococo::{genesis::ED as ROCOCO_ED, Rococo, RococoRelayPallet},
+		coretime_rococo::{genesis::ED as ROCOCO_ED, CoretimeRococo, CoretimeRococoRelayPallet},
 	};
 	use asset_hub_rococo_runtime::xcm_config::XcmConfig as AssetHubRococoXcmConfig;
 	use asset_test_utils::xcm_helpers;
@@ -28,6 +29,7 @@ mod tests {
 	};
 	use pop_runtime::{xcm_config::XcmConfig as PopNetworkXcmConfig, Balance};
 	use rococo_runtime::xcm_config::XcmConfig as RococoXcmConfig;
+	use coretime_rococo_runtime::xcm_config::XcmConfig as CoretimeRococoXcmConfig;
 	use xcm::prelude::{AccountId32 as AccountId32Junction, *};
 
 	decl_test_networks! {
@@ -42,8 +44,20 @@ mod tests {
 		},
 	}
 
+	decl_test_networks_coretime! {
+		// `pub` mandatory for the macro
+		pub struct CoretimeRococoMockNet {
+			relay_chain = CoretimeRococo,
+			parachains = vec![
+				PopNetwork,
+			],
+			bridge = ()
+		},
+	}
+
 	decl_test_sender_receiver_accounts_parameter_types! {
 		RococoRelay { sender: ALICE, receiver: BOB },
+		CoretimeRococoRelay { sender: ALICE, receiver: BOB },
 		AssetHubRococoPara { sender: ALICE, receiver: BOB },
 		PopNetworkPara { sender: ALICE, receiver: BOB}
 	}

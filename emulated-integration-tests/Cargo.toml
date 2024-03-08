@@ -31,6 +31,7 @@ xcm-executor.workspace = true
 # Cumulus
 asset-hub-rococo-runtime.workspace = true
 asset-test-utils.workspace = true
+coretime-rococo-runtime.workspace = true
 cumulus-primitives-core.workspace = true
 emulated-integration-tests-common.workspace = true
 
