@@ -123,8 +123,8 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
 
-	let sender = env.ext().caller();
-	let origin: T::RuntimeOrigin = RawOrigin::Signed(sender.account_id()?.clone()).into();
+	// contract is the origin by default
+	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 
 	match call.dispatch(origin) {
 		Ok(info) => {
@@ -310,7 +310,7 @@ mod tests {
 
             let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/balance-transfer/target/ink/pop_api_extension_demo.wasm").unwrap();
 
-            let init_value = 100;
+            let init_value = 100 * UNIT;
 
             let result = Contracts::bare_instantiate(
                 ALICE,
@@ -335,7 +335,7 @@ mod tests {
             let addr = result.account_id;
 
             let function = function_selector("transfer_through_runtime");
-            let value_to_send: u128 = 1_000_000_000_000_000;
+            let value_to_send: u128 = 10 * UNIT;
             let params = [function, BOB.encode(), value_to_send.encode()].concat();
 
             let bob_balance_before = Balances::free_balance(&BOB);
@@ -403,17 +403,17 @@ mod tests {
 			let collection_id: u32 = 0;
 			let item_id: u32 = 1;
 
-			// create nft collection
+			// create nft collection with contract as owner
 			assert_eq!(
 				Nfts::force_create(
 					RuntimeOrigin::root(),
-					ALICE.into(),
+					addr.clone().into(),
 					default_collection_config()
 				),
 				Ok(())
 			);
 
-			assert_eq!(Nfts::collection_owner(collection_id), Some(ALICE.into()));
+			assert_eq!(Nfts::collection_owner(collection_id), Some(addr.clone().into()));
 			// assert that the item does not exist yet
 			assert_eq!(Nfts::owner(collection_id, item_id), None);
 
