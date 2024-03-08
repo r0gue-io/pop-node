@@ -1,5 +1,5 @@
 [package]
-name = "emulated-integration-tests"
+name = "integration-tests"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

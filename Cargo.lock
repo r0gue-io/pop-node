@@ -3293,34 +3293,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "emulated-integration-tests"
-version = "0.0.0"
-dependencies = [
- "asset-hub-rococo-runtime",
- "asset-test-utils",
- "cumulus-primitives-core",
- "emulated-integration-tests-common",
- "frame-support",
- "pallet-assets",
- "pallet-balances",
- "pallet-message-queue",
- "parity-scale-codec",
- "polkadot-primitives",
- "pop-runtime",
- "rococo-runtime",
- "rococo-runtime-constants",
- "sp-authority-discovery",
- "sp-consensus-babe",
- "sp-consensus-beefy",
- "sp-consensus-grandpa",
- "sp-core 28.0.0",
- "sp-runtime 31.0.1",
- "staging-xcm",
- "staging-xcm-executor",
- "tracing-subscriber 0.3.18",
-]
-
-[[package]]
 name = "emulated-integration-tests-common"
 version = "3.0.0"
 source = "git+https://github.com/paritytech/polkadot-sdk?branch=release-polkadot-v1.7.1#2a91d5abdc56ed27dab36030db5fa3c9c92e60a9"
@@ -5040,6 +5012,34 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "276ec31bcb4a9ee45f58bec6f9ec700ae4cf4f4f8f2fa7e06cb406bd5ffdd770"
 dependencies = [
  "num-traits",
+]
+
+[[package]]
+name = "integration-tests"
+version = "0.0.0"
+dependencies = [
+ "asset-hub-rococo-runtime",
+ "asset-test-utils",
+ "cumulus-primitives-core",
+ "emulated-integration-tests-common",
+ "frame-support",
+ "pallet-assets",
+ "pallet-balances",
+ "pallet-message-queue",
+ "parity-scale-codec",
+ "polkadot-primitives",
+ "pop-runtime",
+ "rococo-runtime",
+ "rococo-runtime-constants",
+ "sp-authority-discovery",
+ "sp-consensus-babe",
+ "sp-consensus-beefy",
+ "sp-consensus-grandpa",
+ "sp-core 28.0.0",
+ "sp-runtime 31.0.1",
+ "staging-xcm",
+ "staging-xcm-executor",
+ "tracing-subscriber 0.3.18",
 ]
 
 [[package]]

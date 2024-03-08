@@ -12,7 +12,7 @@ repository = "https://github.com/r0gue-io/pop-node/"
 members = [
     "node",
     "runtime",
-    "emulated-integration-tests",
+    "integration-tests",
     "pop-api",
 ]
 exclude = [
