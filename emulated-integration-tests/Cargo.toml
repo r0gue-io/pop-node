@@ -42,6 +42,18 @@ pop-node.workspace = true
 default = ["std"]
 std = [
     "asset-hub-rococo-runtime/std",
+    "cumulus-primitives-core/std",
+    "frame-support/std",
+    "pallet-assets/std",
+    "pallet-balances/std",
+    "pallet-message-queue/std",
+    "polkadot-primitives/std",
     "pop-runtime/std",
+    "rococo-runtime-constants/std",
     "rococo-runtime/std",
+    "sp-authority-discovery/std",
+    "sp-core/std",
+    "sp-runtime/std",
+    "xcm-executor/std",
+    "xcm/std",
 ]
