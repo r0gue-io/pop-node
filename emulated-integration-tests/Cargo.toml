@@ -37,6 +37,9 @@ emulated-integration-tests-common.workspace = true
 # Local
 pop-runtime.workspace = true
 
+[dev-dependencies]
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "std", "tracing-log"] }
+
 [features]
 default = ["std"]
 std = [
