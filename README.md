@@ -19,7 +19,7 @@ secure smart contract languages (such as [ink!](https://use.ink/)).
 
 # Launching Local Network
 ## Installation
-You can install the Pop CLI as follows:
+You can install the [Pop CLI](https://github.com/r0gue-io/pop-cli) as follows:
 ```shell
 cargo install --git https://github.com/r0gue-io/pop-cli
 ```
