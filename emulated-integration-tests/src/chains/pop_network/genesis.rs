@@ -3,7 +3,7 @@ use pop_runtime::Balance;
 use sp_core::storage::Storage;
 
 pub(crate) const ED: Balance = pop_runtime::EXISTENTIAL_DEPOSIT;
-pub const PARA_ID: u32 = 909;
+pub const PARA_ID: u32 = 9090;
 pub const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
 pub(crate) fn genesis() -> Storage {
