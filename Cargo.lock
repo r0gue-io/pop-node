@@ -3306,7 +3306,6 @@ dependencies = [
  "pallet-message-queue",
  "parity-scale-codec",
  "polkadot-primitives",
- "pop-node",
  "pop-runtime",
  "rococo-runtime",
  "rococo-runtime-constants",

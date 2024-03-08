@@ -39,7 +39,6 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-s
 
 # Local
 pop-runtime = { path = "./runtime", default-features = false }
-pop-node = { path = "./node", default-features = false }
 pop-api-primitives = { path = "./pop-api/primitives", default-features = false }
 
 # Substrate

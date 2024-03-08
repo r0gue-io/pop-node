@@ -36,7 +36,6 @@ emulated-integration-tests-common.workspace = true
 
 # Local
 pop-runtime.workspace = true
-pop-node.workspace = true
 
 [features]
 default = ["std"]
