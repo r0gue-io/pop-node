@@ -1,22 +1,32 @@
-# Substrate Cumulus Parachain Template
-
-A new [Cumulus](https://github.com/paritytech/polkadot-sdk/tree/master/cumulus)-based Substrate node, ready for hacking ☁️..
-
-This project is originally a fork of the
-[Substrate Node Template](https://github.com/substrate-developer-hub/substrate-node-template)
-modified to include dependencies required for registering this node as a **parathread** or
-**parachain** to a **relay chain**.
-
-The stand-alone version of this template is hosted on the
-[Substrate Devhub Parachain Template](https://github.com/substrate-developer-hub/substrate-parachain-template/)
-for each release of Polkadot. It is generated directly to the upstream
-[Parachain Template in Cumulus](https://github.com/paritytech/polkadot-sdk/tree/master/cumulus/parachain-template)
-at each release branch using the
-[Substrate Template Generator](https://github.com/paritytech/substrate-template-generator/).
-
-👉 Learn more about parachains [here](https://wiki.polkadot.network/docs/learn-parachains), and
-parathreads [here](https://wiki.polkadot.network/docs/learn-parathreads).
+![pop-net-banner](https://github.com/r0gue-io/pop-node/assets/60948618/e13ec7e6-1aaf-44bc-8ab3-c7b1b876ea3f)
 
 
-🧙 Learn about how to use this template and run your own parachain testnet for it in the
-[Devhub Cumulus Tutorial](https://docs.substrate.io/tutorials/v3/cumulus/start-relay/).
+<div align="center">
+
+[![Twitter URL](https://img.shields.io/twitter/follow/Pop?style=social)](https://twitter.com/pop_web3)
+[![Twitter URL](https://img.shields.io/twitter/follow/R0GUE?style=social)](https://twitter.com/gor0gue)
+[![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/PlasmOfficial](https://t.me/Pop_Network)https://t.me/Pop_Network)
+[![Build, test and lint](https://github.com/r0gue-io/pop-node/actions/workflows/build.yml/badge.svg)](https://github.com/r0gue-io/pop-node/actions/workflows/build.yml)
+
+</div>
+
+Pop Network makes it easy for smart contract developers to use the Power of Polkadot. Through curated runtime
+primitives, smart contract developers can spend less time learning the complexities of Polkadot, and more time buidling
+awesome things.
+
+Pop supports Polkadot native contracts (`pallet-contracts`), enabling developers to build with more performant and
+secure smart contract languages (such as [ink!](https://use.ink/)).
+
+# Launching Local Network
+## Installation
+You can install the Pop CLI as follows:
+```shell
+cargo install --git https://github.com/r0gue-io/pop-cli
+```
+
+## Spawn Network
+You can spawn a local network as follows:
+```shell
+pop up parachain -f ./networks/rococo.toml
+```
+Note: `pop` will automatically source the necessary `polkadot` binaries. Currently, these will have to be built if on a non-linux system.
