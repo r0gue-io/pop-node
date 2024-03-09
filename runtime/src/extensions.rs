@@ -14,6 +14,8 @@ use pop_api_primitives::{
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
+use cumulus_pallet_parachain_system::RelaychainDataProvider;
+use sp_runtime::traits::BlockNumberProvider;
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -172,8 +174,7 @@ where
 		RuntimeStateKeys::ParachainSystem(key) => match key {
 			ParachainSystemKeys::LastRelayChainBlockNumber => {
 				env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-				let relay_block_num: BlockNumber =
-					cumulus_pallet_parachain_system::Pallet::<T>::last_relay_block_number();
+				let relay_block_num: BlockNumber = RelaychainDataProvider::<T>::current_block_number();
 				log::debug!(
 					target:LOG_TARGET,
 					"{} last relay chain block number is: {:?}.", LOG_PREFIX, relay_block_num
@@ -520,7 +521,7 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			let _ = env_logger::try_init();
 
-			let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/read-runtime-state/target/ink/pop_api_extension_demo.wasm").unwrap();
+			let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/read-runtime-state/target/ink/pop_api_read_state_example.wasm").unwrap();
 
 			let init_value = 100;
 
