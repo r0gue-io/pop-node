@@ -6,8 +6,9 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
-[dependencies]
+[dev-dependencies]
 codec.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "std", "tracing-log"] }
 
 # Substrate
 frame-support.workspace = true
@@ -36,9 +37,6 @@ emulated-integration-tests-common.workspace = true
 
 # Local
 pop-runtime.workspace = true
-
-[dev-dependencies]
-tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "std", "tracing-log"] }
 
 [features]
 default = ["std"]
