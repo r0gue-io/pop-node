@@ -5,10 +5,10 @@ pub mod v0;
 
 use crate::PopApiError::{Balances, Nfts, UnknownStatusCode};
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
-use primitives::{storage_keys::*, xc_indices::*};
+use primitives::{cross_chain::*, storage_keys::*};
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
-pub use v0::{balances, nfts, relay_chain_block_number, state, cross_chain};
+pub use v0::{balances, cross_chain, nfts, relay_chain_block_number, state};
 
 type AccountId = <Environment as ink::env::Environment>::AccountId;
 type Balance = <Environment as ink::env::Environment>::Balance;
@@ -76,7 +76,7 @@ pub trait PopApi {
 
 	#[ink(extension = 2)]
 	#[allow(private_interfaces)]
-	fn handle_xcm(xcm: XCLocationIndices) -> Result<()>;
+	fn send_xcm(xcm: CrossChainMessage) -> Result<()>;
 }
 
 fn dispatch(call: RuntimeCall) -> Result<()> {
@@ -91,8 +91,8 @@ fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>> {
 	.read_state(key)
 }
 
-fn handle_xcm(xcm: XCLocationIndices) -> Result<()> {
+fn send_xcm(xcm: CrossChainMessage) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
-	.handle_xcm(xcm)
+	.send_xcm(xcm)
 }

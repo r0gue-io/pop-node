@@ -8,17 +8,19 @@ use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
 };
 use pop_api_primitives::{
-	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys, xc_indices::{XCLocationIndices, RelayIndices, OnDemandCall}},
+	cross_chain::CrossChainMessage,
+	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
 	CollectionId, ItemId,
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 use xcm::{
-    latest::{prelude::*, OriginKind::SovereignAccount},
+	latest::{prelude::*, OriginKind::SovereignAccount},
+	VersionedXcm,
 };
 
-use crate::UNIT;
+use crate::{AccountId, RuntimeOrigin, UNIT};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -32,7 +34,7 @@ where
 	T: pallet_contracts::Config
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
-		+ frame_system::Config,
+		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId>,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 	<T as SysConfig>::RuntimeCall: Parameter
 		+ Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
@@ -62,8 +64,8 @@ where
 				read_state::<T, E>(env)?;
 				Ok(RetVal::Converging(0))
 			},
-			v0::FuncId::HandleXcm => {
-				handle_xcm::<T, E>(env)?;
+			v0::FuncId::SendXcm => {
+				send_xcm::<T, E>(env)?;
 				Ok(RetVal::Converging(0))
 			},
 		}
@@ -75,7 +77,7 @@ pub mod v0 {
 	pub enum FuncId {
 		Dispatch,
 		ReadState,
-		HandleXcm,
+		SendXcm,
 	}
 }
 
@@ -86,7 +88,7 @@ impl TryFrom<u16> for v0::FuncId {
 		let id = match func_id {
 			0x0 => Self::Dispatch,
 			0x1 => Self::ReadState,
-			0x2 => Self::HandleXcm,
+			0x2 => Self::SendXcm,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
 				return Err(DispatchError::Other("unimplemented func_id"));
@@ -251,56 +253,88 @@ where
 	}
 }
 
-fn handle_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
-    where
-        T: pallet_contracts::Config + frame_system::Config,
-        E: Ext<T = T>,
+fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+where
+	T: pallet_contracts::Config
+		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId>,
+	E: Ext<T = T>,
 {
-    const LOG_PREFIX: &str = " handle_xcm |";
+	const LOG_PREFIX: &str = " send_xcm |";
 
-    let mut env = env.buf_in_buf_out();
+	// TODO: refactor - the following statements are taken from dispatch function above
+	let mut env = env.buf_in_buf_out();
+	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
 
-    // To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
-    let base_weight: Weight = ContractSchedule::<T>::get()
-        .host_fn_weights
-        .return_per_byte
-        .saturating_mul(env.in_len().into());
-    let charged_weight = env.charge_weight(base_weight)?;
+	// input length
+	let len = env.in_len();
 
-    log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+	// calculate weight for reading bytes of `len`
+	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
+	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
 
-    let xc_call: XCLocationIndices = env.read_as()?;
+	// debug_message weight is a good approximation of the additional overhead of going
+	// from contract layer to substrate layer.
+	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
+	let overhead = contract_host_weight.debug_message;
 
-    match xc_call {
-        XCLocationIndices::Relay(RelayIndices::OnDemand(OnDemandCall::PlaceOrderKeepAlive { max_amount, para_id })) => {
-            env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
+	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
 
-            let assets: Asset = (Here, 10 * UNIT).into();
-            let beneficiary: Location = AccountId32 {
-                id: env.ext().address().into(),
-                network: None
-            }.into();
-            let place_order_keep_alive = RelayIndices::OnDemand(OnDemandCall::PlaceOrderKeepAlive { max_amount, para_id });
+	// read the input as CrossChainMessage
+	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
 
-            let xc_message: Xcm<()> = Xcm::builder()
-                .withdraw_asset(assets.clone().into())
-                .buy_execution(assets.clone().into(), Unlimited)
-                .transact(SovereignAccount, Weight::from_parts(25_000_000, 10_000), place_order_keep_alive.encode().into())
-                .refund_surplus()
-                .deposit_asset(assets.into(), beneficiary.into())
-                .build();
+	// Determine the call to dispatch
+	let (dest, message) = match xc_call {
+		CrossChainMessage::Relay(message) => {
+			let dest = Location::parent().into_versioned();
+			let assets: Asset = (Here, 10 * UNIT).into();
+			let beneficiary: Location =
+				AccountId32 { id: (env.ext().address().clone()).into(), network: None }.into();
+			let message = Xcm::builder()
+				.withdraw_asset(assets.clone().into())
+				.buy_execution(assets.clone().into(), Unlimited)
+				.transact(
+					SovereignAccount,
+					Weight::from_parts(25_000_000, 10_000),
+					message.encode().into(),
+				)
+				.refund_surplus()
+				.deposit_asset(assets.into(), beneficiary.into())
+				.build();
+			(dest, message)
+		},
+	};
 
-            let runtime_call= crate::PolkadotXcm::send(Here, Location::parent(), xc_message);
+	// Generate runtime call to dispatch
+	let call = crate::RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
+		dest: Box::new(dest),
+		message: Box::new(VersionedXcm::V4(message)),
+	});
 
-            env.write(&runtime_call, false, None).map_err(|e| {
-                log::trace!(target: LOG_TARGET, "{:?}", e);
-                DispatchError::Other("unable to write results to contract memory")
-            })?;
-            env.charge_weight(T::DbWeight::get().writes(1_u64))?;
+	// TODO: refactor - the remaining statements are taken from dispatch function above
+	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
-            dispatch(env)
-        },
-    }
+	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
+
+	// contract is the origin by default
+	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+
+	match call.dispatch(origin) {
+		Ok(info) => {
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
+
+			// refund weight if the actual weight is less than the charged weight
+			if let Some(actual_weight) = info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
+
+			Ok(())
+		},
+		Err(err) => {
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
+			Err(err.error)
+		},
+	}
 }
 
 #[cfg(test)]
