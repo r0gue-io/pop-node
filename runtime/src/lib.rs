@@ -188,6 +188,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	spec_name: create_runtime_str!("pop"),
 	impl_name: create_runtime_str!("pop"),
 	authoring_version: 1,
+	#[allow(clippy::zero_prefixed_literal)]
 	spec_version: 00_01_00,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,

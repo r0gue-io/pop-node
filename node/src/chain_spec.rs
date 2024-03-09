@@ -10,10 +10,10 @@ use sp_runtime::traits::{IdentifyAccount, Verify};
 pub type ChainSpec = sc_service::GenericChainSpec<(), Extensions>;
 
 /// The default XCM version to set in genesis config.
-pub const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
+const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
 /// The local para ID of Pop Network.
-pub const PARA_ID: u32 = 909;
+const PARA_ID: u32 = 9090;
 
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
