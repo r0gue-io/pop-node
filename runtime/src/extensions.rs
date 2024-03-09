@@ -100,69 +100,65 @@ impl TryFrom<u16> for v0::FuncId {
 	}
 }
 
-mod utils {
-	use super::*;
+fn dispatch_call<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	call: RuntimeCall,
+	log_prefix: &str,
+) -> Result<(), DispatchError>
+where
+	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
+	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
+	E: Ext<T = T>,
+{
+	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
-	pub(super) fn dispatch_call<T, E>(
-		env: &mut Environment<E, BufInBufOutState>,
-		call: RuntimeCall,
-		log_prefix: &str,
-	) -> Result<(), DispatchError>
-	where
-		T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
-		RuntimeOrigin: From<RawOrigin<T::AccountId>>,
-		E: Ext<T = T>,
-	{
-		let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
+	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
 
-		log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
+	// contract is the origin by default
+	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 
-		// contract is the origin by default
-		let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+	match call.dispatch(origin) {
+		Ok(info) => {
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
 
-		match call.dispatch(origin) {
-			Ok(info) => {
-				log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
+			// refund weight if the actual weight is less than the charged weight
+			if let Some(actual_weight) = info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
 
-				// refund weight if the actual weight is less than the charged weight
-				if let Some(actual_weight) = info.actual_weight {
-					env.adjust_weight(charged_dispatch_weight, actual_weight);
-				}
-
-				Ok(())
-			},
-			Err(err) => {
-				log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
-				Err(err.error)
-			},
-		}
+			Ok(())
+		},
+		Err(err) => {
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
+			Err(err.error)
+		},
 	}
+}
 
-	pub(super) fn charge_overhead_weight<T, E>(
-		env: &mut Environment<E, BufInBufOutState>,
-		len: u32,
-		log_prefix: &str,
-	) -> Result<ChargedAmount, DispatchError>
-	where
-		T: pallet_contracts::Config,
-		E: Ext<T = T>,
-	{
-		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
+fn charge_overhead_weight<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	len: u32,
+	log_prefix: &str,
+) -> Result<ChargedAmount, DispatchError>
+where
+	T: pallet_contracts::Config,
+	E: Ext<T = T>,
+{
+	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
 
-		// calculate weight for reading bytes of `len`
-		// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
-		let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
+	// calculate weight for reading bytes of `len`
+	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
+	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
 
-		// debug_message weight is a good approximation of the additional overhead of going
-		// from contract layer to substrate layer.
-		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-		let overhead = contract_host_weight.debug_message;
+	// debug_message weight is a good approximation of the additional overhead of going
+	// from contract layer to substrate layer.
+	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
+	let overhead = contract_host_weight.debug_message;
 
-		let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
-		log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", log_prefix, charged_weight);
+	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
+	log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", log_prefix, charged_weight);
 
-		Ok(charged_weight)
-	}
+	Ok(charged_weight)
 }
 
 fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
@@ -177,12 +173,12 @@ where
 	let mut env = env.buf_in_buf_out();
 	let len = env.in_len();
 
-	utils::charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
+	charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
 
 	// read the input as RuntimeCall
 	let call: RuntimeCall = env.read_as_unbounded(len)?;
 
-	utils::dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
+	dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
@@ -296,7 +292,7 @@ where
 	let mut env = env.buf_in_buf_out();
 	let len = env.in_len();
 
-	let _ = utils::charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
+	let _ = charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
 
 	// read the input as CrossChainMessage
 	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
@@ -329,7 +325,7 @@ where
 		message: Box::new(VersionedXcm::V4(message)),
 	});
 
-	utils::dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
+	dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
 
 #[cfg(test)]
