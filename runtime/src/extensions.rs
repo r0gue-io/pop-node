@@ -103,9 +103,10 @@ impl TryFrom<u16> for v0::FuncId {
 mod utils {
 	use super::*;
 
-	pub fn dispatch_call<T, E>(
+	pub(super) fn dispatch_call<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		call: <T as SysConfig>::RuntimeCall,
+		log_prefix: &str,
 	) -> Result<(), DispatchError>
 	where
 		T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
@@ -113,17 +114,16 @@ mod utils {
 		<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 		E: Ext<T = T>,
 	{
-		const LOG_PREFIX: &str = " send_xcm |";
 		let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
-		log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
+		log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
 
 		// contract is the origin by default
 		let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 
 		match call.dispatch(origin) {
 			Ok(info) => {
-				log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
+				log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
 
 				// refund weight if the actual weight is less than the charged weight
 				if let Some(actual_weight) = info.actual_weight {
@@ -133,22 +133,21 @@ mod utils {
 				Ok(())
 			},
 			Err(err) => {
-				log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
+				log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
 				Err(err.error)
 			},
 		}
 	}
 
-	pub fn charge_overhead_weight<T, E>(
+	pub(super) fn charge_overhead_weight<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		len: u32,
+		log_prefix: &str,
 	) -> Result<ChargedAmount, DispatchError>
 	where
 		T: pallet_contracts::Config,
 		E: Ext<T = T>,
 	{
-		const LOG_PREFIX: &str = " charge_overhead_weight |";
-
 		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
 
 		// calculate weight for reading bytes of `len`
@@ -161,7 +160,7 @@ mod utils {
 		let overhead = contract_host_weight.debug_message;
 
 		let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
-		log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+		log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", log_prefix, charged_weight);
 
 		Ok(charged_weight)
 	}
@@ -180,12 +179,12 @@ where
 	let mut env = env.buf_in_buf_out();
 	let len = env.in_len();
 
-	utils::charge_overhead_weight::<T, E>(&mut env, len)?;
+	utils::charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
 
 	// read the input as RuntimeCall
 	let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
 
-	utils::dispatch_call::<T, E>(&mut env, call)
+	utils::dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
@@ -301,7 +300,7 @@ where
 	let mut env = env.buf_in_buf_out();
 	let len = env.in_len();
 
-	let _ = utils::charge_overhead_weight::<T, E>(&mut env, len)?;
+	let _ = utils::charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
 
 	// read the input as CrossChainMessage
 	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
@@ -335,7 +334,7 @@ where
 			message: Box::new(VersionedXcm::V4(message)),
 		});
 
-	utils::dispatch_call::<T, E>(&mut env, call)
+	utils::dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
 
 #[cfg(test)]
