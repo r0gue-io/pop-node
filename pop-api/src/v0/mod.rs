@@ -16,8 +16,6 @@ pub fn relay_chain_block_number() -> Result<BlockNumber, PopApiError> {
 pub(crate) enum RuntimeCall {
 	#[codec(index = 10)]
 	Balances(balances::BalancesCall),
-	#[codec(index = 31)]
-	Xcm(cross_chain::XcmCalls),
 	#[codec(index = 50)]
 	Nfts(nfts::NftCalls),
 }

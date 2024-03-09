@@ -1,36 +1,8 @@
 pub mod coretime;
 
 use crate::{PopApiError::UnknownStatusCode, *};
-use crate::v0::cross_chain::coretime::OnDemandCall;
-use xcm::{VersionedLocation, VersionedXcm};
 
 type Result<T> = core::result::Result<T, Error>;
-
-pub(crate) fn send_xcm() -> Result<()>{
-
-    // Xcm::Send needs to be dispatched via pop_api to use the "right" origin. 
-    // type problems with xcm specific stuff ?
-    Ok(())
-}
-
-
-// Declaring this here makes pop_api depend on XCM. Not nice.
-// Maybe let handle_send_xcm() do this.
-#[derive(scale::Encode)]
-pub(crate) enum XcmCalls {
-    #[codec(index = 0)]
-    Send {
-        dest: VersionedLocation,
-        message: VersionedXcm<()>,
-    },
-}
-
-#[derive(scale::Encode)]
-pub(crate) enum Relay {
-    // Rococo index: https://github.com/paritytech/polkadot-sdk/blob/629506ce061db76d31d4f7a81f4a497752b27259/polkadot/runtime/rococo/src/lib.rs#L1423
-    #[codec(index = 66)]
-    OnDemand(OnDemandCall),
-}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
