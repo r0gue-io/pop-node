@@ -5,7 +5,7 @@ use frame_support::{
 	traits::nonfungibles_v2::Inspect,
 };
 use pallet_contracts::chain_extension::{
-	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
+	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal, SysConfig,
 };
 use pop_api_primitives::{
 	cross_chain::CrossChainMessage,
@@ -20,7 +20,7 @@ use xcm::{
 	VersionedXcm,
 };
 
-use crate::{AccountId, RuntimeOrigin, UNIT};
+use crate::{AccountId, Runtime, RuntimeCall, RuntimeOrigin, UNIT};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -31,15 +31,11 @@ pub struct PopApiExtension;
 
 impl<T> ChainExtension<T> for PopApiExtension
 where
-	T: pallet_contracts::Config
+	T: pallet_contracts::Config + pallet_xcm::Config
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
-		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId>,
+		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId, RuntimeCall = RuntimeCall>,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
-	<T as SysConfig>::RuntimeCall: Parameter
-		+ Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
-		+ GetDispatchInfo
-		+ From<frame_system::Call<T>>,
 {
 	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
 	where
@@ -99,62 +95,86 @@ impl TryFrom<u16> for v0::FuncId {
 	}
 }
 
+mod utils {
+	use super::*;
+
+	pub fn dispatch_call<T, E>(env: &mut Environment<E, BufInBufOutState>, call: <T as SysConfig>::RuntimeCall) -> Result<(), DispatchError>
+	where
+		T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
+		RuntimeOrigin: From<RawOrigin<<T as SysConfig>::AccountId>>,
+		<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
+		E: Ext<T = T>,
+	{
+		const LOG_PREFIX: &str = " send_xcm |";
+		let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
+
+		log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
+
+		// contract is the origin by default
+		let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+
+		match call.dispatch(origin) {
+			Ok(info) => {
+				log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
+
+				// refund weight if the actual weight is less than the charged weight
+				if let Some(actual_weight) = info.actual_weight {
+					env.adjust_weight(charged_dispatch_weight, actual_weight);
+				}
+
+				Ok(())
+			},
+			Err(err) => {
+				log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
+				Err(err.error)
+			},
+		}
+	}
+
+	pub fn charge_overhead_weight<T, E>(env: &mut Environment<E, BufInBufOutState>, len: u32) -> Result<ChargedAmount, DispatchError>
+	where
+		T: pallet_contracts::Config,
+		E: Ext<T = T>,
+	{
+		const LOG_PREFIX: &str = " charge_overhead_weight |";
+
+		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
+
+		// calculate weight for reading bytes of `len`
+		// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
+		let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
+
+		// debug_message weight is a good approximation of the additional overhead of going
+		// from contract layer to substrate layer.
+		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
+		let overhead = contract_host_weight.debug_message;
+
+		let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
+		log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+
+		Ok(charged_weight)
+	}
+}
+
+
 fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config + frame_system::Config,
+	T: pallet_contracts::Config + frame_system::Config<RuntimeCall = RuntimeCall, RuntimeOrigin = RuntimeOrigin>,
+	RuntimeOrigin: From<RawOrigin<<T as SysConfig>::AccountId>>,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
-	<T as SysConfig>::RuntimeCall: Parameter
-		+ Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
-		+ GetDispatchInfo
-		+ From<frame_system::Call<T>>,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
 	let mut env = env.buf_in_buf_out();
-	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
-
-	// input length
 	let len = env.in_len();
 
-	// calculate weight for reading bytes of `len`
-	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
-	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
-
-	// debug_message weight is a good approximation of the additional overhead of going
-	// from contract layer to substrate layer.
-	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-	let overhead = contract_host_weight.debug_message;
-
-	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
-	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+	utils::charge_overhead_weight::<T, E>(&mut env, len)?;
 
 	// read the input as RuntimeCall
 	let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
 
-	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-
-	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
-
-	// contract is the origin by default
-	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
-
-	match call.dispatch(origin) {
-		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
-
-			// refund weight if the actual weight is less than the charged weight
-			if let Some(actual_weight) = info.actual_weight {
-				env.adjust_weight(charged_dispatch_weight, actual_weight);
-			}
-
-			Ok(())
-		},
-		Err(err) => {
-			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
-			Err(err.error)
-		},
-	}
+	utils::dispatch_call::<T, E>(&mut env, call)
 }
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
@@ -255,30 +275,17 @@ where
 
 fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config
-		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId>,
+	T: pallet_contracts::Config + pallet_xcm::Config
+		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId, RuntimeCall = RuntimeCall>,
+	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " send_xcm |";
 
-	// TODO: refactor - the following statements are taken from dispatch function above
 	let mut env = env.buf_in_buf_out();
-	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
-
-	// input length
 	let len = env.in_len();
 
-	// calculate weight for reading bytes of `len`
-	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
-	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
-
-	// debug_message weight is a good approximation of the additional overhead of going
-	// from contract layer to substrate layer.
-	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-	let overhead = contract_host_weight.debug_message;
-
-	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
-	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+	let _ = utils::charge_overhead_weight::<T, E>(&mut env, len)?;
 
 	// read the input as CrossChainMessage
 	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
@@ -306,35 +313,12 @@ where
 	};
 
 	// Generate runtime call to dispatch
-	let call = crate::RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
+	let call: <T as SysConfig>::RuntimeCall = <T as SysConfig>::RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
 		dest: Box::new(dest),
 		message: Box::new(VersionedXcm::V4(message)),
 	});
 
-	// TODO: refactor - the remaining statements are taken from dispatch function above
-	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-
-	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
-
-	// contract is the origin by default
-	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
-
-	match call.dispatch(origin) {
-		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
-
-			// refund weight if the actual weight is less than the charged weight
-			if let Some(actual_weight) = info.actual_weight {
-				env.adjust_weight(charged_dispatch_weight, actual_weight);
-			}
-
-			Ok(())
-		},
-		Err(err) => {
-			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
-			Err(err.error)
-		},
-	}
+	utils::dispatch_call::<T, E>(&mut env, call)
 }
 
 #[cfg(test)]
