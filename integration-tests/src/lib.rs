@@ -1,41 +1,42 @@
+use chains::{asset_hub_rococo::AssetHubRococo, pop_network::PopNetwork, rococo::Rococo};
+use emulated_integration_tests_common::xcm_emulator::decl_test_networks;
+
 #[cfg(test)]
 mod chains;
 
+decl_test_networks! {
+	// `pub` mandatory for the macro
+	pub struct RococoMockNet {
+		relay_chain = Rococo,
+		parachains = vec![
+			AssetHubRococo,
+			PopNetwork,
+		],
+		bridge = ()
+	},
+}
+
 #[cfg(test)]
 mod tests {
+	use super::*;
 	use crate::chains::{
-		asset_hub_rococo::{
-			genesis::ED as ASSET_HUB_ROCOCO_ED, AssetHubRococo, AssetHubRococoParaPallet,
-		},
-		pop_network::{PopNetwork, PopNetworkParaPallet},
-		rococo::{genesis::ED as ROCOCO_ED, Rococo, RococoRelayPallet},
+		asset_hub_rococo::{genesis::ED as ASSET_HUB_ROCOCO_ED, AssetHubRococoParaPallet},
+		pop_network::PopNetworkParaPallet,
+		rococo::{genesis::ED as ROCOCO_ED, RococoRelayPallet},
 	};
 	use asset_hub_rococo_runtime::xcm_config::XcmConfig as AssetHubRococoXcmConfig;
 	use asset_test_utils::xcm_helpers;
 	use emulated_integration_tests_common::{
 		accounts::{ALICE, BOB},
 		xcm_emulator::{
-			assert_expected_events, bx, decl_test_networks,
-			decl_test_sender_receiver_accounts_parameter_types, Chain, Parachain as Para,
-			RelayChain as Relay, Test, TestArgs, TestContext, TestExt,
+			assert_expected_events, bx, decl_test_sender_receiver_accounts_parameter_types, Chain,
+			Parachain as Para, RelayChain as Relay, Test, TestArgs, TestContext, TestExt,
 		},
 	};
 	use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
 	use pop_runtime::{xcm_config::XcmConfig as PopNetworkXcmConfig, Balance};
 	use rococo_runtime::xcm_config::XcmConfig as RococoXcmConfig;
 	use xcm::prelude::*;
-
-	decl_test_networks! {
-		// `pub` mandatory for the macro
-		pub struct RococoMockNet {
-			relay_chain = Rococo,
-			parachains = vec![
-				AssetHubRococo,
-				PopNetwork,
-			],
-			bridge = ()
-		},
-	}
 
 	decl_test_sender_receiver_accounts_parameter_types! {
 		RococoRelay { sender: ALICE, receiver: BOB },
