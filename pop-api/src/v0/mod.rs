@@ -7,8 +7,6 @@ pub mod cross_chain;
 pub(crate) enum RuntimeCall {
 	#[codec(index = 10)]
 	Balances(balances::BalancesCall),
-	#[codec(index = 31)]
-	Xcm(cross_chain::XcmCalls),
 	#[codec(index = 50)]
 	Nfts(nfts::NftCalls),
 }

@@ -5,7 +5,7 @@ pub mod v0;
 
 use crate::PopApiError::{Balances, Nfts, UnknownStatusCode};
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
-use primitives::storage_keys::*;
+use primitives::{storage_keys::*, xc_indices::*};
 use scale;
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
@@ -81,6 +81,10 @@ pub trait PopApi {
 	#[ink(extension = 1)]
 	#[allow(private_interfaces)]
 	fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>>;
+
+	#[ink(extension = 2)]
+	#[allow(private_interfaces)]
+	fn handle_xcm(xcm: XCLocationIndices) -> Result<()>;
 }
 
 fn dispatch(call: RuntimeCall) -> Result<()> {
@@ -93,4 +97,10 @@ fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
 	.read_state(key)
+}
+
+fn handle_xcm(xcm: XCLocationIndices) -> Result<()> {
+	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
+	)
+	.handle_xcm(xcm)
 }
