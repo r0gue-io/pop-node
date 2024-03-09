@@ -1,11 +1,11 @@
 use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::{
-	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
+	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
 	traits::nonfungibles_v2::Inspect,
 };
 use pallet_contracts::chain_extension::{
-	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal, SysConfig,
+	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
 use pop_api_primitives::{
 	cross_chain::CrossChainMessage,
@@ -20,7 +20,7 @@ use xcm::{
 	VersionedXcm,
 };
 
-use crate::{AccountId, Runtime, RuntimeCall, RuntimeOrigin, UNIT};
+use crate::{AccountId, RuntimeCall, RuntimeOrigin, UNIT};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -40,12 +40,12 @@ where
 			AccountId = AccountId,
 			RuntimeCall = RuntimeCall,
 		>,
-	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
+	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
 	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
 	where
 		E: Ext<T = T>,
-		<E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {
@@ -105,13 +105,12 @@ mod utils {
 
 	pub(super) fn dispatch_call<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
-		call: <T as SysConfig>::RuntimeCall,
+		call: RuntimeCall,
 		log_prefix: &str,
 	) -> Result<(), DispatchError>
 	where
 		T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
-		RuntimeOrigin: From<RawOrigin<<T as SysConfig>::AccountId>>,
-		<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
+		RuntimeOrigin: From<RawOrigin<T::AccountId>>,
 		E: Ext<T = T>,
 	{
 		let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
@@ -119,7 +118,7 @@ mod utils {
 		log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
 
 		// contract is the origin by default
-		let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+		let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 
 		match call.dispatch(origin) {
 			Ok(info) => {
@@ -170,8 +169,7 @@ fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
 		+ frame_system::Config<RuntimeCall = RuntimeCall, RuntimeOrigin = RuntimeOrigin>,
-	RuntimeOrigin: From<RawOrigin<<T as SysConfig>::AccountId>>,
-	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
+	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
@@ -182,7 +180,7 @@ where
 	utils::charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
 
 	// read the input as RuntimeCall
-	let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
+	let call: RuntimeCall = env.read_as_unbounded(len)?;
 
 	utils::dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
@@ -286,13 +284,11 @@ where
 fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
-		+ pallet_xcm::Config
 		+ frame_system::Config<
 			RuntimeOrigin = RuntimeOrigin,
 			AccountId = AccountId,
 			RuntimeCall = RuntimeCall,
 		>,
-	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " send_xcm |";
@@ -328,11 +324,10 @@ where
 	};
 
 	// Generate runtime call to dispatch
-	let call: <T as SysConfig>::RuntimeCall =
-		<T as SysConfig>::RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
-			dest: Box::new(dest),
-			message: Box::new(VersionedXcm::V4(message)),
-		});
+	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
+		dest: Box::new(dest),
+		message: Box::new(VersionedXcm::V4(message)),
+	});
 
 	utils::dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
