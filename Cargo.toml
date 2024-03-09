@@ -127,6 +127,7 @@ cumulus-pallet-parachain-system = { git = "https://github.com/paritytech/polkado
 cumulus-pallet-session-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
 cumulus-pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
 cumulus-pallet-xcmp-queue = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
+cumulus-primitives-aura = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
 cumulus-primitives-core = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
 cumulus-primitives-utility = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
 emulated-integration-tests-common = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1", default-features = false }
