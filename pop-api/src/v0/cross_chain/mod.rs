@@ -7,59 +7,59 @@ type Result<T> = core::result::Result<T, Error>;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum Error {
-    /// The desired destination was unreachable, generally because there is a no way of routing
-    /// to it.
-    Unreachable,
-    /// There was some other issue (i.e. not to do with routing) in sending the message.
-    /// Perhaps a lack of space for buffering the message.
-    SendFailure,
-    /// The message execution fails the filter.
-    Filtered,
-    /// The message's weight could not be determined.
-    UnweighableMessage,
-    /// The destination `Location` provided cannot be inverted.
-    DestinationNotInvertible,
-    /// The assets to be sent are empty.
-    Empty,
-    /// Could not re-anchor the assets to declare the fees for the destination chain.
-    CannotReanchor,
-    /// Too many assets have been attempted for transfer.
-    TooManyAssets,
-    /// Origin is invalid for sending.
-    InvalidOrigin,
-    /// The version of the `Versioned` value used is not able to be interpreted.
-    BadVersion,
-    /// The given location could not be used (e.g. because it cannot be expressed in the
-    /// desired version of XCM).
-    BadLocation,
-    /// The referenced subscription could not be found.
-    NoSubscription,
-    /// The location is invalid since it already has a subscription from us.
-    AlreadySubscribed,
-    /// Could not check-out the assets for teleportation to the destination chain.
-    CannotCheckOutTeleport,
-    /// The owner does not own (all) of the asset that they wish to do the operation on.
-    LowBalance,
-    /// The asset owner has too many locks on the asset.
-    TooManyLocks,
-    /// The given account is not an identifiable sovereign account for any location.
-    AccountNotSovereign,
-    /// The operation required fees to be paid which the initiator could not meet.
-    FeesNotMet,
-    /// A remote lock with the corresponding data could not be found.
-    LockNotFound,
-    /// The unlock operation cannot succeed because there are still consumers of the lock.
-    InUse,
-    /// Invalid non-concrete asset.
-    InvalidAssetNotConcrete,
-    /// Invalid asset, reserve chain could not be determined for it.
-    InvalidAssetUnknownReserve,
-    /// Invalid asset, do not support remote asset reserves with different fees reserves.
-    InvalidAssetUnsupportedReserve,
-    /// Too many assets with different reserve locations have been attempted for transfer.
-    TooManyReserves,
-    /// Local XCM execution incomplete.
-    LocalExecutionIncomplete,
+	/// The desired destination was unreachable, generally because there is a no way of routing
+	/// to it.
+	Unreachable,
+	/// There was some other issue (i.e. not to do with routing) in sending the message.
+	/// Perhaps a lack of space for buffering the message.
+	SendFailure,
+	/// The message execution fails the filter.
+	Filtered,
+	/// The message's weight could not be determined.
+	UnweighableMessage,
+	/// The destination `Location` provided cannot be inverted.
+	DestinationNotInvertible,
+	/// The assets to be sent are empty.
+	Empty,
+	/// Could not re-anchor the assets to declare the fees for the destination chain.
+	CannotReanchor,
+	/// Too many assets have been attempted for transfer.
+	TooManyAssets,
+	/// Origin is invalid for sending.
+	InvalidOrigin,
+	/// The version of the `Versioned` value used is not able to be interpreted.
+	BadVersion,
+	/// The given location could not be used (e.g. because it cannot be expressed in the
+	/// desired version of XCM).
+	BadLocation,
+	/// The referenced subscription could not be found.
+	NoSubscription,
+	/// The location is invalid since it already has a subscription from us.
+	AlreadySubscribed,
+	/// Could not check-out the assets for teleportation to the destination chain.
+	CannotCheckOutTeleport,
+	/// The owner does not own (all) of the asset that they wish to do the operation on.
+	LowBalance,
+	/// The asset owner has too many locks on the asset.
+	TooManyLocks,
+	/// The given account is not an identifiable sovereign account for any location.
+	AccountNotSovereign,
+	/// The operation required fees to be paid which the initiator could not meet.
+	FeesNotMet,
+	/// A remote lock with the corresponding data could not be found.
+	LockNotFound,
+	/// The unlock operation cannot succeed because there are still consumers of the lock.
+	InUse,
+	/// Invalid non-concrete asset.
+	InvalidAssetNotConcrete,
+	/// Invalid asset, reserve chain could not be determined for it.
+	InvalidAssetUnknownReserve,
+	/// Invalid asset, do not support remote asset reserves with different fees reserves.
+	InvalidAssetUnsupportedReserve,
+	/// Too many assets with different reserve locations have been attempted for transfer.
+	TooManyReserves,
+	/// Local XCM execution incomplete.
+	LocalExecutionIncomplete,
 }
 
 impl TryFrom<u32> for Error {

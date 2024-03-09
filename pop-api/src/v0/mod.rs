@@ -4,9 +4,9 @@ use crate::{
 };
 
 pub mod balances;
+pub mod cross_chain;
 pub mod nfts;
 pub mod state;
-pub mod cross_chain;
 
 pub fn relay_chain_block_number() -> Result<BlockNumber, PopApiError> {
 	state::read(RuntimeStateKeys::ParachainSystem(ParachainSystemKeys::LastRelayChainBlockNumber))

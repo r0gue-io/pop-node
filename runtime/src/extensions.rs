@@ -31,10 +31,15 @@ pub struct PopApiExtension;
 
 impl<T> ChainExtension<T> for PopApiExtension
 where
-	T: pallet_contracts::Config + pallet_xcm::Config
+	T: pallet_contracts::Config
+		+ pallet_xcm::Config
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
-		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId, RuntimeCall = RuntimeCall>,
+		+ frame_system::Config<
+			RuntimeOrigin = RuntimeOrigin,
+			AccountId = AccountId,
+			RuntimeCall = RuntimeCall,
+		>,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 {
 	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
@@ -98,7 +103,10 @@ impl TryFrom<u16> for v0::FuncId {
 mod utils {
 	use super::*;
 
-	pub fn dispatch_call<T, E>(env: &mut Environment<E, BufInBufOutState>, call: <T as SysConfig>::RuntimeCall) -> Result<(), DispatchError>
+	pub fn dispatch_call<T, E>(
+		env: &mut Environment<E, BufInBufOutState>,
+		call: <T as SysConfig>::RuntimeCall,
+	) -> Result<(), DispatchError>
 	where
 		T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
 		RuntimeOrigin: From<RawOrigin<<T as SysConfig>::AccountId>>,
@@ -131,7 +139,10 @@ mod utils {
 		}
 	}
 
-	pub fn charge_overhead_weight<T, E>(env: &mut Environment<E, BufInBufOutState>, len: u32) -> Result<ChargedAmount, DispatchError>
+	pub fn charge_overhead_weight<T, E>(
+		env: &mut Environment<E, BufInBufOutState>,
+		len: u32,
+	) -> Result<ChargedAmount, DispatchError>
 	where
 		T: pallet_contracts::Config,
 		E: Ext<T = T>,
@@ -156,10 +167,10 @@ mod utils {
 	}
 }
 
-
 fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config + frame_system::Config<RuntimeCall = RuntimeCall, RuntimeOrigin = RuntimeOrigin>,
+	T: pallet_contracts::Config
+		+ frame_system::Config<RuntimeCall = RuntimeCall, RuntimeOrigin = RuntimeOrigin>,
 	RuntimeOrigin: From<RawOrigin<<T as SysConfig>::AccountId>>,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 	E: Ext<T = T>,
@@ -275,8 +286,13 @@ where
 
 fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config + pallet_xcm::Config
-		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, AccountId = AccountId, RuntimeCall = RuntimeCall>,
+	T: pallet_contracts::Config
+		+ pallet_xcm::Config
+		+ frame_system::Config<
+			RuntimeOrigin = RuntimeOrigin,
+			AccountId = AccountId,
+			RuntimeCall = RuntimeCall,
+		>,
 	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
 	E: Ext<T = T>,
 {
@@ -313,10 +329,11 @@ where
 	};
 
 	// Generate runtime call to dispatch
-	let call: <T as SysConfig>::RuntimeCall = <T as SysConfig>::RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
-		dest: Box::new(dest),
-		message: Box::new(VersionedXcm::V4(message)),
-	});
+	let call: <T as SysConfig>::RuntimeCall =
+		<T as SysConfig>::RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
+			dest: Box::new(dest),
+			message: Box::new(VersionedXcm::V4(message)),
+		});
 
 	utils::dispatch_call::<T, E>(&mut env, call)
 }
