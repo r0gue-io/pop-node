@@ -8,7 +8,7 @@ use frame_support::{
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
-use pop_api_primitives::{
+use pop_primitives::{
 	cross_chain::CrossChainMessage,
 	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
 	CollectionId, ItemId,
@@ -398,67 +398,66 @@ mod tests {
 	#[ignore]
 	fn dispatch_balance_transfer_from_contract_works() {
 		new_test_ext().execute_with(|| {
-            let _ = env_logger::try_init();
+			let _ = env_logger::try_init();
 
-            let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/balance-transfer/target/ink/pop_api_extension_demo.wasm").unwrap();
+			let (wasm_binary, _) = load_wasm_module::<Runtime>(
+				"../pop-api/examples/balance-transfer/target/ink/pop_api_extension_demo.wasm",
+			)
+			.unwrap();
 
-            let init_value = 100 * UNIT;
+			let init_value = 100 * UNIT;
 
-            let result = Contracts::bare_instantiate(
-                ALICE,
-                init_value,
-                GAS_LIMIT,
-                None,
-                Code::Upload(wasm_binary),
-                function_selector("new"),
-                vec![],
-                DEBUG_OUTPUT,
-                pallet_contracts::CollectEvents::Skip,
-            )
-                .result
-                .unwrap();
+			let result = Contracts::bare_instantiate(
+				ALICE,
+				init_value,
+				GAS_LIMIT,
+				None,
+				Code::Upload(wasm_binary),
+				function_selector("new"),
+				vec![],
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+			)
+			.result
+			.unwrap();
 
-            assert!(
-                !result.result.did_revert(),
-                "deploying contract reverted {:?}",
-                result
-            );
+			assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
 
-            let addr = result.account_id;
+			let addr = result.account_id;
 
-            let function = function_selector("transfer_through_runtime");
-            let value_to_send: u128 = 10 * UNIT;
-            let params = [function, BOB.encode(), value_to_send.encode()].concat();
+			let function = function_selector("transfer_through_runtime");
+			let value_to_send: u128 = 10 * UNIT;
+			let params = [function, BOB.encode(), value_to_send.encode()].concat();
 
-            let bob_balance_before = Balances::free_balance(&BOB);
-            assert_eq!(bob_balance_before, INITIAL_AMOUNT);
+			let bob_balance_before = Balances::free_balance(&BOB);
+			assert_eq!(bob_balance_before, INITIAL_AMOUNT);
 
-            let result = Contracts::bare_call(
-                ALICE,
-                addr.clone(),
-                0,
-                Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-                None,
-                params,
-                DEBUG_OUTPUT,
-                pallet_contracts::CollectEvents::Skip,
-                pallet_contracts::Determinism::Enforced,
-            );
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+				None,
+				params,
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+				pallet_contracts::Determinism::Enforced,
+			);
 
-            if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-                log::debug!(
-                    "Contract debug buffer - {:?}",
-                    String::from_utf8(result.debug_message.clone())
-                );
-                log::debug!("result: {:?}", result);
-            }
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
+				log::debug!("result: {:?}", result);
+			}
 
-            // check for revert
-            assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+			// check for revert
+			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 
-            let bob_balance_after = Balances::free_balance(&BOB);
-            assert_eq!(bob_balance_before + value_to_send, bob_balance_after);
-        });
+			let bob_balance_after = Balances::free_balance(&BOB);
+			assert_eq!(bob_balance_before + value_to_send, bob_balance_after);
+		});
 	}
 
 	#[test]
@@ -468,7 +467,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../contracts/pop-api-examples/nfts/target/ink/pop_api_nft_example.wasm",
+				"../pop-api/examples/nfts/target/ink/pop_api_nft_example.wasm",
 			)
 			.unwrap();
 
@@ -548,7 +547,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../contracts/pop-api-examples/nfts/target/ink/pop_api_nft_example.wasm",
+				"../pop-api/examples/nfts/target/ink/pop_api_nft_example.wasm",
 			)
 			.unwrap();
 
@@ -612,7 +611,10 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			let _ = env_logger::try_init();
 
-			let (wasm_binary, _) = load_wasm_module::<Runtime>("../contracts/pop-api-examples/read-runtime-state/target/ink/pop_api_read_state_example.wasm").unwrap();
+			let (wasm_binary, _) = load_wasm_module::<Runtime>(
+				"../pop-api/examples/read-runtime-state/target/ink/pop_api_read_state_example.wasm",
+			)
+			.unwrap();
 
 			let init_value = 100;
 
@@ -627,14 +629,10 @@ mod tests {
 				DEBUG_OUTPUT,
 				pallet_contracts::CollectEvents::Skip,
 			)
-				.result
-				.unwrap();
+			.result
+			.unwrap();
 
-			assert!(
-				!contract.result.did_revert(),
-				"deploying contract reverted {:?}",
-				contract
-			);
+			assert!(!contract.result.did_revert(), "deploying contract reverted {:?}", contract);
 
 			let addr = contract.account_id;
 
@@ -655,9 +653,9 @@ mod tests {
 
 			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
 				log::debug!(
-                    "Contract debug buffer - {:?}",
-                    String::from_utf8(result.debug_message.clone())
-                );
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
 				log::debug!("result: {:?}", result);
 			}
 

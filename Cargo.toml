@@ -13,10 +13,10 @@ members = [
     "node",
     "runtime",
     "integration-tests",
-    "pop-api",
+    "primitives",
 ]
 exclude = [
-    "contracts"
+    "pop-api"
 ]
 
 resolver = "2"
@@ -40,7 +40,7 @@ substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-s
 
 # Local
 pop-runtime = { path = "./runtime", default-features = false }
-pop-api-primitives = { path = "./pop-api/primitives", default-features = false }
+pop-primitives = { path = "./primitives", default-features = false }
 
 # Substrate
 sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }
