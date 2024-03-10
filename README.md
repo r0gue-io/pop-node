@@ -17,16 +17,25 @@ awesome things.
 Pop supports Polkadot native contracts (`pallet-contracts`), enabling developers to build with more performant and
 secure smart contract languages (such as [ink!](https://use.ink/)).
 
+Get started by using [Pop API](./pop-api) in your contracts!
+
 # Launching Local Network
+
 ## Installation
+
 You can install the [Pop CLI](https://github.com/r0gue-io/pop-cli) as follows:
+
 ```shell
 cargo install --git https://github.com/r0gue-io/pop-cli
 ```
 
 ## Spawn Network
+
 You can spawn a local network as follows:
+
 ```shell
 pop up parachain -f ./networks/rococo.toml
 ```
-Note: `pop` will automatically source the necessary `polkadot` binaries. Currently, these will have to be built if on a non-linux system.
+
+Note: `pop` will automatically source the necessary `polkadot` binaries. Currently, these will have to be built if on a
+non-linux system.
