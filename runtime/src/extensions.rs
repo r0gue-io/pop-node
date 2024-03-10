@@ -14,7 +14,7 @@ use pop_api_primitives::{
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
-use sp_std::vec::Vec;
+use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
 	latest::{prelude::*, OriginKind::SovereignAccount},
 	VersionedXcm,
