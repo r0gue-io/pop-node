@@ -1,19 +1,26 @@
 use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::{
-	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
+	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
 	traits::nonfungibles_v2::Inspect,
 };
 use pallet_contracts::chain_extension::{
-	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal, SysConfig,
+	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
 use pop_api_primitives::{
+	cross_chain::CrossChainMessage,
 	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
 	CollectionId, ItemId,
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
+use xcm::{
+	latest::{prelude::*, OriginKind::SovereignAccount},
+	VersionedXcm,
+};
+
+use crate::{AccountId, RuntimeCall, RuntimeOrigin, UNIT};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -25,19 +32,20 @@ pub struct PopApiExtension;
 impl<T> ChainExtension<T> for PopApiExtension
 where
 	T: pallet_contracts::Config
+		+ pallet_xcm::Config
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
-		+ frame_system::Config,
-	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
-	<T as SysConfig>::RuntimeCall: Parameter
-		+ Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
-		+ GetDispatchInfo
-		+ From<frame_system::Call<T>>,
+		+ frame_system::Config<
+			RuntimeOrigin = RuntimeOrigin,
+			AccountId = AccountId,
+			RuntimeCall = RuntimeCall,
+		>,
+	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
 	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
 	where
 		E: Ext<T = T>,
-		<E::T as SysConfig>::AccountId: UncheckedFrom<<E::T as SysConfig>::Hash> + AsRef<[u8]>,
+		T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {
@@ -57,6 +65,10 @@ where
 				read_state::<T, E>(env)?;
 				Ok(RetVal::Converging(0))
 			},
+			v0::FuncId::SendXcm => {
+				send_xcm::<T, E>(env)?;
+				Ok(RetVal::Converging(0))
+			},
 		}
 	}
 }
@@ -66,6 +78,7 @@ pub mod v0 {
 	pub enum FuncId {
 		Dispatch,
 		ReadState,
+		SendXcm,
 	}
 }
 
@@ -76,6 +89,7 @@ impl TryFrom<u16> for v0::FuncId {
 		let id = match func_id {
 			0x0 => Self::Dispatch,
 			0x1 => Self::ReadState,
+			0x2 => Self::SendXcm,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
 				return Err(DispatchError::Other("unimplemented func_id"));
@@ -86,23 +100,51 @@ impl TryFrom<u16> for v0::FuncId {
 	}
 }
 
-fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+fn dispatch_call<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	call: RuntimeCall,
+	log_prefix: &str,
+) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config + frame_system::Config,
-	<T as SysConfig>::AccountId: UncheckedFrom<<T as SysConfig>::Hash> + AsRef<[u8]>,
-	<T as SysConfig>::RuntimeCall: Parameter
-		+ Dispatchable<RuntimeOrigin = <T as SysConfig>::RuntimeOrigin, PostInfo = PostDispatchInfo>
-		+ GetDispatchInfo
-		+ From<frame_system::Call<T>>,
+	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
+	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
 	E: Ext<T = T>,
 {
-	const LOG_PREFIX: &str = " dispatch |";
+	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
-	let mut env = env.buf_in_buf_out();
+	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
+
+	// contract is the origin by default
+	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+
+	match call.dispatch(origin) {
+		Ok(info) => {
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
+
+			// refund weight if the actual weight is less than the charged weight
+			if let Some(actual_weight) = info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
+
+			Ok(())
+		},
+		Err(err) => {
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
+			Err(err.error)
+		},
+	}
+}
+
+fn charge_overhead_weight<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	len: u32,
+	log_prefix: &str,
+) -> Result<ChargedAmount, DispatchError>
+where
+	T: pallet_contracts::Config,
+	E: Ext<T = T>,
+{
 	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
-
-	// input length
-	let len = env.in_len();
 
 	// calculate weight for reading bytes of `len`
 	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
@@ -114,34 +156,29 @@ where
 	let overhead = contract_host_weight.debug_message;
 
 	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
-	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+	log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", log_prefix, charged_weight);
+
+	Ok(charged_weight)
+}
+
+fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+where
+	T: pallet_contracts::Config
+		+ frame_system::Config<RuntimeCall = RuntimeCall, RuntimeOrigin = RuntimeOrigin>,
+	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
+	E: Ext<T = T>,
+{
+	const LOG_PREFIX: &str = " dispatch |";
+
+	let mut env = env.buf_in_buf_out();
+	let len = env.in_len();
+
+	charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
 
 	// read the input as RuntimeCall
-	let call: <T as SysConfig>::RuntimeCall = env.read_as_unbounded(len)?;
+	let call: RuntimeCall = env.read_as_unbounded(len)?;
 
-	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-
-	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", LOG_PREFIX, call);
-
-	// contract is the origin by default
-	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
-
-	match call.dispatch(origin) {
-		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
-
-			// refund weight if the actual weight is less than the charged weight
-			if let Some(actual_weight) = info.actual_weight {
-				env.adjust_weight(charged_dispatch_weight, actual_weight);
-			}
-
-			Ok(())
-		},
-		Err(err) => {
-			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
-			Err(err.error)
-		},
-	}
+	dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
@@ -238,6 +275,57 @@ where
 			Ok(pallet_nfts::Pallet::<T>::collection_attribute(&collection, &key).encode())
 		},
 	}
+}
+
+fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+where
+	T: pallet_contracts::Config
+		+ frame_system::Config<
+			RuntimeOrigin = RuntimeOrigin,
+			AccountId = AccountId,
+			RuntimeCall = RuntimeCall,
+		>,
+	E: Ext<T = T>,
+{
+	const LOG_PREFIX: &str = " send_xcm |";
+
+	let mut env = env.buf_in_buf_out();
+	let len = env.in_len();
+
+	let _ = charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
+
+	// read the input as CrossChainMessage
+	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
+
+	// Determine the call to dispatch
+	let (dest, message) = match xc_call {
+		CrossChainMessage::Relay(message) => {
+			let dest = Location::parent().into_versioned();
+			let assets: Asset = (Here, 10 * UNIT).into();
+			let beneficiary: Location =
+				AccountId32 { id: (env.ext().address().clone()).into(), network: None }.into();
+			let message = Xcm::builder()
+				.withdraw_asset(assets.clone().into())
+				.buy_execution(assets.clone().into(), Unlimited)
+				.transact(
+					SovereignAccount,
+					Weight::from_parts(25_000_000, 10_000),
+					message.encode().into(),
+				)
+				.refund_surplus()
+				.deposit_asset(assets.into(), beneficiary.into())
+				.build();
+			(dest, message)
+		},
+	};
+
+	// Generate runtime call to dispatch
+	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
+		dest: Box::new(dest),
+		message: Box::new(VersionedXcm::V4(message)),
+	});
+
+	dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
 }
 
 #[cfg(test)]
