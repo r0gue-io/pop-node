@@ -1,5 +1,5 @@
-use cumulus_primitives_core::relay_chain::BlockNumber;
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
+use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
@@ -14,7 +14,10 @@ use pop_api_primitives::{
 	CollectionId, ItemId,
 };
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{traits::{BlockNumberProvider, Dispatchable}, DispatchError};
+use sp_runtime::{
+	traits::{BlockNumberProvider, Dispatchable},
+	DispatchError,
+};
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
 	latest::{prelude::*, OriginKind::SovereignAccount},
@@ -210,7 +213,8 @@ where
 		RuntimeStateKeys::ParachainSystem(key) => match key {
 			ParachainSystemKeys::LastRelayChainBlockNumber => {
 				env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-				let relay_block_num: BlockNumber = RelaychainDataProvider::<T>::current_block_number();
+				let relay_block_num: BlockNumber =
+					RelaychainDataProvider::<T>::current_block_number();
 				log::debug!(
 					target:LOG_TARGET,
 					"{} last relay chain block number is: {:?}.", LOG_PREFIX, relay_block_num
