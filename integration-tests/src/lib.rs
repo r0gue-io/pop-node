@@ -474,6 +474,7 @@ fn place_coretime_spot_order_from_para_to_relay() {
 		let query_id = PopNetworkPara::execute_with(|| {
 			<PopNetwork<RococoMockNet> as PopNetworkParaPallet>::PolkadotXcm::new_query(
 				PopNetworkPara::parent_location(),
+				// timeout in blocks
 				10u32.into(),
 				Location::here(),
 			)
