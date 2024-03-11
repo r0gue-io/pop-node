@@ -1,3 +1,4 @@
+use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
 	pallet_prelude::*,
@@ -11,10 +12,11 @@ use pop_api_primitives::{
 	CollectionId, ItemId,
 };
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{traits::Dispatchable, DispatchError};
+use sp_runtime::{
+	traits::{BlockNumberProvider, Dispatchable},
+	DispatchError,
+};
 use sp_std::vec::Vec;
-use cumulus_pallet_parachain_system::RelaychainDataProvider;
-use sp_runtime::traits::BlockNumberProvider;
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -46,7 +48,8 @@ where
 				match dispatch::<T, E>(env) {
 					Ok(()) => Ok(RetVal::Converging(0)),
 					Err(DispatchError::Module(error)) => {
-						// encode status code = pallet index in runtime + error index, allowing for 999 errors
+						// encode status code = pallet index in runtime + error index, allowing for
+						// 999 errors
 						Ok(RetVal::Converging(
 							(error.index as u32 * 1_000) + u32::from_le_bytes(error.error),
 						))
@@ -170,7 +173,8 @@ where
 
 	let result = match key {
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, &mut env),
-		RuntimeStateKeys::ParachainSystem(key) => read_parachain_system_state::<T, E>(key, &mut env),
+		RuntimeStateKeys::ParachainSystem(key) =>
+			read_parachain_system_state::<T, E>(key, &mut env),
 	}?
 	.encode();
 

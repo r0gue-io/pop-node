@@ -756,8 +756,8 @@ mod types {
 		pub owner: AccountId,
 		/// The approved transferrer of this item, if one is set.
 		pub approvals: BoundedBTreeMap<AccountId, Option<BlockNumber>, ApprovalsLimit>,
-		/// The amount held in the pallet's default account for this item. Free-hold items will have
-		/// this as zero.
+		/// The amount held in the pallet's default account for this item. Free-hold items will
+		/// have this as zero.
 		pub deposit: Balance,
 	}
 
