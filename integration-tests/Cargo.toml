@@ -9,13 +9,11 @@ repository.workspace = true
 [dev-dependencies]
 codec.workspace = true
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "std", "tracing-log"] }
-log.workspace = true
 
 # Substrate
 frame-support.workspace = true
 pallet-assets.workspace = true
 pallet-balances.workspace = true
-pallet-broker.workspace = true
 pallet-message-queue.workspace = true
 sp-core.workspace = true
 sp-authority-discovery.workspace = true
@@ -30,7 +28,6 @@ rococo-runtime-constants.workspace = true
 rococo-runtime.workspace = true
 xcm.workspace = true
 xcm-executor.workspace = true
-polkadot-runtime-common.workspace = true
 polkadot-runtime-parachains.workspace = true
 pallet-xcm.workspace = true
 
@@ -51,11 +48,9 @@ std = [
     "frame-support/std",
     "pallet-assets/std",
     "pallet-balances/std",
-    "pallet-broker/std",
     "pallet-message-queue/std",
     "pallet-xcm/std",
     "polkadot-primitives/std",
-    "polkadot-runtime-common/std",
     "polkadot-runtime-parachains/std",
     "pop-runtime/std",
     "rococo-runtime-constants/std",
