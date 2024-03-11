@@ -21,10 +21,6 @@ decl_test_relay_chains! {
 			Sudo: rococo_runtime::Sudo,
 			Balances: rococo_runtime::Balances,
 			Hrmp: rococo_runtime::Hrmp,
-			Registrar: rococo_runtime::Registrar,
-			Configuration: rococo_runtime::Configuration,
-			Paras: rococo_runtime::Paras,
-			ParasSudoWrapper: rococo_runtime::ParasSudoWrapper,
 		}
 	},
 }
