@@ -210,8 +210,9 @@ where
 
 	let result = match key {
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, &mut env),
-		RuntimeStateKeys::ParachainSystem(key) =>
-			read_parachain_system_state::<T, E>(key, &mut env),
+		RuntimeStateKeys::ParachainSystem(key) => {
+			read_parachain_system_state::<T, E>(key, &mut env)
+		},
 	}?
 	.encode();
 
