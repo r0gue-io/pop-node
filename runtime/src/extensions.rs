@@ -107,6 +107,7 @@ impl TryFrom<u16> for v0::FuncId {
 fn dispatch_call<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: RuntimeCall,
+	origin: RuntimeOrigin,
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
@@ -117,9 +118,6 @@ where
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
 	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
-
-	// contract is the origin by default
-	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 
 	match call.dispatch(origin) {
 		Ok(info) => {
@@ -182,7 +180,10 @@ where
 	// read the input as RuntimeCall
 	let call: RuntimeCall = env.read_as_unbounded(len)?;
 
-	dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
+	// contract is the origin by default
+	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+
+	dispatch_call::<T, E>(&mut env, call, origin, LOG_PREFIX)
 }
 
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
@@ -320,7 +321,7 @@ where
 				.buy_execution(assets.clone().into(), Unlimited)
 				.transact(
 					SovereignAccount,
-					Weight::from_parts(25_000_000, 10_000),
+					Weight::from_parts(250_000_000, 10_000),
 					message.encode().into(),
 				)
 				.refund_surplus()
@@ -330,13 +331,15 @@ where
 		},
 	};
 
+	let origin: RuntimeOrigin = RawOrigin::Root.into();
+
 	// Generate runtime call to dispatch
 	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
 		dest: Box::new(dest),
 		message: Box::new(VersionedXcm::V4(message)),
 	});
 
-	dispatch_call::<T, E>(&mut env, call, LOG_PREFIX)
+	dispatch_call::<T, E>(&mut env, call, origin, LOG_PREFIX)
 }
 
 #[cfg(test)]
