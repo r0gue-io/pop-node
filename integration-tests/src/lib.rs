@@ -10,10 +10,10 @@ use asset_test_utils::xcm_helpers;
 use chains::{asset_hub_rococo::AssetHubRococo, pop_network::PopNetwork, rococo::Rococo};
 use emulated_integration_tests_common::{
 	accounts::{ALICE, BOB},
-	xcm_emulator::decl_test_networks,
 	xcm_emulator::{
-		assert_expected_events, bx, decl_test_sender_receiver_accounts_parameter_types, Chain,
-		Parachain as Para, RelayChain as Relay, Test, TestArgs, TestContext, TestExt,
+		assert_expected_events, bx, decl_test_networks,
+		decl_test_sender_receiver_accounts_parameter_types, Chain, Parachain as Para,
+		RelayChain as Relay, Test, TestArgs, TestContext, TestExt,
 	},
 };
 use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
@@ -278,7 +278,8 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 /// Reserve Transfers of native asset from Parachain to Relay should work
 #[test]
 fn reserve_transfer_native_asset_from_para_to_relay() {
-	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return transfer
+	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
+	// transfer
 	let amount_to_send: Balance = ROCOCO_ED * 1000;
 	{
 		let destination = RococoRelay::child_location_of(PopNetworkPara::para_id());
