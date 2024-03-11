@@ -4,6 +4,7 @@ use crate::{
 };
 
 pub mod balances;
+pub mod cross_chain;
 pub mod nfts;
 pub mod state;
 

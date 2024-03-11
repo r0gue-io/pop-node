@@ -3,6 +3,7 @@
 pub use bounded_collections::{BoundedBTreeMap, BoundedBTreeSet, BoundedVec, ConstU32};
 //use scale::{Decode, Encode, MaxEncodedLen};
 
+pub mod cross_chain;
 pub mod storage_keys;
 
 // /// Some way of identifying an account on the chain.

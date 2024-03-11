@@ -1,0 +1,87 @@
+[package]
+name = "integration-tests"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dev-dependencies]
+codec.workspace = true
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "std", "tracing-log"] }
+
+# Substrate
+frame-support.workspace = true
+pallet-assets.workspace = true
+pallet-balances.workspace = true
+pallet-message-queue.workspace = true
+sp-core.workspace = true
+sp-authority-discovery.workspace = true
+sp-consensus-babe.workspace = true
+sp-consensus-beefy.workspace = true
+sp-consensus-grandpa.workspace = true
+sp-runtime.workspace = true
+
+# Polkadot
+polkadot-primitives.workspace = true
+rococo-runtime-constants.workspace = true
+rococo-runtime.workspace = true
+xcm.workspace = true
+xcm-executor.workspace = true
+
+# Cumulus
+asset-hub-rococo-runtime.workspace = true
+asset-test-utils.workspace = true
+cumulus-primitives-core.workspace = true
+emulated-integration-tests-common.workspace = true
+
+# Local
+pop-runtime.workspace = true
+
+[features]
+default = ["std"]
+std = [
+    "asset-hub-rococo-runtime/std",
+    "cumulus-primitives-core/std",
+    "frame-support/std",
+    "pallet-assets/std",
+    "pallet-balances/std",
+    "pallet-message-queue/std",
+    "polkadot-primitives/std",
+    "pop-runtime/std",
+    "rococo-runtime-constants/std",
+    "rococo-runtime/std",
+    "sp-authority-discovery/std",
+    "sp-consensus-babe/std",
+    "sp-consensus-beefy/std",
+    "sp-consensus-grandpa/std",
+    "sp-core/std",
+    "sp-runtime/std",
+    "xcm-executor/std",
+    "xcm/std",
+]
+
+runtime-benchmarks = [
+    "asset-hub-rococo-runtime/runtime-benchmarks",
+    "cumulus-primitives-core/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "pallet-assets/runtime-benchmarks",
+    "pallet-balances/runtime-benchmarks",
+    "pallet-message-queue/runtime-benchmarks",
+    "polkadot-primitives/runtime-benchmarks",
+    "pop-runtime/runtime-benchmarks",
+    "rococo-runtime/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
+    "xcm-executor/runtime-benchmarks",
+]
+
+try-runtime = [
+    "asset-hub-rococo-runtime/try-runtime",
+    "frame-support/try-runtime",
+    "pallet-assets/try-runtime",
+    "pallet-balances/std",
+    "pallet-message-queue/try-runtime",
+    "pop-runtime/try-runtime",
+    "rococo-runtime/try-runtime",
+    "sp-runtime/try-runtime",
+]

@@ -12,6 +12,9 @@ pub type ChainSpec = sc_service::GenericChainSpec<(), Extensions>;
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
+/// The local para ID of Pop Network.
+const PARA_ID: u32 = 9090;
+
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
@@ -72,7 +75,7 @@ pub fn development_config() -> ChainSpec {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			// You MUST set this to the correct network!
-			para_id: 1000,
+			para_id: PARA_ID,
 		},
 	)
 	.with_name("Development")
@@ -105,7 +108,7 @@ pub fn development_config() -> ChainSpec {
 			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 		],
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
-		1000.into(),
+		PARA_ID.into(),
 	))
 	.build()
 }
@@ -123,7 +126,7 @@ pub fn local_testnet_config() -> ChainSpec {
 		Extensions {
 			relay_chain: "rococo-local".into(),
 			// You MUST set this to the correct network!
-			para_id: 1000,
+			para_id: PARA_ID,
 		},
 	)
 	.with_name("Local Testnet")
@@ -156,7 +159,7 @@ pub fn local_testnet_config() -> ChainSpec {
 			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 		],
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
-		1000.into(),
+		PARA_ID.into(),
 	))
 	.with_protocol_id("pop-local")
 	.with_properties(properties)
