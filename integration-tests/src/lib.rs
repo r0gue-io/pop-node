@@ -6,7 +6,7 @@ use crate::chains::{
 	rococo::{genesis::ED as ROCOCO_ED, RococoRelayPallet},
 };
 use asset_hub_rococo_runtime::xcm_config::XcmConfig as AssetHubRococoXcmConfig;
-use asset_test_utils::xcm_helpers;
+use asset_test_utils::{xcm_helpers, RuntimeCallOf};
 use chains::{asset_hub_rococo::AssetHubRococo, pop_network::PopNetwork, rococo::Rococo};
 use emulated_integration_tests_common::{
 	accounts::{ALICE, BOB},
@@ -19,6 +19,7 @@ use emulated_integration_tests_common::{
 use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
 use pop_runtime::{xcm_config::XcmConfig as PopNetworkXcmConfig, Balance};
 use rococo_runtime::xcm_config::XcmConfig as RococoXcmConfig;
+use rococo_runtime_constants::currency::UNITS;
 use xcm::prelude::*;
 
 mod chains;
@@ -430,6 +431,140 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	// `delivery_fees` might be paid from transfer or JIT, also `bought_execution` is unknown
 	// but should be non-zero
 	assert!(receiver_balance_after < receiver_balance_before + amount_to_send);
+}
+
+#[test]
+fn place_coretime_spot_order_from_para_to_relay() {
+	use frame_support::dispatch::RawOrigin;
+	use frame_support::sp_runtime::traits::Dispatchable;
+	use pallet_broker::CoreAssignment;
+	use polkadot_runtime_common::{paras_registrar, paras_sudo_wrapper};
+	use polkadot_runtime_parachains::{
+		assigner_coretime::PartsOf57600, assigner_on_demand, configuration, coretime,
+	};
+	use sp_core::Encode;
+
+	const PARATHREAD_ID: u32 = 2000;
+
+	let assign_core_call = <RococoRelay as Chain>::RuntimeCall::Coretime(coretime::Call::<
+		<RococoRelay as Chain>::Runtime,
+	>::assign_core {
+		core: 0,
+		begin: 0,
+		assignment: vec![(CoreAssignment::Pool, PartsOf57600::new_saturating(57600))],
+		end_hint: None,
+	});
+
+	let register_para_id_call =
+		<RococoRelay as Chain>::RuntimeCall::Registrar(paras_registrar::Call::<
+			<RococoRelay as Chain>::Runtime,
+		>::reserve {});
+
+	let set_max_size_call =
+		<RococoRelay as Chain>::RuntimeCall::Configuration(configuration::Call::<
+			<RococoRelay as Chain>::Runtime,
+		>::set_max_code_size {
+			new: 3 * 1024 * 1024,
+		});
+
+	let register_para_thread_call =
+		<RococoRelay as Chain>::RuntimeCall::Registrar(paras_registrar::Call::<
+			<RococoRelay as Chain>::Runtime,
+		>::force_register {
+			who: RococoRelayReceiver::get().into(),
+			deposit: 10 * UNITS,
+			id: PARATHREAD_ID.into(),
+			genesis_head: vec![0u8; 1].into(),
+			validation_code: vec![0u8; 1].into(),
+		});
+
+	let downgrade_to_parathread =
+		<RococoRelay as Chain>::RuntimeCall::ParasSudoWrapper(paras_sudo_wrapper::Call::<
+			<RococoRelay as Chain>::Runtime,
+		>::sudo_schedule_parachain_downgrade {
+			id: PopNetworkPara::para_id(),
+		});
+
+	let spot_order = <RococoRelay as Chain>::RuntimeCall::OnDemandAssignmentProvider(
+		assigner_on_demand::Call::<<RococoRelay as Chain>::Runtime>::place_order_keep_alive {
+			max_amount: 1 * UNITS,
+			para_id: AssetHubRococoPara::para_id().into(),
+		},
+	);
+
+	RococoRelay::execute_with(|| {
+		assert!(assign_core_call.dispatch(RawOrigin::Root.into()).is_ok());
+		let res = downgrade_to_parathread.dispatch(RawOrigin::Root.into());
+		log::debug!("**res: {:?}", res);
+		// assert!(res.is_ok());
+		let res = spot_order.dispatch(RawOrigin::Signed(RococoRelayReceiver::get()).into());
+		log::debug!("**res *spot_order : {:?}", res);
+		assert!(res.is_ok());
+
+		// assert!(register_para_id_call.dispatch(RawOrigin::Signed(RococoRelayReceiver::get()).into()).is_ok());
+		// assert!(set_max_size_call.dispatch(RawOrigin::Root.into()).is_ok());
+		// let res = register_para_thread_call.dispatch(RawOrigin::Root.into());
+		// log::debug!("res: {:?}", res);
+		// assert!(res.is_ok());
+	});
+
+	let beneficiary_id = RococoRelayReceiver::get();
+
+	let message = {
+		let assets: Asset = (Here, 10 * pop_runtime::UNIT).into();
+		let beneficiary = AccountId32 { id: beneficiary_id.into(), network: None }.into();
+		let spot_order = <RococoRelay as Chain>::RuntimeCall::OnDemandAssignmentProvider(
+			assigner_on_demand::Call::<<RococoRelay as Chain>::Runtime>::place_order_keep_alive {
+				max_amount: 1 * pop_runtime::UNIT,
+				para_id: AssetHubRococoPara::para_id().into(),
+			},
+		);
+		let message = Xcm::builder()
+			.withdraw_asset(assets.clone().into())
+			.buy_execution(assets.clone().into(), Unlimited)
+			.transact(
+				OriginKind::SovereignAccount,
+				Weight::from_parts(25_000_000, 10_000),
+				spot_order.encode().into(),
+			)
+			.refund_surplus()
+			.deposit_asset(assets.into(), beneficiary)
+			.build();
+		message
+	};
+
+	let destination = PopNetworkPara::parent_location().into_versioned();
+	PopNetworkPara::execute_with(|| {
+		let res = <PopNetworkPara as Chain>::RuntimeCall::PolkadotXcm(pallet_xcm::Call::<
+			<PopNetworkPara as Chain>::Runtime,
+		>::send {
+			dest: bx!(destination),
+			message: bx!(VersionedXcm::V4(message)),
+		})
+		.dispatch(RawOrigin::Root.into());
+
+		assert!(res.is_ok());
+		type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+		// Check that the Transact message was sent
+		assert_expected_events!(
+			PopNetworkPara,
+			vec![
+				RuntimeEvent::PolkadotXcm(pallet_xcm::Event::Sent { .. }) => {},
+			]
+		);
+	});
+
+	RococoRelay::execute_with(|| {
+		type RuntimeEvent = <RococoRelay as Chain>::RuntimeEvent;
+		assert_expected_events!(
+			RococoRelay,
+			vec![
+				RuntimeEvent::OnDemandAssignmentProvider(assigner_on_demand::Event::OnDemandOrderPlaced {
+					..
+				}) => {},
+			]
+		);
+	});
 }
 
 #[allow(dead_code)]
