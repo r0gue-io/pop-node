@@ -13,6 +13,7 @@ members = [
     "node",
     "runtime",
     "integration-tests",
+    "integration-tests/e2e",
     "primitives",
 ]
 exclude = [
