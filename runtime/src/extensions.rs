@@ -703,8 +703,7 @@ mod tests {
 			let max_amount = 1 * UNIT;
 			let para_id = 2000;
 
-			let params =
-				[function, max_amount.encode(), para_id.encode()].concat();
+			let params = [function, max_amount.encode(), para_id.encode()].concat();
 
 			let result = Contracts::bare_call(
 				ALICE,
@@ -728,7 +727,6 @@ mod tests {
 
 			// check for revert
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
-
 		});
 	}
 }

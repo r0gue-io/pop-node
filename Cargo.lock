@@ -4877,6 +4877,7 @@ dependencies = [
 name = "integration-tests-e2e"
 version = "0.0.0"
 dependencies = [
+ "array-bytes 6.2.2",
  "asset-hub-rococo-runtime",
  "asset-test-utils",
  "cumulus-primitives-core",
