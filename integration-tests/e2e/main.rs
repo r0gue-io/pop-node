@@ -11,6 +11,7 @@ type RococoCall = rococo::runtime_types::rococo_runtime::RuntimeCall;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    std::thread::sleep(std::time::Duration::from_secs(5));
     use rococo::runtime_types::polkadot_parachain_primitives::primitives::{Id, HeadData, ValidationCode};
     use rococo::runtime_types::pallet_broker::coretime_interface::CoreAssignment;
     use rococo::runtime_types::polkadot_runtime_parachains::assigner_coretime::PartsOf57600;
@@ -69,5 +70,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Para thread registered: {event:?}");
     }
 
+    let log = std::fs::File::create("para-2000.log").expect("Failed to create log file");
+    let mut collator = std::process::Command::new("./integration-tests/artifacts/parachain-template-node")
+    .arg("--alice")
+    .arg("--collator")
+    .arg("--force-authoring")
+    .arg("--base-path")
+    .arg("/tmp/parachain/alice")
+    .arg("--port")
+    .arg("40336")
+    .arg("--rpc-port")
+    .arg("8811")
+    .arg("--rpc-cors")
+    .arg("all")
+    .arg("--unsafe-rpc-external")
+    .arg("--rpc-methods")
+    .arg("unsafe")
+    .arg("--chain")
+    .arg("./integration-tests/artifacts/para-2000-raw-spec.json")
+    .arg("--execution")
+    .arg("wasm")
+    .arg("--")
+    .arg("--execution")
+    .arg("wasm")
+    .arg("--chain")
+    .arg("./integration-tests/artifacts/rococo-local.json")
+    .arg("--rpc-port")
+    .arg("9947")
+    .arg("--port")
+    .arg("30338")
+    .stdout(log)
+    .spawn()
+    .expect("Failed to execute command");
+
+    collator.wait().expect("Failed to wait for collator");
     Ok(())
 }
