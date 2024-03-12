@@ -62,19 +62,19 @@ impl ink::env::Environment for Environment {
 	type ChainExtension = PopApi;
 }
 
-#[ink::chain_extension]
+#[ink::chain_extension(extension = 909)]
 pub trait PopApi {
 	type ErrorCode = PopApiError;
 
-	#[ink(extension = 0)]
+	#[ink(function = 0)]
 	#[allow(private_interfaces)]
 	fn dispatch(call: RuntimeCall) -> Result<()>;
 
-	#[ink(extension = 1)]
+	#[ink(function = 1)]
 	#[allow(private_interfaces)]
 	fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>>;
 
-	#[ink(extension = 2)]
+	#[ink(function = 2)]
 	#[allow(private_interfaces)]
 	fn send_xcm(xcm: CrossChainMessage) -> Result<()>;
 }

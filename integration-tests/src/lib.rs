@@ -304,9 +304,9 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 /// Reserve Transfers of native asset from Parachain to Relay should work
 #[test]
 fn reserve_transfer_native_asset_from_para_to_relay() {
-    init_tracing();
+	init_tracing();
 
-    // Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
+	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
 	// transfer
 	let amount_to_send: Balance = ROCOCO_ED * 1000;
 	fund_pop_network(RococoRelaySender::get(), amount_to_send, PopNetworkParaReceiver::get());
