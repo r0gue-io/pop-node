@@ -331,6 +331,7 @@ where
 		},
 	};
 
+	// TODO: revisit to replace with signed contract origin
 	let origin: RuntimeOrigin = RawOrigin::Root.into();
 
 	// Generate runtime call to dispatch
