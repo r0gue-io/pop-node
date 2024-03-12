@@ -7,20 +7,43 @@ pub mod rococo {}
 #[subxt::subxt(runtime_metadata_path = "./metadata/pop-net.scale")]
 pub mod pop {}
 
+type RococoCall = rococo::runtime_types::rococo_runtime::RuntimeCall;
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     use rococo::runtime_types::polkadot_parachain_primitives::primitives::{Id, HeadData, ValidationCode};
-    let pop_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:56939").await?;
-    let rococo_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:56931").await?;
+    use rococo::runtime_types::pallet_broker::coretime_interface::CoreAssignment;
+    use rococo::runtime_types::polkadot_runtime_parachains::assigner_coretime::PartsOf57600;
 
-    // Build a balance transfer extrinsic.
+    let pop_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:9944").await?;
+    let rococo_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:8833").await?;
+
+    let head_data = std::fs::read_to_string("./integration-tests/artifacts/para-2000-genesis-state")?;
+    let validation_code = std::fs::read_to_string("./integration-tests/artifacts/para-2000-genesis-code")?;
     let para_id_tx = rococo::tx().registrar().reserve();
-    let head_data  = HeadData(vec![0u8; 32]);
-    let validation_code  = ValidationCode(vec![0u8; 32]);
-    let para_register_tx = rococo::tx().registrar().register(Id(2000), head_data, validation_code);
-    log::debug!("para_id_tx: {:?}", para_id_tx);
 
-    let from = dev::alice();
+    let force_register = RococoCall::Registrar(rococo::registrar::Call::force_register {
+        who: dev::charlie().public_key().into(),
+        deposit: 100000000000000,
+        id: Id(2000),
+        genesis_head: HeadData(hex::decode(&head_data[2..])?),
+        validation_code: ValidationCode(hex::decode(&validation_code[2..])?)
+    });
+
+    let assign_core = RococoCall::Coretime(rococo::coretime::Call::assign_core {
+        begin: 0,
+        core: 2,
+        assignment: vec![(CoreAssignment::Pool, PartsOf57600(57600))],
+        end_hint: None
+    });
+
+    let batch = RococoCall::Utility(rococo::utility::Call::batch {
+        calls: vec![force_register, assign_core]
+    });
+
+    let sudo_batch = rococo::tx().sudo().sudo(batch);
+
+    let from = dev::charlie();
     let events = rococo_api
         .tx()
         .sign_and_submit_then_watch_default(&para_id_tx, &from)
@@ -33,18 +56,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("Para ID reserved success: {event:?}");
     }
 
-    let events = rococo_api
+    let from = dev::alice();
+    let batch_events = rococo_api
         .tx()
-        .sign_and_submit_then_watch_default(&para_register_tx, &from)
+        .sign_and_submit_then_watch_default(&sudo_batch, &from)
         .await?
         .wait_for_finalized_success()
         .await?;
 
-    let registered_event = events.find_first::<rococo::registrar::events::Registered>()?;
+    let registered_event = batch_events.find_first::<rococo::registrar::events::Registered>()?;
     if let Some(event) = registered_event {
-        println!("Para Thread registered success: {event:?}");
+        println!("Para thread registered: {event:?}");
     }
-
 
     Ok(())
 }

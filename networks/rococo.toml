@@ -6,20 +6,21 @@ node_spawn_timeout = 300
 chain = "rococo-local"
 default_command = "./bin/polkadot"
 
-[[relaychain.nodes]]
-name = "alice"
-validator = true
+    [[relaychain.nodes]]
+    name = "alice"
+    validator = true
+    rpc_port = 8833
 
-[[relaychain.nodes]]
-name = "bob"
-validator = true
+    [[relaychain.nodes]]
+    name = "bob"
+    validator = true
 
 [[parachains]]
 id = 9090
 default_command = "./target/release/pop-node"
 
-[[parachains.collators]]
-name = "pop"
-command = "./target/release/pop-node"
-port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]
+    [[parachains.collators]]
+    name = "pop"
+    command = "./target/release/pop-node"
+    rpc_port = 9944
+    args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]

@@ -14,7 +14,10 @@ path = "main.rs"
 subxt = "0.34.0"
 subxt-signer = "0.34.0"
 tokio = { version = "1.36", features = ["macros", "time", "rt-multi-thread"] }
+hex = "0.4.3"
 log.workspace = true
+
+sp-core.workspace = true
 
 [dev-dependencies]
 
@@ -25,9 +28,8 @@ tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "std",
 frame-support.workspace = true
 pallet-assets.workspace = true
 pallet-balances.workspace = true
-pallet-broker.workspace = true
 pallet-message-queue.workspace = true
-sp-core.workspace = true
+
 sp-authority-discovery.workspace = true
 sp-consensus-babe.workspace = true
 sp-consensus-beefy.workspace = true
@@ -61,7 +63,6 @@ std = [
     "frame-support/std",
     "pallet-assets/std",
     "pallet-balances/std",
-    "pallet-broker/std",
     "pallet-message-queue/std",
     "pallet-xcm/std",
     "polkadot-primitives/std",
