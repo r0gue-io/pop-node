@@ -79,7 +79,7 @@ pub fn development_config() -> ChainSpec {
 		},
 	)
 	.with_name("Pop Network Development")
-	.with_id("dev")
+	.with_id("pop-dev")
 	.with_chain_type(ChainType::Development)
 	.with_genesis_config_patch(testnet_genesis(
 		// initial collators.
@@ -130,7 +130,7 @@ pub fn local_testnet_config() -> ChainSpec {
 		},
 	)
 	.with_name("Pop Network Local Testnet")
-	.with_id("local_testnet")
+	.with_id("pop-local")
 	.with_chain_type(ChainType::Local)
 	.with_genesis_config_patch(testnet_genesis(
 		// initial collators.
