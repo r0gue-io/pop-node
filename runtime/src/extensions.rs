@@ -623,7 +623,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../pop-api/examples/read-runtime-state/target/ink/pop_api_read_state_example.wasm",
+				"../pop-api/examples/read-runtime-state/target/ink/pop_api_extension_demo.wasm",
 			)
 			.unwrap();
 
