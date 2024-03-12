@@ -11,7 +11,6 @@ type RococoCall = rococo::runtime_types::rococo_runtime::RuntimeCall;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    std::thread::sleep(std::time::Duration::from_secs(5));
     use rococo::runtime_types::polkadot_parachain_primitives::primitives::{Id, HeadData, ValidationCode};
     use rococo::runtime_types::pallet_broker::coretime_interface::CoreAssignment;
     use rococo::runtime_types::polkadot_runtime_parachains::assigner_coretime::PartsOf57600;
