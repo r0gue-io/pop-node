@@ -28,6 +28,8 @@ rococo-runtime-constants.workspace = true
 rococo-runtime.workspace = true
 xcm.workspace = true
 xcm-executor.workspace = true
+polkadot-runtime-parachains.workspace = true
+pallet-xcm.workspace = true
 
 # Cumulus
 asset-hub-rococo-runtime.workspace = true
@@ -47,7 +49,9 @@ std = [
     "pallet-assets/std",
     "pallet-balances/std",
     "pallet-message-queue/std",
+    "pallet-xcm/std",
     "polkadot-primitives/std",
+    "polkadot-runtime-parachains/std",
     "pop-runtime/std",
     "rococo-runtime-constants/std",
     "rococo-runtime/std",

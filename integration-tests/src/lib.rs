@@ -16,10 +16,16 @@ use emulated_integration_tests_common::{
 		RelayChain as Relay, Test, TestArgs, TestContext, TestExt,
 	},
 };
-use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
+use frame_support::{
+	dispatch::RawOrigin, pallet_prelude::Weight, sp_runtime::traits::Dispatchable,
+	sp_runtime::DispatchResult,
+};
+use polkadot_runtime_parachains::assigner_on_demand;
 use pop_runtime::{xcm_config::XcmConfig as PopNetworkXcmConfig, Balance};
 use rococo_runtime::xcm_config::XcmConfig as RococoXcmConfig;
+use sp_core::Encode;
 use xcm::prelude::*;
+use xcm_executor::traits::QueryHandler;
 
 mod chains;
 
@@ -232,9 +238,29 @@ fn para_to_relay_reserve_transfer_assets(t: ParaToRelayTest) -> DispatchResult {
 	)
 }
 
+// Funds Pop with relay tokens
+fn fund_pop_network(
+	sender: sp_runtime::AccountId32,
+	amount_to_send: Balance,
+	beneficiary: sp_runtime::AccountId32,
+) {
+	let destination = RococoRelay::child_location_of(PopNetworkPara::para_id());
+	let test_args = TestContext {
+		sender,
+		receiver: beneficiary.clone(),
+		args: TestArgs::new_relay(destination, beneficiary, amount_to_send),
+	};
+
+	let mut test = RelayToParaTest::new(test_args);
+	test.set_dispatchable::<RococoRelay>(relay_to_para_reserve_transfer_assets);
+	test.assert();
+}
+
 /// Reserve Transfers of native asset from Relay to Parachain should work
 #[test]
 fn reserve_transfer_native_asset_from_relay_to_para() {
+	init_tracing();
+
 	// Init values for Relay
 	let destination = RococoRelay::child_location_of(PopNetworkPara::para_id());
 	let beneficiary_id = PopNetworkParaReceiver::get();
@@ -278,23 +304,12 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 /// Reserve Transfers of native asset from Parachain to Relay should work
 #[test]
 fn reserve_transfer_native_asset_from_para_to_relay() {
-	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
+    init_tracing();
+
+    // Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
 	// transfer
 	let amount_to_send: Balance = ROCOCO_ED * 1000;
-	{
-		let destination = RococoRelay::child_location_of(PopNetworkPara::para_id());
-		let beneficiary_id = PopNetworkParaReceiver::get();
-
-		let test_args = TestContext {
-			sender: RococoRelaySender::get(),
-			receiver: PopNetworkParaReceiver::get(),
-			args: TestArgs::new_relay(destination, beneficiary_id, amount_to_send),
-		};
-
-		let mut test = RelayToParaTest::new(test_args);
-		test.set_dispatchable::<RococoRelay>(relay_to_para_reserve_transfer_assets);
-		test.assert();
-	}
+	fund_pop_network(RococoRelaySender::get(), amount_to_send, PopNetworkParaReceiver::get());
 
 	// Init values for Pop Network Parachain
 	let destination = PopNetworkPara::parent_location();
@@ -339,6 +354,8 @@ fn reserve_transfer_native_asset_from_para_to_relay() {
 /// Reserve Transfers of native asset from System Parachain to Parachain should work
 #[test]
 fn reserve_transfer_native_asset_from_system_para_to_para() {
+	init_tracing();
+
 	// Init values for System Parachain
 	let destination = AssetHubRococoPara::sibling_location_of(PopNetworkPara::para_id());
 	let beneficiary_id = PopNetworkParaReceiver::get();
@@ -383,6 +400,8 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 /// Reserve Transfers of native asset from Parachain to System Parachain should work
 #[test]
 fn reserve_transfer_native_asset_from_para_to_system_para() {
+	init_tracing();
+
 	// Init values for Pop Network Parachain
 	let destination = PopNetworkPara::sibling_location_of(AssetHubRococoPara::para_id());
 	let beneficiary_id = AssetHubRococoParaReceiver::get();
@@ -430,6 +449,106 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	// `delivery_fees` might be paid from transfer or JIT, also `bought_execution` is unknown
 	// but should be non-zero
 	assert!(receiver_balance_after < receiver_balance_before + amount_to_send);
+}
+
+#[test]
+fn place_coretime_spot_order_from_para_to_relay() {
+	init_tracing();
+
+	let beneficiary: sp_runtime::AccountId32 = [1u8; 32].into();
+
+	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return transfer
+	let amount_to_send: Balance = pop_runtime::UNIT * 1000;
+	fund_pop_network(RococoRelaySender::get(), amount_to_send, beneficiary.clone());
+
+	let message = {
+		let assets: Asset = (Here, 10 * pop_runtime::UNIT).into();
+		let beneficiary = AccountId32 { id: beneficiary.clone().into(), network: None }.into();
+		let spot_order = <RococoRelay as Chain>::RuntimeCall::OnDemandAssignmentProvider(
+			assigner_on_demand::Call::<<RococoRelay as Chain>::Runtime>::place_order_keep_alive {
+				max_amount: 1 * pop_runtime::UNIT,
+				para_id: AssetHubRococoPara::para_id().into(),
+			},
+		);
+
+		// Set up transact status response handler
+		let query_id = PopNetworkPara::execute_with(|| {
+			<PopNetwork<RococoMockNet> as PopNetworkParaPallet>::PolkadotXcm::new_query(
+				PopNetworkPara::parent_location(),
+				// timeout in blocks
+				10u32.into(),
+				Location::here(),
+			)
+		});
+
+		let message = Xcm::builder()
+			.withdraw_asset(assets.clone().into())
+			.buy_execution(assets.clone().into(), Unlimited)
+			.transact(
+				OriginKind::SovereignAccount,
+				Weight::from_parts(220_000_000, 15_000),
+				spot_order.encode().into(),
+			)
+			.report_transact_status(QueryResponseInfo {
+				destination: RococoRelay::child_location_of(PopNetworkPara::para_id()),
+				query_id,
+				max_weight: Weight::from_parts(250_000_000, 10_000),
+			})
+			.refund_surplus()
+			.deposit_asset(assets.into(), beneficiary)
+			.build();
+		message
+	};
+
+	let destination = PopNetworkPara::parent_location().into_versioned();
+	PopNetworkPara::execute_with(|| {
+		let res = <PopNetworkPara as Chain>::RuntimeCall::PolkadotXcm(pallet_xcm::Call::<
+			<PopNetworkPara as Chain>::Runtime,
+		>::send {
+			dest: bx!(destination),
+			message: bx!(VersionedXcm::V4(message)),
+		})
+		// TODO: replace root with signed, currently prohibited by HashedDescription<AccountId, DescribeFamily<DescribeBodyTerminal>> (https://github.com/paritytech/polkadot-sdk/blob/a6713c55fd5082d333518c3ca13f2a4294726fcc/polkadot/runtime/rococo/src/xcm_config.rs#L67) rather than HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>> (https://github.com/polkadot-fellows/runtimes/blob/e42821da8d85f721d0dd1670dfb23f4dd91bd3e8/relay/kusama/src/xcm_config.rs#L76)
+		//.dispatch(RawOrigin::Signed(beneficiary).into());
+		.dispatch(RawOrigin::Root.into());
+
+		assert!(res.is_ok());
+		type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+		// Check that the message was sent
+		assert_expected_events!(
+			PopNetworkPara,
+			vec![
+				RuntimeEvent::PolkadotXcm(pallet_xcm::Event::Sent { .. }) => {},
+			]
+		);
+	});
+
+	RococoRelay::execute_with(|| {
+		type RuntimeEvent = <RococoRelay as Chain>::RuntimeEvent;
+		assert_expected_events!(
+			RococoRelay,
+			vec![
+				// We currently only check that the message was processed successfully
+				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) => {},
+				// TODO: check order placed once we can have on-demand para id registered (probably via setting raw storage as a workaround)
+				// RuntimeEvent::OnDemandAssignmentProvider(assigner_on_demand::Event::OnDemandOrderPlaced {
+				// 	..
+				// }) => {},
+			]
+		);
+	});
+
+	PopNetworkPara::execute_with(|| {
+		type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+		// Check that the reporting of the transact status message was sent
+		assert_expected_events!(
+			PopNetworkPara,
+			vec![
+				RuntimeEvent::PolkadotXcm(pallet_xcm::Event::ResponseReady { query_id: 0, .. }) => {},
+				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) => {},
+			]
+		);
+	});
 }
 
 #[allow(dead_code)]
