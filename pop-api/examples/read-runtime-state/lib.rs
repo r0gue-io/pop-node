@@ -26,7 +26,7 @@ mod pop_api_extension_demo {
         pub fn read_relay_block_number(&self) {
             let result =
                 pop_api::state::read::<BlockNumber>(ParachainSystem(LastRelayChainBlockNumber));
-            ink::env::debug_println!("{:?}", result);
+            ink::env::debug_println!("Last relay block number read by contract: {:?}", result);
             self.env().emit_event(RelayBlockNumberRead {
                 value: result.expect("Failed to read relay block number."),
             });

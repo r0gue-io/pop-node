@@ -9,6 +9,7 @@ pub enum RuntimeStateKeys {
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum ParachainSystemKeys {
+	/// Get the last relay chain block number seen by the parachain.
 	LastRelayChainBlockNumber,
 }
 

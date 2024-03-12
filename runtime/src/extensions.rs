@@ -1,5 +1,4 @@
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
-use cumulus_primitives_core::relay_chain::BlockNumber;
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
@@ -57,7 +56,8 @@ where
 				match dispatch::<T, E>(env) {
 					Ok(()) => Ok(RetVal::Converging(0)),
 					Err(DispatchError::Module(error)) => {
-						// encode status code = pallet index in runtime + error index, allowing for 999 errors
+						// encode status code = pallet index in runtime + error index, allowing for
+						// 999 errors
 						Ok(RetVal::Converging(
 							(error.index as u32 * 1_000) + u32::from_le_bytes(error.error),
 						))
@@ -210,17 +210,8 @@ where
 
 	let result = match key {
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, &mut env),
-		RuntimeStateKeys::ParachainSystem(key) => match key {
-			ParachainSystemKeys::LastRelayChainBlockNumber => {
-				env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-				let relay_block_num: BlockNumber =
-					RelaychainDataProvider::<T>::current_block_number();
-				log::debug!(
-					target:LOG_TARGET,
-					"{} last relay chain block number is: {:?}.", LOG_PREFIX, relay_block_num
-				);
-				Ok(relay_block_num.encode())
-			},
+		RuntimeStateKeys::ParachainSystem(key) => {
+			read_parachain_system_state::<T, E>(key, &mut env)
 		},
 	}?
 	.encode();
@@ -233,6 +224,22 @@ where
 		log::trace!(target: LOG_TARGET, "{:?}", e);
 		DispatchError::Other("unable to write results to contract memory")
 	})
+}
+
+fn read_parachain_system_state<T, E>(
+	key: ParachainSystemKeys,
+	env: &mut Environment<E, BufInBufOutState>,
+) -> Result<Vec<u8>, DispatchError>
+where
+	T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config,
+	E: Ext<T = T>,
+{
+	match key {
+		ParachainSystemKeys::LastRelayChainBlockNumber => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(RelaychainDataProvider::<T>::current_block_number().encode())
+		},
+	}
 }
 
 fn read_nfts_state<T, E>(

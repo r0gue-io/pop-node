@@ -5,8 +5,7 @@ use super::{
 use core::marker::PhantomData;
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Contains, Everything, Nothing},
-	traits::{ContainsPair, Get},
+	traits::{ConstU32, Contains, ContainsPair, Everything, Get, Nothing},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
