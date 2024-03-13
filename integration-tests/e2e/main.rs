@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	});
 
 	let assign_core = RococoCall::Coretime(rococo::coretime::Call::assign_core {
-		begin: 0,
+		begin: 5,
 		core: 2,
 		assignment: vec![(CoreAssignment::Pool, PartsOf57600(57600))],
 		end_hint: None,
@@ -80,8 +80,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		new_free: 1000000000000000,
 	});
 
+    let config_cores = RococoCall::Configuration(rococo::configuration::Call::set_coretime_cores {
+        new: 5,
+    });
+
 	let batch = RococoCall::Utility(rococo::utility::Call::batch {
-		calls: vec![force_register, assign_core, fund_sovereign_account],
+		calls: vec![force_register, config_cores, assign_core, fund_sovereign_account],
 	});
 
 	let sudo_batch = rococo::tx().sudo().sudo(batch);
@@ -112,6 +116,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		println!("Para thread registered: {event:?}");
 	}
 
+    // careful with this! Double check the path
+    let db_path = "/tmp/parachain/alice";
+
+    std::fs::remove_dir_all(db_path)?;
+
 	let log = std::fs::File::create("para-2000.log").expect("Failed to create log file");
 	let mut collator =
 		std::process::Command::new("./integration-tests/artifacts/parachain-template-node")
@@ -119,7 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 			.arg("--collator")
 			.arg("--force-authoring")
 			.arg("--base-path")
-			.arg("/tmp/parachain/alice")
+			.arg(db_path)
 			.arg("--port")
 			.arg("40336")
 			.arg("--rpc-port")
