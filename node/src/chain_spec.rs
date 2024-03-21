@@ -93,20 +93,6 @@ pub fn development_config() -> ChainSpec {
 				get_collator_keys_from_seed("Bob"),
 			),
 		],
-		vec![
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie"),
-			get_account_id_from_seed::<sr25519::Public>("Dave"),
-			get_account_id_from_seed::<sr25519::Public>("Eve"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-		],
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		PARA_ID.into(),
 	))
@@ -144,20 +130,6 @@ pub fn local_testnet_config() -> ChainSpec {
 				get_collator_keys_from_seed("Bob"),
 			),
 		],
-		vec![
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie"),
-			get_account_id_from_seed::<sr25519::Public>("Dave"),
-			get_account_id_from_seed::<sr25519::Public>("Eve"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
-		],
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		PARA_ID.into(),
 	))
@@ -168,14 +140,10 @@ pub fn local_testnet_config() -> ChainSpec {
 
 fn testnet_genesis(
 	invulnerables: Vec<(AccountId, AuraId)>,
-	endowed_accounts: Vec<AccountId>,
 	root: AccountId,
 	id: ParaId,
 ) -> serde_json::Value {
 	serde_json::json!({
-		"balances": {
-			"balances": endowed_accounts.iter().cloned().map(|k| (k, 1u64 << 60)).collect::<Vec<_>>(),
-		},
 		"parachainInfo": {
 			"parachainId": id,
 		},
