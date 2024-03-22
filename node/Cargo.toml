@@ -20,7 +20,9 @@ futures = { workspace = true }
 serde_json = { workspace = true }
 
 # Local
-pop-runtime = { workspace = true }
+pop-runtime-devnet = { workspace = true }
+pop-runtime-testnet = { workspace = true }
+pop-runtime-common = { workspace = true }
 
 # Substrate
 frame-benchmarking = { workspace = true }
@@ -49,8 +51,11 @@ sp-consensus-aura = { workspace = true }
 sp-core = { workspace = true }
 sp-keystore = { workspace = true }
 sp-io = { workspace = true }
+sp-offchain = { workspace = true }
 sp-runtime = { workspace = true }
+sp-session = { workspace = true }
 sp-timestamp = { workspace = true }
+sp-transaction-pool = { workspace = true }
 substrate-frame-rpc-system = { workspace = true }
 substrate-prometheus-endpoint = { workspace = true }
 
@@ -65,6 +70,7 @@ cumulus-client-collator = { workspace = true }
 cumulus-client-consensus-aura = { workspace = true }
 cumulus-client-consensus-common = { workspace = true }
 cumulus-client-consensus-proposer = { workspace = true }
+cumulus-primitives-aura = { workspace = true }
 cumulus-client-service = { workspace = true }
 cumulus-primitives-core = { workspace = true }
 cumulus-primitives-parachain-inherent = { workspace = true }
@@ -80,14 +86,16 @@ runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
 	"frame-benchmarking-cli/runtime-benchmarks",
 	"frame-benchmarking/runtime-benchmarks",
-	"pop-runtime/runtime-benchmarks",
+	"pop-runtime-devnet/runtime-benchmarks",
+	"pop-runtime-testnet/runtime-benchmarks",
 	"polkadot-cli/runtime-benchmarks",
 	"polkadot-primitives/runtime-benchmarks",
 	"sc-service/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
-	"pop-runtime/try-runtime",
+	"pop-runtime-devnet/try-runtime",
+	"pop-runtime-testnet/try-runtime",
 	"polkadot-cli/try-runtime",
 	"sp-runtime/try-runtime",
 ]

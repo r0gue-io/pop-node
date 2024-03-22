@@ -11,7 +11,8 @@ repository = "https://github.com/r0gue-io/pop-node/"
 [workspace]
 members = [
     "node",
-    "runtime",
+    "runtime/devnet",
+    "runtime/testnet",
     "integration-tests",
     "primitives",
 ]
@@ -39,7 +40,9 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", b
 substrate-build-script-utils = { git = "https://github.com/paritytech/polkadot-sdk", branch = "release-polkadot-v1.7.1" }
 
 # Local
-pop-runtime = { path = "./runtime", default-features = true } # default-features=true required for `-p pop-node` builds
+pop-runtime-devnet = { path = "runtime/devnet", default-features = true } # default-features=true required for `-p pop-node` builds
+pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds 
+pop-runtime-common = { path = "runtime/common", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 
 # Substrate
