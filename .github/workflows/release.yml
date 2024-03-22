@@ -1,0 +1,54 @@
+name: pop release
+
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: ref to build binary from
+        required: false
+  push:
+    branches:
+      - 'frank/build-release'
+
+jobs:
+  build-node:
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        cpu: [ "", "skylake" ]
+    env:
+      RUSTFLAGS: "-C target-cpu=${{ matrix.cpu }}"
+      name: "pop-node${{ matrix.cpu != '' && format('-{0}', matrix.cpu) || '' }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Install packages
+        run: |
+          sudo apt-get install -y protobuf-compiler
+          protoc --version
+
+      - name: Build node
+        run: cargo build --profile=production -p pop-node
+
+      - name: Save binary
+        run: |
+          mkdir -p build
+          cp target/production/pop-node build/${{ env.name }}
+          sha256sum target/production/pop-node > build/${{ env.name }}.sha256
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: build
+
+      - name: Add binary to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: build
