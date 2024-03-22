@@ -3468,6 +3468,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "fortuples"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87630a8087e9cac4b7edfb6ee5e250ddca9112b57b6b17d8f5107375a3a8eace"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "fragile"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4339,7 +4350,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.52.0",
+ "windows-core",
 ]
 
 [[package]]
@@ -4625,6 +4636,66 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fa9acdc6d67b75e626ad644734e8bc6df893d9cd2a834129065d3dd6158ea9c8"
 dependencies = [
  "winapi",
+]
+
+[[package]]
+name = "ismp"
+version = "0.1.0"
+source = "git+https://github.com/r0gue-io/ismp?branch=pop#370d9234e78619c2a0822c0a9ac0fc53c1538fa7"
+dependencies = [
+ "derive_more",
+ "hex",
+ "parity-scale-codec",
+ "primitive-types",
+ "scale-info",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "ismp-parachain"
+version = "0.1.0"
+source = "git+https://github.com/r0gue-io/ismp?branch=pop#370d9234e78619c2a0822c0a9ac0fc53c1538fa7"
+dependencies = [
+ "cumulus-pallet-parachain-system",
+ "cumulus-primitives-core",
+ "frame-support",
+ "frame-system",
+ "hex-literal",
+ "ismp",
+ "pallet-ismp",
+ "parity-scale-codec",
+ "primitive-types",
+ "scale-info",
+ "serde",
+ "sp-consensus-aura",
+ "sp-inherents",
+ "sp-io",
+ "sp-runtime",
+ "sp-trie",
+ "substrate-state-machine",
+]
+
+[[package]]
+name = "ismp-parachain-runtime-api"
+version = "0.1.0"
+source = "git+https://github.com/r0gue-io/ismp?branch=pop#370d9234e78619c2a0822c0a9ac0fc53c1538fa7"
+dependencies = [
+ "sp-api",
+]
+
+[[package]]
+name = "ismp-runtime-api"
+version = "0.1.0"
+source = "git+https://github.com/r0gue-io/ismp?branch=pop#370d9234e78619c2a0822c0a9ac0fc53c1538fa7"
+dependencies = [
+ "ismp",
+ "pallet-ismp",
+ "parity-scale-codec",
+ "serde",
+ "sp-api",
+ "sp-core",
+ "sp-std",
 ]
 
 [[package]]
@@ -6996,6 +7067,32 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-ismp"
+version = "0.1.0"
+source = "git+https://github.com/r0gue-io/ismp?branch=pop#370d9234e78619c2a0822c0a9ac0fc53c1538fa7"
+dependencies = [
+ "ckb-merkle-mountain-range",
+ "derive_more",
+ "enum-as-inner",
+ "fortuples",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "ismp",
+ "log",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-api",
+ "sp-consensus-aura",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]
@@ -9424,6 +9521,10 @@ dependencies = [
  "frame-try-runtime",
  "hex",
  "hex-literal",
+ "ismp",
+ "ismp-parachain",
+ "ismp-parachain-runtime-api",
+ "ismp-runtime-api",
  "log",
  "pallet-assets",
  "pallet-aura",
@@ -9431,6 +9532,7 @@ dependencies = [
  "pallet-balances",
  "pallet-collator-selection",
  "pallet-contracts",
+ "pallet-ismp",
  "pallet-message-queue",
  "pallet-nft-fractionalization",
  "pallet-nfts",
@@ -13502,6 +13604,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-state-machine"
+version = "0.1.0"
+source = "git+https://github.com/r0gue-io/ismp?branch=pop#370d9234e78619c2a0822c0a9ac0fc53c1538fa7"
+dependencies = [
+ "ckb-merkle-mountain-range",
+ "frame-support",
+ "frame-system",
+ "hash-db",
+ "ismp",
+ "pallet-ismp",
+ "parity-scale-codec",
+ "primitive-types",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-runtime",
+ "sp-trie",
+]
+
+[[package]]
 name = "substrate-state-trie-migration-rpc"
 version = "28.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -15091,7 +15213,7 @@ version = "0.51.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca229916c5ee38c2f2bc1e9d8f04df975b4bd93f9955dc69fabb5d91270045c9"
 dependencies = [
- "windows-core 0.51.1",
+ "windows-core",
  "windows-targets 0.48.5",
 ]
 
@@ -15102,15 +15224,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1f8cf84f35d2db49a46868f947758c7a1138116f7fac3bc844f43ade1292e64"
 dependencies = [
  "windows-targets 0.48.5",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ab640c8d7e35bf8ba19b884ba838ceb4fba93a4e8c65a9059d08afcfc683d9"
-dependencies = [
- "windows-targets 0.52.4",
 ]
 
 [[package]]

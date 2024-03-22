@@ -144,3 +144,10 @@ cumulus-client-consensus-aura = "0.8.0"
 cumulus-client-consensus-common = "0.8.0"
 cumulus-client-consensus-proposer = "0.8.0"
 cumulus-client-service = "0.8.0"
+
+# ISMP
+ismp = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+ismp-parachain-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+ismp-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
