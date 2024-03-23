@@ -30,8 +30,8 @@ pub(crate) fn genesis() -> Storage {
 				.into_iter()
 				.map(|(acc, aura)| {
 					(
-						acc.clone(),                       // account id
-						acc,                               // validator id
+						acc.clone(),                              // account id
+						acc,                                      // validator id
 						pop_runtime_devnet::SessionKeys { aura }, // session keys
 					)
 				})

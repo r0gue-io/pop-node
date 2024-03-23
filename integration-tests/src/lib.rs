@@ -21,8 +21,8 @@ use frame_support::{
 	sp_runtime::DispatchResult,
 };
 use polkadot_runtime_parachains::assigner_on_demand;
-use pop_runtime_devnet::xcm_config::XcmConfig as PopNetworkXcmConfig;
 use pop_runtime_common::Balance;
+use pop_runtime_devnet::xcm_config::XcmConfig as PopNetworkXcmConfig;
 use rococo_runtime::xcm_config::XcmConfig as RococoXcmConfig;
 use sp_core::Encode;
 use xcm::prelude::*;
