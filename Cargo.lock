@@ -7689,9 +7689,9 @@ dependencies = [
 
 [[package]]
 name = "pallet-xcm"
-version = "8.0.4"
+version = "8.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c13f5c598737e84294880333170d1df3868a11ad7ee79d0b1d1af37365e1c277"
+checksum = "2b0bade2eb6ce40af35a5af150692b4e150638f7f68c15735ab9cdf79650d68e"
 dependencies = [
  "bounded-collections 0.2.0",
  "frame-benchmarking",
