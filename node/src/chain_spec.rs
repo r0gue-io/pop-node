@@ -194,13 +194,6 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 			// POP COLLATOR 1
 			(collator_1_account_id.clone(), collator_1_aura_id),
 		],
-		vec![
-			// Collator stashes
-			collator_0_account_id,
-			collator_1_account_id,
-			// SUDO account
-			sudo_account_id.clone(),
-		],
 		sudo_account_id,
 		para_id.into(),
 	))
@@ -211,16 +204,12 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 
 fn testnet_genesis(
 	invulnerables: Vec<(AccountId, AuraId)>,
-	endowed_accounts: Vec<AccountId>,
 	root: AccountId,
 	id: ParaId,
 ) -> serde_json::Value {
 	use pop_runtime_testnet::EXISTENTIAL_DEPOSIT;
 
 	serde_json::json!({
-		"balances": {
-			"balances": endowed_accounts.iter().cloned().map(|k| (k, 1u64 << 60)).collect::<Vec<_>>(),
-		},
 		"parachainInfo": {
 			"parachainId": id,
 		},

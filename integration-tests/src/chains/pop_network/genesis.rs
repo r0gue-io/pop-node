@@ -1,4 +1,4 @@
-use emulated_integration_tests_common::{accounts, build_genesis_storage, collators};
+use emulated_integration_tests_common::{build_genesis_storage, collators};
 use pop_runtime_common::Balance;
 use sp_core::storage::Storage;
 
@@ -9,13 +9,7 @@ const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 pub(crate) fn genesis() -> Storage {
 	let genesis_config = pop_runtime_devnet::RuntimeGenesisConfig {
 		system: pop_runtime_devnet::SystemConfig::default(),
-		balances: pop_runtime_devnet::BalancesConfig {
-			balances: accounts::init_balances()
-				.iter()
-				.cloned()
-				.map(|k| (k, ED * 4096 * 4096))
-				.collect(),
-		},
+		balances: pop_runtime_devnet::BalancesConfig { ..Default::default() },
 		parachain_info: pop_runtime_devnet::ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),
 			..Default::default()

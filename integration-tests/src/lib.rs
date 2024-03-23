@@ -240,7 +240,7 @@ fn para_to_relay_reserve_transfer_assets(t: ParaToRelayTest) -> DispatchResult {
 }
 
 // Funds Pop with relay tokens
-fn fund_pop_network(
+fn fund_pop_from_relay(
 	sender: sp_runtime::AccountId32,
 	amount_to_send: Balance,
 	beneficiary: sp_runtime::AccountId32,
@@ -254,6 +254,25 @@ fn fund_pop_network(
 
 	let mut test = RelayToParaTest::new(test_args);
 	test.set_dispatchable::<RococoRelay>(relay_to_para_reserve_transfer_assets);
+	test.assert();
+}
+
+// Funds Pop with relay tokens from system para
+fn fund_pop_from_system_para(
+	sender: sp_runtime::AccountId32,
+	amount_to_send: Balance,
+	beneficiary: sp_runtime::AccountId32,
+	assets: Assets,
+) {
+	let destination = AssetHubRococoPara::sibling_location_of(PopNetworkPara::para_id());
+	let test_args = TestContext {
+		sender,
+		receiver: beneficiary.clone(),
+		args: TestArgs::new_para(destination, beneficiary, amount_to_send, assets, None, 0),
+	};
+
+	let mut test = SystemParaToParaTest::new(test_args);
+	test.set_dispatchable::<AssetHubRococoPara>(system_para_to_para_reserve_transfer_assets);
 	test.assert();
 }
 
@@ -309,17 +328,18 @@ fn reserve_transfer_native_asset_from_para_to_relay() {
 
 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
 	// transfer
-	let amount_to_send: Balance = ROCOCO_ED * 1000;
-	fund_pop_network(RococoRelaySender::get(), amount_to_send, PopNetworkParaReceiver::get());
+	let amount_to_send: Balance = ROCOCO_ED * 1_000;
+	fund_pop_from_relay(RococoRelaySender::get(), amount_to_send, PopNetworkParaReceiver::get()); // alice on relay > bob on pop
 
 	// Init values for Pop Network Parachain
-	let destination = PopNetworkPara::parent_location();
-	let beneficiary_id = RococoRelayReceiver::get();
+	let destination = PopNetworkPara::parent_location(); // relay
+	let beneficiary_id = RococoRelayReceiver::get(); // bob on relay
+	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free; // bob on pop balance
 	let assets = (Parent, amount_to_send).into();
 
 	let test_args = TestContext {
-		sender: PopNetworkParaSender::get(),
-		receiver: RococoRelayReceiver::get(),
+		sender: PopNetworkParaReceiver::get(), // bob on pop
+		receiver: RococoRelayReceiver::get(),  // bob on relay
 		args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
 	};
 
@@ -403,15 +423,24 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 fn reserve_transfer_native_asset_from_para_to_system_para() {
 	init_tracing();
 
+	// Setup: reserve transfer from AH to Pop, so that sovereign account accurate for return transfer
+	let amount_to_send: Balance = ASSET_HUB_ROCOCO_ED * 1000;
+	fund_pop_from_system_para(
+		AssetHubRococoParaSender::get(),
+		amount_to_send,
+		PopNetworkParaReceiver::get(),
+		(Parent, amount_to_send).into(),
+	); // alice on asset hub > bob on pop
+
 	// Init values for Pop Network Parachain
 	let destination = PopNetworkPara::sibling_location_of(AssetHubRococoPara::para_id());
-	let beneficiary_id = AssetHubRococoParaReceiver::get();
-	let amount_to_send: Balance = ASSET_HUB_ROCOCO_ED * 1000;
+	let beneficiary_id = AssetHubRococoParaReceiver::get(); // bob on asset hub
+	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free; // bob on pop balance
 	let assets = (Parent, amount_to_send).into();
 
 	let test_args = TestContext {
-		sender: PopNetworkParaSender::get(),
-		receiver: AssetHubRococoParaReceiver::get(),
+		sender: PopNetworkParaReceiver::get(),       // bob on pop
+		receiver: AssetHubRococoParaReceiver::get(), // bob on asset hub
 		args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
 	};
 
@@ -425,7 +454,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let sov_pop_net_on_ahr =
 		AssetHubRococoPara::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
 
-	// fund the Pop Network's SA on AHR with the native tokens held in reserve
+	// fund Pop Network's SA on AHR with the native tokens held in reserve
 	AssetHubRococoPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount_to_send * 2)]);
 
 	test.set_assertion::<PopNetworkPara>(para_to_system_para_sender_assertions);
@@ -460,7 +489,7 @@ fn place_coretime_spot_order_from_para_to_relay() {
 
 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return transfer
 	let amount_to_send: Balance = pop_runtime_devnet::UNIT * 1000;
-	fund_pop_network(RococoRelaySender::get(), amount_to_send, beneficiary.clone());
+	fund_pop_from_relay(RococoRelaySender::get(), amount_to_send, beneficiary.clone());
 
 	let message = {
 		let assets: Asset = (Here, 10 * pop_runtime_devnet::UNIT).into();
