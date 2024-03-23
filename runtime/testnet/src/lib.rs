@@ -251,6 +251,14 @@ impl Contains<RuntimeCall> for FilteredCalls {
 	}
 }
 
+/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
+pub struct AllowedApiCalls;
+impl Contains<RuntimeCall> for crate::AllowedApiCalls {
+	fn contains(c: &RuntimeCall) -> bool {
+		matches!(c, RuntimeCall::Balances { .. } | RuntimeCall::Nfts { .. })
+	}
+}
+
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.

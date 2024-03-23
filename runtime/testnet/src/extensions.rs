@@ -1,4 +1,5 @@
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
+use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
@@ -23,7 +24,7 @@ use xcm::{
 	VersionedXcm,
 };
 
-use crate::{AccountId, RuntimeCall, RuntimeOrigin, UNIT};
+use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin, UNIT};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -107,7 +108,7 @@ impl TryFrom<u16> for v0::FuncId {
 fn dispatch_call<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: RuntimeCall,
-	origin: RuntimeOrigin,
+	mut origin: RuntimeOrigin,
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
@@ -118,6 +119,8 @@ where
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
 	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
+
+	origin.add_filter(AllowedApiCalls::contains);
 
 	match call.dispatch(origin) {
 		Ok(info) => {
