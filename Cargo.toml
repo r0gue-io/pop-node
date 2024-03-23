@@ -112,7 +112,7 @@ sp-transaction-pool = { version = "27.0.0", default-features = false }
 sp-version = { version = "30.0.0", default-features = false }
 
 # Polkadot
-pallet-xcm = { version = "8.0.3", default-features = false }
+pallet-xcm = { version = "=8.0.1", default-features = false }
 polkadot-cli = "8.0.0"
 polkadot-parachain-primitives = { version = "7.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "8.0.1", default-features = false }
