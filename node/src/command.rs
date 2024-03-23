@@ -81,10 +81,6 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 				Runtime::Testnet => Box::new(chain_spec::TestnetChainSpec::from_json_file(path)?),
 			}
 		},
-		_ => {
-			log::warn!("No specific runtime was recognized for chain spec's id: '{}', so Runtime::Default will be used", id);
-			Box::new(chain_spec::development_config(Relay::ROCLOCAL))
-		},
 	})
 }
 

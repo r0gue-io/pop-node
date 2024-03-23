@@ -21,7 +21,8 @@ use frame_support::{
 	sp_runtime::DispatchResult,
 };
 use polkadot_runtime_parachains::assigner_on_demand;
-use pop_runtime::{xcm_config::XcmConfig as PopNetworkXcmConfig, Balance};
+use pop_runtime_devnet::xcm_config::XcmConfig as PopNetworkXcmConfig;
+use pop_runtime_common::Balance;
 use rococo_runtime::xcm_config::XcmConfig as RococoXcmConfig;
 use sp_core::Encode;
 use xcm::prelude::*;
@@ -458,15 +459,15 @@ fn place_coretime_spot_order_from_para_to_relay() {
 	let beneficiary: sp_runtime::AccountId32 = [1u8; 32].into();
 
 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return transfer
-	let amount_to_send: Balance = pop_runtime::UNIT * 1000;
+	let amount_to_send: Balance = pop_runtime_devnet::UNIT * 1000;
 	fund_pop_network(RococoRelaySender::get(), amount_to_send, beneficiary.clone());
 
 	let message = {
-		let assets: Asset = (Here, 10 * pop_runtime::UNIT).into();
+		let assets: Asset = (Here, 10 * pop_runtime_devnet::UNIT).into();
 		let beneficiary = AccountId32 { id: beneficiary.clone().into(), network: None }.into();
 		let spot_order = <RococoRelay as Chain>::RuntimeCall::OnDemandAssignmentProvider(
 			assigner_on_demand::Call::<<RococoRelay as Chain>::Runtime>::place_order_keep_alive {
-				max_amount: 1 * pop_runtime::UNIT,
+				max_amount: 1 * pop_runtime_devnet::UNIT,
 				para_id: AssetHubRococoPara::para_id().into(),
 			},
 		);

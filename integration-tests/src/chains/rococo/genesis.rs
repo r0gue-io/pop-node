@@ -3,7 +3,7 @@ use emulated_integration_tests_common::{
 	validators,
 };
 use polkadot_primitives::{AssignmentId, ValidatorId};
-use pop_runtime::Balance;
+use pop_runtime_common::Balance;
 use rococo_runtime_constants::currency::UNITS as ROC;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;

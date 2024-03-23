@@ -1,7 +1,7 @@
 use emulated_integration_tests_common::{
 	accounts, build_genesis_storage, collators, SAFE_XCM_VERSION,
 };
-use pop_runtime::Balance;
+use pop_runtime_common::Balance;
 use sp_core::storage::Storage;
 
 pub(crate) const PARA_ID: u32 = 1000;

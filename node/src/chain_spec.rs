@@ -81,7 +81,6 @@ fn configure_for_relay(
 	relay: Relay,
 	properties: &mut sc_chain_spec::Properties,
 ) -> (Extensions, u32) {
-	properties.insert("tokenSymbol".into(), "POP".into());
 	properties.insert("ss58Format".into(), 42.into());
 	let para_id;
 
@@ -89,12 +88,14 @@ fn configure_for_relay(
 		// Test relay chains
 		Relay::ROC => {
 			para_id = 4385;
+			properties.insert("tokenSymbol".into(), "ROC".into());
 			properties.insert("tokenDecimals".into(), 12.into());
 
 			(Extensions { relay_chain: "rococo".into(), para_id }, para_id)
 		},
 		Relay::PAS => {
 			para_id = 4001;
+			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 
 			(Extensions { relay_chain: "paseo".into(), para_id }, para_id)
@@ -102,12 +103,14 @@ fn configure_for_relay(
 		// Local relay chains
 		Relay::ROCLOCAL => {
 			para_id = 4385;
+			properties.insert("tokenSymbol".into(), "ROC".into());
 			properties.insert("tokenDecimals".into(), 12.into());
 
 			(Extensions { relay_chain: "rococo-local".into(), para_id }, para_id)
 		},
 		Relay::PASLOCAL => {
 			para_id = 4001;
+			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 
 			(Extensions { relay_chain: "paseo-local".into(), para_id }, para_id)
