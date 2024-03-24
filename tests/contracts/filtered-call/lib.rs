@@ -11,6 +11,7 @@ use scale::Encode;
 
 use ink::{env::Environment, prelude::vec::Vec};
 
+// public visibility required as contract messages are required to be public
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
@@ -18,21 +19,24 @@ pub enum ContractError {
 }
 
 #[derive(Encode)]
-pub enum SystemCalls {
+pub(crate) enum SystemCalls {
 	#[codec(index = 0)]
 	Remark { remark: Vec<u8> },
 }
 #[derive(scale::Encode)]
-pub enum RuntimeCall {
+pub(crate) enum RuntimeCall {
 	#[codec(index = 0)]
 	System(SystemCalls),
 }
 
 pub type Result<T> = core::result::Result<T, ContractError>;
+
+// chain extensions require public visibility.
 #[ink::chain_extension(extension = 909)]
-pub trait PopApi {
+pub trait MyPopApi {
 	type ErrorCode = ContractError;
 	#[ink(function = 0)]
+	#[allow(private_interfaces)]
 	fn dispatch(call: RuntimeCall) -> Result<()>;
 }
 
@@ -47,6 +51,8 @@ impl ink::env::chain_extension::FromStatusCode for ContractError {
 		ink::env::debug_println!("get_filtered status_code: {:?}", status_code);
 		match status_code {
 			0 => Err(Self::CallWasNotFiltered),
+			// CallFiltered originates from `frame_system` with pallet-index 0. The CallFiltered error is at index 5.
+			// If this ever changes, this test will fail and the appropriate mapping can be made.
 			5 => Ok(()),
 			_ => panic!("encountered unknown status code"),
 		}
@@ -65,7 +71,7 @@ impl Environment for CustomEnvironment {
 	type Timestamp = <ink::env::DefaultEnvironment as Environment>::Timestamp;
 	type BlockNumber = <ink::env::DefaultEnvironment as Environment>::BlockNumber;
 
-	type ChainExtension = crate::PopApi;
+	type ChainExtension = crate::MyPopApi;
 }
 
 #[ink::contract(env = crate::CustomEnvironment)]

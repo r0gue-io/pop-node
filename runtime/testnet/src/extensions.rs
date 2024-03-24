@@ -748,7 +748,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../pop-api/examples/filtered-call/target/ink/pop_api_filtered_call.wasm",
+				"../tests/contracts/filtered-call/target/ink/pop_api_filtered_call.wasm",
 			)
 			.unwrap();
 
