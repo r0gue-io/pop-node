@@ -23,6 +23,7 @@ pub type Result<T> = core::result::Result<T, PopApiError>;
 pub enum PopApiError {
 	UnknownStatusCode(u32),
 	DecodingFailed,
+	CallFiltered,
 	Balances(balances::Error),
 	Nfts(nfts::Error),
 	Xcm(cross_chain::Error),
@@ -32,6 +33,7 @@ impl ink::env::chain_extension::FromStatusCode for PopApiError {
 	fn from_status_code(status_code: u32) -> core::result::Result<(), Self> {
 		match status_code {
 			0 => Ok(()),
+			5 => Err(PopApiError::CallFiltered),
 			10_000..=10_999 => Err(Balances((status_code - 10_000).try_into()?)),
 			50_000..=50_999 => Err(Nfts((status_code - 50_000).try_into()?)),
 			_ => Err(UnknownStatusCode(status_code)),
