@@ -17,10 +17,10 @@ pub type TestnetChainSpec =
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 pub(crate) enum Relay {
-	ROC,
-	PAS,
-	ROCLOCAL,
-	PASLOCAL,
+	ROCOCO,
+	PASEO,
+	ROCOCOLOCAL,
+	PASEOLOCAL,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -86,14 +86,14 @@ fn configure_for_relay(
 
 	match relay {
 		// Test relay chains
-		Relay::ROC => {
+		Relay::ROCOCO => {
 			para_id = 4385;
 			properties.insert("tokenSymbol".into(), "ROC".into());
 			properties.insert("tokenDecimals".into(), 12.into());
 
 			(Extensions { relay_chain: "rococo".into(), para_id }, para_id)
 		},
-		Relay::PAS => {
+		Relay::PASEO => {
 			para_id = 4001;
 			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
@@ -101,14 +101,14 @@ fn configure_for_relay(
 			(Extensions { relay_chain: "paseo".into(), para_id }, para_id)
 		},
 		// Local relay chains
-		Relay::ROCLOCAL => {
+		Relay::ROCOCOLOCAL => {
 			para_id = 4385;
 			properties.insert("tokenSymbol".into(), "ROC".into());
 			properties.insert("tokenDecimals".into(), 12.into());
 
 			(Extensions { relay_chain: "rococo-local".into(), para_id }, para_id)
 		},
-		Relay::PASLOCAL => {
+		Relay::PASEOLOCAL => {
 			para_id = 4001;
 			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
