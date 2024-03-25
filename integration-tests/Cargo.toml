@@ -39,7 +39,6 @@ emulated-integration-tests-common.workspace = true
 
 # Local
 pop-runtime-devnet.workspace = true
-pop-runtime-testnet.workspace = true
 pop-runtime-common.workspace = true
 
 [features]

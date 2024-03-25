@@ -255,6 +255,23 @@ parameter_types! {
 	pub const SS58Prefix: u16 = 42;
 }
 
+/// A type to identify filtered calls.
+pub struct FilteredCalls;
+impl Contains<RuntimeCall> for FilteredCalls {
+	fn contains(c: &RuntimeCall) -> bool {
+		use BalancesCall::*;
+		matches!(
+			c,
+			RuntimeCall::Balances(
+				force_adjust_total_issuance { .. }
+					| force_set_balance { .. }
+					| force_transfer { .. }
+					| force_unreserve { .. }
+			)
+		)
+	}
+}
+
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.
@@ -282,6 +299,8 @@ impl frame_system::Config for Runtime {
 	type BlockLength = RuntimeBlockLength;
 	/// This is used as an identifier of the chain. 42 is the generic substrate prefix.
 	type SS58Prefix = SS58Prefix;
+	/// The basic call filter to use in dispatchable. Supports everything as the default.
+	type BaseCallFilter = EverythingBut<FilteredCalls>;
 	/// The action to take on a Runtime Upgrade
 	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
 	type MaxConsumers = frame_support::traits::ConstU32<16>;

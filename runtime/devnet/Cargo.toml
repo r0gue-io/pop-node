@@ -2,7 +2,7 @@
 name = "pop-runtime-devnet"
 version = "0.1.0"
 authors = { workspace = true }
-description = "A new Cumulus FRAME-based Substrate Runtime, ready for hacking together a parachain."
+description = "Pop Network makes it easy for smart contract developers to use the Power of Polkadot."
 license = "Unlicense"
 homepage = { workspace = true }
 repository.workspace = true
