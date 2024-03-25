@@ -28,9 +28,6 @@ pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
 /// Relay chain slot duration, in milliseconds.
 // Value is 6000 millisecs. If `MILLISECS_PER_BLOCK` changes this needs addressing.
-#[cfg(not(feature = "paseo"))]
-const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = MILLISECS_PER_BLOCK;
-#[cfg(feature = "paseo")]
 const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
 
 // Time is measured by number of blocks.
