@@ -54,7 +54,6 @@ std = [
     "polkadot-primitives/std",
     "polkadot-runtime-parachains/std",
     "pop-runtime-devnet/std",
-    "pop-runtime-testnet/std",
     "rococo-runtime-constants/std",
     "rococo-runtime/std",
     "sp-authority-discovery/std",
@@ -76,7 +75,6 @@ runtime-benchmarks = [
     "pallet-message-queue/runtime-benchmarks",
     "polkadot-primitives/runtime-benchmarks",
     "pop-runtime-devnet/runtime-benchmarks",
-    "pop-runtime-testnet/runtime-benchmarks",
     "rococo-runtime/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
     "xcm-executor/runtime-benchmarks",
@@ -89,7 +87,6 @@ try-runtime = [
     "pallet-balances/std",
     "pallet-message-queue/try-runtime",
     "pop-runtime-devnet/try-runtime",
-    "pop-runtime-testnet/try-runtime",
     "rococo-runtime/try-runtime",
     "sp-runtime/try-runtime",
 ]

@@ -37,8 +37,8 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, EitherOfDiverse, EqualPrivilegeOnly, LinearStoragePrice,
-		TransformOrigin,
+		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
+		LinearStoragePrice, TransformOrigin,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -55,6 +55,7 @@ use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 pub use pop_runtime_common::{
 	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO, DAYS, HOURS,
 	MAXIMUM_BLOCK_WEIGHT, MILLISECS_PER_BLOCK, MINUTES, NORMAL_DISPATCH_RATIO, SLOT_DURATION,
+	UNIT, MILLIUNIT, MICROUNIT, EXISTENTIAL_DEPOSIT, UNINCLUDED_SEGMENT_CAPACITY, BLOCK_PROCESSING_VELOCITY, deposit,
 };
 pub use sp_runtime::{MultiAddress, Perbill, Permill};
 use xcm_config::{RelayLocation, XcmOriginToTransactDispatchOrigin};
@@ -184,29 +185,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	state_version: 1,
 };
 
-// Unit = the base number of indivisible units for balances
-pub const UNIT: Balance = 1_000_000_000_000;
-pub const MILLIUNIT: Balance = 1_000_000_000;
-pub const MICROUNIT: Balance = 1_000_000;
-
-// Deposits
-
-pub(crate) const fn deposit(items: u32, bytes: u32) -> Balance {
-	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
-}
-
-/// The existential deposit. Set to 1/10 of the Connected Relay Chain.
-pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
-
-/// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
-/// into the relay chain.
-const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
-/// How many parachain blocks are processed by the relay chain per parent. Limits the
-/// number of blocks authored per slot.
-const BLOCK_PROCESSING_VELOCITY: u32 = 1;
-/// Relay chain slot duration, in milliseconds.
-const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
-
 type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
 	<Runtime as frame_system::Config>::Hash,
@@ -311,6 +289,7 @@ impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = Aura;
 	#[cfg(feature = "experimental")]
+	#[cfg(not(feature = "paseo"))]
 	type MinimumPeriod = ConstU64<0>;
 	#[cfg(not(feature = "experimental"))]
 	type MinimumPeriod = ConstU64<{ SLOT_DURATION / 2 }>;
@@ -453,11 +432,18 @@ impl pallet_session::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	#[cfg(feature = "paseo")]
+	AllowMultipleBlocksPerSlot = ConstBool<false>;
+	#[cfg(not(feature = "paseo"))]
+	AllowMultipleBlocksPerSlot = ConstBool<true>;
+}
+
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<100_000>;
-	type AllowMultipleBlocksPerSlot = ConstBool<true>;
+	type AllowMultipleBlocksPerSlot = AllowMultipleBlocksPerSlot;
 	#[cfg(feature = "experimental")]
 	type SlotDuration = ConstU64<SLOT_DURATION>;
 }

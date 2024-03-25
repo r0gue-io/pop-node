@@ -17,11 +17,21 @@ pub type Nonce = u32;
 /// up by `pallet_aura` to implement `fn slot_duration()`.
 ///
 /// Change this to adjust the block time.
+#[cfg(not(feature = "paseo"))]
 pub const MILLISECS_PER_BLOCK: u64 = 6000;
+#[cfg(feature = "paseo")]
+pub const MILLISECS_PER_BLOCK: u64 = 12000;
 
 // NOTE: Currently it is not possible to change the slot duration after the chain has started.
 // Attempting to do so will brick block production.
 pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
+
+/// Relay chain slot duration, in milliseconds.
+// Value is 6000 millisecs. If `MILLISECS_PER_BLOCK` changes this needs addressing.
+#[cfg(not(feature = "paseo"))]
+const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = MILLISECS_PER_BLOCK;
+#[cfg(feature = "paseo")]
+const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
 
 // Time is measured by number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
@@ -38,6 +48,37 @@ pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 /// We allow for 2 seconds of compute with a 6-second average block.
 pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
+	#[cfg(not(feature = "paseo"))]
 	WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2),
+	#[cfg(feature = "paseo")]
+	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
 	polkadot_primitives::MAX_POV_SIZE as u64,
 );
+
+// Unit = the base number of indivisible units for balances
+#[cfg(not(feature = "paseo"))]
+pub const UNIT: Balance = 1_000_000_000_000; // 12 decimals
+#[cfg(feature = "paseo")]
+pub const UNIT: Balance = 10_000_000_000; // 10 decimals
+
+pub const MILLIUNIT: Balance = UNIT / 1_000;
+pub const MICROUNIT: Balance = UNIT / 1_000_000;
+
+// Deposits
+pub(crate) const fn deposit(items: u32, bytes: u32) -> Balance {
+	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
+}
+/// The existential deposit. Set to 1/1_000 of the Connected Relay Chain.
+pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
+
+// Async backing
+/// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
+/// into the relay chain.
+#[cfg(not(feature = "paseo"))]
+const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
+#[cfg(feature = "paseo")]
+const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
+
+/// How many parachain blocks are processed by the relay chain per parent. Limits the
+/// number of blocks authored per slot.
+const BLOCK_PROCESSING_VELOCITY: u32 = 1;
