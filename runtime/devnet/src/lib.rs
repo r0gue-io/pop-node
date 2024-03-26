@@ -56,6 +56,7 @@ pub use pop_runtime_common::{
 	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO, DAYS, HOURS,
 	MAXIMUM_BLOCK_WEIGHT, MILLISECS_PER_BLOCK, MINUTES, NORMAL_DISPATCH_RATIO, SLOT_DURATION,
 	UNIT, MILLIUNIT, MICROUNIT, EXISTENTIAL_DEPOSIT, UNINCLUDED_SEGMENT_CAPACITY, BLOCK_PROCESSING_VELOCITY, deposit,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS,
 };
 pub use sp_runtime::{MultiAddress, Perbill, Permill};
 use xcm_config::{RelayLocation, XcmOriginToTransactDispatchOrigin};
@@ -432,18 +433,14 @@ impl pallet_session::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	#[cfg(feature = "paseo")]
-	AllowMultipleBlocksPerSlot = ConstBool<false>;
-	#[cfg(not(feature = "paseo"))]
-	AllowMultipleBlocksPerSlot = ConstBool<true>;
-}
-
 impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<100_000>;
-	type AllowMultipleBlocksPerSlot = AllowMultipleBlocksPerSlot;
+	#[cfg(not(feature = "paseo"))]
+	type AllowMultipleBlocksPerSlot = ConstBool<true>;
+	#[cfg(feature = "paseo")]
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 	#[cfg(feature = "experimental")]
 	type SlotDuration = ConstU64<SLOT_DURATION>;
 }

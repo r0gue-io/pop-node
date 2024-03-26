@@ -28,7 +28,7 @@ pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
 
 /// Relay chain slot duration, in milliseconds.
 // Value is 6000 millisecs. If `MILLISECS_PER_BLOCK` changes this needs addressing.
-const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
+pub const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
 
 // Time is measured by number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
@@ -62,7 +62,7 @@ pub const MILLIUNIT: Balance = UNIT / 1_000;
 pub const MICROUNIT: Balance = UNIT / 1_000_000;
 
 // Deposits
-pub(crate) const fn deposit(items: u32, bytes: u32) -> Balance {
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
 }
 /// The existential deposit. Set to 1/1_000 of the Connected Relay Chain.
@@ -72,10 +72,10 @@ pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
 /// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
 /// into the relay chain.
 #[cfg(not(feature = "paseo"))]
-const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
+pub const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
 #[cfg(feature = "paseo")]
-const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
+pub const UNINCLUDED_SEGMENT_CAPACITY: u32 = 1;
 
 /// How many parachain blocks are processed by the relay chain per parent. Limits the
 /// number of blocks authored per slot.
-const BLOCK_PROCESSING_VELOCITY: u32 = 1;
+pub const BLOCK_PROCESSING_VELOCITY: u32 = 1;

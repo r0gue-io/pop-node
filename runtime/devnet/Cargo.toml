@@ -212,3 +212,4 @@ try-runtime = [
 ]
 
 experimental = ["pallet-aura/experimental"]
+paseo = ["pop-runtime-common/paseo"]
