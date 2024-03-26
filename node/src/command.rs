@@ -282,7 +282,7 @@ pub fn run() -> Result<()> {
 							.into())
 					},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
-					construct_benchmark_partials!(config, |partials| cmd.run(partials.client))
+					construct_benchmark_partials!(config, |partials| cmd.run(partials.client)2)
 				}),
 				#[cfg(not(feature = "runtime-benchmarks"))]
 				BenchmarkCmd::Storage(_) =>
@@ -298,7 +298,7 @@ pub fn run() -> Result<()> {
 						let db = partials.backend.expose_db();
 						let storage = partials.backend.expose_storage();
 						cmd.run(config, partials.client.clone(), db, storage)
-					})					
+					})
 				}),
 				BenchmarkCmd::Machine(cmd) =>
 					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
