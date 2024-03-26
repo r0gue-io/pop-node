@@ -67,11 +67,11 @@ impl RuntimeResolver for PathBuf {
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
-		"dev-rococo" => Box::new(chain_spec::development_config(Relay::ROCOCOLOCAL)),
-		"dev-paseo" => Box::new(chain_spec::development_config(Relay::PASEOLOCAL)),
-		"pop-rococo" => Box::new(chain_spec::testnet_config(Relay::ROCOCO)),
-		"pop-paseo" => Box::new(chain_spec::testnet_config(Relay::PASEO)),
-		"" | "local" => Box::new(chain_spec::development_config(Relay::ROCOCOLOCAL)),
+		"dev-rococo" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
+		"dev-paseo" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+		"pop-rococo" => Box::new(chain_spec::testnet_config(Relay::Rococo)),
+		"pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+		"" | "local" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
 		path => {
 			let path: PathBuf = path.into();
 			match path.runtime() {
