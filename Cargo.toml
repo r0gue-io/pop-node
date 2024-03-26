@@ -116,7 +116,7 @@ pallet-xcm = { version = "=8.0.1", default-features = false }
 polkadot-cli = "8.0.0"
 polkadot-parachain-primitives = { version = "7.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "8.0.1", default-features = false }
-polkadot-primitives = "8.0.1"
+polkadot-primitives = { version = "8.0.1", default-features = false }
 polkadot-runtime-common = { version = "8.0.1", default-features = false }
 rococo-runtime-constants = { version = "8.0.0", default-features = false }
 rococo-runtime = { version = "8.0.0", default-features = false }
