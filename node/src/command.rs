@@ -18,11 +18,8 @@ use crate::{
 	service::{new_partial, DevnetRuntimeExecutor, TestnetRuntimeExecutor},
 };
 
-#[derive(Debug, PartialEq, Default)]
+#[derive(Debug, PartialEq)]
 enum Runtime {
-	/// This is the default runtime (actually based on rococo)
-	#[default]
-	Default,
 	Devnet,
 	Testnet,
 }
@@ -38,8 +35,8 @@ fn runtime(id: &str) -> Runtime {
 	} else if id.starts_with("test") {
 		Runtime::Testnet
 	} else {
-		log::warn!("No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Default will be used", id);
-		Runtime::default()
+		log::warn!("No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will be used", id);
+		Runtime::Devnet
 	}
 }
 /// Resolve runtime from ChainSpec ID
@@ -67,17 +64,15 @@ impl RuntimeResolver for PathBuf {
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
-		"dev-rococo" => Box::new(chain_spec::development_config(Relay::ROCOCOLOCAL)),
-		"dev-paseo" => Box::new(chain_spec::development_config(Relay::PASEOLOCAL)),
-		"pop-rococo" => Box::new(chain_spec::testnet_config(Relay::ROCOCO)),
-		"pop-paseo" => Box::new(chain_spec::testnet_config(Relay::PASEO)),
-		"" | "local" => Box::new(chain_spec::development_config(Relay::ROCOCOLOCAL)),
+		"dev-rococo" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
+		"dev-paseo" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+		"pop-rococo" => Box::new(chain_spec::testnet_config(Relay::Rococo)),
+		"pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+		"" | "local" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
 		path => {
 			let path: PathBuf = path.into();
 			match path.runtime() {
-				Runtime::Devnet | Runtime::Default => {
-					Box::new(chain_spec::DevnetChainSpec::from_json_file(path)?)
-				},
+				Runtime::Devnet => Box::new(chain_spec::DevnetChainSpec::from_json_file(path)?),
 				Runtime::Testnet => Box::new(chain_spec::TestnetChainSpec::from_json_file(path)?),
 			}
 		},
@@ -160,7 +155,7 @@ macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 		let runner = $cli.create_runner($cmd)?;
 		match runner.config().chain_spec.runtime() {
-			Runtime::Devnet | Runtime::Default => {
+			Runtime::Devnet => {
 				runner.async_run(|$config| {
 					let $components = new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(
 						&$config
@@ -185,7 +180,7 @@ macro_rules! construct_async_run {
 macro_rules! construct_benchmark_partials {
 	($config:expr, |$partials:ident| $code:expr) => {
 		match $config.chain_spec.runtime() {
-			Runtime::Devnet | Runtime::Default => {
+			Runtime::Devnet => {
 				let $partials =
 					new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(&$config)?;
 				$code
@@ -347,7 +342,7 @@ pub fn run() -> Result<()> {
 				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
 				match config.chain_spec.runtime() {
-					Runtime::Default | Runtime::Devnet => {
+					Runtime::Devnet => {
 						sp_core::crypto::set_default_ss58_version(
 							pop_runtime_devnet::SS58Prefix::get().into(),
 						);

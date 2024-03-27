@@ -7,6 +7,7 @@ edition = "2021"
 homepage = "https://r0gue.io"
 license = "Unlicense"
 repository = "https://github.com/r0gue-io/pop-node/"
+description = "Pop Network makes it easy for smart contract developers to use the Power of Polkadot."
 
 [workspace]
 members = [

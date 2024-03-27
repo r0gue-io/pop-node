@@ -1,10 +1,10 @@
 [package]
-authors = { workspace = true }
+authors.workspace = true
 description = "Pop Runtime Common"
-edition = { workspace = true }
-license = { workspace = true }
+edition.workspace = true
+license.workspace = true
 name = "pop-runtime-common"
-repository = { workspace = true }
+repository.workspace = true
 version = "0.0.0"
 publish = false
 
@@ -12,12 +12,8 @@ publish = false
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-codec = { workspace = true, default-features = false, features = [
-  "derive",
-] }
-scale-info = { workspace = true, default-features = false, features = [
-  "derive",
-] }
+codec = { workspace = true, default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
 
 # Substrate
 frame-support = { workspace = true, default-features = false }
@@ -30,9 +26,8 @@ polkadot-primitives = { workspace = true, default-features = false }
 [features]
 default = ["std"]
 std = ["frame-support/std", "sp-runtime/std"]
-
 runtime-benchmarks = [
-  "frame-support/runtime-benchmarks",
-  "sp-runtime/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
 ]
 paseo = []

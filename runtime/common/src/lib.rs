@@ -5,7 +5,6 @@ use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 
 // Cumulus types re-export
 // These types are shared between the devnet and testnet runtimes
-//https://github.com/paritytech/cumulus/tree/master/parachains/common
 pub use parachains_common::{AccountId, AuraId, Balance, Block, BlockNumber, Hash, Signature};
 
 /// Nonce for an account

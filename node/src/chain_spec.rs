@@ -17,10 +17,10 @@ pub type TestnetChainSpec =
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 pub(crate) enum Relay {
-	ROCOCO,
-	PASEO,
-	ROCOCOLOCAL,
-	PASEOLOCAL,
+	Rococo,
+	Paseo,
+	RococoLocal,
+	PaseoLocal,
 }
 
 /// Helper function to generate a crypto pair from seed
@@ -86,14 +86,14 @@ fn configure_for_relay(
 
 	match relay {
 		// Test relay chains
-		Relay::ROCOCO => {
+		Relay::Rococo => {
 			para_id = 4385;
 			properties.insert("tokenSymbol".into(), "ROC".into());
 			properties.insert("tokenDecimals".into(), 12.into());
 
 			(Extensions { relay_chain: "rococo".into(), para_id }, para_id)
 		},
-		Relay::PASEO => {
+		Relay::Paseo => {
 			para_id = 4001;
 			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
@@ -101,14 +101,14 @@ fn configure_for_relay(
 			(Extensions { relay_chain: "paseo".into(), para_id }, para_id)
 		},
 		// Local relay chains
-		Relay::ROCOCOLOCAL => {
+		Relay::RococoLocal => {
 			para_id = 4385;
 			properties.insert("tokenSymbol".into(), "ROC".into());
 			properties.insert("tokenDecimals".into(), 12.into());
 
 			(Extensions { relay_chain: "rococo-local".into(), para_id }, para_id)
 		},
-		Relay::PASEOLOCAL => {
+		Relay::PaseoLocal => {
 			para_id = 4001;
 			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
@@ -141,20 +141,6 @@ pub fn development_config(relay: Relay) -> DevnetChainSpec {
 				get_account_id_from_seed::<sr25519::Public>("Bob"),
 				get_collator_keys_from_seed("Bob"),
 			),
-		],
-		vec![
-			get_account_id_from_seed::<sr25519::Public>("Alice"),
-			get_account_id_from_seed::<sr25519::Public>("Bob"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie"),
-			get_account_id_from_seed::<sr25519::Public>("Dave"),
-			get_account_id_from_seed::<sr25519::Public>("Eve"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie"),
-			get_account_id_from_seed::<sr25519::Public>("Alice//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Bob//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Charlie//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Dave//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Eve//stash"),
-			get_account_id_from_seed::<sr25519::Public>("Ferdie//stash"),
 		],
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		para_id.into(),
@@ -238,16 +224,12 @@ fn testnet_genesis(
 
 fn devnet_genesis(
 	invulnerables: Vec<(AccountId, AuraId)>,
-	endowed_accounts: Vec<AccountId>,
 	root: AccountId,
 	id: ParaId,
 ) -> serde_json::Value {
 	use pop_runtime_devnet::EXISTENTIAL_DEPOSIT;
 
 	serde_json::json!({
-		"balances": {
-			"balances": endowed_accounts.iter().cloned().map(|k| (k, 1u64 << 60)).collect::<Vec<_>>(),
-		},
 		"parachainInfo": {
 			"parachainId": id,
 		},
