@@ -27,6 +27,7 @@ std = [
     "sp-core/std",
     "sp-runtime/std",
 ]
+paseo = []
 
 runtime-benchmarks = [
     "sp-runtime/runtime-benchmarks",
