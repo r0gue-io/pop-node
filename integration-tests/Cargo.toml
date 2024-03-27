@@ -38,7 +38,8 @@ cumulus-primitives-core.workspace = true
 emulated-integration-tests-common.workspace = true
 
 # Local
-pop-runtime.workspace = true
+pop-runtime-devnet.workspace = true
+pop-runtime-common.workspace = true
 
 [features]
 default = ["std"]
@@ -52,7 +53,7 @@ std = [
     "pallet-xcm/std",
     "polkadot-primitives/std",
     "polkadot-runtime-parachains/std",
-    "pop-runtime/std",
+    "pop-runtime-devnet/std",
     "rococo-runtime-constants/std",
     "rococo-runtime/std",
     "sp-authority-discovery/std",
@@ -73,7 +74,7 @@ runtime-benchmarks = [
     "pallet-balances/runtime-benchmarks",
     "pallet-message-queue/runtime-benchmarks",
     "polkadot-primitives/runtime-benchmarks",
-    "pop-runtime/runtime-benchmarks",
+    "pop-runtime-devnet/runtime-benchmarks",
     "rococo-runtime/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
     "xcm-executor/runtime-benchmarks",
@@ -85,7 +86,7 @@ try-runtime = [
     "pallet-assets/try-runtime",
     "pallet-balances/std",
     "pallet-message-queue/try-runtime",
-    "pop-runtime/try-runtime",
+    "pop-runtime-devnet/try-runtime",
     "rococo-runtime/try-runtime",
     "sp-runtime/try-runtime",
 ]

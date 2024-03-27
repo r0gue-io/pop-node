@@ -1,9 +1,9 @@
-use std::net::SocketAddr;
+use std::{net::SocketAddr, path::PathBuf};
 
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
-use pop_runtime::Block;
+use pop_runtime_common::Block;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
 	NetworkParams, Result, SharedParams, SubstrateCli,
@@ -13,16 +13,69 @@ use sp_runtime::traits::AccountIdConversion;
 
 use crate::{
 	chain_spec,
+	chain_spec::Relay,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::new_partial,
+	service::{new_partial, DevnetRuntimeExecutor, TestnetRuntimeExecutor},
 };
+
+#[derive(Debug, PartialEq)]
+enum Runtime {
+	Devnet,
+	Testnet,
+}
+
+trait RuntimeResolver {
+	fn runtime(&self) -> Runtime;
+}
+/// Private helper that pattern matches on the input (which is expected to be a ChainSpec ID)
+/// and returns the Runtime accordingly.
+fn runtime(id: &str) -> Runtime {
+	if id.starts_with("dev") {
+		Runtime::Devnet
+	} else if id.starts_with("test") {
+		Runtime::Testnet
+	} else {
+		log::warn!("No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will be used", id);
+		Runtime::Devnet
+	}
+}
+/// Resolve runtime from ChainSpec ID
+impl RuntimeResolver for dyn ChainSpec {
+	fn runtime(&self) -> Runtime {
+		runtime(self.id())
+	}
+}
+/// Implementation, that can resolve [`Runtime`] from any json configuration file
+impl RuntimeResolver for PathBuf {
+	fn runtime(&self) -> Runtime {
+		#[derive(Debug, serde::Deserialize)]
+		struct EmptyChainSpecWithId {
+			id: String,
+		}
+
+		let file = std::fs::File::open(self).expect("Failed to open file");
+		let reader = std::io::BufReader::new(file);
+		let chain_spec: EmptyChainSpecWithId = serde_json::from_reader(reader)
+			.expect("Failed to read 'json' file with ChainSpec configuration");
+
+		runtime(&chain_spec.id)
+	}
+}
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
-		"dev" => Box::new(chain_spec::development_config()),
-		"pop-rococo" => Box::new(chain_spec::local_testnet_config()),
-		"" | "local" => Box::new(chain_spec::local_testnet_config()),
-		path => Box::new(chain_spec::ChainSpec::from_json_file(std::path::PathBuf::from(path))?),
+		"dev-rococo" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
+		"dev-paseo" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+		"pop-rococo" => Box::new(chain_spec::testnet_config(Relay::Rococo)),
+		"pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+		"" | "local" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
+		path => {
+			let path: PathBuf = path.into();
+			match path.runtime() {
+				Runtime::Devnet => Box::new(chain_spec::DevnetChainSpec::from_json_file(path)?),
+				Runtime::Testnet => Box::new(chain_spec::TestnetChainSpec::from_json_file(path)?),
+			}
+		},
 	})
 }
 
@@ -54,7 +107,7 @@ impl SubstrateCli for Cli {
 	}
 
 	fn copyright_start_year() -> i32 {
-		2020
+		2023
 	}
 
 	fn load_spec(&self, id: &str) -> std::result::Result<Box<dyn sc_service::ChainSpec>, String> {
@@ -101,12 +154,46 @@ impl SubstrateCli for RelayChainCli {
 macro_rules! construct_async_run {
 	(|$components:ident, $cli:ident, $cmd:ident, $config:ident| $( $code:tt )* ) => {{
 		let runner = $cli.create_runner($cmd)?;
-		runner.async_run(|$config| {
-			let $components = new_partial(&$config)?;
-			let task_manager = $components.task_manager;
-			{ $( $code )* }.map(|v| (v, task_manager))
-		})
+		match runner.config().chain_spec.runtime() {
+			Runtime::Devnet => {
+				runner.async_run(|$config| {
+					let $components = new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(
+						&$config
+					)?;
+					let task_manager = $components.task_manager;
+					{ $( $code )* }.map(|v| (v, task_manager))
+				})
+			}
+			Runtime::Testnet => {
+				runner.async_run(|$config| {
+					let $components = new_partial::<pop_runtime_testnet::RuntimeApi, TestnetRuntimeExecutor>(
+						&$config
+					)?;
+					let task_manager = $components.task_manager;
+					{ $( $code )* }.map(|v| (v, task_manager))
+				})
+			}
+		}
 	}}
+}
+
+macro_rules! construct_benchmark_partials {
+	($config:expr, |$partials:ident| $code:expr) => {
+		match $config.chain_spec.runtime() {
+			Runtime::Devnet => {
+				let $partials =
+					new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(&$config)?;
+				$code
+			},
+			Runtime::Testnet => {
+				let $partials = new_partial::<
+					pop_runtime_testnet::RuntimeApi,
+					TestnetRuntimeExecutor,
+				>(&$config)?;
+				$code
+			},
+		}
+	};
 }
 
 /// Parse command line arguments into service configuration.
@@ -165,9 +252,9 @@ pub fn run() -> Result<()> {
 		Some(Subcommand::ExportGenesisHead(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| {
-				let partials = new_partial(&config)?;
-
-				cmd.run(partials.client)
+				construct_benchmark_partials!(config, |partials| {
+					cmd.run(partials.client)
+				})
 			})
 		},
 		Some(Subcommand::ExportGenesisWasm(cmd)) => {
@@ -190,8 +277,7 @@ pub fn run() -> Result<()> {
 							.into())
 					},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
-					let partials = new_partial(&config)?;
-					cmd.run(partials.client)
+					construct_benchmark_partials!(config, |partials| cmd.run(partials.client))
 				}),
 				#[cfg(not(feature = "runtime-benchmarks"))]
 				BenchmarkCmd::Storage(_) =>
@@ -203,10 +289,11 @@ pub fn run() -> Result<()> {
 					.into()),
 				#[cfg(feature = "runtime-benchmarks")]
 				BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
-					let partials = new_partial(&config)?;
-					let db = partials.backend.expose_db();
-					let storage = partials.backend.expose_storage();
-					cmd.run(config, partials.client.clone(), db, storage)
+					construct_benchmark_partials!(config, |partials| {
+						let db = partials.backend.expose_db();
+						let storage = partials.backend.expose_storage();
+						cmd.run(config, partials.client.clone(), db, storage)
+					})
 				}),
 				BenchmarkCmd::Machine(cmd) =>
 					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
@@ -254,16 +341,44 @@ pub fn run() -> Result<()> {
 				info!("Parachain Account: {parachain_account}");
 				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
-				crate::service::start_parachain_node(
-					config,
-					polkadot_config,
-					collator_options,
-					id,
-					hwbench,
-				)
-				.await
-				.map(|r| r.0)
-				.map_err(Into::into)
+				match config.chain_spec.runtime() {
+					Runtime::Devnet => {
+						sp_core::crypto::set_default_ss58_version(
+							pop_runtime_devnet::SS58Prefix::get().into(),
+						);
+						crate::service::start_parachain_node::<
+							pop_runtime_devnet::RuntimeApi,
+							DevnetRuntimeExecutor,
+						>(
+							config,
+							polkadot_config,
+							collator_options,
+							id,
+							hwbench,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+					},
+					Runtime::Testnet => {
+						sp_core::crypto::set_default_ss58_version(
+							pop_runtime_testnet::SS58Prefix::get().into(),
+						);
+						crate::service::start_parachain_node::<
+							pop_runtime_testnet::RuntimeApi,
+							TestnetRuntimeExecutor,
+						>(
+							config,
+							polkadot_config,
+							collator_options,
+							id,
+							hwbench,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+					},
+				}
 			})
 		},
 	}
