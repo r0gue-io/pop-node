@@ -15,10 +15,11 @@ members = [
     "runtime/devnet",
     "runtime/testnet",
     "integration-tests",
+    "scripts/fund-dev-accounts",
     "primitives",
 ]
 exclude = [
-    "pop-api"
+    "pop-api",
 ]
 
 resolver = "2"
