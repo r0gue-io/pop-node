@@ -2,8 +2,7 @@ use emulated_integration_tests_common::{
 	accounts, build_genesis_storage, get_account_id_from_seed, get_from_seed, get_host_config,
 	validators,
 };
-use polkadot_primitives::{AssignmentId, ValidatorId};
-use pop_runtime::Balance;
+use polkadot_primitives::{AssignmentId, Balance, ValidatorId};
 use rococo_runtime_constants::currency::UNITS as ROC;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;

@@ -13,19 +13,19 @@ decl_test_parachains! {
 	pub struct PopNetwork {
 		genesis = genesis::genesis(),
 		on_init = {
-			pop_runtime::AuraExt::on_initialize(1);
+			pop_runtime_devnet::AuraExt::on_initialize(1);
 		},
-		runtime = pop_runtime,
+		runtime = pop_runtime_devnet,
 		core = {
-			XcmpMessageHandler: pop_runtime::XcmpQueue,
-			LocationToAccountId: pop_runtime::xcm_config::LocationToAccountId,
-			ParachainInfo: pop_runtime::ParachainInfo,
+			XcmpMessageHandler: pop_runtime_devnet::XcmpQueue,
+			LocationToAccountId: pop_runtime_devnet::xcm_config::LocationToAccountId,
+			ParachainInfo: pop_runtime_devnet::ParachainInfo,
 			MessageOrigin: cumulus_primitives_core::AggregateMessageOrigin,
 		},
 		pallets = {
-			PolkadotXcm: pop_runtime::PolkadotXcm,
-			Assets: pop_runtime::Assets,
-			Balances: pop_runtime::Balances,
+			PolkadotXcm: pop_runtime_devnet::PolkadotXcm,
+			Assets: pop_runtime_devnet::Assets,
+			Balances: pop_runtime_devnet::Balances,
 		}
 	},
 }

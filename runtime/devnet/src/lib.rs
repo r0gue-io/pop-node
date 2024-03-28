@@ -21,7 +21,7 @@ use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
-	ApplyExtrinsicResult, MultiSignature,
+	ApplyExtrinsicResult,
 };
 
 use sp_std::prelude::*;
@@ -41,8 +41,8 @@ use frame_support::{
 		LinearStoragePrice, TransformOrigin,
 	},
 	weights::{
-		constants::WEIGHT_REF_TIME_PER_SECOND, ConstantMultiplier, Weight, WeightToFeeCoefficient,
-		WeightToFeeCoefficients, WeightToFeePolynomial,
+		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
+		WeightToFeePolynomial,
 	},
 	PalletId,
 };
@@ -52,7 +52,12 @@ use frame_system::{
 };
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
-pub use sp_consensus_aura::sr25519::AuthorityId as AuraId;
+pub use pop_runtime_common::{
+	deposit, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
+	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICROUNIT,
+	MILLISECS_PER_BLOCK, MILLIUNIT, MINUTES, NORMAL_DISPATCH_RATIO,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION, UNINCLUDED_SEGMENT_CAPACITY, UNIT,
+};
 pub use sp_runtime::{MultiAddress, Perbill, Permill};
 use xcm_config::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 
@@ -69,24 +74,9 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
-/// Alias to 512-bit hash when used in the context of a transaction signature on the chain.
-pub type Signature = MultiSignature;
-
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
-
-/// Balance of an account.
-pub type Balance = parachains_common::Balance;
-
-/// Index of a transaction in the chain.
-pub type Nonce = u32;
-
-/// A hash of some data used by the chain.
-pub type Hash = sp_core::H256;
-
-/// An index to a block.
-pub type BlockNumber = u32;
 
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
@@ -196,60 +186,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	state_version: 1,
 };
 
-/// This determines the average expected block time that we are targeting.
-/// Blocks will be produced at a minimum duration defined by `SLOT_DURATION`.
-/// `SLOT_DURATION` is picked up by `pallet_timestamp` which is in turn picked
-/// up by `pallet_aura` to implement `fn slot_duration()`.
-///
-/// Change this to adjust the block time.
-pub const MILLISECS_PER_BLOCK: u64 = 6000;
-
-// NOTE: Currently it is not possible to change the slot duration after the chain has started.
-//       Attempting to do so will brick block production.
-pub const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
-
-// Time is measured by number of blocks.
-pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-pub const HOURS: BlockNumber = MINUTES * 60;
-pub const DAYS: BlockNumber = HOURS * 24;
-
-// Unit = the base number of indivisible units for balances
-pub const UNIT: Balance = 1_000_000_000_000;
-pub const MILLIUNIT: Balance = 1_000_000_000;
-pub const MICROUNIT: Balance = 1_000_000;
-
-// Deposits
-
-pub(crate) const fn deposit(items: u32, bytes: u32) -> Balance {
-	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
-}
-
-/// The existential deposit. Set to 1/10 of the Connected Relay Chain.
-pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
-
-/// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
-/// used to limit the maximal weight of a single extrinsic.
-const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(5);
-
-/// We allow `Normal` extrinsics to fill up the block up to 75%, the rest can be used by
-/// `Operational` extrinsics.
-const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
-
-/// We allow for 2 seconds of compute with a 6-second average block.
-const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
-	WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2),
-	cumulus_primitives_core::relay_chain::MAX_POV_SIZE as u64,
-);
-
-/// Maximum number of blocks simultaneously accepted by the Runtime, not yet included
-/// into the relay chain.
-const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
-/// How many parachain blocks are processed by the relay chain per parent. Limits the
-/// number of blocks authored per slot.
-const BLOCK_PROCESSING_VELOCITY: u32 = 1;
-/// Relay chain slot duration, in milliseconds.
-const RELAY_CHAIN_SLOT_DURATION_MILLIS: u32 = 6000;
-
 type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
 	<Runtime as frame_system::Config>::Hash,
@@ -315,6 +251,51 @@ impl Contains<RuntimeCall> for FilteredCalls {
 	}
 }
 
+/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
+pub struct AllowedApiCalls;
+impl Contains<RuntimeCall> for crate::AllowedApiCalls {
+	fn contains(c: &RuntimeCall) -> bool {
+		use pallet_nfts::Call as NftsCall;
+		matches!(
+			c,
+			RuntimeCall::Balances(BalancesCall::transfer_keep_alive { .. })
+				| RuntimeCall::Nfts(
+					NftsCall::create { .. }
+						| NftsCall::destroy { .. }
+						| NftsCall::mint { .. } | NftsCall::burn { .. }
+						| NftsCall::transfer { .. }
+						| NftsCall::redeposit { .. }
+						| NftsCall::lock_item_transfer { .. }
+						| NftsCall::unlock_item_transfer { .. }
+						| NftsCall::lock_collection { .. }
+						| NftsCall::transfer_ownership { .. }
+						| NftsCall::set_team { .. }
+						| NftsCall::approve_transfer { .. }
+						| NftsCall::cancel_approval { .. }
+						| NftsCall::clear_all_transfer_approvals { .. }
+						| NftsCall::lock_item_properties { .. }
+						| NftsCall::set_attribute { .. }
+						| NftsCall::clear_attribute { .. }
+						| NftsCall::approve_item_attributes { .. }
+						| NftsCall::cancel_item_attributes_approval { .. }
+						| NftsCall::set_metadata { .. }
+						| NftsCall::clear_metadata { .. }
+						| NftsCall::set_collection_metadata { .. }
+						| NftsCall::clear_collection_metadata { .. }
+						| NftsCall::set_accept_ownership { .. }
+						| NftsCall::set_collection_max_supply { .. }
+						| NftsCall::update_mint_settings { .. }
+						| NftsCall::set_price { .. }
+						| NftsCall::buy_item { .. }
+						| NftsCall::pay_tips { .. }
+						| NftsCall::create_swap { .. }
+						| NftsCall::cancel_swap { .. }
+						| NftsCall::claim_swap { .. }
+				)
+		)
+	}
+}
+
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.
@@ -354,6 +335,7 @@ impl pallet_timestamp::Config for Runtime {
 	type Moment = u64;
 	type OnTimestampSet = Aura;
 	#[cfg(feature = "experimental")]
+	#[cfg(not(feature = "paseo"))]
 	type MinimumPeriod = ConstU64<0>;
 	#[cfg(not(feature = "experimental"))]
 	type MinimumPeriod = ConstU64<{ SLOT_DURATION / 2 }>;
@@ -500,7 +482,10 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<100_000>;
+	#[cfg(not(feature = "paseo"))]
 	type AllowMultipleBlocksPerSlot = ConstBool<true>;
+	#[cfg(feature = "paseo")]
+	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 	#[cfg(feature = "experimental")]
 	type SlotDuration = ConstU64<SLOT_DURATION>;
 }
