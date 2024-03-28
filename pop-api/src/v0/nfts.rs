@@ -149,7 +149,7 @@ pub mod attributes {
 		item: ItemId,
 		delegate: impl Into<MultiAddress<AccountId, ()>>,
 	) -> Result<()> {
-		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveItemAttribute {
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveItemAttributes {
 			collection,
 			item,
 			delegate: delegate.into(),
@@ -339,7 +339,7 @@ pub mod trading {
 
 	/// Set (or reset) the price for an item.
 	pub fn price(collection: CollectionId, item: ItemId, price: Option<Balance>) -> Result<()> {
-		Ok(dispatch(RuntimeCall::Nfts(NftCalls::Price { collection, item, price }))?)
+		Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetPrice { collection, item, price }))?)
 	}
 
 	/// Allows to buy an item if it's up for sale.
@@ -463,7 +463,7 @@ pub(crate) enum NftCalls {
 		key: BoundedVec<u8, KeyLimit>,
 	},
 	#[codec(index = 22)]
-	ApproveItemAttribute {
+	ApproveItemAttributes {
 		collection: CollectionId,
 		item: ItemId,
 		delegate: MultiAddress<AccountId, ()>,
@@ -489,7 +489,7 @@ pub(crate) enum NftCalls {
 	#[codec(index = 30)]
 	UpdateMintSettings { collection: CollectionId, mint_settings: MintSettings },
 	#[codec(index = 31)]
-	Price { collection: CollectionId, item: ItemId, price: Option<Balance> },
+	SetPrice { collection: CollectionId, item: ItemId, price: Option<Balance> },
 	#[codec(index = 32)]
 	BuyItem { collection: CollectionId, item: ItemId, bid_price: Balance },
 	#[codec(index = 33)]
