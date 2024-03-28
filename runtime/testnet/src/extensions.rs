@@ -672,7 +672,10 @@ mod tests {
 			}
 
 			// check for revert
-			assert!(result.result.is_err(), "Contract execution should have failed - unimplemented runtime call!");
+			assert!(
+				result.result.is_err(),
+				"Contract execution should have failed - unimplemented runtime call!"
+			);
 		});
 	}
 
