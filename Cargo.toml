@@ -13,11 +13,11 @@ members = [
     "node",
     "runtime",
     "integration-tests",
-    "scripts/fund-dev-accounts",
     "primitives",
 ]
 exclude = [
     "pop-api",
+    "scripts/fund-dev-accounts",
 ]
 
 resolver = "2"

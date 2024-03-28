@@ -7,6 +7,8 @@
 use subxt::{OnlineClient, PolkadotConfig};
 use subxt_signer::sr25519::{dev, Keypair};
 
+const PARA_ID: u32 = 4385;
+
 #[cfg(not(feature = "paseo"))]
 mod relay {
 	use super::*;
@@ -32,7 +34,7 @@ mod relay {
 	pub(crate) fn gen_account_fund_message_call(account: Keypair) -> RuntimeCall {
 		let pop_location = VersionedLocation::V4(Location {
 			parents: 0,
-			interior: X1([Junction::Parachain(9090)]),
+			interior: X1([Junction::Parachain(PARA_ID)]),
 		});
 		let pop_beneficiary = VersionedLocation::V4(Location {
 			parents: 0,
@@ -87,8 +89,10 @@ mod relay {
 	// generate XCM message to reserve transfer funds to a designated account on
 	// Pop Parachain
 	pub(crate) fn gen_account_fund_message_call(account: Keypair) -> RuntimeCall {
-		let pop_location =
-			VersionedLocation::V3(Location { parents: 0, interior: X1(Junction::Parachain(9090)) });
+		let pop_location = VersionedLocation::V3(Location {
+			parents: 0,
+			interior: X1(Junction::Parachain(PARA_ID)),
+		});
 		let pop_beneficiary = VersionedLocation::V3(Location {
 			parents: 0,
 			interior: X1(Junction::AccountId32 { network: None, id: account.public_key().0 }),
@@ -121,7 +125,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let relay_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:8833").await?;
 
 	let dev_accounts = vec![dev::alice(), dev::bob(), dev::charlie()];
-	let fund_pop_accounts =
+	let fund_pop_accounts_calls =
 		dev_accounts.iter().map(|a| gen_account_fund_message_call(a.clone())).collect();
 
 	let set_alice_balance = RuntimeCall::Balances(runtime::balances::Call::force_set_balance {
@@ -139,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 		.wait_for_finalized_success()
 		.await?;
 
-	let batch_tx = runtime::tx().utility().batch(fund_pop_accounts);
+	let batch_tx = runtime::tx().utility().batch(fund_pop_accounts_calls);
 
 	let from = dev::alice();
 	let _ = relay_api
