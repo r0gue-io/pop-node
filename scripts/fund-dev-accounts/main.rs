@@ -1,4 +1,3 @@
-use std::time::Duration;
 /// As Pop Network uses the relay chain token as native, the dev accounts are not funded by default.
 /// Therefore, after network launch there needs to be a reserve transfer from the relay chain
 /// to the dev accounts.
@@ -8,13 +7,19 @@ use std::time::Duration;
 use subxt::{OnlineClient, PolkadotConfig};
 use subxt_signer::sr25519::{dev, Keypair};
 
+use std::time::Duration;
+
+#[cfg(feature = "paseo")]
+mod paseo_interface;
+#[cfg(not(feature = "paseo"))]
+mod rococo_interface;
+
 const PARA_ID: u32 = 4385;
 
 #[cfg(not(feature = "paseo"))]
 mod relay {
 	use super::*;
-	#[subxt::subxt(runtime_metadata_path = "../metadata/rococo.scale")]
-	pub(crate) mod runtime {}
+	pub(crate) use crate::rococo_interface::api as runtime;
 	pub(crate) type RuntimeCall = runtime::runtime_types::rococo_runtime::RuntimeCall;
 	pub(crate) const UNIT: u128 = 1_000_000_000_000;
 
@@ -64,9 +69,8 @@ mod relay {
 #[cfg(feature = "paseo")]
 mod relay {
 	use super::*;
+	pub(crate) use crate::paseo_interface::api as runtime;
 
-	#[subxt::subxt(runtime_metadata_path = "../metadata/paseo.scale")]
-	pub(crate) mod runtime {}
 	pub(crate) type RuntimeCall = runtime::runtime_types::paseo_runtime::RuntimeCall;
 	pub(crate) const UNIT: u128 = 10_000_000_000;
 
@@ -131,7 +135,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let pop_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:9944").await?;
 
 	let dev_accounts = vec![dev::alice(), dev::bob(), dev::charlie()];
-	let fund_pop_accounts_calls =
+	let fund_pop_accounts_calls: Vec<RuntimeCall> =
 		dev_accounts.iter().map(|a| gen_account_fund_message_call(a.clone())).collect();
 
 	let set_alice_balance = RuntimeCall::Balances(runtime::balances::Call::force_set_balance {
