@@ -1,3 +1,4 @@
+use std::time::Duration;
 /// As Pop Network uses the relay chain token as native, the dev accounts are not funded by default.
 /// Therefore, after network launch there needs to be a reserve transfer from the relay chain
 /// to the dev accounts.
@@ -40,7 +41,7 @@ mod relay {
 			parents: 0,
 			interior: X1([Junction::AccountId32 { network: None, id: account.public_key().0 }]),
 		});
-		let amount = Fungible(UNIT * 1_000_000);
+		let amount = Fungible(AMOUNT_TO_FUND);
 		let assets = VersionedAssets::V4(Assets {
 			0: vec![Asset {
 				id: AssetId { 0: Location { parents: 0, interior: Junctions::Here } },
@@ -97,7 +98,7 @@ mod relay {
 			parents: 0,
 			interior: X1(Junction::AccountId32 { network: None, id: account.public_key().0 }),
 		});
-		let amount = Fungible(UNIT * 1_000_000);
+		let amount = Fungible(AMOUNT_TO_FUND);
 
 		let assets = VersionedAssets::V3(Assets {
 			0: vec![Asset {
@@ -119,10 +120,15 @@ mod relay {
 }
 
 use relay::*;
+pub(crate) const AMOUNT_TO_FUND: u128 = UNIT * 1_000_000;
+
+#[subxt::subxt(runtime_metadata_path = "../metadata/pop-net.scale")]
+pub mod pop {}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let relay_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:8833").await?;
+	let pop_api = OnlineClient::<PolkadotConfig>::from_url("ws://127.0.0.1:9944").await?;
 
 	let dev_accounts = vec![dev::alice(), dev::bob(), dev::charlie()];
 	let fund_pop_accounts_calls =
@@ -146,12 +152,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let batch_tx = runtime::tx().utility().batch(fund_pop_accounts_calls);
 
 	let from = dev::alice();
-	let _ = relay_api
+	let batch_events = relay_api
 		.tx()
 		.sign_and_submit_then_watch_default(&batch_tx, &from)
 		.await?
 		.wait_for_finalized_success()
 		.await?;
 
+	let xcm_event = batch_events.find_first::<runtime::xcm_pallet::events::Sent>()?;
+	if let Some(event) = xcm_event {
+		println!("XCM messages sent {event:?}");
+	}
+	println!("Checking Pop Balances");
+
+	// simple system to wait up to 8 block intervals total (not per account)
+	let max_wait = 8;
+	let mut waited = 0;
+	for account in dev_accounts {
+		let query = pop::storage().system().account(&account.public_key().0.into());
+
+		let mut result = None;
+
+		while waited < max_wait {
+			result = pop_api.storage().at_latest().await?.fetch(&query).await?;
+			if result.is_some() {
+				break;
+			}
+
+			// if result is none, wait for 6 seconds. Timeout in 8 * 6 seconds
+			tokio::time::sleep(Duration::from_millis(6000)).await;
+			waited += 1;
+		}
+
+		// check accounts were funded. 2 UNIT threshold to account for fees
+		assert!(result.expect("account does not exist").data.free >= AMOUNT_TO_FUND - UNIT * 2);
+		println!("Account: {:?} Funded", account);
+	}
 	Ok(())
 }
