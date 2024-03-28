@@ -14,6 +14,8 @@ mod paseo_interface;
 #[cfg(not(feature = "paseo"))]
 mod rococo_interface;
 
+mod pop_interface;
+
 const PARA_ID: u32 = 4385;
 
 #[cfg(not(feature = "paseo"))]
@@ -23,7 +25,7 @@ mod relay {
 	pub(crate) type RuntimeCall = runtime::runtime_types::rococo_runtime::RuntimeCall;
 	pub(crate) const UNIT: u128 = 1_000_000_000_000;
 
-	pub(crate) use runtime::runtime_types::{
+	use runtime::runtime_types::{
 		staging_xcm::v4::{
 			asset::Fungibility::Fungible,
 			asset::{Asset, AssetId, Assets},
@@ -124,10 +126,9 @@ mod relay {
 }
 
 use relay::*;
-pub(crate) const AMOUNT_TO_FUND: u128 = UNIT * 1_000_000;
+const AMOUNT_TO_FUND: u128 = UNIT * 1_000_000;
 
-#[subxt::subxt(runtime_metadata_path = "../metadata/pop-net.scale")]
-pub mod pop {}
+use pop_interface::api as pop;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

@@ -16,10 +16,10 @@ members = [
     "runtime/testnet",
     "integration-tests",
     "primitives",
+    "scripts/fund-dev-accounts",
 ]
 exclude = [
     "pop-api",
-    "scripts/fund-dev-accounts",
     "tests/contracts"
 ]
 
