@@ -16,7 +16,7 @@ name = "bob"
 validator = true
 
 [[parachains]]
-id = 9090
+id = 4385
 default_command = "./target/release/pop-node"
 
 [[parachains.collators]]
