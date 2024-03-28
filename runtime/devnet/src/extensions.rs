@@ -1,4 +1,5 @@
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
+use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
@@ -23,7 +24,7 @@ use xcm::{
 	VersionedXcm,
 };
 
-use crate::{AccountId, RuntimeCall, RuntimeOrigin, UNIT};
+use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin, UNIT};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -107,7 +108,7 @@ impl TryFrom<u16> for v0::FuncId {
 fn dispatch_call<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: RuntimeCall,
-	origin: RuntimeOrigin,
+	mut origin: RuntimeOrigin,
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
@@ -118,6 +119,8 @@ where
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 
 	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
+
+	origin.add_filter(AllowedApiCalls::contains);
 
 	match call.dispatch(origin) {
 		Ok(info) => {
@@ -731,6 +734,65 @@ mod tests {
 					String::from_utf8(result.debug_message.clone())
 				);
 				log::debug!("result: {:?}", result);
+			}
+
+			// check for revert
+			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+		});
+	}
+
+	#[test]
+	#[ignore]
+	fn allow_call_filter_blocks_call() {
+		new_test_ext().execute_with(|| {
+			let _ = env_logger::try_init();
+
+			let (wasm_binary, _) = load_wasm_module::<Runtime>(
+				"../../tests/contracts/filtered-call/target/ink/pop_api_filtered_call.wasm",
+			)
+			.unwrap();
+
+			let init_value = 100 * UNIT;
+
+			let result = Contracts::bare_instantiate(
+				ALICE,
+				init_value,
+				GAS_LIMIT,
+				None,
+				Code::Upload(wasm_binary),
+				function_selector("new"),
+				vec![],
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+			)
+			.result
+			.unwrap();
+
+			assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
+
+			let addr = result.account_id;
+
+			let function = function_selector("get_filtered");
+			let params = [function].concat();
+
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+				None,
+				params,
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+				pallet_contracts::Determinism::Enforced,
+			);
+
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
+				log::debug!("filtered result: {:?}", result);
 			}
 
 			// check for revert
