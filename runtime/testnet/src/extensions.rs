@@ -9,7 +9,6 @@ use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
 use pop_primitives::{
-	cross_chain::CrossChainMessage,
 	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
 	CollectionId, ItemId,
 };
@@ -18,13 +17,9 @@ use sp_runtime::{
 	traits::{BlockNumberProvider, Dispatchable},
 	DispatchError,
 };
-use sp_std::{boxed::Box, vec::Vec};
-use xcm::{
-	latest::{prelude::*, OriginKind::SovereignAccount},
-	VersionedXcm,
-};
+use sp_std::vec::Vec;
 
-use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin, UNIT};
+use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -70,10 +65,6 @@ where
 				read_state::<T, E>(env)?;
 				Ok(RetVal::Converging(0))
 			},
-			v0::FuncId::SendXcm => {
-				send_xcm::<T, E>(env)?;
-				Ok(RetVal::Converging(0))
-			},
 		}
 	}
 }
@@ -83,7 +74,6 @@ pub mod v0 {
 	pub enum FuncId {
 		Dispatch,
 		ReadState,
-		SendXcm,
 	}
 }
 
@@ -94,7 +84,6 @@ impl TryFrom<u16> for v0::FuncId {
 		let id = match func_id {
 			0x0 => Self::Dispatch,
 			0x1 => Self::ReadState,
-			0x2 => Self::SendXcm,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
 				return Err(DispatchError::Other("unimplemented func_id"));
@@ -290,60 +279,6 @@ where
 			Ok(pallet_nfts::Pallet::<T>::collection_attribute(&collection, &key).encode())
 		},
 	}
-}
-
-fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
-where
-	T: pallet_contracts::Config
-		+ frame_system::Config<
-			RuntimeOrigin = RuntimeOrigin,
-			AccountId = AccountId,
-			RuntimeCall = RuntimeCall,
-		>,
-	E: Ext<T = T>,
-{
-	const LOG_PREFIX: &str = " send_xcm |";
-
-	let mut env = env.buf_in_buf_out();
-	let len = env.in_len();
-
-	let _ = charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
-
-	// read the input as CrossChainMessage
-	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
-
-	// Determine the call to dispatch
-	let (dest, message) = match xc_call {
-		CrossChainMessage::Relay(message) => {
-			let dest = Location::parent().into_versioned();
-			let assets: Asset = (Here, 10 * UNIT).into();
-			let beneficiary: Location =
-				AccountId32 { id: (env.ext().address().clone()).into(), network: None }.into();
-			let message = Xcm::builder()
-				.withdraw_asset(assets.clone().into())
-				.buy_execution(assets.clone(), Unlimited)
-				.transact(
-					SovereignAccount,
-					Weight::from_parts(250_000_000, 10_000),
-					message.encode().into(),
-				)
-				.refund_surplus()
-				.deposit_asset(assets.into(), beneficiary)
-				.build();
-			(dest, message)
-		},
-	};
-
-	// TODO: revisit to replace with signed contract origin
-	let origin: RuntimeOrigin = RawOrigin::Root.into();
-
-	// Generate runtime call to dispatch
-	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
-		dest: Box::new(dest),
-		message: Box::new(VersionedXcm::V4(message)),
-	});
-
-	dispatch_call::<T, E>(&mut env, call, origin, LOG_PREFIX)
 }
 
 #[cfg(test)]
@@ -680,7 +615,7 @@ mod tests {
 
 	#[test]
 	#[ignore]
-	fn place_spot_order_from_contract_works() {
+	fn place_spot_order_from_contract_fails() {
 		new_test_ext().execute_with(|| {
 			let _ = env_logger::try_init();
 
@@ -737,7 +672,7 @@ mod tests {
 			}
 
 			// check for revert
-			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+			assert!(result.result.is_err(), "Contract execution should have failed - unimplemented runtime call!");
 		});
 	}
 
