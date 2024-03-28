@@ -321,14 +321,14 @@ where
 				AccountId32 { id: (env.ext().address().clone()).into(), network: None }.into();
 			let message = Xcm::builder()
 				.withdraw_asset(assets.clone().into())
-				.buy_execution(assets.clone().into(), Unlimited)
+				.buy_execution(assets.clone(), Unlimited)
 				.transact(
 					SovereignAccount,
 					Weight::from_parts(250_000_000, 10_000),
 					message.encode().into(),
 				)
 				.refund_surplus()
-				.deposit_asset(assets.into(), beneficiary.into())
+				.deposit_asset(assets.into(), beneficiary)
 				.build();
 			(dest, message)
 		},
