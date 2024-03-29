@@ -183,7 +183,7 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 	)
 	.with_name("Pop Network Testnet")
 	.with_id("pop-testnet")
-	.with_chain_type(ChainType::Local)
+	.with_chain_type(ChainType::Live)
 	.with_genesis_config_patch(testnet_genesis(
 		// initial collators.
 		vec![
@@ -197,7 +197,7 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 		sudo_account_id,
 		para_id.into(),
 	))
-	.with_protocol_id("pop-tesnet")
+	.with_protocol_id("pop-testnet")
 	.with_properties(properties)
 	.build()
 }
