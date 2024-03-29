@@ -81,7 +81,12 @@ color-print.workspace = true
 substrate-build-script-utils.workspace = true
 
 [features]
-default = []
+default = ["paseo"]
+paseo = [
+    "pop-runtime-common/paseo",
+    "pop-runtime-devnet/paseo",
+    "pop-runtime-testnet/paseo",
+]
 runtime-benchmarks = [
     "cumulus-primitives-core/runtime-benchmarks",
     "frame-benchmarking-cli/runtime-benchmarks",
