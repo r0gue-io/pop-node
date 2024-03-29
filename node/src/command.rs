@@ -30,9 +30,9 @@ trait RuntimeResolver {
 /// Private helper that pattern matches on the input (which is expected to be a ChainSpec ID)
 /// and returns the Runtime accordingly.
 fn runtime(id: &str) -> Runtime {
-	if id.starts_with("dev") {
+	if id.starts_with("dev") || id.ends_with("devnet") {
 		Runtime::Devnet
-	} else if id.starts_with("test") {
+	} else if id.starts_with("test") || id.ends_with("testnet") {
 		Runtime::Testnet
 	} else {
 		log::warn!("No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will be used", id);
@@ -64,10 +64,17 @@ impl RuntimeResolver for PathBuf {
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
+		#[cfg(not(feature = "paseo"))]
 		"dev-rococo" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
+		#[cfg(feature = "paseo")]
 		"dev-paseo" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+		#[cfg(not(feature = "paseo"))]
 		"pop-rococo" => Box::new(chain_spec::testnet_config(Relay::Rococo)),
+		#[cfg(feature = "paseo")]
 		"pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+		#[cfg(feature = "paseo")]
+		"" | "local" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+		#[cfg(not(feature = "paseo"))]
 		"" | "local" => Box::new(chain_spec::development_config(Relay::RococoLocal)),
 		path => {
 			let path: PathBuf = path.into();

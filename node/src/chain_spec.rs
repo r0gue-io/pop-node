@@ -17,9 +17,13 @@ pub type TestnetChainSpec =
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 pub(crate) enum Relay {
+	#[cfg(not(feature = "paseo"))]
 	Rococo,
+	#[cfg(feature = "paseo")]
 	Paseo,
+	#[cfg(not(feature = "paseo"))]
 	RococoLocal,
+	#[cfg(feature = "paseo")]
 	PaseoLocal,
 }
 
@@ -86,6 +90,7 @@ fn configure_for_relay(
 
 	match relay {
 		// Test relay chains
+		#[cfg(not(feature = "paseo"))]
 		Relay::Rococo => {
 			para_id = 4385;
 			properties.insert("tokenSymbol".into(), "ROC".into());
@@ -93,6 +98,7 @@ fn configure_for_relay(
 
 			(Extensions { relay_chain: "rococo".into(), para_id }, para_id)
 		},
+		#[cfg(feature = "paseo")]
 		Relay::Paseo => {
 			para_id = 4001;
 			properties.insert("tokenSymbol".into(), "PAS".into());
@@ -101,6 +107,7 @@ fn configure_for_relay(
 			(Extensions { relay_chain: "paseo".into(), para_id }, para_id)
 		},
 		// Local relay chains
+		#[cfg(not(feature = "paseo"))]
 		Relay::RococoLocal => {
 			para_id = 4385;
 			properties.insert("tokenSymbol".into(), "ROC".into());
@@ -108,6 +115,7 @@ fn configure_for_relay(
 
 			(Extensions { relay_chain: "rococo-local".into(), para_id }, para_id)
 		},
+		#[cfg(feature = "paseo")]
 		Relay::PaseoLocal => {
 			para_id = 4001;
 			properties.insert("tokenSymbol".into(), "PAS".into());
@@ -128,7 +136,7 @@ pub fn development_config(relay: Relay) -> DevnetChainSpec {
 		extensions,
 	)
 	.with_name("Pop Network Development")
-	.with_id("pop-dev")
+	.with_id("pop-devnet")
 	.with_chain_type(ChainType::Development)
 	.with_genesis_config_patch(devnet_genesis(
 		// initial collators.
