@@ -169,6 +169,10 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 		AccountId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
 	let collator_1_aura_id: AuraId =
 		AuraId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
+	let collator_2_account_id: AccountId =
+		AccountId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
+	let collator_2_aura_id: AuraId =
+		AuraId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
 	let sudo_account_id: AccountId =
 		AccountId::from_ss58check("5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD").unwrap();
 
@@ -184,9 +188,11 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 		// initial collators.
 		vec![
 			// POP COLLATOR 0
-			(collator_0_account_id.clone(), collator_0_aura_id),
+			(collator_0_account_id, collator_0_aura_id),
 			// POP COLLATOR 1
-			(collator_1_account_id.clone(), collator_1_aura_id),
+			(collator_1_account_id, collator_1_aura_id),
+			// POP COLLATOR 2
+			(collator_2_account_id, collator_2_aura_id),
 		],
 		sudo_account_id,
 		para_id.into(),
