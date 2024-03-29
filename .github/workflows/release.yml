@@ -41,7 +41,7 @@ jobs:
         run: |
           mkdir -p build
           cp target/production/pop-node build/${{ env.name }}
-          sha256sum target/production/pop-node > build/${{ env.name }}.sha256
+          sha256sum build/${{ env.name }} > build/${{ env.name }}.sha256
 
       - name: Upload binary
         uses: actions/upload-artifact@v3
