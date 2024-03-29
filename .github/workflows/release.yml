@@ -51,4 +51,6 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
-          files: build
+          files: |
+            build/${{ env.name }}
+            build/${{ env.name }}.sha256
