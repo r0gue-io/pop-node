@@ -3,8 +3,9 @@
   "id": "pop-testnet",
   "chainType": "Live",
   "bootNodes": [
-    "/ip4/57.151.80.80/tcp/30333/ws/p2p/12D3KooWPQBmHWfhSen69n75wygNUkNpqGxBFuWTTHA27hSfh167",
-    "/ip4/20.117.177.132/tcp/30333/wss/p2p/12D3KooWRzKM1LeD75v9WeG2U5fz2CXQHPQsgfWfU3aTrp3xFe9G"
+    "/ip4/57.151.80.80/tcp/30333/p2p/12D3KooWHkmdnXHQAdL1td8UrNcQeHVMRBD2LM3VqhGFa1a4fpz9",
+    "/ip4/20.117.177.132/tcp/30333/p2p/12D3KooWRzKM1LeD75v9WeG2U5fz2CXQHPQsgfWfU3aTrp3xFe9G",
+    "/ip4/20.240.192.8/tcp/30333/p2p/12D3KooWR2Qrt8Ujd1d2gXvZuYnJkP6EEXCSSk6K6ghxNw1hvrFz"
   ],
   "telemetryEndpoints": null,
   "protocolId": "pop-testnet",
