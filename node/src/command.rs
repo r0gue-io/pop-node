@@ -30,9 +30,9 @@ trait RuntimeResolver {
 /// Private helper that pattern matches on the input (which is expected to be a ChainSpec ID)
 /// and returns the Runtime accordingly.
 fn runtime(id: &str) -> Runtime {
-	if id.starts_with("dev") {
+	if id.starts_with("dev") || id.ends_with("devnet") {
 		Runtime::Devnet
-	} else if id.starts_with("test") {
+	} else if id.starts_with("test") || id.ends_with("testnet") {
 		Runtime::Testnet
 	} else {
 		log::warn!("No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will be used", id);
