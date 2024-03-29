@@ -136,7 +136,7 @@ pub fn development_config(relay: Relay) -> DevnetChainSpec {
 		extensions,
 	)
 	.with_name("Pop Network Development")
-	.with_id("pop-dev")
+	.with_id("pop-devnet")
 	.with_chain_type(ChainType::Development)
 	.with_genesis_config_patch(devnet_genesis(
 		// initial collators.
