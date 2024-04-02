@@ -21,6 +21,7 @@ members = [
     "runtime/testnet",
     "integration-tests",
     "primitives",
+    "scripts/fund-dev-accounts",
 ]
 exclude = [
     "pop-api",
@@ -41,6 +42,9 @@ jsonrpsee = { version = "0.20.3", features = ["server"] }
 futures = "0.3.28"
 serde_json = "1.0.111"
 tracing-subscriber = { version = "0.3", default-features = false }
+subxt = "0.34.0"
+subxt-signer = "0.34.0"
+tokio = { version = "1.36", features = ["macros", "time", "rt-multi-thread"] }
 
 # Build
 substrate-wasm-builder = "18.0.0"
