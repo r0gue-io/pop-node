@@ -5,6 +5,7 @@ use scale::{Decode, Encode, MaxEncodedLen};
 pub enum RuntimeStateKeys {
 	Nfts(NftsKeys),
 	ParachainSystem(ParachainSystemKeys),
+	TrustBackedAssets(TrustBackedAssetsKeys),
 }
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -32,4 +33,10 @@ pub enum NftsKeys {
 	SystemAttribute(CollectionId, Option<ItemId>, BoundedVec<u8, KeyLimit>),
 	/// Get the attribute value of `item` of `collection` corresponding to `key`.
 	CollectionAttribute(CollectionId, BoundedVec<u8, KeyLimit>),
+}
+
+#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+pub enum TrustBackedAssetsKeys {
+	/// Check if the asset exists.
+	AssetExists(AssetId),
 }

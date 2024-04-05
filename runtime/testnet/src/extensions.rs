@@ -3,23 +3,25 @@ use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
-	traits::nonfungibles_v2::Inspect,
+	traits::{fungibles::Inspect, nonfungibles_v2::Inspect as NonFungiblesInspect},
 };
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
 use pop_primitives::{
-	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
-	CollectionId, ItemId,
+	storage_keys::{NftsKeys, ParachainSystemKeys, RuntimeStateKeys, TrustBackedAssetsKeys},
+	AssetId, CollectionId, ItemId,
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Dispatchable},
 	DispatchError,
 };
-use sp_std::vec::Vec;
 
-use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin};
+use crate::{
+	assets_config::TrustBackedAssetsInstance, AccountId, AllowedPopApiCalls, RuntimeCall,
+	RuntimeOrigin,
+};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -32,6 +34,7 @@ impl<T> ChainExtension<T> for PopApiExtension
 where
 	T: pallet_contracts::Config
 		+ pallet_xcm::Config
+		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
 		+ frame_system::Config<
@@ -109,7 +112,7 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
 
-	origin.add_filter(AllowedApiCalls::contains);
+	origin.add_filter(AllowedPopApiCalls::contains);
 
 	match call.dispatch(origin) {
 		Ok(info) => {
@@ -181,6 +184,7 @@ where
 fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
+		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
 		+ frame_system::Config,
@@ -205,6 +209,9 @@ where
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, &mut env),
 		RuntimeStateKeys::ParachainSystem(key) => {
 			read_parachain_system_state::<T, E>(key, &mut env)
+		},
+		RuntimeStateKeys::TrustBackedAssets(key) => {
+			read_trust_backed_assets_state::<T, E>(key, &mut env)
 		},
 	}?
 	.encode();
@@ -277,6 +284,23 @@ where
 		NftsKeys::CollectionAttribute(collection, key) => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_nfts::Pallet::<T>::collection_attribute(&collection, &key).encode())
+		},
+	}
+}
+
+fn read_trust_backed_assets_state<T, E>(
+	key: TrustBackedAssetsKeys,
+	env: &mut Environment<E, BufInBufOutState>,
+) -> Result<Vec<u8>, DispatchError>
+where
+	T: pallet_contracts::Config
+		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>,
+	E: Ext<T = T>,
+{
+	match key {
+		TrustBackedAssetsKeys::AssetExists(id) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
 		},
 	}
 }
@@ -481,7 +505,7 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// check for revert
+			// Check for revert.
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 
 			assert_eq!(Nfts::owner(collection_id, item_id), Some(BOB.into()));
@@ -546,7 +570,7 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// check for revert with expected error
+			// Check for revert with expected error.
 			let result = result.result.unwrap();
 			assert!(result.did_revert());
 		});
@@ -606,7 +630,7 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// check for revert
+			// Check for revert.
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 		});
 	}
@@ -669,11 +693,115 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// check for revert
+			// Check for revert.
 			assert!(
 				result.result.is_err(),
 				"Contract execution should have failed - unimplemented runtime call!"
 			);
+		});
+	}
+
+	#[test]
+	#[ignore]
+	fn dispatch_trust_backed_assets_mint_from_contract_works() {
+		new_test_ext().execute_with(|| {
+			let _ = env_logger::try_init();
+
+			let (wasm_binary, _) = load_wasm_module::<Runtime>(
+				"../../pop-api/examples/trust_backed_assets/target/ink/pop_api_trust_backed_assets_example.wasm",
+			)
+			.unwrap();
+
+			let init_value = 100;
+
+			let result = Contracts::bare_instantiate(
+				ALICE,
+				init_value,
+				GAS_LIMIT,
+				None,
+				Code::Upload(wasm_binary),
+				function_selector("new"),
+				vec![],
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+			)
+			.result
+			.unwrap();
+
+			assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
+			let addr = result.account_id;
+
+			let asset_id: u32 = 1;
+			let min_balance = 1;
+			let amount: u128 = 100 * UNIT;
+			let function = function_selector("mint_asset_through_runtime");
+			let params = [function, asset_id.encode(), BOB.encode(), amount.encode()].concat();
+
+			// Mint asset which does not exist.
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				GAS_LIMIT,
+				None,
+				params.clone(),
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+				pallet_contracts::Determinism::Enforced,
+			);
+
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
+				log::debug!("result: {:?}", result);
+			}
+
+			// Check for revert.
+			assert!(result.result.unwrap().did_revert(), "Contract should have been reverted!");
+
+			// Create asset with contract as owner.
+			assert_eq!(
+				TrustBackedAssets::force_create(
+					RuntimeOrigin::root(),
+					asset_id.into(),
+					addr.clone().into(),
+					true,
+					min_balance,
+				),
+				Ok(())
+			);
+
+			// Check Bob's asset balance before minting through contract.
+			let bob_balance_before = TrustBackedAssets::balance(asset_id, &BOB);
+			assert_eq!(bob_balance_before, 0);
+
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				GAS_LIMIT,
+				None,
+				params,
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+				pallet_contracts::Determinism::Enforced,
+			);
+
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
+				log::debug!("result: {:?}", result);
+			}
+
+			// Check for revert
+			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+
+			let bob_balance_after = TrustBackedAssets::balance(asset_id, &BOB);
+			assert_eq!(bob_balance_after, bob_balance_before + amount);
 		});
 	}
 
@@ -731,7 +859,7 @@ mod tests {
 				log::debug!("filtered result: {:?}", result);
 			}
 
-			// check for revert
+			// Check for revert.
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 		});
 	}

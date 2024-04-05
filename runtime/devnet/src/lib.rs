@@ -251,46 +251,77 @@ impl Contains<RuntimeCall> for FilteredCalls {
 }
 
 /// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for crate::AllowedApiCalls {
+pub struct AllowedPopApiCalls;
+impl Contains<RuntimeCall> for crate::AllowedPopApiCalls {
 	fn contains(c: &RuntimeCall) -> bool {
+		use assets_config::TrustBackedAssetsCall;
 		use pallet_nfts::Call as NftsCall;
 		matches!(
 			c,
 			RuntimeCall::Balances(BalancesCall::transfer_keep_alive { .. })
-				| RuntimeCall::Nfts(
-					NftsCall::create { .. }
-						| NftsCall::destroy { .. }
-						| NftsCall::mint { .. } | NftsCall::burn { .. }
-						| NftsCall::transfer { .. }
-						| NftsCall::redeposit { .. }
-						| NftsCall::lock_item_transfer { .. }
-						| NftsCall::unlock_item_transfer { .. }
-						| NftsCall::lock_collection { .. }
-						| NftsCall::transfer_ownership { .. }
-						| NftsCall::set_team { .. }
-						| NftsCall::approve_transfer { .. }
-						| NftsCall::cancel_approval { .. }
-						| NftsCall::clear_all_transfer_approvals { .. }
-						| NftsCall::lock_item_properties { .. }
-						| NftsCall::set_attribute { .. }
-						| NftsCall::clear_attribute { .. }
-						| NftsCall::approve_item_attributes { .. }
-						| NftsCall::cancel_item_attributes_approval { .. }
-						| NftsCall::set_metadata { .. }
-						| NftsCall::clear_metadata { .. }
-						| NftsCall::set_collection_metadata { .. }
-						| NftsCall::clear_collection_metadata { .. }
-						| NftsCall::set_accept_ownership { .. }
-						| NftsCall::set_collection_max_supply { .. }
-						| NftsCall::update_mint_settings { .. }
-						| NftsCall::set_price { .. }
-						| NftsCall::buy_item { .. }
-						| NftsCall::pay_tips { .. }
-						| NftsCall::create_swap { .. }
-						| NftsCall::cancel_swap { .. }
-						| NftsCall::claim_swap { .. }
-				)
+				| RuntimeCall::TrustBackedAssets(
+					TrustBackedAssetsCall::create { .. }
+						| TrustBackedAssetsCall::start_destroy { .. }
+						| TrustBackedAssetsCall::destroy_accounts { .. }
+						| TrustBackedAssetsCall::destroy_approvals { .. }
+						| TrustBackedAssetsCall::finish_destroy { .. }
+						| TrustBackedAssetsCall::mint { .. }
+						| TrustBackedAssetsCall::burn { .. }
+						| TrustBackedAssetsCall::transfer { .. }
+						| TrustBackedAssetsCall::transfer_keep_alive { .. }
+						| TrustBackedAssetsCall::force_transfer { .. }
+						| TrustBackedAssetsCall::freeze { .. }
+						| TrustBackedAssetsCall::thaw { .. }
+						| TrustBackedAssetsCall::freeze_asset { .. }
+						| TrustBackedAssetsCall::thaw_asset { .. }
+						| TrustBackedAssetsCall::transfer_ownership { .. }
+						| TrustBackedAssetsCall::set_team { .. }
+						| TrustBackedAssetsCall::set_metadata { .. }
+						| TrustBackedAssetsCall::clear_metadata { .. }
+						| TrustBackedAssetsCall::approve_transfer { .. }
+						| TrustBackedAssetsCall::cancel_approval { .. }
+						| TrustBackedAssetsCall::force_cancel_approval { .. }
+						| TrustBackedAssetsCall::transfer_approved { .. }
+						| TrustBackedAssetsCall::touch { .. }
+						| TrustBackedAssetsCall::refund { .. }
+						| TrustBackedAssetsCall::set_min_balance { .. }
+						| TrustBackedAssetsCall::touch_other { .. }
+						| TrustBackedAssetsCall::refund_other { .. }
+						| TrustBackedAssetsCall::block { .. }
+				) | RuntimeCall::Nfts(
+				NftsCall::create { .. }
+					| NftsCall::destroy { .. }
+					| NftsCall::mint { .. }
+					| NftsCall::burn { .. }
+					| NftsCall::transfer { .. }
+					| NftsCall::redeposit { .. }
+					| NftsCall::lock_item_transfer { .. }
+					| NftsCall::unlock_item_transfer { .. }
+					| NftsCall::lock_collection { .. }
+					| NftsCall::transfer_ownership { .. }
+					| NftsCall::set_team { .. }
+					| NftsCall::approve_transfer { .. }
+					| NftsCall::cancel_approval { .. }
+					| NftsCall::clear_all_transfer_approvals { .. }
+					| NftsCall::lock_item_properties { .. }
+					| NftsCall::set_attribute { .. }
+					| NftsCall::clear_attribute { .. }
+					| NftsCall::approve_item_attributes { .. }
+					| NftsCall::cancel_item_attributes_approval { .. }
+					| NftsCall::set_metadata { .. }
+					| NftsCall::clear_metadata { .. }
+					| NftsCall::set_collection_metadata { .. }
+					| NftsCall::clear_collection_metadata { .. }
+					| NftsCall::set_accept_ownership { .. }
+					| NftsCall::set_collection_max_supply { .. }
+					| NftsCall::update_mint_settings { .. }
+					| NftsCall::set_price { .. }
+					| NftsCall::buy_item { .. }
+					| NftsCall::pay_tips { .. }
+					| NftsCall::create_swap { .. }
+					| NftsCall::cancel_swap { .. }
+					| NftsCall::claim_swap { .. }
+			)
 		)
 	}
 }
@@ -631,7 +662,7 @@ construct_runtime!(
 		// Assets
 		Nfts: pallet_nfts = 50,
 		NftFractionalization: pallet_nft_fractionalization = 51,
-		Assets: pallet_assets::<Instance1> = 52,
+		TrustBackedAssets: pallet_assets::<Instance1> = 52,
 	}
 );
 
