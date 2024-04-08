@@ -92,6 +92,7 @@ pallet-nft-fractionalization = { version = "11.0.0", default-features = false }
 pallet-nfts = { version = "23.0.0", default-features = false }
 pallet-nfts-runtime-api = { version = "15.0.0", default-features = false }
 pallet-preimage = { version = "29.0.0", default-features = false }
+pallet-proxy = { version = "29.0.0", default-features = false }
 pallet-scheduler = { version = "30.0.0", default-features = false }
 pallet-session = { version = "29.0.0", default-features = false }
 pallet-sudo = { version = "29.0.0", default-features = false }
