@@ -616,7 +616,7 @@ construct_runtime!(
 		Contracts: pallet_contracts = 40,
 
 		// Multisig
-		Multisig: pallet_multisig = 41,
+		Multisig: pallet_multisig = 42,
 
 		// Assets
 		Nfts: pallet_nfts = 50,
