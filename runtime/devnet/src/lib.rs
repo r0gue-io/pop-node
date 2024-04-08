@@ -577,6 +577,13 @@ impl pallet_multisig::Config for Runtime {
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
 }
 
+impl pallet_utility::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type PalletsOrigin = OriginCaller;
+	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime {
@@ -617,6 +624,8 @@ construct_runtime!(
 
 		// Multisig
 		Multisig: pallet_multisig = 42,
+		// Utility
+		Utility: pallet_utility = 43,
 
 		// Assets
 		Nfts: pallet_nfts = 50,
