@@ -39,6 +39,7 @@ pallet-assets.workspace = true
 pallet-balances.workspace = true
 pallet-contracts.workspace = true
 pallet-message-queue.workspace = true
+pallet-multisig.workspace = true
 pallet-nft-fractionalization.workspace = true
 pallet-nfts.workspace = true
 pallet-nfts-runtime-api.workspace = true
@@ -116,6 +117,7 @@ std = [
     "pallet-collator-selection/std",
     "pallet-contracts/std",
     "pallet-message-queue/std",
+    "pallet-multisig/std",
     "pallet-nft-fractionalization/std",
     "pallet-nfts/std",
     "pallet-nfts-runtime-api/std",
@@ -166,6 +168,7 @@ runtime-benchmarks = [
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-contracts/runtime-benchmarks",
     "pallet-message-queue/runtime-benchmarks",
+    "pallet-multisig/runtime-benchmarks",
     "pallet-nft-fractionalization/runtime-benchmarks",
     "pallet-nfts/runtime-benchmarks",
     "pallet-scheduler/runtime-benchmarks",
@@ -197,6 +200,7 @@ try-runtime = [
     "pallet-collator-selection/try-runtime",
     "pallet-contracts/try-runtime",
     "pallet-message-queue/try-runtime",
+    "pallet-multisig/try-runtime",
     "pallet-nft-fractionalization/try-runtime",
     "pallet-nfts/try-runtime",
     "pallet-scheduler/try-runtime",
