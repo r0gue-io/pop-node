@@ -623,7 +623,7 @@ construct_runtime!(
 		// Contracts
 		Contracts: pallet_contracts = 40,
 
-        // Proxy
+		// Proxy
 		Proxy: pallet_proxy = 41,
 		// Multisig
 		Multisig: pallet_multisig = 42,
