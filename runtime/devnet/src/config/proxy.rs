@@ -1,7 +1,8 @@
 use crate::{
-	assets_config::TrustBackedAssetsCall, deposit, Balance, Balances, Runtime, RuntimeCall,
+	deposit, Balance, Balances, Runtime, RuntimeCall,
 	RuntimeEvent,
 };
+use super::assets::TrustBackedAssetsCall;
 use codec::{Decode, Encode, MaxEncodedLen};
 use sp_runtime::{traits::BlakeTwo256, RuntimeDebug};
 

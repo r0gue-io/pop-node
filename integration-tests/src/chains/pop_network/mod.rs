@@ -18,7 +18,7 @@ decl_test_parachains! {
 		runtime = pop_runtime_devnet,
 		core = {
 			XcmpMessageHandler: pop_runtime_devnet::XcmpQueue,
-			LocationToAccountId: pop_runtime_devnet::xcm_config::LocationToAccountId,
+			LocationToAccountId: pop_runtime_devnet::config::xcm::LocationToAccountId,
 			ParachainInfo: pop_runtime_devnet::ParachainInfo,
 			MessageOrigin: cumulus_primitives_core::AggregateMessageOrigin,
 		},
