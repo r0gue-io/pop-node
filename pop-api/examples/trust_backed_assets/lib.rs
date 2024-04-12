@@ -1,5 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+// Utilizing Trust Backed Assets with the Pop API.
+//
+// This example demonstrates interaction with trust backed assets via the assets pallet. Trust backed assets are originated
+// and managed within Pop Network, harnessing the platform's inherent trust, security, and governance models.
 use pop_api::assets::trust_backed as trust_backed_assets;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -16,14 +20,14 @@ impl From<trust_backed_assets::Error> for ContractError {
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_extension_demo {
+mod pop_api_tb_assets_example {
 	use super::*;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiExtensionDemo;
+	pub struct PopApiTBAssetsExample;
 
-	impl PopApiExtensionDemo {
+	impl PopApiTBAssetsExample {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
 			ink::env::debug_println!("Contract::new");
@@ -45,13 +49,15 @@ mod pop_api_extension_demo {
 			);
 
 			// Check if asset doesn't exist.
-            if !trust_backed_assets::asset_exists(id)? {
+			if !trust_backed_assets::asset_exists(id)? {
 				return Err(ContractError::UnknownAsset);
 			}
 
 			// Mint asset via pop api.
 			trust_backed_assets::mint(id, beneficiary, amount)?;
-			ink::env::debug_println!("Contract::mint_asset_through_runtime: asset(s) minted successfully");
+			ink::env::debug_println!(
+				"Contract::mint_asset_through_runtime: asset(s) minted successfully"
+			);
 			Ok(())
 		}
 	}
@@ -62,8 +68,7 @@ mod pop_api_extension_demo {
 
 		#[ink::test]
 		fn default_works() {
-			PopApiExtensionDemo::new();
+			PopApiTBAssetsExample::new();
 		}
 	}
 }
-
