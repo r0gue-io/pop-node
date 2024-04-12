@@ -39,6 +39,7 @@ pallet-assets.workspace = true
 pallet-balances.workspace = true
 pallet-contracts.workspace = true
 pallet-message-queue.workspace = true
+pallet-multisig.workspace = true
 pallet-nft-fractionalization.workspace = true
 pallet-nfts.workspace = true
 pallet-nfts-runtime-api.workspace = true
@@ -49,6 +50,7 @@ pallet-preimage.workspace = true
 pallet-timestamp.workspace = true
 pallet-transaction-payment.workspace = true
 pallet-transaction-payment-rpc-runtime-api.workspace = true
+pallet-utility.workspace = true
 sp-api.workspace = true
 sp-io.workspace = true
 sp-block-builder.workspace = true
@@ -116,6 +118,7 @@ std = [
     "pallet-collator-selection/std",
     "pallet-contracts/std",
     "pallet-message-queue/std",
+    "pallet-multisig/std",
     "pallet-nft-fractionalization/std",
     "pallet-nfts/std",
     "pallet-nfts-runtime-api/std",
@@ -126,6 +129,7 @@ std = [
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",
+    "pallet-utility/std",
     "pallet-xcm/std",
     "parachain-info/std",
     "parachains-common/std",
@@ -166,12 +170,14 @@ runtime-benchmarks = [
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-contracts/runtime-benchmarks",
     "pallet-message-queue/runtime-benchmarks",
+    "pallet-multisig/runtime-benchmarks",
     "pallet-nft-fractionalization/runtime-benchmarks",
     "pallet-nfts/runtime-benchmarks",
     "pallet-scheduler/runtime-benchmarks",
     "pallet-sudo/runtime-benchmarks",
     "pallet-preimage/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
+    "pallet-utility/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "parachains-common/runtime-benchmarks",
     "polkadot-parachain-primitives/runtime-benchmarks",
@@ -197,6 +203,7 @@ try-runtime = [
     "pallet-collator-selection/try-runtime",
     "pallet-contracts/try-runtime",
     "pallet-message-queue/try-runtime",
+    "pallet-multisig/try-runtime",
     "pallet-nft-fractionalization/try-runtime",
     "pallet-nfts/try-runtime",
     "pallet-scheduler/try-runtime",
@@ -205,6 +212,7 @@ try-runtime = [
     "pallet-preimage/try-runtime",
     "pallet-timestamp/try-runtime",
     "pallet-transaction-payment/try-runtime",
+    "pallet-utility/try-runtime",
     "pallet-xcm/try-runtime",
     "parachain-info/try-runtime",
     "polkadot-runtime-common/try-runtime",
