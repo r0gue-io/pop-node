@@ -8,9 +8,12 @@ on:
       ref:
         description: ref to build binary from
         required: false
+  push:
+    branches:
+      - 'frank/build-macos'
 
 jobs:
-  build-node:
+  build-node-for-linux:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -24,6 +27,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          fetch-depth: 0
           ref: ${{ github.event.inputs.ref }}
 
       - name: Install packages
@@ -39,6 +43,53 @@ jobs:
           mkdir -p build
           cp target/production/pop-node build/${{ env.name }}
           sha256sum build/${{ env.name }} > build/${{ env.name }}.sha256
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v3
+        with:
+          name: binaries
+          path: build
+
+      - name: Add binary to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            build/${{ env.name }}
+            build/${{ env.name }}.sha256
+
+  build-node-for-macos:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        target: [ "aarch64-apple-darwin", "x86_64-apple-darwin" ]
+    env:
+      name: "pop-node-${{ matrix.target }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.ref }}
+
+      - name: Install packages
+        run: |
+          brew install protobuf
+          protoc --version
+
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build node
+        run: cargo build --profile=production -p pop-node --target ${{ matrix.target }}
+
+      - name: Save binary
+        run: |
+          mkdir -p build
+          cp target/${{ matrix.target }}/production/pop-node build/${{ env.name }}
+          shasum -a 256 build/${{ env.name }} > build/${{ env.name }}.sha256
 
       - name: Upload binary
         uses: actions/upload-artifact@v3
