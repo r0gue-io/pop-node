@@ -85,22 +85,21 @@ jobs:
       - name: Build node
         run: cargo build --profile=production -p pop-node --target ${{ matrix.target }}
 
-      - name: Save binary
+      - name: Package binary
         run: |
-          mkdir -p build
-          cp target/${{ matrix.target }}/production/pop-node build/${{ env.name }}
-          shasum -a 256 build/${{ env.name }} > build/${{ env.name }}.sha256
+          cd target/${{ matrix.target }}/production
+          shasum -a 256 pop-node > pop-node.sha256
+          tar -czf pop-node-${{ matrix.target }}.tar.gz pop-node pop-node.sha256
 
       - name: Upload binary
         uses: actions/upload-artifact@v3
         with:
           name: binaries
-          path: build
+          path: target/${{ matrix.target }}/production/pop-node-${{ matrix.target }}.tar.gz
 
       - name: Add binary to release
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            build/${{ env.name }}
-            build/${{ env.name }}.sha256
+            target/${{ matrix.target }}/production/pop-node-${{ matrix.target }}.tar.gz
