@@ -9,7 +9,7 @@ ink! smart contract examples using the Pop API
 
 ## What is the Pop API?
 
-One of the core value propositions of the Pop Network is to enable smart contracts to easily access the power of Polkadot. As such, the Pop API was built to enable smart contracts to easily utilize the functionality provided by the Pop Network parachain runtime.
+One of the core value propositions of Pop Network is to enable smart contracts to easily access the power of Polkadot. As such, the Pop API was built to enable smart contracts to easily utilize the functionality provided by the Pop Network parachain runtime.
 
 Substrate already exposes a Runtime API which is typically associated with the “outer node” calling into the runtime via RPC. Pop Network extends this concept in a direction that makes it usable by smart contracts, allowing untrusted contracts to make use of carefully exposed trusted functionality available within the runtime - this is the Pop API.
 
