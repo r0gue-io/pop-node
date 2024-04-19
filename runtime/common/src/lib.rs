@@ -82,7 +82,7 @@ pub const BLOCK_PROCESSING_VELOCITY: u32 = 1;
 /// Proxy commons for Pop runtimes
 pub mod proxy {
 
-	use super::*;
+	use super::{Balance, deposit};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::parameter_types;
 	use sp_runtime::RuntimeDebug;
