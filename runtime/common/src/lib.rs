@@ -134,4 +134,18 @@ pub mod proxy {
 			Self::Any
 		}
 	}
+
+	impl ProxyType {
+		pub fn is_superset(s: &ProxyType, o: &ProxyType) -> bool {
+			match (s, o) {
+				(x, y) if x == y => true,
+				(ProxyType::Any, _) => true,
+				(_, ProxyType::Any) => false,
+				(ProxyType::Assets, ProxyType::AssetOwner) => true,
+				(ProxyType::Assets, ProxyType::AssetManager) => true,
+				(ProxyType::NonTransfer, ProxyType::Collator) => true,
+				_ => false,
+			}
+		}
+	}
 }
