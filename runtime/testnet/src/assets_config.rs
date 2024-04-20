@@ -96,6 +96,7 @@ impl pallet_nft_fractionalization::Config for Runtime {
 }
 
 pub type TrustBackedAssets = pallet_assets::Instance1;
+pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssets>;
 impl pallet_assets::Config<TrustBackedAssets> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;

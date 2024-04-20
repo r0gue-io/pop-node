@@ -9,6 +9,7 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod assets_config;
 mod contracts_config;
 mod extensions;
+mod proxy_config;
 mod weights;
 pub mod xcm_config;
 
@@ -622,6 +623,8 @@ construct_runtime!(
 		// Contracts
 		Contracts: pallet_contracts = 40,
 
+		// Proxy
+		Proxy: pallet_proxy = 41,
 		// Multisig
 		Multisig: pallet_multisig = 42,
 		// Utility
