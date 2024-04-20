@@ -8,9 +8,6 @@ on:
       ref:
         description: ref to build binary from
         required: false
-  push:
-    branches:
-      - 'frank/build-macos'
 
 jobs:
   build-node:
