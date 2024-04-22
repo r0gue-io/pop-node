@@ -20,7 +20,7 @@ sp-io = { version = "31.0.0", default-features = false, features = [
 ] }
 sp-runtime = { version = "38.0.0", default-features = false }
 
-pop-primitives = { path = "../primitives", default-features = false }
+pop-primitives = { path = "../primitives", features = ["devnet"], default-features = false }
 
 [lib]
 crate-type = [ "rlib" ]

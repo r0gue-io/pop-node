@@ -14,10 +14,7 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
-use crate::{
-	assets_config::TrustBackedAssetsInstance, AccountId, AllowedPopApiCalls, RuntimeCall,
-	RuntimeOrigin,
-};
+use crate::{AccountId, AllowedPopApiCalls, RuntimeCall, RuntimeOrigin};
 
 const LOG_TARGET: &str = "pop-api::extension";
 

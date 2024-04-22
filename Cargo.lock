@@ -9966,6 +9966,8 @@ name = "pop-primitives"
 version = "0.0.0"
 dependencies = [
  "parity-scale-codec",
+ "scale-decode",
+ "scale-encode",
  "scale-info",
 ]
 
