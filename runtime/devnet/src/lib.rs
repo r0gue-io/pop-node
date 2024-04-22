@@ -633,7 +633,7 @@ construct_runtime!(
 		// Assets
 		Nfts: pallet_nfts = 50,
 		NftFractionalization: pallet_nft_fractionalization = 51,
-		Assets: pallet_assets::<Instance1> = 52,
+		TrustBackedAssets: pallet_assets::<Instance1> = 52,
 	}
 );
 

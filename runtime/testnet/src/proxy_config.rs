@@ -14,7 +14,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::NonTransfer => !matches!(
 				c,
 				RuntimeCall::Balances { .. }
-					| RuntimeCall::Assets { .. }
+					| RuntimeCall::TrustBackedAssets { .. }
 					| RuntimeCall::Nfts { .. }
 			),
 			ProxyType::CancelProxy => matches!(
@@ -26,7 +26,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			ProxyType::Assets => {
 				matches!(
 					c,
-					RuntimeCall::Assets { .. }
+					RuntimeCall::TrustBackedAssets { .. }
 						| RuntimeCall::Utility { .. }
 						| RuntimeCall::Multisig { .. }
 						| RuntimeCall::Nfts { .. }
@@ -34,16 +34,18 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			},
 			ProxyType::AssetOwner => matches!(
 				c,
-				RuntimeCall::Assets(TrustBackedAssetsCall::create { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::start_destroy { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::destroy_accounts { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::destroy_approvals { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::finish_destroy { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::transfer_ownership { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::set_team { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::set_metadata { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::clear_metadata { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::set_min_balance { .. })
+				RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::create { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::start_destroy { .. })
+					| RuntimeCall::TrustBackedAssets(
+						TrustBackedAssetsCall::destroy_accounts { .. }
+					) | RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::destroy_approvals { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::finish_destroy { .. })
+					| RuntimeCall::TrustBackedAssets(
+						TrustBackedAssetsCall::transfer_ownership { .. }
+					) | RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::set_team { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::set_metadata { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::clear_metadata { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::set_min_balance { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::create { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::destroy { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::redeposit { .. })
@@ -56,15 +58,15 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			),
 			ProxyType::AssetManager => matches!(
 				c,
-				RuntimeCall::Assets(TrustBackedAssetsCall::mint { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::burn { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::freeze { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::block { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::thaw { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::freeze_asset { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::thaw_asset { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::touch_other { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::refund_other { .. })
+				RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::mint { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::burn { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::freeze { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::block { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::thaw { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::freeze_asset { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::thaw_asset { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::touch_other { .. })
+					| RuntimeCall::TrustBackedAssets(TrustBackedAssetsCall::refund_other { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::force_mint { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::update_mint_settings { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::mint_pre_signed { .. })

@@ -1,6 +1,6 @@
 use crate::{
-	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	deposit, AccountId, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
+	RuntimeHoldReason, TrustBackedAssets, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 use frame_support::{
 	parameter_types,
@@ -84,9 +84,9 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type StringLimit = AssetsStringLimit;
 	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
 	type NftId = <Self as pallet_nfts::Config>::ItemId;
-	type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssets>>::Balance;
-	type AssetId = <Self as pallet_assets::Config<TrustBackedAssets>>::AssetId;
-	type Assets = Assets;
+	type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::Balance;
+	type AssetId = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId;
+	type Assets = TrustBackedAssets;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
 	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
@@ -95,9 +95,9 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type BenchmarkHelper = ();
 }
 
-pub type TrustBackedAssets = pallet_assets::Instance1;
-pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssets>;
-impl pallet_assets::Config<TrustBackedAssets> for Runtime {
+pub type TrustBackedAssetsInstance = pallet_assets::Instance1;
+pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
+impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type AssetId = AssetIdForTrustBackedAssets;
