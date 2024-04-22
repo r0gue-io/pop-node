@@ -18,17 +18,17 @@ impl From<nfts::Error> for ContractError {
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_extension_demo {
+mod pop_api_nfts {
 	use super::ContractError;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiExtensionDemo;
+	pub struct PopApiNfts;
 
-	impl PopApiExtensionDemo {
+	impl PopApiNfts {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("Contract::new");
+			ink::env::debug_println!("PopApiNfts::new");
 			Default::default()
 		}
 
@@ -40,7 +40,7 @@ mod pop_api_extension_demo {
 			receiver: AccountId,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"Contract::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
+				"PopApiNfts::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
 				collection_id,
 				item_id,
 				receiver
@@ -53,13 +53,13 @@ mod pop_api_extension_demo {
 
 			// mint api
 			pop_api::nfts::mint(collection_id, item_id, receiver)?;
-			ink::env::debug_println!("Contract::mint_through_runtime: item minted successfully");
+			ink::env::debug_println!("PopApiNfts::mint_through_runtime: item minted successfully");
 
 			// check owner
 			match pop_api::nfts::owner(collection_id, item_id)? {
 				Some(owner) if owner == receiver => {
 					ink::env::debug_println!(
-						"Contract::mint_through_runtime success: minted item belongs to receiver"
+						"PopApiNfts::mint_through_runtime success: minted item belongs to receiver"
 					);
 				},
 				_ => {
@@ -67,7 +67,7 @@ mod pop_api_extension_demo {
 				},
 			}
 
-			ink::env::debug_println!("Contract::mint_through_runtime end");
+			ink::env::debug_println!("PopApiNfts::mint_through_runtime end");
 			Ok(())
 		}
 	}
@@ -78,7 +78,7 @@ mod pop_api_extension_demo {
 
 		#[ink::test]
 		fn default_works() {
-			PopApiExtensionDemo::new();
+			PopApiNfts::new();
 		}
 	}
 }

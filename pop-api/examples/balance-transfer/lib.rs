@@ -15,17 +15,17 @@ impl From<balances::Error> for ContractError {
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_extension_demo {
+mod pop_api_balances {
 	use super::ContractError;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiExtensionDemo;
+	pub struct PopApiBalances;
 
-	impl PopApiExtensionDemo {
+	impl PopApiBalances {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("PopApiExtensionDemo::new");
+			ink::env::debug_println!("PopApiBalances::new");
 			Default::default()
 		}
 
@@ -36,14 +36,14 @@ mod pop_api_extension_demo {
 			value: Balance,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"PopApiExtensionDemo::transfer_through_runtime: \nreceiver: {:?}, \nvalue: {:?}",
+				"PopApiBalances::transfer_through_runtime: \nreceiver: {:?}, \nvalue: {:?}",
 				receiver,
 				value
 			);
 
 			pop_api::balances::transfer_keep_alive(receiver, value)?;
 
-			ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime end");
+			ink::env::debug_println!("PopApiBalances::transfer_through_runtime end");
 			Ok(())
 		}
 	}

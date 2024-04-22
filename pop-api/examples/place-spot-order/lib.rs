@@ -18,17 +18,17 @@ impl From<nfts::Error> for ContractError {
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_spot_order_example {
+mod pop_api_spot_order {
 	use super::ContractError;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiSpotOrderExample;
+	pub struct PopApiSpotOrder;
 
-	impl PopApiSpotOrderExample {
+	impl PopApiSpotOrder {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("Contract::new");
+			ink::env::debug_println!("PopApiSpotOrder::new");
 			Default::default()
 		}
 
@@ -39,18 +39,18 @@ mod pop_api_spot_order_example {
 			para_id: u32,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"Contract::place_spot_order: max_amount {:?} para_id: {:?} ",
+				"PopApiSpotOrder::place_spot_order: max_amount {:?} para_id: {:?} ",
 				max_amount,
 				para_id,
 			);
 
 			let res = pop_api::cross_chain::coretime::place_spot_order(max_amount, para_id);
 			ink::env::debug_println!(
-				"Contract::place_spot_order: res {:?} ",
+				"PopApiSpotOrder::place_spot_order: res {:?} ",
 				res,
 			);
 
-			ink::env::debug_println!("Contract::place_spot_order end");
+			ink::env::debug_println!("PopApiSpotOrder::place_spot_order end");
 			Ok(())
 		}
 	}
@@ -61,7 +61,7 @@ mod pop_api_spot_order_example {
 
 		#[ink::test]
 		fn default_works() {
-			PopApiSpotOrderExample::new();
+			PopApiSpotOrder::new();
 		}
 	}
 }

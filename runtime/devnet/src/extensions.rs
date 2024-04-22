@@ -415,7 +415,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../../pop-api/examples/balance-transfer/target/ink/pop_api_extension_demo.wasm",
+				"../../pop-api/examples/balance-transfer/target/ink/pop_api_balances.wasm",
 			)
 			.unwrap();
 
@@ -481,7 +481,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../../pop-api/examples/nfts/target/ink/pop_api_nft_example.wasm",
+				"../../pop-api/examples/nfts/target/ink/pop_api_nfts.wasm",
 			)
 			.unwrap();
 
@@ -561,7 +561,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../../pop-api/examples/nfts/target/ink/pop_api_nft_example.wasm",
+				"../../pop-api/examples/nfts/target/ink/pop_api_nfts.wasm",
 			)
 			.unwrap();
 
@@ -626,7 +626,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../../pop-api/examples/read-runtime-state/target/ink/pop_api_extension_demo.wasm",
+				"../../pop-api/examples/read-runtime-state/target/ink/pop_api_read_relay_blocknumber.wasm",
 			)
 			.unwrap();
 
@@ -685,7 +685,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../../pop-api/examples/place-spot-order/target/ink/pop_api_spot_order_example.wasm",
+				"../../pop-api/examples/place-spot-order/target/ink/pop_api_spot_order.wasm",
 			)
 			.unwrap();
 
