@@ -7,6 +7,7 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod extensions;
+mod proxy_config;
 mod weights;
 // Public due to integration tests crate.
 pub mod config;
