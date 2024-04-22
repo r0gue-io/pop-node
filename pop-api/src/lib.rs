@@ -3,6 +3,15 @@
 pub mod primitives;
 pub mod v0;
 
+#[cfg(feature = "inkv4")]
+extern crate inkv4 as ink;
+#[cfg(feature = "inkv5")]
+extern crate inkv5 as ink;
+#[cfg(all(feature = "inkv4", feature = "inkv5"))]
+compile_error!("feature \"inkv4\" and feature \"inkv5\" cannot be enabled at the same time");
+#[cfg(not(any(feature = "inkv4", feature = "inkv5")))]
+compile_error!("feature \"inkv4\" or feature \"inkv5\" must be enabled");
+
 use crate::PopApiError::{Balances, Nfts, UnknownStatusCode};
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
 use primitives::{cross_chain::*, storage_keys::*};
@@ -65,6 +74,25 @@ impl ink::env::Environment for Environment {
 	type ChainExtension = PopApi;
 }
 
+#[cfg(feature = "inkv4")]
+#[ink::chain_extension]
+pub trait PopApi {
+	type ErrorCode = PopApiError;
+
+	#[ink(extension = 0)]
+	#[allow(private_interfaces)]
+	fn dispatch(call: RuntimeCall) -> Result<()>;
+
+	#[ink(extension = 1)]
+	#[allow(private_interfaces)]
+	fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>>;
+
+	#[ink(extension = 2)]
+	#[allow(private_interfaces)]
+	fn send_xcm(xcm: CrossChainMessage) -> Result<()>;
+}
+
+#[cfg(feature = "inkv5")]
 #[ink::chain_extension(extension = 909)]
 pub trait PopApi {
 	type ErrorCode = PopApiError;

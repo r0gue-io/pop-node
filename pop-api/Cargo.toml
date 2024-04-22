@@ -7,7 +7,8 @@ edition = "2021"
 
 [dependencies]
 enumflags2 = { version = "0.7.7" }
-ink = { version = "5.0.0-rc.3", default-features = false }
+inkv4 = { package = "ink", version = "4.3.0", default-features = false, optional = true }
+inkv5 = { package = "ink", version = "5.0.0", default-features = false, optional = true }
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
 scale-info = { version = "2.6", default-features = false, features = ["derive"] }
 sp-io = { version = "23.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
@@ -24,10 +25,11 @@ crate-type = ["rlib"]
 default = ["std"]
 std = [
     "enumflags2/std",
-    "ink/std",
     "pop-primitives/std",
     "scale/std",
     "scale-info/std",
     "sp-io/std",
     "sp-runtime/std",
 ]
+inkv4 = ["dep:inkv4"]
+inkv5 = ["dep:inkv5"]
