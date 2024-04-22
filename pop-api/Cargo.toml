@@ -13,7 +13,7 @@ scale-info = { version = "2.6", default-features = false, features = ["derive"] 
 sp-io = { version = "23.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
 sp-runtime = { version = "24.0", default-features = false }
 
-pop-primitives = { path = "../primitives", default-features = false }
+pop-primitives = { path = "../primitives", features = ["devnet"], default-features = false }
 
 [lib]
 name = "pop_api"

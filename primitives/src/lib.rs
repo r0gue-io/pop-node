@@ -1,9 +1,21 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 pub use bounded_collections::{BoundedBTreeMap, BoundedBTreeSet, BoundedVec, ConstU32};
+use scale::{Decode, Encode, MaxEncodedLen};
+#[cfg(feature = "std")]
+use {
+    scale_decode::DecodeAsType,
+    scale_encode::EncodeAsType,
+    scale_info::TypeInfo,
+};
+
 
 pub mod cross_chain;
 pub mod storage_keys;
+
+#[derive(Encode, Decode, Debug, MaxEncodedLen, Eq, PartialEq, Ord, PartialOrd)]
+#[cfg_attr(feature = "std", derive(TypeInfo, DecodeAsType, EncodeAsType))]
+pub struct AccountId(pub [u8; 32]);
 
 // Identifier for the class of asset.
 pub type AssetId = u32;

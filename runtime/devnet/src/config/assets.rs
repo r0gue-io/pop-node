@@ -1,6 +1,6 @@
 use crate::{
-	deposit, AccountId, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, TrustBackedAssets, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
+	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 use frame_support::{
 	parameter_types,
@@ -86,7 +86,7 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type NftId = <Self as pallet_nfts::Config>::ItemId;
 	type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::Balance;
 	type AssetId = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId;
-	type Assets = TrustBackedAssets;
+	type Assets = Assets;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
 	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
@@ -96,7 +96,7 @@ impl pallet_nft_fractionalization::Config for Runtime {
 }
 
 pub type TrustBackedAssetsInstance = pallet_assets::Instance1;
-pub(crate) type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
+pub(crate) type AssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
 impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;

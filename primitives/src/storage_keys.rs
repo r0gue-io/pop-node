@@ -1,11 +1,12 @@
 use super::*;
-use scale::{Decode, Encode, MaxEncodedLen};
+// use scale::{Decode, Encode, MaxEncodedLen};
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum RuntimeStateKeys {
 	Nfts(NftsKeys),
 	ParachainSystem(ParachainSystemKeys),
-	TrustBackedAssets(TrustBackedAssetsKeys),
+	#[cfg(feature = "devnet")]
+	Assets(AssetsKeys),
 }
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -35,8 +36,15 @@ pub enum NftsKeys {
 	CollectionAttribute(CollectionId, BoundedVec<u8, KeyLimit>),
 }
 
+/// The required input for state queries in pallet assets.
+#[cfg(feature = "devnet")]
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
-pub enum TrustBackedAssetsKeys {
+pub enum AssetsKeys {
+	Allowance(AssetId, AccountId, AccountId),
 	/// Check if the asset exists.
 	AssetExists(AssetId),
+	/// Check balance.
+	BalanceOf(AssetId, AccountId),
+	/// Returns the total token supply for a given asset ID.
+	TotalSupply(AssetId),
 }

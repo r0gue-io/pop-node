@@ -4,6 +4,7 @@ use crate::{
 };
 
 pub mod balances;
+pub mod contracts;
 pub mod cross_chain;
 pub mod nfts;
 pub mod state;
@@ -20,5 +21,5 @@ pub(crate) enum RuntimeCall {
 	#[codec(index = 50)]
 	Nfts(nfts::NftCalls),
 	#[codec(index = 52)]
-	TrustBackedAssets(assets::trust_backed::TrustBackedAssetsCalls),
+	Assets(assets::fungibles::AssetsCall),
 }

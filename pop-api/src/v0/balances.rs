@@ -28,7 +28,7 @@ pub(crate) enum BalancesCall {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum Error {
+pub(crate) enum Error {
 	/// Vesting balance too high to send value.
 	VestingBalance,
 	/// Account liquidity restrictions prevent withdrawal.

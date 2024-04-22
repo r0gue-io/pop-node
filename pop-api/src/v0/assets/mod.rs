@@ -1,1 +1,1 @@
-pub mod trust_backed;
+pub mod fungibles;

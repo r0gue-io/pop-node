@@ -3,14 +3,15 @@
 pub mod primitives;
 pub mod v0;
 
-use crate::PopApiError::{Balances, Nfts, TrustBackedAssets, UnknownStatusCode};
+use crate::PopApiError::{Assets, Balances, Contracts, Nfts, UnknownStatusCode};
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
-use primitives::{cross_chain::*, storage_keys::*};
+use primitives::{cross_chain::*, storage_keys::*, AccountId as AccountId32};
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 use v0::RuntimeCall;
-pub use v0::{balances, cross_chain, nfts, relay_chain_block_number, state, assets};
+pub use v0::{assets, balances, contracts, cross_chain, nfts, relay_chain_block_number, state};
 
-type AccountId = <Environment as ink::env::Environment>::AccountId;
+// type AccountId = <Environment as ink::env::Environment>::AccountId;
+type AccountId = AccountId32;
 type Balance = <Environment as ink::env::Environment>::Balance;
 type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
 type StringLimit = u32;
@@ -25,8 +26,9 @@ pub enum PopApiError {
 	DecodingFailed,
 	SystemCallFiltered,
 	Balances(balances::Error),
+	Contracts(contracts::Error),
 	Nfts(nfts::Error),
-	TrustBackedAssets(assets::trust_backed::Error),
+	Assets(assets::fungibles::AssetsError),
 	Xcm(cross_chain::Error),
 }
 
@@ -37,8 +39,9 @@ impl ink::env::chain_extension::FromStatusCode for PopApiError {
 			// CallFiltered originates from `frame_system` with pallet-index 0. The CallFiltered error is at index 5
 			5 => Err(PopApiError::SystemCallFiltered),
 			10_000..=10_999 => Err(Balances((status_code - 10_000).try_into()?)),
+			40_000..=40_999 => Err(Contracts((status_code - 40_000).try_into()?)),
 			50_000..=50_999 => Err(Nfts((status_code - 50_000).try_into()?)),
-			52_000..=52_999 => Err(TrustBackedAssets((status_code - 52_000).try_into()?)),
+			52_000..=52_999 => Err(Assets((status_code - 52_000).try_into()?)),
 			_ => Err(UnknownStatusCode(status_code)),
 		}
 	}

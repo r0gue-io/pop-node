@@ -254,40 +254,40 @@ impl Contains<RuntimeCall> for FilteredCalls {
 pub struct AllowedPopApiCalls;
 impl Contains<RuntimeCall> for crate::AllowedPopApiCalls {
 	fn contains(c: &RuntimeCall) -> bool {
-		use assets_config::TrustBackedAssetsCall;
+		use config::assets::AssetsCall;
 		use pallet_nfts::Call as NftsCall;
 		matches!(
 			c,
 			RuntimeCall::Balances(BalancesCall::transfer_keep_alive { .. })
-				| RuntimeCall::TrustBackedAssets(
-					TrustBackedAssetsCall::create { .. }
-						| TrustBackedAssetsCall::start_destroy { .. }
-						| TrustBackedAssetsCall::destroy_accounts { .. }
-						| TrustBackedAssetsCall::destroy_approvals { .. }
-						| TrustBackedAssetsCall::finish_destroy { .. }
-						| TrustBackedAssetsCall::mint { .. }
-						| TrustBackedAssetsCall::burn { .. }
-						| TrustBackedAssetsCall::transfer { .. }
-						| TrustBackedAssetsCall::transfer_keep_alive { .. }
-						| TrustBackedAssetsCall::force_transfer { .. }
-						| TrustBackedAssetsCall::freeze { .. }
-						| TrustBackedAssetsCall::thaw { .. }
-						| TrustBackedAssetsCall::freeze_asset { .. }
-						| TrustBackedAssetsCall::thaw_asset { .. }
-						| TrustBackedAssetsCall::transfer_ownership { .. }
-						| TrustBackedAssetsCall::set_team { .. }
-						| TrustBackedAssetsCall::set_metadata { .. }
-						| TrustBackedAssetsCall::clear_metadata { .. }
-						| TrustBackedAssetsCall::approve_transfer { .. }
-						| TrustBackedAssetsCall::cancel_approval { .. }
-						| TrustBackedAssetsCall::force_cancel_approval { .. }
-						| TrustBackedAssetsCall::transfer_approved { .. }
-						| TrustBackedAssetsCall::touch { .. }
-						| TrustBackedAssetsCall::refund { .. }
-						| TrustBackedAssetsCall::set_min_balance { .. }
-						| TrustBackedAssetsCall::touch_other { .. }
-						| TrustBackedAssetsCall::refund_other { .. }
-						| TrustBackedAssetsCall::block { .. }
+				| RuntimeCall::Assets(
+					AssetsCall::create { .. }
+						| AssetsCall::start_destroy { .. }
+						| AssetsCall::destroy_accounts { .. }
+						| AssetsCall::destroy_approvals { .. }
+						| AssetsCall::finish_destroy { .. }
+						| AssetsCall::mint { .. }
+						| AssetsCall::burn { .. }
+						| AssetsCall::transfer { .. }
+						| AssetsCall::transfer_keep_alive { .. }
+						| AssetsCall::force_transfer { .. }
+						| AssetsCall::freeze { .. }
+						| AssetsCall::thaw { .. }
+						| AssetsCall::freeze_asset { .. }
+						| AssetsCall::thaw_asset { .. }
+						| AssetsCall::transfer_ownership { .. }
+						| AssetsCall::set_team { .. }
+						| AssetsCall::set_metadata { .. }
+						| AssetsCall::clear_metadata { .. }
+						| AssetsCall::approve_transfer { .. }
+						| AssetsCall::cancel_approval { .. }
+						| AssetsCall::force_cancel_approval { .. }
+						| AssetsCall::transfer_approved { .. }
+						| AssetsCall::touch { .. }
+						| AssetsCall::refund { .. }
+						| AssetsCall::set_min_balance { .. }
+						| AssetsCall::touch_other { .. }
+						| AssetsCall::refund_other { .. }
+						| AssetsCall::block { .. }
 				) | RuntimeCall::Nfts(
 				NftsCall::create { .. }
 					| NftsCall::destroy { .. }
@@ -662,7 +662,7 @@ construct_runtime!(
 		// Assets
 		Nfts: pallet_nfts = 50,
 		NftFractionalization: pallet_nft_fractionalization = 51,
-		TrustBackedAssets: pallet_assets::<Instance1> = 52,
+		Assets: pallet_assets::<Instance1> = 52,
 	}
 );
 

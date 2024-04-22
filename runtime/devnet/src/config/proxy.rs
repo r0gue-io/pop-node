@@ -1,4 +1,4 @@
-use super::assets::TrustBackedAssetsCall;
+use super::assets::AssetsCall;
 use crate::{Balances, Runtime, RuntimeCall, RuntimeEvent};
 use frame_support::traits::InstanceFilter;
 use pop_runtime_common::proxy::{
@@ -34,16 +34,16 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			},
 			ProxyType::AssetOwner => matches!(
 				c,
-				RuntimeCall::Assets(TrustBackedAssetsCall::create { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::start_destroy { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::destroy_accounts { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::destroy_approvals { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::finish_destroy { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::transfer_ownership { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::set_team { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::set_metadata { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::clear_metadata { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::set_min_balance { .. })
+				RuntimeCall::Assets(AssetsCall::create { .. })
+					| RuntimeCall::Assets(AssetsCall::start_destroy { .. })
+					| RuntimeCall::Assets(AssetsCall::destroy_accounts { .. })
+					| RuntimeCall::Assets(AssetsCall::destroy_approvals { .. })
+					| RuntimeCall::Assets(AssetsCall::finish_destroy { .. })
+					| RuntimeCall::Assets(AssetsCall::transfer_ownership { .. })
+					| RuntimeCall::Assets(AssetsCall::set_team { .. })
+					| RuntimeCall::Assets(AssetsCall::set_metadata { .. })
+					| RuntimeCall::Assets(AssetsCall::clear_metadata { .. })
+					| RuntimeCall::Assets(AssetsCall::set_min_balance { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::create { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::destroy { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::redeposit { .. })
@@ -56,15 +56,15 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 			),
 			ProxyType::AssetManager => matches!(
 				c,
-				RuntimeCall::Assets(TrustBackedAssetsCall::mint { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::burn { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::freeze { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::block { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::thaw { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::freeze_asset { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::thaw_asset { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::touch_other { .. })
-					| RuntimeCall::Assets(TrustBackedAssetsCall::refund_other { .. })
+				RuntimeCall::Assets(AssetsCall::mint { .. })
+					| RuntimeCall::Assets(AssetsCall::burn { .. })
+					| RuntimeCall::Assets(AssetsCall::freeze { .. })
+					| RuntimeCall::Assets(AssetsCall::block { .. })
+					| RuntimeCall::Assets(AssetsCall::thaw { .. })
+					| RuntimeCall::Assets(AssetsCall::freeze_asset { .. })
+					| RuntimeCall::Assets(AssetsCall::thaw_asset { .. })
+					| RuntimeCall::Assets(AssetsCall::touch_other { .. })
+					| RuntimeCall::Assets(AssetsCall::refund_other { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::force_mint { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::update_mint_settings { .. })
 					| RuntimeCall::Nfts(pallet_nfts::Call::mint_pre_signed { .. })
