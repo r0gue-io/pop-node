@@ -486,7 +486,7 @@ mod tests {
 			)
 			.unwrap();
 
-			let init_value = 100;
+			let init_value = 100 * UNIT;
 
 			let result = Contracts::bare_instantiate(
 				ALICE,
@@ -508,8 +508,7 @@ mod tests {
 
 			let function = function_selector("create_nft_collection");
 
-			let params =
-				[function].concat();
+			let params = [function].concat();
 
 			let result = Contracts::bare_call(
 				ALICE,

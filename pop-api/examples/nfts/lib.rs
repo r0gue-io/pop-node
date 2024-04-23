@@ -1,42 +1,40 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use pop_api::nfts;
 use pop_api::nfts::*;
-use enumflags2::BitFlags;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
 	InvalidCollection,
 	ItemAlreadyExists,
-	NftsError(nfts::Error),
+	NftsError(Error),
 	NotOwner,
 }
 
-impl From<nfts::Error> for ContractError {
-	fn from(value: nfts::Error) -> Self {
+impl From<Error> for ContractError {
+	fn from(value: Error) -> Self {
 		ContractError::NftsError(value)
 	}
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_extension_demo {
+mod pop_api_nfts {
 	use super::*;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiExtensionDemo;
+	pub struct Nfts;
 
-	impl PopApiExtensionDemo {
+	impl Nfts {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("Contract::new");
+			ink::env::debug_println!("Nfts::new");
 			Default::default()
 		}
 
 		#[ink(message)]
 		pub fn create_nft_collection( &self ) -> Result<(), ContractError>{
-			ink::env::debug_println!("Contract::create_nft_collection: collection creation started.");
+			ink::env::debug_println!("Nfts::create_nft_collection: collection creation started.");
             let admin = Self::env().caller();
             let item_settings = ItemSettings(BitFlags::from(ItemSetting::Transferable));
 
@@ -54,19 +52,19 @@ mod pop_api_extension_demo {
                 mint_settings,
             };
             pop_api::nfts::create(admin, config)?;
-			ink::env::debug_println!("Contract::create_nft_collection: collection created successfully.");
+			ink::env::debug_println!("Nfts::create_nft_collection: collection created successfully.");
             Ok(())
 		}
 
 		#[ink(message)]
-		pub fn mint_through_runtime(
+		pub fn mint_nft(
 			&mut self,
 			collection_id: u32,
 			item_id: u32,
 			receiver: AccountId,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"Contract::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
+				"Nfts::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
 				collection_id,
 				item_id,
 				receiver
@@ -79,13 +77,13 @@ mod pop_api_extension_demo {
 
 			// mint api
 			pop_api::nfts::mint(collection_id, item_id, receiver)?;
-			ink::env::debug_println!("Contract::mint_through_runtime: item minted successfully");
+			ink::env::debug_println!("Nfts::mint_through_runtime: item minted successfully");
 
 			// check owner
 			match pop_api::nfts::owner(collection_id, item_id)? {
 				Some(owner) if owner == receiver => {
 					ink::env::debug_println!(
-						"Contract::mint_through_runtime success: minted item belongs to receiver"
+						"Nfts::mint_through_runtime success: minted item belongs to receiver"
 					);
 				},
 				_ => {
@@ -93,7 +91,7 @@ mod pop_api_extension_demo {
 				},
 			}
 
-			ink::env::debug_println!("Contract::mint_through_runtime end");
+			ink::env::debug_println!("Nfts::mint_through_runtime end");
 			Ok(())
 		}
 	}

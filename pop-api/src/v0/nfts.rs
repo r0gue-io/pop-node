@@ -681,7 +681,7 @@ mod types {
 		primitives::{CollectionId, ItemId},
 		Balance, BlockNumber,
 	};
-	use enumflags2::{bitflags, BitFlags};
+	pub use enumflags2::{bitflags, BitFlags};
 	use scale::{Decode, EncodeLike, MaxEncodedLen};
 	use scale_info::{build::Fields, meta_type, prelude::vec, Path, Type, TypeInfo, TypeParameter};
 
