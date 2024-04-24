@@ -1,34 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use pop_api::nfts;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum ContractError {
-	InvalidCollection,
-	ItemAlreadyExists,
-	NftsError(nfts::Error),
-	NotOwner,
-}
-
-impl From<nfts::Error> for ContractError {
-	fn from(value: nfts::Error) -> Self {
-		ContractError::NftsError(value)
-	}
-}
-
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_spot_order {
-	use super::ContractError;
+mod spot_order {
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiSpotOrder;
+	pub struct SpotOrder;
 
-	impl PopApiSpotOrder {
+	impl SpotOrder {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("PopApiSpotOrder::new");
+			ink::env::debug_println!("SpotOrder::new");
 			Default::default()
 		}
 
@@ -37,21 +19,21 @@ mod pop_api_spot_order {
 			&mut self,
 			max_amount: Balance,
 			para_id: u32,
-		) -> Result<(), ContractError> {
+		) {
 			ink::env::debug_println!(
-				"PopApiSpotOrder::place_spot_order: max_amount {:?} para_id: {:?} ",
+				"SpotOrder::place_spot_order: max_amount {:?} para_id: {:?} ",
 				max_amount,
 				para_id,
 			);
 
+			#[allow(unused_variables)]
 			let res = pop_api::cross_chain::coretime::place_spot_order(max_amount, para_id);
 			ink::env::debug_println!(
-				"PopApiSpotOrder::place_spot_order: res {:?} ",
+				"SpotOrder::place_spot_order: res {:?} ",
 				res,
 			);
 
-			ink::env::debug_println!("PopApiSpotOrder::place_spot_order end");
-			Ok(())
+			ink::env::debug_println!("SpotOrder::place_spot_order end");
 		}
 	}
 
@@ -61,7 +43,7 @@ mod pop_api_spot_order {
 
 		#[ink::test]
 		fn default_works() {
-			PopApiSpotOrder::new();
+			SpotOrder::new();
 		}
 	}
 }
