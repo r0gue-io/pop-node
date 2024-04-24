@@ -36,14 +36,14 @@ mod balance_transfer {
 			value: Balance,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"BalanceTransfer::transfer_through_runtime: \nreceiver: {:?}, \nvalue: {:?}",
+				"BalanceTransfer::transfer: \nreceiver: {:?}, \nvalue: {:?}",
 				receiver,
 				value
 			);
 
 			transfer_keep_alive(receiver, value)?;
 
-			ink::env::debug_println!("BalanceTransfer::transfer_through_runtime end");
+			ink::env::debug_println!("BalanceTransfer::transfer end");
 			Ok(())
 		}
 	}

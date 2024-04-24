@@ -415,7 +415,7 @@ mod tests {
 			let _ = env_logger::try_init();
 
 			let (wasm_binary, _) = load_wasm_module::<Runtime>(
-				"../../pop-api/examples/balance-transfer/target/ink/balances.wasm",
+				"../../pop-api/examples/balance-transfer/target/ink/balance_transfer.wasm",
 			)
 			.unwrap();
 

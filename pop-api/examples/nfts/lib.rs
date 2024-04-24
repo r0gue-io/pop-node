@@ -33,14 +33,14 @@ mod nfts {
 		}
 
 		#[ink(message)]
-		pub fn mint_through_runtime(
+		pub fn mint(
 			&mut self,
 			collection_id: u32,
 			item_id: u32,
 			receiver: AccountId,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"Nfts::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
+				"Nfts::mint: collection_id: {:?} item_id {:?} receiver: {:?}",
 				collection_id,
 				item_id,
 				receiver
@@ -53,13 +53,13 @@ mod nfts {
 
 			// mint api
 			mint(collection_id, item_id, receiver)?;
-			ink::env::debug_println!("Nfts::mint_through_runtime: item minted successfully");
+			ink::env::debug_println!("Nfts::mint: item minted successfully");
 
 			// check owner
 			match owner(collection_id, item_id)? {
 				Some(owner) if owner == receiver => {
 					ink::env::debug_println!(
-						"Nfts::mint_through_runtime success: minted item belongs to receiver"
+						"Nfts::mint success: minted item belongs to receiver"
 					);
 				},
 				_ => {
@@ -67,7 +67,7 @@ mod nfts {
 				},
 			}
 
-			ink::env::debug_println!("Nfts::mint_through_runtime end");
+			ink::env::debug_println!("Nfts::mint end");
 			Ok(())
 		}
 	}
