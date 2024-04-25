@@ -102,7 +102,7 @@ mod pop_api_nfts {
 
 		#[ink::test]
 		fn default_works() {
-			PopApiExtensionDemo::new();
+			Nfts::new();
 		}
 	}
 }
