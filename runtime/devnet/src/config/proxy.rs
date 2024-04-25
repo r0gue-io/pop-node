@@ -1,11 +1,11 @@
-use crate::{assets_config::TrustBackedAssetsCall, Balances, Runtime, RuntimeCall, RuntimeEvent};
-use sp_runtime::traits::BlakeTwo256;
-
+use super::assets::TrustBackedAssetsCall;
+use crate::{Balances, Runtime, RuntimeCall, RuntimeEvent};
 use frame_support::traits::InstanceFilter;
 use pop_runtime_common::proxy::{
 	AnnouncementDepositBase, AnnouncementDepositFactor, MaxPending, MaxProxies, ProxyDepositBase,
 	ProxyDepositFactor, ProxyType,
 };
+use sp_runtime::traits::BlakeTwo256;
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
