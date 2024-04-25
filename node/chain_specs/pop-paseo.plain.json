@@ -4,7 +4,8 @@
   "chainType": "Live",
   "bootNodes": [
     "/dns/rpc1.paseo.popnetwork.xyz/tcp/30333/p2p/12D3KooWNmudHffwfRQwwaBfA6q7Ez1EcjVQ3EZe7RHiYKE5V6ij",
-    "/dns/rpc2.paseo.popnetwork.xyz/tcp/30333/p2p/12D3KooWR2Qrt8Ujd1d2gXvZuYnJkP6EEXCSSk6K6ghxNw1hvrFz"
+    "/dns/rpc2.paseo.popnetwork.xyz/tcp/30333/p2p/12D3KooWR2Qrt8Ujd1d2gXvZuYnJkP6EEXCSSk6K6ghxNw1hvrFz",
+    "/dns/rpc3.paseo.popnetwork.xyz/tcp/30333/p2p/12D3KooWRzKM1LeD75v9WeG2U5fz2CXQHPQsgfWfU3aTrp3xFe9G"
   ],
   "telemetryEndpoints": null,
   "protocolId": "pop-testnet",
