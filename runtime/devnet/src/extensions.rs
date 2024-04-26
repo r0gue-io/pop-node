@@ -530,6 +530,9 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
+			// check that the nft collection was created
+			assert_eq!(Nfts::collection_owner(0), Some(addr.into()));
+
 			// // check for revert
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 		});
