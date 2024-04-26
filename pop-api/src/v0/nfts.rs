@@ -669,7 +669,7 @@ impl From<PopApiError> for Error {
 	fn from(error: PopApiError) -> Self {
 		match error {
 			PopApiError::Nfts(e) => e,
-			_ => panic!("{:?}", e),
+			_ => panic!("expected nfts error"),
 		}
 	}
 }
