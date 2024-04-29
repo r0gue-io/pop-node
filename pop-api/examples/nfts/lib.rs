@@ -94,6 +94,14 @@ mod pop_api_nfts {
 			ink::env::debug_println!("Nfts::mint_through_runtime end");
 			Ok(())
 		}
+
+		#[ink(message)]
+		pub fn read_collection(&self, collection_id: u32) -> Result<(), ContractError> {
+			ink::env::debug_println!("Nfts::read_collection: collection_id: {:?}", collection_id);
+			let collection = pop_api::nfts::collection(collection_id)?;
+			ink::env::debug_println!("Nfts::read_collection: collection: {:?}", collection);
+			Ok(())
+		}
 	}
 
 	#[cfg(test)]
