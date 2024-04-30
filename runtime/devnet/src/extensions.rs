@@ -531,10 +531,35 @@ mod tests {
 			}
 
 			// check that the nft collection was created
-			assert_eq!(Nfts::collection_owner(0), Some(addr.into()));
+			assert_eq!(Nfts::collection_owner(0), Some(addr.clone().into()));
 
-			// // check for revert
-			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
+			// test reading the collection
+			let function = function_selector("read_collection");
+
+			let params = [function, 0.encode()].concat();
+
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+				None,
+				params,
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+				pallet_contracts::Determinism::Enforced,
+			);
+
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
+				log::debug!("result: {:?}", result);
+			}
+
+			// assert that the collection was read successfully
+			assert_eq!(result.result.clone().unwrap().data, vec![1, 1]);
 		});
 	}
 
