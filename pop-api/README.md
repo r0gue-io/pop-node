@@ -31,7 +31,7 @@ Everything in [`pop-api`](./src/) **is the** Pop API ink! library.
 
 So when the ink! smart contract wants to use the Pop API library, it can simply have a line like:
 ```rust
-use pop_api::nfts;
+use pop_api::nfts::*;
 ```
 
 ## The Glue
@@ -42,11 +42,11 @@ Certain types are shared between the ink! library portion of the Pop API and the
 
 When we use the Pop API in our smart contract like so:
 ```rust
-use pop_api::nfts
-pop_api::nfts::mint(collection_id, item_id, receiver)?;
+use pop_api::nfts::*;
+mint(collection_id, item_id, receiver)?;
 ```
 
-This will call the Pop API `mint` function in the [./src/v0/nfts.rs](./src/v0/nfts.rs) file, which is a wrapper to `dispatch` a `Runtime::Call` to the NFTs pallet's mint function. This is how most of the Pop API is built. This abstraction allows for creating a nice API over runtime level features such as calling pallets, reading state, and cross-chain interactions. All Pop API functionality can be found in [./src/v0/](./src/v0/) which is the current version of the Pop API.
+This will call the Pop API `mint` function in the [./src/v0/nfts.rs](./src/v0/nfts.rs) file, which is a wrapper to `dispatch` a `Runtime::Call` to the NFTs pallet's mint function. This is how most of the Pop API is built. This abstraction allows for creating a developer-friendly API over runtime level features such as calling pallets, reading state, and cross-chain interactions. All Pop API functionality can be found in [./src/v0/](./src/v0/) which is the current version of the Pop API.
 
 
 ## Dispatching to the runtime ([./src/lib.rs](./src/lib.rs))
