@@ -681,7 +681,7 @@ mod types {
 		primitives::{CollectionId, ItemId},
 		Balance, BlockNumber,
 	};
-	use enumflags2::{bitflags, BitFlags};
+	pub use enumflags2::{bitflags, BitFlags};
 	use scale::{Decode, EncodeLike, MaxEncodedLen};
 	use scale_info::{build::Fields, meta_type, prelude::vec, Path, Type, TypeInfo, TypeParameter};
 
@@ -807,7 +807,7 @@ mod types {
 		pub default_item_settings: ItemSettings,
 	}
 
-	/// Mint type. Can the NFT be create by anyone, or only the creator of the collection,
+	/// Mint type. Can the NFT be created by anyone, or only the creator of the collection,
 	/// or only by wallets that already hold an NFT from a certain collection?
 	/// The ownership of a privately minted NFT is still publicly visible.
 	#[derive(Encode)]

@@ -33,7 +33,31 @@ mod nfts {
 		}
 
 		#[ink(message)]
-		pub fn mint(
+		pub fn create_nft_collection( &self ) -> Result<(), ContractError>{
+			ink::env::debug_println!("Nfts::create_nft_collection: collection creation started.");
+            let admin = Self::env().caller();
+            let item_settings = ItemSettings(BitFlags::from(ItemSetting::Transferable));
+
+            let mint_settings = MintSettings {
+                mint_type: MintType::Issuer,
+                price: Some(0),
+                start_block: Some(0),
+                end_block: Some(0),
+                default_item_settings: item_settings,
+            };
+
+            let config = CollectionConfig {
+                settings: CollectionSettings(BitFlags::from(CollectionSetting::TransferableItems)),  
+                max_supply: None,
+                mint_settings,
+            };
+            pop_api::nfts::create(admin, config)?;
+			ink::env::debug_println!("Nfts::create_nft_collection: collection created successfully.");
+            Ok(())
+		}
+
+		#[ink(message)]
+		pub fn mint_nft(
 			&mut self,
 			collection_id: u32,
 			item_id: u32,
@@ -68,6 +92,14 @@ mod nfts {
 			}
 
 			ink::env::debug_println!("Nfts::mint end");
+			Ok(())
+		}
+
+		#[ink(message)]
+		pub fn read_collection(&self, collection_id: u32) -> Result<(), ContractError> {
+			ink::env::debug_println!("Nfts::read_collection: collection_id: {:?}", collection_id);
+			let collection = pop_api::nfts::collection(collection_id)?;
+			ink::env::debug_println!("Nfts::read_collection: collection: {:?}", collection);
 			Ok(())
 		}
 	}

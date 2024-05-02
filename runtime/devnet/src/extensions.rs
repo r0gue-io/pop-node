@@ -474,6 +474,95 @@ mod tests {
 		});
 	}
 
+	// Create a test for tesing create_nft_collection
+	#[test]
+	#[ignore]
+	fn dispatch_nfts_create_nft_collection() {
+		new_test_ext().execute_with(|| {
+			let _ = env_logger::try_init();
+
+			let (wasm_binary, _) = load_wasm_module::<Runtime>(
+				"../../pop-api/examples/nfts/target/ink/pop_api_nft_example.wasm",
+			)
+			.unwrap();
+
+			let init_value = 100 * UNIT;
+
+			let result = Contracts::bare_instantiate(
+				ALICE,
+				init_value,
+				GAS_LIMIT,
+				None,
+				Code::Upload(wasm_binary),
+				function_selector("new"),
+				vec![],
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+			)
+			.result
+			.unwrap();
+
+			assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
+
+			let addr = result.account_id;
+
+			let function = function_selector("create_nft_collection");
+
+			let params = [function].concat();
+
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+				None,
+				params,
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+				pallet_contracts::Determinism::Enforced,
+			);
+
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
+				log::debug!("result: {:?}", result);
+			}
+
+			// check that the nft collection was created
+			assert_eq!(Nfts::collection_owner(0), Some(addr.clone().into()));
+
+			// test reading the collection
+			let function = function_selector("read_collection");
+
+			let params = [function, 0.encode()].concat();
+
+			let result = Contracts::bare_call(
+				ALICE,
+				addr.clone(),
+				0,
+				Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
+				None,
+				params,
+				DEBUG_OUTPUT,
+				pallet_contracts::CollectEvents::Skip,
+				pallet_contracts::Determinism::Enforced,
+			);
+
+			if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
+				log::debug!(
+					"Contract debug buffer - {:?}",
+					String::from_utf8(result.debug_message.clone())
+				);
+				log::debug!("result: {:?}", result);
+			}
+
+			// assert that the collection was read successfully
+			assert_eq!(result.result.clone().unwrap().data, vec![1, 1]);
+		});
+	}
+
 	#[test]
 	#[ignore]
 	fn dispatch_nfts_mint_from_contract_works() {
