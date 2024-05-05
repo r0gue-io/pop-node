@@ -18,7 +18,7 @@ impl From<Error> for ContractError {
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_nfts {
+mod nfts {
 	use super::*;
 
 	#[ink(storage)]
@@ -64,26 +64,26 @@ mod pop_api_nfts {
 			receiver: AccountId,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"Nfts::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
+				"Nfts::mint: collection_id: {:?} item_id {:?} receiver: {:?}",
 				collection_id,
 				item_id,
 				receiver
 			);
 
 			// Check if item already exists (demo purposes only, unnecessary as would expect check in mint call)
-			if pop_api::nfts::item(collection_id, item_id)?.is_some() {
+			if item(collection_id, item_id)?.is_some() {
 				return Err(ContractError::ItemAlreadyExists);
 			}
 
 			// mint api
-			pop_api::nfts::mint(collection_id, item_id, receiver)?;
-			ink::env::debug_println!("Nfts::mint_through_runtime: item minted successfully");
+			mint(collection_id, item_id, receiver)?;
+			ink::env::debug_println!("Nfts::mint: item minted successfully");
 
 			// check owner
-			match pop_api::nfts::owner(collection_id, item_id)? {
+			match owner(collection_id, item_id)? {
 				Some(owner) if owner == receiver => {
 					ink::env::debug_println!(
-						"Nfts::mint_through_runtime success: minted item belongs to receiver"
+						"Nfts::mint success: minted item belongs to receiver"
 					);
 				},
 				_ => {
@@ -91,7 +91,7 @@ mod pop_api_nfts {
 				},
 			}
 
-			ink::env::debug_println!("Nfts::mint_through_runtime end");
+			ink::env::debug_println!("Nfts::mint end");
 			Ok(())
 		}
 

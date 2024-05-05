@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_extension_demo {
+mod read_relay_blocknumber {
     use pop_api::primitives::storage_keys::{
         ParachainSystemKeys::LastRelayChainBlockNumber, RuntimeStateKeys::ParachainSystem,
     };
@@ -13,12 +13,12 @@ mod pop_api_extension_demo {
 
     #[ink(storage)]
     #[derive(Default)]
-    pub struct PopApiExtensionDemo;
+    pub struct ReadRelayBlockNumber;
 
-    impl PopApiExtensionDemo {
+    impl ReadRelayBlockNumber {
         #[ink(constructor, payable)]
         pub fn new() -> Self {
-            ink::env::debug_println!("PopApiExtensionDemo::new");
+            ink::env::debug_println!("ReadRelayBlockNumber::new");
             Default::default()
         }
 

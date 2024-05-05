@@ -1,5 +1,5 @@
 [package]
-name = "pop_api_spot_order_example"
+name = "spot_order"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
