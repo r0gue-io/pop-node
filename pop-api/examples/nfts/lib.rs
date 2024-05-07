@@ -1,65 +1,89 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use pop_api::nfts;
+use pop_api::nfts::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
 	InvalidCollection,
 	ItemAlreadyExists,
-	NftsError(nfts::Error),
+	NftsError(Error),
 	NotOwner,
 }
 
-impl From<nfts::Error> for ContractError {
-	fn from(value: nfts::Error) -> Self {
+impl From<Error> for ContractError {
+	fn from(value: Error) -> Self {
 		ContractError::NftsError(value)
 	}
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_extension_demo {
-	use super::ContractError;
+mod nfts {
+	use super::*;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiExtensionDemo;
+	pub struct Nfts;
 
-	impl PopApiExtensionDemo {
+	impl Nfts {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("Contract::new");
+			ink::env::debug_println!("Nfts::new");
 			Default::default()
 		}
 
 		#[ink(message)]
-		pub fn mint_through_runtime(
+		pub fn create_nft_collection( &self ) -> Result<(), ContractError>{
+			ink::env::debug_println!("Nfts::create_nft_collection: collection creation started.");
+            let admin = Self::env().caller();
+            let item_settings = ItemSettings(BitFlags::from(ItemSetting::Transferable));
+
+            let mint_settings = MintSettings {
+                mint_type: MintType::Issuer,
+                price: Some(0),
+                start_block: Some(0),
+                end_block: Some(0),
+                default_item_settings: item_settings,
+            };
+
+            let config = CollectionConfig {
+                settings: CollectionSettings(BitFlags::from(CollectionSetting::TransferableItems)),  
+                max_supply: None,
+                mint_settings,
+            };
+            pop_api::nfts::create(admin, config)?;
+			ink::env::debug_println!("Nfts::create_nft_collection: collection created successfully.");
+            Ok(())
+		}
+
+		#[ink(message)]
+		pub fn mint_nft(
 			&mut self,
 			collection_id: u32,
 			item_id: u32,
 			receiver: AccountId,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"Contract::mint_through_runtime: collection_id: {:?} item_id {:?} receiver: {:?}",
+				"Nfts::mint: collection_id: {:?} item_id {:?} receiver: {:?}",
 				collection_id,
 				item_id,
 				receiver
 			);
 
 			// Check if item already exists (demo purposes only, unnecessary as would expect check in mint call)
-			if pop_api::nfts::item(collection_id, item_id)?.is_some() {
+			if item(collection_id, item_id)?.is_some() {
 				return Err(ContractError::ItemAlreadyExists);
 			}
 
 			// mint api
-			pop_api::nfts::mint(collection_id, item_id, receiver)?;
-			ink::env::debug_println!("Contract::mint_through_runtime: item minted successfully");
+			mint(collection_id, item_id, receiver)?;
+			ink::env::debug_println!("Nfts::mint: item minted successfully");
 
 			// check owner
-			match pop_api::nfts::owner(collection_id, item_id)? {
+			match owner(collection_id, item_id)? {
 				Some(owner) if owner == receiver => {
 					ink::env::debug_println!(
-						"Contract::mint_through_runtime success: minted item belongs to receiver"
+						"Nfts::mint success: minted item belongs to receiver"
 					);
 				},
 				_ => {
@@ -67,7 +91,15 @@ mod pop_api_extension_demo {
 				},
 			}
 
-			ink::env::debug_println!("Contract::mint_through_runtime end");
+			ink::env::debug_println!("Nfts::mint end");
+			Ok(())
+		}
+
+		#[ink(message)]
+		pub fn read_collection(&self, collection_id: u32) -> Result<(), ContractError> {
+			ink::env::debug_println!("Nfts::read_collection: collection_id: {:?}", collection_id);
+			let collection = pop_api::nfts::collection(collection_id)?;
+			ink::env::debug_println!("Nfts::read_collection: collection: {:?}", collection);
 			Ok(())
 		}
 	}
@@ -78,7 +110,7 @@ mod pop_api_extension_demo {
 
 		#[ink::test]
 		fn default_works() {
-			PopApiExtensionDemo::new();
+			Nfts::new();
 		}
 	}
 }

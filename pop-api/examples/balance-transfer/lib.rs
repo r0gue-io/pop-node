@@ -1,49 +1,49 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use pop_api::balances;
+use pop_api::balances::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
-	BalancesError(balances::Error),
+	BalancesError(Error),
 }
 
-impl From<balances::Error> for ContractError {
-	fn from(value: balances::Error) -> Self {
+impl From<Error> for ContractError {
+	fn from(value: Error) -> Self {
 		ContractError::BalancesError(value)
 	}
 }
 
 #[ink::contract(env = pop_api::Environment)]
-mod pop_api_extension_demo {
-	use super::ContractError;
+mod balance_transfer {
+	use super::*;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct PopApiExtensionDemo;
+	pub struct BalanceTransfer;
 
-	impl PopApiExtensionDemo {
+	impl BalanceTransfer {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("PopApiExtensionDemo::new");
+			ink::env::debug_println!("BalanceTransfer::new");
 			Default::default()
 		}
 
 		#[ink(message)]
-		pub fn transfer_through_runtime(
+		pub fn transfer(
 			&mut self,
 			receiver: AccountId,
 			value: Balance,
 		) -> Result<(), ContractError> {
 			ink::env::debug_println!(
-				"PopApiExtensionDemo::transfer_through_runtime: \nreceiver: {:?}, \nvalue: {:?}",
+				"BalanceTransfer::transfer: \nreceiver: {:?}, \nvalue: {:?}",
 				receiver,
 				value
 			);
 
-			pop_api::balances::transfer_keep_alive(receiver, value)?;
+			transfer_keep_alive(receiver, value)?;
 
-			ink::env::debug_println!("PopApiExtensionDemo::transfer_through_runtime end");
+			ink::env::debug_println!("BalanceTransfer::transfer end");
 			Ok(())
 		}
 	}
@@ -107,7 +107,7 @@ mod pop_api_extension_demo {
 				client.free_balance(receiver).await.expect("Failed to get account balance");
 
 			// when
-			let transfer_message = call_builder.transfer_through_runtime(receiver, TRANSFER_VALUE);
+			let transfer_message = call_builder.transfer(receiver, TRANSFER_VALUE);
 
 			let call_res = client
 				.call(&ink_e2e::alice(), &transfer_message)
