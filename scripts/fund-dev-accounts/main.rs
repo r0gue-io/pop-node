@@ -9,19 +9,24 @@ use subxt_signer::sr25519::{dev, Keypair};
 
 use std::time::Duration;
 
+// subxt codegen --url ws://localhost:8833 | rustfmt > paseo_interface.rs
 #[cfg(feature = "paseo")]
 mod paseo_interface;
+
+// subxt codegen --url ws://localhost:8833 | rustfmt > rococo_interface.rs
 #[cfg(not(feature = "paseo"))]
 mod rococo_interface;
 
+// subxt codegen --url ws://localhost:9944 | rustfmt > pop_interface.rs
 mod pop_interface;
-
-const PARA_ID: u32 = 4385;
 
 #[cfg(not(feature = "paseo"))]
 mod relay {
 	use super::*;
 	pub(crate) use crate::rococo_interface::api as runtime;
+
+	const PARA_ID: u32 = 4385;
+
 	pub(crate) type RuntimeCall = runtime::runtime_types::rococo_runtime::RuntimeCall;
 	pub(crate) const UNIT: u128 = 1_000_000_000_000;
 
@@ -72,6 +77,8 @@ mod relay {
 mod relay {
 	use super::*;
 	pub(crate) use crate::paseo_interface::api as runtime;
+
+	const PARA_ID: u32 = 4001;
 
 	pub(crate) type RuntimeCall = runtime::runtime_types::paseo_runtime::RuntimeCall;
 	pub(crate) const UNIT: u128 = 10_000_000_000;
