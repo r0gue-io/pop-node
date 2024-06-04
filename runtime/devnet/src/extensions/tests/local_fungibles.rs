@@ -5,35 +5,31 @@ use pallet_contracts::debug::ExecResult;
 
 #[derive(Decode, Encode, Debug, Eq, PartialEq)]
 enum FungiblesError {
-	// AssetsError(Error),
-	// /// The origin of the call doesn't have the right permission.
-	// BadOrigin,
-	// /// Custom error type for cases in which an implementation adds its own restrictions.
-	// Custom(String),
-	/// Not enough balance to fulfill a request is available.
-	InsufficientBalance,
+	/// The amount to mint is less than the existential deposit.
+	BelowMinimum,
+	/// Unspecified dispatch error, providing the index and optionally its error index.
+	DispatchError { index: u8, error: Option<u8> },
 	/// Not enough allowance to fulfill a request is available.
 	InsufficientAllowance,
-	/// The asset status is not the expected status.
-	IncorrectStatus,
+	/// Not enough balance to fulfill a request is available.
+	InsufficientBalance,
 	/// The asset ID is already taken.
 	InUse,
 	/// Minimum balance should be non-zero.
 	MinBalanceZero,
+	/// Unspecified pallet error, providing pallet index and error index.
+	ModuleError { pallet: u8, error: u16 },
 	/// The signing account has no permission to do the operation.
 	NoPermission,
-	// /// Safe transfer check fails (e.g. if the receiving contract does not accept tokens).
-	// SafeTransferCheckFailed(String),
 	/// The given asset ID is unknown.
 	Unknown,
-	/// Recipient's address is zero.
-	ZeroRecipientAddress,
-	/// Sender's address is zero.
-	ZeroSenderAddress,
-	UndefinedError,
 }
 
 const ASSET_ID: u32 = 1;
+
+fn decoded<T: Decode>(result: ExecReturnValue) -> T {
+	<T>::decode(&mut &result.data[2..]).unwrap()
+}
 
 fn allowance(
 	addr: AccountId32,
@@ -54,10 +50,11 @@ fn balance_of(addr: AccountId32, asset_id: u32, owner: AccountId32) -> ExecRetur
 }
 
 // Call total_supply contract message.
-fn total_supply(addr: AccountId32, asset_id: u32) -> ExecReturnValue {
+fn total_supply(addr: AccountId32, asset_id: u32) -> Balance {
 	let function = function_selector("total_supply");
 	let params = [function, asset_id.encode()].concat();
-	do_bare_call(addr, params, 0).expect("should work")
+	let result = do_bare_call(addr, params, 0).expect("should work");
+	decoded::<Balance>(result)
 }
 
 fn asset_exists(addr: AccountId32, asset_id: u32) -> ExecReturnValue {
@@ -70,7 +67,7 @@ fn create(
 	addr: AccountId32,
 	asset_id: u32,
 	admin: AccountId32,
-	min_balance: u128,
+	min_balance: Balance,
 ) -> ExecReturnValue {
 	let function = function_selector("create");
 	let params = [function, asset_id.encode(), admin.encode(), min_balance.encode()].concat();
@@ -95,7 +92,7 @@ fn transfer_from(
 	asset_id: u32,
 	_from: Option<AccountId32>,
 	to: Option<AccountId32>,
-	value: u128,
+	value: Balance,
 	_data: &[u8],
 ) -> ExecReturnValue {
 	// let function = function_selector("transfer_from");
@@ -109,16 +106,21 @@ fn transfer_from(
 }
 
 // Create an asset and mint to owner.
-fn create_asset(asset_id: u32, owner: AccountId32) {
+fn create_asset(asset_id: u32, owner: AccountId32, min_balance: Balance) {
 	assert_eq!(
-		Assets::create(RuntimeOrigin::signed(owner.clone()), asset_id.into(), owner.into(), 1),
+		Assets::create(
+			RuntimeOrigin::signed(owner.clone()),
+			asset_id.into(),
+			owner.into(),
+			min_balance
+		),
 		Ok(())
 	);
 }
 
 // Create an asset and mint to owner.
-fn create_asset_and_mint_to(asset_id: u32, owner: AccountId32, to: AccountId32, value: u128) {
-	create_asset(asset_id, owner.clone());
+fn create_asset_and_mint_to(asset_id: u32, owner: AccountId32, to: AccountId32, value: Balance) {
+	create_asset(asset_id, owner.clone(), 1);
 	assert_eq!(
 		Assets::mint(RuntimeOrigin::signed(owner.into()), asset_id.into(), to.into(), value,),
 		Ok(())
@@ -130,9 +132,9 @@ fn create_asset_mint_and_approve(
 	asset_id: u32,
 	owner: AccountId32,
 	to: AccountId32,
-	mint: u128,
+	mint: Balance,
 	spender: AccountId32,
-	approve: u128,
+	approve: Balance,
 ) {
 	create_asset_and_mint_to(asset_id, owner.clone(), to.clone(), mint);
 	assert_eq!(
@@ -151,18 +153,18 @@ fn create_asset_mint_and_approve(
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE);
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![],
+		);
 
 		// No tokens in circulation.
-		assert_eq!(
-			Assets::total_supply(ASSET_ID).encode(),
-			total_supply(addr.clone(), ASSET_ID).data[2..]
-		);
+		assert_eq!(Assets::total_supply(ASSET_ID), total_supply(addr.clone(), ASSET_ID));
 
 		// Tokens in circulation.
 		create_asset_and_mint_to(ASSET_ID, addr.clone(), BOB, 100);
-		assert_eq!(Assets::total_supply(ASSET_ID).encode(), total_supply(addr, ASSET_ID).data[2..]);
+		assert_eq!(Assets::total_supply(ASSET_ID), total_supply(addr, ASSET_ID));
 	});
 }
 
@@ -171,8 +173,11 @@ fn total_supply_works() {
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE);
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![],
+		);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -194,8 +199,11 @@ fn balance_of_works() {
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE);
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![],
+		);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -217,8 +225,11 @@ fn allowance_works() {
 fn asset_exists_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE);
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![],
+		);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -227,40 +238,45 @@ fn asset_exists_works() {
 		);
 
 		// Tokens in circulation.
-		create_asset(ASSET_ID, addr.clone());
+		create_asset(ASSET_ID, addr.clone(), 1);
 		assert_eq!(Assets::asset_exists(ASSET_ID).encode(), asset_exists(addr, ASSET_ID).data[2..]);
 	});
 }
 
-fn decode_error(result: ExecReturnValue) -> FungiblesError {
-	FungiblesError::decode(&mut &result.data[2..]).unwrap()
-}
-
+// Todo - errors:
+// - Badorigin: contract is always signed
+// - Lookup: is a valid AccountId due to the contract
+// - reserve(): Overflow, LiquidityRestrictions; frozen
+// - Callback
+// - StorageDepositLimitExhausted
 #[test]
 #[ignore]
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", 0);
 		let new_asset = 2;
+		let addr =
+			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", 0, vec![0]);
 
 		assert_eq!(
-			decode_error(create(addr.clone(), new_asset, BOB, 1)),
-			FungiblesError::UndefinedError
+			decoded::<FungiblesError>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
+			FungiblesError::InsufficientBalance
 		);
-		// Todo: errors Badorigin, Lookup, reserve(), Callback
-		// create_asset(ASSET_ID, ALICE);
-		// // Error `InUse`.
-		// assert_eq!(decode_error(create(addr.clone(), ASSET_ID, BOB, 1)), FungiblesError::InUse);
-		// // Error `MinBalanceZero`.
-		// assert_eq!(
-		// 	decode_error(create(addr.clone(), new_asset, BOB, 0)),
-		// 	FungiblesError::MinBalanceZero
-		// );
-		// assert!(
-		// 	!create(addr.clone(), new_asset, BOB, 1).did_revert(),
-		// 	"Contract should have been reverted!"
-		// );
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![1],
+		);
+		create_asset(ASSET_ID, ALICE, 1);
+		assert_eq!(
+			decoded::<FungiblesError>(create(addr.clone(), ASSET_ID, BOB, 1)),
+			FungiblesError::InUse
+		);
+		assert_eq!(
+			decoded::<FungiblesError>(create(addr.clone(), new_asset, BOB, 0)),
+			FungiblesError::MinBalanceZero
+		);
+		assert!(!create(addr.clone(), new_asset, BOB, 1).did_revert(), "Contract reverted!");
 	});
 }
 
@@ -269,34 +285,78 @@ fn create_works() {
 fn set_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE);
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![],
+		);
 
-		create_asset(ASSET_ID, addr.clone());
+		create_asset(ASSET_ID, addr.clone(), 1);
 
 		let result = set_metadata(addr.clone(), ASSET_ID, vec![12], vec![12], 12);
-		assert!(!result.did_revert(), "Contract should have been reverted!");
+		assert!(!result.did_revert(), "Contract reverted!");
+	});
+}
+
+// todo: errors:
+// - AssetNotLive: when frozen or being destroyed
+// - TokenErrors: https://github.com/paritytech/polkadot-sdk/blob/3977f389cce4a00fd7100f95262e0563622b9aa4/substrate/frame/assets/src/functions.rs#L125
+#[test]
+#[ignore]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![],
+		);
+		let amount: Balance = 100 * UNIT;
+
+		assert_eq!(
+			decoded::<FungiblesError>(transfer_from(
+				addr.clone(),
+				ASSET_ID,
+				None,
+				Some(BOB),
+				amount,
+				&[0u8]
+			)),
+			FungiblesError::Unknown
+		);
+		create_asset(ASSET_ID, ALICE, 2);
+		assert_eq!(
+			decoded::<FungiblesError>(transfer_from(
+				addr.clone(),
+				ASSET_ID,
+				None,
+				Some(BOB),
+				amount,
+				&[0u8]
+			)),
+			FungiblesError::NoPermission
+		);
+		assert_eq!(
+			decoded::<FungiblesError>(transfer_from(
+				addr.clone(),
+				ASSET_ID,
+				None,
+				Some(BOB),
+				1,
+				&[0u8]
+			)),
+			FungiblesError::BelowMinimum
+		);
+		let asset = 2;
+		create_asset(asset, addr.clone(), 2);
+		let bob_balance_before_mint = Assets::balance(asset, &BOB);
+		let result = transfer_from(addr.clone(), asset, None, Some(BOB), 100 * UNIT, &[0u8]);
+		assert!(!result.did_revert(), "Contract reverted!");
+		let bob_balance_after_mint = Assets::balance(asset, &BOB);
+		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount);
 	});
 }
 
 #[test]
 #[ignore]
-fn transfer_from_aka_mint_works() {
-	new_test_ext().execute_with(|| {
-		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE);
-
-		let amount: u128 = 100 * UNIT;
-		// Create asset with contract as owner.
-		create_asset(ASSET_ID, addr.clone());
-		// Check Bob's asset balance before minting through contract.
-		let bob_balance_before = Assets::balance(ASSET_ID, &BOB);
-
-		let result = transfer_from(addr.clone(), ASSET_ID, None, Some(BOB), 100 * UNIT, &[0u8]);
-		assert!(!result.did_revert(), "Contract reverted!");
-
-		let bob_balance_after = Assets::balance(ASSET_ID, &BOB);
-		assert_eq!(bob_balance_after, bob_balance_before + amount);
-	});
-}
+fn transfer_works() {}

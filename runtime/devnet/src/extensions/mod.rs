@@ -69,9 +69,18 @@ where
 					Err(DispatchError::Module(error)) => {
 						// encode status code = pallet index in runtime + error index, allowing for
 						// 999 errors
+						let first = (3u32 * 1_000_000u32)
+							+ (error.index as u32 * 1_000u32)
+							+ u32::from_le_bytes(error.error);
 						Ok(RetVal::Converging(
-							(error.index as u32 * 1_000) + u32::from_le_bytes(error.error),
+							// (3u32 * 1_000_000u32)
+							// 	+ (error.index as u32 * 1_000u32)
+							// 	+ u32::from_le_bytes(error.error),
+							first,
 						))
+					},
+					Err(DispatchError::Token(error)) => {
+						Ok(RetVal::Converging((7u32 * 1_000_000u32) + error as u32))
 					},
 					Err(e) => Err(e),
 				}

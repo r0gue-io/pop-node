@@ -1,4 +1,8 @@
-use crate::{AccountId, Balance, PopApiError::UnknownStatusCode, RuntimeCall, *};
+use crate::{
+	AccountId, Balance,
+	PopApiError::{UnknownDispatchStatusCode, UnknownModuleStatusCode},
+	RuntimeCall, *,
+};
 use ink::prelude::vec::Vec;
 use primitives::AssetId;
 use scale::{Compact, Encode};
@@ -502,7 +506,7 @@ impl TryFrom<u32> for AssetsError {
 			16 => Ok(AssetNotLive),
 			17 => Ok(IncorrectStatus),
 			18 => Ok(NotFrozen),
-			_ => Err(UnknownStatusCode(status_code)),
+			_ => Err(UnknownModuleStatusCode(status_code)),
 		}
 	}
 }
@@ -510,22 +514,41 @@ impl TryFrom<u32> for AssetsError {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum FungiblesError {
-	/// The signing account has no permission to do the operation.
-	NoPermission,
-	/// The given asset ID is unknown.
-	Unknown,
+	/// The amount to mint is less than the existential deposit.
+	BelowMinimum,
+	/// Unspecified dispatch error, providing the index and its error index (if none `0`).
+	DispatchError { index: u8, error: u8 },
+	/// Not enough allowance to fulfill a request is available.
+	InsufficientAllowance,
+	/// Not enough balance to fulfill a request is available.
 	InsufficientBalance,
 	/// The asset ID is already taken.
 	InUse,
 	/// Minimum balance should be non-zero.
 	MinBalanceZero,
+	/// Unspecified pallet error, providing pallet index and error index.
+	ModuleError { pallet: u8, error: u16 },
+	/// The signing account has no permission to do the operation.
+	NoPermission,
+	/// The given asset ID is unknown.
+	Unknown,
 }
 
 impl From<balances::Error> for FungiblesError {
 	fn from(error: balances::Error) -> Self {
 		match error {
 			balances::Error::InsufficientBalance => FungiblesError::InsufficientBalance,
-			_ => panic!("Unexpected pallet assets error. This error is unknown to pallet assets"),
+			_ => FungiblesError::ModuleError { pallet: 40, error: error as u16 },
+		}
+	}
+}
+
+impl From<dispatch_error::TokenError> for FungiblesError {
+	fn from(error: dispatch_error::TokenError) -> Self {
+		match error {
+			dispatch_error::TokenError::UnknownAsset => FungiblesError::Unknown,
+			dispatch_error::TokenError::BelowMinimum => FungiblesError::BelowMinimum,
+			_ => FungiblesError::DispatchError { index: 7, error: error as u8 },
 		}
 	}
 }
@@ -533,8 +556,12 @@ impl From<balances::Error> for FungiblesError {
 impl From<AssetsError> for FungiblesError {
 	fn from(error: AssetsError) -> Self {
 		match error {
+			AssetsError::Unapproved => FungiblesError::InsufficientAllowance,
 			AssetsError::InUse => FungiblesError::InUse,
-			_ => panic!("Unexpected pallet assets error. This error is unknown to pallet assets"),
+			AssetsError::MinBalanceZero => FungiblesError::MinBalanceZero,
+			AssetsError::NoPermission => FungiblesError::NoPermission,
+			AssetsError::Unknown => FungiblesError::Unknown,
+			_ => FungiblesError::ModuleError { pallet: 40, error: error as u16 },
 		}
 	}
 }
@@ -543,12 +570,19 @@ impl From<PopApiError> for FungiblesError {
 	fn from(error: PopApiError) -> Self {
 		match error {
 			PopApiError::Assets(e) => e.into(),
-			// PopApiError::Balances(e) => todo!("balances: {:?}", e),
 			PopApiError::Balances(e) => e.into(),
-			// PopApiError::Contracts(_e) => todo!("contracts"),
-			// PopApiError::SystemCallFiltered => 100,
-			// PopApiError::UnknownStatusCode(u) => u,
-			_ => panic!("Unexpected pallet assets error. This error is unknown to pallet assets"),
+			PopApiError::TokenError(e) => e.into(),
+			PopApiError::UnknownModuleStatusCode(e) => {
+				let pallet = (e / 1_000) as u8;
+				let error = (e % 1_000) as u16;
+				FungiblesError::ModuleError { pallet, error }
+			},
+			PopApiError::UnknownDispatchStatusCode(e) => {
+				let index = (e / 1_000_000) as u8;
+				let error = (3 % 1_000_000) as u8;
+				FungiblesError::DispatchError { index, error }
+			},
+			_ => todo!(),
 		}
 	}
 }

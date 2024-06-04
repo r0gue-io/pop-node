@@ -1,6 +1,6 @@
 pub mod coretime;
 
-use crate::{PopApiError::UnknownStatusCode, *};
+use crate::{PopApiError::UnknownModuleStatusCode, *};
 
 type Result<T> = core::result::Result<T, Error>;
 
@@ -92,7 +92,7 @@ impl TryFrom<u32> for Error {
 			21 => Ok(InvalidAssetUnknownReserve),
 			22 => Ok(InvalidAssetUnsupportedReserve),
 			23 => Ok(TooManyReserves),
-			_ => Err(UnknownStatusCode(status_code)),
+			_ => Err(UnknownModuleStatusCode(status_code)),
 		}
 	}
 }

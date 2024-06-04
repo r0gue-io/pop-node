@@ -3,12 +3,13 @@ use crate::{
 	BlockNumber, PopApiError,
 };
 
+pub mod assets;
 pub mod balances;
 pub mod contracts;
 pub mod cross_chain;
+pub mod dispatch_error;
 pub mod nfts;
 pub mod state;
-pub mod assets;
 
 pub fn relay_chain_block_number() -> Result<BlockNumber, PopApiError> {
 	state::read(RuntimeStateKeys::ParachainSystem(ParachainSystemKeys::LastRelayChainBlockNumber))

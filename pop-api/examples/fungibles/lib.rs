@@ -10,42 +10,42 @@ use pop_api::{
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum ContractError {
-	// AssetsError(Error),
-	// /// The origin of the call doesn't have the right permission.
-	// BadOrigin,
-	// /// Custom error type for cases in which an implementation adds its own restrictions.
-	// Custom(String),
-	/// Not enough balance to fulfill a request is available.
-	InsufficientBalance,
+	/// The amount to mint is less than the existential deposit.
+	BelowMinimum,
+	/// Unspecified dispatch error, providing the index and its error index (if none `0`).
+	DispatchError { index: u8, error: u8 },
 	/// Not enough allowance to fulfill a request is available.
 	InsufficientAllowance,
-	/// The asset status is not the expected status.
-	IncorrectStatus,
+	/// Not enough balance to fulfill a request is available.
+	InsufficientBalance,
 	/// The asset ID is already taken.
 	InUse,
 	/// Minimum balance should be non-zero.
 	MinBalanceZero,
+	/// Unspecified pallet error, providing pallet index and error index.
+	ModuleError { pallet: u8, error: u16 },
 	/// The signing account has no permission to do the operation.
 	NoPermission,
-	// /// Safe transfer check fails (e.g. if the receiving contract does not accept tokens).
-	// SafeTransferCheckFailed(String),
 	/// The given asset ID is unknown.
 	Unknown,
-	/// Recipient's address is zero.
-	ZeroRecipientAddress,
-	/// Sender's address is zero.
-	ZeroSenderAddress,
-	UndefinedError,
 }
 
 impl From<FungiblesError> for ContractError {
 	fn from(error: FungiblesError) -> Self {
 		match error {
-			// Error::BalanceLow => Err(InsufficientBalance),
+			FungiblesError::BelowMinimum => ContractError::BelowMinimum,
+			FungiblesError::DispatchError { index, error } => {
+				ContractError::DispatchError { index, error }
+			},
+			FungiblesError::InsufficientAllowance => ContractError::InsufficientAllowance,
+			FungiblesError::InsufficientBalance => ContractError::InsufficientBalance,
 			FungiblesError::InUse => ContractError::InUse,
 			FungiblesError::MinBalanceZero => ContractError::MinBalanceZero,
+			FungiblesError::ModuleError { pallet, error } => {
+				ContractError::ModuleError { pallet, error }
+			},
+			FungiblesError::NoPermission => ContractError::NoPermission,
 			FungiblesError::Unknown => ContractError::Unknown,
-			_ => ContractError::UndefinedError,
 		}
 	}
 }

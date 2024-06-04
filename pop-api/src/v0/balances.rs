@@ -1,6 +1,6 @@
 use crate::{
 	dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, PopApiError,
-	PopApiError::UnknownStatusCode,
+	PopApiError::UnknownModuleStatusCode,
 };
 
 type Result<T> = core::result::Result<T, Error>;
@@ -73,7 +73,7 @@ impl TryFrom<u32> for Error {
 			9 => Ok(TooManyFreezes),
 			10 => Ok(IssuanceDeactivated),
 			11 => Ok(DeltaZero),
-			_ => Err(UnknownStatusCode(status_code)),
+			_ => Err(UnknownModuleStatusCode(status_code)),
 		}
 	}
 }
@@ -82,7 +82,7 @@ impl From<PopApiError> for Error {
 	fn from(error: PopApiError) -> Self {
 		match error {
 			PopApiError::Balances(e) => e,
-			_ => panic!("expected balances error"),
+			_ => todo!(),
 		}
 	}
 }
