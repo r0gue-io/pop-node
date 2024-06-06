@@ -120,21 +120,32 @@ fn create_asset(asset_id: u32, owner: AccountId32) {
 fn create_asset_and_mint_to(asset_id: u32, owner: AccountId32, to: AccountId32, value: u128) {
 	create_asset(asset_id, owner.clone());
 	assert_eq!(
-		Assets::mint(RuntimeOrigin::signed(owner.into()), asset_id.into(), to.into(), value,),
+		Assets::mint(RuntimeOrigin::signed(owner.clone()), asset_id.into(), to.into(), value),
 		Ok(())
 	);
+}
+
+fn create_asset_and_mint_to(
+	owner: AccountId32,
+	asset_id: AssetId,
+	to: AccountId32,
+	value: Balance,
+) -> AssetId {
+	create_asset(owner.clone(), asset_id, 1);
+	mint_asset(owner, asset_id, to, value)
 }
 
 // Create an asset, mints to, and approves spender.
 fn create_asset_mint_and_approve(
 	asset_id: u32,
 	owner: AccountId32,
+	asset_id: AssetId,
 	to: AccountId32,
 	mint: u128,
 	spender: AccountId32,
 	approve: u128,
 ) {
-	create_asset_and_mint_to(asset_id, owner.clone(), to.clone(), mint);
+	create_asset_and_mint_to(owner.clone(), asset_id, to.clone(), mint);
 	assert_eq!(
 		Assets::approve_transfer(
 			RuntimeOrigin::signed(to.into()),
@@ -204,7 +215,7 @@ fn allowance_works() {
 		);
 
 		// Tokens in circulation.
-		create_asset_mint_and_approve(ASSET_ID, addr.clone(), BOB, 100, ALICE, 50);
+		create_asset_mint_and_approve(addr.clone(), ASSET_ID, BOB, 100, ALICE, 50);
 		assert_eq!(
 			Assets::allowance(ASSET_ID, &BOB, &ALICE).encode(),
 			allowance(addr, ASSET_ID, BOB, ALICE).data[2..]
