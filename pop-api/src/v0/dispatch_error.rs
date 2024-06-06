@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub(crate) enum TokenError {
+pub enum TokenError {
 	/// Funds are unavailable.
 	FundsUnavailable,
 	/// Some part of the balance gives the only provider reference to the account and thus cannot

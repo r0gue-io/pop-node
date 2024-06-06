@@ -17,7 +17,7 @@ pub fn transfer_keep_alive(
 
 #[derive(scale::Encode)]
 #[allow(dead_code)]
-pub(crate) enum BalancesCall {
+pub enum BalancesCall {
 	#[codec(index = 3)]
 	TransferKeepAlive {
 		dest: MultiAddress<AccountId, ()>,
@@ -28,7 +28,7 @@ pub(crate) enum BalancesCall {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub(crate) enum BalancesError {
+pub enum BalancesError {
 	/// Vesting balance too high to send value.
 	VestingBalance,
 	/// Account liquidity restrictions prevent withdrawal.

@@ -2,31 +2,7 @@
 
 use super::*;
 
-#[derive(Decode, Encode, Debug, Eq, PartialEq)]
-enum FungiblesError {
-	/// The asset is not live; either frozen or being destroyed.
-	AssetNotLive,
-	/// The amount to mint is less than the existential deposit.
-	BelowMinimum,
-	/// Unspecified dispatch error, providing the index and optionally its error index.
-	DispatchError { index: u8, error: Option<u8> },
-	/// Not enough allowance to fulfill a request is available.
-	InsufficientAllowance,
-	/// Not enough balance to fulfill a request is available.
-	InsufficientBalance,
-	/// The asset ID is already taken.
-	InUse,
-	/// Minimum balance should be non-zero.
-	MinBalanceZero,
-	/// Unspecified pallet error, providing pallet index and error index.
-	ModuleError { pallet: u8, error: u16 },
-	/// The account to alter does not exist.
-	NoAccount,
-	/// The signing account has no permission to do the operation.
-	NoPermission,
-	/// The given asset ID is unknown.
-	Unknown,
-}
+use pop_api::v0::assets::fungibles::FungiblesError;
 
 const ASSET_ID: AssetId = 1;
 

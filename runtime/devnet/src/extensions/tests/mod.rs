@@ -1,6 +1,6 @@
 #![cfg(test)]
 use super::*;
-use crate::{Assets, Balances, Contracts, Runtime, System};
+use crate::{Assets, Contracts, Runtime, System};
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 use sp_runtime::{traits::Hash, AccountId32, BuildStorage};
 

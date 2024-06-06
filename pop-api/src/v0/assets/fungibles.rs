@@ -76,12 +76,6 @@ pub fn transfer(
 	to: impl Into<MultiAddress<AccountId, ()>>,
 	value: Balance,
 ) -> Result<()> {
-	// TODO: transfer or transfer_keep_alive
-	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::Transfer {
-	// 	id: id.into(),
-	// 	target: target.into(),
-	// 	amount: Compact(amount),
-	// }))?)
 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::TransferKeepAlive {
 		id: id.into(),
 		target: to.into(),
@@ -416,7 +410,7 @@ pub(crate) enum AssetsCall {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub(crate) enum AssetsError {
+pub enum AssetsError {
 	/// Account balance must be greater than or equal to the transfer amount.
 	BalanceLow,
 	/// The account to alter does not exist.
