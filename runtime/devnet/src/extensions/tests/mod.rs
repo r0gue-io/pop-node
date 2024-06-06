@@ -7,6 +7,7 @@ use sp_runtime::{traits::Hash, AccountId32, BuildStorage};
 mod local_fungibles;
 
 type Balance = u128;
+type AssetId = u32;
 const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 
 const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);

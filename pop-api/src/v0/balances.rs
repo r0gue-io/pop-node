@@ -3,7 +3,7 @@ use crate::{
 	PopApiError::UnknownModuleStatusCode,
 };
 
-type Result<T> = core::result::Result<T, Error>;
+type Result<T> = core::result::Result<T, BalancesError>;
 
 pub fn transfer_keep_alive(
 	dest: impl Into<MultiAddress<AccountId, ()>>,
@@ -28,7 +28,7 @@ pub(crate) enum BalancesCall {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub(crate) enum Error {
+pub(crate) enum BalancesError {
 	/// Vesting balance too high to send value.
 	VestingBalance,
 	/// Account liquidity restrictions prevent withdrawal.
@@ -55,11 +55,11 @@ pub(crate) enum Error {
 	DeltaZero,
 }
 
-impl TryFrom<u32> for Error {
+impl TryFrom<u32> for BalancesError {
 	type Error = PopApiError;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
-		use Error::*;
+		use BalancesError::*;
 		match status_code {
 			0 => Ok(VestingBalance),
 			1 => Ok(LiquidityRestrictions),
@@ -78,7 +78,7 @@ impl TryFrom<u32> for Error {
 	}
 }
 
-impl From<PopApiError> for Error {
+impl From<PopApiError> for BalancesError {
 	fn from(error: PopApiError) -> Self {
 		match error {
 			PopApiError::Balances(e) => e,

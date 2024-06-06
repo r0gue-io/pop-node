@@ -1,10 +1,11 @@
 #![cfg(test)]
 
 use super::*;
-use pallet_contracts::debug::ExecResult;
 
 #[derive(Decode, Encode, Debug, Eq, PartialEq)]
 enum FungiblesError {
+	/// The asset is not live; either frozen or being destroyed.
+	AssetNotLive,
 	/// The amount to mint is less than the existential deposit.
 	BelowMinimum,
 	/// Unspecified dispatch error, providing the index and optionally its error index.
@@ -19,13 +20,15 @@ enum FungiblesError {
 	MinBalanceZero,
 	/// Unspecified pallet error, providing pallet index and error index.
 	ModuleError { pallet: u8, error: u16 },
+	/// The account to alter does not exist.
+	NoAccount,
 	/// The signing account has no permission to do the operation.
 	NoPermission,
 	/// The given asset ID is unknown.
 	Unknown,
 }
 
-const ASSET_ID: u32 = 1;
+const ASSET_ID: AssetId = 1;
 
 fn decoded<T: Decode>(result: ExecReturnValue) -> T {
 	<T>::decode(&mut &result.data[2..]).unwrap()
@@ -33,39 +36,42 @@ fn decoded<T: Decode>(result: ExecReturnValue) -> T {
 
 fn allowance(
 	addr: AccountId32,
-	asset_id: u32,
+	asset_id: AssetId,
 	owner: AccountId32,
 	spender: AccountId32,
-) -> ExecReturnValue {
+) -> Balance {
 	let function = function_selector("allowance");
 	let params = [function, asset_id.encode(), owner.encode(), spender.encode()].concat();
-	do_bare_call(addr, params, 0).expect("should work")
+	let result = do_bare_call(addr, params, 0).expect("should work");
+	decoded::<Balance>(result)
 }
 
 // Call balance_of contract message.
-fn balance_of(addr: AccountId32, asset_id: u32, owner: AccountId32) -> ExecReturnValue {
+fn balance_of(addr: AccountId32, asset_id: AssetId, owner: AccountId32) -> Balance {
 	let function = function_selector("balance_of");
 	let params = [function, asset_id.encode(), owner.encode()].concat();
-	do_bare_call(addr, params, 0).expect("should work")
+	let result = do_bare_call(addr, params, 0).expect("should work");
+	decoded::<Balance>(result)
 }
 
 // Call total_supply contract message.
-fn total_supply(addr: AccountId32, asset_id: u32) -> Balance {
+fn total_supply(addr: AccountId32, asset_id: AssetId) -> Balance {
 	let function = function_selector("total_supply");
 	let params = [function, asset_id.encode()].concat();
 	let result = do_bare_call(addr, params, 0).expect("should work");
 	decoded::<Balance>(result)
 }
 
-fn asset_exists(addr: AccountId32, asset_id: u32) -> ExecReturnValue {
+fn asset_exists(addr: AccountId32, asset_id: AssetId) -> bool {
 	let function = function_selector("asset_exists");
 	let params = [function, asset_id.encode()].concat();
-	do_bare_call(addr, params, 0).expect("should work")
+	let result = do_bare_call(addr, params, 0).expect("should work");
+	decoded::<bool>(result)
 }
 
 fn create(
 	addr: AccountId32,
-	asset_id: u32,
+	asset_id: AssetId,
 	admin: AccountId32,
 	min_balance: Balance,
 ) -> ExecReturnValue {
@@ -76,7 +82,7 @@ fn create(
 
 fn set_metadata(
 	addr: AccountId32,
-	asset_id: u32,
+	asset_id: AssetId,
 	name: Vec<u8>,
 	symbol: Vec<u8>,
 	decimals: u8,
@@ -87,26 +93,34 @@ fn set_metadata(
 	do_bare_call(addr, params, 0).expect("should work")
 }
 
+fn transfer(
+	addr: AccountId32,
+	asset_id: AssetId,
+	to: AccountId32,
+	value: Balance,
+) -> ExecReturnValue {
+	let function = function_selector("transfer");
+	let params = [function, asset_id.encode(), to.encode(), value.encode()].concat();
+	do_bare_call(addr, params, 0).expect("should work")
+}
+
 fn transfer_from(
 	addr: AccountId32,
-	asset_id: u32,
-	_from: Option<AccountId32>,
+	asset_id: AssetId,
+	from: Option<AccountId32>,
 	to: Option<AccountId32>,
 	value: Balance,
-	_data: &[u8],
+	data: &[u8],
 ) -> ExecReturnValue {
-	// let function = function_selector("transfer_from");
-	// let params =
-	// 	[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
-	// 		.concat();
-	// do_bare_call(addr, params, 0)
-	let function = function_selector("mint");
-	let params = [function, asset_id.encode(), to.unwrap().encode(), value.encode()].concat();
+	let function = function_selector("transfer_from");
+	let params =
+		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
+			.concat();
 	do_bare_call(addr, params, 0).expect("should work")
 }
 
 // Create an asset and mint to owner.
-fn create_asset(asset_id: u32, owner: AccountId32, min_balance: Balance) {
+fn create_asset(asset_id: AssetId, owner: AccountId32, min_balance: Balance) -> AssetId {
 	assert_eq!(
 		Assets::create(
 			RuntimeOrigin::signed(owner.clone()),
@@ -116,20 +130,27 @@ fn create_asset(asset_id: u32, owner: AccountId32, min_balance: Balance) {
 		),
 		Ok(())
 	);
+	asset_id
 }
 
 // Create an asset and mint to owner.
-fn create_asset_and_mint_to(asset_id: u32, owner: AccountId32, to: AccountId32, value: Balance) {
+fn create_asset_and_mint_to(
+	asset_id: AssetId,
+	owner: AccountId32,
+	to: AccountId32,
+	value: Balance,
+) -> AssetId {
 	create_asset(asset_id, owner.clone(), 1);
 	assert_eq!(
 		Assets::mint(RuntimeOrigin::signed(owner.into()), asset_id.into(), to.into(), value,),
 		Ok(())
 	);
+	asset_id
 }
 
 // Create an asset, mints to, and approves spender.
 fn create_asset_mint_and_approve(
-	asset_id: u32,
+	asset_id: AssetId,
 	owner: AccountId32,
 	to: AccountId32,
 	mint: Balance,
@@ -146,6 +167,21 @@ fn create_asset_mint_and_approve(
 		),
 		Ok(())
 	);
+}
+
+// Freeze an asset.
+fn freeze_asset(asset_id: AssetId, owner: AccountId32) {
+	assert_eq!(Assets::freeze_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()), Ok(()));
+}
+
+// Thaw an asset.
+fn thaw_asset(asset_id: AssetId, owner: AccountId32) {
+	assert_eq!(Assets::thaw_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()), Ok(()));
+}
+
+// Start destroying an asset.
+fn start_destroy_asset(asset_id: AssetId, owner: AccountId32) {
+	assert_eq!(Assets::start_destroy(RuntimeOrigin::signed(owner.into()), asset_id.into()), Ok(()));
 }
 
 #[test]
@@ -180,17 +216,11 @@ fn balance_of_works() {
 		);
 
 		// No tokens in circulation.
-		assert_eq!(
-			Assets::balance(ASSET_ID, BOB).encode(),
-			balance_of(addr.clone(), ASSET_ID, BOB).data[2..]
-		);
+		assert_eq!(Assets::balance(ASSET_ID, BOB), balance_of(addr.clone(), ASSET_ID, BOB));
 
 		// Tokens in circulation.
 		create_asset_and_mint_to(ASSET_ID, addr.clone(), BOB, 100);
-		assert_eq!(
-			Assets::balance(ASSET_ID, BOB).encode(),
-			balance_of(addr, ASSET_ID, BOB).data[2..]
-		);
+		assert_eq!(Assets::balance(ASSET_ID, BOB), balance_of(addr, ASSET_ID, BOB));
 	});
 }
 
@@ -207,15 +237,15 @@ fn allowance_works() {
 
 		// No tokens in circulation.
 		assert_eq!(
-			Assets::allowance(ASSET_ID, &BOB, &ALICE).encode(),
-			allowance(addr.clone(), ASSET_ID, BOB, ALICE).data[2..]
+			Assets::allowance(ASSET_ID, &BOB, &ALICE),
+			allowance(addr.clone(), ASSET_ID, BOB, ALICE)
 		);
 
 		// Tokens in circulation.
 		create_asset_mint_and_approve(ASSET_ID, addr.clone(), BOB, 100, ALICE, 50);
 		assert_eq!(
-			Assets::allowance(ASSET_ID, &BOB, &ALICE).encode(),
-			allowance(addr, ASSET_ID, BOB, ALICE).data[2..]
+			Assets::allowance(ASSET_ID, &BOB, &ALICE),
+			allowance(addr, ASSET_ID, BOB, ALICE)
 		);
 	});
 }
@@ -232,14 +262,11 @@ fn asset_exists_works() {
 		);
 
 		// No tokens in circulation.
-		assert_eq!(
-			Assets::asset_exists(ASSET_ID).encode(),
-			asset_exists(addr.clone(), ASSET_ID).data[2..]
-		);
+		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr.clone(), ASSET_ID));
 
 		// Tokens in circulation.
 		create_asset(ASSET_ID, addr.clone(), 1);
-		assert_eq!(Assets::asset_exists(ASSET_ID).encode(), asset_exists(addr, ASSET_ID).data[2..]);
+		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr, ASSET_ID));
 	});
 }
 
@@ -299,11 +326,12 @@ fn set_metadata_works() {
 }
 
 // todo: errors:
-// - AssetNotLive: when frozen or being destroyed
-// - TokenErrors: https://github.com/paritytech/polkadot-sdk/blob/3977f389cce4a00fd7100f95262e0563622b9aa4/substrate/frame/assets/src/functions.rs#L125
+// - TokenErrors
+// - Arithmetic
+// - https://github.com/paritytech/polkadot-sdk/blob/3977f389cce4a00fd7100f95262e0563622b9aa4/substrate/frame/assets/src/functions.rs#L125
 #[test]
 #[ignore]
-fn mint_works() {
+fn transfer_from_mint_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
 		let addr = instantiate(
@@ -316,7 +344,7 @@ fn mint_works() {
 		assert_eq!(
 			decoded::<FungiblesError>(transfer_from(
 				addr.clone(),
-				ASSET_ID,
+				1,
 				None,
 				Some(BOB),
 				amount,
@@ -324,11 +352,11 @@ fn mint_works() {
 			)),
 			FungiblesError::Unknown
 		);
-		create_asset(ASSET_ID, ALICE, 2);
+		let asset = create_asset(1, ALICE, 2);
 		assert_eq!(
 			decoded::<FungiblesError>(transfer_from(
 				addr.clone(),
-				ASSET_ID,
+				asset,
 				None,
 				Some(BOB),
 				amount,
@@ -339,7 +367,7 @@ fn mint_works() {
 		assert_eq!(
 			decoded::<FungiblesError>(transfer_from(
 				addr.clone(),
-				ASSET_ID,
+				asset,
 				None,
 				Some(BOB),
 				1,
@@ -347,16 +375,87 @@ fn mint_works() {
 			)),
 			FungiblesError::BelowMinimum
 		);
-		let asset = 2;
-		create_asset(asset, addr.clone(), 2);
+		let asset = create_asset(2, addr.clone(), 2);
+		freeze_asset(asset, addr.clone());
+		assert_eq!(
+			decoded::<FungiblesError>(transfer_from(
+				addr.clone(),
+				asset,
+				None,
+				Some(BOB),
+				amount,
+				&[0u8]
+			)),
+			FungiblesError::AssetNotLive
+		);
+		thaw_asset(asset, addr.clone());
 		let bob_balance_before_mint = Assets::balance(asset, &BOB);
-		let result = transfer_from(addr.clone(), asset, None, Some(BOB), 100 * UNIT, &[0u8]);
+		let result = transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8]);
 		assert!(!result.did_revert(), "Contract reverted!");
 		let bob_balance_after_mint = Assets::balance(asset, &BOB);
 		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount);
+		start_destroy_asset(asset, addr.clone());
+		assert_eq!(
+			decoded::<FungiblesError>(transfer_from(
+				addr.clone(),
+				asset,
+				None,
+				Some(BOB),
+				amount,
+				&[0u8]
+			)),
+			FungiblesError::AssetNotLive
+		);
 	});
 }
 
+// Todo: error:
+// - Frozen: account is frozen, who do you freeze an account?
+// - https://github.com/paritytech/polkadot-sdk/blob/2460cddf57660a88844d201f769eb17a7accce5a/substrate/frame/assets/src/functions.rs#L161
+// - ArithmeticError: Underflow, Overflow
+// - https://github.com/paritytech/polkadot-sdk/blob/master/substrate/frame/assets/src/functions.rs#L125
+// -
 #[test]
 #[ignore]
-fn transfer_works() {}
+fn transfer_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(
+			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
+			INIT_VALUE,
+			vec![],
+		);
+		let amount: Balance = 100 * UNIT;
+
+		assert_eq!(
+			decoded::<FungiblesError>(transfer(addr.clone(), 1, BOB, amount,)),
+			FungiblesError::Unknown
+		);
+		let asset = create_asset_and_mint_to(1, ALICE, addr.clone(), amount);
+		freeze_asset(asset, ALICE);
+		assert_eq!(
+			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount,)),
+			FungiblesError::AssetNotLive
+		);
+		thaw_asset(asset, ALICE);
+		assert_eq!(
+			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
+			FungiblesError::InsufficientBalance
+		);
+		// Errors due to ED. Could be Belowminimum
+		assert_eq!(
+			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount)),
+			FungiblesError::InsufficientBalance
+		);
+		let bob_balance_before_mint = Assets::balance(asset, &BOB);
+		let result = transfer(addr.clone(), asset, BOB, amount / 2);
+		assert!(!result.did_revert(), "Contract reverted!");
+		let bob_balance_after_mint = Assets::balance(asset, &BOB);
+		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount / 2);
+		start_destroy_asset(asset, ALICE);
+		assert_eq!(
+			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount / 4)),
+			FungiblesError::AssetNotLive
+		);
+	});
+}

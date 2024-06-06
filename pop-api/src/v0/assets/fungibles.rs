@@ -1,7 +1,6 @@
 use crate::{
-	AccountId, Balance,
-	PopApiError::{UnknownDispatchStatusCode, UnknownModuleStatusCode},
-	RuntimeCall, *,
+	balances::BalancesError, AccountId, Balance, PopApiError::UnknownModuleStatusCode, RuntimeCall,
+	*,
 };
 use ink::prelude::vec::Vec;
 use primitives::AssetId;
@@ -62,28 +61,6 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 	Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::Allowance(id, owner, spender)))?)
 }
 
-/// Create a new token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-/// * `admin` - The account that will administer the asset.
-/// * `min_balance` - The minimum balance required for accounts holding this asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the creation fails.
-// pub fn create(id: AssetId, admin: impl Into<MultiAddress<AccountId, ()>>, min_balance: Balance) -> Result<()> {
-pub fn create(
-	id: AssetId,
-	admin: impl Into<MultiAddress<AccountId, ()>>,
-	min_balance: Balance,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Assets(AssetsCall::Create {
-		id: id.into(),
-		admin: admin.into(),
-		min_balance,
-	}))?)
-}
-
 /// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
 /// `data` in unspecified format.
 ///
@@ -94,29 +71,27 @@ pub fn create(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
-// #[allow(unused_variables)]
-// pub fn transfer(
-// 	id: AssetId,
-// 	to: impl Into<MultiAddress<AccountId, ()>>,
-// 	value: Balance,
-// ) -> Result<()> {
-// 	todo!()
-// 	// TODO: transfer or transfer_keep_alive
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::Transfer {
-// 	// 	id: id.into(),
-// 	// 	target: target.into(),
-// 	// 	amount: Compact(amount),
-// 	// }))?)
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::TransferKeepAlive {
-// 	// 	id: id.into(),
-// 	// 	target: target.into(),
-// 	// 	amount: Compact(amount),
-// 	// }))?)
-// }
+pub fn transfer(
+	id: AssetId,
+	to: impl Into<MultiAddress<AccountId, ()>>,
+	value: Balance,
+) -> Result<()> {
+	// TODO: transfer or transfer_keep_alive
+	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::Transfer {
+	// 	id: id.into(),
+	// 	target: target.into(),
+	// 	amount: Compact(amount),
+	// }))?)
+	Ok(dispatch(RuntimeCall::Assets(AssetsCall::TransferKeepAlive {
+		id: id.into(),
+		target: to.into(),
+		amount: Compact(value),
+	}))?)
+}
 
-/// Transfers `value` tokens on the behalf of `from` to the account `to` with additional `data`
-/// in unspecified format. This can be used to allow a contract to transfer tokens on ones behalf
-/// and/or to charge fees in sub-currencies, for example.
+/// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
+/// in unspecified format. If `from` is equal to `None`, tokens will be minted to account `to`. If
+/// `to` is equal to `None`, tokens will be burned from account `from`.
 ///
 /// # Arguments
 /// * `id` - The ID of the asset.
@@ -126,43 +101,26 @@ pub fn create(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
-// pub fn transfer_from(
-// 	id: AssetId,
-// 	from: impl Into<MultiAddress<AccountId, ()>>,
-// 	to: impl Into<MultiAddress<AccountId, ()>>,
-// 	value: Balance,
-// ) -> Result<()> {
-//todo!()
-// TODO: depending on `from` and `to`, decide whether to mint, burn or transfer_approved.
-// Ok(dispatch(RuntimeCall::Assets(AssetsCall::Mint {
-// 	id: id.into(),
-// 	beneficiary: beneficiary.into(),
-// 	amount: Compact(amount),
-// }))?)
-// Ok(dispatch(RuntimeCall::Assets(AssetsCall::Burn {
-// 	id: id.into(),
-// 	who: who.into(),
-// 	amount: Compact(amount),
-// }))?)
-// Ok(dispatch(RuntimeCall::Assets(AssetsCall::TransferApproved {
-// 	id: id.into(),
-// 	owner: from.into(),
-// 	destination: to.into(),
-// 	amount: Compact(value),
-// }))?)
-// }
-
-/// Mint assets of a particular class.
-pub fn mint(
+pub fn transfer_from(
 	id: AssetId,
-	beneficiary: impl Into<MultiAddress<AccountId, ()>>,
-	amount: Balance,
+	from: Option<impl Into<MultiAddress<AccountId, ()>>>,
+	to: Option<impl Into<MultiAddress<AccountId, ()>>>,
+	value: Balance,
+	_data: &[u8],
 ) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Assets(AssetsCall::Mint {
-		id: id.into(),
-		beneficiary: beneficiary.into(),
-		amount: Compact(amount),
-	}))?)
+	match (from, to) {
+		(None, Some(to)) => mint(id, to, value),
+		// (Some(from), None) => burn(id, from, value),
+		(Some(from), Some(to)) => {
+			Ok(dispatch(RuntimeCall::Assets(AssetsCall::TransferApproved {
+				id: id.into(),
+				owner: from.into(),
+				destination: to.into(),
+				amount: Compact(value),
+			}))?)
+		},
+		_ => Ok(()),
+	}
 }
 
 /// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -277,6 +235,27 @@ pub fn mint(
 /// - set_metadata
 /// - clear_metadata
 
+/// Create a new token with a given asset ID.
+///
+/// # Arguments
+/// * `id` - The ID of the asset.
+/// * `admin` - The account that will administer the asset.
+/// * `min_balance` - The minimum balance required for accounts holding this asset.
+///
+/// # Returns
+/// Returns `Ok(())` if successful, or an error if the creation fails.
+pub fn create(
+	id: AssetId,
+	admin: impl Into<MultiAddress<AccountId, ()>>,
+	min_balance: Balance,
+) -> Result<()> {
+	Ok(dispatch(RuntimeCall::Assets(AssetsCall::Create {
+		id: id.into(),
+		admin: admin.into(),
+		min_balance,
+	}))?)
+}
+
 /// Start the process of destroying a token with a given asset ID.
 ///
 /// # Arguments
@@ -362,10 +341,22 @@ pub fn asset_exists(id: AssetId) -> Result<bool> {
 	Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::AssetExists(id)))?)
 }
 
-// Parameters to extrinsics representing an asset id (`AssetIdParameter`) and a balance amount (`Balance`) are expected
-// to be compact encoded. The pop api handles that for the developer.
-//
-// reference: https://substrate.stackexchange.com/questions/1873/what-is-the-meaning-of-palletcompact-in-pallet-development
+/// Mint assets of a particular class.
+fn mint(
+	id: AssetId,
+	beneficiary: impl Into<MultiAddress<AccountId, ()>>,
+	amount: Balance,
+) -> Result<()> {
+	Ok(dispatch(RuntimeCall::Assets(AssetsCall::Mint {
+		id: id.into(),
+		beneficiary: beneficiary.into(),
+		amount: Compact(amount),
+	}))?)
+}
+
+// Parameters to extrinsics representing an asset id (`AssetIdParameter`) and a balance amount
+// (`Balance`) are expected to be compact encoded. The pop api handles that for the developer.
+// https://substrate.stackexchange.com/questions/1873/what-is-the-meaning-of-palletcompact-in-pallet-development
 //
 // Asset id that is compact encoded.
 type AssetIdParameter = Compact<AssetId>;
@@ -423,7 +414,6 @@ pub(crate) enum AssetsCall {
 	},
 }
 
-// TODO: remove unnecessary errors
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub(crate) enum AssetsError {
@@ -514,6 +504,8 @@ impl TryFrom<u32> for AssetsError {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum FungiblesError {
+	/// The asset is not live; either frozen or being destroyed.
+	AssetNotLive,
 	/// The amount to mint is less than the existential deposit.
 	BelowMinimum,
 	/// Unspecified dispatch error, providing the index and its error index (if none `0`).
@@ -528,16 +520,20 @@ pub enum FungiblesError {
 	MinBalanceZero,
 	/// Unspecified pallet error, providing pallet index and error index.
 	ModuleError { pallet: u8, error: u16 },
+	/// The account to alter does not exist.
+	NoAccount,
 	/// The signing account has no permission to do the operation.
 	NoPermission,
 	/// The given asset ID is unknown.
 	Unknown,
 }
 
-impl From<balances::Error> for FungiblesError {
-	fn from(error: balances::Error) -> Self {
+impl From<BalancesError> for FungiblesError {
+	fn from(error: BalancesError) -> Self {
 		match error {
-			balances::Error::InsufficientBalance => FungiblesError::InsufficientBalance,
+			// TODO: this insufficient balance is different than the assets variant. This one is
+			// for a deposit of creating an asset, the latter is for transfer tokens.
+			BalancesError::InsufficientBalance => FungiblesError::InsufficientBalance,
 			_ => FungiblesError::ModuleError { pallet: 40, error: error as u16 },
 		}
 	}
@@ -546,8 +542,10 @@ impl From<balances::Error> for FungiblesError {
 impl From<dispatch_error::TokenError> for FungiblesError {
 	fn from(error: dispatch_error::TokenError) -> Self {
 		match error {
-			dispatch_error::TokenError::UnknownAsset => FungiblesError::Unknown,
 			dispatch_error::TokenError::BelowMinimum => FungiblesError::BelowMinimum,
+			// ED is not respected.
+			dispatch_error::TokenError::OnlyProvider => FungiblesError::InsufficientBalance,
+			dispatch_error::TokenError::UnknownAsset => FungiblesError::Unknown,
 			_ => FungiblesError::DispatchError { index: 7, error: error as u8 },
 		}
 	}
@@ -556,12 +554,15 @@ impl From<dispatch_error::TokenError> for FungiblesError {
 impl From<AssetsError> for FungiblesError {
 	fn from(error: AssetsError) -> Self {
 		match error {
+			AssetsError::AssetNotLive => FungiblesError::AssetNotLive,
+			AssetsError::BalanceLow => FungiblesError::InsufficientBalance,
 			AssetsError::Unapproved => FungiblesError::InsufficientAllowance,
 			AssetsError::InUse => FungiblesError::InUse,
 			AssetsError::MinBalanceZero => FungiblesError::MinBalanceZero,
 			AssetsError::NoPermission => FungiblesError::NoPermission,
+			AssetsError::NoAccount => FungiblesError::NoAccount,
 			AssetsError::Unknown => FungiblesError::Unknown,
-			_ => FungiblesError::ModuleError { pallet: 40, error: error as u16 },
+			_ => FungiblesError::ModuleError { pallet: 52, error: error as u16 },
 		}
 	}
 }
@@ -586,3 +587,24 @@ impl From<PopApiError> for FungiblesError {
 		}
 	}
 }
+
+// macro_rules! impl_error_conversion {
+//     ($pallet_index:, $pallet_error:ty, $interface_error:ty, $($variant:ident),*) => {
+//         impl From<$pallet_error> for $interface_error {
+//             fn from(error: $pallet_error) -> Self {
+//                 match error {
+//                     $(
+//                         <$pallet_error>::$variant => <$interface_error>::$variant,
+//                     )*
+//                     _ => <$interface_error>::ModuleError { pallet: 0, error: [255, 0, 0, 0] }, // Default case
+//                 }
+//             }
+//         }
+//
+//         impl FromPalletError<$pallet_error> for $interface_error {
+//             fn from_pallet_error(error: $pallet_error) -> Self {
+//                 Self::from(error)
+//             }
+//         }
+//     };
+// }

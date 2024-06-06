@@ -21,16 +21,11 @@ type MaxTips = u32;
 
 pub type Result<T> = core::result::Result<T, PopApiError>;
 
-struct ModuleError {
-	pallet: u8,
-	error: u16,
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum PopApiError {
 	Assets(assets::fungibles::AssetsError),
-	Balances(balances::Error),
+	Balances(balances::BalancesError),
 	Contracts(contracts::Error),
 	DecodingFailed,
 	Nfts(nfts::Error),
