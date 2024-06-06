@@ -10,6 +10,8 @@ mod extensions;
 mod weights;
 // Public due to integration tests crate.
 pub mod config;
+#[cfg(test)]
+mod tests;
 
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;

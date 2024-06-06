@@ -17,10 +17,7 @@ use pop_primitives::{
 	AssetId, CollectionId, ItemId,
 };
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{
-	traits::{BlockNumberProvider, Dispatchable},
-	DispatchError,
-};
+use sp_runtime::traits::{BlockNumberProvider, Dispatchable};
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
 	latest::{prelude::*, OriginKind::SovereignAccount},
@@ -32,9 +29,6 @@ use crate::{
 	RuntimeOrigin, UNIT,
 };
 
-#[cfg(test)]
-mod tests;
-
 const LOG_TARGET: &str = "pop-api::extension";
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
@@ -42,6 +36,7 @@ type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 #[derive(Default)]
 pub struct PopApiExtension;
 
+// TODO: check removal or simplification of trait bounds.
 impl<T> ChainExtension<T> for PopApiExtension
 where
 	T: pallet_contracts::Config
@@ -59,31 +54,12 @@ where
 	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
 	where
 		E: Ext<T = T>,
-		// T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {
-			v0::FuncId::Dispatch => {
-				match dispatch::<T, E>(env) {
-					Ok(()) => Ok(RetVal::Converging(0)),
-					Err(DispatchError::Module(error)) => {
-						// encode status code = pallet index in runtime + error index, allowing for
-						// 999 errors
-						let first = (3u32 * 1_000_000u32)
-							+ (error.index as u32 * 1_000u32)
-							+ u32::from_le_bytes(error.error);
-						Ok(RetVal::Converging(
-							// (3u32 * 1_000_000u32)
-							// 	+ (error.index as u32 * 1_000u32)
-							// 	+ u32::from_le_bytes(error.error),
-							first,
-						))
-					},
-					Err(DispatchError::Token(error)) => {
-						Ok(RetVal::Converging((7u32 * 1_000_000u32) + error as u32))
-					},
-					Err(e) => Err(e),
-				}
+			v0::FuncId::Dispatch => match dispatch::<T, E>(env) {
+				Ok(()) => Ok(RetVal::Converging(0)),
+				Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
 			},
 			v0::FuncId::ReadState => {
 				read_state::<T, E>(env)?;
@@ -94,6 +70,17 @@ where
 				Ok(RetVal::Converging(0))
 			},
 		}
+	}
+}
+
+pub(crate) fn convert_to_status_code(error: DispatchError) -> u32 {
+	match error {
+		_ => {
+			let mut encoded_error = error.encode();
+			// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
+			encoded_error.resize(4, 0);
+			u32::decode(&mut &encoded_error[..]).unwrap()
+		},
 	}
 }
 

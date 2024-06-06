@@ -1,8 +1,8 @@
 pub mod coretime;
 
-use crate::{PopApiError::UnknownModuleStatusCode, *};
+use crate::error::PopApiError;
 
-type Result<T> = core::result::Result<T, Error>;
+type Result<T> = core::result::Result<T, PopApiError>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -92,16 +92,7 @@ impl TryFrom<u32> for Error {
 			21 => Ok(InvalidAssetUnknownReserve),
 			22 => Ok(InvalidAssetUnsupportedReserve),
 			23 => Ok(TooManyReserves),
-			_ => Err(UnknownModuleStatusCode(status_code)),
-		}
-	}
-}
-
-impl From<PopApiError> for Error {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Xcm(e) => e,
-			_ => panic!("expected xcm error"),
+			_ => todo!(),
 		}
 	}
 }

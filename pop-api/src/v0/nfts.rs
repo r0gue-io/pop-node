@@ -1,12 +1,12 @@
 use super::RuntimeCall;
-use crate::{PopApiError::UnknownModuleStatusCode, *};
+use crate::{PopApiError, *};
 use ink::prelude::vec::Vec;
 use primitives::{ApprovalsLimit, BoundedBTreeMap, KeyLimit, MultiAddress};
 pub use primitives::{CollectionId, ItemId};
 use scale::Encode;
 pub use types::*;
 
-type Result<T> = core::result::Result<T, Error>;
+type Result<T> = core::result::Result<T, PopApiError>;
 
 /// Issue a new collection of non-fungible items
 pub fn create(
@@ -660,16 +660,7 @@ impl TryFrom<u32> for Error {
 			42 => Ok(WrongNamespace),
 			43 => Ok(CollectionNotEmpty),
 			44 => Ok(WitnessRequired),
-			_ => Err(UnknownModuleStatusCode(status_code)),
-		}
-	}
-}
-
-impl From<PopApiError> for Error {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Nfts(e) => e,
-			_ => panic!("unexpected pallet nfts error. This error is unknown to pallet nfts"),
+			_ => todo!(),
 		}
 	}
 }

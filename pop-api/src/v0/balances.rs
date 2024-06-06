@@ -1,9 +1,7 @@
-use crate::{
-	dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, PopApiError,
-	PopApiError::UnknownModuleStatusCode,
-};
+// TODO: what to put in this file?
+use crate::{dispatch, error::PopApiError, primitives::MultiAddress, v0::RuntimeCall, AccountId};
 
-type Result<T> = core::result::Result<T, BalancesError>;
+type Result<T> = core::result::Result<T, PopApiError>;
 
 pub fn transfer_keep_alive(
 	dest: impl Into<MultiAddress<AccountId, ()>>,
@@ -17,7 +15,7 @@ pub fn transfer_keep_alive(
 
 #[derive(scale::Encode)]
 #[allow(dead_code)]
-pub(crate) enum BalancesCall {
+pub enum BalancesCall {
 	#[codec(index = 3)]
 	TransferKeepAlive {
 		dest: MultiAddress<AccountId, ()>,
@@ -28,7 +26,7 @@ pub(crate) enum BalancesCall {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub(crate) enum BalancesError {
+pub enum BalancesError {
 	/// Vesting balance too high to send value.
 	VestingBalance,
 	/// Account liquidity restrictions prevent withdrawal.
@@ -73,15 +71,6 @@ impl TryFrom<u32> for BalancesError {
 			9 => Ok(TooManyFreezes),
 			10 => Ok(IssuanceDeactivated),
 			11 => Ok(DeltaZero),
-			_ => Err(UnknownModuleStatusCode(status_code)),
-		}
-	}
-}
-
-impl From<PopApiError> for BalancesError {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Balances(e) => e,
 			_ => todo!(),
 		}
 	}

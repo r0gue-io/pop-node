@@ -5,9 +5,7 @@ use crate::{
 
 pub mod assets;
 pub mod balances;
-pub mod contracts;
 pub mod cross_chain;
-pub mod dispatch_error;
 pub mod nfts;
 pub mod state;
 
@@ -22,5 +20,5 @@ pub(crate) enum RuntimeCall {
 	#[codec(index = 50)]
 	Nfts(nfts::NftCalls),
 	#[codec(index = 52)]
-	Assets(assets::fungibles::AssetsCall),
+	Assets(assets::pallets::assets::AssetsCall),
 }

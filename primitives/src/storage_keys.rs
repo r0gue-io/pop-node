@@ -1,5 +1,4 @@
 use super::*;
-// use scale::{Decode, Encode, MaxEncodedLen};
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum RuntimeStateKeys {
@@ -28,8 +27,6 @@ pub enum NftsKeys {
 	Owner(CollectionId, ItemId),
 	/// Get the attribute value of `item` of `collection` corresponding to `key`.
 	Attribute(CollectionId, ItemId, BoundedVec<u8, KeyLimit>),
-	// /// Get the custom attribute value of `item` of `collection` corresponding to `key`.
-	// CustomAttribute(AccountId, CollectionId, ItemId, BoundedVec<u8, KeyLimit>),
 	/// Get the system attribute value of `item` of `collection` corresponding to `key`
 	SystemAttribute(CollectionId, Option<ItemId>, BoundedVec<u8, KeyLimit>),
 	/// Get the attribute value of `item` of `collection` corresponding to `key`.
