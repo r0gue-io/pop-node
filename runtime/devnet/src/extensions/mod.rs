@@ -19,7 +19,7 @@ use pop_primitives::{
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Dispatchable},
-	DispatchError,
+	ArithmeticError, DispatchError, ModuleError, TokenError, TransactionalError,
 };
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
@@ -63,23 +63,9 @@ where
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {
-			v0::FuncId::Dispatch => {
-				match dispatch::<T, E>(env) {
-					Ok(()) => Ok(RetVal::Converging(0)),
-					Err(DispatchError::Module(error)) => {
-						// encode status code = pallet index in runtime + error index, allowing for
-						// 999 errors
-						Ok(RetVal::Converging(
-							(3u32 * 1_000_000u32)
-								+ (error.index as u32 * 1_000u32)
-								+ u32::from_le_bytes(error.error),
-						))
-					},
-					Err(DispatchError::Token(error)) => {
-						Ok(RetVal::Converging((7u32 * 1_000_000u32) + error as u32))
-					},
-					Err(e) => Err(e),
-				}
+			v0::FuncId::Dispatch => match dispatch::<T, E>(env) {
+				Ok(()) => Ok(RetVal::Converging(0)),
+				Err(e) => Ok(RetVal::Converging(convert_to_status_code_v0(e))),
 			},
 			v0::FuncId::ReadState => {
 				read_state::<T, E>(env)?;
@@ -90,6 +76,22 @@ where
 				Ok(RetVal::Converging(0))
 			},
 		}
+	}
+}
+
+fn convert_to_status_code_v0(error: DispatchError) -> u32 {
+	use sp_runtime::DispatchError::*;
+	// TODO:
+	// - Versioning: check version number. Convert DispatchError into <version>::DispatchError.
+	// let versioned_dispatch_error = error.into(); // check xcm versioning.
+	// - Encode and decode to u32.
+	match error {
+		_ => {
+			let mut encoded_error = error.encode();
+			// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
+			encoded_error.resize(4, 0);
+			u32::decode(&mut &encoded_error[..]).unwrap()
+		},
 	}
 }
 
