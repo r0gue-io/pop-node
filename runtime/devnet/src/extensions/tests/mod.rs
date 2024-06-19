@@ -1,7 +1,10 @@
 #![cfg(test)]
+
 use super::*;
 use crate::{config::assets::TrustBackedAssetsInstance, Assets, Contracts, Runtime, System};
+use frame_system::Config;
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
+use pop_api::{dispatch_error::TokenError, ArithmeticError, PopApiError, TransactionalError};
 use sp_runtime::{traits::Hash, AccountId32, BuildStorage};
 
 mod local_fungibles;
@@ -90,6 +93,12 @@ fn instantiate(contract: &str, init_value: u128, salt: Vec<u8>) -> AccountId32 {
 	result.account_id
 }
 
+pub fn get_pallet_index<T: Config>() -> u8 {
+	// Get the index of the pallet (module)
+	<<T as Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<Assets>()
+		.expect("Every active module has an index in the runtime; qed") as u8
+}
+
 #[test]
 fn encoding_dispatch_error() {
 	use codec::{Decode, Encode};
@@ -97,12 +106,6 @@ fn encoding_dispatch_error() {
 	use frame_system::Config;
 	use pallet_assets::Error::*;
 	use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
-
-	pub fn get_pallet_index<T: Config>() -> u8 {
-		// Get the index of the pallet (module)
-		<<T as Config>::PalletInfo as PalletInfo>::index::<Assets>()
-			.expect("Every active module has an index in the runtime; qed") as u8
-	}
 
 	new_test_ext().execute_with(|| {
 		// Example DispatchError::Module
@@ -124,7 +127,7 @@ fn encoding_dispatch_error() {
 		// Example pallet assets Error into ModuleError
 		let index = get_pallet_index::<Runtime>();
 		let mut error = NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
-		error.resize(frame_support::MAX_MODULE_ERROR_ENCODED_SIZE, 0);
+		error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
 		let message = None;
 		let error = DispatchError::Module(ModuleError {
 			index,
@@ -158,14 +161,13 @@ fn encoding_dispatch_error() {
 fn encoding_possibilities() {
 	use codec::{Decode, Encode};
 
-	// Comprehensive enum with different types of variants
+	// Comprehensive enum with all different type of variants.
 	#[derive(Debug, PartialEq, Encode, Decode)]
 	enum ComprehensiveEnum {
 		SimpleVariant,
 		DataVariant(u8),
 		NamedFields { w: u8 },
 		NestedEnum(InnerEnum),
-		// Adding more cases to cover all different types
 		OptionVariant(Option<u8>),
 		VecVariant(Vec<u8>),
 		TupleVariant(u8, u8),
@@ -191,7 +193,7 @@ fn encoding_possibilities() {
 		inner_enum: InnerEnum,
 	}
 
-	// Creating instances of each variant of ComprehensiveEnum
+	// Creating each possible variant for an enum.
 	let enum_simple = ComprehensiveEnum::SimpleVariant;
 	let enum_data = ComprehensiveEnum::DataVariant(42);
 	let enum_named = ComprehensiveEnum::NamedFields { w: 42 };
@@ -204,7 +206,7 @@ fn encoding_possibilities() {
 		inner_enum: InnerEnum::C(42),
 	});
 
-	// Encode and print each variant individually to see their encoded values
+	// Encode and print each variant individually to see their encoded values.
 	println!("{:?} -> {:?}", enum_simple, enum_simple.encode());
 	println!("{:?} -> {:?}", enum_data, enum_data.encode());
 	println!("{:?} -> {:?}", enum_named, enum_named.encode());
@@ -217,58 +219,43 @@ fn encoding_possibilities() {
 }
 
 #[test]
-fn experimental_solution() {
-	#[derive(Debug, PartialEq, Clone, Copy, Encode, Decode)]
-	enum NewDispatchError {
-		Module(NewModuleError),
+fn dispatch_to_status_code_to_pop_api_error_works() {
+	// Create all the different `DispatchError` variants with its respective `PopApiError`.
+	let test_cases = vec![
+		(DispatchError::CannotLookup, PopApiError::CannotLookup),
+		(DispatchError::BadOrigin, PopApiError::BadOrigin),
+		(
+			DispatchError::Module(sp_runtime::ModuleError {
+				index: 1,
+				error: [2, 0, 0, 0],
+				message: Some("hallo"),
+			}),
+			PopApiError::Module { index: 1, error: 2 },
+		),
+		(DispatchError::ConsumerRemaining, PopApiError::ConsumerRemaining),
+		(DispatchError::NoProviders, PopApiError::NoProviders),
+		(DispatchError::TooManyConsumers, PopApiError::TooManyConsumers),
+		(
+			DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
+			PopApiError::Token(TokenError::FundsUnavailable),
+		),
+		(
+			DispatchError::Arithmetic(sp_runtime::ArithmeticError::Overflow),
+			PopApiError::Arithmetic(ArithmeticError::Overflow),
+		),
+		(
+			DispatchError::Transactional(sp_runtime::TransactionalError::LimitReached),
+			PopApiError::Transactional(TransactionalError::LimitReached),
+		),
+		(DispatchError::Exhausted, PopApiError::Exhausted),
+		(DispatchError::Corruption, PopApiError::Corruption),
+		(DispatchError::Unavailable, PopApiError::Unavailable),
+		(DispatchError::RootNotAllowed, PopApiError::RootNotAllowed),
+	];
+	for (error, pop_api_error) in test_cases {
+		// Show that the encoding and decoding of the PopApiError <> u32 (status code works)
+		let status_code = convert_to_status_code(error);
+		let error = pop_api::convert_to_pop_api_error(status_code);
+		assert_eq!(pop_api_error, error,);
 	}
-
-	#[derive(Debug, PartialEq, Clone, Copy, Encode, Decode)]
-	struct NewModuleError {
-		index: u8,
-		error: [u8; 2],
-	}
-
-	fn truncate_array(input: [u8; 4]) -> [u8; 2] {
-		let truncated: [u8; 2] = [input[0], input[1]];
-		truncated
-	}
-	fn convert_module_error(error: ModuleError) -> NewModuleError {
-		NewModuleError { index: error.index, error: truncate_array(error.error) }
-	}
-
-	use sp_runtime::ModuleError;
-	let error = ModuleError { index: 1, error: [2, 0, 0, 0], message: None };
-	let error = NewDispatchError::Module(convert_module_error(error));
-
-	let encoded_error = error.encode();
-	println!("Encoded DispatchError {:?}", encoded_error);
-	let status_code = u32::decode(&mut &encoded_error[..]).unwrap();
-	println!("{:?}", status_code);
-
-	let encoded_u32 = status_code.encode();
-	assert_eq!(encoded_error, encoded_error);
-	let dispatch_error = NewDispatchError::decode(&mut &encoded_u32[..]).unwrap();
-	assert_eq!(error, dispatch_error);
-
-	// An extra variant in our own DispatchError which is able to take in any DispatchError that is
-	// not handled by our runtime conversion logic or something that gets added to the sdk and thus
-	// needs to be handled for the immutable contracts.
-	//
-	// let error = DispatchError::Undefined {
-	// 	// index in the DispatchError
-	// 	index: 1,
-	//  // index in the variant of DispatchError. Can handle the ModuleError and direct to a specific
-	//  // error within a pallet (not nested errors...).
-	// 	variant_index: [2, 2],
-	// };
-	// let encoded_error = error.encode();
-	// println!("Encoded DispatchError {:?}", encoded_error);
-	// let status_code = u32::decode(&mut &encoded_error[..]).unwrap();
-	// println!("{:?}", status_code);
-	//
-	// let encoded_u32 = status_code.encode();
-	// assert_eq!(encoded_error, encoded_error);
-	// let dispatch_error = DispatchError::decode(&mut &encoded_u32[..]).unwrap();
-	// assert_eq!(error, dispatch_error);
 }

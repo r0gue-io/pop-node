@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use crate::PopApiError::{DecodingFailed, Module};
 use core::convert::TryInto;
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
 use primitives::{cross_chain::*, storage_keys::*, AccountId as AccountId32};
@@ -25,7 +26,6 @@ type MaxTips = u32;
 
 pub type Result<T> = core::result::Result<T, PopApiError>;
 
-// TODO: Versioning?
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 #[repr(u8)]
@@ -78,27 +78,53 @@ impl ink::env::chain_extension::FromStatusCode for PopApiError {
 		use PopApiError::*;
 		match status_code {
 			0 => Ok(()),
-			_ => {
-				// TODO: refactor
-				let encoded = status_code.encode();
-				let mut error =
-					PopApiError::decode(&mut &encoded[..]).map_err(|_| DecodingFailed)?;
-				ink::env::debug_println!("1st PopApiError: {:?}", error);
-				error = if let Module { index, error } = error {
-					convert_to_fungibles_error(index, error)
-				} else {
-					error
-				};
-				ink::env::debug_println!("2nd PopApiError: {:?}", error);
-				Err(error)
-			},
+			_ => Err(convert_to_pop_api_error(status_code)),
 		}
+	}
+}
+
+// `pub` because it is used in the tests in runtime.
+pub fn convert_to_pop_api_error(status_code: u32) -> PopApiError {
+	// TODO: refactor
+	let mut encoded: [u8; 4] =
+		status_code.encode().try_into().expect("qid u32 always encodes to 4 bytes");
+	encoded = check_for_unknown_nested_pop_api_errors(encoded);
+	let mut error = match PopApiError::decode(&mut &encoded[..]) {
+		Err(_) => {
+			// Failed decoding can be caused by a `PopApiError` variant that is not known
+			// to this version. As a result, we convert it into the `Other` enum variant.
+			encoded[3] = encoded[2];
+			encoded[2] = encoded[1];
+			encoded[1] = encoded[0];
+			encoded[0] = 0;
+			PopApiError::decode(&mut &encoded[..]).unwrap().into()
+		},
+		Ok(error) => error,
+	};
+	error = if let Module { index, error } = error {
+		convert_to_fungibles_error(index, error)
+	} else {
+		error
+	};
+	ink::env::debug_println!("PopApiError: {:?}", error);
+	error
+}
+
+// If an non-nested variant of the `DispatchError` is changed to a nested variant. This function
+// handles the conversion to the `Other` PopApiError variant.
+fn check_for_unknown_nested_pop_api_errors(encoded_error: [u8; 4]) -> [u8; 4] {
+	let non_nested_errors = [1u8, 2u8, 4u8, 5u8, 6u8, 10u8, 11u8, 12u8, 13u8];
+	if non_nested_errors.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8)
+	{
+		[0u8, encoded_error[0], encoded_error[1], encoded_error[2]]
+	} else {
+		encoded_error
 	}
 }
 
 impl From<scale::Error> for PopApiError {
 	fn from(_: scale::Error) -> Self {
-		panic!("encountered unexpected invalid SCALE encoding")
+		DecodingFailed
 	}
 }
 
@@ -123,7 +149,6 @@ impl ink::env::Environment for Environment {
 pub trait PopApi {
 	type ErrorCode = PopApiError;
 
-	// TODO: add versioning.
 	#[ink(function = 0)]
 	#[allow(private_interfaces)]
 	fn dispatch(call: RuntimeCall) -> Result<()>;
@@ -153,4 +178,57 @@ fn send_xcm(xcm: CrossChainMessage) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
 	.send_xcm(xcm)
+}
+
+#[test]
+fn u32_always_encodes_to_4_bytes() {
+	assert_eq!(0u32.encode().len(), 4);
+	assert_eq!(u32::MAX.encode().len(), 4);
+}
+
+// If decoding failed the encoded value is converted to the `PopApiError::Other`. This handles
+// unknown errors coming from the runtime. This could happen if a contract is not upgraded to the
+// latest Pop API version. This test checks for the correct conversion.
+#[test]
+fn test_non_existing_pop_api_errors() {
+	let encoded_error = [7u8, 100u8, 0u8, 0u8];
+	let status_code = u32::decode(&mut &encoded_error[..]).unwrap();
+	let pop_api_error =
+		<PopApiError as ink::env::chain_extension::FromStatusCode>::from_status_code(status_code);
+	assert_eq!(
+		Err(PopApiError::Other { dispatch_error_index: 7, error_index: 100, error: 0 }),
+		pop_api_error
+	);
+}
+
+// If an encoded value indicates for a nested PopApiError which in this Pop API version does not
+// exist, the encoded value should be converted into `PopApiError::Other`. This test checks for the
+// correct conversion.
+#[test]
+fn check_for_unknown_nested_pop_api_errors_works() {
+	let non_nested_errors = [1u8, 2u8, 4u8, 5u8, 6u8, 10u8, 11u8, 12u8, 13u8];
+	for &error_code in &non_nested_errors {
+		let encoded_error = [error_code, 1, 2, 3];
+		let result = check_for_unknown_nested_pop_api_errors(encoded_error);
+		let decoded = PopApiError::decode(&mut &result[..]).unwrap();
+
+		assert_eq!(
+			decoded,
+			PopApiError::Other { dispatch_error_index: error_code, error_index: 1, error: 2 },
+			"Failed for error code: {}",
+			error_code
+		);
+	}
+}
+
+// The `Module` error only has two nested values which requires max. 3 bytes. This test shows that
+// a non-zero value for the 4th byte does not mess up the decoding of the PopApiError and results in
+// a correct `Module` error.
+#[test]
+fn test_nested_pallet_erross() {
+	let encoded_error = [3u8, 4u8, 5u8, 6u8];
+	let status_code = u32::decode(&mut &encoded_error[..]).unwrap();
+	let pop_api_error =
+		<PopApiError as ink::env::chain_extension::FromStatusCode>::from_status_code(status_code);
+	assert_eq!(Err(PopApiError::Module { index: 4, error: 5 }), pop_api_error);
 }

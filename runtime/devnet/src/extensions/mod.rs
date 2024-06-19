@@ -62,7 +62,7 @@ where
 		match v0::FuncId::try_from(env.func_id())? {
 			v0::FuncId::Dispatch => match dispatch::<T, E>(env) {
 				Ok(()) => Ok(RetVal::Converging(0)),
-				Err(e) => Ok(RetVal::Converging(convert_to_status_code_v0(e))),
+				Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
 			},
 			v0::FuncId::ReadState => {
 				read_state::<T, E>(env)?;
@@ -76,7 +76,7 @@ where
 	}
 }
 
-fn convert_to_status_code_v0(error: DispatchError) -> u32 {
+fn convert_to_status_code(error: DispatchError) -> u32 {
 	// TODO:
 	// - Versioning: check version number. Convert DispatchError into <version>::DispatchError.
 	// let versioned_dispatch_error = error.into(); // check xcm versioning.

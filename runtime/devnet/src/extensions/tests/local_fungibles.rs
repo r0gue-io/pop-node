@@ -7,7 +7,7 @@ use pop_api::{
 		assets::use_cases::fungibles::FungiblesError::*,
 		dispatch_error::{ArithmeticError::*, TokenError::*},
 	},
-	PopApiError::{self, *},
+	PopApiError::*,
 };
 
 const ASSET_ID: AssetId = 1;
