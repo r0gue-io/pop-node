@@ -2,7 +2,13 @@
 
 use super::*;
 
-use pop_api::v0::assets::fungibles::FungiblesError;
+use pop_api::{
+	v0::{
+		assets::use_cases::fungibles::FungiblesError::*,
+		dispatch_error::{ArithmeticError::*, TokenError::*},
+	},
+	PopApiError::{self, *},
+};
 
 const ASSET_ID: AssetId = 1;
 
@@ -95,8 +101,7 @@ fn transfer_from(
 	do_bare_call(addr, params, 0).expect("should work")
 }
 
-// Create an asset and mint to owner.
-fn create_asset(asset_id: AssetId, owner: AccountId32, min_balance: Balance) -> AssetId {
+fn create_asset(owner: AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
 	assert_eq!(
 		Assets::create(
 			RuntimeOrigin::signed(owner.clone()),
@@ -109,31 +114,34 @@ fn create_asset(asset_id: AssetId, owner: AccountId32, min_balance: Balance) -> 
 	asset_id
 }
 
-// Create an asset and mint to owner.
-fn create_asset_and_mint_to(
-	asset_id: AssetId,
-	owner: AccountId32,
-	to: AccountId32,
-	value: Balance,
-) -> AssetId {
-	create_asset(asset_id, owner.clone(), 1);
+fn mint_asset(owner: AccountId32, asset_id: AssetId, to: AccountId32, value: Balance) -> AssetId {
 	assert_eq!(
-		Assets::mint(RuntimeOrigin::signed(owner.into()), asset_id.into(), to.into(), value,),
+		Assets::mint(RuntimeOrigin::signed(owner.clone()), asset_id.into(), to.into(), value),
 		Ok(())
 	);
 	asset_id
 }
 
+fn create_asset_and_mint_to(
+	owner: AccountId32,
+	asset_id: AssetId,
+	to: AccountId32,
+	value: Balance,
+) -> AssetId {
+	create_asset(owner.clone(), asset_id, 1);
+	mint_asset(owner, asset_id, to, value)
+}
+
 // Create an asset, mints to, and approves spender.
 fn create_asset_mint_and_approve(
-	asset_id: AssetId,
 	owner: AccountId32,
+	asset_id: AssetId,
 	to: AccountId32,
 	mint: Balance,
 	spender: AccountId32,
 	approve: Balance,
 ) {
-	create_asset_and_mint_to(asset_id, owner.clone(), to.clone(), mint);
+	create_asset_and_mint_to(owner.clone(), asset_id, to.clone(), mint);
 	assert_eq!(
 		Assets::approve_transfer(
 			RuntimeOrigin::signed(to.into()),
@@ -175,7 +183,7 @@ fn total_supply_works() {
 		assert_eq!(Assets::total_supply(ASSET_ID), total_supply(addr.clone(), ASSET_ID));
 
 		// Tokens in circulation.
-		create_asset_and_mint_to(ASSET_ID, addr.clone(), BOB, 100);
+		create_asset_and_mint_to(addr.clone(), ASSET_ID, BOB, 100);
 		assert_eq!(Assets::total_supply(ASSET_ID), total_supply(addr, ASSET_ID));
 	});
 }
@@ -195,7 +203,7 @@ fn balance_of_works() {
 		assert_eq!(Assets::balance(ASSET_ID, BOB), balance_of(addr.clone(), ASSET_ID, BOB));
 
 		// Tokens in circulation.
-		create_asset_and_mint_to(ASSET_ID, addr.clone(), BOB, 100);
+		create_asset_and_mint_to(addr.clone(), ASSET_ID, BOB, 100);
 		assert_eq!(Assets::balance(ASSET_ID, BOB), balance_of(addr, ASSET_ID, BOB));
 	});
 }
@@ -218,7 +226,7 @@ fn allowance_works() {
 		);
 
 		// Tokens in circulation.
-		create_asset_mint_and_approve(ASSET_ID, addr.clone(), BOB, 100, ALICE, 50);
+		create_asset_mint_and_approve(addr.clone(), ASSET_ID, BOB, 100, ALICE, 50);
 		assert_eq!(
 			Assets::allowance(ASSET_ID, &BOB, &ALICE),
 			allowance(addr, ASSET_ID, BOB, ALICE)
@@ -241,7 +249,7 @@ fn asset_exists_works() {
 		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr.clone(), ASSET_ID));
 
 		// Tokens in circulation.
-		create_asset(ASSET_ID, addr.clone(), 1);
+		create_asset(addr.clone(), ASSET_ID, 1);
 		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr, ASSET_ID));
 	});
 }
@@ -258,28 +266,33 @@ fn create_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
 		let new_asset = 2;
+		// Instantiate a contract without balance (relay token).
 		let addr =
 			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", 0, vec![0]);
-
+		// No balance to pay for deposit.
 		assert_eq!(
-			decoded::<FungiblesError>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
-			FungiblesError::InsufficientBalance
+			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
+			UseCaseError(NoBalance)
 		);
+		// Instantiate a contract with balance.
 		let addr = instantiate(
 			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
 			INIT_VALUE,
 			vec![1],
 		);
-		create_asset(ASSET_ID, ALICE, 1);
+		create_asset(ALICE, ASSET_ID, 1);
+		// Asset ID is already taken.
 		assert_eq!(
-			decoded::<FungiblesError>(create(addr.clone(), ASSET_ID, BOB, 1)),
-			FungiblesError::InUse
+			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, BOB, 1)),
+			UseCaseError(InUse)
 		);
+		// The minimal balance for an asset must be non zero.
 		assert_eq!(
-			decoded::<FungiblesError>(create(addr.clone(), new_asset, BOB, 0)),
-			FungiblesError::MinBalanceZero
+			decoded::<PopApiError>(create(addr.clone(), new_asset, BOB, 0)),
+			UseCaseError(MinBalanceZero)
 		);
-		assert!(!create(addr.clone(), new_asset, BOB, 1).did_revert(), "Contract reverted!");
+		let result = create(addr.clone(), new_asset, BOB, 1);
+		assert!(!result.did_revert(), "Contract reverted!");
 	});
 }
 
@@ -294,8 +307,7 @@ fn set_metadata_works() {
 			vec![],
 		);
 
-		create_asset(ASSET_ID, addr.clone(), 1);
-
+		create_asset(addr.clone(), ASSET_ID, 1);
 		let result = set_metadata(addr.clone(), ASSET_ID, vec![12], vec![12], 12);
 		assert!(!result.did_revert(), "Contract reverted!");
 	});
@@ -317,20 +329,15 @@ fn transfer_from_mint_works() {
 		);
 		let amount: Balance = 100 * UNIT;
 
+		// Asset does not exist.
 		assert_eq!(
-			decoded::<FungiblesError>(transfer_from(
-				addr.clone(),
-				1,
-				None,
-				Some(BOB),
-				amount,
-				&[0u8]
-			)),
-			FungiblesError::Unknown
+			decoded::<PopApiError>(transfer_from(addr.clone(), 1, None, Some(BOB), amount, &[0u8])),
+			Token(UnknownAsset)
 		);
-		let asset = create_asset(1, ALICE, 2);
+		let asset = create_asset(ALICE, 1, 2);
+		// Minting can only be done by the owner.
 		assert_eq!(
-			decoded::<FungiblesError>(transfer_from(
+			decoded::<PopApiError>(transfer_from(
 				addr.clone(),
 				asset,
 				None,
@@ -338,23 +345,18 @@ fn transfer_from_mint_works() {
 				amount,
 				&[0u8]
 			)),
-			FungiblesError::NoPermission
+			UseCaseError(NoPermission)
 		);
+		// Minimum balance of an asset can not be zero.
 		assert_eq!(
-			decoded::<FungiblesError>(transfer_from(
-				addr.clone(),
-				asset,
-				None,
-				Some(BOB),
-				1,
-				&[0u8]
-			)),
-			FungiblesError::BelowMinimum
+			decoded::<PopApiError>(transfer_from(addr.clone(), asset, None, Some(BOB), 1, &[0u8])),
+			Token(BelowMinimum)
 		);
-		let asset = create_asset(2, addr.clone(), 2);
+		let asset = create_asset(addr.clone(), 2, 2);
+		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(asset, addr.clone());
 		assert_eq!(
-			decoded::<FungiblesError>(transfer_from(
+			decoded::<PopApiError>(transfer_from(
 				addr.clone(),
 				asset,
 				None,
@@ -362,17 +364,31 @@ fn transfer_from_mint_works() {
 				amount,
 				&[0u8]
 			)),
-			FungiblesError::AssetNotLive
+			UseCaseError(AssetNotLive)
 		);
 		thaw_asset(asset, addr.clone());
+		// Successful mint.
 		let bob_balance_before_mint = Assets::balance(asset, &BOB);
 		let result = transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8]);
 		assert!(!result.did_revert(), "Contract reverted!");
 		let bob_balance_after_mint = Assets::balance(asset, &BOB);
 		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount);
+		// Can not mint more tokens than Balance::MAX.
+		assert_eq!(
+			decoded::<PopApiError>(transfer_from(
+				addr.clone(),
+				asset,
+				None,
+				Some(BOB),
+				Balance::MAX,
+				&[0u8]
+			)),
+			Arithmetic(Overflow)
+		);
+		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(asset, addr.clone());
 		assert_eq!(
-			decoded::<FungiblesError>(transfer_from(
+			decoded::<PopApiError>(transfer_from(
 				addr.clone(),
 				asset,
 				None,
@@ -380,17 +396,15 @@ fn transfer_from_mint_works() {
 				amount,
 				&[0u8]
 			)),
-			FungiblesError::AssetNotLive
+			UseCaseError(AssetNotLive)
 		);
 	});
 }
 
 // Todo: error:
-// - Frozen: account is frozen, who do you freeze an account?
 // - https://github.com/paritytech/polkadot-sdk/blob/2460cddf57660a88844d201f769eb17a7accce5a/substrate/frame/assets/src/functions.rs#L161
 // - ArithmeticError: Underflow, Overflow
 // - https://github.com/paritytech/polkadot-sdk/blob/master/substrate/frame/assets/src/functions.rs#L125
-// -
 #[test]
 #[ignore]
 fn transfer_works() {
@@ -403,35 +417,46 @@ fn transfer_works() {
 		);
 		let amount: Balance = 100 * UNIT;
 
+		// Asset does not exist.
 		assert_eq!(
-			decoded::<FungiblesError>(transfer(addr.clone(), 1, BOB, amount,)),
-			FungiblesError::Unknown
+			decoded::<PopApiError>(transfer(addr.clone(), 1, BOB, amount,)),
+			UseCaseError(Unknown)
 		);
-		let asset = create_asset_and_mint_to(1, ALICE, addr.clone(), amount);
+		// Create asset with Alice as owner and mint `amount` to contract address.
+		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
+		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(asset, ALICE);
 		assert_eq!(
-			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount,)),
-			FungiblesError::AssetNotLive
+			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount,)),
+			UseCaseError(AssetNotLive)
 		);
 		thaw_asset(asset, ALICE);
+		// Not enough balance.
 		assert_eq!(
-			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
-			FungiblesError::InsufficientBalance
+			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
+			UseCaseError(InsufficientBalance)
 		);
-		// Errors due to ED. Could be Belowminimum
+		// Not enough balance due to ED.
 		assert_eq!(
-			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount)),
-			FungiblesError::InsufficientBalance
+			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount)),
+			UseCaseError(InsufficientBalance)
 		);
+		// Successful transfer.
 		let bob_balance_before_mint = Assets::balance(asset, &BOB);
 		let result = transfer(addr.clone(), asset, BOB, amount / 2);
 		assert!(!result.did_revert(), "Contract reverted!");
 		let bob_balance_after_mint = Assets::balance(asset, &BOB);
 		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount / 2);
+		// Transfer asset to account that does not exist.
+		assert_eq!(
+			decoded::<PopApiError>(transfer(addr.clone(), asset, FERDIE, amount / 4)),
+			Token(CannotCreate)
+		);
+		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(asset, ALICE);
 		assert_eq!(
-			decoded::<FungiblesError>(transfer(addr.clone(), asset, BOB, amount / 4)),
-			FungiblesError::AssetNotLive
+			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount / 4)),
+			UseCaseError(AssetNotLive)
 		);
 	});
 }

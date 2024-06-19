@@ -1,9 +1,6 @@
-use crate::{
-	dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, PopApiError,
-	PopApiError::UnknownModuleStatusCode,
-};
+use crate::{dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, PopApiError};
 
-type Result<T> = core::result::Result<T, BalancesError>;
+type Result<T> = core::result::Result<T, PopApiError>;
 
 pub fn transfer_keep_alive(
 	dest: impl Into<MultiAddress<AccountId, ()>>,
@@ -53,36 +50,5 @@ pub enum BalancesError {
 	IssuanceDeactivated,
 	/// The delta cannot be zero.
 	DeltaZero,
-}
-
-impl TryFrom<u32> for BalancesError {
-	type Error = PopApiError;
-
-	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
-		use BalancesError::*;
-		match status_code {
-			0 => Ok(VestingBalance),
-			1 => Ok(LiquidityRestrictions),
-			2 => Ok(InsufficientBalance),
-			3 => Ok(ExistentialDeposit),
-			4 => Ok(Expendability),
-			5 => Ok(ExistingVestingSchedule),
-			6 => Ok(DeadAccount),
-			7 => Ok(TooManyReserves),
-			8 => Ok(TooManyHolds),
-			9 => Ok(TooManyFreezes),
-			10 => Ok(IssuanceDeactivated),
-			11 => Ok(DeltaZero),
-			_ => Err(UnknownModuleStatusCode(status_code)),
-		}
-	}
-}
-
-impl From<PopApiError> for BalancesError {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Balances(e) => e,
-			_ => todo!(),
-		}
-	}
+	UnknownError(u8),
 }

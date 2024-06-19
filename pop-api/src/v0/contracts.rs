@@ -1,4 +1,4 @@
-use crate::{PopApiError, PopApiError::UnknownModuleStatusCode};
+use crate::PopApiError;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -29,6 +29,7 @@ pub enum Error {
 	/// A buffer outside of sandbox memory was passed to a contract API function.
 	OutOfBounds,
 	/// Input passed to a contract API function failed to decode as expected type.
+	//  TODO: Something is wrong with how the call is encoded, check parameters.
 	DecodingFailed,
 	/// Contract trapped during execution.
 	ContractTrapped,
@@ -137,16 +138,16 @@ impl TryFrom<u32> for Error {
 			32 => Ok(DelegateDependencyNotFound),
 			33 => Ok(DelegateDependencyAlreadyExists),
 			34 => Ok(CannotAddSelfAsDelegateDependency),
-			_ => Err(UnknownModuleStatusCode(status_code)),
+			_ => todo!(),
 		}
 	}
 }
 
-impl From<PopApiError> for Error {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Contracts(e) => e,
-			_ => panic!("expected balances error"),
-		}
-	}
-}
+// impl From<PopApiError> for Error {
+// 	fn from(error: PopApiError) -> Self {
+// 		match error {
+// 			PopApiError::Contracts(e) => e,
+// 			_ => panic!("expected balances error"),
+// 		}
+// 	}
+// }

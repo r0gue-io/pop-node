@@ -22,5 +22,5 @@ pub(crate) enum RuntimeCall {
 	#[codec(index = 50)]
 	Nfts(nfts::NftCalls),
 	#[codec(index = 52)]
-	Assets(assets::fungibles::AssetsCall),
+	Assets(assets::pallets::assets::AssetsCall),
 }

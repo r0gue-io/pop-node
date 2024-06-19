@@ -1,12 +1,10 @@
-use crate::{
-	balances::BalancesError, AccountId, Balance, PopApiError::UnknownModuleStatusCode, RuntimeCall,
-	*,
-};
+#![allow(dead_code)]
+
+use crate::{assets::pallets, AccountId, Balance, PopApiError::*, *};
 use ink::prelude::vec::Vec;
 use primitives::AssetId;
-use scale::{Compact, Encode};
 
-type Result<T> = core::result::Result<T, FungiblesError>;
+type Result<T> = core::result::Result<T, PopApiError>;
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
@@ -31,7 +29,7 @@ type Result<T> = core::result::Result<T, FungiblesError>;
 /// # Returns
 /// The total supply of the token, or an error if the operation fails.
 pub fn total_supply(id: AssetId) -> Result<Balance> {
-	Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::TotalSupply(id)))?)
+	Ok(pallets::assets::total_supply(id)?)
 }
 
 /// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
@@ -44,7 +42,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 /// # Returns
 /// The balance of the specified account, or an error if the operation fails.
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
-	Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::BalanceOf(id, owner)))?)
+	Ok(pallets::assets::balance_of(id, owner)?)
 }
 
 /// Returns the amount which `spender` is still allowed to withdraw from `owner` for a given
@@ -58,7 +56,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 /// # Returns
 /// The remaining allowance, or an error if the operation fails.
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
-	Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::Allowance(id, owner, spender)))?)
+	Ok(pallets::assets::allowance(id, owner, spender)?)
 }
 
 /// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
@@ -76,11 +74,7 @@ pub fn transfer(
 	to: impl Into<MultiAddress<AccountId, ()>>,
 	value: Balance,
 ) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Assets(AssetsCall::TransferKeepAlive {
-		id: id.into(),
-		target: to.into(),
-		amount: Compact(value),
-	}))?)
+	Ok(pallets::assets::transfer(id, to, value)?)
 }
 
 /// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
@@ -103,16 +97,9 @@ pub fn transfer_from(
 	_data: &[u8],
 ) -> Result<()> {
 	match (from, to) {
-		(None, Some(to)) => mint(id, to, value),
-		// (Some(from), None) => burn(id, from, value),
-		(Some(from), Some(to)) => {
-			Ok(dispatch(RuntimeCall::Assets(AssetsCall::TransferApproved {
-				id: id.into(),
-				owner: from.into(),
-				destination: to.into(),
-				amount: Compact(value),
-			}))?)
-		},
+		(None, Some(to)) => Ok(pallets::assets::mint(id, to, value)?),
+		(Some(from), None) => Ok(pallets::assets::burn(id, from, value)?),
+		(Some(from), Some(to)) => Ok(pallets::assets::transfer_approved(id, from, to, value)?),
 		_ => Ok(()),
 	}
 }
@@ -243,11 +230,7 @@ pub fn create(
 	admin: impl Into<MultiAddress<AccountId, ()>>,
 	min_balance: Balance,
 ) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Assets(AssetsCall::Create {
-		id: id.into(),
-		admin: admin.into(),
-		min_balance,
-	}))?)
+	Ok(pallets::assets::create(id, admin, min_balance)?)
 }
 
 /// Start the process of destroying a token with a given asset ID.
@@ -310,12 +293,7 @@ pub fn create(
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
 pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Assets(AssetsCall::SetMetadata {
-		id: id.into(),
-		name,
-		symbol,
-		decimals,
-	}))?)
+	Ok(pallets::assets::set_metadata(id, name, symbol, decimals)?)
 }
 
 /// Clear the metadata for a token with a given asset ID.
@@ -332,167 +310,7 @@ pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -
 // }
 
 pub fn asset_exists(id: AssetId) -> Result<bool> {
-	Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::AssetExists(id)))?)
-}
-
-/// Mint assets of a particular class.
-fn mint(
-	id: AssetId,
-	beneficiary: impl Into<MultiAddress<AccountId, ()>>,
-	amount: Balance,
-) -> Result<()> {
-	Ok(dispatch(RuntimeCall::Assets(AssetsCall::Mint {
-		id: id.into(),
-		beneficiary: beneficiary.into(),
-		amount: Compact(amount),
-	}))?)
-}
-
-// Parameters to extrinsics representing an asset id (`AssetIdParameter`) and a balance amount
-// (`Balance`) are expected to be compact encoded. The pop api handles that for the developer.
-// https://substrate.stackexchange.com/questions/1873/what-is-the-meaning-of-palletcompact-in-pallet-development
-//
-// Asset id that is compact encoded.
-type AssetIdParameter = Compact<AssetId>;
-// Balance amount that is compact encoded.
-type BalanceParameter = Compact<Balance>;
-
-#[allow(warnings, unused)]
-#[derive(Encode)]
-pub(crate) enum AssetsCall {
-	#[codec(index = 0)]
-	Create { id: AssetIdParameter, admin: MultiAddress<AccountId, ()>, min_balance: Balance },
-	#[codec(index = 2)]
-	StartDestroy { id: AssetIdParameter },
-	#[codec(index = 3)]
-	DestroyAccounts { id: AssetIdParameter },
-	#[codec(index = 4)]
-	DestroyApprovals { id: AssetIdParameter },
-	#[codec(index = 5)]
-	FinishDestroy { id: AssetIdParameter },
-	#[codec(index = 6)]
-	Mint {
-		id: AssetIdParameter,
-		beneficiary: MultiAddress<AccountId, ()>,
-		amount: BalanceParameter,
-	},
-	#[codec(index = 7)]
-	Burn { id: AssetIdParameter, who: MultiAddress<AccountId, ()>, amount: BalanceParameter },
-	// TODO: ED or not
-	// #[codec(index = 8)]
-	// Transfer { id: AssetIdParameter, target: MultiAddress<AccountId, ()>, amount: BalanceParameter },
-	#[codec(index = 9)]
-	TransferKeepAlive {
-		id: AssetIdParameter,
-		target: MultiAddress<AccountId, ()>,
-		amount: BalanceParameter,
-	},
-	#[codec(index = 17)]
-	SetMetadata { id: AssetIdParameter, name: Vec<u8>, symbol: Vec<u8>, decimals: u8 },
-	#[codec(index = 18)]
-	ClearMetadata { id: AssetIdParameter },
-	#[codec(index = 22)]
-	ApproveTransfer {
-		id: AssetIdParameter,
-		delegate: MultiAddress<AccountId, ()>,
-		amount: BalanceParameter,
-	},
-	#[codec(index = 23)]
-	CancelApproval { id: AssetIdParameter, delegate: MultiAddress<AccountId, ()> },
-	#[codec(index = 25)]
-	TransferApproved {
-		id: AssetIdParameter,
-		owner: MultiAddress<AccountId, ()>,
-		destination: MultiAddress<AccountId, ()>,
-		amount: BalanceParameter,
-	},
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum AssetsError {
-	/// Account balance must be greater than or equal to the transfer amount.
-	BalanceLow,
-	/// The account to alter does not exist.
-	NoAccount,
-	/// The signing account has no permission to do the operation.
-	NoPermission,
-	/// The given asset ID is unknown.
-	Unknown,
-	/// The origin account is frozen.
-	Frozen,
-	/// The asset ID is already taken.
-	InUse,
-	/// Invalid witness data given.
-	BadWitness,
-	/// Minimum balance should be non-zero.
-	MinBalanceZero,
-	/// Unable to increment the consumer reference counters on the account. Either no provider
-	/// reference exists to allow a non-zero balance of a non-self-sufficient asset, or one
-	/// fewer then the maximum number of consumers has been reached.
-	UnavailableConsumer,
-	/// Invalid metadata given.
-	BadMetadata,
-	/// No approval exists that would allow the transfer.
-	Unapproved,
-	/// The source account would not survive the transfer and it needs to stay alive.
-	WouldDie,
-	/// The asset-account already exists.
-	AlreadyExists,
-	/// The asset-account doesn't have an associated deposit.
-	NoDeposit,
-	/// The operation would result in funds being burned.
-	WouldBurn,
-	/// The asset is a live asset and is actively being used. Usually emit for operations such
-	/// as `start_destroy` which require the asset to be in a destroying state.
-	LiveAsset,
-	/// The asset is not live, and likely being destroyed.
-	AssetNotLive,
-	/// The asset status is not the expected status.
-	IncorrectStatus,
-	/// The asset should be frozen before the given operation.
-	NotFrozen,
-	/// Callback action resulted in error
-	CallbackFailed,
-}
-
-impl From<PopApiError> for AssetsError {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Assets(e) => e,
-			_ => panic!("Expected AssetsError"),
-		}
-	}
-}
-
-impl TryFrom<u32> for AssetsError {
-	type Error = PopApiError;
-
-	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
-		use AssetsError::*;
-		match status_code {
-			0 => Ok(BalanceLow),
-			1 => Ok(NoAccount),
-			2 => Ok(NoPermission),
-			3 => Ok(Unknown),
-			4 => Ok(Frozen),
-			5 => Ok(InUse),
-			6 => Ok(BadWitness),
-			7 => Ok(MinBalanceZero),
-			8 => Ok(UnavailableConsumer),
-			9 => Ok(BadMetadata),
-			10 => Ok(Unapproved),
-			11 => Ok(WouldDie),
-			12 => Ok(AlreadyExists),
-			13 => Ok(NoDeposit),
-			14 => Ok(WouldBurn),
-			15 => Ok(LiveAsset),
-			16 => Ok(AssetNotLive),
-			17 => Ok(IncorrectStatus),
-			18 => Ok(NotFrozen),
-			_ => Err(UnknownModuleStatusCode(status_code)),
-		}
-	}
+	Ok(pallets::assets::asset_exists(id)?)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
@@ -500,10 +318,6 @@ impl TryFrom<u32> for AssetsError {
 pub enum FungiblesError {
 	/// The asset is not live; either frozen or being destroyed.
 	AssetNotLive,
-	/// The amount to mint is less than the existential deposit.
-	BelowMinimum,
-	/// Unspecified dispatch error, providing the index and its error index (if none `0`).
-	DispatchError { index: u8, error: u8 },
 	/// Not enough allowance to fulfill a request is available.
 	InsufficientAllowance,
 	/// Not enough balance to fulfill a request is available.
@@ -512,93 +326,45 @@ pub enum FungiblesError {
 	InUse,
 	/// Minimum balance should be non-zero.
 	MinBalanceZero,
-	/// Unspecified pallet error, providing pallet index and error index.
-	ModuleError { pallet: u8, error: u16 },
 	/// The account to alter does not exist.
 	NoAccount,
 	/// The signing account has no permission to do the operation.
 	NoPermission,
 	/// The given asset ID is unknown.
 	Unknown,
+	// // TODO:
+	// // - Originally `InsufficientBalance` for the deposit but this would result in the same error
+	// // as the error when there is insufficient balance for transferring an asset.
+	// // - verify fees
+	/// No balance for creation of assets or fees.
+	NoBalance,
 }
 
-impl From<BalancesError> for FungiblesError {
-	fn from(error: BalancesError) -> Self {
-		match error {
-			// TODO: this insufficient balance is different than the assets variant. This one is
-			// for a deposit of creating an asset, the latter is for transfer tokens.
-			BalancesError::InsufficientBalance => FungiblesError::InsufficientBalance,
-			_ => FungiblesError::ModuleError { pallet: 40, error: error as u16 },
-		}
+pub(crate) fn convert_to_fungibles_error(index: u8, error: u8) -> PopApiError {
+	match index {
+		10 => balance_into(error),
+		52 => assets_into(error),
+		_ => Module { index, error },
 	}
 }
 
-impl From<dispatch_error::TokenError> for FungiblesError {
-	fn from(error: dispatch_error::TokenError) -> Self {
-		match error {
-			dispatch_error::TokenError::BelowMinimum => FungiblesError::BelowMinimum,
-			// ED is not respected.
-			dispatch_error::TokenError::OnlyProvider => FungiblesError::InsufficientBalance,
-			dispatch_error::TokenError::UnknownAsset => FungiblesError::Unknown,
-			_ => FungiblesError::DispatchError { index: 7, error: error as u8 },
-		}
+fn balance_into(error: u8) -> PopApiError {
+	match error {
+		2 => UseCaseError(FungiblesError::NoBalance),
+		_ => Module { index: 10, error },
 	}
 }
 
-impl From<AssetsError> for FungiblesError {
-	fn from(error: AssetsError) -> Self {
-		match error {
-			AssetsError::AssetNotLive => FungiblesError::AssetNotLive,
-			AssetsError::BalanceLow => FungiblesError::InsufficientBalance,
-			AssetsError::Unapproved => FungiblesError::InsufficientAllowance,
-			AssetsError::InUse => FungiblesError::InUse,
-			AssetsError::MinBalanceZero => FungiblesError::MinBalanceZero,
-			AssetsError::NoPermission => FungiblesError::NoPermission,
-			AssetsError::NoAccount => FungiblesError::NoAccount,
-			AssetsError::Unknown => FungiblesError::Unknown,
-			_ => FungiblesError::ModuleError { pallet: 52, error: error as u16 },
-		}
+fn assets_into(error: u8) -> PopApiError {
+	match error {
+		0 => UseCaseError(FungiblesError::InsufficientBalance),
+		1 => UseCaseError(FungiblesError::NoAccount),
+		2 => UseCaseError(FungiblesError::NoPermission),
+		3 => UseCaseError(FungiblesError::Unknown),
+		5 => UseCaseError(FungiblesError::InUse),
+		7 => UseCaseError(FungiblesError::MinBalanceZero),
+		10 => UseCaseError(FungiblesError::InsufficientAllowance),
+		16 => UseCaseError(FungiblesError::AssetNotLive),
+		_ => Module { index: 52, error },
 	}
 }
-
-impl From<PopApiError> for FungiblesError {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Assets(e) => e.into(),
-			PopApiError::Balances(e) => e.into(),
-			PopApiError::TokenError(e) => e.into(),
-			PopApiError::UnknownModuleStatusCode(e) => {
-				let pallet = (e / 1_000) as u8;
-				let error = (e % 1_000) as u16;
-				FungiblesError::ModuleError { pallet, error }
-			},
-			PopApiError::UnknownDispatchStatusCode(e) => {
-				let index = (e / 1_000_000) as u8;
-				let error = (3 % 1_000_000) as u8;
-				FungiblesError::DispatchError { index, error }
-			},
-			_ => todo!(),
-		}
-	}
-}
-
-// macro_rules! impl_error_conversion {
-//     ($pallet_index:, $pallet_error:ty, $interface_error:ty, $($variant:ident),*) => {
-//         impl From<$pallet_error> for $interface_error {
-//             fn from(error: $pallet_error) -> Self {
-//                 match error {
-//                     $(
-//                         <$pallet_error>::$variant => <$interface_error>::$variant,
-//                     )*
-//                     _ => <$interface_error>::ModuleError { pallet: 0, error: [255, 0, 0, 0] }, // Default case
-//                 }
-//             }
-//         }
-//
-//         impl FromPalletError<$pallet_error> for $interface_error {
-//             fn from_pallet_error(error: $pallet_error) -> Self {
-//                 Self::from(error)
-//             }
-//         }
-//     };
-// }

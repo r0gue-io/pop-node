@@ -7,61 +7,12 @@
 ///
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::*,
+	assets::use_cases::fungibles as api,
 	primitives::{AccountId as AccountId32, AssetId},
+	PopApiError,
 };
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum ContractError {
-	/// The asset is not live; either frozen or being destroyed.
-	AssetNotLive,
-	/// The amount to mint is less than the existential deposit.
-	BelowMinimum,
-	/// Unspecified dispatch error, providing the index and its error index (if none `0`).
-	DispatchError { index: u8, error: u8 },
-	/// Not enough allowance to fulfill a request is available.
-	InsufficientAllowance,
-	/// Not enough balance to fulfill a request is available.
-	InsufficientBalance,
-	/// The asset ID is already taken.
-	InUse,
-	/// Minimum balance should be non-zero.
-	MinBalanceZero,
-	/// Unspecified pallet error, providing pallet index and error index.
-	ModuleError { pallet: u8, error: u16 },
-	/// The account to alter does not exist.
-	NoAccount,
-	/// The signing account has no permission to do the operation.
-	NoPermission,
-	/// The given asset ID is unknown.
-	Unknown,
-}
-
-impl From<FungiblesError> for ContractError {
-	fn from(error: FungiblesError) -> Self {
-		match error {
-			FungiblesError::AssetNotLive => ContractError::AssetNotLive,
-			FungiblesError::BelowMinimum => ContractError::BelowMinimum,
-			FungiblesError::DispatchError { index, error } => {
-				ContractError::DispatchError { index, error }
-			},
-			FungiblesError::InsufficientAllowance => ContractError::InsufficientAllowance,
-			FungiblesError::InsufficientBalance => ContractError::InsufficientBalance,
-			FungiblesError::InUse => ContractError::InUse,
-			FungiblesError::MinBalanceZero => ContractError::MinBalanceZero,
-			FungiblesError::ModuleError { pallet, error } => {
-				ContractError::ModuleError { pallet, error }
-			},
-			FungiblesError::NoAccount => ContractError::NoAccount,
-			FungiblesError::NoPermission => ContractError::NoPermission,
-			FungiblesError::Unknown => ContractError::Unknown,
-		}
-	}
-}
-
-/// The fungibles result type.
-pub type Result<T> = core::result::Result<T, ContractError>;
+pub type Result<T> = core::result::Result<T, PopApiError>;
 
 #[ink::contract(env = pop_api::Environment)]
 mod fungibles {
@@ -90,12 +41,12 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
-			total_supply(id).map_err(From::from)
+			api::total_supply(id)
 		}
 
 		#[ink(message)]
 		pub fn balance_of(&self, id: AssetId, owner: AccountId32) -> Result<Balance> {
-			balance_of(id, owner).map_err(From::from)
+			api::balance_of(id, owner)
 		}
 
 		#[ink(message)]
@@ -105,7 +56,7 @@ mod fungibles {
 			owner: AccountId32,
 			spender: AccountId32,
 		) -> Result<Balance> {
-			allowance(id, owner, spender).map_err(From::from)
+			api::allowance(id, owner, spender)
 		}
 
 		#[ink(message)]
@@ -117,9 +68,9 @@ mod fungibles {
 				value,
 			);
 
-			let result = transfer(id, to, value);
+			let result = api::transfer(id, to, value);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(From::from)
+			result
 		}
 
 		#[ink(message)]
@@ -140,9 +91,9 @@ mod fungibles {
 				value,
 			);
 
-			let result = transfer_from(id, from, to, value, &data);
+			let result = api::transfer_from(id, from, to, value, &data);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(From::from)
+			result
 		}
 
 		/// 2. PSP-22 Metadata Interface:
@@ -167,9 +118,9 @@ mod fungibles {
 				admin,
 				min_balance,
 			);
-			let result = create(id, admin, min_balance);
+			let result = api::create(id, admin, min_balance);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(From::from)
+			result
 		}
 
 		#[ink(message)]
@@ -187,14 +138,14 @@ mod fungibles {
 				symbol,
 				decimals,
 			);
-			let result = set_metadata(id, name, symbol, decimals);
+			let result = api::set_metadata(id, name, symbol, decimals);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(From::from)
+			result
 		}
 
 		#[ink(message)]
 		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-			asset_exists(id).map_err(From::from)
+			api::asset_exists(id)
 		}
 	}
 

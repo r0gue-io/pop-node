@@ -1,6 +1,6 @@
 #![cfg(test)]
 use super::*;
-use crate::{Assets, Contracts, Runtime, System};
+use crate::{config::assets::TrustBackedAssetsInstance, Assets, Contracts, Runtime, System};
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 use sp_runtime::{traits::Hash, AccountId32, BuildStorage};
 
@@ -12,6 +12,8 @@ const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::U
 
 const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
 const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
+// FERDIE has no initial balance.
+const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
 const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);

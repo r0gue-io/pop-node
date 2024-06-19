@@ -5,9 +5,12 @@ use ink::{prelude::vec::Vec, ChainExtensionInstance};
 use primitives::{cross_chain::*, storage_keys::*, AccountId as AccountId32};
 use scale::{Decode, Encode};
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
+use v0::assets::use_cases::fungibles::{convert_to_fungibles_error, FungiblesError};
 use v0::RuntimeCall;
 pub use v0::{
-	assets, balances, contracts, cross_chain, dispatch_error, nfts, relay_chain_block_number, state,
+	assets, balances, contracts, cross_chain, dispatch_error,
+	dispatch_error::{ArithmeticError, TokenError, TransactionalError},
+	nfts, relay_chain_block_number, state,
 };
 
 pub mod primitives;
@@ -22,8 +25,10 @@ type MaxTips = u32;
 
 pub type Result<T> = core::result::Result<T, PopApiError>;
 
+// TODO: Versioning?
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[repr(u8)]
 pub enum PopApiError {
 	/// Some error occurred which is not handled by the pop api version.
 	Other {
@@ -50,12 +55,12 @@ pub enum PopApiError {
 	/// There are too many consumers so the account cannot be created.
 	TooManyConsumers,
 	/// An error to do with tokens.
-	Token(u8),
+	Token(TokenError),
 	/// An arithmetic error.
-	Arithmetic(u8),
+	Arithmetic(ArithmeticError),
 	/// The number of transactional layers has been reached, or we are not in a transactional
 	/// layer.
-	Transactional(u8),
+	Transactional(TransactionalError),
 	/// Resources exhausted, e.g. attempt to read/write data which is too large to manipulate.
 	Exhausted,
 	/// The state is corrupt; this is generally not going to fix itself.
@@ -64,17 +69,8 @@ pub enum PopApiError {
 	Unavailable,
 	/// Root origin is not allowed.
 	RootNotAllowed,
-	DecodingFailed = 256,
-	// Assets(assets::fungibles::AssetsError),
-	// Balances(balances::BalancesError),
-	// Contracts(contracts::Error),
-	// DecodingFailed,
-	// Nfts(nfts::Error),
-	// SystemCallFiltered,
-	// TokenError(dispatch_error::TokenError),
-	// UnknownModuleStatusCode(u32),
-	// UnknownDispatchStatusCode(u32),
-	// Xcm(cross_chain::Error),
+	UseCaseError(FungiblesError) = 254,
+	DecodingFailed = 255,
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {
@@ -83,33 +79,20 @@ impl ink::env::chain_extension::FromStatusCode for PopApiError {
 		match status_code {
 			0 => Ok(()),
 			_ => {
-				let mut encoded = status_code.encode();
-				let error = PopApiError::decode(&mut &encoded[..]).map_err(DecodingFailed)?;
+				// TODO: refactor
+				let encoded = status_code.encode();
+				let mut error =
+					PopApiError::decode(&mut &encoded[..]).map_err(|_| DecodingFailed)?;
+				ink::env::debug_println!("1st PopApiError: {:?}", error);
+				error = if let Module { index, error } = error {
+					convert_to_fungibles_error(index, error)
+				} else {
+					error
+				};
+				ink::env::debug_println!("2nd PopApiError: {:?}", error);
 				Err(error)
 			},
 		}
-		// use crate::PopApiError::{
-		// 	Assets, Balances, Contracts, Nfts, TokenError, UnknownDispatchStatusCode,
-		// 	UnknownModuleStatusCode,
-		// };
-		//
-		// match status_code {
-		// 	0 => Ok(()),
-		// 	3_000_000..=3_999_999 => {
-		// 		let status_code = status_code - 3_000_000;
-		// 		match status_code {
-		// 			// CallFiltered originates from `frame_system` with pallet-index 0. The CallFiltered error is at index 5
-		// 			5 => Err(PopApiError::SystemCallFiltered),
-		// 			10_000..=10_999 => Err(Balances((status_code - 10_000).try_into()?)),
-		// 			40_000..=40_999 => Err(Contracts((status_code - 40_000).try_into()?)),
-		// 			50_000..=50_999 => Err(Nfts((status_code - 50_000).try_into()?)),
-		// 			52_000..=52_999 => Err(Assets((status_code - 52_000).try_into()?)),
-		// 			_ => Err(UnknownModuleStatusCode(status_code)),
-		// 		}
-		// 	},
-		// 	7_000_000..=7_999_999 => Err(TokenError((status_code - 7_000_000).try_into()?)),
-		// 	_ => Err(UnknownDispatchStatusCode(status_code)),
-		// }
 	}
 }
 

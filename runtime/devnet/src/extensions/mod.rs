@@ -17,10 +17,7 @@ use pop_primitives::{
 	AssetId, CollectionId, ItemId,
 };
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{
-	traits::{BlockNumberProvider, Dispatchable},
-	ArithmeticError, DispatchError, ModuleError, TokenError, TransactionalError,
-};
+use sp_runtime::traits::{BlockNumberProvider, Dispatchable};
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
 	latest::{prelude::*, OriginKind::SovereignAccount},
@@ -80,7 +77,6 @@ where
 }
 
 fn convert_to_status_code_v0(error: DispatchError) -> u32 {
-	use sp_runtime::DispatchError::*;
 	// TODO:
 	// - Versioning: check version number. Convert DispatchError into <version>::DispatchError.
 	// let versioned_dispatch_error = error.into(); // check xcm versioning.
