@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use crate::{assets::pallets, AccountId, Balance, PopApiError::*, *};
+use crate::{assets::pallets, AccountId, Balance, *};
 use ink::prelude::vec::Vec;
 use primitives::AssetId;
 

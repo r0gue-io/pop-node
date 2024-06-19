@@ -1,17 +1,19 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use crate::PopApiError::{DecodingFailed, Module};
+use crate::PopApiError::*;
 use core::convert::TryInto;
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
 use primitives::{cross_chain::*, storage_keys::*, AccountId as AccountId32};
 use scale::{Decode, Encode};
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
-use v0::assets::use_cases::fungibles::{convert_to_fungibles_error, FungiblesError};
-use v0::RuntimeCall;
 pub use v0::{
 	assets, balances, contracts, cross_chain, dispatch_error,
 	dispatch_error::{ArithmeticError, TokenError, TransactionalError},
 	nfts, relay_chain_block_number, state,
+};
+use v0::{
+	assets::use_cases::fungibles::{convert_to_fungibles_error, FungiblesError},
+	RuntimeCall,
 };
 
 pub mod primitives;
@@ -26,56 +28,56 @@ type MaxTips = u32;
 
 pub type Result<T> = core::result::Result<T, PopApiError>;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 #[repr(u8)]
 pub enum PopApiError {
-	/// Some error occurred which is not handled by the pop api version.
+	/// Some unknown error occurred. Go to the Pop API docs section `Pop API error`.
 	Other {
-		// Index within the DispatchError
+		// Index within the `DispatchError`
 		dispatch_error_index: u8,
-		// Index within the DispatchError variant.
+		// Index within the `DispatchError` variant.
 		error_index: u8,
 		// Index for further nesting, e.g. pallet error.
 		error: u8,
-	},
+	} = 0,
 	/// Failed to lookup some data.
-	CannotLookup,
+	CannotLookup = 1,
 	/// A bad origin.
-	BadOrigin,
+	BadOrigin = 2,
 	/// A custom error in a module.
 	Module {
 		index: u8,
 		error: u8,
-	},
+	} = 3,
 	/// At least one consumer is remaining so the account cannot be destroyed.
-	ConsumerRemaining,
+	ConsumerRemaining = 4,
 	/// There are no providers so the account cannot be created.
-	NoProviders,
+	NoProviders = 5,
 	/// There are too many consumers so the account cannot be created.
-	TooManyConsumers,
+	TooManyConsumers = 6,
 	/// An error to do with tokens.
-	Token(TokenError),
+	Token(TokenError) = 7,
 	/// An arithmetic error.
-	Arithmetic(ArithmeticError),
+	Arithmetic(ArithmeticError) = 8,
 	/// The number of transactional layers has been reached, or we are not in a transactional
 	/// layer.
-	Transactional(TransactionalError),
+	Transactional(TransactionalError) = 9,
 	/// Resources exhausted, e.g. attempt to read/write data which is too large to manipulate.
-	Exhausted,
+	Exhausted = 10,
 	/// The state is corrupt; this is generally not going to fix itself.
-	Corruption,
+	Corruption = 11,
 	/// Some resource (e.g. a preimage) is unavailable right now. This might fix itself later.
-	Unavailable,
+	Unavailable = 12,
 	/// Root origin is not allowed.
-	RootNotAllowed,
+	RootNotAllowed = 13,
+	// TODO: make generic and add docs.
 	UseCaseError(FungiblesError) = 254,
 	DecodingFailed = 255,
 }
 
 impl ink::env::chain_extension::FromStatusCode for PopApiError {
 	fn from_status_code(status_code: u32) -> core::result::Result<(), Self> {
-		use PopApiError::*;
 		match status_code {
 			0 => Ok(()),
 			_ => Err(convert_to_pop_api_error(status_code)),
@@ -83,13 +85,12 @@ impl ink::env::chain_extension::FromStatusCode for PopApiError {
 	}
 }
 
-// `pub` because it is used in the tests in runtime.
+// `pub` because it is used in the test in the runtime.
 pub fn convert_to_pop_api_error(status_code: u32) -> PopApiError {
-	// TODO: refactor
 	let mut encoded: [u8; 4] =
 		status_code.encode().try_into().expect("qid u32 always encodes to 4 bytes");
 	encoded = check_for_unknown_nested_pop_api_errors(encoded);
-	let mut error = match PopApiError::decode(&mut &encoded[..]) {
+	let error = match PopApiError::decode(&mut &encoded[..]) {
 		Err(_) => {
 			// Failed decoding can be caused by a `PopApiError` variant that is not known
 			// to this version. As a result, we convert it into the `Other` enum variant.
@@ -99,12 +100,14 @@ pub fn convert_to_pop_api_error(status_code: u32) -> PopApiError {
 			encoded[0] = 0;
 			PopApiError::decode(&mut &encoded[..]).unwrap().into()
 		},
-		Ok(error) => error,
-	};
-	error = if let Module { index, error } = error {
-		convert_to_fungibles_error(index, error)
-	} else {
-		error
+		Ok(error) => {
+			if let Module { index, error } = error {
+				// TODO: make generic.
+				convert_to_fungibles_error(index, error)
+			} else {
+				error
+			}
+		},
 	};
 	ink::env::debug_println!("PopApiError: {:?}", error);
 	error
@@ -113,13 +116,36 @@ pub fn convert_to_pop_api_error(status_code: u32) -> PopApiError {
 // If an non-nested variant of the `DispatchError` is changed to a nested variant. This function
 // handles the conversion to the `Other` PopApiError variant.
 fn check_for_unknown_nested_pop_api_errors(encoded_error: [u8; 4]) -> [u8; 4] {
-	let non_nested_errors = [1u8, 2u8, 4u8, 5u8, 6u8, 10u8, 11u8, 12u8, 13u8];
-	if non_nested_errors.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8)
+	if non_nested_pop_api_errors().contains(&encoded_error[0])
+		&& encoded_error[1..].iter().any(|x| *x != 0u8)
 	{
 		[0u8, encoded_error[0], encoded_error[1], encoded_error[2]]
 	} else {
 		encoded_error
 	}
+}
+
+fn non_nested_pop_api_errors() -> [u8; 9] {
+	const CANNOT_LOOKUP: u8 = 1;
+	const BAD_ORIGIN: u8 = 2;
+	const CONSUMER_REMAINING: u8 = 4;
+	const NO_PROVIDERS: u8 = 5;
+	const TOO_MANY_CONSUMERS: u8 = 6;
+	const EXHAUSTED: u8 = 10;
+	const CORRUPTION: u8 = 11;
+	const UNAVAILABLE: u8 = 12;
+	const ROOT_NOT_ALLOWED: u8 = 13;
+	[
+		CANNOT_LOOKUP,
+		BAD_ORIGIN,
+		CONSUMER_REMAINING,
+		NO_PROVIDERS,
+		TOO_MANY_CONSUMERS,
+		EXHAUSTED,
+		CORRUPTION,
+		UNAVAILABLE,
+		ROOT_NOT_ALLOWED,
+	]
 }
 
 impl From<scale::Error> for PopApiError {
@@ -206,8 +232,7 @@ fn test_non_existing_pop_api_errors() {
 // correct conversion.
 #[test]
 fn check_for_unknown_nested_pop_api_errors_works() {
-	let non_nested_errors = [1u8, 2u8, 4u8, 5u8, 6u8, 10u8, 11u8, 12u8, 13u8];
-	for &error_code in &non_nested_errors {
+	for &error_code in &non_nested_pop_api_errors() {
 		let encoded_error = [error_code, 1, 2, 3];
 		let result = check_for_unknown_nested_pop_api_errors(encoded_error);
 		let decoded = PopApiError::decode(&mut &result[..]).unwrap();

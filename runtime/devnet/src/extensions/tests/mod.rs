@@ -100,15 +100,11 @@ pub fn get_pallet_index<T: Config>() -> u8 {
 }
 
 #[test]
-fn encoding_dispatch_error() {
+fn encoding_decoding_dispatch_error() {
 	use codec::{Decode, Encode};
-	use frame_support::traits::PalletInfo;
-	use frame_system::Config;
-	use pallet_assets::Error::*;
 	use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
 
 	new_test_ext().execute_with(|| {
-		// Example DispatchError::Module
 		let error = DispatchError::Module(ModuleError {
 			index: 255,
 			error: [2, 0, 0, 0],
@@ -126,7 +122,8 @@ fn encoding_dispatch_error() {
 
 		// Example pallet assets Error into ModuleError
 		let index = get_pallet_index::<Runtime>();
-		let mut error = NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
+		let mut error =
+			pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
 		error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
 		let message = None;
 		let error = DispatchError::Module(ModuleError {
@@ -158,7 +155,7 @@ fn encoding_dispatch_error() {
 }
 
 #[test]
-fn encoding_possibilities() {
+fn encoding_of_enum() {
 	use codec::{Decode, Encode};
 
 	// Comprehensive enum with all different type of variants.
@@ -219,7 +216,7 @@ fn encoding_possibilities() {
 }
 
 #[test]
-fn dispatch_to_status_code_to_pop_api_error_works() {
+fn dispatch_error_to_status_code_to_pop_api_error_works() {
 	// Create all the different `DispatchError` variants with its respective `PopApiError`.
 	let test_cases = vec![
 		(DispatchError::CannotLookup, PopApiError::CannotLookup),
@@ -253,7 +250,7 @@ fn dispatch_to_status_code_to_pop_api_error_works() {
 		(DispatchError::RootNotAllowed, PopApiError::RootNotAllowed),
 	];
 	for (error, pop_api_error) in test_cases {
-		// Show that the encoding and decoding of the PopApiError <> u32 (status code works)
+		// Show that the encoding and decoding of the PopApiError <> u32 (status code) works.
 		let status_code = convert_to_status_code(error);
 		let error = pop_api::convert_to_pop_api_error(status_code);
 		assert_eq!(pop_api_error, error,);
