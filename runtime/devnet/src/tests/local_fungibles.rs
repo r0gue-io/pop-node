@@ -1,11 +1,9 @@
 // Todo - errors:
 // - Badorigin: contract is always signed
 // - Lookup: is a valid AccountId due to the contract
-// - Many errors can occur from calling a dispatchable. As of now, most of the DispatchErrors are
-// handled by the pop api but not all of them are tested. How should I approach this? I.e.:
-// 		- Arithmetic errors
-// 		- Token errors
-// 		- others (besides Module errors) that I might haven't found yet.
+// - Many errors can occur from calling a dispatchable. All the DispatchErrors are handled by the
+// pop api but not all the possible errors for each dipatchable are tested. How should I approach
+// this?
 #![cfg(test)]
 
 use super::*;
