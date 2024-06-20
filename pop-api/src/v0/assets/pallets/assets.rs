@@ -1,4 +1,3 @@
-// TODO: what to put in this file?
 #![allow(dead_code)]
 
 use crate::{Balance, RuntimeCall, *};
@@ -412,6 +411,8 @@ pub(crate) enum AssetsCall {
 	Block { id: AssetIdParameter, who: MultiAddress<AccountId, ()> },
 }
 
+// TODO: do we want add this. Not being used atm but necessary if we want to provide access to the
+//  rest of the pallet.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum AssetsError {

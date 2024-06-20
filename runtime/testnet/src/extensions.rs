@@ -86,6 +86,7 @@ impl TryFrom<u16> for v0::FuncId {
 			0x1 => Self::ReadState,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
+				// TODO: Other error.
 				return Err(DispatchError::Other("unimplemented func_id"));
 			},
 		};
@@ -206,6 +207,7 @@ where
 		RuntimeStateKeys::ParachainSystem(key) => {
 			read_parachain_system_state::<T, E>(key, &mut env)
 		},
+		_ => Err(DispatchError::Other("Unknown state keys")),
 	}?
 	.encode();
 
@@ -215,7 +217,8 @@ where
 	);
 	env.write(&result, false, None).map_err(|e| {
 		log::trace!(target: LOG_TARGET, "{:?}", e);
-		DispatchError::Other("unable to write results to contract memory")
+		// TODO: Other error.
+		DispatchError::Other("Unable to write results to contract memory")
 	})
 }
 

@@ -12,11 +12,6 @@ scale-decode = { version = "0.10.0", default-features = false, features = ["deri
 scale-encode = { version = "0.5.0", default-features = false, features = ["derive"], optional = true }
 scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
 
-#scale = { workspace = true, features = ["max-encoded-len"] }
-#scale-decode = { workspace = true, features = ["derive"], optional = true }
-#scale-encode = { workspace = true, features = ["derive"], optional = true }
-#scale-info = { workspace = true, features = ["derive"], optional = true }
-
 [features]
 default = ["std"]
 std = [

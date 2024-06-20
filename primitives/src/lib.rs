@@ -3,12 +3,7 @@
 pub use bounded_collections::{BoundedBTreeMap, BoundedBTreeSet, BoundedVec, ConstU32};
 use scale::{Decode, Encode, MaxEncodedLen};
 #[cfg(feature = "std")]
-use {
-    scale_decode::DecodeAsType,
-    scale_encode::EncodeAsType,
-    scale_info::TypeInfo,
-};
-
+use {scale_decode::DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInfo};
 
 pub mod cross_chain;
 pub mod storage_keys;

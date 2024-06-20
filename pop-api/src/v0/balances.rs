@@ -1,4 +1,3 @@
-// TODO: what to put in this file?
 use crate::{dispatch, error::PopApiError, primitives::MultiAddress, v0::RuntimeCall, AccountId};
 
 type Result<T> = core::result::Result<T, PopApiError>;
@@ -24,6 +23,8 @@ pub enum BalancesCall {
 	},
 }
 
+// TODO: do we want add this. Not being used atm but necessary if we want to provide access to the
+//  rest of the pallet.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum BalancesError {

@@ -1,3 +1,11 @@
+// Todo - errors:
+// - Badorigin: contract is always signed
+// - Lookup: is a valid AccountId due to the contract
+// - Many errors can occur from calling a dispatchable. As of now, most of the DispatchErrors are
+// handled by the pop api but not all of them are tested. How should I approach this? I.e.:
+// 		- Arithmetic errors
+// 		- Token errors
+// 		- others (besides Module errors) that I might haven't found yet.
 #![cfg(test)]
 
 use super::*;
@@ -251,16 +259,6 @@ fn asset_exists_works() {
 	});
 }
 
-// Todo - errors:
-// - Badorigin: contract is always signed
-// - Lookup: is a valid AccountId due to the contract
-// - reserve(): Overflow, LiquidityRestrictions; frozen
-// - Callback
-// - StorageDepositLimitExhausted
-// todo: errors:
-// - TokenErrors
-// - Arithmetic
-// - https://github.com/paritytech/polkadot-sdk/blob/3977f389cce4a00fd7100f95262e0563622b9aa4/substrate/frame/assets/src/functions.rs#L125
 #[test]
 #[ignore]
 fn create_works() {
@@ -407,10 +405,6 @@ fn transfer_from_mint_works() {
 	});
 }
 
-// Todo: error:
-// - https://github.com/paritytech/polkadot-sdk/blob/2460cddf57660a88844d201f769eb17a7accce5a/substrate/frame/assets/src/functions.rs#L161
-// - ArithmeticError: Underflow, Overflow
-// - https://github.com/paritytech/polkadot-sdk/blob/master/substrate/frame/assets/src/functions.rs#L125
 #[test]
 #[ignore]
 fn transfer_works() {
