@@ -9,11 +9,6 @@ version = "0.0.0"
 codec.workspace = true
 scale-info.workspace = true
 
-#scale = { workspace = true, features = ["max-encoded-len"] }
-#scale-decode = { workspace = true, features = ["derive"], optional = true }
-#scale-encode = { workspace = true, features = ["derive"], optional = true }
-#scale-info = { workspace = true, features = ["derive"], optional = true }
-
 [features]
 default = [ "std" ]
 std = [
