@@ -13,7 +13,7 @@ pub mod primitives;
 pub mod v0;
 
 type AccountId = AccountId32;
-// TODO: do the same as above and check expanded macro code.
+// TODO: do the same as the AccountId above and check expanded macro code.
 type Balance = <Environment as ink::env::Environment>::Balance;
 type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
 type StringLimit = u32;

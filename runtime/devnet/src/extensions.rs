@@ -103,6 +103,7 @@ impl TryFrom<u16> for v0::FuncId {
 			0x2 => Self::SendXcm,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
+				// TODO: Other error.
 				return Err(DispatchError::Other("unimplemented func_id"));
 			},
 		};
@@ -236,6 +237,7 @@ where
 	);
 	env.write(&result, false, None).map_err(|e| {
 		log::trace!(target: LOG_TARGET, "{:?}", e);
+		// TODO: Other error.
 		DispatchError::Other("unable to write results to contract memory")
 	})
 }
