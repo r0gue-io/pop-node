@@ -4,14 +4,16 @@ use frame_support::{
 	dispatch::DispatchResultWithPostInfo, pallet_prelude::*, sp_runtime::Saturating,
 };
 use frame_system::pallet_prelude::*;
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://docs.substrate.io/v3/runtime/frame>
 pub use pallet::*;
+use sp_runtime::traits::{Header, HeaderProvider, Zero};
+use xcm::latest::QueryId;
+use xcm_executor::traits::{QueryHandler, QueryResponseStatus};
+
+use parachains_common::{AccountId, AuraId, Balance, Block, Hash, Signature};
 
 #[cfg(test)]
 mod mock;
-
+#[cfg(test)]
 #[cfg(test)]
 mod tests;
 
@@ -20,33 +22,42 @@ pub mod weights;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
-pub type QueryId = u64;
-
 #[derive(MaxEncodedLen, Clone, Encode, Decode, Debug, Eq, PartialEq, Ord, PartialOrd, TypeInfo)]
-pub enum QueryType {
-	ISMP(QueryId),
-	XCM(QueryId),
+pub enum QueryType<QueryId> {
+	Ismp,
+	Xcm(QueryId),
+}
+
+// TODO: should be available to contracts
+#[derive(Debug, PartialEq, Eq, Encode, Decode)]
+pub enum ResponseStatus {
+	Ready,
+	Pending,
+	NotFound,
+	Error,
 }
 
 // TODO: adjust once XCM and ISMP are integrated
 #[derive(Debug, PartialEq)]
-pub struct Response {
-	data: Vec<u8>,
+pub enum Response<BlockNumber> {
+	Ismp(u8), // TODO: u8 is placeholder
+	Xcm(QueryResponseStatus<BlockNumber>),
 }
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[frame_support::pallet]
 pub mod pallet {
-	pub use super::{AccountIdOf, QueryId, QueryType, *};
+	use super::{AccountIdOf, QueryId, QueryType, *};
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type XcmQueryHandler: QueryHandler;
 		/// A type representing the weights required by the dispatchables of this pallet.
-		type WeightInfo: crate::weights::WeightInfo;
+		type WeightInfo: weights::WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -57,8 +68,13 @@ pub mod pallet {
 	pub(super) type GlobalQueryCounter<T: Config> = StorageValue<_, QueryId, ValueQuery>;
 
 	#[pallet::storage]
-	pub(super) type Queries<T> =
-		StorageMap<_, Blake2_128Concat, QueryId, (QueryType, AccountIdOf<T>), OptionQuery>;
+	pub(super) type Queries<T: Config> = StorageMap<
+		_,
+		Blake2_128Concat,
+		QueryId,
+		(QueryType<<T::XcmQueryHandler as QueryHandler>::QueryId>, AccountIdOf<T>),
+		OptionQuery,
+	>;
 
 	// Pallets use events to inform users when important changes are made.
 	// https://docs.substrate.io/v3/runtime/events-and-errors
@@ -82,7 +98,10 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
-		pub fn register_query(origin: OriginFor<T>, module_query_id: QueryType) -> DispatchResult {
+		pub fn register_query(
+			origin: OriginFor<T>,
+			module_query_id: QueryType<<T::XcmQueryHandler as QueryHandler>::QueryId>,
+		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
 			// get the current global query index, then increment
@@ -109,33 +128,56 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-	fn route_query(query: QueryType) -> Response {
+	fn route_query(
+		query: &QueryType<<T::XcmQueryHandler as QueryHandler>::QueryId>,
+	) -> Response<<T::XcmQueryHandler as QueryHandler>::BlockNumber> {
 		match query {
-			QueryType::ISMP(query_id) => {
+			QueryType::Ismp => {
 				// route to ISMP
-				Response { data: vec![0] }
+				Response::Ismp(0)
 			},
-			QueryType::XCM(query_id) => {
+			QueryType::Xcm(query_id) => {
 				// route to XCM
-				Response { data: vec![1] }
+				// TODO: can probably pull from XCM storage directly before using `take_response`
+				// using the getter query()
+				let response: QueryResponseStatus<
+					<T::XcmQueryHandler as QueryHandler>::BlockNumber,
+				> = T::XcmQueryHandler::take_response(*query_id);
+
+				Response::Xcm(response)
 			},
 		}
 	}
 
-	fn take_response(origin: OriginFor<T>, query_id: QueryId) -> Result<Response, DispatchError> {
+	fn take_response(
+		origin: OriginFor<T>,
+		query_id: QueryId,
+	) -> Result<Response<<T::XcmQueryHandler as QueryHandler>::BlockNumber>, DispatchError> {
 		let who = ensure_signed(origin)?;
-		let query = Queries::<T>::try_mutate(
+		Ok(Queries::<T>::try_mutate(
 			query_id,
-			|maybe_query| -> Result<(QueryType, AccountIdOf<T>), DispatchError> {
-				let query = maybe_query.take().ok_or(Error::<T>::NoneValue)?;
+			|maybe_query| -> Result<
+				Response<<T::XcmQueryHandler as QueryHandler>::BlockNumber>,
+				DispatchError,
+			> {
+				let query = maybe_query.as_mut().ok_or(Error::<T>::NoneValue)?;
+				// only requesting origin can remove from storage
 				if query.1.ne(&who) {
 					return Err(Error::<T>::BadOrigin.into());
 				}
 
-				Ok(query)
+				let response = Self::route_query(&query.0);
+				// if response is Ready, then remove from storage
+				match &response {
+					Response::Ismp(_) => {},
+					Response::Xcm(xcm_response) => match xcm_response {
+						// set maybe_query to None, removing it from storage
+						QueryResponseStatus::Ready { .. } => *maybe_query = None,
+						_ => {},
+					},
+				}
+				Ok(response)
 			},
-		)?;
-		let response = Self::route_query(query.0);
-		Ok(response)
+		)?)
 	}
 }
