@@ -1,0 +1,22 @@
+# pop up parachain -f ./tests/networks/pop.toml
+
+[relaychain]
+chain = "paseo-local"
+
+[[relaychain.nodes]]
+name = "alice"
+rpc_port = 8833
+validator = true
+
+[[relaychain.nodes]]
+name = "bob"
+validator = true
+
+[[parachains]]
+id = 4001
+default_command = "./target/release/pop-node"
+
+[[parachains.collators]]
+name = "pop"
+rpc_port = 9944
+args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]

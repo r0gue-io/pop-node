@@ -332,10 +332,6 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
 	type OnTimestampSet = Aura;
-	#[cfg(feature = "experimental")]
-	#[cfg(not(feature = "paseo"))]
-	type MinimumPeriod = ConstU64<0>;
-	#[cfg(not(feature = "experimental"))]
 	type MinimumPeriod = ConstU64<{ SLOT_DURATION / 2 }>;
 	type WeightInfo = ();
 }
@@ -480,9 +476,6 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<100_000>;
-	#[cfg(not(feature = "paseo"))]
-	type AllowMultipleBlocksPerSlot = ConstBool<true>;
-	#[cfg(feature = "paseo")]
 	type AllowMultipleBlocksPerSlot = ConstBool<false>;
 	#[cfg(feature = "experimental")]
 	type SlotDuration = ConstU64<SLOT_DURATION>;
