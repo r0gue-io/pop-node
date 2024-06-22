@@ -3,9 +3,9 @@
 
 <div align="center">
 
-[![Twitter URL](https://img.shields.io/twitter/follow/Pop?style=social)](https://twitter.com/pop_web3)
+[![Twitter URL](https://img.shields.io/twitter/follow/Pop?style=social)](https://x.com/onpopio/)
 [![Twitter URL](https://img.shields.io/twitter/follow/R0GUE?style=social)](https://twitter.com/gor0gue)
-[![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/PlasmOfficial](https://t.me/Pop_Network)https://t.me/Pop_Network)
+[![Telegram](https://img.shields.io/badge/Telegram-gray?logo=telegram)](https://t.me/onpopio)
 [![Build, test and lint](https://github.com/r0gue-io/pop-node/actions/workflows/build.yml/badge.svg)](https://github.com/r0gue-io/pop-node/actions/workflows/build.yml)
 
 </div>
@@ -26,7 +26,7 @@ Get started by using [Pop API](./pop-api) in your contracts!
 You can install the [Pop CLI](https://github.com/r0gue-io/pop-cli) as follows:
 
 ```shell
-cargo install --git https://github.com/r0gue-io/pop-cli
+cargo install pop-cli
 ```
 
 ## Spawn Network
@@ -34,7 +34,7 @@ cargo install --git https://github.com/r0gue-io/pop-cli
 You can spawn a local network as follows:
 
 ```shell
-pop up parachain -f ./networks/rococo.toml
+pop up parachain -f ./networks/paseo.toml
 ```
 
 Note: `pop` will automatically source the necessary `polkadot` binaries. Currently, these will have to be built if on a
