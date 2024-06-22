@@ -123,6 +123,8 @@ pub fn development_config(relay: Relay) -> DevnetChainSpec {
 		get_account_id_from_seed::<sr25519::Public>("Alice"),
 		para_id.into(),
 	))
+	.with_protocol_id("pop-devnet")
+	.with_properties(properties)
 	.build()
 }
 
@@ -180,6 +182,9 @@ fn testnet_genesis(
 	use pop_runtime_testnet::EXISTENTIAL_DEPOSIT;
 
 	serde_json::json!({
+		"balances": {
+			"balances": [],
+		},
 		"parachainInfo": {
 			"parachainId": id,
 		},
@@ -214,6 +219,9 @@ fn devnet_genesis(
 	use pop_runtime_devnet::EXISTENTIAL_DEPOSIT;
 
 	serde_json::json!({
+		"balances": {
+			"balances": [],
+		},
 		"parachainInfo": {
 			"parachainId": id,
 		},
