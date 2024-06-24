@@ -1,6 +1,8 @@
-use crate::{dispatch, error::PopApiError, primitives::MultiAddress, v0::RuntimeCall, AccountId};
+use crate::{
+	dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, PopApiError, StatusCode,
+};
 
-type Result<T> = core::result::Result<T, PopApiError>;
+type Result<T> = core::result::Result<T, StatusCode>;
 
 pub fn transfer_keep_alive(
 	dest: impl Into<MultiAddress<AccountId, ()>>,

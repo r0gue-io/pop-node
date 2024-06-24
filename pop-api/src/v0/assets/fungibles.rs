@@ -1,12 +1,8 @@
-use crate::{
-	assets::pallets,
-	error::PopApiError::{self, *},
-	AccountId, Balance, *,
-};
+use crate::{assets, primitives::AssetId, AccountId, Balance, MultiAddress, StatusCode};
 use ink::prelude::vec::Vec;
-use primitives::AssetId;
+use scale::Encode;
 
-type Result<T> = core::result::Result<T, PopApiError>;
+type Result<T> = core::result::Result<T, StatusCode>;
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
@@ -31,7 +27,7 @@ type Result<T> = core::result::Result<T, PopApiError>;
 /// # Returns
 /// The total supply of the token, or an error if the operation fails.
 pub fn total_supply(id: AssetId) -> Result<Balance> {
-	pallets::assets::total_supply(id)
+	assets::total_supply(id)
 }
 
 /// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
@@ -44,7 +40,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 /// # Returns
 /// The balance of the specified account, or an error if the operation fails.
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
-	pallets::assets::balance_of(id, owner)
+	assets::balance_of(id, owner)
 }
 
 /// Returns the amount which `spender` is still allowed to withdraw from `owner` for a given
@@ -58,7 +54,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 /// # Returns
 /// The remaining allowance, or an error if the operation fails.
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
-	pallets::assets::allowance(id, owner, spender)
+	assets::allowance(id, owner, spender)
 }
 
 /// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
@@ -76,7 +72,7 @@ pub fn transfer(
 	to: impl Into<MultiAddress<AccountId, ()>>,
 	value: Balance,
 ) -> Result<()> {
-	pallets::assets::transfer(id, to, value)
+	assets::transfer(id, to, value)
 }
 
 /// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
@@ -99,9 +95,9 @@ pub fn transfer_from(
 	_data: &[u8],
 ) -> Result<()> {
 	match (from, to) {
-		(None, Some(to)) => pallets::assets::mint(id, to, value),
-		(Some(from), None) => pallets::assets::burn(id, from, value),
-		(Some(from), Some(to)) => pallets::assets::transfer_approved(id, from, to, value),
+		(None, Some(to)) => assets::mint(id, to, value),
+		(Some(from), None) => assets::burn(id, from, value),
+		(Some(from), Some(to)) => assets::transfer_approved(id, from, to, value),
 		_ => Ok(()),
 	}
 }
@@ -232,7 +228,7 @@ pub fn create(
 	admin: impl Into<MultiAddress<AccountId, ()>>,
 	min_balance: Balance,
 ) -> Result<()> {
-	pallets::assets::create(id, admin, min_balance)
+	assets::create(id, admin, min_balance)
 }
 
 /// Start the process of destroying a token with a given asset ID.
@@ -295,7 +291,7 @@ pub fn create(
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
 pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
-	pallets::assets::set_metadata(id, name, symbol, decimals)
+	assets::set_metadata(id, name, symbol, decimals)
 }
 
 /// Clear the metadata for a token with a given asset ID.
@@ -312,12 +308,13 @@ pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -
 // }
 
 pub fn asset_exists(id: AssetId) -> Result<bool> {
-	pallets::assets::asset_exists(id)
+	assets::asset_exists(id)
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum FungiblesError {
+	Other(StatusCode),
 	/// The asset is not live; either frozen or being destroyed.
 	AssetNotLive,
 	/// Not enough allowance to fulfill a request is available.
@@ -341,32 +338,21 @@ pub enum FungiblesError {
 	NoBalance,
 }
 
-// TODO: make generic.
-pub(crate) fn convert_to_fungibles_error(index: u8, error: u8) -> PopApiError {
-	match index {
-		10 => balance_into(error),
-		52 => assets_into(error),
-		_ => Module { index, error },
-	}
-}
-
-fn balance_into(error: u8) -> PopApiError {
-	match error {
-		2 => UseCaseError(FungiblesError::NoBalance),
-		_ => Module { index: 10, error },
-	}
-}
-
-fn assets_into(error: u8) -> PopApiError {
-	match error {
-		0 => UseCaseError(FungiblesError::InsufficientBalance),
-		1 => UseCaseError(FungiblesError::NoAccount),
-		2 => UseCaseError(FungiblesError::NoPermission),
-		3 => UseCaseError(FungiblesError::Unknown),
-		5 => UseCaseError(FungiblesError::InUse),
-		7 => UseCaseError(FungiblesError::MinBalanceZero),
-		10 => UseCaseError(FungiblesError::InsufficientAllowance),
-		16 => UseCaseError(FungiblesError::AssetNotLive),
-		_ => Module { index: 52, error },
+impl From<StatusCode> for FungiblesError {
+	fn from(value: StatusCode) -> Self {
+		let encoded = value.0.to_le_bytes();
+		match encoded {
+			// Balances.
+			[3, 10, 2, _] => FungiblesError::NoBalance,
+			// Assets.
+			[3, 52, 0, _] => FungiblesError::NoAccount,
+			[3, 52, 1, _] => FungiblesError::NoPermission,
+			[3, 52, 2, _] => FungiblesError::Unknown,
+			[3, 52, 3, _] => FungiblesError::InUse,
+			[3, 52, 5, _] => FungiblesError::MinBalanceZero,
+			[3, 52, 7, _] => FungiblesError::InsufficientAllowance,
+			[3, 52, 10, _] => FungiblesError::AssetNotLive,
+			_ => FungiblesError::Other(value),
+		}
 	}
 }

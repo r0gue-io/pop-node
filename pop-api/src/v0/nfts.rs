@@ -1,12 +1,14 @@
 use super::RuntimeCall;
-use crate::{PopApiError, *};
+use crate::*;
 use ink::prelude::vec::Vec;
 use primitives::{ApprovalsLimit, BoundedBTreeMap, KeyLimit, MultiAddress};
 pub use primitives::{CollectionId, ItemId};
 use scale::Encode;
 pub use types::*;
 
-type Result<T> = core::result::Result<T, PopApiError>;
+type Result<T> = core::result::Result<T, StatusCode>;
+type StringLimit = u32;
+type MaxTips = u32;
 
 /// Issue a new collection of non-fungible items
 pub fn create(
@@ -610,7 +612,7 @@ pub enum Error {
 }
 
 impl TryFrom<u32> for Error {
-	type Error = PopApiError;
+	type Error = Error;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
 		use Error::*;

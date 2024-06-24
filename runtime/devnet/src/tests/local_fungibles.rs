@@ -269,7 +269,7 @@ fn create_works() {
 		// No balance to pay for fees.
 		assert_eq!(
 			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
-			UseCaseError(NoBalance)
+			Module { index: 10, error: 2 },
 		);
 		// Instantiate a contract without balance (relay token).
 		let addr =
@@ -278,7 +278,7 @@ fn create_works() {
 		// No balance to pay fe deposit.
 		assert_eq!(
 			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
-			UseCaseError(NoBalance)
+			Module { index: 10, error: 2 },
 		);
 		// Instantiate a contract with balance.
 		let addr = instantiate(
@@ -290,12 +290,12 @@ fn create_works() {
 		// Asset ID is already taken.
 		assert_eq!(
 			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, BOB, 1)),
-			UseCaseError(InUse)
+			Module { index: 52, error: 5 },
 		);
 		// The minimal balance for an asset must be non zero.
 		assert_eq!(
 			decoded::<PopApiError>(create(addr.clone(), new_asset, BOB, 0)),
-			UseCaseError(MinBalanceZero)
+			Module { index: 52, error: 7 },
 		);
 		let result = create(addr.clone(), new_asset, BOB, 1);
 		assert!(!result.did_revert(), "Contract reverted!");
@@ -347,7 +347,7 @@ fn transfer_from_mint_works() {
 				amount,
 				&[0u8]
 			)),
-			UseCaseError(NoPermission)
+			Module { index: 52, error: 2 },
 		);
 		// Minimum balance of an asset can not be zero.
 		assert_eq!(
@@ -366,7 +366,7 @@ fn transfer_from_mint_works() {
 				amount,
 				&[0u8]
 			)),
-			UseCaseError(AssetNotLive)
+			Module { index: 52, error: 16 },
 		);
 		thaw_asset(asset, addr.clone());
 		// Successful mint.
@@ -398,7 +398,7 @@ fn transfer_from_mint_works() {
 				amount,
 				&[0u8]
 			)),
-			UseCaseError(AssetNotLive)
+			Module { index: 52, error: 16 },
 		);
 	});
 }
@@ -418,7 +418,7 @@ fn transfer_works() {
 		// Asset does not exist.
 		assert_eq!(
 			decoded::<PopApiError>(transfer(addr.clone(), 1, BOB, amount,)),
-			UseCaseError(Unknown)
+			Module { index: 52, error: 3 },
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
@@ -426,18 +426,18 @@ fn transfer_works() {
 		freeze_asset(asset, ALICE);
 		assert_eq!(
 			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount,)),
-			UseCaseError(AssetNotLive)
+			Module { index: 52, error: 16 },
 		);
 		thaw_asset(asset, ALICE);
 		// Not enough balance.
 		assert_eq!(
 			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
-			UseCaseError(InsufficientBalance)
+			Module { index: 52, error: 0 },
 		);
 		// Not enough balance due to ED.
 		assert_eq!(
 			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount)),
-			UseCaseError(InsufficientBalance)
+			Module { index: 52, error: 0 },
 		);
 		// Successful transfer.
 		let bob_balance_before_mint = Assets::balance(asset, &BOB);
@@ -454,7 +454,7 @@ fn transfer_works() {
 		start_destroy_asset(asset, ALICE);
 		assert_eq!(
 			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount / 4)),
-			UseCaseError(AssetNotLive)
+			Module { index: 52, error: 16 },
 		);
 	});
 }

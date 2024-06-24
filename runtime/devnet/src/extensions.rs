@@ -72,16 +72,11 @@ where
 		}
 	}
 }
-
 pub(crate) fn convert_to_status_code(error: DispatchError) -> u32 {
-	match error {
-		_ => {
-			let mut encoded_error = error.encode();
-			// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
-			encoded_error.resize(4, 0);
-			u32::decode(&mut &encoded_error[..]).unwrap()
-		},
-	}
+	let mut encoded_error = error.encode();
+	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
+	encoded_error.resize(4, 0);
+	u32::decode(&mut &encoded_error[..]).expect("qid, resized to 4 bytes line above")
 }
 
 pub mod v0 {

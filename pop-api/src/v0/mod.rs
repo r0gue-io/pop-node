@@ -1,24 +1,22 @@
-use crate::{
-	primitives::storage_keys::{ParachainSystemKeys, RuntimeStateKeys},
-	BlockNumber, PopApiError,
-};
-
+#[cfg(feature = "assets")]
 pub mod assets;
+#[cfg(feature = "balances")]
 pub mod balances;
+#[cfg(feature = "cross-chain")]
 pub mod cross_chain;
+#[cfg(feature = "nfts")]
 pub mod nfts;
 pub mod state;
 
-pub fn relay_chain_block_number() -> Result<BlockNumber, PopApiError> {
-	state::read(RuntimeStateKeys::ParachainSystem(ParachainSystemKeys::LastRelayChainBlockNumber))
-}
-
 #[derive(scale::Encode)]
 pub(crate) enum RuntimeCall {
-	#[codec(index = 10)]
-	Balances(balances::BalancesCall),
-	#[codec(index = 50)]
-	Nfts(nfts::NftCalls),
+	// #[codec(index = 10)]
+	// #[cfg(feature = "balances")]
+	// Balances(balances::BalancesCall),
+	// #[codec(index = 50)]
+	// #[cfg(feature = "nfts")]
+	// Nfts(nfts::NftCalls),
 	#[codec(index = 52)]
-	Assets(assets::pallets::assets::AssetsCall),
+	#[cfg(feature = "assets")]
+	Assets(assets::AssetsCall),
 }

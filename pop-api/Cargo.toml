@@ -31,3 +31,7 @@ std = [
     "sp-io/std",
     "sp-runtime/std",
 ]
+assets = []
+balances = []
+nfts = []
+cross-chain = []

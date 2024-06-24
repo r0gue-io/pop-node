@@ -7,12 +7,12 @@
 ///
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::use_cases::fungibles as api,
-	error::PopApiError,
+	assets::fungibles::{self as api, FungiblesError},
+	error::{PopApiError, StatusCode},
 	primitives::{AccountId as AccountId32, AssetId},
 };
 
-pub type Result<T> = core::result::Result<T, PopApiError>;
+pub type Result<T> = core::result::Result<T, FungiblesError>;
 
 #[ink::contract(env = pop_api::Environment)]
 mod fungibles {
@@ -41,12 +41,12 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
-			api::total_supply(id)
+			api::total_supply(id).map_err(|e| e.into())
 		}
 
 		#[ink(message)]
 		pub fn balance_of(&self, id: AssetId, owner: AccountId32) -> Result<Balance> {
-			api::balance_of(id, owner)
+			api::balance_of(id, owner).map_err(|e| e.into())
 		}
 
 		#[ink(message)]
@@ -56,7 +56,7 @@ mod fungibles {
 			owner: AccountId32,
 			spender: AccountId32,
 		) -> Result<Balance> {
-			api::allowance(id, owner, spender)
+			api::allowance(id, owner, spender).map_err(|e| e.into())
 		}
 
 		#[ink(message)]
@@ -68,7 +68,7 @@ mod fungibles {
 				value,
 			);
 
-			let result = api::transfer(id, to, value);
+			let result = api::transfer(id, to, value).map_err(|e| e.into());
 			ink::env::debug_println!("Result: {:?}", result);
 			result
 		}
@@ -80,8 +80,7 @@ mod fungibles {
 			from: Option<AccountId32>,
 			to: Option<AccountId32>,
 			value: Balance,
-			// In the standard a `[u8]`, but the size needs to be known at compile time ink's `Vec`
-			// has to be used.
+			// In the standard a `[u8]`, but the size needs to be known at compile time.
 			data: Vec<u8>,
 		) -> Result<()> {
 			ink::env::debug_println!(
@@ -92,7 +91,7 @@ mod fungibles {
 				value,
 			);
 
-			let result = api::transfer_from(id, from, to, value, &data);
+			let result = api::transfer_from(id, from, to, value, &data).map_err(|e| e.into());
 			ink::env::debug_println!("Result: {:?}", result);
 			result
 		}
@@ -119,7 +118,7 @@ mod fungibles {
 				admin,
 				min_balance,
 			);
-			let result = api::create(id, admin, min_balance);
+			let result = api::create(id, admin, min_balance).map_err(|e| e.into());
 			ink::env::debug_println!("Result: {:?}", result);
 			result
 		}
@@ -139,14 +138,14 @@ mod fungibles {
 				symbol,
 				decimals,
 			);
-			let result = api::set_metadata(id, name, symbol, decimals);
+			let result = api::set_metadata(id, name, symbol, decimals).map_err(|e| e.into());
 			ink::env::debug_println!("Result: {:?}", result);
 			result
 		}
 
 		#[ink(message)]
 		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-			api::asset_exists(id)
+			api::asset_exists(id).map_err(|e| e.into())
 		}
 	}
 

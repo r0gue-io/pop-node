@@ -1,8 +1,15 @@
 pub mod coretime;
 
-use crate::error::PopApiError;
+use crate::StatusCode;
 
-type Result<T> = core::result::Result<T, PopApiError>;
+type Result<T> = core::result::Result<T, StatusCode>;
+type BlockNumber = <crate::Environment as ink::env::Environment>::BlockNumber;
+
+pub fn relay_chain_block_number() -> std::result::Result<BlockNumber, StatusCode> {
+	crate::v0::state::read(RuntimeStateKeys::ParachainSystem(
+		ParachainSystemKeys::LastRelayChainBlockNumber,
+	))
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -63,7 +70,7 @@ pub enum Error {
 }
 
 impl TryFrom<u32> for Error {
-	type Error = PopApiError;
+	type Error = Error;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
 		use Error::*;
