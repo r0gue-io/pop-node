@@ -1,7 +1,34 @@
-use crate::assets::use_cases::fungibles::{convert_to_fungibles_error, FungiblesError};
 use ink::env::chain_extension::FromStatusCode;
 use scale::{Decode, Encode};
 use PopApiError::*;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub struct StatusCode(pub u32);
+
+impl From<u32> for StatusCode {
+	fn from(value: u32) -> Self {
+		StatusCode(value)
+	}
+}
+impl FromStatusCode for StatusCode {
+	fn from_status_code(status_code: u32) -> Result<(), Self> {
+		match status_code {
+			0 => Ok(()),
+			_ => {
+				let mut encoded = status_code.to_le_bytes();
+				convert_unknown_errors(&mut encoded);
+				Err(StatusCode::from(u32::from_le_bytes(encoded)))
+			},
+		}
+	}
+}
+
+impl From<scale::Error> for StatusCode {
+	fn from(_: scale::Error) -> Self {
+		DecodingFailed.into()
+	}
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -46,79 +73,87 @@ pub enum PopApiError {
 	Unavailable = 12,
 	/// Root origin is not allowed.
 	RootNotAllowed = 13,
-	// TODO: make generic and add docs.
-	UseCaseError(FungiblesError) = 254,
 	DecodingFailed = 255,
 }
 
-impl FromStatusCode for PopApiError {
-	fn from_status_code(status_code: u32) -> core::result::Result<(), Self> {
-		match status_code {
-			0 => Ok(()),
-			_ => Err(convert_to_pop_api_error(status_code)),
-		}
+impl From<PopApiError> for StatusCode {
+	fn from(value: PopApiError) -> Self {
+		let mut encoded_error = value.encode();
+		// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
+		encoded_error.resize(4, 0);
+		StatusCode::from(
+			u32::decode(&mut &encoded_error[..]).expect("qid, resized to 4 bytes line above"),
+		)
 	}
 }
 
-// `pub` because it is used in `runtime/devnet/src/extensions/tests/mod.rs`'s test:
-// `dispatch_error_to_status_code_to_pop_api_error_works`
-//
-// This function converts a given `status_code` (u32) into a `PopApiError`. First it encodes the
-// status code into a 4-byte array and checks for unknown nested errors. If decoding into
-// `PopApiError` fails (e.g. a breaking change in the `DispatchError`), it handles the error by
-// converting it to the `Other` variant by shifting each byte one position forward (the last byte is
-// not used for anything)and setting the first byte to 0. If decoding succeeds, it checks if the
-// error is of the `Module` variant and performs any necessary conversion based on the use case.
-pub fn convert_to_pop_api_error(status_code: u32) -> PopApiError {
-	let mut encoded: [u8; 4] =
-		status_code.encode().try_into().expect("qid u32 always encodes to 4 bytes");
-	encoded = check_for_unknown_nesting(encoded);
-	let error = match PopApiError::decode(&mut &encoded[..]) {
-		Err(_) => {
-			encoded[3] = encoded[2];
-			encoded[2] = encoded[1];
-			encoded[1] = encoded[0];
-			encoded[0] = 0;
-			PopApiError::decode(&mut &encoded[..]).unwrap().into()
-		},
-		Ok(error) => {
-			if let crate::PopApiError::Module { index, error } = error {
-				// TODO: make generic.
-				convert_to_fungibles_error(index, error)
-			} else {
-				error
-			}
-		},
-	};
-	ink::env::debug_println!("PopApiError: {:?}", error);
-	error
+impl From<StatusCode> for PopApiError {
+	// `pub` because it is used in `runtime/devnet/src/extensions/tests/mod.rs`'s test:
+	// `dispatch_error_to_status_code_to_pop_api_error_works`
+	//
+	// This function converts a given `status_code` (u32) into a `PopApiError`.
+	fn from(value: StatusCode) -> Self {
+		let encoded: [u8; 4] = value.0.to_le_bytes();
+		PopApiError::decode(&mut &encoded[..]).unwrap_or(DecodingFailed)
+	}
 }
 
-// If a unknown nested variant of the `DispatchError` is detected meaning any of the subsequent
-// bytes are non-zero (e.g. breaking change in the DispatchError), the error needs to be converted
-// into `PopApiError::Other`'s encoded value. This conversion is done by shifting the bytes one
-// position forward (the last byte is discarded as it is not being used) and replacing the first
-// byte with the `Other` encoded value (0u8). This ensures that the error is correctly categorized
-// as an `Other` variant.
-fn check_for_unknown_nesting(encoded_error: [u8; 4]) -> [u8; 4] {
-	if non_nested_pop_api_errors().contains(&encoded_error[0])
-		&& encoded_error[1..].iter().any(|x| *x != 0u8)
-	{
-		[0u8, encoded_error[0], encoded_error[1], encoded_error[2]]
-	} else if singular_nested_pop_api_errors().contains(&encoded_error[0])
+// If an unknown nested variant of the `DispatchError` is detected (i.e., any of the subsequent
+// bytes are non-zero, indicating a breaking change in the `DispatchError`), the error needs to be
+// converted into the encoded value of `PopApiError::Other`. This conversion is performed by
+// shifting the bytes one position forward (discarding the last byte as it is not used) and setting
+// the first byte to the encoded value of `Other` (0u8). This ensures the error is correctly
+// categorized as an `Other` variant.
+//
+// Byte layout explanation:
+// - Byte 0: PopApiError
+// - Byte 1:
+//   - Must be zero for `UNIT_ERRORS`.
+//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
+//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
+// - Byte 2:
+//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
+// - Byte 3:
+//   - Unused or represents further nested information.
+//
+// This mechanism ensures backward compatibility by correctly categorizing any unknown nested errors
+// into the `Other` variant, thus preventing issues caused by new or unexpected error formats.
+pub(crate) fn convert_unknown_nested_errors(encoded_error: &mut [u8; 4]) {
+	// Converts single nested errors that are known to the Pop API as unit errors into `Other`.
+	if UNIT_ERRORS.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8) {
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
+	// Converts double nested errors that are known to the Pop API as single nested errors into
+	// `Other`.
+	} else if SINGLE_NESTED_ERRORS.contains(&encoded_error[0])
 		&& encoded_error[2..].iter().any(|x| *x != 0u8)
 	{
-		[0u8, encoded_error[0], encoded_error[1], encoded_error[2]]
-	} else {
-		encoded_error
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
+	} else if DOUBLE_NESTED_ERRORS.contains(&encoded_error[0])
+		&& encoded_error[3..].iter().any(|x| *x != 0u8)
+	{
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
 	}
 }
 
-impl From<scale::Error> for PopApiError {
-	fn from(_: scale::Error) -> Self {
-		DecodingFailed
+pub(crate) fn convert_unknown_errors(encoded_error: &mut [u8; 4]) {
+	let all_errors = [
+		UNIT_ERRORS.as_slice(),
+		SINGLE_NESTED_ERRORS.as_slice(),
+		DOUBLE_NESTED_ERRORS.as_slice(),
+		// `DecodingFailed`.
+		&[255u8],
+	]
+	.concat();
+	if !all_errors.contains(&encoded_error[0]) {
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
 	}
+	convert_unknown_nested_errors(encoded_error);
 }
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum TokenError {
@@ -165,91 +200,129 @@ pub enum TransactionalError {
 	NoLayer,
 }
 
-fn singular_nested_pop_api_errors() -> [u8; 3] {
-	const TOKEN_ERROR: u8 = 7;
-	const ARITHMETIC_ERROR: u8 = 8;
-	const TRANSACTION_ERROR: u8 = 9;
-	[TOKEN_ERROR, ARITHMETIC_ERROR, TRANSACTION_ERROR]
-}
+// Unit `DispatchError` variants (variant: index):
+// - CannotLookup: 1,
+// - BadOrigin: 2,
+// - ConsumerRemaining: 4,
+// - NoProviders: 5,
+// - TooManyConsumers: 6,
+// - Exhausted: 10,
+// - Corruption: 11,
+// - Unavailable: 12,
+// - RootNotAllowed: 13,
+const UNIT_ERRORS: [u8; 9] = [1, 2, 4, 5, 6, 10, 11, 12, 13];
 
-fn non_nested_pop_api_errors() -> [u8; 9] {
-	const CANNOT_LOOKUP: u8 = 1;
-	const BAD_ORIGIN: u8 = 2;
-	const CONSUMER_REMAINING: u8 = 4;
-	const NO_PROVIDERS: u8 = 5;
-	const TOO_MANY_CONSUMERS: u8 = 6;
-	const EXHAUSTED: u8 = 10;
-	const CORRUPTION: u8 = 11;
-	const UNAVAILABLE: u8 = 12;
-	const ROOT_NOT_ALLOWED: u8 = 13;
-	[
-		CANNOT_LOOKUP,
-		BAD_ORIGIN,
-		CONSUMER_REMAINING,
-		NO_PROVIDERS,
-		TOO_MANY_CONSUMERS,
-		EXHAUSTED,
-		CORRUPTION,
-		UNAVAILABLE,
-		ROOT_NOT_ALLOWED,
-	]
-}
+// Single nested `DispatchError` variants (variant: index):
+// - Token: 3,
+// - Arithmetic: 8,
+// - Transaction: 9,
+const SINGLE_NESTED_ERRORS: [u8; 3] = [7, 8, 9];
 
-#[test]
-fn u32_always_encodes_to_4_bytes() {
-	assert_eq!(0u32.encode().len(), 4);
-	assert_eq!(u32::MAX.encode().len(), 4);
-}
+const DOUBLE_NESTED_ERRORS: [u8; 1] = [3];
 
-// If decoding failed the encoded value is converted to the `PopApiError::Other`. This handles
-// unknown errors coming from the runtime. This could happen if a contract is not upgraded to the
-// latest Pop API version.
-#[test]
-fn test_non_existing_pop_api_errors() {
-	let encoded_error = [7u8, 100u8, 0u8, 0u8];
-	let status_code = u32::decode(&mut &encoded_error[..]).unwrap();
-	let pop_api_error = <PopApiError as FromStatusCode>::from_status_code(status_code);
-	assert_eq!(Err(Other { dispatch_error_index: 7, error_index: 100, error: 0 }), pop_api_error);
-}
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::error::{ArithmeticError::*, TokenError::*, TransactionalError::*};
 
-// If the encoded value indicates a nested PopApiError which is not handled by the Pop API version,
-// the encoded value is converted into `PopApiError::Other`.
-#[test]
-fn check_for_unknown_nested_pop_api_errors_works() {
-	for &error_code in &non_nested_pop_api_errors() {
-		let encoded_error = [error_code, 1, 2, 3];
-		let result = check_for_unknown_nesting(encoded_error);
-		let decoded = PopApiError::decode(&mut &result[..]).unwrap();
+	#[test]
+	fn u32_always_encodes_to_4_bytes() {
+		assert_eq!(0u32.encode().len(), 4);
+		assert_eq!(u32::MAX.encode().len(), 4);
+	}
 
+	// Decodes into `StatusCode(u32)` and converts it into the `PopApiError`.
+	fn into_pop_api_error(encoded_error: [u8; 4]) -> PopApiError {
+		let status_code =
+			StatusCode::from_status_code(u32::decode(&mut &encoded_error[..]).unwrap())
+				.unwrap_err();
+		status_code.into()
+	}
+
+	// Tests for the `From<StatusCode(u32)>` implementation for `PopApiError`.
+	//
+	// If the encoded value indicates a nested `PopApiError` which is not handled by the Pop API
+	// version, the encoded value is converted into `PopApiError::Other`.
+	#[test]
+	fn test_unit_pop_api_error_variants() {
+		let errors = vec![
+			CannotLookup,
+			BadOrigin,
+			ConsumerRemaining,
+			NoProviders,
+			TooManyConsumers,
+			Exhausted,
+			Corruption,
+			Unavailable,
+			RootNotAllowed,
+		];
+		for (i, &error_code) in UNIT_ERRORS.iter().enumerate() {
+			assert_eq!(into_pop_api_error([error_code, 0, 0, 0]), errors[i]);
+			assert_eq!(
+				into_pop_api_error([error_code, 1, 0, 0]),
+				Other { dispatch_error_index: error_code, error_index: 1, error: 0 },
+			);
+			assert_eq!(
+				into_pop_api_error([error_code, 1, 1, 0]),
+				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+			);
+			assert_eq!(
+				into_pop_api_error([error_code, 1, 1, 1]),
+				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+			);
+		}
+	}
+
+	#[test]
+	fn test_single_nested_pop_api_error_variants() {
+		let errors = vec![
+			[Token(FundsUnavailable), Token(OnlyProvider)],
+			[Arithmetic(Underflow), Arithmetic(Overflow)],
+			[Transactional(LimitReached), Transactional(NoLayer)],
+		];
+		for (i, &error_code) in SINGLE_NESTED_ERRORS.iter().enumerate() {
+			assert_eq!(into_pop_api_error([error_code, 0, 0, 0]), errors[i][0]);
+			assert_eq!(into_pop_api_error([error_code, 1, 0, 0]), errors[i][1]);
+			assert_eq!(
+				into_pop_api_error([error_code, 1, 1, 0]),
+				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+			);
+			assert_eq!(
+				into_pop_api_error([error_code, 1, 1, 1]),
+				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+			);
+		}
+	}
+
+	#[test]
+	fn test_double_nested_pop_api_error_variants() {
+		assert_eq!(into_pop_api_error([3, 0, 0, 0]), Module { index: 0, error: 0 });
+		assert_eq!(into_pop_api_error([3, 1, 0, 0]), Module { index: 1, error: 0 });
+		assert_eq!(into_pop_api_error([3, 1, 1, 0]), Module { index: 1, error: 1 });
+		// TODO: doesn't make sense.
 		assert_eq!(
-			decoded,
-			Other { dispatch_error_index: error_code, error_index: 1, error: 2 },
-			"Failed for error code: {}",
-			error_code
+			into_pop_api_error([3, 1, 1, 1]),
+			Other { dispatch_error_index: 3, error_index: 1, error: 1 },
 		);
 	}
-	for &error_code in &singular_nested_pop_api_errors() {
-		let encoded_error = [error_code, 1, 2, 3];
-		let result = check_for_unknown_nesting(encoded_error);
-		let decoded = PopApiError::decode(&mut &result[..]).unwrap();
 
+	#[test]
+	fn test_decoding_failed() {
+		assert_eq!(into_pop_api_error([255, 0, 0, 0]), DecodingFailed);
+		assert_eq!(into_pop_api_error([255, 255, 0, 0]), DecodingFailed);
+		assert_eq!(into_pop_api_error([255, 255, 255, 0]), DecodingFailed);
+		assert_eq!(into_pop_api_error([255, 255, 255, 255]), DecodingFailed);
+	}
+
+	#[test]
+	fn test_random_encoded_values() {
 		assert_eq!(
-			decoded,
-			Other { dispatch_error_index: error_code, error_index: 1, error: 2 },
-			"Failed for error code: {}",
-			error_code
+			into_pop_api_error([100, 100, 100, 100]),
+			Other { dispatch_error_index: 100, error_index: 100, error: 100 }
+		);
+		assert_eq!(
+			into_pop_api_error([200, 200, 200, 200]),
+			Other { dispatch_error_index: 200, error_index: 200, error: 200 }
 		);
 	}
-}
-
-// This test ensures that a non-zero value for unused bytes does not interfere with the correct
-// decoding of the error. It verifies that even with an additional byte, the errors are correctly
-// decoded and represented in its correct variant.
-#[test]
-fn extra_byte_does_not_mess_up_decoding() {
-	// Module error
-	let encoded_error = [3u8, 4u8, 5u8, 6u8];
-	let status_code = u32::decode(&mut &encoded_error[..]).unwrap();
-	let pop_api_error = <PopApiError as FromStatusCode>::from_status_code(status_code);
-	assert_eq!(Err(Module { index: 4, error: 5 }), pop_api_error);
 }
