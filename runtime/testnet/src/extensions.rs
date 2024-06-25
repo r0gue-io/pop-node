@@ -14,7 +14,7 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
-use crate::{AccountId, AllowedPopApiCalls, RuntimeCall, RuntimeOrigin};
+use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin};
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -97,7 +97,7 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
 
-	origin.add_filter(AllowedPopApiCalls::contains);
+	origin.add_filter(AllowedApiCalls::contains);
 
 	match call.dispatch(origin) {
 		Ok(info) => {

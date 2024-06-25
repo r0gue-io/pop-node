@@ -38,7 +38,7 @@ std = [
 	"sp-io/std",
 	"sp-runtime/std",
 ]
-assets = []
+assets = ["pop-primitives/assets"]
 balances = []
-nfts = []
-cross-chain = []
+nfts = ["pop-primitives/nfts"]
+cross-chain = ["pop-primitives/cross-chain"]

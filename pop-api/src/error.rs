@@ -1,6 +1,7 @@
 use ink::env::chain_extension::FromStatusCode;
 use scale::{Decode, Encode};
-use PopApiError::*;
+
+use Error::*;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -30,10 +31,69 @@ impl From<scale::Error> for StatusCode {
 	}
 }
 
+// If an unknown variant of the `DispatchError` is detected the error needs to be converted
+// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
+// position forward (discarding the last byte as it is not used) and setting the first byte to the
+// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
+// variant which provides all the necessary information to debug which error occurred in the runtime.
+//
+// Byte layout explanation:
+// - Byte 0: index of the variant within `Error`
+// - Byte 1:
+//   - Must be zero for `UNIT_ERRORS`.
+//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
+//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
+// - Byte 2:
+//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
+// - Byte 3:
+//   - Unused or represents further nested information.
+//
+// This mechanism ensures backward compatibility by correctly categorizing any unknown errors
+// into the `Other` variant, thus preventing issues caused by breaking changes.
+fn convert_unknown_errors(encoded_error: &mut [u8; 4]) {
+	let all_errors = [
+		UNIT_ERRORS.as_slice(),
+		SINGLE_NESTED_ERRORS.as_slice(),
+		DOUBLE_NESTED_ERRORS.as_slice(),
+		// `DecodingFailed`.
+		&[255u8],
+	]
+	.concat();
+	// Unknown errors, i.e. an encoded value where the first byte is non-zero (indicating a variant
+	// in `Error`) but unknown.
+	if !all_errors.contains(&encoded_error[0]) {
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
+	}
+	convert_unknown_nested_errors(encoded_error);
+}
+
+// If an unknown nested variant of the `DispatchError` is detected (i.e. when any of the subsequent
+// bytes are non-zero).
+fn convert_unknown_nested_errors(encoded_error: &mut [u8; 4]) {
+	// Converts single nested errors that are known to the Pop API as unit errors into `Other`.
+	if UNIT_ERRORS.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8) {
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
+	// Converts double nested errors that are known to the Pop API as single nested errors into
+	// `Other`.
+	} else if SINGLE_NESTED_ERRORS.contains(&encoded_error[0])
+		&& encoded_error[2..].iter().any(|x| *x != 0u8)
+	{
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
+	} else if DOUBLE_NESTED_ERRORS.contains(&encoded_error[0])
+		&& encoded_error[3..].iter().any(|x| *x != 0u8)
+	{
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
+	}
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 #[repr(u8)]
-pub enum PopApiError {
+pub enum Error {
 	/// Some unknown error occurred. Go to the Pop API docs section `Pop API error`.
 	Other {
 		// Index within the `DispatchError`
@@ -76,8 +136,34 @@ pub enum PopApiError {
 	DecodingFailed = 255,
 }
 
-impl From<PopApiError> for StatusCode {
-	fn from(value: PopApiError) -> Self {
+// Unit `Error` variants.
+// (variant: index):
+// - CannotLookup: 1,
+// - BadOrigin: 2,
+// - ConsumerRemaining: 4,
+// - NoProviders: 5,
+// - TooManyConsumers: 6,
+// - Exhausted: 10,
+// - Corruption: 11,
+// - Unavailable: 12,
+// - RootNotAllowed: 13,
+// - DecodingFailed: 255,
+const UNIT_ERRORS: [u8; 10] = [1, 2, 4, 5, 6, 10, 11, 12, 13, 255];
+
+// Single nested `Error` variants.
+// (variant: index):
+// - Token: 7,
+// - Arithmetic: 8,
+// - Transaction: 9,
+const SINGLE_NESTED_ERRORS: [u8; 3] = [7, 8, 9];
+
+// Double nested `Error` variants
+// (variant: index):
+// - Module: 3,
+const DOUBLE_NESTED_ERRORS: [u8; 1] = [3];
+
+impl From<Error> for StatusCode {
+	fn from(value: Error) -> Self {
 		let mut encoded_error = value.encode();
 		// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
 		encoded_error.resize(4, 0);
@@ -87,71 +173,11 @@ impl From<PopApiError> for StatusCode {
 	}
 }
 
-impl From<StatusCode> for PopApiError {
-	// `pub` because it is used in `runtime/devnet/src/extensions/tests/mod.rs`'s test:
-	// `dispatch_error_to_status_code_to_pop_api_error_works`
-	//
-	// This function converts a given `status_code` (u32) into a `PopApiError`.
+impl From<StatusCode> for Error {
 	fn from(value: StatusCode) -> Self {
 		let encoded: [u8; 4] = value.0.to_le_bytes();
-		PopApiError::decode(&mut &encoded[..]).unwrap_or(DecodingFailed)
+		Error::decode(&mut &encoded[..]).unwrap_or(DecodingFailed)
 	}
-}
-
-// If an unknown nested variant of the `DispatchError` is detected (i.e., any of the subsequent
-// bytes are non-zero, indicating a breaking change in the `DispatchError`), the error needs to be
-// converted into the encoded value of `PopApiError::Other`. This conversion is performed by
-// shifting the bytes one position forward (discarding the last byte as it is not used) and setting
-// the first byte to the encoded value of `Other` (0u8). This ensures the error is correctly
-// categorized as an `Other` variant.
-//
-// Byte layout explanation:
-// - Byte 0: PopApiError
-// - Byte 1:
-//   - Must be zero for `UNIT_ERRORS`.
-//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
-//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
-// - Byte 2:
-//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
-// - Byte 3:
-//   - Unused or represents further nested information.
-//
-// This mechanism ensures backward compatibility by correctly categorizing any unknown nested errors
-// into the `Other` variant, thus preventing issues caused by new or unexpected error formats.
-pub(crate) fn convert_unknown_nested_errors(encoded_error: &mut [u8; 4]) {
-	// Converts single nested errors that are known to the Pop API as unit errors into `Other`.
-	if UNIT_ERRORS.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8) {
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	// Converts double nested errors that are known to the Pop API as single nested errors into
-	// `Other`.
-	} else if SINGLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[2..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	} else if DOUBLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[3..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	}
-}
-
-pub(crate) fn convert_unknown_errors(encoded_error: &mut [u8; 4]) {
-	let all_errors = [
-		UNIT_ERRORS.as_slice(),
-		SINGLE_NESTED_ERRORS.as_slice(),
-		DOUBLE_NESTED_ERRORS.as_slice(),
-		// `DecodingFailed`.
-		&[255u8],
-	]
-	.concat();
-	if !all_errors.contains(&encoded_error[0]) {
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	}
-	convert_unknown_nested_errors(encoded_error);
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -200,26 +226,6 @@ pub enum TransactionalError {
 	NoLayer,
 }
 
-// Unit `DispatchError` variants (variant: index):
-// - CannotLookup: 1,
-// - BadOrigin: 2,
-// - ConsumerRemaining: 4,
-// - NoProviders: 5,
-// - TooManyConsumers: 6,
-// - Exhausted: 10,
-// - Corruption: 11,
-// - Unavailable: 12,
-// - RootNotAllowed: 13,
-const UNIT_ERRORS: [u8; 9] = [1, 2, 4, 5, 6, 10, 11, 12, 13];
-
-// Single nested `DispatchError` variants (variant: index):
-// - Token: 3,
-// - Arithmetic: 8,
-// - Transaction: 9,
-const SINGLE_NESTED_ERRORS: [u8; 3] = [7, 8, 9];
-
-const DOUBLE_NESTED_ERRORS: [u8; 1] = [3];
-
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -231,20 +237,30 @@ mod tests {
 		assert_eq!(u32::MAX.encode().len(), 4);
 	}
 
-	// Decodes into `StatusCode(u32)` and converts it into the `PopApiError`.
-	fn into_pop_api_error(encoded_error: [u8; 4]) -> PopApiError {
-		let status_code =
-			StatusCode::from_status_code(u32::decode(&mut &encoded_error[..]).unwrap())
-				.unwrap_err();
+	// Decodes 4 bytes into a `u32` and converts it into `StatusCode`.
+	fn into_status_code(encoded_error: [u8; 4]) -> StatusCode {
+		let decoded_u32 = u32::decode(&mut &encoded_error[..]).unwrap();
+		StatusCode::from_status_code(decoded_u32).unwrap_err()
+	}
+
+	// Decodes 4 bytes into a `u32` and converts it into `Error`.
+	fn into_error(encoded_error: [u8; 4]) -> Error {
+		let decoded_u32 = u32::decode(&mut &encoded_error[..]).unwrap();
+		let status_code = StatusCode::from_status_code(decoded_u32).unwrap_err();
 		status_code.into()
 	}
 
-	// Tests for the `From<StatusCode(u32)>` implementation for `PopApiError`.
+	// Tests the `From<StatusCode>` implementation for `Error`.
 	//
-	// If the encoded value indicates a nested `PopApiError` which is not handled by the Pop API
-	// version, the encoded value is converted into `PopApiError::Other`.
+	// Unit variants:
+	// If the encoded value indicates a nested `Error` which is known by the Pop API version as a
+	// unit variant, the encoded value is converted into `Error::Other`.
+	//
+	// Example: the error `BadOrigin` (encoded: `[2, 0, 0, 0]`) with a non-zero value for one
+	// of the bytes [1..4]: `[2, 0, 1, 0]` is converted into `[0, 2, 0, 1]`. This is decoded to
+	// `Error::Other { dispatch_error: 2, index: 0, error: 1 }`.
 	#[test]
-	fn test_unit_pop_api_error_variants() {
+	fn unit_error_variants() {
 		let errors = vec![
 			CannotLookup,
 			BadOrigin,
@@ -255,73 +271,134 @@ mod tests {
 			Corruption,
 			Unavailable,
 			RootNotAllowed,
+			DecodingFailed,
 		];
+		// Four scenarios, 2 tests each:
+		// 1. Compare a `StatusCode`, which is converted from an encoded value, with a `StatusCode`
+		// 	converted from an `Error`.
+		// 2. Compare an `Error, which is converted from an encoded value, with the expected `Error`.
 		for (i, &error_code) in UNIT_ERRORS.iter().enumerate() {
-			assert_eq!(into_pop_api_error([error_code, 0, 0, 0]), errors[i]);
+			// No nesting and unit variant correctly returned.
+			assert_eq!(into_status_code([error_code, 0, 0, 0]), errors[i].into());
+			assert_eq!(into_error([error_code, 0, 0, 0]), errors[i]);
+			// Unexpected second byte nested.
 			assert_eq!(
-				into_pop_api_error([error_code, 1, 0, 0]),
+				into_status_code([error_code, 1, 0, 0]),
+				(Other { dispatch_error_index: error_code, error_index: 1, error: 0 }).into(),
+			);
+			assert_eq!(
+				into_error([error_code, 1, 0, 0]),
 				Other { dispatch_error_index: error_code, error_index: 1, error: 0 },
 			);
+			// Unexpected third byte nested.
 			assert_eq!(
-				into_pop_api_error([error_code, 1, 1, 0]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+				into_status_code([error_code, 1, 1, 0]),
+				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
 			);
 			assert_eq!(
-				into_pop_api_error([error_code, 1, 1, 1]),
+				into_error([error_code, 1, 1, 0]),
+				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+			);
+			// Unexpected fourth byte nested.
+			assert_eq!(
+				into_status_code([error_code, 1, 1, 1]),
+				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
+			);
+			assert_eq!(
+				into_error([error_code, 1, 1, 1]),
 				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
 			);
 		}
 	}
 
+	// Single nested variants:
+	// If the encoded value indicates a double nested `Error` which is known by the Pop API version
+	// as a single nested variant, the encoded value is converted into `Error::Other`.
+	//
+	// Example: the error `Arithmetic(Overflow)` (encoded: `[8, 1, 0, 0]`) with a non-zero
+	// value for one of the bytes [2..4]: `[8, 1, 1, 0]` is converted into `[0, 8, 1, 1]`. This is
+	// decoded to `Error::Other { dispatch_error: 8, index: 1,  error: 1 }`.
 	#[test]
-	fn test_single_nested_pop_api_error_variants() {
+	fn single_nested_error_variants() {
 		let errors = vec![
 			[Token(FundsUnavailable), Token(OnlyProvider)],
 			[Arithmetic(Underflow), Arithmetic(Overflow)],
 			[Transactional(LimitReached), Transactional(NoLayer)],
 		];
+		// Four scenarios, 2 tests each:
+		// 1. Compare a `StatusCode`, which is converted from an encoded value, with a `StatusCode`
+		// 	converted from an `Error`.
+		// 2. Compare an `Error, which is converted from an encoded value, with the expected `Error`.
 		for (i, &error_code) in SINGLE_NESTED_ERRORS.iter().enumerate() {
-			assert_eq!(into_pop_api_error([error_code, 0, 0, 0]), errors[i][0]);
-			assert_eq!(into_pop_api_error([error_code, 1, 0, 0]), errors[i][1]);
+			// No nesting and unit variant correctly returned.
+			assert_eq!(into_status_code([error_code, 0, 0, 0]), errors[i][0].into());
+			assert_eq!(into_error([error_code, 0, 0, 0]), errors[i][0]);
+			// Allowed single nesting variant correctly returned.
+			assert_eq!(into_status_code([error_code, 1, 0, 0]), errors[i][1].into());
+			assert_eq!(into_error([error_code, 1, 0, 0]), errors[i][1]);
+			// Unexpected third byte nested.
 			assert_eq!(
-				into_pop_api_error([error_code, 1, 1, 0]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+				into_status_code([error_code, 1, 1, 0]),
+				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
 			);
 			assert_eq!(
-				into_pop_api_error([error_code, 1, 1, 1]),
+				into_error([error_code, 1, 1, 0]),
+				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
+			);
+			// Unexpected fourth byte nested.
+			assert_eq!(
+				into_status_code([error_code, 1, 1, 1]),
+				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
+			);
+			assert_eq!(
+				into_error([error_code, 1, 1, 1]),
 				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
 			);
 		}
 	}
 
+	// Double nested variants:
+	// If the encoded value indicates a triple nested `Error` which is known by the Pop API version
+	// as a double nested variant, the encoded value is converted into `Error::Other`.
+	//
+	// Example: the error `Module { index: 10, error 5 }` (encoded: `[3, 10, 5, 0]`) with a non-zero
+	// value for the last byte: `[3, 10, 5, 3]` is converted into `[0, 3, 10, 5]`. This is
+	// decoded to `Error::Other { dispatch_error: 3, index: 10,  error: 5 }`.
 	#[test]
-	fn test_double_nested_pop_api_error_variants() {
-		assert_eq!(into_pop_api_error([3, 0, 0, 0]), Module { index: 0, error: 0 });
-		assert_eq!(into_pop_api_error([3, 1, 0, 0]), Module { index: 1, error: 0 });
-		assert_eq!(into_pop_api_error([3, 1, 1, 0]), Module { index: 1, error: 1 });
-		// TODO: doesn't make sense.
+	fn double_nested_error_variants() {
+		// Four scenarios, 2 tests each:
+		// 1. Compare a `StatusCode`, which is converted from an encoded value, with a `StatusCode`
+		// 	converted from an `Error`.
+		// 2. Compare an `Error, which is converted from an encoded value, with the expected `Error`.
+		//
+		// No nesting and unit variant correctly returned.
+		assert_eq!(into_status_code([3, 0, 0, 0]), (Module { index: 0, error: 0 }).into());
+		assert_eq!(into_error([3, 0, 0, 0]), Module { index: 0, error: 0 });
+		// Allowed single nesting and variant correctly returned.
+		assert_eq!(into_status_code([3, 1, 0, 0]), (Module { index: 1, error: 0 }).into());
+		assert_eq!(into_error([3, 1, 0, 0]), Module { index: 1, error: 0 });
+		// Allowed double nesting and variant correctly returned.
+		assert_eq!(into_status_code([3, 1, 1, 0]), (Module { index: 1, error: 1 }).into());
+		assert_eq!(into_error([3, 1, 1, 0]), Module { index: 1, error: 1 });
+		// Unexpected fourth byte nested.
 		assert_eq!(
-			into_pop_api_error([3, 1, 1, 1]),
+			into_status_code([3, 1, 1, 1]),
+			(Other { dispatch_error_index: 3, error_index: 1, error: 1 }).into(),
+		);
+		assert_eq!(
+			into_error([3, 1, 1, 1]),
 			Other { dispatch_error_index: 3, error_index: 1, error: 1 },
 		);
 	}
 
 	#[test]
-	fn test_decoding_failed() {
-		assert_eq!(into_pop_api_error([255, 0, 0, 0]), DecodingFailed);
-		assert_eq!(into_pop_api_error([255, 255, 0, 0]), DecodingFailed);
-		assert_eq!(into_pop_api_error([255, 255, 255, 0]), DecodingFailed);
-		assert_eq!(into_pop_api_error([255, 255, 255, 255]), DecodingFailed);
-	}
-
-	#[test]
 	fn test_random_encoded_values() {
 		assert_eq!(
-			into_pop_api_error([100, 100, 100, 100]),
+			into_error([100, 100, 100, 100]),
 			Other { dispatch_error_index: 100, error_index: 100, error: 100 }
 		);
 		assert_eq!(
-			into_pop_api_error([200, 200, 200, 200]),
+			into_error([200, 200, 200, 200]),
 			Other { dispatch_error_index: 200, error_index: 200, error: 200 }
 		);
 	}
