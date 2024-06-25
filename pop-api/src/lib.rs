@@ -3,7 +3,7 @@
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
 pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
 
-use crate::error::{PopApiError, StatusCode};
+use crate::error::{Error, StatusCode};
 use primitives::{storage_keys::*, AccountId as AccountId32};
 #[cfg(feature = "assets")]
 pub use v0::assets;
@@ -21,7 +21,11 @@ pub mod v0;
 
 type AccountId = AccountId32;
 // TODO: do the same as the AccountId above and check expanded macro code.
-type Balance = <Environment as ink::env::Environment>::Balance;
+// type Balance = <Environment as ink::env::Environment>::Balance;
+type Balance = u128;
+#[cfg(any(feature = "nfts", feature = "cross-chain"))]
+type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
+
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,7 +60,7 @@ pub trait PopApi {
 	#[cfg(feature = "cross-chain")]
 	#[ink(function = 2)]
 	#[allow(private_interfaces)]
-	fn send_xcm(xcm: CrossChainMessage) -> Result<()>;
+	fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()>;
 }
 
 fn dispatch(call: RuntimeCall) -> Result<()> {
@@ -72,7 +76,7 @@ fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>> {
 }
 
 #[cfg(feature = "cross-chain")]
-fn send_xcm(xcm: CrossChainMessage) -> Result<()> {
+fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
 	.send_xcm(xcm)

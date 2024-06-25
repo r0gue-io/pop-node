@@ -1,11 +1,8 @@
+use crate::{BlockNumber, ParachainSystemKeys, Result, RuntimeStateKeys};
+
 pub mod coretime;
 
-use crate::StatusCode;
-
-type Result<T> = core::result::Result<T, StatusCode>;
-type BlockNumber = <crate::Environment as ink::env::Environment>::BlockNumber;
-
-pub fn relay_chain_block_number() -> std::result::Result<BlockNumber, StatusCode> {
+pub fn relay_chain_block_number() -> Result<BlockNumber> {
 	crate::v0::state::read(RuntimeStateKeys::ParachainSystem(
 		ParachainSystemKeys::LastRelayChainBlockNumber,
 	))

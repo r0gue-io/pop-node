@@ -1,6 +1,4 @@
-use crate::{
-	dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, PopApiError, StatusCode,
-};
+use crate::{dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, Error, StatusCode};
 
 type Result<T> = core::result::Result<T, StatusCode>;
 
@@ -57,7 +55,7 @@ pub enum BalancesError {
 }
 
 impl TryFrom<u32> for BalancesError {
-	type Error = PopApiError;
+	type Error = Error;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
 		use BalancesError::*;

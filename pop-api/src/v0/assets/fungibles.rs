@@ -356,3 +356,67 @@ impl From<StatusCode> for FungiblesError {
 		}
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use super::FungiblesError;
+	use crate::error::{
+		ArithmeticError::*,
+		Error::{self, *},
+		StatusCode,
+		TokenError::*,
+		TransactionalError::*,
+	};
+
+	fn into_fungibles_error(error: Error) -> FungiblesError {
+		let status_code: StatusCode = error.into();
+		status_code.into()
+	}
+
+	#[test]
+	fn conversion_status_code_into_fungibles_error_works() {
+		let errors = vec![
+			Other { dispatch_error_index: 5, error_index: 5, error: 1 },
+			CannotLookup,
+			BadOrigin,
+			Module { index: 2, error: 5 },
+			ConsumerRemaining,
+			NoProviders,
+			TooManyConsumers,
+			Token(OnlyProvider),
+			Arithmetic(Overflow),
+			Transactional(NoLayer),
+			Exhausted,
+			Corruption,
+			Unavailable,
+			RootNotAllowed,
+			DecodingFailed,
+		];
+		for error in errors {
+			let status_code: StatusCode = error.into();
+			let fungibles_error: FungiblesError = status_code.into();
+			assert_eq!(fungibles_error, FungiblesError::Other(status_code))
+		}
+
+		assert_eq!(into_fungibles_error(Module { index: 10, error: 2 }), FungiblesError::NoBalance);
+		assert_eq!(into_fungibles_error(Module { index: 52, error: 0 }), FungiblesError::NoAccount);
+		assert_eq!(
+			into_fungibles_error(Module { index: 52, error: 1 }),
+			FungiblesError::NoPermission
+		);
+		assert_eq!(into_fungibles_error(Module { index: 52, error: 2 }), FungiblesError::Unknown);
+		assert_eq!(into_fungibles_error(Module { index: 52, error: 3 }), FungiblesError::InUse);
+		assert_eq!(
+			into_fungibles_error(Module { index: 52, error: 5 }),
+			FungiblesError::MinBalanceZero
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: 52, error: 7 }),
+			FungiblesError::InsufficientAllowance
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: 52, error: 10 }),
+			FungiblesError::AssetNotLive
+		);
+	}
+}

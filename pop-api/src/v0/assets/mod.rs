@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use crate::{Balance, RuntimeCall, *};
+use crate::{Balance, MultiAddress, RuntimeCall, *};
 use ink::prelude::vec::Vec;
-use primitives::{AssetId, MultiAddress};
+use primitives::AssetId;
 use scale::{Compact, Encode};
 
 pub mod fungibles;
@@ -13,7 +13,7 @@ type Result<T> = core::result::Result<T, StatusCode>;
 /// 1. Dispatchables
 /// 2. Read state functions
 ///
-/// 1. Dispatchables within pallet assets (TrustBackedAssets instance) that can be used via the pop api on Pop Network:
+/// 1. Dispatchables within pallet assets (TrustBackedAssets instance):
 /// - create
 /// - start_destroy
 /// - destroy_accounts
@@ -464,7 +464,7 @@ pub enum AssetsError {
 }
 
 impl TryFrom<u32> for AssetsError {
-	type Error = PopApiError;
+	type Error = Error;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
 		use AssetsError::*;

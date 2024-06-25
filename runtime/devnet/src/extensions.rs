@@ -11,11 +11,6 @@ use frame_support::{
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
-use pop_primitives::{
-	cross_chain::CrossChainMessage,
-	storage_keys::{AssetsKeys, NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
-	AssetId, CollectionId, ItemId,
-};
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::traits::{BlockNumberProvider, Dispatchable};
 use sp_std::{boxed::Box, vec::Vec};
@@ -25,8 +20,14 @@ use xcm::{
 };
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, AccountId, AllowedPopApiCalls, RuntimeCall,
+	config::assets::TrustBackedAssetsInstance, AccountId, AllowedApiCalls, RuntimeCall,
 	RuntimeOrigin, UNIT,
+};
+use pop_primitives::{
+	cross_chain::CrossChainMessage,
+	nfts::{CollectionId, ItemId},
+	storage_keys::{AssetsKeys, NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
+	AssetId,
 };
 
 const LOG_TARGET: &str = "pop-api::extension";
@@ -122,7 +123,7 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
 
-	origin.add_filter(AllowedPopApiCalls::contains);
+	origin.add_filter(AllowedApiCalls::contains);
 
 	match call.dispatch(origin) {
 		Ok(info) => {
@@ -222,7 +223,7 @@ where
 		RuntimeStateKeys::ParachainSystem(key) => {
 			read_parachain_system_state::<T, E>(key, &mut env)
 		},
-		RuntimeStateKeys::Assets(key) => read_trust_backed_assets_state::<T, E>(key, &mut env),
+		RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, &mut env),
 	}?
 	.encode();
 
@@ -299,7 +300,7 @@ where
 	}
 }
 
-fn read_trust_backed_assets_state<T, E>(
+fn read_assets_state<T, E>(
 	key: AssetsKeys,
 	env: &mut Environment<E, BufInBufOutState>,
 ) -> Result<Vec<u8>, DispatchError>

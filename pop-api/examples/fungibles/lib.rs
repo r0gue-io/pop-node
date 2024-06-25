@@ -8,7 +8,7 @@
 use ink::prelude::vec::Vec;
 use pop_api::{
 	assets::fungibles::{self as api, FungiblesError},
-	error::{PopApiError, StatusCode},
+	error::{Error, StatusCode},
 	primitives::{AccountId as AccountId32, AssetId},
 };
 

@@ -23,3 +23,6 @@ std = [
 ]
 devnet = []
 testnet = []
+assets = []
+cross-chain = []
+nfts = []

@@ -22,7 +22,7 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-pop-primitives = { workspace = true, default-features = false, features = ["devnet"] }
+pop-primitives = { workspace = true, default-features = false, features = ["assets", "cross-chain", "nfts"] }
 pop-runtime-common = { workspace = true, default-features = false }
 
 # Substrate
@@ -91,7 +91,7 @@ parachain-info.workspace = true
 env_logger = "0.11.2"
 hex = "0.4.3"
 enumflags2 = "0.7.9"
-pop-api = { path = "../../pop-api", defeult-features = false, features = ["assets"] }
+pop-api = { path = "../../pop-api", features = ["assets", "cross-chain", "nfts"] }
 
 [features]
 default = ["std"]

@@ -1,13 +1,18 @@
+#[cfg(feature = "nfts")]
+use super::nfts::*;
 use super::*;
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum RuntimeStateKeys {
+	#[cfg(feature = "nfts")]
 	Nfts(NftsKeys),
+	#[cfg(feature = "cross-chain")]
 	ParachainSystem(ParachainSystemKeys),
-	#[cfg(feature = "devnet")]
+	#[cfg(feature = "assets")]
 	Assets(AssetsKeys),
 }
 
+#[cfg(feature = "cross-chain")]
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum ParachainSystemKeys {
 	/// Get the last relay chain block number seen by the parachain.
@@ -15,6 +20,7 @@ pub enum ParachainSystemKeys {
 }
 
 // https://github.com/paritytech/polkadot-sdk/blob/master/substrate/frame/nfts/src/impl_nonfungibles.rs
+#[cfg(feature = "nfts")]
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum NftsKeys {
 	// Get the details of a collection.
@@ -34,7 +40,7 @@ pub enum NftsKeys {
 }
 
 /// The required input for state queries in pallet assets.
-#[cfg(feature = "devnet")]
+#[cfg(feature = "assets")]
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum AssetsKeys {
 	Allowance(AssetId, AccountId, AccountId),

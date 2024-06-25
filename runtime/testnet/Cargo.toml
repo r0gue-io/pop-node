@@ -22,7 +22,7 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-pop-primitives = { workspace = true, features = ["testnet"] }
+pop-primitives = { workspace = true, features = ["assets", "nfts", "cross-chain"] }
 pop-runtime-common = { workspace = true, default-features = false }
 
 # Substrate

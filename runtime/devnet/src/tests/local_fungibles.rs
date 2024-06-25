@@ -9,8 +9,8 @@
 use super::*;
 
 use pop_api::{
-	error::{ArithmeticError::*, PopApiError::*, TokenError::*},
-	v0::assets::use_cases::fungibles::FungiblesError::*,
+	error::{ArithmeticError::*, Error::*, TokenError::*},
+	v0::assets::fungibles::FungiblesError::*,
 };
 
 const ASSET_ID: AssetId = 1;
@@ -268,7 +268,7 @@ fn create_works() {
 			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", 0, vec![0]);
 		// No balance to pay for fees.
 		assert_eq!(
-			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
+			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
 			Module { index: 10, error: 2 },
 		);
 		// Instantiate a contract without balance (relay token).
@@ -277,7 +277,7 @@ fn create_works() {
 		// TODO: make sure it has enough for the fees but not for the deposit.
 		// No balance to pay fe deposit.
 		assert_eq!(
-			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
+			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
 			Module { index: 10, error: 2 },
 		);
 		// Instantiate a contract with balance.
@@ -289,12 +289,12 @@ fn create_works() {
 		create_asset(ALICE, ASSET_ID, 1);
 		// Asset ID is already taken.
 		assert_eq!(
-			decoded::<PopApiError>(create(addr.clone(), ASSET_ID, BOB, 1)),
+			decoded::<Error>(create(addr.clone(), ASSET_ID, BOB, 1)),
 			Module { index: 52, error: 5 },
 		);
 		// The minimal balance for an asset must be non zero.
 		assert_eq!(
-			decoded::<PopApiError>(create(addr.clone(), new_asset, BOB, 0)),
+			decoded::<Error>(create(addr.clone(), new_asset, BOB, 0)),
 			Module { index: 52, error: 7 },
 		);
 		let result = create(addr.clone(), new_asset, BOB, 1);
@@ -333,39 +333,25 @@ fn transfer_from_mint_works() {
 
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<PopApiError>(transfer_from(addr.clone(), 1, None, Some(BOB), amount, &[0u8])),
+			decoded::<Error>(transfer_from(addr.clone(), 1, None, Some(BOB), amount, &[0u8])),
 			Token(UnknownAsset)
 		);
 		let asset = create_asset(ALICE, 1, 2);
 		// Minting can only be done by the owner.
 		assert_eq!(
-			decoded::<PopApiError>(transfer_from(
-				addr.clone(),
-				asset,
-				None,
-				Some(BOB),
-				amount,
-				&[0u8]
-			)),
+			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
 			Module { index: 52, error: 2 },
 		);
 		// Minimum balance of an asset can not be zero.
 		assert_eq!(
-			decoded::<PopApiError>(transfer_from(addr.clone(), asset, None, Some(BOB), 1, &[0u8])),
+			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), 1, &[0u8])),
 			Token(BelowMinimum)
 		);
 		let asset = create_asset(addr.clone(), 2, 2);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(asset, addr.clone());
 		assert_eq!(
-			decoded::<PopApiError>(transfer_from(
-				addr.clone(),
-				asset,
-				None,
-				Some(BOB),
-				amount,
-				&[0u8]
-			)),
+			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
 			Module { index: 52, error: 16 },
 		);
 		thaw_asset(asset, addr.clone());
@@ -377,7 +363,7 @@ fn transfer_from_mint_works() {
 		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount);
 		// Can not mint more tokens than Balance::MAX.
 		assert_eq!(
-			decoded::<PopApiError>(transfer_from(
+			decoded::<Error>(transfer_from(
 				addr.clone(),
 				asset,
 				None,
@@ -390,14 +376,7 @@ fn transfer_from_mint_works() {
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(asset, addr.clone());
 		assert_eq!(
-			decoded::<PopApiError>(transfer_from(
-				addr.clone(),
-				asset,
-				None,
-				Some(BOB),
-				amount,
-				&[0u8]
-			)),
+			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
 			Module { index: 52, error: 16 },
 		);
 	});
@@ -417,7 +396,7 @@ fn transfer_works() {
 
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<PopApiError>(transfer(addr.clone(), 1, BOB, amount,)),
+			decoded::<Error>(transfer(addr.clone(), 1, BOB, amount,)),
 			Module { index: 52, error: 3 },
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
@@ -425,18 +404,18 @@ fn transfer_works() {
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(asset, ALICE);
 		assert_eq!(
-			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount,)),
+			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount,)),
 			Module { index: 52, error: 16 },
 		);
 		thaw_asset(asset, ALICE);
 		// Not enough balance.
 		assert_eq!(
-			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
+			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
 			Module { index: 52, error: 0 },
 		);
 		// Not enough balance due to ED.
 		assert_eq!(
-			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount)),
+			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount)),
 			Module { index: 52, error: 0 },
 		);
 		// Successful transfer.
@@ -447,13 +426,13 @@ fn transfer_works() {
 		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount / 2);
 		// Transfer asset to account that does not exist.
 		assert_eq!(
-			decoded::<PopApiError>(transfer(addr.clone(), asset, FERDIE, amount / 4)),
+			decoded::<Error>(transfer(addr.clone(), asset, FERDIE, amount / 4)),
 			Token(CannotCreate)
 		);
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(asset, ALICE);
 		assert_eq!(
-			decoded::<PopApiError>(transfer(addr.clone(), asset, BOB, amount / 4)),
+			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount / 4)),
 			Module { index: 52, error: 16 },
 		);
 	});
