@@ -5,10 +5,9 @@ use crate::{
 	dispatch,
 	primitives::{
 		nfts::{ApprovalsLimit, CollectionId, ItemId, KeyLimit},
-		BoundedBTreeMap, BoundedVec,
+		BoundedBTreeMap, BoundedVec, MultiAddress,
 	},
-	state, AccountId, Balance, BlockNumber, MultiAddress, NftsKeys, RuntimeCall, RuntimeStateKeys,
-	StatusCode,
+	state, AccountId, Balance, BlockNumber, NftsKeys, RuntimeCall, RuntimeStateKeys, StatusCode,
 };
 pub use types::*;
 
@@ -17,10 +16,7 @@ type StringLimit = u32;
 type MaxTips = u32;
 
 /// Issue a new collection of non-fungible items
-pub fn create(
-	admin: impl Into<MultiAddress<AccountId, ()>>,
-	config: CollectionConfig,
-) -> Result<()> {
+pub fn create(admin: impl Into<MultiAddress<()>>, config: CollectionConfig) -> Result<()> {
 	Ok(dispatch(RuntimeCall::Nfts(NftCalls::Create { admin: admin.into(), config }))?)
 }
 
@@ -33,7 +29,7 @@ pub fn destroy(collection: CollectionId) -> Result<()> {
 pub fn mint(
 	collection: CollectionId,
 	item: ItemId,
-	mint_to: impl Into<MultiAddress<AccountId, ()>>,
+	mint_to: impl Into<MultiAddress<()>>,
 ) -> Result<()> {
 	Ok(dispatch(RuntimeCall::Nfts(NftCalls::Mint {
 		collection,
@@ -52,7 +48,7 @@ pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {
 pub fn transfer(
 	collection: CollectionId,
 	item: ItemId,
-	dest: impl Into<MultiAddress<AccountId, ()>>,
+	dest: impl Into<MultiAddress<()>>,
 ) -> Result<()> {
 	Ok(dispatch(RuntimeCall::Nfts(NftCalls::Transfer { collection, item, dest: dest.into() }))?)
 }
@@ -65,7 +61,7 @@ pub fn redeposit(collection: CollectionId, items: Vec<ItemId>) -> Result<()> {
 /// Change the Owner of a collection.
 pub fn transfer_ownership(
 	collection: CollectionId,
-	new_owner: impl Into<MultiAddress<AccountId, ()>>,
+	new_owner: impl Into<MultiAddress<()>>,
 ) -> Result<()> {
 	Ok(dispatch(RuntimeCall::Nfts(NftCalls::TransferOwnership {
 		collection,
@@ -118,7 +114,7 @@ pub mod approvals {
 	pub fn approve_transfer(
 		collection: CollectionId,
 		item: ItemId,
-		delegate: impl Into<MultiAddress<AccountId, ()>>,
+		delegate: impl Into<MultiAddress<()>>,
 		maybe_deadline: Option<BlockNumber>,
 	) -> Result<()> {
 		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveTransfer {
@@ -133,7 +129,7 @@ pub mod approvals {
 	pub fn cancel_approval(
 		collection: CollectionId,
 		item: ItemId,
-		delegate: impl Into<MultiAddress<AccountId, ()>>,
+		delegate: impl Into<MultiAddress<()>>,
 	) -> Result<()> {
 		Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelApproval {
 			collection,
@@ -155,7 +151,7 @@ pub mod attributes {
 	pub fn approve_item_attribute(
 		collection: CollectionId,
 		item: ItemId,
-		delegate: impl Into<MultiAddress<AccountId, ()>>,
+		delegate: impl Into<MultiAddress<()>>,
 	) -> Result<()> {
 		Ok(dispatch(RuntimeCall::Nfts(NftCalls::ApproveItemAttributes {
 			collection,
@@ -168,7 +164,7 @@ pub mod attributes {
 	pub fn cancel_item_attributes_approval(
 		collection: CollectionId,
 		item: ItemId,
-		delegate: impl Into<MultiAddress<AccountId, ()>>,
+		delegate: impl Into<MultiAddress<()>>,
 	) -> Result<()> {
 		Ok(dispatch(RuntimeCall::Nfts(NftCalls::CancelItemAttributesApproval {
 			collection,
@@ -324,9 +320,9 @@ pub mod roles {
 	/// Change the Issuer, Admin and Freezer of a collection.
 	pub fn set_team(
 		collection: CollectionId,
-		issuer: Option<impl Into<MultiAddress<AccountId, ()>>>,
-		admin: Option<impl Into<MultiAddress<AccountId, ()>>>,
-		freezer: Option<impl Into<MultiAddress<AccountId, ()>>>,
+		issuer: Option<impl Into<MultiAddress<()>>>,
+		admin: Option<impl Into<MultiAddress<()>>>,
+		freezer: Option<impl Into<MultiAddress<()>>>,
 	) -> Result<()> {
 		Ok(dispatch(RuntimeCall::Nfts(NftCalls::SetTeam {
 			collection,
@@ -406,20 +402,20 @@ pub mod trading {
 #[derive(Encode)]
 pub(crate) enum NftCalls {
 	#[codec(index = 0)]
-	Create { admin: MultiAddress<AccountId, ()>, config: CollectionConfig },
+	Create { admin: MultiAddress<()>, config: CollectionConfig },
 	#[codec(index = 2)]
 	Destroy { collection: CollectionId },
 	#[codec(index = 3)]
 	Mint {
 		collection: CollectionId,
 		item: ItemId,
-		mint_to: MultiAddress<AccountId, ()>,
+		mint_to: MultiAddress<()>,
 		witness_data: Option<()>,
 	},
 	#[codec(index = 5)]
 	Burn { collection: CollectionId, item: ItemId },
 	#[codec(index = 6)]
-	Transfer { collection: CollectionId, item: ItemId, dest: MultiAddress<AccountId, ()> },
+	Transfer { collection: CollectionId, item: ItemId, dest: MultiAddress<()> },
 	#[codec(index = 7)]
 	Redeposit { collection: CollectionId, items: Vec<ItemId> },
 	#[codec(index = 8)]
@@ -429,23 +425,23 @@ pub(crate) enum NftCalls {
 	#[codec(index = 10)]
 	LockCollection { collection: CollectionId, lock_settings: CollectionSettings },
 	#[codec(index = 11)]
-	TransferOwnership { collection: CollectionId, new_owner: MultiAddress<AccountId, ()> },
+	TransferOwnership { collection: CollectionId, new_owner: MultiAddress<()> },
 	#[codec(index = 12)]
 	SetTeam {
 		collection: CollectionId,
-		issuer: Option<MultiAddress<AccountId, ()>>,
-		admin: Option<MultiAddress<AccountId, ()>>,
-		freezer: Option<MultiAddress<AccountId, ()>>,
+		issuer: Option<MultiAddress<()>>,
+		admin: Option<MultiAddress<()>>,
+		freezer: Option<MultiAddress<()>>,
 	},
 	#[codec(index = 15)]
 	ApproveTransfer {
 		collection: CollectionId,
 		item: ItemId,
-		delegate: MultiAddress<AccountId, ()>,
+		delegate: MultiAddress<()>,
 		maybe_deadline: Option<BlockNumber>,
 	},
 	#[codec(index = 16)]
-	CancelApproval { collection: CollectionId, item: ItemId, delegate: MultiAddress<AccountId, ()> },
+	CancelApproval { collection: CollectionId, item: ItemId, delegate: MultiAddress<()> },
 	#[codec(index = 17)]
 	ClearAllTransferApprovals { collection: CollectionId, item: ItemId },
 	#[codec(index = 18)]
@@ -471,16 +467,12 @@ pub(crate) enum NftCalls {
 		key: BoundedVec<u8, KeyLimit>,
 	},
 	#[codec(index = 22)]
-	ApproveItemAttributes {
-		collection: CollectionId,
-		item: ItemId,
-		delegate: MultiAddress<AccountId, ()>,
-	},
+	ApproveItemAttributes { collection: CollectionId, item: ItemId, delegate: MultiAddress<()> },
 	#[codec(index = 23)]
 	CancelItemAttributesApproval {
 		collection: CollectionId,
 		item: ItemId,
-		delegate: MultiAddress<AccountId, ()>,
+		delegate: MultiAddress<()>,
 	},
 	#[codec(index = 24)]
 	SetMetadata { collection: CollectionId, item: ItemId, data: BoundedVec<u8, StringLimit> },

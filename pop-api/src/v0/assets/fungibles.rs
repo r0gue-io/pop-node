@@ -1,4 +1,6 @@
-use crate::{assets, primitives::AssetId, AccountId, Balance, MultiAddress, StatusCode};
+use crate::{
+	assets, primitives::AssetId, primitives::MultiAddress, AccountId, Balance, StatusCode,
+};
 use ink::prelude::vec::Vec;
 use scale::Encode;
 
@@ -67,11 +69,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
-pub fn transfer(
-	id: AssetId,
-	to: impl Into<MultiAddress<AccountId, ()>>,
-	value: Balance,
-) -> Result<()> {
+pub fn transfer(id: AssetId, to: impl Into<MultiAddress<()>>, value: Balance) -> Result<()> {
 	assets::transfer(id, to, value)
 }
 
@@ -89,8 +87,8 @@ pub fn transfer(
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 pub fn transfer_from(
 	id: AssetId,
-	from: Option<impl Into<MultiAddress<AccountId, ()>>>,
-	to: Option<impl Into<MultiAddress<AccountId, ()>>>,
+	from: Option<impl Into<MultiAddress<()>>>,
+	to: Option<impl Into<MultiAddress<()>>>,
 	value: Balance,
 	_data: &[u8],
 ) -> Result<()> {
@@ -223,11 +221,7 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the creation fails.
-pub fn create(
-	id: AssetId,
-	admin: impl Into<MultiAddress<AccountId, ()>>,
-	min_balance: Balance,
-) -> Result<()> {
+pub fn create(id: AssetId, admin: impl Into<MultiAddress<()>>, min_balance: Balance) -> Result<()> {
 	assets::create(id, admin, min_balance)
 }
 

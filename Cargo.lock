@@ -9678,6 +9678,7 @@ dependencies = [
  "scale-decode",
  "scale-encode",
  "scale-info",
+ "sp-std",
 ]
 
 [[package]]

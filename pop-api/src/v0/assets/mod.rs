@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use crate::{Balance, MultiAddress, RuntimeCall, *};
+use crate::{Balance, RuntimeCall, *};
 use ink::prelude::vec::Vec;
-use primitives::AssetId;
+use primitives::{AssetId, MultiAddress};
 use scale::{Compact, Encode};
 
 pub mod fungibles;
@@ -46,7 +46,7 @@ type Result<T> = core::result::Result<T, StatusCode>;
 /// Issue a new class of fungible assets from a public origin.
 pub(crate) fn create(
 	id: AssetId,
-	admin: impl Into<MultiAddress<AccountId, ()>>,
+	admin: impl Into<MultiAddress<()>>,
 	min_balance: Balance,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::Create {
@@ -79,7 +79,7 @@ pub(crate) fn finish_destroy(id: AssetId) -> Result<()> {
 /// Mint assets of a particular class.
 pub(crate) fn mint(
 	id: AssetId,
-	beneficiary: impl Into<MultiAddress<AccountId, ()>>,
+	beneficiary: impl Into<MultiAddress<()>>,
 	amount: Balance,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::Mint {
@@ -90,11 +90,7 @@ pub(crate) fn mint(
 }
 
 /// Reduce the balance of `who` by as much as possible up to `amount` assets of `id`.
-pub(crate) fn burn(
-	id: AssetId,
-	who: impl Into<MultiAddress<AccountId, ()>>,
-	amount: Balance,
-) -> Result<()> {
+pub(crate) fn burn(id: AssetId, who: impl Into<MultiAddress<()>>, amount: Balance) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::Burn {
 		id: id.into(),
 		who: who.into(),
@@ -105,7 +101,7 @@ pub(crate) fn burn(
 /// Move some assets from the sender account to another.
 pub(crate) fn transfer(
 	id: AssetId,
-	target: impl Into<MultiAddress<AccountId, ()>>,
+	target: impl Into<MultiAddress<()>>,
 	amount: Balance,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::TransferKeepAlive {
@@ -118,7 +114,7 @@ pub(crate) fn transfer(
 /// Move some assets from the sender account to another, keeping the sender account alive.
 pub(crate) fn transfer_keep_alive(
 	id: AssetId,
-	target: impl Into<MultiAddress<AccountId, ()>>,
+	target: impl Into<MultiAddress<()>>,
 	amount: Balance,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::TransferKeepAlive {
@@ -131,8 +127,8 @@ pub(crate) fn transfer_keep_alive(
 /// Move some assets from one account to another. Sender should be the Admin of the asset `id`.
 pub(crate) fn force_transfer(
 	id: AssetId,
-	source: impl Into<MultiAddress<AccountId, ()>>,
-	dest: impl Into<MultiAddress<AccountId, ()>>,
+	source: impl Into<MultiAddress<()>>,
+	dest: impl Into<MultiAddress<()>>,
 	amount: Balance,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::ForceTransfer {
@@ -146,12 +142,12 @@ pub(crate) fn force_transfer(
 /// Disallow further unprivileged transfers of an asset `id` from an account `who`. `who`
 /// must already exist as an entry in `Account`s of the asset. If you want to freeze an
 /// account that does not have an entry, use `touch_other` first.
-pub(crate) fn freeze(id: AssetId, who: impl Into<MultiAddress<AccountId, ()>>) -> Result<()> {
+pub(crate) fn freeze(id: AssetId, who: impl Into<MultiAddress<()>>) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::Freeze { id: id.into(), who: who.into() }))
 }
 
 /// Allow unprivileged transfers to and from an account again.
-pub(crate) fn thaw(id: AssetId, who: impl Into<MultiAddress<AccountId, ()>>) -> Result<()> {
+pub(crate) fn thaw(id: AssetId, who: impl Into<MultiAddress<()>>) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::Thaw { id: id.into(), who: who.into() }))
 }
 
@@ -166,10 +162,7 @@ pub(crate) fn thaw_asset(id: AssetId) -> Result<()> {
 }
 
 /// Change the Owner of an asset.
-pub(crate) fn transfer_ownership(
-	id: AssetId,
-	owner: impl Into<MultiAddress<AccountId, ()>>,
-) -> Result<()> {
+pub(crate) fn transfer_ownership(id: AssetId, owner: impl Into<MultiAddress<()>>) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::TransferOwnership {
 		id: id.into(),
 		owner: owner.into(),
@@ -179,9 +172,9 @@ pub(crate) fn transfer_ownership(
 /// Change the Issuer, Admin and Freezer of an asset.
 pub(crate) fn set_team(
 	id: AssetId,
-	issuer: impl Into<MultiAddress<AccountId, ()>>,
-	admin: impl Into<MultiAddress<AccountId, ()>>,
-	freezer: impl Into<MultiAddress<AccountId, ()>>,
+	issuer: impl Into<MultiAddress<()>>,
+	admin: impl Into<MultiAddress<()>>,
+	freezer: impl Into<MultiAddress<()>>,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::SetTeam {
 		id: id.into(),
@@ -209,7 +202,7 @@ pub(crate) fn clear_metadata(id: AssetId) -> Result<()> {
 /// Approve an amount of asset for transfer by a delegated third-party account.
 pub(crate) fn approve_transfer(
 	id: AssetId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
+	delegate: impl Into<MultiAddress<()>>,
 	amount: Balance,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::ApproveTransfer {
@@ -220,10 +213,7 @@ pub(crate) fn approve_transfer(
 }
 
 /// Cancel all of some asset approved for delegated transfer by a third-party account.
-pub(crate) fn cancel_approval(
-	id: AssetId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
-) -> Result<()> {
+pub(crate) fn cancel_approval(id: AssetId, delegate: impl Into<MultiAddress<()>>) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::CancelApproval {
 		id: id.into(),
 		delegate: delegate.into(),
@@ -233,8 +223,8 @@ pub(crate) fn cancel_approval(
 /// Cancel all of some asset approved for delegated transfer by a third-party account.
 pub(crate) fn force_cancel_approval(
 	id: AssetId,
-	owner: impl Into<MultiAddress<AccountId, ()>>,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
+	owner: impl Into<MultiAddress<()>>,
+	delegate: impl Into<MultiAddress<()>>,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::ForceCancelApproval {
 		id: id.into(),
@@ -247,8 +237,8 @@ pub(crate) fn force_cancel_approval(
 /// account.
 pub(crate) fn transfer_approved(
 	id: AssetId,
-	owner: impl Into<MultiAddress<AccountId, ()>>,
-	destination: impl Into<MultiAddress<AccountId, ()>>,
+	owner: impl Into<MultiAddress<()>>,
+	destination: impl Into<MultiAddress<()>>,
 	amount: Balance,
 ) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::TransferApproved {
@@ -279,17 +269,17 @@ pub(crate) fn set_min_balance(id: AssetId, min_balance: Balance) -> Result<()> {
 }
 
 /// Create an asset account for `who`.
-pub(crate) fn touch_other(id: AssetId, who: impl Into<MultiAddress<AccountId, ()>>) -> Result<()> {
+pub(crate) fn touch_other(id: AssetId, who: impl Into<MultiAddress<()>>) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::TouchOther { id: id.into(), who: who.into() }))
 }
 
 /// Return the deposit (if any) of a target asset account. Useful if you are the depositor.
-pub(crate) fn refund_other(id: AssetId, who: impl Into<MultiAddress<AccountId, ()>>) -> Result<()> {
+pub(crate) fn refund_other(id: AssetId, who: impl Into<MultiAddress<()>>) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::RefundOther { id: id.into(), who: who.into() }))
 }
 
 /// Disallow further unprivileged transfers of an asset `id` to and from an account `who`.
-pub(crate) fn block(id: AssetId, who: impl Into<MultiAddress<AccountId, ()>>) -> Result<()> {
+pub(crate) fn block(id: AssetId, who: impl Into<MultiAddress<()>>) -> Result<()> {
 	dispatch(RuntimeCall::Assets(AssetsCall::Block { id: id.into(), who: who.into() }))
 }
 
@@ -325,7 +315,7 @@ type BalanceParameter = Compact<Balance>;
 #[derive(Encode)]
 pub(crate) enum AssetsCall {
 	#[codec(index = 0)]
-	Create { id: AssetIdParameter, admin: MultiAddress<AccountId, ()>, min_balance: Balance },
+	Create { id: AssetIdParameter, admin: MultiAddress<()>, min_balance: Balance },
 	#[codec(index = 2)]
 	StartDestroy { id: AssetIdParameter },
 	#[codec(index = 3)]
@@ -335,68 +325,56 @@ pub(crate) enum AssetsCall {
 	#[codec(index = 5)]
 	FinishDestroy { id: AssetIdParameter },
 	#[codec(index = 6)]
-	Mint {
-		id: AssetIdParameter,
-		beneficiary: MultiAddress<AccountId, ()>,
-		amount: BalanceParameter,
-	},
+	Mint { id: AssetIdParameter, beneficiary: MultiAddress<()>, amount: BalanceParameter },
 	#[codec(index = 7)]
-	Burn { id: AssetIdParameter, who: MultiAddress<AccountId, ()>, amount: BalanceParameter },
+	Burn { id: AssetIdParameter, who: MultiAddress<()>, amount: BalanceParameter },
 	#[codec(index = 8)]
-	Transfer { id: AssetIdParameter, target: MultiAddress<AccountId, ()>, amount: BalanceParameter },
+	Transfer { id: AssetIdParameter, target: MultiAddress<()>, amount: BalanceParameter },
 	#[codec(index = 9)]
-	TransferKeepAlive {
-		id: AssetIdParameter,
-		target: MultiAddress<AccountId, ()>,
-		amount: BalanceParameter,
-	},
+	TransferKeepAlive { id: AssetIdParameter, target: MultiAddress<()>, amount: BalanceParameter },
 	#[codec(index = 10)]
 	ForceTransfer {
 		id: AssetIdParameter,
-		source: MultiAddress<AccountId, ()>,
-		dest: MultiAddress<AccountId, ()>,
+		source: MultiAddress<()>,
+		dest: MultiAddress<()>,
 		amount: BalanceParameter,
 	},
 	#[codec(index = 11)]
-	Freeze { id: AssetIdParameter, who: MultiAddress<AccountId, ()> },
+	Freeze { id: AssetIdParameter, who: MultiAddress<()> },
 	#[codec(index = 12)]
-	Thaw { id: AssetIdParameter, who: MultiAddress<AccountId, ()> },
+	Thaw { id: AssetIdParameter, who: MultiAddress<()> },
 	#[codec(index = 13)]
 	FreezeAsset { id: AssetIdParameter },
 	#[codec(index = 14)]
 	ThawAsset { id: AssetIdParameter },
 	#[codec(index = 15)]
-	TransferOwnership { id: AssetIdParameter, owner: MultiAddress<AccountId, ()> },
+	TransferOwnership { id: AssetIdParameter, owner: MultiAddress<()> },
 	#[codec(index = 16)]
 	SetTeam {
 		id: AssetIdParameter,
-		issuer: MultiAddress<AccountId, ()>,
-		admin: MultiAddress<AccountId, ()>,
-		freezer: MultiAddress<AccountId, ()>,
+		issuer: MultiAddress<()>,
+		admin: MultiAddress<()>,
+		freezer: MultiAddress<()>,
 	},
 	#[codec(index = 17)]
 	SetMetadata { id: AssetIdParameter, name: Vec<u8>, symbol: Vec<u8>, decimals: u8 },
 	#[codec(index = 18)]
 	ClearMetadata { id: AssetIdParameter },
 	#[codec(index = 22)]
-	ApproveTransfer {
-		id: AssetIdParameter,
-		delegate: MultiAddress<AccountId, ()>,
-		amount: BalanceParameter,
-	},
+	ApproveTransfer { id: AssetIdParameter, delegate: MultiAddress<()>, amount: BalanceParameter },
 	#[codec(index = 23)]
-	CancelApproval { id: AssetIdParameter, delegate: MultiAddress<AccountId, ()> },
+	CancelApproval { id: AssetIdParameter, delegate: MultiAddress<()> },
 	#[codec(index = 24)]
 	ForceCancelApproval {
 		id: AssetIdParameter,
-		owner: MultiAddress<AccountId, ()>,
-		delegate: MultiAddress<AccountId, ()>,
+		owner: MultiAddress<()>,
+		delegate: MultiAddress<()>,
 	},
 	#[codec(index = 25)]
 	TransferApproved {
 		id: AssetIdParameter,
-		owner: MultiAddress<AccountId, ()>,
-		destination: MultiAddress<AccountId, ()>,
+		owner: MultiAddress<()>,
+		destination: MultiAddress<()>,
 		amount: BalanceParameter,
 	},
 	#[codec(index = 26)]
@@ -406,11 +384,11 @@ pub(crate) enum AssetsCall {
 	#[codec(index = 28)]
 	SetMinBalance { id: AssetIdParameter, min_balance: BalanceParameter },
 	#[codec(index = 29)]
-	TouchOther { id: AssetIdParameter, who: MultiAddress<AccountId, ()> },
+	TouchOther { id: AssetIdParameter, who: MultiAddress<()> },
 	#[codec(index = 30)]
-	RefundOther { id: AssetIdParameter, who: MultiAddress<AccountId, ()> },
+	RefundOther { id: AssetIdParameter, who: MultiAddress<()> },
 	#[codec(index = 31)]
-	Block { id: AssetIdParameter, who: MultiAddress<AccountId, ()> },
+	Block { id: AssetIdParameter, who: MultiAddress<()> },
 }
 
 // TODO: Not being used atm but necessary if we want to provide access to the
