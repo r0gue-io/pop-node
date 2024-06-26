@@ -9,7 +9,7 @@ use {scale_decode::DecodeAsType, scale_encode::EncodeAsType, scale_info::TypeInf
 pub mod cross_chain;
 pub mod storage_keys;
 
-#[derive(Encode, Decode, Debug, MaxEncodedLen, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Encode, Decode, Clone, Debug, MaxEncodedLen, Eq, PartialEq, Ord, PartialOrd)]
 #[cfg_attr(feature = "std", derive(TypeInfo, DecodeAsType, EncodeAsType))]
 pub struct AccountId(pub [u8; 32]);
 

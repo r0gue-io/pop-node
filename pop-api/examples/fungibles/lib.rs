@@ -7,12 +7,12 @@
 ///
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api, FungiblesError},
-	error::{Error, StatusCode},
+	assets::fungibles::{self as api},
+	error::StatusCode,
 	primitives::{AccountId as AccountId32, AssetId},
 };
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract(env = pop_api::Environment)]
 mod fungibles {
@@ -41,12 +41,14 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
-			api::total_supply(id).map_err(|e| e.into())
+			// api::total_supply(id).map_err(|e| e.into())
+			api::total_supply(id)
 		}
 
 		#[ink(message)]
 		pub fn balance_of(&self, id: AssetId, owner: AccountId32) -> Result<Balance> {
-			api::balance_of(id, owner).map_err(|e| e.into())
+			// api::balance_of(id, owner).map_err(|e| e.into())
+			api::balance_of(id, owner)
 		}
 
 		#[ink(message)]
@@ -56,7 +58,8 @@ mod fungibles {
 			owner: AccountId32,
 			spender: AccountId32,
 		) -> Result<Balance> {
-			api::allowance(id, owner, spender).map_err(|e| e.into())
+			// api::allowance(id, owner, spender).map_err(|e| e.into())
+			api::allowance(id, owner, spender)
 		}
 
 		#[ink(message)]
@@ -70,15 +73,16 @@ mod fungibles {
 
 			let result = api::transfer(id, to, value);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+			// result.map_err(|e| e.into())
+			result
 		}
 
 		#[ink(message)]
 		pub fn transfer_from(
 			&self,
 			id: AssetId,
-			from: Option<AccountId32>,
-			to: Option<AccountId32>,
+			from: AccountId32,
+			to: AccountId32,
 			value: Balance,
 			// In the standard a `[u8]`, but the size needs to be known at compile time.
 			data: Vec<u8>,
@@ -93,7 +97,63 @@ mod fungibles {
 
 			let result = api::transfer_from(id, from, to, value, &data);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+			// result.map_err(|e| e.into())
+			result
+		}
+
+		#[ink(message)]
+		pub fn approve(&self, id: AssetId, spender: AccountId32, value: Balance) -> Result<()> {
+			ink::env::debug_println!(
+				"PopApiFungiblesExample::approve: id: {:?}, spender {:?}, value: {:?}",
+				id,
+				spender,
+				value,
+			);
+
+			let result = api::approve(id, spender, value);
+			ink::env::debug_println!("Result: {:?}", result);
+			// result.map_err(|e| e.into())
+			result
+		}
+
+		#[ink(message)]
+		pub fn increase_allowance(
+			&self,
+			id: AssetId,
+			spender: AccountId32,
+			value: Balance,
+		) -> Result<()> {
+			ink::env::debug_println!(
+				"PopApiFungiblesExample::increase_allowance: id: {:?}, spender {:?}, value: {:?}",
+				id,
+				spender,
+				value,
+			);
+
+			let result = api::increase_allowance(id, spender, value);
+			ink::env::debug_println!("Result: {:?}", result);
+			// result.map_err(|e| e.into())
+			result
+		}
+
+		#[ink(message)]
+		pub fn decrease_allowance(
+			&self,
+			id: AssetId,
+			spender: AccountId32,
+			value: Balance,
+		) -> Result<()> {
+			ink::env::debug_println!(
+				"PopApiFungiblesExample::decrease_allowance: id: {:?}, spender {:?}, value: {:?}",
+				id,
+				spender,
+				value,
+			);
+
+			let result = api::decrease_allowance(id, spender, value);
+			ink::env::debug_println!("Result: {:?}", result);
+			// result.map_err(|e| e.into())
+			result
 		}
 
 		/// 2. PSP-22 Metadata Interface:
@@ -101,52 +161,73 @@ mod fungibles {
 		/// - token_symbol
 		/// - token_decimals
 
-		/// 3. Asset Management:
-		/// - create
-		/// - start_destroy
-		/// - destroy_accounts
-		/// - destroy_approvals
-		/// - finish_destroy
-		/// - set_metadata
-		/// - clear_metadata
-
 		#[ink(message)]
-		pub fn create(&self, id: AssetId, admin: AccountId32, min_balance: Balance) -> Result<()> {
-			ink::env::debug_println!(
-				"PopApiFungiblesExample::create: id: {:?} admin: {:?} min_balance: {:?}",
-				id,
-				admin,
-				min_balance,
-			);
-			let result = api::create(id, admin, min_balance);
-			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+		pub fn token_name(&self, id: AssetId) -> Result<Vec<u8>> {
+			// api::token_name(id).map_err(|e| e.into())
+			api::token_name(id)
 		}
 
 		#[ink(message)]
-		pub fn set_metadata(
-			&self,
-			id: AssetId,
-			name: Vec<u8>,
-			symbol: Vec<u8>,
-			decimals: u8,
-		) -> Result<()> {
-			ink::env::debug_println!(
-				"PopApiFungiblesExample::set_metadata: id: {:?} name: {:?} symbol: {:?}, decimals: {:?}",
-				id,
-				name,
-				symbol,
-				decimals,
-			);
-			let result = api::set_metadata(id, name, symbol, decimals);
-			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+		pub fn token_symbol(&self, id: AssetId) -> Result<Vec<u8>> {
+			// api::token_symbol(id).map_err(|e| e.into())
+			api::token_symbol(id)
 		}
 
 		#[ink(message)]
-		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-			api::asset_exists(id).map_err(|e| e.into())
+		pub fn token_decimals(&self, id: AssetId) -> Result<u8> {
+			// api::token_decimals(id).map_err(|e| e.into())
+			api::token_decimals(id)
 		}
+
+		// 3. Asset Management:
+		// - create
+		// - start_destroy
+		// - destroy_accounts
+		// - destroy_approvals
+		// - finish_destroy
+		// - set_metadata
+		// - clear_metadata
+
+		// #[ink(message)]
+		// pub fn create(&self, id: AssetId, admin: AccountId32, min_balance: Balance) -> Result<()> {
+		// 	ink::env::debug_println!(
+		// 		"PopApiFungiblesExample::create: id: {:?} admin: {:?} min_balance: {:?}",
+		// 		id,
+		// 		admin,
+		// 		min_balance,
+		// 	);
+		// 	let result = api::create(id, admin, min_balance);
+		// 	ink::env::debug_println!("Result: {:?}", result);
+		// 	// result.map_err(|e| e.into())
+		// 	result
+		// }
+
+		// #[ink(message)]
+		// pub fn set_metadata(
+		// 	&self,
+		// 	id: AssetId,
+		// 	name: Vec<u8>,
+		// 	symbol: Vec<u8>,
+		// 	decimals: u8,
+		// ) -> Result<()> {
+		// 	ink::env::debug_println!(
+		// 		"PopApiFungiblesExample::set_metadata: id: {:?} name: {:?} symbol: {:?}, decimals: {:?}",
+		// 		id,
+		// 		name,
+		// 		symbol,
+		// 		decimals,
+		// 	);
+		// 	let result = api::set_metadata(id, name, symbol, decimals);
+		// 	ink::env::debug_println!("Result: {:?}", result);
+		// 	// result.map_err(|e| e.into())
+		// 	result
+		// }
+		//
+		// #[ink(message)]
+		// pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
+		// 	// api::asset_exists(id).map_err(|e| e.into())
+		// 	api::asset_exists(id)
+		// }
 	}
 
 	#[cfg(test)]

@@ -1,9 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
-pub use sp_runtime::{MultiAddress, MultiSignature};
+pub use sp_runtime::MultiAddress;
 
-use crate::error::{Error, StatusCode};
+use crate::error::StatusCode;
 use primitives::{storage_keys::*, AccountId as AccountId32};
 #[cfg(feature = "assets")]
 pub use v0::assets;
@@ -62,12 +62,14 @@ pub trait PopApi {
 	fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()>;
 }
 
+#[inline]
 fn dispatch(call: RuntimeCall) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
 	.dispatch(call)
 }
 
+#[inline]
 fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)

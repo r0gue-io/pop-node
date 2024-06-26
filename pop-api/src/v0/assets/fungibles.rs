@@ -1,6 +1,11 @@
-use crate::{assets, primitives::AssetId, AccountId, Balance, MultiAddress, StatusCode};
 use ink::prelude::vec::Vec;
 use scale::Encode;
+
+use crate::{
+	assets,
+	primitives::{AssetId, MultiAddress},
+	AccountId, Balance, StatusCode,
+};
 
 type Result<T> = core::result::Result<T, StatusCode>;
 
@@ -26,6 +31,7 @@ type Result<T> = core::result::Result<T, StatusCode>;
 ///
 /// # Returns
 /// The total supply of the token, or an error if the operation fails.
+#[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
 	assets::total_supply(id)
 }
@@ -39,6 +45,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 ///
 /// # Returns
 /// The balance of the specified account, or an error if the operation fails.
+#[inline]
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 	assets::balance_of(id, owner)
 }
@@ -53,6 +60,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 ///
 /// # Returns
 /// The remaining allowance, or an error if the operation fails.
+#[inline]
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
 	assets::allowance(id, owner, spender)
 }
@@ -67,6 +75,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
+#[inline]
 pub fn transfer(
 	id: AssetId,
 	to: impl Into<MultiAddress<AccountId, ()>>,
@@ -87,19 +96,15 @@ pub fn transfer(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
+#[inline]
 pub fn transfer_from(
 	id: AssetId,
-	from: Option<impl Into<MultiAddress<AccountId, ()>>>,
-	to: Option<impl Into<MultiAddress<AccountId, ()>>>,
+	from: impl Into<MultiAddress<AccountId, ()>>,
+	to: impl Into<MultiAddress<AccountId, ()>>,
 	value: Balance,
 	_data: &[u8],
 ) -> Result<()> {
-	match (from, to) {
-		(None, Some(to)) => assets::mint(id, to, value),
-		(Some(from), None) => assets::burn(id, from, value),
-		(Some(from), Some(to)) => assets::transfer_approved(id, from, to, value),
-		_ => Ok(()),
-	}
+	assets::transfer_approved(id, from, to, value)
 }
 
 /// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -111,16 +116,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the approval fails.
-// #[allow(unused_variables)]
-// fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-// 	todo!()
-// 	// TODO: read allowance and increase or decrease.
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::ApproveTransfer {
-// 	// 	id: id.into(),
-// 	// 	delegate: spender.into(),
-// 	// 	amount: Compact(value),
-// 	// }))?)
-// }
+#[inline]
+pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	assets::approve_transfer(id, spender, value)
+}
 
 /// Increases the allowance of a spender.
 ///
@@ -131,13 +130,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-// fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-// 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::ApproveTransfer {
-// 		id: id.into(),
-// 		delegate: spender.into(),
-// 		amount: Compact(value),
-// 	}))?)
-// }
+#[inline]
+pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	assets::approve_transfer(id, spender, value)
+}
 
 /// Decreases the allowance of a spender.
 ///
@@ -148,20 +144,11 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-// #[allow(unused_variables)]
-// fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-// 	todo!()
-// 	// TODO: cancel_approval + approve_transfer
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::CancelApproval {
-// 	// 	id: id.into(),
-// 	// 	delegate: delegate.into(),
-// 	// }))?)
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::ApproveTransfer {
-// 	// 	id: id.into(),
-// 	// 	delegate: spender.into(),
-// 	// 	amount: Compact(value),
-// 	// }))?)
-// }
+#[inline]
+pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	assets::cancel_approval(id, spender.clone())?;
+	assets::approve_transfer(id, spender, value)
+}
 
 /// 2. PSP-22 Metadata Interface:
 /// - token_name
@@ -175,11 +162,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// The name of the token as a byte vector, or an error if the operation fails.
-// #[allow(unused_variables)]
-// pub fn token_name(id: AssetId) -> Result<Option<Vec<u8>>> {
-// 	todo!()
-// 	// Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::TokenName(id)))?)
-// }
+#[inline]
+pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
+	assets::token_name(id)
+}
 
 /// Returns the token symbol for a given asset ID.
 ///
@@ -188,10 +174,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 ///  The symbol of the token as a byte vector, or an error if the operation fails.
-// #[allow(unused_variables)]
-// fn token_symbol(id: AssetId) -> Result<Option<Vec<u8>>> {
-// 	todo!()
-// }
+#[inline]
+pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
+	assets::token_symbol(id)
+}
 
 /// Returns the token decimals for a given asset ID.
 ///
@@ -200,118 +186,114 @@ pub fn transfer_from(
 ///
 /// # Returns
 ///  The number of decimals of the token as a byte vector, or an error if the operation fails.
-// #[allow(unused_variables)]
-// fn token_decimals(id: AssetId) -> Result<Option<Vec<u8>>> {
-// 	todo!()
-// }
-
-/// 3. Asset Management:
-/// - create
-/// - start_destroy
-/// - destroy_accounts
-/// - destroy_approvals
-/// - finish_destroy
-/// - set_metadata
-/// - clear_metadata
-
-/// Create a new token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-/// * `admin` - The account that will administer the asset.
-/// * `min_balance` - The minimum balance required for accounts holding this asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the creation fails.
-pub fn create(
-	id: AssetId,
-	admin: impl Into<MultiAddress<AccountId, ()>>,
-	min_balance: Balance,
-) -> Result<()> {
-	assets::create(id, admin, min_balance)
+#[inline]
+pub fn token_decimals(id: AssetId) -> Result<u8> {
+	assets::token_decimals(id)
 }
 
-/// Start the process of destroying a token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
-// fn start_destroy(id: AssetId) -> Result<()> {
-// 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::StartDestroy {
-// 		id: id.into(),
-// 	}))?)
+// /// 3. Asset Management:
+// /// - create
+// /// - start_destroy
+// /// - destroy_accounts
+// /// - destroy_approvals
+// /// - finish_destroy
+// /// - set_metadata
+// /// - clear_metadata
+//
+// /// Create a new token with a given asset ID.
+// ///
+// /// # Arguments
+// /// * `id` - The ID of the asset.
+// /// * `admin` - The account that will administer the asset.
+// /// * `min_balance` - The minimum balance required for accounts holding this asset.
+// ///
+// /// # Returns
+// /// Returns `Ok(())` if successful, or an error if the creation fails.
+// // pub fn create(id: AssetId, admin: impl Into<MultiAddress<AccountId, ()>>, min_balance: Balance) -> Result<()> {
+// // 	assets::create(id, admin, min_balance)
+// // }
+//
+// /// Start the process of destroying a token with a given asset ID.
+// ///
+// /// # Arguments
+// /// * `id` - The ID of the asset.
+// ///
+// /// # Returns
+// /// Returns `Ok(())` if successful, or an error if the operation fails.
+// // fn start_destroy(id: AssetId) -> Result<()> {
+// // 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::StartDestroy {
+// // 		id: id.into(),
+// // 	}))?)
+// // }
+//
+// /// Destroy all accounts associated with a token with a given asset ID.
+// ///
+// /// # Arguments
+// /// * `id` - The ID of the asset.
+// ///
+// /// # Returns
+// /// Returns `Ok(())` if successful, or an error if the operation fails.
+// // fn destroy_accounts(id: AssetId) -> Result<()> {
+// // 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::DestroyAccounts {
+// // 		id: id.into(),
+// // 	}))?)
+// // }
+//
+// /// Destroy all approvals associated with a token with a given asset ID.
+// ///
+// /// # Arguments
+// /// * `id` - The ID of the asset.
+// ///
+// /// # Returns
+// /// Returns `Ok(())` if successful, or an error if the operation fails.
+// // fn destroy_approvals(id: AssetId) -> Result<()> {
+// // 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::DestroyApprovals {
+// // 		id: id.into(),
+// // 	}))?)
+// // }
+//
+// /// Complete the process of destroying a token with a given asset ID.
+// ///
+// /// # Arguments
+// /// * `id` - The ID of the asset.
+// ///
+// /// # Returns
+// /// Returns `Ok(())` if successful, or an error if the operation fails.
+// // fn finish_destroy(id: AssetId) -> Result<()> {
+// // 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::FinishDestroy {
+// // 		id: id.into(),
+// // 	}))?)
+// // }
+//
+// /// Set the metadata for a token with a given asset ID.
+// ///
+// /// # Arguments
+// /// * `id` - The ID of the asset.
+// ///
+// /// # Returns
+// /// Returns `Ok(())` if successful, or an error if the operation fails.
+// // pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
+// // 	assets::set_metadata(id, name, symbol, decimals)
+// // }
+//
+// /// Clear the metadata for a token with a given asset ID.
+// ///
+// /// # Arguments
+// /// * `id` - The ID of the asset.
+// ///
+// /// # Returns
+// /// Returns `Ok(())` if successful, or an error if the operation fails.
+// // fn clear_metadata(id: AssetId) -> Result<()> {
+// // 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::ClearMetadata {
+// // 		id: id.into(),
+// // 	}))?)
+// // }
+//
+// pub fn asset_exists(id: AssetId) -> Result<bool> {
+// 	assets::asset_exists(id)
 // }
 
-/// Destroy all accounts associated with a token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
-// fn destroy_accounts(id: AssetId) -> Result<()> {
-// 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::DestroyAccounts {
-// 		id: id.into(),
-// 	}))?)
-// }
-
-/// Destroy all approvals associated with a token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
-// fn destroy_approvals(id: AssetId) -> Result<()> {
-// 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::DestroyApprovals {
-// 		id: id.into(),
-// 	}))?)
-// }
-
-/// Complete the process of destroying a token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
-// fn finish_destroy(id: AssetId) -> Result<()> {
-// 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::FinishDestroy {
-// 		id: id.into(),
-// 	}))?)
-// }
-
-/// Set the metadata for a token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
-pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
-	assets::set_metadata(id, name, symbol, decimals)
-}
-
-/// Clear the metadata for a token with a given asset ID.
-///
-/// # Arguments
-/// * `id` - The ID of the asset.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
-// fn clear_metadata(id: AssetId) -> Result<()> {
-// 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::ClearMetadata {
-// 		id: id.into(),
-// 	}))?)
-// }
-
-pub fn asset_exists(id: AssetId) -> Result<bool> {
-	assets::asset_exists(id)
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
+#[derive(Encode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 pub enum FungiblesError {
 	Other(StatusCode),
@@ -359,11 +341,13 @@ impl From<StatusCode> for FungiblesError {
 
 #[cfg(test)]
 mod tests {
+	use scale::Decode;
+
 	use super::FungiblesError;
-	use crate::error::{
+	use crate::StatusCode;
+	use pop_primitives::{
 		ArithmeticError::*,
 		Error::{self, *},
-		StatusCode,
 		TokenError::*,
 		TransactionalError::*,
 	};
@@ -371,6 +355,18 @@ mod tests {
 	fn into_fungibles_error(error: Error) -> FungiblesError {
 		let status_code: StatusCode = error.into();
 		status_code.into()
+	}
+
+	#[test]
+	fn status_code_vs_encoded() {
+		assert_eq!(u32::decode(&mut &[3u8, 10, 2, 0][..]).unwrap(), 133635u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 0, 0][..]).unwrap(), 13315u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 1, 0][..]).unwrap(), 78851u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 2, 0][..]).unwrap(), 144387u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 3, 0][..]).unwrap(), 209923u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 5, 0][..]).unwrap(), 340995u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 7, 0][..]).unwrap(), 472067u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 10, 0][..]).unwrap(), 668675u32);
 	}
 
 	#[test]

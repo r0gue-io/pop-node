@@ -47,10 +47,13 @@ pub enum NftsKeys {
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum AssetsKeys {
 	Allowance(AssetId, AccountId, AccountId),
-	/// Check if the asset exists.
-	AssetExists(AssetId),
+	// 	/// Check if the asset exists.
+	// 	// AssetExists(AssetId),
 	/// Check balance.
 	BalanceOf(AssetId, AccountId),
 	/// Returns the total token supply for a given asset ID.
 	TotalSupply(AssetId),
+	TokenDecimals(AssetId),
+	TokenSymbol(AssetId),
+	TokenName(AssetId),
 }
