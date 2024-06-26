@@ -5,6 +5,10 @@ license = "GPL-3.0-only"
 name = "pop-api"
 version = "0.0.0"
 
+[workspace]
+exclude = [
+	"integration-tests",
+]
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
 scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
