@@ -71,46 +71,39 @@ fn convert_unknown_errors(encoded_error: &mut [u8; 4]) {
 // If an unknown nested variant of the `DispatchError` is detected (i.e. when any of the subsequent
 // bytes are non-zero).
 fn convert_unknown_nested_errors(encoded_error: &mut [u8; 4]) {
-	// Converts single nested errors that are known to the Pop API as unit errors into `Other`.
-	// match encoded_error {
-	// 	[a, 0, 0, 0] => {},
-	// 	[a, b, 0, 0] => {
-	// 		if UNIT_ERRORS.contains(a) {
-	// 			encoded_error[..].rotate_right(1);
-	// 			encoded_error[0] = 0u8;
-	// 		}
-	// 	},
-	// 	[a, b, c, 0] => {
-	// 		if UNIT_ERRORS.contains(a) || SINGLE_NESTED_ERRORS.contains(a) {
-	// 			encoded_error[..].rotate_right(1);
-	// 			encoded_error[0] = 0u8;
-	// 		}
-	// 	},
-	// 	[a, b, c, d] => {
-	// 		if UNIT_ERRORS.contains(a)
-	// 			|| SINGLE_NESTED_ERRORS.contains(a)
-	// 			|| DOUBLE_NESTED_ERRORS.contains(a)
-	// 		{
-	// 			encoded_error[..].rotate_right(1);
-	// 			encoded_error[0] = 0u8;
-	// 		}
-	// 	},
-	// }
-	if UNIT_ERRORS.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8) {
-		encoded_error[..].rotate_right(1);
+	// Helper function to check if all elements in the slice are non-zero
+	fn all_non_zero(slice: &[u8]) -> bool {
+		slice.iter().all(|&x| x != 0)
+	}
+
+	// Helper function to rotate and set the first element to `Other`
+	fn rotate_and_set_other(encoded_error: &mut [u8; 4]) {
+		encoded_error.rotate_right(1);
 		encoded_error[0] = 0u8;
-	// Converts double nested errors that are known to the Pop API as single nested errors into
-	// `Other`.
-	} else if SINGLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[2..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	} else if DOUBLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[3..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
+	}
+
+	// Match on the encoded error and apply transformations if conditions are met
+	match *encoded_error {
+		[a, 0, 0, 0] if a != 0 => {},
+		[a, b, 0, 0] if all_non_zero(&[a, b]) => {
+			if UNIT_ERRORS.contains(&a) {
+				rotate_and_set_other(encoded_error);
+			}
+		},
+		[a, b, c, 0] if all_non_zero(&[a, b, c]) => {
+			if UNIT_ERRORS.contains(&a) || SINGLE_NESTED_ERRORS.contains(&a) {
+				rotate_and_set_other(encoded_error);
+			}
+		},
+		[a, b, c, d] if all_non_zero(&[a, b, c, d]) => {
+			if UNIT_ERRORS.contains(&a)
+				|| SINGLE_NESTED_ERRORS.contains(&a)
+				|| DOUBLE_NESTED_ERRORS.contains(&a)
+			{
+				rotate_and_set_other(encoded_error);
+			}
+		},
+		_ => {},
 	}
 }
 
