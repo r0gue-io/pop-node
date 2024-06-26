@@ -18,7 +18,10 @@ impl FromStatusCode for StatusCode {
 			0 => Ok(()),
 			_ => {
 				let mut encoded = status_code.to_le_bytes();
-				convert_unknown_errors(&mut encoded);
+				if unknown_errors(&encoded) {
+					encoded[..].rotate_right(1);
+					encoded[0] = 0u8;
+				};
 				Err(StatusCode::from(u32::from_le_bytes(encoded)))
 			},
 		}
@@ -27,7 +30,7 @@ impl FromStatusCode for StatusCode {
 
 impl From<scale::Error> for StatusCode {
 	fn from(_: scale::Error) -> Self {
-		DecodingFailed.into()
+		u32::from_le_bytes([255, 0, 0, 0]).into()
 	}
 }
 
@@ -50,43 +53,32 @@ impl From<scale::Error> for StatusCode {
 //
 // This mechanism ensures backward compatibility by correctly categorizing any unknown errors
 // into the `Other` variant, thus preventing issues caused by breaking changes.
-fn convert_unknown_errors(encoded_error: &mut [u8; 4]) {
-	let all_errors = [
-		UNIT_ERRORS.as_slice(),
-		SINGLE_NESTED_ERRORS.as_slice(),
-		DOUBLE_NESTED_ERRORS.as_slice(),
-		// `DecodingFailed`.
-		&[255u8],
-	]
-	.concat();
-	// Unknown errors, i.e. an encoded value where the first byte is non-zero (indicating a variant
-	// in `Error`) but unknown.
-	if !all_errors.contains(&encoded_error[0]) {
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
+fn unknown_errors(encoded_error: &[u8; 4]) -> bool {
+	match encoded_error[0] {
+		code if UNIT_ERRORS.contains(&code) => nested_errors(&encoded_error[1..], None),
+		// Single nested errors with a limit in their nesting.
+		//
+		// `TokenError`: has ten variants - translated to a limit of nine.
+		7 => nested_errors(&encoded_error[1..], Some(9)),
+		// `ArithmeticError`: has 3 variants - translated to a limit of two.
+		8 => nested_errors(&encoded_error[1..], Some(2)),
+		// `TransactionalError`: has 2 variants - translated to a limit of one.
+		9 => nested_errors(&encoded_error[1..], Some(1)),
+		code if DOUBLE_NESTED_ERRORS.contains(&code) => nested_errors(&encoded_error[3..], None),
+		_ => true,
 	}
-	convert_unknown_nested_errors(encoded_error);
 }
 
-// If an unknown nested variant of the `DispatchError` is detected (i.e. when any of the subsequent
-// bytes are non-zero).
-fn convert_unknown_nested_errors(encoded_error: &mut [u8; 4]) {
-	// Converts single nested errors that are known to the Pop API as unit errors into `Other`.
-	if UNIT_ERRORS.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8) {
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	// Converts double nested errors that are known to the Pop API as single nested errors into
-	// `Other`.
-	} else if SINGLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[2..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	} else if DOUBLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[3..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
+// Checks for unknown nested errors within the `DispatchError`.
+// - For single nested errors with a limit, it verifies if the nested value exceeds the limit.
+// - For other nested errors, it checks if any subsequent bytes are non-zero.
+//
+// `nested_error` - The slice of bytes representing the nested error.
+// `limit` - An optional limit for single nested errors.
+fn nested_errors(nested_error: &[u8], limit: Option<u8>) -> bool {
+	match limit {
+		Some(l) => nested_error[0] > l || nested_error[1..].iter().any(|&x| x != 0u8),
+		None => nested_error.iter().any(|&x| x != 0u8),
 	}
 }
 
@@ -150,11 +142,7 @@ pub enum Error {
 // - DecodingFailed: 255,
 const UNIT_ERRORS: [u8; 10] = [1, 2, 4, 5, 6, 10, 11, 12, 13, 255];
 
-// Single nested `Error` variants.
-// (variant: index):
-// - Token: 7,
-// - Arithmetic: 8,
-// - Transaction: 9,
+#[cfg(test)]
 const SINGLE_NESTED_ERRORS: [u8; 3] = [7, 8, 9];
 
 // Double nested `Error` variants
@@ -162,6 +150,7 @@ const SINGLE_NESTED_ERRORS: [u8; 3] = [7, 8, 9];
 // - Module: 3,
 const DOUBLE_NESTED_ERRORS: [u8; 1] = [3];
 
+#[cfg(test)]
 impl From<Error> for StatusCode {
 	fn from(value: Error) -> Self {
 		let mut encoded_error = value.encode();
@@ -388,6 +377,37 @@ mod tests {
 		assert_eq!(
 			into_error([3, 1, 1, 1]),
 			Other { dispatch_error_index: 3, error_index: 1, error: 1 },
+		);
+	}
+
+	#[test]
+	fn single_nested_unknown_variants() {
+		// Unknown `TokenError` variant.
+		assert_eq!(
+			into_error([7, 10, 0, 0]),
+			Other { dispatch_error_index: 7, error_index: 10, error: 0 }
+		);
+		assert_eq!(
+			into_status_code([7, 10, 0, 0]),
+			Other { dispatch_error_index: 7, error_index: 10, error: 0 }.into()
+		);
+		// Unknown `Arithmetic` variant.
+		assert_eq!(
+			into_error([8, 3, 0, 0]),
+			Other { dispatch_error_index: 8, error_index: 3, error: 0 }
+		);
+		assert_eq!(
+			into_status_code([8, 3, 0, 0]),
+			Other { dispatch_error_index: 8, error_index: 3, error: 0 }.into()
+		);
+		// Unknown `Transactional` variant.
+		assert_eq!(
+			into_error([9, 2, 0, 0]),
+			Other { dispatch_error_index: 9, error_index: 2, error: 0 }
+		);
+		assert_eq!(
+			into_status_code([9, 2, 0, 0]),
+			Other { dispatch_error_index: 9, error_index: 2, error: 0 }.into()
 		);
 	}
 
