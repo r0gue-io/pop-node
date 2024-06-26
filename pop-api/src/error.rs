@@ -72,6 +72,30 @@ fn convert_unknown_errors(encoded_error: &mut [u8; 4]) {
 // bytes are non-zero).
 fn convert_unknown_nested_errors(encoded_error: &mut [u8; 4]) {
 	// Converts single nested errors that are known to the Pop API as unit errors into `Other`.
+	// match encoded_error {
+	// 	[a, 0, 0, 0] => {},
+	// 	[a, b, 0, 0] => {
+	// 		if UNIT_ERRORS.contains(a) {
+	// 			encoded_error[..].rotate_right(1);
+	// 			encoded_error[0] = 0u8;
+	// 		}
+	// 	},
+	// 	[a, b, c, 0] => {
+	// 		if UNIT_ERRORS.contains(a) || SINGLE_NESTED_ERRORS.contains(a) {
+	// 			encoded_error[..].rotate_right(1);
+	// 			encoded_error[0] = 0u8;
+	// 		}
+	// 	},
+	// 	[a, b, c, d] => {
+	// 		if UNIT_ERRORS.contains(a)
+	// 			|| SINGLE_NESTED_ERRORS.contains(a)
+	// 			|| DOUBLE_NESTED_ERRORS.contains(a)
+	// 		{
+	// 			encoded_error[..].rotate_right(1);
+	// 			encoded_error[0] = 0u8;
+	// 		}
+	// 	},
+	// }
 	if UNIT_ERRORS.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8) {
 		encoded_error[..].rotate_right(1);
 		encoded_error[0] = 0u8;
@@ -136,31 +160,70 @@ pub enum Error {
 	DecodingFailed = 255,
 }
 
+// A const function is required for defining constants.
+const fn error_to_u8(error: Error) -> u8 {
+	match error {
+		Error::Other { .. } => 0,
+		Error::CannotLookup => 1,
+		Error::BadOrigin => 2,
+		Error::Module { .. } => 3,
+		Error::ConsumerRemaining => 4,
+		Error::NoProviders => 5,
+		Error::TooManyConsumers => 6,
+		Error::Token(_) => 7,
+		Error::Arithmetic(_) => 8,
+		Error::Transactional(_) => 9,
+		Error::Exhausted => 10,
+		Error::Corruption => 11,
+		Error::Unavailable => 12,
+		Error::RootNotAllowed => 13,
+		Error::DecodingFailed => 255,
+	}
+}
+
+macro_rules! unit_error_values {
+    ($($variant:ident),*) => {
+        [$(
+            error_to_u8(Error::$variant)
+        ),*]
+    };
+}
+
 // Unit `Error` variants.
-// (variant: index):
-// - CannotLookup: 1,
-// - BadOrigin: 2,
-// - ConsumerRemaining: 4,
-// - NoProviders: 5,
-// - TooManyConsumers: 6,
-// - Exhausted: 10,
-// - Corruption: 11,
-// - Unavailable: 12,
-// - RootNotAllowed: 13,
-// - DecodingFailed: 255,
-const UNIT_ERRORS: [u8; 10] = [1, 2, 4, 5, 6, 10, 11, 12, 13, 255];
+const UNIT_ERRORS: [u8; 10] = unit_error_values!(
+	CannotLookup,
+	BadOrigin,
+	ConsumerRemaining,
+	NoProviders,
+	TooManyConsumers,
+	Exhausted,
+	Corruption,
+	Unavailable,
+	RootNotAllowed,
+	DecodingFailed
+);
+
+// Macro for single nested errors
+macro_rules! single_nested_error_values {
+    ($($variant:ident($default:expr)),*) => {
+        [$(
+            error_to_u8(Error::$variant($default))
+        ),*]
+    };
+}
 
 // Single nested `Error` variants.
-// (variant: index):
-// - Token: 7,
-// - Arithmetic: 8,
-// - Transaction: 9,
-const SINGLE_NESTED_ERRORS: [u8; 3] = [7, 8, 9];
+//
+// Default values had to be given explicitly because non-const functions can be used for constan.
+const SINGLE_NESTED_ERRORS: [u8; 3] = single_nested_error_values!(
+	Token(TokenError::FundsUnavailable),
+	Arithmetic(ArithmeticError::Underflow),
+	Transactional(TransactionalError::LimitReached)
+);
+// const SINGLE_NESTED_ERRORS: [u8; 3] = single_error_values!(Token, Arithmetic, Transactional);
 
 // Double nested `Error` variants
-// (variant: index):
-// - Module: 3,
-const DOUBLE_NESTED_ERRORS: [u8; 1] = [3];
+const DOUBLE_NESTED_ERRORS: [u8; 1] = [error_to_u8(Module { error: 0, index: 0 })];
 
 impl From<Error> for StatusCode {
 	fn from(value: Error) -> Self {
