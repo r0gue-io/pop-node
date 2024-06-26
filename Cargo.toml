@@ -134,8 +134,8 @@ sp-transaction-pool = { version = "33.0.0", default-features = false }
 sp-version = { version = "36.0.0", default-features = false }
 substrate-frame-rpc-system = "36.0.0"
 
-# Polkadot
-pallet-xcm = { version = "15.0.0", default-features = false }
+
+pallet-xcm = { version = "15.0.0", default-features = false }                                     # Polkadot
 polkadot-cli = "15.0.0"
 polkadot-parachain-primitives = { version = "13.0.0", default-features = false }
 polkadot-primitives = { version = "14.0.0", default-features = false }
@@ -177,8 +177,3 @@ parachains-common = { version = "15.0.0", default-features = false }
 asset-hub-paseo-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "asset-hub-polkadot-runtime" }
 paseo-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "polkadot-runtime" }
 paseo-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "polkadot-runtime-constants" }
-
-# Paseo
-# asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
-# paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
-# paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
