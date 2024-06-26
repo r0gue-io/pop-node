@@ -5,10 +5,10 @@ use crate::{
 	dispatch,
 	primitives::{
 		nfts::{ApprovalsLimit, CollectionId, ItemId, KeyLimit},
-		BoundedBTreeMap,
+		BoundedBTreeMap, BoundedVec,
 	},
-	state, AccountId, Balance, BlockNumber, BoundedVec, MultiAddress, NftsKeys, RuntimeCall,
-	RuntimeStateKeys, StatusCode,
+	state, AccountId, Balance, BlockNumber, MultiAddress, NftsKeys, RuntimeCall, RuntimeStateKeys,
+	StatusCode,
 };
 pub use types::*;
 
@@ -521,157 +521,157 @@ pub(crate) enum NftCalls {
 		receive_item: ItemId,
 	},
 }
-//
-// #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
-// #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-// pub enum Error {
-// 	/// The signing account has no permission to do the operation.
-// 	NoPermission,
-// 	/// The given item ID is unknown.
-// 	UnknownCollection,
-// 	/// The item ID has already been used for an item.
-// 	AlreadyExists,
-// 	/// The approval had a deadline that expired, so the approval isn't valid anymore.
-// 	ApprovalExpired,
-// 	/// The owner turned out to be different to what was expected.
-// 	WrongOwner,
-// 	/// The witness data given does not match the current state of the chain.
-// 	BadWitness,
-// 	/// Collection ID is already taken.
-// 	CollectionIdInUse,
-// 	/// Items within that collection are non-transferable.
-// 	ItemsNonTransferable,
-// 	/// The provided account is not a delegate.
-// 	NotDelegate,
-// 	/// The delegate turned out to be different to what was expected.
-// 	WrongDelegate,
-// 	/// No approval exists that would allow the transfer.
-// 	Unapproved,
-// 	/// The named owner has not signed ownership acceptance of the collection.
-// 	Unaccepted,
-// 	/// The item is locked (non-transferable).
-// 	ItemLocked,
-// 	/// Item's attributes are locked.
-// 	LockedItemAttributes,
-// 	/// Collection's attributes are locked.
-// 	LockedCollectionAttributes,
-// 	/// Item's metadata is locked.
-// 	LockedItemMetadata,
-// 	/// Collection's metadata is locked.
-// 	LockedCollectionMetadata,
-// 	/// All items have been minted.
-// 	MaxSupplyReached,
-// 	/// The max supply is locked and can't be changed.
-// 	MaxSupplyLocked,
-// 	/// The provided max supply is less than the number of items a collection already has.
-// 	MaxSupplyTooSmall,
-// 	/// The given item ID is unknown.
-// 	UnknownItem,
-// 	/// Swap doesn't exist.
-// 	UnknownSwap,
-// 	/// The given item has no metadata set.
-// 	MetadataNotFound,
-// 	/// The provided attribute can't be found.
-// 	AttributeNotFound,
-// 	/// Item is not for sale.
-// 	NotForSale,
-// 	/// The provided bid is too low.
-// 	BidTooLow,
-// 	/// The item has reached its approval limit.
-// 	ReachedApprovalLimit,
-// 	/// The deadline has already expired.
-// 	DeadlineExpired,
-// 	/// The duration provided should be less than or equal to `MaxDeadlineDuration`.
-// 	WrongDuration,
-// 	/// The method is disabled by system settings.
-// 	MethodDisabled,
-// 	/// The provided setting can't be set.
-// 	WrongSetting,
-// 	/// Item's config already exists and should be equal to the provided one.
-// 	InconsistentItemConfig,
-// 	/// Config for a collection or an item can't be found.
-// 	NoConfig,
-// 	/// Some roles were not cleared.
-// 	RolesNotCleared,
-// 	/// Mint has not started yet.
-// 	MintNotStarted,
-// 	/// Mint has already ended.
-// 	MintEnded,
-// 	/// The provided Item was already used for claiming.
-// 	AlreadyClaimed,
-// 	/// The provided data is incorrect.
-// 	IncorrectData,
-// 	/// The extrinsic was sent by the wrong origin.
-// 	WrongOrigin,
-// 	/// The provided signature is incorrect.
-// 	WrongSignature,
-// 	/// The provided metadata might be too long.
-// 	IncorrectMetadata,
-// 	/// Can't set more attributes per one call.
-// 	MaxAttributesLimitReached,
-// 	/// The provided namespace isn't supported in this call.
-// 	WrongNamespace,
-// 	/// Can't delete non-empty collections.
-// 	CollectionNotEmpty,
-// 	/// The witness data should be provided.
-// 	WitnessRequired,
-// }
-//
-// impl TryFrom<u32> for Error {
-// 	type Error = Error;
-//
-// 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
-// 		use Error::*;
-// 		match status_code {
-// 			0 => Ok(NoPermission),
-// 			1 => Ok(UnknownCollection),
-// 			2 => Ok(AlreadyExists),
-// 			3 => Ok(ApprovalExpired),
-// 			4 => Ok(WrongOwner),
-// 			5 => Ok(BadWitness),
-// 			6 => Ok(CollectionIdInUse),
-// 			7 => Ok(ItemsNonTransferable),
-// 			8 => Ok(NotDelegate),
-// 			9 => Ok(WrongDelegate),
-// 			10 => Ok(Unapproved),
-// 			11 => Ok(Unaccepted),
-// 			12 => Ok(ItemLocked),
-// 			13 => Ok(LockedItemAttributes),
-// 			14 => Ok(LockedCollectionAttributes),
-// 			15 => Ok(LockedItemMetadata),
-// 			16 => Ok(LockedCollectionMetadata),
-// 			17 => Ok(MaxSupplyReached),
-// 			18 => Ok(MaxSupplyLocked),
-// 			19 => Ok(MaxSupplyTooSmall),
-// 			20 => Ok(UnknownItem),
-// 			21 => Ok(UnknownSwap),
-// 			22 => Ok(MetadataNotFound),
-// 			23 => Ok(AttributeNotFound),
-// 			24 => Ok(NotForSale),
-// 			25 => Ok(BidTooLow),
-// 			26 => Ok(ReachedApprovalLimit),
-// 			27 => Ok(DeadlineExpired),
-// 			28 => Ok(WrongDuration),
-// 			29 => Ok(MethodDisabled),
-// 			30 => Ok(WrongSetting),
-// 			31 => Ok(InconsistentItemConfig),
-// 			32 => Ok(NoConfig),
-// 			33 => Ok(RolesNotCleared),
-// 			34 => Ok(MintNotStarted),
-// 			35 => Ok(MintEnded),
-// 			36 => Ok(AlreadyClaimed),
-// 			37 => Ok(IncorrectData),
-// 			38 => Ok(WrongOrigin),
-// 			39 => Ok(WrongSignature),
-// 			40 => Ok(IncorrectMetadata),
-// 			41 => Ok(MaxAttributesLimitReached),
-// 			42 => Ok(WrongNamespace),
-// 			43 => Ok(CollectionNotEmpty),
-// 			44 => Ok(WitnessRequired),
-// 			_ => todo!(),
-// 		}
-// 	}
-// }
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum NftsError {
+	/// The signing account has no permission to do the operation.
+	NoPermission,
+	/// The given item ID is unknown.
+	UnknownCollection,
+	/// The item ID has already been used for an item.
+	AlreadyExists,
+	/// The approval had a deadline that expired, so the approval isn't valid anymore.
+	ApprovalExpired,
+	/// The owner turned out to be different to what was expected.
+	WrongOwner,
+	/// The witness data given does not match the current state of the chain.
+	BadWitness,
+	/// Collection ID is already taken.
+	CollectionIdInUse,
+	/// Items within that collection are non-transferable.
+	ItemsNonTransferable,
+	/// The provided account is not a delegate.
+	NotDelegate,
+	/// The delegate turned out to be different to what was expected.
+	WrongDelegate,
+	/// No approval exists that would allow the transfer.
+	Unapproved,
+	/// The named owner has not signed ownership acceptance of the collection.
+	Unaccepted,
+	/// The item is locked (non-transferable).
+	ItemLocked,
+	/// Item's attributes are locked.
+	LockedItemAttributes,
+	/// Collection's attributes are locked.
+	LockedCollectionAttributes,
+	/// Item's metadata is locked.
+	LockedItemMetadata,
+	/// Collection's metadata is locked.
+	LockedCollectionMetadata,
+	/// All items have been minted.
+	MaxSupplyReached,
+	/// The max supply is locked and can't be changed.
+	MaxSupplyLocked,
+	/// The provided max supply is less than the number of items a collection already has.
+	MaxSupplyTooSmall,
+	/// The given item ID is unknown.
+	UnknownItem,
+	/// Swap doesn't exist.
+	UnknownSwap,
+	/// The given item has no metadata set.
+	MetadataNotFound,
+	/// The provided attribute can't be found.
+	AttributeNotFound,
+	/// Item is not for sale.
+	NotForSale,
+	/// The provided bid is too low.
+	BidTooLow,
+	/// The item has reached its approval limit.
+	ReachedApprovalLimit,
+	/// The deadline has already expired.
+	DeadlineExpired,
+	/// The duration provided should be less than or equal to `MaxDeadlineDuration`.
+	WrongDuration,
+	/// The method is disabled by system settings.
+	MethodDisabled,
+	/// The provided setting can't be set.
+	WrongSetting,
+	/// Item's config already exists and should be equal to the provided one.
+	InconsistentItemConfig,
+	/// Config for a collection or an item can't be found.
+	NoConfig,
+	/// Some roles were not cleared.
+	RolesNotCleared,
+	/// Mint has not started yet.
+	MintNotStarted,
+	/// Mint has already ended.
+	MintEnded,
+	/// The provided Item was already used for claiming.
+	AlreadyClaimed,
+	/// The provided data is incorrect.
+	IncorrectData,
+	/// The extrinsic was sent by the wrong origin.
+	WrongOrigin,
+	/// The provided signature is incorrect.
+	WrongSignature,
+	/// The provided metadata might be too long.
+	IncorrectMetadata,
+	/// Can't set more attributes per one call.
+	MaxAttributesLimitReached,
+	/// The provided namespace isn't supported in this call.
+	WrongNamespace,
+	/// Can't delete non-empty collections.
+	CollectionNotEmpty,
+	/// The witness data should be provided.
+	WitnessRequired,
+}
+
+impl TryFrom<u32> for NftsError {
+	type Error = crate::error::Error;
+
+	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
+		use NftsError::*;
+		match status_code {
+			0 => Ok(NoPermission),
+			1 => Ok(UnknownCollection),
+			2 => Ok(AlreadyExists),
+			3 => Ok(ApprovalExpired),
+			4 => Ok(WrongOwner),
+			5 => Ok(BadWitness),
+			6 => Ok(CollectionIdInUse),
+			7 => Ok(ItemsNonTransferable),
+			8 => Ok(NotDelegate),
+			9 => Ok(WrongDelegate),
+			10 => Ok(Unapproved),
+			11 => Ok(Unaccepted),
+			12 => Ok(ItemLocked),
+			13 => Ok(LockedItemAttributes),
+			14 => Ok(LockedCollectionAttributes),
+			15 => Ok(LockedItemMetadata),
+			16 => Ok(LockedCollectionMetadata),
+			17 => Ok(MaxSupplyReached),
+			18 => Ok(MaxSupplyLocked),
+			19 => Ok(MaxSupplyTooSmall),
+			20 => Ok(UnknownItem),
+			21 => Ok(UnknownSwap),
+			22 => Ok(MetadataNotFound),
+			23 => Ok(AttributeNotFound),
+			24 => Ok(NotForSale),
+			25 => Ok(BidTooLow),
+			26 => Ok(ReachedApprovalLimit),
+			27 => Ok(DeadlineExpired),
+			28 => Ok(WrongDuration),
+			29 => Ok(MethodDisabled),
+			30 => Ok(WrongSetting),
+			31 => Ok(InconsistentItemConfig),
+			32 => Ok(NoConfig),
+			33 => Ok(RolesNotCleared),
+			34 => Ok(MintNotStarted),
+			35 => Ok(MintEnded),
+			36 => Ok(AlreadyClaimed),
+			37 => Ok(IncorrectData),
+			38 => Ok(WrongOrigin),
+			39 => Ok(WrongSignature),
+			40 => Ok(IncorrectMetadata),
+			41 => Ok(MaxAttributesLimitReached),
+			42 => Ok(WrongNamespace),
+			43 => Ok(CollectionNotEmpty),
+			44 => Ok(WitnessRequired),
+			_ => todo!(),
+		}
+	}
+}
 
 // Local implementations of pallet-nfts types
 mod types {

@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
-pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
+pub use sp_runtime::{MultiAddress, MultiSignature};
 
 use crate::error::{Error, StatusCode};
 use primitives::{storage_keys::*, AccountId as AccountId32};
