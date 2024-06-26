@@ -41,7 +41,7 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
-			api::total_supply(id).map_err(|e| e.into())
+			api::total_supply(id)
 		}
 
 		#[ink(message)]
@@ -56,7 +56,7 @@ mod fungibles {
 			owner: AccountId,
 			spender: AccountId,
 		) -> Result<Balance> {
-			api::allowance(id, owner, spender).map_err(|e| e.into())
+			api::allowance(id, owner, spender)
 		}
 
 		#[ink(message)]

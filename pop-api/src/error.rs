@@ -14,79 +14,16 @@ impl From<u32> for StatusCode {
 }
 impl FromStatusCode for StatusCode {
 	fn from_status_code(status_code: u32) -> Result<(), Self> {
-		match status_code {
-			0 => Ok(()),
-			_ => {
-				let mut encoded = status_code.to_le_bytes();
-				convert_unknown_errors(&mut encoded);
-				Err(StatusCode::from(u32::from_le_bytes(encoded)))
-			},
+		if status_code == 0 {
+			return Ok(());
 		}
+		Err(StatusCode(status_code))
 	}
 }
 
 impl From<scale::Error> for StatusCode {
 	fn from(_: scale::Error) -> Self {
-		DecodingFailed.into()
-	}
-}
-
-// If an unknown variant of the `DispatchError` is detected the error needs to be converted
-// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
-// position forward (discarding the last byte as it is not used) and setting the first byte to the
-// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
-// variant which provides all the necessary information to debug which error occurred in the runtime.
-//
-// Byte layout explanation:
-// - Byte 0: index of the variant within `Error`
-// - Byte 1:
-//   - Must be zero for `UNIT_ERRORS`.
-//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
-//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
-// - Byte 2:
-//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
-// - Byte 3:
-//   - Unused or represents further nested information.
-//
-// This mechanism ensures backward compatibility by correctly categorizing any unknown errors
-// into the `Other` variant, thus preventing issues caused by breaking changes.
-fn convert_unknown_errors(encoded_error: &mut [u8; 4]) {
-	let all_errors = [
-		UNIT_ERRORS.as_slice(),
-		SINGLE_NESTED_ERRORS.as_slice(),
-		DOUBLE_NESTED_ERRORS.as_slice(),
-		// `DecodingFailed`.
-		&[255u8],
-	]
-	.concat();
-	// Unknown errors, i.e. an encoded value where the first byte is non-zero (indicating a variant
-	// in `Error`) but unknown.
-	if !all_errors.contains(&encoded_error[0]) {
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	}
-	convert_unknown_nested_errors(encoded_error);
-}
-
-// If an unknown nested variant of the `DispatchError` is detected (i.e. when any of the subsequent
-// bytes are non-zero).
-fn convert_unknown_nested_errors(encoded_error: &mut [u8; 4]) {
-	// Converts single nested errors that are known to the Pop API as unit errors into `Other`.
-	if UNIT_ERRORS.contains(&encoded_error[0]) && encoded_error[1..].iter().any(|x| *x != 0u8) {
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	// Converts double nested errors that are known to the Pop API as single nested errors into
-	// `Other`.
-	} else if SINGLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[2..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
-	} else if DOUBLE_NESTED_ERRORS.contains(&encoded_error[0])
-		&& encoded_error[3..].iter().any(|x| *x != 0u8)
-	{
-		encoded_error[..].rotate_right(1);
-		encoded_error[0] = 0u8;
+		StatusCode(255u32)
 	}
 }
 
@@ -136,32 +73,7 @@ pub enum Error {
 	DecodingFailed = 255,
 }
 
-// Unit `Error` variants.
-// (variant: index):
-// - CannotLookup: 1,
-// - BadOrigin: 2,
-// - ConsumerRemaining: 4,
-// - NoProviders: 5,
-// - TooManyConsumers: 6,
-// - Exhausted: 10,
-// - Corruption: 11,
-// - Unavailable: 12,
-// - RootNotAllowed: 13,
-// - DecodingFailed: 255,
-const UNIT_ERRORS: [u8; 10] = [1, 2, 4, 5, 6, 10, 11, 12, 13, 255];
-
-// Single nested `Error` variants.
-// (variant: index):
-// - Token: 7,
-// - Arithmetic: 8,
-// - Transaction: 9,
-const SINGLE_NESTED_ERRORS: [u8; 3] = [7, 8, 9];
-
-// Double nested `Error` variants
-// (variant: index):
-// - Module: 3,
-const DOUBLE_NESTED_ERRORS: [u8; 1] = [3];
-
+#[cfg(test)]
 impl From<Error> for StatusCode {
 	fn from(value: Error) -> Self {
 		let mut encoded_error = value.encode();
@@ -175,8 +87,15 @@ impl From<Error> for StatusCode {
 
 impl From<StatusCode> for Error {
 	fn from(value: StatusCode) -> Self {
-		let encoded: [u8; 4] = value.0.to_le_bytes();
-		Error::decode(&mut &encoded[..]).unwrap_or(DecodingFailed)
+		let mut encoded: [u8; 4] = value.0.to_le_bytes();
+		match Error::decode(&mut &encoded[..]) {
+			Err(_) => {
+				encoded[..].rotate_right(1);
+				encoded[0] = 0u8;
+				Error::decode(&mut &encoded[..]).unwrap_or(DecodingFailed)
+			},
+			Ok(error) => error,
+		}
 	}
 }
 
@@ -286,28 +205,19 @@ mod tests {
 				into_status_code([error_code, 1, 0, 0]),
 				(Other { dispatch_error_index: error_code, error_index: 1, error: 0 }).into(),
 			);
-			assert_eq!(
-				into_error([error_code, 1, 0, 0]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 0 },
-			);
+			assert_eq!(into_error([error_code, 1, 0, 0]), errors[i]);
 			// Unexpected third byte nested.
 			assert_eq!(
 				into_status_code([error_code, 1, 1, 0]),
 				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
 			);
-			assert_eq!(
-				into_error([error_code, 1, 1, 0]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
-			);
+			assert_eq!(into_error([error_code, 1, 1, 0]), errors[i]);
 			// Unexpected fourth byte nested.
 			assert_eq!(
 				into_status_code([error_code, 1, 1, 1]),
 				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
 			);
-			assert_eq!(
-				into_error([error_code, 1, 1, 1]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
-			);
+			assert_eq!(into_error([error_code, 1, 1, 1]), errors[i]);
 		}
 	}
 
@@ -341,19 +251,13 @@ mod tests {
 				into_status_code([error_code, 1, 1, 0]),
 				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
 			);
-			assert_eq!(
-				into_error([error_code, 1, 1, 0]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
-			);
+			assert_eq!(into_error([error_code, 1, 1, 0]), errors[i][1]);
 			// Unexpected fourth byte nested.
 			assert_eq!(
 				into_status_code([error_code, 1, 1, 1]),
 				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }).into(),
 			);
-			assert_eq!(
-				into_error([error_code, 1, 1, 1]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
-			);
+			assert_eq!(into_error([error_code, 1, 1, 1]), errors[i][1]);
 		}
 	}
 
@@ -385,9 +289,37 @@ mod tests {
 			into_status_code([3, 1, 1, 1]),
 			(Other { dispatch_error_index: 3, error_index: 1, error: 1 }).into(),
 		);
+		assert_eq!(into_error([3, 1, 1, 1]), Module { index: 1, error: 1 });
+	}
+
+	#[test]
+	fn single_nested_unknown_variants() {
+		// Unknown `TokenError` variant.
 		assert_eq!(
-			into_error([3, 1, 1, 1]),
-			Other { dispatch_error_index: 3, error_index: 1, error: 1 },
+			into_error([7, 10, 0, 0]),
+			Other { dispatch_error_index: 7, error_index: 10, error: 0 }
+		);
+		assert_eq!(
+			into_status_code([7, 10, 0, 0]),
+			Other { dispatch_error_index: 7, error_index: 10, error: 0 }.into()
+		);
+		// Unknown `Arithmetic` variant.
+		assert_eq!(
+			into_error([8, 3, 0, 0]),
+			Other { dispatch_error_index: 8, error_index: 3, error: 0 }
+		);
+		assert_eq!(
+			into_status_code([8, 3, 0, 0]),
+			Other { dispatch_error_index: 8, error_index: 3, error: 0 }.into()
+		);
+		// Unknown `Transactional` variant.
+		assert_eq!(
+			into_error([9, 2, 0, 0]),
+			Other { dispatch_error_index: 9, error_index: 2, error: 0 }
+		);
+		assert_eq!(
+			into_status_code([9, 2, 0, 0]),
+			Other { dispatch_error_index: 9, error_index: 2, error: 0 }.into()
 		);
 	}
 
