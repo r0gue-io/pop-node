@@ -298,18 +298,18 @@ pub(crate) fn block(id: AssetId, who: impl Into<MultiAddress<AccountId, ()>>) ->
 /// -
 
 pub(crate) fn total_supply(id: AssetId) -> Result<Balance> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::TotalSupply(id))).into()
+	state::read(RuntimeStateKeys::Assets(AssetsKeys::TotalSupply(id)))
 }
 
 pub(crate) fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::BalanceOf(id, owner))).into()
+	state::read(RuntimeStateKeys::Assets(AssetsKeys::BalanceOf(id, owner)))
 }
 
 pub(crate) fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::Allowance(id, owner, spender))).into()
+	state::read(RuntimeStateKeys::Assets(AssetsKeys::Allowance(id, owner, spender)))
 }
 pub(crate) fn asset_exists(id: AssetId) -> Result<bool> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::AssetExists(id))).into()
+	state::read(RuntimeStateKeys::Assets(AssetsKeys::AssetExists(id)))
 }
 
 // Parameters to extrinsics representing an asset id (`AssetIdParameter`) and a balance amount (`Balance`) are expected

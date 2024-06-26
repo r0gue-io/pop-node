@@ -4,12 +4,12 @@ use super::*;
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum RuntimeStateKeys {
+	#[cfg(feature = "assets")]
+	Assets(AssetsKeys),
 	#[cfg(feature = "nfts")]
 	Nfts(NftsKeys),
 	#[cfg(feature = "cross-chain")]
 	ParachainSystem(ParachainSystemKeys),
-	#[cfg(feature = "assets")]
-	Assets(AssetsKeys),
 }
 
 #[cfg(feature = "cross-chain")]

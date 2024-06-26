@@ -1,16 +1,8 @@
-// Todo - errors:
-// - Badorigin: contract is always signed
-// - Lookup: is a valid AccountId due to the contract
-// - Many errors can occur from calling a dispatchable. All the DispatchErrors are handled by the
-// pop api but not all the possible errors for each dipatchable are tested. How should I approach
-// this?
-#![cfg(test)]
-
 use super::*;
-
-use pop_api::{
-	error::{ArithmeticError::*, Error::*, TokenError::*},
-	v0::assets::fungibles::FungiblesError::*,
+use pop_api::error::{
+	ArithmeticError::*,
+	Error::{self, *},
+	TokenError::*,
 };
 
 const ASSET_ID: AssetId = 1;
@@ -196,11 +188,8 @@ fn total_supply_works() {
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr =
+			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(Assets::balance(ASSET_ID, BOB), balance_of(addr.clone(), ASSET_ID, BOB));
@@ -216,11 +205,8 @@ fn balance_of_works() {
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr =
+			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -242,11 +228,8 @@ fn allowance_works() {
 fn asset_exists_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr =
+			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr.clone(), ASSET_ID));
@@ -264,16 +247,14 @@ fn create_works() {
 		let _ = env_logger::try_init();
 		let new_asset = 2;
 		// Instantiate a contract without balance (relay token).
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", 0, vec![0]);
+		let addr = instantiate("../examples/fungibles/target/ink/fungibles.wasm", 0, vec![0]);
 		// No balance to pay for fees.
 		assert_eq!(
 			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
 			Module { index: 10, error: 2 },
 		);
 		// Instantiate a contract without balance (relay token).
-		let addr =
-			instantiate("../../pop-api/examples/fungibles/target/ink/fungibles.wasm", 100, vec![2]);
+		let addr = instantiate("../examples/fungibles/target/ink/fungibles.wasm", 100, vec![2]);
 		// TODO: make sure it has enough for the fees but not for the deposit.
 		// No balance to pay fe deposit.
 		assert_eq!(
@@ -281,11 +262,8 @@ fn create_works() {
 			Module { index: 10, error: 2 },
 		);
 		// Instantiate a contract with balance.
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![1],
-		);
+		let addr =
+			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
 		create_asset(ALICE, ASSET_ID, 1);
 		// Asset ID is already taken.
 		assert_eq!(
@@ -307,11 +285,8 @@ fn create_works() {
 fn set_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr =
+			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		create_asset(addr.clone(), ASSET_ID, 1);
 		let result = set_metadata(addr.clone(), ASSET_ID, vec![12], vec![12], 12);
@@ -324,11 +299,8 @@ fn set_metadata_works() {
 fn transfer_from_mint_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr =
+			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Asset does not exist.
@@ -387,11 +359,8 @@ fn transfer_from_mint_works() {
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr =
+			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Asset does not exist.

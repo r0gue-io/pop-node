@@ -390,6 +390,186 @@ where
 	dispatch_call::<T, E>(&mut env, call, origin, LOG_PREFIX)
 }
 
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::{Assets, Runtime, System};
+	use sp_runtime::BuildStorage;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
+			.expect("Frame system builds valid default genesis config");
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	#[test]
+	fn encoding_decoding_dispatch_error() {
+		use codec::{Decode, Encode};
+		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+
+		new_test_ext().execute_with(|| {
+			let error = DispatchError::Module(ModuleError {
+				index: 255,
+				error: [2, 0, 0, 0],
+				message: Some("error message"),
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				// `message` is skipped for encoding.
+				DispatchError::Module(ModuleError {
+					index: 255,
+					error: [2, 0, 0, 0],
+					message: None
+				})
+			);
+			println!("Encoded Module Error: {:?}", encoded);
+
+			// Example pallet assets Error into ModuleError.
+			let index =
+				<<Runtime as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
+					Assets,
+				>()
+				.expect("Every active module has an index in the runtime; qed") as u8;
+
+			let mut error =
+				pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
+			error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
+			let error = DispatchError::Module(ModuleError {
+				index,
+				error: TryInto::try_into(error).expect("should work"),
+				message: None,
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 52, 18, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				DispatchError::Module(ModuleError {
+					index: 52,
+					error: [18, 0, 0, 0],
+					message: None
+				})
+			);
+			println!("Encoded Module Error: {:?}", encoded);
+
+			// Example DispatchError::Token
+			let error = DispatchError::Token(TokenError::UnknownAsset);
+			let encoded = error.encode();
+			assert_eq!(encoded, vec![7, 4]);
+			println!("Encoded Token Error: {:?}", encoded);
+
+			// Example DispatchError::Arithmetic
+			let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
+			let encoded = error.encode();
+			assert_eq!(encoded, vec![8, 1]);
+			println!("Encoded Arithmetic Error: {:?}", encoded);
+		});
+	}
+
+	#[test]
+	fn encoding_of_enum() {
+		use codec::{Decode, Encode};
+
+		// Comprehensive enum with all different type of variants.
+		#[derive(Debug, PartialEq, Encode, Decode)]
+		enum ComprehensiveEnum {
+			SimpleVariant,
+			DataVariant(u8),
+			NamedFields { w: u8 },
+			NestedEnum(InnerEnum),
+			OptionVariant(Option<u8>),
+			VecVariant(Vec<u8>),
+			TupleVariant(u8, u8),
+			NestedStructVariant(NestedStruct),
+			NestedEnumStructVariant(NestedEnumStruct),
+		}
+
+		#[derive(Debug, PartialEq, Encode, Decode)]
+		enum InnerEnum {
+			A,
+			B { inner_data: u8 },
+			C(u8),
+		}
+
+		#[derive(Debug, PartialEq, Encode, Decode)]
+		struct NestedStruct {
+			x: u8,
+			y: u8,
+		}
+
+		#[derive(Debug, PartialEq, Encode, Decode)]
+		struct NestedEnumStruct {
+			inner_enum: InnerEnum,
+		}
+
+		// Creating each possible variant for an enum.
+		let enum_simple = ComprehensiveEnum::SimpleVariant;
+		let enum_data = ComprehensiveEnum::DataVariant(42);
+		let enum_named = ComprehensiveEnum::NamedFields { w: 42 };
+		let enum_nested = ComprehensiveEnum::NestedEnum(InnerEnum::B { inner_data: 42 });
+		let enum_option = ComprehensiveEnum::OptionVariant(Some(42));
+		let enum_vec = ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4, 5]);
+		let enum_tuple = ComprehensiveEnum::TupleVariant(42, 42);
+		let enum_nested_struct =
+			ComprehensiveEnum::NestedStructVariant(NestedStruct { x: 42, y: 42 });
+		let enum_nested_enum_struct =
+			ComprehensiveEnum::NestedEnumStructVariant(NestedEnumStruct {
+				inner_enum: InnerEnum::C(42),
+			});
+
+		// Encode and print each variant individually to see their encoded values.
+		println!("{:?} -> {:?}", enum_simple, enum_simple.encode());
+		println!("{:?} -> {:?}", enum_data, enum_data.encode());
+		println!("{:?} -> {:?}", enum_named, enum_named.encode());
+		println!("{:?} -> {:?}", enum_nested, enum_nested.encode());
+		println!("{:?} -> {:?}", enum_option, enum_option.encode());
+		println!("{:?} -> {:?}", enum_vec, enum_vec.encode());
+		println!("{:?} -> {:?}", enum_tuple, enum_tuple.encode());
+		println!("{:?} -> {:?}", enum_nested_struct, enum_nested_struct.encode());
+		println!("{:?} -> {:?}", enum_nested_enum_struct, enum_nested_enum_struct.encode());
+	}
+
+	#[test]
+	fn dispatch_error_to_status_code() {
+		// Create all the different `DispatchError` variants with its respective `PopApiError`.
+		let test_cases = vec![
+			(DispatchError::Other("hallo"), [0, 0, 0, 0]),
+			(DispatchError::CannotLookup, [1, 0, 0, 0]),
+			(DispatchError::BadOrigin, [2, 0, 0, 0]),
+			(
+				DispatchError::Module(sp_runtime::ModuleError {
+					index: 1,
+					error: [2, 0, 0, 0],
+					message: Some("hallo"),
+				}),
+				[3, 1, 2, 0],
+			),
+			(DispatchError::ConsumerRemaining, [4, 0, 0, 0]),
+			(DispatchError::NoProviders, [5, 0, 0, 0]),
+			(DispatchError::TooManyConsumers, [6, 0, 0, 0]),
+			(DispatchError::Token(sp_runtime::TokenError::BelowMinimum), [7, 2, 0, 0]),
+			(DispatchError::Arithmetic(sp_runtime::ArithmeticError::Overflow), [8, 1, 0, 0]),
+			(
+				DispatchError::Transactional(sp_runtime::TransactionalError::LimitReached),
+				[9, 0, 0, 0],
+			),
+			(DispatchError::Exhausted, [10, 0, 0, 0]),
+			(DispatchError::Corruption, [11, 0, 0, 0]),
+			(DispatchError::Unavailable, [12, 0, 0, 0]),
+			(DispatchError::RootNotAllowed, [13, 0, 0, 0]),
+		];
+		for (error, encoded_error) in test_cases {
+			let status_code = crate::extensions::convert_to_status_code(error);
+			assert_eq!(status_code, u32::decode(&mut &encoded_error[..]).unwrap());
+		}
+	}
+}
 // use enumflags2::BitFlags;
 // use pallet_nfts::{CollectionConfig, CollectionSetting, CollectionSettings, MintSettings};
 // use parachains_common::CollectionId;

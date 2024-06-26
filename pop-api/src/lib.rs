@@ -21,8 +21,7 @@ pub mod v0;
 
 type AccountId = AccountId32;
 // TODO: do the same as the AccountId above and check expanded macro code.
-// type Balance = <Environment as ink::env::Environment>::Balance;
-type Balance = u128;
+type Balance = <Environment as ink::env::Environment>::Balance;
 #[cfg(any(feature = "nfts", feature = "cross-chain"))]
 type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
 

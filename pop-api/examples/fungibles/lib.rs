@@ -12,7 +12,7 @@ use pop_api::{
 	primitives::{AccountId as AccountId32, AssetId},
 };
 
-pub type Result<T> = core::result::Result<T, FungiblesError>;
+pub type Result<T> = core::result::Result<T, Error>;
 
 #[ink::contract(env = pop_api::Environment)]
 mod fungibles {
@@ -68,9 +68,9 @@ mod fungibles {
 				value,
 			);
 
-			let result = api::transfer(id, to, value).map_err(|e| e.into());
+			let result = api::transfer(id, to, value);
 			ink::env::debug_println!("Result: {:?}", result);
-			result
+			result.map_err(|e| e.into())
 		}
 
 		#[ink(message)]
@@ -91,9 +91,9 @@ mod fungibles {
 				value,
 			);
 
-			let result = api::transfer_from(id, from, to, value, &data).map_err(|e| e.into());
+			let result = api::transfer_from(id, from, to, value, &data);
 			ink::env::debug_println!("Result: {:?}", result);
-			result
+			result.map_err(|e| e.into())
 		}
 
 		/// 2. PSP-22 Metadata Interface:
@@ -118,9 +118,9 @@ mod fungibles {
 				admin,
 				min_balance,
 			);
-			let result = api::create(id, admin, min_balance).map_err(|e| e.into());
+			let result = api::create(id, admin, min_balance);
 			ink::env::debug_println!("Result: {:?}", result);
-			result
+			result.map_err(|e| e.into())
 		}
 
 		#[ink(message)]
@@ -138,9 +138,9 @@ mod fungibles {
 				symbol,
 				decimals,
 			);
-			let result = api::set_metadata(id, name, symbol, decimals).map_err(|e| e.into());
+			let result = api::set_metadata(id, name, symbol, decimals);
 			ink::env::debug_println!("Result: {:?}", result);
-			result
+			result.map_err(|e| e.into())
 		}
 
 		#[ink(message)]
