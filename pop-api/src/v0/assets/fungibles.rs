@@ -353,11 +353,13 @@ impl From<StatusCode> for FungiblesError {
 
 #[cfg(test)]
 mod tests {
+	use scale::Decode;
+
 	use super::FungiblesError;
-	use crate::error::{
+	use crate::StatusCode;
+	use pop_primitives::{
 		ArithmeticError::*,
 		Error::{self, *},
-		StatusCode,
 		TokenError::*,
 		TransactionalError::*,
 	};
@@ -365,6 +367,18 @@ mod tests {
 	fn into_fungibles_error(error: Error) -> FungiblesError {
 		let status_code: StatusCode = error.into();
 		status_code.into()
+	}
+
+	#[test]
+	fn status_code_vs_encoded() {
+		assert_eq!(u32::decode(&mut &[3u8, 10, 2, 0][..]).unwrap(), 133635u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 0, 0][..]).unwrap(), 13315u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 1, 0][..]).unwrap(), 78851u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 2, 0][..]).unwrap(), 144387u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 3, 0][..]).unwrap(), 209923u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 5, 0][..]).unwrap(), 340995u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 7, 0][..]).unwrap(), 472067u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 10, 0][..]).unwrap(), 668675u32);
 	}
 
 	#[test]

@@ -7,12 +7,12 @@
 ///
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api, FungiblesError},
-	error::{Error, StatusCode},
+	assets::fungibles::{self as api},
+	error::StatusCode,
 	primitives::{AccountId as AccountId32, AssetId},
 };
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract(env = pop_api::Environment)]
 mod fungibles {
@@ -41,12 +41,14 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
-			api::total_supply(id).map_err(|e| e.into())
+			// api::total_supply(id).map_err(|e| e.into())
+			api::total_supply(id)
 		}
 
 		#[ink(message)]
 		pub fn balance_of(&self, id: AssetId, owner: AccountId32) -> Result<Balance> {
-			api::balance_of(id, owner).map_err(|e| e.into())
+			// api::balance_of(id, owner).map_err(|e| e.into())
+			api::balance_of(id, owner)
 		}
 
 		#[ink(message)]
@@ -56,7 +58,8 @@ mod fungibles {
 			owner: AccountId32,
 			spender: AccountId32,
 		) -> Result<Balance> {
-			api::allowance(id, owner, spender).map_err(|e| e.into())
+			// api::allowance(id, owner, spender).map_err(|e| e.into())
+			api::allowance(id, owner, spender)
 		}
 
 		#[ink(message)]
@@ -70,7 +73,8 @@ mod fungibles {
 
 			let result = api::transfer(id, to, value);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+			// result.map_err(|e| e.into())
+			result
 		}
 
 		#[ink(message)]
@@ -93,7 +97,8 @@ mod fungibles {
 
 			let result = api::transfer_from(id, from, to, value, &data);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+			// result.map_err(|e| e.into())
+			result
 		}
 
 		/// 2. PSP-22 Metadata Interface:
@@ -120,7 +125,8 @@ mod fungibles {
 			);
 			let result = api::create(id, admin, min_balance);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+			// result.map_err(|e| e.into())
+			result
 		}
 
 		#[ink(message)]
@@ -140,12 +146,14 @@ mod fungibles {
 			);
 			let result = api::set_metadata(id, name, symbol, decimals);
 			ink::env::debug_println!("Result: {:?}", result);
-			result.map_err(|e| e.into())
+			// result.map_err(|e| e.into())
+			result
 		}
 
 		#[ink(message)]
 		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-			api::asset_exists(id).map_err(|e| e.into())
+			// api::asset_exists(id).map_err(|e| e.into())
+			api::asset_exists(id)
 		}
 	}
 
