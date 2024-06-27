@@ -27,6 +27,7 @@ use pop_primitives::{
 	cross_chain::CrossChainMessage,
 	nfts::{CollectionId, ItemId},
 	storage_keys::{AssetsKeys, NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
+	v0::{unknown_errors, Error},
 	AssetId,
 };
 
@@ -57,26 +58,73 @@ where
 		E: Ext<T = T>,
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
-		match v0::FuncId::try_from(env.func_id())? {
-			v0::FuncId::Dispatch => match dispatch::<T, E>(env) {
-				Ok(()) => Ok(RetVal::Converging(0)),
-				Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
+		match v0::FuncId::try_from(env.func_id()) {
+			Ok(function) => {
+				match function {
+					v0::FuncId::Dispatch => {
+						const LOG_PREFIX: &str = " dispatch |";
+						let mut env = env.buf_in_buf_out();
+						let len = env.in_len();
+
+						charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
+
+						// read the input as RuntimeCall
+						let (call, _version): (RuntimeCall, u8) = env.read_as_unbounded(len)?;
+
+						match dispatch::<T, E>(env, call) {
+							Ok(()) => Ok(RetVal::Converging(0)),
+							Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
+						}
+					},
+					v0::FuncId::ReadState => {
+						const LOG_PREFIX: &str = " read_state |";
+
+						let mut env = env.buf_in_buf_out();
+
+						// To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
+						let base_weight: Weight = ContractSchedule::<T>::get()
+							.host_fn_weights
+							.return_per_byte
+							.saturating_mul(env.in_len().into());
+						let charged_weight = env.charge_weight(base_weight)?;
+
+						log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+
+						let (key, _version): (RuntimeStateKeys, u8) = env.read_as()?;
+						read_state::<T, E>(env, key)?;
+						Ok(RetVal::Converging(0))
+					},
+					v0::FuncId::SendXcm => {
+						const LOG_PREFIX: &str = " send_xcm |";
+
+						let mut env = env.buf_in_buf_out();
+						let len = env.in_len();
+
+						let _ = charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
+
+						// read the input as CrossChainMessage
+						let (xc_call, _version): (CrossChainMessage, u8) =
+							env.read_as::<(CrossChainMessage, u8)>()?;
+
+						send_xcm::<T, E>(env, xc_call)?;
+						Ok(RetVal::Converging(0))
+					},
+				}
 			},
-			v0::FuncId::ReadState => {
-				read_state::<T, E>(env)?;
-				Ok(RetVal::Converging(0))
-			},
-			v0::FuncId::SendXcm => {
-				send_xcm::<T, E>(env)?;
-				Ok(RetVal::Converging(0))
-			},
+			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
 		}
 	}
 }
+
 pub(crate) fn convert_to_status_code(error: DispatchError) -> u32 {
 	let mut encoded_error = error.encode();
 	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
 	encoded_error.resize(4, 0);
+	let mut encoded_error = encoded_error.try_into().expect("qid resized to 4 bytes");
+	if unknown_errors(&encoded_error) {
+		encoded_error[..].rotate_right(1);
+		encoded_error[0] = 0u8;
+	};
 	u32::decode(&mut &encoded_error[..]).expect("qid, resized to 4 bytes line above")
 }
 
@@ -169,7 +217,10 @@ where
 	Ok(charged_weight)
 }
 
-fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+fn dispatch<T, E>(
+	mut env: Environment<E, BufInBufOutState>,
+	call: RuntimeCall,
+) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
 		+ frame_system::Config<RuntimeCall = RuntimeCall, RuntimeOrigin = RuntimeOrigin>,
@@ -178,13 +229,13 @@ where
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
-	let mut env = env.buf_in_buf_out();
-	let len = env.in_len();
-
-	charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
-
-	// read the input as RuntimeCall
-	let call: RuntimeCall = env.read_as_unbounded(len)?;
+	// let mut env = env.buf_in_buf_out();
+	// let len = env.in_len();
+	//
+	// charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
+	//
+	// // read the input as RuntimeCall
+	// let call: RuntimeCall = env.read_as_unbounded(len)?;
 
 	log::debug!(target: LOG_TARGET, "Read input as call successfully");
 
@@ -194,7 +245,10 @@ where
 	dispatch_call::<T, E>(&mut env, call, origin, LOG_PREFIX)
 }
 
-fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+fn read_state<T, E>(
+	mut env: Environment<E, BufInBufOutState>,
+	key: RuntimeStateKeys,
+) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
 		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
@@ -205,18 +259,18 @@ where
 {
 	const LOG_PREFIX: &str = " read_state |";
 
-	let mut env = env.buf_in_buf_out();
-
-	// To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
-	let base_weight: Weight = ContractSchedule::<T>::get()
-		.host_fn_weights
-		.return_per_byte
-		.saturating_mul(env.in_len().into());
-	let charged_weight = env.charge_weight(base_weight)?;
-
-	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
-
-	let key: RuntimeStateKeys = env.read_as()?;
+	// let mut env = env.buf_in_buf_out();
+	//
+	// // To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
+	// let base_weight: Weight = ContractSchedule::<T>::get()
+	// 	.host_fn_weights
+	// 	.return_per_byte
+	// 	.saturating_mul(env.in_len().into());
+	// let charged_weight = env.charge_weight(base_weight)?;
+	//
+	// log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
+	//
+	// let key: RuntimeStateKeys = env.read_as()?;
 
 	let result = match key {
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, &mut env),
@@ -336,7 +390,10 @@ where
 	}
 }
 
-fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
+fn send_xcm<T, E>(
+	mut env: Environment<E, BufInBufOutState>,
+	xc_call: CrossChainMessage,
+) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
 		+ frame_system::Config<
@@ -348,13 +405,13 @@ where
 {
 	const LOG_PREFIX: &str = " send_xcm |";
 
-	let mut env = env.buf_in_buf_out();
-	let len = env.in_len();
-
-	let _ = charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
-
-	// read the input as CrossChainMessage
-	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
+	// let mut env = env.buf_in_buf_out();
+	// let len = env.in_len();
+	//
+	// let _ = charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
+	//
+	// // read the input as CrossChainMessage
+	// let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
 
 	// Determine the call to dispatch
 	let (dest, message) = match xc_call {

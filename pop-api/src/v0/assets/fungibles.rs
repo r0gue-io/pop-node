@@ -1,5 +1,7 @@
 use crate::{
-	assets, primitives::AssetId, primitives::MultiAddress, AccountId, Balance, StatusCode,
+	assets,
+	primitives::{AssetId, MultiAddress},
+	AccountId, Balance, StatusCode,
 };
 use ink::prelude::vec::Vec;
 use scale::Encode;
@@ -28,6 +30,7 @@ type Result<T> = core::result::Result<T, StatusCode>;
 ///
 /// # Returns
 /// The total supply of the token, or an error if the operation fails.
+#[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
 	assets::total_supply(id)
 }
@@ -41,6 +44,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 ///
 /// # Returns
 /// The balance of the specified account, or an error if the operation fails.
+#[inline]
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 	assets::balance_of(id, owner)
 }
@@ -55,6 +59,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 ///
 /// # Returns
 /// The remaining allowance, or an error if the operation fails.
+#[inline]
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
 	assets::allowance(id, owner, spender)
 }
@@ -69,6 +74,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
+#[inline]
 pub fn transfer(id: AssetId, to: impl Into<MultiAddress<()>>, value: Balance) -> Result<()> {
 	assets::transfer(id, to, value)
 }
@@ -85,19 +91,15 @@ pub fn transfer(id: AssetId, to: impl Into<MultiAddress<()>>, value: Balance) ->
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
+#[inline]
 pub fn transfer_from(
 	id: AssetId,
-	from: Option<impl Into<MultiAddress<()>>>,
-	to: Option<impl Into<MultiAddress<()>>>,
+	from: impl Into<MultiAddress<()>>,
+	to: impl Into<MultiAddress<()>>,
 	value: Balance,
 	_data: &[u8],
 ) -> Result<()> {
-	match (from, to) {
-		(None, Some(to)) => assets::mint(id, to, value),
-		(Some(from), None) => assets::burn(id, from, value),
-		(Some(from), Some(to)) => assets::transfer_approved(id, from, to, value),
-		_ => Ok(()),
-	}
+	assets::transfer_approved(id, from, to, value)
 }
 
 /// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -109,16 +111,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the approval fails.
-// #[allow(unused_variables)]
-// fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-// 	todo!()
-// 	// TODO: read allowance and increase or decrease.
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::ApproveTransfer {
-// 	// 	id: id.into(),
-// 	// 	delegate: spender.into(),
-// 	// 	amount: Compact(value),
-// 	// }))?)
-// }
+#[inline]
+pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	assets::approve_transfer(id, spender, value)
+}
 
 /// Increases the allowance of a spender.
 ///
@@ -129,13 +125,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-// fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-// 	Ok(dispatch(RuntimeCall::Assets(AssetsCall::ApproveTransfer {
-// 		id: id.into(),
-// 		delegate: spender.into(),
-// 		amount: Compact(value),
-// 	}))?)
-// }
+#[inline]
+pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	assets::approve_transfer(id, spender, value)
+}
 
 /// Decreases the allowance of a spender.
 ///
@@ -146,20 +139,11 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-// #[allow(unused_variables)]
-// fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-// 	todo!()
-// 	// TODO: cancel_approval + approve_transfer
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::CancelApproval {
-// 	// 	id: id.into(),
-// 	// 	delegate: delegate.into(),
-// 	// }))?)
-// 	// Ok(dispatch(RuntimeCall::Assets(AssetsCall::ApproveTransfer {
-// 	// 	id: id.into(),
-// 	// 	delegate: spender.into(),
-// 	// 	amount: Compact(value),
-// 	// }))?)
-// }
+#[inline]
+pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	// assets::cancel_approval(id, spender)?;
+	assets::approve_transfer(id, spender, value)
+}
 
 /// 2. PSP-22 Metadata Interface:
 /// - token_name
@@ -173,11 +157,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// The name of the token as a byte vector, or an error if the operation fails.
-// #[allow(unused_variables)]
-// pub fn token_name(id: AssetId) -> Result<Option<Vec<u8>>> {
-// 	todo!()
-// 	// Ok(state::read(RuntimeStateKeys::Assets(AssetsKeys::TokenName(id)))?)
-// }
+#[inline]
+pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
+	assets::token_name(id)
+}
 
 /// Returns the token symbol for a given asset ID.
 ///
@@ -186,10 +169,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 ///  The symbol of the token as a byte vector, or an error if the operation fails.
-// #[allow(unused_variables)]
-// fn token_symbol(id: AssetId) -> Result<Option<Vec<u8>>> {
-// 	todo!()
-// }
+#[inline]
+pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
+	assets::token_symbol(id)
+}
 
 /// Returns the token decimals for a given asset ID.
 ///
@@ -198,10 +181,10 @@ pub fn transfer_from(
 ///
 /// # Returns
 ///  The number of decimals of the token as a byte vector, or an error if the operation fails.
-// #[allow(unused_variables)]
-// fn token_decimals(id: AssetId) -> Result<Option<Vec<u8>>> {
-// 	todo!()
-// }
+#[inline]
+pub fn token_decimals(id: AssetId) -> Result<u8> {
+	assets::token_decimals(id)
+}
 
 /// 3. Asset Management:
 /// - create
@@ -221,9 +204,9 @@ pub fn transfer_from(
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the creation fails.
-pub fn create(id: AssetId, admin: impl Into<MultiAddress<()>>, min_balance: Balance) -> Result<()> {
-	assets::create(id, admin, min_balance)
-}
+// pub fn create(id: AssetId, admin: impl Into<MultiAddress<()>>, min_balance: Balance) -> Result<()> {
+// 	assets::create(id, admin, min_balance)
+// }
 
 /// Start the process of destroying a token with a given asset ID.
 ///
@@ -284,9 +267,9 @@ pub fn create(id: AssetId, admin: impl Into<MultiAddress<()>>, min_balance: Bala
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
-	assets::set_metadata(id, name, symbol, decimals)
-}
+// pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
+// 	assets::set_metadata(id, name, symbol, decimals)
+// }
 
 /// Clear the metadata for a token with a given asset ID.
 ///
@@ -301,55 +284,55 @@ pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -
 // 	}))?)
 // }
 
-pub fn asset_exists(id: AssetId) -> Result<bool> {
-	assets::asset_exists(id)
-}
+// pub fn asset_exists(id: AssetId) -> Result<bool> {
+// 	assets::asset_exists(id)
+// }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum FungiblesError {
-	Other(StatusCode),
-	/// The asset is not live; either frozen or being destroyed.
-	AssetNotLive,
-	/// Not enough allowance to fulfill a request is available.
-	InsufficientAllowance,
-	/// Not enough balance to fulfill a request is available.
-	InsufficientBalance,
-	/// The asset ID is already taken.
-	InUse,
-	/// Minimum balance should be non-zero.
-	MinBalanceZero,
-	/// The account to alter does not exist.
-	NoAccount,
-	/// The signing account has no permission to do the operation.
-	NoPermission,
-	/// The given asset ID is unknown.
-	Unknown,
-	// // TODO:
-	// // - Originally `InsufficientBalance` for the deposit but this would result in the same error
-	// // as the error when there is insufficient balance for transferring an asset.
-	/// No balance for creation of assets or fees.
-	NoBalance,
-}
-
-impl From<StatusCode> for FungiblesError {
-	fn from(value: StatusCode) -> Self {
-		let encoded = value.0.to_le_bytes();
-		match encoded {
-			// Balances.
-			[3, 10, 2, _] => FungiblesError::NoBalance,
-			// Assets.
-			[3, 52, 0, _] => FungiblesError::NoAccount,
-			[3, 52, 1, _] => FungiblesError::NoPermission,
-			[3, 52, 2, _] => FungiblesError::Unknown,
-			[3, 52, 3, _] => FungiblesError::InUse,
-			[3, 52, 5, _] => FungiblesError::MinBalanceZero,
-			[3, 52, 7, _] => FungiblesError::InsufficientAllowance,
-			[3, 52, 10, _] => FungiblesError::AssetNotLive,
-			_ => FungiblesError::Other(value),
-		}
-	}
-}
+// #[derive(Encode)]
+// // #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+// pub enum FungiblesError {
+// 	Other(StatusCode),
+// 	/// The asset is not live; either frozen or being destroyed.
+// 	AssetNotLive,
+// 	/// Not enough allowance to fulfill a request is available.
+// 	InsufficientAllowance,
+// 	/// Not enough balance to fulfill a request is available.
+// 	InsufficientBalance,
+// 	/// The asset ID is already taken.
+// 	InUse,
+// 	/// Minimum balance should be non-zero.
+// 	MinBalanceZero,
+// 	/// The account to alter does not exist.
+// 	NoAccount,
+// 	/// The signing account has no permission to do the operation.
+// 	NoPermission,
+// 	/// The given asset ID is unknown.
+// 	Unknown,
+// 	// // TODO:
+// 	// // - Originally `InsufficientBalance` for the deposit but this would result in the same error
+// 	// // as the error when there is insufficient balance for transferring an asset.
+// 	/// No balance for creation of assets or fees.
+// 	NoBalance,
+// }
+//
+// impl From<StatusCode> for FungiblesError {
+// 	fn from(value: StatusCode) -> Self {
+// 		let encoded = value.0.to_le_bytes();
+// 		match encoded {
+// 			// Balances.
+// 			[3, 10, 2, _] => FungiblesError::NoBalance,
+// 			// Assets.
+// 			[3, 52, 0, _] => FungiblesError::NoAccount,
+// 			[3, 52, 1, _] => FungiblesError::NoPermission,
+// 			[3, 52, 2, _] => FungiblesError::Unknown,
+// 			[3, 52, 3, _] => FungiblesError::InUse,
+// 			[3, 52, 5, _] => FungiblesError::MinBalanceZero,
+// 			[3, 52, 7, _] => FungiblesError::InsufficientAllowance,
+// 			[3, 52, 10, _] => FungiblesError::AssetNotLive,
+// 			_ => FungiblesError::Other(value),
+// 		}
+// 	}
+// }
 
 #[cfg(test)]
 mod tests {

@@ -2,7 +2,7 @@
 use super::nfts::*;
 use super::*;
 
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+#[derive(Encode, Decode, MaxEncodedLen)]
 pub enum RuntimeStateKeys {
 	#[cfg(feature = "cross-chain")]
 	#[codec(index = 1)]
@@ -44,13 +44,16 @@ pub enum NftsKeys {
 
 /// The required input for state queries in pallet assets.
 #[cfg(feature = "assets")]
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+#[derive(Encode, Decode, MaxEncodedLen)]
 pub enum AssetsKeys {
 	Allowance(AssetId, AccountId, AccountId),
 	/// Check if the asset exists.
-	AssetExists(AssetId),
+	// AssetExists(AssetId),
 	/// Check balance.
 	BalanceOf(AssetId, AccountId),
 	/// Returns the total token supply for a given asset ID.
 	TotalSupply(AssetId),
+	TokenDecimals(AssetId),
+	TokenSymbol(AssetId),
+	TokenName(AssetId),
 }

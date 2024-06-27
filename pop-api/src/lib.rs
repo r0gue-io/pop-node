@@ -2,7 +2,7 @@
 
 use ink::{prelude::vec::Vec, ChainExtensionInstance};
 
-use crate::error::{Error, StatusCode};
+use crate::error::StatusCode;
 use primitives::{storage_keys::*, AccountId as AccountId32};
 #[cfg(feature = "assets")]
 pub use v0::assets;
@@ -49,33 +49,39 @@ pub trait PopApi {
 
 	#[ink(function = 0)]
 	#[allow(private_interfaces)]
-	fn dispatch(call: RuntimeCall) -> Result<()>;
+	#[ink(handle_status = false)]
+	fn dispatch(call: RuntimeCall, version: u8) -> Result<()>;
 
 	#[ink(function = 1)]
 	#[allow(private_interfaces)]
-	fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>>;
+	#[ink(handle_status = false)]
+	fn read_state(key: RuntimeStateKeys, version: u8) -> Result<Vec<u8>>;
 
 	#[cfg(feature = "cross-chain")]
 	#[ink(function = 2)]
 	#[allow(private_interfaces)]
-	fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()>;
+	#[ink(handle_status = false)]
+	fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage, version: u8) -> Result<()>;
 }
 
+#[inline]
 fn dispatch(call: RuntimeCall) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
-	.dispatch(call)
+	.dispatch(call, 0)
 }
 
+#[inline]
 fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
-	.read_state(key)
+	.read_state(key, 0)
 }
 
+#[inline]
 #[cfg(feature = "cross-chain")]
-fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()> {
+fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage, version: u8) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
-	.send_xcm(xcm)
+	.send_xcm(xcm, 0)
 }
