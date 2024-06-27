@@ -60,7 +60,8 @@ where
 		match v0::FuncId::try_from(env.func_id())? {
 			v0::FuncId::Dispatch => match dispatch::<T, E>(env) {
 				Ok(()) => Ok(RetVal::Converging(0)),
-				Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
+				// Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
+				Err(e) => Err(e),
 			},
 			v0::FuncId::ReadState => {
 				read_state::<T, E>(env)?;

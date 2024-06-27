@@ -4,7 +4,7 @@ use super::*;
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum RuntimeStateKeys {
-	#[cfg(feature = "assets")]
+    #[cfg(feature = "assets")]
 	Assets(AssetsKeys),
 	#[cfg(feature = "nfts")]
 	Nfts(NftsKeys),
