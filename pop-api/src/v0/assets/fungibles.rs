@@ -4,10 +4,8 @@ use scale::Encode;
 use crate::{
 	assets,
 	primitives::{AssetId, MultiAddress},
-	AccountId, Balance, StatusCode,
+	AccountId, Balance, Result, StatusCode,
 };
-
-type Result<T> = core::result::Result<T, StatusCode>;
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
@@ -102,7 +100,6 @@ pub fn transfer_from(
 	from: impl Into<MultiAddress<AccountId, ()>>,
 	to: impl Into<MultiAddress<AccountId, ()>>,
 	value: Balance,
-	_data: &[u8],
 ) -> Result<()> {
 	assets::transfer_approved(id, from, to, value)
 }

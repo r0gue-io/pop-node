@@ -56,6 +56,7 @@ where
 	where
 		E: Ext<T = T>,
 	{
+		// TODO weight.
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {
 			v0::FuncId::Dispatch => match dispatch::<T, E>(env) {
@@ -320,10 +321,10 @@ where
 			)
 			.encode())
 		},
-		AssetsKeys::AssetExists(id) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
-		},
+		// AssetsKeys::AssetExists(id) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
+		// },
 		AssetsKeys::BalanceOf(id, owner) => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::balance(id, &owner.0.into())
@@ -333,6 +334,7 @@ where
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::total_supply(id).encode())
 		},
+		_ => todo!(),
 	}
 }
 
