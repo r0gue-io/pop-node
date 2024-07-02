@@ -6,18 +6,3 @@ pub mod balances;
 pub mod cross_chain;
 #[cfg(feature = "nfts")]
 pub mod nfts;
-pub mod state;
-
-#[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub(crate) enum RuntimeCall {
-	#[codec(index = 10)]
-	#[cfg(feature = "balances")]
-	Balances(balances::BalancesCall),
-	#[codec(index = 50)]
-	#[cfg(feature = "nfts")]
-	Nfts(nfts::NftCalls),
-	#[codec(index = 52)]
-	#[cfg(feature = "assets")]
-	Assets(assets::AssetsCall),
-}

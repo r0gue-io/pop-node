@@ -1,18 +1,22 @@
+use codec::{Compact, Decode, Encode};
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
 	traits::{
-		fungibles::{approvals::Inspect as ApprovalInspect, Inspect},
+		fungibles::approvals::Inspect as ApprovalInspect,
 		nonfungibles_v2::Inspect as NonFungiblesInspect,
 	},
 };
 use pallet_contracts::chain_extension::{
-	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
+	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::traits::{BlockNumberProvider, Dispatchable};
+use sp_runtime::{
+	traits::{BlockNumberProvider, Dispatchable},
+	DispatchError, MultiAddress,
+};
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
 	latest::{prelude::*, OriginKind::SovereignAccount},
@@ -20,17 +24,24 @@ use xcm::{
 };
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, AccountId, AllowedApiCalls, RuntimeCall,
-	RuntimeOrigin, UNIT,
+	config::assets::TrustBackedAssetsInstance, AccountId, AllowedApiCalls, Balance, Runtime,
+	RuntimeCall, RuntimeOrigin, UNIT,
 };
 use pop_primitives::{
 	cross_chain::CrossChainMessage,
 	nfts::{CollectionId, ItemId},
-	storage_keys::{AssetsKeys, NftsKeys, ParachainSystemKeys, RuntimeStateKeys},
+	storage_keys::{
+		AssetsKeys::{self, *},
+		NftsKeys, ParachainSystemKeys, RuntimeStateKeys,
+	},
 	AssetId,
 };
 
+mod v0;
+
 const LOG_TARGET: &str = "pop-api::extension";
+// Versions:
+const V0: u8 = 0;
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
@@ -58,53 +69,162 @@ where
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
 		let mut env = env.buf_in_buf_out();
-		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
-		// debug_message weight is a good approximation of the additional overhead of going
+		// Charge weight for making a call from a contract to the runtime.
+		// `debug_message` weight is a good approximation of the additional overhead of going
 		// from contract layer to substrate layer.
 		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
+		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
 		env.charge_weight(contract_host_weight.debug_message)?;
 
-		let result = match v0::FuncId::try_from(env.func_id()) {
-			Ok(function) => {
-				// calculate weight for reading bytes of `len`
+		// Extract version and function_id from first two bytes.
+		let (version, function_id) = {
+			let bytes = env.func_id().to_le_bytes();
+			(bytes[0], bytes[1])
+		};
+		// Extract pallet index and call / key index from last two bytes.
+		let (pallet_index, call_index) = {
+			let bytes = env.ext_id().to_le_bytes();
+			(bytes[0], bytes[1])
+		};
+
+		let result = match FuncId::try_from(function_id) {
+			Ok(function_id) => {
+				// Read encoded parameters from buffer and calculate weight for reading `len` bytes`.
 				// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
 				let len = env.in_len();
 				env.charge_weight(contract_host_weight.return_per_byte.saturating_mul(len.into()))?;
-				match function {
-					v0::FuncId::Dispatch => dispatch::<T, E>(&mut env, len),
-					v0::FuncId::ReadState => read_state::<T, E>(&mut env),
-					v0::FuncId::SendXcm => send_xcm::<T, E>(&mut env),
+				let params = env.read(len)?;
+				log::debug!(target: LOG_TARGET, "Read input successfully");
+				match function_id {
+					FuncId::Dispatch => {
+						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
+					},
+					FuncId::ReadState => {
+						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
+					},
+					// TODO
+					FuncId::SendXcm => send_xcm::<T, E>(&mut env),
 				}
 			},
 			Err(e) => Err(e),
 		};
 
-		// Convert any error to a status code and return Ok with RetVal::Converging
 		match result {
 			Ok(_) => Ok(RetVal::Converging(0)),
-			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
+			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e, version))),
 		}
 	}
 }
 
-fn dispatch<T, E>(env: &mut Environment<E, BufInBufOutState>, len: u32) -> Result<(), DispatchError>
+fn dispatch<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config
-		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
+	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
 	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
-
-	// read the input as RuntimeCall
-	let call: RuntimeCall = env.read_as_unbounded(len)?;
-	log::debug!(target: LOG_TARGET, "Read input as call successfully");
-	// contract is the origin by default
+	let call = construct_call(version, pallet_index, call_index, params)
+		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+	// Contract is the origin by default.
 	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
 }
 
-fn read_state<T, E>(env: &mut Environment<E, BufInBufOutState>) -> Result<(), DispatchError>
+fn dispatch_call<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	call: RuntimeCall,
+	mut origin: RuntimeOrigin,
+	log_prefix: &str,
+) -> Result<(), DispatchError>
+where
+	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
+	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
+	E: Ext<T = T>,
+{
+	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
+	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
+	origin.add_filter(AllowedApiCalls::contains);
+	match call.dispatch(origin) {
+		Ok(info) => {
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
+			// Refund weight if the actual weight is less than the charged weight.
+			if let Some(actual_weight) = info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
+			Ok(())
+		},
+		Err(err) => {
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
+			Err(err.error)
+		},
+	}
+}
+
+fn construct_call(
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<RuntimeCall, DispatchError> {
+	match pallet_index {
+		52 => {
+			let call = versioned_construct_assets_call(version, call_index, params)?;
+			Ok(RuntimeCall::Assets(call))
+		},
+		_ => Err(DispatchError::Other("UnknownFunctionId")),
+	}
+}
+
+fn construct_key(
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<RuntimeStateKeys, DispatchError> {
+	match pallet_index {
+		52 => {
+			let key = versioned_construct_assets_key(version, call_index, params)?;
+			Ok(RuntimeStateKeys::Assets(key))
+		},
+		_ => Err(DispatchError::Other("UnknownFunctionId")),
+	}
+}
+
+fn versioned_construct_assets_call(
+	version: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<pallet_assets::Call<Runtime, TrustBackedAssetsInstance>, DispatchError> {
+	match version {
+		V0 => v0::assets::construct_assets_call(call_index, params),
+		_ => Err(DispatchError::Other("UnknownFunctionId")),
+	}
+}
+
+fn versioned_construct_assets_key(
+	version: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<AssetsKeys, DispatchError> {
+	match version {
+		V0 => v0::assets::construct_assets_key(call_index, params),
+		_ => Err(DispatchError::Other("UnknownFunctionId")),
+	}
+}
+
+fn read_state<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
 		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
@@ -114,15 +234,13 @@ where
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " read_state |";
-
-	let key: RuntimeStateKeys = env.read_as()?;
+	let key = construct_key(version, pallet_index, call_index, params)?;
 	let result = match key {
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, env),
 		RuntimeStateKeys::ParachainSystem(key) => read_parachain_system_state::<T, E>(key, env),
 		RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, env),
 	}?
 	.encode();
-
 	log::trace!(
 		target:LOG_TARGET,
 		"{} result: {:?}.", LOG_PREFIX, result
@@ -141,10 +259,9 @@ where
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " send_xcm |";
-
-	// read the input as CrossChainMessage
+	// Read the input as CrossChainMessage.
 	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
-	// Determine the call to dispatch
+	// Determine the call to dispatch.
 	let (dest, message) = match xc_call {
 		CrossChainMessage::Relay(message) => {
 			let dest = Location::parent().into_versioned();
@@ -165,88 +282,82 @@ where
 			(dest, message)
 		},
 	};
-
 	// TODO: revisit to replace with signed contract origin
 	let origin: RuntimeOrigin = RawOrigin::Root.into();
-
-	// Generate runtime call to dispatch
+	// Generate runtime call to dispatch.
 	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
 		dest: Box::new(dest),
 		message: Box::new(VersionedXcm::V4(message)),
 	});
-
 	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
 }
 
-pub(crate) fn convert_to_status_code(error: DispatchError) -> u32 {
+// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
+// The contract calling the chain extension can convert the status code to the descriptive `Error`.
+//
+// For `Error` see `pop_primitives::<version>::error::Error`.
+//
+// The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
+// As a result, contracts maintain compatibility across different versions of the runtime.
+//
+// # Parameters
+//
+// - `error`: The `DispatchError` encountered during contract execution.
+// - `version`: The version of the chain extension, used to determine the known errors.
+pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
+	// "UnknownFunctionId" and "DecodingFailed" are mapped to specific errors in the API and will
+	// never change.
 	let mut encoded_error = match error {
 		DispatchError::Other("UnknownFunctionId") => vec![254, 0, 0, 0],
+		DispatchError::Other("DecodingFailed") => vec![255, 0, 0, 0],
 		_ => error.encode(),
 	};
 	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
 	encoded_error.resize(4, 0);
-	u32::decode(&mut &encoded_error[..]).expect("qid, resized to 4 bytes line above")
-}
-
-pub mod v0 {
-	#[derive(Debug)]
-	pub enum FuncId {
-		Dispatch,
-		ReadState,
-		SendXcm,
+	let mut encoded_error = encoded_error.try_into().expect("qid, resized to 4 bytes line above");
+	match version {
+		// If an unknown variant of the `DispatchError` is detected the error needs to be converted
+		// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
+		// position forward (discarding the last byte as it is not used) and setting the first byte to the
+		// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
+		// variant which provides all the necessary information to debug which error occurred in the runtime.
+		//
+		// Byte layout explanation:
+		// - Byte 0: index of the variant within `Error`
+		// - Byte 1:
+		//   - Must be zero for `UNIT_ERRORS`.
+		//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
+		//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
+		// - Byte 2:
+		//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
+		// - Byte 3:
+		//   - Unused or represents further nested information.
+		0 => v0::error::handle_unknown_error(&mut encoded_error),
+		_ => encoded_error = [254, 0, 0, 0],
 	}
+	u32::from_le_bytes(encoded_error)
 }
 
-impl TryFrom<u16> for v0::FuncId {
+#[derive(Debug)]
+pub enum FuncId {
+	Dispatch,
+	ReadState,
+	SendXcm,
+}
+
+impl TryFrom<u8> for FuncId {
 	type Error = DispatchError;
 
-	fn try_from(func_id: u16) -> Result<Self, Self::Error> {
+	fn try_from(func_id: u8) -> Result<Self, Self::Error> {
 		let id = match func_id {
-			0x0 => Self::Dispatch,
-			0x1 => Self::ReadState,
-			0x2 => Self::SendXcm,
+			0 => Self::Dispatch,
+			1 => Self::ReadState,
+			2 => Self::SendXcm,
 			_ => {
-				log::error!("called an unregistered `func_id`: {:}", func_id);
 				return Err(DispatchError::Other("UnknownFuncId"));
 			},
 		};
-
 		Ok(id)
-	}
-}
-
-fn dispatch_call<T, E>(
-	env: &mut Environment<E, BufInBufOutState>,
-	call: RuntimeCall,
-	mut origin: RuntimeOrigin,
-	log_prefix: &str,
-) -> Result<(), DispatchError>
-where
-	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
-	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
-	E: Ext<T = T>,
-{
-	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-
-	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
-
-	origin.add_filter(AllowedApiCalls::contains);
-
-	match call.dispatch(origin) {
-		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
-
-			// refund weight if the actual weight is less than the charged weight
-			if let Some(actual_weight) = info.actual_weight {
-				env.adjust_weight(charged_dispatch_weight, actual_weight);
-			}
-
-			Ok(())
-		},
-		Err(err) => {
-			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
-			Err(err.error)
-		},
 	}
 }
 
@@ -323,7 +434,7 @@ where
 	T: frame_system::Config<AccountId = sp_runtime::AccountId32>,
 {
 	match key {
-		AssetsKeys::Allowance(id, owner, spender) => {
+		Allowance(id, owner, spender) => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::allowance(
 				id,
@@ -336,12 +447,12 @@ where
 		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
 		// },
-		AssetsKeys::BalanceOf(id, owner) => {
+		BalanceOf(id, owner) => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::balance(id, &owner.0.into())
 				.encode())
 		},
-		AssetsKeys::TotalSupply(id) => {
+		TotalSupply(id) => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::total_supply(id).encode())
 		},
@@ -354,88 +465,51 @@ mod tests {
 	use super::*;
 	use crate::{Assets, Runtime, System};
 	use sp_runtime::BuildStorage;
-
-	fn new_test_ext() -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::<Runtime>::default()
-			.build_storage()
-			.expect("Frame system builds valid default genesis config");
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
-
+	// Test ensuring `func_id()` and `ext_id()` work as expected, i.e. extracting the first two
+	// bytes and the last two bytes, respectively, from a 4 byte array.
 	#[test]
-	fn encoding_decoding_dispatch_error() {
-		use codec::{Decode, Encode};
-		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+	fn test_byte_extraction() {
+		use rand::Rng;
 
-		new_test_ext().execute_with(|| {
-			let error = DispatchError::Module(ModuleError {
-				index: 255,
-				error: [2, 0, 0, 0],
-				message: Some("error message"),
-			});
-			let encoded = error.encode();
-			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-			assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
-			assert_eq!(
-				decoded,
-				// `message` is skipped for encoding.
-				DispatchError::Module(ModuleError {
-					index: 255,
-					error: [2, 0, 0, 0],
-					message: None
-				})
-			);
-			println!("Encoded Module Error: {:?}", encoded);
+		// Helper functions
+		fn func_id(id: u32) -> u16 {
+			(id & 0x0000FFFF) as u16
+		}
+		fn ext_id(id: u32) -> u16 {
+			(id >> 16) as u16
+		}
 
-			// Example pallet assets Error into ModuleError.
-			let index =
-				<<Runtime as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
-					Assets,
-				>()
-				.expect("Every active module has an index in the runtime; qed") as u8;
+		// Number of test iterations
+		let test_iterations = 1_000_000;
 
-			let mut error =
-				pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
-			error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
-			let error = DispatchError::Module(ModuleError {
-				index,
-				error: TryInto::try_into(error).expect("should work"),
-				message: None,
-			});
-			let encoded = error.encode();
-			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-			assert_eq!(encoded, vec![3, 52, 18, 0, 0, 0]);
-			assert_eq!(
-				decoded,
-				DispatchError::Module(ModuleError {
-					index: 52,
-					error: [18, 0, 0, 0],
-					message: None
-				})
-			);
-			println!("Encoded Module Error: {:?}", encoded);
+		// Create a random number generator
+		let mut rng = rand::thread_rng();
 
-			// Example DispatchError::Token
-			let error = DispatchError::Token(TokenError::UnknownAsset);
-			let encoded = error.encode();
-			assert_eq!(encoded, vec![7, 4]);
-			println!("Encoded Token Error: {:?}", encoded);
+		// Run the test for a large number of random 4-byte arrays
+		for _ in 0..test_iterations {
+			// Generate a random 4-byte array
+			let bytes: [u8; 4] = rng.gen();
 
-			// Example DispatchError::Arithmetic
-			let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
-			let encoded = error.encode();
-			assert_eq!(encoded, vec![8, 1]);
-			println!("Encoded Arithmetic Error: {:?}", encoded);
-		});
+			// Convert the 4-byte array to a u32 value
+			let value = u32::from_le_bytes(bytes);
+
+			// Extract the first two bytes (least significant 2 bytes)
+			let first_two_bytes = func_id(value);
+
+			// Extract the last two bytes (most significant 2 bytes)
+			let last_two_bytes = ext_id(value);
+
+			// Check if the first two bytes match the expected value
+			assert_eq!([bytes[0], bytes[1]], first_two_bytes.to_le_bytes());
+
+			// Check if the last two bytes match the expected value
+			assert_eq!([bytes[2], bytes[3]], last_two_bytes.to_le_bytes());
+		}
 	}
 
+	// Test showing all the different type of variants and its encoding.
 	#[test]
 	fn encoding_of_enum() {
-		use codec::{Decode, Encode};
-
-		// Comprehensive enum with all different type of variants.
 		#[derive(Debug, PartialEq, Encode, Decode)]
 		enum ComprehensiveEnum {
 			SimpleVariant,
@@ -494,39 +568,77 @@ mod tests {
 		println!("{:?} -> {:?}", enum_nested_enum_struct, enum_nested_enum_struct.encode());
 	}
 
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
+			.expect("Frame system builds valid default genesis config");
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
 	#[test]
-	fn dispatch_error_to_status_code() {
-		// Create all the different `DispatchError` variants with its respective `PopApiError`.
-		let test_cases = vec![
-			(DispatchError::Other("hallo"), [0, 0, 0, 0]),
-			(DispatchError::CannotLookup, [1, 0, 0, 0]),
-			(DispatchError::BadOrigin, [2, 0, 0, 0]),
-			(
-				DispatchError::Module(sp_runtime::ModuleError {
-					index: 1,
+	fn encoding_decoding_dispatch_error() {
+		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+
+		new_test_ext().execute_with(|| {
+			let error = DispatchError::Module(ModuleError {
+				index: 255,
+				error: [2, 0, 0, 0],
+				message: Some("error message"),
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				// `message` is skipped for encoding.
+				DispatchError::Module(ModuleError {
+					index: 255,
 					error: [2, 0, 0, 0],
-					message: Some("hallo"),
-				}),
-				[3, 1, 2, 0],
-			),
-			(DispatchError::ConsumerRemaining, [4, 0, 0, 0]),
-			(DispatchError::NoProviders, [5, 0, 0, 0]),
-			(DispatchError::TooManyConsumers, [6, 0, 0, 0]),
-			(DispatchError::Token(sp_runtime::TokenError::BelowMinimum), [7, 2, 0, 0]),
-			(DispatchError::Arithmetic(sp_runtime::ArithmeticError::Overflow), [8, 1, 0, 0]),
-			(
-				DispatchError::Transactional(sp_runtime::TransactionalError::LimitReached),
-				[9, 0, 0, 0],
-			),
-			(DispatchError::Exhausted, [10, 0, 0, 0]),
-			(DispatchError::Corruption, [11, 0, 0, 0]),
-			(DispatchError::Unavailable, [12, 0, 0, 0]),
-			(DispatchError::RootNotAllowed, [13, 0, 0, 0]),
-		];
-		for (error, encoded_error) in test_cases {
-			let status_code = crate::extensions::convert_to_status_code(error);
-			assert_eq!(status_code, u32::decode(&mut &encoded_error[..]).unwrap());
-		}
+					message: None
+				})
+			);
+
+			// Example pallet assets Error into ModuleError.
+			let index = <<Runtime as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
+				Assets,
+			>()
+			.expect("Every active module has an index in the runtime; qed") as u8;
+			let mut error =
+				pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
+			error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
+			let error = DispatchError::Module(ModuleError {
+				index,
+				error: TryInto::try_into(error).expect("should work"),
+				message: None,
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 52, 18, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				DispatchError::Module(ModuleError {
+					index: 52,
+					error: [18, 0, 0, 0],
+					message: None
+				})
+			);
+
+			// Example DispatchError::Token
+			let error = DispatchError::Token(TokenError::UnknownAsset);
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![7, 4]);
+			assert_eq!(decoded, error);
+
+			// Example DispatchError::Arithmetic
+			let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![8, 1]);
+			assert_eq!(decoded, error);
+		});
 	}
 }
 // use enumflags2::BitFlags;

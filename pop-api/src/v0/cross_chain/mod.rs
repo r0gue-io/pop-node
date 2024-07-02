@@ -1,16 +1,12 @@
-use crate::{BlockNumber, ParachainSystemKeys, Result, RuntimeStateKeys};
-
 pub mod coretime;
 
-pub fn relay_chain_block_number() -> Result<BlockNumber> {
-	crate::v0::state::read(RuntimeStateKeys::ParachainSystem(
-		ParachainSystemKeys::LastRelayChainBlockNumber,
-	))
-}
+use crate::{PopApiError::UnknownStatusCode, *};
+
+type Result<T> = core::result::Result<T, Error>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum CrossChainError {
+pub enum Error {
 	/// The desired destination was unreachable, generally because there is a no way of routing
 	/// to it.
 	Unreachable,
@@ -66,11 +62,11 @@ pub enum CrossChainError {
 	LocalExecutionIncomplete,
 }
 
-impl TryFrom<u32> for CrossChainError {
-	type Error = crate::error::Error;
+impl TryFrom<u32> for Error {
+	type Error = PopApiError;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
-		use CrossChainError::*;
+		use Error::*;
 		match status_code {
 			0 => Ok(Unreachable),
 			1 => Ok(SendFailure),
@@ -96,7 +92,16 @@ impl TryFrom<u32> for CrossChainError {
 			21 => Ok(InvalidAssetUnknownReserve),
 			22 => Ok(InvalidAssetUnsupportedReserve),
 			23 => Ok(TooManyReserves),
-			_ => todo!(),
+			_ => Err(UnknownStatusCode(status_code)),
+		}
+	}
+}
+
+impl From<PopApiError> for Error {
+	fn from(error: PopApiError) -> Self {
+		match error {
+			PopApiError::Xcm(e) => e,
+			_ => panic!("expected xcm error"),
 		}
 	}
 }

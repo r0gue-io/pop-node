@@ -1,12 +1,6 @@
 use ink::prelude::vec::Vec;
 
-use crate::{
-	assets,
-	primitives::{AssetId, MultiAddress},
-	AccountId, Balance, StatusCode,
-};
-
-type Result<T> = core::result::Result<T, StatusCode>;
+use crate::{assets, primitives::AssetId, AccountId, Balance, Result, StatusCode};
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
@@ -45,7 +39,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 /// # Returns
 /// The balance of the specified account, or an error if the operation fails.
 #[inline]
-pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
+pub fn balance_of(id: AssetId, owner: AccountId) -> Balance {
 	assets::balance_of(id, owner)
 }
 
@@ -60,7 +54,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 /// # Returns
 /// The remaining allowance, or an error if the operation fails.
 #[inline]
-pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
+pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Balance {
 	assets::allowance(id, owner, spender)
 }
 
@@ -75,11 +69,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer(
-	id: AssetId,
-	to: impl Into<MultiAddress<AccountId, ()>>,
-	value: Balance,
-) -> Result<()> {
+pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 	assets::transfer(id, to, value)
 }
 
@@ -96,12 +86,7 @@ pub fn transfer(
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer_from(
-	id: AssetId,
-	from: impl Into<MultiAddress<AccountId, ()>>,
-	to: impl Into<MultiAddress<AccountId, ()>>,
-	value: Balance,
-) -> Result<()> {
+pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
 	assets::transfer_approved(id, from, to, value)
 }
 
@@ -161,7 +146,7 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// # Returns
 /// The name of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
+pub fn token_name(id: AssetId) -> Vec<u8> {
 	assets::token_name(id)
 }
 
@@ -173,7 +158,7 @@ pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
 /// # Returns
 ///  The symbol of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
+pub fn token_symbol(id: AssetId) -> Vec<u8> {
 	assets::token_symbol(id)
 }
 
@@ -185,7 +170,7 @@ pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
 /// # Returns
 ///  The number of decimals of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_decimals(id: AssetId) -> Result<u8> {
+pub fn token_decimals(id: AssetId) -> u8 {
 	assets::token_decimals(id)
 }
 
@@ -291,6 +276,7 @@ pub fn token_decimals(id: AssetId) -> Result<u8> {
 // 	assets::asset_exists(id)
 // }
 
+// TODO: further implement the rest of the interfaces and conclude on the FungiblesError.
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum FungiblesError {
@@ -311,13 +297,13 @@ pub enum FungiblesError {
 	NoPermission,
 	/// The given asset ID is unknown.
 	Unknown,
-	// // TODO:
-	// // - Originally `InsufficientBalance` for the deposit but this would result in the same error
-	// // as the error when there is insufficient balance for transferring an asset.
+	// - Originally `InsufficientBalance` for the deposit but this would result in the same error
+	// as the error when there is insufficient balance for transferring an asset.
 	/// No balance for creation of assets or fees.
 	NoBalance,
 }
 
+// TODO: include conversions from TokenError and add conversions based on added interfaces.
 impl From<StatusCode> for FungiblesError {
 	fn from(value: StatusCode) -> Self {
 		let encoded = value.0.to_le_bytes();
@@ -339,10 +325,10 @@ impl From<StatusCode> for FungiblesError {
 
 #[cfg(test)]
 mod tests {
-	use scale::Decode;
+	use ink::scale::Decode;
 
 	use super::FungiblesError;
-	use crate::error::{
+	use crate::primitives::error::{
 		ArithmeticError::*,
 		Error::{self, *},
 		TokenError::*,
@@ -355,6 +341,7 @@ mod tests {
 		status_code.into()
 	}
 
+	// If we ever want to change the conversion from bytes to `u32`.
 	#[test]
 	fn status_code_vs_encoded() {
 		assert_eq!(u32::decode(&mut &[3u8, 10, 2, 0][..]).unwrap(), 133635u32);
@@ -373,6 +360,7 @@ mod tests {
 			Other { dispatch_error_index: 5, error_index: 5, error: 1 },
 			CannotLookup,
 			BadOrigin,
+			// `ModuleError` other than assets module.
 			Module { index: 2, error: 5 },
 			ConsumerRemaining,
 			NoProviders,
@@ -384,6 +372,7 @@ mod tests {
 			Corruption,
 			Unavailable,
 			RootNotAllowed,
+			UnknownFunctionId,
 			DecodingFailed,
 		];
 		for error in errors {

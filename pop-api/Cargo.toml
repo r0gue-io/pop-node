@@ -9,9 +9,8 @@ edition = "2021"
 enumflags2 = { version = "0.7.7" }
 ink = { version = "5.0.0", default-features = false }
 sp-io = { version = "31.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
-sp-runtime = { version = "32.0.0", default-features = false }
 
-pop-primitives = { path = "../primitives", features = ["devnet"], default-features = false }
+pop-primitives = { path = "../primitives", default-features = false }
 
 [lib]
 name = "pop_api"
@@ -25,7 +24,6 @@ std = [
     "ink/std",
     "pop-primitives/std",
     "sp-io/std",
-    "sp-runtime/std",
 ]
 assets = ["pop-primitives/assets"]
 balances = []

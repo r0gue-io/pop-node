@@ -9675,8 +9675,6 @@ version = "0.0.0"
 dependencies = [
  "bounded-collections 0.1.9",
  "parity-scale-codec",
- "scale-decode",
- "scale-encode",
  "scale-info",
 ]
 
@@ -9744,6 +9742,7 @@ dependencies = [
  "polkadot-runtime-common",
  "pop-primitives",
  "pop-runtime-common",
+ "rand",
  "scale-info",
  "smallvec",
  "sp-api",
