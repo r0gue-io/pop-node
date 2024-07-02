@@ -56,6 +56,7 @@ where
 	where
 		E: Ext<T = T>,
 	{
+		// TODO weight.
 		log::debug!(target:LOG_TARGET, " extension called ");
 		let mut env = env.buf_in_buf_out();
 		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;

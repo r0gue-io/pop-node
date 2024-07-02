@@ -36,6 +36,7 @@ fn total_supply(addr: AccountId32, asset_id: AssetId) -> Balance {
 	let function = function_selector("total_supply");
 	let params = [function, asset_id.encode()].concat();
 	let result = do_bare_call(addr, params, 0).expect("should work");
+	println!("Total supply result: {:?}", result);
 	decoded::<Balance>(result)
 }
 
@@ -78,7 +79,9 @@ fn transfer(
 ) -> ExecReturnValue {
 	let function = function_selector("transfer");
 	let params = [function, asset_id.encode(), to.encode(), value.encode()].concat();
-	do_bare_call(addr, params, 0).expect("should work")
+	let result = do_bare_call(addr, params, 0).expect("should work");
+	println!("Transfer result: {:?}", result);
+	result
 }
 
 fn transfer_from(

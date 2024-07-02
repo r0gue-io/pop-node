@@ -1,10 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{prelude::vec::Vec, ChainExtensionInstance};
+use ink::{scale::{Decode, Encode}, env::{chain_extension::FromStatusCode, DefaultEnvironment, Environment}};
 pub use sp_runtime::MultiAddress;
 
-use crate::error::StatusCode;
-use primitives::{storage_keys::*, AccountId as AccountId32};
 #[cfg(feature = "assets")]
 pub use v0::assets;
 #[cfg(feature = "balances")]
@@ -13,72 +11,38 @@ pub use v0::balances;
 pub use v0::cross_chain;
 #[cfg(feature = "nfts")]
 pub use v0::nfts;
-use v0::{state, RuntimeCall};
 
 pub mod error;
 pub mod primitives;
 pub mod v0;
 
-type AccountId = AccountId32;
-// TODO: do the same as the AccountId above and check expanded macro code.
-type Balance = <Environment as ink::env::Environment>::Balance;
-#[cfg(any(feature = "nfts", feature = "cross-chain"))]
-type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
+type AccountId = <DefaultEnvironment as Environment>::AccountId;
+type Balance = <DefaultEnvironment as Environment>::Balance;
+// #[cfg(any(feature = "nfts", feature = "cross-chain"))]
+// type BlockNumber = <DefaultEnvironment as Environment>::BlockNumber;
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum Environment {}
+pub struct StatusCode(pub u32);
 
-impl ink::env::Environment for Environment {
-	const MAX_EVENT_TOPICS: usize =
-		<ink::env::DefaultEnvironment as ink::env::Environment>::MAX_EVENT_TOPICS;
-
-	type AccountId = <ink::env::DefaultEnvironment as ink::env::Environment>::AccountId;
-	type Balance = <ink::env::DefaultEnvironment as ink::env::Environment>::Balance;
-	type Hash = <ink::env::DefaultEnvironment as ink::env::Environment>::Hash;
-	type BlockNumber = <ink::env::DefaultEnvironment as ink::env::Environment>::BlockNumber;
-	type Timestamp = <ink::env::DefaultEnvironment as ink::env::Environment>::Timestamp;
-
-	type ChainExtension = PopApi;
+impl From<u32> for StatusCode {
+	fn from(value: u32) -> Self {
+		StatusCode(value)
+	}
+}
+impl FromStatusCode for StatusCode {
+	fn from_status_code(status_code: u32) -> core::result::Result<(), Self> {
+		match status_code {
+            0 => Ok(()),
+            _ => Err(StatusCode(status_code))
+        }
+	}
 }
 
-#[ink::chain_extension(extension = 909)]
-pub trait PopApi {
-	type ErrorCode = StatusCode;
-
-	#[ink(function = 0)]
-	#[allow(private_interfaces)]
-	fn dispatch(call: RuntimeCall) -> Result<()>;
-
-	#[ink(function = 1)]
-	#[allow(private_interfaces)]
-	fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>>;
-
-	#[cfg(feature = "cross-chain")]
-	#[ink(function = 2)]
-	#[allow(private_interfaces)]
-	fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()>;
-}
-
-#[inline]
-fn dispatch(call: RuntimeCall) -> Result<()> {
-	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
-	)
-	.dispatch(call)
-}
-
-#[inline]
-fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>> {
-	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
-	)
-	.read_state(key)
-}
-
-#[cfg(feature = "cross-chain")]
-fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()> {
-	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
-	)
-	.send_xcm(xcm)
+impl From<ink::scale::Error> for StatusCode {
+	fn from(_: ink::scale::Error) -> Self {
+		StatusCode(255u32)
+	}
 }

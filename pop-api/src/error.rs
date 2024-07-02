@@ -1,28 +1,6 @@
 use ink::{env::chain_extension::FromStatusCode, scale::Decode};
 
-#[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct StatusCode(pub u32);
-
-impl From<u32> for StatusCode {
-	fn from(value: u32) -> Self {
-		StatusCode(value)
-	}
-}
-impl FromStatusCode for StatusCode {
-	fn from_status_code(status_code: u32) -> Result<(), Self> {
-		match status_code {
-			0 => Ok(()),
-			_ => Err(StatusCode(status_code)),
-		}
-	}
-}
-
-impl From<ink::scale::Error> for StatusCode {
-	fn from(_: ink::scale::Error) -> Self {
-		StatusCode(255u32)
-	}
-}
+use crate::StatusCode;
 
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]

@@ -3,10 +3,8 @@ use ink::prelude::vec::Vec;
 use crate::{
 	assets,
 	primitives::{AssetId, MultiAddress},
-	AccountId, Balance, StatusCode,
+	AccountId, Balance, Result, StatusCode,
 };
-
-type Result<T> = core::result::Result<T, StatusCode>;
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
