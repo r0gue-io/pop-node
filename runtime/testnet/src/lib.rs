@@ -251,7 +251,7 @@ impl Contains<RuntimeCall> for FilteredCalls {
 
 /// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
 pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for crate::AllowedApiCalls {
+impl Contains<RuntimeCall> for AllowedApiCalls {
 	fn contains(c: &RuntimeCall) -> bool {
 		use pallet_nfts::Call as NftsCall;
 		matches!(

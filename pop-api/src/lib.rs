@@ -1,52 +1,31 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use ink::{prelude::vec::Vec, ChainExtensionInstance};
+pub use sp_runtime::MultiAddress;
+
+use crate::error::StatusCode;
+use primitives::{storage_keys::*, AccountId as AccountId32};
+#[cfg(feature = "assets")]
+pub use v0::assets;
+#[cfg(feature = "balances")]
+pub use v0::balances;
+#[cfg(feature = "cross-chain")]
+pub use v0::cross_chain;
+#[cfg(feature = "nfts")]
+pub use v0::nfts;
+use v0::{state, RuntimeCall};
+
+pub mod error;
 pub mod primitives;
 pub mod v0;
 
-use crate::PopApiError::{Balances, Nfts, UnknownStatusCode};
-use ink::{prelude::vec::Vec, ChainExtensionInstance};
-use primitives::{cross_chain::*, storage_keys::*};
-pub use sp_runtime::{BoundedVec, MultiAddress, MultiSignature};
-use v0::RuntimeCall;
-pub use v0::{balances, cross_chain, nfts, relay_chain_block_number, state};
-
-type AccountId = <Environment as ink::env::Environment>::AccountId;
+type AccountId = AccountId32;
+// TODO: do the same as the AccountId above and check expanded macro code.
 type Balance = <Environment as ink::env::Environment>::Balance;
+#[cfg(any(feature = "nfts", feature = "cross-chain"))]
 type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
-type StringLimit = u32;
-type MaxTips = u32;
 
-pub type Result<T> = core::result::Result<T, PopApiError>;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum PopApiError {
-	UnknownStatusCode(u32),
-	DecodingFailed,
-	SystemCallFiltered,
-	Balances(balances::Error),
-	Nfts(nfts::Error),
-	Xcm(cross_chain::Error),
-}
-
-impl ink::env::chain_extension::FromStatusCode for PopApiError {
-	fn from_status_code(status_code: u32) -> core::result::Result<(), Self> {
-		match status_code {
-			0 => Ok(()),
-			// CallFiltered originates from `frame_system` with pallet-index 0. The CallFiltered error is at index 5
-			5 => Err(PopApiError::SystemCallFiltered),
-			10_000..=10_999 => Err(Balances((status_code - 10_000).try_into()?)),
-			50_000..=50_999 => Err(Nfts((status_code - 50_000).try_into()?)),
-			_ => Err(UnknownStatusCode(status_code)),
-		}
-	}
-}
-
-impl From<scale::Error> for PopApiError {
-	fn from(_: scale::Error) -> Self {
-		panic!("encountered unexpected invalid SCALE encoding")
-	}
-}
+pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
@@ -67,7 +46,7 @@ impl ink::env::Environment for Environment {
 
 #[ink::chain_extension(extension = 909)]
 pub trait PopApi {
-	type ErrorCode = PopApiError;
+	type ErrorCode = StatusCode;
 
 	#[ink(function = 0)]
 	#[allow(private_interfaces)]
@@ -77,24 +56,28 @@ pub trait PopApi {
 	#[allow(private_interfaces)]
 	fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>>;
 
+	#[cfg(feature = "cross-chain")]
 	#[ink(function = 2)]
 	#[allow(private_interfaces)]
-	fn send_xcm(xcm: CrossChainMessage) -> Result<()>;
+	fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()>;
 }
 
+#[inline]
 fn dispatch(call: RuntimeCall) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
 	.dispatch(call)
 }
 
+#[inline]
 fn read_state(key: RuntimeStateKeys) -> Result<Vec<u8>> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
 	.read_state(key)
 }
 
-fn send_xcm(xcm: CrossChainMessage) -> Result<()> {
+#[cfg(feature = "cross-chain")]
+fn send_xcm(xcm: primitives::cross_chain::CrossChainMessage) -> Result<()> {
 	<<Environment as ink::env::Environment>::ChainExtension as ChainExtensionInstance>::instantiate(
 	)
 	.send_xcm(xcm)

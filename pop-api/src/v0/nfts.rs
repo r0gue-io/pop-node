@@ -1,12 +1,20 @@
-use super::RuntimeCall;
-use crate::{PopApiError::UnknownStatusCode, *};
 use ink::prelude::vec::Vec;
-use primitives::{ApprovalsLimit, BoundedBTreeMap, KeyLimit, MultiAddress};
-pub use primitives::{CollectionId, ItemId};
 use scale::Encode;
+
+use crate::{
+	dispatch,
+	primitives::{
+		nfts::{ApprovalsLimit, CollectionId, ItemId, KeyLimit},
+		BoundedBTreeMap, BoundedVec,
+	},
+	state, AccountId, Balance, BlockNumber, MultiAddress, NftsKeys, RuntimeCall, RuntimeStateKeys,
+	StatusCode,
+};
 pub use types::*;
 
-type Result<T> = core::result::Result<T, Error>;
+type Result<T> = core::result::Result<T, StatusCode>;
+type StringLimit = u32;
+type MaxTips = u32;
 
 /// Issue a new collection of non-fungible items
 pub fn create(
@@ -516,7 +524,7 @@ pub(crate) enum NftCalls {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum Error {
+pub enum NftsError {
 	/// The signing account has no permission to do the operation.
 	NoPermission,
 	/// The given item ID is unknown.
@@ -609,11 +617,11 @@ pub enum Error {
 	WitnessRequired,
 }
 
-impl TryFrom<u32> for Error {
-	type Error = PopApiError;
+impl TryFrom<u32> for NftsError {
+	type Error = crate::error::Error;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
-		use Error::*;
+		use NftsError::*;
 		match status_code {
 			0 => Ok(NoPermission),
 			1 => Ok(UnknownCollection),
@@ -660,16 +668,7 @@ impl TryFrom<u32> for Error {
 			42 => Ok(WrongNamespace),
 			43 => Ok(CollectionNotEmpty),
 			44 => Ok(WitnessRequired),
-			_ => Err(UnknownStatusCode(status_code)),
-		}
-	}
-}
-
-impl From<PopApiError> for Error {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Nfts(e) => e,
-			_ => panic!("expected nfts error"),
+			_ => todo!(),
 		}
 	}
 }
@@ -678,7 +677,7 @@ impl From<PopApiError> for Error {
 mod types {
 	use super::*;
 	use crate::{
-		primitives::{CollectionId, ItemId},
+		primitives::nfts::{CollectionId, ItemId},
 		Balance, BlockNumber,
 	};
 	pub use enumflags2::{bitflags, BitFlags};

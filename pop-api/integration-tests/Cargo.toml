@@ -1,0 +1,31 @@
+[package]
+name = "integration-tests"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+env_logger = "0.11.2"
+scale = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+frame-support = { version = "29.0.0", default-features = false }
+frame-system = { version = "29.0.0", default-features = false }
+pallet-balances = { version = "29.0.2", default-features = false }
+pallet-contracts = { version = "28.0.0", default-features = false }
+pop-api = { path = "../.", default-features = false, features = ["assets"] }
+pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
+sp-io = { version = "31.0.0", default-features = false }
+sp-runtime = { version = "32.0.0", default-features = false }
+
+
+[features]
+default = ["std"]
+std = [
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-balances/std",
+    "pallet-contracts/std",
+    "pop-api/std",
+    "pop-runtime-devnet/std",
+    "scale/std",
+    "sp-io/std",
+    "sp-runtime/std",
+]

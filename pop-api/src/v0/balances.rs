@@ -1,9 +1,6 @@
-use crate::{
-	dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, PopApiError,
-	PopApiError::UnknownStatusCode,
-};
+use crate::{dispatch, primitives::MultiAddress, v0::RuntimeCall, AccountId, Error, StatusCode};
 
-type Result<T> = core::result::Result<T, Error>;
+type Result<T> = core::result::Result<T, StatusCode>;
 
 pub fn transfer_keep_alive(
 	dest: impl Into<MultiAddress<AccountId, ()>>,
@@ -17,7 +14,7 @@ pub fn transfer_keep_alive(
 
 #[derive(scale::Encode)]
 #[allow(dead_code)]
-pub(crate) enum BalancesCall {
+pub enum BalancesCall {
 	#[codec(index = 3)]
 	TransferKeepAlive {
 		dest: MultiAddress<AccountId, ()>,
@@ -26,9 +23,11 @@ pub(crate) enum BalancesCall {
 	},
 }
 
+// TODO: Not being used atm but necessary if we want to provide access to the
+//  rest of the pallet, outside of the use cases.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
 #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
-pub enum Error {
+pub enum BalancesError {
 	/// Vesting balance too high to send value.
 	VestingBalance,
 	/// Account liquidity restrictions prevent withdrawal.
@@ -55,11 +54,11 @@ pub enum Error {
 	DeltaZero,
 }
 
-impl TryFrom<u32> for Error {
-	type Error = PopApiError;
+impl TryFrom<u32> for BalancesError {
+	type Error = Error;
 
 	fn try_from(status_code: u32) -> core::result::Result<Self, Self::Error> {
-		use Error::*;
+		use BalancesError::*;
 		match status_code {
 			0 => Ok(VestingBalance),
 			1 => Ok(LiquidityRestrictions),
@@ -73,16 +72,7 @@ impl TryFrom<u32> for Error {
 			9 => Ok(TooManyFreezes),
 			10 => Ok(IssuanceDeactivated),
 			11 => Ok(DeltaZero),
-			_ => Err(UnknownStatusCode(status_code)),
-		}
-	}
-}
-
-impl From<PopApiError> for Error {
-	fn from(error: PopApiError) -> Self {
-		match error {
-			PopApiError::Balances(e) => e,
-			_ => panic!("expected balances error"),
+			_ => todo!(),
 		}
 	}
 }
