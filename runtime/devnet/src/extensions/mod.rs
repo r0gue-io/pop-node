@@ -16,7 +16,11 @@ use sp_std::vec::Vec;
 
 use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin};
 
+mod v0;
+
 const LOG_TARGET: &str = "pop-api::extension";
+// Versions:
+const V0: u8 = 0;
 
 #[derive(Default)]
 pub struct PopApiExtension;
@@ -64,21 +68,29 @@ pub mod v0 {
 		Dispatch,
 		ReadState,
 	}
+	u32::from_le_bytes(encoded_error)
 }
 
-impl TryFrom<u16> for v0::FuncId {
+#[derive(Debug)]
+pub enum FuncId {
+	Dispatch,
+	ReadState,
+	SendXcm,
+}
+
+impl TryFrom<u8> for FuncId {
 	type Error = DispatchError;
 
-	fn try_from(func_id: u16) -> Result<Self, Self::Error> {
+	fn try_from(func_id: u8) -> Result<Self, Self::Error> {
 		let id = match func_id {
 			0x0 => Self::Dispatch,
 			0x1 => Self::ReadState,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
+				// TODO: Other error.
 				return Err(DispatchError::Other("unimplemented func_id"));
 			},
 		};
-
 		Ok(id)
 	}
 }
@@ -96,7 +108,7 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} inputted RuntimeCall: {:?}", log_prefix, call);
 
-	origin.add_filter(AllowedApiCalls::contains);
+	origin.add_filter(AllowedPopApiCalls::contains);
 
 	match call.dispatch(origin) {
 		Ok(info) => {
@@ -126,13 +138,13 @@ where
 	E: Ext<T = T>,
 {
 	// calculate weight for reading bytes of `len`
-	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
+	// reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=CopyToContract(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_input(len)%2C
 	let base_weight: Weight = T::WeightInfo::seal_return(len);
 
 	// debug_message weight is a good approximation of the additional overhead of going
 	// from contract layer to substrate layer.
-	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-	let overhead: Weight = T::WeightInfo::seal_debug_message(len);
+	// reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=DebugMessage(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_debug_message(len)%2C
+	let overhead = T::WeightInfo::seal_debug_message(len);
 
 	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
 	log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", log_prefix, charged_weight);
@@ -177,9 +189,12 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
 
-	// TODO: always returning an empty vec. Chainextension will be refactored into one for both
-	//  runtimes before pop api implementation gets merged into main.
-	let result = Vec::<u8>::default().encode();
+	let key: RuntimeStateKeys = env.read_as()?;
+
+	let result = match key {
+		_ => Vec::<u8>::default(),
+	}
+	.encode();
 
 	log::trace!(
 		target:LOG_TARGET,
@@ -187,6 +202,7 @@ where
 	);
 	env.write(&result, false, None).map_err(|e| {
 		log::trace!(target: LOG_TARGET, "{:?}", e);
+		// TODO: Other error.
 		DispatchError::Other("unable to write results to contract memory")
 	})
 }

@@ -9966,8 +9966,6 @@ name = "pop-primitives"
 version = "0.0.0"
 dependencies = [
  "parity-scale-codec",
- "scale-decode",
- "scale-encode",
  "scale-info",
 ]
 
@@ -10036,6 +10034,7 @@ dependencies = [
  "pop-chain-extension",
  "pop-primitives",
  "pop-runtime-common",
+ "rand",
  "scale-info",
  "smallvec",
  "sp-api",

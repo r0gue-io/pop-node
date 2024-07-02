@@ -97,6 +97,7 @@ env_logger = "0.11.2"
 hex = "0.4.3"
 
 [features]
+default = [ "std" ]
 std = [
 	"codec/std",
 	"cumulus-pallet-aura-ext/std",
@@ -162,7 +163,7 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 	"xcm/std",
-]default = [ "std" ]
+]
 
 runtime-benchmarks = [
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
