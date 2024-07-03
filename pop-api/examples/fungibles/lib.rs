@@ -85,7 +85,7 @@ mod fungibles {
 			to: AccountId32,
 			value: Balance,
 			// In the standard a `[u8]`, but the size needs to be known at compile time.
-			data: Vec<u8>,
+			_data: Vec<u8>,
 		) -> Result<()> {
 			ink::env::debug_println!(
 				"PopApiFungiblesExample::transfer_from: id: {:?}, from: {:?}, to: {:?} value: {:?}",
@@ -95,7 +95,7 @@ mod fungibles {
 				value,
 			);
 
-			let result = api::transfer_from(id, from, to, value, &data);
+			let result = api::transfer_from(id, from, to, value);
 			ink::env::debug_println!("Result: {:?}", result);
 			// result.map_err(|e| e.into())
 			result

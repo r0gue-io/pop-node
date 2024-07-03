@@ -1,10 +1,7 @@
-use ink::env::chain_extension::FromStatusCode;
-use scale::{Decode, Encode};
+use ink::{env::chain_extension::FromStatusCode, scale::Decode};
 
-use Error::*;
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
 
 impl From<u32> for StatusCode {
@@ -14,21 +11,21 @@ impl From<u32> for StatusCode {
 }
 impl FromStatusCode for StatusCode {
 	fn from_status_code(status_code: u32) -> Result<(), Self> {
-		if status_code == 0 {
-			return Ok(());
+		match status_code {
+			0 => Ok(()),
+			_ => Err(StatusCode(status_code)),
 		}
-		Err(StatusCode(status_code))
 	}
 }
 
-impl From<scale::Error> for StatusCode {
-	fn from(_: scale::Error) -> Self {
+impl From<ink::scale::Error> for StatusCode {
+	fn from(_: ink::scale::Error) -> Self {
 		StatusCode(255u32)
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Encode, Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[repr(u8)]
 pub enum Error {
 	/// Some unknown error occurred. Go to the Pop API docs section `Pop API error`.
@@ -70,6 +67,7 @@ pub enum Error {
 	Unavailable = 12,
 	/// Root origin is not allowed.
 	RootNotAllowed = 13,
+	UnknownFunctionId = 254,
 	DecodingFailed = 255,
 }
 
@@ -92,15 +90,15 @@ impl From<StatusCode> for Error {
 			Err(_) => {
 				encoded[..].rotate_right(1);
 				encoded[0] = 0u8;
-				Error::decode(&mut &encoded[..]).unwrap_or(DecodingFailed)
+				Error::decode(&mut &encoded[..]).unwrap_or(Error::DecodingFailed)
 			},
 			Ok(error) => error,
 		}
 	}
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum TokenError {
 	/// Funds are unavailable.
 	FundsUnavailable,
@@ -125,8 +123,8 @@ pub enum TokenError {
 	Blocked,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum ArithmeticError {
 	/// Underflow.
 	Underflow,
@@ -136,8 +134,8 @@ pub enum ArithmeticError {
 	DivisionByZero,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum TransactionalError {
 	/// Too many transactional layers have been spawned.
 	LimitReached,

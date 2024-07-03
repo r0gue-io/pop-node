@@ -1,5 +1,4 @@
 use ink::prelude::vec::Vec;
-use scale::Encode;
 
 use crate::{
 	assets,
@@ -102,7 +101,6 @@ pub fn transfer_from(
 	from: impl Into<MultiAddress<AccountId, ()>>,
 	to: impl Into<MultiAddress<AccountId, ()>>,
 	value: Balance,
-	_data: &[u8],
 ) -> Result<()> {
 	assets::transfer_approved(id, from, to, value)
 }
@@ -293,8 +291,8 @@ pub fn token_decimals(id: AssetId) -> Result<u8> {
 // 	assets::asset_exists(id)
 // }
 
-#[derive(Encode)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum FungiblesError {
 	Other(StatusCode),
 	/// The asset is not live; either frozen or being destroyed.
@@ -344,13 +342,13 @@ mod tests {
 	use scale::Decode;
 
 	use super::FungiblesError;
-	use crate::StatusCode;
-	use pop_primitives::{
+	use crate::error::{
 		ArithmeticError::*,
 		Error::{self, *},
 		TokenError::*,
 		TransactionalError::*,
 	};
+	use crate::StatusCode;
 
 	fn into_fungibles_error(error: Error) -> FungiblesError {
 		let status_code: StatusCode = error.into();

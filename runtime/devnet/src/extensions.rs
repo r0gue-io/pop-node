@@ -57,24 +57,132 @@ where
 		E: Ext<T = T>,
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
-		match v0::FuncId::try_from(env.func_id())? {
-			v0::FuncId::Dispatch => match dispatch::<T, E>(env) {
-				Ok(()) => Ok(RetVal::Converging(0)),
-				Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
+		let mut env = env.buf_in_buf_out();
+		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
+		// debug_message weight is a good approximation of the additional overhead of going
+		// from contract layer to substrate layer.
+		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
+		env.charge_weight(contract_host_weight.debug_message)?;
+
+		let result = match v0::FuncId::try_from(env.func_id()) {
+			Ok(function) => {
+				// calculate weight for reading bytes of `len`
+				// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
+				let len = env.in_len();
+				env.charge_weight(contract_host_weight.return_per_byte.saturating_mul(len.into()))?;
+				match function {
+					v0::FuncId::Dispatch => dispatch::<T, E>(&mut env, len),
+					v0::FuncId::ReadState => read_state::<T, E>(&mut env),
+					v0::FuncId::SendXcm => send_xcm::<T, E>(&mut env),
+				}
 			},
-			v0::FuncId::ReadState => {
-				read_state::<T, E>(env)?;
-				Ok(RetVal::Converging(0))
-			},
-			v0::FuncId::SendXcm => {
-				send_xcm::<T, E>(env)?;
-				Ok(RetVal::Converging(0))
-			},
+			Err(e) => Err(e),
+		};
+
+		// Convert any error to a status code and return Ok with RetVal::Converging
+		match result {
+			Ok(_) => Ok(RetVal::Converging(0)),
+			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
 		}
 	}
 }
+
+fn dispatch<T, E>(env: &mut Environment<E, BufInBufOutState>, len: u32) -> Result<(), DispatchError>
+where
+	T: pallet_contracts::Config
+		+ frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
+	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
+	E: Ext<T = T>,
+{
+	const LOG_PREFIX: &str = " dispatch |";
+
+	// read the input as RuntimeCall
+	let call: RuntimeCall = env.read_as_unbounded(len)?;
+	log::debug!(target: LOG_TARGET, "Read input as call successfully");
+	// contract is the origin by default
+	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
+}
+
+fn read_state<T, E>(env: &mut Environment<E, BufInBufOutState>) -> Result<(), DispatchError>
+where
+	T: pallet_contracts::Config
+		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
+		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
+		+ cumulus_pallet_parachain_system::Config
+		+ frame_system::Config<AccountId = sp_runtime::AccountId32>,
+	E: Ext<T = T>,
+{
+	const LOG_PREFIX: &str = " read_state |";
+
+	let key: RuntimeStateKeys = env.read_as()?;
+	let result = match key {
+		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, env),
+		RuntimeStateKeys::ParachainSystem(key) => read_parachain_system_state::<T, E>(key, env),
+		RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, env),
+	}?
+	.encode();
+
+	log::trace!(
+		target:LOG_TARGET,
+		"{} result: {:?}.", LOG_PREFIX, result
+	);
+	env.write(&result, false, None)
+}
+
+fn send_xcm<T, E>(env: &mut Environment<E, BufInBufOutState>) -> Result<(), DispatchError>
+where
+	T: pallet_contracts::Config
+		+ frame_system::Config<
+			RuntimeOrigin = RuntimeOrigin,
+			AccountId = AccountId,
+			RuntimeCall = RuntimeCall,
+		>,
+	E: Ext<T = T>,
+{
+	const LOG_PREFIX: &str = " send_xcm |";
+
+	// read the input as CrossChainMessage
+	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
+	// Determine the call to dispatch
+	let (dest, message) = match xc_call {
+		CrossChainMessage::Relay(message) => {
+			let dest = Location::parent().into_versioned();
+			let assets: Asset = (Here, 10 * UNIT).into();
+			let beneficiary: Location =
+				AccountId32 { id: (env.ext().address().clone()).into(), network: None }.into();
+			let message = Xcm::builder()
+				.withdraw_asset(assets.clone().into())
+				.buy_execution(assets.clone(), Unlimited)
+				.transact(
+					SovereignAccount,
+					Weight::from_parts(250_000_000, 10_000),
+					message.encode().into(),
+				)
+				.refund_surplus()
+				.deposit_asset(assets.into(), beneficiary)
+				.build();
+			(dest, message)
+		},
+	};
+
+	// TODO: revisit to replace with signed contract origin
+	let origin: RuntimeOrigin = RawOrigin::Root.into();
+
+	// Generate runtime call to dispatch
+	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
+		dest: Box::new(dest),
+		message: Box::new(VersionedXcm::V4(message)),
+	});
+
+	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
+}
+
 pub(crate) fn convert_to_status_code(error: DispatchError) -> u32 {
-	let mut encoded_error = error.encode();
+	let mut encoded_error = match error {
+		DispatchError::Other("UnknownFunctionId") => vec![254, 0, 0, 0],
+		_ => error.encode(),
+	};
 	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
 	encoded_error.resize(4, 0);
 	u32::decode(&mut &encoded_error[..]).expect("qid, resized to 4 bytes line above")
@@ -99,8 +207,7 @@ impl TryFrom<u16> for v0::FuncId {
 			0x2 => Self::SendXcm,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
-				// TODO: Other error.
-				return Err(DispatchError::Other("unimplemented func_id"));
+				return Err(DispatchError::Other("UnknownFuncId"));
 			},
 		};
 
@@ -141,101 +248,6 @@ where
 			Err(err.error)
 		},
 	}
-}
-
-fn charge_overhead_weight<T, E>(
-	env: &mut Environment<E, BufInBufOutState>,
-	len: u32,
-	log_prefix: &str,
-) -> Result<ChargedAmount, DispatchError>
-where
-	T: pallet_contracts::Config,
-	E: Ext<T = T>,
-{
-	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
-
-	// calculate weight for reading bytes of `len`
-	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
-	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
-
-	// debug_message weight is a good approximation of the additional overhead of going
-	// from contract layer to substrate layer.
-	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-	let overhead = contract_host_weight.debug_message;
-
-	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
-	log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", log_prefix, charged_weight);
-
-	Ok(charged_weight)
-}
-
-fn dispatch<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
-where
-	T: pallet_contracts::Config
-		+ frame_system::Config<RuntimeCall = RuntimeCall, RuntimeOrigin = RuntimeOrigin>,
-	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
-	E: Ext<T = T>,
-{
-	const LOG_PREFIX: &str = " dispatch |";
-
-	let mut env = env.buf_in_buf_out();
-	let len = env.in_len();
-
-	charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
-
-	// read the input as RuntimeCall
-	let call: RuntimeCall = env.read_as_unbounded(len)?;
-
-	log::debug!(target: LOG_TARGET, "Read input as call successfully");
-
-	// contract is the origin by default
-	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
-
-	dispatch_call::<T, E>(&mut env, call, origin, LOG_PREFIX)
-}
-
-fn read_state<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
-where
-	T: pallet_contracts::Config
-		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
-		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
-		+ cumulus_pallet_parachain_system::Config
-		+ frame_system::Config<AccountId = sp_runtime::AccountId32>,
-	E: Ext<T = T>,
-{
-	const LOG_PREFIX: &str = " read_state |";
-
-	let mut env = env.buf_in_buf_out();
-
-	// To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
-	let base_weight: Weight = ContractSchedule::<T>::get()
-		.host_fn_weights
-		.return_per_byte
-		.saturating_mul(env.in_len().into());
-	let charged_weight = env.charge_weight(base_weight)?;
-
-	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
-
-	let key: RuntimeStateKeys = env.read_as()?;
-
-	let result = match key {
-		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, &mut env),
-		RuntimeStateKeys::ParachainSystem(key) => {
-			read_parachain_system_state::<T, E>(key, &mut env)
-		},
-		RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, &mut env),
-	}?
-	.encode();
-
-	log::trace!(
-		target:LOG_TARGET,
-		"{} result: {:?}.", LOG_PREFIX, result
-	);
-	env.write(&result, false, None).map_err(|e| {
-		log::trace!(target: LOG_TARGET, "{:?}", e);
-		// TODO: Other error.
-		DispatchError::Other("unable to write results to contract memory")
-	})
 }
 
 fn read_parachain_system_state<T, E>(
@@ -320,10 +332,10 @@ where
 			)
 			.encode())
 		},
-		AssetsKeys::AssetExists(id) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
-		},
+		// AssetsKeys::AssetExists(id) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
+		// },
 		AssetsKeys::BalanceOf(id, owner) => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::balance(id, &owner.0.into())
@@ -333,61 +345,8 @@ where
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::total_supply(id).encode())
 		},
+		_ => todo!(),
 	}
-}
-
-fn send_xcm<T, E>(env: Environment<E, InitState>) -> Result<(), DispatchError>
-where
-	T: pallet_contracts::Config
-		+ frame_system::Config<
-			RuntimeOrigin = RuntimeOrigin,
-			AccountId = AccountId,
-			RuntimeCall = RuntimeCall,
-		>,
-	E: Ext<T = T>,
-{
-	const LOG_PREFIX: &str = " send_xcm |";
-
-	let mut env = env.buf_in_buf_out();
-	let len = env.in_len();
-
-	let _ = charge_overhead_weight::<T, E>(&mut env, len, LOG_PREFIX)?;
-
-	// read the input as CrossChainMessage
-	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
-
-	// Determine the call to dispatch
-	let (dest, message) = match xc_call {
-		CrossChainMessage::Relay(message) => {
-			let dest = Location::parent().into_versioned();
-			let assets: Asset = (Here, 10 * UNIT).into();
-			let beneficiary: Location =
-				AccountId32 { id: (env.ext().address().clone()).into(), network: None }.into();
-			let message = Xcm::builder()
-				.withdraw_asset(assets.clone().into())
-				.buy_execution(assets.clone(), Unlimited)
-				.transact(
-					SovereignAccount,
-					Weight::from_parts(250_000_000, 10_000),
-					message.encode().into(),
-				)
-				.refund_surplus()
-				.deposit_asset(assets.into(), beneficiary)
-				.build();
-			(dest, message)
-		},
-	};
-
-	// TODO: revisit to replace with signed contract origin
-	let origin: RuntimeOrigin = RawOrigin::Root.into();
-
-	// Generate runtime call to dispatch
-	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
-		dest: Box::new(dest),
-		message: Box::new(VersionedXcm::V4(message)),
-	});
-
-	dispatch_call::<T, E>(&mut env, call, origin, LOG_PREFIX)
 }
 
 #[cfg(test)]

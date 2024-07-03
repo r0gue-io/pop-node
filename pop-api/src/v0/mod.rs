@@ -8,7 +8,8 @@ pub mod cross_chain;
 pub mod nfts;
 pub mod state;
 
-#[derive(scale::Encode)]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub(crate) enum RuntimeCall {
 	#[codec(index = 10)]
 	#[cfg(feature = "balances")]

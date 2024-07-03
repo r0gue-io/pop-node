@@ -1,5 +1,5 @@
 use crate::{error::StatusCode, primitives::storage_keys::RuntimeStateKeys, read_state};
-use scale::Decode;
+use ink::scale::Decode;
 
 #[inline]
 pub fn read<T: Decode>(key: RuntimeStateKeys) -> crate::Result<T> {

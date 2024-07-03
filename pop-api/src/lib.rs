@@ -27,8 +27,8 @@ type BlockNumber = <Environment as ink::env::Environment>::BlockNumber;
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+#[derive(Debug, PartialEq, Eq, Clone)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum Environment {}
 
 impl ink::env::Environment for Environment {

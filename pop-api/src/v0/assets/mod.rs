@@ -1,5 +1,4 @@
-use ink::prelude::vec::Vec;
-use scale::{Compact, Encode};
+use ink::{prelude::vec::Vec, scale::Compact};
 
 use crate::{state::read, Balance, RuntimeCall, *};
 use primitives::{AssetId, MultiAddress};
@@ -97,7 +96,7 @@ type Result<T> = core::result::Result<T, StatusCode>;
 // 	}))
 // }
 
-// /// Move some assets from the sender account to another.
+/// Move some assets from the sender account to another.
 #[inline]
 pub(crate) fn transfer(
 	id: AssetId,
@@ -199,7 +198,7 @@ pub(crate) fn transfer(
 // 	dispatch(RuntimeCall::Assets(AssetsCall::ClearMetadata { id: id.into() }))
 // }
 
-// /// Approve an amount of asset for transfer by a delegated third-party account.
+/// Approve an amount of asset for transfer by a delegated third-party account.
 #[inline]
 pub(crate) fn approve_transfer(
 	id: AssetId,
@@ -300,17 +299,17 @@ pub(crate) fn transfer_approved(
 //
 #[inline]
 pub(crate) fn total_supply(id: AssetId) -> Result<Balance> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::TotalSupply(id)))
+	read(RuntimeStateKeys::Assets(AssetsKeys::TotalSupply(id)))
 }
 
 #[inline]
 pub(crate) fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::BalanceOf(id, owner)))
+	read(RuntimeStateKeys::Assets(AssetsKeys::BalanceOf(id, owner)))
 }
 
 #[inline]
 pub(crate) fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::Allowance(id, owner, spender)))
+	read(RuntimeStateKeys::Assets(AssetsKeys::Allowance(id, owner, spender)))
 }
 // pub(crate) fn asset_exists(id: AssetId) -> Result<bool> {
 // 	state::read(RuntimeStateKeys::Assets(AssetsKeys::AssetExists(id)))
@@ -318,17 +317,17 @@ pub(crate) fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Re
 
 #[inline]
 pub(crate) fn token_name(id: AssetId) -> Result<Vec<u8>> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::TokenName(id)))
+	read(RuntimeStateKeys::Assets(AssetsKeys::TokenName(id)))
 }
 //
 #[inline]
 pub(crate) fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::TokenSymbol(id)))
+	read(RuntimeStateKeys::Assets(AssetsKeys::TokenSymbol(id)))
 }
 
 #[inline]
 pub(crate) fn token_decimals(id: AssetId) -> Result<u8> {
-	state::read(RuntimeStateKeys::Assets(AssetsKeys::TokenDecimals(id)))
+	read(RuntimeStateKeys::Assets(AssetsKeys::TokenDecimals(id)))
 }
 
 // Parameters to extrinsics representing an asset id (`AssetIdParameter`) and a balance amount (`Balance`) are expected
@@ -341,7 +340,8 @@ type AssetIdParameter = Compact<AssetId>;
 // Balance amount that is compact encoded.
 type BalanceParameter = Compact<Balance>;
 //
-#[derive(Encode)]
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub(crate) enum AssetsCall {
 	// 	#[codec(index = 0)]
 	// 	Create { id: AssetIdParameter, admin: MultiAddress<AccountId, ()>, min_balance: Balance },
