@@ -1,4 +1,4 @@
-use ink::{scale::Decode, env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec, scale::Decode};
 
 use crate::{primitives::AssetId, AccountId, Balance, Result, StatusCode};
 
@@ -92,7 +92,7 @@ pub mod fungibles;
 /// Move some assets from the sender account to another.
 #[inline]
 pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(0)
+	ChainExtensionMethod::build(u32::from_le_bytes([0u8, 0, 52, 9]))
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -130,7 +130,7 @@ pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 /// Approve an amount of asset for transfer by a delegated third-party account.
 #[inline]
 pub fn approve_transfer(id: AssetId, delegate: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(0)
+	ChainExtensionMethod::build(u32::from_le_bytes([0u8, 0, 52, 69]))
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -173,12 +173,13 @@ pub fn transfer_approved(
 /// - token_decimals
 
 #[inline]
-pub fn total_supply(id: AssetId) -> Balance {
-	ChainExtensionMethod::build(1)
-		.input::<(AssetId)>()
-		.output::<Balance, false>()
-		.ignore_error_code()
+pub fn total_supply(id: AssetId) -> Result<Balance> {
+	ChainExtensionMethod::build(u32::from_le_bytes([0u8, 1, 52, 2]))
+		.input::<AssetId>()
+		.output::<Result<Vec<u8>>, true>()
+		.handle_error_code::<StatusCode>()
 		.call(&(id))
+		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
 }
 
 #[inline]
@@ -202,7 +203,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Balance {
 #[inline]
 pub fn token_name(id: AssetId) -> Vec<u8> {
 	ChainExtensionMethod::build(1)
-		.input::<(AssetId)>()
+		.input::<AssetId>()
 		.output::<Vec<u8>, false>()
 		.ignore_error_code()
 		.call(&(id))
@@ -211,7 +212,7 @@ pub fn token_name(id: AssetId) -> Vec<u8> {
 #[inline]
 pub fn token_symbol(id: AssetId) -> Vec<u8> {
 	ChainExtensionMethod::build(1)
-		.input::<(AssetId)>()
+		.input::<AssetId>()
 		.output::<Vec<u8>, false>()
 		.ignore_error_code()
 		.call(&(id))
@@ -220,7 +221,7 @@ pub fn token_symbol(id: AssetId) -> Vec<u8> {
 #[inline]
 pub fn token_decimals(id: AssetId) -> u8 {
 	ChainExtensionMethod::build(1)
-		.input::<(AssetId)>()
+		.input::<AssetId>()
 		.output::<u8, false>()
 		.ignore_error_code()
 		.call(&(id))

@@ -23,7 +23,7 @@ mod fungibles {
 	pub struct Fungibles;
 
 	impl Fungibles {
-		#[ink(constructor)]
+		#[ink(constructor, payable)]
 		pub fn new() -> Self {
 			ink::env::debug_println!("PopApiFungiblesExample::new");
 			Default::default()
@@ -40,7 +40,7 @@ mod fungibles {
 		/// - decrease_allowance
 
 		#[ink(message)]
-		pub fn total_supply(&self, id: AssetId) -> Balance {
+		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
 			api::total_supply(id)
 		}
 

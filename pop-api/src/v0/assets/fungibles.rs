@@ -1,4 +1,4 @@
-use ink::{prelude::vec::Vec, scale::Encode};
+use ink::prelude::vec::Vec;
 
 use crate::{assets, primitives::AssetId, AccountId, Balance, Result, StatusCode};
 
@@ -25,7 +25,7 @@ use crate::{assets, primitives::AssetId, AccountId, Balance, Result, StatusCode}
 /// # Returns
 /// The total supply of the token, or an error if the operation fails.
 #[inline]
-pub fn total_supply(id: AssetId) -> Balance {
+pub fn total_supply(id: AssetId) -> Result<Balance> {
 	assets::total_supply(id)
 }
 

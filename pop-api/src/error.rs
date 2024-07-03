@@ -1,4 +1,4 @@
-use ink::scale::{Decode, Encode};
+use ink::scale::Decode;
 
 use crate::StatusCode;
 
