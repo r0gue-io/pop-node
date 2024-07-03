@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{scale::{Decode, Encode}, env::{chain_extension::FromStatusCode, DefaultEnvironment, Environment}};
-pub use sp_runtime::MultiAddress;
+use ink::env::{chain_extension::FromStatusCode, DefaultEnvironment, Environment};
 
 #[cfg(feature = "assets")]
 pub use v0::assets;
@@ -23,7 +22,7 @@ type Balance = <DefaultEnvironment as Environment>::Balance;
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
 
@@ -33,11 +32,11 @@ impl From<u32> for StatusCode {
 	}
 }
 impl FromStatusCode for StatusCode {
-	fn from_status_code(status_code: u32) -> core::result::Result<(), Self> {
+	fn from_status_code(status_code: u32) -> Result<()> {
 		match status_code {
-            0 => Ok(()),
-            _ => Err(StatusCode(status_code))
-        }
+			0 => Ok(()),
+			_ => Err(StatusCode(status_code)),
+		}
 	}
 }
 

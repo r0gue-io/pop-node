@@ -23,7 +23,7 @@ mod fungibles {
 	pub struct Fungibles;
 
 	impl Fungibles {
-		#[ink(constructor, payable)]
+		#[ink(constructor)]
 		pub fn new() -> Self {
 			ink::env::debug_println!("PopApiFungiblesExample::new");
 			Default::default()
@@ -40,41 +40,24 @@ mod fungibles {
 		/// - decrease_allowance
 
 		#[ink(message)]
-		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
-			// api::total_supply(id).map_err(|e| e.into())
+		pub fn total_supply(&self, id: AssetId) -> Balance {
 			api::total_supply(id)
 		}
-		//
+
 		#[ink(message)]
-		pub fn balance_of(&self, id: AssetId, owner: AccountId) -> Result<Balance> {
-			// api::balance_of(id, owner).map_err(|e| e.into())
+		pub fn balance_of(&self, id: AssetId, owner: AccountId) -> Balance {
 			api::balance_of(id, owner)
 		}
 
 		#[ink(message)]
-		pub fn allowance(
-			&self,
-			id: AssetId,
-			owner: AccountId,
-			spender: AccountId,
-		) -> Result<Balance> {
-			// api::allowance(id, owner, spender).map_err(|e| e.into())
+		pub fn allowance(&self, id: AssetId, owner: AccountId, spender: AccountId) -> Balance {
 			api::allowance(id, owner, spender)
 		}
 
 		#[ink(message)]
 		pub fn transfer(&self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
-			ink::env::debug_println!(
-				"PopApiFungiblesExample::transfer: id: {:?}, to: {:?} value: {:?}",
-				id,
-				to,
-				value,
-			);
-
-			let result = api::transfer(id, to, value);
-			ink::env::debug_println!("Result: {:?}", result);
-			// result.map_err(|e| e.into())
-			result
+			api::transfer(id, to, value)?;
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -87,35 +70,16 @@ mod fungibles {
 			// In the standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
 		) -> Result<()> {
-			ink::env::debug_println!(
-				"PopApiFungiblesExample::transfer_from: id: {:?}, from: {:?}, to: {:?} value: {:?}",
-				id,
-				from,
-				to,
-				value,
-			);
-
-			let result = api::transfer_from(id, from, to, value);
-			ink::env::debug_println!("Result: {:?}", result);
-			// result.map_err(|e| e.into())
-			result
+			api::transfer_from(id, from, to, value)?;
+			Ok(())
 		}
 
 		#[ink(message)]
 		pub fn approve(&self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-			ink::env::debug_println!(
-				"PopApiFungiblesExample::approve: id: {:?}, spender {:?}, value: {:?}",
-				id,
-				spender,
-				value,
-			);
-
-			let result = api::approve(id, spender, value);
-			ink::env::debug_println!("Result: {:?}", result);
-			// result.map_err(|e| e.into())
-			result
+			api::approve(id, spender, value)?;
+			Ok(())
 		}
-		//
+
 		#[ink(message)]
 		pub fn increase_allowance(
 			&self,
@@ -123,19 +87,10 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
-			ink::env::debug_println!(
-				"PopApiFungiblesExample::increase_allowance: id: {:?}, spender {:?}, value: {:?}",
-				id,
-				spender,
-				value,
-			);
-
-			let result = api::increase_allowance(id, spender, value);
-			ink::env::debug_println!("Result: {:?}", result);
-			// result.map_err(|e| e.into())
-			result
+			api::increase_allowance(id, spender, value)?;
+			Ok(())
 		}
-		//
+
 		#[ink(message)]
 		pub fn decrease_allowance(
 			&self,
@@ -143,17 +98,8 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
-			ink::env::debug_println!(
-				"PopApiFungiblesExample::decrease_allowance: id: {:?}, spender {:?}, value: {:?}",
-				id,
-				spender,
-				value,
-			);
-
-			let result = api::decrease_allowance(id, spender, value);
-			ink::env::debug_println!("Result: {:?}", result);
-			// result.map_err(|e| e.into())
-			result
+			api::decrease_allowance(id, spender, value)?;
+			Ok(())
 		}
 
 		// 2. PSP-22 Metadata Interface:
@@ -162,20 +108,17 @@ mod fungibles {
 		// - token_decimals
 
 		#[ink(message)]
-		pub fn token_name(&self, id: AssetId) -> Result<Vec<u8>> {
-			// api::token_name(id).map_err(|e| e.into())
+		pub fn token_name(&self, id: AssetId) -> Vec<u8> {
 			api::token_name(id)
 		}
 
 		#[ink(message)]
-		pub fn token_symbol(&self, id: AssetId) -> Result<Vec<u8>> {
-			// api::token_symbol(id).map_err(|e| e.into())
+		pub fn token_symbol(&self, id: AssetId) -> Vec<u8> {
 			api::token_symbol(id)
 		}
 
 		#[ink(message)]
-		pub fn token_decimals(&self, id: AssetId) -> Result<u8> {
-			// api::token_decimals(id).map_err(|e| e.into())
+		pub fn token_decimals(&self, id: AssetId) -> u8 {
 			api::token_decimals(id)
 		}
 
@@ -198,8 +141,8 @@ mod fungibles {
 		// 	);
 		// 	let result = api::create(id, admin, min_balance);
 		// 	ink::env::debug_println!("Result: {:?}", result);
-		// 	// result.map_err(|e| e.into())
-		// 	result
+		// result.map_err(|e| e.into())
+		// result
 		// }
 
 		// #[ink(message)]

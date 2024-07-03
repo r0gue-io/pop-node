@@ -1,4 +1,4 @@
-use ink::{env::chain_extension::FromStatusCode, scale::Decode};
+use ink::scale::{Decode, Encode};
 
 use crate::StatusCode;
 

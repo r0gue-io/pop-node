@@ -1,10 +1,6 @@
-use ink::prelude::vec::Vec;
+use ink::{prelude::vec::Vec, scale::Encode};
 
-use crate::{
-	assets,
-	primitives::{AssetId, MultiAddress},
-	AccountId, Balance, Result, StatusCode,
-};
+use crate::{assets, primitives::AssetId, AccountId, Balance, Result, StatusCode};
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
@@ -29,7 +25,7 @@ use crate::{
 /// # Returns
 /// The total supply of the token, or an error if the operation fails.
 #[inline]
-pub fn total_supply(id: AssetId) -> Result<Balance> {
+pub fn total_supply(id: AssetId) -> Balance {
 	assets::total_supply(id)
 }
 
@@ -43,7 +39,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 /// # Returns
 /// The balance of the specified account, or an error if the operation fails.
 #[inline]
-pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
+pub fn balance_of(id: AssetId, owner: AccountId) -> Balance {
 	assets::balance_of(id, owner)
 }
 
@@ -58,7 +54,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 /// # Returns
 /// The remaining allowance, or an error if the operation fails.
 #[inline]
-pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
+pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Balance {
 	assets::allowance(id, owner, spender)
 }
 
@@ -73,11 +69,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer(
-	id: AssetId,
-	to: impl Into<MultiAddress<AccountId, ()>>,
-	value: Balance,
-) -> Result<()> {
+pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 	assets::transfer(id, to, value)
 }
 
@@ -94,12 +86,7 @@ pub fn transfer(
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer_from(
-	id: AssetId,
-	from: impl Into<MultiAddress<AccountId, ()>>,
-	to: impl Into<MultiAddress<AccountId, ()>>,
-	value: Balance,
-) -> Result<()> {
+pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
 	assets::transfer_approved(id, from, to, value)
 }
 
@@ -159,7 +146,7 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// # Returns
 /// The name of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
+pub fn token_name(id: AssetId) -> Vec<u8> {
 	assets::token_name(id)
 }
 
@@ -171,7 +158,7 @@ pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
 /// # Returns
 ///  The symbol of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
+pub fn token_symbol(id: AssetId) -> Vec<u8> {
 	assets::token_symbol(id)
 }
 
@@ -183,7 +170,7 @@ pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
 /// # Returns
 ///  The number of decimals of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_decimals(id: AssetId) -> Result<u8> {
+pub fn token_decimals(id: AssetId) -> u8 {
 	assets::token_decimals(id)
 }
 

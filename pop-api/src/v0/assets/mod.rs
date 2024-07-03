@@ -1,7 +1,6 @@
-use ink::{scale::{Compact, Decode}, env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+use ink::{scale::Decode, env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 
-use crate::primitives::{AssetId, MultiAddress};
-use crate::{AccountId, Balance, Result, StatusCode};
+use crate::{primitives::AssetId, AccountId, Balance, Result, StatusCode};
 
 pub mod fungibles;
 
@@ -11,9 +10,9 @@ pub mod fungibles;
 // reference: https://substrate.stackexchange.com/questions/1873/what-is-the-meaning-of-palletcompact-in-pallet-development
 //
 // Asset id that is compact encoded.
-type AssetIdParameter = Compact<AssetId>;
-// Balance amount that is compact encoded.
-type BalanceParameter = Compact<Balance>;
+// type AssetIdParameter = Compact<AssetId>;
+// // Balance amount that is compact encoded.
+// type BalanceParameter = Compact<Balance>;
 
 /// [Pallet Assets](https://github.com/paritytech/polkadot-sdk/blob/master/substrate/frame/assets/src/lib.rs):
 /// 1. Dispatchables
@@ -92,16 +91,12 @@ type BalanceParameter = Compact<Balance>;
 
 /// Move some assets from the sender account to another.
 #[inline]
-pub(crate) fn transfer(
-	id: AssetId,
-	target: impl Into<MultiAddress<AccountId, ()>>,
-	amount: Balance,
-) -> Result<()> {
+pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 	ChainExtensionMethod::build(0)
-		.input::<(u8, u8, AssetIdParameter, MultiAddress<AccountId, ()>, BalanceParameter)>()
+		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(52, 9, Compact(id), target.into(), Compact(amount)))
+		.call(&(id, target, amount))
 }
 
 // /// Move some assets from the sender account to another, keeping the sender account alive.
@@ -134,52 +129,38 @@ pub(crate) fn transfer(
 
 /// Approve an amount of asset for transfer by a delegated third-party account.
 #[inline]
-pub(crate) fn approve_transfer(
-	id: AssetId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
-	amount: Balance,
-) -> Result<()> {
+pub fn approve_transfer(id: AssetId, delegate: AccountId, amount: Balance) -> Result<()> {
 	ChainExtensionMethod::build(0)
-		.input::<(u8, u8, AssetIdParameter, MultiAddress<AccountId, ()>, BalanceParameter)>()
+		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(52, 22, Compact(id), delegate.into(), Compact(amount)))
+		.call(&(id, delegate, amount))
 }
 
 /// Cancel all of some asset approved for delegated transfer by a third-party account.
 #[inline]
-pub(crate) fn cancel_approval(
-	id: AssetId,
-	delegate: impl Into<MultiAddress<AccountId, ()>>,
-) -> Result<()> {
+pub fn cancel_approval(id: AssetId, delegate: AccountId) -> Result<()> {
 	ChainExtensionMethod::build(0)
-		.input::<(u8, u8, AssetIdParameter, MultiAddress<AccountId, ()>)>()
+		.input::<(AssetId, AccountId)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(52, 23, Compact(id), delegate.into()))
+		.call(&(id, delegate))
 }
 
 /// Transfer some asset balance from a previously delegated account to some third-party
 /// account.
 #[inline]
-pub(crate) fn transfer_approved(
+pub fn transfer_approved(
 	id: AssetId,
-	from: impl Into<MultiAddress<AccountId, ()>>,
-	to: impl Into<MultiAddress<AccountId, ()>>,
+	from: AccountId,
+	to: AccountId,
 	amount: Balance,
 ) -> Result<()> {
 	ChainExtensionMethod::build(0)
-		.input::<(
-			u8,
-			u8,
-			AssetIdParameter,
-			MultiAddress<AccountId, ()>,
-			MultiAddress<AccountId, ()>,
-			BalanceParameter,
-		)>()
+		.input::<(AssetId, AccountId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(52, 25, Compact(id), from.into(), to.into(), Compact(amount)))
+		.call(&(id, from, to, amount))
 }
 
 /// 2. Read state functions
@@ -192,63 +173,57 @@ pub(crate) fn transfer_approved(
 /// - token_decimals
 
 #[inline]
-pub(crate) fn total_supply(id: AssetId) -> Result<Balance> {
+pub fn total_supply(id: AssetId) -> Balance {
 	ChainExtensionMethod::build(1)
-		.input::<(u8, u8, AssetId)>()
-		.output::<Result<Vec<u8>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(52, 2, id))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+		.input::<(AssetId)>()
+		.output::<Balance, false>()
+		.ignore_error_code()
+		.call(&(id))
 }
 
 #[inline]
-pub(crate) fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
+pub fn balance_of(id: AssetId, owner: AccountId) -> Balance {
 	ChainExtensionMethod::build(1)
-		.input::<(u8, u8, AssetId, AccountId)>()
-		.output::<Result<Vec<u8>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(52, 1, id, owner))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+		.input::<(AssetId, AccountId)>()
+		.output::<Balance, false>()
+		.ignore_error_code()
+		.call(&(id, owner))
 }
 
 #[inline]
-pub(crate) fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
+pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Balance {
 	ChainExtensionMethod::build(1)
-		.input::<(u8, u8, AssetId, AccountId, AccountId)>()
-		.output::<Result<Vec<u8>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(52, 0, id, owner, spender))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+		.input::<(AssetId, AccountId, AccountId)>()
+		.output::<Balance, false>()
+		.ignore_error_code()
+		.call(&(id, owner, spender))
 }
 
 #[inline]
-pub(crate) fn token_name(id: AssetId) -> Result<Vec<u8>> {
+pub fn token_name(id: AssetId) -> Vec<u8> {
 	ChainExtensionMethod::build(1)
-		.input::<(u8, u8, AssetId)>()
-		.output::<Result<Vec<u8>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(52, 5, id))
-		.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+		.input::<(AssetId)>()
+		.output::<Vec<u8>, false>()
+		.ignore_error_code()
+		.call(&(id))
 }
 //
 #[inline]
-pub(crate) fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
+pub fn token_symbol(id: AssetId) -> Vec<u8> {
 	ChainExtensionMethod::build(1)
-		.input::<(u8, u8, AssetId)>()
-		.output::<Result<Vec<u8>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(52, 4, id))
-		.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+		.input::<(AssetId)>()
+		.output::<Vec<u8>, false>()
+		.ignore_error_code()
+		.call(&(id))
 }
 
 #[inline]
-pub(crate) fn token_decimals(id: AssetId) -> Result<u8> {
+pub fn token_decimals(id: AssetId) -> u8 {
 	ChainExtensionMethod::build(1)
-		.input::<(u8, u8, AssetId)>()
-		.output::<Result<Vec<u8>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(52, 3, id))
-		.and_then(|v| u8::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+		.input::<(AssetId)>()
+		.output::<u8, false>()
+		.ignore_error_code()
+		.call(&(id))
 }
 
 // pub(crate) fn asset_exists(id: AssetId) -> Result<bool> {
