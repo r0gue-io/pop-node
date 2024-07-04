@@ -3,7 +3,7 @@ use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
-	traits::nonfungibles_v2::Inspect as NonFungiblesInspect,
+	traits::nonfungibles_v2::Inspect,
 };
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
@@ -86,7 +86,6 @@ impl TryFrom<u16> for v0::FuncId {
 			0x1 => Self::ReadState,
 			_ => {
 				log::error!("called an unregistered `func_id`: {:}", func_id);
-				// TODO: Other error.
 				return Err(DispatchError::Other("unimplemented func_id"));
 			},
 		};
@@ -207,8 +206,6 @@ where
 		RuntimeStateKeys::ParachainSystem(key) => {
 			read_parachain_system_state::<T, E>(key, &mut env)
 		},
-		// TODO: devnet / testnet feature.
-		_ => Err(DispatchError::Other("Unknown state keys")),
 	}?
 	.encode();
 
@@ -218,8 +215,7 @@ where
 	);
 	env.write(&result, false, None).map_err(|e| {
 		log::trace!(target: LOG_TARGET, "{:?}", e);
-		// TODO: Other error.
-		DispatchError::Other("Unable to write results to contract memory")
+		DispatchError::Other("unable to write results to contract memory")
 	})
 }
 
@@ -485,7 +481,7 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// Check for revert.
+			// check for revert
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 
 			assert_eq!(Nfts::owner(collection_id, item_id), Some(BOB.into()));
@@ -550,7 +546,7 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// Check for revert with expected error.
+			// check for revert with expected error
 			let result = result.result.unwrap();
 			assert!(result.did_revert());
 		});
@@ -610,7 +606,7 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// Check for revert.
+			// check for revert
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 		});
 	}
@@ -673,7 +669,7 @@ mod tests {
 				log::debug!("result: {:?}", result);
 			}
 
-			// Check for revert.
+			// check for revert
 			assert!(
 				result.result.is_err(),
 				"Contract execution should have failed - unimplemented runtime call!"
@@ -735,7 +731,7 @@ mod tests {
 				log::debug!("filtered result: {:?}", result);
 			}
 
-			// Check for revert.
+			// check for revert
 			assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
 		});
 	}

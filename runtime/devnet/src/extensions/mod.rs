@@ -15,7 +15,7 @@ use pallet_contracts::chain_extension::{
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{
 	traits::{BlockNumberProvider, Dispatchable},
-	MultiAddress,
+	DispatchError, MultiAddress,
 };
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
@@ -67,33 +67,33 @@ where
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
 		let mut env = env.buf_in_buf_out();
-
-		// Charge weight for making a call form a contract to the runtime.
+		// Charge weight for making a call from a contract to the runtime.
 		// `debug_message` weight is a good approximation of the additional overhead of going
 		// from contract layer to substrate layer.
 		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
 		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
 		env.charge_weight(contract_host_weight.debug_message)?;
 
-		// Extract version, function_id, pallet index and dispatchable index.
-		let func_id_value = env.func_id().to_le_bytes();
-		let version = func_id_value[0];
-		let function_id = func_id_value[1];
-		let ext_id_value = env.ext_id().to_le_bytes();
-		let pallet_index = ext_id_value[0];
-		let call_index = ext_id_value[1];
+		// Extract version and function_id from first two bytes.
+		let (version, function_id) = {
+			let bytes = env.func_id().to_le_bytes();
+			(bytes[0], bytes[1])
+		};
+		// Extract pallet index and call / key index from last two bytes.
+		let (pallet_index, call_index) = {
+			let bytes = env.ext_id().to_le_bytes();
+			(bytes[0], bytes[1])
+		};
 
 		let result = match FuncId::try_from(function_id) {
-			Ok(function) => {
-				// Calculate weight for reading bytes of `len`.
+			Ok(function_id) => {
+				// Read encoded parameters from buffer and calculate weight for reading `len` bytes`.
 				// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
 				let len = env.in_len();
 				env.charge_weight(contract_host_weight.return_per_byte.saturating_mul(len.into()))?;
-				// Read encoded parameters from buffer.
 				let params = env.read(len)?;
-				log::debug!(target: LOG_TARGET, "Read input as successfully");
-
-				match function {
+				log::debug!(target: LOG_TARGET, "Read input successfully");
+				match function_id {
 					FuncId::Dispatch => {
 						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
 					},
@@ -107,7 +107,6 @@ where
 			Err(e) => Err(e),
 		};
 
-		// Convert any error to a status code and return Ok with RetVal::Converging
 		match result {
 			Ok(_) => Ok(RetVal::Converging(0)),
 			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e, version))),
@@ -129,7 +128,7 @@ where
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
-	let call = construct_runtime_call(version, pallet_index, call_index, params)
+	let call = construct_call(version, pallet_index, call_index, params)
 		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
 
 	// contract is the origin by default
@@ -173,7 +172,7 @@ where
 	}
 }
 
-fn construct_runtime_call(
+fn construct_call(
 	version: u8,
 	pallet_index: u8,
 	call_index: u8,
@@ -181,15 +180,14 @@ fn construct_runtime_call(
 ) -> Result<RuntimeCall, DispatchError> {
 	match pallet_index {
 		52 => {
-			let call = decode_versioned_assets_call_param(version, call_index, params)?;
+			let call = versioned_construct_assets_call(version, call_index, params)?;
 			Ok(RuntimeCall::Assets(call))
 		},
-		// other pallets
 		_ => Err(DispatchError::Other("UnknownFunctionId")),
 	}
 }
 
-fn construct_read_state_function(
+fn construct_read_state_keys(
 	version: u8,
 	pallet_index: u8,
 	call_index: u8,
@@ -197,53 +195,31 @@ fn construct_read_state_function(
 ) -> Result<RuntimeStateKeys, DispatchError> {
 	match pallet_index {
 		52 => {
-			let keys = decode_versioned_assets_state_param(version, call_index, params)?;
+			let keys = versioned_construct_assets_key(version, call_index, params)?;
 			Ok(RuntimeStateKeys::Assets(keys))
 		},
-		// other pallets
 		_ => Err(DispatchError::Other("UnknownFunctionId")),
 	}
 }
 
-fn decode_versioned_assets_call_param(
+fn versioned_construct_assets_call(
 	version: u8,
 	call_index: u8,
 	params: Vec<u8>,
 ) -> Result<pallet_assets::Call<Runtime, TrustBackedAssetsInstance>, DispatchError> {
 	match version {
-		0 => {
-			match call_index {
-				9 => {
-					let (id, target, amount) =
-						<(AssetId, AccountId, Balance)>::decode(&mut &params[..])
-							.map_err(|_| DispatchError::Other("DecodingFailed"))?;
-					Ok(pallet_assets::Call::<Runtime, TrustBackedAssetsInstance>::transfer_keep_alive { id: Compact(id), target: MultiAddress::Id(target), amount })
-				},
-				// other calls
-				_ => Err(DispatchError::Other("UnknownFunctionId")),
-			}
-		},
+		0 => v0::assets::construct_assets_call(call_index, params),
 		_ => Err(DispatchError::Other("UnknownFunctionId")),
 	}
 }
 
-fn decode_versioned_assets_state_param(
+fn versioned_construct_assets_key(
 	version: u8,
 	call_index: u8,
 	params: Vec<u8>,
 ) -> Result<AssetsKeys, DispatchError> {
 	match version {
-		0 => {
-			match call_index {
-				0 => {
-					let id = <AssetId>::decode(&mut &params[..])
-						.map_err(|_| DispatchError::Other("DecodingFailed"))?;
-					Ok(TotalSupply(id))
-				},
-				// other calls
-				_ => Err(DispatchError::Other("UnknownFunctionId")),
-			}
-		},
+		0 => v0::assets::construct_assets_key(call_index, params),
 		_ => Err(DispatchError::Other("UnknownFunctionId")),
 	}
 }
@@ -265,7 +241,7 @@ where
 {
 	const LOG_PREFIX: &str = " read_state |";
 
-	let key = construct_read_state_function(version, pallet_index, call_index, params)?;
+	let key = construct_read_state_keys(version, pallet_index, call_index, params)?;
 
 	let result = match key {
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, env),
@@ -329,7 +305,21 @@ where
 	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
 }
 
+// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
+// The contract calling the chain extension can convert the status code to the descriptive `Error`.
+//
+// For `Error` see `pop_primitives::<version>::error::Error`.
+//
+// The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
+// As a result, contracts maintain compatibility across different versions of the runtime.
+//
+// # Parameters
+//
+// - `error`: The `DispatchError` encountered during contract execution.
+// - `version`: The version of the chain extension, used to determine the known errors.
 pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
+	// "UnknownFunctionId" and "DecodingFailed" are mapped to specific errors in the API and will
+	// never change.
 	let mut encoded_error = match error {
 		DispatchError::Other("UnknownFunctionId") => vec![254, 0, 0, 0],
 		DispatchError::Other("DecodingFailed") => vec![255, 0, 0, 0],
@@ -339,6 +329,22 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	encoded_error.resize(4, 0);
 	let mut encoded_error = encoded_error.try_into().expect("qid, resized to 4 bytes line above");
 	match version {
+		// If an unknown variant of the `DispatchError` is detected the error needs to be converted
+		// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
+		// position forward (discarding the last byte as it is not used) and setting the first byte to the
+		// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
+		// variant which provides all the necessary information to debug which error occurred in the runtime.
+		//
+		// Byte layout explanation:
+		// - Byte 0: index of the variant within `Error`
+		// - Byte 1:
+		//   - Must be zero for `UNIT_ERRORS`.
+		//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
+		//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
+		// - Byte 2:
+		//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
+		// - Byte 3:
+		//   - Unused or represents further nested information.
 		0 => v0::error::handle_unknown_error(&mut encoded_error),
 		_ => encoded_error = [254, 0, 0, 0],
 	}
@@ -364,7 +370,6 @@ impl TryFrom<u8> for FuncId {
 				return Err(DispatchError::Other("UnknownFuncId"));
 			},
 		};
-
 		Ok(id)
 	}
 }
@@ -470,6 +475,10 @@ where
 
 #[cfg(test)]
 mod tests {
+	use super::*;
+	use crate::{Assets, Runtime, System};
+	use sp_runtime::BuildStorage;
+
 	// Test ensuring `func_id()` and `ext_id()` work as expected, i.e. extracting the first two
 	// bytes and the last two bytes, respectively, from a 4 byte array.
 	#[test]

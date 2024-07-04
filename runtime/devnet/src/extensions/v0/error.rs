@@ -1,22 +1,5 @@
-// If an unknown variant of the `DispatchError` is detected the error needs to be converted
-// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
-// position forward (discarding the last byte as it is not used) and setting the first byte to the
-// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
-// variant which provides all the necessary information to debug which error occurred in the runtime.
-//
-// Byte layout explanation:
-// - Byte 0: index of the variant within `Error`
-// - Byte 1:
-//   - Must be zero for `UNIT_ERRORS`.
-//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
-//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
-// - Byte 2:
-//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
-// - Byte 3:
-//   - Unused or represents further nested information.
-//
-// This mechanism ensures backward compatibility by correctly categorizing any unknown errors
-// into the `Other` variant, thus preventing issues caused by breaking changes.
+use crate::extensions::convert_to_status_code;
+
 pub(crate) fn handle_unknown_error(encoded_error: &mut [u8; 4]) {
 	let unknown = match encoded_error[0] {
 		code if UNIT_ERRORS.contains(&code) => nested_errors(&encoded_error[1..], None),
@@ -122,7 +105,7 @@ mod tests {
 			(DispatchError::RootNotAllowed, RootNotAllowed),
 		];
 		for (dispatch_error, expected) in test_cases {
-			let status_code = convert_to_status_code(dispatch_error, 0);
+			let status_code = crate::extensions::convert_to_status_code(dispatch_error, 0);
 			let error: Error = status_code.into();
 			assert_eq!(error, expected);
 		}

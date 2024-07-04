@@ -22,7 +22,7 @@ type BlockNumber = <DefaultEnvironment as Environment>::BlockNumber;
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
 
@@ -49,5 +49,11 @@ impl From<ink::scale::Error> for StatusCode {
 impl From<StatusCode> for Error {
 	fn from(value: StatusCode) -> Self {
 		value.0.into()
+	}
+}
+
+impl From<Error> for StatusCode {
+	fn from(value: Error) -> Self {
+		StatusCode::from(u32::from(value))
 	}
 }
