@@ -276,6 +276,7 @@ pub fn token_decimals(id: AssetId) -> u8 {
 // 	assets::asset_exists(id)
 // }
 
+// TODO: further implement the rest of the interfaces and conclude on the FungiblesError.
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum FungiblesError {
@@ -296,13 +297,13 @@ pub enum FungiblesError {
 	NoPermission,
 	/// The given asset ID is unknown.
 	Unknown,
-	// // TODO:
-	// // - Originally `InsufficientBalance` for the deposit but this would result in the same error
-	// // as the error when there is insufficient balance for transferring an asset.
+	// - Originally `InsufficientBalance` for the deposit but this would result in the same error
+	// as the error when there is insufficient balance for transferring an asset.
 	/// No balance for creation of assets or fees.
 	NoBalance,
 }
 
+// TODO: include conversions from TokenError and add conversions based on added interfaces.
 impl From<StatusCode> for FungiblesError {
 	fn from(value: StatusCode) -> Self {
 		let encoded = value.0.to_le_bytes();
@@ -324,10 +325,10 @@ impl From<StatusCode> for FungiblesError {
 
 #[cfg(test)]
 mod tests {
-	use scale::Decode;
+	use ink::scale::Decode;
 
 	use super::FungiblesError;
-	use crate::error::{
+	use crate::primitives::error::{
 		ArithmeticError::*,
 		Error::{self, *},
 		TokenError::*,
@@ -340,6 +341,7 @@ mod tests {
 		status_code.into()
 	}
 
+	// If we ever want to change the conversion from bytes to `u32`.
 	#[test]
 	fn status_code_vs_encoded() {
 		assert_eq!(u32::decode(&mut &[3u8, 10, 2, 0][..]).unwrap(), 133635u32);
@@ -358,6 +360,7 @@ mod tests {
 			Other { dispatch_error_index: 5, error_index: 5, error: 1 },
 			CannotLookup,
 			BadOrigin,
+			// `ModuleError` other than assets module.
 			Module { index: 2, error: 5 },
 			ConsumerRemaining,
 			NoProviders,
@@ -369,6 +372,7 @@ mod tests {
 			Corruption,
 			Unavailable,
 			RootNotAllowed,
+			UnknownFunctionId,
 			DecodingFailed,
 		];
 		for error in errors {

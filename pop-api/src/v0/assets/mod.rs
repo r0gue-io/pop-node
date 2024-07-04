@@ -4,21 +4,15 @@ use crate::{primitives::AssetId, AccountId, Balance, Result, StatusCode};
 
 pub mod fungibles;
 
-// Parameters to extrinsics representing an asset id (`AssetIdParameter`) and a balance amount (`Balance`) are expected
-// to be compact encoded. The pop api handles that for the developer.
-//
-// reference: https://substrate.stackexchange.com/questions/1873/what-is-the-meaning-of-palletcompact-in-pallet-development
-//
-// Asset id that is compact encoded.
-// type AssetIdParameter = Compact<AssetId>;
-// // Balance amount that is compact encoded.
-// type BalanceParameter = Compact<Balance>;
+const ASSETS_MODULE: u8 = 52;
+const VERSION: u8 = 0;
 
 /// [Pallet Assets](https://github.com/paritytech/polkadot-sdk/blob/master/substrate/frame/assets/src/lib.rs):
 /// 1. Dispatchables
 /// 2. Read state functions
 ///
 /// 1. Dispatchables within pallet assets (TrustBackedAssets instance):
+const DISPATCH: u8 = 0;
 /// - create
 /// - start_destroy
 /// - destroy_accounts
@@ -28,6 +22,7 @@ pub mod fungibles;
 /// - burn
 /// - transfer
 /// - transfer_keep_alive
+const TRANSFER_KEEP_ALIVE: u8 = 9;
 /// - set_metadata
 /// - clear_metadata
 /// - approve_transfer
@@ -92,11 +87,17 @@ pub mod fungibles;
 /// Move some assets from the sender account to another.
 #[inline]
 pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([0u8, 0, 52, 9]))
-		.input::<(AssetId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(id, target, amount))
+	ChainExtensionMethod::build(u32::from_le_bytes([
+		VERSION,
+		DISPATCH,
+		ASSETS_MODULE,
+		// TODO: E.D. is always respected with transferring tokens via the API.
+		TRANSFER_KEEP_ALIVE,
+	]))
+	.input::<(AssetId, AccountId, Balance)>()
+	.output::<Result<()>, true>()
+	.handle_error_code::<StatusCode>()
+	.call(&(id, target, amount))
 }
 
 // /// Move some assets from the sender account to another, keeping the sender account alive.
@@ -164,7 +165,9 @@ pub fn transfer_approved(
 }
 
 /// 2. Read state functions
+const READ_STATE: u8 = 1;
 /// - total_supply
+const TOTAL_SUPPLY: u8 = 0;
 /// - balance_of
 /// - allowance
 /// - asset_exists
@@ -174,12 +177,17 @@ pub fn transfer_approved(
 
 #[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
-	ChainExtensionMethod::build(u32::from_le_bytes([0u8, 1, 52, 2]))
-		.input::<AssetId>()
-		.output::<Result<Vec<u8>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(id))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+	ChainExtensionMethod::build(u32::from_le_bytes([
+		VERSION,
+		READ_STATE,
+		ASSETS_MODULE,
+		TOTAL_SUPPLY,
+	]))
+	.input::<AssetId>()
+	.output::<Result<Vec<u8>>, true>()
+	.handle_error_code::<StatusCode>()
+	.call(&(id))
+	.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
 }
 
 #[inline]

@@ -1,16 +1,16 @@
-use codec::{Compact, Decode};
+use codec::{Compact, Decode, Encode};
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
 	traits::{
-		fungibles::{approvals::Inspect as ApprovalInspect, Inspect},
+		fungibles::approvals::Inspect as ApprovalInspect,
 		nonfungibles_v2::Inspect as NonFungiblesInspect,
 	},
 };
 use pallet_contracts::chain_extension::{
-	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
+	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{
@@ -36,6 +36,8 @@ use pop_primitives::{
 	},
 	AssetId,
 };
+
+mod v0;
 
 const LOG_TARGET: &str = "pop-api::extension";
 
@@ -81,22 +83,25 @@ where
 		let pallet_index = ext_id_value[0];
 		let call_index = ext_id_value[1];
 
-		let result = match v0::FuncId::try_from(function_id) {
+		let result = match FuncId::try_from(function_id) {
 			Ok(function) => {
 				// Calculate weight for reading bytes of `len`.
 				// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
 				let len = env.in_len();
 				env.charge_weight(contract_host_weight.return_per_byte.saturating_mul(len.into()))?;
+				// Read encoded parameters from buffer.
 				let params = env.read(len)?;
 				log::debug!(target: LOG_TARGET, "Read input as successfully");
+
 				match function {
-					v0::FuncId::Dispatch => {
+					FuncId::Dispatch => {
 						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
 					},
-					v0::FuncId::ReadState => {
+					FuncId::ReadState => {
 						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
 					},
-					v0::FuncId::SendXcm => send_xcm::<T, E>(&mut env),
+					// TODO
+					FuncId::SendXcm => send_xcm::<T, E>(&mut env),
 				}
 			},
 			Err(e) => Err(e),
@@ -105,7 +110,7 @@ where
 		// Convert any error to a status code and return Ok with RetVal::Converging
 		match result {
 			Ok(_) => Ok(RetVal::Converging(0)),
-			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e))),
+			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e, version))),
 		}
 	}
 }
@@ -230,7 +235,7 @@ fn decode_versioned_assets_state_param(
 	match version {
 		0 => {
 			match call_index {
-				2 => {
+				0 => {
 					let id = <AssetId>::decode(&mut &params[..])
 						.map_err(|_| DispatchError::Other("DecodingFailed"))?;
 					Ok(TotalSupply(id))
@@ -260,8 +265,7 @@ where
 {
 	const LOG_PREFIX: &str = " read_state |";
 
-	let key = construct_read_state_function(version, pallet_index, call_index, params)
-		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+	let key = construct_read_state_function(version, pallet_index, call_index, params)?;
 
 	let result = match key {
 		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, env),
@@ -325,26 +329,30 @@ where
 	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
 }
 
-pub(crate) fn convert_to_status_code(error: DispatchError) -> u32 {
+pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	let mut encoded_error = match error {
 		DispatchError::Other("UnknownFunctionId") => vec![254, 0, 0, 0],
+		DispatchError::Other("DecodingFailed") => vec![255, 0, 0, 0],
 		_ => error.encode(),
 	};
 	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
 	encoded_error.resize(4, 0);
-	u32::decode(&mut &encoded_error[..]).expect("qid, resized to 4 bytes line above")
-}
-
-pub mod v0 {
-	#[derive(Debug)]
-	pub enum FuncId {
-		Dispatch,
-		ReadState,
-		SendXcm,
+	let mut encoded_error = encoded_error.try_into().expect("qid, resized to 4 bytes line above");
+	match version {
+		0 => v0::error::handle_unknown_error(&mut encoded_error),
+		_ => encoded_error = [254, 0, 0, 0],
 	}
+	u32::from_le_bytes(encoded_error)
 }
 
-impl TryFrom<u8> for v0::FuncId {
+#[derive(Debug)]
+pub enum FuncId {
+	Dispatch,
+	ReadState,
+	SendXcm,
+}
+
+impl TryFrom<u8> for FuncId {
 	type Error = DispatchError;
 
 	fn try_from(func_id: u8) -> Result<Self, Self::Error> {
@@ -462,10 +470,8 @@ where
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::{Assets, Runtime, System};
-	use sp_runtime::BuildStorage;
-
+	// Test ensuring `func_id()` and `ext_id()` work as expected, i.e. extracting the first two
+	// bytes and the last two bytes, respectively, from a 4 byte array.
 	#[test]
 	fn test_byte_extraction() {
 		use rand::Rng;
@@ -474,7 +480,6 @@ mod tests {
 		fn func_id(id: u32) -> u16 {
 			(id & 0x0000FFFF) as u16
 		}
-
 		fn ext_id(id: u32) -> u16 {
 			(id >> 16) as u16
 		}
@@ -507,87 +512,9 @@ mod tests {
 		}
 	}
 
-	// fn new_test_ext() -> sp_io::TestExternalities {
-	// 	let t = frame_system::GenesisConfig::<Runtime>::default()
-	// 		.build_storage()
-	// 		.expect("Frame system builds valid default genesis config");
-	// 	let mut ext = sp_io::TestExternalities::new(t);
-	// 	ext.execute_with(|| System::set_block_number(1));
-	// 	ext
-	// }
-	//
-	// #[test]
-	// fn encoding_decoding_dispatch_error() {
-	// 	use codec::{Decode, Encode};
-	// 	use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
-	//
-	// 	new_test_ext().execute_with(|| {
-	// 		let error = DispatchError::Module(ModuleError {
-	// 			index: 255,
-	// 			error: [2, 0, 0, 0],
-	// 			message: Some("error message"),
-	// 		});
-	// 		let encoded = error.encode();
-	// 		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-	// 		assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
-	// 		assert_eq!(
-	// 			decoded,
-	// 			// `message` is skipped for encoding.
-	// 			DispatchError::Module(ModuleError {
-	// 				index: 255,
-	// 				error: [2, 0, 0, 0],
-	// 				message: None
-	// 			})
-	// 		);
-	// 		println!("Encoded Module Error: {:?}", encoded);
-	//
-	// 		// Example pallet assets Error into ModuleError.
-	// 		let index =
-	// 			<<Runtime as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
-	// 				Assets,
-	// 			>()
-	// 			.expect("Every active module has an index in the runtime; qed") as u8;
-	//
-	// 		let mut error =
-	// 			pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
-	// 		error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
-	// 		let error = DispatchError::Module(ModuleError {
-	// 			index,
-	// 			error: TryInto::try_into(error).expect("should work"),
-	// 			message: None,
-	// 		});
-	// 		let encoded = error.encode();
-	// 		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-	// 		assert_eq!(encoded, vec![3, 52, 18, 0, 0, 0]);
-	// 		assert_eq!(
-	// 			decoded,
-	// 			DispatchError::Module(ModuleError {
-	// 				index: 52,
-	// 				error: [18, 0, 0, 0],
-	// 				message: None
-	// 			})
-	// 		);
-	// 		println!("Encoded Module Error: {:?}", encoded);
-	//
-	// 		// Example DispatchError::Token
-	// 		let error = DispatchError::Token(TokenError::UnknownAsset);
-	// 		let encoded = error.encode();
-	// 		assert_eq!(encoded, vec![7, 4]);
-	// 		println!("Encoded Token Error: {:?}", encoded);
-	//
-	// 		// Example DispatchError::Arithmetic
-	// 		let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
-	// 		let encoded = error.encode();
-	// 		assert_eq!(encoded, vec![8, 1]);
-	// 		println!("Encoded Arithmetic Error: {:?}", encoded);
-	// 	});
-	// }
-
+	// Test showing all the different type of variants and its encoding.
 	#[test]
 	fn encoding_of_enum() {
-		use codec::{Decode, Encode};
-
-		// Comprehensive enum with all different type of variants.
 		#[derive(Debug, PartialEq, Encode, Decode)]
 		enum ComprehensiveEnum {
 			SimpleVariant,
@@ -646,39 +573,79 @@ mod tests {
 		println!("{:?} -> {:?}", enum_nested_enum_struct, enum_nested_enum_struct.encode());
 	}
 
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
+			.expect("Frame system builds valid default genesis config");
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
 	#[test]
-	fn dispatch_error_to_status_code() {
-		// Create all the different `DispatchError` variants with its respective `PopApiError`.
-		let test_cases = vec![
-			(DispatchError::Other("hallo"), [0, 0, 0, 0]),
-			(DispatchError::CannotLookup, [1, 0, 0, 0]),
-			(DispatchError::BadOrigin, [2, 0, 0, 0]),
-			(
-				DispatchError::Module(sp_runtime::ModuleError {
-					index: 1,
+	fn encoding_decoding_dispatch_error() {
+		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+
+		new_test_ext().execute_with(|| {
+			let error = DispatchError::Module(ModuleError {
+				index: 255,
+				error: [2, 0, 0, 0],
+				message: Some("error message"),
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				// `message` is skipped for encoding.
+				DispatchError::Module(ModuleError {
+					index: 255,
 					error: [2, 0, 0, 0],
-					message: Some("hallo"),
-				}),
-				[3, 1, 2, 0],
-			),
-			(DispatchError::ConsumerRemaining, [4, 0, 0, 0]),
-			(DispatchError::NoProviders, [5, 0, 0, 0]),
-			(DispatchError::TooManyConsumers, [6, 0, 0, 0]),
-			(DispatchError::Token(sp_runtime::TokenError::BelowMinimum), [7, 2, 0, 0]),
-			(DispatchError::Arithmetic(sp_runtime::ArithmeticError::Overflow), [8, 1, 0, 0]),
-			(
-				DispatchError::Transactional(sp_runtime::TransactionalError::LimitReached),
-				[9, 0, 0, 0],
-			),
-			(DispatchError::Exhausted, [10, 0, 0, 0]),
-			(DispatchError::Corruption, [11, 0, 0, 0]),
-			(DispatchError::Unavailable, [12, 0, 0, 0]),
-			(DispatchError::RootNotAllowed, [13, 0, 0, 0]),
-		];
-		for (error, encoded_error) in test_cases {
-			let status_code = crate::extensions::convert_to_status_code(error);
-			assert_eq!(status_code, u32::decode(&mut &encoded_error[..]).unwrap());
-		}
+					message: None
+				})
+			);
+
+			// Example pallet assets Error into ModuleError.
+			let index =
+				<<Runtime as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
+					Assets,
+				>()
+					.expect("Every active module has an index in the runtime; qed") as u8;
+
+			let mut error =
+				pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
+			error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
+			let error = DispatchError::Module(ModuleError {
+				index,
+				error: TryInto::try_into(error).expect("should work"),
+				message: None,
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 52, 18, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				DispatchError::Module(ModuleError {
+					index: 52,
+					error: [18, 0, 0, 0],
+					message: None
+				})
+			);
+
+			// Example DispatchError::Token
+			let error = DispatchError::Token(TokenError::UnknownAsset);
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![7, 4]);
+			assert_eq!(decoded, error);
+
+			// Example DispatchError::Arithmetic
+			let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![8, 1]);
+			assert_eq!(decoded, error);
+		});
 	}
 }
 // use enumflags2::BitFlags;

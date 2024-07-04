@@ -1,5 +1,5 @@
 use super::*;
-use pop_api::error::{
+use pop_primitives::error::{
 	ArithmeticError::*,
 	Error::{self, *},
 	TokenError::*,
@@ -8,7 +8,10 @@ use pop_api::error::{
 const ASSET_ID: AssetId = 1;
 
 fn decoded<T: Decode>(result: ExecReturnValue) -> T {
-	<T>::decode(&mut &result.data[2..]).unwrap()
+	match <T>::decode(&mut &result.data[2..]) {
+		Ok(value) => value,
+		Err(_) => panic!("\nTest failed by trying to decode result: {:?} into `T`\n", result),
+	}
 }
 
 fn allowance(
@@ -36,7 +39,6 @@ fn total_supply(addr: AccountId32, asset_id: AssetId) -> Balance {
 	let function = function_selector("total_supply");
 	let params = [function, asset_id.encode()].concat();
 	let result = do_bare_call(addr, params, 0).expect("should work");
-	println!("Total supply result: {:?}", result);
 	decoded::<Balance>(result)
 }
 

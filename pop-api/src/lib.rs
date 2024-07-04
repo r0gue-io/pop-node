@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::env::{chain_extension::FromStatusCode, DefaultEnvironment, Environment};
+use primitives::error::Error;
 
 #[cfg(feature = "assets")]
 pub use v0::assets;
@@ -11,14 +12,13 @@ pub use v0::cross_chain;
 #[cfg(feature = "nfts")]
 pub use v0::nfts;
 
-pub mod error;
 pub mod primitives;
 pub mod v0;
 
 type AccountId = <DefaultEnvironment as Environment>::AccountId;
 type Balance = <DefaultEnvironment as Environment>::Balance;
-// #[cfg(any(feature = "nfts", feature = "cross-chain"))]
-// type BlockNumber = <DefaultEnvironment as Environment>::BlockNumber;
+#[cfg(any(feature = "nfts", feature = "cross-chain"))]
+type BlockNumber = <DefaultEnvironment as Environment>::BlockNumber;
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
@@ -43,5 +43,11 @@ impl FromStatusCode for StatusCode {
 impl From<ink::scale::Error> for StatusCode {
 	fn from(_: ink::scale::Error) -> Self {
 		StatusCode(255u32)
+	}
+}
+
+impl From<StatusCode> for Error {
+	fn from(value: StatusCode) -> Self {
+		value.0.into()
 	}
 }
