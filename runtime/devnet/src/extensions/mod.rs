@@ -5,7 +5,7 @@ use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
 	traits::{
-		fungibles::approvals::Inspect as ApprovalInspect,
+		fungibles::{approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect},
 		nonfungibles_v2::Inspect as NonFungiblesInspect,
 	},
 };
@@ -129,8 +129,7 @@ where
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
-	let call = construct_call(version, pallet_index, call_index, params)
-		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+	let call = construct_call(version, pallet_index, call_index, params)?;
 	// Contract is the origin by default.
 	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
@@ -434,6 +433,15 @@ where
 	T: frame_system::Config<AccountId = sp_runtime::AccountId32>,
 {
 	match key {
+		TotalSupply(id) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::total_supply(id).encode())
+		},
+		BalanceOf(id, owner) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::balance(id, &owner.0.into())
+				.encode())
+		},
 		Allowance(id, owner, spender) => {
 			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::allowance(
@@ -443,20 +451,31 @@ where
 			)
 			.encode())
 		},
+		TokenName(id) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
+				AccountId,
+			>>::name(id)
+			.encode())
+		},
+		TokenSymbol(id) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
+				AccountId,
+			>>::symbol(id)
+			.encode())
+		},
+		TokenDecimals(id) => {
+			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+			Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
+				AccountId,
+			>>::decimals(id)
+			.encode())
+		},
 		// AssetsKeys::AssetExists(id) => {
 		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
 		// },
-		BalanceOf(id, owner) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::balance(id, &owner.0.into())
-				.encode())
-		},
-		TotalSupply(id) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::total_supply(id).encode())
-		},
-		_ => todo!(),
 	}
 }
 

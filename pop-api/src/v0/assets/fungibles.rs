@@ -39,7 +39,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 /// # Returns
 /// The balance of the specified account, or an error if the operation fails.
 #[inline]
-pub fn balance_of(id: AssetId, owner: AccountId) -> Balance {
+pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 	assets::balance_of(id, owner)
 }
 
@@ -54,7 +54,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Balance {
 /// # Returns
 /// The remaining allowance, or an error if the operation fails.
 #[inline]
-pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Balance {
+pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
 	assets::allowance(id, owner, spender)
 }
 
@@ -101,6 +101,7 @@ pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance
 /// Returns `Ok(())` if successful, or an error if the approval fails.
 #[inline]
 pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	assets::cancel_approval(id, spender)?;
 	assets::approve_transfer(id, spender, value)
 }
 
@@ -128,9 +129,11 @@ pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
 #[inline]
-pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-	assets::cancel_approval(id, spender.clone())?;
-	assets::approve_transfer(id, spender, value)
+pub fn decrease_allowance(_id: AssetId, _spender: AccountId, _value: Balance) -> Result<()> {
+	// let allowance = assets::allowance(id, owner, spender)?;
+	// assets::cancel_approval(id, spender.clone())?;
+	// assets::approve_transfer(id, spender, value)
+	Ok(())
 }
 
 /// 2. PSP-22 Metadata Interface:
@@ -146,7 +149,7 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// # Returns
 /// The name of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_name(id: AssetId) -> Vec<u8> {
+pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
 	assets::token_name(id)
 }
 
@@ -158,7 +161,7 @@ pub fn token_name(id: AssetId) -> Vec<u8> {
 /// # Returns
 ///  The symbol of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_symbol(id: AssetId) -> Vec<u8> {
+pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
 	assets::token_symbol(id)
 }
 
@@ -170,7 +173,7 @@ pub fn token_symbol(id: AssetId) -> Vec<u8> {
 /// # Returns
 ///  The number of decimals of the token as a byte vector, or an error if the operation fails.
 #[inline]
-pub fn token_decimals(id: AssetId) -> u8 {
+pub fn token_decimals(id: AssetId) -> Result<u8> {
 	assets::token_decimals(id)
 }
 

@@ -1,14 +1,19 @@
 #![cfg(test)]
 
 use frame_support::{
-	traits::fungibles::{approvals::Inspect as ApprovalInspect, Inspect},
+	traits::fungibles::{
+		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
+	},
 	weights::Weight,
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 use scale::{Decode, Encode};
 use sp_runtime::{traits::Hash, AccountId32, BuildStorage, DispatchError};
 
-use pop_runtime_devnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{
+	config::assets::TrustBackedAssetsInstance, Assets, Contracts, Runtime, RuntimeOrigin, System,
+	UNIT,
+};
 
 mod local_fungibles;
 

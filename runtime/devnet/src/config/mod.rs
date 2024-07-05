@@ -1,4 +1,4 @@
-pub(crate) mod assets;
+pub mod assets;
 mod contracts;
 mod proxy;
 // Public due to integration tests crate.
