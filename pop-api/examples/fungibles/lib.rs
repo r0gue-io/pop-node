@@ -102,10 +102,10 @@ mod fungibles {
 			api::decrease_allowance(id, spender, value)
 		}
 
-		// 2. PSP-22 Metadata Interface:
-		// - token_name
-		// - token_symbol
-		// - token_decimals
+		/// 2. PSP-22 Metadata Interface:
+		/// - token_name
+		/// - token_symbol
+		/// - token_decimals
 
 		#[ink(message)]
 		pub fn token_name(&self, id: AssetId) -> Result<Vec<u8>> {

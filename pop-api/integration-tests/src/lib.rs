@@ -1,7 +1,6 @@
 #![cfg(test)]
 
 use frame_support::{
-	assert_ok,
 	traits::fungibles::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
