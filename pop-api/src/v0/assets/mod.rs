@@ -87,9 +87,9 @@ const TRANSFER_APPROVED: u8 = 25;
 // 	}))
 // }
 
-/// Move some assets from the sender account to another.
+/// Move some assets from the sender account to another, keeping the sender account alive.
 #[inline]
-pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
+pub fn transfer_keep_alive(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 	ChainExtensionMethod::build(u32::from_le_bytes([
 		VERSION,
 		DISPATCH,
@@ -102,19 +102,6 @@ pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 	.handle_error_code::<StatusCode>()
 	.call(&(id, target, amount))
 }
-
-// /// Move some assets from the sender account to another, keeping the sender account alive.
-// pub(crate) fn transfer_keep_alive(
-// 	id: AssetId,
-// 	target: impl Into<MultiAddress<AccountId, ()>>,
-// 	amount: Balance,
-// ) -> Result<()> {
-// 	dispatch(RuntimeCall::Assets(AssetsCall::TransferKeepAlive {
-// 		id: id.into(),
-// 		target: target.into(),
-// 		amount: Compact(amount),
-// 	}))
-// }
 
 // /// Set the metadata for an asset.
 // pub(crate) fn set_metadata(

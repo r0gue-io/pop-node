@@ -4,6 +4,7 @@ use crate::extensions::{
 	Balance, Compact, Decode, DispatchError, MultiAddress, Runtime, TrustBackedAssetsInstance,
 };
 use pop_primitives::AccountId;
+use sp_std::vec::Vec;
 
 pub(crate) fn construct_assets_key(
 	call_index: u8,

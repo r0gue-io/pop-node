@@ -70,7 +70,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
 pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
-	assets::transfer(id, to, value)
+	assets::transfer_keep_alive(id, to, value)
 }
 
 /// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
@@ -279,7 +279,6 @@ pub fn token_decimals(id: AssetId) -> Result<u8> {
 // 	assets::asset_exists(id)
 // }
 
-// TODO: further implement the rest of the interfaces and conclude on the FungiblesError.
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum FungiblesError {
@@ -300,13 +299,14 @@ pub enum FungiblesError {
 	NoPermission,
 	/// The given asset ID is unknown.
 	Unknown,
-	// - Originally `InsufficientBalance` for the deposit but this would result in the same error
-	// as the error when there is insufficient balance for transferring an asset.
 	/// No balance for creation of assets or fees.
+	//
+	// Originally `pallet_balances::Error::InsufficientBalance` but collides with the
+	// `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere to
+	// standard.
 	NoBalance,
 }
 
-// TODO: include conversions from TokenError and add conversions based on added interfaces.
 impl From<StatusCode> for FungiblesError {
 	fn from(value: StatusCode) -> Self {
 		let encoded = value.0.to_le_bytes();

@@ -304,6 +304,7 @@ where
 // - `error`: The `DispatchError` encountered during contract execution.
 // - `version`: The version of the chain extension, used to determine the known errors.
 pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
+	use sp_std::vec;
 	// "UnknownFunctionId" and "DecodingFailed" are mapped to specific errors in the API and will
 	// never change.
 	let mut encoded_error = match error {
