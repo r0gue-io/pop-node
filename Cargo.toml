@@ -97,7 +97,7 @@ pallet-scheduler = { version = "30.0.0", default-features = false }
 pallet-session = { version = "29.0.0", default-features = false }
 pallet-sudo = { version = "29.0.0", default-features = false }
 pallet-timestamp = { version = "28.0.0", default-features = false }
-pallet-transaction-payment = { version = "29.0.1", default-features = false }
+pallet-transaction-payment = { version = "29.0.2", default-features = false }
 pallet-transaction-payment-rpc = "31.0.0"
 pallet-transaction-payment-rpc-runtime-api = { version = "29.0.0", default-features = false }
 pallet-utility = { version = "29.0.0", default-features = false }
@@ -130,15 +130,15 @@ polkadot-cli = "8.0.0"
 polkadot-parachain-primitives = { version = "7.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "8.0.3", default-features = false }
 polkadot-primitives = { version = "8.0.1", default-features = false }
-polkadot-runtime-common = { version = "8.0.2", default-features = false }
+polkadot-runtime-common = { version = "8.0.3", default-features = false }
 rococo-runtime-constants = { version = "8.0.0", default-features = false }
-rococo-runtime = { version = "8.0.0", default-features = false }
+rococo-runtime = { version = "8.0.1", default-features = false }
 xcm = { version = "8.0.1", package = "staging-xcm", default-features = false }
-xcm-builder = { version = "8.0.2", package = "staging-xcm-builder", default-features = false }
+xcm-builder = { version = "8.0.3", package = "staging-xcm-builder", default-features = false }
 xcm-executor = { version = "8.0.2", package = "staging-xcm-executor", default-features = false }
 
 # Cumulus
-asset-hub-rococo-runtime = { version = "0.12.0", default-features = false }
+asset-hub-rococo-runtime = { version = "0.12.3", default-features = false }
 asset-test-utils = { version = "8.0.1", default-features = false }
 cumulus-pallet-aura-ext = { version = "0.8.0", default-features = false }
 cumulus-pallet-parachain-system = { version = "0.8.1", default-features = false, features = ["parameterized-consensus-hook"] }
@@ -149,8 +149,8 @@ cumulus-primitives-aura = { version = "0.8.0", default-features = false }
 cumulus-primitives-core = { version = "0.8.0", default-features = false }
 cumulus-primitives-utility = { version = "0.8.1", default-features = false }
 emulated-integration-tests-common = { version = "4.0.0", default-features = false }
-pallet-collator-selection = { version = "10.0.2", default-features = false }
-parachains-common = { version = "8.0.0", default-features = false }
+pallet-collator-selection = { version = "10.0.3", default-features = false }
+parachains-common = { version = "8.0.1", default-features = false }
 parachain-info = { version = "0.8.0", package = "staging-parachain-info", default-features = false }
 cumulus-primitives-parachain-inherent = "0.8.0"
 cumulus-relay-chain-interface = "0.8.0"
