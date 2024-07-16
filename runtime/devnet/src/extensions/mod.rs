@@ -307,8 +307,8 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	// "UnknownFunctionId" and "DecodingFailed" are mapped to specific errors in the API and will
 	// never change.
 	let mut encoded_error = match error {
-		DispatchError::Other("UnknownFunctionId") => vec![254, 0, 0, 0],
-		DispatchError::Other("DecodingFailed") => vec![255, 0, 0, 0],
+		DispatchError::Other("UnknownFunctionId") => Vec::from([254u8, 0, 0, 0]),
+		DispatchError::Other("DecodingFailed") => Vec::from([255u8, 0, 0, 0]),
 		_ => error.encode(),
 	};
 	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).

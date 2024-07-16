@@ -206,7 +206,7 @@ where
 		RuntimeStateKeys::ParachainSystem(key) => {
 			read_parachain_system_state::<T, E>(key, &mut env)
 		},
-		_ => Ok(vec![0u8]),
+		_ => Ok(Vec::from([0u8])),
 	}?
 	.encode();
 
