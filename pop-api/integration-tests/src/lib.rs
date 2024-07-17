@@ -59,7 +59,7 @@ fn function_selector(name: &str) -> Vec<u8> {
 	[hash[0..4].to_vec()].concat()
 }
 
-fn do_bare_call(
+fn bare_call(
 	addr: AccountId32,
 	input: Vec<u8>,
 	value: u128,

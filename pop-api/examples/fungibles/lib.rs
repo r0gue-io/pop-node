@@ -71,7 +71,7 @@ mod fungibles {
 			from: AccountId,
 			to: AccountId,
 			value: Balance,
-			// In the standard a `[u8]`, but the size needs to be known at compile time.
+			// In the PSP-22 standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
 		) -> Result<()> {
 			api::transfer_from(id, from, to, value)

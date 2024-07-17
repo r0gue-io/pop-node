@@ -18,7 +18,7 @@ fn decoded<T: Decode>(result: ExecReturnValue) -> T {
 fn total_supply(addr: AccountId32, asset_id: AssetId) -> Balance {
 	let function = function_selector("total_supply");
 	let params = [function, asset_id.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	decoded::<Balance>(result)
 }
 
@@ -26,7 +26,7 @@ fn total_supply(addr: AccountId32, asset_id: AssetId) -> Balance {
 fn balance_of(addr: AccountId32, asset_id: AssetId, owner: AccountId32) -> Balance {
 	let function = function_selector("balance_of");
 	let params = [function, asset_id.encode(), owner.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	decoded::<Balance>(result)
 }
 
@@ -39,7 +39,7 @@ fn allowance(
 ) -> Balance {
 	let function = function_selector("allowance");
 	let params = [function, asset_id.encode(), owner.encode(), spender.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	decoded::<Balance>(result)
 }
 
@@ -47,7 +47,7 @@ fn allowance(
 fn token_name(addr: AccountId32, asset_id: AssetId) -> Vec<u8> {
 	let function = function_selector("token_name");
 	let params = [function, asset_id.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	decoded::<Vec<u8>>(result)
 }
 
@@ -55,7 +55,7 @@ fn token_name(addr: AccountId32, asset_id: AssetId) -> Vec<u8> {
 fn token_symbol(addr: AccountId32, asset_id: AssetId) -> Vec<u8> {
 	let function = function_selector("token_symbol");
 	let params = [function, asset_id.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	decoded::<Vec<u8>>(result)
 }
 
@@ -63,7 +63,7 @@ fn token_symbol(addr: AccountId32, asset_id: AssetId) -> Vec<u8> {
 fn token_decimals(addr: AccountId32, asset_id: AssetId) -> u8 {
 	let function = function_selector("token_decimals");
 	let params = [function, asset_id.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	decoded::<u8>(result)
 }
 
@@ -75,7 +75,7 @@ fn transfer(
 ) -> ExecReturnValue {
 	let function = function_selector("transfer");
 	let params = [function, asset_id.encode(), to.encode(), value.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	result
 }
 
@@ -91,7 +91,7 @@ fn transfer_from(
 	let params =
 		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
 			.concat();
-	do_bare_call(addr, params, 0).expect("should work")
+	bare_call(addr, params, 0).expect("should work")
 }
 
 fn increase_allowance(
@@ -102,14 +102,14 @@ fn increase_allowance(
 ) -> ExecReturnValue {
 	let function = function_selector("increase_allowance");
 	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
-	let result = do_bare_call(addr, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	result
 }
 
 // fn asset_exists(addr: AccountId32, asset_id: AssetId) -> bool {
 // 	let function = function_selector("asset_exists");
 // 	let params = [function, asset_id.encode()].concat();
-// 	let result = do_bare_call(addr, params, 0).expect("should work");
+// 	let result = bare_call(addr, params, 0).expect("should work");
 // 	decoded::<bool>(result)
 // }
 //
@@ -121,7 +121,7 @@ fn increase_allowance(
 // ) -> ExecReturnValue {
 // 	let function = function_selector("create");
 // 	let params = [function, asset_id.encode(), admin.encode(), min_balance.encode()].concat();
-// 	do_bare_call(addr, params, 0).expect("should work")
+// 	bare_call(addr, params, 0).expect("should work")
 // }
 //
 // fn set_metadata(
@@ -134,21 +134,21 @@ fn increase_allowance(
 // 	let function = function_selector("set_metadata");
 // 	let params =
 // 		[function, asset_id.encode(), name.encode(), symbol.encode(), decimals.encode()].concat();
-// 	do_bare_call(addr, params, 0).expect("should work")
+// 	bare_call(addr, params, 0).expect("should work")
 // }
-//
-// fn create_asset(owner: AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
-// 	assert_eq!(
-// 		Assets::create(
-// 			RuntimeOrigin::signed(owner.clone()),
-// 			asset_id.into(),
-// 			owner.into(),
-// 			min_balance
-// 		),
-// 		Ok(())
-// 	);
-// 	asset_id
-// }
+
+fn create_asset(owner: AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
+	assert_eq!(
+		Assets::create(
+			RuntimeOrigin::signed(owner.clone()),
+			asset_id.into(),
+			owner.into(),
+			min_balance
+		),
+		Ok(())
+	);
+	asset_id
+}
 
 fn mint_asset(owner: AccountId32, asset_id: AssetId, to: AccountId32, value: Balance) -> AssetId {
 	assert_eq!(
