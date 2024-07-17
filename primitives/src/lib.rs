@@ -215,7 +215,7 @@ pub mod v0 {
 				// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
 				encoded_error.resize(4, 0);
 				u32::from_le_bytes(
-					encoded_error.try_into().expect("qid, resized to 4 bytes line above"),
+					encoded_error.try_into().expect("qed, resized to 4 bytes line above"),
 				)
 			}
 		}

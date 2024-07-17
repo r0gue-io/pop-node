@@ -65,6 +65,8 @@ fn build_extension_method(
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
 
+pub(crate) const DECODING_FAILED: u32 = 255;
+
 impl From<u32> for StatusCode {
 	/// Converts a `u32` into a `StatusCode`.
 	fn from(value: u32) -> Self {
