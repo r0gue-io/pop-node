@@ -26,6 +26,8 @@ pub type Result<T> = core::result::Result<T, StatusCode>;
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
 
+pub(crate) const DECODING_FAILED: u32 = 255;
+
 impl From<u32> for StatusCode {
 	fn from(value: u32) -> Self {
 		StatusCode(value)
@@ -42,7 +44,7 @@ impl FromStatusCode for StatusCode {
 
 impl From<ink::scale::Error> for StatusCode {
 	fn from(_: ink::scale::Error) -> Self {
-		StatusCode(255u32)
+		StatusCode(DECODING_FAILED)
 	}
 }
 

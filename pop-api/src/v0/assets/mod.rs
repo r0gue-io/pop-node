@@ -1,6 +1,6 @@
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec, scale::Decode};
 
-use crate::{primitives::AssetId, AccountId, Balance, Result, StatusCode};
+use crate::{primitives::AssetId, AccountId, Balance, Result, StatusCode, DECODING_FAILED};
 
 pub mod fungibles;
 
@@ -197,7 +197,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 	.output::<Result<Vec<u8>>, true>()
 	.handle_error_code::<StatusCode>()
 	.call(&(id))
-	.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+	.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 #[inline]
@@ -212,7 +212,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 	.output::<Result<Vec<u8>>, true>()
 	.handle_error_code::<StatusCode>()
 	.call(&(id, owner))
-	.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+	.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 #[inline]
@@ -222,7 +222,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 		.output::<Result<Vec<u8>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(id, owner, spender))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 #[inline]
@@ -237,7 +237,7 @@ pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
 	.output::<Result<Vec<u8>>, true>()
 	.handle_error_code::<StatusCode>()
 	.call(&(id))
-	.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+	.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 //
 #[inline]
@@ -252,7 +252,7 @@ pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
 	.output::<Result<Vec<u8>>, true>()
 	.handle_error_code::<StatusCode>()
 	.call(&(id))
-	.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+	.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 #[inline]
@@ -267,7 +267,7 @@ pub fn token_decimals(id: AssetId) -> Result<u8> {
 	.output::<Result<Vec<u8>>, true>()
 	.handle_error_code::<StatusCode>()
 	.call(&(id))
-	.and_then(|v| <u8>::decode(&mut &v[..]).map_err(|_e| StatusCode(255u32)))
+	.and_then(|v| <u8>::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 // pub(crate) fn asset_exists(id: AssetId) -> Result<bool> {

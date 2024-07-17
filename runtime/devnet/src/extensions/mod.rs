@@ -313,7 +313,7 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	};
 	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
 	encoded_error.resize(4, 0);
-	let mut encoded_error = encoded_error.try_into().expect("qid, resized to 4 bytes line above");
+	let mut encoded_error = encoded_error.try_into().expect("qed, resized to 4 bytes line above");
 	match version {
 		// If an unknown variant of the `DispatchError` is detected the error needs to be converted
 		// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
