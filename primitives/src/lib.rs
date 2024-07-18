@@ -10,20 +10,21 @@ pub use v0::error;
 pub mod cross_chain;
 pub mod storage_keys;
 
+/// An opaque 32-byte cryptographic identifier.
 #[derive(Encode, Decode, Debug, MaxEncodedLen, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(TypeInfo))]
 pub struct AccountId(pub [u8; 32]);
 
-// Identifier for the class of asset.
+/// Identifier for the class of asset.
 pub type AssetId = u32;
 
 #[cfg(feature = "nfts")]
 pub mod nfts {
 	use bounded_collections::ConstU32;
 
-	// Id used for identifying non-fungible collections.
+	/// Id used for identifying non-fungible collections.
 	pub type CollectionId = u32;
-	// Id used for identifying non-fungible items.
+	/// Id used for identifying non-fungible items.
 	pub type ItemId = u32;
 	/// The maximum length of an attribute key.
 	pub type KeyLimit = ConstU32<64>;
@@ -36,24 +37,29 @@ pub mod v0 {
 	pub mod error {
 		use super::*;
 
+		/// Reason why a Pop API function call failed.
 		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		#[repr(u8)]
 		pub enum Error {
-			/// Some unknown error occurred. Go to the Pop API docs section `Pop API error`.
-			Other {
-				// Index within the `DispatchError`
-				dispatch_error_index: u8,
-				// Index within the `DispatchError` variant.
-				error_index: u8,
-				// Index for further nesting, e.g. pallet error.
-				error: u8,
-			},
+			/// An unknown error occurred. This variant captures any unexpected errors that the
+			/// contract cannot specifically handle. It is useful for cases where there are breaking
+			/// changes in the runtime or when an error falls outside the predefined categories. The
+			/// variant includes:
+			///
+			/// - `dispatch_error_index`: The index within the `DispatchError`.
+			/// - `error_index`: The index within the `DispatchError` variant (e.g. a `TokenError`).
+			/// - `error`: The specific error code or sub-index, providing additional context (e.g.
+			///   `error` in `ModuleError`).
+			Other { dispatch_error_index: u8, error_index: u8, error: u8 },
 			/// Failed to lookup some data.
 			CannotLookup,
 			/// A bad origin.
 			BadOrigin,
 			/// A custom error in a module.
+			///
+			/// - `index`: The pallet index.
+			/// - `error`: The error within the pallet.
 			Module { index: u8, error: u8 },
 			/// At least one consumer is remaining so the account cannot be destroyed.
 			ConsumerRemaining,
@@ -76,13 +82,18 @@ pub mod v0 {
 			Unavailable,
 			/// Root origin is not allowed.
 			RootNotAllowed,
-			/// Unknown function id.
-			UnknownFunctionId = 254,
-			/// Decoding failed on the runtime.
+			/// Unknown function called.
+			UnknownFunctionCall = 254,
+			/// Decoding failed.
 			DecodingFailed = 255,
 		}
 
 		impl From<u32> for Error {
+			/// Converts a `u32` status code into an `Error`.
+			///
+			/// This conversion maps a raw status code returned by the runtime into the more
+			/// descriptive `Error` enum variant, providing better context and understanding of the
+			/// error.
 			fn from(value: u32) -> Self {
 				let encoded = value.to_le_bytes();
 				Error::decode(&mut &encoded[..]).unwrap_or(Error::DecodingFailed)
@@ -90,6 +101,7 @@ pub mod v0 {
 		}
 
 		impl From<Error> for u32 {
+			/// Converts an `Error` to a `u32` status code.
 			fn from(value: Error) -> Self {
 				let mut encoded_error = value.encode();
 				// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
@@ -100,6 +112,7 @@ pub mod v0 {
 			}
 		}
 
+		/// Description of what went wrong when trying to complete an operation on a token.
 		#[derive(Encode, Decode, Clone, Debug, MaxEncodedLen, Eq, PartialEq, Ord, PartialOrd)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum TokenError {
@@ -126,6 +139,7 @@ pub mod v0 {
 			Blocked,
 		}
 
+		/// Arithmetic errors.
 		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum ArithmeticError {
@@ -137,6 +151,7 @@ pub mod v0 {
 			DivisionByZero,
 		}
 
+		/// Errors related to transactional storage layers.
 		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum TransactionalError {

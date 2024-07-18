@@ -337,6 +337,15 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	u32::from_le_bytes(encoded_error)
 }
 
+/// Enum representing the different function identifiers used in the Pop API chain extension.
+///
+/// The `FuncId` enum specifies the available functions that can be called through the Pop API chain
+/// extension. Each variant corresponds to a specific functionality provided by the chain extension,
+/// facilitating the interaction between smart contracts and the runtime.
+///
+/// - `Dispatch`: Represents a function call to dispatch a runtime call.
+/// - `ReadState`: Represents a function call to read the state from the runtime.
+/// - `SendXcm`: Represents a function call to send an XCM message.
 #[derive(Debug)]
 pub enum FuncId {
 	Dispatch,
@@ -347,6 +356,10 @@ pub enum FuncId {
 impl TryFrom<u8> for FuncId {
 	type Error = DispatchError;
 
+	/// Attempts to convert a `u8` value to its corresponding `FuncId` variant.
+	///
+	/// If the `u8` value does not match any known function identifier, it returns a
+	/// `DispatchError::Other` indicating an unknown function ID.
 	fn try_from(func_id: u8) -> Result<Self, Self::Error> {
 		let id = match func_id {
 			0 => Self::Dispatch,

@@ -284,9 +284,20 @@ pub fn token_decimals(id: AssetId) -> Result<u8> {
 // 	assets::asset_exists(id)
 // }
 
+/// Represents various errors related to local fungible assets in the API.
+///
+/// The `FungiblesError` provides a detailed and specific set of error types that can occur when
+/// interacting with fungible assets through the Pop API. Each variant signifies a particular error
+/// condition, facilitating precise error handling and debugging.
+///
+/// It is designed to be lightweight, including only the essential errors relevant to fungible asset
+/// operations. The `Other` variant serves as a catch-all for any unexpected errors. For more
+/// detailed debugging, the `Other` variant can be converted into the richer `Error` type defined in
+/// the primitives crate.
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum FungiblesError {
+	/// An unspecified or unknown error occurred.
 	Other(StatusCode),
 	/// The asset is not live; either frozen or being destroyed.
 	AssetNotLive,
@@ -305,14 +316,18 @@ pub enum FungiblesError {
 	/// The given asset ID is unknown.
 	Unknown,
 	/// No balance for creation of assets or fees.
-	//
-	// Originally `pallet_balances::Error::InsufficientBalance` but collides with the
-	// `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere to
-	// standard.
+	// TODO: Originally `pallet_balances::Error::InsufficientBalance` but collides with the
+	//  `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere to
+	//   standard. This deserves a second look.
 	NoBalance,
 }
 
 impl From<StatusCode> for FungiblesError {
+	/// Converts a `StatusCode` to a `FungiblesError`.
+	///
+	/// This conversion maps a `StatusCode`, returned by the runtime, to a more descriptive
+	/// `FungiblesError`. This provides better context and understanding of the error, allowing
+	/// developers to handle the most important errors effectively.
 	fn from(value: StatusCode) -> Self {
 		let encoded = value.0.to_le_bytes();
 		match encoded {
@@ -381,7 +396,7 @@ mod tests {
 			Corruption,
 			Unavailable,
 			RootNotAllowed,
-			UnknownFunctionId,
+			UnknownFunctionCall,
 			DecodingFailed,
 		];
 		for error in other_errors {
