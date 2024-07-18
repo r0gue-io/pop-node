@@ -138,23 +138,22 @@ fn increase_allowance(
 // }
 
 fn create_asset(owner: AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
-	assert_eq!(
-		Assets::create(
-			RuntimeOrigin::signed(owner.clone()),
-			asset_id.into(),
-			owner.into(),
-			min_balance
-		),
-		Ok(())
-	);
+	assert_ok!(Assets::create(
+		RuntimeOrigin::signed(owner.clone()),
+		asset_id.into(),
+		owner.into(),
+		min_balance
+	));
 	asset_id
 }
 
 fn mint_asset(owner: AccountId32, asset_id: AssetId, to: AccountId32, value: Balance) -> AssetId {
-	assert_eq!(
-		Assets::mint(RuntimeOrigin::signed(owner.clone()), asset_id.into(), to.into(), value),
-		Ok(())
-	);
+	assert_ok!(Assets::mint(
+		RuntimeOrigin::signed(owner.clone()),
+		asset_id.into(),
+		to.into(),
+		value
+	));
 	asset_id
 }
 
@@ -178,30 +177,27 @@ fn create_asset_mint_and_approve(
 	approve: Balance,
 ) {
 	create_asset_and_mint_to(owner.clone(), asset_id, to.clone(), mint);
-	assert_eq!(
-		Assets::approve_transfer(
-			RuntimeOrigin::signed(to.into()),
-			asset_id.into(),
-			spender.into(),
-			approve,
-		),
-		Ok(())
-	);
+	assert_ok!(Assets::approve_transfer(
+		RuntimeOrigin::signed(to.into()),
+		asset_id.into(),
+		spender.into(),
+		approve,
+	));
 }
 
 // Freeze an asset.
 fn freeze_asset(owner: AccountId32, asset_id: AssetId) {
-	assert_eq!(Assets::freeze_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()), Ok(()));
+	assert_ok!(Assets::freeze_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()));
 }
 
 // Thaw an asset.
 fn thaw_asset(owner: AccountId32, asset_id: AssetId) {
-	assert_eq!(Assets::thaw_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()), Ok(()));
+	assert_ok!(Assets::thaw_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()));
 }
 
 // Start destroying an asset.
 fn start_destroy_asset(owner: AccountId32, asset_id: AssetId) {
-	assert_eq!(Assets::start_destroy(RuntimeOrigin::signed(owner.into()), asset_id.into()), Ok(()));
+	assert_ok!(Assets::start_destroy(RuntimeOrigin::signed(owner.into()), asset_id.into()));
 }
 
 // Create an asset and set metadata.
@@ -212,15 +208,12 @@ fn create_asset_and_set_metadata(
 	symbol: Vec<u8>,
 	decimals: u8,
 ) {
-	assert_eq!(
-		Assets::create(
-			RuntimeOrigin::signed(owner.clone()),
-			asset_id.into(),
-			owner.clone().into(),
-			100
-		),
-		Ok(())
-	);
+	assert_ok!(Assets::create(
+		RuntimeOrigin::signed(owner.clone()),
+		asset_id.into(),
+		owner.clone().into(),
+		100
+	));
 	set_metadata_asset(owner, asset_id, name, symbol, decimals);
 }
 
@@ -232,16 +225,13 @@ fn set_metadata_asset(
 	symbol: Vec<u8>,
 	decimals: u8,
 ) {
-	assert_eq!(
-		Assets::set_metadata(
-			RuntimeOrigin::signed(owner.into()),
-			asset_id.into(),
-			name,
-			symbol,
-			decimals
-		),
-		Ok(())
-	);
+	assert_ok!(Assets::set_metadata(
+		RuntimeOrigin::signed(owner.into()),
+		asset_id.into(),
+		name,
+		symbol,
+		decimals
+	));
 }
 
 fn token_name_asset(asset_id: AssetId) -> Vec<u8> {

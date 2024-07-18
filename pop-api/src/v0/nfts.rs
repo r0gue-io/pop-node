@@ -6,11 +6,8 @@ pub use primitives::{CollectionId, ItemId};
 use scale::Encode;
 pub use types::*;
 
-type Result<T> = core::result::Result<T, StatusCode>;
 type StringLimit = u32;
 type MaxTips = u32;
-
-type Result<T> = core::result::Result<T, Error>;
 
 /// Issue a new collection of non-fungible items
 pub fn create(

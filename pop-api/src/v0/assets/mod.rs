@@ -1,18 +1,19 @@
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec, scale::Decode};
 
-use crate::{primitives::AssetId, AccountId, Balance, Result, StatusCode, DECODING_FAILED};
+use crate::{
+	constants::{ASSETS_MODULE, DECODING_FAILED, DISPATCH, READ_STATE},
+	primitives::{AccountId, AssetId, Balance},
+	v0::VERSION,
+	Result, StatusCode,
+};
 
 pub mod fungibles;
-
-const ASSETS_MODULE: u8 = 52;
-const VERSION: u8 = 0;
 
 /// [Pallet Assets](https://github.com/paritytech/polkadot-sdk/blob/master/substrate/frame/assets/src/lib.rs):
 /// 1. Dispatchables
 /// 2. Read state functions
 ///
 /// 1. Dispatchables within pallet assets (TrustBackedAssets instance):
-const DISPATCH: u8 = 0;
 /// - create
 /// - start_destroy
 /// - destroy_accounts
@@ -170,7 +171,6 @@ pub fn transfer_approved(
 }
 
 /// 2. Read state functions:
-const READ_STATE: u8 = 1;
 /// - total_supply
 const TOTAL_SUPPLY: u8 = 0;
 /// - balance_of

@@ -48,34 +48,34 @@ pub mod v0 {
 				error_index: u8,
 				// Index for further nesting, e.g. pallet error.
 				error: u8,
-			} = 0,
+			},
 			/// Failed to lookup some data.
-			CannotLookup = 1,
+			CannotLookup,
 			/// A bad origin.
-			BadOrigin = 2,
+			BadOrigin,
 			/// A custom error in a module.
-			Module { index: u8, error: u8 } = 3,
+			Module { index: u8, error: u8 },
 			/// At least one consumer is remaining so the account cannot be destroyed.
-			ConsumerRemaining = 4,
+			ConsumerRemaining,
 			/// There are no providers so the account cannot be created.
-			NoProviders = 5,
+			NoProviders,
 			/// There are too many consumers so the account cannot be created.
-			TooManyConsumers = 6,
+			TooManyConsumers,
 			/// An error to do with tokens.
-			Token(TokenError) = 7,
+			Token(TokenError),
 			/// An arithmetic error.
-			Arithmetic(ArithmeticError) = 8,
+			Arithmetic(ArithmeticError),
 			/// The number of transactional layers has been reached, or we are not in a transactional
 			/// layer.
-			Transactional(TransactionalError) = 9,
+			Transactional(TransactionalError),
 			/// Resources exhausted, e.g. attempt to read/write data which is too large to manipulate.
-			Exhausted = 10,
+			Exhausted,
 			/// The state is corrupt; this is generally not going to fix itself.
-			Corruption = 11,
+			Corruption,
 			/// Some resource (e.g. a preimage) is unavailable right now. This might fix itself later.
-			Unavailable = 12,
+			Unavailable,
 			/// Root origin is not allowed.
-			RootNotAllowed = 13,
+			RootNotAllowed,
 			/// Unknown function id.
 			UnknownFunctionId = 254,
 			/// Decoding failed on the runtime.

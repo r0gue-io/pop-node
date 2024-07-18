@@ -1,7 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::env::{chain_extension::FromStatusCode, DefaultEnvironment, Environment};
-use primitives::error::Error;
+use ink::env::chain_extension::FromStatusCode;
+
+use constants::DECODING_FAILED;
 
 #[cfg(feature = "assets")]
 pub use v0::assets;
@@ -15,18 +16,25 @@ pub use v0::nfts;
 pub mod primitives;
 pub mod v0;
 
-type AccountId = <DefaultEnvironment as Environment>::AccountId;
-type Balance = <DefaultEnvironment as Environment>::Balance;
-#[cfg(any(feature = "nfts", feature = "cross-chain"))]
-type BlockNumber = <DefaultEnvironment as Environment>::BlockNumber;
-
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
 
-pub(crate) const DECODING_FAILED: u32 = 255;
+mod constants {
+	// Errors:
+	pub(crate) const DECODING_FAILED: u32 = 255;
+	pub(crate) const MODULE_ERROR: u8 = 3;
+
+	// Function IDs:
+	pub(crate) const DISPATCH: u8 = 0;
+	pub(crate) const READ_STATE: u8 = 1;
+
+	// Modules:
+	pub(crate) const ASSETS_MODULE: u8 = 52;
+	pub(crate) const BALANCES_MODULE: u8 = 10;
+}
 
 impl From<u32> for StatusCode {
 	fn from(value: u32) -> Self {
@@ -45,17 +53,5 @@ impl FromStatusCode for StatusCode {
 impl From<ink::scale::Error> for StatusCode {
 	fn from(_: ink::scale::Error) -> Self {
 		StatusCode(DECODING_FAILED)
-	}
-}
-
-impl From<StatusCode> for Error {
-	fn from(value: StatusCode) -> Self {
-		value.0.into()
-	}
-}
-
-impl From<Error> for StatusCode {
-	fn from(value: Error) -> Self {
-		StatusCode::from(u32::from(value))
 	}
 }

@@ -172,7 +172,7 @@ fn construct_call(
 	params: Vec<u8>,
 ) -> Result<RuntimeCall, DispatchError> {
 	match pallet_index {
-		52 => {
+		index if index == super::Assets::index() as u8 => {
 			let call = versioned_construct_assets_call(version, call_index, params)?;
 			Ok(RuntimeCall::Assets(call))
 		},

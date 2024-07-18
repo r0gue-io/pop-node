@@ -1,9 +1,9 @@
 use cumulus_pallet_parachain_system::RelaychainDataProvider;
-use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
 	traits::nonfungibles_v2::Inspect,
+	traits::{Contains, OriginTrait},
 };
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
@@ -206,7 +206,7 @@ where
 		RuntimeStateKeys::ParachainSystem(key) => {
 			read_parachain_system_state::<T, E>(key, &mut env)
 		},
-		_ => Ok(Vec::from([0u8])),
+		_ => Ok(Vec::default()),
 	}?
 	.encode();
 
