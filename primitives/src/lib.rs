@@ -100,18 +100,6 @@ pub mod v0 {
 			}
 		}
 
-		impl From<Error> for u32 {
-			/// Converts an `Error` to a `u32` status code.
-			fn from(value: Error) -> Self {
-				let mut encoded_error = value.encode();
-				// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
-				encoded_error.resize(4, 0);
-				u32::from_le_bytes(
-					encoded_error.try_into().expect("qed, resized to 4 bytes line above"),
-				)
-			}
-		}
-
 		/// Description of what went wrong when trying to complete an operation on a token.
 		#[derive(Encode, Decode, Clone, Debug, MaxEncodedLen, Eq, PartialEq, Ord, PartialOrd)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]

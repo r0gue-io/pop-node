@@ -17,9 +17,3 @@ impl From<StatusCode> for Error {
 		value.0.into()
 	}
 }
-
-impl From<Error> for StatusCode {
-	fn from(value: Error) -> Self {
-		StatusCode::from(u32::from(value))
-	}
-}

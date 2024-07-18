@@ -349,7 +349,7 @@ impl From<StatusCode> for FungiblesError {
 #[cfg(test)]
 mod tests {
 	use crate::constants::{ASSETS_MODULE, BALANCES_MODULE};
-	use ink::scale::Decode;
+	use ink::scale::{Decode, Encode};
 
 	use super::FungiblesError;
 	use crate::primitives::error::{
@@ -360,8 +360,17 @@ mod tests {
 	};
 	use crate::StatusCode;
 
+	fn error_into_status_code(error: Error) -> StatusCode {
+		let mut encoded_error = error.encode();
+		encoded_error.resize(4, 0);
+		let value = u32::from_le_bytes(
+			encoded_error.try_into().expect("qed, resized to 4 bytes line above"),
+		);
+		value.into()
+	}
+
 	fn into_fungibles_error(error: Error) -> FungiblesError {
-		let status_code: StatusCode = error.into();
+		let status_code: StatusCode = error_into_status_code(error);
 		status_code.into()
 	}
 
@@ -400,7 +409,7 @@ mod tests {
 			DecodingFailed,
 		];
 		for error in other_errors {
-			let status_code: StatusCode = error.into();
+			let status_code: StatusCode = error_into_status_code(error);
 			let fungibles_error: FungiblesError = status_code.into();
 			assert_eq!(fungibles_error, FungiblesError::Other(status_code))
 		}
