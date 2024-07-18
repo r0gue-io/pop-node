@@ -65,7 +65,19 @@ fn build_extension_method(
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
 
-pub(crate) const DECODING_FAILED: u32 = 255;
+mod constants {
+	// Errors:
+	pub(crate) const DECODING_FAILED: u32 = 255;
+	pub(crate) const MODULE_ERROR: u8 = 3;
+
+	// Function IDs:
+	pub(crate) const DISPATCH: u8 = 0;
+	pub(crate) const READ_STATE: u8 = 1;
+
+	// Modules:
+	pub(crate) const ASSETS_MODULE: u8 = 52;
+	pub(crate) const BALANCES_MODULE: u8 = 10;
+}
 
 impl From<u32> for StatusCode {
 	/// Converts a `u32` into a `StatusCode`.
