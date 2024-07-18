@@ -37,7 +37,7 @@ pub mod v0 {
 	pub mod error {
 		use super::*;
 
-		/// Reason why a Pop API function call failed.
+		/// Reason why a Pop API call failed.
 		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		#[repr(u8)]
@@ -82,8 +82,8 @@ pub mod v0 {
 			Unavailable,
 			/// Root origin is not allowed.
 			RootNotAllowed,
-			/// Unknown function called.
-			UnknownFunctionCall = 254,
+			/// Unknown call.
+			UnknownCall = 254,
 			/// Decoding failed.
 			DecodingFailed = 255,
 		}

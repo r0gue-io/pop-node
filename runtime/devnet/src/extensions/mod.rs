@@ -337,11 +337,11 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	u32::from_le_bytes(encoded_error)
 }
 
-/// Enum representing the different function identifiers used in the Pop API chain extension.
+/// Function identifiers used in the Pop API.
 ///
-/// The `FuncId` enum specifies the available functions that can be called through the Pop API chain
-/// extension. Each variant corresponds to a specific functionality provided by the chain extension,
-/// facilitating the interaction between smart contracts and the runtime.
+/// The `FuncId` specifies the available functions that can be called through the Pop API. Each
+/// variant corresponds to a specific functionality provided by the API, facilitating the
+/// interaction between smart contracts and the runtime.
 ///
 /// - `Dispatch`: Represents a function call to dispatch a runtime call.
 /// - `ReadState`: Represents a function call to read the state from the runtime.

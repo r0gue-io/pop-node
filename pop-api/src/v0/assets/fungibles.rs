@@ -2,7 +2,7 @@ use ink::prelude::vec::Vec;
 
 use crate::{
 	assets,
-	constants::{ASSETS_MODULE, BALANCES_MODULE, MODULE_ERROR},
+	constants::{ASSETS, BALANCES, MODULE_ERROR},
 	primitives::{AccountId, AssetId, Balance},
 	Result, StatusCode,
 };
@@ -106,7 +106,7 @@ pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance
 /// Returns `Ok(())` if successful, or an error if the approval fails.
 #[inline]
 pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-	assets::cancel_approval(id, spender.clone())?;
+	assets::cancel_approval(id, spender)?;
 	assets::approve_transfer(id, spender, value)
 }
 
@@ -284,7 +284,7 @@ pub fn token_decimals(id: AssetId) -> Result<u8> {
 // 	assets::asset_exists(id)
 // }
 
-/// Represents various errors related to local fungible assets in the API.
+/// Represents various errors related to local fungible assets in the Pop API.
 ///
 /// The `FungiblesError` provides a detailed and specific set of error types that can occur when
 /// interacting with fungible assets through the Pop API. Each variant signifies a particular error
@@ -332,15 +332,15 @@ impl From<StatusCode> for FungiblesError {
 		let encoded = value.0.to_le_bytes();
 		match encoded {
 			// Balances.
-			[MODULE_ERROR, BALANCES_MODULE, 2, _] => FungiblesError::NoBalance,
+			[MODULE_ERROR, BALANCES, 2, _] => FungiblesError::NoBalance,
 			// Assets.
-			[MODULE_ERROR, ASSETS_MODULE, 0, _] => FungiblesError::NoAccount,
-			[MODULE_ERROR, ASSETS_MODULE, 1, _] => FungiblesError::NoPermission,
-			[MODULE_ERROR, ASSETS_MODULE, 2, _] => FungiblesError::Unknown,
-			[MODULE_ERROR, ASSETS_MODULE, 3, _] => FungiblesError::InUse,
-			[MODULE_ERROR, ASSETS_MODULE, 5, _] => FungiblesError::MinBalanceZero,
-			[MODULE_ERROR, ASSETS_MODULE, 7, _] => FungiblesError::InsufficientAllowance,
-			[MODULE_ERROR, ASSETS_MODULE, 10, _] => FungiblesError::AssetNotLive,
+			[MODULE_ERROR, ASSETS, 0, _] => FungiblesError::NoAccount,
+			[MODULE_ERROR, ASSETS, 1, _] => FungiblesError::NoPermission,
+			[MODULE_ERROR, ASSETS, 2, _] => FungiblesError::Unknown,
+			[MODULE_ERROR, ASSETS, 3, _] => FungiblesError::InUse,
+			[MODULE_ERROR, ASSETS, 5, _] => FungiblesError::MinBalanceZero,
+			[MODULE_ERROR, ASSETS, 7, _] => FungiblesError::InsufficientAllowance,
+			[MODULE_ERROR, ASSETS, 10, _] => FungiblesError::AssetNotLive,
 			_ => FungiblesError::Other(value),
 		}
 	}
@@ -348,17 +348,19 @@ impl From<StatusCode> for FungiblesError {
 
 #[cfg(test)]
 mod tests {
-	use crate::constants::{ASSETS_MODULE, BALANCES_MODULE};
 	use ink::scale::{Decode, Encode};
 
 	use super::FungiblesError;
-	use crate::primitives::error::{
-		ArithmeticError::*,
-		Error::{self, *},
-		TokenError::*,
-		TransactionalError::*,
+	use crate::{
+		constants::{ASSETS, BALANCES},
+		primitives::error::{
+			ArithmeticError::*,
+			Error::{self, *},
+			TokenError::*,
+			TransactionalError::*,
+		},
+		StatusCode,
 	};
-	use crate::StatusCode;
 
 	fn error_into_status_code(error: Error) -> StatusCode {
 		let mut encoded_error = error.encode();
@@ -415,35 +417,32 @@ mod tests {
 		}
 
 		assert_eq!(
-			into_fungibles_error(Module { index: BALANCES_MODULE, error: 2 }),
+			into_fungibles_error(Module { index: BALANCES, error: 2 }),
 			FungiblesError::NoBalance
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS_MODULE, error: 0 }),
+			into_fungibles_error(Module { index: ASSETS, error: 0 }),
 			FungiblesError::NoAccount
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS_MODULE, error: 1 }),
+			into_fungibles_error(Module { index: ASSETS, error: 1 }),
 			FungiblesError::NoPermission
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS_MODULE, error: 2 }),
+			into_fungibles_error(Module { index: ASSETS, error: 2 }),
 			FungiblesError::Unknown
 		);
+		assert_eq!(into_fungibles_error(Module { index: ASSETS, error: 3 }), FungiblesError::InUse);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS_MODULE, error: 3 }),
-			FungiblesError::InUse
-		);
-		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS_MODULE, error: 5 }),
+			into_fungibles_error(Module { index: ASSETS, error: 5 }),
 			FungiblesError::MinBalanceZero
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS_MODULE, error: 7 }),
+			into_fungibles_error(Module { index: ASSETS, error: 7 }),
 			FungiblesError::InsufficientAllowance
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS_MODULE, error: 10 }),
+			into_fungibles_error(Module { index: ASSETS, error: 10 }),
 			FungiblesError::AssetNotLive
 		);
 	}

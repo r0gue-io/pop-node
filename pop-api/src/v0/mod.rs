@@ -1,5 +1,4 @@
-use crate::StatusCode;
-use pop_primitives::error::Error;
+use crate::{primitives::error::Error, StatusCode};
 
 #[cfg(feature = "assets")]
 pub mod assets;
@@ -10,7 +9,7 @@ pub mod cross_chain;
 #[cfg(feature = "nfts")]
 pub mod nfts;
 
-pub(crate) const VERSION: u8 = 0;
+pub(crate) const V0: u8 = 0;
 
 impl From<StatusCode> for Error {
 	fn from(value: StatusCode) -> Self {
