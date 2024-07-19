@@ -174,7 +174,7 @@ fn construct_call(
 	match pallet_index {
 		index if index == super::Assets::index() as u8 => {
 			let call = versioned_construct_assets_call(version, call_index, params)?;
-			Ok(RuntimeCall::Assets(call))
+			Ok(RuntimeCall::Fungibles(call))
 		},
 		_ => Err(DispatchError::Other("UnknownFunctionId")),
 	}
@@ -199,7 +199,8 @@ fn versioned_construct_assets_call(
 	version: u8,
 	call_index: u8,
 	params: Vec<u8>,
-) -> Result<pallet_assets::Call<Runtime, TrustBackedAssetsInstance>, DispatchError> {
+	// ) -> Result<pallet_assets::Call<Runtime, TrustBackedAssetsInstance>, DispatchError> {
+) -> Result<pallet_fungibles::Call<Runtime>, DispatchError> {
 	match version {
 		V0 => v0::assets::construct_assets_call(call_index, params),
 		_ => Err(DispatchError::Other("UnknownFunctionId")),

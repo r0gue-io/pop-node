@@ -20,6 +20,7 @@ members = [
     "runtime/devnet",
     "runtime/testnet",
     "integration-tests",
+    "pallets/*",
     "primitives",
     "scripts/fund-dev-accounts",
 ]

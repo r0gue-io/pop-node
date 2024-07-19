@@ -252,7 +252,7 @@ impl Contains<RuntimeCall> for FilteredCalls {
 
 /// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
 pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for crate::AllowedApiCalls {
+impl Contains<RuntimeCall> for AllowedApiCalls {
 	fn contains(c: &RuntimeCall) -> bool {
 		use config::assets::AssetsCall;
 		use pallet_nfts::Call as NftsCall;
@@ -321,7 +321,7 @@ impl Contains<RuntimeCall> for crate::AllowedApiCalls {
 					| NftsCall::create_swap { .. }
 					| NftsCall::cancel_swap { .. }
 					| NftsCall::claim_swap { .. }
-			)
+			) | RuntimeCall::Fungibles(pallet_fungibles::Call::transfer { .. })
 		)
 	}
 }
@@ -663,6 +663,7 @@ construct_runtime!(
 		Nfts: pallet_nfts = 50,
 		NftFractionalization: pallet_nft_fractionalization = 51,
 		Assets: pallet_assets::<Instance1> = 52,
+		Fungibles: pallet_fungibles = 53,
 	}
 );
 

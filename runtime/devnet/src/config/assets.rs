@@ -119,3 +119,5 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 }
+
+impl pallet_fungibles::Config for Runtime {}
