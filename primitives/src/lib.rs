@@ -41,6 +41,7 @@ pub mod v0 {
 		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		#[repr(u8)]
+		#[allow(clippy::unnecessary_cast)]
 		pub enum Error {
 			/// An unknown error occurred. This variant captures any unexpected errors that the
 			/// contract cannot specifically handle. It is useful for cases where there are breaking
@@ -51,37 +52,37 @@ pub mod v0 {
 			/// - `error_index`: The index within the `DispatchError` variant (e.g. a `TokenError`).
 			/// - `error`: The specific error code or sub-index, providing additional context (e.g.
 			///   `error` in `ModuleError`).
-			Other { dispatch_error_index: u8, error_index: u8, error: u8 },
+			Other { dispatch_error_index: u8, error_index: u8, error: u8 } = 0,
 			/// Failed to lookup some data.
-			CannotLookup,
+			CannotLookup = 1,
 			/// A bad origin.
-			BadOrigin,
+			BadOrigin = 2,
 			/// A custom error in a module.
 			///
 			/// - `index`: The pallet index.
 			/// - `error`: The error within the pallet.
-			Module { index: u8, error: u8 },
+			Module { index: u8, error: u8 } = 3,
 			/// At least one consumer is remaining so the account cannot be destroyed.
-			ConsumerRemaining,
+			ConsumerRemaining = 4,
 			/// There are no providers so the account cannot be created.
-			NoProviders,
+			NoProviders = 5,
 			/// There are too many consumers so the account cannot be created.
-			TooManyConsumers,
+			TooManyConsumers = 6,
 			/// An error to do with tokens.
-			Token(TokenError),
+			Token(TokenError) = 7,
 			/// An arithmetic error.
-			Arithmetic(ArithmeticError),
+			Arithmetic(ArithmeticError) = 8,
 			/// The number of transactional layers has been reached, or we are not in a transactional
 			/// layer.
-			Transactional(TransactionalError),
+			Transactional(TransactionalError) = 9,
 			/// Resources exhausted, e.g. attempt to read/write data which is too large to manipulate.
-			Exhausted,
+			Exhausted = 10,
 			/// The state is corrupt; this is generally not going to fix itself.
-			Corruption,
+			Corruption = 11,
 			/// Some resource (e.g. a preimage) is unavailable right now. This might fix itself later.
-			Unavailable,
+			Unavailable = 12,
 			/// Root origin is not allowed.
-			RootNotAllowed,
+			RootNotAllowed = 13,
 			/// Unknown call.
 			UnknownCall = 254,
 			/// Decoding failed.
