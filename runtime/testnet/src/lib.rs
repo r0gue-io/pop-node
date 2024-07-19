@@ -251,46 +251,9 @@ impl Contains<RuntimeCall> for FilteredCalls {
 
 /// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
 pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for crate::AllowedApiCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use pallet_nfts::Call as NftsCall;
-		matches!(
-			c,
-			RuntimeCall::Balances(BalancesCall::transfer_keep_alive { .. })
-				| RuntimeCall::Nfts(
-					NftsCall::create { .. }
-						| NftsCall::destroy { .. }
-						| NftsCall::mint { .. } | NftsCall::burn { .. }
-						| NftsCall::transfer { .. }
-						| NftsCall::redeposit { .. }
-						| NftsCall::lock_item_transfer { .. }
-						| NftsCall::unlock_item_transfer { .. }
-						| NftsCall::lock_collection { .. }
-						| NftsCall::transfer_ownership { .. }
-						| NftsCall::set_team { .. }
-						| NftsCall::approve_transfer { .. }
-						| NftsCall::cancel_approval { .. }
-						| NftsCall::clear_all_transfer_approvals { .. }
-						| NftsCall::lock_item_properties { .. }
-						| NftsCall::set_attribute { .. }
-						| NftsCall::clear_attribute { .. }
-						| NftsCall::approve_item_attributes { .. }
-						| NftsCall::cancel_item_attributes_approval { .. }
-						| NftsCall::set_metadata { .. }
-						| NftsCall::clear_metadata { .. }
-						| NftsCall::set_collection_metadata { .. }
-						| NftsCall::clear_collection_metadata { .. }
-						| NftsCall::set_accept_ownership { .. }
-						| NftsCall::set_collection_max_supply { .. }
-						| NftsCall::update_mint_settings { .. }
-						| NftsCall::set_price { .. }
-						| NftsCall::buy_item { .. }
-						| NftsCall::pay_tips { .. }
-						| NftsCall::create_swap { .. }
-						| NftsCall::cancel_swap { .. }
-						| NftsCall::claim_swap { .. }
-				)
-		)
+impl Contains<RuntimeCall> for AllowedApiCalls {
+	fn contains(_c: &RuntimeCall) -> bool {
+		false
 	}
 }
 
