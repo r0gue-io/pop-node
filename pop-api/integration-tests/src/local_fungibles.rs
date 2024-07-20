@@ -263,7 +263,6 @@ fn token_decimals_asset(asset_id: AssetId) -> u8 {
 /// - decrease_allowance
 
 #[test]
-#[ignore]
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -285,7 +284,6 @@ fn total_supply_works() {
 }
 
 #[test]
-#[ignore]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -304,7 +302,6 @@ fn balance_of_works() {
 }
 
 #[test]
-#[ignore]
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -329,7 +326,6 @@ fn allowance_works() {
 }
 
 #[test]
-#[ignore]
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -382,7 +378,6 @@ fn transfer_works() {
 }
 
 #[test]
-#[ignore]
 fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -435,7 +430,6 @@ fn transfer_from_works() {
 }
 
 #[test]
-#[ignore]
 fn increase_allowance_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -493,7 +487,6 @@ fn increase_allowance_works() {
 /// - token_decimals
 
 #[test]
-#[ignore]
 fn token_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();

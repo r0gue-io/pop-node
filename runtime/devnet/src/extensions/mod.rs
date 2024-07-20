@@ -180,21 +180,6 @@ fn construct_call(
 	}
 }
 
-fn construct_key(
-	version: u8,
-	pallet_index: u8,
-	call_index: u8,
-	params: Vec<u8>,
-) -> Result<RuntimeStateKeys, DispatchError> {
-	match pallet_index {
-		52 => {
-			let key = versioned_construct_assets_key(version, call_index, params)?;
-			Ok(RuntimeStateKeys::Assets(key))
-		},
-		_ => Err(DispatchError::Other("UnknownFunctionId")),
-	}
-}
-
 fn versioned_construct_assets_call(
 	version: u8,
 	call_index: u8,
@@ -206,23 +191,12 @@ fn versioned_construct_assets_call(
 	}
 }
 
-fn versioned_construct_assets_key(
-	version: u8,
-	call_index: u8,
-	params: Vec<u8>,
-) -> Result<AssetsKeys, DispatchError> {
-	match version {
-		V0 => v0::assets::construct_assets_key(call_index, params),
-		_ => Err(DispatchError::Other("UnknownFunctionId")),
-	}
-}
-
 fn read_state<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
 	call_index: u8,
-	params: Vec<u8>,
+	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
@@ -233,11 +207,21 @@ where
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " read_state |";
-	let key = construct_key(version, pallet_index, call_index, params)?;
+
+	// Prefix params with version, pallet, index to simplify decoding
+	params.insert(0, version);
+	params.insert(1, pallet_index);
+	params.insert(2, call_index);
+
+	let key = <VersionedRuntimeStateKeys>::decode(&mut &params[..])
+		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+
 	let result = match key {
-		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, env),
-		RuntimeStateKeys::ParachainSystem(key) => read_parachain_system_state::<T, E>(key, env),
-		RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, env),
+		VersionedRuntimeStateKeys::V0(key) => match key {
+			RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, env),
+			RuntimeStateKeys::ParachainSystem(key) => read_parachain_system_state::<T, E>(key, env),
+			RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, env),
+		},
 	}?
 	.encode();
 	log::trace!(
@@ -245,6 +229,13 @@ where
 		"{} result: {:?}.", LOG_PREFIX, result
 	);
 	env.write(&result, false, None)
+}
+
+// Example wrapper to enable versioning of state read keys
+#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+enum VersionedRuntimeStateKeys {
+	#[codec(index = 0)]
+	V0(RuntimeStateKeys),
 }
 
 fn send_xcm<T, E>(env: &mut Environment<E, BufInBufOutState>) -> Result<(), DispatchError>

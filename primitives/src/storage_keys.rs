@@ -2,6 +2,8 @@
 use super::nfts::*;
 use super::*;
 
+// This should be moved to the runtime, it is no longer required in primitives if we are just using
+// a chainextensionmethod call where we encode the first four bytes to channel the request
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum RuntimeStateKeys {
 	#[cfg(feature = "cross-chain")]
@@ -42,15 +44,23 @@ pub enum NftsKeys {
 	CollectionAttribute(CollectionId, BoundedVec<u8, KeyLimit>),
 }
 
+// This should be moved to the runtime, it is no longer required in primitives if we are just using
+// a chainextensionmethod call where we encode the first four bytes to channel the request
 /// The required input for state queries in pallet assets.
 #[cfg(feature = "assets")]
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum AssetsKeys {
+	#[codec(index = 0)]
 	TotalSupply(AssetId),
+	#[codec(index = 1)]
 	BalanceOf(AssetId, AccountId),
+	#[codec(index = 2)]
 	Allowance(AssetId, AccountId, AccountId),
+	#[codec(index = 3)]
 	TokenName(AssetId),
+	#[codec(index = 4)]
 	TokenSymbol(AssetId),
+	#[codec(index = 5)]
 	TokenDecimals(AssetId),
 	// AssetExists(AssetId),
 }
