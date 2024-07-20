@@ -73,7 +73,7 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
-pub(crate) use pallet_pop_api::fungibles;
+pub(crate) use pallet_api::fungibles;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
@@ -290,40 +290,7 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 						| AssetsCall::touch_other { .. }
 						| AssetsCall::refund_other { .. }
 						| AssetsCall::block { .. }
-				) | RuntimeCall::Nfts(
-				NftsCall::create { .. }
-					| NftsCall::destroy { .. }
-					| NftsCall::mint { .. }
-					| NftsCall::burn { .. }
-					| NftsCall::transfer { .. }
-					| NftsCall::redeposit { .. }
-					| NftsCall::lock_item_transfer { .. }
-					| NftsCall::unlock_item_transfer { .. }
-					| NftsCall::lock_collection { .. }
-					| NftsCall::transfer_ownership { .. }
-					| NftsCall::set_team { .. }
-					| NftsCall::approve_transfer { .. }
-					| NftsCall::cancel_approval { .. }
-					| NftsCall::clear_all_transfer_approvals { .. }
-					| NftsCall::lock_item_properties { .. }
-					| NftsCall::set_attribute { .. }
-					| NftsCall::clear_attribute { .. }
-					| NftsCall::approve_item_attributes { .. }
-					| NftsCall::cancel_item_attributes_approval { .. }
-					| NftsCall::set_metadata { .. }
-					| NftsCall::clear_metadata { .. }
-					| NftsCall::set_collection_metadata { .. }
-					| NftsCall::clear_collection_metadata { .. }
-					| NftsCall::set_accept_ownership { .. }
-					| NftsCall::set_collection_max_supply { .. }
-					| NftsCall::update_mint_settings { .. }
-					| NftsCall::set_price { .. }
-					| NftsCall::buy_item { .. }
-					| NftsCall::pay_tips { .. }
-					| NftsCall::create_swap { .. }
-					| NftsCall::cancel_swap { .. }
-					| NftsCall::claim_swap { .. }
-			) | RuntimeCall::Fungibles(fungibles::Call::transfer { .. })
+				) | RuntimeCall::Fungibles(fungibles::Call::transfer { .. })
 		)
 	}
 }
@@ -1034,4 +1001,33 @@ impl_runtime_apis! {
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+}
+
+pub(crate) mod state_keys {
+	use super::{fungibles, Runtime};
+	use codec::{Decode, Encode, MaxEncodedLen};
+
+	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	pub enum RuntimeStateKeys<T: fungibles::Config> {
+		#[codec(index = 52)]
+		Assets(fungibles::AssetsKeys<T>),
+	}
+}
+
+#[test]
+fn check_encoding() {
+	use codec::{Compact, Encode};
+	use sp_runtime::{AccountId32, MultiAddress};
+
+	let id = Compact(5u32);
+	let spender = MultiAddress::Id(AccountId32::from([0; 32]));
+	let value = 100u128;
+	let encoded_runtime_call = RuntimeCall::Fungibles(fungibles::Call::<Runtime>::approve {
+		id,
+		spender: spender.clone(),
+		value,
+	})
+	.encode();
+	let encoded = (150u8, 10u8, id, spender, value).encode();
+	assert_eq!(encoded_runtime_call, encoded);
 }

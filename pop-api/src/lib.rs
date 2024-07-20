@@ -30,6 +30,7 @@ mod constants {
 
 	// Modules:
 	pub(crate) const ASSETS: u8 = 52;
+	pub(crate) const FUNGIBLES: u8 = 150;
 	pub(crate) const BALANCES: u8 = 10;
 }
 

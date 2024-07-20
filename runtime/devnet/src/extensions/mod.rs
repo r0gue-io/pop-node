@@ -1,22 +1,17 @@
 use codec::{Compact, Decode, Encode};
-use cumulus_pallet_parachain_system::RelaychainDataProvider;
 use frame_support::traits::{Contains, OriginTrait};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
-	traits::{
-		fungibles::{approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect},
-		nonfungibles_v2::Inspect as NonFungiblesInspect,
+	traits::fungibles::{
+		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect,
 	},
 };
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{
-	traits::{BlockNumberProvider, Dispatchable},
-	DispatchError, MultiAddress,
-};
+use sp_runtime::{traits::Dispatchable, DispatchError, MultiAddress};
 use sp_std::{boxed::Box, vec::Vec};
 use xcm::{
 	latest::{prelude::*, OriginKind::SovereignAccount},
@@ -24,16 +19,17 @@ use xcm::{
 };
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, AccountId, AllowedApiCalls, Balance,
-	Runtime, RuntimeCall, RuntimeOrigin, UNIT,
+	config::assets::TrustBackedAssetsInstance,
+	fungibles::{
+		self,
+		AssetsKeys::{self, *},
+	},
+	state_keys::RuntimeStateKeys,
+	AccountId, AllowedApiCalls, Balance, Runtime, RuntimeCall, RuntimeOrigin, UNIT,
 };
 use pop_primitives::{
 	cross_chain::CrossChainMessage,
 	nfts::{CollectionId, ItemId},
-	storage_keys::{
-		AssetsKeys::{self, *},
-		NftsKeys, ParachainSystemKeys, RuntimeStateKeys,
-	},
 	AssetId,
 };
 
@@ -54,6 +50,7 @@ where
 	T: pallet_contracts::Config
 		+ pallet_xcm::Config
 		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
+		+ fungibles::Config
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
 		+ frame_system::Config<
@@ -121,7 +118,7 @@ fn dispatch<T, E>(
 	version: u8,
 	pallet_index: u8,
 	call_index: u8,
-	params: Vec<u8>,
+	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
 	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
@@ -129,10 +126,20 @@ where
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
-	let call = construct_call(version, pallet_index, call_index, params)?;
+
+	// Prefix params with version, pallet, index to simplify decoding
+	params.insert(0, version);
+	params.insert(1, pallet_index);
+	params.insert(2, call_index);
+
+	let call = <VersionedRuntimeCall>::decode(&mut &params[..])
+		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+
 	// Contract is the origin by default.
 	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
-	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
+	match call {
+		VersionedRuntimeCall::V0(call) => dispatch_call::<T, E>(env, call, origin, LOG_PREFIX),
+	}
 }
 
 fn dispatch_call<T, E>(
@@ -165,80 +172,36 @@ where
 	}
 }
 
-fn construct_call(
-	version: u8,
-	pallet_index: u8,
-	call_index: u8,
-	params: Vec<u8>,
-) -> Result<RuntimeCall, DispatchError> {
-	match pallet_index {
-		index if index == super::Assets::index() as u8 => {
-			let call = versioned_construct_assets_call(version, call_index, params)?;
-			Ok(RuntimeCall::Fungibles(call))
-		},
-		_ => Err(DispatchError::Other("UnknownFunctionId")),
-	}
-}
-
-fn construct_key(
-	version: u8,
-	pallet_index: u8,
-	call_index: u8,
-	params: Vec<u8>,
-) -> Result<RuntimeStateKeys, DispatchError> {
-	match pallet_index {
-		52 => {
-			let key = versioned_construct_assets_key(version, call_index, params)?;
-			Ok(RuntimeStateKeys::Assets(key))
-		},
-		_ => Err(DispatchError::Other("UnknownFunctionId")),
-	}
-}
-
-fn versioned_construct_assets_call(
-	version: u8,
-	call_index: u8,
-	params: Vec<u8>,
-	// ) -> Result<pallet_assets::Call<Runtime, TrustBackedAssetsInstance>, DispatchError> {
-) -> Result<fungibles::Call<Runtime>, DispatchError> {
-	match version {
-		V0 => v0::assets::construct_assets_call(call_index, params),
-		_ => Err(DispatchError::Other("UnknownFunctionId")),
-	}
-}
-
-fn versioned_construct_assets_key(
-	version: u8,
-	call_index: u8,
-	params: Vec<u8>,
-) -> Result<AssetsKeys, DispatchError> {
-	match version {
-		V0 => v0::assets::construct_assets_key(call_index, params),
-		_ => Err(DispatchError::Other("UnknownFunctionId")),
-	}
-}
-
 fn read_state<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
 	call_index: u8,
-	params: Vec<u8>,
+	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
 	T: pallet_contracts::Config
 		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
+		+ fungibles::Config
 		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
 		+ cumulus_pallet_parachain_system::Config
 		+ frame_system::Config<AccountId = sp_runtime::AccountId32>,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " read_state |";
-	let key = construct_key(version, pallet_index, call_index, params)?;
+
+	// Prefix params with version, pallet, index to simplify decoding
+	params.insert(0, version);
+	params.insert(1, pallet_index);
+	params.insert(2, call_index);
+
+	let key = <VersionedRuntimeStateKeys<T>>::decode(&mut &params[..])
+		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+
 	let result = match key {
-		RuntimeStateKeys::Nfts(key) => read_nfts_state::<T, E>(key, env),
-		RuntimeStateKeys::ParachainSystem(key) => read_parachain_system_state::<T, E>(key, env),
-		RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, env),
+		VersionedRuntimeStateKeys::V0(key) => match key {
+			RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, env),
+		},
 	}?
 	.encode();
 	log::trace!(
@@ -246,6 +209,20 @@ where
 		"{} result: {:?}.", LOG_PREFIX, result
 	);
 	env.write(&result, false, None)
+}
+
+// Example wrapper to enable versioning of state read keys
+#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+enum VersionedRuntimeStateKeys<T: fungibles::Config> {
+	#[codec(index = 0)]
+	V0(RuntimeStateKeys<T>),
+}
+
+// Example wrapper to enable versioning of state read keys
+#[derive(Decode, Debug)]
+enum VersionedRuntimeCall {
+	#[codec(index = 0)]
+	V0(RuntimeCall),
 }
 
 fn send_xcm<T, E>(env: &mut Environment<E, BufInBufOutState>) -> Result<(), DispatchError>
@@ -374,118 +351,52 @@ impl TryFrom<u8> for FuncId {
 	}
 }
 
-fn read_parachain_system_state<T, E>(
-	key: ParachainSystemKeys,
-	env: &mut Environment<E, BufInBufOutState>,
-) -> Result<Vec<u8>, DispatchError>
-where
-	T: pallet_contracts::Config + cumulus_pallet_parachain_system::Config,
-	E: Ext<T = T>,
-{
-	match key {
-		ParachainSystemKeys::LastRelayChainBlockNumber => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(RelaychainDataProvider::<T>::current_block_number().encode())
-		},
-	}
-}
-
-fn read_nfts_state<T, E>(
-	key: NftsKeys,
-	env: &mut Environment<E, BufInBufOutState>,
-) -> Result<Vec<u8>, DispatchError>
-where
-	T: pallet_contracts::Config + pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>,
-	E: Ext<T = T>,
-{
-	match key {
-		NftsKeys::Collection(collection) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_nfts::Collection::<T>::get(collection).encode())
-		},
-		NftsKeys::CollectionOwner(collection) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_nfts::Pallet::<T>::collection_owner(collection).encode())
-		},
-		NftsKeys::Item(collection, item) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_nfts::Item::<T>::get(collection, item).encode())
-		},
-		NftsKeys::Owner(collection, item) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_nfts::Pallet::<T>::owner(collection, item).encode())
-		},
-		NftsKeys::Attribute(collection, item, key) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_nfts::Pallet::<T>::attribute(&collection, &item, &key).encode())
-		},
-		// NftsKeys::CustomAttribute(account, collection, item, key) => {
-		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// 	Ok(pallet_nfts::Pallet::<T>::custom_attribute(&account, &collection, &item, &key)
-		// 		.encode())
-		// },
-		NftsKeys::SystemAttribute(collection, item, key) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_nfts::Pallet::<T>::system_attribute(&collection, item.as_ref(), &key)
-				.encode())
-		},
-		NftsKeys::CollectionAttribute(collection, key) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_nfts::Pallet::<T>::collection_attribute(&collection, &key).encode())
-		},
-	}
-}
-
 fn read_assets_state<T, E>(
-	key: AssetsKeys,
+	key: AssetsKeys<T>,
 	env: &mut Environment<E, BufInBufOutState>,
 ) -> Result<Vec<u8>, DispatchError>
 where
 	T: pallet_contracts::Config
-		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>,
+		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
+		+ fungibles::Config,
 	E: Ext<T = T>,
 	T: frame_system::Config<AccountId = sp_runtime::AccountId32>,
 {
+	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	match key {
-		TotalSupply(id) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::total_supply(id).encode())
-		},
-		BalanceOf(id, owner) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::balance(id, &owner.0.into())
-				.encode())
-		},
-		Allowance(id, owner, spender) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::allowance(
-				id,
-				&owner.0.into(),
-				&spender.0.into(),
-			)
-			.encode())
-		},
-		TokenName(id) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
-				AccountId,
-			>>::name(id)
-			.encode())
-		},
-		TokenSymbol(id) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
-				AccountId,
-			>>::symbol(id)
-			.encode())
-		},
-		TokenDecimals(id) => {
-			env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-			Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
-				AccountId,
-			>>::decimals(id)
-			.encode())
-		},
+		TotalSupply(id) => Ok(fungibles::Pallet::<T>::total_supply(id).encode()),
+		BalanceOf(id, owner) => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
+		_ => todo!(),
+		// Allowance(id, owner, spender) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::allowance(
+		// 		id,
+		// 		&owner.0.into(),
+		// 		&spender.0.into(),
+		// 	)
+		// 	.encode())
+		// },
+		// TokenName(id) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
+		// 		AccountId,
+		// 	>>::name(id)
+		// 	.encode())
+		// },
+		// TokenSymbol(id) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
+		// 		AccountId,
+		// 	>>::symbol(id)
+		// 	.encode())
+		// },
+		// TokenDecimals(id) => {
+		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+		// 	Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
+		// 		AccountId,
+		// 	>>::decimals(id)
+		// 	.encode())
+		// },
 		// AssetsKeys::AssetExists(id) => {
 		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
@@ -674,501 +585,3 @@ mod tests {
 		});
 	}
 }
-// use enumflags2::BitFlags;
-// use pallet_nfts::{CollectionConfig, CollectionSetting, CollectionSettings, MintSettings};
-// use parachains_common::CollectionId;
-// {
-//     // NFT helper functions
-//     fn collection_config_from_disabled_settings(
-//         settings: BitFlags<CollectionSetting>,
-//     ) -> CollectionConfig<Balance, crate::BlockNumber, CollectionId> {
-//         CollectionConfig {
-//             settings: CollectionSettings::from_disabled(settings),
-//             max_supply: None,
-//             mint_settings: MintSettings::default(),
-//         }
-//     }
-//
-//     fn default_collection_config() -> CollectionConfig<Balance, crate::BlockNumber, CollectionId> {
-//         collection_config_from_disabled_settings(CollectionSetting::DepositRequired.into())
-//     }
-//
-//     #[test]
-//     #[ignore]
-//     fn dispatch_balance_transfer_from_contract_works() {
-//         new_test_ext().execute_with(|| {
-//             let _ = env_logger::try_init();
-//
-//             let (wasm_binary, _) = load_wasm_module::<Runtime>(
-//                 "../../pop-api/examples/balance-transfer/target/ink/balance_transfer.wasm",
-//             )
-//                 .unwrap();
-//
-//             let init_value = 100 * UNIT;
-//
-//             let result = Contracts::bare_instantiate(
-//                 ALICE,
-//                 init_value,
-//                 GAS_LIMIT,
-//                 None,
-//                 Code::Upload(wasm_binary),
-//                 function_selector("new"),
-//                 vec![],
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//             )
-//                 .result
-//                 .unwrap();
-//
-//             assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-//
-//             let addr = result.account_id;
-//
-//             let function = function_selector("transfer_through_runtime");
-//             let value_to_send: u128 = 10 * UNIT;
-//             let params = [function, BOB.encode(), value_to_send.encode()].concat();
-//
-//             let bob_balance_before = Balances::free_balance(&BOB);
-//             assert_eq!(bob_balance_before, INITIAL_AMOUNT);
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//                 pallet_contracts::Determinism::Enforced,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("result: {:?}", result);
-//             }
-//
-//             // check for revert
-//             assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
-//
-//             let bob_balance_after = Balances::free_balance(&BOB);
-//             assert_eq!(bob_balance_before + value_to_send, bob_balance_after);
-//         });
-//     }
-//
-//     // Create a test for tesing create_nft_collection
-//     #[test]
-//     #[ignore]
-//     fn dispatch_nfts_create_nft_collection() {
-//         new_test_ext().execute_with(|| {
-//             let _ = env_logger::try_init();
-//
-//             let (wasm_binary, _) = load_wasm_module::<Runtime>(
-//                 "../../pop-api/examples/nfts/target/ink/pop_api_nft_example.wasm",
-//             )
-//                 .unwrap();
-//
-//             let init_value = 100 * UNIT;
-//
-//             let result = Contracts::bare_instantiate(
-//                 ALICE,
-//                 init_value,
-//                 GAS_LIMIT,
-//                 None,
-//                 Code::Upload(wasm_binary),
-//                 function_selector("new"),
-//                 vec![],
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//             )
-//                 .result
-//                 .unwrap();
-//
-//             assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-//
-//             let addr = result.account_id;
-//
-//             let function = function_selector("create_nft_collection");
-//
-//             let params = [function].concat();
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//                 pallet_contracts::Determinism::Enforced,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("result: {:?}", result);
-//             }
-//
-//             // check that the nft collection was created
-//             assert_eq!(Nfts::collection_owner(0), Some(addr.clone().into()));
-//
-//             // test reading the collection
-//             let function = function_selector("read_collection");
-//
-//             let params = [function, 0.encode()].concat();
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//                 pallet_contracts::Determinism::Enforced,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("result: {:?}", result);
-//             }
-//
-//             // assert that the collection was read successfully
-//             assert_eq!(result.result.clone().unwrap().data, vec![1, 1]);
-//         });
-//     }
-//
-//     #[test]
-//     #[ignore]
-//     fn dispatch_nfts_mint_from_contract_works() {
-//         new_test_ext().execute_with(|| {
-//             let _ = env_logger::try_init();
-//
-//             let (wasm_binary, _) =
-//                 load_wasm_module::<Runtime>("../../pop-api/examples/nfts/target/ink/nfts.wasm")
-//                     .unwrap();
-//
-//             let init_value = 100;
-//
-//             let result = Contracts::bare_instantiate(
-//                 ALICE,
-//                 init_value,
-//                 GAS_LIMIT,
-//                 None,
-//                 Code::Upload(wasm_binary),
-//                 function_selector("new"),
-//                 vec![],
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//             )
-//                 .result
-//                 .unwrap();
-//
-//             assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-//
-//             let addr = result.account_id;
-//
-//             let collection_id: u32 = 0;
-//             let item_id: u32 = 1;
-//
-//             // create nft collection with contract as owner
-//             assert_eq!(
-//                 Nfts::force_create(
-//                     RuntimeOrigin::root(),
-//                     addr.clone().into(),
-//                     default_collection_config()
-//                 ),
-//                 Ok(())
-//             );
-//
-//             assert_eq!(Nfts::collection_owner(collection_id), Some(addr.clone().into()));
-//             // assert that the item does not exist yet
-//             assert_eq!(Nfts::owner(collection_id, item_id), None);
-//
-//             let function = function_selector("mint_through_runtime");
-//
-//             let params =
-//                 [function, collection_id.encode(), item_id.encode(), BOB.encode()].concat();
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//                 pallet_contracts::Determinism::Enforced,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("result: {:?}", result);
-//             }
-//
-//             // check for revert
-//             assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
-//
-//             assert_eq!(Nfts::owner(collection_id, item_id), Some(BOB.into()));
-//         });
-//     }
-//
-//     #[test]
-//     #[ignore]
-//     fn nfts_mint_surfaces_error() {
-//         new_test_ext().execute_with(|| {
-//             let _ = env_logger::try_init();
-//
-//             let (wasm_binary, _) =
-//                 load_wasm_module::<Runtime>("../../pop-api/examples/nfts/target/ink/nfts.wasm")
-//                     .unwrap();
-//
-//             let init_value = 100;
-//
-//             let result = Contracts::bare_instantiate(
-//                 ALICE,
-//                 init_value,
-//                 GAS_LIMIT,
-//                 None,
-//                 Code::Upload(wasm_binary),
-//                 function_selector("new"),
-//                 vec![],
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//             )
-//                 .result
-//                 .unwrap();
-//
-//             assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-//
-//             let addr = result.account_id;
-//
-//             let collection_id: u32 = 0;
-//             let item_id: u32 = 1;
-//
-//             let function = function_selector("mint_through_runtime");
-//
-//             let params =
-//                 [function, collection_id.encode(), item_id.encode(), BOB.encode()].concat();
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//                 pallet_contracts::Determinism::Enforced,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("result: {:?}", result);
-//             }
-//
-//             // check for revert with expected error
-//             let result = result.result.unwrap();
-//             assert!(result.did_revert());
-//         });
-//     }
-//
-//     #[test]
-//     #[ignore]
-//     fn reading_last_relay_chain_block_number_works() {
-//         new_test_ext().execute_with(|| {
-//             let _ = env_logger::try_init();
-//
-//             let (wasm_binary, _) = load_wasm_module::<Runtime>(
-//                 "../../pop-api/examples/read-runtime-state/target/ink/read_relay_blocknumber.wasm",
-//             )
-//                 .unwrap();
-//
-//             let init_value = 100;
-//
-//             let contract = Contracts::bare_instantiate(
-//                 ALICE,
-//                 init_value,
-//                 GAS_LIMIT,
-//                 None,
-//                 Code::Upload(wasm_binary),
-//                 function_selector("new"),
-//                 vec![],
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//             )
-//                 .result
-//                 .unwrap();
-//
-//             assert!(!contract.result.did_revert(), "deploying contract reverted {:?}", contract);
-//
-//             let addr = contract.account_id;
-//
-//             let function = function_selector("read_relay_block_number");
-//             let params = [function].concat();
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::UnsafeCollect,
-//                 pallet_contracts::Determinism::Relaxed,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("result: {:?}", result);
-//             }
-//
-//             // check for revert
-//             assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
-//         });
-//     }
-//
-//     #[test]
-//     #[ignore]
-//     fn place_spot_order_from_contract_works() {
-//         new_test_ext().execute_with(|| {
-//             let _ = env_logger::try_init();
-//
-//             let (wasm_binary, _) = load_wasm_module::<Runtime>(
-//                 "../../pop-api/examples/place-spot-order/target/ink/spot_order.wasm",
-//             )
-//                 .unwrap();
-//
-//             let init_value = 100 * UNIT;
-//
-//             let result = Contracts::bare_instantiate(
-//                 ALICE,
-//                 init_value,
-//                 GAS_LIMIT,
-//                 None,
-//                 Code::Upload(wasm_binary),
-//                 function_selector("new"),
-//                 vec![],
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//             )
-//                 .result
-//                 .unwrap();
-//
-//             assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-//
-//             let addr = result.account_id;
-//
-//             let function = function_selector("place_spot_order");
-//
-//             let max_amount = 1 * UNIT;
-//             let para_id = 2000;
-//
-//             let params = [function, max_amount.encode(), para_id.encode()].concat();
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//                 pallet_contracts::Determinism::Enforced,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("result: {:?}", result);
-//             }
-//
-//             // check for revert
-//             assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
-//         });
-//     }
-//
-//     #[test]
-//     #[ignore]
-//     fn allow_call_filter_blocks_call() {
-//         new_test_ext().execute_with(|| {
-//             let _ = env_logger::try_init();
-//
-//             let (wasm_binary, _) = load_wasm_module::<Runtime>(
-//                 "../../tests/contracts/filtered-call/target/ink/pop_api_filtered_call.wasm",
-//             )
-//                 .unwrap();
-//
-//             let init_value = 100 * UNIT;
-//
-//             let result = Contracts::bare_instantiate(
-//                 ALICE,
-//                 init_value,
-//                 GAS_LIMIT,
-//                 None,
-//                 Code::Upload(wasm_binary),
-//                 function_selector("new"),
-//                 vec![],
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//             )
-//                 .result
-//                 .unwrap();
-//
-//             assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-//
-//             let addr = result.account_id;
-//
-//             let function = function_selector("get_filtered");
-//             let params = [function].concat();
-//
-//             let result = Contracts::bare_call(
-//                 ALICE,
-//                 addr.clone(),
-//                 0,
-//                 Weight::from_parts(100_000_000_000, 3 * 1024 * 1024),
-//                 None,
-//                 params,
-//                 DEBUG_OUTPUT,
-//                 pallet_contracts::CollectEvents::Skip,
-//                 pallet_contracts::Determinism::Enforced,
-//             );
-//
-//             if DEBUG_OUTPUT == pallet_contracts::DebugInfo::UnsafeDebug {
-//                 log::debug!(
-// 					"Contract debug buffer - {:?}",
-// 					String::from_utf8(result.debug_message.clone())
-// 				);
-//                 log::debug!("filtered result: {:?}", result);
-//             }
-//
-//             // check for revert
-//             assert!(!result.result.unwrap().did_revert(), "Contract reverted!");
-//         });
-//     }
-// }

@@ -1,7 +1,7 @@
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec, scale::Decode};
 
 use crate::{
-	constants::{ASSETS, DECODING_FAILED, DISPATCH, READ_STATE},
+	constants::{ASSETS, DECODING_FAILED, DISPATCH, FUNGIBLES, READ_STATE},
 	primitives::{AccountId, AssetId, Balance},
 	v0::V0,
 	Result, StatusCode,
@@ -23,11 +23,11 @@ pub mod fungibles;
 /// - burn
 /// - transfer
 /// - transfer_keep_alive
-const TRANSFER_KEEP_ALIVE: u8 = 9;
+const TRANSFER: u8 = 9;
 /// - set_metadata
 /// - clear_metadata
 /// - approve_transfer
-const APPROVE_TRANSFER: u8 = 22;
+const APPROVE: u8 = 10;
 /// - cancel_approval
 const CANCEL_APPROVAL: u8 = 23;
 /// - transfer_approved
@@ -91,17 +91,11 @@ const TRANSFER_APPROVED: u8 = 25;
 /// Move some assets from the sender account to another, keeping the sender account alive.
 #[inline]
 pub fn transfer_keep_alive(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([
-		V0,
-		DISPATCH,
-		ASSETS,
-		// E.D. is always respected with transferring tokens via the API.
-		TRANSFER_KEEP_ALIVE,
-	]))
-	.input::<(AssetId, AccountId, Balance)>()
-	.output::<Result<()>, true>()
-	.handle_error_code::<StatusCode>()
-	.call(&(id, target, amount))
+	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, TRANSFER]))
+		.input::<(AssetId, AccountId, Balance)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(id, target, amount))
 }
 
 // /// Set the metadata for an asset.
@@ -122,7 +116,7 @@ pub fn transfer_keep_alive(id: AssetId, target: AccountId, amount: Balance) -> R
 /// Approve an amount of asset for transfer by a delegated third-party account.
 #[inline]
 pub fn approve_transfer(id: AssetId, delegate: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, ASSETS, APPROVE_TRANSFER]))
+	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, APPROVE]))
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()

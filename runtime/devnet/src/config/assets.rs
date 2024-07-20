@@ -121,4 +121,6 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type BenchmarkHelper = ();
 }
 
-impl fungibles::Config for Runtime {}
+impl fungibles::Config for Runtime {
+	type AssetsInstance = TrustBackedAssetsInstance;
+}

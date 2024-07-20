@@ -2,19 +2,6 @@
 use super::nfts::*;
 use super::*;
 
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-pub enum RuntimeStateKeys {
-	#[cfg(feature = "cross-chain")]
-	#[codec(index = 1)]
-	ParachainSystem(ParachainSystemKeys),
-	#[cfg(feature = "nfts")]
-	#[codec(index = 50)]
-	Nfts(NftsKeys),
-	#[cfg(feature = "assets")]
-	#[codec(index = 52)]
-	Assets(AssetsKeys),
-}
-
 #[cfg(feature = "cross-chain")]
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum ParachainSystemKeys {
@@ -40,17 +27,4 @@ pub enum NftsKeys {
 	SystemAttribute(CollectionId, Option<ItemId>, BoundedVec<u8, KeyLimit>),
 	/// Get the attribute value of `item` of `collection` corresponding to `key`.
 	CollectionAttribute(CollectionId, BoundedVec<u8, KeyLimit>),
-}
-
-/// The required input for state queries in pallet assets.
-#[cfg(feature = "assets")]
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-pub enum AssetsKeys {
-	TotalSupply(AssetId),
-	BalanceOf(AssetId, AccountId),
-	Allowance(AssetId, AccountId, AccountId),
-	TokenName(AssetId),
-	TokenSymbol(AssetId),
-	TokenDecimals(AssetId),
-	// AssetExists(AssetId),
 }
