@@ -1,7 +1,3 @@
-use crate::{
-	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
-};
 use frame_support::{
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU32},
@@ -11,6 +7,11 @@ use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
 use sp_runtime::traits::Verify;
+
+use crate::{
+	deposit, fungibles, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime,
+	RuntimeEvent, RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+};
 
 /// We allow root to execute privileged asset operations.
 pub type AssetsForceOrigin = EnsureRoot<AccountId>;
@@ -120,4 +121,4 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type BenchmarkHelper = ();
 }
 
-impl pallet_fungibles::Config for Runtime {}
+impl fungibles::Config for Runtime {}

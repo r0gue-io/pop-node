@@ -1,7 +1,10 @@
-use crate::extensions::{
-	AccountId as AccountId32, AssetId,
-	AssetsKeys::{self, *},
-	Balance, Compact, Decode, DispatchError, MultiAddress, Runtime, TrustBackedAssetsInstance,
+use crate::{
+	extensions::{
+		AccountId as AccountId32, AssetId,
+		AssetsKeys::{self, *},
+		Balance, Compact, Decode, DispatchError, MultiAddress, Runtime, TrustBackedAssetsInstance,
+	},
+	fungibles,
 };
 use pop_primitives::AccountId;
 use sp_std::vec::Vec;
@@ -50,7 +53,7 @@ pub(crate) fn construct_assets_call(
 	call_index: u8,
 	params: Vec<u8>,
 	// ) -> Result<pallet_assets::Call<Runtime, TrustBackedAssetsInstance>, DispatchError> {
-) -> Result<pallet_fungibles::Call<Runtime>, DispatchError> {
+) -> Result<fungibles::Call<Runtime>, DispatchError> {
 	match call_index {
 		9 => {
 			let (id, target, amount) = <(AssetId, AccountId32, Balance)>::decode(&mut &params[..])
@@ -60,22 +63,27 @@ pub(crate) fn construct_assets_call(
 			// 	target: MultiAddress::Id(target),
 			// 	amount,
 			// })
-			Ok(pallet_fungibles::Call::<Runtime>::transfer {
+			Ok(fungibles::Call::<Runtime>::transfer {
 				id: Compact(id),
 				target: MultiAddress::Id(target),
 				amount,
 			})
 		},
-		// 22 => {
-		// 	let (id, delegate, amount) =
-		// 		<(AssetId, AccountId32, Balance)>::decode(&mut &params[..])
-		// 			.map_err(|_| DispatchError::Other("DecodingFailed"))?;
-		// 	Ok(pallet_assets::Call::<Runtime, TrustBackedAssetsInstance>::approve_transfer {
-		// 		id: Compact(id),
-		// 		delegate: MultiAddress::Id(delegate),
-		// 		amount,
-		// 	})
-		// },
+		22 => {
+			let (id, delegate, amount) =
+				<(AssetId, AccountId32, Balance)>::decode(&mut &params[..])
+					.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+			Ok(fungibles::Call::<Runtime>::approve {
+				id: Compact(id),
+				spender: MultiAddress::Id(delegate),
+				value: amount,
+			})
+			// Ok(pallet_assets::Call::<Runtime, TrustBackedAssetsInstance>::approve_transfer {
+			// 	id: Compact(id),
+			// 	delegate: MultiAddress::Id(delegate),
+			// 	amount,
+			// })
+		},
 		// other calls
 		_ => Err(DispatchError::Other("UnknownFunctionId")),
 	}

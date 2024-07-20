@@ -73,6 +73,8 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
+pub(crate) use pallet_pop_api::fungibles;
+
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -321,7 +323,7 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 					| NftsCall::create_swap { .. }
 					| NftsCall::cancel_swap { .. }
 					| NftsCall::claim_swap { .. }
-			) | RuntimeCall::Fungibles(pallet_fungibles::Call::transfer { .. })
+			) | RuntimeCall::Fungibles(fungibles::Call::transfer { .. })
 		)
 	}
 }
@@ -663,7 +665,9 @@ construct_runtime!(
 		Nfts: pallet_nfts = 50,
 		NftFractionalization: pallet_nft_fractionalization = 51,
 		Assets: pallet_assets::<Instance1> = 52,
-		Fungibles: pallet_fungibles = 53,
+
+		// Pop API
+		Fungibles: fungibles = 150,
 	}
 );
 

@@ -7220,21 +7220,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-fungibles"
-version = "0.1.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "pallet-assets",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
-]
-
-[[package]]
 name = "pallet-grandpa"
 version = "29.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7550,6 +7535,21 @@ dependencies = [
  "sp-runtime",
  "sp-staking",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-pop-api"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "pallet-assets",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
 ]
 
 [[package]]
@@ -9760,12 +9760,12 @@ dependencies = [
  "pallet-balances",
  "pallet-collator-selection",
  "pallet-contracts",
- "pallet-fungibles",
  "pallet-message-queue",
  "pallet-multisig",
  "pallet-nft-fractionalization",
  "pallet-nfts",
  "pallet-nfts-runtime-api",
+ "pallet-pop-api",
  "pallet-preimage",
  "pallet-proxy",
  "pallet-scheduler",

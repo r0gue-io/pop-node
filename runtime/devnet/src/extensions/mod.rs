@@ -24,8 +24,8 @@ use xcm::{
 };
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, AccountId, AllowedApiCalls, Balance, Runtime,
-	RuntimeCall, RuntimeOrigin, UNIT,
+	config::assets::TrustBackedAssetsInstance, fungibles, AccountId, AllowedApiCalls, Balance,
+	Runtime, RuntimeCall, RuntimeOrigin, UNIT,
 };
 use pop_primitives::{
 	cross_chain::CrossChainMessage,
@@ -200,7 +200,7 @@ fn versioned_construct_assets_call(
 	call_index: u8,
 	params: Vec<u8>,
 	// ) -> Result<pallet_assets::Call<Runtime, TrustBackedAssetsInstance>, DispatchError> {
-) -> Result<pallet_fungibles::Call<Runtime>, DispatchError> {
+) -> Result<fungibles::Call<Runtime>, DispatchError> {
 	match version {
 		V0 => v0::assets::construct_assets_call(call_index, params),
 		_ => Err(DispatchError::Other("UnknownFunctionId")),
