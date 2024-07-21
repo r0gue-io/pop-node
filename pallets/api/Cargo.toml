@@ -18,6 +18,7 @@ frame-benchmarking.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 pallet-assets.workspace = true
+primitives = { workspace = true, features = ["fungibles"] }
 sp-runtime.workspace = true
 
 [dev-dependencies]
@@ -38,6 +39,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "pallet-assets/std",
+    "primitives/std",
     "scale-info/std",
     "sp-core/std",
     "sp-io/std",

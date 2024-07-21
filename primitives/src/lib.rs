@@ -6,10 +6,6 @@ use scale::{Decode, Encode, MaxEncodedLen};
 use scale_info::TypeInfo;
 pub use v0::error;
 
-#[cfg(feature = "cross-chain")]
-pub mod cross_chain;
-pub mod storage_keys;
-
 /// An opaque 32-byte cryptographic identifier.
 #[derive(Encode, Decode, Debug, MaxEncodedLen, Eq, PartialEq)]
 #[cfg_attr(feature = "std", derive(TypeInfo))]
@@ -17,19 +13,20 @@ pub struct AccountId(pub [u8; 32]);
 
 /// Identifier for the class of asset.
 pub type AssetId = u32;
+pub const FUNGIBLES: u8 = 150;
 
-#[cfg(feature = "nfts")]
-pub mod nfts {
-	use bounded_collections::ConstU32;
-
-	/// Id used for identifying non-fungible collections.
-	pub type CollectionId = u32;
-	/// Id used for identifying non-fungible items.
-	pub type ItemId = u32;
-	/// The maximum length of an attribute key.
-	pub type KeyLimit = ConstU32<64>;
-	/// The maximum approvals an item could have.
-	pub type ApprovalsLimit = ConstU32<20>;
+#[cfg(feature = "fungibles")]
+pub mod constants {
+	/// Module index.
+	pub const FUNGIBLES: u8 = 150;
+	pub mod fungibles {
+		pub const TOTAL_SUPPLY: u8 = 0;
+		pub const BALANCE_OF: u8 = 1;
+		pub const ALLOWANCE: u8 = 2;
+		pub const TOKEN_NAME: u8 = 3;
+		pub const TOKEN_SYMBOL: u8 = 4;
+		pub const TOKEN_DECIMALS: u8 = 5;
+	}
 }
 
 pub mod v0 {

@@ -11,7 +11,7 @@ frame-system = { version = "29.0.0", default-features = false }
 pallet-balances = { version = "29.0.2", default-features = false }
 pallet-assets = { version = "30.0.0", default-features = false }
 pallet-contracts = { version = "28.0.0", default-features = false }
-pop-primitives = { path = "../../primitives", default-features = false, features = ["assets"] }
+primitives = { path = "../../primitives", default-features = false }
 pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
 sp-io = { version = "31.0.0", default-features = false }
 sp-runtime = { version = "32.0.0", default-features = false }
@@ -25,7 +25,7 @@ std = [
     "pallet-balances/std",
     "pallet-assets/std",
     "pallet-contracts/std",
-    "pop-primitives/std",
+    "primitives/std",
     "pop-runtime-devnet/std",
     "scale/std",
     "sp-io/std",

@@ -1,5 +1,5 @@
 use super::*;
-use pop_primitives::error::{
+use primitives::error::{
 	ArithmeticError::*,
 	Error::{self, *},
 	TokenError::*,
@@ -266,11 +266,7 @@ fn token_decimals_asset(asset_id: AssetId) -> u8 {
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(Assets::total_supply(ASSET_ID), total_supply(addr.clone(), ASSET_ID));
@@ -287,8 +283,7 @@ fn total_supply_works() {
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(Assets::balance(ASSET_ID, BOB), balance_of(addr.clone(), ASSET_ID, BOB));
@@ -305,8 +300,7 @@ fn balance_of_works() {
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -329,8 +323,7 @@ fn allowance_works() {
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Asset does not exist.
@@ -381,8 +374,7 @@ fn transfer_works() {
 fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr =
-			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Asset does not exist.
@@ -433,7 +425,7 @@ fn transfer_from_works() {
 fn increase_allowance_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate("../examples/fungibles/target/ink/fungibles.wasm", 0, vec![]);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", 0, vec![]);
 		let amount: Balance = 100 * UNIT;
 		let asset = 0;
 		create_asset_and_mint_to(ALICE, asset, addr.clone(), amount);
@@ -443,7 +435,7 @@ fn increase_allowance_works() {
 		);
 
 		let addr =
-			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
+			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
 		// Asset does not exist.
 		let asset = 1;
 		assert_eq!(
@@ -490,11 +482,7 @@ fn increase_allowance_works() {
 fn token_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate(
-			"../../pop-api/examples/fungibles/target/ink/fungibles.wasm",
-			INIT_VALUE,
-			vec![],
-		);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 
 		let name: Vec<u8> = vec![11, 12, 13];
 		let symbol: Vec<u8> = vec![21, 22, 23];
@@ -529,7 +517,7 @@ fn token_metadata_works() {
 // 	new_test_ext().execute_with(|| {
 // 		let _ = env_logger::try_init();
 // 		let addr =
-// 			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+// 			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 //
 // 		// No tokens in circulation.
 // 		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr.clone(), ASSET_ID));
@@ -546,7 +534,7 @@ fn token_metadata_works() {
 // 	new_test_ext().execute_with(|| {
 // 		let _ = env_logger::try_init();
 // 		let addr =
-// 			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+// 			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 // 		let amount: Balance = 100 * UNIT;
 //
 // 		// Asset does not exist.
@@ -606,14 +594,14 @@ fn token_metadata_works() {
 // 	new_test_ext().execute_with(|| {
 // 		let _ = env_logger::try_init();
 // 		// Instantiate a contract without balance (relay token).
-// 		let addr = instantiate("../examples/fungibles/target/ink/fungibles.wasm", 0, vec![0]);
+// 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", 0, vec![0]);
 // 		// No balance to pay for fees.
 // 		assert_eq!(
 // 			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
 // 			Module { index: 10, error: 2 },
 // 		);
 // 		// Instantiate a contract without balance (relay token).
-// 		let addr = instantiate("../examples/fungibles/target/ink/fungibles.wasm", 100, vec![2]);
+// 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", 100, vec![2]);
 // 		// No balance to pay the deposit.
 // 		assert_eq!(
 // 			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
@@ -621,7 +609,7 @@ fn token_metadata_works() {
 // 		);
 // 		// Instantiate a contract with balance.
 // 		let addr =
-// 			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
+// 			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
 // 		assert_eq!(
 // 			decoded::<Error>(create(addr.clone(), ASSET_ID, BOB, 0)),
 // 			Module { index: 52, error: 7 },
@@ -645,7 +633,7 @@ fn token_metadata_works() {
 // 	new_test_ext().execute_with(|| {
 // 		let _ = env_logger::try_init();
 // 		let addr =
-// 			instantiate("../examples/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+// 			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 //
 // 		create_asset(addr.clone(), ASSET_ID, 1);
 // 		let result = set_metadata(addr.clone(), ASSET_ID, vec![12], vec![12], 12);

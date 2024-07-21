@@ -1,37 +1,29 @@
-use codec::{Compact, Decode, Encode};
-use frame_support::traits::{Contains, OriginTrait};
+use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{GetDispatchInfo, RawOrigin},
 	pallet_prelude::*,
-	traits::fungibles::{
-		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect,
+	traits::{
+		fungibles::{approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect},
+		Contains, OriginTrait,
 	},
 };
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
 use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{traits::Dispatchable, DispatchError, MultiAddress};
-use sp_std::{boxed::Box, vec::Vec};
-use xcm::{
-	latest::{prelude::*, OriginKind::SovereignAccount},
-	VersionedXcm,
-};
+use sp_runtime::{traits::Dispatchable, DispatchError};
+use sp_std::vec::Vec;
 
 use crate::{
 	config::assets::TrustBackedAssetsInstance,
 	fungibles::{
 		self,
-		AssetsKeys::{self, *},
+		Keys::{self, *},
 	},
 	state_keys::RuntimeStateKeys,
 	AccountId, AllowedApiCalls, Balance, Runtime, RuntimeCall, RuntimeOrigin, UNIT,
 };
-use pop_primitives::{
-	cross_chain::CrossChainMessage,
-	nfts::{CollectionId, ItemId},
-	AssetId,
-};
+use primitives::AssetId;
 
 mod v0;
 
@@ -48,11 +40,8 @@ pub struct PopApiExtension;
 impl<T> ChainExtension<T> for PopApiExtension
 where
 	T: pallet_contracts::Config
-		+ pallet_xcm::Config
 		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
 		+ fungibles::Config
-		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
-		+ cumulus_pallet_parachain_system::Config
 		+ frame_system::Config<
 			RuntimeOrigin = RuntimeOrigin,
 			AccountId = AccountId,
@@ -99,8 +88,6 @@ where
 					FuncId::ReadState => {
 						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
 					},
-					// TODO
-					FuncId::SendXcm => send_xcm::<T, E>(&mut env),
 				}
 			},
 			Err(e) => Err(e),
@@ -183,8 +170,6 @@ where
 	T: pallet_contracts::Config
 		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
 		+ fungibles::Config
-		+ pallet_nfts::Config<CollectionId = CollectionId, ItemId = ItemId>
-		+ cumulus_pallet_parachain_system::Config
 		+ frame_system::Config<AccountId = sp_runtime::AccountId32>,
 	E: Ext<T = T>,
 {
@@ -200,7 +185,7 @@ where
 
 	let result = match key {
 		VersionedRuntimeStateKeys::V0(key) => match key {
-			RuntimeStateKeys::Assets(key) => read_assets_state::<T, E>(key, env),
+			RuntimeStateKeys::Fungibles(key) => read_fungibles_state::<T, E>(key, env),
 		},
 	}?
 	.encode();
@@ -223,50 +208,6 @@ enum VersionedRuntimeStateKeys<T: fungibles::Config> {
 enum VersionedRuntimeCall {
 	#[codec(index = 0)]
 	V0(RuntimeCall),
-}
-
-fn send_xcm<T, E>(env: &mut Environment<E, BufInBufOutState>) -> Result<(), DispatchError>
-where
-	T: pallet_contracts::Config
-		+ frame_system::Config<
-			RuntimeOrigin = RuntimeOrigin,
-			AccountId = AccountId,
-			RuntimeCall = RuntimeCall,
-		>,
-	E: Ext<T = T>,
-{
-	const LOG_PREFIX: &str = " send_xcm |";
-	// Read the input as CrossChainMessage.
-	let xc_call: CrossChainMessage = env.read_as::<CrossChainMessage>()?;
-	// Determine the call to dispatch.
-	let (dest, message) = match xc_call {
-		CrossChainMessage::Relay(message) => {
-			let dest = Location::parent().into_versioned();
-			let assets: Asset = (Here, 10 * UNIT).into();
-			let beneficiary: Location =
-				AccountId32 { id: (env.ext().address().clone()).into(), network: None }.into();
-			let message = Xcm::builder()
-				.withdraw_asset(assets.clone().into())
-				.buy_execution(assets.clone(), Unlimited)
-				.transact(
-					SovereignAccount,
-					Weight::from_parts(250_000_000, 10_000),
-					message.encode().into(),
-				)
-				.refund_surplus()
-				.deposit_asset(assets.into(), beneficiary)
-				.build();
-			(dest, message)
-		},
-	};
-	// TODO: revisit to replace with signed contract origin
-	let origin: RuntimeOrigin = RawOrigin::Root.into();
-	// Generate runtime call to dispatch.
-	let call = RuntimeCall::PolkadotXcm(pallet_xcm::Call::send {
-		dest: Box::new(dest),
-		message: Box::new(VersionedXcm::V4(message)),
-	});
-	dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
 }
 
 // Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
@@ -328,7 +269,6 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 pub enum FuncId {
 	Dispatch,
 	ReadState,
-	SendXcm,
 }
 
 impl TryFrom<u8> for FuncId {
@@ -342,7 +282,6 @@ impl TryFrom<u8> for FuncId {
 		let id = match func_id {
 			0 => Self::Dispatch,
 			1 => Self::ReadState,
-			2 => Self::SendXcm,
 			_ => {
 				return Err(DispatchError::Other("UnknownFuncId"));
 			},
@@ -351,8 +290,8 @@ impl TryFrom<u8> for FuncId {
 	}
 }
 
-fn read_assets_state<T, E>(
-	key: AssetsKeys<T>,
+fn read_fungibles_state<T, E>(
+	key: Keys<T>,
 	env: &mut Environment<E, BufInBufOutState>,
 ) -> Result<Vec<u8>, DispatchError>
 where
@@ -366,37 +305,12 @@ where
 	match key {
 		TotalSupply(id) => Ok(fungibles::Pallet::<T>::total_supply(id).encode()),
 		BalanceOf(id, owner) => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
-		_ => todo!(),
-		// Allowance(id, owner, spender) => {
-		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::allowance(
-		// 		id,
-		// 		&owner.0.into(),
-		// 		&spender.0.into(),
-		// 	)
-		// 	.encode())
-		// },
-		// TokenName(id) => {
-		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// 	Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
-		// 		AccountId,
-		// 	>>::name(id)
-		// 	.encode())
-		// },
-		// TokenSymbol(id) => {
-		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// 	Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
-		// 		AccountId,
-		// 	>>::symbol(id)
-		// 	.encode())
-		// },
-		// TokenDecimals(id) => {
-		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// 	Ok(<pallet_assets::Pallet<T, TrustBackedAssetsInstance> as MetadataInspect<
-		// 		AccountId,
-		// 	>>::decimals(id)
-		// 	.encode())
-		// },
+		Allowance(id, owner, spender) => {
+			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode())
+		},
+		TokenName(id) => Ok(fungibles::Pallet::<T>::token_name(id).encode()),
+		TokenSymbol(id) => Ok(fungibles::Pallet::<T>::token_symbol(id).encode()),
+		TokenDecimals(id) => Ok(fungibles::Pallet::<T>::token_decimals(id).encode()),
 		// AssetsKeys::AssetExists(id) => {
 		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
@@ -409,6 +323,7 @@ mod tests {
 	use super::*;
 	use crate::{Assets, Runtime, System};
 	use sp_runtime::BuildStorage;
+
 	// Test ensuring `func_id()` and `ext_id()` work as expected, i.e. extracting the first two
 	// bytes and the last two bytes, respectively, from a 4 byte array.
 	#[test]

@@ -1,5 +1,5 @@
 [package]
-name = "pop-primitives"
+name = "primitives"
 license = "GPL-3.0-only"
 version = "0.0.0"
 edition = "2021"
@@ -16,6 +16,4 @@ std = [
     "scale/std",
     "scale-info/std",
 ]
-assets = []
-cross-chain = []
-nfts = []
+fungibles = []

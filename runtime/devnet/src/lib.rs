@@ -256,41 +256,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 pub struct AllowedApiCalls;
 impl Contains<RuntimeCall> for AllowedApiCalls {
 	fn contains(c: &RuntimeCall) -> bool {
-		use config::assets::AssetsCall;
-		use pallet_nfts::Call as NftsCall;
+		use fungibles::Call as FungiblesCall;
 		matches!(
 			c,
-			RuntimeCall::Balances(BalancesCall::transfer_keep_alive { .. })
-				| RuntimeCall::Assets(
-					AssetsCall::create { .. }
-						| AssetsCall::start_destroy { .. }
-						| AssetsCall::destroy_accounts { .. }
-						| AssetsCall::destroy_approvals { .. }
-						| AssetsCall::finish_destroy { .. }
-						| AssetsCall::mint { .. }
-						| AssetsCall::burn { .. }
-						| AssetsCall::transfer { .. }
-						| AssetsCall::transfer_keep_alive { .. }
-						| AssetsCall::force_transfer { .. }
-						| AssetsCall::freeze { .. }
-						| AssetsCall::thaw { .. }
-						| AssetsCall::freeze_asset { .. }
-						| AssetsCall::thaw_asset { .. }
-						| AssetsCall::transfer_ownership { .. }
-						| AssetsCall::set_team { .. }
-						| AssetsCall::set_metadata { .. }
-						| AssetsCall::clear_metadata { .. }
-						| AssetsCall::approve_transfer { .. }
-						| AssetsCall::cancel_approval { .. }
-						| AssetsCall::force_cancel_approval { .. }
-						| AssetsCall::transfer_approved { .. }
-						| AssetsCall::touch { .. }
-						| AssetsCall::refund { .. }
-						| AssetsCall::set_min_balance { .. }
-						| AssetsCall::touch_other { .. }
-						| AssetsCall::refund_other { .. }
-						| AssetsCall::block { .. }
-				) | RuntimeCall::Fungibles(fungibles::Call::transfer { .. })
+			RuntimeCall::Fungibles(FungiblesCall::transfer { .. } | FungiblesCall::approve { .. })
 		)
 	}
 }
@@ -1004,19 +973,21 @@ cumulus_pallet_parachain_system::register_validate_block! {
 }
 
 pub(crate) mod state_keys {
-	use super::{fungibles, Runtime};
+	use super::fungibles;
 	use codec::{Decode, Encode, MaxEncodedLen};
+	use primitives::constants::FUNGIBLES;
 
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[repr(u8)]
 	pub enum RuntimeStateKeys<T: fungibles::Config> {
-		#[codec(index = 52)]
-		Assets(fungibles::AssetsKeys<T>),
+		Fungibles(fungibles::Keys<T>) = FUNGIBLES,
 	}
 }
 
 #[test]
 fn check_encoding() {
 	use codec::{Compact, Encode};
+	use primitives::constants::FUNGIBLES;
 	use sp_runtime::{AccountId32, MultiAddress};
 
 	let id = Compact(5u32);
@@ -1028,6 +999,6 @@ fn check_encoding() {
 		value,
 	})
 	.encode();
-	let encoded = (150u8, 10u8, id, spender, value).encode();
+	let encoded = (FUNGIBLES, 10u8, id, spender, value).encode();
 	assert_eq!(encoded_runtime_call, encoded);
 }
