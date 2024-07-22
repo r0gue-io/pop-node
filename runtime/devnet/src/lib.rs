@@ -259,7 +259,11 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 		use fungibles::Call as FungiblesCall;
 		matches!(
 			c,
-			RuntimeCall::Fungibles(FungiblesCall::transfer { .. } | FungiblesCall::approve { .. })
+			RuntimeCall::Fungibles(
+				FungiblesCall::transfer { .. }
+					| FungiblesCall::approve { .. }
+					| FungiblesCall::increase_allowance { .. }
+			)
 		)
 	}
 }
@@ -975,19 +979,18 @@ cumulus_pallet_parachain_system::register_validate_block! {
 pub(crate) mod state_keys {
 	use super::fungibles;
 	use codec::{Decode, Encode, MaxEncodedLen};
-	use primitives::constants::FUNGIBLES;
 
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
 	#[repr(u8)]
 	pub enum RuntimeStateKeys<T: fungibles::Config> {
-		Fungibles(fungibles::Keys<T>) = FUNGIBLES,
+		#[codec(index = 150)]
+		Fungibles(fungibles::FungiblesKey<T>),
 	}
 }
 
 #[test]
 fn check_encoding() {
 	use codec::{Compact, Encode};
-	use primitives::constants::FUNGIBLES;
 	use sp_runtime::{AccountId32, MultiAddress};
 
 	let id = Compact(5u32);
@@ -999,6 +1002,6 @@ fn check_encoding() {
 		value,
 	})
 	.encode();
-	let encoded = (FUNGIBLES, 10u8, id, spender, value).encode();
+	let encoded = (150u8, 10u8, id, spender, value).encode();
 	assert_eq!(encoded_runtime_call, encoded);
 }

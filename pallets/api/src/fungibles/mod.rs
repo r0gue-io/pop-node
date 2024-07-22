@@ -18,8 +18,6 @@ pub mod pallet {
 	use pallet_assets::WeightInfo;
 	use sp_runtime::traits::StaticLookup;
 
-	use primitives::constants::fungibles::*;
-
 	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	type AssetIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 		<T as frame_system::Config>::AccountId,
@@ -37,13 +35,19 @@ pub mod pallet {
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
-	pub enum Keys<T: Config> {
-		TotalSupply(AssetIdOf<T>) = TOTAL_SUPPLY,
-		BalanceOf(AssetIdOf<T>, AccountIdOf<T>) = BALANCE_OF,
-		Allowance(AssetIdOf<T>, AccountIdOf<T>, AccountIdOf<T>) = ALLOWANCE,
-		TokenName(AssetIdOf<T>) = TOKEN_NAME,
-		TokenSymbol(AssetIdOf<T>) = TOKEN_SYMBOL,
-		TokenDecimals(AssetIdOf<T>) = TOKEN_DECIMALS,
+	pub enum FungiblesKey<T: Config> {
+		#[codec(index = 0)]
+		TotalSupply(AssetIdOf<T>),
+		#[codec(index = 1)]
+		BalanceOf(AssetIdOf<T>, AccountIdOf<T>),
+		#[codec(index = 2)]
+		Allowance(AssetIdOf<T>, AccountIdOf<T>, AccountIdOf<T>),
+		#[codec(index = 3)]
+		TokenName(AssetIdOf<T>),
+		#[codec(index = 4)]
+		TokenSymbol(AssetIdOf<T>),
+		#[codec(index = 5)]
+		TokenDecimals(AssetIdOf<T>),
 	}
 
 	#[pallet::config]
@@ -56,7 +60,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::call_index(9)]
+		#[pallet::call_index(0)]
 		#[pallet::weight(AssetsWeightInfo::<T>::transfer_keep_alive())]
 		pub fn transfer(
 			origin: OriginFor<T>,
@@ -68,7 +72,7 @@ pub mod pallet {
 			Assets::<T>::transfer_keep_alive(origin, id.into(), target, amount)
 		}
 
-		#[pallet::call_index(10)]
+		#[pallet::call_index(2)]
 		#[pallet::weight(AssetsWeightInfo::<T>::cancel_approval() + AssetsWeightInfo::<T>::approve_transfer())]
 		pub fn approve(
 			origin: OriginFor<T>,
@@ -80,13 +84,20 @@ pub mod pallet {
 			let id: AssetIdParameterOf<T> = id.into();
 			Assets::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
 				.map_err(|e| e.with_weight(AssetsWeightInfo::<T>::cancel_approval()))?;
-			Assets::<T>::approve_transfer(origin, id, spender, value).map_err(|e| {
-				e.with_weight(
-					AssetsWeightInfo::<T>::cancel_approval()
-						+ AssetsWeightInfo::<T>::approve_transfer(),
-				)
-			})?;
+			Assets::<T>::approve_transfer(origin, id, spender, value)?;
 			Ok(().into())
+		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(AssetsWeightInfo::<T>::approve_transfer())]
+		pub fn increase_allowance(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			spender: AccountIdOf<T>,
+			value: BalanceOf<T>,
+		) -> DispatchResult {
+			let spender = T::Lookup::unlookup(spender);
+			Assets::<T>::approve_transfer(origin, id.into(), spender, value)
 		}
 	}
 

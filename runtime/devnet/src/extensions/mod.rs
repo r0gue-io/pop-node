@@ -1,42 +1,35 @@
-use codec::{Decode, Encode};
-use frame_support::{
-	dispatch::{GetDispatchInfo, RawOrigin},
-	pallet_prelude::*,
-	traits::{
-		fungibles::{approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect},
-		Contains, OriginTrait,
-	},
-};
-use pallet_contracts::chain_extension::{
-	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
-};
-use sp_core::crypto::UncheckedFrom;
-use sp_runtime::{traits::Dispatchable, DispatchError};
-use sp_std::vec::Vec;
+mod v0;
 
 use crate::{
 	config::assets::TrustBackedAssetsInstance,
 	fungibles::{
 		self,
-		Keys::{self, *},
+		FungiblesKey::{self, *},
 	},
 	state_keys::RuntimeStateKeys,
-	AccountId, AllowedApiCalls, Balance, Runtime, RuntimeCall, RuntimeOrigin, UNIT,
+	AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin,
+};
+use codec::{Decode, Encode};
+use frame_support::{
+	dispatch::{GetDispatchInfo, RawOrigin},
+	pallet_prelude::*,
+	traits::{Contains, OriginTrait},
+};
+use pallet_contracts::chain_extension::{
+	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
 use primitives::AssetId;
-
-mod v0;
+use sp_core::crypto::UncheckedFrom;
+use sp_runtime::{traits::Dispatchable, DispatchError};
+use sp_std::vec::Vec;
 
 const LOG_TARGET: &str = "pop-api::extension";
-// Versions:
-const V0: u8 = 0;
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
 #[derive(Default)]
 pub struct PopApiExtension;
 
-// TODO: check removal or simplification of trait bounds.
 impl<T> ChainExtension<T> for PopApiExtension
 where
 	T: pallet_contracts::Config
@@ -114,18 +107,17 @@ where
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
-	// Prefix params with version, pallet, index to simplify decoding
+	// Prefix params with version, pallet, index to simplify decoding.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-
-	let call = <VersionedRuntimeCall>::decode(&mut &params[..])
+	let call = <VersionedDispatch>::decode(&mut &params[..])
 		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
 
 	// Contract is the origin by default.
 	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
-		VersionedRuntimeCall::V0(call) => dispatch_call::<T, E>(env, call, origin, LOG_PREFIX),
+		VersionedDispatch::V0(call) => dispatch_call::<T, E>(env, call, origin, LOG_PREFIX),
 	}
 }
 
@@ -175,16 +167,15 @@ where
 {
 	const LOG_PREFIX: &str = " read_state |";
 
-	// Prefix params with version, pallet, index to simplify decoding
+	// Prefix params with version, pallet, index to simplify decoding.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-
-	let key = <VersionedRuntimeStateKeys<T>>::decode(&mut &params[..])
+	let key = <VersionedStateRead<T>>::decode(&mut &params[..])
 		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
 
 	let result = match key {
-		VersionedRuntimeStateKeys::V0(key) => match key {
+		VersionedStateRead::V0(key) => match key {
 			RuntimeStateKeys::Fungibles(key) => read_fungibles_state::<T, E>(key, env),
 		},
 	}?
@@ -196,16 +187,16 @@ where
 	env.write(&result, false, None)
 }
 
-// Example wrapper to enable versioning of state read keys
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-enum VersionedRuntimeStateKeys<T: fungibles::Config> {
+// Example wrapper to enable versioning of `RuntimeStateKeys`.
+#[derive(Decode, Debug)]
+enum VersionedStateRead<T: fungibles::Config> {
 	#[codec(index = 0)]
 	V0(RuntimeStateKeys<T>),
 }
 
-// Example wrapper to enable versioning of state read keys
+// Wrapper to enable versioning of `RuntimeCall`.
 #[derive(Decode, Debug)]
-enum VersionedRuntimeCall {
+enum VersionedDispatch {
 	#[codec(index = 0)]
 	V0(RuntimeCall),
 }
@@ -250,7 +241,7 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 		//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
 		// - Byte 3:
 		//   - Unused or represents further nested information.
-		0 => v0::error::handle_unknown_error(&mut encoded_error),
+		0 => v0::handle_unknown_error(&mut encoded_error),
 		_ => encoded_error = [254, 0, 0, 0],
 	}
 	u32::from_le_bytes(encoded_error)
@@ -291,7 +282,7 @@ impl TryFrom<u8> for FuncId {
 }
 
 fn read_fungibles_state<T, E>(
-	key: Keys<T>,
+	key: FungiblesKey<T>,
 	env: &mut Environment<E, BufInBufOutState>,
 ) -> Result<Vec<u8>, DispatchError>
 where

@@ -1,9 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::env::chain_extension::FromStatusCode;
-
 use constants::DECODING_FAILED;
-
+use ink::env::chain_extension::FromStatusCode;
 pub use v0::assets;
 
 pub mod primitives;
@@ -24,6 +22,7 @@ mod constants {
 	// Modules:
 	pub(crate) const ASSETS: u8 = 52;
 	pub(crate) const BALANCES: u8 = 10;
+	pub(crate) const FUNGIBLES: u8 = 150;
 }
 
 /// Represents a status code returned by the runtime.

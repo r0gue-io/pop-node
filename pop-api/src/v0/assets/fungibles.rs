@@ -1,35 +1,45 @@
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec, scale::Decode};
 
 use crate::{
-	constants::{ASSETS, BALANCES, DECODING_FAILED, DISPATCH, READ_STATE},
+	constants::{ASSETS, BALANCES, DECODING_FAILED, DISPATCH, FUNGIBLES, READ_STATE},
 	primitives::{AccountId, AssetId, Balance},
 	v0::V0,
 	Result, StatusCode,
 };
 use constants::*;
 pub use metadata::*;
-use primitives::constants::{fungibles::*, FUNGIBLES};
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
 /// 2. PSP-22 Metadata Interface
 /// 3. Asset Management
 
-pub(super) mod constants {
+mod constants {
 	/// 1. PSP-22 Interface:
 	/// - total_supply
+	pub const TOTAL_SUPPLY: u8 = 0;
 	/// - balance_of
+	pub const BALANCE_OF: u8 = 1;
 	/// - allowance
+	pub const ALLOWANCE: u8 = 2;
 	/// - transfer
-	pub(super) const TRANSFER: u8 = 9;
+	pub(super) const TRANSFER: u8 = 0;
 	/// - transfer_from
-	pub(super) const TRANSFER_FROM: u8 = 9;
+	pub(super) const TRANSFER_FROM: u8 = 1;
 	/// - approve
-	pub(super) const APPROVE: u8 = 10;
+	pub(super) const APPROVE: u8 = 2;
 	/// - increase_allowance
-	pub(super) const _INCREASE_ALLOWANCE: u8 = 10;
+	pub(super) const INCREASE_ALLOWANCE: u8 = 3;
 	/// - decrease_allowance
-	pub(super) const _DECREASE_ALLOWANCE: u8 = 10;
+	pub(super) const DECREASE_ALLOWANCE: u8 = 4;
+
+	/// 2. PSP-22 Metadata Interface:
+	/// - token_name
+	pub const TOKEN_NAME: u8 = 3;
+	/// - token_symbol
+	pub const TOKEN_SYMBOL: u8 = 4;
+	/// - token_decimals
+	pub const TOKEN_DECIMALS: u8 = 5;
 
 	// 3. Asset Management:
 	// - create
@@ -227,8 +237,12 @@ pub fn approve(id: AssetId, spender: AccountId, amount: Balance) -> Result<()> {
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
 #[inline]
-pub fn increase_allowance(_id: AssetId, _spender: AccountId, _value: Balance) -> Result<()> {
-	Ok(())
+pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, INCREASE_ALLOWANCE]))
+		.input::<(AssetId, AccountId, Balance)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(id, spender, value))
 }
 
 /// Decreases the allowance of a spender.
@@ -241,11 +255,12 @@ pub fn increase_allowance(_id: AssetId, _spender: AccountId, _value: Balance) ->
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
 #[inline]
-pub fn decrease_allowance(_id: AssetId, _spender: AccountId, _value: Balance) -> Result<()> {
-	// let allowance = assets::allowance(id, owner, spender)?;
-	// assets::cancel_approval(id, spender.clone())?;
-	// assets::approve_transfer(id, spender, value)
-	Ok(())
+pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, DECREASE_ALLOWANCE]))
+		.input::<(AssetId, AccountId, Balance)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(id, spender, value))
 }
 
 pub mod metadata {
