@@ -987,21 +987,3 @@ pub(crate) mod state_keys {
 		Fungibles(fungibles::FungiblesKey<T>),
 	}
 }
-
-#[test]
-fn check_encoding() {
-	use codec::{Compact, Encode};
-	use sp_runtime::{AccountId32, MultiAddress};
-
-	let id = Compact(5u32);
-	let spender = MultiAddress::Id(AccountId32::from([0; 32]));
-	let value = 100u128;
-	let encoded_runtime_call = RuntimeCall::Fungibles(fungibles::Call::<Runtime>::approve {
-		id,
-		spender: spender.clone(),
-		value,
-	})
-	.encode();
-	let encoded = (150u8, 10u8, id, spender, value).encode();
-	assert_eq!(encoded_runtime_call, encoded);
-}

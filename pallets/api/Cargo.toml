@@ -22,6 +22,7 @@ primitives = { workspace = true, features = ["fungibles"] }
 sp-runtime.workspace = true
 
 [dev-dependencies]
+pallet-balances.workspace = true
 sp-core.workspace = true
 sp-io.workspace = true
 
@@ -39,6 +40,7 @@ std = [
     "frame-support/std",
     "frame-system/std",
     "pallet-assets/std",
+    "pallet-balances/std",
     "primitives/std",
     "scale-info/std",
     "sp-core/std",

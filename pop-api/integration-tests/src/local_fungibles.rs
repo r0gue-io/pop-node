@@ -351,11 +351,11 @@ fn transfer_works() {
 			Module { index: 52, error: 0 },
 		);
 		// Successful transfer.
-		let bob_balance_before_mint = Assets::balance(asset, &BOB);
+		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
 		let result = transfer(addr.clone(), asset, BOB, amount / 2);
 		assert!(!result.did_revert(), "Contract reverted!");
-		let bob_balance_after_mint = Assets::balance(asset, &BOB);
-		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount / 2);
+		let bob_balance_after_transfer = Assets::balance(asset, &BOB);
+		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
 		// Transfer asset to account that does not exist.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, FERDIE, amount / 4)),

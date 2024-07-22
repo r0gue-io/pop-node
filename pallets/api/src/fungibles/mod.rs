@@ -16,10 +16,10 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use pallet_assets::WeightInfo;
-	use sp_runtime::traits::StaticLookup;
+	use sp_runtime::{traits::StaticLookup, Saturating};
 
-	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-	type AssetIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
+	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+	pub(crate) type AssetIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::AssetId;
 	type AssetIdParameterOf<T> =
@@ -27,11 +27,11 @@ pub mod pallet {
 	type Assets<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 	type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 	type AssetsWeightInfo<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
-	type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
+	pub(crate) type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance;
 
-	/// The required input for state queries in pallet assets.
+	/// The required input for state queries through the fungibles api.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
@@ -78,13 +78,27 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
 			spender: AccountIdOf<T>,
-			value: BalanceOf<T>,
+			mut value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin.clone())?;
+			let current_allowance = Assets::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
-			Assets::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
-				.map_err(|e| e.with_weight(AssetsWeightInfo::<T>::cancel_approval()))?;
-			Assets::<T>::approve_transfer(origin, id, spender, value)?;
+			// If the new value is equal to the current allowance, do nothing.
+			if value == current_allowance {
+				return Ok(().into());
+			}
+			// If the new value is greater than the current allowance, approve the difference.
+			if value > current_allowance {
+				value.saturating_reduce(current_allowance);
+				Assets::<T>::approve_transfer(origin, id, spender, value)?;
+			} else {
+				// If the new value is less than the current allowance, cancel the approval and set the new value
+				Assets::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
+					.map_err(|e| e.with_weight(AssetsWeightInfo::<T>::cancel_approval()))?;
+				Assets::<T>::approve_transfer(origin, id, spender, value)?;
+			}
+
 			Ok(().into())
 		}
 
