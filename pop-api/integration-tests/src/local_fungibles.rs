@@ -373,20 +373,18 @@ fn approve_works() {
 		let _ = env_logger::try_init();
 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", 0, vec![]);
 		let amount: Balance = 100 * UNIT;
-		let asset = 0;
-		create_asset_and_mint_to(ALICE, asset, addr.clone(), amount);
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(approve(addr.clone(), 0, BOB, amount)),
+			Module { index: 52, error: 3 },
+		);
+		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
 		assert_eq!(decoded::<Error>(approve(addr.clone(), asset, BOB, amount)), ConsumerRemaining);
 
 		let addr =
 			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
-		// Asset does not exist.
-		let asset = 1;
-		assert_eq!(
-			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 3 },
-		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
-		create_asset_and_mint_to(ALICE, asset, addr.clone(), amount);
+		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(ALICE, asset);
 		assert_eq!(
@@ -394,7 +392,7 @@ fn approve_works() {
 			Module { index: 52, error: 16 },
 		);
 		thaw_asset(ALICE, asset);
-		// Successful approval.
+		// Successful approvals:
 		assert_eq!(0, Assets::allowance(asset, &addr, &BOB));
 		assert!(!approve(addr.clone(), asset, BOB, amount).did_revert(), "Contract reverted!");
 		assert_eq!(Assets::allowance(asset, &addr, &BOB), amount);
@@ -416,8 +414,12 @@ fn increase_allowance_works() {
 		let _ = env_logger::try_init();
 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", 0, vec![]);
 		let amount: Balance = 100 * UNIT;
-		let asset = 0;
-		create_asset_and_mint_to(ALICE, asset, addr.clone(), amount);
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(increase_allowance(addr.clone(), 0, BOB, amount)),
+			Module { index: 52, error: 3 },
+		);
+		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
 			ConsumerRemaining
@@ -425,14 +427,8 @@ fn increase_allowance_works() {
 
 		let addr =
 			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
-		// Asset does not exist.
-		let asset = 1;
-		assert_eq!(
-			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 3 },
-		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
-		create_asset_and_mint_to(ALICE, asset, addr.clone(), amount);
+		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(ALICE, asset);
 		assert_eq!(
@@ -440,7 +436,7 @@ fn increase_allowance_works() {
 			Module { index: 52, error: 16 },
 		);
 		thaw_asset(ALICE, asset);
-		// Successful approval.
+		// Successful approvals:
 		assert_eq!(0, Assets::allowance(asset, &addr, &BOB));
 		assert!(
 			!increase_allowance(addr.clone(), asset, BOB, amount).did_revert(),

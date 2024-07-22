@@ -25,4 +25,4 @@ std = [
     "primitives/std",
     "sp-io/std",
 ]
-fungibles = ["primitives/fungibles"]
+fungibles = []

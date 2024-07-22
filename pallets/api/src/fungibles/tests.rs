@@ -27,12 +27,15 @@ fn approve_works() {
 		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
 		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
-		// Sets a new allowance amount that is lower than the current allowance.
+		// Approves an amount to spend that is lower than the current allowance.
 		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount / 2));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2);
-		// Sets a new allowance amount that is higher than the current allowance.
+		// Approves an amount to spend that is higher than the current allowance.
 		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
+		// Sets allowance to zero.
+		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, 0));
+		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
 	});
 }
 
@@ -44,6 +47,7 @@ fn increase_allowance_works() {
 		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
 		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
+		// Additive.
 		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 	});
