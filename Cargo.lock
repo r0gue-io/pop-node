@@ -1053,18 +1053,6 @@ dependencies = [
 
 [[package]]
 name = "bounded-collections"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ca548b6163b872067dc5eb82fd130c56881435e30367d2073594a3d9744120dd"
-dependencies = [
- "log",
- "parity-scale-codec",
- "scale-info",
- "serde",
-]
-
-[[package]]
-name = "bounded-collections"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d32385ecb91a31bddaf908e8dcf4a15aef1bcd3913cc03ebfad02ff6d568abc1"
@@ -2383,7 +2371,7 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0fa22d6e479a4d3a2790bab291269ba0917a1ac384255a54a2ebc3f7c37e505e"
 dependencies = [
- "bounded-collections 0.2.0",
+ "bounded-collections",
  "bp-xcm-bridge-hub-router",
  "cumulus-primitives-core",
  "frame-benchmarking",
@@ -8010,7 +7998,7 @@ version = "8.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ba9138b04168b07b1aff4a2079f5514753c31dddba40e5fb471b9cda7da27ad6"
 dependencies = [
- "bounded-collections 0.2.0",
+ "bounded-collections",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
@@ -9220,7 +9208,7 @@ version = "7.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "248ab090959a92e61493277e33b7e85104280a4beb4cb0815137d3c8c50a07f4"
 dependencies = [
- "bounded-collections 0.2.0",
+ "bounded-collections",
  "derive_more",
  "parity-scale-codec",
  "polkadot-core-primitives",
@@ -9958,7 +9946,6 @@ dependencies = [
 name = "primitives"
 version = "0.0.0"
 dependencies = [
- "bounded-collections 0.1.9",
  "parity-scale-codec",
  "scale-info",
 ]
@@ -13306,7 +13293,7 @@ dependencies = [
  "bip39",
  "bitflags 1.3.2",
  "blake2 0.10.6",
- "bounded-collections 0.2.0",
+ "bounded-collections",
  "bs58 0.5.1",
  "dyn-clonable",
  "ed25519-zebra 3.1.0",
@@ -13878,7 +13865,7 @@ version = "28.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3be30aec904994451dcacf841a9168cfbbaf817de6b24b6a1c1418cbf1af2fe"
 dependencies = [
- "bounded-collections 0.2.0",
+ "bounded-collections",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -13987,7 +13974,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fa328b87de3466bc38cc9a07244c42c647b7755b81115e1dfeb47cc13fc6e6"
 dependencies = [
  "array-bytes 6.2.3",
- "bounded-collections 0.2.0",
+ "bounded-collections",
  "derivative",
  "environmental",
  "impl-trait-for-tuples",

@@ -22,7 +22,7 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-primitives = { workspace = true, features = ["fungibles"] }
+primitives.workspace = true
 pop-runtime-common.workspace = true
 pallet-api.workspace = true
 

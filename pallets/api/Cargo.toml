@@ -18,7 +18,7 @@ frame-benchmarking.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 pallet-assets.workspace = true
-primitives = { workspace = true, features = ["fungibles"] }
+primitives.workspace = true
 sp-runtime.workspace = true
 
 [dev-dependencies]
