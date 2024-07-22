@@ -79,19 +79,16 @@ fn transfer(
 	result
 }
 
-fn transfer_from(
+fn approve(
 	addr: AccountId32,
 	asset_id: AssetId,
-	from: Option<AccountId32>,
-	to: Option<AccountId32>,
+	spender: AccountId32,
 	value: Balance,
-	data: &[u8],
 ) -> ExecReturnValue {
-	let function = function_selector("transfer_from");
-	let params =
-		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
-			.concat();
-	bare_call(addr, params, 0).expect("should work")
+	let function = function_selector("approve");
+	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
 }
 
 fn increase_allowance(
@@ -371,51 +368,43 @@ fn transfer_works() {
 }
 
 #[test]
-fn transfer_from_works() {
+fn approve_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", 0, vec![]);
 		let amount: Balance = 100 * UNIT;
+		let asset = 0;
+		create_asset_and_mint_to(ALICE, asset, addr.clone(), amount);
+		assert_eq!(decoded::<Error>(approve(addr.clone(), asset, BOB, amount)), ConsumerRemaining);
 
+		let addr =
+			instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![1]);
 		// Asset does not exist.
+		let asset = 1;
 		assert_eq!(
-			decoded::<Error>(transfer(addr.clone(), 1, BOB, amount,)),
+			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
 			Module { index: 52, error: 3 },
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
-		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
+		create_asset_and_mint_to(ALICE, asset, addr.clone(), amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(ALICE, asset);
 		assert_eq!(
-			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount,)),
+			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
 			Module { index: 52, error: 16 },
 		);
 		thaw_asset(ALICE, asset);
-		// Not enough balance.
-		assert_eq!(
-			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
-			Module { index: 52, error: 0 },
-		);
-		// Not enough balance due to ED.
-		assert_eq!(
-			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 0 },
-		);
-		// Successful transfer.
-		let bob_balance_before_mint = Assets::balance(asset, &BOB);
-		let result = transfer(addr.clone(), asset, BOB, amount / 2);
-		assert!(!result.did_revert(), "Contract reverted!");
-		let bob_balance_after_mint = Assets::balance(asset, &BOB);
-		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount / 2);
-		// Transfer asset to account that does not exist.
-		assert_eq!(
-			decoded::<Error>(transfer(addr.clone(), asset, FERDIE, amount / 4)),
-			Token(CannotCreate)
-		);
+		// Successful approval.
+		assert_eq!(0, Assets::allowance(asset, &addr, &BOB));
+		assert!(!approve(addr.clone(), asset, BOB, amount).did_revert(), "Contract reverted!");
+		assert_eq!(Assets::allowance(asset, &addr, &BOB), amount);
+		// Non-additive, sets new value.
+		assert!(!approve(addr.clone(), asset, BOB, amount / 2).did_revert(), "Contract reverted!");
+		assert_eq!(Assets::allowance(asset, &addr, &BOB), amount / 2);
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(ALICE, asset);
 		assert_eq!(
-			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount / 4)),
+			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
 			Module { index: 52, error: 16 },
 		);
 	});
