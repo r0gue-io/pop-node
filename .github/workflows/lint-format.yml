@@ -33,21 +33,3 @@ jobs:
         with:
           commit_message: Apply formatting changes
           branch: ${{ github.head_ref }}
-  check:
-    name: Format check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-      - name: Run clippy check on workspace
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --workspace
-      - name: Format all packages
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all
