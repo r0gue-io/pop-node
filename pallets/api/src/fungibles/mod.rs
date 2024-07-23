@@ -3,6 +3,8 @@
 /// API that adheres to standards in the smart contract space.
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod tests;
 
@@ -26,8 +28,8 @@ pub mod pallet {
 	>>::AssetId;
 	type AssetIdParameterOf<T> =
 		<T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
-	type Assets<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
-	type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
+	pub(crate) type Assets<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
+	pub(crate) type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 	type AssetsWeightInfo<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
 	pub(crate) type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 		<T as frame_system::Config>::AccountId,
@@ -94,7 +96,7 @@ pub mod pallet {
 		/// # Returns
 		/// Returns `Ok(())` if successful, or an error if the approval fails.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::cancel_approval() + AssetsWeightInfo::<T>::approve_transfer())]
+		#[pallet::weight(T::DbWeight::get().reads(1) + AssetsWeightInfo::<T>::cancel_approval() + AssetsWeightInfo::<T>::approve_transfer())]
 		pub fn approve(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
@@ -102,6 +104,7 @@ pub mod pallet {
 			mut value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin.clone())
+				// To have the caller pay some fees.
 				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
 			let current_allowance = Assets::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
@@ -115,7 +118,7 @@ pub mod pallet {
 				value.saturating_reduce(current_allowance);
 				Assets::<T>::approve_transfer(origin, id, spender, value).map_err(|e| {
 					e.with_weight(
-						T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::approve_transfer(),
+						T::DbWeight::get().reads(1) + AssetsWeightInfo::<T>::approve_transfer(),
 					)
 				})?;
 			} else {
@@ -123,7 +126,7 @@ pub mod pallet {
 				Assets::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone()).map_err(
 					|e| {
 						e.with_weight(
-							T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::cancel_approval(),
+							T::DbWeight::get().reads(1) + AssetsWeightInfo::<T>::cancel_approval(),
 						)
 					},
 				)?;
