@@ -75,10 +75,12 @@ where
 				let params = env.read(len)?;
 				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
-					FuncId::Dispatch =>
-						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params),
-					FuncId::ReadState =>
-						read_state::<T, E>(&mut env, version, pallet_index, call_index, params),
+					FuncId::Dispatch => {
+						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
+					},
+					FuncId::ReadState => {
+						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
+					},
 				}
 			},
 			Err(e) => Err(e),
@@ -296,8 +298,9 @@ where
 	match key {
 		TotalSupply(id) => Ok(fungibles::Pallet::<T>::total_supply(id).encode()),
 		BalanceOf(id, owner) => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
-		Allowance(id, owner, spender) =>
-			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode()),
+		Allowance(id, owner, spender) => {
+			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode())
+		},
 		TokenName(id) => Ok(fungibles::Pallet::<T>::token_name(id).encode()),
 		TokenSymbol(id) => Ok(fungibles::Pallet::<T>::token_symbol(id).encode()),
 		TokenDecimals(id) => Ok(fungibles::Pallet::<T>::token_decimals(id).encode()),

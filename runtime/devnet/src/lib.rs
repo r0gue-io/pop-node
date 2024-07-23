@@ -243,10 +243,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
+				force_adjust_total_issuance { .. }
+					| force_set_balance { .. }
+					| force_transfer { .. }
+					| force_unreserve { .. }
 			)
 		)
 	}
@@ -260,9 +260,9 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 		matches!(
 			c,
 			RuntimeCall::Fungibles(
-				FungiblesCall::transfer { .. } |
-					FungiblesCall::approve { .. } |
-					FungiblesCall::increase_allowance { .. }
+				FungiblesCall::transfer { .. }
+					| FungiblesCall::approve { .. }
+					| FungiblesCall::increase_allowance { .. }
 			)
 		)
 	}

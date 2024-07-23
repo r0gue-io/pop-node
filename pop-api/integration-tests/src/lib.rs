@@ -23,6 +23,7 @@ type Balance = u128;
 
 const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
 const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
+const CHARLIE: AccountId32 = AccountId32::new([3_u8; 32]);
 const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 // FERDIE has no initial balance.
 const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
@@ -36,7 +37,7 @@ fn new_test_ext() -> sp_io::TestExternalities {
 		.expect("Frame system builds valid default genesis config");
 
 	pallet_balances::GenesisConfig::<Runtime> {
-		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT)],
+		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)],
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");

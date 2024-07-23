@@ -386,12 +386,27 @@ fn transfer_from_works() {
 		let _ = env_logger::try_init();
 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
-		// TODO: Add approval process and finalize the integration test
+
+		// Allow CHARLIE to spend `amount` owned by ALICE
+		create_asset_mint_and_approve(
+			addr.clone(),
+			ASSET_ID,
+			ALICE,
+			amount * 2,
+			CHARLIE,
+			amount * 2,
+		);
+		assert_eq!(
+			Assets::allowance(ASSET_ID, &ALICE, &CHARLIE),
+			allowance(addr.clone(), ASSET_ID, ALICE, CHARLIE)
+		);
+
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), 1, ALICE, BOB, amount,)),
+			decoded::<Error>(transfer_from(addr.clone(), 1, CHARLIE, BOB, amount,)),
 			Module { index: 52, error: 3 },
 		);
+
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
 		// Asset is not live, i.e. frozen or being destroyed.
