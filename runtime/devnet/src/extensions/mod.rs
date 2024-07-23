@@ -169,19 +169,21 @@ where
 {
 	const LOG_PREFIX: &str = " read_state |";
 
-	// Prefix params with version, pallet, index to simplify decoding.
+	// Prefix params with version, pallet, index to simplify decoding, and decode parameters for
+	// reading state.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
 	let key = <VersionedStateRead<T>>::decode(&mut &params[..])
 		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
 
+	// Charge weight for doing one storage read.
+	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	let result = match key {
 		VersionedStateRead::V0(key) => match key {
-			RuntimeRead::Fungibles(key) => read_fungibles_state::<T, E>(key, env),
+			RuntimeStateKeys::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
 		},
-	}?
-	.encode();
+	};
 	log::trace!(
 		target:LOG_TARGET,
 		"{} result: {:?}.", LOG_PREFIX, result
@@ -282,30 +284,6 @@ impl TryFrom<u8> for FuncId {
 			},
 		};
 		Ok(id)
-	}
-}
-
-fn read_fungibles_state<T, E>(
-	key: Read<T>,
-	env: &mut Environment<E, BufInBufOutState>,
-) -> Result<Vec<u8>, DispatchError>
-where
-	T: pallet_contracts::Config
-		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
-		+ fungibles::Config,
-	E: Ext<T = T>,
-	T: frame_system::Config<AccountId = sp_runtime::AccountId32>,
-{
-	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-	match key {
-		TotalSupply(id) => Ok(fungibles::Pallet::<T>::total_supply(id).encode()),
-		BalanceOf { id, owner } => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
-		Allowance { id, owner, spender } => {
-			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode())
-		},
-		TokenName(id) => Ok(fungibles::Pallet::<T>::token_name(id).encode()),
-		TokenSymbol(id) => Ok(fungibles::Pallet::<T>::token_symbol(id).encode()),
-		TokenDecimals(id) => Ok(fungibles::Pallet::<T>::token_decimals(id).encode()),
 	}
 }
 
