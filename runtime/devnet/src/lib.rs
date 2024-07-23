@@ -261,8 +261,10 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 			c,
 			RuntimeCall::Fungibles(
 				FungiblesCall::transfer { .. }
+					| FungiblesCall::transfer_from { .. }
 					| FungiblesCall::approve { .. }
 					| FungiblesCall::increase_allowance { .. }
+					| FungiblesCall::decrease_allowance { .. }
 			)
 		)
 	}
