@@ -87,7 +87,6 @@ fn transfer(
 
 fn transfer_from(
 	addr: AccountId32,
-	spender: AccountId32,
 	asset_id: AssetId,
 	from: AccountId32,
 	to: AccountId32,
@@ -95,7 +94,7 @@ fn transfer_from(
 ) -> ExecReturnValue {
 	let function = function_selector("transfer_from");
 	let params = [function, asset_id.encode(), from.encode(), to.encode(), value.encode()].concat();
-	let result = bare_call_by(addr, spender, params, 0).expect("should work");
+	let result = bare_call(addr, params, 0).expect("should work");
 	result
 }
 
@@ -408,30 +407,27 @@ fn transfer_from_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Allow CHARLIE to spend `amount` owned by ALICE
+		let delegate = addr.clone();
 		let asset_id = create_asset_mint_and_approve(
 			addr.clone(),
 			ASSET_ID,
 			ALICE,
 			amount * 2,
-			CHARLIE,
+			delegate.clone(),
 			amount * 2,
 		);
 		assert_eq!(
-			Assets::allowance(asset_id, &ALICE, &CHARLIE),
-			allowance(addr.clone(), asset_id, ALICE, CHARLIE)
+			Assets::allowance(asset_id, &ALICE, &delegate.clone()),
+			allowance(addr.clone(), asset_id, ALICE, delegate.clone())
 		);
-		assert_eq!(allowance(addr.clone(), asset_id, ALICE, CHARLIE), amount * 2);
+		assert_eq!(allowance(addr.clone(), asset_id, ALICE, delegate.clone()), amount * 2);
 
 		// Successfully transfer
 		// TODO: Fix
-		assert_ok!(checked_decoded::<Error>(transfer_from(
-			addr.clone(),
-			CHARLIE,
-			asset_id,
-			ALICE,
-			BOB,
-			amount * 2,
-		)));
+		// CHARLIE trying to send from ALICE to BOB
+		let result = transfer_from(addr.clone(), asset_id, ALICE, BOB, amount * 2);
+		assert_eq!(decoded::<Error>(result.clone()), Module { index: 52, error: 16 },);
+		assert!(!result.did_revert(), "Contract reverted!");
 	});
 }
 
