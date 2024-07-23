@@ -102,6 +102,8 @@ impl crate::fungibles::Config for Test {
 
 pub(crate) const ALICE: AccountId = 1;
 pub(crate) const BOB: AccountId = 2;
+pub(crate) const CHARLIE: AccountId = 3;
+pub(crate) const DAVE: AccountId = 4;
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
@@ -111,7 +113,12 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 		.expect("Frame system builds valid default genesis config");
 
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT)],
+		balances: vec![
+			(ALICE, INIT_AMOUNT),
+			(BOB, INIT_AMOUNT),
+			(CHARLIE, INIT_AMOUNT),
+			(DAVE, INIT_AMOUNT),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");

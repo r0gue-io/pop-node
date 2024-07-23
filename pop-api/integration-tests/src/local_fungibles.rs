@@ -79,6 +79,19 @@ fn transfer(
 	result
 }
 
+fn transfer_from(
+	addr: AccountId32,
+	asset_id: AssetId,
+	from: AccountId32,
+	to: AccountId32,
+	value: Balance,
+) -> ExecReturnValue {
+	let function = function_selector("transfer_from");
+	let params = [function, asset_id.encode(), from.encode(), to.encode(), value.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
 fn approve(
 	addr: AccountId32,
 	asset_id: AssetId,
@@ -362,6 +375,64 @@ fn transfer_works() {
 		start_destroy_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount / 4)),
+			Module { index: 52, error: 16 },
+		);
+	});
+}
+
+#[test]
+fn transfer_from_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+		// TODO: Add approval process and finalize the integration test
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), 1, ALICE, BOB, amount,)),
+			Module { index: 52, error: 3 },
+		);
+		// Create asset with Alice as owner and mint `amount` to contract address.
+		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(ALICE, asset);
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount,)),
+			Module { index: 52, error: 16 },
+		);
+		thaw_asset(ALICE, asset);
+		// Not enough balance.
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount + 1 * UNIT)),
+			Module { index: 52, error: 0 },
+		);
+		// Not enough balance due to ED.
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount)),
+			Module { index: 52, error: 0 },
+		);
+		// Successful transfer.
+		let alice_balance_before_transfer = Assets::balance(asset, &ALICE);
+		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
+
+		let result = transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2);
+		assert!(!result.did_revert(), "Contract reverted!");
+
+		let alice_balance_after_transfer = Assets::balance(asset, &BOB);
+		let bob_balance_after_transfer = Assets::balance(asset, &BOB);
+
+		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
+		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - amount / 2);
+
+		// Transfer asset to account that does not exist.
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, FERDIE, amount / 4)),
+			Token(CannotCreate)
+		);
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(ALICE, asset);
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount / 4)),
 			Module { index: 52, error: 16 },
 		);
 	});

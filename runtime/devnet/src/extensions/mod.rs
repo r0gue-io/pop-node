@@ -68,19 +68,17 @@ where
 
 		let result = match FuncId::try_from(function_id) {
 			Ok(function_id) => {
-				// Read encoded parameters from buffer and calculate weight for reading `len` bytes`.
-				// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
+				// Read encoded parameters from buffer and calculate weight for reading `len`
+				// bytes`. reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
 				let len = env.in_len();
 				env.charge_weight(contract_host_weight.return_per_byte.saturating_mul(len.into()))?;
 				let params = env.read(len)?;
 				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
-					FuncId::Dispatch => {
-						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
-					},
-					FuncId::ReadState => {
-						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
-					},
+					FuncId::Dispatch =>
+						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params),
+					FuncId::ReadState =>
+						read_state::<T, E>(&mut env, version, pallet_index, call_index, params),
 				}
 			},
 			Err(e) => Err(e),
@@ -201,13 +199,14 @@ enum VersionedDispatch {
 	V0(RuntimeCall),
 }
 
-// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
-// The contract calling the chain extension can convert the status code to the descriptive `Error`.
+// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract
+// uses. The contract calling the chain extension can convert the status code to the descriptive
+// `Error`.
 //
 // For `Error` see `primitives::<version>::error::Error`.
 //
-// The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
-// As a result, contracts maintain compatibility across different versions of the runtime.
+// The error encoding can vary per version, allowing for flexible and backward-compatible error
+// handling. As a result, contracts maintain compatibility across different versions of the runtime.
 //
 // # Parameters
 //
@@ -226,10 +225,11 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	let mut encoded_error = encoded_error.try_into().expect("qed, resized to 4 bytes line above");
 	match version {
 		// If an unknown variant of the `DispatchError` is detected the error needs to be converted
-		// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
-		// position forward (discarding the last byte as it is not used) and setting the first byte to the
-		// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
-		// variant which provides all the necessary information to debug which error occurred in the runtime.
+		// into the encoded value of `Error::Other`. This conversion is performed by shifting the
+		// bytes one position forward (discarding the last byte as it is not used) and setting the
+		// first byte to the encoded value of `Other` (0u8). This ensures the error is correctly
+		// categorized as an `Other` variant which provides all the necessary information to debug
+		// which error occurred in the runtime.
 		//
 		// Byte layout explanation:
 		// - Byte 0: index of the variant within `Error`
@@ -296,9 +296,8 @@ where
 	match key {
 		TotalSupply(id) => Ok(fungibles::Pallet::<T>::total_supply(id).encode()),
 		BalanceOf(id, owner) => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
-		Allowance(id, owner, spender) => {
-			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode())
-		},
+		Allowance(id, owner, spender) =>
+			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode()),
 		TokenName(id) => Ok(fungibles::Pallet::<T>::token_name(id).encode()),
 		TokenSymbol(id) => Ok(fungibles::Pallet::<T>::token_symbol(id).encode()),
 		TokenDecimals(id) => Ok(fungibles::Pallet::<T>::token_decimals(id).encode()),

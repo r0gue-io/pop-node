@@ -1,6 +1,6 @@
 /// The fungibles pallet serves as a wrapper around the pallet_assets, offering a streamlined
-/// interface for interacting with fungible assets. The goal is to provide a simplified, consistent
-/// API that adheres to standards in the smart contract space.
+/// interface for interacting with fungible assets. The goal is to provide a simplified,
+/// consistent API that adheres to standards in the smart contract space.
 pub use pallet::*;
 
 #[cfg(test)]
@@ -62,8 +62,8 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
-		/// `data` in unspecified format.
+		/// Transfers `value` amount of tokens from the caller's account to account `to`, with
+		/// additional `data` in unspecified format.
 		///
 		/// # Arguments
 		/// * `id` - The ID of the asset.
@@ -82,6 +82,33 @@ pub mod pallet {
 		) -> DispatchResult {
 			let target = T::Lookup::unlookup(target);
 			Assets::<T>::transfer_keep_alive(origin, id.into(), target, amount)
+		}
+
+		/// Transfers `value` amount of tokens from the delegated account approved by the `owner` to
+		/// account `to`, with additional `data` in unspecified format.
+		///
+		/// # Arguments
+		/// * `id` - The ID of the asset.
+		/// * `owner` - The account which previously approved for a transfer of at least `amount`
+		///   and
+		/// from which the asset balance will be withdrawn.
+		/// * `to` - The recipient account.
+		/// * `value` - The number of tokens to transfer.
+		///
+		/// # Returns
+		/// Returns `Ok(())` if successful, or an error if the transfer fails.
+		#[pallet::call_index(1)]
+		#[pallet::weight(AssetsWeightInfo::<T>::transfer_approved())]
+		pub fn transfer_from(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			owner: AccountIdOf<T>,
+			target: AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let owner = T::Lookup::unlookup(owner);
+			let target = T::Lookup::unlookup(target);
+			Assets::<T>::transfer_approved(origin, id.into(), owner, target, amount)
 		}
 
 		/// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -119,7 +146,8 @@ pub mod pallet {
 					)
 				})?;
 			} else {
-				// If the new value is less than the current allowance, cancel the approval and set the new value
+				// If the new value is less than the current allowance, cancel the approval and set
+				// the new value
 				Assets::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone()).map_err(
 					|e| {
 						e.with_weight(
@@ -167,8 +195,8 @@ pub mod pallet {
 			Assets::<T>::total_supply(id)
 		}
 
-		/// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
-		/// the account is non-existent.
+		/// Returns the account balance for the specified `owner` for a given asset ID. Returns `0`
+		/// if the account is non-existent.
 		///
 		/// # Arguments
 		/// * `id` - The ID of the asset.
@@ -226,7 +254,8 @@ pub mod pallet {
 		/// * `id` - The ID of the asset.
 		///
 		/// # Returns
-		///  The number of decimals of the token as a byte vector, or an error if the operation fails.
+		///  The number of decimals of the token as a byte vector, or an error if the operation
+		/// fails.
 		pub fn token_decimals(id: AssetIdOf<T>) -> u8 {
 			<Assets<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id)
 		}

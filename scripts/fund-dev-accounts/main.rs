@@ -1,9 +1,8 @@
-/// As Pop Network uses the relay chain token as native, the dev accounts are not funded by default.
-/// Therefore, after network launch there needs to be a reserve transfer from the relay chain
-/// to the dev accounts.
+/// As Pop Network uses the relay chain token as native, the dev accounts are not funded by
+/// default. Therefore, after network launch there needs to be a reserve transfer from the
+/// relay chain to the dev accounts.
 ///
 /// This script performs these reserve transfers to fund the dev accounts from the relay chain.
-///
 use subxt::{OnlineClient, PolkadotConfig};
 use subxt_signer::sr25519::{dev, Keypair};
 
@@ -27,11 +26,9 @@ mod relay {
 
 	use runtime::runtime_types::{
 		staging_xcm::v4::{
-			asset::Fungibility::Fungible,
-			asset::{Asset, AssetId, Assets},
+			asset::{Asset, AssetId, Assets, Fungibility::Fungible},
 			junction::Junction,
-			junctions::Junctions,
-			junctions::Junctions::X1,
+			junctions::{Junctions, Junctions::X1},
 			location::Location,
 		},
 		xcm::{v3::WeightLimit, VersionedAssets, VersionedLocation},
@@ -81,8 +78,7 @@ mod relay {
 		xcm::{
 			v3::{
 				junction::Junction,
-				junctions::Junctions,
-				junctions::Junctions::X1,
+				junctions::{Junctions, Junctions::X1},
 				multiasset::{
 					AssetId::Concrete, Fungibility::Fungible, MultiAsset as Asset,
 					MultiAssets as Assets,

@@ -1,10 +1,19 @@
 use crate::mock::*;
 use frame_support::{
-	assert_ok,
+	assert_noop, assert_ok,
 	traits::fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
 };
+use sp_runtime::{DispatchError, ModuleError};
 
 const ASSET: u32 = 42;
+
+fn get_dispatch_error(index: u8, error_index: u8, error_message: &'static str) -> DispatchError {
+	DispatchError::Module(ModuleError {
+		index,
+		error: [error_index, 0, 0, 0],
+		message: Some(error_message),
+	})
+}
 
 #[test]
 fn transfer_works() {
@@ -15,6 +24,41 @@ fn transfer_works() {
 		assert_ok!(Fungibles::transfer(signed(ALICE), ASSET, BOB, amount / 2));
 		let bob_balance_after_transfer = Assets::balance(ASSET, &BOB);
 		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
+	});
+}
+
+#[test]
+fn transfer_from_works() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		// Approve CHARLIE to transfer up to `amount` to BOB
+		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount * 2, CHARLIE, amount / 2);
+
+		let transferred = amount / 2;
+
+		assert_eq!(transferred, Assets::allowance(ASSET, &ALICE, &CHARLIE));
+		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
+
+		// Transfer `amount` from an unapproved spender
+		assert_noop!(
+			Fungibles::transfer_from(signed(BOB), ASSET, ALICE, BOB, transferred),
+			get_dispatch_error(1, 10, "Unapproved")
+		);
+
+		// Transfer `amount` more than the allowed allowance
+		assert_noop!(
+			Fungibles::transfer_from(signed(CHARLIE), ASSET, ALICE, BOB, amount),
+			get_dispatch_error(1, 10, "Unapproved")
+		);
+
+		let alice_balance_before_transfer = Assets::balance(ASSET, &ALICE);
+		let bob_balance_before_transfer = Assets::balance(ASSET, &BOB);
+		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), ASSET, ALICE, BOB, transferred));
+		let alice_balance_after_transfer = Assets::balance(ASSET, &ALICE);
+		let bob_balance_after_transfer = Assets::balance(ASSET, &BOB);
+		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE
+		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + transferred);
+		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - transferred);
 	});
 }
 
