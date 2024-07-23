@@ -14,6 +14,7 @@ pub use v0::cross_chain;
 pub use v0::nfts;
 
 pub mod primitives;
+pub mod utils;
 pub mod v0;
 
 /// A result type used by the API, with the `StatusCode` as the error type.
