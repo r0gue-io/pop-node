@@ -3,6 +3,8 @@
 /// consistent API that adheres to standards in the smart contract space.
 pub use pallet::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod tests;
 
@@ -125,7 +127,7 @@ pub mod pallet {
 		/// # Returns
 		/// Returns `Ok(())` if successful, or an error if the approval fails.
 		#[pallet::call_index(2)]
-		#[pallet::weight(T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::cancel_approval() + AssetsWeightInfo::<T>::approve_transfer())]
+		#[pallet::weight(T::DbWeight::get().reads(1) + AssetsWeightInfo::<T>::cancel_approval() + AssetsWeightInfo::<T>::approve_transfer())]
 		pub fn approve(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
@@ -133,6 +135,7 @@ pub mod pallet {
 			mut value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin.clone())
+				// To have the caller pay some fees.
 				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
 			let current_allowance = Assets::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
@@ -146,7 +149,7 @@ pub mod pallet {
 				value.saturating_reduce(current_allowance);
 				Assets::<T>::approve_transfer(origin, id, spender, value).map_err(|e| {
 					e.with_weight(
-						T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::approve_transfer(),
+						T::DbWeight::get().reads(1) + AssetsWeightInfo::<T>::approve_transfer(),
 					)
 				})?;
 			} else {
