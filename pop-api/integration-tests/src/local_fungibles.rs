@@ -409,6 +409,7 @@ fn transfer_from_works() {
 		let _ = env_logger::try_init();
 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
+		let owner = addr.clone();
 		let delegate = CHARLIE;
 		let asset = ASSET_ID;
 
@@ -427,9 +428,8 @@ fn transfer_from_works() {
 		);
 
 		// Allow `delegate` to spend `amount` owned by contract address
-		let owner = addr.clone();
 		let asset = create_asset_and_mint_to(ALICE, ASSET_ID, owner.clone(), amount * 2);
-		// `delegate` transfer from the `owner` with approval
+		// `delegate` transfer from the `owner` without approval
 		let unapproved_result = transfer_from(
 			addr.clone(),
 			asset,
@@ -442,7 +442,7 @@ fn transfer_from_works() {
 		assert_eq!(decoded::<Error>(unapproved_result), Module { index: 52, error: 10 },);
 
 		// Check if the allowance is correct
-		assert_eq!(0, Assets::allowance(asset, &addr, &delegate.clone()));
+		assert_eq!(0, Assets::allowance(asset, &owner, &delegate.clone()));
 		assert!(
 			!approve(owner.clone(), asset, delegate.clone(), amount).did_revert(),
 			"Contract reverted!"
