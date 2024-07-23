@@ -423,6 +423,7 @@ fn transfer_from_works() {
 		assert_eq!(allowance(addr.clone(), asset_id, ALICE, CHARLIE), amount * 2);
 
 		// Successfully transfer
+		// TODO: Fix
 		assert_ok!(checked_decoded::<Error>(transfer_from(
 			addr.clone(),
 			CHARLIE,
@@ -521,6 +522,21 @@ fn increase_allowance_works() {
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
 			Module { index: 52, error: 16 },
+		);
+	});
+}
+
+#[test]
+fn decrease_allowance_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", 0, vec![]);
+		let amount: Balance = 100 * UNIT;
+		// Asset does not exist.
+		// TODO: Fix
+		assert_eq!(
+			checked_decoded::<Error>(decrease_allowance(addr.clone(), 0, BOB, amount)),
+			Ok(Module { index: 52, error: 3 }),
 		);
 	});
 }
