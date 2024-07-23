@@ -123,6 +123,18 @@ fn increase_allowance(
 	result
 }
 
+fn decrease_allowance(
+	addr: AccountId32,
+	asset_id: AssetId,
+	spender: AccountId32,
+	value: Balance,
+) -> ExecReturnValue {
+	let function = function_selector("decrease_allowance");
+	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
 // fn asset_exists(addr: AccountId32, asset_id: AssetId) -> bool {
 // 	let function = function_selector("asset_exists");
 // 	let params = [function, asset_id.encode()].concat();

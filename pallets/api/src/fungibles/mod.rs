@@ -17,7 +17,10 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use pallet_assets::WeightInfo;
-	use sp_runtime::{traits::StaticLookup, Saturating};
+	use sp_runtime::{
+		traits::{StaticLookup, Zero},
+		Saturating,
+	};
 	use sp_std::vec::Vec;
 
 	pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -26,6 +29,7 @@ pub mod pallet {
 	>>::AssetId;
 	type AssetIdParameterOf<T> =
 		<T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
+	type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 	type Assets<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 	type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 	type AssetsWeightInfo<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
@@ -148,14 +152,7 @@ pub mod pallet {
 			} else {
 				// If the new value is less than the current allowance, cancel the approval and set
 				// the new value
-				Assets::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone()).map_err(
-					|e| {
-						e.with_weight(
-							T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::cancel_approval(),
-						)
-					},
-				)?;
-				Assets::<T>::approve_transfer(origin, id, spender, value)?;
+				Self::do_set_allowance(origin, id, spender, value)?;
 			}
 
 			Ok(().into())
@@ -180,6 +177,34 @@ pub mod pallet {
 		) -> DispatchResult {
 			let spender = T::Lookup::unlookup(spender);
 			Assets::<T>::approve_transfer(origin, id.into(), spender, value)
+		}
+
+		/// Decreases the allowance of a spender.
+		///
+		/// # Arguments
+		/// * `id` - The ID of the asset.
+		/// * `spender` - The account that is allowed to spend the tokens.
+		/// * `value` - The number of tokens to decrease the allowance by.
+		///
+		/// # Returns
+		/// Returns `Ok(())` if successful, or an error if the operation fails.
+		#[pallet::call_index(4)]
+		#[pallet::weight(T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::cancel_approval() + AssetsWeightInfo::<T>::approve_transfer())]
+		pub fn decrease_allowance(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			spender: AccountIdOf<T>,
+			value: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin.clone())
+				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
+			let mut current_allowance = Assets::<T>::allowance(id.clone(), &who, &spender);
+			let spender = T::Lookup::unlookup(spender);
+			let id: AssetIdParameterOf<T> = id.into();
+
+			current_allowance.saturating_reduce(value);
+			Self::do_set_allowance(origin, id, spender, current_allowance)?;
+			Ok(().into())
 		}
 	}
 
@@ -258,6 +283,26 @@ pub mod pallet {
 		/// fails.
 		pub fn token_decimals(id: AssetIdOf<T>) -> u8 {
 			<Assets<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id)
+		}
+
+		/// Set the allowance `value` of the `spender` delegated by `origin`
+		pub(crate) fn do_set_allowance(
+			origin: OriginFor<T>,
+			id: AssetIdParameterOf<T>,
+			spender: AccountIdLookupOf<T>,
+			value: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			Assets::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone()).map_err(
+				|e| {
+					e.with_weight(
+						T::DbWeight::get().reads(2) + AssetsWeightInfo::<T>::cancel_approval(),
+					)
+				},
+			)?;
+			if value > Zero::zero() {
+				Assets::<T>::approve_transfer(origin, id, spender, value)?;
+			}
+			Ok(().into())
 		}
 	}
 }
