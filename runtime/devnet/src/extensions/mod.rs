@@ -180,8 +180,11 @@ where
 	// Charge weight for doing one storage read.
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	let result = match key {
-		VersionedStateRead::V0(key) => match key {
-			RuntimeStateKeys::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
+		VersionedStateRead::V0(key) => {
+			ensure!(AllowedApiCalls::contains(&key), DispatchError::Other("UnknownCall"));
+			match key {
+				RuntimeStateKeys::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
+			}
 		},
 	};
 	log::trace!(
@@ -220,10 +223,10 @@ enum VersionedDispatch {
 // - `error`: The `DispatchError` encountered during contract execution.
 // - `version`: The version of the chain extension, used to determine the known errors.
 pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
-	// "UnknownFunctionId" and "DecodingFailed" are mapped to specific errors in the API and will
+	// "UnknownCall" and "DecodingFailed" are mapped to specific errors in the API and will
 	// never change.
 	let mut encoded_error = match error {
-		DispatchError::Other("UnknownFunctionId") => Vec::from([254u8, 0, 0, 0]),
+		DispatchError::Other("UnknownCall") => Vec::from([254u8, 0, 0, 0]),
 		DispatchError::Other("DecodingFailed") => Vec::from([255u8, 0, 0, 0]),
 		_ => error.encode(),
 	};
