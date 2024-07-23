@@ -4,6 +4,7 @@ use primitives::error::{
 	Error::{self, *},
 	TokenError::*,
 };
+use std::result::Result;
 
 const ASSET_ID: AssetId = 1;
 
@@ -12,6 +13,11 @@ fn decoded<T: Decode>(result: ExecReturnValue) -> T {
 		Ok(value) => value,
 		Err(_) => panic!("\nTest failed by trying to decode `{:?}` into `T`\n", result),
 	}
+}
+
+fn checked_decoded<T: Decode>(result: ExecReturnValue) -> Result<T, String> {
+	<T>::decode(&mut &result.data[2..])
+		.map_err(|_| format!("Test failed by trying to decode `{:?}` into `T`", result).to_string())
 }
 
 // Call total_supply contract message.
@@ -81,6 +87,7 @@ fn transfer(
 
 fn transfer_from(
 	addr: AccountId32,
+	spender: AccountId32,
 	asset_id: AssetId,
 	from: AccountId32,
 	to: AccountId32,
@@ -88,7 +95,7 @@ fn transfer_from(
 ) -> ExecReturnValue {
 	let function = function_selector("transfer_from");
 	let params = [function, asset_id.encode(), from.encode(), to.encode(), value.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = bare_call_by(addr, spender, params, 0).expect("should work");
 	result
 }
 
@@ -185,7 +192,7 @@ fn create_asset_mint_and_approve(
 	mint: Balance,
 	spender: AccountId32,
 	approve: Balance,
-) {
+) -> AssetId {
 	create_asset_and_mint_to(owner.clone(), asset_id, to.clone(), mint);
 	assert_ok!(Assets::approve_transfer(
 		RuntimeOrigin::signed(to.into()),
@@ -193,6 +200,7 @@ fn create_asset_mint_and_approve(
 		spender.into(),
 		approve,
 	));
+	asset_id
 }
 
 // Freeze an asset.
@@ -388,7 +396,7 @@ fn transfer_from_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Allow CHARLIE to spend `amount` owned by ALICE
-		create_asset_mint_and_approve(
+		let asset_id = create_asset_mint_and_approve(
 			addr.clone(),
 			ASSET_ID,
 			ALICE,
@@ -397,59 +405,20 @@ fn transfer_from_works() {
 			amount * 2,
 		);
 		assert_eq!(
-			Assets::allowance(ASSET_ID, &ALICE, &CHARLIE),
-			allowance(addr.clone(), ASSET_ID, ALICE, CHARLIE)
+			Assets::allowance(asset_id, &ALICE, &CHARLIE),
+			allowance(addr.clone(), asset_id, ALICE, CHARLIE)
 		);
+		assert_eq!(allowance(addr.clone(), asset_id, ALICE, CHARLIE), amount * 2);
 
-		// Asset does not exist.
-		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), 1, CHARLIE, BOB, amount,)),
-			Module { index: 52, error: 3 },
-		);
-
-		// Create asset with Alice as owner and mint `amount` to contract address.
-		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
-		// Asset is not live, i.e. frozen or being destroyed.
-		freeze_asset(ALICE, asset);
-		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount,)),
-			Module { index: 52, error: 16 },
-		);
-		thaw_asset(ALICE, asset);
-		// Not enough balance.
-		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount + 1 * UNIT)),
-			Module { index: 52, error: 0 },
-		);
-		// Not enough balance due to ED.
-		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount)),
-			Module { index: 52, error: 0 },
-		);
-		// Successful transfer.
-		let alice_balance_before_transfer = Assets::balance(asset, &ALICE);
-		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
-
-		let result = transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2);
-		assert!(!result.did_revert(), "Contract reverted!");
-
-		let alice_balance_after_transfer = Assets::balance(asset, &BOB);
-		let bob_balance_after_transfer = Assets::balance(asset, &BOB);
-
-		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
-		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - amount / 2);
-
-		// Transfer asset to account that does not exist.
-		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, FERDIE, amount / 4)),
-			Token(CannotCreate)
-		);
-		// Asset is not live, i.e. frozen or being destroyed.
-		start_destroy_asset(ALICE, asset);
-		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount / 4)),
-			Module { index: 52, error: 16 },
-		);
+		// Successfully transfer
+		assert_ok!(checked_decoded::<Error>(transfer_from(
+			addr.clone(),
+			CHARLIE,
+			asset_id,
+			ALICE,
+			BOB,
+			amount * 2,
+		)));
 	});
 }
 

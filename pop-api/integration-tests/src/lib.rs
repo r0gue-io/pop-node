@@ -26,7 +26,7 @@ const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
 const CHARLIE: AccountId32 = AccountId32::new([3_u8; 32]);
 const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 // FERDIE has no initial balance.
-const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
+const FERDIE: AccountId32 = AccountId32::new([99_u8; 32]);
 const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
@@ -61,13 +61,14 @@ fn function_selector(name: &str) -> Vec<u8> {
 	[hash[0..4].to_vec()].concat()
 }
 
-fn bare_call(
+fn bare_call_by(
 	addr: AccountId32,
+	caller: AccountId32,
 	input: Vec<u8>,
 	value: u128,
 ) -> Result<ExecReturnValue, DispatchError> {
 	let result = Contracts::bare_call(
-		ALICE,
+		caller,
 		addr.into(),
 		value.into(),
 		GAS_LIMIT,
@@ -78,6 +79,14 @@ fn bare_call(
 		Determinism::Enforced,
 	);
 	result.result
+}
+
+fn bare_call(
+	addr: AccountId32,
+	input: Vec<u8>,
+	value: u128,
+) -> Result<ExecReturnValue, DispatchError> {
+	bare_call_by(addr, ALICE, input, value)
 }
 
 // Deploy, instantiate and return contract address.
