@@ -88,13 +88,17 @@ fn transfer(
 fn transfer_from(
 	addr: AccountId32,
 	asset_id: AssetId,
+	delegate: AccountId32,
 	from: AccountId32,
 	to: AccountId32,
 	value: Balance,
+	data: Vec<u8>,
 ) -> ExecReturnValue {
 	let function = function_selector("transfer_from");
-	let params = [function, asset_id.encode(), from.encode(), to.encode(), value.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params =
+		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
+			.concat();
+	let result = bare_call_by(addr, delegate, params, 0).expect("should work");
 	result
 }
 
@@ -405,29 +409,60 @@ fn transfer_from_works() {
 		let _ = env_logger::try_init();
 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
+		let delegate = CHARLIE;
+		let asset = ASSET_ID;
 
-		// Allow CHARLIE to spend `amount` owned by ALICE
-		let delegate = addr.clone();
-		let asset_id = create_asset_mint_and_approve(
-			addr.clone(),
-			ASSET_ID,
-			ALICE,
-			amount * 2,
-			delegate.clone(),
-			amount * 2,
-		);
+		// Asset does not exist
 		assert_eq!(
-			Assets::allowance(asset_id, &ALICE, &delegate.clone()),
-			allowance(addr.clone(), asset_id, ALICE, delegate.clone())
+			decoded::<Error>(transfer_from(
+				addr.clone(),
+				asset,
+				delegate.clone(),
+				ALICE,
+				BOB,
+				1,
+				vec![]
+			)),
+			Module { index: 52, error: 3 },
 		);
-		assert_eq!(allowance(addr.clone(), asset_id, ALICE, delegate.clone()), amount * 2);
+
+		// Allow `delegate` to spend `amount` owned by contract address
+		let owner = addr.clone();
+		let asset = create_asset_and_mint_to(ALICE, ASSET_ID, owner.clone(), amount * 2);
+		// `delegate` transfer from the `owner` with approval
+		let unapproved_result = transfer_from(
+			addr.clone(),
+			asset,
+			delegate.clone(),
+			owner.clone(),
+			BOB,
+			amount / 2,
+			vec![],
+		);
+		assert_eq!(decoded::<Error>(unapproved_result), Module { index: 52, error: 10 },);
+
+		// Check if the allowance is correct
+		assert_eq!(0, Assets::allowance(asset, &addr, &delegate.clone()));
+		assert!(
+			!approve(owner.clone(), asset, delegate.clone(), amount).did_revert(),
+			"Contract reverted!"
+		);
+		assert_eq!(Assets::allowance(asset, &owner, &delegate.clone()), amount);
 
 		// Successfully transfer
-		// TODO: Fix
-		// CHARLIE trying to send from ALICE to BOB
-		let result = transfer_from(addr.clone(), asset_id, ALICE, BOB, amount * 2);
-		assert_eq!(decoded::<Error>(result.clone()), Module { index: 52, error: 16 },);
-		assert!(!result.did_revert(), "Contract reverted!");
+		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
+		let approved_result = transfer_from(
+			addr.clone(),
+			asset,
+			delegate.clone(),
+			owner.clone(),
+			BOB,
+			amount / 2,
+			vec![],
+		);
+		assert!(!approved_result.did_revert(), "Contract reverted!");
+		let bob_balance_after_transfer = Assets::balance(asset, &BOB);
+		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
 	});
 }
 
