@@ -41,9 +41,9 @@ fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 
 /// Helper method to build a dispatch call `ChainExtensionMethod` for `ASSET` module
 ///
-/// - `dispatchable`: The index of the module dispatchable functions
-fn build_read_state(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
-	crate::v0::build_read_state(ASSETS, dispatchable)
+/// - `state_query`: The index of the runtime state query
+fn build_read_state(state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
+	crate::v0::build_read_state(ASSETS, state_query)
 }
 
 /// Issue a new class of fungible assets from a public origin.

@@ -47,7 +47,7 @@ fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), 
 /// Helper method to build a dispatch call `ChainExtensionMethod`
 ///
 /// - `module`: The index of the runtime module
-/// - `dispatchable`: The index of the module dispatchable functions
-fn build_read_state(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
-	build_extension_method_v0(READ_STATE, module, dispatchable)
+/// - `state_query`: The index of the runtime state query
+fn build_read_state(module: u8, state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
+	build_extension_method_v0(READ_STATE, module, state_query)
 }
