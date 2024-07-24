@@ -409,9 +409,6 @@ fn transfer_from_works() {
 		let _ = env_logger::try_init();
 		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
-		let owner = addr.clone();
-		let delegate = CHARLIE;
-		let asset = ASSET_ID;
 
 		// Asset does not exist
 		assert_eq!(
