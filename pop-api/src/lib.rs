@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::env::chain_extension::FromStatusCode;
+use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 
 use constants::DECODING_FAILED;
 
@@ -14,7 +14,6 @@ pub use v0::cross_chain;
 pub use v0::nfts;
 
 pub mod primitives;
-pub mod utils;
 pub mod v0;
 
 /// A result type used by the API, with the `StatusCode` as the error type.
@@ -32,6 +31,16 @@ mod constants {
 	// Modules:
 	pub(crate) const ASSETS: u8 = 52;
 	pub(crate) const BALANCES: u8 = 10;
+}
+
+/// Helper method to build `ChainExtensionMethod``
+pub fn build_extension_method(
+	version: u8,
+	function: u8,
+	module: u8,
+	dispatchable: u8,
+) -> ChainExtensionMethod<(), (), (), false> {
+	ChainExtensionMethod::build(u32::from_le_bytes([version, function, module, dispatchable]))
 }
 
 /// Represents a status code returned by the runtime.
