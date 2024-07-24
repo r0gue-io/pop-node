@@ -425,7 +425,7 @@ fn transfer_from_works() {
 		);
 
 		// Allow `delegate` to spend `amount` owned by contract address
-		let asset = create_asset_and_mint_to(ALICE, ASSET_ID, owner.clone(), amount * 2);
+		let asset = create_asset_and_mint_to(ALICE, ASSET_ID, ALICE, amount * 2);
 		// `delegate` transfer from the `owner` without approval
 		let unapproved_result = transfer_from(
 			addr.clone(),
