@@ -116,7 +116,7 @@ pub mod pallet {
 			let id: AssetIdParameterOf<T> = id.into();
 			// If the new value is equal to the current allowance, do nothing.
 			if value == current_allowance {
-				return Ok(().into());
+				return Ok(Some(T::DbWeight::get().reads(1)).into());
 			}
 			// If the new value is greater than the current allowance, approve the difference
 			// because `approve_transfer` works additively (see pallet-assets).
@@ -132,6 +132,7 @@ pub mod pallet {
 						T::DbWeight::get().reads(1) + AssetsWeightInfoOf::<T>::approve_transfer(),
 					)
 				})?;
+				Ok(Some(AssetsWeightInfoOf::<T>::approve_transfer()).into())
 			} else {
 				// If the new value is less than the current allowance, cancel the approval and set the new value
 				AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
@@ -142,8 +143,8 @@ pub mod pallet {
 						)
 					})?;
 				AssetsOf::<T>::approve_transfer(origin, id, spender, value)?;
+				Ok(().into())
 			}
-			Ok(().into())
 		}
 
 		/// Increases the allowance of a spender.
