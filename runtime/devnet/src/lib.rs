@@ -960,3 +960,19 @@ cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 }
+
+#[cfg(test)]
+mod tests {
+	use crate::Runtime;
+	use std::any::TypeId;
+	type ExpectedLookup = sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>;
+	type ConfigLookup = <Runtime as frame_system::Config>::Lookup;
+
+	#[test]
+	fn test_lookup_config() {
+		let expected_type_id = TypeId::of::<ExpectedLookup>();
+		let config_type_id = TypeId::of::<ConfigLookup>();
+
+		assert_eq!(config_type_id, expected_type_id);
+	}
+}
