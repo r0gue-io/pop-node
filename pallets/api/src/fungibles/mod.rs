@@ -33,7 +33,10 @@ pub mod pallet {
 		traits::fungibles::approvals::Inspect as ApprovalInspect,
 	};
 	use frame_system::pallet_prelude::*;
-	use sp_runtime::{traits::StaticLookup, Saturating};
+	use sp_runtime::{
+		traits::{StaticLookup, Zero},
+		Saturating,
+	};
 	use sp_std::vec::Vec;
 
 	/// State reads for the fungibles api with required input.
@@ -101,22 +104,23 @@ pub mod pallet {
 		/// * `spender` - The account that is allowed to spend the tokens.
 		/// * `value` - The number of tokens to approve.
 		#[pallet::call_index(5)]
-		#[pallet::weight(<T as Config>::WeightInfo::approve())]
+		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn approve(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
-			let who = ensure_signed(origin.clone())
-				// To have the caller pay some fees.
-				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
+			let weight = |approve: u32, cancel: u32| -> Weight {
+				<T as Config>::WeightInfo::approve(cancel, approve)
+			};
+			let who = ensure_signed(origin.clone()).map_err(|e| e.with_weight(weight(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
 			// If the new value is equal to the current allowance, do nothing.
 			if value == current_allowance {
-				return Ok(().into());
+				return Ok(Some(weight(0, 0)).into());
 			}
 			// If the new value is greater than the current allowance, approve the difference
 			// because `approve_transfer` works additively (see pallet-assets).
@@ -127,23 +131,18 @@ pub mod pallet {
 					spender,
 					value.saturating_sub(current_allowance),
 				)
-				.map_err(|e| {
-					e.with_weight(
-						T::DbWeight::get().reads(1) + AssetsWeightInfoOf::<T>::approve_transfer(),
-					)
-				})?;
+				.map_err(|e| e.with_weight(weight(1, 0)))?;
+				Ok(Some(weight(1, 0)).into())
 			} else {
 				// If the new value is less than the current allowance, cancel the approval and set the new value
 				AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
-					.map_err(|e| {
-						e.with_weight(
-							T::DbWeight::get().reads(1)
-								+ AssetsWeightInfoOf::<T>::cancel_approval(),
-						)
-					})?;
+					.map_err(|e| e.with_weight(weight(0, 1)))?;
+				if value.is_zero() {
+					return Ok(Some(weight(0, 1)).into());
+				}
 				AssetsOf::<T>::approve_transfer(origin, id, spender, value)?;
+				Ok(().into())
 			}
-			Ok(().into())
 		}
 
 		/// Increases the allowance of a spender.
