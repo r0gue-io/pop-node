@@ -31,7 +31,8 @@ pub mod pallet {
 	>>::AssetId;
 	type AssetIdParameterOf<T> =
 		<T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
-	pub(crate) type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
+	pub(crate) type AccountIdLookupOf<T> =
+		<<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 	pub(crate) type Assets<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 	pub(crate) type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 	type AssetsWeightInfo<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
