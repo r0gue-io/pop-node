@@ -1,6 +1,6 @@
 //! Benchmarking setup for pallet-cards
 
-use super::{AccountIdOf, AssetIdOf, Assets, AssetsInstanceOf, BalanceOf, Call, Config, Pallet};
+use super::{AccountIdOf, AssetIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{
 	assert_ok,
@@ -35,13 +35,13 @@ mod benchmarks {
 		let spender: AccountIdOf<T> = account("Bob", 0, SEED);
 		let value = <BalanceOf<T>>::from(100u32);
 		T::Currency::make_free_balance_be(&owner, 100u32.into());
-		assert_ok!(<Assets<T> as Create<AccountIdOf<T>>>::create(
+		assert_ok!(<AssetsOf<T> as Create<AccountIdOf<T>>>::create(
 			asset.clone().into(),
 			owner.clone(),
 			true,
 			min_balance
 		));
-		assert_ok!(<Assets<T> as Mutate<AccountIdOf<T>>>::approve(
+		assert_ok!(<AssetsOf<T> as Mutate<AccountIdOf<T>>>::approve(
 			asset.clone(),
 			&owner,
 			&spender,
@@ -51,7 +51,7 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(RawOrigin::Signed(owner.clone()), asset.clone(), spender.clone(), decreased_value);
 
-		assert_eq!(Assets::<T>::allowance(asset, &owner, &spender), decreased_value);
+		assert_eq!(AssetsOf::<T>::allowance(asset, &owner, &spender), decreased_value);
 
 		Ok(())
 	}
