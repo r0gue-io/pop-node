@@ -17,8 +17,12 @@ impl From<StatusCode> for Error {
 	}
 }
 
-/// Helper method to build `ChainExtensionMethod``
-pub fn build_extension_method_v0(
+/// Helper method to build `ChainExtensionMethod` for version `v0`
+///
+/// - `function`: The ID of the function
+/// - `module`: The index of the runtime module
+/// - `dispatchable`: The index of the module dispatchable functions
+fn build_extension_method_v0(
 	function: u8,
 	module: u8,
 	dispatchable: u8,
@@ -27,11 +31,17 @@ pub fn build_extension_method_v0(
 }
 
 /// Helper method to build a dispatch call `ChainExtensionMethod`
-pub fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
+///
+/// - `module`: The index of the runtime module
+/// - `dispatchable`: The index of the module dispatchable functions
+fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	build_extension_method_v0(DISPATCH, module, dispatchable)
 }
 
 /// Helper method to build a dispatch call `ChainExtensionMethod`
-pub fn build_read_state(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
+///
+/// - `module`: The index of the runtime module
+/// - `dispatchable`: The index of the module dispatchable functions
+fn build_read_state(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	build_extension_method_v0(READ_STATE, module, dispatchable)
 }
