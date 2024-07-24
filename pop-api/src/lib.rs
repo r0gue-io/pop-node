@@ -33,12 +33,13 @@ mod constants {
 	pub(crate) const BALANCES: u8 = 10;
 }
 
-/// Helper method to build `ChainExtensionMethod``
+/// Helper method to build `ChainExtensionMethod`.
 ///
-/// - `version`: The version of the chain extension
-/// - `function`: The ID of the function
-/// - `module`: The index of the runtime module
-/// - `dispatchable`: The index of the module dispatchable functions
+/// Parameters:
+/// - 'version': The version of the chain extension
+/// - 'function': The ID of the function
+/// - 'module': The index of the runtime module
+/// - 'dispatchable': The index of the module dispatchable functions
 fn build_extension_method(
 	version: u8,
 	function: u8,
