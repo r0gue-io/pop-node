@@ -101,11 +101,11 @@ fn increase_allowance_works() {
 fn decrease_allowance_works() {
 	new_test_ext().execute_with(|| {
 		let amount: Balance = 100 * UNIT;
-		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
-		assert_ok!(Assets::increase_allowance(signed(ALICE), ASSET, BOB, amount));
+		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount, BOB, amount);
+
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount / 2));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2);
+		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount / 2 - 1 * UNIT));
+		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2 + 1 * UNIT);
 		// Saturating if the allowance value is already zero.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
