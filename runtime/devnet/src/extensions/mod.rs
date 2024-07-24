@@ -1,13 +1,15 @@
 mod v0;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance,
+	config::{
+		api::{AllowedApiCalls, RuntimeStateKeys},
+		assets::TrustBackedAssetsInstance,
+	},
 	fungibles::{
 		self,
-		FungiblesKey::{self, *},
+		Read::{self, *},
 	},
-	state_keys::RuntimeStateKeys,
-	AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin,
+	AccountId, RuntimeCall, RuntimeOrigin,
 };
 use codec::{Decode, Encode};
 use frame_support::{
@@ -187,16 +189,18 @@ where
 	env.write(&result, false, None)
 }
 
-// Example wrapper to enable versioning of `RuntimeStateKeys`.
+/// Wrapper to enable versioning of `RuntimeStateKeys`.
 #[derive(Decode, Debug)]
 enum VersionedStateRead<T: fungibles::Config> {
+	/// Version zero of reading state from api.
 	#[codec(index = 0)]
 	V0(RuntimeStateKeys<T>),
 }
 
-// Wrapper to enable versioning of `RuntimeCall`.
+/// Wrapper to enable versioning of `RuntimeCall`.
 #[derive(Decode, Debug)]
 enum VersionedDispatch {
+	/// Version zero of dispatch calls from api.
 	#[codec(index = 0)]
 	V0(RuntimeCall),
 }
@@ -282,7 +286,7 @@ impl TryFrom<u8> for FuncId {
 }
 
 fn read_fungibles_state<T, E>(
-	key: FungiblesKey<T>,
+	key: Read<T>,
 	env: &mut Environment<E, BufInBufOutState>,
 ) -> Result<Vec<u8>, DispatchError>
 where

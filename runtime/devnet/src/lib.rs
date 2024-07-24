@@ -252,22 +252,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 	}
 }
 
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use fungibles::Call as FungiblesCall;
-		matches!(
-			c,
-			RuntimeCall::Fungibles(
-				FungiblesCall::transfer { .. }
-					| FungiblesCall::approve { .. }
-					| FungiblesCall::increase_allowance { .. }
-			)
-		)
-	}
-}
-
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.
@@ -974,16 +958,4 @@ impl_runtime_apis! {
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
-}
-
-pub(crate) mod state_keys {
-	use super::fungibles;
-	use codec::{Decode, Encode, MaxEncodedLen};
-
-	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-	#[repr(u8)]
-	pub enum RuntimeStateKeys<T: fungibles::Config> {
-		#[codec(index = 150)]
-		Fungibles(fungibles::FungiblesKey<T>),
-	}
 }
