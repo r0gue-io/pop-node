@@ -98,6 +98,7 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 }
 impl crate::fungibles::Config for Test {
 	type AssetsInstance = AssetsInstance;
+	type WeightInfo = ();
 }
 
 pub(crate) const ALICE: AccountId = 1;

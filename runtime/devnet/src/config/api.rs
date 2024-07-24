@@ -11,6 +11,7 @@ pub enum RuntimeStateKeys<T: fungibles::Config> {
 
 impl fungibles::Config for Runtime {
 	type AssetsInstance = TrustBackedAssetsInstance;
+	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
 
 /// A type to identify allowed calls to the Runtime from contracts. Used by Pop API

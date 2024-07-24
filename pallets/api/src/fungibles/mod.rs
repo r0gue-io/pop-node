@@ -5,9 +5,12 @@
 mod benchmarking;
 #[cfg(test)]
 mod tests;
+pub mod weights;
 
 use frame_support::traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect};
 pub use pallet::*;
+use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
+use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AssetIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
@@ -30,7 +33,6 @@ pub mod pallet {
 		traits::fungibles::approvals::Inspect as ApprovalInspect,
 	};
 	use frame_system::pallet_prelude::*;
-	use pallet_assets::WeightInfo;
 	use sp_runtime::{traits::StaticLookup, Saturating};
 	use sp_std::vec::Vec;
 
@@ -64,6 +66,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
 		/// The instance of pallet assets it is tightly coupled to.
 		type AssetsInstance;
+		/// Weight information for extrinsics in this pallet.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -97,7 +101,7 @@ pub mod pallet {
 		/// * `spender` - The account that is allowed to spend the tokens.
 		/// * `value` - The number of tokens to approve.
 		#[pallet::call_index(5)]
-		#[pallet::weight(T::DbWeight::get().reads(1) + AssetsWeightInfoOf::<T>::cancel_approval() + AssetsWeightInfoOf::<T>::approve_transfer())]
+		#[pallet::weight(<T as Config>::WeightInfo::approve())]
 		pub fn approve(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
