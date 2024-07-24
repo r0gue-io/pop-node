@@ -3,7 +3,6 @@ use ink::{prelude::vec::Vec, scale::Decode};
 use crate::{
 	constants::{ASSETS, DECODING_FAILED},
 	primitives::{AccountId, AssetId, Balance},
-	v0::{build_dispatch, build_read_state},
 	Result, StatusCode,
 };
 
@@ -32,6 +31,20 @@ const APPROVE_TRANSFER: u8 = 22;
 const CANCEL_APPROVAL: u8 = 23;
 /// - transfer_approved
 const TRANSFER_APPROVED: u8 = 25;
+
+/// Helper method to build a dispatch call `ChainExtensionMethod` for `ASSET` module
+///
+/// - `dispatchable`: The index of the dispatchable functions in `ASSET` module
+fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
+	crate::v0::build_dispatch(ASSETS, dispatchable)
+}
+
+/// Helper method to build a dispatch call `ChainExtensionMethod` for `ASSET` module
+///
+/// - `dispatchable`: The index of the module dispatchable functions
+fn build_read_state(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
+	crate::v0::build_read_state(ASSETS, dispatchable)
+}
 
 /// Issue a new class of fungible assets from a public origin.
 // pub(crate) fn create(
@@ -91,15 +104,12 @@ const TRANSFER_APPROVED: u8 = 25;
 /// Move some assets from the sender account to another, keeping the sender account alive.
 #[inline]
 pub fn transfer_keep_alive(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
-	build_dispatch(
-		ASSETS,
-		// E.D. is always respected with transferring tokens via the API.
-		TRANSFER_KEEP_ALIVE,
-	)
-	.input::<(AssetId, AccountId, Balance)>()
-	.output::<Result<()>, true>()
-	.handle_error_code::<StatusCode>()
-	.call(&(id, target, amount))
+	// E.D. is always respected with transferring tokens via the API.
+	build_dispatch(TRANSFER_KEEP_ALIVE)
+		.input::<(AssetId, AccountId, Balance)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(id, target, amount))
 }
 
 // /// Set the metadata for an asset.
@@ -120,7 +130,7 @@ pub fn transfer_keep_alive(id: AssetId, target: AccountId, amount: Balance) -> R
 /// Approve an amount of asset for transfer by a delegated third-party account.
 #[inline]
 pub fn approve_transfer(id: AssetId, delegate: AccountId, amount: Balance) -> Result<()> {
-	build_dispatch(ASSETS, APPROVE_TRANSFER)
+	build_dispatch(APPROVE_TRANSFER)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -130,7 +140,7 @@ pub fn approve_transfer(id: AssetId, delegate: AccountId, amount: Balance) -> Re
 /// Cancel all of some asset approved for delegated transfer by a third-party account.
 #[inline]
 pub fn cancel_approval(id: AssetId, delegate: AccountId) -> Result<()> {
-	build_dispatch(ASSETS, CANCEL_APPROVAL)
+	build_dispatch(CANCEL_APPROVAL)
 		.input::<(AssetId, AccountId)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -146,7 +156,7 @@ pub fn transfer_approved(
 	to: AccountId,
 	amount: Balance,
 ) -> Result<()> {
-	build_dispatch(ASSETS, TRANSFER_APPROVED)
+	build_dispatch(TRANSFER_APPROVED)
 		.input::<(AssetId, AccountId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -170,7 +180,7 @@ const TOKEN_DECIMALS: u8 = 5;
 
 #[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
-	build_read_state(ASSETS, TOTAL_SUPPLY)
+	build_read_state(TOTAL_SUPPLY)
 		.input::<AssetId>()
 		.output::<Result<Vec<u8>>, true>()
 		.handle_error_code::<StatusCode>()
@@ -190,7 +200,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 
 #[inline]
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
-	build_read_state(ASSETS, ALLOWANCE)
+	build_read_state(ALLOWANCE)
 		.input::<(AssetId, AccountId, AccountId)>()
 		.output::<Result<Vec<u8>>, true>()
 		.handle_error_code::<StatusCode>()
@@ -200,7 +210,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 
 #[inline]
 pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
-	build_read_state(ASSETS, TOKEN_NAME)
+	build_read_state(TOKEN_NAME)
 		.input::<AssetId>()
 		.output::<Result<Vec<u8>>, true>()
 		.handle_error_code::<StatusCode>()
@@ -210,7 +220,7 @@ pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
 //
 #[inline]
 pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
-	build_read_state(ASSETS, TOKEN_SYMBOL)
+	build_read_state(TOKEN_SYMBOL)
 		.input::<AssetId>()
 		.output::<Result<Vec<u8>>, true>()
 		.handle_error_code::<StatusCode>()
@@ -220,7 +230,7 @@ pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
 
 #[inline]
 pub fn token_decimals(id: AssetId) -> Result<u8> {
-	build_read_state(ASSETS, TOKEN_DECIMALS)
+	build_read_state(TOKEN_DECIMALS)
 		.input::<AssetId>()
 		.output::<Result<Vec<u8>>, true>()
 		.handle_error_code::<StatusCode>()
