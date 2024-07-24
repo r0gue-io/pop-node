@@ -1,5 +1,6 @@
 use crate::{primitives::error::Error, StatusCode};
 
+#[cfg(feature = "assets")]
 pub mod assets;
 
 pub(crate) const V0: u8 = 0;

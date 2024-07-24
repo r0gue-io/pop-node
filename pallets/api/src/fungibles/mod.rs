@@ -49,13 +49,13 @@ pub mod pallet {
 		#[codec(index = 2)]
 		Allowance(AssetIdOf<T>, AccountIdOf<T>, AccountIdOf<T>),
 		/// Token name for a given asset ID.
-		#[codec(index = 3)]
+		#[codec(index = 8)]
 		TokenName(AssetIdOf<T>),
 		/// Token symbol for a given asset ID.
-		#[codec(index = 4)]
+		#[codec(index = 9)]
 		TokenSymbol(AssetIdOf<T>),
 		/// Token decimals for a given asset ID.
-		#[codec(index = 5)]
+		#[codec(index = 10)]
 		TokenDecimals(AssetIdOf<T>),
 	}
 
@@ -78,7 +78,7 @@ pub mod pallet {
 		/// * `id` - The ID of the asset.
 		/// * `to` - The recipient account.
 		/// * `value` - The number of tokens to transfer.
-		#[pallet::call_index(0)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
 		pub fn transfer(
 			origin: OriginFor<T>,
@@ -96,7 +96,7 @@ pub mod pallet {
 		/// * `id` - The ID of the asset.
 		/// * `spender` - The account that is allowed to spend the tokens.
 		/// * `value` - The number of tokens to approve.
-		#[pallet::call_index(2)]
+		#[pallet::call_index(5)]
 		#[pallet::weight(T::DbWeight::get().reads(1) + AssetsWeightInfoOf::<T>::cancel_approval() + AssetsWeightInfoOf::<T>::approve_transfer())]
 		pub fn approve(
 			origin: OriginFor<T>,
@@ -148,7 +148,7 @@ pub mod pallet {
 		/// * `id` - The ID of the asset.
 		/// * `spender` - The account that is allowed to spend the tokens.
 		/// * `value` - The number of tokens to increase the allowance by.
-		#[pallet::call_index(3)]
+		#[pallet::call_index(6)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::approve_transfer())]
 		pub fn increase_allowance(
 			origin: OriginFor<T>,
