@@ -440,7 +440,6 @@ fn transfer_from_works() {
 			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount + 1 * UNIT,)),
 			Module { index: 52, error: 0 },
 		);
-
 		// Successful transfer.
 		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
 		let result = transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2);
