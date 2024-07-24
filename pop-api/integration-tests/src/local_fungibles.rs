@@ -91,9 +91,9 @@ fn transfer_from(
 	from: AccountId32,
 	to: AccountId32,
 	value: Balance,
-	data: Vec<u8>,
 ) -> ExecReturnValue {
 	let function = function_selector("transfer_from");
+	let data: Vec<u8> = vec![];
 	let params =
 		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
 			.concat();
@@ -411,7 +411,7 @@ fn transfer_from_works() {
 
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), 1, ALICE, BOB, amount / 2, vec![])),
+			decoded::<Error>(transfer_from(addr.clone(), 1, ALICE, BOB, amount / 2)),
 			Module { index: 52, error: 3 },
 		);
 
@@ -419,7 +419,7 @@ fn transfer_from_works() {
 		let asset = create_asset_and_mint_to(ALICE, 1, ALICE, amount);
 		// Unapproved transfer
 		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2, vec![])),
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2)),
 			Module { index: 52, error: 10 }
 		);
 
@@ -433,26 +433,19 @@ fn transfer_from_works() {
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(ALICE, asset);
 		assert_eq!(
-			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount, vec![])),
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount)),
 			Module { index: 52, error: 16 },
 		);
 		thaw_asset(ALICE, asset);
 		// Not enough balance.
 		assert_eq!(
-			decoded::<Error>(transfer_from(
-				addr.clone(),
-				asset,
-				ALICE,
-				BOB,
-				amount + 1 * UNIT,
-				vec![]
-			)),
+			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount + 1 * UNIT,)),
 			Module { index: 52, error: 0 },
 		);
 
 		// Successful transfer.
 		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
-		let result = transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2, vec![]);
+		let result = transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2);
 		assert!(!result.did_revert(), "Contract reverted!");
 		let bob_balance_after_transfer = Assets::balance(asset, &BOB);
 		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
