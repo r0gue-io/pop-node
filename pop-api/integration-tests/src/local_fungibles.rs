@@ -421,7 +421,6 @@ fn transfer_from_works() {
 			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2)),
 			Module { index: 52, error: 10 }
 		);
-
 		assert_ok!(Assets::approve_transfer(
 			RuntimeOrigin::signed(ALICE.into()),
 			asset.into(),
