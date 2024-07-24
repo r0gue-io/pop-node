@@ -414,7 +414,6 @@ fn transfer_from_works() {
 			decoded::<Error>(transfer_from(addr.clone(), 1, ALICE, BOB, amount / 2)),
 			Module { index: 52, error: 3 },
 		);
-
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, ALICE, amount);
 		// Unapproved transfer
