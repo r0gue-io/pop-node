@@ -34,14 +34,16 @@ const TRANSFER_APPROVED: u8 = 25;
 
 /// Helper method to build a dispatch call `ChainExtensionMethod` for `ASSET` module
 ///
-/// - `dispatchable`: The index of the dispatchable functions in `ASSET` module
+/// Parameters:
+/// - 'dispatchable': The index of the dispatchable functions in `ASSET` module.
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_dispatch(ASSETS, dispatchable)
 }
 
 /// Helper method to build a dispatch call `ChainExtensionMethod` for `ASSET` module
 ///
-/// - `state_query`: The index of the runtime state query
+/// Parameters:
+/// - 'state_query': The index of the runtime state query.
 fn build_read_state(state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_read_state(ASSETS, state_query)
 }
