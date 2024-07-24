@@ -348,11 +348,11 @@ fn transfer_works() {
 			Module { index: 52, error: 0 },
 		);
 		// Successful transfer.
-		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
+		let balance_before_transfer = Assets::balance(asset, &BOB);
 		let result = transfer(addr.clone(), asset, BOB, amount / 2);
 		assert!(!result.did_revert(), "Contract reverted!");
-		let bob_balance_after_transfer = Assets::balance(asset, &BOB);
-		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
+		let balance_after_transfer = Assets::balance(asset, &BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 		// Transfer asset to account that does not exist.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, FERDIE, amount / 4)),
@@ -547,11 +547,11 @@ fn token_metadata_works() {
 // 		);
 // 		thaw_asset(addr.clone(), asset);
 // 		// Successful mint.
-// 		let bob_balance_before_mint = Assets::balance(asset, &BOB);
+// 		let balance_before_mint = Assets::balance(asset, &BOB);
 // 		let result = transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8]);
 // 		assert!(!result.did_revert(), "Contract reverted!");
-// 		let bob_balance_after_mint = Assets::balance(asset, &BOB);
-// 		assert_eq!(bob_balance_after_mint, bob_balance_before_mint + amount);
+// 		let balance_after_mint = Assets::balance(asset, &BOB);
+// 		assert_eq!(balance_after_mint, balance_before_mint + amount);
 // 		// Can not mint more tokens than Balance::MAX.
 // 		assert_eq!(
 // 			decoded::<Error>(transfer_from(
