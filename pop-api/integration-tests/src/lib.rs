@@ -61,14 +61,13 @@ fn function_selector(name: &str) -> Vec<u8> {
 	[hash[0..4].to_vec()].concat()
 }
 
-fn bare_call_by(
+fn bare_call(
 	addr: AccountId32,
-	caller: AccountId32,
 	input: Vec<u8>,
 	value: u128,
 ) -> Result<ExecReturnValue, DispatchError> {
 	let result = Contracts::bare_call(
-		caller,
+		ALICE,
 		addr.into(),
 		value.into(),
 		GAS_LIMIT,
@@ -79,14 +78,6 @@ fn bare_call_by(
 		Determinism::Enforced,
 	);
 	result.result
-}
-
-fn bare_call(
-	addr: AccountId32,
-	input: Vec<u8>,
-	value: u128,
-) -> Result<ExecReturnValue, DispatchError> {
-	bare_call_by(addr, ALICE, input, value)
 }
 
 // Deploy, instantiate and return contract address.
