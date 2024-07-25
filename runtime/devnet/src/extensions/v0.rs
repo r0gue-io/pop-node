@@ -60,7 +60,7 @@ fn nested_errors(nested_error: &[u8], limit: Option<u8>) -> bool {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use primitives::error::{
+	use pop_primitives::error::{
 		ArithmeticError::*,
 		Error::{self, *},
 		TokenError::*,
