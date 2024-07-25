@@ -253,7 +253,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 	}
 }
 
-
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.

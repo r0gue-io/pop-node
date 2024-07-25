@@ -188,95 +188,25 @@ pub mod pallet {
 		/// # Arguments
 		/// * `key` - An instance of `FungiblesKey<T>`, which specifies the type of state query and
 		/// 		  the associated parameters.
-		///
-		/// # Returns
-		/// A vector of bytes representing the encoded result of the state query.
 		pub fn read_state(key: Read<T>) -> Vec<u8> {
 			use Read::*;
 
 			match key {
-				TotalSupply(id) => Self::total_supply(id).encode(),
-				BalanceOf(id, owner) => Self::balance_of(id, &owner).encode(),
-				Allowance(id, owner, spender) => Self::allowance(id, &owner, &spender).encode(),
-				TokenName(id) => Self::token_name(id).encode(),
-				TokenSymbol(id) => Self::token_symbol(id).encode(),
-				TokenDecimals(id) => Self::token_decimals(id).encode(),
+				TotalSupply(id) => AssetsOf::<T>::total_supply(id).encode(),
+				BalanceOf(id, owner) => AssetsOf::<T>::balance(id, owner).encode(),
+				Allowance(id, owner, spender) => {
+					AssetsOf::<T>::allowance(id, &owner, &spender).encode()
+				},
+				TokenName(id) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(id).encode()
+				},
+				TokenSymbol(id) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(id).encode()
+				},
+				TokenDecimals(id) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
+				},
 			}
-		}
-
-		/// Returns the total token supply for a given asset ID.
-		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		///
-		/// # Returns
-		/// The total supply of the token, or an error if the operation fails.
-		pub fn total_supply(id: AssetIdOf<T>) -> BalanceOf<T> {
-			Assets::<T>::total_supply(id)
-		}
-
-		/// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
-		/// the account is non-existent.
-		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		/// * `owner` - The account whose balance is being queried.
-		///
-		/// # Returns
-		/// The balance of the specified account, or an error if the operation fails.
-		pub fn balance_of(id: AssetIdOf<T>, owner: &AccountIdOf<T>) -> BalanceOf<T> {
-			Assets::<T>::balance(id, owner)
-		}
-
-		/// Returns the amount which `spender` is still allowed to withdraw from `owner` for a given
-		/// asset ID. Returns `0` if no allowance has been set.
-		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		/// * `owner` - The account that owns the tokens.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		///
-		/// # Returns
-		/// The remaining allowance, or an error if the operation fails.
-		pub fn allowance(
-			id: AssetIdOf<T>,
-			owner: &AccountIdOf<T>,
-			spender: &AccountIdOf<T>,
-		) -> BalanceOf<T> {
-			Assets::<T>::allowance(id, owner, spender)
-		}
-
-		/// Returns the token name for a given asset ID.
-		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		///
-		/// # Returns
-		/// The name of the token as a byte vector, or an error if the operation fails.
-		pub fn token_name(id: AssetIdOf<T>) -> Vec<u8> {
-			<Assets<T> as MetadataInspect<AccountIdOf<T>>>::name(id)
-		}
-
-		/// Returns the token symbol for a given asset ID.
-		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		///
-		/// # Returns
-		///  The symbol of the token as a byte vector, or an error if the operation fails.
-		pub fn token_symbol(id: AssetIdOf<T>) -> Vec<u8> {
-			<Assets<T> as MetadataInspect<AccountIdOf<T>>>::symbol(id)
-		}
-
-		/// Returns the token decimals for a given asset ID.
-		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		///
-		/// # Returns
-		///  The number of decimals of the token as a byte vector, or an error if the operation fails.
-		pub fn token_decimals(id: AssetIdOf<T>) -> u8 {
-			<Assets<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id)
 		}
 	}
 }

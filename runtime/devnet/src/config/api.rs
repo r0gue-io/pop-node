@@ -11,11 +11,6 @@ pub enum RuntimeRead<T: fungibles::Config> {
 	Fungibles(fungibles::Read<T>),
 }
 
-impl fungibles::Config for Runtime {
-	type AssetsInstance = TrustBackedAssetsInstance;
-	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
-}
-
 /// A type to identify allowed calls to the Runtime from the API.
 pub struct AllowedApiCalls;
 
@@ -30,18 +25,10 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 	}
 }
 
-/// State queries that can be made in the API.
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-#[repr(u8)]
-pub enum RuntimeStateKeys<T: fungibles::Config> {
-	#[codec(index = 150)]
-	Fungibles(fungibles::FungiblesKey<T>),
-}
-
 impl<T: fungibles::Config> Contains<RuntimeStateKeys<T>> for AllowedApiCalls {
 	/// Allowed state queries from the API.
 	fn contains(c: &RuntimeStateKeys<T>) -> bool {
-		use fungibles::FungiblesKey::*;
+		use fungibles::Read::*;
 		matches!(
 			c,
 			RuntimeStateKeys::Fungibles(
@@ -52,4 +39,9 @@ impl<T: fungibles::Config> Contains<RuntimeStateKeys<T>> for AllowedApiCalls {
 			)
 		)
 	}
+}
+
+impl fungibles::Config for Runtime {
+	type AssetsInstance = TrustBackedAssetsInstance;
+	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
