@@ -5,10 +5,7 @@ use crate::{
 		api::{AllowedApiCalls, RuntimeRead},
 		assets::TrustBackedAssetsInstance,
 	},
-	fungibles::{
-		self,
-		Read::{self, *},
-	},
+	fungibles::{self},
 	AccountId, RuntimeCall, RuntimeOrigin,
 };
 use codec::{Decode, Encode};
@@ -183,7 +180,7 @@ where
 		VersionedStateRead::V0(key) => {
 			ensure!(AllowedApiCalls::contains(&key), DispatchError::Other("UnknownCall"));
 			match key {
-				RuntimeStateKeys::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
+				RuntimeRead::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
 			}
 		},
 	};

@@ -25,15 +25,15 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 	}
 }
 
-impl<T: fungibles::Config> Contains<RuntimeStateKeys<T>> for AllowedApiCalls {
+impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
 	/// Allowed state queries from the API.
-	fn contains(c: &RuntimeStateKeys<T>) -> bool {
+	fn contains(c: &RuntimeRead<T>) -> bool {
 		use fungibles::Read::*;
 		matches!(
 			c,
-			RuntimeStateKeys::Fungibles(
+			RuntimeRead::Fungibles(
 				TotalSupply(..)
-					| BalanceOf(..) | Allowance(..)
+					| BalanceOf { .. } | Allowance { .. }
 					| TokenName(..) | TokenSymbol(..)
 					| TokenDecimals(..)
 			)

@@ -193,8 +193,8 @@ pub mod pallet {
 
 			match key {
 				TotalSupply(id) => AssetsOf::<T>::total_supply(id).encode(),
-				BalanceOf(id, owner) => AssetsOf::<T>::balance(id, owner).encode(),
-				Allowance(id, owner, spender) => {
+				BalanceOf { id, owner } => AssetsOf::<T>::balance(id, owner).encode(),
+				Allowance { id, owner, spender } => {
 					AssetsOf::<T>::allowance(id, &owner, &spender).encode()
 				},
 				TokenName(id) => {

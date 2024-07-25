@@ -71,7 +71,7 @@ fn balance_of_works() {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
 		assert_eq!(
 			Assets::balance(ASSET, ALICE).encode(),
-			Fungibles::read_state(BalanceOf(ASSET, ALICE))
+			Fungibles::read_state(BalanceOf { id: ASSET, owner: ALICE })
 		);
 	});
 }
@@ -82,7 +82,7 @@ fn allowance_works() {
 		create_asset_mint_and_approve(ALICE, ASSET, BOB, 100, ALICE, 50);
 		assert_eq!(
 			Assets::allowance(ASSET, &ALICE, &BOB).encode(),
-			Fungibles::read_state(Allowance(ASSET, ALICE, BOB))
+			Fungibles::read_state(Allowance { id: ASSET, owner: ALICE, spender: BOB })
 		);
 	});
 }
