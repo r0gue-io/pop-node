@@ -33,6 +33,9 @@ fn approve_works() {
 		// Approves an amount to spend that is higher than the current allowance.
 		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
+		// Approves an amount to spend that is equal to the current allowance.
+		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
+		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 		// Sets allowance to zero.
 		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, 0));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);

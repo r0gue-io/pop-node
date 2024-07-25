@@ -32,8 +32,8 @@ mod benchmarks {
 	use super::*;
 
 	// Parameter:
-	// - 'a': whether `approve_transfer` has been called.
-	// - 'c': whether `cancel_approval` has been called.
+	// - 'a': whether `approve_transfer` is required.
+	// - 'c': whether `cancel_approval` is required.
 	#[benchmark]
 	fn approve(a: Linear<0, 1>, c: Linear<0, 1>) -> Result<(), BenchmarkError> {
 		let asset_id = AssetIdOf::<T>::zero();

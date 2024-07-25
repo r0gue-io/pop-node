@@ -2,9 +2,11 @@ use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, Runti
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Contains;
 
+/// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 #[repr(u8)]
-pub enum RuntimeStateKeys<T: fungibles::Config> {
+pub enum RuntimeRead<T: fungibles::Config> {
+	/// Fungible token queries.
 	#[codec(index = 150)]
 	Fungibles(fungibles::Read<T>),
 }

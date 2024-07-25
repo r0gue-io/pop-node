@@ -2,7 +2,7 @@ mod v0;
 
 use crate::{
 	config::{
-		api::{AllowedApiCalls, RuntimeStateKeys},
+		api::{AllowedApiCalls, RuntimeRead},
 		assets::TrustBackedAssetsInstance,
 	},
 	fungibles::{
@@ -178,7 +178,7 @@ where
 
 	let result = match key {
 		VersionedStateRead::V0(key) => match key {
-			RuntimeStateKeys::Fungibles(key) => read_fungibles_state::<T, E>(key, env),
+			RuntimeRead::Fungibles(key) => read_fungibles_state::<T, E>(key, env),
 		},
 	}?
 	.encode();
@@ -189,18 +189,18 @@ where
 	env.write(&result, false, None)
 }
 
-/// Wrapper to enable versioning of `RuntimeStateKeys`.
+/// Wrapper to enable versioning of runtime state reads.
 #[derive(Decode, Debug)]
 enum VersionedStateRead<T: fungibles::Config> {
-	/// Version zero of reading state from api.
+	/// Version zero of state reads.
 	#[codec(index = 0)]
-	V0(RuntimeStateKeys<T>),
+	V0(RuntimeRead<T>),
 }
 
-/// Wrapper to enable versioning of `RuntimeCall`.
+/// Wrapper to enable versioning of runtime calls.
 #[derive(Decode, Debug)]
 enum VersionedDispatch {
-	/// Version zero of dispatch calls from api.
+	/// Version zero of dispatch calls.
 	#[codec(index = 0)]
 	V0(RuntimeCall),
 }
@@ -299,17 +299,13 @@ where
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	match key {
 		TotalSupply(id) => Ok(fungibles::Pallet::<T>::total_supply(id).encode()),
-		BalanceOf(id, owner) => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
-		Allowance(id, owner, spender) => {
+		BalanceOf { id, owner } => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
+		Allowance { id, owner, spender } => {
 			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode())
 		},
 		TokenName(id) => Ok(fungibles::Pallet::<T>::token_name(id).encode()),
 		TokenSymbol(id) => Ok(fungibles::Pallet::<T>::token_symbol(id).encode()),
 		TokenDecimals(id) => Ok(fungibles::Pallet::<T>::token_decimals(id).encode()),
-		// AssetsKeys::AssetExists(id) => {
-		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
-		// },
 	}
 }
 

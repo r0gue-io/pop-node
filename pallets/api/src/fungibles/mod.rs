@@ -1,6 +1,7 @@
 /// The fungibles pallet serves as a wrapper around the pallet_assets, offering a streamlined
 /// interface for interacting with fungible assets. The goal is to provide a simplified, consistent
 /// API that adheres to standards in the smart contract space.
+
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 #[cfg(test)]
@@ -49,10 +50,22 @@ pub mod pallet {
 		TotalSupply(AssetIdOf<T>),
 		/// Account balance for a given asset ID.
 		#[codec(index = 1)]
-		BalanceOf(AssetIdOf<T>, AccountIdOf<T>),
+		BalanceOf {
+			/// The asset ID.
+			id: AssetIdOf<T>,
+			/// The account ID of the owner.
+			owner: AccountIdOf<T>,
+		},
 		/// Allowance for a spender approved by an owner, for a given asset ID.
 		#[codec(index = 2)]
-		Allowance(AssetIdOf<T>, AccountIdOf<T>, AccountIdOf<T>),
+		Allowance {
+			/// The asset ID.
+			id: AssetIdOf<T>,
+			/// The account ID of the owner.
+			owner: AccountIdOf<T>,
+			/// The account ID of the spender.
+			spender: AccountIdOf<T>,
+		},
 		/// Token name for a given asset ID.
 		#[codec(index = 8)]
 		TokenName(AssetIdOf<T>),
@@ -69,7 +82,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
 		/// The instance of pallet assets it is tightly coupled to.
 		type AssetsInstance;
-		/// Weight information for extrinsics in this pallet.
+		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
 	}
 
@@ -118,13 +131,14 @@ pub mod pallet {
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
+
 			// If the new value is equal to the current allowance, do nothing.
-			if value == current_allowance {
-				return Ok(Some(weight(0, 0)).into());
+			let return_weight = if value == current_allowance {
+				weight(0, 0)
 			}
 			// If the new value is greater than the current allowance, approve the difference
-			// because `approve_transfer` works additively (see pallet-assets).
-			if value > current_allowance {
+			// because `approve_transfer` works additively (see `pallet-assets`).
+			else if value > current_allowance {
 				AssetsOf::<T>::approve_transfer(
 					origin,
 					id,
@@ -132,7 +146,7 @@ pub mod pallet {
 					value.saturating_sub(current_allowance),
 				)
 				.map_err(|e| e.with_weight(weight(1, 0)))?;
-				Ok(Some(weight(1, 0)).into())
+				weight(1, 0)
 			} else {
 				// If the new value is less than the current allowance, cancel the approval and set the new value
 				AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
@@ -141,8 +155,9 @@ pub mod pallet {
 					return Ok(Some(weight(0, 1)).into());
 				}
 				AssetsOf::<T>::approve_transfer(origin, id, spender, value)?;
-				Ok(().into())
-			}
+				weight(1, 1)
+			};
+			Ok(Some(return_weight).into())
 		}
 
 		/// Increases the allowance of a spender.

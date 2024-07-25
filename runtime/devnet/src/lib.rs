@@ -966,6 +966,8 @@ mod tests {
 	use crate::Runtime;
 	use std::any::TypeId;
 
+	// Ensures that the account id lookup does not perform any state reads. When this changes,
+	// `pallet_api::fungibles` dispatchables need to be re-evaluated.
 	#[test]
 	fn test_lookup_config() {
 		type ExpectedLookup = sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>;
