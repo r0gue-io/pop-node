@@ -2,6 +2,7 @@
 
 use constants::DECODING_FAILED;
 use ink::env::chain_extension::FromStatusCode;
+#[cfg(feature = "assets")]
 pub use v0::assets;
 
 pub mod primitives;
@@ -13,8 +14,7 @@ pub type Result<T> = core::result::Result<T, StatusCode>;
 mod constants {
 	// Errors:
 	pub(crate) const DECODING_FAILED: u32 = 255;
-	// TODO: Not used but will be used in the future when the remaining fungibles features will be
-	// 	implemented.
+	// TODO: will be used in the future when the remaining fungibles features will be implemented.
 	pub(crate) const _MODULE_ERROR: u8 = 3;
 
 	// Function IDs:

@@ -11,10 +11,10 @@ fn transfer_works() {
 	new_test_ext().execute_with(|| {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
-		let bob_balance_before_transfer = Assets::balance(ASSET, &BOB);
+		let balance_before_transfer = Assets::balance(ASSET, &BOB);
 		assert_ok!(Fungibles::transfer(signed(ALICE), ASSET, BOB, amount / 2));
-		let bob_balance_after_transfer = Assets::balance(ASSET, &BOB);
-		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
+		let balance_after_transfer = Assets::balance(ASSET, &BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 	});
 }
 
