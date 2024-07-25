@@ -20,7 +20,7 @@ use frame_support::{
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
-use primitives::AssetId;
+use pop_primitives::AssetId;
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
@@ -208,7 +208,7 @@ enum VersionedDispatch {
 // Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
 // The contract calling the chain extension can convert the status code to the descriptive `Error`.
 //
-// For `Error` see `primitives::<version>::error::Error`.
+// For `Error` see `pop_primitives::<version>::error::Error`.
 //
 // The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
 // As a result, contracts maintain compatibility across different versions of the runtime.

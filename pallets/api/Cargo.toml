@@ -18,7 +18,6 @@ frame-benchmarking.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 pallet-assets.workspace = true
-primitives.workspace = true
 sp-runtime.workspace = true
 sp-std.workspace = true
 
@@ -43,7 +42,6 @@ std = [
     "frame-system/std",
     "pallet-assets/std",
     "pallet-balances/std",
-    "primitives/std",
     "scale-info/std",
     "sp-core/std",
     "sp-io/std",

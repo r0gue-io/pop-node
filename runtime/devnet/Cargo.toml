@@ -22,7 +22,7 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-primitives.workspace = true
+pop-primitives.workspace = true
 pop-runtime-common.workspace = true
 pallet-api.workspace = true
 
@@ -140,7 +140,7 @@ std = [
     "parachains-common/std",
     "polkadot-parachain-primitives/std",
     "polkadot-runtime-common/std",
-    "primitives/std",
+    "pop-primitives/std",
     "scale-info/std",
     "sp-api/std",
     "sp-io/std",
