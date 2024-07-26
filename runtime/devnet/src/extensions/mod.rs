@@ -23,6 +23,14 @@ use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
 const LOG_TARGET: &str = "pop-api::extension";
+const DECODING_FAILED_ERROR: DispatchError = DispatchError::Other("DecodingFailed");
+// TODO: issue #93, we can also encode the `pop_primitives::Error::UnknownCall` which means we do use
+//  `Error` in the runtime and it should stay in primitives. Perhaps issue #91 will also influence
+//  here. Should be looked at together.
+const DECODING_FAILED_ERROR_ENCODED: [u8; 4] = [255u8, 0, 0, 0];
+const UNKNOWN_CALL_ERROR: DispatchError = DispatchError::Other("UnknownCall");
+// TODO: see above.
+const UNKNOWN_CALL_ERROR_ENCODED: [u8; 4] = [254u8, 0, 0, 0];
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
@@ -110,8 +118,7 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-	let call = <VersionedDispatch>::decode(&mut &params[..])
-		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+	let call = <VersionedDispatch>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
 
 	// Contract is the origin by default.
 	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
@@ -171,15 +178,15 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-	let key = <VersionedStateRead<T>>::decode(&mut &params[..])
-		.map_err(|_| DispatchError::Other("DecodingFailed"))?;
+	let read =
+		<VersionedStateRead<T>>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
 
 	// Charge weight for doing one storage read.
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-	let result = match key {
-		VersionedStateRead::V0(key) => {
-			ensure!(AllowedApiCalls::contains(&key), DispatchError::Other("UnknownCall"));
-			match key {
+	let result = match read {
+		VersionedStateRead::V0(read) => {
+			ensure!(AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
+			match read {
 				RuntimeRead::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
 			}
 		},
@@ -220,16 +227,18 @@ enum VersionedDispatch {
 // - `error`: The `DispatchError` encountered during contract execution.
 // - `version`: The version of the chain extension, used to determine the known errors.
 pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
-	// "UnknownCall" and "DecodingFailed" are mapped to specific errors in the API and will
-	// never change.
-	let mut encoded_error = match error {
-		DispatchError::Other("UnknownCall") => Vec::from([254u8, 0, 0, 0]),
-		DispatchError::Other("DecodingFailed") => Vec::from([255u8, 0, 0, 0]),
-		_ => error.encode(),
+	let mut encoded_error: [u8; 4] = match error {
+		// "UnknownCall" and "DecodingFailed" are mapped to specific errors in the API and will
+		// never change.
+		UNKNOWN_CALL_ERROR => UNKNOWN_CALL_ERROR_ENCODED,
+		DECODING_FAILED_ERROR => DECODING_FAILED_ERROR_ENCODED,
+		_ => {
+			let mut encoded_error = error.encode();
+			// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
+			encoded_error.resize(4, 0);
+			encoded_error.try_into().expect("qed, resized to 4 bytes line above")
+		},
 	};
-	// Resize the encoded value to 4 bytes in order to decode the value in a u32 (4 bytes).
-	encoded_error.resize(4, 0);
-	let mut encoded_error = encoded_error.try_into().expect("qed, resized to 4 bytes line above");
 	match version {
 		// If an unknown variant of the `DispatchError` is detected the error needs to be converted
 		// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
@@ -248,7 +257,7 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 		// - Byte 3:
 		//   - Unused or represents further nested information.
 		0 => v0::handle_unknown_error(&mut encoded_error),
-		_ => encoded_error = [254, 0, 0, 0],
+		_ => encoded_error = UNKNOWN_CALL_ERROR_ENCODED,
 	}
 	u32::from_le_bytes(encoded_error)
 }
@@ -280,7 +289,7 @@ impl TryFrom<u8> for FuncId {
 			0 => Self::Dispatch,
 			1 => Self::ReadState,
 			_ => {
-				return Err(DispatchError::Other("UnknownFuncId"));
+				return Err(UNKNOWN_CALL_ERROR);
 			},
 		};
 		Ok(id)

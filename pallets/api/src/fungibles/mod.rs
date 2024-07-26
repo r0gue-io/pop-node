@@ -180,18 +180,18 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Reads the state of the fungible asset based on the provided key.
+		/// Reads fungible asset state based on the provided value.
 		///
-		/// This function matches the key to determine the type of state query and returns the
+		/// This function matches the value to determine the type of state query and returns the
 		/// encoded result.
 		///
-		/// # Arguments
-		/// * `key` - An instance of `FungiblesKey<T>`, which specifies the type of state query and
+		/// # Parameter
+		/// * `value` - An instance of `Read<T>`, which specifies the type of state query and
 		/// 		  the associated parameters.
-		pub fn read_state(key: Read<T>) -> Vec<u8> {
+		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 
-			match key {
+			match value {
 				TotalSupply(id) => AssetsOf::<T>::total_supply(id).encode(),
 				BalanceOf { id, owner } => AssetsOf::<T>::balance(id, owner).encode(),
 				Allowance { id, owner, spender } => {
