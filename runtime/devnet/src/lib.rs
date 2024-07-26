@@ -73,6 +73,8 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
+pub(crate) use pallet_api::fungibles;
+
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -245,82 +247,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 					| force_set_balance { .. }
 					| force_transfer { .. }
 					| force_unreserve { .. }
-			)
-		)
-	}
-}
-
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for crate::AllowedApiCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use config::assets::AssetsCall;
-		use pallet_nfts::Call as NftsCall;
-		matches!(
-			c,
-			RuntimeCall::Balances(BalancesCall::transfer_keep_alive { .. })
-				| RuntimeCall::Assets(
-					AssetsCall::create { .. }
-						| AssetsCall::start_destroy { .. }
-						| AssetsCall::destroy_accounts { .. }
-						| AssetsCall::destroy_approvals { .. }
-						| AssetsCall::finish_destroy { .. }
-						| AssetsCall::mint { .. }
-						| AssetsCall::burn { .. }
-						| AssetsCall::transfer { .. }
-						| AssetsCall::transfer_keep_alive { .. }
-						| AssetsCall::force_transfer { .. }
-						| AssetsCall::freeze { .. }
-						| AssetsCall::thaw { .. }
-						| AssetsCall::freeze_asset { .. }
-						| AssetsCall::thaw_asset { .. }
-						| AssetsCall::transfer_ownership { .. }
-						| AssetsCall::set_team { .. }
-						| AssetsCall::set_metadata { .. }
-						| AssetsCall::clear_metadata { .. }
-						| AssetsCall::approve_transfer { .. }
-						| AssetsCall::cancel_approval { .. }
-						| AssetsCall::force_cancel_approval { .. }
-						| AssetsCall::transfer_approved { .. }
-						| AssetsCall::touch { .. }
-						| AssetsCall::refund { .. }
-						| AssetsCall::set_min_balance { .. }
-						| AssetsCall::touch_other { .. }
-						| AssetsCall::refund_other { .. }
-						| AssetsCall::block { .. }
-				) | RuntimeCall::Nfts(
-				NftsCall::create { .. }
-					| NftsCall::destroy { .. }
-					| NftsCall::mint { .. }
-					| NftsCall::burn { .. }
-					| NftsCall::transfer { .. }
-					| NftsCall::redeposit { .. }
-					| NftsCall::lock_item_transfer { .. }
-					| NftsCall::unlock_item_transfer { .. }
-					| NftsCall::lock_collection { .. }
-					| NftsCall::transfer_ownership { .. }
-					| NftsCall::set_team { .. }
-					| NftsCall::approve_transfer { .. }
-					| NftsCall::cancel_approval { .. }
-					| NftsCall::clear_all_transfer_approvals { .. }
-					| NftsCall::lock_item_properties { .. }
-					| NftsCall::set_attribute { .. }
-					| NftsCall::clear_attribute { .. }
-					| NftsCall::approve_item_attributes { .. }
-					| NftsCall::cancel_item_attributes_approval { .. }
-					| NftsCall::set_metadata { .. }
-					| NftsCall::clear_metadata { .. }
-					| NftsCall::set_collection_metadata { .. }
-					| NftsCall::clear_collection_metadata { .. }
-					| NftsCall::set_accept_ownership { .. }
-					| NftsCall::set_collection_max_supply { .. }
-					| NftsCall::update_mint_settings { .. }
-					| NftsCall::set_price { .. }
-					| NftsCall::buy_item { .. }
-					| NftsCall::pay_tips { .. }
-					| NftsCall::create_swap { .. }
-					| NftsCall::cancel_swap { .. }
-					| NftsCall::claim_swap { .. }
 			)
 		)
 	}
@@ -663,6 +589,9 @@ construct_runtime!(
 		Nfts: pallet_nfts = 50,
 		NftFractionalization: pallet_nft_fractionalization = 51,
 		Assets: pallet_assets::<Instance1> = 52,
+
+		// Pop API
+		Fungibles: fungibles = 150,
 	}
 );
 
@@ -670,6 +599,7 @@ construct_runtime!(
 mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[frame_system, SystemBench::<Runtime>]
+		[pallet_api::fungibles, Fungibles]
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
@@ -1029,4 +959,23 @@ impl_runtime_apis! {
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::Runtime;
+	use std::any::TypeId;
+
+	// Ensures that the account id lookup does not perform any state reads. When this changes,
+	// `pallet_api::fungibles` dispatchables need to be re-evaluated.
+	#[test]
+	fn test_lookup_config() {
+		type ExpectedLookup = sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>;
+		type ConfigLookup = <Runtime as frame_system::Config>::Lookup;
+
+		let expected_type_id = TypeId::of::<ExpectedLookup>();
+		let config_type_id = TypeId::of::<ConfigLookup>();
+
+		assert_eq!(config_type_id, expected_type_id);
+	}
 }

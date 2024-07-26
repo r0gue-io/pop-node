@@ -1,17 +1,9 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::env::chain_extension::FromStatusCode;
-
 use constants::DECODING_FAILED;
-
+use ink::env::chain_extension::FromStatusCode;
 #[cfg(feature = "assets")]
 pub use v0::assets;
-#[cfg(feature = "balances")]
-pub use v0::balances;
-#[cfg(feature = "cross-chain")]
-pub use v0::cross_chain;
-#[cfg(feature = "nfts")]
-pub use v0::nfts;
 
 pub mod primitives;
 pub mod v0;
@@ -22,7 +14,8 @@ pub type Result<T> = core::result::Result<T, StatusCode>;
 mod constants {
 	// Errors:
 	pub(crate) const DECODING_FAILED: u32 = 255;
-	pub(crate) const MODULE_ERROR: u8 = 3;
+	// TODO: will be used in the future when the remaining fungibles features will be implemented.
+	pub(crate) const _MODULE_ERROR: u8 = 3;
 
 	// Function IDs:
 	pub(crate) const DISPATCH: u8 = 0;
@@ -31,6 +24,7 @@ mod constants {
 	// Modules:
 	pub(crate) const ASSETS: u8 = 52;
 	pub(crate) const BALANCES: u8 = 10;
+	pub(crate) const FUNGIBLES: u8 = 150;
 }
 
 /// Represents a status code returned by the runtime.
