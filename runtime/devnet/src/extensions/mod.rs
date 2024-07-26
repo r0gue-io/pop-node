@@ -1,13 +1,15 @@
 mod v0;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance,
+	config::{
+		api::{AllowedApiCalls, RuntimeRead},
+		assets::TrustBackedAssetsInstance,
+	},
 	fungibles::{
 		self,
-		FungiblesKey::{self, *},
+		Read::{self, *},
 	},
-	state_keys::RuntimeStateKeys,
-	AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin,
+	AccountId, RuntimeCall, RuntimeOrigin,
 };
 use codec::{Decode, Encode};
 use frame_support::{
@@ -18,7 +20,7 @@ use frame_support::{
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
-use primitives::AssetId;
+use pop_primitives::AssetId;
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
@@ -176,7 +178,7 @@ where
 
 	let result = match key {
 		VersionedStateRead::V0(key) => match key {
-			RuntimeStateKeys::Fungibles(key) => read_fungibles_state::<T, E>(key, env),
+			RuntimeRead::Fungibles(key) => read_fungibles_state::<T, E>(key, env),
 		},
 	}?
 	.encode();
@@ -187,16 +189,18 @@ where
 	env.write(&result, false, None)
 }
 
-// Example wrapper to enable versioning of `RuntimeStateKeys`.
+/// Wrapper to enable versioning of runtime state reads.
 #[derive(Decode, Debug)]
 enum VersionedStateRead<T: fungibles::Config> {
+	/// Version zero of state reads.
 	#[codec(index = 0)]
-	V0(RuntimeStateKeys<T>),
+	V0(RuntimeRead<T>),
 }
 
-// Wrapper to enable versioning of `RuntimeCall`.
+/// Wrapper to enable versioning of runtime calls.
 #[derive(Decode, Debug)]
 enum VersionedDispatch {
+	/// Version zero of dispatch calls.
 	#[codec(index = 0)]
 	V0(RuntimeCall),
 }
@@ -205,7 +209,7 @@ enum VersionedDispatch {
 // uses. The contract calling the chain extension can convert the status code to the descriptive
 // `Error`.
 //
-// For `Error` see `primitives::<version>::error::Error`.
+// For `Error` see `pop_primitives::<version>::error::Error`.
 //
 // The error encoding can vary per version, allowing for flexible and backward-compatible error
 // handling. As a result, contracts maintain compatibility across different versions of the runtime.
@@ -284,7 +288,7 @@ impl TryFrom<u8> for FuncId {
 }
 
 fn read_fungibles_state<T, E>(
-	key: FungiblesKey<T>,
+	key: Read<T>,
 	env: &mut Environment<E, BufInBufOutState>,
 ) -> Result<Vec<u8>, DispatchError>
 where
@@ -297,17 +301,13 @@ where
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	match key {
 		TotalSupply(id) => Ok(fungibles::Pallet::<T>::total_supply(id).encode()),
-		BalanceOf(id, owner) => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
-		Allowance(id, owner, spender) => {
+		BalanceOf { id, owner } => Ok(fungibles::Pallet::<T>::balance_of(id, &owner).encode()),
+		Allowance { id, owner, spender } => {
 			Ok(fungibles::Pallet::<T>::allowance(id, &owner, &spender).encode())
 		},
 		TokenName(id) => Ok(fungibles::Pallet::<T>::token_name(id).encode()),
 		TokenSymbol(id) => Ok(fungibles::Pallet::<T>::token_symbol(id).encode()),
 		TokenDecimals(id) => Ok(fungibles::Pallet::<T>::token_decimals(id).encode()),
-		// AssetsKeys::AssetExists(id) => {
-		// 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// 	Ok(pallet_assets::Pallet::<T, TrustBackedAssetsInstance>::asset_exists(id).encode())
-		// },
 	}
 }
 

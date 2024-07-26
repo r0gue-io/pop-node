@@ -6614,7 +6614,6 @@ dependencies = [
  "pallet-assets",
  "pallet-balances",
  "parity-scale-codec",
- "primitives",
  "scale-info",
  "sp-core",
  "sp-io",
@@ -9700,6 +9699,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "pop-primitives"
+version = "0.0.0"
+dependencies = [
+ "parity-scale-codec",
+ "scale-info",
+]
+
+[[package]]
 name = "pop-runtime-common"
 version = "0.0.0"
 dependencies = [
@@ -9724,7 +9731,6 @@ dependencies = [
  "cumulus-primitives-aura",
  "cumulus-primitives-core",
  "cumulus-primitives-utility",
- "enumflags2",
  "env_logger 0.11.3",
  "frame-benchmarking",
  "frame-executive",
@@ -9762,8 +9768,8 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
+ "pop-primitives",
  "pop-runtime-common",
- "primitives",
  "rand",
  "scale-info",
  "smallvec",
@@ -9799,7 +9805,6 @@ dependencies = [
  "cumulus-primitives-aura",
  "cumulus-primitives-core",
  "cumulus-primitives-utility",
- "enumflags2",
  "env_logger 0.11.3",
  "frame-benchmarking",
  "frame-executive",
@@ -9836,8 +9841,8 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
+ "pop-primitives",
  "pop-runtime-common",
- "primitives",
  "scale-info",
  "smallvec",
  "sp-api",
@@ -9941,14 +9946,6 @@ dependencies = [
  "impl-serde",
  "scale-info",
  "uint",
-]
-
-[[package]]
-name = "primitives"
-version = "0.0.0"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
 ]
 
 [[package]]

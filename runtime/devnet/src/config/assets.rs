@@ -9,8 +9,8 @@ use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signa
 use sp_runtime::traits::Verify;
 
 use crate::{
-	deposit, fungibles, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime,
-	RuntimeEvent, RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
+	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -119,8 +119,4 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type RemoveItemsLimit = ConstU32<1000>;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
-}
-
-impl fungibles::Config for Runtime {
-	type AssetsInstance = TrustBackedAssetsInstance;
 }

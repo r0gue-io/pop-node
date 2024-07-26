@@ -6,11 +6,10 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-enumflags2 = { version = "0.7.7" }
 ink = { version = "5.0.0", default-features = false }
 sp-io = { version = "31.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
 
-primitives = { path = "../primitives", default-features = false }
+pop-primitives = { path = "../primitives", default-features = false }
 
 [lib]
 name = "pop_api"
@@ -20,9 +19,9 @@ crate-type = ["rlib"]
 [features]
 default = ["std"]
 std = [
-    "enumflags2/std",
     "ink/std",
-    "primitives/std",
+    "pop-primitives/std",
     "sp-io/std",
 ]
-fungibles = []
+assets = []
+fungibles = ["assets"]

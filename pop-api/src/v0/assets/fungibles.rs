@@ -23,23 +23,23 @@ mod constants {
 	/// - allowance
 	pub const ALLOWANCE: u8 = 2;
 	/// - transfer
-	pub(super) const TRANSFER: u8 = 0;
+	pub(super) const TRANSFER: u8 = 3;
 	/// - transfer_from
-	pub(super) const TRANSFER_FROM: u8 = 1;
+	pub(super) const TRANSFER_FROM: u8 = 4;
 	/// - approve
-	pub(super) const APPROVE: u8 = 2;
+	pub(super) const APPROVE: u8 = 5;
 	/// - increase_allowance
-	pub(super) const INCREASE_ALLOWANCE: u8 = 3;
+	pub(super) const INCREASE_ALLOWANCE: u8 = 6;
 	/// - decrease_allowance
-	pub(super) const DECREASE_ALLOWANCE: u8 = 4;
+	pub(super) const DECREASE_ALLOWANCE: u8 = 7;
 
 	/// 2. PSP-22 Metadata Interface:
 	/// - token_name
-	pub const TOKEN_NAME: u8 = 3;
+	pub const TOKEN_NAME: u8 = 8;
 	/// - token_symbol
-	pub const TOKEN_SYMBOL: u8 = 4;
+	pub const TOKEN_SYMBOL: u8 = 9;
 	/// - token_decimals
-	pub const TOKEN_DECIMALS: u8 = 5;
+	pub const TOKEN_DECIMALS: u8 = 10;
 
 	// 3. Asset Management:
 	// - create

@@ -252,24 +252,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 	}
 }
 
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use fungibles::Call as FungiblesCall;
-		matches!(
-			c,
-			RuntimeCall::Fungibles(
-				FungiblesCall::transfer { .. }
-					| FungiblesCall::transfer_from { .. }
-					| FungiblesCall::approve { .. }
-					| FungiblesCall::increase_allowance { .. }
-					| FungiblesCall::decrease_allowance { .. }
-			)
-		)
-	}
-}
-
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.
@@ -617,6 +599,7 @@ construct_runtime!(
 mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[frame_system, SystemBench::<Runtime>]
+		[pallet_api::fungibles, Fungibles]
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
@@ -978,14 +961,21 @@ cumulus_pallet_parachain_system::register_validate_block! {
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 }
 
-pub(crate) mod state_keys {
-	use super::fungibles;
-	use codec::{Decode, Encode, MaxEncodedLen};
+#[cfg(test)]
+mod tests {
+	use crate::Runtime;
+	use std::any::TypeId;
 
-	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-	#[repr(u8)]
-	pub enum RuntimeStateKeys<T: fungibles::Config> {
-		#[codec(index = 150)]
-		Fungibles(fungibles::FungiblesKey<T>),
+	// Ensures that the account id lookup does not perform any state reads. When this changes,
+	// `pallet_api::fungibles` dispatchables need to be re-evaluated.
+	#[test]
+	fn test_lookup_config() {
+		type ExpectedLookup = sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>;
+		type ConfigLookup = <Runtime as frame_system::Config>::Lookup;
+
+		let expected_type_id = TypeId::of::<ExpectedLookup>();
+		let config_type_id = TypeId::of::<ConfigLookup>();
+
+		assert_eq!(config_type_id, expected_type_id);
 	}
 }

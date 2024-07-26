@@ -1,5 +1,6 @@
 [package]
-name = "primitives"
+name = "pop-primitives"
+description = "Primitives crate for Pop"
 license = "GPL-3.0-only"
 version = "0.0.0"
 edition = "2021"

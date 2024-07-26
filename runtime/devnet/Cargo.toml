@@ -22,7 +22,7 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-primitives.workspace = true
+pop-primitives.workspace = true
 pop-runtime-common.workspace = true
 pallet-api.workspace = true
 
@@ -90,7 +90,6 @@ parachain-info.workspace = true
 
 [dev-dependencies]
 env_logger = "0.11.2"
-enumflags2 = "0.7.9"
 hex = "0.4.3"
 rand = "0.8.5"
 
@@ -140,7 +139,7 @@ std = [
     "parachains-common/std",
     "polkadot-parachain-primitives/std",
     "polkadot-runtime-common/std",
-    "primitives/std",
+    "pop-primitives/std",
     "scale-info/std",
     "sp-api/std",
     "sp-io/std",
@@ -171,6 +170,7 @@ runtime-benchmarks = [
     "frame-system-benchmarking/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "pallet-assets/runtime-benchmarks",
+    "pallet-api/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-contracts/runtime-benchmarks",
