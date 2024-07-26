@@ -22,8 +22,9 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-pop-primitives = { workspace = true, features = ["assets", "cross-chain", "nfts"] }
-pop-runtime-common = { workspace = true, default-features = false }
+pop-primitives.workspace = true
+pop-runtime-common.workspace = true
+pallet-api.workspace = true
 
 # Substrate
 frame-benchmarking.workspace = true
@@ -89,7 +90,6 @@ parachain-info.workspace = true
 
 [dev-dependencies]
 env_logger = "0.11.2"
-enumflags2 = "0.7.9"
 hex = "0.4.3"
 rand = "0.8.5"
 
@@ -119,6 +119,7 @@ std = [
     "pallet-balances/std",
     "pallet-collator-selection/std",
     "pallet-contracts/std",
+    "pallet-api/std",
     "pallet-message-queue/std",
     "pallet-multisig/std",
     "pallet-nft-fractionalization/std",
@@ -169,6 +170,7 @@ runtime-benchmarks = [
     "frame-system-benchmarking/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
     "pallet-assets/runtime-benchmarks",
+    "pallet-api/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-collator-selection/runtime-benchmarks",
     "pallet-contracts/runtime-benchmarks",
