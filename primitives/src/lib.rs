@@ -232,7 +232,7 @@ pub mod v0 {
 		}
 
 		/// Description of what went wrong when trying to complete an operation on a token.
-		#[derive(Encode, Decode, Clone, Debug, MaxEncodedLen, Eq, PartialEq, Ord, PartialOrd)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum TokenError {
 			/// Funds are unavailable.
