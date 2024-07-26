@@ -8,11 +8,10 @@ use pop_primitives::error::{
 const ASSET_ID: AssetId = 1;
 const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.wasm";
 
-fn decoded<T: Decode>(result: ExecReturnValue) -> T {
-	match <T>::decode(&mut &result.data[2..]) {
-		Ok(value) => value,
-		Err(_) => panic!("\nTest failed by trying to decode `{:?}` into `T`\n", result),
-	}
+// Decode the contract execution value, return error if the value can't be decoded
+fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, String> {
+	<T>::decode(&mut &result.data[2..])
+		.map_err(|_| format!("\nTest failed by trying to decode `{:?}` into `T`\n", result))
 }
 
 // Call total_supply contract message.
@@ -20,7 +19,7 @@ fn total_supply(addr: AccountId32, asset_id: AssetId) -> Balance {
 	let function = function_selector("total_supply");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	decoded::<Balance>(result)
+	decoded::<Balance>(result).unwrap()
 }
 
 // Call balance_of contract message.
@@ -28,7 +27,7 @@ fn balance_of(addr: AccountId32, asset_id: AssetId, owner: AccountId32) -> Balan
 	let function = function_selector("balance_of");
 	let params = [function, asset_id.encode(), owner.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	decoded::<Balance>(result)
+	decoded::<Balance>(result).unwrap()
 }
 
 // Call allowance contract message.
@@ -41,7 +40,7 @@ fn allowance(
 	let function = function_selector("allowance");
 	let params = [function, asset_id.encode(), owner.encode(), spender.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	decoded::<Balance>(result)
+	decoded::<Balance>(result).unwrap()
 }
 
 // Call token_name contract message.
@@ -49,7 +48,7 @@ fn token_name(addr: AccountId32, asset_id: AssetId) -> Vec<u8> {
 	let function = function_selector("token_name");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	decoded::<Vec<u8>>(result)
+	decoded::<Vec<u8>>(result).unwrap()
 }
 
 // Call token_symbol contract message.
@@ -57,7 +56,7 @@ fn token_symbol(addr: AccountId32, asset_id: AssetId) -> Vec<u8> {
 	let function = function_selector("token_symbol");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	decoded::<Vec<u8>>(result)
+	decoded::<Vec<u8>>(result).unwrap()
 }
 
 // Call token_decimals contract message.
@@ -65,7 +64,7 @@ fn token_decimals(addr: AccountId32, asset_id: AssetId) -> u8 {
 	let function = function_selector("token_decimals");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	decoded::<u8>(result)
+	decoded::<u8>(result).unwrap()
 }
 
 fn transfer(
@@ -327,7 +326,7 @@ fn transfer_works() {
 		// Asset does not exist.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), 1, BOB, amount,)),
-			Module { index: 52, error: 3 },
+			Ok(Module { index: 52, error: 3 }),
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
@@ -335,18 +334,18 @@ fn transfer_works() {
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount,)),
-			Module { index: 52, error: 16 },
+			Ok(Module { index: 52, error: 16 }),
 		);
 		thaw_asset(ALICE, asset);
 		// Not enough balance.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
-			Module { index: 52, error: 0 },
+			Ok(Module { index: 52, error: 0 }),
 		);
 		// Not enough balance due to ED.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 0 },
+			Ok(Module { index: 52, error: 0 }),
 		);
 		// Successful transfer.
 		let balance_before_transfer = Assets::balance(asset, &BOB);
@@ -357,13 +356,13 @@ fn transfer_works() {
 		// Transfer asset to account that does not exist.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, FERDIE, amount / 4)),
-			Token(CannotCreate)
+			Ok(Token(CannotCreate))
 		);
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount / 4)),
-			Module { index: 52, error: 16 },
+			Ok(Module { index: 52, error: 16 }),
 		);
 	});
 }
@@ -377,10 +376,13 @@ fn approve_works() {
 		// Asset does not exist.
 		assert_eq!(
 			decoded::<Error>(approve(addr.clone(), 0, BOB, amount)),
-			Module { index: 52, error: 3 },
+			Ok(Module { index: 52, error: 3 }),
 		);
 		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
-		assert_eq!(decoded::<Error>(approve(addr.clone(), asset, BOB, amount)), ConsumerRemaining);
+		assert_eq!(
+			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
+			Ok(ConsumerRemaining)
+		);
 
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
 		// Create asset with Alice as owner and mint `amount` to contract address.
@@ -389,7 +391,7 @@ fn approve_works() {
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 16 },
+			Ok(Module { index: 52, error: 16 }),
 		);
 		thaw_asset(ALICE, asset);
 		// Successful approvals:
@@ -403,7 +405,7 @@ fn approve_works() {
 		start_destroy_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 16 },
+			Ok(Module { index: 52, error: 16 }),
 		);
 	});
 }
@@ -417,12 +419,12 @@ fn increase_allowance_works() {
 		// Asset does not exist.
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), 0, BOB, amount)),
-			Module { index: 52, error: 3 },
+			Ok(Module { index: 52, error: 3 }),
 		);
 		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
-			ConsumerRemaining
+			Ok(ConsumerRemaining)
 		);
 
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
@@ -432,7 +434,7 @@ fn increase_allowance_works() {
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 16 },
+			Ok(Module { index: 52, error: 16 }),
 		);
 		thaw_asset(ALICE, asset);
 		// Successful approvals:
@@ -452,7 +454,7 @@ fn increase_allowance_works() {
 		start_destroy_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
-			Module { index: 52, error: 16 },
+			Ok(Module { index: 52, error: 16 }),
 		);
 	});
 }
