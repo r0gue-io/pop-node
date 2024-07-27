@@ -1,13 +1,27 @@
-use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
-
 use crate::{
-	constants::{ASSETS, BALANCES, DISPATCH, FUNGIBLES, READ_STATE},
+	constants::{ASSETS, BALANCES, FUNGIBLES},
 	primitives::{AccountId, AssetId, Balance},
-	v0::V0,
 	Result, StatusCode,
 };
 use constants::*;
+use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
+
+/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`
+///
+/// Parameters:
+/// - 'dispatchable': The index of the module dispatchable functions
+fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
+	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
+}
+
+/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0``
+///
+/// Parameters:
+/// - 'state_query': The index of the runtime state query
+fn build_read_state(state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
+	crate::v0::build_read_state(FUNGIBLES, state_query)
+}
 
 /// Local Fungibles:
 /// 1. PSP-22 Interface
@@ -60,7 +74,7 @@ mod constants {
 /// The total supply of the token, or an error if the operation fails.
 #[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, READ_STATE, FUNGIBLES, TOTAL_SUPPLY]))
+	build_read_state(TOTAL_SUPPLY)
 		.input::<AssetId>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
@@ -78,7 +92,7 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 /// The balance of the specified account, or an error if the operation fails.
 #[inline]
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, READ_STATE, FUNGIBLES, BALANCE_OF]))
+	build_read_state(BALANCE_OF)
 		.input::<(AssetId, AccountId)>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
@@ -97,7 +111,7 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 /// The remaining allowance, or an error if the operation fails.
 #[inline]
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, READ_STATE, FUNGIBLES, ALLOWANCE]))
+	build_read_state(ALLOWANCE)
 		.input::<(AssetId, AccountId, AccountId)>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
@@ -116,7 +130,7 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
 pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, TRANSFER]))
+	build_dispatch(TRANSFER)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -137,7 +151,7 @@ pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
 pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, TRANSFER_FROM]))
+	build_dispatch(TRANSFER_FROM)
 		.input::<(AssetId, AccountId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -155,7 +169,7 @@ pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balanc
 /// Returns `Ok(())` if successful, or an error if the approval fails.
 #[inline]
 pub fn approve(id: AssetId, spender: AccountId, amount: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, APPROVE]))
+	build_dispatch(APPROVE)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -173,7 +187,7 @@ pub fn approve(id: AssetId, spender: AccountId, amount: Balance) -> Result<()> {
 /// Returns `Ok(())` if successful, or an error if the operation fails.
 #[inline]
 pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, INCREASE_ALLOWANCE]))
+	build_dispatch(INCREASE_ALLOWANCE)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -191,7 +205,7 @@ pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// Returns `Ok(())` if successful, or an error if the operation fails.
 #[inline]
 pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-	ChainExtensionMethod::build(u32::from_le_bytes([V0, DISPATCH, FUNGIBLES, DECREASE_ALLOWANCE]))
+	build_dispatch(DECREASE_ALLOWANCE)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -209,7 +223,7 @@ pub mod metadata {
 	/// The name of the token as a byte vector, or an error if the operation fails.
 	#[inline]
 	pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
-		ChainExtensionMethod::build(u32::from_le_bytes([V0, READ_STATE, FUNGIBLES, TOKEN_NAME]))
+		build_read_state(TOKEN_NAME)
 			.input::<AssetId>()
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
@@ -225,7 +239,7 @@ pub mod metadata {
 	///  The symbol of the token as a byte vector, or an error if the operation fails.
 	#[inline]
 	pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
-		ChainExtensionMethod::build(u32::from_le_bytes([V0, READ_STATE, FUNGIBLES, TOKEN_SYMBOL]))
+		build_read_state(TOKEN_SYMBOL)
 			.input::<AssetId>()
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
@@ -241,7 +255,7 @@ pub mod metadata {
 	///  The number of decimals of the token as a byte vector, or an error if the operation fails.
 	#[inline]
 	pub fn token_decimals(id: AssetId) -> Result<u8> {
-		ChainExtensionMethod::build(u32::from_le_bytes([V0, READ_STATE, FUNGIBLES, TOKEN_DECIMALS]))
+		build_read_state(TOKEN_DECIMALS)
 			.input::<AssetId>()
 			.output::<Result<u8>, true>()
 			.handle_error_code::<StatusCode>()

@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use constants::DECODING_FAILED;
-use ink::env::chain_extension::FromStatusCode;
+use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 #[cfg(feature = "assets")]
 pub use v0::assets;
 
@@ -25,6 +25,22 @@ mod constants {
 	pub(crate) const ASSETS: u8 = 52;
 	pub(crate) const BALANCES: u8 = 10;
 	pub(crate) const FUNGIBLES: u8 = 150;
+}
+
+/// Helper method to build `ChainExtensionMethod`.
+///
+/// Parameters:
+/// - 'version': The version of the chain extension
+/// - 'function': The ID of the function
+/// - 'module': The index of the runtime module
+/// - 'dispatchable': The index of the module dispatchable functions
+fn build_extension_method(
+	version: u8,
+	function: u8,
+	module: u8,
+	dispatchable: u8,
+) -> ChainExtensionMethod<(), (), (), false> {
+	ChainExtensionMethod::build(u32::from_le_bytes([version, function, module, dispatchable]))
 }
 
 /// Represents a status code returned by the runtime.
