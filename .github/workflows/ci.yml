@@ -54,7 +54,7 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        run: cargo test --release --locked --verbose --all
+        run: cargo test --release --locked --verbose --workspace --features=runtime-benchmarks
 
       - name: Check try-runtime build
         run: cargo check --release --features=try-runtime
