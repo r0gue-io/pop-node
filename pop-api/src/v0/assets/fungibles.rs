@@ -1,7 +1,7 @@
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec, scale::Decode};
 
 use crate::{
-	constants::{ASSETS, BALANCES, DECODING_FAILED, DISPATCH, FUNGIBLES, READ_STATE},
+	constants::{ASSETS, BALANCES, DECODING_FAILED, FUNGIBLES},
 	primitives::{AccountId, AssetId, Balance},
 	v0::V0,
 	Result, StatusCode,
