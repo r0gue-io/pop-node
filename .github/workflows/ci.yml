@@ -25,7 +25,7 @@ jobs:
 
       - name: Check Build
         run: |
-          cargo check --release --locked --features=runtime-benchmarks
+          cargo check --release --locked --features=runtime-benchmarks,try-runtime
 
   clippy:
     needs: lint
@@ -55,9 +55,6 @@ jobs:
 
       - name: Run tests
         run: cargo test --release --locked --verbose --workspace --features=runtime-benchmarks
-
-      - name: Check try-runtime build
-        run: cargo check --release --features=try-runtime
 
   coverage:
     needs: lint
