@@ -73,6 +73,8 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
+pub(crate) use pallet_api::fungibles;
+
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -247,14 +249,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 					| force_unreserve { .. }
 			)
 		)
-	}
-}
-
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	fn contains(_c: &RuntimeCall) -> bool {
-		false
 	}
 }
 
@@ -588,6 +582,9 @@ construct_runtime!(
 		Nfts: pallet_nfts = 50,
 		NftFractionalization: pallet_nft_fractionalization = 51,
 		Assets: pallet_assets::<Instance1> = 52,
+
+		// Pop API
+		Fungibles: fungibles = 150,
 	}
 );
 
@@ -595,6 +592,7 @@ construct_runtime!(
 mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[frame_system, SystemBench::<Runtime>]
+		[pallet_api::fungibles, Fungibles]
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
@@ -954,4 +952,23 @@ impl_runtime_apis! {
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::Runtime;
+	use std::any::TypeId;
+
+	// Ensures that the account id lookup does not perform any state reads. When this changes,
+	// `pallet_api::fungibles` dispatchables need to be re-evaluated.
+	#[test]
+	fn test_lookup_config() {
+		type ExpectedLookup = sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>;
+		type ConfigLookup = <Runtime as frame_system::Config>::Lookup;
+
+		let expected_type_id = TypeId::of::<ExpectedLookup>();
+		let config_type_id = TypeId::of::<ConfigLookup>();
+
+		assert_eq!(config_type_id, expected_type_id);
+	}
 }

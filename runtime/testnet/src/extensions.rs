@@ -6,7 +6,6 @@ use frame_support::{
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
-use pop_primitives::storage_keys::RuntimeStateKeys;
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
@@ -181,12 +180,9 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
 
-	let key: RuntimeStateKeys = env.read_as()?;
-
-	let result = match key {
-		_ => Vec::<u8>::default(),
-	}
-	.encode();
+	// TODO: always returning an empty vec. Chainextension will be refactored into one for both
+	//  runtimes before pop api implementation gets merged into main.
+	let result = Vec::<u8>::default().encode();
 
 	log::trace!(
 		target:LOG_TARGET,
