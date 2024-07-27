@@ -1,0 +1,27 @@
+name: Initialize
+description: This action initializes a runner for use in other actions.
+inputs:
+  cache-key:
+    description: "The key to be used for the cache"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Ubuntu dependencies
+      shell: bash
+      run: sudo apt update && sudo apt install -y protobuf-compiler
+
+    - name: Free up space on runner
+      shell: bash
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+    - name: Rust Cache
+      uses: Swatinem/rust-cache@v2.7.3
+      with:
+        cache-on-failure: true
+        cache-all-crates: true
+        key: ${{ inputs.cache-key }}
