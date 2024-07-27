@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
+use ink::env::chain_extension::ChainExtensionMethod;
 
 use constants::DECODING_FAILED;
 use ink::env::chain_extension::FromStatusCode;
