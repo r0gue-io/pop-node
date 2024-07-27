@@ -47,7 +47,7 @@ subxt-signer = "0.34.0"
 tokio = { version = "1.36", features = ["macros", "time", "rt-multi-thread"] }
 
 # Build
-substrate-wasm-builder = "18.0.0"
+substrate-wasm-builder = "18.0.1"
 substrate-build-script-utils = "11.0.0"
 
 # Local
@@ -76,7 +76,7 @@ sc-transaction-pool-api = "29.0.0"
 frame-benchmarking = { version = "29.0.0", default-features = false }
 frame-benchmarking-cli = "33.0.0"
 frame-executive = { version = "29.0.0", default-features = false }
-frame-support = { version = "29.0.0", default-features = false }
+frame-support = { version = "29.0.2", default-features = false }
 frame-system = { version = "29.0.0", default-features = false }
 frame-system-benchmarking = { version = "29.0.0", default-features = false }
 frame-system-rpc-runtime-api = { version = "27.0.0", default-features = false }
@@ -84,7 +84,7 @@ frame-try-runtime = { version = "0.35.0", default-features = false }
 pallet-aura = { version = "28.0.0", default-features = false }
 pallet-authorship = { version = "29.0.0", default-features = false }
 pallet-assets = { version = "30.0.0", default-features = false }
-pallet-balances = { version = "29.0.0", default-features = false }
+pallet-balances = { version = "29.0.2", default-features = false }
 pallet-contracts = { version = "28.0.0", default-features = false }
 pallet-message-queue = { version = "32.0.0", default-features = false }
 pallet-multisig = { version = "29.0.0", default-features = false }
@@ -97,11 +97,11 @@ pallet-scheduler = { version = "30.0.0", default-features = false }
 pallet-session = { version = "29.0.0", default-features = false }
 pallet-sudo = { version = "29.0.0", default-features = false }
 pallet-timestamp = { version = "28.0.0", default-features = false }
-pallet-transaction-payment = { version = "29.0.0", default-features = false }
+pallet-transaction-payment = { version = "29.0.2", default-features = false }
 pallet-transaction-payment-rpc = "31.0.0"
 pallet-transaction-payment-rpc-runtime-api = { version = "29.0.0", default-features = false }
 pallet-utility = { version = "29.0.0", default-features = false }
-sp-api = { version = "27.0.0", default-features = false }
+sp-api = { version = "27.0.1", default-features = false }
 sp-authority-discovery = { version = "27.0.0", default-features = false }
 sp-block-builder = { version = "27.0.0", default-features = false }
 sp-blockchain = "29.0.0"
@@ -125,20 +125,20 @@ sp-transaction-pool = { version = "27.0.0", default-features = false }
 sp-version = { version = "30.0.0", default-features = false }
 
 # Polkadot
-pallet-xcm = { version = "=8.0.1", default-features = false }
+pallet-xcm = { version = "8.0.5", default-features = false }
 polkadot-cli = "8.0.0"
 polkadot-parachain-primitives = { version = "7.0.0", default-features = false }
-polkadot-runtime-parachains = { version = "8.0.1", default-features = false }
+polkadot-runtime-parachains = { version = "8.0.3", default-features = false }
 polkadot-primitives = { version = "8.0.1", default-features = false }
-polkadot-runtime-common = { version = "8.0.1", default-features = false }
+polkadot-runtime-common = { version = "8.0.3", default-features = false }
 rococo-runtime-constants = { version = "8.0.0", default-features = false }
-rococo-runtime = { version = "8.0.0", default-features = false }
+rococo-runtime = { version = "8.0.1", default-features = false }
 xcm = { package = "staging-xcm", version = "8.0.1", default-features = false }
-xcm-builder = { package = "staging-xcm-builder", version = "8.0.1", default-features = false }
-xcm-executor = { package = "staging-xcm-executor", version = "8.0.1", default-features = false }
+xcm-builder = { package = "staging-xcm-builder", version = "8.0.3", default-features = false }
+xcm-executor = { package = "staging-xcm-executor", version = "8.0.2", default-features = false }
 
 # Cumulus
-asset-hub-rococo-runtime = { version = "0.12.0", default-features = false }
+asset-hub-rococo-runtime = { version = "0.12.3", default-features = false }
 asset-test-utils = { version = "8.0.1", default-features = false }
 cumulus-pallet-aura-ext = { version = "0.8.0", default-features = false }
 cumulus-pallet-parachain-system = { version = "0.8.1", default-features = false, features = ["parameterized-consensus-hook"] }
@@ -149,8 +149,8 @@ cumulus-primitives-aura = { version = "0.8.0", default-features = false }
 cumulus-primitives-core = { version = "0.8.0", default-features = false }
 cumulus-primitives-utility = { version = "0.8.1", default-features = false }
 emulated-integration-tests-common = { version = "4.0.0", default-features = false }
-pallet-collator-selection = { version = "10.0.0", default-features = false }
-parachains-common = { version = "8.0.0", default-features = false }
+pallet-collator-selection = { version = "10.0.3", default-features = false }
+parachains-common = { version = "8.0.1", default-features = false }
 parachain-info = { package = "staging-parachain-info", version = "0.8.0", default-features = false }
 cumulus-primitives-parachain-inherent = "0.8.0"
 cumulus-relay-chain-interface = "0.8.0"
