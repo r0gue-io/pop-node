@@ -54,7 +54,7 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        run: cargo test --release --locked --verbose --workspace --features=runtime-benchmarks --exclude integration-tests
+        run: cargo test --release --locked --workspace --features=runtime-benchmarks --exclude integration-tests
 
   integration-tests:
     needs: lint
