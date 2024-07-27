@@ -9,66 +9,11 @@ use subxt_signer::sr25519::{dev, Keypair};
 
 use std::time::Duration;
 
-#[cfg(feature = "paseo")]
 mod paseo_interface;
-#[cfg(not(feature = "paseo"))]
-mod rococo_interface;
-
 mod pop_interface;
 
-const PARA_ID: u32 = 4385;
+const PARA_ID: u32 = 4001;
 
-#[cfg(not(feature = "paseo"))]
-mod relay {
-	use super::*;
-	pub(crate) use crate::rococo_interface::api as runtime;
-	pub(crate) type RuntimeCall = runtime::runtime_types::rococo_runtime::RuntimeCall;
-	pub(crate) const UNIT: u128 = 1_000_000_000_000;
-
-	use runtime::runtime_types::{
-		staging_xcm::v4::{
-			asset::Fungibility::Fungible,
-			asset::{Asset, AssetId, Assets},
-			junction::Junction,
-			junctions::Junctions,
-			junctions::Junctions::X1,
-			location::Location,
-		},
-		xcm::{v3::WeightLimit, VersionedAssets, VersionedLocation},
-	};
-
-	// generate XCM message to reserve transfer funds to a designated account on
-	// Pop Parachain
-	pub(crate) fn gen_account_fund_message_call(account: Keypair) -> RuntimeCall {
-		let pop_location = VersionedLocation::V4(Location {
-			parents: 0,
-			interior: X1([Junction::Parachain(PARA_ID)]),
-		});
-		let pop_beneficiary = VersionedLocation::V4(Location {
-			parents: 0,
-			interior: X1([Junction::AccountId32 { network: None, id: account.public_key().0 }]),
-		});
-		let amount = Fungible(AMOUNT_TO_FUND);
-		let assets = VersionedAssets::V4(Assets {
-			0: vec![Asset {
-				id: AssetId { 0: Location { parents: 0, interior: Junctions::Here } },
-				fun: amount,
-			}],
-		});
-
-		RuntimeCall::XcmPallet(
-			crate::relay::runtime::xcm_pallet::Call::limited_reserve_transfer_assets {
-				dest: Box::new(pop_location),
-				beneficiary: Box::new(pop_beneficiary),
-				assets: Box::new(assets),
-				fee_asset_item: 0,
-				weight_limit: WeightLimit::Unlimited,
-			},
-		)
-	}
-}
-
-#[cfg(feature = "paseo")]
 mod relay {
 	use super::*;
 	pub(crate) use crate::paseo_interface::api as runtime;
