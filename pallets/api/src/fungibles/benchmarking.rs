@@ -102,5 +102,29 @@ mod benchmarks {
 		Ok(())
 	}
 
+	#[benchmark]
+	fn decrease_allowance() -> Result<(), BenchmarkError> {
+		assert_has_event::<T>(
+			pallet_assets::Event::ApprovalCancelled {
+				asset_id: asset_id.clone(),
+				owner: owner.clone(),
+				delegate: spender.clone(),
+			}
+			.into(),
+		);
+
+		assert_has_event::<T>(
+			pallet_assets::Event::ApprovedTransfer {
+				asset_id,
+				source: owner,
+				delegate: spender,
+				amount,
+			}
+			.into(),
+		);
+
+		Ok(())
+	}
+
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
