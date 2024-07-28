@@ -1,4 +1,5 @@
-use crate::mock::*;
+use crate::{fungibles::Read::*, mock::*};
+use codec::Encode;
 use frame_support::{
 	assert_ok,
 	traits::fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
@@ -60,7 +61,7 @@ fn increase_allowance_works() {
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
-		assert_eq!(Assets::total_supply(ASSET), Fungibles::total_supply(ASSET));
+		assert_eq!(Assets::total_supply(ASSET).encode(), Fungibles::read_state(TotalSupply(ASSET)));
 	});
 }
 
@@ -68,7 +69,10 @@ fn total_supply_works() {
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
-		assert_eq!(Assets::balance(ASSET, ALICE), Fungibles::balance_of(ASSET, &ALICE));
+		assert_eq!(
+			Assets::balance(ASSET, ALICE).encode(),
+			Fungibles::read_state(BalanceOf { id: ASSET, owner: ALICE })
+		);
 	});
 }
 
@@ -77,8 +81,8 @@ fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		create_asset_mint_and_approve(ALICE, ASSET, BOB, 100, ALICE, 50);
 		assert_eq!(
-			Assets::allowance(ASSET, &ALICE, &BOB),
-			Fungibles::allowance(ASSET, &ALICE, &BOB)
+			Assets::allowance(ASSET, &ALICE, &BOB).encode(),
+			Fungibles::read_state(Allowance { id: ASSET, owner: ALICE, spender: BOB })
 		);
 	});
 }
@@ -90,9 +94,9 @@ fn token_metadata_works() {
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
 		create_asset_and_set_metadata(ALICE, ASSET, name.clone(), symbol.clone(), decimals);
-		assert_eq!(Assets::name(ASSET), Fungibles::token_name(ASSET));
-		assert_eq!(Assets::symbol(ASSET), Fungibles::token_symbol(ASSET));
-		assert_eq!(Assets::decimals(ASSET), Fungibles::token_decimals(ASSET));
+		assert_eq!(Assets::name(ASSET).encode(), Fungibles::read_state(TokenName(ASSET)));
+		assert_eq!(Assets::symbol(ASSET).encode(), Fungibles::read_state(TokenSymbol(ASSET)));
+		assert_eq!(Assets::decimals(ASSET).encode(), Fungibles::read_state(TokenDecimals(ASSET)));
 	});
 }
 
