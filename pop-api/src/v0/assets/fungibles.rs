@@ -1,12 +1,10 @@
-use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec, scale::Decode};
-
 use crate::{
-	constants::{ASSETS, BALANCES, DECODING_FAILED, DISPATCH, FUNGIBLES, READ_STATE},
+	constants::{ASSETS, BALANCES, FUNGIBLES},
 	primitives::{AccountId, AssetId, Balance},
-	v0::V0,
 	Result, StatusCode,
 };
 use constants::*;
+use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
 
 /// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`
@@ -78,10 +76,9 @@ mod constants {
 pub fn total_supply(id: AssetId) -> Result<Balance> {
 	build_read_state(TOTAL_SUPPLY)
 		.input::<AssetId>()
-		.output::<Result<Vec<u8>>, true>()
+		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(id))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 /// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
@@ -97,10 +94,9 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 	build_read_state(BALANCE_OF)
 		.input::<(AssetId, AccountId)>()
-		.output::<Result<Vec<u8>>, true>()
+		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(id, owner))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 /// Returns the amount which `spender` is still allowed to withdraw from `owner` for a given
@@ -117,10 +113,9 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
 	build_read_state(ALLOWANCE)
 		.input::<(AssetId, AccountId, AccountId)>()
-		.output::<Result<Vec<u8>>, true>()
+		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(id, owner, spender))
-		.and_then(|v| Balance::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 }
 
 /// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
@@ -233,7 +228,6 @@ pub mod metadata {
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(id))
-			.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 	}
 
 	/// Returns the token symbol for a given asset ID.
@@ -250,7 +244,6 @@ pub mod metadata {
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(id))
-			.and_then(|v| <Vec<u8>>::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 	}
 
 	/// Returns the token decimals for a given asset ID.
@@ -264,10 +257,9 @@ pub mod metadata {
 	pub fn token_decimals(id: AssetId) -> Result<u8> {
 		build_read_state(TOKEN_DECIMALS)
 			.input::<AssetId>()
-			.output::<Result<Vec<u8>>, true>()
+			.output::<Result<u8>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(id))
-			.and_then(|v| <u8>::decode(&mut &v[..]).map_err(|_e| StatusCode(DECODING_FAILED)))
 	}
 }
 
