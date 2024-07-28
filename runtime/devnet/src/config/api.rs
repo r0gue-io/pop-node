@@ -21,10 +21,11 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 		matches!(
 			c,
 			RuntimeCall::Fungibles(
-        transfer { .. } 
-        | transfer_from { .. } | approve { .. } 
-        | increase_allowance { .. } 
-        | decrease_allowance { .. })
+				transfer { .. }
+					| transfer_from { .. }
+					| approve { .. } | increase_allowance { .. }
+					| decrease_allowance { .. }
+			)
 		)
 	}
 }
