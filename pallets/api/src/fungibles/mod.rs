@@ -214,18 +214,25 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin.clone())
 				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
-			let mut current_allowance = AssetsOf::<T>::allowance(id.clone(), &who, &spender);
+			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
 
-			current_allowance.saturating_reduce(value);
+			if value == Zero::zero() {
+				return Ok(Some(Self::weight_approve(0, 0)).into());
+			}
 			// Cancel the aproval and set the new value if `current_allowance` is more than zero
 			AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 			if value.is_zero() {
 				return Ok(Some(Self::weight_approve(0, 1)).into());
 			}
-			AssetsOf::<T>::approve_transfer(origin, id, spender, current_allowance)?;
+			AssetsOf::<T>::approve_transfer(
+				origin,
+				id,
+				spender,
+				current_allowance.saturating_sub(value),
+			)?;
 			Ok(Some(Self::weight_approve(1, 1)).into())
 		}
 	}
