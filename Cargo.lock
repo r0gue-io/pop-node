@@ -10609,13 +10609,14 @@ dependencies = [
 
 [[package]]
 name = "rococo-runtime"
-version = "8.0.0"
+version = "8.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d089e93be2b8b76dd0d4b794a6a995ca3a1d6cb0ea3dd1cd42462f048bcfc926"
+checksum = "cfa4cc054efdd3bfbec965da01b1ae16475031308c109c173347717091f6e3a5"
 dependencies = [
  "binary-merkle-tree",
  "frame-benchmarking",
  "frame-executive",
+ "frame-metadata-hash-extension",
  "frame-support",
  "frame-system",
  "frame-system-benchmarking",
