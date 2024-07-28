@@ -70,7 +70,7 @@ fn decrease_allowance_works() {
 
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 
-		// Decrease allowance successfully
+		// Decrease allowance successfully.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount / 2 - 1 * UNIT));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2 + 1 * UNIT);
 
