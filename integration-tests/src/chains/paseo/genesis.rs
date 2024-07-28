@@ -2,7 +2,7 @@ use emulated_integration_tests_common::{
 	accounts, build_genesis_storage, get_account_id_from_seed, get_from_seed, get_host_config,
 	validators,
 };
-use paseo_runtime_constants::currency::UNITS as ROC;
+use paseo_runtime_constants::currency::UNITS as PAS;
 use polkadot_primitives::{AssignmentId, Balance, ValidatorId};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
@@ -11,7 +11,7 @@ use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::{sr25519, storage::Storage};
 
 pub(crate) const ED: Balance = paseo_runtime_constants::currency::EXISTENTIAL_DEPOSIT;
-const ENDOWMENT: u128 = 1_000_000 * ROC;
+const ENDOWMENT: u128 = 1_000_000 * PAS;
 
 fn session_keys(
 	babe: BabeId,
