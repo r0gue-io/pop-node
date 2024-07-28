@@ -557,7 +557,7 @@ fn decrease_allowance_works() {
 		);
 		thaw_asset(addr.clone(), asset);
 
-		// Successfully decrease allowance
+		// Successfully decrease allowance.
 		let bob_allowance_before = Assets::allowance(asset, &addr, &BOB);
 		let result = decrease_allowance(addr.clone(), 0, BOB, amount / 2 - 1 * UNIT);
 		assert!(!result.did_revert(), "Contract reverted!");
