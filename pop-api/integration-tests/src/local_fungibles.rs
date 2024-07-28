@@ -420,7 +420,6 @@ fn transfer_from_works() {
 			addr.clone().into(),
 			amount + 1 * UNIT,
 		));
-
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(ALICE, asset);
 		assert_eq!(
