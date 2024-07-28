@@ -546,7 +546,7 @@ fn decrease_allowance_works() {
 			Ok(Module { index: 52, error: 3 }),
 		);
 
-		// Create asset and mint to the address contract, delegate Bob to spend the `amount`.
+		// Create asset and mint to the address contract, delegate Bob to spend the `amount`
 		let asset =
 			create_asset_mint_and_approve(addr.clone(), 0, addr.clone(), amount, BOB, amount);
 		// Asset is not live, i.e. frozen or being destroyed.
@@ -556,14 +556,12 @@ fn decrease_allowance_works() {
 			Ok(Module { index: 52, error: 16 }),
 		);
 		thaw_asset(addr.clone(), asset);
-
-		// Successfully decrease allowance.
+		// Successfully decrease allowance
 		let bob_allowance_before = Assets::allowance(asset, &addr, &BOB);
 		let result = decrease_allowance(addr.clone(), 0, BOB, amount / 2 - 1 * UNIT);
 		assert!(!result.did_revert(), "Contract reverted!");
 		let bob_allowance_after = Assets::allowance(asset, &addr, &BOB);
 		assert_eq!(bob_allowance_before - bob_allowance_after, amount / 2 - 1 * UNIT);
-
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);
 		assert_eq!(
