@@ -219,7 +219,6 @@ pub mod pallet {
 			let id: AssetIdParameterOf<T> = id.into();
 
 			current_allowance.saturating_reduce(value);
-
 			// Cancel the aproval and set the new value if `current_allowance` is more than zero
 			AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
