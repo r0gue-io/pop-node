@@ -545,7 +545,6 @@ fn decrease_allowance_works() {
 			decoded::<Error>(decrease_allowance(addr.clone(), 0, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
-
 		// Create asset and mint to the address contract, delegate Bob to spend the `amount`
 		let asset =
 			create_asset_mint_and_approve(addr.clone(), 0, addr.clone(), amount, BOB, amount);
