@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use constants::DECODING_FAILED;
-use ink::env::chain_extension::FromStatusCode;
+use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 #[cfg(feature = "assets")]
 pub use v0::assets;
 
@@ -27,15 +27,31 @@ mod constants {
 	pub(crate) const FUNGIBLES: u8 = 150;
 }
 
+/// Helper method to build `ChainExtensionMethod`.
+///
+/// Parameters:
+/// - 'version': The version of the chain extension.
+/// - 'function': The ID of the function.
+/// - 'module': The index of the runtime module.
+/// - 'dispatchable': The index of the module dispatchable functions.
+fn build_extension_method(
+	version: u8,
+	function: u8,
+	module: u8,
+	dispatchable: u8,
+) -> ChainExtensionMethod<(), (), (), false> {
+	ChainExtensionMethod::build(u32::from_le_bytes([version, function, module, dispatchable]))
+}
+
 /// Represents a status code returned by the runtime.
 ///
-/// `StatusCode` encapsulates a `u32` value that indicates the status of an operation performed
-/// by the runtime. It helps to communicate the success or failure of a Pop API call to the contract,
+/// `StatusCode` encapsulates a `u32` value that indicates the status of an operation performed by
+/// the runtime. It helps to communicate the success or failure of a Pop API call to the contract,
 /// providing a standardized way to handle errors.
 ///
-/// This status code can be used to determine if an operation succeeded or if it encountered
-/// an error. A `StatusCode` of `0` typically indicates success, while any other value represents
-/// an error.
+/// This status code can be used to determine if an operation succeeded or if it encountered an
+/// error. A `StatusCode` of `0` typically indicates success, while any other value represents an
+/// error.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct StatusCode(pub u32);
