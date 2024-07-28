@@ -6,6 +6,7 @@ use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
 // Cumulus types re-export
 // These types are shared between the devnet and testnet runtimes
 pub use parachains_common::{AccountId, AuraId, Balance, Block, BlockNumber, Hash, Signature};
+pub use polkadot_primitives::MAX_POV_SIZE;
 
 /// Nonce for an account
 pub type Nonce = u32;
@@ -40,10 +41,8 @@ pub const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(5);
 pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
 /// We allow for 2 seconds of compute with a 6-second average block.
-pub const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
-	WEIGHT_REF_TIME_PER_SECOND.saturating_div(2),
-	polkadot_primitives::MAX_POV_SIZE as u64,
-);
+pub const MAXIMUM_BLOCK_WEIGHT: Weight =
+	Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_div(2), MAX_POV_SIZE as u64);
 
 // Unit = the base number of indivisible units for balances
 pub const UNIT: Balance = 10_000_000_000; // 10 decimals
