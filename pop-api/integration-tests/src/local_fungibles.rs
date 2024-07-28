@@ -546,7 +546,7 @@ fn decrease_allowance_works() {
 			Ok(Module { index: 52, error: 3 }),
 		);
 
-		// Create asset and mint to the address contract, delegate Bob to spend the `amount`
+		// Create asset and mint to the address contract, delegate Bob to spend the `amount`.
 		let asset =
 			create_asset_mint_and_approve(addr.clone(), 0, addr.clone(), amount, BOB, amount);
 		// Asset is not live, i.e. frozen or being destroyed.
