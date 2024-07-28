@@ -238,61 +238,33 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Returns the total token supply for a given asset ID.
+		/// Reads fungible asset state based on the provided value.
 		///
-		/// # Parameters
-		/// * `id` - The ID of the asset.
-		pub fn total_supply(id: AssetIdOf<T>) -> BalanceOf<T> {
-			AssetsOf::<T>::total_supply(id)
-		}
+		/// This function matches the value to determine the type of state query and returns the
+		/// encoded result.
+		///
+		/// # Parameter
+		/// * `value` - An instance of `Read<T>`, which specifies the type of state query and
+		/// 		  the associated parameters.
+		pub fn read_state(value: Read<T>) -> Vec<u8> {
+			use Read::*;
 
-		/// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
-		/// the account is non-existent.
-		///
-		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `owner` - The account whose balance is being queried.
-		pub fn balance_of(id: AssetIdOf<T>, owner: &AccountIdOf<T>) -> BalanceOf<T> {
-			AssetsOf::<T>::balance(id, owner)
-		}
-
-		/// Returns the amount which `spender` is still allowed to withdraw from `owner` for a given
-		/// asset ID. Returns `0` if no allowance has been set.
-		///
-		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `owner` - The account that owns the tokens.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		pub fn allowance(
-			id: AssetIdOf<T>,
-			owner: &AccountIdOf<T>,
-			spender: &AccountIdOf<T>,
-		) -> BalanceOf<T> {
-			AssetsOf::<T>::allowance(id, owner, spender)
-		}
-
-		/// Returns the token name for a given asset ID.
-		///
-		/// # Parameters
-		/// * `id` - The ID of the asset.
-		pub fn token_name(id: AssetIdOf<T>) -> Vec<u8> {
-			<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(id)
-		}
-
-		/// Returns the token symbol for a given asset ID.
-		///
-		/// # Parameters
-		/// * `id` - The ID of the asset.
-		pub fn token_symbol(id: AssetIdOf<T>) -> Vec<u8> {
-			<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(id)
-		}
-
-		/// Returns the token decimals for a given asset ID.
-		///
-		/// # Parameters
-		/// * `id` - The ID of the asset.
-		pub fn token_decimals(id: AssetIdOf<T>) -> u8 {
-			<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id)
+			match value {
+				TotalSupply(id) => AssetsOf::<T>::total_supply(id).encode(),
+				BalanceOf { id, owner } => AssetsOf::<T>::balance(id, owner).encode(),
+				Allowance { id, owner, spender } => {
+					AssetsOf::<T>::allowance(id, &owner, &spender).encode()
+				},
+				TokenName(id) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(id).encode()
+				},
+				TokenSymbol(id) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(id).encode()
+				},
+				TokenDecimals(id) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
+				},
+			}
 		}
 
 		pub fn weight_approve(approve: u32, cancel: u32) -> Weight {

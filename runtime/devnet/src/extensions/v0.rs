@@ -76,7 +76,7 @@ mod tests {
 				DispatchError::Other(""),
 				(Other { dispatch_error_index: 0, error_index: 0, error: 0 }),
 			),
-			(DispatchError::Other("UnknownFunctionId"), UnknownCall),
+			(DispatchError::Other("UnknownCall"), UnknownCall),
 			(DispatchError::Other("DecodingFailed"), DecodingFailed),
 			(DispatchError::CannotLookup, CannotLookup),
 			(DispatchError::BadOrigin, BadOrigin),
@@ -120,7 +120,7 @@ mod tests {
 				DispatchError::Other("Random"),
 				(Other { dispatch_error_index: 0, error_index: 0, error: 0 }),
 			),
-			(DispatchError::Other("UnknownFunctionId"), UnknownCall),
+			(DispatchError::Other("UnknownCall"), UnknownCall),
 			(DispatchError::Other("DecodingFailed"), DecodingFailed),
 		];
 		for (dispatch_error, expected) in test_cases {
