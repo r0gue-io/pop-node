@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    types: [ opened, synchronize, reopened, ready_for_review ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   lint:
@@ -45,8 +45,39 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           args: --release --locked --features=runtime-benchmarks
 
+  format:
+    needs: check
+    timeout-minutes: 20
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Setup worker
+        uses: "./.github/templates/setup-worker"
+
+      - name: Cache Build artefacts
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-debug-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-debug
+
+      - name: Format check packages
+        run: cargo +nightly fmt --all -- --check
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "style: apply formatting changes"
+          branch: ${{ github.head_ref }}
+
   test:
-    needs: lint
+    needs: [lint, format]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
