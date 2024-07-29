@@ -1,8 +1,5 @@
 name: pop release
 
-env:
-  SUBWASM_VERSION: 0.18.0
-
 on:
   release:
     types: [ published ]
@@ -13,103 +10,6 @@ on:
         required: false
 
 jobs:
-  srtool:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    strategy:
-      matrix:
-        runtime: [ "pop-runtime-devnet", "pop-runtime-testnet" ]
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v4
-
-      - name: Cache runtime target dir
-        uses: actions/cache@v4
-        with:
-          path: "${{ github.workspace }}/runtime/${{ matrix.runtime }}/target"
-          key: srtool-target-${{ matrix.runtime }}-${{ github.sha }}
-          restore-keys: |
-            srtool-target-${{ matrix.runtime }}-
-            srtool-target-
-
-      - name: Build ${{ matrix.runtime }} runtime
-        id: srtool_build
-        uses: chevdor/srtool-actions@v0.9.2
-        env:
-          BUILD_OPTS: "--features on-chain-release-build"
-        with:
-          chain: ${{ matrix.runtime }}
-
-      - name: Store srtool digest to disk
-        run: |
-          echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ matrix.runtime }}-srtool-digest.json
-
-      # Manual trigger: add artifacts to run
-      - name: Copy artifacts
-        if: github.event_name != 'release'
-        run: cp `dirname ${{ steps.srtool_build.outputs.wasm }}`/*.wasm ./
-
-      - name: Archive Runtime
-        if: github.event_name != 'release'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.runtime }}-runtime-${{ github.sha }}
-          path: |
-            ${{ matrix.chain }}*.wasm
-            ${{ matrix.runtime }}-srtool-digest.json
-
-      # We now get extra information thanks to subwasm,
-      - name: Install subwasm ${{ env.SUBWASM_VERSION }}
-        run: |
-          wget https://github.com/chevdor/subwasm/releases/download/v${{ env.SUBWASM_VERSION }}/subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
-          sudo dpkg -i subwasm_linux_amd64_v${{ env.SUBWASM_VERSION }}.deb
-          subwasm --version
-
-      - name: Show Runtime information
-        run: |
-          subwasm info ${{ steps.srtool_build.outputs.wasm }}
-          subwasm info ${{ steps.srtool_build.outputs.wasm_compressed }}
-          subwasm --json info ${{ steps.srtool_build.outputs.wasm }} > ${{ matrix.runtime }}-info.json
-          subwasm --json info ${{ steps.srtool_build.outputs.wasm_compressed }} > ${{ matrix.runtime }}-info_compressed.json
-
-      - name: Extract the metadata
-        run: |
-          subwasm meta ${{ steps.srtool_build.outputs.wasm }}
-          subwasm --json meta ${{ steps.srtool_build.outputs.wasm }} > ${{ matrix.runtime }}-metadata.json
-
-      - name: Archive Subwasm results
-        if: github.event_name != 'release'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.runtime }}-info
-          path: |
-            ${{ matrix.runtime }}-info.json
-            ${{ matrix.runtime }}-info_compressed.json
-            ${{ matrix.runtime }}-metadata.json
-            ${{ matrix.runtime }}-diff.txt
-
-      # Release published: add artifacts to release
-      - name: Add artifacts to release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v1
-        with:
-          append_body: true
-          body: |
-            ## Runtime: `${{ matrix.runtime }}`
-            ```
-            🏋️ Runtime Size:           ${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.size }} bytes
-            🔥 Core Version:           ${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.core_version.specName }}-${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.core_version.specVersion }}
-            🎁 Metadata version:       V${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.metadata_version }}
-            🗳️ system.setCode hash:    ${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.proposal_hash }}
-            🗳️ authorizeUpgrade hash:  ${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.parachain_authorize_upgrade_hash }}
-            🗳️ Blake2-256 hash:        ${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.blake2_256 }}
-            📦 IPFS:                   ${{ fromJSON(steps.srtool_build.outputs.json).runtimes.compressed.subwasm.ipfs_hash }}
-            ```
-          files: |
-            ${{ steps.srtool_build.outputs.wasm_compressed }}
-            ${{ matrix.runtime }}-srtool-digest.json
-
   build-node:
     runs-on: ${{ matrix.platform.os }}
     permissions:
