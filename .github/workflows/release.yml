@@ -35,7 +35,7 @@ jobs:
         env:
           BUILD_OPTS: "--features on-chain-release-build -p pop-runtime-${{ matrix.runtime }}"
         with:
-          chain: ${{ matrix.runtime }}
+          chain: "pop-runtime-${{ matrix.runtime }}"
           path: "runtime/${{ matrix.runtime }}"
 
       - name: Store srtool digest to disk
