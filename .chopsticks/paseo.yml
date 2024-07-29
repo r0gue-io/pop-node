@@ -1,0 +1,3 @@
+endpoint: wss://rpc.ibp.network/paseo
+mock-signature-host: true
+db: ./db.sqlite
