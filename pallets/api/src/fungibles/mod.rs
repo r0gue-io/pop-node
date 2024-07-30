@@ -231,7 +231,7 @@ pub mod pallet {
 				return Ok(Some(Self::weight_approve(0, 1)).into());
 			}
 			AssetsOf::<T>::approve_transfer(origin, id, spender, current_allowance)?;
-			Ok(Some(Self::weight_approve(1, 1)).into())
+			Ok(().into())
 		}
 	}
 
