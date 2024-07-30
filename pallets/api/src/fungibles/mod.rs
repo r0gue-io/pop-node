@@ -213,7 +213,7 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
+				.map_err(|e| e.with_weight(Self::weight_approve))?;
 			let mut current_allowance = AssetsOf::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
