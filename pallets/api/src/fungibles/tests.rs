@@ -2,7 +2,9 @@ use crate::{fungibles::Read::*, mock::*};
 use codec::Encode;
 use frame_support::{
 	assert_ok,
-	traits::fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
+	traits::fungibles::{
+		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
+	},
 };
 
 const ASSET: u32 = 42;
@@ -54,6 +56,35 @@ fn increase_allowance_works() {
 		// Additive.
 		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
+	});
+}
+
+#[test]
+fn create_works() {
+	new_test_ext().execute_with(|| {
+		assert!(!Assets::asset_exists(ASSET));
+		assert_ok!(Fungibles::create(signed(ALICE), ASSET, ALICE, 100));
+		assert!(Assets::asset_exists(ASSET));
+	});
+}
+
+#[test]
+fn set_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let name = vec![42];
+		let symbol = vec![42];
+		let decimals = 42;
+		create_asset(ALICE, ASSET, 100);
+		assert_ok!(Fungibles::set_metadata(
+			signed(ALICE),
+			ASSET,
+			name.clone(),
+			symbol.clone(),
+			decimals
+		));
+		assert_eq!(Assets::name(ASSET), name);
+		assert_eq!(Assets::symbol(ASSET), symbol);
+		assert_eq!(Assets::decimals(ASSET), decimals);
 	});
 }
 

@@ -109,29 +109,31 @@ fn increase_allowance(
 // 	decoded::<bool>(result)
 // }
 //
-// fn create(
-// 	addr: AccountId32,
-// 	asset_id: AssetId,
-// 	admin: AccountId32,
-// 	min_balance: Balance,
-// ) -> ExecReturnValue {
-// 	let function = function_selector("create");
-// 	let params = [function, asset_id.encode(), admin.encode(), min_balance.encode()].concat();
-// 	bare_call(addr, params, 0).expect("should work")
-// }
-//
-// fn set_metadata(
-// 	addr: AccountId32,
-// 	asset_id: AssetId,
-// 	name: Vec<u8>,
-// 	symbol: Vec<u8>,
-// 	decimals: u8,
-// ) -> ExecReturnValue {
-// 	let function = function_selector("set_metadata");
-// 	let params =
-// 		[function, asset_id.encode(), name.encode(), symbol.encode(), decimals.encode()].concat();
-// 	bare_call(addr, params, 0).expect("should work")
-// }
+fn create(
+	addr: AccountId32,
+	asset_id: AssetId,
+	admin: AccountId32,
+	min_balance: Balance,
+) -> ExecReturnValue {
+	let function = function_selector("create");
+	let params = [function, asset_id.encode(), admin.encode(), min_balance.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
+fn set_metadata(
+	addr: AccountId32,
+	asset_id: AssetId,
+	name: Vec<u8>,
+	symbol: Vec<u8>,
+	decimals: u8,
+) -> ExecReturnValue {
+	let function = function_selector("set_metadata");
+	let params =
+		[function, asset_id.encode(), name.encode(), symbol.encode(), decimals.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
 
 fn create_asset(owner: AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
 	assert_ok!(Assets::create(
@@ -496,6 +498,108 @@ fn token_metadata_works() {
 	});
 }
 
+/// 3. Asset Management:
+/// - create
+/// - start_destroy
+/// - destroy_accounts
+/// - destroy_approvals
+/// - finish_destroy
+/// - set_metadata
+
+#[test]
+fn create_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		// Instantiate a contract without balance for fees.
+		let addr = instantiate(CONTRACT, 0, vec![0]);
+		// No balance to pay for fees.
+		assert_eq!(
+			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
+			Ok(Module { index: 10, error: 2 }),
+		);
+		// Instantiate a contract without balance for deposit.
+		let addr = instantiate(CONTRACT, 100, vec![1]);
+		// No balance to pay the deposit.
+		assert_eq!(
+			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
+			Ok(Module { index: 10, error: 2 }),
+		);
+		// Instantiate a contract with enough balance.
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		assert_eq!(
+			decoded::<Error>(create(addr.clone(), ASSET_ID, BOB, 0)),
+			Ok(Module { index: 52, error: 7 }),
+		);
+		// The minimal balance for an asset must be non zero.
+		assert_eq!(
+			decoded::<Error>(create(addr.clone(), ASSET_ID, BOB, 0)),
+			Ok(Module { index: 52, error: 7 }),
+		);
+		// Create asset successfully.
+		let result = create(addr.clone(), ASSET_ID, BOB, 1);
+		assert!(!result.did_revert(), "Contract reverted!");
+		// Asset ID is already taken.
+		assert_eq!(
+			decoded::<Error>(create(addr.clone(), ASSET_ID, BOB, 1)),
+			Ok(Module { index: 52, error: 5 }),
+		);
+	});
+}
+
+#[test]
+fn set_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let name = vec![42];
+		let symbol = vec![42];
+		let decimals = 42u8;
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], 0u8)),
+			Ok(Module { index: 52, error: 3 }),
+		);
+		// Create assets where contract is not the owner.
+		let asset = create_asset(ALICE, 0, 1);
+		// No Permission.
+		assert_eq!(
+			decoded::<Error>(set_metadata(addr.clone(), asset, vec![0], vec![0], 0u8)),
+			Ok(Module { index: 52, error: 2 }),
+		);
+		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(addr.clone(), asset);
+		assert_eq!(
+			decoded::<Error>(set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], 0u8)),
+			Ok(Module { index: 52, error: 16 }),
+		);
+		thaw_asset(addr.clone(), asset);
+		// TODO: calling the below with a vector of length `100_000` errors in pallet contracts
+		//  `OutputBufferTooSmall. Added to security analysis issue #131 to revisit.
+		// Set bad metadata - too large values.
+		assert_eq!(
+			decoded::<Error>(set_metadata(
+				addr.clone(),
+				ASSET_ID,
+				vec![0; 1000],
+				vec![0; 1000],
+				0u8
+			)),
+			Ok(Module { index: 52, error: 9 }),
+		);
+		// Set metadata successfully.
+		let result = set_metadata(addr.clone(), ASSET_ID, name, symbol, decimals);
+		assert!(!result.did_revert(), "Contract reverted!");
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(addr.clone(), asset);
+		assert_eq!(
+			decoded::<Error>(set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], decimals)),
+			Ok(Module { index: 52, error: 16 }),
+		);
+	});
+}
+
 // #[test]
 // #[ignore]
 // fn asset_exists_works() {
@@ -570,58 +674,5 @@ fn token_metadata_works() {
 // 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
 // 			Ok(Module { index: 52, error: 16 }),
 // 		);
-// 	});
-// }
-
-// #[test]
-// #[ignore]
-// fn create_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let _ = env_logger::try_init();
-// 		// Instantiate a contract without balance (relay token).
-// 		let addr = instantiate(CONTRACT, 0, vec![0]);
-// 		// No balance to pay for fees.
-// 		assert_eq!(
-// 			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
-// 			Ok(Module { index: 10, error: 2 }),
-// 		);
-// 		// Instantiate a contract without balance (relay token).
-// 		let addr = instantiate(CONTRACT, 100, vec![2]);
-// 		// No balance to pay the deposit.
-// 		assert_eq!(
-// 			decoded::<Error>(create(addr.clone(), ASSET_ID, addr.clone(), 1)),
-// 			Ok(Module { index: 10, error: 2 }),
-// 		);
-// 		// Instantiate a contract with balance.
-// 		let addr =
-// 			instantiate(CONTRACT, INIT_VALUE, vec![1]);
-// 		assert_eq!(
-// 			decoded::<Error>(create(addr.clone(), ASSET_ID, BOB, 0)),
-// 			Ok(Module { index: 52, error: 7 }),
-// 		);
-// 		create_asset(ALICE, ASSET_ID, 1);
-// 		// Asset ID is already taken.
-// 		assert_eq!(
-// 			decoded::<Error>(create(addr.clone(), ASSET_ID, BOB, 1)),
-// 			Ok(Module { index: 52, error: 5 }),
-// 		);
-// 		// The minimal balance for an asset must be non zero.
-// 		let new_asset = 2;
-// 		let result = create(addr.clone(), new_asset, BOB, 1);
-// 		assert!(!result.did_revert(), "Contract reverted!");
-// 	});
-// }
-
-// #[test]
-// #[ignore]
-// fn set_metadata_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let _ = env_logger::try_init();
-// 		let addr =
-// 			instantiate(CONTRACT, INIT_VALUE, vec![]);
-//
-// 		create_asset(addr.clone(), ASSET_ID, 1);
-// 		let result = set_metadata(addr.clone(), ASSET_ID, vec![12], vec![12], 12);
-// 		assert!(!result.did_revert(), "Contract reverted!");
 // 	});
 // }

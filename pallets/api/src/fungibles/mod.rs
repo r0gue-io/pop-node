@@ -177,6 +177,43 @@ pub mod pallet {
 			let spender = T::Lookup::unlookup(spender);
 			AssetsOf::<T>::approve_transfer(origin, id.into(), spender, value)
 		}
+
+		/// Create a new token with a given asset ID.
+		///
+		/// # Arguments
+		/// * `id` - The ID of the asset.
+		/// * `admin` - The account that will administer the asset.
+		/// * `min_balance` - The minimum balance required for accounts holding this asset.
+		#[pallet::call_index(11)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::create())]
+		pub fn create(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			admin: AccountIdOf<T>,
+			min_balance: BalanceOf<T>,
+		) -> DispatchResult {
+			let admin = T::Lookup::unlookup(admin);
+			AssetsOf::<T>::create(origin, id.into(), admin, min_balance)
+		}
+
+		/// Set the metadata for a token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id`: The identifier of the asset to update.
+		/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
+		/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
+		/// - `decimals`: The number of decimals this asset uses to represent one unit.
+		#[pallet::call_index(16)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::set_metadata(name.len() as u32, symbol.len() as u32))]
+		pub fn set_metadata(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			name: Vec<u8>,
+			symbol: Vec<u8>,
+			decimals: u8,
+		) -> DispatchResult {
+			AssetsOf::<T>::set_metadata(origin, id.into(), name, symbol, decimals)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
