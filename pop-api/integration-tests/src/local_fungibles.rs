@@ -537,7 +537,7 @@ fn increase_allowance_works() {
 fn decrease_allowance_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
-		let addr = instantiate("contracts/fungibles/target/ink/fungibles.wasm", INIT_VALUE, vec![]);
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 		// Asset does not exist.
 		assert_eq!(
