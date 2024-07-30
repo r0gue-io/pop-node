@@ -279,7 +279,7 @@ pub mod asset_management {
 	///
 	/// # Returns
 	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	fn start_destroy(id: AssetId) -> Result<()> {
+	pub fn start_destroy(id: AssetId) -> Result<()> {
 		build_dispatch(START_DESTROY)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
@@ -294,7 +294,7 @@ pub mod asset_management {
 	///
 	/// # Returns
 	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	fn destroy_accounts(id: AssetId) -> Result<()> {
+	pub fn destroy_accounts(id: AssetId) -> Result<()> {
 		build_dispatch(DESTROY_ACCOUNTS)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
@@ -309,7 +309,7 @@ pub mod asset_management {
 	///
 	/// # Returns
 	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	fn destroy_approvals(id: AssetId) -> Result<()> {
+	pub fn destroy_approvals(id: AssetId) -> Result<()> {
 		build_dispatch(DESTROY_APPROVALS)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
@@ -324,7 +324,7 @@ pub mod asset_management {
 	///
 	/// # Returns
 	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	fn finish_destroy(id: AssetId) -> Result<()> {
+	pub fn finish_destroy(id: AssetId) -> Result<()> {
 		build_dispatch(FINISH_DESTROY)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
@@ -357,7 +357,7 @@ pub mod asset_management {
 	///
 	/// # Returns
 	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	fn clear_metadata(id: AssetId) -> Result<()> {
+	pub fn clear_metadata(id: AssetId) -> Result<()> {
 		build_dispatch(CLEAR_METADATA)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()

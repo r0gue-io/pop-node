@@ -69,6 +69,17 @@ fn create_works() {
 }
 
 #[test]
+fn destroy_asset_works() {
+	new_test_ext().execute_with(|| {
+		create_asset(ALICE, ASSET, 100);
+		assert_ok!(Fungibles::start_destroy(signed(ALICE), ASSET));
+		assert_ok!(Fungibles::destroy_accounts(signed(ALICE), ASSET));
+		assert_ok!(Fungibles::destroy_approvals(signed(ALICE), ASSET));
+		assert_ok!(Fungibles::finish_destroy(signed(ALICE), ASSET));
+	});
+}
+
+#[test]
 fn set_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let name = vec![42];
@@ -85,6 +96,20 @@ fn set_metadata_works() {
 		assert_eq!(Assets::name(ASSET), name);
 		assert_eq!(Assets::symbol(ASSET), symbol);
 		assert_eq!(Assets::decimals(ASSET), decimals);
+	});
+}
+
+#[test]
+fn clear_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let name = vec![42];
+		let symbol = vec![42];
+		let decimals = 42;
+		create_asset_and_set_metadata(ALICE, ASSET, name, symbol, decimals);
+		assert_ok!(Fungibles::clear_metadata(signed(ALICE), ASSET));
+		assert_eq!(Assets::name(ASSET), Vec::<u8>::new());
+		assert_eq!(Assets::symbol(ASSET), Vec::<u8>::new());
+		assert_eq!(Assets::decimals(ASSET), 0u8);
 	});
 }
 

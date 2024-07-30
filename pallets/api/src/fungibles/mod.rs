@@ -21,6 +21,7 @@ type AssetIdParameterOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::
 type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
+type RemoveItemsLimitOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::RemoveItemsLimit;
 type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
@@ -196,12 +197,64 @@ pub mod pallet {
 			AssetsOf::<T>::create(origin, id.into(), admin, min_balance)
 		}
 
+		/// Create a new token with a given asset ID.
+		///
+		/// # Arguments
+		/// * `id` - The ID of the asset.
+		/// * `admin` - The account that will administer the asset.
+		/// * `min_balance` - The minimum balance required for accounts holding this asset.
+		#[pallet::call_index(12)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
+		pub fn start_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
+			AssetsOf::<T>::start_destroy(origin, id.into())
+		}
+
+		/// Destroy all accounts associated with a token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		// TODO: weight function
+		#[pallet::call_index(13)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::destroy_accounts(RemoveItemsLimitOf::<T>::get() / 6))]
+		pub fn destroy_accounts(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+		) -> DispatchResultWithPostInfo {
+			AssetsOf::<T>::destroy_accounts(origin, id.into())
+		}
+
+		/// Destroy all approvals associated with a token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		// TODO: weight function
+		#[pallet::call_index(14)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::destroy_approvals(RemoveItemsLimitOf::<T>::get() / 4))]
+		pub fn destroy_approvals(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+		) -> DispatchResultWithPostInfo {
+			AssetsOf::<T>::destroy_approvals(origin, id.into())
+		}
+
+		/// Complete the process of destroying a token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		#[pallet::call_index(15)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::finish_destroy())]
+		pub fn finish_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
+			AssetsOf::<T>::finish_destroy(origin, id.into())
+		}
+
 		/// Set the metadata for a token with a given asset ID.
 		///
 		/// # Parameters
 		/// - `id`: The identifier of the asset to update.
-		/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
-		/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
+		/// - `name`: The user friendly name of this asset. Limited in length by
+		///   `pallet_assets::Config::StringLimit`.
+		/// - `symbol`: The exchange symbol for this asset. Limited in length by
+		///   `pallet_assets::Config::StringLimit`.
 		/// - `decimals`: The number of decimals this asset uses to represent one unit.
 		#[pallet::call_index(16)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::set_metadata(name.len() as u32, symbol.len() as u32))]
@@ -213,6 +266,12 @@ pub mod pallet {
 			decimals: u8,
 		) -> DispatchResult {
 			AssetsOf::<T>::set_metadata(origin, id.into(), name, symbol, decimals)
+		}
+
+		#[pallet::call_index(17)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::clear_metadata())]
+		pub fn clear_metadata(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
+			AssetsOf::<T>::clear_metadata(origin, id.into())
 		}
 	}
 

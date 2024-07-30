@@ -121,6 +121,34 @@ fn create(
 	result
 }
 
+fn start_destroy(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
+	let function = function_selector("start_destroy");
+	let params = [function, asset_id.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
+fn destroy_accounts(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
+	let function = function_selector("destroy_accounts");
+	let params = [function, asset_id.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
+fn destroy_approvals(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
+	let function = function_selector("destroy_approvals");
+	let params = [function, asset_id.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
+fn finish_destroy(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
+	let function = function_selector("finish_destroy");
+	let params = [function, asset_id.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
 fn set_metadata(
 	addr: AccountId32,
 	asset_id: AssetId,
@@ -131,6 +159,13 @@ fn set_metadata(
 	let function = function_selector("set_metadata");
 	let params =
 		[function, asset_id.encode(), name.encode(), symbol.encode(), decimals.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	result
+}
+
+fn clear_metadata(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
+	let function = function_selector("clear_metadata");
+	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
 	result
 }
@@ -205,7 +240,7 @@ fn create_asset_and_set_metadata(
 	name: Vec<u8>,
 	symbol: Vec<u8>,
 	decimals: u8,
-) {
+) -> AssetId {
 	assert_ok!(Assets::create(
 		RuntimeOrigin::signed(owner.clone()),
 		asset_id.into(),
@@ -213,6 +248,7 @@ fn create_asset_and_set_metadata(
 		100
 	));
 	set_metadata_asset(owner, asset_id, name, symbol, decimals);
+	asset_id
 }
 
 // Set metadata of an asset.
@@ -547,6 +583,95 @@ fn create_works() {
 }
 
 #[test]
+fn start_destroy_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(start_destroy(addr.clone(), ASSET_ID)),
+			Ok(Module { index: 52, error: 3 }),
+		);
+		// Create assets where contract is not the owner.
+		let asset = create_asset(ALICE, 0, 1);
+		// No Permission.
+		assert_eq!(
+			decoded::<Error>(start_destroy(addr.clone(), asset)),
+			Ok(Module { index: 52, error: 2 }),
+		);
+		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		let result = start_destroy(addr.clone(), asset);
+		assert!(!result.did_revert(), "Contract reverted!");
+	});
+}
+
+#[test]
+fn destroy_accounts_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(destroy_accounts(addr.clone(), ASSET_ID)),
+			Ok(Module { index: 52, error: 3 }),
+		);
+		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		// The destroy process hasn't been started.
+		assert_eq!(
+			decoded::<Error>(destroy_accounts(addr.clone(), asset)),
+			Ok(Module { index: 52, error: 17 }),
+		);
+		start_destroy_asset(addr.clone(), asset);
+		let result = destroy_accounts(addr.clone(), asset);
+		assert!(!result.did_revert(), "Contract reverted!");
+	});
+}
+
+#[test]
+fn destroy_approvals_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(destroy_approvals(addr.clone(), ASSET_ID)),
+			Ok(Module { index: 52, error: 3 }),
+		);
+		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		// The destroy process hasn't been started.
+		assert_eq!(
+			decoded::<Error>(destroy_approvals(addr.clone(), asset)),
+			Ok(Module { index: 52, error: 17 }),
+		);
+		start_destroy_asset(addr.clone(), asset);
+		let result = destroy_approvals(addr.clone(), asset);
+		assert!(!result.did_revert(), "Contract reverted!");
+	});
+}
+
+#[test]
+fn finish_destroy_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(finish_destroy(addr.clone(), ASSET_ID)),
+			Ok(Module { index: 52, error: 3 }),
+		);
+		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		// The destroy process hasn't been started.
+		assert_eq!(
+			decoded::<Error>(finish_destroy(addr.clone(), asset)),
+			Ok(Module { index: 52, error: 17 }),
+		);
+		start_destroy_asset(addr.clone(), asset);
+		let result = finish_destroy(addr.clone(), asset);
+		assert!(!result.did_revert(), "Contract reverted!");
+	});
+}
+
+#[test]
 fn set_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -590,6 +715,53 @@ fn set_metadata_works() {
 		);
 		// Set metadata successfully.
 		let result = set_metadata(addr.clone(), ASSET_ID, name, symbol, decimals);
+		assert!(!result.did_revert(), "Contract reverted!");
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(addr.clone(), asset);
+		assert_eq!(
+			decoded::<Error>(set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], 0)),
+			Ok(Module { index: 52, error: 16 }),
+		);
+	});
+}
+
+#[test]
+fn clear_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let name = vec![42];
+		let symbol = vec![42];
+		let decimals = 42u8;
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		// Asset does not exist.
+		assert_eq!(
+			decoded::<Error>(clear_metadata(addr.clone(), 0)),
+			Ok(Module { index: 52, error: 3 }),
+		);
+		// Create assets where contract is not the owner.
+		let asset = create_asset_and_set_metadata(ALICE, 0, vec![0], vec![0], 0);
+		// No Permission.
+		assert_eq!(
+			decoded::<Error>(clear_metadata(addr.clone(), asset)),
+			Ok(Module { index: 52, error: 2 }),
+		);
+		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(addr.clone(), asset);
+		assert_eq!(
+			decoded::<Error>(clear_metadata(addr.clone(), asset)),
+			Ok(Module { index: 52, error: 16 }),
+		);
+		thaw_asset(addr.clone(), asset);
+		// No metadata set.
+		assert_eq!(
+			decoded::<Error>(clear_metadata(addr.clone(), asset)),
+			Ok(Module { index: 52, error: 3 }),
+		);
+		set_metadata_asset(addr.clone(), asset, name, symbol, decimals);
+		// Clear metadata successfully.
+		let result = clear_metadata(addr.clone(), ASSET_ID);
 		assert!(!result.did_revert(), "Contract reverted!");
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);

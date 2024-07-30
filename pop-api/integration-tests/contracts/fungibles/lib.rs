@@ -137,6 +137,26 @@ mod fungibles {
 		}
 
 		#[ink(message)]
+		pub fn start_destroy(&self, id: AssetId) -> Result<()> {
+			api::start_destroy(id)
+		}
+
+		#[ink(message)]
+		pub fn destroy_accounts(&self, id: AssetId) -> Result<()> {
+			api::destroy_accounts(id)
+		}
+
+		#[ink(message)]
+		pub fn destroy_approvals(&self, id: AssetId) -> Result<()> {
+			api::destroy_approvals(id)
+		}
+
+		#[ink(message)]
+		pub fn finish_destroy(&self, id: AssetId) -> Result<()> {
+			api::finish_destroy(id)
+		}
+
+		#[ink(message)]
 		pub fn set_metadata(
 			&self,
 			id: AssetId,
@@ -146,7 +166,12 @@ mod fungibles {
 		) -> Result<()> {
 			api::set_metadata(id, name, symbol, decimals)
 		}
-		//
+
+		#[ink(message)]
+		pub fn clear_metadata(&self, id: AssetId) -> Result<()> {
+			api::clear_metadata(id)
+		}
+
 		// #[ink(message)]
 		// pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
 		// 	// api::asset_exists(id).map_err(|e| e.into())
