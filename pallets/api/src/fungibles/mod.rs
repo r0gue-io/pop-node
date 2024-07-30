@@ -96,9 +96,9 @@ pub mod pallet {
 		/// `data` in unspecified format.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `to` - The recipient account.
-		/// * `value` - The number of tokens to transfer.
+		/// - `id` - The ID of the asset.
+		/// - `to` - The recipient account.
+		/// - `value` - The number of tokens to transfer.
 		#[pallet::call_index(3)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
 		pub fn transfer(
@@ -114,9 +114,9 @@ pub mod pallet {
 		/// Approves an account to spend a specified number of tokens on behalf of the caller.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		/// * `value` - The number of tokens to approve.
+		/// - `id` - The ID of the asset.
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to approve.
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn approve(
@@ -164,9 +164,9 @@ pub mod pallet {
 		/// Increases the allowance of a spender.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		/// * `value` - The number of tokens to increase the allowance by.
+		/// - `id` - The ID of the asset.
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to increase the allowance by.
 		#[pallet::call_index(6)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::approve_transfer())]
 		pub fn increase_allowance(
@@ -181,10 +181,10 @@ pub mod pallet {
 
 		/// Create a new token with a given asset ID.
 		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		/// * `admin` - The account that will administer the asset.
-		/// * `min_balance` - The minimum balance required for accounts holding this asset.
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		/// - `admin` - The account that will administer the asset.
+		/// - `min_balance` - The minimum balance required for accounts holding this asset.
 		#[pallet::call_index(11)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::create())]
 		pub fn create(
@@ -199,10 +199,10 @@ pub mod pallet {
 
 		/// Create a new token with a given asset ID.
 		///
-		/// # Arguments
-		/// * `id` - The ID of the asset.
-		/// * `admin` - The account that will administer the asset.
-		/// * `min_balance` - The minimum balance required for accounts holding this asset.
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		/// - `admin` - The account that will administer the asset.
+		/// - `min_balance` - The minimum balance required for accounts holding this asset.
 		#[pallet::call_index(12)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
 		pub fn start_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
@@ -282,7 +282,7 @@ pub mod pallet {
 		/// encoded result.
 		///
 		/// # Parameter
-		/// * `value` - An instance of `Read<T>`, which specifies the type of state query and
+		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
 		/// 		  the associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
