@@ -1,6 +1,6 @@
 use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, AccountId, Assets, Balance, Balances,
-	Runtime, RuntimeCall,
+	config::assets::TrustBackedAssetsInstance, fungibles, AccountId, Assets, Balances, Runtime,
+	RuntimeCall,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{

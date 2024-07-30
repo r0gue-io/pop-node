@@ -325,7 +325,7 @@ fn transfer_works() {
 		// Asset does not exist.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), 1, BOB, amount,)),
-			Ok(Module { index: 52, error: 3 }),
+			Ok(Token(UnknownAsset)),
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
@@ -333,18 +333,18 @@ fn transfer_works() {
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount,)),
-			Ok(Module { index: 52, error: 16 }),
+			Ok(Token(Frozen)),
 		);
 		thaw_asset(ALICE, asset);
 		// Not enough balance.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
-			Ok(Module { index: 52, error: 0 }),
+			Ok(Arithmetic(Underflow)),
 		);
 		// Not enough balance due to ED.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount)),
-			Ok(Module { index: 52, error: 0 }),
+			Ok(Token(NotExpendable)),
 		);
 		// Successful transfer.
 		let balance_before_transfer = Assets::balance(asset, &BOB);

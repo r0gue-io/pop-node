@@ -4,8 +4,17 @@ use crate::{
 	Result, StatusCode,
 };
 use constants::*;
+use frame_support::traits::fungible::NativeOrWithId;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
+
+fn build_asset_kind(asset_id: AssetId) -> NativeOrWithId<AssetId> {
+	if asset_id == 0 {
+		NativeOrWithId::<AssetId>::Native
+	} else {
+		NativeOrWithId::<AssetId>::WithId(asset_id)
+	}
+}
 
 /// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`
 ///
@@ -131,10 +140,10 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 #[inline]
 pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 	build_dispatch(TRANSFER)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, target, amount))
+		.call(&(build_asset_kind(id), target, amount))
 }
 
 /// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
