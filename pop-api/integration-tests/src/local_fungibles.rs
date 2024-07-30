@@ -433,11 +433,11 @@ fn transfer_from_works() {
 			Ok(Module { index: 52, error: 0 }),
 		);
 		// Successful transfer.
-		let bob_balance_before_transfer = Assets::balance(asset, &BOB);
+		let balance_before_transfer = Assets::balance(asset, &BOB);
 		let result = transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2);
 		assert!(!result.did_revert(), "Contract reverted!");
-		let bob_balance_after_transfer = Assets::balance(asset, &BOB);
-		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + amount / 2);
+		let balance_after_transfer = Assets::balance(asset, &BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 	});
 }
 
