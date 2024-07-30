@@ -84,6 +84,12 @@ pub mod pallet {
 		TokenDecimals(T::AssetKind),
 	}
 
+	#[pallet::error]
+	pub enum Error<T> {
+		// The method is not supported for the asset class
+		UnsupportedMethod,
+	}
+
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
@@ -148,8 +154,8 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			match T::AssetCriteria::convert(asset) {
-				Either::Left(_) => todo!(),
 				Either::Right(id) => Self::do_approve_asset(origin, id, spender, value),
+				Either::Left(_) => Err(Error::<T>::UnsupportedMethod.into()),
 			}
 		}
 
@@ -168,11 +174,11 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResult {
 			match T::AssetCriteria::convert(asset) {
-				Either::Left(_) => todo!(),
 				Either::Right(id) => {
 					let spender = T::Lookup::unlookup(spender);
 					AssetsOf::<T>::approve_transfer(origin, id.into(), spender, value)
 				},
+				Either::Left(_) => Err(Error::<T>::UnsupportedMethod.into()),
 			}
 		}
 	}
