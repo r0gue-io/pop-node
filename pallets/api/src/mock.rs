@@ -102,9 +102,11 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type BenchmarkHelper = ();
 }
 impl crate::fungibles::Config for Test {
+	type NativeBalance = Balances;
 	type Assets = NativeAndAssets<AssetId>;
 	type AssetKind = NativeOrWithId<AssetId>;
 	type AssetsInstance = AssetsInstance;
+	type AssetCriteria = NativeFromLeft;
 	type WeightInfo = ();
 }
 

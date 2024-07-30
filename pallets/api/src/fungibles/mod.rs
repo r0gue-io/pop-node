@@ -9,7 +9,11 @@ mod tests;
 pub mod weights;
 
 use frame_support::traits::{
-	fungibles::{metadata::Inspect as MetadataInspect, Balanced, Inspect, Mutate},
+	fungible::{Inspect as NativeInspect, Mutate as NativeMutate},
+	fungibles::{
+		metadata::Inspect as AssetsMetadataInspect, Balanced as AssetsBalanced,
+		Inspect as AssetsInspect, Mutate as AssetsMutate,
+	},
 	tokens::Preservation::Preserve,
 };
 pub use pallet::*;
@@ -17,14 +21,14 @@ use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
 use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type AssetIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
+type AssetIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as AssetsInspect<
 	<T as frame_system::Config>::AccountId,
 >>::AssetId;
 type AssetIdParameterOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
 type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
-type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
+type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as AssetsInspect<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 
@@ -38,8 +42,8 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{
-		traits::{StaticLookup, Zero},
-		Saturating,
+		traits::{Convert, StaticLookup, Zero},
+		Either, Saturating,
 	};
 	use sp_std::vec::Vec;
 
@@ -50,12 +54,12 @@ pub mod pallet {
 	pub enum Read<T: Config> {
 		/// Total token supply for a given asset ID.
 		#[codec(index = 0)]
-		TotalSupply(AssetIdOf<T>),
+		TotalSupply(T::AssetKind),
 		/// Account balance for a given asset ID.
 		#[codec(index = 1)]
 		BalanceOf {
 			/// The asset ID.
-			id: AssetIdOf<T>,
+			asset: T::AssetKind,
 			/// The account ID of the owner.
 			owner: AccountIdOf<T>,
 		},
@@ -63,7 +67,7 @@ pub mod pallet {
 		#[codec(index = 2)]
 		Allowance {
 			/// The asset ID.
-			id: AssetIdOf<T>,
+			asset: T::AssetKind,
 			/// The account ID of the owner.
 			owner: AccountIdOf<T>,
 			/// The account ID of the spender.
@@ -71,29 +75,35 @@ pub mod pallet {
 		},
 		/// Token name for a given asset ID.
 		#[codec(index = 8)]
-		TokenName(AssetIdOf<T>),
+		TokenName(T::AssetKind),
 		/// Token symbol for a given asset ID.
 		#[codec(index = 9)]
-		TokenSymbol(AssetIdOf<T>),
+		TokenSymbol(T::AssetKind),
 		/// Token decimals for a given asset ID.
 		#[codec(index = 10)]
-		TokenDecimals(AssetIdOf<T>),
+		TokenDecimals(T::AssetKind),
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
 		/// Registry of assets utilized for dynamic experience between Native Token and Asset
-		type Assets: Inspect<Self::AccountId, AssetId = Self::AssetKind, Balance = Self::Balance>
-			+ Mutate<Self::AccountId>
-			+ Balanced<Self::AccountId>;
+		type Assets: AssetsInspect<Self::AccountId, AssetId = Self::AssetKind, Balance = Self::Balance>
+			+ AssetsMutate<Self::AccountId>
+			+ AssetsBalanced<Self::AccountId>;
 
-		/// The instance of pallet assets it is tightly coupled to.
 		/// Type of asset class, sourced from [`Config::Assets`], utilized to identify between `Native` and `Asset`
 		type AssetKind: Parameter + MaxEncodedLen;
 
+		/// The criteria to identify the class of the asset
+		type AssetCriteria: Convert<Self::AssetKind, Either<(), Self::AssetId>>;
+
 		/// The instance of pallet assets it is tightly coupled to.
 		type AssetsInstance;
+
+		/// Type to access the Balances Pallet.
+		type NativeBalance: NativeInspect<Self::AccountId> + NativeMutate<Self::AccountId>;
+
 		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
 	}
@@ -132,6 +142,43 @@ pub mod pallet {
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn approve(
+			origin: OriginFor<T>,
+			asset: T::AssetKind,
+			spender: AccountIdOf<T>,
+			value: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			match T::AssetCriteria::convert(asset) {
+				Either::Left(_) => todo!(),
+				Either::Right(id) => Self::do_approve_asset(origin, id, spender, value),
+			}
+		}
+
+		/// Increases the allowance of a spender.
+		///
+		/// # Parameters
+		/// * `id` - The ID of the asset.
+		/// * `spender` - The account that is allowed to spend the tokens.
+		/// * `value` - The number of tokens to increase the allowance by.
+		#[pallet::call_index(6)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::approve_transfer())]
+		pub fn increase_allowance(
+			origin: OriginFor<T>,
+			asset: T::AssetKind,
+			spender: AccountIdOf<T>,
+			value: BalanceOf<T>,
+		) -> DispatchResult {
+			match T::AssetCriteria::convert(asset) {
+				Either::Left(_) => todo!(),
+				Either::Right(id) => {
+					let spender = T::Lookup::unlookup(spender);
+					AssetsOf::<T>::approve_transfer(origin, id.into(), spender, value)
+				},
+			}
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		pub fn do_approve_asset(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
 			spender: AccountIdOf<T>,
@@ -173,26 +220,6 @@ pub mod pallet {
 			Ok(Some(return_weight).into())
 		}
 
-		/// Increases the allowance of a spender.
-		///
-		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		/// * `value` - The number of tokens to increase the allowance by.
-		#[pallet::call_index(6)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::approve_transfer())]
-		pub fn increase_allowance(
-			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
-			spender: AccountIdOf<T>,
-			value: BalanceOf<T>,
-		) -> DispatchResult {
-			let spender = T::Lookup::unlookup(spender);
-			AssetsOf::<T>::approve_transfer(origin, id.into(), spender, value)
-		}
-	}
-
-	impl<T: Config> Pallet<T> {
 		/// Reads fungible asset state based on the provided value.
 		///
 		/// This function matches the value to determine the type of state query and returns the
@@ -205,19 +232,30 @@ pub mod pallet {
 			use Read::*;
 
 			match value {
-				TotalSupply(id) => AssetsOf::<T>::total_supply(id).encode(),
-				BalanceOf { id, owner } => AssetsOf::<T>::balance(id, owner).encode(),
-				Allowance { id, owner, spender } => {
-					AssetsOf::<T>::allowance(id, &owner, &spender).encode()
+				TotalSupply(asset) => T::Assets::total_issuance(asset).encode(),
+				BalanceOf { asset, owner } => T::Assets::total_balance(asset, &owner).encode(),
+				Allowance { asset, owner, spender } => match T::AssetCriteria::convert(asset) {
+					Either::Left(_) => todo!(),
+					Either::Right(id) => AssetsOf::<T>::allowance(id, &owner, &spender).encode(),
 				},
-				TokenName(id) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(id).encode()
+				TokenName(asset) => match T::AssetCriteria::convert(asset) {
+					Either::Left(_) => todo!(),
+					Either::Right(id) => {
+						<AssetsOf<T> as AssetsMetadataInspect<AccountIdOf<T>>>::name(id).encode()
+					},
 				},
-				TokenSymbol(id) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(id).encode()
+				TokenSymbol(asset) => match T::AssetCriteria::convert(asset) {
+					Either::Left(_) => todo!(),
+					Either::Right(id) => {
+						<AssetsOf<T> as AssetsMetadataInspect<AccountIdOf<T>>>::symbol(id).encode()
+					},
 				},
-				TokenDecimals(id) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
+				TokenDecimals(asset) => match T::AssetCriteria::convert(asset) {
+					Either::Left(_) => todo!(),
+					Either::Right(id) => {
+						<AssetsOf<T> as AssetsMetadataInspect<AccountIdOf<T>>>::decimals(id)
+							.encode()
+					},
 				},
 			}
 		}

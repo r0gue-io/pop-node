@@ -53,7 +53,9 @@ pub type NativeAndTrustBackedAssets<AssetId> =
 
 impl fungibles::Config for Runtime {
 	type Assets = NativeAndTrustBackedAssets<Self::AssetId>;
+	type NativeBalance = Balances;
 	type AssetKind = NativeOrWithId<Self::AssetId>;
+	type AssetCriteria = NativeFromLeft;
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }

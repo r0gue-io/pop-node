@@ -34,19 +34,34 @@ fn approve_works() {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
 		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::approve(signed(ALICE), NativeOrWithId::WithId(ASSET), BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Approves an amount to spend that is lower than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount / 2));
+		assert_ok!(Fungibles::approve(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount / 2
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2);
 		// Approves an amount to spend that is higher than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
+		assert_ok!(Fungibles::approve(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount * 2
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 		// Approves an amount to spend that is equal to the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
+		assert_ok!(Fungibles::approve(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount * 2
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 		// Sets allowance to zero.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, 0));
+		assert_ok!(Fungibles::approve(signed(ALICE), NativeOrWithId::WithId(ASSET), BOB, 0));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
 	});
 }
@@ -57,10 +72,20 @@ fn increase_allowance_works() {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
 		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::increase_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Additive.
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::increase_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 	});
 }
@@ -69,7 +94,10 @@ fn increase_allowance_works() {
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
-		assert_eq!(Assets::total_supply(ASSET).encode(), Fungibles::read_state(TotalSupply(ASSET)));
+		assert_eq!(
+			Assets::total_supply(ASSET).encode(),
+			Fungibles::read_state(TotalSupply(NativeOrWithId::WithId(ASSET)))
+		);
 	});
 }
 
@@ -79,7 +107,7 @@ fn balance_of_works() {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
 		assert_eq!(
 			Assets::balance(ASSET, ALICE).encode(),
-			Fungibles::read_state(BalanceOf { id: ASSET, owner: ALICE })
+			Fungibles::read_state(BalanceOf { asset: NativeOrWithId::WithId(ASSET), owner: ALICE })
 		);
 	});
 }
@@ -90,7 +118,11 @@ fn allowance_works() {
 		create_asset_mint_and_approve(ALICE, ASSET, BOB, 100, ALICE, 50);
 		assert_eq!(
 			Assets::allowance(ASSET, &ALICE, &BOB).encode(),
-			Fungibles::read_state(Allowance { id: ASSET, owner: ALICE, spender: BOB })
+			Fungibles::read_state(Allowance {
+				asset: NativeOrWithId::WithId(ASSET),
+				owner: ALICE,
+				spender: BOB
+			})
 		);
 	});
 }
@@ -102,9 +134,18 @@ fn token_metadata_works() {
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
 		create_asset_and_set_metadata(ALICE, ASSET, name.clone(), symbol.clone(), decimals);
-		assert_eq!(Assets::name(ASSET).encode(), Fungibles::read_state(TokenName(ASSET)));
-		assert_eq!(Assets::symbol(ASSET).encode(), Fungibles::read_state(TokenSymbol(ASSET)));
-		assert_eq!(Assets::decimals(ASSET).encode(), Fungibles::read_state(TokenDecimals(ASSET)));
+		assert_eq!(
+			Assets::name(ASSET).encode(),
+			Fungibles::read_state(TokenName(NativeOrWithId::WithId(ASSET)))
+		);
+		assert_eq!(
+			Assets::symbol(ASSET).encode(),
+			Fungibles::read_state(TokenSymbol(NativeOrWithId::WithId(ASSET)))
+		);
+		assert_eq!(
+			Assets::decimals(ASSET).encode(),
+			Fungibles::read_state(TokenDecimals(NativeOrWithId::WithId(ASSET)))
+		);
 	});
 }
 

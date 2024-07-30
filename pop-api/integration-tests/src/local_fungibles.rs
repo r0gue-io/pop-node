@@ -374,10 +374,10 @@ fn approve_works() {
 		let amount: Balance = 100 * UNIT;
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(approve(addr.clone(), 0, BOB, amount)),
+			decoded::<Error>(approve(addr.clone(), 2, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
-		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
+		let asset = create_asset_and_mint_to(ALICE, 2, addr.clone(), amount);
 		assert_eq!(
 			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
 			Ok(ConsumerRemaining)
@@ -417,10 +417,10 @@ fn increase_allowance_works() {
 		let amount: Balance = 100 * UNIT;
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(increase_allowance(addr.clone(), 0, BOB, amount)),
+			decoded::<Error>(increase_allowance(addr.clone(), 2, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
-		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
+		let asset = create_asset_and_mint_to(ALICE, 2, addr.clone(), amount);
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
 			Ok(ConsumerRemaining)
