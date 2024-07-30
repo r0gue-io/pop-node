@@ -2,7 +2,10 @@ use crate::{fungibles::Read::*, mock::*};
 use codec::Encode;
 use frame_support::{
 	assert_ok,
-	traits::fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
+	traits::{
+		fungible::NativeOrWithId,
+		fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
+	},
 };
 
 const ASSET: u32 = 42;
@@ -13,7 +16,12 @@ fn transfer_works() {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
 		let balance_before_transfer = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::transfer(signed(ALICE), ASSET, BOB, amount / 2));
+		assert_ok!(Fungibles::transfer(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount / 2
+		));
 		let balance_after_transfer = Assets::balance(ASSET, &BOB);
 		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 	});

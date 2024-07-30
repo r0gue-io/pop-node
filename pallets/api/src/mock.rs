@@ -1,6 +1,9 @@
 use frame_support::{
 	derive_impl, parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, Everything},
+	traits::{
+		fungible::{NativeFromLeft, NativeOrWithId, UnionOf},
+		AsEnsureOriginWithArg, ConstU128, ConstU32, Everything,
+	},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use sp_core::H256;
@@ -9,6 +12,8 @@ use sp_runtime::{
 	BuildStorage,
 };
 
+pub type NativeAndAssets<AssetId> =
+	UnionOf<Balances, Assets, NativeFromLeft, NativeOrWithId<AssetId>, AccountId>;
 type Block = frame_system::mocking::MockBlock<Test>;
 pub(crate) type AccountId = u64;
 pub(crate) type AssetId = u32;
@@ -97,6 +102,8 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type BenchmarkHelper = ();
 }
 impl crate::fungibles::Config for Test {
+	type Assets = NativeAndAssets<AssetId>;
+	type AssetKind = NativeOrWithId<AssetId>;
 	type AssetsInstance = AssetsInstance;
 	type WeightInfo = ();
 }

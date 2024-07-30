@@ -8,7 +8,10 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
-use frame_support::traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect};
+use frame_support::traits::{
+	fungibles::{metadata::Inspect as MetadataInspect, Balanced, Inspect, Mutate},
+	tokens::Preservation::Preserve,
+};
 pub use pallet::*;
 use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
 use weights::WeightInfo;
@@ -80,6 +83,15 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
+		/// Registry of assets utilized for dynamic experience between Native Token and Asset
+		type Assets: Inspect<Self::AccountId, AssetId = Self::AssetKind, Balance = Self::Balance>
+			+ Mutate<Self::AccountId>
+			+ Balanced<Self::AccountId>;
+
+		/// The instance of pallet assets it is tightly coupled to.
+		/// Type of asset class, sourced from [`Config::Assets`], utilized to identify between `Native` and `Asset`
+		type AssetKind: Parameter + MaxEncodedLen;
+
 		/// The instance of pallet assets it is tightly coupled to.
 		type AssetsInstance;
 		/// Weight information for dispatchables in this pallet.
@@ -102,12 +114,13 @@ pub mod pallet {
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
 		pub fn transfer(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: T::AssetKind,
 			target: AccountIdOf<T>,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			let target = T::Lookup::unlookup(target);
-			AssetsOf::<T>::transfer_keep_alive(origin, id.into(), target, amount)
+			let sender = ensure_signed(origin.clone())?;
+			T::Assets::transfer(asset, &sender, &target, amount, Preserve)?;
+			Ok(())
 		}
 
 		/// Approves an account to spend a specified number of tokens on behalf of the caller.
