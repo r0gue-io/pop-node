@@ -69,13 +69,10 @@ fn create_works() {
 }
 
 #[test]
-fn destroy_asset_works() {
+fn start_destroy_works() {
 	new_test_ext().execute_with(|| {
 		create_asset(ALICE, ASSET, 100);
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), ASSET));
-		assert_ok!(Fungibles::destroy_accounts(signed(ALICE), ASSET));
-		assert_ok!(Fungibles::destroy_approvals(signed(ALICE), ASSET));
-		assert_ok!(Fungibles::finish_destroy(signed(ALICE), ASSET));
 	});
 }
 

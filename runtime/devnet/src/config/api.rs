@@ -25,9 +25,6 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 					| approve { .. } | increase_allowance { .. }
 					| create { .. } | set_metadata { .. }
 					| start_destroy { .. }
-					| destroy_accounts { .. }
-					| destroy_approvals { .. }
-					| finish_destroy { .. }
 					| clear_metadata { .. }
 			)
 		)

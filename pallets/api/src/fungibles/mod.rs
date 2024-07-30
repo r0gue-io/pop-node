@@ -21,7 +21,6 @@ type AssetIdParameterOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::
 type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
-type RemoveItemsLimitOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::RemoveItemsLimit;
 type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
@@ -207,44 +206,6 @@ pub mod pallet {
 		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
 		pub fn start_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
 			AssetsOf::<T>::start_destroy(origin, id.into())
-		}
-
-		/// Destroy all accounts associated with a token with a given asset ID.
-		///
-		/// # Parameters
-		/// - `id` - The ID of the asset.
-		// TODO: weight function
-		#[pallet::call_index(13)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::destroy_accounts(RemoveItemsLimitOf::<T>::get() / 6))]
-		pub fn destroy_accounts(
-			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
-		) -> DispatchResultWithPostInfo {
-			AssetsOf::<T>::destroy_accounts(origin, id.into())
-		}
-
-		/// Destroy all approvals associated with a token with a given asset ID.
-		///
-		/// # Parameters
-		/// - `id` - The ID of the asset.
-		// TODO: weight function
-		#[pallet::call_index(14)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::destroy_approvals(RemoveItemsLimitOf::<T>::get() / 4))]
-		pub fn destroy_approvals(
-			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
-		) -> DispatchResultWithPostInfo {
-			AssetsOf::<T>::destroy_approvals(origin, id.into())
-		}
-
-		/// Complete the process of destroying a token with a given asset ID.
-		///
-		/// # Parameters
-		/// - `id` - The ID of the asset.
-		#[pallet::call_index(15)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::finish_destroy())]
-		pub fn finish_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
-			AssetsOf::<T>::finish_destroy(origin, id.into())
 		}
 
 		/// Set the metadata for a token with a given asset ID.

@@ -128,27 +128,6 @@ fn start_destroy(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
 	result
 }
 
-fn destroy_accounts(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
-	let function = function_selector("destroy_accounts");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
-	result
-}
-
-fn destroy_approvals(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
-	let function = function_selector("destroy_approvals");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
-	result
-}
-
-fn finish_destroy(addr: AccountId32, asset_id: AssetId) -> ExecReturnValue {
-	let function = function_selector("finish_destroy");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
-	result
-}
-
 fn set_metadata(
 	addr: AccountId32,
 	asset_id: AssetId,
@@ -601,72 +580,6 @@ fn start_destroy_works() {
 		);
 		let asset = create_asset(addr.clone(), ASSET_ID, 1);
 		let result = start_destroy(addr.clone(), asset);
-		assert!(!result.did_revert(), "Contract reverted!");
-	});
-}
-
-#[test]
-fn destroy_accounts_works() {
-	new_test_ext().execute_with(|| {
-		let _ = env_logger::try_init();
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
-		// Asset does not exist.
-		assert_eq!(
-			decoded::<Error>(destroy_accounts(addr.clone(), ASSET_ID)),
-			Ok(Module { index: 52, error: 3 }),
-		);
-		let asset = create_asset(addr.clone(), ASSET_ID, 1);
-		// The destroy process hasn't been started.
-		assert_eq!(
-			decoded::<Error>(destroy_accounts(addr.clone(), asset)),
-			Ok(Module { index: 52, error: 17 }),
-		);
-		start_destroy_asset(addr.clone(), asset);
-		let result = destroy_accounts(addr.clone(), asset);
-		assert!(!result.did_revert(), "Contract reverted!");
-	});
-}
-
-#[test]
-fn destroy_approvals_works() {
-	new_test_ext().execute_with(|| {
-		let _ = env_logger::try_init();
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
-		// Asset does not exist.
-		assert_eq!(
-			decoded::<Error>(destroy_approvals(addr.clone(), ASSET_ID)),
-			Ok(Module { index: 52, error: 3 }),
-		);
-		let asset = create_asset(addr.clone(), ASSET_ID, 1);
-		// The destroy process hasn't been started.
-		assert_eq!(
-			decoded::<Error>(destroy_approvals(addr.clone(), asset)),
-			Ok(Module { index: 52, error: 17 }),
-		);
-		start_destroy_asset(addr.clone(), asset);
-		let result = destroy_approvals(addr.clone(), asset);
-		assert!(!result.did_revert(), "Contract reverted!");
-	});
-}
-
-#[test]
-fn finish_destroy_works() {
-	new_test_ext().execute_with(|| {
-		let _ = env_logger::try_init();
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
-		// Asset does not exist.
-		assert_eq!(
-			decoded::<Error>(finish_destroy(addr.clone(), ASSET_ID)),
-			Ok(Module { index: 52, error: 3 }),
-		);
-		let asset = create_asset(addr.clone(), ASSET_ID, 1);
-		// The destroy process hasn't been started.
-		assert_eq!(
-			decoded::<Error>(finish_destroy(addr.clone(), asset)),
-			Ok(Module { index: 52, error: 17 }),
-		);
-		start_destroy_asset(addr.clone(), asset);
-		let result = finish_destroy(addr.clone(), asset);
 		assert!(!result.did_revert(), "Contract reverted!");
 	});
 }

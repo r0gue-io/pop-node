@@ -142,21 +142,6 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn destroy_accounts(&self, id: AssetId) -> Result<()> {
-			api::destroy_accounts(id)
-		}
-
-		#[ink(message)]
-		pub fn destroy_approvals(&self, id: AssetId) -> Result<()> {
-			api::destroy_approvals(id)
-		}
-
-		#[ink(message)]
-		pub fn finish_destroy(&self, id: AssetId) -> Result<()> {
-			api::finish_destroy(id)
-		}
-
-		#[ink(message)]
 		pub fn set_metadata(
 			&self,
 			id: AssetId,

@@ -48,9 +48,6 @@ mod constants {
 	/// 3. Asset Management:
 	pub(super) const CREATE: u8 = 11;
 	pub(super) const START_DESTROY: u8 = 12;
-	pub(super) const DESTROY_ACCOUNTS: u8 = 13;
-	pub(super) const DESTROY_APPROVALS: u8 = 14;
-	pub(super) const FINISH_DESTROY: u8 = 15;
 	pub(super) const SET_METADATA: u8 = 16;
 	pub(super) const CLEAR_METADATA: u8 = 17;
 }
@@ -281,51 +278,6 @@ pub mod asset_management {
 	/// Returns `Ok(())` if successful, or an error if the operation fails.
 	pub fn start_destroy(id: AssetId) -> Result<()> {
 		build_dispatch(START_DESTROY)
-			.input::<AssetId>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id))
-	}
-
-	/// Destroy all accounts associated with a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	pub fn destroy_accounts(id: AssetId) -> Result<()> {
-		build_dispatch(DESTROY_ACCOUNTS)
-			.input::<AssetId>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id))
-	}
-
-	/// Destroy all approvals associated with a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	pub fn destroy_approvals(id: AssetId) -> Result<()> {
-		build_dispatch(DESTROY_APPROVALS)
-			.input::<AssetId>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id))
-	}
-
-	/// Complete the process of destroying a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	pub fn finish_destroy(id: AssetId) -> Result<()> {
-		build_dispatch(FINISH_DESTROY)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
