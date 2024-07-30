@@ -409,7 +409,7 @@ fn transfer_from_works() {
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, ALICE, amount);
-		// Unapproved transfer
+		// Unapproved transfer.
 		assert_eq!(
 			decoded::<Error>(transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2)),
 			Ok(Module { index: 52, error: 10 })
@@ -544,7 +544,7 @@ fn decrease_allowance_works() {
 			decoded::<Error>(decrease_allowance(addr.clone(), 0, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
-		// Create asset and mint to the address contract, delegate Bob to spend the `amount`
+		// Create asset and mint to the address contract, delegate Bob to spend the `amount`.
 		let asset =
 			create_asset_mint_and_approve(addr.clone(), 0, addr.clone(), amount, BOB, amount);
 		// Asset is not live, i.e. frozen or being destroyed.
@@ -554,7 +554,7 @@ fn decrease_allowance_works() {
 			Ok(Module { index: 52, error: 16 }),
 		);
 		thaw_asset(addr.clone(), asset);
-		// Successfully decrease allowance
+		// Successfully decrease allowance.
 		let bob_allowance_before = Assets::allowance(asset, &addr, &BOB);
 		let result = decrease_allowance(addr.clone(), 0, BOB, amount / 2 - 1 * UNIT);
 		assert!(!result.did_revert(), "Contract reverted!");

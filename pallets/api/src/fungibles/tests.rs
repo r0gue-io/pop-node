@@ -23,16 +23,16 @@ fn transfer_works() {
 fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
 		let amount: Balance = 100 * UNIT;
-		// Approve CHARLIE to transfer up to `amount` to BOB
+		// Approve CHARLIE to transfer up to `amount` to BOB.
 		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount * 2, CHARLIE, amount / 2);
 		let transferred = amount / 2;
-		// Successfully call transfer from
+		// Successfully call transfer from.
 		let alice_balance_before_transfer = Assets::balance(ASSET, &ALICE);
 		let bob_balance_before_transfer = Assets::balance(ASSET, &BOB);
 		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), ASSET, ALICE, BOB, transferred));
 		let alice_balance_after_transfer = Assets::balance(ASSET, &ALICE);
 		let bob_balance_after_transfer = Assets::balance(ASSET, &BOB);
-		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE
+		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE.
 		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + transferred);
 		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - transferred);
 	});
@@ -44,13 +44,13 @@ fn decrease_allowance_works() {
 		let amount: Balance = 100 * UNIT;
 		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount, BOB, amount);
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
-		// Owner balance is not changed if decreased by zero
+		// Owner balance is not changed if decreased by zero.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, 0));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
-		// Decrease allowance successfully
+		// Decrease allowance successfully.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount / 2 - 1 * UNIT));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2 + 1 * UNIT);
-		// Saturating if current allowance is decreased more than the owner balance
+		// Saturating if current allowance is decreased more than the owner balance.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
 	});
