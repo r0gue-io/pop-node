@@ -37,7 +37,13 @@ fn transfer_from_works() {
 		// Successfully call transfer from.
 		let alice_balance_before_transfer = Assets::balance(ASSET, &ALICE);
 		let balance_before_transfer = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), ASSET, ALICE, BOB, transferred));
+		assert_ok!(Fungibles::transfer_from(
+			signed(CHARLIE),
+			NativeOrWithId::WithId(ASSET),
+			ALICE,
+			BOB,
+			transferred
+		));
 		let alice_balance_after_transfer = Assets::balance(ASSET, &ALICE);
 		let balance_after_transfer = Assets::balance(ASSET, &BOB);
 		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE.
@@ -53,13 +59,28 @@ fn decrease_allowance_works() {
 		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount, BOB, amount);
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Owner balance is not changed if decreased by zero.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, 0));
+		assert_ok!(Fungibles::decrease_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			0
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Decrease allowance successfully.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount / 2 - 1 * UNIT));
+		assert_ok!(Fungibles::decrease_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount / 2 - 1 * UNIT
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2 + 1 * UNIT);
 		// Saturating if current allowance is decreased more than the owner balance.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::decrease_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
 	});
 }

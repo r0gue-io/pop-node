@@ -541,12 +541,12 @@ fn decrease_allowance_works() {
 		let amount: Balance = 100 * UNIT;
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(decrease_allowance(addr.clone(), 0, BOB, amount)),
+			decoded::<Error>(decrease_allowance(addr.clone(), 1, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
 		// Create asset and mint to the address contract, delegate Bob to spend the `amount`.
 		let asset =
-			create_asset_mint_and_approve(addr.clone(), 0, addr.clone(), amount, BOB, amount);
+			create_asset_mint_and_approve(addr.clone(), 1, addr.clone(), amount, BOB, amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(addr.clone(), asset);
 		assert_eq!(
@@ -556,7 +556,7 @@ fn decrease_allowance_works() {
 		thaw_asset(addr.clone(), asset);
 		// Successfully decrease allowance.
 		let bob_allowance_before = Assets::allowance(asset, &addr, &BOB);
-		let result = decrease_allowance(addr.clone(), 0, BOB, amount / 2 - 1 * UNIT);
+		let result = decrease_allowance(addr.clone(), 1, BOB, amount / 2 - 1 * UNIT);
 		assert!(!result.did_revert(), "Contract reverted!");
 		let bob_allowance_after = Assets::allowance(asset, &addr, &BOB);
 		assert_eq!(bob_allowance_before - bob_allowance_after, amount / 2 - 1 * UNIT);
