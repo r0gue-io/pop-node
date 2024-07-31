@@ -569,6 +569,34 @@ fn decrease_allowance_works() {
 	});
 }
 
+#[test]
+fn native_fungible_methods_unsupported() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), 0, ALICE, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
+		);
+
+		assert_eq!(
+			decoded::<Error>(increase_allowance(addr.clone(), 0, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
+		);
+
+		assert_eq!(
+			decoded::<Error>(decrease_allowance(addr.clone(), 0, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
+		);
+
+		assert_eq!(
+			decoded::<Error>(approve(addr.clone(), 0, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
+		);
+	});
+}
+
 /// 2. PSP-22 Metadata Interface:
 /// - token_name
 /// - token_symbol
