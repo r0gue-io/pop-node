@@ -11,7 +11,7 @@ use frame_support::{
 const ASSET: u32 = 42;
 
 #[test]
-fn transfer_works() {
+fn fungible_transfer_works() {
 	new_test_ext().execute_with(|| {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
@@ -23,6 +23,18 @@ fn transfer_works() {
 			amount / 2
 		));
 		let balance_after_transfer = Assets::balance(ASSET, &BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+	});
+}
+
+#[test]
+fn native_fungible_transfer_works() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		set_native_balance(ALICE, amount);
+		let balance_before_transfer = Balances::free_balance(&BOB);
+		assert_ok!(Fungibles::transfer(signed(ALICE), NativeOrWithId::Native, BOB, amount / 2));
+		let balance_after_transfer = Balances::free_balance(&BOB);
 		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 	});
 }
@@ -217,6 +229,10 @@ fn create_asset(owner: AccountId, asset_id: AssetId, min_balance: Balance) {
 
 fn mint_asset(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {
 	assert_ok!(Assets::mint(signed(owner), asset_id, to, value));
+}
+
+fn set_native_balance(to: AccountId, value: Balance) {
+	assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), to, value));
 }
 
 fn create_asset_and_mint_to(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {
