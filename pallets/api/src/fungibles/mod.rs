@@ -75,6 +75,9 @@ pub mod pallet {
 		/// Token decimals for a given asset ID.
 		#[codec(index = 10)]
 		TokenDecimals(AssetIdOf<T>),
+		/// Check if token exists for a given asset ID.
+		#[codec(index = 18)]
+		AssetExists(AssetIdOf<T>),
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -297,7 +300,7 @@ pub mod pallet {
 		/// - `id` - The ID of the asset.
 		/// - `owner` - The account to be credited with the created tokens.
 		/// - `value` - The number of tokens to mint.
-		#[pallet::call_index(18)]
+		#[pallet::call_index(19)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
@@ -315,7 +318,7 @@ pub mod pallet {
 		/// - `id` - The ID of the asset.
 		/// - `owner` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
-		#[pallet::call_index(19)]
+		#[pallet::call_index(20)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
@@ -336,7 +339,7 @@ pub mod pallet {
 		///
 		/// # Parameter
 		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
-		/// 		  the associated parameters.
+		///   the associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 
@@ -355,6 +358,7 @@ pub mod pallet {
 				TokenDecimals(id) => {
 					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
 				},
+				AssetExists(id) => AssetsOf::<T>::asset_exists(id).encode(),
 			}
 		}
 

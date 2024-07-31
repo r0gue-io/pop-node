@@ -157,6 +157,10 @@ mod fungibles {
 			api::clear_metadata(id)
 		}
 
+		#[ink(message)]
+		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
+			api::asset_exists(id)
+		}
 		/// 4. PSP-22 Mintable & Burnable Interface:
 		/// - mint
 		/// - burn
@@ -170,12 +174,6 @@ mod fungibles {
 		pub fn burn(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
 			api::burn(id, account, amount)
 		}
-
-		// #[ink(message)]
-		// pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-		// 	// api::asset_exists(id).map_err(|e| e.into())
-		// 	api::asset_exists(id)
-		// }
 	}
 
 	#[cfg(test)]

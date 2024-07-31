@@ -51,10 +51,11 @@ mod constants {
 	pub(super) const START_DESTROY: u8 = 12;
 	pub(super) const SET_METADATA: u8 = 16;
 	pub(super) const CLEAR_METADATA: u8 = 17;
+	pub(super) const ASSET_EXISTS: u8 = 18;
 
 	/// 4. PSP-22 Mintable & Burnable interface:
-	pub(super) const MINT: u8 = 18;
-	pub(super) const BURN: u8 = 19;
+	pub(super) const MINT: u8 = 19;
+	pub(super) const BURN: u8 = 20;
 }
 
 /// Returns the total token supply for a given asset ID.
@@ -358,9 +359,18 @@ pub mod asset_management {
 			.call(&(id))
 	}
 
-	// pub fn asset_exists(id: AssetId) -> Result<bool> {
-	// 	assets::asset_exists(id)
-	// }
+	/// Checks if token exists for a given asset ID.
+	///
+	/// # Parameters
+	/// - `id` - The ID of the asset.
+	#[inline]
+	pub fn asset_exists(id: AssetId) -> Result<bool> {
+		build_read_state(ASSET_EXISTS)
+			.input::<AssetId>()
+			.output::<Result<bool>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id))
+	}
 }
 
 /// Represents various errors related to local fungible assets in the Pop API.
