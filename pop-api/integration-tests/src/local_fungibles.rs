@@ -446,6 +446,69 @@ fn clear_metadata_works() {
 	});
 }
 
+#[test]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+
+		// Asset does not exist.
+		assert_eq!(mint(addr.clone(), 1, BOB, amount), Err(Token(UnknownAsset)));
+		let asset = create_asset(ALICE, 1, 1);
+		// Minting can only be done by the owner.
+		assert_eq!(mint(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 2 }));
+		let asset = create_asset(addr.clone(), 2, 2);
+		// Minimum balance of an asset can not be zero.
+		assert_eq!(mint(addr.clone(), asset, BOB, 1), Err(Token(BelowMinimum)));
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(addr.clone(), asset);
+		assert_eq!(mint(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		thaw_asset(addr.clone(), asset);
+		// Successful mint.
+		let balance_before_mint = Assets::balance(asset, &BOB);
+		assert_ok!(mint(addr.clone(), asset, BOB, amount));
+		let balance_after_mint = Assets::balance(asset, &BOB);
+		assert_eq!(balance_after_mint, balance_before_mint + amount);
+		// Account can not hold more tokens than Balance::MAX.
+		assert_eq!(mint(addr.clone(), asset, BOB, Balance::MAX,), Err(Arithmetic(Overflow)));
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(addr.clone(), asset);
+		assert_eq!(mint(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+	});
+}
+
+#[test]
+fn burn_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+
+		// Asset does not exist.
+		assert_eq!(burn(addr.clone(), 1, BOB, amount), Err(Module { index: 52, error: 3 }));
+		let asset = create_asset(ALICE, 1, 1);
+		// Bob has no tokens and thus pallet assets doesn't know the account.
+		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 1 }));
+		// Burning can only be done by the manager.
+		mint_asset(ALICE, asset, BOB, amount);
+		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 2 }));
+		let asset = create_asset_and_mint_to(addr.clone(), 2, BOB, amount);
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(addr.clone(), asset);
+		assert_eq!(burn(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		thaw_asset(addr.clone(), asset);
+		// Successful mint.
+		let balance_before_burn = Assets::balance(asset, &BOB);
+		assert_ok!(burn(addr.clone(), asset, BOB, amount));
+		let balance_after_burn = Assets::balance(asset, &BOB);
+		assert_eq!(balance_after_burn, balance_before_burn - amount);
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(addr.clone(), asset);
+		assert_eq!(burn(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+	});
+}
+
 // #[test]
 // #[ignore]
 // fn asset_exists_works() {
@@ -463,66 +526,6 @@ fn clear_metadata_works() {
 // 	});
 // }
 
-// #[test]
-// #[ignore]
-// fn mint_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let _ = env_logger::try_init();
-// 		let addr =
-// 			instantiate(CONTRACT, INIT_VALUE, vec![]);
-// 		let amount: Balance = 100 * UNIT;
-//
-// 		// Asset does not exist.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), 1, None, Some(BOB), amount, &[0u8])),
-// 			Token(UnknownAsset)
-// 		);
-// 		let asset = create_asset(ALICE, 1, 2);
-// 		// Minting can only be done by the owner.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
-// 			Ok(Module { index: 52, error: 2 }),
-// 		);
-// 		// Minimum balance of an asset can not be zero.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), 1, &[0u8])),
-// 			Token(BelowMinimum)
-// 		);
-// 		let asset = create_asset(addr.clone(), 2, 2);
-// 		// Asset is not live, i.e. frozen or being destroyed.
-// 		freeze_asset(addr.clone(), asset);
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
-// 			Ok(Module { index: 52, error: 16 }),
-// 		);
-// 		thaw_asset(addr.clone(), asset);
-// 		// Successful mint.
-// 		let balance_before_mint = Assets::balance(asset, &BOB);
-// 		let result = transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8]);
-// 		assert!(!result.did_revert(), "Contract reverted!");
-// 		let balance_after_mint = Assets::balance(asset, &BOB);
-// 		assert_eq!(balance_after_mint, balance_before_mint + amount);
-// 		// Can not mint more tokens than Balance::MAX.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(
-// 				addr.clone(),
-// 				asset,
-// 				None,
-// 				Some(BOB),
-// 				Balance::MAX,
-// 				&[0u8]
-// 			)),
-// 			Arithmetic(Overflow)
-// 		);
-// 		// Asset is not live, i.e. frozen or being destroyed.
-// 		start_destroy_asset(addr.clone(), asset);
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
-// 			Ok(Module { index: 52, error: 16 }),
-// 		);
-// 	});
-// }
-
 fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecReturnValue> {
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
@@ -532,10 +535,8 @@ fn total_supply(addr: AccountId32, asset_id: AssetId) -> Result<Balance, Error> 
 	let function = function_selector("total_supply");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<Balance, Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<Balance, Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 // Call balance_of contract message.
@@ -543,10 +544,8 @@ fn balance_of(addr: AccountId32, asset_id: AssetId, owner: AccountId32) -> Resul
 	let function = function_selector("balance_of");
 	let params = [function, asset_id.encode(), owner.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<Balance, Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<Balance, Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 // Call allowance contract message.
@@ -559,10 +558,8 @@ fn allowance(
 	let function = function_selector("allowance");
 	let params = [function, asset_id.encode(), owner.encode(), spender.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<Balance, Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<Balance, Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 // Call token_name contract message.
@@ -570,10 +567,8 @@ fn token_name(addr: AccountId32, asset_id: AssetId) -> Result<Vec<u8>, Error> {
 	let function = function_selector("token_name");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<Vec<u8>, Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<Vec<u8>, Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 // Call token_symbol contract message.
@@ -581,10 +576,8 @@ fn token_symbol(addr: AccountId32, asset_id: AssetId) -> Result<Vec<u8>, Error> 
 	let function = function_selector("token_symbol");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<Vec<u8>, Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<Vec<u8>, Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 // Call token_decimals contract message.
@@ -592,10 +585,8 @@ fn token_decimals(addr: AccountId32, asset_id: AssetId) -> Result<u8, Error> {
 	let function = function_selector("token_decimals");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<u8, Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<u8, Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 fn transfer(
@@ -607,10 +598,8 @@ fn transfer(
 	let function = function_selector("transfer");
 	let params = [function, asset_id.encode(), to.encode(), value.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<(), Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 fn transfer_from(
@@ -626,10 +615,8 @@ fn transfer_from(
 		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
 			.concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<(), Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 fn approve(
@@ -641,10 +628,8 @@ fn approve(
 	let function = function_selector("approve");
 	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<(), Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 fn increase_allowance(
@@ -656,10 +641,8 @@ fn increase_allowance(
 	let function = function_selector("increase_allowance");
 	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<(), Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 fn decrease_allowance(
@@ -671,10 +654,8 @@ fn decrease_allowance(
 	let function = function_selector("decrease_allowance");
 	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<(), Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 fn create(
@@ -694,10 +675,8 @@ fn start_destroy(addr: AccountId32, asset_id: AssetId) -> Result<(), Error> {
 	let function = function_selector("start_destroy");
 	let params = [function, asset_id.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
-	match decoded::<Result<(), Error>>(result) {
-		Ok(x) => x,
-		Err(result) => panic!("Contract reverted: {:?}", result),
-	}
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 fn set_metadata(
@@ -718,6 +697,32 @@ fn set_metadata(
 fn clear_metadata(addr: AccountId32, asset_id: AssetId) -> Result<(), Error> {
 	let function = function_selector("clear_metadata");
 	let params = [function, asset_id.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+fn mint(
+	addr: AccountId32,
+	asset_id: AssetId,
+	account: AccountId32,
+	amount: Balance,
+) -> Result<(), Error> {
+	let function = function_selector("mint");
+	let params = [function, asset_id.encode(), account.encode(), amount.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+fn burn(
+	addr: AccountId32,
+	asset_id: AssetId,
+	account: AccountId32,
+	amount: Balance,
+) -> Result<(), Error> {
+	let function = function_selector("burn");
+	let params = [function, asset_id.encode(), account.encode(), amount.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))

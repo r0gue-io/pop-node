@@ -28,6 +28,7 @@ fn build_read_state(state_query: u8) -> ChainExtensionMethod<(), (), (), false> 
 /// 1. PSP-22 Interface
 /// 2. PSP-22 Metadata Interface
 /// 3. Asset Management
+/// 4. PSP-22 Mintable & Burnable Interface
 
 mod constants {
 	/// 1. PSP-22 Interface:
@@ -50,6 +51,10 @@ mod constants {
 	pub(super) const START_DESTROY: u8 = 12;
 	pub(super) const SET_METADATA: u8 = 16;
 	pub(super) const CLEAR_METADATA: u8 = 17;
+
+	/// 4. PSP-22 Mintable & Burnable interface:
+	pub(super) const MINT: u8 = 18;
+	pub(super) const BURN: u8 = 19;
 }
 
 /// Returns the total token supply for a given asset ID.
@@ -199,8 +204,43 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 		.call(&(id, spender, value))
 }
 
+/// Creates `amount` tokens and assigns them to `account`, increasing the total supply.
+///
+/// # Parameters
+/// - `id` - The ID of the asset.
+/// - `owner` - The account to be credited with the created tokens.
+/// - `value` - The number of tokens to mint.
+///
+/// # Returns
+/// Returns `Ok(())` if successful, or an error if the operation fails.
+pub fn mint(id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+	build_dispatch(MINT)
+		.input::<(AssetId, AccountId, Balance)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(id, account, amount))
+}
+
+/// Destroys `amount` tokens from `account`, reducing the total supply.
+///
+/// # Parameters
+/// - `id` - The ID of the asset.
+/// - `owner` - The account from which the tokens will be destroyed.
+/// - `value` - The number of tokens to destroy.
+///
+/// # Returns
+/// Returns `Ok(())` if successful, or an error if the operation fails.
+pub fn burn(id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+	build_dispatch(BURN)
+		.input::<(AssetId, AccountId, Balance)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(id, account, amount))
+}
+
 pub mod metadata {
 	use super::*;
+
 	/// Returns the token name for a given asset ID.
 	///
 	/// # Parameters
@@ -252,6 +292,7 @@ pub mod metadata {
 
 pub mod asset_management {
 	use super::*;
+
 	/// Create a new token with a given asset ID.
 	///
 	/// # Parameters
@@ -316,7 +357,7 @@ pub mod asset_management {
 			.handle_error_code::<StatusCode>()
 			.call(&(id))
 	}
-	//
+
 	// pub fn asset_exists(id: AssetId) -> Result<bool> {
 	// 	assets::asset_exists(id)
 	// }

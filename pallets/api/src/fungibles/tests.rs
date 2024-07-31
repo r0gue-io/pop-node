@@ -108,7 +108,7 @@ fn create_works() {
 #[test]
 fn start_destroy_works() {
 	new_test_ext().execute_with(|| {
-		create_asset(ALICE, ASSET, 100);
+		create_asset(ALICE, ASSET);
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), ASSET));
 	});
 }
@@ -119,7 +119,7 @@ fn set_metadata_works() {
 		let name = vec![42];
 		let symbol = vec![42];
 		let decimals = 42;
-		create_asset(ALICE, ASSET, 100);
+		create_asset(ALICE, ASSET);
 		assert_ok!(Fungibles::set_metadata(
 			signed(ALICE),
 			ASSET,
@@ -144,6 +144,30 @@ fn clear_metadata_works() {
 		assert_eq!(Assets::name(ASSET), Vec::<u8>::new());
 		assert_eq!(Assets::symbol(ASSET), Vec::<u8>::new());
 		assert_eq!(Assets::decimals(ASSET), 0u8);
+	});
+}
+
+#[test]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		create_asset(ALICE, ASSET);
+		let balance_before_mint = Assets::balance(ASSET, &BOB);
+		assert_ok!(Fungibles::mint(signed(ALICE), ASSET, BOB, amount));
+		let balance_after_mint = Assets::balance(ASSET, &BOB);
+		assert_eq!(balance_after_mint, balance_before_mint + amount);
+	});
+}
+
+#[test]
+fn burn_works() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		create_asset_and_mint_to(ALICE, ASSET, BOB, amount);
+		let balance_before_burn = Assets::balance(ASSET, &BOB);
+		assert_ok!(Fungibles::burn(signed(ALICE), ASSET, BOB, amount));
+		let balance_after_burn = Assets::balance(ASSET, &BOB);
+		assert_eq!(balance_after_burn, balance_before_burn - amount);
 	});
 }
 
@@ -194,8 +218,8 @@ fn signed(account: AccountId) -> RuntimeOrigin {
 	RuntimeOrigin::signed(account)
 }
 
-fn create_asset(owner: AccountId, asset_id: AssetId, min_balance: Balance) {
-	assert_ok!(Assets::create(signed(owner), asset_id, owner, min_balance));
+fn create_asset(owner: AccountId, asset_id: AssetId) {
+	assert_ok!(Assets::create(signed(owner), asset_id, owner, 1));
 }
 
 fn mint_asset(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {
@@ -203,7 +227,7 @@ fn mint_asset(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance
 }
 
 fn create_asset_and_mint_to(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {
-	create_asset(owner, asset_id, 1);
+	create_asset(owner, asset_id);
 	mint_asset(owner, asset_id, to, value)
 }
 

@@ -122,14 +122,14 @@ mod fungibles {
 			api::token_decimals(id)
 		}
 
-		// 3. Asset Management:
-		// - create
-		// - start_destroy
-		// - destroy_accounts
-		// - destroy_approvals
-		// - finish_destroy
-		// - set_metadata
-		// - clear_metadata
+		/// 3. Asset Management:
+		/// - create
+		/// - start_destroy
+		/// - destroy_accounts
+		/// - destroy_approvals
+		/// - finish_destroy
+		/// - set_metadata
+		/// - clear_metadata
 
 		#[ink(message)]
 		pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
@@ -155,6 +155,20 @@ mod fungibles {
 		#[ink(message)]
 		pub fn clear_metadata(&self, id: AssetId) -> Result<()> {
 			api::clear_metadata(id)
+		}
+
+		/// 4. PSP-22 Mintable & Burnable Interface:
+		/// - mint
+		/// - burn
+
+		#[ink(message)]
+		pub fn mint(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+			api::mint(id, account, amount)
+		}
+
+		#[ink(message)]
+		pub fn burn(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+			api::burn(id, account, amount)
 		}
 
 		// #[ink(message)]
