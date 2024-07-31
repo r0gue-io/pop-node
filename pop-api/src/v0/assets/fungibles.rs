@@ -58,6 +58,36 @@ mod constants {
 	pub(super) const BURN: u8 = 20;
 }
 
+pub mod events {
+	use super::*;
+
+	/// Event emitted when allowance by `owner` to `spender` changes.
+	#[ink::event]
+	pub struct Approval {
+		/// Account providing allowance.
+		#[ink(topic)]
+		pub owner: AccountId,
+		/// Allowance beneficiary.
+		#[ink(topic)]
+		pub spender: AccountId,
+		/// New allowance amount.
+		pub value: u128,
+	}
+
+	/// Event emitted when transfer of tokens occurs.
+	#[ink::event]
+	pub struct Transfer {
+		/// Transfer sender. `None` in case of minting new tokens.
+		#[ink(topic)]
+		pub from: Option<AccountId>,
+		/// Transfer recipient. `None` in case of burning tokens.
+		#[ink(topic)]
+		pub to: Option<AccountId>,
+		/// Amount of tokens transferred (or minted/burned).
+		pub value: u128,
+	}
+}
+
 /// Returns the total token supply for a given asset ID.
 ///
 /// # Parameters
@@ -122,12 +152,12 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
+pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, target, amount))
+		.call(&(id, to, value))
 }
 
 /// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
@@ -143,12 +173,12 @@ pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balance) -> Result<()> {
+pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER_FROM)
 		.input::<(AssetId, AccountId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, from, to, amount))
+		.call(&(id, from, to, value))
 }
 
 /// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -161,12 +191,12 @@ pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balanc
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the approval fails.
 #[inline]
-pub fn approve(id: AssetId, spender: AccountId, amount: Balance) -> Result<()> {
+pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(APPROVE)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, amount))
+		.call(&(id, spender, value))
 }
 
 /// Increases the allowance of a spender.
@@ -205,7 +235,7 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 		.call(&(id, spender, value))
 }
 
-/// Creates `amount` tokens and assigns them to `account`, increasing the total supply.
+/// Creates `value` tokens and assigns them to `account`, increasing the total supply.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
@@ -214,15 +244,15 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-pub fn mint(id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(MINT)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, account, amount))
+		.call(&(id, account, value))
 }
 
-/// Destroys `amount` tokens from `account`, reducing the total supply.
+/// Destroys `value` tokens from `account`, reducing the total supply.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
@@ -231,12 +261,12 @@ pub fn mint(id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-pub fn burn(id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(BURN)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, account, amount))
+		.call(&(id, account, value))
 }
 
 pub mod metadata {
