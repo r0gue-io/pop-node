@@ -545,20 +545,3 @@ fn burn_works() {
 		assert_eq!(burn(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
 	});
 }
-
-// #[test]
-// #[ignore]
-// fn asset_exists_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let _ = env_logger::try_init();
-// 		let addr =
-// 			instantiate(CONTRACT, INIT_VALUE, vec![]);
-//
-// 		// No tokens in circulation.
-// 		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr.clone(), ASSET_ID));
-//
-// 		// Tokens in circulation.
-// 		create_asset(addr.clone(), ASSET_ID, 1);
-// 		assert_eq!(Assets::asset_exists(ASSET_ID), asset_exists(addr, ASSET_ID));
-// 	});
-// }
