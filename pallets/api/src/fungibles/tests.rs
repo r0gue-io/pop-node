@@ -190,6 +190,14 @@ fn token_metadata_works() {
 	});
 }
 
+#[test]
+fn asset_exists_works() {
+	new_test_ext().execute_with(|| {
+		create_asset(ALICE, ASSET, 100);
+		assert_eq!(Assets::asset_exists(ASSET).encode(), Fungibles::read_state(AssetExists(ASSET)));
+	});
+}
+
 fn signed(account: AccountId) -> RuntimeOrigin {
 	RuntimeOrigin::signed(account)
 }

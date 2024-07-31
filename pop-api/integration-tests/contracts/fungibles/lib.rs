@@ -157,11 +157,10 @@ mod fungibles {
 			api::clear_metadata(id)
 		}
 
-		// #[ink(message)]
-		// pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-		// 	// api::asset_exists(id).map_err(|e| e.into())
-		// 	api::asset_exists(id)
-		// }
+		#[ink(message)]
+		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
+			api::asset_exists(id)
+		}
 	}
 
 	#[cfg(test)]

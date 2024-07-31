@@ -75,6 +75,9 @@ pub mod pallet {
 		/// Token decimals for a given asset ID.
 		#[codec(index = 10)]
 		TokenDecimals(AssetIdOf<T>),
+		/// Check if token exists for a given asset ID.
+		#[codec(index = 18)]
+		AssetExists(AssetIdOf<T>),
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -319,6 +322,7 @@ pub mod pallet {
 				TokenDecimals(id) => {
 					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
 				},
+				AssetExists(id) => AssetsOf::<T>::asset_exists(id).encode(),
 			}
 		}
 

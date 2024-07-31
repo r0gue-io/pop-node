@@ -43,7 +43,7 @@ impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
 				TotalSupply(..)
 					| BalanceOf { .. } | Allowance { .. }
 					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..)
+					| TokenDecimals(..) | AssetExists(..)
 			)
 		)
 	}
