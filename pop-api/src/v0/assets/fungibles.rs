@@ -8,18 +8,18 @@ use constants::*;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
 
-/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`
+/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
 ///
 /// Parameters:
-/// - 'dispatchable': The index of the module dispatchable functions
+/// - 'dispatchable': The index of the module dispatchable functions.
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
 }
 
-/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0``
+/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
 ///
 /// Parameters:
-/// - 'state_query': The index of the runtime state query
+/// - 'state_query': The index of the runtime state query.
 fn build_read_state(state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_read_state(FUNGIBLES, state_query)
 }

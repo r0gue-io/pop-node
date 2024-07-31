@@ -22,7 +22,9 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 			c,
 			RuntimeCall::Fungibles(
 				transfer { .. }
+					| transfer_from { .. }
 					| approve { .. } | increase_allowance { .. }
+					| decrease_allowance { .. }
 					| create { .. } | set_metadata { .. }
 					| start_destroy { .. }
 					| clear_metadata { .. }
