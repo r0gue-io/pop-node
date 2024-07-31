@@ -1,7 +1,10 @@
-use crate::{fungibles::Read::*, mock::*};
+use crate::{
+	fungibles::{Error, Read::*},
+	mock::*,
+};
 use codec::Encode;
 use frame_support::{
-	assert_ok,
+	assert_err, assert_ok,
 	traits::{
 		fungible::NativeOrWithId,
 		fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
@@ -61,6 +64,32 @@ fn transfer_from_works() {
 		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE.
 		assert_eq!(balance_after_transfer, balance_before_transfer + transferred);
 		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - transferred);
+	});
+}
+
+#[test]
+fn native_fungible_methods_unsupported() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		assert_err!(
+			Fungibles::transfer_from(signed(ALICE), NativeOrWithId::Native, ALICE, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
+
+		assert_err!(
+			Fungibles::increase_allowance(signed(ALICE), NativeOrWithId::Native, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
+
+		assert_err!(
+			Fungibles::decrease_allowance(signed(ALICE), NativeOrWithId::Native, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
+
+		assert_err!(
+			Fungibles::approve(signed(ALICE), NativeOrWithId::Native, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
 	});
 }
 
