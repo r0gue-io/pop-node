@@ -310,7 +310,7 @@ pub(super) fn instantiate_and_create_fungible(
 	contract: &str,
 	asset_id: AssetId,
 	min_balance: Balance,
-) -> AccountId32 {
+) -> Result<(), Error> {
 	let function = function_selector("new");
 	let input = [function, asset_id.encode(), min_balance.encode()].concat();
 	let (wasm_binary, _) =
@@ -327,7 +327,8 @@ pub(super) fn instantiate_and_create_fungible(
 		CollectEvents::Skip,
 	)
 	.result
-	.unwrap();
-	assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-	result.account_id
+	.expect("should work")
+	.result;
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }

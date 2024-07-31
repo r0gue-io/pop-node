@@ -22,8 +22,9 @@ mod create_token_in_constructor {
 		#[ink(constructor, payable)]
 		pub fn new(id: AssetId, min_balance: Balance) -> Result<Self> {
 			let contract = Self { id };
-			let account = contract.env().account_id();
-			api::create(id, account, min_balance)?;
+			// AccountId of the contract which will be set to the owner of the fungible token.
+			let owner = contract.env().account_id();
+			api::create(id, owner, min_balance)?;
 			Ok(contract)
 		}
 

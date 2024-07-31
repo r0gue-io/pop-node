@@ -358,8 +358,15 @@ fn instantiate_and_create_fungible_works() {
 		let _ = env_logger::try_init();
 		let contract =
 			"contracts/create_token_in_constructor/target/ink/create_token_in_constructor.wasm";
-		let addr = instantiate_and_create_fungible(contract, ASSET_ID, 1);
-		assert_eq!(asset_exists(addr, ASSET_ID), Ok(Assets::asset_exists(ASSET_ID)));
+		// Asset already exists.
+		create_asset(ALICE, 0, 1);
+		assert_eq!(
+			instantiate_and_create_fungible(contract, 0, 1),
+			Err(Module { index: 52, error: 5 })
+		);
+		// Successfully create an asset when instantiating the contract.
+		assert_ok!(instantiate_and_create_fungible(contract, ASSET_ID, 1));
+		assert!(Assets::asset_exists(ASSET_ID));
 	});
 }
 

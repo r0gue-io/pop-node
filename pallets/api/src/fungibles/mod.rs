@@ -303,7 +303,7 @@ pub mod pallet {
 		///
 		/// # Parameter
 		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
-		/// 		  the associated parameters.
+		///   the associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 
