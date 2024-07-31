@@ -20,7 +20,12 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 		use fungibles::Call::*;
 		matches!(
 			c,
-			RuntimeCall::Fungibles(transfer { .. } | approve { .. } | increase_allowance { .. })
+			RuntimeCall::Fungibles(
+				transfer { .. }
+					| transfer_from { .. }
+					| approve { .. } | increase_allowance { .. }
+					| decrease_allowance { .. }
+			)
 		)
 	}
 }

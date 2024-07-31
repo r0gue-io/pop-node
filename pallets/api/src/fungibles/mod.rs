@@ -110,6 +110,28 @@ pub mod pallet {
 			AssetsOf::<T>::transfer_keep_alive(origin, id.into(), target, amount)
 		}
 
+		/// Transfers `value` amount of tokens from the delegated account approved by the `owner` to
+		/// account `to`, with additional `data` in unspecified format.
+		///
+		/// # Parameters
+		/// * `id` - The ID of the asset.
+		/// * `owner` - The account from which the asset balance will be withdrawn.
+		/// * `to` - The recipient account.
+		/// * `value` - The number of tokens to transfer.
+		#[pallet::call_index(4)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_approved())]
+		pub fn transfer_from(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			owner: AccountIdOf<T>,
+			target: AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let owner = T::Lookup::unlookup(owner);
+			let target = T::Lookup::unlookup(target);
+			AssetsOf::<T>::transfer_approved(origin, id.into(), owner, target, amount)
+		}
+
 		/// Approves an account to spend a specified number of tokens on behalf of the caller.
 		///
 		/// # Parameters
@@ -124,17 +146,15 @@ pub mod pallet {
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
-			let weight = |approve: u32, cancel: u32| -> Weight {
-				<T as Config>::WeightInfo::approve(cancel, approve)
-			};
-			let who = ensure_signed(origin.clone()).map_err(|e| e.with_weight(weight(0, 0)))?;
+			let who = ensure_signed(origin.clone())
+				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &who, &spender);
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
 
 			// If the new value is equal to the current allowance, do nothing.
 			let return_weight = if value == current_allowance {
-				weight(0, 0)
+				Self::weight_approve(0, 0)
 			}
 			// If the new value is greater than the current allowance, approve the difference
 			// because `approve_transfer` works additively (see `pallet-assets`).
@@ -145,17 +165,17 @@ pub mod pallet {
 					spender,
 					value.saturating_sub(current_allowance),
 				)
-				.map_err(|e| e.with_weight(weight(1, 0)))?;
-				weight(1, 0)
+				.map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
+				Self::weight_approve(1, 0)
 			} else {
 				// If the new value is less than the current allowance, cancel the approval and set the new value
 				AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
-					.map_err(|e| e.with_weight(weight(0, 1)))?;
+					.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 				if value.is_zero() {
-					return Ok(Some(weight(0, 1)).into());
+					return Ok(Some(Self::weight_approve(0, 1)).into());
 				}
 				AssetsOf::<T>::approve_transfer(origin, id, spender, value)?;
-				weight(1, 1)
+				Self::weight_approve(1, 1)
 			};
 			Ok(Some(return_weight).into())
 		}
@@ -176,6 +196,40 @@ pub mod pallet {
 		) -> DispatchResult {
 			let spender = T::Lookup::unlookup(spender);
 			AssetsOf::<T>::approve_transfer(origin, id.into(), spender, value)
+		}
+
+		/// Decreases the allowance of a spender.
+		///
+		/// # Parameters
+		/// * `id` - The ID of the asset.
+		/// * `spender` - The account that is allowed to spend the tokens.
+		/// * `value` - The number of tokens to decrease the allowance by.
+		#[pallet::call_index(7)]
+		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
+		pub fn decrease_allowance(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			spender: AccountIdOf<T>,
+			value: BalanceOf<T>,
+		) -> DispatchResultWithPostInfo {
+			let who = ensure_signed(origin.clone())
+				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
+			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &who, &spender);
+			let spender = T::Lookup::unlookup(spender);
+			let id: AssetIdParameterOf<T> = id.into();
+
+			if value.is_zero() {
+				return Ok(Some(Self::weight_approve(0, 0)).into());
+			}
+			// Cancel the aproval and set the new value if `current_allowance` is more than zero.
+			AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
+				.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
+			let new_allowance = current_allowance.saturating_sub(value);
+			if new_allowance.is_zero() {
+				return Ok(Some(Self::weight_approve(0, 1)).into());
+			}
+			AssetsOf::<T>::approve_transfer(origin, id, spender, new_allowance)?;
+			Ok(().into())
 		}
 	}
 
@@ -207,6 +261,10 @@ pub mod pallet {
 					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
 				},
 			}
+		}
+
+		pub fn weight_approve(approve: u32, cancel: u32) -> Weight {
+			<T as Config>::WeightInfo::approve(cancel, approve)
 		}
 	}
 }

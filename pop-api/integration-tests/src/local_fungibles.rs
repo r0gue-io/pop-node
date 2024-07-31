@@ -116,6 +116,50 @@ fn transfer_works() {
 }
 
 #[test]
+fn transfer_from_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+		// Asset does not exist.
+		assert_eq!(
+			transfer_from(addr.clone(), 1, ALICE, BOB, amount / 2),
+			Err(Module { index: 52, error: 3 }),
+		);
+		// Create asset with Alice as owner and mint `amount` to contract address.
+		let asset = create_asset_and_mint_to(ALICE, 1, ALICE, amount);
+		// Unapproved transfer.
+		assert_eq!(
+			transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2),
+			Err(Module { index: 52, error: 10 })
+		);
+		assert_ok!(Assets::approve_transfer(
+			RuntimeOrigin::signed(ALICE.into()),
+			asset.into(),
+			addr.clone().into(),
+			amount + 1 * UNIT,
+		));
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(ALICE, asset);
+		assert_eq!(
+			transfer_from(addr.clone(), asset, ALICE, BOB, amount),
+			Err(Module { index: 52, error: 16 }),
+		);
+		thaw_asset(ALICE, asset);
+		// Not enough balance.
+		assert_eq!(
+			transfer_from(addr.clone(), asset, ALICE, BOB, amount + 1 * UNIT),
+			Err(Module { index: 52, error: 0 }),
+		);
+		// Successful transfer.
+		let balance_before_transfer = Assets::balance(asset, &BOB);
+		assert_ok!(transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2));
+		let balance_after_transfer = Assets::balance(asset, &BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+	});
+}
+
+#[test]
 fn approve_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -180,6 +224,41 @@ fn increase_allowance_works() {
 		assert_eq!(
 			increase_allowance(addr.clone(), asset, BOB, amount),
 			Err(Module { index: 52, error: 16 })
+		);
+	});
+}
+
+#[test]
+fn decrease_allowance_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+		// Asset does not exist.
+		assert_eq!(
+			decrease_allowance(addr.clone(), 0, BOB, amount),
+			Err(Module { index: 52, error: 3 }),
+		);
+		// Create asset and mint `amount` to contract address, then approve Bob to spend `amount`.
+		let asset =
+			create_asset_mint_and_approve(addr.clone(), 0, addr.clone(), amount, BOB, amount);
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(addr.clone(), asset);
+		assert_eq!(
+			decrease_allowance(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: 16 }),
+		);
+		thaw_asset(addr.clone(), asset);
+		// Successfully decrease allowance.
+		let allowance_before = Assets::allowance(asset, &addr, &BOB);
+		assert_ok!(decrease_allowance(addr.clone(), 0, BOB, amount / 2 - 1 * UNIT));
+		let allowance_after = Assets::allowance(asset, &addr, &BOB);
+		assert_eq!(allowance_before - allowance_after, amount / 2 - 1 * UNIT);
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(addr.clone(), asset);
+		assert_eq!(
+			decrease_allowance(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: 16 }),
 		);
 	});
 }
@@ -443,6 +522,25 @@ fn transfer(
 	}
 }
 
+fn transfer_from(
+	addr: AccountId32,
+	asset_id: AssetId,
+	from: AccountId32,
+	to: AccountId32,
+	value: Balance,
+) -> Result<(), Error> {
+	let function = function_selector("transfer_from");
+	let data: Vec<u8> = vec![];
+	let params =
+		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
+			.concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	match decoded::<Result<(), Error>>(result) {
+		Ok(x) => x,
+		Err(result) => panic!("Contract reverted: {:?}", result),
+	}
+}
+
 fn approve(
 	addr: AccountId32,
 	asset_id: AssetId,
@@ -465,6 +563,21 @@ fn increase_allowance(
 	value: Balance,
 ) -> Result<(), Error> {
 	let function = function_selector("increase_allowance");
+	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	match decoded::<Result<(), Error>>(result) {
+		Ok(x) => x,
+		Err(result) => panic!("Contract reverted: {:?}", result),
+	}
+}
+
+fn decrease_allowance(
+	addr: AccountId32,
+	asset_id: AssetId,
+	spender: AccountId32,
+	value: Balance,
+) -> Result<(), Error> {
+	let function = function_selector("decrease_allowance");
 	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
 	let result = bare_call(addr, params, 0).expect("should work");
 	match decoded::<Result<(), Error>>(result) {
@@ -542,7 +655,7 @@ fn create_asset_mint_and_approve(
 	mint: Balance,
 	spender: AccountId32,
 	approve: Balance,
-) {
+) -> AssetId {
 	create_asset_and_mint_to(owner.clone(), asset_id, to.clone(), mint);
 	assert_ok!(Assets::approve_transfer(
 		RuntimeOrigin::signed(to.into()),
@@ -550,6 +663,7 @@ fn create_asset_mint_and_approve(
 		spender.into(),
 		approve,
 	));
+	asset_id
 }
 
 // Freeze an asset.
