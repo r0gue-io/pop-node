@@ -28,12 +28,12 @@ fn transfer_from_works() {
 		let transferred = amount / 2;
 		// Successfully call transfer from.
 		let alice_balance_before_transfer = Assets::balance(ASSET, &ALICE);
-		let bob_balance_before_transfer = Assets::balance(ASSET, &BOB);
+		let balance_before_transfer = Assets::balance(ASSET, &BOB);
 		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), ASSET, ALICE, BOB, transferred));
 		let alice_balance_after_transfer = Assets::balance(ASSET, &ALICE);
-		let bob_balance_after_transfer = Assets::balance(ASSET, &BOB);
+		let balance_after_transfer = Assets::balance(ASSET, &BOB);
 		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE.
-		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + transferred);
+		assert_eq!(balance_after_transfer, balance_before_transfer + transferred);
 		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - transferred);
 	});
 }

@@ -218,6 +218,10 @@ pub mod pallet {
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
 
+			if value.is_zero() {
+				return Ok(Some(Self::weight_approve(0, 0)).into());
+			}
+
 			current_allowance.saturating_reduce(value);
 			// Cancel the aproval and set the new value if `current_allowance` is more than zero.
 			AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
