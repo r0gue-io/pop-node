@@ -181,6 +181,10 @@ fn mint_asset(owner: AccountId32, asset_id: AssetId, to: AccountId32, value: Bal
 	asset_id
 }
 
+fn set_native_balance(to: AccountId32, value: Balance) {
+	assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), to.into(), value.into()));
+}
+
 fn create_asset_and_mint_to(
 	owner: AccountId32,
 	asset_id: AssetId,
@@ -301,6 +305,16 @@ fn total_supply_works() {
 		create_asset_and_mint_to(addr.clone(), ASSET_ID, BOB, 100);
 		assert_eq!(Assets::total_supply(ASSET_ID), total_supply(addr.clone(), ASSET_ID));
 		assert_eq!(100, total_supply(addr, ASSET_ID));
+	});
+}
+
+#[test]
+fn native_fungible_total_supply_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		// Tokens in circulation.
+		assert_eq!(Balances::total_issuance(), total_supply(addr.clone(), 0));
 	});
 }
 

@@ -201,6 +201,16 @@ fn total_supply_works() {
 }
 
 #[test]
+fn native_fungible_total_supply_works() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(
+			Balances::total_issuance().encode(),
+			Fungibles::read_state(TotalSupply(NativeOrWithId::Native))
+		);
+	});
+}
+
+#[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
