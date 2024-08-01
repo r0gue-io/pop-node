@@ -23,7 +23,7 @@ on:
 jobs:
   srtool:
     runs-on: ubuntu-latest
-    if: github.event_name == 'release' || inputs.runtime == true
+    if: inputs == '' || inputs.runtime == true
     permissions:
       contents: write
     strategy:
@@ -120,7 +120,7 @@ jobs:
 
   build-node:
     runs-on: ${{ matrix.platform.os }}
-    if: github.event_name == 'release' || inputs.runtime == true
+    if: inputs == '' || inputs.node == true
     permissions:
       contents: write
     strategy:
