@@ -17,7 +17,7 @@ on:
         default: true
       runtime:
         type: boolean
-        description: Build runtime
+        description: Build runtimes deterministically
         default: true
 
 jobs:
