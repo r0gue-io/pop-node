@@ -11,10 +11,19 @@ on:
       ref:
         description: ref to build binary from
         required: false
+      node:
+        type: boolean
+        description: Build node
+        default: true
+      runtime:
+        type: boolean
+        description: Build runtime
+        default: true
 
 jobs:
   srtool:
     runs-on: ubuntu-latest
+    if: inputs.runtime == true
     permissions:
       contents: write
     strategy:
@@ -108,8 +117,10 @@ jobs:
           files: |
             ${{ steps.srtool_build.outputs.wasm_compressed }}
             ${{ matrix.runtime }}-srtool-digest.json
+
   build-node:
     runs-on: ${{ matrix.platform.os }}
+    if: inputs.node == true
     permissions:
       contents: write
     strategy:
