@@ -46,14 +46,17 @@ jobs:
           echo '${{ steps.srtool_build.outputs.json }}' | jq . > ${{ matrix.runtime }}-srtool-digest.json
 
       # Manual trigger: add artifacts to run
+      - name: Copy artifacts
+        if: github.event_name != 'release'
+        run: cp `dirname ${{ steps.srtool_build.outputs.wasm }}`/*.wasm ./
+
       - name: Archive Runtime
         if: github.event_name != 'release'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.runtime }}-runtime-${{ github.sha }}
           path: |
-            ${{ steps.srtool_build.outputs.wasm }}
-            ${{ steps.srtool_build.outputs.wasm_compressed }}
+            pop_runtime_${{ matrix.runtime }}*.wasm
             ${{ matrix.runtime }}-srtool-digest.json
 
       # We now get extra information thanks to subwasm,
