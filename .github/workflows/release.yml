@@ -23,7 +23,7 @@ on:
 jobs:
   srtool:
     runs-on: ubuntu-latest
-    if: inputs == '' || inputs.runtime == true
+    if: github.event_name != 'workflow_dispatch' && 'true' || inputs.runtime
     permissions:
       contents: write
     strategy:
@@ -120,7 +120,7 @@ jobs:
 
   build-node:
     runs-on: ${{ matrix.platform.os }}
-    if: inputs == '' || inputs.node == true
+    if: github.event_name != 'workflow_dispatch' && 'true' || inputs.node
     permissions:
       contents: write
     strategy:
