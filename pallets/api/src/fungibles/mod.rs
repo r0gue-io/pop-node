@@ -8,6 +8,9 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
+#[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::ArgumentsFactory;
+
 use frame_support::traits::{
 	fungible::{Inspect as NativeInspect, Mutate as NativeMutate},
 	fungibles::{
@@ -112,6 +115,10 @@ pub mod pallet {
 
 		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
+
+		/// Helper type for benchmarks.
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper: ArgumentsFactory<Self::AssetKind>;
 	}
 
 	#[pallet::pallet]
