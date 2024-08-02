@@ -108,6 +108,8 @@ impl crate::fungibles::Config for Test {
 	type AssetsInstance = AssetsInstance;
 	type AssetCriteria = NativeFromLeft;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
 
 pub(crate) const ALICE: AccountId = 1;

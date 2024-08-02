@@ -63,4 +63,6 @@ impl fungibles::Config for Runtime {
 	type AssetCriteria = NativeFromLeft;
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }
