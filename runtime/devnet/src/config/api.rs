@@ -3,11 +3,8 @@ use crate::{
 	RuntimeCall,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::{
-	fungible::NativeFromLeft,
-	tokens::fungible::{NativeOrWithId, UnionOf},
-	Contains,
-};
+use frame_support::traits::{fungible::NativeFromLeft, tokens::fungible::NativeOrWithId, Contains};
+use pallet_api::fungibles::union_of::FungibleUnionOf;
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -54,13 +51,12 @@ impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
 }
 
 pub type NativeAndTrustBackedAssets<AssetId> =
-	UnionOf<Balances, Assets, NativeFromLeft, NativeOrWithId<AssetId>, AccountId>;
+	FungibleUnionOf<Balances, Assets, NativeFromLeft, NativeOrWithId<AssetId>, AccountId>;
 
 impl fungibles::Config for Runtime {
-	type Assets = NativeAndTrustBackedAssets<Self::AssetId>;
-	type NativeBalance = Balances;
-	type AssetKind = NativeOrWithId<Self::AssetId>;
-	type AssetCriteria = NativeFromLeft;
+	type Fungibles = NativeAndTrustBackedAssets<Self::AssetId>;
+	type Fungible = NativeOrWithId<Self::AssetId>;
+	type FungibleCriterion = NativeFromLeft;
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 	#[cfg(feature = "runtime-benchmarks")]

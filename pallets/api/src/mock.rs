@@ -1,7 +1,8 @@
+use crate::fungibles::union_of::FungibleUnionOf;
 use frame_support::{
 	derive_impl, parameter_types,
 	traits::{
-		fungible::{NativeFromLeft, NativeOrWithId, UnionOf},
+		fungible::{NativeFromLeft, NativeOrWithId},
 		AsEnsureOriginWithArg, ConstU128, ConstU32, Everything,
 	},
 };
@@ -12,8 +13,8 @@ use sp_runtime::{
 	BuildStorage,
 };
 
-pub type NativeAndAssets<AssetId> =
-	UnionOf<Balances, Assets, NativeFromLeft, NativeOrWithId<AssetId>, AccountId>;
+pub type NativeAndAssetsFungible<AssetId> =
+	FungibleUnionOf<Balances, Assets, NativeFromLeft, NativeOrWithId<AssetId>, AccountId>;
 type Block = frame_system::mocking::MockBlock<Test>;
 pub(crate) type AccountId = u64;
 pub(crate) type AssetId = u32;
@@ -102,11 +103,10 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type BenchmarkHelper = ();
 }
 impl crate::fungibles::Config for Test {
-	type NativeBalance = Balances;
-	type Assets = NativeAndAssets<AssetId>;
-	type AssetKind = NativeOrWithId<AssetId>;
+	type Fungibles = NativeAndAssetsFungible<AssetId>;
+	type Fungible = NativeOrWithId<AssetId>;
 	type AssetsInstance = AssetsInstance;
-	type AssetCriteria = NativeFromLeft;
+	type FungibleCriterion = NativeFromLeft;
 	type WeightInfo = ();
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();

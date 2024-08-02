@@ -1,21 +1,20 @@
 /// The fungibles pallet serves as a wrapper around the pallet_assets, offering a streamlined
 /// interface for interacting with fungible assets. The goal is to provide a simplified, consistent
 /// API that adheres to standards in the smart contract space.
-
-#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 #[cfg(test)]
 mod tests;
 pub mod weights;
 
+pub mod union_of;
+
 #[cfg(feature = "runtime-benchmarks")]
-pub use benchmarking::ArgumentsFactory;
+pub use benchmarking::BenchmarkHelper;
 
 use frame_support::traits::{
-	fungible::{Inspect as NativeInspect, Mutate as NativeMutate},
 	fungibles::{
-		metadata::Inspect as AssetsMetadataInspect, Balanced as AssetsBalanced,
-		Inspect as AssetsInspect, Mutate as AssetsMutate,
+		approvals::Inspect as AssetsApprovalInspect, metadata::Inspect as AssetsMetadataInspect,
+		Inspect as AssetsInspect, Mutate as AssetsMutate, Unbalanced as AssetsUnbalanced,
 	},
 	tokens::Preservation::Preserve,
 };
@@ -57,12 +56,12 @@ pub mod pallet {
 	pub enum Read<T: Config> {
 		/// Total token supply for a given asset ID.
 		#[codec(index = 0)]
-		TotalSupply(T::AssetKind),
+		TotalSupply(T::Fungible),
 		/// Account balance for a given asset ID.
 		#[codec(index = 1)]
 		BalanceOf {
 			/// The asset ID.
-			asset: T::AssetKind,
+			asset: T::Fungible,
 			/// The account ID of the owner.
 			owner: AccountIdOf<T>,
 		},
@@ -70,7 +69,7 @@ pub mod pallet {
 		#[codec(index = 2)]
 		Allowance {
 			/// The asset ID.
-			asset: T::AssetKind,
+			asset: T::Fungible,
 			/// The account ID of the owner.
 			owner: AccountIdOf<T>,
 			/// The account ID of the spender.
@@ -78,13 +77,13 @@ pub mod pallet {
 		},
 		/// Token name for a given asset ID.
 		#[codec(index = 8)]
-		TokenName(T::AssetKind),
+		TokenName(T::Fungible),
 		/// Token symbol for a given asset ID.
 		#[codec(index = 9)]
-		TokenSymbol(T::AssetKind),
+		TokenSymbol(T::Fungible),
 		/// Token decimals for a given asset ID.
 		#[codec(index = 10)]
-		TokenDecimals(T::AssetKind),
+		TokenDecimals(T::Fungible),
 	}
 
 	#[pallet::error]
@@ -97,28 +96,27 @@ pub mod pallet {
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
 		/// Registry of assets utilized for dynamic experience between Native Token and Asset
-		type Assets: AssetsInspect<Self::AccountId, AssetId = Self::AssetKind, Balance = Self::Balance>
+		type Fungibles: AssetsInspect<Self::AccountId, AssetId = Self::Fungible, Balance = Self::Balance>
 			+ AssetsMutate<Self::AccountId>
-			+ AssetsBalanced<Self::AccountId>;
+			+ AssetsUnbalanced<Self::AccountId>
+			+ AssetsApprovalInspect<Self::AccountId>
+			+ AssetsMetadataInspect<Self::AccountId>;
 
 		/// Type of asset class, sourced from [`Config::Assets`], utilized to identify between `Native` and `Asset`
-		type AssetKind: Parameter + MaxEncodedLen;
+		type Fungible: Parameter + MaxEncodedLen;
 
 		/// The criteria to identify the class of the asset
-		type AssetCriteria: Convert<Self::AssetKind, Either<(), Self::AssetId>>;
+		type FungibleCriterion: Convert<Self::Fungible, Either<(), Self::AssetId>>;
 
 		/// The instance of pallet assets it is tightly coupled to.
 		type AssetsInstance;
-
-		/// Type to access the Balances Pallet.
-		type NativeBalance: NativeInspect<Self::AccountId> + NativeMutate<Self::AccountId>;
 
 		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
 
 		/// Helper type for benchmarks.
 		#[cfg(feature = "runtime-benchmarks")]
-		type BenchmarkHelper: ArgumentsFactory<Self::AssetKind>;
+		type BenchmarkHelper: BenchmarkHelper<Self::Fungible>;
 	}
 
 	#[pallet::pallet]
@@ -137,12 +135,12 @@ pub mod pallet {
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
 		pub fn transfer(
 			origin: OriginFor<T>,
-			asset: T::AssetKind,
+			asset: T::Fungible,
 			target: AccountIdOf<T>,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin.clone())?;
-			T::Assets::transfer(asset, &sender, &target, amount, Preserve)?;
+			T::Fungibles::transfer(asset, &sender, &target, amount, Preserve)?;
 			Ok(())
 		}
 
@@ -158,12 +156,12 @@ pub mod pallet {
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_approved())]
 		pub fn transfer_from(
 			origin: OriginFor<T>,
-			asset: T::AssetKind,
+			asset: T::Fungible,
 			owner: AccountIdOf<T>,
 			target: AccountIdOf<T>,
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
-			match T::AssetCriteria::convert(asset) {
+			match T::FungibleCriterion::convert(asset) {
 				Either::Right(id) => {
 					let owner = T::Lookup::unlookup(owner);
 					let target = T::Lookup::unlookup(target);
@@ -183,11 +181,11 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn approve(
 			origin: OriginFor<T>,
-			asset: T::AssetKind,
+			asset: T::Fungible,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
-			match T::AssetCriteria::convert(asset) {
+			match T::FungibleCriterion::convert(asset) {
 				Either::Right(id) => Self::do_approve_asset(origin, id, spender, value),
 				Either::Left(_) => Err(Error::<T>::UnsupportedMethod.into()),
 			}
@@ -203,11 +201,11 @@ pub mod pallet {
 		#[pallet::weight(AssetsWeightInfoOf::<T>::approve_transfer())]
 		pub fn increase_allowance(
 			origin: OriginFor<T>,
-			asset: T::AssetKind,
+			asset: T::Fungible,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
-			match T::AssetCriteria::convert(asset) {
+			match T::FungibleCriterion::convert(asset) {
 				Either::Right(id) => {
 					let spender = T::Lookup::unlookup(spender);
 					AssetsOf::<T>::approve_transfer(origin, id.into(), spender, value)
@@ -226,11 +224,11 @@ pub mod pallet {
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn decrease_allowance(
 			origin: OriginFor<T>,
-			asset: T::AssetKind,
+			asset: T::Fungible,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
-			match T::AssetCriteria::convert(asset) {
+			match T::FungibleCriterion::convert(asset) {
 				Either::Right(id) => Self::do_decrease_allowance(origin, id, spender, value),
 				Either::Left(_) => Err(Error::<T>::UnsupportedMethod.into()),
 			}
@@ -318,31 +316,14 @@ pub mod pallet {
 			use Read::*;
 
 			match value {
-				TotalSupply(asset) => T::Assets::total_issuance(asset).encode(),
-				BalanceOf { asset, owner } => T::Assets::total_balance(asset, &owner).encode(),
-				Allowance { asset, owner, spender } => match T::AssetCriteria::convert(asset) {
-					Either::Left(_) => todo!(),
-					Either::Right(id) => AssetsOf::<T>::allowance(id, &owner, &spender).encode(),
+				TotalSupply(asset) => T::Fungibles::total_issuance(asset).encode(),
+				BalanceOf { asset, owner } => T::Fungibles::total_balance(asset, &owner).encode(),
+				Allowance { asset, owner, spender } => {
+					T::Fungibles::allowance(asset, &owner, &spender).encode()
 				},
-				TokenName(asset) => match T::AssetCriteria::convert(asset) {
-					Either::Left(_) => todo!(),
-					Either::Right(id) => {
-						<AssetsOf<T> as AssetsMetadataInspect<AccountIdOf<T>>>::name(id).encode()
-					},
-				},
-				TokenSymbol(asset) => match T::AssetCriteria::convert(asset) {
-					Either::Left(_) => todo!(),
-					Either::Right(id) => {
-						<AssetsOf<T> as AssetsMetadataInspect<AccountIdOf<T>>>::symbol(id).encode()
-					},
-				},
-				TokenDecimals(asset) => match T::AssetCriteria::convert(asset) {
-					Either::Left(_) => todo!(),
-					Either::Right(id) => {
-						<AssetsOf<T> as AssetsMetadataInspect<AccountIdOf<T>>>::decimals(id)
-							.encode()
-					},
-				},
+				TokenName(asset) => T::Fungibles::name(asset).encode(),
+				TokenSymbol(asset) => T::Fungibles::symbol(asset).encode(),
+				TokenDecimals(asset) => T::Fungibles::decimals(asset).encode(),
 			}
 		}
 

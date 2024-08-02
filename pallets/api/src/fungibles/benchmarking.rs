@@ -3,11 +3,12 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::{AccountIdOf, AssetIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet};
-use codec::Encode;
+use core::marker::PhantomData;
 use frame_benchmarking::{account, v2::*};
 use frame_support::{
 	assert_ok,
 	traits::{
+		fungible::NativeOrWithId,
 		fungibles::{
 			approvals::{Inspect as ApprovalInspect, Mutate as ApprovalMutate},
 			Create, Inspect, Mutate,
@@ -16,24 +17,35 @@ use frame_support::{
 	},
 };
 use frame_system::RawOrigin;
-use sp_core::crypto::FromEntropy;
 use sp_runtime::traits::Zero;
 
 const SEED: u32 = 1;
 
 /// Trait describing factory functions for dispatchables' parameters.
-pub trait ArgumentsFactory<AssetKind> {
+pub trait BenchmarkHelper<Fungible> {
 	/// Factory function for an asset kind.
-	fn create_asset_kind(seed: u32) -> AssetKind;
+	fn create_asset_kind(seed: u32) -> Fungible;
 }
 
-/// Implementation that expects the parameters implement the [`FromEntropy`] trait.
-impl<AssetKind> ArgumentsFactory<AssetKind> for ()
+impl<Fungible> BenchmarkHelper<Fungible> for ()
 where
-	AssetKind: FromEntropy,
+	Fungible: From<u32>,
 {
-	fn create_asset_kind(seed: u32) -> AssetKind {
-		AssetKind::from_entropy(&mut seed.encode().as_slice()).unwrap()
+	fn create_asset_kind(seed: u32) -> Fungible {
+		seed.into()
+	}
+}
+
+pub struct NativeOrWithIdFactory<AssetId>(PhantomData<AssetId>);
+impl<AssetId: From<u32> + Ord> BenchmarkHelper<NativeOrWithId<AssetId>>
+	for NativeOrWithIdFactory<AssetId>
+{
+	fn create_asset_kind(seed: u32) -> NativeOrWithId<AssetId> {
+		if seed == 0 {
+			NativeOrWithId::Native
+		} else {
+			NativeOrWithId::WithId(seed.into())
+		}
 	}
 }
 
@@ -52,18 +64,18 @@ mod benchmarks {
 	use super::*;
 
 	// Parameter:
-	// - 'a': wethere `transfer` accepts native token fungible or asset.
+	// - 'k': whether `transfer` accepts native token fungible or asset.
 	#[benchmark]
-	fn transfer(a: Linear<0, 1>) -> Result<(), BenchmarkError> {
+	fn transfer(k: Linear<0, 1>) -> Result<(), BenchmarkError> {
 		let from: AccountIdOf<T> = account("Alice", 0, SEED);
 		let to: AccountIdOf<T> = account("Bob", 0, SEED);
 		let min_balance = <BalanceOf<T>>::from(1u32);
 		let asset_id = AssetIdOf::<T>::zero();
-		let asset_kind = <T as Config>::BenchmarkHelper::create_asset_kind(a);
+		let asset_kind = <T as Config>::BenchmarkHelper::create_asset_kind(k);
 		let amount = <BalanceOf<T>>::from(u32::MAX / 2);
 		// Initiate the native balance for the `from` account.
 		T::Currency::make_free_balance_be(&from, u32::MAX.into());
-		if a == 1 {
+		if k == 1 {
 			assert_ok!(<AssetsOf<T> as Create<AccountIdOf<T>>>::create(
 				asset_id.clone(),
 				from.clone(),
@@ -80,7 +92,8 @@ mod benchmarks {
 
 		#[extrinsic_call]
 		_(RawOrigin::Signed(from.clone()), asset_kind, to.clone(), amount);
-		if a == 1 {
+
+		if k == 1 {
 			assert_eq!(
 				<AssetsOf<T> as Inspect<AccountIdOf<T>>>::total_balance(asset_id, &to),
 				<BalanceOf<T>>::from(u32::MAX / 2)
@@ -95,7 +108,7 @@ mod benchmarks {
 	// - 'a': whether `approve_transfer` is required.
 	// - 'c': whether `cancel_approval` is required.
 	#[benchmark]
-	fn approve(a: Linear<0, 1>, c: Linear<0, 1>) -> Result<(), BenchmarkError> {
+	fn approve(k: Linear<0, 1>, a: Linear<0, 1>, c: Linear<0, 1>) -> Result<(), BenchmarkError> {
 		let asset_id = AssetIdOf::<T>::zero();
 		let asset_kind = <T as Config>::BenchmarkHelper::create_asset_kind(SEED);
 		let min_balance = <BalanceOf<T>>::from(1u32);
