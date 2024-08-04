@@ -83,6 +83,7 @@ impl pallet_contracts::Config for Runtime {
 	type MaxDelegateDependencies = ConstU32<32>;
 	type RuntimeHoldReason = RuntimeHoldReason;
 
+	type ApiVersion = ();
 	type Environment = ();
 	type Debug = ();
 	type Migrations = ();
