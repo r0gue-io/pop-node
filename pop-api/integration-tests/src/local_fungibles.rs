@@ -181,6 +181,10 @@ fn mint_asset(owner: AccountId32, asset_id: AssetId, to: AccountId32, value: Bal
 	asset_id
 }
 
+fn set_native_balance(to: AccountId32, value: Balance) {
+	assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), to.into(), value.into()));
+}
+
 fn create_asset_and_mint_to(
 	owner: AccountId32,
 	asset_id: AssetId,
@@ -305,6 +309,16 @@ fn total_supply_works() {
 }
 
 #[test]
+fn native_fungible_total_supply_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		// Tokens in circulation.
+		assert_eq!(Balances::total_issuance(), total_supply(addr.clone(), 0));
+	});
+}
+
+#[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
@@ -354,7 +368,7 @@ fn transfer_works() {
 		// Asset does not exist.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), 1, BOB, amount,)),
-			Ok(Module { index: 52, error: 3 }),
+			Ok(Token(UnknownAsset)),
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
@@ -362,18 +376,18 @@ fn transfer_works() {
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount,)),
-			Ok(Module { index: 52, error: 16 }),
+			Ok(Token(Frozen)),
 		);
 		thaw_asset(ALICE, asset);
 		// Not enough balance.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
-			Ok(Module { index: 52, error: 0 }),
+			Ok(Arithmetic(Underflow)),
 		);
 		// Not enough balance due to ED.
 		assert_eq!(
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount)),
-			Ok(Module { index: 52, error: 0 }),
+			Ok(Token(NotExpendable)),
 		);
 		// Successful transfer.
 		let balance_before_transfer = Assets::balance(asset, &BOB);
@@ -392,6 +406,31 @@ fn transfer_works() {
 			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount / 4)),
 			Ok(Module { index: 52, error: 16 }),
 		);
+	});
+}
+
+#[test]
+fn native_fungible_transfer_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+
+		let asset = 0;
+		set_native_balance(addr.clone(), amount);
+		// Not enough balance.
+		assert_eq!(
+			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
+			Ok(Token(FundsUnavailable)),
+		);
+		// Not enough balance due to ED.
+		assert_eq!(decoded::<Error>(transfer(addr.clone(), asset, BOB, amount)), Ok(Token(Frozen)),);
+		// Successful transfer.
+		let balance_before_transfer = Balances::free_balance(&BOB);
+		let result = transfer(addr.clone(), asset, BOB, amount / 2);
+		assert!(!result.did_revert(), "Contract reverted!");
+		let balance_after_transfer = Balances::free_balance(&BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 	});
 }
 
@@ -449,10 +488,10 @@ fn approve_works() {
 		let amount: Balance = 100 * UNIT;
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(approve(addr.clone(), 0, BOB, amount)),
+			decoded::<Error>(approve(addr.clone(), 2, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
-		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
+		let asset = create_asset_and_mint_to(ALICE, 2, addr.clone(), amount);
 		assert_eq!(
 			decoded::<Error>(approve(addr.clone(), asset, BOB, amount)),
 			Ok(ConsumerRemaining)
@@ -492,10 +531,10 @@ fn increase_allowance_works() {
 		let amount: Balance = 100 * UNIT;
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(increase_allowance(addr.clone(), 0, BOB, amount)),
+			decoded::<Error>(increase_allowance(addr.clone(), 2, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
-		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
+		let asset = create_asset_and_mint_to(ALICE, 2, addr.clone(), amount);
 		assert_eq!(
 			decoded::<Error>(increase_allowance(addr.clone(), asset, BOB, amount)),
 			Ok(ConsumerRemaining)
@@ -541,12 +580,12 @@ fn decrease_allowance_works() {
 		let amount: Balance = 100 * UNIT;
 		// Asset does not exist.
 		assert_eq!(
-			decoded::<Error>(decrease_allowance(addr.clone(), 0, BOB, amount)),
+			decoded::<Error>(decrease_allowance(addr.clone(), 1, BOB, amount)),
 			Ok(Module { index: 52, error: 3 }),
 		);
 		// Create asset and mint to the address contract, delegate Bob to spend the `amount`.
 		let asset =
-			create_asset_mint_and_approve(addr.clone(), 0, addr.clone(), amount, BOB, amount);
+			create_asset_mint_and_approve(addr.clone(), 1, addr.clone(), amount, BOB, amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(addr.clone(), asset);
 		assert_eq!(
@@ -556,7 +595,7 @@ fn decrease_allowance_works() {
 		thaw_asset(addr.clone(), asset);
 		// Successfully decrease allowance.
 		let bob_allowance_before = Assets::allowance(asset, &addr, &BOB);
-		let result = decrease_allowance(addr.clone(), 0, BOB, amount / 2 - 1 * UNIT);
+		let result = decrease_allowance(addr.clone(), 1, BOB, amount / 2 - 1 * UNIT);
 		assert!(!result.did_revert(), "Contract reverted!");
 		let bob_allowance_after = Assets::allowance(asset, &addr, &BOB);
 		assert_eq!(bob_allowance_before - bob_allowance_after, amount / 2 - 1 * UNIT);
@@ -565,6 +604,34 @@ fn decrease_allowance_works() {
 		assert_eq!(
 			decoded::<Error>(decrease_allowance(addr.clone(), asset, BOB, amount)),
 			Ok(Module { index: 52, error: 16 }),
+		);
+	});
+}
+
+#[test]
+fn native_fungible_methods_unsupported() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+		assert_eq!(
+			decoded::<Error>(transfer_from(addr.clone(), 0, ALICE, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
+		);
+
+		assert_eq!(
+			decoded::<Error>(increase_allowance(addr.clone(), 0, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
+		);
+
+		assert_eq!(
+			decoded::<Error>(decrease_allowance(addr.clone(), 0, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
+		);
+
+		assert_eq!(
+			decoded::<Error>(approve(addr.clone(), 0, BOB, amount)),
+			Ok(Module { index: 150, error: 0 })
 		);
 	});
 }

@@ -7,7 +7,12 @@ edition = "2021"
 
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
-sp-io = { version = "31.0.0", default-features = false, features = ["disable_panic_handler", "disable_oom", "disable_allocator"] }
+sp-io = { version = "31.0.0", default-features = false, features = [
+    "disable_panic_handler",
+    "disable_oom",
+    "disable_allocator",
+] }
+frame-support = { version = "29.0.2", default-features = false }
 
 pop-primitives = { path = "../primitives", default-features = false }
 
@@ -18,10 +23,6 @@ crate-type = ["rlib"]
 
 [features]
 default = ["std"]
-std = [
-    "ink/std",
-    "pop-primitives/std",
-    "sp-io/std",
-]
+std = ["ink/std", "pop-primitives/std", "sp-io/std", "frame-support/std"]
 assets = []
 fungibles = ["assets"]

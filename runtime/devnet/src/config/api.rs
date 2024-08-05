@@ -1,6 +1,10 @@
-use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
+use crate::{
+	config::assets::TrustBackedAssetsInstance, fungibles, AccountId, Assets, Balances, Runtime,
+	RuntimeCall,
+};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Contains;
+use frame_support::traits::{fungible::NativeFromLeft, tokens::fungible::NativeOrWithId, Contains};
+use pallet_api::fungibles::union_of::FungibleUnionOf;
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -46,7 +50,15 @@ impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
 	}
 }
 
+pub type NativeAndTrustBackedAssets<AssetId> =
+	FungibleUnionOf<Balances, Assets, NativeFromLeft, NativeOrWithId<AssetId>, AccountId>;
+
 impl fungibles::Config for Runtime {
+	type Fungibles = NativeAndTrustBackedAssets<Self::AssetId>;
+	type Fungible = NativeOrWithId<Self::AssetId>;
+	type FungibleCriterion = NativeFromLeft;
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
 }

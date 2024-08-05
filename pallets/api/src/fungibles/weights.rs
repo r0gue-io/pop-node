@@ -33,6 +33,7 @@ use core::marker::PhantomData;
 /// Weight functions needed for `pallet_api::fungibles`.
 pub trait WeightInfo {
 	fn approve(a: u32, c: u32, ) -> Weight;
+	fn transfer(k: u32) -> Weight;
 }
 
 /// Weights for `pallet_api::fungibles` using the Substrate node and recommended hardware.
@@ -62,6 +63,29 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 1797).saturating_mul(c.into()))
 	}
+
+	/// Storage: `Assets::Asset` (r:1 w:1)
+	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
+	/// Storage: `Assets::Account` (r:2 w:2)
+	/// Proof: `Assets::Account` (`max_values`: None, `max_size`: Some(134), added: 2609, mode: `MaxEncodedLen`)
+	/// Storage: `System::Account` (r:1 w:1)
+	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
+	/// The range of component `k` is `[0, 1]`.
+	fn transfer(k: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `102 + k * (249 ±0)`
+		//  Estimated: `6196 + k * (3104 ±0)`
+		// Minimum execution time: 30_000_000 picoseconds.
+		Weight::from_parts(33_102_040, 0)
+			.saturating_add(Weight::from_parts(0, 6196))
+			// Standard Error: 166_562
+			.saturating_add(Weight::from_parts(3_397_959, 0).saturating_mul(k.into()))
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(k.into())))
+			.saturating_add(T::DbWeight::get().writes(2))
+			.saturating_add(T::DbWeight::get().writes((2_u64).saturating_mul(k.into())))
+			.saturating_add(Weight::from_parts(0, 3104).saturating_mul(k.into()))
+	}
 }
 
 // For backwards compatibility and tests.
@@ -89,6 +113,29 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(c.into())))
 			.saturating_add(Weight::from_parts(0, 1797).saturating_mul(c.into()))
+	}
+
+	/// Storage: `Assets::Asset` (r:1 w:1)
+	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
+	/// Storage: `Assets::Account` (r:2 w:2)
+	/// Proof: `Assets::Account` (`max_values`: None, `max_size`: Some(134), added: 2609, mode: `MaxEncodedLen`)
+	/// Storage: `System::Account` (r:1 w:1)
+	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
+	/// The range of component `k` is `[0, 1]`.
+	fn transfer(k: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `102 + k * (249 ±0)`
+		//  Estimated: `6196 + k * (3104 ±0)`
+		// Minimum execution time: 30_000_000 picoseconds.
+		Weight::from_parts(33_102_040, 0)
+			.saturating_add(Weight::from_parts(0, 6196))
+			// Standard Error: 166_562
+			.saturating_add(Weight::from_parts(3_397_959, 0).saturating_mul(k.into()))
+			.saturating_add(RocksDbWeight::get().reads(2))
+			.saturating_add(RocksDbWeight::get().reads((2_u64).saturating_mul(k.into())))
+			.saturating_add(RocksDbWeight::get().writes(2))
+			.saturating_add(RocksDbWeight::get().writes((2_u64).saturating_mul(k.into())))
+			.saturating_add(Weight::from_parts(0, 3104).saturating_mul(k.into()))
 	}
 }
 

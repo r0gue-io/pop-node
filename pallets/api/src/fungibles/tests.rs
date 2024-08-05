@@ -1,20 +1,43 @@
-use crate::{fungibles::Read::*, mock::*};
+use crate::{
+	fungibles::{Error, Read::*},
+	mock::*,
+};
 use codec::Encode;
 use frame_support::{
-	assert_ok,
-	traits::fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
+	assert_err, assert_ok,
+	traits::{
+		fungible::NativeOrWithId,
+		fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
+	},
 };
 
 const ASSET: u32 = 42;
 
 #[test]
-fn transfer_works() {
+fn fungible_transfer_works() {
 	new_test_ext().execute_with(|| {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
 		let balance_before_transfer = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::transfer(signed(ALICE), ASSET, BOB, amount / 2));
+		assert_ok!(Fungibles::transfer(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount / 2
+		));
 		let balance_after_transfer = Assets::balance(ASSET, &BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+	});
+}
+
+#[test]
+fn native_fungible_transfer_works() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		set_native_balance(ALICE, amount);
+		let balance_before_transfer = Balances::free_balance(&BOB);
+		assert_ok!(Fungibles::transfer(signed(ALICE), NativeOrWithId::Native, BOB, amount / 2));
+		let balance_after_transfer = Balances::free_balance(&BOB);
 		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 	});
 }
@@ -29,12 +52,44 @@ fn transfer_from_works() {
 		// Successfully call transfer from.
 		let alice_balance_before_transfer = Assets::balance(ASSET, &ALICE);
 		let balance_before_transfer = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), ASSET, ALICE, BOB, transferred));
+		assert_ok!(Fungibles::transfer_from(
+			signed(CHARLIE),
+			NativeOrWithId::WithId(ASSET),
+			ALICE,
+			BOB,
+			transferred
+		));
 		let alice_balance_after_transfer = Assets::balance(ASSET, &ALICE);
 		let balance_after_transfer = Assets::balance(ASSET, &BOB);
 		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE.
 		assert_eq!(balance_after_transfer, balance_before_transfer + transferred);
 		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - transferred);
+	});
+}
+
+#[test]
+fn native_fungible_methods_unsupported() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		assert_err!(
+			Fungibles::transfer_from(signed(ALICE), NativeOrWithId::Native, ALICE, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
+
+		assert_err!(
+			Fungibles::increase_allowance(signed(ALICE), NativeOrWithId::Native, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
+
+		assert_err!(
+			Fungibles::decrease_allowance(signed(ALICE), NativeOrWithId::Native, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
+
+		assert_err!(
+			Fungibles::approve(signed(ALICE), NativeOrWithId::Native, BOB, amount),
+			Error::<Test>::UnsupportedMethod
+		);
 	});
 }
 
@@ -45,13 +100,28 @@ fn decrease_allowance_works() {
 		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount, BOB, amount);
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Owner balance is not changed if decreased by zero.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, 0));
+		assert_ok!(Fungibles::decrease_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			0
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Decrease allowance successfully.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount / 2 - 1 * UNIT));
+		assert_ok!(Fungibles::decrease_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount / 2 - 1 * UNIT
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2 + 1 * UNIT);
 		// Saturating if current allowance is decreased more than the owner balance.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::decrease_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
 	});
 }
@@ -63,19 +133,34 @@ fn approve_works() {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
 		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::approve(signed(ALICE), NativeOrWithId::WithId(ASSET), BOB, amount));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Approves an amount to spend that is lower than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount / 2));
+		assert_ok!(Fungibles::approve(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount / 2
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2);
 		// Approves an amount to spend that is higher than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
+		assert_ok!(Fungibles::approve(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount * 2
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 		// Approves an amount to spend that is equal to the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
+		assert_ok!(Fungibles::approve(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount * 2
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 		// Sets allowance to zero.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, 0));
+		assert_ok!(Fungibles::approve(signed(ALICE), NativeOrWithId::WithId(ASSET), BOB, 0));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
 	});
 }
@@ -86,10 +171,20 @@ fn increase_allowance_works() {
 		let amount: Balance = 100 * UNIT;
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
 		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::increase_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
 		// Additive.
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
+		assert_ok!(Fungibles::increase_allowance(
+			signed(ALICE),
+			NativeOrWithId::WithId(ASSET),
+			BOB,
+			amount
+		));
 		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
 	});
 }
@@ -98,7 +193,20 @@ fn increase_allowance_works() {
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
-		assert_eq!(Assets::total_supply(ASSET).encode(), Fungibles::read_state(TotalSupply(ASSET)));
+		assert_eq!(
+			Assets::total_supply(ASSET).encode(),
+			Fungibles::read_state(TotalSupply(NativeOrWithId::WithId(ASSET)))
+		);
+	});
+}
+
+#[test]
+fn native_fungible_total_supply_works() {
+	new_test_ext().execute_with(|| {
+		assert_eq!(
+			Balances::total_issuance().encode(),
+			Fungibles::read_state(TotalSupply(NativeOrWithId::Native))
+		);
 	});
 }
 
@@ -108,7 +216,7 @@ fn balance_of_works() {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
 		assert_eq!(
 			Assets::balance(ASSET, ALICE).encode(),
-			Fungibles::read_state(BalanceOf { id: ASSET, owner: ALICE })
+			Fungibles::read_state(BalanceOf { asset: NativeOrWithId::WithId(ASSET), owner: ALICE })
 		);
 	});
 }
@@ -119,7 +227,11 @@ fn allowance_works() {
 		create_asset_mint_and_approve(ALICE, ASSET, BOB, 100, ALICE, 50);
 		assert_eq!(
 			Assets::allowance(ASSET, &ALICE, &BOB).encode(),
-			Fungibles::read_state(Allowance { id: ASSET, owner: ALICE, spender: BOB })
+			Fungibles::read_state(Allowance {
+				asset: NativeOrWithId::WithId(ASSET),
+				owner: ALICE,
+				spender: BOB
+			})
 		);
 	});
 }
@@ -131,9 +243,18 @@ fn token_metadata_works() {
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
 		create_asset_and_set_metadata(ALICE, ASSET, name.clone(), symbol.clone(), decimals);
-		assert_eq!(Assets::name(ASSET).encode(), Fungibles::read_state(TokenName(ASSET)));
-		assert_eq!(Assets::symbol(ASSET).encode(), Fungibles::read_state(TokenSymbol(ASSET)));
-		assert_eq!(Assets::decimals(ASSET).encode(), Fungibles::read_state(TokenDecimals(ASSET)));
+		assert_eq!(
+			Assets::name(ASSET).encode(),
+			Fungibles::read_state(TokenName(NativeOrWithId::WithId(ASSET)))
+		);
+		assert_eq!(
+			Assets::symbol(ASSET).encode(),
+			Fungibles::read_state(TokenSymbol(NativeOrWithId::WithId(ASSET)))
+		);
+		assert_eq!(
+			Assets::decimals(ASSET).encode(),
+			Fungibles::read_state(TokenDecimals(NativeOrWithId::WithId(ASSET)))
+		);
 	});
 }
 
@@ -147,6 +268,10 @@ fn create_asset(owner: AccountId, asset_id: AssetId, min_balance: Balance) {
 
 fn mint_asset(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {
 	assert_ok!(Assets::mint(signed(owner), asset_id, to, value));
+}
+
+fn set_native_balance(to: AccountId, value: Balance) {
+	assert_ok!(Balances::force_set_balance(RuntimeOrigin::root(), to, value));
 }
 
 fn create_asset_and_mint_to(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {

@@ -118,7 +118,9 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
+	log::debug!(target:LOG_TARGET, " pre-dispatch | Version: {:?}, Pallet Index: {:?}, Call Index: {:?}, Params: {:?}", version, pallet_index, call_index, params);
 	let call = <VersionedDispatch>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
+	log::debug!(target:LOG_TARGET, " pre-dispatch | Decoded Call: {:?}", call);
 
 	// Contract is the origin by default.
 	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();

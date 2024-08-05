@@ -4,8 +4,17 @@ use crate::{
 	Result, StatusCode,
 };
 use constants::*;
+use frame_support::traits::fungible::NativeOrWithId;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
+
+fn build_asset_kind(asset_id: AssetId) -> NativeOrWithId<AssetId> {
+	if asset_id == 0 {
+		NativeOrWithId::<AssetId>::Native
+	} else {
+		NativeOrWithId::<AssetId>::WithId(asset_id)
+	}
+}
 
 /// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`
 ///
@@ -75,10 +84,10 @@ mod constants {
 #[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
 	build_read_state(TOTAL_SUPPLY)
-		.input::<AssetId>()
+		.input::<NativeOrWithId<AssetId>>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id))
+		.call(&(build_asset_kind(id)))
 }
 
 /// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
@@ -93,10 +102,10 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 #[inline]
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 	build_read_state(BALANCE_OF)
-		.input::<(AssetId, AccountId)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId)>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, owner))
+		.call(&(build_asset_kind(id), owner))
 }
 
 /// Returns the amount which `spender` is still allowed to withdraw from `owner` for a given
@@ -112,10 +121,10 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 #[inline]
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
 	build_read_state(ALLOWANCE)
-		.input::<(AssetId, AccountId, AccountId)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId, AccountId)>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, owner, spender))
+		.call(&(build_asset_kind(id), owner, spender))
 }
 
 /// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
@@ -131,10 +140,10 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 #[inline]
 pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 	build_dispatch(TRANSFER)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, target, amount))
+		.call(&(build_asset_kind(id), target, amount))
 }
 
 /// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
@@ -152,10 +161,10 @@ pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 #[inline]
 pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balance) -> Result<()> {
 	build_dispatch(TRANSFER_FROM)
-		.input::<(AssetId, AccountId, AccountId, Balance)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, from, to, amount))
+		.call(&(build_asset_kind(id), from, to, amount))
 }
 
 /// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -170,10 +179,10 @@ pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balanc
 #[inline]
 pub fn approve(id: AssetId, spender: AccountId, amount: Balance) -> Result<()> {
 	build_dispatch(APPROVE)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, amount))
+		.call(&(build_asset_kind(id), spender, amount))
 }
 
 /// Increases the allowance of a spender.
@@ -188,10 +197,10 @@ pub fn approve(id: AssetId, spender: AccountId, amount: Balance) -> Result<()> {
 #[inline]
 pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(INCREASE_ALLOWANCE)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, value))
+		.call(&(build_asset_kind(id), spender, value))
 }
 
 /// Decreases the allowance of a spender.
@@ -206,10 +215,10 @@ pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 #[inline]
 pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(DECREASE_ALLOWANCE)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(NativeOrWithId<AssetId>, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, value))
+		.call(&(build_asset_kind(id), spender, value))
 }
 
 pub mod metadata {
@@ -224,10 +233,10 @@ pub mod metadata {
 	#[inline]
 	pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
 		build_read_state(TOKEN_NAME)
-			.input::<AssetId>()
+			.input::<NativeOrWithId<AssetId>>()
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(build_asset_kind(id)))
 	}
 
 	/// Returns the token symbol for a given asset ID.
@@ -240,10 +249,10 @@ pub mod metadata {
 	#[inline]
 	pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
 		build_read_state(TOKEN_SYMBOL)
-			.input::<AssetId>()
+			.input::<NativeOrWithId<AssetId>>()
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(build_asset_kind(id)))
 	}
 
 	/// Returns the token decimals for a given asset ID.
@@ -256,10 +265,10 @@ pub mod metadata {
 	#[inline]
 	pub fn token_decimals(id: AssetId) -> Result<u8> {
 		build_read_state(TOKEN_DECIMALS)
-			.input::<AssetId>()
+			.input::<NativeOrWithId<AssetId>>()
 			.output::<Result<u8>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(build_asset_kind(id)))
 	}
 }
 
