@@ -95,17 +95,17 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
-		/// Registry of assets utilized for dynamic experience between Native Token and Asset
+		/// Registry of assets utilized for dynamic experience between Native Token and Asset.
 		type Fungibles: AssetsInspect<Self::AccountId, AssetId = Self::Fungible, Balance = Self::Balance>
 			+ AssetsMutate<Self::AccountId>
 			+ AssetsUnbalanced<Self::AccountId>
 			+ AssetsApprovalInspect<Self::AccountId>
 			+ AssetsMetadataInspect<Self::AccountId>;
 
-		/// Type of asset class, sourced from [`Config::Assets`], utilized to identify between `Native` and `Asset`
+		/// Type of asset class, sourced from [`Config::Assets`], utilized to identify between `Native` and `Asset`.
 		type Fungible: Parameter + MaxEncodedLen;
 
-		/// The criteria to identify the class of the asset
+		/// The criterion to identify the class of the fungible.
 		type FungibleCriterion: Convert<Self::Fungible, Either<(), Self::AssetId>>;
 
 		/// The instance of pallet assets it is tightly coupled to.
@@ -264,7 +264,7 @@ pub mod pallet {
 				.map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
 				Self::weight_approve(1, 0)
 			} else {
-				// If the new value is less than the current allowance, cancel the approval and set the new value
+				// If the new value is less than the current allowance, cancel the approval and set the new value.
 				AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
 					.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 				if value.is_zero() {
