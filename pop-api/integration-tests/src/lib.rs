@@ -12,8 +12,8 @@ use scale::{Decode, Encode};
 use sp_runtime::{traits::Hash, AccountId32, BuildStorage, DispatchError};
 
 use pop_runtime_devnet::{
-	config::assets::TrustBackedAssetsInstance, Assets, Contracts, Runtime, RuntimeOrigin, System,
-	UNIT,
+	config::assets::TrustBackedAssetsInstance, Assets, Balances, Contracts, Runtime, RuntimeOrigin,
+	System, UNIT,
 };
 
 mod local_fungibles;
