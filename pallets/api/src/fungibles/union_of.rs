@@ -13,7 +13,7 @@ use sp_runtime::{
 	Either::{self, Left, Right},
 	RuntimeDebug,
 };
-use sp_std::cmp::Ordering;
+use sp_std::{cmp::Ordering, vec::Vec};
 
 /// The `NativeOrWithId` enum classifies an asset as either `Native` to the current chain or as an
 /// asset with a specific ID.

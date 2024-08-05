@@ -132,7 +132,7 @@ pub mod pallet {
 		/// * `to` - The recipient account.
 		/// * `value` - The number of tokens to transfer.
 		#[pallet::call_index(3)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
+		#[pallet::weight(<T as Config>::WeightInfo::transfer(1))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			asset: T::Fungible,
