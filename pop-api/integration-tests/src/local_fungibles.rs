@@ -410,6 +410,31 @@ fn transfer_works() {
 }
 
 #[test]
+fn native_fungible_transfer_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+
+		let asset = 0;
+		set_native_balance(addr.clone(), amount);
+		// Not enough balance.
+		assert_eq!(
+			decoded::<Error>(transfer(addr.clone(), asset, BOB, amount + 1 * UNIT)),
+			Ok(Token(FundsUnavailable)),
+		);
+		// Not enough balance due to ED.
+		assert_eq!(decoded::<Error>(transfer(addr.clone(), asset, BOB, amount)), Ok(Token(Frozen)),);
+		// Successful transfer.
+		let balance_before_transfer = Balances::free_balance(&BOB);
+		let result = transfer(addr.clone(), asset, BOB, amount / 2);
+		assert!(!result.did_revert(), "Contract reverted!");
+		let balance_after_transfer = Balances::free_balance(&BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+	});
+}
+
+#[test]
 fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
