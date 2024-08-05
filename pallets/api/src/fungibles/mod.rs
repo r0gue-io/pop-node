@@ -28,6 +28,7 @@ type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use core::cmp::Ordering::*;
 	use frame_support::{
 		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
 		pallet_prelude::*,
@@ -152,30 +153,32 @@ pub mod pallet {
 			let spender = T::Lookup::unlookup(spender);
 			let id: AssetIdParameterOf<T> = id.into();
 
-			// If the new value is equal to the current allowance, do nothing.
-			let return_weight = if value == current_allowance {
-				Self::weight_approve(0, 0)
-			}
-			// If the new value is greater than the current allowance, approve the difference
-			// because `approve_transfer` works additively (see `pallet-assets`).
-			else if value > current_allowance {
-				AssetsOf::<T>::approve_transfer(
-					origin,
-					id,
-					spender,
-					value.saturating_sub(current_allowance),
-				)
-				.map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
-				Self::weight_approve(1, 0)
-			} else {
-				// If the new value is less than the current allowance, cancel the approval and set the new value
-				AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
-					.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
-				if value.is_zero() {
-					return Ok(Some(Self::weight_approve(0, 1)).into());
-				}
-				AssetsOf::<T>::approve_transfer(origin, id, spender, value)?;
-				Self::weight_approve(1, 1)
+			let return_weight = match value.cmp(&current_allowance) {
+				// If the new value is equal to the current allowance, do nothing.
+				Equal => Self::weight_approve(0, 0),
+				// If the new value is greater than the current allowance, approve the difference
+				// because `approve_transfer` works additively (see `pallet-assets`).
+				Greater => {
+					AssetsOf::<T>::approve_transfer(
+						origin,
+						id,
+						spender,
+						value.saturating_sub(current_allowance),
+					)
+					.map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
+					Self::weight_approve(1, 0)
+				},
+				// If the new value is less than the current allowance, cancel the approval and
+				// set the new value.
+				Less => {
+					AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
+						.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
+					if value.is_zero() {
+						return Ok(Some(Self::weight_approve(0, 1)).into());
+					}
+					AssetsOf::<T>::approve_transfer(origin, id, spender, value)?;
+					Self::weight_approve(1, 1)
+				},
 			};
 			Ok(Some(return_weight).into())
 		}
@@ -221,7 +224,7 @@ pub mod pallet {
 			if value.is_zero() {
 				return Ok(Some(Self::weight_approve(0, 0)).into());
 			}
-			// Cancel the aproval and set the new value if `current_allowance` is more than zero.
+			// Cancel the aproval and set the new value if `new_allowance` is more than zero.
 			AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 			let new_allowance = current_allowance.saturating_sub(value);
