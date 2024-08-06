@@ -1,7 +1,7 @@
 use crate::{
 	config::assets::TrustBackedAssetsInstance,
 	fungibles::{self},
-	Runtime, RuntimeCall,
+	Runtime,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use pop_chain_extension::{CallFilter, ReadState};
