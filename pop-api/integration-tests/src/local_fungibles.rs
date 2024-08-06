@@ -305,6 +305,16 @@ fn total_supply_works() {
 }
 
 #[test]
+fn native_fungible_total_supply_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		// Tokens in circulation.
+		assert_eq!(Balances::total_issuance(), total_supply(addr.clone(), 0));
+	});
+}
+
+#[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();

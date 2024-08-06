@@ -1,4 +1,5 @@
 use crate::{
+	assets::balances,
 	constants::{ASSETS, BALANCES, FUNGIBLES},
 	primitives::{AccountId, AssetId, Balance},
 	Result, StatusCode,
@@ -74,11 +75,15 @@ mod constants {
 /// The total supply of the token, or an error if the operation fails.
 #[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
-	build_read_state(TOTAL_SUPPLY)
-		.input::<AssetId>()
-		.output::<Result<Balance>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(id))
+	if id == 0 {
+		balances::total_issuance()
+	} else {
+		build_read_state(TOTAL_SUPPLY)
+			.input::<AssetId>()
+			.output::<Result<Balance>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id))
+	}
 }
 
 /// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
@@ -130,11 +135,15 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
 pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
-	build_dispatch(TRANSFER)
-		.input::<(AssetId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(id, target, amount))
+	if id == 0 {
+		balances::transfer_keep_alive(target, amount)
+	} else {
+		build_dispatch(TRANSFER)
+			.input::<(AssetId, AccountId, Balance)>()
+			.output::<Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id, target, amount))
+	}
 }
 
 /// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
