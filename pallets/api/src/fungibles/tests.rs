@@ -9,34 +9,45 @@ use frame_support::{
 
 const ASSET: u32 = 42;
 
+type Event = crate::fungibles::Event<Test>;
+
 #[test]
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
-		let amount: Balance = 100 * UNIT;
-		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
-		let balance_before_transfer = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::transfer(signed(ALICE), ASSET, BOB, amount / 2));
-		let balance_after_transfer = Assets::balance(ASSET, &BOB);
-		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+		let value: Balance = 100 * UNIT;
+		let id = ASSET;
+		let from = Some(ALICE);
+		let to = Some(BOB);
+
+		create_asset_and_mint_to(ALICE, id, ALICE, value * 2);
+		let balance_before_transfer = Assets::balance(id, &BOB);
+		assert_ok!(Fungibles::transfer(signed(ALICE), id, BOB, value));
+		let balance_after_transfer = Assets::balance(id, &BOB);
+		assert_eq!(balance_after_transfer, balance_before_transfer + value);
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
 #[test]
 fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
-		let amount: Balance = 100 * UNIT;
-		// Approve CHARLIE to transfer up to `amount` to BOB.
-		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount * 2, CHARLIE, amount / 2);
-		let transferred = amount / 2;
+		let value: Balance = 100 * UNIT;
+		let id = ASSET;
+		let from = Some(ALICE);
+		let to = Some(BOB);
+
+		// Approve CHARLIE to transfer up to `value` to BOB.
+		create_asset_mint_and_approve(ALICE, id, ALICE, value * 2, CHARLIE, value);
 		// Successfully call transfer from.
-		let alice_balance_before_transfer = Assets::balance(ASSET, &ALICE);
-		let balance_before_transfer = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), ASSET, ALICE, BOB, transferred));
-		let alice_balance_after_transfer = Assets::balance(ASSET, &ALICE);
-		let balance_after_transfer = Assets::balance(ASSET, &BOB);
-		// Check that BOB receives the `amount` and ALICE `amount` is spent successfully by CHARLIE.
-		assert_eq!(balance_after_transfer, balance_before_transfer + transferred);
-		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - transferred);
+		let alice_balance_before_transfer = Assets::balance(id, &ALICE);
+		let bob_balance_before_transfer = Assets::balance(id, &BOB);
+		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), id, ALICE, BOB, value));
+		let alice_balance_after_transfer = Assets::balance(id, &ALICE);
+		let bob_balance_after_transfer = Assets::balance(id, &BOB);
+		// Check that BOB receives the `value` and ALICE `amount` is spent successfully by CHARLIE.
+		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + value);
+		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - value);
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
@@ -44,130 +55,175 @@ fn transfer_from_works() {
 #[test]
 fn approve_works() {
 	new_test_ext().execute_with(|| {
-		let amount: Balance = 100 * UNIT;
-		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
-		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
-		// Approves an amount to spend that is lower than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount / 2));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2);
-		// Approves an amount to spend that is higher than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
-		// Approves an amount to spend that is equal to the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, amount * 2));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
+		let value: Balance = 100 * UNIT;
+		let id = ASSET;
+		let owner = ALICE;
+		let spender = BOB;
+
+		create_asset_and_mint_to(ALICE, id, ALICE, value);
+		assert_eq!(0, Assets::allowance(id, &ALICE, &BOB));
+		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value);
+		System::assert_last_event(Event::Approval { id, owner, spender, value }.into());
+		// Approves an value to spend that is lower than the current allowance.
+		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value / 2));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value / 2);
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value / 2 }.into());
+		// Approves an value to spend that is higher than the current allowance.
+		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value * 2));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value * 2);
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value * 2 }.into());
+		// Approves an value to spend that is equal to the current allowance.
+		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value * 2));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value * 2);
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value * 2 }.into());
 		// Sets allowance to zero.
-		assert_ok!(Fungibles::approve(signed(ALICE), ASSET, BOB, 0));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
+		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, 0));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), 0);
+		System::assert_last_event(Event::Approval { id, owner, spender, value: 0 }.into());
 	});
 }
 
 #[test]
 fn increase_allowance_works() {
 	new_test_ext().execute_with(|| {
-		let amount: Balance = 100 * UNIT;
-		create_asset_and_mint_to(ALICE, ASSET, ALICE, amount);
-		assert_eq!(0, Assets::allowance(ASSET, &ALICE, &BOB));
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
+		let value: Balance = 100 * UNIT;
+		let id = ASSET;
+		let owner = ALICE;
+		let spender = BOB;
+
+		create_asset_and_mint_to(ALICE, id, ALICE, value);
+		assert_eq!(0, Assets::allowance(id, &ALICE, &BOB));
+		assert_ok!(Fungibles::increase_allowance(signed(ALICE), id, BOB, value));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value);
+		System::assert_last_event(Event::Approval { id, owner, spender, value }.into());
 		// Additive.
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), ASSET, BOB, amount));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount * 2);
+		assert_ok!(Fungibles::increase_allowance(signed(ALICE), id, BOB, value));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value * 2);
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value * 2 }.into());
 	});
 }
 
 #[test]
 fn decrease_allowance_works() {
 	new_test_ext().execute_with(|| {
-		let amount: Balance = 100 * UNIT;
-		create_asset_mint_and_approve(ALICE, ASSET, ALICE, amount, BOB, amount);
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
+		let value: Balance = 100 * UNIT;
+		let id = ASSET;
+		let owner = ALICE;
+		let spender = BOB;
+
+		create_asset_mint_and_approve(ALICE, id, ALICE, value, BOB, value);
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value);
 		// Owner balance is not changed if decreased by zero.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, 0));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount);
+		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), id, BOB, 0));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value);
 		// Decrease allowance successfully.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount / 2 - 1 * UNIT));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), amount / 2 + 1 * UNIT);
+		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), id, BOB, value / 2));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value / 2);
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value / 2 }.into());
 		// Saturating if current allowance is decreased more than the owner balance.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), ASSET, BOB, amount));
-		assert_eq!(Assets::allowance(ASSET, &ALICE, &BOB), 0);
+		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), id, BOB, value));
+		assert_eq!(Assets::allowance(id, &ALICE, &BOB), 0);
+		System::assert_last_event(Event::Approval { id, owner, spender, value: 0 }.into());
 	});
 }
 
 #[test]
 fn create_works() {
 	new_test_ext().execute_with(|| {
-		assert!(!Assets::asset_exists(ASSET));
-		assert_ok!(Fungibles::create(signed(ALICE), ASSET, ALICE, 100));
-		assert!(Assets::asset_exists(ASSET));
+		let id = ASSET;
+		let owner = ALICE;
+		let admin = ALICE;
+
+		assert!(!Assets::asset_exists(id));
+		assert_ok!(Fungibles::create(signed(ALICE), id, ALICE, 100));
+		assert!(Assets::asset_exists(id));
+		System::assert_last_event(Event::Create { id, owner, admin }.into());
 	});
 }
 
 #[test]
 fn start_destroy_works() {
 	new_test_ext().execute_with(|| {
-		create_asset(ALICE, ASSET);
-		assert_ok!(Fungibles::start_destroy(signed(ALICE), ASSET));
+		let id = ASSET;
+
+		create_asset(ALICE, id);
+		assert_ok!(Fungibles::start_destroy(signed(ALICE), id));
+		System::assert_last_event(Event::StartDestroy { id }.into());
 	});
 }
 
 #[test]
 fn set_metadata_works() {
 	new_test_ext().execute_with(|| {
+		let id = ASSET;
 		let name = vec![42];
 		let symbol = vec![42];
 		let decimals = 42;
-		create_asset(ALICE, ASSET);
+
+		create_asset(ALICE, id);
 		assert_ok!(Fungibles::set_metadata(
 			signed(ALICE),
-			ASSET,
+			id,
 			name.clone(),
 			symbol.clone(),
 			decimals
 		));
-		assert_eq!(Assets::name(ASSET), name);
-		assert_eq!(Assets::symbol(ASSET), symbol);
-		assert_eq!(Assets::decimals(ASSET), decimals);
+		assert_eq!(Assets::name(id), name);
+		assert_eq!(Assets::symbol(id), symbol);
+		assert_eq!(Assets::decimals(id), decimals);
+		System::assert_last_event(Event::SetMetadata { id, name, symbol, decimals }.into());
 	});
 }
 
 #[test]
 fn clear_metadata_works() {
 	new_test_ext().execute_with(|| {
+		let id = ASSET;
 		let name = vec![42];
 		let symbol = vec![42];
 		let decimals = 42;
-		create_asset_and_set_metadata(ALICE, ASSET, name, symbol, decimals);
-		assert_ok!(Fungibles::clear_metadata(signed(ALICE), ASSET));
-		assert_eq!(Assets::name(ASSET), Vec::<u8>::new());
-		assert_eq!(Assets::symbol(ASSET), Vec::<u8>::new());
-		assert_eq!(Assets::decimals(ASSET), 0u8);
+
+		create_asset_and_set_metadata(ALICE, id, name, symbol, decimals);
+		assert_ok!(Fungibles::clear_metadata(signed(ALICE), id));
+		assert_eq!(Assets::name(id), Vec::<u8>::new());
+		assert_eq!(Assets::symbol(id), Vec::<u8>::new());
+		assert_eq!(Assets::decimals(id), 0u8);
+		System::assert_last_event(Event::ClearMetadata { id }.into());
 	});
 }
 
 #[test]
 fn mint_works() {
 	new_test_ext().execute_with(|| {
-		let amount: Balance = 100 * UNIT;
-		create_asset(ALICE, ASSET);
-		let balance_before_mint = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::mint(signed(ALICE), ASSET, BOB, amount));
-		let balance_after_mint = Assets::balance(ASSET, &BOB);
-		assert_eq!(balance_after_mint, balance_before_mint + amount);
+		let value: Balance = 100 * UNIT;
+		let id = ASSET;
+		let from = None;
+		let to = Some(BOB);
+
+		create_asset(ALICE, id);
+		let balance_before_mint = Assets::balance(id, &BOB);
+		assert_ok!(Fungibles::mint(signed(ALICE), id, BOB, value));
+		let balance_after_mint = Assets::balance(id, &BOB);
+		assert_eq!(balance_after_mint, balance_before_mint + value);
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
 #[test]
 fn burn_works() {
 	new_test_ext().execute_with(|| {
-		let amount: Balance = 100 * UNIT;
-		create_asset_and_mint_to(ALICE, ASSET, BOB, amount);
-		let balance_before_burn = Assets::balance(ASSET, &BOB);
-		assert_ok!(Fungibles::burn(signed(ALICE), ASSET, BOB, amount));
-		let balance_after_burn = Assets::balance(ASSET, &BOB);
-		assert_eq!(balance_after_burn, balance_before_burn - amount);
+		let value: Balance = 100 * UNIT;
+		let id = ASSET;
+		let from = Some(BOB);
+		let to = None;
+
+		create_asset_and_mint_to(ALICE, id, BOB, value);
+		let balance_before_burn = Assets::balance(id, &BOB);
+		assert_ok!(Fungibles::burn(signed(ALICE), id, BOB, value));
+		let balance_after_burn = Assets::balance(id, &BOB);
+		assert_eq!(balance_after_burn, balance_before_burn - value);
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
