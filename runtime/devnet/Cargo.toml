@@ -142,6 +142,7 @@ std = [
     "polkadot-runtime-common/std",
     "pop-primitives/std",
     "pop-runtime-extensions/std",
+    "pop-runtime-extensions/pop-devnet",
     "scale-info/std",
     "sp-api/std",
     "sp-io/std",

@@ -9807,6 +9807,7 @@ dependencies = [
  "parity-scale-codec",
  "pop-primitives",
  "pop-runtime-common",
+ "rand",
  "sp-core",
  "sp-runtime",
  "sp-std",
