@@ -425,16 +425,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 
 [[package]]
-name = "asset-hub-rococo-runtime"
-version = "0.12.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af52c4d3011936f615f3469b3c20f8b13b861f4c06d097bc1922200ce44781d9"
+name = "asset-hub-paseo-runtime"
+version = "1.0.0"
+source = "git+https://github.com/paseo-network/runtimes/?tag=v1.2.5-system-chains#e7265b10b28d8b82c3146e72c98895dac2b55729"
 dependencies = [
  "assets-common",
- "bp-asset-hub-rococo",
- "bp-asset-hub-westend",
- "bp-bridge-hub-rococo",
- "bp-bridge-hub-westend",
+ "bp-asset-hub-paseo",
+ "bp-bridge-hub-paseo",
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
  "cumulus-pallet-session-benchmarking",
@@ -462,12 +459,10 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-message-queue",
  "pallet-multisig",
- "pallet-nft-fractionalization",
  "pallet-nfts",
  "pallet-nfts-runtime-api",
  "pallet-proxy",
  "pallet-session",
- "pallet-state-trie-migration",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -478,10 +473,11 @@ dependencies = [
  "pallet-xcm-bridge-hub-router",
  "parachains-common",
  "parity-scale-codec",
+ "paseo-runtime-constants",
+ "polkadot-core-primitives",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
  "primitive-types",
- "rococo-runtime-constants",
  "scale-info",
  "snowbridge-router-primitives",
  "sp-api",
@@ -490,6 +486,7 @@ dependencies = [
  "sp-core",
  "sp-genesis-builder",
  "sp-inherents",
+ "sp-io",
  "sp-offchain",
  "sp-runtime",
  "sp-session",
@@ -503,7 +500,7 @@ dependencies = [
  "staging-xcm-builder",
  "staging-xcm-executor",
  "substrate-wasm-builder",
- "testnet-parachains-constants",
+ "system-parachains-constants",
 ]
 
 [[package]]
@@ -1035,27 +1032,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "bp-asset-hub-rococo"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4acbc4a97cc234685179ffb0b756e6a906acdae59e749e7b2202872da2c08478"
+name = "bp-asset-hub-paseo"
+version = "1.0.0"
+source = "git+https://github.com/paseo-network/runtimes/?tag=v1.2.5-system-chains#e7265b10b28d8b82c3146e72c98895dac2b55729"
 dependencies = [
- "bp-xcm-bridge-hub-router",
  "frame-support",
- "parity-scale-codec",
- "scale-info",
-]
-
-[[package]]
-name = "bp-asset-hub-westend"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0eebe84c84f20d5147df985ff74d47f264628e14614c836e1230c688b9476462"
-dependencies = [
- "bp-xcm-bridge-hub-router",
- "frame-support",
- "parity-scale-codec",
- "scale-info",
+ "sp-std",
+ "staging-xcm",
+ "system-parachains-constants",
 ]
 
 [[package]]
@@ -1075,33 +1059,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "bp-bridge-hub-rococo"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "53a9fd41ffa36ae08acf7da242a023703a7a6162d8aa2b8c06593f48f0c6c771"
+name = "bp-bridge-hub-paseo"
+version = "1.0.0"
+source = "git+https://github.com/paseo-network/runtimes/?tag=v1.2.5-system-chains#e7265b10b28d8b82c3146e72c98895dac2b55729"
 dependencies = [
  "bp-bridge-hub-cumulus",
  "bp-messages",
  "bp-runtime",
  "frame-support",
+ "parity-scale-codec",
+ "scale-info",
+ "snowbridge-core",
  "sp-api",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "bp-bridge-hub-westend"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b65039a3c5aa8652f3dad6a2d6dc3948eff24333a30f2528bc34fc406e38819"
-dependencies = [
- "bp-bridge-hub-cumulus",
- "bp-messages",
- "bp-runtime",
- "frame-support",
- "sp-api",
- "sp-runtime",
- "sp-std",
+ "staging-xcm",
 ]
 
 [[package]]
@@ -4373,7 +4345,7 @@ dependencies = [
  "iana-time-zone-haiku",
  "js-sys",
  "wasm-bindgen",
- "windows-core 0.52.0",
+ "windows-core",
 ]
 
 [[package]]
@@ -4580,7 +4552,7 @@ dependencies = [
 name = "integration-tests"
 version = "0.0.0"
 dependencies = [
- "asset-hub-rococo-runtime",
+ "asset-hub-paseo-runtime",
  "asset-test-utils",
  "cumulus-primitives-core",
  "emulated-integration-tests-common",
@@ -4590,13 +4562,14 @@ dependencies = [
  "pallet-message-queue",
  "pallet-xcm",
  "parity-scale-codec",
+ "paseo-runtime",
+ "paseo-runtime-constants",
  "polkadot-primitives",
  "polkadot-runtime-parachains",
  "pop-runtime-common",
  "pop-runtime-devnet",
- "rococo-runtime",
- "rococo-runtime-constants",
  "sp-authority-discovery",
+ "sp-consensus-aura",
  "sp-consensus-babe",
  "sp-consensus-beefy",
  "sp-consensus-grandpa",
@@ -7180,9 +7153,9 @@ dependencies = [
 
 [[package]]
 name = "pallet-nomination-pools"
-version = "26.0.0"
+version = "26.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f14519c1c613d2f8c95c27015864c11a37969a23deeba9f6dbaff4276e1b81c"
+checksum = "b62091305ec7426e71c3da2b0944c2df5a804109ee4d2e8f4fe34865e049f8ac"
 dependencies = [
  "frame-support",
  "frame-system",
@@ -7507,9 +7480,9 @@ dependencies = [
 
 [[package]]
 name = "pallet-staking-runtime-api"
-version = "15.0.0"
+version = "15.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "237d7b5a10cb6cba727c3e957fb241776302aa3cce589e6759ba53f50129c1a5"
+checksum = "e47c73850103db30b61ef170107afe1ef0dab6905c495bd6dfb57b3c1dd81bc7"
 dependencies = [
  "parity-scale-codec",
  "sp-api",
@@ -7880,9 +7853,9 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec"
-version = "3.6.9"
+version = "3.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "881331e34fa842a2fb61cc2db9643a8fedc615e47cfcc52597d1af0db9a7e8fe"
+checksum = "306800abfa29c7f16596b5970a588435e3d5b3149683d00c12b699cc19f895ee"
 dependencies = [
  "arrayvec 0.7.4",
  "bitvec",
@@ -7895,11 +7868,11 @@ dependencies = [
 
 [[package]]
 name = "parity-scale-codec-derive"
-version = "3.6.9"
+version = "3.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be30eaf4b0a9fba5336683b38de57bb86d179a35862ba6bfcf57625d006bde5b"
+checksum = "d830939c76d294956402033aee57a6da7b438f2294eb94864c37b0569053a42c"
 dependencies = [
- "proc-macro-crate 2.0.0",
+ "proc-macro-crate 3.1.0",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
@@ -8005,6 +7978,116 @@ name = "partial_sort"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7924d1d0ad836f665c9065e26d016c673ece3993f30d340068b16f282afc1156"
+
+[[package]]
+name = "paseo-runtime"
+version = "1.2.5"
+source = "git+https://github.com/paseo-network/runtimes/?tag=v1.2.5-system-chains#e7265b10b28d8b82c3146e72c98895dac2b55729"
+dependencies = [
+ "binary-merkle-tree",
+ "frame-benchmarking",
+ "frame-election-provider-support",
+ "frame-executive",
+ "frame-metadata-hash-extension",
+ "frame-support",
+ "frame-system",
+ "frame-system-benchmarking",
+ "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
+ "log",
+ "pallet-asset-rate",
+ "pallet-authority-discovery",
+ "pallet-authorship",
+ "pallet-babe",
+ "pallet-bags-list",
+ "pallet-balances",
+ "pallet-beefy",
+ "pallet-beefy-mmr",
+ "pallet-bounties",
+ "pallet-child-bounties",
+ "pallet-conviction-voting",
+ "pallet-election-provider-multi-phase",
+ "pallet-election-provider-support-benchmarking",
+ "pallet-fast-unstake",
+ "pallet-grandpa",
+ "pallet-identity",
+ "pallet-indices",
+ "pallet-message-queue",
+ "pallet-mmr",
+ "pallet-multisig",
+ "pallet-nomination-pools",
+ "pallet-nomination-pools-benchmarking",
+ "pallet-nomination-pools-runtime-api",
+ "pallet-offences",
+ "pallet-offences-benchmarking",
+ "pallet-preimage",
+ "pallet-proxy",
+ "pallet-referenda",
+ "pallet-scheduler",
+ "pallet-session",
+ "pallet-session-benchmarking",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
+ "pallet-staking-reward-fn",
+ "pallet-staking-runtime-api",
+ "pallet-state-trie-migration",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-treasury",
+ "pallet-utility",
+ "pallet-vesting",
+ "pallet-whitelist",
+ "pallet-xcm",
+ "pallet-xcm-benchmarks",
+ "parity-scale-codec",
+ "paseo-runtime-constants",
+ "polkadot-primitives",
+ "polkadot-runtime-common",
+ "polkadot-runtime-parachains",
+ "scale-info",
+ "sp-api",
+ "sp-application-crypto",
+ "sp-arithmetic",
+ "sp-authority-discovery",
+ "sp-block-builder",
+ "sp-consensus-babe",
+ "sp-consensus-beefy",
+ "sp-core",
+ "sp-debug-derive",
+ "sp-genesis-builder",
+ "sp-inherents",
+ "sp-io",
+ "sp-npos-elections",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-session",
+ "sp-staking",
+ "sp-std",
+ "sp-storage",
+ "sp-transaction-pool",
+ "sp-version",
+ "staging-xcm",
+ "staging-xcm-builder",
+ "staging-xcm-executor",
+ "substrate-wasm-builder",
+]
+
+[[package]]
+name = "paseo-runtime-constants"
+version = "1.0.0"
+source = "git+https://github.com/paseo-network/runtimes/?tag=v1.2.5-system-chains#e7265b10b28d8b82c3146e72c98895dac2b55729"
+dependencies = [
+ "frame-support",
+ "polkadot-primitives",
+ "polkadot-runtime-common",
+ "smallvec",
+ "sp-core",
+ "sp-runtime",
+ "sp-weights",
+ "staging-xcm-builder",
+]
 
 [[package]]
 name = "paste"
@@ -9721,15 +9804,6 @@ checksum = "7f4c021e1093a56626774e81216a4ce732a735e5bad4868a03f3ed65ca0c3919"
 dependencies = [
  "once_cell",
  "toml_edit 0.19.15",
-]
-
-[[package]]
-name = "proc-macro-crate"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7e8366a6159044a37876a2b9817124296703c586a5c92e2c53751fa06d8d43e8"
-dependencies = [
- "toml_edit 0.20.7",
 ]
 
 [[package]]
@@ -13747,6 +13821,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "system-parachains-constants"
+version = "1.0.0"
+source = "git+https://github.com/paseo-network/runtimes/?tag=v1.2.5-system-chains#e7265b10b28d8b82c3146e72c98895dac2b55729"
+dependencies = [
+ "frame-support",
+ "parachains-common",
+ "paseo-runtime-constants",
+ "polkadot-core-primitives",
+ "polkadot-primitives",
+ "smallvec",
+ "sp-runtime",
+]
+
+[[package]]
 name = "tap"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -13794,21 +13882,6 @@ name = "termtree"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3369f5ac52d5eb6ab48c6b4ffdc8efbcad6b89c765749064ba298f2c68a16a76"
-
-[[package]]
-name = "testnet-parachains-constants"
-version = "1.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ff23c25f39d64b930ab9d721643d0c780a66201c7f1da34fac6982752626bf5"
-dependencies = [
- "frame-support",
- "polkadot-core-primitives",
- "rococo-runtime-constants",
- "smallvec",
- "sp-runtime",
- "staging-xcm",
- "westend-runtime-constants",
-]
 
 [[package]]
 name = "thiserror"
@@ -14077,17 +14150,6 @@ name = "toml_edit"
 version = "0.19.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
-dependencies = [
- "indexmap 2.2.6",
- "toml_datetime",
- "winnow 0.5.40",
-]
-
-[[package]]
-name = "toml_edit"
-version = "0.20.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70f427fce4d84c72b5b732388bf4a9f4531b53f74e2887e3ecb2481f68f66d81"
 dependencies = [
  "indexmap 2.2.6",
  "toml_datetime",
@@ -15226,7 +15288,7 @@ version = "0.51.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca229916c5ee38c2f2bc1e9d8f04df975b4bd93f9955dc69fabb5d91270045c9"
 dependencies = [
- "windows-core 0.51.1",
+ "windows-core",
  "windows-targets 0.48.5",
 ]
 
@@ -15237,15 +15299,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1f8cf84f35d2db49a46868f947758c7a1138116f7fac3bc844f43ade1292e64"
 dependencies = [
  "windows-targets 0.48.5",
-]
-
-[[package]]
-name = "windows-core"
-version = "0.52.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "33ab640c8d7e35bf8ba19b884ba838ceb4fba93a4e8c65a9059d08afcfc683d9"
-dependencies = [
- "windows-targets 0.52.4",
 ]
 
 [[package]]
