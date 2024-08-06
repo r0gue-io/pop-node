@@ -16,7 +16,7 @@ use pop_runtime_devnet::{
 	UNIT,
 };
 
-mod local_fungibles;
+mod fungibles;
 
 type AssetId = u32;
 type Balance = u128;
