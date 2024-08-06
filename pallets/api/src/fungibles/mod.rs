@@ -76,6 +76,9 @@ pub mod pallet {
 		/// Token decimals for a given asset ID.
 		#[codec(index = 10)]
 		TokenDecimals(AssetIdOf<T>),
+		/// Check if token exists for a given asset ID.
+		#[codec(index = 18)]
+		AssetExists(AssetIdOf<T>),
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -96,9 +99,9 @@ pub mod pallet {
 		/// `data` in unspecified format.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `to` - The recipient account.
-		/// * `value` - The number of tokens to transfer.
+		/// - `id` - The ID of the asset.
+		/// - `to` - The recipient account.
+		/// - `value` - The number of tokens to transfer.
 		#[pallet::call_index(3)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
 		pub fn transfer(
@@ -115,10 +118,10 @@ pub mod pallet {
 		/// account `to`, with additional `data` in unspecified format.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `owner` - The account from which the asset balance will be withdrawn.
-		/// * `to` - The recipient account.
-		/// * `value` - The number of tokens to transfer.
+		/// - `id` - The ID of the asset.
+		/// - `owner` - The account from which the asset balance will be withdrawn.
+		/// - `to` - The recipient account.
+		/// - `value` - The number of tokens to transfer.
 		#[pallet::call_index(4)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_approved())]
 		pub fn transfer_from(
@@ -136,9 +139,9 @@ pub mod pallet {
 		/// Approves an account to spend a specified number of tokens on behalf of the caller.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		/// * `value` - The number of tokens to approve.
+		/// - `id` - The ID of the asset.
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to approve.
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn approve(
@@ -186,9 +189,9 @@ pub mod pallet {
 		/// Increases the allowance of a spender.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		/// * `value` - The number of tokens to increase the allowance by.
+		/// - `id` - The ID of the asset.
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to increase the allowance by.
 		#[pallet::call_index(6)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::approve_transfer())]
 		pub fn increase_allowance(
@@ -204,9 +207,9 @@ pub mod pallet {
 		/// Decreases the allowance of a spender.
 		///
 		/// # Parameters
-		/// * `id` - The ID of the asset.
-		/// * `spender` - The account that is allowed to spend the tokens.
-		/// * `value` - The number of tokens to decrease the allowance by.
+		/// - `id` - The ID of the asset.
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to decrease the allowance by.
 		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn decrease_allowance(
@@ -234,6 +237,101 @@ pub mod pallet {
 			AssetsOf::<T>::approve_transfer(origin, id, spender, new_allowance)?;
 			Ok(().into())
 		}
+
+		/// Create a new token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		/// - `admin` - The account that will administer the asset.
+		/// - `min_balance` - The minimum balance required for accounts holding this asset.
+		#[pallet::call_index(11)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::create())]
+		pub fn create(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			admin: AccountIdOf<T>,
+			min_balance: BalanceOf<T>,
+		) -> DispatchResult {
+			let admin = T::Lookup::unlookup(admin);
+			AssetsOf::<T>::create(origin, id.into(), admin, min_balance)
+		}
+
+		/// Start the process of destroying a token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		#[pallet::call_index(12)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
+		pub fn start_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
+			AssetsOf::<T>::start_destroy(origin, id.into())
+		}
+
+		/// Set the metadata for a token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id`: The identifier of the asset to update.
+		/// - `name`: The user friendly name of this asset. Limited in length by
+		///   `pallet_assets::Config::StringLimit`.
+		/// - `symbol`: The exchange symbol for this asset. Limited in length by
+		///   `pallet_assets::Config::StringLimit`.
+		/// - `decimals`: The number of decimals this asset uses to represent one unit.
+		#[pallet::call_index(16)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::set_metadata(name.len() as u32, symbol.len() as u32))]
+		pub fn set_metadata(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			name: Vec<u8>,
+			symbol: Vec<u8>,
+			decimals: u8,
+		) -> DispatchResult {
+			AssetsOf::<T>::set_metadata(origin, id.into(), name, symbol, decimals)
+		}
+
+		/// Clear the metadata for a token with a given asset ID.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		#[pallet::call_index(17)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::clear_metadata())]
+		pub fn clear_metadata(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
+			AssetsOf::<T>::clear_metadata(origin, id.into())
+		}
+
+		/// Creates `amount` tokens and assigns them to `account`, increasing the total supply.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		/// - `owner` - The account to be credited with the created tokens.
+		/// - `value` - The number of tokens to mint.
+		#[pallet::call_index(19)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::mint())]
+		pub fn mint(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			account: AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let account = T::Lookup::unlookup(account);
+			AssetsOf::<T>::mint(origin, id.into(), account, amount)
+		}
+
+		/// Destroys `amount` tokens from `account`, reducing the total supply.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		/// - `owner` - The account from which the tokens will be destroyed.
+		/// - `value` - The number of tokens to destroy.
+		#[pallet::call_index(20)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]
+		pub fn burn(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			account: AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let account = T::Lookup::unlookup(account);
+			AssetsOf::<T>::burn(origin, id.into(), account, amount)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -243,8 +341,8 @@ pub mod pallet {
 		/// encoded result.
 		///
 		/// # Parameter
-		/// * `value` - An instance of `Read<T>`, which specifies the type of state query and
-		/// 		  the associated parameters.
+		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
+		///   the associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 
@@ -263,6 +361,7 @@ pub mod pallet {
 				TokenDecimals(id) => {
 					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
 				},
+				AssetExists(id) => AssetsOf::<T>::asset_exists(id).encode(),
 			}
 		}
 

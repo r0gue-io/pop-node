@@ -2,7 +2,9 @@ use crate::{fungibles::Read::*, mock::*};
 use codec::Encode;
 use frame_support::{
 	assert_ok,
-	traits::fungibles::{approvals::Inspect, metadata::Inspect as MetadataInspect},
+	traits::fungibles::{
+		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
+	},
 };
 
 const ASSET: u32 = 42;
@@ -95,6 +97,81 @@ fn decrease_allowance_works() {
 }
 
 #[test]
+fn create_works() {
+	new_test_ext().execute_with(|| {
+		assert!(!Assets::asset_exists(ASSET));
+		assert_ok!(Fungibles::create(signed(ALICE), ASSET, ALICE, 100));
+		assert!(Assets::asset_exists(ASSET));
+	});
+}
+
+#[test]
+fn start_destroy_works() {
+	new_test_ext().execute_with(|| {
+		create_asset(ALICE, ASSET);
+		assert_ok!(Fungibles::start_destroy(signed(ALICE), ASSET));
+	});
+}
+
+#[test]
+fn set_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let name = vec![42];
+		let symbol = vec![42];
+		let decimals = 42;
+		create_asset(ALICE, ASSET);
+		assert_ok!(Fungibles::set_metadata(
+			signed(ALICE),
+			ASSET,
+			name.clone(),
+			symbol.clone(),
+			decimals
+		));
+		assert_eq!(Assets::name(ASSET), name);
+		assert_eq!(Assets::symbol(ASSET), symbol);
+		assert_eq!(Assets::decimals(ASSET), decimals);
+	});
+}
+
+#[test]
+fn clear_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let name = vec![42];
+		let symbol = vec![42];
+		let decimals = 42;
+		create_asset_and_set_metadata(ALICE, ASSET, name, symbol, decimals);
+		assert_ok!(Fungibles::clear_metadata(signed(ALICE), ASSET));
+		assert_eq!(Assets::name(ASSET), Vec::<u8>::new());
+		assert_eq!(Assets::symbol(ASSET), Vec::<u8>::new());
+		assert_eq!(Assets::decimals(ASSET), 0u8);
+	});
+}
+
+#[test]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		create_asset(ALICE, ASSET);
+		let balance_before_mint = Assets::balance(ASSET, &BOB);
+		assert_ok!(Fungibles::mint(signed(ALICE), ASSET, BOB, amount));
+		let balance_after_mint = Assets::balance(ASSET, &BOB);
+		assert_eq!(balance_after_mint, balance_before_mint + amount);
+	});
+}
+
+#[test]
+fn burn_works() {
+	new_test_ext().execute_with(|| {
+		let amount: Balance = 100 * UNIT;
+		create_asset_and_mint_to(ALICE, ASSET, BOB, amount);
+		let balance_before_burn = Assets::balance(ASSET, &BOB);
+		assert_ok!(Fungibles::burn(signed(ALICE), ASSET, BOB, amount));
+		let balance_after_burn = Assets::balance(ASSET, &BOB);
+		assert_eq!(balance_after_burn, balance_before_burn - amount);
+	});
+}
+
+#[test]
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		create_asset_and_mint_to(ALICE, ASSET, ALICE, 100);
@@ -137,12 +214,20 @@ fn token_metadata_works() {
 	});
 }
 
+#[test]
+fn asset_exists_works() {
+	new_test_ext().execute_with(|| {
+		create_asset(ALICE, ASSET);
+		assert_eq!(Assets::asset_exists(ASSET).encode(), Fungibles::read_state(AssetExists(ASSET)));
+	});
+}
+
 fn signed(account: AccountId) -> RuntimeOrigin {
 	RuntimeOrigin::signed(account)
 }
 
-fn create_asset(owner: AccountId, asset_id: AssetId, min_balance: Balance) {
-	assert_ok!(Assets::create(signed(owner), asset_id, owner, min_balance));
+fn create_asset(owner: AccountId, asset_id: AssetId) {
+	assert_ok!(Assets::create(signed(owner), asset_id, owner, 1));
 }
 
 fn mint_asset(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {
@@ -150,7 +235,7 @@ fn mint_asset(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance
 }
 
 fn create_asset_and_mint_to(owner: AccountId, asset_id: AssetId, to: AccountId, value: Balance) {
-	create_asset(owner, asset_id, 1);
+	create_asset(owner, asset_id);
 	mint_asset(owner, asset_id, to, value)
 }
 

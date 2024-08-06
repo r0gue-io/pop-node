@@ -122,55 +122,58 @@ mod fungibles {
 			api::token_decimals(id)
 		}
 
-		// 3. Asset Management:
-		// - create
-		// - start_destroy
-		// - destroy_accounts
-		// - destroy_approvals
-		// - finish_destroy
-		// - set_metadata
-		// - clear_metadata
+		/// 3. Asset Management:
+		/// - create
+		/// - start_destroy
+		/// - destroy_accounts
+		/// - destroy_approvals
+		/// - finish_destroy
+		/// - set_metadata
+		/// - clear_metadata
 
-		// #[ink(message)]
-		// pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
-		// 	ink::env::debug_println!(
-		// 		"PopApiFungiblesExample::create: id: {:?} admin: {:?} min_balance: {:?}",
-		// 		id,
-		// 		admin,
-		// 		min_balance,
-		// 	);
-		// 	let result = api::create(id, admin, min_balance);
-		// 	ink::env::debug_println!("Result: {:?}", result);
-		// result.map_err(|e| e.into())
-		// result
-		// }
+		#[ink(message)]
+		pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
+			api::create(id, admin, min_balance)
+		}
 
-		// #[ink(message)]
-		// pub fn set_metadata(
-		// 	&self,
-		// 	id: AssetId,
-		// 	name: Vec<u8>,
-		// 	symbol: Vec<u8>,
-		// 	decimals: u8,
-		// ) -> Result<()> {
-		// 	ink::env::debug_println!(
-		// 		"PopApiFungiblesExample::set_metadata: id: {:?} name: {:?} symbol: {:?}, decimals: {:?}",
-		// 		id,
-		// 		name,
-		// 		symbol,
-		// 		decimals,
-		// 	);
-		// 	let result = api::set_metadata(id, name, symbol, decimals);
-		// 	ink::env::debug_println!("Result: {:?}", result);
-		// 	// result.map_err(|e| e.into())
-		// 	result
-		// }
-		//
-		// #[ink(message)]
-		// pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-		// 	// api::asset_exists(id).map_err(|e| e.into())
-		// 	api::asset_exists(id)
-		// }
+		#[ink(message)]
+		pub fn start_destroy(&self, id: AssetId) -> Result<()> {
+			api::start_destroy(id)
+		}
+
+		#[ink(message)]
+		pub fn set_metadata(
+			&self,
+			id: AssetId,
+			name: Vec<u8>,
+			symbol: Vec<u8>,
+			decimals: u8,
+		) -> Result<()> {
+			api::set_metadata(id, name, symbol, decimals)
+		}
+
+		#[ink(message)]
+		pub fn clear_metadata(&self, id: AssetId) -> Result<()> {
+			api::clear_metadata(id)
+		}
+
+		#[ink(message)]
+		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
+			api::asset_exists(id)
+		}
+		/// 4. PSP-22 Mintable & Burnable Interface:
+		/// - mint
+		/// - burn
+
+		#[ink(message)]
+		pub fn mint(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+			api::mint(id, account, amount)
+		}
+
+		#[ink(message)]
+		pub fn burn(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+			api::burn(id, account, amount)
+		}
 	}
 
 	#[cfg(test)]
