@@ -483,62 +483,65 @@ fn asset_exists_works() {
 	});
 }
 
-// #[test]
-// #[ignore]
-// fn mint_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let _ = env_logger::try_init();
-// 		let addr =
-// 			instantiate(CONTRACT, INIT_VALUE, vec![]);
-// 		let amount: Balance = 100 * UNIT;
-//
-// 		// Asset does not exist.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), 1, None, Some(BOB), amount, &[0u8])),
-// 			Token(UnknownAsset)
-// 		);
-// 		let asset = create_asset(ALICE, 1, 2);
-// 		// Minting can only be done by the owner.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
-// 			Ok(Module { index: 52, error: 2 }),
-// 		);
-// 		// Minimum balance of an asset can not be zero.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), 1, &[0u8])),
-// 			Token(BelowMinimum)
-// 		);
-// 		let asset = create_asset(addr.clone(), 2, 2);
-// 		// Asset is not live, i.e. frozen or being destroyed.
-// 		freeze_asset(addr.clone(), asset);
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
-// 			Ok(Module { index: 52, error: 16 }),
-// 		);
-// 		thaw_asset(addr.clone(), asset);
-// 		// Successful mint.
-// 		let balance_before_mint = Assets::balance(asset, &BOB);
-// 		let result = transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8]);
-// 		assert!(!result.did_revert(), "Contract reverted!");
-// 		let balance_after_mint = Assets::balance(asset, &BOB);
-// 		assert_eq!(balance_after_mint, balance_before_mint + amount);
-// 		// Can not mint more tokens than Balance::MAX.
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(
-// 				addr.clone(),
-// 				asset,
-// 				None,
-// 				Some(BOB),
-// 				Balance::MAX,
-// 				&[0u8]
-// 			)),
-// 			Arithmetic(Overflow)
-// 		);
-// 		// Asset is not live, i.e. frozen or being destroyed.
-// 		start_destroy_asset(addr.clone(), asset);
-// 		assert_eq!(
-// 			decoded::<Error>(transfer_from(addr.clone(), asset, None, Some(BOB), amount, &[0u8])),
-// 			Ok(Module { index: 52, error: 16 }),
-// 		);
-// 	});
-// }
+#[test]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+
+		// Asset does not exist.
+		assert_eq!(mint(addr.clone(), 1, BOB, amount), Err(Token(UnknownAsset)));
+		let asset = create_asset(ALICE, 1, 1);
+		// Minting can only be done by the owner.
+		assert_eq!(mint(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 2 }));
+		let asset = create_asset(addr.clone(), 2, 2);
+		// Minimum balance of an asset can not be zero.
+		assert_eq!(mint(addr.clone(), asset, BOB, 1), Err(Token(BelowMinimum)));
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(addr.clone(), asset);
+		assert_eq!(mint(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		thaw_asset(addr.clone(), asset);
+		// Successful mint.
+		let balance_before_mint = Assets::balance(asset, &BOB);
+		assert_ok!(mint(addr.clone(), asset, BOB, amount));
+		let balance_after_mint = Assets::balance(asset, &BOB);
+		assert_eq!(balance_after_mint, balance_before_mint + amount);
+		// Account can not hold more tokens than Balance::MAX.
+		assert_eq!(mint(addr.clone(), asset, BOB, Balance::MAX,), Err(Arithmetic(Overflow)));
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(addr.clone(), asset);
+		assert_eq!(mint(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+	});
+}
+
+#[test]
+fn burn_works() {
+	new_test_ext().execute_with(|| {
+		let _ = env_logger::try_init();
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let amount: Balance = 100 * UNIT;
+
+		// Asset does not exist.
+		assert_eq!(burn(addr.clone(), 1, BOB, amount), Err(Module { index: 52, error: 3 }));
+		let asset = create_asset(ALICE, 1, 1);
+		// Bob has no tokens and thus pallet assets doesn't know the account.
+		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 1 }));
+		// Burning can only be done by the manager.
+		mint_asset(ALICE, asset, BOB, amount);
+		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 2 }));
+		let asset = create_asset_and_mint_to(addr.clone(), 2, BOB, amount);
+		// Asset is not live, i.e. frozen or being destroyed.
+		freeze_asset(addr.clone(), asset);
+		assert_eq!(burn(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		thaw_asset(addr.clone(), asset);
+		// Successful mint.
+		let balance_before_burn = Assets::balance(asset, &BOB);
+		assert_ok!(burn(addr.clone(), asset, BOB, amount));
+		let balance_after_burn = Assets::balance(asset, &BOB);
+		assert_eq!(balance_after_burn, balance_before_burn - amount);
+		// Asset is not live, i.e. frozen or being destroyed.
+		start_destroy_asset(addr.clone(), asset);
+		assert_eq!(burn(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+	});
+}

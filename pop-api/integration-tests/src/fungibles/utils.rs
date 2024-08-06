@@ -184,6 +184,32 @@ pub(super) fn clear_metadata(addr: AccountId32, asset_id: AssetId) -> Result<(),
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
+pub(super) fn mint(
+	addr: AccountId32,
+	asset_id: AssetId,
+	account: AccountId32,
+	amount: Balance,
+) -> Result<(), Error> {
+	let function = function_selector("mint");
+	let params = [function, asset_id.encode(), account.encode(), amount.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) fn burn(
+	addr: AccountId32,
+	asset_id: AssetId,
+	account: AccountId32,
+	amount: Balance,
+) -> Result<(), Error> {
+	let function = function_selector("burn");
+	let params = [function, asset_id.encode(), account.encode(), amount.encode()].concat();
+	let result = bare_call(addr, params, 0).expect("should work");
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
 pub(super) fn create_asset(owner: AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
 	assert_ok!(Assets::create(
 		RuntimeOrigin::signed(owner.clone()),

@@ -28,6 +28,7 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 					| create { .. } | set_metadata { .. }
 					| start_destroy { .. }
 					| clear_metadata { .. }
+					| mint { .. } | burn { .. }
 			)
 		)
 	}

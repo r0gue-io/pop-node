@@ -293,6 +293,42 @@ pub mod pallet {
 		pub fn clear_metadata(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
 			AssetsOf::<T>::clear_metadata(origin, id.into())
 		}
+
+		/// Creates `amount` tokens and assigns them to `account`, increasing the total supply.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		/// - `owner` - The account to be credited with the created tokens.
+		/// - `value` - The number of tokens to mint.
+		#[pallet::call_index(19)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::mint())]
+		pub fn mint(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			account: AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let account = T::Lookup::unlookup(account);
+			AssetsOf::<T>::mint(origin, id.into(), account, amount)
+		}
+
+		/// Destroys `amount` tokens from `account`, reducing the total supply.
+		///
+		/// # Parameters
+		/// - `id` - The ID of the asset.
+		/// - `owner` - The account from which the tokens will be destroyed.
+		/// - `value` - The number of tokens to destroy.
+		#[pallet::call_index(20)]
+		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]
+		pub fn burn(
+			origin: OriginFor<T>,
+			id: AssetIdOf<T>,
+			account: AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> DispatchResult {
+			let account = T::Lookup::unlookup(account);
+			AssetsOf::<T>::burn(origin, id.into(), account, amount)
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
