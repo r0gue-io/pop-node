@@ -1,12 +1,12 @@
 pub mod constants;
 mod v0;
 
-use codec::{Decode, Encode};
+use codec::Encode;
 use constants::*;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::{Contains, OriginTrait},
+	traits::Contains,
 };
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
@@ -53,9 +53,7 @@ pub trait PopApiExtensionConfig:
 	type AssetInstance;
 	type ReadStateParamsHandler: ReadStateParamsHandler;
 	type DispatchCallParamsHandler: DispatchCallParamsHandler;
-	type RuntimeRead: Encode + Decode + MaxEncodedLen;
 	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
-	type AllowedReadCalls: Contains<Self::RuntimeRead>;
 }
 
 #[cfg(not(feature = "pop-devnet"))]
@@ -64,9 +62,7 @@ pub trait PopApiExtensionConfig:
 {
 	type ReadStateParamsHandler: ReadStateParamsHandler;
 	type DispatchCallParamsHandler: DispatchCallParamsHandler;
-	type RuntimeRead: Encode + Decode + MaxEncodedLen;
 	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
-	type AllowedReadCalls: Contains<Self::RuntimeRead>;
 }
 
 #[derive(Default)]
@@ -160,7 +156,7 @@ where
 pub fn dispatch_call<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
-	mut origin: T::RuntimeOrigin,
+	origin: T::RuntimeOrigin,
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
@@ -169,7 +165,6 @@ where
 {
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
-	origin.add_filter(T::AllowedDispatchCalls::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
 			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
