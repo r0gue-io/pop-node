@@ -13,7 +13,6 @@ publish = false
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
-rand = "0.8.5"
 codec.workspace = true
 log.workspace = true
 
@@ -30,6 +29,9 @@ pallet-contracts.workspace = true
 sp-core.workspace = true
 sp-runtime.workspace = true
 sp-std.workspace = true
+
+[dev-dependencies]
+rand = "0.8.5"
 
 [features]
 default = ["std"]
