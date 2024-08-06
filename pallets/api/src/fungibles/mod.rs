@@ -76,7 +76,7 @@ pub mod pallet {
 		/// Token decimals for a given asset ID.
 		#[codec(index = 10)]
 		TokenDecimals(AssetIdOf<T>),
-		/// Check if token exists for a given asset ID.
+		/// Check if token with a given asset ID exists.
 		#[codec(index = 18)]
 		AssetExists(AssetIdOf<T>),
 	}
@@ -107,15 +107,15 @@ pub mod pallet {
 		pub fn transfer(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
-			target: AccountIdOf<T>,
-			amount: BalanceOf<T>,
+			to: AccountIdOf<T>,
+			value: BalanceOf<T>,
 		) -> DispatchResult {
-			let target = T::Lookup::unlookup(target);
-			AssetsOf::<T>::transfer_keep_alive(origin, id.into(), target, amount)
+			let to = T::Lookup::unlookup(to);
+			AssetsOf::<T>::transfer_keep_alive(origin, id.into(), to, value)
 		}
 
-		/// Transfers `value` amount of tokens from the delegated account approved by the `owner` to
-		/// account `to`, with additional `data` in unspecified format.
+		/// Transfers `value` amount tokens on behalf of `from` to account `to` with additional `data`
+		/// in unspecified format.
 		///
 		/// # Parameters
 		/// - `id` - The ID of the asset.
@@ -127,13 +127,13 @@ pub mod pallet {
 		pub fn transfer_from(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
-			owner: AccountIdOf<T>,
-			target: AccountIdOf<T>,
-			amount: BalanceOf<T>,
+			from: AccountIdOf<T>,
+			to: AccountIdOf<T>,
+			value: BalanceOf<T>,
 		) -> DispatchResult {
-			let owner = T::Lookup::unlookup(owner);
-			let target = T::Lookup::unlookup(target);
-			AssetsOf::<T>::transfer_approved(origin, id.into(), owner, target, amount)
+			let from = T::Lookup::unlookup(from);
+			let to = T::Lookup::unlookup(to);
+			AssetsOf::<T>::transfer_approved(origin, id.into(), from, to, value)
 		}
 
 		/// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -297,11 +297,11 @@ pub mod pallet {
 			AssetsOf::<T>::clear_metadata(origin, id.into())
 		}
 
-		/// Creates `amount` tokens and assigns them to `account`, increasing the total supply.
+		/// Creates `value` amount tokens and assigns them to `account`, increasing the total supply.
 		///
 		/// # Parameters
 		/// - `id` - The ID of the asset.
-		/// - `owner` - The account to be credited with the created tokens.
+		/// - `account` - The account to be credited with the created tokens.
 		/// - `value` - The number of tokens to mint.
 		#[pallet::call_index(19)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::mint())]
@@ -309,17 +309,17 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
 			account: AccountIdOf<T>,
-			amount: BalanceOf<T>,
+			value: BalanceOf<T>,
 		) -> DispatchResult {
 			let account = T::Lookup::unlookup(account);
-			AssetsOf::<T>::mint(origin, id.into(), account, amount)
+			AssetsOf::<T>::mint(origin, id.into(), account, value)
 		}
 
-		/// Destroys `amount` tokens from `account`, reducing the total supply.
+		/// Destroys `value` amount tokens from `account`, reducing the total supply.
 		///
 		/// # Parameters
 		/// - `id` - The ID of the asset.
-		/// - `owner` - The account from which the tokens will be destroyed.
+		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[pallet::call_index(20)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]
@@ -327,10 +327,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
 			account: AccountIdOf<T>,
-			amount: BalanceOf<T>,
+			value: BalanceOf<T>,
 		) -> DispatchResult {
 			let account = T::Lookup::unlookup(account);
-			AssetsOf::<T>::burn(origin, id.into(), account, amount)
+			AssetsOf::<T>::burn(origin, id.into(), account, value)
 		}
 	}
 
