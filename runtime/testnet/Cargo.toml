@@ -24,6 +24,7 @@ smallvec.workspace = true
 # Local
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
+pop-runtime-extensions.workspace = true
 
 # Substrate
 frame-benchmarking.workspace = true

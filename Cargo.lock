@@ -9770,6 +9770,7 @@ dependencies = [
  "polkadot-runtime-common",
  "pop-primitives",
  "pop-runtime-common",
+ "pop-runtime-extensions",
  "rand",
  "scale-info",
  "smallvec",
@@ -9791,6 +9792,24 @@ dependencies = [
  "staging-xcm-builder",
  "staging-xcm-executor",
  "substrate-wasm-builder",
+]
+
+[[package]]
+name = "pop-runtime-extensions"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-api",
+ "pallet-assets",
+ "pallet-contracts",
+ "parity-scale-codec",
+ "pop-primitives",
+ "pop-runtime-common",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
@@ -9843,6 +9862,7 @@ dependencies = [
  "polkadot-runtime-common",
  "pop-primitives",
  "pop-runtime-common",
+ "pop-runtime-extensions",
  "scale-info",
  "smallvec",
  "sp-api",
