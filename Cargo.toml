@@ -51,8 +51,12 @@ substrate-wasm-builder = "19.0.0"
 substrate-build-script-utils = "11.0.0"
 
 # Local
-pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
-pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
+pop-runtime-devnet = { path = "runtime/devnet", default-features = true, features = [
+    "experimental",
+] } # default-features=true required for `-p pop-node` builds
+pop-runtime-testnet = { path = "runtime/testnet", default-features = true, features = [
+    "experimental",
+] } # default-features=true required for `-p pop-node` builds
 pop-runtime-common = { path = "runtime/common", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 
@@ -163,3 +167,9 @@ cumulus-client-consensus-aura = "0.9.0"
 cumulus-client-consensus-common = "0.9.0"
 cumulus-client-consensus-proposer = "0.9.0"
 cumulus-client-service = "0.9.0"
+
+
+# Paseo
+asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
