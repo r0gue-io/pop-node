@@ -125,11 +125,9 @@ mod fungibles {
 		/// 3. Asset Management:
 		/// - create
 		/// - start_destroy
-		/// - destroy_accounts
-		/// - destroy_approvals
-		/// - finish_destroy
 		/// - set_metadata
 		/// - clear_metadata
+		/// - asset_exists
 
 		#[ink(message)]
 		pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
@@ -161,6 +159,7 @@ mod fungibles {
 		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
 			api::asset_exists(id)
 		}
+
 		/// 4. PSP-22 Mintable & Burnable Interface:
 		/// - mint
 		/// - burn

@@ -314,10 +314,8 @@ fn token_metadata_works() {
 /// 3. Asset Management:
 /// - create
 /// - start_destroy
-/// - destroy_accounts
-/// - destroy_approvals
-/// - finish_destroy
 /// - set_metadata
+/// - clear_metadata
 /// - asset_exists
 
 #[test]
@@ -352,6 +350,7 @@ fn create_works() {
 	});
 }
 
+// Testing a contract that creates an asset in the constructor.
 #[test]
 fn instantiate_and_create_fungible_works() {
 	new_test_ext().execute_with(|| {

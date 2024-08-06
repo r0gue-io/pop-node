@@ -28,6 +28,7 @@ type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use core::cmp::Ordering::*;
 	use frame_support::{
 		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
 		pallet_prelude::*,
@@ -75,7 +76,7 @@ pub mod pallet {
 		/// Token decimals for a given asset ID.
 		#[codec(index = 10)]
 		TokenDecimals(AssetIdOf<T>),
-		/// Check if token exists for a given asset ID.
+		/// Check if token with a given asset ID exists.
 		#[codec(index = 18)]
 		AssetExists(AssetIdOf<T>),
 	}
@@ -165,8 +166,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Transfers `value` amount of tokens from the delegated account approved by the `owner` to
-		/// account `to`, with additional `data` in unspecified format.
+		/// Transfers `value` amount tokens on behalf of `from` to account `to` with additional `data`
+		/// in unspecified format.
 		///
 		/// # Parameters
 		/// - `id` - The ID of the asset.
@@ -207,41 +208,39 @@ pub mod pallet {
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
-			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
-			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
-			let spender_unlookup = T::Lookup::unlookup(spender.clone());
-			let id: AssetIdParameterOf<T> = id.into();
+            let owner = ensure_signed(origin.clone())
+                .map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
+            let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
+            let spender_unlookup = T::Lookup::unlookup(spender.clone());
+            let id: AssetIdParameterOf<T> = id.into();
 
-			// If the new value is equal to the current allowance, do nothing.
-			let return_weight = if value == current_allowance {
-				Self::weight_approve(0, 0)
-			}
-			// If the new value is greater than the current allowance, approve the difference
-			// because `approve_transfer` works additively (see `pallet-assets`).
-			else if value > current_allowance {
-				AssetsOf::<T>::approve_transfer(
-					origin,
-					id,
-					spender_unlookup,
-					value.saturating_sub(current_allowance),
-				)
-				.map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
-				Self::weight_approve(1, 0)
-			} else {
-				// If the new value is less than the current allowance, cancel the approval and set the new value
-				AssetsOf::<T>::cancel_approval(
-					origin.clone(),
-					id.clone(),
-					spender_unlookup.clone(),
-				)
-				.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
-				if value.is_zero() {
-					return Ok(Some(Self::weight_approve(0, 1)).into());
-				}
-				AssetsOf::<T>::approve_transfer(origin, id, spender_unlookup, value)?;
-				Self::weight_approve(1, 1)
-			};
+            let return_weight = match value.cmp(&current_allowance) {
+                // If the new value is equal to the current allowance, do nothing.
+                Equal => Self::weight_approve(0, 0),
+                // If the new value is greater than the current allowance, approve the difference
+                // because `approve_transfer` works additively (see `pallet-assets`).
+                Greater => {
+                    AssetsOf::<T>::approve_transfer(
+                        origin,
+                        id,
+                        spender_unlookup,
+                        value.saturating_sub(current_allowance),
+                    )
+                        .map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
+                    Self::weight_approve(1, 0)
+                },
+                // If the new value is less than the current allowance, cancel the approval and
+                // set the new value.
+                Less => {
+                    AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender_unlookup.clone())
+                        .map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
+                    if value.is_zero() {
+                        return Ok(Some(Self::weight_approve(0, 1)).into());
+                    }
+                    AssetsOf::<T>::approve_transfer(origin, id, spender_unlookup, value)?;
+                    Self::weight_approve(1, 1)
+            },
+            }
 			Self::deposit_event(Event::Approval { owner, spender, value });
 			Ok(Some(return_weight).into())
 		}
@@ -295,7 +294,7 @@ pub mod pallet {
 			if value.is_zero() {
 				return Ok(Some(Self::weight_approve(0, 0)).into());
 			}
-			// Cancel the aproval and set the new value if `current_allowance` is more than zero.
+			// Cancel the aproval and set the new value if `new_allowance` is more than zero.
 			AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender_unlookup.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 			let new_allowance = current_allowance.saturating_sub(value);
@@ -400,7 +399,7 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `id` - The ID of the asset.
-		/// - `owner` - The account from which the tokens will be destroyed.
+		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[pallet::call_index(20)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]

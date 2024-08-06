@@ -160,9 +160,8 @@ pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 		.call(&(id, to, value))
 }
 
-/// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
-/// in unspecified format. If `from` is equal to `None`, tokens will be minted to account `to`. If
-/// `to` is equal to `None`, tokens will be burned from account `from`.
+/// Transfers `value` amount tokens on behalf of `from` to account `to` with additional `data`
+/// in unspecified format.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
@@ -235,11 +234,11 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 		.call(&(id, spender, value))
 }
 
-/// Creates `value` tokens and assigns them to `account`, increasing the total supply.
+/// Creates `value` amount tokens and assigns them to `account`, increasing the total supply.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
-/// - `owner` - The account to be credited with the created tokens.
+/// - `account` - The account to be credited with the created tokens.
 /// - `value` - The number of tokens to mint.
 ///
 /// # Returns
@@ -252,11 +251,11 @@ pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 		.call(&(id, account, value))
 }
 
-/// Destroys `value` tokens from `account`, reducing the total supply.
+/// Destroys `value` amount tokens from `account`, reducing the total supply.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
-/// - `owner` - The account from which the tokens will be destroyed.
+/// - `account` - The account from which the tokens will be destroyed.
 /// - `value` - The number of tokens to destroy.
 ///
 /// # Returns
@@ -310,7 +309,7 @@ pub mod metadata {
 	/// - `id` - The ID of the asset.
 	///
 	/// # Returns
-	///  The number of decimals of the token as a byte vector, or an error if the operation fails.
+	///  The number of decimals of the token, or an error if the operation fails.
 	#[inline]
 	pub fn token_decimals(id: AssetId) -> Result<u8> {
 		build_read_state(TOKEN_DECIMALS)
@@ -389,7 +388,7 @@ pub mod asset_management {
 			.call(&(id))
 	}
 
-	/// Checks if token exists for a given asset ID.
+	/// Checks if token with a given asset ID exists.
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
