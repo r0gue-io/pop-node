@@ -25,6 +25,10 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 					| transfer_from { .. }
 					| approve { .. } | increase_allowance { .. }
 					| decrease_allowance { .. }
+					| create { .. } | set_metadata { .. }
+					| start_destroy { .. }
+					| clear_metadata { .. }
+					| mint { .. } | burn { .. }
 			)
 		)
 	}
@@ -40,7 +44,7 @@ impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
 				TotalSupply(..)
 					| BalanceOf { .. } | Allowance { .. }
 					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..)
+					| TokenDecimals(..) | AssetExists(..)
 			)
 		)
 	}
