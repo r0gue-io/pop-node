@@ -1,61 +1,20 @@
 use crate::{
+	config::api::AllowedApiCalls,
 	fungibles::{self},
-	Runtime, RuntimeCall,
+	Runtime,
 };
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::Decode;
 use frame_support::{ensure, traits::Contains};
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext};
 use pop_runtime_extension::{
 	constants::{DECODING_FAILED_ERROR, LOG_TARGET, UNKNOWN_CALL_ERROR},
-	PopApiExtensionConfig, StateReadHandler,
+	StateReadHandler,
 };
 use sp_core::Get;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
-/// A query of runtime state.
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-#[repr(u8)]
-pub enum RuntimeRead {
-	/// Fungible token queries.
-	#[codec(index = 150)]
-	Fungibles(fungibles::Read<Runtime>),
-}
-
-/// A type to identify allowed calls to the Runtime from the API.
-pub struct AllowedApiCalls;
-
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	/// Allowed runtime calls from the API.
-	fn contains(c: &RuntimeCall) -> bool {
-		use fungibles::Call::*;
-		matches!(
-			c,
-			RuntimeCall::Fungibles(
-				transfer { .. }
-					| transfer_from { .. }
-					| approve { .. } | increase_allowance { .. }
-					| decrease_allowance { .. }
-			)
-		)
-	}
-}
-
-impl Contains<RuntimeRead> for AllowedApiCalls {
-	/// Allowed state queries from the API.
-	fn contains(c: &RuntimeRead) -> bool {
-		use fungibles::Read::*;
-		matches!(
-			c,
-			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..)
-			)
-		)
-	}
-}
+use super::api::RuntimeRead;
 
 /// Wrapper to enable versioning of runtime state reads.
 #[derive(Decode, Debug)]
@@ -74,7 +33,7 @@ impl StateReadHandler for ContractExecutionContext {
 	) -> Result<(), DispatchError>
 	where
 		E: Ext<T = T>,
-		T: PopApiExtensionConfig,
+		T: pop_runtime_extension::Config,
 	{
 		const LOG_PREFIX: &str = " read_state |";
 
@@ -99,7 +58,7 @@ impl StateReadHandler for ContractExecutionContext {
 	}
 }
 
-impl PopApiExtensionConfig for Runtime {
+impl pop_runtime_extension::Config for Runtime {
 	type StateReadHandler = ContractExecutionContext;
 	type AllowedDispatchCalls = AllowedApiCalls;
 }
