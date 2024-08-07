@@ -1,9 +1,9 @@
 use crate::{
 	config::api::AllowedApiCalls,
 	fungibles::{self},
-	Runtime,
+	Assets, Runtime, System,
 };
-use codec::Decode;
+use codec::{Decode, Encode};
 use frame_support::{ensure, traits::Contains};
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext};
 use pop_runtime_extension::{
@@ -11,6 +11,7 @@ use pop_runtime_extension::{
 	StateReadHandler,
 };
 use sp_core::Get;
+use sp_runtime::BuildStorage;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -61,4 +62,86 @@ impl StateReadHandler for ContractExecutionContext {
 impl pop_runtime_extension::Config for Runtime {
 	type StateReadHandler = ContractExecutionContext;
 	type AllowedDispatchCalls = AllowedApiCalls;
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::config::assets::TrustBackedAssetsInstance;
+
+	use super::*;
+
+	use sp_runtime::MAX_MODULE_ERROR_ENCODED_SIZE;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let t = frame_system::GenesisConfig::<Runtime>::default()
+			.build_storage()
+			.expect("Frame system builds valid default genesis config");
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	#[test]
+	fn encoding_decoding_dispatch_error() {
+		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+
+		new_test_ext().execute_with(|| {
+			let error = DispatchError::Module(ModuleError {
+				index: 255,
+				error: [2, 0, 0, 0],
+				message: Some("error message"),
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				// `message` is skipped for encoding.
+				DispatchError::Module(ModuleError {
+					index: 255,
+					error: [2, 0, 0, 0],
+					message: None
+				})
+			);
+
+			// Example pallet assets Error into ModuleError.
+			let index = <<Runtime as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
+				Assets,
+			>()
+			.expect("Every active module has an index in the runtime; qed") as u8;
+			let mut error =
+				pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
+			error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
+			let error = DispatchError::Module(ModuleError {
+				index,
+				error: TryInto::try_into(error).expect("should work"),
+				message: None,
+			});
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![3, 52, 18, 0, 0, 0]);
+			assert_eq!(
+				decoded,
+				DispatchError::Module(ModuleError {
+					index: 52,
+					error: [18, 0, 0, 0],
+					message: None
+				})
+			);
+
+			// Example DispatchError::Token
+			let error = DispatchError::Token(TokenError::UnknownAsset);
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![7, 4]);
+			assert_eq!(decoded, error);
+
+			// Example DispatchError::Arithmetic
+			let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
+			let encoded = error.encode();
+			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+			assert_eq!(encoded, vec![8, 1]);
+			assert_eq!(decoded, error);
+		});
+	}
 }
