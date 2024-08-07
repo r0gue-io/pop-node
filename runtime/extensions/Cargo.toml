@@ -52,5 +52,3 @@ runtime-benchmarks = [
  "pallet-assets/runtime-benchmarks",
  "pallet-contracts/runtime-benchmarks",
 ]
-pop-devnet = ["pallet-assets/std", "pallet-api/std"]
-pop-testnet = []

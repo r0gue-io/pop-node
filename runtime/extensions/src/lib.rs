@@ -1,10 +1,14 @@
-mod config;
 pub mod constants;
 mod v0;
 
 use codec::Encode;
 use constants::*;
-use frame_support::{dispatch::GetDispatchInfo, pallet_prelude::*};
+use frame_support::{
+	dispatch::{GetDispatchInfo, PostDispatchInfo},
+	pallet_prelude::*,
+	traits::Contains,
+};
+use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
@@ -12,32 +16,17 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
-// Conditionally use different implementations of `PopApiExtensionConfig` based on the active feature.
-cfg_if::cfg_if! {
-	if #[cfg(feature = "pop-devnet")] {
-		pub use config::devnet::PopApiExtensionConfig;
-	} else if #[cfg(feature = "pop-testnet")] {
-		pub use config::testnet::PopApiExtensionConfig;
-	}
-}
-
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
+
+pub trait PopApiExtensionConfig:
+	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
+{
+	type StateReadHandler: StateReadHandler;
+	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
+}
 
 /// Trait for handling parameters from the chain extension environment during state read operations.
 pub trait StateReadHandler {
-	/// Processes the parameters needed to execute a call within the runtime environment.
-	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
-	fn handle_params<T, E>(
-		env: &mut Environment<E, BufInBufOutState>,
-		params: Vec<u8>,
-	) -> Result<(), DispatchError>
-	where
-		E: Ext<T = T>,
-		T: PopApiExtensionConfig;
-}
-
-/// Trait for handling parameters from the chain extension environment during call dispatch operations.
-pub trait CallDispatchHandler {
 	/// Processes the parameters needed to execute a call within the runtime environment.
 	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
 	fn handle_params<T, E>(
@@ -108,10 +97,9 @@ where
 				let params = env.read(len)?;
 				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
-					FuncId::Dispatch => T::CallDispatchHandler::handle_params(
-						&mut env,
-						prefix_params(params, version, pallet_index, call_index),
-					),
+					FuncId::Dispatch => {
+						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
+					},
 					FuncId::ReadState => T::StateReadHandler::handle_params(
 						&mut env,
 						prefix_params(params, version, pallet_index, call_index),
@@ -125,6 +113,33 @@ where
 			Ok(_) => Ok(RetVal::Converging(0)),
 			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e, version))),
 		}
+	}
+}
+
+fn dispatch<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	mut params: Vec<u8>,
+) -> Result<(), DispatchError>
+where
+	T: PopApiExtensionConfig,
+	E: Ext<T = T>,
+{
+	const LOG_PREFIX: &str = " dispatch |";
+
+	// Prefix params with version, pallet, index to simplify decoding.
+	params.insert(0, version);
+	params.insert(1, pallet_index);
+	params.insert(2, call_index);
+	let call =
+		<VersionedDispatch<T>>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
+
+	// Contract is the origin by default.
+	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+	match call {
+		VersionedDispatch::V0(call) => dispatch_call::<T, E>(env, call, origin, LOG_PREFIX),
 	}
 }
 
@@ -154,6 +169,14 @@ where
 			Err(err.error)
 		},
 	}
+}
+
+/// Wrapper to enable versioning of runtime calls.
+#[derive(Decode, Debug)]
+enum VersionedDispatch<T: PopApiExtensionConfig> {
+	/// Version zero of dispatch calls.
+	#[codec(index = 0)]
+	V0(T::RuntimeCall),
 }
 
 // Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
@@ -238,7 +261,6 @@ impl TryFrom<u8> for FuncId {
 	}
 }
 
-#[cfg(all(feature = "pop-devnet", test))]
 mod tests {
 	use super::*;
 
