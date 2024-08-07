@@ -1,16 +1,13 @@
 use crate::{
-	config::assets::TrustBackedAssetsInstance,
 	fungibles::{self},
 	Runtime, RuntimeCall,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::OriginTrait;
 use frame_support::{ensure, traits::Contains};
-use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext};
 use pop_runtime_extensions::{
 	constants::{DECODING_FAILED_ERROR, LOG_TARGET, UNKNOWN_CALL_ERROR},
-	dispatch_call, CallDispatchHandler, PopApiExtensionConfig, StateReadHandler,
+	PopApiExtensionConfig, StateReadHandler,
 };
 use sp_core::Get;
 use sp_runtime::DispatchError;
@@ -18,10 +15,10 @@ use sp_runtime::DispatchError;
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 #[repr(u8)]
-pub enum RuntimeRead<T: fungibles::Config> {
+pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
-	Fungibles(fungibles::Read<T>),
+	Fungibles(fungibles::Read<Runtime>),
 }
 
 /// A type to identify allowed calls to the Runtime from the API.
@@ -43,9 +40,9 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 	}
 }
 
-impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
+impl Contains<RuntimeRead> for AllowedApiCalls {
 	/// Allowed state queries from the API.
-	fn contains(c: &RuntimeRead<T>) -> bool {
+	fn contains(c: &RuntimeRead) -> bool {
 		use fungibles::Read::*;
 		matches!(
 			c,
@@ -61,10 +58,10 @@ impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
 
 /// Wrapper to enable versioning of runtime state reads.
 #[derive(Decode, Debug)]
-enum VersionedStateRead<T: fungibles::Config> {
+enum VersionedStateRead {
 	/// Version zero of state reads.
 	#[codec(index = 0)]
-	V0(RuntimeRead<T>),
+	V0(RuntimeRead),
 }
 
 /// Wrapper to enable versioning of runtime calls.
@@ -76,31 +73,6 @@ enum VersionedDispatch<T: PopApiExtensionConfig> {
 }
 
 pub struct ContractExecutionContext;
-
-impl CallDispatchHandler for ContractExecutionContext {
-	fn handle_params<T, E>(
-		env: &mut Environment<E, BufInBufOutState>,
-		params: Vec<u8>,
-	) -> Result<(), DispatchError>
-	where
-		E: Ext<T = T>,
-		T: PopApiExtensionConfig,
-	{
-		const LOG_PREFIX: &str = " dispatch |";
-
-		let call =
-			<VersionedDispatch<T>>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
-
-		// Contract is the origin by default.
-		let mut origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
-		match call {
-			VersionedDispatch::V0(call) => {
-				origin.add_filter(T::AllowedDispatchCalls::contains);
-				dispatch_call::<T, E>(env, call, origin, LOG_PREFIX)
-			},
-		}
-	}
-}
 
 impl StateReadHandler for ContractExecutionContext {
 	fn handle_params<T, E>(
@@ -114,7 +86,7 @@ impl StateReadHandler for ContractExecutionContext {
 		const LOG_PREFIX: &str = " read_state |";
 
 		let read =
-			<VersionedStateRead<T>>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
+			<VersionedStateRead>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
 
 		// Charge weight for doing one storage read.
 		env.charge_weight(T::DbWeight::get().reads(1_u64))?;
@@ -122,7 +94,7 @@ impl StateReadHandler for ContractExecutionContext {
 			VersionedStateRead::V0(read) => {
 				ensure!(AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
 				match read {
-					RuntimeRead::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
+					RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
 				}
 			},
 		};
@@ -135,8 +107,6 @@ impl StateReadHandler for ContractExecutionContext {
 }
 
 impl PopApiExtensionConfig for Runtime {
-	type AssetInstance = TrustBackedAssetsInstance;
 	type StateReadHandler = ContractExecutionContext;
-	type CallDispatchHandler = ContractExecutionContext;
 	type AllowedDispatchCalls = AllowedApiCalls;
 }
