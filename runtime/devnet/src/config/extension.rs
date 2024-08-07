@@ -10,7 +10,7 @@ use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext};
 use pop_runtime_extensions::{
 	constants::{DECODING_FAILED_ERROR, LOG_TARGET, UNKNOWN_CALL_ERROR},
-	dispatch_call, DispatchCallParamsHandler, PopApiExtensionConfig, ReadStateParamsHandler,
+	dispatch_call, CallDispatchHandler, PopApiExtensionConfig, StateReadHandler,
 };
 use sp_core::Get;
 use sp_runtime::DispatchError;
@@ -75,9 +75,9 @@ enum VersionedDispatch<T: PopApiExtensionConfig> {
 	V0(T::RuntimeCall),
 }
 
-pub struct ChainExtensionEnvironment;
+pub struct ContractExecutionContext;
 
-impl DispatchCallParamsHandler for ChainExtensionEnvironment {
+impl StateReadHandler for ContractExecutionContext {
 	fn handle_params<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		params: Vec<u8>,
@@ -102,7 +102,7 @@ impl DispatchCallParamsHandler for ChainExtensionEnvironment {
 	}
 }
 
-impl ReadStateParamsHandler for ChainExtensionEnvironment {
+impl CallDispatchHandler for ContractExecutionContext {
 	fn handle_params<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		params: Vec<u8>,
@@ -136,7 +136,7 @@ impl ReadStateParamsHandler for ChainExtensionEnvironment {
 
 impl PopApiExtensionConfig for Runtime {
 	type AssetInstance = TrustBackedAssetsInstance;
-	type ReadStateParamsHandler = ChainExtensionEnvironment;
-	type DispatchCallParamsHandler = ChainExtensionEnvironment;
+	type StateReadHandler = ContractExecutionContext;
+	type CallDispatchHandler = ContractExecutionContext;
 	type AllowedDispatchCalls = AllowedApiCalls;
 }

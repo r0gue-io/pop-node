@@ -22,8 +22,10 @@ use pop_primitives::AssetId;
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
-/// Handler to process the parameters from the chain extension environment for read state calls.
-pub trait ReadStateParamsHandler {
+/// Trait for handling parameters from the chain extension environment during state read operations.
+pub trait StateReadHandler {
+	/// Processes the parameters needed to execute a call within the runtime environment.
+	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
 	fn handle_params<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		params: Vec<u8>,
@@ -33,8 +35,10 @@ pub trait ReadStateParamsHandler {
 		T: PopApiExtensionConfig;
 }
 
-/// Handler to process the parameters from the chain extension environment for dispatch calls.
-pub trait DispatchCallParamsHandler {
+/// Trait for handling parameters from the chain extension environment during call dispatch operations.
+pub trait CallDispatchHandler {
+	/// Processes the parameters needed to execute a call within the runtime environment.
+	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
 	fn handle_params<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		params: Vec<u8>,
@@ -51,8 +55,8 @@ pub trait PopApiExtensionConfig:
 	+ fungibles::Config
 {
 	type AssetInstance;
-	type ReadStateParamsHandler: ReadStateParamsHandler;
-	type DispatchCallParamsHandler: DispatchCallParamsHandler;
+	type StateReadHandler: StateReadHandler;
+	type CallDispatchHandler: CallDispatchHandler;
 	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
 }
 
@@ -60,8 +64,8 @@ pub trait PopApiExtensionConfig:
 pub trait PopApiExtensionConfig:
 	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
 {
-	type ReadStateParamsHandler: ReadStateParamsHandler;
-	type DispatchCallParamsHandler: DispatchCallParamsHandler;
+	type StateReadHandler: StateReadHandler;
+	type CallDispatchHandler: CallDispatchHandler;
 	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
 }
 
@@ -85,6 +89,14 @@ where
 	};
 
 	(version, function_id, pallet_index, call_index)
+}
+
+// Prefix params with version, pallet, and index to simplify decoding.
+fn prefix_params(mut params: Vec<u8>, version: u8, pallet_index: u8, call_index: u8) -> Vec<u8> {
+	params.insert(0, version);
+	params.insert(1, pallet_index);
+	params.insert(2, call_index);
+	params
 }
 
 impl<T> ChainExtension<T> for PopApiExtension
@@ -116,12 +128,14 @@ where
 				let params = env.read(len)?;
 				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
-					FuncId::Dispatch => {
-						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
-					},
-					FuncId::ReadState => {
-						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
-					},
+					FuncId::Dispatch => T::CallDispatchHandler::handle_params(
+						&mut env,
+						prefix_params(params, version, pallet_index, call_index),
+					),
+					FuncId::ReadState => T::StateReadHandler::handle_params(
+						&mut env,
+						prefix_params(params, version, pallet_index, call_index),
+					),
 				}
 			},
 			Err(e) => Err(e),
@@ -132,25 +146,6 @@ where
 			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e, version))),
 		}
 	}
-}
-
-fn dispatch<T, E>(
-	env: &mut Environment<E, BufInBufOutState>,
-	version: u8,
-	pallet_index: u8,
-	call_index: u8,
-	mut params: Vec<u8>,
-) -> Result<(), DispatchError>
-where
-	T: PopApiExtensionConfig,
-	E: Ext<T = T>,
-{
-	// Prefix params with version, pallet, index to simplify decoding.
-	params.insert(0, version);
-	params.insert(1, pallet_index);
-	params.insert(2, call_index);
-	// Handle the params for the dispatch call.
-	T::DispatchCallParamsHandler::handle_params(env, params)
 }
 
 pub fn dispatch_call<T, E>(
@@ -179,26 +174,6 @@ where
 			Err(err.error)
 		},
 	}
-}
-
-fn read_state<T, E>(
-	env: &mut Environment<E, BufInBufOutState>,
-	version: u8,
-	pallet_index: u8,
-	call_index: u8,
-	mut params: Vec<u8>,
-) -> Result<(), DispatchError>
-where
-	T: PopApiExtensionConfig + pallet_contracts::Config,
-	E: Ext<T = T>,
-{
-	// Prefix params with version, pallet, index to simplify decoding, and decode parameters for
-	// reading state.
-	params.insert(0, version);
-	params.insert(1, pallet_index);
-	params.insert(2, call_index);
-	// Handle the params for the read state call.
-	T::ReadStateParamsHandler::handle_params(env, params)
 }
 
 // Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
