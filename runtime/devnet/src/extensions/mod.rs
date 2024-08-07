@@ -6,7 +6,7 @@ use crate::{
 		assets::TrustBackedAssetsInstance,
 	},
 	fungibles::{self},
-	AccountId, RuntimeCall, RuntimeOrigin,
+	AccountId, Runtime, RuntimeCall, RuntimeOrigin,
 };
 use codec::{Decode, Encode};
 use frame_support::{
@@ -37,29 +37,18 @@ type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 #[derive(Default)]
 pub struct PopApiExtension;
 
-impl<T> ChainExtension<T> for PopApiExtension
-where
-	T: pallet_contracts::Config
-		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
-		+ fungibles::Config
-		+ frame_system::Config<
-			RuntimeOrigin = RuntimeOrigin,
-			AccountId = AccountId,
-			RuntimeCall = RuntimeCall,
-		>,
-	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
-{
-	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
-	where
-		E: Ext<T = T>,
-	{
+impl ChainExtension<Runtime> for PopApiExtension {
+	fn call<E: Ext<T = Runtime>>(
+		&mut self,
+		env: Environment<E, InitState>,
+	) -> Result<RetVal, DispatchError> {
 		log::debug!(target:LOG_TARGET, " extension called ");
 		let mut env = env.buf_in_buf_out();
 		// Charge weight for making a call from a contract to the runtime.
 		// `debug_message` weight is a good approximation of the additional overhead of going
 		// from contract layer to substrate layer.
 		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-		let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
+		let contract_host_weight = ContractSchedule::<Runtime>::get().host_fn_weights;
 		env.charge_weight(contract_host_weight.debug_message)?;
 
 		// Extract version and function_id from first two bytes.
@@ -83,10 +72,10 @@ where
 				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
 					FuncId::Dispatch => {
-						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
+						dispatch::<E>(&mut env, version, pallet_index, call_index, params)
 					},
 					FuncId::ReadState => {
-						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
+						read_state::<E>(&mut env, version, pallet_index, call_index, params)
 					},
 				}
 			},
@@ -100,7 +89,7 @@ where
 	}
 }
 
-fn dispatch<T, E>(
+fn dispatch<E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
@@ -108,9 +97,9 @@ fn dispatch<T, E>(
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
-	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
-	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
-	E: Ext<T = T>,
+	E: Ext<T = Runtime>,
+	// Runtime: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
+	// RuntimeOrigin: From<RawOrigin<<Runtime as frame_system::Config>::AccountId>>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
@@ -123,20 +112,18 @@ where
 	// Contract is the origin by default.
 	let origin: RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
-		VersionedDispatch::V0(call) => dispatch_call::<T, E>(env, call, origin, LOG_PREFIX),
+		VersionedDispatch::V0(call) => dispatch_call::<E>(env, call, origin, LOG_PREFIX),
 	}
 }
 
-fn dispatch_call<T, E>(
+fn dispatch_call<E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: RuntimeCall,
 	mut origin: RuntimeOrigin,
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
-	T: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
-	RuntimeOrigin: From<RawOrigin<T::AccountId>>,
-	E: Ext<T = T>,
+	E: Ext<T = Runtime>,
 {
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
@@ -157,7 +144,7 @@ where
 	}
 }
 
-fn read_state<T, E>(
+fn read_state<E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
@@ -165,11 +152,9 @@ fn read_state<T, E>(
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config
-		+ pallet_assets::Config<TrustBackedAssetsInstance, AssetId = AssetId>
-		+ fungibles::Config
-		+ frame_system::Config<AccountId = sp_runtime::AccountId32>,
-	E: Ext<T = T>,
+	E: Ext<T = Runtime>,
+	// Runtime: frame_system::Config,
+	// Runtime: pallet_api::fungibles::Config,
 {
 	const LOG_PREFIX: &str = " read_state |";
 
@@ -178,16 +163,15 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-	let read =
-		<VersionedStateRead<T>>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
+	let read = <VersionedStateRead>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
 
 	// Charge weight for doing one storage read.
-	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+	env.charge_weight(<Runtime as frame_system::Config>::DbWeight::get().reads(1_u64))?;
 	let result = match read {
 		VersionedStateRead::V0(read) => {
 			ensure!(AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
 			match read {
-				RuntimeRead::Fungibles(key) => fungibles::Pallet::<T>::read_state(key),
+				RuntimeRead::Fungibles(key) => fungibles::Pallet::<Runtime>::read_state(key),
 			}
 		},
 	};
@@ -200,10 +184,10 @@ where
 
 /// Wrapper to enable versioning of runtime state reads.
 #[derive(Decode, Debug)]
-enum VersionedStateRead<T: fungibles::Config> {
+enum VersionedStateRead {
 	/// Version zero of state reads.
 	#[codec(index = 0)]
-	V0(RuntimeRead<T>),
+	V0(RuntimeRead),
 }
 
 /// Wrapper to enable versioning of runtime calls.

@@ -5,10 +5,10 @@ use frame_support::traits::Contains;
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 #[repr(u8)]
-pub enum RuntimeRead<T: fungibles::Config> {
+pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
-	Fungibles(fungibles::Read<T>),
+	Fungibles(fungibles::Read<Runtime>),
 }
 
 /// A type to identify allowed calls to the Runtime from the API.
@@ -34,9 +34,9 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 	}
 }
 
-impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
+impl Contains<RuntimeRead> for AllowedApiCalls {
 	/// Allowed state queries from the API.
-	fn contains(c: &RuntimeRead<T>) -> bool {
+	fn contains(c: &RuntimeRead) -> bool {
 		use fungibles::Read::*;
 		matches!(
 			c,
