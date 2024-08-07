@@ -24,7 +24,7 @@ smallvec.workspace = true
 # Local
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
-pop-runtime-extensions.workspace = true
+pop-runtime-extension.workspace = true
 pallet-api.workspace = true
 
 # Substrate
@@ -141,7 +141,7 @@ std = [
     "polkadot-parachain-primitives/std",
     "polkadot-runtime-common/std",
     "pop-primitives/std",
-    "pop-runtime-extensions/std",
+    "pop-runtime-extension/std",
     "scale-info/std",
     "sp-api/std",
     "sp-io/std",
