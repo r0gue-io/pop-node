@@ -5,12 +5,13 @@ use crate::{
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{ensure, traits::Contains};
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext};
-use pop_runtime_extensions::{
+use pop_runtime_extension::{
 	constants::{DECODING_FAILED_ERROR, LOG_TARGET, UNKNOWN_CALL_ERROR},
 	PopApiExtensionConfig, StateReadHandler,
 };
 use sp_core::Get;
 use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
