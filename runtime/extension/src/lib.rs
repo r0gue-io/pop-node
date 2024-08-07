@@ -20,7 +20,7 @@ use sp_std::vec::Vec;
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
-pub trait PopApiExtensionConfig:
+pub trait Config:
 	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
 {
 	type StateReadHandler: StateReadHandler;
@@ -37,7 +37,7 @@ pub trait StateReadHandler {
 	) -> Result<(), DispatchError>
 	where
 		E: Ext<T = T>,
-		T: PopApiExtensionConfig;
+		T: Config;
 }
 
 #[derive(Default)]
@@ -72,7 +72,7 @@ fn prefix_params(mut params: Vec<u8>, version: u8, pallet_index: u8, call_index:
 
 impl<T> ChainExtension<T> for PopApiExtension
 where
-	T: PopApiExtensionConfig + pallet_contracts::Config,
+	T: Config + pallet_contracts::Config,
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
 	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
@@ -126,7 +126,7 @@ fn dispatch<T, E>(
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
-	T: PopApiExtensionConfig,
+	T: Config,
 	E: Ext<T = T>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
@@ -152,7 +152,7 @@ pub fn dispatch_call<T, E>(
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
-	T: PopApiExtensionConfig,
+	T: Config,
 	E: Ext<T = T>,
 {
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
@@ -175,7 +175,7 @@ where
 
 /// Wrapper to enable versioning of runtime calls.
 #[derive(Decode, Debug)]
-enum VersionedDispatch<T: PopApiExtensionConfig> {
+enum VersionedDispatch<T: Config> {
 	/// Version zero of dispatch calls.
 	#[codec(index = 0)]
 	V0(T::RuntimeCall),
