@@ -9596,7 +9596,7 @@ dependencies = [
  "polkadot-runtime-common",
  "pop-primitives",
  "pop-runtime-common",
- "pop-runtime-extensions",
+ "pop-runtime-extension",
  "rand",
  "scale-info",
  "smallvec",
@@ -9621,10 +9621,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "pop-runtime-extensions"
+name = "pop-runtime-extension"
 version = "0.1.0"
 dependencies = [
- "cfg-if",
  "frame-support",
  "frame-system",
  "log",
@@ -9690,7 +9689,7 @@ dependencies = [
  "polkadot-runtime-common",
  "pop-primitives",
  "pop-runtime-common",
- "pop-runtime-extensions",
+ "pop-runtime-extension",
  "scale-info",
  "smallvec",
  "sp-api",
