@@ -1,3 +1,5 @@
+#![cfg_attr(not(feature = "std"), no_std)]
+
 pub mod constants;
 mod v0;
 
@@ -42,7 +44,7 @@ pub trait StateReadHandler {
 pub struct PopApiExtension;
 
 /// Extract (version, function_id, pallet_index, call_index) from the payload bytes
-fn extract_env<T, E: Ext>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8)
+fn extract_env<T, E>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8)
 where
 	E: Ext<T = T>,
 {
