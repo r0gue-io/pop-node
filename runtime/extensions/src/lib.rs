@@ -1,13 +1,10 @@
+mod config;
 pub mod constants;
 mod v0;
 
 use codec::Encode;
 use constants::*;
-use frame_support::{
-	dispatch::{GetDispatchInfo, PostDispatchInfo},
-	pallet_prelude::*,
-	traits::Contains,
-};
+use frame_support::{dispatch::GetDispatchInfo, pallet_prelude::*};
 use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, Environment, Ext, InitState, RetVal,
 };
@@ -15,10 +12,14 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
-#[cfg(feature = "pop-devnet")]
-pub(crate) use pallet_api::fungibles;
-#[cfg(feature = "pop-devnet")]
-use pop_primitives::AssetId;
+// Conditionally use different implementations of `PopApiExtensionConfig` based on the active feature.
+cfg_if::cfg_if! {
+	if #[cfg(feature = "pop-devnet")] {
+		pub use config::devnet::PopApiExtensionConfig;
+	} else if #[cfg(feature = "pop-tesnet")] {
+		pub use config::testnet::PopApiExtensionConfig;
+	}
+}
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
@@ -46,27 +47,6 @@ pub trait CallDispatchHandler {
 	where
 		E: Ext<T = T>,
 		T: PopApiExtensionConfig;
-}
-
-#[cfg(feature = "pop-devnet")]
-pub trait PopApiExtensionConfig:
-	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
-	+ pallet_assets::Config<Self::AssetInstance, AssetId = AssetId>
-	+ fungibles::Config
-{
-	type AssetInstance;
-	type StateReadHandler: StateReadHandler;
-	type CallDispatchHandler: CallDispatchHandler;
-	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
-}
-
-#[cfg(not(feature = "pop-devnet"))]
-pub trait PopApiExtensionConfig:
-	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
-{
-	type StateReadHandler: StateReadHandler;
-	type CallDispatchHandler: CallDispatchHandler;
-	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
 }
 
 #[derive(Default)]

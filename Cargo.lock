@@ -9798,6 +9798,7 @@ dependencies = [
 name = "pop-runtime-extensions"
 version = "0.1.0"
 dependencies = [
+ "cfg-if",
  "frame-support",
  "frame-system",
  "log",
