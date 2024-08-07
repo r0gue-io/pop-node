@@ -12,6 +12,10 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
+#[cfg(all(feature = "pop-devnet", feature = "pop-testnet"))]
+compile_error!(
+	"Feature \"pop-devnet\" and feature \"pop-testnet\" cannot be enabled at the same time."
+);
 // Conditionally use different implementations of `PopApiExtensionConfig` based on the active feature.
 cfg_if::cfg_if! {
 	if #[cfg(feature = "pop-devnet")] {

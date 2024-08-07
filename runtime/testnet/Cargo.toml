@@ -93,7 +93,7 @@ env_logger = "0.11.2"
 hex = "0.4.3"
 
 [features]
-default = ["std"]
+default = ["std", "pop-runtime-extensions/pop-testnet"]
 std = [
     "codec/std",
     "cumulus-pallet-aura-ext/std",
@@ -139,7 +139,6 @@ std = [
     "polkadot-runtime-common/std",
     "pop-primitives/std",
     "pop-runtime-extensions/std",
-    "pop-runtime-extensions/pop-testnet",
     "scale-info/std",
     "sp-api/std",
     "sp-io/std",

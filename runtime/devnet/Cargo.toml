@@ -95,7 +95,7 @@ hex = "0.4.3"
 rand = "0.8.5"
 
 [features]
-default = ["std"]
+default = ["std", "pop-runtime-extensions/pop-devnet"]
 std = [
     "codec/std",
     "cumulus-pallet-aura-ext/std",
@@ -142,7 +142,6 @@ std = [
     "polkadot-runtime-common/std",
     "pop-primitives/std",
     "pop-runtime-extensions/std",
-    "pop-runtime-extensions/pop-devnet",
     "scale-info/std",
     "sp-api/std",
     "sp-io/std",
