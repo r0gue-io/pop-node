@@ -427,7 +427,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Destroys `value` tokens from `account`, reducing the total supply.
+		/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 		///
 		/// # Parameters
 		/// - `id` - The ID of the asset.

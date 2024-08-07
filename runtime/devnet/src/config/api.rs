@@ -1,4 +1,6 @@
-use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
+use crate::{
+	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Contains;
 
@@ -51,6 +53,7 @@ impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
 }
 
 impl fungibles::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
