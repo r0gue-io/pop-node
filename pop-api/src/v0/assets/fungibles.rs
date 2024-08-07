@@ -122,17 +122,16 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
+pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, target, amount))
+		.call(&(id, to, value))
 }
 
-/// Transfers `value` tokens on behalf of `from` to account `to` with additional `data`
-/// in unspecified format. If `from` is equal to `None`, tokens will be minted to account `to`. If
-/// `to` is equal to `None`, tokens will be burned from account `from`.
+/// Transfers `value` amount tokens on behalf of `from` to account `to` with additional `data`
+/// in unspecified format.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
@@ -143,12 +142,12 @@ pub fn transfer(id: AssetId, target: AccountId, amount: Balance) -> Result<()> {
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
-pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balance) -> Result<()> {
+pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER_FROM)
 		.input::<(AssetId, AccountId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, from, to, amount))
+		.call(&(id, from, to, value))
 }
 
 /// Approves an account to spend a specified number of tokens on behalf of the caller.
@@ -161,12 +160,12 @@ pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, amount: Balanc
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the approval fails.
 #[inline]
-pub fn approve(id: AssetId, spender: AccountId, amount: Balance) -> Result<()> {
+pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(APPROVE)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, amount))
+		.call(&(id, spender, value))
 }
 
 /// Increases the allowance of a spender.
@@ -205,38 +204,38 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 		.call(&(id, spender, value))
 }
 
-/// Creates `amount` tokens and assigns them to `account`, increasing the total supply.
+/// Creates `value` amount tokens and assigns them to `account`, increasing the total supply.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
-/// - `owner` - The account to be credited with the created tokens.
+/// - `account` - The account to be credited with the created tokens.
 /// - `value` - The number of tokens to mint.
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-pub fn mint(id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(MINT)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, account, amount))
+		.call(&(id, account, value))
 }
 
-/// Destroys `amount` tokens from `account`, reducing the total supply.
+/// Destroys `value` amount tokens from `account`, reducing the total supply.
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
-/// - `owner` - The account from which the tokens will be destroyed.
+/// - `account` - The account from which the tokens will be destroyed.
 /// - `value` - The number of tokens to destroy.
 ///
 /// # Returns
 /// Returns `Ok(())` if successful, or an error if the operation fails.
-pub fn burn(id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(BURN)
 		.input::<(AssetId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, account, amount))
+		.call(&(id, account, value))
 }
 
 pub mod metadata {
@@ -280,7 +279,7 @@ pub mod metadata {
 	/// - `id` - The ID of the asset.
 	///
 	/// # Returns
-	///  The number of decimals of the token as a byte vector, or an error if the operation fails.
+	///  The number of decimals of the token, or an error if the operation fails.
 	#[inline]
 	pub fn token_decimals(id: AssetId) -> Result<u8> {
 		build_read_state(TOKEN_DECIMALS)
@@ -359,7 +358,7 @@ pub mod asset_management {
 			.call(&(id))
 	}
 
-	/// Checks if token exists for a given asset ID.
+	/// Checks if token with a given asset ID exists.
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
