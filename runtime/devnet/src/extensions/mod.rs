@@ -98,8 +98,6 @@ fn dispatch<E>(
 ) -> Result<(), DispatchError>
 where
 	E: Ext<T = Runtime>,
-	// Runtime: frame_system::Config<RuntimeOrigin = RuntimeOrigin, RuntimeCall = RuntimeCall>,
-	// RuntimeOrigin: From<RawOrigin<<Runtime as frame_system::Config>::AccountId>>,
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
@@ -153,8 +151,6 @@ fn read_state<E>(
 ) -> Result<(), DispatchError>
 where
 	E: Ext<T = Runtime>,
-	// Runtime: frame_system::Config,
-	// Runtime: pallet_api::fungibles::Config,
 {
 	const LOG_PREFIX: &str = " read_state |";
 
