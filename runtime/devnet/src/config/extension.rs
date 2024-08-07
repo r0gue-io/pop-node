@@ -65,14 +65,6 @@ enum VersionedStateRead {
 	V0(RuntimeRead),
 }
 
-/// Wrapper to enable versioning of runtime calls.
-#[derive(Decode, Debug)]
-enum VersionedDispatch<T: PopApiExtensionConfig> {
-	/// Version zero of dispatch calls.
-	#[codec(index = 0)]
-	V0(T::RuntimeCall),
-}
-
 pub struct ContractExecutionContext;
 
 impl StateReadHandler for ContractExecutionContext {
