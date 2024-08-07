@@ -23,7 +23,9 @@ type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 pub trait Config:
 	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
 {
+	/// Receives parameter byte array from the environment buffer and handles the logic.
 	type StateReadHandler: StateReadHandler;
+	/// Whitelisting list of runtime calls that can be dispatched.
 	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
 }
 
@@ -43,7 +45,7 @@ pub trait StateReadHandler {
 #[derive(Default)]
 pub struct PopApiExtension;
 
-/// Extract (version, function_id, pallet_index, call_index) from the payload bytes
+/// Extract (version, function_id, pallet_index, call_index) from the payload bytes.
 fn extract_env<T, E>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8)
 where
 	E: Ext<T = T>,
