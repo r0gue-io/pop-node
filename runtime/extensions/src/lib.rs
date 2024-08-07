@@ -16,7 +16,7 @@ use sp_std::vec::Vec;
 cfg_if::cfg_if! {
 	if #[cfg(feature = "pop-devnet")] {
 		pub use config::devnet::PopApiExtensionConfig;
-	} else if #[cfg(feature = "pop-tesnet")] {
+	} else if #[cfg(feature = "pop-testnet")] {
 		pub use config::testnet::PopApiExtensionConfig;
 	}
 }
