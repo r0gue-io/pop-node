@@ -77,7 +77,7 @@ enum VersionedDispatch<T: PopApiExtensionConfig> {
 
 pub struct ContractExecutionContext;
 
-impl StateReadHandler for ContractExecutionContext {
+impl CallDispatchHandler for ContractExecutionContext {
 	fn handle_params<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		params: Vec<u8>,
@@ -102,7 +102,7 @@ impl StateReadHandler for ContractExecutionContext {
 	}
 }
 
-impl CallDispatchHandler for ContractExecutionContext {
+impl StateReadHandler for ContractExecutionContext {
 	fn handle_params<T, E>(
 		env: &mut Environment<E, BufInBufOutState>,
 		params: Vec<u8>,
