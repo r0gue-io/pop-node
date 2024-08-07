@@ -261,6 +261,7 @@ impl TryFrom<u8> for FuncId {
 	}
 }
 
+#[cfg(test)]
 mod tests {
 	use super::*;
 
