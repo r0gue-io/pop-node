@@ -23,17 +23,17 @@ type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 pub trait Config:
 	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
 {
-	/// Receives parameter byte array from the environment buffer and handles the logic.
-	type StateReadHandler: StateReadHandler;
-	/// Whitelisting list of runtime calls that can be dispatched.
-	type AllowedDispatchCalls: Contains<Self::RuntimeCall>;
+	/// A query of runtime state.
+	type RuntimeRead: Decode + ReadStateHandler<Self>;
+	/// Whitelisting list of runtime calls and read state calls.
+	type AllowedApiCalls: Contains<Self::RuntimeCall> + Contains<Self::RuntimeRead>;
 }
 
 /// Trait for handling parameters from the chain extension environment during state read operations.
-pub trait StateReadHandler {
+pub trait ReadStateHandler<T: Config> {
 	/// Processes the parameters needed to execute a call within the runtime environment.
 	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
-	fn handle_params(params: &[u8]) -> Result<Vec<u8>, DispatchError>;
+	fn handle_read(params: T::RuntimeRead) -> Vec<u8>;
 }
 
 #[derive(Default)]
@@ -130,13 +130,17 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-	let (mut encoded_version, encoded_read) = (&params[..1], &params[1..]);
+	let (mut encoded_version, mut encoded_read) = (&params[..1], &params[1..]);
 	let version = decode_checked::<VersionedStateRead>(&mut encoded_version)?;
 
 	// Charge weight for doing one storage read.
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	let result = match version {
-		VersionedStateRead::V0 => T::StateReadHandler::handle_params(encoded_read)?,
+		VersionedStateRead::V0 => {
+			let read = decode_checked::<T::RuntimeRead>(&mut encoded_read)?;
+			ensure!(T::AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
+			T::RuntimeRead::handle_read(read)
+		},
 	};
 	log::trace!(
 		target:LOG_TARGET,
@@ -182,7 +186,7 @@ where
 {
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
-	origin.add_filter(T::AllowedDispatchCalls::contains);
+	origin.add_filter(T::AllowedApiCalls::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
 			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
