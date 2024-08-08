@@ -3,44 +3,24 @@ use crate::{
 	fungibles::{self},
 	Runtime,
 };
-use codec::Decode;
 use frame_support::{ensure, traits::Contains};
-use pop_runtime_extension::{
-	constants::{DECODING_FAILED_ERROR, UNKNOWN_CALL_ERROR},
-	StateReadHandler,
-};
+use pop_runtime_extension::{constants::UNKNOWN_CALL_ERROR, decode_checked, StateReadHandler};
 
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 use super::api::RuntimeRead;
 
-/// Wrapper to enable versioning of runtime state reads.
-#[derive(Decode, Debug)]
-enum VersionedStateRead {
-	/// Version zero of state reads.
-	#[codec(index = 0)]
-	V0(RuntimeRead),
-}
-
 pub struct ContractExecutionContext;
 
 impl StateReadHandler for ContractExecutionContext {
-	fn handle_params<T>(params: Vec<u8>) -> Result<Vec<u8>, DispatchError>
-	where
-		T: pop_runtime_extension::Config,
-	{
-		let read =
-			<VersionedStateRead>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
-		match read {
-			VersionedStateRead::V0(read) => {
-				ensure!(AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
-				match read {
-					RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
-				}
-			},
+	fn handle_params(params: &[u8]) -> Result<Vec<u8>, DispatchError> {
+		let read = decode_checked::<RuntimeRead>(&mut &params[..])?;
+		ensure!(AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
+		let result = match read {
+			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
 		};
-		Ok(vec![])
+		Ok(result)
 	}
 }
 

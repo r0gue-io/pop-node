@@ -8,7 +8,7 @@ use constants::*;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::Contains,
+	traits::{Contains, OriginTrait},
 };
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
@@ -33,7 +33,7 @@ pub trait Config:
 pub trait StateReadHandler {
 	/// Processes the parameters needed to execute a call within the runtime environment.
 	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
-	fn handle_params<T: Config>(params: Vec<u8>) -> Result<Vec<u8>, DispatchError>;
+	fn handle_params(params: &[u8]) -> Result<Vec<u8>, DispatchError>;
 }
 
 #[derive(Default)]
@@ -105,6 +105,14 @@ where
 	}
 }
 
+/// Helper method to decode the byte data to a provided type and throws error if failed.
+pub fn decode_checked<T>(params: &mut &[u8]) -> Result<T, DispatchError>
+where
+	T: Decode,
+{
+	T::decode(params).map_err(|_| DECODING_FAILED_ERROR)
+}
+
 fn read_state<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
@@ -122,10 +130,14 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
+	let (mut encoded_version, encoded_read) = (&params[..1], &params[1..]);
+	let version = decode_checked::<VersionedStateRead>(&mut encoded_version)?;
 
 	// Charge weight for doing one storage read.
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-	let result = T::StateReadHandler::handle_params::<T>(params)?;
+	let result = match version {
+		VersionedStateRead::V0 => T::StateReadHandler::handle_params(encoded_read)?,
+	};
 	log::trace!(
 		target:LOG_TARGET,
 		"{} result: {:?}.", LOG_PREFIX, result
@@ -150,9 +162,7 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-	let call =
-		<VersionedDispatch<T>>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
-
+	let call = decode_checked::<VersionedDispatch<T>>(&mut &params[..])?;
 	// Contract is the origin by default.
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
@@ -163,7 +173,7 @@ where
 pub fn dispatch_call<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
-	origin: T::RuntimeOrigin,
+	mut origin: T::RuntimeOrigin,
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
@@ -172,6 +182,7 @@ where
 {
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
+	origin.add_filter(T::AllowedDispatchCalls::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
 			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
@@ -186,6 +197,14 @@ where
 			Err(err.error)
 		},
 	}
+}
+
+/// Wrapper to enable versioning of runtime state reads.
+#[derive(Decode, Debug)]
+enum VersionedStateRead {
+	/// Version zero of state reads.
+	#[codec(index = 0)]
+	V0,
 }
 
 /// Wrapper to enable versioning of runtime calls.
