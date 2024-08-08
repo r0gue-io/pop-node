@@ -1,9 +1,9 @@
 use crate::{
 	config::api::AllowedApiCalls,
 	fungibles::{self},
-	Assets, BuildStorage, Runtime, System,
+	Runtime,
 };
-use codec::{Decode, Encode};
+use codec::Decode;
 use frame_support::{ensure, traits::Contains};
 use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext};
 use pop_runtime_extension::{
@@ -69,8 +69,12 @@ mod tests {
 
 	use super::*;
 
-	use crate::config::assets::TrustBackedAssetsInstance;
-	use sp_runtime::MAX_MODULE_ERROR_ENCODED_SIZE;
+	use crate::{config::assets::TrustBackedAssetsInstance, Assets, Runtime, System};
+	use codec::Encode;
+	use sp_runtime::{
+		ArithmeticError, BuildStorage, DispatchError, ModuleError, TokenError,
+		MAX_MODULE_ERROR_ENCODED_SIZE,
+	};
 
 	fn new_test_ext() -> sp_io::TestExternalities {
 		let t = frame_system::GenesisConfig::<Runtime>::default()
@@ -83,8 +87,6 @@ mod tests {
 
 	#[test]
 	fn encoding_decoding_dispatch_error() {
-		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
-
 		new_test_ext().execute_with(|| {
 			let error = DispatchError::Module(ModuleError {
 				index: 255,
