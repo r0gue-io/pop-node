@@ -1,39 +1,5 @@
-use crate::{
-	config::api::AllowedApiCalls,
-	fungibles::{self},
-	Runtime,
-};
-use frame_support::{ensure, traits::Contains};
-use pop_runtime_extension::{constants::UNKNOWN_CALL_ERROR, decode_checked, StateReadHandler};
-
-use sp_runtime::DispatchError;
-use sp_std::vec::Vec;
-
-use super::api::RuntimeRead;
-
-pub struct ContractExecutionContext;
-
-impl StateReadHandler for ContractExecutionContext {
-	fn handle_params(params: &[u8]) -> Result<Vec<u8>, DispatchError> {
-		let read = decode_checked::<RuntimeRead>(&mut &params[..])?;
-		ensure!(AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
-		let result = match read {
-			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
-		};
-		Ok(result)
-	}
-}
-
-impl pop_runtime_extension::Config for Runtime {
-	type StateReadHandler = ContractExecutionContext;
-	type AllowedDispatchCalls = AllowedApiCalls;
-}
-
 #[cfg(test)]
 mod tests {
-
-	use super::*;
-
 	use crate::{config::assets::TrustBackedAssetsInstance, Assets, Runtime, System};
 	use codec::{Decode, Encode};
 	use sp_runtime::{
