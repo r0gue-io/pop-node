@@ -8,6 +8,8 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 
+use super::api::{AllowedApiCalls, RuntimeRead};
+
 pub enum AllowBalancesCall {}
 
 impl frame_support::traits::Contains<RuntimeCall> for AllowBalancesCall {
@@ -42,6 +44,11 @@ parameter_types! {
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+}
+
+impl pop_runtime_extension::Config for Runtime {
+	type RuntimeRead = RuntimeRead;
+	type AllowedApiCalls = AllowedApiCalls;
 }
 
 impl pallet_contracts::Config for Runtime {
