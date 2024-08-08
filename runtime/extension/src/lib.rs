@@ -33,13 +33,7 @@ pub trait Config:
 pub trait StateReadHandler {
 	/// Processes the parameters needed to execute a call within the runtime environment.
 	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
-	fn handle_params<T, E>(
-		env: &mut Environment<E, BufInBufOutState>,
-		params: Vec<u8>,
-	) -> Result<(), DispatchError>
-	where
-		E: Ext<T = T>,
-		T: Config;
+	fn handle_params<T: Config>(params: Vec<u8>) -> Result<Vec<u8>, DispatchError>;
 }
 
 #[derive(Default)]
@@ -62,14 +56,6 @@ where
 	};
 
 	(version, function_id, pallet_index, call_index)
-}
-
-// Prefix params with version, pallet, and index to simplify decoding.
-fn prefix_params(mut params: Vec<u8>, version: u8, pallet_index: u8, call_index: u8) -> Vec<u8> {
-	params.insert(0, version);
-	params.insert(1, pallet_index);
-	params.insert(2, call_index);
-	params
 }
 
 impl<T> ChainExtension<T> for PopApiExtension
@@ -104,10 +90,9 @@ where
 					FuncId::Dispatch => {
 						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
 					},
-					FuncId::ReadState => T::StateReadHandler::handle_params(
-						&mut env,
-						prefix_params(params, version, pallet_index, call_index),
-					),
+					FuncId::ReadState => {
+						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
+					},
 				}
 			},
 			Err(e) => Err(e),
@@ -118,6 +103,34 @@ where
 			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e, version))),
 		}
 	}
+}
+
+fn read_state<T, E>(
+	env: &mut Environment<E, BufInBufOutState>,
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	mut params: Vec<u8>,
+) -> Result<(), DispatchError>
+where
+	T: Config,
+	E: Ext<T = T>,
+{
+	const LOG_PREFIX: &str = " read_state |";
+
+	// Prefix params with version, pallet, index to simplify decoding.
+	params.insert(0, version);
+	params.insert(1, pallet_index);
+	params.insert(2, call_index);
+
+	// Charge weight for doing one storage read.
+	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+	let result = T::StateReadHandler::handle_params::<T>(params)?;
+	log::trace!(
+		target:LOG_TARGET,
+		"{} result: {:?}.", LOG_PREFIX, result
+	);
+	env.write(&result, false, None)
 }
 
 fn dispatch<T, E>(
