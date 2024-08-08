@@ -5,12 +5,10 @@ use crate::{
 };
 use codec::Decode;
 use frame_support::{ensure, traits::Contains};
-use pallet_contracts::chain_extension::{BufInBufOutState, Environment, Ext};
 use pop_runtime_extension::{
-	constants::{DECODING_FAILED_ERROR, LOG_TARGET, UNKNOWN_CALL_ERROR},
+	constants::{DECODING_FAILED_ERROR, UNKNOWN_CALL_ERROR},
 	StateReadHandler,
 };
-use sp_core::Get;
 
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
@@ -28,22 +26,13 @@ enum VersionedStateRead {
 pub struct ContractExecutionContext;
 
 impl StateReadHandler for ContractExecutionContext {
-	fn handle_params<T, E>(
-		env: &mut Environment<E, BufInBufOutState>,
-		params: Vec<u8>,
-	) -> Result<(), DispatchError>
+	fn handle_params<T>(params: Vec<u8>) -> Result<Vec<u8>, DispatchError>
 	where
-		E: Ext<T = T>,
 		T: pop_runtime_extension::Config,
 	{
-		const LOG_PREFIX: &str = " read_state |";
-
 		let read =
 			<VersionedStateRead>::decode(&mut &params[..]).map_err(|_| DECODING_FAILED_ERROR)?;
-
-		// Charge weight for doing one storage read.
-		env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		let result = match read {
+		match read {
 			VersionedStateRead::V0(read) => {
 				ensure!(AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
 				match read {
@@ -51,11 +40,7 @@ impl StateReadHandler for ContractExecutionContext {
 				}
 			},
 		};
-		log::trace!(
-			target:LOG_TARGET,
-			"{} result: {:?}.", LOG_PREFIX, result
-		);
-		env.write(&result, false, None)
+		Ok(vec![])
 	}
 }
 
