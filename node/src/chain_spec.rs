@@ -150,7 +150,7 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 
 	#[allow(deprecated)]
 	TestnetChainSpec::builder(
-		pop_runtime_devnet::WASM_BINARY.expect("WASM binary was not built, please build it!"),
+		pop_runtime_testnet::WASM_BINARY.expect("WASM binary was not built, please build it!"),
 		extensions,
 	)
 	.with_name("Pop Network Testnet")

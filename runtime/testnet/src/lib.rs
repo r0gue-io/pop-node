@@ -444,8 +444,11 @@ impl pallet_aura::Config for Runtime {
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<100_000>;
 	type AllowMultipleBlocksPerSlot = ConstBool<false>;
+	// Note: SlotDuration potentially enabled here due to devnet runtime and Rust's feature
+	// unification, requiring the setting of a backwards compatible value.
+	// See https://github.com/paritytech/polkadot-sdk/blob/09df373db9cd5dfed82c5cdb0736d417d54249e6/substrate/frame/aura/src/lib.rs#L262
 	#[cfg(feature = "experimental")]
-	type SlotDuration = ConstU64<SLOT_DURATION>;
+	type SlotDuration = pallet_aura::MinimumPeriodTimesTwo<Runtime>;
 }
 
 parameter_types! {

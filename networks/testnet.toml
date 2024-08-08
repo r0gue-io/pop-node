@@ -1,0 +1,40 @@
+# pop up parachain -f ./tests/networks/pop.toml
+
+[relaychain]
+chain = "paseo-local"
+
+[relaychain.runtime_genesis_patch.balances]
+balances = [
+    # Pop sovereign account
+    ["5Ec4AhPKXY9B4ayGshkz2wFMh7N8gP7XKfAvtt1cigpG9FkJ", 60000000000000000],
+]
+
+[[relaychain.nodes]]
+name = "alice"
+rpc_port = 8833
+validator = true
+
+[[relaychain.nodes]]
+name = "bob"
+validator = true
+
+[[parachains]]
+id = 4001
+chain = "testnet"
+default_command = "./target/release/pop-node"
+
+[parachains.genesis_overrides.balances]
+balances = [
+    # Dev accounts
+    ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", 10000000000000000],
+    ["5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", 10000000000000000],
+    ["5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y", 10000000000000000],
+    ["5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy", 10000000000000000],
+    ["5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw", 10000000000000000],
+    ["5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL", 10000000000000000],
+]
+
+[[parachains.collators]]
+name = "pop"
+rpc_port = 9944
+args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]
