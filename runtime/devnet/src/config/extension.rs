@@ -1,7 +1,7 @@
 use crate::{
 	config::api::AllowedApiCalls,
 	fungibles::{self},
-	Assets, Runtime, System,
+	Assets, BuildStorage, Runtime, System,
 };
 use codec::{Decode, Encode};
 use frame_support::{ensure, traits::Contains};
@@ -11,7 +11,7 @@ use pop_runtime_extension::{
 	StateReadHandler,
 };
 use sp_core::Get;
-use sp_runtime::BuildStorage;
+
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -66,10 +66,10 @@ impl pop_runtime_extension::Config for Runtime {
 
 #[cfg(test)]
 mod tests {
-	use crate::config::assets::TrustBackedAssetsInstance;
 
 	use super::*;
 
+	use crate::config::assets::TrustBackedAssetsInstance;
 	use sp_runtime::MAX_MODULE_ERROR_ENCODED_SIZE;
 
 	fn new_test_ext() -> sp_io::TestExternalities {
