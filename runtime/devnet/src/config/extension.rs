@@ -35,7 +35,7 @@ mod tests {
 	use super::*;
 
 	use crate::{config::assets::TrustBackedAssetsInstance, Assets, Runtime, System};
-	use codec::Encode;
+	use codec::{Decode, Encode};
 	use sp_runtime::{
 		ArithmeticError, BuildStorage, DispatchError, ModuleError, TokenError,
 		MAX_MODULE_ERROR_ENCODED_SIZE,
