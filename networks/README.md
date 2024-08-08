@@ -13,5 +13,5 @@ cargo install --git https://github.com/r0gue-io/pop-cli
 You can spawn a local network as follows:
 
 ```shell
-pop up parachain -f ./networks/paseo.toml
+pop up parachain -f ./networks/testnet.toml
 ```
