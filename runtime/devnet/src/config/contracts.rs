@@ -1,6 +1,7 @@
+use super::api::{AllowedApiCalls, RuntimeRead};
 use crate::{
-	deposit, extensions, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeHoldReason, Timestamp,
+	deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeHoldReason, Timestamp,
 };
 use frame_support::{
 	parameter_types,
@@ -44,6 +45,11 @@ parameter_types! {
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 }
 
+impl pop_chain_extension::Config for Runtime {
+	type RuntimeRead = RuntimeRead;
+	type AllowedApiCalls = AllowedApiCalls;
+}
+
 impl pallet_contracts::Config for Runtime {
 	type Time = Timestamp;
 	type Randomness = DummyRandomness<Self>;
@@ -63,7 +69,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = extensions::PopApiExtension;
+	type ChainExtension = pop_chain_extension::ApiExtension;
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	// This node is geared towards development and testing of contracts.

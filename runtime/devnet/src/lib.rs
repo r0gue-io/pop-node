@@ -6,7 +6,6 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-mod extensions;
 mod weights;
 // Public due to integration tests crate.
 pub mod config;
