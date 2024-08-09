@@ -1,24 +1,12 @@
-#[cfg(test)]
-mod tests {
-	use crate::{config::assets::TrustBackedAssetsInstance, Assets, Runtime, System};
-	use codec::{Decode, Encode};
-	use sp_runtime::{
-		ArithmeticError, BuildStorage, DispatchError, ModuleError, TokenError,
-		MAX_MODULE_ERROR_ENCODED_SIZE,
-	};
+use crate::mock::{new_test_ext, Assets, AssetsInstance, Test};
+use codec::{Decode, Encode};
+use sp_runtime::{
+	ArithmeticError, DispatchError, ModuleError, TokenError, MAX_MODULE_ERROR_ENCODED_SIZE,
+};
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		let t = frame_system::GenesisConfig::<Runtime>::default()
-			.build_storage()
-			.expect("Frame system builds valid default genesis config");
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
-
-	#[test]
-	fn encoding_decoding_dispatch_error() {
-		new_test_ext().execute_with(|| {
+#[test]
+fn encoding_decoding_dispatch_error() {
+	new_test_ext().execute_with(|| {
 			let error = DispatchError::Module(ModuleError {
 				index: 255,
 				error: [2, 0, 0, 0],
@@ -38,12 +26,12 @@ mod tests {
 			);
 
 			// Example pallet assets Error into ModuleError.
-			let index = <<Runtime as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
+			let index = <<Test as frame_system::Config>::PalletInfo as frame_support::traits::PalletInfo>::index::<
 				Assets,
 			>()
 			.expect("Every active module has an index in the runtime; qed") as u8;
 			let mut error =
-				pallet_assets::Error::NotFrozen::<Runtime, TrustBackedAssetsInstance>.encode();
+				pallet_assets::Error::NotFrozen::<Test, AssetsInstance>.encode();
 			error.resize(MAX_MODULE_ERROR_ENCODED_SIZE, 0);
 			let error = DispatchError::Module(ModuleError {
 				index,
@@ -52,11 +40,11 @@ mod tests {
 			});
 			let encoded = error.encode();
 			let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-			assert_eq!(encoded, vec![3, 52, 18, 0, 0, 0]);
+			assert_eq!(encoded, vec![3, 2, 18, 0, 0, 0]);
 			assert_eq!(
 				decoded,
 				DispatchError::Module(ModuleError {
-					index: 52,
+					index: 2,
 					error: [18, 0, 0, 0],
 					message: None
 				})
@@ -76,5 +64,4 @@ mod tests {
 			assert_eq!(encoded, vec![8, 1]);
 			assert_eq!(decoded, error);
 		});
-	}
 }
