@@ -24,7 +24,7 @@ smallvec.workspace = true
 # Local
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
-pop-runtime-extension.workspace = true
+pop-chain-extension.workspace = true
 
 # Substrate
 frame-benchmarking.workspace = true
@@ -138,7 +138,7 @@ std = [
     "polkadot-parachain-primitives/std",
     "polkadot-runtime-common/std",
     "pop-primitives/std",
-    "pop-runtime-extension/std",
+    "pop-chain-extension/std",
     "scale-info/std",
     "sp-api/std",
     "sp-io/std",

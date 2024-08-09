@@ -25,7 +25,7 @@ pub trait Config:
 {
 	/// A query of runtime state.
 	type RuntimeRead: Decode + ReadStateHandler<Self>;
-	/// Whitelisting list of runtime calls and read state calls.
+	/// Allowlisted runtime calls and read state calls.
 	type AllowedApiCalls: Contains<Self::RuntimeCall> + Contains<Self::RuntimeRead>;
 }
 
@@ -40,10 +40,7 @@ pub trait ReadStateHandler<T: Config> {
 pub struct ApiExtension;
 
 /// Extract (version, function_id, pallet_index, call_index) from the payload bytes.
-fn extract_env<T, E>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8)
-where
-	E: Ext<T = T>,
-{
+fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8) {
 	// Extract version and function_id from first two bytes.
 	let (version, function_id) = {
 		let bytes = env.func_id().to_le_bytes();
@@ -106,10 +103,7 @@ where
 }
 
 /// Helper method to decode the byte data to a provided type and throws error if failed.
-fn decode_checked<T>(params: &mut &[u8]) -> Result<T, DispatchError>
-where
-	T: Decode,
-{
+fn decode_checked<T: Decode>(params: &mut &[u8]) -> Result<T, DispatchError> {
 	T::decode(params).map_err(|_| DECODING_FAILED_ERROR)
 }
 

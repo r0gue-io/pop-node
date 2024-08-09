@@ -56,7 +56,7 @@ pallet-api = { path = "pallets/api", default-features = false }
 pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
 pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
 pop-runtime-common = { path = "runtime/common", default-features = false }
-pop-runtime-extension = { path = "./extension", default-features = false }
+pop-chain-extension = { path = "./extension", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 
 # Substrate
