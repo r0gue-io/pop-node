@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 mod constants;
-mod mock;
 #[cfg(test)]
 mod tests;
 mod v0;
