@@ -1,7 +1,4 @@
 #[cfg(test)]
-mod fungibles;
-
-#[cfg(test)]
 mod tests {
 	use codec::{Decode, Encode};
 
@@ -106,5 +103,38 @@ mod tests {
 		println!("{:?} -> {:?}", enum_tuple, enum_tuple.encode());
 		println!("{:?} -> {:?}", enum_nested_struct, enum_nested_struct.encode());
 		println!("{:?} -> {:?}", enum_nested_enum_struct, enum_nested_enum_struct.encode());
+	}
+
+	#[test]
+	fn encoding_decoding_dispatch_error() {
+		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+
+		let error = DispatchError::Module(ModuleError {
+			index: 255,
+			error: [2, 0, 0, 0],
+			message: Some("error message"),
+		});
+		let encoded = error.encode();
+		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+		assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
+		assert_eq!(
+			decoded,
+			// `message` is skipped for encoding.
+			DispatchError::Module(ModuleError { index: 255, error: [2, 0, 0, 0], message: None })
+		);
+
+		// Example DispatchError::Token
+		let error = DispatchError::Token(TokenError::UnknownAsset);
+		let encoded = error.encode();
+		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+		assert_eq!(encoded, vec![7, 4]);
+		assert_eq!(decoded, error);
+
+		// Example DispatchError::Arithmetic
+		let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
+		let encoded = error.encode();
+		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+		assert_eq!(encoded, vec![8, 1]);
+		assert_eq!(decoded, error);
 	}
 }
