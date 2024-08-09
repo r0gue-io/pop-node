@@ -9461,6 +9461,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pop-chain-extension"
+version = "0.1.0"
+dependencies = [
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-api",
+ "pallet-assets",
+ "pallet-contracts",
+ "parity-scale-codec",
+ "pop-primitives",
+ "pop-runtime-common",
+ "rand",
+ "sp-core",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pop-node"
 version = "0.1.0-alpha"
 dependencies = [
@@ -9594,9 +9613,9 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
+ "pop-chain-extension",
  "pop-primitives",
  "pop-runtime-common",
- "pop-runtime-extension",
  "rand",
  "scale-info",
  "smallvec",
@@ -9618,25 +9637,6 @@ dependencies = [
  "staging-xcm-builder",
  "staging-xcm-executor",
  "substrate-wasm-builder",
-]
-
-[[package]]
-name = "pop-runtime-extension"
-version = "0.1.0"
-dependencies = [
- "frame-support",
- "frame-system",
- "log",
- "pallet-api",
- "pallet-assets",
- "pallet-contracts",
- "parity-scale-codec",
- "pop-primitives",
- "pop-runtime-common",
- "rand",
- "sp-core",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -9687,9 +9687,9 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
+ "pop-chain-extension",
  "pop-primitives",
  "pop-runtime-common",
- "pop-runtime-extension",
  "scale-info",
  "smallvec",
  "sp-api",
