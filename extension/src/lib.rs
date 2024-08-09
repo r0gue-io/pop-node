@@ -41,22 +41,6 @@ pub trait ReadStateHandler<T: Config> {
 #[derive(Default)]
 pub struct ApiExtension;
 
-/// Extract (version, function_id, pallet_index, call_index) from the payload bytes.
-fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8) {
-	// Extract version and function_id from first two bytes.
-	let (version, function_id) = {
-		let bytes = env.func_id().to_le_bytes();
-		(bytes[0], bytes[1])
-	};
-	// Extract pallet index and call / key index from last two bytes.
-	let (pallet_index, call_index) = {
-		let bytes = env.ext_id().to_le_bytes();
-		(bytes[0], bytes[1])
-	};
-
-	(version, function_id, pallet_index, call_index)
-}
-
 impl<T> ChainExtension<T> for ApiExtension
 where
 	T: Config + pallet_contracts::Config,
@@ -104,9 +88,20 @@ where
 	}
 }
 
-/// Helper method to decode the byte data to a provided type and throws error if failed.
-fn decode_checked<T: Decode>(params: &mut &[u8]) -> Result<T, DispatchError> {
-	T::decode(params).map_err(|_| DECODING_FAILED_ERROR)
+/// Extract (version, function_id, pallet_index, call_index) from the payload bytes.
+fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8) {
+	// Extract version and function_id from first two bytes.
+	let (version, function_id) = {
+		let bytes = env.func_id().to_le_bytes();
+		(bytes[0], bytes[1])
+	};
+	// Extract pallet index and call / key index from last two bytes.
+	let (pallet_index, call_index) = {
+		let bytes = env.ext_id().to_le_bytes();
+		(bytes[0], bytes[1])
+	};
+
+	(version, function_id, pallet_index, call_index)
 }
 
 fn read_state<T, E>(
@@ -170,6 +165,11 @@ where
 	}
 }
 
+/// Helper method to decode the byte data to a provided type and throws error if failed.
+fn decode_checked<T: Decode>(params: &mut &[u8]) -> Result<T, DispatchError> {
+	T::decode(params).map_err(|_| DECODING_FAILED_ERROR)
+}
+
 fn dispatch_call<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
@@ -213,6 +213,39 @@ enum VersionedDispatch<T: Config> {
 	/// Version zero of dispatch calls.
 	#[codec(index = 0)]
 	V0(T::RuntimeCall),
+}
+
+/// Function identifiers used in the Pop API.
+///
+/// The `FuncId` specifies the available functions that can be called through the Pop API. Each
+/// variant corresponds to a specific functionality provided by the API, facilitating the
+/// interaction between smart contracts and the runtime.
+///
+/// - `Dispatch`: Represents a function call to dispatch a runtime call.
+/// - `ReadState`: Represents a function call to read the state from the runtime.
+#[derive(Debug)]
+pub enum FuncId {
+	Dispatch,
+	ReadState,
+}
+
+impl TryFrom<u8> for FuncId {
+	type Error = DispatchError;
+
+	/// Attempts to convert a `u8` value to its corresponding `FuncId` variant.
+	///
+	/// If the `u8` value does not match any known function identifier, it returns a
+	/// `DispatchError::Other` indicating an unknown function ID.
+	fn try_from(func_id: u8) -> Result<Self, Self::Error> {
+		let id = match func_id {
+			0 => Self::Dispatch,
+			1 => Self::ReadState,
+			_ => {
+				return Err(UNKNOWN_CALL_ERROR);
+			},
+		};
+		Ok(id)
+	}
 }
 
 // Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
@@ -261,38 +294,4 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 		_ => encoded_error = UNKNOWN_CALL_ERROR_ENCODED,
 	}
 	u32::from_le_bytes(encoded_error)
-}
-
-/// Function identifiers used in the Pop API.
-///
-/// The `FuncId` specifies the available functions that can be called through the Pop API. Each
-/// variant corresponds to a specific functionality provided by the API, facilitating the
-/// interaction between smart contracts and the runtime.
-///
-/// - `Dispatch`: Represents a function call to dispatch a runtime call.
-/// - `ReadState`: Represents a function call to read the state from the runtime.
-/// - `SendXcm`: Represents a function call to send an XCM message.
-#[derive(Debug)]
-pub enum FuncId {
-	Dispatch,
-	ReadState,
-}
-
-impl TryFrom<u8> for FuncId {
-	type Error = DispatchError;
-
-	/// Attempts to convert a `u8` value to its corresponding `FuncId` variant.
-	///
-	/// If the `u8` value does not match any known function identifier, it returns a
-	/// `DispatchError::Other` indicating an unknown function ID.
-	fn try_from(func_id: u8) -> Result<Self, Self::Error> {
-		let id = match func_id {
-			0 => Self::Dispatch,
-			1 => Self::ReadState,
-			_ => {
-				return Err(UNKNOWN_CALL_ERROR);
-			},
-		};
-		Ok(id)
-	}
 }
