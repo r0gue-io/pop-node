@@ -37,7 +37,7 @@ pub trait ReadStateHandler<T: Config> {
 }
 
 #[derive(Default)]
-pub struct PopApiExtension;
+pub struct ApiExtension;
 
 /// Extract (version, function_id, pallet_index, call_index) from the payload bytes.
 fn extract_env<T, E>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8)
@@ -58,15 +58,15 @@ where
 	(version, function_id, pallet_index, call_index)
 }
 
-impl<T> ChainExtension<T> for PopApiExtension
+impl<T> ChainExtension<T> for ApiExtension
 where
 	T: Config + pallet_contracts::Config,
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
-	where
-		E: Ext<T = T>,
-	{
+	fn call<E: Ext<T = T>>(
+		&mut self,
+		env: Environment<E, InitState>,
+	) -> Result<RetVal, DispatchError> {
 		log::debug!(target:LOG_TARGET, " extension called ");
 		let mut env = env.buf_in_buf_out();
 		// Charge weight for making a call from a contract to the runtime.
@@ -106,7 +106,7 @@ where
 }
 
 /// Helper method to decode the byte data to a provided type and throws error if failed.
-pub fn decode_checked<T>(params: &mut &[u8]) -> Result<T, DispatchError>
+fn decode_checked<T>(params: &mut &[u8]) -> Result<T, DispatchError>
 where
 	T: Decode,
 {
@@ -174,7 +174,7 @@ where
 	}
 }
 
-pub fn dispatch_call<T, E>(
+fn dispatch_call<T, E>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
 	mut origin: T::RuntimeOrigin,
