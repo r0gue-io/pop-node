@@ -1,12 +1,12 @@
 [package]
-name = "pop-runtime-testnet"
-version = "0.2.0"
 authors.workspace = true
 description.workspace = true
-license = "Unlicense"
-homepage.workspace = true
-repository.workspace = true
 edition.workspace = true
+homepage.workspace = true
+license = "Unlicense"
+name = "pop-runtime-testnet"
+repository.workspace = true
+version = "0.2.0"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
@@ -26,39 +26,39 @@ pop-primitives.workspace = true
 pop-runtime-common = { workspace = true, default-features = false }
 
 # Substrate
-frame-benchmarking.workspace = true
+frame-benchmarking = { optional = true, workspace = true }
 frame-executive.workspace = true
 frame-support.workspace = true
-frame-system.workspace = true
-frame-system-benchmarking.workspace = true
+frame-system-benchmarking = { optional = true, workspace = true }
 frame-system-rpc-runtime-api.workspace = true
+frame-system.workspace = true
 frame-try-runtime.workspace = true
+pallet-assets.workspace = true
 pallet-aura.workspace = true
 pallet-authorship.workspace = true
-pallet-assets.workspace = true
 pallet-balances.workspace = true
 pallet-contracts.workspace = true
 pallet-message-queue.workspace = true
 pallet-multisig.workspace = true
 pallet-nft-fractionalization.workspace = true
-pallet-nfts.workspace = true
 pallet-nfts-runtime-api.workspace = true
+pallet-nfts.workspace = true
+pallet-preimage.workspace = true
+pallet-proxy.workspace = true
 pallet-scheduler.workspace = true
 pallet-session.workspace = true
 pallet-sudo.workspace = true
-pallet-preimage.workspace = true
-pallet-proxy.workspace = true
 pallet-timestamp.workspace = true
-pallet-transaction-payment.workspace = true
 pallet-transaction-payment-rpc-runtime-api.workspace = true
+pallet-transaction-payment.workspace = true
 pallet-utility.workspace = true
 sp-api.workspace = true
-sp-io.workspace = true
 sp-block-builder.workspace = true
 sp-consensus-aura.workspace = true
 sp-core.workspace = true
 sp-genesis-builder.workspace = true
 sp-inherents.workspace = true
+sp-io.workspace = true
 sp-offchain.workspace = true
 sp-runtime.workspace = true
 sp-session.workspace = true
@@ -70,9 +70,9 @@ sp-version.workspace = true
 pallet-xcm.workspace = true
 polkadot-parachain-primitives.workspace = true
 polkadot-runtime-common.workspace = true
-xcm.workspace = true
 xcm-builder.workspace = true
 xcm-executor.workspace = true
+xcm.workspace = true
 
 # Cumulus
 cumulus-pallet-aura-ext.workspace = true
@@ -84,13 +84,13 @@ cumulus-primitives-aura.workspace = true
 cumulus-primitives-core.workspace = true
 cumulus-primitives-utility.workspace = true
 pallet-collator-selection.workspace = true
-parachains-common.workspace = true
 parachain-info.workspace = true
+parachains-common.workspace = true
 
 [dev-dependencies]
+enumflags2 = "0.7.9"
 env_logger = "0.11.2"
 hex = "0.4.3"
-enumflags2 = "0.7.9"
 
 [features]
 default = ["std"]
@@ -104,30 +104,30 @@ std = [
     "cumulus-primitives-aura/std",
     "cumulus-primitives-core/std",
     "cumulus-primitives-utility/std",
-    "frame-benchmarking/std",
+    "frame-benchmarking?/std",
     "frame-executive/std",
     "frame-support/std",
-    "frame-system-benchmarking/std",
+    "frame-system-benchmarking?/std",
     "frame-system-rpc-runtime-api/std",
     "frame-system/std",
     "frame-try-runtime/std",
     "log/std",
+    "pallet-assets/std",
     "pallet-aura/std",
     "pallet-authorship/std",
-    "pallet-assets/std",
     "pallet-balances/std",
     "pallet-collator-selection/std",
     "pallet-contracts/std",
     "pallet-message-queue/std",
     "pallet-multisig/std",
     "pallet-nft-fractionalization/std",
-    "pallet-nfts/std",
     "pallet-nfts-runtime-api/std",
+    "pallet-nfts/std",
+    "pallet-preimage/std",
+    "pallet-proxy/std",
     "pallet-scheduler/std",
     "pallet-session/std",
     "pallet-sudo/std",
-    "pallet-preimage/std",
-    "pallet-proxy/std",
     "pallet-timestamp/std",
     "pallet-transaction-payment-rpc-runtime-api/std",
     "pallet-transaction-payment/std",
@@ -140,12 +140,12 @@ std = [
     "pop-primitives/std",
     "scale-info/std",
     "sp-api/std",
-    "sp-io/std",
     "sp-block-builder/std",
     "sp-consensus-aura/std",
     "sp-core/std",
     "sp-genesis-builder/std",
     "sp-inherents/std",
+    "sp-io/std",
     "sp-offchain/std",
     "sp-runtime/std",
     "sp-session/std",
@@ -175,10 +175,10 @@ runtime-benchmarks = [
     "pallet-multisig/runtime-benchmarks",
     "pallet-nft-fractionalization/runtime-benchmarks",
     "pallet-nfts/runtime-benchmarks",
-    "pallet-scheduler/runtime-benchmarks",
-    "pallet-sudo/runtime-benchmarks",
     "pallet-preimage/runtime-benchmarks",
     "pallet-proxy/runtime-benchmarks",
+    "pallet-scheduler/runtime-benchmarks",
+    "pallet-sudo/runtime-benchmarks",
     "pallet-timestamp/runtime-benchmarks",
     "pallet-utility/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
@@ -199,9 +199,9 @@ try-runtime = [
     "frame-support/try-runtime",
     "frame-system/try-runtime",
     "frame-try-runtime/try-runtime",
+    "pallet-assets/try-runtime",
     "pallet-aura/try-runtime",
     "pallet-authorship/try-runtime",
-    "pallet-assets/try-runtime",
     "pallet-balances/try-runtime",
     "pallet-collator-selection/try-runtime",
     "pallet-contracts/try-runtime",
@@ -209,11 +209,11 @@ try-runtime = [
     "pallet-multisig/try-runtime",
     "pallet-nft-fractionalization/try-runtime",
     "pallet-nfts/try-runtime",
+    "pallet-preimage/try-runtime",
+    "pallet-proxy/try-runtime",
     "pallet-scheduler/try-runtime",
     "pallet-session/try-runtime",
     "pallet-sudo/try-runtime",
-    "pallet-preimage/try-runtime",
-    "pallet-proxy/try-runtime",
     "pallet-timestamp/try-runtime",
     "pallet-transaction-payment/try-runtime",
     "pallet-utility/try-runtime",
@@ -223,4 +223,4 @@ try-runtime = [
     "sp-runtime/try-runtime",
 ]
 
-experimental = ["pallet-aura/experimental"]
+experimental = []

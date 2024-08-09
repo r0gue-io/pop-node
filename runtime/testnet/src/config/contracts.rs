@@ -6,7 +6,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstBool, ConstU32, Randomness},
 };
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
 pub enum AllowBalancesCall {}
 
@@ -87,4 +87,8 @@ impl pallet_contracts::Config for Runtime {
 	type Debug = ();
 	type Migrations = ();
 	type Xcm = pallet_xcm::Pallet<Self>;
+
+	type UploadOrigin = EnsureSigned<Self::AccountId>;
+	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
+	type ApiVersion = ();
 }
