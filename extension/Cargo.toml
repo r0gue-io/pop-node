@@ -17,6 +17,7 @@ codec.workspace = true
 log.workspace = true
 
 # Local
+pallet-api.workspace = true
 pop-primitives.workspace = true
 
 # Substrate

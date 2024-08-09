@@ -93,6 +93,7 @@ hex = "0.4.3"
 
 [features]
 default = ["std"]
+
 std = [
     "codec/std",
     "cumulus-pallet-aura-ext/std",
