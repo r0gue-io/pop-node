@@ -58,6 +58,65 @@ mod constants {
 	pub(super) const BURN: u8 = 20;
 }
 
+pub mod events {
+	use super::*;
+
+	/// Event emitted when allowance by `owner` to `spender` changes.
+	#[ink::event]
+	pub struct Approval {
+		/// Account providing allowance.
+		#[ink(topic)]
+		pub owner: AccountId,
+		/// Allowance beneficiary.
+		#[ink(topic)]
+		pub spender: AccountId,
+		/// New allowance amount.
+		pub value: u128,
+	}
+
+	/// Event emitted when transfer of tokens occurs.
+	#[ink::event]
+	pub struct Transfer {
+		/// Transfer sender. `None` in case of minting new tokens.
+		#[ink(topic)]
+		pub from: Option<AccountId>,
+		/// Transfer recipient. `None` in case of burning tokens.
+		#[ink(topic)]
+		pub to: Option<AccountId>,
+		/// Amount of tokens transferred (or minted/burned).
+		pub value: u128,
+	}
+
+	/// Event emitted when a token class is created.
+	#[ink::event]
+	pub struct Create {
+		id: AssetId,
+		creator: AccountId,
+		owner: AccountId,
+	}
+
+	/// Event emitted when a token is in the process of being destroyed.
+	#[ink::event]
+	pub struct StartDestroy {
+		id: AssetId,
+	}
+
+	/// Event emitted when new metadata is set for a token.
+	#[ink::event]
+	pub struct SetMetadata {
+		id: AssetId,
+		name: Vec<u8>,
+		symbol: Vec<u8>,
+		decimals: u8,
+	}
+
+	/// Event emitted when metadata is cleared for a token.
+	#[ink::event]
+	pub struct ClearMetadata {
+		id: AssetId,
+	}
+}
+
 /// Returns the total token supply for a given asset ID.
 ///
 /// # Parameters
