@@ -1,7 +1,7 @@
 use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Contains;
-use pop_runtime_extension::ReadStateHandler;
+use pop_chain_extension::ReadStateHandler;
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
