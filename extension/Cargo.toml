@@ -3,7 +3,7 @@ name = "pop-chain-extension"
 version = "0.1.0"
 authors.workspace = true
 description.workspace = true
-license = "Unlicense"
+license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 edition.workspace = true
@@ -18,7 +18,6 @@ log.workspace = true
 
 # Local
 pop-primitives.workspace = true
-pop-runtime-common.workspace = true
 
 # Substrate
 frame-support.workspace = true
