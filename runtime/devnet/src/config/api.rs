@@ -14,7 +14,7 @@ pub enum RuntimeRead {
 
 pub struct StateReader;
 impl ReadState<Runtime> for StateReader {
-	fn read(read: RuntimeRead) -> sp_std::vec::Vec<u8> {
+	fn read(read: RuntimeRead) -> Vec<u8> {
 		match read {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
 		}
