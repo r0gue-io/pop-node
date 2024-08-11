@@ -2,6 +2,7 @@ use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, Runti
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Contains;
 use pop_chain_extension::ReadState;
+use sp_std::vec::Vec;
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
