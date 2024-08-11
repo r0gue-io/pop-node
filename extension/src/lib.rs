@@ -22,12 +22,13 @@ use sp_std::vec::Vec;
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
+/// Trait for the Pop API chain extension configuration.
 pub trait Config:
 	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
 {
 	/// A query of runtime state.
 	type RuntimeRead: Decode;
-	/// Something to read runtime states
+	/// Something to read runtime states.
 	type StateReader: ReadState<Self>;
 	/// Allowlisted runtime calls and read state calls.
 	type AllowedApiCalls: Contains<Self::RuntimeCall> + Contains<Self::RuntimeRead>;
