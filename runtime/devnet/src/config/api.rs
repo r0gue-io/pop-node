@@ -1,7 +1,7 @@
 use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::Contains;
-use pop_chain_extension::ReadStateHandler;
+use pop_chain_extension::ReadState;
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -12,8 +12,9 @@ pub enum RuntimeRead {
 	Fungibles(fungibles::Read<Runtime>),
 }
 
-impl ReadStateHandler<Runtime> for RuntimeRead {
-	fn handle_read(read: RuntimeRead) -> sp_std::vec::Vec<u8> {
+pub struct StateReader;
+impl ReadState<Runtime> for StateReader {
+	fn read(read: RuntimeRead) -> sp_std::vec::Vec<u8> {
 		match read {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
 		}

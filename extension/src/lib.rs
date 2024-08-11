@@ -26,16 +26,16 @@ pub trait Config:
 	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
 {
 	/// A query of runtime state.
-	type RuntimeRead: Decode + ReadStateHandler<Self>;
+	type RuntimeRead: Decode;
+	/// Something to read runtime states
+	type StateReader: ReadState<Self>;
 	/// Allowlisted runtime calls and read state calls.
 	type AllowedApiCalls: Contains<Self::RuntimeCall> + Contains<Self::RuntimeRead>;
 }
 
 /// Trait for handling parameters from the chain extension environment during state read operations.
-pub trait ReadStateHandler<T: Config> {
-	/// Processes the parameters needed to execute a call within the runtime environment.
-	/// Layout of `params`: [version, pallet_index, call_index, ...Vec<u8>].
-	fn handle_read(params: T::RuntimeRead) -> Vec<u8>;
+pub trait ReadState<T: Config> {
+	fn read(read: T::RuntimeRead) -> Vec<u8>;
 }
 
 #[derive(Default)]
@@ -130,7 +130,7 @@ where
 		VersionedStateRead::V0 => {
 			let read = decode_checked::<T::RuntimeRead>(&mut encoded_read)?;
 			ensure!(T::AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
-			T::RuntimeRead::handle_read(read)
+			T::StateReader::read(read)
 		},
 	};
 	log::trace!(
@@ -220,12 +220,11 @@ enum VersionedDispatch<T: Config> {
 /// The `FuncId` specifies the available functions that can be called through the Pop API. Each
 /// variant corresponds to a specific functionality provided by the API, facilitating the
 /// interaction between smart contracts and the runtime.
-///
-/// - `Dispatch`: Represents a function call to dispatch a runtime call.
-/// - `ReadState`: Represents a function call to read the state from the runtime.
 #[derive(Debug)]
 pub enum FuncId {
+	/// Represents a function call to dispatch a runtime call.
 	Dispatch,
+	/// Represents a function call to read the state from the runtime.
 	ReadState,
 }
 

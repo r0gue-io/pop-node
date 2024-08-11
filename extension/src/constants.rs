@@ -1,6 +1,7 @@
 use sp_runtime::DispatchError;
 
-pub const LOG_TARGET: &str = "pop-api::extension";
+/// Logging target for categorizing messages from the Pop API extension module.
+pub(crate) const LOG_TARGET: &str = "pop-api::extension";
 
 pub const DECODING_FAILED_ERROR: DispatchError = DispatchError::Other("DecodingFailed");
 // TODO: issue #93, we can also encode the `pop_primitives::Error::UnknownCall` which means we do use

@@ -1,4 +1,4 @@
-use super::api::{AllowedApiCalls, RuntimeRead};
+use super::api::{AllowedApiCalls, RuntimeRead, StateReader};
 use crate::{
 	deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
 	RuntimeHoldReason, Timestamp,
@@ -47,6 +47,7 @@ parameter_types! {
 
 impl pop_chain_extension::Config for Runtime {
 	type RuntimeRead = RuntimeRead;
+	type StateReader = StateReader;
 	type AllowedApiCalls = AllowedApiCalls;
 }
 
