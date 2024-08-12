@@ -53,7 +53,7 @@ substrate-build-script-utils = "11.0.0"
 # Local
 pop-runtime-devnet = { path = "runtime/devnet", default-features = true, features = [
     "experimental",
-] } # default-features=true required for `-p pop-node` builds
+] } # default-features=true required for `-p pop-node` builds# Loca
 pop-runtime-testnet = { path = "runtime/testnet", default-features = true, features = [
     "experimental",
 ] } # default-features=true required for `-p pop-node` builds
@@ -167,7 +167,6 @@ cumulus-client-consensus-aura = "0.9.0"
 cumulus-client-consensus-common = "0.9.0"
 cumulus-client-consensus-proposer = "0.9.0"
 cumulus-client-service = "0.9.0"
-
 
 # Paseo
 asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
