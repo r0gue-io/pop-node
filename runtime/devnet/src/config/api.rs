@@ -14,8 +14,11 @@ pub enum RuntimeRead {
 }
 
 /// A struct that provides a state reading implementation for the Runtime.
+#[derive(Default)]
 pub struct StateReader;
 impl ReadState<Runtime> for StateReader {
+	type StateQuery = RuntimeRead;
+
 	fn read(read: RuntimeRead) -> Vec<u8> {
 		match read {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
@@ -24,6 +27,7 @@ impl ReadState<Runtime> for StateReader {
 }
 
 /// A type to identify allowed calls to the Runtime from the API.
+#[derive(Default)]
 pub struct AllowedApiCalls;
 
 impl Contains<RuntimeCall> for AllowedApiCalls {

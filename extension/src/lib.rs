@@ -22,30 +22,34 @@ use sp_std::vec::Vec;
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
-/// Trait for the Pop API chain extension configuration.
-pub trait Config:
-	frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>
-{
-	/// A query of runtime state.
-	type RuntimeRead: Decode;
-	/// Something to read runtime states.
-	type StateReader: ReadState<Self>;
-	/// Allowlisted runtime calls and read state calls.
-	type AllowedApiCalls: Contains<Self::RuntimeCall> + Contains<Self::RuntimeRead>;
-}
-
 /// Trait for handling parameters from the chain extension environment during state read operations.
-pub trait ReadState<T: Config> {
-	fn read(read: T::RuntimeRead) -> Vec<u8>;
+pub trait ReadState<T>
+where
+	T: frame_system::Config<
+		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
+	>,
+{
+	type StateQuery: Decode;
+
+	fn read(read: Self::StateQuery) -> Vec<u8>;
+
+	fn unpack(params: &mut &[u8]) -> Result<Self::StateQuery, DispatchError> {
+		decode_checked(params)
+	}
 }
 
 #[derive(Default)]
-pub struct ApiExtension;
+pub struct ApiExtension<S, A>(core::marker::PhantomData<(S, A)>);
 
-impl<T> ChainExtension<T> for ApiExtension
+impl<T, S, A> ChainExtension<T> for ApiExtension<S, A>
 where
-	T: Config + pallet_contracts::Config,
+	T: pallet_contracts::Config
+		+ frame_system::Config<
+			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
+		>,
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	S: ReadState<T>,
+	A: Contains<<T as frame_system::Config>::RuntimeCall> + Contains<S::StateQuery> + 'static,
 {
 	fn call<E: Ext<T = T>>(
 		&mut self,
@@ -72,11 +76,15 @@ where
 				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
 					FuncId::Dispatch => {
-						dispatch::<T, E>(&mut env, version, pallet_index, call_index, params)
+						dispatch::<T, E, A>(&mut env, version, pallet_index, call_index, params)
 					},
-					FuncId::ReadState => {
-						read_state::<T, E>(&mut env, version, pallet_index, call_index, params)
-					},
+					FuncId::ReadState => read_state::<T, E, S, A>(
+						&mut env,
+						version,
+						pallet_index,
+						call_index,
+						params,
+					),
 				}
 			},
 			Err(e) => Err(e),
@@ -105,7 +113,7 @@ fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8,
 	(version, function_id, pallet_index, call_index)
 }
 
-fn read_state<T, E>(
+fn read_state<T, E, S, A>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
@@ -113,8 +121,12 @@ fn read_state<T, E>(
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
-	T: Config,
+	T: frame_system::Config<
+		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
+	>,
 	E: Ext<T = T>,
+	S: ReadState<T>,
+	A: Contains<S::StateQuery>,
 {
 	const LOG_PREFIX: &str = " read_state |";
 
@@ -129,9 +141,9 @@ where
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	let result = match version {
 		VersionedStateRead::V0 => {
-			let read = decode_checked::<T::RuntimeRead>(&mut encoded_read)?;
-			ensure!(T::AllowedApiCalls::contains(&read), UNKNOWN_CALL_ERROR);
-			T::StateReader::read(read)
+			let read = S::unpack(&mut encoded_read)?;
+			ensure!(A::contains(&read), UNKNOWN_CALL_ERROR);
+			S::read(read)
 		},
 	};
 	log::trace!(
@@ -141,7 +153,7 @@ where
 	env.write(&result, false, None)
 }
 
-fn dispatch<T, E>(
+fn dispatch<T, E, A>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
@@ -149,8 +161,11 @@ fn dispatch<T, E>(
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError>
 where
-	T: Config,
+	T: frame_system::Config<
+		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
+	>,
 	E: Ext<T = T>,
+	A: Contains<T::RuntimeCall> + 'static,
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
@@ -162,7 +177,7 @@ where
 	// Contract is the origin by default.
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
-		VersionedDispatch::V0(call) => dispatch_call::<T, E>(env, call, origin, LOG_PREFIX),
+		VersionedDispatch::V0(call) => dispatch_call::<T, E, A>(env, call, origin, LOG_PREFIX),
 	}
 }
 
@@ -171,19 +186,22 @@ fn decode_checked<T: Decode>(params: &mut &[u8]) -> Result<T, DispatchError> {
 	T::decode(params).map_err(|_| DECODING_FAILED_ERROR)
 }
 
-fn dispatch_call<T, E>(
+fn dispatch_call<T, E, A>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
 	mut origin: T::RuntimeOrigin,
 	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
-	T: Config,
+	T: frame_system::Config<
+		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
+	>,
 	E: Ext<T = T>,
+	A: Contains<T::RuntimeCall> + 'static,
 {
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
-	origin.add_filter(T::AllowedApiCalls::contains);
+	origin.add_filter(A::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
 			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
@@ -210,7 +228,9 @@ enum VersionedStateRead {
 
 /// Wrapper to enable versioning of runtime calls.
 #[derive(Decode, Debug)]
-enum VersionedDispatch<T: Config> {
+enum VersionedDispatch<
+	T: frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>,
+> {
 	/// Version zero of dispatch calls.
 	#[codec(index = 0)]
 	V0(T::RuntimeCall),
