@@ -1,8 +1,12 @@
 use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Contains;
-use pop_chain_extension::ReadState;
+use pop_chain_extension::*;
 use sp_std::vec::Vec;
+
+impl fungibles::Config for Runtime {
+	type AssetsInstance = TrustBackedAssetsInstance;
+	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
+}
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -13,24 +17,37 @@ pub enum RuntimeRead {
 	Fungibles(fungibles::Read<Runtime>),
 }
 
-/// A struct that provides a state reading implementation for the Runtime.
+/// Runtime-specific implementation of the generic extension requirements.
 #[derive(Default)]
-pub struct StateReader;
-impl ReadState<Runtime> for StateReader {
+pub struct Extension;
+
+impl ReadState for Extension {
 	type StateQuery = RuntimeRead;
 
-	fn read(read: RuntimeRead) -> Vec<u8> {
+	/// Allowed state queries from the API.
+	fn contains(c: &RuntimeRead) -> bool {
+		use fungibles::Read::*;
+		matches!(
+			c,
+			RuntimeRead::Fungibles(
+				TotalSupply(..)
+					| BalanceOf { .. } | Allowance { .. }
+					| TokenName(..) | TokenSymbol(..)
+					| TokenDecimals(..) | AssetExists(..)
+			)
+		)
+	}
+
+	fn read(read: Self::StateQuery) -> Vec<u8> {
 		match read {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
 		}
 	}
 }
 
-/// A type to identify allowed calls to the Runtime from the API.
-#[derive(Default)]
-pub struct AllowedApiCalls;
+impl CallFilter for Extension {
+	type Call = RuntimeCall;
 
-impl Contains<RuntimeCall> for AllowedApiCalls {
 	/// Allowed runtime calls from the API.
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
@@ -48,25 +65,4 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 			)
 		)
 	}
-}
-
-impl Contains<RuntimeRead> for AllowedApiCalls {
-	/// Allowed state queries from the API.
-	fn contains(c: &RuntimeRead) -> bool {
-		use fungibles::Read::*;
-		matches!(
-			c,
-			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | AssetExists(..)
-			)
-		)
-	}
-}
-
-impl fungibles::Config for Runtime {
-	type AssetsInstance = TrustBackedAssetsInstance;
-	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }

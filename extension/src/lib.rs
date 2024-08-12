@@ -10,7 +10,7 @@ use constants::*;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
-	traits::{Contains, OriginTrait},
+	traits::OriginTrait,
 };
 use frame_system::RawOrigin;
 use pallet_contracts::chain_extension::{
@@ -23,13 +23,11 @@ use sp_std::vec::Vec;
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
 /// Trait for handling parameters from the chain extension environment during state read operations.
-pub trait ReadState<T>
-where
-	T: frame_system::Config<
-		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
-	>,
-{
+pub trait ReadState {
 	type StateQuery: Decode;
+
+	// Seems fine to just include this within the same trait rather than Contains, only as it is used before every read. Main justification is simplified implementation in the runtime.
+	fn contains(c: &Self::StateQuery) -> bool;
 
 	fn read(read: Self::StateQuery) -> Vec<u8>;
 
@@ -38,18 +36,26 @@ where
 	}
 }
 
-#[derive(Default)]
-pub struct ApiExtension<S, A>(core::marker::PhantomData<(S, A)>);
+// Simply added to be more expressive in terms of intent, specifically within the runtime implementation.
+pub trait CallFilter {
+	type Call: Decode;
 
-impl<T, S, A> ChainExtension<T> for ApiExtension<S, A>
+	fn contains(t: &Self::Call) -> bool;
+}
+
+/// Generic extension implementation, deferring more specific implementations to a single type provided by runtime. Less flexible, but a simpler/cleaner implementation in the runtime imo.
+#[derive(Default)]
+pub struct ApiExtension<I>(PhantomData<I>);
+
+impl<T, I> ChainExtension<T> for ApiExtension<I>
 where
 	T: pallet_contracts::Config
 		+ frame_system::Config<
 			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 		>,
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
-	S: ReadState<T>,
-	A: Contains<<T as frame_system::Config>::RuntimeCall> + Contains<S::StateQuery> + 'static,
+	// Bound the type by the two traits which need to be implemented by the runtime
+	I: ReadState + CallFilter<Call = <T as frame_system::Config>::RuntimeCall> + 'static,
 {
 	fn call<E: Ext<T = T>>(
 		&mut self,
@@ -76,15 +82,11 @@ where
 				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
 					FuncId::Dispatch => {
-						dispatch::<T, E, A>(&mut env, version, pallet_index, call_index, params)
+						dispatch::<T, E, I>(&mut env, version, pallet_index, call_index, params)
 					},
-					FuncId::ReadState => read_state::<T, E, S, A>(
-						&mut env,
-						version,
-						pallet_index,
-						call_index,
-						params,
-					),
+					FuncId::ReadState => {
+						read_state::<T, E, I>(&mut env, version, pallet_index, call_index, params)
+					},
 				}
 			},
 			Err(e) => Err(e),
@@ -113,21 +115,14 @@ fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8,
 	(version, function_id, pallet_index, call_index)
 }
 
-fn read_state<T, E, S, A>(
+// Unnecessary bounds allowed a simpler definition
+fn read_state<T: frame_system::Config, E: Ext<T = T>, S: ReadState>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
 	call_index: u8,
 	mut params: Vec<u8>,
-) -> Result<(), DispatchError>
-where
-	T: frame_system::Config<
-		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
-	>,
-	E: Ext<T = T>,
-	S: ReadState<T>,
-	A: Contains<S::StateQuery>,
-{
+) -> Result<(), DispatchError> {
 	const LOG_PREFIX: &str = " read_state |";
 
 	// Prefix params with version, pallet, index to simplify decoding.
@@ -142,7 +137,7 @@ where
 	let result = match version {
 		VersionedStateRead::V0 => {
 			let read = S::unpack(&mut encoded_read)?;
-			ensure!(A::contains(&read), UNKNOWN_CALL_ERROR);
+			ensure!(S::contains(&read), UNKNOWN_CALL_ERROR);
 			S::read(read)
 		},
 	};
@@ -153,7 +148,7 @@ where
 	env.write(&result, false, None)
 }
 
-fn dispatch<T, E, A>(
+fn dispatch<T, E, Filter>(
 	env: &mut Environment<E, BufInBufOutState>,
 	version: u8,
 	pallet_index: u8,
@@ -165,7 +160,7 @@ where
 		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 	>,
 	E: Ext<T = T>,
-	A: Contains<T::RuntimeCall> + 'static,
+	Filter: CallFilter<Call = T::RuntimeCall> + 'static,
 {
 	const LOG_PREFIX: &str = " dispatch |";
 
@@ -173,11 +168,11 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-	let call = decode_checked::<VersionedDispatch<T>>(&mut &params[..])?;
+	let call = decode_checked::<VersionedDispatch<T::RuntimeCall>>(&mut &params[..])?;
 	// Contract is the origin by default.
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
-		VersionedDispatch::V0(call) => dispatch_call::<T, E, A>(env, call, origin, LOG_PREFIX),
+		VersionedDispatch::V0(call) => dispatch_call::<T, E, Filter>(env, call, origin, LOG_PREFIX),
 	}
 }
 
@@ -186,7 +181,7 @@ fn decode_checked<T: Decode>(params: &mut &[u8]) -> Result<T, DispatchError> {
 	T::decode(params).map_err(|_| DECODING_FAILED_ERROR)
 }
 
-fn dispatch_call<T, E, A>(
+fn dispatch_call<T, E, Filter>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
 	mut origin: T::RuntimeOrigin,
@@ -194,14 +189,15 @@ fn dispatch_call<T, E, A>(
 ) -> Result<(), DispatchError>
 where
 	T: frame_system::Config<
-		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
+		// + Sized probably not required, simply added it due to an IDE warning so can omit
+		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo> + Sized,
 	>,
 	E: Ext<T = T>,
-	A: Contains<T::RuntimeCall> + 'static,
+	Filter: CallFilter<Call = T::RuntimeCall> + 'static,
 {
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
 	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
-	origin.add_filter(A::contains);
+	origin.add_filter(Filter::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
 			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
@@ -228,12 +224,11 @@ enum VersionedStateRead {
 
 /// Wrapper to enable versioning of runtime calls.
 #[derive(Decode, Debug)]
-enum VersionedDispatch<
-	T: frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>,
-> {
+// Bounds seem unnecessary - only pass a type with provides the minimum required information
+enum VersionedDispatch<RuntimeCall> {
 	/// Version zero of dispatch calls.
 	#[codec(index = 0)]
-	V0(T::RuntimeCall),
+	V0(RuntimeCall),
 }
 
 /// Function identifiers used in the Pop API.

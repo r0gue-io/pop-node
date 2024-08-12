@@ -1,7 +1,6 @@
-use super::api::{AllowedApiCalls, RuntimeRead, StateReader};
 use crate::{
-	deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp,
+	config::api::Extension, deposit, Balance, Balances, BalancesCall, Perbill, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeHoldReason, Timestamp,
 };
 use frame_support::{
 	parameter_types,
@@ -64,7 +63,7 @@ impl pallet_contracts::Config for Runtime {
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
-	type ChainExtension = pop_chain_extension::ApiExtension<StateReader, AllowedApiCalls>;
+	type ChainExtension = pop_chain_extension::ApiExtension<Extension>;
 	type Schedule = Schedule;
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	// This node is geared towards development and testing of contracts.
