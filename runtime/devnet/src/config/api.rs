@@ -13,6 +13,7 @@ pub enum RuntimeRead {
 	Fungibles(fungibles::Read<Runtime>),
 }
 
+/// A struct that provides a state reading implementation for the Runtime.
 pub struct StateReader;
 impl ReadState<Runtime> for StateReader {
 	fn read(read: RuntimeRead) -> Vec<u8> {
