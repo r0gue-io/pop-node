@@ -192,8 +192,6 @@ pub mod pallet {
 			let owner = ensure_signed(origin.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
-			let spender_unlookup = T::Lookup::unlookup(spender.clone());
-			let id_param: AssetIdParameterOf<T> = id.into();
 
 			let return_weight = match value.cmp(&current_allowance) {
 				// If the new value is equal to the current allowance, do nothing.
@@ -203,8 +201,8 @@ pub mod pallet {
 				Greater => {
 					AssetsOf::<T>::approve_transfer(
 						origin,
-						id_param,
-						spender_unlookup,
+						id.into(),
+						T::Lookup::unlookup(spender.clone()),
 						value.saturating_sub(current_allowance),
 					)
 					.map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
@@ -213,16 +211,18 @@ pub mod pallet {
 				// If the new value is less than the current allowance, cancel the approval and
 				// set the new value.
 				Less => {
+					let id: AssetIdParameterOf<T> = id.into();
+					let spender_source = T::Lookup::unlookup(spender.clone());
 					AssetsOf::<T>::cancel_approval(
 						origin.clone(),
-						id_param.clone(),
-						spender_unlookup.clone(),
+						id.clone(),
+						spender_source.clone(),
 					)
 					.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 					if value.is_zero() {
 						Self::weight_approve(0, 1)
 					} else {
-						AssetsOf::<T>::approve_transfer(origin, id_param, spender_unlookup, value)?;
+						AssetsOf::<T>::approve_transfer(origin, id, spender_source, value)?;
 						Self::weight_approve(1, 1)
 					}
 				},
@@ -275,24 +275,20 @@ pub mod pallet {
 			let owner = ensure_signed(origin.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
-			let spender_unlookup = T::Lookup::unlookup(spender.clone());
-			let id_param: AssetIdParameterOf<T> = id.into();
+			let spender_source = T::Lookup::unlookup(spender.clone());
+			let id: AssetIdParameterOf<T> = id.into();
 
 			if value.is_zero() {
 				return Ok(Some(Self::weight_approve(0, 0)).into());
 			}
 			// Cancel the approval and set the new value if `new_allowance` is more than zero.
-			AssetsOf::<T>::cancel_approval(
-				origin.clone(),
-				id_param.clone(),
-				spender_unlookup.clone(),
-			)
-			.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
+			AssetsOf::<T>::cancel_approval(origin.clone(), id.clone(), spender_source.clone())
+				.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 			let new_allowance = current_allowance.saturating_sub(value);
 			let weight = if new_allowance.is_zero() {
 				Self::weight_approve(0, 1)
 			} else {
-				AssetsOf::<T>::approve_transfer(origin, id_param, spender_unlookup, new_allowance)?;
+				AssetsOf::<T>::approve_transfer(origin, id, spender_source, new_allowance)?;
 				Self::weight_approve(1, 1)
 			};
 			Self::deposit_event(Event::Approval { owner, spender, value: new_allowance });
