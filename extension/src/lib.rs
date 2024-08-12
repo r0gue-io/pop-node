@@ -169,7 +169,7 @@ where
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
-	let call = decode_checked::<VersionedDispatch<T>>(&mut &params[..])?;
+	let call = decode_checked::<VersionedDispatch<T::RuntimeCall>>(&mut &params[..])?;
 	// Contract is the origin by default.
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
@@ -224,12 +224,10 @@ enum VersionedStateRead {
 
 /// Wrapper to enable versioning of runtime calls.
 #[derive(Decode, Debug)]
-enum VersionedDispatch<
-	T: frame_system::Config<RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>>,
-> {
+enum VersionedDispatch<RuntimeCall: Decode> {
 	/// Version zero of dispatch calls.
 	#[codec(index = 0)]
-	V0(T::RuntimeCall),
+	V0(RuntimeCall),
 }
 
 /// Function identifiers used in the Pop API.
