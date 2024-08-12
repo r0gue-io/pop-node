@@ -51,7 +51,7 @@ substrate-wasm-builder = "20.0.0"
 substrate-build-script-utils = "11.0.0"
 
 # Local
-pop-runtime-devnet = { path = "runtime/devnet", default-features = true } # default-features=true required for `-p pop-node` builds
+pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
 pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
 pop-runtime-common = { path = "runtime/common", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
@@ -81,7 +81,9 @@ frame-system = { version = "31.0.0", default-features = false }
 frame-system-benchmarking = { version = "31.0.0", default-features = false }
 frame-system-rpc-runtime-api = { version = "29.0.0", default-features = false }
 frame-try-runtime = { version = "0.37.0", default-features = false }
-pallet-aura = { version = "30.0.0", default-features = false }
+pallet-aura = { version = "30.0.0", default-features = false, features = [
+    "experimental",
+] }
 pallet-authorship = { version = "31.0.0", default-features = false }
 pallet-assets = { version = "32.0.0", default-features = false }
 pallet-balances = { version = "31.0.0", default-features = false }
