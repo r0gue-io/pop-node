@@ -22,7 +22,7 @@ use sp_std::vec::Vec;
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
-/// Trait for handling parameters from the chain extension environment during state read operations.
+/// Handles the query from the chain extension environment for state reads.
 pub trait ReadState<T>
 where
 	T: frame_system::Config<
@@ -31,9 +31,11 @@ where
 {
 	type StateQuery: Decode;
 
+	/// Reads state using the provided query, returning the result as a byte vector.
 	fn read(read: Self::StateQuery) -> Vec<u8>;
 
-	fn unpack(params: &mut &[u8]) -> Result<Self::StateQuery, DispatchError> {
+	/// Decodes parameters into state query.
+	fn decode(params: &mut &[u8]) -> Result<Self::StateQuery, DispatchError> {
 		decode_checked(params)
 	}
 }
@@ -141,7 +143,7 @@ where
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
 	let result = match version {
 		VersionedStateRead::V0 => {
-			let read = S::unpack(&mut encoded_read)?;
+			let read = S::decode(&mut encoded_read)?;
 			ensure!(A::contains(&read), UNKNOWN_CALL_ERROR);
 			S::read(read)
 		},
