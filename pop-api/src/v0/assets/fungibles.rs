@@ -90,30 +90,48 @@ pub mod events {
 	/// Event emitted when a token class is created.
 	#[ink::event]
 	pub struct Create {
-		id: AssetId,
-		creator: AccountId,
-		owner: AccountId,
+		/// The ID of the asset.
+		#[ink(topic)]
+		pub id: AssetId,
+		/// Creator of the asset.
+		#[ink(topic)]
+		pub creator: AccountId,
+		/// Admin of the asset.
+		#[ink(topic)]
+		pub admin: AccountId,
 	}
 
-	/// Event emitted when a token is in the process of being destroyed.
+	/// Event emitted when a asset is in the process of being destroyed.
 	#[ink::event]
 	pub struct StartDestroy {
-		id: AssetId,
+		/// The ID of the asset.
+		#[ink(topic)]
+		pub id: AssetId,
 	}
 
-	/// Event emitted when new metadata is set for a token.
+	/// Event emitted when new metadata is set for an asset.
 	#[ink::event]
 	pub struct SetMetadata {
-		id: AssetId,
-		name: Vec<u8>,
-		symbol: Vec<u8>,
-		decimals: u8,
+		/// The ID of the asset created.
+		#[ink(topic)]
+		pub id: AssetId,
+		#[ink(topic)]
+		/// The name of the asset.
+		pub name: Vec<u8>,
+		/// The symbol of the asset.
+		#[ink(topic)]
+		pub symbol: Vec<u8>,
+		/// The decimals of the asset.
+		#[ink(topic)]
+		pub decimals: u8,
 	}
 
 	/// Event emitted when metadata is cleared for a token.
 	#[ink::event]
 	pub struct ClearMetadata {
-		id: AssetId,
+		/// The ID of the asset.
+		#[ink(topic)]
+		pub id: AssetId,
 	}
 }
 
