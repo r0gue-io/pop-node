@@ -132,13 +132,10 @@ fn decrease_allowance_works() {
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		let id = ASSET;
-		let owner = ALICE;
-		let admin = ALICE;
 
 		assert!(!Assets::asset_exists(id));
 		assert_ok!(Fungibles::create(signed(ALICE), id, ALICE, 100));
 		assert!(Assets::asset_exists(id));
-		System::assert_last_event(Event::Create { id, owner, admin }.into());
 	});
 }
 
@@ -149,7 +146,6 @@ fn start_destroy_works() {
 
 		create_asset(ALICE, id);
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), id));
-		System::assert_last_event(Event::StartDestroy { id }.into());
 	});
 }
 
@@ -172,7 +168,6 @@ fn set_metadata_works() {
 		assert_eq!(Assets::name(id), name);
 		assert_eq!(Assets::symbol(id), symbol);
 		assert_eq!(Assets::decimals(id), decimals);
-		System::assert_last_event(Event::SetMetadata { id, name, symbol, decimals }.into());
 	});
 }
 
@@ -180,16 +175,12 @@ fn set_metadata_works() {
 fn clear_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let id = ASSET;
-		let name = vec![42];
-		let symbol = vec![42];
-		let decimals = 42;
 
-		create_asset_and_set_metadata(ALICE, id, name, symbol, decimals);
+		create_asset_and_set_metadata(ALICE, id, vec![42], vec![42], 42);
 		assert_ok!(Fungibles::clear_metadata(signed(ALICE), id));
 		assert_eq!(Assets::name(id), Vec::<u8>::new());
 		assert_eq!(Assets::symbol(id), Vec::<u8>::new());
 		assert_eq!(Assets::decimals(id), 0u8);
-		System::assert_last_event(Event::ClearMetadata { id }.into());
 	});
 }
 

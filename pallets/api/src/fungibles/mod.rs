@@ -120,30 +120,6 @@ pub mod pallet {
 			/// Amount of tokens transferred (or minted/burned).
 			value: BalanceOf<T>,
 		},
-		/// Event emitted when a token is created.
-		Create {
-			/// Token ID.
-			id: AssetIdOf<T>,
-			/// Owner of the token created.
-			owner: AccountIdOf<T>,
-			/// Admin of the token created.
-			admin: AccountIdOf<T>,
-		},
-		/// Event emitted when a token is in the process of being destroyed.
-		StartDestroy { id: AssetIdOf<T> },
-		/// Event emitted when new metadata is set for a token.
-		SetMetadata {
-			/// Token ID.
-			id: AssetIdOf<T>,
-			/// Token name.
-			name: Vec<u8>,
-			/// Token symbol.
-			symbol: Vec<u8>,
-			/// Token decimals.
-			decimals: u8,
-		},
-		/// Event emitted when metadata is cleared for a token.
-		ClearMetadata { id: AssetIdOf<T> },
 	}
 
 	#[pallet::call]
@@ -340,15 +316,7 @@ pub mod pallet {
 			admin: AccountIdOf<T>,
 			min_balance: BalanceOf<T>,
 		) -> DispatchResult {
-			AssetsOf::<T>::create(
-				origin.clone(),
-				id.clone().into(),
-				T::Lookup::unlookup(admin.clone()),
-				min_balance,
-			)?;
-			let owner = ensure_signed(origin)?;
-			Self::deposit_event(Event::Create { id, owner, admin });
-			Ok(())
+			AssetsOf::<T>::create(origin, id.into(), T::Lookup::unlookup(admin), min_balance)
 		}
 
 		/// Start the process of destroying a token with a given asset ID.
@@ -358,9 +326,7 @@ pub mod pallet {
 		#[pallet::call_index(12)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
 		pub fn start_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
-			AssetsOf::<T>::start_destroy(origin, id.clone().into())?;
-			Self::deposit_event(Event::StartDestroy { id });
-			Ok(())
+			AssetsOf::<T>::start_destroy(origin, id.into())
 		}
 
 		/// Set the metadata for a token with a given asset ID.
@@ -381,15 +347,7 @@ pub mod pallet {
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> DispatchResult {
-			AssetsOf::<T>::set_metadata(
-				origin,
-				id.clone().into(),
-				name.clone(),
-				symbol.clone(),
-				decimals,
-			)?;
-			Self::deposit_event(Event::SetMetadata { id, name, symbol, decimals });
-			Ok(())
+			AssetsOf::<T>::set_metadata(origin, id.into(), name, symbol, decimals)
 		}
 
 		/// Clear the metadata for a token with a given asset ID.
@@ -399,9 +357,7 @@ pub mod pallet {
 		#[pallet::call_index(17)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::clear_metadata())]
 		pub fn clear_metadata(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
-			AssetsOf::<T>::clear_metadata(origin, id.clone().into())?;
-			Self::deposit_event(Event::ClearMetadata { id });
-			Ok(())
+			AssetsOf::<T>::clear_metadata(origin, id.into())
 		}
 
 		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
