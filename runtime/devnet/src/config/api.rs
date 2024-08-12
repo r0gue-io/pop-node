@@ -1,7 +1,6 @@
 use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Contains;
-use pop_chain_extension::ReadState;
+use pop_chain_extension::{CallFilter, ReadState};
 use sp_std::vec::Vec;
 
 /// A query of runtime state.
@@ -13,9 +12,25 @@ pub enum RuntimeRead {
 	Fungibles(fungibles::Read<Runtime>),
 }
 
-/// A struct that provides a state reading implementation for the Runtime.
-pub struct StateReader;
-impl ReadState<Runtime> for StateReader {
+/// A struct that implement requirements for the Pop API chain extension.
+#[derive(Default)]
+pub struct Extension;
+impl ReadState for Extension {
+	type StateQuery = RuntimeRead;
+
+	fn contains(c: &Self::StateQuery) -> bool {
+		use fungibles::Read::*;
+		matches!(
+			c,
+			RuntimeRead::Fungibles(
+				TotalSupply(..)
+					| BalanceOf { .. } | Allowance { .. }
+					| TokenName(..) | TokenSymbol(..)
+					| TokenDecimals(..) | AssetExists(..)
+			)
+		)
+	}
+
 	fn read(read: RuntimeRead) -> Vec<u8> {
 		match read {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
@@ -23,12 +38,10 @@ impl ReadState<Runtime> for StateReader {
 	}
 }
 
-/// A type to identify allowed calls to the Runtime from the API.
-pub struct AllowedApiCalls;
+impl CallFilter for Extension {
+	type Call = RuntimeCall;
 
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	/// Allowed runtime calls from the API.
-	fn contains(c: &RuntimeCall) -> bool {
+	fn contains(c: &Self::Call) -> bool {
 		use fungibles::Call::*;
 		matches!(
 			c,
@@ -41,22 +54,6 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 					| start_destroy { .. }
 					| clear_metadata { .. }
 					| mint { .. } | burn { .. }
-			)
-		)
-	}
-}
-
-impl Contains<RuntimeRead> for AllowedApiCalls {
-	/// Allowed state queries from the API.
-	fn contains(c: &RuntimeRead) -> bool {
-		use fungibles::Read::*;
-		matches!(
-			c,
-			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | AssetExists(..)
 			)
 		)
 	}
