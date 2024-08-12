@@ -238,14 +238,15 @@ pub mod pallet {
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to increase the allowance by.
 		#[pallet::call_index(6)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::approve_transfer() + T::DbWeight::get().reads(1))]
+		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 0))]
 		pub fn increase_allowance(
 			origin: OriginFor<T>,
 			id: AssetIdOf<T>,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
-			let owner = ensure_signed(origin.clone())?;
+			let owner = ensure_signed(origin.clone())
+				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			AssetsOf::<T>::approve_transfer(
 				origin,
 				id.clone().into(),
