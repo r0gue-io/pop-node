@@ -58,6 +58,15 @@ mod constants {
 	pub(super) const BURN: u8 = 20;
 }
 
+/// A set of events for use in smart contracts interacting with the fungibles API.
+///
+/// The `Transfer` and `Approval` events conform to the PSP-22 standard. The other events
+/// (`Create`, `StartDestroy`, `SetMetadata`, `ClearMetadata`) are provided for convenience.
+///
+/// These events are not emitted by the API itself but can be used in your contracts to
+/// track asset operations. Be mindful of the costs associated with emitting events.
+///
+/// For more details, refer to [ink! events](https://use.ink/basics/events).
 pub mod events {
 	use super::*;
 
