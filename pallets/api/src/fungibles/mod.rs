@@ -95,13 +95,12 @@ pub mod pallet {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
+	/// The events that can be emitted.
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `spender` changes.
 		Approval {
-			/// Token ID.
-			id: AssetIdOf<T>,
 			/// Account providing allowance.
 			owner: AccountIdOf<T>,
 			/// Allowance beneficiary.
@@ -111,8 +110,6 @@ pub mod pallet {
 		},
 		/// Event emitted when transfer of tokens occurs.
 		Transfer {
-			/// Token ID.
-			id: AssetIdOf<T>,
 			/// Transfer sender. `None` in case of minting new tokens.
 			from: Option<AccountIdOf<T>>,
 			/// Transfer recipient. `None` in case of burning tokens.
@@ -141,12 +138,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			AssetsOf::<T>::transfer_keep_alive(
 				origin.clone(),
-				id.clone().into(),
+				id.into(),
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
 			let from = ensure_signed(origin)?;
-			Self::deposit_event(Event::Transfer { id, from: Some(from), to: Some(to), value });
+			Self::deposit_event(Event::Transfer { from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -169,12 +166,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			AssetsOf::<T>::transfer_approved(
 				origin,
-				id.clone().into(),
+				id.into(),
 				T::Lookup::unlookup(from.clone()),
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer { id, from: Some(from), to: Some(to), value });
+			Self::deposit_event(Event::Transfer { from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -196,7 +193,7 @@ pub mod pallet {
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
 			let spender_unlookup = T::Lookup::unlookup(spender.clone());
-			let id_param: AssetIdParameterOf<T> = id.clone().into();
+			let id_param: AssetIdParameterOf<T> = id.into();
 
 			let return_weight = match value.cmp(&current_allowance) {
 				// If the new value is equal to the current allowance, do nothing.
@@ -230,7 +227,7 @@ pub mod pallet {
 					}
 				},
 			};
-			Self::deposit_event(Event::Approval { id, owner, spender, value });
+			Self::deposit_event(Event::Approval { owner, spender, value });
 			Ok(Some(return_weight).into())
 		}
 
@@ -256,8 +253,8 @@ pub mod pallet {
 				value,
 			)
 			.map_err(|e| e.with_weight(AssetsWeightInfoOf::<T>::approve_transfer()))?;
-			let value = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
-			Self::deposit_event(Event::Approval { id, owner, spender, value });
+			let value = AssetsOf::<T>::allowance(id, &owner, &spender);
+			Self::deposit_event(Event::Approval { owner, spender, value });
 			Ok(().into())
 		}
 
@@ -279,7 +276,7 @@ pub mod pallet {
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
 			let spender_unlookup = T::Lookup::unlookup(spender.clone());
-			let id_param: AssetIdParameterOf<T> = id.clone().into();
+			let id_param: AssetIdParameterOf<T> = id.into();
 
 			if value.is_zero() {
 				return Ok(Some(Self::weight_approve(0, 0)).into());
@@ -298,7 +295,7 @@ pub mod pallet {
 				AssetsOf::<T>::approve_transfer(origin, id_param, spender_unlookup, new_allowance)?;
 				Self::weight_approve(1, 1)
 			};
-			Self::deposit_event(Event::Approval { id, owner, spender, value: new_allowance });
+			Self::deposit_event(Event::Approval { owner, spender, value: new_allowance });
 			Ok(Some(weight).into())
 		}
 
@@ -374,13 +371,8 @@ pub mod pallet {
 			account: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
-			AssetsOf::<T>::mint(
-				origin,
-				id.clone().into(),
-				T::Lookup::unlookup(account.clone()),
-				value,
-			)?;
-			Self::deposit_event(Event::Transfer { id, from: None, to: Some(account), value });
+			AssetsOf::<T>::mint(origin, id.into(), T::Lookup::unlookup(account.clone()), value)?;
+			Self::deposit_event(Event::Transfer { from: None, to: Some(account), value });
 			Ok(())
 		}
 
@@ -398,13 +390,8 @@ pub mod pallet {
 			account: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
-			AssetsOf::<T>::burn(
-				origin,
-				id.clone().into(),
-				T::Lookup::unlookup(account.clone()),
-				value,
-			)?;
-			Self::deposit_event(Event::Transfer { id, from: Some(account), to: None, value });
+			AssetsOf::<T>::burn(origin, id.into(), T::Lookup::unlookup(account.clone()), value)?;
+			Self::deposit_event(Event::Transfer { from: Some(account), to: None, value });
 			Ok(())
 		}
 	}
