@@ -153,7 +153,6 @@ cumulus-pallet-xcm = { version = "0.11.0", default-features = false }
 cumulus-pallet-xcmp-queue = { version = "0.11.0", default-features = false }
 cumulus-primitives-aura = { version = "0.11.0", default-features = false }
 cumulus-primitives-core = { version = "0.11.0", default-features = false }
-cumulus-primitives-storage-weight-reclaim = { version = "2.0.0", default-features = false }
 cumulus-primitives-utility = { version = "0.11.0", default-features = false }
 emulated-integration-tests-common = { version = "7.0.0", default-features = false }
 pallet-collator-selection = { version = "13.0.1", default-features = false }
