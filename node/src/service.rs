@@ -44,7 +44,10 @@ use substrate_prometheus_endpoint::Registry;
 pub struct DevnetRuntimeExecutor;
 
 impl NativeExecutionDispatch for DevnetRuntimeExecutor {
-	type ExtendHostFunctions = frame_benchmarking::benchmarking::HostFunctions;
+	type ExtendHostFunctions = (
+		cumulus_client_service::storage_proof_size::HostFunctions,
+		frame_benchmarking::benchmarking::HostFunctions,
+	);
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
 		pop_runtime_devnet::api::dispatch(method, data)
@@ -131,10 +134,11 @@ where
 	let executor = NativeElseWasmExecutor::<Executor>::new_with_wasm_executor(wasm);
 
 	let (client, backend, keystore_container, task_manager) =
-		sc_service::new_full_parts::<Block, RuntimeApi, _>(
+		sc_service::new_full_parts_record_import::<Block, RuntimeApi, _>(
 			config,
 			telemetry.as_ref().map(|(_, telemetry)| telemetry.handle()),
 			executor,
+			true,
 		)?;
 	let client = Arc::new(client);
 
