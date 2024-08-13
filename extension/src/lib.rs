@@ -1,12 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-mod constants;
 #[cfg(test)]
 mod tests;
 mod v0;
 
 use codec::Encode;
-use constants::*;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo},
 	pallet_prelude::*,
@@ -20,13 +18,26 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
+/// Logging target for categorizing messages from the Pop API extension module.
+const LOG_TARGET: &str = "pop-api::extension";
+
+const DECODING_FAILED_ERROR: DispatchError = DispatchError::Other("DecodingFailed");
+// TODO: issue #93, we can also encode the `pop_primitives::Error::UnknownCall` which means we do use
+//  `Error` in the runtime and it should stay in primitives. Perhaps issue #91 will also influence
+//  here. Should be looked at together.
+const DECODING_FAILED_ERROR_ENCODED: [u8; 4] = [255u8, 0, 0, 0];
+const UNKNOWN_CALL_ERROR: DispatchError = DispatchError::Other("UnknownCall");
+// TODO: see above.
+const UNKNOWN_CALL_ERROR_ENCODED: [u8; 4] = [254u8, 0, 0, 0];
+
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
-/// Handles the query from the chain extension environment for state reads.
+/// Type of the state reader.
 pub trait ReadState {
+	/// Query of the state read operations.
 	type StateQuery: Decode;
 
-	/// Allowed state queries from the API.
+	/// Check if state queries from the API is allowlisted.
 	fn contains(c: &Self::StateQuery) -> bool;
 
 	/// Reads state using the provided query, returning the result as a byte vector.
@@ -38,14 +49,16 @@ pub trait ReadState {
 	}
 }
 
-/// Handles the query from the chain extension environment for dispatch calls.
+/// Type of the dispatch call filter.
 pub trait CallFilter {
+	/// Query of the dispatch calls operations.
 	type Call: Decode;
 
-	/// Allowed runtime calls from the API.
+	/// Check if runtime calls from the API is allowlisted.
 	fn contains(t: &Self::Call) -> bool;
 }
 
+/// Pop API chain extension.
 #[derive(Default)]
 pub struct ApiExtension<I>(PhantomData<I>);
 
@@ -262,18 +275,18 @@ impl TryFrom<u8> for FuncId {
 	}
 }
 
-// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
-// The contract calling the chain extension can convert the status code to the descriptive `Error`.
-//
-// For `Error` see `pop_primitives::<version>::error::Error`.
-//
-// The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
-// As a result, contracts maintain compatibility across different versions of the runtime.
-//
-// # Parameters
-//
-// - `error`: The `DispatchError` encountered during contract execution.
-// - `version`: The version of the chain extension, used to determine the known errors.
+/// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
+/// The contract calling the chain extension can convert the status code to the descriptive `Error`.
+///
+/// For `Error` see `pop_primitives::<version>::error::Error`.
+///
+/// The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
+/// As a result, contracts maintain compatibility across different versions of the runtime.
+///
+/// # Parameters
+///
+/// - `error`: The `DispatchError` encountered during contract execution.
+/// - `version`: The version of the chain extension, used to determine the known errors.
 pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	let mut encoded_error: [u8; 4] = match error {
 		// "UnknownCall" and "DecodingFailed" are mapped to specific errors in the API and will
