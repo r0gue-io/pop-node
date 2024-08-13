@@ -1,16 +1,16 @@
 [package]
-name = "pop-chain-extension"
-version = "0.1.0"
 authors.workspace = true
 description.workspace = true
-license.workspace = true
-homepage.workspace = true
-repository.workspace = true
 edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "pop-chain-extension"
 publish = false
+repository.workspace = true
+version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+targets = [ "x86_64-unknown-linux-gnu" ]
 
 [dependencies]
 codec.workspace = true
@@ -36,25 +36,25 @@ scale-info.workspace = true
 sp-io.workspace = true
 
 [features]
-default = ["std"]
-std = [
-    "log/std",
-    "codec/std",
-    "frame-support/std",
-    "frame-system/std",
-    "pallet-balances/std",
-    "pallet-contracts/std",
-    "pallet-timestamp/std",
-    "sp-runtime/std",
-    "sp-core/std",
-    "sp-io/std",
-    "sp-std/std",
-]
+default = [ "std" ]
 runtime-benchmarks = [
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks",
-    "pallet-contracts/runtime-benchmarks",
-    "pallet-timestamp/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-contracts/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
+std = [
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"log/std",
+	"pallet-balances/std",
+	"pallet-contracts/std",
+	"pallet-timestamp/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
 ]
