@@ -18,9 +18,10 @@ jobs:
         run: |
           cargo +nightly fmt --all -- --check
           cargo install zepter --locked
-          zepter format features
           zepter lint propagate-feature --feature try-runtime --left-side-feature-missing=ignore --workspace --feature-enables-dep="try-runtime:frame-try-runtime" --locked
+          zepter lint propagate-feature --feature runtime-benchmarks --left-side-feature-missing=ignore --workspace --feature-enables-dep="runtime-benchmarks:frame-benchmarking" --locked
           zepter lint propagate-feature --feature std --left-side-feature-missing=ignore --workspace --locked
+          zepter format features
   
   check:
     needs: lint
