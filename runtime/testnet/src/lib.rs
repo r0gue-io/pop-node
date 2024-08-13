@@ -403,6 +403,7 @@ impl pallet_message_queue::Config for Runtime {
 	type HeapSize = sp_core::ConstU32<{ 64 * 1024 }>;
 	type MaxStale = sp_core::ConstU32<8>;
 	type ServiceWeight = MessageQueueServiceWeight;
+	type IdleMaxServiceWeight = ();
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -447,7 +448,6 @@ impl pallet_aura::Config for Runtime {
 	// Note: SlotDuration potentially enabled here due to devnet runtime and Rust's feature
 	// unification, requiring the setting of a backwards compatible value.
 	// See https://github.com/paritytech/polkadot-sdk/blob/09df373db9cd5dfed82c5cdb0736d417d54249e6/substrate/frame/aura/src/lib.rs#L262
-	#[cfg(feature = "experimental")]
 	type SlotDuration = pallet_aura::MinimumPeriodTimesTwo<Runtime>;
 }
 
@@ -620,7 +620,7 @@ impl_runtime_apis! {
 		}
 
 		fn authorities() -> Vec<AuraId> {
-			Aura::authorities().into_inner()
+			pallet_aura::Authorities::<Runtime>::get().into_inner()
 		}
 	}
 
