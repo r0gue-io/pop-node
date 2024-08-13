@@ -43,7 +43,7 @@ pub trait ReadState {
 	/// Reads state using the provided query, returning the result as a byte vector.
 	fn read(read: Self::StateQuery) -> Vec<u8>;
 
-	/// Decodes parameters into state query.
+	/// Decodes parameters into state query
 	fn decode(params: &mut &[u8]) -> Result<Self::StateQuery, DispatchError> {
 		decode_checked(params)
 	}
