@@ -1,5 +1,5 @@
 #[cfg(test)]
-use crate::extensions::convert_to_status_code;
+use crate::convert_to_status_code;
 
 pub(crate) fn handle_unknown_error(encoded_error: &mut [u8; 4]) {
 	let unknown = match encoded_error[0] {
@@ -106,7 +106,7 @@ mod tests {
 			(DispatchError::RootNotAllowed, RootNotAllowed),
 		];
 		for (dispatch_error, expected) in test_cases {
-			let status_code = crate::extensions::convert_to_status_code(dispatch_error, 0);
+			let status_code = crate::convert_to_status_code(dispatch_error, 0);
 			let error: Error = status_code.into();
 			assert_eq!(error, expected);
 		}
