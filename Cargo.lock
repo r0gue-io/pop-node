@@ -2697,19 +2697,19 @@ dependencies = [
 
 [[package]]
 name = "cumulus-primitives-storage-weight-reclaim"
-version = "1.0.0"
+version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21d52a6f23cf094b01b33330e4f8d9a4c225620646cf0ad4e21ad299dddbe193"
+checksum = "dd8596e26f2d3b2c70c00b695eb9edc8fca4533105bf6b2f0c4c0ecc8075bf99"
 dependencies = [
- "cumulus-primitives-core 0.10.0",
- "cumulus-primitives-proof-size-hostfunction 0.5.0",
+ "cumulus-primitives-core 0.11.0",
+ "cumulus-primitives-proof-size-hostfunction 0.6.0",
  "docify",
- "frame-support 31.0.0",
- "frame-system 31.0.0",
+ "frame-support 32.0.0",
+ "frame-system 32.0.0",
  "log",
  "parity-scale-codec",
  "scale-info",
- "sp-runtime 34.0.0",
+ "sp-runtime 35.0.0",
  "sp-std",
 ]
 
