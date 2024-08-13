@@ -13,7 +13,8 @@ use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImpo
 use cumulus_client_consensus_proposer::Proposer;
 use cumulus_client_service::{
 	build_network, build_relay_chain_interface, prepare_node_config, start_relay_chain_tasks,
-	BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, StartRelayChainTasksParams,
+	BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, ParachainHostFunctions,
+	StartRelayChainTasksParams,
 };
 use cumulus_primitives_core::{
 	relay_chain::{CollatorPair, ValidationCode},
@@ -37,12 +38,7 @@ use sp_keystore::KeystorePtr;
 use sp_runtime::{app_crypto::AppCrypto, traits::BlakeTwo256};
 use substrate_prometheus_endpoint::Registry;
 
-type HostFunctions = (
-	cumulus_client_service::ParachainHostFunctions,
-	frame_benchmarking::benchmarking::HostFunctions,
-);
-
-type ParachainExecutor = WasmExecutor<HostFunctions>;
+type ParachainExecutor = WasmExecutor<ParachainHostFunctions>;
 
 type ParachainClient<RuntimeApi> = TFullClient<Block, RuntimeApi, ParachainExecutor>;
 
