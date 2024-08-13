@@ -5,6 +5,7 @@
 // Make the WASM binary available.
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
+
 // Public due to integration tests crate.
 pub mod config;
 mod weights;

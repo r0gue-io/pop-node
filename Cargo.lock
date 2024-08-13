@@ -9467,7 +9467,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "pallet-api",
  "pallet-contracts",
  "parity-scale-codec",
  "pop-primitives",
