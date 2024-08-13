@@ -24,7 +24,7 @@ fn transfer_works() {
 		assert_ok!(Fungibles::transfer(signed(ALICE), id, BOB, value));
 		let balance_after_transfer = Assets::balance(id, &BOB);
 		assert_eq!(balance_after_transfer, balance_before_transfer + value);
-		System::assert_last_event(Event::Transfer { from, to, value }.into());
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
@@ -47,7 +47,7 @@ fn transfer_from_works() {
 		// Check that BOB receives the `value` and ALICE `amount` is spent successfully by CHARLIE.
 		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + value);
 		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - value);
-		System::assert_last_event(Event::Transfer { from, to, value }.into());
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
@@ -64,23 +64,23 @@ fn approve_works() {
 		assert_eq!(0, Assets::allowance(id, &ALICE, &BOB));
 		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value);
-		System::assert_last_event(Event::Approval { owner, spender, value }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value }.into());
 		// Approves an value to spend that is lower than the current allowance.
 		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value / 2));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value / 2);
-		System::assert_last_event(Event::Approval { owner, spender, value: value / 2 }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value / 2 }.into());
 		// Approves an value to spend that is higher than the current allowance.
 		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value * 2));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value * 2);
-		System::assert_last_event(Event::Approval { owner, spender, value: value * 2 }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value * 2 }.into());
 		// Approves an value to spend that is equal to the current allowance.
 		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, value * 2));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value * 2);
-		System::assert_last_event(Event::Approval { owner, spender, value: value * 2 }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value * 2 }.into());
 		// Sets allowance to zero.
 		assert_ok!(Fungibles::approve(signed(ALICE), id, BOB, 0));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), 0);
-		System::assert_last_event(Event::Approval { owner, spender, value: 0 }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value: 0 }.into());
 	});
 }
 
@@ -96,11 +96,11 @@ fn increase_allowance_works() {
 		assert_eq!(0, Assets::allowance(id, &ALICE, &BOB));
 		assert_ok!(Fungibles::increase_allowance(signed(ALICE), id, BOB, value));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value);
-		System::assert_last_event(Event::Approval { owner, spender, value }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value }.into());
 		// Additive.
 		assert_ok!(Fungibles::increase_allowance(signed(ALICE), id, BOB, value));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value * 2);
-		System::assert_last_event(Event::Approval { owner, spender, value: value * 2 }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value * 2 }.into());
 	});
 }
 
@@ -120,11 +120,11 @@ fn decrease_allowance_works() {
 		// Decrease allowance successfully.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), id, BOB, value / 2));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), value / 2);
-		System::assert_last_event(Event::Approval { owner, spender, value: value / 2 }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value: value / 2 }.into());
 		// Saturating if current allowance is decreased more than the owner balance.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), id, BOB, value));
 		assert_eq!(Assets::allowance(id, &ALICE, &BOB), 0);
-		System::assert_last_event(Event::Approval { owner, spender, value: 0 }.into());
+		System::assert_last_event(Event::Approval { id, owner, spender, value: 0 }.into());
 	});
 }
 
@@ -197,7 +197,7 @@ fn mint_works() {
 		assert_ok!(Fungibles::mint(signed(ALICE), id, BOB, value));
 		let balance_after_mint = Assets::balance(id, &BOB);
 		assert_eq!(balance_after_mint, balance_before_mint + value);
-		System::assert_last_event(Event::Transfer { from, to, value }.into());
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
@@ -214,7 +214,7 @@ fn burn_works() {
 		assert_ok!(Fungibles::burn(signed(ALICE), id, BOB, value));
 		let balance_after_burn = Assets::balance(id, &BOB);
 		assert_eq!(balance_after_burn, balance_before_burn - value);
-		System::assert_last_event(Event::Transfer { from, to, value }.into());
+		System::assert_last_event(Event::Transfer { id, from, to, value }.into());
 	});
 }
 
