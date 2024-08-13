@@ -1,4 +1,8 @@
-use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
+use crate::{
+	config::assets::TrustBackedAssetsInstance,
+	fungibles::{self},
+	Runtime, RuntimeCall,
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use pop_chain_extension::{CallFilter, ReadState};
 use sp_std::vec::Vec;
