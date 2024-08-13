@@ -2,7 +2,10 @@
 
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api},
+	assets::fungibles::{
+		self as api,
+		events::{Create, Transfer},
+	},
 	primitives::AssetId,
 	StatusCode,
 };
@@ -25,7 +28,19 @@ mod create_token_in_constructor {
 			// AccountId of the contract which will be set to the owner of the fungible token.
 			let owner = contract.env().account_id();
 			api::create(id, owner, min_balance)?;
+			contract.env().emit_event(Create { id, creator: owner, admin: owner });
 			Ok(contract)
+		}
+
+		#[ink(message)]
+		pub fn transfer(&self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
+			// api::transfer(id, to, value)
+			self.env().emit_event(Transfer {
+				from: Some(self.env().account_id()),
+				to: Some(to),
+				value,
+			});
+			Ok(())
 		}
 
 		#[ink(message)]

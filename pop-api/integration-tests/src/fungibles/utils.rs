@@ -315,7 +315,7 @@ pub(super) fn instantiate_and_create_fungible(
 	contract: &str,
 	asset_id: AssetId,
 	min_balance: Balance,
-) -> Result<(), Error> {
+) -> Result<AccountId32, Error> {
 	let function = function_selector("new");
 	let input = [function, asset_id.encode(), min_balance.encode()].concat();
 	let (wasm_binary, _) =
@@ -329,11 +329,15 @@ pub(super) fn instantiate_and_create_fungible(
 		input,
 		vec![],
 		DEBUG_OUTPUT,
-		CollectEvents::Skip,
+		CollectEvents::UnsafeCollect,
 	)
 	.result
-	.expect("should work")
-	.result;
-	decoded::<Result<(), Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+	.expect("should work");
+	let account_id = result.clone().account_id;
+	let result = decoded::<Result<(), Error>>(result.clone().result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result));
+	match result {
+		Ok(_) => Ok(account_id),
+		Err(error) => Err(error),
+	}
 }

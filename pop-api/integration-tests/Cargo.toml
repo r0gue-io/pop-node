@@ -16,12 +16,16 @@ pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
 sp-io = { version = "31.0.0", default-features = false }
 sp-runtime = { version = "32.0.0", default-features = false }
 
+# TODO
+ink = { version = "5.0.0", default-features = false }
+
 
 [features]
 default = ["std"]
 std = [
     "frame-support/std",
     "frame-system/std",
+    "ink/std",
     "pallet-balances/std",
     "pallet-assets/std",
     "pallet-contracts/std",
@@ -31,3 +35,5 @@ std = [
     "sp-io/std",
     "sp-runtime/std",
 ]
+apis = []
+events = []

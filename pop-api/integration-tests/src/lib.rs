@@ -21,8 +21,8 @@ mod fungibles;
 type AssetId = u32;
 type Balance = u128;
 
-const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
-const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
+pub(crate) const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
+pub(crate) const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
 const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 // FERDIE has no initial balance.
 const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
@@ -30,7 +30,7 @@ const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
 
-fn new_test_ext() -> sp_io::TestExternalities {
+pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::<Runtime>::default()
 		.build_storage()
 		.expect("Frame system builds valid default genesis config");
