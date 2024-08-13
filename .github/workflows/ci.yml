@@ -50,6 +50,7 @@ jobs:
     permissions:
       checks: write
     env:
+      RUSTFLAGS: "-Wmissing_docs"
       SKIP_WASM_BUILD: 1
     steps:
       - uses: actions/checkout@v4
