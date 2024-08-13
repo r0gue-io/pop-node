@@ -22,9 +22,9 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
+pop-chain-extension.workspace = true
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
-pop-chain-extension.workspace = true
 pallet-api.workspace = true
 
 # Substrate
