@@ -39,9 +39,9 @@ fn instantiate_and_create_fungible_works() {
 
 		// Test events.
 		// let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
-        let events = frame_system::Pallet::<Runtime>::read_events_for_pallet::<
-            pallet_contracts::Event<Runtime>,
-        >();
+		let events = frame_system::Pallet::<Runtime>::read_events_for_pallet::<
+			pallet_contracts::Event<Runtime>,
+		>();
 		let event: Vec<&[u8]> = events
 			.iter()
 			.filter_map(|event| match event {
