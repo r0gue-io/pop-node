@@ -15,7 +15,7 @@ use crate::{
 	chain_spec,
 	chain_spec::Relay,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, DevnetRuntimeExecutor, TestnetRuntimeExecutor},
+	service::new_partial,
 };
 
 #[derive(Debug, PartialEq)]
@@ -157,7 +157,7 @@ macro_rules! construct_async_run {
 		match runner.config().chain_spec.runtime() {
 			Runtime::Devnet => {
 				runner.async_run(|$config| {
-					let $components = new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(
+					let $components = new_partial::<pop_runtime_devnet::RuntimeApi>(
 						&$config
 					)?;
 					let task_manager = $components.task_manager;
@@ -166,7 +166,7 @@ macro_rules! construct_async_run {
 			}
 			Runtime::Testnet => {
 				runner.async_run(|$config| {
-					let $components = new_partial::<pop_runtime_testnet::RuntimeApi, TestnetRuntimeExecutor>(
+					let $components = new_partial::<pop_runtime_testnet::RuntimeApi>(
 						&$config
 					)?;
 					let task_manager = $components.task_manager;
@@ -181,15 +181,11 @@ macro_rules! construct_benchmark_partials {
 	($config:expr, |$partials:ident| $code:expr) => {
 		match $config.chain_spec.runtime() {
 			Runtime::Devnet => {
-				let $partials =
-					new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(&$config)?;
+				let $partials = new_partial::<pop_runtime_devnet::RuntimeApi>(&$config)?;
 				$code
 			},
 			Runtime::Testnet => {
-				let $partials = new_partial::<
-					pop_runtime_testnet::RuntimeApi,
-					TestnetRuntimeExecutor,
-				>(&$config)?;
+				let $partials = new_partial::<pop_runtime_testnet::RuntimeApi>(&$config)?;
 				$code
 			},
 		}
@@ -348,7 +344,6 @@ pub fn run() -> Result<()> {
 						);
 						crate::service::start_parachain_node::<
 							pop_runtime_devnet::RuntimeApi,
-							DevnetRuntimeExecutor,
 						>(
 							config,
 							polkadot_config,
@@ -366,7 +361,6 @@ pub fn run() -> Result<()> {
 						);
 						crate::service::start_parachain_node::<
 							pop_runtime_testnet::RuntimeApi,
-							TestnetRuntimeExecutor,
 						>(
 							config,
 							polkadot_config,
