@@ -94,7 +94,6 @@ where
 				let len = env.in_len();
 				env.charge_weight(contract_host_weight.return_per_byte.saturating_mul(len.into()))?;
 				let params = env.read(len)?;
-				log::debug!(target: LOG_TARGET, "Read input successfully");
 				match function_id {
 					FuncId::Dispatch => {
 						dispatch::<T, E, I>(&mut env, version, pallet_index, call_index, params)
