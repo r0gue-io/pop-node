@@ -1,13 +1,17 @@
 use super::*;
 
+fn do_bare_call(function: &str, addr: AccountId32, params: Vec<u8>) -> ExecReturnValue {
+	let function = function_selector(function);
+	let params = [function, params].concat();
+	bare_call(addr, params, 0).expect("should work")
+}
+
 pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecReturnValue> {
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
 
 pub(super) fn total_supply(addr: AccountId32, asset_id: AssetId) -> Result<Balance, Error> {
-	let function = function_selector("total_supply");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = do_bare_call("total_supply", addr, asset_id.encode());
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -17,9 +21,8 @@ pub(super) fn balance_of(
 	asset_id: AssetId,
 	owner: AccountId32,
 ) -> Result<Balance, Error> {
-	let function = function_selector("balance_of");
-	let params = [function, asset_id.encode(), owner.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), owner.encode()].concat();
+	let result = do_bare_call("balance_of", addr, params);
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -30,41 +33,32 @@ pub(super) fn allowance(
 	owner: AccountId32,
 	spender: AccountId32,
 ) -> Result<Balance, Error> {
-	let function = function_selector("allowance");
-	let params = [function, asset_id.encode(), owner.encode(), spender.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), owner.encode(), spender.encode()].concat();
+	let result = do_bare_call("allowance", addr, params);
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn token_name(addr: AccountId32, asset_id: AssetId) -> Result<Vec<u8>, Error> {
-	let function = function_selector("token_name");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = do_bare_call("token_name", addr, asset_id.encode());
 	decoded::<Result<Vec<u8>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn token_symbol(addr: AccountId32, asset_id: AssetId) -> Result<Vec<u8>, Error> {
-	let function = function_selector("token_symbol");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = do_bare_call("token_symbol", addr, asset_id.encode());
 	decoded::<Result<Vec<u8>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn token_decimals(addr: AccountId32, asset_id: AssetId) -> Result<u8, Error> {
-	let function = function_selector("token_decimals");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = do_bare_call("token_decimals", addr, asset_id.encode());
 	decoded::<Result<u8, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn asset_exists(addr: AccountId32, asset_id: AssetId) -> Result<bool, Error> {
-	let function = function_selector("asset_exists");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = do_bare_call("asset_exists", addr, asset_id.encode());
 	decoded::<Result<bool, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -75,9 +69,8 @@ pub(super) fn transfer(
 	to: AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("transfer");
-	let params = [function, asset_id.encode(), to.encode(), value.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), to.encode(), value.encode()].concat();
+	let result = do_bare_call("transfer", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -89,12 +82,10 @@ pub(super) fn transfer_from(
 	to: AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("transfer_from");
 	let data: Vec<u8> = vec![];
 	let params =
-		[function, asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()]
-			.concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+		[asset_id.encode(), from.encode(), to.encode(), value.encode(), data.encode()].concat();
+	let result = do_bare_call("transfer_from", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -105,9 +96,8 @@ pub(super) fn approve(
 	spender: AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("approve");
-	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), spender.encode(), value.encode()].concat();
+	let result = do_bare_call("approve", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -118,9 +108,8 @@ pub(super) fn increase_allowance(
 	spender: AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("increase_allowance");
-	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), spender.encode(), value.encode()].concat();
+	let result = do_bare_call("increase_allowance", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -131,9 +120,8 @@ pub(super) fn decrease_allowance(
 	spender: AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("decrease_allowance");
-	let params = [function, asset_id.encode(), spender.encode(), value.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), spender.encode(), value.encode()].concat();
+	let result = do_bare_call("decrease_allowance", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -144,17 +132,14 @@ pub(super) fn create(
 	admin: AccountId32,
 	min_balance: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("create");
-	let params = [function, asset_id.encode(), admin.encode(), min_balance.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), admin.encode(), min_balance.encode()].concat();
+	let result = do_bare_call("create", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn start_destroy(addr: AccountId32, asset_id: AssetId) -> Result<(), Error> {
-	let function = function_selector("start_destroy");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = do_bare_call("start_destroy", addr, asset_id.encode());
 	match decoded::<Result<(), Error>>(result) {
 		Ok(x) => x,
 		Err(result) => panic!("Contract reverted: {:?}", result),
@@ -168,18 +153,14 @@ pub(super) fn set_metadata(
 	symbol: Vec<u8>,
 	decimals: u8,
 ) -> Result<(), Error> {
-	let function = function_selector("set_metadata");
-	let params =
-		[function, asset_id.encode(), name.encode(), symbol.encode(), decimals.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), name.encode(), symbol.encode(), decimals.encode()].concat();
+	let result = do_bare_call("set_metadata", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn clear_metadata(addr: AccountId32, asset_id: AssetId) -> Result<(), Error> {
-	let function = function_selector("clear_metadata");
-	let params = [function, asset_id.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let result = do_bare_call("clear_metadata", addr, asset_id.encode());
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -190,9 +171,8 @@ pub(super) fn mint(
 	account: AccountId32,
 	amount: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("mint");
-	let params = [function, asset_id.encode(), account.encode(), amount.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), account.encode(), amount.encode()].concat();
+	let result = do_bare_call("mint", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -203,9 +183,8 @@ pub(super) fn burn(
 	account: AccountId32,
 	amount: Balance,
 ) -> Result<(), Error> {
-	let function = function_selector("burn");
-	let params = [function, asset_id.encode(), account.encode(), amount.encode()].concat();
-	let result = bare_call(addr, params, 0).expect("should work");
+	let params = [asset_id.encode(), account.encode(), amount.encode()].concat();
+	let result = do_bare_call("burn", addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }

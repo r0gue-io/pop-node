@@ -28,7 +28,8 @@ use xcm_executor::XcmExecutor;
 parameter_types! {
 	pub const RelayLocation: Location = Location::parent();
 	pub AssetHub: Location = Location::new(1, [Parachain(1000)]);
-	pub const RelayNetwork: Option<NetworkId> = None;
+	// Note: Paseo currently uses Polkadot https://github.com/paseo-network/runtimes/blob/abc4ae9c5ae8f0166aab7ef2b427b3c2c6d5ce5c/relay/paseo/src/xcm_config.rs#L56
+	pub const RelayNetwork: Option<NetworkId> = Some(Polkadot);
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
 	pub UniversalLocation: InteriorLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 }
