@@ -8,7 +8,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 // Public due to integration tests crate.
 pub mod config;
-mod extensions;
 mod weights;
 
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
