@@ -148,18 +148,19 @@ cumulus-pallet-aura-ext = { version = "0.11.0", default-features = false }
 cumulus-pallet-parachain-system = { version = "0.11.0", default-features = false, features = [
     "parameterized-consensus-hook",
 ] }
-cumulus-pallet-session-benchmarking = { version = "13.0.0", default-features = false }
-cumulus-pallet-xcm = { version = "0.11.0", default-features = false }
-cumulus-pallet-xcmp-queue = { version = "0.11.0", default-features = false }
-cumulus-primitives-aura = { version = "0.11.0", default-features = false }
-cumulus-primitives-core = { version = "0.11.0", default-features = false }
-cumulus-primitives-utility = { version = "0.11.0", default-features = false }
-emulated-integration-tests-common = { version = "7.0.0", default-features = false }
-pallet-collator-selection = { version = "13.0.1", default-features = false }
-parachains-common = { version = "11.0.0", default-features = false }
-parachain-info = { version = "0.11.0", package = "staging-parachain-info", default-features = false }
-cumulus-primitives-parachain-inherent = "0.11.0"
-cumulus-relay-chain-interface = "0.11.0"
+cumulus-pallet-session-benchmarking = { version = "12.0.0", default-features = false }
+cumulus-pallet-xcm = { version = "0.10.0", default-features = false }
+cumulus-pallet-xcmp-queue = { version = "0.10.0", default-features = false }
+cumulus-primitives-aura = { version = "0.10.0", default-features = false }
+cumulus-primitives-core = { version = "0.10.0", default-features = false }
+cumulus-primitives-storage-weight-reclaim = { version = "1.0.0", default-features = false }
+cumulus-primitives-utility = { version = "0.10.0", default-features = false }
+emulated-integration-tests-common = { version = "6.0.0", default-features = false }
+pallet-collator-selection = { version = "12.0.1", default-features = false }
+parachains-common = { version = "10.0.0", default-features = false }
+parachain-info = { version = "0.10.0", package = "staging-parachain-info", default-features = false }
+cumulus-primitives-parachain-inherent = "0.10.0"
+cumulus-relay-chain-interface = "0.10.0"
 color-print = "0.3.4"
 cumulus-client-cli = "0.11.0"
 cumulus-client-collator = "0.11.0"
