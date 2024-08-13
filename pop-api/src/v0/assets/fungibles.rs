@@ -124,14 +124,13 @@ pub mod events {
 		/// The ID of the asset created.
 		#[ink(topic)]
 		pub id: AssetId,
-		#[ink(topic)]
 		/// The name of the asset.
+		#[ink(topic)]
 		pub name: Vec<u8>,
 		/// The symbol of the asset.
 		#[ink(topic)]
 		pub symbol: Vec<u8>,
 		/// The decimals of the asset.
-		#[ink(topic)]
 		pub decimals: u8,
 	}
 
