@@ -22,7 +22,6 @@ members = [
     "integration-tests",
     "pallets/*",
     "primitives",
-    "scripts/fund-dev-accounts",
 ]
 exclude = [
     "pop-api",
@@ -83,7 +82,7 @@ frame-system = { version = "29.0.0", default-features = false }
 frame-system-benchmarking = { version = "29.0.0", default-features = false }
 frame-system-rpc-runtime-api = { version = "27.0.0", default-features = false }
 frame-try-runtime = { version = "0.35.0", default-features = false }
-pallet-aura = { version = "28.0.0", default-features = false }
+pallet-aura = { version = "28.0.0", default-features = false, features = ["experimental"] }
 pallet-authorship = { version = "29.0.0", default-features = false }
 pallet-assets = { version = "30.0.0", default-features = false }
 pallet-balances = { version = "29.0.2", default-features = false }
@@ -133,14 +132,11 @@ polkadot-parachain-primitives = { version = "7.0.0", default-features = false }
 polkadot-runtime-parachains = { version = "8.0.3", default-features = false }
 polkadot-primitives = { version = "8.0.1", default-features = false }
 polkadot-runtime-common = { version = "8.0.3", default-features = false }
-rococo-runtime-constants = { version = "8.0.0", default-features = false }
-rococo-runtime = { version = "8.0.1", default-features = false }
-xcm = { version = "8.0.1", package = "staging-xcm", default-features = false }
-xcm-builder = { version = "8.0.3", package = "staging-xcm-builder", default-features = false }
-xcm-executor = { version = "8.0.2", package = "staging-xcm-executor", default-features = false }
+xcm = { package = "staging-xcm", version = "8.0.1", default-features = false }
+xcm-builder = { package = "staging-xcm-builder", version = "8.0.3", default-features = false }
+xcm-executor = { package = "staging-xcm-executor", version = "8.0.2", default-features = false }
 
 # Cumulus
-asset-hub-rococo-runtime = { version = "0.12.3", default-features = false }
 asset-test-utils = { version = "8.0.1", default-features = false }
 cumulus-pallet-aura-ext = { version = "0.8.0", default-features = false }
 cumulus-pallet-parachain-system = { version = "0.8.1", default-features = false, features = ["parameterized-consensus-hook"] }
@@ -153,7 +149,7 @@ cumulus-primitives-utility = { version = "0.8.1", default-features = false }
 emulated-integration-tests-common = { version = "4.0.0", default-features = false }
 pallet-collator-selection = { version = "10.0.3", default-features = false }
 parachains-common = { version = "8.0.1", default-features = false }
-parachain-info = { version = "0.8.0", package = "staging-parachain-info", default-features = false }
+parachain-info = { package = "staging-parachain-info", version = "0.8.0", default-features = false }
 cumulus-primitives-parachain-inherent = "0.8.0"
 cumulus-relay-chain-interface = "0.8.0"
 color-print = "0.3.4"
@@ -163,3 +159,8 @@ cumulus-client-consensus-aura = "0.8.0"
 cumulus-client-consensus-common = "0.8.0"
 cumulus-client-consensus-proposer = "0.8.0"
 cumulus-client-service = "0.8.0"
+
+# Paseo
+asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
