@@ -37,7 +37,7 @@ pub trait ReadState {
 	/// Query of the state read operations.
 	type StateQuery: Decode;
 
-	/// Check if state queries from the API is allowlisted.
+	/// Check if a state query is allowed.
 	fn contains(c: &Self::StateQuery) -> bool;
 
 	/// Reads state using the provided query, returning the result as a byte vector.
@@ -54,7 +54,7 @@ pub trait CallFilter {
 	/// Query of the dispatch calls operations.
 	type Call: Decode;
 
-	/// Check if runtime calls from the API is allowlisted.
+	/// Check if runtime call is allowed.
 	fn contains(t: &Self::Call) -> bool;
 }
 
