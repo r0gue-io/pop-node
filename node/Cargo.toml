@@ -1,28 +1,28 @@
 [package]
-name = "pop-node"
-version = "0.2.0-alpha"
 authors.workspace = true
-description.workspace = true
-license = "Unlicense"
-homepage.workspace = true
-repository.workspace = true
-edition.workspace = true
 build = "build.rs"
+description.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license = "Unlicense"
+name = "pop-node"
 publish = false
+repository.workspace = true
+version = "0.2.0-alpha"
 
 [dependencies]
 clap.workspace = true
-log.workspace = true
 codec.workspace = true
-serde.workspace = true
-jsonrpsee.workspace = true
 futures.workspace = true
+jsonrpsee.workspace = true
+log.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 
 # Local
+pop-runtime-common.workspace = true
 pop-runtime-devnet.workspace = true
 pop-runtime-testnet.workspace = true
-pop-runtime-common.workspace = true
 
 # Substrate
 frame-benchmarking.workspace = true
@@ -33,11 +33,11 @@ sc-basic-authorship.workspace = true
 sc-chain-spec.workspace = true
 sc-cli.workspace = true
 sc-client-api.workspace = true
-sc-offchain.workspace = true
 sc-consensus.workspace = true
 sc-executor.workspace = true
 sc-network.workspace = true
 sc-network-sync.workspace = true
+sc-offchain.workspace = true
 sc-rpc.workspace = true
 sc-service.workspace = true
 sc-sysinfo.workspace = true
@@ -50,8 +50,8 @@ sp-block-builder.workspace = true
 sp-blockchain.workspace = true
 sp-consensus-aura.workspace = true
 sp-core.workspace = true
-sp-keystore.workspace = true
 sp-io.workspace = true
+sp-keystore.workspace = true
 sp-offchain.workspace = true
 sp-runtime.workspace = true
 sp-session.workspace = true
@@ -65,17 +65,17 @@ polkadot-primitives.workspace = true
 xcm.workspace = true
 
 # Cumulus
+color-print.workspace = true
 cumulus-client-cli.workspace = true
 cumulus-client-collator.workspace = true
 cumulus-client-consensus-aura.workspace = true
 cumulus-client-consensus-common.workspace = true
 cumulus-client-consensus-proposer.workspace = true
-cumulus-primitives-aura.workspace = true
 cumulus-client-service.workspace = true
+cumulus-primitives-aura.workspace = true
 cumulus-primitives-core.workspace = true
 cumulus-primitives-parachain-inherent.workspace = true
 cumulus-relay-chain-interface.workspace = true
-color-print.workspace = true
 
 [build-dependencies]
 substrate-build-script-utils.workspace = true

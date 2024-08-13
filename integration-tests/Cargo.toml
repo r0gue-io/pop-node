@@ -1,18 +1,18 @@
 [package]
-name = "integration-tests"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
+name = "integration-tests"
 repository.workspace = true
 
 [dev-dependencies]
 codec.workspace = true
 tracing-subscriber = { workspace = true, features = [
-    "env-filter",
-    "fmt",
-    "std",
-    "tracing-log",
+	"env-filter",
+	"fmt",
+	"std",
+	"tracing-log",
 ] }
 
 # Substrate
@@ -20,20 +20,20 @@ frame-support.workspace = true
 pallet-assets.workspace = true
 pallet-balances.workspace = true
 pallet-message-queue.workspace = true
-sp-core.workspace = true
 sp-authority-discovery.workspace = true
 sp-consensus-aura.workspace = true
 sp-consensus-babe.workspace = true
 sp-consensus-beefy.workspace = true
 sp-consensus-grandpa.workspace = true
+sp-core.workspace = true
 sp-runtime.workspace = true
 
 # Polkadot
+pallet-xcm.workspace = true
 polkadot-primitives.workspace = true
+polkadot-runtime-parachains.workspace = true
 xcm.workspace = true
 xcm-executor.workspace = true
-polkadot-runtime-parachains.workspace = true
-pallet-xcm.workspace = true
 
 # Cumulus
 asset-test-utils.workspace = true
@@ -46,8 +46,8 @@ paseo-runtime.workspace = true
 paseo-runtime-constants.workspace = true
 
 # Local
-pop-runtime-devnet.workspace = true
 pop-runtime-common.workspace = true
+pop-runtime-devnet.workspace = true
 
 [features]
 default = [ "std" ]
