@@ -206,7 +206,7 @@ pub mod pallet {
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
 
-			let return_weight = match value.cmp(&current_allowance) {
+			let weight = match value.cmp(&current_allowance) {
 				// If the new value is equal to the current allowance, do nothing.
 				Equal => Self::weight_approve(0, 0),
 				// If the new value is greater than the current allowance, approve the difference
@@ -241,7 +241,7 @@ pub mod pallet {
 				},
 			};
 			Self::deposit_event(Event::Approval { id, owner, spender, value });
-			Ok(Some(return_weight).into())
+			Ok(Some(weight).into())
 		}
 
 		/// Increases the allowance of a spender.
@@ -288,13 +288,13 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
+			if value.is_zero() {
+				return Ok(Some(Self::weight_approve(0, 0)).into());
+			}
 			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
 			let spender_source = T::Lookup::unlookup(spender.clone());
 			let id_param: AssetIdParameterOf<T> = id.clone().into();
 
-			if value.is_zero() {
-				return Ok(Some(Self::weight_approve(0, 0)).into());
-			}
 			// Cancel the approval and set the new value if `new_allowance` is more than zero.
 			AssetsOf::<T>::cancel_approval(
 				origin.clone(),

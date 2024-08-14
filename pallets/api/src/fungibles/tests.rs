@@ -2,6 +2,7 @@ use crate::{fungibles::Read::*, mock::*};
 use codec::Encode;
 use frame_support::{
 	assert_ok,
+	sp_runtime::traits::Zero,
 	traits::fungibles::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
@@ -181,9 +182,9 @@ fn clear_metadata_works() {
 
 		create_asset_and_set_metadata(ALICE, id, vec![42], vec![42], 42);
 		assert_ok!(Fungibles::clear_metadata(signed(ALICE), id));
-		assert_eq!(Assets::name(id), Vec::<u8>::new());
-		assert_eq!(Assets::symbol(id), Vec::<u8>::new());
-		assert_eq!(Assets::decimals(id), 0u8);
+		assert!(Assets::name(id).is_empty());
+		assert!(Assets::symbol(id).is_empty());
+		assert!(Assets::decimals(id).is_zero());
 	});
 }
 
