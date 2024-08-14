@@ -1,4 +1,6 @@
-use crate::{config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall};
+use crate::{
+	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+};
 use codec::{Decode, Encode, MaxEncodedLen};
 use pop_chain_extension::{CallFilter, ReadState};
 use sp_std::vec::Vec;
@@ -60,6 +62,7 @@ impl CallFilter for Extension {
 }
 
 impl fungibles::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }

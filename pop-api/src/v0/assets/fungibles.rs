@@ -58,6 +58,91 @@ mod constants {
 	pub(super) const BURN: u8 = 20;
 }
 
+/// A set of events for use in smart contracts interacting with the fungibles API.
+///
+/// The `Transfer` and `Approval` events conform to the PSP-22 standard. The other events
+/// (`Create`, `StartDestroy`, `SetMetadata`, `ClearMetadata`) are provided for convenience.
+///
+/// These events are not emitted by the API itself but can be used in your contracts to
+/// track asset operations. Be mindful of the costs associated with emitting events.
+///
+/// For more details, refer to [ink! events](https://use.ink/basics/events).
+pub mod events {
+	use super::*;
+
+	/// Event emitted when allowance by `owner` to `spender` changes.
+	#[ink::event]
+	pub struct Approval {
+		/// Account providing allowance.
+		#[ink(topic)]
+		pub owner: AccountId,
+		/// Allowance beneficiary.
+		#[ink(topic)]
+		pub spender: AccountId,
+		/// New allowance amount.
+		pub value: u128,
+	}
+
+	/// Event emitted when transfer of tokens occurs.
+	#[ink::event]
+	pub struct Transfer {
+		/// Transfer sender. `None` in case of minting new tokens.
+		#[ink(topic)]
+		pub from: Option<AccountId>,
+		/// Transfer recipient. `None` in case of burning tokens.
+		#[ink(topic)]
+		pub to: Option<AccountId>,
+		/// Amount of tokens transferred (or minted/burned).
+		pub value: u128,
+	}
+
+	/// Event emitted when a token class is created.
+	#[ink::event]
+	pub struct Create {
+		/// The ID of the asset.
+		#[ink(topic)]
+		pub id: AssetId,
+		/// Creator of the asset.
+		#[ink(topic)]
+		pub creator: AccountId,
+		/// Admin of the asset.
+		#[ink(topic)]
+		pub admin: AccountId,
+	}
+
+	/// Event emitted when a asset is in the process of being destroyed.
+	#[ink::event]
+	pub struct StartDestroy {
+		/// The ID of the asset.
+		#[ink(topic)]
+		pub id: AssetId,
+	}
+
+	/// Event emitted when new metadata is set for an asset.
+	#[ink::event]
+	pub struct SetMetadata {
+		/// The ID of the asset created.
+		#[ink(topic)]
+		pub id: AssetId,
+		/// The name of the asset.
+		#[ink(topic)]
+		pub name: Vec<u8>,
+		/// The symbol of the asset.
+		#[ink(topic)]
+		pub symbol: Vec<u8>,
+		/// The decimals of the asset.
+		pub decimals: u8,
+	}
+
+	/// Event emitted when metadata is cleared for a token.
+	#[ink::event]
+	pub struct ClearMetadata {
+		/// The ID of the asset.
+		#[ink(topic)]
+		pub id: AssetId,
+	}
+}
+
 /// Returns the total token supply for a given asset ID.
 ///
 /// # Parameters

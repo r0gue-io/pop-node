@@ -97,6 +97,7 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type BenchmarkHelper = ();
 }
 impl crate::fungibles::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
 	type AssetsInstance = AssetsInstance;
 	type WeightInfo = ();
 }
