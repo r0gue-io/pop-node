@@ -132,10 +132,13 @@ fn decrease_allowance_works() {
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		let id = ASSET;
+		let creator = ALICE;
+		let admin = ALICE;
 
 		assert!(!Assets::asset_exists(id));
-		assert_ok!(Fungibles::create(signed(ALICE), id, ALICE, 100));
+		assert_ok!(Fungibles::create(signed(creator), id, admin, 100));
 		assert!(Assets::asset_exists(id));
+		System::assert_last_event(Event::Create { id, creator, admin }.into());
 	});
 }
 

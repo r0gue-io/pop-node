@@ -121,6 +121,15 @@ pub mod pallet {
 			/// Amount of tokens transferred (or minted/burned).
 			value: BalanceOf<T>,
 		},
+		/// Event emitted when a token class is created.
+		Create {
+			/// The ID of the asset.
+			id: AssetIdOf<T>,
+			/// Creator of the asset.
+			creator: AccountIdOf<T>,
+			/// Admin of the asset.
+			admin: AccountIdOf<T>,
+		},
 	}
 
 	#[pallet::call]
@@ -318,7 +327,15 @@ pub mod pallet {
 			admin: AccountIdOf<T>,
 			min_balance: BalanceOf<T>,
 		) -> DispatchResult {
-			AssetsOf::<T>::create(origin, id.into(), T::Lookup::unlookup(admin), min_balance)
+			AssetsOf::<T>::create(
+				origin.clone(),
+				id.clone().into(),
+				T::Lookup::unlookup(admin.clone()),
+				min_balance,
+			)?;
+			let creator = ensure_signed(origin)?;
+			Self::deposit_event(Event::Create { id, creator, admin });
+			Ok(())
 		}
 
 		/// Start the process of destroying a token with a given asset ID.
