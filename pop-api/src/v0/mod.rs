@@ -6,6 +6,7 @@ use crate::{
 };
 use ink::env::chain_extension::ChainExtensionMethod;
 
+/// APIs for assets related use cases.
 #[cfg(feature = "assets")]
 pub mod assets;
 

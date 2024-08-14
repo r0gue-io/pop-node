@@ -1,3 +1,10 @@
+//! The `pop-api` crate provides an API for smart contracts to interact with the Pop network runtime.
+//!
+//! This crate abstracts away complexities to deliver a streamlined developer experience while supporting
+//! multiple API versions to ensure backward compatibility. It is designed with a focus on stability,
+//! future-proofing, and storage efficiency, allowing developers to easily integrate powerful runtime
+//! features into their contracts without unnecessary overhead.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use constants::DECODING_FAILED;
@@ -5,7 +12,9 @@ use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 #[cfg(feature = "assets")]
 pub use v0::assets;
 
+/// Module providing primitives types.
 pub mod primitives;
+/// Version zero of the API.
 pub mod v0;
 
 /// A result type used by the API, with the `StatusCode` as the error type.

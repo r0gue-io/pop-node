@@ -1,3 +1,10 @@
+//! The `fungibles` module provides an API for interacting and managing with fungible assets on Pop network.
+//!
+//! 1. PSP-22 Interface
+//! 2. PSP-22 Metadata Interface
+//! 3. Asset Management
+//! 4. PSP-22 Mintable & Burnable Interface
+
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
 	primitives::{AccountId, AssetId, Balance},
@@ -8,27 +15,21 @@ use constants::*;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
 
-/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
-///
-/// Parameters:
-/// - 'dispatchable': The index of the module dispatchable functions.
+// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
+//
+// Parameters:
+// - 'dispatchable': The index of the module dispatchable functions.
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
 }
 
-/// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
-///
-/// Parameters:
-/// - 'state_query': The index of the runtime state query.
+// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
+//
+// Parameters:
+// - 'state_query': The index of the runtime state query.
 fn build_read_state(state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_read_state(FUNGIBLES, state_query)
 }
-
-/// Local Fungibles:
-/// 1. PSP-22 Interface
-/// 2. PSP-22 Metadata Interface
-/// 3. Asset Management
-/// 4. PSP-22 Mintable & Burnable Interface
 
 mod constants {
 	/// 1. PSP-22 Interface:
@@ -323,8 +324,45 @@ pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 		.call(&(id, account, value))
 }
 
+/// The interface for managing metadata of fungible assets. It includes the PSP-22 Metadata interface
+/// for querying metadata.
+// TODO: if reviewers agree with replacing metadata related apis here, the dispatchable index has to
+//  be changed (quick fix).
 pub mod metadata {
 	use super::*;
+
+	/// Set the metadata for a token with a given asset ID.
+	///
+	/// # Parameters
+	/// - `id`: The identifier of the asset to update.
+	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
+	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
+	/// - `decimals`: The number of decimals this asset uses to represent one unit.
+	///
+	/// # Returns
+	/// Returns `Ok(())` if successful, or an error if the operation fails.
+	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
+		build_dispatch(SET_METADATA)
+			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
+			.output::<Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id, name, symbol, decimals))
+	}
+
+	/// Clear the metadata for a token with a given asset ID.
+	///
+	/// # Parameters
+	/// - `id` - The ID of the asset.
+	///
+	/// # Returns
+	/// Returns `Ok(())` if successful, or an error if the operation fails.
+	pub fn clear_metadata(id: AssetId) -> Result<()> {
+		build_dispatch(CLEAR_METADATA)
+			.input::<AssetId>()
+			.output::<Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id))
+	}
 
 	/// Returns the token name for a given asset ID.
 	///
@@ -375,6 +413,7 @@ pub mod metadata {
 	}
 }
 
+/// The interface for creating and destroying fungible assets.
 pub mod asset_management {
 	use super::*;
 
@@ -404,39 +443,6 @@ pub mod asset_management {
 	/// Returns `Ok(())` if successful, or an error if the operation fails.
 	pub fn start_destroy(id: AssetId) -> Result<()> {
 		build_dispatch(START_DESTROY)
-			.input::<AssetId>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id))
-	}
-
-	/// Set the metadata for a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id`: The identifier of the asset to update.
-	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
-	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
-	/// - `decimals`: The number of decimals this asset uses to represent one unit.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
-		build_dispatch(SET_METADATA)
-			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id, name, symbol, decimals))
-	}
-
-	/// Clear the metadata for a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	pub fn clear_metadata(id: AssetId) -> Result<()> {
-		build_dispatch(CLEAR_METADATA)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
