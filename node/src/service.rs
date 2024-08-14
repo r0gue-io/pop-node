@@ -134,7 +134,7 @@ where
 		config,
 		telemetry.as_ref().map(|telemetry| telemetry.handle()),
 		&task_manager,
-	)?;
+	);
 
 	Ok(PartialComponents {
 		backend,
@@ -185,7 +185,11 @@ where
 
 	let params = new_partial::<RuntimeApi>(&parachain_config)?;
 	let (block_import, mut telemetry, telemetry_worker_handle) = params.other;
-	let net_config = sc_network::config::FullNetworkConfiguration::new(&parachain_config.network);
+	let net_config = sc_network::config::FullNetworkConfiguration::<
+		_,
+		_,
+		sc_network::NetworkWorker<Block, Hash>,
+	>::new(&parachain_config.network);
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();
@@ -234,7 +238,7 @@ where
 				transaction_pool: Some(OffchainTransactionPoolFactory::new(
 					transaction_pool.clone(),
 				)),
-				network_provider: network.clone(),
+				network_provider: Arc::new(network.clone()),
 				is_validator: parachain_config.role.is_authority(),
 				enable_http_requests: false,
 				custom_extensions: move |_| vec![],
@@ -356,14 +360,12 @@ pub(crate) fn build_import_queue<RuntimeApi>(
 	config: &Configuration,
 	telemetry: Option<TelemetryHandle>,
 	task_manager: &TaskManager,
-) -> Result<sc_consensus::DefaultImportQueue<Block>, sc_service::Error>
+) -> sc_consensus::DefaultImportQueue<Block>
 where
 	RuntimeApi: ConstructRuntimeApi<Block, ParachainClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiExt<RuntimeApi>,
 {
-	let slot_duration = cumulus_client_consensus_aura::slot_duration(&*client)?;
-
-	Ok(cumulus_client_consensus_aura::equivocation_import_queue::fully_verifying_import_queue::<
+	cumulus_client_consensus_aura::equivocation_import_queue::fully_verifying_import_queue::<
 		sp_consensus_aura::sr25519::AuthorityPair,
 		_,
 		_,
@@ -376,11 +378,10 @@ where
 			let timestamp = sp_timestamp::InherentDataProvider::from_system_time();
 			Ok(timestamp)
 		},
-		slot_duration,
 		&task_manager.spawn_essential_handle(),
 		config.prometheus_registry(),
 		telemetry,
-	))
+	)
 }
 
 #[allow(clippy::too_many_arguments)]
