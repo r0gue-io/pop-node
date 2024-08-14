@@ -138,18 +138,15 @@ fn read_state<T: frame_system::Config, E: Ext<T = T>, StateReader: ReadState>(
 ) -> Result<(), DispatchError> {
 	const LOG_PREFIX: &str = " read_state |";
 
-	// Prefix params with version, pallet, index to simplify decoding.
-	params.insert(0, version);
-	params.insert(1, pallet_index);
-	params.insert(2, call_index);
-	let (mut encoded_version, mut encoded_read) = (&params[..1], &params[1..]);
-	let version = decode_checked::<VersionedStateRead>(&mut encoded_version)?;
+	// Prefix params with pallet, index to simplify decoding.
+	params.insert(0, pallet_index);
+	params.insert(1, call_index);
 
 	// Charge weight for doing one storage read.
 	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-	let result = match version {
+	let result = match version.try_into()? {
 		VersionedStateRead::V0 => {
-			let read = StateReader::decode(&mut encoded_read)?;
+			let read = StateReader::decode(&mut &params[..])?;
 			ensure!(StateReader::contains(&read), UNKNOWN_CALL_ERROR);
 			StateReader::read(read)
 		},
@@ -227,11 +224,24 @@ where
 }
 
 /// Wrapper to enable versioning of runtime state reads.
-#[derive(Decode, Debug)]
 enum VersionedStateRead {
 	/// Version zero of state reads.
-	#[codec(index = 0)]
 	V0,
+}
+
+impl TryFrom<u8> for VersionedStateRead {
+	type Error = DispatchError;
+
+	/// Attempts to convert a `u8` value to its corresponding `VersionedStateRead` variant.
+	///
+	/// If the `u8` value does not match any known function identifier, it returns a
+	/// `DispatchError::Other` indicating an unknown versioned state read.
+	fn try_from(index: u8) -> Result<Self, Self::Error> {
+		match index {
+			0 => Ok(VersionedStateRead::V0),
+			_ => Err(UNKNOWN_CALL_ERROR),
+		}
+	}
 }
 
 /// Wrapper to enable versioning of runtime calls.
