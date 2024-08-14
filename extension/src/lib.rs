@@ -216,6 +216,10 @@ where
 		},
 		Err(err) => {
 			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
+			// Refund weight if the actual weight is less than the charged weight.
+			if let Some(actual_weight) = err.post_info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
 			Err(err.error)
 		},
 	}
