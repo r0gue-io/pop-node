@@ -136,8 +136,6 @@ fn read_state<T: frame_system::Config, E: Ext<T = T>, StateReader: ReadState>(
 	call_index: u8,
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError> {
-	const LOG_PREFIX: &str = " read_state |";
-
 	// Prefix params with pallet, index to simplify decoding.
 	params.insert(0, pallet_index);
 	params.insert(1, call_index);
@@ -153,7 +151,7 @@ fn read_state<T: frame_system::Config, E: Ext<T = T>, StateReader: ReadState>(
 	};
 	log::trace!(
 		target:LOG_TARGET,
-		"{} result: {:?}.", LOG_PREFIX, result
+		"{} result: {:?}.", " read_state |", result
 	);
 	env.write(&result, false, None)
 }
@@ -172,17 +170,16 @@ where
 	E: Ext<T = T>,
 	Filter: CallFilter<Call = <T as frame_system::Config>::RuntimeCall> + 'static,
 {
-	const LOG_PREFIX: &str = " dispatch |";
-
 	// Prefix params with version, pallet, index to simplify decoding.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
 	params.insert(2, call_index);
 	let call = decode_checked::<VersionedDispatch<T::RuntimeCall>>(&mut &params[..])?;
+
 	// Contract is the origin by default.
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
-		VersionedDispatch::V0(call) => dispatch_call::<T, E, Filter>(env, call, origin, LOG_PREFIX),
+		VersionedDispatch::V0(call) => dispatch_call::<T, E, Filter>(env, call, origin),
 	}
 }
 
@@ -195,7 +192,6 @@ fn dispatch_call<T, E, Filter>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
 	mut origin: T::RuntimeOrigin,
-	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
 	T: frame_system::Config<
@@ -204,12 +200,14 @@ where
 	E: Ext<T = T>,
 	Filter: CallFilter<Call = <T as frame_system::Config>::RuntimeCall> + 'static,
 {
+	const LOG_PREFIX: &str = " dispatch |";
+
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
+	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", LOG_PREFIX, call);
 	origin.add_filter(Filter::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
 			// Refund weight if the actual weight is less than the charged weight.
 			if let Some(actual_weight) = info.actual_weight {
 				env.adjust_weight(charged_dispatch_weight, actual_weight);
@@ -217,7 +215,7 @@ where
 			Ok(())
 		},
 		Err(err) => {
-			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
 			Err(err.error)
 		},
 	}
