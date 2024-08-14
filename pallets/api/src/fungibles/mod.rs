@@ -327,13 +327,13 @@ pub mod pallet {
 			admin: AccountIdOf<T>,
 			min_balance: BalanceOf<T>,
 		) -> DispatchResult {
+			let creator = ensure_signed(origin.clone())?;
 			AssetsOf::<T>::create(
-				origin.clone(),
+				origin,
 				id.clone().into(),
 				T::Lookup::unlookup(admin.clone()),
 				min_balance,
 			)?;
-			let creator = ensure_signed(origin)?;
 			Self::deposit_event(Event::Create { id, creator, admin });
 			Ok(())
 		}
