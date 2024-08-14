@@ -38,6 +38,10 @@ use sp_keystore::KeystorePtr;
 use sp_runtime::{app_crypto::AppCrypto, traits::BlakeTwo256};
 use substrate_prometheus_endpoint::Registry;
 
+#[cfg(not(feature = "runtime-benchmarks"))]
+type HostFunctions = cumulus_client_service::ParachainHostFunctions;
+
+#[cfg(feature = "runtime-benchmarks")]
 type HostFunctions = (
 	cumulus_client_service::ParachainHostFunctions,
 	frame_benchmarking::benchmarking::HostFunctions,
