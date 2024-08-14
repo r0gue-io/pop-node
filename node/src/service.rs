@@ -9,6 +9,7 @@ use pop_runtime_common::{AccountId, AuraId, Balance, Block, Hash, Nonce};
 
 // Cumulus Imports
 use cumulus_client_collator::service::CollatorService;
+use cumulus_client_consensus_aura::collators::lookahead::{self as aura, Params as AuraParams};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
 use cumulus_client_consensus_proposer::Proposer;
 use cumulus_client_service::{
@@ -400,11 +401,6 @@ where
 	RuntimeApi: ConstructRuntimeApi<Block, ParachainClient<RuntimeApi>> + Send + Sync + 'static,
 	RuntimeApi::RuntimeApi: RuntimeApiExt<RuntimeApi>,
 {
-	use cumulus_client_consensus_aura::collators::lookahead::{self as aura, Params as AuraParams};
-
-	// NOTE: because we use Aura here explicitly, we can use `CollatorSybilResistance::Resistant`
-	// when starting the network.
-
 	let proposer_factory = sc_basic_authorship::ProposerFactory::with_proof_recording(
 		task_manager.spawn_handle(),
 		client.clone(),
@@ -439,7 +435,7 @@ where
 		relay_chain_slot_duration,
 		proposer,
 		collator_service,
-		authoring_duration: Duration::from_millis(1500),
+		authoring_duration: Duration::from_millis(2000),
 		reinitialize: false,
 	};
 
