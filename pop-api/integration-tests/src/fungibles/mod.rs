@@ -1,5 +1,5 @@
 use super::*;
-use pop_primitives::error::{
+use pop_api::v0::{
 	ArithmeticError::*,
 	Error::{self, *},
 	TokenError::*,

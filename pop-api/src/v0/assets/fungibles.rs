@@ -532,7 +532,7 @@ mod tests {
 	use super::FungiblesError;
 	use crate::{
 		constants::{ASSETS, BALANCES},
-		primitives::error::{
+		v0::{
 			ArithmeticError::*,
 			Error::{self, *},
 			TokenError::*,

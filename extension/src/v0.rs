@@ -32,7 +32,7 @@ pub(crate) fn handle_unknown_error(encoded_error: &mut [u8; 4]) {
 // - Corruption: 11,
 // - Unavailable: 12,
 // - RootNotAllowed: 13,
-// - UnknownFunctionId: 254,
+// - UnknownCall: 254,
 // - DecodingFailed: 255,
 const UNIT_ERRORS: [u8; 11] = [1, 2, 4, 5, 6, 10, 11, 12, 13, 254, 255];
 
@@ -60,92 +60,68 @@ fn nested_errors(nested_error: &[u8], limit: Option<u8>) -> bool {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use pop_primitives::error::{
-		ArithmeticError::*,
-		Error::{self, *},
-		TokenError::*,
-		TransactionalError::*,
-	};
-	use sp_runtime::DispatchError;
+	use sp_runtime::{DispatchError, ModuleError};
 
-	// Compare all the different `DispatchError` variants with the expected `Error`.
+	// Check if `DispatchError` is correctly converted into the expected status code (`u32`).
+	// Each test case has an associated 4-byte array that represents the `u32` status code in
+	// little-endian format.
 	#[test]
-	fn dispatch_error_to_error() {
+	fn dispatch_error_to_status_code() {
 		let test_cases = vec![
-			(
-				DispatchError::Other(""),
-				(Other { dispatch_error_index: 0, error_index: 0, error: 0 }),
-			),
-			(DispatchError::Other("UnknownCall"), UnknownCall),
-			(DispatchError::Other("DecodingFailed"), DecodingFailed),
-			(DispatchError::CannotLookup, CannotLookup),
-			(DispatchError::BadOrigin, BadOrigin),
+			(DispatchError::Other(""), [0u8, 0, 0, 0]),
+			(DispatchError::CannotLookup, [1, 0, 0, 0]),
+			(DispatchError::BadOrigin, [2, 0, 0, 0]),
 			(
 				DispatchError::Module(sp_runtime::ModuleError {
 					index: 1,
 					error: [2, 0, 0, 0],
 					message: Some("hallo"),
 				}),
-				Module { index: 1, error: 2 },
+				[3, 1, 2, 0],
+				// Module { index: 1, error: 2 },
 			),
-			(DispatchError::ConsumerRemaining, ConsumerRemaining),
-			(DispatchError::NoProviders, NoProviders),
-			(DispatchError::TooManyConsumers, TooManyConsumers),
-			(DispatchError::Token(sp_runtime::TokenError::BelowMinimum), Token(BelowMinimum)),
-			(
-				DispatchError::Arithmetic(sp_runtime::ArithmeticError::Overflow),
-				Arithmetic(Overflow),
-			),
+			(DispatchError::ConsumerRemaining, [4, 0, 0, 0]),
+			(DispatchError::NoProviders, [5, 0, 0, 0]),
+			(DispatchError::TooManyConsumers, [6, 0, 0, 0]),
+			(DispatchError::Token(sp_runtime::TokenError::BelowMinimum), [7, 2, 0, 0]),
+			(DispatchError::Arithmetic(sp_runtime::ArithmeticError::Overflow), [8, 1, 0, 0]),
 			(
 				DispatchError::Transactional(sp_runtime::TransactionalError::LimitReached),
-				Transactional(LimitReached),
+				[9, 0, 0, 0],
 			),
-			(DispatchError::Exhausted, Exhausted),
-			(DispatchError::Corruption, Corruption),
-			(DispatchError::Unavailable, Unavailable),
-			(DispatchError::RootNotAllowed, RootNotAllowed),
-		];
-		for (dispatch_error, expected) in test_cases {
-			let status_code = crate::convert_to_status_code(dispatch_error, 0);
-			let error: Error = status_code.into();
-			assert_eq!(error, expected);
-		}
-	}
-
-	// Compare all the different `DispatchError::Other` possibilities with the expected `Error`.
-	#[test]
-	fn other_error() {
-		let test_cases = vec![
-			(
-				DispatchError::Other("Random"),
-				(Other { dispatch_error_index: 0, error_index: 0, error: 0 }),
-			),
-			(DispatchError::Other("UnknownCall"), UnknownCall),
-			(DispatchError::Other("DecodingFailed"), DecodingFailed),
+			(DispatchError::Exhausted, [10, 0, 0, 0]),
+			(DispatchError::Corruption, [11, 0, 0, 0]),
+			(DispatchError::Unavailable, [12, 0, 0, 0]),
+			(DispatchError::RootNotAllowed, [13, 0, 0, 0]),
+			(DispatchError::Other("UnknownCall"), [254, 0, 0, 0]),
+			(DispatchError::Other("DecodingFailed"), [255, 0, 0, 0]),
 		];
 		for (dispatch_error, expected) in test_cases {
 			let status_code = convert_to_status_code(dispatch_error, 0);
-			let error: Error = status_code.into();
-			assert_eq!(error, expected);
+			assert_eq!(status_code, u32::from_le_bytes(expected));
 		}
 	}
 
-	// Compare all the different `DispatchError::Module` nesting possibilities, which can not be
-	// handled, with the expected `Error`. See `double_nested_error_variants` fourth byte nesting.
+	// This test checks various nesting possibilities of `DispatchError::Module` and ensures
+	// that they are correctly converted to a `u32` status code. The expected result for
+	// each test case is the little-endian 4-byte array `[0u8, 3u8, 1u8, 2u8]`. I.e. the raw bytes
+	// of the `pop_api::v0::Error::Other`.
+	//
+	// Also see the test `fn double_nested_error_variants()` regarding fourth byte nesting.
 	#[test]
 	fn test_module_error() {
 		let test_cases = vec![
-			DispatchError::Module(sp_runtime::ModuleError {
+			DispatchError::Module(ModuleError {
 				index: 1,
 				error: [2, 2, 0, 0],
 				message: Some("Random"),
 			}),
-			DispatchError::Module(sp_runtime::ModuleError {
+			DispatchError::Module(ModuleError {
 				index: 1,
 				error: [2, 2, 2, 0],
 				message: Some("Random"),
 			}),
-			DispatchError::Module(sp_runtime::ModuleError {
+			DispatchError::Module(ModuleError {
 				index: 1,
 				error: [2, 2, 2, 2],
 				message: Some("Random"),
@@ -153,66 +129,55 @@ mod tests {
 		];
 		for dispatch_error in test_cases {
 			let status_code = convert_to_status_code(dispatch_error, 0);
-			let error: Error = status_code.into();
-			assert_eq!(error, Other { dispatch_error_index: 3, error_index: 1, error: 2 });
+			assert_eq!(status_code, u32::from_le_bytes([0u8, 3, 1, 2]));
 		}
 	}
 
-	// Converts 4 bytes into `Error` and handles unknown errors (used in `convert_to_status_code`).
-	fn into_error(mut error_bytes: [u8; 4]) -> Error {
+	fn into_error(mut error_bytes: [u8; 4]) -> [u8; 4] {
 		handle_unknown_error(&mut error_bytes);
-		u32::from_le_bytes(error_bytes).into()
+		error_bytes
 	}
 
-	// Tests the `handle_unknown_error` for `Error`, version 0.
+	// Tests the `handle_unknown_error` for unit variants.
 	//
-	// Unit variants:
-	// If the encoded value indicates a nested `Error` which is known by V0 as a
-	// unit variant, the encoded value is converted into `Error::Other`.
+	// If the encoded value indicates a nested enum error, which is known by V0 as a
+	// unit error, the encoded value is converted into `pop_api::v0::Error::Other`.
 	//
 	// Example: the error `BadOrigin` (encoded: `[2, 0, 0, 0]`) with a non-zero value for one
 	// of the bytes [1..4]: `[2, 0, 1, 0]` is converted into `[0, 2, 0, 1]` (shifting the bits
-	// one forward). This is decoded to `Error::Other { dispatch_error: 2, index: 0, error: 1 }`.
+	// one forward). This is decoded to `pop_api::v0::Error::Other { dispatch_error: 2, index: 0, error: 1 }`.
 	#[test]
 	fn unit_error_variants() {
 		let errors = vec![
-			CannotLookup,
-			BadOrigin,
-			ConsumerRemaining,
-			NoProviders,
-			TooManyConsumers,
-			Exhausted,
-			Corruption,
-			Unavailable,
-			RootNotAllowed,
-			UnknownCall,
-			DecodingFailed,
+			[1u8, 0, 0, 0],
+			[2, 0, 0, 0],
+			[4, 0, 0, 0],
+			[5, 0, 0, 0],
+			[6, 0, 0, 0],
+			[10, 0, 0, 0],
+			[11, 0, 0, 0],
+			[12, 0, 0, 0],
+			[13, 0, 0, 0],
+			[254, 0, 0, 0],
+			[255, 0, 0, 0],
 		];
 		// Compare an `Error`, which is converted from an encoded value, with the expected `Error`.
 		for (i, &error_code) in UNIT_ERRORS.iter().enumerate() {
 			// No nesting and unit variant correctly returned.
 			assert_eq!(into_error([error_code, 0, 0, 0]), errors[i]);
 			// Unexpected second byte nested.
-			assert_eq!(
-				into_error([error_code, 1, 0, 0]),
-				(Other { dispatch_error_index: error_code, error_index: 1, error: 0 }),
-			);
+			assert_eq!(into_error([error_code, 1, 0, 0]), [0, error_code, 1, 0],);
 			// Unexpected third byte nested.
-			assert_eq!(
-				into_error([error_code, 1, 1, 0]),
-				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }),
-			);
+			assert_eq!(into_error([error_code, 1, 1, 0]), [0, error_code, 1, 1],);
 			// Unexpected fourth byte nested.
-			assert_eq!(
-				into_error([error_code, 1, 1, 1]),
-				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }),
-			);
+			assert_eq!(into_error([error_code, 1, 1, 1]), [0, error_code, 1, 1],);
 		}
 	}
 
-	// Single nested variants:
-	// If the encoded value indicates a double nested `Error` which is known by V0
-	// as a single nested variant, the encoded value is converted into `Error::Other`.
+	// Tests the `handle_unknown_error` for single nested variants.
+	//
+	// If the encoded value indicates a double nested error which is known by V0
+	// as a single nested error, the encoded value is converted into `pop_api::v0::Error::Other`.
 	//
 	// Example: the error `Arithmetic(Overflow)` (encoded: `[8, 1, 0, 0]`) with a non-zero
 	// value for one of the bytes [2..4]: `[8, 1, 1, 0]` is converted into `[0, 8, 1, 1]`. This is
@@ -220,9 +185,9 @@ mod tests {
 	#[test]
 	fn single_nested_error_variants() {
 		let errors = vec![
-			[Token(FundsUnavailable), Token(OnlyProvider)],
-			[Arithmetic(Underflow), Arithmetic(Overflow)],
-			[Transactional(LimitReached), Transactional(NoLayer)],
+			[[7u8, 0, 0, 0], [7u8, 1, 0, 0]],
+			[[8, 0, 0, 0], [8, 1, 0, 0]],
+			[[9, 0, 0, 0], [9, 1, 0, 0]],
 		];
 		// Compare an `Error`, which is converted from an encoded value, with the expected `Error`.
 		for (i, &error_code) in SINGLE_NESTED_ERRORS.iter().enumerate() {
@@ -230,40 +195,26 @@ mod tests {
 			assert_eq!(into_error([error_code, 0, 0, 0]), errors[i][0]);
 			assert_eq!(into_error([error_code, 1, 0, 0]), errors[i][1]);
 			// Unexpected third byte nested.
-			assert_eq!(
-				into_error([error_code, 1, 1, 0]),
-				(Other { dispatch_error_index: error_code, error_index: 1, error: 1 }),
-			);
+			assert_eq!(into_error([error_code, 1, 1, 0]), [0, error_code, 1, 1],);
 			// Unexpected fourth byte nested.
-			assert_eq!(
-				into_error([error_code, 1, 1, 1]),
-				Other { dispatch_error_index: error_code, error_index: 1, error: 1 },
-			);
+			assert_eq!(into_error([error_code, 1, 1, 1]), [0, error_code, 1, 1],);
 		}
 	}
 
 	#[test]
 	fn single_nested_unknown_variants() {
 		// Unknown `TokenError` variant.
-		assert_eq!(
-			into_error([7, 10, 0, 0]),
-			Other { dispatch_error_index: 7, error_index: 10, error: 0 }
-		);
+		assert_eq!(into_error([7, 10, 0, 0]), [0, 7, 10, 0],);
 		// Unknown `Arithmetic` variant.
-		assert_eq!(
-			into_error([8, 3, 0, 0]),
-			Other { dispatch_error_index: 8, error_index: 3, error: 0 }
-		);
+		assert_eq!(into_error([8, 3, 0, 0]), [0, 8, 3, 0],);
 		// Unknown `Transactional` variant.
-		assert_eq!(
-			into_error([9, 2, 0, 0]),
-			Other { dispatch_error_index: 9, error_index: 2, error: 0 }
-		);
+		assert_eq!(into_error([9, 2, 0, 0]), [0, 9, 2, 0],);
 	}
 
-	// Double nested variants:
-	// If the encoded value indicates a triple nested `Error` which is known by V0
-	// as a double nested variant, the encoded value is converted into `Error::Other`.
+	// Tests the `handle_unknown_error` for double nested variants.
+	//
+	// If the encoded value indicates a triple nested error which is known by V0
+	// as a double nested error, the encoded value is converted into `pop_api::v0::Error::Other`.
 	//
 	// Example: the error `Module { index: 10, error 5 }` (encoded: `[3, 10, 5, 0]`) with a non-zero
 	// value for the last byte: `[3, 10, 5, 3]` is converted into `[0, 3, 10, 5]`. This is
@@ -272,27 +223,18 @@ mod tests {
 	fn double_nested_error_variants() {
 		// Compare an `Error`, which is converted from an encoded value, with the expected `Error`.
 		// No nesting and unit variant correctly returned.
-		assert_eq!(into_error([3, 0, 0, 0]), Module { index: 0, error: 0 });
+		assert_eq!(into_error([3, 0, 0, 0]), [3, 0, 0, 0]);
 		// Allowed single nesting and variant correctly returned.
-		assert_eq!(into_error([3, 1, 0, 0]), Module { index: 1, error: 0 });
+		assert_eq!(into_error([3, 1, 0, 0]), [3, 1, 0, 0]);
 		// Allowed double nesting and variant correctly returned.
-		assert_eq!(into_error([3, 1, 1, 0]), Module { index: 1, error: 1 });
+		assert_eq!(into_error([3, 1, 1, 0]), [3, 1, 1, 0]);
 		// Unexpected fourth byte nested.
-		assert_eq!(
-			into_error([3, 1, 1, 1]),
-			Other { dispatch_error_index: 3, error_index: 1, error: 1 },
-		);
+		assert_eq!(into_error([3, 1, 1, 1]), [0, 3, 1, 1],);
 	}
 
 	#[test]
 	fn test_random_encoded_values() {
-		assert_eq!(
-			into_error([100, 100, 100, 100]),
-			Other { dispatch_error_index: 100, error_index: 100, error: 100 }
-		);
-		assert_eq!(
-			into_error([200, 200, 200, 200]),
-			Other { dispatch_error_index: 200, error_index: 200, error: 200 }
-		);
+		assert_eq!(into_error([100, 100, 100, 100]), [0, 100, 100, 100],);
+		assert_eq!(into_error([200, 200, 200, 200]), [0, 200, 200, 200],);
 	}
 }

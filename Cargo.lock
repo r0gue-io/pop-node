@@ -9543,10 +9543,6 @@ dependencies = [
 [[package]]
 name = "pop-primitives"
 version = "0.0.0"
-dependencies = [
- "parity-scale-codec",
- "scale-info",
-]
 
 [[package]]
 name = "pop-runtime-common"
