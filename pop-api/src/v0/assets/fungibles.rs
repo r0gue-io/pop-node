@@ -273,6 +273,7 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// - `id` - The ID of the asset.
 /// - `account` - The account to be credited with the created tokens.
 /// - `value` - The number of tokens to mint.
+#[inline]
 pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(MINT)
 		.input::<(AssetId, AccountId, Balance)>()
@@ -287,6 +288,7 @@ pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 /// - `id` - The ID of the asset.
 /// - `account` - The account from which the tokens will be destroyed.
 /// - `value` - The number of tokens to destroy.
+#[inline]
 pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(BURN)
 		.input::<(AssetId, AccountId, Balance)>()
@@ -309,6 +311,7 @@ pub mod metadata {
 	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
 	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
 	/// - `decimals`: The number of decimals this asset uses to represent one unit.
+	#[inline]
 	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
 		build_dispatch(SET_METADATA)
 			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
@@ -321,6 +324,7 @@ pub mod metadata {
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
+	#[inline]
 	pub fn clear_metadata(id: AssetId) -> Result<()> {
 		build_dispatch(CLEAR_METADATA)
 			.input::<AssetId>()
@@ -379,6 +383,7 @@ pub mod asset_management {
 	/// - `id` - The ID of the asset.
 	/// - `admin` - The account that will administer the asset.
 	/// - `min_balance` - The minimum balance required for accounts holding this asset.
+	#[inline]
 	pub fn create(id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
 		build_dispatch(CREATE)
 			.input::<(AssetId, AccountId, Balance)>()
@@ -391,6 +396,7 @@ pub mod asset_management {
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
+	#[inline]
 	pub fn start_destroy(id: AssetId) -> Result<()> {
 		build_dispatch(START_DESTROY)
 			.input::<AssetId>()
