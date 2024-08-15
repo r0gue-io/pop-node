@@ -54,8 +54,8 @@ use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 pub use pop_runtime_common::{
 	deposit, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICROUNIT,
-	MILLISECS_PER_BLOCK, MILLIUNIT, MINUTES, NORMAL_DISPATCH_RATIO,
-	RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION, UNINCLUDED_SEGMENT_CAPACITY, UNIT,
+	MILLIUNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
+	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
 };
 pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 
@@ -300,7 +300,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
 	type OnTimestampSet = Aura;
-	type MinimumPeriod = ConstU64<{ SLOT_DURATION / 2 }>;
+	type MinimumPeriod = ConstU64<0>;
 	type WeightInfo = ();
 }
 
@@ -449,11 +449,8 @@ impl pallet_aura::Config for Runtime {
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<100_000>;
-	type AllowMultipleBlocksPerSlot = ConstBool<false>;
-	// Note: SlotDuration potentially enabled here due to devnet runtime and Rust's feature
-	// unification, requiring the setting of a backwards compatible value.
-	// See https://github.com/paritytech/polkadot-sdk/blob/09df373db9cd5dfed82c5cdb0736d417d54249e6/substrate/frame/aura/src/lib.rs#L262
-	type SlotDuration = pallet_aura::MinimumPeriodTimesTwo<Runtime>;
+	type AllowMultipleBlocksPerSlot = ConstBool<true>;
+	type SlotDuration = ConstU64<SLOT_DURATION>;
 }
 
 parameter_types! {

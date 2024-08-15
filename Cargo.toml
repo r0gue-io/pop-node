@@ -51,12 +51,8 @@ substrate-build-script-utils = "11.0.0"
 substrate-wasm-builder = "23.0.0"
 
 # Local
-pop-runtime-devnet = { path = "runtime/devnet", default-features = true, features = [
-    "experimental",
-] } # default-features=true required for `-p pop-node` builds
-pop-runtime-testnet = { path = "runtime/testnet", default-features = true, features = [
-    "experimental",
-] } # default-features=true required for `-p pop-node` builds
+pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
+pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
 pop-runtime-common = { path = "runtime/common", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 
