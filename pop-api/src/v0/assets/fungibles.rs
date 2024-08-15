@@ -297,41 +297,9 @@ pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 		.call(&(id, account, value))
 }
 
-/// The interface for managing metadata of fungible assets. It includes the PSP-22 Metadata interface
-/// for querying metadata.
-// TODO: if reviewers agree with replacing metadata related apis here, the dispatchable index has to
-//  be changed (quick fix).
+/// The PSP-22 Metadata interface for querying metadata.
 pub mod metadata {
 	use super::*;
-
-	/// Set the metadata for a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id`: The identifier of the asset to update.
-	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
-	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
-	/// - `decimals`: The number of decimals this asset uses to represent one unit.
-	#[inline]
-	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
-		build_dispatch(SET_METADATA)
-			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id, name, symbol, decimals))
-	}
-
-	/// Clear the metadata for a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id` - The ID of the asset.
-	#[inline]
-	pub fn clear_metadata(id: AssetId) -> Result<()> {
-		build_dispatch(CLEAR_METADATA)
-			.input::<AssetId>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id))
-	}
 
 	/// Returns the token name for a given asset ID.
 	///
@@ -373,7 +341,7 @@ pub mod metadata {
 	}
 }
 
-/// The interface for creating and destroying fungible assets.
+/// The interface for creating, managing and destroying fungible assets.
 pub mod asset_management {
 	use super::*;
 
@@ -399,6 +367,35 @@ pub mod asset_management {
 	#[inline]
 	pub fn start_destroy(id: AssetId) -> Result<()> {
 		build_dispatch(START_DESTROY)
+			.input::<AssetId>()
+			.output::<Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id))
+	}
+
+	/// Set the metadata for a token with a given asset ID.
+	///
+	/// # Parameters
+	/// - `id`: The identifier of the asset to update.
+	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
+	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
+	/// - `decimals`: The number of decimals this asset uses to represent one unit.
+	#[inline]
+	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
+		build_dispatch(SET_METADATA)
+			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
+			.output::<Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id, name, symbol, decimals))
+	}
+
+	/// Clear the metadata for a token with a given asset ID.
+	///
+	/// # Parameters
+	/// - `id` - The ID of the asset.
+	#[inline]
+	pub fn clear_metadata(id: AssetId) -> Result<()> {
+		build_dispatch(CLEAR_METADATA)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
