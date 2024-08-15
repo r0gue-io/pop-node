@@ -6,10 +6,10 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-mod extensions;
-mod weights;
 // Public due to integration tests crate.
 pub mod config;
+mod extensions;
+mod weights;
 
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
@@ -54,8 +54,9 @@ use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 pub use pop_runtime_common::{
 	deposit, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
-	BLOCK_PROCESSING_VELOCITY, EXISTENTIAL_DEPOSIT, MICROUNIT, MILLIUNIT, NORMAL_DISPATCH_RATIO,
-	RELAY_CHAIN_SLOT_DURATION_MILLIS, UNIT,
+	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICROUNIT,
+	MILLIUNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
+	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
 };
 pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 
@@ -295,10 +296,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
 	type OnTimestampSet = Aura;
-	#[cfg(feature = "experimental")]
 	type MinimumPeriod = ConstU64<0>;
-	#[cfg(not(feature = "experimental"))]
-	type MinimumPeriod = ConstU64<{ SLOT_DURATION / 2 }>;
 	type WeightInfo = ();
 }
 
@@ -354,18 +352,6 @@ parameter_types! {
 	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
 	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
 }
-
-// Async backing
-const MAXIMUM_BLOCK_WEIGHT: Weight = Weight::from_parts(
-	frame_support::weights::constants::WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2),
-	pop_runtime_common::MAX_POV_SIZE as u64,
-);
-const MILLISECS_PER_BLOCK: u64 = 6_000;
-const SLOT_DURATION: u64 = MILLISECS_PER_BLOCK;
-const UNINCLUDED_SEGMENT_CAPACITY: u32 = 3;
-const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
-const HOURS: BlockNumber = MINUTES * 60;
-const DAYS: BlockNumber = HOURS * 24;
 
 type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
 	Runtime,
@@ -455,7 +441,6 @@ impl pallet_aura::Config for Runtime {
 	type DisabledValidators = ();
 	type MaxAuthorities = ConstU32<100_000>;
 	type AllowMultipleBlocksPerSlot = ConstBool<true>;
-	#[cfg(feature = "experimental")]
 	type SlotDuration = ConstU64<SLOT_DURATION>;
 }
 
