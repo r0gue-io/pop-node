@@ -1,9 +1,10 @@
-//! The `fungibles` module provides an API for interacting and managing with fungible assets on Pop network.
+//! The `fungibles` module provides an API for interacting and managing fungible assets on Pop Network.
 //!
-//! 1. PSP-22 Interface
-//! 2. PSP-22 Metadata Interface
+//! The API includes the following interfaces:
+//! 1. PSP-22
+//! 2. PSP-22 Metadata
 //! 3. Asset Management
-//! 4. PSP-22 Mintable & Burnable Interface
+//! 4. PSP-22 Mintable & Burnable
 
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
@@ -15,15 +16,15 @@ use constants::*;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
 
-// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
+// Helper method to build a dispatch call.
 //
 // Parameters:
-// - 'dispatchable': The index of the module dispatchable functions.
+// - 'dispatchable': The index of the dispatchable function within the module.
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
 }
 
-// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
+// Helper method to build a call to read state.
 //
 // Parameters:
 // - 'state_query': The index of the runtime state query.
