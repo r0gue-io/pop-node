@@ -1,6 +1,5 @@
 use std::{net::SocketAddr, path::PathBuf};
 
-use cumulus_client_service::storage_proof_size::HostFunctions as ReclaimHostFunctions;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -266,9 +265,7 @@ pub fn run() -> Result<()> {
 				BenchmarkCmd::Pallet(cmd) => {
 					if cfg!(feature = "runtime-benchmarks") {
 						runner.sync_run(|config| {
-							cmd.run_with_spec::<HashingFor<Block>, ReclaimHostFunctions>(Some(
-								config.chain_spec,
-							))
+							cmd.run_with_spec::<HashingFor<Block>, ()>(Some(config.chain_spec))
 						})
 					} else {
 						Err("Benchmarking wasn't enabled when building the node. \
