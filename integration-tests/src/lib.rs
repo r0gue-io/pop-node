@@ -5,7 +5,7 @@ use crate::chains::{
 	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
 	pop_network::PopNetworkParaPallet,
 };
-use asset_hub_paseo_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
+use asset_hub_polkadot_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
 use asset_test_utils::xcm_helpers;
 use chains::{asset_hub_paseo::AssetHubPaseo, paseo::Paseo, pop_network::PopNetwork};
 use emulated_integration_tests_common::{
@@ -17,7 +17,7 @@ use emulated_integration_tests_common::{
 	},
 };
 use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
-use paseo_runtime::xcm_config::XcmConfig as PaseoXcmConfig;
+use polkadot_runtime::xcm_config::XcmConfig as PaseoXcmConfig;
 use pop_runtime_common::Balance;
 use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;

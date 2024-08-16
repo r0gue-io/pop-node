@@ -12,15 +12,15 @@ decl_test_relay_chains! {
 	pub struct Paseo {
 		genesis = genesis::genesis(),
 		on_init = (),
-		runtime = paseo_runtime,
+		runtime = polkadot_runtime,
 		core = {
-			SovereignAccountOf: paseo_runtime::xcm_config::SovereignAccountOf,
+			SovereignAccountOf: polkadot_runtime::xcm_config::SovereignAccountOf,
 		},
 		pallets = {
-			XcmPallet: paseo_runtime::XcmPallet,
-			Sudo: paseo_runtime::Sudo,
-			Balances: paseo_runtime::Balances,
-			Hrmp: paseo_runtime::Hrmp,
+			XcmPallet: polkadot_runtime::XcmPallet,
+			Sudo: polkadot_runtime::Sudo,
+			Balances: polkadot_runtime::Balances,
+			Hrmp: polkadot_runtime::Hrmp,
 		}
 	},
 }
