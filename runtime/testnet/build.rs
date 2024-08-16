@@ -10,11 +10,7 @@ fn main() {
 
 #[cfg(all(feature = "std", not(feature = "metadata-hash")))]
 fn main() {
-	substrate_wasm_builder::WasmBuilder::new()
-		.with_current_project()
-		.export_heap_base()
-		.import_memory()
-		.build()
+	substrate_wasm_builder::WasmBuilder::build_using_defaults()
 }
 
 /// The wasm builder is deactivated when compiling
