@@ -5,7 +5,9 @@ use crate::chains::{
 	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
 	pop_network::PopNetworkParaPallet,
 };
-use asset_hub_polkadot_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
+// Note: using polkadot as stopgap until paseo updated to polkadot sdk v.13
+use asset_hub_polkadot_runtime as asset_hub_runtime;
+use asset_hub_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
 use asset_test_utils::xcm_helpers;
 use chains::{asset_hub_paseo::AssetHubPaseo, paseo::Paseo, pop_network::PopNetwork};
 use emulated_integration_tests_common::{
@@ -297,7 +299,7 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 	test.assert();
 
 	let delivery_fees = PaseoRelay::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<PaseoXcmConfig as xcm_executor::Config>::XcmSender,
 		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
 	});
@@ -351,7 +353,7 @@ fn reserve_transfer_native_asset_from_para_to_relay() {
 	let receiver_balance_after = test.receiver.balance;
 
 	let delivery_fees = PopNetworkPara::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
 		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
 	});
@@ -397,7 +399,7 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 	let receiver_balance_after = test.receiver.balance;
 
 	let delivery_fees = AssetHubPaseoPara::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<AssetHubPaseoXcmConfig as xcm_executor::Config>::XcmSender,
 		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
 	});
@@ -460,7 +462,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let receiver_balance_after = test.receiver.balance;
 
 	let delivery_fees = PopNetworkPara::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
 		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
 	});

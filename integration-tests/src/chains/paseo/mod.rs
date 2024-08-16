@@ -1,4 +1,5 @@
 pub(crate) mod genesis;
+use polkadot_runtime as runtime;
 
 use emulated_integration_tests_common::{
 	impl_accounts_helpers_for_relay_chain, impl_assert_events_helpers_for_relay_chain,
@@ -8,19 +9,19 @@ use emulated_integration_tests_common::{
 
 // Paseo declaration
 decl_test_relay_chains! {
-	#[api_version(10)]
+	#[api_version(11)]
 	pub struct Paseo {
 		genesis = genesis::genesis(),
 		on_init = (),
-		runtime = polkadot_runtime,
+		runtime = runtime,
 		core = {
-			SovereignAccountOf: polkadot_runtime::xcm_config::SovereignAccountOf,
+			SovereignAccountOf: runtime::xcm_config::SovereignAccountOf,
 		},
 		pallets = {
-			XcmPallet: polkadot_runtime::XcmPallet,
-			Sudo: polkadot_runtime::Sudo,
-			Balances: polkadot_runtime::Balances,
-			Hrmp: polkadot_runtime::Hrmp,
+			XcmPallet: runtime::XcmPallet,
+			// Sudo: runtime::Sudo,
+			Balances: runtime::Balances,
+			Hrmp: runtime::Hrmp,
 		}
 	},
 }
