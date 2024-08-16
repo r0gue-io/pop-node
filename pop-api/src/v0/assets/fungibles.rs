@@ -342,7 +342,7 @@ pub mod metadata {
 }
 
 /// The interface for creating, managing and destroying fungible assets.
-pub mod asset_management {
+pub mod management {
 	use super::*;
 
 	/// Create a new token with a given asset ID.
