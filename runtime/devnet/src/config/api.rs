@@ -24,7 +24,7 @@ pub enum RuntimeRead {
 #[derive(Default)]
 pub struct Extension;
 
-impl ExtensionTrait<Runtime> for Extension {
+impl ExtensionTrait for Extension {
 	type StateReader = StateReader;
 	type DispatchHandler = DispatchHandler;
 	type EnvExtractor = EnvExtractor;

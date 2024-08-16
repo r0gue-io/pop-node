@@ -50,7 +50,10 @@ pub trait ReadState {
 /// Type of the dispatch call filter.
 pub trait HandleDispatch {
 	/// Query of the dispatch calls operations.
-	type Call: Decode;
+	type Call: GetDispatchInfo
+		+ Dispatchable<PostInfo = PostDispatchInfo>
+		+ Decode
+		+ core::fmt::Debug;
 
 	/// Check if runtime call is allowed.
 	fn contains(t: &Self::Call) -> bool;
@@ -67,20 +70,32 @@ pub trait ExtractEnv {
 	fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8);
 }
 
-pub trait ExtensionTrait<T: pallet_contracts::Config + frame_system::Config> {
+pub trait ExtensionTrait {
 	type StateReader: ReadState;
-	type DispatchHandler: HandleDispatch<Call = <T as frame_system::Config>::RuntimeCall> + 'static;
+	// type DispatchHandler: HandleDispatch<Call = <T as frame_system::Config>::RuntimeCall> + 'static;
+	type DispatchHandler: HandleDispatch;
 	type EnvExtractor: ExtractEnv;
+}
 
-	fn call<E: Ext<T = T>>(
-		env: &mut Environment<E, BufInBufOutState>,
-	) -> Result<RetVal, DispatchError>
-	where
-		T: frame_system::Config<
+/// Pop API chain extension.
+#[derive(Default)]
+pub struct ApiExtension<I: ExtensionTrait>(PhantomData<I>);
+
+impl<T, I> ChainExtension<T> for ApiExtension<I>
+where
+	T: pallet_contracts::Config
+		+ frame_system::Config<
 			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 		>,
-		E: Ext<T = T>,
-	{
+	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
+	// Bound the type by the two traits which need to be implemented by the runtime.
+	I: ExtensionTrait,
+{
+	fn call<E: Ext<T = T>>(
+		&mut self,
+		env: Environment<E, InitState>,
+	) -> Result<RetVal, DispatchError> {
+		let mut env = env.buf_in_buf_out();
 		// Charge weight for making a call from a contract to the runtime.
 		// `debug_message` weight is a good approximation of the additional overhead of going
 		// from contract layer to substrate layer.
@@ -89,7 +104,7 @@ pub trait ExtensionTrait<T: pallet_contracts::Config + frame_system::Config> {
 		env.charge_weight(contract_host_weight.debug_message)?;
 
 		let (function_id, version, pallet_index, call_index) =
-			Self::EnvExtractor::extract_env(&env);
+			<I as ExtensionTrait>::EnvExtractor::extract_env(&env);
 
 		let result = match FuncId::try_from(function_id) {
 			// Read encoded parameters from buffer and calculate weight for reading `len` bytes`.
@@ -100,10 +115,10 @@ pub trait ExtensionTrait<T: pallet_contracts::Config + frame_system::Config> {
 				let params = env.read(len)?;
 				match function_id {
 					FuncId::Dispatch => {
-						Self::dispatch::<E>(env, version, pallet_index, call_index, params)
+						dispatch::<T, E, I>(&mut env, version, pallet_index, call_index, params)
 					},
 					FuncId::ReadState => {
-						Self::read_state::<E>(env, version, pallet_index, call_index, params)
+						read_state::<T, E, I>(&mut env, version, pallet_index, call_index, params)
 					},
 				}
 			},
@@ -115,106 +130,88 @@ pub trait ExtensionTrait<T: pallet_contracts::Config + frame_system::Config> {
 			Err(e) => Ok(RetVal::Converging(convert_to_status_code(e, version))),
 		}
 	}
+}
+fn dispatch<T, E, I>(
+	env: &mut Environment<E, BufInBufOutState>,
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<(), DispatchError>
+where
+	T: frame_system::Config<
+		RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
+	>,
+	E: Ext<T = T>,
+	I: ExtensionTrait<HandleDispatch<Call = <T as frame_system::Config>::RuntimeCall>>,
+{
+	const LOG_PREFIX: &str = " dispatch |";
 
-	fn dispatch<E>(
-		env: &mut Environment<E, BufInBufOutState>,
-		version: u8,
-		pallet_index: u8,
-		call_index: u8,
-		params: Vec<u8>,
-	) -> Result<(), DispatchError>
-	where
-		T: frame_system::Config<
-			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
-		>,
-		E: Ext<T = T>,
-	{
-		const LOG_PREFIX: &str = " dispatch |";
-
-		// Decode the parameters in a dispatch call based on the version, pallet index and call index.
-		let call = Self::DispatchHandler::versioned_dispatch_handler(
-			params,
-			version,
-			pallet_index,
-			call_index,
-		)?;
-		log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", LOG_PREFIX, call);
-		// Contract is the origin by default.
-		let mut origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
-		// Charge pre-dispatch weight.
-		let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-		// Check whether the dispatch call is allowed by the runtime.
-		origin.add_filter(Self::DispatchHandler::contains);
-		match call.dispatch(origin) {
-			Ok(info) => {
-				log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
-				// Refund weight if the actual weight is less than the charged weight.
-				if let Some(actual_weight) = info.actual_weight {
-					env.adjust_weight(charged_dispatch_weight, actual_weight);
-				}
-				Ok(())
-			},
-			Err(err) => {
-				log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
-				// Refund weight if the actual weight is less than the charged weight.
-				if let Some(actual_weight) = err.post_info.actual_weight {
-					env.adjust_weight(charged_dispatch_weight, actual_weight);
-				}
-				Err(err.error)
-			},
-		}
-	}
-
-	fn read_state<E: Ext<T = T>>(
-		env: &mut Environment<E, BufInBufOutState>,
-		version: u8,
-		pallet_index: u8,
-		call_index: u8,
-		params: Vec<u8>,
-	) -> Result<(), DispatchError> {
-		// Charge weight for doing one storage read.
-		env.charge_weight(T::DbWeight::get().reads(1_u64))?;
-		// Decode the parameters in a state query based on the version, pallet index and call index.
-		let read = Self::StateReader::versioned_read_state_handler(
-			params,
-			version,
-			pallet_index,
-			call_index,
-		)?;
-		// Check whether the state query is allowed by the runtime.
-		ensure!(Self::StateReader::contains(&read), UNKNOWN_CALL_ERROR);
-		// Query state.
-		let result = Self::StateReader::read(read);
-		log::trace!(
-			target:LOG_TARGET,
-			"{} result: {:?}.", " read_state |", result
-		);
-		// Write the result in the buffer for the contract to obtain.
-		env.write(&result, false, None)
+	// Decode the parameters in a dispatch call based on the version, pallet index and call index.
+	let call = <I as ExtensionTrait>::DispatchHandler::versioned_dispatch_handler(
+		params,
+		version,
+		pallet_index,
+		call_index,
+	)?;
+	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", LOG_PREFIX, call);
+	// Contract is the origin by default.
+	let mut origin: <<<I as ExtensionTrait>::DispatchHandler as HandleDispatch>::Call as Dispatchable>::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
+	// Charge pre-dispatch weight.
+	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
+	// Check whether the dispatch call is allowed by the runtime.
+	origin.add_filter(<I as ExtensionTrait>::DispatchHandler::contains);
+	match call.dispatch(origin) {
+		Ok(info) => {
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
+			// Refund weight if the actual weight is less than the charged weight.
+			if let Some(actual_weight) = info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
+			Ok(())
+		},
+		Err(err) => {
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
+			// Refund weight if the actual weight is less than the charged weight.
+			if let Some(actual_weight) = err.post_info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
+			Err(err.error)
+		},
 	}
 }
 
-/// Pop API chain extension.
-#[derive(Default)]
-pub struct ApiExtension<T: pallet_contracts::Config, I: ExtensionTrait<T>>(PhantomData<(T, I)>);
-
-impl<T, I> ChainExtension<T> for ApiExtension<T, I>
+fn read_state<T, E, I>(
+	env: &mut Environment<E, BufInBufOutState>,
+	version: u8,
+	pallet_index: u8,
+	call_index: u8,
+	params: Vec<u8>,
+) -> Result<(), DispatchError>
 where
-	T: pallet_contracts::Config
-		+ frame_system::Config<
-			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
-		>,
-	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
-	// Bound the type by the two traits which need to be implemented by the runtime.
-	I: ExtensionTrait<T>,
+	T: frame_system::Config,
+	E: Ext<T = T>,
+	I: ExtensionTrait,
 {
-	fn call<E: Ext<T = T>>(
-		&mut self,
-		env: Environment<E, InitState>,
-	) -> Result<RetVal, DispatchError> {
-		let mut env = env.buf_in_buf_out();
-		<I as ExtensionTrait<T>>::call(&mut env)
-	}
+	// Charge weight for doing one storage read.
+	env.charge_weight(T::DbWeight::get().reads(1_u64))?;
+	// Decode the parameters in a state query based on the version, pallet index and call index.
+	let read = <I as ExtensionTrait>::StateReader::versioned_read_state_handler(
+		params,
+		version,
+		pallet_index,
+		call_index,
+	)?;
+	// Check whether the state query is allowed by the runtime.
+	ensure!(<I as ExtensionTrait>::StateReader::contains(&read), UNKNOWN_CALL_ERROR);
+	// Query state.
+	let result = <I as ExtensionTrait>::StateReader::read(read);
+	log::trace!(
+		target:LOG_TARGET,
+		"{} result: {:?}.", " read_state |", result
+	);
+	// Write the result in the buffer for the contract to obtain.
+	env.write(&result, false, None)
 }
 
 /// Function identifiers used in the Pop API.
