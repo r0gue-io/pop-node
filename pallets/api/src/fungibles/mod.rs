@@ -1,17 +1,17 @@
-/// The fungibles pallet serves as a wrapper around the pallet_assets, offering a streamlined
-/// interface for interacting with fungible assets. The goal is to provide a simplified, consistent
-/// API that adheres to standards in the smart contract space.
+//! The fungibles pallet offers a streamlined interface for interacting with fungible assets. The
+//! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
+//! space.
+
+use frame_support::traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect};
+pub use pallet::*;
+use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
+use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 #[cfg(test)]
 mod tests;
 pub mod weights;
-
-use frame_support::traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect};
-pub use pallet::*;
-use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
-use weights::WeightInfo;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AssetIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
@@ -41,42 +41,42 @@ pub mod pallet {
 	};
 	use sp_std::vec::Vec;
 
-	/// State reads for the fungibles api with required input.
+	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// Total token supply for a given asset ID.
+		/// Total token supply for a specified asset.
 		#[codec(index = 0)]
 		TotalSupply(AssetIdOf<T>),
-		/// Account balance for a given asset ID.
+		/// Account balance for a specified `asset` and `owner`.
 		#[codec(index = 1)]
 		BalanceOf {
-			/// The asset ID.
-			id: AssetIdOf<T>,
-			/// The account ID of the owner.
+			/// The asset.
+			asset: AssetIdOf<T>,
+			/// The owner of the asset.
 			owner: AccountIdOf<T>,
 		},
-		/// Allowance for a spender approved by an owner, for a given asset ID.
+		/// Allowance for a `spender` approved by an `owner`, for a specified `asset`.
 		#[codec(index = 2)]
 		Allowance {
-			/// The asset ID.
-			id: AssetIdOf<T>,
-			/// The account ID of the owner.
+			/// The asset.
+			asset: AssetIdOf<T>,
+			/// The owner of the asset.
 			owner: AccountIdOf<T>,
-			/// The account ID of the spender.
+			/// The spender with an allowance.
 			spender: AccountIdOf<T>,
 		},
-		/// Token name for a given asset ID.
+		/// Name of the specified asset.
 		#[codec(index = 8)]
 		TokenName(AssetIdOf<T>),
-		/// Token symbol for a given asset ID.
+		/// Symbol for the specified asset.
 		#[codec(index = 9)]
 		TokenSymbol(AssetIdOf<T>),
-		/// Token decimals for a given asset ID.
+		/// Decimals for the specified asset.
 		#[codec(index = 10)]
 		TokenDecimals(AssetIdOf<T>),
-		/// Check if token with a given asset ID exists.
+		/// Check if a specified asset exists.
 		#[codec(index = 18)]
 		AssetExists(AssetIdOf<T>),
 	}
@@ -101,62 +101,61 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `spender` changes.
 		Approval {
-			/// The ID of the asset.
-			id: AssetIdOf<T>,
-			/// Account providing allowance.
+			/// The asset.
+			asset: AssetIdOf<T>,
+			/// The owner providing the allowance.
 			owner: AccountIdOf<T>,
-			/// Allowance beneficiary.
+			/// The beneficiary of the allowance.
 			spender: AccountIdOf<T>,
-			/// New allowance amount.
+			/// The new allowance amount.
 			value: BalanceOf<T>,
 		},
-		/// Event emitted when transfer of tokens occurs.
+		/// Event emitted when an asset transfer occurs.
 		Transfer {
-			/// The ID of the asset.
-			id: AssetIdOf<T>,
-			/// Transfer sender. `None` in case of minting new tokens.
+			/// The asset.
+			asset: AssetIdOf<T>,
+			/// The source of the transfer. `None` when minting.
 			from: Option<AccountIdOf<T>>,
-			/// Transfer recipient. `None` in case of burning tokens.
+			/// The recipient of the transfer. `None` when burning.
 			to: Option<AccountIdOf<T>>,
-			/// Amount of tokens transferred (or minted/burned).
+			/// The amount transferred (or minted/burned).
 			value: BalanceOf<T>,
 		},
-		/// Event emitted when a token class is created.
+		/// Event emitted when an asset is created.
 		Create {
-			/// The ID of the asset.
+			/// The asset identifier.
 			id: AssetIdOf<T>,
-			/// Creator of the asset.
+			/// The creator of the asset.
 			creator: AccountIdOf<T>,
-			/// Admin of the asset.
+			/// The administrator of the asset.
 			admin: AccountIdOf<T>,
 		},
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
-		/// `data` in unspecified format.
+		/// Transfers `value` amount of tokens from the caller's account to account `to`.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to transfer.
 		/// - `to` - The recipient account.
 		/// - `value` - The number of tokens to transfer.
 		#[pallet::call_index(3)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
 		pub fn transfer(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			to: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
+			let from = ensure_signed(origin.clone())?;
 			AssetsOf::<T>::transfer_keep_alive(
-				origin.clone(),
-				id.clone().into(),
+				origin,
+				asset.clone().into(),
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
-			let from = ensure_signed(origin)?;
-			Self::deposit_event(Event::Transfer { id, from: Some(from), to: Some(to), value });
+			Self::deposit_event(Event::Transfer { asset, from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -164,7 +163,7 @@ pub mod pallet {
 		/// in unspecified format.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to transfer.
 		/// - `from` - The account from which the asset balance will be withdrawn.
 		/// - `to` - The recipient account.
 		/// - `value` - The number of tokens to transfer.
@@ -172,39 +171,39 @@ pub mod pallet {
 		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_approved())]
 		pub fn transfer_from(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			from: AccountIdOf<T>,
 			to: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
 			AssetsOf::<T>::transfer_approved(
 				origin,
-				id.clone().into(),
+				asset.clone().into(),
 				T::Lookup::unlookup(from.clone()),
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer { id, from: Some(from), to: Some(to), value });
+			Self::deposit_event(Event::Transfer { asset, from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
 		/// Approves an account to spend a specified number of tokens on behalf of the caller.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to approve.
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to approve.
 		#[pallet::call_index(5)]
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn approve(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
-			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
+			let current_allowance = AssetsOf::<T>::allowance(asset.clone(), &owner, &spender);
 
 			let weight = match value.cmp(&current_allowance) {
 				// If the new value is equal to the current allowance, do nothing.
@@ -214,7 +213,7 @@ pub mod pallet {
 				Greater => {
 					AssetsOf::<T>::approve_transfer(
 						origin,
-						id.clone().into(),
+						asset.clone().into(),
 						T::Lookup::unlookup(spender.clone()),
 						value.saturating_sub(current_allowance),
 					)
@@ -224,37 +223,42 @@ pub mod pallet {
 				// If the new value is less than the current allowance, cancel the approval and
 				// set the new value.
 				Less => {
-					let id_param: AssetIdParameterOf<T> = id.clone().into();
+					let asset_param: AssetIdParameterOf<T> = asset.clone().into();
 					let spender_source = T::Lookup::unlookup(spender.clone());
 					AssetsOf::<T>::cancel_approval(
 						origin.clone(),
-						id_param.clone(),
+						asset_param.clone(),
 						spender_source.clone(),
 					)
 					.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
 					if value.is_zero() {
 						Self::weight_approve(0, 1)
 					} else {
-						AssetsOf::<T>::approve_transfer(origin, id_param, spender_source, value)?;
+						AssetsOf::<T>::approve_transfer(
+							origin,
+							asset_param,
+							spender_source,
+							value,
+						)?;
 						Self::weight_approve(1, 1)
 					}
 				},
 			};
-			Self::deposit_event(Event::Approval { id, owner, spender, value });
+			Self::deposit_event(Event::Approval { asset, owner, spender, value });
 			Ok(Some(weight).into())
 		}
 
-		/// Increases the allowance of a spender.
+		/// Increases the allowance of a spender and asset.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to have an allowance increased.
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to increase the allowance by.
 		#[pallet::call_index(6)]
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 0))]
 		pub fn increase_allowance(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
@@ -262,27 +266,27 @@ pub mod pallet {
 				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
 			AssetsOf::<T>::approve_transfer(
 				origin,
-				id.clone().into(),
+				asset.clone().into(),
 				T::Lookup::unlookup(spender.clone()),
 				value,
 			)
 			.map_err(|e| e.with_weight(AssetsWeightInfoOf::<T>::approve_transfer()))?;
-			let value = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
-			Self::deposit_event(Event::Approval { id, owner, spender, value });
+			let value = AssetsOf::<T>::allowance(asset.clone(), &owner, &spender);
+			Self::deposit_event(Event::Approval { asset, owner, spender, value });
 			Ok(().into())
 		}
 
-		/// Decreases the allowance of a spender.
+		/// Decreases the allowance of a spender and asset.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to have an allowance decreased.
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to decrease the allowance by.
 		#[pallet::call_index(7)]
 		#[pallet::weight(<T as Config>::WeightInfo::approve(1, 1))]
 		pub fn decrease_allowance(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			spender: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
@@ -291,14 +295,14 @@ pub mod pallet {
 			if value.is_zero() {
 				return Ok(Some(Self::weight_approve(0, 0)).into());
 			}
-			let current_allowance = AssetsOf::<T>::allowance(id.clone(), &owner, &spender);
+			let current_allowance = AssetsOf::<T>::allowance(asset.clone(), &owner, &spender);
 			let spender_source = T::Lookup::unlookup(spender.clone());
-			let id_param: AssetIdParameterOf<T> = id.clone().into();
+			let asset_param: AssetIdParameterOf<T> = asset.clone().into();
 
 			// Cancel the approval and set the new value if `new_allowance` is more than zero.
 			AssetsOf::<T>::cancel_approval(
 				origin.clone(),
-				id_param.clone(),
+				asset_param.clone(),
 				spender_source.clone(),
 			)
 			.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
@@ -306,17 +310,22 @@ pub mod pallet {
 			let weight = if new_allowance.is_zero() {
 				Self::weight_approve(0, 1)
 			} else {
-				AssetsOf::<T>::approve_transfer(origin, id_param, spender_source, new_allowance)?;
+				AssetsOf::<T>::approve_transfer(
+					origin,
+					asset_param,
+					spender_source,
+					new_allowance,
+				)?;
 				Self::weight_approve(1, 1)
 			};
-			Self::deposit_event(Event::Approval { id, owner, spender, value: new_allowance });
+			Self::deposit_event(Event::Approval { asset, owner, spender, value: new_allowance });
 			Ok(Some(weight).into())
 		}
 
-		/// Create a new token with a given asset ID.
+		/// Create a new token with a given identifier.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `id` - The identifier of the asset.
 		/// - `admin` - The account that will administer the asset.
 		/// - `min_balance` - The minimum balance required for accounts holding this asset.
 		#[pallet::call_index(11)]
@@ -338,92 +347,90 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Start the process of destroying a token with a given asset ID.
+		/// Start the process of destroying a token.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to be destroyed.
 		#[pallet::call_index(12)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
-		pub fn start_destroy(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
-			AssetsOf::<T>::start_destroy(origin, id.into())
+		pub fn start_destroy(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
+			AssetsOf::<T>::start_destroy(origin, asset.into())
 		}
 
-		/// Set the metadata for a token with a given asset ID.
+		/// Set the metadata for a token.
 		///
 		/// # Parameters
-		/// - `id`: The identifier of the asset to update.
-		/// - `name`: The user friendly name of this asset. Limited in length by
-		///   `pallet_assets::Config::StringLimit`.
-		/// - `symbol`: The exchange symbol for this asset. Limited in length by
-		///   `pallet_assets::Config::StringLimit`.
+		/// - `asset`: The asset to update.
+		/// - `name`: The user friendly name of this asset.
+		/// - `symbol`: The exchange symbol for this asset.
 		/// - `decimals`: The number of decimals this asset uses to represent one unit.
 		#[pallet::call_index(16)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::set_metadata(name.len() as u32, symbol.len() as u32))]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> DispatchResult {
-			AssetsOf::<T>::set_metadata(origin, id.into(), name, symbol, decimals)
+			AssetsOf::<T>::set_metadata(origin, asset.into(), name, symbol, decimals)
 		}
 
-		/// Clear the metadata for a token with a given asset ID.
+		/// Clear the metadata for a token.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to update.
 		#[pallet::call_index(17)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::clear_metadata())]
-		pub fn clear_metadata(origin: OriginFor<T>, id: AssetIdOf<T>) -> DispatchResult {
-			AssetsOf::<T>::clear_metadata(origin, id.into())
+		pub fn clear_metadata(origin: OriginFor<T>, asset: AssetIdOf<T>) -> DispatchResult {
+			AssetsOf::<T>::clear_metadata(origin, asset.into())
 		}
 
 		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - The asset to mint.
 		/// - `account` - The account to be credited with the created tokens.
 		/// - `value` - The number of tokens to mint.
 		#[pallet::call_index(19)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			account: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
 			AssetsOf::<T>::mint(
 				origin,
-				id.clone().into(),
+				asset.clone().into(),
 				T::Lookup::unlookup(account.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer { id, from: None, to: Some(account), value });
+			Self::deposit_event(Event::Transfer { asset, from: None, to: Some(account), value });
 			Ok(())
 		}
 
 		/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 		///
 		/// # Parameters
-		/// - `id` - The ID of the asset.
+		/// - `asset` - the asset to burn.
 		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[pallet::call_index(20)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
-			id: AssetIdOf<T>,
+			asset: AssetIdOf<T>,
 			account: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
 			AssetsOf::<T>::burn(
 				origin,
-				id.clone().into(),
+				asset.clone().into(),
 				T::Lookup::unlookup(account.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer { id, from: Some(account), to: None, value });
+			Self::deposit_event(Event::Transfer { asset, from: Some(account), to: None, value });
 			Ok(())
 		}
 	}
@@ -441,25 +448,25 @@ pub mod pallet {
 			use Read::*;
 
 			match value {
-				TotalSupply(id) => AssetsOf::<T>::total_supply(id).encode(),
-				BalanceOf { id, owner } => AssetsOf::<T>::balance(id, owner).encode(),
-				Allowance { id, owner, spender } => {
-					AssetsOf::<T>::allowance(id, &owner, &spender).encode()
+				TotalSupply(asset) => AssetsOf::<T>::total_supply(asset).encode(),
+				BalanceOf { asset, owner } => AssetsOf::<T>::balance(asset, owner).encode(),
+				Allowance { asset, owner, spender } => {
+					AssetsOf::<T>::allowance(asset, &owner, &spender).encode()
 				},
-				TokenName(id) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(id).encode()
+				TokenName(asset) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(asset).encode()
 				},
-				TokenSymbol(id) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(id).encode()
+				TokenSymbol(asset) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(asset).encode()
 				},
-				TokenDecimals(id) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(id).encode()
+				TokenDecimals(asset) => {
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(asset).encode()
 				},
-				AssetExists(id) => AssetsOf::<T>::asset_exists(id).encode(),
+				AssetExists(asset) => AssetsOf::<T>::asset_exists(asset).encode(),
 			}
 		}
 
-		pub fn weight_approve(approve: u32, cancel: u32) -> Weight {
+		fn weight_approve(approve: u32, cancel: u32) -> Weight {
 			<T as Config>::WeightInfo::approve(cancel, approve)
 		}
 	}
