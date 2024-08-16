@@ -1,9 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-mod tests;
-mod v0;
-
 use codec::Encode;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo},
@@ -17,6 +13,10 @@ use pallet_contracts::chain_extension::{
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
+
+#[cfg(test)]
+mod tests;
+mod v0;
 
 /// Logging target for categorizing messages from the Pop API extension module.
 const LOG_TARGET: &str = "pop-api::extension";
@@ -113,7 +113,7 @@ where
 	}
 }
 
-/// Extract (version, function_id, pallet_index, call_index) from the payload bytes.
+/// Extract discriminators (version, function_id, pallet_index, call_index) from the encoded call.
 fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8) {
 	// Extract version and function_id from first two bytes.
 	let (version, function_id) = {
@@ -136,8 +136,6 @@ fn read_state<T: frame_system::Config, E: Ext<T = T>, StateReader: ReadState>(
 	call_index: u8,
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError> {
-	const LOG_PREFIX: &str = " read_state |";
-
 	// Prefix params with version, pallet, index to simplify decoding.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
@@ -156,7 +154,7 @@ fn read_state<T: frame_system::Config, E: Ext<T = T>, StateReader: ReadState>(
 	};
 	log::trace!(
 		target:LOG_TARGET,
-		"{} result: {:?}.", LOG_PREFIX, result
+		"{} result: {:?}.", " read_state |", result
 	);
 	env.write(&result, false, None)
 }
@@ -175,8 +173,6 @@ where
 	E: Ext<T = T>,
 	Filter: CallFilter<Call = <T as frame_system::Config>::RuntimeCall> + 'static,
 {
-	const LOG_PREFIX: &str = " dispatch |";
-
 	// Prefix params with version, pallet, index to simplify decoding.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
@@ -185,7 +181,7 @@ where
 	// Contract is the origin by default.
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
-		VersionedDispatch::V0(call) => dispatch_call::<T, E, Filter>(env, call, origin, LOG_PREFIX),
+		VersionedDispatch::V0(call) => dispatch_call::<T, E, Filter>(env, call, origin),
 	}
 }
 
@@ -198,7 +194,6 @@ fn dispatch_call<T, E, Filter>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
 	mut origin: T::RuntimeOrigin,
-	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
 	T: frame_system::Config<
@@ -207,12 +202,14 @@ where
 	E: Ext<T = T>,
 	Filter: CallFilter<Call = <T as frame_system::Config>::RuntimeCall> + 'static,
 {
+	const LOG_PREFIX: &str = " dispatch |";
+
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
+	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", LOG_PREFIX, call);
 	origin.add_filter(Filter::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
 			// Refund weight if the actual weight is less than the charged weight.
 			if let Some(actual_weight) = info.actual_weight {
 				env.adjust_weight(charged_dispatch_weight, actual_weight);
@@ -220,7 +217,11 @@ where
 			Ok(())
 		},
 		Err(err) => {
-			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
+			// Refund weight if the actual weight is less than the charged weight.
+			if let Some(actual_weight) = err.post_info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
 			Err(err.error)
 		},
 	}
@@ -275,7 +276,7 @@ impl TryFrom<u8> for FuncId {
 }
 
 /// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
-/// The contract calling the chain extension can convert the status code to the descriptive `Error`.
+/// The contract calling the chain extension can optionally convert the status code to the descriptive `Error`.
 ///
 /// For `Error` see `pop_primitives::<version>::error::Error`.
 ///
