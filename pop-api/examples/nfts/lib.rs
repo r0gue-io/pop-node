@@ -18,7 +18,7 @@ impl From<Error> for ContractError {
 	}
 }
 
-#[ink::contract(env = pop_api::Environment)]
+#[ink::contract]
 mod nfts {
 	use super::*;
 
