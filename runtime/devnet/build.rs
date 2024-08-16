@@ -1,9 +1,6 @@
 #[cfg(all(feature = "std", feature = "metadata-hash"))]
 fn main() {
-	substrate_wasm_builder::WasmBuilder::new()
-		.with_current_project()
-		.export_heap_base()
-		.import_memory()
+	substrate_wasm_builder::WasmBuilder::init_with_defaults()
 		.enable_metadata_hash("UNIT", 12)
 		.build()
 }
