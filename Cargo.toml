@@ -48,7 +48,7 @@ tokio = { version = "1.36", features = ["macros", "time", "rt-multi-thread"] }
 
 # Build
 substrate-build-script-utils = "11.0.0"
-substrate-wasm-builder = "22.0.0"
+substrate-wasm-builder = "22.0.1"
 
 # Local
 pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
