@@ -28,6 +28,7 @@ pop-runtime-common = { workspace = true, default-features = false }
 # Substrate
 frame-benchmarking.workspace = true
 frame-executive.workspace = true
+frame-metadata-hash-extension.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 frame-system-benchmarking.workspace = true
