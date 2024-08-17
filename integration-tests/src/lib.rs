@@ -97,7 +97,7 @@ fn para_receiver_assertions<Test>(_: Test) {
 	assert_expected_events!(
 		PopNetworkPara,
 		vec![
-			RuntimeEvent::Balances(pallet_balances::Event::Deposit { .. }) => {},
+			RuntimeEvent::Balances(pallet_balances::Event::Minted { ..}) => {},
 			RuntimeEvent::MessageQueue(
 				pallet_message_queue::Event::Processed { success: true, .. }
 			) => {},
@@ -114,11 +114,9 @@ fn para_to_system_para_sender_assertions(t: ParaToSystemParaTest) {
 	assert_expected_events!(
 		PopNetworkPara,
 		vec![
-			// Amount to reserve transfer is transferred to Parachain's Sovereign account
-			RuntimeEvent::Balances(
-				pallet_balances::Event::Withdraw { who, amount }
-			) => {
-				who: *who == t.sender.account_id,
+			// Amount to teleport is withdrawn from Sender
+			RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
+				who: *who == t.receiver.account_id,
 				amount: *amount == t.args.amount,
 			},
 		]
@@ -134,11 +132,9 @@ fn para_to_relay_sender_assertions(t: ParaToRelayTest) {
 	assert_expected_events!(
 		PopNetworkPara,
 		vec![
-			// Amount to reserve transfer is transferred to Parachain's Sovereign account
-			RuntimeEvent::Balances(
-				pallet_balances::Event::Withdraw { who, amount }
-			) => {
-				who: *who == t.sender.account_id,
+			// Amount to teleport is withdrawn from Sender
+			RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
+				who: *who == t.receiver.account_id,
 				amount: *amount == t.args.amount,
 			},
 		]
