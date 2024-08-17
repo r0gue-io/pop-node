@@ -7,12 +7,10 @@ use sp_core::{crypto::Ss58Codec, sr25519, Pair, Public};
 use sp_runtime::traits::{IdentifyAccount, Verify};
 
 /// Specialized `ChainSpec` for the development parachain runtime.
-pub type DevnetChainSpec =
-	sc_service::GenericChainSpec<pop_runtime_devnet::RuntimeGenesisConfig, Extensions>;
+pub type DevnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 /// Specialized `ChainSpec` for the testnet parachain runtime.
-pub type TestnetChainSpec =
-	sc_service::GenericChainSpec<pop_runtime_testnet::RuntimeGenesisConfig, Extensions>;
+pub type TestnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
