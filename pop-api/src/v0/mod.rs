@@ -136,11 +136,11 @@ pub enum TransactionalError {
 	NoLayer,
 }
 
-// Helper method to build a dispatch call `ChainExtensionMethod`
+// Helper method to build a dispatch call.
 //
 // Parameters:
-// - 'module': The index of the runtime module
-// - 'dispatchable': The index of the module dispatchable functions
+// - 'module': The index of the runtime module.
+// - 'dispatchable': The index of the module dispatchable functions.
 fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	build_extension_method(V0, DISPATCH, module, dispatchable)
 }
