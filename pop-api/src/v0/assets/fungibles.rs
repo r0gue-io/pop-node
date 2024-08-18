@@ -1,9 +1,10 @@
-//! The `fungibles` module provides an API for interacting and managing with fungible assets on Pop network.
+//! The `fungibles` module provides an API for interacting and managing fungible assets on Pop Network.
 //!
-//! 1. PSP-22 Interface
-//! 2. PSP-22 Metadata Interface
+//! The API includes the following interfaces:
+//! 1. PSP-22
+//! 2. PSP-22 Metadata
 //! 3. Asset Management
-//! 4. PSP-22 Mintable & Burnable Interface
+//! 4. PSP-22 Mintable & Burnable
 
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
@@ -15,15 +16,15 @@ use constants::*;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
 pub use metadata::*;
 
-// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
+// Helper method to build a dispatch call.
 //
 // Parameters:
-// - 'dispatchable': The index of the module dispatchable functions.
+// - 'dispatchable': The index of the dispatchable function within the module.
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
 }
 
-// Helper method to build a dispatch call `ChainExtensionMethod` for fungibles `v0`.
+// Helper method to build a call to read state.
 //
 // Parameters:
 // - 'state_query': The index of the runtime state query.
@@ -148,9 +149,6 @@ pub mod events {
 ///
 /// # Parameters
 /// - `id` - The ID of the asset.
-///
-/// # Returns
-/// The total supply of the token, or an error if the operation fails.
 #[inline]
 pub fn total_supply(id: AssetId) -> Result<Balance> {
 	build_read_state(TOTAL_SUPPLY)
@@ -166,9 +164,6 @@ pub fn total_supply(id: AssetId) -> Result<Balance> {
 /// # Parameters
 /// - `id` - The ID of the asset.
 /// - `owner` - The account whose balance is being queried.
-///
-/// # Returns
-/// The balance of the specified account, or an error if the operation fails.
 #[inline]
 pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 	build_read_state(BALANCE_OF)
@@ -185,9 +180,6 @@ pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
 /// - `id` - The ID of the asset.
 /// - `owner` - The account that owns the tokens.
 /// - `spender` - The account that is allowed to spend the tokens.
-///
-/// # Returns
-/// The remaining allowance, or an error if the operation fails.
 #[inline]
 pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
 	build_read_state(ALLOWANCE)
@@ -204,9 +196,6 @@ pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Ba
 /// - `id` - The ID of the asset.
 /// - `to` - The recipient account.
 /// - `value` - The number of tokens to transfer.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
 pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER)
@@ -224,9 +213,6 @@ pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 /// - `from` - The account from which the tokens are transferred.
 /// - `to` - The recipient account.
 /// - `value` - The number of tokens to transfer.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the transfer fails.
 #[inline]
 pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER_FROM)
@@ -242,9 +228,6 @@ pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance
 /// - `id` - The ID of the asset.
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to approve.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the approval fails.
 #[inline]
 pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(APPROVE)
@@ -260,9 +243,6 @@ pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 /// - `id` - The ID of the asset.
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to increase the allowance by.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
 #[inline]
 pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(INCREASE_ALLOWANCE)
@@ -278,9 +258,6 @@ pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// - `id` - The ID of the asset.
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to decrease the allowance by.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
 #[inline]
 pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(DECREASE_ALLOWANCE)
@@ -296,9 +273,7 @@ pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Re
 /// - `id` - The ID of the asset.
 /// - `account` - The account to be credited with the created tokens.
 /// - `value` - The number of tokens to mint.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
+#[inline]
 pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(MINT)
 		.input::<(AssetId, AccountId, Balance)>()
@@ -313,9 +288,7 @@ pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 /// - `id` - The ID of the asset.
 /// - `account` - The account from which the tokens will be destroyed.
 /// - `value` - The number of tokens to destroy.
-///
-/// # Returns
-/// Returns `Ok(())` if successful, or an error if the operation fails.
+#[inline]
 pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(BURN)
 		.input::<(AssetId, AccountId, Balance)>()
@@ -324,53 +297,14 @@ pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
 		.call(&(id, account, value))
 }
 
-/// The interface for managing metadata of fungible assets. It includes the PSP-22 Metadata interface
-/// for querying metadata.
-// TODO: if reviewers agree with replacing metadata related apis here, the dispatchable index has to
-//  be changed (quick fix).
+/// The PSP-22 Metadata interface for querying metadata.
 pub mod metadata {
 	use super::*;
-
-	/// Set the metadata for a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id`: The identifier of the asset to update.
-	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
-	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
-	/// - `decimals`: The number of decimals this asset uses to represent one unit.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
-		build_dispatch(SET_METADATA)
-			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id, name, symbol, decimals))
-	}
-
-	/// Clear the metadata for a token with a given asset ID.
-	///
-	/// # Parameters
-	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
-	pub fn clear_metadata(id: AssetId) -> Result<()> {
-		build_dispatch(CLEAR_METADATA)
-			.input::<AssetId>()
-			.output::<Result<()>, true>()
-			.handle_error_code::<StatusCode>()
-			.call(&(id))
-	}
 
 	/// Returns the token name for a given asset ID.
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	/// The name of the token as a byte vector, or an error if the operation fails.
 	#[inline]
 	pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
 		build_read_state(TOKEN_NAME)
@@ -384,9 +318,6 @@ pub mod metadata {
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	///  The symbol of the token as a byte vector, or an error if the operation fails.
 	#[inline]
 	pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
 		build_read_state(TOKEN_SYMBOL)
@@ -400,9 +331,6 @@ pub mod metadata {
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	///  The number of decimals of the token, or an error if the operation fails.
 	#[inline]
 	pub fn token_decimals(id: AssetId) -> Result<u8> {
 		build_read_state(TOKEN_DECIMALS)
@@ -413,8 +341,8 @@ pub mod metadata {
 	}
 }
 
-/// The interface for creating and destroying fungible assets.
-pub mod asset_management {
+/// The interface for creating, managing and destroying fungible assets.
+pub mod management {
 	use super::*;
 
 	/// Create a new token with a given asset ID.
@@ -423,9 +351,7 @@ pub mod asset_management {
 	/// - `id` - The ID of the asset.
 	/// - `admin` - The account that will administer the asset.
 	/// - `min_balance` - The minimum balance required for accounts holding this asset.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the creation fails.
+	#[inline]
 	pub fn create(id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
 		build_dispatch(CREATE)
 			.input::<(AssetId, AccountId, Balance)>()
@@ -438,11 +364,38 @@ pub mod asset_management {
 	///
 	/// # Parameters
 	/// - `id` - The ID of the asset.
-	///
-	/// # Returns
-	/// Returns `Ok(())` if successful, or an error if the operation fails.
+	#[inline]
 	pub fn start_destroy(id: AssetId) -> Result<()> {
 		build_dispatch(START_DESTROY)
+			.input::<AssetId>()
+			.output::<Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id))
+	}
+
+	/// Set the metadata for a token with a given asset ID.
+	///
+	/// # Parameters
+	/// - `id`: The identifier of the asset to update.
+	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
+	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
+	/// - `decimals`: The number of decimals this asset uses to represent one unit.
+	#[inline]
+	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
+		build_dispatch(SET_METADATA)
+			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
+			.output::<Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(id, name, symbol, decimals))
+	}
+
+	/// Clear the metadata for a token with a given asset ID.
+	///
+	/// # Parameters
+	/// - `id` - The ID of the asset.
+	#[inline]
+	pub fn clear_metadata(id: AssetId) -> Result<()> {
+		build_dispatch(CLEAR_METADATA)
 			.input::<AssetId>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
@@ -532,7 +485,7 @@ mod tests {
 	use super::FungiblesError;
 	use crate::{
 		constants::{ASSETS, BALANCES},
-		v0::{
+		primitives::error::{
 			ArithmeticError::*,
 			Error::{self, *},
 			TokenError::*,

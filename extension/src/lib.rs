@@ -1,9 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(test)]
-mod tests;
-mod v0;
-
 use codec::Encode;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo},
@@ -18,16 +14,16 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
-/// Logging target for categorizing messages from the Pop API extension module.
+#[cfg(test)]
+mod tests;
+mod v0;
+
+// Logging target for categorizing messages from the Pop API extension module.
 const LOG_TARGET: &str = "pop-api::extension";
 
 const DECODING_FAILED_ERROR: DispatchError = DispatchError::Other("DecodingFailed");
-// TODO: issue #93, we can also encode the `pop_primitives::Error::UnknownCall` which means we do use
-//  `Error` in the runtime and it should stay in primitives. Perhaps issue #91 will also influence
-//  here. Should be looked at together.
 const DECODING_FAILED_ERROR_ENCODED: [u8; 4] = [255u8, 0, 0, 0];
 const UNKNOWN_CALL_ERROR: DispatchError = DispatchError::Other("UnknownCall");
-// TODO: see above.
 const UNKNOWN_CALL_ERROR_ENCODED: [u8; 4] = [254u8, 0, 0, 0];
 
 type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
@@ -113,7 +109,7 @@ where
 	}
 }
 
-/// Extract (version, function_id, pallet_index, call_index) from the payload bytes.
+/// Extract discriminators (version, function_id, pallet_index, call_index) from the encoded call.
 fn extract_env<T, E: Ext<T = T>>(env: &Environment<E, BufInBufOutState>) -> (u8, u8, u8, u8) {
 	// Extract version and function_id from first two bytes.
 	let (version, function_id) = {
@@ -136,8 +132,6 @@ fn read_state<T: frame_system::Config, E: Ext<T = T>, StateReader: ReadState>(
 	call_index: u8,
 	mut params: Vec<u8>,
 ) -> Result<(), DispatchError> {
-	const LOG_PREFIX: &str = " read_state |";
-
 	// Prefix params with version, pallet, index to simplify decoding.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
@@ -156,7 +150,7 @@ fn read_state<T: frame_system::Config, E: Ext<T = T>, StateReader: ReadState>(
 	};
 	log::trace!(
 		target:LOG_TARGET,
-		"{} result: {:?}.", LOG_PREFIX, result
+		"{} result: {:?}.", " read_state |", result
 	);
 	env.write(&result, false, None)
 }
@@ -175,8 +169,6 @@ where
 	E: Ext<T = T>,
 	Filter: CallFilter<Call = <T as frame_system::Config>::RuntimeCall> + 'static,
 {
-	const LOG_PREFIX: &str = " dispatch |";
-
 	// Prefix params with version, pallet, index to simplify decoding.
 	params.insert(0, version);
 	params.insert(1, pallet_index);
@@ -185,7 +177,7 @@ where
 	// Contract is the origin by default.
 	let origin: T::RuntimeOrigin = RawOrigin::Signed(env.ext().address().clone()).into();
 	match call {
-		VersionedDispatch::V0(call) => dispatch_call::<T, E, Filter>(env, call, origin, LOG_PREFIX),
+		VersionedDispatch::V0(call) => dispatch_call::<T, E, Filter>(env, call, origin),
 	}
 }
 
@@ -198,7 +190,6 @@ fn dispatch_call<T, E, Filter>(
 	env: &mut Environment<E, BufInBufOutState>,
 	call: T::RuntimeCall,
 	mut origin: T::RuntimeOrigin,
-	log_prefix: &str,
 ) -> Result<(), DispatchError>
 where
 	T: frame_system::Config<
@@ -207,12 +198,14 @@ where
 	E: Ext<T = T>,
 	Filter: CallFilter<Call = <T as frame_system::Config>::RuntimeCall> + 'static,
 {
+	const LOG_PREFIX: &str = " dispatch |";
+
 	let charged_dispatch_weight = env.charge_weight(call.get_dispatch_info().weight)?;
-	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", log_prefix, call);
+	log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", LOG_PREFIX, call);
 	origin.add_filter(Filter::contains);
 	match call.dispatch(origin) {
 		Ok(info) => {
-			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", log_prefix, info.actual_weight);
+			log::debug!(target:LOG_TARGET, "{} success, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
 			// Refund weight if the actual weight is less than the charged weight.
 			if let Some(actual_weight) = info.actual_weight {
 				env.adjust_weight(charged_dispatch_weight, actual_weight);
@@ -220,7 +213,11 @@ where
 			Ok(())
 		},
 		Err(err) => {
-			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", log_prefix, err.error);
+			log::debug!(target:LOG_TARGET, "{} failed: error: {:?}", LOG_PREFIX, err.error);
+			// Refund weight if the actual weight is less than the charged weight.
+			if let Some(actual_weight) = err.post_info.actual_weight {
+				env.adjust_weight(charged_dispatch_weight, actual_weight);
+			}
 			Err(err.error)
 		},
 	}
@@ -247,7 +244,7 @@ enum VersionedDispatch<RuntimeCall: Decode> {
 /// The `FuncId` specifies the available functions that can be called through the Pop API. Each
 /// variant corresponds to a specific functionality provided by the API, facilitating the
 /// interaction between smart contracts and the runtime.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum FuncId {
 	/// Represents a function call to dispatch a runtime call.
 	Dispatch,
@@ -275,7 +272,7 @@ impl TryFrom<u8> for FuncId {
 }
 
 /// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
-/// The contract calling the chain extension can convert the status code to the descriptive `Error`.
+/// The contract calling the chain extension can optionally convert the status code to the descriptive `Error`.
 ///
 /// For `Error` see `pop_primitives::<version>::error::Error`.
 ///
@@ -286,8 +283,17 @@ impl TryFrom<u8> for FuncId {
 ///
 /// - `error`: The `DispatchError` encountered during contract execution.
 /// - `version`: The version of the chain extension, used to determine the known errors.
-pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
-	let mut encoded_error: [u8; 4] = match error {
+fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
+	let mut encoded_error: [u8; 4] = encode_error(error);
+	match version {
+		0 => v0::handle_unknown_error(&mut encoded_error),
+		_ => encoded_error = UNKNOWN_CALL_ERROR_ENCODED,
+	}
+	u32::from_le_bytes(encoded_error)
+}
+
+fn encode_error(error: DispatchError) -> [u8; 4] {
+	match error {
 		// "UnknownCall" and "DecodingFailed" are mapped to specific errors in the API and will
 		// never change.
 		UNKNOWN_CALL_ERROR => UNKNOWN_CALL_ERROR_ENCODED,
@@ -298,26 +304,5 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 			encoded_error.resize(4, 0);
 			encoded_error.try_into().expect("qed, resized to 4 bytes line above")
 		},
-	};
-	match version {
-		// If an unknown variant of the `DispatchError` is detected the error needs to be converted
-		// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
-		// position forward (discarding the last byte as it is not used) and setting the first byte to the
-		// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
-		// variant which provides all the necessary information to debug which error occurred in the runtime.
-		//
-		// Byte layout explanation:
-		// - Byte 0: index of the variant within `Error`
-		// - Byte 1:
-		//   - Must be zero for `UNIT_ERRORS`.
-		//   - Represents the nested error in `SINGLE_NESTED_ERRORS`.
-		//   - Represents the first level of nesting in `DOUBLE_NESTED_ERRORS`.
-		// - Byte 2:
-		//   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
-		// - Byte 3:
-		//   - Unused or represents further nested information.
-		0 => v0::handle_unknown_error(&mut encoded_error),
-		_ => encoded_error = UNKNOWN_CALL_ERROR_ENCODED,
 	}
-	u32::from_le_bytes(encoded_error)
 }

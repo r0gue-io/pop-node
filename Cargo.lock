@@ -9609,7 +9609,6 @@ dependencies = [
  "pop-chain-extension",
  "pop-primitives",
  "pop-runtime-common",
- "rand",
  "scale-info",
  "smallvec",
  "sp-api",

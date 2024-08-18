@@ -1,4 +1,4 @@
-//! The `pop-api` crate provides an API for smart contracts to interact with the Pop network runtime.
+//! The `pop-api` crate provides an API for smart contracts to interact with the Pop Network runtime.
 //!
 //! This crate abstracts away complexities to deliver a streamlined developer experience while supporting
 //! multiple API versions to ensure backward compatibility. It is designed with a focus on stability,
@@ -14,7 +14,7 @@ pub use v0::assets;
 
 /// Module providing primitives types.
 pub mod primitives;
-/// Version zero of the API.
+/// The first version of the API.
 pub mod v0;
 
 /// A result type used by the API, with the `StatusCode` as the error type.
@@ -36,13 +36,13 @@ mod constants {
 	pub(crate) const FUNGIBLES: u8 = 150;
 }
 
-/// Helper method to build `ChainExtensionMethod`.
-///
-/// Parameters:
-/// - 'version': The version of the chain extension.
-/// - 'function': The ID of the function.
-/// - 'module': The index of the runtime module.
-/// - 'dispatchable': The index of the module dispatchable functions.
+// Helper method to build a dispatch call or a call to read state.
+//
+// Parameters:
+// - 'version': The version of the chain extension.
+// - 'function': The ID of the function.
+// - 'module': The index of the runtime module.
+// - 'dispatchable': The index of the module dispatchable functions.
 fn build_extension_method(
 	version: u8,
 	function: u8,
