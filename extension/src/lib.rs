@@ -272,9 +272,7 @@ impl TryFrom<u8> for FuncId {
 }
 
 /// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
-/// The contract calling the chain extension can optionally convert the status code to the descriptive `Error`.
-///
-/// For `Error` see `pop_primitives::<version>::error::Error`.
+/// The contract calling the chain extension can optionally convert the status code to the descriptive `pop_api::Error`.
 ///
 /// The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
 /// As a result, contracts maintain compatibility across different versions of the runtime.

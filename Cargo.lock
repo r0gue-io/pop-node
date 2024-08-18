@@ -9469,7 +9469,6 @@ dependencies = [
  "log",
  "pallet-contracts",
  "parity-scale-codec",
- "pop-primitives",
  "rand",
  "sp-core",
  "sp-runtime",
