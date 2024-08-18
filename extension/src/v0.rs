@@ -1,4 +1,9 @@
-//! TODO
+//! This module is responsible for handling and converting unknown errors returned to contracts that use the first version of the Pop API.
+//!
+//! The errors are categorized into unit errors, single nested errors, and double nested errors,
+//! each of which is encoded into a 4-byte array. The module provides functionality to convert
+//! unknown errors into the general "pop_api::Error::Other" error type, ensuring consistent error categorization
+//! across the runtime for contracts using the API.
 
 // Unit errors.
 // - CannotLookup: 1,
@@ -43,7 +48,7 @@ const MODULE_ERROR: u8 = 3;
 //   - Represents the second level of nesting in `DOUBLE_NESTED_ERRORS`.
 // - Byte 3:
 //   - Unused or represents further nested information.
-pub(crate) fn handle_unknown_error(encoded_error: &mut [u8; 4]) {
+pub(super) fn handle_unknown_error(encoded_error: &mut [u8; 4]) {
 	let is_unknown_error = match encoded_error[0] {
 		code if UNIT_ERRORS.contains(&code) => nested_errors(&encoded_error[1..], None),
 		TOKEN_ERROR => nested_errors(&encoded_error[1..], Some(INVALID_TOKEN_INDEX)),
@@ -96,7 +101,7 @@ mod tests {
 	// unit error, the encoded value is converted.
 	//
 	// Example: the error `BadOrigin` (encoded: `[2, 0, 0, 0]`) with a non-zero value for one
-	// of the bytes [1..4] - `[2, 0, 1, 0]` - is converted into `[0, 2, 0, 1]` (shifting the bits
+	// of the bytes [1..4]: `[2, 0, 1, 0]` is converted into `[0, 2, 0, 1]` (shifting the bits
 	// one forward). This is decoded to `Error::Other { dispatch_error: 2, index: 0, error: 1 }`.
 
 	macro_rules! unit_error_test {
