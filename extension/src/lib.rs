@@ -14,6 +14,7 @@ use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
+pub mod reboot;
 #[cfg(test)]
 mod tests;
 mod v0;

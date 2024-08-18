@@ -9466,6 +9466,7 @@ version = "0.1.0"
 dependencies = [
  "frame-support",
  "frame-system",
+ "impl-trait-for-tuples",
  "log",
  "pallet-contracts",
  "parity-scale-codec",
