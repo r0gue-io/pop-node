@@ -2,23 +2,48 @@ use crate::{
 	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::traits::Contains;
+use pop_chain_extension::{CallFilter, ReadState};
+use sp_std::vec::Vec;
 
 /// A query of runtime state.
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 #[repr(u8)]
-pub enum RuntimeRead<T: fungibles::Config> {
+pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
-	Fungibles(fungibles::Read<T>),
+	Fungibles(fungibles::Read<Runtime>),
 }
 
-/// A type to identify allowed calls to the Runtime from the API.
-pub struct AllowedApiCalls;
+/// A struct that implement requirements for the Pop API chain extension.
+#[derive(Default)]
+pub struct Extension;
+impl ReadState for Extension {
+	type StateQuery = RuntimeRead;
 
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	/// Allowed runtime calls from the API.
-	fn contains(c: &RuntimeCall) -> bool {
+	fn contains(c: &Self::StateQuery) -> bool {
+		use fungibles::Read::*;
+		matches!(
+			c,
+			RuntimeRead::Fungibles(
+				TotalSupply(..)
+					| BalanceOf { .. } | Allowance { .. }
+					| TokenName(..) | TokenSymbol(..)
+					| TokenDecimals(..) | AssetExists(..)
+			)
+		)
+	}
+
+	fn read(read: RuntimeRead) -> Vec<u8> {
+		match read {
+			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
+		}
+	}
+}
+
+impl CallFilter for Extension {
+	type Call = RuntimeCall;
+
+	fn contains(c: &Self::Call) -> bool {
 		use fungibles::Call::*;
 		matches!(
 			c,
@@ -31,22 +56,6 @@ impl Contains<RuntimeCall> for AllowedApiCalls {
 					| start_destroy { .. }
 					| clear_metadata { .. }
 					| mint { .. } | burn { .. }
-			)
-		)
-	}
-}
-
-impl<T: fungibles::Config> Contains<RuntimeRead<T>> for AllowedApiCalls {
-	/// Allowed state queries from the API.
-	fn contains(c: &RuntimeRead<T>) -> bool {
-		use fungibles::Read::*;
-		matches!(
-			c,
-			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | AssetExists(..)
 			)
 		)
 	}

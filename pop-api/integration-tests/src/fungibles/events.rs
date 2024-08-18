@@ -8,17 +8,8 @@ use scale::Encode;
 use sp_runtime::{traits::Hash, AccountId32, BuildStorage, DispatchError};
 
 fn create_event(id: AssetId, contract: AccountId32) -> Vec<u8> {
-	#[ink::event]
-	pub struct Create {
-		#[ink(topic)]
-		pub id: AssetId,
-		#[ink(topic)]
-		pub creator: AccountId32,
-		#[ink(topic)]
-		pub admin: AccountId32,
-	}
-
-	Create { id, creator: contract.clone(), admin: contract }.encode()
+	pop_api::assets::fungibles::events::Create { id, creator: contract.clone(), admin: contract }
+		.encode()
 }
 
 #[test]
@@ -51,32 +42,7 @@ fn instantiate_and_create_fungible_works() {
 				_ => None,
 			})
 			.collect();
-		// let event = events.last().unwrap();
-		// match event {
-		// 	pallet_contracts::Event::<Runtime>::ContractEmitted { contract, data } => {
-		// 		assert_eq!(data, &create_event(ASSET_ID, depl_contract))
-		// 	},
-		// 	_ => todo!(),
-		// }
-		let data = create_event(ASSET_ID, contract.clone());
-		assert_eq!(event.last().unwrap(), &data.as_slice());
+		let expected = create_event(ASSET_ID, contract.clone());
+		assert_eq!(event.last().unwrap(), &expected.as_slice());
 	});
-}
-
-#[test]
-fn event_encoding() {
-	#[ink::event]
-	pub struct Transfer {
-		/// Transfer sender. `None` in case of minting new tokens.
-		#[ink(topic)]
-		pub from: Option<AccountId32>,
-		/// Transfer recipient. `None` in case of burning tokens.
-		#[ink(topic)]
-		pub to: Option<AccountId32>,
-		/// Amount of tokens transferred (or minted/burned).
-		pub value: u128,
-	}
-
-	let event = Transfer { from: Some(ALICE), to: Some(BOB), value: 100u128 };
-	println!("Encoded: {:?}", event.encode());
 }
