@@ -11,6 +11,7 @@ use constants::DECODING_FAILED;
 use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 #[cfg(feature = "assets")]
 pub use v0::assets;
+pub use v0::{ArithmeticError, Error, TokenError, TransactionalError};
 
 /// Module providing primitives types.
 pub mod primitives;

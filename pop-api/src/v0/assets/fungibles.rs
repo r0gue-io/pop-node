@@ -11,9 +11,9 @@ use crate::{
 	primitives::{AccountId, AssetId, Balance},
 	Result, StatusCode,
 };
-pub use asset_management::*;
 use constants::*;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+pub use management::*;
 pub use metadata::*;
 
 // Helper method to build a dispatch call.
@@ -485,13 +485,11 @@ mod tests {
 	use super::FungiblesError;
 	use crate::{
 		constants::{ASSETS, BALANCES},
-		primitives::error::{
-			ArithmeticError::*,
-			Error::{self, *},
-			TokenError::*,
-			TransactionalError::*,
-		},
+		ArithmeticError::*,
+		Error::{self, *},
 		StatusCode,
+		TokenError::*,
+		TransactionalError::*,
 	};
 
 	fn error_into_status_code(error: Error) -> StatusCode {

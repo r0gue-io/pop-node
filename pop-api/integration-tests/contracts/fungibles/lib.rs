@@ -181,7 +181,7 @@ mod fungibles {
 
 		#[ink::test]
 		fn default_works() {
-			PopApiFungiblesExample::new();
+			Fungibles::new();
 		}
 	}
 }
