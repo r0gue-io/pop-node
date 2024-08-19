@@ -159,8 +159,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Transfers `value` amount tokens on behalf of `from` to account `to` with additional `data`
-		/// in unspecified format.
+		/// Transfers `value` amount tokens on behalf of `from` to account `to`.
 		///
 		/// # Parameters
 		/// - `asset` - The asset to transfer.
@@ -187,7 +186,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Approves an account to spend a specified number of tokens on behalf of the caller.
+		/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
 		///
 		/// # Parameters
 		/// - `asset` - The asset to approve.
@@ -248,7 +247,7 @@ pub mod pallet {
 			Ok(Some(weight).into())
 		}
 
-		/// Increases the allowance of a spender and asset.
+		/// Increases the allowance of `spender` by `value` amount of tokens.
 		///
 		/// # Parameters
 		/// - `asset` - The asset to have an allowance increased.
