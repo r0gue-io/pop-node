@@ -2552,9 +2552,9 @@ dependencies = [
 
 [[package]]
 name = "cumulus-primitives-storage-weight-reclaim"
-version = "6.0.1"
+version = "6.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9e02d29ca51a4911585fdd5381e5f1cb4ee553e4f20b843c08917dfba881ea7"
+checksum = "29a7e13063f593f21534a7b64c96f311c40cd4d3c72649e0bd063a34506fdd70"
 dependencies = [
  "cumulus-primitives-core",
  "cumulus-primitives-proof-size-hostfunction",
@@ -3897,9 +3897,9 @@ dependencies = [
 
 [[package]]
 name = "frame-system"
-version = "36.0.1"
+version = "36.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d19f388280c14dbabcee2a817e1123c59c55847c6d07a5b5ca901b34a5910093"
+checksum = "64d6a0e7bb6503facdcc6f8e19c83cd0bfc8bbbd268522b1a50e107dfc6b972d"
 dependencies = [
  "cfg-if",
  "docify",
@@ -9934,9 +9934,9 @@ dependencies = [
 
 [[package]]
 name = "polkadot-runtime-parachains"
-version = "15.0.2"
+version = "15.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a6cb1cf1fa41c64b0b515a33d7bd388c3af0de31e5f93bd4c2b220e408f7f968"
+checksum = "cb7e68cb26f9025daaad694d8192fd0e63e92c8761c45a339dd7a5b7925a3cb6"
 dependencies = [
  "bitflags 1.3.2",
  "bitvec",
