@@ -187,7 +187,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Approves an account to spend a specified number of tokens on behalf of the caller.
+		/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
 		///
 		/// # Parameters
 		/// - `token` - The token to approve.
@@ -248,7 +248,7 @@ pub mod pallet {
 			Ok(Some(weight).into())
 		}
 
-		/// Increases the allowance of a spender and token.
+		/// Increases the allowance of `spender` by `value` amount of tokens.
 		///
 		/// # Parameters
 		/// - `token` - The token to have an allowance increased.
@@ -276,7 +276,7 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Decreases the allowance of a spender and token.
+		/// Decreases the allowance of `spender` by `value` amount of tokens.
 		///
 		/// # Parameters
 		/// - `token` - The token to have an allowance decreased.
