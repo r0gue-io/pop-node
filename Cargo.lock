@@ -9530,7 +9530,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime-common"
-version = "0.3.0"
+version = "0.0.0"
 dependencies = [
  "frame-support",
  "parachains-common",
@@ -9543,7 +9543,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime-devnet"
-version = "0.3.0"
+version = "0.1.0"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
