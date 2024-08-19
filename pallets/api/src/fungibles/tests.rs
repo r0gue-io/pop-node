@@ -287,48 +287,48 @@ fn signed(account: AccountId) -> RuntimeOrigin {
 	RuntimeOrigin::signed(account)
 }
 
-fn create_asset(owner: AccountId, asset_asset: AssetId) {
-	assert_ok!(Assets::create(signed(owner), asset_asset, owner, 1));
+fn create_asset(owner: AccountId, asset: AssetId) {
+	assert_ok!(Assets::create(signed(owner), asset, owner, 1));
 }
 
-fn mint_asset(owner: AccountId, asset_asset: AssetId, to: AccountId, value: Balance) {
-	assert_ok!(Assets::mint(signed(owner), asset_asset, to, value));
+fn mint_asset(owner: AccountId, asset: AssetId, to: AccountId, value: Balance) {
+	assert_ok!(Assets::mint(signed(owner), asset, to, value));
 }
 
-fn create_asset_and_mint_to(owner: AccountId, asset_asset: AssetId, to: AccountId, value: Balance) {
-	create_asset(owner, asset_asset);
-	mint_asset(owner, asset_asset, to, value)
+fn create_asset_and_mint_to(owner: AccountId, asset: AssetId, to: AccountId, value: Balance) {
+	create_asset(owner, asset);
+	mint_asset(owner, asset, to, value)
 }
 
 fn create_asset_mint_and_approve(
 	owner: AccountId,
-	asset_asset: AssetId,
+	asset: AssetId,
 	to: AccountId,
 	mint: Balance,
 	spender: AccountId,
 	approve: Balance,
 ) {
-	create_asset_and_mint_to(owner, asset_asset, to, mint);
-	assert_ok!(Assets::approve_transfer(signed(to), asset_asset, spender, approve,));
+	create_asset_and_mint_to(owner, asset, to, mint);
+	assert_ok!(Assets::approve_transfer(signed(to), asset, spender, approve,));
 }
 
 fn create_asset_and_set_metadata(
 	owner: AccountId,
-	asset_asset: AssetId,
+	asset: AssetId,
 	name: Vec<u8>,
 	symbol: Vec<u8>,
 	decimals: u8,
 ) {
-	assert_ok!(Assets::create(signed(owner), asset_asset, owner, 100));
-	set_metadata_asset(owner, asset_asset, name, symbol, decimals);
+	assert_ok!(Assets::create(signed(owner), asset, owner, 100));
+	set_metadata_asset(owner, asset, name, symbol, decimals);
 }
 
 fn set_metadata_asset(
 	owner: AccountId,
-	asset_asset: AssetId,
+	asset: AssetId,
 	name: Vec<u8>,
 	symbol: Vec<u8>,
 	decimals: u8,
 ) {
-	assert_ok!(Assets::set_metadata(signed(owner), asset_asset, name, symbol, decimals));
+	assert_ok!(Assets::set_metadata(signed(owner), asset, name, symbol, decimals));
 }
