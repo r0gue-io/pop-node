@@ -62,6 +62,7 @@ pub(crate) fn genesis() -> Storage {
 			epoch_config: runtime::BABE_GENESIS_EPOCH_CONFIG,
 			..Default::default()
 		},
+		// TODO: sudo pallet is not configured in polkadot runtime
 		// sudo: runtime::SudoConfig {
 		// 	key: Some(get_account_id_from_seed::<sr25519::Public>("Alice")),
 		// },

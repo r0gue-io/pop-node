@@ -5,7 +5,7 @@ use crate::chains::{
 	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
 	pop_network::PopNetworkParaPallet,
 };
-// Note: using polkadot as stopgap until paseo updated to polkadot sdk v.13
+// Note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
 use asset_hub_polkadot_runtime as asset_hub_runtime;
 use asset_hub_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
 use asset_test_utils::xcm_helpers;

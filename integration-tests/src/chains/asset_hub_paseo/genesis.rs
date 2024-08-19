@@ -1,4 +1,4 @@
-// Note: using polkadot as stopgap until paseo updated to polkadot sdk v.13
+// Note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
 use asset_hub_polkadot_runtime as asset_hub_runtime;
 use emulated_integration_tests_common::{
 	accounts, build_genesis_storage, get_account_id_from_seed, get_from_seed, SAFE_XCM_VERSION,

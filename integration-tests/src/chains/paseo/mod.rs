@@ -19,6 +19,7 @@ decl_test_relay_chains! {
 		},
 		pallets = {
 			XcmPallet: runtime::XcmPallet,
+			// TODO: sudo pallet is not configured in polkadot runtime
 			// Sudo: runtime::Sudo,
 			Balances: runtime::Balances,
 			Hrmp: runtime::Hrmp,

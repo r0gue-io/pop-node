@@ -1,4 +1,4 @@
-// Note: using polkadot as stopgap until paseo updated to polkadot sdk v.13
+// Note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
 use asset_hub_polkadot_runtime as asset_hub_runtime;
 pub(crate) mod genesis;
 
@@ -17,7 +17,7 @@ decl_test_parachains! {
 		on_init = {
 			asset_hub_runtime::AuraExt::on_initialize(1);
 		},
-		// Note: using polkadot as stopgap until paseo updated to polkadot sdk v.13
+		// Note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
 		runtime = asset_hub_runtime,
 		core = {
 			XcmpMessageHandler: asset_hub_runtime::XcmpQueue,
