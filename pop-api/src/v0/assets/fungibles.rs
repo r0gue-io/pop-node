@@ -11,9 +11,9 @@ use crate::{
 	primitives::{AccountId, AssetId, Balance},
 	Result, StatusCode,
 };
-pub use asset_management::*;
 use constants::*;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+pub use management::*;
 pub use metadata::*;
 
 // Helper method to build a dispatch call.
