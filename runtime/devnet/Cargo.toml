@@ -95,6 +95,7 @@ hex = "0.4.3"
 enumflags2 = "0.7.9"
 
 [features]
+default = ["std"]
 std = [
     "codec/std",
     "cumulus-pallet-aura-ext/std",
@@ -237,4 +238,3 @@ metadata-hash = ["substrate-wasm-builder/metadata-hash"]
 # A convenience feature for enabling things when doing a build
 # for an on-chain release.
 on-chain-release-build = ["metadata-hash"]
-default = ["std"]
