@@ -11,8 +11,10 @@ use sp_runtime::{
 
 type Block = frame_system::mocking::MockBlock<Test>;
 pub(crate) type AccountId = u64;
-pub(crate) type AssetId = u32;
+pub type AssetId = u32;
 pub(crate) type Balance = u128;
+// For terminology in tests.
+pub(crate) type TokenId = AssetId;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
