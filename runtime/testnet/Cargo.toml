@@ -165,6 +165,7 @@ runtime-benchmarks = [
     "cumulus-primitives-core/runtime-benchmarks",
     "cumulus-primitives-utility/runtime-benchmarks",
     "frame-benchmarking/runtime-benchmarks",
+    "frame-metadata-hash-extension/std",
     "frame-support/runtime-benchmarks",
     "frame-system-benchmarking/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
