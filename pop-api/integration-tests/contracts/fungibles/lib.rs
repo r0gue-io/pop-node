@@ -1,14 +1,13 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-/// Local Fungibles:
-/// 1. PSP-22 Interface
-/// 2. PSP-22 Metadata Interface
-/// 3. Asset Management
-///
+/// 1. PSP-22
+/// 2. PSP-22 Metadata
+/// 3. Management
+/// 4. PSP-22 Mintable & Burnable
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api},
-	primitives::AssetId,
+	fungibles::{self as api},
+	primitives::TokenId,
 	StatusCode,
 };
 
@@ -40,66 +39,66 @@ mod fungibles {
 		/// - decrease_allowance
 
 		#[ink(message)]
-		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
-			api::total_supply(id)
+		pub fn total_supply(&self, token: TokenId) -> Result<Balance> {
+			api::total_supply(token)
 		}
 
 		#[ink(message)]
-		pub fn balance_of(&self, id: AssetId, owner: AccountId) -> Result<Balance> {
-			api::balance_of(id, owner)
+		pub fn balance_of(&self, token: TokenId, owner: AccountId) -> Result<Balance> {
+			api::balance_of(token, owner)
 		}
 
 		#[ink(message)]
 		pub fn allowance(
 			&self,
-			id: AssetId,
+			token: TokenId,
 			owner: AccountId,
 			spender: AccountId,
 		) -> Result<Balance> {
-			api::allowance(id, owner, spender)
+			api::allowance(token, owner, spender)
 		}
 
 		#[ink(message)]
-		pub fn transfer(&self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
-			api::transfer(id, to, value)
+		pub fn transfer(&self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
+			api::transfer(token, to, value)
 		}
 
 		#[ink(message)]
 		pub fn transfer_from(
 			&self,
-			id: AssetId,
+			token: TokenId,
 			from: AccountId,
 			to: AccountId,
 			value: Balance,
 			// In the PSP-22 standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
 		) -> Result<()> {
-			api::transfer_from(id, from, to, value)
+			api::transfer_from(token, from, to, value)
 		}
 
 		#[ink(message)]
-		pub fn approve(&self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-			api::approve(id, spender, value)
+		pub fn approve(&self, token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
+			api::approve(token, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn increase_allowance(
 			&self,
-			id: AssetId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
-			api::increase_allowance(id, spender, value)
+			api::increase_allowance(token, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn decrease_allowance(
 			&self,
-			id: AssetId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
-			api::decrease_allowance(id, spender, value)
+			api::decrease_allowance(token, spender, value)
 		}
 
 		/// 2. PSP-22 Metadata Interface:
@@ -108,18 +107,18 @@ mod fungibles {
 		/// - token_decimals
 
 		#[ink(message)]
-		pub fn token_name(&self, id: AssetId) -> Result<Vec<u8>> {
-			api::token_name(id)
+		pub fn token_name(&self, token: TokenId) -> Result<Vec<u8>> {
+			api::token_name(token)
 		}
 
 		#[ink(message)]
-		pub fn token_symbol(&self, id: AssetId) -> Result<Vec<u8>> {
-			api::token_symbol(id)
+		pub fn token_symbol(&self, token: TokenId) -> Result<Vec<u8>> {
+			api::token_symbol(token)
 		}
 
 		#[ink(message)]
-		pub fn token_decimals(&self, id: AssetId) -> Result<u8> {
-			api::token_decimals(id)
+		pub fn token_decimals(&self, token: TokenId) -> Result<u8> {
+			api::token_decimals(token)
 		}
 
 		/// 3. Asset Management:
@@ -127,37 +126,37 @@ mod fungibles {
 		/// - start_destroy
 		/// - set_metadata
 		/// - clear_metadata
-		/// - asset_exists
+		/// - token_exists
 
 		#[ink(message)]
-		pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
+		pub fn create(&self, id: TokenId, admin: AccountId, min_balance: Balance) -> Result<()> {
 			api::create(id, admin, min_balance)
 		}
 
 		#[ink(message)]
-		pub fn start_destroy(&self, id: AssetId) -> Result<()> {
-			api::start_destroy(id)
+		pub fn start_destroy(&self, token: TokenId) -> Result<()> {
+			api::start_destroy(token)
 		}
 
 		#[ink(message)]
 		pub fn set_metadata(
 			&self,
-			id: AssetId,
+			token: TokenId,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> Result<()> {
-			api::set_metadata(id, name, symbol, decimals)
+			api::set_metadata(token, name, symbol, decimals)
 		}
 
 		#[ink(message)]
-		pub fn clear_metadata(&self, id: AssetId) -> Result<()> {
-			api::clear_metadata(id)
+		pub fn clear_metadata(&self, token: TokenId) -> Result<()> {
+			api::clear_metadata(token)
 		}
 
 		#[ink(message)]
-		pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-			api::asset_exists(id)
+		pub fn token_exists(&self, token: TokenId) -> Result<bool> {
+			api::token_exists(token)
 		}
 
 		/// 4. PSP-22 Mintable & Burnable Interface:
@@ -165,13 +164,13 @@ mod fungibles {
 		/// - burn
 
 		#[ink(message)]
-		pub fn mint(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
-			api::mint(id, account, amount)
+		pub fn mint(&self, token: TokenId, account: AccountId, amount: Balance) -> Result<()> {
+			api::mint(token, account, amount)
 		}
 
 		#[ink(message)]
-		pub fn burn(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
-			api::burn(id, account, amount)
+		pub fn burn(&self, token: TokenId, account: AccountId, amount: Balance) -> Result<()> {
+			api::burn(token, account, amount)
 		}
 	}
 

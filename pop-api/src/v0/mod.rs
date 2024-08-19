@@ -6,9 +6,9 @@ use crate::{
 };
 use ink::env::chain_extension::ChainExtensionMethod;
 
-/// APIs for asset-related use cases.
-#[cfg(feature = "assets")]
-pub mod assets;
+/// APIs for fungible tokens.
+#[cfg(feature = "fungibles")]
+pub mod fungibles;
 
 pub(crate) const V0: u8 = 0;
 

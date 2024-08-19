@@ -23,5 +23,4 @@ std = [
     "pop-primitives/std",
     "sp-io/std",
 ]
-assets = []
-fungibles = ["assets"]
+fungibles = []

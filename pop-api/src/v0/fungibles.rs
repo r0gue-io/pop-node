@@ -1,19 +1,19 @@
-//! The `fungibles` module provides an API for interacting and managing fungible assets on Pop Network.
+//! The `fungibles` module provides an API for interacting and managing fungible tokens on Pop Network.
 //!
 //! The API includes the following interfaces:
 //! 1. PSP-22
 //! 2. PSP-22 Metadata
-//! 3. Asset Management
+//! 3. Management
 //! 4. PSP-22 Mintable & Burnable
 
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
-	primitives::{AccountId, AssetId, Balance},
+	primitives::{AccountId, Balance, TokenId},
 	Result, StatusCode,
 };
-pub use asset_management::*;
 use constants::*;
 use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+pub use management::*;
 pub use metadata::*;
 
 // Helper method to build a dispatch call.
@@ -53,7 +53,7 @@ mod constants {
 	pub(super) const START_DESTROY: u8 = 12;
 	pub(super) const SET_METADATA: u8 = 16;
 	pub(super) const CLEAR_METADATA: u8 = 17;
-	pub(super) const ASSET_EXISTS: u8 = 18;
+	pub(super) const TOKEN_EXISTS: u8 = 18;
 
 	/// 4. PSP-22 Mintable & Burnable interface:
 	pub(super) const MINT: u8 = 19;
@@ -66,7 +66,7 @@ mod constants {
 /// (`Create`, `StartDestroy`, `SetMetadata`, `ClearMetadata`) are provided for convenience.
 ///
 /// These events are not emitted by the API itself but can be used in your contracts to
-/// track asset operations. Be mindful of the costs associated with emitting events.
+/// track token operations. Be mindful of the costs associated with emitting events.
 ///
 /// For more details, refer to [ink! events](https://use.ink/basics/events).
 pub mod events {
@@ -75,354 +75,357 @@ pub mod events {
 	/// Event emitted when allowance by `owner` to `spender` changes.
 	#[ink::event]
 	pub struct Approval {
-		/// Account providing allowance.
+		/// The owner providing the allowance.
 		#[ink(topic)]
 		pub owner: AccountId,
-		/// Allowance beneficiary.
+		/// The beneficiary of the allowance.
 		#[ink(topic)]
 		pub spender: AccountId,
-		/// New allowance amount.
+		/// The new allowance amount.
 		pub value: u128,
 	}
 
 	/// Event emitted when transfer of tokens occurs.
 	#[ink::event]
 	pub struct Transfer {
-		/// Transfer sender. `None` in case of minting new tokens.
+		/// The source of the transfer. `None` when minting.
 		#[ink(topic)]
 		pub from: Option<AccountId>,
-		/// Transfer recipient. `None` in case of burning tokens.
+		/// The recipient of the transfer. `None` when burning.
 		#[ink(topic)]
 		pub to: Option<AccountId>,
-		/// Amount of tokens transferred (or minted/burned).
+		/// The amount transferred (or minted/burned).
 		pub value: u128,
 	}
 
-	/// Event emitted when a token class is created.
+	/// Event emitted when an token is created.
 	#[ink::event]
 	pub struct Create {
-		/// The ID of the asset.
+		/// The token identifier.
 		#[ink(topic)]
-		pub id: AssetId,
-		/// Creator of the asset.
+		pub id: TokenId,
+		/// The creator of the token.
 		#[ink(topic)]
 		pub creator: AccountId,
-		/// Admin of the asset.
+		/// The administrator of the token.
 		#[ink(topic)]
 		pub admin: AccountId,
 	}
 
-	/// Event emitted when a asset is in the process of being destroyed.
+	/// Event emitted when a token is in the process of being destroyed.
 	#[ink::event]
 	pub struct StartDestroy {
-		/// The ID of the asset.
+		/// The token.
 		#[ink(topic)]
-		pub id: AssetId,
+		pub token: TokenId,
 	}
 
-	/// Event emitted when new metadata is set for an asset.
+	/// Event emitted when new metadata is set for a token.
 	#[ink::event]
 	pub struct SetMetadata {
-		/// The ID of the asset created.
+		/// The token.
 		#[ink(topic)]
-		pub id: AssetId,
-		/// The name of the asset.
+		pub token: TokenId,
+		/// The name of the token.
 		#[ink(topic)]
 		pub name: Vec<u8>,
-		/// The symbol of the asset.
+		/// The symbol of the token.
 		#[ink(topic)]
 		pub symbol: Vec<u8>,
-		/// The decimals of the asset.
+		/// The decimals of the token.
 		pub decimals: u8,
 	}
 
 	/// Event emitted when metadata is cleared for a token.
 	#[ink::event]
 	pub struct ClearMetadata {
-		/// The ID of the asset.
+		/// The token.
 		#[ink(topic)]
-		pub id: AssetId,
+		pub token: TokenId,
 	}
 }
 
-/// Returns the total token supply for a given asset ID.
+/// Returns the total token supply for a specified token.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token.
 #[inline]
-pub fn total_supply(id: AssetId) -> Result<Balance> {
+pub fn total_supply(token: TokenId) -> Result<Balance> {
 	build_read_state(TOTAL_SUPPLY)
-		.input::<AssetId>()
+		.input::<TokenId>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id))
+		.call(&(token))
 }
 
-/// Returns the account balance for the specified `owner` for a given asset ID. Returns `0` if
+/// Returns the account balance for a specified `token` and `owner`. Returns `0` if
 /// the account is non-existent.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token.
 /// - `owner` - The account whose balance is being queried.
 #[inline]
-pub fn balance_of(id: AssetId, owner: AccountId) -> Result<Balance> {
+pub fn balance_of(token: TokenId, owner: AccountId) -> Result<Balance> {
 	build_read_state(BALANCE_OF)
-		.input::<(AssetId, AccountId)>()
+		.input::<(TokenId, AccountId)>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, owner))
+		.call(&(token, owner))
 }
 
-/// Returns the amount which `spender` is still allowed to withdraw from `owner` for a given
-/// asset ID. Returns `0` if no allowance has been set.
+/// Returns the allowance for a `spender` approved by an `owner`, for a specified `token`. Returns
+/// `0` if no allowance has been set.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token.
 /// - `owner` - The account that owns the tokens.
 /// - `spender` - The account that is allowed to spend the tokens.
 #[inline]
-pub fn allowance(id: AssetId, owner: AccountId, spender: AccountId) -> Result<Balance> {
+pub fn allowance(token: TokenId, owner: AccountId, spender: AccountId) -> Result<Balance> {
 	build_read_state(ALLOWANCE)
-		.input::<(AssetId, AccountId, AccountId)>()
+		.input::<(TokenId, AccountId, AccountId)>()
 		.output::<Result<Balance>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, owner, spender))
+		.call(&(token, owner, spender))
 }
 
-/// Transfers `value` amount of tokens from the caller's account to account `to`, with additional
-/// `data` in unspecified format.
+/// Transfers `value` amount of tokens from the caller's account to account `to`.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token to transfer.
 /// - `to` - The recipient account.
 /// - `value` - The number of tokens to transfer.
 #[inline]
-pub fn transfer(id: AssetId, to: AccountId, value: Balance) -> Result<()> {
+pub fn transfer(token: TokenId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(TokenId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, to, value))
+		.call(&(token, to, value))
 }
 
-/// Transfers `value` amount tokens on behalf of `from` to account `to` with additional `data`
-/// in unspecified format.
+/// Transfers `value` amount tokens on behalf of `from` to account `to`.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
-/// - `from` - The account from which the tokens are transferred.
+/// - `token` - The token to transfer.
+/// - `from` - The account from which the token balance will be withdrawn.
 /// - `to` - The recipient account.
 /// - `value` - The number of tokens to transfer.
 #[inline]
-pub fn transfer_from(id: AssetId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
+pub fn transfer_from(token: TokenId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(TRANSFER_FROM)
-		.input::<(AssetId, AccountId, AccountId, Balance)>()
+		.input::<(TokenId, AccountId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, from, to, value))
+		.call(&(token, from, to, value))
 }
 
-/// Approves an account to spend a specified number of tokens on behalf of the caller.
+/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token to approve.
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to approve.
 #[inline]
-pub fn approve(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+pub fn approve(token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(APPROVE)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(TokenId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, value))
+		.call(&(token, spender, value))
 }
 
-/// Increases the allowance of a spender.
+/// Increases the allowance of `spender` by `value` amount of tokens.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token to have an allowance increased.
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to increase the allowance by.
 #[inline]
-pub fn increase_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+pub fn increase_allowance(token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(INCREASE_ALLOWANCE)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(TokenId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, value))
+		.call(&(token, spender, value))
 }
 
-/// Decreases the allowance of a spender.
+/// Decreases the allowance of `spender` by `value` amount of tokens.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token to have an allowance decreased.
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to decrease the allowance by.
 #[inline]
-pub fn decrease_allowance(id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+pub fn decrease_allowance(token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(DECREASE_ALLOWANCE)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(TokenId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, spender, value))
+		.call(&(token, spender, value))
 }
 
-/// Creates `value` amount tokens and assigns them to `account`, increasing the total supply.
+/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - The token to mint.
 /// - `account` - The account to be credited with the created tokens.
 /// - `value` - The number of tokens to mint.
 #[inline]
-pub fn mint(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
+pub fn mint(token: TokenId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(MINT)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(TokenId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, account, value))
+		.call(&(token, account, value))
 }
 
-/// Destroys `value` amount tokens from `account`, reducing the total supply.
+/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 ///
 /// # Parameters
-/// - `id` - The ID of the asset.
+/// - `token` - the token to burn.
 /// - `account` - The account from which the tokens will be destroyed.
 /// - `value` - The number of tokens to destroy.
 #[inline]
-pub fn burn(id: AssetId, account: AccountId, value: Balance) -> Result<()> {
+pub fn burn(token: TokenId, account: AccountId, value: Balance) -> Result<()> {
 	build_dispatch(BURN)
-		.input::<(AssetId, AccountId, Balance)>()
+		.input::<(TokenId, AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, account, value))
+		.call(&(token, account, value))
 }
 
 /// The PSP-22 Metadata interface for querying metadata.
 pub mod metadata {
 	use super::*;
 
-	/// Returns the token name for a given asset ID.
+	/// Returns the name of the specified token.
 	///
 	/// # Parameters
-	/// - `id` - The ID of the asset.
+	/// - `token` - The token.
 	#[inline]
-	pub fn token_name(id: AssetId) -> Result<Vec<u8>> {
+	pub fn token_name(token: TokenId) -> Result<Vec<u8>> {
 		build_read_state(TOKEN_NAME)
-			.input::<AssetId>()
+			.input::<TokenId>()
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(token))
 	}
 
-	/// Returns the token symbol for a given asset ID.
+	/// Returns the symbol for the specified token.
 	///
 	/// # Parameters
-	/// - `id` - The ID of the asset.
+	/// - `token` - The token.
 	#[inline]
-	pub fn token_symbol(id: AssetId) -> Result<Vec<u8>> {
+	pub fn token_symbol(token: TokenId) -> Result<Vec<u8>> {
 		build_read_state(TOKEN_SYMBOL)
-			.input::<AssetId>()
+			.input::<TokenId>()
 			.output::<Result<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(token))
 	}
 
-	/// Returns the token decimals for a given asset ID.
+	/// Returns the decimals for the specified token.
 	///
 	/// # Parameters
-	/// - `id` - The ID of the asset.
+	/// - `token` - The token.
 	#[inline]
-	pub fn token_decimals(id: AssetId) -> Result<u8> {
+	pub fn token_decimals(token: TokenId) -> Result<u8> {
 		build_read_state(TOKEN_DECIMALS)
-			.input::<AssetId>()
+			.input::<TokenId>()
 			.output::<Result<u8>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(token))
 	}
 }
 
-/// The interface for creating, managing and destroying fungible assets.
+/// The interface for creating, managing and destroying fungible tokens.
 pub mod management {
 	use super::*;
 
-	/// Create a new token with a given asset ID.
+	/// Create a new token with a given identifier.
 	///
 	/// # Parameters
-	/// - `id` - The ID of the asset.
-	/// - `admin` - The account that will administer the asset.
-	/// - `min_balance` - The minimum balance required for accounts holding this asset.
+	/// - `id` - The identifier of the token.
+	/// - `admin` - The account that will administer the token.
+	/// - `min_balance` - The minimum balance required for accounts holding this token.
 	#[inline]
-	pub fn create(id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
+	pub fn create(id: TokenId, admin: AccountId, min_balance: Balance) -> Result<()> {
 		build_dispatch(CREATE)
-			.input::<(AssetId, AccountId, Balance)>()
+			.input::<(TokenId, AccountId, Balance)>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(id, admin, min_balance))
 	}
 
-	/// Start the process of destroying a token with a given asset ID.
+	/// Start the process of destroying a token.
 	///
 	/// # Parameters
-	/// - `id` - The ID of the asset.
+	/// - `token` - The token to be destroyed.
 	#[inline]
-	pub fn start_destroy(id: AssetId) -> Result<()> {
+	pub fn start_destroy(token: TokenId) -> Result<()> {
 		build_dispatch(START_DESTROY)
-			.input::<AssetId>()
+			.input::<TokenId>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(token))
 	}
 
-	/// Set the metadata for a token with a given asset ID.
+	/// Set the metadata for a token.
 	///
 	/// # Parameters
-	/// - `id`: The identifier of the asset to update.
-	/// - `name`: The user friendly name of this asset. Limited in length by `StringLimit`.
-	/// - `symbol`: The exchange symbol for this asset. Limited in length by `StringLimit`.
-	/// - `decimals`: The number of decimals this asset uses to represent one unit.
+	/// - `token`: The token to update.
+	/// - `name`: The user friendly name of this token.
+	/// - `symbol`: The exchange symbol for this token.
+	/// - `decimals`: The number of decimals this token uses to represent one unit.
 	#[inline]
-	pub fn set_metadata(id: AssetId, name: Vec<u8>, symbol: Vec<u8>, decimals: u8) -> Result<()> {
+	pub fn set_metadata(
+		token: TokenId,
+		name: Vec<u8>,
+		symbol: Vec<u8>,
+		decimals: u8,
+	) -> Result<()> {
 		build_dispatch(SET_METADATA)
-			.input::<(AssetId, Vec<u8>, Vec<u8>, u8)>()
+			.input::<(TokenId, Vec<u8>, Vec<u8>, u8)>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id, name, symbol, decimals))
+			.call(&(token, name, symbol, decimals))
 	}
 
-	/// Clear the metadata for a token with a given asset ID.
+	/// Clear the metadata for a token.
 	///
 	/// # Parameters
-	/// - `id` - The ID of the asset.
+	/// - `token` - The token to update
 	#[inline]
-	pub fn clear_metadata(id: AssetId) -> Result<()> {
+	pub fn clear_metadata(token: TokenId) -> Result<()> {
 		build_dispatch(CLEAR_METADATA)
-			.input::<AssetId>()
+			.input::<TokenId>()
 			.output::<Result<()>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(token))
 	}
 
-	/// Checks if token with a given asset ID exists.
+	/// Checks if a specified token exists.
 	///
 	/// # Parameters
-	/// - `id` - The ID of the asset.
+	/// - `token` - The token.
 	#[inline]
-	pub fn asset_exists(id: AssetId) -> Result<bool> {
-		build_read_state(ASSET_EXISTS)
-			.input::<AssetId>()
+	pub fn token_exists(token: TokenId) -> Result<bool> {
+		build_read_state(TOKEN_EXISTS)
+			.input::<TokenId>()
 			.output::<Result<bool>, true>()
 			.handle_error_code::<StatusCode>()
-			.call(&(id))
+			.call(&(token))
 	}
 }
 
-/// Represents various errors related to local fungible assets in the Pop API.
+/// Represents various errors related to fungible tokens in the Pop API.
 ///
 /// The `FungiblesError` provides a detailed and specific set of error types that can occur when
-/// interacting with fungible assets through the Pop API. Each variant signifies a particular error
+/// interacting with fungible tokens through the Pop API. Each variant signifies a particular error
 /// condition, facilitating precise error handling and debugging.
 ///
-/// It is designed to be lightweight, including only the essential errors relevant to fungible asset
+/// It is designed to be lightweight, including only the essential errors relevant to fungible token
 /// operations. The `Other` variant serves as a catch-all for any unexpected errors. For more
 /// detailed debugging, the `Other` variant can be converted into the richer `Error` type defined in
 /// the primitives crate.
@@ -431,13 +434,13 @@ pub mod management {
 pub enum FungiblesError {
 	/// An unspecified or unknown error occurred.
 	Other(StatusCode),
-	/// The asset is not live; either frozen or being destroyed.
-	AssetNotLive,
+	/// The token is not live; either frozen or being destroyed.
+	TokenNotLive,
 	/// Not enough allowance to fulfill a request is available.
 	InsufficientAllowance,
 	/// Not enough balance to fulfill a request is available.
 	InsufficientBalance,
-	/// The asset ID is already taken.
+	/// The token ID is already taken.
 	InUse,
 	/// Minimum balance should be non-zero.
 	MinBalanceZero,
@@ -445,9 +448,9 @@ pub enum FungiblesError {
 	NoAccount,
 	/// The signing account has no permission to do the operation.
 	NoPermission,
-	/// The given asset ID is unknown.
+	/// The given token ID is unknown.
 	Unknown,
-	/// No balance for creation of assets or fees.
+	/// No balance for creation of tokens or fees.
 	// TODO: Originally `pallet_balances::Error::InsufficientBalance` but collides with the
 	//  `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere to
 	//   standard. This deserves a second look.
@@ -472,7 +475,7 @@ impl From<StatusCode> for FungiblesError {
 			[_, ASSETS, 3, _] => FungiblesError::InUse,
 			[_, ASSETS, 5, _] => FungiblesError::MinBalanceZero,
 			[_, ASSETS, 7, _] => FungiblesError::InsufficientAllowance,
-			[_, ASSETS, 10, _] => FungiblesError::AssetNotLive,
+			[_, ASSETS, 10, _] => FungiblesError::TokenNotLive,
 			_ => FungiblesError::Other(value),
 		}
 	}
@@ -575,7 +578,7 @@ mod tests {
 		);
 		assert_eq!(
 			into_fungibles_error(Module { index: ASSETS, error: 10 }),
-			FungiblesError::AssetNotLive
+			FungiblesError::TokenNotLive
 		);
 	}
 }
