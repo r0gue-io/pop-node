@@ -72,8 +72,11 @@ pub(crate) mod reboot {
 	use codec::Decode;
 	use cumulus_primitives_core::Weight;
 	use frame_support::traits::Contains;
-	use pop_chain_extension::reboot::{RuntimeRead as Read, *};
+	use pop_chain_extension::reboot::{pop_api::*, RuntimeRead as Read, *};
 	use sp_core::ConstU8;
+
+	// Use bytes from func_id() + ext_id() to prefix the encoded input bytes to determine the versioned output
+	type Decodes<Output> = pop_chain_extension::reboot::Decodes<Output, Prepender>;
 
 	#[derive(Decode, Debug)]
 	pub enum VersionedRuntimeCall {
@@ -161,26 +164,20 @@ pub(crate) mod reboot {
 			// Dispatching calls
 			DispatchCall<
 				Runtime,
-				// Use bytes from func_id() + ext_id() to prefix the encoded input bytes to determine the versioned dispatch
-				PrefixBuilder<Runtime, VersionedRuntimeCall>,
-				// Type for versioning runtime calls
-				VersionedRuntimeCall,
+				Decodes<VersionedRuntimeCall>,
 				// Use first byte of func_id to match to this function, with value of zero.
-				FirstByte<ConstU8<0>>,
+				FirstByteOfFunctionId<ConstU8<0>>,
 				// Filtering of allowed calls
 				Filter,
 			>,
 			// Reading state
 			ReadState<
 				Runtime,
-				// Use bytes from func_id() + ext_id() to prefix the encoded input bytes to determine the versioned read
-				PrefixBuilder<Runtime, VersionedRuntimeRead>,
-				// Type for versioning runtime reads
-				VersionedRuntimeRead,
+				Decodes<VersionedRuntimeRead>,
 				// The current runtime reads available
 				RuntimeRead,
 				// Use first byte of func_id to match to this function, with value of one.
-				FirstByte<ConstU8<1>>,
+				FirstByteOfFunctionId<ConstU8<1>>,
 				// Filtering of allowed reads
 				Filter,
 			>,
