@@ -496,8 +496,6 @@ mod tests {
 			TransactionalError::*,
 		},
 		StatusCode,
-		TokenError::*,
-		TransactionalError::*,
 	};
 
 	fn error_into_status_code(error: Error) -> StatusCode {
