@@ -28,7 +28,7 @@ impl ReadState for Extension {
 				TotalSupply(..)
 					| BalanceOf { .. } | Allowance { .. }
 					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | AssetExists(..)
+					| TokenDecimals(..) | TokenExists(..)
 			)
 		)
 	}
