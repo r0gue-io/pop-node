@@ -75,8 +75,30 @@ pub(crate) mod reboot {
 	use pop_chain_extension::reboot::{pop_api::*, RuntimeRead as Read, *};
 	use sp_core::ConstU8;
 
-	// Use bytes from func_id() + ext_id() to prefix the encoded input bytes to determine the versioned output
-	type Decodes<Output> = pop_chain_extension::reboot::Decodes<Output, Prepender>;
+	pub type PopApi = Extension<Config>;
+
+	#[derive(Default)]
+	pub struct Config;
+	impl pop_chain_extension::reboot::Config for Config {
+		// Configure the functions available
+		type Functions = (
+			// Dispatching calls
+			DispatchCall<
+				Runtime,
+				DecodesAs<VersionedRuntimeCall>,
+				FirstByteOfFunctionId<ConstU8<0>>,
+				Filter,
+			>,
+			// Reading state
+			ReadState<
+				Runtime,
+				RuntimeRead,
+				DecodesAs<VersionedRuntimeRead>,
+				FirstByteOfFunctionId<ConstU8<1>>,
+				Filter,
+			>,
+		);
+	}
 
 	#[derive(Decode, Debug)]
 	pub enum VersionedRuntimeCall {
@@ -154,33 +176,5 @@ pub(crate) mod reboot {
 				)
 			)
 		}
-	}
-
-	#[derive(Default)]
-	pub struct Functions;
-	impl pop_chain_extension::reboot::Functions for Functions {
-		// Configure the functions available
-		type Function = (
-			// Dispatching calls
-			DispatchCall<
-				Runtime,
-				Decodes<VersionedRuntimeCall>,
-				// Use first byte of func_id to match to this function, with value of zero.
-				FirstByteOfFunctionId<ConstU8<0>>,
-				// Filtering of allowed calls
-				Filter,
-			>,
-			// Reading state
-			ReadState<
-				Runtime,
-				Decodes<VersionedRuntimeRead>,
-				// The current runtime reads available
-				RuntimeRead,
-				// Use first byte of func_id to match to this function, with value of one.
-				FirstByteOfFunctionId<ConstU8<1>>,
-				// Filtering of allowed reads
-				Filter,
-			>,
-		);
 	}
 }
