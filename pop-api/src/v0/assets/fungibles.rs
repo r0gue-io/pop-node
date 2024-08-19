@@ -485,11 +485,13 @@ mod tests {
 	use super::FungiblesError;
 	use crate::{
 		constants::{ASSETS, BALANCES},
-		ArithmeticError::*,
-		Error::{self, *},
+		primitives::error::{
+			ArithmeticError::*,
+			Error::{self, *},
+			TokenError::*,
+			TransactionalError::*,
+		},
 		StatusCode,
-		TokenError::*,
-		TransactionalError::*,
 	};
 
 	fn error_into_status_code(error: Error) -> StatusCode {
