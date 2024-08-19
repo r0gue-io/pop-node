@@ -8,7 +8,7 @@ use frame_support::{
 };
 pub use functions::{
 	matching::{FunctionIdMatcher, Matches},
-	Decode, Decodes, DispatchCall, Function, Processor, ReadState,
+	Decode, Decodes, DispatchCall, Function, Processor, ReadState, Readable,
 };
 use pallet_contracts::chain_extension::{
 	ChainExtension, Environment, Ext, InitState, Result, RetVal, RetVal::Converging,
@@ -45,12 +45,6 @@ where
 pub trait Config {
 	/// The function(s) available with the chain extension.
 	type Functions: Function;
-}
-
-// Trait to be implemented for type handling a read of runtime state
-pub trait RuntimeRead {
-	fn weight(&self) -> Weight;
-	fn read(self) -> Vec<u8>;
 }
 
 mod functions {
@@ -141,7 +135,7 @@ mod functions {
 	pub struct ReadState<C, R, D, M, F>(PhantomData<(C, R, D, M, F)>);
 	impl<
 			Config: pallet_contracts::Config,
-			Read: RuntimeRead,
+			Read: Readable,
 			Decoder: Decode<Output: codec::Decode + Into<Read>>,
 			Matcher: Matches,
 			Filter: Contains<Read>,
@@ -177,6 +171,15 @@ mod functions {
 		fn matches(func_id: u16) -> bool {
 			M::matches(func_id)
 		}
+	}
+
+	/// Trait to be implemented for type handling a read of runtime state
+	pub trait Readable {
+		/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
+		fn weight(&self) -> Weight;
+
+		/// Performs the read and returns the result.
+		fn read(self) -> Vec<u8>;
 	}
 
 	mod decoding {
