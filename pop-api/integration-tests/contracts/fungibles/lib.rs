@@ -88,7 +88,12 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn approve(&mut self, token: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+		pub fn approve(
+			&mut self,
+			token: AssetId,
+			spender: AccountId,
+			value: Balance,
+		) -> Result<()> {
 			let result = api::approve(token, spender, value);
 			self.env()
 				.emit_event(Approval { owner: self.env().account_id(), spender, value });
