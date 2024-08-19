@@ -108,6 +108,7 @@ std = [
     "cumulus-primitives-utility/std",
     "frame-benchmarking/std",
     "frame-executive/std",
+    "frame-metadata-hash-extension/std",
     "frame-support/std",
     "frame-system-benchmarking/std",
     "frame-system-rpc-runtime-api/std",
@@ -224,8 +225,6 @@ try-runtime = [
     "polkadot-runtime-common/try-runtime",
     "sp-runtime/try-runtime",
 ]
-
-experimental = []
 
 # Enable the metadata hash generation.
 #
