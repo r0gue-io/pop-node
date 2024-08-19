@@ -11,40 +11,41 @@ pub use functions::{
 	matching::{FirstByte, FunctionIdMatcher, Matches},
 	DispatchCall, Function, ReadState,
 };
-use pallet_contracts::{
-	chain_extension::{
-		BufInBufOutState, ChainExtension, Environment, Ext, InitState, Result, RetVal,
-		RetVal::Converging,
-	},
-	Config,
+use pallet_contracts::chain_extension::{
+	ChainExtension, Environment, Ext, InitState, Result, RetVal, RetVal::Converging,
 };
 use sp_core::Get;
 use sp_runtime::traits::Dispatchable;
 use std::marker::PhantomData;
 
+type Schedule<T> = <T as pallet_contracts::Config>::Schedule;
+
+/// A configurable chain extension.
 #[derive(Default)]
-pub struct ApiExtension<F>(PhantomData<F>);
-impl<C, F> ChainExtension<C> for ApiExtension<F>
+pub struct Extension<C: Config>(PhantomData<C>);
+impl<Config, F> ChainExtension<Config> for Extension<F>
 where
-	C: Config
+	Config: pallet_contracts::Config
 		+ frame_system::Config<
 			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 		>,
 	F: Functions<Function: Function<C = C>> + 'static,
 {
-	fn call<E: Ext<T = C>>(&mut self, env: Environment<E, InitState>) -> Result<RetVal> {
+	/// Call the chain extension logic.
+	///
+	/// # Parameters
+	/// - `env`: Access to the remaining arguments and the execution environment.
+	fn call<E: Ext<T = Config>>(&mut self, env: Environment<E, InitState>) -> Result<RetVal> {
 		let mut env = env.buf_in_buf_out();
-
-		let contract_host_weight = <C as Config>::Schedule::get().host_fn_weights;
-		env.charge_weight(contract_host_weight.debug_message)?;
-
-		F::Function::execute::<E>(env)
+		env.charge_weight(Schedule::<Config>::get().host_fn_weights.debug_message)?;
+		F::Functions::execute(env)
 	}
 }
 
-// Simple trait to allow configuration of chain extension functions (workaround for Default requirement)
-pub trait Functions {
-	type Function: Function;
+/// Trait for configuration of the chain extension.
+pub trait Config {
+	/// The function(s) available with the chain extension.
+	type Functions: Function;
 }
 
 // Trait to be implemented for type handling a read of runtime state
@@ -57,6 +58,7 @@ mod functions {
 	use super::*;
 	use builders::Builder;
 	use matching::Matches;
+	use pallet_contracts::chain_extension::{BufIn, BufOut};
 
 	// A chain extension function.
 	pub trait Function {
@@ -99,21 +101,18 @@ mod functions {
 			// Build call
 			let call = B::build(&mut env)?.into();
 			// Charge weight before dispatch
-			let charged_weight = env.charge_weight(call.get_dispatch_info().weight)?;
+			let dispatch_info = call.get_dispatch_info();
+			let charged = env.charge_weight(dispatch_info.weight)?;
 			// Ensure call allowed
 			let mut origin: C::RuntimeOrigin =
 				RawOrigin::Signed(env.ext().address().clone()).into();
 			origin.add_filter(Filter::contains);
-
-			let (result, weight) = match call.dispatch(origin) {
-				Ok(info) => (Ok(()), info.actual_weight),
-				Err(err) => (Err(err.error), err.post_info.actual_weight),
-			};
-			// Adjust post-dispatch weight
-			if let Some(actual_weight) = weight {
-				env.adjust_weight(charged_weight, actual_weight);
-			}
-			result.map(|_| Converging(0))
+			// Dispatch call
+			let result = call.dispatch(origin);
+			// Adjust weight
+			let weight = frame_support::dispatch::extract_actual_weight(&result, &dispatch_info);
+			env.adjust_weight(charged, weight);
+			result.map(|_| Converging(0)).map_err(|e| e.error)
 		}
 	}
 
@@ -142,11 +141,14 @@ mod functions {
 
 			// Charge weight before read
 			env.charge_weight(read.weight())?;
-			// Ensure call allowed
-			// TODO: use filtered error so easier to determine if it is decoding error or a filter blocking the call
-			ensure!(Filter::contains(&read), UNKNOWN_CALL_ERROR);
-			// TODO: check remaining parameters (allow_skip, weight per byte)
-			env.write(&read.read(), false, None)?;
+			// Ensure read allowed
+			ensure!(Filter::contains(&read), frame_system::Error::<Config>::CallFiltered);
+			// TODO: check parameters (allow_skip, weight_per_byte)
+			env.write(
+				&read.read(),
+				false,
+				Some(Schedule::<Config>::get().host_fn_weights.input_per_byte),
+			)?;
 			Ok(Converging(0))
 		}
 	}
