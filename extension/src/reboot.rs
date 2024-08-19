@@ -7,8 +7,8 @@ use frame_support::{
 	weights::Weight,
 };
 pub use functions::{
-	matching::{FunctionIdMatcher, Matches},
-	Decode, Decodes, DispatchCall, Function, Processor, ReadState, Readable,
+	Decode, Decodes, DispatchCall, Equals, Function, FunctionId, Matches, Processor, ReadState,
+	Readable,
 };
 use pallet_contracts::chain_extension::{
 	ChainExtension, Environment, Ext, InitState, Result, RetVal, RetVal::Converging,
@@ -50,7 +50,7 @@ pub trait Config {
 mod functions {
 	use super::*;
 	pub use decoding::{Decode, Decodes, Processor};
-	use matching::Matches;
+	pub use matching::{Equals, FunctionId, Matches};
 	use pallet_contracts::chain_extension::{BufIn, BufOut};
 
 	/// A chain extension function.
@@ -76,7 +76,7 @@ mod functions {
 			env: Environment<E, S>,
 		) -> Result<RetVal> {
 			for_tuples!( #(
-			if Tuple::matches(env.func_id()) {
+			if Tuple::matches(env.ext_id(), env.func_id()) {
 				return Tuple::execute(env)
 			}
 		)* );
@@ -126,8 +126,8 @@ mod functions {
 	}
 
 	impl<C, D, M: Matches, F> Matches for DispatchCall<C, D, M, F> {
-		fn matches(func_id: u16) -> bool {
-			M::matches(func_id)
+		fn matches(ext_id: u16, func_id: u16) -> bool {
+			M::matches(ext_id, func_id)
 		}
 	}
 
@@ -168,8 +168,8 @@ mod functions {
 	}
 
 	impl<C, R, D, M: Matches, F> Matches for ReadState<C, R, D, M, F> {
-		fn matches(func_id: u16) -> bool {
-			M::matches(func_id)
+		fn matches(ext_id: u16, func_id: u16) -> bool {
+			M::matches(ext_id, func_id)
 		}
 	}
 
@@ -241,19 +241,32 @@ mod functions {
 		}
 	}
 
-	pub mod matching {
+	mod matching {
 		use super::*;
 
-		// Simple trait for determining if a `Function` matches a function identifier
+		/// Trait for matching a function.
 		pub trait Matches {
-			fn matches(func_id: u16) -> bool;
+			/// Determines whether a function is a match.
+			///
+			/// # Parameters
+			/// - `ext_id` - The specified chain extension identifier.
+			/// - `func_id` - The specified function identifier.
+			fn matches(ext_id: u16, func_id: u16) -> bool;
 		}
 
-		// Default implementation
-		pub struct FunctionIdMatcher<T>(PhantomData<T>);
-		impl<T: Get<u16>> Matches for FunctionIdMatcher<T> {
-			fn matches(function_id: u16) -> bool {
-				function_id == T::get()
+		/// Matches on an extension and function identifier.
+		pub struct Equals<E, F>(PhantomData<(E, F)>);
+		impl<E: Get<u16>, F: Get<u16>> Matches for Equals<E, F> {
+			fn matches(ext_id: u16, func_id: u16) -> bool {
+				ext_id == E::get() && func_id == F::get()
+			}
+		}
+
+		/// Matches on a function identifier only.
+		pub struct FunctionId<T>(PhantomData<T>);
+		impl<T: Get<u16>> Matches for FunctionId<T> {
+			fn matches(_ext_id: u16, func_id: u16) -> bool {
+				func_id == T::get()
 			}
 		}
 	}
@@ -289,11 +302,11 @@ pub mod pop_api {
 		}
 	}
 
-	// Implementation which matches on the first byte of a function identifier only
+	/// Matches on the first byte of a function identifier only.
 	pub struct FirstByteOfFunctionId<T>(PhantomData<T>);
 	impl<T: Get<u8>> Matches for FirstByteOfFunctionId<T> {
-		fn matches(function_id: u16) -> bool {
-			let bytes = function_id.to_le_bytes();
+		fn matches(_ext_id: u16, func_id: u16) -> bool {
+			let bytes = func_id.to_le_bytes();
 			bytes[0] == T::get()
 		}
 	}
