@@ -72,7 +72,7 @@ pub(crate) mod reboot {
 	use codec::Decode;
 	use cumulus_primitives_core::Weight;
 	use frame_support::traits::Contains;
-	use pop_chain_extension::reboot::{pop_api::*, RuntimeRead as Read, *};
+	use pop_chain_extension::reboot::{pop_api::*, *};
 	use sp_core::ConstU8;
 
 	pub type PopApi = Extension<Config>;
@@ -130,12 +130,14 @@ pub(crate) mod reboot {
 		}
 	}
 
-	impl Read for RuntimeRead {
+	impl Readable for RuntimeRead {
+		/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
 		fn weight(&self) -> Weight {
 			// TODO: defer to relevant pallet - e.g. RuntimeRead::Fungibles(key) => fungibles::Pallet::read_weight(key),
 			<Runtime as frame_system::Config>::DbWeight::get().reads(1_u64)
 		}
 
+		/// Performs the read and returns the result.
 		fn read(self) -> Vec<u8> {
 			match self {
 				RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
