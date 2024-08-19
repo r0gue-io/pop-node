@@ -7,7 +7,10 @@
 ///
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api},
+	assets::fungibles::{
+		self as api,
+		events::{Approval, ClearMetadata, Create, SetMetadata, StartDestroy, Transfer},
+	},
 	primitives::AssetId,
 	StatusCode,
 };
@@ -61,7 +64,13 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn transfer(&self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
-			api::transfer(id, to, value)
+			let result = api::transfer(id, to, value);
+			self.env().emit_event(Transfer {
+				from: Some(self.env().account_id()),
+				to: Some(to),
+				value,
+			});
+			result
 		}
 
 		#[ink(message)]
@@ -74,12 +83,17 @@ mod fungibles {
 			// In the PSP-22 standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
 		) -> Result<()> {
-			api::transfer_from(id, from, to, value)
+			let result = api::transfer_from(id, from, to, value);
+			self.env().emit_event(Transfer { from: Some(from), to: Some(to), value });
+			result
 		}
 
 		#[ink(message)]
 		pub fn approve(&self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
-			api::approve(id, spender, value)
+			let result = api::approve(id, spender, value);
+			self.env()
+				.emit_event(Approval { owner: self.env().account_id(), spender, value });
+			result
 		}
 
 		#[ink(message)]
@@ -131,12 +145,16 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
-			api::create(id, admin, min_balance)
+			let result = api::create(id, admin, min_balance);
+			self.env().emit_event(Create { id, creator: admin, admin });
+			result
 		}
 
 		#[ink(message)]
 		pub fn start_destroy(&self, id: AssetId) -> Result<()> {
-			api::start_destroy(id)
+			let result = api::start_destroy(id);
+			self.env().emit_event(StartDestroy { id });
+			result
 		}
 
 		#[ink(message)]
@@ -147,12 +165,16 @@ mod fungibles {
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> Result<()> {
-			api::set_metadata(id, name, symbol, decimals)
+			let result = api::set_metadata(id, name.clone(), symbol.clone(), decimals);
+			self.env().emit_event(SetMetadata { id, name, symbol, decimals });
+			result
 		}
 
 		#[ink(message)]
 		pub fn clear_metadata(&self, id: AssetId) -> Result<()> {
-			api::clear_metadata(id)
+			let result = api::clear_metadata(id);
+			self.env().emit_event(ClearMetadata { id });
+			result
 		}
 
 		#[ink(message)]

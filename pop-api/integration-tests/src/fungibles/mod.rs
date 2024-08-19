@@ -1,4 +1,10 @@
 use super::*;
+use pop_api::{
+	assets::fungibles::events::{
+		Approval, ClearMetadata, Create, SetMetadata, StartDestroy, Transfer,
+	},
+	primitives::account_id_from_slice,
+};
 use pop_primitives::error::{
 	ArithmeticError::*,
 	Error::{self, *},
@@ -186,6 +192,14 @@ fn approve_works() {
 		assert_eq!(0, Assets::allowance(asset, &addr, &BOB));
 		assert_ok!(approve(addr.clone(), asset, BOB, amount));
 		assert_eq!(Assets::allowance(asset, &addr, &BOB), amount);
+		// Successfully emit an event from approving.
+		let expected = Approval {
+			owner: account_id_from_slice(addr.clone().as_ref()),
+			spender: account_id_from_slice(BOB.as_ref()),
+			value: amount,
+		}
+		.encode();
+		assert_eq!(latest_contract_event(), expected.as_slice());
 		// Non-additive, sets new value.
 		assert_ok!(approve(addr.clone(), asset, BOB, amount / 2));
 		assert_eq!(Assets::allowance(asset, &addr, &BOB), amount / 2);
@@ -345,6 +359,10 @@ fn create_works() {
 		assert_eq!(create(addr.clone(), ASSET_ID, BOB, 0), Err(Module { index: 52, error: 7 }),);
 		// Create asset successfully.
 		assert_ok!(create(addr.clone(), ASSET_ID, BOB, 1));
+		// Successfully emit an event from creating a new asset class.
+		let admin = account_id_from_slice(BOB.as_ref());
+		let expected = Create { id: ASSET_ID, creator: admin, admin }.encode();
+		assert_eq!(latest_contract_event(), expected.as_slice());
 		// Asset ID is already taken.
 		assert_eq!(create(addr.clone(), ASSET_ID, BOB, 1), Err(Module { index: 52, error: 5 }),);
 	});
@@ -364,8 +382,14 @@ fn instantiate_and_create_fungible_works() {
 			Err(Module { index: 52, error: 5 })
 		);
 		// Successfully create an asset when instantiating the contract.
-		assert_ok!(instantiate_and_create_fungible(contract, ASSET_ID, 1));
+		let instantiator =
+			instantiate_and_create_fungible(contract, ASSET_ID, 1).expect("Should work");
 		assert!(Assets::asset_exists(ASSET_ID));
+		// Successfully emit an event from instantiating a new fungible.
+		let instantiator = account_id_from_slice(instantiator.as_ref());
+		let expected =
+			Create { id: ASSET_ID, creator: instantiator.clone(), admin: instantiator }.encode();
+		assert_eq!(latest_contract_event(), expected.as_slice());
 	});
 }
 
@@ -383,6 +407,9 @@ fn start_destroy_works() {
 		assert_eq!(start_destroy(addr.clone(), asset), Err(Module { index: 52, error: 2 }),);
 		let asset = create_asset(addr.clone(), ASSET_ID, 1);
 		assert_ok!(start_destroy(addr.clone(), asset));
+		// Successfully emit an event from destroying an asset.
+		let expected = StartDestroy { id: ASSET_ID }.encode();
+		assert_eq!(latest_contract_event(), expected.as_slice());
 	});
 }
 
@@ -423,7 +450,10 @@ fn set_metadata_works() {
 			Err(Module { index: 52, error: 9 }),
 		);
 		// Set metadata successfully.
-		assert_ok!(set_metadata(addr.clone(), ASSET_ID, name, symbol, decimals));
+		assert_ok!(set_metadata(addr.clone(), ASSET_ID, name.clone(), symbol.clone(), decimals));
+		// Successfully emit an event from set asset metadata.
+		let expected = SetMetadata { id: ASSET_ID, name, symbol, decimals }.encode();
+		assert_eq!(latest_contract_event(), expected.as_slice());
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);
 		assert_eq!(
@@ -458,6 +488,9 @@ fn clear_metadata_works() {
 		set_metadata_asset(addr.clone(), asset, name, symbol, decimals);
 		// Clear metadata successfully.
 		assert_ok!(clear_metadata(addr.clone(), ASSET_ID));
+		// Successfully emit an event from set asset metadata.
+		let expected = ClearMetadata { id: ASSET_ID }.encode();
+		assert_eq!(latest_contract_event(), expected.as_slice());
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);
 		assert_eq!(

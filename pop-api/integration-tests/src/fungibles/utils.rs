@@ -315,7 +315,7 @@ pub(super) fn instantiate_and_create_fungible(
 	contract: &str,
 	asset_id: AssetId,
 	min_balance: Balance,
-) -> Result<(), Error> {
+) -> Result<AccountId32, Error> {
 	let function = function_selector("new");
 	let input = [function, asset_id.encode(), min_balance.encode()].concat();
 	let (wasm_binary, _) =
@@ -329,11 +329,30 @@ pub(super) fn instantiate_and_create_fungible(
 		input,
 		vec![],
 		DEBUG_OUTPUT,
-		CollectEvents::Skip,
+		CollectEvents::UnsafeCollect,
 	)
 	.result
-	.expect("should work")
-	.result;
-	decoded::<Result<(), Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+	.expect("should work");
+	let account_id = result.clone().account_id;
+	let result = decoded::<Result<(), Error>>(result.clone().result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result));
+	match result {
+		Ok(_) => Ok(account_id),
+		Err(error) => Err(error),
+	}
+}
+
+/// Get the latest event from pallet contracts.
+pub(super) fn latest_contract_event() -> Vec<u8> {
+	let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
+	let contract_events = events
+		.iter()
+		.filter_map(|event| match event {
+			pallet_contracts::Event::<Runtime>::ContractEmitted { data, .. } => {
+				Some(data.as_slice())
+			},
+			_ => None,
+		})
+		.collect::<Vec<&[u8]>>();
+	contract_events.last().unwrap().to_vec()
 }

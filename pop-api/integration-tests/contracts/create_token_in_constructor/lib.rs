@@ -1,8 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api},
+	assets::fungibles::{self as api, events::Create},
 	primitives::AssetId,
 	StatusCode,
 };
@@ -25,6 +24,7 @@ mod create_token_in_constructor {
 			// AccountId of the contract which will be set to the owner of the fungible token.
 			let owner = contract.env().account_id();
 			api::create(id, owner, min_balance)?;
+			contract.env().emit_event(Create { id, creator: owner, admin: owner });
 			Ok(contract)
 		}
 
