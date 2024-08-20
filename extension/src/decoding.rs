@@ -10,7 +10,7 @@ pub trait Decode {
 	type Processor: Processor;
 
 	/// The error to return if decoding fails.
-	const ERROR: DispatchError = DECODING_FAILED_ERROR;
+	const ERROR: DispatchError;
 	/// The log target.
 	const LOG_TARGET: &'static str;
 
@@ -39,12 +39,13 @@ pub trait Decode {
 }
 
 /// Default implementation for decoding data read from contract memory.
-pub struct Decodes<O, P = (), L = ()>(PhantomData<(O, P, L)>);
-impl<Output: codec::Decode, Processor_: Processor, Logger: LogTarget> Decode
-	for Decodes<Output, Processor_, Logger>
+pub struct Decodes<O, E, P = (), L = ()>(PhantomData<(O, E, P, L)>);
+impl<Output: codec::Decode, Error: ErrorProvider, Processor_: Processor, Logger: LogTarget> Decode
+	for Decodes<Output, Error, Processor_, Logger>
 {
 	type Output = Output;
 	type Processor = Processor_;
+	const ERROR: DispatchError = Error::ERROR;
 	const LOG_TARGET: &'static str = Logger::LOG_TARGET;
 }
 

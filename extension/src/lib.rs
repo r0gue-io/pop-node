@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::error::{DECODING_FAILED_ERROR, UNKNOWN_CALL_ERROR};
 use codec::Decode as _;
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
@@ -16,17 +15,14 @@ use pallet_contracts::chain_extension::{
 };
 pub use pallet_contracts::chain_extension::{Environment, Ext, State};
 use sp_core::Get;
-use sp_runtime::traits::Dispatchable;
+use sp_runtime::{traits::Dispatchable, DispatchError};
 use std::marker::PhantomData;
 
 mod decoding;
-#[allow(dead_code)]
-mod error;
 mod functions;
 mod matching;
 #[cfg(test)]
 mod tests;
-mod v0;
 
 type Schedule<T> = <T as pallet_contracts::Config>::Schedule;
 
@@ -53,7 +49,10 @@ where
 		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
 		env.charge_weight(Schedule::<Runtime>::get().host_fn_weights.debug_message)?;
 		// Execute the function
-		Config::Functions::execute(env)
+		match Config::Functions::execute(&mut env) {
+			Ok(r) => Ok(r),
+			Err(e) => Config::Error::convert(e, env),
+		}
 	}
 }
 
@@ -61,6 +60,8 @@ where
 pub trait Config {
 	/// The function(s) available with the chain extension.
 	type Functions: Function;
+	/// Optional error conversion.
+	type Error: ErrorConverter;
 
 	/// The log target.
 	const LOG_TARGET: &'static str;
@@ -83,4 +84,26 @@ pub trait LogTarget {
 
 impl LogTarget for () {
 	const LOG_TARGET: &'static str = "pop-chain-extension";
+}
+
+/// Trait for error conversion.
+pub trait ErrorConverter {
+	/// Converts the provided error.
+	///
+	/// # Parameters
+	/// - `error` - The error to be converted.
+	/// - `env` - The current execution environment.
+	fn convert<E: Ext, S: State>(error: DispatchError, env: Environment<E, S>) -> Result<RetVal>;
+}
+
+impl ErrorConverter for () {
+	fn convert<E: Ext, S: State>(error: DispatchError, _env: Environment<E, S>) -> Result<RetVal> {
+		Err(error)
+	}
+}
+
+/// Trait for providing an error type.
+pub trait ErrorProvider {
+	/// An error to return.
+	const ERROR: DispatchError;
 }

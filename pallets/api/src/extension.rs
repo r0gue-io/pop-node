@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 use frame_support::traits::Get;
-pub use pop_chain_extension::{Config, DispatchCall, ReadState, Readable};
+pub use pop_chain_extension::{Config, DispatchCall, ErrorConverter, ReadState, Readable};
 use pop_chain_extension::{Decodes, Environment, Ext, LogTarget, Matches, Processor, State};
 
 /// The logging target for the chain extension.
@@ -9,7 +9,7 @@ pub const LOG_TARGET: &str = "pop-api::extension";
 /// The chain extension used by the API.
 pub type Extension<Functions> = pop_chain_extension::Extension<Functions>;
 /// Decodes output by prepending bytes from ext_id() + func_id()
-pub type DecodesAs<Output, Logger = ()> = Decodes<Output, Prepender, Logger>;
+pub type DecodesAs<Output, Error, Logger = ()> = Decodes<Output, Error, Prepender, Logger>;
 
 /// Prepends bytes from ext_id() + func_id() to prefix the encoded input bytes to determine the versioned output
 pub struct Prepender;
