@@ -35,8 +35,8 @@ impl Processor for Prepender {
 /// Matches on the first byte of a function identifier only.
 pub struct IdentifiedByFirstByteOfFunctionId<T>(PhantomData<T>);
 impl<T: Get<u8>> Matches for IdentifiedByFirstByteOfFunctionId<T> {
-	fn matches(_ext_id: u16, func_id: u16) -> bool {
-		let bytes = func_id.to_le_bytes();
+	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+		let bytes = env.func_id().to_le_bytes();
 		bytes[1] == T::get()
 	}
 }
