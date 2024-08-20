@@ -22,22 +22,27 @@ type Schedule<T> = <T as pallet_contracts::Config>::Schedule;
 /// A configurable chain extension.
 #[derive(Default)]
 pub struct Extension<C: Config>(PhantomData<C>);
-impl<Config, F> ChainExtension<Config> for Extension<F>
+impl<Runtime, Config> ChainExtension<Runtime> for Extension<Config>
 where
-	Config: pallet_contracts::Config
+	Runtime: pallet_contracts::Config
 		+ frame_system::Config<
 			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 		>,
-	F: self::Config<Functions: Function<Config = Config>> + 'static,
+	Config: self::Config<Functions: Function<Config = Runtime>> + 'static,
 {
 	/// Call the chain extension logic.
 	///
 	/// # Parameters
 	/// - `env`: Access to the remaining arguments and the execution environment.
-	fn call<E: Ext<T = Config>>(&mut self, env: Environment<E, InitState>) -> Result<RetVal> {
+	fn call<E: Ext<T = Runtime>>(&mut self, env: Environment<E, InitState>) -> Result<RetVal> {
+		log::debug!(target: Config::LOG_TARGET, " extension called ");
 		let mut env = env.buf_in_buf_out();
-		env.charge_weight(Schedule::<Config>::get().host_fn_weights.debug_message)?;
-		F::Functions::execute(env)
+		// Charge weight for making a call from a contract to the runtime.
+		// `debug_message` weight is a good approximation of the additional overhead of going from contract layer to substrate layer.
+		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
+		env.charge_weight(Schedule::<Runtime>::get().host_fn_weights.debug_message)?;
+		// Execute the function
+		Config::Functions::execute(env)
 	}
 }
 
@@ -45,6 +50,9 @@ where
 pub trait Config {
 	/// The function(s) available with the chain extension.
 	type Functions: Function;
+
+	/// The log target.
+	const LOG_TARGET: &'static str;
 }
 
 mod functions {
@@ -75,12 +83,15 @@ mod functions {
 		fn execute<E: Ext<T = Self::Config>, S: BufIn + BufOut>(
 			env: Environment<E, S>,
 		) -> Result<RetVal> {
+			// Attempts to match a specified extension/function identifier to its corresponding function, as configured by the runtime.
 			for_tuples!( #(
-			if Tuple::matches(env.ext_id(), env.func_id()) {
-				return Tuple::execute(env)
-			}
-		)* );
+				if Tuple::matches(env.ext_id(), env.func_id()) {
+					return Tuple::execute(env)
+				}
+			)* );
 
+			// Otherwise returns `DispatchError::Other` indicating an unmatched request.
+			// TODO: improve error so we can determine if its an invalid function vs unknown runtime call/read
 			Err(UNKNOWN_CALL_ERROR)
 		}
 	}
@@ -107,20 +118,27 @@ mod functions {
 		fn execute<E: Ext<T = Config>, S: BufIn + BufOut>(
 			mut env: Environment<E, S>,
 		) -> Result<RetVal> {
-			// Decode runtime call
+			const LOG_PREFIX: &str = " dispatch |";
+
+			// Decode runtime call.
 			let call = Decoder::decode(&mut env)?.into();
-			// Charge weight before dispatch
+			// TODO: log::debug!(target:LOG_TARGET, "{} Inputted RuntimeCall: {:?}", LOG_PREFIX, call);
+			// Charge weight before dispatch.
 			let dispatch_info = call.get_dispatch_info();
 			let charged = env.charge_weight(dispatch_info.weight)?;
-			// Ensure call allowed
+			// TODO: log::trace! dispatch_info and charged
+			// Contract is the origin by default.
 			let mut origin: Config::RuntimeOrigin =
 				RawOrigin::Signed(env.ext().address().clone()).into();
+			// Ensure call allowed.
 			origin.add_filter(Filter::contains);
-			// Dispatch call
+			// Dispatch call.
 			let result = call.dispatch(origin);
-			// Adjust weight
+			// TODO: log::debug!(target:LOG_TARGET, "{} result, actual weight: {:?}", LOG_PREFIX, info.actual_weight);
+			// Adjust weight.
 			let weight = frame_support::dispatch::extract_actual_weight(&result, &dispatch_info);
 			env.adjust_weight(charged, weight);
+			// TODO: conversion of error to 'versioned' status code
 			result.map(|_| Converging(0)).map_err(|e| e.error)
 		}
 	}
@@ -151,18 +169,25 @@ mod functions {
 		fn execute<E: Ext<T = Config>, S: BufIn + BufOut>(
 			mut env: Environment<E, S>,
 		) -> Result<RetVal> {
+			const LOG_PREFIX: &str = " dispatch |";
+
 			// Decode runtime read
 			let read = Decoder::decode(&mut env)?.into();
+			// TODO: log::debug!(target:LOG_TARGET, "{} Inputted RuntimeRead: {:?}", LOG_PREFIX, read);
 			// Charge weight before read
-			env.charge_weight(read.weight())?;
+			let _charged = env.charge_weight(read.weight())?;
+			// TODO: log::trace! charged
 			// Ensure read allowed
 			ensure!(Filter::contains(&read), frame_system::Error::<Config>::CallFiltered);
+			let result = read.read();
+			// TODO: log::debug!(target:LOG_TARGET, "{} result: {:?}", LOG_PREFIX, result);
 			// TODO: check parameters (allow_skip, weight_per_byte)
 			env.write(
-				&read.read(),
+				&result,
 				false,
 				Some(Schedule::<Config>::get().host_fn_weights.input_per_byte),
 			)?;
+			// TODO: conversion of error to 'versioned' status code
 			Ok(Converging(0))
 		}
 	}
@@ -202,7 +227,8 @@ mod functions {
 			/// # Parameters
 			/// - `env` - The current execution environment.
 			fn decode<E: Ext, S: BufIn>(env: &mut Environment<E, S>) -> Result<Self::Output> {
-				// Charge appropriate weight prior to decoding.
+				// Charge appropriate weight, based on input length, prior to decoding.
+				// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
 				let len = env.in_len();
 				env.charge_weight(
 					Schedule::<E::T>::get()
@@ -210,7 +236,7 @@ mod functions {
 						.return_per_byte
 						.saturating_mul(len.into()),
 				)?;
-				// Read input supplied by contract.
+				// Read encoded input supplied by contract for buffer.
 				let mut input = env.read(len)?;
 				// Perform any additional processing required. Any implementation is expected to charge weight as appropriate.
 				Self::Processor::process(&mut input, env);
