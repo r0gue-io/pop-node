@@ -12,8 +12,9 @@ pub use functions::{
 	DispatchCall, Function, ReadState,
 };
 use pallet_contracts::chain_extension::{
-	ChainExtension, Environment, Ext, InitState, Result, RetVal, RetVal::Converging,
+	ChainExtension, InitState, Result, RetVal, RetVal::Converging,
 };
+pub use pallet_contracts::chain_extension::{Environment, Ext, State};
 use sp_core::Get;
 use sp_runtime::traits::Dispatchable;
 use std::marker::PhantomData;
