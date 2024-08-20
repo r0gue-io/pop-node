@@ -2,6 +2,7 @@ use core::marker::PhantomData;
 use frame_support::traits::Get;
 pub use pop_chain_extension::{Config, DispatchCall, ErrorConverter, ReadState, Readable};
 use pop_chain_extension::{Decodes, Environment, Ext, LogTarget, Matches, Processor, State};
+use sp_std::vec::Vec;
 
 /// The logging target for the chain extension.
 pub const LOG_TARGET: &str = "pop-api::extension";
