@@ -80,7 +80,10 @@ pub(crate) mod reboot {
 	#[derive(Default)]
 	pub struct Config;
 	impl pop_chain_extension::reboot::Config for Config {
-		// Configure the functions available
+		/// Functions used by the Pop API
+		/// .
+		/// Each function corresponds to specific functionality provided by the API, facilitating the
+		// interaction between smart contracts and the runtime.
 		type Functions = (
 			// Dispatching calls
 			DispatchCall<
@@ -98,10 +101,14 @@ pub(crate) mod reboot {
 				Filter,
 			>,
 		);
+
+		const LOG_TARGET: &'static str = "pop-api::extension";
 	}
 
+	/// Versioned runtime calls.
 	#[derive(Decode, Debug)]
 	pub enum VersionedRuntimeCall {
+		/// Version zero of runtime calls.
 		#[codec(index = 0)]
 		V0(RuntimeCall),
 	}
@@ -115,8 +122,10 @@ pub(crate) mod reboot {
 		}
 	}
 
+	/// Versioned runtime state reads.
 	#[derive(Decode, Debug)]
 	pub enum VersionedRuntimeRead {
+		/// Version zero of runtime state reads.
 		#[codec(index = 0)]
 		V0(RuntimeRead),
 	}
