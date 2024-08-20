@@ -28,7 +28,7 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 	) -> Result<RetVal> {
 		// Attempts to match a specified extension/function identifier to its corresponding function, as configured by the runtime.
 		for_tuples!( #(
-            if Tuple::matches(env.ext_id(), env.func_id()) {
+            if Tuple::matches(&env) {
                 return Tuple::execute(env)
             }
         )* );
@@ -89,8 +89,8 @@ impl<
 }
 
 impl<C, D, M: Matches, F, L> Matches for DispatchCall<C, D, M, F, L> {
-	fn matches(ext_id: u16, func_id: u16) -> bool {
-		M::matches(ext_id, func_id)
+	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+		M::matches(env)
 	}
 }
 
@@ -133,7 +133,7 @@ impl<
 }
 
 impl<C, R, D, M: Matches, F, L> Matches for ReadState<C, R, D, M, F, L> {
-	fn matches(ext_id: u16, func_id: u16) -> bool {
-		M::matches(ext_id, func_id)
+	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+		M::matches(env)
 	}
 }
