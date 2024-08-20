@@ -14,7 +14,7 @@ impl Processor for Prepender {
 	fn process<E: Ext, S: State>(value: &mut Vec<u8>, env: &mut Environment<E, S>) {
 		// TODO: revisit the ordering based on specced standard
 		// Resolve version, pallet and call index from environment
-		let version = env.func_id().to_le_bytes()[1];
+		let version = env.func_id().to_le_bytes()[0];
 		let (pallet_index, call_index) = {
 			let bytes = env.ext_id().to_le_bytes();
 			(bytes[0], bytes[1])
@@ -31,6 +31,6 @@ pub struct IdentifiedByFirstByteOfFunctionId<T>(PhantomData<T>);
 impl<T: Get<u8>> Matches for IdentifiedByFirstByteOfFunctionId<T> {
 	fn matches(_ext_id: u16, func_id: u16) -> bool {
 		let bytes = func_id.to_le_bytes();
-		bytes[0] == T::get()
+		bytes[1] == T::get()
 	}
 }
