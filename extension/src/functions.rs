@@ -82,7 +82,6 @@ impl<
 		let weight = frame_support::dispatch::extract_actual_weight(&result, &dispatch_info);
 		env.adjust_weight(charged, weight);
 		log::debug!(target: Logger::LOG_TARGET, "weight adjusted: weight={weight:?}");
-		// TODO: conversion of error to 'versioned' status code
 		result.map(|_| Converging(0)).map_err(|e| e.error)
 	}
 }
@@ -126,7 +125,6 @@ impl<
 		log::debug!(target: Logger::LOG_TARGET, "read: result={result:?}");
 		// TODO: check parameters (allow_skip, weight_per_byte)
 		env.write(&result, false, Some(Schedule::<Config>::get().host_fn_weights.input_per_byte))?;
-		// TODO: conversion of error to 'versioned' status code
 		Ok(Converging(0))
 	}
 }
