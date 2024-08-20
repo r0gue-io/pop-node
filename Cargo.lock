@@ -12211,6 +12211,7 @@ dependencies = [
  "cumulus-pallet-xcmp-queue 0.15.0",
  "cumulus-primitives-aura 0.14.0",
  "cumulus-primitives-core 0.14.0",
+ "cumulus-primitives-storage-weight-reclaim",
  "cumulus-primitives-utility 0.15.0",
  "enumflags2",
  "env_logger 0.11.5",

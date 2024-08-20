@@ -420,7 +420,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	// Limit the number of messages and signals a HRML channel can have at most
 	type MaxActiveOutboundChannels = ConstU32<128>;
 	// Limit the number of HRML channels
-	type MaxPageSize = ConstU32<{ 1 << 16 }>;
+	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 }
 
 parameter_types! {
