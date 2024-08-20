@@ -1,9 +1,9 @@
 use core::marker::PhantomData;
 use frame_support::traits::Get;
-pub use pop_chain_extension::reboot::{Config, DispatchCall, ReadState, Readable};
-use pop_chain_extension::reboot::{Decodes, Environment, Ext, Matches, Processor, State};
+pub use pop_chain_extension::{Config, DispatchCall, ReadState, Readable};
+use pop_chain_extension::{Decodes, Environment, Ext, Matches, Processor, State};
 
-pub type Extension<Functions> = pop_chain_extension::reboot::Extension<Functions>;
+pub type Extension<Functions> = pop_chain_extension::Extension<Functions>;
 
 /// Decodes output by prepending bytes from ext_id() + func_id()
 pub type DecodesAs<Output> = Decodes<Output, Prepender>;
@@ -27,8 +27,8 @@ impl Processor for Prepender {
 }
 
 /// Matches on the first byte of a function identifier only.
-pub struct FirstByteOfFunctionId<T>(PhantomData<T>);
-impl<T: Get<u8>> Matches for FirstByteOfFunctionId<T> {
+pub struct IdentifiedByFirstByteOfFunctionId<T>(PhantomData<T>);
+impl<T: Get<u8>> Matches for IdentifiedByFirstByteOfFunctionId<T> {
 	fn matches(_ext_id: u16, func_id: u16) -> bool {
 		let bytes = func_id.to_le_bytes();
 		bytes[0] == T::get()
