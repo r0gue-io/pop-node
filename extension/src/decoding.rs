@@ -1,6 +1,7 @@
 use super::*;
 use pallet_contracts::chain_extension::{BufIn, State};
 use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 
 /// Trait for decoding data read from contract memory.
 pub trait Decode {
