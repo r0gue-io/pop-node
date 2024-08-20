@@ -46,7 +46,7 @@ where
 	/// # Parameters
 	/// - `env`: Access to the remaining arguments and the execution environment.
 	fn call<E: Ext<T = Runtime>>(&mut self, env: Environment<E, InitState>) -> Result<RetVal> {
-		log::debug!(target: Config::LOG_TARGET, " extension called ");
+		log::trace!(target: Config::LOG_TARGET, "extension called");
 		let mut env = env.buf_in_buf_out();
 		// Charge weight for making a call from a contract to the runtime.
 		// `debug_message` weight is a good approximation of the additional overhead of going from contract layer to substrate layer.
@@ -66,11 +66,21 @@ pub trait Config {
 	const LOG_TARGET: &'static str;
 }
 
-/// Trait to be implemented for type handling a read of runtime state
+/// Trait to be implemented for type handling a read of runtime state.
 pub trait Readable {
 	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
 	fn weight(&self) -> Weight;
 
 	/// Performs the read and returns the result.
 	fn read(self) -> Vec<u8>;
+}
+
+/// Trait to enable specification of a log target.
+pub trait LogTarget {
+	/// The log target.
+	const LOG_TARGET: &'static str;
+}
+
+impl LogTarget for () {
+	const LOG_TARGET: &'static str = "pop-chain-extension";
 }
