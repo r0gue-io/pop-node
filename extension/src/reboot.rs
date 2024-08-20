@@ -11,8 +11,9 @@ pub use functions::{
 	Readable,
 };
 use pallet_contracts::chain_extension::{
-	ChainExtension, Environment, Ext, InitState, Result, RetVal, RetVal::Converging,
+	ChainExtension, InitState, Result, RetVal, RetVal::Converging,
 };
+pub use pallet_contracts::chain_extension::{Environment, Ext, State};
 use sp_core::Get;
 use sp_runtime::traits::Dispatchable;
 use std::marker::PhantomData;
@@ -294,46 +295,6 @@ mod functions {
 			fn matches(_ext_id: u16, func_id: u16) -> bool {
 				func_id == T::get()
 			}
-		}
-	}
-}
-
-// TODO: below implementations are technically specific to pop-api so should be moved elsewhere - e.g. pallet-api
-pub mod pop_api {
-	use super::{Decodes, Matches, Processor};
-	use core::marker::PhantomData;
-	use pallet_contracts::chain_extension::{Environment, Ext, State};
-	use sp_core::Get;
-
-	pub type PopApi<Functions> = super::Extension<Functions>;
-
-	// Use bytes from func_id() + ext_id() to prefix the encoded input bytes to determine the versioned output
-	pub type DecodesAs<Output> = Decodes<Output, Prepender>;
-
-	// Use bytes from func_id() + ext_id() to prefix the encoded input bytes to determine the versioned output
-	pub struct Prepender;
-	impl Processor for Prepender {
-		fn process<E: Ext, S: State>(value: &mut Vec<u8>, env: &mut Environment<E, S>) {
-			// TODO: revisit the ordering based on specced standard
-			// Resolve version, pallet and call index from environment
-			let version = env.func_id().to_le_bytes()[1];
-			let (pallet_index, call_index) = {
-				let bytes = env.ext_id().to_le_bytes();
-				(bytes[0], bytes[1])
-			};
-			// Prepend bytes
-			value.insert(0, version);
-			value.insert(1, pallet_index);
-			value.insert(2, call_index);
-		}
-	}
-
-	/// Matches on the first byte of a function identifier only.
-	pub struct FirstByteOfFunctionId<T>(PhantomData<T>);
-	impl<T: Get<u8>> Matches for FirstByteOfFunctionId<T> {
-		fn matches(_ext_id: u16, func_id: u16) -> bool {
-			let bytes = func_id.to_le_bytes();
-			bytes[0] == T::get()
 		}
 	}
 }

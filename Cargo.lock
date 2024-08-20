@@ -6461,6 +6461,7 @@ dependencies = [
  "pallet-assets",
  "pallet-balances",
  "parity-scale-codec",
+ "pop-chain-extension",
  "scale-info",
  "sp-core",
  "sp-io",

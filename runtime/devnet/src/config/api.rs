@@ -72,14 +72,12 @@ pub(crate) mod reboot {
 	use codec::Decode;
 	use cumulus_primitives_core::Weight;
 	use frame_support::traits::Contains;
-	use pop_chain_extension::reboot::{pop_api::*, *};
+	use pallet_api::extension::*;
 	use sp_core::ConstU8;
-
-	pub type PopApi = Extension<Config>;
 
 	#[derive(Default)]
 	pub struct Config;
-	impl pop_chain_extension::reboot::Config for Config {
+	impl pallet_api::extension::Config for Config {
 		/// Functions used by the Pop API
 		/// .
 		/// Each function corresponds to specific functionality provided by the API, facilitating the
