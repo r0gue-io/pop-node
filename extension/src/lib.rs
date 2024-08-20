@@ -225,3 +225,13 @@ mod extension {
 		ContractWeights::<Test>::seal_input(len)
 	}
 }
+
+/// Trait to enable specification of a log target.
+pub trait LogTarget {
+	/// The log target.
+	const LOG_TARGET: &'static str;
+}
+
+impl LogTarget for () {
+	const LOG_TARGET: &'static str = "pop-chain-extension";
+}
