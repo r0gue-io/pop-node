@@ -4,7 +4,7 @@ use pop_chain_extension::{CallFilter, ReadState};
 use sp_std::vec::Vec;
 
 /// A query of runtime state.
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+#[derive(Decode, Debug)]
 #[repr(u8)]
 pub enum RuntimeRead {
 	/// Fungible token queries.
@@ -12,27 +12,16 @@ pub enum RuntimeRead {
 	Fungibles(fungibles::Read<Runtime>),
 }
 
-/// A struct that implement requirements for the Pop API chain extension.
-#[derive(Default)]
-pub struct Extension;
-impl ReadState for Extension {
-	type StateQuery = RuntimeRead;
-
-	fn contains(c: &Self::StateQuery) -> bool {
-		use fungibles::Read::*;
-		matches!(
-			c,
-			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | AssetExists(..)
-			)
-		)
+impl Readable for RuntimeRead {
+	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
+	fn weight(&self) -> Weight {
+		// TODO: defer to relevant pallet - e.g. RuntimeRead::Fungibles(key) => fungibles::Pallet::read_weight(key),
+		<Runtime as frame_system::Config>::DbWeight::get().reads(1_u64)
 	}
 
-	fn read(read: RuntimeRead) -> Vec<u8> {
-		match read {
+	/// Performs the read and returns the result.
+	fn read(self) -> Vec<u8> {
+		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
 		}
 	}
