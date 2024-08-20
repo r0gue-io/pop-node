@@ -14,7 +14,7 @@ pub trait Function {
 	/// # Parameters
 	/// - `env` - The current execution environment.
 	fn execute<E: Ext<T = Self::Config>, S: BufIn + BufOut>(
-		env: Environment<E, S>,
+		env: &mut Environment<E, S>,
 	) -> Result<RetVal>;
 }
 
@@ -24,7 +24,7 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
 	type Config = Runtime;
 	fn execute<E: Ext<T = Self::Config>, S: BufIn + BufOut>(
-		env: Environment<E, S>,
+		env: &mut Environment<E, S>,
 	) -> Result<RetVal> {
 		// Attempts to match a specified extension/function identifier to its corresponding function, as configured by the runtime.
 		for_tuples!( #(
@@ -33,9 +33,8 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
             }
         )* );
 
-		// Otherwise returns `DispatchError::Other` indicating an unmatched request.
-		// TODO: improve error so we can determine if its an invalid function vs unknown runtime call/read
-		Err(UNKNOWN_CALL_ERROR)
+		// Otherwise returns error indicating an unmatched request.
+		Err(pallet_contracts::Error::<Self::Config>::NoChainExtension.into())
 	}
 }
 
@@ -60,10 +59,10 @@ impl<
 	/// # Parameters
 	/// - `env` - The current execution environment.
 	fn execute<E: Ext<T = Config>, S: BufIn + BufOut>(
-		mut env: Environment<E, S>,
+		env: &mut Environment<E, S>,
 	) -> Result<RetVal> {
 		// Decode runtime call.
-		let call = Decoder::decode(&mut env)?.into();
+		let call = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: call={call:?}");
 		// Charge weight before dispatch.
 		let dispatch_info = call.get_dispatch_info();
@@ -113,10 +112,10 @@ impl<
 	/// # Parameters
 	/// - `env` - The current execution environment.
 	fn execute<E: Ext<T = Config>, S: BufIn + BufOut>(
-		mut env: Environment<E, S>,
+		env: &mut Environment<E, S>,
 	) -> Result<RetVal> {
 		// Decode runtime read
-		let read = Decoder::decode(&mut env)?.into();
+		let read = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: read={read:?}");
 		// Charge weight before read
 		let charged = env.charge_weight(read.weight())?;
