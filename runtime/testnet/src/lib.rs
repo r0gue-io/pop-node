@@ -109,7 +109,12 @@ pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
 /// Migrations to apply on runtime upgrade.
-pub type Migrations = (pallet_collator_selection::migration::v2::MigrationToV2<Runtime>,);
+pub type Migrations = (
+	pallet_collator_selection::migration::v2::MigrationToV2<Runtime>,
+	pallet_contracts::Migration<Runtime>,
+	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
+	pallet_xcm::migration::MigrateToLatestXcmVersion<Runtime>,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -423,7 +428,12 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	// Limit the number of messages and signals a HRML channel can have at most
 	type MaxActiveOutboundChannels = ConstU32<128>;
 	// Limit the number of HRML channels
-	type MaxPageSize = ConstU32<{ 1 << 16 }>;
+	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
+}
+
+impl cumulus_pallet_xcmp_queue::migration::v5::V5Config for Runtime {
+	// This must be the same as the `ChannelInfo` from the `Config`:
+	type ChannelList = ParachainSystem;
 }
 
 parameter_types! {
