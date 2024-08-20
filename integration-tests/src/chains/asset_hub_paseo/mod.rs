@@ -1,6 +1,3 @@
-// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
-use asset_hub_polkadot_runtime as asset_hub_paseo_runtime;
-
 pub(crate) mod genesis;
 
 use emulated_integration_tests_common::{
@@ -17,7 +14,6 @@ decl_test_parachains! {
 		on_init = {
 			asset_hub_paseo_runtime::AuraExt::on_initialize(1);
 		},
-		// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
 		runtime = asset_hub_paseo_runtime,
 		core = {
 			XcmpMessageHandler: asset_hub_paseo_runtime::XcmpQueue,

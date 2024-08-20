@@ -1,6 +1,3 @@
-// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
-use polkadot_runtime as paseo_runtime;
-
 pub(crate) mod genesis;
 
 use emulated_integration_tests_common::{

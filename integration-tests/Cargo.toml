@@ -41,9 +41,9 @@ cumulus-primitives-core.workspace = true
 emulated-integration-tests-common.workspace = true
 
 # Paseo
-asset-hub-polkadot-runtime.workspace = true
-polkadot-runtime.workspace = true
-polkadot-runtime-constants.workspace = true
+asset-hub-paseo-runtime.workspace = true
+paseo-runtime.workspace = true
+paseo-runtime-constants.workspace = true
 
 # Local
 pop-runtime-devnet.workspace = true
@@ -52,15 +52,15 @@ pop-runtime-common.workspace = true
 [features]
 default = ["std"]
 std = [
-    "asset-hub-polkadot-runtime/std",
+    "asset-hub-paseo-runtime/std",
     "cumulus-primitives-core/std",
     "frame-support/std",
     "pallet-assets/std",
     "pallet-balances/std",
     "pallet-message-queue/std",
     "pallet-xcm/std",
-    "polkadot-runtime/std",
-    "polkadot-runtime-constants/std",
+    "paseo-runtime/std",
+    "paseo-runtime-constants/std",
     "polkadot-primitives/std",
     "polkadot-runtime-parachains/std",
     "pop-runtime-devnet/std",
@@ -76,13 +76,13 @@ std = [
 ]
 
 runtime-benchmarks = [
-    "asset-hub-polkadot-runtime/runtime-benchmarks",
+    "asset-hub-paseo-runtime/runtime-benchmarks",
     "cumulus-primitives-core/runtime-benchmarks",
     "frame-support/runtime-benchmarks",
     "pallet-assets/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
     "pallet-message-queue/runtime-benchmarks",
-    "polkadot-runtime/runtime-benchmarks",
+    "paseo-runtime/runtime-benchmarks",
     "polkadot-primitives/runtime-benchmarks",
     "pop-runtime-devnet/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
@@ -90,12 +90,12 @@ runtime-benchmarks = [
 ]
 
 try-runtime = [
-    "asset-hub-polkadot-runtime/try-runtime",
+    "asset-hub-paseo-runtime/try-runtime",
     "frame-support/try-runtime",
     "pallet-assets/try-runtime",
     "pallet-balances/std",
     "pallet-message-queue/try-runtime",
-    "polkadot-runtime/try-runtime",
+    "paseo-runtime/try-runtime",
     "pop-runtime-devnet/try-runtime",
     "sp-runtime/try-runtime",
 ]

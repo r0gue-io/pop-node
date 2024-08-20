@@ -1,9 +1,5 @@
 #![cfg(test)]
 
-// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
-use asset_hub_polkadot_runtime as asset_hub_paseo_runtime;
-use polkadot_runtime as paseo_runtime;
-
 use crate::chains::{
 	asset_hub_paseo::{genesis::ED as ASSET_HUB_PASEO_ED, AssetHubPaseoParaPallet},
 	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
