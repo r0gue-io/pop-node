@@ -461,7 +461,7 @@ checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 [[package]]
 name = "asset-hub-polkadot-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "assets-common",
  "bp-asset-hub-kusama",
@@ -1100,7 +1100,7 @@ dependencies = [
 [[package]]
 name = "bp-asset-hub-kusama"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "bp-xcm-bridge-hub-router",
  "frame-support",
@@ -1114,7 +1114,7 @@ dependencies = [
 [[package]]
 name = "bp-asset-hub-polkadot"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "bp-xcm-bridge-hub-router",
  "frame-support",
@@ -1144,7 +1144,7 @@ dependencies = [
 [[package]]
 name = "bp-bridge-hub-kusama"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "bp-bridge-hub-cumulus",
  "bp-messages",
@@ -1161,7 +1161,7 @@ dependencies = [
 [[package]]
 name = "bp-bridge-hub-polkadot"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "bp-bridge-hub-cumulus",
  "bp-messages",
@@ -1716,7 +1716,7 @@ dependencies = [
 [[package]]
 name = "collectives-polkadot-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 
 [[package]]
 name = "color-print"
@@ -5295,7 +5295,7 @@ checksum = "c33070833c9ee02266356de0c43f723152bd38bd96ddf52c82b3af10c9138b28"
 [[package]]
 name = "kusama-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "frame-support",
  "polkadot-primitives",
@@ -9756,7 +9756,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "binary-merkle-tree",
  "frame-benchmarking",
@@ -9906,7 +9906,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "frame-support",
  "polkadot-primitives",
@@ -10438,15 +10438,15 @@ dependencies = [
 name = "pop-runtime-testnet"
 version = "0.2.0"
 dependencies = [
- "cumulus-pallet-aura-ext 0.15.0",
- "cumulus-pallet-parachain-system 0.15.0",
- "cumulus-pallet-session-benchmarking 17.0.0",
- "cumulus-pallet-xcm 0.15.0",
- "cumulus-pallet-xcmp-queue 0.15.0",
- "cumulus-primitives-aura 0.14.0",
- "cumulus-primitives-core 0.14.0",
+ "cumulus-pallet-aura-ext",
+ "cumulus-pallet-parachain-system",
+ "cumulus-pallet-session-benchmarking",
+ "cumulus-pallet-xcm",
+ "cumulus-pallet-xcmp-queue",
+ "cumulus-primitives-aura",
+ "cumulus-primitives-core",
  "cumulus-primitives-storage-weight-reclaim",
- "cumulus-primitives-utility 0.15.0",
+ "cumulus-primitives-utility",
  "enumflags2",
  "env_logger 0.11.5",
  "frame-benchmarking",
@@ -14997,7 +14997,7 @@ dependencies = [
 [[package]]
 name = "system-parachains-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?rev=4260e50#4260e50d46c13befb127211a8f7230662366998a"
+source = "git+https://github.com/polkadot-fellows/runtimes#f42acab60edf4d6ded4d9e99b1a8fbacded85669"
 dependencies = [
  "frame-support",
  "kusama-runtime-constants",

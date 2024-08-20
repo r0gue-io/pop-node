@@ -1,8 +1,8 @@
-// Note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
-use asset_hub_polkadot_runtime as asset_hub_runtime;
+// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
+use asset_hub_polkadot_runtime as asset_hub_paseo_runtime;
+
 pub(crate) mod genesis;
 
-use crate::chains::paseo::Paseo;
 use emulated_integration_tests_common::{
 	impl_accounts_helpers_for_parachain, impl_assert_events_helpers_for_parachain,
 	impl_assets_helpers_for_parachain, impl_foreign_assets_helpers_for_parachain,
@@ -15,21 +15,21 @@ decl_test_parachains! {
 	pub struct AssetHubPaseo {
 		genesis = genesis::genesis(),
 		on_init = {
-			asset_hub_runtime::AuraExt::on_initialize(1);
+			asset_hub_paseo_runtime::AuraExt::on_initialize(1);
 		},
-		// Note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
-		runtime = asset_hub_runtime,
+		// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
+		runtime = asset_hub_paseo_runtime,
 		core = {
-			XcmpMessageHandler: asset_hub_runtime::XcmpQueue,
-			LocationToAccountId: asset_hub_runtime::xcm_config::LocationToAccountId,
-			ParachainInfo: asset_hub_runtime::ParachainInfo,
+			XcmpMessageHandler: asset_hub_paseo_runtime::XcmpQueue,
+			LocationToAccountId: asset_hub_paseo_runtime::xcm_config::LocationToAccountId,
+			ParachainInfo: asset_hub_paseo_runtime::ParachainInfo,
 			MessageOrigin: cumulus_primitives_core::AggregateMessageOrigin,
 		},
 		pallets = {
-			PolkadotXcm: asset_hub_runtime::PolkadotXcm,
-			Assets: asset_hub_runtime::Assets,
-			ForeignAssets: asset_hub_runtime::ForeignAssets,
-			Balances: asset_hub_runtime::Balances,
+			PolkadotXcm: asset_hub_paseo_runtime::PolkadotXcm,
+			Assets: asset_hub_paseo_runtime::Assets,
+			ForeignAssets: asset_hub_paseo_runtime::ForeignAssets,
+			Balances: asset_hub_paseo_runtime::Balances,
 		}
 	},
 }

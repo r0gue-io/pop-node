@@ -1,13 +1,15 @@
 #![cfg(test)]
 
+// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
+use asset_hub_polkadot_runtime as asset_hub_paseo_runtime;
+use polkadot_runtime as paseo_runtime;
+
 use crate::chains::{
 	asset_hub_paseo::{genesis::ED as ASSET_HUB_PASEO_ED, AssetHubPaseoParaPallet},
 	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
 	pop_network::PopNetworkParaPallet,
 };
-// Note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
-use asset_hub_polkadot_runtime as asset_hub_runtime;
-use asset_hub_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
+use asset_hub_paseo_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
 use asset_test_utils::xcm_helpers;
 use chains::{asset_hub_paseo::AssetHubPaseo, paseo::Paseo, pop_network::PopNetwork};
 use emulated_integration_tests_common::{
@@ -19,7 +21,7 @@ use emulated_integration_tests_common::{
 	},
 };
 use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
-use polkadot_runtime::xcm_config::XcmConfig as PaseoXcmConfig;
+use paseo_runtime::xcm_config::XcmConfig as PaseoXcmConfig;
 use pop_runtime_common::Balance;
 use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
@@ -97,7 +99,7 @@ fn para_receiver_assertions<Test>(_: Test) {
 	assert_expected_events!(
 		PopNetworkPara,
 		vec![
-			RuntimeEvent::Balances(pallet_balances::Event::Minted { ..}) => {},
+			RuntimeEvent::Balances(pallet_balances::Event::Minted { .. }) => {},
 			RuntimeEvent::MessageQueue(
 				pallet_message_queue::Event::Processed { success: true, .. }
 			) => {},

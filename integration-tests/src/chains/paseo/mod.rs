@@ -1,5 +1,7 @@
+// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
+use polkadot_runtime as paseo_runtime;
+
 pub(crate) mod genesis;
-use polkadot_runtime as runtime;
 
 use emulated_integration_tests_common::{
 	impl_accounts_helpers_for_relay_chain, impl_assert_events_helpers_for_relay_chain,
@@ -13,16 +15,16 @@ decl_test_relay_chains! {
 	pub struct Paseo {
 		genesis = genesis::genesis(),
 		on_init = (),
-		runtime = runtime,
+		runtime = paseo_runtime,
 		core = {
-			SovereignAccountOf: runtime::xcm_config::SovereignAccountOf,
+			SovereignAccountOf: paseo_runtime::xcm_config::SovereignAccountOf,
 		},
 		pallets = {
-			XcmPallet: runtime::XcmPallet,
+			XcmPallet: paseo_runtime::XcmPallet,
 			// TODO: sudo pallet is not configured in polkadot runtime
-			// Sudo: runtime::Sudo,
-			Balances: runtime::Balances,
-			Hrmp: runtime::Hrmp,
+			// Sudo: paseo_runtime::Sudo,
+			Balances: paseo_runtime::Balances,
+			Hrmp: paseo_runtime::Hrmp,
 		}
 	},
 }

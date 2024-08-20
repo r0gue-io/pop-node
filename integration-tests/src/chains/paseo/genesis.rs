@@ -1,17 +1,19 @@
+// TODO: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0
+use polkadot_runtime as paseo_runtime;
+use polkadot_runtime_constants as paseo_runtime_constants;
+
 use emulated_integration_tests_common::{
 	accounts, build_genesis_storage, get_from_seed, get_host_config, validators,
 };
+use paseo_runtime_constants::currency::UNITS as PAS;
 use polkadot_primitives::{AssignmentId, Balance, ValidatorId};
-use polkadot_runtime as runtime;
-use polkadot_runtime_constants as runtime_constants;
-use runtime_constants::currency::UNITS as PAS;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
 use sp_consensus_beefy::ecdsa_crypto::AuthorityId as BeefyId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::storage::Storage;
 
-pub(crate) const ED: Balance = runtime_constants::currency::EXISTENTIAL_DEPOSIT;
+pub(crate) const ED: Balance = paseo_runtime_constants::currency::EXISTENTIAL_DEPOSIT;
 const ENDOWMENT: u128 = 1_000_000 * PAS;
 
 fn session_keys(
@@ -21,8 +23,8 @@ fn session_keys(
 	para_assignment: AssignmentId,
 	authority_discovery: AuthorityDiscoveryId,
 	beefy: BeefyId,
-) -> polkadot_runtime::SessionKeys {
-	polkadot_runtime::SessionKeys {
+) -> paseo_runtime::SessionKeys {
+	paseo_runtime::SessionKeys {
 		babe,
 		grandpa,
 		para_validator,
@@ -33,12 +35,12 @@ fn session_keys(
 }
 
 pub(crate) fn genesis() -> Storage {
-	let genesis_config = runtime::RuntimeGenesisConfig {
-		system: runtime::SystemConfig::default(),
-		balances: runtime::BalancesConfig {
+	let genesis_config = paseo_runtime::RuntimeGenesisConfig {
+		system: paseo_runtime::SystemConfig::default(),
+		balances: paseo_runtime::BalancesConfig {
 			balances: accounts::init_balances().iter().map(|k| (k.clone(), ENDOWMENT)).collect(),
 		},
-		session: runtime::SessionConfig {
+		session: paseo_runtime::SessionConfig {
 			keys: validators::initial_authorities()
 				.iter()
 				.map(|x| {
@@ -57,22 +59,22 @@ pub(crate) fn genesis() -> Storage {
 				})
 				.collect::<Vec<_>>(),
 		},
-		babe: runtime::BabeConfig {
+		babe: paseo_runtime::BabeConfig {
 			authorities: Default::default(),
-			epoch_config: runtime::BABE_GENESIS_EPOCH_CONFIG,
+			epoch_config: paseo_runtime::BABE_GENESIS_EPOCH_CONFIG,
 			..Default::default()
 		},
 		// TODO: sudo pallet is not configured in polkadot runtime
 		// sudo: runtime::SudoConfig {
 		// 	key: Some(get_account_id_from_seed::<sr25519::Public>("Alice")),
 		// },
-		configuration: runtime::ConfigurationConfig { config: get_host_config() },
-		registrar: runtime::RegistrarConfig {
+		configuration: paseo_runtime::ConfigurationConfig { config: get_host_config() },
+		registrar: paseo_runtime::RegistrarConfig {
 			next_free_para_id: polkadot_primitives::LOWEST_PUBLIC_ID,
 			..Default::default()
 		},
 		..Default::default()
 	};
 
-	build_genesis_storage(&genesis_config, runtime::WASM_BINARY.unwrap())
+	build_genesis_storage(&genesis_config, paseo_runtime::WASM_BINARY.unwrap())
 }

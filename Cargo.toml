@@ -164,7 +164,7 @@ cumulus-client-consensus-common = "0.15.0"
 cumulus-client-consensus-proposer = "0.14.0"
 cumulus-client-service = "0.15.0"
 
-# Paseo (note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0)
-asset-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes", rev = "4260e50", default-features = false }
-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes", rev = "4260e50", default-features = false }
-polkadot-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes", rev = "4260e50", default-features = false }
+# TODO: Paseo (note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0)
+asset-hub-polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false }
+polkadot-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false }
+polkadot-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false }
