@@ -164,7 +164,12 @@ cumulus-client-consensus-common = "0.15.0"
 cumulus-client-consensus-proposer = "0.14.0"
 cumulus-client-service = "0.15.0"
 
+# TODO: Paseo (note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0)
+asset-hub-paseo-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "asset-hub-polkadot-runtime" }
+paseo-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "polkadot-runtime" }
+paseo-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "polkadot-runtime-constants" }
+
 # Paseo
-asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
-paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+# asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+# paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+# paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
