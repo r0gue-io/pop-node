@@ -111,10 +111,10 @@ pub(crate) mod reboot {
 		V0(RuntimeCall),
 	}
 
-	impl Into<RuntimeCall> for VersionedRuntimeCall {
-		fn into(self) -> RuntimeCall {
+	impl From<VersionedRuntimeCall> for RuntimeCall {
+		fn from(value: VersionedRuntimeCall) -> Self {
 			// Allows mapping from some previous runtime call shape to a current valid runtime call
-			match self {
+			match value {
 				VersionedRuntimeCall::V0(call) => call,
 			}
 		}
@@ -128,10 +128,10 @@ pub(crate) mod reboot {
 		V0(RuntimeRead),
 	}
 
-	impl Into<RuntimeRead> for VersionedRuntimeRead {
-		fn into(self) -> RuntimeRead {
+	impl From<VersionedRuntimeRead> for RuntimeRead {
+		fn from(value: VersionedRuntimeRead) -> Self {
 			// Allows mapping from some previous runtime call shape to a current valid runtime read
-			match self {
+			match value {
 				VersionedRuntimeRead::V0(read) => read,
 			}
 		}
