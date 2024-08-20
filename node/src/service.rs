@@ -36,7 +36,7 @@ use sp_api::ConstructRuntimeApi;
 use sp_core::Pair;
 use sp_keystore::KeystorePtr;
 use sp_runtime::{app_crypto::AppCrypto, traits::BlakeTwo256};
-use substrate_prometheus_endpoint::Registry;
+use prometheus_endpoint::Registry;
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 type HostFunctions = cumulus_client_service::ParachainHostFunctions;
