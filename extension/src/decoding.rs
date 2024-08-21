@@ -9,9 +9,9 @@ pub trait Decode {
 	type Output: codec::Decode;
 	/// An optional processor, for performing any additional processing before decoding.
 	type Processor: Processor;
-
 	/// The error to return if decoding fails.
-	const ERROR: DispatchError;
+	type Error: Get<DispatchError>;
+
 	/// The log target.
 	const LOG_TARGET: &'static str;
 
@@ -35,18 +35,22 @@ pub trait Decode {
 		// Perform any additional processing required. Any implementation is expected to charge weight as appropriate.
 		Self::Processor::process(&mut input, env);
 		// Finally decode and return.
-		Self::Output::decode(&mut &input[..]).map_err(|_| Self::ERROR)
+		Self::Output::decode(&mut &input[..]).map_err(|_| Self::Error::get())
 	}
 }
 
 /// Default implementation for decoding data read from contract memory.
 pub struct Decodes<O, E, P = (), L = ()>(PhantomData<(O, E, P, L)>);
-impl<Output: codec::Decode, Error: ErrorProvider, Processor_: Processor, Logger: LogTarget> Decode
-	for Decodes<Output, Error, Processor_, Logger>
+impl<
+		Output: codec::Decode,
+		Error: Get<DispatchError>,
+		Processor_: Processor,
+		Logger: LogTarget,
+	> Decode for Decodes<Output, Error, Processor_, Logger>
 {
 	type Output = Output;
 	type Processor = Processor_;
-	const ERROR: DispatchError = Error::ERROR;
+	type Error = Error;
 	const LOG_TARGET: &'static str = Logger::LOG_TARGET;
 }
 

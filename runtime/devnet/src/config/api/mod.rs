@@ -13,6 +13,10 @@ use versioning::*;
 
 mod versioning;
 
+type DecodingFailedError = DecodingFailed<Runtime>;
+type DecodesAs<Output, Logger = ()> =
+	pallet_api::extension::DecodesAs<Output, DecodingFailedError, Logger>;
+
 /// A query of runtime state.
 #[derive(Decode, Debug)]
 #[repr(u8)]
@@ -54,7 +58,7 @@ impl pallet_api::extension::Config for Config {
 		// Dispatching calls
 		DispatchCall<
 			Runtime,
-			DecodesAs<VersionedRuntimeCall, DecodingFailedError, DispatchCallLogTarget>,
+			DecodesAs<VersionedRuntimeCall, DispatchCallLogTarget>,
 			IdentifiedByFirstByteOfFunctionId<ConstU8<0>>,
 			Filter,
 			DispatchCallLogTarget,
@@ -63,7 +67,7 @@ impl pallet_api::extension::Config for Config {
 		ReadState<
 			Runtime,
 			RuntimeRead,
-			DecodesAs<VersionedRuntimeRead, DecodingFailedError, ReadStateLogTarget>,
+			DecodesAs<VersionedRuntimeRead, ReadStateLogTarget>,
 			IdentifiedByFirstByteOfFunctionId<ConstU8<1>>,
 			Filter,
 			ReadStateLogTarget,
@@ -73,12 +77,6 @@ impl pallet_api::extension::Config for Config {
 	type Error = ErrorConverter<VersionedError>;
 
 	const LOG_TARGET: &'static str = LOG_TARGET;
-}
-
-/// Specification of error to be returned when decoding fails.
-pub struct DecodingFailedError;
-impl ErrorProvider for DecodingFailedError {
-	const ERROR: DispatchError = DispatchError::Other("DecodingFailed");
 }
 
 mod filtering {
