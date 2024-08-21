@@ -10275,7 +10275,7 @@ dependencies = [
 
 [[package]]
 name = "pop-node"
-version = "0.1.0-alpha"
+version = "0.2.0-alpha"
 dependencies = [
  "clap",
  "color-print",
@@ -10436,7 +10436,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime-testnet"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
