@@ -8,7 +8,7 @@ use emulated_integration_tests_common::{
 
 // Paseo declaration
 decl_test_relay_chains! {
-	#[api_version(10)]
+	#[api_version(11)]
 	pub struct Paseo {
 		genesis = genesis::genesis(),
 		on_init = (),
@@ -18,7 +18,8 @@ decl_test_relay_chains! {
 		},
 		pallets = {
 			XcmPallet: paseo_runtime::XcmPallet,
-			Sudo: paseo_runtime::Sudo,
+			// TODO: sudo pallet is not configured in polkadot runtime
+			// Sudo: paseo_runtime::Sudo,
 			Balances: paseo_runtime::Balances,
 			Hrmp: paseo_runtime::Hrmp,
 		}

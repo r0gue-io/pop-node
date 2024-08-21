@@ -1,6 +1,6 @@
 [package]
 name = "pop-runtime-testnet"
-version = "0.3.0"
+version = "0.4.0"
 authors.workspace = true
 description.workspace = true
 license = "Unlicense"
@@ -28,6 +28,7 @@ pop-runtime-common.workspace = true
 # Substrate
 frame-benchmarking.workspace = true
 frame-executive.workspace = true
+frame-metadata-hash-extension.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 frame-system-benchmarking.workspace = true
@@ -82,6 +83,7 @@ cumulus-pallet-xcm.workspace = true
 cumulus-pallet-xcmp-queue.workspace = true
 cumulus-primitives-aura.workspace = true
 cumulus-primitives-core.workspace = true
+cumulus-primitives-storage-weight-reclaim.workspace = true
 cumulus-primitives-utility.workspace = true
 pallet-collator-selection.workspace = true
 parachains-common.workspace = true
@@ -102,9 +104,11 @@ std = [
     "cumulus-pallet-xcmp-queue/std",
     "cumulus-primitives-aura/std",
     "cumulus-primitives-core/std",
+    "cumulus-primitives-storage-weight-reclaim/std",
     "cumulus-primitives-utility/std",
     "frame-benchmarking/std",
     "frame-executive/std",
+    "frame-metadata-hash-extension/std",
     "frame-support/std",
     "frame-system-benchmarking/std",
     "frame-system-rpc-runtime-api/std",
@@ -221,3 +225,16 @@ try-runtime = [
     "polkadot-runtime-common/try-runtime",
     "sp-runtime/try-runtime",
 ]
+
+# Enable the metadata hash generation.
+#
+# This is hidden behind a feature because it increases the compile time.
+# The wasm binary needs to be compiled twice, once to fetch the metadata,
+# generate the metadata hash and then a second time with the
+# `RUNTIME_METADATA_HASH` environment variable set for the `CheckMetadataHash`
+# extension.
+metadata-hash = ["substrate-wasm-builder/metadata-hash"]
+
+# A convenience feature for enabling things when doing a build
+# for an on-chain release.
+on-chain-release-build = ["metadata-hash"]

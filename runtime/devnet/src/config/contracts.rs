@@ -7,7 +7,7 @@ use frame_support::{
 	parameter_types,
 	traits::{ConstBool, ConstU32, Randomness},
 };
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
 pub enum AllowBalancesCall {}
 
@@ -80,10 +80,13 @@ impl pallet_contracts::Config for Runtime {
 	type MaxStorageKeyLen = ConstU32<128>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type UnsafeUnstableInterface = ConstBool<true>;
+	type UploadOrigin = EnsureSigned<Self::AccountId>;
+	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = ConstU32<32>;
 	type RuntimeHoldReason = RuntimeHoldReason;
 
+	type ApiVersion = ();
 	type Environment = ();
 	type Debug = ();
 	type Migrations = ();
