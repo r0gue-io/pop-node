@@ -3,7 +3,6 @@ use crate::{
 };
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use filtering::*;
 use frame_support::traits::Contains;
 use pallet_api::extension::*;
 pub(crate) use pallet_api::Extension;
@@ -80,41 +79,39 @@ impl pallet_api::extension::Config for Config {
 	const LOG_TARGET: &'static str = LOG_TARGET;
 }
 
-mod filtering {
-	use super::*;
+/// Filters used by the chain extension.
+pub struct Filter;
 
-	pub struct Filter;
-
-	impl Contains<RuntimeCall> for Filter {
-		fn contains(c: &RuntimeCall) -> bool {
-			use fungibles::Call::*;
-			matches!(
-				c,
-				RuntimeCall::Fungibles(
-					transfer { .. }
-						| transfer_from { .. } | approve { .. }
-						| increase_allowance { .. }
-						| decrease_allowance { .. }
-						| create { .. } | set_metadata { .. }
-						| start_destroy { .. } | clear_metadata { .. }
-						| mint { .. } | burn { .. }
-				)
+impl Contains<RuntimeCall> for Filter {
+	fn contains(c: &RuntimeCall) -> bool {
+		use fungibles::Call::*;
+		matches!(
+			c,
+			RuntimeCall::Fungibles(
+				transfer { .. }
+					| transfer_from { .. }
+					| approve { .. } | increase_allowance { .. }
+					| decrease_allowance { .. }
+					| create { .. } | set_metadata { .. }
+					| start_destroy { .. }
+					| clear_metadata { .. }
+					| mint { .. } | burn { .. }
 			)
-		}
+		)
 	}
+}
 
-	impl Contains<RuntimeRead> for Filter {
-		fn contains(r: &RuntimeRead) -> bool {
-			use fungibles::Read::*;
-			matches!(
-				r,
-				RuntimeRead::Fungibles(
-					TotalSupply(..)
-						| BalanceOf { .. } | Allowance { .. }
-						| TokenName(..) | TokenSymbol(..)
-						| TokenDecimals(..) | AssetExists(..)
-				)
+impl Contains<RuntimeRead> for Filter {
+	fn contains(r: &RuntimeRead) -> bool {
+		use fungibles::Read::*;
+		matches!(
+			r,
+			RuntimeRead::Fungibles(
+				TotalSupply(..)
+					| BalanceOf { .. } | Allowance { .. }
+					| TokenName(..) | TokenSymbol(..)
+					| TokenDecimals(..) | AssetExists(..)
 			)
-		}
+		)
 	}
 }
