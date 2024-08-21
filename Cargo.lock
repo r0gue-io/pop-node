@@ -9603,6 +9603,7 @@ dependencies = [
  "log",
  "pallet-contracts",
  "parity-scale-codec",
+ "rand",
  "sp-core",
  "sp-runtime",
  "sp-std",
