@@ -27,11 +27,11 @@ exclude = ["pop-api", "tests/contracts"]
 resolver = "2"
 
 [workspace.dependencies]
-codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
     "derive",
 ] }
 hex-literal = "0.4.1"
-log = { version = "0.4.20", default-features = false }
+log = { version = "0.4.21", default-features = false }
 scale-info = { version = "2.10.0", default-features = false, features = [
     "derive",
 ] }
