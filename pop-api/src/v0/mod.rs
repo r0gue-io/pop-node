@@ -1,7 +1,7 @@
 use crate::{
 	build_extension_method,
 	constants::{DISPATCH, READ_STATE},
-	primitives::error::Error,
+	primitives::Error,
 	StatusCode,
 };
 use ink::env::chain_extension::ChainExtensionMethod;

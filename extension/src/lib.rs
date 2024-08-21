@@ -11,10 +11,8 @@ use frame_support::{
 pub use functions::{
 	Decode, Decodes, DispatchCall, Equals, Function, FunctionId, Matches, Processor, ReadState,
 };
-use pallet_contracts::chain_extension::{
-	ChainExtension, InitState, Result, RetVal, RetVal::Converging,
-};
-pub use pallet_contracts::chain_extension::{Environment, Ext, State};
+use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
+pub use pallet_contracts::chain_extension::{Environment, Ext, Result, RetVal, State};
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;

@@ -1,7 +1,10 @@
 use core::marker::PhantomData;
 use frame_support::traits::Get;
-pub use pop_chain_extension::{Config, DispatchCall, ErrorConverter, ReadState, Readable};
-use pop_chain_extension::{Decodes, Environment, Ext, LogTarget, Matches, Processor, State};
+pub use pop_chain_extension::{Config, DispatchCall, ErrorProvider, ReadState, Readable};
+use pop_chain_extension::{
+	Decodes, Environment, Ext, LogTarget, Matches, Processor, Result, RetVal, State,
+};
+use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
 /// The logging target for the chain extension.
@@ -52,4 +55,16 @@ impl LogTarget for DispatchCallLogTarget {
 pub struct ReadStateLogTarget;
 impl LogTarget for ReadStateLogTarget {
 	const LOG_TARGET: &'static str = "pop-api::extension::read-state";
+}
+
+/// Conversion of a `DispatchError` to return value.
+pub struct ErrorConverter<E>(PhantomData<E>);
+impl<Error: From<(DispatchError, u8)> + Into<u32>> pop_chain_extension::ErrorConverter
+	for ErrorConverter<Error>
+{
+	fn convert<E: Ext, S: State>(error: DispatchError, env: Environment<E, S>) -> Result<RetVal> {
+		// Defer to versioned error converter
+		let error: Error = (error, env.func_id().to_le_bytes()[0]).into();
+		Ok(RetVal::Converging(error.into()))
+	}
 }
