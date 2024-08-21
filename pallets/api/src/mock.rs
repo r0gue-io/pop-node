@@ -11,10 +11,9 @@ use sp_runtime::{
 
 type Block = frame_system::mocking::MockBlock<Test>;
 pub(crate) type AccountId = u64;
-pub type AssetId = u32;
 pub(crate) type Balance = u128;
 // For terminology in tests.
-pub(crate) type TokenId = AssetId;
+pub(crate) type TokenId = u32;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -80,7 +79,7 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
 	type RemoveItemsLimit = ConstU32<5>;
-	type AssetId = AssetId;
+	type AssetId = TokenId;
 	type AssetIdParameter = u32;
 	type Currency = Balances;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
