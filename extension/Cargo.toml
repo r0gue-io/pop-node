@@ -25,6 +25,9 @@ sp-core.workspace = true
 sp-runtime.workspace = true
 sp-std.workspace = true
 
+[dev-dependencies]
+rand = "0.8.5"
+
 [features]
 default = ["std"]
 std = [
