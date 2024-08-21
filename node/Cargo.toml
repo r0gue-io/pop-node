@@ -1,6 +1,6 @@
 [package]
 name = "pop-node"
-version = "0.1.0-alpha"
+version = "0.2.0-alpha"
 authors.workspace = true
 description.workspace = true
 license = "Unlicense"

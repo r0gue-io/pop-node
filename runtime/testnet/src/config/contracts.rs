@@ -88,6 +88,6 @@ impl pallet_contracts::Config for Runtime {
 	type ApiVersion = ();
 	type Environment = ();
 	type Debug = ();
-	type Migrations = ();
+	type Migrations = (pallet_contracts::migration::v16::Migration<Runtime>,);
 	type Xcm = pallet_xcm::Pallet<Self>;
 }
