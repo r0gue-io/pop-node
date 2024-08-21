@@ -34,7 +34,7 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
         )* );
 
 		// Otherwise returns error indicating an unmatched request.
-		Err(pallet_contracts::Error::<Self::Config>::NoChainExtension.into())
+		Err(pallet_contracts::Error::<Self::Config>::DecodingFailed.into())
 	}
 }
 
