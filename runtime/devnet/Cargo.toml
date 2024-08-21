@@ -28,6 +28,7 @@ pop-runtime-common = { workspace = true, default-features = false }
 # Substrate
 frame-benchmarking.workspace = true
 frame-executive.workspace = true
+frame-metadata-hash-extension.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 frame-system-benchmarking.workspace = true
@@ -104,9 +105,11 @@ std = [
     "cumulus-pallet-xcmp-queue/std",
     "cumulus-primitives-aura/std",
     "cumulus-primitives-core/std",
+    "cumulus-primitives-storage-weight-reclaim/std",
     "cumulus-primitives-utility/std",
     "frame-benchmarking/std",
     "frame-executive/std",
+    "frame-metadata-hash-extension/std",
     "frame-support/std",
     "frame-system-benchmarking/std",
     "frame-system-rpc-runtime-api/std",
