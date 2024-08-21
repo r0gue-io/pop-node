@@ -9,6 +9,7 @@ use pallet_api::extension::*;
 pub(crate) use pallet_api::Extension;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
 use versioning::*;
 
 mod versioning;
