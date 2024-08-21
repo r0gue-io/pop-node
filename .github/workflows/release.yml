@@ -5,7 +5,7 @@ env:
 
 on:
   release:
-    types: [ published ]
+    types: [published]
   workflow_dispatch:
     inputs:
       ref:
@@ -23,12 +23,12 @@ on:
 jobs:
   srtool:
     runs-on: ubuntu-latest
-    if: github.event_name != 'workflow_dispatch' && 'true' || inputs.runtime
+    if: github.event_name != 'workflow_dispatch' && 'true' || inputs.runtime || startsWith(github.ref, 'refs/tags/runtime-')
     permissions:
       contents: write
     strategy:
       matrix:
-        runtime: [ "devnet", "testnet" ]
+        runtime: ["devnet", "testnet"]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
@@ -120,7 +120,7 @@ jobs:
 
   build-node:
     runs-on: ${{ matrix.platform.os }}
-    if: github.event_name != 'workflow_dispatch' && 'true' || inputs.node
+    if: github.event_name != 'workflow_dispatch' && 'true' || inputs.node || startsWith(github.ref, 'refs/tags/node-')
     permissions:
       contents: write
     strategy:
