@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 use frame_support::traits::Get;
-pub use pop_chain_extension::{Config, DispatchCall, ErrorProvider, ReadState, Readable};
+pub use pop_chain_extension::{Config, DecodingFailed, DispatchCall, ReadState, Readable};
 use pop_chain_extension::{
 	Decodes, Environment, Ext, LogTarget, Matches, Processor, Result, RetVal, State,
 };

@@ -101,8 +101,10 @@ impl ErrorConverter for () {
 	}
 }
 
-/// Trait for providing an error type.
-pub trait ErrorProvider {
-	/// An error to return.
-	const ERROR: DispatchError;
+/// Error to be returned when decoding fails.
+pub struct DecodingFailed<C>(PhantomData<C>);
+impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
+	fn get() -> DispatchError {
+		pallet_contracts::Error::<T>::DecodingFailed.into()
+	}
 }
