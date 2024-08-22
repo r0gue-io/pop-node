@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    types: [ opened, synchronize, reopened, ready_for_review ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   lint:
@@ -66,6 +66,49 @@ jobs:
 
       - name: Run integration tests
         run: cargo test --release --locked --package integration-tests
+
+  contract-integration-tests:
+    env:
+      CONTRACT_INTEGRATION_TESTS: pop-api/integration-tests
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Download and run latest `substrate-contracts-node` binary
+        if: matrix.os == 'macOS-latest'
+        run: |
+          curl -L -o substrate-contracts-node.zip 'https://gitlab.parity.io/parity/mirrors/substrate-contracts-node/-/jobs/artifacts/main/download?job=build-mac' && \
+          unzip substrate-contracts-node.zip && \
+          chmod +x artifacts/substrate-contracts-node-mac/substrate-contracts-node &&
+          ./artifacts/substrate-contracts-node-mac/substrate-contracts-node -linfo,runtime::contracts=debug  2>&1 | tee /tmp/contracts-node.log &
+
+      - name: Install and run latest `substrate-contracts-node` binary
+        if: matrix.os == 'windows-latest'
+        run: |
+          cargo install contracts-node --git https://github.com/paritytech/substrate-contracts-node.git --force --locked && \
+          substrate-contracts-node -lruntime::contracts=debug  2>&1 | tee /tmp/contracts-node.log &
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@23bce251a8cd2ffc3c1075eaa2367cf899916d84 # v2.7.3
+
+      - name: Install `cargo-contract` `master`
+        uses: baptiste0928/cargo-install@9f6037ed331dcf7da101461a20656273fa72abf0 # v3.1.0
+        with:
+          crate: cargo-contract
+          git: https://github.com/use-ink/cargo-contract.git
+          branch: master
+
+      - name: Output versions
+        run: |
+          cargo -vV
+          cargo contract --version
+
+      - name: Build contracts
+        run: cargo contract build --release
+        working-directory: ${{env.CONTRACT_INTEGRATION_TESTS}}
 
   coverage:
     needs: lint
