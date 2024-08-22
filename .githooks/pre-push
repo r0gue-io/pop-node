@@ -11,4 +11,20 @@ then
     exit 1
 fi
 
+# Check TOML formatting
+if ! taplo format --check
+then
+    echo "There are some code style issues."
+    echo "Run 'taplo fmt' first."
+    exit 1
+fi
+
+# Check for feature formatting
+if ! zepter format features
+then
+    echo "There are some code style issues."
+    echo "Run 'zepter format features --fix' first."
+    exit 1
+fi
+
 exit 0
