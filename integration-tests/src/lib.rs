@@ -562,9 +562,9 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 // 				// We currently only check that the message was processed successfully
 // 				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) =>
 // {}, 				// TODO: check order placed once we can have on-demand para id registered (probably via
-// setting raw storage as a workaround) 				// RuntimeEvent::OnDemandAssignmentProvider(assigner_on_demand::Event::OnDemandOrderPlaced
-// { 				// 	..
-// 				// }) => {},
+// setting raw storage as a workaround) 				//
+// RuntimeEvent::OnDemandAssignmentProvider(assigner_on_demand::Event::OnDemandOrderPlaced { 				//
+// .. 				// }) => {},
 // 			]
 // 		);
 // 	});
