@@ -18,6 +18,7 @@ reorder_impl_items = true
 trailing_semicolon = false
 unstable_features = true
 use_field_init_shorthand = true
+# Uses max_width or its default value (100) if not specified.
 use_small_heuristics = "Max"
 use_try_shorthand = true
 wrap_comments = true
