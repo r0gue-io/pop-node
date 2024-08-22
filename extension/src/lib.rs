@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode as _;
-use core::marker::PhantomData;
+use core::{fmt::Debug, marker::PhantomData};
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
 	ensure,
@@ -16,7 +16,6 @@ pub use pallet_contracts::chain_extension::{Environment, Ext, Result, RetVal, St
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
-use std::fmt::Debug;
 
 mod decoding;
 mod functions;
