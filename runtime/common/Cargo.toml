@@ -24,9 +24,9 @@ parachains-common = { workspace = true, default-features = false }
 polkadot-primitives = { workspace = true, default-features = false }
 
 [features]
-default = ["std"]
-std = ["frame-support/std", "sp-runtime/std"]
+default = [ "std" ]
+std = [ "frame-support/std", "sp-runtime/std" ]
 runtime-benchmarks = [
-    "frame-support/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
