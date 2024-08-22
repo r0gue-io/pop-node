@@ -1,10 +1,5 @@
 #![cfg(test)]
 
-use crate::chains::{
-	asset_hub_paseo::{genesis::ED as ASSET_HUB_PASEO_ED, AssetHubPaseoParaPallet},
-	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
-	pop_network::PopNetworkParaPallet,
-};
 use asset_hub_paseo_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
 use asset_test_utils::xcm_helpers;
 use chains::{asset_hub_paseo::AssetHubPaseo, paseo::Paseo, pop_network::PopNetwork};
@@ -21,6 +16,12 @@ use paseo_runtime::xcm_config::XcmConfig as PaseoXcmConfig;
 use pop_runtime_common::Balance;
 use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
+
+use crate::chains::{
+	asset_hub_paseo::{genesis::ED as ASSET_HUB_PASEO_ED, AssetHubPaseoParaPallet},
+	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
+	pop_network::PopNetworkParaPallet,
+};
 
 mod chains;
 

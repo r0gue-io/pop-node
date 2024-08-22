@@ -36,7 +36,11 @@ fn runtime(id: &str) -> Runtime {
 	} else if id.starts_with("test") || id.ends_with("testnet") {
 		Runtime::Testnet
 	} else {
-		log::warn!("No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will be used", id);
+		log::warn!(
+			"No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will \
+			 be used",
+			id
+		);
 		Runtime::Devnet
 	}
 }
@@ -90,10 +94,9 @@ impl SubstrateCli for Cli {
 
 	fn description() -> String {
 		format!(
-			"Pop Collator\n\nThe command-line arguments provided first will be \
-		passed to the parachain node, while the arguments provided after -- will be passed \
-		to the relay chain node.\n\n\
-		{} <parachain-args> -- <relay-chain-args>",
+			"Pop Collator\n\nThe command-line arguments provided first will be passed to the \
+			 parachain node, while the arguments provided after -- will be passed to the relay \
+			 chain node.\n\n{} <parachain-args> -- <relay-chain-args>",
 			Self::executable_name()
 		)
 	}
@@ -126,10 +129,9 @@ impl SubstrateCli for RelayChainCli {
 
 	fn description() -> String {
 		format!(
-			"Pop Collator\n\nThe command-line arguments provided first will be \
-		passed to the parachain node, while the arguments provided after -- will be passed \
-		to the relay chain node.\n\n\
-		{} <parachain-args> -- <relay-chain-args>",
+			"Pop Collator\n\nThe command-line arguments provided first will be passed to the \
+			 parachain node, while the arguments provided after -- will be passed to the relay \
+			 chain node.\n\n{} <parachain-args> -- <relay-chain-args>",
 			Self::executable_name()
 		)
 	}
@@ -262,7 +264,7 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			// Switch on the concrete benchmark sub-command-
 			match cmd {
-				BenchmarkCmd::Pallet(cmd) => {
+				BenchmarkCmd::Pallet(cmd) =>
 					if cfg!(feature = "runtime-benchmarks") {
 						runner.sync_run(|config| {
 							cmd.run_with_spec::<HashingFor<Block>, ReclaimHostFunctions>(Some(
@@ -270,18 +272,16 @@ pub fn run() -> Result<()> {
 							))
 						})
 					} else {
-						Err("Benchmarking wasn't enabled when building the node. \
-					You can enable it with `--features runtime-benchmarks`."
+						Err("Benchmarking wasn't enabled when building the node. You can enable \
+						     it with `--features runtime-benchmarks`."
 							.into())
-					}
-				},
+					},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
 					construct_benchmark_partials!(config, |partials| cmd.run(partials.client))
 				}),
 				#[cfg(not(feature = "runtime-benchmarks"))]
 				BenchmarkCmd::Storage(_) => Err(sc_cli::Error::Input(
-					"Compile with --features=runtime-benchmarks \
-						to enable storage benchmarks."
+					"Compile with --features=runtime-benchmarks to enable storage benchmarks."
 						.into(),
 				)),
 				#[cfg(feature = "runtime-benchmarks")]
@@ -292,9 +292,8 @@ pub fn run() -> Result<()> {
 						cmd.run(config, partials.client.clone(), db, storage)
 					})
 				}),
-				BenchmarkCmd::Machine(cmd) => {
-					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
-				},
+				BenchmarkCmd::Machine(cmd) =>
+					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
 				// NOTE: this allows the Client to leniently implement
 				// new benchmark commands without requiring a companion MR.
 				#[allow(unreachable_patterns)]
