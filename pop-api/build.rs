@@ -1,16 +1,16 @@
+use contract_build::{execute, BuildMode, ExecuteArgs, ManifestPath};
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
+#[cfg(feature = "integration-tests")]
 fn main() {
 	let contracts = PathBuf::from("./integration-tests/contracts/");
 	for contract in &get_subcontract_directories(&contracts) {
-		let contract_path = contract.join("Cargo.toml");
-		Command::new("cargo")
-			.args(["contract", "build", "--release", "--manifest-path"])
-			.arg(&contract_path)
-			.spawn()
-			.expect(&format!("Failed to build contract: {:?}", contract_path));
+		let manifest_path = ManifestPath::new(contract.join("Cargo.toml"))
+			.expect(&format!("Failed to retrieve contract: {:?}", contract));
+		let args =
+			ExecuteArgs { build_mode: BuildMode::Release, manifest_path, ..Default::default() };
+		execute(args).expect(&format!("Failed to build contract: {:?}", contract));
 	}
 }
 
@@ -31,3 +31,6 @@ fn get_subcontract_directories(contracts_dir: &Path) -> Vec<PathBuf> {
 	}
 	directories
 }
+
+#[cfg(not(feature = "integration-tests"))]
+fn main() {}
