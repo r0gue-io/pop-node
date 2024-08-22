@@ -76,7 +76,7 @@ jobs:
 
       - name: Run tests
         working-directory: pop-api
-        run: cargo test --release --locked --all-features
+        run: cargo test --release --all-features
 
   api-integration-tests:
     runs-on: ubuntu-latest
