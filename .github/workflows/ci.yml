@@ -99,7 +99,7 @@ jobs:
 
       - name: Run integration tests
         working-directory: ${{env.CONTRACT_INTEGRATION_TESTS}}
-        run: cargo test --release --locked
+        run: cargo test --release
 
   coverage:
     needs: lint
