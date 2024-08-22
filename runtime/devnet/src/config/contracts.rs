@@ -1,12 +1,13 @@
-use crate::{
-	deposit, extensions, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeHoldReason, Timestamp,
-};
 use frame_support::{
 	parameter_types,
 	traits::{ConstBool, ConstU32, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
+
+use crate::{
+	deposit, extensions, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall,
+	RuntimeEvent, RuntimeHoldReason, Timestamp,
+};
 
 pub enum AllowBalancesCall {}
 
@@ -45,12 +46,8 @@ parameter_types! {
 }
 
 impl pallet_contracts::Config for Runtime {
-	type Time = Timestamp;
-	type Randomness = DummyRandomness<Self>;
-	type Currency = Balances;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
-
+	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type ApiVersion = ();
 	/// The safest default is to allow no calls at all.
 	///
 	/// Runtimes should whitelist dispatchables that are allowed to be called from contracts
@@ -58,14 +55,16 @@ impl pallet_contracts::Config for Runtime {
 	/// change because that would break already deployed contracts. The `RuntimeCall` structure
 	/// itself is not allowed to change the indices of existing pallets, too.
 	type CallFilter = AllowBalancesCall;
-	type DepositPerItem = DepositPerItem;
-	type DepositPerByte = DepositPerByte;
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
-	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
-	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
 	type ChainExtension = extensions::PopApiExtension;
-	type Schedule = Schedule;
-	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type Currency = Balances;
+	type Debug = ();
+	type DefaultDepositLimit = DefaultDepositLimit;
+	type DepositPerByte = DepositPerByte;
+	type DepositPerItem = DepositPerItem;
+	type Environment = ();
+	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	// This node is geared towards development and testing of contracts.
 	// We decided to increase the default allowed contract size for this
 	// reason (the default is `128 * 1024`).
@@ -75,19 +74,19 @@ impl pallet_contracts::Config for Runtime {
 	// less friction during development when the requirement here is
 	// just more lax.
 	type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
-	type DefaultDepositLimit = DefaultDepositLimit;
-	type MaxStorageKeyLen = ConstU32<128>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type MaxDelegateDependencies = ConstU32<32>;
+	type MaxStorageKeyLen = ConstU32<128>;
+	type Migrations = ();
+	type Randomness = DummyRandomness<Self>;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Schedule = Schedule;
+	type Time = Timestamp;
 	type UnsafeUnstableInterface = ConstBool<true>;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
-	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
-	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
-	type MaxDelegateDependencies = ConstU32<32>;
-	type RuntimeHoldReason = RuntimeHoldReason;
-
-	type ApiVersion = ();
-	type Environment = ();
-	type Debug = ();
-	type Migrations = ();
+	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
+	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type Xcm = pallet_xcm::Pallet<Self>;
 }

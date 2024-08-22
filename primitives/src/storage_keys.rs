@@ -1,5 +1,6 @@
-use super::*;
 use scale::{Decode, Encode, MaxEncodedLen};
+
+use super::*;
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 pub enum RuntimeStateKeys {

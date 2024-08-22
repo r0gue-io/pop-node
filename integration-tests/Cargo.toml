@@ -1,18 +1,18 @@
 [package]
-name = "integration-tests"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
+name = "integration-tests"
 repository.workspace = true
 
 [dev-dependencies]
 codec.workspace = true
 tracing-subscriber = { workspace = true, features = [
-    "env-filter",
-    "fmt",
-    "std",
-    "tracing-log",
+	"env-filter",
+	"fmt",
+	"std",
+	"tracing-log",
 ] }
 
 # Substrate
@@ -20,20 +20,20 @@ frame-support.workspace = true
 pallet-assets.workspace = true
 pallet-balances.workspace = true
 pallet-message-queue.workspace = true
-sp-core.workspace = true
 sp-authority-discovery.workspace = true
 sp-consensus-aura.workspace = true
 sp-consensus-babe.workspace = true
 sp-consensus-beefy.workspace = true
 sp-consensus-grandpa.workspace = true
+sp-core.workspace = true
 sp-runtime.workspace = true
 
 # Polkadot
+pallet-xcm.workspace = true
 polkadot-primitives.workspace = true
+polkadot-runtime-parachains.workspace = true
 xcm.workspace = true
 xcm-executor.workspace = true
-polkadot-runtime-parachains.workspace = true
-pallet-xcm.workspace = true
 
 # Cumulus
 asset-test-utils.workspace = true
@@ -46,56 +46,58 @@ paseo-runtime.workspace = true
 paseo-runtime-constants.workspace = true
 
 # Local
-pop-runtime-devnet.workspace = true
 pop-runtime-common.workspace = true
+pop-runtime-devnet.workspace = true
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "asset-hub-paseo-runtime/std",
-    "cumulus-primitives-core/std",
-    "frame-support/std",
-    "pallet-assets/std",
-    "pallet-balances/std",
-    "pallet-message-queue/std",
-    "pallet-xcm/std",
-    "paseo-runtime/std",
-    "paseo-runtime-constants/std",
-    "polkadot-primitives/std",
-    "polkadot-runtime-parachains/std",
-    "pop-runtime-devnet/std",
-    "sp-authority-discovery/std",
-    "sp-consensus-aura/std",
-    "sp-consensus-babe/std",
-    "sp-consensus-beefy/std",
-    "sp-consensus-grandpa/std",
-    "sp-core/std",
-    "sp-runtime/std",
-    "xcm-executor/std",
-    "xcm/std",
+	"asset-hub-paseo-runtime/std",
+	"cumulus-primitives-core/std",
+	"frame-support/std",
+	"pallet-assets/std",
+	"pallet-balances/std",
+	"pallet-message-queue/std",
+	"pallet-xcm/std",
+	"paseo-runtime-constants/std",
+	"paseo-runtime/std",
+	"polkadot-primitives/std",
+	"polkadot-runtime-parachains/std",
+	"pop-runtime-common/std",
+	"pop-runtime-devnet/std",
+	"sp-authority-discovery/std",
+	"sp-consensus-aura/std",
+	"sp-consensus-babe/std",
+	"sp-consensus-beefy/std",
+	"sp-consensus-grandpa/std",
+	"sp-core/std",
+	"sp-runtime/std",
+	"xcm-executor/std",
+	"xcm/std",
 ]
 
 runtime-benchmarks = [
-    "asset-hub-paseo-runtime/runtime-benchmarks",
-    "cumulus-primitives-core/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "pallet-assets/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks",
-    "pallet-message-queue/runtime-benchmarks",
-    "paseo-runtime/runtime-benchmarks",
-    "polkadot-primitives/runtime-benchmarks",
-    "pop-runtime-devnet/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
-    "xcm-executor/runtime-benchmarks",
+	"asset-hub-paseo-runtime/runtime-benchmarks",
+	"cumulus-primitives-core/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"pallet-assets/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-message-queue/runtime-benchmarks",
+	"paseo-runtime/runtime-benchmarks",
+	"polkadot-primitives/runtime-benchmarks",
+	"pop-runtime-common/runtime-benchmarks",
+	"pop-runtime-devnet/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+	"xcm-executor/runtime-benchmarks",
 ]
 
 try-runtime = [
-    "asset-hub-paseo-runtime/try-runtime",
-    "frame-support/try-runtime",
-    "pallet-assets/try-runtime",
-    "pallet-balances/std",
-    "pallet-message-queue/try-runtime",
-    "paseo-runtime/try-runtime",
-    "pop-runtime-devnet/try-runtime",
-    "sp-runtime/try-runtime",
+	"asset-hub-paseo-runtime/try-runtime",
+	"frame-support/try-runtime",
+	"pallet-assets/try-runtime",
+	"pallet-balances/std",
+	"pallet-message-queue/try-runtime",
+	"paseo-runtime/try-runtime",
+	"pop-runtime-devnet/try-runtime",
+	"sp-runtime/try-runtime",
 ]
