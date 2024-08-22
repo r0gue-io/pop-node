@@ -68,38 +68,17 @@ jobs:
         run: cargo test --release --locked --package integration-tests
 
   contract-integration-tests:
-    env:
-      SUBCONTRACT_DIRECTORIES: "create_token_in_constructor fungibles"
-      CONTRACT_INTEGRATION_TESTS: pop-api/integration-tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: "./.github/actions/init"
 
-      - name: Install `cargo-contract` `master`
-        uses: baptiste0928/cargo-install@9f6037ed331dcf7da101461a20656273fa72abf0 # v3.1.0
-        with:
-          crate: cargo-contract
-          git: https://github.com/use-ink/cargo-contract.git
-          branch: master
-
-      - name: Output versions
-        run: |
-          cargo -vV
-          cargo contract --version
-
-      - name: Build contracts
-        working-directory: ${{env.CONTRACT_INTEGRATION_TESTS}}
-        run: |
-          for contract in ${SUBCONTRACT_DIRECTORIES}; do
-              echo "Processing contract: $contract";
-              cargo contract build --release --manifest-path contracts/${contract}/Cargo.toml;
-          done
+      - name: Build
+        run: cargo build --package pop-api --features integration-tests
 
       - name: Run integration tests
-        working-directory: ${{env.CONTRACT_INTEGRATION_TESTS}}
-        run: cargo test --release
+        run: cargo test --release --locked --package pop-api/integration-tests
 
   coverage:
     needs: lint
