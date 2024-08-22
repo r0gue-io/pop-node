@@ -1,6 +1,8 @@
 use super::*;
 use sp_runtime::ModuleError;
 
+type Version = u8;
+
 /// Versioned runtime calls.
 #[derive(Decode, Debug)]
 pub enum VersionedRuntimeCall {
@@ -35,17 +37,46 @@ impl From<VersionedRuntimeRead> for RuntimeRead {
 	}
 }
 
+/// Versioned runtime state read results.
+#[derive(Debug)]
+pub enum VersionedRuntimeResult {
+	/// Version zero of runtime read results.
+	V0(RuntimeResult),
+}
+
+impl From<(RuntimeResult, Version)> for VersionedRuntimeResult {
+	fn from(value: (RuntimeResult, Version)) -> Self {
+		let (result, version) = value;
+		match version {
+			// Allows mapping from current `RuntimeResult` to a specific/prior version
+			0 => VersionedRuntimeResult::V0(result),
+			// TODO: should never occur due to version processing/validation when request received
+			_ => unimplemented!(),
+		}
+	}
+}
+
+impl From<VersionedRuntimeResult> for Vec<u8> {
+	fn from(result: VersionedRuntimeResult) -> Self {
+		match result {
+			// Simply unwrap and return the encoded result
+			VersionedRuntimeResult::V0(result) => result.encode(),
+		}
+	}
+}
+
 /// Versioned errors.
+#[derive(Debug)]
 pub enum VersionedError {
 	/// Version zero of errors.
 	V0(pop_primitives::v0::Error),
 }
 
-impl From<(DispatchError, u8)> for VersionedError {
-	fn from(value: (DispatchError, u8)) -> Self {
+impl From<(DispatchError, Version)> for VersionedError {
+	fn from(value: (DispatchError, Version)) -> Self {
 		let (error, version) = value;
 		match version {
-			// Allows mapping from current `DispatchError` to a specific version of `Error`
+			// Allows mapping from current `DispatchError` to a specific/prior version of `Error`
 			0 => VersionedError::V0(V0Error::from(error).0),
 			// TODO: should never occur due to version processing/validation when request received
 			_ => unimplemented!(),

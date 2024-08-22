@@ -1,5 +1,5 @@
 use super::*;
-use pallet_contracts::chain_extension::{BufIn, State};
+use pallet_contracts::chain_extension::BufIn;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -7,8 +7,8 @@ use sp_std::vec::Vec;
 pub trait Decode {
 	/// The output type to be decoded.
 	type Output: codec::Decode;
-	/// An optional processor, for performing any additional processing before decoding.
-	type Processor: Processor;
+	/// An optional processor, for performing any additional processing on data read from the contract before decoding.
+	type Processor: Processor<Value = Vec<u8>>;
 	/// The error to return if decoding fails.
 	type Error: Get<DispatchError>;
 
@@ -33,7 +33,7 @@ pub trait Decode {
 		let mut input = env.read(len)?;
 		log::debug!(target: Self::LOG_TARGET, "input read: input={input:?}");
 		// Perform any additional processing required. Any implementation is expected to charge weight as appropriate.
-		Self::Processor::process(&mut input, env);
+		input = Self::Processor::process(input, env);
 		// Finally decode and return.
 		Self::Output::decode(&mut &input[..]).map_err(|_| Self::Error::get())
 	}
@@ -44,31 +44,12 @@ pub struct Decodes<O, E, P = (), L = ()>(PhantomData<(O, E, P, L)>);
 impl<
 		Output: codec::Decode,
 		Error: Get<DispatchError>,
-		Processor_: Processor,
+		ValueProcessor: Processor<Value = Vec<u8>>,
 		Logger: LogTarget,
-	> Decode for Decodes<Output, Error, Processor_, Logger>
+	> Decode for Decodes<Output, Error, ValueProcessor, Logger>
 {
 	type Output = Output;
-	type Processor = Processor_;
+	type Processor = ValueProcessor;
 	type Error = Error;
 	const LOG_TARGET: &'static str = Logger::LOG_TARGET;
-}
-
-/// Trait for processing a value based on additional information available from the environment.
-pub trait Processor {
-	/// The log target.
-	const LOG_TARGET: &'static str;
-
-	/// Processes the provided value.
-	///
-	/// # Parameters
-	/// - `value` - The value to be processed.
-	/// - `env` - The current execution environment.
-	fn process<E: Ext, S: State>(value: &mut Vec<u8>, env: &mut Environment<E, S>);
-}
-
-impl Processor for () {
-	const LOG_TARGET: &'static str = "";
-
-	fn process<E: Ext, S: State>(_value: &mut Vec<u8>, _env: &mut Environment<E, S>) {}
 }

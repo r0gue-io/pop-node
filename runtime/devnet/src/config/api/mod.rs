@@ -6,6 +6,7 @@ use cumulus_primitives_core::Weight;
 use frame_support::traits::Contains;
 use pallet_api::extension::*;
 pub(crate) use pallet_api::Extension;
+use pallet_api::Read;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
@@ -27,16 +28,36 @@ pub enum RuntimeRead {
 }
 
 impl Readable for RuntimeRead {
+	/// The corresponding type carrying the result of the query for runtime state.
+	type Result = RuntimeResult;
+
 	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
 	fn weight(&self) -> Weight {
-		// TODO: defer to relevant pallet - e.g. RuntimeRead::Fungibles(key) => fungibles::Pallet::read_weight(key),
-		<Runtime as frame_system::Config>::DbWeight::get().reads(1_u64)
+		match self {
+			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
+		}
 	}
 
 	/// Performs the read and returns the result.
-	fn read(self) -> Vec<u8> {
+	fn read(self) -> Self::Result {
 		match self {
-			RuntimeRead::Fungibles(key) => fungibles::Pallet::read_state(key),
+			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+		}
+	}
+}
+
+/// The result of a runtime state read.
+#[derive(Debug)]
+pub enum RuntimeResult {
+	/// Fungible token read results.
+	Fungibles(fungibles::Result<Runtime>),
+}
+
+impl RuntimeResult {
+	/// Encodes the result.
+	fn encode(&self) -> Vec<u8> {
+		match self {
+			RuntimeResult::Fungibles(result) => result.encode(),
 		}
 	}
 }
@@ -58,7 +79,9 @@ impl pallet_api::extension::Config for Config {
 		// Dispatching calls
 		DispatchCall<
 			Runtime,
+			// Decode as a versioned runtime call
 			DecodesAs<VersionedRuntimeCall, DispatchCallLogTarget>,
+			// Function 0
 			IdentifiedByFirstByteOfFunctionId<ConstU8<0>>,
 			Filter,
 			DispatchCallLogTarget,
@@ -67,15 +90,20 @@ impl pallet_api::extension::Config for Config {
 		ReadState<
 			Runtime,
 			RuntimeRead,
+			// Decode as a versioned runtime read
 			DecodesAs<VersionedRuntimeRead, ReadStateLogTarget>,
+			// Function 1
 			IdentifiedByFirstByteOfFunctionId<ConstU8<1>>,
 			Filter,
+			// Convert the result of a read into the expected versioned result
+			VersionedResultConverter<RuntimeResult, VersionedRuntimeResult>,
 			ReadStateLogTarget,
 		>,
 	);
 	/// Ensure errors are versioned.
-	type Error = ErrorConverter<VersionedError>;
+	type Error = VersionedErrorConverter<VersionedError>;
 
+	/// The log target.
 	const LOG_TARGET: &'static str = LOG_TARGET;
 }
 

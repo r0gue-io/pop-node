@@ -1,6 +1,6 @@
 use super::*;
 use core::fmt::Debug;
-pub use decoding::{Decode, Decodes, Processor};
+pub use decoding::{Decode, Decodes};
 pub use matching::{Equals, FunctionId, Matches};
 use pallet_contracts::chain_extension::{BufIn, BufOut};
 
@@ -93,15 +93,18 @@ impl<C, D, M: Matches, F, L> Matches for DispatchCall<C, D, M, F, L> {
 }
 
 /// A function for reading runtime state.
-pub struct ReadState<C, R, D, M, F, L = ()>(PhantomData<(C, R, D, M, F, L)>);
+pub struct ReadState<C, R, D, M, F, RC = DefaultConverter<<R as Readable>::Result>, L = ()>(
+	PhantomData<(C, R, D, M, F, RC, L)>,
+);
 impl<
 		Config: pallet_contracts::Config,
 		Read: Readable + Debug,
 		Decoder: Decode<Output: codec::Decode + Into<Read>>,
 		Matcher: Matches,
 		Filter: Contains<Read>,
+		ResultConverter: Converter<Source = Read::Result, Target: Into<Vec<u8>>>,
 		Logger: LogTarget,
-	> Function for ReadState<Config, Read, Decoder, Matcher, Filter, Logger>
+	> Function for ReadState<Config, Read, Decoder, Matcher, Filter, ResultConverter, Logger>
 {
 	/// The configuration of the contracts module.
 	type Config = Config;
@@ -123,14 +126,31 @@ impl<
 		ensure!(Filter::contains(&read), frame_system::Error::<Config>::CallFiltered);
 		let result = read.read();
 		log::debug!(target: Logger::LOG_TARGET, "read: result={result:?}");
+		// Perform any final conversion. Any implementation is expected to charge weight as appropriate.
+		let result = ResultConverter::convert(result, env).into();
 		// TODO: check parameters (allow_skip, weight_per_byte)
 		env.write(&result, false, Some(Schedule::<Config>::get().host_fn_weights.input_per_byte))?;
 		Ok(Converging(0))
 	}
 }
 
-impl<C, R, D, M: Matches, F, L> Matches for ReadState<C, R, D, M, F, L> {
+impl<C, R, D, M: Matches, F, RC, L> Matches for ReadState<C, R, D, M, F, RC, L> {
 	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
 		M::matches(env)
+	}
+}
+
+/// A default converter, for converting (encoding) from some type into a byte array.
+pub struct DefaultConverter<T>(PhantomData<T>);
+impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
+	type Source = T;
+	type Target = Vec<u8>;
+	const LOG_TARGET: &'static str = "";
+
+	fn convert<E: Ext, S: State>(
+		value: Self::Source,
+		_env: &mut Environment<E, S>,
+	) -> Self::Target {
+		value.into()
 	}
 }
