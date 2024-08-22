@@ -4,10 +4,6 @@ description = "Enabling smart(er) contracts with the power of Polkadot"
 license = "GPL-3.0-only"
 version = "0.0.0"
 edition = "2021"
-build = "build.rs"
-
-[build-dependencies]
-contract-build = "4.1.1"
 
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
@@ -28,5 +24,4 @@ crate-type = ["rlib"]
 default = ["std"]
 std = ["ink/std", "pop-primitives/std", "sp-io/std"]
 assets = []
-integration-tests = []
 fungibles = ["assets"]

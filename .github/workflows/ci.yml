@@ -74,13 +74,9 @@ jobs:
 
       - uses: "./.github/actions/init"
 
-      - name: Build
-        working-directory: pop-api
-        run: cargo build --features integration-tests
-
       - name: Run integration tests
         working-directory: pop-api/integration-tests
-        run: cargo test --release
+        run: cargo test --release --features contracts
 
   coverage:
     needs: lint
