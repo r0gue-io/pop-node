@@ -11,13 +11,6 @@ jobs:
     env:
       SUBCONTRACT_DIRECTORIES: "create_token_in_constructor fungibles"
       CONTRACT_INTEGRATION_TESTS: pop-api/integration-tests
-    strategy:
-      matrix:
-        toolchain:
-          - stable
-        job:
-          - contract build
-          - test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -43,10 +36,14 @@ jobs:
           cargo -vV
           cargo contract --version
 
-      - name: ${{ matrix.job }} integration-tests on ${{ matrix.platform }}-${{ matrix.toolchain }}
+      - name: Build contracts
         working-directory: ${{env.CONTRACT_INTEGRATION_TESTS}}
         run: |
           for contract in ${SUBCONTRACT_DIRECTORIES}; do
               echo "Processing contract: $contract";
-              cargo ${{ matrix.job }} --release --manifest-path contracts/${contract}/Cargo.toml;
+              cargo contract build --release --manifest-path contracts/${contract}/Cargo.toml;
           done
+
+      - name: Run integration tests
+        working-directory: ${{env.CONTRACT_INTEGRATION_TESTS}}
+        run: cargo test
