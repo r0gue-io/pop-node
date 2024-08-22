@@ -9,13 +9,14 @@ use frame_support::{
 	weights::Weight,
 };
 pub use functions::{
-	Decode, Decodes, DispatchCall, Equals, Function, FunctionId, Matches, Processor, ReadState,
+	Decode, Decodes, DispatchCall, Equals, Function, FunctionId, Matches, ReadState,
 };
 use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
 pub use pallet_contracts::chain_extension::{Environment, Ext, Result, RetVal, State};
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
+use std::fmt::Debug;
 
 mod decoding;
 mod functions;
@@ -66,13 +67,16 @@ pub trait Config {
 	const LOG_TARGET: &'static str;
 }
 
-/// Trait to be implemented for type handling a read of runtime state.
+/// Trait to be implemented for a type handling a read of runtime state.
 pub trait Readable {
+	/// The corresponding type carrying the result of the runtime state read.
+	type Result: Debug;
+
 	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
 	fn weight(&self) -> Weight;
 
 	/// Performs the read and returns the result.
-	fn read(self) -> Vec<u8>;
+	fn read(self) -> Self::Result;
 }
 
 /// Trait to enable specification of a log target.
@@ -87,6 +91,9 @@ impl LogTarget for () {
 
 /// Trait for error conversion.
 pub trait ErrorConverter {
+	/// The log target.
+	const LOG_TARGET: &'static str;
+
 	/// Converts the provided error.
 	///
 	/// # Parameters
@@ -96,6 +103,8 @@ pub trait ErrorConverter {
 }
 
 impl ErrorConverter for () {
+	const LOG_TARGET: &'static str = "pop-chain-extension::converters::error";
+
 	fn convert<E: Ext, S: State>(error: DispatchError, _env: Environment<E, S>) -> Result<RetVal> {
 		Err(error)
 	}
@@ -107,4 +116,45 @@ impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
 	fn get() -> DispatchError {
 		pallet_contracts::Error::<T>::DecodingFailed.into()
 	}
+}
+
+/// Trait for processing a value based on additional information available from the environment.
+pub trait Processor {
+	/// The type of value to be processed.
+	type Value;
+
+	/// The log target.
+	const LOG_TARGET: &'static str;
+
+	/// Processes the provided value.
+	///
+	/// # Parameters
+	/// - `value` - The value to be processed.
+	/// - `env` - The current execution environment.
+	fn process<E: Ext, S: State>(value: Self::Value, env: &mut Environment<E, S>) -> Self::Value;
+}
+
+impl Processor for () {
+	type Value = ();
+	const LOG_TARGET: &'static str = "";
+	fn process<E: Ext, S: State>(value: Self::Value, _env: &mut Environment<E, S>) -> Self::Value {
+		value
+	}
+}
+
+/// Trait for converting a value based on additional information available from the environment.
+pub trait Converter {
+	/// The type of value to be converted.
+	type Source;
+	/// The target type.
+	type Target;
+	/// The log target.
+	const LOG_TARGET: &'static str;
+
+	/// Converts the provided value.
+	///
+	/// # Parameters
+	/// - `value` - The value to be converted.
+	/// - `env` - The current execution environment.
+	fn convert<E: Ext, S: State>(value: Self::Source, env: &mut Environment<E, S>) -> Self::Target;
 }
