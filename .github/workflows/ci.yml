@@ -80,7 +80,7 @@ jobs:
 
       - name: Run integration tests
         working-directory: pop-api/integration-tests
-        run: cargo test --release --locked
+        run: cargo test --release
 
   coverage:
     needs: lint
