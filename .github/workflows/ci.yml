@@ -75,10 +75,12 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Build
-        run: cargo build --package pop-api --features integration-tests
+        working-directory: pop-api
+        run: cargo build --features integration-tests
 
       - name: Run integration tests
-        run: cargo test --release --locked --package pop-api/integration-tests
+        working-directory: pop-api/integration-tests
+        run: cargo test --release --locked
 
   coverage:
     needs: lint
