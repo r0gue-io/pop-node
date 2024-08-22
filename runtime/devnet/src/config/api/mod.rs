@@ -50,7 +50,7 @@ impl Readable for RuntimeRead {
 #[derive(Debug)]
 pub enum RuntimeResult {
 	/// Fungible token read results.
-	Fungibles(fungibles::Result<Runtime>),
+	Fungibles(fungibles::ReadResult<Runtime>),
 }
 
 impl RuntimeResult {

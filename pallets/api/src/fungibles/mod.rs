@@ -83,7 +83,7 @@ pub mod pallet {
 
 	/// Results of state reads for the fungibles API.
 	#[derive(Debug)]
-	pub enum Result<T: Config> {
+	pub enum ReadResult<T: Config> {
 		/// Total token supply for a specified asset.
 		TotalSupply(BalanceOf<T>),
 		/// Account balance for a specified `asset` and `owner`.
@@ -100,17 +100,18 @@ pub mod pallet {
 		AssetExists(bool),
 	}
 
-	impl<T: Config> Result<T> {
+	impl<T: Config> ReadResult<T> {
 		/// Encodes the result.
 		pub fn encode(&self) -> Vec<u8> {
+			use ReadResult::*;
 			match self {
-				Result::TotalSupply(result) => result.encode(),
-				Result::BalanceOf(result) => result.encode(),
-				Result::Allowance(result) => result.encode(),
-				Result::TokenName(result) => result.encode(),
-				Result::TokenSymbol(result) => result.encode(),
-				Result::TokenDecimals(result) => result.encode(),
-				Result::AssetExists(result) => result.encode(),
+				TotalSupply(result) => result.encode(),
+				BalanceOf(result) => result.encode(),
+				Allowance(result) => result.encode(),
+				TokenName(result) => result.encode(),
+				TokenSymbol(result) => result.encode(),
+				TokenDecimals(result) => result.encode(),
+				AssetExists(result) => result.encode(),
 			}
 		}
 	}
@@ -509,7 +510,7 @@ pub mod pallet {
 		/// The type of read requested.
 		type Read = Read<T>;
 		/// The type or result returned.
-		type Result = Result<T>;
+		type Result = ReadResult<T>;
 
 		/// Determines the weight of the requested read, used to charge the appropriate weight before the read is performed.
 		///
@@ -527,23 +528,23 @@ pub mod pallet {
 		fn read(request: Self::Read) -> Self::Result {
 			use Read::*;
 			match request {
-				TotalSupply(asset) => Result::TotalSupply(AssetsOf::<T>::total_supply(asset)),
+				TotalSupply(asset) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(asset)),
 				BalanceOf { asset, owner } => {
-					Result::BalanceOf(AssetsOf::<T>::balance(asset, owner))
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(asset, owner))
 				},
 				Allowance { asset, owner, spender } => {
-					Result::Allowance(AssetsOf::<T>::allowance(asset, &owner, &spender))
+					ReadResult::Allowance(AssetsOf::<T>::allowance(asset, &owner, &spender))
 				},
-				TokenName(asset) => {
-					Result::TokenName(<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(asset))
-				},
-				TokenSymbol(asset) => Result::TokenSymbol(<AssetsOf<T> as MetadataInspect<
+				TokenName(asset) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
+					AccountIdOf<T>,
+				>>::name(asset)),
+				TokenSymbol(asset) => ReadResult::TokenSymbol(<AssetsOf<T> as MetadataInspect<
 					AccountIdOf<T>,
 				>>::symbol(asset)),
-				TokenDecimals(asset) => Result::TokenDecimals(<AssetsOf<T> as MetadataInspect<
-					AccountIdOf<T>,
-				>>::decimals(asset)),
-				AssetExists(asset) => Result::AssetExists(AssetsOf::<T>::asset_exists(asset)),
+				TokenDecimals(asset) => ReadResult::TokenDecimals(
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(asset),
+				),
+				AssetExists(asset) => ReadResult::AssetExists(AssetsOf::<T>::asset_exists(asset)),
 			}
 		}
 	}
