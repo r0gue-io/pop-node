@@ -32,18 +32,14 @@ impl Processor for Prepender {
 	/// - `value` - The value to be processed.
 	/// - `env` - The current execution environment.
 	fn process<E: Ext, S: State>(mut value: Self::Value, env: &Environment<E, S>) -> Self::Value {
-		// TODO: revisit the ordering based on specced standard
 		// Resolve version, pallet and call index from environment
-		let version = env.func_id().to_le_bytes()[0];
-		let (pallet_index, call_index) = {
-			let bytes = env.ext_id().to_le_bytes();
-			(bytes[0], bytes[1])
-		};
+		let version = version(env);
+		let (module, index) = module_and_index(env);
 		// Prepend bytes
 		value.insert(0, version);
-		value.insert(1, pallet_index);
-		value.insert(2, call_index);
-		log::debug!(target: Self::LOG_TARGET, "prepender: version={version}, module={pallet_index}, call={call_index}");
+		value.insert(1, module);
+		value.insert(2, index);
+		log::debug!(target: Self::LOG_TARGET, "prepender: version={version}, module={module}, index={index}");
 		value
 	}
 }
@@ -52,8 +48,7 @@ impl Processor for Prepender {
 pub struct IdentifiedByFirstByteOfFunctionId<T>(PhantomData<T>);
 impl<T: Get<u8>> Matches for IdentifiedByFirstByteOfFunctionId<T> {
 	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
-		let bytes = env.func_id().to_le_bytes();
-		bytes[1] == T::get()
+		func_id(env) == T::get()
 	}
 }
 
@@ -84,7 +79,7 @@ impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> pop_chain_extension::
 	/// - `env` - The current execution environment.
 	fn convert<E: Ext, S: State>(error: DispatchError, env: Environment<E, S>) -> Result<RetVal> {
 		// Defer to supplied versioned error conversion type
-		let version = env.func_id().to_le_bytes()[0];
+		let version = version(&env);
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: error={error:?}, version={version}");
 		let error: Error = (error, version).into();
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: converted error={error:?}");
@@ -111,10 +106,26 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 	/// - `env` - The current execution environment.
 	fn convert<E: Ext, S: State>(value: Self::Source, env: &Environment<E, S>) -> Self::Target {
 		// Defer to supplied versioned result conversion type
-		let version = env.func_id().to_le_bytes()[0];
+		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: result={value:?}, version={version}");
 		let converted: Target = (value, version).into();
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: converted result={converted:?}");
 		converted
 	}
+}
+
+fn func_id<E: Ext, S: State>(env: &Environment<E, S>) -> u8 {
+	// TODO: update once the encoding scheme order has been finalised: expected to be env.ext_id().to_le_bytes()[0]
+	env.func_id().to_le_bytes()[1]
+}
+
+fn module_and_index<E: Ext, S: State>(env: &Environment<E, S>) -> (u8, u8) {
+	// TODO: update once the encoding scheme order has been finalised: expected to be env.func_id().to_le_bytes()[0..1]
+	let bytes = env.ext_id().to_le_bytes();
+	(bytes[0], bytes[1])
+}
+
+fn version<E: Ext, S: State>(env: &Environment<E, S>) -> u8 {
+	// TODO: update once the encoding scheme order has been finalised: expected to be env.ext_id().to_le_bytes()[1]
+	env.func_id().to_le_bytes()[0]
 }
