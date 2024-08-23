@@ -1,0 +1,17 @@
+# all options https://taplo.tamasfe.dev/configuration/formatter-options.html
+
+exclude = [ "networks/**", "target/**" ]
+
+# global rules
+[formatting]
+array_auto_collapse = false
+array_auto_expand = true
+compact_arrays = false      # zepter compatibility
+indent_string = "	"         # tab
+inline_table_expand = false
+reorder_arrays = true
+reorder_keys = true
+
+[[rule]]
+include = [ "Cargo.toml" ]
+keys = [ "workspace.dependencies" ]

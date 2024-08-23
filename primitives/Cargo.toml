@@ -1,18 +1,14 @@
 [package]
-name = "pop-primitives"
-license = "GPL-3.0-only"
-version = "0.0.0"
 edition = "2021"
+license = "GPL-3.0-only"
+name = "pop-primitives"
+version = "0.0.0"
 
 [dependencies]
 bounded-collections = { version = "0.1", default-features = false }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [ "derive" ] }
+scale-info = { version = "2.6", default-features = false, features = [ "derive" ], optional = true }
 
 [features]
-default = ["std"]
-std = [
-    "bounded-collections/std",
-    "scale/std",
-    "scale-info/std",
-]
+default = [ "std" ]
+std = [ "bounded-collections/std", "scale-info/std", "scale/std" ]

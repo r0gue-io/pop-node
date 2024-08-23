@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -eu
+
+# Check Rust formatting
+if ! cargo +nightly fmt --all -- --check
+then
+    echo "There are some code style issues."
+    # shellcheck disable=SC2006
+    echo "Run 'cargo +nightly fmt --all' first."
+    exit 1
+fi
+
+exit 0
