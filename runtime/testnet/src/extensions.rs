@@ -7,7 +7,6 @@ use pallet_contracts::chain_extension::{
 	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
 };
 use pallet_contracts::WeightInfo;
-use pop_primitives::storage_keys::RuntimeStateKeys;
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;

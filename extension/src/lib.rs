@@ -13,6 +13,7 @@ pub use functions::{
 };
 use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
 pub use pallet_contracts::chain_extension::{Environment, Ext, Result, RetVal, State};
+use pallet_contracts::WeightInfo;
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
@@ -22,8 +23,6 @@ mod functions;
 mod matching;
 #[cfg(test)]
 mod tests;
-
-type Schedule<T> = <T as pallet_contracts::Config>::Schedule;
 
 /// A configurable chain extension.
 #[derive(Default)]
@@ -43,10 +42,12 @@ where
 	fn call<E: Ext<T = Runtime>>(&mut self, env: Environment<E, InitState>) -> Result<RetVal> {
 		log::trace!(target: Config::LOG_TARGET, "extension called");
 		let mut env = env.buf_in_buf_out();
-		// Charge weight for making a call from a contract to the runtime.
-		// `debug_message` weight is a good approximation of the additional overhead of going from contract layer to substrate layer.
+		// debug_message weight is a good approximation of the additional overhead of going
+		// from contract layer to substrate layer.
 		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-		env.charge_weight(Schedule::<Runtime>::get().host_fn_weights.debug_message)?;
+		// TODO: Temporary value for testing purpose
+		let overhead: Weight = Runtime::WeightInfo::seal_random();
+		env.charge_weight(overhead)?;
 		// Execute the function
 		match Config::Functions::execute(&mut env) {
 			Ok(r) => Ok(r),

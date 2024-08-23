@@ -3,6 +3,7 @@ use core::fmt::Debug;
 pub use decoding::{Decode, Decodes};
 pub use matching::{Equals, FunctionId, Matches};
 use pallet_contracts::chain_extension::{BufIn, BufOut};
+use pallet_contracts::WeightInfo;
 
 /// A chain extension function.
 pub trait Function {
@@ -128,8 +129,9 @@ impl<
 		log::debug!(target: Logger::LOG_TARGET, "read: result={result:?}");
 		// Perform any final conversion. Any implementation is expected to charge weight as appropriate.
 		let result = ResultConverter::convert(result, env).into();
-		// TODO: check parameters (allow_skip, weight_per_byte)
-		env.write(&result, false, Some(Schedule::<Config>::get().host_fn_weights.input_per_byte))?;
+		// To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
+		let base_weight: Weight = Config::WeightInfo::seal_return(env.in_len());
+		env.write(&result, false, Some(base_weight))?;
 		Ok(Converging(0))
 	}
 }

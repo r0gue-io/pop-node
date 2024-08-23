@@ -1,5 +1,6 @@
 use super::*;
 use pallet_contracts::chain_extension::BufIn;
+use pallet_contracts::WeightInfo;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
@@ -23,10 +24,7 @@ pub trait Decode {
 		// Charge appropriate weight, based on input length, prior to decoding.
 		// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
 		let len = env.in_len();
-		let weight = Schedule::<E::T>::get()
-			.host_fn_weights
-			.return_per_byte
-			.saturating_mul(len.into());
+		let weight = <E::T as pallet_contracts::Config>::WeightInfo::seal_return(len);
 		env.charge_weight(weight)?;
 		log::debug!(target: Self::LOG_TARGET, "pre-decode weight charged: len={len}, weight={weight}");
 		// Read encoded input supplied by contract for buffer.
