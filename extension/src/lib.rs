@@ -23,6 +23,7 @@ mod matching;
 #[cfg(test)]
 mod tests;
 
+#[deprecated]
 type Schedule<T> = <T as pallet_contracts::Config>::Schedule;
 
 /// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within `DispatchError::ModuleError`.
