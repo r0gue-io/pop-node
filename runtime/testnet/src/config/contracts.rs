@@ -83,6 +83,7 @@ impl pallet_contracts::Config for Runtime {
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = ConstU32<32>;
+	type MaxTransientStorageSize = ConstU32<{ 1 * 1024 * 1024 }>;
 	type RuntimeHoldReason = RuntimeHoldReason;
 
 	type ApiVersion = ();
