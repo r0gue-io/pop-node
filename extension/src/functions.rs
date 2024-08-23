@@ -18,7 +18,8 @@ pub trait Function {
 	) -> Result<RetVal>;
 }
 
-#[impl_trait_for_tuples::impl_for_tuples(1, 3)]
+// Support tuples of at least one function (required for type resolution) and a maximum of ten.
+#[impl_trait_for_tuples::impl_for_tuples(1, 10)]
 #[tuple_types_custom_trait_bound(Function + Matches)]
 impl<Runtime: pallet_contracts::Config> Function for Tuple {
 	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
