@@ -134,13 +134,13 @@ pub trait Processor {
 	/// # Parameters
 	/// - `value` - The value to be processed.
 	/// - `env` - The current execution environment.
-	fn process<E: Ext, S: State>(value: Self::Value, env: &mut Environment<E, S>) -> Self::Value;
+	fn process<E: Ext, S: State>(value: Self::Value, env: &Environment<E, S>) -> Self::Value;
 }
 
 impl Processor for () {
 	type Value = ();
 	const LOG_TARGET: &'static str = "";
-	fn process<E: Ext, S: State>(value: Self::Value, _env: &mut Environment<E, S>) -> Self::Value {
+	fn process<E: Ext, S: State>(value: Self::Value, _env: &Environment<E, S>) -> Self::Value {
 		value
 	}
 }
@@ -159,5 +159,5 @@ pub trait Converter {
 	/// # Parameters
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
-	fn convert<E: Ext, S: State>(value: Self::Source, env: &mut Environment<E, S>) -> Self::Target;
+	fn convert<E: Ext, S: State>(value: Self::Source, env: &Environment<E, S>) -> Self::Target;
 }

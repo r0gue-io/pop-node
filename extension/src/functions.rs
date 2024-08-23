@@ -148,10 +148,7 @@ impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
 	type Target = Vec<u8>;
 	const LOG_TARGET: &'static str = "";
 
-	fn convert<E: Ext, S: State>(
-		value: Self::Source,
-		_env: &mut Environment<E, S>,
-	) -> Self::Target {
+	fn convert<E: Ext, S: State>(value: Self::Source, _env: &Environment<E, S>) -> Self::Target {
 		value.into()
 	}
 }

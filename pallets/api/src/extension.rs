@@ -31,10 +31,7 @@ impl Processor for Prepender {
 	/// # Parameters
 	/// - `value` - The value to be processed.
 	/// - `env` - The current execution environment.
-	fn process<E: Ext, S: State>(
-		mut value: Self::Value,
-		env: &mut Environment<E, S>,
-	) -> Self::Value {
+	fn process<E: Ext, S: State>(mut value: Self::Value, env: &Environment<E, S>) -> Self::Value {
 		// TODO: revisit the ordering based on specced standard
 		// Resolve version, pallet and call index from environment
 		let version = env.func_id().to_le_bytes()[0];
@@ -112,7 +109,7 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 	/// # Parameters
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
-	fn convert<E: Ext, S: State>(value: Self::Source, env: &mut Environment<E, S>) -> Self::Target {
+	fn convert<E: Ext, S: State>(value: Self::Source, env: &Environment<E, S>) -> Self::Target {
 		// Defer to supplied versioned result conversion type
 		let version = env.func_id().to_le_bytes()[0];
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: result={value:?}, version={version}");
