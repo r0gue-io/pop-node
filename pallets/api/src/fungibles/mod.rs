@@ -81,6 +81,41 @@ pub mod pallet {
 		AssetExists(AssetIdOf<T>),
 	}
 
+	/// Results of state reads for the fungibles API.
+	#[derive(Debug)]
+	pub enum ReadResult<T: Config> {
+		/// Total token supply for a specified asset.
+		TotalSupply(BalanceOf<T>),
+		/// Account balance for a specified `asset` and `owner`.
+		BalanceOf(BalanceOf<T>),
+		/// Allowance for a `spender` approved by an `owner`, for a specified `asset`.
+		Allowance(BalanceOf<T>),
+		/// Name of the specified asset.
+		TokenName(Vec<u8>),
+		/// Symbol for the specified asset.
+		TokenSymbol(Vec<u8>),
+		/// Decimals for the specified asset.
+		TokenDecimals(u8),
+		/// Whether the specified asset exists.
+		AssetExists(bool),
+	}
+
+	impl<T: Config> ReadResult<T> {
+		/// Encodes the result.
+		pub fn encode(&self) -> Vec<u8> {
+			use ReadResult::*;
+			match self {
+				TotalSupply(result) => result.encode(),
+				BalanceOf(result) => result.encode(),
+				Allowance(result) => result.encode(),
+				TokenName(result) => result.encode(),
+				TokenSymbol(result) => result.encode(),
+				TokenDecimals(result) => result.encode(),
+				AssetExists(result) => result.encode(),
+			}
+		}
+	}
+
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
@@ -443,6 +478,7 @@ pub mod pallet {
 		/// # Parameter
 		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
 		///   the associated parameters.
+		#[deprecated]
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 
@@ -467,6 +503,49 @@ pub mod pallet {
 
 		fn weight_approve(approve: u32, cancel: u32) -> Weight {
 			<T as Config>::WeightInfo::approve(cancel, approve)
+		}
+	}
+
+	impl<T: Config> crate::Read for Pallet<T> {
+		/// The type of read requested.
+		type Read = Read<T>;
+		/// The type or result returned.
+		type Result = ReadResult<T>;
+
+		/// Determines the weight of the requested read, used to charge the appropriate weight before the read is performed.
+		///
+		/// # Parameters
+		/// - `request` - The read request.
+		fn weight(_request: &Self::Read) -> Weight {
+			// TODO: match on request and return benchmarked weight
+			T::DbWeight::get().reads(1_u64)
+		}
+
+		/// Performs the requested read and returns the result.
+		///
+		/// # Parameters
+		/// - `request` - The read request.
+		fn read(request: Self::Read) -> Self::Result {
+			use Read::*;
+			match request {
+				TotalSupply(asset) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(asset)),
+				BalanceOf { asset, owner } => {
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(asset, owner))
+				},
+				Allowance { asset, owner, spender } => {
+					ReadResult::Allowance(AssetsOf::<T>::allowance(asset, &owner, &spender))
+				},
+				TokenName(asset) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
+					AccountIdOf<T>,
+				>>::name(asset)),
+				TokenSymbol(asset) => ReadResult::TokenSymbol(<AssetsOf<T> as MetadataInspect<
+					AccountIdOf<T>,
+				>>::symbol(asset)),
+				TokenDecimals(asset) => ReadResult::TokenDecimals(
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(asset),
+				),
+				AssetExists(asset) => ReadResult::AssetExists(AssetsOf::<T>::asset_exists(asset)),
+			}
 		}
 	}
 }

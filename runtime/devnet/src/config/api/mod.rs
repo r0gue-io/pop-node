@@ -1,0 +1,145 @@
+use crate::{
+	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+};
+use codec::Decode;
+use cumulus_primitives_core::Weight;
+use frame_support::traits::Contains;
+use pallet_api::extension::*;
+pub(crate) use pallet_api::Extension;
+use pallet_api::Read;
+use sp_core::ConstU8;
+use sp_runtime::DispatchError;
+use sp_std::vec::Vec;
+use versioning::*;
+
+mod versioning;
+
+type DecodingFailedError = DecodingFailed<Runtime>;
+type DecodesAs<Output, Logger = ()> =
+	pallet_api::extension::DecodesAs<Output, DecodingFailedError, Logger>;
+
+/// A query of runtime state.
+#[derive(Decode, Debug)]
+#[repr(u8)]
+pub enum RuntimeRead {
+	/// Fungible token queries.
+	#[codec(index = 150)]
+	Fungibles(fungibles::Read<Runtime>),
+}
+
+impl Readable for RuntimeRead {
+	/// The corresponding type carrying the result of the query for runtime state.
+	type Result = RuntimeResult;
+
+	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
+	fn weight(&self) -> Weight {
+		match self {
+			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
+		}
+	}
+
+	/// Performs the read and returns the result.
+	fn read(self) -> Self::Result {
+		match self {
+			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+		}
+	}
+}
+
+/// The result of a runtime state read.
+#[derive(Debug)]
+pub enum RuntimeResult {
+	/// Fungible token read results.
+	Fungibles(fungibles::ReadResult<Runtime>),
+}
+
+impl RuntimeResult {
+	/// Encodes the result.
+	fn encode(&self) -> Vec<u8> {
+		match self {
+			RuntimeResult::Fungibles(result) => result.encode(),
+		}
+	}
+}
+
+impl fungibles::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type AssetsInstance = TrustBackedAssetsInstance;
+	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
+}
+
+#[derive(Default)]
+pub struct Config;
+impl pallet_api::extension::Config for Config {
+	/// Functions used by the Pop API.
+	///
+	/// Each function corresponds to specific functionality provided by the API, facilitating the
+	/// interaction between smart contracts and the runtime.
+	type Functions = (
+		// Dispatching calls
+		DispatchCall<
+			Runtime,
+			// Decode as a versioned runtime call
+			DecodesAs<VersionedRuntimeCall, DispatchCallLogTarget>,
+			// Function 0
+			IdentifiedByFirstByteOfFunctionId<ConstU8<0>>,
+			Filter,
+			DispatchCallLogTarget,
+		>,
+		// Reading state
+		ReadState<
+			Runtime,
+			RuntimeRead,
+			// Decode as a versioned runtime read
+			DecodesAs<VersionedRuntimeRead, ReadStateLogTarget>,
+			// Function 1
+			IdentifiedByFirstByteOfFunctionId<ConstU8<1>>,
+			Filter,
+			// Convert the result of a read into the expected versioned result
+			VersionedResultConverter<RuntimeResult, VersionedRuntimeResult>,
+			ReadStateLogTarget,
+		>,
+	);
+	/// Ensure errors are versioned.
+	type Error = VersionedErrorConverter<VersionedError>;
+
+	/// The log target.
+	const LOG_TARGET: &'static str = LOG_TARGET;
+}
+
+/// Filters used by the chain extension.
+pub struct Filter;
+
+impl Contains<RuntimeCall> for Filter {
+	fn contains(c: &RuntimeCall) -> bool {
+		use fungibles::Call::*;
+		matches!(
+			c,
+			RuntimeCall::Fungibles(
+				transfer { .. }
+					| transfer_from { .. }
+					| approve { .. } | increase_allowance { .. }
+					| decrease_allowance { .. }
+					| create { .. } | set_metadata { .. }
+					| start_destroy { .. }
+					| clear_metadata { .. }
+					| mint { .. } | burn { .. }
+			)
+		)
+	}
+}
+
+impl Contains<RuntimeRead> for Filter {
+	fn contains(r: &RuntimeRead) -> bool {
+		use fungibles::Read::*;
+		matches!(
+			r,
+			RuntimeRead::Fungibles(
+				TotalSupply(..)
+					| BalanceOf { .. } | Allowance { .. }
+					| TokenName(..) | TokenSymbol(..)
+					| TokenDecimals(..) | AssetExists(..)
+			)
+		)
+	}
+}

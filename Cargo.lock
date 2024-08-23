@@ -6511,11 +6511,13 @@ name = "pallet-api"
 version = "0.1.0"
 dependencies = [
  "frame-benchmarking",
- "frame-support 29.0.2",
- "frame-system 29.0.0",
+ "frame-support",
+ "frame-system",
+ "log",
  "pallet-assets",
  "pallet-balances",
  "parity-scale-codec",
+ "pop-chain-extension",
  "scale-info",
  "sp-core 29.0.0",
  "sp-io 31.0.0",
@@ -9820,12 +9822,12 @@ dependencies = [
 name = "pop-chain-extension"
 version = "0.1.0"
 dependencies = [
- "frame-support 29.0.2",
- "frame-system 29.0.0",
+ "frame-support",
+ "frame-system",
+ "impl-trait-for-tuples",
  "log",
  "pallet-contracts 28.0.0",
  "parity-scale-codec",
- "pop-primitives",
  "rand",
  "sp-core 29.0.0",
  "sp-runtime 32.0.0",

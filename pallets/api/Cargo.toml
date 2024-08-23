@@ -11,7 +11,11 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec.workspace = true
+log.workspace = true
 scale-info.workspace = true
+
+# Local
+pop-chain-extension.workspace = true
 
 # Substrate
 frame-benchmarking.workspace = true
