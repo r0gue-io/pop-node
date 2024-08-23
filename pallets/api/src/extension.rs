@@ -1,6 +1,8 @@
 use core::{fmt::Debug, marker::PhantomData};
 use frame_support::traits::Get;
-pub use pop_chain_extension::{Config, DecodingFailed, DispatchCall, ReadState, Readable};
+pub use pop_chain_extension::{
+	Config, DecodingFailed, DispatchCall, ReadState, Readable, DECODING_FAILED_ERROR,
+};
 use pop_chain_extension::{
 	Converter, Decodes, Environment, Ext, LogTarget, Matches, Processor, Result, RetVal, State,
 };
