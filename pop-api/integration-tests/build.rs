@@ -1,15 +1,18 @@
-use contract_build::{execute, BuildMode, ExecuteArgs, ManifestPath};
+use contract_build::{execute, BuildMode, ExecuteArgs, ManifestPath, Verbosity};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[cfg(feature = "contracts")]
 fn main() {
 	let contracts = PathBuf::from("./contracts/");
 	for contract in &get_subcontract_directories(&contracts) {
 		let manifest_path = ManifestPath::new(contract.join("Cargo.toml"))
 			.expect(&format!("Failed to retrieve contract: {:?}", contract));
-		let args =
-			ExecuteArgs { build_mode: BuildMode::Release, manifest_path, ..Default::default() };
+		let args = ExecuteArgs {
+			build_mode: BuildMode::Release,
+			manifest_path,
+			verbosity: Verbosity::Quiet,
+			..Default::default()
+		};
 		execute(args).expect(&format!("Failed to build contract: {:?}", contract));
 	}
 }
@@ -31,6 +34,3 @@ fn get_subcontract_directories(contracts_dir: &Path) -> Vec<PathBuf> {
 	}
 	directories
 }
-
-#[cfg(not(feature = "contracts"))]
-fn main() {}
