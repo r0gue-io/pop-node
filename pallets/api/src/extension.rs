@@ -118,6 +118,6 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: result={value:?}, version={version}");
 		let converted: Target = (value, version).into();
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: converted result={converted:?}");
-		converted.into()
+		converted
 	}
 }
