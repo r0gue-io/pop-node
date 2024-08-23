@@ -85,6 +85,7 @@ impl pallet_contracts::Config for Runtime {
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type MaxDelegateDependencies = ConstU32<32>;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type MaxTransientStorageSize = ();
 
 	type ApiVersion = ();
 	type Environment = ();
