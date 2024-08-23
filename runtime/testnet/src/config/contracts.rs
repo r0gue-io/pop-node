@@ -64,6 +64,7 @@ impl pallet_contracts::Config for Runtime {
 	type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type MaxDelegateDependencies = ConstU32<32>;
+	type MaxTransientStorageSize = ConstU32<{ 1 * 1024 * 1024 }>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type Migrations = ();
 	type Randomness = DummyRandomness<Self>;
