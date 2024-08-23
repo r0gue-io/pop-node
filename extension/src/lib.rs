@@ -13,6 +13,7 @@ pub use functions::{
 };
 use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
 pub use pallet_contracts::chain_extension::{Environment, Ext, Result, RetVal, State};
+use pallet_contracts::WeightInfo;
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
@@ -23,8 +24,7 @@ mod matching;
 #[cfg(test)]
 mod tests;
 
-#[deprecated]
-type Schedule<T> = <T as pallet_contracts::Config>::Schedule;
+type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;
 
 /// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within `DispatchError::ModuleError`.
 pub const DECODING_FAILED_ERROR: [u8; 4] = [11, 0, 0, 0];
@@ -49,8 +49,11 @@ where
 		let mut env = env.buf_in_buf_out();
 		// Charge weight for making a call from a contract to the runtime.
 		// `debug_message` weight is a good approximation of the additional overhead of going from contract layer to substrate layer.
-		// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-		env.charge_weight(Schedule::<Runtime>::get().host_fn_weights.debug_message)?;
+		// reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=DebugMessage(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_debug_message(len)%2C
+		let len = env.in_len();
+		let overhead = ContractWeights::<Runtime>::seal_debug_message(len);
+		let charged = env.charge_weight(overhead)?;
+		log::debug!(target: Config::LOG_TARGET, "extension call weight charged: len={len}, weight={overhead}, charged={charged:?}");
 		// Execute the function
 		match Config::Functions::execute(&mut env) {
 			Ok(r) => Ok(r),

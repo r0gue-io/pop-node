@@ -20,15 +20,12 @@ pub trait Decode {
 	/// # Parameters
 	/// - `env` - The current execution environment.
 	fn decode<E: Ext, S: BufIn>(env: &mut Environment<E, S>) -> Result<Self::Output> {
-		// Charge appropriate weight, based on input length, prior to decoding.
-		// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
+		// Charge appropriate weight for copying from contract, based on input length, prior to decoding.
+		// reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=CopyToContract(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_return(len)%2C
 		let len = env.in_len();
-		let weight = Schedule::<E::T>::get()
-			.host_fn_weights
-			.return_per_byte
-			.saturating_mul(len.into());
-		env.charge_weight(weight)?;
-		log::debug!(target: Self::LOG_TARGET, "pre-decode weight charged: len={len}, weight={weight}");
+		let weight = ContractWeights::<E::T>::seal_return(len);
+		let charged = env.charge_weight(weight)?;
+		log::debug!(target: Self::LOG_TARGET, "pre-decode weight charged: len={len}, weight={weight}, charged={charged:?}");
 		// Read encoded input supplied by contract for buffer.
 		let mut input = env.read(len)?;
 		log::debug!(target: Self::LOG_TARGET, "input read: input={input:?}");

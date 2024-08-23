@@ -121,16 +121,21 @@ impl<
 		let read = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: read={read:?}");
 		// Charge weight before read
-		let charged = env.charge_weight(read.weight())?;
-		log::trace!(target: Logger::LOG_TARGET, "pre-read weight charged: charged={charged:?}");
+		let weight = read.weight();
+		let charged = env.charge_weight(weight)?;
+		log::trace!(target: Logger::LOG_TARGET, "pre-read weight charged: weight={weight}, charged={charged:?}");
 		// Ensure read allowed
 		ensure!(Filter::contains(&read), frame_system::Error::<Config>::CallFiltered);
 		let result = read.read();
 		log::debug!(target: Logger::LOG_TARGET, "read: result={result:?}");
 		// Perform any final conversion. Any implementation is expected to charge weight as appropriate.
 		let result = ResultConverter::convert(result, env).into();
+		// Charge weight before read
+		let weight = ContractWeights::<Config>::seal_input_per_byte(1); // use unit weight as write function handles multiplication
+		log::trace!(target: Logger::LOG_TARGET, "return result to contract: weight_per_byte={weight}");
+		// Charge appropriate weight for writing to contract, based on input length, prior to decoding.
 		// TODO: check parameters (allow_skip, weight_per_byte)
-		env.write(&result, false, Some(Schedule::<Config>::get().host_fn_weights.input_per_byte))?;
+		env.write(&result, false, Some(weight))?;
 		Ok(Converging(0))
 	}
 }
