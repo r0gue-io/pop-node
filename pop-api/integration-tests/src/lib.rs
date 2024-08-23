@@ -76,6 +76,7 @@ fn bare_call(
 		CollectEvents::Skip,
 		Determinism::Enforced,
 	);
+	log::info!("contract exec result={result:?}");
 	result.result
 }
 
