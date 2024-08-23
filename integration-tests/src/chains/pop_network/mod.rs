@@ -1,6 +1,5 @@
 pub(crate) mod genesis;
 
-use crate::chains::paseo::Paseo;
 use emulated_integration_tests_common::{
 	impl_accounts_helpers_for_parachain, impl_assert_events_helpers_for_parachain,
 	impl_assets_helpers_for_parachain, impl_xcm_helpers_for_parachain, impls::Parachain,
@@ -33,5 +32,5 @@ decl_test_parachains! {
 // PopNetwork implementation
 impl_accounts_helpers_for_parachain!(PopNetwork);
 impl_assert_events_helpers_for_parachain!(PopNetwork);
-impl_assets_helpers_for_parachain!(PopNetwork, Paseo);
+impl_assets_helpers_for_parachain!(PopNetwork);
 impl_xcm_helpers_for_parachain!(PopNetwork);
