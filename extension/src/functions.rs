@@ -1,6 +1,6 @@
 use super::*;
 use core::fmt::Debug;
-pub use decoding::{Decode, Decodes};
+pub use decoding::{Decode, Decodes, IdentityProcessor};
 pub use matching::{Equals, FunctionId, Matches};
 use pallet_contracts::chain_extension::{BufIn, BufOut};
 

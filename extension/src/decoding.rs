@@ -37,7 +37,7 @@ pub trait Decode {
 }
 
 /// Default implementation for decoding data read from contract memory.
-pub struct Decodes<O, E, P = (), L = ()>(PhantomData<(O, E, P, L)>);
+pub struct Decodes<O, E, P = IdentityProcessor, L = ()>(PhantomData<(O, E, P, L)>);
 impl<
 		Output: codec::Decode,
 		Error: Get<DispatchError>,
@@ -49,4 +49,15 @@ impl<
 	type Processor = ValueProcessor;
 	type Error = Error;
 	const LOG_TARGET: &'static str = Logger::LOG_TARGET;
+}
+
+/// Default processor implementation which just passes through the value unchanged.
+pub struct IdentityProcessor;
+impl Processor for IdentityProcessor {
+	type Value = Vec<u8>;
+	const LOG_TARGET: &'static str = "";
+
+	fn process<E: Ext, S: State>(value: Self::Value, _env: &Environment<E, S>) -> Self::Value {
+		value
+	}
 }

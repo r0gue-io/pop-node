@@ -9,7 +9,8 @@ use frame_support::{
 	weights::Weight,
 };
 pub use functions::{
-	Decode, Decodes, DispatchCall, Equals, Function, FunctionId, Matches, ReadState,
+	Decode, Decodes, DispatchCall, Equals, Function, FunctionId, IdentityProcessor, Matches,
+	ReadState,
 };
 use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
 pub use pallet_contracts::chain_extension::{Environment, Ext, Result, RetVal, State};
