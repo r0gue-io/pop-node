@@ -40,17 +40,17 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 }
 
 /// A function for dispatching a runtime call.
-pub struct DispatchCall<C, D, M, F, L = ()>(PhantomData<(C, D, M, F, L)>);
+pub struct DispatchCall<M, C, D, F, L = ()>(PhantomData<(M, C, D, F, L)>);
 impl<
+		Matcher: Matches,
 		Config: pallet_contracts::Config
 			+ frame_system::Config<
 				RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 			>,
 		Decoder: Decode<Output: codec::Decode + Into<<Config as frame_system::Config>::RuntimeCall>>,
-		Matcher: Matches,
 		Filter: Contains<<Config as frame_system::Config>::RuntimeCall> + 'static,
 		Logger: LogTarget,
-	> Function for DispatchCall<Config, Decoder, Matcher, Filter, Logger>
+	> Function for DispatchCall<Matcher, Config, Decoder, Filter, Logger>
 {
 	/// The configuration of the contracts module.
 	type Config = Config;
@@ -87,25 +87,25 @@ impl<
 	}
 }
 
-impl<C, D, M: Matches, F, L> Matches for DispatchCall<C, D, M, F, L> {
+impl<M: Matches, C, D, F, L> Matches for DispatchCall<M, C, D, F, L> {
 	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
 		M::matches(env)
 	}
 }
 
 /// A function for reading runtime state.
-pub struct ReadState<C, R, D, M, F, RC = DefaultConverter<<R as Readable>::Result>, L = ()>(
-	PhantomData<(C, R, D, M, F, RC, L)>,
+pub struct ReadState<M, C, R, D, F, RC = DefaultConverter<<R as Readable>::Result>, L = ()>(
+	PhantomData<(M, C, R, D, F, RC, L)>,
 );
 impl<
+		Matcher: Matches,
 		Config: pallet_contracts::Config,
 		Read: Readable + Debug,
 		Decoder: Decode<Output: codec::Decode + Into<Read>>,
-		Matcher: Matches,
 		Filter: Contains<Read>,
 		ResultConverter: Converter<Source = Read::Result, Target: Into<Vec<u8>>>,
 		Logger: LogTarget,
-	> Function for ReadState<Config, Read, Decoder, Matcher, Filter, ResultConverter, Logger>
+	> Function for ReadState<Matcher, Config, Read, Decoder, Filter, ResultConverter, Logger>
 {
 	/// The configuration of the contracts module.
 	type Config = Config;
@@ -140,7 +140,7 @@ impl<
 	}
 }
 
-impl<C, R, D, M: Matches, F, RC, L> Matches for ReadState<C, R, D, M, F, RC, L> {
+impl<M: Matches, C, R, D, F, RC, L> Matches for ReadState<M, C, R, D, F, RC, L> {
 	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
 		M::matches(env)
 	}

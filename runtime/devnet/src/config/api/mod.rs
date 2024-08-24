@@ -78,25 +78,32 @@ impl pallet_api::extension::Config for Config {
 	type Functions = (
 		// Dispatching calls
 		DispatchCall<
-			Runtime,
-			// Decode as a versioned runtime call
-			DecodesAs<VersionedRuntimeCall, DispatchCallLogTarget>,
-			// Function 0
+			// Function ID: 0.
 			IdentifiedByFirstByteOfFunctionId<ConstU8<0>>,
+			// The runtime configuration.
+			Runtime,
+			// Decode as a versioned runtime call.
+			DecodesAs<VersionedRuntimeCall, DispatchCallLogTarget>,
+			// Apply any filtering.
 			Filter,
+			// Logging with a specific target.
 			DispatchCallLogTarget,
 		>,
 		// Reading state
 		ReadState<
-			Runtime,
-			RuntimeRead,
-			// Decode as a versioned runtime read
-			DecodesAs<VersionedRuntimeRead, ReadStateLogTarget>,
-			// Function 1
+			// Function ID: 1.
 			IdentifiedByFirstByteOfFunctionId<ConstU8<1>>,
+			// The runtime configuration.
+			Runtime,
+			// The runtime state reads available.
+			RuntimeRead,
+			// Decode as a versioned runtime read.
+			DecodesAs<VersionedRuntimeRead, ReadStateLogTarget>,
+			// Apply any filtering.
 			Filter,
 			// Convert the result of a read into the expected versioned result
 			VersionedResultConverter<RuntimeResult, VersionedRuntimeResult>,
+			// Logging with a specific target.
 			ReadStateLogTarget,
 		>,
 	);
