@@ -32,7 +32,10 @@ pub trait Decode {
 		// Perform any additional processing required. Any implementation is expected to charge weight as appropriate.
 		input = Self::Processor::process(input, env);
 		// Finally decode and return.
-		Self::Output::decode(&mut &input[..]).map_err(|_| Self::Error::get())
+		Self::Output::decode(&mut &input[..]).map_err(|_| {
+			log::error!(target: Self::LOG_TARGET, "decoding failed: unable to decode input into output type. input={input:?}");
+			Self::Error::get()
+		})
 	}
 }
 

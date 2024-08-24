@@ -35,6 +35,7 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
         )* );
 
 		// Otherwise returns error indicating an unmatched request.
+		log::error!("no function could be matched");
 		Err(pallet_contracts::Error::<Self::Config>::DecodingFailed.into())
 	}
 }
