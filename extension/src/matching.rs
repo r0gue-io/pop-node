@@ -24,3 +24,13 @@ impl<T: Get<u16>> Matches for FunctionId<T> {
 		env.func_id() == T::get()
 	}
 }
+
+/// Matches on a function identifier only.
+pub struct WithFuncId<T>(PhantomData<T>);
+impl<T: Get<u32>> Matches for WithFuncId<T> {
+	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+		let ext_id: [u8; 2] = env.ext_id().to_le_bytes();
+		let func_id: [u8; 2] = env.func_id().to_le_bytes();
+		u32::from_le_bytes([func_id[0], func_id[1], ext_id[0], ext_id[1]]) == T::get()
+	}
+}
