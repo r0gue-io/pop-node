@@ -4,7 +4,7 @@ pub use pop_chain_extension::{
 	Config, DecodingFailed, DispatchCall, ReadState, Readable, DECODING_FAILED_ERROR,
 };
 use pop_chain_extension::{
-	Converter, Decodes, Environment, Ext, LogTarget, Matches, Processor, Result, RetVal, State,
+	Converter, Decodes, Environment, Ext, LogTarget, Matches, Processor, Result, RetVal,
 };
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
@@ -31,7 +31,7 @@ impl Processor for Prepender {
 	/// # Parameters
 	/// - `value` - The value to be processed.
 	/// - `env` - The current execution environment.
-	fn process<E: Ext, S: State>(mut value: Self::Value, env: &Environment<E, S>) -> Self::Value {
+	fn process<E: Ext>(mut value: Self::Value, env: &impl Environment<E>) -> Self::Value {
 		// Resolve version, pallet and call index from environment
 		let version = version(env);
 		let (module, index) = module_and_index(env);
@@ -47,7 +47,7 @@ impl Processor for Prepender {
 /// Matches on the first byte of a function identifier only.
 pub struct IdentifiedByFirstByteOfFunctionId<T>(PhantomData<T>);
 impl<T: Get<u8>> Matches for IdentifiedByFirstByteOfFunctionId<T> {
-	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+	fn matches<E: Ext>(env: &impl Environment<E>) -> bool {
 		func_id(env) == T::get()
 	}
 }
@@ -77,7 +77,7 @@ impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> pop_chain_extension::
 	/// # Parameters
 	/// - `error` - The error to be converted.
 	/// - `env` - The current execution environment.
-	fn convert<E: Ext, S: State>(error: DispatchError, env: Environment<E, S>) -> Result<RetVal> {
+	fn convert<E: Ext>(error: DispatchError, env: impl Environment<E>) -> Result<RetVal> {
 		// Defer to supplied versioned error conversion type
 		let version = version(&env);
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: error={error:?}, version={version}");
@@ -104,7 +104,7 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 	/// # Parameters
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
-	fn convert<E: Ext, S: State>(value: Self::Source, env: &Environment<E, S>) -> Self::Target {
+	fn convert<E: Ext>(value: Self::Source, env: &impl Environment<E>) -> Self::Target {
 		// Defer to supplied versioned result conversion type
 		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: result={value:?}, version={version}");
@@ -114,18 +114,18 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 	}
 }
 
-fn func_id<E: Ext, S: State>(env: &Environment<E, S>) -> u8 {
+fn func_id<E: Ext>(env: &impl Environment<E>) -> u8 {
 	// TODO: update once the encoding scheme order has been finalised: expected to be env.ext_id().to_le_bytes()[0]
 	env.func_id().to_le_bytes()[1]
 }
 
-fn module_and_index<E: Ext, S: State>(env: &Environment<E, S>) -> (u8, u8) {
+fn module_and_index<E: Ext>(env: &impl Environment<E>) -> (u8, u8) {
 	// TODO: update once the encoding scheme order has been finalised: expected to be env.func_id().to_le_bytes()[0..1]
 	let bytes = env.ext_id().to_le_bytes();
 	(bytes[0], bytes[1])
 }
 
-fn version<E: Ext, S: State>(env: &Environment<E, S>) -> u8 {
+fn version<E: Ext>(env: &impl Environment<E>) -> u8 {
 	// TODO: update once the encoding scheme order has been finalised: expected to be env.ext_id().to_le_bytes()[1]
 	env.func_id().to_le_bytes()[0]
 }

@@ -1,8 +1,5 @@
 use super::*;
 use core::fmt::Debug;
-pub use decoding::{Decode, Decodes, IdentityProcessor};
-pub use matching::{Equals, FunctionId, Matches};
-use pallet_contracts::chain_extension::{BufIn, BufOut};
 
 /// A chain extension function.
 pub trait Function {
@@ -13,8 +10,8 @@ pub trait Function {
 	///
 	/// # Parameters
 	/// - `env` - The current execution environment.
-	fn execute<E: Ext<T = Self::Config>, S: BufIn + BufOut>(
-		env: &mut Environment<E, S>,
+	fn execute<E: Ext<T = Self::Config>>(
+		env: &mut (impl Environment<E> + BufIn + BufOut),
 	) -> Result<RetVal>;
 }
 
@@ -24,12 +21,12 @@ pub trait Function {
 impl<Runtime: pallet_contracts::Config> Function for Tuple {
 	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
 	type Config = Runtime;
-	fn execute<E: Ext<T = Self::Config>, S: BufIn + BufOut>(
-		env: &mut Environment<E, S>,
+	fn execute<E: Ext<T = Self::Config>>(
+		env: &mut (impl Environment<E> + BufIn + BufOut),
 	) -> Result<RetVal> {
 		// Attempts to match a specified extension/function identifier to its corresponding function, as configured by the runtime.
 		for_tuples!( #(
-            if Tuple::matches(&env) {
+            if Tuple::matches(env) {
                 return Tuple::execute(env)
             }
         )* );
@@ -60,9 +57,7 @@ impl<
 	///
 	/// # Parameters
 	/// - `env` - The current execution environment.
-	fn execute<E: Ext<T = Config>, S: BufIn + BufOut>(
-		env: &mut Environment<E, S>,
-	) -> Result<RetVal> {
+	fn execute<E: Ext<T = Config>>(env: &mut (impl Environment<E> + BufIn)) -> Result<RetVal> {
 		// Decode runtime call.
 		let call = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: call={call:?}");
@@ -89,7 +84,7 @@ impl<
 }
 
 impl<M: Matches, C, D, F, L> Matches for DispatchCall<M, C, D, F, L> {
-	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+	fn matches<E: Ext>(env: &impl Environment<E>) -> bool {
 		M::matches(env)
 	}
 }
@@ -115,9 +110,7 @@ impl<
 	///
 	/// # Parameters
 	/// - `env` - The current execution environment.
-	fn execute<E: Ext<T = Config>, S: BufIn + BufOut>(
-		env: &mut Environment<E, S>,
-	) -> Result<RetVal> {
+	fn execute<E: Ext>(env: &mut (impl Environment<E> + BufIn + BufOut)) -> Result<RetVal> {
 		// Decode runtime read
 		let read = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: read={read:?}");
@@ -142,7 +135,7 @@ impl<
 }
 
 impl<M: Matches, C, R, D, F, RC, L> Matches for ReadState<M, C, R, D, F, RC, L> {
-	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+	fn matches<E: Ext>(env: &impl Environment<E>) -> bool {
 		M::matches(env)
 	}
 }
@@ -154,7 +147,7 @@ impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
 	type Target = Vec<u8>;
 	const LOG_TARGET: &'static str = "";
 
-	fn convert<E: Ext, S: State>(value: Self::Source, _env: &Environment<E, S>) -> Self::Target {
+	fn convert<E: Ext>(value: Self::Source, _env: &impl Environment<E>) -> Self::Target {
 		value.into()
 	}
 }

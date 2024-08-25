@@ -6,13 +6,13 @@ pub trait Matches {
 	///
 	/// # Parameters
 	/// - `env` - The current execution environment.
-	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool;
+	fn matches<E: Ext>(env: &impl Environment<E>) -> bool;
 }
 
 /// Matches on an extension and function identifier.
 pub struct Equals<E, F>(PhantomData<(E, F)>);
 impl<ExtId: Get<u16>, FuncId: Get<u16>> Matches for Equals<ExtId, FuncId> {
-	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+	fn matches<E: Ext>(env: &impl Environment<E>) -> bool {
 		env.ext_id() == ExtId::get() && env.func_id() == FuncId::get()
 	}
 }
@@ -20,7 +20,7 @@ impl<ExtId: Get<u16>, FuncId: Get<u16>> Matches for Equals<ExtId, FuncId> {
 /// Matches on a function identifier only.
 pub struct FunctionId<T>(PhantomData<T>);
 impl<T: Get<u16>> Matches for FunctionId<T> {
-	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+	fn matches<E: Ext>(env: &impl Environment<E>) -> bool {
 		env.func_id() == T::get()
 	}
 }
@@ -28,7 +28,7 @@ impl<T: Get<u16>> Matches for FunctionId<T> {
 /// Matches on a function identifier only.
 pub struct WithFuncId<T>(PhantomData<T>);
 impl<T: Get<u32>> Matches for WithFuncId<T> {
-	fn matches<E: Ext, S: State>(env: &Environment<E, S>) -> bool {
+	fn matches<E: Ext>(env: &impl Environment<E>) -> bool {
 		let ext_id: [u8; 2] = env.ext_id().to_le_bytes();
 		let func_id: [u8; 2] = env.func_id().to_le_bytes();
 		u32::from_le_bytes([func_id[0], func_id[1], ext_id[0], ext_id[1]]) == T::get()
