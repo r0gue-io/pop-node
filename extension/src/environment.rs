@@ -1,5 +1,6 @@
 use frame_support::pallet_prelude::Weight;
 use pallet_contracts::chain_extension::{BufInBufOutState, ChargedAmount, Ext, Result, State};
+use sp_std::vec::Vec;
 
 /// Provides access to the parameters passed to a chain extension and its execution environment.
 ///
