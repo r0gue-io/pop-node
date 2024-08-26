@@ -2,10 +2,16 @@
 name = "integration-tests"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
+
+[build-dependencies]
+contract-build = "4.1.1"
 
 [dev-dependencies]
 env_logger = "0.11.2"
-scale = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
+scale = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = [
+    "derive",
+] }
 frame-support = { version = "29.0.0", default-features = false }
 frame-system = { version = "29.0.0", default-features = false }
 pallet-balances = { version = "29.0.2", default-features = false }
