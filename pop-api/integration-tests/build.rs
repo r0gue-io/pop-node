@@ -1,4 +1,7 @@
-use contract_build::{execute, BuildMode, BuildResult, ExecuteArgs, ManifestPath, Verbosity};
+use contract_build::{
+	execute, BuildArtifacts, BuildMode, BuildResult, ExecuteArgs, ManifestPath, OutputType,
+	Verbosity,
+};
 use std::{
 	fs,
 	path::{Path, PathBuf},
@@ -43,8 +46,10 @@ fn build_contract(contract_dir: &Path) -> Result<BuildResult, String> {
 
 	let args = ExecuteArgs {
 		build_mode: BuildMode::Release,
+		build_artifact: BuildArtifacts::CodeOnly,
 		manifest_path,
-		verbosity: Verbosity::Quiet,
+		output_type: OutputType::HumanReadable,
+		verbosity: Verbosity::Default,
 		..Default::default()
 	};
 

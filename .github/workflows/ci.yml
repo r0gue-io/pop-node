@@ -89,18 +89,6 @@ jobs:
         working-directory: pop-api/integration-tests
         run: cargo test --release
 
-      - name: Copy contract WASM files to artifacts folder
-        working-directory: pop-api/integration-tests
-        run: |
-          mkdir -p artifacts
-          cp contracts/*/target/ink/*.wasm artifacts/
-
-      - name: Archive API contract artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: api-contracts
-          path: artifacts
-
   coverage:
     needs: lint
     runs-on: ubuntu-latest
