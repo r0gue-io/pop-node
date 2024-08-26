@@ -61,7 +61,7 @@ cargo build --release --features=try-runtime -p <runtime-crate>
 try-runtime --runtime ./target/release/wbuild/pop-runtime-testnet/pop_runtime_testnet.compact.compressed.wasm on-runtime-upgrade live --uri wss://rpc3.paseo.popnetwork.xyz:443
 ```
 
-- [ ] (Advised) Runtime upgrade on a local **fork** of Pop Newtork.
+- [ ] (Advised) Runtime upgrade on a local **fork** of Pop Network.
 
 _More instructions around using chopsticks for this can be found in [.chopsticks direcotry](../../.chopsticks)_
 
