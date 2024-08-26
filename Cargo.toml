@@ -23,7 +23,7 @@ members = [
     "pallets/*",
     "primitives",
 ]
-exclude = ["pop-api", "tests/contracts"]
+exclude = ["extension/contract", "pop-api", "tests/contracts"]
 
 resolver = "2"
 

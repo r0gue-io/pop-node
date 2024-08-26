@@ -24,6 +24,8 @@ mod environment;
 mod functions;
 mod matching;
 #[cfg(test)]
+mod mock;
+#[cfg(test)]
 mod tests;
 
 type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;

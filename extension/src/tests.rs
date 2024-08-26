@@ -1,3 +1,169 @@
+use crate::mock::{Test as Runtime, *};
+use codec::{Decode, Encode};
+use core::fmt::Debug;
+use frame_support::{pallet_prelude::Weight, traits::fungible::Inspect};
+use frame_system::Call;
+use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism};
+use sp_runtime::{BuildStorage, DispatchError};
+
+type AccountId = <Test as frame_system::Config>::AccountId;
+type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
+	<Test as frame_system::Config>::AccountId,
+>>::Balance;
+type EventRecord = frame_system::EventRecord<
+	<Test as frame_system::Config>::RuntimeEvent,
+	<Test as frame_system::Config>::Hash,
+>;
+
+const ALICE: u64 = 1;
+const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
+const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
+const INIT_AMOUNT: <Runtime as pallet_balances::Config>::Balance = 100_000_000;
+const INVALID_FUNC_ID: u32 = 0;
+
+#[test]
+#[ignore]
+fn wip_extension_charges_weight_for_call() {
+	new_test_ext().execute_with(|| {
+		let contract = instantiate();
+		// Call extension with invalid func id to determine required weight
+		let required_weight = call(contract, NoopFuncId::get(), (), Weight::MAX).gas_required;
+		// Call with insufficient weight
+		let result = call(
+			contract,
+			NoopFuncId::get(),
+			(),
+			required_weight.saturating_sub(Weight::from_parts(669158213, 0)),
+		);
+		let expected: DispatchError = pallet_contracts::Error::<Test>::OutOfGas.into();
+		assert_eq!(result.result, Err(expected));
+	});
+}
+
+#[test]
+#[ignore]
+fn wip_dispatch_call_charges_weight_for_decoding() {
+	new_test_ext().execute_with(|| {
+		let contract = instantiate();
+		// Call dispatch call function with invalid input to determine required weight
+		let required_weight =
+			call(contract, DispatchCallFuncId::get(), (), Weight::MAX).gas_required;
+		// Call with insufficient weight
+		let result =
+			call(contract, DispatchCallFuncId::get(), (), required_weight.saturating_sub(1.into()));
+		let expected: DispatchError = pallet_contracts::Error::<Test>::OutOfGas.into();
+		assert_eq!(result.result, Err(expected));
+	});
+}
+
+#[test]
+fn dispatch_call_works() {
+	new_test_ext().execute_with(|| {
+		let contract = instantiate();
+
+		let call = call(
+			contract,
+			DispatchCallFuncId::get(),
+			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
+			GAS_LIMIT,
+		);
+
+		let return_value = call.result.unwrap();
+		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
+		assert!(decoded.unwrap().is_empty());
+
+		assert!(call.events.unwrap().iter().any(|e| matches!(e.event,
+				RuntimeEvent::System(frame_system::Event::<Test>::Remarked { sender, .. })
+					if sender == contract)));
+	});
+}
+
+#[test]
+fn invalid_func_id_fails() {
+	new_test_ext().execute_with(|| {
+		let contract = instantiate();
+
+		let call = call(contract, INVALID_FUNC_ID, (), GAS_LIMIT);
+		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+		// TODO: assess whether this error should be passed through the error converter - i.e. is this error type considered 'stable'?
+		assert_eq!(call.result, Err(expected))
+	});
+}
+
+#[test]
+#[ignore]
+fn wip_dispatch_call_handles_invalid_encoded_call() {
+	new_test_ext().execute_with(|| {
+		let contract = instantiate();
+
+		let call = call(contract, DispatchCallFuncId::get(), (), GAS_LIMIT);
+
+		let return_value = call.result.unwrap();
+		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
+		assert!(decoded.unwrap().is_empty())
+	});
+}
+
+fn new_test_ext() -> sp_io::TestExternalities {
+	let _ = env_logger::try_init();
+
+	let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+
+	pallet_balances::GenesisConfig::<Runtime> { balances: vec![(ALICE, INIT_AMOUNT)] }
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| System::set_block_number(1));
+	ext
+}
+
+fn instantiate() -> AccountId {
+	let proxy = std::fs::read("contract/target/ink/proxy.wasm").unwrap();
+	let result = Contracts::bare_instantiate(
+		ALICE,
+		0,
+		GAS_LIMIT,
+		None,
+		Code::Upload(proxy),
+		function_selector("new"),
+		Default::default(),
+		DEBUG_OUTPUT,
+		CollectEvents::UnsafeCollect,
+	);
+	log::debug!("instantiate result: {result:?}");
+	let result = result.result.unwrap();
+	assert!(!result.result.did_revert());
+	result.account_id
+}
+
+fn call(
+	contract: AccountId,
+	func_id: u32,
+	input: impl Encode + Debug,
+	gas_limit: Weight,
+) -> ContractExecResult<Balance, EventRecord> {
+	log::debug!("call: func_id={func_id}, input={input:?}");
+	let result = Contracts::bare_call(
+		ALICE,
+		contract,
+		0,
+		gas_limit,
+		None,
+		[function_selector("call"), (func_id, input.encode()).encode()].concat(),
+		DEBUG_OUTPUT,
+		CollectEvents::UnsafeCollect,
+		Determinism::Enforced,
+	);
+	log::debug!("gas consumed: {:?}", result.gas_consumed);
+	log::debug!("call result: {result:?}");
+	result
+}
+
+fn function_selector(name: &str) -> Vec<u8> {
+	sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
+}
+
 mod encoding {
 	use codec::{Decode, Encode};
 

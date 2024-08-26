@@ -9597,14 +9597,19 @@ dependencies = [
 name = "pop-chain-extension"
 version = "0.1.0"
 dependencies = [
+ "env_logger 0.11.5",
  "frame-support",
  "frame-system",
  "impl-trait-for-tuples",
  "log",
+ "pallet-balances",
  "pallet-contracts",
+ "pallet-timestamp",
  "parity-scale-codec",
  "rand",
+ "scale-info",
  "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]

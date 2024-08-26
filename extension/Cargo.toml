@@ -26,7 +26,13 @@ sp-runtime.workspace = true
 sp-std.workspace = true
 
 [dev-dependencies]
+env_logger = "0.11.2"
+pallet-balances.workspace = true
+pallet-contracts.workspace = true
+pallet-timestamp.workspace = true
 rand = "0.8.5"
+scale-info.workspace = true
+sp-io.workspace = true
 
 [features]
 default = ["std"]
@@ -35,14 +41,19 @@ std = [
     "codec/std",
     "frame-support/std",
     "frame-system/std",
+    "pallet-balances/std",
     "pallet-contracts/std",
+    "pallet-timestamp/std",
     "sp-runtime/std",
     "sp-core/std",
+    "sp-io/std",
     "sp-std/std",
 ]
 runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "frame-system/runtime-benchmarks",
+    "pallet-balances/runtime-benchmarks",
     "pallet-contracts/runtime-benchmarks",
+    "pallet-timestamp/runtime-benchmarks",
     "sp-runtime/runtime-benchmarks",
 ]
