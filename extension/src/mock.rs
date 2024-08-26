@@ -1,6 +1,8 @@
-use crate::environment::*;
-use crate::matching::WithFuncId;
-use crate::{Decodes, DecodingFailed, DispatchCall, Extension, Function, Matches, Processor};
+use crate::{
+	environment, matching::WithFuncId, Decodes, DecodingFailed, DispatchCall, Ext, Extension,
+	Function, Matches, Processor,
+};
+use frame_support::pallet_prelude::Weight;
 use frame_support::{derive_impl, parameter_types, traits::ConstU32, traits::Everything};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
@@ -126,7 +128,7 @@ impl<Matcher: Matches, Config: pallet_contracts::Config> Function for Noop<Match
 	type Error = ();
 
 	fn execute(
-		_env: &mut (impl Environment<Config = Config> + crate::BufIn),
+		_env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
 	) -> pallet_contracts::chain_extension::Result<RetVal> {
 		Ok(RetVal::Converging(0))
 	}
@@ -134,5 +136,54 @@ impl<Matcher: Matches, Config: pallet_contracts::Config> Function for Noop<Match
 impl<M: Matches, C> Matches for Noop<M, C> {
 	fn matches(env: &impl crate::Environment) -> bool {
 		M::matches(env)
+	}
+}
+
+/// A mocked environment.
+struct Environment<E> {
+	func_id: u16,
+	ext_id: u16,
+	charged: Vec<Weight>,
+	ext: E,
+}
+impl<E> Environment<E> {
+	fn new(func_id: u16, ext_id: u16, ext: E) -> Self {
+		Self { func_id, ext_id, charged: Vec::new(), ext }
+	}
+}
+impl<E: Ext<Config = Test> + Clone> environment::Environment for Environment<E> {
+	type Config = Test;
+	type ChargedAmount = Weight;
+
+	fn func_id(&self) -> u16 {
+		self.func_id
+	}
+
+	fn ext_id(&self) -> u16 {
+		self.ext_id
+	}
+
+	fn charge_weight(
+		&mut self,
+		amount: Weight,
+	) -> pallet_contracts::chain_extension::Result<Self::ChargedAmount> {
+		self.charged.push(amount);
+		Ok(amount)
+	}
+
+	fn adjust_weight(&mut self, charged: Self::ChargedAmount, actual_weight: Weight) {
+		let last = self
+			.charged
+			.iter()
+			.enumerate()
+			.filter_map(|(i, c)| (c == &charged).then_some(i))
+			.last()
+			.unwrap();
+		self.charged.remove(last);
+		self.charged.insert(last, actual_weight)
+	}
+
+	fn ext(&mut self) -> impl Ext<Config = Self::Config> {
+		self.ext.clone()
 	}
 }

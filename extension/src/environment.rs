@@ -1,3 +1,4 @@
+use core::fmt::Debug;
 use frame_support::pallet_prelude::Weight;
 use pallet_contracts::{
 	chain_extension::{BufInBufOutState, ChargedAmount, Result, State},
@@ -12,6 +13,8 @@ use sp_std::vec::Vec;
 pub trait Environment {
 	/// The configuration of the contracts module.
 	type Config: Config;
+	/// The charged weight.
+	type ChargedAmount: Debug;
 
 	/// The function id within the `id` passed by a contract.
 	///
@@ -37,17 +40,18 @@ pub trait Environment {
 	/// # Note
 	///
 	/// Weight is synonymous with gas in substrate.
-	fn charge_weight(&mut self, amount: Weight) -> Result<ChargedAmount>;
+	fn charge_weight(&mut self, amount: Weight) -> Result<Self::ChargedAmount>;
 
 	/// Adjust a previously charged amount down to its actual amount.
 	///
 	/// This is when a maximum a priori amount was charged and then should be partially
 	/// refunded to match the actual amount.
-	fn adjust_weight(&mut self, charged: ChargedAmount, actual_weight: Weight);
+	fn adjust_weight(&mut self, charged: Self::ChargedAmount, actual_weight: Weight);
 
 	/// Grants access to the execution environment of the current contract call.
 	///
 	/// Consult the functions on the returned type before re-implementing those functions.
+	// TODO: improve the return type to &mut
 	fn ext(&mut self) -> impl Ext<Config = Self::Config>;
 }
 
@@ -60,6 +64,7 @@ impl<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: State> Environment
 	for Env<'a, 'b, E, S>
 {
 	type Config = E::T;
+	type ChargedAmount = ChargedAmount;
 
 	fn func_id(&self) -> u16 {
 		self.0.func_id()
@@ -69,11 +74,11 @@ impl<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: State> Environment
 		self.0.ext_id()
 	}
 
-	fn charge_weight(&mut self, amount: Weight) -> Result<ChargedAmount> {
+	fn charge_weight(&mut self, amount: Weight) -> Result<Self::ChargedAmount> {
 		self.0.charge_weight(amount)
 	}
 
-	fn adjust_weight(&mut self, charged: ChargedAmount, actual_weight: Weight) {
+	fn adjust_weight(&mut self, charged: Self::ChargedAmount, actual_weight: Weight) {
 		self.0.adjust_weight(charged, actual_weight)
 	}
 
