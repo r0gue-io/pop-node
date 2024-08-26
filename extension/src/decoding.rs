@@ -18,11 +18,11 @@ pub trait Decode {
 	///
 	/// # Parameters
 	/// - `env` - The current execution environment.
-	fn decode<E: Ext>(env: &mut (impl Environment<E> + BufIn)) -> Result<Self::Output> {
+	fn decode<E: Environment + BufIn>(env: &mut E) -> Result<Self::Output> {
 		// Charge appropriate weight for copying from contract, based on input length, prior to decoding.
 		// reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=CopyToContract(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_return(len)%2C
 		let len = env.in_len();
-		let weight = ContractWeights::<E::T>::seal_return(len);
+		let weight = ContractWeights::<E::Config>::seal_return(len);
 		let charged = env.charge_weight(weight)?;
 		log::debug!(target: Self::LOG_TARGET, "pre-decode weight charged: len={len}, weight={weight}, charged={charged:?}");
 		// Read encoded input supplied by contract for buffer.
@@ -59,7 +59,7 @@ impl Processor for IdentityProcessor {
 	type Value = Vec<u8>;
 	const LOG_TARGET: &'static str = "";
 
-	fn process<E: Ext>(value: Self::Value, _env: &impl Environment<E>) -> Self::Value {
+	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
 		value
 	}
 }

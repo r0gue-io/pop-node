@@ -3,7 +3,7 @@
 use codec::Decode as _;
 use core::{fmt::Debug, marker::PhantomData};
 pub use decoding::{Decode, Decodes, IdentityProcessor};
-pub use environment::{BufIn, BufOut, Environment};
+pub use environment::{BufIn, BufOut, Environment, Ext};
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
 	ensure,
@@ -13,7 +13,7 @@ use frame_support::{
 pub use functions::{DispatchCall, Function, ReadState};
 pub use matching::{Equals, FunctionId, Matches};
 use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
-pub use pallet_contracts::chain_extension::{Ext, Result, RetVal, State};
+pub use pallet_contracts::chain_extension::{Result, RetVal, State};
 use pallet_contracts::WeightInfo;
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
@@ -46,7 +46,7 @@ where
 	///
 	/// # Parameters
 	/// - `env`: Access to the remaining arguments and the execution environment.
-	fn call<E: Ext<T = Runtime>>(
+	fn call<E: pallet_contracts::chain_extension::Ext<T = Runtime>>(
 		&mut self,
 		env: pallet_contracts::chain_extension::Environment<E, InitState>,
 	) -> Result<RetVal> {
@@ -59,16 +59,16 @@ impl<
 		Config: self::Config<Functions: Function<Config = Runtime>>,
 	> Extension<Config>
 {
-	fn call<E: Ext<T = Runtime>>(
+	fn call(
 		&mut self,
-		mut env: (impl Environment<E> + BufIn + BufOut),
+		mut env: (impl Environment<Config = Runtime> + BufIn + BufOut),
 	) -> Result<RetVal> {
 		log::trace!(target: Config::LOG_TARGET, "extension called");
 		// Charge weight for making a call from a contract to the runtime.
 		// `debug_message` weight is a good approximation of the additional overhead of going from contract layer to substrate layer.
 		// reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=DebugMessage(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_debug_message(len)%2C
 		let len = env.in_len();
-		let overhead = ContractWeights::<E::T>::seal_debug_message(len);
+		let overhead = ContractWeights::<Runtime>::seal_debug_message(len);
 		let charged = env.charge_weight(overhead)?;
 		log::debug!(target: Config::LOG_TARGET, "extension call weight charged: len={len}, weight={overhead}, charged={charged:?}");
 		// Execute the function
@@ -122,13 +122,13 @@ pub trait ErrorConverter {
 	/// # Parameters
 	/// - `error` - The error to be converted.
 	/// - `env` - The current execution environment.
-	fn convert<E: Ext>(error: DispatchError, env: impl Environment<E>) -> Result<RetVal>;
+	fn convert(error: DispatchError, env: impl Environment) -> Result<RetVal>;
 }
 
 impl ErrorConverter for () {
 	const LOG_TARGET: &'static str = "pop-chain-extension::converters::error";
 
-	fn convert<E: Ext>(error: DispatchError, _env: impl Environment<E>) -> Result<RetVal> {
+	fn convert(error: DispatchError, _env: impl Environment) -> Result<RetVal> {
 		Err(error)
 	}
 }
@@ -154,13 +154,13 @@ pub trait Processor {
 	/// # Parameters
 	/// - `value` - The value to be processed.
 	/// - `env` - The current execution environment.
-	fn process<E: Ext>(value: Self::Value, env: &impl Environment<E>) -> Self::Value;
+	fn process(value: Self::Value, env: &impl Environment) -> Self::Value;
 }
 
 impl Processor for () {
 	type Value = ();
 	const LOG_TARGET: &'static str = "";
-	fn process<E: Ext>(value: Self::Value, _env: &impl Environment<E>) -> Self::Value {
+	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
 		value
 	}
 }
@@ -179,5 +179,5 @@ pub trait Converter {
 	/// # Parameters
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
-	fn convert<E: Ext>(value: Self::Source, env: &impl Environment<E>) -> Self::Target;
+	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target;
 }
