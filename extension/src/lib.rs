@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+use crate::mock::NoopFuncId;
 use codec::Decode as _;
 use core::{fmt::Debug, marker::PhantomData};
 pub use decoding::{Decode, Decodes, IdentityProcessor};
@@ -52,7 +53,8 @@ where
 		&mut self,
 		env: pallet_contracts::chain_extension::Environment<E, InitState>,
 	) -> Result<RetVal> {
-		self.call(environment::Env(env.buf_in_buf_out()))
+		let mut env = environment::Env(env.buf_in_buf_out());
+		self.call(&mut env)
 	}
 }
 
@@ -63,7 +65,7 @@ impl<
 {
 	fn call(
 		&mut self,
-		mut env: (impl Environment<Config = Runtime> + BufIn + BufOut),
+		env: &mut (impl Environment<Config = Runtime> + BufIn + BufOut),
 	) -> Result<RetVal> {
 		log::trace!(target: Config::LOG_TARGET, "extension called");
 		// Charge weight for making a call from a contract to the runtime.
@@ -74,7 +76,7 @@ impl<
 		let charged = env.charge_weight(overhead)?;
 		log::debug!(target: Config::LOG_TARGET, "extension call weight charged: len={len}, weight={overhead}, charged={charged:?}");
 		// Execute the function
-		Config::Functions::execute(&mut env)
+		Config::Functions::execute(env)
 	}
 }
 
@@ -177,4 +179,51 @@ pub trait Converter {
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
 	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target;
+}
+
+#[test]
+fn extension_call_works() {
+	let mut env = mock::Environment::new(NoopFuncId::get(), Vec::default(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
+}
+
+#[test]
+fn extension_returns_decoding_failed_for_unknown_function() {
+	// no function registered for id 0
+	let mut env = mock::Environment::new(0, Vec::default(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	assert!(matches!(
+		extension.call(&mut env),
+		Err(error) if error == pallet_contracts::Error::<mock::Test>::DecodingFailed.into()
+	));
+}
+
+#[test]
+fn extension_call_charges_weight() {
+	// specify invalid function
+	let mut env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	assert!(extension.call(&mut env).is_err());
+	assert_eq!(env.charged(), ContractWeights::<mock::Test>::seal_debug_message(42))
+}
+
+#[test]
+fn decoding_failed_error_type_works() {
+	assert_eq!(
+		DecodingFailed::<mock::Test>::get(),
+		pallet_contracts::Error::<mock::Test>::DecodingFailed.into()
+	)
+}
+
+#[test]
+fn default_error_conversion_works() {
+	let env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
+	assert!(matches!(
+		<() as ErrorConverter>::convert(
+			DispatchError::BadOrigin,
+			&env
+		),
+		Err(error) if error == DispatchError::BadOrigin
+	));
 }

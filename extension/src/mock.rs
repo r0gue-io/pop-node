@@ -1,6 +1,6 @@
 use crate::{
-	environment, matching::WithFuncId, Decodes, DecodingFailed, DispatchCall, Ext, Extension,
-	Function, Matches, Processor,
+	environment, matching::WithFuncId, Decodes, DecodingFailed, DispatchCall, Extension, Function,
+	Matches, Processor,
 };
 use frame_support::pallet_prelude::Weight;
 use frame_support::{derive_impl, parameter_types, traits::ConstU32, traits::Everything};
@@ -139,19 +139,32 @@ impl<M: Matches, C> Matches for Noop<M, C> {
 	}
 }
 
-/// A mocked environment.
-struct Environment<E> {
+/// A mocked chain extension environment.
+pub(crate) struct Environment<E> {
 	func_id: u16,
 	ext_id: u16,
 	charged: Vec<Weight>,
+	pub(crate) buffer: Vec<u8>,
 	ext: E,
 }
+
 impl<E> Environment<E> {
-	fn new(func_id: u16, ext_id: u16, ext: E) -> Self {
-		Self { func_id, ext_id, charged: Vec::new(), ext }
+	pub(crate) fn new(id: u32, buffer: Vec<u8>, ext: E) -> Self {
+		Self {
+			func_id: (id & 0x0000FFFF) as u16,
+			ext_id: (id >> 16) as u16,
+			charged: Vec::new(),
+			buffer,
+			ext,
+		}
+	}
+
+	pub(crate) fn charged(&self) -> Weight {
+		self.charged.iter().fold(Weight::zero(), |acc, b| acc.saturating_add(*b))
 	}
 }
-impl<E: Ext<Config = Test> + Clone> environment::Environment for Environment<E> {
+
+impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for Environment<E> {
 	type Config = Test;
 	type ChargedAmount = Weight;
 
@@ -183,7 +196,42 @@ impl<E: Ext<Config = Test> + Clone> environment::Environment for Environment<E> 
 		self.charged.insert(last, actual_weight)
 	}
 
-	fn ext(&mut self) -> impl Ext<Config = Self::Config> {
+	fn ext(&mut self) -> impl environment::Ext<Config = Self::Config> {
 		self.ext.clone()
+	}
+}
+
+impl<E> environment::BufIn for Environment<E> {
+	fn in_len(&self) -> u32 {
+		self.buffer.len() as u32
+	}
+
+	fn read(&self, _max_len: u32) -> pallet_contracts::chain_extension::Result<Vec<u8>> {
+		// TODO: handle max_len
+		Ok(self.buffer.clone())
+	}
+}
+
+impl<E> environment::BufOut for Environment<E> {
+	fn write(
+		&mut self,
+		_buffer: &[u8],
+		_allow_skip: bool,
+		_weight_per_byte: Option<Weight>,
+	) -> pallet_contracts::chain_extension::Result<()> {
+		todo!()
+	}
+}
+
+/// A mocked smart contract environment.
+#[derive(Clone, Default)]
+pub(crate) struct Ext {
+	pub(crate) address: <Test as frame_system::Config>::AccountId,
+}
+impl environment::Ext for Ext {
+	type Config = Test;
+
+	fn address(&self) -> &<Self::Config as frame_system::Config>::AccountId {
+		&self.address
 	}
 }
