@@ -5,6 +5,7 @@ use frame_support::{pallet_prelude::Weight, traits::fungible::Inspect};
 use frame_system::Call;
 use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism};
 use sp_runtime::{BuildStorage, DispatchError};
+use std::{path::Path, sync::LazyLock};
 
 type AccountId = <Test as frame_system::Config>::AccountId;
 type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
@@ -118,14 +119,32 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	ext
 }
 
+static CONTRACT: LazyLock<Vec<u8>> = LazyLock::new(|| {
+	const CONTRACT: &str = "contract/target/ink/proxy.wasm";
+	if !Path::new(CONTRACT).exists() {
+		use contract_build::*;
+		let manifest_path = ManifestPath::new("contract/Cargo.toml").unwrap();
+		let args = ExecuteArgs {
+			build_artifact: BuildArtifacts::CodeOnly,
+			build_mode: BuildMode::Debug,
+			manifest_path,
+			output_type: OutputType::Json,
+			verbosity: Verbosity::Quiet,
+			skip_wasm_validation: true,
+			..Default::default()
+		};
+		execute(args).unwrap();
+	}
+	std::fs::read(CONTRACT).unwrap()
+});
+
 fn instantiate() -> AccountId {
-	let proxy = std::fs::read("contract/target/ink/proxy.wasm").unwrap();
 	let result = Contracts::bare_instantiate(
 		ALICE,
 		0,
 		GAS_LIMIT,
 		None,
-		Code::Upload(proxy),
+		Code::Upload(CONTRACT.clone()),
 		function_selector("new"),
 		Default::default(),
 		DEBUG_OUTPUT,
