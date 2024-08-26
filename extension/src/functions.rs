@@ -5,6 +5,8 @@ use core::fmt::Debug;
 pub trait Function {
 	/// The configuration of the contracts module.
 	type Config: pallet_contracts::Config;
+	/// Optional error conversion.
+	type Error: ErrorConverter;
 
 	/// Executes the function.
 	///
@@ -21,6 +23,8 @@ pub trait Function {
 impl<Runtime: pallet_contracts::Config> Function for Tuple {
 	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
 	type Config = Runtime;
+	type Error = ();
+
 	fn execute(
 		env: &mut (impl Environment<Config = Self::Config> + BufIn + BufOut),
 	) -> Result<RetVal> {
@@ -38,7 +42,7 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 }
 
 /// A function for dispatching a runtime call.
-pub struct DispatchCall<M, C, D, F, L = ()>(PhantomData<(M, C, D, F, L)>);
+pub struct DispatchCall<M, C, D, F, E = (), L = ()>(PhantomData<(M, C, D, F, E, L)>);
 impl<
 		Matcher: Matches,
 		Config: pallet_contracts::Config
@@ -47,11 +51,14 @@ impl<
 			>,
 		Decoder: Decode<Output: codec::Decode + Into<<Config as frame_system::Config>::RuntimeCall>>,
 		Filter: Contains<<Config as frame_system::Config>::RuntimeCall> + 'static,
+		Error: ErrorConverter,
 		Logger: LogTarget,
-	> Function for DispatchCall<Matcher, Config, Decoder, Filter, Logger>
+	> Function for DispatchCall<Matcher, Config, Decoder, Filter, Error, Logger>
 {
 	/// The configuration of the contracts module.
 	type Config = Config;
+	/// Optional error conversion.
+	type Error = Error;
 
 	/// Executes the function.
 	///
@@ -59,6 +66,7 @@ impl<
 	/// - `env` - The current execution environment.
 	fn execute(env: &mut (impl Environment<Config = Config> + BufIn)) -> Result<RetVal> {
 		// Decode runtime call.
+		// TODO: should the error returned from decoding failure be converted into a versioned error, or always be pallet_contracts::Error::DecodingFailed?
 		let call = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: call={call:?}");
 		// Charge weight before dispatch.
@@ -79,19 +87,22 @@ impl<
 		let weight = frame_support::dispatch::extract_actual_weight(&result, &dispatch_info);
 		env.adjust_weight(charged, weight);
 		log::debug!(target: Logger::LOG_TARGET, "weight adjusted: weight={weight:?}");
-		result.map(|_| Converging(0)).map_err(|e| e.error)
+		match result {
+			Ok(_) => Ok(Converging(0)),
+			Err(e) => Error::convert(e.error, env),
+		}
 	}
 }
 
-impl<M: Matches, C, D, F, L> Matches for DispatchCall<M, C, D, F, L> {
+impl<M: Matches, C, D, F, E, L> Matches for DispatchCall<M, C, D, F, E, L> {
 	fn matches(env: &impl Environment) -> bool {
 		M::matches(env)
 	}
 }
 
 /// A function for reading runtime state.
-pub struct ReadState<M, C, R, D, F, RC = DefaultConverter<<R as Readable>::Result>, L = ()>(
-	PhantomData<(M, C, R, D, F, RC, L)>,
+pub struct ReadState<M, C, R, D, F, RC = DefaultConverter<<R as Readable>::Result>, E = (), L = ()>(
+	PhantomData<(M, C, R, D, F, RC, E, L)>,
 );
 impl<
 		Matcher: Matches,
@@ -100,11 +111,14 @@ impl<
 		Decoder: Decode<Output: codec::Decode + Into<Read>>,
 		Filter: Contains<Read>,
 		ResultConverter: Converter<Source = Read::Result, Target: Into<Vec<u8>>>,
+		Error: ErrorConverter,
 		Logger: LogTarget,
-	> Function for ReadState<Matcher, Config, Read, Decoder, Filter, ResultConverter, Logger>
+	> Function for ReadState<Matcher, Config, Read, Decoder, Filter, ResultConverter, Error, Logger>
 {
 	/// The configuration of the contracts module.
 	type Config = Config;
+	/// Optional error conversion.
+	type Error = Error;
 
 	/// Executes the function.
 	///
@@ -112,6 +126,7 @@ impl<
 	/// - `env` - The current execution environment.
 	fn execute(env: &mut (impl Environment + BufIn + BufOut)) -> Result<RetVal> {
 		// Decode runtime read
+		// TODO: should the error returned from decoding failure be converted into a versioned error, or always be pallet_contracts::Error::DecodingFailed?
 		let read = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: read={read:?}");
 		// Charge weight before read
@@ -129,12 +144,13 @@ impl<
 		log::trace!(target: Logger::LOG_TARGET, "return result to contract: weight_per_byte={weight}");
 		// Charge appropriate weight for writing to contract, based on input length, prior to decoding.
 		// TODO: check parameters (allow_skip, weight_per_byte)
+		// TODO: confirm whether potential error from writing to the buffer needs to be converted to a versioned error (suspect not)
 		env.write(&result, false, Some(weight))?;
 		Ok(Converging(0))
 	}
 }
 
-impl<M: Matches, C, R, D, F, RC, L> Matches for ReadState<M, C, R, D, F, RC, L> {
+impl<M: Matches, C, R, D, F, RC, E, L> Matches for ReadState<M, C, R, D, F, RC, E, L> {
 	fn matches(env: &impl Environment) -> bool {
 		M::matches(env)
 	}

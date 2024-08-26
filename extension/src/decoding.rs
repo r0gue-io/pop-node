@@ -33,6 +33,7 @@ pub trait Decode {
 		// Finally decode and return.
 		Self::Output::decode(&mut &input[..]).map_err(|_| {
 			log::error!(target: Self::LOG_TARGET, "decoding failed: unable to decode input into output type. input={input:?}");
+			// TODO: should we standardise on pallet_contracts::Error::DecodingFailed to simplify rather than allow customisation?
 			Self::Error::get()
 		})
 	}

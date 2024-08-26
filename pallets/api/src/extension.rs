@@ -77,9 +77,9 @@ impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> pop_chain_extension::
 	/// # Parameters
 	/// - `error` - The error to be converted.
 	/// - `env` - The current execution environment.
-	fn convert(error: DispatchError, env: impl Environment) -> Result<RetVal> {
+	fn convert(error: DispatchError, env: &impl Environment) -> Result<RetVal> {
 		// Defer to supplied versioned error conversion type
-		let version = version(&env);
+		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: error={error:?}, version={version}");
 		let error: Error = (error, version).into();
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: converted error={error:?}");

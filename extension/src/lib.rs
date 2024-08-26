@@ -74,10 +74,7 @@ impl<
 		let charged = env.charge_weight(overhead)?;
 		log::debug!(target: Config::LOG_TARGET, "extension call weight charged: len={len}, weight={overhead}, charged={charged:?}");
 		// Execute the function
-		match Config::Functions::execute(&mut env) {
-			Ok(r) => Ok(r),
-			Err(e) => Config::Error::convert(e, env),
-		}
+		Config::Functions::execute(&mut env)
 	}
 }
 
@@ -85,8 +82,6 @@ impl<
 pub trait Config {
 	/// The function(s) available with the chain extension.
 	type Functions: Function;
-	/// Optional error conversion.
-	type Error: ErrorConverter;
 
 	/// The log target.
 	const LOG_TARGET: &'static str;
@@ -124,13 +119,13 @@ pub trait ErrorConverter {
 	/// # Parameters
 	/// - `error` - The error to be converted.
 	/// - `env` - The current execution environment.
-	fn convert(error: DispatchError, env: impl Environment) -> Result<RetVal>;
+	fn convert(error: DispatchError, env: &impl Environment) -> Result<RetVal>;
 }
 
 impl ErrorConverter for () {
 	const LOG_TARGET: &'static str = "pop-chain-extension::converters::error";
 
-	fn convert(error: DispatchError, _env: impl Environment) -> Result<RetVal> {
+	fn convert(error: DispatchError, _env: &impl Environment) -> Result<RetVal> {
 		Err(error)
 	}
 }

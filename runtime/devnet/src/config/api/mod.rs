@@ -86,6 +86,8 @@ impl pallet_api::extension::Config for Config {
 			DecodesAs<VersionedRuntimeCall, DispatchCallLogTarget>,
 			// Apply any filtering.
 			Filter,
+			// Ensure errors are versioned.
+			VersionedErrorConverter<VersionedError>,
 			// Logging with a specific target.
 			DispatchCallLogTarget,
 		>,
@@ -103,12 +105,12 @@ impl pallet_api::extension::Config for Config {
 			Filter,
 			// Convert the result of a read into the expected versioned result
 			VersionedResultConverter<RuntimeResult, VersionedRuntimeResult>,
+			// Ensure errors are versioned.
+			VersionedErrorConverter<VersionedError>,
 			// Logging with a specific target.
 			ReadStateLogTarget,
 		>,
 	);
-	/// Ensure errors are versioned.
-	type Error = VersionedErrorConverter<VersionedError>;
 
 	/// The log target.
 	const LOG_TARGET: &'static str = LOG_TARGET;

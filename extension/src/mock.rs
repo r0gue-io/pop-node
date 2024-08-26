@@ -1,11 +1,9 @@
 use crate::environment::*;
 use crate::matching::WithFuncId;
 use crate::{Decodes, DecodingFailed, DispatchCall, Extension, Function, Matches, Processor};
-use frame_support::weights::Weight;
 use frame_support::{derive_impl, parameter_types, traits::ConstU32, traits::Everything};
 use frame_system::pallet_prelude::BlockNumberFor;
-use pallet_contracts::chain_extension::RetVal;
-use pallet_contracts::{DefaultAddressGenerator, Frame, Schedule};
+use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
 use sp_runtime::Perbill;
 use std::marker::PhantomData;
 
@@ -106,7 +104,6 @@ impl super::Config for Config {
 		>,
 		Noop<WithFuncId<NoopFuncId>, Test>,
 	);
-	type Error = ();
 	const LOG_TARGET: &'static str = "pop-chain-extension";
 }
 
@@ -126,6 +123,7 @@ impl Processor for RemoveFirstByte {
 pub struct Noop<M, C>(PhantomData<(M, C)>);
 impl<Matcher: Matches, Config: pallet_contracts::Config> Function for Noop<Matcher, Config> {
 	type Config = Config;
+	type Error = ();
 
 	fn execute(
 		_env: &mut (impl Environment<Config = Config> + crate::BufIn),
