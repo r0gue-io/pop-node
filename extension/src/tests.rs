@@ -23,41 +23,6 @@ const INIT_AMOUNT: <Runtime as pallet_balances::Config>::Balance = 100_000_000;
 const INVALID_FUNC_ID: u32 = 0;
 
 #[test]
-#[ignore]
-fn wip_extension_charges_weight_for_call() {
-	new_test_ext().execute_with(|| {
-		let contract = instantiate();
-		// Call extension with invalid func id to determine required weight
-		let required_weight = call(contract, NoopFuncId::get(), (), Weight::MAX).gas_required;
-		// Call with insufficient weight
-		let result = call(
-			contract,
-			NoopFuncId::get(),
-			(),
-			required_weight.saturating_sub(Weight::from_parts(669158213, 0)),
-		);
-		let expected: DispatchError = pallet_contracts::Error::<Test>::OutOfGas.into();
-		assert_eq!(result.result, Err(expected));
-	});
-}
-
-#[test]
-#[ignore]
-fn wip_dispatch_call_charges_weight_for_decoding() {
-	new_test_ext().execute_with(|| {
-		let contract = instantiate();
-		// Call dispatch call function with invalid input to determine required weight
-		let required_weight =
-			call(contract, DispatchCallFuncId::get(), (), Weight::MAX).gas_required;
-		// Call with insufficient weight
-		let result =
-			call(contract, DispatchCallFuncId::get(), (), required_weight.saturating_sub(1.into()));
-		let expected: DispatchError = pallet_contracts::Error::<Test>::OutOfGas.into();
-		assert_eq!(result.result, Err(expected));
-	});
-}
-
-#[test]
 fn dispatch_call_works() {
 	new_test_ext().execute_with(|| {
 		let contract = instantiate();
@@ -88,20 +53,6 @@ fn invalid_func_id_fails() {
 		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
 		// TODO: assess whether this error should be passed through the error converter - i.e. is this error type considered 'stable'?
 		assert_eq!(call.result, Err(expected))
-	});
-}
-
-#[test]
-#[ignore]
-fn wip_dispatch_call_handles_invalid_encoded_call() {
-	new_test_ext().execute_with(|| {
-		let contract = instantiate();
-
-		let call = call(contract, DispatchCallFuncId::get(), (), GAS_LIMIT);
-
-		let return_value = call.result.unwrap();
-		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
-		assert!(decoded.unwrap().is_empty())
 	});
 }
 
