@@ -60,13 +60,13 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn transfer(&self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
+		pub fn transfer(&mut self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 			api::transfer(id, to, value)
 		}
 
 		#[ink(message)]
 		pub fn transfer_from(
-			&self,
+			&mut self,
 			id: AssetId,
 			from: AccountId,
 			to: AccountId,
@@ -78,13 +78,13 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn approve(&self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+		pub fn approve(&mut self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 			api::approve(id, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn increase_allowance(
-			&self,
+			&mut self,
 			id: AssetId,
 			spender: AccountId,
 			value: Balance,
@@ -94,7 +94,7 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn decrease_allowance(
-			&self,
+			&mut self,
 			id: AssetId,
 			spender: AccountId,
 			value: Balance,
