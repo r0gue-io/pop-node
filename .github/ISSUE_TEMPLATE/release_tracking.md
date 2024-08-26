@@ -39,7 +39,7 @@ assignees: ''
 
 3. Switch to the new release branch and rebuild.
 4. Kill the running `pop-node` process
-> For isntance, on Mac one can look in Activity Monitor, find the `pop-node` process and force quit. The network will still be running, but without the collator so Pop Network might not be producing blocks.
+> For instance, on Mac one can look in Activity Monitor, find the `pop-node` process and force quit. The network will still be running, but without the collator so Pop Network might not be producing blocks.
 6. Run the new `pop-node` binary using the command prompted in step `2`, with the same specs that are prompted at step `2`.
 7. Verify that the new node is producing blocks.
 8. Verify running versions as needed.
