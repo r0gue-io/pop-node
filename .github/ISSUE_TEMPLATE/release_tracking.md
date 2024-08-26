@@ -63,7 +63,7 @@ try-runtime --runtime ./target/release/wbuild/pop-runtime-testnet/pop_runtime_te
 
 - [ ] (Advised) Runtime upgrade on a local **fork** of Pop Network.
 
-_More instructions around using chopsticks for this can be found in [.chopsticks direcotry](../../.chopsticks)_
+_More instructions around using chopsticks for this can be found in [.chopsticks directory](../../.chopsticks)_
 
 1. Launch the local fork:
 ```shell
