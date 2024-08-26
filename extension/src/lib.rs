@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use crate::mock::NoopFuncId;
 use codec::Decode as _;
 use core::{fmt::Debug, marker::PhantomData};
 pub use decoding::{Decode, Decodes, IdentityProcessor};
@@ -183,7 +182,8 @@ pub trait Converter {
 
 #[test]
 fn extension_call_works() {
-	let mut env = mock::Environment::new(NoopFuncId::get(), Vec::default(), mock::Ext::default());
+	let mut env =
+		mock::Environment::new(mock::NoopFuncId::get(), Vec::default(), mock::Ext::default());
 	let mut extension = Extension::<mock::Config>::default();
 	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
 }
