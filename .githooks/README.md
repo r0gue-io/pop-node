@@ -16,7 +16,8 @@ rustup toolchain install nightly --profile minimal --component rustfmt
 
 ## Taplo
 
-Formatting of TOML documents is done via [`taplo`](https://taplo.tamasfe.dev/)
+Formatting of TOML documents is done via `taplo`.
+Find more about taplo [here](https://taplo.tamasfe.dev/).
 
 ```
 cargo install taplo-cli --locked
@@ -25,6 +26,7 @@ cargo install taplo-cli --locked
 ## Zepter
 
 Analyze, fix and format features in your Rust workspace.
+Find more about zepter [here](https://github.com/ggwpez/zepter).
 
 ```
 cargo install zepter -f --locked
