@@ -1,11 +1,11 @@
-use crate::{
-	environment, matching::WithFuncId, Decodes, DecodingFailed, DispatchCall, Extension, Function,
-	Matches, Processor,
-};
 use frame_support::pallet_prelude::Weight;
 use frame_support::{derive_impl, parameter_types, traits::ConstU32, traits::Everything};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
+use pop_chain_extension::{
+	environment, matching::WithFuncId, BufIn, Config as PopApiExtensionConfig, Decodes,
+	DecodingFailed, DispatchCall, Extension, Function, Matches, Processor,
+};
 use sp_runtime::Perbill;
 use std::marker::PhantomData;
 
@@ -92,7 +92,7 @@ parameter_types! {
 
 #[derive(Default)]
 pub struct Config;
-impl super::Config for Config {
+impl PopApiExtensionConfig for Config {
 	type Functions = (
 		DispatchCall<
 			// Registered with func id 1
@@ -115,7 +115,10 @@ impl Processor for RemoveFirstByte {
 	type Value = Vec<u8>;
 	const LOG_TARGET: &'static str = "";
 
-	fn process(mut value: Self::Value, _env: &impl crate::Environment) -> Self::Value {
+	fn process(
+		mut value: Self::Value,
+		_env: &impl pop_chain_extension::Environment,
+	) -> Self::Value {
 		value.remove(0);
 		value
 	}
@@ -128,13 +131,13 @@ impl<Matcher: Matches, Config: pallet_contracts::Config> Function for Noop<Match
 	type Error = ();
 
 	fn execute(
-		_env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
+		_env: &mut (impl environment::Environment<Config = Config> + BufIn),
 	) -> pallet_contracts::chain_extension::Result<RetVal> {
 		Ok(RetVal::Converging(0))
 	}
 }
 impl<M: Matches, C> Matches for Noop<M, C> {
-	fn matches(env: &impl crate::Environment) -> bool {
+	fn matches(env: &impl pop_chain_extension::Environment) -> bool {
 		M::matches(env)
 	}
 }

@@ -4932,9 +4932,12 @@ version = "0.0.0"
 dependencies = [
  "asset-hub-paseo-runtime",
  "asset-test-utils",
+ "contract-build",
  "cumulus-primitives-core",
  "emulated-integration-tests-common",
+ "env_logger 0.11.5",
  "frame-support",
+ "log",
  "pallet-assets",
  "pallet-balances",
  "pallet-message-queue",
@@ -4946,6 +4949,7 @@ dependencies = [
  "polkadot-runtime-parachains",
  "pop-runtime-common",
  "pop-runtime-devnet",
+ "scale-info",
  "sp-authority-discovery",
  "sp-consensus-aura",
  "sp-consensus-babe",
@@ -9879,7 +9883,6 @@ dependencies = [
 name = "pop-chain-extension"
 version = "0.1.0"
 dependencies = [
- "contract-build",
  "env_logger 0.11.5",
  "frame-support",
  "frame-system",

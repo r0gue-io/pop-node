@@ -20,15 +20,15 @@ use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
 mod decoding;
-mod environment;
+// Public because integration tests need this
+pub mod environment;
 mod functions;
-mod matching;
-#[cfg(test)]
-mod mock;
+// Public because integration tests need this
+pub mod matching;
 #[cfg(test)]
 mod tests;
 
-type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;
+pub type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;
 
 /// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within `DispatchError::ModuleError`.
 pub const DECODING_FAILED_ERROR: [u8; 4] = [11, 0, 0, 0];
@@ -62,7 +62,7 @@ impl<
 		Config: self::Config<Functions: Function<Config = Runtime>>,
 	> Extension<Config>
 {
-	fn call(
+	pub fn call(
 		&mut self,
 		env: &mut (impl Environment<Config = Runtime> + BufIn + BufOut),
 	) -> Result<RetVal> {
@@ -178,52 +178,4 @@ pub trait Converter {
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
 	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target;
-}
-
-#[test]
-fn extension_call_works() {
-	let mut env =
-		mock::Environment::new(mock::NoopFuncId::get(), Vec::default(), mock::Ext::default());
-	let mut extension = Extension::<mock::Config>::default();
-	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
-}
-
-#[test]
-fn extension_returns_decoding_failed_for_unknown_function() {
-	// no function registered for id 0
-	let mut env = mock::Environment::new(0, Vec::default(), mock::Ext::default());
-	let mut extension = Extension::<mock::Config>::default();
-	assert!(matches!(
-		extension.call(&mut env),
-		Err(error) if error == pallet_contracts::Error::<mock::Test>::DecodingFailed.into()
-	));
-}
-
-#[test]
-fn extension_call_charges_weight() {
-	// specify invalid function
-	let mut env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
-	let mut extension = Extension::<mock::Config>::default();
-	assert!(extension.call(&mut env).is_err());
-	assert_eq!(env.charged(), ContractWeights::<mock::Test>::seal_debug_message(42))
-}
-
-#[test]
-fn decoding_failed_error_type_works() {
-	assert_eq!(
-		DecodingFailed::<mock::Test>::get(),
-		pallet_contracts::Error::<mock::Test>::DecodingFailed.into()
-	)
-}
-
-#[test]
-fn default_error_conversion_works() {
-	let env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
-	assert!(matches!(
-		<() as ErrorConverter>::convert(
-			DispatchError::BadOrigin,
-			&env
-		),
-		Err(error) if error == DispatchError::BadOrigin
-	));
 }

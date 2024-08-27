@@ -1,0 +1,70 @@
+[package]
+name = "pop_chain_extension_tests"
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dev-dependencies]
+codec.workspace = true
+contract-build.workspace = true
+env_logger.workspace = true
+log.workspace = true
+scale-info.workspace = true
+tracing-subscriber = { workspace = true, features = [
+ "env-filter",
+ "fmt",
+ "std",
+ "tracing-log",
+] }
+
+# Substrate
+frame-support.workspace = true
+frame-system.workspace = true
+pallet-assets.workspace = true
+pallet-balances.workspace = true
+pallet-contracts.workspace = true
+pallet-timestamp.workspace = true
+pop-chain-extension.workspace = true
+sp-io.workspace = true
+sp-core.workspace = true
+sp-runtime.workspace = true
+
+[features]
+default = ["std"]
+std = [
+ "log/std",
+ "codec/std",
+ "asset-hub-paseo-runtime/std",
+ "cumulus-primitives-core/std",
+ "frame-support/std",
+ "frame-system/std",
+ "pallet-assets/std",
+ "pallet-balances/std",
+ "pallet-contracts/std",
+ "pallet-timestamp/std",
+ "pop-chain-extension/std",
+ "sp-core/std",
+ "sp-runtime/std",
+]
+
+runtime-benchmarks = [
+ "frame-support/runtime-benchmarks",
+ "frame-system/runtime-benchmarks",
+ "pallet-assets/runtime-benchmarks",
+ "pallet-balances/runtime-benchmarks",
+ "pallet-contracts/runtime-benchmarks",
+ "pallet-timestamp/runtime-benchmarks",
+ "sp-runtime/runtime-benchmarks",
+]
+
+try-runtime = [
+ "frame-support/try-runtime",
+ "frame-system/try-runtime",
+ "pallet-assets/try-runtime",
+ "pallet-balances/try-runtime",
+ "pallet-contracts/try-runtime",
+ "pallet-timestamp/try-runtime",
+ "sp-runtime/try-runtime",
+]
