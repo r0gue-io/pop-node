@@ -63,7 +63,7 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn transfer(&self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
+		pub fn transfer(&mut self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
 			let result = api::transfer(id, to, value);
 			self.env().emit_event(Transfer {
 				from: Some(self.env().account_id()),
@@ -75,7 +75,7 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn transfer_from(
-			&self,
+			&mut self,
 			id: AssetId,
 			from: AccountId,
 			to: AccountId,
@@ -89,7 +89,7 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn approve(&self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+		pub fn approve(&mut self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
 			let result = api::approve(id, spender, value);
 			self.env()
 				.emit_event(Approval { owner: self.env().account_id(), spender, value });
@@ -98,7 +98,7 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn increase_allowance(
-			&self,
+			&mut self,
 			id: AssetId,
 			spender: AccountId,
 			value: Balance,
@@ -108,7 +108,7 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn decrease_allowance(
-			&self,
+			&mut self,
 			id: AssetId,
 			spender: AccountId,
 			value: Balance,
@@ -144,14 +144,19 @@ mod fungibles {
 		/// - asset_exists
 
 		#[ink(message)]
-		pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
+		pub fn create(
+			&mut self,
+			id: AssetId,
+			admin: AccountId,
+			min_balance: Balance,
+		) -> Result<()> {
 			let result = api::create(id, admin, min_balance);
 			self.env().emit_event(Create { id, creator: admin, admin });
 			result
 		}
 
 		#[ink(message)]
-		pub fn start_destroy(&self, id: AssetId) -> Result<()> {
+		pub fn start_destroy(&mut self, id: AssetId) -> Result<()> {
 			let result = api::start_destroy(id);
 			self.env().emit_event(StartDestroy { id });
 			result
@@ -159,7 +164,7 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn set_metadata(
-			&self,
+			&mut self,
 			id: AssetId,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
@@ -171,7 +176,7 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn clear_metadata(&self, id: AssetId) -> Result<()> {
+		pub fn clear_metadata(&mut self, id: AssetId) -> Result<()> {
 			let result = api::clear_metadata(id);
 			self.env().emit_event(ClearMetadata { id });
 			result
@@ -187,12 +192,12 @@ mod fungibles {
 		/// - burn
 
 		#[ink(message)]
-		pub fn mint(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+		pub fn mint(&mut self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
 			api::mint(id, account, amount)
 		}
 
 		#[ink(message)]
-		pub fn burn(&self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
+		pub fn burn(&mut self, id: AssetId, account: AccountId, amount: Balance) -> Result<()> {
 			api::burn(id, account, amount)
 		}
 	}
