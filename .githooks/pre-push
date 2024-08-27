@@ -6,6 +6,7 @@ set -eu
 if ! which 2>/dev/null 1>&2 cargo
 then
     echo "cargo couldn't be found, please confirm your set up is properly configured."
+    exit 1
 else
     # Check Rust formatting
     if ! cargo +nightly fmt --all -- --check
@@ -20,6 +21,7 @@ fi
 if ! which 2>/dev/null 1>&2 taplo
 then
     echo "taplo couldn't be found. Please, refer to .githooks/README.md."
+    exit 1
 else
     # Check TOML formatting
     if ! taplo format --check
@@ -33,6 +35,7 @@ fi
 if ! which 2>/dev/null 1>&2 zepter
 then
     echo "zepter couldn't be found. Please, refer to .githooks/README.md."
+    exit 1
 else
     # Check for feature formatting
     if ! zepter format features
