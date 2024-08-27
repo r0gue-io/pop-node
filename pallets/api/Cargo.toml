@@ -46,6 +46,7 @@ std = [
     "frame-system/std",
     "pallet-assets/std",
     "pallet-balances/std",
+    "pop-chain-extension/std",
     "scale-info/std",
     "sp-core/std",
     "sp-io/std",
