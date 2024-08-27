@@ -1,6 +1,6 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstBool, ConstU32, Randomness},
+	traits::{ConstBool, ConstU32, Nothing, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
@@ -8,14 +8,6 @@ use crate::{
 	deposit, extensions, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall,
 	RuntimeEvent, RuntimeHoldReason, Timestamp,
 };
-
-pub enum AllowBalancesCall {}
-
-impl frame_support::traits::Contains<RuntimeCall> for AllowBalancesCall {
-	fn contains(call: &RuntimeCall) -> bool {
-		matches!(call, RuntimeCall::Balances(BalancesCall::transfer_allow_death { .. }))
-	}
-}
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 	pallet_contracts::Schedule {
@@ -54,7 +46,7 @@ impl pallet_contracts::Config for Runtime {
 	/// and make sure they are stable. Dispatchables exposed to contracts are not allowed to
 	/// change because that would break already deployed contracts. The `RuntimeCall` structure
 	/// itself is not allowed to change the indices of existing pallets, too.
-	type CallFilter = AllowBalancesCall;
+	type CallFilter = Nothing;
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
 	type ChainExtension = extensions::PopApiExtension;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
