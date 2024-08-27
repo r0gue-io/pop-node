@@ -21,6 +21,7 @@ members = [
 	"node",
 	"primitives",
 	"runtime/devnet",
+	"runtime/live",
 	"runtime/testnet",
 ]
 
@@ -52,6 +53,7 @@ substrate-wasm-builder = "23.0.0"
 
 # Local
 pop-primitives = { path = "./primitives", default-features = false }
+pop-runtime = { path = "runtime/live", default-features = true }            # default-features=true required for `-p pop-node` builds
 pop-runtime-common = { path = "runtime/common", default-features = false }
 pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
 pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
