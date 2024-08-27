@@ -1,4 +1,4 @@
-use crate::extension::mock::{self as mock, Test as Runtime, *};
+use crate::mock::{self as mock, Test as Runtime, *};
 use codec::{Decode, Encode};
 use core::fmt::Debug;
 use frame_support::{pallet_prelude::Weight, traits::fungible::Inspect};

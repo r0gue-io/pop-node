@@ -9901,6 +9901,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "pop-chain-extension-tests"
+version = "0.0.0"
+dependencies = [
+ "contract-build",
+ "env_logger 0.11.5",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-timestamp",
+ "parity-scale-codec",
+ "pop-chain-extension",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "tracing-subscriber 0.3.18",
+]
+
+[[package]]
 name = "pop-node"
 version = "0.1.0-alpha"
 dependencies = [

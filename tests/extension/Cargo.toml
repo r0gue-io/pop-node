@@ -1,12 +1,12 @@
 [package]
-name = "pop_chain_extension_tests"
+name = "pop-chain-extension-tests"
+description = "Pop Network integration tests."
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true
-license.workspace = true
 repository.workspace = true
 
-[dev-dependencies]
+[dependencies]
 codec.workspace = true
 contract-build.workspace = true
 env_logger.workspace = true
@@ -22,7 +22,6 @@ tracing-subscriber = { workspace = true, features = [
 # Substrate
 frame-support.workspace = true
 frame-system.workspace = true
-pallet-assets.workspace = true
 pallet-balances.workspace = true
 pallet-contracts.workspace = true
 pallet-timestamp.workspace = true
@@ -36,11 +35,8 @@ default = ["std"]
 std = [
  "log/std",
  "codec/std",
- "asset-hub-paseo-runtime/std",
- "cumulus-primitives-core/std",
  "frame-support/std",
  "frame-system/std",
- "pallet-assets/std",
  "pallet-balances/std",
  "pallet-contracts/std",
  "pallet-timestamp/std",
@@ -52,7 +48,6 @@ std = [
 runtime-benchmarks = [
  "frame-support/runtime-benchmarks",
  "frame-system/runtime-benchmarks",
- "pallet-assets/runtime-benchmarks",
  "pallet-balances/runtime-benchmarks",
  "pallet-contracts/runtime-benchmarks",
  "pallet-timestamp/runtime-benchmarks",
@@ -62,7 +57,6 @@ runtime-benchmarks = [
 try-runtime = [
  "frame-support/try-runtime",
  "frame-system/try-runtime",
- "pallet-assets/try-runtime",
  "pallet-balances/try-runtime",
  "pallet-contracts/try-runtime",
  "pallet-timestamp/try-runtime",

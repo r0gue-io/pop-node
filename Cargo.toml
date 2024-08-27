@@ -17,6 +17,7 @@ description = "Pop Network makes it easy for smart contract developers to use th
 [workspace]
 members = [
     "node",
+    "tests/extension",
     "runtime/devnet",
     "runtime/testnet",
     "integration-tests",
