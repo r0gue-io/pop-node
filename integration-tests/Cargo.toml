@@ -8,16 +8,7 @@ repository.workspace = true
 
 [dev-dependencies]
 codec.workspace = true
-contract-build.workspace = true
-env_logger.workspace = true
-log.workspace = true
-scale-info.workspace = true
-tracing-subscriber = { workspace = true, features = [
-    "env-filter",
-    "fmt",
-    "std",
-    "tracing-log",
-] }
+tracing-subscriber = { workspace = true, features = ["env-filter", "fmt", "std", "tracing-log"] }
 
 # Substrate
 frame-support.workspace = true
@@ -97,6 +88,7 @@ try-runtime = [
     "asset-hub-paseo-runtime/try-runtime",
     "frame-support/try-runtime",
     "pallet-assets/try-runtime",
+    "pallet-balances/try-runtime",
     "pallet-message-queue/try-runtime",
     "paseo-runtime/try-runtime",
     "pop-runtime-devnet/try-runtime",
