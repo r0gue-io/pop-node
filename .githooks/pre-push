@@ -2,6 +2,20 @@
 
 set -eu
 
+# Are deps installed
+if ! which cargo 2>/dev/null
+then
+    echo "cargo couldn't be found, please confirm your set up is properly configured."
+fi
+if ! which taplo 2>/dev/null
+then
+    echo "taplo couldn't be found. Please, refer to .githooks/README.md."
+fi
+if ! which zepter 2>/dev/null
+then
+    echo "zepter couldn't be found. Please, refer to .githooks/README.md."
+fi
+
 # Check Rust formatting
 if ! cargo +nightly fmt --all -- --check
 then
