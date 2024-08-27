@@ -3,15 +3,15 @@
 set -eu
 
 # Are deps installed
-if ! which cargo 2>/dev/null
+if ! which 2>/dev/null 1>&2 cargo
 then
     echo "cargo couldn't be found, please confirm your set up is properly configured."
 fi
-if ! which taplo 2>/dev/null
+if ! which 2>/dev/null 1>&2 taplo
 then
     echo "taplo couldn't be found. Please, refer to .githooks/README.md."
 fi
-if ! which zepter 2>/dev/null
+if ! which 2>/dev/null 1>&2 zepter
 then
     echo "zepter couldn't be found. Please, refer to .githooks/README.md."
 fi
