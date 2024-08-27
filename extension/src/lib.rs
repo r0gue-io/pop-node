@@ -20,14 +20,15 @@ use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
 mod decoding;
-// Public because integration tests need this
+/// Contains traits related to the execution environment of chain extension.
 pub mod environment;
 mod functions;
-// Public because integration tests need this
+/// Contains traits related to matching functions.
 pub mod matching;
 #[cfg(test)]
 mod tests;
 
+/// Describes the weights of the dispatchables of contract module and is also used to construct a default cost schedule.
 pub type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;
 
 /// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within `DispatchError::ModuleError`.
@@ -62,6 +63,10 @@ impl<
 		Config: self::Config<Functions: Function<Config = Runtime>>,
 	> Extension<Config>
 {
+	/// Call the chain extension logic and executed configured functions.
+	///
+	/// # Parameters
+	/// - `env`: Access to the remaining arguments and the execution environment.
 	pub fn call(
 		&mut self,
 		env: &mut (impl Environment<Config = Runtime> + BufIn + BufOut),
