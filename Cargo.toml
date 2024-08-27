@@ -16,15 +16,15 @@ description = "Pop Network makes it easy for smart contract developers to use th
 
 [workspace]
 members = [
-    "node",
-    "tests/extension",
-    "runtime/devnet",
-    "runtime/testnet",
     "integration-tests",
+    "node",
     "pallets/*",
     "primitives",
+    "runtime/devnet",
+    "runtime/testnet",
+    "tests/*",
 ]
-exclude = ["extension/contract", "pop-api", "tests/contracts"]
+exclude = ["pop-api", "tests/contracts", "tests/extension/contract"]
 
 resolver = "2"
 

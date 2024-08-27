@@ -1,12 +1,9 @@
 [package]
 name = "pop-chain-extension-tests"
 description = "Pop Network integration tests."
-authors.workspace = true
-edition.workspace = true
-homepage.workspace = true
-repository.workspace = true
+edition = "2021"
 
-[dependencies]
+[dev-dependencies]
 codec.workspace = true
 contract-build.workspace = true
 env_logger.workspace = true
