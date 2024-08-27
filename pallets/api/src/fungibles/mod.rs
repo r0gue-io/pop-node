@@ -470,37 +470,6 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Reads fungible asset state based on the provided value.
-		///
-		/// This function matches the value to determine the type of state query and returns the
-		/// encoded result.
-		///
-		/// # Parameter
-		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
-		///   the associated parameters.
-		#[deprecated]
-		pub fn read_state(value: Read<T>) -> Vec<u8> {
-			use Read::*;
-
-			match value {
-				TotalSupply(asset) => AssetsOf::<T>::total_supply(asset).encode(),
-				BalanceOf { asset, owner } => AssetsOf::<T>::balance(asset, owner).encode(),
-				Allowance { asset, owner, spender } => {
-					AssetsOf::<T>::allowance(asset, &owner, &spender).encode()
-				},
-				TokenName(asset) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(asset).encode()
-				},
-				TokenSymbol(asset) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(asset).encode()
-				},
-				TokenDecimals(asset) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(asset).encode()
-				},
-				AssetExists(asset) => AssetsOf::<T>::asset_exists(asset).encode(),
-			}
-		}
-
 		fn weight_approve(approve: u32, cancel: u32) -> Weight {
 			<T as Config>::WeightInfo::approve(cancel, approve)
 		}
