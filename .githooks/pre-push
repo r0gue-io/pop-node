@@ -6,39 +6,41 @@ set -eu
 if ! which 2>/dev/null 1>&2 cargo
 then
     echo "cargo couldn't be found, please confirm your set up is properly configured."
+else
+    # Check Rust formatting
+    if ! cargo +nightly fmt --all -- --check
+    then
+        echo "There are some code style issues."
+        # shellcheck disable=SC2006
+        echo "Run 'cargo +nightly fmt --all' first."
+        exit 1
+    fi
 fi
+
 if ! which 2>/dev/null 1>&2 taplo
 then
     echo "taplo couldn't be found. Please, refer to .githooks/README.md."
+else
+    # Check TOML formatting
+    if ! taplo format --check
+    then
+        echo "There are some code style issues."
+        echo "Run 'taplo fmt' first."
+        exit 1
+    fi
 fi
+
 if ! which 2>/dev/null 1>&2 zepter
 then
     echo "zepter couldn't be found. Please, refer to .githooks/README.md."
-fi
-
-# Check Rust formatting
-if ! cargo +nightly fmt --all -- --check
-then
-    echo "There are some code style issues."
-    # shellcheck disable=SC2006
-    echo "Run 'cargo +nightly fmt --all' first."
-    exit 1
-fi
-
-# Check TOML formatting
-if ! taplo format --check
-then
-    echo "There are some code style issues."
-    echo "Run 'taplo fmt' first."
-    exit 1
-fi
-
-# Check for feature formatting
-if ! zepter format features
-then
-    echo "There are some code style issues."
-    echo "Run 'zepter format features --fix' first."
-    exit 1
+else
+    # Check for feature formatting
+    if ! zepter format features
+    then
+        echo "There are some code style issues."
+        echo "Run 'zepter format features --fix' first."
+        exit 1
+    fi
 fi
 
 exit 0
