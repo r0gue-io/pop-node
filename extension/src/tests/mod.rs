@@ -200,20 +200,11 @@ mod error {
 	}
 }
 
-mod converter {
-	use super::*;
-	#[test]
-	fn default_converter_works() {
-		let env = mock::Environment::new(0, vec![], mock::Ext::default());
-		let source = "pop".to_string();
-		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
-	}
-}
-
 mod matching {
 	use super::*;
 	use crate::{matching::WithFuncId, Equals, Matches};
 	use sp_core::{ConstU16, ConstU32};
+
 	#[test]
 	fn matching_with_func_id_works() {
 		let env = mock::Environment::new(0, vec![], mock::Ext::default());
@@ -244,6 +235,13 @@ mod matching {
 			mock::Ext::default(),
 		);
 		assert!(!Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
+	}
+
+	#[test]
+	fn default_converter_works() {
+		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let source = "pop".to_string();
+		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
 	}
 }
 
