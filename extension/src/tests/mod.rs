@@ -5,7 +5,7 @@ use crate::{
 	Processor,
 };
 use codec::{Decode, Encode};
-use pallet_contracts::chain_extension::RetVal::Converging;
+use pallet_contracts::chain_extension::RetVal::{Converging, Diverging};
 use pallet_contracts::WeightInfo;
 use sp_core::Get;
 use sp_runtime::DispatchError;
@@ -92,6 +92,90 @@ mod call {
 		let mut extension = Extension::<mock::Config>::default();
 		// Failed due to the invalid read index.
 		assert!(extension.call(&mut env).is_err());
+	}
+}
+
+mod functions {
+	use super::*;
+	use core::marker::PhantomData;
+	use frame_support::parameter_types;
+	use pallet_contracts::chain_extension::{RetVal, ReturnFlags};
+
+	use crate::{environment, matching::WithFuncId, mock::Test, Function, Matches};
+
+	/// A function that returns a success status from a contract call.
+	struct ReturnSuccessFunction<M, C>(PhantomData<(M, C)>);
+	impl<Matcher: Matches, Config: pallet_contracts::Config> Function
+		for ReturnSuccessFunction<Matcher, Config>
+	{
+		type Config = Config;
+		type Error = ();
+
+		fn execute(
+			_env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
+		) -> pallet_contracts::chain_extension::Result<RetVal> {
+			Ok(Converging(0))
+		}
+	}
+	impl<M: Matches, C> Matches for ReturnSuccessFunction<M, C> {
+		fn matches(env: &impl crate::Environment) -> bool {
+			M::matches(env)
+		}
+	}
+
+	/// A function that returns a failure from a contract call.
+	struct ReturnFailureFunction<M, C>(PhantomData<(M, C)>);
+	impl<Matcher: Matches, Config: pallet_contracts::Config> Function
+		for ReturnFailureFunction<Matcher, Config>
+	{
+		type Config = Config;
+		type Error = ();
+
+		fn execute(
+			_env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
+		) -> pallet_contracts::chain_extension::Result<RetVal> {
+			Ok(RetVal::Diverging { flags: ReturnFlags::REVERT, data: vec![42] })
+		}
+	}
+	impl<M: Matches, C> Matches for ReturnFailureFunction<M, C> {
+		fn matches(env: &impl crate::Environment) -> bool {
+			M::matches(env)
+		}
+	}
+
+	/// Registry of chain extension functions.
+	type Functions = (
+		ReturnSuccessFunction<WithFuncId<ReturnSuccessId>, Test>,
+		ReturnFailureFunction<WithFuncId<ReturnFailureId>, Test>,
+	);
+
+	parameter_types! {
+		pub const ReturnSuccessId : u32 = 0;
+		pub const ReturnFailureId : u32 = 1;
+		pub const InvalidId : u32 = 99;
+	}
+
+	#[test]
+	fn execute_success_function_works() {
+		let mut env = mock::Environment::new(ReturnSuccessId::get(), vec![], mock::Ext::default());
+		assert!(matches!(Functions::execute(&mut env), Ok(Converging(0))));
+	}
+
+	#[test]
+	fn execute_failure_function_works() {
+		let mut env = mock::Environment::new(ReturnFailureId::get(), vec![], mock::Ext::default());
+		assert!(matches!(
+			Functions::execute(&mut env),
+			Ok(Diverging { flags: ReturnFlags::REVERT, data: ref d }) if d == &[42]
+		));
+	}
+
+	#[test]
+	fn execute_invalid_function() {
+		let mut env = mock::Environment::new(InvalidId::get(), vec![], mock::Ext::default());
+		let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
+		let expected = <() as ErrorConverter>::convert(error, &mut env).err();
+		assert_eq!(Functions::execute(&mut env).err(), expected);
 	}
 }
 
