@@ -10298,9 +10298,9 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-cli",
  "polkadot-primitives",
- "pop-runtime",
  "pop-runtime-common",
  "pop-runtime-devnet",
+ "pop-runtime-mainnet",
  "pop-runtime-testnet",
  "sc-basic-authorship",
  "sc-chain-spec",
@@ -10348,7 +10348,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "pop-runtime"
+name = "pop-runtime-common"
+version = "0.0.0"
+dependencies = [
+ "frame-support",
+ "parachains-common",
+ "parity-scale-codec",
+ "polkadot-primitives",
+ "scale-info",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pop-runtime-devnet"
 version = "0.1.0"
 dependencies = [
  "cumulus-pallet-aura-ext",
@@ -10423,20 +10436,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pop-runtime-common"
-version = "0.0.0"
-dependencies = [
- "frame-support",
- "parachains-common",
- "parity-scale-codec",
- "polkadot-primitives",
- "scale-info",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pop-runtime-devnet"
+name = "pop-runtime-mainnet"
 version = "0.1.0"
 dependencies = [
  "cumulus-pallet-aura-ext",

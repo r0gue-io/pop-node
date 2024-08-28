@@ -183,7 +183,7 @@ macro_rules! construct_async_run {
 			}
 			Runtime::Mainnet => {
 				runner.async_run(|$config| {
-					let $components = new_partial::<pop_runtime::RuntimeApi>(
+					let $components = new_partial::<pop_runtime_mainnet::RuntimeApi>(
 						&$config
 					)?;
 					let task_manager = $components.task_manager;
@@ -206,7 +206,7 @@ macro_rules! construct_benchmark_partials {
 				$code
 			},
 			Runtime::Mainnet => {
-				let $partials = new_partial::<pop_runtime::RuntimeApi>(&$config)?;
+				let $partials = new_partial::<pop_runtime_mainnet::RuntimeApi>(&$config)?;
 				$code
 			},
 		}
@@ -383,9 +383,9 @@ pub fn run() -> Result<()> {
 					},
 					Runtime::Mainnet => {
 						sp_core::crypto::set_default_ss58_version(
-							pop_runtime::SS58Prefix::get().into(),
+							pop_runtime_mainnet::SS58Prefix::get().into(),
 						);
-						crate::service::start_parachain_node::<pop_runtime::RuntimeApi>(
+						crate::service::start_parachain_node::<pop_runtime_mainnet::RuntimeApi>(
 							config,
 							polkadot_config,
 							collator_options,

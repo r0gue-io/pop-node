@@ -4,7 +4,7 @@ description.workspace = true
 edition.workspace = true
 homepage.workspace = true
 license = "Unlicense"
-name = "pop-runtime"
+name = "pop-runtime-mainnet"
 repository.workspace = true
 version = "0.1.0"
 

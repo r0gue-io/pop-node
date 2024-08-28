@@ -81,8 +81,8 @@ pub fn pop_testnet_session_keys(keys: AuraId) -> pop_runtime_testnet::SessionKey
 /// Generate the session keys from individual elements.
 ///
 /// The input must be a tuple of individual keys (a single arg for now since we have just one key).
-pub fn pop_mainnet_session_keys(keys: AuraId) -> pop_runtime::SessionKeys {
-	pop_runtime::SessionKeys { aura: keys }
+pub fn pop_mainnet_session_keys(keys: AuraId) -> pop_runtime_mainnet::SessionKeys {
+	pop_runtime_mainnet::SessionKeys { aura: keys }
 }
 
 fn configure_for_relay(
@@ -210,7 +210,7 @@ pub fn mainnet_config(relay: Relay) -> MainnetChainSpec {
 
 	#[allow(deprecated)]
 	MainnetChainSpec::builder(
-		pop_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!"),
+		pop_runtime_mainnet::WASM_BINARY.expect("WASM binary was not built, please build it!"),
 		extensions,
 	)
 	.with_name("Pop Network")
@@ -235,7 +235,7 @@ fn mainnet_genesis(
 	root: AccountId,
 	id: ParaId,
 ) -> serde_json::Value {
-	use pop_runtime::EXISTENTIAL_DEPOSIT;
+	use pop_runtime_mainnet::EXISTENTIAL_DEPOSIT;
 
 	serde_json::json!({
 		"balances": {

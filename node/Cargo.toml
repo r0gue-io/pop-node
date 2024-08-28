@@ -20,9 +20,9 @@ serde.workspace = true
 serde_json.workspace = true
 
 # Local
-pop-runtime.workspace = true
 pop-runtime-common.workspace = true
 pop-runtime-devnet.workspace = true
+pop-runtime-mainnet.workspace = true
 pop-runtime-testnet.workspace = true
 
 # Substrate
@@ -90,15 +90,15 @@ runtime-benchmarks = [
 	"polkadot-primitives/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"pop-runtime-devnet/runtime-benchmarks",
+	"pop-runtime-mainnet/runtime-benchmarks",
 	"pop-runtime-testnet/runtime-benchmarks",
-	"pop-runtime/runtime-benchmarks",
 	"sc-service/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
 	"polkadot-cli/try-runtime",
 	"pop-runtime-devnet/try-runtime",
+	"pop-runtime-mainnet/try-runtime",
 	"pop-runtime-testnet/try-runtime",
-	"pop-runtime/try-runtime",
 	"sp-runtime/try-runtime",
 ]
