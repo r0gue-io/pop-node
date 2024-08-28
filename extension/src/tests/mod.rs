@@ -186,6 +186,7 @@ mod decoding {
 
 	#[test]
 	fn decode_with_identity_processor_works() {
+		// Creating a set of byte data input and the decoded enum variant.
 		vec![
 			(vec![0, 0, 0, 0], ComprehensiveEnum::SimpleVariant),
 			(vec![1, 42, 0, 0], ComprehensiveEnum::DataVariant(42)),
@@ -193,16 +194,82 @@ mod decoding {
 			(vec![3, 0, 0, 0], ComprehensiveEnum::NestedEnum(InnerEnum::A)),
 			(vec![3, 1, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::B { inner_data: 42 })),
 			(vec![3, 2, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::C(42))),
+			(vec![4, 1, 42, 0], ComprehensiveEnum::OptionVariant(Some(42))),
+			(vec![4, 0, 0, 0], ComprehensiveEnum::OptionVariant(None)),
+			(vec![5, 12, 1, 2, 3], ComprehensiveEnum::VecVariant(vec![1, 2, 3])),
+			(vec![5, 16, 1, 2, 3, 4], ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4])),
+			(vec![5, 20, 1, 2, 3, 4, 5], ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4, 5])),
+			(vec![6, 42, 43, 0], ComprehensiveEnum::TupleVariant(42, 43)),
+			(
+				vec![7, 42, 43, 0],
+				ComprehensiveEnum::NestedStructVariant(NestedStruct { x: 42, y: 43 }),
+			),
+			(
+				vec![8, 1, 42, 0],
+				ComprehensiveEnum::NestedEnumStructVariant(NestedEnumStruct {
+					inner_enum: InnerEnum::B { inner_data: 42 },
+				}),
+			),
 		]
 		.iter()
 		.for_each(|t| {
-			let mut env = mock::Environment::new(0, t.clone().0, mock::Ext::default());
+			let (input, output) = (t.clone().0, t.clone().1);
+			println!("input: {:?} -> output: {:?}", input, output);
+			let mut env = mock::Environment::new(0, input, mock::Ext::default());
 			let result =
 				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(
 					&mut env,
 				);
-			assert_eq!(result, Ok(t.clone().1));
+			assert_eq!(result, Ok(output));
 		});
+	}
+
+	#[test]
+	fn decode_with_remove_first_byte_processor_works() {
+		// Creating a set of byte data input and the decoded enum variant.
+		vec![
+			(vec![0, 0, 0, 0, 0], ComprehensiveEnum::SimpleVariant),
+			(vec![0, 1, 42, 0, 0], ComprehensiveEnum::DataVariant(42)),
+			(vec![0, 2, 42, 0, 0], ComprehensiveEnum::NamedFields { w: 42 }),
+			(vec![0, 3, 0, 0, 0], ComprehensiveEnum::NestedEnum(InnerEnum::A)),
+			(vec![0, 3, 1, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::B { inner_data: 42 })),
+			(vec![0, 3, 2, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::C(42))),
+			(vec![0, 4, 1, 42, 0], ComprehensiveEnum::OptionVariant(Some(42))),
+			(vec![0, 4, 0, 0, 0], ComprehensiveEnum::OptionVariant(None)),
+			(vec![0, 5, 12, 1, 2, 3], ComprehensiveEnum::VecVariant(vec![1, 2, 3])),
+			(vec![0, 5, 16, 1, 2, 3, 4], ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4])),
+			(vec![0, 5, 20, 1, 2, 3, 4, 5], ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4, 5])),
+			(vec![0, 6, 42, 43, 0], ComprehensiveEnum::TupleVariant(42, 43)),
+			(
+				vec![0, 7, 42, 43, 0],
+				ComprehensiveEnum::NestedStructVariant(NestedStruct { x: 42, y: 43 }),
+			),
+			(
+				vec![0, 8, 1, 42, 0],
+				ComprehensiveEnum::NestedEnumStructVariant(NestedEnumStruct {
+					inner_enum: InnerEnum::B { inner_data: 42 },
+				}),
+			),
+		]
+		.iter()
+		.for_each(|t| {
+			let (input, output) = (t.clone().0, t.clone().1);
+			println!("input: {:?} -> output: {:?}", input, output);
+			let mut env = mock::Environment::new(0, input, mock::Ext::default());
+			let result =
+				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, RemoveFirstByte>::decode(
+					&mut env,
+				);
+			assert_eq!(result, Ok(output));
+		});
+	}
+
+	#[test]
+	fn decode_return_decoding_fail_error() {
+		let mut env = mock::Environment::new(0, vec![1, 42, 0, 0], mock::Ext::default());
+		let result =
+			Decodes::<ComprehensiveEnum, DecodingFailed<Test>, RemoveFirstByte>::decode(&mut env);
+		assert_eq!(result, Err(pallet_contracts::Error::<mock::Test>::DecodingFailed.into()));
 	}
 }
 
