@@ -1,16 +1,24 @@
+use std::sync::LazyLock;
+
 use crate::mock::{Test as Runtime, *};
 use codec::Decode;
 use frame_system::Call;
 use sp_runtime::{BuildStorage, DispatchError};
-use utils::{call, instantiate, ALICE, GAS_LIMIT, INIT_AMOUNT, INVALID_FUNC_ID};
+use utils::{
+	call, initialize_contract, instantiate, ALICE, GAS_LIMIT, INIT_AMOUNT, INVALID_FUNC_ID,
+};
 
 mod encoding;
 mod utils;
 
+static CONTRACT: LazyLock<Vec<u8>> =
+	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.wasm"));
+
 #[test]
 fn dispatch_call_works() {
 	new_test_ext().execute_with(|| {
-		let contract = instantiate();
+		// Instantiate a new contract;
+		let contract = instantiate(CONTRACT.clone());
 
 		let call = call(
 			contract,
@@ -30,10 +38,14 @@ fn dispatch_call_works() {
 }
 
 #[test]
+fn read_state_works() {
+	new_test_ext().execute_with(|| unimplemented!("TODO: Test if the read state function works"))
+}
+
+#[test]
 fn invalid_func_id_fails() {
 	new_test_ext().execute_with(|| {
-		let contract = instantiate();
-
+		let contract = instantiate(CONTRACT.clone());
 		let call = call(contract, INVALID_FUNC_ID, (), GAS_LIMIT);
 		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
 		// TODO: assess whether this error should be passed through the error converter - i.e. is this error type considered 'stable'?

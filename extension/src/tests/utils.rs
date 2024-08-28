@@ -3,7 +3,7 @@ use codec::Encode;
 use core::fmt::Debug;
 use frame_support::{pallet_prelude::Weight, traits::fungible::Inspect};
 use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism};
-use std::{path::Path, sync::LazyLock};
+use std::path::Path;
 
 pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
 pub(crate) type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
@@ -21,9 +21,9 @@ pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 102
 pub(crate) const INIT_AMOUNT: <Runtime as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
-static CONTRACT: LazyLock<Vec<u8>> = LazyLock::new(|| {
-	const CONTRACT: &str = "contract/target/ink/proxy.wasm";
-	if !Path::new(CONTRACT).exists() {
+/// Initializing a new contract file if it does not exist.
+pub(crate) fn initialize_contract(contract_path: &str) -> Vec<u8> {
+	if !Path::new(contract_path).exists() {
 		use contract_build::*;
 		let manifest_path = ManifestPath::new("contract/Cargo.toml").unwrap();
 		let args = ExecuteArgs {
@@ -37,17 +37,17 @@ static CONTRACT: LazyLock<Vec<u8>> = LazyLock::new(|| {
 		};
 		execute(args).unwrap();
 	}
-	std::fs::read(CONTRACT).unwrap()
-});
+	std::fs::read(contract_path).unwrap()
+}
 
 /// Instantiating the contract.
-pub(crate) fn instantiate() -> AccountId {
+pub(crate) fn instantiate(contract: Vec<u8>) -> AccountId {
 	let result = Contracts::bare_instantiate(
 		ALICE,
 		0,
 		GAS_LIMIT,
 		None,
-		Code::Upload(CONTRACT.clone()),
+		Code::Upload(contract),
 		function_selector("new"),
 		Default::default(),
 		DEBUG_OUTPUT,
