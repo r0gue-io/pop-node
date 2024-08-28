@@ -102,11 +102,7 @@ pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
 /// Migrations to apply on runtime upgrade.
-pub type Migrations = (
-	pallet_contracts::Migration<Runtime>,
-	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
-	pallet_xcm::migration::MigrateToLatestXcmVersion<Runtime>,
-);
+pub type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -422,11 +418,6 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type WeightInfo = ();
 	// Enqueue XCMP messages from siblings for later processing.
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
-}
-
-impl cumulus_pallet_xcmp_queue::migration::v5::V5Config for Runtime {
-	// This must be the same as the `ChannelInfo` from the `Config`:
-	type ChannelList = ParachainSystem;
 }
 
 parameter_types! {
