@@ -95,6 +95,43 @@ fn default_converter_works() {
 	assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
 }
 
+mod matching {
+	use super::*;
+	use crate::{matching::WithFuncId, Equals, Matches};
+	use sp_core::{ConstU16, ConstU32};
+	#[test]
+	fn matching_with_func_id_works() {
+		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		assert!(WithFuncId::<ConstU32<0>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_with_func_id_invalid() {
+		let env = mock::Environment::new(1, vec![], mock::Ext::default());
+		assert!(!WithFuncId::<ConstU32<0>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_equals_works() {
+		let env = mock::Environment::new(
+			u32::from_be_bytes([0u8, 1, 0, 2]),
+			vec![],
+			mock::Ext::default(),
+		);
+		assert!(Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_equals_invalid() {
+		let env = mock::Environment::new(
+			u32::from_be_bytes([0u8, 1, 0, 3]),
+			vec![],
+			mock::Ext::default(),
+		);
+		assert!(!Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
+	}
+}
+
 mod processor {
 	use super::*;
 	#[test]

@@ -275,7 +275,8 @@ impl<E> environment::BufOut for Environment<E> {
 		_allow_skip: bool,
 		_weight_per_byte: Option<Weight>,
 	) -> pallet_contracts::chain_extension::Result<()> {
-		todo!()
+		// TODO handle write logic
+		Ok(())
 	}
 }
 
