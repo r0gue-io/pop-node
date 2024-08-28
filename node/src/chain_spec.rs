@@ -89,12 +89,12 @@ fn configure_for_relay(
 	relay: Relay,
 	properties: &mut sc_chain_spec::Properties,
 ) -> (Extensions, u32) {
-	properties.insert("ss58Format".into(), 42.into());
 	let para_id;
 
 	match relay {
 		Relay::Paseo | Relay::PaseoLocal => {
 			para_id = 4001;
+			properties.insert("ss58Format".into(), 42.into());
 			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 
@@ -104,6 +104,7 @@ fn configure_for_relay(
 		},
 		Relay::Polkadot => {
 			para_id = 3395;
+			properties.insert("ss58Format".into(), 0.into());
 			properties.insert("tokenSymbol".into(), "DOT".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 			(Extensions { relay_chain: "polkadot".into(), para_id }, para_id)
