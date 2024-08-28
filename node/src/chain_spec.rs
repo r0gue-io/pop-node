@@ -195,17 +195,9 @@ pub fn mainnet_config(relay: Relay) -> MainnetChainSpec {
 	let (extensions, para_id) = configure_for_relay(relay, &mut properties);
 
 	let collator_0_account_id: AccountId =
-		AccountId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
+		AccountId::from_ss58check("15B6eUkXgoLA3dWruCRYWeBGNC8SCwuqiMtMTM1Zh2auSg3w").unwrap();
 	let collator_0_aura_id: AuraId =
-		AuraId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
-	let collator_1_account_id: AccountId =
-		AccountId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_1_aura_id: AuraId =
-		AuraId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_2_account_id: AccountId =
-		AccountId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
-	let collator_2_aura_id: AuraId =
-		AuraId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
+		AuraId::from_ss58check("15B6eUkXgoLA3dWruCRYWeBGNC8SCwuqiMtMTM1Zh2auSg3w").unwrap();
 
 	// Multisig account for sudo, generated from the following signatories:
 	// - 15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg
@@ -229,10 +221,6 @@ pub fn mainnet_config(relay: Relay) -> MainnetChainSpec {
 		vec![
 			// POP COLLATOR 0
 			(collator_0_account_id, collator_0_aura_id),
-			// POP COLLATOR 1
-			(collator_1_account_id, collator_1_aura_id),
-			// POP COLLATOR 2
-			(collator_2_account_id, collator_2_aura_id),
 		],
 		sudo_account_id,
 		para_id.into(),
