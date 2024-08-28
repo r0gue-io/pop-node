@@ -1,6 +1,6 @@
 use crate::{
 	functions::DefaultConverter,
-	mock::{self, NoopFuncId, ReadStateFuncId, RemoveFirstByte},
+	mock::{self, NoopFuncId, ReadStateFuncId, RemoveFirstByte, Test},
 	ContractWeights, Converter, DecodingFailed, ErrorConverter, Extension, IdentityProcessor,
 	Processor,
 };
@@ -12,6 +12,37 @@ use sp_runtime::DispatchError;
 
 mod contract;
 mod utils;
+
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+enum ComprehensiveEnum {
+	SimpleVariant,
+	DataVariant(u8),
+	NamedFields { w: u8 },
+	NestedEnum(InnerEnum),
+	OptionVariant(Option<u8>),
+	VecVariant(Vec<u8>),
+	TupleVariant(u8, u8),
+	NestedStructVariant(NestedStruct),
+	NestedEnumStructVariant(NestedEnumStruct),
+}
+
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+enum InnerEnum {
+	A,
+	B { inner_data: u8 },
+	C(u8),
+}
+
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+struct NestedStruct {
+	x: u8,
+	y: u8,
+}
+
+#[derive(Debug, Clone, PartialEq, Encode, Decode)]
+struct NestedEnumStruct {
+	inner_enum: InnerEnum,
+}
 
 mod call {
 	use super::*;
@@ -136,6 +167,9 @@ mod matching {
 
 mod decoding {
 	use super::*;
+	use crate::decoding::Decode;
+	use crate::Decodes;
+
 	#[test]
 	fn remove_first_byte_processor_works() {
 		let env = mock::Environment::new(0, vec![], mock::Ext::default());
@@ -148,6 +182,27 @@ mod decoding {
 		let env = mock::Environment::new(0, vec![], mock::Ext::default());
 		let result = IdentityProcessor::process(vec![0, 1, 2, 3, 4], &env);
 		assert_eq!(result, vec![0, 1, 2, 3, 4])
+	}
+
+	#[test]
+	fn decode_with_identity_processor_works() {
+		vec![
+			(vec![0, 0, 0, 0], ComprehensiveEnum::SimpleVariant),
+			(vec![1, 42, 0, 0], ComprehensiveEnum::DataVariant(42)),
+			(vec![2, 42, 0, 0], ComprehensiveEnum::NamedFields { w: 42 }),
+			(vec![3, 0, 0, 0], ComprehensiveEnum::NestedEnum(InnerEnum::A)),
+			(vec![3, 1, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::B { inner_data: 42 })),
+			(vec![3, 2, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::C(42))),
+		]
+		.iter()
+		.for_each(|t| {
+			let mut env = mock::Environment::new(0, t.clone().0, mock::Ext::default());
+			let result =
+				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(
+					&mut env,
+				);
+			assert_eq!(result, Ok(t.clone().1));
+		});
 	}
 }
 
@@ -199,37 +254,6 @@ mod encoding {
 	// Test showing all the different type of variants and its encoding.
 	#[test]
 	fn encoding_of_enum() {
-		#[derive(Debug, PartialEq, Encode, Decode)]
-		enum ComprehensiveEnum {
-			SimpleVariant,
-			DataVariant(u8),
-			NamedFields { w: u8 },
-			NestedEnum(InnerEnum),
-			OptionVariant(Option<u8>),
-			VecVariant(Vec<u8>),
-			TupleVariant(u8, u8),
-			NestedStructVariant(NestedStruct),
-			NestedEnumStructVariant(NestedEnumStruct),
-		}
-
-		#[derive(Debug, PartialEq, Encode, Decode)]
-		enum InnerEnum {
-			A,
-			B { inner_data: u8 },
-			C(u8),
-		}
-
-		#[derive(Debug, PartialEq, Encode, Decode)]
-		struct NestedStruct {
-			x: u8,
-			y: u8,
-		}
-
-		#[derive(Debug, PartialEq, Encode, Decode)]
-		struct NestedEnumStruct {
-			inner_enum: InnerEnum,
-		}
-
 		// Creating each possible variant for an enum.
 		let enum_simple = ComprehensiveEnum::SimpleVariant;
 		let enum_data = ComprehensiveEnum::DataVariant(42);
