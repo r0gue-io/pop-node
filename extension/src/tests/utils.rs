@@ -3,6 +3,7 @@ use codec::Encode;
 use core::fmt::Debug;
 use frame_support::{pallet_prelude::Weight, traits::fungible::Inspect};
 use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism};
+use sp_runtime::BuildStorage;
 use std::path::Path;
 
 pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
@@ -17,7 +18,7 @@ pub(crate) type EventRecord = frame_system::EventRecord<
 pub(crate) const ALICE: u64 = 1;
 pub(crate) const DEBUG_OUTPUT: pallet_contracts::DebugInfo =
 	pallet_contracts::DebugInfo::UnsafeDebug;
-pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
+pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
 pub(crate) const INIT_AMOUNT: <Runtime as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
@@ -60,7 +61,6 @@ pub(crate) fn instantiate(contract: Vec<u8>) -> AccountId {
 }
 
 /// Perform a call to a specified contract.
-/// TODO: Parameters
 pub(crate) fn call(
 	contract: AccountId,
 	func_id: u32,
@@ -85,7 +85,21 @@ pub(crate) fn call(
 }
 
 /// Construct the hashed bytes as a selector of function.
-/// TODO: Parameters
 pub(crate) fn function_selector(name: &str) -> Vec<u8> {
 	sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
+}
+
+/// Test externalities.
+pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
+	let _ = env_logger::try_init();
+
+	let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+
+	pallet_balances::GenesisConfig::<Runtime> { balances: vec![(ALICE, INIT_AMOUNT)] }
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }

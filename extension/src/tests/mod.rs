@@ -1,68 +1,82 @@
-use std::sync::LazyLock;
-
-use crate::mock::{Test as Runtime, *};
-use codec::Decode;
-use frame_system::Call;
-use sp_runtime::{BuildStorage, DispatchError};
-use utils::{
-	call, initialize_contract, instantiate, ALICE, GAS_LIMIT, INIT_AMOUNT, INVALID_FUNC_ID,
+use crate::{
+	mock::{self, NoopFuncId, ReadStateFuncId},
+	ContractWeights, DecodingFailed, ErrorConverter, Extension,
 };
+use pallet_contracts::chain_extension::RetVal::Converging;
+use pallet_contracts::WeightInfo;
+use sp_core::Get;
+use sp_runtime::DispatchError;
 
 mod encoding;
+mod proxy;
+#[cfg(test)]
 mod utils;
 
-static CONTRACT: LazyLock<Vec<u8>> =
-	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.wasm"));
-
 #[test]
-fn dispatch_call_works() {
-	new_test_ext().execute_with(|| {
-		// Instantiate a new contract;
-		let contract = instantiate(CONTRACT.clone());
-
-		let call = call(
-			contract,
-			DispatchCallFuncId::get(),
-			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
-			GAS_LIMIT,
-		);
-
-		let return_value = call.result.unwrap();
-		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
-		assert!(decoded.unwrap().is_empty());
-
-		assert!(call.events.unwrap().iter().any(|e| matches!(e.event,
-				RuntimeEvent::System(frame_system::Event::<Test>::Remarked { sender, .. })
-					if sender == contract)));
-	});
+fn extension_call_works() {
+	let mut env = mock::Environment::new(NoopFuncId::get(), Vec::default(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
 }
 
 #[test]
-fn read_state_works() {
-	new_test_ext().execute_with(|| unimplemented!("TODO: Test if the read state function works"))
+fn extension_returns_decoding_failed_for_unknown_function() {
+	// no function registered for id 0
+	let mut env = mock::Environment::new(0, Vec::default(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	assert!(matches!(
+		extension.call(&mut env),
+		Err(error) if error == pallet_contracts::Error::<mock::Test>::DecodingFailed.into()
+	));
 }
 
 #[test]
-fn invalid_func_id_fails() {
-	new_test_ext().execute_with(|| {
-		let contract = instantiate(CONTRACT.clone());
-		let call = call(contract, INVALID_FUNC_ID, (), GAS_LIMIT);
-		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
-		// TODO: assess whether this error should be passed through the error converter - i.e. is this error type considered 'stable'?
-		assert_eq!(call.result, Err(expected))
-	});
+fn extension_call_charges_weight() {
+	// specify invalid function
+	let mut env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	assert!(extension.call(&mut env).is_err());
+	assert_eq!(env.charged(), ContractWeights::<mock::Test>::seal_debug_message(42))
 }
 
-fn new_test_ext() -> sp_io::TestExternalities {
-	let _ = env_logger::try_init();
+#[test]
+fn decoding_failed_error_type_works() {
+	assert_eq!(
+		DecodingFailed::<mock::Test>::get(),
+		pallet_contracts::Error::<mock::Test>::DecodingFailed.into()
+	)
+}
 
-	let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+#[test]
+fn default_error_conversion_works() {
+	let env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
+	assert!(matches!(
+		<() as ErrorConverter>::convert(
+			DispatchError::BadOrigin,
+			&env
+		),
+		Err(error) if error == DispatchError::BadOrigin
+	));
+}
 
-	pallet_balances::GenesisConfig::<Runtime> { balances: vec![(ALICE, INIT_AMOUNT)] }
-		.assimilate_storage(&mut t)
-		.unwrap();
+#[test]
+fn extension_call_read_state_works() {
+	let mut env =
+		mock::Environment::new(ReadStateFuncId::get(), [0u8, 1].to_vec(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
+}
 
-	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
-	ext
+#[test]
+fn extension_call_read_state_invalid() {
+	let mut env =
+		mock::Environment::new(ReadStateFuncId::get(), [0u8, 99].to_vec(), mock::Ext::default());
+	let mut extension = Extension::<mock::Config>::default();
+	// Failed due to the invalid read index.
+	assert!(extension.call(&mut env).is_err());
+}
+
+#[test]
+fn processor_works() {
+	unimplemented!("Test if the provided processor works correctly");
 }

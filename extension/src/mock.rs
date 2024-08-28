@@ -1,7 +1,10 @@
+use crate::functions::DefaultConverter;
 use crate::{
 	environment, matching::WithFuncId, Decodes, DecodingFailed, DispatchCall, Extension, Function,
 	Matches, Processor,
 };
+use crate::{ReadState, Readable};
+use codec::{Decode, Encode};
 use frame_support::pallet_prelude::Weight;
 use frame_support::{derive_impl, parameter_types, traits::ConstU32, traits::Everything};
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -90,6 +93,45 @@ parameter_types! {
 	pub const NoopFuncId : u32 = u32::MAX;
 }
 
+/// A query of mock runtime state.
+#[derive(Encode, Decode, Debug)]
+#[repr(u8)]
+pub enum RuntimeRead {
+	#[codec(index = 1)]
+	Ping,
+}
+impl Readable for RuntimeRead {
+	/// The corresponding type carrying the result of the query for mock runtime state.
+	type Result = RuntimeResult;
+
+	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
+	fn weight(&self) -> Weight {
+		match self {
+			RuntimeRead::Ping => Weight::from_parts(1u64, 1u64),
+		}
+	}
+
+	/// Performs the read and returns the result.
+	fn read(self) -> Self::Result {
+		match self {
+			RuntimeRead::Ping => RuntimeResult::Pong("pop".to_string()),
+		}
+	}
+}
+
+/// The result of a mock runtime state read.
+#[derive(Debug, Decode, Encode)]
+pub enum RuntimeResult {
+	#[codec(index = 1)]
+	Pong(String),
+}
+
+impl Into<Vec<u8>> for RuntimeResult {
+	fn into(self) -> Vec<u8> {
+		self.encode()
+	}
+}
+
 #[derive(Default)]
 pub struct Config;
 impl super::Config for Config {
@@ -103,6 +145,20 @@ impl super::Config for Config {
 			Decodes<RuntimeCall, DecodingFailed<Test>, RemoveFirstByte>,
 			// Allow everything
 			Everything,
+		>,
+		ReadState<
+			// Registered with func id 1
+			WithFuncId<ReadStateFuncId>,
+			// Runtime config
+			Test,
+			// The runtime state reads available.
+			RuntimeRead,
+			// Decode inputs to the function as runtime calls
+			Decodes<RuntimeRead, DecodingFailed<Test>, RemoveFirstByte>,
+			// Allow everything
+			Everything,
+			// Convert the result of a read into the expected versioned result
+			DefaultConverter<RuntimeResult>,
 		>,
 		Noop<WithFuncId<NoopFuncId>, Test>,
 	);
