@@ -103,7 +103,7 @@ fn configure_for_relay(
 			(Extensions { relay_chain, para_id }, para_id)
 		},
 		Relay::Polkadot => {
-			para_id = 3456;
+			para_id = 3395;
 			properties.insert("tokenSymbol".into(), "DOT".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 			(Extensions { relay_chain: "polkadot".into(), para_id }, para_id)
