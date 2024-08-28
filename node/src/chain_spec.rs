@@ -13,7 +13,7 @@ pub type DevnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 pub type TestnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 /// Specialized `ChainSpec` for the live parachain runtime.
-pub type LiveChainSpec = sc_service::GenericChainSpec<Extensions>;
+pub type MainnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
@@ -81,7 +81,7 @@ pub fn pop_testnet_session_keys(keys: AuraId) -> pop_runtime_testnet::SessionKey
 /// Generate the session keys from individual elements.
 ///
 /// The input must be a tuple of individual keys (a single arg for now since we have just one key).
-pub fn pop_live_session_keys(keys: AuraId) -> pop_runtime::SessionKeys {
+pub fn pop_mainnet_session_keys(keys: AuraId) -> pop_runtime::SessionKeys {
 	pop_runtime::SessionKeys { aura: keys }
 }
 
@@ -89,12 +89,12 @@ fn configure_for_relay(
 	relay: Relay,
 	properties: &mut sc_chain_spec::Properties,
 ) -> (Extensions, u32) {
-	properties.insert("ss58Format".into(), 42.into());
 	let para_id;
 
 	match relay {
 		Relay::Paseo | Relay::PaseoLocal => {
 			para_id = 4001;
+			properties.insert("ss58Format".into(), 42.into());
 			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 
@@ -103,7 +103,8 @@ fn configure_for_relay(
 			(Extensions { relay_chain, para_id }, para_id)
 		},
 		Relay::Polkadot => {
-			para_id = 3456;
+			para_id = 3395;
+			properties.insert("ss58Format".into(), 0.into());
 			properties.insert("tokenSymbol".into(), "DOT".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 			(Extensions { relay_chain: "polkadot".into(), para_id }, para_id)
@@ -189,42 +190,37 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 	.build()
 }
 
-pub fn live_config(relay: Relay) -> LiveChainSpec {
+pub fn mainnet_config(relay: Relay) -> MainnetChainSpec {
 	let mut properties = sc_chain_spec::Properties::new();
 	let (extensions, para_id) = configure_for_relay(relay, &mut properties);
 
 	let collator_0_account_id: AccountId =
-		AccountId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
+		AccountId::from_ss58check("15B6eUkXgoLA3dWruCRYWeBGNC8SCwuqiMtMTM1Zh2auSg3w").unwrap();
 	let collator_0_aura_id: AuraId =
-		AuraId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
-	let collator_1_account_id: AccountId =
-		AccountId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_1_aura_id: AuraId =
-		AuraId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_2_account_id: AccountId =
-		AccountId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
-	let collator_2_aura_id: AuraId =
-		AuraId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
+		AuraId::from_ss58check("15B6eUkXgoLA3dWruCRYWeBGNC8SCwuqiMtMTM1Zh2auSg3w").unwrap();
+
+	// Multisig account for sudo, generated from the following signatories:
+	// - 15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg
+	// - 142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z
+	// - 15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz
+	// - 14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4
+	// - Threshold 2
 	let sudo_account_id: AccountId =
-		AccountId::from_ss58check("5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD").unwrap();
+		AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").unwrap();
 
 	#[allow(deprecated)]
-	LiveChainSpec::builder(
+	MainnetChainSpec::builder(
 		pop_runtime::WASM_BINARY.expect("WASM binary was not built, please build it!"),
 		extensions,
 	)
 	.with_name("Pop Network")
 	.with_id("pop")
 	.with_chain_type(ChainType::Live)
-	.with_genesis_config_patch(live_genesis(
+	.with_genesis_config_patch(mainnet_genesis(
 		// initial collators.
 		vec![
 			// POP COLLATOR 0
 			(collator_0_account_id, collator_0_aura_id),
-			// POP COLLATOR 1
-			(collator_1_account_id, collator_1_aura_id),
-			// POP COLLATOR 2
-			(collator_2_account_id, collator_2_aura_id),
 		],
 		sudo_account_id,
 		para_id.into(),
@@ -234,7 +230,7 @@ pub fn live_config(relay: Relay) -> LiveChainSpec {
 	.build()
 }
 
-fn live_genesis(
+fn mainnet_genesis(
 	invulnerables: Vec<(AccountId, AuraId)>,
 	root: AccountId,
 	id: ParaId,
@@ -260,7 +256,7 @@ fn live_genesis(
 					(
 						acc.clone(),                 // account id
 						acc,                         // validator id
-						pop_live_session_keys(aura),      // session keys
+						pop_mainnet_session_keys(aura),      // session keys
 					)
 				})
 			.collect::<Vec<_>>(),
