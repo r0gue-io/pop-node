@@ -7,7 +7,6 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod config;
-mod extensions;
 mod weights;
 
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
@@ -244,10 +243,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
+				force_adjust_total_issuance { .. }
+					| force_set_balance { .. }
+					| force_transfer { .. }
+					| force_unreserve { .. }
 			)
 		)
 	}

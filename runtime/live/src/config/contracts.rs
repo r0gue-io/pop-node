@@ -5,8 +5,8 @@ use frame_support::{
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
 use crate::{
-	deposit, extensions, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeHoldReason, Timestamp,
+	deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeHoldReason, Timestamp,
 };
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
@@ -48,7 +48,7 @@ impl pallet_contracts::Config for Runtime {
 	/// itself is not allowed to change the indices of existing pallets, too.
 	type CallFilter = Nothing;
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
-	type ChainExtension = extensions::PopApiExtension;
+	type ChainExtension = ();
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
 	type Debug = ();
