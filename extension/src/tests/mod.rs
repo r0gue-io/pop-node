@@ -207,7 +207,7 @@ mod matching {
 
 	#[test]
 	fn matching_with_func_id_works() {
-		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let env = mock::Environment::default();
 		assert!(WithFuncId::<ConstU32<0>>::matches(&env));
 	}
 
@@ -239,7 +239,7 @@ mod matching {
 
 	#[test]
 	fn default_converter_works() {
-		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let env = mock::Environment::default();
 		let source = "pop".to_string();
 		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
 	}
@@ -252,20 +252,20 @@ mod decoding {
 
 	#[test]
 	fn default_processor_works() {
-		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let env = mock::Environment::default();
 		assert_eq!(<()>::process((), &env), ())
 	}
 
 	#[test]
 	fn remove_first_byte_processor_works() {
-		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let env = mock::Environment::default();
 		let result = RemoveFirstByte::process(vec![0, 1, 2, 3, 4], &env);
 		assert_eq!(result, vec![1, 2, 3, 4])
 	}
 
 	#[test]
 	fn identity_processor_works() {
-		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let env = mock::Environment::default();
 		let result = IdentityProcessor::process(vec![0, 1, 2, 3, 4], &env);
 		assert_eq!(result, vec![0, 1, 2, 3, 4])
 	}
