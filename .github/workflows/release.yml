@@ -28,7 +28,7 @@ jobs:
       contents: write
     strategy:
       matrix:
-        runtime: [ "devnet", "testnet" ]
+        runtime: [ "devnet", "testnet", "mainnet" ]
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
