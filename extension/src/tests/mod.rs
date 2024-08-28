@@ -220,6 +220,7 @@ mod decoding {
 			let (input, output) = (t.clone().0, t.clone().1);
 			println!("input: {:?} -> output: {:?}", input, output);
 			let mut env = mock::Environment::new(0, input, mock::Ext::default());
+			// Decode `input` to `output` using a provided processor.
 			let result =
 				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(
 					&mut env,
@@ -260,6 +261,7 @@ mod decoding {
 			let (input, output) = (t.clone().0, t.clone().1);
 			println!("input: {:?} -> output: {:?}", input, output);
 			let mut env = mock::Environment::new(0, input, mock::Ext::default());
+			// Decode `input` to `output` using a provided processor.
 			let result =
 				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, RemoveFirstByte>::decode(
 					&mut env,
