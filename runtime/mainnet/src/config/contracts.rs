@@ -69,14 +69,14 @@ impl pallet_contracts::Config for Runtime {
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type MaxDelegateDependencies = ConstU32<32>;
 	type MaxStorageKeyLen = ConstU32<128>;
-	type Migrations = (pallet_contracts::migration::v16::Migration<Runtime>,);
+	type Migrations = ();
 	type Randomness = DummyRandomness<Self>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Schedule = Schedule;
 	type Time = Timestamp;
-	type UnsafeUnstableInterface = ConstBool<true>;
+	type UnsafeUnstableInterface = ConstBool<false>;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
