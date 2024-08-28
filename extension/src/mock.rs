@@ -204,6 +204,12 @@ pub(crate) struct Environment<E> {
 	ext: E,
 }
 
+impl Default for Environment<Ext> {
+	fn default() -> Self {
+		Environment::new(0, [].to_vec(), Ext::default())
+	}
+}
+
 impl<E> Environment<E> {
 	pub(crate) fn new(id: u32, buffer: Vec<u8>, ext: E) -> Self {
 		Self {

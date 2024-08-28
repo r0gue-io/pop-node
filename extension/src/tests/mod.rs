@@ -97,6 +97,7 @@ mod call {
 
 mod error {
 	use super::*;
+
 	#[test]
 	fn decoding_failed_error_type_works() {
 		assert_eq!(
@@ -109,11 +110,8 @@ mod error {
 	fn default_error_conversion_works() {
 		let env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
 		assert!(matches!(
-			<() as ErrorConverter>::convert(
-				DispatchError::BadOrigin,
-				&env
-			),
-			Err(error) if error == DispatchError::BadOrigin
+			<() as ErrorConverter>::convert(DispatchError::BadOrigin, &env),
+			Err(DispatchError::BadOrigin)
 		));
 	}
 }
@@ -169,6 +167,12 @@ mod decoding {
 	use super::*;
 	use crate::decoding::Decode;
 	use crate::Decodes;
+
+	#[test]
+	fn default_processor_works() {
+		let env = mock::Environment::new(0, vec![], mock::Ext::default());
+		assert_eq!(<()>::process((), &env), ())
+	}
 
 	#[test]
 	fn remove_first_byte_processor_works() {

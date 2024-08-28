@@ -3,7 +3,10 @@ use std::sync::LazyLock;
 use super::utils::{
 	call, initialize_contract, instantiate, new_test_ext, GAS_LIMIT, INVALID_FUNC_ID,
 };
-use crate::mock::*;
+use crate::{
+	mock::{self, *},
+	ErrorConverter,
+};
 use codec::Decode;
 use frame_system::Call;
 use pallet_contracts::StorageDeposit;
@@ -60,7 +63,7 @@ fn read_state_works() {
 		// Successfully return data.
 		let return_value = call.result.unwrap();
 		let _decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
-		todo!("This test case does not work at the moment. Somehow, when debugging, the result returned before `env.write()` is correct, 
+		todo!("This test case does not work at the moment. Somehow, when debugging, the result returned before `env.write()` is correct,
 		but after the `env.write()` finishes, the data always return [0, 1, 255, 255, 255]");
 	});
 }
@@ -72,8 +75,9 @@ fn read_state_invalid_method_works() {
 		let contract = instantiate(CONTRACT.clone());
 		let call = call(contract, ReadStateFuncId::get(), 99u8, GAS_LIMIT);
 		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
-		// TODO: assess whether this error should be passed through the error converter - i.e. is this error type considered 'stable'?
-		assert_eq!(call.result, Err(expected))
+		// Make sure the error is passed through the error converter.
+		let error = <() as ErrorConverter>::convert(expected, &mock::Environment::default()).err();
+		assert_eq!(call.result.err(), error);
 	})
 }
 
@@ -98,7 +102,8 @@ fn invalid_func_id_fails() {
 		let contract = instantiate(CONTRACT.clone());
 		let call = call(contract, INVALID_FUNC_ID, (), GAS_LIMIT);
 		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
-		// TODO: assess whether this error should be passed through the error converter - i.e. is this error type considered 'stable'?
-		assert_eq!(call.result, Err(expected))
+		// Make sure the error is passed through the error converter.
+		let error = <() as ErrorConverter>::convert(expected, &mock::Environment::default()).err();
+		assert_eq!(call.result.err(), error);
 	});
 }
