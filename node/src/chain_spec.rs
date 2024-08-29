@@ -345,3 +345,43 @@ fn devnet_genesis(
 		"sudo": { "key": Some(root) }
 	})
 }
+
+#[test]
+fn sudo_key_valid() {
+	// Source: https://github.com/paritytech/extended-parachain-template/blob/d08cec37117731953119ecaed79522a0812b46f5/node/src/chain_spec.rs#L79
+	fn get_multisig_sudo_key(mut authority_set: Vec<AccountId>, threshold: u16) -> AccountId {
+		assert!(threshold > 0, "Threshold for sudo multisig cannot be 0");
+		assert!(!authority_set.is_empty(), "Sudo authority set cannot be empty");
+		assert!(
+			authority_set.len() >= threshold.into(),
+			"Threshold must be less than or equal to authority set members"
+		);
+		// Sorting is done to deterministically order the multisig set
+		// So that a single authority set (A, B, C) may generate only a single unique multisig key
+		// Otherwise, (B, A, C) or (C, A, B) could produce different keys and cause chaos
+		authority_set.sort();
+
+		// Define a multisig threshold for `threshold / authority_set.len()` members
+		pallet_multisig::Pallet::<pop_runtime_mainnet::Runtime>::multi_account_id(
+			&authority_set[..],
+			threshold,
+		)
+	}
+
+	assert_eq!(
+		get_multisig_sudo_key(
+			vec![
+				AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg")
+					.unwrap(),
+				AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z")
+					.unwrap(),
+				AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz")
+					.unwrap(),
+				AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4")
+					.unwrap(),
+			],
+			2
+		),
+		AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").unwrap()
+	)
+}
