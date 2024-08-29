@@ -36,7 +36,7 @@ use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 // Polkadot imports
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use pop_runtime_common::{
-	deposit, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
+	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICROUNIT,
 	MILLIUNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
 	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
@@ -113,6 +113,11 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	// src: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L70
+	(items as Balance * 20 * UNIT + (bytes as Balance) * 100 * fee::MILLICENTS) / 100
+}
+
 /// Constants related to Polkadot fee payment.
 /// Source: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L65C47-L65C58
 pub mod fee {
@@ -123,16 +128,12 @@ pub mod fee {
 			WeightToFeeCoefficients, WeightToFeePolynomial,
 		},
 	};
-	use polkadot_core_primitives::Balance;
-	use pop_runtime_common::MILLIUNIT;
+	use pop_runtime_common::{Balance, MILLIUNIT};
 	use smallvec::smallvec;
 	pub use sp_runtime::Perbill;
 
 	pub const CENTS: Balance = MILLIUNIT * 10; // 100_000_000
 	pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
-
-	/// The block saturation level. Fees will be updates based on this value.
-	pub const TARGET_BLOCK_FULLNESS: Perbill = Perbill::from_percent(25);
 
 	/// Cost of every transaction byte at Polkadot system parachains.
 	///
@@ -493,7 +494,6 @@ impl pallet_aura::Config for Runtime {
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
 	pub CollatorSelectionAddress: AccountId = CollatorSelection::account_id();
-	pub const SessionLength: BlockNumber = 6 * HOURS;
 	// StakingAdmin pluralistic body.
 	pub const StakingAdminBodyId: BodyId = BodyId::Defense;
 }
@@ -992,5 +992,25 @@ mod tests {
 	#[test]
 	fn transaction_byte_fee_is_correct() {
 		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
+	}
+
+	#[test]
+	fn deposit_works() {
+		const UNITS: Balance = 10_000_000_000;
+		const DOLLARS: Balance = UNITS; // 10_000_000_000
+		const CENTS: Balance = DOLLARS / 100; // 100_000_000
+		const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+
+		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
+		fn relay_deposit(items: u32, bytes: u32) -> Balance {
+			items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLICENTS
+		}
+
+		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70
+		fn system_para_deposit(items: u32, bytes: u32) -> Balance {
+			relay_deposit(items, bytes) / 100
+		}
+
+		assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
 	}
 }
