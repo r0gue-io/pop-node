@@ -1,5 +1,6 @@
 use cumulus_primitives_core::ParaId;
 use pop_runtime_common::{AccountId, AuraId, Signature};
+use pop_runtime_mainnet::SudoAddress;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
@@ -209,9 +210,7 @@ pub fn mainnet_config(relay: Relay) -> MainnetChainSpec {
 	// - 15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz
 	// - 14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4
 	// - Threshold 2
-	let sudo_account_id: AccountId =
-		AccountId::from_ss58check(pop_runtime_mainnet::SUDO_ADDRESS_STRING)
-			.expect("sudo address is valid ss58");
+	let sudo_account_id: AccountId = SudoAddress::get();
 
 	#[allow(deprecated)]
 	MainnetChainSpec::builder(
@@ -383,7 +382,6 @@ fn sudo_key_valid() {
 			],
 			2
 		),
-		AccountId::from_ss58check(pop_runtime_mainnet::SUDO_ADDRESS_STRING)
-			.expect("sudo address is valid ss58")
+		SudoAddress::get()
 	)
 }
