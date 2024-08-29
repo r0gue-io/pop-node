@@ -18,9 +18,9 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, ConstBool, ConstU32, ConstU64, ConstU8, Contains,
-		EitherOfDiverse, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice, TransformOrigin,
-		VariantCountOf,
+		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
+		ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice,
+		TransformOrigin, VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -313,7 +313,10 @@ parameter_types! {
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
+	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<
+		Balances,
+		ResolveTo<CollatorSelectionAddress, Balances>,
+	>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightToFee = WeightToFee;
@@ -429,6 +432,8 @@ impl pallet_aura::Config for Runtime {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
+	pub CollatorSelectionAddress: AccountId = CollatorSelection::account_id();
+	pub const SessionLength: BlockNumber = 6 * HOURS;
 	// StakingAdmin pluralistic body.
 	pub const StakingAdminBodyId: BodyId = BodyId::Defense;
 }
