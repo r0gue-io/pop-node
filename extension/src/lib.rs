@@ -23,7 +23,7 @@ use sp_std::vec::Vec;
 
 mod decoding;
 mod environment;
-pub mod functions;
+mod functions;
 mod matching;
 #[cfg(test)]
 mod mock;
