@@ -241,6 +241,7 @@ impl<E> Environment<E> {
 	}
 
 	pub(crate) fn charged(&self) -> Weight {
+		println!("{:?}", self.charged);
 		self.charged.iter().fold(Weight::zero(), |acc, b| acc.saturating_add(*b))
 	}
 }

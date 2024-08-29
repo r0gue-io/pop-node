@@ -222,10 +222,10 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{Environment, Ext, ReadStateEverthingFuncId};
+	use crate::mock::{Ext, ReadStateEverthingFuncId};
 	use codec::Encode;
 	use frame_support::traits::{Everything, Nothing};
-	use mock::RuntimeRead;
+	use mock::{RuntimeRead, RuntimeResult, Test};
 
 	enum AtLeastOneByte {}
 	impl Contains<Vec<u8>> for AtLeastOneByte {
@@ -257,7 +257,7 @@ mod tests {
 		contains::<Everything, Vec<u8>>(vec![1, 2, 3, 4], true);
 		contains::<Nothing, u32>(42, false);
 		contains::<Nothing, Vec<u8>>(vec![1, 2, 3, 4], false);
-		contains::<AtLeastOneByte, Vec<u8>>(vec![0], false);
+		contains::<AtLeastOneByte, Vec<u8>>(vec![], false);
 		contains::<AtLeastOneByte, Vec<u8>>(vec![1], true);
 		contains::<AtLeastOneByte, Vec<u8>>(vec![1, 2, 3, 4], true);
 		contains::<LargerThan100, u8>(100, false);
@@ -268,13 +268,37 @@ mod tests {
 
 	#[test]
 	fn execute_read_state_write_to_memory_works() {
+		use crate::environment::Environment;
+		// Initialize default environment without function execution
+		let mut default_env = mock::Environment::default();
+		let read = RuntimeRead::Ping;
+		// Initialize real environment with function execution
 		let mut env = mock::Environment::new(
 			ReadStateEverthingFuncId::get(),
-			[0u8.encode(), RuntimeRead::Ping.encode()].concat(),
+			[0u8.encode(), read.encode()].concat(),
 			mock::Ext::default(),
 		);
+		// Check that two environments charged same weights
+		assert_eq!(env.charged(), default_env.charged());
+
+		// Make sure the environment charged weights correctly
+		let len = env.in_len();
+		let result = RuntimeResult::Pong("pop".to_string());
+		let expected = "pop".as_bytes().encode();
+		// Check if the contract environment buffer is written correctly
 		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
-		assert_eq!(env.buffer, "pop".as_bytes().encode());
+		assert_eq!(env.buffer, expected);
+		// Decode runtime read
+		let weight = ContractWeights::<Test>::seal_return(len);
+		default_env.charge_weight(weight).unwrap();
+		// Charge weight before read
+		default_env.charge_weight(read.weight()).unwrap();
+		// Charge appropriate weight for writing to contract, based on input length, prior to decoding.
+		let result = DefaultConverter::<RuntimeResult>::convert(result, &default_env);
+		let weight_per_byte = ContractWeights::<Test>::seal_input_per_byte(1);
+		default_env.write(&result, false, Some(weight_per_byte)).unwrap();
+		// Check that two environments charged same weights
+		assert_eq!(env.charged(), default_env.charged());
 	}
 
 	#[test]
@@ -299,7 +323,7 @@ mod tests {
 
 	#[test]
 	fn default_error_conversion_works() {
-		let env = Environment::new(0, [0u8; 42].to_vec(), Ext::default());
+		let env = mock::Environment::new(0, [0u8; 42].to_vec(), Ext::default());
 		assert!(matches!(
 			<() as ErrorConverter>::convert(DispatchError::BadOrigin, &env),
 			Err(DispatchError::BadOrigin)
@@ -308,7 +332,7 @@ mod tests {
 
 	#[test]
 	fn default_conversion_works() {
-		let env = Environment::default();
+		let env = mock::Environment::default();
 		let source = "pop".to_string();
 		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
 	}
