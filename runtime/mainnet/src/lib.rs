@@ -856,3 +856,54 @@ cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 }
+
+#[cfg(test)]
+mod tests {
+	use std::any::TypeId;
+
+	use pallet_balances::AdjustmentDirection;
+	use BalancesCall::*;
+	use RuntimeCall::Balances;
+
+	use super::*;
+	#[test]
+	fn filtering_force_adjust_total_issuance_works() {
+		assert!(FilteredCalls::contains(&Balances(force_adjust_total_issuance {
+			direction: AdjustmentDirection::Increase,
+			delta: 0
+		})));
+	}
+
+	#[test]
+	fn filtering_force_set_balance_works() {
+		assert!(FilteredCalls::contains(&Balances(force_set_balance {
+			who: MultiAddress::Address32([0u8; 32]),
+			new_free: 0,
+		})));
+	}
+
+	#[test]
+	fn filtering_force_transfer_works() {
+		assert!(FilteredCalls::contains(&Balances(force_transfer {
+			source: MultiAddress::Address32([0u8; 32]),
+			dest: MultiAddress::Address32([0u8; 32]),
+			value: 0,
+		})));
+	}
+
+	#[test]
+	fn filtering_force_unreserve_works() {
+		assert!(FilteredCalls::contains(&Balances(force_unreserve {
+			who: MultiAddress::Address32([0u8; 32]),
+			amount: 0
+		})));
+	}
+
+	#[test]
+	fn filtering_configured() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
+			TypeId::of::<EverythingBut<FilteredCalls>>(),
+		);
+	}
+}
