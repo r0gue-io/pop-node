@@ -268,6 +268,21 @@ mod tests {
 
 	#[test]
 	fn execute_read_state_write_to_memory_works() {
+		let read = RuntimeRead::Ping;
+		// Initialize real environment with function execution
+		let mut env = mock::Environment::new(
+			ReadStateEverthingFuncId::get(),
+			[0u8.encode(), read.encode()].concat(),
+			mock::Ext::default(),
+		);
+		let expected = "pop".as_bytes().encode();
+		// Check if the contract environment buffer is written correctly
+		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+		assert_eq!(env.buffer, expected);
+	}
+
+	#[test]
+	fn execute_read_state_charged_weights() {
 		use crate::environment::Environment;
 		// Initialize default environment without function execution
 		let mut default_env = mock::Environment::default();
@@ -284,10 +299,8 @@ mod tests {
 		// Make sure the environment charged weights correctly
 		let len = env.in_len();
 		let result = RuntimeResult::Pong("pop".to_string());
-		let expected = "pop".as_bytes().encode();
 		// Check if the contract environment buffer is written correctly
 		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
-		assert_eq!(env.buffer, expected);
 		// Decode runtime read
 		let weight = ContractWeights::<Test>::seal_return(len);
 		default_env.charge_weight(weight).unwrap();
