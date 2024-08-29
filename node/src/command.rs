@@ -76,7 +76,7 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 			Box::new(chain_spec::development_config(Relay::PaseoLocal))
 		},
 		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
-		"pop-network" | "pop" | "pop-polkadot" | "mainnet" => {
+		"pop" | "mainnet" | "pop-polkadot" | "pop-network" => {
 			Box::new(chain_spec::mainnet_config(Relay::Polkadot))
 		},
 		"" | "local" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
