@@ -17,30 +17,6 @@ pub trait Function {
 	) -> Result<RetVal>;
 }
 
-// Support tuples of at least one function (required for type resolution) and a maximum of ten.
-#[impl_trait_for_tuples::impl_for_tuples(1, 10)]
-#[tuple_types_custom_trait_bound(Function + Matches)]
-impl<Runtime: pallet_contracts::Config> Function for Tuple {
-	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
-	type Config = Runtime;
-	type Error = ();
-
-	fn execute(
-		env: &mut (impl Environment<Config = Self::Config> + BufIn + BufOut),
-	) -> Result<RetVal> {
-		// Attempts to match a specified extension/function identifier to its corresponding function, as configured by the runtime.
-		for_tuples!( #(
-            if Tuple::matches(env) {
-                return Tuple::execute(env)
-            }
-        )* );
-
-		// Otherwise returns error indicating an unmatched request.
-		log::error!("no function could be matched");
-		Err(pallet_contracts::Error::<Self::Config>::DecodingFailed.into())
-	}
-}
-
 /// A function for dispatching a runtime call.
 pub struct DispatchCall<M, C, D, F, E = (), L = ()>(PhantomData<(M, C, D, F, E, L)>);
 impl<
@@ -156,6 +132,35 @@ impl<M: Matches, C, R, D, F, RC, E, L> Matches for ReadState<M, C, R, D, F, RC, 
 	}
 }
 
+/// Trait to be implemented for a type handling a read of runtime state.
+pub trait Readable {
+	/// The corresponding type carrying the result of the runtime state read.
+	type Result: Debug;
+
+	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
+	fn weight(&self) -> Weight;
+
+	/// Performs the read and returns the result.
+	fn read(self) -> Self::Result;
+}
+
+/// Trait for converting a value based on additional information available from the environment.
+pub trait Converter {
+	/// The type of value to be converted.
+	type Source;
+	/// The target type.
+	type Target;
+	/// The log target.
+	const LOG_TARGET: &'static str;
+
+	/// Converts the provided value.
+	///
+	/// # Parameters
+	/// - `value` - The value to be converted.
+	/// - `env` - The current execution environment.
+	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target;
+}
+
 /// A default converter, for converting (encoding) from some type into a byte array.
 pub struct DefaultConverter<T>(PhantomData<T>);
 impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
@@ -165,5 +170,93 @@ impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
 
 	fn convert(value: Self::Source, _env: &impl Environment) -> Self::Target {
 		value.into()
+	}
+}
+
+/// Trait for error conversion.
+pub trait ErrorConverter {
+	/// The log target.
+	const LOG_TARGET: &'static str;
+
+	/// Converts the provided error.
+	///
+	/// # Parameters
+	/// - `error` - The error to be converted.
+	/// - `env` - The current execution environment.
+	fn convert(error: DispatchError, env: &impl Environment) -> Result<RetVal>;
+}
+
+impl ErrorConverter for () {
+	const LOG_TARGET: &'static str = "pop-chain-extension::converters::error";
+
+	fn convert(error: DispatchError, _env: &impl Environment) -> Result<RetVal> {
+		Err(error)
+	}
+}
+
+// Support tuples of at least one function (required for type resolution) and a maximum of ten.
+#[impl_trait_for_tuples::impl_for_tuples(1, 10)]
+#[tuple_types_custom_trait_bound(Function + Matches)]
+impl<Runtime: pallet_contracts::Config> Function for Tuple {
+	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
+	type Config = Runtime;
+	type Error = ();
+
+	fn execute(
+		env: &mut (impl Environment<Config = Self::Config> + BufIn + BufOut),
+	) -> Result<RetVal> {
+		// Attempts to match a specified extension/function identifier to its corresponding function, as configured by the runtime.
+		for_tuples!( #(
+            if Tuple::matches(env) {
+                return Tuple::execute(env)
+            }
+        )* );
+
+		// Otherwise returns error indicating an unmatched request.
+		log::error!("no function could be matched");
+		Err(pallet_contracts::Error::<Self::Config>::DecodingFailed.into())
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::mock::{DispatchCallFuncId, Environment, Ext, ReadStateFuncId};
+
+	#[test]
+	fn execute_dispatch_call_function_works() {
+		let mut env =
+			mock::Environment::new(DispatchCallFuncId::get(), vec![], mock::Ext::default());
+		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+	}
+
+	#[test]
+	fn execute_read_state_function_works() {
+		let mut env = mock::Environment::new(ReadStateFuncId::get(), vec![], mock::Ext::default());
+		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+	}
+
+	#[test]
+	fn execute_invalid_function() {
+		let mut env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
+		let expected = <() as ErrorConverter>::convert(error, &mut env).err();
+		assert_eq!(mock::Functions::execute(&mut env).err(), expected);
+	}
+
+	#[test]
+	fn default_error_conversion_works() {
+		let env = Environment::new(0, [0u8; 42].to_vec(), Ext::default());
+		assert!(matches!(
+			<() as ErrorConverter>::convert(DispatchError::BadOrigin, &env),
+			Err(DispatchError::BadOrigin)
+		));
+	}
+
+	#[test]
+	fn default_converter_works() {
+		let env = Environment::default();
+		let source = "pop".to_string();
+		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
 	}
 }
