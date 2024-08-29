@@ -210,7 +210,8 @@ pub fn mainnet_config(relay: Relay) -> MainnetChainSpec {
 	// - 14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4
 	// - Threshold 2
 	let sudo_account_id: AccountId =
-		AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").unwrap();
+		AccountId::from_ss58check(pop_runtime_mainnet::SUDO_ADDRESS_STRING)
+			.expect("sudo address is valid ss58");
 
 	#[allow(deprecated)]
 	MainnetChainSpec::builder(
@@ -382,6 +383,7 @@ fn sudo_key_valid() {
 			],
 			2
 		),
-		AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").unwrap()
+		AccountId::from_ss58check(pop_runtime_mainnet::SUDO_ADDRESS_STRING)
+			.expect("sudo address is valid ss58")
 	)
 }
