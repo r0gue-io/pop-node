@@ -1,3 +1,2 @@
 mod proxy;
-// Public due to integration tests crate.
-pub mod xcm;
+pub(crate) mod xcm;
