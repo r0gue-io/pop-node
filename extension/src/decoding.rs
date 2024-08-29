@@ -34,8 +34,44 @@ pub trait Decode {
 		Self::Output::decode(&mut &input[..]).map_err(|_| {
 			log::error!(target: Self::LOG_TARGET, "decoding failed: unable to decode input into output type. input={input:?}");
 			// TODO: should we standardise on pallet_contracts::Error::DecodingFailed to simplify rather than allow customisation?
+			// Daan: Yes
 			Self::Error::get()
 		})
+	}
+}
+
+/// Trait for processing a value based on additional information available from the environment.
+pub trait Processor {
+	/// The type of value to be processed.
+	type Value;
+
+	/// The log target.
+	const LOG_TARGET: &'static str;
+
+	/// Processes the provided value.
+	///
+	/// # Parameters
+	/// - `value` - The value to be processed.
+	/// - `env` - The current execution environment.
+	fn process(value: Self::Value, env: &impl Environment) -> Self::Value;
+}
+
+impl Processor for () {
+	type Value = ();
+	const LOG_TARGET: &'static str = "";
+	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
+		value
+	}
+}
+
+/// Default processor implementation which just passes through the value unchanged.
+pub struct IdentityProcessor;
+impl Processor for IdentityProcessor {
+	type Value = Vec<u8>;
+	const LOG_TARGET: &'static str = "";
+
+	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
+		value
 	}
 }
 
@@ -54,13 +90,214 @@ impl<
 	const LOG_TARGET: &'static str = Logger::LOG_TARGET;
 }
 
-/// Default processor implementation which just passes through the value unchanged.
-pub struct IdentityProcessor;
-impl Processor for IdentityProcessor {
-	type Value = Vec<u8>;
-	const LOG_TARGET: &'static str = "";
+/// Error to be returned when decoding fails.
+pub struct DecodingFailed<C>(PhantomData<C>);
+impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
+	fn get() -> DispatchError {
+		pallet_contracts::Error::<T>::DecodingFailed.into()
+	}
+}
 
-	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
-		value
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::mock::{Environment, Ext, RemoveFirstByte, Test};
+	use codec::{Decode as OriginalDecode, Encode};
+
+	#[test]
+	fn default_processor_works() {
+		let env = Environment::default();
+		assert_eq!(<()>::process((), &env), ())
+	}
+
+	#[test]
+	fn identity_processor_works() {
+		let env = Environment::default();
+		let result = IdentityProcessor::process(vec![0, 1, 2, 3, 4], &env);
+		assert_eq!(result, vec![0, 1, 2, 3, 4])
+	}
+
+	#[test]
+	fn remove_first_byte_processor_works() {
+		let env = Environment::default();
+		let result = RemoveFirstByte::process(vec![0, 1, 2, 3, 4], &env);
+		assert_eq!(result, vec![1, 2, 3, 4])
+	}
+
+	#[test]
+	fn decode_with_identity_processor_works() {
+		test_cases().iter().for_each(|t| {
+			let (input, output) = (t.clone().0, t.clone().1);
+			println!("input: {:?} -> output: {:?}", input, output);
+			let mut env = Environment::new(0, input.clone(), Ext::default());
+			// Decode `input` to `output` using a provided processor.
+			let result =
+				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(
+					&mut env,
+				);
+			// Decode charges weight based on the length of the input.
+			assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
+			assert_eq!(result, Ok(output));
+		});
+	}
+
+	#[test]
+	fn decode_with_remove_first_byte_processor_works() {
+		test_cases().iter().for_each(|t| {
+			let (mut input, output) = (t.clone().0, t.clone().1);
+			// Insert one bit at the start because of `RemoveFirstByte`.
+			input.insert(0, 0);
+			println!("input: {:?} -> output: {:?}", input, output);
+			let mut env = Environment::new(0, input.clone(), Ext::default());
+			// Decode `input` to `output` using a provided processor.
+			let result =
+				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, RemoveFirstByte>::decode(
+					&mut env,
+				);
+			// Decode charges weight based on the length of the input.
+			assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
+			assert_eq!(result, Ok(output));
+		});
+	}
+
+	#[test]
+	fn decoding_failed_error_type_works() {
+		assert_eq!(
+			DecodingFailed::<Test>::get(),
+			pallet_contracts::Error::<Test>::DecodingFailed.into()
+		)
+	}
+
+	#[test]
+	fn decode_return_decoding_fail_error() {
+		let input = vec![100];
+		let mut env = Environment::new(0, input.clone(), Ext::default());
+		let result =
+			Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(&mut env);
+		// Decode charges weight based on the length of the input, also when decoding fails.
+		assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
+		assert_eq!(result, Err(pallet_contracts::Error::<Test>::DecodingFailed.into()));
+	}
+
+	#[derive(Debug, Clone, PartialEq, Encode, OriginalDecode)]
+	enum ComprehensiveEnum {
+		SimpleVariant,
+		DataVariant(u8),
+		NamedFields { w: u8 },
+		NestedEnum(InnerEnum),
+		OptionVariant(Option<u8>),
+		VecVariant(Vec<u8>),
+		TupleVariant(u8, u8),
+		NestedStructVariant(NestedStruct),
+		NestedEnumStructVariant(NestedEnumStruct),
+	}
+
+	#[derive(Debug, Clone, PartialEq, Encode, OriginalDecode)]
+	enum InnerEnum {
+		A,
+		B { inner_data: u8 },
+		C(u8),
+	}
+
+	#[derive(Debug, Clone, PartialEq, Encode, OriginalDecode)]
+	struct NestedStruct {
+		x: u8,
+		y: u8,
+	}
+
+	#[derive(Debug, Clone, PartialEq, Encode, OriginalDecode)]
+	struct NestedEnumStruct {
+		inner_enum: InnerEnum,
+	}
+
+	// Creating a set of byte data input and the decoded enum variant.
+	fn test_cases() -> Vec<(Vec<u8>, ComprehensiveEnum)> {
+		vec![
+			(vec![0, 0, 0, 0], ComprehensiveEnum::SimpleVariant),
+			(vec![1, 42, 0, 0], ComprehensiveEnum::DataVariant(42)),
+			(vec![2, 42, 0, 0], ComprehensiveEnum::NamedFields { w: 42 }),
+			(vec![3, 0, 0, 0], ComprehensiveEnum::NestedEnum(InnerEnum::A)),
+			(vec![3, 1, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::B { inner_data: 42 })),
+			(vec![3, 2, 42, 0], ComprehensiveEnum::NestedEnum(InnerEnum::C(42))),
+			(vec![4, 1, 42, 0], ComprehensiveEnum::OptionVariant(Some(42))),
+			(vec![4, 0, 0, 0], ComprehensiveEnum::OptionVariant(None)),
+			(vec![5, 12, 1, 2, 3], ComprehensiveEnum::VecVariant(vec![1, 2, 3])),
+			(vec![5, 16, 1, 2, 3, 4], ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4])),
+			(vec![5, 20, 1, 2, 3, 4, 5], ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4, 5])),
+			(vec![6, 42, 43, 0], ComprehensiveEnum::TupleVariant(42, 43)),
+			(
+				vec![7, 42, 43, 0],
+				ComprehensiveEnum::NestedStructVariant(NestedStruct { x: 42, y: 43 }),
+			),
+			(
+				vec![8, 1, 42, 0],
+				ComprehensiveEnum::NestedEnumStructVariant(NestedEnumStruct {
+					inner_enum: InnerEnum::B { inner_data: 42 },
+				}),
+			),
+		]
+	}
+
+	// Test showing all the different type of variants and its encoding.
+	#[test]
+	fn encoding_of_enum() {
+		// Creating each possible variant for an enum.
+		let enum_simple = ComprehensiveEnum::SimpleVariant;
+		let enum_data = ComprehensiveEnum::DataVariant(42);
+		let enum_named = ComprehensiveEnum::NamedFields { w: 42 };
+		let enum_nested = ComprehensiveEnum::NestedEnum(InnerEnum::B { inner_data: 42 });
+		let enum_option = ComprehensiveEnum::OptionVariant(Some(42));
+		let enum_vec = ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4, 5]);
+		let enum_tuple = ComprehensiveEnum::TupleVariant(42, 42);
+		let enum_nested_struct =
+			ComprehensiveEnum::NestedStructVariant(NestedStruct { x: 42, y: 42 });
+		let enum_nested_enum_struct =
+			ComprehensiveEnum::NestedEnumStructVariant(NestedEnumStruct {
+				inner_enum: InnerEnum::C(42),
+			});
+
+		// Encode and print each variant individually to see their encoded values.
+		println!("{:?} -> {:?}", enum_simple, enum_simple.encode());
+		println!("{:?} -> {:?}", enum_data, enum_data.encode());
+		println!("{:?} -> {:?}", enum_named, enum_named.encode());
+		println!("{:?} -> {:?}", enum_nested, enum_nested.encode());
+		println!("{:?} -> {:?}", enum_option, enum_option.encode());
+		println!("{:?} -> {:?}", enum_vec, enum_vec.encode());
+		println!("{:?} -> {:?}", enum_tuple, enum_tuple.encode());
+		println!("{:?} -> {:?}", enum_nested_struct, enum_nested_struct.encode());
+		println!("{:?} -> {:?}", enum_nested_enum_struct, enum_nested_enum_struct.encode());
+	}
+
+	#[test]
+	fn encoding_decoding_dispatch_error() {
+		use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+
+		let error = DispatchError::Module(ModuleError {
+			index: 255,
+			error: [2, 0, 0, 0],
+			message: Some("error message"),
+		});
+		let encoded = error.encode();
+		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+		assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
+		assert_eq!(
+			decoded,
+			// `message` is skipped for encoding.
+			DispatchError::Module(ModuleError { index: 255, error: [2, 0, 0, 0], message: None })
+		);
+
+		// Example DispatchError::Token
+		let error = DispatchError::Token(TokenError::UnknownAsset);
+		let encoded = error.encode();
+		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+		assert_eq!(encoded, vec![7, 4]);
+		assert_eq!(decoded, error);
+
+		// Example DispatchError::Arithmetic
+		let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
+		let encoded = error.encode();
+		let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
+		assert_eq!(encoded, vec![8, 1]);
+		assert_eq!(decoded, error);
 	}
 }

@@ -2,7 +2,7 @@
 
 use codec::Decode as _;
 use core::{fmt::Debug, marker::PhantomData};
-pub use decoding::{Decode, Decodes, IdentityProcessor};
+pub use decoding::{Decode, Decodes, DecodingFailed, IdentityProcessor, Processor};
 pub use environment::{BufIn, BufOut, Environment, Ext};
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
@@ -10,7 +10,9 @@ use frame_support::{
 	traits::{Contains, OriginTrait},
 	weights::Weight,
 };
-pub use functions::{DispatchCall, Function, ReadState};
+pub use functions::{
+	DefaultConverter, DispatchCall, ErrorConverter, Function, ReadState, Readable,
+};
 pub use matching::{Equals, FunctionId, Matches};
 use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
 pub use pallet_contracts::chain_extension::{Result, RetVal, State};
@@ -88,18 +90,6 @@ pub trait Config {
 	const LOG_TARGET: &'static str;
 }
 
-/// Trait to be implemented for a type handling a read of runtime state.
-pub trait Readable {
-	/// The corresponding type carrying the result of the runtime state read.
-	type Result: Debug;
-
-	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
-	fn weight(&self) -> Weight;
-
-	/// Performs the read and returns the result.
-	fn read(self) -> Self::Result;
-}
-
 /// Trait to enable specification of a log target.
 pub trait LogTarget {
 	/// The log target.
@@ -110,72 +100,7 @@ impl LogTarget for () {
 	const LOG_TARGET: &'static str = "pop-chain-extension";
 }
 
-/// Trait for error conversion.
-pub trait ErrorConverter {
-	/// The log target.
-	const LOG_TARGET: &'static str;
-
-	/// Converts the provided error.
-	///
-	/// # Parameters
-	/// - `error` - The error to be converted.
-	/// - `env` - The current execution environment.
-	fn convert(error: DispatchError, env: &impl Environment) -> Result<RetVal>;
-}
-
-impl ErrorConverter for () {
-	const LOG_TARGET: &'static str = "pop-chain-extension::converters::error";
-
-	fn convert(error: DispatchError, _env: &impl Environment) -> Result<RetVal> {
-		Err(error)
-	}
-}
-
-/// Error to be returned when decoding fails.
-pub struct DecodingFailed<C>(PhantomData<C>);
-impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
-	fn get() -> DispatchError {
-		pallet_contracts::Error::<T>::DecodingFailed.into()
-	}
-}
-
-/// Trait for processing a value based on additional information available from the environment.
-pub trait Processor {
-	/// The type of value to be processed.
-	type Value;
-
-	/// The log target.
-	const LOG_TARGET: &'static str;
-
-	/// Processes the provided value.
-	///
-	/// # Parameters
-	/// - `value` - The value to be processed.
-	/// - `env` - The current execution environment.
-	fn process(value: Self::Value, env: &impl Environment) -> Self::Value;
-}
-
-impl Processor for () {
-	type Value = ();
-	const LOG_TARGET: &'static str = "";
-	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
-		value
-	}
-}
-
-/// Trait for converting a value based on additional information available from the environment.
-pub trait Converter {
-	/// The type of value to be converted.
-	type Source;
-	/// The target type.
-	type Target;
-	/// The log target.
-	const LOG_TARGET: &'static str;
-
-	/// Converts the provided value.
-	///
-	/// # Parameters
-	/// - `value` - The value to be converted.
-	/// - `env` - The current execution environment.
-	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target;
+#[test]
+fn default_log_target_works() {
+	assert!(matches!(<() as LogTarget>::LOG_TARGET, "pop-chain-extension"));
 }

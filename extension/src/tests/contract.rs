@@ -56,15 +56,18 @@ fn dispatch_call_return_error_works() {
 
 #[test]
 fn read_state_works() {
+	use codec::Encode;
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
 		let call = call(contract, ReadStateFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
 		// Successfully return data.
 		let return_value = call.result.unwrap();
-		let _decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
-		todo!("This test case does not work at the moment. Somehow, when debugging, the result returned before `env.write()` is correct,
-		but after the `env.write()` finishes, the data always return [0, 1, 255, 255, 255]");
+		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
+		let result = RuntimeResult::Pong("pop".to_string()).encode();
+		assert!(matches!(decoded, result));
+		// todo!("This test case does not work at the moment. Somehow, when debugging, the result returned before `env.write()` is correct,
+		// but after the `env.write()` finishes, the data always return [0, 1, 255, 255, 255]");
 	});
 }
 

@@ -25,12 +25,55 @@ impl<T: Get<u16>> Matches for FunctionId<T> {
 	}
 }
 
-/// Matches on a function identifier only.
+/// Matches on an extension and function identifier together.
 pub struct WithFuncId<T>(PhantomData<T>);
 impl<T: Get<u32>> Matches for WithFuncId<T> {
 	fn matches(env: &impl Environment) -> bool {
 		let ext_id: [u8; 2] = env.ext_id().to_le_bytes();
 		let func_id: [u8; 2] = env.func_id().to_le_bytes();
 		u32::from_le_bytes([func_id[0], func_id[1], ext_id[0], ext_id[1]]) == T::get()
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::mock::{Environment, Ext};
+	use sp_core::{ConstU16, ConstU32};
+
+	#[test]
+	fn matching_equals_works() {
+		let env = Environment::new(u32::from_be_bytes([0u8, 1, 0, 2]), vec![], Ext::default());
+		assert!(Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_equals_invalid() {
+		let env = Environment::new(u32::from_be_bytes([0u8, 1, 0, 3]), vec![], Ext::default());
+		assert!(!Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_function_id_works() {
+		let env = Environment::new(u32::from_be_bytes([0u8, 1, 0, 2]), vec![], Ext::default());
+		assert!(FunctionId::<ConstU16<2>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_function_id_invalid() {
+		let env = Environment::new(u32::from_be_bytes([0u8, 1, 0, 3]), vec![], Ext::default());
+		assert!(!FunctionId::<ConstU16<2>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_with_func_id_works() {
+		let env = Environment::default();
+		assert!(WithFuncId::<ConstU32<0>>::matches(&env));
+	}
+
+	#[test]
+	fn matching_with_func_id_invalid() {
+		let env = Environment::new(1, vec![], Ext::default());
+		assert!(!WithFuncId::<ConstU32<0>>::matches(&env));
 	}
 }

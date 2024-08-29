@@ -1,12 +1,11 @@
-use crate::functions::DefaultConverter;
 use crate::{
-	environment, matching::WithFuncId, Decodes, DecodingFailed, DispatchCall, Extension, Function,
-	Matches, Processor,
+	environment, matching::WithFuncId, Decodes, DecodingFailed, DefaultConverter, DispatchCall,
+	Extension, Function, Matches, Processor, ReadState, Readable,
 };
-use crate::{ReadState, Readable};
 use codec::{Decode, Encode};
-use frame_support::pallet_prelude::Weight;
-use frame_support::{derive_impl, parameter_types, traits::ConstU32, traits::Everything};
+use frame_support::{
+	derive_impl, pallet_prelude::Weight, parameter_types, traits::ConstU32, traits::Everything,
+};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
 use sp_runtime::Perbill;
@@ -132,36 +131,38 @@ impl Into<Vec<u8>> for RuntimeResult {
 	}
 }
 
+pub(crate) type Functions = (
+	DispatchCall<
+		// Registered with func id 1
+		WithFuncId<DispatchCallFuncId>,
+		// Runtime config
+		Test,
+		// Decode inputs to the function as runtime calls
+		Decodes<RuntimeCall, DecodingFailed<Test>, RemoveFirstByte>,
+		// Allow everything
+		Everything,
+	>,
+	ReadState<
+		// Registered with func id 1
+		WithFuncId<ReadStateFuncId>,
+		// Runtime config
+		Test,
+		// The runtime state reads available.
+		RuntimeRead,
+		// Decode inputs to the function as runtime calls
+		Decodes<RuntimeRead, DecodingFailed<Test>, RemoveFirstByte>,
+		// Allow everything
+		Everything,
+		// Convert the result of a read into the expected versioned result
+		DefaultConverter<RuntimeResult>,
+	>,
+	Noop<WithFuncId<NoopFuncId>, Test>,
+);
+
 #[derive(Default)]
 pub struct Config;
 impl super::Config for Config {
-	type Functions = (
-		DispatchCall<
-			// Registered with func id 1
-			WithFuncId<DispatchCallFuncId>,
-			// Runtime config
-			Test,
-			// Decode inputs to the function as runtime calls
-			Decodes<RuntimeCall, DecodingFailed<Test>, RemoveFirstByte>,
-			// Allow everything
-			Everything,
-		>,
-		ReadState<
-			// Registered with func id 1
-			WithFuncId<ReadStateFuncId>,
-			// Runtime config
-			Test,
-			// The runtime state reads available.
-			RuntimeRead,
-			// Decode inputs to the function as runtime calls
-			Decodes<RuntimeRead, DecodingFailed<Test>, RemoveFirstByte>,
-			// Allow everything
-			Everything,
-			// Convert the result of a read into the expected versioned result
-			DefaultConverter<RuntimeResult>,
-		>,
-		Noop<WithFuncId<NoopFuncId>, Test>,
-	);
+	type Functions = Functions;
 	const LOG_TARGET: &'static str = "pop-chain-extension";
 }
 
