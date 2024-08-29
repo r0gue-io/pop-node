@@ -81,6 +81,9 @@ cumulus-relay-chain-interface.workspace = true
 [build-dependencies]
 substrate-build-script-utils.workspace = true
 
+[dev-dependencies]
+pallet-multisig.workspace = true
+
 [features]
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",

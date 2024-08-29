@@ -236,14 +236,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 	}
 }
 
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	fn contains(_c: &RuntimeCall) -> bool {
-		false
-	}
-}
-
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.
@@ -364,16 +356,16 @@ impl parachain_info::Config for Runtime {}
 
 parameter_types! {
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block;
 }
 
 impl pallet_message_queue::Config for Runtime {
-	type HeapSize = sp_core::ConstU32<{ 103 * 1024 }>;
-	type IdleMaxServiceWeight = ();
-	type MaxStale = sp_core::ConstU32<8>;
+	type HeapSize = ConstU32<{ 64 * 1024 }>;
+	type IdleMaxServiceWeight = MessageQueueIdleServiceWeight;
+	type MaxStale = ConstU32<8>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type MessageProcessor = pallet_message_queue::mock_helpers::NoopMessageProcessor<
-		cumulus_primitives_core::AggregateMessageOrigin,
-	>;
+	type MessageProcessor =
+		pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type MessageProcessor = xcm_builder::ProcessXcmMessage<
 		AggregateMessageOrigin,
@@ -395,14 +387,14 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	// Limit the number of messages and signals a HRML channel can have at most
+	// Limit the number of messages and signals a HRMP channel can have at most
 	type MaxActiveOutboundChannels = ConstU32<128>;
-	type MaxInboundSuspended = sp_core::ConstU32<1_000>;
-	// Limit the number of HRML channels
+	type MaxInboundSuspended = ConstU32<1_000>;
+	// Limit the number of HRMP channels
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
 	type RuntimeEvent = RuntimeEvent;
-	type VersionWrapper = ();
+	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = ();
 	// Enqueue XCMP messages from siblings for later processing.
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
@@ -437,7 +429,6 @@ impl pallet_aura::Config for Runtime {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	pub const SessionLength: BlockNumber = 6 * HOURS;
 	// StakingAdmin pluralistic body.
 	pub const StakingAdminBodyId: BodyId = BodyId::Defense;
 }
@@ -863,4 +854,55 @@ impl_runtime_apis! {
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+}
+
+#[cfg(test)]
+mod tests {
+	use std::any::TypeId;
+
+	use pallet_balances::AdjustmentDirection;
+	use BalancesCall::*;
+	use RuntimeCall::Balances;
+
+	use super::*;
+	#[test]
+	fn filtering_force_adjust_total_issuance_works() {
+		assert!(FilteredCalls::contains(&Balances(force_adjust_total_issuance {
+			direction: AdjustmentDirection::Increase,
+			delta: 0
+		})));
+	}
+
+	#[test]
+	fn filtering_force_set_balance_works() {
+		assert!(FilteredCalls::contains(&Balances(force_set_balance {
+			who: MultiAddress::Address32([0u8; 32]),
+			new_free: 0,
+		})));
+	}
+
+	#[test]
+	fn filtering_force_transfer_works() {
+		assert!(FilteredCalls::contains(&Balances(force_transfer {
+			source: MultiAddress::Address32([0u8; 32]),
+			dest: MultiAddress::Address32([0u8; 32]),
+			value: 0,
+		})));
+	}
+
+	#[test]
+	fn filtering_force_unreserve_works() {
+		assert!(FilteredCalls::contains(&Balances(force_unreserve {
+			who: MultiAddress::Address32([0u8; 32]),
+			amount: 0
+		})));
+	}
+
+	#[test]
+	fn filtering_configured() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
+			TypeId::of::<EverythingBut<FilteredCalls>>(),
+		);
+	}
 }
