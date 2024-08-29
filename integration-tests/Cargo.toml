@@ -52,7 +52,7 @@ pop-runtime-mainnet.workspace = true
 
 [features]
 default = [ "std" ]
-mainnet = []
+mainnet = [  ]
 std = [
 	"asset-hub-paseo-runtime/std",
 	"cumulus-primitives-core/std",
