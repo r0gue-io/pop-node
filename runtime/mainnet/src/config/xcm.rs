@@ -2,13 +2,15 @@ use core::marker::PhantomData;
 
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, ContainsPair, Everything, Get, Nothing},
+	traits::{tokens::imbalance::ResolveTo, ConstU32, ContainsPair, Everything, Get, Nothing},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
 use pallet_xcm::XcmPassthrough;
+use parachains_common::xcm_config::{
+	AllSiblingSystemParachains, ParentRelayOrSiblingParachains, RelayOrOtherSystemParachains,
+};
 use polkadot_parachain_primitives::primitives::Sibling;
-use polkadot_runtime_common::impls::ToAuthor;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -17,12 +19,13 @@ use xcm_builder::{
 	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
 	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
+	XcmFeeManagerFromComponents, XcmFeeToAccount,
 };
 use xcm_executor::XcmExecutor;
 
 use crate::{
 	fee::WeightToFee, AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, XcmpQueue,
+	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, SudoAddress, XcmpQueue,
 };
 
 parameter_types! {
@@ -46,7 +49,6 @@ pub type LocationToAccountId = (
 );
 
 /// Means for transacting assets on this chain.
-#[allow(deprecated)]
 pub type LocalAssetTransactor = FungibleAdapter<
 	// Use this currency:
 	Balances,
@@ -92,7 +94,10 @@ pub type Barrier = TrailingSetTopicAsId<(
 	TakeWeightCredit,
 	AllowKnownQueryResponses<PolkadotXcm>,
 	WithComputedOrigin<
-		(AllowTopLevelPaidExecutionFrom<Everything>, AllowSubscriptionsFrom<Everything>),
+		(
+			AllowTopLevelPaidExecutionFrom<Everything>,
+			AllowSubscriptionsFrom<ParentRelayOrSiblingParachains>,
+		),
 		UniversalLocation,
 		ConstU32<8>,
 	>,
@@ -111,6 +116,11 @@ impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 }
 pub type TrustedReserves = (NativeAsset, NativeAssetFrom<AssetHub>);
 
+/// Locations that will not be charged fees in the executor,
+/// either execution or delivery.
+/// We only waive fees for system functions, which these locations represent.
+pub type WaivedLocations = (RelayOrOtherSystemParachains<AllSiblingSystemParachains, Runtime>,);
+
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Aliasers = Nothing;
@@ -122,7 +132,10 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTrap = PolkadotXcm;
 	type Barrier = Barrier;
 	type CallDispatcher = RuntimeCall;
-	type FeeManager = ();
+	type FeeManager = XcmFeeManagerFromComponents<
+		WaivedLocations,
+		XcmFeeToAccount<Self::AssetTransactor, AccountId, SudoAddress>,
+	>;
 	type HrmpChannelAcceptedHandler = ();
 	type HrmpChannelClosingHandler = ();
 	type HrmpNewChannelOpenRequestHandler = ();
@@ -136,11 +149,15 @@ impl xcm_executor::Config for XcmConfig {
 	type RuntimeCall = RuntimeCall;
 	type SafeCallFilter = Everything;
 	type SubscriptionService = PolkadotXcm;
-	type Trader =
-		UsingComponents<WeightToFee, RelayLocation, AccountId, Balances, ToAuthor<Runtime>>;
+	type Trader = UsingComponents<
+		WeightToFee,
+		RelayLocation,
+		AccountId,
+		Balances,
+		ResolveTo<SudoAddress, Balances>,
+	>;
 	type TransactionalProcessor = FrameTransactionalProcessor;
 	type UniversalAliases = Nothing;
-	// Teleporting is disabled.
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type XcmRecorder = PolkadotXcm;
@@ -185,7 +202,7 @@ impl pallet_xcm::Config for Runtime {
 	// TODO: add filter to only allow reserve transfers of native to relay/asset hub
 	type XcmReserveTransferFilter = Everything;
 	type XcmRouter = XcmRouter;
-	type XcmTeleportFilter = Everything;
+	type XcmTeleportFilter = Nothing;
 
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
 }
