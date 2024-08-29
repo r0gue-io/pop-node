@@ -106,7 +106,7 @@ impl Readable for RuntimeRead {
 	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
 	fn weight(&self) -> Weight {
 		match self {
-			RuntimeRead::Ping => Weight::from_parts(1u64, 1u64),
+			RuntimeRead::Ping => Weight::from_parts(1_000u64, 1u64),
 		}
 	}
 
@@ -127,7 +127,9 @@ pub enum RuntimeResult {
 
 impl Into<Vec<u8>> for RuntimeResult {
 	fn into(self) -> Vec<u8> {
-		self.encode()
+		match self {
+			RuntimeResult::Pong(value) => value.encode(),
+		}
 	}
 }
 
@@ -173,7 +175,9 @@ impl Processor for RemoveFirstByte {
 	const LOG_TARGET: &'static str = "";
 
 	fn process(mut value: Self::Value, _env: &impl crate::Environment) -> Self::Value {
-		value.remove(0);
+		if !value.is_empty() {
+			value.remove(0);
+		}
 		value
 	}
 }

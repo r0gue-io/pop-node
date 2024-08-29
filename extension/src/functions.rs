@@ -224,7 +224,7 @@ mod tests {
 	use super::*;
 	use crate::mock::{DispatchCallFuncId, Environment, Ext, ReadStateFuncId};
 	use codec::Encode;
-	use mock::{RuntimeRead, RuntimeResult};
+	use mock::RuntimeRead;
 
 	#[test]
 	fn execute_dispatch_call_function_works() {
@@ -247,7 +247,7 @@ mod tests {
 			mock::Ext::default(),
 		);
 		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
-		assert_eq!(env.buffer, RuntimeResult::Pong("pop".to_string()).encode());
+		assert_eq!(env.buffer, "pop".as_bytes().encode());
 	}
 
 	#[test]
