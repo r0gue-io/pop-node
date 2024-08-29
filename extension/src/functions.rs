@@ -133,32 +133,6 @@ impl<M: Matches, C, R, D, F, RC, E, L> Matches for ReadState<M, C, R, D, F, RC, 
 	}
 }
 
-/// A function that filters the provided input. Only for testing purpose.
-/// Returns supplied contract value as 1 if allowed, 0 if not allowed.
-struct InputFilter<M, C, F>(PhantomData<(M, C, F)>);
-impl<Matcher: Matches, Config: pallet_contracts::Config, Filter: Contains<Vec<u8>>> Function
-	for InputFilter<Matcher, Config, Filter>
-{
-	type Config = Config;
-	type Error = ();
-
-	fn execute(
-		env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
-	) -> pallet_contracts::chain_extension::Result<RetVal> {
-		let input = env.read(env.in_len())?;
-		if Filter::contains(&input) {
-			Ok(Converging(1))
-		} else {
-			Ok(Converging(0))
-		}
-	}
-}
-impl<M: Matches, C, F> Matches for InputFilter<M, C, F> {
-	fn matches(env: &impl crate::Environment) -> bool {
-		M::matches(env)
-	}
-}
-
 /// Trait to be implemented for a type handling a read of runtime state.
 pub trait Readable {
 	/// The corresponding type carrying the result of the runtime state read.
@@ -251,9 +225,7 @@ mod tests {
 	use crate::mock::{Environment, Ext, ReadStateEverthingFuncId};
 	use codec::Encode;
 	use frame_support::traits::{Everything, Nothing};
-	use matching::WithFuncId;
-	use mock::{RuntimeRead, Test};
-	use sp_core::ConstU32;
+	use mock::RuntimeRead;
 
 	enum AtLeastOneByte {}
 	impl Contains<Vec<u8>> for AtLeastOneByte {
@@ -262,34 +234,36 @@ mod tests {
 		}
 	}
 
-	type TestFunctions = (
-		InputFilter<WithFuncId<ConstU32<0>>, Test, Everything>,
-		InputFilter<WithFuncId<ConstU32<1>>, Test, Nothing>,
-		InputFilter<WithFuncId<ConstU32<2>>, Test, AtLeastOneByte>,
-	);
+	enum LargerThan100 {}
+	impl Contains<u8> for LargerThan100 {
+		fn contains(input: &u8) -> bool {
+			*input > 100
+		}
+	}
 
-	#[test]
-	fn filterting_allow_everything_works() {
-		let mut env = mock::Environment::new(0, vec![], mock::Ext::default());
-		assert!(matches!(TestFunctions::execute(&mut env), Ok(Converging(1))));
+	enum MustBeEven {}
+	impl Contains<u8> for MustBeEven {
+		fn contains(input: &u8) -> bool {
+			*input % 2 == 0
+		}
 	}
 
 	#[test]
-	fn filtering_do_nothing_works() {
-		let mut env = mock::Environment::new(1, vec![], mock::Ext::default());
-		assert!(matches!(TestFunctions::execute(&mut env), Ok(Converging(0))));
-	}
-
-	#[test]
-	fn filterting_least_one_byte_works() {
-		let mut env = mock::Environment::new(2, vec![0], mock::Ext::default());
-		assert!(matches!(TestFunctions::execute(&mut env), Ok(Converging(1))));
-	}
-
-	#[test]
-	fn filterting_least_one_byte_invalid() {
-		let mut env = mock::Environment::new(2, vec![], mock::Ext::default());
-		assert!(matches!(TestFunctions::execute(&mut env), Ok(Converging(0))));
+	fn filterting_works() {
+		fn contains<C: Contains<T>, T>(input: T, expected: bool) {
+			assert!(C::contains(&input) == expected);
+		}
+		contains::<Everything, u32>(42, true);
+		contains::<Everything, Vec<u8>>(vec![1, 2, 3, 4], true);
+		contains::<Nothing, u32>(42, false);
+		contains::<Nothing, Vec<u8>>(vec![1, 2, 3, 4], false);
+		contains::<AtLeastOneByte, Vec<u8>>(vec![0], false);
+		contains::<AtLeastOneByte, Vec<u8>>(vec![1], true);
+		contains::<AtLeastOneByte, Vec<u8>>(vec![1, 2, 3, 4], true);
+		contains::<LargerThan100, u8>(100, false);
+		contains::<LargerThan100, u8>(101, true);
+		contains::<MustBeEven, u8>(100, true);
+		contains::<MustBeEven, u8>(101, false);
 	}
 
 	#[test]
