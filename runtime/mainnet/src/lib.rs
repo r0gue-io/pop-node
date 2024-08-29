@@ -986,4 +986,9 @@ mod tests {
 		assert_eq!(fee::CENTS, 100_000_000);
 		assert_eq!(fee::MILLICENTS, 100_000);
 	}
+
+	#[test]
+	fn transaction_byte_fee_is_correct() {
+		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
+	}
 }
