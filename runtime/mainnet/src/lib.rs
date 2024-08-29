@@ -364,9 +364,8 @@ impl pallet_message_queue::Config for Runtime {
 	type IdleMaxServiceWeight = MessageQueueIdleServiceWeight;
 	type MaxStale = ConstU32<8>;
 	#[cfg(feature = "runtime-benchmarks")]
-	type MessageProcessor = pallet_message_queue::mock_helpers::NoopMessageProcessor<
-		cumulus_primitives_core::AggregateMessageOrigin,
-	>;
+	type MessageProcessor =
+		pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type MessageProcessor = xcm_builder::ProcessXcmMessage<
 		AggregateMessageOrigin,
@@ -388,14 +387,14 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	// Limit the number of messages and signals a HRML channel can have at most
+	// Limit the number of messages and signals a HRMP channel can have at most
 	type MaxActiveOutboundChannels = ConstU32<128>;
-	type MaxInboundSuspended = sp_core::ConstU32<1_000>;
-	// Limit the number of HRML channels
+	type MaxInboundSuspended = ConstU32<1_000>;
+	// Limit the number of HRMP channels
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
 	type RuntimeEvent = RuntimeEvent;
-	type VersionWrapper = ();
+	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = ();
 	// Enqueue XCMP messages from siblings for later processing.
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
@@ -430,7 +429,6 @@ impl pallet_aura::Config for Runtime {
 
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
-	pub const SessionLength: BlockNumber = 6 * HOURS;
 	// StakingAdmin pluralistic body.
 	pub const StakingAdminBodyId: BodyId = BodyId::Defense;
 }
