@@ -23,6 +23,7 @@ use crate::{
 enum Runtime {
 	Devnet,
 	Testnet,
+	Mainnet,
 }
 
 trait RuntimeResolver {
@@ -35,6 +36,8 @@ fn runtime(id: &str) -> Runtime {
 		Runtime::Devnet
 	} else if id.starts_with("test") || id.ends_with("testnet") {
 		Runtime::Testnet
+	} else if id.eq("pop") || id.ends_with("mainnet") {
+		Runtime::Mainnet
 	} else {
 		log::warn!(
 			"No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will \
@@ -72,12 +75,15 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 		"dev" | "devnet" | "dev-paseo" =>
 			Box::new(chain_spec::development_config(Relay::PaseoLocal)),
 		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
+			Box::new(chain_spec::mainnet_config(Relay::Polkadot)),
 		"" | "local" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
 		path => {
 			let path: PathBuf = path.into();
 			match path.runtime() {
 				Runtime::Devnet => Box::new(chain_spec::DevnetChainSpec::from_json_file(path)?),
 				Runtime::Testnet => Box::new(chain_spec::TestnetChainSpec::from_json_file(path)?),
+				Runtime::Mainnet => Box::new(chain_spec::MainnetChainSpec::from_json_file(path)?),
 			}
 		},
 	})
@@ -175,6 +181,15 @@ macro_rules! construct_async_run {
 					{ $( $code )* }.map(|v| (v, task_manager))
 				})
 			}
+			Runtime::Mainnet => {
+				runner.async_run(|$config| {
+					let $components = new_partial::<pop_runtime_mainnet::RuntimeApi>(
+						&$config
+					)?;
+					let task_manager = $components.task_manager;
+					{ $( $code )* }.map(|v| (v, task_manager))
+				})
+			}
 		}
 	}}
 }
@@ -188,6 +203,10 @@ macro_rules! construct_benchmark_partials {
 			},
 			Runtime::Testnet => {
 				let $partials = new_partial::<pop_runtime_testnet::RuntimeApi>(&$config)?;
+				$code
+			},
+			Runtime::Mainnet => {
+				let $partials = new_partial::<pop_runtime_mainnet::RuntimeApi>(&$config)?;
 				$code
 			},
 		}
@@ -352,6 +371,21 @@ pub fn run() -> Result<()> {
 							pop_runtime_testnet::SS58Prefix::get().into(),
 						);
 						crate::service::start_parachain_node::<pop_runtime_testnet::RuntimeApi>(
+							config,
+							polkadot_config,
+							collator_options,
+							id,
+							hwbench,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+					},
+					Runtime::Mainnet => {
+						sp_core::crypto::set_default_ss58_version(
+							pop_runtime_mainnet::SS58Prefix::get().into(),
+						);
+						crate::service::start_parachain_node::<pop_runtime_mainnet::RuntimeApi>(
 							config,
 							polkadot_config,
 							collator_options,
