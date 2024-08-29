@@ -1,8 +1,6 @@
 use std::sync::LazyLock;
 
-use super::utils::{
-	call, initialize_contract, instantiate, new_test_ext, GAS_LIMIT, INVALID_FUNC_ID,
-};
+use super::utils::{call, initialize_contract, instantiate};
 use crate::{
 	mock::{self, *},
 	ErrorConverter,
@@ -80,7 +78,7 @@ fn dispatch_call_return_error_works() {
 }
 
 #[test]
-fn read_state_works() {
+fn read_state_filterting_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
@@ -97,7 +95,7 @@ fn read_state_works() {
 }
 
 #[test]
-fn dispatch_call_read_state_works() {
+fn read_state_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
@@ -110,7 +108,7 @@ fn dispatch_call_read_state_works() {
 }
 
 #[test]
-fn read_state_invalid_method_works() {
+fn read_state_invalid() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());

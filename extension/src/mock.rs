@@ -3,6 +3,7 @@ use crate::{
 	Extension, Function, Matches, Processor, ReadState, Readable,
 };
 use codec::{Decode, Encode};
+use frame_support::traits::fungible::Inspect;
 use frame_support::{
 	derive_impl,
 	pallet_prelude::Weight,
@@ -11,8 +12,25 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
+use sp_runtime::BuildStorage;
 use sp_runtime::Perbill;
 use std::marker::PhantomData;
+
+pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
+pub(crate) type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
+	<Test as frame_system::Config>::AccountId,
+>>::Balance;
+pub(crate) type EventRecord = frame_system::EventRecord<
+	<Test as frame_system::Config>::RuntimeEvent,
+	<Test as frame_system::Config>::Hash,
+>;
+
+pub(crate) const ALICE: u64 = 1;
+pub(crate) const DEBUG_OUTPUT: pallet_contracts::DebugInfo =
+	pallet_contracts::DebugInfo::UnsafeDebug;
+pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
+pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
+pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
 type DispatchCallWith<Id, Filter> = DispatchCall<
 	// Registered with func id 1
@@ -241,7 +259,6 @@ impl<E> Environment<E> {
 	}
 
 	pub(crate) fn charged(&self) -> Weight {
-		println!("{:?}", self.charged);
 		self.charged.iter().fold(Weight::zero(), |acc, b| acc.saturating_add(*b))
 	}
 }
@@ -318,4 +335,19 @@ impl environment::Ext for Ext {
 	fn address(&self) -> &<Self::Config as frame_system::Config>::AccountId {
 		&self.address
 	}
+}
+
+/// Test externalities.
+pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
+	let _ = env_logger::try_init();
+
+	let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
+
+	pallet_balances::GenesisConfig::<Test> { balances: vec![(ALICE, INIT_AMOUNT)] }
+		.assimilate_storage(&mut t)
+		.unwrap();
+
+	let mut ext = sp_io::TestExternalities::new(t);
+	ext.execute_with(|| System::set_block_number(1));
+	ext
 }
