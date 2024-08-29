@@ -254,7 +254,7 @@ mod tests {
 	}
 
 	#[test]
-	fn default_converter_works() {
+	fn default_conversion_works() {
 		let env = Environment::default();
 		let source = "pop".to_string();
 		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
