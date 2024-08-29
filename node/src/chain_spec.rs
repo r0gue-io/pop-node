@@ -12,7 +12,7 @@ pub type DevnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 /// Specialized `ChainSpec` for the testnet parachain runtime.
 pub type TestnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 
-/// Specialized `ChainSpec` for the live parachain runtime.
+/// Specialized `ChainSpec` for the mainnet parachain runtime.
 pub type MainnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 
 /// The default XCM version to set in genesis config.
@@ -94,12 +94,16 @@ fn configure_for_relay(
 	match relay {
 		Relay::Paseo | Relay::PaseoLocal => {
 			para_id = 4001;
-			properties.insert("ss58Format".into(), 42.into());
 			properties.insert("tokenSymbol".into(), "PAS".into());
 			properties.insert("tokenDecimals".into(), 10.into());
 
-			let relay_chain =
-				if let Relay::Paseo = relay { "paseo".into() } else { "paseo-local".into() };
+			let relay_chain = if let Relay::Paseo = relay {
+				properties.insert("ss58Format".into(), 0.into());
+				"paseo".into()
+			} else {
+				properties.insert("ss58Format".into(), 42.into());
+				"paseo-local".into()
+			};
 			(Extensions { relay_chain, para_id }, para_id)
 		},
 		Relay::Polkadot => {
