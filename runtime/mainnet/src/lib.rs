@@ -42,7 +42,10 @@ pub use pop_runtime_common::{
 	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
 };
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{
+	crypto::{KeyTypeId, Ss58Codec},
+	OpaqueMetadata,
+};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -366,15 +369,14 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
+	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").unwrap();
 }
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<
-		Balances,
-		ResolveTo<CollatorSelectionAddress, Balances>,
-	>;
+	type OnChargeTransaction =
+		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightToFee = fee::WeightToFee;
