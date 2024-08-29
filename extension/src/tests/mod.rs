@@ -1,12 +1,9 @@
 use crate::{
-	decoding::Processor,
 	mock::{Config, Environment, Ext, NoopFuncId, ReadStateFuncId, Test},
 	ContractWeights, Extension,
 };
-use codec::{Decode, Encode};
 use pallet_contracts::chain_extension::RetVal::Converging;
 use pallet_contracts::WeightInfo;
-use sp_core::Get;
 
 mod contract;
 mod utils;

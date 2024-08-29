@@ -221,93 +221,28 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{Environment, Ext};
+	use crate::mock::{DispatchCallFuncId, Environment, Ext, ReadStateFuncId};
 
-	// use core::marker::PhantomData;
-	// use frame_support::parameter_types;
-	// use pallet_contracts::chain_extension::{RetVal, ReturnFlags};
-	//
-	// use crate::{environment, matching::WithFuncId, mock::Test, Function, Matches};
+	#[test]
+	fn execute_dispatch_call_function_works() {
+		let mut env =
+			mock::Environment::new(DispatchCallFuncId::get(), vec![], mock::Ext::default());
+		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+	}
 
-	// TODO: implement the above by using the Functions in mock and test everything:
-	// 	- correct weight charging.
-	//  - filter - add one filter if possible.
-	//  - for read state - read state result conversion
-	//  - error conversion
-	// /// A function that returns a success status from a contract call.
-	// struct ReturnSuccessFunction<M, C>(PhantomData<(M, C)>);
-	// impl<Matcher: Matches, Config: pallet_contracts::Config> Function
-	// 	for ReturnSuccessFunction<Matcher, Config>
-	// {
-	// 	type Config = Config;
-	// 	type Error = ();
-	//
-	// 	fn execute(
-	// 		_env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
-	// 	) -> pallet_contracts::chain_extension::Result<RetVal> {
-	// 		Ok(Converging(0))
-	// 	}
-	// }
-	// impl<M: Matches, C> Matches for ReturnSuccessFunction<M, C> {
-	// 	fn matches(env: &impl crate::Environment) -> bool {
-	// 		M::matches(env)
-	// 	}
-	// }
-	//
-	// /// A function that returns a failure from a contract call.
-	// struct ReturnFailureFunction<M, C>(PhantomData<(M, C)>);
-	// impl<Matcher: Matches, Config: pallet_contracts::Config> Function
-	// 	for ReturnFailureFunction<Matcher, Config>
-	// {
-	// 	type Config = Config;
-	// 	type Error = ();
-	//
-	// 	fn execute(
-	// 		_env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
-	// 	) -> pallet_contracts::chain_extension::Result<RetVal> {
-	// 		Ok(RetVal::Diverging { flags: ReturnFlags::REVERT, data: vec![42] })
-	// 	}
-	// }
-	// impl<M: Matches, C> Matches for ReturnFailureFunction<M, C> {
-	// 	fn matches(env: &impl crate::Environment) -> bool {
-	// 		M::matches(env)
-	// 	}
-	// }
-	//
-	// /// Registry of chain extension functions.
-	// type Functions = (
-	// 	ReturnSuccessFunction<WithFuncId<ReturnSuccessId>, Test>,
-	// 	ReturnFailureFunction<WithFuncId<ReturnFailureId>, Test>,
-	// );
-	//
-	// parameter_types! {
-	// 	pub const ReturnSuccessId : u32 = 0;
-	// 	pub const ReturnFailureId : u32 = 1;
-	// 	pub const InvalidId : u32 = 99;
-	// }
-	//
-	// #[test]
-	// fn execute_success_function_works() {
-	// 	let mut env = mock::Environment::new(ReturnSuccessId::get(), vec![], mock::Ext::default());
-	// 	assert!(matches!(Functions::execute(&mut env), Ok(Converging(0))));
-	// }
-	//
-	// #[test]
-	// fn execute_failure_function_works() {
-	// 	let mut env = mock::Environment::new(ReturnFailureId::get(), vec![], mock::Ext::default());
-	// 	assert!(matches!(
-	// 		Functions::execute(&mut env),
-	// 		Ok(Diverging { flags: ReturnFlags::REVERT, data: ref d }) if d == &[42]
-	// 	));
-	// }
-	//
-	// #[test]
-	// fn execute_invalid_function() {
-	// 	let mut env = mock::Environment::new(InvalidId::get(), vec![], mock::Ext::default());
-	// 	let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
-	// 	let expected = <() as ErrorConverter>::convert(error, &mut env).err();
-	// 	assert_eq!(Functions::execute(&mut env).err(), expected);
-	// }
+	#[test]
+	fn execute_read_state_function_works() {
+		let mut env = mock::Environment::new(ReadStateFuncId::get(), vec![], mock::Ext::default());
+		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+	}
+
+	#[test]
+	fn execute_invalid_function() {
+		let mut env = mock::Environment::new(0, vec![], mock::Ext::default());
+		let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
+		let expected = <() as ErrorConverter>::convert(error, &mut env).err();
+		assert_eq!(mock::Functions::execute(&mut env).err(), expected);
+	}
 
 	#[test]
 	fn default_error_conversion_works() {

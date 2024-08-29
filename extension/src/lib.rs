@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use codec::Decode as _;
-use core::{fmt::Debug, marker::PhantomData};
+use core::marker::PhantomData;
 pub use decoding::{Decode, Decodes, DecodingFailed, IdentityProcessor, Processor};
 pub use environment::{BufIn, BufOut, Environment, Ext};
 use frame_support::{
@@ -11,7 +11,7 @@ use frame_support::{
 	weights::Weight,
 };
 pub use functions::{
-	DefaultConverter, DispatchCall, ErrorConverter, Function, ReadState, Readable,
+	Converter, DefaultConverter, DispatchCall, ErrorConverter, Function, ReadState, Readable,
 };
 pub use matching::{Equals, FunctionId, Matches};
 use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
@@ -23,7 +23,7 @@ use sp_std::vec::Vec;
 
 mod decoding;
 mod environment;
-mod functions;
+pub mod functions;
 mod matching;
 #[cfg(test)]
 mod mock;
