@@ -284,7 +284,8 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT;
+	// increase ED 100 times to match system chains: 1_000_000_000
+	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
 }
 
 impl pallet_balances::Config for Runtime {
