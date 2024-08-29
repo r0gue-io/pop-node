@@ -60,10 +60,9 @@ fn read_state_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
-		let call = call(contract, ReadStateFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
-		// Successfully return data.
+		let call = call(contract, ReadStateFuncId::get(), RuntimeRead::Ping, GAS_LIMIT); // Successfully return data.
 		let return_value = call.result.unwrap();
-		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
+		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
 		let result = Ok(RuntimeResult::Pong("pop".to_string()).encode());
 		assert_eq!(decoded, result);
 	});

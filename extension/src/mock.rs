@@ -278,11 +278,12 @@ impl<E> environment::BufIn for Environment<E> {
 impl<E> environment::BufOut for Environment<E> {
 	fn write(
 		&mut self,
-		_buffer: &[u8],
+		buffer: &[u8],
 		_allow_skip: bool,
 		_weight_per_byte: Option<Weight>,
 	) -> pallet_contracts::chain_extension::Result<()> {
 		// TODO handle write logic
+		self.buffer = buffer.to_vec();
 		Ok(())
 	}
 }

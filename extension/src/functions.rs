@@ -115,6 +115,7 @@ impl<
 		log::debug!(target: Logger::LOG_TARGET, "read: result={result:?}");
 		// Perform any final conversion. Any implementation is expected to charge weight as appropriate.
 		let result = ResultConverter::convert(result, env).into();
+		log::debug!(target: Logger::LOG_TARGET, "converted: result={result:?}");
 		// Charge weight before read
 		let weight = ContractWeights::<Config>::seal_input_per_byte(1); // use unit weight as write function handles multiplication
 		log::trace!(target: Logger::LOG_TARGET, "return result to contract: weight_per_byte={weight}");
@@ -222,6 +223,8 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 mod tests {
 	use super::*;
 	use crate::mock::{DispatchCallFuncId, Environment, Ext, ReadStateFuncId};
+	use codec::Encode;
+	use mock::{RuntimeRead, RuntimeResult};
 
 	#[test]
 	fn execute_dispatch_call_function_works() {
@@ -234,6 +237,26 @@ mod tests {
 	fn execute_read_state_function_works() {
 		let mut env = mock::Environment::new(ReadStateFuncId::get(), vec![], mock::Ext::default());
 		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+	}
+
+	#[test]
+	fn execute_read_state_write_to_memory_works() {
+		let mut env = mock::Environment::new(
+			ReadStateFuncId::get(),
+			[0u8.encode(), RuntimeRead::Ping.encode()].concat(),
+			mock::Ext::default(),
+		);
+		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+		assert_eq!(env.buffer, RuntimeResult::Pong("pop".to_string()).encode());
+	}
+
+	#[test]
+	fn execute_read_state_invalid() {
+		let mut env =
+			mock::Environment::new(ReadStateFuncId::get(), vec![0, 0], mock::Ext::default());
+		let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
+		let expected = <() as ErrorConverter>::convert(error, &mut env).err();
+		assert_eq!(mock::Functions::execute(&mut env).err(), expected);
 	}
 
 	#[test]
