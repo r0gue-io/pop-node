@@ -46,7 +46,7 @@ pub const MAXIMUM_BLOCK_WEIGHT: Weight =
 pub const UNIT: Balance = 10_000_000_000; // 10 decimals
 
 pub const MILLIUNIT: Balance = UNIT / 1_000; // 10_000_000
-pub const MICROUNIT: Balance = UNIT / 1_000_000; // 10,000
+pub const MICROUNIT: Balance = UNIT / 1_000_000; // 10_000
 
 // Deposits
 pub const fn deposit(items: u32, bytes: u32) -> Balance {

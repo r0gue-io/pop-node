@@ -968,4 +968,22 @@ mod tests {
 			TypeId::of::<EverythingBut<FilteredCalls>>(),
 		);
 	}
+
+	#[test]
+	fn ed_is_correct() {
+		assert_eq!(ExistentialDeposit::get(), EXISTENTIAL_DEPOSIT * 100);
+		assert_eq!(ExistentialDeposit::get(), 1_000_000_000);
+	}
+
+	#[test]
+	fn units_are_correct() {
+		// UNIT should have 10 decimals
+		assert_eq!(UNIT, 10_000_000_000);
+		assert_eq!(MILLIUNIT, 10_000_000);
+		assert_eq!(MICROUNIT, 10_000);
+
+		// fee specific units
+		assert_eq!(fee::CENTS, 100_000_000);
+		assert_eq!(fee::MILLICENTS, 100_000);
+	}
 }
