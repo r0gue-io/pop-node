@@ -10,7 +10,10 @@ use crate::{
 use codec::Decode;
 use frame_system::Call;
 use pallet_contracts::StorageDeposit;
-use sp_runtime::DispatchError::{self, BadOrigin};
+use sp_runtime::{
+	DispatchError::{self, BadOrigin, Module},
+	ModuleError,
+};
 
 static CONTRACT: LazyLock<Vec<u8>> =
 	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.wasm"));
@@ -22,7 +25,7 @@ fn dispatch_call_works() {
 		let contract = instantiate(CONTRACT.clone());
 		let call = call(
 			contract,
-			DispatchCallFuncId::get(),
+			DispatchCallEverthingFuncId::get(),
 			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
 			GAS_LIMIT,
 		);
@@ -39,13 +42,35 @@ fn dispatch_call_works() {
 }
 
 #[test]
+fn dispatch_call_filterting_works() {
+	new_test_ext().execute_with(|| {
+		// Instantiate a new contract.
+		let contract = instantiate(CONTRACT.clone());
+		let call = call(
+			contract,
+			DispatchCallNothingFuncId::get(),
+			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
+			GAS_LIMIT,
+		);
+		assert_eq!(
+			call.result,
+			Err(Module(ModuleError {
+				index: 0,
+				error: [5, 0, 0, 0],
+				message: Some("CallFiltered")
+			}))
+		);
+	});
+}
+
+#[test]
 fn dispatch_call_return_error_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
 		let call = call(
 			contract,
-			DispatchCallFuncId::get(),
+			DispatchCallEverthingFuncId::get(),
 			// `set_code` requires root origin, expect throwing error.
 			RuntimeCall::System(Call::set_code { code: "pop".as_bytes().to_vec() }),
 			GAS_LIMIT,
@@ -59,7 +84,24 @@ fn read_state_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
-		let call = call(contract, ReadStateFuncId::get(), RuntimeRead::Ping, GAS_LIMIT); // Successfully return data.
+		let call = call(contract, ReadStateNothingFuncId::get(), RuntimeRead::Ping, GAS_LIMIT); // Successfully return data.
+		assert_eq!(
+			call.result,
+			Err(Module(ModuleError {
+				index: 0,
+				error: [5, 0, 0, 0],
+				message: Some("CallFiltered")
+			}))
+		);
+	});
+}
+
+#[test]
+fn dispatch_call_read_state_works() {
+	new_test_ext().execute_with(|| {
+		// Instantiate a new contract.
+		let contract = instantiate(CONTRACT.clone());
+		let call = call(contract, ReadStateEverthingFuncId::get(), RuntimeRead::Ping, GAS_LIMIT); // Successfully return data.
 		let return_value = call.result.unwrap();
 		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
 		let result = Ok("pop".as_bytes().to_vec());
@@ -72,7 +114,7 @@ fn read_state_invalid_method_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
-		let call = call(contract, ReadStateFuncId::get(), 99u8, GAS_LIMIT);
+		let call = call(contract, ReadStateEverthingFuncId::get(), 99u8, GAS_LIMIT);
 		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
 		// Make sure the error is passed through the error converter.
 		let error = <() as ErrorConverter>::convert(expected, &mock::Environment::default()).err();

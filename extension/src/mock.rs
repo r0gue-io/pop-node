@@ -4,12 +4,41 @@ use crate::{
 };
 use codec::{Decode, Encode};
 use frame_support::{
-	derive_impl, pallet_prelude::Weight, parameter_types, traits::ConstU32, traits::Everything,
+	derive_impl,
+	pallet_prelude::Weight,
+	parameter_types,
+	traits::{ConstU32, Everything, Nothing},
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
 use sp_runtime::Perbill;
 use std::marker::PhantomData;
+
+type DispatchCallWith<Id, Filter> = DispatchCall<
+	// Registered with func id 1
+	WithFuncId<Id>,
+	// Runtime config
+	Test,
+	// Decode inputs to the function as runtime calls
+	Decodes<RuntimeCall, DecodingFailed<Test>, RemoveFirstByte>,
+	// Accept any filterting
+	Filter,
+>;
+
+type ReadStateWith<Id, Filter> = ReadState<
+	// Registered with func id 1
+	WithFuncId<Id>,
+	// Runtime config
+	Test,
+	// The runtime state reads available.
+	RuntimeRead,
+	// Decode inputs to the function as runtime calls
+	Decodes<RuntimeRead, DecodingFailed<Test>, RemoveFirstByte>,
+	// Accept any filtering
+	Filter,
+	// Convert the result of a read into the expected result
+	DefaultConverter<RuntimeResult>,
+>;
 
 frame_support::construct_runtime!(
 	pub enum Test {
@@ -87,8 +116,10 @@ impl frame_support::traits::Randomness<<Test as frame_system::Config>::Hash, Blo
 }
 
 parameter_types! {
-	pub const DispatchCallFuncId : u32 = 1;
-	pub const ReadStateFuncId : u32 = 2;
+	pub const DispatchCallEverthingFuncId : u32 = 1;
+	pub const ReadStateEverthingFuncId : u32 = 2;
+	pub const DispatchCallNothingFuncId : u32 = 3;
+	pub const ReadStateNothingFuncId : u32 = 4;
 	pub const NoopFuncId : u32 = u32::MAX;
 }
 
@@ -134,30 +165,13 @@ impl Into<Vec<u8>> for RuntimeResult {
 }
 
 pub(crate) type Functions = (
-	DispatchCall<
-		// Registered with func id 1
-		WithFuncId<DispatchCallFuncId>,
-		// Runtime config
-		Test,
-		// Decode inputs to the function as runtime calls
-		Decodes<RuntimeCall, DecodingFailed<Test>, RemoveFirstByte>,
-		// Allow everything
-		Everything,
-	>,
-	ReadState<
-		// Registered with func id 1
-		WithFuncId<ReadStateFuncId>,
-		// Runtime config
-		Test,
-		// The runtime state reads available.
-		RuntimeRead,
-		// Decode inputs to the function as runtime calls
-		Decodes<RuntimeRead, DecodingFailed<Test>, RemoveFirstByte>,
-		// Allow everything
-		Everything,
-		// Convert the result of a read into the expected versioned result
-		DefaultConverter<RuntimeResult>,
-	>,
+	// Functions that allow everything.
+	DispatchCallWith<DispatchCallEverthingFuncId, Everything>,
+	ReadStateWith<ReadStateEverthingFuncId, Everything>,
+	// Functions that allow nothing.
+	DispatchCallWith<DispatchCallNothingFuncId, Nothing>,
+	ReadStateWith<ReadStateNothingFuncId, Nothing>,
+	// Function that does nothing.
 	Noop<WithFuncId<NoopFuncId>, Test>,
 );
 
