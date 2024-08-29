@@ -1,2 +1,2 @@
 mod proxy;
-pub(crate) mod xcm;
+pub mod xcm;

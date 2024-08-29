@@ -6,25 +6,51 @@ use emulated_integration_tests_common::{
 	xcm_emulator::decl_test_parachains,
 };
 use frame_support::traits::OnInitialize;
+#[cfg(not(feature = "mainnet"))]
+use pop_runtime_devnet as runtime;
+#[cfg(feature = "mainnet")]
+use pop_runtime_mainnet as runtime;
 
 // PopNetwork Parachain declaration
+#[cfg(not(feature = "mainnet"))]
 decl_test_parachains! {
 	pub struct PopNetwork {
 		genesis = genesis::genesis(),
 		on_init = {
-			pop_runtime_devnet::AuraExt::on_initialize(1);
+			runtime::AuraExt::on_initialize(1);
 		},
-		runtime = pop_runtime_devnet,
+		runtime = runtime,
 		core = {
-			XcmpMessageHandler: pop_runtime_devnet::XcmpQueue,
-			LocationToAccountId: pop_runtime_devnet::config::xcm::LocationToAccountId,
-			ParachainInfo: pop_runtime_devnet::ParachainInfo,
+			XcmpMessageHandler: runtime::XcmpQueue,
+			LocationToAccountId: runtime::config::xcm::LocationToAccountId,
+			ParachainInfo: runtime::ParachainInfo,
 			MessageOrigin: cumulus_primitives_core::AggregateMessageOrigin,
 		},
 		pallets = {
-			PolkadotXcm: pop_runtime_devnet::PolkadotXcm,
-			Assets: pop_runtime_devnet::Assets,
-			Balances: pop_runtime_devnet::Balances,
+			PolkadotXcm: runtime::PolkadotXcm,
+			Balances: runtime::Balances,
+			Assets: runtime::Assets,
+		}
+	},
+}
+
+#[cfg(feature = "mainnet")]
+decl_test_parachains! {
+	pub struct PopNetwork {
+		genesis = genesis::genesis(),
+		on_init = {
+			runtime::AuraExt::on_initialize(1);
+		},
+		runtime = runtime,
+		core = {
+			XcmpMessageHandler: runtime::XcmpQueue,
+			LocationToAccountId: runtime::config::xcm::LocationToAccountId,
+			ParachainInfo: runtime::ParachainInfo,
+			MessageOrigin: cumulus_primitives_core::AggregateMessageOrigin,
+		},
+		pallets = {
+			PolkadotXcm: runtime::PolkadotXcm,
+			Balances: runtime::Balances,
 		}
 	},
 }
@@ -32,5 +58,6 @@ decl_test_parachains! {
 // PopNetwork implementation
 impl_accounts_helpers_for_parachain!(PopNetwork);
 impl_assert_events_helpers_for_parachain!(PopNetwork);
-impl_assets_helpers_for_parachain!(PopNetwork);
 impl_xcm_helpers_for_parachain!(PopNetwork);
+#[cfg(not(feature = "mainnet"))]
+impl_assets_helpers_for_parachain!(PopNetwork);

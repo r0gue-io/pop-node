@@ -6,7 +6,7 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-mod config;
+pub mod config;
 mod weights;
 
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};

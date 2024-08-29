@@ -4995,6 +4995,7 @@ dependencies = [
  "polkadot-runtime-parachains",
  "pop-runtime-common",
  "pop-runtime-devnet",
+ "pop-runtime-mainnet",
  "sp-authority-discovery",
  "sp-consensus-aura",
  "sp-consensus-babe",

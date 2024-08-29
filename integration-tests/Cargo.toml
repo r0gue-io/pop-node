@@ -48,9 +48,11 @@ paseo-runtime-constants.workspace = true
 # Local
 pop-runtime-common.workspace = true
 pop-runtime-devnet.workspace = true
+pop-runtime-mainnet.workspace = true
 
 [features]
 default = [ "std" ]
+mainnet = [  ]
 std = [
 	"asset-hub-paseo-runtime/std",
 	"cumulus-primitives-core/std",
@@ -65,6 +67,7 @@ std = [
 	"polkadot-runtime-parachains/std",
 	"pop-runtime-common/std",
 	"pop-runtime-devnet/std",
+	"pop-runtime-mainnet/std",
 	"sp-authority-discovery/std",
 	"sp-consensus-aura/std",
 	"sp-consensus-babe/std",
