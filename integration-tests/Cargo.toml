@@ -90,6 +90,7 @@ runtime-benchmarks = [
 	"polkadot-primitives/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"pop-runtime-devnet/runtime-benchmarks",
+	"pop-runtime-mainnet/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
 ]
@@ -102,5 +103,6 @@ try-runtime = [
 	"pallet-message-queue/try-runtime",
 	"paseo-runtime/try-runtime",
 	"pop-runtime-devnet/try-runtime",
+	"pop-runtime-mainnet/try-runtime",
 	"sp-runtime/try-runtime",
 ]
