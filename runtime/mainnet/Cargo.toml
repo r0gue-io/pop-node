@@ -61,6 +61,7 @@ sp-version.workspace = true
 
 # Polkadot
 pallet-xcm.workspace = true
+polkadot-core-primitives.workspace = true
 polkadot-parachain-primitives.workspace = true
 polkadot-runtime-common.workspace = true
 xcm.workspace = true
@@ -125,6 +126,7 @@ std = [
 	"pallet-xcm/std",
 	"parachain-info/std",
 	"parachains-common/std",
+	"polkadot-core-primitives/std",
 	"polkadot-parachain-primitives/std",
 	"polkadot-runtime-common/std",
 	"pop-runtime-common/std",

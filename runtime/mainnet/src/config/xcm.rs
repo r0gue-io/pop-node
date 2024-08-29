@@ -21,8 +21,8 @@ use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 use crate::{
-	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
+	fee::WeightToFee, AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem,
+	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, XcmpQueue,
 };
 
 parameter_types! {
