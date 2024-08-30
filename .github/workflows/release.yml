@@ -168,7 +168,7 @@ jobs:
         run: rustup target add ${{ matrix.platform.target }}
 
       - name: Build node
-        run: cargo build --profile=production -p pop-node --target ${{ matrix.platform.target }}
+        run: cargo build --profile=production -p pop-node --features on-chain-release-build --target ${{ matrix.platform.target }}
 
       - name: Package binary (Linux)
         if: contains(matrix.platform.target, 'linux')
