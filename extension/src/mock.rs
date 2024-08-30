@@ -233,7 +233,7 @@ impl<M: Matches, C> Matches for Noop<M, C> {
 }
 
 /// A mocked chain extension environment.
-pub(crate) struct Environment<E> {
+pub(crate) struct MockEnvironment<E> {
 	func_id: u16,
 	ext_id: u16,
 	charged: Vec<Weight>,
@@ -241,13 +241,13 @@ pub(crate) struct Environment<E> {
 	ext: E,
 }
 
-impl Default for Environment<Ext> {
+impl Default for MockEnvironment<MockExt> {
 	fn default() -> Self {
-		Environment::new(0, [].to_vec(), Ext::default())
+		MockEnvironment::new(0, [].to_vec(), MockExt::default())
 	}
 }
 
-impl<E> Environment<E> {
+impl<E> MockEnvironment<E> {
 	pub(crate) fn new(id: u32, buffer: Vec<u8>, ext: E) -> Self {
 		Self {
 			func_id: (id & 0x0000FFFF) as u16,
@@ -263,7 +263,7 @@ impl<E> Environment<E> {
 	}
 }
 
-impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for Environment<E> {
+impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for MockEnvironment<E> {
 	type Config = Test;
 	type ChargedAmount = Weight;
 
@@ -300,7 +300,7 @@ impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for En
 	}
 }
 
-impl<E> environment::BufIn for Environment<E> {
+impl<E> environment::BufIn for MockEnvironment<E> {
 	fn in_len(&self) -> u32 {
 		self.buffer.len() as u32
 	}
@@ -311,7 +311,7 @@ impl<E> environment::BufIn for Environment<E> {
 	}
 }
 
-impl<E> environment::BufOut for Environment<E> {
+impl<E> environment::BufOut for MockEnvironment<E> {
 	fn write(
 		&mut self,
 		buffer: &[u8],
@@ -326,10 +326,10 @@ impl<E> environment::BufOut for Environment<E> {
 
 /// A mocked smart contract environment.
 #[derive(Clone, Default)]
-pub(crate) struct Ext {
+pub(crate) struct MockExt {
 	pub(crate) address: <Test as frame_system::Config>::AccountId,
 }
-impl environment::Ext for Ext {
+impl environment::Ext for MockExt {
 	type Config = Test;
 
 	fn address(&self) -> &<Self::Config as frame_system::Config>::AccountId {
