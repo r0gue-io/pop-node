@@ -225,13 +225,10 @@ mod tests {
 	use crate::tests::read_from_buffer;
 	use crate::{
 		mock::INVALID_FUNC_ID,
-		tests::{function_dispatch_call_weight, function_read_state_weight, overhead_weight},
+		tests::{function_dispatch_call_weight, function_read_state_weight},
 	};
 	use codec::Encode;
-	use frame_support::{
-		assert_ok,
-		traits::{Everything, Nothing},
-	};
+	use frame_support::traits::{Everything, Nothing};
 	use frame_system::Call;
 	use mock::{
 		new_test_ext, DispatchCallEverthingFuncId, Functions, MockEnvironment, MockExt,
