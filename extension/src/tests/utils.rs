@@ -1,18 +1,14 @@
-use crate::mock::{MockExt, *};
+use crate::mock::*;
 use crate::{
 	environment::{BufOut, Ext},
 	functions::{Converter, Readable},
-	BufIn, ContractWeights, DefaultConverter, Dispatchable, Environment, Extension,
-	GetDispatchInfo, RawOrigin, Weight,
+	ContractWeights, DefaultConverter, Dispatchable, Environment, GetDispatchInfo, RawOrigin,
+	Weight,
 };
 use codec::Encode;
 use core::fmt::Debug;
 use frame_support::assert_ok;
-use frame_system::Call;
-use pallet_contracts::{
-	chain_extension::RetVal::Converging, Code, CollectEvents, ContractExecResult, Determinism,
-	WeightInfo,
-};
+use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism, WeightInfo};
 use std::path::Path;
 
 /// Initializing a new contract file if it does not exist.
