@@ -101,7 +101,7 @@ impl<
 	/// # Parameters
 	/// - `env` - The current execution environment.
 	fn execute(env: &mut (impl Environment + BufIn + BufOut)) -> Result<RetVal> {
-		// Decode runtime read
+		// Decode runtime state read
 		// TODO: should the error returned from decoding failure be converted into a versioned error, or always be pallet_contracts::Error::DecodingFailed?
 		let read = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: read={read:?}");
@@ -222,12 +222,20 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::{mock::ReadStateEverthingFuncId, Ext};
+	use crate::tests::read_from_buffer;
+	use crate::{
+		mock::INVALID_FUNC_ID,
+		tests::{function_dispatch_call_weight, function_read_state_weight, overhead_weight},
+	};
 	use codec::Encode;
-	use frame_support::traits::{Everything, Nothing};
+	use frame_support::{
+		assert_ok,
+		traits::{Everything, Nothing},
+	};
 	use frame_system::Call;
 	use mock::{
-		new_test_ext, DispatchCallEverthingFuncId, RuntimeCall, RuntimeRead, RuntimeResult, Test,
+		new_test_ext, DispatchCallEverthingFuncId, Functions, MockEnvironment, MockExt,
+		ReadStateEverthingFuncId, RuntimeCall, RuntimeRead, RuntimeResult, Test,
 	};
 
 	enum AtLeastOneByte {}
@@ -270,139 +278,111 @@ mod tests {
 	}
 
 	#[test]
-	fn execute_dispatch_call_works() {
+	fn execute_dispatch_call_function_works() {
 		new_test_ext().execute_with(|| {
-			let mut env = mock::Environment::new(
-				DispatchCallEverthingFuncId::get(),
-				vec![0, 0, 7, 12, 112, 111, 112],
-				mock::Ext::default(),
-			);
-			assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
-		})
-	}
-
-	#[test]
-	fn execute_dispatch_call_invalid() {
-		new_test_ext().execute_with(|| {
-			let mut env = mock::Environment::new(
-				DispatchCallEverthingFuncId::get(),
-				vec![0, 0, 99],
-				mock::Ext::default(),
-			);
-			let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
-			let expected = <() as ErrorConverter>::convert(error, &mut env).err();
-			assert_eq!(mock::Functions::execute(&mut env).err(), expected);
-		})
-	}
-
-	#[test]
-	fn execute_dispatch_call_charges_weight_works() {
-		new_test_ext().execute_with(|| {
-			use crate::environment::Environment;
-			let mut default_env = mock::Environment::default();
-			let mut env = mock::Environment::new(
-				DispatchCallEverthingFuncId::get(),
-				vec![0, 0, 7, 12, 112, 111, 112],
-				mock::Ext::default(),
-			);
-			// Check that two environments charged same weights
-			assert_eq!(env.charged(), default_env.charged());
-
-			// Make sure the environment charged weights correctly
-			let len = env.in_len();
 			let call =
 				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
-
-			assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
-			// Decode runtime read
-			let weight = ContractWeights::<Test>::seal_return(len);
-			default_env.charge_weight(weight).unwrap();
-			// Charge weight before dispatch.
-			let dispatch_info = call.get_dispatch_info();
-			let charged = default_env.charge_weight(dispatch_info.weight).unwrap();
-			// Dispatch call.
-			let origin: <mock::Test as frame_system::Config>::RuntimeOrigin =
-				RawOrigin::Signed(env.ext().address().clone()).into();
-			let result = call.dispatch(origin);
-			// Adjust weight.
-			let weight = frame_support::dispatch::extract_actual_weight(&result, &dispatch_info);
-			default_env.adjust_weight(charged, weight);
-			// Check that two environments charged same weights
+			// Insert one byte due to the `RemoveFirstByte` conversion configuration of `DispatchCallEverythingFuncId`.
+			let encoded_call = [0u8.encode(), call.encode()].concat();
+			let mut default_env = MockEnvironment::default();
+			// Initialize mock environment with function execution.
+			let mut env = MockEnvironment::new(
+				DispatchCallEverthingFuncId::get(),
+				encoded_call.clone(),
+				MockExt::default(),
+			);
 			assert_eq!(env.charged(), default_env.charged());
+			assert!(matches!(Functions::execute(&mut env), Ok(Converging(0))));
+			// Check that the two environments charged the same weights.
+			assert_eq!(
+				env.charged(),
+				function_dispatch_call_weight(
+					&mut default_env,
+					encoded_call.len() as u32,
+					call,
+					env.ext().address().clone()
+				)
+			);
 		})
 	}
 
 	#[test]
-	fn execute_read_state_write_to_memory_works() {
-		let read = RuntimeRead::Ping;
-		// Initialize real environment with function execution
-		let mut env = mock::Environment::new(
-			ReadStateEverthingFuncId::get(),
-			[0u8.encode(), read.encode()].concat(),
-			mock::Ext::default(),
-		);
+	fn execute_dispatch_call_function_invalid_input_works() {
+		new_test_ext().execute_with(|| {
+			// Invalid encoded runtime call.
+			let input = vec![0, 0, 99];
+			let mut env = MockEnvironment::new(
+				DispatchCallEverthingFuncId::get(),
+				input.clone(),
+				MockExt::default(),
+			);
+			let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			let expected = <() as ErrorConverter>::convert(error, &mut env).err();
+			assert_eq!(Functions::execute(&mut env).err(), expected);
+			assert_eq!(env.charged(), read_from_buffer(input.len() as u32,));
+		})
+	}
 
+	#[test]
+	fn execute_read_state_function_works() {
+		let read = RuntimeRead::Ping;
+		// Insert one byte due to the `RemoveFirstByte` conversion configuration of `ReadStateEverythingFuncId`.
+		let encoded_read = [0u8.encode(), read.encode()].concat();
+		let read_result = RuntimeResult::Pong("pop".to_string());
 		let expected = "pop".as_bytes().encode();
-		// Check if the contract environment buffer is written correctly
-		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
+		let mut default_env = MockEnvironment::default();
+		// Initialize real environment with function execution
+		let mut env = MockEnvironment::new(
+			ReadStateEverthingFuncId::get(),
+			// Invalid encoded runtime state read.
+			encoded_read.clone(),
+			MockExt::default(),
+		);
+		assert_eq!(env.charged(), default_env.charged());
+		assert!(matches!(Functions::execute(&mut env), Ok(Converging(0))));
+		// Check that the two environments charged the same weights.
+		assert_eq!(
+			env.charged(),
+			function_read_state_weight(
+				&mut default_env,
+				encoded_read.len() as u32,
+				read,
+				read_result,
+			)
+		);
+		// Check if the contract environment buffer is written correctly.
 		assert_eq!(env.buffer, expected);
 	}
 
 	#[test]
-	fn execute_read_state_charge_weight_works() {
-		use crate::environment::Environment;
-		let mut default_env = mock::Environment::default();
-		let read = RuntimeRead::Ping;
-		// Initialize real environment with function execution
-		let mut env = mock::Environment::new(
+	fn execute_read_state_function_invalid_input_works() {
+		// Invalid encoded runtime state read.
+		let input = vec![0, 0];
+		let mut env = MockEnvironment::new(
 			ReadStateEverthingFuncId::get(),
-			[0u8.encode(), read.encode()].concat(),
-			mock::Ext::default(),
+			input.clone(),
+			MockExt::default(),
 		);
-		// Check that two environments charged same weights
-		assert_eq!(env.charged(), default_env.charged());
-
-		// Make sure the environment charged weights correctly
-		let len = env.in_len();
-		let result = RuntimeResult::Pong("pop".to_string());
-
-		assert!(matches!(mock::Functions::execute(&mut env), Ok(Converging(0))));
-		// Decode runtime read
-		let weight = ContractWeights::<Test>::seal_return(len);
-		default_env.charge_weight(weight).unwrap();
-		// Charge weight before read
-		default_env.charge_weight(read.weight()).unwrap();
-		// Charge appropriate weight for writing to contract, based on input length, prior to decoding.
-		let result = DefaultConverter::<RuntimeResult>::convert(result, &default_env);
-		let weight_per_byte = ContractWeights::<Test>::seal_input_per_byte(1);
-		default_env.write(&result, false, Some(weight_per_byte)).unwrap();
-		// Check that two environments charged same weights
-		assert_eq!(env.charged(), default_env.charged());
-	}
-
-	#[test]
-	fn execute_read_state_invalid() {
-		let mut env = mock::Environment::new(
-			ReadStateEverthingFuncId::get(),
-			vec![0, 0],
-			mock::Ext::default(),
-		);
-		let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
+		let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
 		let expected = <() as ErrorConverter>::convert(error, &mut env).err();
-		assert_eq!(mock::Functions::execute(&mut env).err(), expected);
+		assert_eq!(Functions::execute(&mut env).err(), expected);
+		assert_eq!(env.charged(), read_from_buffer(input.len() as u32,));
 	}
 
 	#[test]
 	fn execute_invalid_function() {
-		let mut env = mock::Environment::new(0, vec![], mock::Ext::default());
-		let error = pallet_contracts::Error::<mock::Test>::DecodingFailed.into();
+		let input = vec![];
+		let mut env = MockEnvironment::new(INVALID_FUNC_ID, input.clone(), MockExt::default());
+		let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
 		let expected = <() as ErrorConverter>::convert(error, &mut env).err();
-		assert_eq!(mock::Functions::execute(&mut env).err(), expected);
+		assert_eq!(Functions::execute(&mut env).err(), expected);
+		// No weight charged as execution begins after the overhead weight charge and immediately errors.
+		assert_eq!(env.charged(), Weight::default());
 	}
 
 	#[test]
 	fn default_error_conversion_works() {
-		let env = mock::Environment::new(0, [0u8; 42].to_vec(), mock::Ext::default());
+		let env = MockEnvironment::new(0, [0u8; 42].to_vec(), MockExt::default());
 		assert!(matches!(
 			<() as ErrorConverter>::convert(DispatchError::BadOrigin, &env),
 			Err(DispatchError::BadOrigin)
@@ -411,7 +391,7 @@ mod tests {
 
 	#[test]
 	fn default_conversion_works() {
-		let env = mock::Environment::default();
+		let env = MockEnvironment::default();
 		let source = "pop".to_string();
 		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
 	}

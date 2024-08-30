@@ -34,7 +34,6 @@ pub trait Decode {
 		Self::Output::decode(&mut &input[..]).map_err(|_| {
 			log::error!(target: Self::LOG_TARGET, "decoding failed: unable to decode input into output type. input={input:?}");
 			// TODO: should we standardise on pallet_contracts::Error::DecodingFailed to simplify rather than allow customisation?
-			// Daan: Yes
 			Self::Error::get()
 		})
 	}
@@ -101,25 +100,28 @@ impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{Environment, Ext, RemoveFirstByte, Test};
+	use crate::{
+		mock::{MockEnvironment, MockExt, RemoveFirstByte, Test},
+		tests::read_from_buffer,
+	};
 	use codec::{Decode as OriginalDecode, Encode};
 
 	#[test]
 	fn default_processor_works() {
-		let env = Environment::default();
+		let env = MockEnvironment::default();
 		assert_eq!(<()>::process((), &env), ())
 	}
 
 	#[test]
 	fn identity_processor_works() {
-		let env = Environment::default();
+		let env = MockEnvironment::default();
 		let result = IdentityProcessor::process(vec![0, 1, 2, 3, 4], &env);
 		assert_eq!(result, vec![0, 1, 2, 3, 4])
 	}
 
 	#[test]
 	fn remove_first_byte_processor_works() {
-		let env = Environment::default();
+		let env = MockEnvironment::default();
 		let result = RemoveFirstByte::process(vec![0, 1, 2, 3, 4], &env);
 		assert_eq!(result, vec![1, 2, 3, 4])
 	}
@@ -129,14 +131,14 @@ mod tests {
 		test_cases().iter().for_each(|t| {
 			let (input, output) = (t.clone().0, t.clone().1);
 			println!("input: {:?} -> output: {:?}", input, output);
-			let mut env = Environment::new(0, input.clone(), Ext::default());
+			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
 			// Decode `input` to `output` using a provided processor.
 			let result =
 				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(
 					&mut env,
 				);
 			// Decode charges weight based on the length of the input.
-			assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
+			assert_eq!(env.charged(), read_from_buffer(input.len() as u32));
 			assert_eq!(result, Ok(output));
 		});
 	}
@@ -148,14 +150,14 @@ mod tests {
 			// Insert one bit at the start because of `RemoveFirstByte`.
 			input.insert(0, 0);
 			println!("input: {:?} -> output: {:?}", input, output);
-			let mut env = Environment::new(0, input.clone(), Ext::default());
+			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
 			// Decode `input` to `output` using a provided processor.
 			let result =
 				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, RemoveFirstByte>::decode(
 					&mut env,
 				);
 			// Decode charges weight based on the length of the input.
-			assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
+			assert_eq!(env.charged(), read_from_buffer(input.len() as u32));
 			assert_eq!(result, Ok(output));
 		});
 	}
@@ -171,12 +173,12 @@ mod tests {
 	#[test]
 	fn decode_return_decoding_fail_error() {
 		let input = vec![100];
-		let mut env = Environment::new(0, input.clone(), Ext::default());
+		let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
 		let result =
 			Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(&mut env);
 		// Decode charges weight based on the length of the input, also when decoding fails.
-		assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
 		assert_eq!(result, Err(pallet_contracts::Error::<Test>::DecodingFailed.into()));
+		assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
 	}
 
 	#[derive(Debug, Clone, PartialEq, Encode, OriginalDecode)]
