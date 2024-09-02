@@ -102,9 +102,12 @@ mod tests {
 	use super::*;
 	use crate::{
 		mock::{MockEnvironment, MockExt, RemoveFirstByte, Test},
-		tests::read_from_buffer,
+		tests::read_from_buffer_weight,
 	};
 	use codec::{Decode as OriginalDecode, Encode};
+	use frame_support::assert_ok;
+
+	type EnumDecodes<P> = Decodes<ComprehensiveEnum, DecodingFailed<Test>, P>;
 
 	#[test]
 	fn default_processor_works() {
@@ -128,37 +131,53 @@ mod tests {
 
 	#[test]
 	fn decode_with_identity_processor_works() {
-		test_cases().iter().for_each(|t| {
-			let (input, output) = (t.clone().0, t.clone().1);
+		test_cases().into_iter().for_each(|t| {
+			let (input, output) = (t.0, t.1);
 			println!("input: {:?} -> output: {:?}", input, output);
 			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
 			// Decode `input` to `output` using a provided processor.
-			let result =
-				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(
-					&mut env,
-				);
+			assert_eq!(EnumDecodes::<IdentityProcessor>::decode(&mut env), Ok(output));
+		});
+	}
+
+	#[test]
+	fn decode_with_identity_processor_charges_weight() {
+		test_cases().into_iter().for_each(|t| {
+			let (input, output) = (t.0, t.1);
+			println!("input: {:?} -> output: {:?}", input, output);
+			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
+			// Decode `input` to `output` using a default processor.
+			assert_ok!(EnumDecodes::<IdentityProcessor>::decode(&mut env));
 			// Decode charges weight based on the length of the input.
-			assert_eq!(env.charged(), read_from_buffer(input.len() as u32));
-			assert_eq!(result, Ok(output));
+			assert_eq!(env.charged(), read_from_buffer_weight(input.len() as u32));
 		});
 	}
 
 	#[test]
 	fn decode_with_remove_first_byte_processor_works() {
-		test_cases().iter().for_each(|t| {
-			let (mut input, output) = (t.clone().0, t.clone().1);
+		test_cases().into_iter().for_each(|t| {
+			let (mut input, output) = (t.0, t.1);
 			// Insert one bit at the start because of `RemoveFirstByte`.
 			input.insert(0, 0);
 			println!("input: {:?} -> output: {:?}", input, output);
 			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
 			// Decode `input` to `output` using a provided processor.
-			let result =
-				Decodes::<ComprehensiveEnum, DecodingFailed<Test>, RemoveFirstByte>::decode(
-					&mut env,
-				);
+			assert_eq!(EnumDecodes::<RemoveFirstByte>::decode(&mut env,), Ok(output));
+		});
+	}
+
+	#[test]
+	fn decode_with_remove_first_byte_processor_charge_weights() {
+		test_cases().into_iter().for_each(|t| {
+			let (mut input, output) = (t.0, t.1);
+			// Insert one bit at the start because of `RemoveFirstByte`.
+			input.insert(0, 0);
+			println!("input: {:?} -> output: {:?}", input, output);
+			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
+			// Decode `input` to `output` using a provided processor.
+			assert_ok!(EnumDecodes::<RemoveFirstByte>::decode(&mut env,));
 			// Decode charges weight based on the length of the input.
-			assert_eq!(env.charged(), read_from_buffer(input.len() as u32));
-			assert_eq!(result, Ok(output));
+			assert_eq!(env.charged(), read_from_buffer_weight(input.len() as u32));
 		});
 	}
 
@@ -174,10 +193,16 @@ mod tests {
 	fn decode_return_decoding_fail_error() {
 		let input = vec![100];
 		let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
-		let result =
-			Decodes::<ComprehensiveEnum, DecodingFailed<Test>, IdentityProcessor>::decode(&mut env);
-		// Decode charges weight based on the length of the input, also when decoding fails.
+		let result = EnumDecodes::<IdentityProcessor>::decode(&mut env);
 		assert_eq!(result, Err(pallet_contracts::Error::<Test>::DecodingFailed.into()));
+	}
+
+	#[test]
+	fn decode_decoding_fail_charge_weights() {
+		let input = vec![100];
+		let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
+		assert_ok!(EnumDecodes::<IdentityProcessor>::decode(&mut env));
+		// Decode charges weight based on the length of the input, also when decoding fails.
 		assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
 	}
 

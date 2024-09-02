@@ -13,7 +13,8 @@ use frame_system::Call;
 use pallet_contracts::chain_extension::RetVal::Converging;
 pub(crate) use utils::{
 	extension_call_dispatch_call_weight, extension_call_read_state_weight,
-	function_dispatch_call_weight, function_read_state_weight, overhead_weight, read_from_buffer,
+	function_dispatch_call_weight, function_read_state_weight, overhead_weight,
+	read_from_buffer_weight,
 };
 
 mod contract;
