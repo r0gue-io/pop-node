@@ -106,4 +106,4 @@ try-runtime = [
 	"sp-runtime/try-runtime",
 ]
 
-on-chain-release-build = ["pop-runtime-mainnet/on-chain-release-build"]
+on-chain-release-build = [ "pop-runtime-mainnet/on-chain-release-build" ]
