@@ -1,3 +1,4 @@
+use crate::decoding::IdentityProcessor;
 use crate::{
 	environment, matching::WithFuncId, Decodes, DecodingFailed, DefaultConverter, DispatchCall,
 	Extension, Function, Matches, Processor, ReadState, Readable,
@@ -32,18 +33,18 @@ pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 102
 pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
-type DispatchCallWith<Id, Filter> = DispatchCall<
+type DispatchCallWith<Id, Filter, Processor> = DispatchCall<
 	// Registered with func id 1
 	WithFuncId<Id>,
 	// Runtime config
 	Test,
 	// Decode inputs to the function as runtime calls
-	Decodes<RuntimeCall, DecodingFailed<Test>, RemoveFirstByte>,
+	Decodes<RuntimeCall, DecodingFailed<Test>, Processor>,
 	// Accept any filterting
 	Filter,
 >;
 
-type ReadStateWith<Id, Filter> = ReadState<
+type ReadStateWith<Id, Filter, Processor> = ReadState<
 	// Registered with func id 1
 	WithFuncId<Id>,
 	// Runtime config
@@ -51,7 +52,7 @@ type ReadStateWith<Id, Filter> = ReadState<
 	// The runtime state reads available.
 	RuntimeRead,
 	// Decode inputs to the function as runtime calls
-	Decodes<RuntimeRead, DecodingFailed<Test>, RemoveFirstByte>,
+	Decodes<RuntimeRead, DecodingFailed<Test>, Processor>,
 	// Accept any filtering
 	Filter,
 	// Convert the result of a read into the expected result
@@ -134,10 +135,19 @@ impl frame_support::traits::Randomness<<Test as frame_system::Config>::Hash, Blo
 }
 
 parameter_types! {
-	pub const DispatchCallEverthingFuncId : u32 = 1;
-	pub const ReadStateEverthingFuncId : u32 = 2;
-	pub const DispatchCallNothingFuncId : u32 = 3;
-	pub const ReadStateNothingFuncId : u32 = 4;
+// IDs for functions for extension tests.
+	pub const DispatchExtFuncId : u32 = 1;
+	pub const ReadExtFuncId : u32 = 2;
+	// IDs for function for extension tests but do nothing.
+	pub const DispatchExtNoopFuncId : u32 = 3;
+	pub const ReadExtNoopFuncId : u32 = 4;
+// IDs for functions for contract tests.
+	pub const DispatchContractFuncId : u32 = 5;
+	pub const ReadContractFuncId : u32 = 6;
+	// IDs for function for contract tests but do nothing.
+	pub const DispatchContractNoopFuncId : u32 = 7;
+	pub const ReadContractNoopFuncId : u32 = 8;
+	// ID for function that does nothing
 	pub const NoopFuncId : u32 = u32::MAX;
 }
 
@@ -183,12 +193,18 @@ impl Into<Vec<u8>> for RuntimeResult {
 }
 
 pub(crate) type Functions = (
-	// Functions that allow everything.
-	DispatchCallWith<DispatchCallEverthingFuncId, Everything>,
-	ReadStateWith<ReadStateEverthingFuncId, Everything>,
-	// Functions that allow nothing.
-	DispatchCallWith<DispatchCallNothingFuncId, Nothing>,
-	ReadStateWith<ReadStateNothingFuncId, Nothing>,
+	// Functions that allow everything for extension testing.
+	DispatchCallWith<DispatchExtFuncId, Everything, IdentityProcessor>,
+	ReadStateWith<ReadExtFuncId, Everything, IdentityProcessor>,
+	// Functions that allow nothing for extension testing.
+	DispatchCallWith<DispatchExtNoopFuncId, Nothing, IdentityProcessor>,
+	ReadStateWith<ReadExtNoopFuncId, Nothing, IdentityProcessor>,
+	// Functions that allow everything for contract testing.
+	DispatchCallWith<DispatchContractFuncId, Everything, RemoveFirstByte>,
+	ReadStateWith<ReadContractFuncId, Everything, RemoveFirstByte>,
+	// Functions that allow nothing for contract testing
+	DispatchCallWith<DispatchContractNoopFuncId, Nothing, RemoveFirstByte>,
+	ReadStateWith<ReadContractNoopFuncId, Nothing, RemoveFirstByte>,
 	// Function that does nothing.
 	Noop<WithFuncId<NoopFuncId>, Test>,
 );

@@ -3,8 +3,8 @@ use crate::tests::utils::decoding_failed_weight;
 use crate::{
 	environment::Ext,
 	mock::{
-		new_test_ext, Config, DispatchCallEverthingFuncId, MockEnvironment, MockExt, NoopFuncId,
-		ReadStateEverthingFuncId, RuntimeCall, RuntimeRead, Test,
+		new_test_ext, Config, DispatchExtFuncId, MockEnvironment, MockExt, NoopFuncId,
+		ReadExtFuncId, RuntimeCall, RuntimeRead, Test,
 	},
 	Environment, Extension,
 };
@@ -48,11 +48,10 @@ fn extension_call_dispatch_call_works() {
 	new_test_ext().execute_with(|| {
 		let call =
 			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
-		// Insert one byte due to the `RemoveFirstByte` conversion configuration of `DispatchCallEverythingFuncId`.
-		let encoded_call = [0u8.encode(), call.encode()].concat();
+		let encoded_call = call.encode();
 		let mut default_env = MockEnvironment::default();
 		let mut env = MockEnvironment::new(
-			DispatchCallEverthingFuncId::get(),
+			DispatchExtFuncId::get(),
 			encoded_call.clone(),
 			MockExt::default(),
 		);
@@ -74,8 +73,7 @@ fn extension_call_dispatch_call_works() {
 fn extension_call_dispatch_call_invalid() {
 	// Invalid encoded runtime call.
 	let input = vec![0u8, 99];
-	let mut env =
-		MockEnvironment::new(DispatchCallEverthingFuncId::get(), input.clone(), MockExt::default());
+	let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone(), MockExt::default());
 	let mut extension = Extension::<Config>::default();
 	assert!(extension.call(&mut env).is_err());
 	assert_eq!(env.charged(), decoding_failed_weight(input.len() as u32));
@@ -84,16 +82,12 @@ fn extension_call_dispatch_call_invalid() {
 #[test]
 fn extension_call_read_state_works() {
 	let read = RuntimeRead::Ping;
-	// Insert one byte due to the `RemoveFirstByte` conversion configuration of `ReadStateEverythingFuncId`.
-	let encoded_read = [0u8.encode(), read.encode()].concat();
+	let encoded_read = read.encode();
 	let read_result = RuntimeResult::Pong("pop".to_string());
 	let expected = "pop".as_bytes().encode();
 	let mut default_env = MockEnvironment::default();
-	let mut env = MockEnvironment::new(
-		ReadStateEverthingFuncId::get(),
-		encoded_read.clone(),
-		MockExt::default(),
-	);
+	let mut env =
+		MockEnvironment::new(ReadExtFuncId::get(), encoded_read.clone(), MockExt::default());
 	let mut extension = Extension::<Config>::default();
 	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
 	// Check that the two environments charged the same weights.
@@ -114,7 +108,7 @@ fn extension_call_read_state_works() {
 fn extension_call_read_state_invalid() {
 	let input = vec![0u8, 99];
 	let mut env = MockEnvironment::new(
-		ReadStateEverthingFuncId::get(),
+		ReadExtFuncId::get(),
 		// Invalid runtime state read.
 		input.clone(),
 		MockExt::default(),
