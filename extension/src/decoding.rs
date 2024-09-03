@@ -162,7 +162,7 @@ mod tests {
 			println!("input: {:?} -> output: {:?}", input, output);
 			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
 			// Decode `input` to `output` using a provided processor.
-			assert_eq!(EnumDecodes::<RemoveFirstByte>::decode(&mut env,), Ok(output));
+			assert_eq!(EnumDecodes::<RemoveFirstByte>::decode(&mut env), Ok(output));
 		});
 	}
 
@@ -175,7 +175,7 @@ mod tests {
 			println!("input: {:?} -> output: {:?}", input, output);
 			let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
 			// Decode `input` to `output` using a provided processor.
-			assert_ok!(EnumDecodes::<RemoveFirstByte>::decode(&mut env,));
+			assert_ok!(EnumDecodes::<RemoveFirstByte>::decode(&mut env));
 			// Decode charges weight based on the length of the input.
 			assert_eq!(env.charged(), read_from_buffer_weight(input.len() as u32));
 		});
