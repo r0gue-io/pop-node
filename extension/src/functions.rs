@@ -341,6 +341,18 @@ mod tests {
 		}
 
 		#[test]
+		fn execute_dispatch_call_function_return_error() {
+			new_test_ext().execute_with(|| {
+				let call = RuntimeCall::System(Call::set_code { code: "pop".as_bytes().to_vec() });
+				let mut env = environment(DispatchExtFuncId::get(), call.encode());
+				let error = Functions::execute(&mut env).err();
+				let expected =
+					<() as ErrorConverter>::convert(DispatchError::BadOrigin, &env).err();
+				assert_eq!(error, expected);
+			})
+		}
+
+		#[test]
 		fn execute_dispatch_call_function_charge_weights() {
 			new_test_ext().execute_with(|| {
 				let call = RuntimeCall::System(Call::remark_with_event {
@@ -422,6 +434,17 @@ mod tests {
 			assert!(matches!(Functions::execute(&mut env), Ok(Converging(0))));
 			// Check if the contract environment buffer is written correctly.
 			assert_eq!(env.buffer, expected);
+		}
+
+		#[test]
+		fn execute_read_state_function_result_converter_works() {
+			let read = RuntimeRead::Ping;
+			let expected = "pop".as_bytes().encode();
+			let mut env = environment(ReadExtFuncId::get(), read.encode());
+			assert!(matches!(Functions::execute(&mut env), Ok(Converging(0))));
+			// Check if the contract environment buffer is written correctly.
+			let result = DefaultConverter::convert(expected, &env);
+			assert_eq!(env.buffer, result);
 		}
 
 		#[test]

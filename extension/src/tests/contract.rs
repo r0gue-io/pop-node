@@ -16,112 +16,123 @@ use sp_runtime::{
 static CONTRACT: LazyLock<Vec<u8>> =
 	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.wasm"));
 
-#[test]
-fn dispatch_call_works() {
-	new_test_ext().execute_with(|| {
-		// Instantiate a new contract.
-		let contract = instantiate(CONTRACT.clone());
-		let dispatch_result = call(
-			contract,
-			DispatchContractFuncId::get(),
-			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
-			GAS_LIMIT,
-		);
-		// Successfully return data.
-		let return_value = dispatch_result.result.unwrap();
-		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
-		assert!(decoded.unwrap().is_empty());
-		// Successfully emit event.
-		assert!(dispatch_result.events.unwrap().iter().any(|e| matches!(e.event,
+#[cfg(test)]
+mod dispatch_call_tests {
+	use super::*;
+
+	#[test]
+	fn dispatch_call_works() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate(CONTRACT.clone());
+			let dispatch_result = call(
+				contract,
+				DispatchContractFuncId::get(),
+				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
+				GAS_LIMIT,
+			);
+			// Successfully return data.
+			let return_value = dispatch_result.result.unwrap();
+			let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
+			assert!(decoded.unwrap().is_empty());
+			// Successfully emit event.
+			assert!(dispatch_result.events.unwrap().iter().any(|e| matches!(e.event,
 				RuntimeEvent::System(frame_system::Event::<Test>::Remarked { sender, .. })
 					if sender == contract)));
-		assert_eq!(dispatch_result.storage_deposit, StorageDeposit::Charge(0));
-	});
+			assert_eq!(dispatch_result.storage_deposit, StorageDeposit::Charge(0));
+		});
+	}
+
+	#[test]
+	fn dispatch_call_filtering_noop_fails() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate(CONTRACT.clone());
+			let dispatch_result = call(
+				contract,
+				DispatchContractNoopFuncId::get(),
+				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
+				GAS_LIMIT,
+			);
+			assert_eq!(
+				dispatch_result.result,
+				Err(Module(ModuleError {
+					index: 0,
+					error: [5, 0, 0, 0],
+					message: Some("CallFiltered")
+				}))
+			);
+		});
+	}
+
+	#[test]
+	fn dispatch_call_return_error_fails() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate(CONTRACT.clone());
+			let dispatch_result = call(
+				contract,
+				DispatchContractFuncId::get(),
+				// `set_code` requires root origin, expect throwing error.
+				RuntimeCall::System(Call::set_code { code: "pop".as_bytes().to_vec() }),
+				GAS_LIMIT,
+			);
+			assert_eq!(dispatch_result.result.err(), Some(BadOrigin))
+		})
+	}
 }
 
-#[test]
-fn dispatch_call_filtering_noop_fails() {
-	new_test_ext().execute_with(|| {
-		// Instantiate a new contract.
-		let contract = instantiate(CONTRACT.clone());
-		let dispatch_result = call(
-			contract,
-			DispatchContractNoopFuncId::get(),
-			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
-			GAS_LIMIT,
-		);
-		assert_eq!(
-			dispatch_result.result,
-			Err(Module(ModuleError {
-				index: 0,
-				error: [5, 0, 0, 0],
-				message: Some("CallFiltered")
-			}))
-		);
-	});
-}
+#[cfg(test)]
+mod read_state_tests {
+	use super::*;
 
-#[test]
-fn dispatch_call_return_error_fails() {
-	new_test_ext().execute_with(|| {
-		// Instantiate a new contract.
-		let contract = instantiate(CONTRACT.clone());
-		let dispatch_result = call(
-			contract,
-			DispatchContractFuncId::get(),
-			// `set_code` requires root origin, expect throwing error.
-			RuntimeCall::System(Call::set_code { code: "pop".as_bytes().to_vec() }),
-			GAS_LIMIT,
-		);
-		assert_eq!(dispatch_result.result.err(), Some(BadOrigin))
-	})
-}
+	#[test]
+	fn read_state_works() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate(CONTRACT.clone());
+			// Successfully return data.
+			let read_result =
+				call(contract, ReadContractFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
+			let return_value = read_result.result.unwrap();
+			let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
+			let result = Ok("pop".as_bytes().to_vec());
+			assert_eq!(decoded, result);
+		});
+	}
 
-#[test]
-fn read_state_works() {
-	new_test_ext().execute_with(|| {
-		// Instantiate a new contract.
-		let contract = instantiate(CONTRACT.clone());
-		// Successfully return data.
-		let read_result = call(contract, ReadContractFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
-		let return_value = read_result.result.unwrap();
-		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
-		let result = Ok("pop".as_bytes().to_vec());
-		assert_eq!(decoded, result);
-	});
-}
+	#[test]
+	fn read_state_filtering_noop_fails() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate(CONTRACT.clone());
+			// Successfully return data.
+			let read_result =
+				call(contract, ReadContractNoopFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
+			assert_eq!(
+				read_result.result,
+				Err(Module(ModuleError {
+					index: 0,
+					error: [5, 0, 0, 0],
+					message: Some("CallFiltered")
+				}))
+			);
+		});
+	}
 
-#[test]
-fn read_state_filtering_noop_fails() {
-	new_test_ext().execute_with(|| {
-		// Instantiate a new contract.
-		let contract = instantiate(CONTRACT.clone());
-		// Successfully return data.
-		let read_result =
-			call(contract, ReadContractNoopFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
-		assert_eq!(
-			read_result.result,
-			Err(Module(ModuleError {
-				index: 0,
-				error: [5, 0, 0, 0],
-				message: Some("CallFiltered")
-			}))
-		);
-	});
-}
-
-#[test]
-fn read_state_invalid_input_fails() {
-	new_test_ext().execute_with(|| {
-		// Instantiate a new contract.
-		let contract = instantiate(CONTRACT.clone());
-		let read_result = call(contract, ReadExtFuncId::get(), 99u8, GAS_LIMIT);
-		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
-		// Make sure the error is passed through the error converter.
-		let error =
-			<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
-		assert_eq!(read_result.result.err(), error);
-	})
+	#[test]
+	fn read_state_invalid_input_fails() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate(CONTRACT.clone());
+			let read_result = call(contract, ReadExtFuncId::get(), 99u8, GAS_LIMIT);
+			let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			// Make sure the error is passed through the error converter.
+			let error =
+				<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
+			assert_eq!(read_result.result.err(), error);
+		})
+	}
 }
 
 #[test]
