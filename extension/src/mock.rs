@@ -202,7 +202,7 @@ pub(crate) type Functions = (
 	// Functions that allow everything for contract testing.
 	DispatchCallWith<DispatchContractFuncId, Everything, RemoveFirstByte>,
 	ReadStateWith<ReadContractFuncId, Everything, RemoveFirstByte>,
-	// Functions that allow nothing for contract testing
+	// Functions that allow nothing for contract testing.
 	DispatchCallWith<DispatchContractNoopFuncId, Nothing, RemoveFirstByte>,
 	ReadStateWith<ReadContractNoopFuncId, Nothing, RemoveFirstByte>,
 	// Function that does nothing.
