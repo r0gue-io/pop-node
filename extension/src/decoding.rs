@@ -201,7 +201,7 @@ mod tests {
 	fn decode_decoding_fail_charge_weights() {
 		let input = vec![100];
 		let mut env = MockEnvironment::new(0, input.clone(), MockExt::default());
-		assert_ok!(EnumDecodes::<IdentityProcessor>::decode(&mut env));
+		assert!(EnumDecodes::<IdentityProcessor>::decode(&mut env).is_err());
 		// Decode charges weight based on the length of the input, also when decoding fails.
 		assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
 	}

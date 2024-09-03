@@ -23,7 +23,7 @@ fn dispatch_call_works() {
 		let contract = instantiate(CONTRACT.clone());
 		let dispatch_result = call(
 			contract,
-			DispatchExtFuncId::get(),
+			DispatchContractFuncId::get(),
 			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
 			GAS_LIMIT,
 		);
@@ -68,7 +68,7 @@ fn dispatch_call_return_error_fails() {
 		let contract = instantiate(CONTRACT.clone());
 		let dispatch_result = call(
 			contract,
-			DispatchExtFuncId::get(),
+			DispatchContractFuncId::get(),
 			// `set_code` requires root origin, expect throwing error.
 			RuntimeCall::System(Call::set_code { code: "pop".as_bytes().to_vec() }),
 			GAS_LIMIT,
@@ -83,7 +83,7 @@ fn read_state_works() {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
 		// Successfully return data.
-		let read_result = call(contract, ReadExtFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
+		let read_result = call(contract, ReadContractFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
 		let return_value = read_result.result.unwrap();
 		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
 		let result = Ok("pop".as_bytes().to_vec());
