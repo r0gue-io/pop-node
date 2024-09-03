@@ -135,13 +135,13 @@ impl frame_support::traits::Randomness<<Test as frame_system::Config>::Hash, Blo
 }
 
 parameter_types! {
-// IDs for functions for extension tests.
+	// IDs for functions for extension tests.
 	pub const DispatchExtFuncId : u32 = 1;
 	pub const ReadExtFuncId : u32 = 2;
 	// IDs for function for extension tests but do nothing.
 	pub const DispatchExtNoopFuncId : u32 = 3;
 	pub const ReadExtNoopFuncId : u32 = 4;
-// IDs for functions for contract tests.
+	// IDs for functions for contract tests.
 	pub const DispatchContractFuncId : u32 = 5;
 	pub const ReadContractFuncId : u32 = 6;
 	// IDs for function for contract tests but do nothing.
