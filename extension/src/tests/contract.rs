@@ -40,7 +40,7 @@ fn dispatch_call_works() {
 }
 
 #[test]
-fn dispatch_call_filtering_works() {
+fn dispatch_call_filtering_noop_fails() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
@@ -62,7 +62,7 @@ fn dispatch_call_filtering_works() {
 }
 
 #[test]
-fn dispatch_call_return_error_works() {
+fn dispatch_call_return_error_fails() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
@@ -92,7 +92,7 @@ fn read_state_works() {
 }
 
 #[test]
-fn read_state_filtering_works() {
+fn read_state_filtering_noop_fails() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());
@@ -111,7 +111,7 @@ fn read_state_filtering_works() {
 }
 
 #[test]
-fn read_state_invalid() {
+fn read_state_invalid_input_fails() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a new contract.
 		let contract = instantiate(CONTRACT.clone());

@@ -104,6 +104,33 @@ pub(crate) fn extension_call_dispatch_call_weight<E: Ext<Config = Test> + Clone>
 	function_dispatch_call_weight(default_env, input_len, call, contract)
 }
 
+// Environment charges weight for before the dispatch call.
+pub(crate) fn charge_weight_filtering_dispatch_call<E: Ext<Config = Test> + Clone>(
+	default_env: &mut MockEnvironment<E>,
+	input_len: u32,
+	call: RuntimeCall,
+	contract: <Test as frame_system::Config>::AccountId,
+) {
+	let dispatch_info = call.get_dispatch_info();
+	assert_ok!(default_env.charge_weight(read_from_buffer_weight(input_len)));
+	// Charge pre-dispatch weight.
+	default_env.charge_weight(dispatch_info.weight).expect("should work");
+	// Dispatch call.
+	let origin: <Test as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(contract).into();
+	assert_ok!(call.dispatch(origin));
+}
+
+// Environment charges weight for before the dispatch call.
+pub(crate) fn charge_weight_filtering_read_state<E: Ext<Config = Test> + Clone>(
+	default_env: &mut MockEnvironment<E>,
+	input_len: u32,
+	read: RuntimeRead,
+) {
+	assert_ok!(default_env.charge_weight(read_from_buffer_weight(input_len)));
+	// Charge weight for reading state.
+	assert_ok!(default_env.charge_weight(read.weight()));
+}
+
 // Weight charged for executing the function dispatch call.
 pub(crate) fn function_dispatch_call_weight<E: Ext<Config = Test> + Clone>(
 	default_env: &mut MockEnvironment<E>,
