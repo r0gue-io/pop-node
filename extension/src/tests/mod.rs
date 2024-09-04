@@ -1,19 +1,16 @@
 use crate::{
 	mock::{
 		new_test_ext, Config, DispatchExtFuncId, MockEnvironment, NoopFuncId, ReadExtFuncId,
-		RuntimeCall, RuntimeRead, Test,
+		RuntimeCall, RuntimeRead, Test, *,
 	},
-	tests::utils::decoding_failed_weight,
-	Extension, Readable,
+	ContractWeights, Extension, Readable, Weight,
 };
 use codec::Encode;
 use frame_support::dispatch::GetDispatchInfo;
 use frame_system::Call;
-use pallet_contracts::chain_extension::RetVal::Converging;
-pub(crate) use utils::{overhead_weight, read_from_buffer_weight, write_to_contract_weight};
+use pallet_contracts::{chain_extension::RetVal::Converging, WeightInfo};
 
 mod contract;
-mod utils;
 
 #[test]
 fn extension_call_works() {
@@ -66,7 +63,10 @@ fn extension_call_dispatch_call_invalid() {
 	let mut extension = Extension::<Config>::default();
 	assert!(extension.call(&mut env).is_err());
 	// Charges weight.
-	assert_eq!(env.charged(), decoding_failed_weight(input.len() as u32));
+	assert_eq!(
+		env.charged(),
+		overhead_weight(input.len() as u32) + read_from_buffer_weight(input.len() as u32)
+	);
 }
 
 #[test]
@@ -100,5 +100,23 @@ fn extension_call_read_state_invalid() {
 	let mut extension = Extension::<Config>::default();
 	assert!(extension.call(&mut env).is_err());
 	// Charges weight.
-	assert_eq!(env.charged(), decoding_failed_weight(input.len() as u32));
+	assert_eq!(
+		env.charged(),
+		overhead_weight(input.len() as u32) + read_from_buffer_weight(input.len() as u32)
+	);
+}
+
+// Weight charged for calling into the runtime from a contract.
+fn overhead_weight(input_len: u32) -> Weight {
+	ContractWeights::<Test>::seal_debug_message(input_len)
+}
+
+// Weight charged for reading function call input from buffer.
+pub(crate) fn read_from_buffer_weight(input_len: u32) -> Weight {
+	ContractWeights::<Test>::seal_return(input_len)
+}
+
+// Weight charged for writing to contract memory.
+pub(crate) fn write_to_contract_weight(len: u32) -> Weight {
+	ContractWeights::<Test>::seal_input(len)
 }
