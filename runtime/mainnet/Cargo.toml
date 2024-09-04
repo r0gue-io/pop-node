@@ -3,10 +3,10 @@ authors.workspace = true
 description.workspace = true
 edition.workspace = true
 homepage.workspace = true
-license = "Unlicense"
-name = "pop-runtime-testnet"
+license.workspace = true
+name = "pop-runtime-mainnet"
 repository.workspace = true
-version = "0.4.1"
+version = "0.1.0"
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
@@ -16,13 +16,10 @@ substrate-wasm-builder.workspace = true
 
 [dependencies]
 codec.workspace = true
-hex-literal.workspace = true
-log.workspace = true
 scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-pop-primitives.workspace = true
 pop-runtime-common = { workspace = true, default-features = false }
 
 # Substrate
@@ -34,16 +31,11 @@ frame-system.workspace = true
 frame-system-benchmarking.workspace = true
 frame-system-rpc-runtime-api.workspace = true
 frame-try-runtime.workspace = true
-pallet-assets.workspace = true
 pallet-aura.workspace = true
 pallet-authorship.workspace = true
 pallet-balances.workspace = true
-pallet-contracts.workspace = true
 pallet-message-queue.workspace = true
 pallet-multisig.workspace = true
-pallet-nft-fractionalization.workspace = true
-pallet-nfts.workspace = true
-pallet-nfts-runtime-api.workspace = true
 pallet-preimage.workspace = true
 pallet-proxy.workspace = true
 pallet-scheduler.workspace = true
@@ -115,18 +107,12 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-try-runtime/std",
-	"log/std",
-	"pallet-assets/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
-	"pallet-contracts/std",
 	"pallet-message-queue/std",
 	"pallet-multisig/std",
-	"pallet-nft-fractionalization/std",
-	"pallet-nfts-runtime-api/std",
-	"pallet-nfts/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
 	"pallet-scheduler/std",
@@ -141,7 +127,6 @@ std = [
 	"parachains-common/std",
 	"polkadot-parachain-primitives/std",
 	"polkadot-runtime-common/std",
-	"pop-primitives/std",
 	"pop-runtime-common/std",
 	"scale-info/std",
 	"sp-api/std",
@@ -172,14 +157,10 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"frame-system-benchmarking/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
-	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
-	"pallet-contracts/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
-	"pallet-nft-fractionalization/runtime-benchmarks",
-	"pallet-nfts/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
@@ -205,16 +186,12 @@ try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
-	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
 	"pallet-authorship/try-runtime",
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
-	"pallet-contracts/try-runtime",
 	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",
-	"pallet-nft-fractionalization/try-runtime",
-	"pallet-nfts/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",
 	"pallet-scheduler/try-runtime",

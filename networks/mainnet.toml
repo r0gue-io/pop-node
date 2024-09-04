@@ -1,4 +1,4 @@
-# pop up parachain -f ./tests/networks/pop.toml
+# pop up parachain -f ./networks/mainnet.toml
 
 [relaychain]
 chain = "paseo-local"
@@ -20,7 +20,7 @@ validator = true
 
 [[parachains]]
 id = 4001
-chain = "testnet"
+chain = "mainnet"
 default_command = "./target/release/pop-node"
 
 [parachains.genesis_overrides.balances]
@@ -37,12 +37,4 @@ balances = [
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug", "-lxcm=trace"]
-
-[[parachains]]
-id = 1000
-chain = "asset-hub-rococo-local"
-
-[[parachains.collators]]
-name = "asset-hub"
-args = ["-lxcm=trace"]
+args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]
