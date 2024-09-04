@@ -9,7 +9,7 @@ pub trait Matches {
 	fn matches(env: &impl Environment) -> bool;
 }
 
-/// Matches on an extension and function identifier.
+/// Matches an extension and function identifier.
 pub struct Equals<E, F>(PhantomData<(E, F)>);
 impl<ExtId: Get<u16>, FuncId: Get<u16>> Matches for Equals<ExtId, FuncId> {
 	fn matches(env: &impl Environment) -> bool {
@@ -17,7 +17,7 @@ impl<ExtId: Get<u16>, FuncId: Get<u16>> Matches for Equals<ExtId, FuncId> {
 	}
 }
 
-/// Matches on a function identifier only.
+/// Matches a function identifier only.
 pub struct FunctionId<T>(PhantomData<T>);
 impl<T: Get<u16>> Matches for FunctionId<T> {
 	fn matches(env: &impl Environment) -> bool {
@@ -25,7 +25,7 @@ impl<T: Get<u16>> Matches for FunctionId<T> {
 	}
 }
 
-/// Matches on an extension and function identifier together.
+/// Matches a `u32` function identifier.
 pub struct WithFuncId<T>(PhantomData<T>);
 impl<T: Get<u32>> Matches for WithFuncId<T> {
 	fn matches(env: &impl Environment) -> bool {
@@ -42,13 +42,13 @@ mod tests {
 	use sp_core::{ConstU16, ConstU32};
 
 	#[test]
-	fn matching_equals_works() {
+	fn equals_matches() {
 		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 2]), vec![]);
 		assert!(Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
 	}
 
 	#[test]
-	fn matching_equals_invalid() {
+	fn equals_does_not_match() {
 		// Fails due to the invalid function id.
 		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 3]), vec![]);
 		assert!(!Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
@@ -59,25 +59,25 @@ mod tests {
 	}
 
 	#[test]
-	fn matching_function_id_works() {
+	fn function_id_matches() {
 		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 2]), vec![]);
 		assert!(FunctionId::<ConstU16<2>>::matches(&env));
 	}
 
 	#[test]
-	fn matching_function_id_invalid() {
+	fn function_id_does_not_match() {
 		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 3]), vec![]);
 		assert!(!FunctionId::<ConstU16<2>>::matches(&env));
 	}
 
 	#[test]
-	fn matching_with_func_id_works() {
+	fn func_id_matches() {
 		let env = MockEnvironment::default();
 		assert!(WithFuncId::<ConstU32<0>>::matches(&env));
 	}
 
 	#[test]
-	fn matching_with_func_id_invalid() {
+	fn func_id_does_not_match() {
 		let env = MockEnvironment::new(1, vec![]);
 		assert!(!WithFuncId::<ConstU32<0>>::matches(&env));
 	}
