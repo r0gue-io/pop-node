@@ -27,8 +27,10 @@ mod decoding;
 mod environment;
 mod functions;
 mod matching;
+// Mock runtime/environment for unit/integration testing.
 #[cfg(test)]
 mod mock;
+// Integration tests using proxy contract and mock runtime.
 #[cfg(test)]
 mod tests;
 
