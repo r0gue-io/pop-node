@@ -1,18 +1,16 @@
 use crate::{
 	mock::{
 		new_test_ext, Config, DispatchExtFuncId, MockEnvironment, NoopFuncId, ReadExtFuncId,
-		RuntimeCall, RuntimeRead, RuntimeResult, Test,
+		RuntimeCall, RuntimeRead, Test,
 	},
 	tests::utils::decoding_failed_weight,
-	Environment as _, Ext as _, Extension,
+	Extension, Readable,
 };
 use codec::Encode;
+use frame_support::dispatch::GetDispatchInfo;
 use frame_system::Call;
 use pallet_contracts::chain_extension::RetVal::Converging;
-pub(crate) use utils::{
-	extension_call_dispatch_call_weight, extension_call_read_state_weight, overhead_weight,
-	read_from_buffer_weight, write_to_contract_weight,
-};
+pub(crate) use utils::{overhead_weight, read_from_buffer_weight, write_to_contract_weight};
 
 mod contract;
 mod utils;
@@ -23,6 +21,7 @@ fn extension_call_works() {
 	let mut env = MockEnvironment::new(NoopFuncId::get(), input.clone());
 	let mut extension = Extension::<Config>::default();
 	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
+	// Charges weight.
 	assert_eq!(env.charged(), overhead_weight(input.len() as u32))
 }
 
@@ -46,18 +45,15 @@ fn extension_call_dispatch_call_works() {
 		let call =
 			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
 		let encoded_call = call.encode();
-		let mut default_env = MockEnvironment::default();
 		let mut env = MockEnvironment::new(DispatchExtFuncId::get(), encoded_call.clone());
 		let mut extension = Extension::<Config>::default();
 		assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
+		// Charges weight.
 		assert_eq!(
 			env.charged(),
-			extension_call_dispatch_call_weight(
-				&mut default_env,
-				encoded_call.len() as u32,
-				call,
-				env.ext().address().clone()
-			)
+			overhead_weight(encoded_call.len() as u32) +
+				read_from_buffer_weight(encoded_call.len() as u32) +
+				call.get_dispatch_info().weight
 		);
 	});
 }
@@ -69,6 +65,7 @@ fn extension_call_dispatch_call_invalid() {
 	let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone());
 	let mut extension = Extension::<Config>::default();
 	assert!(extension.call(&mut env).is_err());
+	// Charges weight.
 	assert_eq!(env.charged(), decoding_failed_weight(input.len() as u32));
 }
 
@@ -76,21 +73,17 @@ fn extension_call_dispatch_call_invalid() {
 fn extension_call_read_state_works() {
 	let read = RuntimeRead::Ping;
 	let encoded_read = read.encode();
-	let read_result = RuntimeResult::Pong("pop".to_string());
 	let expected = "pop".as_bytes().encode();
-	let mut default_env = MockEnvironment::default();
 	let mut env = MockEnvironment::new(ReadExtFuncId::get(), encoded_read.clone());
 	let mut extension = Extension::<Config>::default();
 	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
-	// Check that the two environments charged the same weights.
+	// Charges weight.
 	assert_eq!(
 		env.charged(),
-		extension_call_read_state_weight(
-			&mut default_env,
-			encoded_read.len() as u32,
-			read,
-			read_result,
-		)
+		overhead_weight(encoded_read.len() as u32) +
+			read_from_buffer_weight(encoded_read.len() as u32) +
+			read.weight() +
+			write_to_contract_weight(expected.len() as u32)
 	);
 	// Check if the contract environment buffer is written correctly.
 	assert_eq!(env.buffer, expected);
@@ -106,5 +99,6 @@ fn extension_call_read_state_invalid() {
 	);
 	let mut extension = Extension::<Config>::default();
 	assert!(extension.call(&mut env).is_err());
+	// Charges weight.
 	assert_eq!(env.charged(), decoding_failed_weight(input.len() as u32));
 }
