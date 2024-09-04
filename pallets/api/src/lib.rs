@@ -3,3 +3,4 @@
 pub mod fungibles;
 #[cfg(test)]
 mod mock;
+pub mod non_fungibles;
