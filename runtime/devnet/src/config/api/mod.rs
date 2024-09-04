@@ -4,9 +4,8 @@ use crate::{
 use codec::Decode;
 use cumulus_primitives_core::Weight;
 use frame_support::traits::Contains;
-use pallet_api::extension::*;
 pub(crate) use pallet_api::Extension;
-use pallet_api::Read;
+use pallet_api::{extension::*, Read};
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
@@ -31,7 +30,8 @@ impl Readable for RuntimeRead {
 	/// The corresponding type carrying the result of the query for runtime state.
 	type Result = RuntimeResult;
 
-	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
+	/// Determines the weight of the read, used to charge the appropriate weight before the read is
+	/// performed.
 	fn weight(&self) -> Weight {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
@@ -125,14 +125,14 @@ impl Contains<RuntimeCall> for Filter {
 		matches!(
 			c,
 			RuntimeCall::Fungibles(
-				transfer { .. }
-					| transfer_from { .. }
-					| approve { .. } | increase_allowance { .. }
-					| decrease_allowance { .. }
-					| create { .. } | set_metadata { .. }
-					| start_destroy { .. }
-					| clear_metadata { .. }
-					| mint { .. } | burn { .. }
+				transfer { .. } |
+					transfer_from { .. } |
+					approve { .. } | increase_allowance { .. } |
+					decrease_allowance { .. } |
+					create { .. } | set_metadata { .. } |
+					start_destroy { .. } |
+					clear_metadata { .. } |
+					mint { .. } | burn { .. }
 			)
 		)
 	}
@@ -144,10 +144,12 @@ impl Contains<RuntimeRead> for Filter {
 		matches!(
 			r,
 			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | AssetExists(..)
+				TotalSupply(..) |
+					BalanceOf { .. } |
+					Allowance { .. } |
+					TokenName(..) | TokenSymbol(..) |
+					TokenDecimals(..) |
+					AssetExists(..)
 			)
 		)
 	}

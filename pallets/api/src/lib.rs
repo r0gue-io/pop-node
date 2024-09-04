@@ -15,7 +15,8 @@ pub trait Read {
 	/// The type or result returned.
 	type Result;
 
-	/// Determines the weight of the requested read, used to charge the appropriate weight before the read is performed.
+	/// Determines the weight of the requested read, used to charge the appropriate weight before
+	/// the read is performed.
 	///
 	/// # Parameters
 	/// - `request` - The read request.

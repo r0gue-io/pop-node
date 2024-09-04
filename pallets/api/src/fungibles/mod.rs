@@ -420,7 +420,8 @@ pub mod pallet {
 			AssetsOf::<T>::clear_metadata(origin, asset.into())
 		}
 
-		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
+		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
+		/// supply.
 		///
 		/// # Parameters
 		/// - `asset` - The asset to mint.
@@ -481,7 +482,8 @@ pub mod pallet {
 		/// The type or result returned.
 		type Result = ReadResult<T>;
 
-		/// Determines the weight of the requested read, used to charge the appropriate weight before the read is performed.
+		/// Determines the weight of the requested read, used to charge the appropriate weight
+		/// before the read is performed.
 		///
 		/// # Parameters
 		/// - `request` - The read request.
@@ -498,12 +500,10 @@ pub mod pallet {
 			use Read::*;
 			match request {
 				TotalSupply(asset) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(asset)),
-				BalanceOf { asset, owner } => {
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(asset, owner))
-				},
-				Allowance { asset, owner, spender } => {
-					ReadResult::Allowance(AssetsOf::<T>::allowance(asset, &owner, &spender))
-				},
+				BalanceOf { asset, owner } =>
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(asset, owner)),
+				Allowance { asset, owner, spender } =>
+					ReadResult::Allowance(AssetsOf::<T>::allowance(asset, &owner, &spender)),
 				TokenName(asset) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
 					AccountIdOf<T>,
 				>>::name(asset)),
