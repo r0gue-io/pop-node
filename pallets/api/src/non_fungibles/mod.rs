@@ -37,22 +37,22 @@ pub mod pallet {
 		/// Returns the owner of a collection.
 		#[codec(index = 1)]
 		CollectionOwner(CollectionIdOf<T>),
-		/// Whether an operator is allowed to transfer an item or items from owner.
-		#[codec(index = 2)]
-		Allowance {
-			operator: AccountIdOf<T>,
-			collection: CollectionIdOf<T>,
-			maybe_item: Option<ItemIdOf<T>>,
-		},
 		/// Number of items existing in a concrete collection.
-		#[codec(index = 3)]
+		#[codec(index = 2)]
 		TotalSupply(CollectionIdOf<T>),
 		/// Returns the details of a collection.
-		#[codec(index = 4)]
+		#[codec(index = 3)]
 		Collection(CollectionIdOf<T>),
 		/// Returns the details of an item.
-		#[codec(index = 5)]
+		#[codec(index = 4)]
 		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
+		// /// Whether an operator is allowed to transfer an item or items from owner.
+		// #[codec(index = 2)]
+		// Allowance {
+		// 	operator: AccountIdOf<T>,
+		// 	collection: CollectionIdOf<T>,
+		// 	maybe_item: Option<ItemIdOf<T>>,
+		// },
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -72,7 +72,55 @@ pub mod pallet {
 	/// The events that can be emitted.
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {}
+	pub enum Event<T: Config> {
+		/// Event emitted when allowance by `owner` to `spender` canceled.
+		CancelApproval {
+			/// The collection ID.
+			collection: CollectionIdOf<T>,
+			/// the item ID.
+			item: ItemIdOf<T>,
+			/// The beneficiary of the allowance.
+			spender: AccountIdOf<T>,
+		},
+		/// Event emitted when allowance by `owner` to `spender` changes.
+		Approval {
+			/// The collection ID.
+			collection: CollectionIdOf<T>,
+			/// the item ID.
+			item: ItemIdOf<T>,
+			/// The owner providing the allowance.
+			owner: AccountIdOf<T>,
+			/// The beneficiary of the allowance.
+			spender: AccountIdOf<T>,
+		},
+		/// Event emitted when new item is minted to the account.
+		Mint {
+			/// The owner of the item.
+			to: AccountIdOf<T>,
+			/// The collection ID.
+			collection: CollectionIdOf<T>,
+			/// the item ID.
+			item: ItemIdOf<T>,
+		},
+		/// Event emitted when item is burned.
+		Burn {
+			/// The collection ID.
+			collection: CollectionIdOf<T>,
+			/// the item ID.
+			item: ItemIdOf<T>,
+		},
+		/// Event emitted when an item transfer occurs.
+		Transfer {
+			/// The collection ID.
+			collection: CollectionIdOf<T>,
+			/// the item ID.
+			item: ItemIdOf<T>,
+			/// The source of the transfer.
+			from: AccountIdOf<T>,
+			/// The recipient of the transfer.
+			to: AccountIdOf<T>,
+		},
+	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
@@ -92,6 +140,7 @@ pub mod pallet {
 				T::Lookup::unlookup(to.clone()),
 				None,
 			)?;
+			Self::deposit_event(Event::Mint { to, collection, item });
 			Ok(())
 		}
 
@@ -104,6 +153,7 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 		) -> DispatchResult {
 			NonFungiblesOf::<T>::burn(origin, collection, item)?;
+			Self::deposit_event(Event::Burn { collection, item });
 			Ok(())
 		}
 
@@ -114,14 +164,16 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-			dest: AccountIdOf<T>,
+			to: AccountIdOf<T>,
 		) -> DispatchResult {
+			let from = ensure_signed(origin.clone())?;
 			NonFungiblesOf::<T>::transfer(
 				origin,
 				collection,
 				item,
-				T::Lookup::unlookup(dest.clone()),
+				T::Lookup::unlookup(to.clone()),
 			)?;
+			Self::deposit_event(Event::Transfer { from, to, collection, item });
 			Ok(())
 		}
 
@@ -132,15 +184,17 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-			delegate: AccountIdOf<T>,
+			spender: AccountIdOf<T>,
 		) -> DispatchResult {
+			let owner = ensure_signed(origin.clone())?;
 			NonFungiblesOf::<T>::approve_transfer(
 				origin,
 				collection,
 				item,
-				T::Lookup::unlookup(delegate.clone()),
+				T::Lookup::unlookup(spender.clone()),
 				None,
 			)?;
+			Self::deposit_event(Event::Approval { collection, item, spender, owner });
 			Ok(())
 		}
 
@@ -151,14 +205,15 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-			delegate: AccountIdOf<T>,
+			spender: AccountIdOf<T>,
 		) -> DispatchResult {
 			NonFungiblesOf::<T>::cancel_approval(
 				origin,
 				collection,
 				item,
-				T::Lookup::unlookup(delegate.clone()),
+				T::Lookup::unlookup(spender.clone()),
 			)?;
+			Self::deposit_event(Event::CancelApproval { collection, item, spender });
 			Ok(())
 		}
 	}
@@ -192,7 +247,7 @@ pub mod pallet {
 						.encode()
 				},
 				// TODO: approvals field of the nft item is set to be private in the pallet_nfts
-				Allowance { operator, collection, maybe_item } => todo!(),
+				// Allowance { operator, collection, maybe_item } => todo!(),
 			}
 		}
 	}
