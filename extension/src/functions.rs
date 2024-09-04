@@ -349,6 +349,12 @@ mod tests {
 		}
 
 		#[test]
+		#[ignore]
+		fn dispatch_call_adjusts_weight() {
+			todo!()
+		}
+
+		#[test]
 		fn dispatch_call_with_invalid_input_returns_error() {
 			// Invalid encoded runtime call.
 			let input = vec![0, 99];
