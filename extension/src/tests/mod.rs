@@ -1,11 +1,10 @@
-use crate::mock::RuntimeResult;
-use crate::tests::utils::decoding_failed_weight;
 use crate::{
 	mock::{
-		mock_environment, new_test_ext, Config, DispatchExtFuncId, MockEnvironment, NoopFuncId,
-		ReadExtFuncId, RuntimeCall, RuntimeRead, Test,
+		new_test_ext, Config, DispatchExtFuncId, MockEnvironment, NoopFuncId, ReadExtFuncId,
+		RuntimeCall, RuntimeRead, RuntimeResult, Test,
 	},
-	Environment, Ext, Extension,
+	tests::utils::decoding_failed_weight,
+	Environment as _, Ext as _, Extension,
 };
 use codec::Encode;
 use frame_system::Call;
@@ -23,7 +22,7 @@ mod utils;
 #[test]
 fn extension_call_works() {
 	let input = vec![2, 2];
-	let mut env = mock_environment(NoopFuncId::get(), input.clone());
+	let mut env = MockEnvironment::new(NoopFuncId::get(), input.clone());
 	let mut extension = Extension::<Config>::default();
 	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
 	assert_eq!(env.charged(), overhead_weight(input.len() as u32))
@@ -33,7 +32,7 @@ fn extension_call_works() {
 fn extension_for_unknown_function_fails() {
 	let input = vec![2, 2];
 	// No function registered for id 0.
-	let mut env = mock_environment(0, input.clone());
+	let mut env = MockEnvironment::new(0, input.clone());
 	let mut extension = Extension::<Config>::default();
 	assert!(matches!(
 		extension.call(&mut env),
@@ -50,7 +49,7 @@ fn extension_call_dispatch_call_works() {
 			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
 		let encoded_call = call.encode();
 		let mut default_env = MockEnvironment::default();
-		let mut env = mock_environment(DispatchExtFuncId::get(), encoded_call.clone());
+		let mut env = MockEnvironment::new(DispatchExtFuncId::get(), encoded_call.clone());
 		let mut extension = Extension::<Config>::default();
 		assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
 		assert_eq!(
@@ -69,7 +68,7 @@ fn extension_call_dispatch_call_works() {
 fn extension_call_dispatch_call_invalid() {
 	// Invalid encoded runtime call.
 	let input = vec![0u8, 99];
-	let mut env = mock_environment(DispatchExtFuncId::get(), input.clone());
+	let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone());
 	let mut extension = Extension::<Config>::default();
 	assert!(extension.call(&mut env).is_err());
 	assert_eq!(env.charged(), decoding_failed_weight(input.len() as u32));
@@ -82,7 +81,7 @@ fn extension_call_read_state_works() {
 	let read_result = RuntimeResult::Pong("pop".to_string());
 	let expected = "pop".as_bytes().encode();
 	let mut default_env = MockEnvironment::default();
-	let mut env = mock_environment(ReadExtFuncId::get(), encoded_read.clone());
+	let mut env = MockEnvironment::new(ReadExtFuncId::get(), encoded_read.clone());
 	let mut extension = Extension::<Config>::default();
 	assert!(matches!(extension.call(&mut env), Ok(Converging(0))));
 	// Check that the two environments charged the same weights.
@@ -102,7 +101,7 @@ fn extension_call_read_state_works() {
 #[test]
 fn extension_call_read_state_invalid() {
 	let input = vec![0u8, 99];
-	let mut env = mock_environment(
+	let mut env = MockEnvironment::new(
 		ReadExtFuncId::get(),
 		// Invalid runtime state read.
 		input.clone(),

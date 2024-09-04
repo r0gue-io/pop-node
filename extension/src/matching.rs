@@ -38,35 +38,35 @@ impl<T: Get<u32>> Matches for WithFuncId<T> {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::mock::{mock_environment, MockEnvironment};
+	use crate::mock::MockEnvironment;
 	use sp_core::{ConstU16, ConstU32};
 
 	#[test]
 	fn matching_equals_works() {
-		let env = mock_environment(u32::from_be_bytes([0u8, 1, 0, 2]), vec![]);
+		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 2]), vec![]);
 		assert!(Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
 	}
 
 	#[test]
 	fn matching_equals_invalid() {
 		// Fails due to the invalid function id.
-		let env = mock_environment(u32::from_be_bytes([0u8, 1, 0, 3]), vec![]);
+		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 3]), vec![]);
 		assert!(!Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
 
 		// Fails due to the invalid extension id.
-		let env = mock_environment(u32::from_be_bytes([0u8, 2, 0, 2]), vec![]);
+		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 2, 0, 2]), vec![]);
 		assert!(!Equals::<ConstU16<1>, ConstU16<2>>::matches(&env));
 	}
 
 	#[test]
 	fn matching_function_id_works() {
-		let env = mock_environment(u32::from_be_bytes([0u8, 1, 0, 2]), vec![]);
+		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 2]), vec![]);
 		assert!(FunctionId::<ConstU16<2>>::matches(&env));
 	}
 
 	#[test]
 	fn matching_function_id_invalid() {
-		let env = mock_environment(u32::from_be_bytes([0u8, 1, 0, 3]), vec![]);
+		let env = MockEnvironment::new(u32::from_be_bytes([0u8, 1, 0, 3]), vec![]);
 		assert!(!FunctionId::<ConstU16<2>>::matches(&env));
 	}
 
@@ -78,7 +78,7 @@ mod tests {
 
 	#[test]
 	fn matching_with_func_id_invalid() {
-		let env = mock_environment(1, vec![]);
+		let env = MockEnvironment::new(1, vec![]);
 		assert!(!WithFuncId::<ConstU32<0>>::matches(&env));
 	}
 }

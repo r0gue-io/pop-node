@@ -1,8 +1,8 @@
-use crate::mock::*;
 use crate::{
 	environment::{BufOut, Ext},
 	functions::{Converter, Readable},
-	ContractWeights, DefaultConverter, Dispatchable, Environment, GetDispatchInfo, RawOrigin,
+	mock::*,
+	ContractWeights, DefaultConverter, Dispatchable, Environment as _, GetDispatchInfo, RawOrigin,
 	Weight,
 };
 use codec::Encode;
@@ -95,8 +95,8 @@ pub(crate) fn decoding_failed_weight(input_len: u32) -> Weight {
 }
 
 // Weight charged for executing a dispatch call with the chain extension.
-pub(crate) fn extension_call_dispatch_call_weight<E: Ext<Config = Test> + Clone>(
-	default_env: &mut MockEnvironment<E>,
+pub(crate) fn extension_call_dispatch_call_weight<E: Ext<Config = Test> + Clone + Default>(
+	default_env: &mut Environment<E>,
 	input_len: u32,
 	call: RuntimeCall,
 	contract: <Test as frame_system::Config>::AccountId,
@@ -107,7 +107,7 @@ pub(crate) fn extension_call_dispatch_call_weight<E: Ext<Config = Test> + Clone>
 
 // Environment charges weight before the dispatch call.
 pub(crate) fn charge_weight_filtering_dispatch_call<E: Ext<Config = Test> + Clone>(
-	default_env: &mut MockEnvironment<E>,
+	default_env: &mut Environment<E>,
 	input_len: u32,
 	call: RuntimeCall,
 	contract: <Test as frame_system::Config>::AccountId,
@@ -123,7 +123,7 @@ pub(crate) fn charge_weight_filtering_dispatch_call<E: Ext<Config = Test> + Clon
 
 // Environment charges weight before the dispatch call.
 pub(crate) fn charge_weight_filtering_read_state<E: Ext<Config = Test> + Clone>(
-	default_env: &mut MockEnvironment<E>,
+	default_env: &mut Environment<E>,
 	input_len: u32,
 	read: RuntimeRead,
 ) {
@@ -133,8 +133,8 @@ pub(crate) fn charge_weight_filtering_read_state<E: Ext<Config = Test> + Clone>(
 }
 
 // Weight charged for executing the function dispatch call.
-pub(crate) fn function_dispatch_call_weight<E: Ext<Config = Test> + Clone>(
-	default_env: &mut MockEnvironment<E>,
+pub(crate) fn function_dispatch_call_weight<E: Ext<Config = Test> + Clone + Default>(
+	default_env: &mut Environment<E>,
 	input_len: u32,
 	call: RuntimeCall,
 	contract: <Test as frame_system::Config>::AccountId,
@@ -153,8 +153,8 @@ pub(crate) fn function_dispatch_call_weight<E: Ext<Config = Test> + Clone>(
 }
 
 // Weight charged for executing a runtime state read with the chain extension.
-pub(crate) fn extension_call_read_state_weight<E: Ext<Config = Test> + Clone>(
-	default_env: &mut MockEnvironment<E>,
+pub(crate) fn extension_call_read_state_weight<E: Ext<Config = Test> + Clone + Default>(
+	default_env: &mut Environment<E>,
 	input_len: u32,
 	read: RuntimeRead,
 	read_result: RuntimeResult,
@@ -164,8 +164,8 @@ pub(crate) fn extension_call_read_state_weight<E: Ext<Config = Test> + Clone>(
 }
 
 // Weight charged for executing the function runtime read state.
-pub(crate) fn function_read_state_weight<E: Ext<Config = Test> + Clone>(
-	default_env: &mut MockEnvironment<E>,
+pub(crate) fn function_read_state_weight<E: Ext<Config = Test> + Clone + Default>(
+	default_env: &mut Environment<E>,
 	input_len: u32,
 	read: RuntimeRead,
 	read_result: RuntimeResult,
