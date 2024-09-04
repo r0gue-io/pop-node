@@ -14,15 +14,6 @@ use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, 
 use sp_runtime::{BuildStorage, Perbill};
 use std::marker::PhantomData;
 
-pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
-pub(crate) type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
-	<Test as frame_system::Config>::AccountId,
->>::Balance;
-pub(crate) type EventRecord = frame_system::EventRecord<
-	<Test as frame_system::Config>::RuntimeEvent,
-	<Test as frame_system::Config>::Hash,
->;
-
 pub(crate) const ALICE: u64 = 1;
 pub(crate) const DEBUG_OUTPUT: pallet_contracts::DebugInfo =
 	pallet_contracts::DebugInfo::UnsafeDebug;
@@ -30,6 +21,10 @@ pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 102
 pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
+pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
+pub(crate) type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
+	<Test as frame_system::Config>::AccountId,
+>>::Balance;
 type DispatchCallWith<Id, Filter, Processor = Identity<Vec<u8>>> = DispatchCall<
 	// Registered with func id 1
 	WithFuncId<Id>,
@@ -40,6 +35,11 @@ type DispatchCallWith<Id, Filter, Processor = Identity<Vec<u8>>> = DispatchCall<
 	// Accept any filterting
 	Filter,
 >;
+pub(crate) type EventRecord = frame_system::EventRecord<
+	<Test as frame_system::Config>::RuntimeEvent,
+	<Test as frame_system::Config>::Hash,
+>;
+pub(crate) type MockEnvironment = Environment<MockExt>;
 type ReadStateWith<Id, Filter, Processor = Identity<Vec<u8>>> = ReadState<
 	// Registered with func id 1
 	WithFuncId<Id>,
@@ -54,7 +54,6 @@ type ReadStateWith<Id, Filter, Processor = Identity<Vec<u8>>> = ReadState<
 	// Convert the result of a read into the expected result
 	DefaultConverter<RuntimeResult>,
 >;
-pub(crate) type MockEnvironment = Environment<MockExt>;
 
 frame_support::construct_runtime!(
 	pub enum Test {
