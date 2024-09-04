@@ -143,24 +143,24 @@ pub mod pallet {
 			)?;
 			Ok(())
 		}
-	}
 
-	/// Cancel one of the transfer approvals for a specific item.
-	#[pallet::call_index(4)]
-	#[pallet::weight(NonFungiblesWeightInfoOf::<T>::cancel_approval())]
-	pub fn cancel_approval(
-		origin: OriginFor<T>,
-		collection: CollectionIdOf<T>,
-		item: ItemIdOf<T>,
-		delegate: AccountIdOf<T>,
-	) -> DispatchResult {
-		NonFungiblesOf::<T>::cancel_approval(
-			origin,
-			collection,
-			item,
-			T::Lookup::unlookup(delegate.clone()),
-		)?;
-		Ok(())
+		/// Cancel one of the transfer approvals for a specific item.
+		#[pallet::call_index(4)]
+		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::cancel_approval())]
+		pub fn cancel_approval(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+			delegate: AccountIdOf<T>,
+		) -> DispatchResult {
+			NonFungiblesOf::<T>::cancel_approval(
+				origin,
+				collection,
+				item,
+				T::Lookup::unlookup(delegate.clone()),
+			)?;
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
