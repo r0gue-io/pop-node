@@ -248,6 +248,11 @@ impl<M: Matches, C> Matches for Noop<M, C> {
 	}
 }
 
+/// Helper method to construct the mock environment.
+pub(crate) fn mock_environment(id: u32, buffer: Vec<u8>) -> MockEnvironment<MockExt> {
+	MockEnvironment::new(id, buffer, MockExt::default())
+}
+
 /// A mocked chain extension environment.
 pub(crate) struct MockEnvironment<E> {
 	func_id: u16,
@@ -259,7 +264,7 @@ pub(crate) struct MockEnvironment<E> {
 
 impl Default for MockEnvironment<MockExt> {
 	fn default() -> Self {
-		MockEnvironment::new(0, [].to_vec(), MockExt::default())
+		mock_environment(0, [].to_vec())
 	}
 }
 

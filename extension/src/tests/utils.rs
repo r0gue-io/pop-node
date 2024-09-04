@@ -31,14 +31,14 @@ pub(crate) fn initialize_contract(contract_path: &str) -> Vec<u8> {
 }
 
 /// Instantiating the contract.
-pub(crate) fn instantiate(contract: Vec<u8>) -> AccountId {
+pub(crate) fn instantiate(func_name: &str, contract: Vec<u8>) -> AccountId {
 	let result = Contracts::bare_instantiate(
 		ALICE,
 		0,
 		GAS_LIMIT,
 		None,
 		Code::Upload(contract),
-		function_selector("new"),
+		function_selector(func_name),
 		Default::default(),
 		DEBUG_OUTPUT,
 		CollectEvents::UnsafeCollect,
@@ -51,6 +51,7 @@ pub(crate) fn instantiate(contract: Vec<u8>) -> AccountId {
 
 /// Perform a call to a specified contract.
 pub(crate) fn call(
+	func_name: &str,
 	contract: AccountId,
 	func_id: u32,
 	input: impl Encode + Debug,
@@ -63,7 +64,7 @@ pub(crate) fn call(
 		0,
 		gas_limit,
 		None,
-		[function_selector("call"), (func_id, input.encode()).encode()].concat(),
+		[function_selector(func_name), (func_id, input.encode()).encode()].concat(),
 		DEBUG_OUTPUT,
 		CollectEvents::UnsafeCollect,
 		Determinism::Enforced,
@@ -104,7 +105,7 @@ pub(crate) fn extension_call_dispatch_call_weight<E: Ext<Config = Test> + Clone>
 	function_dispatch_call_weight(default_env, input_len, call, contract)
 }
 
-// Environment charges weight for before the dispatch call.
+// Environment charges weight before the dispatch call.
 pub(crate) fn charge_weight_filtering_dispatch_call<E: Ext<Config = Test> + Clone>(
 	default_env: &mut MockEnvironment<E>,
 	input_len: u32,
@@ -114,13 +115,13 @@ pub(crate) fn charge_weight_filtering_dispatch_call<E: Ext<Config = Test> + Clon
 	let dispatch_info = call.get_dispatch_info();
 	assert_ok!(default_env.charge_weight(read_from_buffer_weight(input_len)));
 	// Charge pre-dispatch weight.
-	default_env.charge_weight(dispatch_info.weight).expect("should work");
+	assert_ok!(default_env.charge_weight(dispatch_info.weight));
 	// Dispatch call.
 	let origin: <Test as frame_system::Config>::RuntimeOrigin = RawOrigin::Signed(contract).into();
 	assert_ok!(call.dispatch(origin));
 }
 
-// Environment charges weight for before the dispatch call.
+// Environment charges weight before the dispatch call.
 pub(crate) fn charge_weight_filtering_read_state<E: Ext<Config = Test> + Clone>(
 	default_env: &mut MockEnvironment<E>,
 	input_len: u32,
