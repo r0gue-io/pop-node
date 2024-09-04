@@ -1,7 +1,6 @@
 use core::fmt::Debug;
-use std::sync::LazyLock;
+use std::{path::Path, sync::LazyLock};
 
-use super::utils::{self, initialize_contract};
 use crate::{
 	mock::{self, *},
 	ErrorConverter,
@@ -9,7 +8,7 @@ use crate::{
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
 use frame_system::Call;
-use pallet_contracts::{ContractExecResult, StorageDeposit};
+use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism, StorageDeposit};
 use sp_runtime::{
 	DispatchError::{self, BadOrigin, Module},
 	ModuleError,
@@ -18,21 +17,7 @@ use sp_runtime::{
 static CONTRACT: LazyLock<Vec<u8>> =
 	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.wasm"));
 
-fn instantiate() -> AccountId {
-	utils::instantiate("new", CONTRACT.clone())
-}
-
-fn call(
-	contract: AccountId,
-	func_id: u32,
-	input: impl Encode + Debug,
-	gas_limit: Weight,
-) -> ContractExecResult<Balance, EventRecord> {
-	utils::call("call", contract, func_id, input, gas_limit)
-}
-
-#[cfg(test)]
-mod dispatch_call_tests {
+mod dispatch_call {
 	use super::*;
 
 	#[test]
@@ -97,8 +82,7 @@ mod dispatch_call_tests {
 	}
 }
 
-#[cfg(test)]
-mod read_state_tests {
+mod read_state {
 	use super::*;
 
 	#[test]
@@ -176,4 +160,71 @@ fn invalid_func_id_fails() {
 			<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
 		assert_eq!(result.result.err(), error);
 	});
+}
+
+/// Initializing a new contract file if it does not exist.
+fn initialize_contract(contract_path: &str) -> Vec<u8> {
+	if !Path::new(contract_path).exists() {
+		use contract_build::*;
+		let manifest_path = ManifestPath::new("contract/Cargo.toml").unwrap();
+		let args = ExecuteArgs {
+			build_artifact: BuildArtifacts::CodeOnly,
+			build_mode: BuildMode::Debug,
+			manifest_path,
+			output_type: OutputType::Json,
+			verbosity: Verbosity::Quiet,
+			skip_wasm_validation: true,
+			..Default::default()
+		};
+		execute(args).unwrap();
+	}
+	std::fs::read(contract_path).unwrap()
+}
+
+/// Instantiating the contract.
+fn instantiate() -> AccountId {
+	let result = Contracts::bare_instantiate(
+		ALICE,
+		0,
+		GAS_LIMIT,
+		None,
+		Code::Upload(CONTRACT.clone()),
+		function_selector("new"),
+		Default::default(),
+		DEBUG_OUTPUT,
+		CollectEvents::UnsafeCollect,
+	);
+	log::debug!("instantiate result: {result:?}");
+	let result = result.result.unwrap();
+	assert!(!result.result.did_revert());
+	result.account_id
+}
+
+/// Perform a call to a specified contract.
+fn call(
+	contract: AccountId,
+	func_id: u32,
+	input: impl Encode + Debug,
+	gas_limit: Weight,
+) -> ContractExecResult<Balance, EventRecord> {
+	log::debug!("call: func_id={func_id}, input={input:?}");
+	let result = Contracts::bare_call(
+		ALICE,
+		contract,
+		0,
+		gas_limit,
+		None,
+		[function_selector("call"), (func_id, input.encode()).encode()].concat(),
+		DEBUG_OUTPUT,
+		CollectEvents::UnsafeCollect,
+		Determinism::Enforced,
+	);
+	log::debug!("gas consumed: {:?}", result.gas_consumed);
+	log::debug!("call result: {result:?}");
+	result
+}
+
+/// Construct the hashed bytes as a selector of function.
+fn function_selector(name: &str) -> Vec<u8> {
+	sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
 }
