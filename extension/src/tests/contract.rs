@@ -59,7 +59,7 @@ mod dispatch_call_tests {
 	}
 
 	#[test]
-	fn dispatch_call_filtering_noop_fails() {
+	fn dispatch_call_filtering_works() {
 		new_test_ext().execute_with(|| {
 			// Instantiate a new contract.
 			let contract = instantiate();
@@ -81,7 +81,7 @@ mod dispatch_call_tests {
 	}
 
 	#[test]
-	fn dispatch_call_return_error_fails() {
+	fn dispatch_call_returns_error() {
 		new_test_ext().execute_with(|| {
 			// Instantiate a new contract.
 			let contract = instantiate();
@@ -117,7 +117,7 @@ mod read_state_tests {
 	}
 
 	#[test]
-	fn read_state_filtering_noop_fails() {
+	fn read_state_filtering_works() {
 		new_test_ext().execute_with(|| {
 			// Instantiate a new contract.
 			let contract = instantiate();
@@ -136,7 +136,7 @@ mod read_state_tests {
 	}
 
 	#[test]
-	fn read_state_invalid_input_fails() {
+	fn read_state_with_invalid_input_returns_error() {
 		new_test_ext().execute_with(|| {
 			// Instantiate a new contract.
 			let contract = instantiate();
