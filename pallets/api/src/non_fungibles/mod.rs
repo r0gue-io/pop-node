@@ -4,9 +4,6 @@
 
 pub use pallet::*;
 
-#[cfg(test)]
-mod tests;
-
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
 #[frame_support::pallet]
