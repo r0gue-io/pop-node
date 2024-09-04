@@ -94,8 +94,8 @@ impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
 mod tests {
 	use super::*;
 	use crate::{
+		extension::read_from_buffer_weight,
 		mock::{MockEnvironment, RemoveFirstByte, Test},
-		tests::read_from_buffer_weight,
 	};
 	use codec::{Decode as OriginalDecode, Encode};
 	use frame_support::assert_ok;

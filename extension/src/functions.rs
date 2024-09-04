@@ -222,9 +222,9 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 mod tests {
 	use super::*;
 	use crate::{
+		extension::{read_from_buffer_weight, write_to_contract_weight},
 		matching::WithFuncId,
 		mock::INVALID_FUNC_ID,
-		tests::{read_from_buffer_weight, write_to_contract_weight},
 	};
 	use codec::Encode;
 	use frame_support::traits::{Everything, Nothing};
