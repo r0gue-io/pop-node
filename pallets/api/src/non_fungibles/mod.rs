@@ -2,9 +2,8 @@
 //! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
 //! space.
 
+use frame_support::traits::nonfungibles_v2::{Inspect, InspectEnumerable};
 pub use pallet::*;
-
-use frame_support::traits::nonfungibles_v2::Inspect;
 use pallet_nfts::WeightInfo;
 use sp_runtime::traits::StaticLookup;
 
@@ -32,8 +31,28 @@ pub mod pallet {
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
+		/// Returns the owner of an item.
 		#[codec(index = 0)]
-		Dummy(AccountIdOf<T>),
+		OwnerOf { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
+		/// Returns the owner of a collection.
+		#[codec(index = 1)]
+		CollectionOwner(CollectionIdOf<T>),
+		/// Whether an operator is allowed to transfer an item or items from owner.
+		#[codec(index = 2)]
+		Allowance {
+			operator: AccountIdOf<T>,
+			collection: CollectionIdOf<T>,
+			maybe_item: Option<ItemIdOf<T>>,
+		},
+		/// Number of items existing in a concrete collection.
+		#[codec(index = 3)]
+		TotalSupply(CollectionIdOf<T>),
+		/// Returns the details of a collection.
+		#[codec(index = 4)]
+		Collection(CollectionIdOf<T>),
+		/// Returns the details of an item.
+		#[codec(index = 5)]
+		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -108,10 +127,40 @@ pub mod pallet {
 
 		/// Delegate a permission to perform actions on the collection item to an account.
 		#[pallet::call_index(3)]
-		#[pallet::weight(Weight::default())]
-		pub fn approve(_origin: OriginFor<T>) -> DispatchResult {
+		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::approve_transfer())]
+		pub fn approve(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+			delegate: AccountIdOf<T>,
+		) -> DispatchResult {
+			NonFungiblesOf::<T>::approve_transfer(
+				origin,
+				collection,
+				item,
+				T::Lookup::unlookup(delegate.clone()),
+				None,
+			)?;
 			Ok(())
 		}
+	}
+
+	/// Cancel one of the transfer approvals for a specific item.
+	#[pallet::call_index(4)]
+	#[pallet::weight(NonFungiblesWeightInfoOf::<T>::cancel_approval())]
+	pub fn cancel_approval(
+		origin: OriginFor<T>,
+		collection: CollectionIdOf<T>,
+		item: ItemIdOf<T>,
+		delegate: AccountIdOf<T>,
+	) -> DispatchResult {
+		NonFungiblesOf::<T>::cancel_approval(
+			origin,
+			collection,
+			item,
+			T::Lookup::unlookup(delegate.clone()),
+		)?;
+		Ok(())
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -125,7 +174,26 @@ pub mod pallet {
 		///   the associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
-			vec![]
+			match value {
+				OwnerOf { collection, item } => {
+					NonFungiblesOf::<T>::owner(collection, item).encode()
+				},
+				CollectionOwner(collection) => {
+					NonFungiblesOf::<T>::collection_owner(collection).encode()
+				},
+				TotalSupply(collection) => {
+					(NonFungiblesOf::<T>::items(&collection).count() as u8).encode()
+				},
+				Collection(collection) => {
+					pallet_nfts::Collection::<T, T::NonFungiblesInstance>::get(&collection).encode()
+				},
+				Item { collection, item } => {
+					pallet_nfts::Item::<T, T::NonFungiblesInstance>::get(&collection, &item)
+						.encode()
+				},
+				// TODO: approvals field of the nft item is set to be private in the pallet_nfts
+				Allowance { operator, collection, maybe_item } => todo!(),
+			}
 		}
 	}
 }
