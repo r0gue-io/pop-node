@@ -1,5 +1,5 @@
 use crate::{
-	decoding::Identity, environment, matching::WithFuncId, Decodes, DecodingFailed,
+	decoding::Identity, environment, matching::WithFuncId, Converter, Decodes, DecodingFailed,
 	DefaultConverter, DispatchCall, Extension, Function, Matches, Processor, ReadState, Readable,
 };
 use codec::{Decode, Encode};
@@ -135,14 +135,12 @@ parameter_types! {
 	// IDs for functions for extension tests.
 	pub const DispatchExtFuncId : u32 = 1;
 	pub const ReadExtFuncId : u32 = 2;
-	// IDs for function for extension tests but do nothing.
-	pub const ReadExtNoopFuncId : u32 = 4;
 	// IDs for functions for contract tests.
-	pub const DispatchContractFuncId : u32 = 5;
-	pub const ReadContractFuncId : u32 = 6;
+	pub const DispatchContractFuncId : u32 = 3;
+	pub const ReadContractFuncId : u32 = 4;
 	// IDs for function for contract tests but do nothing.
-	pub const DispatchContractNoopFuncId : u32 = 7;
-	pub const ReadContractNoopFuncId : u32 = 8;
+	pub const DispatchContractNoopFuncId : u32 = 5;
+	pub const ReadContractNoopFuncId : u32 = 6;
 	// ID for function that does nothing
 	pub const NoopFuncId : u32 = u32::MAX;
 }
@@ -193,8 +191,6 @@ pub(crate) type Functions = (
 	// Functions that allow everything for extension testing.
 	DispatchCallWith<DispatchExtFuncId, Everything>,
 	ReadStateWith<ReadExtFuncId, Everything>,
-	// Functions that allow nothing for extension testing.
-	ReadStateWith<ReadExtNoopFuncId, Nothing>,
 	// Functions that allow everything for contract testing.
 	DispatchCallWith<DispatchContractFuncId, Everything, RemoveFirstByte>,
 	ReadStateWith<ReadContractFuncId, Everything, RemoveFirstByte>,
@@ -331,7 +327,6 @@ impl<E> environment::BufOut for Environment<E> {
 		_allow_skip: bool,
 		_weight_per_byte: Option<Weight>,
 	) -> pallet_contracts::chain_extension::Result<()> {
-		// TODO handle write logic
 		self.buffer = buffer.to_vec();
 		Ok(())
 	}
@@ -363,4 +358,18 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
+}
+
+/// A converter for converting string results to uppercase.
+pub(crate) struct UppercaseConverter;
+impl Converter for UppercaseConverter {
+	type Source = RuntimeResult;
+	type Target = Vec<u8>;
+	const LOG_TARGET: &'static str = "";
+
+	fn convert(value: Self::Source, _env: &impl crate::Environment) -> Self::Target {
+		match value {
+			RuntimeResult::Pong(value) => value.to_uppercase().encode(),
+		}
+	}
 }

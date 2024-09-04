@@ -89,6 +89,11 @@ pub(crate) fn read_from_buffer_weight(input_len: u32) -> Weight {
 	ContractWeights::<Test>::seal_return(input_len)
 }
 
+// Weight charged for writing to contract memory.
+pub(crate) fn write_to_contract_weight(len: u32) -> Weight {
+	ContractWeights::<Test>::seal_input(len)
+}
+
 // Weight charged after decoding failed.
 pub(crate) fn decoding_failed_weight(input_len: u32) -> Weight {
 	overhead_weight(input_len) + read_from_buffer_weight(input_len)
@@ -103,17 +108,6 @@ pub(crate) fn extension_call_dispatch_call_weight<E: Ext<Config = Test> + Clone 
 ) -> Weight {
 	assert_ok!(default_env.charge_weight(ContractWeights::<Test>::seal_debug_message(input_len)));
 	function_dispatch_call_weight(default_env, input_len, call, contract)
-}
-
-// Environment charges weight before the dispatch call.
-pub(crate) fn charge_weight_filtering_read_state<E: Ext<Config = Test> + Clone>(
-	default_env: &mut Environment<E>,
-	input_len: u32,
-	read: RuntimeRead,
-) {
-	assert_ok!(default_env.charge_weight(read_from_buffer_weight(input_len)));
-	// Charge weight for reading state.
-	assert_ok!(default_env.charge_weight(read.weight()));
 }
 
 // Weight charged for executing the function dispatch call.

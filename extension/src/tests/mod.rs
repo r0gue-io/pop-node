@@ -10,9 +10,8 @@ use codec::Encode;
 use frame_system::Call;
 use pallet_contracts::chain_extension::RetVal::Converging;
 pub(crate) use utils::{
-	charge_weight_filtering_read_state, extension_call_dispatch_call_weight,
-	extension_call_read_state_weight, function_read_state_weight, overhead_weight,
-	read_from_buffer_weight,
+	extension_call_dispatch_call_weight, extension_call_read_state_weight, overhead_weight,
+	read_from_buffer_weight, write_to_contract_weight,
 };
 
 mod contract;
