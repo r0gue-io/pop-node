@@ -2,7 +2,7 @@
 
 use codec::Decode as _;
 use core::marker::PhantomData;
-pub use decoding::{Decode, Decodes, DecodingFailed, IdentityProcessor, Processor};
+pub use decoding::{Decode, Decodes, DecodingFailed, Identity, Processor};
 pub use environment::{BufIn, BufOut, Environment, Ext};
 use frame_support::{
 	dispatch::{GetDispatchInfo, PostDispatchInfo, RawOrigin},
@@ -14,9 +14,11 @@ pub use functions::{
 	Converter, DefaultConverter, DispatchCall, ErrorConverter, Function, ReadState, Readable,
 };
 pub use matching::{Equals, FunctionId, Matches};
-use pallet_contracts::chain_extension::{ChainExtension, InitState, RetVal::Converging};
 pub use pallet_contracts::chain_extension::{Result, RetVal, State};
-use pallet_contracts::WeightInfo;
+use pallet_contracts::{
+	chain_extension::{ChainExtension, InitState, RetVal::Converging},
+	WeightInfo,
+};
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
@@ -32,7 +34,8 @@ mod tests;
 
 type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;
 
-/// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within `DispatchError::ModuleError`.
+/// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within
+/// `DispatchError::ModuleError`.
 pub const DECODING_FAILED_ERROR: [u8; 4] = [11, 0, 0, 0];
 
 /// A configurable chain extension.
@@ -70,8 +73,8 @@ impl<
 	) -> Result<RetVal> {
 		log::trace!(target: Config::LOG_TARGET, "extension called");
 		// Charge weight for making a call from a contract to the runtime.
-		// `debug_message` weight is a good approximation of the additional overhead of going from contract layer to substrate layer.
-		// reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=DebugMessage(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_debug_message(len)%2C
+		// `debug_message` weight is a good approximation of the additional overhead of going from
+		// contract layer to substrate layer. reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=DebugMessage(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_debug_message(len)%2C
 		let len = env.in_len();
 		let overhead = ContractWeights::<Runtime>::seal_debug_message(len);
 		let charged = env.charge_weight(overhead)?;

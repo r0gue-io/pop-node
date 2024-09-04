@@ -1,5 +1,5 @@
 use crate::{
-	decoding::IdentityProcessor, environment, matching::WithFuncId, Decodes, DecodingFailed,
+	decoding::Identity, environment, matching::WithFuncId, Decodes, DecodingFailed,
 	DefaultConverter, DispatchCall, Extension, Function, Matches, Processor, ReadState, Readable,
 };
 use codec::{Decode, Encode};
@@ -30,7 +30,7 @@ pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 102
 pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
-type DispatchCallWith<Id, Filter, Processor> = DispatchCall<
+type DispatchCallWith<Id, Filter, Processor = Identity<Vec<u8>>> = DispatchCall<
 	// Registered with func id 1
 	WithFuncId<Id>,
 	// Runtime config
@@ -40,7 +40,7 @@ type DispatchCallWith<Id, Filter, Processor> = DispatchCall<
 	// Accept any filterting
 	Filter,
 >;
-type ReadStateWith<Id, Filter, Processor> = ReadState<
+type ReadStateWith<Id, Filter, Processor = Identity<Vec<u8>>> = ReadState<
 	// Registered with func id 1
 	WithFuncId<Id>,
 	// Runtime config
@@ -192,11 +192,11 @@ impl Into<Vec<u8>> for RuntimeResult {
 
 pub(crate) type Functions = (
 	// Functions that allow everything for extension testing.
-	DispatchCallWith<DispatchExtFuncId, Everything, IdentityProcessor>,
-	ReadStateWith<ReadExtFuncId, Everything, IdentityProcessor>,
+	DispatchCallWith<DispatchExtFuncId, Everything>,
+	ReadStateWith<ReadExtFuncId, Everything>,
 	// Functions that allow nothing for extension testing.
-	DispatchCallWith<DispatchExtNoopFuncId, Nothing, IdentityProcessor>,
-	ReadStateWith<ReadExtNoopFuncId, Nothing, IdentityProcessor>,
+	DispatchCallWith<DispatchExtNoopFuncId, Nothing>,
+	ReadStateWith<ReadExtNoopFuncId, Nothing>,
 	// Functions that allow everything for contract testing.
 	DispatchCallWith<DispatchContractFuncId, Everything, RemoveFirstByte>,
 	ReadStateWith<ReadContractFuncId, Everything, RemoveFirstByte>,

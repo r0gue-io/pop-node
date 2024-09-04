@@ -57,18 +57,10 @@ pub trait Processor {
 	fn process(value: Self::Value, env: &impl Environment) -> Self::Value;
 }
 
-impl Processor for () {
-	type Value = ();
-	const LOG_TARGET: &'static str = "";
-	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
-		value
-	}
-}
-
 /// Default processor implementation which just passes through the value unchanged.
-pub struct IdentityProcessor;
-impl Processor for IdentityProcessor {
-	type Value = Vec<u8>;
+pub struct Identity<Value>(PhantomData<Value>);
+impl<Value> Processor for Identity<Value> {
+	type Value = Value;
 	const LOG_TARGET: &'static str = "";
 
 	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
@@ -77,7 +69,7 @@ impl Processor for IdentityProcessor {
 }
 
 /// Default implementation for decoding data read from contract memory.
-pub struct Decodes<O, E, P = IdentityProcessor, L = ()>(PhantomData<(O, E, P, L)>);
+pub struct Decodes<O, E, P = Identity<Vec<u8>>, L = ()>(PhantomData<(O, E, P, L)>);
 impl<
 		Output: codec::Decode,
 		Error: Get<DispatchError>,
@@ -109,19 +101,13 @@ mod tests {
 	use codec::{Decode as OriginalDecode, Encode};
 	use frame_support::assert_ok;
 
-	type EnumDecodes<P> = Decodes<ComprehensiveEnum, DecodingFailed<Test>, P>;
-
-	#[test]
-	fn default_processor_works() {
-		let env = MockEnvironment::default();
-		assert_eq!(<()>::process((), &env), ())
-	}
+	type EnumDecodes = Decodes<ComprehensiveEnum, DecodingFailed<Test>>;
 
 	#[test]
 	fn identity_processor_works() {
 		let env = MockEnvironment::default();
-		let result = IdentityProcessor::process(vec![0, 1, 2, 3, 4], &env);
-		assert_eq!(result, vec![0, 1, 2, 3, 4])
+		assert_eq!(Identity::process(42, &env), 42);
+		assert_eq!(Identity::process(vec![0, 1, 2, 3, 4], &env), vec![0, 1, 2, 3, 4]);
 	}
 
 	#[test]
@@ -132,52 +118,24 @@ mod tests {
 	}
 
 	#[test]
-	fn decode_with_identity_processor_works() {
+	fn decode_works() {
+		test_cases().into_iter().for_each(|t| {
+			let (input, output) = (t.0, t.1);
+			println!("input: {:?} -> output: {:?}", input, output);
+			let mut env = MockEnvironment::new(0, input);
+			// Decode `input` to `output`.
+			assert_eq!(EnumDecodes::decode(&mut env), Ok(output));
+		});
+	}
+
+	#[test]
+	fn decode_charges_weight() {
 		test_cases().into_iter().for_each(|t| {
 			let (input, output) = (t.0, t.1);
 			println!("input: {:?} -> output: {:?}", input, output);
 			let mut env = MockEnvironment::new(0, input.clone());
-			// Decode `input` to `output` using a provided processor.
-			assert_eq!(EnumDecodes::<IdentityProcessor>::decode(&mut env), Ok(output));
-		});
-	}
-
-	#[test]
-	fn decode_with_identity_processor_charges_weight() {
-		test_cases().into_iter().for_each(|t| {
-			let (input, output) = (t.0, t.1);
-			println!("input: {:?} -> output: {:?}", input, output);
-			let mut env = MockEnvironment::new(0, input.clone());
-			// Decode `input` to `output` using a default processor.
-			assert_ok!(EnumDecodes::<IdentityProcessor>::decode(&mut env));
-			// Decode charges weight based on the length of the input.
-			assert_eq!(env.charged(), read_from_buffer_weight(input.len() as u32));
-		});
-	}
-
-	#[test]
-	fn decode_with_remove_first_byte_processor_works() {
-		test_cases().into_iter().for_each(|t| {
-			let (mut input, output) = (t.0, t.1);
-			// Insert one bit at the start because of `RemoveFirstByte`.
-			input.insert(0, 0);
-			println!("input: {:?} -> output: {:?}", input, output);
-			let mut env = MockEnvironment::new(0, input.clone());
-			// Decode `input` to `output` using a provided processor.
-			assert_eq!(EnumDecodes::<RemoveFirstByte>::decode(&mut env), Ok(output));
-		});
-	}
-
-	#[test]
-	fn decode_with_remove_first_byte_processor_charge_weights() {
-		test_cases().into_iter().for_each(|t| {
-			let (mut input, output) = (t.0, t.1);
-			// Insert one bit at the start because of `RemoveFirstByte`.
-			input.insert(0, 0);
-			println!("input: {:?} -> output: {:?}", input, output);
-			let mut env = MockEnvironment::new(0, input.clone());
-			// Decode `input` to `output` using a provided processor.
-			assert_ok!(EnumDecodes::<RemoveFirstByte>::decode(&mut env));
+			// Decode `input` to `output`.
+			assert_ok!(EnumDecodes::decode(&mut env));
 			// Decode charges weight based on the length of the input.
 			assert_eq!(env.charged(), read_from_buffer_weight(input.len() as u32));
 		});
@@ -192,18 +150,18 @@ mod tests {
 	}
 
 	#[test]
-	fn decode_return_decoding_fail_error() {
+	fn decode_failure_returns_decoding_failed_error() {
 		let input = vec![100];
 		let mut env = MockEnvironment::new(0, input.clone());
-		let result = EnumDecodes::<IdentityProcessor>::decode(&mut env);
+		let result = EnumDecodes::decode(&mut env);
 		assert_eq!(result, Err(pallet_contracts::Error::<Test>::DecodingFailed.into()));
 	}
 
 	#[test]
-	fn decode_fail_charge_weight() {
+	fn decode_failure_charges_weight() {
 		let input = vec![100];
 		let mut env = MockEnvironment::new(0, input.clone());
-		assert!(EnumDecodes::<IdentityProcessor>::decode(&mut env).is_err());
+		assert!(EnumDecodes::decode(&mut env).is_err());
 		// Decode charges weight based on the length of the input, also when decoding fails.
 		assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
 	}
