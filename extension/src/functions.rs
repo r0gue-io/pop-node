@@ -232,16 +232,15 @@ mod tests {
 	use crate::{
 		mock::INVALID_FUNC_ID,
 		tests::{
-			charge_weight_filtering_dispatch_call, charge_weight_filtering_read_state,
-			function_dispatch_call_weight, function_read_state_weight, read_from_buffer_weight,
+			charge_weight_filtering_read_state, function_read_state_weight, read_from_buffer_weight,
 		},
 	};
 	use codec::Encode;
 	use frame_support::traits::{Everything, Nothing};
 	use frame_system::Call;
 	use mock::{
-		new_test_ext, DispatchExtFuncId, DispatchExtNoopFuncId, Functions, MockEnvironment,
-		ReadExtFuncId, ReadExtNoopFuncId, RuntimeCall, RuntimeRead, RuntimeResult, Test,
+		new_test_ext, DispatchExtFuncId, Functions, MockEnvironment, ReadExtFuncId,
+		ReadExtNoopFuncId, RuntimeCall, RuntimeRead, RuntimeResult, Test,
 	};
 
 	fn test_environments(id: u32, buffer: Vec<u8>) -> (MockEnvironment, MockEnvironment) {
@@ -275,7 +274,7 @@ mod tests {
 	}
 
 	#[test]
-	fn filtering_works() {
+	fn contains_works() {
 		fn contains<C: Contains<T>, T>(input: T, expected: bool) {
 			assert_eq!(C::contains(&input), expected);
 		}
@@ -292,44 +291,45 @@ mod tests {
 		contains::<MustBeEven, u8>(101, false);
 	}
 
-	mod dispatch_call_tests {
+	mod dispatch_call {
 		use super::*;
+		use crate::{functions::Function as _, matching::WithFuncId};
+		use sp_core::ConstU32;
+
+		type FuncId = ConstU32<42>;
+		type Function<Filter = Everything> = DispatchCall<
+			WithFuncId<FuncId>,
+			Test,
+			Decodes<RuntimeCall, DecodingFailed<Test>>,
+			Filter,
+		>;
 
 		#[test]
-		fn filtering_dispatch_call_noop_function_fails() {
-			new_test_ext().execute_with(|| {
-				let call = RuntimeCall::System(Call::remark_with_event {
-					remark: "pop".as_bytes().to_vec(),
-				});
-				let mut env = MockEnvironment::new(DispatchExtNoopFuncId::get(), call.encode());
-				let error = frame_system::Error::<Test>::CallFiltered.into();
-				let expected = <() as ErrorConverter>::convert(error, &mut env).err();
-				assert_eq!(Functions::execute(&mut env).err(), expected);
-			})
+		fn dispatch_call_filtering_works() {
+			let call =
+				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
+			let mut env = MockEnvironment::new(FuncId::get(), call.encode());
+			let error = frame_system::Error::<Test>::CallFiltered.into();
+			let expected = <() as ErrorConverter>::convert(error, &mut env).err();
+			assert_eq!(Function::<Nothing>::execute(&mut env).err(), expected);
 		}
 
 		#[test]
-		fn filtering_dispatch_call_noop_function_charge_weights() {
-			new_test_ext().execute_with(|| {
-				let call = RuntimeCall::System(Call::remark_with_event {
-					remark: "pop".as_bytes().to_vec(),
-				});
-				let (mut env, mut noop_env) =
-					test_environments(DispatchExtNoopFuncId::get(), call.encode());
-				assert!(Functions::execute(&mut env).is_err());
-				// Check that the two environments charged the same weights.
-				charge_weight_filtering_dispatch_call(
-					&mut noop_env,
-					call.encode().len() as u32,
-					call,
-					env.ext().address().clone(),
-				);
-				assert_eq!(env.charged(), noop_env.charged());
-			})
+		fn dispatch_call_filtered_charges_weight() {
+			let call =
+				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
+			let encoded_call = call.encode();
+			let mut env = MockEnvironment::new(FuncId::get(), encoded_call.clone());
+			assert!(Function::<Nothing>::execute(&mut env).is_err());
+			assert_eq!(
+				env.charged(),
+				read_from_buffer_weight(encoded_call.len() as u32) +
+					call.get_dispatch_info().weight
+			);
 		}
 
 		#[test]
-		fn execute_dispatch_call_function_works() {
+		fn dispatch_call_works() {
 			new_test_ext().execute_with(|| {
 				let call = RuntimeCall::System(Call::remark_with_event {
 					remark: "pop".as_bytes().to_vec(),
@@ -340,11 +340,11 @@ mod tests {
 		}
 
 		#[test]
-		fn execute_dispatch_call_function_return_error() {
+		fn dispatch_call_returns_error() {
 			new_test_ext().execute_with(|| {
 				let call = RuntimeCall::System(Call::set_code { code: "pop".as_bytes().to_vec() });
 				let mut env = MockEnvironment::new(DispatchExtFuncId::get(), call.encode());
-				let error = Functions::execute(&mut env).err();
+				let error = Function::<Everything>::execute(&mut env).err();
 				let expected =
 					<() as ErrorConverter>::convert(DispatchError::BadOrigin, &env).err();
 				assert_eq!(error, expected);
@@ -352,53 +352,43 @@ mod tests {
 		}
 
 		#[test]
-		fn execute_dispatch_call_function_charge_weights() {
+		fn dispatch_call_charges_weight() {
 			new_test_ext().execute_with(|| {
 				let call = RuntimeCall::System(Call::remark_with_event {
 					remark: "pop".as_bytes().to_vec(),
 				});
 				let encoded_call = call.encode();
-				let (mut env, mut noop_env) =
-					test_environments(DispatchExtFuncId::get(), encoded_call.clone());
-				assert!(Functions::execute(&mut env).is_ok());
-				// Check that the two environments charged the same weights.
+				let mut env = MockEnvironment::new(FuncId::get(), encoded_call.clone());
+				assert!(Function::<Everything>::execute(&mut env).is_ok());
 				assert_eq!(
 					env.charged(),
-					function_dispatch_call_weight(
-						&mut noop_env,
-						encoded_call.len() as u32,
-						call,
-						env.ext().address().clone()
-					)
+					read_from_buffer_weight(encoded_call.len() as u32) +
+						call.get_dispatch_info().weight
 				);
 			})
 		}
 
 		#[test]
-		fn execute_dispatch_call_function_invalid_input_fails() {
-			new_test_ext().execute_with(|| {
-				// Invalid encoded runtime call.
-				let input = vec![0, 99];
-				let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone());
-				let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
-				let expected = <() as ErrorConverter>::convert(error, &mut env).err();
-				assert_eq!(Functions::execute(&mut env).err(), expected);
-			})
+		fn dispatch_call_with_invalid_input_returns_error() {
+			// Invalid encoded runtime call.
+			let input = vec![0, 99];
+			let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone());
+			let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			let expected = <() as ErrorConverter>::convert(error, &mut env).err();
+			assert_eq!(Function::<Everything>::execute(&mut env).err(), expected);
 		}
 
 		#[test]
-		fn execute_dispatch_call_function_invalid_input_charge_weights() {
-			new_test_ext().execute_with(|| {
-				// Invalid encoded runtime call.
-				let input = vec![0, 99];
-				let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone());
-				assert!(Functions::execute(&mut env).is_err());
-				assert_eq!(env.charged(), read_from_buffer_weight(input.len() as u32,));
-			})
+		fn dispatch_call_with_invalid_input_charges_weight() {
+			// Invalid encoded runtime call.
+			let input = vec![0, 99];
+			let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone());
+			assert!(Functions::execute(&mut env).is_err());
+			assert_eq!(env.charged(), read_from_buffer_weight(input.len() as u32,));
 		}
 	}
 
-	mod read_state_tests {
+	mod read_state {
 		use super::*;
 
 		#[test]
@@ -496,12 +486,12 @@ mod tests {
 	}
 
 	#[test]
-	fn execute_invalid_function_no_charge_weights() {
+	fn execute_invalid_function_does_not_charge_weight() {
 		let input = vec![];
 		let mut env = MockEnvironment::new(INVALID_FUNC_ID, input.clone());
 		assert!(Functions::execute(&mut env).is_err());
-		// No weight charged as execution begins after the overhead weight charge and immediately
-		// errors.
+		// No weight charged as no function in the `Functions` tuple is matched to charge weight.
+		// See extension tests for extension call weight charges.
 		assert_eq!(env.charged(), Weight::default());
 	}
 
@@ -518,6 +508,6 @@ mod tests {
 	fn default_conversion_works() {
 		let env = MockEnvironment::default();
 		let source = "pop".to_string();
-		assert_eq!(DefaultConverter::<String>::convert(source.clone(), &env), source.as_bytes());
+		assert_eq!(DefaultConverter::convert(source.clone(), &env), source.as_bytes());
 	}
 }

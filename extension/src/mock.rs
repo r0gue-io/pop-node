@@ -136,7 +136,6 @@ parameter_types! {
 	pub const DispatchExtFuncId : u32 = 1;
 	pub const ReadExtFuncId : u32 = 2;
 	// IDs for function for extension tests but do nothing.
-	pub const DispatchExtNoopFuncId : u32 = 3;
 	pub const ReadExtNoopFuncId : u32 = 4;
 	// IDs for functions for contract tests.
 	pub const DispatchContractFuncId : u32 = 5;
@@ -195,7 +194,6 @@ pub(crate) type Functions = (
 	DispatchCallWith<DispatchExtFuncId, Everything>,
 	ReadStateWith<ReadExtFuncId, Everything>,
 	// Functions that allow nothing for extension testing.
-	DispatchCallWith<DispatchExtNoopFuncId, Nothing>,
 	ReadStateWith<ReadExtNoopFuncId, Nothing>,
 	// Functions that allow everything for contract testing.
 	DispatchCallWith<DispatchContractFuncId, Everything, RemoveFirstByte>,
