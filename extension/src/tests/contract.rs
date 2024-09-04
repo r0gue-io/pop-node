@@ -110,7 +110,6 @@ mod read_state_tests {
 			let read_result =
 				call(contract, ReadContractFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
 			let return_value = read_result.result.unwrap();
-			println!("{:?}", return_value.data);
 			let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
 			let result = Ok("pop".as_bytes().to_vec());
 			assert_eq!(decoded, result);
