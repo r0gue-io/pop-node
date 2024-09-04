@@ -6460,6 +6460,7 @@ dependencies = [
  "frame-system",
  "pallet-assets",
  "pallet-balances",
+ "pallet-nfts",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
