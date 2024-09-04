@@ -349,9 +349,24 @@ mod tests {
 		}
 
 		#[test]
-		#[ignore]
 		fn dispatch_call_adjusts_weight() {
-			todo!()
+			new_test_ext().execute_with(|| {
+				// Attempt to perform non-existent migration with additional weight limit specified.
+				let weight_limit = Weight::from_parts(123456789, 12345);
+				let call = RuntimeCall::Contracts(pallet_contracts::Call::migrate { weight_limit });
+				let encoded_call = call.encode();
+				let mut env = MockEnvironment::new(FuncId::get(), encoded_call.clone());
+				let expected: DispatchError =
+					pallet_contracts::Error::<Test>::NoMigrationPerformed.into();
+				assert_eq!(DispatchCall::execute(&mut env).err().unwrap(), expected);
+				assert_eq!(
+					env.charged(),
+					read_from_buffer_weight(encoded_call.len() as u32) +
+						// Weight limit subtracted from pre-dispatch weight charged on failure.
+						call.get_dispatch_info().weight -
+						weight_limit
+				);
+			})
 		}
 
 		#[test]
