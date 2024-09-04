@@ -42,8 +42,6 @@ impl<
 	/// - `env` - The current execution environment.
 	fn execute(env: &mut (impl Environment<Config = Config> + BufIn)) -> Result<RetVal> {
 		// Decode runtime call.
-		// TODO: should the error returned from decoding failure be converted into a versioned
-		// error, or always be pallet_contracts::Error::DecodingFailed?
 		let call = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: call={call:?}");
 		// Charge weight before dispatch.
@@ -103,8 +101,6 @@ impl<
 	/// - `env` - The current execution environment.
 	fn execute(env: &mut (impl Environment + BufIn + BufOut)) -> Result<RetVal> {
 		// Decode runtime state read
-		// TODO: should the error returned from decoding failure be converted into a versioned
-		// error, or always be pallet_contracts::Error::DecodingFailed?
 		let read = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: read={read:?}");
 		// Charge weight before read
