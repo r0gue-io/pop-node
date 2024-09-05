@@ -1,14 +1,15 @@
 use core::{fmt::Debug, marker::PhantomData};
 use frame_support::traits::Get;
-pub use pop_chain_extension::{
-	Config, DecodingFailed, DispatchCall, ReadState, Readable, DECODING_FAILED_ERROR,
-};
+pub use pop_chain_extension::{Config, DecodingFailed, DispatchCall, ReadState, Readable};
 use pop_chain_extension::{
 	Converter, Decodes, Environment, LogTarget, Matches, Processor, Result, RetVal,
 };
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
+/// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within
+/// `DispatchError::ModuleError`.
+pub const DECODING_FAILED_ERROR: [u8; 4] = [11, 0, 0, 0];
 /// The logging target for the chain extension.
 pub const LOG_TARGET: &str = "pop-api::extension";
 

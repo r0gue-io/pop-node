@@ -36,10 +36,6 @@ mod tests;
 
 type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;
 
-/// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within
-/// `DispatchError::ModuleError`.
-pub const DECODING_FAILED_ERROR: [u8; 4] = [11, 0, 0, 0];
-
 /// A configurable chain extension.
 #[derive(Default)]
 pub struct Extension<C: Config>(PhantomData<C>);
