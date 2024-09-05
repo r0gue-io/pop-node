@@ -224,7 +224,7 @@ mod tests {
 	use crate::{
 		extension::{read_from_buffer_weight, write_to_contract_weight},
 		matching::WithFuncId,
-		mock::INVALID_FUNC_ID,
+		mock::{Noop, NoopFuncId, INVALID_FUNC_ID},
 	};
 	use codec::Encode;
 	use frame_support::traits::{Everything, Nothing};
@@ -489,7 +489,14 @@ mod tests {
 	}
 
 	#[test]
-	fn execute_invalid_function_fails() {
+	fn execute_tuple_matches_and_executes_function() {
+		type Functions = (Noop<WithFuncId<NoopFuncId>, Test>,);
+		let mut env = MockEnvironment::new(NoopFuncId::get(), vec![]);
+		assert!(matches!(Functions::execute(&mut env), Ok(Converging(0))));
+	}
+
+	#[test]
+	fn execute_tuple_with_invalid_function_fails() {
 		let input = vec![];
 		let mut env = MockEnvironment::new(INVALID_FUNC_ID, input.clone());
 		let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
@@ -498,7 +505,7 @@ mod tests {
 	}
 
 	#[test]
-	fn execute_invalid_function_does_not_charge_weight() {
+	fn execute_tuple_with_invalid_function_does_not_charge_weight() {
 		let input = vec![];
 		let mut env = MockEnvironment::new(INVALID_FUNC_ID, input.clone());
 		assert!(Functions::execute(&mut env).is_err());
