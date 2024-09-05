@@ -4,8 +4,11 @@
 
 use frame_support::traits::nonfungibles_v2::InspectEnumerable;
 pub use pallet::*;
+use pallet_nfts::WeightInfo;
 use sp_runtime::traits::StaticLookup;
 
+#[cfg(test)]
+mod tests;
 mod types;
 
 #[frame_support::pallet]
@@ -13,7 +16,6 @@ pub mod pallet {
 	use super::*;
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
-	use pallet_nfts::WeightInfo;
 	use sp_std::vec::Vec;
 	use types::{
 		AccountIdOf, CollectionIdOf, ItemDetails, ItemIdOf, NonFungiblesOf,
@@ -34,26 +36,25 @@ pub mod pallet {
 		/// Number of items existing in a concrete collection.
 		#[codec(index = 2)]
 		TotalSupply(CollectionIdOf<T>),
-		/// Returns the details of a collection.
+		/// Returns the total number of items in the collection owned by the account.
 		#[codec(index = 3)]
+		BalanceOf { collection: CollectionIdOf<T>, owner: AccountIdOf<T> },
+		/// Returns the details of a collection.
+		#[codec(index = 4)]
 		Collection(CollectionIdOf<T>),
 		/// Returns the details of an item.
-		#[codec(index = 4)]
+		#[codec(index = 5)]
 		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 		/// Whether a spender is allowed to transfer an item or items from owner.
-		#[codec(index = 5)]
+		#[codec(index = 6)]
 		Allowance { spender: AccountIdOf<T>, collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config:
-		frame_system::Config + pallet_nfts::Config<Self::NonFungiblesInstance>
-	{
+	pub trait Config: frame_system::Config + pallet_nfts::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// The instance of pallet nfts it is tightly coupled to.
-		type NonFungiblesInstance;
 	}
 
 	#[pallet::pallet]
@@ -117,7 +118,7 @@ pub mod pallet {
 		/// Create a new non-fungible token to the collection.
 		#[pallet::call_index(0)]
 		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::mint())]
-		pub fn mint_to(
+		pub fn mint(
 			origin: OriginFor<T>,
 			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
@@ -229,15 +230,16 @@ pub mod pallet {
 				TotalSupply(collection) => {
 					(NonFungiblesOf::<T>::items(&collection).count() as u8).encode()
 				},
-				Collection(collection) => {
-					pallet_nfts::Collection::<T, T::NonFungiblesInstance>::get(&collection).encode()
-				},
+				Collection(collection) => pallet_nfts::Collection::<T>::get(&collection).encode(),
 				Item { collection, item } => {
-					pallet_nfts::Item::<T, T::NonFungiblesInstance>::get(&collection, &item)
-						.encode()
+					pallet_nfts::Item::<T>::get(&collection, &item).encode()
 				},
 				Allowance { collection, item, spender } => {
 					Self::allowance(collection, item, spender).encode()
+				},
+				BalanceOf { collection, owner } => {
+					(NonFungiblesOf::<T>::owned_in_collection(&collection, &owner).count() as u8)
+						.encode()
 				},
 			}
 		}
@@ -248,8 +250,7 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			spender: AccountIdOf<T>,
 		) -> bool {
-			let data =
-				pallet_nfts::Item::<T, T::NonFungiblesInstance>::get(&collection, &item).encode();
+			let data = pallet_nfts::Item::<T>::get(&collection, &item).encode();
 			if let Ok(detail) = ItemDetails::<T>::decode(&mut data.as_slice()) {
 				return detail.approvals.contains_key(&spender);
 			}
