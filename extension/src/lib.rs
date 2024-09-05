@@ -33,6 +33,7 @@ mod mock;
 // Integration tests using proxy contract and mock runtime.
 #[cfg(test)]
 mod mock;
+// Integration tests using proxy contract and mock runtime.
 #[cfg(test)]
 mod tests;
 
