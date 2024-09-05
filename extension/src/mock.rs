@@ -1,30 +1,18 @@
-use crate::decoding::IdentityProcessor;
 use crate::{
-	environment, matching::WithFuncId, Decodes, DecodingFailed, DefaultConverter, DispatchCall,
-	Extension, Function, Matches, Processor, ReadState, Readable,
+	decoding::Identity, environment, matching::WithFuncId, Converter, Decodes, DecodingFailed,
+	DefaultConverter, DispatchCall, Extension, Function, Matches, Processor, ReadState, Readable,
 };
 use codec::{Decode, Encode};
-use frame_support::traits::fungible::Inspect;
 use frame_support::{
 	derive_impl,
 	pallet_prelude::Weight,
 	parameter_types,
-	traits::{ConstU32, Everything, Nothing},
+	traits::{fungible::Inspect, ConstU32, Everything, Nothing},
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
-use sp_runtime::BuildStorage;
-use sp_runtime::Perbill;
+use sp_runtime::{BuildStorage, Perbill};
 use std::marker::PhantomData;
-
-pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
-pub(crate) type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
-	<Test as frame_system::Config>::AccountId,
->>::Balance;
-pub(crate) type EventRecord = frame_system::EventRecord<
-	<Test as frame_system::Config>::RuntimeEvent,
-	<Test as frame_system::Config>::Hash,
->;
 
 pub(crate) const ALICE: u64 = 1;
 pub(crate) const DEBUG_OUTPUT: pallet_contracts::DebugInfo =
@@ -33,7 +21,11 @@ pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 102
 pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
-type DispatchCallWith<Id, Filter, Processor> = DispatchCall<
+pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
+pub(crate) type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
+	<Test as frame_system::Config>::AccountId,
+>>::Balance;
+type DispatchCallWith<Id, Filter, Processor = Identity<Vec<u8>>> = DispatchCall<
 	// Registered with func id 1
 	WithFuncId<Id>,
 	// Runtime config
@@ -43,8 +35,12 @@ type DispatchCallWith<Id, Filter, Processor> = DispatchCall<
 	// Accept any filterting
 	Filter,
 >;
-
-type ReadStateWith<Id, Filter, Processor> = ReadState<
+pub(crate) type EventRecord = frame_system::EventRecord<
+	<Test as frame_system::Config>::RuntimeEvent,
+	<Test as frame_system::Config>::Hash,
+>;
+pub(crate) type MockEnvironment = Environment<MockExt>;
+type ReadStateWith<Id, Filter, Processor = Identity<Vec<u8>>> = ReadState<
 	// Registered with func id 1
 	WithFuncId<Id>,
 	// Runtime config
@@ -138,15 +134,12 @@ parameter_types! {
 	// IDs for functions for extension tests.
 	pub const DispatchExtFuncId : u32 = 1;
 	pub const ReadExtFuncId : u32 = 2;
-	// IDs for function for extension tests but do nothing.
-	pub const DispatchExtNoopFuncId : u32 = 3;
-	pub const ReadExtNoopFuncId : u32 = 4;
 	// IDs for functions for contract tests.
-	pub const DispatchContractFuncId : u32 = 5;
-	pub const ReadContractFuncId : u32 = 6;
+	pub const DispatchContractFuncId : u32 = 3;
+	pub const ReadContractFuncId : u32 = 4;
 	// IDs for function for contract tests but do nothing.
-	pub const DispatchContractNoopFuncId : u32 = 7;
-	pub const ReadContractNoopFuncId : u32 = 8;
+	pub const DispatchContractNoopFuncId : u32 = 5;
+	pub const ReadContractNoopFuncId : u32 = 6;
 	// ID for function that does nothing
 	pub const NoopFuncId : u32 = u32::MAX;
 }
@@ -162,7 +155,8 @@ impl Readable for RuntimeRead {
 	/// The corresponding type carrying the result of the query for mock runtime state.
 	type Result = RuntimeResult;
 
-	/// Determines the weight of the read, used to charge the appropriate weight before the read is performed.
+	/// Determines the weight of the read, used to charge the appropriate weight before the read is
+	/// performed.
 	fn weight(&self) -> Weight {
 		match self {
 			RuntimeRead::Ping => Weight::from_parts(1_000u64, 1u64),
@@ -194,11 +188,8 @@ impl Into<Vec<u8>> for RuntimeResult {
 
 pub(crate) type Functions = (
 	// Functions that allow everything for extension testing.
-	DispatchCallWith<DispatchExtFuncId, Everything, IdentityProcessor>,
-	ReadStateWith<ReadExtFuncId, Everything, IdentityProcessor>,
-	// Functions that allow nothing for extension testing.
-	DispatchCallWith<DispatchExtNoopFuncId, Nothing, IdentityProcessor>,
-	ReadStateWith<ReadExtNoopFuncId, Nothing, IdentityProcessor>,
+	DispatchCallWith<DispatchExtFuncId, Everything>,
+	ReadStateWith<ReadExtFuncId, Everything>,
 	// Functions that allow everything for contract testing.
 	DispatchCallWith<DispatchContractFuncId, Everything, RemoveFirstByte>,
 	ReadStateWith<ReadContractFuncId, Everything, RemoveFirstByte>,
@@ -216,7 +207,8 @@ impl super::Config for Config {
 	const LOG_TARGET: &'static str = "pop-chain-extension";
 }
 
-// Removes first bytes of the encoded call, added by the chain extension call within the proxy contract.
+// Removes first bytes of the encoded call, added by the chain extension call within the proxy
+// contract.
 pub struct RemoveFirstByte;
 impl Processor for RemoveFirstByte {
 	type Value = Vec<u8>;
@@ -248,13 +240,8 @@ impl<M: Matches, C> Matches for Noop<M, C> {
 	}
 }
 
-/// Helper method to construct the mock environment.
-pub(crate) fn mock_environment(id: u32, buffer: Vec<u8>) -> MockEnvironment<MockExt> {
-	MockEnvironment::new(id, buffer, MockExt::default())
-}
-
 /// A mocked chain extension environment.
-pub(crate) struct MockEnvironment<E> {
+pub(crate) struct Environment<E = MockExt> {
 	func_id: u16,
 	ext_id: u16,
 	charged: Vec<Weight>,
@@ -262,20 +249,20 @@ pub(crate) struct MockEnvironment<E> {
 	ext: E,
 }
 
-impl Default for MockEnvironment<MockExt> {
+impl Default for Environment {
 	fn default() -> Self {
-		mock_environment(0, [].to_vec())
+		Self::new(0, [].to_vec())
 	}
 }
 
-impl<E> MockEnvironment<E> {
-	pub(crate) fn new(id: u32, buffer: Vec<u8>, ext: E) -> Self {
+impl<E: Default> Environment<E> {
+	pub(crate) fn new(id: u32, buffer: Vec<u8>) -> Self {
 		Self {
 			func_id: (id & 0x0000FFFF) as u16,
 			ext_id: (id >> 16) as u16,
 			charged: Vec::new(),
 			buffer,
-			ext,
+			ext: E::default(),
 		}
 	}
 
@@ -284,7 +271,7 @@ impl<E> MockEnvironment<E> {
 	}
 }
 
-impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for MockEnvironment<E> {
+impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for Environment<E> {
 	type Config = Test;
 	type ChargedAmount = Weight;
 
@@ -321,7 +308,7 @@ impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for Mo
 	}
 }
 
-impl<E> environment::BufIn for MockEnvironment<E> {
+impl<E> environment::BufIn for Environment<E> {
 	fn in_len(&self) -> u32 {
 		self.buffer.len() as u32
 	}
@@ -332,14 +319,13 @@ impl<E> environment::BufIn for MockEnvironment<E> {
 	}
 }
 
-impl<E> environment::BufOut for MockEnvironment<E> {
+impl<E> environment::BufOut for Environment<E> {
 	fn write(
 		&mut self,
 		buffer: &[u8],
 		_allow_skip: bool,
 		_weight_per_byte: Option<Weight>,
 	) -> pallet_contracts::chain_extension::Result<()> {
-		// TODO handle write logic
 		self.buffer = buffer.to_vec();
 		Ok(())
 	}
@@ -371,4 +357,18 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
+}
+
+/// A converter for converting string results to uppercase.
+pub(crate) struct UppercaseConverter;
+impl Converter for UppercaseConverter {
+	type Source = RuntimeResult;
+	type Target = Vec<u8>;
+	const LOG_TARGET: &'static str = "";
+
+	fn convert(value: Self::Source, _env: &impl crate::Environment) -> Self::Target {
+		match value {
+			RuntimeResult::Pong(value) => value.to_uppercase().encode(),
+		}
+	}
 }
