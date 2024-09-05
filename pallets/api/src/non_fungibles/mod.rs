@@ -1,30 +1,24 @@
-//! The fungibles pallet offers a streamlined interface for interacting with fungible assets. The
+//! The non-fungibles pallet offers a streamlined interface for interacting with non-fungible assets. The
 //! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
 //! space.
 
-use frame_support::traits::nonfungibles_v2::{Inspect, InspectEnumerable};
+use frame_support::traits::nonfungibles_v2::InspectEnumerable;
 pub use pallet::*;
-use pallet_nfts::WeightInfo;
 use sp_runtime::traits::StaticLookup;
 
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type NonFungiblesInstanceOf<T> = <T as Config>::NonFungiblesInstance;
-type NonFungiblesOf<T> = pallet_nfts::Pallet<T, NonFungiblesInstanceOf<T>>;
-type NonFungiblesWeightInfoOf<T> =
-	<T as pallet_nfts::Config<NonFungiblesInstanceOf<T>>>::WeightInfo;
-type CollectionIdOf<T> = <pallet_nfts::Pallet<T, NonFungiblesInstanceOf<T>> as Inspect<
-	<T as frame_system::Config>::AccountId,
->>::CollectionId;
-type ItemIdOf<T> = <pallet_nfts::Pallet<T, NonFungiblesInstanceOf<T>> as Inspect<
-	<T as frame_system::Config>::AccountId,
->>::ItemId;
+mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
+	use pallet_nfts::WeightInfo;
 	use sp_std::vec::Vec;
+	use types::{
+		AccountIdOf, CollectionIdOf, ItemDetails, ItemIdOf, NonFungiblesOf,
+		NonFungiblesWeightInfoOf,
+	};
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -46,13 +40,9 @@ pub mod pallet {
 		/// Returns the details of an item.
 		#[codec(index = 4)]
 		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
-		// /// Whether an operator is allowed to transfer an item or items from owner.
-		// #[codec(index = 2)]
-		// Allowance {
-		// 	operator: AccountIdOf<T>,
-		// 	collection: CollectionIdOf<T>,
-		// 	maybe_item: Option<ItemIdOf<T>>,
-		// },
+		/// Whether a spender is allowed to transfer an item or items from owner.
+		#[codec(index = 5)]
+		Allowance { spender: AccountIdOf<T>, collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -246,9 +236,24 @@ pub mod pallet {
 					pallet_nfts::Item::<T, T::NonFungiblesInstance>::get(&collection, &item)
 						.encode()
 				},
-				// TODO: approvals field of the nft item is set to be private in the pallet_nfts
-				// Allowance { operator, collection, maybe_item } => todo!(),
+				Allowance { collection, item, spender } => {
+					Self::allowance(collection, item, spender).encode()
+				},
 			}
+		}
+
+		/// Check if the `spender` is approved to transfer the collection item
+		fn allowance(
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+			spender: AccountIdOf<T>,
+		) -> bool {
+			let data =
+				pallet_nfts::Item::<T, T::NonFungiblesInstance>::get(&collection, &item).encode();
+			if let Ok(detail) = ItemDetails::<T>::decode(&mut data.as_slice()) {
+				return detail.approvals.contains_key(&spender);
+			}
+			false
 		}
 	}
 }
