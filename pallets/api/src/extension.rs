@@ -17,7 +17,8 @@ pub type Extension<Functions> = pop_chain_extension::Extension<Functions>;
 /// Decodes output by prepending bytes from ext_id() + func_id()
 pub type DecodesAs<Output, Error, Logger = ()> = Decodes<Output, Error, Prepender, Logger>;
 
-/// Prepends bytes from ext_id() + func_id() to prefix the encoded input bytes to determine the versioned output
+/// Prepends bytes from ext_id() + func_id() to prefix the encoded input bytes to determine the
+/// versioned output
 pub struct Prepender;
 impl Processor for Prepender {
 	/// The type of value to be processed.
@@ -115,17 +116,20 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 }
 
 fn func_id(env: &impl Environment) -> u8 {
-	// TODO: update once the encoding scheme order has been finalised: expected to be env.ext_id().to_le_bytes()[0]
+	// TODO: update once the encoding scheme order has been finalised: expected to be
+	// env.ext_id().to_le_bytes()[0]
 	env.func_id().to_le_bytes()[1]
 }
 
 fn module_and_index(env: &impl Environment) -> (u8, u8) {
-	// TODO: update once the encoding scheme order has been finalised: expected to be env.func_id().to_le_bytes()[0..1]
+	// TODO: update once the encoding scheme order has been finalised: expected to be
+	// env.func_id().to_le_bytes()[0..1]
 	let bytes = env.ext_id().to_le_bytes();
 	(bytes[0], bytes[1])
 }
 
 fn version(env: &impl Environment) -> u8 {
-	// TODO: update once the encoding scheme order has been finalised: expected to be env.ext_id().to_le_bytes()[1]
+	// TODO: update once the encoding scheme order has been finalised: expected to be
+	// env.ext_id().to_le_bytes()[1]
 	env.func_id().to_le_bytes()[0]
 }
