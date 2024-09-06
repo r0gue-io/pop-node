@@ -9,11 +9,6 @@ use frame_support::{
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
-use crate::{
-	deposit, extensions, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeHoldReason, Timestamp,
-};
-
 pub enum AllowBalancesCall {}
 
 impl frame_support::traits::Contains<RuntimeCall> for AllowBalancesCall {

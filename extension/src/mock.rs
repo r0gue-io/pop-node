@@ -1,6 +1,7 @@
 use crate::{
-	decoding::Identity, environment, matching::WithFuncId, Converter, Decodes, DecodingFailed,
-	DefaultConverter, DispatchCall, Extension, Function, Matches, Processor, ReadState, Readable,
+	decoding::Identity, environment, matching::WithFuncId, AccountIdOf, ContractWeightsOf,
+	Converter, Decodes, DecodingFailed, DefaultConverter, DispatchCall, Extension, Function,
+	Matches, Processor, ReadState, Readable,
 };
 use codec::{Decode, Encode};
 use frame_support::{
@@ -9,7 +10,7 @@ use frame_support::{
 	parameter_types,
 	traits::{fungible::Inspect, ConstU32, Everything, Nothing},
 };
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
 use sp_runtime::{BuildStorage, Perbill};
 use std::marker::PhantomData;
@@ -21,24 +22,22 @@ pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 102
 pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
-pub(crate) type AccountId = <Test as frame_system::Config>::AccountId;
-pub(crate) type Balance = <<Test as pallet_contracts::Config>::Currency as Inspect<
-	<Test as frame_system::Config>::AccountId,
->>::Balance;
+pub(crate) type AccountId = AccountIdOf<Test>;
+pub(crate) type Balance =
+	<<Test as pallet_contracts::Config>::Currency as Inspect<AccountIdOf<Test>>>::Balance;
 type DispatchCallWith<Id, Filter, Processor = Identity<Vec<u8>>> = DispatchCall<
 	// Registered with func id 1
 	WithFuncId<Id>,
 	// Runtime config
 	Test,
 	// Decode inputs to the function as runtime calls
-	Decodes<RuntimeCall, DecodingFailed<Test>, Processor>,
-	// Accept any filterting
+	Decodes<RuntimeCall, ContractWeightsOf<Test>, DecodingFailed<Test>, Processor>,
+	// Accept any filtering
 	Filter,
 >;
-pub(crate) type EventRecord = frame_system::EventRecord<
-	<Test as frame_system::Config>::RuntimeEvent,
-	<Test as frame_system::Config>::Hash,
->;
+pub(crate) type EventRecord =
+	frame_system::EventRecord<<Test as frame_system::Config>::RuntimeEvent, HashOf<Test>>;
+type HashOf<T> = <T as frame_system::Config>::Hash;
 pub(crate) type MockEnvironment = Environment<MockExt>;
 type ReadStateWith<Id, Filter, Processor = Identity<Vec<u8>>> = ReadState<
 	// Registered with func id 1
@@ -48,7 +47,7 @@ type ReadStateWith<Id, Filter, Processor = Identity<Vec<u8>>> = ReadState<
 	// The runtime state reads available.
 	RuntimeRead,
 	// Decode inputs to the function as runtime calls
-	Decodes<RuntimeRead, DecodingFailed<Test>, Processor>,
+	Decodes<RuntimeRead, ContractWeightsOf<Test>, DecodingFailed<Test>, Processor>,
 	// Accept any filtering
 	Filter,
 	// Convert the result of a read into the expected result
@@ -81,31 +80,34 @@ impl pallet_balances::Config for Test {
 impl pallet_timestamp::Config for Test {}
 
 impl pallet_contracts::Config for Test {
-	type Time = Timestamp;
-	type Randomness = Test;
-	type Currency = Balances;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
+	type AddressGenerator = DefaultAddressGenerator;
+	type ApiVersion = ();
 	type CallFilter = (); //TestFilter;
 	type CallStack = [Frame<Self>; 5];
-	type WeightPrice = (); //Self;
-	type WeightInfo = ();
 	type ChainExtension = Extension<Config>;
-	type Schedule = MySchedule;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type Currency = Balances;
+	type Debug = (); //TestDebug;
+	type DefaultDepositLimit = DefaultDepositLimit;
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
-	type DefaultDepositLimit = DefaultDepositLimit;
-	type AddressGenerator = DefaultAddressGenerator;
-	type MaxCodeLen = ConstU32<{ 100 * 1024 }>;
-	type MaxStorageKeyLen = ConstU32<128>;
-	type UnsafeUnstableInterface = (); //UnstableInterface;
-	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type Migrations = (); //crate::migration::codegen::BenchMigrations;
-	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
-	type MaxDelegateDependencies = MaxDelegateDependencies;
-	type Debug = (); //TestDebug;
 	type Environment = ();
+	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
+	type MaxCodeLen = ConstU32<{ 100 * 1024 }>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type MaxStorageKeyLen = ConstU32<128>;
+	type Migrations = (); //crate::migration::codegen::BenchMigrations;
+	type Randomness = Test;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Schedule = MySchedule;
+	type Time = Timestamp;
+	type UnsafeUnstableInterface = (); //UnstableInterface;
+	type UploadOrigin = EnsureSigned<Self::AccountId>;
+	type WeightInfo = ();
+	type WeightPrice = (); //Self;
 	type Xcm = ();
 }
 
@@ -122,10 +124,8 @@ parameter_types! {
 	pub static DefaultDepositLimit: <Test as pallet_balances::Config>::Balance = 10_000_000;
 }
 
-impl frame_support::traits::Randomness<<Test as frame_system::Config>::Hash, BlockNumberFor<Test>>
-	for Test
-{
-	fn random(_subject: &[u8]) -> (<Test as frame_system::Config>::Hash, BlockNumberFor<Test>) {
+impl frame_support::traits::Randomness<HashOf<Test>, BlockNumberFor<Test>> for Test {
+	fn random(_subject: &[u8]) -> (HashOf<Test>, BlockNumberFor<Test>) {
 		(Default::default(), Default::default())
 	}
 }
@@ -229,7 +229,7 @@ impl<Matcher: Matches, Config: pallet_contracts::Config> Function for Noop<Match
 	type Error = ();
 
 	fn execute(
-		_env: &mut (impl environment::Environment<Config = Config> + crate::BufIn),
+		_env: &mut (impl environment::Environment<AccountId = Config::AccountId> + crate::BufIn),
 	) -> pallet_contracts::chain_extension::Result<RetVal> {
 		Ok(RetVal::Converging(0))
 	}
@@ -271,8 +271,10 @@ impl<E: Default> Environment<E> {
 	}
 }
 
-impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for Environment<E> {
-	type Config = Test;
+impl<E: environment::Ext<AccountId = AccountIdOf<Test>> + Clone> environment::Environment
+	for Environment<E>
+{
+	type AccountId = E::AccountId;
 	type ChargedAmount = Weight;
 
 	fn func_id(&self) -> u16 {
@@ -303,7 +305,7 @@ impl<E: environment::Ext<Config = Test> + Clone> environment::Environment for En
 		self.charged.insert(last, actual_weight)
 	}
 
-	fn ext(&mut self) -> impl environment::Ext<Config = Self::Config> {
+	fn ext(&mut self) -> impl environment::Ext<AccountId = Self::AccountId> {
 		self.ext.clone()
 	}
 }
@@ -334,12 +336,12 @@ impl<E> environment::BufOut for Environment<E> {
 /// A mocked smart contract environment.
 #[derive(Clone, Default)]
 pub(crate) struct MockExt {
-	pub(crate) address: <Test as frame_system::Config>::AccountId,
+	pub(crate) address: AccountIdOf<Test>,
 }
 impl environment::Ext for MockExt {
-	type Config = Test;
+	type AccountId = AccountIdOf<Test>;
 
-	fn address(&self) -> &<Self::Config as frame_system::Config>::AccountId {
+	fn address(&self) -> &Self::AccountId {
 		&self.address
 	}
 }

@@ -77,14 +77,6 @@ parameter_types! {
 }
 
 impl pallet_nft_fractionalization::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Deposit = AssetDeposit;
-	type Currency = Balances;
-	type NewAssetSymbol = NewAssetSymbol;
-	type NewAssetName = NewAssetName;
-	type StringLimit = AssetsStringLimit;
-	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
-	type NftId = <Self as pallet_nfts::Config>::ItemId;
 	type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::Balance;
 	type AssetId = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId;
 	type Assets = Assets;

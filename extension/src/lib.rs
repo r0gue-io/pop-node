@@ -1,6 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Decode as _;
 use core::marker::PhantomData;
 pub use decoding::{Decode, Decodes, DecodingFailed, Identity, Processor};
 pub use environment::{BufIn, BufOut, Environment, Ext};
@@ -32,12 +31,11 @@ mod matching;
 mod mock;
 // Integration tests using proxy contract and mock runtime.
 #[cfg(test)]
-mod mock;
-// Integration tests using proxy contract and mock runtime.
-#[cfg(test)]
 mod tests;
 
-type ContractWeights<T> = <T as pallet_contracts::Config>::WeightInfo;
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+pub type ContractWeightsOf<T> = <T as pallet_contracts::Config>::WeightInfo;
+type RuntimeCallOf<T> = <T as frame_system::Config>::RuntimeCall;
 
 /// A configurable chain extension.
 #[derive(Default)]
@@ -70,14 +68,14 @@ impl<
 {
 	fn call(
 		&mut self,
-		env: &mut (impl Environment<Config = Runtime> + BufIn + BufOut),
+		env: &mut (impl Environment<AccountId = Runtime::AccountId> + BufIn + BufOut),
 	) -> Result<RetVal> {
 		log::trace!(target: Config::LOG_TARGET, "extension called");
 		// Charge weight for making a call from a contract to the runtime.
 		// `debug_message` weight is a good approximation of the additional overhead of going from
 		// contract layer to substrate layer. reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=DebugMessage(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_debug_message(len)%2C
 		let len = env.in_len();
-		let overhead = ContractWeights::<Runtime>::seal_debug_message(len);
+		let overhead = ContractWeightsOf::<Runtime>::seal_debug_message(len);
 		let charged = env.charge_weight(overhead)?;
 		log::debug!(target: Config::LOG_TARGET, "extension call weight charged: len={len}, weight={overhead}, charged={charged:?}");
 		// Execute the function
@@ -215,26 +213,16 @@ mod extension {
 
 	// Weight charged for calling into the runtime from a contract.
 	fn overhead_weight(input_len: u32) -> Weight {
-		ContractWeights::<Test>::seal_debug_message(input_len)
+		ContractWeightsOf::<Test>::seal_debug_message(input_len)
 	}
 
 	// Weight charged for reading function call input from buffer.
 	pub(crate) fn read_from_buffer_weight(input_len: u32) -> Weight {
-		ContractWeights::<Test>::seal_return(input_len)
+		ContractWeightsOf::<Test>::seal_return(input_len)
 	}
 
 	// Weight charged for writing to contract memory.
 	pub(crate) fn write_to_contract_weight(len: u32) -> Weight {
-		ContractWeights::<Test>::seal_input(len)
+		ContractWeightsOf::<Test>::seal_input(len)
 	}
-}
-
-/// Trait to enable specification of a log target.
-pub trait LogTarget {
-	/// The log target.
-	const LOG_TARGET: &'static str;
-}
-
-impl LogTarget for () {
-	const LOG_TARGET: &'static str = "pop-chain-extension";
 }
