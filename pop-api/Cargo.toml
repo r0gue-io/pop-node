@@ -38,7 +38,6 @@ cross-chain = [ "pop-primitives/cross-chain" ]
 default = [ "std" ]
 nfts = [ "pop-primitives/nfts" ]
 std = [
-	"enumflags2/std",
 	"ink/std",
 	"pop-primitives/std",
 	"scale-info/std",
