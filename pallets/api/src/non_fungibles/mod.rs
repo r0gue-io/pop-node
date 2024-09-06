@@ -113,6 +113,11 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create a new non-fungible token to the collection.
+		///
+		/// # Parameters
+		/// - `to` - The owner of the collection item.
+		/// - `collection` - The collection ID.
+		/// - `item` - The item ID.
 		#[pallet::call_index(0)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -127,6 +132,10 @@ pub mod pallet {
 		}
 
 		/// Destroy a new non-fungible token to the collection.
+		///
+		/// # Parameters
+		/// - `collection` - The collection ID.
+		/// - `item` - The item ID.
 		#[pallet::call_index(1)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
@@ -140,6 +149,11 @@ pub mod pallet {
 		}
 
 		/// Transfer a token from one account to the another account.
+		///
+		/// # Parameters
+		/// - `collection` - The collection ID.
+		/// - `item` - The item ID.
+		/// - `to` - The recipient account.
 		#[pallet::call_index(2)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
@@ -155,6 +169,11 @@ pub mod pallet {
 		}
 
 		/// Delegate a permission to perform actions on the collection item to an account.
+		///
+		/// # Parameters
+		/// - `collection` - The collection ID.
+		/// - `item` - The item ID.
+		/// - `spender` - The account that is allowed to transfer the collection item.
 		#[pallet::call_index(3)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer())]
 		pub fn approve(
@@ -176,6 +195,11 @@ pub mod pallet {
 		}
 
 		/// Cancel one of the transfer approvals for a specific item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection ID.
+		/// - `item` - The item ID.
+		/// - `spender` - The account that is revoked permission to transfer the collection item.
 		#[pallet::call_index(4)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_approval())]
 		pub fn cancel_approval(
