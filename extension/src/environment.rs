@@ -1,9 +1,7 @@
+use crate::AccountIdOf;
 use core::fmt::Debug;
 use frame_support::pallet_prelude::Weight;
-use pallet_contracts::{
-	chain_extension::{BufInBufOutState, ChargedAmount, Result, State},
-	Config,
-};
+use pallet_contracts::chain_extension::{BufInBufOutState, ChargedAmount, Result, State};
 use sp_std::vec::Vec;
 
 /// Provides access to the parameters passed to a chain extension and its execution environment.
@@ -11,9 +9,9 @@ use sp_std::vec::Vec;
 /// A wrapper trait for `pallet_contracts::chain_extension::Environment`. All comments have been
 /// copied solely for consistent developer experience in line with the wrapped type.
 pub trait Environment {
-	/// The configuration of the contracts module.
-	type Config: Config;
-	/// The charged weight.
+	/// The account identifier type for the runtime.
+	type AccountId;
+	/// The charged weight type.
 	type ChargedAmount: Debug;
 
 	/// The function id within the `id` passed by a contract.
@@ -52,7 +50,7 @@ pub trait Environment {
 	///
 	/// Consult the functions on the returned type before re-implementing those functions.
 	// TODO: improve the return type to &mut
-	fn ext(&mut self) -> impl Ext<Config = Self::Config>;
+	fn ext(&mut self) -> impl Ext<AccountId = Self::AccountId>;
 }
 
 /// A wrapper type for `pallet_contracts::chain_extension::Environment`.
@@ -63,7 +61,7 @@ pub(crate) struct Env<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: Stat
 impl<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: State> Environment
 	for Env<'a, 'b, E, S>
 {
-	type Config = E::T;
+	type AccountId = AccountIdOf<E::T>;
 	type ChargedAmount = ChargedAmount;
 
 	fn func_id(&self) -> u16 {
@@ -82,7 +80,7 @@ impl<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: State> Environment
 		self.0.adjust_weight(charged, actual_weight)
 	}
 
-	fn ext(&mut self) -> impl Ext<Config = E::T> {
+	fn ext(&mut self) -> impl Ext<AccountId = Self::AccountId> {
 		ExternalEnvironment(self.0.ext())
 	}
 }
@@ -164,19 +162,27 @@ impl<'a, 'b, E: pallet_contracts::chain_extension::Ext> BufOut
 /// A wrapper trait for `pallet_contracts::chain_extension::Ext`. All comments have been copied
 /// solely for consistent developer experience in line with the wrapped type.
 pub trait Ext {
-	/// The configuration of the contracts module.
-	type Config: Config;
+	/// The account identifier type for the runtime.
+	type AccountId;
 
 	/// Returns a reference to the account id of the current contract.
-	fn address(&self) -> &<Self::Config as frame_system::Config>::AccountId;
+	fn address(&self) -> &Self::AccountId;
+}
+
+impl Ext for () {
+	type AccountId = ();
+
+	fn address(&self) -> &Self::AccountId {
+		&()
+	}
 }
 
 /// A wrapper type for a type implementing `pallet_contracts::chain_extension::Ext`.
 pub(crate) struct ExternalEnvironment<'a, T: pallet_contracts::chain_extension::Ext>(&'a mut T);
 
 impl<'a, T: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<'a, T> {
-	type Config = T::T;
-	fn address(&self) -> &<Self::Config as frame_system::Config>::AccountId {
+	type AccountId = AccountIdOf<T::T>;
+	fn address(&self) -> &Self::AccountId {
 		self.0.address()
 	}
 }
