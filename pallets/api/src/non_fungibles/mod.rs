@@ -254,9 +254,7 @@ pub mod pallet {
 				CollectionOwner(collection) => NftsOf::<T>::collection_owner(collection).encode(),
 				TotalSupply(collection) => (NftsOf::<T>::items(&collection).count() as u8).encode(),
 				Collection(collection) => pallet_nfts::Collection::<T>::get(&collection).encode(),
-				Item { collection, item } => {
-					pallet_nfts::Item::<T>::get(&collection, &item).encode()
-				},
+				Item { collection, item } => pallet_nfts::Item::<T>::get(collection, item).encode(),
 				Allowance { collection, item, spender } => {
 					Self::allowance(collection, item, spender).encode()
 				},
