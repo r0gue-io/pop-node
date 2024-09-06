@@ -180,8 +180,8 @@ impl Ext for () {
 /// A wrapper type for a type implementing `pallet_contracts::chain_extension::Ext`.
 pub(crate) struct ExternalEnvironment<'a, T: pallet_contracts::chain_extension::Ext>(&'a mut T);
 
-impl<'a, T: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<'a, T> {
-	type AccountId = AccountIdOf<T::T>;
+impl<'a, E: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<'a, E> {
+	type AccountId = AccountIdOf<E::T>;
 	fn address(&self) -> &Self::AccountId {
 		self.0.address()
 	}
