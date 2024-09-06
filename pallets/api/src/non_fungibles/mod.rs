@@ -229,7 +229,7 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			spender: AccountIdOf<T>,
 		) -> bool {
-			let data = pallet_nfts::Item::<T>::get(&collection, &item).encode();
+			let data = pallet_nfts::Item::<T>::get(collection, item).encode();
 			if let Ok(detail) = ItemDetails::<T>::decode(&mut data.as_slice()) {
 				return detail.approvals.contains_key(&spender);
 			}

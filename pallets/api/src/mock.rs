@@ -141,7 +141,7 @@ impl pallet_nfts::Config for Test {
 	type OffchainPublic = AccountPublic;
 	type WeightInfo = ();
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = ();
+	type Helper = ();
 }
 
 impl crate::non_fungibles::Config for Test {
