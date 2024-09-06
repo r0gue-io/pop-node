@@ -32,7 +32,7 @@ use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, Ta
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_api::ConstructRuntimeApi;
-use sp_core::Pair;
+use sp_core::{Pair, H256};
 use sp_keystore::KeystorePtr;
 use sp_runtime::{app_crypto::AppCrypto, traits::BlakeTwo256};
 
@@ -421,8 +421,23 @@ where
 		client.clone(),
 	);
 
+	let (client_clone, relay_chain_interface_clone) =
+		(client.clone(), relay_chain_interface.clone());
 	let params = AuraParams {
-		create_inherent_data_providers: move |_, ()| async move { Ok(()) },
+		create_inherent_data_providers: move |parent, ()| {
+			let client = client_clone.clone();
+			let relay_chain_interface = relay_chain_interface_clone.clone();
+			async move {
+				let inherent = ismp_parachain_inherent::ConsensusInherentProvider::create(
+					parent,
+					client,
+					relay_chain_interface,
+				)
+				.await?;
+
+				Ok(inherent)
+			}
+		},
 		block_import,
 		para_client: client.clone(),
 		para_backend: backend,
@@ -487,6 +502,8 @@ pub(crate) trait RuntimeApiExt<RuntimeApi>:
 	+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
 	+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
 	+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>
+	+ ismp_parachain_runtime_api::IsmpParachainApi<Block>
+	+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>
 {
 }
 impl<
@@ -500,7 +517,9 @@ impl<
 			+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
 			+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
 			+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
-			+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>,
+			+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>
+			+ ismp_parachain_runtime_api::IsmpParachainApi<Block>
+			+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>,
 		RuntimeApi,
 	> RuntimeApiExt<RuntimeApi> for T
 {

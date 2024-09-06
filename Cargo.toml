@@ -7,7 +7,7 @@ inherits = "release"
 lto = true
 
 [workspace.package]
-authors = [ "R0GUE <go@r0gue.io>" ]
+authors = ["R0GUE <go@r0gue.io>"]
 description = "Pop Network makes it easy for smart contract developers to use the Power of Polkadot."
 edition = "2021"
 homepage = "https://r0gue.io"
@@ -15,36 +15,36 @@ license = "Unlicense"
 repository = "https://github.com/r0gue-io/pop-node/"
 
 [workspace]
-exclude = [ "pop-api", "tests/contracts" ]
+exclude = ["pop-api", "tests/contracts"]
 members = [
-	"integration-tests",
-	"node",
-	"primitives",
-	"runtime/devnet",
-	"runtime/mainnet",
-	"runtime/testnet",
+    "integration-tests",
+    "node",
+    "primitives",
+    "runtime/devnet",
+    "runtime/mainnet",
+    "runtime/testnet",
 ]
 
 resolver = "2"
 
 [workspace.dependencies]
-clap = { version = "4.4.18", features = [ "derive" ] }
+clap = { version = "4.4.18", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
-	"derive",
+    "derive",
 ] }
 futures = "0.3.28"
 hex-literal = "0.4.1"
-jsonrpsee = { version = "0.23.2", features = [ "server" ] }
+jsonrpsee = { version = "0.23.2", features = ["server"] }
 log = { version = "0.4.21", default-features = false }
 scale-info = { version = "2.11.1", default-features = false, features = [
-	"derive",
+    "derive",
 ] }
 serde = "1.0.197"
 serde_json = "1.0.114"
 smallvec = "1.11.2"
 subxt = "0.34.0"
 subxt-signer = "0.34.0"
-tokio = { version = "1.36", features = [ "macros", "rt-multi-thread", "time" ] }
+tokio = { version = "1.36", features = ["macros", "rt-multi-thread", "time"] }
 tracing-subscriber = { version = "0.3", default-features = false }
 
 # Build
@@ -119,6 +119,7 @@ sp-inherents = { version = "33.0.0", default-features = false }
 sp-io = { version = "37.0.0", default-features = false }
 sp-keystore = "0.40.0"
 sp-offchain = { version = "33.0.0", default-features = false }
+sp-mmr-primitives = { version = "33.0.0", default-features = false }
 sp-runtime = { version = "38.0.0", default-features = false }
 sp-session = { version = "34.0.0", default-features = false }
 sp-std = { version = "14.0.0", default-features = false }
@@ -175,3 +176,28 @@ paseo-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes"
 # asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
 # paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
 # paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+
+# ISMP
+# ismp = { version = "0.1.2", default-features = false }
+# ismp-parachain = { version = "1.6.2", default-features = false }
+# ismp-parachain-inherent = { version = "1.6.3", default-features = false }
+# ismp-parachain-runtime-api = { version = "1.6.2", default-features = false }
+# pallet-ismp = { version = "1.6.2", default-features = false }
+# pallet-ismp-rpc = { version = "1.6.2", default-features = false }
+# pallet-ismp-runtime-api = { version = "1.6.2", default-features = false }
+
+# ismp = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+# ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+# ismp-parachain-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+# ismp-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+# pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "pop", default-features = false }
+
+ismp = { path = "../ismp/modules/ismp/core/", default-features = false }
+ismp-parachain = { path = "../ismp/modules/ismp/clients/parachain/client/", default-features = false }
+ismp-parachain-inherent = { path = "../ismp/modules/ismp/clients/parachain/inherent/", default-features = false }
+ismp-parachain-runtime-api = { path = "../ismp/modules/ismp/clients/parachain/runtime-api/", default-features = false }
+pallet-ismp = { path = "../ismp/modules/ismp/pallets/pallet/", default-features = false }
+#pallet-ismp-demo = { path = "./pallets/demo", default-features = false }
+pallet-ismp-demo = { path = "../ismp/modules/ismp/pallets/demo", default-features = false }
+pallet-ismp-rpc = { path = "../ismp/modules/ismp/pallets/rpc/", default-features = false }
+pallet-ismp-runtime-api = { path = "../ismp/modules/ismp/pallets/runtime-api/", default-features = false }
