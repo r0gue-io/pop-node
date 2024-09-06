@@ -5,26 +5,15 @@ license = "GPL-3.0-only"
 name = "pop-api"
 version = "0.0.0"
 
-[workspace]
-exclude = [
-	"integration-tests",
-]
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
-scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
-	"derive",
-] }
-scale-info = { version = "2.11.1", default-features = false, features = [
-	"derive",
-] }
 sp-io = { version = "31.0.0", default-features = false, features = [
 	"disable_allocator",
 	"disable_oom",
 	"disable_panic_handler",
 ] }
-sp-runtime = { version = "38.0.0", default-features = false }
 
-pop-primitives = { path = "../primitives", features = [ "devnet" ], default-features = false }
+pop-primitives = { path = "../primitives", default-features = false }
 
 [lib]
 crate-type = [ "rlib" ]
@@ -32,16 +21,7 @@ name = "pop_api"
 path = "src/lib.rs"
 
 [features]
-assets = [ "pop-primitives/assets" ]
-balances = [  ]
-cross-chain = [ "pop-primitives/cross-chain" ]
+assets = [  ]
 default = [ "std" ]
-nfts = [ "pop-primitives/nfts" ]
-std = [
-	"ink/std",
-	"pop-primitives/std",
-	"scale-info/std",
-	"scale/std",
-	"sp-io/std",
-	"sp-runtime/std",
-]
+fungibles = [ "assets" ]
+std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]
