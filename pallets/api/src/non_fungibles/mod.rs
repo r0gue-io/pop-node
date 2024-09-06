@@ -17,10 +17,7 @@ pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;
-	use types::{
-		AccountIdOf, CollectionIdOf, ItemDetails, ItemIdOf, NonFungiblesOf,
-		NonFungiblesWeightInfoOf,
-	};
+	use types::{AccountIdOf, CollectionIdOf, ItemDetails, ItemIdOf, NftsOf, NftsWeightInfoOf};
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -117,40 +114,34 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		/// Create a new non-fungible token to the collection.
 		#[pallet::call_index(0)]
-		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::mint())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
 			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 		) -> DispatchResult {
-			NonFungiblesOf::<T>::mint(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(to.clone()),
-				None,
-			)?;
+			NftsOf::<T>::mint(origin, collection, item, T::Lookup::unlookup(to.clone()), None)?;
 			Self::deposit_event(Event::Mint { to, collection, item });
 			Ok(())
 		}
 
 		/// Destroy a new non-fungible token to the collection.
 		#[pallet::call_index(1)]
-		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::burn())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 		) -> DispatchResult {
-			NonFungiblesOf::<T>::burn(origin, collection, item)?;
+			NftsOf::<T>::burn(origin, collection, item)?;
 			Self::deposit_event(Event::Burn { collection, item });
 			Ok(())
 		}
 
 		/// Transfer a token from one account to the another account.
 		#[pallet::call_index(2)]
-		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::transfer())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -158,19 +149,14 @@ pub mod pallet {
 			to: AccountIdOf<T>,
 		) -> DispatchResult {
 			let from = ensure_signed(origin.clone())?;
-			NonFungiblesOf::<T>::transfer(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(to.clone()),
-			)?;
+			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
 			Self::deposit_event(Event::Transfer { from, to, collection, item });
 			Ok(())
 		}
 
 		/// Delegate a permission to perform actions on the collection item to an account.
 		#[pallet::call_index(3)]
-		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::approve_transfer())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer())]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -178,7 +164,7 @@ pub mod pallet {
 			spender: AccountIdOf<T>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
-			NonFungiblesOf::<T>::approve_transfer(
+			NftsOf::<T>::approve_transfer(
 				origin,
 				collection,
 				item,
@@ -191,14 +177,14 @@ pub mod pallet {
 
 		/// Cancel one of the transfer approvals for a specific item.
 		#[pallet::call_index(4)]
-		#[pallet::weight(NonFungiblesWeightInfoOf::<T>::cancel_approval())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_approval())]
 		pub fn cancel_approval(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 			spender: AccountIdOf<T>,
 		) -> DispatchResult {
-			NonFungiblesOf::<T>::cancel_approval(
+			NftsOf::<T>::cancel_approval(
 				origin,
 				collection,
 				item,
@@ -221,15 +207,9 @@ pub mod pallet {
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 			match value {
-				OwnerOf { collection, item } => {
-					NonFungiblesOf::<T>::owner(collection, item).encode()
-				},
-				CollectionOwner(collection) => {
-					NonFungiblesOf::<T>::collection_owner(collection).encode()
-				},
-				TotalSupply(collection) => {
-					(NonFungiblesOf::<T>::items(&collection).count() as u8).encode()
-				},
+				OwnerOf { collection, item } => NftsOf::<T>::owner(collection, item).encode(),
+				CollectionOwner(collection) => NftsOf::<T>::collection_owner(collection).encode(),
+				TotalSupply(collection) => (NftsOf::<T>::items(&collection).count() as u8).encode(),
 				Collection(collection) => pallet_nfts::Collection::<T>::get(&collection).encode(),
 				Item { collection, item } => {
 					pallet_nfts::Item::<T>::get(&collection, &item).encode()
@@ -238,14 +218,13 @@ pub mod pallet {
 					Self::allowance(collection, item, spender).encode()
 				},
 				BalanceOf { collection, owner } => {
-					(NonFungiblesOf::<T>::owned_in_collection(&collection, &owner).count() as u8)
-						.encode()
+					(NftsOf::<T>::owned_in_collection(&collection, &owner).count() as u8).encode()
 				},
 			}
 		}
 
 		/// Check if the `spender` is approved to transfer the collection item
-		fn allowance(
+		pub(crate) fn allowance(
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 			spender: AccountIdOf<T>,

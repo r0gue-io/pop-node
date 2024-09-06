@@ -8,10 +8,10 @@ use super::Config;
 
 pub(super) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
-pub(super) type NonFungiblesOf<T> = pallet_nfts::Pallet<T>;
+pub(super) type NftsOf<T> = pallet_nfts::Pallet<T>;
 
 /// Weight information for extrinsics in this pallet.
-pub(super) type NonFungiblesWeightInfoOf<T> = <T as pallet_nfts::Config>::WeightInfo;
+pub(super) type NftsWeightInfoOf<T> = <T as pallet_nfts::Config>::WeightInfo;
 
 /// A type alias for the collection ID.
 pub(super) type CollectionIdOf<T> =

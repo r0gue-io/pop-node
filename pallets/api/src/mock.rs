@@ -13,8 +13,8 @@ use sp_runtime::{
 pub(crate) type Balance = u128;
 pub(crate) type AssetId = u32;
 pub(crate) type AccountId = <AccountPublic as IdentifyAccount>::AccountId;
+pub(crate) type Block = frame_system::mocking::MockBlock<Test>;
 type AccountPublic = <Signature as Verify>::Signer;
-type Block = frame_system::mocking::MockBlock<Test>;
 type Signature = MultiSignature;
 
 // Configure a mock runtime to test the pallet.
