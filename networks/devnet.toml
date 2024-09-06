@@ -45,3 +45,4 @@ chain = "asset-hub-rococo-local"
 [[parachains.collators]]
 name = "asset-hub"
 args = ["-lxcm=trace"]
+rpc_port = 9977

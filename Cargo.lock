@@ -485,7 +485,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.4.1",
  "kusama-runtime-constants",
  "log",
  "pallet-asset-conversion",
@@ -4419,6 +4419,12 @@ checksum = "212ab92002354b4819390025006c897e8140934349e8635c9b077f47b4dcbd20"
 
 [[package]]
 name = "hex-literal"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
+
+[[package]]
+name = "hex-literal"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
@@ -5100,7 +5106,7 @@ dependencies = [
  "cumulus-primitives-core",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "log",
  "pallet-ismp",
@@ -6061,7 +6067,7 @@ dependencies = [
  "ed25519-dalek",
  "futures",
  "futures-timer",
- "hex-literal",
+ "hex-literal 0.4.1",
  "indexmap 2.2.6",
  "libc",
  "mockall 0.12.1",
@@ -7857,6 +7863,34 @@ dependencies = [
  "scale-info",
  "sp-core",
  "sp-runtime",
+]
+
+[[package]]
+name = "pallet-ismp-rpc"
+version = "1.15.0"
+dependencies = [
+ "anyhow",
+ "frame-system",
+ "hash-db",
+ "hex",
+ "hex-literal 0.3.4",
+ "ismp",
+ "jsonrpsee",
+ "pallet-ismp",
+ "pallet-ismp-runtime-api",
+ "parity-scale-codec",
+ "sc-client-api",
+ "sc-rpc",
+ "serde",
+ "serde_json",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-mmr-primitives",
+ "sp-runtime",
+ "sp-storage",
+ "sp-trie",
+ "trie-db",
 ]
 
 [[package]]
@@ -9833,7 +9867,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a4879609f4340138930c3c7313256941104a3ff6f7ecb2569d15223da9b35b2"
 dependencies = [
  "bitvec",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "polkadot-core-primitives",
@@ -10131,7 +10165,7 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "futures",
- "hex-literal",
+ "hex-literal 0.4.1",
  "is_executable",
  "kvdb",
  "kvdb-rocksdb",
@@ -10434,6 +10468,7 @@ dependencies = [
  "ismp-parachain-runtime-api",
  "jsonrpsee",
  "log",
+ "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
  "pallet-multisig",
  "pallet-transaction-payment-rpc",
@@ -10526,7 +10561,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "ismp-parachain",
  "ismp-parachain-runtime-api",
@@ -10608,7 +10643,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "ismp-parachain",
  "ismp-parachain-runtime-api",
@@ -10690,7 +10725,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "ismp-parachain",
  "ismp-parachain-runtime-api",
@@ -11560,7 +11595,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "pallet-asset-rate",
  "pallet-authority-discovery",
@@ -13891,7 +13926,7 @@ dependencies = [
  "ethabi-decode",
  "frame-support",
  "frame-system",
- "hex-literal",
+ "hex-literal 0.4.1",
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "scale-info",
@@ -13915,7 +13950,7 @@ dependencies = [
  "ethabi-decode",
  "ethbloom",
  "ethereum-types",
- "hex-literal",
+ "hex-literal 0.4.1",
  "parity-bytes",
  "parity-scale-codec",
  "rlp",
@@ -13949,7 +13984,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e8e6707ced1308d763117bfe68f85e3f22fcdca7987b32e438c0485570f6ac7"
 dependencies = [
  "frame-support",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "scale-info",
@@ -16655,7 +16690,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "pallet-asset-rate",
  "pallet-authority-discovery",

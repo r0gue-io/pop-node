@@ -53,12 +53,6 @@ impl Get<StateMachine> for HostStateMachine {
 pub struct Router;
 impl IsmpRouter for Router {
 	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, Error> {
-		let module = match ModuleId::from_bytes(&id) {
-			// Ok(pallet_name::PALLET_ID) => {
-			// 	Box::<pallet_name::IsmpModuleCallback<Runtime>>::default()
-			// },
-			_ => Err(Error::ModuleNotFound(id))?,
-		};
-		Ok(module)
+		Ok(Box::new(pallet_ismp_demo::IsmpModuleCallback::<Runtime>::default()))
 	}
 }
