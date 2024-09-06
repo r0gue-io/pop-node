@@ -41,9 +41,7 @@ impl Processor for Prepender {
 		let version = version(env);
 		let (module, index) = module_and_index(env);
 		// Prepend bytes
-		value.insert(0, version);
-		value.insert(1, module);
-		value.insert(2, index);
+		value.splice(0..0, [version, module, index]);
 		log::debug!(target: Self::LOG_TARGET, "prepender: version={version}, module={module}, index={index}");
 		value
 	}
@@ -148,8 +146,7 @@ mod tests {
 	#[test]
 	fn prepender_works() {
 		let env = MockEnvironment { func_id: 1, ext_id: u16::from_le_bytes([2, 3]) };
-		let value = Vec::<u8>::default();
-		assert_eq!(Prepender::process(value, &env), vec![1, 2, 3]);
+		assert_eq!(Prepender::process(vec![0u8], &env), vec![1, 2, 3, 0]);
 	}
 
 	struct MockEnvironment {
