@@ -2,6 +2,7 @@ use crate::{
 	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 use codec::Decode;
+use core::marker::PhantomData;
 use cumulus_primitives_core::Weight;
 use frame_support::traits::Contains;
 pub(crate) use pallet_api::Extension;
@@ -85,7 +86,7 @@ impl pallet_api::extension::Config for Config {
 			// Decode as a versioned runtime call.
 			DecodesAs<VersionedRuntimeCall, DispatchCallLogTarget>,
 			// Apply any filtering.
-			Filter,
+			Filter<Runtime>,
 			// Ensure errors are versioned.
 			VersionedErrorConverter<VersionedError>,
 			// Logging with a specific target.
@@ -102,7 +103,7 @@ impl pallet_api::extension::Config for Config {
 			// Decode as a versioned runtime read.
 			DecodesAs<VersionedRuntimeRead, ReadStateLogTarget>,
 			// Apply any filtering.
-			Filter,
+			Filter<Runtime>,
 			// Convert the result of a read into the expected versioned result
 			VersionedResultConverter<RuntimeResult, VersionedRuntimeResult>,
 			// Ensure errors are versioned.
@@ -117,28 +118,29 @@ impl pallet_api::extension::Config for Config {
 }
 
 /// Filters used by the chain extension.
-pub struct Filter;
+pub struct Filter<T>(PhantomData<T>);
 
-impl Contains<RuntimeCall> for Filter {
+impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
-		matches!(
-			c,
-			RuntimeCall::Fungibles(
-				transfer { .. } |
-					transfer_from { .. } |
-					approve { .. } | increase_allowance { .. } |
-					decrease_allowance { .. } |
-					create { .. } | set_metadata { .. } |
-					start_destroy { .. } |
-					clear_metadata { .. } |
-					mint { .. } | burn { .. }
+		T::BaseCallFilter::contains(c) &&
+			matches!(
+				c,
+				RuntimeCall::Fungibles(
+					transfer { .. } |
+						transfer_from { .. } |
+						approve { .. } | increase_allowance { .. } |
+						decrease_allowance { .. } |
+						create { .. } | set_metadata { .. } |
+						start_destroy { .. } |
+						clear_metadata { .. } |
+						mint { .. } | burn { .. }
+				)
 			)
-		)
 	}
 }
 
-impl Contains<RuntimeRead> for Filter {
+impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	fn contains(r: &RuntimeRead) -> bool {
 		use fungibles::Read::*;
 		matches!(
@@ -152,5 +154,56 @@ impl Contains<RuntimeRead> for Filter {
 					AssetExists(..)
 			)
 		)
+	}
+}
+
+#[test]
+fn filter_prevents_runtime_filtered_calls() {
+	use pallet_balances::{AdjustmentDirection, Call::*};
+	use sp_runtime::MultiAddress;
+	use RuntimeCall::Balances;
+
+	const CALLS: [RuntimeCall; 4] = [
+		Balances(force_adjust_total_issuance {
+			direction: AdjustmentDirection::Increase,
+			delta: 0,
+		}),
+		Balances(force_set_balance { who: MultiAddress::Address32([0u8; 32]), new_free: 0 }),
+		Balances(force_transfer {
+			source: MultiAddress::Address32([0u8; 32]),
+			dest: MultiAddress::Address32([0u8; 32]),
+			value: 0,
+		}),
+		Balances(force_unreserve { who: MultiAddress::Address32([0u8; 32]), amount: 0 }),
+	];
+
+	for call in CALLS {
+		assert!(!Filter::<Runtime>::contains(&call))
+	}
+}
+
+#[test]
+fn filter_allows_fungibles_calls() {
+	use pallet_api::fungibles::Call::*;
+	use sp_core::crypto::AccountId32;
+	use RuntimeCall::Fungibles;
+
+	const ACCOUNT: AccountId32 = AccountId32::new([0u8; 32]);
+	const CALLS: [RuntimeCall; 11] = [
+		Fungibles(transfer { asset: 0, to: ACCOUNT, value: 0 }),
+		Fungibles(transfer_from { asset: 0, from: ACCOUNT, to: ACCOUNT, value: 0 }),
+		Fungibles(approve { asset: 0, spender: ACCOUNT, value: 0 }),
+		Fungibles(increase_allowance { asset: 0, spender: ACCOUNT, value: 0 }),
+		Fungibles(decrease_allowance { asset: 0, spender: ACCOUNT, value: 0 }),
+		Fungibles(create { id: 0, admin: ACCOUNT, min_balance: 0 }),
+		Fungibles(set_metadata { asset: 0, name: vec![], symbol: vec![], decimals: 0 }),
+		Fungibles(start_destroy { asset: 0 }),
+		Fungibles(clear_metadata { asset: 0 }),
+		Fungibles(mint { asset: 0, account: ACCOUNT, value: 0 }),
+		Fungibles(burn { asset: 0, account: ACCOUNT, value: 0 }),
+	];
+
+	for call in CALLS {
+		assert!(Filter::<Runtime>::contains(&call))
 	}
 }
