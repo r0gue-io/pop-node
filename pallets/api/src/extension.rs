@@ -1,6 +1,8 @@
 use core::{fmt::Debug, marker::PhantomData};
 use frame_support::traits::Get;
-pub use pop_chain_extension::{Config, DecodingFailed, DispatchCall, ReadState, Readable};
+pub use pop_chain_extension::{
+	Config, ContractWeightsOf, DecodingFailed, DispatchCall, ReadState, Readable,
+};
 use pop_chain_extension::{
 	Converter, Decodes, Environment, LogTarget, Matches, Processor, Result, RetVal,
 };
@@ -16,7 +18,8 @@ pub const LOG_TARGET: &str = "pop-api::extension";
 /// The chain extension used by the API.
 pub type Extension<Functions> = pop_chain_extension::Extension<Functions>;
 /// Decodes output by prepending bytes from ext_id() + func_id()
-pub type DecodesAs<Output, Error, Logger = ()> = Decodes<Output, Error, Prepender, Logger>;
+pub type DecodesAs<Output, Weight, Error, Logger = ()> =
+	Decodes<Output, Weight, Error, Prepender, Logger>;
 
 /// Prepends bytes from ext_id() + func_id() to prefix the encoded input bytes to determine the
 /// versioned output
@@ -133,4 +136,48 @@ fn version(env: &impl Environment) -> u8 {
 	// TODO: update once the encoding scheme order has been finalised: expected to be
 	// env.ext_id().to_le_bytes()[1]
 	env.func_id().to_le_bytes()[0]
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	use crate::extension::Prepender;
+	use frame_support::pallet_prelude::Weight;
+	use pop_chain_extension::Ext;
+
+	#[test]
+	fn prepender_works() {
+		let env = MockEnvironment { func_id: 1, ext_id: u16::from_le_bytes([2, 3]) };
+		let value = Vec::<u8>::default();
+		assert_eq!(Prepender::process(value, &env), vec![1, 2, 3]);
+	}
+
+	struct MockEnvironment {
+		func_id: u16,
+		ext_id: u16,
+	}
+	impl Environment for MockEnvironment {
+		type AccountId = ();
+		type ChargedAmount = Weight;
+
+		fn func_id(&self) -> u16 {
+			self.func_id
+		}
+
+		fn ext_id(&self) -> u16 {
+			self.ext_id
+		}
+
+		fn charge_weight(&mut self, _amount: Weight) -> Result<Self::ChargedAmount> {
+			unimplemented!()
+		}
+
+		fn adjust_weight(&mut self, _charged: Self::ChargedAmount, _actual_weight: Weight) {
+			unimplemented!()
+		}
+
+		fn ext(&mut self) -> impl Ext<AccountId = Self::AccountId> {
+			unimplemented!()
+		}
+	}
 }
