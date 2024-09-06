@@ -4,7 +4,7 @@
 
 use frame_support::traits::nonfungibles_v2::InspectEnumerable;
 pub use pallet::*;
-use pallet_nfts::WeightInfo;
+use pallet_nfts::{AttributeNamespace, WeightInfo};
 use sp_runtime::traits::StaticLookup;
 
 #[cfg(test)]
@@ -17,7 +17,9 @@ pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;
-	use types::{AccountIdOf, CollectionIdOf, ItemDetails, ItemIdOf, NftsOf, NftsWeightInfoOf};
+	use types::{
+		AccountIdOf, ApprovalsOf, CollectionIdOf, ItemDetails, ItemIdOf, NftsOf, NftsWeightInfoOf,
+	};
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -45,6 +47,13 @@ pub mod pallet {
 		/// Whether a spender is allowed to transfer an item or items from owner.
 		#[codec(index = 6)]
 		Allowance { spender: AccountIdOf<T>, collection: CollectionIdOf<T>, item: ItemIdOf<T> },
+		/// Returns the attribute of collection item for the given `key`.
+		#[codec(index = 7)]
+		ItemAttribute {
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+			key: BoundedVec<u8, <T as pallet_nfts::Config>::KeyLimit>,
+		},
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -65,7 +74,7 @@ pub mod pallet {
 		CancelApproval {
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// the item ID.
+			/// The item ID.
 			item: ItemIdOf<T>,
 			/// The beneficiary of the allowance.
 			spender: AccountIdOf<T>,
@@ -74,7 +83,7 @@ pub mod pallet {
 		Approval {
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// the item ID.
+			/// The item ID.
 			item: ItemIdOf<T>,
 			/// The owner providing the allowance.
 			owner: AccountIdOf<T>,
@@ -87,26 +96,37 @@ pub mod pallet {
 			to: AccountIdOf<T>,
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// the item ID.
+			/// The item ID.
 			item: ItemIdOf<T>,
 		},
 		/// Event emitted when item is burned.
 		Burn {
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// the item ID.
+			/// The item ID.
 			item: ItemIdOf<T>,
 		},
 		/// Event emitted when an item transfer occurs.
 		Transfer {
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// the item ID.
+			/// The item ID.
 			item: ItemIdOf<T>,
 			/// The source of the transfer.
 			from: AccountIdOf<T>,
 			/// The recipient of the transfer.
 			to: AccountIdOf<T>,
+		},
+		/// Event emitted when an item's attribute is set.
+		SetAttribute {
+			/// The collection ID.
+			collection: CollectionIdOf<T>,
+			/// the item ID.
+			item: ItemIdOf<T>,
+			/// The key of the attribute.
+			key: BoundedVec<u8, T::KeyLimit>,
+			/// The value of the attribute.
+			value: BoundedVec<u8, T::ValueLimit>,
 		},
 	}
 
@@ -193,6 +213,29 @@ pub mod pallet {
 			Self::deposit_event(Event::CancelApproval { collection, item, spender });
 			Ok(())
 		}
+
+		/// Cancel one of the transfer approvals for a specific item.
+		#[pallet::call_index(5)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::set_attribute())]
+		pub fn set_attribute(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+			key: BoundedVec<u8, T::KeyLimit>,
+			value: BoundedVec<u8, T::ValueLimit>,
+		) -> DispatchResult {
+			let namespace = Self::namespace();
+			NftsOf::<T>::set_attribute(
+				origin,
+				collection,
+				Some(item),
+				namespace,
+				key.clone(),
+				value.clone(),
+			)?;
+			Self::deposit_event(Event::SetAttribute { collection, item, key, value });
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -220,20 +263,37 @@ pub mod pallet {
 				BalanceOf { collection, owner } => {
 					(NftsOf::<T>::owned_in_collection(&collection, &owner).count() as u8).encode()
 				},
+				ItemAttribute { collection, item, key } => {
+					let namespace = Self::namespace();
+					pallet_nfts::Attribute::<T>::get((collection, Some(item), namespace, key))
+						.encode()
+				},
 			}
 		}
 
+		pub(crate) fn namespace() -> AttributeNamespace<T::AccountId> {
+			// TODO: Which namespace should we choose? Should we dynamically change the namespace based on the provided origin?
+			AttributeNamespace::CollectionOwner
+		}
+
 		/// Check if the `spender` is approved to transfer the collection item
-		pub(crate) fn allowance(
+		pub(super) fn allowance(
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 			spender: AccountIdOf<T>,
 		) -> bool {
+			Self::item_approvals(collection, item).contains_key(&spender)
+		}
+
+		pub(super) fn item_approvals(
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+		) -> ApprovalsOf<T> {
 			let data = pallet_nfts::Item::<T>::get(collection, item).encode();
 			if let Ok(detail) = ItemDetails::<T>::decode(&mut data.as_slice()) {
-				return detail.approvals.contains_key(&spender);
+				return detail.approvals;
 			}
-			false
+			Default::default()
 		}
 	}
 }
