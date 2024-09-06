@@ -246,7 +246,7 @@ pub mod pallet {
 		}
 
 		/// Check if the `spender` is approved to transfer the collection item
-		pub(crate) fn allowance(
+		pub(super) fn allowance(
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 			spender: AccountIdOf<T>,
