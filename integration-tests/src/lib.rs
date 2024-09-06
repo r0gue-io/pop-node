@@ -299,7 +299,9 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 	let delivery_fees = PaseoRelay::execute_with(|| {
 		xcm_helpers::transfer_assets_delivery_fees::<
 			<PaseoXcmConfig as xcm_executor::Config>::XcmSender,
-		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
+		>(
+			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
+		)
 	});
 
 	let sender_balance_after = test.sender.balance;
@@ -353,7 +355,9 @@ fn reserve_transfer_native_asset_from_para_to_relay() {
 	let delivery_fees = PopNetworkPara::execute_with(|| {
 		xcm_helpers::transfer_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
-		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
+		>(
+			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
+		)
 	});
 
 	// Sender's balance is reduced
@@ -399,7 +403,9 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 	let delivery_fees = AssetHubPaseoPara::execute_with(|| {
 		xcm_helpers::transfer_assets_delivery_fees::<
 			<AssetHubPaseoXcmConfig as xcm_executor::Config>::XcmSender,
-		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
+		>(
+			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
+		)
 	});
 
 	// Sender's balance is reduced
@@ -417,7 +423,8 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 fn reserve_transfer_native_asset_from_para_to_system_para() {
 	init_tracing();
 
-	// Setup: reserve transfer from AH to Pop, so that sovereign account accurate for return transfer
+	// Setup: reserve transfer from AH to Pop, so that sovereign account accurate for return
+	// transfer
 	let amount_to_send: Balance = ASSET_HUB_PASEO_ED * 1000;
 	fund_pop_from_system_para(
 		AssetHubPaseoParaSender::get(),
@@ -462,7 +469,9 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let delivery_fees = PopNetworkPara::execute_with(|| {
 		xcm_helpers::transfer_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
-		>(test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
+		>(
+			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
+		)
 	});
 
 	// Sender's balance is reduced
@@ -482,8 +491,8 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 //
 // 	let beneficiary: sp_runtime::AccountId32 = [1u8; 32].into();
 //
-// 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return transfer
-// 	let amount_to_send: Balance = pop_runtime::UNIT * 1000;
+// 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
+// transfer 	let amount_to_send: Balance = pop_runtime::UNIT * 1000;
 // 	fund_pop_from_relay(PaseoRelaySender::get(), amount_to_send, beneficiary.clone());
 //
 // 	let message = {
@@ -554,11 +563,11 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 // 			PaseoRelay,
 // 			vec![
 // 				// We currently only check that the message was processed successfully
-// 				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) => {},
-// 				// TODO: check order placed once we can have on-demand para id registered (probably via setting raw storage as a workaround)
-// 				// RuntimeEvent::OnDemandAssignmentProvider(assigner_on_demand::Event::OnDemandOrderPlaced {
-// 				// 	..
-// 				// }) => {},
+// 				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) =>
+// {}, 				// TODO: check order placed once we can have on-demand para id registered (probably via
+// setting raw storage as a workaround) 				//
+// RuntimeEvent::OnDemandAssignmentProvider(assigner_on_demand::Event::OnDemandOrderPlaced { 				//
+// .. 				// }) => {},
 // 			]
 // 		);
 // 	});
@@ -570,8 +579,8 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 // 			PopNetworkPara,
 // 			vec![
 // 				RuntimeEvent::PolkadotXcm(pallet_xcm::Event::ResponseReady { query_id: 0, .. }) => {},
-// 				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) => {},
-// 			]
+// 				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) =>
+// {}, 			]
 // 		);
 // 	});
 // }

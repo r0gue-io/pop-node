@@ -11,7 +11,11 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec.workspace = true
+log.workspace = true
 scale-info.workspace = true
+
+# Local
+pop-chain-extension.workspace = true
 
 # Substrate
 frame-benchmarking.workspace = true
@@ -42,6 +46,7 @@ std = [
     "frame-system/std",
     "pallet-assets/std",
     "pallet-balances/std",
+    "pop-chain-extension/std",
     "scale-info/std",
     "sp-core/std",
     "sp-io/std",
