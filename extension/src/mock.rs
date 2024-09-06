@@ -1,8 +1,5 @@
-use crate::{
-	decoding::Identity, environment, matching::WithFuncId, AccountIdOf, ContractWeightsOf,
-	Converter, Decodes, DecodingFailed, DefaultConverter, DispatchCall, Extension, Function,
-	Matches, Processor, ReadState, Readable,
-};
+use std::marker::PhantomData;
+
 use codec::{Decode, Encode};
 use frame_support::{
 	derive_impl,
@@ -13,7 +10,12 @@ use frame_support::{
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
 use sp_runtime::{BuildStorage, Perbill};
-use std::marker::PhantomData;
+
+use crate::{
+	decoding::Identity, environment, matching::WithFuncId, AccountIdOf, ContractWeightsOf,
+	Converter, Decodes, DecodingFailed, DefaultConverter, DispatchCall, Extension, Function,
+	Matches, Processor, ReadState, Readable,
+};
 
 pub(crate) const ALICE: u64 = 1;
 pub(crate) const DEBUG_OUTPUT: pallet_contracts::DebugInfo =
@@ -65,8 +67,8 @@ frame_support::construct_runtime!(
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
-	type AccountId = u64;
 	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountId = u64;
 	type Block = frame_system::mocking::MockBlock<Test>;
 }
 
@@ -82,12 +84,14 @@ impl pallet_timestamp::Config for Test {}
 impl pallet_contracts::Config for Test {
 	type AddressGenerator = DefaultAddressGenerator;
 	type ApiVersion = ();
-	type CallFilter = (); //TestFilter;
+	type CallFilter = ();
+	// TestFilter;
 	type CallStack = [Frame<Self>; 5];
 	type ChainExtension = Extension<Config>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
-	type Debug = (); //TestDebug;
+	type Debug = ();
+	// TestDebug;
 	type DefaultDepositLimit = DefaultDepositLimit;
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
@@ -97,17 +101,20 @@ impl pallet_contracts::Config for Test {
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type MaxDelegateDependencies = MaxDelegateDependencies;
 	type MaxStorageKeyLen = ConstU32<128>;
-	type Migrations = (); //crate::migration::codegen::BenchMigrations;
+	type Migrations = ();
+	// crate::migration::codegen::BenchMigrations;
 	type Randomness = Test;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Schedule = MySchedule;
 	type Time = Timestamp;
-	type UnsafeUnstableInterface = (); //UnstableInterface;
+	type UnsafeUnstableInterface = ();
+	// UnstableInterface;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = ();
-	type WeightPrice = (); //Self;
+	type WeightPrice = ();
+	// Self;
 	type Xcm = ();
 }
 
@@ -204,6 +211,7 @@ pub(crate) type Functions = (
 pub struct Config;
 impl super::Config for Config {
 	type Functions = Functions;
+
 	const LOG_TARGET: &'static str = "pop-chain-extension";
 }
 
@@ -212,6 +220,7 @@ impl super::Config for Config {
 pub struct RemoveFirstByte;
 impl Processor for RemoveFirstByte {
 	type Value = Vec<u8>;
+
 	const LOG_TARGET: &'static str = "";
 
 	fn process(mut value: Self::Value, _env: &impl crate::Environment) -> Self::Value {
@@ -366,6 +375,7 @@ pub(crate) struct UppercaseConverter;
 impl Converter for UppercaseConverter {
 	type Source = RuntimeResult;
 	type Target = Vec<u8>;
+
 	const LOG_TARGET: &'static str = "";
 
 	fn convert(value: Self::Source, _env: &impl crate::Environment) -> Self::Target {

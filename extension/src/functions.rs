@@ -1,5 +1,6 @@
-use super::*;
 use core::fmt::Debug;
+
+use super::*;
 
 /// A chain extension function.
 pub trait Function {
@@ -167,6 +168,7 @@ pub struct DefaultConverter<T>(PhantomData<T>);
 impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
 	type Source = T;
 	type Target = Vec<u8>;
+
 	const LOG_TARGET: &'static str = "";
 
 	fn convert(value: Self::Source, _env: &impl Environment) -> Self::Target {
@@ -199,9 +201,10 @@ impl ErrorConverter for () {
 #[impl_trait_for_tuples::impl_for_tuples(1, 10)]
 #[tuple_types_custom_trait_bound(Function + Matches)]
 impl<Runtime: pallet_contracts::Config> Function for Tuple {
-	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
 	type Config = Runtime;
 	type Error = ();
+
+	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
 
 	fn execute(
 		env: &mut (impl Environment<AccountId = AccountIdOf<Self::Config>> + BufIn + BufOut),
@@ -222,17 +225,18 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 
 #[cfg(test)]
 mod tests {
+	use codec::Encode;
+	use frame_support::traits::{Everything, Nothing};
+	use frame_system::Call;
+	use mock::{new_test_ext, Functions, MockEnvironment, RuntimeCall, RuntimeRead, Test};
+	use sp_core::ConstU32;
+
 	use super::*;
 	use crate::{
 		extension::{read_from_buffer_weight, write_to_contract_weight},
 		matching::WithFuncId,
 		mock::{Noop, NoopFuncId, INVALID_FUNC_ID},
 	};
-	use codec::Encode;
-	use frame_support::traits::{Everything, Nothing};
-	use frame_system::Call;
-	use mock::{new_test_ext, Functions, MockEnvironment, RuntimeCall, RuntimeRead, Test};
-	use sp_core::ConstU32;
 
 	type FuncId = ConstU32<42>;
 

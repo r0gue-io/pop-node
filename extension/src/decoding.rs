@@ -1,6 +1,7 @@
-use super::*;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
+
+use super::*;
 
 /// Trait for decoding data read from contract memory.
 pub trait Decode {
@@ -42,6 +43,7 @@ pub trait Processor {
 pub struct Identity<Value>(PhantomData<Value>);
 impl<Value> Processor for Identity<Value> {
 	type Value = Value;
+
 	const LOG_TARGET: &'static str = "";
 
 	fn process(value: Self::Value, _env: &impl Environment) -> Self::Value {
@@ -59,9 +61,10 @@ impl<
 		Logger: LogTarget,
 	> Decode for Decodes<Output, Weight, Error, ValueProcessor, Logger>
 {
+	type Error = Error;
 	type Output = Output;
 	type Processor = ValueProcessor;
-	type Error = Error;
+
 	const LOG_TARGET: &'static str = Logger::LOG_TARGET;
 
 	/// Decodes data read from contract memory.
@@ -99,13 +102,14 @@ impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
 
 #[cfg(test)]
 mod tests {
+	use codec::{Decode as OriginalDecode, Encode};
+	use frame_support::assert_ok;
+
 	use super::*;
 	use crate::{
 		extension::read_from_buffer_weight,
 		mock::{MockEnvironment, RemoveFirstByte, Test},
 	};
-	use codec::{Decode as OriginalDecode, Encode};
-	use frame_support::assert_ok;
 
 	type EnumDecodes = Decodes<ComprehensiveEnum, ContractWeightsOf<Test>, DecodingFailed<Test>>;
 

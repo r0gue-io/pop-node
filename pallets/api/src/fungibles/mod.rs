@@ -27,8 +27,8 @@ type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use core::cmp::Ordering::*;
+
 	use frame_support::{
 		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
 		pallet_prelude::*,
@@ -40,6 +40,8 @@ pub mod pallet {
 		Saturating,
 	};
 	use sp_std::vec::Vec;
+
+	use super::*;
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]

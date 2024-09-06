@@ -1,13 +1,14 @@
-use super::api::{self, Config};
-use crate::{
-	deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp,
-};
 use frame_support::{
 	parameter_types,
 	traits::{ConstBool, ConstU32, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
+
+use super::api::{self, Config};
+use crate::{
+	deposit, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeHoldReason, Timestamp,
+};
 
 pub enum AllowBalancesCall {}
 

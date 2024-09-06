@@ -1,6 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 use core::marker::PhantomData;
+
 pub use decoding::{Decode, Decodes, DecodingFailed, Identity, Processor};
 pub use environment::{BufIn, BufOut, Environment, Ext};
 use frame_support::{
@@ -109,13 +110,14 @@ fn default_log_target_works() {
 
 #[cfg(test)]
 mod extension {
+	use codec::Encode;
+	use frame_system::Call;
+
 	use super::*;
 	use crate::mock::{
 		new_test_ext, DispatchExtFuncId, MockEnvironment, NoopFuncId, ReadExtFuncId, RuntimeCall,
 		RuntimeRead, Test, INVALID_FUNC_ID,
 	};
-	use codec::Encode;
-	use frame_system::Call;
 
 	#[test]
 	fn call_works() {

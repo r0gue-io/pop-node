@@ -33,6 +33,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+use pallet_api::fungibles;
 use pallet_balances::Call as BalancesCall;
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
@@ -64,8 +65,6 @@ use sp_version::RuntimeVersion;
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
-
-use pallet_api::fungibles;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
@@ -998,8 +997,9 @@ cumulus_pallet_parachain_system::register_validate_block! {
 
 #[cfg(test)]
 mod tests {
-	use crate::Runtime;
 	use std::any::TypeId;
+
+	use crate::Runtime;
 
 	// Ensures that the account id lookup does not perform any state reads. When this changes,
 	// `pallet_api::fungibles` dispatchables need to be re-evaluated.

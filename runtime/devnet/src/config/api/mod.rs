@@ -1,8 +1,6 @@
-use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
-};
-use codec::Decode;
 use core::marker::PhantomData;
+
+use codec::Decode;
 use cumulus_primitives_core::Weight;
 use frame_support::traits::Contains;
 pub(crate) use pallet_api::Extension;
@@ -11,6 +9,10 @@ use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use versioning::*;
+
+use crate::{
+	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+};
 
 mod versioning;
 
@@ -68,8 +70,8 @@ impl RuntimeResult {
 }
 
 impl fungibles::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type AssetsInstance = TrustBackedAssetsInstance;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
 

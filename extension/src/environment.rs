@@ -1,8 +1,10 @@
-use crate::AccountIdOf;
 use core::fmt::Debug;
+
 use frame_support::pallet_prelude::Weight;
 use pallet_contracts::chain_extension::{BufInBufOutState, ChargedAmount, Result, State};
 use sp_std::vec::Vec;
+
+use crate::AccountIdOf;
 
 /// Provides access to the parameters passed to a chain extension and its execution environment.
 ///
@@ -182,6 +184,7 @@ pub(crate) struct ExternalEnvironment<'a, T: pallet_contracts::chain_extension::
 
 impl<'a, E: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<'a, E> {
 	type AccountId = AccountIdOf<E::T>;
+
 	fn address(&self) -> &Self::AccountId {
 		self.0.address()
 	}

@@ -1,4 +1,5 @@
 use core::{fmt::Debug, marker::PhantomData};
+
 use frame_support::traits::Get;
 pub use pop_chain_extension::{
 	Config, ContractWeightsOf, DecodingFailed, DispatchCall, ReadState, Readable,
@@ -99,6 +100,7 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 	type Source = Source;
 	/// The target type.
 	type Target = Target;
+
 	/// The log target.
 	const LOG_TARGET: &'static str = "pop-api::extension::converters::versioned-result";
 
@@ -138,10 +140,11 @@ fn version(env: &impl Environment) -> u8 {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::extension::Prepender;
 	use frame_support::pallet_prelude::Weight;
 	use pop_chain_extension::Ext;
+
+	use super::*;
+	use crate::extension::Prepender;
 
 	#[test]
 	fn prepender_works() {
