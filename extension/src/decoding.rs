@@ -19,25 +19,7 @@ pub trait Decode {
 	///
 	/// # Parameters
 	/// - `env` - The current execution environment.
-	fn decode<E: Environment + BufIn>(env: &mut E) -> Result<Self::Output> {
-		// Charge appropriate weight for copying from contract, based on input length, prior to
-		// decoding. reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=CopyToContract(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_return(len)%2C
-		let len = env.in_len();
-		let weight = ContractWeights::<E::Config>::seal_return(len);
-		let charged = env.charge_weight(weight)?;
-		log::debug!(target: Self::LOG_TARGET, "pre-decode weight charged: len={len}, weight={weight}, charged={charged:?}");
-		// Read encoded input supplied by contract for buffer.
-		let mut input = env.read(len)?;
-		log::debug!(target: Self::LOG_TARGET, "input read: input={input:?}");
-		// Perform any additional processing required. Any implementation is expected to charge
-		// weight as appropriate.
-		input = Self::Processor::process(input, env);
-		// Finally decode and return.
-		Self::Output::decode(&mut &input[..]).map_err(|_| {
-			log::error!(target: Self::LOG_TARGET, "decoding failed: unable to decode input into output type. input={input:?}");
-			Self::Error::get()
-		})
-	}
+	fn decode<E: Environment + BufIn>(env: &mut E) -> Result<Self::Output>;
 }
 
 /// Trait for processing a value based on additional information available from the environment.
@@ -68,18 +50,43 @@ impl<Value> Processor for Identity<Value> {
 }
 
 /// Default implementation for decoding data read from contract memory.
-pub struct Decodes<O, E, P = Identity<Vec<u8>>, L = ()>(PhantomData<(O, E, P, L)>);
+pub struct Decodes<O, W, E, P = Identity<Vec<u8>>, L = ()>(PhantomData<(O, W, E, P, L)>);
 impl<
 		Output: codec::Decode,
+		Weight: WeightInfo,
 		Error: Get<DispatchError>,
 		ValueProcessor: Processor<Value = Vec<u8>>,
 		Logger: LogTarget,
-	> Decode for Decodes<Output, Error, ValueProcessor, Logger>
+	> Decode for Decodes<Output, Weight, Error, ValueProcessor, Logger>
 {
 	type Output = Output;
 	type Processor = ValueProcessor;
 	type Error = Error;
 	const LOG_TARGET: &'static str = Logger::LOG_TARGET;
+
+	/// Decodes data read from contract memory.
+	///
+	/// # Parameters
+	/// - `env` - The current execution environment.
+	fn decode<E: Environment + BufIn>(env: &mut E) -> Result<Self::Output> {
+		// Charge appropriate weight for copying from contract, based on input length, prior to
+		// decoding. reference: https://github.com/paritytech/polkadot-sdk/pull/4233/files#:~:text=CopyToContract(len)%20%3D%3E%20T%3A%3AWeightInfo%3A%3Aseal_return(len)%2C
+		let len = env.in_len();
+		let weight = Weight::seal_return(len);
+		let charged = env.charge_weight(weight)?;
+		log::debug!(target: Self::LOG_TARGET, "pre-decode weight charged: len={len}, weight={weight}, charged={charged:?}");
+		// Read encoded input supplied by contract for buffer.
+		let mut input = env.read(len)?;
+		log::debug!(target: Self::LOG_TARGET, "input read: input={input:?}");
+		// Perform any additional processing required. Any implementation is expected to charge
+		// weight as appropriate.
+		input = Self::Processor::process(input, env);
+		// Finally decode and return.
+		Output::decode(&mut &input[..]).map_err(|_| {
+			log::error!(target: Self::LOG_TARGET, "decoding failed: unable to decode input into output type. input={input:?}");
+			Error::get()
+		})
+	}
 }
 
 /// Error to be returned when decoding fails.
@@ -100,7 +107,7 @@ mod tests {
 	use codec::{Decode as OriginalDecode, Encode};
 	use frame_support::assert_ok;
 
-	type EnumDecodes = Decodes<ComprehensiveEnum, DecodingFailed<Test>>;
+	type EnumDecodes = Decodes<ComprehensiveEnum, ContractWeightsOf<Test>, DecodingFailed<Test>>;
 
 	#[test]
 	fn identity_processor_works() {
@@ -162,7 +169,7 @@ mod tests {
 		let mut env = MockEnvironment::new(0, input.clone());
 		assert!(EnumDecodes::decode(&mut env).is_err());
 		// Decode charges weight based on the length of the input, also when decoding fails.
-		assert_eq!(env.charged(), ContractWeights::<Test>::seal_return(input.len() as u32));
+		assert_eq!(env.charged(), ContractWeightsOf::<Test>::seal_return(input.len() as u32));
 	}
 
 	#[derive(Debug, Clone, PartialEq, Encode, OriginalDecode)]

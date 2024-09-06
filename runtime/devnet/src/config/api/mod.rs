@@ -15,8 +15,12 @@ use versioning::*;
 mod versioning;
 
 type DecodingFailedError = DecodingFailed<Runtime>;
-type DecodesAs<Output, Logger = ()> =
-	pallet_api::extension::DecodesAs<Output, DecodingFailedError, Logger>;
+type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
+	Output,
+	ContractWeightsOf<Runtime>,
+	DecodingFailedError,
+	Logger,
+>;
 
 /// A query of runtime state.
 #[derive(Decode, Debug)]

@@ -13,7 +13,7 @@ pub trait Function {
 	/// # Parameters
 	/// - `env` - The current execution environment.
 	fn execute(
-		env: &mut (impl Environment<Config = Self::Config> + BufIn + BufOut),
+		env: &mut (impl Environment<AccountId = AccountIdOf<Self::Config>> + BufIn + BufOut),
 	) -> Result<RetVal>;
 }
 
@@ -25,8 +25,8 @@ impl<
 			+ frame_system::Config<
 				RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 			>,
-		Decoder: Decode<Output: codec::Decode + Into<<Config as frame_system::Config>::RuntimeCall>>,
-		Filter: Contains<<Config as frame_system::Config>::RuntimeCall> + 'static,
+		Decoder: Decode<Output: codec::Decode + Into<RuntimeCallOf<Config>>>,
+		Filter: Contains<RuntimeCallOf<Config>> + 'static,
 		Error: ErrorConverter,
 		Logger: LogTarget,
 	> Function for DispatchCall<Matcher, Config, Decoder, Filter, Error, Logger>
@@ -40,7 +40,9 @@ impl<
 	///
 	/// # Parameters
 	/// - `env` - The current execution environment.
-	fn execute(env: &mut (impl Environment<Config = Config> + BufIn)) -> Result<RetVal> {
+	fn execute(
+		env: &mut (impl Environment<AccountId = Config::AccountId> + BufIn),
+	) -> Result<RetVal> {
 		// Decode runtime call.
 		let call = Decoder::decode(env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "decoded: call={call:?}");
@@ -116,7 +118,7 @@ impl<
 		let result = ResultConverter::convert(result, env).into();
 		log::debug!(target: Logger::LOG_TARGET, "converted: result={result:?}");
 		// Charge appropriate weight for writing to contract, based on result length.
-		let weight = ContractWeights::<Config>::seal_input(result.len() as u32);
+		let weight = ContractWeightsOf::<Config>::seal_input(result.len() as u32);
 		let charged = env.charge_weight(weight)?;
 		log::trace!(target: Logger::LOG_TARGET, "return result to contract: weight={weight}, charged={charged:?}");
 		env.write(&result, false, None)?; // weight charged above
@@ -202,7 +204,7 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 	type Error = ();
 
 	fn execute(
-		env: &mut (impl Environment<Config = Self::Config> + BufIn + BufOut),
+		env: &mut (impl Environment<AccountId = AccountIdOf<Self::Config>> + BufIn + BufOut),
 	) -> Result<RetVal> {
 		// Attempts to match a specified extension/function identifier to its corresponding
 		// function, as configured by the runtime.
@@ -280,7 +282,7 @@ mod tests {
 		type DispatchCallWithFilter<Filter> = super::DispatchCall<
 			WithFuncId<FuncId>,
 			Test,
-			Decodes<RuntimeCall, DecodingFailed<Test>>,
+			Decodes<RuntimeCall, ContractWeightsOf<Test>, DecodingFailed<Test>>,
 			Filter,
 		>;
 
@@ -398,14 +400,14 @@ mod tests {
 			WithFuncId<FuncId>,
 			Test,
 			RuntimeRead,
-			Decodes<RuntimeRead, DecodingFailed<Test>>,
+			Decodes<RuntimeRead, ContractWeightsOf<Test>, DecodingFailed<Test>>,
 			Filter,
 		>;
 		type ReadStateWithResultConverter<ResultConverter> = super::ReadState<
 			WithFuncId<FuncId>,
 			Test,
 			RuntimeRead,
-			Decodes<RuntimeRead, DecodingFailed<Test>>,
+			Decodes<RuntimeRead, ContractWeightsOf<Test>, DecodingFailed<Test>>,
 			Everything,
 			ResultConverter,
 		>;
