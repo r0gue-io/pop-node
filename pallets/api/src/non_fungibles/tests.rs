@@ -71,7 +71,9 @@ fn cancel_approval_works() {
 		let (collection, item) =
 			create_collection_mint_and_approve(owner.clone(), ITEM, spender.clone());
 		// Successfully cancel the transfer approval of `spender` by `owner`.
-		assert_ok!(NonFungibles::cancel_approval(signed(owner), collection, item, spender));
+		assert_ok!(NonFungibles::cancel_approval(signed(owner), collection, item, spender.clone()));
+		// Failed to transfer the item by `spender` without permission.
+		assert!(Nfts::transfer(signed(spender.clone()), collection, item, spender).is_err());
 	});
 }
 
