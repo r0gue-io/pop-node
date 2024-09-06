@@ -186,3 +186,8 @@ impl<'a, T: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<
 		self.0.address()
 	}
 }
+
+#[test]
+fn default_ext_works() {
+	assert_eq!(().address(), &())
+}
