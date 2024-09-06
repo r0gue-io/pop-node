@@ -228,3 +228,8 @@ fn call(
 fn function_selector(name: &str) -> Vec<u8> {
 	sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
 }
+
+/// Construct the hashed bytes as a selector of function.
+fn function_selector(name: &str) -> Vec<u8> {
+	sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
+}
