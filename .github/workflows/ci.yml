@@ -110,6 +110,8 @@ jobs:
   coverage:
     needs: lint
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-C debuginfo=0"
     steps:
       - uses: actions/checkout@v4
 
