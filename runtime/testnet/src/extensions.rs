@@ -30,9 +30,7 @@ where
 		>,
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
-	where
-		E: Ext<T = T>,
+	fn call<E: Ext<T = T>>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
 	{
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {

@@ -7,13 +7,12 @@ version = "0.0.0"
 
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
+pop-primitives = { path = "../primitives", default-features = false }
 sp-io = { version = "31.0.0", default-features = false, features = [
 	"disable_allocator",
 	"disable_oom",
 	"disable_panic_handler",
 ] }
-
-pop-primitives = { path = "../primitives", default-features = false }
 
 [lib]
 crate-type = [ "rlib" ]
