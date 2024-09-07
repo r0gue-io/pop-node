@@ -354,7 +354,7 @@ mod tests {
 			})
 		}
 
-#[test]
+		#[test]
 		fn dispatch_call_adjusts_weight() {
 			let migrate_weight = <Test as pallet_contracts::Config>::WeightInfo::migrate();
 			let migration_noop_weight =
