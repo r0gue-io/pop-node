@@ -3,8 +3,11 @@ use frame_support::{
 	pallet_prelude::*,
 	traits::{Contains, OriginTrait},
 };
-use pallet_contracts::chain_extension::{
-	BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
+use pallet_contracts::{
+	chain_extension::{
+		BufInBufOutState, ChainExtension, ChargedAmount, Environment, Ext, InitState, RetVal,
+	},
+	WeightInfo,
 };
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
@@ -13,8 +16,6 @@ use sp_std::vec::Vec;
 use crate::{AccountId, AllowedApiCalls, RuntimeCall, RuntimeOrigin};
 
 const LOG_TARGET: &str = "pop-api::extension";
-
-type ContractSchedule<T> = <T as pallet_contracts::Config>::Schedule;
 
 #[derive(Default)]
 pub struct PopApiExtension;
@@ -29,10 +30,10 @@ where
 		>,
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
-	where
-		E: Ext<T = T>,
-	{
+	fn call<E: Ext<T = T>>(
+		&mut self,
+		env: Environment<E, InitState>,
+	) -> Result<RetVal, DispatchError> {
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {
 			v0::FuncId::Dispatch => {
@@ -123,16 +124,14 @@ where
 	T: pallet_contracts::Config,
 	E: Ext<T = T>,
 {
-	let contract_host_weight = ContractSchedule::<T>::get().host_fn_weights;
-
 	// calculate weight for reading bytes of `len`
 	// reference: https://github.com/paritytech/polkadot-sdk/blob/117a9433dac88d5ac00c058c9b39c511d47749d2/substrate/frame/contracts/src/wasm/runtime.rs#L267
-	let base_weight: Weight = contract_host_weight.return_per_byte.saturating_mul(len.into());
+	let base_weight: Weight = T::WeightInfo::seal_return(len);
 
 	// debug_message weight is a good approximation of the additional overhead of going
 	// from contract layer to substrate layer.
 	// reference: https://github.com/paritytech/ink-examples/blob/b8d2caa52cf4691e0ddd7c919e4462311deb5ad0/psp22-extension/runtime/psp22-extension-example.rs#L236
-	let overhead = contract_host_weight.debug_message;
+	let overhead: Weight = T::WeightInfo::seal_debug_message(len);
 
 	let charged_weight = env.charge_weight(base_weight.saturating_add(overhead))?;
 	log::debug!(target: LOG_TARGET, "{} charged weight: {:?}", log_prefix, charged_weight);
@@ -172,10 +171,7 @@ where
 	let mut env = env.buf_in_buf_out();
 
 	// To be conservative, we charge the weight for reading the input bytes of a fixed-size type.
-	let base_weight: Weight = ContractSchedule::<T>::get()
-		.host_fn_weights
-		.return_per_byte
-		.saturating_mul(env.in_len().into());
+	let base_weight: Weight = T::WeightInfo::seal_return(env.in_len());
 	let charged_weight = env.charge_weight(base_weight)?;
 
 	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);

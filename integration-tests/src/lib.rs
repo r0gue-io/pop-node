@@ -1,10 +1,5 @@
 #![cfg(test)]
 
-use crate::chains::{
-	asset_hub_paseo::{genesis::ED as ASSET_HUB_PASEO_ED, AssetHubPaseoParaPallet},
-	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
-	pop_network::PopNetworkParaPallet,
-};
 use asset_hub_paseo_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
 use asset_test_utils::xcm_helpers;
 use chains::{asset_hub_paseo::AssetHubPaseo, paseo::Paseo, pop_network::PopNetwork};
@@ -21,6 +16,12 @@ use paseo_runtime::xcm_config::XcmConfig as PaseoXcmConfig;
 use pop_runtime_common::Balance;
 use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
+
+use crate::chains::{
+	asset_hub_paseo::{genesis::ED as ASSET_HUB_PASEO_ED, AssetHubPaseoParaPallet},
+	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
+	pop_network::PopNetworkParaPallet,
+};
 
 mod chains;
 
@@ -95,7 +96,7 @@ fn para_receiver_assertions<Test>(_: Test) {
 	assert_expected_events!(
 		PopNetworkPara,
 		vec![
-			RuntimeEvent::Balances(pallet_balances::Event::Deposit { .. }) => {},
+			RuntimeEvent::Balances(pallet_balances::Event::Minted { .. }) => {},
 			RuntimeEvent::MessageQueue(
 				pallet_message_queue::Event::Processed { success: true, .. }
 			) => {},
@@ -113,9 +114,7 @@ fn para_to_system_para_sender_assertions(t: ParaToSystemParaTest) {
 		PopNetworkPara,
 		vec![
 			// Amount to reserve transfer is transferred to Parachain's Sovereign account
-			RuntimeEvent::Balances(
-				pallet_balances::Event::Withdraw { who, amount }
-			) => {
+			RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
 				who: *who == t.sender.account_id,
 				amount: *amount == t.args.amount,
 			},
@@ -133,9 +132,7 @@ fn para_to_relay_sender_assertions(t: ParaToRelayTest) {
 		PopNetworkPara,
 		vec![
 			// Amount to reserve transfer is transferred to Parachain's Sovereign account
-			RuntimeEvent::Balances(
-				pallet_balances::Event::Withdraw { who, amount }
-			) => {
+			RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
 				who: *who == t.sender.account_id,
 				amount: *amount == t.args.amount,
 			},
@@ -297,7 +294,7 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 	test.assert();
 
 	let delivery_fees = PaseoRelay::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<PaseoXcmConfig as xcm_executor::Config>::XcmSender,
 		>(
 			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
@@ -353,7 +350,7 @@ fn reserve_transfer_native_asset_from_para_to_relay() {
 	let receiver_balance_after = test.receiver.balance;
 
 	let delivery_fees = PopNetworkPara::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
 		>(
 			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
@@ -401,7 +398,7 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 	let receiver_balance_after = test.receiver.balance;
 
 	let delivery_fees = AssetHubPaseoPara::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<AssetHubPaseoXcmConfig as xcm_executor::Config>::XcmSender,
 		>(
 			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
@@ -467,7 +464,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let receiver_balance_after = test.receiver.balance;
 
 	let delivery_fees = PopNetworkPara::execute_with(|| {
-		xcm_helpers::transfer_assets_delivery_fees::<
+		xcm_helpers::teleport_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
 		>(
 			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest

@@ -1,5 +1,6 @@
-use super::*;
 use sp_runtime::ModuleError;
+
+use super::*;
 
 type Version = u8;
 
@@ -156,10 +157,11 @@ impl From<DispatchError> for V0Error {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
 	use pop_primitives::{ArithmeticError::*, Error, TokenError::*, TransactionalError::*};
 	use sp_runtime::ModuleError;
 	use DispatchError::*;
+
+	use super::*;
 
 	// Compare all the different `DispatchError` variants with the expected `Error`.
 	#[test]

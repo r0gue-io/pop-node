@@ -1,4 +1,3 @@
-use crate::{fungibles::Read::*, mock::*, Read};
 use codec::Encode;
 use frame_support::{
 	assert_ok,
@@ -7,6 +6,8 @@ use frame_support::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
 };
+
+use crate::{fungibles::Read::*, mock::*, Read};
 
 const ASSET: u32 = 42;
 

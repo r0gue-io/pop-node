@@ -1,12 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use sp_runtime::Perbill;
-
 use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
-
 // Cumulus types re-export
 // These types are shared between the devnet and testnet runtimes
 pub use parachains_common::{AccountId, AuraId, Balance, Block, BlockNumber, Hash, Signature};
 pub use polkadot_primitives::MAX_POV_SIZE;
+use sp_runtime::Perbill;
 
 /// Nonce for an account
 pub type Nonce = u32;
@@ -47,8 +45,8 @@ pub const MAXIMUM_BLOCK_WEIGHT: Weight =
 // Unit = the base number of indivisible units for balances
 pub const UNIT: Balance = 10_000_000_000; // 10 decimals
 
-pub const MILLIUNIT: Balance = UNIT / 1_000;
-pub const MICROUNIT: Balance = UNIT / 1_000_000;
+pub const MILLIUNIT: Balance = UNIT / 1_000; // 10_000_000
+pub const MICROUNIT: Balance = UNIT / 1_000_000; // 10_000
 
 // Deposits
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
@@ -69,10 +67,11 @@ pub const BLOCK_PROCESSING_VELOCITY: u32 = 1;
 /// Proxy commons for Pop runtimes
 pub mod proxy {
 
-	use super::{deposit, Balance};
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::parameter_types;
 	use sp_runtime::RuntimeDebug;
+
+	use super::{deposit, Balance};
 
 	parameter_types! {
 		// One storage item; key size 32, value size 8; .

@@ -1,6 +1,5 @@
 pub(crate) mod genesis;
 
-use crate::chains::paseo::Paseo;
 use emulated_integration_tests_common::{
 	impl_accounts_helpers_for_parachain, impl_assert_events_helpers_for_parachain,
 	impl_assets_helpers_for_parachain, impl_foreign_assets_helpers_for_parachain,
@@ -34,6 +33,6 @@ decl_test_parachains! {
 // AssetHubPaseo implementation
 impl_accounts_helpers_for_parachain!(AssetHubPaseo);
 impl_assert_events_helpers_for_parachain!(AssetHubPaseo);
-impl_assets_helpers_for_parachain!(AssetHubPaseo, Paseo);
-impl_foreign_assets_helpers_for_parachain!(AssetHubPaseo, Paseo);
+impl_assets_helpers_for_parachain!(AssetHubPaseo);
+impl_foreign_assets_helpers_for_parachain!(AssetHubPaseo, xcm::v3::Location);
 impl_xcm_helpers_for_parachain!(AssetHubPaseo);

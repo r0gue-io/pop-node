@@ -1,27 +1,26 @@
 [package]
-name = "pop-api"
 description = "Enabling smart(er) contracts with the power of Polkadot"
-license = "GPL-3.0-only"
-version = "0.0.0"
 edition = "2021"
+license = "GPL-3.0-only"
+name = "pop-api"
+version = "0.0.0"
 
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
+pop-primitives = { path = "../primitives", default-features = false }
 sp-io = { version = "31.0.0", default-features = false, features = [
-    "disable_panic_handler",
-    "disable_oom",
-    "disable_allocator",
+	"disable_allocator",
+	"disable_oom",
+	"disable_panic_handler",
 ] }
 
-pop-primitives = { path = "../primitives", default-features = false }
-
 [lib]
+crate-type = [ "rlib" ]
 name = "pop_api"
 path = "src/lib.rs"
-crate-type = ["rlib"]
 
 [features]
-default = ["std"]
-std = ["ink/std", "pop-primitives/std", "sp-io/std"]
-assets = []
-fungibles = ["assets"]
+assets = [  ]
+default = [ "std" ]
+fungibles = [ "assets" ]
+std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]

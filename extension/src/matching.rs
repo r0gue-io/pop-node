@@ -37,9 +37,10 @@ impl<T: Get<u32>> Matches for WithFuncId<T> {
 
 #[cfg(test)]
 mod tests {
+	use sp_core::{ConstU16, ConstU32};
+
 	use super::*;
 	use crate::mock::MockEnvironment;
-	use sp_core::{ConstU16, ConstU32};
 
 	#[test]
 	fn equals_matches() {

@@ -569,7 +569,7 @@ fn burn_works() {
 		start_destroy_asset(addr.clone(), asset);
 		assert_eq!(
 			burn(addr.clone(), asset, BOB, amount),
-			Err(Module { index: 52, error: [16, 0] })
+			Err(Module { index: 52, error: [17, 0] })
 		);
 	});
 }

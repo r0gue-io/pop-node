@@ -9,8 +9,9 @@ pub use v0::*;
 pub type AssetId = u32;
 
 pub mod v0 {
-	use super::*;
 	pub use error::*;
+
+	use super::*;
 
 	mod error {
 		use super::*;

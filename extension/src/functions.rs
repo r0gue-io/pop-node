@@ -1,5 +1,6 @@
-use super::*;
 use core::fmt::Debug;
+
+use super::*;
 
 /// A chain extension function.
 pub trait Function {
@@ -167,6 +168,7 @@ pub struct DefaultConverter<T>(PhantomData<T>);
 impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
 	type Source = T;
 	type Target = Vec<u8>;
+
 	const LOG_TARGET: &'static str = "";
 
 	fn convert(value: Self::Source, _env: &impl Environment) -> Self::Target {
@@ -199,9 +201,10 @@ impl ErrorConverter for () {
 #[impl_trait_for_tuples::impl_for_tuples(1, 10)]
 #[tuple_types_custom_trait_bound(Function + Matches)]
 impl<Runtime: pallet_contracts::Config> Function for Tuple {
-	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
 	type Config = Runtime;
 	type Error = ();
+
+	for_tuples!( where #( Tuple: Function<Config=Runtime> )* );
 
 	fn execute(
 		env: &mut (impl Environment<AccountId = AccountIdOf<Self::Config>> + BufIn + BufOut),
@@ -222,17 +225,18 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 
 #[cfg(test)]
 mod tests {
+	use codec::Encode;
+	use frame_support::traits::{Everything, Nothing};
+	use frame_system::Call;
+	use mock::{new_test_ext, Functions, MockEnvironment, RuntimeCall, RuntimeRead, Test};
+	use sp_core::ConstU32;
+
 	use super::*;
 	use crate::{
 		extension::{read_from_buffer_weight, write_to_contract_weight},
 		matching::WithFuncId,
 		mock::{Noop, NoopFuncId, INVALID_FUNC_ID},
 	};
-	use codec::Encode;
-	use frame_support::traits::{Everything, Nothing};
-	use frame_system::Call;
-	use mock::{new_test_ext, Functions, MockEnvironment, RuntimeCall, RuntimeRead, Test};
-	use sp_core::ConstU32;
 
 	type FuncId = ConstU32<42>;
 
@@ -352,21 +356,26 @@ mod tests {
 
 		#[test]
 		fn dispatch_call_adjusts_weight() {
+			let migrate_weight = <Test as pallet_contracts::Config>::WeightInfo::migrate();
+			let migration_noop_weight =
+				<Test as pallet_contracts::Config>::WeightInfo::migration_noop();
 			new_test_ext().execute_with(|| {
 				// Attempt to perform non-existent migration with additional weight limit specified.
-				let weight_limit = Weight::from_parts(123456789, 12345);
+				let extra_weight = Weight::from_parts(123456789, 12345);
+				let weight_limit = migration_noop_weight.saturating_add(extra_weight);
 				let call = RuntimeCall::Contracts(pallet_contracts::Call::migrate { weight_limit });
 				let encoded_call = call.encode();
 				let mut env = MockEnvironment::new(FuncId::get(), encoded_call.clone());
 				let expected: DispatchError =
 					pallet_contracts::Error::<Test>::NoMigrationPerformed.into();
 				assert_eq!(DispatchCall::execute(&mut env).err().unwrap(), expected);
+				// Ensure pre-dispatch weight is weight function + weight limit
+				assert_eq!(call.get_dispatch_info().weight, migrate_weight + weight_limit);
 				assert_eq!(
 					env.charged(),
 					read_from_buffer_weight(encoded_call.len() as u32) +
-						// Weight limit subtracted from pre-dispatch weight charged on failure.
 						call.get_dispatch_info().weight -
-						weight_limit
+						extra_weight
 				);
 			})
 		}

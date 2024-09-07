@@ -8,7 +8,6 @@
 use std::sync::Arc;
 
 use pop_runtime_common::{AccountId, Balance, Block, Nonce};
-
 pub use sc_rpc::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
