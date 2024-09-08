@@ -1,4 +1,5 @@
-//! The `fungibles` module provides an API for interacting and managing fungible assets on Pop Network.
+//! The `fungibles` module provides an API for interacting and managing fungible assets on Pop
+//! Network.
 //!
 //! The API includes the following interfaces:
 //! 1. PSP-22
@@ -6,15 +7,16 @@
 //! 3. Asset Management
 //! 4. PSP-22 Mintable & Burnable
 
+use constants::*;
+use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+pub use management::*;
+pub use metadata::*;
+
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
 	primitives::{AccountId, AssetId, Balance},
 	Result, StatusCode,
 };
-use constants::*;
-use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
-pub use management::*;
-pub use metadata::*;
 
 // Helper method to build a dispatch call.
 //
@@ -449,8 +451,8 @@ pub enum FungiblesError {
 	Unknown,
 	/// No balance for creation of assets or fees.
 	// TODO: Originally `pallet_balances::Error::InsufficientBalance` but collides with the
-	//  `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere to
-	//   standard. This deserves a second look.
+	//  `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere
+	// to standard. This deserves a second look.
 	NoBalance,
 }
 
@@ -476,6 +478,63 @@ impl From<StatusCode> for FungiblesError {
 			_ => FungiblesError::Other(value),
 		}
 	}
+}
+
+type Psp22Result<T> = core::result::Result<T, Psp22Error>;
+
+#[ink::trait_definition]
+pub trait Psp22 {
+	#[ink(message)]
+	fn total_supply(&self) -> Balance;
+
+	#[ink(message)]
+	fn balance_of(&self, owner: AccountId) -> Balance;
+
+	#[ink(message)]
+	fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance;
+
+	#[ink(message)]
+	fn transfer(&mut self, to: AccountId, value: Balance, data: Vec<u8>) -> Psp22Result<()>;
+
+	#[ink(message)]
+	fn transfer_from(
+		&mut self,
+		from: AccountId,
+		to: AccountId,
+		value: Balance,
+		data: Vec<u8>,
+	) -> Psp22Result<()>;
+
+	#[ink(message)]
+	fn approve(&mut self, spender: AccountId, value: Balance) -> Psp22Result<()>;
+
+	#[ink(message)]
+	fn increase_allowance(&mut self, spender: AccountId, value: Balance) -> Psp22Result<()>;
+
+	#[ink(message)]
+	fn decrease_allowance(&mut self, spender: AccountId, value: Balance) -> Psp22Result<()>;
+}
+
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub enum Psp22Error {
+	Custom(String),
+	InsufficientBalance,
+	InsufficientAllowance,
+	ZeroRecipientAddress,
+	ZeroSenderAddress,
+	SafeTransferCheckFailed(String),
+}
+
+#[ink::trait_definition]
+pub trait Psp22Metadata {
+	#[ink(message)]
+	fn token_name(&self) -> Option<Vec<u8>>;
+
+	#[ink(message)]
+	fn token_symbol(&self) -> Option<Vec<u8>>;
+
+	#[ink(message)]
+	fn token_decimals(&self, id: AssetId) -> u8;
 }
 
 #[cfg(test)]
