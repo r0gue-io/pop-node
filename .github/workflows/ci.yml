@@ -12,8 +12,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: "./.github/actions/init"
+
       - name: Check formatting
-        run: cargo +stable fmt --all -- --check
+        run: |
+          rustup toolchain install nightly --profile minimal --component rustfmt
+          cargo +nightly fmt --all -- --check
+
+      - name: Check manifests
+        run: |
+          cargo install taplo-cli --locked
+          taplo format --check
+
+      - name: Check features
+        run: |
+          cargo install zepter --locked
+          zepter lint propagate-feature --feature try-runtime --left-side-feature-missing=ignore --workspace --feature-enables-dep="try-runtime:frame-try-runtime" --locked
+          zepter lint propagate-feature --feature runtime-benchmarks --left-side-feature-missing=ignore --workspace --feature-enables-dep="runtime-benchmarks:frame-benchmarking" --locked
+          zepter lint propagate-feature --feature std --left-side-feature-missing=ignore --workspace --locked
+          zepter format features
 
   check:
     needs: lint
@@ -33,6 +50,7 @@ jobs:
     permissions:
       checks: write
     env:
+      RUSTFLAGS: "-Wmissing_docs"
       SKIP_WASM_BUILD: 1
     steps:
       - uses: actions/checkout@v4
@@ -67,9 +85,33 @@ jobs:
       - name: Run integration tests
         run: cargo test --release --locked --package integration-tests
 
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run tests
+        working-directory: pop-api
+        run: cargo test --release --all-features
+
+  api-integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run integration tests
+        working-directory: pop-api/integration-tests
+        run: cargo test --release
+
   coverage:
     needs: lint
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-C debuginfo=0"
     steps:
       - uses: actions/checkout@v4
 

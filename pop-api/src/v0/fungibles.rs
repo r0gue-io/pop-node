@@ -488,7 +488,7 @@ mod tests {
 	use super::FungiblesError;
 	use crate::{
 		constants::{ASSETS, BALANCES},
-		primitives::error::{
+		primitives::{
 			ArithmeticError::*,
 			Error::{self, *},
 			TokenError::*,
@@ -527,11 +527,11 @@ mod tests {
 	#[test]
 	fn conversion_status_code_into_fungibles_error_works() {
 		let other_errors = vec![
-			Other { dispatch_error_index: 5, error_index: 5, error: 1 },
+			Other,
 			CannotLookup,
 			BadOrigin,
 			// `ModuleError` other than assets module.
-			Module { index: 2, error: 5 },
+			Module { index: 2, error: [5, 0] },
 			ConsumerRemaining,
 			NoProviders,
 			TooManyConsumers,
@@ -542,7 +542,7 @@ mod tests {
 			Corruption,
 			Unavailable,
 			RootNotAllowed,
-			UnknownCall,
+			Unknown { dispatch_error_index: 5, error_index: 5, error: 1 },
 			DecodingFailed,
 		];
 		for error in other_errors {
@@ -552,32 +552,35 @@ mod tests {
 		}
 
 		assert_eq!(
-			into_fungibles_error(Module { index: BALANCES, error: 2 }),
+			into_fungibles_error(Module { index: BALANCES, error: [2, 0] }),
 			FungiblesError::NoBalance
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: 0 }),
+			into_fungibles_error(Module { index: ASSETS, error: [0, 0] }),
 			FungiblesError::NoAccount
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: 1 }),
+			into_fungibles_error(Module { index: ASSETS, error: [1, 0] }),
 			FungiblesError::NoPermission
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: 2 }),
+			into_fungibles_error(Module { index: ASSETS, error: [2, 0] }),
 			FungiblesError::Unknown
 		);
-		assert_eq!(into_fungibles_error(Module { index: ASSETS, error: 3 }), FungiblesError::InUse);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: 5 }),
+			into_fungibles_error(Module { index: ASSETS, error: [3, 0] }),
+			FungiblesError::InUse
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [5, 0] }),
 			FungiblesError::MinBalanceZero
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: 7 }),
+			into_fungibles_error(Module { index: ASSETS, error: [7, 0] }),
 			FungiblesError::InsufficientAllowance
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: 10 }),
+			into_fungibles_error(Module { index: ASSETS, error: [10, 0] }),
 			FungiblesError::TokenNotLive
 		);
 	}

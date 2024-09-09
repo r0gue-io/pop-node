@@ -33,73 +33,73 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
+	type AccountData = pallet_balances::AccountData<u128>;
+	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
+	type Block = Block;
+	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type Nonce = u64;
+	type BlockWeights = ();
+	type DbWeight = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Block = Block;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u128>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = SS58Prefix;
-	type OnSetCode = ();
 	type MaxConsumers = ConstU32<16>;
+	type Nonce = u64;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type PalletInfo = PalletInfo;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type SS58Prefix = SS58Prefix;
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 impl pallet_balances::Config for Test {
+	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
-	type RuntimeEvent = RuntimeEvent;
 	type ExistentialDeposit = ConstU128<1>;
-	type AccountStore = System;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ConstU32<0>;
-	type WeightInfo = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type RuntimeHoldReason = RuntimeHoldReason;
+	type RuntimeEvent = RuntimeEvent;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightInfo = ();
 }
 
 type AssetsInstance = pallet_assets::Instance1;
 impl pallet_assets::Config<AssetsInstance> for Test {
-	type RuntimeEvent = RuntimeEvent;
-	type Balance = Balance;
-	type RemoveItemsLimit = ConstU32<5>;
+	type ApprovalDeposit = ConstU128<1>;
+	type AssetAccountDeposit = ConstU128<10>;
+	type AssetDeposit = ConstU128<1>;
 	type AssetId = TokenId;
 	type AssetIdParameter = u32;
-	type Currency = Balances;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
-	type ForceOrigin = EnsureRoot<u64>;
-	type AssetDeposit = ConstU128<1>;
-	type AssetAccountDeposit = ConstU128<10>;
-	type MetadataDepositBase = ConstU128<1>;
-	type MetadataDepositPerByte = ConstU128<1>;
-	type ApprovalDeposit = ConstU128<1>;
-	type StringLimit = ConstU32<50>;
-	type Freezer = ();
-	type Extra = ();
-	type CallbackHandle = ();
-	type WeightInfo = ();
+	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
+	type CallbackHandle = ();
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
+	type Currency = Balances;
+	type Extra = ();
+	type ForceOrigin = EnsureRoot<u64>;
+	type Freezer = ();
+	type MetadataDepositBase = ConstU128<1>;
+	type MetadataDepositPerByte = ConstU128<1>;
+	type RemoveItemsLimit = ConstU32<5>;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = ConstU32<50>;
+	type WeightInfo = ();
 }
 impl crate::fungibles::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
 	type AssetsInstance = AssetsInstance;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 

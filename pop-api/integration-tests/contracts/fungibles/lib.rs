@@ -59,13 +59,13 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn transfer(&self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
+		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
 			api::transfer(token, to, value)
 		}
 
 		#[ink(message)]
 		pub fn transfer_from(
-			&self,
+			&mut self,
 			token: TokenId,
 			from: AccountId,
 			to: AccountId,
@@ -77,13 +77,13 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn approve(&self, token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
+		pub fn approve(&mut self, token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
 			api::approve(token, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn increase_allowance(
-			&self,
+			&mut self,
 			token: TokenId,
 			spender: AccountId,
 			value: Balance,
@@ -93,7 +93,7 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn decrease_allowance(
-			&self,
+			&mut self,
 			token: TokenId,
 			spender: AccountId,
 			value: Balance,
@@ -129,18 +129,23 @@ mod fungibles {
 		/// - token_exists
 
 		#[ink(message)]
-		pub fn create(&self, id: TokenId, admin: AccountId, min_balance: Balance) -> Result<()> {
+		pub fn create(
+			&mut self,
+			id: TokenId,
+			admin: AccountId,
+			min_balance: Balance,
+		) -> Result<()> {
 			api::create(id, admin, min_balance)
 		}
 
 		#[ink(message)]
-		pub fn start_destroy(&self, token: TokenId) -> Result<()> {
+		pub fn start_destroy(&mut self, token: TokenId) -> Result<()> {
 			api::start_destroy(token)
 		}
 
 		#[ink(message)]
 		pub fn set_metadata(
-			&self,
+			&mut self,
 			token: TokenId,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
@@ -164,12 +169,12 @@ mod fungibles {
 		/// - burn
 
 		#[ink(message)]
-		pub fn mint(&self, token: TokenId, account: AccountId, amount: Balance) -> Result<()> {
+		pub fn mint(&mut self, token: TokenId, account: AccountId, amount: Balance) -> Result<()> {
 			api::mint(token, account, amount)
 		}
 
 		#[ink(message)]
-		pub fn burn(&self, token: TokenId, account: AccountId, amount: Balance) -> Result<()> {
+		pub fn burn(&mut self, token: TokenId, account: AccountId, amount: Balance) -> Result<()> {
 			api::burn(token, account, amount)
 		}
 	}

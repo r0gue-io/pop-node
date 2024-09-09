@@ -1,33 +1,41 @@
 [package]
+build = "build.rs"
+edition = "2021"
 name = "integration-tests"
 version = "0.1.0"
-edition = "2021"
+
+[build-dependencies]
+contract-build = "4.1.1"
 
 [dev-dependencies]
 env_logger = "0.11.2"
-scale = { package = "parity-scale-codec", version = "3.0.0", default-features = false, features = ["derive"] }
-frame-support = { version = "29.0.0", default-features = false }
-frame-system = { version = "29.0.0", default-features = false }
-pallet-balances = { version = "29.0.2", default-features = false }
-pallet-assets = { version = "30.0.0", default-features = false }
-pallet-contracts = { version = "28.0.0", default-features = false }
+frame-support = { version = "36.0.0", default-features = false }
+frame-support-procedural = { version = "=30.0.1", default-features = false }
+frame-system = { version = "36.1.0", default-features = false }
+log = "0.4.22"
+pallet-assets = { version = "37.0.0", default-features = false }
+pallet-balances = { version = "37.0.0", default-features = false }
+pallet-contracts = { version = "35.0.0", default-features = false }
 pop-primitives = { path = "../../primitives", default-features = false }
 pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
-sp-io = { version = "31.0.0", default-features = false }
-sp-runtime = { version = "32.0.0", default-features = false }
+scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
+	"derive",
+] }
+sp-io = { version = "37.0.0", default-features = false }
+sp-runtime = { version = "=38.0.0", default-features = false }
 
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "frame-support/std",
-    "frame-system/std",
-    "pallet-balances/std",
-    "pallet-assets/std",
-    "pallet-contracts/std",
-    "pop-primitives/std",
-    "pop-runtime-devnet/std",
-    "scale/std",
-    "sp-io/std",
-    "sp-runtime/std",
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-assets/std",
+	"pallet-balances/std",
+	"pallet-contracts/std",
+	"pop-primitives/std",
+	"pop-runtime-devnet/std",
+	"scale/std",
+	"sp-io/std",
+	"sp-runtime/std",
 ]

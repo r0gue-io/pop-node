@@ -1,6 +1,5 @@
 //! Benchmarking setup for pallet_api::fungibles
 
-use super::{AccountIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet, TokenIdOf};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{
 	assert_ok,
@@ -14,6 +13,8 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use sp_runtime::traits::Zero;
+
+use super::{AccountIdOf, TokenIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet};
 
 const SEED: u32 = 1;
 

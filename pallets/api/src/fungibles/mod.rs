@@ -27,8 +27,8 @@ type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
 	use core::cmp::Ordering::*;
+
 	use frame_support::{
 		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
 		pallet_prelude::*,
@@ -40,6 +40,8 @@ pub mod pallet {
 		Saturating,
 	};
 	use sp_std::vec::Vec;
+
+	use super::*;
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -79,6 +81,41 @@ pub mod pallet {
 		/// Check if a specified token exists.
 		#[codec(index = 18)]
 		TokenExists(TokenIdOf<T>),
+	}
+
+	/// Results of state reads for the fungibles API.
+	#[derive(Debug)]
+	pub enum ReadResult<T: Config> {
+		/// Total token supply for a specified token.
+		TotalSupply(BalanceOf<T>),
+		/// Account balance for a specified token and owner.
+		BalanceOf(BalanceOf<T>),
+		/// Allowance for a spender approved by an owner, for a specified token.
+		Allowance(BalanceOf<T>),
+		/// Name of the specified token.
+		TokenName(Vec<u8>),
+		/// Symbol for the specified token.
+		TokenSymbol(Vec<u8>),
+		/// Decimals for the specified token.
+		TokenDecimals(u8),
+		/// Whether the specified token exists.
+		TokenExists(bool),
+	}
+
+	impl<T: Config> ReadResult<T> {
+		/// Encodes the result.
+		pub fn encode(&self) -> Vec<u8> {
+			use ReadResult::*;
+			match self {
+				TotalSupply(result) => result.encode(),
+				BalanceOf(result) => result.encode(),
+				Allowance(result) => result.encode(),
+				TokenName(result) => result.encode(),
+				TokenSymbol(result) => result.encode(),
+				TokenDecimals(result) => result.encode(),
+				TokenExists(result) => result.encode(),
+			}
+		}
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -386,7 +423,8 @@ pub mod pallet {
 			AssetsOf::<T>::clear_metadata(origin, token.into())
 		}
 
-		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
+		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
+		/// supply.
 		///
 		/// # Parameters
 		/// - `token` - The token to mint.
@@ -436,38 +474,52 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Reads fungible token state based on the provided value.
-		///
-		/// This function matches the value to determine the type of state query and returns the
-		/// encoded result.
-		///
-		/// # Parameter
-		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
-		///   the associated parameters.
-		pub fn read_state(value: Read<T>) -> Vec<u8> {
-			use Read::*;
-
-			match value {
-				TotalSupply(token) => AssetsOf::<T>::total_supply(token).encode(),
-				BalanceOf { token, owner } => AssetsOf::<T>::balance(token, owner).encode(),
-				Allowance { token, owner, spender } => {
-					AssetsOf::<T>::allowance(token, &owner, &spender).encode()
-				},
-				TokenName(token) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(token).encode()
-				},
-				TokenSymbol(token) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(token).encode()
-				},
-				TokenDecimals(token) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(token).encode()
-				},
-				TokenExists(token) => AssetsOf::<T>::asset_exists(token).encode(),
-			}
-		}
-
 		fn weight_approve(approve: u32, cancel: u32) -> Weight {
 			<T as Config>::WeightInfo::approve(cancel, approve)
+		}
+	}
+
+	impl<T: Config> crate::Read for Pallet<T> {
+		/// The type of read requested.
+		type Read = Read<T>;
+		/// The type or result returned.
+		type Result = ReadResult<T>;
+
+		/// Determines the weight of the requested read, used to charge the appropriate weight
+		/// before the read is performed.
+		///
+		/// # Parameters
+		/// - `request` - The read request.
+		fn weight(_request: &Self::Read) -> Weight {
+			// TODO: match on request and return benchmarked weight
+			T::DbWeight::get().reads(1_u64)
+		}
+
+		/// Performs the requested read and returns the result.
+		///
+		/// # Parameters
+		/// - `request` - The read request.
+		fn read(request: Self::Read) -> Self::Result {
+			use Read::*;
+			match request {
+				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
+				BalanceOf { token, owner } => {
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner))
+				},
+				Allowance { token, owner, spender } => {
+					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender))
+				},
+				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
+					AccountIdOf<T>,
+				>>::name(token)),
+				TokenSymbol(token) => ReadResult::TokenSymbol(<AssetsOf<T> as MetadataInspect<
+					AccountIdOf<T>,
+				>>::symbol(token)),
+				TokenDecimals(token) => ReadResult::TokenDecimals(
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(token),
+				),
+				TokenExists(token) => ReadResult::TokenExists(AssetsOf::<T>::asset_exists(token)),
+			}
 		}
 	}
 }

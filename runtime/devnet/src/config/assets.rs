@@ -38,36 +38,36 @@ parameter_types! {
 }
 
 impl pallet_nfts::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	// TODO: source from primitives
-	type CollectionId = CollectionId;
-	// TODO: source from primitives
-	type ItemId = ItemId;
-	type Currency = Balances;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type ForceOrigin = AssetsForceOrigin;
-	type Locker = ();
-	type CollectionDeposit = NftsCollectionDeposit;
-	type ItemDeposit = NftsItemDeposit;
-	type MetadataDepositBase = NftsMetadataDepositBase;
-	type AttributeDepositBase = NftsAttributeDepositBase;
-	type DepositPerByte = NftsDepositPerByte;
-	type StringLimit = ConstU32<256>;
-	// TODO: source from primitives
-	type KeyLimit = ConstU32<64>;
-	type ValueLimit = ConstU32<256>;
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
-	type ItemAttributesApprovalsLimit = ConstU32<30>;
-	type MaxTips = ConstU32<10>;
-	type MaxDeadlineDuration = NftsMaxDeadlineDuration;
-	type MaxAttributesPerCall = ConstU32<10>;
+	type AttributeDepositBase = NftsAttributeDepositBase;
+	type CollectionDeposit = NftsCollectionDeposit;
+	// TODO: source from primitives
+	type CollectionId = CollectionId;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type DepositPerByte = NftsDepositPerByte;
 	type Features = NftsPalletFeatures;
-	type OffchainSignature = Signature;
-	type OffchainPublic = <Signature as Verify>::Signer;
-	type WeightInfo = pallet_nfts::weights::SubstrateWeight<Self>;
+	type ForceOrigin = AssetsForceOrigin;
 	#[cfg(feature = "runtime-benchmarks")]
 	type Helper = ();
+	type ItemAttributesApprovalsLimit = ConstU32<30>;
+	type ItemDeposit = NftsItemDeposit;
+	// TODO: source from primitives
+	type ItemId = ItemId;
+	// TODO: source from primitives
+	type KeyLimit = ConstU32<64>;
+	type Locker = ();
+	type MaxAttributesPerCall = ConstU32<10>;
+	type MaxDeadlineDuration = NftsMaxDeadlineDuration;
+	type MaxTips = ConstU32<10>;
+	type MetadataDepositBase = NftsMetadataDepositBase;
+	type OffchainPublic = <Signature as Verify>::Signer;
+	type OffchainSignature = Signature;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = ConstU32<256>;
+	type ValueLimit = ConstU32<256>;
+	type WeightInfo = pallet_nfts::weights::SubstrateWeight<Self>;
 }
 
 parameter_types! {
@@ -77,46 +77,46 @@ parameter_types! {
 }
 
 impl pallet_nft_fractionalization::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Deposit = AssetDeposit;
-	type Currency = Balances;
-	type NewAssetSymbol = NewAssetSymbol;
-	type NewAssetName = NewAssetName;
-	type StringLimit = AssetsStringLimit;
-	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
-	type NftId = <Self as pallet_nfts::Config>::ItemId;
 	type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::Balance;
 	type AssetId = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId;
 	type Assets = Assets;
-	type Nfts = Nfts;
-	type PalletId = NftFractionalizationPalletId;
-	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
-	type RuntimeHoldReason = RuntimeHoldReason;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
+	type Currency = Balances;
+	type Deposit = AssetDeposit;
+	type NewAssetName = NewAssetName;
+	type NewAssetSymbol = NewAssetSymbol;
+	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
+	type NftId = <Self as pallet_nfts::Config>::ItemId;
+	type Nfts = Nfts;
+	type PalletId = NftFractionalizationPalletId;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type StringLimit = AssetsStringLimit;
+	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
 }
 
 pub type TrustBackedAssetsInstance = pallet_assets::Instance1;
-pub(crate) type AssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
+pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
 impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Balance = Balance;
+	type ApprovalDeposit = ApprovalDeposit;
+	type AssetAccountDeposit = AssetAccountDeposit;
+	type AssetDeposit = AssetDeposit;
 	type AssetId = AssetIdForTrustBackedAssets;
 	type AssetIdParameter = codec::Compact<AssetIdForTrustBackedAssets>;
-	type Currency = Balances;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type ForceOrigin = AssetsForceOrigin;
-	type AssetDeposit = AssetDeposit;
-	type MetadataDepositBase = MetadataDepositBase;
-	type MetadataDepositPerByte = MetadataDepositPerByte;
-	type ApprovalDeposit = ApprovalDeposit;
-	type StringLimit = AssetsStringLimit;
-	type Freezer = ();
-	type Extra = ();
-	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
-	type CallbackHandle = ();
-	type AssetAccountDeposit = AssetAccountDeposit;
-	type RemoveItemsLimit = ConstU32<1000>;
+	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
+	type CallbackHandle = ();
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type Extra = ();
+	type ForceOrigin = AssetsForceOrigin;
+	type Freezer = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = AssetsStringLimit;
+	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
 }

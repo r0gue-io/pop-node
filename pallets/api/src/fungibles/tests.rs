@@ -1,4 +1,3 @@
-use crate::{fungibles::Read::*, mock::*};
 use codec::Encode;
 use frame_support::{
 	assert_ok,
@@ -7,6 +6,8 @@ use frame_support::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
 };
+
+use crate::{fungibles::Read::*, mock::*, Read};
 
 const TOKEN: u32 = 42;
 
@@ -236,7 +237,10 @@ fn burn_works() {
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		create_token_and_mint_to(ALICE, TOKEN, ALICE, 100);
-		assert_eq!(Assets::total_supply(TOKEN).encode(), Fungibles::read_state(TotalSupply(TOKEN)));
+		assert_eq!(
+			Assets::total_supply(TOKEN).encode(),
+			Fungibles::read(TotalSupply(TOKEN)).encode()
+		);
 	});
 }
 
@@ -246,7 +250,7 @@ fn balance_of_works() {
 		create_token_and_mint_to(ALICE, TOKEN, ALICE, 100);
 		assert_eq!(
 			Assets::balance(TOKEN, ALICE).encode(),
-			Fungibles::read_state(BalanceOf { token: TOKEN, owner: ALICE })
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode()
 		);
 	});
 }
@@ -257,7 +261,7 @@ fn allowance_works() {
 		create_token_mint_and_approve(ALICE, TOKEN, BOB, 100, ALICE, 50);
 		assert_eq!(
 			Assets::allowance(TOKEN, &ALICE, &BOB).encode(),
-			Fungibles::read_state(Allowance { token: TOKEN, owner: ALICE, spender: BOB })
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode()
 		);
 	});
 }
@@ -269,9 +273,12 @@ fn token_metadata_works() {
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
 		create_token_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
-		assert_eq!(Assets::name(TOKEN).encode(), Fungibles::read_state(TokenName(TOKEN)));
-		assert_eq!(Assets::symbol(TOKEN).encode(), Fungibles::read_state(TokenSymbol(TOKEN)));
-		assert_eq!(Assets::decimals(TOKEN).encode(), Fungibles::read_state(TokenDecimals(TOKEN)));
+		assert_eq!(Assets::name(TOKEN).encode(), Fungibles::read(TokenName(TOKEN)).encode());
+		assert_eq!(Assets::symbol(TOKEN).encode(), Fungibles::read(TokenSymbol(TOKEN)).encode());
+		assert_eq!(
+			Assets::decimals(TOKEN).encode(),
+			Fungibles::read(TokenDecimals(TOKEN)).encode()
+		);
 	});
 }
 
@@ -279,7 +286,10 @@ fn token_metadata_works() {
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
 		create_token(ALICE, TOKEN);
-		assert_eq!(Assets::asset_exists(TOKEN).encode(), Fungibles::read_state(TokenExists(TOKEN)));
+		assert_eq!(
+			Assets::asset_exists(TOKEN).encode(),
+			Fungibles::read(TokenExists(TOKEN)).encode()
+		);
 	});
 }
 
