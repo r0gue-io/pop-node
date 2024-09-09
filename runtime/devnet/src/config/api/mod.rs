@@ -157,7 +157,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					Allowance { .. } |
 					TokenName(..) | TokenSymbol(..) |
 					TokenDecimals(..) |
-					AssetExists(..)
+					TokenExists(..)
 			)
 		)
 	}
@@ -196,17 +196,17 @@ fn filter_allows_fungibles_calls() {
 
 	const ACCOUNT: AccountId32 = AccountId32::new([0u8; 32]);
 	const CALLS: [RuntimeCall; 11] = [
-		Fungibles(transfer { asset: 0, to: ACCOUNT, value: 0 }),
-		Fungibles(transfer_from { asset: 0, from: ACCOUNT, to: ACCOUNT, value: 0 }),
-		Fungibles(approve { asset: 0, spender: ACCOUNT, value: 0 }),
-		Fungibles(increase_allowance { asset: 0, spender: ACCOUNT, value: 0 }),
-		Fungibles(decrease_allowance { asset: 0, spender: ACCOUNT, value: 0 }),
+		Fungibles(transfer { token: 0, to: ACCOUNT, value: 0 }),
+		Fungibles(transfer_from { token: 0, from: ACCOUNT, to: ACCOUNT, value: 0 }),
+		Fungibles(approve { token: 0, spender: ACCOUNT, value: 0 }),
+		Fungibles(increase_allowance { token: 0, spender: ACCOUNT, value: 0 }),
+		Fungibles(decrease_allowance { token: 0, spender: ACCOUNT, value: 0 }),
 		Fungibles(create { id: 0, admin: ACCOUNT, min_balance: 0 }),
-		Fungibles(set_metadata { asset: 0, name: vec![], symbol: vec![], decimals: 0 }),
-		Fungibles(start_destroy { asset: 0 }),
-		Fungibles(clear_metadata { asset: 0 }),
-		Fungibles(mint { asset: 0, account: ACCOUNT, value: 0 }),
-		Fungibles(burn { asset: 0, account: ACCOUNT, value: 0 }),
+		Fungibles(set_metadata { token: 0, name: vec![], symbol: vec![], decimals: 0 }),
+		Fungibles(start_destroy { token: 0 }),
+		Fungibles(clear_metadata { token: 0 }),
+		Fungibles(mint { token: 0, account: ACCOUNT, value: 0 }),
+		Fungibles(burn { token: 0, account: ACCOUNT, value: 0 }),
 	];
 
 	for call in CALLS {

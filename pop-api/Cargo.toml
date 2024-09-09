@@ -20,7 +20,6 @@ name = "pop_api"
 path = "src/lib.rs"
 
 [features]
-assets = [  ]
 default = [ "std" ]
-fungibles = [ "assets" ]
+fungibles = [  ]
 std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]

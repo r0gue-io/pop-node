@@ -5,8 +5,8 @@ use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 pub use v0::*;
 
-/// Identifier for the class of asset.
-pub type AssetId = u32;
+/// The identifier of a token.
+pub type TokenId = u32;
 
 pub mod v0 {
 	pub use error::*;
