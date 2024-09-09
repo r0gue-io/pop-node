@@ -246,7 +246,7 @@ pub mod pallet {
 				// If the new value is equal to the current allowance, do nothing.
 				Equal => Self::weight_approve(0, 0),
 				// If the new value is greater than the current allowance, approve the difference
-				// because `approve_transfer` works additively (see `pallet-tokens`).
+				// because `approve_transfer` works additively (see `pallet-assets`).
 				Greater => {
 					AssetsOf::<T>::approve_transfer(
 						origin,
