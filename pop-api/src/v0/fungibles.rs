@@ -476,7 +476,7 @@ impl From<StatusCode> for FungiblesError {
 			[_, ASSETS, 3, _] => FungiblesError::InUse,
 			[_, ASSETS, 5, _] => FungiblesError::MinBalanceZero,
 			[_, ASSETS, 7, _] => FungiblesError::InsufficientAllowance,
-			[_, ASSETS, 10, _] => FungiblesError::TokenNotLive,
+			[_, ASSETS, 10, _] => FungiblesError::NotLive,
 			_ => FungiblesError::Other(value),
 		}
 	}
@@ -582,7 +582,7 @@ mod tests {
 		);
 		assert_eq!(
 			into_fungibles_error(Module { index: ASSETS, error: [10, 0] }),
-			FungiblesError::TokenNotLive
+			FungiblesError::NotLive
 		);
 	}
 }
