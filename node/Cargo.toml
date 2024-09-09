@@ -14,7 +14,7 @@ version = "0.2.0-alpha"
 clap.workspace = true
 codec.workspace = true
 futures.workspace = true
-jsonrpsee = { version = "0.23", features = ["server"] }
+jsonrpsee = { version = "0.23", features = [ "server" ] }
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -82,8 +82,8 @@ cumulus-relay-chain-interface.workspace = true
 ismp-parachain.workspace = true
 ismp-parachain-inherent.workspace = true
 ismp-parachain-runtime-api.workspace = true
-pallet-ismp-runtime-api.workspace = true
 pallet-ismp-rpc.workspace = true
+pallet-ismp-runtime-api.workspace = true
 
 [build-dependencies]
 substrate-build-script-utils.workspace = true
@@ -93,24 +93,24 @@ pallet-multisig.workspace = true
 
 [features]
 runtime-benchmarks = [
-    "cumulus-primitives-core/runtime-benchmarks",
-    "frame-benchmarking-cli/runtime-benchmarks",
-    "frame-benchmarking/runtime-benchmarks",
-    "polkadot-cli/runtime-benchmarks",
-    "polkadot-primitives/runtime-benchmarks",
-    "pop-runtime-common/runtime-benchmarks",
-    "pop-runtime-devnet/runtime-benchmarks",
-    "pop-runtime-mainnet/runtime-benchmarks",
-    "pop-runtime-testnet/runtime-benchmarks",
-    "sc-service/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
+	"cumulus-primitives-core/runtime-benchmarks",
+	"frame-benchmarking-cli/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"polkadot-cli/runtime-benchmarks",
+	"polkadot-primitives/runtime-benchmarks",
+	"pop-runtime-common/runtime-benchmarks",
+	"pop-runtime-devnet/runtime-benchmarks",
+	"pop-runtime-mainnet/runtime-benchmarks",
+	"pop-runtime-testnet/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
 try-runtime = [
-    "polkadot-cli/try-runtime",
-    "pop-runtime-devnet/try-runtime",
-    "pop-runtime-mainnet/try-runtime",
-    "pop-runtime-testnet/try-runtime",
-    "sp-runtime/try-runtime",
+	"polkadot-cli/try-runtime",
+	"pop-runtime-devnet/try-runtime",
+	"pop-runtime-mainnet/try-runtime",
+	"pop-runtime-testnet/try-runtime",
+	"sp-runtime/try-runtime",
 ]
 
-on-chain-release-build = ["pop-runtime-mainnet/on-chain-release-build"]
+on-chain-release-build = [ "pop-runtime-mainnet/on-chain-release-build" ]

@@ -1,5 +1,5 @@
 [package]
-authors = ["Polytope Labs <hello@polytope.technology>"]
+authors = [ "Polytope Labs <hello@polytope.technology>" ]
 edition = "2021"
 name = "pallet-ismp-demo"
 publish = false
@@ -7,7 +7,7 @@ version = "0.1.1"
 
 
 [package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+targets = [ "x86_64-unknown-linux-gnu" ]
 
 [dependencies]
 # crates.io
@@ -36,20 +36,20 @@ pallet-ismp = { workspace = true, default-features = false }
 [dev-dependencies]
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "codec/std",
-    "frame-support/std",
-    "frame-system/std",
-    "ismp/std",
-    "pallet-balances/std",
-    "pallet-ismp/std",
-    "scale-info/std",
-    "sp-runtime/std",
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"ismp/std",
+	"pallet-balances/std",
+	"pallet-ismp/std",
+	"scale-info/std",
+	"sp-runtime/std",
 ]
 
 try-runtime = [
-    "frame-support/try-runtime",
-    "frame-system/try-runtime",
-    "sp-runtime/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"sp-runtime/try-runtime",
 ]

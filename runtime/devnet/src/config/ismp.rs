@@ -1,7 +1,3 @@
-use crate::{
-	AccountId, Balance, Balances, Ismp, IsmpParachain, ParachainInfo, Runtime, RuntimeEvent,
-	Timestamp,
-};
 use frame_support::traits::Get;
 use frame_system::EnsureRoot;
 use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
@@ -9,30 +5,35 @@ use ismp_parachain::ParachainConsensusClient;
 use pallet_ismp::ModuleId;
 use sp_std::prelude::*;
 
+use crate::{
+	AccountId, Balance, Balances, Ismp, IsmpParachain, ParachainInfo, Runtime, RuntimeEvent,
+	Timestamp,
+};
+
 impl pallet_ismp::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type AdminOrigin = EnsureRoot<AccountId>;
-	type TimestampProvider = Timestamp;
 	type Balance = Balance;
+	type ConsensusClients = (ParachainConsensusClient<Runtime, IsmpParachain>,);
+	type Coprocessor = Coprocessor;
 	type Currency = Balances;
 	type HostStateMachine = HostStateMachine;
-	type Coprocessor = Coprocessor;
-	type Router = Router;
-	type ConsensusClients = (ParachainConsensusClient<Runtime, IsmpParachain>,);
-	type WeightProvider = ();
 	type Mmr = pallet_ismp::NoOpMmrTree<Self>;
+	type Router = Router;
+	type RuntimeEvent = RuntimeEvent;
+	type TimestampProvider = Timestamp;
+	type WeightProvider = ();
 }
 
 impl pallet_ismp_demo::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type Balance = Balance;
-	type NativeCurrency = Balances;
 	type IsmpDispatcher = Ismp;
+	type NativeCurrency = Balances;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 impl ismp_parachain::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
 	type IsmpHost = Ismp;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 pub struct Coprocessor;
