@@ -29,25 +29,6 @@ async function submitExtrinsic(
     });
 }
 
-async function setupRelayAsset(api: ApiPromise, signer: KeyringPair, initialBalance = 0n) {
-    // The relay asset is registered in the genesis block.
-
-    const assetSetupCalls = [
-        api.tx.assetRate.create(RELAY_ASSET_ID, 1_000_000_000_000_000_000n), // 1 on 1
-    ];
-
-    if (initialBalance > BigInt(0)) {
-        assetSetupCalls.push(
-            api.tx.tokens.setBalance(signer.address, RELAY_ASSET_ID, initialBalance, 0)
-        );
-    }
-
-    const batchCall = api.tx.utility.batch(assetSetupCalls);
-    const sudoCall = api.tx.sudo.sudo(batchCall);
-
-    await submitExtrinsic(signer, sudoCall, {});
-}
-
 // Transfer the relay chain asset to the parachain specified by paraId.
 // Receiver address is same as the sender's.
 async function transferRelayAssetToPara(
@@ -97,32 +78,8 @@ async function transferRelayAssetToPara(
     await submitExtrinsic(signer, reserveTransfer, {});
 }
 
-async function sleep(milliseconds: number) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
-const getAddressFromModuleId = (moduleId: string): string => {
-    if (moduleId.length !== 8) {
-        console.log('Module Id must be 8 characters (i.e. `py/trsry`)');
-        return '';
-    }
-    const address = stringToU8a(('modl' + moduleId).padEnd(32, '\0'));
-    return encodeAddress(address);
-};
-
-const getFreeBalance = async (api: ApiPromise, address: string): Promise<bigint> => {
-    const {
-        data: {free},
-    } = (await api.query.system.account(address)).toJSON() as any;
-    return BigInt(free);
-};
-
 export {
     RELAY_ASSET_ID,
-    setupRelayAsset,
-    sleep,
     submitExtrinsic,
     transferRelayAssetToPara,
-    getAddressFromModuleId,
-    getFreeBalance,
 };

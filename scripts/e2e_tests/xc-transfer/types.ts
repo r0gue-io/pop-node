@@ -10,17 +10,9 @@ export interface Get {
     timeout_timestamp: bigint;
 }
 
-export type IsmpRequest = { post: any } | { get: Get };
+export type IsmpRequest = { get: Get };
 
-export const REGIONX_API_TYPES = {
-    CoreIndex: "u32",
-    CoreMask: "Vec<u8>",
-    Timeslice: "u32",
-    RegionId: {
-        begin: "Timeslice",
-        core: "CoreIndex",
-        mask: "CoreMask",
-    },
+export const API_TYPES = {
     HashAlgorithm: {
         _enum: ["Keccak", "Blake2"],
     },
@@ -44,9 +36,10 @@ export const REGIONX_API_TYPES = {
             Kusama: "u32",
         },
     },
-    Post: {},
     Get: {
+        // Can't be decoded directly to StateMachine type.
         source: "String",
+        // Can't be decoded directly to StateMachine type.
         dest: "String",
         nonce: "u64",
         from: "Vec<u8>",
@@ -62,7 +55,7 @@ export const REGIONX_API_TYPES = {
     },
 };
 
-export const REGIONX_CUSTOM_RPC = {
+export const CUSTOM_RPC = {
     ismp: {
         queryRequests: {
             description: "",
