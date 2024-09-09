@@ -14,7 +14,7 @@ version = "0.2.0-alpha"
 clap.workspace = true
 codec.workspace = true
 futures.workspace = true
-jsonrpsee.workspace = true
+jsonrpsee = { workspace = true, features = [ "server" ] }
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -77,6 +77,13 @@ cumulus-primitives-aura.workspace = true
 cumulus-primitives-core.workspace = true
 cumulus-primitives-parachain-inherent.workspace = true
 cumulus-relay-chain-interface.workspace = true
+
+# ismp
+ismp-parachain.workspace = true
+ismp-parachain-inherent.workspace = true
+ismp-parachain-runtime-api.workspace = true
+pallet-ismp-rpc.workspace = true
+pallet-ismp-runtime-api.workspace = true
 
 [build-dependencies]
 substrate-build-script-utils.workspace = true
