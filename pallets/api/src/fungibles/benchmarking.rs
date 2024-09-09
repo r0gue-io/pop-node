@@ -14,7 +14,7 @@ use frame_support::{
 use frame_system::RawOrigin;
 use sp_runtime::traits::Zero;
 
-use super::{AccountIdOf, TokenIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet};
+use super::{AccountIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet, TokenIdOf};
 
 const SEED: u32 = 1;
 
