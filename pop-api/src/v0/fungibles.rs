@@ -1,4 +1,4 @@
-//! The `fungibles` module provides an API for interacting and managing fungible tokens on Pop Network.
+//! The `fungibles` module provides an API for interacting and managing fungible tokens.
 //!
 //! The API includes the following interfaces:
 //! 1. PSP-22
@@ -6,15 +6,16 @@
 //! 3. Management
 //! 4. PSP-22 Mintable & Burnable
 
+use constants::*;
+use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+pub use management::*;
+pub use metadata::*;
+
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
 	primitives::{AccountId, Balance, TokenId},
 	Result, StatusCode,
 };
-use constants::*;
-use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
-pub use management::*;
-pub use metadata::*;
 
 // Helper method to build a dispatch call.
 //
@@ -419,10 +420,10 @@ pub mod management {
 	}
 }
 
-/// Represents various errors related to fungible tokens in the Pop API.
+/// Represents various errors related to fungible tokens.
 ///
 /// The `FungiblesError` provides a detailed and specific set of error types that can occur when
-/// interacting with fungible tokens through the Pop API. Each variant signifies a particular error
+/// interacting with fungible tokens. Each variant signifies a particular error
 /// condition, facilitating precise error handling and debugging.
 ///
 /// It is designed to be lightweight, including only the essential errors relevant to fungible token
@@ -435,7 +436,7 @@ pub enum FungiblesError {
 	/// An unspecified or unknown error occurred.
 	Other(StatusCode),
 	/// The token is not live; either frozen or being destroyed.
-	TokenNotLive,
+	NotLive,
 	/// Not enough allowance to fulfill a request is available.
 	InsufficientAllowance,
 	/// Not enough balance to fulfill a request is available.
@@ -452,8 +453,8 @@ pub enum FungiblesError {
 	Unknown,
 	/// No balance for creation of tokens or fees.
 	// TODO: Originally `pallet_balances::Error::InsufficientBalance` but collides with the
-	//  `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere to
-	//   standard. This deserves a second look.
+	//  `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere
+	// to   standard. This deserves a second look.
 	NoBalance,
 }
 
