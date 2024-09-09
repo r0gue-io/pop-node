@@ -14,6 +14,19 @@ sp-io = { version = "31.0.0", default-features = false, features = [
 ] }
 
 pop-primitives = { path = "../primitives", default-features = false }
+# TODO: For testing only.
+drink = { path = "../../pop-drink/drink", default-features = false }
+pop-chain-extension = { path = "../extension", default-features = false }
+pop-runtime-devnet = { path = "../runtime/devnet", default-features = false }
+
+# If you are creating a custom runtime with `drink::create_sandbox!` macro, unfortunately you need to
+# include these dependencies manually. Versions should match the ones in `Cargo.toml` of the `drink` crate.
+frame-support = { version = "29.0.2" }
+frame-system = { version = "29.0.0" }
+scale-info = { version = "2.11", default-features = false }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+    "derive",
+] }
 
 [lib]
 name = "pop_api"
@@ -22,6 +35,16 @@ crate-type = ["rlib"]
 
 [features]
 default = ["std"]
-std = ["ink/std", "pop-primitives/std", "sp-io/std"]
+std = [
+    "ink/std",
+    "frame-support/std",
+    "frame-system/std",
+    "scale/std",
+    "scale-info/std",
+    "pop-primitives/std",
+    "pop-runtime-devnet/std",
+    "pop-chain-extension/std",
+    "sp-io/std",
+]
 assets = []
 fungibles = ["assets"]

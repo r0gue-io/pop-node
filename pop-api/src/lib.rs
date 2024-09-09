@@ -14,6 +14,8 @@ pub use v0::assets;
 
 /// Module providing primitives types.
 pub mod primitives;
+/// Module providing sandbox environment for contract quasi testing.
+pub mod sandbox;
 /// The first version of the API.
 pub mod v0;
 
