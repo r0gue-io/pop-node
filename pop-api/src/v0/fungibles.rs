@@ -454,7 +454,7 @@ pub enum FungiblesError {
 	/// No balance for creation of tokens or fees.
 	// TODO: Originally `pallet_balances::Error::InsufficientBalance` but collides with the
 	//  `InsufficientBalance` error that is used for `pallet_assets::Error::BalanceLow` to adhere
-	// to   standard. This deserves a second look.
+	//  to the standard. This deserves a second look.
 	NoBalance,
 }
 
