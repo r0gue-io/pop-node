@@ -1,5 +1,5 @@
 [package]
-name = "flipper"
+name = "api_example_flipper"
 edition = "2021"
 version = "0.1.0"
 authors = ["R0GUE <go@r0gue.io>"]

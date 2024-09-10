@@ -1,5 +1,5 @@
 [package]
-name = "api_example_fungibles"
+name = "api_example_proxy"
 version = "0.1.0"
 authors = ["[your_name] <[your_email]>"]
 edition = "2021"
@@ -9,12 +9,13 @@ ink = { version = "=5.0.0", default-features = false, features = ["ink-debug"] }
 pop-api = { path = "../../../pop-api", default-features = false, features = [
     "fungibles",
 ] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
     "derive",
 ] }
 scale-info = { version = "2.6", default-features = false, features = [
     "derive",
 ], optional = true }
+frame-system = { version = "29.0.0", default-features = false }
 
 [dev-dependencies]
 drink = { path = "../../../../pop-drink/drink" }
@@ -31,6 +32,7 @@ std = [
     "ink/std",
     "pop-api/std",
     "pop-sandbox/std",
-    "scale/std",
+    "frame-system/std",
+    "codec/std",
     "scale-info/std",
 ]
