@@ -120,22 +120,16 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 }
 
 fn func_id(env: &impl Environment) -> u8 {
-	// TODO: update once the encoding scheme order has been finalised: expected to be
-	// env.ext_id().to_le_bytes()[0]
-	env.func_id().to_le_bytes()[1]
+	env.func_id().to_le_bytes()[0]
 }
 
 fn module_and_index(env: &impl Environment) -> (u8, u8) {
-	// TODO: update once the encoding scheme order has been finalised: expected to be
-	// env.func_id().to_le_bytes()[0..1]
 	let bytes = env.ext_id().to_le_bytes();
 	(bytes[0], bytes[1])
 }
 
 fn version(env: &impl Environment) -> u8 {
-	// TODO: update once the encoding scheme order has been finalised: expected to be
-	// env.ext_id().to_le_bytes()[1]
-	env.func_id().to_le_bytes()[0]
+	env.func_id().to_le_bytes()[1]
 }
 
 #[cfg(test)]
@@ -148,7 +142,10 @@ mod tests {
 
 	#[test]
 	fn prepender_works() {
-		let env = MockEnvironment { func_id: 1, ext_id: u16::from_le_bytes([2, 3]) };
+		let env = MockEnvironment {
+			func_id: u16::from_le_bytes([0, 1]),
+			ext_id: u16::from_le_bytes([2, 3]),
+		};
 		assert_eq!(Prepender::process(vec![0u8], &env), vec![1, 2, 3, 0]);
 	}
 

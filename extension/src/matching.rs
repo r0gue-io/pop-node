@@ -75,6 +75,12 @@ mod tests {
 	fn func_id_matches() {
 		let env = MockEnvironment::default();
 		assert!(WithFuncId::<ConstU32<0>>::matches(&env));
+
+		let env = MockEnvironment::new(1, vec![]);
+		assert!(WithFuncId::<ConstU32<1>>::matches(&env));
+
+		let env = MockEnvironment::new(100, vec![]);
+		assert!(WithFuncId::<ConstU32<100>>::matches(&env));
 	}
 
 	#[test]
