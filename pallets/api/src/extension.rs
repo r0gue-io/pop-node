@@ -70,8 +70,8 @@ impl LogTarget for ReadStateLogTarget {
 
 /// Conversion of a `DispatchError` to a versioned error.
 pub struct VersionedErrorConverter<E>(PhantomData<E>);
-impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> pop_chain_extension::ErrorConverter
-	for VersionedErrorConverter<Error>
+impl<Error: TryFrom<(DispatchError, u8), Error = DispatchError> + Into<u32> + Debug>
+	pop_chain_extension::ErrorConverter for VersionedErrorConverter<Error>
 {
 	/// The log target.
 	const LOG_TARGET: &'static str = "pop-api::extension::converters::versioned-error";
@@ -85,7 +85,7 @@ impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> pop_chain_extension::
 		// Defer to supplied versioned error conversion type
 		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: error={error:?}, version={version}");
-		let error: Error = (error, version).into();
+		let error: Error = (error, version).try_into()?;
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: converted error={error:?}");
 		Ok(RetVal::Converging(error.into()))
 	}
@@ -93,9 +93,11 @@ impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> pop_chain_extension::
 
 /// Conversion of a read result to a versioned read result.
 pub struct VersionedResultConverter<S, T>(PhantomData<(S, T)>);
-impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
+impl<Source: Debug, Target: TryFrom<(Source, u8), Error = DispatchError> + Debug> Converter
 	for VersionedResultConverter<Source, Target>
 {
+	/// The type returned in the event of a conversion error.
+	type Error = DispatchError;
 	/// The type of value to be converted.
 	type Source = Source;
 	/// The target type.
@@ -109,13 +111,13 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 	/// # Parameters
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
-	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target {
+	fn try_convert(value: Self::Source, env: &impl Environment) -> Result<Self::Target> {
 		// Defer to supplied versioned result conversion type
 		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: result={value:?}, version={version}");
-		let converted: Target = (value, version).into();
+		let converted: Target = (value, version).try_into()?;
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: converted result={converted:?}");
-		converted
+		Ok(converted)
 	}
 }
 

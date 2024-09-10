@@ -88,7 +88,7 @@ impl<
 		Read: Readable + Debug,
 		Decoder: Decode<Output: codec::Decode + Into<Read>>,
 		Filter: Contains<Read>,
-		ResultConverter: Converter<Source = Read::Result, Target: Into<Vec<u8>>>,
+		ResultConverter: Converter<Source = Read::Result, Target: Into<Vec<u8>>, Error = DispatchError>,
 		Error: ErrorConverter,
 		Logger: LogTarget,
 	> Function for ReadState<Matcher, Config, Read, Decoder, Filter, ResultConverter, Error, Logger>
@@ -116,7 +116,7 @@ impl<
 		log::debug!(target: Logger::LOG_TARGET, "read: result={result:?}");
 		// Perform any final conversion. Any implementation is expected to charge weight as
 		// appropriate.
-		let result = ResultConverter::convert(result, env).into();
+		let result = ResultConverter::try_convert(result, env)?.into();
 		log::debug!(target: Logger::LOG_TARGET, "converted: result={result:?}");
 		// Charge appropriate weight for writing to contract, based on result length.
 		let weight = ContractWeightsOf::<Config>::seal_input(result.len() as u32);
@@ -146,12 +146,16 @@ pub trait Readable {
 	fn read(self) -> Self::Result;
 }
 
-/// Trait for converting a value based on additional information available from the environment.
+/// Trait for fallible conversion of a value based on additional information available from the
+/// environment.
 pub trait Converter {
+	/// The type returned in the event of a conversion error.
+	type Error;
 	/// The type of value to be converted.
 	type Source;
 	/// The target type.
 	type Target;
+
 	/// The log target.
 	const LOG_TARGET: &'static str;
 
@@ -160,19 +164,29 @@ pub trait Converter {
 	/// # Parameters
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
-	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target;
+	fn try_convert(
+		value: Self::Source,
+		env: &impl Environment,
+	) -> core::result::Result<Self::Target, Self::Error>;
 }
 
 /// A default converter, for converting (encoding) from some type into a byte array.
 pub struct DefaultConverter<T>(PhantomData<T>);
 impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
+	/// The type returned in the event of a conversion error.
+	type Error = DispatchError;
+	/// The type of value to be converted.
 	type Source = T;
+	/// The target type.
 	type Target = Vec<u8>;
 
 	const LOG_TARGET: &'static str = "";
 
-	fn convert(value: Self::Source, _env: &impl Environment) -> Self::Target {
-		value.into()
+	fn try_convert(
+		value: Self::Source,
+		_env: &impl Environment,
+	) -> core::result::Result<Self::Target, Self::Error> {
+		Ok(value.into())
 	}
 }
 
@@ -462,7 +476,7 @@ mod tests {
 				Ok(Converging(0))
 			));
 			// Check if the contract environment buffer is written correctly.
-			assert_eq!(env.buffer, UppercaseConverter::convert(expected, &env));
+			assert_eq!(env.buffer, UppercaseConverter::try_convert(expected, &env).unwrap());
 		}
 
 		#[test]
@@ -538,6 +552,6 @@ mod tests {
 	fn default_conversion_works() {
 		let env = MockEnvironment::default();
 		let source = "pop".to_string();
-		assert_eq!(DefaultConverter::convert(source.clone(), &env), source.as_bytes());
+		assert_eq!(DefaultConverter::try_convert(source.clone(), &env).unwrap(), source.as_bytes());
 	}
 }
