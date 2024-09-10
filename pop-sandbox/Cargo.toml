@@ -1,0 +1,50 @@
+[package]
+name = "pop-sandbox"
+description = "Sandboxing environment for contract quasi testing with Pop Network runtimes."
+license = "GPL-3.0-only"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+scale-info = { version = "2.11", default-features = false }
+codec = { package = "parity-scale-codec", version = "3", default-features = false, features = [
+ "derive",
+] }
+
+# Local
+drink = { path = "../../pop-drink/drink", default-features = false }
+pop-chain-extension = { path = "../extension", default-features = false }
+pallet-api = { path = "../pallets/api", default-features = false }
+
+# Substrate
+sp-std = { version = "14.0.0", default-features = false }
+sp-runtime = { version = "32.0.0", default-features = false }
+frame-support = { version = "29.0.2", default-features = false }
+frame-system = { version = "29.0.0", default-features = false }
+pallet-assets = { version = "30.0.0", default-features = false }
+pallet-balances = { version = "29.0.2", default-features = false }
+pallet-contracts = { version = "28.0.0", default-features = false }
+pallet-timestamp = { version = "28.0.0", default-features = false }
+
+[lib]
+name = "pop_sandbox"
+path = "src/lib.rs"
+crate-type = ["rlib"]
+
+[features]
+default = ["std"]
+std = [
+ "sp-std/std",
+ "sp-runtime/std",
+ "frame-support/std",
+ "frame-system/std",
+ "pallet-assets/std",
+ "pallet-balances/std",
+ "pallet-timestamp/std",
+ "pallet-api/std",
+ "drink/std",
+ "pallet-api/std",
+ "codec/std",
+ "scale-info/std",
+ "pop-chain-extension/std",
+]
