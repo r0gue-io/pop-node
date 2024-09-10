@@ -1,3 +1,5 @@
+//! The `pop-primitives` crate provides types used by other crates.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use codec::{Decode, Encode};
@@ -8,6 +10,7 @@ pub use v0::*;
 /// The identifier of a token.
 pub type TokenId = u32;
 
+/// The first version of primitives' types.
 pub mod v0 {
 	pub use error::*;
 
@@ -16,8 +19,8 @@ pub mod v0 {
 	mod error {
 		use super::*;
 
-		/// Reason why a Pop API call failed.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		/// Reason why a call failed.
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		#[repr(u8)]
 		#[allow(clippy::unnecessary_cast)]
@@ -102,7 +105,7 @@ pub mod v0 {
 		}
 
 		/// Description of what went wrong when trying to complete an operation on a token.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum TokenError {
 			/// Funds are unavailable.
@@ -129,7 +132,7 @@ pub mod v0 {
 		}
 
 		/// Arithmetic errors.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum ArithmeticError {
 			/// Underflow.
@@ -141,13 +144,57 @@ pub mod v0 {
 		}
 
 		/// Errors related to transactional storage layers.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum TransactionalError {
 			/// Too many transactional layers have been spawned.
 			LimitReached,
 			/// A transactional layer was expected, but does not exist.
 			NoLayer,
+		}
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use super::*;
+
+		#[test]
+		fn test_error_u32_conversion_with_all_variants() {
+			let error_variants = vec![
+				Error::Other,
+				Error::CannotLookup,
+				Error::BadOrigin,
+				Error::ConsumerRemaining,
+				Error::NoProviders,
+				Error::TooManyConsumers,
+				Error::Token(TokenError::FundsUnavailable),
+				Error::Arithmetic(ArithmeticError::Underflow),
+				Error::Transactional(TransactionalError::LimitReached),
+				Error::Exhausted,
+				Error::Corruption,
+				Error::Unavailable,
+				Error::RootNotAllowed,
+				Error::DecodingFailed,
+				Error::Unknown { dispatch_error_index: 1, error_index: 2, error: 3 },
+			];
+
+			// Test conversion for all Error variants
+			for error in error_variants {
+				let original_u32: u32 = error.clone().into();
+				let decoded_error: Error = original_u32.into();
+				assert_eq!(error, decoded_error);
+			}
+		}
+
+		#[test]
+		fn test_invalid_u32_values_result_in_decoding_failed() {
+			// These are u32 values that don't map to any valid Error.
+			let invalid_u32_values = vec![111u32, 999u32, 1234u32];
+
+			for invalid_value in invalid_u32_values {
+				let error: Error = invalid_value.into();
+				assert_eq!(error, Error::DecodingFailed,);
+			}
 		}
 	}
 }
