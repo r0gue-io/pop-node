@@ -20,12 +20,13 @@ pub mod v0 {
 		#[allow(clippy::unnecessary_cast)]
 		pub enum Error {
 			/// An unknown error occurred. This variant captures any unexpected errors that the
-			/// contract cannot specifically handle. It is useful for cases where there are breaking
-			/// changes in the runtime or when an error falls outside the predefined categories. The
-			/// variant includes:
+			/// contract cannot specifically handle. It is useful for cases where there are
+			/// breaking changes in the runtime or when an error falls outside the predefined
+			/// categories. The variant includes:
 			///
 			/// - `dispatch_error_index`: The index within the `DispatchError`.
-			/// - `error_index`: The index within the `DispatchError` variant (e.g. a `TokenError`).
+			/// - `error_index`: The index within the `DispatchError` variant (e.g. a
+			///   `TokenError`).
 			/// - `error`: The specific error code or sub-index, providing additional context (e.g.
 			///   `error` in `ModuleError`).
 			Other { dispatch_error_index: u8, error_index: u8, error: u8 } = 0,
@@ -48,14 +49,16 @@ pub mod v0 {
 			Token(TokenError) = 7,
 			/// An arithmetic error.
 			Arithmetic(ArithmeticError) = 8,
-			/// The number of transactional layers has been reached, or we are not in a transactional
-			/// layer.
+			/// The number of transactional layers has been reached, or we are not in a
+			/// transactional layer.
 			Transactional(TransactionalError) = 9,
-			/// Resources exhausted, e.g. attempt to read/write data which is too large to manipulate.
+			/// Resources exhausted, e.g. attempt to read/write data which is too large to
+			/// manipulate.
 			Exhausted = 10,
 			/// The state is corrupt; this is generally not going to fix itself.
 			Corruption = 11,
-			/// Some resource (e.g. a preimage) is unavailable right now. This might fix itself later.
+			/// Some resource (e.g. a preimage) is unavailable right now. This might fix itself
+			/// later.
 			Unavailable = 12,
 			/// Root origin is not allowed.
 			RootNotAllowed = 13,
@@ -83,8 +86,8 @@ pub mod v0 {
 		pub enum TokenError {
 			/// Funds are unavailable.
 			FundsUnavailable,
-			/// Some part of the balance gives the only provider reference to the account and thus cannot
-			/// be (re)moved.
+			/// Some part of the balance gives the only provider reference to the account and thus
+			/// cannot be (re)moved.
 			OnlyProvider,
 			/// Account cannot exist with the funds that would be given.
 			BelowMinimum,

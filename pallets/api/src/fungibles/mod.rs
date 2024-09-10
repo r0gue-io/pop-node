@@ -385,7 +385,8 @@ pub mod pallet {
 			AssetsOf::<T>::clear_metadata(origin, asset.into())
 		}
 
-		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
+		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
+		/// supply.
 		///
 		/// # Parameters
 		/// - `asset` - The asset to mint.
@@ -441,8 +442,8 @@ pub mod pallet {
 		/// encoded result.
 		///
 		/// # Parameter
-		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
-		///   the associated parameters.
+		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and the
+		///   associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 

@@ -2,15 +2,17 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	sp_runtime::{testing::H256, Perbill},
-	traits::{AsEnsureOriginWithArg, ConstU32, ConstU128, Randomness},
+	traits::{AsEnsureOriginWithArg, ConstBool, ConstU128, ConstU32, Randomness},
+	weights::Weight,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_api::fungibles;
 use pallet_contracts::{DefaultAddressGenerator, Frame, Schedule};
 use pop_chain_extension::{CallFilter, ReadState};
+use sp_runtime::traits::{Convert, AccountIdLookup};
 use sp_std::vec::Vec;
 
-pub(crate) type AccountId = u64;
+pub(crate) type AccountId = AccountId32;
 pub(crate) type AssetId = u32;
 pub(crate) type Balance = u128;
 
@@ -22,7 +24,7 @@ construct_runtime!(
 		Balances: pallet_balances,
 		Timestamp: pallet_timestamp,
 		Contracts: pallet_contracts,
-		Fungibles: fungibles
+		Fungibles: fungibles = 150,
 	}
 );
 
@@ -33,9 +35,10 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
- type AccountData = pallet_balances::AccountData<<Runtime as pallet_balances::Config>::Balance>;
+	type AccountData = pallet_balances::AccountData<<Runtime as pallet_balances::Config>::Balance>;
 	type AccountId = AccountId;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
+	type Lookup = AccountIdLookup<AccountId, ()>;
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
@@ -62,8 +65,8 @@ impl pallet_assets::Config for Runtime {
 	type AssetId = AssetId;
 	type AssetIdParameter = u32;
 	type Currency = Balances;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
-	type ForceOrigin = EnsureRoot<u64>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type ForceOrigin = EnsureRoot<AccountId>;
 	type AssetDeposit = ConstU128<1>;
 	type AssetAccountDeposit = ConstU128<10>;
 	type MetadataDepositBase = ConstU128<1>;
@@ -152,125 +155,59 @@ impl CallFilter for Extension {
 	}
 }
 
+// Configure pallet contracts
+pub enum SandboxRandomness {}
+impl Randomness<H256, u64> for SandboxRandomness {
+	fn random(_subject: &[u8]) -> (H256, u64) {
+		unreachable!("No randomness")
+	}
+}
+
+type BalanceOf = <Runtime as pallet_balances::Config>::Balance;
+impl Convert<Weight, BalanceOf> for Runtime {
+	fn convert(w: Weight) -> BalanceOf {
+		w.ref_time().into()
+	}
+}
+
 parameter_types! {
-	pub MySchedule: Schedule<Runtime> = {
+	pub SandboxSchedule: Schedule<Runtime> = {
 		let schedule = <Schedule<Runtime>>::default();
 		schedule
 	};
-	pub static DepositPerByte: <Runtime as pallet_balances::Config>::Balance = 1;
-	pub const DepositPerItem: <Runtime as pallet_balances::Config>::Balance = 2;
-	pub static MaxDelegateDependencies: u32 = 32;
-	pub static MaxTransientStorageSize: u32 = 4 * 1024;
-	pub static CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
-	pub static DefaultDepositLimit: <Runtime as pallet_balances::Config>::Balance = 10_000_000;
+	pub DeletionWeightLimit: Weight = Weight::zero();
+	pub DefaultDepositLimit: BalanceOf = 10_000_000;
+	pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+	pub MaxDelegateDependencies: u32 = 32;
 }
 
 impl pallet_contracts::Config for Runtime {
-	type AddressGenerator = DefaultAddressGenerator;
-	type CallFilter = ();
-	// TestFilter;
-	type CallStack = [Frame<Self>; 5];
-	// type ChainExtension = pop_chain_extension::ApiExtension<Extension>;
-	type ChainExtension = ();
-	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
-	type Currency = Balances;
-	type Debug = ();
-	// TestDebug;
-	type DefaultDepositLimit = DefaultDepositLimit;
-	type DepositPerByte = DepositPerByte;
-	type DepositPerItem = DepositPerItem;
-	type Environment = ();
-	type MaxCodeLen = ConstU32<{ 100 * 1024 }>;
-	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type MaxDelegateDependencies = MaxDelegateDependencies;
-	type MaxStorageKeyLen = ConstU32<128>;
-	type Migrations = ();
-	// crate::migration::codegen::BenchMigrations;
-	type Randomness = Runtime;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type Schedule = MySchedule;
 	type Time = Timestamp;
-	type UnsafeUnstableInterface = ();
-	// UnstableInterface;
+	type Randomness = SandboxRandomness;
+	type Currency = Balances;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeCall = RuntimeCall;
+	type CallFilter = ();
+	type WeightPrice = Self;
 	type WeightInfo = ();
-	type WeightPrice = ();
-	// Self;
+	type ChainExtension = pop_chain_extension::ApiExtension<Extension>;
+	type Schedule = SandboxSchedule;
+	type CallStack = [Frame<Self>; 5];
+	type DepositPerByte = ConstU128<1>;
+	type DepositPerItem = ConstU128<1>;
+	type AddressGenerator = DefaultAddressGenerator;
+	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
+	type MaxStorageKeyLen = ConstU32<128>;
+	type UnsafeUnstableInterface = ConstBool<false>;
+	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
+	type Migrations = ();
+	type DefaultDepositLimit = DefaultDepositLimit;
+	type Debug = drink::pallet_contracts_debugging::DrinkDebug;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Environment = ();
 	type Xcm = ();
 }
 
-// Implement `crate::Sandbox` trait
-
-/// Default initial balance for the default account.
-pub const INITIAL_BALANCE: Balance = 1_000_000_000_000_000;
-pub const DEFAULT_ACCOUNT: AccountId = 1;
-
-pub struct PopSandbox {
-	ext: drink::ink_sandbox::TestExternalities,
-}
-
-impl ::std::default::Default for PopSandbox {
-	fn default() -> Self {
-		let ext = drink::ink_sandbox::macros::BlockBuilder::<Runtime>::new_ext(vec![(
-			DEFAULT_ACCOUNT,
-			INITIAL_BALANCE,
-		)]);
-		Self { ext }
-	}
-}
-
-impl drink::ink_sandbox::Sandbox for PopSandbox {
-	type Runtime = Runtime;
-
-	fn execute_with<T>(&mut self, execute: impl FnOnce() -> T) -> T {
-		self.ext.execute_with(execute)
-	}
-
-	fn dry_run<T>(&mut self, action: impl FnOnce(&mut Self) -> T) -> T {
-		// Make a backup of the backend.
-		let backend_backup = self.ext.as_backend();
-		// Run the action, potentially modifying storage. Ensure, that there are no pending changes
-		// that would affect the reverted backend.
-		let result = action(self);
-		self.ext.commit_all().expect("Failed to commit changes");
-
-		// Restore the backend.
-		self.ext.backend = backend_backup;
-		result
-	}
-
-	fn register_extension<E: ::core::any::Any + drink::ink_sandbox::Extension>(&mut self, ext: E) {
-		self.ext.register_extension(ext);
-	}
-
-	fn initialize_block(
-		height: drink::ink_sandbox::frame_system::pallet_prelude::BlockNumberFor<Self::Runtime>,
-		parent_hash: <Self::Runtime as drink::ink_sandbox::frame_system::Config>::Hash,
-	) {
-		drink::ink_sandbox::macros::BlockBuilder::<Self::Runtime>::initialize_block(
-			height,
-			parent_hash,
-		)
-	}
-
-	fn finalize_block(
-		height: drink::ink_sandbox::frame_system::pallet_prelude::BlockNumberFor<Self::Runtime>,
-	) -> <Self::Runtime as drink::ink_sandbox::frame_system::Config>::Hash {
-		drink::ink_sandbox::macros::BlockBuilder::<Self::Runtime>::finalize_block(height)
-	}
-
-	fn default_actor() -> drink::ink_sandbox::AccountIdFor<Self::Runtime> {
-		DEFAULT_ACCOUNT
-	}
-
-	fn get_metadata() -> drink::ink_sandbox::RuntimeMetadataPrefixed {
-		Self::Runtime::metadata()
-	}
-
-	fn convert_account_to_origin(
-		account: drink::ink_sandbox::AccountIdFor<Self::Runtime>,
-	) -> <<Self::Runtime as drink::ink_sandbox::frame_system::Config>::RuntimeCall as drink::ink_sandbox::frame_support::sp_runtime::traits::Dispatchable>::RuntimeOrigin{
-		Some(account).into()
-	}
-}
+drink::create_sandbox!(PopSandbox, Runtime);

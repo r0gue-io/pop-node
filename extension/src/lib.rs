@@ -22,9 +22,9 @@ mod v0;
 const LOG_TARGET: &str = "pop-api::extension";
 
 const DECODING_FAILED_ERROR: DispatchError = DispatchError::Other("DecodingFailed");
-// TODO: issue #93, we can also encode the `pop_primitives::Error::UnknownCall` which means we do use
-//  `Error` in the runtime and it should stay in primitives. Perhaps issue #91 will also influence
-//  here. Should be looked at together.
+// TODO: issue #93, we can also encode the `pop_primitives::Error::UnknownCall` which means we do
+// use  `Error` in the runtime and it should stay in primitives. Perhaps issue #91 will also
+// influence  here. Should be looked at together.
 const DECODING_FAILED_ERROR_ENCODED: [u8; 4] = [255u8, 0, 0, 0];
 const UNKNOWN_CALL_ERROR: DispatchError = DispatchError::Other("UnknownCall");
 // TODO: see above.
@@ -275,13 +275,15 @@ impl TryFrom<u8> for FuncId {
 	}
 }
 
-/// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract uses.
-/// The contract calling the chain extension can optionally convert the status code to the descriptive `Error`.
+/// Converts a `DispatchError` to a `u32` status code based on the version of the API the contract
+/// uses. The contract calling the chain extension can optionally convert the status code to the
+/// descriptive `Error`.
 ///
 /// For `Error` see `pop_primitives::<version>::error::Error`.
 ///
-/// The error encoding can vary per version, allowing for flexible and backward-compatible error handling.
-/// As a result, contracts maintain compatibility across different versions of the runtime.
+/// The error encoding can vary per version, allowing for flexible and backward-compatible error
+/// handling. As a result, contracts maintain compatibility across different versions of the
+/// runtime.
 ///
 /// # Parameters
 ///
@@ -302,10 +304,11 @@ pub(crate) fn convert_to_status_code(error: DispatchError, version: u8) -> u32 {
 	};
 	match version {
 		// If an unknown variant of the `DispatchError` is detected the error needs to be converted
-		// into the encoded value of `Error::Other`. This conversion is performed by shifting the bytes one
-		// position forward (discarding the last byte as it is not used) and setting the first byte to the
-		// encoded value of `Other` (0u8). This ensures the error is correctly categorized as an `Other`
-		// variant which provides all the necessary information to debug which error occurred in the runtime.
+		// into the encoded value of `Error::Other`. This conversion is performed by shifting the
+		// bytes one position forward (discarding the last byte as it is not used) and setting the
+		// first byte to the encoded value of `Other` (0u8). This ensures the error is correctly
+		// categorized as an `Other` variant which provides all the necessary information to debug
+		// which error occurred in the runtime.
 		//
 		// Byte layout explanation:
 		// - Byte 0: index of the variant within `Error`
