@@ -143,6 +143,7 @@ mod tests {
 
 	#[test]
 	fn func_id_works() {
+		// Test ensuring little endian.
 		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
 		assert_eq!(func_id(&env), 1);
 		let env = MockEnvironment { func_id: u16::from_le_bytes([2, 1]), ext_id: 0u16 };
@@ -151,6 +152,7 @@ mod tests {
 
 	#[test]
 	fn module_and_index_works() {
+		// Test ensuring little endian.
 		let env = MockEnvironment { func_id: 0u16, ext_id: u16::from_le_bytes([2, 3]) };
 		assert_eq!(module_and_index(&env), (2, 3));
 		let env = MockEnvironment { func_id: 0u16, ext_id: u16::from_le_bytes([3, 2]) };
@@ -159,6 +161,7 @@ mod tests {
 
 	#[test]
 	fn version_works() {
+		// Test ensuring little endian.
 		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
 		assert_eq!(version(&env), 2);
 		let env = MockEnvironment { func_id: u16::from_le_bytes([2, 1]), ext_id: 0u16 };
@@ -167,6 +170,7 @@ mod tests {
 
 	#[test]
 	fn prepender_works() {
+		// Test ensuring little endian.
 		let env = MockEnvironment {
 			func_id: u16::from_le_bytes([1, 2]),
 			ext_id: u16::from_le_bytes([3, 4]),
@@ -184,6 +188,7 @@ mod tests {
 
 	#[test]
 	fn identified_by_first_byte_of_function_id_matches() {
+		// Test ensuring little endian.
 		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
 		assert!(IdentifiedByFirstByteOfFunctionId::<ConstU8<1>>::matches(&env));
 		let env = MockEnvironment { func_id: u16::from_le_bytes([2, 1]), ext_id: 0u16 };
@@ -192,6 +197,7 @@ mod tests {
 
 	#[test]
 	fn identified_by_first_byte_of_function_id_does_not_match() {
+		// Test ensuring little endian.
 		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
 		assert!(!IdentifiedByFirstByteOfFunctionId::<ConstU8<2>>::matches(&env));
 		let env = MockEnvironment { func_id: u16::from_le_bytes([2, 1]), ext_id: 0u16 };
@@ -257,6 +263,7 @@ mod tests {
 			(1, CannotLookup, 200),
 		] {
 			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+			// Because `Retval` does not implement the `Debug` trait:
 			let RetVal::Converging(result) =
 				VersionedErrorConverter::<VersionedError>::convert(error, &env)
 					.expect("should always result `Ok`")
