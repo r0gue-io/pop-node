@@ -180,8 +180,8 @@ pub mod v0 {
 
 			// Test conversion for all Error variants
 			for error in error_variants {
-				let original_u32: u32 = error.clone().into();
-				let decoded_error: Error = original_u32.into();
+				let u32_value: u32 = error.clone().into();
+				let decoded_error: Error = u32_value.into();
 				assert_eq!(error, decoded_error);
 			}
 		}
