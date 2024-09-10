@@ -2,7 +2,7 @@ use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	sp_runtime::{testing::H256, Perbill},
-	traits::{AsEnsureOriginWithArg, ConstU32, ConstU64, Randomness},
+	traits::{AsEnsureOriginWithArg, ConstU32, ConstU128, Randomness},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_api::fungibles;
@@ -33,7 +33,7 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Runtime {
-	type AccountData = pallet_balances::AccountData<u64>;
+ type AccountData = pallet_balances::AccountData<<Runtime as pallet_balances::Config>::Balance>;
 	type AccountId = AccountId;
 	type Block = frame_system::mocking::MockBlock<Runtime>;
 }
@@ -41,6 +41,8 @@ impl frame_system::Config for Runtime {
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
 impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
+	type Balance = Balance;
+	type ExistentialDeposit = ConstU128<1>;
 	type ReserveIdentifier = [u8; 8];
 }
 
@@ -62,11 +64,11 @@ impl pallet_assets::Config for Runtime {
 	type Currency = Balances;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
 	type ForceOrigin = EnsureRoot<u64>;
-	type AssetDeposit = ConstU64<1>;
-	type AssetAccountDeposit = ConstU64<10>;
-	type MetadataDepositBase = ConstU64<1>;
-	type MetadataDepositPerByte = ConstU64<1>;
-	type ApprovalDeposit = ConstU64<1>;
+	type AssetDeposit = ConstU128<1>;
+	type AssetAccountDeposit = ConstU128<10>;
+	type MetadataDepositBase = ConstU128<1>;
+	type MetadataDepositPerByte = ConstU128<1>;
+	type ApprovalDeposit = ConstU128<1>;
 	type StringLimit = ConstU32<50>;
 	type Freezer = ();
 	type Extra = ();
@@ -201,7 +203,7 @@ impl pallet_contracts::Config for Runtime {
 // Implement `crate::Sandbox` trait
 
 /// Default initial balance for the default account.
-pub const INITIAL_BALANCE: u64 = 1_000_000_000_000_000;
+pub const INITIAL_BALANCE: Balance = 1_000_000_000_000_000;
 pub const DEFAULT_ACCOUNT: AccountId = 1;
 
 pub struct PopSandbox {

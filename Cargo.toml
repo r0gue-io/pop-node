@@ -22,7 +22,6 @@ members = [
     "integration-tests",
     "pallets/*",
     "primitives",
-    "pop-sandbox",
 ]
 exclude = ["pop-api", "pop-sandbox", "tests/contracts"]
 
