@@ -1,6 +1,6 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstBool, ConstU32, Randomness},
+	traits::{ConstBool, ConstU32, Contains, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
@@ -12,7 +12,7 @@ use crate::{
 
 pub enum AllowBalancesCall {}
 
-impl frame_support::traits::Contains<RuntimeCall> for AllowBalancesCall {
+impl Contains<RuntimeCall> for AllowBalancesCall {
 	fn contains(call: &RuntimeCall) -> bool {
 		matches!(call, RuntimeCall::Balances(BalancesCall::transfer_allow_death { .. }))
 	}
@@ -90,4 +90,14 @@ impl pallet_contracts::Config for Runtime {
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type Xcm = pallet_xcm::Pallet<Self>;
+}
+
+#[test]
+fn filter_allows_transfer_allow_death_call() {
+	assert!(AllowBalancesCall::contains(&RuntimeCall::Balances(
+		BalancesCall::transfer_allow_death {
+			dest: sp_runtime::MultiAddress::Address32([0u8; 32]),
+			value: 0
+		}
+	)));
 }
