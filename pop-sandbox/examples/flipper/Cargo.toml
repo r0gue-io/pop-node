@@ -1,17 +1,17 @@
 [package]
-name = "api_example_flipper"
+authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
+name = "api_example_flipper"
 version = "0.1.0"
-authors = ["R0GUE <go@r0gue.io>"]
 
 [dependencies]
-ink = { version = "=5.0.0", default-features = false, features = ["ink-debug"] }
+ink = { version = "=5.0.0", default-features = false, features = [ "ink-debug" ] }
 
 scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
-    "derive",
+	"derive",
 ] }
 scale-info = { version = "2.6", default-features = false, features = [
-    "derive",
+	"derive",
 ], optional = true }
 
 [dev-dependencies]
@@ -22,6 +22,6 @@ pop-sandbox = { path = "../../../pop-sandbox", default-features = false }
 path = "lib.rs"
 
 [features]
-default = ["std"]
-std = ["ink/std", "scale/std", "scale-info/std", "pop-sandbox/std"]
-ink-as-dependency = []
+default = [ "std" ]
+ink-as-dependency = [  ]
+std = [ "ink/std", "pop-sandbox/std", "scale-info/std", "scale/std" ]
