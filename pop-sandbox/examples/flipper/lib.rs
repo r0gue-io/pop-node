@@ -91,7 +91,7 @@ mod tests {
 			// Salt for the contract address derivation.
 			NO_SALT,
 			// Initial endowment (the amount of tokens that we want to transfer to the contract).
-			Some(1000),
+			None,
 		)?;
 
 		// Once the contract is instantiated, we can call the `flip` method on the contract.
