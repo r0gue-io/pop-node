@@ -183,10 +183,14 @@ mod tests {
 	#[test]
 	fn from_versioned_runtime_result_works() {
 		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000));
-		let version = 0;
 		assert_eq!(
-			VersionedRuntimeResult::from((result.clone(), version)),
-			VersionedRuntimeResult::V0(result)
+			VersionedRuntimeResult::try_from((result.clone(), 0)),
+			Ok(VersionedRuntimeResult::V0(result.clone()))
+		);
+		// Unknown version.
+		assert_eq!(
+			VersionedRuntimeResult::try_from((result.clone(), 1)),
+			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
 
@@ -199,10 +203,14 @@ mod tests {
 	#[test]
 	fn from_versioned_error_works() {
 		let error = BadOrigin;
-		let version = 0;
 		assert_eq!(
-			VersionedError::from((error, version)),
-			VersionedError::V0(V0Error::from(error).0)
+			VersionedError::try_from((error, 0)),
+			Ok(VersionedError::V0(V0Error::from(error).0))
+		);
+		// Unknown version.
+		assert_eq!(
+			VersionedError::try_from((error, 1)),
+			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
 
