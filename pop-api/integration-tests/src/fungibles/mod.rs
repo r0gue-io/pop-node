@@ -317,16 +317,17 @@ fn create_works() {
 		// Instantiate a contract with enough balance.
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 0), Err(Module { index: 52, error: [7, 0] }),);
-		// The minimal balance for an token must be non zero.
+		// The minimal balance for a token must be non zero.
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 0), Err(Module { index: 52, error: [7, 0] }),);
 		// Create token successfully.
 		assert_ok!(create(&addr, TOKEN_ID, &BOB, 1));
+		assert_eq!(Assets::owner(TOKEN_ID), Some(addr.clone()));
 		// Token ID is already taken.
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 1), Err(Module { index: 52, error: [5, 0] }),);
 	});
 }
 
-// Testing a contract that creates an token in the constructor.
+// Testing a contract that creates a token in the constructor.
 #[test]
 fn instantiate_and_create_fungible_works() {
 	new_test_ext().execute_with(|| {
@@ -338,8 +339,10 @@ fn instantiate_and_create_fungible_works() {
 			instantiate_and_create_fungible(contract, 0, 1),
 			Err(Module { index: 52, error: [5, 0] })
 		);
-		// Successfully create an token when instantiating the contract.
-		assert_ok!(instantiate_and_create_fungible(contract, TOKEN_ID, 1));
+		// Successfully create a token when instantiating the contract.
+		let result_with_address = instantiate_and_create_fungible(contract, TOKEN_ID, 1);
+		assert_ok!(result_with_address.clone());
+		assert_eq!(Assets::owner(TOKEN_ID), result_with_address.ok());
 		assert!(Assets::asset_exists(TOKEN_ID));
 	});
 }
@@ -465,7 +468,7 @@ fn mint_works() {
 		// Minting can only be done by the owner.
 		assert_eq!(mint(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
 		let token = pallet_assets_create(&addr, 2, 2);
-		// Minimum balance of an token can not be zero.
+		// Minimum balance of a token can not be zero.
 		assert_eq!(mint(&addr, token, &BOB, 1), Err(Token(BelowMinimum)));
 		// Token is not live, i.e. frozen or being destroyed.
 		pallet_assets_freeze(&addr, token);

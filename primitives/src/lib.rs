@@ -17,7 +17,7 @@ pub mod v0 {
 		use super::*;
 
 		/// Reason why a Pop API call failed.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		#[repr(u8)]
 		#[allow(clippy::unnecessary_cast)]
@@ -102,7 +102,7 @@ pub mod v0 {
 		}
 
 		/// Description of what went wrong when trying to complete an operation on a token.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum TokenError {
 			/// Funds are unavailable.
@@ -129,7 +129,7 @@ pub mod v0 {
 		}
 
 		/// Arithmetic errors.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum ArithmeticError {
 			/// Underflow.
@@ -141,7 +141,7 @@ pub mod v0 {
 		}
 
 		/// Errors related to transactional storage layers.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq)]
+		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
 		#[cfg_attr(feature = "std", derive(TypeInfo))]
 		pub enum TransactionalError {
 			/// Too many transactional layers have been spawned.

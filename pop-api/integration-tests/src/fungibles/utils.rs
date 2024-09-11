@@ -322,7 +322,7 @@ pub(super) fn instantiate_and_create_fungible(
 	contract: &str,
 	token_id: TokenId,
 	min_balance: Balance,
-) -> Result<(), Error> {
+) -> Result<AccountId32, Error> {
 	let function = function_selector("new");
 	let input = [function, token_id.encode(), min_balance.encode()].concat();
 	let wasm_binary = load_wasm_module::<Runtime>(contract).expect("could not read .wasm file");
@@ -338,8 +338,10 @@ pub(super) fn instantiate_and_create_fungible(
 		CollectEvents::Skip,
 	)
 	.result
-	.expect("should work")
-	.result;
+	.expect("should work");
+	let address = result.account_id;
+	let result = result.result;
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+		.map(|_| address)
 }

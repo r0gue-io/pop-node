@@ -3,7 +3,8 @@
 use frame_support::{
 	assert_ok,
 	traits::fungibles::{
-		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
+		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect,
+		roles::Inspect as RolesInspect, Inspect,
 	},
 	weights::Weight,
 };
