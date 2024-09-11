@@ -160,7 +160,8 @@ pub mod v0 {
 
 		#[test]
 		fn test_error_u32_conversion_with_all_variants() {
-			let error_variants = vec![
+			// Test conversion for all Error variants
+			vec![
 				Error::Other,
 				Error::CannotLookup,
 				Error::BadOrigin,
@@ -177,25 +178,22 @@ pub mod v0 {
 				Error::RootNotAllowed,
 				Error::DecodingFailed,
 				Error::Unknown { dispatch_error_index: 1, error_index: 2, error: 3 },
-			];
-
-			// Test conversion for all Error variants
-			for error in error_variants {
+			]
+			.into_iter()
+			.for_each(|error| {
 				let status_code = u32::from(error.clone());
 				let decoded_error = Error::from(status_code);
 				assert_eq!(decoded_error, error);
-			}
+			});
 		}
 
 		#[test]
 		fn test_invalid_u32_values_result_in_decoding_failed() {
 			// U32 values that don't map to a valid Error.
-			let invalid_u32_values = vec![111u32, 999u32, 1234u32];
-
-			for invalid_value in invalid_u32_values {
+			vec![111u32, 999u32, 1234u32].into_iter().for_each(|invalid_value| {
 				let error: Error = invalid_value.into();
 				assert_eq!(error, Error::DecodingFailed,);
-			}
+			});
 		}
 	}
 }
