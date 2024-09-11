@@ -70,8 +70,8 @@ impl LogTarget for ReadStateLogTarget {
 
 /// Conversion of a `DispatchError` to a versioned error.
 pub struct VersionedErrorConverter<E>(PhantomData<E>);
-impl<Error: TryFrom<(DispatchError, u8), Error = DispatchError> + Into<u32> + Debug>
-	ErrorConverter for VersionedErrorConverter<Error>
+impl<Error: TryFrom<(DispatchError, u8), Error = DispatchError> + Into<u32> + Debug> ErrorConverter
+	for VersionedErrorConverter<Error>
 {
 	/// The log target.
 	const LOG_TARGET: &'static str = "pop-api::extension::converters::versioned-error";
