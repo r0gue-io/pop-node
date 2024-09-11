@@ -55,21 +55,34 @@ mod proxy_contract {
 mod tests {
 	use codec::Encode;
 	use core::fmt::Debug;
-	use drink::session::{Session, NO_ARGS, NO_SALT};
+	use drink::{
+		session::{Session, NO_ARGS, NO_SALT},
+		AccountId32,
+	};
+	use frame_system::Call;
+	use pop_sandbox::{utils::call_function, PopSandbox, RuntimeCall};
 
 	#[drink::contract_bundle_provider]
 	enum BundleProvider {}
 
-	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
+	#[drink::test(sandbox = PopSandbox)]
 	fn deploy_contract_and_call(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		let contract_bundle = BundleProvider::local()?;
 		let contract_address =
 			session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, None)?;
 
-		let input : Vec<u8> = vec![0, 7, 112, 111, 112].encode();
-		let converted_input : Vec<String> = input.into_iter().map(|b| b.to_string()).collect::<Vec<String>>();
-		// DispatchCall::RuntimeSystem::Remark
-		session.call_with_address(contract_address, "call", &[vec![0u32.to_string()], converted_input].concat(), None)??;
+		let alice = AccountId32::new([1u8; 32]);
+		let call =
+			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
+		call_function(
+			session,
+			&contract_address,
+			&alice,
+			"call".to_string(),
+			// DispatchCall::System::Call::remark_with_event.
+			Some(vec![0.to_string(), serde_json::to_string(&call.encode()).unwrap()]),
+			None,
+		)?;
 
 		Ok(())
 	}

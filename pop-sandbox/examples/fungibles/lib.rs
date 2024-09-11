@@ -3,8 +3,8 @@
 #[ink::contract]
 mod create_token_in_constructor {
 	use pop_api::{
-		primitives::AssetId,
-		v0::assets::fungibles::{self as api},
+		primitives::TokenId,
+		v0::fungibles::{self as api},
 		StatusCode,
 	};
 
@@ -12,13 +12,13 @@ mod create_token_in_constructor {
 
 	#[ink(storage)]
 	pub struct Fungible {
-		id: AssetId,
+		id: TokenId,
 	}
 
 	impl Fungible {
 		#[ink(constructor)]
-		pub fn new(id: AssetId, min_balance: Balance) -> Result<Self> {
-						ink::env::debug_println!("Fungible::call() asset_id={id}, min_balance={min_balance}");
+		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self> {
+			ink::env::debug_println!("Fungible::call() asset_id={id}, min_balance={min_balance}");
 			let contract = Self { id };
 			// AccountId of the contract which will be set to the owner of the fungible token.
 			let owner = contract.env().account_id();
@@ -28,8 +28,8 @@ mod create_token_in_constructor {
 		}
 
 		#[ink(message)]
-		pub fn asset_exists(&self) -> Result<bool> {
-			api::asset_exists(self.id)
+		pub fn token_exists(&self) -> Result<bool> {
+			api::token_exists(self.id)
 		}
 	}
 }

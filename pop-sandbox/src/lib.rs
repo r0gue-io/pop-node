@@ -12,6 +12,8 @@ use sp_runtime::traits::{AccountIdLookup, Convert};
 use sp_std::vec::Vec;
 
 mod api;
+// Provides utlity methods to interact with the sandbox.
+pub mod utils;
 
 pub(crate) type AccountId = AccountId32;
 pub(crate) type AssetId = u32;
