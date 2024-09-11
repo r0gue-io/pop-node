@@ -164,6 +164,7 @@ pub mod v0 {
 				Error::Other,
 				Error::CannotLookup,
 				Error::BadOrigin,
+				Error::Module { index: 1, error: [2, 3] },
 				Error::ConsumerRemaining,
 				Error::NoProviders,
 				Error::TooManyConsumers,
@@ -180,15 +181,15 @@ pub mod v0 {
 
 			// Test conversion for all Error variants
 			for error in error_variants {
-				let u32_value: u32 = error.clone().into();
-				let decoded_error: Error = u32_value.into();
-				assert_eq!(error, decoded_error);
+				let status_code = u32::from(error.clone());
+				let decoded_error = Error::from(status_code);
+				assert_eq!(decoded_error, error);
 			}
 		}
 
 		#[test]
 		fn test_invalid_u32_values_result_in_decoding_failed() {
-			// These are u32 values that don't map to any valid Error.
+			// U32 values that don't map to a valid Error.
 			let invalid_u32_values = vec![111u32, 999u32, 1234u32];
 
 			for invalid_value in invalid_u32_values {
