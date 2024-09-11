@@ -60,29 +60,34 @@ mod tests {
 		AccountId32,
 	};
 	use frame_system::Call;
-	use pop_sandbox::{utils::call_function, PopSandbox, RuntimeCall};
+	use pop_sandbox::{
+		utils::{call_function, ALICE},
+		PopSandbox, RuntimeCall,
+	};
 
 	#[drink::contract_bundle_provider]
 	enum BundleProvider {}
 
 	#[drink::test(sandbox = PopSandbox)]
 	fn deploy_contract_and_call(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+		let _ = env_logger::try_init();
+
 		let contract_bundle = BundleProvider::local()?;
 		let contract_address =
 			session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, None)?;
 
-		let alice = AccountId32::new([1u8; 32]);
 		let call =
 			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
 		call_function(
 			session,
 			&contract_address,
-			&alice,
+			&ALICE,
 			"call".to_string(),
 			// DispatchCall::System::Call::remark_with_event.
 			Some(vec![0.to_string(), serde_json::to_string(&call.encode()).unwrap()]),
 			None,
 		)?;
+		// TOOD: Return CallFiltered
 
 		Ok(())
 	}

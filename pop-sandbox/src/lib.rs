@@ -7,7 +7,7 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_api::fungibles;
-use pallet_contracts::{DefaultAddressGenerator, Frame, Schedule};
+use pallet_contracts::{DefaultAddressGenerator, Frame};
 use sp_runtime::traits::{AccountIdLookup, Convert};
 use sp_std::vec::Vec;
 
@@ -18,6 +18,12 @@ pub mod utils;
 pub(crate) type AccountId = AccountId32;
 pub(crate) type AssetId = u32;
 pub(crate) type Balance = u128;
+
+pub const MILLIUNIT: Balance = UNIT / 1_000; // 10_000_000
+
+pub const fn deposit(items: u32, bytes: u32) -> Balance {
+	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
+}
 
 // Define the runtime type as a collection of pallets
 construct_runtime!(
@@ -109,51 +115,64 @@ impl Convert<Weight, BalanceOf> for Runtime {
 	}
 }
 
+fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
+	pallet_contracts::Schedule {
+		limits: pallet_contracts::Limits {
+			runtime_memory: 1024 * 1024 * 1024,
+			..Default::default()
+		},
+		..Default::default()
+	}
+}
+
 parameter_types! {
-	pub SandboxSchedule: Schedule<Runtime> = {
-		let schedule = <Schedule<Runtime>>::default();
-		schedule
-	};
-	pub DeletionWeightLimit: Weight = Weight::zero();
-	pub DefaultDepositLimit: BalanceOf = 10_000_000;
-	pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
-	pub MaxDelegateDependencies: u32 = 32;
+	pub const DepositPerItem: Balance = deposit(1, 0);
+	pub const DepositPerByte: Balance = deposit(0, 1);
+	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
+	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
+	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 }
 
 impl pallet_contracts::Config for Runtime {
 	type AddressGenerator = DefaultAddressGenerator;
 	type ApiVersion = ();
+	// C
 	type CallFilter = ();
-	// TestFilter;
-	type CallStack = [Frame<Self>; 5];
+	type CallStack = [Frame<Self>; 23];
 	type ChainExtension = api::Extension<Config>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
+	// D
 	type Debug = drink::pallet_contracts_debugging::DrinkDebug;
-	// TestDebug;
 	type DefaultDepositLimit = DefaultDepositLimit;
-	type DepositPerByte = ConstU128<1>;
-	type DepositPerItem = ConstU128<1>;
+	type DepositPerByte = DepositPerByte;
+	type DepositPerItem = DepositPerItem;
+	// E
 	type Environment = ();
+	// I
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
-	type MaxCodeLen = ConstU32<{ 123 * 1024 }>;
+	// M
+	type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type MaxDelegateDependencies = MaxDelegateDependencies;
+	type MaxDelegateDependencies = ConstU32<32>;
 	type MaxStorageKeyLen = ConstU32<128>;
 	type Migrations = ();
-	// crate::migration::codegen::BenchMigrations;
+	// R
 	type Randomness = SandboxRandomness;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
-	type Schedule = SandboxSchedule;
+	// S
+	type Schedule = Schedule;
+	// T
 	type Time = Timestamp;
+	// U
 	type UnsafeUnstableInterface = ConstBool<false>;
-	// UnstableInterface;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
+	// W
 	type WeightInfo = ();
 	type WeightPrice = Self;
-	// Self;
+	// X
 	type Xcm = ();
 }
 
