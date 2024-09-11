@@ -2,7 +2,7 @@ use core::{fmt::Debug, marker::PhantomData};
 
 use frame_support::traits::Get;
 pub use pop_chain_extension::{
-	Config, ContractWeightsOf, DecodingFailed, DispatchCall, ReadState, Readable,
+	Config, ContractWeightsOf, DecodingFailed, DispatchCall, ErrorConverter, ReadState, Readable,
 };
 use pop_chain_extension::{
 	Converter, Decodes, Environment, LogTarget, Matches, Processor, Result, RetVal,
@@ -71,7 +71,7 @@ impl LogTarget for ReadStateLogTarget {
 /// Conversion of a `DispatchError` to a versioned error.
 pub struct VersionedErrorConverter<E>(PhantomData<E>);
 impl<Error: TryFrom<(DispatchError, u8), Error = DispatchError> + Into<u32> + Debug>
-	pop_chain_extension::ErrorConverter for VersionedErrorConverter<Error>
+	ErrorConverter for VersionedErrorConverter<Error>
 {
 	/// The log target.
 	const LOG_TARGET: &'static str = "pop-api::extension::converters::versioned-error";
@@ -122,36 +122,171 @@ impl<Source: Debug, Target: TryFrom<(Source, u8), Error = DispatchError> + Debug
 }
 
 fn func_id(env: &impl Environment) -> u8 {
-	// TODO: update once the encoding scheme order has been finalised: expected to be
-	// env.ext_id().to_le_bytes()[0]
-	env.func_id().to_le_bytes()[1]
+	env.func_id().to_le_bytes()[0]
 }
 
 fn module_and_index(env: &impl Environment) -> (u8, u8) {
-	// TODO: update once the encoding scheme order has been finalised: expected to be
-	// env.func_id().to_le_bytes()[0..1]
 	let bytes = env.ext_id().to_le_bytes();
 	(bytes[0], bytes[1])
 }
 
 fn version(env: &impl Environment) -> u8 {
-	// TODO: update once the encoding scheme order has been finalised: expected to be
-	// env.ext_id().to_le_bytes()[1]
-	env.func_id().to_le_bytes()[0]
+	env.func_id().to_le_bytes()[1]
 }
 
 #[cfg(test)]
 mod tests {
 	use frame_support::pallet_prelude::Weight;
 	use pop_chain_extension::Ext;
+	use sp_core::ConstU8;
 
-	use super::*;
+	use super::{DispatchError::*, *};
 	use crate::extension::Prepender;
 
 	#[test]
+	fn func_id_works() {
+		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
+		assert_eq!(func_id(&env), 1);
+	}
+
+	#[test]
+	fn module_and_index_works() {
+		let env = MockEnvironment { func_id: 0u16, ext_id: u16::from_le_bytes([2, 3]) };
+		assert_eq!(module_and_index(&env), (2, 3));
+	}
+
+	#[test]
+	fn version_works() {
+		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
+		assert_eq!(version(&env), 2);
+	}
+
+	#[test]
 	fn prepender_works() {
-		let env = MockEnvironment { func_id: 1, ext_id: u16::from_le_bytes([2, 3]) };
-		assert_eq!(Prepender::process(vec![0u8], &env), vec![1, 2, 3, 0]);
+		let env = MockEnvironment {
+			func_id: u16::from_le_bytes([1, 2]),
+			ext_id: u16::from_le_bytes([3, 4]),
+		};
+		assert_eq!(Prepender::process(vec![0u8], &env), vec![2, 3, 4, 0]);
+		assert_eq!(Prepender::process(vec![0u8, 5, 10], &env), vec![2, 3, 4, 0, 5, 10]);
+	}
+
+	#[test]
+	fn identified_by_first_byte_of_function_id_matches() {
+		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
+		assert!(IdentifiedByFirstByteOfFunctionId::<ConstU8<1>>::matches(&env));
+	}
+
+	#[test]
+	fn identified_by_first_byte_of_function_id_does_not_match() {
+		let env = MockEnvironment { func_id: u16::from_le_bytes([1, 2]), ext_id: 0u16 };
+		assert!(!IdentifiedByFirstByteOfFunctionId::<ConstU8<2>>::matches(&env));
+	}
+
+	#[test]
+	fn dispatch_call_log_target_works() {
+		assert!(matches!(
+			<DispatchCallLogTarget as LogTarget>::LOG_TARGET,
+			"pop-api::extension::dispatch"
+		));
+	}
+
+	#[test]
+	fn read_state_log_target_works() {
+		assert!(matches!(
+			<ReadStateLogTarget as LogTarget>::LOG_TARGET,
+			"pop-api::extension::read-state"
+		));
+	}
+
+	#[test]
+	fn versioned_error_converter_works() {
+		// Mock versioned error.
+		#[derive(Debug)]
+		pub enum VersionedError {
+			V0(DispatchError),
+			V1(DispatchError),
+		}
+
+		impl From<(DispatchError, u8)> for VersionedError {
+			fn from(value: (DispatchError, u8)) -> Self {
+				let (error, version) = value;
+				match version {
+					0 => VersionedError::V0(error),
+					1 => VersionedError::V1(error),
+					_ => unimplemented!(),
+				}
+			}
+		}
+
+		impl From<VersionedError> for u32 {
+			// Mock conversion based on error and version.
+			fn from(value: VersionedError) -> Self {
+				match value {
+					VersionedError::V0(error) => match error {
+						BadOrigin => 1,
+						_ => 100,
+					},
+					VersionedError::V1(error) => match error {
+						BadOrigin => 2,
+						_ => 200,
+					},
+				}
+			}
+		}
+
+		for (version, error, expected_result) in vec![
+			(0, BadOrigin, 1),
+			(0, CannotLookup, 100),
+			(1, BadOrigin, 2),
+			(1, CannotLookup, 200),
+		] {
+			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+			// Because `Retval` does not implement the `Debug` trait:
+			let RetVal::Converging(result) =
+				VersionedErrorConverter::<VersionedError>::convert(error, &env)
+					.expect("should always result `Ok`")
+			else {
+				unimplemented!();
+			};
+			assert_eq!(result, expected_result);
+		}
+	}
+
+	#[test]
+	fn versioned_result_converter_works() {
+		// Mock versioned runtime result.
+		#[derive(Debug, PartialEq)]
+		pub enum VersionedRuntimeResult {
+			V0(u8),
+			V1(u8),
+		}
+
+		impl From<(u8, u8)> for VersionedRuntimeResult {
+			// Mock conversion based on result and version.
+			fn from(value: (u8, u8)) -> Self {
+				let (result, version) = value;
+				match version {
+					0 if result <= 50 => VersionedRuntimeResult::V0(result),
+					0 if result > 50 => VersionedRuntimeResult::V0(50),
+					1 if result <= 100 => VersionedRuntimeResult::V1(result),
+					1 if result > 100 => VersionedRuntimeResult::V1(100),
+					_ => unimplemented!(),
+				}
+			}
+		}
+
+		for (version, value, expected_result) in vec![
+			(0, 10, VersionedRuntimeResult::V0(10)),
+			(0, 100, VersionedRuntimeResult::V0(50)),
+			(1, 10, VersionedRuntimeResult::V1(10)),
+			(1, 100, VersionedRuntimeResult::V1(100)),
+		] {
+			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+			let result =
+				VersionedResultConverter::<u8, VersionedRuntimeResult>::convert(value, &env);
+			assert_eq!(result, expected_result);
+		}
 	}
 
 	struct MockEnvironment {
