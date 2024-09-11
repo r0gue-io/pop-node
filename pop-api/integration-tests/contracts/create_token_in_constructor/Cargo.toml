@@ -5,16 +5,16 @@ version = "0.1.0"
 
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
-pop-api = { path = "../../..", default-features = false, features = ["fungibles"] }
+pop-api = { path = "../../..", default-features = false, features = [ "fungibles" ] }
 
 [lib]
 path = "lib.rs"
 
 [features]
-default = ["std"]
-e2e-tests = []
-ink-as-dependency = []
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
 std = [
-    "ink/std",
-    "pop-api/std",
+	"ink/std",
+	"pop-api/std",
 ]
