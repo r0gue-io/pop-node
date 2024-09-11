@@ -75,6 +75,7 @@ mod tests {
 	/// use `MinimalSandbox`, which is a minimalistic runtime that allows using smart contracts.
 	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
 	fn deploy_and_call_a_contract(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+		let _ = env_logger::try_init();
 		// Now we get the contract bundle from the `BundleProvider` enum. Since the current crate
 		// comes with a contract, we can use the `local` method to get the bundle for it.
 		let contract_bundle = BundleProvider::local()?;
@@ -90,7 +91,7 @@ mod tests {
 			// Salt for the contract address derivation.
 			NO_SALT,
 			// Initial endowment (the amount of tokens that we want to transfer to the contract).
-			None,
+			Some(1000),
 		)?;
 
 		// Once the contract is instantiated, we can call the `flip` method on the contract.
