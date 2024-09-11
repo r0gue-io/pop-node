@@ -1,7 +1,7 @@
 use codec::Encode;
 use frame_support::{
-	assert_ok,
-	sp_runtime::traits::Zero,
+	assert_noop, assert_ok,
+	sp_runtime::{traits::Zero, DispatchError::BadOrigin},
 	traits::fungibles::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
@@ -22,6 +22,9 @@ fn transfer_works() {
 		let to = Some(BOB);
 
 		create_token_and_mint_to(ALICE, token, ALICE, value * 2);
+		for origin in vec![root(), none()] {
+			assert_noop!(Fungibles::transfer(origin, token, BOB, value), BadOrigin);
+		}
 		let balance_before_transfer = Assets::balance(token, &BOB);
 		assert_ok!(Fungibles::transfer(signed(ALICE), token, BOB, value));
 		let balance_after_transfer = Assets::balance(token, &BOB);
@@ -40,6 +43,10 @@ fn transfer_from_works() {
 
 		// Approve CHARLIE to transfer up to `value` to BOB.
 		create_token_mint_and_approve(ALICE, token, ALICE, value * 2, CHARLIE, value);
+		// TODO: weight
+		for origin in vec![root(), none()] {
+			assert_noop!(Fungibles::transfer_from(origin, token, ALICE, BOB, value), BadOrigin);
+		}
 		// Successfully call transfer from.
 		let alice_balance_before_transfer = Assets::balance(token, &ALICE);
 		let bob_balance_before_transfer = Assets::balance(token, &BOB);
@@ -101,6 +108,10 @@ fn increase_allowance_works() {
 		let spender = BOB;
 
 		create_token_and_mint_to(ALICE, token, ALICE, value);
+		// TODO: weight
+		for origin in vec![root(), none()] {
+			assert_noop!(Fungibles::increase_allowance(origin, token, BOB, value), BadOrigin);
+		}
 		assert_eq!(0, Assets::allowance(token, &ALICE, &BOB));
 		assert_ok!(Fungibles::increase_allowance(signed(ALICE), token, BOB, value));
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
@@ -123,6 +134,10 @@ fn decrease_allowance_works() {
 		let spender = BOB;
 
 		create_token_mint_and_approve(ALICE, token, ALICE, value, BOB, value);
+		// TODO: weight
+		for origin in vec![root(), none()] {
+			assert_noop!(Fungibles::decrease_allowance(origin, token, BOB, 0), BadOrigin);
+		}
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
 		// Owner balance is not changed if decreased by zero.
 		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), token, BOB, 0));
@@ -147,6 +162,9 @@ fn create_works() {
 		let creator = ALICE;
 		let admin = ALICE;
 
+		for origin in vec![root(), none()] {
+			assert_noop!(Fungibles::create(origin, id, admin, 100), BadOrigin);
+		}
 		assert!(!Assets::asset_exists(id));
 		assert_ok!(Fungibles::create(signed(creator), id, admin, 100));
 		assert!(Assets::asset_exists(id));
@@ -295,6 +313,14 @@ fn token_exists_works() {
 
 fn signed(account: AccountId) -> RuntimeOrigin {
 	RuntimeOrigin::signed(account)
+}
+
+fn root() -> RuntimeOrigin {
+	RuntimeOrigin::root()
+}
+
+fn none() -> RuntimeOrigin {
+	RuntimeOrigin::none()
 }
 
 fn create_token(owner: AccountId, token: TokenId) {

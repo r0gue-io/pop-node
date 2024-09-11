@@ -14,16 +14,12 @@ mod tests;
 pub mod weights;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type TokenIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
-	<T as frame_system::Config>::AccountId,
->>::AssetId;
+type TokenIdOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 type TokenIdParameterOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
 type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
-type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
+type BalanceOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -78,7 +74,7 @@ pub mod pallet {
 		/// Decimals for the specified token.
 		#[codec(index = 10)]
 		TokenDecimals(TokenIdOf<T>),
-		/// Check if a specified token exists.
+		/// Whether a specified token exists.
 		#[codec(index = 18)]
 		TokenExists(TokenIdOf<T>),
 	}
@@ -123,7 +119,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// The instance of pallet assets it is tightly coupled to.
+		/// The instance of pallet-assets.
 		type AssetsInstance;
 		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
