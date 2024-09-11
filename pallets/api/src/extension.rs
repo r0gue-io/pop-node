@@ -112,7 +112,7 @@ impl<Source: Debug, Target: TryFrom<(Source, u8), Error = DispatchError> + Debug
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
 	fn try_convert(value: Self::Source, env: &impl Environment) -> Result<Self::Target> {
-		// Defer to supplied versioned result conversion type
+		// Defer to supplied versioned result conversion type.
 		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: result={value:?}, version={version}");
 		let converted: Target = (value, version).try_into()?;
@@ -199,9 +199,8 @@ mod tests {
 		));
 	}
 
-	#[test]
-	fn versioned_error_converter_works() {
-		use super::RetVal::Converging;
+	mod versioned_error {
+		use super::{RetVal::Converging, *};
 
 		// Mock versioned error.
 		#[derive(Debug)]
@@ -239,35 +238,41 @@ mod tests {
 			}
 		}
 
-		// Because `Retval` does not implement the `Debug` trait the success and error test cases
-		// are separated.
-		for (version, error, expected_result) in vec![
-			(0, BadOrigin, 1),
-			(0, CannotLookup, 100),
-			(1, BadOrigin, 2),
-			(1, CannotLookup, 200),
-		] {
-			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
-			// Again, due to missing `Debug` trait the result has to be unwrapped.
-			let Ok(Converging(result)) =
-				VersionedErrorConverter::<VersionedError>::convert(error, &env)
-			else {
-				panic!("should not happen")
-			};
-			assert_eq!(result, expected_result);
+		#[test]
+		fn versioned_error_converter_works() {
+			for (version, error, expected_result) in vec![
+				(0, BadOrigin, 1),
+				(0, CannotLookup, 100),
+				(1, BadOrigin, 2),
+				(1, CannotLookup, 200),
+			] {
+				let env =
+					MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+				// Because `Retval` does not implement the `Debug` trait the result has to be
+				// unwrapped.
+				let Ok(Converging(result)) =
+					VersionedErrorConverter::<VersionedError>::convert(error, &env)
+				else {
+					panic!("should not happen")
+				};
+				assert_eq!(result, expected_result);
+			}
 		}
 
-		// Error case.
-		let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
-		let result = VersionedErrorConverter::<VersionedError>::convert(BadOrigin, &env)
-			.err()
-			.unwrap(); // Again, can't use `unwrap_err()` due to missing `Debug` trait.
-		assert_eq!(result, Other("DecodingFailed"));
+		#[test]
+		fn versioned_error_converter_fails() {
+			let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
+			let result = VersionedErrorConverter::<VersionedError>::convert(BadOrigin, &env)
+				.err()
+				.unwrap(); // Again, can't use `unwrap_err()` due to missing `Debug` trait.
+			assert_eq!(result, Other("DecodingFailed"));
+		}
 	}
 
-	#[test]
-	fn versioned_result_converter_works() {
+	mod versioned_result {
 		use VersionedRuntimeResult::{V0, V1};
+
+		use super::*;
 
 		// Mock versioned runtime result.
 		#[derive(Debug, PartialEq)]
@@ -292,17 +297,31 @@ mod tests {
 			}
 		}
 
-		for (version, value, expected_result) in vec![
-			(0, 10, Ok(V0(10))),
-			(0, 100, Ok(V0(50))),
-			(1, 10, Ok(V1(10))),
-			(1, 100, Ok(V1(100))),
-			(2, 10, Err(Other("DecodingFailed"))),
-		] {
-			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+		#[test]
+		fn versioned_result_converter_works() {
+			for (version, value, expected_result) in vec![
+				(0, 10, Ok(V0(10))),
+				(0, 100, Ok(V0(50))),
+				(1, 10, Ok(V1(10))),
+				(1, 100, Ok(V1(100))),
+			] {
+				let env =
+					MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+				let result = VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(
+					value, &env,
+				);
+				assert_eq!(result, expected_result);
+			}
+		}
+
+		#[test]
+		fn versioned_result_converter_fails() {
+			let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
 			let result =
-				VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(value, &env);
-			assert_eq!(result, expected_result);
+				VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(10, &env)
+					.err()
+					.unwrap(); // Again, can't use `unwrap_err()` due to missing `Debug` trait.
+			assert_eq!(result, Other("DecodingFailed"));
 		}
 	}
 

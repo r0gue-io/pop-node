@@ -149,7 +149,7 @@ pub trait Readable {
 /// Trait for fallible conversion of a value based on additional information available from the
 /// environment.
 pub trait Converter {
-	/// The type returned in the event of a conversion error.
+	/// The error type returned when conversion fails.
 	type Error;
 	/// The type of value to be converted.
 	type Source;
@@ -173,7 +173,7 @@ pub trait Converter {
 /// A default converter, for converting (encoding) from some type into a byte array.
 pub struct DefaultConverter<T>(PhantomData<T>);
 impl<T: Into<Vec<u8>>> Converter for DefaultConverter<T> {
-	/// The type returned in the event of a conversion error.
+	/// The error type returned when conversion fails.
 	type Error = DispatchError;
 	/// The type of value to be converted.
 	type Source = T;
@@ -476,7 +476,7 @@ mod tests {
 				Ok(Converging(0))
 			));
 			// Check if the contract environment buffer is written correctly.
-			assert_eq!(env.buffer, UppercaseConverter::try_convert(expected, &env).unwrap());
+			assert_eq!(Ok(env.buffer.clone()), UppercaseConverter::try_convert(expected, &env));
 		}
 
 		#[test]
@@ -551,7 +551,7 @@ mod tests {
 	#[test]
 	fn default_conversion_works() {
 		let env = MockEnvironment::default();
-		let source = "pop".to_string();
-		assert_eq!(DefaultConverter::try_convert(source.clone(), &env).unwrap(), source.as_bytes());
+		let source: Vec<u8> = "pop".to_string().encode();
+		assert_eq!(DefaultConverter::try_convert(source.clone(), &env), Ok(source));
 	}
 }
