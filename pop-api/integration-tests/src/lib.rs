@@ -28,6 +28,8 @@ const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
 
 fn new_test_ext() -> sp_io::TestExternalities {
+	let _ = env_logger::try_init();
+
 	let mut t = frame_system::GenesisConfig::<Runtime>::default()
 		.build_storage()
 		.expect("Frame system builds valid default genesis config");

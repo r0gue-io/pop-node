@@ -2,10 +2,10 @@ use super::*;
 
 type AssetId = TokenId;
 
-fn do_bare_call(function: &str, addr: AccountId32, params: Vec<u8>) -> ExecReturnValue {
+fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);
 	let params = [function, params].concat();
-	bare_call(addr, params, 0).expect("should work")
+	bare_call(addr.clone(), params, 0).expect("should work")
 }
 
 // TODO - issue #263 - why result.data[1..]
@@ -13,61 +13,61 @@ pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecRetur
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
 
-pub(super) fn total_supply(addr: AccountId32, token_id: TokenId) -> Result<Balance, Error> {
+pub(super) fn total_supply(addr: &AccountId32, token_id: TokenId) -> Result<Balance, Error> {
 	let result = do_bare_call("total_supply", addr, token_id.encode());
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn balance_of(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
 	owner: AccountId32,
 ) -> Result<Balance, Error> {
 	let params = [token_id.encode(), owner.encode()].concat();
-	let result = do_bare_call("balance_of", addr, params);
+	let result = do_bare_call("balance_of", &addr, params);
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn allowance(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
 	owner: AccountId32,
 	spender: AccountId32,
 ) -> Result<Balance, Error> {
 	let params = [token_id.encode(), owner.encode(), spender.encode()].concat();
-	let result = do_bare_call("allowance", addr, params);
+	let result = do_bare_call("allowance", &addr, params);
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_name(addr: AccountId32, token_id: TokenId) -> Result<Vec<u8>, Error> {
+pub(super) fn token_name(addr: &AccountId32, token_id: TokenId) -> Result<Vec<u8>, Error> {
 	let result = do_bare_call("token_name", addr, token_id.encode());
 	decoded::<Result<Vec<u8>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_symbol(addr: AccountId32, token_id: TokenId) -> Result<Vec<u8>, Error> {
+pub(super) fn token_symbol(addr: &AccountId32, token_id: TokenId) -> Result<Vec<u8>, Error> {
 	let result = do_bare_call("token_symbol", addr, token_id.encode());
 	decoded::<Result<Vec<u8>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_decimals(addr: AccountId32, token_id: TokenId) -> Result<u8, Error> {
+pub(super) fn token_decimals(addr: &AccountId32, token_id: TokenId) -> Result<u8, Error> {
 	let result = do_bare_call("token_decimals", addr, token_id.encode());
 	decoded::<Result<u8, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_exists(addr: AccountId32, token_id: TokenId) -> Result<bool, Error> {
+pub(super) fn token_exists(addr: &AccountId32, token_id: TokenId) -> Result<bool, Error> {
 	let result = do_bare_call("token_exists", addr, token_id.encode());
 	decoded::<Result<bool, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn transfer(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
 	to: AccountId32,
 	value: Balance,
@@ -79,7 +79,7 @@ pub(super) fn transfer(
 }
 
 pub(super) fn transfer_from(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
 	from: AccountId32,
 	to: AccountId32,
@@ -94,9 +94,9 @@ pub(super) fn transfer_from(
 }
 
 pub(super) fn approve(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
-	spender: AccountId32,
+	spender: &AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
 	let params = [token_id.encode(), spender.encode(), value.encode()].concat();
@@ -106,9 +106,9 @@ pub(super) fn approve(
 }
 
 pub(super) fn increase_allowance(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
-	spender: AccountId32,
+	spender: &AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
 	let params = [token_id.encode(), spender.encode(), value.encode()].concat();
@@ -118,9 +118,9 @@ pub(super) fn increase_allowance(
 }
 
 pub(super) fn decrease_allowance(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
-	spender: AccountId32,
+	spender: &AccountId32,
 	value: Balance,
 ) -> Result<(), Error> {
 	let params = [token_id.encode(), spender.encode(), value.encode()].concat();
@@ -130,9 +130,9 @@ pub(super) fn decrease_allowance(
 }
 
 pub(super) fn create(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
-	admin: AccountId32,
+	admin: &AccountId32,
 	min_balance: Balance,
 ) -> Result<(), Error> {
 	let params = [token_id.encode(), admin.encode(), min_balance.encode()].concat();
@@ -141,7 +141,7 @@ pub(super) fn create(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn start_destroy(addr: AccountId32, token_id: TokenId) -> Result<(), Error> {
+pub(super) fn start_destroy(addr: &AccountId32, token_id: TokenId) -> Result<(), Error> {
 	let result = do_bare_call("start_destroy", addr, token_id.encode());
 	match decoded::<Result<(), Error>>(result) {
 		Ok(x) => x,
@@ -150,7 +150,7 @@ pub(super) fn start_destroy(addr: AccountId32, token_id: TokenId) -> Result<(), 
 }
 
 pub(super) fn set_metadata(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
 	name: Vec<u8>,
 	symbol: Vec<u8>,
@@ -162,16 +162,16 @@ pub(super) fn set_metadata(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn clear_metadata(addr: AccountId32, token_id: TokenId) -> Result<(), Error> {
+pub(super) fn clear_metadata(addr: &AccountId32, token_id: TokenId) -> Result<(), Error> {
 	let result = do_bare_call("clear_metadata", addr, token_id.encode());
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn mint(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
-	account: AccountId32,
+	account: &AccountId32,
 	amount: Balance,
 ) -> Result<(), Error> {
 	let params = [token_id.encode(), account.encode(), amount.encode()].concat();
@@ -181,9 +181,9 @@ pub(super) fn mint(
 }
 
 pub(super) fn burn(
-	addr: AccountId32,
+	addr: &AccountId32,
 	token_id: TokenId,
-	account: AccountId32,
+	account: &AccountId32,
 	amount: Balance,
 ) -> Result<(), Error> {
 	let params = [token_id.encode(), account.encode(), amount.encode()].concat();
@@ -193,81 +193,81 @@ pub(super) fn burn(
 }
 
 pub(super) fn pallet_assets_create(
-	owner: AccountId32,
+	owner: &AccountId32,
 	asset_id: AssetId,
 	min_balance: Balance,
 ) -> AssetId {
 	assert_ok!(Assets::create(
 		RuntimeOrigin::signed(owner.clone()),
 		asset_id.into(),
-		owner.into(),
+		owner.clone().into(),
 		min_balance
 	));
 	asset_id
 }
 
 pub(super) fn pallet_assets_mint(
-	owner: AccountId32,
+	owner: &AccountId32,
 	asset_id: AssetId,
-	to: AccountId32,
+	to: &AccountId32,
 	value: Balance,
 ) -> AssetId {
 	assert_ok!(Assets::mint(
 		RuntimeOrigin::signed(owner.clone()),
 		asset_id.into(),
-		to.into(),
+		to.clone().into(),
 		value
 	));
 	asset_id
 }
 
 pub(super) fn pallet_assets_create_and_mint_to(
-	owner: AccountId32,
+	owner: &AccountId32,
 	asset_id: AssetId,
-	to: AccountId32,
+	to: &AccountId32,
 	value: Balance,
 ) -> AssetId {
-	pallet_assets_create(owner.clone(), asset_id, 1);
+	pallet_assets_create(owner, asset_id, 1);
 	pallet_assets_mint(owner, asset_id, to, value)
 }
 
 // Create an asset, mints to, and approves spender.
 pub(super) fn pallet_assets_create_mint_and_approve(
-	owner: AccountId32,
+	owner: &AccountId32,
 	asset_id: AssetId,
-	to: AccountId32,
+	to: &AccountId32,
 	mint: Balance,
-	spender: AccountId32,
+	spender: &AccountId32,
 	approve: Balance,
 ) -> AssetId {
-	pallet_assets_create_and_mint_to(owner.clone(), asset_id, to.clone(), mint);
+	pallet_assets_create_and_mint_to(owner, asset_id, to, mint);
 	assert_ok!(Assets::approve_transfer(
-		RuntimeOrigin::signed(to.into()),
+		RuntimeOrigin::signed(to.clone().into()),
 		asset_id.into(),
-		spender.into(),
+		spender.clone().into(),
 		approve,
 	));
 	asset_id
 }
 
 // Freeze an asset.
-pub(super) fn pallet_assets_freeze(owner: AccountId32, asset_id: AssetId) {
-	assert_ok!(Assets::freeze_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()));
+pub(super) fn pallet_assets_freeze(owner: &AccountId32, asset_id: AssetId) {
+	assert_ok!(Assets::freeze_asset(RuntimeOrigin::signed(owner.clone().into()), asset_id.into()));
 }
 
 // Thaw an asset.
-pub(super) fn pallet_assets_thaw(owner: AccountId32, asset_id: AssetId) {
-	assert_ok!(Assets::thaw_asset(RuntimeOrigin::signed(owner.into()), asset_id.into()));
+pub(super) fn pallet_assets_thaw(owner: &AccountId32, asset_id: AssetId) {
+	assert_ok!(Assets::thaw_asset(RuntimeOrigin::signed(owner.clone().into()), asset_id.into()));
 }
 
 // Start destroying an asset.
-pub(super) fn pallet_assets_start_destroy(owner: AccountId32, asset_id: AssetId) {
-	assert_ok!(Assets::start_destroy(RuntimeOrigin::signed(owner.into()), asset_id.into()));
+pub(super) fn pallet_assets_start_destroy(owner: &AccountId32, asset_id: AssetId) {
+	assert_ok!(Assets::start_destroy(RuntimeOrigin::signed(owner.clone().into()), asset_id.into()));
 }
 
 // Create an asset and set metadata.
 pub(super) fn pallet_assets_create_and_set_metadata(
-	owner: AccountId32,
+	owner: &AccountId32,
 	asset_id: AssetId,
 	name: Vec<u8>,
 	symbol: Vec<u8>,
@@ -285,14 +285,14 @@ pub(super) fn pallet_assets_create_and_set_metadata(
 
 // Set metadata of an asset.
 pub(super) fn pallet_assets_set_metadata(
-	owner: AccountId32,
+	owner: &AccountId32,
 	asset_id: AssetId,
 	name: Vec<u8>,
 	symbol: Vec<u8>,
 	decimals: u8,
 ) {
 	assert_ok!(Assets::set_metadata(
-		RuntimeOrigin::signed(owner.into()),
+		RuntimeOrigin::signed(owner.clone().into()),
 		asset_id.into(),
 		name,
 		symbol,
