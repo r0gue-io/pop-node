@@ -155,7 +155,7 @@ pub mod pallet {
 			/// The amount transferred (or minted/burned).
 			value: BalanceOf<T>,
 		},
-		/// Event emitted when an token is created.
+		/// Event emitted when a token is created.
 		Create {
 			/// The token identifier.
 			id: TokenIdOf<T>,
