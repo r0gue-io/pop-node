@@ -1,17 +1,27 @@
 use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
+	dispatch::WithPostDispatchInfo,
 	sp_runtime::{traits::Zero, DispatchError::BadOrigin},
 	traits::fungibles::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
 };
 
-use crate::{fungibles::Read::*, mock::*, Read};
+use crate::{
+	fungibles::{
+		weights::WeightInfo as WeightInfoTrait, AssetsWeightInfoOf, AssetsWeightInfoTrait, Config,
+		Read::*,
+	},
+	mock::*,
+	Read,
+};
 
 const TOKEN: u32 = 42;
 
 type Event = crate::fungibles::Event<Test>;
+type WeightInfo = <Test as Config>::WeightInfo;
+type AssetsWeightInfo = AssetsWeightInfoOf<Test>;
 
 #[test]
 fn transfer_works() {
@@ -41,9 +51,8 @@ fn transfer_from_works() {
 		let from = Some(ALICE);
 		let to = Some(BOB);
 
-		// Approve CHARLIE to transfer up to `value` to BOB.
+		// Approve CHARLIE to transfer up to `value`.
 		create_token_mint_and_approve(ALICE, token, ALICE, value * 2, CHARLIE, value);
-		// TODO: weight
 		for origin in vec![root(), none()] {
 			assert_noop!(Fungibles::transfer_from(origin, token, ALICE, BOB, value), BadOrigin);
 		}
@@ -70,30 +79,51 @@ fn approve_works() {
 		let spender = BOB;
 
 		create_token_and_mint_to(ALICE, token, ALICE, value);
+		for origin in vec![root(), none()] {
+			assert_noop!(
+				Fungibles::approve(origin, token, BOB, value),
+				BadOrigin.with_weight(WeightInfo::approve(0, 0))
+			);
+		}
 		assert_eq!(0, Assets::allowance(token, &ALICE, &BOB));
-		assert_ok!(Fungibles::approve(signed(ALICE), token, BOB, value));
+		assert_eq!(
+			Fungibles::approve(signed(ALICE), token, BOB, value),
+			Ok(Some(WeightInfo::approve(1, 0)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
 		System::assert_last_event(Event::Approval { token, owner, spender, value }.into());
-		// Approves an value to spend that is lower than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), token, BOB, value / 2));
+		// Approves a value to spend that is lower than the current allowance.
+		assert_eq!(
+			Fungibles::approve(signed(ALICE), token, BOB, value / 2),
+			Ok(Some(WeightInfo::approve(1, 1)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value / 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value / 2 }.into(),
 		);
-		// Approves an value to spend that is higher than the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), token, BOB, value * 2));
+		// Approves a value to spend that is higher than the current allowance.
+		assert_eq!(
+			Fungibles::approve(signed(ALICE), token, BOB, value * 2),
+			Ok(Some(WeightInfo::approve(1, 0)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value * 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value * 2 }.into(),
 		);
-		// Approves an value to spend that is equal to the current allowance.
-		assert_ok!(Fungibles::approve(signed(ALICE), token, BOB, value * 2));
+		// Approves a value to spend that is equal to the current allowance.
+		assert_eq!(
+			Fungibles::approve(signed(ALICE), token, BOB, value * 2),
+			Ok(Some(WeightInfo::approve(0, 0)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value * 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value * 2 }.into(),
 		);
 		// Sets allowance to zero.
-		assert_ok!(Fungibles::approve(signed(ALICE), token, BOB, 0));
+		assert_eq!(
+			Fungibles::approve(signed(ALICE), token, BOB, 0),
+			Ok(Some(WeightInfo::approve(0, 1)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), 0);
 		System::assert_last_event(Event::Approval { token, owner, spender, value: 0 }.into());
 	});
@@ -108,9 +138,11 @@ fn increase_allowance_works() {
 		let spender = BOB;
 
 		create_token_and_mint_to(ALICE, token, ALICE, value);
-		// TODO: weight
 		for origin in vec![root(), none()] {
-			assert_noop!(Fungibles::increase_allowance(origin, token, BOB, value), BadOrigin);
+			assert_noop!(
+				Fungibles::increase_allowance(origin, token, BOB, value),
+				BadOrigin.with_weight(WeightInfo::approve(0, 0))
+			);
 		}
 		assert_eq!(0, Assets::allowance(token, &ALICE, &BOB));
 		assert_ok!(Fungibles::increase_allowance(signed(ALICE), token, BOB, value));
@@ -134,22 +166,33 @@ fn decrease_allowance_works() {
 		let spender = BOB;
 
 		create_token_mint_and_approve(ALICE, token, ALICE, value, BOB, value);
-		// TODO: weight
 		for origin in vec![root(), none()] {
-			assert_noop!(Fungibles::decrease_allowance(origin, token, BOB, 0), BadOrigin);
+			assert_noop!(
+				Fungibles::decrease_allowance(origin, token, BOB, 0),
+				BadOrigin.with_weight(WeightInfo::approve(0, 0))
+			);
 		}
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
 		// Owner balance is not changed if decreased by zero.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), token, BOB, 0));
+		assert_eq!(
+			Fungibles::decrease_allowance(signed(ALICE), token, BOB, 0),
+			Ok(Some(WeightInfo::approve(0, 0)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
 		// Decrease allowance successfully.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), token, BOB, value / 2));
+		assert_eq!(
+			Fungibles::decrease_allowance(signed(ALICE), token, BOB, value / 2),
+			Ok(Some(WeightInfo::approve(1, 1)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value / 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value / 2 }.into(),
 		);
 		// Saturating if current allowance is decreased more than the owner balance.
-		assert_ok!(Fungibles::decrease_allowance(signed(ALICE), token, BOB, value));
+		assert_eq!(
+			Fungibles::decrease_allowance(signed(ALICE), token, BOB, value),
+			Ok(Some(WeightInfo::approve(0, 1)).into())
+		);
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), 0);
 		System::assert_last_event(Event::Approval { token, owner, spender, value: 0 }.into());
 	});
@@ -179,6 +222,7 @@ fn start_destroy_works() {
 
 		create_token(ALICE, token);
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), token));
+		assert!(Fungibles::start_destroy(signed(BOB), token).is_err());
 	});
 }
 
@@ -241,10 +285,13 @@ fn burn_works() {
 		let token = TOKEN;
 		let from = Some(BOB);
 		let to = None;
+		let total_supply = value * 2;
 
-		create_token_and_mint_to(ALICE, token, BOB, value);
+		create_token_and_mint_to(ALICE, token, BOB, total_supply);
+		assert_eq!(Assets::total_supply(TOKEN), total_supply);
 		let balance_before_burn = Assets::balance(token, &BOB);
 		assert_ok!(Fungibles::burn(signed(ALICE), token, BOB, value));
+		assert_eq!(Assets::total_supply(TOKEN), total_supply - value);
 		let balance_after_burn = Assets::balance(token, &BOB);
 		assert_eq!(balance_after_burn, balance_before_burn - value);
 		System::assert_last_event(Event::Transfer { token, from, to, value }.into());
@@ -254,21 +301,28 @@ fn burn_works() {
 #[test]
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
-		create_token_and_mint_to(ALICE, TOKEN, ALICE, 100);
+		let total_supply = INIT_AMOUNT;
+		create_token_and_mint_to(ALICE, TOKEN, ALICE, total_supply);
 		assert_eq!(
+			Fungibles::read(TotalSupply(TOKEN)).encode(),
 			Assets::total_supply(TOKEN).encode(),
-			Fungibles::read(TotalSupply(TOKEN)).encode()
 		);
+		assert_eq!(Fungibles::read(TotalSupply(TOKEN)).encode(), total_supply.encode(),);
 	});
 }
 
 #[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
-		create_token_and_mint_to(ALICE, TOKEN, ALICE, 100);
+		let value = 1_000 * UNIT;
+		create_token_and_mint_to(ALICE, TOKEN, ALICE, value);
 		assert_eq!(
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode(),
 			Assets::balance(TOKEN, ALICE).encode(),
-			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode()
+		);
+		assert_eq!(
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode(),
+			value.encode()
 		);
 	});
 }
@@ -276,10 +330,15 @@ fn balance_of_works() {
 #[test]
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
-		create_token_mint_and_approve(ALICE, TOKEN, BOB, 100, ALICE, 50);
+		let value = 1_000 * UNIT;
+		create_token_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
 		assert_eq!(
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode(),
 			Assets::allowance(TOKEN, &ALICE, &BOB).encode(),
-			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode()
+		);
+		assert_eq!(
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode(),
+			value.encode()
 		);
 	});
 }
@@ -291,12 +350,15 @@ fn token_metadata_works() {
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
 		create_token_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
-		assert_eq!(Assets::name(TOKEN).encode(), Fungibles::read(TokenName(TOKEN)).encode());
-		assert_eq!(Assets::symbol(TOKEN).encode(), Fungibles::read(TokenSymbol(TOKEN)).encode());
+		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), Assets::name(TOKEN).encode());
+		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)).encode(), Assets::symbol(TOKEN).encode());
 		assert_eq!(
+			Fungibles::read(TokenDecimals(TOKEN)).encode(),
 			Assets::decimals(TOKEN).encode(),
-			Fungibles::read(TokenDecimals(TOKEN)).encode()
 		);
+		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), name.encode());
+		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)).encode(), symbol.encode());
+		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)).encode(), decimals.encode());
 	});
 }
 
@@ -305,9 +367,10 @@ fn token_exists_works() {
 	new_test_ext().execute_with(|| {
 		create_token(ALICE, TOKEN);
 		assert_eq!(
+			Fungibles::read(TokenExists(TOKEN)).encode(),
 			Assets::asset_exists(TOKEN).encode(),
-			Fungibles::read(TokenExists(TOKEN)).encode()
 		);
+		assert_eq!(Fungibles::read(TokenExists(TOKEN)).encode(), true.encode());
 	});
 }
 
