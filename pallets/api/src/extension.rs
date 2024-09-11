@@ -262,10 +262,8 @@ mod tests {
 		#[test]
 		fn versioned_error_converter_fails() {
 			let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
-			let result = VersionedErrorConverter::<VersionedError>::convert(BadOrigin, &env)
-				.err()
-				.unwrap(); // Again, can't use `unwrap_err()` due to missing `Debug` trait.
-			assert_eq!(result, Other("DecodingFailed"));
+			let result = VersionedErrorConverter::<VersionedError>::convert(BadOrigin, &env).err();
+			assert_eq!(result, Some(Other("DecodingFailed")));
 		}
 	}
 
@@ -318,10 +316,8 @@ mod tests {
 		fn versioned_result_converter_fails() {
 			let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
 			let result =
-				VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(10, &env)
-					.err()
-					.unwrap(); // Again, can't use `unwrap_err()` due to missing `Debug` trait.
-			assert_eq!(result, Other("DecodingFailed"));
+				VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(10, &env).err();
+			assert_eq!(result, Some(Other("DecodingFailed")));
 		}
 	}
 
