@@ -9,6 +9,9 @@ version = "0.0.0"
 codec.workspace = true
 scale-info.workspace = true
 
+[dev-dependencies]
+enum-iterator = "2.1.0"
+
 [features]
 default = [ "std" ]
 std = [ "codec/std", "scale-info/std" ]
