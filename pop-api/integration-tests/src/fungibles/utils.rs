@@ -57,8 +57,8 @@ pub(super) fn token_decimals(addr: AccountId32, asset_id: AssetId) -> Result<u8,
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn asset_exists(addr: AccountId32, asset_id: AssetId) -> Result<bool, Error> {
-	let result = do_bare_call("asset_exists", addr, asset_id.encode());
+pub(super) fn token_exists(addr: AccountId32, asset_id: AssetId) -> Result<bool, Error> {
+	let result = do_bare_call("token_exists", addr, asset_id.encode());
 	decoded::<Result<bool, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }

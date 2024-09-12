@@ -1,14 +1,14 @@
 [package]
+authors = [ "[your_name] <[your_email]>" ]
+edition = "2021"
 name = "balance_transfer"
 version = "0.1.0"
-authors = ["[your_name] <[your_email]>"]
-edition = "2021"
 
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
 pop-api = { path = "../../../pop-api", default-features = false }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = ["derive"] }
-scale-info = { version = "2.6", default-features = false, features = ["derive"], optional = true }
+scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [ "derive" ] }
+scale-info = { version = "2.6", default-features = false, features = [ "derive" ], optional = true }
 
 [dev-dependencies]
 ink_e2e = "5.0.0"
@@ -17,12 +17,12 @@ ink_e2e = "5.0.0"
 path = "lib.rs"
 
 [features]
-default = ["std"]
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
 std = [
-    "ink/std",
-    "pop-api/std",
-    "scale/std",
-    "scale-info/std",
+	"ink/std",
+	"pop-api/std",
+	"scale-info/std",
+	"scale/std",
 ]
-ink-as-dependency = []
-e2e-tests = []

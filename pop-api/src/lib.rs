@@ -1,16 +1,16 @@
-//! The `pop-api` crate provides an API for smart contracts to interact with the Pop Network runtime.
+//! The `pop-api` crate provides an API for smart contracts to interact with the Pop Network
+//! runtime.
 //!
-//! This crate abstracts away complexities to deliver a streamlined developer experience while supporting
-//! multiple API versions to ensure backward compatibility. It is designed with a focus on stability,
-//! future-proofing, and storage efficiency, allowing developers to easily integrate powerful runtime
-//! features into their contracts without unnecessary overhead.
+//! This crate abstracts away complexities to deliver a streamlined developer experience while
+//! supporting multiple API versions to ensure backward compatibility. It is designed with a focus
+//! on stability, future-proofing, and storage efficiency, allowing developers to easily integrate
+//! powerful runtime features into their contracts without unnecessary overhead.
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use constants::DECODING_FAILED;
 use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
-#[cfg(feature = "assets")]
-pub use v0::assets;
+pub use v0::*;
 
 /// Module providing primitives types.
 pub mod primitives;
@@ -39,17 +39,17 @@ mod constants {
 // Helper method to build a dispatch call or a call to read state.
 //
 // Parameters:
-// - 'version': The version of the chain extension.
 // - 'function': The ID of the function.
+// - 'version': The version of the chain extension.
 // - 'module': The index of the runtime module.
 // - 'dispatchable': The index of the module dispatchable functions.
 fn build_extension_method(
-	version: u8,
 	function: u8,
+	version: u8,
 	module: u8,
 	dispatchable: u8,
 ) -> ChainExtensionMethod<(), (), (), false> {
-	ChainExtensionMethod::build(u32::from_le_bytes([version, function, module, dispatchable]))
+	ChainExtensionMethod::build(u32::from_le_bytes([function, version, module, dispatchable]))
 }
 
 /// Represents a status code returned by the runtime.

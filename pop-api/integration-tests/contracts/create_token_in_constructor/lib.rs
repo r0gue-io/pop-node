@@ -2,7 +2,7 @@
 
 use pop_api::{
 	assets::fungibles::{self as api, events::Create},
-	primitives::AssetId,
+	primitives::TokenId,
 	StatusCode,
 };
 
@@ -14,12 +14,12 @@ mod create_token_in_constructor {
 
 	#[ink(storage)]
 	pub struct Fungible {
-		id: AssetId,
+		id: TokenId,
 	}
 
 	impl Fungible {
 		#[ink(constructor, payable)]
-		pub fn new(id: AssetId, min_balance: Balance) -> Result<Self> {
+		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self> {
 			let contract = Self { id };
 			// AccountId of the contract which will be set to the owner of the fungible token.
 			let owner = contract.env().account_id();
@@ -29,18 +29,8 @@ mod create_token_in_constructor {
 		}
 
 		#[ink(message)]
-		pub fn asset_exists(&self) -> Result<bool> {
-			api::asset_exists(self.id)
-		}
-	}
-
-	#[cfg(test)]
-	mod tests {
-		use super::*;
-
-		#[ink::test]
-		fn default_works() {
-			PopApiFungiblesExample::new();
+		pub fn token_exists(&self) -> Result<bool> {
+			api::token_exists(self.id)
 		}
 	}
 }

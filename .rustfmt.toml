@@ -1,24 +1,24 @@
-# Basic
-edition = "2021"
-hard_tabs = true
-max_width = 100
-use_small_heuristics = "Max"
-# Imports
-imports_granularity = "Crate"
-reorder_imports = true
-# Consistency
-newline_style = "Unix"
-# Misc
-chain_width = 80
-spaces_around_ranges = false
+# Non-default formatting configuration options: use with `cargo +nightly fmt  --all`
 binop_separator = "Back"
-reorder_impl_items = false
-match_arm_leading_pipes = "Preserve"
+chain_width = 80
+combine_control_expr = false
+comment_width = 100
+condense_wildcard_suffixes = true
+edition = "2021"
+format_code_in_doc_comments = true
+format_strings = true
+group_imports = "StdExternalCrate"
+hard_tabs = true
+imports_granularity = "Crate"
 match_arm_blocks = false
 match_block_trailing_comma = true
-trailing_comma = "Vertical"
+newline_style = "Unix"
+normalize_comments = true
+reorder_impl_items = true
 trailing_semicolon = false
+unstable_features = true
 use_field_init_shorthand = true
-# Format comments
-comment_width = 100
+# Uses max_width or its default value (100) if not specified.
+use_small_heuristics = "Max"
+use_try_shorthand = true
 wrap_comments = true

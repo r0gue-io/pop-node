@@ -1,6 +1,5 @@
-//! Benchmarking setup for pallet-api::fungibles
+//! Benchmarking setup for pallet_api::fungibles
 
-use super::{AccountIdOf, AssetIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{
 	assert_ok,
@@ -14,6 +13,8 @@ use frame_support::{
 };
 use frame_system::RawOrigin;
 use sp_runtime::traits::Zero;
+
+use super::{AccountIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet, TokenIdOf};
 
 const SEED: u32 = 1;
 
@@ -36,7 +37,7 @@ mod benchmarks {
 	// - 'c': whether `cancel_approval` is required.
 	#[benchmark]
 	fn approve(a: Linear<0, 1>, c: Linear<0, 1>) -> Result<(), BenchmarkError> {
-		let asset_id = AssetIdOf::<T>::zero();
+		let token_id = TokenIdOf::<T>::zero();
 		let min_balance = <BalanceOf<T>>::from(1u32);
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		let spender: AccountIdOf<T> = account("Bob", 0, SEED);
@@ -44,13 +45,13 @@ mod benchmarks {
 		T::Currency::make_free_balance_be(&owner, u32::MAX.into());
 		// Set the `current_allowance`.
 		assert_ok!(<AssetsOf<T> as Create<AccountIdOf<T>>>::create(
-			asset_id.clone(),
+			token_id.clone(),
 			owner.clone(),
 			true,
 			min_balance
 		));
 		assert_ok!(<AssetsOf<T> as Mutate<AccountIdOf<T>>>::approve(
-			asset_id.clone(),
+			token_id.clone(),
 			&owner,
 			&spender,
 			current_allowance,
@@ -68,13 +69,13 @@ mod benchmarks {
 		};
 
 		#[extrinsic_call]
-		_(RawOrigin::Signed(owner.clone()), asset_id.clone(), spender.clone(), approval_value);
+		_(RawOrigin::Signed(owner.clone()), token_id.clone(), spender.clone(), approval_value);
 
-		assert_eq!(AssetsOf::<T>::allowance(asset_id.clone(), &owner, &spender), approval_value);
+		assert_eq!(AssetsOf::<T>::allowance(token_id.clone(), &owner, &spender), approval_value);
 		if c == 1 {
 			assert_has_event::<T>(
 				pallet_assets::Event::ApprovalCancelled {
-					asset_id: asset_id.clone(),
+					asset_id: token_id.clone(),
 					owner: owner.clone(),
 					delegate: spender.clone(),
 				}
@@ -91,7 +92,7 @@ mod benchmarks {
 			};
 			assert_has_event::<T>(
 				pallet_assets::Event::ApprovedTransfer {
-					asset_id,
+					asset_id: token_id,
 					source: owner,
 					delegate: spender,
 					amount,

@@ -1,17 +1,17 @@
 [package]
-name = "pop-primitives"
 description = "Primitives crate for Pop"
-license = "GPL-3.0-only"
-version = "0.0.0"
 edition = "2021"
+license = "GPL-3.0-only"
+name = "pop-primitives"
+version = "0.0.0"
 
 [dependencies]
 codec.workspace = true
 scale-info.workspace = true
 
+[dev-dependencies]
+enum-iterator = "2.1.0"
+
 [features]
-default = ["std"]
-std = [
-    "codec/std",
-    "scale-info/std",
-]
+default = [ "std" ]
+std = [ "codec/std", "scale-info/std" ]

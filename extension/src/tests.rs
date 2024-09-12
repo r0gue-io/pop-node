@@ -1,135 +1,231 @@
+use core::fmt::Debug;
+use std::{path::Path, sync::LazyLock};
+
 use codec::{Decode, Encode};
+use frame_support::weights::Weight;
+use frame_system::Call;
+use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism, StorageDeposit};
+use sp_runtime::{
+	DispatchError::{self, BadOrigin, Module},
+	ModuleError,
+};
 
-// Test ensuring `func_id()` and `ext_id()` work as expected, i.e. extracting the first two
-// bytes and the last two bytes, respectively, from a 4 byte array.
-#[test]
-fn test_byte_extraction() {
-	use rand::Rng;
+use crate::{
+	mock::{self, *},
+	ErrorConverter,
+};
 
-	// Helper functions
-	fn func_id(id: u32) -> u16 {
-		(id & 0x0000FFFF) as u16
+static CONTRACT: LazyLock<Vec<u8>> =
+	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.wasm"));
+
+mod dispatch_call {
+	use super::*;
+
+	#[test]
+	fn dispatch_call_works() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate();
+			let dispatch_result = call(
+				contract,
+				DispatchContractFuncId::get(),
+				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
+				GAS_LIMIT,
+			);
+			// Successfully return data.
+			let return_value = dispatch_result.result.unwrap();
+			let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
+			assert!(decoded.unwrap().is_empty());
+			// Successfully emit event.
+			assert!(dispatch_result.events.unwrap().iter().any(|e| matches!(e.event,
+				RuntimeEvent::System(frame_system::Event::<Test>::Remarked { sender, .. })
+					if sender == contract)));
+			assert_eq!(dispatch_result.storage_deposit, StorageDeposit::Charge(0));
+		});
 	}
-	fn ext_id(id: u32) -> u16 {
-		(id >> 16) as u16
+
+	#[test]
+	fn dispatch_call_filtering_works() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate();
+			let dispatch_result = call(
+				contract,
+				DispatchContractNoopFuncId::get(),
+				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
+				GAS_LIMIT,
+			);
+			assert_eq!(
+				dispatch_result.result,
+				Err(Module(ModuleError {
+					index: 0,
+					error: [5, 0, 0, 0],
+					message: Some("CallFiltered")
+				}))
+			);
+		});
 	}
 
-	// Number of test iterations
-	let test_iterations = 1_000_000;
-
-	// Create a random number generator
-	let mut rng = rand::thread_rng();
-
-	// Run the test for a large number of random 4-byte arrays
-	for _ in 0..test_iterations {
-		// Generate a random 4-byte array
-		let bytes: [u8; 4] = rng.gen();
-
-		// Convert the 4-byte array to a u32 value
-		let value = u32::from_le_bytes(bytes);
-
-		// Extract the first two bytes (least significant 2 bytes)
-		let first_two_bytes = func_id(value);
-
-		// Extract the last two bytes (most significant 2 bytes)
-		let last_two_bytes = ext_id(value);
-
-		// Check if the first two bytes match the expected value
-		assert_eq!([bytes[0], bytes[1]], first_two_bytes.to_le_bytes());
-
-		// Check if the last two bytes match the expected value
-		assert_eq!([bytes[2], bytes[3]], last_two_bytes.to_le_bytes());
+	#[test]
+	fn dispatch_call_returns_error() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate();
+			let dispatch_result = call(
+				contract,
+				DispatchContractFuncId::get(),
+				// `set_code` requires root origin, expect throwing error.
+				RuntimeCall::System(Call::set_code { code: "pop".as_bytes().to_vec() }),
+				GAS_LIMIT,
+			);
+			assert_eq!(dispatch_result.result.err(), Some(BadOrigin))
+		})
 	}
 }
 
-// Test showing all the different type of variants and its encoding.
-#[test]
-fn encoding_of_enum() {
-	#[derive(Debug, PartialEq, Encode, Decode)]
-	enum ComprehensiveEnum {
-		SimpleVariant,
-		DataVariant(u8),
-		NamedFields { w: u8 },
-		NestedEnum(InnerEnum),
-		OptionVariant(Option<u8>),
-		VecVariant(Vec<u8>),
-		TupleVariant(u8, u8),
-		NestedStructVariant(NestedStruct),
-		NestedEnumStructVariant(NestedEnumStruct),
+mod read_state {
+	use super::*;
+
+	#[test]
+	fn read_state_works() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate();
+			// Successfully return data.
+			let read_result =
+				call(contract, ReadContractFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
+			let return_value = read_result.result.unwrap();
+			let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[1..]).unwrap();
+			let result = Ok("pop".as_bytes().to_vec());
+			assert_eq!(decoded, result);
+		});
 	}
 
-	#[derive(Debug, PartialEq, Encode, Decode)]
-	enum InnerEnum {
-		A,
-		B { inner_data: u8 },
-		C(u8),
+	#[test]
+	fn read_state_filtering_works() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate();
+			// Successfully return data.
+			let read_result =
+				call(contract, ReadContractNoopFuncId::get(), RuntimeRead::Ping, GAS_LIMIT);
+			assert_eq!(
+				read_result.result,
+				Err(Module(ModuleError {
+					index: 0,
+					error: [5, 0, 0, 0],
+					message: Some("CallFiltered")
+				}))
+			);
+		});
 	}
 
-	#[derive(Debug, PartialEq, Encode, Decode)]
-	struct NestedStruct {
-		x: u8,
-		y: u8,
+	#[test]
+	fn read_state_with_invalid_input_returns_error() {
+		new_test_ext().execute_with(|| {
+			// Instantiate a new contract.
+			let contract = instantiate();
+			let read_result = call(contract, ReadExtFuncId::get(), 99u8, GAS_LIMIT);
+			let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			// Make sure the error is passed through the error converter.
+			let error =
+				<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
+			assert_eq!(read_result.result.err(), error);
+		})
 	}
-
-	#[derive(Debug, PartialEq, Encode, Decode)]
-	struct NestedEnumStruct {
-		inner_enum: InnerEnum,
-	}
-
-	// Creating each possible variant for an enum.
-	let enum_simple = ComprehensiveEnum::SimpleVariant;
-	let enum_data = ComprehensiveEnum::DataVariant(42);
-	let enum_named = ComprehensiveEnum::NamedFields { w: 42 };
-	let enum_nested = ComprehensiveEnum::NestedEnum(InnerEnum::B { inner_data: 42 });
-	let enum_option = ComprehensiveEnum::OptionVariant(Some(42));
-	let enum_vec = ComprehensiveEnum::VecVariant(vec![1, 2, 3, 4, 5]);
-	let enum_tuple = ComprehensiveEnum::TupleVariant(42, 42);
-	let enum_nested_struct = ComprehensiveEnum::NestedStructVariant(NestedStruct { x: 42, y: 42 });
-	let enum_nested_enum_struct = ComprehensiveEnum::NestedEnumStructVariant(NestedEnumStruct {
-		inner_enum: InnerEnum::C(42),
-	});
-
-	// Encode and print each variant individually to see their encoded values.
-	println!("{:?} -> {:?}", enum_simple, enum_simple.encode());
-	println!("{:?} -> {:?}", enum_data, enum_data.encode());
-	println!("{:?} -> {:?}", enum_named, enum_named.encode());
-	println!("{:?} -> {:?}", enum_nested, enum_nested.encode());
-	println!("{:?} -> {:?}", enum_option, enum_option.encode());
-	println!("{:?} -> {:?}", enum_vec, enum_vec.encode());
-	println!("{:?} -> {:?}", enum_tuple, enum_tuple.encode());
-	println!("{:?} -> {:?}", enum_nested_struct, enum_nested_struct.encode());
-	println!("{:?} -> {:?}", enum_nested_enum_struct, enum_nested_enum_struct.encode());
 }
 
 #[test]
-fn encoding_decoding_dispatch_error() {
-	use sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError};
+fn noop_function_works() {
+	new_test_ext().execute_with(|| {
+		// Instantiate a new contract.
+		let contract = instantiate();
+		let noop_result = call(contract, NoopFuncId::get(), (), GAS_LIMIT);
+		// Successfully return data.
+		let return_value = noop_result.result.unwrap();
+		let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
+		assert!(decoded.unwrap().is_empty());
+		assert_eq!(noop_result.storage_deposit, StorageDeposit::Charge(0));
+	})
+}
 
-	let error = DispatchError::Module(ModuleError {
-		index: 255,
-		error: [2, 0, 0, 0],
-		message: Some("error message"),
+#[test]
+fn invalid_func_id_fails() {
+	new_test_ext().execute_with(|| {
+		// Instantiate a new contract.
+		let contract = instantiate();
+		let result = call(contract, INVALID_FUNC_ID, (), GAS_LIMIT);
+		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+		// Make sure the error is passed through the error converter.
+		let error =
+			<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
+		assert_eq!(result.result.err(), error);
 	});
-	let encoded = error.encode();
-	let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-	assert_eq!(encoded, vec![3, 255, 2, 0, 0, 0]);
-	assert_eq!(
-		decoded,
-		// `message` is skipped for encoding.
-		DispatchError::Module(ModuleError { index: 255, error: [2, 0, 0, 0], message: None })
+}
+
+/// Initializing a new contract file if it does not exist.
+fn initialize_contract(contract_path: &str) -> Vec<u8> {
+	if !Path::new(contract_path).exists() {
+		use contract_build::*;
+		let manifest_path = ManifestPath::new("contract/Cargo.toml").unwrap();
+		let args = ExecuteArgs {
+			build_artifact: BuildArtifacts::CodeOnly,
+			build_mode: BuildMode::Debug,
+			manifest_path,
+			output_type: OutputType::Json,
+			verbosity: Verbosity::Quiet,
+			skip_wasm_validation: true,
+			..Default::default()
+		};
+		execute(args).unwrap();
+	}
+	std::fs::read(contract_path).unwrap()
+}
+
+/// Instantiating the contract.
+fn instantiate() -> AccountId {
+	let result = Contracts::bare_instantiate(
+		ALICE,
+		0,
+		GAS_LIMIT,
+		None,
+		Code::Upload(CONTRACT.clone()),
+		function_selector("new"),
+		Default::default(),
+		DEBUG_OUTPUT,
+		CollectEvents::UnsafeCollect,
 	);
+	log::debug!("instantiate result: {result:?}");
+	let result = result.result.unwrap();
+	assert!(!result.result.did_revert());
+	result.account_id
+}
 
-	// Example DispatchError::Token
-	let error = DispatchError::Token(TokenError::UnknownAsset);
-	let encoded = error.encode();
-	let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-	assert_eq!(encoded, vec![7, 4]);
-	assert_eq!(decoded, error);
+/// Perform a call to a specified contract.
+fn call(
+	contract: AccountId,
+	func_id: u32,
+	input: impl Encode + Debug,
+	gas_limit: Weight,
+) -> ContractExecResult<Balance, EventRecord> {
+	log::debug!("call: func_id={func_id}, input={input:?}");
+	let result = Contracts::bare_call(
+		ALICE,
+		contract,
+		0,
+		gas_limit,
+		None,
+		[function_selector("call"), (func_id, input.encode()).encode()].concat(),
+		DEBUG_OUTPUT,
+		CollectEvents::UnsafeCollect,
+		Determinism::Enforced,
+	);
+	log::debug!("gas consumed: {:?}", result.gas_consumed);
+	log::debug!("call result: {result:?}");
+	result
+}
 
-	// Example DispatchError::Arithmetic
-	let error = DispatchError::Arithmetic(ArithmeticError::Overflow);
-	let encoded = error.encode();
-	let decoded = DispatchError::decode(&mut &encoded[..]).unwrap();
-	assert_eq!(encoded, vec![8, 1]);
-	assert_eq!(decoded, error);
+/// Construct the hashed bytes as a selector of function.
+fn function_selector(name: &str) -> Vec<u8> {
+	sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
 }

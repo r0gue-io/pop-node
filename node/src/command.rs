@@ -1,5 +1,6 @@
 use std::{net::SocketAddr, path::PathBuf};
 
+use cumulus_client_service::storage_proof_size::HostFunctions as ReclaimHostFunctions;
 use cumulus_primitives_core::ParaId;
 use frame_benchmarking_cli::{BenchmarkCmd, SUBSTRATE_REFERENCE_HARDWARE};
 use log::info;
@@ -9,19 +10,20 @@ use sc_cli::{
 	NetworkParams, Result, SharedParams, SubstrateCli,
 };
 use sc_service::config::{BasePath, PrometheusConfig};
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::traits::HashingFor;
 
 use crate::{
 	chain_spec,
 	chain_spec::Relay,
 	cli::{Cli, RelayChainCli, Subcommand},
-	service::{new_partial, DevnetRuntimeExecutor, TestnetRuntimeExecutor},
+	service::new_partial,
 };
 
 #[derive(Debug, PartialEq)]
 enum Runtime {
 	Devnet,
 	Testnet,
+	Mainnet,
 }
 
 trait RuntimeResolver {
@@ -34,8 +36,14 @@ fn runtime(id: &str) -> Runtime {
 		Runtime::Devnet
 	} else if id.starts_with("test") || id.ends_with("testnet") {
 		Runtime::Testnet
+	} else if id.eq("pop") || id.ends_with("mainnet") {
+		Runtime::Mainnet
 	} else {
-		log::warn!("No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will be used", id);
+		log::warn!(
+			"No specific runtime was recognized for ChainSpec's Id: '{}', so Runtime::Devnet will \
+			 be used",
+			id
+		);
 		Runtime::Devnet
 	}
 }
@@ -64,16 +72,18 @@ impl RuntimeResolver for PathBuf {
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
-		"dev" | "devnet" | "dev-paseo" => {
-			Box::new(chain_spec::development_config(Relay::PaseoLocal))
-		},
+		"dev" | "devnet" | "dev-paseo" =>
+			Box::new(chain_spec::development_config(Relay::PaseoLocal)),
 		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
+			Box::new(chain_spec::mainnet_config(Relay::Polkadot)),
 		"" | "local" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
 		path => {
 			let path: PathBuf = path.into();
 			match path.runtime() {
 				Runtime::Devnet => Box::new(chain_spec::DevnetChainSpec::from_json_file(path)?),
 				Runtime::Testnet => Box::new(chain_spec::TestnetChainSpec::from_json_file(path)?),
+				Runtime::Mainnet => Box::new(chain_spec::MainnetChainSpec::from_json_file(path)?),
 			}
 		},
 	})
@@ -90,10 +100,9 @@ impl SubstrateCli for Cli {
 
 	fn description() -> String {
 		format!(
-			"Pop Collator\n\nThe command-line arguments provided first will be \
-		passed to the parachain node, while the arguments provided after -- will be passed \
-		to the relay chain node.\n\n\
-		{} <parachain-args> -- <relay-chain-args>",
+			"Pop Collator\n\nThe command-line arguments provided first will be passed to the \
+			 parachain node, while the arguments provided after -- will be passed to the relay \
+			 chain node.\n\n{} <parachain-args> -- <relay-chain-args>",
 			Self::executable_name()
 		)
 	}
@@ -126,10 +135,9 @@ impl SubstrateCli for RelayChainCli {
 
 	fn description() -> String {
 		format!(
-			"Pop Collator\n\nThe command-line arguments provided first will be \
-		passed to the parachain node, while the arguments provided after -- will be passed \
-		to the relay chain node.\n\n\
-		{} <parachain-args> -- <relay-chain-args>",
+			"Pop Collator\n\nThe command-line arguments provided first will be passed to the \
+			 parachain node, while the arguments provided after -- will be passed to the relay \
+			 chain node.\n\n{} <parachain-args> -- <relay-chain-args>",
 			Self::executable_name()
 		)
 	}
@@ -157,7 +165,7 @@ macro_rules! construct_async_run {
 		match runner.config().chain_spec.runtime() {
 			Runtime::Devnet => {
 				runner.async_run(|$config| {
-					let $components = new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(
+					let $components = new_partial::<pop_runtime_devnet::RuntimeApi>(
 						&$config
 					)?;
 					let task_manager = $components.task_manager;
@@ -166,7 +174,16 @@ macro_rules! construct_async_run {
 			}
 			Runtime::Testnet => {
 				runner.async_run(|$config| {
-					let $components = new_partial::<pop_runtime_testnet::RuntimeApi, TestnetRuntimeExecutor>(
+					let $components = new_partial::<pop_runtime_testnet::RuntimeApi>(
+						&$config
+					)?;
+					let task_manager = $components.task_manager;
+					{ $( $code )* }.map(|v| (v, task_manager))
+				})
+			}
+			Runtime::Mainnet => {
+				runner.async_run(|$config| {
+					let $components = new_partial::<pop_runtime_mainnet::RuntimeApi>(
 						&$config
 					)?;
 					let task_manager = $components.task_manager;
@@ -181,15 +198,15 @@ macro_rules! construct_benchmark_partials {
 	($config:expr, |$partials:ident| $code:expr) => {
 		match $config.chain_spec.runtime() {
 			Runtime::Devnet => {
-				let $partials =
-					new_partial::<pop_runtime_devnet::RuntimeApi, DevnetRuntimeExecutor>(&$config)?;
+				let $partials = new_partial::<pop_runtime_devnet::RuntimeApi>(&$config)?;
 				$code
 			},
 			Runtime::Testnet => {
-				let $partials = new_partial::<
-					pop_runtime_testnet::RuntimeApi,
-					TestnetRuntimeExecutor,
-				>(&$config)?;
+				let $partials = new_partial::<pop_runtime_testnet::RuntimeApi>(&$config)?;
+				$code
+			},
+			Runtime::Mainnet => {
+				let $partials = new_partial::<pop_runtime_mainnet::RuntimeApi>(&$config)?;
 				$code
 			},
 		}
@@ -252,9 +269,7 @@ pub fn run() -> Result<()> {
 		Some(Subcommand::ExportGenesisHead(cmd)) => {
 			let runner = cli.create_runner(cmd)?;
 			runner.sync_run(|config| {
-				construct_benchmark_partials!(config, |partials| {
-					cmd.run(partials.client)
-				})
+				construct_benchmark_partials!(config, |partials| cmd.run(partials.client))
 			})
 		},
 		Some(Subcommand::ExportGenesisWasm(cmd)) => {
@@ -270,23 +285,24 @@ pub fn run() -> Result<()> {
 			match cmd {
 				BenchmarkCmd::Pallet(cmd) =>
 					if cfg!(feature = "runtime-benchmarks") {
-						runner.sync_run(|config| cmd.run::<Block, ()>(config))
+						runner.sync_run(|config| {
+							cmd.run_with_spec::<HashingFor<Block>, ReclaimHostFunctions>(Some(
+								config.chain_spec,
+							))
+						})
 					} else {
-						Err("Benchmarking wasn't enabled when building the node. \
-					You can enable it with `--features runtime-benchmarks`."
+						Err("Benchmarking wasn't enabled when building the node. You can enable \
+						     it with `--features runtime-benchmarks`."
 							.into())
 					},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
 					construct_benchmark_partials!(config, |partials| cmd.run(partials.client))
 				}),
 				#[cfg(not(feature = "runtime-benchmarks"))]
-				BenchmarkCmd::Storage(_) =>
-					return Err(sc_cli::Error::Input(
-						"Compile with --features=runtime-benchmarks \
-						to enable storage benchmarks."
-							.into(),
-					)
-					.into()),
+				BenchmarkCmd::Storage(_) => Err(sc_cli::Error::Input(
+					"Compile with --features=runtime-benchmarks to enable storage benchmarks."
+						.into(),
+				)),
 				#[cfg(feature = "runtime-benchmarks")]
 				BenchmarkCmd::Storage(cmd) => runner.sync_run(|config| {
 					construct_benchmark_partials!(config, |partials| {
@@ -303,7 +319,6 @@ pub fn run() -> Result<()> {
 				_ => Err("Benchmarking sub-command unsupported".into()),
 			}
 		},
-		Some(Subcommand::TryRuntime) => Err("The `try-runtime` subcommand has been migrated to a standalone CLI (https://github.com/paritytech/try-runtime-cli). It is no longer being maintained here and will be removed entirely some time after January 2024. Please remove this subcommand from your runtime and use the standalone CLI.".into()),
 		Some(Subcommand::Key(cmd)) => cmd.run(&cli),
 		None => {
 			let runner = cli.create_runner(&cli.run.normalize())?;
@@ -328,17 +343,11 @@ pub fn run() -> Result<()> {
 
 				let id = ParaId::from(para_id);
 
-				let parachain_account =
-					AccountIdConversion::<polkadot_primitives::AccountId>::into_account_truncating(
-						&id,
-					);
-
 				let tokio_handle = config.tokio_handle.clone();
 				let polkadot_config =
 					SubstrateCli::create_configuration(&polkadot_cli, &polkadot_cli, tokio_handle)
 						.map_err(|err| format!("Relay chain argument error: {}", err))?;
 
-				info!("Parachain Account: {parachain_account}");
 				info!("Is collating: {}", if config.role.is_authority() { "yes" } else { "no" });
 
 				match config.chain_spec.runtime() {
@@ -346,10 +355,7 @@ pub fn run() -> Result<()> {
 						sp_core::crypto::set_default_ss58_version(
 							pop_runtime_devnet::SS58Prefix::get().into(),
 						);
-						crate::service::start_parachain_node::<
-							pop_runtime_devnet::RuntimeApi,
-							DevnetRuntimeExecutor,
-						>(
+						crate::service::start_parachain_node::<pop_runtime_devnet::RuntimeApi>(
 							config,
 							polkadot_config,
 							collator_options,
@@ -364,10 +370,22 @@ pub fn run() -> Result<()> {
 						sp_core::crypto::set_default_ss58_version(
 							pop_runtime_testnet::SS58Prefix::get().into(),
 						);
-						crate::service::start_parachain_node::<
-							pop_runtime_testnet::RuntimeApi,
-							TestnetRuntimeExecutor,
-						>(
+						crate::service::start_parachain_node::<pop_runtime_testnet::RuntimeApi>(
+							config,
+							polkadot_config,
+							collator_options,
+							id,
+							hwbench,
+						)
+						.await
+						.map(|r| r.0)
+						.map_err(Into::into)
+					},
+					Runtime::Mainnet => {
+						sp_core::crypto::set_default_ss58_version(
+							pop_runtime_mainnet::SS58Prefix::get().into(),
+						);
+						crate::service::start_parachain_node::<pop_runtime_mainnet::RuntimeApi>(
 							config,
 							polkadot_config,
 							collator_options,

@@ -1,20 +1,18 @@
-use super::*;
 use pop_api::{
-	assets::fungibles::events::{
+	fungibles::events::{
 		Approval, ClearMetadata, Create, SetMetadata, StartDestroy, Transfer,
 	},
 	primitives::account_id_from_slice,
 };
-use pop_primitives::error::{
-	ArithmeticError::*,
-	Error::{self, *},
-	TokenError::*,
-};
+use pop_primitives::{ArithmeticError::*, Error::*, TokenError::*, TokenId, *};
+
 use utils::*;
+
+use super::*;
 
 mod utils;
 
-const ASSET_ID: AssetId = 1;
+const TOKEN_ID: TokenId = 1;
 const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.wasm";
 
 /// 1. PSP-22 Interface:
@@ -34,13 +32,13 @@ fn total_supply_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
-		assert_eq!(total_supply(addr.clone(), ASSET_ID), Ok(Assets::total_supply(ASSET_ID)));
-		assert_eq!(total_supply(addr.clone(), ASSET_ID), Ok(0));
+		assert_eq!(total_supply(addr.clone(), TOKEN_ID), Ok(Assets::total_supply(TOKEN_ID)));
+		assert_eq!(total_supply(addr.clone(), TOKEN_ID), Ok(0));
 
 		// Tokens in circulation.
-		create_asset_and_mint_to(addr.clone(), ASSET_ID, BOB, 100);
-		assert_eq!(total_supply(addr.clone(), ASSET_ID), Ok(Assets::total_supply(ASSET_ID)));
-		assert_eq!(total_supply(addr, ASSET_ID), Ok(100));
+		create_asset_and_mint_to(addr.clone(), TOKEN_ID, BOB, 100);
+		assert_eq!(total_supply(addr.clone(), TOKEN_ID), Ok(Assets::total_supply(TOKEN_ID)));
+		assert_eq!(total_supply(addr, TOKEN_ID), Ok(100));
 	});
 }
 
@@ -51,13 +49,13 @@ fn balance_of_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
-		assert_eq!(balance_of(addr.clone(), ASSET_ID, BOB), Ok(Assets::balance(ASSET_ID, BOB)));
-		assert_eq!(balance_of(addr.clone(), ASSET_ID, BOB), Ok(0));
+		assert_eq!(balance_of(addr.clone(), TOKEN_ID, BOB), Ok(Assets::balance(TOKEN_ID, BOB)));
+		assert_eq!(balance_of(addr.clone(), TOKEN_ID, BOB), Ok(0));
 
 		// Tokens in circulation.
-		create_asset_and_mint_to(addr.clone(), ASSET_ID, BOB, 100);
-		assert_eq!(balance_of(addr.clone(), ASSET_ID, BOB), Ok(Assets::balance(ASSET_ID, BOB)));
-		assert_eq!(balance_of(addr, ASSET_ID, BOB), Ok(100));
+		create_asset_and_mint_to(addr.clone(), TOKEN_ID, BOB, 100);
+		assert_eq!(balance_of(addr.clone(), TOKEN_ID, BOB), Ok(Assets::balance(TOKEN_ID, BOB)));
+		assert_eq!(balance_of(addr, TOKEN_ID, BOB), Ok(100));
 	});
 }
 
@@ -69,18 +67,18 @@ fn allowance_works() {
 
 		// No tokens in circulation.
 		assert_eq!(
-			allowance(addr.clone(), ASSET_ID, BOB, ALICE),
-			Ok(Assets::allowance(ASSET_ID, &BOB, &ALICE))
+			allowance(addr.clone(), TOKEN_ID, BOB, ALICE),
+			Ok(Assets::allowance(TOKEN_ID, &BOB, &ALICE))
 		);
-		assert_eq!(allowance(addr.clone(), ASSET_ID, BOB, ALICE), Ok(0));
+		assert_eq!(allowance(addr.clone(), TOKEN_ID, BOB, ALICE), Ok(0));
 
 		// Tokens in circulation.
-		create_asset_mint_and_approve(addr.clone(), ASSET_ID, BOB, 100, ALICE, 50);
+		create_asset_mint_and_approve(addr.clone(), TOKEN_ID, BOB, 100, ALICE, 50);
 		assert_eq!(
-			allowance(addr.clone(), ASSET_ID, BOB, ALICE),
-			Ok(Assets::allowance(ASSET_ID, &BOB, &ALICE))
+			allowance(addr.clone(), TOKEN_ID, BOB, ALICE),
+			Ok(Assets::allowance(TOKEN_ID, &BOB, &ALICE))
 		);
-		assert_eq!(allowance(addr, ASSET_ID, BOB, ALICE), Ok(50));
+		assert_eq!(allowance(addr, TOKEN_ID, BOB, ALICE), Ok(50));
 	});
 }
 
@@ -92,23 +90,29 @@ fn transfer_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Asset does not exist.
-		assert_eq!(transfer(addr.clone(), 1, BOB, amount), Err(Module { index: 52, error: 3 }));
+		assert_eq!(
+			transfer(addr.clone(), 1, BOB, amount),
+			Err(Module { index: 52, error: [3, 0] })
+		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			transfer(addr.clone(), asset, BOB, amount),
-			Err(Module { index: 52, error: 16 })
+			Err(Module { index: 52, error: [16, 0] })
 		);
 		thaw_asset(ALICE, asset);
 		// Not enough balance.
 		assert_eq!(
 			transfer(addr.clone(), asset, BOB, amount + 1 * UNIT),
-			Err(Module { index: 52, error: 0 })
+			Err(Module { index: 52, error: [0, 0] })
 		);
 		// Not enough balance due to ED.
-		assert_eq!(transfer(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 0 }));
+		assert_eq!(
+			transfer(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: [0, 0] })
+		);
 		// Successful transfer.
 		let balance_before_transfer = Assets::balance(asset, &BOB);
 		assert_ok!(transfer(addr.clone(), asset, BOB, amount / 2));
@@ -120,7 +124,7 @@ fn transfer_works() {
 		start_destroy_asset(ALICE, asset);
 		assert_eq!(
 			transfer(addr.clone(), asset, BOB, amount / 4),
-			Err(Module { index: 52, error: 16 })
+			Err(Module { index: 52, error: [16, 0] })
 		);
 	});
 }
@@ -135,14 +139,14 @@ fn transfer_from_works() {
 		// Asset does not exist.
 		assert_eq!(
 			transfer_from(addr.clone(), 1, ALICE, BOB, amount / 2),
-			Err(Module { index: 52, error: 3 }),
+			Err(Module { index: 52, error: [3, 0] }),
 		);
 		// Create asset with Alice as owner and mint `amount` to contract address.
 		let asset = create_asset_and_mint_to(ALICE, 1, ALICE, amount);
 		// Unapproved transfer.
 		assert_eq!(
 			transfer_from(addr.clone(), asset, ALICE, BOB, amount / 2),
-			Err(Module { index: 52, error: 10 })
+			Err(Module { index: 52, error: [10, 0] })
 		);
 		assert_ok!(Assets::approve_transfer(
 			RuntimeOrigin::signed(ALICE.into()),
@@ -154,13 +158,13 @@ fn transfer_from_works() {
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			transfer_from(addr.clone(), asset, ALICE, BOB, amount),
-			Err(Module { index: 52, error: 16 }),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 		thaw_asset(ALICE, asset);
 		// Not enough balance.
 		assert_eq!(
 			transfer_from(addr.clone(), asset, ALICE, BOB, amount + 1 * UNIT),
-			Err(Module { index: 52, error: 0 }),
+			Err(Module { index: 52, error: [0, 0] }),
 		);
 		// Successful transfer.
 		let balance_before_transfer = Assets::balance(asset, &BOB);
@@ -178,7 +182,7 @@ fn approve_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Asset does not exist.
-		assert_eq!(approve(addr.clone(), 0, BOB, amount), Err(Module { index: 52, error: 3 }));
+		assert_eq!(approve(addr.clone(), 0, BOB, amount), Err(Module { index: 52, error: [3, 0] }));
 		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
 		assert_eq!(approve(addr.clone(), asset, BOB, amount), Err(ConsumerRemaining));
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
@@ -186,7 +190,10 @@ fn approve_works() {
 		let asset = create_asset_and_mint_to(ALICE, 1, addr.clone(), amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(ALICE, asset);
-		assert_eq!(approve(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		assert_eq!(
+			approve(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: [16, 0] })
+		);
 		thaw_asset(ALICE, asset);
 		// Successful approvals:
 		assert_eq!(0, Assets::allowance(asset, &addr, &BOB));
@@ -205,7 +212,10 @@ fn approve_works() {
 		assert_eq!(Assets::allowance(asset, &addr, &BOB), amount / 2);
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(ALICE, asset);
-		assert_eq!(approve(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		assert_eq!(
+			approve(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: [16, 0] })
+		);
 	});
 }
 
@@ -219,7 +229,7 @@ fn increase_allowance_works() {
 		// Asset does not exist.
 		assert_eq!(
 			increase_allowance(addr.clone(), 0, BOB, amount),
-			Err(Module { index: 52, error: 3 })
+			Err(Module { index: 52, error: [3, 0] })
 		);
 		let asset = create_asset_and_mint_to(ALICE, 0, addr.clone(), amount);
 		assert_eq!(increase_allowance(addr.clone(), asset, BOB, amount), Err(ConsumerRemaining));
@@ -232,7 +242,7 @@ fn increase_allowance_works() {
 		freeze_asset(ALICE, asset);
 		assert_eq!(
 			increase_allowance(addr.clone(), asset, BOB, amount),
-			Err(Module { index: 52, error: 16 })
+			Err(Module { index: 52, error: [16, 0] })
 		);
 		thaw_asset(ALICE, asset);
 		// Successful approvals:
@@ -246,7 +256,7 @@ fn increase_allowance_works() {
 		start_destroy_asset(ALICE, asset);
 		assert_eq!(
 			increase_allowance(addr.clone(), asset, BOB, amount),
-			Err(Module { index: 52, error: 16 })
+			Err(Module { index: 52, error: [16, 0] })
 		);
 	});
 }
@@ -261,7 +271,7 @@ fn decrease_allowance_works() {
 		// Asset does not exist.
 		assert_eq!(
 			decrease_allowance(addr.clone(), 0, BOB, amount),
-			Err(Module { index: 52, error: 3 }),
+			Err(Module { index: 52, error: [3, 0] }),
 		);
 		// Create asset and mint `amount` to contract address, then approve Bob to spend `amount`.
 		let asset =
@@ -270,7 +280,7 @@ fn decrease_allowance_works() {
 		freeze_asset(addr.clone(), asset);
 		assert_eq!(
 			decrease_allowance(addr.clone(), asset, BOB, amount),
-			Err(Module { index: 52, error: 16 }),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 		thaw_asset(addr.clone(), asset);
 		// Successfully decrease allowance.
@@ -282,7 +292,7 @@ fn decrease_allowance_works() {
 		start_destroy_asset(addr.clone(), asset);
 		assert_eq!(
 			decrease_allowance(addr.clone(), asset, BOB, amount),
-			Err(Module { index: 52, error: 16 }),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 	});
 }
@@ -302,26 +312,26 @@ fn token_metadata_works() {
 		let decimals: u8 = 69;
 
 		// Token does not exist.
-		assert_eq!(token_name(addr.clone(), ASSET_ID), Ok(token_name_asset(ASSET_ID)));
-		assert_eq!(token_name(addr.clone(), ASSET_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_symbol(addr.clone(), ASSET_ID), Ok(token_symbol_asset(ASSET_ID)));
-		assert_eq!(token_symbol(addr.clone(), ASSET_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_decimals(addr.clone(), ASSET_ID), Ok(token_decimals_asset(ASSET_ID)));
-		assert_eq!(token_decimals(addr.clone(), ASSET_ID), Ok(0));
+		assert_eq!(token_name(addr.clone(), TOKEN_ID), Ok(token_name_asset(TOKEN_ID)));
+		assert_eq!(token_name(addr.clone(), TOKEN_ID), Ok(Vec::<u8>::new()));
+		assert_eq!(token_symbol(addr.clone(), TOKEN_ID), Ok(token_symbol_asset(TOKEN_ID)));
+		assert_eq!(token_symbol(addr.clone(), TOKEN_ID), Ok(Vec::<u8>::new()));
+		assert_eq!(token_decimals(addr.clone(), TOKEN_ID), Ok(token_decimals_asset(TOKEN_ID)));
+		assert_eq!(token_decimals(addr.clone(), TOKEN_ID), Ok(0));
 		// Create Token.
 		create_asset_and_set_metadata(
 			addr.clone(),
-			ASSET_ID,
+			TOKEN_ID,
 			name.clone(),
 			symbol.clone(),
 			decimals,
 		);
-		assert_eq!(token_name(addr.clone(), ASSET_ID), Ok(token_name_asset(ASSET_ID)));
-		assert_eq!(token_name(addr.clone(), ASSET_ID), Ok(name));
-		assert_eq!(token_symbol(addr.clone(), ASSET_ID), Ok(token_symbol_asset(ASSET_ID)));
-		assert_eq!(token_symbol(addr.clone(), ASSET_ID), Ok(symbol));
-		assert_eq!(token_decimals(addr.clone(), ASSET_ID), Ok(token_decimals_asset(ASSET_ID)));
-		assert_eq!(token_decimals(addr.clone(), ASSET_ID), Ok(decimals));
+		assert_eq!(token_name(addr.clone(), TOKEN_ID), Ok(token_name_asset(TOKEN_ID)));
+		assert_eq!(token_name(addr.clone(), TOKEN_ID), Ok(name));
+		assert_eq!(token_symbol(addr.clone(), TOKEN_ID), Ok(token_symbol_asset(TOKEN_ID)));
+		assert_eq!(token_symbol(addr.clone(), TOKEN_ID), Ok(symbol));
+		assert_eq!(token_decimals(addr.clone(), TOKEN_ID), Ok(token_decimals_asset(TOKEN_ID)));
+		assert_eq!(token_decimals(addr.clone(), TOKEN_ID), Ok(decimals));
 	});
 }
 
@@ -330,7 +340,7 @@ fn token_metadata_works() {
 /// - start_destroy
 /// - set_metadata
 /// - clear_metadata
-/// - asset_exists
+/// - token_exists
 
 #[test]
 fn create_works() {
@@ -340,31 +350,40 @@ fn create_works() {
 		let addr = instantiate(CONTRACT, 0, vec![0]);
 		// No balance to pay for fees.
 		assert_eq!(
-			create(addr.clone(), ASSET_ID, addr.clone(), 1),
-			Err(Module { index: 10, error: 2 }),
+			create(addr.clone(), TOKEN_ID, addr.clone(), 1),
+			Err(Module { index: 10, error: [2, 0] }),
 		);
 
 		// Instantiate a contract without balance for deposit.
 		let addr = instantiate(CONTRACT, 100, vec![1]);
 		// No balance to pay the deposit.
 		assert_eq!(
-			create(addr.clone(), ASSET_ID, addr.clone(), 1),
-			Err(Module { index: 10, error: 2 }),
+			create(addr.clone(), TOKEN_ID, addr.clone(), 1),
+			Err(Module { index: 10, error: [2, 0] }),
 		);
 
 		// Instantiate a contract with enough balance.
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
-		assert_eq!(create(addr.clone(), ASSET_ID, BOB, 0), Err(Module { index: 52, error: 7 }),);
+		assert_eq!(
+			create(addr.clone(), TOKEN_ID, BOB, 0),
+			Err(Module { index: 52, error: [7, 0] }),
+		);
 		// The minimal balance for an asset must be non zero.
-		assert_eq!(create(addr.clone(), ASSET_ID, BOB, 0), Err(Module { index: 52, error: 7 }),);
+		assert_eq!(
+			create(addr.clone(), TOKEN_ID, BOB, 0),
+			Err(Module { index: 52, error: [7, 0] }),
+		);
 		// Create asset successfully.
-		assert_ok!(create(addr.clone(), ASSET_ID, BOB, 1));
+		assert_ok!(create(addr.clone(), TOKEN_ID, BOB, 1));
 		// Successfully emit an event from creating a new asset class.
 		let admin = account_id_from_slice(BOB.as_ref());
-		let expected = Create { id: ASSET_ID, creator: admin, admin }.encode();
+		let expected = Create { id: TOKEN_ID, creator: admin, admin }.encode();
 		assert_eq!(latest_contract_event(), expected.as_slice());
 		// Asset ID is already taken.
-		assert_eq!(create(addr.clone(), ASSET_ID, BOB, 1), Err(Module { index: 52, error: 5 }),);
+		assert_eq!(
+			create(addr.clone(), TOKEN_ID, BOB, 1),
+			Err(Module { index: 52, error: [5, 0] }),
+		);
 	});
 }
 
@@ -379,12 +398,12 @@ fn instantiate_and_create_fungible_works() {
 		create_asset(ALICE, 0, 1);
 		assert_eq!(
 			instantiate_and_create_fungible(contract, 0, 1),
-			Err(Module { index: 52, error: 5 })
+			Err(Module { index: 52, error: [5, 0] })
 		);
 		// Successfully create an asset when instantiating the contract.
 		let instantiator =
-			instantiate_and_create_fungible(contract, ASSET_ID, 1).expect("Should work");
-		assert!(Assets::asset_exists(ASSET_ID));
+			instantiate_and_create_fungible(contract, TOKEN_ID, 1).expect("Should work");
+		assert!(Assets::asset_exists(TOKEN_ID));
 		// Successfully emit an event from instantiating a new fungible.
 		let instantiator = account_id_from_slice(instantiator.as_ref());
 		let expected =
@@ -400,12 +419,12 @@ fn start_destroy_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
 
 		// Asset does not exist.
-		assert_eq!(start_destroy(addr.clone(), ASSET_ID), Err(Module { index: 52, error: 3 }),);
+		assert_eq!(start_destroy(addr.clone(), TOKEN_ID), Err(Module { index: 52, error: [3, 0] }),);
 		// Create assets where contract is not the owner.
 		let asset = create_asset(ALICE, 0, 1);
 		// No Permission.
-		assert_eq!(start_destroy(addr.clone(), asset), Err(Module { index: 52, error: 2 }),);
-		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		assert_eq!(start_destroy(addr.clone(), asset), Err(Module { index: 52, error: [2, 0] }),);
+		let asset = create_asset(addr.clone(), TOKEN_ID, 1);
 		assert_ok!(start_destroy(addr.clone(), asset));
 		// Successfully emit an event from destroying an asset.
 		let expected = StartDestroy { id: ASSET_ID }.encode();
@@ -424,41 +443,41 @@ fn set_metadata_works() {
 
 		// Asset does not exist.
 		assert_eq!(
-			set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], 0u8),
-			Err(Module { index: 52, error: 3 }),
+			set_metadata(addr.clone(), TOKEN_ID, vec![0], vec![0], 0u8),
+			Err(Module { index: 52, error: [3, 0] }),
 		);
 		// Create assets where contract is not the owner.
 		let asset = create_asset(ALICE, 0, 1);
 		// No Permission.
 		assert_eq!(
 			set_metadata(addr.clone(), asset, vec![0], vec![0], 0u8),
-			Err(Module { index: 52, error: 2 }),
+			Err(Module { index: 52, error: [2, 0] }),
 		);
-		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		let asset = create_asset(addr.clone(), TOKEN_ID, 1);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(addr.clone(), asset);
 		assert_eq!(
-			set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], 0u8),
-			Err(Module { index: 52, error: 16 }),
+			set_metadata(addr.clone(), TOKEN_ID, vec![0], vec![0], 0u8),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 		thaw_asset(addr.clone(), asset);
 		// TODO: calling the below with a vector of length `100_000` errors in pallet contracts
 		//  `OutputBufferTooSmall. Added to security analysis issue #131 to revisit.
 		// Set bad metadata - too large values.
 		assert_eq!(
-			set_metadata(addr.clone(), ASSET_ID, vec![0; 1000], vec![0; 1000], 0u8),
-			Err(Module { index: 52, error: 9 }),
+			set_metadata(addr.clone(), TOKEN_ID, vec![0; 1000], vec![0; 1000], 0u8),
+			Err(Module { index: 52, error: [9, 0] }),
 		);
 		// Set metadata successfully.
-		assert_ok!(set_metadata(addr.clone(), ASSET_ID, name.clone(), symbol.clone(), decimals));
+		assert_ok!(set_metadata(addr.clone(), TOKEN_ID, name.clone(), symbol.clone(), decimals));
 		// Successfully emit an event from set asset metadata.
-		let expected = SetMetadata { id: ASSET_ID, name, symbol, decimals }.encode();
+		let expected = SetMetadata { id: TOKEN_ID, name, symbol, decimals }.encode();
 		assert_eq!(latest_contract_event(), expected.as_slice());
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);
 		assert_eq!(
-			set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], 0),
-			Err(Module { index: 52, error: 16 }),
+			set_metadata(addr.clone(), TOKEN_ID, vec![0], vec![0], 0),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 	});
 }
@@ -473,45 +492,45 @@ fn clear_metadata_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// Asset does not exist.
-		assert_eq!(clear_metadata(addr.clone(), 0), Err(Module { index: 52, error: 3 }),);
+		assert_eq!(clear_metadata(addr.clone(), 0), Err(Module { index: 52, error: [3, 0] }),);
 		// Create assets where contract is not the owner.
 		let asset = create_asset_and_set_metadata(ALICE, 0, vec![0], vec![0], 0);
 		// No Permission.
-		assert_eq!(clear_metadata(addr.clone(), asset), Err(Module { index: 52, error: 2 }),);
-		let asset = create_asset(addr.clone(), ASSET_ID, 1);
+		assert_eq!(clear_metadata(addr.clone(), asset), Err(Module { index: 52, error: [2, 0] }),);
+		let asset = create_asset(addr.clone(), TOKEN_ID, 1);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(addr.clone(), asset);
-		assert_eq!(clear_metadata(addr.clone(), asset), Err(Module { index: 52, error: 16 }),);
+		assert_eq!(clear_metadata(addr.clone(), asset), Err(Module { index: 52, error: [16, 0] }),);
 		thaw_asset(addr.clone(), asset);
 		// No metadata set.
-		assert_eq!(clear_metadata(addr.clone(), asset), Err(Module { index: 52, error: 3 }),);
+		assert_eq!(clear_metadata(addr.clone(), asset), Err(Module { index: 52, error: [3, 0] }),);
 		set_metadata_asset(addr.clone(), asset, name, symbol, decimals);
 		// Clear metadata successfully.
-		assert_ok!(clear_metadata(addr.clone(), ASSET_ID));
+		assert_ok!(clear_metadata(addr.clone(), TOKEN_ID));
 		// Successfully emit an event from set asset metadata.
-		let expected = ClearMetadata { id: ASSET_ID }.encode();
+		let expected = ClearMetadata { id: TOKEN_ID }.encode();
 		assert_eq!(latest_contract_event(), expected.as_slice());
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);
 		assert_eq!(
-			set_metadata(addr.clone(), ASSET_ID, vec![0], vec![0], decimals),
-			Err(Module { index: 52, error: 16 }),
+			set_metadata(addr.clone(), TOKEN_ID, vec![0], vec![0], decimals),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 	});
 }
 
 #[test]
-fn asset_exists_works() {
+fn token_exists_works() {
 	new_test_ext().execute_with(|| {
 		let _ = env_logger::try_init();
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
-		assert_eq!(asset_exists(addr.clone(), ASSET_ID), Ok(Assets::asset_exists(ASSET_ID)));
+		assert_eq!(token_exists(addr.clone(), TOKEN_ID), Ok(Assets::asset_exists(TOKEN_ID)));
 
 		// Tokens in circulation.
-		create_asset(addr.clone(), ASSET_ID, 1);
-		assert_eq!(asset_exists(addr.clone(), ASSET_ID), Ok(Assets::asset_exists(ASSET_ID)));
+		create_asset(addr.clone(), TOKEN_ID, 1);
+		assert_eq!(token_exists(addr.clone(), TOKEN_ID), Ok(Assets::asset_exists(TOKEN_ID)));
 	});
 }
 
@@ -526,13 +545,16 @@ fn mint_works() {
 		assert_eq!(mint(addr.clone(), 1, BOB, amount), Err(Token(UnknownAsset)));
 		let asset = create_asset(ALICE, 1, 1);
 		// Minting can only be done by the owner.
-		assert_eq!(mint(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 2 }));
+		assert_eq!(mint(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: [2, 0] }));
 		let asset = create_asset(addr.clone(), 2, 2);
 		// Minimum balance of an asset can not be zero.
 		assert_eq!(mint(addr.clone(), asset, BOB, 1), Err(Token(BelowMinimum)));
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(addr.clone(), asset);
-		assert_eq!(mint(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		assert_eq!(
+			mint(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: [16, 0] })
+		);
 		thaw_asset(addr.clone(), asset);
 		// Successful mint.
 		let balance_before_mint = Assets::balance(asset, &BOB);
@@ -543,7 +565,10 @@ fn mint_works() {
 		assert_eq!(mint(addr.clone(), asset, BOB, Balance::MAX,), Err(Arithmetic(Overflow)));
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);
-		assert_eq!(mint(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		assert_eq!(
+			mint(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: [16, 0] })
+		);
 	});
 }
 
@@ -555,17 +580,20 @@ fn burn_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Asset does not exist.
-		assert_eq!(burn(addr.clone(), 1, BOB, amount), Err(Module { index: 52, error: 3 }));
+		assert_eq!(burn(addr.clone(), 1, BOB, amount), Err(Module { index: 52, error: [3, 0] }));
 		let asset = create_asset(ALICE, 1, 1);
 		// Bob has no tokens and thus pallet assets doesn't know the account.
-		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 1 }));
+		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: [1, 0] }));
 		// Burning can only be done by the manager.
 		mint_asset(ALICE, asset, BOB, amount);
-		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: 2 }));
+		assert_eq!(burn(addr.clone(), asset, BOB, 1), Err(Module { index: 52, error: [2, 0] }));
 		let asset = create_asset_and_mint_to(addr.clone(), 2, BOB, amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		freeze_asset(addr.clone(), asset);
-		assert_eq!(burn(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		assert_eq!(
+			burn(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: [16, 0] })
+		);
 		thaw_asset(addr.clone(), asset);
 		// Successful mint.
 		let balance_before_burn = Assets::balance(asset, &BOB);
@@ -574,6 +602,9 @@ fn burn_works() {
 		assert_eq!(balance_after_burn, balance_before_burn - amount);
 		// Asset is not live, i.e. frozen or being destroyed.
 		start_destroy_asset(addr.clone(), asset);
-		assert_eq!(burn(addr.clone(), asset, BOB, amount), Err(Module { index: 52, error: 16 }));
+		assert_eq!(
+			burn(addr.clone(), asset, BOB, amount),
+			Err(Module { index: 52, error: [17, 0] })
+		);
 	});
 }
