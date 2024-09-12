@@ -25,24 +25,29 @@ type Event = crate::fungibles::Event<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
 #[test]
+fn encoding_read_result_works() {}
+
+#[test]
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
 		let value: Balance = 100 * UNIT;
 		let token = TOKEN;
-		let from = Some(ALICE);
-		let to = Some(BOB);
+		let from = ALICE;
+		let to = BOB;
 
 		// Check error works for `Assets::transfer_keep_alive()`.
-		assert_noop!(Fungibles::transfer(signed(ALICE), token, BOB, value), AssetsError::Unknown);
-		pallet_assets_create_and_mint_to(ALICE, token, ALICE, value * 2);
+		assert_noop!(Fungibles::transfer(signed(from), token, to, value), AssetsError::Unknown);
+		pallet_assets_create_and_mint_to(from, token, from, value * 2);
 		for origin in vec![root(), none()] {
-			assert_noop!(Fungibles::transfer(origin, token, BOB, value), BadOrigin);
+			assert_noop!(Fungibles::transfer(origin, token, to, value), BadOrigin);
 		}
-		let balance_before_transfer = Assets::balance(token, &BOB);
-		assert_ok!(Fungibles::transfer(signed(ALICE), token, BOB, value));
-		let balance_after_transfer = Assets::balance(token, &BOB);
+		let balance_before_transfer = Assets::balance(token, &to);
+		assert_ok!(Fungibles::transfer(signed(from), token, to, value));
+		let balance_after_transfer = Assets::balance(token, &to);
 		assert_eq!(balance_after_transfer, balance_before_transfer + value);
-		System::assert_last_event(Event::Transfer { token, from, to, value }.into());
+		System::assert_last_event(
+			Event::Transfer { token, from: Some(from), to: Some(to), value }.into(),
+		);
 	});
 }
 
@@ -51,29 +56,32 @@ fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
 		let value: Balance = 100 * UNIT;
 		let token = TOKEN;
-		let from = Some(ALICE);
-		let to = Some(BOB);
+		let from = ALICE;
+		let to = BOB;
+		let spender = CHARLIE;
 
 		// Check error works for `Assets::transfer_approved()`.
 		assert_noop!(
-			Fungibles::transfer_from(signed(CHARLIE), token, ALICE, BOB, value),
+			Fungibles::transfer_from(signed(spender), token, from, to, value),
 			AssetsError::Unknown
 		);
-		// Approve CHARLIE to transfer up to `value`.
-		pallet_assets_create_mint_and_approve(ALICE, token, ALICE, value * 2, CHARLIE, value);
+		// Approve `spender` to transfer up to `value`.
+		pallet_assets_create_mint_and_approve(spender, token, from, value * 2, spender, value);
 		for origin in vec![root(), none()] {
-			assert_noop!(Fungibles::transfer_from(origin, token, ALICE, BOB, value), BadOrigin);
+			assert_noop!(Fungibles::transfer_from(origin, token, from, to, value), BadOrigin);
 		}
 		// Successfully call transfer from.
-		let alice_balance_before_transfer = Assets::balance(token, &ALICE);
-		let bob_balance_before_transfer = Assets::balance(token, &BOB);
-		assert_ok!(Fungibles::transfer_from(signed(CHARLIE), token, ALICE, BOB, value));
-		let alice_balance_after_transfer = Assets::balance(token, &ALICE);
-		let bob_balance_after_transfer = Assets::balance(token, &BOB);
-		// Check that BOB receives the `value` and ALICE `amount` is spent successfully by CHARLIE.
+		let alice_balance_before_transfer = Assets::balance(token, &from);
+		let bob_balance_before_transfer = Assets::balance(token, &to);
+		assert_ok!(Fungibles::transfer_from(signed(spender), token, from, to, value));
+		let alice_balance_after_transfer = Assets::balance(token, &from);
+		let bob_balance_after_transfer = Assets::balance(token, &to);
+		// Check that `to` has received the `value` tokens from `from`.
 		assert_eq!(bob_balance_after_transfer, bob_balance_before_transfer + value);
 		assert_eq!(alice_balance_after_transfer, alice_balance_before_transfer - value);
-		System::assert_last_event(Event::Transfer { token, from, to, value }.into());
+		System::assert_last_event(
+			Event::Transfer { token, from: Some(from), to: Some(to), value }.into(),
+		);
 	});
 }
 
@@ -90,65 +98,65 @@ fn approve_works() {
 		//
 		// Check error works for `Assets::approve_transfer()` in `Greater` match arm.
 		assert_noop!(
-			Fungibles::approve(signed(ALICE), token, BOB, value),
+			Fungibles::approve(signed(owner), token, spender, value),
 			AssetsError::Unknown.with_weight(WeightInfo::approve(1, 0))
 		);
-		pallet_assets_create_and_mint_to(ALICE, token, ALICE, value);
+		pallet_assets_create_and_mint_to(owner, token, owner, value);
 		for origin in vec![root(), none()] {
 			assert_noop!(
-				Fungibles::approve(origin, token, BOB, value),
+				Fungibles::approve(origin, token, spender, value),
 				BadOrigin.with_weight(WeightInfo::approve(0, 0))
 			);
 		}
-		assert_eq!(0, Assets::allowance(token, &ALICE, &BOB));
+		assert_eq!(0, Assets::allowance(token, &owner, &spender));
 		assert_eq!(
-			Fungibles::approve(signed(ALICE), token, BOB, value),
+			Fungibles::approve(signed(owner), token, spender, value),
 			Ok(Some(WeightInfo::approve(1, 0)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value);
 		System::assert_last_event(Event::Approval { token, owner, spender, value }.into());
 		// Approves a value to spend that is lower than the current allowance.
 		//
 		// Check error works for `Assets::cancel_approval()` in `Less` match arm. No error test for
 		// `approve_transfer` in `Less` arm because it is not possible.
-		pallet_assets_freeze_asset(ALICE, token);
+		pallet_assets_freeze_asset(owner, token);
 		assert_noop!(
-			Fungibles::approve(signed(ALICE), token, BOB, value / 2),
+			Fungibles::approve(signed(owner), token, spender, value / 2),
 			AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
 		);
-		pallet_assets_thaw_asset(ALICE, token);
+		pallet_assets_thaw_asset(owner, token);
 		assert_eq!(
-			Fungibles::approve(signed(ALICE), token, BOB, value / 2),
+			Fungibles::approve(signed(owner), token, spender, value / 2),
 			Ok(Some(WeightInfo::approve(1, 1)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value / 2);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value / 2 }.into(),
 		);
 		// Approves a value to spend that is higher than the current allowance.
 		assert_eq!(
-			Fungibles::approve(signed(ALICE), token, BOB, value * 2),
+			Fungibles::approve(signed(owner), token, spender, value * 2),
 			Ok(Some(WeightInfo::approve(1, 0)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value * 2);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value * 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value * 2 }.into(),
 		);
 		// Approves a value to spend that is equal to the current allowance.
 		assert_eq!(
-			Fungibles::approve(signed(ALICE), token, BOB, value * 2),
+			Fungibles::approve(signed(owner), token, spender, value * 2),
 			Ok(Some(WeightInfo::approve(0, 0)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value * 2);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value * 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value * 2 }.into(),
 		);
 		// Sets allowance to zero.
 		assert_eq!(
-			Fungibles::approve(signed(ALICE), token, BOB, 0),
+			Fungibles::approve(signed(owner), token, spender, 0),
 			Ok(Some(WeightInfo::approve(0, 1)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), 0);
+		assert_eq!(Assets::allowance(token, &owner, &spender), 0);
 		System::assert_last_event(Event::Approval { token, owner, spender, value: 0 }.into());
 	});
 }
@@ -163,23 +171,23 @@ fn increase_allowance_works() {
 
 		// Check error works for `Assets::approve_transfer()`.
 		assert_noop!(
-			Fungibles::increase_allowance(signed(ALICE), token, BOB, value),
+			Fungibles::increase_allowance(signed(owner), token, spender, value),
 			AssetsError::Unknown.with_weight(AssetsWeightInfo::approve_transfer())
 		);
-		pallet_assets_create_and_mint_to(ALICE, token, ALICE, value);
+		pallet_assets_create_and_mint_to(owner, token, owner, value);
 		for origin in vec![root(), none()] {
 			assert_noop!(
-				Fungibles::increase_allowance(origin, token, BOB, value),
+				Fungibles::increase_allowance(origin, token, spender, value),
 				BadOrigin.with_weight(WeightInfo::approve(0, 0))
 			);
 		}
-		assert_eq!(0, Assets::allowance(token, &ALICE, &BOB));
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), token, BOB, value));
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
+		assert_eq!(0, Assets::allowance(token, &owner, &spender));
+		assert_ok!(Fungibles::increase_allowance(signed(owner), token, spender, value));
+		assert_eq!(Assets::allowance(token, &owner, &spender), value);
 		System::assert_last_event(Event::Approval { token, owner, spender, value }.into());
 		// Additive.
-		assert_ok!(Fungibles::increase_allowance(signed(ALICE), token, BOB, value));
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value * 2);
+		assert_ok!(Fungibles::increase_allowance(signed(owner), token, spender, value));
+		assert_eq!(Assets::allowance(token, &owner, &spender), value * 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value * 2 }.into(),
 		);
@@ -197,38 +205,38 @@ fn decrease_allowance_works() {
 		// Check error works for `Assets::cancel_approval()`. No error test for `approve_transfer`
 		// because it is not possible.
 		assert_noop!(
-			Fungibles::decrease_allowance(signed(ALICE), token, BOB, value / 2),
+			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
 			AssetsError::Unknown.with_weight(WeightInfo::approve(0, 1))
 		);
-		pallet_assets_create_mint_and_approve(ALICE, token, ALICE, value, BOB, value);
+		pallet_assets_create_mint_and_approve(owner, token, owner, value, spender, value);
 		for origin in vec![root(), none()] {
 			assert_noop!(
-				Fungibles::decrease_allowance(origin, token, BOB, 0),
+				Fungibles::decrease_allowance(origin, token, spender, 0),
 				BadOrigin.with_weight(WeightInfo::approve(0, 0))
 			);
 		}
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value);
 		// Owner balance is not changed if decreased by zero.
 		assert_eq!(
-			Fungibles::decrease_allowance(signed(ALICE), token, BOB, 0),
+			Fungibles::decrease_allowance(signed(owner), token, spender, 0),
 			Ok(Some(WeightInfo::approve(0, 0)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value);
 		// Decrease allowance successfully.
 		assert_eq!(
-			Fungibles::decrease_allowance(signed(ALICE), token, BOB, value / 2),
+			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
 			Ok(Some(WeightInfo::approve(1, 1)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value / 2);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value / 2 }.into(),
 		);
 		// Saturating if current allowance is decreased more than the owner balance.
 		assert_eq!(
-			Fungibles::decrease_allowance(signed(ALICE), token, BOB, value),
+			Fungibles::decrease_allowance(signed(owner), token, spender, value),
 			Ok(Some(WeightInfo::approve(0, 1)).into())
 		);
-		assert_eq!(Assets::allowance(token, &ALICE, &BOB), 0);
+		assert_eq!(Assets::allowance(token, &owner, &spender), 0);
 		System::assert_last_event(Event::Approval { token, owner, spender, value: 0 }.into());
 	});
 }
@@ -261,7 +269,11 @@ fn start_destroy_works() {
 		assert_noop!(Fungibles::start_destroy(signed(ALICE), token), AssetsError::Unknown);
 		pallet_assets_create(ALICE, token);
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), token));
-		assert!(Fungibles::start_destroy(signed(BOB), token).is_err());
+		// Check that the token is not live after starting the destroy process.
+		assert_noop!(
+			Assets::mint(signed(ALICE), token, ALICE, 10 * UNIT),
+			AssetsError::AssetNotLive
+		);
 	});
 }
 
@@ -312,20 +324,22 @@ fn mint_works() {
 	new_test_ext().execute_with(|| {
 		let value: Balance = 100 * UNIT;
 		let token = TOKEN;
-		let from = None;
-		let to = Some(BOB);
+		let from = ALICE;
+		let to = BOB;
 
 		// Check error works for `Assets::mint()`.
 		assert_noop!(
-			Fungibles::mint(signed(ALICE), token, BOB, value),
+			Fungibles::mint(signed(from), token, to, value),
 			sp_runtime::TokenError::UnknownAsset
 		);
-		pallet_assets_create(ALICE, token);
-		let balance_before_mint = Assets::balance(token, &BOB);
-		assert_ok!(Fungibles::mint(signed(ALICE), token, BOB, value));
-		let balance_after_mint = Assets::balance(token, &BOB);
+		pallet_assets_create(from, token);
+		let balance_before_mint = Assets::balance(token, &to);
+		assert_ok!(Fungibles::mint(signed(from), token, to, value));
+		let balance_after_mint = Assets::balance(token, &to);
 		assert_eq!(balance_after_mint, balance_before_mint + value);
-		System::assert_last_event(Event::Transfer { token, from, to, value }.into());
+		System::assert_last_event(
+			Event::Transfer { token, from: None, to: Some(to), value }.into(),
+		);
 	});
 }
 
@@ -334,20 +348,22 @@ fn burn_works() {
 	new_test_ext().execute_with(|| {
 		let value: Balance = 100 * UNIT;
 		let token = TOKEN;
-		let from = Some(BOB);
-		let to = None;
+		let owner = ALICE;
+		let from = BOB;
 		let total_supply = value * 2;
 
 		// Check error works for `Assets::burn()`.
-		assert_noop!(Fungibles::burn(signed(ALICE), token, BOB, value), AssetsError::Unknown);
-		pallet_assets_create_and_mint_to(ALICE, token, BOB, total_supply);
+		assert_noop!(Fungibles::burn(signed(owner), token, from, value), AssetsError::Unknown);
+		pallet_assets_create_and_mint_to(owner, token, from, total_supply);
 		assert_eq!(Assets::total_supply(TOKEN), total_supply);
-		let balance_before_burn = Assets::balance(token, &BOB);
-		assert_ok!(Fungibles::burn(signed(ALICE), token, BOB, value));
+		let balance_before_burn = Assets::balance(token, &from);
+		assert_ok!(Fungibles::burn(signed(owner), token, from, value));
 		assert_eq!(Assets::total_supply(TOKEN), total_supply - value);
-		let balance_after_burn = Assets::balance(token, &BOB);
+		let balance_after_burn = Assets::balance(token, &from);
 		assert_eq!(balance_after_burn, balance_before_burn - value);
-		System::assert_last_event(Event::Transfer { token, from, to, value }.into());
+		System::assert_last_event(
+			Event::Transfer { token, from: Some(from), to: None, value }.into(),
+		);
 	});
 }
 
