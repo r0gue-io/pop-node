@@ -25,7 +25,21 @@ type Event = crate::fungibles::Event<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
 #[test]
-fn encoding_read_result_works() {}
+fn encoding_read_result_works() {
+	use crate::fungibles::ReadResult::*;
+	let value = 100 * UNIT;
+	assert_eq!(TotalSupply::<Test>(value).encode(), value.encode());
+	assert_eq!(BalanceOf::<Test>(value).encode(), value.encode());
+	assert_eq!(Allowance::<Test>(value).encode(), value.encode());
+	let value = vec![42, 42, 42, 42, 42];
+	let value_encoded = value.encode();
+	assert_eq!(TokenName::<Test>(value.clone()).encode(), value_encoded);
+	assert_eq!(TokenSymbol::<Test>(value).encode(), value_encoded);
+	let value = 42;
+	assert_eq!(Allowance::<Test>(value).encode(), value.encode());
+	let value = true;
+	assert_eq!(TokenExists::<Test>(value).encode(), value.encode());
+}
 
 #[test]
 fn transfer_works() {
