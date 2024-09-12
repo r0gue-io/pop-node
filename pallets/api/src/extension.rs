@@ -246,9 +246,9 @@ mod tests {
 		fn versioned_error_converter_works() {
 			for (version, error, expected_result) in vec![
 				(0, BadOrigin, 1),
-				(0, CannotLookup, 100),
+				(0, Other("test"), 100),
 				(1, BadOrigin, 2),
-				(1, CannotLookup, 200),
+				(1, Other("test"), 200),
 			] {
 				let env =
 					MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
@@ -264,8 +264,9 @@ mod tests {
 		}
 
 		#[test]
-		fn versioned_error_converter_fails() {
-			let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
+		fn versioned_error_converter_fails_when_invalid_version() {
+			let version = 2;
+			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
 			let result = VersionedErrorConverter::<VersionedError>::convert(BadOrigin, &env).err();
 			assert_eq!(result, Some(Other("DecodingFailed")));
 		}
@@ -289,6 +290,7 @@ mod tests {
 			// Mock conversion based on result and version.
 			fn try_from(value: (u8, u8)) -> Result<Self> {
 				let (result, version) = value;
+				// Per version there is a specific upper bound allowed.
 				match version {
 					0 if result <= 50 => Ok(V0(result)),
 					0 if result > 50 => Ok(V0(50)),
@@ -303,8 +305,10 @@ mod tests {
 		fn versioned_result_converter_works() {
 			for (version, value, expected_result) in vec![
 				(0, 10, Ok(V0(10))),
+				// `V0` has 50 as upper bound and therefore caps the value.
 				(0, 100, Ok(V0(50))),
 				(1, 10, Ok(V1(10))),
+				// Different upper bound for `V1`.
 				(1, 100, Ok(V1(100))),
 			] {
 				let env =
@@ -317,7 +321,7 @@ mod tests {
 		}
 
 		#[test]
-		fn versioned_result_converter_fails() {
+		fn versioned_result_converter_fails_when_invalid_version() {
 			let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
 			let result =
 				VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(10, &env).err();

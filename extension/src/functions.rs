@@ -476,7 +476,7 @@ mod tests {
 				Ok(Converging(0))
 			));
 			// Check if the contract environment buffer is written correctly.
-			assert_eq!(Ok(env.buffer.clone()), UppercaseConverter::try_convert(expected, &env));
+			assert_eq!(Ok(&env.buffer), UppercaseConverter::try_convert(expected, &env).as_ref());
 		}
 
 		#[test]
@@ -551,7 +551,10 @@ mod tests {
 	#[test]
 	fn default_conversion_works() {
 		let env = MockEnvironment::default();
-		let source: Vec<u8> = "pop".to_string().encode();
-		assert_eq!(DefaultConverter::try_convert(source.clone(), &env), Ok(source));
+		let source = "pop".to_string();
+		assert_eq!(
+			DefaultConverter::try_convert(source.clone(), &env),
+			Ok(source.as_bytes().into())
+		);
 	}
 }
