@@ -11,7 +11,7 @@ use frame_support::{
 use crate::{
 	fungibles::{
 		weights::WeightInfo as WeightInfoTrait, AssetsInstanceOf, AssetsWeightInfoOf,
-		AssetsWeightInfoTrait, Config, Read::*,
+		AssetsWeightInfoTrait, Config, Read::*, ReadResult,
 	},
 	mock::*,
 	Read,
@@ -355,12 +355,16 @@ fn burn_works() {
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		let total_supply = INIT_AMOUNT;
+		assert_eq!(
+			Fungibles::read(TotalSupply(TOKEN)),
+			ReadResult::TotalSupply(Default::default())
+		);
 		pallet_assets_create_and_mint_to(ALICE, TOKEN, ALICE, total_supply);
+		assert_eq!(Fungibles::read(TotalSupply(TOKEN)), ReadResult::TotalSupply(total_supply));
 		assert_eq!(
 			Fungibles::read(TotalSupply(TOKEN)).encode(),
 			Assets::total_supply(TOKEN).encode(),
 		);
-		assert_eq!(Fungibles::read(TotalSupply(TOKEN)).encode(), total_supply.encode(),);
 	});
 }
 
@@ -368,14 +372,18 @@ fn total_supply_works() {
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let value = 1_000 * UNIT;
+		assert_eq!(
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }),
+			ReadResult::BalanceOf(Default::default())
+		);
 		pallet_assets_create_and_mint_to(ALICE, TOKEN, ALICE, value);
 		assert_eq!(
-			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode(),
-			Assets::balance(TOKEN, ALICE).encode(),
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }),
+			ReadResult::BalanceOf(value)
 		);
 		assert_eq!(
 			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode(),
-			value.encode()
+			Assets::balance(TOKEN, ALICE).encode(),
 		);
 	});
 }
@@ -384,14 +392,18 @@ fn balance_of_works() {
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let value = 1_000 * UNIT;
+		assert_eq!(
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }),
+			ReadResult::Allowance(Default::default())
+		);
 		pallet_assets_create_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
 		assert_eq!(
-			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode(),
-			Assets::allowance(TOKEN, &ALICE, &BOB).encode(),
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }),
+			ReadResult::Allowance(value)
 		);
 		assert_eq!(
 			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode(),
-			value.encode()
+			Assets::allowance(TOKEN, &ALICE, &BOB).encode(),
 		);
 	});
 }
@@ -402,28 +414,38 @@ fn token_metadata_works() {
 		let name: Vec<u8> = vec![11, 12, 13];
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
+		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(Default::default()));
+		assert_eq!(
+			Fungibles::read(TokenSymbol(TOKEN)),
+			ReadResult::TokenSymbol(Default::default())
+		);
+		assert_eq!(
+			Fungibles::read(TokenDecimals(TOKEN)),
+			ReadResult::TokenDecimals(Default::default())
+		);
 		pallet_assets_create_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
+		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(name));
+		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(symbol));
+		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)), ReadResult::TokenDecimals(decimals));
 		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), Assets::name(TOKEN).encode());
 		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)).encode(), Assets::symbol(TOKEN).encode());
 		assert_eq!(
 			Fungibles::read(TokenDecimals(TOKEN)).encode(),
 			Assets::decimals(TOKEN).encode(),
 		);
-		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), name.encode());
-		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)).encode(), symbol.encode());
-		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)).encode(), decimals.encode());
 	});
 }
 
 #[test]
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
+		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(false));
 		pallet_assets_create(ALICE, TOKEN);
+		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(true));
 		assert_eq!(
 			Fungibles::read(TokenExists(TOKEN)).encode(),
 			Assets::asset_exists(TOKEN).encode(),
 		);
-		assert_eq!(Fungibles::read(TokenExists(TOKEN)).encode(), true.encode());
 	});
 }
 
