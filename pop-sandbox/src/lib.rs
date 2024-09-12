@@ -1,13 +1,13 @@
 use frame_support::{
 	sp_runtime::{
 		traits::{Header, One},
-		AccountId32,
 	},
 	traits::Hooks,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
-pub use pop_runtime_devnet::Balance;
 use pop_runtime_devnet::{BuildStorage, Runtime};
+pub use pop_runtime_devnet::Balance;
+pub use frame_support::sp_runtime::AccountId32;
 
 /// Alias for the account ID type.
 pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
@@ -17,6 +17,8 @@ pub const UNIT: Balance = 10_000_000_000;
 pub const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub const INIT_VALUE: Balance = 100 * UNIT;
 pub const ALICE: AccountId32 = AccountId32::new([1u8; 32]);
+pub const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
+pub const CHARLIE: AccountId32 = AccountId32::new([3_u8; 32]);
 
 /// A helper struct for initializing and finalizing blocks.
 pub struct BlockBuilder<T>(std::marker::PhantomData<T>);
@@ -70,16 +72,16 @@ impl<
 	}
 }
 
-pub struct PopSandbox {
+pub struct Sandbox {
 	ext: sp_io::TestExternalities,
 }
 
-impl Default for PopSandbox {
+impl Default for Sandbox {
 	fn default() -> Self {
-		let balances: Vec<(AccountId32, u128)> = vec![(ALICE, INIT_AMOUNT)];
+		let balances: Vec<(AccountId32, u128)> = vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
 }
 
-drink::impl_sandbox!(PopSandbox, Runtime, BlockBuilder, ALICE);
+drink::impl_sandbox!(Sandbox, Runtime, BlockBuilder, ALICE);
