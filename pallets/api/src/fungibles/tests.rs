@@ -10,8 +10,8 @@ use frame_support::{
 
 use crate::{
 	fungibles::{
-		weights::WeightInfo as WeightInfoTrait, AssetsWeightInfoOf, AssetsWeightInfoTrait, Config,
-		Read::*,
+		weights::WeightInfo as WeightInfoTrait, AssetsInstanceOf, AssetsWeightInfoOf,
+		AssetsWeightInfoTrait, Config, Read::*,
 	},
 	mock::*,
 	Read,
@@ -19,9 +19,10 @@ use crate::{
 
 const TOKEN: u32 = 42;
 
+type AssetsError = pallet_assets::Error<Test, AssetsInstanceOf<Test>>;
+type AssetsWeightInfo = AssetsWeightInfoOf<Test>;
 type Event = crate::fungibles::Event<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
-type AssetsWeightInfo = AssetsWeightInfoOf<Test>;
 
 #[test]
 fn transfer_works() {
@@ -31,7 +32,9 @@ fn transfer_works() {
 		let from = Some(ALICE);
 		let to = Some(BOB);
 
-		create_token_and_mint_to(ALICE, token, ALICE, value * 2);
+		// Check error works for `Assets::transfer_keep_alive()`.
+		assert_noop!(Fungibles::transfer(signed(ALICE), token, BOB, value), AssetsError::Unknown);
+		pallet_assets_create_and_mint_to(ALICE, token, ALICE, value * 2);
 		for origin in vec![root(), none()] {
 			assert_noop!(Fungibles::transfer(origin, token, BOB, value), BadOrigin);
 		}
@@ -51,8 +54,13 @@ fn transfer_from_works() {
 		let from = Some(ALICE);
 		let to = Some(BOB);
 
+		// Check error works for `Assets::transfer_approved()`.
+		assert_noop!(
+			Fungibles::transfer_from(signed(CHARLIE), token, ALICE, BOB, value),
+			AssetsError::Unknown
+		);
 		// Approve CHARLIE to transfer up to `value`.
-		create_token_mint_and_approve(ALICE, token, ALICE, value * 2, CHARLIE, value);
+		pallet_assets_create_mint_and_approve(ALICE, token, ALICE, value * 2, CHARLIE, value);
 		for origin in vec![root(), none()] {
 			assert_noop!(Fungibles::transfer_from(origin, token, ALICE, BOB, value), BadOrigin);
 		}
@@ -78,7 +86,14 @@ fn approve_works() {
 		let owner = ALICE;
 		let spender = BOB;
 
-		create_token_and_mint_to(ALICE, token, ALICE, value);
+		// Approves a value to spend.
+		//
+		// Check error works for `Assets::approve_transfer()` in `Greater` match arm.
+		assert_noop!(
+			Fungibles::approve(signed(ALICE), token, BOB, value),
+			AssetsError::Unknown.with_weight(WeightInfo::approve(1, 0))
+		);
+		pallet_assets_create_and_mint_to(ALICE, token, ALICE, value);
 		for origin in vec![root(), none()] {
 			assert_noop!(
 				Fungibles::approve(origin, token, BOB, value),
@@ -93,6 +108,15 @@ fn approve_works() {
 		assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
 		System::assert_last_event(Event::Approval { token, owner, spender, value }.into());
 		// Approves a value to spend that is lower than the current allowance.
+		//
+		// Check error works for `Assets::cancel_approval()` in `Less` match arm. No error test for
+		// `approve_transfer` in `Less` arm because it is not possible.
+		pallet_assets_freeze_asset(ALICE, token);
+		assert_noop!(
+			Fungibles::approve(signed(ALICE), token, BOB, value / 2),
+			AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
+		);
+		pallet_assets_thaw_asset(ALICE, token);
 		assert_eq!(
 			Fungibles::approve(signed(ALICE), token, BOB, value / 2),
 			Ok(Some(WeightInfo::approve(1, 1)).into())
@@ -137,7 +161,12 @@ fn increase_allowance_works() {
 		let owner = ALICE;
 		let spender = BOB;
 
-		create_token_and_mint_to(ALICE, token, ALICE, value);
+		// Check error works for `Assets::approve_transfer()`.
+		assert_noop!(
+			Fungibles::increase_allowance(signed(ALICE), token, BOB, value),
+			AssetsError::Unknown.with_weight(AssetsWeightInfo::approve_transfer())
+		);
+		pallet_assets_create_and_mint_to(ALICE, token, ALICE, value);
 		for origin in vec![root(), none()] {
 			assert_noop!(
 				Fungibles::increase_allowance(origin, token, BOB, value),
@@ -165,7 +194,13 @@ fn decrease_allowance_works() {
 		let owner = ALICE;
 		let spender = BOB;
 
-		create_token_mint_and_approve(ALICE, token, ALICE, value, BOB, value);
+		// Check error works for `Assets::cancel_approval()`. No error test for `approve_transfer`
+		// because it is not possible.
+		assert_noop!(
+			Fungibles::decrease_allowance(signed(ALICE), token, BOB, value / 2),
+			AssetsError::Unknown.with_weight(WeightInfo::approve(0, 1))
+		);
+		pallet_assets_create_mint_and_approve(ALICE, token, ALICE, value, BOB, value);
 		for origin in vec![root(), none()] {
 			assert_noop!(
 				Fungibles::decrease_allowance(origin, token, BOB, 0),
@@ -212,6 +247,8 @@ fn create_works() {
 		assert_ok!(Fungibles::create(signed(creator), id, admin, 100));
 		assert!(Assets::asset_exists(id));
 		System::assert_last_event(Event::Create { id, creator, admin }.into());
+		// Check error works for `Assets::create()`.
+		assert_noop!(Fungibles::create(signed(creator), id, admin, 100), AssetsError::InUse);
 	});
 }
 
@@ -220,7 +257,9 @@ fn start_destroy_works() {
 	new_test_ext().execute_with(|| {
 		let token = TOKEN;
 
-		create_token(ALICE, token);
+		// Check error works for `Assets::start_destroy()`.
+		assert_noop!(Fungibles::start_destroy(signed(ALICE), token), AssetsError::Unknown);
+		pallet_assets_create(ALICE, token);
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), token));
 		assert!(Fungibles::start_destroy(signed(BOB), token).is_err());
 	});
@@ -234,7 +273,12 @@ fn set_metadata_works() {
 		let symbol = vec![42];
 		let decimals = 42;
 
-		create_token(ALICE, token);
+		// Check error works for `Assets::set_metadata()`.
+		assert_noop!(
+			Fungibles::set_metadata(signed(ALICE), token, name.clone(), symbol.clone(), decimals),
+			AssetsError::Unknown
+		);
+		pallet_assets_create(ALICE, token);
 		assert_ok!(Fungibles::set_metadata(
 			signed(ALICE),
 			token,
@@ -253,7 +297,9 @@ fn clear_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let token = TOKEN;
 
-		create_token_and_set_metadata(ALICE, token, vec![42], vec![42], 42);
+		// Check error works for `Assets::clear_metadata()`.
+		assert_noop!(Fungibles::clear_metadata(signed(ALICE), token), AssetsError::Unknown);
+		pallet_assets_create_and_set_metadata(ALICE, token, vec![42], vec![42], 42);
 		assert_ok!(Fungibles::clear_metadata(signed(ALICE), token));
 		assert!(Assets::name(token).is_empty());
 		assert!(Assets::symbol(token).is_empty());
@@ -269,7 +315,12 @@ fn mint_works() {
 		let from = None;
 		let to = Some(BOB);
 
-		create_token(ALICE, token);
+		// Check error works for `Assets::mint()`.
+		assert_noop!(
+			Fungibles::mint(signed(ALICE), token, BOB, value),
+			sp_runtime::TokenError::UnknownAsset
+		);
+		pallet_assets_create(ALICE, token);
 		let balance_before_mint = Assets::balance(token, &BOB);
 		assert_ok!(Fungibles::mint(signed(ALICE), token, BOB, value));
 		let balance_after_mint = Assets::balance(token, &BOB);
@@ -287,7 +338,9 @@ fn burn_works() {
 		let to = None;
 		let total_supply = value * 2;
 
-		create_token_and_mint_to(ALICE, token, BOB, total_supply);
+		// Check error works for `Assets::burn()`.
+		assert_noop!(Fungibles::burn(signed(ALICE), token, BOB, value), AssetsError::Unknown);
+		pallet_assets_create_and_mint_to(ALICE, token, BOB, total_supply);
 		assert_eq!(Assets::total_supply(TOKEN), total_supply);
 		let balance_before_burn = Assets::balance(token, &BOB);
 		assert_ok!(Fungibles::burn(signed(ALICE), token, BOB, value));
@@ -302,7 +355,7 @@ fn burn_works() {
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		let total_supply = INIT_AMOUNT;
-		create_token_and_mint_to(ALICE, TOKEN, ALICE, total_supply);
+		pallet_assets_create_and_mint_to(ALICE, TOKEN, ALICE, total_supply);
 		assert_eq!(
 			Fungibles::read(TotalSupply(TOKEN)).encode(),
 			Assets::total_supply(TOKEN).encode(),
@@ -315,7 +368,7 @@ fn total_supply_works() {
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let value = 1_000 * UNIT;
-		create_token_and_mint_to(ALICE, TOKEN, ALICE, value);
+		pallet_assets_create_and_mint_to(ALICE, TOKEN, ALICE, value);
 		assert_eq!(
 			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode(),
 			Assets::balance(TOKEN, ALICE).encode(),
@@ -331,7 +384,7 @@ fn balance_of_works() {
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let value = 1_000 * UNIT;
-		create_token_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
+		pallet_assets_create_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
 		assert_eq!(
 			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode(),
 			Assets::allowance(TOKEN, &ALICE, &BOB).encode(),
@@ -349,7 +402,7 @@ fn token_metadata_works() {
 		let name: Vec<u8> = vec![11, 12, 13];
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
-		create_token_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
+		pallet_assets_create_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
 		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), Assets::name(TOKEN).encode());
 		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)).encode(), Assets::symbol(TOKEN).encode());
 		assert_eq!(
@@ -365,7 +418,7 @@ fn token_metadata_works() {
 #[test]
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
-		create_token(ALICE, TOKEN);
+		pallet_assets_create(ALICE, TOKEN);
 		assert_eq!(
 			Fungibles::read(TokenExists(TOKEN)).encode(),
 			Assets::asset_exists(TOKEN).encode(),
@@ -386,20 +439,25 @@ fn none() -> RuntimeOrigin {
 	RuntimeOrigin::none()
 }
 
-fn create_token(owner: AccountId, token: TokenId) {
+fn pallet_assets_create(owner: AccountId, token: TokenId) {
 	assert_ok!(Assets::create(signed(owner), token, owner, 1));
 }
 
-fn mint_token(owner: AccountId, token: TokenId, to: AccountId, value: Balance) {
+fn pallet_assets_mint(owner: AccountId, token: TokenId, to: AccountId, value: Balance) {
 	assert_ok!(Assets::mint(signed(owner), token, to, value));
 }
 
-fn create_token_and_mint_to(owner: AccountId, token: TokenId, to: AccountId, value: Balance) {
-	create_token(owner, token);
-	mint_token(owner, token, to, value)
+fn pallet_assets_create_and_mint_to(
+	owner: AccountId,
+	token: TokenId,
+	to: AccountId,
+	value: Balance,
+) {
+	pallet_assets_create(owner, token);
+	pallet_assets_mint(owner, token, to, value)
 }
 
-fn create_token_mint_and_approve(
+fn pallet_assets_create_mint_and_approve(
 	owner: AccountId,
 	token: TokenId,
 	to: AccountId,
@@ -407,11 +465,11 @@ fn create_token_mint_and_approve(
 	spender: AccountId,
 	approve: Balance,
 ) {
-	create_token_and_mint_to(owner, token, to, mint);
+	pallet_assets_create_and_mint_to(owner, token, to, mint);
 	assert_ok!(Assets::approve_transfer(signed(to), token, spender, approve,));
 }
 
-fn create_token_and_set_metadata(
+fn pallet_assets_create_and_set_metadata(
 	owner: AccountId,
 	token: TokenId,
 	name: Vec<u8>,
@@ -419,10 +477,10 @@ fn create_token_and_set_metadata(
 	decimals: u8,
 ) {
 	assert_ok!(Assets::create(signed(owner), token, owner, 100));
-	set_metadata_token(owner, token, name, symbol, decimals);
+	pallet_assets_set_metadata(owner, token, name, symbol, decimals);
 }
 
-fn set_metadata_token(
+fn pallet_assets_set_metadata(
 	owner: AccountId,
 	token: TokenId,
 	name: Vec<u8>,
@@ -430,4 +488,12 @@ fn set_metadata_token(
 	decimals: u8,
 ) {
 	assert_ok!(Assets::set_metadata(signed(owner), token, name, symbol, decimals));
+}
+
+fn pallet_assets_freeze_asset(owner: AccountId, token: TokenId) {
+	assert_ok!(Assets::freeze_asset(signed(owner), token));
+}
+
+fn pallet_assets_thaw_asset(owner: AccountId, token: TokenId) {
+	assert_ok!(Assets::thaw_asset(signed(owner), token));
 }
