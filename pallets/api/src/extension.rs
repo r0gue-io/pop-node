@@ -70,7 +70,7 @@ impl LogTarget for ReadStateLogTarget {
 
 /// Conversion of a `DispatchError` to a versioned error.
 pub struct VersionedErrorConverter<E>(PhantomData<E>);
-impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> ErrorConverter
+impl<Error: TryFrom<(DispatchError, u8), Error = DispatchError> + Into<u32> + Debug> ErrorConverter
 	for VersionedErrorConverter<Error>
 {
 	/// The log target.
@@ -85,7 +85,7 @@ impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> ErrorConverter
 		// Defer to supplied versioned error conversion type
 		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: error={error:?}, version={version}");
-		let error: Error = (error, version).into();
+		let error: Error = (error, version).try_into()?;
 		log::debug!(target: Self::LOG_TARGET, "versioned error converter: converted error={error:?}");
 		Ok(RetVal::Converging(error.into()))
 	}
@@ -93,9 +93,11 @@ impl<Error: From<(DispatchError, u8)> + Into<u32> + Debug> ErrorConverter
 
 /// Conversion of a read result to a versioned read result.
 pub struct VersionedResultConverter<S, T>(PhantomData<(S, T)>);
-impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
+impl<Source: Debug, Target: TryFrom<(Source, u8), Error = DispatchError> + Debug> Converter
 	for VersionedResultConverter<Source, Target>
 {
+	/// The type returned in the event of a conversion error.
+	type Error = DispatchError;
 	/// The type of value to be converted.
 	type Source = Source;
 	/// The target type.
@@ -109,13 +111,13 @@ impl<Source: Debug, Target: From<(Source, u8)> + Debug> Converter
 	/// # Parameters
 	/// - `value` - The value to be converted.
 	/// - `env` - The current execution environment.
-	fn convert(value: Self::Source, env: &impl Environment) -> Self::Target {
-		// Defer to supplied versioned result conversion type
+	fn try_convert(value: Self::Source, env: &impl Environment) -> Result<Self::Target> {
+		// Defer to supplied versioned result conversion type.
 		let version = version(env);
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: result={value:?}, version={version}");
-		let converted: Target = (value, version).into();
+		let converted: Target = (value, version).try_into()?;
 		log::debug!(target: Self::LOG_TARGET, "versioned result converter: converted result={converted:?}");
-		converted
+		Ok(converted)
 	}
 }
 
@@ -161,12 +163,16 @@ mod tests {
 
 	#[test]
 	fn prepender_works() {
+		let func = 0;
+		let version = 1;
+		let module = 2;
+		let index = 3;
 		let env = MockEnvironment {
-			func_id: u16::from_le_bytes([1, 2]),
-			ext_id: u16::from_le_bytes([3, 4]),
+			func_id: u16::from_le_bytes([func, version]),
+			ext_id: u16::from_le_bytes([module, index]),
 		};
-		assert_eq!(Prepender::process(vec![0u8], &env), vec![2, 3, 4, 0]);
-		assert_eq!(Prepender::process(vec![0u8, 5, 10], &env), vec![2, 3, 4, 0, 5, 10]);
+		let data = 42;
+		assert_eq!(Prepender::process(vec![data], &env), vec![version, module, index, data]);
 	}
 
 	#[test]
@@ -197,8 +203,9 @@ mod tests {
 		));
 	}
 
-	#[test]
-	fn versioned_error_converter_works() {
+	mod versioned_error {
+		use super::{RetVal::Converging, *};
+
 		// Mock versioned error.
 		#[derive(Debug)]
 		pub enum VersionedError {
@@ -206,13 +213,15 @@ mod tests {
 			V1(DispatchError),
 		}
 
-		impl From<(DispatchError, u8)> for VersionedError {
-			fn from(value: (DispatchError, u8)) -> Self {
+		impl TryFrom<(DispatchError, u8)> for VersionedError {
+			type Error = DispatchError;
+
+			fn try_from(value: (DispatchError, u8)) -> Result<Self> {
 				let (error, version) = value;
 				match version {
-					0 => VersionedError::V0(error),
-					1 => VersionedError::V1(error),
-					_ => unimplemented!(),
+					0 => Ok(VersionedError::V0(error)),
+					1 => Ok(VersionedError::V1(error)),
+					_ => Err(Other("DecodingFailed")),
 				}
 			}
 		}
@@ -233,26 +242,41 @@ mod tests {
 			}
 		}
 
-		for (version, error, expected_result) in vec![
-			(0, BadOrigin, 1),
-			(0, CannotLookup, 100),
-			(1, BadOrigin, 2),
-			(1, CannotLookup, 200),
-		] {
+		#[test]
+		fn versioned_error_converter_works() {
+			for (version, error, expected_result) in vec![
+				(0, BadOrigin, 1),
+				(0, Other("test"), 100),
+				(1, BadOrigin, 2),
+				(1, Other("test"), 200),
+			] {
+				let env =
+					MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+				// Because `Retval` does not implement the `Debug` trait the result has to be
+				// unwrapped.
+				let Ok(Converging(result)) =
+					VersionedErrorConverter::<VersionedError>::convert(error, &env)
+				else {
+					panic!("should not happen")
+				};
+				assert_eq!(result, expected_result);
+			}
+		}
+
+		#[test]
+		fn versioned_error_converter_fails_when_invalid_version() {
+			let version = 2;
 			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
-			// Because `Retval` does not implement the `Debug` trait:
-			let RetVal::Converging(result) =
-				VersionedErrorConverter::<VersionedError>::convert(error, &env)
-					.expect("should always result `Ok`")
-			else {
-				unimplemented!();
-			};
-			assert_eq!(result, expected_result);
+			let result = VersionedErrorConverter::<VersionedError>::convert(BadOrigin, &env).err();
+			assert_eq!(result, Some(Other("DecodingFailed")));
 		}
 	}
 
-	#[test]
-	fn versioned_result_converter_works() {
+	mod versioned_result {
+		use VersionedRuntimeResult::{V0, V1};
+
+		use super::*;
+
 		// Mock versioned runtime result.
 		#[derive(Debug, PartialEq)]
 		pub enum VersionedRuntimeResult {
@@ -260,30 +284,48 @@ mod tests {
 			V1(u8),
 		}
 
-		impl From<(u8, u8)> for VersionedRuntimeResult {
+		impl TryFrom<(u8, u8)> for VersionedRuntimeResult {
+			type Error = DispatchError;
+
 			// Mock conversion based on result and version.
-			fn from(value: (u8, u8)) -> Self {
+			fn try_from(value: (u8, u8)) -> Result<Self> {
 				let (result, version) = value;
+				// Per version there is a specific upper bound allowed.
 				match version {
-					0 if result <= 50 => VersionedRuntimeResult::V0(result),
-					0 if result > 50 => VersionedRuntimeResult::V0(50),
-					1 if result <= 100 => VersionedRuntimeResult::V1(result),
-					1 if result > 100 => VersionedRuntimeResult::V1(100),
-					_ => unimplemented!(),
+					0 if result <= 50 => Ok(V0(result)),
+					0 if result > 50 => Ok(V0(50)),
+					1 if result <= 100 => Ok(V1(result)),
+					1 if result > 100 => Ok(V1(100)),
+					_ => Err(Other("DecodingFailed")),
 				}
 			}
 		}
 
-		for (version, value, expected_result) in vec![
-			(0, 10, VersionedRuntimeResult::V0(10)),
-			(0, 100, VersionedRuntimeResult::V0(50)),
-			(1, 10, VersionedRuntimeResult::V1(10)),
-			(1, 100, VersionedRuntimeResult::V1(100)),
-		] {
-			let env = MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+		#[test]
+		fn versioned_result_converter_works() {
+			for (version, value, expected_result) in vec![
+				(0, 10, Ok(V0(10))),
+				// `V0` has 50 as upper bound and therefore caps the value.
+				(0, 100, Ok(V0(50))),
+				(1, 10, Ok(V1(10))),
+				// Different upper bound for `V1`.
+				(1, 100, Ok(V1(100))),
+			] {
+				let env =
+					MockEnvironment { func_id: u16::from_le_bytes([0, version]), ext_id: 0u16 };
+				let result = VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(
+					value, &env,
+				);
+				assert_eq!(result, expected_result);
+			}
+		}
+
+		#[test]
+		fn versioned_result_converter_fails_when_invalid_version() {
+			let env = MockEnvironment { func_id: u16::from_le_bytes([0, 2]), ext_id: 0u16 };
 			let result =
-				VersionedResultConverter::<u8, VersionedRuntimeResult>::convert(value, &env);
-			assert_eq!(result, expected_result);
+				VersionedResultConverter::<u8, VersionedRuntimeResult>::try_convert(10, &env).err();
+			assert_eq!(result, Some(Other("DecodingFailed")));
 		}
 	}
 

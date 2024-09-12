@@ -9,7 +9,7 @@ use frame_support::{
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
-use sp_runtime::{BuildStorage, Perbill};
+use sp_runtime::{BuildStorage, DispatchError, Perbill};
 
 use crate::{
 	decoding::Identity, environment, matching::WithFuncId, AccountIdOf, ContractWeightsOf,
@@ -373,14 +373,18 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 /// A converter for converting string results to uppercase.
 pub(crate) struct UppercaseConverter;
 impl Converter for UppercaseConverter {
+	type Error = DispatchError;
 	type Source = RuntimeResult;
 	type Target = Vec<u8>;
 
 	const LOG_TARGET: &'static str = "";
 
-	fn convert(value: Self::Source, _env: &impl crate::Environment) -> Self::Target {
+	fn try_convert(
+		value: Self::Source,
+		_env: &impl crate::Environment,
+	) -> Result<Self::Target, Self::Error> {
 		match value {
-			RuntimeResult::Pong(value) => value.to_uppercase().encode(),
+			RuntimeResult::Pong(value) => Ok(value.to_uppercase().encode()),
 		}
 	}
 }

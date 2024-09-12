@@ -45,14 +45,15 @@ pub enum VersionedRuntimeResult {
 	V0(RuntimeResult),
 }
 
-impl From<(RuntimeResult, Version)> for VersionedRuntimeResult {
-	fn from(value: (RuntimeResult, Version)) -> Self {
+impl TryFrom<(RuntimeResult, Version)> for VersionedRuntimeResult {
+	type Error = DispatchError;
+
+	fn try_from(value: (RuntimeResult, Version)) -> Result<Self, Self::Error> {
 		let (result, version) = value;
 		match version {
 			// Allows mapping from current `RuntimeResult` to a specific/prior version
-			0 => VersionedRuntimeResult::V0(result),
-			// TODO: should never occur due to version processing/validation when request received
-			_ => unimplemented!(),
+			0 => Ok(VersionedRuntimeResult::V0(result)),
+			_ => Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into()),
 		}
 	}
 }
@@ -73,14 +74,15 @@ pub enum VersionedError {
 	V0(pop_primitives::v0::Error),
 }
 
-impl From<(DispatchError, Version)> for VersionedError {
-	fn from(value: (DispatchError, Version)) -> Self {
+impl TryFrom<(DispatchError, Version)> for VersionedError {
+	type Error = DispatchError;
+
+	fn try_from(value: (DispatchError, Version)) -> Result<Self, Self::Error> {
 		let (error, version) = value;
 		match version {
 			// Allows mapping from current `DispatchError` to a specific/prior version of `Error`
-			0 => VersionedError::V0(V0Error::from(error).0),
-			// TODO: should never occur due to version processing/validation when request received
-			_ => unimplemented!(),
+			0 => Ok(VersionedError::V0(V0Error::from(error).0)),
+			_ => Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into()),
 		}
 	}
 }
