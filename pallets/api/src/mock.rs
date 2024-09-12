@@ -74,6 +74,10 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const StringLimit: u32 = 50;
+}
+
 type AssetsInstance = pallet_assets::Instance1;
 impl pallet_assets::Config<AssetsInstance> for Test {
 	type ApprovalDeposit = ConstU128<1>;
@@ -94,7 +98,7 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type MetadataDepositPerByte = ConstU128<1>;
 	type RemoveItemsLimit = ConstU32<5>;
 	type RuntimeEvent = RuntimeEvent;
-	type StringLimit = ConstU32<50>;
+	type StringLimit = StringLimit;
 	type WeightInfo = ();
 }
 impl crate::fungibles::Config for Test {

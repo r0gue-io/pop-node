@@ -1,10 +1,11 @@
-use codec::Encode;
+use codec::{Encode, MaxEncodedLen};
 use frame_support::{
 	assert_ok,
 	sp_runtime::traits::Zero,
 	traits::fungibles::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
+	weights::Weight,
 };
 
 use crate::{fungibles::Read::*, mock::*, Read};
@@ -291,6 +292,197 @@ fn token_exists_works() {
 			Fungibles::read(TokenExists(TOKEN)).encode()
 		);
 	});
+}
+
+mod read_weights {
+	use pallet_assets::{Approval, AssetAccount, AssetDetails, AssetMetadata};
+	use sp_runtime::BoundedVec;
+
+	use super::*;
+
+	// Expected encoded length calculation for `Approval`, based on mock runtime types:
+	// Balance (u128) * 2 (amount, deposit) = 32 bytes
+	// Total Proof Size = 32 bytes
+	fn approval_max_encoded_lens() -> (u64, u64) {
+		(Approval::<Balance, Balance>::max_encoded_len() as u64, (16 * 2))
+	}
+
+	// Expected encoded length calculation for `AssetAccount`, based on mock runtime types:
+	// Balance: u128 = 16 bytes
+	// AccountStatus: 1 byte (enum with small number of variants)
+	// ExistenceReason<DepositBalance, AccountId>:
+	//   DepositBalance: u128 = 16 bytes
+	//   AccountId: u64 = 4 bytes
+	// Extra: 0
+	// Total Proof Size = 43 bytes
+	fn asset_account_max_encoded_lens() -> (u64, u64) {
+		(
+			AssetAccount::<Balance, Balance, (), AccountId>::max_encoded_len() as u64,
+			// TODO: get max_encoded_len of Extra
+			(16 + 1 + 16 + 4),
+		)
+	}
+
+	// Expected encoded length calculation for `AssetMetadata`, based on mock runtime types:
+	// DepositBalance (u128) = 16 bytes
+	// BoundedString:
+	// - name: BoundedVec<u8, StringLimit> = 50 bytes + 1 byte
+	// - symbol: BoundedVec<u8, StringLimit> = 50 bytes + byte
+	// decimals (u8) = 1 byte
+	// is_frozen (bool) = 1 byte
+	// Total Proof Size = 120 bytes
+	fn asset_metadata_max_encoded_lens() -> (u64, u64) {
+		(
+			AssetMetadata::<Balance, BoundedVec<u8, StringLimit>>::max_encoded_len() as u64,
+			(16 + 50 + 50 + 2 + 2),
+		)
+	}
+
+	// Expected encoded length calculation for `AssetDetails`, based on mock runtime types:
+	// AccountId: u64 (8 bytes) * 4 (owner, issuer, admin, freezer) = 32 bytes
+	// Balance (u128) * 2 (supply, min_balance) = 32 bytes
+	// DepositBalance (u128) = 16 bytes
+	// is_sufficient (bool) = 1 byte
+	// accounts, sufficients, approvals (u32) * 3 = 12 bytes
+	// status (AssetStatus, 1 byte) = 1 byte
+	// Total Proof Size = 94 bytes
+	fn asset_details_max_encoded_lens() -> (u64, u64) {
+		(
+			AssetDetails::<Balance, AccountId, Balance>::max_encoded_len() as u64,
+			(32 + 32 + 16 + 1 + 12 + 1),
+		)
+	}
+
+	#[test]
+	fn ensure_approval_max_encoded_len_is_correct() {
+		let (actual, expected) = approval_max_encoded_lens();
+		assert_eq!(actual, expected);
+		assert_eq!(actual, 32);
+	}
+
+	#[test]
+	fn ensure_asset_account_max_encoded_len_is_correct() {
+		let (actual, _) = asset_account_max_encoded_lens();
+		// TODO: resolve once Extra max_encoded_len is determined
+		// assert_eq!(actual, expected);
+		assert_eq!(actual, 42);
+	}
+
+	#[test]
+	fn ensure_asset_metadata_max_encoded_len_is_correct() {
+		let (actual, expected) = asset_metadata_max_encoded_lens();
+		assert_eq!(actual, expected);
+		assert_eq!(actual, 120);
+	}
+
+	#[test]
+	fn ensure_asset_details_max_encoded_len_is_correct() {
+		let (actual, expected) = asset_details_max_encoded_lens();
+		assert_eq!(actual, expected);
+		assert_eq!(actual, 94);
+	}
+
+	#[test]
+	fn allowance() {
+		new_test_ext().execute_with(|| {
+			let allowance_read_weight =
+				Fungibles::weight(&Allowance { token: TOKEN, owner: ALICE, spender: BOB });
+			assert_eq!(allowance_read_weight, Weight::from_parts(0, approval_max_encoded_lens().0));
+			assert_eq!(allowance_read_weight, Weight::from_parts(0, approval_max_encoded_lens().1));
+		});
+	}
+
+	#[test]
+	fn balance_of() {
+		new_test_ext().execute_with(|| {
+			let balance_of_read_weight =
+				Fungibles::weight(&BalanceOf { token: TOKEN, owner: ALICE });
+			assert_eq!(
+				balance_of_read_weight,
+				Weight::from_parts(0, asset_account_max_encoded_lens().0)
+			);
+			// TODO: resolve once Extra max_encoded_len is determined
+			// assert_eq!(
+			// 	balance_of_read_weight,
+			// 	Weight::from_parts(0, asset_account_max_encoded_lens().1)
+			// );
+		});
+	}
+
+	#[test]
+	fn token_decimals() {
+		new_test_ext().execute_with(|| {
+			let token_decimals_read_weight = Fungibles::weight(&TokenDecimals(TOKEN));
+			assert_eq!(
+				token_decimals_read_weight,
+				Weight::from_parts(0, asset_metadata_max_encoded_lens().0)
+			);
+			assert_eq!(
+				token_decimals_read_weight,
+				Weight::from_parts(0, asset_metadata_max_encoded_lens().1)
+			);
+		});
+	}
+
+	#[test]
+	fn token_name() {
+		new_test_ext().execute_with(|| {
+			let token_name_read_weight = Fungibles::weight(&TokenName(TOKEN));
+			assert_eq!(
+				token_name_read_weight,
+				Weight::from_parts(0, asset_metadata_max_encoded_lens().0)
+			);
+			assert_eq!(
+				token_name_read_weight,
+				Weight::from_parts(0, asset_metadata_max_encoded_lens().1)
+			);
+		});
+	}
+
+	#[test]
+	fn token_symbol() {
+		new_test_ext().execute_with(|| {
+			let token_symbol_read_weight = Fungibles::weight(&TokenSymbol(TOKEN));
+			assert_eq!(
+				token_symbol_read_weight,
+				Weight::from_parts(0, asset_metadata_max_encoded_lens().0)
+			);
+			assert_eq!(
+				token_symbol_read_weight,
+				Weight::from_parts(0, asset_metadata_max_encoded_lens().1)
+			);
+		});
+	}
+
+	#[test]
+	fn total_supply() {
+		new_test_ext().execute_with(|| {
+			let total_supply_read_weight = Fungibles::weight(&TotalSupply(TOKEN));
+			assert_eq!(
+				total_supply_read_weight,
+				Weight::from_parts(0, asset_details_max_encoded_lens().0)
+			);
+			assert_eq!(
+				total_supply_read_weight,
+				Weight::from_parts(0, asset_details_max_encoded_lens().1)
+			);
+		});
+	}
+
+	#[test]
+	fn token_exists() {
+		new_test_ext().execute_with(|| {
+			let token_exists_read_weight = Fungibles::weight(&TokenExists(TOKEN));
+			assert_eq!(
+				token_exists_read_weight,
+				Weight::from_parts(0, asset_details_max_encoded_lens().0)
+			);
+			assert_eq!(
+				token_exists_read_weight,
+				Weight::from_parts(0, asset_details_max_encoded_lens().1)
+			);
+		});
+	}
 }
 
 fn signed(account: AccountId) -> RuntimeOrigin {
