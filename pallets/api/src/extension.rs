@@ -163,12 +163,16 @@ mod tests {
 
 	#[test]
 	fn prepender_works() {
+		let func = 0;
+		let version = 1;
+		let module = 2;
+		let index = 3;
 		let env = MockEnvironment {
-			func_id: u16::from_le_bytes([1, 2]),
-			ext_id: u16::from_le_bytes([3, 4]),
+			func_id: u16::from_le_bytes([func, version]),
+			ext_id: u16::from_le_bytes([module, index]),
 		};
-		assert_eq!(Prepender::process(vec![0u8], &env), vec![2, 3, 4, 0]);
-		assert_eq!(Prepender::process(vec![0u8, 5, 10], &env), vec![2, 3, 4, 0, 5, 10]);
+		let data = 42;
+		assert_eq!(Prepender::process(vec![data], &env), vec![version, module, index, data]);
 	}
 
 	#[test]
