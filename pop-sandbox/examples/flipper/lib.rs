@@ -18,7 +18,7 @@ mod flipper {
 	}
 
 	impl Flipper {
-		#[ink(constructor)]
+		#[ink(constructor, payable)]
 		pub fn new(init: bool) -> Self {
 			debug_println!("Initializing contract with: `{init}`");
 			Self { value: init }
@@ -49,9 +49,9 @@ mod tests {
 
 	/// `drink` automatically discovers all the contract projects that your tests will need. For
 	/// every such dependency (including the contract from the current crate), it will generate a
-	/// [`ContractBundle`](drink::session::ContractBundle) object that contains the compiled contract's code
-	/// and a special transcoder, which is used to encode and decode the contract's message
-	/// arguments. Such a bundle will be useful when deploying a contract.
+	/// [`ContractBundle`](drink::session::ContractBundle) object that contains the compiled
+	/// contract's code and a special transcoder, which is used to encode and decode the contract's
+	/// message arguments. Such a bundle will be useful when deploying a contract.
 	///
 	/// To get a convenient way for obtaining such bundles, we can define an empty enum and mark
 	/// it with the [`drink::contract_bundle_provider`](drink::contract_bundle_provider) attribute.
@@ -70,9 +70,10 @@ mod tests {
 	///
 	/// For convenience of using `?` operator, we mark the test function as returning a `Result`.
 	///
-	/// `drink::test` will already provide us with a `Session` object. It is a wrapper around a runtime and it exposes
-	/// a broad API for interacting with it. Session is generic over the runtime type, but usually and by default, we
-	/// use `MinimalSandbox`, which is a minimalistic runtime that allows using smart contracts.
+	/// `drink::test` will already provide us with a `Session` object. It is a wrapper around a
+	/// runtime and it exposes a broad API for interacting with it. Session is generic over the
+	/// runtime type, but usually and by default, we use `MinimalSandbox`, which is a minimalistic
+	/// runtime that allows using smart contracts.
 	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
 	fn deploy_and_call_a_contract(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		let _ = env_logger::try_init();

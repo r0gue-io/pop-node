@@ -1,12 +1,11 @@
+use std::error::Error;
+
 use drink::{
 	session::{Session, NO_ARGS},
 	AccountId32,
 };
-use std::error::Error;
 
 use super::*;
-
-pub const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
 
 // TODO: Convert this method to accept generic runtime instead of `PopSandbox`.
 pub fn call_function(

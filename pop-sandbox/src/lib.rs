@@ -1,179 +1,142 @@
-use crate::api::Config;
-use frame_support::{
-	construct_runtime, derive_impl, parameter_types,
-	sp_runtime::{testing::H256, Perbill},
-	traits::{AsEnsureOriginWithArg, ConstBool, ConstU128, ConstU32, Randomness},
-	weights::Weight,
-};
-use frame_system::{EnsureRoot, EnsureSigned};
-use pallet_api::fungibles;
-use pallet_contracts::{DefaultAddressGenerator, Frame};
-use sp_runtime::traits::{AccountIdLookup, Convert};
-use sp_std::vec::Vec;
+use core::any::Any;
 
-mod api;
+use frame_metadata::RuntimeMetadataPrefixed;
+use frame_support::{
+	sp_runtime::{traits::Header, AccountId32},
+	traits::Hooks,
+};
+use frame_system::pallet_prelude::BlockNumberFor;
+use pop_runtime_devnet::{BuildStorage, Runtime};
+use sp_io::TestExternalities;
+use frame_support::sp_runtime::traits::One;
+use pop_runtime_devnet::Balance;
+
 // Provides utlity methods to interact with the sandbox.
 pub mod utils;
 
-pub(crate) type AccountId = AccountId32;
-pub(crate) type AssetId = u32;
-pub(crate) type Balance = u128;
+/// Alias for the account ID type.
+pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
 
-pub const MILLIUNIT: Balance = UNIT / 1_000; // 10_000_000
+/// Default initial balance for the default account.
+pub const UNIT: Balance = 10_000_000_000;
+pub const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
+pub const INIT_VALUE: Balance = 100 * UNIT;
+pub const ALICE: AccountId32 = AccountId32::new([1u8; 32]);
 
-pub const fn deposit(items: u32, bytes: u32) -> Balance {
-	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
-}
+/// A helper struct for initializing and finalizing blocks.
+pub struct BlockBuilder<T>(std::marker::PhantomData<T>);
 
-// Define the runtime type as a collection of pallets
-construct_runtime!(
-	pub enum Runtime {
-		System: frame_system,
-		Assets: pallet_assets,
-		Balances: pallet_balances,
-		Timestamp: pallet_timestamp,
-		Contracts: pallet_contracts,
-		Fungibles: fungibles = 150,
+impl<
+		T: pallet_balances::Config + pallet_timestamp::Config<Moment = u64> + pallet_contracts::Config + pallet_aura::Config,
+	> BlockBuilder<T>
+{
+	/// Create a new externalities with the given balances.
+	pub fn new_ext(balances: Vec<(T::AccountId, T::Balance)>) -> TestExternalities {
+		log::debug!("new externalities: balances={:?}", balances);
+		let mut storage = frame_system::GenesisConfig::<T>::default().build_storage().unwrap();
+
+		pallet_balances::GenesisConfig::<T> { balances }
+			.assimilate_storage(&mut storage)
+			.unwrap();
+
+		let mut ext = TestExternalities::new(storage);
+
+		ext.execute_with(|| Self::initialize_block(BlockNumberFor::<T>::one(), Default::default()));
+		ext
 	}
-);
 
-parameter_types! {
-	pub const BlockHashCount: u64 = 250;
-	pub const SS58Prefix: u8 = 42;
-}
+	/// Initialize a new block at particular height.
+	pub fn initialize_block(
+		height: frame_system::pallet_prelude::BlockNumberFor<T>,
+		parent_hash: <T as frame_system::Config>::Hash,
+	) {
+		frame_system::Pallet::<T>::reset_events();
+		frame_system::Pallet::<T>::initialize(&height, &parent_hash, &Default::default());
+		pallet_balances::Pallet::<T>::on_initialize(height);
+		pallet_aura::Pallet::<T>::on_initialize(height);		
+		// TODO: Resolve an issue with pallet-aura to simulate the time.
+		// pallet_timestamp::Pallet::<T>::set_timestamp(
+		// 	SystemTime::now()
+		// 		.duration_since(SystemTime::UNIX_EPOCH)
+		// 		.expect("Time went backwards")
+		// 		.as_secs(),
+		// );
+		pallet_timestamp::Pallet::<T>::on_initialize(height);
+		pallet_contracts::Pallet::<T>::on_initialize(height);
+		frame_system::Pallet::<T>::note_finished_initialize();
+	}
 
-#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
-impl frame_system::Config for Runtime {
-	type AccountData = pallet_balances::AccountData<<Runtime as pallet_balances::Config>::Balance>;
-	type AccountId = AccountId;
-	type Block = frame_system::mocking::MockBlock<Runtime>;
-	type Lookup = AccountIdLookup<AccountId, ()>;
-}
-
-#[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	type Balance = Balance;
-	type ExistentialDeposit = ConstU128<1>;
-	type ReserveIdentifier = [u8; 8];
-}
-
-parameter_types! {
-	pub const AssetDeposit: u128 = 1;
-	pub const AssetAccountDeposit: u128 = 10;
-	pub const ApprovalDeposit: u128 = 1;
-	pub const AssetsStringLimit: u32 = 50;
-	pub const MetadataDepositBase: u128 = 1;
-	pub const MetadataDepositPerByte: u128 = 1;
-}
-
-impl pallet_assets::Config for Runtime {
-	type RuntimeEvent = RuntimeEvent;
-	type Balance = Balance;
-	type RemoveItemsLimit = ConstU32<5>;
-	type AssetId = AssetId;
-	type AssetIdParameter = u32;
-	type Currency = Balances;
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type ForceOrigin = EnsureRoot<AccountId>;
-	type AssetDeposit = ConstU128<1>;
-	type AssetAccountDeposit = ConstU128<10>;
-	type MetadataDepositBase = ConstU128<1>;
-	type MetadataDepositPerByte = ConstU128<1>;
-	type ApprovalDeposit = ConstU128<1>;
-	type StringLimit = ConstU32<50>;
-	type Freezer = ();
-	type Extra = ();
-	type CallbackHandle = ();
-	type WeightInfo = ();
-	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = ();
-}
-
-#[derive_impl(pallet_timestamp::config_preludes::TestDefaultConfig as pallet_timestamp::DefaultConfig)]
-impl pallet_timestamp::Config for Runtime {}
-
-// Configure pallet contracts
-impl Randomness<H256, u64> for Runtime {
-	fn random(_subject: &[u8]) -> (H256, u64) {
-		(Default::default(), Default::default())
+	/// Finalize a block at particular height.
+	pub fn finalize_block(
+		height: frame_system::pallet_prelude::BlockNumberFor<T>,
+	) -> <T as frame_system::Config>::Hash {
+		pallet_contracts::Pallet::<T>::on_finalize(height);
+		pallet_timestamp::Pallet::<T>::on_finalize(height);
+		pallet_balances::Pallet::<T>::on_finalize(height);
+		frame_system::Pallet::<T>::finalize().hash()
 	}
 }
 
-// Configure pallet contracts
-pub enum SandboxRandomness {}
-impl Randomness<H256, u64> for SandboxRandomness {
-	fn random(_subject: &[u8]) -> (H256, u64) {
-		unreachable!("No randomness")
+pub struct PopSandbox {
+	ext: TestExternalities,
+}
+
+impl Default for PopSandbox {
+	fn default() -> Self {
+		let balances : Vec<(AccountId32, u128)> = vec![(ALICE, INIT_AMOUNT)];
+		let ext = BlockBuilder::<Runtime>::new_ext(balances);
+		Self { ext }
 	}
 }
 
-type BalanceOf = <Runtime as pallet_balances::Config>::Balance;
-impl Convert<Weight, BalanceOf> for Runtime {
-	fn convert(w: Weight) -> BalanceOf {
-		w.ref_time().into()
+impl drink::Sandbox for PopSandbox {
+	type Runtime = Runtime;
+
+	fn execute_with<T>(&mut self, execute: impl FnOnce() -> T) -> T {
+		self.ext.execute_with(execute)
+	}
+
+	fn dry_run<T>(&mut self, action: impl FnOnce(&mut Self) -> T) -> T {
+		// Make a backup of the backend.
+		let backend_backup = self.ext.as_backend();
+		// Run the action, potentially modifying storage. Ensure, that there are no pending changes
+		// that would affect the reverted backend.
+		let result = action(self);
+		self.ext.commit_all().expect("Failed to commit changes");
+
+		// Restore the backend.
+		self.ext.backend = backend_backup;
+		result
+	}
+
+	fn register_extension<E: Any + drink::ink_sandbox::Extension>(&mut self, ext: E) {
+		self.ext.register_extension(ext);
+	}
+
+	fn initialize_block(
+		height: frame_system::pallet_prelude::BlockNumberFor<Self::Runtime>,
+		parent_hash: <Self::Runtime as frame_system::Config>::Hash,
+	) {
+		BlockBuilder::<Self::Runtime>::initialize_block(height, parent_hash)
+	}
+
+	fn finalize_block(
+		height: frame_system::pallet_prelude::BlockNumberFor<Self::Runtime>,
+	) -> <Self::Runtime as frame_system::Config>::Hash {
+		BlockBuilder::<Self::Runtime>::finalize_block(height)
+	}
+
+	fn default_actor() -> AccountIdFor<Self::Runtime> {
+	ALICE	
+	}
+
+	fn get_metadata() -> RuntimeMetadataPrefixed {
+		Self::Runtime::metadata()
+	}
+
+	fn convert_account_to_origin(
+                account: AccountIdFor<Self::Runtime>,
+	) -> <<Self::Runtime as frame_system::Config>::RuntimeCall as frame_support::sp_runtime::traits::Dispatchable>::RuntimeOrigin{
+		Some(account).into()
 	}
 }
-
-fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
-	pallet_contracts::Schedule {
-		limits: pallet_contracts::Limits {
-			runtime_memory: 1024 * 1024 * 1024,
-			..Default::default()
-		},
-		..Default::default()
-	}
-}
-
-parameter_types! {
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
-	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
-	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
-	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
-}
-
-impl pallet_contracts::Config for Runtime {
-	type AddressGenerator = DefaultAddressGenerator;
-	type ApiVersion = ();
-	// C
-	type CallFilter = ();
-	type CallStack = [Frame<Self>; 23];
-	type ChainExtension = api::Extension<Config>;
-	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
-	type Currency = Balances;
-	// D
-	type Debug = drink::pallet_contracts_debugging::DrinkDebug;
-	type DefaultDepositLimit = DefaultDepositLimit;
-	type DepositPerByte = DepositPerByte;
-	type DepositPerItem = DepositPerItem;
-	// E
-	type Environment = ();
-	// I
-	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
-	// M
-	type MaxCodeLen = ConstU32<{ 256 * 1024 }>;
-	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type MaxDelegateDependencies = ConstU32<32>;
-	type MaxStorageKeyLen = ConstU32<128>;
-	type Migrations = ();
-	// R
-	type Randomness = SandboxRandomness;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	// S
-	type Schedule = Schedule;
-	// T
-	type Time = Timestamp;
-	// U
-	type UnsafeUnstableInterface = ConstBool<false>;
-	type UploadOrigin = EnsureSigned<Self::AccountId>;
-	// W
-	type WeightInfo = ();
-	type WeightPrice = Self;
-	// X
-	type Xcm = ();
-}
-
-drink::create_sandbox!(PopSandbox, Runtime);

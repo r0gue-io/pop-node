@@ -1,185 +1,161 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-/// Local Fungibles:
-/// 1. PSP-22 Interface
-/// 2. PSP-22 Metadata Interface
-/// 3. Asset Management
-///
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api},
-	primitives::AssetId,
+	primitives::TokenId,
+	v0::fungibles::{self as api},
 	StatusCode,
 };
 
-pub type Result<T> = core::result::Result<T, StatusCode>;
+type PopApiResult<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract]
-mod fungibles {
+mod create_token_in_constructor {
 	use super::*;
 
 	#[ink(storage)]
-	#[derive(Default)]
-	pub struct Fungibles;
+	pub struct Fungible {
+		id: TokenId,
+	}
 
-	impl Fungibles {
+	impl Fungible {
 		#[ink(constructor, payable)]
-		pub fn new() -> Self {
-			ink::env::debug_println!("PopApiFungiblesExample::new");
-			Default::default()
+		pub fn new(id: TokenId, min_balance: Balance) -> PopApiResult<Self> {
+			ink::env::debug_println!("Fungible::call() asset_id={id}, min_balance={min_balance}");
+			let contract = Self { id };
+			let owner = contract.env().account_id();
+			api::create(id, owner, min_balance)?;
+			Ok(contract)
 		}
 
-		/// 1. PSP-22 Interface:
-		/// - total_supply
-		/// - balance_of
-		/// - allowance
-		/// - transfer
-		/// - transfer_from
-		/// - approve
-		/// - increase_allowance
-		/// - decrease_allowance
+		#[ink(message)]
+		pub fn token_exists(&self, id: TokenId) -> PopApiResult<bool> {
+			api::token_exists(id)
+		}
 
 		#[ink(message)]
-		pub fn total_supply(&self, id: AssetId) -> Result<Balance> {
+		pub fn total_supply(&self, id: TokenId) -> PopApiResult<Balance> {
 			api::total_supply(id)
 		}
 
 		#[ink(message)]
-		pub fn balance_of(&self, id: AssetId, owner: AccountId) -> Result<Balance> {
+		pub fn balance_of(&self, id: TokenId, owner: AccountId) -> PopApiResult<Balance> {
 			api::balance_of(id, owner)
 		}
 
 		#[ink(message)]
 		pub fn allowance(
 			&self,
-			id: AssetId,
+			id: TokenId,
 			owner: AccountId,
 			spender: AccountId,
-		) -> Result<Balance> {
+		) -> PopApiResult<Balance> {
 			api::allowance(id, owner, spender)
 		}
 
 		#[ink(message)]
-		pub fn transfer(&mut self, id: AssetId, to: AccountId, value: Balance) -> Result<()> {
+		pub fn transfer(&mut self, id: TokenId, to: AccountId, value: Balance) -> PopApiResult<()> {
 			api::transfer(id, to, value)
 		}
 
 		#[ink(message)]
 		pub fn transfer_from(
 			&mut self,
-			id: AssetId,
+			id: TokenId,
 			from: AccountId,
 			to: AccountId,
 			value: Balance,
 			// In the PSP-22 standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
-		) -> Result<()> {
+		) -> PopApiResult<()> {
 			api::transfer_from(id, from, to, value)
 		}
 
 		#[ink(message)]
-		pub fn approve(&mut self, id: AssetId, spender: AccountId, value: Balance) -> Result<()> {
+		pub fn approve(
+			&mut self,
+			id: TokenId,
+			spender: AccountId,
+			value: Balance,
+		) -> PopApiResult<()> {
 			api::approve(id, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn increase_allowance(
 			&mut self,
-			id: AssetId,
+			id: TokenId,
 			spender: AccountId,
 			value: Balance,
-		) -> Result<()> {
+		) -> PopApiResult<()> {
 			api::increase_allowance(id, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn decrease_allowance(
 			&mut self,
-			id: AssetId,
+			id: TokenId,
 			spender: AccountId,
 			value: Balance,
-		) -> Result<()> {
+		) -> PopApiResult<()> {
 			api::decrease_allowance(id, spender, value)
 		}
 
-		/// 2. PSP-22 Metadata Interface:
-		/// - token_name
-		/// - token_symbol
-		/// - token_decimals
-
 		#[ink(message)]
-		pub fn token_name(&self, id: AssetId) -> Result<Vec<u8>> {
+		pub fn token_name(&self, id: TokenId) -> PopApiResult<Vec<u8>> {
 			api::token_name(id)
 		}
 
 		#[ink(message)]
-		pub fn token_symbol(&self, id: AssetId) -> Result<Vec<u8>> {
+		pub fn token_symbol(&self, id: TokenId) -> PopApiResult<Vec<u8>> {
 			api::token_symbol(id)
 		}
 
 		#[ink(message)]
-		pub fn token_decimals(&self, id: AssetId) -> Result<u8> {
+		pub fn token_decimals(&self, id: TokenId) -> PopApiResult<u8> {
 			api::token_decimals(id)
 		}
-
-		// 3. Asset Management:
-		// - create
-		// - start_destroy
-		// - destroy_accounts
-		// - destroy_approvals
-		// - finish_destroy
-		// - set_metadata
-		// - clear_metadata
-
-		// #[ink(message)]
-		// pub fn create(&self, id: AssetId, admin: AccountId, min_balance: Balance) -> Result<()> {
-		// 	ink::env::debug_println!(
-		// 		"PopApiFungiblesExample::create: id: {:?} admin: {:?} min_balance: {:?}",
-		// 		id,
-		// 		admin,
-		// 		min_balance,
-		// 	);
-		// 	let result = api::create(id, admin, min_balance);
-		// 	ink::env::debug_println!("Result: {:?}", result);
-		// result.map_err(|e| e.into())
-		// result
-		// }
-
-		// #[ink(message)]
-		// pub fn set_metadata(
-		// 	&self,
-		// 	id: AssetId,
-		// 	name: Vec<u8>,
-		// 	symbol: Vec<u8>,
-		// 	decimals: u8,
-		// ) -> Result<()> {
-		// 	ink::env::debug_println!(
-		// 		"PopApiFungiblesExample::set_metadata: id: {:?} name: {:?} symbol: {:?}, decimals: {:?}",
-		// 		id,
-		// 		name,
-		// 		symbol,
-		// 		decimals,
-		// 	);
-		// 	let result = api::set_metadata(id, name, symbol, decimals);
-		// 	ink::env::debug_println!("Result: {:?}", result);
-		// 	// result.map_err(|e| e.into())
-		// 	result
-		// }
-		//
-		// #[ink(message)]
-		// pub fn asset_exists(&self, id: AssetId) -> Result<bool> {
-		// 	// api::asset_exists(id).map_err(|e| e.into())
-		// 	api::asset_exists(id)
-		// }
 	}
+}
 
-	#[cfg(test)]
-	mod tests {
-		use super::*;
+/// We put `drink`-based tests as usual unit tests, into a test module.
+#[cfg(test)]
+mod tests {
+	use drink::session::{Session, NO_SALT};
+	use pop_sandbox::{utils::call_function, ALICE, INIT_VALUE};
 
-		#[ink::test]
-		fn default_works() {
-			PopApiFungiblesExample::new();
-		}
+	use super::*;
+
+	#[drink::contract_bundle_provider]
+	enum BundleProvider {}
+
+	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
+	fn deploy_and_call_a_contract(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+		let _ = env_logger::try_init();
+		let contract_bundle = BundleProvider::local()?;
+
+		const ASSET_ID: TokenId = 1;
+
+		// Deploy a contract and create a new token with ASSET_ID = 1
+		let contract_address = session.deploy_bundle(
+			contract_bundle,
+			"new",
+			&[ASSET_ID.to_string(), 1.to_string()],
+			NO_SALT,
+			Some(INIT_VALUE),
+		)?;
+		// Calling the method in the contract.
+		let session = call_function(
+			session,
+			&contract_address,
+			&ALICE,
+			"token_exists".to_string(),
+			Some(vec![ASSET_ID.to_string()]),
+			None,
+		)?;
+		// Check that the token is created successfully.
+		let result = session.record().last_call_return_decoded::<PopApiResult<bool>>()??;
+		assert_eq!(result, Ok(true));
+		Ok(())
 	}
 }
