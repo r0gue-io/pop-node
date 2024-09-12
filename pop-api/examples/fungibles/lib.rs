@@ -10,22 +10,20 @@ use pop_api::{
 type PopApiResult<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract]
-mod create_token_in_constructor {
+mod fungibles {
 	use super::*;
 
 	#[ink(storage)]
-	pub struct Fungible {
-		id: TokenId,
-	}
+	#[derive(Default)]
+	pub struct Fungibles;
 
-	impl Fungible {
+	impl Fungibles {
 		#[ink(constructor, payable)]
 		pub fn new(id: TokenId, min_balance: Balance) -> PopApiResult<Self> {
 			ink::env::debug_println!("Fungible::call() asset_id={id}, min_balance={min_balance}");
-			let contract = Self { id };
-			let owner = contract.env().account_id();
+			let owner = Self::env().account_id();
 			api::create(id, owner, min_balance)?;
-			Ok(contract)
+			Ok(Default::default())
 		}
 
 		#[ink(message)]
