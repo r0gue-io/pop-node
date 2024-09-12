@@ -342,3 +342,98 @@ fn set_metadata_token(
 ) {
 	assert_ok!(Assets::set_metadata(signed(owner), token, name, symbol, decimals));
 }
+
+mod read_weights {
+	use frame_support::weights::Weight;
+
+	use super::*;
+	use crate::fungibles::{weights::WeightInfo, Config};
+
+	struct ReadWeightInfo {
+		allowance: Weight,
+		balance_of: Weight,
+		token_decimals: Weight,
+		token_name: Weight,
+		token_symbol: Weight,
+		total_supply: Weight,
+		token_exists: Weight,
+	}
+
+	impl ReadWeightInfo {
+		fn new() -> Self {
+			Self {
+				allowance: Fungibles::weight(&Allowance {
+					token: TOKEN,
+					owner: ALICE,
+					spender: BOB,
+				}),
+				balance_of: Fungibles::weight(&BalanceOf { token: TOKEN, owner: ALICE }),
+				token_decimals: Fungibles::weight(&TokenDecimals(TOKEN)),
+				token_name: Fungibles::weight(&TokenName(TOKEN)),
+				token_symbol: Fungibles::weight(&TokenSymbol(TOKEN)),
+				total_supply: Fungibles::weight(&TotalSupply(TOKEN)),
+				token_exists: Fungibles::weight(&TokenExists(TOKEN)),
+			}
+		}
+	}
+
+	#[test]
+	fn ensure_read_matches_benchmarks() {
+		let ReadWeightInfo {
+			allowance,
+			balance_of,
+			token_decimals,
+			token_name,
+			token_symbol,
+			total_supply,
+			token_exists,
+		} = ReadWeightInfo::new();
+
+		assert_eq!(allowance, <Test as Config>::WeightInfo::allowance());
+		assert_eq!(balance_of, <Test as Config>::WeightInfo::balance_of());
+		assert_eq!(token_decimals, <Test as Config>::WeightInfo::token_decimals());
+		assert_eq!(token_name, <Test as Config>::WeightInfo::token_name());
+		assert_eq!(token_symbol, <Test as Config>::WeightInfo::token_symbol());
+		assert_eq!(total_supply, <Test as Config>::WeightInfo::total_supply());
+		assert_eq!(token_exists, <Test as Config>::WeightInfo::token_exists());
+	}
+
+	// These types read from the `AssetMetadata` storage.
+	#[test]
+	fn ensure_asset_metadata_variants_match() {
+		let ReadWeightInfo { token_decimals, token_name, token_symbol, .. } = ReadWeightInfo::new();
+
+		assert_eq!(token_decimals, token_name);
+		assert_eq!(token_decimals, token_symbol);
+	}
+
+	// These types read from the `Assets` storage.
+	#[test]
+	fn ensure_asset_variants_match() {
+		let ReadWeightInfo { total_supply, token_exists, .. } = ReadWeightInfo::new();
+
+		assert_eq!(total_supply, token_exists);
+	}
+
+	// Proof size is based on `MaxEncodedLen`, not hardware.
+	#[test]
+	fn ensure_expected_proof_size_does_not_change() {
+		let ReadWeightInfo {
+			allowance,
+			balance_of,
+			token_decimals,
+			token_name,
+			token_symbol,
+			total_supply,
+			token_exists,
+		} = ReadWeightInfo::new();
+
+		assert_eq!(allowance.proof_size(), 3613);
+		assert_eq!(balance_of.proof_size(), 3599);
+		assert_eq!(token_name.proof_size(), 3605);
+		assert_eq!(token_symbol.proof_size(), 3605);
+		assert_eq!(token_decimals.proof_size(), 3605);
+		assert_eq!(total_supply.proof_size(), 3675);
+		assert_eq!(token_exists.proof_size(), 3675);
+	}
+}
