@@ -14,7 +14,10 @@ use frame_support::{
 use frame_system::RawOrigin;
 use sp_runtime::traits::Zero;
 
-use super::{AccountIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet, TokenIdOf};
+use super::{
+	AccountIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet, Read, TokenIdOf,
+};
+use crate::Read as _;
 
 const SEED: u32 = 1;
 
@@ -101,6 +104,14 @@ mod benchmarks {
 			);
 		}
 		Ok(())
+	}
+
+	#[benchmark]
+	fn total_supply() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::TotalSupply(TokenIdOf::<T>::zero()));
+		}
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

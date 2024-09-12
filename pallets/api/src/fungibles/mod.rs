@@ -490,9 +490,13 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `request` - The read request.
-		fn weight(_request: &Self::Read) -> Weight {
-			// TODO: match on request and return benchmarked weight
-			T::DbWeight::get().reads(1_u64)
+		fn weight(request: &Self::Read) -> Weight {
+			use Read::*;
+			match request {
+				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
+				// TODO: implement remaining to remove catch all
+				_ => T::DbWeight::get().reads(1_u64),
+			}
 		}
 
 		/// Performs the requested read and returns the result.
