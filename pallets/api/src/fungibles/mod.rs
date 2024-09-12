@@ -35,6 +35,7 @@ pub mod pallet {
 		traits::fungibles::approvals::Inspect as ApprovalInspect,
 	};
 	use frame_system::pallet_prelude::*;
+	use pallet_assets::{Approval, AssetAccount, AssetDetails, AssetMetadata};
 	use sp_runtime::{
 		traits::{StaticLookup, Zero},
 		Saturating,
@@ -490,9 +491,28 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `request` - The read request.
-		fn weight(_request: &Self::Read) -> Weight {
-			// TODO: match on request and return benchmarked weight
-			T::DbWeight::get().reads(1_u64)
+		fn weight(request: &Self::Read) -> Weight {
+			// The proof size of a read is the max encoded size of the item being read.
+			// src: https://substrate.stackexchange.com/a/11843/703
+			let proof_size = match request {
+				// Approval<T::Balance, DepositBalanceOf<T, I>>,
+				Read::Allowance { .. } => Approval::<T::Balance, T::Balance>::max_encoded_len(),
+				// AssetAccountOf<T, I>,
+				// AssetAccount<Balance, DepositBalance, Extra, AccountId>
+				Read::BalanceOf { .. } =>
+					AssetAccount::<T::Balance, T::Balance, T::Extra, T::AccountId>::max_encoded_len(
+					),
+				// AssetMetadata<DepositBalanceOf<T, I>, BoundedVec<u8, T::StringLimit>>,
+				Read::TokenDecimals(_) | Read::TokenName(_) | Read::TokenSymbol(_) =>
+					AssetMetadata::<T::Balance, BoundedVec<u8, T::StringLimit>>::max_encoded_len(),
+				// AssetDetails<T::Balance, T::AccountId, DepositBalanceOf<T, I>>,
+				Read::TokenExists(_) | Read::TotalSupply(_) =>
+					AssetDetails::<T::Balance, T::AccountId, T::Balance>::max_encoded_len(),
+			};
+
+			// Safe conversion to u64 -- will not panic. It is highly improbable that the
+			// max_encoded_len exceeds u64::MAX.
+			T::DbWeight::get().reads(1_u64).add_proof_size(proof_size as u64)
 		}
 
 		/// Performs the requested read and returns the result.
@@ -501,6 +521,7 @@ pub mod pallet {
 		/// - `request` - The read request.
 		fn read(request: Self::Read) -> Self::Result {
 			use Read::*;
+
 			match request {
 				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
 				BalanceOf { token, owner } =>
