@@ -19,16 +19,8 @@ mod fungibles {
 
 	impl Fungibles {
 		#[ink(constructor, payable)]
-		pub fn new(id: TokenId, min_balance: Balance) -> PopApiResult<Self> {
-			ink::env::debug_println!("Fungible::call() asset_id={id}, min_balance={min_balance}");
-			let owner = Self::env().account_id();
-			api::create(id, owner, min_balance)?;
-			Ok(Default::default())
-		}
-
-		#[ink(message)]
-		pub fn token_exists(&self, id: TokenId) -> PopApiResult<bool> {
-			api::token_exists(id)
+		pub fn new() -> Self {
+			Default::default()
 		}
 
 		#[ink(message)]
@@ -113,14 +105,40 @@ mod fungibles {
 		pub fn token_decimals(&self, id: TokenId) -> PopApiResult<u8> {
 			api::token_decimals(id)
 		}
+
+		#[ink(message, payable)]
+		pub fn create(
+			&self,
+			id: TokenId,
+			admin: AccountId,
+			min_balance: Balance,
+		) -> PopApiResult<()> {
+			api::create(id, admin, min_balance)
+		}
+
+		#[ink(message)]
+		pub fn set_metadata(
+			&self,
+			id: TokenId,
+			name: Vec<u8>,
+			symbol: Vec<u8>,
+			decimals: u8,
+		) -> PopApiResult<()> {
+			api::set_metadata(id, name, symbol, decimals)
+		}
+
+		#[ink(message)]
+		pub fn token_exists(&self, id: TokenId) -> PopApiResult<bool> {
+			api::token_exists(id)
+		}
 	}
 }
 
 /// We put `drink`-based tests as usual unit tests, into a test module.
 #[cfg(test)]
 mod tests {
-	use drink::session::{Session, NO_SALT};
-	use pop_sandbox::{utils::call_function, ALICE, INIT_VALUE};
+	use drink::session::{Session, NO_ARGS, NO_SALT};
+	use pop_sandbox::{ALICE, INIT_VALUE};
 
 	use super::*;
 
@@ -134,23 +152,23 @@ mod tests {
 
 		const ASSET_ID: TokenId = 1;
 
-		// Deploy a contract and create a new token with ASSET_ID = 1
-		let contract_address = session.deploy_bundle(
-			contract_bundle,
-			"new",
-			&[ASSET_ID.to_string(), 1.to_string()],
-			NO_SALT,
-			Some(INIT_VALUE),
-		)?;
+		// Deploy a contract.
+		let contract_address =
+			session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
 		// Calling the method in the contract.
-		let session = call_function(
-			session,
-			&contract_address,
-			&ALICE,
-			"token_exists".to_string(),
-			Some(vec![ASSET_ID.to_string()]),
+		session.call_with_address(
+			contract_address.clone(),
+			"create",
+			&vec![ASSET_ID.to_string(), ALICE.to_string(), 10_000.to_string()],
 			None,
-		)?;
+		)??;
+		// Calling the method in the contract.
+		session.call_with_address(
+			contract_address.clone(),
+			"token_exists",
+			&vec![ASSET_ID.to_string()],
+			None,
+		)??;
 		// Check that the token is created successfully.
 		let result = session.record().last_call_return_decoded::<PopApiResult<bool>>()??;
 		assert_eq!(result, Ok(true));

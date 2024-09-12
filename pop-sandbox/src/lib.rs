@@ -11,9 +11,6 @@ use sp_io::TestExternalities;
 use frame_support::sp_runtime::traits::One;
 use pop_runtime_devnet::Balance;
 
-// Provides utlity methods to interact with the sandbox.
-pub mod utils;
-
 /// Alias for the account ID type.
 pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
 
