@@ -313,13 +313,12 @@ mod read_weights {
 	// ExistenceReason<DepositBalance, AccountId>:
 	//   DepositBalance: u128 = 16 bytes
 	//   AccountId: u64 = 4 bytes
-	// Extra: 0
-	// Total Proof Size = 43 bytes
+	// Extra: 5 bytes (determined by running test)
+	// Total Proof Size = 42 bytes
 	fn asset_account_max_encoded_lens() -> (u64, u64) {
 		(
 			AssetAccount::<Balance, Balance, (), AccountId>::max_encoded_len() as u64,
-			// TODO: get max_encoded_len of Extra
-			(16 + 1 + 16 + 4),
+			(16 + 1 + 16 + 4 + 5),
 		)
 	}
 
@@ -362,9 +361,8 @@ mod read_weights {
 
 	#[test]
 	fn ensure_asset_account_max_encoded_len_is_correct() {
-		let (actual, _) = asset_account_max_encoded_lens();
-		// TODO: resolve once Extra max_encoded_len is determined
-		// assert_eq!(actual, expected);
+		let (actual, expected) = asset_account_max_encoded_lens();
+		assert_eq!(actual, expected);
 		assert_eq!(actual, 42);
 	}
 
@@ -401,11 +399,10 @@ mod read_weights {
 				balance_of_read_weight,
 				Weight::from_parts(0, asset_account_max_encoded_lens().0)
 			);
-			// TODO: resolve once Extra max_encoded_len is determined
-			// assert_eq!(
-			// 	balance_of_read_weight,
-			// 	Weight::from_parts(0, asset_account_max_encoded_lens().1)
-			// );
+			assert_eq!(
+				balance_of_read_weight,
+				Weight::from_parts(0, asset_account_max_encoded_lens().1)
+			);
 		});
 	}
 
