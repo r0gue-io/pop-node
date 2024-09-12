@@ -138,39 +138,48 @@ mod fungibles {
 #[cfg(test)]
 mod tests {
 	use drink::session::{Session, NO_ARGS, NO_SALT};
-	use pop_sandbox::{ALICE, INIT_VALUE};
+	use pop_sandbox::{Balance, PopSandbox, ALICE, INIT_VALUE};
+	use scale::Decode;
 
 	use super::*;
 
 	#[drink::contract_bundle_provider]
 	enum BundleProvider {}
 
-	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
-	fn deploy_and_call_a_contract(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+	fn decoded_call<T: Decode>(
+		session: &mut Session<PopSandbox>,
+		func_name: &str,
+		input: Vec<String>,
+		endowment: Option<Balance>,
+	) -> Result<T, Box<dyn std::error::Error>> {
+		session.call(func_name, &input, endowment)??;
+		Ok(session.record().last_call_return_decoded::<T>()??)
+	}
+
+	#[drink::test(sandbox = PopSandbox)]
+	fn test_create_token_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		let _ = env_logger::try_init();
 		let contract_bundle = BundleProvider::local()?;
 
-		const ASSET_ID: TokenId = 1;
-
 		// Deploy a contract.
-		let contract_address =
-			session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
-		// Calling the method in the contract.
-		session.call_with_address(
-			contract_address.clone(),
+		session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
+
+		const TOKEN_ID: TokenId = 1;
+		// Create a new token.
+		let _ = decoded_call::<PopApiResult<()>>(
+			&mut session,
 			"create",
-			&vec![ASSET_ID.to_string(), ALICE.to_string(), 10_000.to_string()],
+			vec![TOKEN_ID.to_string(), ALICE.to_string(), 10_000.to_string()],
 			None,
-		)??;
-		// Calling the method in the contract.
-		session.call_with_address(
-			contract_address.clone(),
-			"token_exists",
-			&vec![ASSET_ID.to_string()],
-			None,
-		)??;
+		)?;
+
 		// Check that the token is created successfully.
-		let result = session.record().last_call_return_decoded::<PopApiResult<bool>>()??;
+		let result = decoded_call::<PopApiResult<bool>>(
+			&mut session,
+			"token_exists",
+			vec![TOKEN_ID.to_string()],
+			None,
+		)?;
 		assert_eq!(result, Ok(true));
 		Ok(())
 	}

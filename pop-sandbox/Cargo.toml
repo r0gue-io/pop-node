@@ -1,4 +1,5 @@
 [package]
+authors = [ "[your_name] <[your_email]>" ]
 description = "Sandboxing environment for contract quasi testing with Pop Network runtimes."
 edition = "2021"
 license = "GPL-3.0-only"
@@ -20,14 +21,9 @@ frame-support = { version = "36.0.0", default-features = false }
 frame-support-procedural = { version = "=30.0.1", default-features = false }
 frame-system = { version = "36.1.0", default-features = false }
 pallet-assets = { version = "37.0.0", default-features = false }
-pallet-aura = { version = "35.0.0", default-features = false }
-pallet-authorship = { version = "36.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
 pallet-contracts = { version = "35.0.0", default-features = false }
-pallet-scheduler = { version = "37.0.0", default-features = false }
-pallet-session = { version = "36.0.0", default-features = false }
 pallet-timestamp = { version = "35.0.0", default-features = false }
-pallet-transaction-payment = { version = "36.0.0", default-features = false }
 pop-runtime-devnet = { path = "../runtime/devnet", default-features = false }
 sp-io = { version = "37.0.0", default-features = false }
 sp-runtime = { version = "=38.0.0", default-features = false }
@@ -44,14 +40,9 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-assets/std",
-	"pallet-aura/std",
-	"pallet-authorship/std",
 	"pallet-balances/std",
 	"pallet-contracts/std",
-	"pallet-scheduler/std",
-	"pallet-session/std",
 	"pallet-timestamp/std",
-	"pallet-transaction-payment/std",
 	"pop-runtime-devnet/std",
 	"scale-info/std",
 	"sp-io/std",
