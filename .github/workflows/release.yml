@@ -24,6 +24,7 @@ on:
           - devnet
           - testnet
           - mainnet
+          - none
 
 jobs:
   srtool:
@@ -32,7 +33,8 @@ jobs:
       startsWith(github.event.release.tag_name, 'testnet') ||
       startsWith(github.event.release.tag_name, 'devnet') ||
       startsWith(github.event.release.tag_name, 'mainnet') ||
-      github.event_name == 'workflow_dispatch'
+      github.event_name == 'workflow_dispatch' &&
+      github.event.inputs.runtime != 'none'
     permissions:
       contents: write
     steps:
