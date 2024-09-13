@@ -684,9 +684,9 @@ mod ensure_codec_indexes {
 	fn ensure_read_variant_indexes() {
 		[
 			// explicit u8 to help Rust infer the type
-			(TotalSupply::<Test>(Default::default()).encode(), 0u8, "TotalSupply"),
+			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
 			(
-				BalanceOf::<Test> { token: Default::default(), owner: Default::default() }.encode(),
+				BalanceOf::<Test> { token: Default::default(), owner: Default::default() },
 				1,
 				"BalanceOf",
 			),
@@ -695,19 +695,22 @@ mod ensure_codec_indexes {
 					token: Default::default(),
 					owner: Default::default(),
 					spender: Default::default(),
-				}
-				.encode(),
+				},
 				2,
 				"Allowance",
 			),
-			(TokenName::<Test>(Default::default()).encode(), 8, "TokenName"),
-			(TokenSymbol::<Test>(Default::default()).encode(), 9, "TokenSymbol"),
-			(TokenDecimals::<Test>(Default::default()).encode(), 10, "TokenDecimals"),
-			(TokenExists::<Test>(Default::default()).encode(), 18, "TokenExists"),
+			(TokenName::<Test>(Default::default()), 8, "TokenName"),
+			(TokenSymbol::<Test>(Default::default()), 9, "TokenSymbol"),
+			(TokenDecimals::<Test>(Default::default()), 10, "TokenDecimals"),
+			(TokenExists::<Test>(Default::default()), 18, "TokenExists"),
 		]
 		.iter()
 		.for_each(|(encoded_variant, expected_index, name)| {
-			assert_eq!(encoded_variant[0], *expected_index, "{name} variant index changed");
+			assert_eq!(
+				encoded_variant.encode()[0],
+				*expected_index,
+				"{name} variant index changed"
+			);
 		})
 	}
 
