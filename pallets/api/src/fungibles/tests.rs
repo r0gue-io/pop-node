@@ -318,7 +318,7 @@ fn create_works() {
 		assert!(!Assets::asset_exists(id));
 		assert_ok!(Fungibles::create(signed(creator), id, admin, 100));
 		assert!(Assets::asset_exists(id));
-		System::assert_last_event(Event::Create { id, creator, admin }.into());
+		System::assert_last_event(Event::Created { id, creator, admin }.into());
 		// Check error works for `Assets::create()`.
 		assert_noop!(Fungibles::create(signed(creator), id, admin, 100), AssetsError::InUse);
 	});
