@@ -327,7 +327,7 @@ pub(super) fn instantiate_and_create_fungible(
 		input,
 		vec![],
 		DEBUG_OUTPUT,
-		CollectEvents::UnsafeCollect,
+		CollectEvents::Skip,
 	)
 	.result
 	.expect("should work");
