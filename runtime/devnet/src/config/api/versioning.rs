@@ -184,13 +184,15 @@ mod tests {
 	#[test]
 	fn from_versioned_runtime_result_works() {
 		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000));
+		let v0 = 0;
+		let v1 = 1;
 		assert_eq!(
-			VersionedRuntimeResult::try_from((result.clone(), 0)),
+			VersionedRuntimeResult::try_from((result.clone(), v0)),
 			Ok(VersionedRuntimeResult::V0(result.clone()))
 		);
 		// Unknown version.
 		assert_eq!(
-			VersionedRuntimeResult::try_from((result.clone(), 1)),
+			VersionedRuntimeResult::try_from((result.clone(), v1)),
 			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
@@ -204,20 +206,22 @@ mod tests {
 	#[test]
 	fn from_versioned_error_works() {
 		let error = BadOrigin;
+		let v0 = 0;
+		let v1 = 1;
 		assert_eq!(
-			VersionedError::try_from((error, 0)),
+			VersionedError::try_from((error, v0)),
 			Ok(VersionedError::V0(V0Error::from(error).0))
 		);
 		// Unknown version.
 		assert_eq!(
-			VersionedError::try_from((error, 1)),
+			VersionedError::try_from((error, v1)),
 			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
 
 	#[test]
 	fn from_versioned_error_to_u32_works() {
-		assert_eq!(u32::from(VersionedError::V0(Error::BadOrigin)), 2);
+		assert_eq!(u32::from(VersionedError::V0(Error::BadOrigin)), u32::from(Error::BadOrigin));
 	}
 
 	// Compare all the different `DispatchError` variants with the expected `Error`.
