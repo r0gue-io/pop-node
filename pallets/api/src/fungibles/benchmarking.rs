@@ -117,20 +117,24 @@ mod benchmarks {
 	#[benchmark]
 	// Storage: `AssetAccount`
 	fn balance_of() {
-		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		#[block]
 		{
-			Pallet::<T>::read(Read::BalanceOf { token: TokenIdOf::<T>::zero(), owner });
+			Pallet::<T>::read(Read::BalanceOf {
+				token: TokenIdOf::<T>::zero(),
+				owner: account("Alice", 0, SEED),
+			});
 		}
 	}
 	#[benchmark]
 	// Storage: `Approval`
 	fn allowance() {
-		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
-		let spender: AccountIdOf<T> = account("Bob", 0, SEED);
 		#[block]
 		{
-			Pallet::<T>::read(Read::Allowance { token: TokenIdOf::<T>::zero(), owner, spender });
+			Pallet::<T>::read(Read::Allowance {
+				token: TokenIdOf::<T>::zero(),
+				owner: account("Alice", 0, SEED),
+				spender: account("Bob", 0, SEED),
+			});
 		}
 	}
 

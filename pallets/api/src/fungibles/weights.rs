@@ -33,12 +33,12 @@ use core::marker::PhantomData;
 /// Weight functions needed for `fungibles`.
 pub trait WeightInfo {
 	fn approve(a: u32, c: u32, ) -> Weight;
-	fn allowance() -> Weight;
+	fn total_supply() -> Weight;
 	fn balance_of() -> Weight;
+	fn allowance() -> Weight;
 	fn token_name() -> Weight;
 	fn token_symbol() -> Weight;
 	fn token_decimals() -> Weight;
-	fn total_supply() -> Weight;
 	fn token_exists() -> Weight;
 }
 
@@ -57,25 +57,25 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `413 + c * (102 ±0)`
 		//  Estimated: `3675`
-		// Minimum execution time: 19_000_000 picoseconds.
-		Weight::from_parts(2_685_714, 3675)
-			// Standard Error: 94_393
-			.saturating_add(Weight::from_parts(18_900_000, 0).saturating_mul(a.into()))
-			// Standard Error: 94_393
-			.saturating_add(Weight::from_parts(30_314_285, 0).saturating_mul(c.into()))
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(1_473_469, 3675)
+			// Standard Error: 89_329
+			.saturating_add(Weight::from_parts(19_606_122, 0).saturating_mul(a.into()))
+			// Standard Error: 89_329
+			.saturating_add(Weight::from_parts(30_920_408, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(c.into())))
 	}
-	/// Storage: `Assets::Approvals` (r:1 w:0)
-	/// Proof: `Assets::Approvals` (`max_values`: None, `max_size`: Some(148), added: 2623, mode: `MaxEncodedLen`)
-	fn allowance() -> Weight {
+	/// Storage: `Assets::Asset` (r:1 w:0)
+	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
+	fn total_supply() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `6`
-		//  Estimated: `3613`
-		// Minimum execution time: 4_000_000 picoseconds.
-		Weight::from_parts(5_000_000, 3613)
+		//  Estimated: `3675`
+		// Minimum execution time: 1_000_000 picoseconds.
+		Weight::from_parts(2_000_000, 3675)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Account` (r:1 w:0)
@@ -88,13 +88,23 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(3_000_000, 3599)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
+	/// Storage: `Assets::Approvals` (r:1 w:0)
+	/// Proof: `Assets::Approvals` (`max_values`: None, `max_size`: Some(148), added: 2623, mode: `MaxEncodedLen`)
+	fn allowance() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `6`
+		//  Estimated: `3613`
+		// Minimum execution time: 4_000_000 picoseconds.
+		Weight::from_parts(4_000_000, 3613)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
 	fn token_name() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `6`
 		//  Estimated: `3605`
-		// Minimum execution time: 2_000_000 picoseconds.
+		// Minimum execution time: 1_000_000 picoseconds.
 		Weight::from_parts(2_000_000, 3605)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
@@ -116,16 +126,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `3605`
 		// Minimum execution time: 1_000_000 picoseconds.
 		Weight::from_parts(2_000_000, 3605)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-	}
-	/// Storage: `Assets::Asset` (r:1 w:0)
-	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
-	fn total_supply() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `6`
-		//  Estimated: `3675`
-		// Minimum execution time: 1_000_000 picoseconds.
-		Weight::from_parts(2_000_000, 3675)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Asset` (r:1 w:0)
@@ -154,25 +154,25 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `413 + c * (102 ±0)`
 		//  Estimated: `3675`
-		// Minimum execution time: 19_000_000 picoseconds.
-		Weight::from_parts(2_685_714, 3675)
-			// Standard Error: 94_393
-			.saturating_add(Weight::from_parts(18_900_000, 0).saturating_mul(a.into()))
-			// Standard Error: 94_393
-			.saturating_add(Weight::from_parts(30_314_285, 0).saturating_mul(c.into()))
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(1_473_469, 3675)
+			// Standard Error: 89_329
+			.saturating_add(Weight::from_parts(19_606_122, 0).saturating_mul(a.into()))
+			// Standard Error: 89_329
+			.saturating_add(Weight::from_parts(30_920_408, 0).saturating_mul(c.into()))
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(c.into())))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(c.into())))
 	}
-	/// Storage: `Assets::Approvals` (r:1 w:0)
-	/// Proof: `Assets::Approvals` (`max_values`: None, `max_size`: Some(148), added: 2623, mode: `MaxEncodedLen`)
-	fn allowance() -> Weight {
+	/// Storage: `Assets::Asset` (r:1 w:0)
+	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
+	fn total_supply() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `6`
-		//  Estimated: `3613`
-		// Minimum execution time: 4_000_000 picoseconds.
-		Weight::from_parts(5_000_000, 3613)
+		//  Estimated: `3675`
+		// Minimum execution time: 1_000_000 picoseconds.
+		Weight::from_parts(2_000_000, 3675)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Account` (r:1 w:0)
@@ -185,13 +185,23 @@ impl WeightInfo for () {
 		Weight::from_parts(3_000_000, 3599)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
+	/// Storage: `Assets::Approvals` (r:1 w:0)
+	/// Proof: `Assets::Approvals` (`max_values`: None, `max_size`: Some(148), added: 2623, mode: `MaxEncodedLen`)
+	fn allowance() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `6`
+		//  Estimated: `3613`
+		// Minimum execution time: 4_000_000 picoseconds.
+		Weight::from_parts(4_000_000, 3613)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
 	fn token_name() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `6`
 		//  Estimated: `3605`
-		// Minimum execution time: 2_000_000 picoseconds.
+		// Minimum execution time: 1_000_000 picoseconds.
 		Weight::from_parts(2_000_000, 3605)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
@@ -213,16 +223,6 @@ impl WeightInfo for () {
 		//  Estimated: `3605`
 		// Minimum execution time: 1_000_000 picoseconds.
 		Weight::from_parts(2_000_000, 3605)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-	}
-	/// Storage: `Assets::Asset` (r:1 w:0)
-	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
-	fn total_supply() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `6`
-		//  Estimated: `3675`
-		// Minimum execution time: 1_000_000 picoseconds.
-		Weight::from_parts(2_000_000, 3675)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Asset` (r:1 w:0)
