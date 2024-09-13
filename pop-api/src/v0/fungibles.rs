@@ -101,7 +101,7 @@ pub mod events {
 
 	/// Event emitted when a token is created.
 	#[ink::event]
-	pub struct Create {
+	pub struct Created {
 		/// The token identifier.
 		#[ink(topic)]
 		pub id: TokenId,
@@ -115,7 +115,7 @@ pub mod events {
 
 	/// Event emitted when a token is in the process of being destroyed.
 	#[ink::event]
-	pub struct StartDestroy {
+	pub struct DestroyStarted {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,
@@ -123,7 +123,7 @@ pub mod events {
 
 	/// Event emitted when new metadata is set for a token.
 	#[ink::event]
-	pub struct SetMetadata {
+	pub struct MetadataSet {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,
@@ -139,7 +139,7 @@ pub mod events {
 
 	/// Event emitted when metadata is cleared for a token.
 	#[ink::event]
-	pub struct ClearMetadata {
+	pub struct MetadataCleared {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,

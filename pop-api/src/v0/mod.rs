@@ -1,5 +1,3 @@
-use ink::env::chain_extension::ChainExtensionMethod;
-
 use crate::{
 	build_extension_method,
 	constants::{DISPATCH, READ_STATE},

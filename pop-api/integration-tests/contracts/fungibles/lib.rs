@@ -6,7 +6,10 @@
 /// 4. PSP-22 Mintable & Burnable
 use ink::prelude::vec::Vec;
 use pop_api::{
-	fungibles::{self as api},
+	fungibles::{
+		self as api,
+		events::{Approval, Created, DestroyStarted, MetadataCleared, MetadataSet, Transfer},
+	},
 	primitives::TokenId,
 	StatusCode,
 };
@@ -60,7 +63,13 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
-			api::transfer(token, to, value)
+			api::transfer(token, to, value)?;
+			self.env().emit_event(Transfer {
+				from: Some(self.env().account_id()),
+				to: Some(to),
+				value,
+			});
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -73,12 +82,22 @@ mod fungibles {
 			// In the PSP-22 standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
 		) -> Result<()> {
-			api::transfer_from(token, from, to, value)
+			api::transfer_from(token, from, to, value)?;
+			self.env().emit_event(Transfer { from: Some(from), to: Some(to), value });
+			Ok(())
 		}
 
 		#[ink(message)]
-		pub fn approve(&mut self, token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
-			api::approve(token, spender, value)
+		pub fn approve(
+			&mut self,
+			token: TokenId,
+			spender: AccountId,
+			value: Balance,
+		) -> Result<()> {
+			api::approve(token, spender, value)?;
+			self.env()
+				.emit_event(Approval { owner: self.env().account_id(), spender, value });
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -135,12 +154,16 @@ mod fungibles {
 			admin: AccountId,
 			min_balance: Balance,
 		) -> Result<()> {
-			api::create(id, admin, min_balance)
+			api::create(id, admin, min_balance)?;
+			self.env().emit_event(Created { id, creator: admin, admin });
+			Ok(())
 		}
 
 		#[ink(message)]
 		pub fn start_destroy(&mut self, token: TokenId) -> Result<()> {
-			api::start_destroy(token)
+			api::start_destroy(token)?;
+			self.env().emit_event(DestroyStarted { token });
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -151,12 +174,16 @@ mod fungibles {
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> Result<()> {
-			api::set_metadata(token, name, symbol, decimals)
+			api::set_metadata(token, name.clone(), symbol.clone(), decimals)?;
+			self.env().emit_event(MetadataSet { token, name, symbol, decimals });
+			Ok(())
 		}
 
 		#[ink(message)]
-		pub fn clear_metadata(&self, token: TokenId) -> Result<()> {
-			api::clear_metadata(token)
+		pub fn clear_metadata(&mut self, token: TokenId) -> Result<()> {
+			api::clear_metadata(token)?;
+			self.env().emit_event(MetadataCleared { token });
+			Ok(())
 		}
 
 		#[ink(message)]
