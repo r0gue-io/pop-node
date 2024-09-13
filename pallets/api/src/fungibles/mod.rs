@@ -45,6 +45,7 @@ pub mod pallet {
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
@@ -85,6 +86,7 @@ pub mod pallet {
 
 	/// Results of state reads for the fungibles API.
 	#[derive(Debug)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
 		/// Total token supply for a specified token.
 		TotalSupply(BalanceOf<T>),

@@ -40,6 +40,7 @@ impl From<VersionedRuntimeRead> for RuntimeRead {
 
 /// Versioned runtime state read results.
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum VersionedRuntimeResult {
 	/// Version zero of runtime read results.
 	V0(RuntimeResult),
@@ -69,6 +70,7 @@ impl From<VersionedRuntimeResult> for Vec<u8> {
 
 /// Versioned errors.
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum VersionedError {
 	/// Version zero of errors.
 	V0(pop_primitives::v0::Error),
@@ -95,6 +97,8 @@ impl From<VersionedError> for u32 {
 	}
 }
 
+// Type for conversion to a versioned `pop_primitives::Error` to avoid taking a dependency of
+// sp-runtime on pop-primitives.
 struct V0Error(pop_primitives::v0::Error);
 impl From<DispatchError> for V0Error {
 	fn from(error: DispatchError) -> Self {
@@ -159,11 +163,80 @@ impl From<DispatchError> for V0Error {
 
 #[cfg(test)]
 mod tests {
+	use codec::Encode;
+	use frame_system::Call;
 	use pop_primitives::{ArithmeticError::*, Error, TokenError::*, TransactionalError::*};
 	use sp_runtime::ModuleError;
 	use DispatchError::*;
 
 	use super::*;
+
+	#[test]
+	fn from_versioned_runtime_call_to_runtime_call_works() {
+		let call =
+			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
+		assert_eq!(RuntimeCall::from(VersionedRuntimeCall::V0(call.clone())), call);
+	}
+
+	#[test]
+	fn from_versioned_runtime_read_to_runtime_read_works() {
+		let read = RuntimeRead::Fungibles(fungibles::Read::<Runtime>::TotalSupply(42));
+		assert_eq!(RuntimeRead::from(VersionedRuntimeRead::V0(read.clone())), read);
+	}
+
+	#[test]
+	fn versioned_runtime_result_works() {
+		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000));
+		let v0 = 0;
+		assert_eq!(
+			VersionedRuntimeResult::try_from((result.clone(), v0)),
+			Ok(VersionedRuntimeResult::V0(result.clone()))
+		);
+	}
+
+	#[test]
+	fn versioned_runtime_result_fails() {
+		// Unknown version 1.
+		assert_eq!(
+			VersionedRuntimeResult::try_from((
+				RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000)),
+				1
+			)),
+			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
+		);
+	}
+
+	#[test]
+	fn versioned_runtime_result_to_bytes_works() {
+		let value = 1_000;
+		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(value));
+		assert_eq!(<Vec<u8>>::from(VersionedRuntimeResult::V0(result)), value.encode());
+	}
+
+	#[test]
+	fn versioned_error_works() {
+		let error = BadOrigin;
+		let v0 = 0;
+
+		assert_eq!(
+			VersionedError::try_from((error, v0)),
+			Ok(VersionedError::V0(V0Error::from(error).0))
+		);
+	}
+
+	#[test]
+	fn versioned_error_fails() {
+		// Unknown version 1.
+		assert_eq!(
+			VersionedError::try_from((BadOrigin, 1)),
+			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
+		);
+	}
+
+	#[test]
+	fn versioned_error_to_u32_works() {
+		assert_eq!(u32::from(VersionedError::V0(Error::BadOrigin)), u32::from(Error::BadOrigin));
+	}
 
 	// Compare all the different `DispatchError` variants with the expected `Error`.
 	#[test]
