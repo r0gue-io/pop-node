@@ -683,7 +683,6 @@ mod ensure_codec_indexes {
 	#[test]
 	fn ensure_read_variant_indexes() {
 		[
-			// explicit u8 to help Rust infer the type
 			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
 			(
 				BalanceOf::<Test> { token: Default::default(), owner: Default::default() },
@@ -705,12 +704,8 @@ mod ensure_codec_indexes {
 			(TokenExists::<Test>(Default::default()), 18, "TokenExists"),
 		]
 		.iter()
-		.for_each(|(encoded_variant, expected_index, name)| {
-			assert_eq!(
-				encoded_variant.encode()[0],
-				*expected_index,
-				"{name} variant index changed"
-			);
+		.for_each(|(variant, expected_index, name)| {
+			assert_eq!(variant.encode()[0], *expected_index, "{name} variant index changed");
 		})
 	}
 
@@ -720,95 +715,95 @@ mod ensure_codec_indexes {
 
 		[
 			(
-				Fungibles(transfer {
+				transfer {
 					token: Default::default(),
 					to: Default::default(),
 					value: Default::default(),
-				}),
-				3u8, // explicit u8 to help Rust infer the type
+				},
+				3u8,
 				"transfer",
 			),
 			(
-				Fungibles(transfer_from {
+				transfer_from {
 					token: Default::default(),
 					from: Default::default(),
 					to: Default::default(),
 					value: Default::default(),
-				}),
+				},
 				4,
 				"transfer_from",
 			),
 			(
-				Fungibles(approve {
+				approve {
 					token: Default::default(),
 					spender: Default::default(),
 					value: Default::default(),
-				}),
+				},
 				5,
 				"approve",
 			),
 			(
-				Fungibles(increase_allowance {
+				increase_allowance {
 					token: Default::default(),
 					spender: Default::default(),
 					value: Default::default(),
-				}),
+				},
 				6,
 				"increase_allowance",
 			),
 			(
-				Fungibles(decrease_allowance {
+				decrease_allowance {
 					token: Default::default(),
 					spender: Default::default(),
 					value: Default::default(),
-				}),
+				},
 				7,
 				"decrease_allowance",
 			),
 			(
-				Fungibles(create {
+				create {
 					id: Default::default(),
 					admin: Default::default(),
 					min_balance: Default::default(),
-				}),
+				},
 				11,
 				"create",
 			),
-			(Fungibles(start_destroy { token: Default::default() }), 12, "start_destroy"),
+			(start_destroy { token: Default::default() }, 12, "start_destroy"),
 			(
-				Fungibles(set_metadata {
+				set_metadata {
 					token: Default::default(),
 					name: Default::default(),
 					symbol: Default::default(),
 					decimals: Default::default(),
-				}),
+				},
 				16,
 				"set_metadata",
 			),
-			(Fungibles(clear_metadata { token: Default::default() }), 17, "clear_metadata"),
+			(clear_metadata { token: Default::default() }, 17, "clear_metadata"),
 			(
-				Fungibles(mint {
+				mint {
 					token: Default::default(),
 					account: Default::default(),
 					value: Default::default(),
-				}),
+				},
 				19,
 				"mint",
 			),
 			(
-				Fungibles(burn {
+				burn {
 					token: Default::default(),
 					account: Default::default(),
 					value: Default::default(),
-				}),
+				},
 				20,
 				"burn",
 			),
 		]
 		.iter()
-		.for_each(|(encoded_variant, expected_index, name)| {
+		.for_each(|(variant, expected_index, name)| {
 			assert_eq!(
-				encoded_variant.encode()[1],
+				Fungibles(variant.to_owned()).encode()[1],
 				*expected_index,
 				"{name} dispatchable index changed"
 			);
