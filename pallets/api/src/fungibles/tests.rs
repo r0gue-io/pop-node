@@ -24,6 +24,29 @@ type AssetsWeightInfo = AssetsWeightInfoOf<Test>;
 type Event = crate::fungibles::Event<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
+#[test]
+fn ensure_read_variants_index() {
+	let total_supply = TotalSupply::<Test>(Default::default());
+	let balance_of = BalanceOf::<Test> { token: Default::default(), owner: Default::default() };
+	let allowance = Allowance::<Test> {
+		token: Default::default(),
+		owner: Default::default(),
+		spender: Default::default(),
+	};
+	let token_name = TokenName::<Test>(Default::default());
+	let token_symbol = TokenSymbol::<Test>(Default::default());
+	let token_decimals = TokenDecimals::<Test>(Default::default());
+	let token_exists = TokenExists::<Test>(Default::default());
+	// Encode and assert on the first byte (the enum variant index)
+	assert_eq!(total_supply.encode()[0], 0);
+	assert_eq!(balance_of.encode()[0], 1);
+	assert_eq!(allowance.encode()[0], 2);
+	assert_eq!(token_name.encode()[0], 8);
+	assert_eq!(token_symbol.encode()[0], 9);
+	assert_eq!(token_decimals.encode()[0], 10);
+	assert_eq!(token_exists.encode()[0], 18);
+}
+
 mod encoding_read_result {
 	use super::*;
 
