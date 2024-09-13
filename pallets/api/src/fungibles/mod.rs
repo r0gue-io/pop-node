@@ -134,7 +134,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `spender` changes.
-		Approve {
+		Approval {
 			/// The token.
 			token: TokenIdOf<T>,
 			/// The owner providing the allowance.
@@ -278,7 +278,7 @@ pub mod pallet {
 					}
 				},
 			};
-			Self::deposit_event(Event::Approve { token, owner, spender, value });
+			Self::deposit_event(Event::Approval { token, owner, spender, value });
 			Ok(Some(weight).into())
 		}
 
@@ -306,7 +306,7 @@ pub mod pallet {
 			)
 			.map_err(|e| e.with_weight(AssetsWeightInfoOf::<T>::approve_transfer()))?;
 			let value = AssetsOf::<T>::allowance(token.clone(), &owner, &spender);
-			Self::deposit_event(Event::Approve { token, owner, spender, value });
+			Self::deposit_event(Event::Approval { token, owner, spender, value });
 			Ok(().into())
 		}
 
@@ -352,7 +352,7 @@ pub mod pallet {
 				)?;
 				WeightOf::<T>::approve(1, 1)
 			};
-			Self::deposit_event(Event::Approve { token, owner, spender, value: new_allowance });
+			Self::deposit_event(Event::Approval { token, owner, spender, value: new_allowance });
 			Ok(Some(weight).into())
 		}
 
