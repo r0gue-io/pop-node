@@ -2,7 +2,7 @@
 
 use ink::prelude::vec::Vec;
 use pop_api::{
-	assets::fungibles::{self as api},
+	fungibles::{self as api},
 	primitives::TokenId,
 	StatusCode,
 };
@@ -20,93 +20,89 @@ mod fungibles {
 	impl Fungibles {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("PopApiFungiblesExample::new");
 			Default::default()
 		}
 
 		#[ink(message)]
-		pub fn total_supply(&self, id: TokenId) -> Result<Balance> {
-			api::total_supply(id)
+		pub fn total_supply(&self, token: TokenId) -> Result<Balance> {
+			api::total_supply(token)
 		}
 
 		#[ink(message)]
-		pub fn balance_of(&self, id: TokenId, owner: AccountId) -> Result<Balance> {
-			api::balance_of(id, owner)
+		pub fn balance_of(&self, token: TokenId, owner: AccountId) -> Result<Balance> {
+			api::balance_of(token, owner)
 		}
 
 		#[ink(message)]
 		pub fn allowance(
 			&self,
-			id: TokenId,
+			token: TokenId,
 			owner: AccountId,
 			spender: AccountId,
 		) -> Result<Balance> {
-			api::allowance(id, owner, spender)
+			api::allowance(token, owner, spender)
 		}
 
 		#[ink(message)]
-		pub fn transfer(&mut self, id: TokenId, to: AccountId, value: Balance) -> Result<()> {
-			api::transfer(id, to, value)
+		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
+			api::transfer(token, to, value)
 		}
 
 		#[ink(message)]
 		pub fn transfer_from(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			from: AccountId,
 			to: AccountId,
 			value: Balance,
 			_data: Vec<u8>,
 		) -> Result<()> {
-			api::transfer_from(id, from, to, value)
+			api::transfer_from(token, from, to, value)
 		}
 
 		#[ink(message)]
-		pub fn approve(&mut self, id: TokenId, spender: AccountId, value: Balance) -> Result<()> {
-			api::approve(id, spender, value)
+		pub fn approve(
+			&mut self,
+			token: TokenId,
+			spender: AccountId,
+			value: Balance,
+		) -> Result<()> {
+			api::approve(token, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn increase_allowance(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
-			api::increase_allowance(id, spender, value)
+			api::increase_allowance(token, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn decrease_allowance(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
-			api::decrease_allowance(id, spender, value)
+			api::decrease_allowance(token, spender, value)
 		}
 
 		#[ink(message)]
-		pub fn token_name(&self, id: TokenId) -> Result<Vec<u8>> {
-			api::token_name(id)
+		pub fn token_name(&self, token: TokenId) -> Result<Vec<u8>> {
+			api::token_name(token)
 		}
 
 		#[ink(message)]
-		pub fn token_symbol(&self, id: TokenId) -> Result<Vec<u8>> {
-			api::token_symbol(id)
+		pub fn token_symbol(&self, token: TokenId) -> Result<Vec<u8>> {
+			api::token_symbol(token)
 		}
 
 		#[ink(message)]
-		pub fn token_decimals(&self, id: TokenId) -> Result<u8> {
-			api::token_decimals(id)
+		pub fn token_decimals(&self, token: TokenId) -> Result<u8> {
+			api::token_decimals(token)
 		}
-	}
-
-	#[cfg(test)]
-	mod tests {
-		use super::*;
-
-		#[ink::test]
-		fn default_works() {}
 	}
 }
