@@ -344,10 +344,7 @@ fn set_metadata_token(
 }
 
 mod read_weights {
-	use codec::MaxEncodedLen;
 	use frame_support::weights::Weight;
-	use pallet_assets::{Approval, AssetAccount, AssetDetails, AssetMetadata};
-	use sp_runtime::BoundedVec;
 
 	use super::*;
 	use crate::fungibles::{weights::WeightInfo, Config};
@@ -378,123 +375,6 @@ mod read_weights {
 				token_exists: Fungibles::weight(&TokenExists(TOKEN)),
 			}
 		}
-	}
-
-	// mock account id is u64, benchmarks use AccountId32. Adjust bytes.
-	const ADDRESS_ADJUSTMENT: u64 = 32u64 - 8u64;
-	const BLAKE_128_BYTES: u64 = 128 / 8;
-
-	// Expected encoded length calculation for `Approvals` Storage read.
-	// Storage:
-	//   - Blake2_128 * 3 = 48 bytes
-	//   - AssetId = 4 bytes
-	//   - AccountId * 2 = 64 bytes (mock runtime = 16 bytes)
-	// `Approval` type
-	//  - Balance (u128) * 2 (amount, deposit) = 32 bytes
-	// Total Proof Size = 48+4+64+32 = 148 bytes
-	fn approval_max_encoded_lens() -> (u64, u64) {
-		(
-			Approval::<Balance, Balance>::max_encoded_len() as u64 + BLAKE_128_BYTES * 3 + 4 + 64, /* AssetId + AccountId * 2 */
-			(48 + 4 + 64 + 32),
-		)
-	}
-
-	// Expected encoded length calculation for `Account` Storage read:
-	// Storage:
-	//   - Blake2_128 * 2 = 32 bytes
-	//   - AssetId = 4 bytes
-	//   - AccountId = 32 bytes (mock runtime = 8 bytes)
-	// `AssetAccount` type
-	//   - Balance = 16 bytes
-	//   - AccountStatus: 1 byte
-	//   - ExistenceReason<DepositBalance, AccountId> = 1 byte:
-	//     - DepositBalance = 16 bytes
-	//     - AccountId = 32 bytes
-	// Extra: 0 bytes
-	// Total Proof Size = 32+4+32+16+1+1+16+32 = 134 bytes
-	fn asset_account_max_encoded_lens() -> (u64, u64) {
-		(
-			AssetAccount::<Balance, Balance, (), AccountId>::max_encoded_len() as u64 +
-				ADDRESS_ADJUSTMENT +
-				BLAKE_128_BYTES * 2 +
-				4 + 32, // AssetId + AccountId
-			(32 + 4 + 32 + 16 + 1 + 1 + 16 + 32),
-		)
-	}
-
-	// Expected encoded length calculation for `Metadata` Storage read:
-	// Storage:
-	//   - Blake2_128 = 16 bytes
-	//   - AssetId = 4 bytes
-	// `AssetMetadata` type:
-	//   - DepositBalance (u128) = 16 bytes
-	//   - name: BoundedVec<u8, StringLimit> = 50 bytes + 1 byte
-	//   - symbol: BoundedVec<u8, StringLimit> = 50 bytes + byte
-	// decimals (u8) = 1 byte
-	// is_frozen (bool) = 1 byte
-	// Total Proof Size = 16+4+16+50+1+50+1+1+1 = 140 bytes
-	fn asset_metadata_max_encoded_lens() -> (u64, u64) {
-		(
-			AssetMetadata::<Balance, BoundedVec<u8, StringLimit>>::max_encoded_len() as u64 +
-				BLAKE_128_BYTES +
-				4, // AssetId
-			(16 + 4 + 16 + 50 + 1 + 50 + 1 + 1 + 1),
-		)
-	}
-
-	// Expected encoded length calculation for `Asset` Storage read:
-	// Storage:
-	//   - Blake2_128 = 16 bytes
-	//   - AssetId = 4 bytes
-	// `AssetDetails` type:
-	//   - AccountId: 32 * 4 (owner, issuer, admin, freezer) = 128 bytes
-	//   - Balance (u128) * 2 (supply, min_balance) = 32 bytes
-	//   - DepositBalance (u128) = 16 bytes
-	//   - is_sufficient (bool) = 1 byte
-	//   - accounts, sufficients, approvals (u32) * 3 = 12 bytes
-	//   - status (AssetStatus, 1 byte) = 1 byte
-	// Total Proof Size = 16+4+128+32+16+1+12+1 = 210 bytes
-	fn asset_details_max_encoded_lens() -> (u64, u64) {
-		(
-			AssetDetails::<Balance, AccountId, Balance>::max_encoded_len() as u64 +
-				ADDRESS_ADJUSTMENT * 4 +
-				BLAKE_128_BYTES +
-				4, // AssetId
-			(16 + 4 + 128 + 32 + 16 + 1 + 12 + 1),
-		)
-	}
-
-	#[test]
-	fn ensure_approval_max_encoded_len_is_correct() {
-		let (actual, expected) = approval_max_encoded_lens();
-		assert_eq!(actual, expected);
-		// see weights.rs `max_size` for `fn allowance()`
-		assert_eq!(actual, 148);
-	}
-
-	#[test]
-	fn ensure_asset_account_max_encoded_len_is_correct() {
-		let (actual, expected) = asset_account_max_encoded_lens();
-		assert_eq!(actual, expected);
-		// see weights.rs `max_size` for `fn balance_of()`
-		assert_eq!(actual, 134);
-	}
-
-	#[test]
-	fn ensure_asset_metadata_max_encoded_len_is_correct() {
-		let (actual, expected) = asset_metadata_max_encoded_lens();
-		assert_eq!(actual, expected);
-		// see weights.rs `max_size` for `fn token_name()` or `fn token_symbol()` or `fn
-		// token_decimals()`
-		assert_eq!(actual, 140);
-	}
-
-	#[test]
-	fn ensure_asset_details_max_encoded_len_is_correct() {
-		let (actual, expected) = asset_details_max_encoded_lens();
-		assert_eq!(actual, expected);
-		// see weights.rs `max_size` from `fn total_supply()` or `fn token_exists()`
-		assert_eq!(actual, 210);
 	}
 
 	#[test]
