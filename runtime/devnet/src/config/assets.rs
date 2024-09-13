@@ -96,7 +96,7 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
 }
 
-pub type TrustBackedAssetsInstance = pallet_assets::Instance1;
+pub(crate) type TrustBackedAssetsInstance = pallet_assets::Instance1;
 pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
 impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type ApprovalDeposit = ApprovalDeposit;

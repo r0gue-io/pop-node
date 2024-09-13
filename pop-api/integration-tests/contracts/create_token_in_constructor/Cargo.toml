@@ -1,5 +1,4 @@
 [package]
-authors = [ "[your_name] <[your_email]>" ]
 edition = "2021"
 name = "create_token_in_constructor"
 version = "0.1.0"
