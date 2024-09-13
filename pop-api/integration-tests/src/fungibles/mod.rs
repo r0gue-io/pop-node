@@ -101,7 +101,7 @@ fn transfer_works() {
 		assert_ok!(transfer(&addr, token, BOB, amount / 2));
 		let balance_after_transfer = Assets::balance(token, &BOB);
 		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
-		// Successfully emit an event when tokens transferred.
+		// Successfully emit event.
 		let from = account_id_from_slice(addr.as_ref());
 		let to = account_id_from_slice(BOB.as_ref());
 		let expected = Transferred { from: Some(from), to: Some(to), value: amount / 2 }.encode();
@@ -158,7 +158,7 @@ fn transfer_from_works() {
 		assert_ok!(transfer_from(&addr, token, ALICE, BOB, amount / 2));
 		let balance_after_transfer = Assets::balance(token, &BOB);
 		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
-		// Successfully emit an event when tokens transferred.
+		// Successfully emit event.
 		let from = account_id_from_slice(ALICE.as_ref());
 		let to = account_id_from_slice(BOB.as_ref());
 		let expected = Transferred { from: Some(from), to: Some(to), value: amount / 2 }.encode();
@@ -187,7 +187,7 @@ fn approve_works() {
 		assert_eq!(0, Assets::allowance(token, &addr, &BOB));
 		assert_ok!(approve(&addr, token, &BOB, amount));
 		assert_eq!(Assets::allowance(token, &addr, &BOB), amount);
-		// Successfully emit an event when a new spend allowance approved.
+		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
 		let expected = Approved { owner, spender, value: amount }.encode();
@@ -195,7 +195,7 @@ fn approve_works() {
 		// Non-additive, sets new value.
 		assert_ok!(approve(&addr, token, &BOB, amount / 2));
 		assert_eq!(Assets::allowance(token, &addr, &BOB), amount / 2);
-		// Successfully emit an event when a new spend allowance approved.
+		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
 		let expected = Approved { owner, spender, value: amount / 2 }.encode();
@@ -339,7 +339,7 @@ fn create_works() {
 		// Create token successfully.
 		assert_ok!(create(&addr, TOKEN_ID, &BOB, 1));
 		assert_eq!(Assets::owner(TOKEN_ID), Some(addr.clone()));
-		// Successfully emit an event when a new token created.
+		// Successfully emit event.
 		let admin = account_id_from_slice(BOB.as_ref());
 		let expected = Created { token: TOKEN_ID, creator: admin, admin }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
@@ -366,7 +366,7 @@ fn instantiate_and_create_fungible_works() {
 		assert_ok!(result_with_address.clone());
 		assert_eq!(Assets::owner(TOKEN_ID), instantiator.clone());
 		assert!(Assets::asset_exists(TOKEN_ID));
-		// Successfully emit an event when a new token created.
+		// Successfully emit event.
 		let instantiator = account_id_from_slice(instantiator.unwrap().as_ref());
 		let expected =
 			Created { token: TOKEN_ID, creator: instantiator.clone(), admin: instantiator }
@@ -388,7 +388,7 @@ fn start_destroy_works() {
 		assert_eq!(start_destroy(&addr, token), Err(Module { index: 52, error: [2, 0] }),);
 		let token = assets::create(&addr, TOKEN_ID, 1);
 		assert_ok!(start_destroy(&addr, token));
-		// Successfully emit an event when a new token destroyed.
+		// Successfully emit event.
 		let expected = Destroyed { token: TOKEN_ID }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 	});
@@ -431,7 +431,7 @@ fn set_metadata_works() {
 		);
 		// Set metadata successfully.
 		assert_ok!(set_metadata(&addr, TOKEN_ID, name.clone(), symbol.clone(), decimals));
-		// Successfully emit an event when a token metadata set.
+		// Successfully emit event.
 		let expected = MetadataSet { token: TOKEN_ID, name, symbol, decimals }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Token is not live, i.e. frozen or being destroyed.
@@ -467,7 +467,7 @@ fn clear_metadata_works() {
 		assets::set_metadata(&addr, token, name, symbol, decimals);
 		// Clear metadata successfully.
 		assert_ok!(clear_metadata(&addr, TOKEN_ID));
-		// Successfully emit an event when a token metadata set.
+		// Successfully emit event.
 		let expected = MetadataCleared { token: TOKEN_ID }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Token is not live, i.e. frozen or being destroyed.
