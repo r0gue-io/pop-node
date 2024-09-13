@@ -68,7 +68,8 @@ impl From<VersionedRuntimeResult> for Vec<u8> {
 }
 
 /// Versioned errors.
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq))]
 pub enum VersionedError {
 	/// Version zero of errors.
 	V0(pop_primitives::v0::Error),
