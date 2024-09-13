@@ -308,18 +308,6 @@ pub(super) mod assets {
 			decimals
 		));
 	}
-
-	pub(crate) fn token_name(asset_id: AssetId) -> Vec<u8> {
-		Assets::name(asset_id)
-	}
-
-	pub(crate) fn token_symbol(asset_id: AssetId) -> Vec<u8> {
-		Assets::symbol(asset_id)
-	}
-
-	pub(crate) fn token_decimals(asset_id: AssetId) -> u8 {
-		Assets::decimals(asset_id)
-	}
 }
 
 pub(super) fn instantiate_and_create_fungible(
