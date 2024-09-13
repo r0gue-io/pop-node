@@ -675,3 +675,138 @@ mod read_weights {
 		assert_eq!(token_exists.proof_size(), 3675);
 	}
 }
+
+mod ensure_codec_indexes {
+	use super::{Encode, RuntimeCall, *};
+	use crate::{fungibles, fungibles::Call::*, mock::RuntimeCall::Fungibles};
+
+	#[test]
+	fn ensure_read_variant_indexes() {
+		[
+			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
+			(
+				BalanceOf::<Test> { token: Default::default(), owner: Default::default() },
+				1,
+				"BalanceOf",
+			),
+			(
+				Allowance::<Test> {
+					token: Default::default(),
+					owner: Default::default(),
+					spender: Default::default(),
+				},
+				2,
+				"Allowance",
+			),
+			(TokenName::<Test>(Default::default()), 8, "TokenName"),
+			(TokenSymbol::<Test>(Default::default()), 9, "TokenSymbol"),
+			(TokenDecimals::<Test>(Default::default()), 10, "TokenDecimals"),
+			(TokenExists::<Test>(Default::default()), 18, "TokenExists"),
+		]
+		.iter()
+		.for_each(|(variant, expected_index, name)| {
+			assert_eq!(variant.encode()[0], *expected_index, "{name} variant index changed");
+		})
+	}
+
+	#[test]
+	fn ensure_dispatchable_indexes() {
+		use fungibles::Call::*;
+
+		[
+			(
+				transfer {
+					token: Default::default(),
+					to: Default::default(),
+					value: Default::default(),
+				},
+				3u8,
+				"transfer",
+			),
+			(
+				transfer_from {
+					token: Default::default(),
+					from: Default::default(),
+					to: Default::default(),
+					value: Default::default(),
+				},
+				4,
+				"transfer_from",
+			),
+			(
+				approve {
+					token: Default::default(),
+					spender: Default::default(),
+					value: Default::default(),
+				},
+				5,
+				"approve",
+			),
+			(
+				increase_allowance {
+					token: Default::default(),
+					spender: Default::default(),
+					value: Default::default(),
+				},
+				6,
+				"increase_allowance",
+			),
+			(
+				decrease_allowance {
+					token: Default::default(),
+					spender: Default::default(),
+					value: Default::default(),
+				},
+				7,
+				"decrease_allowance",
+			),
+			(
+				create {
+					id: Default::default(),
+					admin: Default::default(),
+					min_balance: Default::default(),
+				},
+				11,
+				"create",
+			),
+			(start_destroy { token: Default::default() }, 12, "start_destroy"),
+			(
+				set_metadata {
+					token: Default::default(),
+					name: Default::default(),
+					symbol: Default::default(),
+					decimals: Default::default(),
+				},
+				16,
+				"set_metadata",
+			),
+			(clear_metadata { token: Default::default() }, 17, "clear_metadata"),
+			(
+				mint {
+					token: Default::default(),
+					account: Default::default(),
+					value: Default::default(),
+				},
+				19,
+				"mint",
+			),
+			(
+				burn {
+					token: Default::default(),
+					account: Default::default(),
+					value: Default::default(),
+				},
+				20,
+				"burn",
+			),
+		]
+		.iter()
+		.for_each(|(variant, expected_index, name)| {
+			assert_eq!(
+				Fungibles(variant.to_owned()).encode()[1],
+				*expected_index,
+				"{name} dispatchable index changed"
+			);
+		})
+	}
+}
