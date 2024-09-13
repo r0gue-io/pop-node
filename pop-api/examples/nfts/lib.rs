@@ -1,3 +1,4 @@
+// DEPRECATED
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use pop_api::nfts::*;
@@ -17,7 +18,7 @@ impl From<Error> for ContractError {
 	}
 }
 
-#[ink::contract(env = pop_api::Environment)]
+#[ink::contract]
 mod nfts {
 	use super::*;
 
@@ -33,27 +34,29 @@ mod nfts {
 		}
 
 		#[ink(message)]
-		pub fn create_nft_collection( &self ) -> Result<(), ContractError>{
+		pub fn create_nft_collection(&self) -> Result<(), ContractError> {
 			ink::env::debug_println!("Nfts::create_nft_collection: collection creation started.");
-            let admin = Self::env().caller();
-            let item_settings = ItemSettings(BitFlags::from(ItemSetting::Transferable));
+			let admin = Self::env().caller();
+			let item_settings = ItemSettings(BitFlags::from(ItemSetting::Transferable));
 
-            let mint_settings = MintSettings {
-                mint_type: MintType::Issuer,
-                price: Some(0),
-                start_block: Some(0),
-                end_block: Some(0),
-                default_item_settings: item_settings,
-            };
+			let mint_settings = MintSettings {
+				mint_type: MintType::Issuer,
+				price: Some(0),
+				start_block: Some(0),
+				end_block: Some(0),
+				default_item_settings: item_settings,
+			};
 
-            let config = CollectionConfig {
-                settings: CollectionSettings(BitFlags::from(CollectionSetting::TransferableItems)),  
-                max_supply: None,
-                mint_settings,
-            };
-            pop_api::nfts::create(admin, config)?;
-			ink::env::debug_println!("Nfts::create_nft_collection: collection created successfully.");
-            Ok(())
+			let config = CollectionConfig {
+				settings: CollectionSettings(BitFlags::from(CollectionSetting::TransferableItems)),
+				max_supply: None,
+				mint_settings,
+			};
+			pop_api::nfts::create(admin, config)?;
+			ink::env::debug_println!(
+				"Nfts::create_nft_collection: collection created successfully."
+			);
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -82,9 +85,7 @@ mod nfts {
 			// check owner
 			match owner(collection_id, item_id)? {
 				Some(owner) if owner == receiver => {
-					ink::env::debug_println!(
-						"Nfts::mint success: minted item belongs to receiver"
-					);
+					ink::env::debug_println!("Nfts::mint success: minted item belongs to receiver");
 				},
 				_ => {
 					return Err(ContractError::NotOwner);

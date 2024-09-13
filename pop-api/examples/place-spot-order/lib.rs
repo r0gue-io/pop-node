@@ -1,6 +1,7 @@
+// DEPRECATED
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-#[ink::contract(env = pop_api::Environment)]
+#[ink::contract]
 mod spot_order {
 
 	#[ink(storage)]
@@ -15,11 +16,7 @@ mod spot_order {
 		}
 
 		#[ink(message)]
-		pub fn place_spot_order(
-			&mut self,
-			max_amount: Balance,
-			para_id: u32,
-		) {
+		pub fn place_spot_order(&mut self, max_amount: Balance, para_id: u32) {
 			ink::env::debug_println!(
 				"SpotOrder::place_spot_order: max_amount {:?} para_id: {:?} ",
 				max_amount,
@@ -28,10 +25,7 @@ mod spot_order {
 
 			#[allow(unused_variables)]
 			let res = pop_api::cross_chain::coretime::place_spot_order(max_amount, para_id);
-			ink::env::debug_println!(
-				"SpotOrder::place_spot_order: res {:?} ",
-				res,
-			);
+			ink::env::debug_println!("SpotOrder::place_spot_order: res {:?} ", res,);
 
 			ink::env::debug_println!("SpotOrder::place_spot_order end");
 		}

@@ -8,7 +8,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 // Public due to integration tests crate.
 pub mod config;
-mod extensions;
 mod weights;
 
 // ISMP imports
@@ -40,6 +39,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+use pallet_api::fungibles;
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -250,14 +250,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 					force_unreserve { .. }
 			)
 		)
-	}
-}
-
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	fn contains(_c: &RuntimeCall) -> bool {
-		false
 	}
 }
 
@@ -638,12 +630,17 @@ mod runtime {
 	pub type NftFractionalization = pallet_nft_fractionalization::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]
 	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
+
+	// Pop API
+	#[runtime::pallet_index(150)]
+	pub type Fungibles = fungibles::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[frame_system, SystemBench::<Runtime>]
+		[fungibles, Fungibles]
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
@@ -1071,4 +1068,15 @@ impl_runtime_apis! {
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+}
+
+// Ensures that the account id lookup does not perform any state reads. When this changes,
+// `pallet_api::fungibles` dispatchables need to be re-evaluated.
+#[test]
+fn test_lookup_config() {
+	use std::any::TypeId;
+	assert_eq!(
+		TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
+		TypeId::of::<sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>>()
+	);
 }

@@ -1,21 +1,14 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstBool, ConstU32, Randomness},
+	traits::{ConstBool, ConstU32, Nothing, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
+use super::api::{self, Config};
 use crate::{
-	deposit, extensions, Balance, Balances, BalancesCall, Perbill, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeHoldReason, Timestamp,
+	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	Timestamp,
 };
-
-pub enum AllowBalancesCall {}
-
-impl frame_support::traits::Contains<RuntimeCall> for AllowBalancesCall {
-	fn contains(call: &RuntimeCall) -> bool {
-		matches!(call, RuntimeCall::Balances(BalancesCall::transfer_allow_death { .. }))
-	}
-}
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 	pallet_contracts::Schedule {
@@ -48,15 +41,10 @@ parameter_types! {
 impl pallet_contracts::Config for Runtime {
 	type AddressGenerator = pallet_contracts::DefaultAddressGenerator;
 	type ApiVersion = ();
-	/// The safest default is to allow no calls at all.
-	///
-	/// Runtimes should whitelist dispatchables that are allowed to be called from contracts
-	/// and make sure they are stable. Dispatchables exposed to contracts are not allowed to
-	/// change because that would break already deployed contracts. The `RuntimeCall` structure
-	/// itself is not allowed to change the indices of existing pallets, too.
-	type CallFilter = AllowBalancesCall;
+	// IMPORTANT: only runtime calls through the api are allowed.
+	type CallFilter = Nothing;
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
-	type ChainExtension = extensions::PopApiExtension;
+	type ChainExtension = api::Extension<Config>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
 	type Debug = ();
@@ -89,4 +77,14 @@ impl pallet_contracts::Config for Runtime {
 	type WeightInfo = pallet_contracts::weights::SubstrateWeight<Self>;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type Xcm = pallet_xcm::Pallet<Self>;
+}
+
+// IMPORTANT: only runtime calls through the api are allowed.
+#[test]
+fn contracts_prevents_runtime_calls() {
+	use std::any::TypeId;
+	assert_eq!(
+		TypeId::of::<<Runtime as pallet_contracts::Config>::CallFilter>(),
+		TypeId::of::<Nothing>()
+	);
 }

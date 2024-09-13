@@ -22,8 +22,10 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
+pallet-api.workspace = true
+pop-chain-extension.workspace = true
 pop-primitives.workspace = true
-pop-runtime-common = { workspace = true, default-features = false }
+pop-runtime-common.workspace = true
 
 # Substrate
 frame-benchmarking.workspace = true
@@ -98,9 +100,9 @@ pallet-ismp = { workspace = true, features = [ "unsigned" ] }
 pallet-ismp-runtime-api.workspace = true
 
 [dev-dependencies]
-enumflags2 = "0.7.9"
-env_logger = "0.11.2"
-hex = "0.4.3"
+enumflags2.workspace = true
+env_logger.workspace = true
+hex.workspace = true
 
 [features]
 default = [ "std" ]
@@ -127,6 +129,7 @@ std = [
 	"ismp-parachain/std",
 	"ismp/std",
 	"log/std",
+	"pallet-api/std",
 	"pallet-assets/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
@@ -154,6 +157,7 @@ std = [
 	"parachains-common/std",
 	"polkadot-parachain-primitives/std",
 	"polkadot-runtime-common/std",
+	"pop-chain-extension/std",
 	"pop-primitives/std",
 	"pop-runtime-common/std",
 	"scale-info/std",
@@ -185,6 +189,7 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"frame-system-benchmarking/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"pallet-api/runtime-benchmarks",
 	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
@@ -203,6 +208,7 @@ runtime-benchmarks = [
 	"parachains-common/runtime-benchmarks",
 	"polkadot-parachain-primitives/runtime-benchmarks",
 	"polkadot-runtime-common/runtime-benchmarks",
+	"pop-chain-extension/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
@@ -219,6 +225,7 @@ try-runtime = [
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
 	"ismp-parachain/try-runtime",
+	"pallet-api/try-runtime",
 	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
 	"pallet-authorship/try-runtime",

@@ -9,7 +9,6 @@ use pallet_contracts::{
 	},
 	WeightInfo,
 };
-use pop_primitives::storage_keys::RuntimeStateKeys;
 use sp_core::crypto::UncheckedFrom;
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
@@ -31,10 +30,10 @@ where
 		>,
 	T::AccountId: UncheckedFrom<T::Hash> + AsRef<[u8]>,
 {
-	fn call<E: Ext>(&mut self, env: Environment<E, InitState>) -> Result<RetVal, DispatchError>
-	where
-		E: Ext<T = T>,
-	{
+	fn call<E: Ext<T = T>>(
+		&mut self,
+		env: Environment<E, InitState>,
+	) -> Result<RetVal, DispatchError> {
 		log::debug!(target:LOG_TARGET, " extension called ");
 		match v0::FuncId::try_from(env.func_id())? {
 			v0::FuncId::Dispatch => {
@@ -177,12 +176,9 @@ where
 
 	log::debug!(target:LOG_TARGET, "{} charged weight: {:?}", LOG_PREFIX, charged_weight);
 
-	let key: RuntimeStateKeys = env.read_as()?;
-
-	let result = match key {
-		_ => Vec::<u8>::default(),
-	}
-	.encode();
+	// TODO: always returning an empty vec. Chainextension will be refactored into one for both
+	//  runtimes before pop api implementation gets merged into main.
+	let result = Vec::<u8>::default().encode();
 
 	log::trace!(
 		target:LOG_TARGET,
