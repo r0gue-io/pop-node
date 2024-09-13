@@ -1,7 +1,5 @@
 use super::*;
 
-type AssetId = TokenId;
-
 fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);
 	let params = [function, params].concat();
@@ -195,6 +193,9 @@ pub(super) fn burn(
 // Helper functions for interacting with pallet-assets.
 pub(super) mod assets {
 	use super::*;
+
+	type AssetId = TokenId;
+
 	pub(crate) fn create(owner: &AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
 		assert_ok!(Assets::create(
 			RuntimeOrigin::signed(owner.clone()),
@@ -307,24 +308,6 @@ pub(super) mod assets {
 			decimals
 		));
 	}
-
-	pub(crate) fn token_name(asset_id: AssetId) -> Vec<u8> {
-		<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<
-			AccountId32,
-		>>::name(asset_id)
-	}
-
-	pub(crate) fn token_symbol(asset_id: AssetId) -> Vec<u8> {
-		<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<
-			AccountId32,
-		>>::symbol(asset_id)
-	}
-
-	pub(crate) fn token_decimals(asset_id: AssetId) -> u8 {
-		<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<
-			AccountId32,
-		>>::decimals(asset_id)
-	}
 }
 
 pub(super) fn instantiate_and_create_fungible(
@@ -334,7 +317,7 @@ pub(super) fn instantiate_and_create_fungible(
 ) -> Result<AccountId32, Error> {
 	let function = function_selector("new");
 	let input = [function, token_id.encode(), min_balance.encode()].concat();
-	let wasm_binary = load_wasm_module::<Runtime>(contract).expect("could not read .wasm file");
+	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
 	let result = Contracts::bare_instantiate(
 		ALICE,
 		INIT_VALUE,

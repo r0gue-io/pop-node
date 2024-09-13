@@ -3,8 +3,7 @@
 use frame_support::{
 	assert_ok,
 	traits::fungibles::{
-		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect,
-		roles::Inspect as RolesInspect, Inspect,
+		approvals::Inspect as _, metadata::Inspect as _, roles::Inspect as _, Inspect,
 	},
 	weights::Weight,
 };
@@ -47,14 +46,6 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	ext
 }
 
-fn load_wasm_module<T>(path: &str) -> std::io::Result<Vec<u8>>
-where
-	T: frame_system::Config,
-{
-	let wasm_binary = std::fs::read(path)?;
-	Ok(wasm_binary)
-}
-
 fn function_selector(name: &str) -> Vec<u8> {
 	let hash = sp_io::hashing::blake2_256(name.as_bytes());
 	[hash[0..4].to_vec()].concat()
@@ -82,7 +73,8 @@ fn bare_call(
 
 // Deploy, instantiate and return contract address.
 fn instantiate(contract: &str, init_value: u128, salt: Vec<u8>) -> AccountId32 {
-	let wasm_binary = load_wasm_module::<Runtime>(contract).expect("could not read .wasm file");
+	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
+
 	let result = Contracts::bare_instantiate(
 		ALICE,
 		init_value,
