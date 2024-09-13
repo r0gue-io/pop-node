@@ -675,3 +675,95 @@ mod read_weights {
 		assert_eq!(token_exists.proof_size(), 3675);
 	}
 }
+
+mod ensure_codec_indexes {
+	use super::{Encode, RuntimeCall, *};
+	use crate::{fungibles::Call::*, mock::RuntimeCall::Fungibles};
+	#[test]
+	fn ensure_read_variant_indexes() {
+		let total_supply = TotalSupply::<Test>(Default::default());
+		let balance_of = BalanceOf::<Test> { token: Default::default(), owner: Default::default() };
+		let allowance = Allowance::<Test> {
+			token: Default::default(),
+			owner: Default::default(),
+			spender: Default::default(),
+		};
+		let token_name = TokenName::<Test>(Default::default());
+		let token_symbol = TokenSymbol::<Test>(Default::default());
+		let token_decimals = TokenDecimals::<Test>(Default::default());
+		let token_exists = TokenExists::<Test>(Default::default());
+		// Encode and assert on the first byte (the enum variant index)
+		assert_eq!(total_supply.encode()[0], 0, "TotalSupply variant index changed");
+		assert_eq!(balance_of.encode()[0], 1, "BalanceOf variant index changed");
+		assert_eq!(allowance.encode()[0], 2, "Allowance variant index changed");
+		assert_eq!(token_name.encode()[0], 8, "TokenName variant index changed");
+		assert_eq!(token_symbol.encode()[0], 9, "TokenSymbol variant index changed");
+		assert_eq!(token_decimals.encode()[0], 10, "TokenDecimals variant index changed");
+		assert_eq!(token_exists.encode()[0], 18, "TokenExists variant index changed");
+	}
+
+	#[test]
+	fn ensure_dispatchable_indexes() {
+		let transfer: RuntimeCall = Fungibles(transfer {
+			token: Default::default(),
+			to: Default::default(),
+			value: Default::default(),
+		});
+		let transfer_from: RuntimeCall = Fungibles(transfer_from {
+			token: Default::default(),
+			from: Default::default(),
+			to: Default::default(),
+			value: Default::default(),
+		});
+		let approve: RuntimeCall = Fungibles(crate::fungibles::Call::approve {
+			token: Default::default(),
+			spender: Default::default(),
+			value: Default::default(),
+		});
+		let increase_allowance: RuntimeCall = Fungibles(increase_allowance {
+			token: Default::default(),
+			spender: Default::default(),
+			value: Default::default(),
+		});
+		let decrease_allowance: RuntimeCall = Fungibles(decrease_allowance {
+			token: Default::default(),
+			spender: Default::default(),
+			value: Default::default(),
+		});
+		let create: RuntimeCall = Fungibles(create {
+			id: Default::default(),
+			admin: Default::default(),
+			min_balance: Default::default(),
+		});
+		let start_destroy: RuntimeCall = Fungibles(start_destroy { token: Default::default() });
+		let set_metadata: RuntimeCall = Fungibles(set_metadata {
+			token: Default::default(),
+			name: Default::default(),
+			symbol: Default::default(),
+			decimals: Default::default(),
+		});
+		let clear_metadata: RuntimeCall = Fungibles(clear_metadata { token: Default::default() });
+		let mint: RuntimeCall = Fungibles(mint {
+			token: Default::default(),
+			account: Default::default(),
+			value: Default::default(),
+		});
+		let burn: RuntimeCall = Fungibles(burn {
+			token: Default::default(),
+			account: Default::default(),
+			value: Default::default(),
+		});
+
+		assert_eq!(transfer.encode()[1], 3, "transfer index changed");
+		assert_eq!(transfer_from.encode()[1], 4, "transfer_from index changed");
+		assert_eq!(approve.encode()[1], 5, "approve index changed");
+		assert_eq!(increase_allowance.encode()[1], 6, "increase_allowance index changed");
+		assert_eq!(decrease_allowance.encode()[1], 7, "decrease_allowance index changed");
+		assert_eq!(create.encode()[1], 11, "create index changed");
+		assert_eq!(start_destroy.encode()[1], 12, "start_destroy index changed");
+		assert_eq!(set_metadata.encode()[1], 16, "set_metadata index changed");
+		assert_eq!(clear_metadata.encode()[1], 17, "clear_metadata index changed");
+		assert_eq!(mint.encode()[1], 19, "mint index changed");
+		assert_eq!(burn.encode()[1], 20, "burn index changed");
+	}
+}
