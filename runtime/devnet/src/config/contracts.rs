@@ -83,12 +83,8 @@ impl pallet_contracts::Config for Runtime {
 #[test]
 fn contracts_prevents_runtime_calls() {
 	use std::any::TypeId;
-
-	type ExpectedCallFilter = Nothing;
-	type ConfigCallFilter = <Runtime as pallet_contracts::Config>::CallFilter;
-
-	let expected = TypeId::of::<ExpectedCallFilter>();
-	let config = TypeId::of::<ConfigCallFilter>();
-
-	assert_eq!(config, expected);
+	assert_eq!(
+		TypeId::of::<<Runtime as pallet_contracts::Config>::CallFilter>(),
+		TypeId::of::<Nothing>()
+	);
 }

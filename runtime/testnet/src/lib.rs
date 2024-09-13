@@ -1009,3 +1009,14 @@ cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 }
+
+// Ensures that the account id lookup does not perform any state reads. When this changes,
+// `pallet_api::fungibles` dispatchables need to be re-evaluated.
+#[test]
+fn test_lookup_config() {
+	use std::any::TypeId;
+	assert_eq!(
+		TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
+		TypeId::of::<sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>>()
+	);
+}
