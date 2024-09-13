@@ -1,5 +1,3 @@
-use pop_api::primitives::AccountId;
-
 use super::*;
 
 type AssetId = TokenId;
@@ -363,15 +361,18 @@ pub(super) fn last_contract_event() -> Vec<u8> {
 	let contract_events = events
 		.iter()
 		.filter_map(|event| match event {
-			pallet_contracts::Event::<Runtime>::ContractEmitted { data, .. } =>
-				Some(data.as_slice()),
+			pallet_contracts::Event::<Runtime>::ContractEmitted { data, .. } => {
+				Some(data.as_slice())
+			},
 			_ => None,
 		})
 		.collect::<Vec<&[u8]>>();
 	contract_events.last().unwrap().to_vec()
 }
 
-/// Decode slice of bytes to environment associated type AccountId.
-pub fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
-	AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
+/// Decodes a byte slice into an `AccountId` as defined in `primitives`.
+///
+/// This is used to resolve type mismatches between the `AccountId` in the integration tests and the contract environment.
+pub fn account_id_from_slice(s: &[u8; 32]) -> pop_api::primitives::AccountId {
+	pop_api::primitives::AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
 }
