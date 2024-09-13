@@ -75,7 +75,7 @@ pub mod events {
 
 	/// Event emitted when allowance by `owner` to `spender` changes.
 	#[ink::event]
-	pub struct Approved {
+	pub struct Approve {
 		/// The owner providing the allowance.
 		#[ink(topic)]
 		pub owner: AccountId,
@@ -88,7 +88,7 @@ pub mod events {
 
 	/// Event emitted when transfer of tokens occurs.
 	#[ink::event]
-	pub struct Transferred {
+	pub struct Transfer {
 		/// The source of the transfer. `None` when minting.
 		#[ink(topic)]
 		pub from: Option<AccountId>,

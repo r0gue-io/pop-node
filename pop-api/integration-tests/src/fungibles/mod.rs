@@ -1,5 +1,5 @@
 use pop_api::fungibles::events::{
-	Approved, Created, Destroyed, MetadataCleared, MetadataSet, Transferred,
+	Approve, Created, Destroyed, MetadataCleared, MetadataSet, Transfer,
 };
 use pop_primitives::{ArithmeticError::*, Error, Error::*, TokenError::*, TokenId};
 use utils::*;
@@ -104,7 +104,7 @@ fn transfer_works() {
 		// Successfully emit event.
 		let from = account_id_from_slice(addr.as_ref());
 		let to = account_id_from_slice(BOB.as_ref());
-		let expected = Transferred { from: Some(from), to: Some(to), value: amount / 2 }.encode();
+		let expected = Transfer { from: Some(from), to: Some(to), value: amount / 2 }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Transfer token to account that does not exist.
 		assert_eq!(transfer(&addr, token, FERDIE, amount / 4), Err(Token(CannotCreate)));
@@ -161,7 +161,7 @@ fn transfer_from_works() {
 		// Successfully emit event.
 		let from = account_id_from_slice(ALICE.as_ref());
 		let to = account_id_from_slice(BOB.as_ref());
-		let expected = Transferred { from: Some(from), to: Some(to), value: amount / 2 }.encode();
+		let expected = Transfer { from: Some(from), to: Some(to), value: amount / 2 }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 	});
 }
@@ -190,7 +190,7 @@ fn approve_works() {
 		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
-		let expected = Approved { owner, spender, value: amount }.encode();
+		let expected = Approve { owner, spender, value: amount }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Non-additive, sets new value.
 		assert_ok!(approve(&addr, token, &BOB, amount / 2));
@@ -198,7 +198,7 @@ fn approve_works() {
 		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
-		let expected = Approved { owner, spender, value: amount / 2 }.encode();
+		let expected = Approve { owner, spender, value: amount / 2 }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&ALICE, token);

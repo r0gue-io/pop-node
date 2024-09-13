@@ -8,7 +8,7 @@ use ink::prelude::vec::Vec;
 use pop_api::{
 	fungibles::{
 		self as api,
-		events::{Approved, Created, Destroyed, MetadataCleared, MetadataSet, Transferred},
+		events::{Approve, Created, Destroyed, MetadataCleared, MetadataSet, Transfer},
 	},
 	primitives::TokenId,
 	StatusCode,
@@ -64,7 +64,7 @@ mod fungibles {
 		#[ink(message)]
 		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
 			api::transfer(token, to, value)?;
-			self.env().emit_event(Transferred {
+			self.env().emit_event(Transfer {
 				from: Some(self.env().account_id()),
 				to: Some(to),
 				value,
@@ -83,7 +83,7 @@ mod fungibles {
 			_data: Vec<u8>,
 		) -> Result<()> {
 			api::transfer_from(token, from, to, value)?;
-			self.env().emit_event(Transferred { from: Some(from), to: Some(to), value });
+			self.env().emit_event(Transfer { from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -96,7 +96,7 @@ mod fungibles {
 		) -> Result<()> {
 			api::approve(token, spender, value)?;
 			self.env()
-				.emit_event(Approved { owner: self.env().account_id(), spender, value });
+				.emit_event(Approve { owner: self.env().account_id(), spender, value });
 			Ok(())
 		}
 
