@@ -1,3 +1,4 @@
+// DEPRECATED
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use pop_api::balances::*;
@@ -14,7 +15,7 @@ impl From<Error> for ContractError {
 	}
 }
 
-#[ink::contract(env = pop_api::Environment)]
+#[ink::contract]
 mod balance_transfer {
 	use super::*;
 

@@ -13,3 +13,6 @@
 
 # Binaries
 **/bin/
+
+# Cargo.lock
+**/Cargo.lock
