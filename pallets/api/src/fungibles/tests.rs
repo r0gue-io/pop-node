@@ -83,7 +83,7 @@ fn transfer_works() {
 		}
 		// Check error works for `Assets::transfer_keep_alive()`.
 		assert_noop!(Fungibles::transfer(signed(from), token, to, value), AssetsError::Unknown);
-		pallet_assets_create_and_mint_to(from, token, from, value * 2);
+		assets::create_and_mint_to(from, token, from, value * 2);
 		let balance_before_transfer = Assets::balance(token, &to);
 		assert_ok!(Fungibles::transfer(signed(from), token, to, value));
 		let balance_after_transfer = Assets::balance(token, &to);
@@ -112,7 +112,7 @@ fn transfer_from_works() {
 			AssetsError::Unknown
 		);
 		// Approve `spender` to transfer up to `value`.
-		pallet_assets_create_mint_and_approve(spender, token, from, value * 2, spender, value);
+		assets::create_mint_and_approve(spender, token, from, value * 2, spender, value);
 		// Successfully call transfer from.
 		let from_balance_before_transfer = Assets::balance(token, &from);
 		let to_balance_before_transfer = Assets::balance(token, &to);
@@ -166,14 +166,14 @@ mod approve {
 				Fungibles::approve(signed(owner), token, spender, value),
 				AssetsError::Unknown.with_weight(WeightInfo::approve(1, 0))
 			);
-			pallet_assets_create_mint_and_approve(owner, token, owner, value, spender, value);
+			assets::create_mint_and_approve(owner, token, owner, value, spender, value);
 			// Check error works for `Assets::cancel_approval()` in `Less` match arm.
-			pallet_assets_freeze_asset(owner, token);
+			assert_ok!(Assets::freeze_asset(signed(owner), token));
 			assert_noop!(
 				Fungibles::approve(signed(owner), token, spender, value / 2),
 				AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
 			);
-			pallet_assets_thaw_asset(owner, token);
+			assert_ok!(Assets::thaw_asset(signed(owner), token));
 			// No error test for `approve_transfer` in `Less` arm because it is not possible.
 		});
 	}
@@ -188,7 +188,7 @@ mod approve {
 			let spender = BOB;
 
 			// Approves a value to spend that is higher than the current allowance.
-			pallet_assets_create_and_mint_to(owner, token, owner, value);
+			assets::create_and_mint_to(owner, token, owner, value);
 			assert_eq!(Assets::allowance(token, &owner, &spender), 0);
 			assert_eq!(
 				Fungibles::approve(signed(owner), token, spender, value),
@@ -244,7 +244,7 @@ fn increase_allowance_works() {
 			Fungibles::increase_allowance(signed(owner), token, spender, value),
 			AssetsError::Unknown.with_weight(AssetsWeightInfo::approve_transfer())
 		);
-		pallet_assets_create_and_mint_to(owner, token, owner, value);
+		assets::create_and_mint_to(owner, token, owner, value);
 		assert_eq!(0, Assets::allowance(token, &owner, &spender));
 		assert_ok!(Fungibles::increase_allowance(signed(owner), token, spender, value));
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
@@ -278,7 +278,7 @@ fn decrease_allowance_works() {
 			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
 			AssetsError::Unknown.with_weight(WeightInfo::approve(0, 1))
 		);
-		pallet_assets_create_mint_and_approve(owner, token, owner, value, spender, value);
+		assets::create_mint_and_approve(owner, token, owner, value, spender, value);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
 		// Owner balance is not changed if decreased by zero.
 		assert_eq!(
@@ -331,7 +331,7 @@ fn start_destroy_works() {
 
 		// Check error works for `Assets::start_destroy()`.
 		assert_noop!(Fungibles::start_destroy(signed(ALICE), token), AssetsError::Unknown);
-		pallet_assets_create(ALICE, token);
+		assert_ok!(Assets::create(signed(ALICE), token, ALICE, 1));
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), token));
 		// Check that the token is not live after starting the destroy process.
 		assert_noop!(
@@ -354,7 +354,7 @@ fn set_metadata_works() {
 			Fungibles::set_metadata(signed(ALICE), token, name.clone(), symbol.clone(), decimals),
 			AssetsError::Unknown
 		);
-		pallet_assets_create(ALICE, token);
+		assert_ok!(Assets::create(signed(ALICE), token, ALICE, 1));
 		assert_ok!(Fungibles::set_metadata(
 			signed(ALICE),
 			token,
@@ -375,7 +375,7 @@ fn clear_metadata_works() {
 
 		// Check error works for `Assets::clear_metadata()`.
 		assert_noop!(Fungibles::clear_metadata(signed(ALICE), token), AssetsError::Unknown);
-		pallet_assets_create_and_set_metadata(ALICE, token, vec![42], vec![42], 42);
+		assets::create_and_set_metadata(ALICE, token, vec![42], vec![42], 42);
 		assert_ok!(Fungibles::clear_metadata(signed(ALICE), token));
 		assert!(Assets::name(token).is_empty());
 		assert!(Assets::symbol(token).is_empty());
@@ -396,7 +396,7 @@ fn mint_works() {
 			Fungibles::mint(signed(from), token, to, value),
 			sp_runtime::TokenError::UnknownAsset
 		);
-		pallet_assets_create(from, token);
+		assert_ok!(Assets::create(signed(from), token, from, 1));
 		let balance_before_mint = Assets::balance(token, &to);
 		assert_ok!(Fungibles::mint(signed(from), token, to, value));
 		let balance_after_mint = Assets::balance(token, &to);
@@ -418,7 +418,7 @@ fn burn_works() {
 
 		// Check error works for `Assets::burn()`.
 		assert_noop!(Fungibles::burn(signed(owner), token, from, value), AssetsError::Unknown);
-		pallet_assets_create_and_mint_to(owner, token, from, total_supply);
+		assets::create_and_mint_to(owner, token, from, total_supply);
 		assert_eq!(Assets::total_supply(TOKEN), total_supply);
 		let balance_before_burn = Assets::balance(token, &from);
 		assert_ok!(Fungibles::burn(signed(owner), token, from, value));
@@ -439,7 +439,7 @@ fn total_supply_works() {
 			Fungibles::read(TotalSupply(TOKEN)),
 			ReadResult::TotalSupply(Default::default())
 		);
-		pallet_assets_create_and_mint_to(ALICE, TOKEN, ALICE, total_supply);
+		assets::create_and_mint_to(ALICE, TOKEN, ALICE, total_supply);
 		assert_eq!(Fungibles::read(TotalSupply(TOKEN)), ReadResult::TotalSupply(total_supply));
 		assert_eq!(
 			Fungibles::read(TotalSupply(TOKEN)).encode(),
@@ -456,7 +456,7 @@ fn balance_of_works() {
 			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }),
 			ReadResult::BalanceOf(Default::default())
 		);
-		pallet_assets_create_and_mint_to(ALICE, TOKEN, ALICE, value);
+		assets::create_and_mint_to(ALICE, TOKEN, ALICE, value);
 		assert_eq!(
 			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }),
 			ReadResult::BalanceOf(value)
@@ -476,7 +476,7 @@ fn allowance_works() {
 			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }),
 			ReadResult::Allowance(Default::default())
 		);
-		pallet_assets_create_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
+		assets::create_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
 		assert_eq!(
 			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }),
 			ReadResult::Allowance(value)
@@ -503,7 +503,7 @@ fn token_metadata_works() {
 			Fungibles::read(TokenDecimals(TOKEN)),
 			ReadResult::TokenDecimals(Default::default())
 		);
-		pallet_assets_create_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
+		assets::create_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
 		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(name));
 		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(symbol));
 		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)), ReadResult::TokenDecimals(decimals));
@@ -520,7 +520,7 @@ fn token_metadata_works() {
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(false));
-		pallet_assets_create(ALICE, TOKEN);
+		assert_ok!(Assets::create(signed(ALICE), TOKEN, ALICE, 1));
 		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(true));
 		assert_eq!(
 			Fungibles::read(TokenExists(TOKEN)).encode(),
@@ -541,61 +541,40 @@ fn none() -> RuntimeOrigin {
 	RuntimeOrigin::none()
 }
 
-fn pallet_assets_create(owner: AccountId, token: TokenId) {
-	assert_ok!(Assets::create(signed(owner), token, owner, 1));
-}
+// Helper functions for interacting with pallet-assets.
+mod assets {
+	use super::*;
 
-fn pallet_assets_mint(owner: AccountId, token: TokenId, to: AccountId, value: Balance) {
-	assert_ok!(Assets::mint(signed(owner), token, to, value));
-}
+	pub(super) fn create_and_mint_to(
+		owner: AccountId,
+		token: TokenId,
+		to: AccountId,
+		value: Balance,
+	) {
+		assert_ok!(Assets::create(signed(owner), token, owner, 1));
+		assert_ok!(Assets::mint(signed(owner), token, to, value));
+	}
 
-fn pallet_assets_create_and_mint_to(
-	owner: AccountId,
-	token: TokenId,
-	to: AccountId,
-	value: Balance,
-) {
-	pallet_assets_create(owner, token);
-	pallet_assets_mint(owner, token, to, value)
-}
+	pub(super) fn create_mint_and_approve(
+		owner: AccountId,
+		token: TokenId,
+		to: AccountId,
+		mint: Balance,
+		spender: AccountId,
+		approve: Balance,
+	) {
+		create_and_mint_to(owner, token, to, mint);
+		assert_ok!(Assets::approve_transfer(signed(to), token, spender, approve,));
+	}
 
-fn pallet_assets_create_mint_and_approve(
-	owner: AccountId,
-	token: TokenId,
-	to: AccountId,
-	mint: Balance,
-	spender: AccountId,
-	approve: Balance,
-) {
-	pallet_assets_create_and_mint_to(owner, token, to, mint);
-	assert_ok!(Assets::approve_transfer(signed(to), token, spender, approve,));
-}
-
-fn pallet_assets_create_and_set_metadata(
-	owner: AccountId,
-	token: TokenId,
-	name: Vec<u8>,
-	symbol: Vec<u8>,
-	decimals: u8,
-) {
-	assert_ok!(Assets::create(signed(owner), token, owner, 100));
-	pallet_assets_set_metadata(owner, token, name, symbol, decimals);
-}
-
-fn pallet_assets_set_metadata(
-	owner: AccountId,
-	token: TokenId,
-	name: Vec<u8>,
-	symbol: Vec<u8>,
-	decimals: u8,
-) {
-	assert_ok!(Assets::set_metadata(signed(owner), token, name, symbol, decimals));
-}
-
-fn pallet_assets_freeze_asset(owner: AccountId, token: TokenId) {
-	assert_ok!(Assets::freeze_asset(signed(owner), token));
-}
-
-fn pallet_assets_thaw_asset(owner: AccountId, token: TokenId) {
-	assert_ok!(Assets::thaw_asset(signed(owner), token));
+	pub(super) fn create_and_set_metadata(
+		owner: AccountId,
+		token: TokenId,
+		name: Vec<u8>,
+		symbol: Vec<u8>,
+		decimals: u8,
+	) {
+		assert_ok!(Assets::create(signed(owner), token, owner, 1));
+		assert_ok!(Assets::set_metadata(signed(owner), token, name, symbol, decimals));
+	}
 }
