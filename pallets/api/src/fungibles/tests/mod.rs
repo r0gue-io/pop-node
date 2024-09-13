@@ -17,6 +17,9 @@ use crate::{
 	Read,
 };
 
+// Tests for read and dispatchable index.
+mod index;
+
 const TOKEN: u32 = 42;
 
 type AssetsError = pallet_assets::Error<Test, AssetsInstanceOf<Test>>;
