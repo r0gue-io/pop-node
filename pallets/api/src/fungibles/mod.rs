@@ -41,7 +41,8 @@ pub mod pallet {
 	use super::*;
 
 	/// State reads for the fungibles API with required input.
-	#[derive(Encode, Decode, Debug, MaxEncodedLen, PartialEq, Clone)]
+	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
@@ -81,7 +82,8 @@ pub mod pallet {
 	}
 
 	/// Results of state reads for the fungibles API.
-	#[derive(Debug, PartialEq, Clone)]
+	#[derive(Debug)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
 		/// Total token supply for a specified token.
 		TotalSupply(BalanceOf<T>),
@@ -485,9 +487,17 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `request` - The read request.
-		fn weight(_request: &Self::Read) -> Weight {
-			// TODO: match on request and return benchmarked weight
-			T::DbWeight::get().reads(1_u64)
+		fn weight(request: &Self::Read) -> Weight {
+			use Read::*;
+			match request {
+				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
+				BalanceOf { .. } => <T as Config>::WeightInfo::balance_of(),
+				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
+				TokenName(_) => <T as Config>::WeightInfo::token_name(),
+				TokenSymbol(_) => <T as Config>::WeightInfo::token_symbol(),
+				TokenDecimals(_) => <T as Config>::WeightInfo::token_decimals(),
+				TokenExists(_) => <T as Config>::WeightInfo::token_exists(),
+			}
 		}
 
 		/// Performs the requested read and returns the result.

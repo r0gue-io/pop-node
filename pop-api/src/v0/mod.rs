@@ -4,7 +4,7 @@ use crate::{
 	build_extension_method,
 	constants::{DISPATCH, READ_STATE},
 	primitives::Error,
-	StatusCode,
+	ChainExtensionMethodApi, StatusCode,
 };
 
 /// APIs for fungible tokens.
@@ -24,7 +24,7 @@ impl From<StatusCode> for Error {
 // Parameters:
 // - 'module': The index of the runtime module.
 // - 'dispatchable': The index of the module dispatchable functions.
-fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
+fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethodApi {
 	build_extension_method(DISPATCH, V0, module, dispatchable)
 }
 
@@ -33,6 +33,6 @@ fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethod<(), (), 
 // Parameters:
 // - 'module': The index of the runtime module.
 // - 'state_query': The index of the runtime state query.
-fn build_read_state(module: u8, state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
+fn build_read_state(module: u8, state_query: u8) -> ChainExtensionMethodApi {
 	build_extension_method(READ_STATE, V0, module, state_query)
 }
