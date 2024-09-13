@@ -20,7 +20,7 @@ type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
 type BalanceOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
-type WeightInfoOf<T> = <T as Config>::WeightInfo;
+type WeightOf<T> = <T as Config>::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -236,12 +236,12 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(WeightInfoOf::<T>::approve(0, 0)))?;
+				.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(token.clone(), &owner, &spender);
 
 			let weight = match value.cmp(&current_allowance) {
 				// If the new value is equal to the current allowance, do nothing.
-				Equal => WeightInfoOf::<T>::approve(0, 0),
+				Equal => WeightOf::<T>::approve(0, 0),
 				// If the new value is greater than the current allowance, approve the difference
 				// because `approve_transfer` works additively (see `pallet-assets`).
 				Greater => {
@@ -251,8 +251,8 @@ pub mod pallet {
 						T::Lookup::unlookup(spender.clone()),
 						value.saturating_sub(current_allowance),
 					)
-					.map_err(|e| e.with_weight(WeightInfoOf::<T>::approve(1, 0)))?;
-					WeightInfoOf::<T>::approve(1, 0)
+					.map_err(|e| e.with_weight(WeightOf::<T>::approve(1, 0)))?;
+					WeightOf::<T>::approve(1, 0)
 				},
 				// If the new value is less than the current allowance, cancel the approval and
 				// set the new value.
@@ -264,9 +264,9 @@ pub mod pallet {
 						token_param.clone(),
 						spender_source.clone(),
 					)
-					.map_err(|e| e.with_weight(WeightInfoOf::<T>::approve(0, 1)))?;
+					.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 1)))?;
 					if value.is_zero() {
-						WeightInfoOf::<T>::approve(0, 1)
+						WeightOf::<T>::approve(0, 1)
 					} else {
 						AssetsOf::<T>::approve_transfer(
 							origin,
@@ -274,7 +274,7 @@ pub mod pallet {
 							spender_source,
 							value,
 						)?;
-						WeightInfoOf::<T>::approve(1, 1)
+						WeightOf::<T>::approve(1, 1)
 					}
 				},
 			};
@@ -297,7 +297,7 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(WeightInfoOf::<T>::approve(0, 0)))?;
+				.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 0)))?;
 			AssetsOf::<T>::approve_transfer(
 				origin,
 				token.clone().into(),
@@ -325,9 +325,9 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(WeightInfoOf::<T>::approve(0, 0)))?;
+				.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 0)))?;
 			if value.is_zero() {
-				return Ok(Some(WeightInfoOf::<T>::approve(0, 0)).into());
+				return Ok(Some(WeightOf::<T>::approve(0, 0)).into());
 			}
 			let current_allowance = AssetsOf::<T>::allowance(token.clone(), &owner, &spender);
 			let spender_source = T::Lookup::unlookup(spender.clone());
@@ -339,10 +339,10 @@ pub mod pallet {
 				token_param.clone(),
 				spender_source.clone(),
 			)
-			.map_err(|e| e.with_weight(WeightInfoOf::<T>::approve(0, 1)))?;
+			.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 1)))?;
 			let new_allowance = current_allowance.saturating_sub(value);
 			let weight = if new_allowance.is_zero() {
-				WeightInfoOf::<T>::approve(0, 1)
+				WeightOf::<T>::approve(0, 1)
 			} else {
 				AssetsOf::<T>::approve_transfer(
 					origin,
@@ -350,7 +350,7 @@ pub mod pallet {
 					spender_source,
 					new_allowance,
 				)?;
-				WeightInfoOf::<T>::approve(1, 1)
+				WeightOf::<T>::approve(1, 1)
 			};
 			Self::deposit_event(Event::Approval { token, owner, spender, value: new_allowance });
 			Ok(Some(weight).into())
@@ -383,13 +383,12 @@ pub mod pallet {
 
 		/// Start the process of destroying a token.
 		///
-		/// See `pallet-assets` documentation for more information. Related dispatchables are:
-		/// - `destroy_accounts`
-		/// - `destroy_approvals`
-		/// - `finish_destroy`
-		///
 		/// # Parameters
 		/// - `token` - The token to be destroyed.
+		// See `pallet-assets` documentation for more information. Related dispatchables are:
+		// - `destroy_accounts`
+		// - `destroy_approvals`
+		// - `finish_destroy`
 		#[pallet::call_index(12)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
 		pub fn start_destroy(origin: OriginFor<T>, token: TokenIdOf<T>) -> DispatchResult {
