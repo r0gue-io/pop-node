@@ -508,12 +508,10 @@ pub mod pallet {
 			use Read::*;
 			match request {
 				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
-				BalanceOf { token, owner } => {
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner))
-				},
-				Allowance { token, owner, spender } => {
-					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender))
-				},
+				BalanceOf { token, owner } =>
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
+				Allowance { token, owner, spender } =>
+					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
 				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
 					AccountIdOf<T>,
 				>>::name(token)),
