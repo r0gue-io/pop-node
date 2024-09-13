@@ -76,15 +76,15 @@ mod constants {
 // Helper method to build a dispatch call or a call to read state.
 //
 // Parameters:
-// - 'version': The version of the chain extension.
 // - 'function': The ID of the function.
+// - 'version': The version of the chain extension.
 // - 'module': The index of the runtime module.
 // - 'dispatchable': The index of the module dispatchable functions.
 fn build_extension_method(
-	version: u8,
 	function: u8,
+	version: u8,
 	module: u8,
 	dispatchable: u8,
 ) -> ChainExtensionMethodApi {
-	ChainExtensionMethod::build(u32::from_le_bytes([version, function, module, dispatchable]))
+	ChainExtensionMethod::build(u32::from_le_bytes([function, version, module, dispatchable]))
 }

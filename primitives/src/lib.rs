@@ -1,6 +1,10 @@
+//! The `pop-primitives` crate provides types used by other crates.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use codec::{Decode, Encode};
+#[cfg(test)]
+use enum_iterator::Sequence;
 #[cfg(feature = "std")]
 use scale_info::TypeInfo;
 pub use v0::*;
@@ -8,6 +12,7 @@ pub use v0::*;
 /// The identifier of a token.
 pub type TokenId = u32;
 
+/// The first version of primitives' types.
 pub mod v0 {
 	pub use error::*;
 
@@ -16,9 +21,10 @@ pub mod v0 {
 	mod error {
 		use super::*;
 
-		/// Reason why a Pop API call failed.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		/// Reason why a call failed.
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
+		#[cfg_attr(test, derive(Sequence))]
 		#[repr(u8)]
 		#[allow(clippy::unnecessary_cast)]
 		pub enum Error {
@@ -102,8 +108,9 @@ pub mod v0 {
 		}
 
 		/// Description of what went wrong when trying to complete an operation on a token.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(test, derive(Sequence))]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
 		pub enum TokenError {
 			/// Funds are unavailable.
 			FundsUnavailable,
@@ -129,8 +136,9 @@ pub mod v0 {
 		}
 
 		/// Arithmetic errors.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(test, derive(Sequence))]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
 		pub enum ArithmeticError {
 			/// Underflow.
 			Underflow,
@@ -141,13 +149,51 @@ pub mod v0 {
 		}
 
 		/// Errors related to transactional storage layers.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(test, derive(Sequence))]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
 		pub enum TransactionalError {
 			/// Too many transactional layers have been spawned.
 			LimitReached,
 			/// A transactional layer was expected, but does not exist.
 			NoLayer,
+		}
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use enum_iterator::all;
+
+		use super::{Error::*, *};
+
+		// Conversion method for `Error` to `u32`.
+		fn convert_error_into_u32(error: &Error) -> u32 {
+			let mut encoded_error = error.encode();
+			encoded_error.resize(4, 0);
+			u32::from_le_bytes(
+				encoded_error.try_into().expect("qed, resized to 4 bytes line above"),
+			)
+		}
+
+		#[test]
+		fn test_error_u32_conversion_with_all_variants() {
+			// Test conversion for all Error variants
+			all::<Error>().collect::<Vec<_>>().into_iter().for_each(|error| {
+				let status_code = u32::from(error.clone());
+				let expected = convert_error_into_u32(&error);
+				assert_eq!(status_code, expected);
+				let decoded_error = Error::from(status_code);
+				assert_eq!(decoded_error, error);
+			});
+		}
+
+		#[test]
+		fn test_invalid_u32_values_result_in_decoding_failed() {
+			// U32 values that don't map to a valid Error.
+			vec![111u32, 999u32, 1234u32].into_iter().for_each(|invalid_value| {
+				let error: Error = invalid_value.into();
+				assert_eq!(error, DecodingFailed,);
+			});
 		}
 	}
 }

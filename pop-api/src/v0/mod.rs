@@ -1,3 +1,5 @@
+use ink::env::chain_extension::ChainExtensionMethod;
+
 use crate::{
 	build_extension_method,
 	constants::{DISPATCH, READ_STATE},
@@ -23,7 +25,7 @@ impl From<StatusCode> for Error {
 // - 'module': The index of the runtime module.
 // - 'dispatchable': The index of the module dispatchable functions.
 fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethodApi {
-	build_extension_method(V0, DISPATCH, module, dispatchable)
+	build_extension_method(DISPATCH, V0, module, dispatchable)
 }
 
 // Helper method to build a call to read state.
@@ -32,5 +34,5 @@ fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethodApi {
 // - 'module': The index of the runtime module.
 // - 'state_query': The index of the runtime state query.
 fn build_read_state(module: u8, state_query: u8) -> ChainExtensionMethodApi {
-	build_extension_method(V0, READ_STATE, module, state_query)
+	build_extension_method(READ_STATE, V0, module, state_query)
 }
