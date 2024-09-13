@@ -150,12 +150,12 @@ mod fungibles {
 		#[ink(message)]
 		pub fn create(
 			&mut self,
-			token: TokenId,
+			id: TokenId,
 			admin: AccountId,
 			min_balance: Balance,
 		) -> Result<()> {
-			api::create(token, admin, min_balance)?;
-			self.env().emit_event(Created { token, creator: admin, admin });
+			api::create(id, admin, min_balance)?;
+			self.env().emit_event(Created { id, creator: admin, admin });
 			Ok(())
 		}
 

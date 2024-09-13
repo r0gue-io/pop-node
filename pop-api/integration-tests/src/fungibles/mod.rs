@@ -1,10 +1,10 @@
-use super::*;
-use pop_api::{
-	fungibles::events::{Approved, Created, Destroyed, MetadataCleared, MetadataSet, Transferred},
-	primitives::account_id_from_slice,
+use pop_api::fungibles::events::{
+	Approved, Created, Destroyed, MetadataCleared, MetadataSet, Transferred,
 };
 use pop_primitives::{ArithmeticError::*, Error, Error::*, TokenError::*, TokenId};
 use utils::*;
+
+use super::*;
 
 mod utils;
 
@@ -341,7 +341,7 @@ fn create_works() {
 		assert_eq!(Assets::owner(TOKEN_ID), Some(addr.clone()));
 		// Successfully emit event.
 		let admin = account_id_from_slice(BOB.as_ref());
-		let expected = Created { token: TOKEN_ID, creator: admin, admin }.encode();
+		let expected = Created { id: TOKEN_ID, creator: admin, admin }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Token ID is already taken.
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 1), Err(Module { index: 52, error: [5, 0] }),);
@@ -369,8 +369,7 @@ fn instantiate_and_create_fungible_works() {
 		// Successfully emit event.
 		let instantiator = account_id_from_slice(instantiator.unwrap().as_ref());
 		let expected =
-			Created { token: TOKEN_ID, creator: instantiator.clone(), admin: instantiator }
-				.encode();
+			Created { id: TOKEN_ID, creator: instantiator.clone(), admin: instantiator }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 	});
 }

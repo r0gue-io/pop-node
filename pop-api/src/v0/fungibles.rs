@@ -104,7 +104,7 @@ pub mod events {
 	pub struct Created {
 		/// The token identifier.
 		#[ink(topic)]
-		pub token: TokenId,
+		pub id: TokenId,
 		/// The creator of the token.
 		#[ink(topic)]
 		pub creator: AccountId,

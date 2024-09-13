@@ -14,23 +14,23 @@ mod create_token_in_constructor {
 
 	#[ink(storage)]
 	pub struct Fungible {
-		token: TokenId,
+		id: TokenId,
 	}
 
 	impl Fungible {
 		#[ink(constructor, payable)]
-		pub fn new(token: TokenId, min_balance: Balance) -> Result<Self> {
-			let contract = Self { token };
+		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self> {
+			let contract = Self { id };
 			// AccountId of the contract which will be set to the owner of the fungible token.
 			let owner = contract.env().account_id();
-			api::create(token, owner, min_balance)?;
-			contract.env().emit_event(Created { token, creator: owner, admin: owner });
+			api::create(id, owner, min_balance)?;
+			contract.env().emit_event(Created { id, creator: owner, admin: owner });
 			Ok(contract)
 		}
 
 		#[ink(message)]
 		pub fn token_exists(&self) -> Result<bool> {
-			api::token_exists(self.token)
+			api::token_exists(self.id)
 		}
 	}
 }
