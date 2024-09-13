@@ -240,7 +240,7 @@ mod tests {
 
 	// Compare all the different `DispatchError` variants with the expected `Error`.
 	#[test]
-	fn dispatch_error_to_error() {
+	fn from_dispatch_error_to_error_works() {
 		let test_cases = vec![
 			(Other(""), (Error::Other)),
 			(Other("UnknownCall"), Error::Other),
