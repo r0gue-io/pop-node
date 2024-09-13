@@ -96,7 +96,8 @@ impl From<VersionedError> for u32 {
 	}
 }
 
-// Type for `pop_primitives::Error` to avoid taking a dependency of sp_runtime on pop-primitives.
+// Type for conversion to a versioned `pop_primitives::Error` to avoid taking a dependency of
+// sp_runtime on pop-primitives.
 struct V0Error(pop_primitives::v0::Error);
 impl From<DispatchError> for V0Error {
 	fn from(error: DispatchError) -> Self {
@@ -161,6 +162,7 @@ impl From<DispatchError> for V0Error {
 
 #[cfg(test)]
 mod tests {
+	use codec::Encode;
 	use frame_system::Call;
 	use pop_primitives::{ArithmeticError::*, Error, TokenError::*, TransactionalError::*};
 	use sp_runtime::ModuleError;
@@ -182,7 +184,7 @@ mod tests {
 	}
 
 	#[test]
-	fn from_versioned_runtime_result_works() {
+	fn versioned_runtime_result_works() {
 		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000));
 		let v0 = 0;
 		let v1 = 1;
@@ -198,13 +200,14 @@ mod tests {
 	}
 
 	#[test]
-	fn from_versioned_runtime_result_to_bytes_works() {
-		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000));
-		assert_eq!(<Vec<u8>>::from(VersionedRuntimeResult::V0(result.clone())), result.encode());
+	fn versioned_runtime_result_to_bytes_works() {
+		let value = 1_000;
+		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(value));
+		assert_eq!(<Vec<u8>>::from(VersionedRuntimeResult::V0(result)), value.encode());
 	}
 
 	#[test]
-	fn from_versioned_error_works() {
+	fn versioned_error_works() {
 		let error = BadOrigin;
 		let v0 = 0;
 		let v1 = 1;
@@ -220,13 +223,13 @@ mod tests {
 	}
 
 	#[test]
-	fn from_versioned_error_to_u32_works() {
+	fn versioned_error_to_u32_works() {
 		assert_eq!(u32::from(VersionedError::V0(Error::BadOrigin)), u32::from(Error::BadOrigin));
 	}
 
 	// Compare all the different `DispatchError` variants with the expected `Error`.
 	#[test]
-	fn from_dispatch_error_to_error_works() {
+	fn dispatch_error_to_error() {
 		let test_cases = vec![
 			(Other(""), (Error::Other)),
 			(Other("UnknownCall"), Error::Other),

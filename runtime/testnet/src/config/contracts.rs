@@ -77,3 +77,17 @@ impl pallet_contracts::Config for Runtime {
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type Xcm = pallet_xcm::Pallet<Self>;
 }
+
+// IMPORTANT: only runtime calls through the api are allowed.
+#[test]
+fn contracts_prevents_runtime_calls() {
+	use std::any::TypeId;
+
+	type ExpectedCallFilter = Nothing;
+	type ConfigCallFilter = <Runtime as pallet_contracts::Config>::CallFilter;
+
+	let expected = TypeId::of::<ExpectedCallFilter>();
+	let config = TypeId::of::<ConfigCallFilter>();
+
+	assert_eq!(config, expected);
+}
