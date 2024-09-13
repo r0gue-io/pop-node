@@ -28,7 +28,7 @@ fn total_supply_works() {
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(0));
 
 		// Tokens in circulation.
-		pallet_assets_create_and_mint_to(&addr, TOKEN_ID, &BOB, 100);
+		assets::create_and_mint_to(&addr, TOKEN_ID, &BOB, 100);
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(Assets::total_supply(TOKEN_ID)));
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(100));
 	});
@@ -44,7 +44,7 @@ fn balance_of_works() {
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(0));
 
 		// Tokens in circulation.
-		pallet_assets_create_and_mint_to(&addr, TOKEN_ID, &BOB, 100);
+		assets::create_and_mint_to(&addr, TOKEN_ID, &BOB, 100);
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(Assets::balance(TOKEN_ID, BOB)));
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(100));
 	});
@@ -63,7 +63,7 @@ fn allowance_works() {
 		assert_eq!(allowance(&addr, TOKEN_ID, BOB, ALICE), Ok(0));
 
 		// Tokens in circulation.
-		pallet_assets_create_mint_and_approve(&addr, TOKEN_ID, &BOB, 100, &ALICE, 50);
+		assets::create_mint_and_approve(&addr, TOKEN_ID, &BOB, 100, &ALICE, 50);
 		assert_eq!(
 			allowance(&addr, TOKEN_ID, BOB, ALICE),
 			Ok(Assets::allowance(TOKEN_ID, &BOB, &ALICE))
@@ -81,11 +81,11 @@ fn transfer_works() {
 		// Token does not exist.
 		assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0] }));
 		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = pallet_assets_create_and_mint_to(&ALICE, 1, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&ALICE, token);
+		assets::freeze(&ALICE, token);
 		assert_eq!(transfer(&addr, token, BOB, amount), Err(Module { index: 52, error: [16, 0] }));
-		pallet_assets_thaw(&ALICE, token);
+		assets::thaw(&ALICE, token);
 		// Not enough balance.
 		assert_eq!(
 			transfer(&addr, token, BOB, amount + 1 * UNIT),
@@ -101,7 +101,7 @@ fn transfer_works() {
 		// Transfer token to account that does not exist.
 		assert_eq!(transfer(&addr, token, FERDIE, amount / 4), Err(Token(CannotCreate)));
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&ALICE, token);
+		assets::start_destroy(&ALICE, token);
 		assert_eq!(
 			transfer(&addr, token, BOB, amount / 4),
 			Err(Module { index: 52, error: [16, 0] })
@@ -121,7 +121,7 @@ fn transfer_from_works() {
 			Err(Module { index: 52, error: [3, 0] }),
 		);
 		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = pallet_assets_create_and_mint_to(&ALICE, 1, &ALICE, amount);
+		let token = assets::create_and_mint_to(&ALICE, 1, &ALICE, amount);
 		// Unapproved transfer.
 		assert_eq!(
 			transfer_from(&addr, token, ALICE, BOB, amount / 2),
@@ -134,12 +134,12 @@ fn transfer_from_works() {
 			amount + 1 * UNIT,
 		));
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&ALICE, token);
+		assets::freeze(&ALICE, token);
 		assert_eq!(
 			transfer_from(&addr, token, ALICE, BOB, amount),
 			Err(Module { index: 52, error: [16, 0] }),
 		);
-		pallet_assets_thaw(&ALICE, token);
+		assets::thaw(&ALICE, token);
 		// Not enough balance.
 		assert_eq!(
 			transfer_from(&addr, token, ALICE, BOB, amount + 1 * UNIT),
@@ -161,15 +161,15 @@ fn approve_works() {
 
 		// Token does not exist.
 		assert_eq!(approve(&addr, 0, &BOB, amount), Err(Module { index: 52, error: [3, 0] }));
-		let token = pallet_assets_create_and_mint_to(&ALICE, 0, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 0, &addr, amount);
 		assert_eq!(approve(&addr, token, &BOB, amount), Err(ConsumerRemaining));
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
 		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = pallet_assets_create_and_mint_to(&ALICE, 1, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&ALICE, token);
+		assets::freeze(&ALICE, token);
 		assert_eq!(approve(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
-		pallet_assets_thaw(&ALICE, token);
+		assets::thaw(&ALICE, token);
 		// Successful approvals:
 		assert_eq!(0, Assets::allowance(token, &addr, &BOB));
 		assert_ok!(approve(&addr, token, &BOB, amount));
@@ -178,7 +178,7 @@ fn approve_works() {
 		assert_ok!(approve(&addr, token, &BOB, amount / 2));
 		assert_eq!(Assets::allowance(token, &addr, &BOB), amount / 2);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&ALICE, token);
+		assets::start_destroy(&ALICE, token);
 		assert_eq!(approve(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
 	});
 }
@@ -194,20 +194,20 @@ fn increase_allowance_works() {
 			increase_allowance(&addr, 0, &BOB, amount),
 			Err(Module { index: 52, error: [3, 0] })
 		);
-		let token = pallet_assets_create_and_mint_to(&ALICE, 0, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 0, &addr, amount);
 		assert_eq!(increase_allowance(&addr, token, &BOB, amount), Err(ConsumerRemaining));
 
 		// Instantiate a contract with balance.
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
 		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = pallet_assets_create_and_mint_to(&ALICE, 1, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&ALICE, token);
+		assets::freeze(&ALICE, token);
 		assert_eq!(
 			increase_allowance(&addr, token, &BOB, amount),
 			Err(Module { index: 52, error: [16, 0] })
 		);
-		pallet_assets_thaw(&ALICE, token);
+		assets::thaw(&ALICE, token);
 		// Successful approvals:
 		assert_eq!(0, Assets::allowance(token, &addr, &BOB));
 		assert_ok!(increase_allowance(&addr, token, &BOB, amount));
@@ -216,7 +216,7 @@ fn increase_allowance_works() {
 		assert_ok!(increase_allowance(&addr, token, &BOB, amount));
 		assert_eq!(Assets::allowance(token, &addr, &BOB), amount * 2);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&ALICE, token);
+		assets::start_destroy(&ALICE, token);
 		assert_eq!(
 			increase_allowance(&addr, token, &BOB, amount),
 			Err(Module { index: 52, error: [16, 0] })
@@ -236,21 +236,21 @@ fn decrease_allowance_works() {
 			Err(Module { index: 52, error: [3, 0] }),
 		);
 		// Create token and mint `amount` to contract address, then approve Bob to spend `amount`.
-		let token = pallet_assets_create_mint_and_approve(&addr, 0, &addr, amount, &BOB, amount);
+		let token = assets::create_mint_and_approve(&addr, 0, &addr, amount, &BOB, amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&addr, token);
+		assets::freeze(&addr, token);
 		assert_eq!(
 			decrease_allowance(&addr, token, &BOB, amount),
 			Err(Module { index: 52, error: [16, 0] }),
 		);
-		pallet_assets_thaw(&addr, token);
+		assets::thaw(&addr, token);
 		// Successfully decrease allowance.
 		let allowance_before = Assets::allowance(token, &addr, &BOB);
 		assert_ok!(decrease_allowance(&addr, 0, &BOB, amount / 2 - 1 * UNIT));
 		let allowance_after = Assets::allowance(token, &addr, &BOB);
 		assert_eq!(allowance_before - allowance_after, amount / 2 - 1 * UNIT);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&addr, token);
+		assets::start_destroy(&addr, token);
 		assert_eq!(
 			decrease_allowance(&addr, token, &BOB, amount),
 			Err(Module { index: 52, error: [16, 0] }),
@@ -272,25 +272,19 @@ fn token_metadata_works() {
 		let decimals: u8 = 69;
 
 		// Token does not exist.
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(pallet_assets_token_name(TOKEN_ID)));
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(assets::token_name(TOKEN_ID)));
 		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(pallet_assets_token_symbol(TOKEN_ID)));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(assets::token_symbol(TOKEN_ID)));
 		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(pallet_assets_token_decimals(TOKEN_ID)));
+		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(assets::token_decimals(TOKEN_ID)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(0));
 		// Create Token.
-		pallet_assets_create_and_set_metadata(
-			&addr,
-			TOKEN_ID,
-			name.clone(),
-			symbol.clone(),
-			decimals,
-		);
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(pallet_assets_token_name(TOKEN_ID)));
+		assets::create_and_set_metadata(&addr, TOKEN_ID, name.clone(), symbol.clone(), decimals);
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(assets::token_name(TOKEN_ID)));
 		assert_eq!(token_name(&addr, TOKEN_ID), Ok(name));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(pallet_assets_token_symbol(TOKEN_ID)));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(assets::token_symbol(TOKEN_ID)));
 		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(symbol));
-		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(pallet_assets_token_decimals(TOKEN_ID)));
+		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(assets::token_decimals(TOKEN_ID)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(decimals));
 	});
 }
@@ -334,7 +328,7 @@ fn instantiate_and_create_fungible_works() {
 		let contract =
 			"contracts/create_token_in_constructor/target/ink/create_token_in_constructor.wasm";
 		// Token already exists.
-		pallet_assets_create(&ALICE, 0, 1);
+		assets::create(&ALICE, 0, 1);
 		assert_eq!(
 			instantiate_and_create_fungible(contract, 0, 1),
 			Err(Module { index: 52, error: [5, 0] })
@@ -355,10 +349,10 @@ fn start_destroy_works() {
 		// Token does not exist.
 		assert_eq!(start_destroy(&addr, TOKEN_ID), Err(Module { index: 52, error: [3, 0] }),);
 		// Create tokens where contract is not the owner.
-		let token = pallet_assets_create(&ALICE, 0, 1);
+		let token = assets::create(&ALICE, 0, 1);
 		// No Permission.
 		assert_eq!(start_destroy(&addr, token), Err(Module { index: 52, error: [2, 0] }),);
-		let token = pallet_assets_create(&addr, TOKEN_ID, 1);
+		let token = assets::create(&addr, TOKEN_ID, 1);
 		assert_ok!(start_destroy(&addr, token));
 	});
 }
@@ -377,20 +371,20 @@ fn set_metadata_works() {
 			Err(Module { index: 52, error: [3, 0] }),
 		);
 		// Create token where contract is not the owner.
-		let token = pallet_assets_create(&ALICE, 0, 1);
+		let token = assets::create(&ALICE, 0, 1);
 		// No Permission.
 		assert_eq!(
 			set_metadata(&addr, token, vec![0], vec![0], 0u8),
 			Err(Module { index: 52, error: [2, 0] }),
 		);
-		let token = pallet_assets_create(&addr, TOKEN_ID, 1);
+		let token = assets::create(&addr, TOKEN_ID, 1);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&addr, token);
+		assets::freeze(&addr, token);
 		assert_eq!(
 			set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0u8),
 			Err(Module { index: 52, error: [16, 0] }),
 		);
-		pallet_assets_thaw(&addr, token);
+		assets::thaw(&addr, token);
 		// TODO: calling the below with a vector of length `100_000` errors in pallet contracts
 		//  `OutputBufferTooSmall. Added to security analysis issue #131 to revisit.
 		// Set bad metadata - too large values.
@@ -401,7 +395,7 @@ fn set_metadata_works() {
 		// Set metadata successfully.
 		assert_ok!(set_metadata(&addr, TOKEN_ID, name, symbol, decimals));
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&addr, token);
+		assets::start_destroy(&addr, token);
 		assert_eq!(
 			set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0),
 			Err(Module { index: 52, error: [16, 0] }),
@@ -420,21 +414,21 @@ fn clear_metadata_works() {
 		// Token does not exist.
 		assert_eq!(clear_metadata(&addr, 0), Err(Module { index: 52, error: [3, 0] }),);
 		// Create token where contract is not the owner.
-		let token = pallet_assets_create_and_set_metadata(&ALICE, 0, vec![0], vec![0], 0);
+		let token = assets::create_and_set_metadata(&ALICE, 0, vec![0], vec![0], 0);
 		// No Permission.
 		assert_eq!(clear_metadata(&addr, token), Err(Module { index: 52, error: [2, 0] }),);
-		let token = pallet_assets_create(&addr, TOKEN_ID, 1);
+		let token = assets::create(&addr, TOKEN_ID, 1);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&addr, token);
+		assets::freeze(&addr, token);
 		assert_eq!(clear_metadata(&addr, token), Err(Module { index: 52, error: [16, 0] }),);
-		pallet_assets_thaw(&addr, token);
+		assets::thaw(&addr, token);
 		// No metadata set.
 		assert_eq!(clear_metadata(&addr, token), Err(Module { index: 52, error: [3, 0] }),);
-		pallet_assets_set_metadata(&addr, token, name, symbol, decimals);
+		assets::set_metadata(&addr, token, name, symbol, decimals);
 		// Clear metadata successfully.
 		assert_ok!(clear_metadata(&addr, TOKEN_ID));
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&addr, token);
+		assets::start_destroy(&addr, token);
 		assert_eq!(
 			set_metadata(&addr, TOKEN_ID, vec![0], vec![0], decimals),
 			Err(Module { index: 52, error: [16, 0] }),
@@ -451,7 +445,7 @@ fn token_exists_works() {
 		assert_eq!(token_exists(&addr, TOKEN_ID), Ok(Assets::asset_exists(TOKEN_ID)));
 
 		// Tokens in circulation.
-		pallet_assets_create(&addr, TOKEN_ID, 1);
+		assets::create(&addr, TOKEN_ID, 1);
 		assert_eq!(token_exists(&addr, TOKEN_ID), Ok(Assets::asset_exists(TOKEN_ID)));
 	});
 }
@@ -464,16 +458,16 @@ fn mint_works() {
 
 		// Token does not exist.
 		assert_eq!(mint(&addr, 1, &BOB, amount), Err(Token(UnknownAsset)));
-		let token = pallet_assets_create(&ALICE, 1, 1);
+		let token = assets::create(&ALICE, 1, 1);
 		// Minting can only be done by the owner.
 		assert_eq!(mint(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
-		let token = pallet_assets_create(&addr, 2, 2);
+		let token = assets::create(&addr, 2, 2);
 		// Minimum balance of a token can not be zero.
 		assert_eq!(mint(&addr, token, &BOB, 1), Err(Token(BelowMinimum)));
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&addr, token);
+		assets::freeze(&addr, token);
 		assert_eq!(mint(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
-		pallet_assets_thaw(&addr, token);
+		assets::thaw(&addr, token);
 		// Successful mint.
 		let balance_before_mint = Assets::balance(token, &BOB);
 		assert_ok!(mint(&addr, token, &BOB, amount));
@@ -482,7 +476,7 @@ fn mint_works() {
 		// Account can not hold more tokens than Balance::MAX.
 		assert_eq!(mint(&addr, token, &BOB, Balance::MAX,), Err(Arithmetic(Overflow)));
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&addr, token);
+		assets::start_destroy(&addr, token);
 		assert_eq!(mint(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
 	});
 }
@@ -495,24 +489,24 @@ fn burn_works() {
 
 		// Token does not exist.
 		assert_eq!(burn(&addr, 1, &BOB, amount), Err(Module { index: 52, error: [3, 0] }));
-		let token = pallet_assets_create(&ALICE, 1, 1);
+		let token = assets::create(&ALICE, 1, 1);
 		// Bob has no tokens and therefore doesn't exist.
 		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [1, 0] }));
 		// Burning can only be done by the manager.
-		pallet_assets_mint(&ALICE, token, &BOB, amount);
+		assets::mint(&ALICE, token, &BOB, amount);
 		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
-		let token = pallet_assets_create_and_mint_to(&addr, 2, &BOB, amount);
+		let token = assets::create_and_mint_to(&addr, 2, &BOB, amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_freeze(&addr, token);
+		assets::freeze(&addr, token);
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
-		pallet_assets_thaw(&addr, token);
+		assets::thaw(&addr, token);
 		// Successful mint.
 		let balance_before_burn = Assets::balance(token, &BOB);
 		assert_ok!(burn(&addr, token, &BOB, amount));
 		let balance_after_burn = Assets::balance(token, &BOB);
 		assert_eq!(balance_after_burn, balance_before_burn - amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		pallet_assets_start_destroy(&addr, token);
+		assets::start_destroy(&addr, token);
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [17, 0] }));
 	});
 }

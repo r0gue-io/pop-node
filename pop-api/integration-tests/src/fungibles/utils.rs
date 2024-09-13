@@ -192,130 +192,139 @@ pub(super) fn burn(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn pallet_assets_create(
-	owner: &AccountId32,
-	asset_id: AssetId,
-	min_balance: Balance,
-) -> AssetId {
-	assert_ok!(Assets::create(
-		RuntimeOrigin::signed(owner.clone()),
-		asset_id.into(),
-		owner.clone().into(),
-		min_balance
-	));
-	asset_id
-}
+// Helper functions for interacting with pallet-assets.
+pub(super) mod assets {
+	use super::*;
+	pub(crate) fn create(owner: &AccountId32, asset_id: AssetId, min_balance: Balance) -> AssetId {
+		assert_ok!(Assets::create(
+			RuntimeOrigin::signed(owner.clone()),
+			asset_id.into(),
+			owner.clone().into(),
+			min_balance
+		));
+		asset_id
+	}
 
-pub(super) fn pallet_assets_mint(
-	owner: &AccountId32,
-	asset_id: AssetId,
-	to: &AccountId32,
-	value: Balance,
-) -> AssetId {
-	assert_ok!(Assets::mint(
-		RuntimeOrigin::signed(owner.clone()),
-		asset_id.into(),
-		to.clone().into(),
-		value
-	));
-	asset_id
-}
+	pub(crate) fn mint(
+		owner: &AccountId32,
+		asset_id: AssetId,
+		to: &AccountId32,
+		value: Balance,
+	) -> AssetId {
+		assert_ok!(Assets::mint(
+			RuntimeOrigin::signed(owner.clone()),
+			asset_id.into(),
+			to.clone().into(),
+			value
+		));
+		asset_id
+	}
 
-pub(super) fn pallet_assets_create_and_mint_to(
-	owner: &AccountId32,
-	asset_id: AssetId,
-	to: &AccountId32,
-	value: Balance,
-) -> AssetId {
-	pallet_assets_create(owner, asset_id, 1);
-	pallet_assets_mint(owner, asset_id, to, value)
-}
+	pub(crate) fn create_and_mint_to(
+		owner: &AccountId32,
+		asset_id: AssetId,
+		to: &AccountId32,
+		value: Balance,
+	) -> AssetId {
+		create(owner, asset_id, 1);
+		mint(owner, asset_id, to, value)
+	}
 
-// Create an asset, mints to, and approves spender.
-pub(super) fn pallet_assets_create_mint_and_approve(
-	owner: &AccountId32,
-	asset_id: AssetId,
-	to: &AccountId32,
-	mint: Balance,
-	spender: &AccountId32,
-	approve: Balance,
-) -> AssetId {
-	pallet_assets_create_and_mint_to(owner, asset_id, to, mint);
-	assert_ok!(Assets::approve_transfer(
-		RuntimeOrigin::signed(to.clone().into()),
-		asset_id.into(),
-		spender.clone().into(),
-		approve,
-	));
-	asset_id
-}
+	// Create an asset, mints to, and approves spender.
+	pub(crate) fn create_mint_and_approve(
+		owner: &AccountId32,
+		asset_id: AssetId,
+		to: &AccountId32,
+		mint: Balance,
+		spender: &AccountId32,
+		approve: Balance,
+	) -> AssetId {
+		create_and_mint_to(owner, asset_id, to, mint);
+		assert_ok!(Assets::approve_transfer(
+			RuntimeOrigin::signed(to.clone().into()),
+			asset_id.into(),
+			spender.clone().into(),
+			approve,
+		));
+		asset_id
+	}
 
-// Freeze an asset.
-pub(super) fn pallet_assets_freeze(owner: &AccountId32, asset_id: AssetId) {
-	assert_ok!(Assets::freeze_asset(RuntimeOrigin::signed(owner.clone().into()), asset_id.into()));
-}
+	// Freeze an asset.
+	pub(crate) fn freeze(owner: &AccountId32, asset_id: AssetId) {
+		assert_ok!(Assets::freeze_asset(
+			RuntimeOrigin::signed(owner.clone().into()),
+			asset_id.into()
+		));
+	}
 
-// Thaw an asset.
-pub(super) fn pallet_assets_thaw(owner: &AccountId32, asset_id: AssetId) {
-	assert_ok!(Assets::thaw_asset(RuntimeOrigin::signed(owner.clone().into()), asset_id.into()));
-}
+	// Thaw an asset.
+	pub(crate) fn thaw(owner: &AccountId32, asset_id: AssetId) {
+		assert_ok!(Assets::thaw_asset(
+			RuntimeOrigin::signed(owner.clone().into()),
+			asset_id.into()
+		));
+	}
 
-// Start destroying an asset.
-pub(super) fn pallet_assets_start_destroy(owner: &AccountId32, asset_id: AssetId) {
-	assert_ok!(Assets::start_destroy(RuntimeOrigin::signed(owner.clone().into()), asset_id.into()));
-}
+	// Start destroying an asset.
+	pub(crate) fn start_destroy(owner: &AccountId32, asset_id: AssetId) {
+		assert_ok!(Assets::start_destroy(
+			RuntimeOrigin::signed(owner.clone().into()),
+			asset_id.into()
+		));
+	}
 
-// Create an asset and set metadata.
-pub(super) fn pallet_assets_create_and_set_metadata(
-	owner: &AccountId32,
-	asset_id: AssetId,
-	name: Vec<u8>,
-	symbol: Vec<u8>,
-	decimals: u8,
-) -> AssetId {
-	assert_ok!(Assets::create(
-		RuntimeOrigin::signed(owner.clone()),
-		asset_id.into(),
-		owner.clone().into(),
-		100
-	));
-	pallet_assets_set_metadata(owner, asset_id, name, symbol, decimals);
-	asset_id
-}
+	// Create an asset and set metadata.
+	pub(crate) fn create_and_set_metadata(
+		owner: &AccountId32,
+		asset_id: AssetId,
+		name: Vec<u8>,
+		symbol: Vec<u8>,
+		decimals: u8,
+	) -> AssetId {
+		assert_ok!(Assets::create(
+			RuntimeOrigin::signed(owner.clone()),
+			asset_id.into(),
+			owner.clone().into(),
+			100
+		));
+		set_metadata(owner, asset_id, name, symbol, decimals);
+		asset_id
+	}
 
-// Set metadata of an asset.
-pub(super) fn pallet_assets_set_metadata(
-	owner: &AccountId32,
-	asset_id: AssetId,
-	name: Vec<u8>,
-	symbol: Vec<u8>,
-	decimals: u8,
-) {
-	assert_ok!(Assets::set_metadata(
-		RuntimeOrigin::signed(owner.clone().into()),
-		asset_id.into(),
-		name,
-		symbol,
-		decimals
-	));
-}
+	// Set metadata of an asset.
+	pub(crate) fn set_metadata(
+		owner: &AccountId32,
+		asset_id: AssetId,
+		name: Vec<u8>,
+		symbol: Vec<u8>,
+		decimals: u8,
+	) {
+		assert_ok!(Assets::set_metadata(
+			RuntimeOrigin::signed(owner.clone().into()),
+			asset_id.into(),
+			name,
+			symbol,
+			decimals
+		));
+	}
 
-pub(super) fn pallet_assets_token_name(asset_id: AssetId) -> Vec<u8> {
-	<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<AccountId32>>::name(
-		asset_id,
-	)
-}
+	pub(crate) fn token_name(asset_id: AssetId) -> Vec<u8> {
+		<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<
+			AccountId32,
+		>>::name(asset_id)
+	}
 
-pub(super) fn pallet_assets_token_symbol(asset_id: AssetId) -> Vec<u8> {
-	<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<AccountId32>>::symbol(
-		asset_id,
-	)
-}
+	pub(crate) fn token_symbol(asset_id: AssetId) -> Vec<u8> {
+		<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<
+			AccountId32,
+		>>::symbol(asset_id)
+	}
 
-pub(super) fn pallet_assets_token_decimals(asset_id: AssetId) -> u8 {
-	<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<AccountId32>>::decimals(
-		asset_id,
-	)
+	pub(crate) fn token_decimals(asset_id: AssetId) -> u8 {
+		<pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance> as MetadataInspect<
+			AccountId32,
+		>>::decimals(asset_id)
+	}
 }
 
 pub(super) fn instantiate_and_create_fungible(
