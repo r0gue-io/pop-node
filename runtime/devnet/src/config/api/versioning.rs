@@ -98,7 +98,7 @@ impl From<VersionedError> for u32 {
 }
 
 // Type for conversion to a versioned `pop_primitives::Error` to avoid taking a dependency of
-// sp_runtime on pop-primitives.
+// sp-runtime on pop-primitives.
 struct V0Error(pop_primitives::v0::Error);
 impl From<DispatchError> for V0Error {
 	fn from(error: DispatchError) -> Self {
@@ -188,14 +188,20 @@ mod tests {
 	fn versioned_runtime_result_works() {
 		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000));
 		let v0 = 0;
-		let v1 = 1;
 		assert_eq!(
 			VersionedRuntimeResult::try_from((result.clone(), v0)),
 			Ok(VersionedRuntimeResult::V0(result.clone()))
 		);
-		// Unknown version.
+	}
+
+	#[test]
+	fn versioned_runtime_result_fails() {
+		// Unknown version 1.
 		assert_eq!(
-			VersionedRuntimeResult::try_from((result.clone(), v1)),
+			VersionedRuntimeResult::try_from((
+				RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000)),
+				1
+			)),
 			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
@@ -211,14 +217,18 @@ mod tests {
 	fn versioned_error_works() {
 		let error = BadOrigin;
 		let v0 = 0;
-		let v1 = 1;
+
 		assert_eq!(
 			VersionedError::try_from((error, v0)),
 			Ok(VersionedError::V0(V0Error::from(error).0))
 		);
-		// Unknown version.
+	}
+
+	#[test]
+	fn versioned_error_fails() {
+		// Unknown version 1.
 		assert_eq!(
-			VersionedError::try_from((error, v1)),
+			VersionedError::try_from((BadOrigin, 1)),
 			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
