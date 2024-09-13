@@ -90,7 +90,7 @@ mod fungibles {
 		#[ink(message)]
 		pub fn approve(
 			&mut self,
-			token: AssetId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
@@ -160,7 +160,7 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn start_destroy(&mut self, token: AssetId) -> Result<()> {
+		pub fn start_destroy(&mut self, token: TokenId) -> Result<()> {
 			api::start_destroy(token)?;
 			self.env().emit_event(Destroyed { token });
 			Ok(())
@@ -180,7 +180,7 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn clear_metadata(&mut self, token: AssetId) -> Result<()> {
+		pub fn clear_metadata(&mut self, token: TokenId) -> Result<()> {
 			api::clear_metadata(token)?;
 			self.env().emit_event(MetadataCleared { token });
 			Ok(())
