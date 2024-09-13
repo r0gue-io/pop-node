@@ -107,16 +107,13 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	// Storage: `Approval`
-	fn allowance() {
-		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
-		let spender: AccountIdOf<T> = account("Bob", 0, SEED);
+	// Storage: `Assets`
+	fn total_supply() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::Allowance { token: TokenIdOf::<T>::zero(), owner, spender });
+			Pallet::<T>::read(Read::TotalSupply(TokenIdOf::<T>::zero()));
 		}
 	}
-
 	#[benchmark]
 	// Storage: `AssetAccount`
 	fn balance_of() {
@@ -124,6 +121,16 @@ mod benchmarks {
 		#[block]
 		{
 			Pallet::<T>::read(Read::BalanceOf { token: TokenIdOf::<T>::zero(), owner });
+		}
+	}
+	#[benchmark]
+	// Storage: `Approval`
+	fn allowance() {
+		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
+		let spender: AccountIdOf<T> = account("Bob", 0, SEED);
+		#[block]
+		{
+			Pallet::<T>::read(Read::Allowance { token: TokenIdOf::<T>::zero(), owner, spender });
 		}
 	}
 
@@ -154,14 +161,6 @@ mod benchmarks {
 		}
 	}
 
-	#[benchmark]
-	// Storage: `Assets`
-	fn total_supply() {
-		#[block]
-		{
-			Pallet::<T>::read(Read::TotalSupply(TokenIdOf::<T>::zero()));
-		}
-	}
 	#[benchmark]
 	// Storage: `Assets`
 	fn token_exists() {

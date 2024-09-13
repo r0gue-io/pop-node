@@ -493,13 +493,13 @@ pub mod pallet {
 		fn weight(request: &Self::Read) -> Weight {
 			use Read::*;
 			match request {
-				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
+				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
 				BalanceOf { .. } => <T as Config>::WeightInfo::balance_of(),
-				TokenDecimals(_) => <T as Config>::WeightInfo::token_decimals(),
-				TokenExists(_) => <T as Config>::WeightInfo::token_exists(),
+				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
 				TokenName(_) => <T as Config>::WeightInfo::token_name(),
 				TokenSymbol(_) => <T as Config>::WeightInfo::token_symbol(),
-				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
+				TokenDecimals(_) => <T as Config>::WeightInfo::token_decimals(),
+				TokenExists(_) => <T as Config>::WeightInfo::token_exists(),
 			}
 		}
 

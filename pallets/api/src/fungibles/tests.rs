@@ -350,28 +350,28 @@ mod read_weights {
 	use crate::fungibles::{weights::WeightInfo, Config};
 
 	struct ReadWeightInfo {
-		allowance: Weight,
+		total_supply: Weight,
 		balance_of: Weight,
-		token_decimals: Weight,
+		allowance: Weight,
 		token_name: Weight,
 		token_symbol: Weight,
-		total_supply: Weight,
+		token_decimals: Weight,
 		token_exists: Weight,
 	}
 
 	impl ReadWeightInfo {
 		fn new() -> Self {
 			Self {
+				total_supply: Fungibles::weight(&TotalSupply(TOKEN)),
+				balance_of: Fungibles::weight(&BalanceOf { token: TOKEN, owner: ALICE }),
 				allowance: Fungibles::weight(&Allowance {
 					token: TOKEN,
 					owner: ALICE,
 					spender: BOB,
 				}),
-				balance_of: Fungibles::weight(&BalanceOf { token: TOKEN, owner: ALICE }),
-				token_decimals: Fungibles::weight(&TokenDecimals(TOKEN)),
 				token_name: Fungibles::weight(&TokenName(TOKEN)),
 				token_symbol: Fungibles::weight(&TokenSymbol(TOKEN)),
-				total_supply: Fungibles::weight(&TotalSupply(TOKEN)),
+				token_decimals: Fungibles::weight(&TokenDecimals(TOKEN)),
 				token_exists: Fungibles::weight(&TokenExists(TOKEN)),
 			}
 		}
@@ -389,12 +389,12 @@ mod read_weights {
 			token_exists,
 		} = ReadWeightInfo::new();
 
-		assert_eq!(allowance, <Test as Config>::WeightInfo::allowance());
+		assert_eq!(total_supply, <Test as Config>::WeightInfo::total_supply());
 		assert_eq!(balance_of, <Test as Config>::WeightInfo::balance_of());
-		assert_eq!(token_decimals, <Test as Config>::WeightInfo::token_decimals());
+		assert_eq!(allowance, <Test as Config>::WeightInfo::allowance());
 		assert_eq!(token_name, <Test as Config>::WeightInfo::token_name());
 		assert_eq!(token_symbol, <Test as Config>::WeightInfo::token_symbol());
-		assert_eq!(total_supply, <Test as Config>::WeightInfo::total_supply());
+		assert_eq!(token_decimals, <Test as Config>::WeightInfo::token_decimals());
 		assert_eq!(token_exists, <Test as Config>::WeightInfo::token_exists());
 	}
 
