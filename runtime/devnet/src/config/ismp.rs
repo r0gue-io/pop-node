@@ -23,13 +23,6 @@ impl pallet_ismp::Config for Runtime {
 	type WeightProvider = ();
 }
 
-impl pallet_ismp_demo::Config for Runtime {
-	type Balance = Balance;
-	type IsmpDispatcher = Ismp;
-	type NativeCurrency = Balances;
-	type RuntimeEvent = RuntimeEvent;
-}
-
 impl ismp_parachain::Config for Runtime {
 	type IsmpHost = Ismp;
 	type RuntimeEvent = RuntimeEvent;
@@ -52,7 +45,7 @@ impl Get<StateMachine> for HostStateMachine {
 #[derive(Default)]
 pub struct Router;
 impl IsmpRouter for Router {
-	fn module_for_id(&self, _id: Vec<u8>) -> Result<Box<dyn IsmpModule>, Error> {
-		Ok(Box::new(pallet_ismp_demo::IsmpModuleCallback::<Runtime>::default()))
+	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, Error> {
+		Err(Error::ModuleNotFound(id))
 	}
 }

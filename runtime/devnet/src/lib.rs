@@ -612,8 +612,6 @@ mod runtime {
 	pub type CumulusXcm = cumulus_pallet_xcm::Pallet<Runtime>;
 	#[runtime::pallet_index(33)]
 	pub type MessageQueue = pallet_message_queue::Pallet<Runtime>;
-	#[runtime::pallet_index(37)]
-	pub type IsmpDemo = pallet_ismp_demo::Pallet<Runtime>;
 	#[runtime::pallet_index(38)]
 	pub type Ismp = pallet_ismp::Pallet<Runtime>;
 	#[runtime::pallet_index(39)]

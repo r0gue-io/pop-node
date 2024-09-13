@@ -95,7 +95,6 @@ ismp.workspace = true
 ismp-parachain.workspace = true
 ismp-parachain-runtime-api.workspace = true
 pallet-ismp = { workspace = true, features = [ "unsigned" ] }
-pallet-ismp-demo.workspace = true
 pallet-ismp-runtime-api.workspace = true
 
 [dev-dependencies]
@@ -226,7 +225,6 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
 	"pallet-contracts/try-runtime",
-	"pallet-ismp-demo/try-runtime",
 	"pallet-ismp/try-runtime",
 	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",

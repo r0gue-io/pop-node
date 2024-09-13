@@ -7868,22 +7868,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-ismp-demo"
-version = "0.1.1"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "frame-support",
- "frame-system",
- "ismp",
- "pallet-balances",
- "pallet-ismp",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
 name = "pallet-ismp-rpc"
 version = "1.15.0"
 source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
@@ -10593,7 +10577,6 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-contracts",
  "pallet-ismp",
- "pallet-ismp-demo",
  "pallet-ismp-runtime-api",
  "pallet-message-queue",
  "pallet-multisig",
