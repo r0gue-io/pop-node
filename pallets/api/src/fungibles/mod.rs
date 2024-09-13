@@ -134,6 +134,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `spender` changes.
+		// Differing style: event name abides by the PSP22 standard.
 		Approval {
 			/// The token.
 			token: TokenIdOf<T>,
@@ -145,6 +146,7 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		},
 		/// Event emitted when a token transfer occurs.
+		// Differing style: event name abides by the PSP22 standard.
 		Transfer {
 			/// The token.
 			token: TokenIdOf<T>,
