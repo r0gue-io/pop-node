@@ -25,7 +25,8 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 >;
 
 /// A query of runtime state.
-#[derive(Decode, Debug, PartialEq, Clone)]
+#[derive(Decode, Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 #[repr(u8)]
 pub enum RuntimeRead {
 	/// Fungible token queries.
@@ -54,7 +55,8 @@ impl Readable for RuntimeRead {
 }
 
 /// The result of a runtime state read.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),

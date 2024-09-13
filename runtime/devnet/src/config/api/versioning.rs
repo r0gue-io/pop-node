@@ -39,7 +39,8 @@ impl From<VersionedRuntimeRead> for RuntimeRead {
 }
 
 /// Versioned runtime state read results.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum VersionedRuntimeResult {
 	/// Version zero of runtime read results.
 	V0(RuntimeResult),
