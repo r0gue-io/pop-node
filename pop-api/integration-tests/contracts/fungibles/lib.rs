@@ -8,7 +8,7 @@ use ink::prelude::vec::Vec;
 use pop_api::{
 	fungibles::{
 		self as api,
-		events::{Approve, Created, Destroyed, MetadataCleared, MetadataSet, Transfer},
+		events::{Approval, Created, DestroyStarted, MetadataCleared, MetadataSet, Transfer},
 	},
 	primitives::TokenId,
 	StatusCode,
@@ -96,7 +96,7 @@ mod fungibles {
 		) -> Result<()> {
 			api::approve(token, spender, value)?;
 			self.env()
-				.emit_event(Approve { owner: self.env().account_id(), spender, value });
+				.emit_event(Approval { owner: self.env().account_id(), spender, value });
 			Ok(())
 		}
 
@@ -162,7 +162,7 @@ mod fungibles {
 		#[ink(message)]
 		pub fn start_destroy(&mut self, token: TokenId) -> Result<()> {
 			api::start_destroy(token)?;
-			self.env().emit_event(Destroyed { token });
+			self.env().emit_event(DestroyStarted { token });
 			Ok(())
 		}
 

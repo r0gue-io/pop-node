@@ -75,7 +75,7 @@ pub mod events {
 
 	/// Event emitted when allowance by `owner` to `spender` changes.
 	#[ink::event]
-	pub struct Approve {
+	pub struct Approval {
 		/// The owner providing the allowance.
 		#[ink(topic)]
 		pub owner: AccountId,
@@ -115,7 +115,7 @@ pub mod events {
 
 	/// Event emitted when a token is in the process of being destroyed.
 	#[ink::event]
-	pub struct Destroyed {
+	pub struct DestroyStarted {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,

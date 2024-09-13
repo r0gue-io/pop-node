@@ -1,5 +1,5 @@
 use pop_api::fungibles::events::{
-	Approve, Created, Destroyed, MetadataCleared, MetadataSet, Transfer,
+	Approval, Created, DestroyStarted, MetadataCleared, MetadataSet, Transfer,
 };
 use pop_primitives::{ArithmeticError::*, Error, Error::*, TokenError::*, TokenId};
 use utils::*;
@@ -190,7 +190,7 @@ fn approve_works() {
 		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
-		let expected = Approve { owner, spender, value: amount }.encode();
+		let expected = Approval { owner, spender, value: amount }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Non-additive, sets new value.
 		assert_ok!(approve(&addr, token, &BOB, amount / 2));
@@ -198,7 +198,7 @@ fn approve_works() {
 		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
-		let expected = Approve { owner, spender, value: amount / 2 }.encode();
+		let expected = Approval { owner, spender, value: amount / 2 }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&ALICE, token);
@@ -388,7 +388,7 @@ fn start_destroy_works() {
 		let token = assets::create(&addr, TOKEN_ID, 1);
 		assert_ok!(start_destroy(&addr, token));
 		// Successfully emit event.
-		let expected = Destroyed { token: TOKEN_ID }.encode();
+		let expected = DestroyStarted { token: TOKEN_ID }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 	});
 }
