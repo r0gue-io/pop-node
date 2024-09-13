@@ -1,17 +1,3 @@
-//! The fungibles pallet offers a streamlined interface for interacting with fungible tokens. The
-//! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
-//! space.
-
-use frame_support::traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect};
-pub use pallet::*;
-use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
-use weights::WeightInfo;
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
-#[cfg(test)]
-mod tests;
-pub mod weights;
 use pop_primitives::{ArithmeticError::*, Error::*, TokenError::*, TokenId, *};
 use utils::*;
 
