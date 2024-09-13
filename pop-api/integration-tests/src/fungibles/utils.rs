@@ -342,8 +342,8 @@ pub(super) fn instantiate_and_create_fungible(
 	}
 }
 
-/// Get the latest event from pallet contracts.
-pub(super) fn latest_contract_event() -> Vec<u8> {
+/// Get the last event from pallet contracts.
+pub(super) fn last_contract_event() -> Vec<u8> {
 	let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
 	let contract_events = events
 		.iter()

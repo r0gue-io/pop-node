@@ -75,7 +75,7 @@ pub mod events {
 
 	/// Event emitted when allowance by `owner` to `spender` changes.
 	#[ink::event]
-	pub struct Approval {
+	pub struct Approved {
 		/// The owner providing the allowance.
 		#[ink(topic)]
 		pub owner: AccountId,
@@ -88,7 +88,7 @@ pub mod events {
 
 	/// Event emitted when transfer of tokens occurs.
 	#[ink::event]
-	pub struct Transfer {
+	pub struct Transferred {
 		/// The source of the transfer. `None` when minting.
 		#[ink(topic)]
 		pub from: Option<AccountId>,
@@ -101,10 +101,10 @@ pub mod events {
 
 	/// Event emitted when an token is created.
 	#[ink::event]
-	pub struct Create {
+	pub struct Created {
 		/// The token identifier.
 		#[ink(topic)]
-		pub id: TokenId,
+		pub token: TokenId,
 		/// The creator of the token.
 		#[ink(topic)]
 		pub creator: AccountId,
@@ -115,7 +115,7 @@ pub mod events {
 
 	/// Event emitted when a token is in the process of being destroyed.
 	#[ink::event]
-	pub struct StartDestroy {
+	pub struct Destroyed {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,
@@ -123,7 +123,7 @@ pub mod events {
 
 	/// Event emitted when new metadata is set for a token.
 	#[ink::event]
-	pub struct SetMetadata {
+	pub struct MetadataSet {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,
@@ -139,7 +139,7 @@ pub mod events {
 
 	/// Event emitted when metadata is cleared for a token.
 	#[ink::event]
-	pub struct ClearMetadata {
+	pub struct MetadataCleared {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,

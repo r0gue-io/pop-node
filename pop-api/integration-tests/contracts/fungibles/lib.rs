@@ -8,7 +8,7 @@ use ink::prelude::vec::Vec;
 use pop_api::{
 	fungibles::{
 		self as api,
-		events::{Approval, ClearMetadata, Create, SetMetadata, StartDestroy, Transfer},
+		events::{Approved, Created, Destroyed, MetadataCleared, MetadataSet, Transferred},
 	},
 	primitives::TokenId,
 	StatusCode,
@@ -63,13 +63,13 @@ mod fungibles {
 
 		#[ink(message)]
 		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
-			let result = api::transfer(token, to, value);
-			self.env().emit_event(Transfer {
+			api::transfer(token, to, value)?;
+			self.env().emit_event(Transferred {
 				from: Some(self.env().account_id()),
 				to: Some(to),
 				value,
 			});
-			result
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -82,9 +82,9 @@ mod fungibles {
 			// In the PSP-22 standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
 		) -> Result<()> {
-			let result = api::transfer_from(token, from, to, value);
-			self.env().emit_event(Transfer { from: Some(from), to: Some(to), value });
-			result
+			api::transfer_from(token, from, to, value)?;
+			self.env().emit_event(Transferred { from: Some(from), to: Some(to), value });
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -94,10 +94,10 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<()> {
-			let result = api::approve(token, spender, value);
+			api::approve(token, spender, value)?;
 			self.env()
-				.emit_event(Approval { owner: self.env().account_id(), spender, value });
-			result
+				.emit_event(Approved { owner: self.env().account_id(), spender, value });
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -150,20 +150,20 @@ mod fungibles {
 		#[ink(message)]
 		pub fn create(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			admin: AccountId,
 			min_balance: Balance,
 		) -> Result<()> {
-			let result = api::create(id, admin, min_balance);
-			self.env().emit_event(Create { id, creator: admin, admin });
-			result
+			api::create(token, admin, min_balance)?;
+			self.env().emit_event(Created { token, creator: admin, admin });
+			Ok(())
 		}
 
 		#[ink(message)]
 		pub fn start_destroy(&mut self, token: AssetId) -> Result<()> {
-			let result = api::start_destroy(token);
-			self.env().emit_event(StartDestroy { id: token });
-			result
+			api::start_destroy(token)?;
+			self.env().emit_event(Destroyed { token });
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -174,16 +174,16 @@ mod fungibles {
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> Result<()> {
-			let result = api::set_metadata(token, name.clone(), symbol.clone(), decimals);
-			self.env().emit_event(SetMetadata { id: token, name, symbol, decimals });
-			result
+			api::set_metadata(token, name.clone(), symbol.clone(), decimals)?;
+			self.env().emit_event(MetadataSet { token, name, symbol, decimals });
+			Ok(())
 		}
 
 		#[ink(message)]
 		pub fn clear_metadata(&mut self, token: AssetId) -> Result<()> {
-			let result = api::clear_metadata(token);
-			self.env().emit_event(ClearMetadata { id: token });
-			result
+			api::clear_metadata(token)?;
+			self.env().emit_event(MetadataCleared { token });
+			Ok(())
 		}
 
 		#[ink(message)]
