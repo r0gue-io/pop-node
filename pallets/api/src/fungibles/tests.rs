@@ -416,6 +416,7 @@ mod read_weights {
 	}
 
 	// Proof size is based on `MaxEncodedLen`, not hardware.
+	// This test ensures that the data structure sizes do not change with upgrades.
 	#[test]
 	fn ensure_expected_proof_size_does_not_change() {
 		let ReadWeightInfo {
@@ -428,6 +429,7 @@ mod read_weights {
 			token_exists,
 		} = ReadWeightInfo::new();
 
+		// These values come from `weights.rs`.
 		assert_eq!(allowance.proof_size(), 3613);
 		assert_eq!(balance_of.proof_size(), 3599);
 		assert_eq!(token_name.proof_size(), 3605);
