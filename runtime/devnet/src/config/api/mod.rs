@@ -25,7 +25,8 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 >;
 
 /// A query of runtime state.
-#[derive(Decode, Debug, PartialEq, Clone)]
+#[derive(Decode, Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 #[repr(u8)]
 pub enum RuntimeRead {
 	/// Fungible token queries.
@@ -54,7 +55,8 @@ impl Readable for RuntimeRead {
 }
 
 /// The result of a runtime state read.
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
@@ -165,6 +167,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 
 #[cfg(test)]
 mod tests {
+	use codec::Encode;
 	use pallet_api::fungibles::Call::*;
 	use sp_core::crypto::AccountId32;
 	use RuntimeCall::{Balances, Fungibles};
@@ -175,8 +178,9 @@ mod tests {
 
 	#[test]
 	fn runtime_result_encode_works() {
-		let result = fungibles::ReadResult::<Runtime>::TotalSupply(1_000);
-		assert_eq!(RuntimeResult::Fungibles(result.clone()).encode(), result.encode());
+		let value = 1_000;
+		let result = fungibles::ReadResult::<Runtime>::TotalSupply(value);
+		assert_eq!(RuntimeResult::Fungibles(result).encode(), value.encode());
 	}
 
 	#[test]
@@ -225,7 +229,7 @@ mod tests {
 	}
 
 	#[test]
-	fn filter_allows_fungible_reads() {
+	fn filter_allows_fungibles_reads() {
 		use super::{fungibles::Read::*, RuntimeRead::*};
 		const READS: [RuntimeRead; 7] = [
 			Fungibles(TotalSupply(1)),

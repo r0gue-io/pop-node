@@ -1,11 +1,12 @@
-use contract_build::{
-	execute, BuildArtifacts, BuildMode, BuildResult, ExecuteArgs, ManifestPath, OutputType,
-	Verbosity,
-};
 use std::{
 	fs,
 	path::{Path, PathBuf},
 	process,
+};
+
+use contract_build::{
+	execute, BuildArtifacts, BuildMode, BuildResult, ExecuteArgs, ManifestPath, OutputType,
+	Verbosity,
 };
 
 fn main() {

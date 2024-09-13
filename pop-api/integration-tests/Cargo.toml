@@ -16,6 +16,9 @@ log = "0.4.22"
 pallet-assets = { version = "37.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
 pallet-contracts = { version = "35.0.0", default-features = false }
+pop-api = { path = "../../pop-api", default-features = false, features = [
+	"fungibles",
+] }
 pop-primitives = { path = "../../primitives", default-features = false }
 pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
 scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
@@ -23,7 +26,6 @@ scale = { package = "parity-scale-codec", version = "3.6.12", default-features =
 ] }
 sp-io = { version = "37.0.0", default-features = false }
 sp-runtime = { version = "=38.0.0", default-features = false }
-
 
 [features]
 default = [ "std" ]
@@ -33,6 +35,7 @@ std = [
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-contracts/std",
+	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",
 	"scale/std",

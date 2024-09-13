@@ -3,6 +3,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use codec::{Decode, Encode};
+#[cfg(test)]
+use enum_iterator::Sequence;
 #[cfg(feature = "std")]
 use scale_info::TypeInfo;
 pub use v0::*;
@@ -20,8 +22,9 @@ pub mod v0 {
 		use super::*;
 
 		/// Reason why a call failed.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
+		#[cfg_attr(test, derive(Sequence))]
 		#[repr(u8)]
 		#[allow(clippy::unnecessary_cast)]
 		pub enum Error {
@@ -105,8 +108,9 @@ pub mod v0 {
 		}
 
 		/// Description of what went wrong when trying to complete an operation on a token.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(test, derive(Sequence))]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
 		pub enum TokenError {
 			/// Funds are unavailable.
 			FundsUnavailable,
@@ -132,8 +136,9 @@ pub mod v0 {
 		}
 
 		/// Arithmetic errors.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(test, derive(Sequence))]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
 		pub enum ArithmeticError {
 			/// Underflow.
 			Underflow,
@@ -144,8 +149,9 @@ pub mod v0 {
 		}
 
 		/// Errors related to transactional storage layers.
-		#[derive(Encode, Decode, Debug, Eq, PartialEq, Clone)]
-		#[cfg_attr(feature = "std", derive(TypeInfo))]
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(test, derive(Sequence))]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
 		pub enum TransactionalError {
 			/// Too many transactional layers have been spawned.
 			LimitReached,
@@ -156,45 +162,38 @@ pub mod v0 {
 
 	#[cfg(test)]
 	mod tests {
-		use super::*;
+		use enum_iterator::all;
+
+		use super::{Error::*, *};
+
+		// Conversion method for `Error` to `u32`.
+		fn convert_error_into_u32(error: &Error) -> u32 {
+			let mut encoded_error = error.encode();
+			encoded_error.resize(4, 0);
+			u32::from_le_bytes(
+				encoded_error.try_into().expect("qed, resized to 4 bytes line above"),
+			)
+		}
 
 		#[test]
 		fn test_error_u32_conversion_with_all_variants() {
-			let error_variants = vec![
-				Error::Other,
-				Error::CannotLookup,
-				Error::BadOrigin,
-				Error::ConsumerRemaining,
-				Error::NoProviders,
-				Error::TooManyConsumers,
-				Error::Token(TokenError::FundsUnavailable),
-				Error::Arithmetic(ArithmeticError::Underflow),
-				Error::Transactional(TransactionalError::LimitReached),
-				Error::Exhausted,
-				Error::Corruption,
-				Error::Unavailable,
-				Error::RootNotAllowed,
-				Error::DecodingFailed,
-				Error::Unknown { dispatch_error_index: 1, error_index: 2, error: 3 },
-			];
-
 			// Test conversion for all Error variants
-			for error in error_variants {
-				let u32_value: u32 = error.clone().into();
-				let decoded_error: Error = u32_value.into();
-				assert_eq!(error, decoded_error);
-			}
+			all::<Error>().collect::<Vec<_>>().into_iter().for_each(|error| {
+				let status_code = u32::from(error.clone());
+				let expected = convert_error_into_u32(&error);
+				assert_eq!(status_code, expected);
+				let decoded_error = Error::from(status_code);
+				assert_eq!(decoded_error, error);
+			});
 		}
 
 		#[test]
 		fn test_invalid_u32_values_result_in_decoding_failed() {
-			// These are u32 values that don't map to any valid Error.
-			let invalid_u32_values = vec![111u32, 999u32, 1234u32];
-
-			for invalid_value in invalid_u32_values {
+			// U32 values that don't map to a valid Error.
+			vec![111u32, 999u32, 1234u32].into_iter().for_each(|invalid_value| {
 				let error: Error = invalid_value.into();
-				assert_eq!(error, Error::DecodingFailed,);
-			}
+				assert_eq!(error, DecodingFailed,);
+			});
 		}
 	}
 }
