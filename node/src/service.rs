@@ -500,7 +500,7 @@ where
 }
 
 #[cfg(not(feature = "ismp"))]
-mod runtime_api_ext {
+mod traits {
 	use pop_runtime_common::{AccountId, AuraId, Balance, Block, Nonce};
 	use sp_core::Pair;
 	use sp_runtime::app_crypto::AppCrypto;
@@ -539,7 +539,7 @@ mod runtime_api_ext {
 }
 
 #[cfg(feature = "ismp")]
-mod runtime_api_ext {
+mod traits {
 	use pop_runtime_common::{AccountId, AuraId, Balance, Block, Nonce};
 	use sp_core::{Pair, H256};
 	use sp_runtime::app_crypto::AppCrypto;
@@ -576,9 +576,9 @@ mod runtime_api_ext {
 				+ ismp_parachain_runtime_api::IsmpParachainApi<Block>
 				+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>,
 			RuntimeApi,
-		> crate::service::runtime_api_ext::RuntimeApiExt<RuntimeApi> for T
+		> RuntimeApiExt<RuntimeApi> for T
 	{
 	}
 }
 
-use runtime_api_ext::RuntimeApiExt;
+use traits::RuntimeApiExt;
