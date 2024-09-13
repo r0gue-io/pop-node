@@ -363,8 +363,8 @@ fn instantiate_and_create_fungible_works() {
 		// Successfully create a token when instantiating the contract.
 		let result_with_address = instantiate_and_create_fungible(contract, TOKEN_ID, 1);
 		let instantiator = result_with_address.clone().ok();
-		assert_ok!(result_with_address.clone());
-		assert_eq!(Assets::owner(TOKEN_ID), instantiator.clone());
+		assert_ok!(result_with_address);
+		assert_eq!(&Assets::owner(TOKEN_ID), &instantiator);
 		assert!(Assets::asset_exists(TOKEN_ID));
 		// Successfully emit event.
 		let instantiator = account_id_from_slice(instantiator.unwrap().as_ref());
