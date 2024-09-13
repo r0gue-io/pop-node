@@ -89,7 +89,7 @@ fn transfer_works() {
 		let balance_after_transfer = Assets::balance(token, &to);
 		assert_eq!(balance_after_transfer, balance_before_transfer + value);
 		System::assert_last_event(
-			Event::Transferred { token, from: Some(from), to: Some(to), value }.into(),
+			Event::Transfer { token, from: Some(from), to: Some(to), value }.into(),
 		);
 	});
 }
@@ -123,7 +123,7 @@ fn transfer_from_works() {
 		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + value);
 		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - value);
 		System::assert_last_event(
-			Event::Transferred { token, from: Some(from), to: Some(to), value }.into(),
+			Event::Transfer { token, from: Some(from), to: Some(to), value }.into(),
 		);
 	});
 }
@@ -195,7 +195,7 @@ mod approve {
 				Ok(Some(WeightInfo::approve(1, 0)).into())
 			);
 			assert_eq!(Assets::allowance(token, &owner, &spender), value);
-			System::assert_last_event(Event::Approved { token, owner, spender, value }.into());
+			System::assert_last_event(Event::Approve { token, owner, spender, value }.into());
 			// Approves a value to spend that is lower than the current allowance.
 			assert_eq!(
 				Fungibles::approve(signed(owner), token, spender, value / 2),
@@ -203,7 +203,7 @@ mod approve {
 			);
 			assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 			System::assert_last_event(
-				Event::Approved { token, owner, spender, value: value / 2 }.into(),
+				Event::Approve { token, owner, spender, value: value / 2 }.into(),
 			);
 			// Approves a value to spend that is equal to the current allowance.
 			assert_eq!(
@@ -212,7 +212,7 @@ mod approve {
 			);
 			assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 			System::assert_last_event(
-				Event::Approved { token, owner, spender, value: value / 2 }.into(),
+				Event::Approve { token, owner, spender, value: value / 2 }.into(),
 			);
 			// Sets allowance to zero.
 			assert_eq!(
@@ -220,7 +220,7 @@ mod approve {
 				Ok(Some(WeightInfo::approve(0, 1)).into())
 			);
 			assert_eq!(Assets::allowance(token, &owner, &spender), 0);
-			System::assert_last_event(Event::Approved { token, owner, spender, value: 0 }.into());
+			System::assert_last_event(Event::Approve { token, owner, spender, value: 0 }.into());
 		});
 	}
 }
@@ -248,12 +248,12 @@ fn increase_allowance_works() {
 		assert_eq!(0, Assets::allowance(token, &owner, &spender));
 		assert_ok!(Fungibles::increase_allowance(signed(owner), token, spender, value));
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
-		System::assert_last_event(Event::Approved { token, owner, spender, value }.into());
+		System::assert_last_event(Event::Approve { token, owner, spender, value }.into());
 		// Additive.
 		assert_ok!(Fungibles::increase_allowance(signed(owner), token, spender, value));
 		assert_eq!(Assets::allowance(token, &owner, &spender), value * 2);
 		System::assert_last_event(
-			Event::Approved { token, owner, spender, value: value * 2 }.into(),
+			Event::Approve { token, owner, spender, value: value * 2 }.into(),
 		);
 	});
 }
@@ -293,7 +293,7 @@ fn decrease_allowance_works() {
 		);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 		System::assert_last_event(
-			Event::Approved { token, owner, spender, value: value / 2 }.into(),
+			Event::Approve { token, owner, spender, value: value / 2 }.into(),
 		);
 		// Saturating if current allowance is decreased more than the owner balance.
 		assert_eq!(
@@ -301,7 +301,7 @@ fn decrease_allowance_works() {
 			Ok(Some(WeightInfo::approve(0, 1)).into())
 		);
 		assert_eq!(Assets::allowance(token, &owner, &spender), 0);
-		System::assert_last_event(Event::Approved { token, owner, spender, value: 0 }.into());
+		System::assert_last_event(Event::Approve { token, owner, spender, value: 0 }.into());
 	});
 }
 
@@ -402,7 +402,7 @@ fn mint_works() {
 		let balance_after_mint = Assets::balance(token, &to);
 		assert_eq!(balance_after_mint, balance_before_mint + value);
 		System::assert_last_event(
-			Event::Transferred { token, from: None, to: Some(to), value }.into(),
+			Event::Transfer { token, from: None, to: Some(to), value }.into(),
 		);
 	});
 }
@@ -426,7 +426,7 @@ fn burn_works() {
 		let balance_after_burn = Assets::balance(token, &from);
 		assert_eq!(balance_after_burn, balance_before_burn - value);
 		System::assert_last_event(
-			Event::Transferred { token, from: Some(from), to: None, value }.into(),
+			Event::Transfer { token, from: Some(from), to: None, value }.into(),
 		);
 	});
 }

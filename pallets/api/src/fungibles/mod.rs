@@ -134,7 +134,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `spender` changes.
-		Approved {
+		Approve {
 			/// The token.
 			token: TokenIdOf<T>,
 			/// The owner providing the allowance.
@@ -145,7 +145,7 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		},
 		/// Event emitted when a token transfer occurs.
-		Transferred {
+		Transfer {
 			/// The token.
 			token: TokenIdOf<T>,
 			/// The source of the transfer. `None` when minting.
@@ -189,12 +189,7 @@ pub mod pallet {
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transferred {
-				token,
-				from: Some(from),
-				to: Some(to),
-				value,
-			});
+			Self::deposit_event(Event::Transfer { token, from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -222,12 +217,7 @@ pub mod pallet {
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transferred {
-				token,
-				from: Some(from),
-				to: Some(to),
-				value,
-			});
+			Self::deposit_event(Event::Transfer { token, from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -288,7 +278,7 @@ pub mod pallet {
 					}
 				},
 			};
-			Self::deposit_event(Event::Approved { token, owner, spender, value });
+			Self::deposit_event(Event::Approve { token, owner, spender, value });
 			Ok(Some(weight).into())
 		}
 
@@ -316,7 +306,7 @@ pub mod pallet {
 			)
 			.map_err(|e| e.with_weight(AssetsWeightInfoOf::<T>::approve_transfer()))?;
 			let value = AssetsOf::<T>::allowance(token.clone(), &owner, &spender);
-			Self::deposit_event(Event::Approved { token, owner, spender, value });
+			Self::deposit_event(Event::Approve { token, owner, spender, value });
 			Ok(().into())
 		}
 
@@ -362,7 +352,7 @@ pub mod pallet {
 				)?;
 				WeightOf::<T>::approve(1, 1)
 			};
-			Self::deposit_event(Event::Approved { token, owner, spender, value: new_allowance });
+			Self::deposit_event(Event::Approve { token, owner, spender, value: new_allowance });
 			Ok(Some(weight).into())
 		}
 
@@ -455,7 +445,7 @@ pub mod pallet {
 				T::Lookup::unlookup(account.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transferred { token, from: None, to: Some(account), value });
+			Self::deposit_event(Event::Transfer { token, from: None, to: Some(account), value });
 			Ok(())
 		}
 
@@ -479,7 +469,7 @@ pub mod pallet {
 				T::Lookup::unlookup(account.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transferred { token, from: Some(account), to: None, value });
+			Self::deposit_event(Event::Transfer { token, from: Some(account), to: None, value });
 			Ok(())
 		}
 	}
@@ -508,10 +498,12 @@ pub mod pallet {
 			use Read::*;
 			match request {
 				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
-				BalanceOf { token, owner } =>
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
-				Allowance { token, owner, spender } =>
-					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
+				BalanceOf { token, owner } => {
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner))
+				},
+				Allowance { token, owner, spender } => {
+					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender))
+				},
 				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
 					AccountIdOf<T>,
 				>>::name(token)),
