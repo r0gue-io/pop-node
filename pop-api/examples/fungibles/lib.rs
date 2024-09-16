@@ -47,50 +47,50 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn transfer(&mut self, id: TokenId, to: AccountId, value: Balance) -> PopApiResult<()> {
-			api::transfer(id, to, value)
+		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> PopApiResult<()> {
+			api::transfer(token, to, value)
 		}
 
 		#[ink(message)]
 		pub fn transfer_from(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			from: AccountId,
 			to: AccountId,
 			value: Balance,
 			_data: Vec<u8>,
 		) -> PopApiResult<()> {
-			api::transfer_from(id, from, to, value)
+			api::transfer_from(token, from, to, value)
 		}
 
 		#[ink(message)]
 		pub fn approve(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> PopApiResult<()> {
-			api::approve(id, spender, value)
+			api::approve(token, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn increase_allowance(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> PopApiResult<()> {
-			api::increase_allowance(id, spender, value)
+			api::increase_allowance(token, spender, value)
 		}
 
 		#[ink(message)]
 		pub fn decrease_allowance(
 			&mut self,
-			id: TokenId,
+			token: TokenId,
 			spender: AccountId,
 			value: Balance,
 		) -> PopApiResult<()> {
-			api::decrease_allowance(id, spender, value)
+			api::decrease_allowance(token, spender, value)
 		}
 
 		#[ink(message, payable)]
@@ -108,52 +108,52 @@ mod fungibles {
 		#[ink(message)]
 		pub fn set_metadata(
 			&self,
-			id: TokenId,
+			token: TokenId,
 			name: Vec<u8>,
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> PopApiResult<()> {
-			api::set_metadata(id, name, symbol, decimals)
+			api::set_metadata(token, name, symbol, decimals)
 		}
 
 		#[ink(message)]
-		pub fn total_supply(&self, id: TokenId) -> PopApiResult<Balance> {
-			api::total_supply(id)
+		pub fn total_supply(&self, token: TokenId) -> PopApiResult<Balance> {
+			api::total_supply(token)
 		}
 
 		#[ink(message)]
-		pub fn balance_of(&self, id: TokenId, owner: AccountId) -> PopApiResult<Balance> {
-			api::balance_of(id, owner)
+		pub fn balance_of(&self, token: TokenId, owner: AccountId) -> PopApiResult<Balance> {
+			api::balance_of(token, owner)
 		}
 
 		#[ink(message)]
 		pub fn allowance(
 			&self,
-			id: TokenId,
+			token: TokenId,
 			owner: AccountId,
 			spender: AccountId,
 		) -> PopApiResult<Balance> {
-			api::allowance(id, owner, spender)
+			api::allowance(token, owner, spender)
 		}
 
 		#[ink(message)]
-		pub fn token_name(&self, id: TokenId) -> PopApiResult<Vec<u8>> {
-			api::token_name(id)
+		pub fn token_name(&self, token: TokenId) -> PopApiResult<Vec<u8>> {
+			api::token_name(token)
 		}
 
 		#[ink(message)]
-		pub fn token_symbol(&self, id: TokenId) -> PopApiResult<Vec<u8>> {
-			api::token_symbol(id)
+		pub fn token_symbol(&self, token: TokenId) -> PopApiResult<Vec<u8>> {
+			api::token_symbol(token)
 		}
 
 		#[ink(message)]
-		pub fn token_decimals(&self, id: TokenId) -> PopApiResult<u8> {
-			api::token_decimals(id)
+		pub fn token_decimals(&self, token: TokenId) -> PopApiResult<u8> {
+			api::token_decimals(token)
 		}
 
 		#[ink(message)]
-		pub fn token_exists(&self, id: TokenId) -> PopApiResult<bool> {
-			api::token_exists(id)
+		pub fn token_exists(&self, token: TokenId) -> PopApiResult<bool> {
+			api::token_exists(token)
 		}
 	}
 }

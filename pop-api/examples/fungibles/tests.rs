@@ -96,32 +96,32 @@ mod test_methods {
 
 	pub(super) fn token_exist(
 		session: &mut Session<Sandbox>,
-		id: TokenId,
+		token: TokenId,
 	) -> Result<PopApiResult<bool>, Box<dyn std::error::Error>> {
-		Ok(decoded_call::<PopApiResult<bool>>(session, "token_exists", vec![id.to_string()], None)?)
+		Ok(decoded_call::<PopApiResult<bool>>(session, "token_exists", vec![token.to_string()], None)?)
 	}
 
 	pub(super) fn total_supply(
 		session: &mut Session<Sandbox>,
-		id: TokenId,
+		token: TokenId,
 	) -> Result<PopApiResult<Balance>, Box<dyn std::error::Error>> {
 		Ok(decoded_call::<PopApiResult<Balance>>(
 			session,
 			"total_supply",
-			vec![id.to_string()],
+			vec![token.to_string()],
 			None,
 		)?)
 	}
 
 	pub(super) fn balance_of(
 		session: &mut Session<Sandbox>,
-		id: TokenId,
+		token: TokenId,
 		owner: AccountId32,
 	) -> Result<PopApiResult<Balance>, Box<dyn std::error::Error>> {
 		Ok(decoded_call::<PopApiResult<Balance>>(
 			session,
 			"balance_of",
-			vec![id.to_string(), owner.to_string()],
+			vec![token.to_string(), owner.to_string()],
 			None,
 		)?)
 	}
