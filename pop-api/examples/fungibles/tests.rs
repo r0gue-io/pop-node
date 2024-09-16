@@ -1,6 +1,6 @@
 use drink::session::{Session, NO_ARGS, NO_SALT};
 use pop_api::{
-	primitives::{account_id_from_slice, TokenId},
+	primitives::TokenId,
 	v0::fungibles::{self as api},
 };
 use pop_sandbox::{AccountId32, Balance, Sandbox, ALICE, BOB, INIT_VALUE};
@@ -8,8 +8,8 @@ use scale::{Decode, Encode};
 
 use super::*;
 
-const TOKEN_A_ID: TokenId = 1;
-const TOKEN_B_ID: TokenId = 2;
+const TOKEN_A: TokenId = 1;
+const TOKEN_B: TokenId = 2;
 
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
@@ -18,6 +18,11 @@ use test_methods::*;
 // Utility methods to test the contract calls.
 mod test_methods {
 	use super::*;
+
+	// Decode slice of bytes to `pop-api` AccountId.
+	pub(super) fn account_id_from_slice(s: &[u8; 32]) -> pop_api::primitives::AccountId {
+		pop_api::primitives::AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
+	}
 
 	// Call a contract method and decode the returned data.
 	pub(super) fn decoded_call<T: Decode>(
@@ -131,22 +136,22 @@ fn test_create_multiple_token_works(
 	// Deploy a contract.
 	session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
 	// Create new tokens.
-	create(&mut session, TOKEN_A_ID, ALICE, 1_000)?;
+	create(&mut session, TOKEN_A, ALICE, 1_000)?;
 
 	assert_event(
 		&mut session,
-		api::events::Create {
-			id: TOKEN_A_ID,
+		api::events::Created {
+			id: TOKEN_A,
 			admin: account_id_from_slice(ALICE.as_ref()),
 			creator: account_id_from_slice(ALICE.as_ref()),
 		}
 		.encode(),
 	);
 
-	create(&mut session, TOKEN_B_ID, ALICE, 2_000)?;
+	create(&mut session, TOKEN_B, ALICE, 2_000)?;
 	// Check that the token is created successfully.
-	assert_eq!(token_exist(&mut session, TOKEN_A_ID)?, Ok(true));
-	assert_eq!(token_exist(&mut session, TOKEN_B_ID)?, Ok(true));
+	assert_eq!(token_exist(&mut session, TOKEN_A)?, Ok(true));
+	assert_eq!(token_exist(&mut session, TOKEN_B)?, Ok(true));
 	Ok(())
 }
 
@@ -158,15 +163,15 @@ fn test_mint_token_works(mut session: Session) -> Result<(), Box<dyn std::error:
 	let contract_address =
 		session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
 	// Create a new token.
-	create(&mut session, TOKEN_A_ID, contract_address, 10_000)?;
+	create(&mut session, TOKEN_A, contract_address, 10_000)?;
 	// Mint tokens.
 	const AMOUNT: Balance = 12_000;
-	mint(&mut session, TOKEN_A_ID, ALICE, AMOUNT)?;
-	mint(&mut session, TOKEN_A_ID, BOB, AMOUNT)?;
+	mint(&mut session, TOKEN_A, ALICE, AMOUNT)?;
+	mint(&mut session, TOKEN_A, BOB, AMOUNT)?;
 	// Check if the tokens were minted with the right amount.
-	assert_eq!(total_supply(&mut session, TOKEN_A_ID)?, Ok(AMOUNT * 2));
-	assert_eq!(balance_of(&mut session, TOKEN_A_ID, ALICE)?, Ok(AMOUNT));
-	assert_eq!(balance_of(&mut session, TOKEN_A_ID, BOB)?, Ok(AMOUNT));
+	assert_eq!(total_supply(&mut session, TOKEN_A)?, Ok(AMOUNT * 2));
+	assert_eq!(balance_of(&mut session, TOKEN_A, ALICE)?, Ok(AMOUNT));
+	assert_eq!(balance_of(&mut session, TOKEN_A, BOB)?, Ok(AMOUNT));
 	Ok(())
 }
 
@@ -178,14 +183,14 @@ fn test_burn_token_works(mut session: Session) -> Result<(), Box<dyn std::error:
 	let contract_address =
 		session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
 	// Create a new token.
-	create(&mut session, TOKEN_A_ID, contract_address, 10_000)?;
+	create(&mut session, TOKEN_A, contract_address, 10_000)?;
 	// Mint tokens.
 	const AMOUNT: Balance = 12_000;
-	mint(&mut session, TOKEN_A_ID, ALICE, AMOUNT)?;
+	mint(&mut session, TOKEN_A, ALICE, AMOUNT)?;
 	// Burn tokens.
-	burn(&mut session, TOKEN_A_ID, ALICE, 1)?;
-	assert_eq!(total_supply(&mut session, TOKEN_A_ID)?, Ok(AMOUNT - 1));
-	assert_eq!(balance_of(&mut session, TOKEN_A_ID, ALICE)?, Ok(AMOUNT - 1));
+	burn(&mut session, TOKEN_A, ALICE, 1)?;
+	assert_eq!(total_supply(&mut session, TOKEN_A)?, Ok(AMOUNT - 1));
+	assert_eq!(balance_of(&mut session, TOKEN_A, ALICE)?, Ok(AMOUNT - 1));
 	Ok(())
 }
 
@@ -197,15 +202,15 @@ fn test_transfer_token_works(mut session: Session) -> Result<(), Box<dyn std::er
 	let contract_address =
 		session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
 	// Create a new token.
-	create(&mut session, TOKEN_A_ID, contract_address.clone(), 10_000)?;
+	create(&mut session, TOKEN_A, contract_address.clone(), 10_000)?;
 	// Mint tokens.
 	const AMOUNT: Balance = 12_000;
 	const TRANSFERED: Balance = 500;
-	mint(&mut session, TOKEN_A_ID, contract_address.clone(), AMOUNT)?;
-	mint(&mut session, TOKEN_A_ID, BOB, AMOUNT)?;
+	mint(&mut session, TOKEN_A, contract_address.clone(), AMOUNT)?;
+	mint(&mut session, TOKEN_A, BOB, AMOUNT)?;
 	// Transfer tokens.
-	transfer(&mut session, TOKEN_A_ID, BOB, TRANSFERED)?;
-	assert_eq!(balance_of(&mut session, TOKEN_A_ID, contract_address)?, Ok(AMOUNT - TRANSFERED));
-	assert_eq!(balance_of(&mut session, TOKEN_A_ID, BOB)?, Ok(AMOUNT + TRANSFERED));
+	transfer(&mut session, TOKEN_A, BOB, TRANSFERED)?;
+	assert_eq!(balance_of(&mut session, TOKEN_A, contract_address)?, Ok(AMOUNT - TRANSFERED));
+	assert_eq!(balance_of(&mut session, TOKEN_A, BOB)?, Ok(AMOUNT + TRANSFERED));
 	Ok(())
 }

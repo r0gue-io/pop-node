@@ -58,7 +58,6 @@ mod fungibles {
 			from: AccountId,
 			to: AccountId,
 			value: Balance,
-			// In the PSP-22 standard a `[u8]`, but the size needs to be known at compile time.
 			_data: Vec<u8>,
 		) -> PopApiResult<()> {
 			api::transfer_from(id, from, to, value)
@@ -102,7 +101,7 @@ mod fungibles {
 			min_balance: Balance,
 		) -> PopApiResult<()> {
 			api::create(id, admin, min_balance)?;
-			self.env().emit_event(api::events::Create { id, creator: admin, admin });
+			self.env().emit_event(api::events::Created { id, creator: admin, admin });
 			Ok(())
 		}
 

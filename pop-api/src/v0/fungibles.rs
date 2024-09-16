@@ -7,21 +7,21 @@
 //! 4. PSP-22 Mintable & Burnable
 
 use constants::*;
-use ink::{env::chain_extension::ChainExtensionMethod, prelude::vec::Vec};
+use ink::prelude::vec::Vec;
 pub use management::*;
 pub use metadata::*;
 
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
 	primitives::{AccountId, Balance, TokenId},
-	Result, StatusCode,
+	ChainExtensionMethodApi, Result, StatusCode,
 };
 
 // Helper method to build a dispatch call.
 //
 // Parameters:
 // - 'dispatchable': The index of the dispatchable function within the module.
-fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
+fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
 	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
 }
 
@@ -29,7 +29,7 @@ fn build_dispatch(dispatchable: u8) -> ChainExtensionMethod<(), (), (), false> {
 //
 // Parameters:
 // - 'state_query': The index of the runtime state query.
-fn build_read_state(state_query: u8) -> ChainExtensionMethod<(), (), (), false> {
+fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
 	crate::v0::build_read_state(FUNGIBLES, state_query)
 }
 
@@ -99,9 +99,9 @@ pub mod events {
 		pub value: u128,
 	}
 
-	/// Event emitted when an token is created.
+	/// Event emitted when a token is created.
 	#[ink::event]
-	pub struct Create {
+	pub struct Created {
 		/// The token identifier.
 		#[ink(topic)]
 		pub id: TokenId,
@@ -115,7 +115,7 @@ pub mod events {
 
 	/// Event emitted when a token is in the process of being destroyed.
 	#[ink::event]
-	pub struct StartDestroy {
+	pub struct DestroyStarted {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,
@@ -123,7 +123,7 @@ pub mod events {
 
 	/// Event emitted when new metadata is set for a token.
 	#[ink::event]
-	pub struct SetMetadata {
+	pub struct MetadataSet {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,
@@ -139,7 +139,7 @@ pub mod events {
 
 	/// Event emitted when metadata is cleared for a token.
 	#[ink::event]
-	pub struct ClearMetadata {
+	pub struct MetadataCleared {
 		/// The token.
 		#[ink(topic)]
 		pub token: TokenId,
@@ -296,7 +296,7 @@ pub fn burn(token: TokenId, account: AccountId, value: Balance) -> Result<()> {
 		.call(&(token, account, value))
 }
 
-/// The PSP-22 Metadata interface for querying metadata.
+/// The PSP-22 compliant interface for querying metadata.
 pub mod metadata {
 	use super::*;
 
@@ -526,7 +526,7 @@ mod tests {
 	}
 
 	#[test]
-	fn conversion_status_code_into_fungibles_error_works() {
+	fn converting_status_code_into_fungibles_error_works() {
 		let other_errors = vec![
 			Other,
 			CannotLookup,

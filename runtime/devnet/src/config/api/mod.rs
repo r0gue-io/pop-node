@@ -26,6 +26,7 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 
 /// A query of runtime state.
 #[derive(Decode, Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 #[repr(u8)]
 pub enum RuntimeRead {
 	/// Fungible token queries.
@@ -55,6 +56,7 @@ impl Readable for RuntimeRead {
 
 /// The result of a runtime state read.
 #[derive(Debug)]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
@@ -163,53 +165,84 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	}
 }
 
-#[test]
-fn filter_prevents_runtime_filtered_calls() {
-	use pallet_balances::{AdjustmentDirection, Call::*};
-	use sp_runtime::MultiAddress;
-	use RuntimeCall::Balances;
-
-	const CALLS: [RuntimeCall; 4] = [
-		Balances(force_adjust_total_issuance {
-			direction: AdjustmentDirection::Increase,
-			delta: 0,
-		}),
-		Balances(force_set_balance { who: MultiAddress::Address32([0u8; 32]), new_free: 0 }),
-		Balances(force_transfer {
-			source: MultiAddress::Address32([0u8; 32]),
-			dest: MultiAddress::Address32([0u8; 32]),
-			value: 0,
-		}),
-		Balances(force_unreserve { who: MultiAddress::Address32([0u8; 32]), amount: 0 }),
-	];
-
-	for call in CALLS {
-		assert!(!Filter::<Runtime>::contains(&call))
-	}
-}
-
-#[test]
-fn filter_allows_fungibles_calls() {
+#[cfg(test)]
+mod tests {
+	use codec::Encode;
 	use pallet_api::fungibles::Call::*;
 	use sp_core::crypto::AccountId32;
-	use RuntimeCall::Fungibles;
+	use RuntimeCall::{Balances, Fungibles};
+
+	use super::*;
 
 	const ACCOUNT: AccountId32 = AccountId32::new([0u8; 32]);
-	const CALLS: [RuntimeCall; 11] = [
-		Fungibles(transfer { token: 0, to: ACCOUNT, value: 0 }),
-		Fungibles(transfer_from { token: 0, from: ACCOUNT, to: ACCOUNT, value: 0 }),
-		Fungibles(approve { token: 0, spender: ACCOUNT, value: 0 }),
-		Fungibles(increase_allowance { token: 0, spender: ACCOUNT, value: 0 }),
-		Fungibles(decrease_allowance { token: 0, spender: ACCOUNT, value: 0 }),
-		Fungibles(create { id: 0, admin: ACCOUNT, min_balance: 0 }),
-		Fungibles(set_metadata { token: 0, name: vec![], symbol: vec![], decimals: 0 }),
-		Fungibles(start_destroy { token: 0 }),
-		Fungibles(clear_metadata { token: 0 }),
-		Fungibles(mint { token: 0, account: ACCOUNT, value: 0 }),
-		Fungibles(burn { token: 0, account: ACCOUNT, value: 0 }),
-	];
 
-	for call in CALLS {
-		assert!(Filter::<Runtime>::contains(&call))
+	#[test]
+	fn runtime_result_encode_works() {
+		let value = 1_000;
+		let result = fungibles::ReadResult::<Runtime>::TotalSupply(value);
+		assert_eq!(RuntimeResult::Fungibles(result).encode(), value.encode());
+	}
+
+	#[test]
+	fn filter_prevents_runtime_filtered_calls() {
+		use pallet_balances::{AdjustmentDirection, Call::*};
+		use sp_runtime::MultiAddress;
+
+		const CALLS: [RuntimeCall; 4] = [
+			Balances(force_adjust_total_issuance {
+				direction: AdjustmentDirection::Increase,
+				delta: 0,
+			}),
+			Balances(force_set_balance { who: MultiAddress::Address32([0u8; 32]), new_free: 0 }),
+			Balances(force_transfer {
+				source: MultiAddress::Address32([0u8; 32]),
+				dest: MultiAddress::Address32([0u8; 32]),
+				value: 0,
+			}),
+			Balances(force_unreserve { who: MultiAddress::Address32([0u8; 32]), amount: 0 }),
+		];
+
+		for call in CALLS {
+			assert!(!Filter::<Runtime>::contains(&call))
+		}
+	}
+
+	#[test]
+	fn filter_allows_fungibles_calls() {
+		const CALLS: [RuntimeCall; 11] = [
+			Fungibles(transfer { token: 0, to: ACCOUNT, value: 0 }),
+			Fungibles(transfer_from { token: 0, from: ACCOUNT, to: ACCOUNT, value: 0 }),
+			Fungibles(approve { token: 0, spender: ACCOUNT, value: 0 }),
+			Fungibles(increase_allowance { token: 0, spender: ACCOUNT, value: 0 }),
+			Fungibles(decrease_allowance { token: 0, spender: ACCOUNT, value: 0 }),
+			Fungibles(create { id: 0, admin: ACCOUNT, min_balance: 0 }),
+			Fungibles(set_metadata { token: 0, name: vec![], symbol: vec![], decimals: 0 }),
+			Fungibles(start_destroy { token: 0 }),
+			Fungibles(clear_metadata { token: 0 }),
+			Fungibles(mint { token: 0, account: ACCOUNT, value: 0 }),
+			Fungibles(burn { token: 0, account: ACCOUNT, value: 0 }),
+		];
+
+		for call in CALLS {
+			assert!(Filter::<Runtime>::contains(&call))
+		}
+	}
+
+	#[test]
+	fn filter_allows_fungibles_reads() {
+		use super::{fungibles::Read::*, RuntimeRead::*};
+		const READS: [RuntimeRead; 7] = [
+			Fungibles(TotalSupply(1)),
+			Fungibles(BalanceOf { token: 1, owner: ACCOUNT }),
+			Fungibles(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
+			Fungibles(TokenName(1)),
+			Fungibles(TokenSymbol(1)),
+			Fungibles(TokenDecimals(10)),
+			Fungibles(TokenExists(1)),
+		];
+
+		for read in READS {
+			assert!(Filter::<Runtime>::contains(&read))
+		}
 	}
 }

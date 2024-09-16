@@ -14,16 +14,13 @@ mod tests;
 pub mod weights;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type TokenIdOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
-	<T as frame_system::Config>::AccountId,
->>::AssetId;
+type TokenIdOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 type TokenIdParameterOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
 type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
 type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
-type BalanceOf<T> = <pallet_assets::Pallet<T, AssetsInstanceOf<T>> as Inspect<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
+type BalanceOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
+type WeightOf<T> = <T as Config>::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -45,6 +42,7 @@ pub mod pallet {
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
@@ -78,13 +76,14 @@ pub mod pallet {
 		/// Decimals for the specified token.
 		#[codec(index = 10)]
 		TokenDecimals(TokenIdOf<T>),
-		/// Check if a specified token exists.
+		/// Whether a specified token exists.
 		#[codec(index = 18)]
 		TokenExists(TokenIdOf<T>),
 	}
 
 	/// Results of state reads for the fungibles API.
 	#[derive(Debug)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
 		/// Total token supply for a specified token.
 		TotalSupply(BalanceOf<T>),
@@ -123,7 +122,7 @@ pub mod pallet {
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// The instance of pallet assets it is tightly coupled to.
+		/// The instance of pallet-assets.
 		type AssetsInstance;
 		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
@@ -137,6 +136,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `spender` changes.
+		// Differing style: event name abides by the PSP22 standard.
 		Approval {
 			/// The token.
 			token: TokenIdOf<T>,
@@ -148,6 +148,7 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		},
 		/// Event emitted when a token transfer occurs.
+		// Differing style: event name abides by the PSP22 standard.
 		Transfer {
 			/// The token.
 			token: TokenIdOf<T>,
@@ -158,8 +159,8 @@ pub mod pallet {
 			/// The amount transferred (or minted/burned).
 			value: BalanceOf<T>,
 		},
-		/// Event emitted when an token is created.
-		Create {
+		/// Event emitted when a token is created.
+		Created {
 			/// The token identifier.
 			id: TokenIdOf<T>,
 			/// The creator of the token.
@@ -239,12 +240,12 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
+				.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 0)))?;
 			let current_allowance = AssetsOf::<T>::allowance(token.clone(), &owner, &spender);
 
 			let weight = match value.cmp(&current_allowance) {
 				// If the new value is equal to the current allowance, do nothing.
-				Equal => Self::weight_approve(0, 0),
+				Equal => WeightOf::<T>::approve(0, 0),
 				// If the new value is greater than the current allowance, approve the difference
 				// because `approve_transfer` works additively (see `pallet-assets`).
 				Greater => {
@@ -254,8 +255,8 @@ pub mod pallet {
 						T::Lookup::unlookup(spender.clone()),
 						value.saturating_sub(current_allowance),
 					)
-					.map_err(|e| e.with_weight(Self::weight_approve(1, 0)))?;
-					Self::weight_approve(1, 0)
+					.map_err(|e| e.with_weight(WeightOf::<T>::approve(1, 0)))?;
+					WeightOf::<T>::approve(1, 0)
 				},
 				// If the new value is less than the current allowance, cancel the approval and
 				// set the new value.
@@ -267,9 +268,9 @@ pub mod pallet {
 						token_param.clone(),
 						spender_source.clone(),
 					)
-					.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
+					.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 1)))?;
 					if value.is_zero() {
-						Self::weight_approve(0, 1)
+						WeightOf::<T>::approve(0, 1)
 					} else {
 						AssetsOf::<T>::approve_transfer(
 							origin,
@@ -277,7 +278,7 @@ pub mod pallet {
 							spender_source,
 							value,
 						)?;
-						Self::weight_approve(1, 1)
+						WeightOf::<T>::approve(1, 1)
 					}
 				},
 			};
@@ -300,7 +301,7 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
+				.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 0)))?;
 			AssetsOf::<T>::approve_transfer(
 				origin,
 				token.clone().into(),
@@ -328,24 +329,24 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(Self::weight_approve(0, 0)))?;
+				.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 0)))?;
 			if value.is_zero() {
-				return Ok(Some(Self::weight_approve(0, 0)).into());
+				return Ok(Some(WeightOf::<T>::approve(0, 0)).into());
 			}
 			let current_allowance = AssetsOf::<T>::allowance(token.clone(), &owner, &spender);
 			let spender_source = T::Lookup::unlookup(spender.clone());
 			let token_param: TokenIdParameterOf<T> = token.clone().into();
 
-			// Cancel the approval and set the new value if `new_allowance` is more than zero.
+			// Cancel the approval and approve `new_allowance` if difference is more than zero.
 			AssetsOf::<T>::cancel_approval(
 				origin.clone(),
 				token_param.clone(),
 				spender_source.clone(),
 			)
-			.map_err(|e| e.with_weight(Self::weight_approve(0, 1)))?;
+			.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 1)))?;
 			let new_allowance = current_allowance.saturating_sub(value);
 			let weight = if new_allowance.is_zero() {
-				Self::weight_approve(0, 1)
+				WeightOf::<T>::approve(0, 1)
 			} else {
 				AssetsOf::<T>::approve_transfer(
 					origin,
@@ -353,7 +354,7 @@ pub mod pallet {
 					spender_source,
 					new_allowance,
 				)?;
-				Self::weight_approve(1, 1)
+				WeightOf::<T>::approve(1, 1)
 			};
 			Self::deposit_event(Event::Approval { token, owner, spender, value: new_allowance });
 			Ok(Some(weight).into())
@@ -380,7 +381,7 @@ pub mod pallet {
 				T::Lookup::unlookup(admin.clone()),
 				min_balance,
 			)?;
-			Self::deposit_event(Event::Create { id, creator, admin });
+			Self::deposit_event(Event::Created { id, creator, admin });
 			Ok(())
 		}
 
@@ -388,6 +389,10 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `token` - The token to be destroyed.
+		// See `pallet-assets` documentation for more information. Related dispatchables are:
+		// - `destroy_accounts`
+		// - `destroy_approvals`
+		// - `finish_destroy`
 		#[pallet::call_index(12)]
 		#[pallet::weight(AssetsWeightInfoOf::<T>::start_destroy())]
 		pub fn start_destroy(origin: OriginFor<T>, token: TokenIdOf<T>) -> DispatchResult {
@@ -473,12 +478,6 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T> {
-		fn weight_approve(approve: u32, cancel: u32) -> Weight {
-			<T as Config>::WeightInfo::approve(cancel, approve)
-		}
-	}
-
 	impl<T: Config> crate::Read for Pallet<T> {
 		/// The type of read requested.
 		type Read = Read<T>;
@@ -490,9 +489,17 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `request` - The read request.
-		fn weight(_request: &Self::Read) -> Weight {
-			// TODO: match on request and return benchmarked weight
-			T::DbWeight::get().reads(1_u64)
+		fn weight(request: &Self::Read) -> Weight {
+			use Read::*;
+			match request {
+				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
+				BalanceOf { .. } => <T as Config>::WeightInfo::balance_of(),
+				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
+				TokenName(_) => <T as Config>::WeightInfo::token_name(),
+				TokenSymbol(_) => <T as Config>::WeightInfo::token_symbol(),
+				TokenDecimals(_) => <T as Config>::WeightInfo::token_decimals(),
+				TokenExists(_) => <T as Config>::WeightInfo::token_exists(),
+			}
 		}
 
 		/// Performs the requested read and returns the result.

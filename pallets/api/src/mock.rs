@@ -9,6 +9,12 @@ use sp_runtime::{
 	BuildStorage,
 };
 
+pub(crate) const ALICE: AccountId = 1;
+pub(crate) const BOB: AccountId = 2;
+pub(crate) const CHARLIE: AccountId = 3;
+pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
+pub(crate) const UNIT: Balance = 10_000_000_000;
+
 type Block = frame_system::mocking::MockBlock<Test>;
 pub(crate) type AccountId = u64;
 pub(crate) type Balance = u128;
@@ -80,7 +86,7 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type AssetAccountDeposit = ConstU128<10>;
 	type AssetDeposit = ConstU128<1>;
 	type AssetId = TokenId;
-	type AssetIdParameter = u32;
+	type AssetIdParameter = TokenId;
 	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
@@ -97,17 +103,12 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type StringLimit = ConstU32<50>;
 	type WeightInfo = ();
 }
+
 impl crate::fungibles::Config for Test {
 	type AssetsInstance = AssetsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
-
-pub(crate) const ALICE: AccountId = 1;
-pub(crate) const BOB: AccountId = 2;
-pub(crate) const CHARLIE: AccountId = 3;
-pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
-pub(crate) const UNIT: Balance = 10_000_000_000;
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::<Test>::default()

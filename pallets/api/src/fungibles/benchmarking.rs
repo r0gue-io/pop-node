@@ -14,7 +14,10 @@ use frame_support::{
 use frame_system::RawOrigin;
 use sp_runtime::traits::Zero;
 
-use super::{AccountIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet, TokenIdOf};
+use super::{
+	AccountIdOf, AssetsInstanceOf, AssetsOf, BalanceOf, Call, Config, Pallet, Read, TokenIdOf,
+};
+use crate::Read as _;
 
 const SEED: u32 = 1;
 
@@ -101,6 +104,74 @@ mod benchmarks {
 			);
 		}
 		Ok(())
+	}
+
+	#[benchmark]
+	// Storage: `Assets`
+	fn total_supply() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::TotalSupply(TokenIdOf::<T>::zero()));
+		}
+	}
+	#[benchmark]
+	// Storage: `AssetAccount`
+	fn balance_of() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::BalanceOf {
+				token: TokenIdOf::<T>::zero(),
+				owner: account("Alice", 0, SEED),
+			});
+		}
+	}
+	#[benchmark]
+	// Storage: `Approval`
+	fn allowance() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::Allowance {
+				token: TokenIdOf::<T>::zero(),
+				owner: account("Alice", 0, SEED),
+				spender: account("Bob", 0, SEED),
+			});
+		}
+	}
+
+	#[benchmark]
+	// Storage: `AssetMetadata`
+	fn token_name() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::TokenName(TokenIdOf::<T>::zero()));
+		}
+	}
+
+	#[benchmark]
+	// Storage: `AssetMetadata`
+	fn token_symbol() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::TokenSymbol(TokenIdOf::<T>::zero()));
+		}
+	}
+
+	#[benchmark]
+	// Storage: `AssetMetadata`
+	fn token_decimals() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::TokenDecimals(TokenIdOf::<T>::zero()));
+		}
+	}
+
+	#[benchmark]
+	// Storage: `Assets`
+	fn token_exists() {
+		#[block]
+		{
+			Pallet::<T>::read(Read::TokenExists(TokenIdOf::<T>::zero()));
+		}
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

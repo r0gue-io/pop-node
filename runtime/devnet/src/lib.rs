@@ -995,22 +995,13 @@ cumulus_pallet_parachain_system::register_validate_block! {
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 }
 
-#[cfg(test)]
-mod tests {
+// Ensures that the account id lookup does not perform any state reads. When this changes,
+// `pallet_api::fungibles` dispatchables need to be re-evaluated.
+#[test]
+fn test_lookup_config() {
 	use std::any::TypeId;
-
-	use crate::Runtime;
-
-	// Ensures that the account id lookup does not perform any state reads. When this changes,
-	// `pallet_api::fungibles` dispatchables need to be re-evaluated.
-	#[test]
-	fn test_lookup_config() {
-		type ExpectedLookup = sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>;
-		type ConfigLookup = <Runtime as frame_system::Config>::Lookup;
-
-		let expected_type_id = TypeId::of::<ExpectedLookup>();
-		let config_type_id = TypeId::of::<ConfigLookup>();
-
-		assert_eq!(config_type_id, expected_type_id);
-	}
+	assert_eq!(
+		TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
+		TypeId::of::<sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>>()
+	);
 }
