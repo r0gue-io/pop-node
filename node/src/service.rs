@@ -23,14 +23,12 @@ use frame_benchmarking_cli::SUBSTRATE_REFERENCE_HARDWARE;
 // Local Runtime Types
 use pop_runtime_common::{AccountId, AuraId, Balance, Block, Hash, Nonce};
 use prometheus_endpoint::Registry;
-use sc_client_api::Backend;
 use sc_consensus::ImportQueue;
 use sc_executor::{HeapAllocStrategy, WasmExecutor, DEFAULT_HEAP_ALLOC_STRATEGY};
 use sc_network::NetworkBlock;
 use sc_network_sync::SyncingService;
 use sc_service::{Configuration, PartialComponents, TFullBackend, TFullClient, TaskManager};
 use sc_telemetry::{Telemetry, TelemetryHandle, TelemetryWorker, TelemetryWorkerHandle};
-use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 use sp_api::ConstructRuntimeApi;
 use sp_core::Pair;
 use sp_keystore::KeystorePtr;
@@ -224,26 +222,9 @@ where
 		.await?;
 
 	if parachain_config.offchain_worker.enabled {
-		use futures::FutureExt;
-
-		task_manager.spawn_handle().spawn(
-			"offchain-workers-runner",
-			"offchain-work",
-			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
-				runtime_api_provider: client.clone(),
-				keystore: Some(params.keystore_container.keystore()),
-				offchain_db: backend.offchain_storage(),
-				transaction_pool: Some(OffchainTransactionPoolFactory::new(
-					transaction_pool.clone(),
-				)),
-				network_provider: Arc::new(network.clone()),
-				is_validator: parachain_config.role.is_authority(),
-				enable_http_requests: false,
-				custom_extensions: move |_| vec![],
-			})
-			.run(client.clone(), task_manager.spawn_handle())
-			.boxed(),
-		);
+		// Excluding offchain workers unless they are necessary for the runtime.
+		// This can help minimize potential vulnerabilities.
+		unimplemented!("Offchain workers are not supported.")
 	}
 
 	let rpc_builder = {
@@ -480,7 +461,6 @@ pub(crate) trait RuntimeApiExt<RuntimeApi>:
 	+ sp_api::Metadata<Block>
 	+ sp_session::SessionKeys<Block>
 	+ sp_api::ApiExt<Block>
-	+ sp_offchain::OffchainWorkerApi<Block>
 	+ sp_block_builder::BlockBuilder<Block>
 	+ cumulus_primitives_core::CollectCollationInfo<Block>
 	+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
@@ -494,7 +474,6 @@ impl<
 			+ sp_api::Metadata<Block>
 			+ sp_session::SessionKeys<Block>
 			+ sp_api::ApiExt<Block>
-			+ sp_offchain::OffchainWorkerApi<Block>
 			+ sp_block_builder::BlockBuilder<Block>
 			+ cumulus_primitives_core::CollectCollationInfo<Block>
 			+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
