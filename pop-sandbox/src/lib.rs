@@ -1,13 +1,13 @@
 use frame_support::{
 	sp_runtime::{
 		traits::{Header, One},
+		AccountId32,
 	},
 	traits::Hooks,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
-use pop_runtime_devnet::{BuildStorage, Runtime};
 pub use pop_runtime_devnet::Balance;
-pub use frame_support::sp_runtime::AccountId32;
+use pop_runtime_devnet::{BuildStorage, Runtime};
 
 /// Alias for the account ID type.
 pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
@@ -78,7 +78,8 @@ pub struct Sandbox {
 
 impl Default for Sandbox {
 	fn default() -> Self {
-		let balances: Vec<(AccountId32, u128)> = vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
+		let balances: Vec<(AccountId32, u128)> =
+			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
