@@ -17,12 +17,16 @@ use crate::{
 	ChainExtensionMethodApi, StatusCode,
 };
 use constants::*;
+use core::result::Result;
 pub use errors::*;
 pub use events::*;
 use ink::prelude::vec::Vec;
 pub use interfaces::*;
 pub use management::*;
 pub use metadata::*;
+
+pub type PSP22Result<T> = Result<T, PSP22Error>;
+pub type PopApiResult<T> = Result<T, StatusCode>;
 
 // Helper method to build a dispatch call.
 //
@@ -73,10 +77,10 @@ mod constants {
 /// # Parameters
 /// - `token` - The token.
 #[inline]
-pub fn total_supply(token: TokenId) -> Result<Balance> {
+pub fn total_supply(token: TokenId) -> PopApiResult<Balance> {
 	build_read_state(TOTAL_SUPPLY)
 		.input::<TokenId>()
-		.output::<Result<Balance>, true>()
+		.output::<PopApiResult<Balance>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token))
 }
@@ -88,10 +92,10 @@ pub fn total_supply(token: TokenId) -> Result<Balance> {
 /// - `token` - The token.
 /// - `owner` - The account whose balance is being queried.
 #[inline]
-pub fn balance_of(token: TokenId, owner: AccountId) -> Result<Balance> {
+pub fn balance_of(token: TokenId, owner: AccountId) -> PopApiResult<Balance> {
 	build_read_state(BALANCE_OF)
 		.input::<(TokenId, AccountId)>()
-		.output::<Result<Balance>, true>()
+		.output::<PopApiResult<Balance>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, owner))
 }
@@ -104,10 +108,10 @@ pub fn balance_of(token: TokenId, owner: AccountId) -> Result<Balance> {
 /// - `owner` - The account that owns the tokens.
 /// - `spender` - The account that is allowed to spend the tokens.
 #[inline]
-pub fn allowance(token: TokenId, owner: AccountId, spender: AccountId) -> Result<Balance> {
+pub fn allowance(token: TokenId, owner: AccountId, spender: AccountId) -> PopApiResult<Balance> {
 	build_read_state(ALLOWANCE)
 		.input::<(TokenId, AccountId, AccountId)>()
-		.output::<Result<Balance>, true>()
+		.output::<PopApiResult<Balance>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, owner, spender))
 }
@@ -119,10 +123,10 @@ pub fn allowance(token: TokenId, owner: AccountId, spender: AccountId) -> Result
 /// - `to` - The recipient account.
 /// - `value` - The number of tokens to transfer.
 #[inline]
-pub fn transfer(token: TokenId, to: AccountId, value: Balance) -> Result<()> {
+pub fn transfer(token: TokenId, to: AccountId, value: Balance) -> PopApiResult<()> {
 	build_dispatch(TRANSFER)
 		.input::<(TokenId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
+		.output::<PopApiResult<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, to, value))
 }
@@ -135,10 +139,15 @@ pub fn transfer(token: TokenId, to: AccountId, value: Balance) -> Result<()> {
 /// - `to` - The recipient account.
 /// - `value` - The number of tokens to transfer.
 #[inline]
-pub fn transfer_from(token: TokenId, from: AccountId, to: AccountId, value: Balance) -> Result<()> {
+pub fn transfer_from(
+	token: TokenId,
+	from: AccountId,
+	to: AccountId,
+	value: Balance,
+) -> PopApiResult<()> {
 	build_dispatch(TRANSFER_FROM)
 		.input::<(TokenId, AccountId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
+		.output::<PopApiResult<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, from, to, value))
 }
@@ -150,10 +159,10 @@ pub fn transfer_from(token: TokenId, from: AccountId, to: AccountId, value: Bala
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to approve.
 #[inline]
-pub fn approve(token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
+pub fn approve(token: TokenId, spender: AccountId, value: Balance) -> PopApiResult<()> {
 	build_dispatch(APPROVE)
 		.input::<(TokenId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
+		.output::<PopApiResult<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, spender, value))
 }
@@ -165,10 +174,10 @@ pub fn approve(token: TokenId, spender: AccountId, value: Balance) -> Result<()>
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to increase the allowance by.
 #[inline]
-pub fn increase_allowance(token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
+pub fn increase_allowance(token: TokenId, spender: AccountId, value: Balance) -> PopApiResult<()> {
 	build_dispatch(INCREASE_ALLOWANCE)
 		.input::<(TokenId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
+		.output::<PopApiResult<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, spender, value))
 }
@@ -180,10 +189,10 @@ pub fn increase_allowance(token: TokenId, spender: AccountId, value: Balance) ->
 /// - `spender` - The account that is allowed to spend the tokens.
 /// - `value` - The number of tokens to decrease the allowance by.
 #[inline]
-pub fn decrease_allowance(token: TokenId, spender: AccountId, value: Balance) -> Result<()> {
+pub fn decrease_allowance(token: TokenId, spender: AccountId, value: Balance) -> PopApiResult<()> {
 	build_dispatch(DECREASE_ALLOWANCE)
 		.input::<(TokenId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
+		.output::<PopApiResult<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, spender, value))
 }
@@ -195,10 +204,10 @@ pub fn decrease_allowance(token: TokenId, spender: AccountId, value: Balance) ->
 /// - `account` - The account to be credited with the created tokens.
 /// - `value` - The number of tokens to mint.
 #[inline]
-pub fn mint(token: TokenId, account: AccountId, value: Balance) -> Result<()> {
+pub fn mint(token: TokenId, account: AccountId, value: Balance) -> PopApiResult<()> {
 	build_dispatch(MINT)
 		.input::<(TokenId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
+		.output::<PopApiResult<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, account, value))
 }
@@ -210,10 +219,10 @@ pub fn mint(token: TokenId, account: AccountId, value: Balance) -> Result<()> {
 /// - `account` - The account from which the tokens will be destroyed.
 /// - `value` - The number of tokens to destroy.
 #[inline]
-pub fn burn(token: TokenId, account: AccountId, value: Balance) -> Result<()> {
+pub fn burn(token: TokenId, account: AccountId, value: Balance) -> PopApiResult<()> {
 	build_dispatch(BURN)
 		.input::<(TokenId, AccountId, Balance)>()
-		.output::<Result<()>, true>()
+		.output::<PopApiResult<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(token, account, value))
 }
@@ -227,10 +236,10 @@ pub mod metadata {
 	/// # Parameters
 	/// - `token` - The token.
 	#[inline]
-	pub fn token_name(token: TokenId) -> Result<Vec<u8>> {
+	pub fn token_name(token: TokenId) -> PopApiResult<Vec<u8>> {
 		build_read_state(TOKEN_NAME)
 			.input::<TokenId>()
-			.output::<Result<Vec<u8>>, true>()
+			.output::<PopApiResult<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
@@ -240,10 +249,10 @@ pub mod metadata {
 	/// # Parameters
 	/// - `token` - The token.
 	#[inline]
-	pub fn token_symbol(token: TokenId) -> Result<Vec<u8>> {
+	pub fn token_symbol(token: TokenId) -> PopApiResult<Vec<u8>> {
 		build_read_state(TOKEN_SYMBOL)
 			.input::<TokenId>()
-			.output::<Result<Vec<u8>>, true>()
+			.output::<PopApiResult<Vec<u8>>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
@@ -253,10 +262,10 @@ pub mod metadata {
 	/// # Parameters
 	/// - `token` - The token.
 	#[inline]
-	pub fn token_decimals(token: TokenId) -> Result<u8> {
+	pub fn token_decimals(token: TokenId) -> PopApiResult<u8> {
 		build_read_state(TOKEN_DECIMALS)
 			.input::<TokenId>()
-			.output::<Result<u8>, true>()
+			.output::<PopApiResult<u8>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
@@ -273,10 +282,10 @@ pub mod management {
 	/// - `admin` - The account that will administer the token.
 	/// - `min_balance` - The minimum balance required for accounts holding this token.
 	#[inline]
-	pub fn create(id: TokenId, admin: AccountId, min_balance: Balance) -> Result<()> {
+	pub fn create(id: TokenId, admin: AccountId, min_balance: Balance) -> PopApiResult<()> {
 		build_dispatch(CREATE)
 			.input::<(TokenId, AccountId, Balance)>()
-			.output::<Result<()>, true>()
+			.output::<PopApiResult<()>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(id, admin, min_balance))
 	}
@@ -286,10 +295,10 @@ pub mod management {
 	/// # Parameters
 	/// - `token` - The token to be destroyed.
 	#[inline]
-	pub fn start_destroy(token: TokenId) -> Result<()> {
+	pub fn start_destroy(token: TokenId) -> PopApiResult<()> {
 		build_dispatch(START_DESTROY)
 			.input::<TokenId>()
-			.output::<Result<()>, true>()
+			.output::<PopApiResult<()>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
@@ -307,10 +316,10 @@ pub mod management {
 		name: Vec<u8>,
 		symbol: Vec<u8>,
 		decimals: u8,
-	) -> Result<()> {
+	) -> PopApiResult<()> {
 		build_dispatch(SET_METADATA)
 			.input::<(TokenId, Vec<u8>, Vec<u8>, u8)>()
-			.output::<Result<()>, true>()
+			.output::<PopApiResult<()>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token, name, symbol, decimals))
 	}
@@ -320,10 +329,10 @@ pub mod management {
 	/// # Parameters
 	/// - `token` - The token to update
 	#[inline]
-	pub fn clear_metadata(token: TokenId) -> Result<()> {
+	pub fn clear_metadata(token: TokenId) -> PopApiResult<()> {
 		build_dispatch(CLEAR_METADATA)
 			.input::<TokenId>()
-			.output::<Result<()>, true>()
+			.output::<PopApiResult<()>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
@@ -333,10 +342,10 @@ pub mod management {
 	/// # Parameters
 	/// - `token` - The token.
 	#[inline]
-	pub fn token_exists(token: TokenId) -> Result<bool> {
+	pub fn token_exists(token: TokenId) -> PopApiResult<bool> {
 		build_read_state(TOKEN_EXISTS)
 			.input::<TokenId>()
-			.output::<Result<bool>, true>()
+			.output::<PopApiResult<bool>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}

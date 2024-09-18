@@ -3,14 +3,17 @@
 use ink::prelude::{string::String, vec::Vec};
 use pop_api::{
 	primitives::TokenId,
-	v0::fungibles::{self as api, events::Created, PSP22Error},
+	v0::fungibles::{
+		self as api,
+		events::Created,
+		interfaces::{Psp22, Psp22Burnable, Psp22Metadata, Psp22Mintable},
+		PSP22Error, PSP22Result,
+	},
 	StatusCode,
 };
 
 #[cfg(test)]
 mod tests;
-
-type PSP22Result<T> = core::result::Result<T, PSP22Error>;
 
 #[ink::contract]
 mod fungibles {
@@ -55,55 +58,6 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn mint(&mut self, account: AccountId, amount: Balance) -> PSP22Result<()> {
-			api::mint(self.id, account, amount).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn burn(&mut self, account: AccountId, amount: Balance) -> PSP22Result<()> {
-			api::burn(self.id, account, amount).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn transfer(&mut self, to: AccountId, value: Balance) -> PSP22Result<()> {
-			api::transfer(self.id, to, value).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn transfer_from(
-			&mut self,
-			from: AccountId,
-			to: AccountId,
-			value: Balance,
-			_data: Vec<u8>,
-		) -> PSP22Result<()> {
-			api::transfer_from(self.id, from, to, value).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn approve(&mut self, spender: AccountId, value: Balance) -> PSP22Result<()> {
-			api::approve(self.id, spender, value).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn increase_allowance(
-			&mut self,
-			spender: AccountId,
-			value: Balance,
-		) -> PSP22Result<()> {
-			api::increase_allowance(self.id, spender, value).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn decrease_allowance(
-			&mut self,
-			spender: AccountId,
-			value: Balance,
-		) -> PSP22Result<()> {
-			api::decrease_allowance(self.id, spender, value).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
 		pub fn set_metadata(
 			&self,
 			name: Vec<u8>,
@@ -114,38 +68,93 @@ mod fungibles {
 		}
 
 		#[ink(message)]
-		pub fn total_supply(&self) -> PSP22Result<Balance> {
-			api::total_supply(self.id).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn balance_of(&self, owner: AccountId) -> PSP22Result<Balance> {
-			api::balance_of(self.id, owner).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn allowance(&self, owner: AccountId, spender: AccountId) -> PSP22Result<Balance> {
-			api::allowance(self.id, owner, spender).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn token_name(&self) -> PSP22Result<Vec<u8>> {
-			api::token_name(self.id).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn token_symbol(&self) -> PSP22Result<Vec<u8>> {
-			api::token_symbol(self.id).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
-		pub fn token_decimals(&self) -> PSP22Result<u8> {
-			api::token_decimals(self.id).map_err(|e| PSP22Error::from(e))
-		}
-
-		#[ink(message)]
 		pub fn token_exists(&self) -> PSP22Result<bool> {
 			api::token_exists(self.id).map_err(|e| PSP22Error::from(e))
+		}
+	}
+
+	impl Psp22 for Fungibles {
+		#[ink(message)]
+		fn total_supply(&self) -> Balance {
+			api::total_supply(self.id).unwrap_or_default()
+		}
+
+		#[ink(message)]
+		fn balance_of(&self, owner: AccountId) -> Balance {
+			api::balance_of(self.id, owner).unwrap_or_default()
+		}
+
+		#[ink(message)]
+		fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
+			api::allowance(self.id, owner, spender).unwrap_or_default()
+		}
+
+		#[ink(message)]
+		fn transfer(&mut self, to: AccountId, value: Balance, _data: Vec<u8>) -> PSP22Result<()> {
+			api::transfer(self.id, to, value).map_err(|e| PSP22Error::from(e))
+		}
+
+		#[ink(message)]
+		fn transfer_from(
+			&mut self,
+			from: AccountId,
+			to: AccountId,
+			value: Balance,
+			_data: Vec<u8>,
+		) -> PSP22Result<()> {
+			api::transfer_from(self.id, from, to, value).map_err(|e| PSP22Error::from(e))
+		}
+
+		#[ink(message)]
+		fn approve(&mut self, spender: AccountId, value: Balance) -> PSP22Result<()> {
+			api::approve(self.id, spender, value).map_err(|e| PSP22Error::from(e))
+		}
+
+		#[ink(message)]
+		fn increase_allowance(&mut self, spender: AccountId, value: Balance) -> PSP22Result<()> {
+			api::increase_allowance(self.id, spender, value).map_err(|e| PSP22Error::from(e))
+		}
+
+		#[ink(message)]
+		fn decrease_allowance(&mut self, spender: AccountId, value: Balance) -> PSP22Result<()> {
+			api::decrease_allowance(self.id, spender, value).map_err(|e| PSP22Error::from(e))
+		}
+	}
+
+	impl Psp22Metadata for Fungibles {
+		#[ink(message)]
+		fn token_name(&self) -> Option<Vec<u8>> {
+			if let Ok(value) = api::token_name(self.id) {
+				return Some(value);
+			}
+			None
+		}
+
+		#[ink(message)]
+		fn token_symbol(&self) -> Option<Vec<u8>> {
+			if let Ok(value) = api::token_symbol(self.id) {
+				return Some(value);
+			}
+			None
+		}
+
+		#[ink(message)]
+		fn token_decimals(&self) -> u8 {
+			api::token_decimals(self.id).unwrap_or_default()
+		}
+	}
+
+	impl Psp22Mintable for Fungibles {
+		#[ink(message)]
+		fn mint(&mut self, account: AccountId, amount: Balance) -> PSP22Result<()> {
+			api::mint(self.id, account, amount).map_err(|e| PSP22Error::from(e))
+		}
+	}
+
+	impl Psp22Burnable for Fungibles {
+		#[ink(message)]
+		fn burn(&mut self, account: AccountId, amount: Balance) -> PSP22Result<()> {
+			api::burn(self.id, account, amount).map_err(|e| PSP22Error::from(e))
 		}
 	}
 }
