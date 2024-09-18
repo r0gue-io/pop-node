@@ -1,4 +1,4 @@
-use super::FungiblesError;
+use super::{FungiblesError, PSP22Error};
 use crate::{
 	constants::{ASSETS, BALANCES},
 	primitives::{
@@ -20,6 +20,11 @@ fn error_into_status_code(error: Error) -> StatusCode {
 }
 
 fn into_fungibles_error(error: Error) -> FungiblesError {
+	let status_code: StatusCode = error_into_status_code(error);
+	status_code.into()
+}
+
+fn into_psp22_error(error: Error) -> PSP22Error {
 	let status_code: StatusCode = error_into_status_code(error);
 	status_code.into()
 }
@@ -95,5 +100,42 @@ fn converting_status_code_into_fungibles_error_works() {
 	assert_eq!(
 		into_fungibles_error(Module { index: ASSETS, error: [10, 0] }),
 		FungiblesError::NotLive
+	);
+}
+
+#[test]
+fn converting_status_code_into_psp22_error_works() {
+	let other_errors = vec![
+		Other,
+		CannotLookup,
+		BadOrigin,
+		// `ModuleError` other than assets module.
+		Module { index: 2, error: [5, 0] },
+		ConsumerRemaining,
+		NoProviders,
+		TooManyConsumers,
+		Token(OnlyProvider),
+		Arithmetic(Overflow),
+		Transactional(NoLayer),
+		Exhausted,
+		Corruption,
+		Unavailable,
+		RootNotAllowed,
+		Unknown { dispatch_error_index: 5, error_index: 5, error: 1 },
+		DecodingFailed,
+	];
+	for error in other_errors {
+		let status_code: StatusCode = error_into_status_code(error);
+		let fungibles_error: PSP22Error = status_code.into();
+		assert_eq!(fungibles_error, PSP22Error::Custom(String::from("Other")))
+	}
+
+	assert_eq!(
+		into_psp22_error(Module { index: ASSETS, error: [3, 0] }),
+		PSP22Error::Custom(String::from("Unknown"))
+	);
+	assert_eq!(
+		into_psp22_error(Module { index: ASSETS, error: [7, 0] }),
+		PSP22Error::InsufficientAllowance
 	);
 }
