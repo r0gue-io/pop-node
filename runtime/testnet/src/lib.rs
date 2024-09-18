@@ -181,7 +181,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_name: create_runtime_str!("pop"),
 	authoring_version: 1,
 	#[allow(clippy::zero_prefixed_literal)]
-	spec_version: 00_04_00,
+	spec_version: 00_04_01,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -233,7 +233,7 @@ parameter_types! {
 		})
 		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
 		.build_or_panic();
-	pub const SS58Prefix: u16 = 42;
+	pub const SS58Prefix: u16 = 0;
 }
 
 /// A type to identify filtered calls.
@@ -1008,4 +1008,15 @@ impl_runtime_apis! {
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+}
+
+// Ensures that the account id lookup does not perform any state reads. When this changes,
+// `pallet_api::fungibles` dispatchables need to be re-evaluated.
+#[test]
+fn test_lookup_config() {
+	use std::any::TypeId;
+	assert_eq!(
+		TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
+		TypeId::of::<sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>>()
+	);
 }

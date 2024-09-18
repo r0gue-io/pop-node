@@ -48,9 +48,11 @@ paseo-runtime-constants.workspace = true
 # Local
 pop-runtime-common.workspace = true
 pop-runtime-devnet.workspace = true
+pop-runtime-mainnet.workspace = true
 
 [features]
 default = [ "std" ]
+mainnet = [ "pop-runtime-mainnet/default" ]
 std = [
 	"asset-hub-paseo-runtime/std",
 	"cumulus-primitives-core/std",
@@ -65,6 +67,7 @@ std = [
 	"polkadot-runtime-parachains/std",
 	"pop-runtime-common/std",
 	"pop-runtime-devnet/std",
+	"pop-runtime-mainnet/std",
 	"sp-authority-discovery/std",
 	"sp-consensus-aura/std",
 	"sp-consensus-babe/std",
@@ -87,6 +90,7 @@ runtime-benchmarks = [
 	"polkadot-primitives/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"pop-runtime-devnet/runtime-benchmarks",
+	"pop-runtime-mainnet/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
 ]
@@ -99,5 +103,6 @@ try-runtime = [
 	"pallet-message-queue/try-runtime",
 	"paseo-runtime/try-runtime",
 	"pop-runtime-devnet/try-runtime",
+	"pop-runtime-mainnet/try-runtime",
 	"sp-runtime/try-runtime",
 ]

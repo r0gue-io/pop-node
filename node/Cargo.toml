@@ -22,6 +22,7 @@ serde_json.workspace = true
 # Local
 pop-runtime-common.workspace = true
 pop-runtime-devnet.workspace = true
+pop-runtime-mainnet.workspace = true
 pop-runtime-testnet.workspace = true
 
 # Substrate
@@ -80,6 +81,9 @@ cumulus-relay-chain-interface.workspace = true
 [build-dependencies]
 substrate-build-script-utils.workspace = true
 
+[dev-dependencies]
+pallet-multisig.workspace = true
+
 [features]
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
@@ -89,6 +93,7 @@ runtime-benchmarks = [
 	"polkadot-primitives/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"pop-runtime-devnet/runtime-benchmarks",
+	"pop-runtime-mainnet/runtime-benchmarks",
 	"pop-runtime-testnet/runtime-benchmarks",
 	"sc-service/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
@@ -96,6 +101,9 @@ runtime-benchmarks = [
 try-runtime = [
 	"polkadot-cli/try-runtime",
 	"pop-runtime-devnet/try-runtime",
+	"pop-runtime-mainnet/try-runtime",
 	"pop-runtime-testnet/try-runtime",
 	"sp-runtime/try-runtime",
 ]
+
+on-chain-release-build = [ "pop-runtime-mainnet/on-chain-release-build" ]

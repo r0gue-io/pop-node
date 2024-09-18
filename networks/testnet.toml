@@ -37,4 +37,12 @@ balances = [
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]
+args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug", "-lxcm=trace"]
+
+[[parachains]]
+id = 1000
+chain = "asset-hub-rococo-local"
+
+[[parachains.collators]]
+name = "asset-hub"
+args = ["-lxcm=trace"]

@@ -85,9 +85,33 @@ jobs:
       - name: Run integration tests
         run: cargo test --release --locked --package integration-tests
 
+  api-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run tests
+        working-directory: pop-api
+        run: cargo test --release --all-features
+
+  api-integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run integration tests
+        working-directory: pop-api/integration-tests
+        run: cargo test --release
+
   coverage:
     needs: lint
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-C debuginfo=0"
     steps:
       - uses: actions/checkout@v4
 

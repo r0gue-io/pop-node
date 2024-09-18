@@ -1,21 +1,36 @@
 use crate::{
-	primitives::storage_keys::{ParachainSystemKeys, RuntimeStateKeys},
-	BlockNumber, PopApiError,
+	build_extension_method,
+	constants::{DISPATCH, READ_STATE},
+	primitives::Error,
+	ChainExtensionMethodApi, StatusCode,
 };
 
-pub mod balances;
-pub mod cross_chain;
-pub mod nfts;
-pub mod state;
+/// APIs for fungible tokens.
+#[cfg(feature = "fungibles")]
+pub mod fungibles;
 
-pub fn relay_chain_block_number() -> Result<BlockNumber, PopApiError> {
-	state::read(RuntimeStateKeys::ParachainSystem(ParachainSystemKeys::LastRelayChainBlockNumber))
+pub(crate) const V0: u8 = 0;
+
+impl From<StatusCode> for Error {
+	fn from(value: StatusCode) -> Self {
+		value.0.into()
+	}
 }
 
-#[derive(scale::Encode)]
-pub(crate) enum RuntimeCall {
-	#[codec(index = 10)]
-	Balances(balances::BalancesCall),
-	#[codec(index = 50)]
-	Nfts(nfts::NftCalls),
+// Helper method to build a dispatch call.
+//
+// Parameters:
+// - 'module': The index of the runtime module.
+// - 'dispatchable': The index of the module dispatchable functions.
+fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethodApi {
+	build_extension_method(DISPATCH, V0, module, dispatchable)
+}
+
+// Helper method to build a call to read state.
+//
+// Parameters:
+// - 'module': The index of the runtime module.
+// - 'state_query': The index of the runtime state query.
+fn build_read_state(module: u8, state_query: u8) -> ChainExtensionMethodApi {
+	build_extension_method(READ_STATE, V0, module, state_query)
 }

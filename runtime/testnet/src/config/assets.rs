@@ -77,8 +77,8 @@ parameter_types! {
 }
 
 impl pallet_nft_fractionalization::Config for Runtime {
-	type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssets>>::Balance;
-	type AssetId = <Self as pallet_assets::Config<TrustBackedAssets>>::AssetId;
+	type AssetBalance = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::Balance;
+	type AssetId = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId;
 	type Assets = Assets;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
@@ -96,9 +96,9 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
 }
 
-pub type TrustBackedAssets = pallet_assets::Instance1;
-pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssets>;
-impl pallet_assets::Config<TrustBackedAssets> for Runtime {
+pub type TrustBackedAssetsInstance = pallet_assets::Instance1;
+pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
+impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type ApprovalDeposit = ApprovalDeposit;
 	type AssetAccountDeposit = AssetAccountDeposit;
 	type AssetDeposit = AssetDeposit;
