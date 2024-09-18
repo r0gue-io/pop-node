@@ -9,6 +9,7 @@ use crate::{
 	},
 	StatusCode,
 };
+use ink::prelude::string::String;
 use ink::scale::{Decode, Encode};
 
 fn error_into_status_code(error: Error) -> StatusCode {

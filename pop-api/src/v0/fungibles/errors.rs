@@ -1,4 +1,5 @@
 use super::*;
+use ink::prelude::string::String;
 
 /// Represents various errors related to fungible tokens.
 ///
