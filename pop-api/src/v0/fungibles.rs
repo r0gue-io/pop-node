@@ -420,6 +420,93 @@ pub mod management {
 	}
 }
 
+pub mod interfaces {
+	use super::*;
+
+	pub type Result<T> = core::result::Result<T, StatusCode>;
+
+	#[ink::trait_definition]
+	pub trait Psp22Impl {
+		#[ink(message)]
+		fn total_supply(&self) -> Balance;
+
+		#[ink(message)]
+		fn balance_of(&self, owner: AccountId) -> Balance;
+
+		#[ink(message)]
+		fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance;
+
+		#[ink(message)]
+		fn transfer(&mut self, to: AccountId, value: Balance, data: Vec<u8>) -> Result<()>;
+
+		#[ink(message)]
+		fn transfer_from(
+			&mut self,
+			from: AccountId,
+			to: AccountId,
+			value: Balance,
+			data: Vec<u8>,
+		) -> Result<()>;
+
+		#[ink(message)]
+		fn approve(&mut self, spender: AccountId, value: Balance) -> Result<()>;
+
+		#[ink(message)]
+		fn increase_allowance(&mut self, spender: AccountId, value: Balance) -> Result<()>;
+
+		#[ink(message)]
+		fn decrease_allowance(&mut self, spender: AccountId, value: Balance) -> Result<()>;
+	}
+
+	#[ink::trait_definition]
+	pub trait Psp2ManagableImpl {
+		#[ink(message)]
+		fn create(&mut self, id: TokenId, admin: AccountId, min_balance: Balance) -> Result<()>;
+
+		#[ink(message)]
+		fn start_destroy(&mut self, token: TokenId) -> Result<()>;
+
+		#[ink(message)]
+		fn set_metadata(
+			&mut self,
+			token: TokenId,
+			name: Vec<u8>,
+			symbol: Vec<u8>,
+			decimals: u8,
+		) -> Result<()>;
+
+		#[ink(message)]
+		fn clear_metadata(&mut self, token: TokenId) -> Result<()>;
+
+		#[ink(message)]
+		fn token_exists(&self, token: TokenId) -> Result<bool>;
+	}
+
+	#[ink::trait_definition]
+	pub trait Psp22MetadataImpl {
+		#[ink(message)]
+		fn token_name(&self) -> Option<Vec<u8>>;
+
+		#[ink(message)]
+		fn token_symbol(&self) -> Option<Vec<u8>>;
+
+		#[ink(message)]
+		fn token_decimals(&self, id: TokenId) -> u8;
+	}
+
+	#[ink::trait_definition]
+	pub trait Psp22MintableImpl {
+		#[ink(message)]
+		fn mint(&mut self, account: AccountId, amount: Balance) -> Result<()>;
+	}
+
+	#[ink::trait_definition]
+	pub trait Psp22BurnableImpl {
+		#[ink(message)]
+		fn burn(&mut self, account: AccountId, amount: Balance) -> Result<()>;
+	}
+}
+
 /// Represents various errors related to fungible tokens.
 ///
 /// The `FungiblesError` provides a detailed and specific set of error types that can occur when
