@@ -12,8 +12,6 @@ pub trait Psp22 {
 	///
 	/// # Parameters
 	/// - `owner` - The account whose balance is being queried.
-	///
-	/// Returns `0` if the account is non-existent.
 	#[ink(message)]
 	fn balance_of(&self, owner: AccountId) -> Balance;
 
@@ -22,8 +20,6 @@ pub trait Psp22 {
 	/// # Parameters
 	/// - `owner` - The account that owns the tokens.
 	/// - `spender` - The account that is allowed to spend the tokens.
-	///
-	/// Returns `0` if no allowance has been set.
 	#[ink(message)]
 	fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance;
 
@@ -34,15 +30,6 @@ pub trait Psp22 {
 	/// - `to` - The recipient account.
 	/// - `value` - The number of tokens to transfer.
 	/// - `data` - Additional data in unspecified format.
-	///
-	/// # Events
-	/// On success a `Transfer` event is emitted.
-	///
-	/// No-op if the caller and `to` is the same address or `value` is zero, returns success
-	/// and no events are emitted.
-	///
-	/// # Errors
-	/// Reverts with `InsufficientBalance` if the `value` exceeds the caller's balance.
 	#[ink(message)]
 	fn transfer(&mut self, to: AccountId, value: Balance, data: Vec<u8>) -> Result<()>;
 
@@ -53,28 +40,6 @@ pub trait Psp22 {
 	/// - `from` - The account from which the token balance will be withdrawn.
 	/// - `to` - The recipient account.
 	/// - `value` - The number of tokens to transfer.
-	///
-	/// If `from` and the caller are different addresses, the caller must be allowed
-	/// by `from` to spend at least `value` tokens.
-	///
-	/// # Events
-	/// On success a `Transfer` event is emitted.
-	///
-	/// No-op if `from` and `to` is the same address or `value` is zero, returns success
-	/// and no events are emitted.
-	///
-	/// If `from` and the caller are different addresses, a successful transfer results
-	/// in decreased allowance by `from` to the caller and an `Approval` event with
-	/// the new allowance amount is emitted.
-	///
-	/// # Errors
-	/// Reverts with `InsufficientBalance` if the `value` exceeds the balance of the account `from`.
-	///
-	/// Reverts with `InsufficientAllowance` if `from` and the caller are different addresses and
-	/// the `value` exceeds the allowance granted by `from` to the caller.
-	///
-	/// If conditions for both `InsufficientBalance` and `InsufficientAllowance` errors are met,
-	/// reverts with `InsufficientAllowance`.
 	#[ink(message)]
 	fn transfer_from(
 		&mut self,
@@ -91,11 +56,6 @@ pub trait Psp22 {
 	/// # Parameters
 	/// - `spender` - The account that is allowed to spend the tokens.
 	/// - `value` - The number of tokens to approve.
-	///
-	/// # Events
-	/// An `Approval` event is emitted.
-	///
-	/// No-op if the caller and `spender` is the same address, returns success and no events are emitted.
 	#[ink(message)]
 	fn approve(&mut self, spender: AccountId, value: Balance) -> Result<()>;
 
@@ -104,12 +64,6 @@ pub trait Psp22 {
 	/// # Parameters
 	/// - `spender` - The account that is allowed to spend the tokens.
 	/// - `value` - The number of tokens to increase the allowance by.
-	///
-	/// # Events
-	/// An `Approval` event with the new allowance amount is emitted.
-	///
-	/// No-op if the caller and `spender` is the same address or `value` is zero, returns success
-	/// and no events are emitted.
 	#[ink(message)]
 	fn increase_allowance(&mut self, spender: AccountId, value: Balance) -> Result<()>;
 
@@ -118,16 +72,6 @@ pub trait Psp22 {
 	/// # Parameters
 	/// - `spender` - The account that is allowed to spend the tokens.
 	/// - `value` - The number of tokens to decrease the allowance by.
-	///
-	/// # Events
-	/// An `Approval` event with the new allowance amount is emitted.
-	///
-	/// No-op if the caller and `spender` is the same address or `value` is zero, returns success
-	/// and no events are emitted.
-	///
-	/// # Errors
-	/// Reverts with `InsufficientAllowance` if `spender` and the caller are different addresses and
-	/// the `value` exceeds the allowance granted by the caller to `spender`.
 	#[ink(message)]
 	fn decrease_allowance(&mut self, spender: AccountId, value: Balance) -> Result<()>;
 }
@@ -135,12 +79,30 @@ pub trait Psp22 {
 /// The PSP22 Metadata trait.
 #[ink::trait_definition]
 pub trait Psp22Managable {
+	/// Creates a new token with the specified `id`, assigns `admin` as the administrator,
+	/// and sets a minimum balance requirement.
+	///
+	/// # Parameters
+	/// - `id`: The unique identifier for the token to be created.
+	/// - `admin`: The account that will have administrative privileges over the token.
+	/// - `min_balance`: The minimum balance required to hold the token.
 	#[ink(message)]
 	fn create(&mut self, id: TokenId, admin: AccountId, min_balance: Balance) -> Result<()>;
 
+	/// Initiates the process to destroy the specified `token`.
+	///
+	/// # Parameters
+	/// - `token`: The identifier of the token to be destroyed.
 	#[ink(message)]
 	fn start_destroy(&mut self, token: TokenId) -> Result<()>;
 
+	/// Sets metadata for the specified `token`, including its name, symbol, and decimal places.
+	///
+	/// # Parameters
+	/// - `token`: The identifier of the token to set metadata for.
+	/// - `name`: The name of the token.
+	/// - `symbol`: The symbol representing the token.
+	/// - `decimals`: The number of decimal places the token uses.
 	#[ink(message)]
 	fn set_metadata(
 		&mut self,
@@ -150,9 +112,17 @@ pub trait Psp22Managable {
 		decimals: u8,
 	) -> Result<()>;
 
+	/// Clears the metadata for the specified `token`.
+	///
+	/// # Parameters
+	/// - `token`: The identifier of the token to clear metadata for.
 	#[ink(message)]
 	fn clear_metadata(&mut self, token: TokenId) -> Result<()>;
 
+	/// Checks whether a token with the specified `token` identifier exists.
+	///
+	/// # Parameters
+	/// - `token`: The identifier of the token to check for existence.
 	#[ink(message)]
 	fn token_exists(&self, token: TokenId) -> Result<bool>;
 }
@@ -181,15 +151,6 @@ pub trait Psp22Mintable {
 	/// # Parameters
 	/// - `account` - The account to be credited with the created tokens.
 	/// - `value` - The number of tokens to mint.
-	///
-	/// # Events
-	/// On success a `Transfer` event is emitted with `None` sender.
-	///
-	/// No-op if `value` is zero, returns success and no events are emitted.
-	///
-	/// # Errors
-	/// Reverts with `Custom (max supply exceeded)` if the total supply increased by
-	/// `value` exceeds maximal value of `u128` type.
 	#[ink(message)]
 	fn mint(&mut self, account: AccountId, amount: Balance) -> Result<()>;
 }
@@ -202,14 +163,6 @@ pub trait Psp22Burnable {
 	/// # Parameters
 	/// - `account` - The account from which the tokens will be destroyed.
 	/// - `value` - The number of tokens to destroy.
-	///
-	/// # Events
-	/// On success a `Transfer` event is emitted with `None` recipient.
-	///
-	/// No-op if `value` is zero, returns success and no events are emitted.
-	///
-	/// # Errors
-	/// Reverts with `InsufficientBalance` if the `value` exceeds the caller's balance.
 	#[ink(message)]
 	fn burn(&mut self, account: AccountId, amount: Balance) -> Result<()>;
 }

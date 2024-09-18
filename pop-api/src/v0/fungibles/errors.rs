@@ -61,3 +61,33 @@ impl From<StatusCode> for FungiblesError {
 		}
 	}
 }
+
+/// The PSP22 error.
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub enum PSP22Error {
+	/// Custom error type for implementation-based errors.
+	Custom(String),
+	/// Returned when an account does not have enough tokens to complete the operation.
+	InsufficientBalance,
+	/// Returned if there is not enough allowance to complete the operation.
+	InsufficientAllowance,
+	/// Returned if recipient's address is zero.
+	ZeroRecipientAddress,
+	/// Returned if sender's address is zero.
+	ZeroSenderAddress,
+	/// Returned if a safe transfer check failed.
+	SafeTransferCheckFailed(String),
+}
+
+impl From<StatusCode> for PSP22Error {
+	/// Converts a `StatusCode` to a `PSP22Error`.
+	fn from(value: StatusCode) -> Self {
+		let encoded = value.0.to_le_bytes();
+		match encoded {
+			[_, ASSETS, 3, _] => PSP22Error::Custom(String::from("Unknown")),
+			[_, ASSETS, 7, _] => PSP22Error::InsufficientAllowance,
+			_ => PSP22Error::Custom(String::from("Other")),
+		}
+	}
+}
