@@ -17,14 +17,13 @@ on:
         default: true
       runtime:
         description: 'Runtime to build (devnet, testnet, mainnet)'
-        required: true
-        default: 'devnet'
+        default: ''
         type: choice
         options:
+          - ''
           - devnet
           - testnet
           - mainnet
-          - none
 
 jobs:
   srtool:
@@ -34,7 +33,7 @@ jobs:
       startsWith(github.event.release.tag_name, 'devnet') ||
       startsWith(github.event.release.tag_name, 'mainnet') ||
       github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.runtime != 'none'
+      github.event.inputs.runtime != ''
     permissions:
       contents: write
     steps:
