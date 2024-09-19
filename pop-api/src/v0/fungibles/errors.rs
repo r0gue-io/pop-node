@@ -1,4 +1,5 @@
 //! A set of errors for use in smart contracts that interact with the fungibles api. This includes errors compliant to standards.
+
 use super::*;
 use ink::prelude::string::String;
 
