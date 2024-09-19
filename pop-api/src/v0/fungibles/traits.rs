@@ -80,11 +80,11 @@ pub trait Psp22 {
 pub trait Psp22Metadata {
 	/// Returns the token name.
 	#[ink(message)]
-	fn token_name(&self) -> Option<Vec<u8>>;
+	fn token_name(&self) -> Option<String>;
 
 	/// Returns the token symbol.
 	#[ink(message)]
-	fn token_symbol(&self) -> Option<Vec<u8>>;
+	fn token_symbol(&self) -> Option<String>;
 
 	/// Returns the token decimals.
 	#[ink(message)]
