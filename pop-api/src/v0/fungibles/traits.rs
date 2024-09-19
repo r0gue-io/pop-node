@@ -1,5 +1,6 @@
 use super::*;
 
+/// The PSP22 trait.
 #[ink::trait_definition]
 pub trait Psp22 {
 	/// Returns the total token supply.
