@@ -7,6 +7,7 @@
 //! track token operations. Be mindful of the costs associated with emitting events.
 //!
 //! For more details, refer to [ink! events](https://use.ink/basics/events).
+
 use super::*;
 
 /// Event emitted when allowance by `owner` to `spender` changes.
