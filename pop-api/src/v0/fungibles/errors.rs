@@ -1,4 +1,4 @@
-//! A set of errors for use in smart contracts to manage the returned errors.
+//! A set of errors for use in smart contracts that interact with the fungibles api. This includes errors compliant to standards.
 use super::*;
 use ink::prelude::string::String;
 
@@ -66,7 +66,7 @@ impl From<StatusCode> for FungiblesError {
 }
 
 /// The PSP22 error.
-/// TODO: Issue https://github.com/r0gue-io/pop-node/issues/298
+// TODO: Issue https://github.com/r0gue-io/pop-node/issues/298
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum PSP22Error {

@@ -23,8 +23,6 @@ pub mod errors;
 pub mod events;
 pub mod traits;
 
-pub type PSP22Result<T> = core::result::Result<T, PSP22Error>;
-
 /// Returns the total token supply for a specified token.
 ///
 /// # Parameters
@@ -300,7 +298,7 @@ pub mod management {
 }
 
 mod constants {
-	/// 1. PSP-22 Interface:
+	/// 1. PSP-22
 	pub(super) const TOTAL_SUPPLY: u8 = 0;
 	pub(super) const BALANCE_OF: u8 = 1;
 	pub(super) const ALLOWANCE: u8 = 2;
@@ -310,19 +308,19 @@ mod constants {
 	pub(super) const INCREASE_ALLOWANCE: u8 = 6;
 	pub(super) const DECREASE_ALLOWANCE: u8 = 7;
 
-	/// 2. PSP-22 Metadata Interface:
+	/// 2. PSP-22 Metadata
 	pub(super) const TOKEN_NAME: u8 = 8;
 	pub(super) const TOKEN_SYMBOL: u8 = 9;
 	pub(super) const TOKEN_DECIMALS: u8 = 10;
 
-	/// 3. Asset Management:
+	/// 3. Management
 	pub(super) const CREATE: u8 = 11;
 	pub(super) const START_DESTROY: u8 = 12;
 	pub(super) const SET_METADATA: u8 = 16;
 	pub(super) const CLEAR_METADATA: u8 = 17;
 	pub(super) const TOKEN_EXISTS: u8 = 18;
 
-	/// 4. PSP-22 Mintable & Burnable interface:
+	/// 4. PSP-22 Mintable & Burnable
 	pub(super) const MINT: u8 = 19;
 	pub(super) const BURN: u8 = 20;
 }
