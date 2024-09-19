@@ -1,15 +1,10 @@
 //! The `fungibles` module provides an API for interacting and managing fungible tokens.
 //!
-//! The API includes the following interfaces:
+//! The API includes the following traits:
 //! 1. PSP-22
 //! 2. PSP-22 Metadata
 //! 3. Management
 //! 4. PSP-22 Mintable & Burnable
-pub mod errors;
-pub mod events;
-pub mod interfaces;
-#[cfg(test)]
-mod tests;
 
 use crate::{
 	constants::{ASSETS, BALANCES, FUNGIBLES},
@@ -17,60 +12,18 @@ use crate::{
 	ChainExtensionMethodApi, StatusCode,
 };
 use constants::*;
-use core::result::Result;
 pub use errors::*;
 pub use events::*;
 use ink::prelude::vec::Vec;
-pub use interfaces::*;
 pub use management::*;
 pub use metadata::*;
+pub use traits::*;
 
-pub type PSP22Result<T> = Result<T, PSP22Error>;
-pub type PopApiResult<T> = Result<T, StatusCode>;
+pub mod errors;
+pub mod events;
+pub mod traits;
 
-// Helper method to build a dispatch call.
-//
-// Parameters:
-// - 'dispatchable': The index of the dispatchable function within the module.
-fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
-	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
-}
-
-// Helper method to build a call to read state.
-//
-// Parameters:
-// - 'state_query': The index of the runtime state query.
-fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
-	crate::v0::build_read_state(FUNGIBLES, state_query)
-}
-
-mod constants {
-	/// 1. PSP-22 Interface:
-	pub(super) const TOTAL_SUPPLY: u8 = 0;
-	pub(super) const BALANCE_OF: u8 = 1;
-	pub(super) const ALLOWANCE: u8 = 2;
-	pub(super) const TRANSFER: u8 = 3;
-	pub(super) const TRANSFER_FROM: u8 = 4;
-	pub(super) const APPROVE: u8 = 5;
-	pub(super) const INCREASE_ALLOWANCE: u8 = 6;
-	pub(super) const DECREASE_ALLOWANCE: u8 = 7;
-
-	/// 2. PSP-22 Metadata Interface:
-	pub(super) const TOKEN_NAME: u8 = 8;
-	pub(super) const TOKEN_SYMBOL: u8 = 9;
-	pub(super) const TOKEN_DECIMALS: u8 = 10;
-
-	/// 3. Asset Management:
-	pub(super) const CREATE: u8 = 11;
-	pub(super) const START_DESTROY: u8 = 12;
-	pub(super) const SET_METADATA: u8 = 16;
-	pub(super) const CLEAR_METADATA: u8 = 17;
-	pub(super) const TOKEN_EXISTS: u8 = 18;
-
-	/// 4. PSP-22 Mintable & Burnable interface:
-	pub(super) const MINT: u8 = 19;
-	pub(super) const BURN: u8 = 20;
-}
+pub type PSP22Result<T> = core::result::Result<T, PSP22Error>;
 
 /// Returns the total token supply for a specified token.
 ///
@@ -349,4 +302,48 @@ pub mod management {
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
+}
+
+mod constants {
+	/// 1. PSP-22 Interface:
+	pub(super) const TOTAL_SUPPLY: u8 = 0;
+	pub(super) const BALANCE_OF: u8 = 1;
+	pub(super) const ALLOWANCE: u8 = 2;
+	pub(super) const TRANSFER: u8 = 3;
+	pub(super) const TRANSFER_FROM: u8 = 4;
+	pub(super) const APPROVE: u8 = 5;
+	pub(super) const INCREASE_ALLOWANCE: u8 = 6;
+	pub(super) const DECREASE_ALLOWANCE: u8 = 7;
+
+	/// 2. PSP-22 Metadata Interface:
+	pub(super) const TOKEN_NAME: u8 = 8;
+	pub(super) const TOKEN_SYMBOL: u8 = 9;
+	pub(super) const TOKEN_DECIMALS: u8 = 10;
+
+	/// 3. Asset Management:
+	pub(super) const CREATE: u8 = 11;
+	pub(super) const START_DESTROY: u8 = 12;
+	pub(super) const SET_METADATA: u8 = 16;
+	pub(super) const CLEAR_METADATA: u8 = 17;
+	pub(super) const TOKEN_EXISTS: u8 = 18;
+
+	/// 4. PSP-22 Mintable & Burnable interface:
+	pub(super) const MINT: u8 = 19;
+	pub(super) const BURN: u8 = 20;
+}
+
+// Helper method to build a dispatch call.
+//
+// Parameters:
+// - 'dispatchable': The index of the dispatchable function within the module.
+fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
+	crate::v0::build_dispatch(FUNGIBLES, dispatchable)
+}
+
+// Helper method to build a call to read state.
+//
+// Parameters:
+// - 'state_query': The index of the runtime state query.
+fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
+	crate::v0::build_read_state(FUNGIBLES, state_query)
 }
