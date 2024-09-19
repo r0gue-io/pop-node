@@ -1,3 +1,4 @@
+//! A set of errors for use in smart contracts to manage the returned errors.
 use super::*;
 use ink::prelude::string::String;
 
