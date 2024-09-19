@@ -1,15 +1,16 @@
-/// A set of events for use in smart contracts interacting with the fungibles API.
-///
-/// The `Transfer` and `Approval` events conform to the PSP-22 standard. The other events
-/// (`Create`, `StartDestroy`, `SetMetadata`, `ClearMetadata`) are provided for convenience.
-///
-/// These events are not emitted by the API itself but can be used in your contracts to
-/// track token operations. Be mindful of the costs associated with emitting events.
-///
-/// For more details, refer to [ink! events](https://use.ink/basics/events).
+//! A set of events for use in smart contracts interacting with the fungibles API.
+//!
+//! The `Transfer` and `Approval` events conform to the PSP-22 standard. The other events
+//! (`Create`, `StartDestroy`, `SetMetadata`, `ClearMetadata`) are provided for convenience.
+//!
+//! These events are not emitted by the API itself but can be used in your contracts to
+//! track token operations. Be mindful of the costs associated with emitting events.
+//!
+//! For more details, refer to [ink! events](https://use.ink/basics/events).
 use super::*;
 
 /// Event emitted when allowance by `owner` to `spender` changes.
+// Differing style: event name abides by the PSP22 standard.
 #[ink::event]
 pub struct Approval {
 	/// The owner providing the allowance.
@@ -23,6 +24,7 @@ pub struct Approval {
 }
 
 /// Event emitted when transfer of tokens occurs.
+// Differing style: event name abides by the PSP22 standard.
 #[ink::event]
 pub struct Transfer {
 	/// The source of the transfer. `None` when minting.

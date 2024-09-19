@@ -11,6 +11,7 @@ use ink::prelude::string::String;
 /// operations. The `Other` variant serves as a catch-all for any unexpected errors. For more
 /// detailed debugging, the `Other` variant can be converted into the richer `Error` type defined in
 /// the primitives crate.
+/// NOTE: The `FungiblesError` is WIP
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum FungiblesError {
@@ -64,6 +65,7 @@ impl From<StatusCode> for FungiblesError {
 }
 
 /// The PSP22 error.
+/// TODO: Issue https://github.com/r0gue-io/pop-node/issues/298
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum PSP22Error {
@@ -90,5 +92,152 @@ impl From<StatusCode> for PSP22Error {
 			[_, ASSETS, 7, _] => PSP22Error::InsufficientAllowance,
 			_ => PSP22Error::Custom(String::from("Other")),
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::{FungiblesError, PSP22Error};
+	use crate::{
+		constants::{ASSETS, BALANCES},
+		primitives::{
+			ArithmeticError::*,
+			Error::{self, *},
+			TokenError::*,
+			TransactionalError::*,
+		},
+		StatusCode,
+	};
+	use ink::prelude::string::String;
+	use ink::scale::{Decode, Encode};
+
+	fn error_into_status_code(error: Error) -> StatusCode {
+		let mut encoded_error = error.encode();
+		encoded_error.resize(4, 0);
+		let value = u32::from_le_bytes(
+			encoded_error.try_into().expect("qed, resized to 4 bytes line above"),
+		);
+		value.into()
+	}
+
+	fn into_fungibles_error(error: Error) -> FungiblesError {
+		let status_code: StatusCode = error_into_status_code(error);
+		status_code.into()
+	}
+
+	fn into_psp22_error(error: Error) -> PSP22Error {
+		let status_code: StatusCode = error_into_status_code(error);
+		status_code.into()
+	}
+
+	// If we ever want to change the conversion from bytes to `u32`.
+	#[test]
+	fn status_code_vs_encoded() {
+		assert_eq!(u32::decode(&mut &[3u8, 10, 2, 0][..]).unwrap(), 133635u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 0, 0][..]).unwrap(), 13315u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 1, 0][..]).unwrap(), 78851u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 2, 0][..]).unwrap(), 144387u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 3, 0][..]).unwrap(), 209923u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 5, 0][..]).unwrap(), 340995u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 7, 0][..]).unwrap(), 472067u32);
+		assert_eq!(u32::decode(&mut &[3u8, 52, 10, 0][..]).unwrap(), 668675u32);
+	}
+
+	#[test]
+	fn converting_status_code_into_fungibles_error_works() {
+		let other_errors = vec![
+			Other,
+			CannotLookup,
+			BadOrigin,
+			// `ModuleError` other than assets module.
+			Module { index: 2, error: [5, 0] },
+			ConsumerRemaining,
+			NoProviders,
+			TooManyConsumers,
+			Token(OnlyProvider),
+			Arithmetic(Overflow),
+			Transactional(NoLayer),
+			Exhausted,
+			Corruption,
+			Unavailable,
+			RootNotAllowed,
+			Unknown { dispatch_error_index: 5, error_index: 5, error: 1 },
+			DecodingFailed,
+		];
+		for error in other_errors {
+			let status_code: StatusCode = error_into_status_code(error);
+			let fungibles_error: FungiblesError = status_code.into();
+			assert_eq!(fungibles_error, FungiblesError::Other(status_code))
+		}
+
+		assert_eq!(
+			into_fungibles_error(Module { index: BALANCES, error: [2, 0] }),
+			FungiblesError::NoBalance
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [0, 0] }),
+			FungiblesError::NoAccount
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [1, 0] }),
+			FungiblesError::NoPermission
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [2, 0] }),
+			FungiblesError::Unknown
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [3, 0] }),
+			FungiblesError::InUse
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [5, 0] }),
+			FungiblesError::MinBalanceZero
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [7, 0] }),
+			FungiblesError::InsufficientAllowance
+		);
+		assert_eq!(
+			into_fungibles_error(Module { index: ASSETS, error: [10, 0] }),
+			FungiblesError::NotLive
+		);
+	}
+
+	#[test]
+	fn converting_status_code_into_psp22_error_works() {
+		let other_errors = vec![
+			Other,
+			CannotLookup,
+			BadOrigin,
+			// `ModuleError` other than assets module.
+			Module { index: 2, error: [5, 0] },
+			ConsumerRemaining,
+			NoProviders,
+			TooManyConsumers,
+			Token(OnlyProvider),
+			Arithmetic(Overflow),
+			Transactional(NoLayer),
+			Exhausted,
+			Corruption,
+			Unavailable,
+			RootNotAllowed,
+			Unknown { dispatch_error_index: 5, error_index: 5, error: 1 },
+			DecodingFailed,
+		];
+		for error in other_errors {
+			let status_code: StatusCode = error_into_status_code(error);
+			let fungibles_error: PSP22Error = status_code.into();
+			assert_eq!(fungibles_error, PSP22Error::Custom(String::from("Other")))
+		}
+
+		assert_eq!(
+			into_psp22_error(Module { index: ASSETS, error: [3, 0] }),
+			PSP22Error::Custom(String::from("Unknown"))
+		);
+		assert_eq!(
+			into_psp22_error(Module { index: ASSETS, error: [7, 0] }),
+			PSP22Error::InsufficientAllowance
+		);
 	}
 }
