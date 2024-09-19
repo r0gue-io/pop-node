@@ -1,8 +1,8 @@
 //! A set of traits that implement the PSP22 token standard.
 
 use super::*;
+use core::result::Result;
 use ink::prelude::string::String;
-use std::result::Result;
 
 /// The PSP22 trait.
 #[ink::trait_definition]
