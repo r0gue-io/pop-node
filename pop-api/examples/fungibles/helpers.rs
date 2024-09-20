@@ -1,6 +1,9 @@
 // A set of helper methods to test the contract calls.
 
-use drink::session::{bundle::ContractBundle, error::SessionError, Session, NO_SALT};
+use drink::{
+	session::{bundle::ContractBundle, error::SessionError, Session, NO_SALT},
+	DispatchError,
+};
 use pop_api::primitives::{AccountId, TokenId};
 use pop_sandbox::{AccountId32, Balance, Sandbox, INIT_VALUE};
 use scale::{Decode, Encode};
@@ -16,6 +19,11 @@ pub(super) fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
 /// Get the last event from pallet contracts.
 pub(super) fn last_contract_event(session: &Session<Sandbox>) -> Option<Vec<u8>> {
 	session.record().last_event_batch().contract_events().last().cloned()
+}
+
+/// Get the last contract execution result.
+pub(super) fn last_contract_error(session: &Session<Sandbox>) -> Option<DispatchError> {
+	session.record().last_call_result().result.clone().err()
 }
 
 // Call a contract method and decode the returned data.
@@ -63,17 +71,12 @@ pub(super) fn deploy_with_new_existing_constructor(
 
 // Test methods for `PSP22`.`
 
-pub(super) fn total_supply(
-	session: &mut Session<Sandbox>,
-) -> Result<Balance, Box<dyn std::error::Error>> {
-	Ok(decoded_call::<Balance>(session, "Psp22::total_supply", vec![], None)?)
+pub(super) fn total_supply(session: &mut Session<Sandbox>) -> Balance {
+	decoded_call::<Balance>(session, "Psp22::total_supply", vec![], None).unwrap()
 }
 
-pub(super) fn balance_of(
-	session: &mut Session<Sandbox>,
-	owner: AccountId32,
-) -> Result<Balance, Box<dyn std::error::Error>> {
-	Ok(decoded_call::<Balance>(session, "Psp22::balance_of", vec![owner.to_string()], None)?)
+pub(super) fn balance_of(session: &mut Session<Sandbox>, owner: AccountId32) -> Balance {
+	decoded_call::<Balance>(session, "Psp22::balance_of", vec![owner.to_string()], None).unwrap()
 }
 
 pub(super) fn transfer(
@@ -87,22 +90,16 @@ pub(super) fn transfer(
 
 // Test methods for `PSP22Metadata``.
 
-pub(super) fn token_name(
-	session: &mut Session<Sandbox>,
-) -> Result<String, Box<dyn std::error::Error>> {
-	Ok(decoded_call::<String>(session, "Psp22Metadata::token_name", vec![], None)?)
+pub(super) fn token_name(session: &mut Session<Sandbox>) -> String {
+	decoded_call::<String>(session, "Psp22Metadata::token_name", vec![], None).unwrap()
 }
 
-pub(super) fn token_symbol(
-	session: &mut Session<Sandbox>,
-) -> Result<String, Box<dyn std::error::Error>> {
-	Ok(decoded_call::<String>(session, "Psp22Metadata::token_symbol", vec![], None)?)
+pub(super) fn token_symbol(session: &mut Session<Sandbox>) -> String {
+	decoded_call::<String>(session, "Psp22Metadata::token_symbol", vec![], None).unwrap()
 }
 
-pub(super) fn token_decimals(
-	session: &mut Session<Sandbox>,
-) -> Result<u8, Box<dyn std::error::Error>> {
-	Ok(decoded_call::<u8>(session, "Psp22Metadata::token_decimals", vec![], None)?)
+pub(super) fn token_decimals(session: &mut Session<Sandbox>) -> u8 {
+	decoded_call::<u8>(session, "Psp22Metadata::token_decimals", vec![], None).unwrap()
 }
 
 // Test methods for `PSP22Mintable``.
