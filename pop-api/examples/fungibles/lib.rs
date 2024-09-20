@@ -196,9 +196,9 @@ mod fungibles {
 				return Ok(());
 			}
 
+			let allowance = self.allowance(caller, spender);
 			api::increase_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			let allowance = self.allowance(caller, spender).saturating_add(value);
-			self.emit_approval_event(caller, spender, allowance);
+			self.emit_approval_event(caller, spender, allowance.saturating_add(value));
 			Ok(())
 		}
 
@@ -224,8 +224,7 @@ mod fungibles {
 			}
 
 			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			let allowance = allowance.saturating_sub(value);
-			self.emit_approval_event(caller, spender, allowance);
+			self.emit_approval_event(caller, spender, allowance.saturating_sub(value));
 			Ok(())
 		}
 	}
