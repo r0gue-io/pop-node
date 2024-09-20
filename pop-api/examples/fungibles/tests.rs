@@ -3,13 +3,13 @@ use drink::{
 	session::{error::SessionError, Session},
 };
 use frame_support::assert_ok;
-use helpers::*;
 use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
 use pop_sandbox::{Balance, Sandbox, ALICE, BOB};
 use scale::Encode;
+use utils::*;
 
 use super::*;
 
@@ -170,16 +170,13 @@ fn burn_fails_with_insufficient_amount(
 	// Mint tokens.
 	const AMOUNT: Balance = 12_000;
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
-
 	// Burn tokens reverted with `InsufficientBalance`.
-	let function: &str = "Psp22Burnable::burn";
-	let params: Vec<String> = vec![ALICE.to_string(), (AMOUNT + 1).to_string()];
-	let call = session.call::<String, ()>(function, &params, None);
-
-	// TODO: Failed assertion [0, 1, 1] and [1].
-	if let Err(SessionError::CallReverted(error)) = call {
-		assert_eq!(error, PSP22Error::InsufficientBalance.encode());
-	}
+	expect_call_reverted(
+		&mut session,
+		BURN,
+		vec![ALICE.to_string(), (AMOUNT + 1).to_string()],
+		PSP22Error::InsufficientBalance,
+	);
 	Ok(())
 }
 

@@ -12,9 +12,9 @@ use pop_api::{
 };
 
 #[cfg(test)]
-mod helpers;
-#[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod utils;
 
 #[ink::contract]
 mod fungibles {

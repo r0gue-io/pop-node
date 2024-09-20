@@ -10,6 +10,19 @@ use scale::{Decode, Encode};
 
 use super::*;
 
+// PSP22 functions.
+pub const BALANCE_OF: &str = "Psp22::balance_of";
+pub const TOTAL_SUPPLY: &str = "Psp22::total_supply";
+pub const TRANSFER: &str = "Psp22::transfer";
+// PSP22Metadata functions.
+pub const TOKEN_NAME: &str = "Psp22Metadata::token_name";
+pub const TOKEN_SYMBOL: &str = "Psp22Metadata::token_symbol";
+pub const TOKEN_DECIMALS: &str = "Psp22Metadata::token_decimals";
+// PSP22Mintable functions.
+pub const MINT: &str = "Psp22Mintable::mint";
+// PSP22Burnable functions.
+pub const BURN: &str = "Psp22Burnable::burn";
+
 /// This is used to resolve type mismatches between the `AccountId` in the quasi testing environment and the
 /// contract environment.
 pub(super) fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
@@ -21,9 +34,17 @@ pub(super) fn last_contract_event(session: &Session<Sandbox>) -> Option<Vec<u8>>
 	session.record().last_event_batch().contract_events().last().cloned()
 }
 
-/// Get the last contract execution result.
-pub(super) fn last_contract_error(session: &Session<Sandbox>) -> Option<DispatchError> {
-	session.record().last_call_result().result.clone().err()
+/// Execute a contract method and exepct CallReverted error to be returned.
+pub(super) fn expect_call_reverted(
+	session: &mut Session<Sandbox>,
+	function: &str,
+	params: Vec<String>,
+	err: PSP22Error,
+) {
+	let call = session.call::<String, ()>(function, &params, None);
+	if let Err(SessionError::CallReverted(error)) = call {
+		assert_eq!(error[1..], Err::<(), PSP22Error>(err).encode());
+	}
 }
 
 // Call a contract method and decode the returned data.
@@ -72,11 +93,11 @@ pub(super) fn deploy_with_new_existing_constructor(
 // Test methods for `PSP22`.`
 
 pub(super) fn total_supply(session: &mut Session<Sandbox>) -> Balance {
-	decoded_call::<Balance>(session, "Psp22::total_supply", vec![], None).unwrap()
+	decoded_call::<Balance>(session, TOTAL_SUPPLY, vec![], None).unwrap()
 }
 
 pub(super) fn balance_of(session: &mut Session<Sandbox>, owner: AccountId32) -> Balance {
-	decoded_call::<Balance>(session, "Psp22::balance_of", vec![owner.to_string()], None).unwrap()
+	decoded_call::<Balance>(session, BALANCE_OF, vec![owner.to_string()], None).unwrap()
 }
 
 pub(super) fn transfer(
@@ -85,21 +106,21 @@ pub(super) fn transfer(
 	amount: Balance,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let data = serde_json::to_string::<[u8; 0]>(&[]).unwrap();
-	Ok(session.call("Psp22::transfer", &vec![to.to_string(), amount.to_string(), data], None)??)
+	Ok(session.call(TRANSFER, &vec![to.to_string(), amount.to_string(), data], None)??)
 }
 
 // Test methods for `PSP22Metadata``.
 
 pub(super) fn token_name(session: &mut Session<Sandbox>) -> String {
-	decoded_call::<String>(session, "Psp22Metadata::token_name", vec![], None).unwrap()
+	decoded_call::<String>(session, TOKEN_NAME, vec![], None).unwrap()
 }
 
 pub(super) fn token_symbol(session: &mut Session<Sandbox>) -> String {
-	decoded_call::<String>(session, "Psp22Metadata::token_symbol", vec![], None).unwrap()
+	decoded_call::<String>(session, TOKEN_SYMBOL, vec![], None).unwrap()
 }
 
 pub(super) fn token_decimals(session: &mut Session<Sandbox>) -> u8 {
-	decoded_call::<u8>(session, "Psp22Metadata::token_decimals", vec![], None).unwrap()
+	decoded_call::<u8>(session, TOKEN_DECIMALS, vec![], None).unwrap()
 }
 
 // Test methods for `PSP22Mintable``.
@@ -109,11 +130,7 @@ pub(super) fn mint(
 	account: AccountId32,
 	amount: Balance,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	Ok(session.call(
-		"Psp22Mintable::mint",
-		&vec![account.to_string(), amount.to_string()],
-		None,
-	)??)
+	Ok(session.call(MINT, &vec![account.to_string(), amount.to_string()], None)??)
 }
 
 // Test methods for `PSP22MPsp22Burnablentable``.
@@ -123,9 +140,5 @@ pub(super) fn burn(
 	account: AccountId32,
 	amount: Balance,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	Ok(session.call(
-		"Psp22Burnable::burn",
-		&vec![account.to_string(), amount.to_string()],
-		None,
-	)??)
+	Ok(session.call(BURN, &vec![account.to_string(), amount.to_string()], None)??)
 }
