@@ -115,7 +115,7 @@ mod fungibles {
 			}
 
 			// Reverts with `InsufficientBalance` if the `value` exceeds the caller's balance.
-			if value > self.env().balance() {
+			if value > self.balance_of(caller) {
 				return Err(PSP22Error::InsufficientBalance);
 			}
 

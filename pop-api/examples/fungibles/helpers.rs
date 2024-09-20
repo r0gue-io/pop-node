@@ -7,9 +7,15 @@ use scale::{Decode, Encode};
 
 use super::*;
 
-// Decode slice of bytes to `pop-api` AccountId.
+/// This is used to resolve type mismatches between the `AccountId` in the quasi testing environment and the
+/// contract environment.
 pub(super) fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
 	AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
+}
+
+/// Get the last event from pallet contracts.
+pub(super) fn last_contract_event(session: &Session<Sandbox>) -> Option<Vec<u8>> {
+	session.record().last_event_batch().contract_events().last().cloned()
 }
 
 // Call a contract method and decode the returned data.
