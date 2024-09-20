@@ -12,6 +12,8 @@ use pop_api::{
 };
 
 #[cfg(test)]
+mod helpers;
+#[cfg(test)]
 mod tests;
 
 #[ink::contract]
