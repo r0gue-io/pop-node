@@ -11,6 +11,9 @@ use pop_api::{
 	},
 };
 
+#[cfg(test)]
+mod tests;
+
 #[ink::contract]
 mod fungibles {
 	use super::*;
@@ -62,12 +65,14 @@ mod fungibles {
 		#[ink(constructor, payable)]
 		pub fn new(
 			id: TokenId,
-			admin: AccountId,
+			// TODO: If admin is different than the contract address, `NoPermission` thrown for mint, burn
+			// _admin: AccountId,
 			min_balance: Balance,
 		) -> Result<Self, PSP22Error> {
-			api::create(id, admin, min_balance).map_err(PSP22Error::from)?;
 			let mut contract = Self { id };
-			contract.emit_created_event(id, contract.env().account_id(), admin);
+			let contract_id = contract.env().account_id();
+			api::create(id, contract_id, min_balance).map_err(PSP22Error::from)?;
+			contract.emit_created_event(id, contract_id, contract_id);
 			Ok(contract)
 		}
 	}
@@ -183,8 +188,8 @@ mod fungibles {
 			value: Balance,
 		) -> Result<(), PSP22Error> {
 			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address or `value` is zero, returns success
-			// and no events are emitted.
+			// No-op if the caller and `spender` is the same address or `value` is zero, returns
+			// success and no events are emitted.
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
@@ -203,13 +208,14 @@ mod fungibles {
 			value: Balance,
 		) -> Result<(), PSP22Error> {
 			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address or `value` is zero, returns success
-			// and no events are emitted.
+			// No-op if the caller and `spender` is the same address or `value` is zero, returns
+			// success and no events are emitted.
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
-			// Reverts with `InsufficientAllowance` if `spender` and the caller are different addresses and
-			// the `value` exceeds the allowance granted by the caller to `spender`.
+			// Reverts with `InsufficientAllowance` if `spender` and the caller are different
+			// addresses and the `value` exceeds the allowance granted by the caller to
+			// `spender`.
 			let allowance = self.allowance(caller, spender);
 			if allowance < value {
 				return Err(PSP22Error::InsufficientAllowance);

@@ -1,15 +1,14 @@
-use drink::session::{Session, NO_ARGS, NO_SALT};
+use drink::session::{error::SessionError, Session, NO_ARGS, NO_SALT};
 use pop_api::{
-	primitives::TokenId,
-	v0::fungibles::{self as api},
+	primitives::{AccountId, TokenId},
+	v0::fungibles::{self as api, PSP22Error},
 };
 use pop_sandbox::{AccountId32, Balance, Sandbox, ALICE, BOB, INIT_VALUE};
 use scale::{Decode, Encode};
 
 use super::*;
 
-const TOKEN_A: TokenId = 1;
-const TOKEN_B: TokenId = 2;
+const TOKEN_ID: TokenId = 1;
 
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
@@ -20,8 +19,8 @@ mod test_methods {
 	use super::*;
 
 	// Decode slice of bytes to `pop-api` AccountId.
-	pub(super) fn account_id_from_slice(s: &[u8; 32]) -> pop_api::primitives::AccountId {
-		pop_api::primitives::AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
+	pub(super) fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
+		AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
 	}
 
 	// Call a contract method and decode the returned data.
@@ -42,175 +41,143 @@ mod test_methods {
 		assert_eq!(last_event, event.as_slice());
 	}
 
-	pub(super) fn mint(
-		session: &mut Session<Sandbox>,
-		token: TokenId,
-		account: AccountId32,
-		amount: Balance,
-	) -> Result<(), Box<dyn std::error::Error>> {
-		Ok(session.call(
-			"mint",
-			&vec![token.to_string(), account.to_string(), amount.to_string()],
-			None,
-		)??)
-	}
+	// Test methods for deployment with constructor function.
 
-	pub(super) fn burn(
-		session: &mut Session<Sandbox>,
-		token: TokenId,
-		account: AccountId32,
-		amount: Balance,
-	) -> Result<(), Box<dyn std::error::Error>> {
-		Ok(session.call(
-			"burn",
-			&vec![token.to_string(), account.to_string(), amount.to_string()],
-			None,
-		)??)
-	}
-
-	pub(super) fn transfer(
-		session: &mut Session<Sandbox>,
-		token: TokenId,
-		to: AccountId32,
-		amount: Balance,
-	) -> Result<(), Box<dyn std::error::Error>> {
-		Ok(session.call(
-			"transfer",
-			&vec![token.to_string(), to.to_string(), amount.to_string()],
-			None,
-		)??)
-	}
-
-	pub(super) fn create(
+	pub(super) fn deploy_with_new_constructor(
 		session: &mut Session<Sandbox>,
 		id: TokenId,
-		admin: AccountId32,
 		min_balance: Balance,
-	) -> Result<(), Box<dyn std::error::Error>> {
-		Ok(session.call(
-			"create",
-			&vec![id.to_string(), admin.to_string(), min_balance.to_string()],
-			None,
-		)??)
+	) -> Result<AccountId32, SessionError> {
+		session.deploy_bundle(
+			BundleProvider::local()?,
+			"new",
+			&[id.to_string(), min_balance.to_string()],
+			NO_SALT,
+			Some(INIT_VALUE),
+		)
 	}
 
-	pub(super) fn token_exist(
-		session: &mut Session<Sandbox>,
-		token: TokenId,
-	) -> Result<PopApiResult<bool>, Box<dyn std::error::Error>> {
-		Ok(decoded_call::<PopApiResult<bool>>(session, "token_exists", vec![token.to_string()], None)?)
-	}
+	// Test methods for `PSP22`.`
 
 	pub(super) fn total_supply(
 		session: &mut Session<Sandbox>,
-		token: TokenId,
-	) -> Result<PopApiResult<Balance>, Box<dyn std::error::Error>> {
-		Ok(decoded_call::<PopApiResult<Balance>>(
-			session,
-			"total_supply",
-			vec![token.to_string()],
-			None,
-		)?)
+	) -> Result<Balance, Box<dyn std::error::Error>> {
+		Ok(decoded_call::<Balance>(session, "Psp22::total_supply", vec![], None)?)
 	}
 
 	pub(super) fn balance_of(
 		session: &mut Session<Sandbox>,
-		token: TokenId,
 		owner: AccountId32,
-	) -> Result<PopApiResult<Balance>, Box<dyn std::error::Error>> {
-		Ok(decoded_call::<PopApiResult<Balance>>(
-			session,
-			"balance_of",
-			vec![token.to_string(), owner.to_string()],
-			None,
-		)?)
+	) -> Result<Balance, Box<dyn std::error::Error>> {
+		Ok(decoded_call::<Balance>(session, "Psp22::balance_of", vec![owner.to_string()], None)?)
 	}
-}
 
-#[drink::test(sandbox = Sandbox)]
-fn test_create_multiple_token_works(
-	mut session: Session,
-) -> Result<(), Box<dyn std::error::Error>> {
-	let _ = env_logger::try_init();
-	let contract_bundle = BundleProvider::local()?;
-	// Deploy a contract.
-	session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
-	// Create new tokens.
-	create(&mut session, TOKEN_A, ALICE, 1_000)?;
+	pub(super) fn transfer(
+		session: &mut Session<Sandbox>,
+		to: AccountId32,
+		amount: Balance,
+	) -> Result<(), Box<dyn std::error::Error>> {
+		let data = serde_json::to_string::<[u8; 0]>(&[]).unwrap();
+		Ok(session.call(
+			"Psp22::transfer",
+			&vec![to.to_string(), amount.to_string(), data],
+			None,
+		)??)
+	}
 
-	assert_event(
-		&mut session,
-		api::events::Created {
-			id: TOKEN_A,
-			admin: account_id_from_slice(ALICE.as_ref()),
-			creator: account_id_from_slice(ALICE.as_ref()),
-		}
-		.encode(),
-	);
+	// Test methods for `PSP22Metadata``.
 
-	create(&mut session, TOKEN_B, ALICE, 2_000)?;
-	// Check that the token is created successfully.
-	assert_eq!(token_exist(&mut session, TOKEN_A)?, Ok(true));
-	assert_eq!(token_exist(&mut session, TOKEN_B)?, Ok(true));
-	Ok(())
+	pub(super) fn token_name(
+		session: &mut Session<Sandbox>,
+	) -> Result<String, Box<dyn std::error::Error>> {
+		Ok(decoded_call::<String>(session, "Psp22Metadata::token_name", vec![], None)?)
+	}
+
+	pub(super) fn token_symbol(
+		session: &mut Session<Sandbox>,
+	) -> Result<String, Box<dyn std::error::Error>> {
+		Ok(decoded_call::<String>(session, "Psp22Metadata::token_symbol", vec![], None)?)
+	}
+
+	pub(super) fn token_decimals(
+		session: &mut Session<Sandbox>,
+	) -> Result<u8, Box<dyn std::error::Error>> {
+		Ok(decoded_call::<u8>(session, "Psp22Metadata::token_decimals", vec![], None)?)
+	}
+
+	// Test methods for `PSP22Mintable``.
+
+	pub(super) fn mint(
+		session: &mut Session<Sandbox>,
+		account: AccountId32,
+		amount: Balance,
+	) -> Result<(), Box<dyn std::error::Error>> {
+		Ok(session.call(
+			"Psp22Mintable::mint",
+			&vec![account.to_string(), amount.to_string()],
+			None,
+		)??)
+	}
+
+	// Test methods for `PSP22MPsp22Burnablentable``.
+
+	pub(super) fn burn(
+		session: &mut Session<Sandbox>,
+		account: AccountId32,
+		amount: Balance,
+	) -> Result<(), Box<dyn std::error::Error>> {
+		Ok(session.call(
+			"Psp22Burnable::burn",
+			&vec![account.to_string(), amount.to_string()],
+			None,
+		)??)
+	}
 }
 
 #[drink::test(sandbox = Sandbox)]
 fn test_mint_token_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();
-	let contract_bundle = BundleProvider::local()?;
-	// Deploy a contract.
-	let contract_address =
-		session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
-	// Create a new token.
-	create(&mut session, TOKEN_A, contract_address, 10_000)?;
+	// Deploy a new contract.
+	let contract_address = deploy_with_new_constructor(&mut session, 1, 10_000)?;
 	// Mint tokens.
 	const AMOUNT: Balance = 12_000;
-	mint(&mut session, TOKEN_A, ALICE, AMOUNT)?;
-	mint(&mut session, TOKEN_A, BOB, AMOUNT)?;
+	mint(&mut session, ALICE, AMOUNT)?;
+	mint(&mut session, BOB, AMOUNT)?;
 	// Check if the tokens were minted with the right amount.
-	assert_eq!(total_supply(&mut session, TOKEN_A)?, Ok(AMOUNT * 2));
-	assert_eq!(balance_of(&mut session, TOKEN_A, ALICE)?, Ok(AMOUNT));
-	assert_eq!(balance_of(&mut session, TOKEN_A, BOB)?, Ok(AMOUNT));
+	assert_eq!(total_supply(&mut session)?, AMOUNT * 2);
+	assert_eq!(balance_of(&mut session, ALICE)?, AMOUNT);
+	assert_eq!(balance_of(&mut session, BOB)?, AMOUNT);
 	Ok(())
 }
 
 #[drink::test(sandbox = Sandbox)]
 fn test_burn_token_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();
-	let contract_bundle = BundleProvider::local()?;
-	// Deploy a contract.
-	let contract_address =
-		session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
-	// Create a new token.
-	create(&mut session, TOKEN_A, contract_address, 10_000)?;
+	// Deploy a new contract.
+	let contract_address = deploy_with_new_constructor(&mut session, TOKEN_ID, 10_000)?;
 	// Mint tokens.
 	const AMOUNT: Balance = 12_000;
-	mint(&mut session, TOKEN_A, ALICE, AMOUNT)?;
+	mint(&mut session, ALICE, AMOUNT)?;
 	// Burn tokens.
-	burn(&mut session, TOKEN_A, ALICE, 1)?;
-	assert_eq!(total_supply(&mut session, TOKEN_A)?, Ok(AMOUNT - 1));
-	assert_eq!(balance_of(&mut session, TOKEN_A, ALICE)?, Ok(AMOUNT - 1));
+	burn(&mut session, ALICE, 1)?;
+	assert_eq!(total_supply(&mut session)?, AMOUNT - 1);
+	assert_eq!(balance_of(&mut session, ALICE)?, AMOUNT - 1);
 	Ok(())
 }
 
 #[drink::test(sandbox = Sandbox)]
 fn test_transfer_token_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();
-	let contract_bundle = BundleProvider::local()?;
-	// Deploy a contract.
-	let contract_address =
-		session.deploy_bundle(contract_bundle, "new", NO_ARGS, NO_SALT, Some(INIT_VALUE))?;
-	// Create a new token.
-	create(&mut session, TOKEN_A, contract_address.clone(), 10_000)?;
+	// Deploy a new contract.
+	let contract_address = deploy_with_new_constructor(&mut session, TOKEN_ID, 10_000)?;
 	// Mint tokens.
 	const AMOUNT: Balance = 12_000;
 	const TRANSFERED: Balance = 500;
-	mint(&mut session, TOKEN_A, contract_address.clone(), AMOUNT)?;
-	mint(&mut session, TOKEN_A, BOB, AMOUNT)?;
+	mint(&mut session, contract_address.clone(), AMOUNT)?;
+	mint(&mut session, BOB, AMOUNT)?;
 	// Transfer tokens.
-	transfer(&mut session, TOKEN_A, BOB, TRANSFERED)?;
-	assert_eq!(balance_of(&mut session, TOKEN_A, contract_address)?, Ok(AMOUNT - TRANSFERED));
-	assert_eq!(balance_of(&mut session, TOKEN_A, BOB)?, Ok(AMOUNT + TRANSFERED));
+	transfer(&mut session, BOB, TRANSFERED)?;
+	assert_eq!(balance_of(&mut session, contract_address)?, AMOUNT - TRANSFERED);
+	assert_eq!(balance_of(&mut session, BOB)?, AMOUNT + TRANSFERED);
 	Ok(())
 }

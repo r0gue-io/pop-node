@@ -1,7 +1,9 @@
-//! A set of errors for use in smart contracts that interact with the fungibles api. This includes errors compliant to standards.
+//! A set of errors for use in smart contracts that interact with the fungibles api. This includes
+//! errors compliant to standards.
+
+use ink::prelude::string::String;
 
 use super::*;
-use ink::prelude::string::String;
 
 /// Represents various errors related to fungible tokens.
 ///
@@ -99,6 +101,11 @@ impl From<StatusCode> for PSP22Error {
 
 #[cfg(test)]
 mod tests {
+	use ink::{
+		prelude::string::String,
+		scale::{Decode, Encode},
+	};
+
 	use super::{FungiblesError, PSP22Error};
 	use crate::{
 		constants::{ASSETS, BALANCES},
@@ -110,8 +117,6 @@ mod tests {
 		},
 		StatusCode,
 	};
-	use ink::prelude::string::String;
-	use ink::scale::{Decode, Encode};
 
 	fn error_into_status_code(error: Error) -> StatusCode {
 		let mut encoded_error = error.encode();

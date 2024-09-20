@@ -6,11 +6,6 @@
 //! 3. Management
 //! 4. PSP-22 Mintable & Burnable
 
-use crate::{
-	constants::{ASSETS, BALANCES, FUNGIBLES},
-	primitives::{AccountId, Balance, TokenId},
-	ChainExtensionMethodApi, Result, StatusCode,
-};
 use constants::*;
 pub use errors::*;
 pub use events::*;
@@ -18,6 +13,12 @@ use ink::prelude::vec::Vec;
 pub use management::*;
 pub use metadata::*;
 pub use traits::*;
+
+use crate::{
+	constants::{ASSETS, BALANCES, FUNGIBLES},
+	primitives::{AccountId, Balance, TokenId},
+	ChainExtensionMethodApi, Result, StatusCode,
+};
 
 pub mod errors;
 pub mod events;
