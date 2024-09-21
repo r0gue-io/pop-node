@@ -189,15 +189,10 @@ impl<'a, E: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<
 	type AccountId = AccountIdOf<E::T>;
 
 	fn address(&self) -> Self::AccountId {
+		// TODO: Need to decide which address to return.
 		match self.0.caller() {
-			Origin::Root => {
-				log::debug!("origin=root");
-				self.0.address().clone()
-			},
-			Origin::Signed(caller) => {
-				log::debug!("origin=signed({:?}) | contract({:?})", caller, self.0.address());
-				caller
-			},
+			Origin::Root => self.0.address().clone(),
+			Origin::Signed(caller) => caller,
 		}
 	}
 }
