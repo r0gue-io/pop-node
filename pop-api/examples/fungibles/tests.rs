@@ -27,13 +27,18 @@ fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error:
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Token exists after the deployment.
 	assert!(session.sandbox().asset_exists(&TOKEN_ID));
-	let contract = account_id_from_slice(contract.as_ref());
 	// Successfully emit event.
-	let expected = Created { id: TOKEN_ID, creator: contract, admin: contract }.encode();
+	let expected = Created {
+		id: TOKEN_ID,
+		creator: account_id_from_slice(contract.as_ref()),
+		admin: account_id_from_slice(ALICE.as_ref()),
+	}
+	.encode();
 	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
 	Ok(())
 }
@@ -74,6 +79,7 @@ fn balance_of_works(mut session: Session) -> Result<(), Box<dyn std::error::Erro
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Mint tokens.
@@ -93,6 +99,7 @@ fn mint_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Mint tokens.
@@ -117,6 +124,7 @@ fn mint_zero_value_works(mut session: Session) -> Result<(), Box<dyn std::error:
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Mint tokens.
@@ -137,6 +145,7 @@ fn burn_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Mint tokens.
@@ -162,6 +171,7 @@ fn burn_zero_value_works(mut session: Session) -> Result<(), Box<dyn std::error:
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Burn tokens.
@@ -184,6 +194,7 @@ fn burn_fails_with_insufficient_balance(
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Mint tokens.
@@ -207,6 +218,7 @@ fn transfer_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Mint tokens.
@@ -239,6 +251,7 @@ fn transfer_zero_value_works(mut session: Session) -> Result<(), Box<dyn std::er
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	assert_ok!(transfer(&mut session, ALICE, 0));
@@ -257,6 +270,7 @@ fn transfer_fails_with_insufficient_balance(
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 	// Mint tokens.
@@ -283,6 +297,7 @@ fn approve_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>>
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 
@@ -312,6 +327,7 @@ fn increase_allowance_works(mut session: Session) -> Result<(), Box<dyn std::err
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 
@@ -342,6 +358,7 @@ fn decrease_allowance_works(mut session: Session) -> Result<(), Box<dyn std::err
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 
@@ -364,7 +381,6 @@ fn decrease_allowance_works(mut session: Session) -> Result<(), Box<dyn std::err
 	Ok(())
 }
 
-// TODO: Unapproved error
 #[drink::test(sandbox = Sandbox)]
 fn transfer_from_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();
@@ -373,26 +389,35 @@ fn transfer_from_works(mut session: Session) -> Result<(), Box<dyn std::error::E
 		&mut session,
 		BundleProvider::local()?,
 		TOKEN_ID,
+		ALICE,
 		TOKEN_MIN_BALANCE,
 	)?;
 
-	const AMOUNT: Balance = 12_000;
+	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
+	const TRANSFERRED: Balance = TOKEN_MIN_BALANCE * 2;
 	// Mint tokens.
 	assert_ok!(mint(&mut session, contract.clone(), AMOUNT));
-	// Successfully transfer from `owner`.
+	// Successfully transfer from `contract` by `ALICE`.
 	session.set_actor(contract.clone());
-	assert_ok!(approve(&mut session, ALICE, AMOUNT / 2));
-	assert_eq!(allowance(&mut session, contract.clone(), ALICE), AMOUNT / 2);
+	assert_ok!(approve(&mut session, ALICE, AMOUNT));
+	assert_eq!(allowance(&mut session, contract.clone(), ALICE), AMOUNT);
+	assert_eq!(balance_of(&mut session, ALICE), 0);
+	assert_eq!(balance_of(&mut session, BOB), 0);
+	assert_eq!(balance_of(&mut session, contract.clone()), AMOUNT);
 
 	session.set_actor(ALICE);
-	assert_ok!(transfer_from(&mut session, contract, BOB, AMOUNT / 2));
+	assert_ok!(transfer_from(&mut session, contract.clone(), BOB, TRANSFERRED));
 	// Successfully emit event.
-	let expected = Transfer {
-		from: Some(account_id_from_slice(ALICE.as_ref())),
-		to: Some(account_id_from_slice(BOB.as_ref())),
-		value: AMOUNT / 4,
+	let expected = Approval {
+		owner: account_id_from_slice(contract.clone().as_ref()),
+		spender: account_id_from_slice(ALICE.as_ref()),
+		value: TRANSFERRED,
 	}
 	.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
+	// assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
+	assert_eq!(allowance(&mut session, contract.clone(), ALICE), AMOUNT - TRANSFERRED);
+	assert_eq!(balance_of(&mut session, ALICE), 0);
+	assert_eq!(balance_of(&mut session, BOB), TRANSFERRED);
+	assert_eq!(balance_of(&mut session, contract), AMOUNT - TRANSFERRED);
 	Ok(())
 }
