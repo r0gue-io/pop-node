@@ -1,7 +1,10 @@
 use core::fmt::Debug;
 
 use frame_support::pallet_prelude::Weight;
-use pallet_contracts::chain_extension::{BufInBufOutState, ChargedAmount, Result, State};
+use pallet_contracts::{
+	chain_extension::{BufInBufOutState, ChargedAmount, Result, State},
+	Origin,
+};
 use sp_std::vec::Vec;
 
 use crate::AccountIdOf;
@@ -168,14 +171,14 @@ pub trait Ext {
 	type AccountId;
 
 	/// Returns a reference to the account id of the current contract.
-	fn address(&self) -> &Self::AccountId;
+	fn address(&self) -> Self::AccountId;
 }
 
 impl Ext for () {
 	type AccountId = ();
 
-	fn address(&self) -> &Self::AccountId {
-		&()
+	fn address(&self) -> Self::AccountId {
+		()
 	}
 }
 
@@ -185,12 +188,21 @@ pub(crate) struct ExternalEnvironment<'a, T: pallet_contracts::chain_extension::
 impl<'a, E: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<'a, E> {
 	type AccountId = AccountIdOf<E::T>;
 
-	fn address(&self) -> &Self::AccountId {
-		self.0.address()
+	fn address(&self) -> Self::AccountId {
+		match self.0.caller() {
+			Origin::Root => {
+				log::debug!("origin=root");
+				self.0.address().clone()
+			},
+			Origin::Signed(caller) => {
+				log::debug!("origin=signed({:?}) | contract({:?})", caller, self.0.address());
+				caller
+			},
+		}
 	}
 }
 
 #[test]
 fn default_ext_works() {
-	assert_eq!(().address(), &())
+	assert_eq!(().address(), ())
 }

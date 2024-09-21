@@ -364,6 +364,7 @@ fn decrease_allowance_works(mut session: Session) -> Result<(), Box<dyn std::err
 	Ok(())
 }
 
+// TODO: Unapproved error
 #[drink::test(sandbox = Sandbox)]
 fn transfer_from_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();

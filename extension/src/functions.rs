@@ -53,7 +53,7 @@ impl<
 		let charged = env.charge_weight(dispatch_info.weight)?;
 		log::debug!(target: Logger::LOG_TARGET, "pre-dispatch weight charged: charged={charged:?}");
 		// Contract is the origin by default.
-		let origin = RawOrigin::Signed(env.ext().address().clone());
+		let origin = RawOrigin::Signed(env.ext().address());
 		log::debug!(target: Logger::LOG_TARGET, "contract origin: origin={origin:?}");
 		let mut origin: Config::RuntimeOrigin = origin.into();
 		// Ensure call allowed.
@@ -323,8 +323,8 @@ mod tests {
 			assert!(DispatchCallWithFilter::<Nothing>::execute(&mut env).is_err());
 			assert_eq!(
 				env.charged(),
-				read_from_buffer_weight(encoded_call.len() as u32) +
-					call.get_dispatch_info().weight
+				read_from_buffer_weight(encoded_call.len() as u32)
+					+ call.get_dispatch_info().weight
 			);
 		}
 
@@ -362,8 +362,8 @@ mod tests {
 				assert!(DispatchCall::execute(&mut env).is_ok());
 				assert_eq!(
 					env.charged(),
-					read_from_buffer_weight(encoded_call.len() as u32) +
-						call.get_dispatch_info().weight
+					read_from_buffer_weight(encoded_call.len() as u32)
+						+ call.get_dispatch_info().weight
 				);
 			})
 		}
@@ -387,9 +387,9 @@ mod tests {
 				assert_eq!(call.get_dispatch_info().weight, migrate_weight + weight_limit);
 				assert_eq!(
 					env.charged(),
-					read_from_buffer_weight(encoded_call.len() as u32) +
-						call.get_dispatch_info().weight -
-						extra_weight
+					read_from_buffer_weight(encoded_call.len() as u32)
+						+ call.get_dispatch_info().weight
+						- extra_weight
 				);
 			})
 		}
@@ -488,8 +488,8 @@ mod tests {
 			let expected = "pop".as_bytes().encode();
 			assert_eq!(
 				env.charged(),
-				read_from_buffer_weight(encoded_read.len() as u32) +
-					read.weight() + write_to_contract_weight(expected.len() as u32)
+				read_from_buffer_weight(encoded_read.len() as u32)
+					+ read.weight() + write_to_contract_weight(expected.len() as u32)
 			);
 		}
 
