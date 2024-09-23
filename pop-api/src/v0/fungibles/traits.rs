@@ -1,4 +1,4 @@
-//! A set of traits that implement the PSP22 token standard.
+//! Traits that can be used by contracts. Including standard compliant traits.
 
 use super::*;
 use core::result::Result;

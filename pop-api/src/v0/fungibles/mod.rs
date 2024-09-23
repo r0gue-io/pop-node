@@ -1,6 +1,6 @@
 //! The `fungibles` module provides an API for interacting and managing fungible tokens.
 //!
-//! The API includes the following traits:
+//! The API includes the following interfaces:
 //! 1. PSP-22
 //! 2. PSP-22 Metadata
 //! 3. Management
