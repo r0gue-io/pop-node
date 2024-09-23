@@ -5,7 +5,7 @@ use drink::{
 	DispatchError,
 };
 use pop_api::primitives::{AccountId, TokenId};
-use pop_sandbox::{AccountId32, Balance, Sandbox, INIT_VALUE};
+use pop_sandbox::{AccountId32, Balance, DevnetSandbox as Sandbox, INIT_VALUE};
 use scale::{Decode, Encode};
 
 use super::*;
@@ -87,12 +87,12 @@ pub(super) fn deploy_with_new_constructor(
 	)
 }
 
-pub(super) fn deploy_with_new_existing_constructor(
+pub(super) fn deploy_with_existing_constructor(
 	session: &mut Session<Sandbox>,
 	bundle: ContractBundle,
 	id: TokenId,
 ) -> Result<AccountId32, SessionError> {
-	session.deploy_bundle(bundle, "new_existing", &[id.to_string()], NO_SALT, Some(INIT_VALUE))
+	session.deploy_bundle(bundle, "existing", &[id.to_string()], NO_SALT, Some(INIT_VALUE))
 }
 
 // Test methods for `PSP22`.
@@ -192,5 +192,5 @@ pub(super) fn burn(
 	account: AccountId32,
 	amount: Balance,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	Ok(session.call(BURN, &vec![account.to_string(), amount.to_string()], None)??)
+	Ok(session.call(, &vec![account.to_string(), amount.to_string()], None)??)
 }

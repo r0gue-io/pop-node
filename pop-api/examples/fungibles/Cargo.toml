@@ -37,4 +37,7 @@ ink-as-dependency = [  ]
 std = [
 	"ink/std",
 	"pop-api/std",
+	"pop-sandbox/std",
+	"scale-info/std",
+	"scale/std",
 ]

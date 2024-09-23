@@ -2,7 +2,6 @@
 
 use ink::prelude::{string::String, vec::Vec};
 use pop_api::{
-	fungibles::{self as api},
 	primitives::TokenId,
 	v0::fungibles::{
 		self as api,
@@ -27,19 +26,6 @@ mod fungibles {
 	}
 
 	impl Fungibles {
-		fn emit_created_event(&mut self, id: u32, creator: AccountId, admin: AccountId) {
-			self.env().emit_event(Created { id, creator, admin });
-		}
-
-		fn emit_transfer_event(
-			&mut self,
-			from: Option<AccountId>,
-			to: Option<AccountId>,
-			value: Balance,
-		) {
-			self.env().emit_event(Transfer { from, to, value });
-		}
-
 		fn emit_approval_event(&mut self, owner: AccountId, spender: AccountId, value: Balance) {
 			self.env().emit_event(Approval { owner, spender, value });
 		}
@@ -49,7 +35,7 @@ mod fungibles {
 		/// # Parameters
 		/// * - `token` - The token.
 		#[ink(constructor, payable)]
-		pub fn new_existing(id: TokenId) -> Result<Self, PSP22Error> {
+		pub fn existing(id: TokenId) -> Result<Self, PSP22Error> {
 			// Make sure token exists.
 			if !api::token_exists(id).unwrap_or_default() {
 				return Err(PSP22Error::Custom(String::from("Unknown")));
@@ -75,7 +61,9 @@ mod fungibles {
 			let mut contract = Self { id };
 			let contract_id = contract.env().account_id();
 			api::create(id, contract_id, min_balance).map_err(PSP22Error::from)?;
-			contract.emit_created_event(id, contract_id, contract_id);
+			contract
+				.env()
+				.emit_event(Created { id, creator: contract_id, admin: contract_id });
 			Ok(contract)
 		}
 	}
@@ -121,7 +109,7 @@ mod fungibles {
 			}
 
 			api::transfer(self.id, to, value).map_err(PSP22Error::from)?;
-			self.emit_transfer_event(Some(caller), Some(to), value);
+			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			Ok(())
 		}
 
@@ -161,9 +149,10 @@ mod fungibles {
 			// the new allowance amount is emitted.
 			api::transfer_from(self.id, from, to, value).map_err(PSP22Error::from)?;
 			// Emit events.
-			self.emit_transfer_event(Some(caller), Some(to), value);
+			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			let allowance = self.allowance(from, to).saturating_sub(value);
-			self.emit_approval_event(from, caller, allowance);
+			self.env()
+				.emit_event(Approval { owner: from, spender: caller, value: allowance });
 			Ok(())
 		}
 
@@ -179,7 +168,7 @@ mod fungibles {
 			}
 
 			api::approve(self.id, spender, value).map_err(PSP22Error::from)?;
-			self.emit_approval_event(caller, spender, value);
+			self.env().emit_event(Approval { owner: caller, spender, value });
 			Ok(())
 		}
 
@@ -199,7 +188,11 @@ mod fungibles {
 
 			let allowance = self.allowance(caller, spender);
 			api::increase_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			self.emit_approval_event(caller, spender, allowance.saturating_add(value));
+			self.env().emit_event(Approval {
+				owner: caller,
+				spender,
+				value: allowance.saturating_add(value),
+			});
 			Ok(())
 		}
 
@@ -225,7 +218,11 @@ mod fungibles {
 			}
 
 			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			self.emit_approval_event(caller, spender, allowance.saturating_sub(value));
+			self.env().emit_event(Approval {
+				owner: caller,
+				spender,
+				value: allowance.saturating_sub(value),
+			});
 			Ok(())
 		}
 	}
@@ -258,7 +255,7 @@ mod fungibles {
 				return Ok(());
 			}
 			api::mint(self.id, account, value).map_err(PSP22Error::from)?;
-			self.emit_transfer_event(None, Some(account), value);
+			self.env().emit_event(Transfer { from: None, to: Some(account), value });
 			Ok(())
 		}
 	}
@@ -275,7 +272,7 @@ mod fungibles {
 				return Err(PSP22Error::InsufficientBalance);
 			}
 			api::burn(self.id, account, value).map_err(PSP22Error::from)?;
-			self.emit_transfer_event(Some(account), None, value);
+			self.env().emit_event(Transfer { from: Some(account), to: None, value });
 			Ok(())
 		}
 	}

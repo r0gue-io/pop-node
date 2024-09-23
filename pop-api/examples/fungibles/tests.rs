@@ -7,7 +7,7 @@ use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
-use pop_sandbox::{Balance, Sandbox, ALICE, BOB};
+use pop_sandbox::{Balance, DevnetSandbox as Sandbox, ALICE, BOB};
 use scale::Encode;
 use utils::*;
 
@@ -39,14 +39,14 @@ fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error:
 }
 
 #[drink::test(sandbox = Sandbox)]
-fn new_existing_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+fn existing_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();
 
 	// Create token.
 	let actor = session.get_actor();
 	session.sandbox().create(&TOKEN_ID, &actor, TOKEN_MIN_BALANCE).unwrap();
 	// Deploy a new contract.
-	deploy_with_new_existing_constructor(&mut session, BundleProvider::local()?, TOKEN_ID)?;
+	deploy_with_existing_constructor(&mut session, BundleProvider::local()?, TOKEN_ID)?;
 	// Token is created successfully.
 	assert!(session.sandbox().asset_exists(&TOKEN_ID));
 	// No event emitted.
@@ -55,13 +55,12 @@ fn new_existing_constructor_works(mut session: Session) -> Result<(), Box<dyn st
 }
 
 #[drink::test(sandbox = Sandbox)]
-fn new_existing_constructor_deployment_fails(
+fn existing_constructor_deployment_fails(
 	mut session: Session,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();
 
-	let result =
-		deploy_with_new_existing_constructor(&mut session, BundleProvider::local()?, TOKEN_ID);
+	let result = deploy_with_existing_constructor(&mut session, BundleProvider::local()?, TOKEN_ID);
 	assert!(result.is_err());
 	Ok(())
 }
