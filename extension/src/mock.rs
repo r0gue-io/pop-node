@@ -350,8 +350,8 @@ pub(crate) struct MockExt {
 impl environment::Ext for MockExt {
 	type AccountId = AccountIdOf<Test>;
 
-	fn address(&self) -> &Self::AccountId {
-		&self.address
+	fn address(&self) -> Self::AccountId {
+		self.address
 	}
 }
 

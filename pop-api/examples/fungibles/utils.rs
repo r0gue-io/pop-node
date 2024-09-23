@@ -76,12 +76,13 @@ pub(super) fn deploy_with_new_constructor(
 	session: &mut Session<Sandbox>,
 	bundle: ContractBundle,
 	id: TokenId,
+	admin: AccountId32,
 	min_balance: Balance,
 ) -> Result<AccountId32, SessionError> {
 	session.deploy_bundle(
 		bundle,
 		"new",
-		&[id.to_string(), min_balance.to_string()],
+		&[id.to_string(), admin.to_string(), min_balance.to_string()],
 		NO_SALT,
 		Some(INIT_VALUE),
 	)

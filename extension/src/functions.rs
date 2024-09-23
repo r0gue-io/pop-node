@@ -53,7 +53,7 @@ impl<
 		let charged = env.charge_weight(dispatch_info.weight)?;
 		log::debug!(target: Logger::LOG_TARGET, "pre-dispatch weight charged: charged={charged:?}");
 		// Contract is the origin by default.
-		let origin = RawOrigin::Signed(env.ext().address().clone());
+		let origin = RawOrigin::Signed(env.ext().address());
 		log::debug!(target: Logger::LOG_TARGET, "contract origin: origin={origin:?}");
 		let mut origin: Config::RuntimeOrigin = origin.into();
 		// Ensure call allowed.

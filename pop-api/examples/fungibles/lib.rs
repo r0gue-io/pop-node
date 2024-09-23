@@ -68,14 +68,13 @@ mod fungibles {
 		#[ink(constructor, payable)]
 		pub fn new(
 			id: TokenId,
-			// TODO: If admin is different than the contract address, `NoPermission` thrown for mint, burn
-			// _admin: AccountId,
+			admin: AccountId,
 			min_balance: Balance,
 		) -> Result<Self, PSP22Error> {
 			let mut contract = Self { id };
 			let contract_id = contract.env().account_id();
-			api::create(id, contract_id, min_balance).map_err(PSP22Error::from)?;
-			contract.emit_created_event(id, contract_id, contract_id);
+			api::create(id, admin, min_balance).map_err(PSP22Error::from)?;
+			contract.emit_created_event(id, contract_id, admin);
 			Ok(contract)
 		}
 	}
@@ -162,7 +161,7 @@ mod fungibles {
 			api::transfer_from(self.id, from, to, value).map_err(PSP22Error::from)?;
 			// Emit events.
 			self.emit_transfer_event(Some(caller), Some(to), value);
-			let allowance = self.allowance(from, to).saturating_sub(value);
+			let allowance = self.allowance(from, caller).saturating_sub(value);
 			self.emit_approval_event(from, caller, allowance);
 			Ok(())
 		}
