@@ -2,6 +2,7 @@
 
 use ink::prelude::{string::String, vec::Vec};
 use pop_api::{
+	fungibles::{self as api},
 	primitives::TokenId,
 	v0::fungibles::{
 		self as api,

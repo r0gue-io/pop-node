@@ -1,13 +1,11 @@
+pub use frame_support::sp_runtime::AccountId32;
 use frame_support::{
-	sp_runtime::{
-		traits::{Header, One},
-	},
+	sp_runtime::traits::{Header, One},
 	traits::Hooks,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
-use pop_runtime_devnet::{BuildStorage, Runtime};
 pub use pop_runtime_devnet::Balance;
-pub use frame_support::sp_runtime::AccountId32;
+use pop_runtime_devnet::{BuildStorage, Runtime};
 
 /// Alias for the account ID type.
 pub type AccountIdFor<R> = <R as frame_system::Config>::AccountId;
@@ -49,7 +47,7 @@ impl<
 		frame_system::Pallet::<T>::reset_events();
 		frame_system::Pallet::<T>::initialize(&height, &parent_hash, &Default::default());
 		pallet_balances::Pallet::<T>::on_initialize(height);
-		// TODO: Resolve an issue with pallet-aura to simulate the time.
+		// TODO: Resolve an issue with pallet-aura to simulate the time: Timestamp slot must match `CurrentSlot`
 		// pallet_timestamp::Pallet::<T>::set_timestamp(
 		// 	SystemTime::now()
 		// 		.duration_since(SystemTime::UNIX_EPOCH)
@@ -72,16 +70,19 @@ impl<
 	}
 }
 
-pub struct Sandbox {
+/// Sandbox runtime environment for `devnet` runtime.
+pub struct DevnetSandbox {
 	ext: sp_io::TestExternalities,
 }
 
-impl Default for Sandbox {
+impl Default for DevnetSandbox {
 	fn default() -> Self {
-		let balances: Vec<(AccountId32, u128)> = vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
+		let balances: Vec<(AccountId32, u128)> =
+			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
 }
 
-drink::impl_sandbox!(Sandbox, Runtime, BlockBuilder, ALICE);
+/// Implement core functionalities of the `DevnetSandbox`.
+drink::impl_sandbox!(DevnetSandbox, Runtime, BlockBuilder, ALICE);

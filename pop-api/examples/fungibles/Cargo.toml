@@ -1,7 +1,7 @@
 [package]
 authors = [ "[your_name] <[your_email]>" ]
 edition = "2021"
-name = "api_example_fungibles"
+name = "fungibles"
 version = "0.1.0"
 
 [dependencies]
@@ -37,7 +37,4 @@ ink-as-dependency = [  ]
 std = [
 	"ink/std",
 	"pop-api/std",
-	"pop-sandbox/std",
-	"scale-info/std",
-	"scale/std",
 ]

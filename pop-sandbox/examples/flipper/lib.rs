@@ -74,7 +74,7 @@ mod tests {
 	/// runtime and it exposes a broad API for interacting with it. Session is generic over the
 	/// runtime type, but usually and by default, we use `MinimalSandbox`, which is a minimalistic
 	/// runtime that allows using smart contracts.
-	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
+	#[drink::test(sandbox = pop_sandbox::DevnetSandbox)]
 	fn deploy_and_call_a_contract(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		let _ = env_logger::try_init();
 		// Now we get the contract bundle from the `BundleProvider` enum. Since the current crate
@@ -119,7 +119,7 @@ mod tests {
 	}
 
 	/// In this testcase we will see how to get and read debug logs from the contract.
-	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
+	#[drink::test(sandbox = pop_sandbox::DevnetSandbox)]
 	fn get_debug_logs(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		session.deploy_bundle(BundleProvider::local()?, "new", &["true"], NO_SALT, None)?;
 
@@ -139,7 +139,7 @@ mod tests {
 	}
 
 	/// In this testcase we will see how to work with multiple contracts.
-	#[drink::test(sandbox = pop_sandbox::PopSandbox)]
+	#[drink::test(sandbox = pop_sandbox::DevnetSandbox)]
 	fn work_with_multiple_contracts(
 		mut session: Session,
 	) -> Result<(), Box<dyn std::error::Error>> {
