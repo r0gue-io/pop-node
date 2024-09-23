@@ -26,10 +26,6 @@ mod fungibles {
 	}
 
 	impl Fungibles {
-		fn emit_approval_event(&mut self, owner: AccountId, spender: AccountId, value: Balance) {
-			self.env().emit_event(Approval { owner, spender, value });
-		}
-
 		/// Instantiate the contract and wrap around an existing token.
 		///
 		/// # Parameters
@@ -150,9 +146,11 @@ mod fungibles {
 			api::transfer_from(self.id, from, to, value).map_err(PSP22Error::from)?;
 			// Emit events.
 			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
-			let allowance = self.allowance(from, to).saturating_sub(value);
-			self.env()
-				.emit_event(Approval { owner: from, spender: caller, value: allowance });
+			self.env().emit_event(Approval {
+				owner: from,
+				spender: caller,
+				value: self.allowance(from, caller),
+			});
 			Ok(())
 		}
 
@@ -186,13 +184,9 @@ mod fungibles {
 				return Ok(());
 			}
 
-			let allowance = self.allowance(caller, spender);
 			api::increase_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			self.env().emit_event(Approval {
-				owner: caller,
-				spender,
-				value: allowance.saturating_add(value),
-			});
+			let allowance = self.allowance(caller, spender);
+			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
 			Ok(())
 		}
 
@@ -218,11 +212,8 @@ mod fungibles {
 			}
 
 			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			self.env().emit_event(Approval {
-				owner: caller,
-				spender,
-				value: allowance.saturating_sub(value),
-			});
+			let allowance = self.allowance(caller, spender);
+			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
 			Ok(())
 		}
 	}

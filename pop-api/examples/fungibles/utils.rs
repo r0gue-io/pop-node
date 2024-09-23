@@ -192,5 +192,5 @@ pub(super) fn burn(
 	account: AccountId32,
 	amount: Balance,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	Ok(session.call(, &vec![account.to_string(), amount.to_string()], None)??)
+	Ok(session.call(BURN, &vec![account.to_string(), amount.to_string()], None)??)
 }
