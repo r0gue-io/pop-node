@@ -98,7 +98,7 @@ impl From<StatusCode> for PSP22Error {
 			[_, ASSETS, 10, _] => PSP22Error::InsufficientAllowance,
 			// Unknown.
 			[_, ASSETS, 3, _] => PSP22Error::Custom(String::from("Unknown")),
-			_ => PSP22Error::Custom(value.to_string()),
+			_ => PSP22Error::Custom(value.0.to_string()),
 		}
 	}
 }
@@ -233,7 +233,7 @@ mod tests {
 		for error in other_errors {
 			let status_code: StatusCode = error_into_status_code(error);
 			let fungibles_error: PSP22Error = status_code.into();
-			assert_eq!(fungibles_error, PSP22Error::Custom(String::from(status_code.to_string())))
+			assert_eq!(fungibles_error, PSP22Error::Custom(String::from(status_code.0.to_string())))
 		}
 
 		assert_eq!(
