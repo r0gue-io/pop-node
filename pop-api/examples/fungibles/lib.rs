@@ -1,3 +1,9 @@
+// TODO: If `admin` in `create` is different than the contract address, `NoPermission` thrown for
+// mint, burn
+// TODO: `Fungibles::decrease_allowance()` saturating_sub the value, it should
+// `checked_sub` and throw an error instead. Hence, we don't have to handle `InsufficientAllowance`
+// on the contract side.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::prelude::{string::String, vec::Vec};
@@ -48,12 +54,7 @@ mod fungibles {
 		/// * - `admin` - The account that will administer the token.
 		/// * - `min_balance` - The minimum balance required for accounts holding this token.
 		#[ink(constructor, payable)]
-		pub fn new(
-			id: TokenId,
-			// TODO: If admin is different than the contract address, `NoPermission` thrown for mint, burn
-			// _admin: AccountId,
-			min_balance: Balance,
-		) -> Result<Self, PSP22Error> {
+		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, PSP22Error> {
 			let mut contract = Self { id };
 			let contract_id = contract.env().account_id();
 			api::create(id, contract_id, min_balance).map_err(PSP22Error::from)?;
@@ -99,11 +100,6 @@ mod fungibles {
 				return Ok(());
 			}
 
-			// Reverts with `InsufficientBalance` if the `value` exceeds the caller's balance.
-			if value > self.balance_of(caller) {
-				return Err(PSP22Error::InsufficientBalance);
-			}
-
 			api::transfer(self.id, to, value).map_err(PSP22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			Ok(())
@@ -124,20 +120,6 @@ mod fungibles {
 			// no events are emitted.
 			if from == to || value == 0 {
 				return Ok(());
-			}
-
-			// Reverts with `InsufficientBalance` if the `value` exceeds the balance of the account
-			// `from`.
-			let allowance = self.allowance(from, caller);
-			if allowance < value {
-				return Err(PSP22Error::InsufficientAllowance);
-			}
-
-			// Reverts with `InsufficientAllowance` if `from` and the caller are different addresses
-			// and the `value` exceeds the allowance granted by `from` to the caller.
-			let from_balance = self.balance_of(from);
-			if from_balance < value {
-				return Err(PSP22Error::InsufficientBalance);
 			}
 
 			// If `from` and the caller are different addresses, a successful transfer results

@@ -28,8 +28,8 @@ pub const MINT: &str = "Psp22Mintable::mint";
 // PSP22Burnable functions.
 pub const BURN: &str = "Psp22Burnable::burn";
 
-/// This is used to resolve type mismatches between the `AccountId` in the quasi testing environment and the
-/// contract environment.
+/// This is used to resolve type mismatches between the `AccountId` in the quasi testing environment
+/// and the contract environment.
 pub(super) fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
 	AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
 }
@@ -47,6 +47,7 @@ pub(super) fn expect_call_reverted(
 	err: PSP22Error,
 ) {
 	let call = session.call::<String, ()>(function, &params, None);
+	println!("call: {:?}", call);
 	match call {
 		Err(SessionError::CallReverted(error)) => {
 			assert_eq!(error[1..], Err::<(), PSP22Error>(err).encode())

@@ -31,14 +31,13 @@ fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error:
 	)?;
 	// Token exists after the deployment.
 	assert!(session.sandbox().asset_exists(&TOKEN_ID));
-	// Successfully emit event.
 	let expected = Created {
 		id: TOKEN_ID,
 		creator: account_id_from_slice(contract.as_ref()),
 		admin: account_id_from_slice(contract.as_ref()),
 	}
 	.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
+	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice()); // Successfully emit event.
 	Ok(())
 }
 
@@ -51,10 +50,11 @@ fn existing_constructor_works(mut session: Session) -> Result<(), Box<dyn std::e
 	session.sandbox().create(&TOKEN_ID, &actor, TOKEN_MIN_BALANCE).unwrap();
 	// Deploy a new contract.
 	deploy_with_existing_constructor(&mut session, BundleProvider::local()?, TOKEN_ID)?;
-	// Token is created successfully.
+
+	// Successfully create a token.
 	assert!(session.sandbox().asset_exists(&TOKEN_ID));
-	// No event emitted.
-	assert_eq!(last_contract_event(&session), None);
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().total_supply(&TOKEN_ID), 0);
 	Ok(())
 }
 
@@ -79,10 +79,12 @@ fn balance_of_works(mut session: Session) -> Result<(), Box<dyn std::error::Erro
 		TOKEN_ID,
 		TOKEN_MIN_BALANCE,
 	)?;
-	// Mint tokens.
+
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
+	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &ALICE, AMOUNT));
-	// Tokens were minted with the right amount.
+
+	// Successfully return a correct balance.
 	assert_eq!(balance_of(&mut session, ALICE), AMOUNT);
 	assert_eq!(balance_of(&mut session, ALICE), session.sandbox().balance_of(&TOKEN_ID, &ALICE));
 	Ok(())
@@ -98,37 +100,24 @@ fn mint_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		TOKEN_ID,
 		TOKEN_MIN_BALANCE,
 	)?;
-	// Mint tokens.
+
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
+
+	// Successfully mint tokens.
+	assert_ok!(mint(&mut session, ALICE, 0));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().total_supply(&TOKEN_ID), 0);
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), 0);
+
+	// Mint tokens.
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
-	// Successfully emit event.
 	let expected =
 		Transfer { from: None, to: Some(account_id_from_slice(ALICE.as_ref())), value: AMOUNT }
 			.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
-	// Tokens were minted with the right amount.
+	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice()); // Successfully emit event.
+
 	assert_eq!(session.sandbox().total_supply(&TOKEN_ID), AMOUNT);
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), AMOUNT);
-	Ok(())
-}
-
-#[drink::test(sandbox = Sandbox)]
-fn mint_zero_value_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
-	let _ = env_logger::try_init();
-	// Deploy a new contract.
-	deploy_with_new_constructor(
-		&mut session,
-		BundleProvider::local()?,
-		TOKEN_ID,
-		TOKEN_MIN_BALANCE,
-	)?;
-	// Mint tokens.
-	assert_ok!(mint(&mut session, ALICE, 0));
-	// No event emitted.
-	assert_eq!(last_contract_event(&session), None);
-	// Tokens were minted with the right amount.
-	assert_eq!(session.sandbox().total_supply(&TOKEN_ID), 0);
-	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), 0);
 	Ok(())
 }
 
@@ -142,56 +131,15 @@ fn burn_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 		TOKEN_ID,
 		TOKEN_MIN_BALANCE,
 	)?;
-	// Mint tokens.
+
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
+	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &ALICE, AMOUNT));
-	// Burn tokens.
-	assert_ok!(burn(&mut session, ALICE, 1));
-	// Successfully emit event.
-	let expected =
-		Transfer { from: Some(account_id_from_slice(ALICE.as_ref())), to: None, value: 1 }.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
 
-	assert_eq!(session.sandbox().total_supply(&TOKEN_ID), AMOUNT - 1);
-	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), AMOUNT - 1);
-	Ok(())
-}
-
-#[drink::test(sandbox = Sandbox)]
-fn burn_zero_value_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
-	let _ = env_logger::try_init();
-	// Deploy a new contract.
-	deploy_with_new_constructor(
-		&mut session,
-		BundleProvider::local()?,
-		TOKEN_ID,
-		TOKEN_MIN_BALANCE,
-	)?;
-	// Burn tokens.
+	// No-op.
 	assert_ok!(burn(&mut session, ALICE, 0));
-	// No event emitted.
-	assert_eq!(last_contract_event(&session), None);
-	// Tokens were minted with the right amount.
-	assert_eq!(total_supply(&mut session), 0);
-	assert_eq!(balance_of(&mut session, ALICE), 0);
-	Ok(())
-}
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
-#[drink::test(sandbox = Sandbox)]
-fn burn_fails_with_insufficient_balance(
-	mut session: Session,
-) -> Result<(), Box<dyn std::error::Error>> {
-	let _ = env_logger::try_init();
-	// Deploy a new contract.
-	deploy_with_new_constructor(
-		&mut session,
-		BundleProvider::local()?,
-		TOKEN_ID,
-		TOKEN_MIN_BALANCE,
-	)?;
-	// Mint tokens.
-	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
-	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &ALICE, AMOUNT));
 	// Failed with `InsufficientBalance`.
 	expect_call_reverted(
 		&mut session,
@@ -199,6 +147,15 @@ fn burn_fails_with_insufficient_balance(
 		vec![ALICE.to_string(), (AMOUNT + 1).to_string()],
 		PSP22Error::InsufficientBalance,
 	);
+
+	// Successfully burn tokens.
+	assert_ok!(burn(&mut session, ALICE, 1));
+	let expected =
+		Transfer { from: Some(account_id_from_slice(ALICE.as_ref())), to: None, value: 1 }.encode();
+	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice()); // Successfully emit event.
+
+	assert_eq!(session.sandbox().total_supply(&TOKEN_ID), AMOUNT - 1);
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), AMOUNT - 1);
 	Ok(())
 }
 
@@ -212,65 +169,20 @@ fn transfer_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>
 		TOKEN_ID,
 		TOKEN_MIN_BALANCE,
 	)?;
-	// Mint tokens.
+
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
 	const TRANSFERRED: Balance = TOKEN_MIN_BALANCE;
+	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &contract.clone(), AMOUNT));
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &BOB, AMOUNT));
 	// Check balance of accounts.
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract.clone()), AMOUNT);
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &BOB), AMOUNT);
-	// Transfer tokens from `contract` to `account`.
-	session.set_actor(contract.clone());
-	assert_ok!(transfer(&mut session, BOB, TRANSFERRED));
-	// Successfully emit event.
-	let expected = Transfer {
-		from: Some(account_id_from_slice(contract.clone().as_ref())),
-		to: Some(account_id_from_slice(BOB.as_ref())),
-		value: TRANSFERRED,
-	}
-	.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
-	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), AMOUNT - TRANSFERRED);
-	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &BOB), AMOUNT + TRANSFERRED);
-	Ok(())
-}
 
-#[drink::test(sandbox = Sandbox)]
-fn transfer_zero_value_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
-	let _ = env_logger::try_init();
-	// Deploy a new contract.
-	deploy_with_new_constructor(
-		&mut session,
-		BundleProvider::local()?,
-		TOKEN_ID,
-		TOKEN_MIN_BALANCE,
-	)?;
+	// No-op.
 	assert_ok!(transfer(&mut session, ALICE, 0));
-	// No event emitted.
-	assert_eq!(last_contract_event(&session), None);
-	Ok(())
-}
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
-#[drink::test(sandbox = Sandbox)]
-fn transfer_fails_with_insufficient_balance(
-	mut session: Session,
-) -> Result<(), Box<dyn std::error::Error>> {
-	let _ = env_logger::try_init();
-	// Deploy a new contract.
-	let contract = deploy_with_new_constructor(
-		&mut session,
-		BundleProvider::local()?,
-		TOKEN_ID,
-		TOKEN_MIN_BALANCE,
-	)?;
-	// Mint tokens.
-	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
-	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &contract.clone(), AMOUNT));
-	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &BOB, AMOUNT));
-	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract.clone()), AMOUNT);
-
-	session.set_actor(contract.clone());
 	// Failed with `InsufficientBalance`.
 	let data = serde_json::to_string::<[u8; 0]>(&[]).unwrap();
 	expect_call_reverted(
@@ -279,13 +191,43 @@ fn transfer_fails_with_insufficient_balance(
 		vec![BOB.to_string(), (AMOUNT + 1).to_string(), data],
 		PSP22Error::InsufficientBalance,
 	);
-	// Check that balance of account is not changed.
+	// Make sure balance is not changed.
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), AMOUNT);
+
+	// Successfully transfer tokens from `contract` to `account`.
+	session.set_actor(contract.clone());
+	assert_ok!(transfer(&mut session, BOB, TRANSFERRED));
+	let expected = Transfer {
+		from: Some(account_id_from_slice(contract.clone().as_ref())),
+		to: Some(account_id_from_slice(BOB.as_ref())),
+		value: TRANSFERRED,
+	}
+	.encode();
+	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice()); // Successfully emit event.
+
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), AMOUNT - TRANSFERRED);
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &BOB), AMOUNT + TRANSFERRED);
 	Ok(())
 }
 
 #[drink::test(sandbox = Sandbox)]
 fn allowance_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_new_constructor(
+		&mut session,
+		BundleProvider::local()?,
+		TOKEN_ID,
+		TOKEN_MIN_BALANCE,
+	)?;
+
+	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
+	// Mint tokens and approve.
+	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &contract.clone(), AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN_ID, &contract.clone(), &ALICE, AMOUNT / 2));
+
+	// Successfully return a correct allowance.
+	assert_eq!(allowance(&mut session, contract, ALICE), AMOUNT / 2);
 	Ok(())
 }
 
@@ -303,17 +245,17 @@ fn approve_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>>
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &contract.clone(), AMOUNT));
-	// Successfully apporve.
+
+	// Successfully approve.
 	session.set_actor(contract.clone());
 	assert_ok!(approve(&mut session, ALICE, AMOUNT / 2));
-	// Successfully emit event.
 	let expected = Approval {
 		owner: account_id_from_slice(contract.clone().as_ref()),
 		spender: account_id_from_slice(ALICE.as_ref()),
 		value: AMOUNT / 2,
 	}
 	.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
+	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice()); // Successfully emit event.
 	assert_eq!(session.sandbox().allowance(&TOKEN_ID, &contract, &ALICE), AMOUNT / 2);
 	Ok(())
 }
@@ -330,20 +272,20 @@ fn increase_allowance_works(mut session: Session) -> Result<(), Box<dyn std::err
 	)?;
 
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
-	// Mint tokens.
+	// Mint tokens and approve.
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &contract.clone(), AMOUNT));
-	// Successfully apporve.
-	session.set_actor(contract.clone());
 	assert_ok!(session.sandbox().approve(&TOKEN_ID, &contract.clone(), &ALICE, AMOUNT / 2));
+
+	// Successfully increase allowance.
+	session.set_actor(contract.clone());
 	assert_ok!(increase_allowance(&mut session, ALICE, AMOUNT / 2));
-	// Successfully emit event.
 	let expected = Approval {
 		owner: account_id_from_slice(contract.clone().as_ref()),
 		spender: account_id_from_slice(ALICE.as_ref()),
 		value: AMOUNT,
 	}
 	.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
+	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice()); // Successfully emit event.
 	assert_eq!(session.sandbox().allowance(&TOKEN_ID, &contract, &ALICE), AMOUNT);
 	Ok(())
 }
@@ -362,9 +304,20 @@ fn decrease_allowance_works(mut session: Session) -> Result<(), Box<dyn std::err
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &contract.clone(), AMOUNT));
-	// Successfully apporve.
-	session.set_actor(contract.clone());
 	assert_ok!(session.sandbox().approve(&TOKEN_ID, &contract.clone(), &ALICE, AMOUNT / 2));
+
+	session.set_actor(contract.clone());
+	// Failed with `InsufficientAllowance`.
+	expect_call_reverted(
+		&mut session,
+		DECREASE_ALLOWANCE,
+		vec![ALICE.to_string(), AMOUNT.to_string()],
+		PSP22Error::InsufficientAllowance,
+	);
+	// Make sure allowance is unchaged.
+	assert_eq!(session.sandbox().allowance(&TOKEN_ID, &contract, &ALICE), AMOUNT / 2);
+
+	// Successfully decrease allowance.
 	assert_ok!(decrease_allowance(&mut session, ALICE, 1));
 	// Successfully emit event.
 	let expected = Approval {
@@ -393,12 +346,41 @@ fn transfer_from_works(mut session: Session) -> Result<(), Box<dyn std::error::E
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &ALICE, AMOUNT));
 	// Approve `contract` to spend `ALICE` tokens.
-	assert_ok!(session.sandbox().approve(&TOKEN_ID, &ALICE, &contract.clone(), AMOUNT));
-	assert_eq!(session.sandbox().allowance(&TOKEN_ID, &ALICE, &contract.clone()), AMOUNT);
+	assert_ok!(session.sandbox().approve(&TOKEN_ID, &ALICE, &contract.clone(), AMOUNT * 2));
+	assert_eq!(session.sandbox().allowance(&TOKEN_ID, &ALICE, &contract.clone()), AMOUNT * 2);
 	// Check balance of accounts.
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), 0);
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), AMOUNT);
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &BOB), 0);
+
+	// Failed with `InsufficientAllowance`.
+	session.set_actor(contract.clone());
+	let data = serde_json::to_string::<[u8; 0]>(&[]).unwrap();
+	expect_call_reverted(
+		&mut session,
+		TRANSFER_FROM,
+		vec![ALICE.to_string(), contract.clone().to_string(), (AMOUNT * 2 + 1).to_string(), data],
+		PSP22Error::InsufficientAllowance,
+	);
+	// Make sure balances are unchaged.
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), 0);
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), AMOUNT);
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &BOB), 0);
+
+	// Failed with `InsufficientBalance`.
+	session.set_actor(contract.clone());
+	let data = serde_json::to_string::<[u8; 0]>(&[]).unwrap();
+	expect_call_reverted(
+		&mut session,
+		TRANSFER_FROM,
+		vec![ALICE.to_string(), contract.clone().to_string(), (AMOUNT + 1).to_string(), data],
+		PSP22Error::InsufficientBalance,
+	);
+	// Make sure balances are unchaged.
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), 0);
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), AMOUNT);
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &BOB), 0);
+
 	// Successfully transfer from `owner`.
 	session.set_actor(contract.clone());
 	assert_ok!(transfer_from(&mut session, ALICE, BOB, AMOUNT / 2));
@@ -406,11 +388,14 @@ fn transfer_from_works(mut session: Session) -> Result<(), Box<dyn std::error::E
 	let expected = Approval {
 		owner: account_id_from_slice(ALICE.as_ref()),
 		spender: account_id_from_slice(contract.clone().as_ref()),
-		value: AMOUNT / 2,
+		value: AMOUNT + AMOUNT / 2,
 	}
 	.encode();
 	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
-	assert_eq!(session.sandbox().allowance(&TOKEN_ID, &ALICE, &contract.clone()), AMOUNT / 2);
+	assert_eq!(
+		session.sandbox().allowance(&TOKEN_ID, &ALICE, &contract.clone()),
+		AMOUNT + AMOUNT / 2
+	);
 	// Check balance of accounts.
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), 0);
 	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &ALICE), AMOUNT / 2);
