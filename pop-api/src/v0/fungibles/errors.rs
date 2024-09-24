@@ -90,9 +90,13 @@ impl From<StatusCode> for PSP22Error {
 	fn from(value: StatusCode) -> Self {
 		let encoded = value.0.to_le_bytes();
 		match encoded {
+			// BalanceLow.
+			[_, ASSETS, 0, _] => PSP22Error::InsufficientBalance,
+			// Unapproved.
+			[_, ASSETS, 10, _] => PSP22Error::InsufficientAllowance,
+			// Unknown.
 			[_, ASSETS, 3, _] => PSP22Error::Custom(String::from("Unknown")),
-			[_, ASSETS, 7, _] => PSP22Error::InsufficientAllowance,
-			_ => PSP22Error::Custom(String::from("Other")),
+			_ => PSP22Error::Custom(value.to_string()),
 		}
 	}
 }
@@ -122,14 +126,8 @@ mod tests {
 		value.into()
 	}
 
-	fn into_fungibles_error(error: Error) -> FungiblesError {
-		let status_code: StatusCode = error_into_status_code(error);
-		status_code.into()
-	}
-
-	fn into_psp22_error(error: Error) -> PSP22Error {
-		let status_code: StatusCode = error_into_status_code(error);
-		status_code.into()
+	fn into_error<T: From<StatusCode>>(error: Error) -> T {
+		error_into_status_code(error).into()
 	}
 
 	// If we ever want to change the conversion from bytes to `u32`.
@@ -173,35 +171,35 @@ mod tests {
 		}
 
 		assert_eq!(
-			into_fungibles_error(Module { index: BALANCES, error: [2, 0] }),
+			into_error::<FungiblesError>(Module { index: BALANCES, error: [2, 0] }),
 			FungiblesError::NoBalance
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: [0, 0] }),
+			into_error::<FungiblesError>(Module { index: ASSETS, error: [0, 0] }),
 			FungiblesError::NoAccount
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: [1, 0] }),
+			into_error::<FungiblesError>(Module { index: ASSETS, error: [1, 0] }),
 			FungiblesError::NoPermission
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: [2, 0] }),
+			into_error::<FungiblesError>(Module { index: ASSETS, error: [2, 0] }),
 			FungiblesError::Unknown
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: [3, 0] }),
+			into_error::<FungiblesError>(Module { index: ASSETS, error: [3, 0] }),
 			FungiblesError::InUse
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: [5, 0] }),
+			into_error::<FungiblesError>(Module { index: ASSETS, error: [5, 0] }),
 			FungiblesError::MinBalanceZero
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: [7, 0] }),
+			into_error::<FungiblesError>(Module { index: ASSETS, error: [7, 0] }),
 			FungiblesError::InsufficientAllowance
 		);
 		assert_eq!(
-			into_fungibles_error(Module { index: ASSETS, error: [10, 0] }),
+			into_error::<FungiblesError>(Module { index: ASSETS, error: [10, 0] }),
 			FungiblesError::NotLive
 		);
 	}
@@ -230,16 +228,20 @@ mod tests {
 		for error in other_errors {
 			let status_code: StatusCode = error_into_status_code(error);
 			let fungibles_error: PSP22Error = status_code.into();
-			assert_eq!(fungibles_error, PSP22Error::Custom(String::from("Other")))
+			assert_eq!(fungibles_error, PSP22Error::Custom(String::from(status_code.to_string())))
 		}
 
 		assert_eq!(
-			into_psp22_error(Module { index: ASSETS, error: [3, 0] }),
-			PSP22Error::Custom(String::from("Unknown"))
+			into_error::<PSP22Error>(Module { index: ASSETS, error: [0, 0] }),
+			PSP22Error::InsufficientBalance
 		);
 		assert_eq!(
-			into_psp22_error(Module { index: ASSETS, error: [7, 0] }),
+			into_error::<PSP22Error>(Module { index: ASSETS, error: [10, 0] }),
 			PSP22Error::InsufficientAllowance
+		);
+		assert_eq!(
+			into_error::<PSP22Error>(Module { index: ASSETS, error: [3, 0] }),
+			PSP22Error::Custom(String::from("Unknown"))
 		);
 	}
 }
