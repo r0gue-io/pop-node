@@ -11,22 +11,22 @@ use scale::{Decode, Encode};
 use super::*;
 
 // PSP22 functions.
-pub const ALLOWANCE: &str = "Psp22::allowance";
-pub const BALANCE_OF: &str = "Psp22::balance_of";
-pub const TOTAL_SUPPLY: &str = "Psp22::total_supply";
-pub const TRANSFER: &str = "Psp22::transfer";
-pub const TRANSFER_FROM: &str = "Psp22::transfer_from";
-pub const APPROVE: &str = "Psp22::approve";
-pub const INCREASE_ALLOWANCE: &str = "Psp22::increase_allowance";
-pub const DECREASE_ALLOWANCE: &str = "Psp22::decrease_allowance";
+pub(super) const ALLOWANCE: &str = "Psp22::allowance";
+pub(super) const BALANCE_OF: &str = "Psp22::balance_of";
+pub(super) const TOTAL_SUPPLY: &str = "Psp22::total_supply";
+pub(super) const TRANSFER: &str = "Psp22::transfer";
+pub(super) const TRANSFER_FROM: &str = "Psp22::transfer_from";
+pub(super) const APPROVE: &str = "Psp22::approve";
+pub(super) const INCREASE_ALLOWANCE: &str = "Psp22::increase_allowance";
+pub(super) const DECREASE_ALLOWANCE: &str = "Psp22::decrease_allowance";
 // PSP22Metadata functions.
-pub const TOKEN_NAME: &str = "Psp22Metadata::token_name";
-pub const TOKEN_SYMBOL: &str = "Psp22Metadata::token_symbol";
-pub const TOKEN_DECIMALS: &str = "Psp22Metadata::token_decimals";
+pub(super) const TOKEN_NAME: &str = "Psp22Metadata::token_name";
+pub(super) const TOKEN_SYMBOL: &str = "Psp22Metadata::token_symbol";
+pub(super) const TOKEN_DECIMALS: &str = "Psp22Metadata::token_decimals";
 // PSP22Mintable functions.
-pub const MINT: &str = "Psp22Mintable::mint";
+pub(super) const MINT: &str = "Psp22Mintable::mint";
 // PSP22Burnable functions.
-pub const BURN: &str = "Psp22Burnable::burn";
+pub(super) const BURN: &str = "Psp22Burnable::burn";
 
 /// This is used to resolve type mismatches between the `AccountId` in the quasi testing environment
 /// and the contract environment.
