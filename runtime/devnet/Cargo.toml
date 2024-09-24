@@ -62,6 +62,7 @@ sp-core.workspace = true
 sp-genesis-builder.workspace = true
 sp-inherents.workspace = true
 sp-io.workspace = true
+sp-mmr-primitives.workspace = true
 sp-offchain.workspace = true
 sp-runtime.workspace = true
 sp-session.workspace = true
@@ -91,6 +92,13 @@ pallet-collator-selection.workspace = true
 parachain-info.workspace = true
 parachains-common.workspace = true
 
+# ISMP
+ismp.workspace = true
+ismp-parachain.workspace = true
+ismp-parachain-runtime-api.workspace = true
+pallet-ismp = { workspace = true, features = [ "unsigned" ] }
+pallet-ismp-runtime-api.workspace = true
+
 [dev-dependencies]
 enumflags2.workspace = true
 env_logger.workspace = true
@@ -117,6 +125,9 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-try-runtime/std",
+	"ismp-parachain-runtime-api/std",
+	"ismp-parachain/std",
+	"ismp/std",
 	"log/std",
 	"pallet-api/std",
 	"pallet-assets/std",
@@ -125,6 +136,8 @@ std = [
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
 	"pallet-contracts/std",
+	"pallet-ismp-runtime-api/std",
+	"pallet-ismp/std",
 	"pallet-message-queue/std",
 	"pallet-multisig/std",
 	"pallet-nft-fractionalization/std",
@@ -211,6 +224,7 @@ try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
+	"ismp-parachain/try-runtime",
 	"pallet-api/try-runtime",
 	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
@@ -218,6 +232,7 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
 	"pallet-contracts/try-runtime",
+	"pallet-ismp/try-runtime",
 	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",
 	"pallet-nft-fractionalization/try-runtime",
