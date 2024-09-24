@@ -104,11 +104,6 @@ impl From<StatusCode> for PSP22Error {
 
 #[cfg(test)]
 mod tests {
-	use ink::{
-		prelude::string::String,
-		scale::{Decode, Encode},
-	};
-
 	use super::{FungiblesError, PSP22Error};
 	use crate::{
 		constants::{ASSETS, BALANCES},
@@ -119,6 +114,10 @@ mod tests {
 			TransactionalError::*,
 		},
 		StatusCode,
+	};
+	use ink::{
+		prelude::string::String,
+		scale::{Decode, Encode},
 	};
 
 	fn error_into_status_code(error: Error) -> StatusCode {
