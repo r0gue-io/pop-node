@@ -3,6 +3,8 @@
 // TODO: `Fungibles::decrease_allowance()` saturating_sub the value, it should
 // `checked_sub` and throw an error instead. Hence, we don't have to handle `InsufficientAllowance`
 // on the contract side.
+// TODO: `InsufficientBalance` case is not returned in the `burn` pallet api if the `value` exceeds
+// the minted value. In `decrease_balance` method of `pallet-assets`, it is also `saturating_sub`.
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 

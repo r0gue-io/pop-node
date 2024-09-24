@@ -47,13 +47,19 @@ pub(super) fn expect_call_reverted(
 	err: PSP22Error,
 ) {
 	let call = session.call::<String, ()>(function, &params, None);
-	println!("call: {:?}", call);
 	match call {
 		Err(SessionError::CallReverted(error)) => {
 			assert_eq!(error[1..], Err::<(), PSP22Error>(err).encode())
 		},
 		_ => panic!("Expect call reverted"),
 	}
+}
+
+/// Return the last deployment result data.
+pub(super) fn expect_deployment_reverted(session: &Session<Sandbox>, err: PSP22Error) {
+	let result = session.record().last_deploy_result().result.clone();
+	let error = result.unwrap().result.data;
+	assert_eq!(error[1..], Err::<(), PSP22Error>(err).encode())
 }
 
 // Call a contract method and decode the returned data.
