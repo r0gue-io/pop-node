@@ -39,12 +39,6 @@ impl From<u32> for StatusCode {
 	}
 }
 
-impl ToString for StatusCode {
-	fn to_string(&self) -> String {
-		self.0.to_string()
-	}
-}
-
 impl FromStatusCode for StatusCode {
 	/// Converts a `u32` status code to a `Result`.
 	///
