@@ -268,15 +268,19 @@ fn transfer_fails_with_insufficient_balance(
 	const AMOUNT: Balance = TOKEN_MIN_BALANCE * 4;
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &contract.clone(), AMOUNT));
 	assert_ok!(session.sandbox().mint_into(&TOKEN_ID, &BOB, AMOUNT));
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract.clone()), AMOUNT);
 
 	session.set_actor(contract.clone());
 	// Failed with `InsufficientBalance`.
+	let data = serde_json::to_string::<[u8; 0]>(&[]).unwrap();
 	expect_call_reverted(
 		&mut session,
 		TRANSFER,
-		vec![BOB.to_string(), (AMOUNT + 1).to_string()],
+		vec![BOB.to_string(), (AMOUNT + 1).to_string(), data],
 		PSP22Error::InsufficientBalance,
 	);
+	// Check that balance of account is not changed.
+	assert_eq!(session.sandbox().balance_of(&TOKEN_ID, &contract), AMOUNT);
 	Ok(())
 }
 

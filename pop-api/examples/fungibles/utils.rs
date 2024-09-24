@@ -39,7 +39,7 @@ pub(super) fn last_contract_event(session: &Session<Sandbox>) -> Option<Vec<u8>>
 	session.record().last_event_batch().contract_events().last().cloned()
 }
 
-/// Execute a contract method and exepct CallReverted error to be returned.
+/// Execute a contract method and expect CallReverted error to be returned.
 pub(super) fn expect_call_reverted(
 	session: &mut Session<Sandbox>,
 	function: &str,
@@ -47,8 +47,11 @@ pub(super) fn expect_call_reverted(
 	err: PSP22Error,
 ) {
 	let call = session.call::<String, ()>(function, &params, None);
-	if let Err(SessionError::CallReverted(error)) = call {
-		assert_eq!(error[1..], Err::<(), PSP22Error>(err).encode());
+	match call {
+		Err(SessionError::CallReverted(error)) => {
+			assert_eq!(error[1..], Err::<(), PSP22Error>(err).encode())
+		},
+		_ => panic!("Expect call reverted"),
 	}
 }
 
