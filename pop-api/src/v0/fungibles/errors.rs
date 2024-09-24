@@ -1,7 +1,7 @@
 //! A set of errors for use in smart contracts that interact with the fungibles api. This includes errors compliant to standards.
 
 use super::*;
-use ink::prelude::string::String;
+use ink::prelude::string::{String, ToString};
 
 /// Represents various errors related to fungible tokens.
 ///
@@ -228,7 +228,7 @@ mod tests {
 		for error in other_errors {
 			let status_code: StatusCode = error_into_status_code(error);
 			let fungibles_error: PSP22Error = status_code.into();
-			assert_eq!(fungibles_error, PSP22Error::Custom(String::from(status_code.0.to_string())))
+			assert_eq!(fungibles_error, PSP22Error::Custom(status_code.0.to_string()))
 		}
 
 		assert_eq!(
