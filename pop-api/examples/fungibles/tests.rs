@@ -40,13 +40,16 @@ fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error:
 	// Token exists after the deployment.
 	assert!(session.sandbox().asset_exists(&TOKEN));
 	// Successfully emit event.
-	let expected = Created {
-		id: TOKEN,
-		creator: account_id_from_slice(contract.as_ref()),
-		admin: account_id_from_slice(contract.as_ref()),
-	}
-	.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
+	assert_eq!(
+		last_contract_event(&session).unwrap(),
+		Created {
+			id: TOKEN,
+			creator: account_id_from_slice(contract.as_ref()),
+			admin: account_id_from_slice(contract.as_ref()),
+		}
+		.encode()
+		.as_slice()
+	);
 	Ok(())
 }
 
@@ -204,6 +207,10 @@ fn transfer_from_works(mut session: Session) {
 	)
 	.unwrap();
 	session.set_actor(contract.clone());
+	// Mint tokens and approve.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN, &ALICE, &contract.clone(), AMOUNT * 2));
+
 	// Unapproved transfer. Failed with `InsufficientAllowance`.
 	assert_eq!(
 		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT * 2 + 1),
