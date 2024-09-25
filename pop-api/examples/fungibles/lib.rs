@@ -21,8 +21,6 @@ use pop_api::{
 
 #[cfg(test)]
 mod tests;
-#[cfg(test)]
-mod utils;
 
 #[ink::contract]
 mod fungibles {
@@ -57,7 +55,7 @@ mod fungibles {
 		/// * - `min_balance` - The minimum balance required for accounts holding this token.
 		#[ink(constructor, payable)]
 		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, PSP22Error> {
-			let mut contract = Self { id };
+			let contract = Self { id };
 			let contract_id = contract.env().account_id();
 			api::create(id, contract_id, min_balance).map_err(PSP22Error::from)?;
 			contract
@@ -206,13 +204,19 @@ mod fungibles {
 		/// Returns the token name.
 		#[ink(message)]
 		fn token_name(&self) -> Option<String> {
-			api::token_name(self.id).ok().and_then(|v| String::from_utf8(v).ok())
+			api::token_name(self.id)
+				.ok()
+				.filter(|v| !v.is_empty())
+				.and_then(|v| String::from_utf8(v).ok())
 		}
 
 		/// Returns the token symbol.
 		#[ink(message)]
 		fn token_symbol(&self) -> Option<String> {
-			api::token_symbol(self.id).ok().and_then(|v| String::from_utf8(v).ok())
+			api::token_symbol(self.id)
+				.ok()
+				.filter(|v| !v.is_empty())
+				.and_then(|v| String::from_utf8(v).ok())
 		}
 
 		/// Returns the token decimals.
