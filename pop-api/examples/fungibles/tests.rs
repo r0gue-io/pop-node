@@ -37,7 +37,6 @@ fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error:
 		vec![TOKEN.to_string(), MIN_BALANCE.to_string()],
 	)
 	.unwrap();
-
 	// Token exists after the deployment.
 	assert!(session.sandbox().asset_exists(&TOKEN));
 	// Successfully emit event.
@@ -47,20 +46,18 @@ fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error:
 		admin: account_id_from_slice(contract.as_ref()),
 	}
 	.encode();
-	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice()); // Successfully emit event.
+	assert_eq!(last_contract_event(&session).unwrap(), expected.as_slice());
 	Ok(())
 }
 
 #[drink::test(sandbox = Sandbox)]
 fn existing_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
 	let _ = env_logger::try_init();
-
 	// Fails to deploy contract with a non-existing token ID.
 	assert_eq!(
 		deploy(&mut session, CONTRACT.clone(), "existing", vec![TOKEN.to_string()]),
 		Err(PSP22Error::Custom(String::from("Unknown")))
 	);
-
 	// Successfully deploy contract with an existing token ID.
 	let actor = session.get_actor();
 	session.sandbox().create(&TOKEN, &actor, MIN_BALANCE).unwrap();
@@ -169,7 +166,7 @@ fn transfer_works(mut session: Session) {
 	// Failed with `InsufficientBalance`.
 	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(PSP22Error::InsufficientBalance));
 
-	// Successfully transfer tokens from `contract` to `account`.
+	// Successfully transfer.
 	assert_ok!(transfer(&mut session, BOB, AMOUNT / 4));
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT - AMOUNT / 4);
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &BOB), AMOUNT + AMOUNT / 4);
