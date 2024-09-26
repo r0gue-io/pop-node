@@ -152,7 +152,6 @@ fn allowance_works(mut session: Session) {
 	assert_eq!(allowance(&mut session, contract.clone(), ALICE), 0);
 
 	// Tokens in circulation.
-	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &ALICE, AMOUNT / 2));
 	assert_eq!(allowance(&mut session, contract, ALICE), AMOUNT / 2);
 }
