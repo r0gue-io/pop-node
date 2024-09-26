@@ -445,7 +445,8 @@ fn token_metadata(mut session: Session) {
 	assert_eq!(token_name(&mut session), None);
 	assert_eq!(token_symbol(&mut session), None);
 	assert_eq!(token_decimals(&mut session), 0);
-	// Create Token.
+
+	// Set token metadata.
 	let actor = session.get_actor();
 	assert_ok!(session.sandbox().set_metadata(
 		Some(actor),
