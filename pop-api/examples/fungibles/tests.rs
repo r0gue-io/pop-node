@@ -1,5 +1,4 @@
-use std::sync::LazyLock;
-
+use super::*;
 use drink::{
 	sandbox_api::assets_api::AssetsAPI,
 	session::{ContractBundle, Session},
@@ -11,9 +10,8 @@ use pop_api::{
 };
 use pop_sandbox::{Balance, DevnetSandbox as Sandbox, ALICE, BOB};
 use scale::Encode;
+use std::sync::LazyLock;
 use utils::*;
-
-use super::*;
 
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
