@@ -649,11 +649,11 @@ mod utils {
 	/// PSP22 test utilities.
 
 	pub(super) fn total_supply(session: &mut Session<Sandbox>) -> Balance {
-		call::<Balance>(session, "Psp22::total_supply", vec![], None).unwrap()
+		call::<Balance>(session, "PSP22::total_supply", vec![], None).unwrap()
 	}
 
 	pub(super) fn balance_of(session: &mut Session<Sandbox>, owner: AccountId32) -> Balance {
-		call::<Balance>(session, "Psp22::balance_of", vec![owner.to_string()], None).unwrap()
+		call::<Balance>(session, "PSP22::balance_of", vec![owner.to_string()], None).unwrap()
 	}
 
 	pub(super) fn allowance(
@@ -663,7 +663,7 @@ mod utils {
 	) -> Balance {
 		call::<Balance>(
 			session,
-			"Psp22::allowance",
+			"PSP22::allowance",
 			vec![owner.to_string(), spender.to_string()],
 			None,
 		)
@@ -677,7 +677,7 @@ mod utils {
 	) -> Result<(), PSP22Error> {
 		call::<()>(
 			session,
-			"Psp22::transfer",
+			"PSP22::transfer",
 			vec![
 				to.to_string(),
 				amount.to_string(),
@@ -695,7 +695,7 @@ mod utils {
 	) -> Result<(), PSP22Error> {
 		call::<()>(
 			session,
-			"Psp22::transfer_from",
+			"PSP22::transfer_from",
 			vec![
 				from.to_string(),
 				to.to_string(),
@@ -711,7 +711,7 @@ mod utils {
 		spender: AccountId32,
 		value: Balance,
 	) -> Result<(), PSP22Error> {
-		call::<()>(session, "Psp22::approve", vec![spender.to_string(), value.to_string()], None)
+		call::<()>(session, "PSP22::approve", vec![spender.to_string(), value.to_string()], None)
 	}
 
 	pub(super) fn increase_allowance(
@@ -721,7 +721,7 @@ mod utils {
 	) -> Result<(), PSP22Error> {
 		call::<()>(
 			session,
-			"Psp22::increase_allowance",
+			"PSP22::increase_allowance",
 			vec![spender.to_string(), value.to_string()],
 			None,
 		)
@@ -734,7 +734,7 @@ mod utils {
 	) -> Result<(), PSP22Error> {
 		call::<()>(
 			session,
-			"Psp22::decrease_allowance",
+			"PSP22::decrease_allowance",
 			vec![spender.to_string(), value.to_string()],
 			None,
 		)
@@ -743,15 +743,15 @@ mod utils {
 	/// PSP22Metadata test utilities.
 
 	pub(super) fn token_name(session: &mut Session<Sandbox>) -> Option<String> {
-		call::<Option<String>>(session, "Psp22Metadata::token_name", vec![], None).unwrap()
+		call::<Option<String>>(session, "PSP22Metadata::token_name", vec![], None).unwrap()
 	}
 
 	pub(super) fn token_symbol(session: &mut Session<Sandbox>) -> Option<String> {
-		call::<Option<String>>(session, "Psp22Metadata::token_symbol", vec![], None).unwrap()
+		call::<Option<String>>(session, "PSP22Metadata::token_symbol", vec![], None).unwrap()
 	}
 
 	pub(super) fn token_decimals(session: &mut Session<Sandbox>) -> u8 {
-		call::<u8>(session, "Psp22Metadata::token_decimals", vec![], None).unwrap()
+		call::<u8>(session, "PSP22Metadata::token_decimals", vec![], None).unwrap()
 	}
 
 	/// PSP22Mintable test utilities.
@@ -763,7 +763,7 @@ mod utils {
 	) -> Result<(), PSP22Error> {
 		call::<()>(
 			session,
-			"Psp22Mintable::mint",
+			"PSP22Mintable::mint",
 			vec![account.to_string(), amount.to_string()],
 			None,
 		)
@@ -778,7 +778,7 @@ mod utils {
 	) -> Result<(), PSP22Error> {
 		call::<()>(
 			session,
-			"Psp22Burnable::burn",
+			"PSP22Burnable::burn",
 			vec![account.to_string(), amount.to_string()],
 			None,
 		)
