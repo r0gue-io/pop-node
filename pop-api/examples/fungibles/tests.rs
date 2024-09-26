@@ -42,9 +42,7 @@ fn new_constructor_works(mut session: Session) {
 			"new",
 			vec![token.to_string(), MIN_BALANCE.to_string()]
 		),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [5, 0] }.encode()).unwrap().to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [5, 0] }))
 	);
 
 	// Deploy a new contract.
@@ -175,9 +173,7 @@ fn transfer_works(mut session: Session) {
 	// `pallet-assets` returns `NoAccount` error.
 	assert_eq!(
 		transfer(&mut session, ALICE, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [1, 0] }.encode()).unwrap().to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [1, 0] }))
 	);
 
 	// Mint tokens.
@@ -221,11 +217,7 @@ fn transfer_works(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		transfer(&mut session, BOB, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
-				.unwrap()
-				.to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
 	);
 }
 
@@ -300,11 +292,7 @@ fn transfer_from_works(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		transfer_from(&mut session, ALICE, BOB, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
-				.unwrap()
-				.to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
 	);
 }
 
@@ -365,11 +353,7 @@ fn approve_works(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		approve(&mut session, ALICE, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
-				.unwrap()
-				.to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
 	);
 }
 
@@ -436,11 +420,7 @@ fn increase_allowance_works(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		increase_allowance(&mut session, ALICE, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
-				.unwrap()
-				.to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
 	);
 }
 
@@ -509,11 +489,7 @@ fn decrease_allowance_works(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		decrease_allowance(&mut session, ALICE, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
-				.unwrap()
-				.to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
 	);
 }
 
@@ -569,9 +545,7 @@ fn mint_works(mut session: Session) {
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
 		mint(&mut session, BOB, AMOUNT),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [2, 0] }.encode()).unwrap().to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [2, 0] }))
 	);
 
 	// Deploy a new contract.
@@ -603,10 +577,7 @@ fn mint_works(mut session: Session) {
 	);
 
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
-	assert_eq!(
-		mint(&mut session, ALICE, u128::MAX),
-		Err(PSP22Error::Custom(vec_u8_to_u32(Arithmetic(Overflow).encode()).unwrap().to_string()))
-	);
+	assert_eq!(mint(&mut session, ALICE, u128::MAX), Err(into_psp22_custom(Arithmetic(Overflow))));
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), value);
 
 	// Token is not live, i.e. frozen or being destroyed.
@@ -614,11 +585,7 @@ fn mint_works(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		mint(&mut session, ALICE, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
-				.unwrap()
-				.to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
 	);
 }
 
@@ -635,9 +602,7 @@ fn burn_works(mut session: Session) {
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
 		burn(&mut session, BOB, AMOUNT),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [2, 0] }.encode()).unwrap().to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [2, 0] }))
 	);
 
 	// Deploy a new contract.
@@ -681,11 +646,7 @@ fn burn_works(mut session: Session) {
 	// `pallet-assets` returns `IncorrectStatus` error.
 	assert_eq!(
 		burn(&mut session, ALICE, value),
-		Err(PSP22Error::Custom(
-			vec_u8_to_u32(Module { index: 52, error: [17, 0] }.encode())
-				.unwrap()
-				.to_string()
-		))
+		Err(into_psp22_custom(Module { index: 52, error: [17, 0] }))
 	);
 }
 
@@ -877,6 +838,16 @@ mod utils {
 		}
 	}
 
+	/// Convert into `PSP22Error::Custom` error type.
+	pub(super) fn into_psp22_custom<T: Encode>(err: T) -> PSP22Error {
+		let mut padded_vec = err.encode().to_vec();
+		padded_vec.resize(4, 0);
+		// Convert the `Vec<u8>`` to value of `StatusCode`.
+		let array: [u8; 4] = padded_vec.try_into().map_err(|_| "Invalid length").unwrap();
+		let status_code = u32::from_le_bytes(array);
+		PSP22Error::Custom(status_code.to_string())
+	}
+
 	/// This is used to resolve type mismatches between the `AccountId` in the quasi testing
 	/// environment and the contract environment.
 	pub(super) fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
@@ -886,14 +857,5 @@ mod utils {
 	/// Get the last event from pallet contracts.
 	pub(super) fn last_contract_event(session: &Session<Sandbox>) -> Option<Vec<u8>> {
 		session.record().last_event_batch().contract_events().last().cloned()
-	}
-
-	/// Convert the Vec<u8> to u32.
-	pub(super) fn vec_u8_to_u32(vec: Vec<u8>) -> Result<u32, &'static str> {
-		let mut padded_vec = vec.to_vec();
-		padded_vec.resize(4, 0);
-
-		let array: [u8; 4] = padded_vec.try_into().map_err(|_| "Invalid length")?;
-		Ok(u32::from_le_bytes(array))
 	}
 }
