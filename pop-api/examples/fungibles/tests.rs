@@ -31,7 +31,7 @@ static CONTRACT: LazyLock<ContractBundle> = LazyLock::new(|| BundleProvider::loc
 #[drink::test(sandbox = Sandbox)]
 fn new_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
-	// Fails to deploy contract with a used token ID.
+	// Fails to deploy contract with an used token ID.
 	let token = TOKEN + 1;
 	assert_ok!(session.sandbox().create(&token, &ALICE, MIN_BALANCE));
 	// `pallet-assets` returns `InUse` error.
