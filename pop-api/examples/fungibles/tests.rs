@@ -27,7 +27,7 @@ static CONTRACT: LazyLock<ContractBundle> = LazyLock::new(|| BundleProvider::loc
 /// Deployment and constructor method tests.
 
 #[drink::test(sandbox = Sandbox)]
-fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+fn new_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy(
@@ -50,23 +50,22 @@ fn new_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error:
 		.encode()
 		.as_slice()
 	);
-	Ok(())
 }
 
 #[drink::test(sandbox = Sandbox)]
-fn existing_constructor_works(mut session: Session) -> Result<(), Box<dyn std::error::Error>> {
+fn existing_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Fails to deploy contract with a non-existing token ID.
 	assert_eq!(
 		deploy(&mut session, CONTRACT.clone(), "existing", vec![TOKEN.to_string()]),
 		Err(PSP22Error::Custom(String::from("Unknown")))
 	);
+
 	// Successfully deploy contract with an existing token ID.
 	let actor = session.get_actor();
 	session.sandbox().create(&TOKEN, &actor, MIN_BALANCE).unwrap();
 	deploy(&mut session, CONTRACT.clone(), "existing", vec![TOKEN.to_string()]).unwrap();
 	assert!(session.sandbox().asset_exists(&TOKEN));
-	Ok(())
 }
 
 /// 1. PSP-22 Interface:
