@@ -194,8 +194,11 @@ mod fungibles {
 			}
 
 			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			let allowance = self.allowance(caller, spender);
-			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
+			self.env().emit_event(Approval {
+				owner: caller,
+				spender,
+				value: allowance.saturating_sub(value),
+			});
 			Ok(())
 		}
 	}
