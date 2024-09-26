@@ -1,6 +1,6 @@
 # Pop Sandbox
 
-Implementation of the [`pop_drink::Sandbox`](https://github.com/r0gue-io/pop-drink) struct for the Pop Network runtimes (located in `pop-node/runtime`) required for the quasi testing with `drink`.
+Implementation of the [`pop_drink::Sandbox`](https://github.com/r0gue-io/pop-drink) for the Pop Network runtimes (located in `pop-node/runtime`) required for the quasi testing with `drink`.
 
 In the context of quasi-testing with pop-drink, a sandbox refers to an isolated runtime environment that simulates the behavior of a full node, without requiring an actual node. It can emulate key processes (where runtime `pallets` are involved) such as block initialization, execution, and block finalization.
 
