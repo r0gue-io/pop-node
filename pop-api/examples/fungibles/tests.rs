@@ -1,9 +1,11 @@
-use super::*;
+use std::sync::LazyLock;
+
 use drink::{
-	sandbox_api::assets_api::AssetsAPI,
+	assert_ok,
+	devnet::{AccountId as AccountId32, Balance, Runtime},
 	session::{ContractBundle, Session},
+	AssetsAPI, TestExternalities,
 };
-use frame_support::assert_ok;
 use pop_api::{
 	primitives::{
 		ArithmeticError::Overflow,
@@ -12,21 +14,44 @@ use pop_api::{
 	},
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
-use pop_sandbox::{Balance, DevnetSandbox as Sandbox, ALICE, BOB};
 use scale::Encode;
-use std::sync::LazyLock;
 use utils::*;
 
-#[drink::contract_bundle_provider]
-enum BundleProvider {}
+use super::*;
 
+const UNIT: Balance = 10_000_000_000;
+const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
+const INIT_VALUE: Balance = 100 * UNIT;
+const ALICE: AccountId32 = AccountId32::new([1u8; 32]);
+const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
+const CHARLIE: AccountId32 = AccountId32::new([3_u8; 32]);
 const AMOUNT: Balance = MIN_BALANCE * 4;
 const MIN_BALANCE: Balance = 10_000;
 const TOKEN: TokenId = 1;
 
 static CONTRACT: LazyLock<ContractBundle> = LazyLock::new(|| BundleProvider::local().unwrap());
 
-/// Deployment and constructor method tests.
+/// Sandbox runtime environment for `devnet` runtime.
+pub struct Sandbox {
+	ext: TestExternalities,
+}
+
+impl Default for Sandbox {
+	fn default() -> Self {
+		let balances: Vec<(AccountId32, u128)> =
+			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
+		let ext = BlockBuilder::<Runtime>::new_ext(balances);
+		Self { ext }
+	}
+}
+
+// Implement core functionalities of the `Sandbox`.
+drink::impl_sandbox!(Sandbox, Runtime, ALICE);
+
+#[drink::contract_bundle_provider]
+enum BundleProvider {}
+
+// Deployment and constructor method tests.
 
 #[drink::test(sandbox = Sandbox)]
 fn new_constructor_works(mut session: Session) {
@@ -84,15 +109,15 @@ fn existing_constructor_works(mut session: Session) {
 	assert!(session.sandbox().asset_exists(&TOKEN));
 }
 
-/// 1. PSP-22 Interface:
-/// - total_supply
-/// - balance_of
-/// - allowance
-/// - transfer
-/// - transfer_from
-/// - approve
-/// - increase_allowance
-/// - decrease_allowance
+// 1. PSP-22 Interface:
+// - total_supply
+// - balance_of
+// - allowance
+// - transfer
+// - transfer_from
+// - approve
+// - increase_allowance
+// - decrease_allowance
 
 #[drink::test(sandbox = Sandbox)]
 fn total_supply_works(mut session: Session) {
@@ -469,10 +494,10 @@ fn decrease_allowance_works(mut session: Session) {
 	);
 }
 
-/// 2. PSP-22 Metadata Interface:
-/// - token_name
-/// - token_symbol
-/// - token_decimals
+// 2. PSP-22 Metadata Interface:
+// - token_name
+// - token_symbol
+// - token_decimals
 
 #[drink::test(sandbox = Sandbox)]
 fn token_metadata(mut session: Session) {
@@ -509,16 +534,15 @@ fn token_metadata(mut session: Session) {
 	assert_eq!(token_decimals(&mut session), decimals);
 }
 
-/// 3. PSP-22 Mintable Interface:
-/// - mint
+// 3. PSP-22 Mintable Interface:
+// - mint
 
 #[drink::test(sandbox = Sandbox)]
 fn mint_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// No permission to mint.
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE)); // Create a new token owned by `BOB`.
-	assert_ok!(deploy(&mut session, CONTRACT.clone(), "existing", vec![(TOKEN + 1).to_string()]));
-	// `pallet-assets` returns `NoPermission` error.
+	assert_ok!(deploy(&mut session, CONTRACT.clone(), "existing", vec![(TOKEN + 1).to_string()])); // `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
 		mint(&mut session, BOB, AMOUNT),
 		Err(into_psp22_custom(Module { index: 52, error: [2, 0] }))
@@ -563,8 +587,8 @@ fn mint_works(mut session: Session) {
 	);
 }
 
-/// 4. PSP-22 Burnable Interface:
-/// - burn
+// 4. PSP-22 Burnable Interface:
+// - burn
 
 #[drink::test(sandbox = Sandbox)]
 fn burn_works(mut session: Session) {
@@ -620,16 +644,18 @@ fn burn_works(mut session: Session) {
 	);
 }
 
-/// A set of helper methods to test the contract calls.
+// A set of helper methods to test the contract calls.
 mod utils {
-	use drink::session::{error::SessionError, NO_SALT};
+	use drink::{
+		devnet::{AccountId as AccountId32, Balance},
+		session::{error::SessionError, NO_SALT},
+	};
 	use pop_api::primitives::AccountId;
-	use pop_sandbox::{AccountId32, Balance, INIT_VALUE};
 	use scale::Decode;
 
 	use super::*;
 
-	/// Deploy test utilities.
+	// Deploy test utilities.
 
 	pub(super) fn deploy(
 		session: &mut Session<Sandbox>,
@@ -646,7 +672,7 @@ mod utils {
 		Ok(result.unwrap())
 	}
 
-	/// PSP22 test utilities.
+	// PSP22 test utilities.
 
 	pub(super) fn total_supply(session: &mut Session<Sandbox>) -> Balance {
 		call::<Balance>(session, "PSP22::total_supply", vec![], None).unwrap()
@@ -740,7 +766,7 @@ mod utils {
 		)
 	}
 
-	/// PSP22Metadata test utilities.
+	// PSP22Metadata test utilities.
 
 	pub(super) fn token_name(session: &mut Session<Sandbox>) -> Option<String> {
 		call::<Option<String>>(session, "PSP22Metadata::token_name", vec![], None).unwrap()
@@ -754,7 +780,7 @@ mod utils {
 		call::<u8>(session, "PSP22Metadata::token_decimals", vec![], None).unwrap()
 	}
 
-	/// PSP22Mintable test utilities.
+	// PSP22Mintable test utilities.
 
 	pub(super) fn mint(
 		session: &mut Session<Sandbox>,
@@ -769,7 +795,7 @@ mod utils {
 		)
 	}
 
-	/// PSP22Burnable test utilities.
+	// PSP22Burnable test utilities.
 
 	pub(super) fn burn(
 		session: &mut Session<Sandbox>,
@@ -784,7 +810,7 @@ mod utils {
 		)
 	}
 
-	/// Call a contract method and decode the returned data.
+	// Call a contract method and decode the returned data.
 	pub(super) fn call<T: Decode>(
 		session: &mut Session<Sandbox>,
 		func_name: &str,
@@ -793,10 +819,9 @@ mod utils {
 	) -> Result<T, PSP22Error> {
 		match session.call::<String, ()>(func_name, &input, endowment) {
 			// If the call is reverted, decode the error into `PSP22Error`.
-			Err(SessionError::CallReverted(error)) => {
+			Err(SessionError::CallReverted(error)) =>
 				Err(PSP22Error::decode(&mut &error[2..])
-					.unwrap_or_else(|_| panic!("Decoding failed")))
-			},
+					.unwrap_or_else(|_| panic!("Decoding failed"))),
 			// If the call is successful, decode the last returned value.
 			Ok(_) => Ok(session
 				.record()
@@ -808,7 +833,7 @@ mod utils {
 		}
 	}
 
-	/// Convert into `PSP22Error::Custom` error type.
+	// Convert into `PSP22Error::Custom` error type.
 	pub(super) fn into_psp22_custom<T: Encode>(err: T) -> PSP22Error {
 		let mut padded_vec = err.encode().to_vec();
 		padded_vec.resize(4, 0);
@@ -818,13 +843,13 @@ mod utils {
 		PSP22Error::Custom(status_code.to_string())
 	}
 
-	/// This is used to resolve type mismatches between the `AccountId` in the quasi testing
-	/// environment and the contract environment.
+	// This is used to resolve type mismatches between the `AccountId` in the quasi testing
+	// environment and the contract environment.
 	pub(super) fn account_id_from_slice(s: &[u8; 32]) -> AccountId {
 		AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
 	}
 
-	/// Get the last event from pallet contracts.
+	// Get the last event from pallet contracts.
 	pub(super) fn last_contract_event(session: &Session<Sandbox>) -> Option<Vec<u8>> {
 		session.record().last_event_batch().contract_events().last().cloned()
 	}
