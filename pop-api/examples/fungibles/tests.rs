@@ -571,7 +571,7 @@ fn burn_works(mut session: Session) {
 	);
 }
 
-// A set of helper methods to test the contract calls.
+/// A set of helper methods to test the contract calls.
 mod utils {
 	use drink::session::{error::SessionError, NO_SALT};
 	use pop_api::primitives::AccountId;
@@ -580,7 +580,7 @@ mod utils {
 
 	use super::*;
 
-	// Test methods for deployment with constructor function.
+	/// Deploy test utilities.
 
 	pub(super) fn deploy(
 		session: &mut Session<Sandbox>,
@@ -597,7 +597,7 @@ mod utils {
 		Ok(result.unwrap())
 	}
 
-	// Test methods for `PSP22`.
+	/// PSP22 test utilities.
 
 	pub(super) fn total_supply(session: &mut Session<Sandbox>) -> Balance {
 		call::<Balance>(session, "Psp22::total_supply", vec![], None).unwrap()
@@ -691,7 +691,7 @@ mod utils {
 		)
 	}
 
-	// Test methods for `PSP22Metadata``.
+	/// PSP22Metadata test utilities.
 
 	pub(super) fn token_name(session: &mut Session<Sandbox>) -> Option<String> {
 		call::<Option<String>>(session, "Psp22Metadata::token_name", vec![], None).unwrap()
@@ -705,7 +705,7 @@ mod utils {
 		call::<u8>(session, "Psp22Metadata::token_decimals", vec![], None).unwrap()
 	}
 
-	// Test methods for `PSP22Mintable``.
+	/// PSP22Mintable test utilities.
 
 	pub(super) fn mint(
 		session: &mut Session<Sandbox>,
@@ -720,7 +720,7 @@ mod utils {
 		)
 	}
 
-	// Test methods for `PSP22MPsp22Burnablentable``.
+	/// PSP22Burnable test utilities.
 
 	pub(super) fn burn(
 		session: &mut Session<Sandbox>,
@@ -770,10 +770,9 @@ mod utils {
 		session.record().last_event_batch().contract_events().last().cloned()
 	}
 
-	/// convert bytes array to u32.
+	/// Convert the Vec<u8> to u32.
 	pub(super) fn vec_u8_to_u32(vec: Vec<u8>) -> Result<u32, &'static str> {
 		if vec.len() == 4 {
-			// Try to convert the Vec<u8> to an array of 4 bytes and then convert to u32.
 			let array: [u8; 4] = vec.try_into().map_err(|_| "Invalid length")?;
 			Ok(u32::from_le_bytes(array))
 		} else {
