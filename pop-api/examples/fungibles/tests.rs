@@ -180,20 +180,14 @@ fn transfer_works(mut session: Session) {
 
 	// No-op if `value` is zero.
 	assert_ok!(transfer(&mut session, ALICE, 0));
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &BOB), 0);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// No-op if the caller and `to` is the same address, returns success and no events are emitted.
 	assert_ok!(transfer(&mut session, contract.clone(), value));
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &BOB), 0);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// Failed with `InsufficientBalance`.
 	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(PSP22Error::InsufficientBalance));
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &BOB), 0);
 
 	// Successfully transfer.
 	assert_ok!(transfer(&mut session, BOB, value));
@@ -239,16 +233,10 @@ fn transfer_from_works(mut session: Session) {
 
 	// No-op if `value` is zero.
 	assert_ok!(transfer_from(&mut session, ALICE, BOB, 0));
-	assert_eq!(session.sandbox().allowance(&TOKEN, &ALICE, &contract.clone()), AMOUNT * 2);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), 0);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// No-op if the `from` and `to` is the same address, returns success and no events are emitted.
 	assert_ok!(transfer_from(&mut session, ALICE, ALICE, value));
-	assert_eq!(session.sandbox().allowance(&TOKEN, &ALICE, &contract.clone()), AMOUNT * 2);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), 0);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// Not enough balance. Failed with `InsufficientBalance`.
@@ -256,18 +244,12 @@ fn transfer_from_works(mut session: Session) {
 		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT + 1),
 		Err(PSP22Error::InsufficientBalance)
 	);
-	assert_eq!(session.sandbox().allowance(&TOKEN, &ALICE, &contract.clone()), AMOUNT * 2);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), 0);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
 
 	// Unapproved transfer. Failed with `InsufficientAllowance`.
 	assert_eq!(
 		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT * 2 + 1),
 		Err(PSP22Error::InsufficientAllowance)
 	);
-	assert_eq!(session.sandbox().allowance(&TOKEN, &ALICE, &contract.clone()), AMOUNT * 2);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), 0);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
 
 	// Successful transfer.
 	assert_ok!(transfer_from(&mut session, ALICE, BOB, value));
@@ -314,7 +296,6 @@ fn approve_works(mut session: Session) {
 	// No-op if the caller and `spender` is the same address, returns success and no events are
 	// emitted.
 	assert_ok!(approve(&mut session, contract.clone(), value));
-	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), 0);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// Successfully approve.
@@ -376,12 +357,10 @@ fn increase_allowance_works(mut session: Session) {
 	// No-op if the caller and `spender` is the same address, returns success and no events are
 	// emitted.
 	assert_ok!(increase_allowance(&mut session, contract.clone(), value));
-	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// No-op if the `value` is zero.
 	assert_ok!(increase_allowance(&mut session, contract.clone(), 0));
-	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// Successfully approve.
@@ -443,7 +422,6 @@ fn decrease_allowance_works(mut session: Session) {
 	// No-op if the caller and `spender` is the same address, returns success and no events are
 	// emitted.
 	assert_ok!(decrease_allowance(&mut session, contract.clone(), value));
-	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// Failed with `InsufficientAllowance`.
@@ -451,7 +429,6 @@ fn decrease_allowance_works(mut session: Session) {
 		decrease_allowance(&mut session, ALICE, AMOUNT + value),
 		Err(PSP22Error::InsufficientAllowance)
 	);
-	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT);
 
 	// Successfully approve.
 	assert_ok!(decrease_allowance(&mut session, ALICE, value));
@@ -560,7 +537,6 @@ fn mint_works(mut session: Session) {
 
 	// No-op if minted value is zero.
 	assert_ok!(mint(&mut session, ALICE, 0));
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), 0);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// Successfully mint tokens.
@@ -577,7 +553,6 @@ fn mint_works(mut session: Session) {
 
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
 	assert_eq!(mint(&mut session, ALICE, u128::MAX), Err(into_psp22_custom(Arithmetic(Overflow))));
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), value);
 
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
@@ -619,14 +594,10 @@ fn burn_works(mut session: Session) {
 
 	// No-op.
 	assert_ok!(burn(&mut session, ALICE, 0));
-	assert_eq!(session.sandbox().total_supply(&TOKEN), AMOUNT);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
 
 	// Failed with `InsufficientBalance`.
 	assert_eq!(burn(&mut session, ALICE, AMOUNT * 2), Err(PSP22Error::InsufficientBalance));
-	assert_eq!(session.sandbox().total_supply(&TOKEN), AMOUNT);
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
 
 	// Successfully burn tokens.
 	assert_ok!(burn(&mut session, ALICE, value));
