@@ -30,14 +30,6 @@ Implementation of the sandbox runtime environment for `testnet` runtime located 
 use pop_sandbox::TestnetSandbox;
 ```
 
-- For `mainnet` runtime
-
-Implementation of the sandbox runtime environment for `mainnet` runtime located in `pop-node/runtime/mainnet`
-
-```rs
-use pop_sandbox::MainnetSandbox;
-```
-
 ### Setup test environment for your contract
 
 Below is an example for the contract testing with `pop_drink` and `pop_sandbox` for `devnet` environment using `DevnetSandbox`.
