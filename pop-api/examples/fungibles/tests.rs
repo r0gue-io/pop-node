@@ -5,7 +5,11 @@ use drink::{
 };
 use frame_support::assert_ok;
 use pop_api::{
-	primitives::{Error::Module, TokenId},
+	primitives::{
+		ArithmeticError::Overflow,
+		Error::{Arithmetic, Module},
+		TokenId,
+	},
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
 use pop_sandbox::{Balance, DevnetSandbox as Sandbox, ALICE, BOB};
@@ -145,26 +149,16 @@ fn transfer_works(mut session: Session) {
 	.unwrap();
 	session.set_actor(contract.clone());
 	// `pallet-assets` returns `NoAccount` error.
-	let error = Module { index: 52, error: [1, 0] }.encode();
 	assert_eq!(
 		transfer(&mut session, ALICE, AMOUNT / 4),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [1, 0] }.encode()).unwrap().to_string()
+		))
 	);
 
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &BOB, AMOUNT));
-
-	// No-op if `value` is zero.
-	assert_ok!(transfer(&mut session, ALICE, 0));
-	assert_eq!(last_contract_event(&session), None); // No event emitted.
-
-	// No-op if the caller and `to` is the same address, returns success and no events are emitted.
-	assert_ok!(transfer(&mut session, contract.clone(), AMOUNT / 4));
-	assert_eq!(last_contract_event(&session), None); // No event emitted.
-
-	// Failed with `InsufficientBalance`.
-	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(PSP22Error::InsufficientBalance));
 
 	// Successfully transfer.
 	assert_ok!(transfer(&mut session, BOB, AMOUNT / 4));
@@ -182,13 +176,30 @@ fn transfer_works(mut session: Session) {
 		.as_slice()
 	);
 
+	// No-op if `value` is zero.
+	assert_ok!(transfer(&mut session, ALICE, 0));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT - AMOUNT / 4);
+
+	// No-op if the caller and `to` is the same address, returns success and no events are emitted.
+	assert_ok!(transfer(&mut session, contract.clone(), AMOUNT / 4));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT - AMOUNT / 4);
+
+	// Failed with `InsufficientBalance`.
+	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(PSP22Error::InsufficientBalance));
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT - AMOUNT / 4);
+
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	let error = Module { index: 52, error: [16, 0] }.encode();
 	assert_eq!(
 		transfer(&mut session, BOB, AMOUNT / 4),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
+				.unwrap()
+				.to_string()
+		))
 	);
 }
 
@@ -208,12 +219,6 @@ fn transfer_from_works(mut session: Session) {
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
 	assert_ok!(session.sandbox().approve(&TOKEN, &ALICE, &contract.clone(), AMOUNT * 2));
 
-	// Unapproved transfer. Failed with `InsufficientAllowance`.
-	assert_eq!(
-		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT * 2 + 1),
-		Err(PSP22Error::InsufficientAllowance)
-	);
-
 	// No-op if `value` is zero.
 	assert_ok!(transfer_from(&mut session, ALICE, BOB, 0));
 	assert_eq!(last_contract_event(&session), None); // No event emitted.
@@ -226,6 +231,12 @@ fn transfer_from_works(mut session: Session) {
 	assert_eq!(
 		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT + 1),
 		Err(PSP22Error::InsufficientBalance)
+	);
+
+	// Unapproved transfer. Failed with `InsufficientAllowance`.
+	assert_eq!(
+		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT * 2 + 1),
+		Err(PSP22Error::InsufficientAllowance)
 	);
 
 	// Successful transfer.
@@ -249,10 +260,13 @@ fn transfer_from_works(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	let error = Module { index: 52, error: [16, 0] }.encode();
 	assert_eq!(
 		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
+				.unwrap()
+				.to_string()
+		))
 	);
 }
 
@@ -271,11 +285,6 @@ fn approve_works(mut session: Session) {
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 
-	// No-op if the caller and `spender` is the same address, returns success and no events are
-	// emitted.
-	assert_ok!(approve(&mut session, contract.clone(), AMOUNT / 2));
-	assert_eq!(last_contract_event(&session), None); // No event emitted.
-
 	// Successfully approvals.
 	assert_ok!(approve(&mut session, ALICE, AMOUNT / 2));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT / 2);
@@ -290,6 +299,12 @@ fn approve_works(mut session: Session) {
 		.encode()
 		.as_slice()
 	);
+
+	// No-op if the caller and `spender` is the same address, returns success and no events are
+	// emitted.
+	assert_ok!(approve(&mut session, contract.clone(), AMOUNT / 2));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT / 2);
 
 	// Non-additive, sets new value.
 	assert_ok!(approve(&mut session, ALICE, AMOUNT / 2 - 1));
@@ -309,10 +324,13 @@ fn approve_works(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	let error = Module { index: 52, error: [16, 0] }.encode();
 	assert_eq!(
 		approve(&mut session, ALICE, AMOUNT / 2),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
+				.unwrap()
+				.to_string()
+		))
 	);
 }
 
@@ -332,11 +350,6 @@ fn increase_allowance_works(mut session: Session) {
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &ALICE, AMOUNT / 2));
 
-	// No-op if the caller and `spender` is the same address, returns success and no events are
-	// emitted.
-	assert_ok!(increase_allowance(&mut session, contract.clone(), AMOUNT / 2));
-	assert_eq!(last_contract_event(&session), None); // No event emitted.
-
 	// Successfully approvals.
 	assert_ok!(increase_allowance(&mut session, ALICE, AMOUNT / 2));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT);
@@ -352,6 +365,17 @@ fn increase_allowance_works(mut session: Session) {
 		.as_slice()
 	);
 
+	// No-op if the caller and `spender` is the same address, returns success and no events are
+	// emitted.
+	assert_ok!(increase_allowance(&mut session, contract.clone(), AMOUNT / 2));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT);
+
+	// No-op if the `value` is zero.
+	assert_ok!(increase_allowance(&mut session, contract.clone(), 0));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT);
+
 	// Additive.
 	assert_ok!(increase_allowance(&mut session, ALICE, AMOUNT / 2));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT + AMOUNT / 2);
@@ -359,10 +383,13 @@ fn increase_allowance_works(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	let error = Module { index: 52, error: [16, 0] }.encode();
 	assert_eq!(
 		increase_allowance(&mut session, ALICE, AMOUNT / 2),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
+				.unwrap()
+				.to_string()
+		))
 	);
 }
 
@@ -382,17 +409,6 @@ fn decrease_allowance_works(mut session: Session) {
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &ALICE, AMOUNT / 2));
 
-	// No-op if the caller and `spender` is the same address, returns success and no events are
-	// emitted.
-	assert_ok!(decrease_allowance(&mut session, contract.clone(), AMOUNT / 2));
-	assert_eq!(last_contract_event(&session), None); // No event emitted.
-
-	// Failed with `InsufficientAllowance`.
-	assert_eq!(
-		decrease_allowance(&mut session, ALICE, AMOUNT),
-		Err(PSP22Error::InsufficientAllowance)
-	);
-
 	// Successfully approvals.
 	assert_ok!(decrease_allowance(&mut session, ALICE, 1));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT / 2 - 1);
@@ -408,13 +424,29 @@ fn decrease_allowance_works(mut session: Session) {
 		.as_slice()
 	);
 
+	// No-op if the caller and `spender` is the same address, returns success and no events are
+	// emitted.
+	assert_ok!(decrease_allowance(&mut session, contract.clone(), 1));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT / 2 - 1);
+
+	// Failed with `InsufficientAllowance`.
+	assert_eq!(
+		decrease_allowance(&mut session, ALICE, AMOUNT),
+		Err(PSP22Error::InsufficientAllowance)
+	);
+	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT / 2 - 1);
+
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	let error = Module { index: 52, error: [16, 0] }.encode();
 	assert_eq!(
 		decrease_allowance(&mut session, ALICE, 1),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
+				.unwrap()
+				.to_string()
+		))
 	);
 }
 
@@ -468,10 +500,11 @@ fn mint_works(mut session: Session) {
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE)); // Create a new token owned by `BOB`.
 	deploy(&mut session, CONTRACT.clone(), "existing", vec![(TOKEN + 1).to_string()]).unwrap();
 	// `pallet-assets` returns `NoPermission` error.
-	let error = Module { index: 52, error: [2, 0] }.encode();
 	assert_eq!(
 		mint(&mut session, BOB, AMOUNT),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [2, 0] }.encode()).unwrap().to_string()
+		))
 	);
 
 	// Deploy a new contract.
@@ -483,11 +516,6 @@ fn mint_works(mut session: Session) {
 	)
 	.unwrap();
 	session.set_actor(contract.clone());
-
-	// No-op if minted value is zero.
-	assert_ok!(mint(&mut session, ALICE, 0));
-	assert_eq!(last_contract_event(&session), None); // No event emitted.
-	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), 0);
 
 	// Successfully mint tokens.
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
@@ -501,13 +529,28 @@ fn mint_works(mut session: Session) {
 			.as_slice()
 	);
 
+	// No-op if minted value is zero.
+	assert_ok!(mint(&mut session, ALICE, 0));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
+
+	// Total supply increased by `value` exceeds maximal value of `u128` type.
+	assert_eq!(
+		mint(&mut session, ALICE, u128::MAX),
+		Err(PSP22Error::Custom(vec_u8_to_u32(Arithmetic(Overflow).encode()).unwrap().to_string()))
+	);
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
+
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	let error = Module { index: 52, error: [16, 0] }.encode();
 	assert_eq!(
 		mint(&mut session, ALICE, AMOUNT),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [16, 0] }.encode())
+				.unwrap()
+				.to_string()
+		))
 	);
 }
 
@@ -522,10 +565,11 @@ fn burn_works(mut session: Session) {
 	assert_ok!(session.sandbox().mint_into(&(TOKEN + 1), &BOB, AMOUNT));
 	deploy(&mut session, CONTRACT.clone(), "existing", vec![(TOKEN + 1).to_string()]).unwrap();
 	// `pallet-assets` returns `NoPermission` error.
-	let error = Module { index: 52, error: [2, 0] }.encode();
 	assert_eq!(
 		burn(&mut session, BOB, AMOUNT),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [2, 0] }.encode()).unwrap().to_string()
+		))
 	);
 
 	// Deploy a new contract.
@@ -540,13 +584,6 @@ fn burn_works(mut session: Session) {
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
 
-	// No-op.
-	assert_ok!(burn(&mut session, ALICE, 0));
-	assert_eq!(last_contract_event(&session), None); // No event emitted.
-
-	// Failed with `InsufficientBalance`.
-	assert_eq!(burn(&mut session, ALICE, AMOUNT * 2), Err(PSP22Error::InsufficientBalance));
-
 	// Successfully burn tokens.
 	assert_ok!(burn(&mut session, ALICE, 1));
 	assert_eq!(session.sandbox().total_supply(&TOKEN), AMOUNT - 1);
@@ -559,13 +596,25 @@ fn burn_works(mut session: Session) {
 			.as_slice()
 	);
 
+	// No-op.
+	assert_ok!(burn(&mut session, ALICE, 0));
+	assert_eq!(last_contract_event(&session), None); // No event emitted.
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT - 1);
+
+	// Failed with `InsufficientBalance`.
+	assert_eq!(burn(&mut session, ALICE, AMOUNT * 2), Err(PSP22Error::InsufficientBalance));
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT - 1);
+
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `IncorrectStatus` error.
-	let error = Module { index: 52, error: [17, 0] }.encode();
 	assert_eq!(
 		burn(&mut session, ALICE, 1),
-		Err(PSP22Error::Custom(vec_u8_to_u32(error).unwrap().to_string()))
+		Err(PSP22Error::Custom(
+			vec_u8_to_u32(Module { index: 52, error: [17, 0] }.encode())
+				.unwrap()
+				.to_string()
+		))
 	);
 }
 
@@ -770,11 +819,10 @@ mod utils {
 
 	/// Convert the Vec<u8> to u32.
 	pub(super) fn vec_u8_to_u32(vec: Vec<u8>) -> Result<u32, &'static str> {
-		if vec.len() == 4 {
-			let array: [u8; 4] = vec.try_into().map_err(|_| "Invalid length")?;
-			Ok(u32::from_le_bytes(array))
-		} else {
-			Err("Vector must be exactly 4 bytes long")
-		}
+		let mut padded_vec = vec.to_vec();
+		padded_vec.resize(4, 0);
+
+		let array: [u8; 4] = padded_vec.try_into().map_err(|_| "Invalid length")?;
+		Ok(u32::from_le_bytes(array))
 	}
 }
