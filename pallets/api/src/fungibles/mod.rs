@@ -339,10 +339,8 @@ pub mod pallet {
 			let token_param: TokenIdParameterOf<T> = token.clone().into();
 
 			// Cancel the approval and approve `new_allowance` if difference is more than zero.
-			let new_allowance = match current_allowance.checked_sub(&value) {
-				Some(allowance) => allowance,
-				None => return Err(AssetsErrorOf::<T>::Unapproved.into()),
-			};
+			let new_allowance =
+				current_allowance.checked_sub(&value).ok_or(AssetsErrorOf::<T>::Unapproved)?;
 			AssetsOf::<T>::cancel_approval(
 				origin.clone(),
 				token_param.clone(),
