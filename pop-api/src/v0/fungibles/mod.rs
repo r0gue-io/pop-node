@@ -180,8 +180,6 @@ pub mod metadata {
 
 	/// Returns the name of the specified token, if available.
 	///
-	/// `None` if not existing.
-	///
 	/// # Parameters
 	/// - `token` - The token.
 	#[inline]
