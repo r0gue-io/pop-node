@@ -267,7 +267,7 @@ fn decrease_allowance_works() {
 			Err(Module { index: 52, error: [16, 0] }),
 		);
 		assets::thaw(&addr, token);
-		// `UnApproved` error returned if current allowance is decreased more than the allowance.
+		// "Unapproved" error is returned if the current allowance is less than `value`.
 		assert_eq!(
 			decrease_allowance(&addr, token, &BOB, amount * 2),
 			Err(Module { index: 52, error: [10, 0] }),
