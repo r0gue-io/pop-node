@@ -47,13 +47,17 @@ mod encoding_read_result {
 
 	#[test]
 	fn token_name() {
-		let name = vec![42, 42, 42, 42, 42];
+		let mut name = Some(vec![42, 42, 42, 42, 42]);
+		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
+		name = None;
 		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
 	}
 
 	#[test]
 	fn token_symbol() {
-		let symbol = vec![42, 42, 42, 42, 42];
+		let mut symbol = Some(vec![42, 42, 42, 42, 42]);
+		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
+		symbol = None;
 		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
 	}
 
@@ -504,11 +508,14 @@ fn token_metadata_works() {
 			ReadResult::TokenDecimals(Default::default())
 		);
 		assets::create_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
-		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(name));
-		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(symbol));
+		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(Some(name)));
+		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(Some(symbol)));
 		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)), ReadResult::TokenDecimals(decimals));
-		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), Assets::name(TOKEN).encode());
-		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)).encode(), Assets::symbol(TOKEN).encode());
+		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), Some(Assets::name(TOKEN)).encode());
+		assert_eq!(
+			Fungibles::read(TokenSymbol(TOKEN)).encode(),
+			Some(Assets::symbol(TOKEN)).encode()
+		);
 		assert_eq!(
 			Fungibles::read(TokenDecimals(TOKEN)).encode(),
 			Assets::decimals(TOKEN).encode(),
@@ -677,8 +684,8 @@ mod read_weights {
 }
 
 mod ensure_codec_indexes {
-	use super::{Encode, RuntimeCall, *};
-	use crate::{fungibles, fungibles::Call::*, mock::RuntimeCall::Fungibles};
+	use super::{Encode, *};
+	use crate::{fungibles, mock::RuntimeCall::Fungibles};
 
 	#[test]
 	fn ensure_read_variant_indexes() {

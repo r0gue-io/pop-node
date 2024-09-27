@@ -40,15 +40,18 @@ pub(super) fn allowance(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_name(addr: &AccountId32, token_id: TokenId) -> Result<Vec<u8>, Error> {
+pub(super) fn token_name(addr: &AccountId32, token_id: TokenId) -> Result<Option<Vec<u8>>, Error> {
 	let result = do_bare_call("token_name", addr, token_id.encode());
-	decoded::<Result<Vec<u8>, Error>>(result.clone())
+	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_symbol(addr: &AccountId32, token_id: TokenId) -> Result<Vec<u8>, Error> {
+pub(super) fn token_symbol(
+	addr: &AccountId32,
+	token_id: TokenId,
+) -> Result<Option<Vec<u8>>, Error> {
 	let result = do_bare_call("token_symbol", addr, token_id.encode());
-	decoded::<Result<Vec<u8>, Error>>(result.clone())
+	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 

@@ -6,11 +6,6 @@
 //! 3. Management
 //! 4. PSP-22 Mintable & Burnable
 
-use crate::{
-	constants::{ASSETS, BALANCES, FUNGIBLES},
-	primitives::{AccountId, Balance, TokenId},
-	ChainExtensionMethodApi, Result, StatusCode,
-};
 use constants::*;
 pub use errors::*;
 pub use events::*;
@@ -18,6 +13,12 @@ use ink::prelude::vec::Vec;
 pub use management::*;
 pub use metadata::*;
 pub use traits::*;
+
+use crate::{
+	constants::{ASSETS, BALANCES, FUNGIBLES},
+	primitives::{AccountId, Balance, TokenId},
+	ChainExtensionMethodApi, Result, StatusCode,
+};
 
 pub mod errors;
 pub mod events;
@@ -177,28 +178,30 @@ pub fn burn(token: TokenId, account: AccountId, value: Balance) -> Result<()> {
 pub mod metadata {
 	use super::*;
 
-	/// Returns the name of the specified token.
+	/// Returns the name of the specified token, if available.
+	///
+	/// `None` if not existing.
 	///
 	/// # Parameters
 	/// - `token` - The token.
 	#[inline]
-	pub fn token_name(token: TokenId) -> Result<Vec<u8>> {
+	pub fn token_name(token: TokenId) -> Result<Option<Vec<u8>>> {
 		build_read_state(TOKEN_NAME)
 			.input::<TokenId>()
-			.output::<Result<Vec<u8>>, true>()
+			.output::<Result<Option<Vec<u8>>>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
 
-	/// Returns the symbol for the specified token.
+	/// Returns the symbol for the specified token, if available.
 	///
 	/// # Parameters
 	/// - `token` - The token.
 	#[inline]
-	pub fn token_symbol(token: TokenId) -> Result<Vec<u8>> {
+	pub fn token_symbol(token: TokenId) -> Result<Option<Vec<u8>>> {
 		build_read_state(TOKEN_SYMBOL)
 			.input::<TokenId>()
-			.output::<Result<Vec<u8>>, true>()
+			.output::<Result<Option<Vec<u8>>>, true>()
 			.handle_error_code::<StatusCode>()
 			.call(&(token))
 	}
