@@ -256,7 +256,7 @@ fn decrease_allowance_works() {
 		// Token does not exist.
 		assert_eq!(
 			decrease_allowance(&addr, 0, &BOB, amount),
-			Err(Module { index: 52, error: [3, 0] }),
+			Err(Module { index: 52, error: [10, 0] }),
 		);
 		// Create token and mint `amount` to contract address, then approve Bob to spend `amount`.
 		let token = assets::create_mint_and_approve(&addr, 0, &addr, amount, &BOB, amount);
@@ -281,7 +281,7 @@ fn decrease_allowance_works() {
 		assets::start_destroy(&addr, token);
 		assert_eq!(
 			decrease_allowance(&addr, token, &BOB, amount),
-			Err(Module { index: 52, error: [16, 0] }),
+			Err(Module { index: 52, error: [10, 0] }),
 		);
 	});
 }

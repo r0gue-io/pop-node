@@ -272,14 +272,16 @@ fn decrease_allowance_works() {
 				BadOrigin.with_weight(WeightInfo::approve(0, 0))
 			);
 		}
-		// Check error works for `Assets::cancel_approval()`. No error test for `approve_transfer`
-		// because it is not possible.
-		assert_noop!(
-			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
-			AssetsError::Unknown.with_weight(WeightInfo::approve(0, 1))
-		);
 		assets::create_mint_and_approve(owner, token, owner, value, spender, value);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
+		// Check error works for `Assets::cancel_approval()`. No error test for `approve_transfer`
+		// because it is not possible.
+		assert_ok!(Assets::freeze_asset(signed(owner), token));
+		assert_noop!(
+			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
+			AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
+		);
+		assert_ok!(Assets::thaw_asset(signed(owner), token));
 		// Owner balance is not changed if decreased by zero.
 		assert_eq!(
 			Fungibles::decrease_allowance(signed(owner), token, spender, 0),
