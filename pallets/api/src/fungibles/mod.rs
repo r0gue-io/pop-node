@@ -339,16 +339,16 @@ pub mod pallet {
 			let token_param: TokenIdParameterOf<T> = token.clone().into();
 
 			// Cancel the approval and approve `new_allowance` if difference is more than zero.
+			let new_allowance = match current_allowance.checked_sub(&value) {
+				Some(allowance) => allowance,
+				None => return Err(AssetsErrorOf::<T>::Unapproved.into()),
+			};
 			AssetsOf::<T>::cancel_approval(
 				origin.clone(),
 				token_param.clone(),
 				spender_source.clone(),
 			)
 			.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 1)))?;
-			let new_allowance = match current_allowance.checked_sub(&value) {
-				Some(allowance) => allowance,
-				None => return Err(AssetsErrorOf::<T>::Unapproved.into()),
-			};
 			let weight = if new_allowance.is_zero() {
 				WeightOf::<T>::approve(0, 1)
 			} else {
@@ -514,10 +514,12 @@ pub mod pallet {
 			use Read::*;
 			match request {
 				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
-				BalanceOf { token, owner } =>
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
-				Allowance { token, owner, spender } =>
-					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
+				BalanceOf { token, owner } => {
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner))
+				},
+				Allowance { token, owner, spender } => {
+					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender))
+				},
 				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
 					AccountIdOf<T>,
 				>>::name(token)),
