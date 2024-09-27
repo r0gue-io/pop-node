@@ -1,20 +1,14 @@
 [package]
-authors = [ "[your_name] <[your_email]>" ]
+authors = ["[your_name] <[your_email]>"]
 edition = "2021"
 name = "fungibles"
 version = "0.1.0"
 
 [dependencies]
-ink = { version = "=5.0.0", default-features = false, features = [ "ink-debug" ] }
+ink = { version = "=5.0.0", default-features = false, features = ["ink-debug"] }
 pop-api = { path = "../../../pop-api", default-features = false, features = [
-	"fungibles",
+    "fungibles",
 ] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
-	"derive",
-] }
-scale-info = { version = "2.6", default-features = false, features = [
-	"derive",
-], optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.11.3" }
@@ -27,12 +21,10 @@ drink = { package = "pop-drink", path = "../../../../pop-drink/crates/pop-drink"
 path = "lib.rs"
 
 [features]
-default = [ "std" ]
-e2e-tests = [  ]
-ink-as-dependency = [  ]
+default = ["std"]
+e2e-tests = []
+ink-as-dependency = []
 std = [
-	"ink/std",
-	"pop-api/std",
-	"scale-info/std",
-	"scale/std",
+    "ink/std",
+    "pop-api/std",
 ]

@@ -6,6 +6,7 @@ use drink::{
 	session::{ContractBundle, Session},
 	AssetsAPI, TestExternalities,
 };
+use ink::scale::Encode;
 use pop_api::{
 	primitives::{
 		ArithmeticError::Overflow,
@@ -14,7 +15,6 @@ use pop_api::{
 	},
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
-use scale::Encode;
 use utils::*;
 
 use super::*;
@@ -650,8 +650,8 @@ mod utils {
 		devnet::{AccountId as AccountId32, Balance},
 		session::{error::SessionError, NO_SALT},
 	};
+	use ink::scale::Decode;
 	use pop_api::primitives::AccountId;
-	use scale::Decode;
 
 	use super::*;
 
