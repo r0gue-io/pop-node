@@ -291,9 +291,9 @@ impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ConstU64<0>;
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
-	#[cfg(feature = "drink")]
+	#[cfg(feature = "std")]
 	type OnTimestampSet = ();
-	#[cfg(not(feature = "drink"))]
+	#[cfg(not(feature = "std"))]
 	type OnTimestampSet = Aura;
 	type WeightInfo = ();
 }
