@@ -29,15 +29,21 @@ const AMOUNT: Balance = MIN_BALANCE * 4;
 const MIN_BALANCE: Balance = 10_000;
 const TOKEN: TokenId = 1;
 
+// The contract bundle provider.
+//
+// See https://github.com/r0gue-io/pop-drink/blob/main/drink/test-macro/src/lib.rs for more information.
+#[drink::contract_bundle_provider]
+enum BundleProvider {}
 static CONTRACT: LazyLock<ContractBundle> = LazyLock::new(|| BundleProvider::local().unwrap());
 
-/// Sandbox runtime environment for `devnet` runtime.
-pub struct Sandbox {
+/// Sandbox environment for Pop Devnet Runtime.
+pub struct Pop {
 	ext: TestExternalities,
 }
 
-impl Default for Sandbox {
+impl Default for Pop {
 	fn default() -> Self {
+		// Initialising genesis state, providing accounts with an initial balance.
 		let balances: Vec<(AccountId32, u128)> =
 			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
@@ -45,15 +51,12 @@ impl Default for Sandbox {
 	}
 }
 
-// Implement core functionalities of the `Sandbox`.
-drink::impl_sandbox!(Sandbox, Runtime, ALICE);
-
-#[drink::contract_bundle_provider]
-enum BundleProvider {}
+// Implement core functionalities for the `Pop` sandbox.
+drink::impl_sandbox!(Pop, Runtime, ALICE);
 
 // Deployment and constructor method tests.
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn new_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Fails to deploy contract with an used token ID.
@@ -93,13 +96,13 @@ fn new_constructor_works(mut session: Session) {
 	);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn existing_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Fails to deploy contract with a non-existing token ID.
 	assert_eq!(
 		deploy(&mut session, CONTRACT.clone(), "existing", vec![TOKEN.to_string()]),
-		Err(PSP22Error::Custom(String::from("Unknown")))
+		Err(PSP22Error::Custom(String::from("Token does not exist")))
 	);
 
 	// Successfully deploy contract with an existing token ID.
@@ -119,7 +122,7 @@ fn existing_constructor_works(mut session: Session) {
 // - increase_allowance
 // - decrease_allowance
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn total_supply_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -140,7 +143,7 @@ fn total_supply_works(mut session: Session) {
 	assert_eq!(total_supply(&mut session), session.sandbox().total_supply(&TOKEN));
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn balance_of_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -161,7 +164,7 @@ fn balance_of_works(mut session: Session) {
 	assert_eq!(balance_of(&mut session, ALICE), session.sandbox().balance_of(&TOKEN, &ALICE));
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn allowance_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -181,7 +184,7 @@ fn allowance_works(mut session: Session) {
 	assert_eq!(allowance(&mut session, contract, ALICE), AMOUNT / 2);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn transfer_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -239,7 +242,7 @@ fn transfer_works(mut session: Session) {
 	);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn transfer_from_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -302,7 +305,7 @@ fn transfer_from_works(mut session: Session) {
 	);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn approve_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -362,7 +365,7 @@ fn approve_works(mut session: Session) {
 	);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn increase_allowance_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -427,7 +430,7 @@ fn increase_allowance_works(mut session: Session) {
 	);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn decrease_allowance_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -499,7 +502,7 @@ fn decrease_allowance_works(mut session: Session) {
 // - token_symbol
 // - token_decimals
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn token_metadata(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -537,7 +540,7 @@ fn token_metadata(mut session: Session) {
 // 3. PSP-22 Mintable Interface:
 // - mint
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn mint_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// No permission to mint.
@@ -590,7 +593,7 @@ fn mint_works(mut session: Session) {
 // 4. PSP-22 Burnable Interface:
 // - burn
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn burn_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// No permission to burn.
@@ -658,7 +661,7 @@ mod utils {
 	// Deploy test utilities.
 
 	pub(super) fn deploy(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		bundle: ContractBundle,
 		method: &str,
 		inputs: Vec<String>,
@@ -674,16 +677,16 @@ mod utils {
 
 	// PSP22 test utilities.
 
-	pub(super) fn total_supply(session: &mut Session<Sandbox>) -> Balance {
+	pub(super) fn total_supply(session: &mut Session<Pop>) -> Balance {
 		call::<Balance>(session, "PSP22::total_supply", vec![], None).unwrap()
 	}
 
-	pub(super) fn balance_of(session: &mut Session<Sandbox>, owner: AccountId32) -> Balance {
+	pub(super) fn balance_of(session: &mut Session<Pop>, owner: AccountId32) -> Balance {
 		call::<Balance>(session, "PSP22::balance_of", vec![owner.to_string()], None).unwrap()
 	}
 
 	pub(super) fn allowance(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		owner: AccountId32,
 		spender: AccountId32,
 	) -> Balance {
@@ -697,7 +700,7 @@ mod utils {
 	}
 
 	pub(super) fn transfer(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		to: AccountId32,
 		amount: Balance,
 	) -> Result<(), PSP22Error> {
@@ -714,7 +717,7 @@ mod utils {
 	}
 
 	pub(super) fn transfer_from(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		from: AccountId32,
 		to: AccountId32,
 		amount: Balance,
@@ -733,7 +736,7 @@ mod utils {
 	}
 
 	pub(super) fn approve(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		spender: AccountId32,
 		value: Balance,
 	) -> Result<(), PSP22Error> {
@@ -741,7 +744,7 @@ mod utils {
 	}
 
 	pub(super) fn increase_allowance(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		spender: AccountId32,
 		value: Balance,
 	) -> Result<(), PSP22Error> {
@@ -754,7 +757,7 @@ mod utils {
 	}
 
 	pub(super) fn decrease_allowance(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		spender: AccountId32,
 		value: Balance,
 	) -> Result<(), PSP22Error> {
@@ -768,22 +771,22 @@ mod utils {
 
 	// PSP22Metadata test utilities.
 
-	pub(super) fn token_name(session: &mut Session<Sandbox>) -> Option<String> {
+	pub(super) fn token_name(session: &mut Session<Pop>) -> Option<String> {
 		call::<Option<String>>(session, "PSP22Metadata::token_name", vec![], None).unwrap()
 	}
 
-	pub(super) fn token_symbol(session: &mut Session<Sandbox>) -> Option<String> {
+	pub(super) fn token_symbol(session: &mut Session<Pop>) -> Option<String> {
 		call::<Option<String>>(session, "PSP22Metadata::token_symbol", vec![], None).unwrap()
 	}
 
-	pub(super) fn token_decimals(session: &mut Session<Sandbox>) -> u8 {
+	pub(super) fn token_decimals(session: &mut Session<Pop>) -> u8 {
 		call::<u8>(session, "PSP22Metadata::token_decimals", vec![], None).unwrap()
 	}
 
 	// PSP22Mintable test utilities.
 
 	pub(super) fn mint(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		account: AccountId32,
 		amount: Balance,
 	) -> Result<(), PSP22Error> {
@@ -798,7 +801,7 @@ mod utils {
 	// PSP22Burnable test utilities.
 
 	pub(super) fn burn(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		account: AccountId32,
 		amount: Balance,
 	) -> Result<(), PSP22Error> {
@@ -812,7 +815,7 @@ mod utils {
 
 	// Call a contract method and decode the returned data.
 	pub(super) fn call<T: Decode>(
-		session: &mut Session<Sandbox>,
+		session: &mut Session<Pop>,
 		func_name: &str,
 		input: Vec<String>,
 		endowment: Option<Balance>,
@@ -850,7 +853,7 @@ mod utils {
 	}
 
 	// Get the last event from pallet contracts.
-	pub(super) fn last_contract_event(session: &Session<Sandbox>) -> Option<Vec<u8>> {
+	pub(super) fn last_contract_event(session: &Session<Pop>) -> Option<Vec<u8>> {
 		session.record().last_event_batch().contract_events().last().cloned()
 	}
 }
