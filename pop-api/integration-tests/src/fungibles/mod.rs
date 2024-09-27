@@ -280,8 +280,8 @@ fn decrease_allowance_works() {
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&addr, token);
 		assert_eq!(
-			decrease_allowance(&addr, token, &BOB, amount),
-			Err(Module { index: 52, error: [10, 0] }),
+			decrease_allowance(&addr, token, &BOB, 1 * UNIT),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 	});
 }
@@ -537,12 +537,12 @@ fn burn_works() {
 		// Token does not exist.
 		assert_eq!(burn(&addr, 1, &BOB, 0), Err(Module { index: 52, error: [3, 0] }));
 		let token = assets::create(&ALICE, 1, 1);
-		// Bob has no tokens and therefore doesn't have any balance.
+		// Bob has no tokens.
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [0, 0] }));
 		// Burning can only be done by the manager.
 		assets::mint(&ALICE, token, &BOB, amount);
 		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
-		let token = assets::create_and_mint_to(&addr, 2, &BOB, amount);
+		let token = assets::create_and_mint_to(&addr, 2, &BOB, amount * 2);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::freeze(&addr, token);
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
@@ -554,6 +554,6 @@ fn burn_works() {
 		assert_eq!(balance_after_burn, balance_before_burn - amount);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&addr, token);
-		assert_eq!(burn(&addr, token, &BOB, 0), Err(Module { index: 52, error: [17, 0] }));
+		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [17, 0] }));
 	});
 }
