@@ -416,10 +416,17 @@ fn burn_works() {
 		let from = BOB;
 		let total_supply = value * 2;
 
-		// Check error works for `Assets::burn()`.
-		assert_noop!(Fungibles::burn(signed(owner), token, from, value), AssetsError::Unknown);
 		assets::create_and_mint_to(owner, token, from, total_supply);
 		assert_eq!(Assets::total_supply(TOKEN), total_supply);
+		// Check error works for `Assets::burn()`.
+		assert_ok!(Assets::freeze_asset(signed(owner), token));
+		assert_noop!(Fungibles::burn(signed(owner), token, from, value), AssetsError::AssetNotLive);
+		assert_ok!(Assets::thaw_asset(signed(owner), token));
+		// "BalanceLow" error is returned if the balance is less than `value`.
+		assert_noop!(
+			Fungibles::burn(signed(owner), token, from, total_supply * 2),
+			AssetsError::BalanceLow
+		);
 		let balance_before_burn = Assets::balance(token, &from);
 		assert_ok!(Fungibles::burn(signed(owner), token, from, value));
 		assert_eq!(Assets::total_supply(TOKEN), total_supply - value);

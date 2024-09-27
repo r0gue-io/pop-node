@@ -471,6 +471,10 @@ pub mod pallet {
 			account: AccountIdOf<T>,
 			value: BalanceOf<T>,
 		) -> DispatchResult {
+			let current_balance = AssetsOf::<T>::balance(token.clone(), &account);
+			if current_balance < value {
+				return Err(AssetsErrorOf::<T>::BalanceLow.into());
+			}
 			AssetsOf::<T>::burn(
 				origin,
 				token.clone().into(),
