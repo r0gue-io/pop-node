@@ -6,7 +6,7 @@ use ink::prelude::string::String;
 
 /// The PSP22 trait.
 #[ink::trait_definition]
-pub trait PSP22 {
+pub trait Psp22 {
 	/// Returns the total token supply.
 	#[ink(message)]
 	fn total_supply(&self) -> Balance;
@@ -82,7 +82,7 @@ pub trait PSP22 {
 
 /// The PSP22 Metadata trait.
 #[ink::trait_definition]
-pub trait PSP22Metadata {
+pub trait Psp22Metadata {
 	/// Returns the token name.
 	#[ink(message)]
 	fn token_name(&self) -> Option<String>;
@@ -98,7 +98,7 @@ pub trait PSP22Metadata {
 
 /// The PSP22 Mintable trait.
 #[ink::trait_definition]
-pub trait PSP22Mintable {
+pub trait Psp22Mintable {
 	/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
 	///
 	/// # Parameters
@@ -110,7 +110,7 @@ pub trait PSP22Mintable {
 
 /// The PSP22 Burnable trait.
 #[ink::trait_definition]
-pub trait PSP22Burnable {
+pub trait Psp22Burnable {
 	/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 	///
 	/// # Parameters
