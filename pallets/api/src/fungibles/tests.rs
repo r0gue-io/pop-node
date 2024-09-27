@@ -286,6 +286,11 @@ fn decrease_allowance_works() {
 			Ok(Some(WeightInfo::approve(0, 0)).into())
 		);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
+		// "Unapproved" error is returned if the current allowance is less than `value`.
+		assert_noop!(
+			Fungibles::decrease_allowance(signed(owner), token, spender, value * 2),
+			AssetsError::Unapproved
+		);
 		// Decrease allowance successfully.
 		assert_eq!(
 			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
@@ -295,13 +300,6 @@ fn decrease_allowance_works() {
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value / 2 }.into(),
 		);
-		// Saturating if current allowance is decreased more than the owner balance.
-		assert_eq!(
-			Fungibles::decrease_allowance(signed(owner), token, spender, value),
-			Ok(Some(WeightInfo::approve(0, 1)).into())
-		);
-		assert_eq!(Assets::allowance(token, &owner, &spender), 0);
-		System::assert_last_event(Event::Approval { token, owner, spender, value: 0 }.into());
 	});
 }
 
@@ -677,8 +675,8 @@ mod read_weights {
 }
 
 mod ensure_codec_indexes {
-	use super::{Encode, RuntimeCall, *};
-	use crate::{fungibles, fungibles::Call::*, mock::RuntimeCall::Fungibles};
+	use super::{Encode, *};
+	use crate::{fungibles, mock::RuntimeCall::Fungibles};
 
 	#[test]
 	fn ensure_read_variant_indexes() {

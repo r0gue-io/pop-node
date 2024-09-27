@@ -1,11 +1,3 @@
-// TODO: If `admin` in `create` is different than the contract address, `NoPermission` thrown for
-// mint, burn
-// TODO: `Fungibles::decrease_allowance()` saturating_sub the value, it should
-// `checked_sub` and throw an error instead. Hence, we don't have to handle `InsufficientAllowance`
-// on the contract side.
-// TODO: `InsufficientBalance` case is not returned in the `burn` pallet api if the `value` exceeds
-// the minted value. In `decrease_balance` method of `pallet-assets`, it is also `saturating_sub`.
-
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::prelude::{string::String, vec::Vec};
@@ -185,20 +177,10 @@ mod fungibles {
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
-			// Reverts with `InsufficientAllowance` if `spender` and the caller are different
-			// addresses and the `value` exceeds the allowance granted by the caller to
-			// `spender`.
-			let allowance = self.allowance(caller, spender);
-			if allowance < value {
-				return Err(PSP22Error::InsufficientAllowance);
-			}
 
 			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			self.env().emit_event(Approval {
-				owner: caller,
-				spender,
-				value: allowance.saturating_sub(value),
-			});
+			let allowance = self.allowance(caller, spender);
+			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
 			Ok(())
 		}
 	}

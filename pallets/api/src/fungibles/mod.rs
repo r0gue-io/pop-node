@@ -17,6 +17,7 @@ type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type TokenIdOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
 type TokenIdParameterOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
 type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
+type AssetsErrorOf<T> = pallet_assets::Error<T, AssetsInstanceOf<T>>;
 type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
 type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
 type BalanceOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
@@ -33,7 +34,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_runtime::{
-		traits::{StaticLookup, Zero},
+		traits::{CheckedSub, StaticLookup, Zero},
 		Saturating,
 	};
 	use sp_std::vec::Vec;
@@ -338,13 +339,16 @@ pub mod pallet {
 			let token_param: TokenIdParameterOf<T> = token.clone().into();
 
 			// Cancel the approval and approve `new_allowance` if difference is more than zero.
+			let new_allowance = match current_allowance.checked_sub(&value) {
+				Some(allowance) => allowance,
+				None => return Err(AssetsErrorOf::<T>::Unapproved.into()),
+			};
 			AssetsOf::<T>::cancel_approval(
 				origin.clone(),
 				token_param.clone(),
 				spender_source.clone(),
 			)
 			.map_err(|e| e.with_weight(WeightOf::<T>::approve(0, 1)))?;
-			let new_allowance = current_allowance.saturating_sub(value);
 			let weight = if new_allowance.is_zero() {
 				WeightOf::<T>::approve(0, 1)
 			} else {
@@ -510,10 +514,12 @@ pub mod pallet {
 			use Read::*;
 			match request {
 				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
-				BalanceOf { token, owner } =>
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
-				Allowance { token, owner, spender } =>
-					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
+				BalanceOf { token, owner } => {
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner))
+				},
+				Allowance { token, owner, spender } => {
+					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender))
+				},
 				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
 					AccountIdOf<T>,
 				>>::name(token)),

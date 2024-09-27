@@ -267,9 +267,14 @@ fn decrease_allowance_works() {
 			Err(Module { index: 52, error: [16, 0] }),
 		);
 		assets::thaw(&addr, token);
+		// "Unapproved" error is returned if the current allowance is less than `value`.
+		assert_eq!(
+			decrease_allowance(&addr, token, &BOB, amount * 2),
+			Err(Module { index: 52, error: [10, 0] }),
+		);
 		// Successfully decrease allowance.
 		let allowance_before = Assets::allowance(token, &addr, &BOB);
-		assert_ok!(decrease_allowance(&addr, 0, &BOB, amount / 2 - 1 * UNIT));
+		assert_ok!(decrease_allowance(&addr, token, &BOB, amount / 2 - 1 * UNIT));
 		let allowance_after = Assets::allowance(token, &addr, &BOB);
 		assert_eq!(allowance_before - allowance_after, amount / 2 - 1 * UNIT);
 		// Token is not live, i.e. frozen or being destroyed.
