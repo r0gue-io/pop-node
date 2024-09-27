@@ -91,7 +91,6 @@ mod fungibles {
 			if caller == to || value == 0 {
 				return Ok(());
 			}
-
 			api::transfer(self.id, to, value).map_err(PSP22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			Ok(())
@@ -113,7 +112,6 @@ mod fungibles {
 			if from == to || value == 0 {
 				return Ok(());
 			}
-
 			// If `from` and the caller are different addresses, a successful transfer results
 			// in decreased allowance by `from` to the caller and an `Approval` event with
 			// the new allowance amount is emitted.
@@ -138,7 +136,6 @@ mod fungibles {
 			if caller == spender {
 				return Ok(());
 			}
-
 			api::approve(self.id, spender, value).map_err(PSP22Error::from)?;
 			self.env().emit_event(Approval { owner: caller, spender, value });
 			Ok(())
@@ -157,7 +154,6 @@ mod fungibles {
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
-
 			api::increase_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
 			let allowance = self.allowance(caller, spender);
 			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
@@ -177,7 +173,6 @@ mod fungibles {
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
-
 			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
 			let allowance = self.allowance(caller, spender);
 			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
@@ -230,10 +225,6 @@ mod fungibles {
 		fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), PSP22Error> {
 			if value == 0 {
 				return Ok(());
-			}
-			let balance = self.balance_of(account);
-			if balance < value {
-				return Err(PSP22Error::InsufficientBalance);
 			}
 			api::burn(self.id, account, value).map_err(PSP22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(account), to: None, value });

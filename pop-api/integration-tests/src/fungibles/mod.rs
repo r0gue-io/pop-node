@@ -256,7 +256,7 @@ fn decrease_allowance_works() {
 		// Token does not exist.
 		assert_eq!(
 			decrease_allowance(&addr, 0, &BOB, amount),
-			Err(Module { index: 52, error: [3, 0] }),
+			Err(Module { index: 52, error: [10, 0] }),
 		);
 		// Create token and mint `amount` to contract address, then approve Bob to spend `amount`.
 		let token = assets::create_mint_and_approve(&addr, 0, &addr, amount, &BOB, amount);
@@ -281,7 +281,7 @@ fn decrease_allowance_works() {
 		assets::start_destroy(&addr, token);
 		assert_eq!(
 			decrease_allowance(&addr, token, &BOB, amount),
-			Err(Module { index: 52, error: [16, 0] }),
+			Err(Module { index: 52, error: [10, 0] }),
 		);
 	});
 }
@@ -535,10 +535,10 @@ fn burn_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
-		assert_eq!(burn(&addr, 1, &BOB, amount), Err(Module { index: 52, error: [3, 0] }));
+		assert_eq!(burn(&addr, 1, &BOB, 0), Err(Module { index: 52, error: [3, 0] }));
 		let token = assets::create(&ALICE, 1, 1);
-		// Bob has no tokens and therefore doesn't exist.
-		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [1, 0] }));
+		// Bob has no tokens and therefore doesn't have any balance.
+		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [0, 0] }));
 		// Burning can only be done by the manager.
 		assets::mint(&ALICE, token, &BOB, amount);
 		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
@@ -554,6 +554,6 @@ fn burn_works() {
 		assert_eq!(balance_after_burn, balance_before_burn - amount);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&addr, token);
-		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [17, 0] }));
+		assert_eq!(burn(&addr, token, &BOB, 0), Err(Module { index: 52, error: [17, 0] }));
 	});
 }
