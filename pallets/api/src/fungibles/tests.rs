@@ -288,7 +288,7 @@ fn decrease_allowance_works() {
 			Ok(Some(WeightInfo::approve(0, 0)).into())
 		);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
-		// "Unapproved" error is returned if the current allowance is less than `value`.
+		// "Unapproved" error is returned if the current allowance is less than amount to decrease with.
 		assert_noop!(
 			Fungibles::decrease_allowance(signed(owner), token, spender, value * 2),
 			AssetsError::Unapproved
@@ -422,7 +422,7 @@ fn burn_works() {
 		assert_ok!(Assets::freeze_asset(signed(owner), token));
 		assert_noop!(Fungibles::burn(signed(owner), token, from, value), AssetsError::AssetNotLive);
 		assert_ok!(Assets::thaw_asset(signed(owner), token));
-		// "BalanceLow" error is returned if the balance is less than `value`.
+		// "BalanceLow" error is returned if the balance is less than amount to burn.
 		assert_noop!(
 			Fungibles::burn(signed(owner), token, from, total_supply * 2),
 			AssetsError::BalanceLow
