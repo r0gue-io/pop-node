@@ -74,7 +74,7 @@ fn new_constructor_works(mut session: Session) {
 	);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn new_constructor_fails_with_used_token() {
 	let _ = env_logger::try_init();
 	// Fails to deploy contract with an used token ID.
@@ -92,7 +92,7 @@ fn new_constructor_fails_with_used_token() {
 	);
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn existing_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Successfully deploy contract with an existing token ID.
@@ -102,7 +102,7 @@ fn existing_constructor_works(mut session: Session) {
 	assert!(session.sandbox().asset_exists(&TOKEN));
 }
 
-#[drink::test(sandbox = Sandbox)]
+#[drink::test(sandbox = Pop)]
 fn existing_constructor_fails_with_non_existing_token(&mut session: Session) {
 	let _ = env_logger::try_init();
 	// Fails to deploy contract with a non-existing token ID.
