@@ -288,7 +288,8 @@ fn decrease_allowance_works() {
 			Ok(Some(WeightInfo::approve(0, 0)).into())
 		);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
-		// "Unapproved" error is returned if the current allowance is less than amount to decrease with.
+		// "Unapproved" error is returned if the current allowance is less than amount to decrease
+		// with.
 		assert_noop!(
 			Fungibles::decrease_allowance(signed(owner), token, spender, value * 2),
 			AssetsError::Unapproved
