@@ -82,12 +82,7 @@ fn new_constructor_fails_with_used_token() {
 	assert_ok!(session.sandbox().create(&token, &ALICE, MIN_BALANCE));
 	// `pallet-assets` returns `InUse` error.
 	assert_eq!(
-		deploy(
-			&mut session,
-			CONTRACT.clone(),
-			"new",
-			vec![token.to_string(), MIN_BALANCE.to_string()]
-		),
+		deploy(&mut session, "new", vec![token.to_string(), MIN_BALANCE.to_string()]),
 		Err(into_psp22_custom(Module { index: 52, error: [5, 0] }))
 	);
 }
@@ -98,7 +93,7 @@ fn existing_constructor_works(mut session: Session) {
 	// Successfully deploy contract with an existing token ID.
 	let actor = session.get_actor();
 	assert_ok!(session.sandbox().create(&TOKEN, &actor, MIN_BALANCE));
-	assert_ok!(deploy(&mut session, CONTRACT.clone(), "existing", vec![TOKEN.to_string()]));
+	assert_ok!(deploy(&mut session, "existing", vec![TOKEN.to_string()]));
 	assert!(session.sandbox().asset_exists(&TOKEN));
 }
 
@@ -199,8 +194,10 @@ fn transfer_fails_with_insufficient_balance() {
 	let contract =
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
+	// Mint tokens.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	// Failed with `InsufficientBalance`.
-	assert_eq!(transfer(&mut session, BOB, AMOUNT), Err(PSP22Error::InsufficientBalance));
+	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(PSP22Error::InsufficientBalance));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -270,9 +267,12 @@ fn transfer_from_fails_with_insufficient_balance() {
 	let contract =
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
+	// Mint tokens and approve.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN, &ALICE, &contract.clone(), AMOUNT * 2));
 	// Not enough balance. Failed with `InsufficientBalance`.
 	assert_eq!(
-		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT),
+		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT + 1),
 		Err(PSP22Error::InsufficientBalance)
 	);
 }
@@ -497,7 +497,7 @@ fn decrease_allowance_noop_works(mut session: Session) {
 }
 
 #[drink::test(sandbox = Pop)]
-fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
+fn decrease_allowance_fails_with_insufficient_allowance(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract =
@@ -517,6 +517,9 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	let contract =
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
+	// Mint tokens and approve.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &ALICE, AMOUNT));
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
@@ -630,7 +633,7 @@ fn mint_noop_works(mut session: Session) {
 }
 
 #[drink::test(sandbox = Pop)]
-fn mint_fails_with_token_not_live(mut session: Session) {
+fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract =
@@ -687,6 +690,7 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	// No permission to burn.
 	// Create a new token owned by `BOB`.
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
+	assert_ok!(session.sandbox().mint_into(&(TOKEN + 1), &BOB, AMOUNT));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
@@ -725,6 +729,7 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 	let contract =
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `IncorrectStatus` error.
