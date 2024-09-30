@@ -535,14 +535,14 @@ fn burn_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
-		assert_eq!(burn(&addr, 1, &BOB, amount), Err(Module { index: 52, error: [3, 0] }));
+		assert_eq!(burn(&addr, 1, &BOB, 0), Err(Module { index: 52, error: [3, 0] }));
 		let token = assets::create(&ALICE, 1, 1);
-		// Bob has no tokens and therefore doesn't exist.
-		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [1, 0] }));
+		// Bob has no tokens.
+		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [0, 0] }));
 		// Burning can only be done by the manager.
 		assets::mint(&ALICE, token, &BOB, amount);
 		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
-		let token = assets::create_and_mint_to(&addr, 2, &BOB, amount);
+		let token = assets::create_and_mint_to(&addr, 2, &BOB, amount * 2);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::freeze(&addr, token);
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
