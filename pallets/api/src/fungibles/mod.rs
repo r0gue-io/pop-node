@@ -462,7 +462,7 @@ pub mod pallet {
 		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[pallet::call_index(20)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]
+		#[pallet::weight(<T as Config>::WeightInfo::balance_of() + AssetsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
 			token: TokenIdOf<T>,
