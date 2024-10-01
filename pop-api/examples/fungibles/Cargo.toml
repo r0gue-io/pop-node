@@ -9,23 +9,13 @@ ink = { version = "=5.0.0", default-features = false, features = [ "ink-debug" ]
 pop-api = { path = "../../../pop-api", default-features = false, features = [
 	"fungibles",
 ] }
-scale = { package = "parity-scale-codec", version = "3", default-features = false, features = [
-	"derive",
-] }
-scale-info = { version = "2.6", default-features = false, features = [
-	"derive",
-], optional = true }
 
 [dev-dependencies]
 env_logger = { version = "0.11.3" }
 serde_json = "1.0.114"
 
 # Local
-drink = { path = "../../../../pop-drink/drink" }
-pop-sandbox = { path = "../../../pop-sandbox", default-features = false }
-
-# Substrate
-frame-support = { version = "36.0.0", default-features = false }
+drink = { package = "pop-drink", path = "../../../../pop-drink/crates/pop-drink" }
 
 [lib]
 path = "lib.rs"
@@ -37,7 +27,4 @@ ink-as-dependency = [  ]
 std = [
 	"ink/std",
 	"pop-api/std",
-	"pop-sandbox/std",
-	"scale-info/std",
-	"scale/std",
 ]

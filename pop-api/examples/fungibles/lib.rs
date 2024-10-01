@@ -19,11 +19,11 @@ mod fungibles {
 	use super::*;
 
 	#[ink(storage)]
-	pub struct Fungibles {
+	pub struct Fungible {
 		id: TokenId,
 	}
 
-	impl Fungibles {
+	impl Fungible {
 		/// Instantiate the contract and wrap around an existing token.
 		///
 		/// # Parameters
@@ -32,10 +32,9 @@ mod fungibles {
 		pub fn existing(id: TokenId) -> Result<Self, PSP22Error> {
 			// Make sure token exists.
 			if !api::token_exists(id).unwrap_or_default() {
-				return Err(PSP22Error::Custom(String::from("Unknown")));
+				return Err(PSP22Error::Custom(String::from("Token does not exist")));
 			}
-			let contract = Self { id };
-			Ok(contract)
+			Ok(Self { id })
 		}
 
 		/// Instantiate the contract and create a new token. The token identifier will be stored
@@ -43,8 +42,9 @@ mod fungibles {
 		///
 		/// # Parameters
 		/// * - `id` - The identifier of the token.
-		/// * - `admin` - The account that will administer the token.
 		/// * - `min_balance` - The minimum balance required for accounts holding this token.
+		// The `min_balance` ensures accounts hold a minimum amount of tokens, preventing tiny,
+		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
 		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, PSP22Error> {
 			let contract = Self { id };
@@ -57,20 +57,27 @@ mod fungibles {
 		}
 	}
 
-	impl PSP22 for Fungibles {
+	impl PSP22 for Fungible {
 		/// Returns the total token supply.
 		#[ink(message)]
 		fn total_supply(&self) -> Balance {
 			api::total_supply(self.id).unwrap_or_default()
 		}
 
-		/// Returns the account balance for the specified `owner`
+		/// Returns the account balance for the specified `owner`.
+		///
+		/// # Parameters
+		/// - `owner` - The account whose balance is being queried.
 		#[ink(message)]
 		fn balance_of(&self, owner: AccountId) -> Balance {
 			api::balance_of(self.id, owner).unwrap_or_default()
 		}
 
-		/// Returns the amount which `spender` is still allowed to withdraw from `owner`
+		/// Returns the allowance for a `spender` approved by an `owner`.
+		///
+		/// # Parameters
+		/// - `owner` - The account that owns the tokens.
+		/// - `spender` - The account that is allowed to spend the tokens.
 		#[ink(message)]
 		fn allowance(&self, owner: AccountId, spender: AccountId) -> Balance {
 			api::allowance(self.id, owner, spender).unwrap_or_default()
@@ -78,6 +85,11 @@ mod fungibles {
 
 		/// Transfers `value` amount of tokens from the caller's account to account `to`
 		/// with additional `data` in unspecified format.
+		///
+		/// # Parameters
+		/// - `to` - The recipient account.
+		/// - `value` - The number of tokens to transfer.
+		/// - `data` - Additional data in unspecified format.
 		#[ink(message)]
 		fn transfer(
 			&mut self,
@@ -86,8 +98,7 @@ mod fungibles {
 			_data: Vec<u8>,
 		) -> Result<(), PSP22Error> {
 			let caller = self.env().caller();
-			// No-op if the caller and `to` is the same address or `value` is zero, returns success
-			// and no events are emitted.
+			// No-op if the caller and `to` is the same address or `value` is zero.
 			if caller == to || value == 0 {
 				return Ok(());
 			}
@@ -97,8 +108,14 @@ mod fungibles {
 			Ok(())
 		}
 
-		/// Transfers `value` tokens on the behalf of `from` to the account `to`
+		/// Transfers `value` tokens on behalf of `from` to the account `to`
 		/// with additional `data` in unspecified format.
+		///
+		/// # Parameters
+		/// - `from` - The account from which the token balance will be withdrawn.
+		/// - `to` - The recipient account.
+		/// - `value` - The number of tokens to transfer.
+		/// - `data` - Additional data with unspecified format.
 		#[ink(message)]
 		fn transfer_from(
 			&mut self,
@@ -108,8 +125,7 @@ mod fungibles {
 			_data: Vec<u8>,
 		) -> Result<(), PSP22Error> {
 			let caller = self.env().caller();
-			// No-op if `from` and `to` is the same address or `value` is zero, returns success and
-			// no events are emitted.
+			// No-op if `from` and `to` is the same address or `value` is zero.
 			if from == to || value == 0 {
 				return Ok(());
 			}
@@ -118,7 +134,6 @@ mod fungibles {
 			// in decreased allowance by `from` to the caller and an `Approval` event with
 			// the new allowance amount is emitted.
 			api::transfer_from(self.id, from, to, value).map_err(PSP22Error::from)?;
-			// Emit events.
 			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			self.env().emit_event(Approval {
 				owner: from,
@@ -128,13 +143,17 @@ mod fungibles {
 			Ok(())
 		}
 
-		/// Allows `spender` to withdraw from the caller's account multiple times, up to
-		/// the total amount of `value`.
+		/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
+		///
+		/// Successive calls of this method overwrite previous values.
+		///
+		/// # Parameters
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to approve.
 		#[ink(message)]
 		fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), PSP22Error> {
 			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address, returns success and no events
-			// are emitted.
+			// No-op if the caller and `spender` is the same address.
 			if caller == spender {
 				return Ok(());
 			}
@@ -144,7 +163,11 @@ mod fungibles {
 			Ok(())
 		}
 
-		/// Increases by `value` the allowance granted to `spender` by the caller.
+		/// Increases the allowance of `spender` by `value` amount of tokens.
+		///
+		/// # Parameters
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to increase the allowance by.
 		#[ink(message)]
 		fn increase_allowance(
 			&mut self,
@@ -152,8 +175,7 @@ mod fungibles {
 			value: Balance,
 		) -> Result<(), PSP22Error> {
 			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address or `value` is zero, returns
-			// success and no events are emitted.
+			// No-op if the caller and `spender` is the same address or `value` is zero.
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
@@ -164,7 +186,11 @@ mod fungibles {
 			Ok(())
 		}
 
-		/// Decreases by `value` the allowance granted to `spender` by the caller.
+		/// Decreases the allowance of `spender` by `value` amount of tokens.
+		///
+		/// # Parameters
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to decrease the allowance by.
 		#[ink(message)]
 		fn decrease_allowance(
 			&mut self,
@@ -172,20 +198,19 @@ mod fungibles {
 			value: Balance,
 		) -> Result<(), PSP22Error> {
 			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address or `value` is zero, returns
-			// success and no events are emitted.
+			// No-op if the caller and `spender` is the same address or `value` is zero.
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
 
 			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
-			let allowance = self.allowance(caller, spender);
-			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
+			let value = self.allowance(caller, spender);
+			self.env().emit_event(Approval { owner: caller, spender, value });
 			Ok(())
 		}
 	}
 
-	impl PSP22Metadata for Fungibles {
+	impl PSP22Metadata for Fungible {
 		/// Returns the token name.
 		#[ink(message)]
 		fn token_name(&self) -> Option<String> {
@@ -211,10 +236,16 @@ mod fungibles {
 		}
 	}
 
-	impl PSP22Mintable for Fungibles {
-		/// Mints `value` tokens to the senders account.
+	impl PSP22Mintable for Fungible {
+		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
+		/// supply.
+		///
+		/// # Parameters
+		/// - `account` - The account to be credited with the created tokens.
+		/// - `value` - The number of tokens to mint.
 		#[ink(message)]
 		fn mint(&mut self, account: AccountId, value: Balance) -> Result<(), PSP22Error> {
+			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
 			}
@@ -224,10 +255,15 @@ mod fungibles {
 		}
 	}
 
-	impl PSP22Burnable for Fungibles {
-		/// Burns `value` tokens from the senders account.
+	impl PSP22Burnable for Fungible {
+		/// Destroys `value` amount of tokens from `account`, reducing the total supply.
+		///
+		/// # Parameters
+		/// - `account` - The account from which the tokens will be destroyed.
+		/// - `value` - The number of tokens to destroy.
 		#[ink(message)]
 		fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), PSP22Error> {
+			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
 			}
