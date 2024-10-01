@@ -297,7 +297,6 @@ fn token_metadata_works() {
 		// Token does not exist.
 		assert_eq!(token_name(&addr, TOKEN_ID), Ok(None));
 		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(None));
-		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(Assets::decimals(TOKEN_ID)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(0));
 		// Create Token.
 		assets::create_and_set_metadata(&addr, TOKEN_ID, name.clone(), symbol.clone(), decimals);
