@@ -82,8 +82,8 @@ fn new_constructor_fails_with_used_token() {
 	assert_ok!(session.sandbox().create(&token, &ALICE, MIN_BALANCE));
 	// `pallet-assets` returns `InUse` error.
 	assert_eq!(
-		deploy(&mut session, "new", vec![token.to_string(), MIN_BALANCE.to_string()]),
-		Err(into_psp22_custom(Module { index: 52, error: [5, 0] }))
+		deploy(&mut session, "existing", vec![TOKEN.to_string()]),
+		Err(PSP22Error::Custom(String::from("Token does not exist")))
 	);
 }
 
