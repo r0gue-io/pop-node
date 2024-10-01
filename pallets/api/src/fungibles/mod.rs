@@ -385,7 +385,8 @@ pub mod pallet {
 			AssetsOf::<T>::clear_metadata(origin, asset.into())
 		}
 
-		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
+		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
+		/// supply.
 		///
 		/// # Parameters
 		/// - `asset` - The asset to mint.
@@ -441,26 +442,22 @@ pub mod pallet {
 		/// encoded result.
 		///
 		/// # Parameter
-		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
-		///   the associated parameters.
+		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and the
+		///   associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 
 			match value {
 				TotalSupply(asset) => AssetsOf::<T>::total_supply(asset).encode(),
 				BalanceOf { asset, owner } => AssetsOf::<T>::balance(asset, owner).encode(),
-				Allowance { asset, owner, spender } => {
-					AssetsOf::<T>::allowance(asset, &owner, &spender).encode()
-				},
-				TokenName(asset) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(asset).encode()
-				},
-				TokenSymbol(asset) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(asset).encode()
-				},
-				TokenDecimals(asset) => {
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(asset).encode()
-				},
+				Allowance { asset, owner, spender } =>
+					AssetsOf::<T>::allowance(asset, &owner, &spender).encode(),
+				TokenName(asset) =>
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(asset).encode(),
+				TokenSymbol(asset) =>
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(asset).encode(),
+				TokenDecimals(asset) =>
+					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(asset).encode(),
 				AssetExists(asset) => AssetsOf::<T>::asset_exists(asset).encode(),
 			}
 		}

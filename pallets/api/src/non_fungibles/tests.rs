@@ -4,8 +4,7 @@ use crate::{
 	non_fungibles::{Event, Read::*},
 };
 use codec::Encode;
-use frame_support::assert_ok;
-use frame_support::traits::nonfungibles_v2::InspectEnumerable;
+use frame_support::{assert_ok, traits::nonfungibles_v2::InspectEnumerable};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_nfts::{CollectionConfig, CollectionSettings, MintSettings};
 

@@ -25,10 +25,12 @@ impl ReadState for Extension {
 		matches!(
 			c,
 			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | AssetExists(..)
+				TotalSupply(..) |
+					BalanceOf { .. } |
+					Allowance { .. } |
+					TokenName(..) | TokenSymbol(..) |
+					TokenDecimals(..) |
+					AssetExists(..)
 			)
 		)
 	}
@@ -48,14 +50,14 @@ impl CallFilter for Extension {
 		matches!(
 			c,
 			RuntimeCall::Fungibles(
-				transfer { .. }
-					| transfer_from { .. }
-					| approve { .. } | increase_allowance { .. }
-					| decrease_allowance { .. }
-					| create { .. } | set_metadata { .. }
-					| start_destroy { .. }
-					| clear_metadata { .. }
-					| mint { .. } | burn { .. }
+				transfer { .. } |
+					transfer_from { .. } |
+					approve { .. } | increase_allowance { .. } |
+					decrease_allowance { .. } |
+					create { .. } | set_metadata { .. } |
+					start_destroy { .. } |
+					clear_metadata { .. } |
+					mint { .. } | burn { .. }
 			)
 		)
 	}

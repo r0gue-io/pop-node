@@ -1,6 +1,6 @@
-//! The non-fungibles pallet offers a streamlined interface for interacting with non-fungible assets. The
-//! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
-//! space.
+//! The non-fungibles pallet offers a streamlined interface for interacting with non-fungible
+//! assets. The goal is to provide a simplified, consistent API that adheres to standards in the
+//! smart contract space.
 
 use frame_support::traits::nonfungibles_v2::InspectEnumerable;
 pub use pallet::*;
@@ -226,8 +226,8 @@ pub mod pallet {
 		/// encoded result.
 		///
 		/// # Parameter
-		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and
-		///   the associated parameters.
+		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and the
+		///   associated parameters.
 		pub fn read_state(value: Read<T>) -> Vec<u8> {
 			use Read::*;
 			match value {
