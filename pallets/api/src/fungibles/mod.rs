@@ -468,10 +468,11 @@ pub mod pallet {
 			token: TokenIdOf<T>,
 			account: AccountIdOf<T>,
 			value: BalanceOf<T>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let current_balance = AssetsOf::<T>::balance(token.clone(), &account);
 			if current_balance < value {
-				return Err(AssetsErrorOf::<T>::BalanceLow.into());
+				return Err(AssetsErrorOf::<T>::BalanceLow
+					.with_weight(<T as Config>::WeightInfo::balance_of()));
 			}
 			AssetsOf::<T>::burn(
 				origin,
@@ -480,7 +481,7 @@ pub mod pallet {
 				value,
 			)?;
 			Self::deposit_event(Event::Transfer { token, from: Some(account), to: None, value });
-			Ok(())
+			Ok(().into())
 		}
 	}
 
@@ -516,10 +517,12 @@ pub mod pallet {
 			use Read::*;
 			match request {
 				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
-				BalanceOf { token, owner } =>
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
-				Allowance { token, owner, spender } =>
-					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
+				BalanceOf { token, owner } => {
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner))
+				},
+				Allowance { token, owner, spender } => {
+					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender))
+				},
 				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
 					AccountIdOf<T>,
 				>>::name(token)),

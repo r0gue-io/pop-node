@@ -426,7 +426,7 @@ fn burn_works() {
 		// "BalanceLow" error is returned if the balance is less than amount to burn.
 		assert_noop!(
 			Fungibles::burn(signed(owner), token, from, total_supply * 2),
-			AssetsError::BalanceLow
+			AssetsError::BalanceLow.with_weight(WeightInfo::balance_of())
 		);
 		let balance_before_burn = Assets::balance(token, &from);
 		assert_ok!(Fungibles::burn(signed(owner), token, from, value));
