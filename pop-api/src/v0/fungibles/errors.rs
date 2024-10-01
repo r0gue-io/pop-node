@@ -2,7 +2,10 @@
 //! errors compliant to standards.
 
 use super::*;
-use ink::prelude::string::{String, ToString};
+use ink::{
+	prelude::string::{String, ToString},
+	scale::{Decode, Encode},
+};
 
 /// Represents various errors related to fungible tokens.
 ///
@@ -104,7 +107,7 @@ impl From<StatusCode> for PSP22Error {
 
 #[cfg(test)]
 mod tests {
-	use super::{FungiblesError, PSP22Error};
+	use super::*;
 	use crate::{
 		constants::{ASSETS, BALANCES},
 		primitives::{
@@ -114,10 +117,6 @@ mod tests {
 			TransactionalError::*,
 		},
 		StatusCode,
-	};
-	use ink::{
-		prelude::string::String,
-		scale::{Decode, Encode},
 	};
 
 	fn error_into_status_code(error: Error) -> StatusCode {
