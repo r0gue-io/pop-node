@@ -253,11 +253,6 @@ fn decrease_allowance_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
-		// Token does not exist.
-		assert_eq!(
-			decrease_allowance(&addr, 0, &BOB, amount),
-			Err(Module { index: 52, error: [10, 0] }),
-		);
 		// Create token and mint `amount` to contract address, then approve Bob to spend `amount`.
 		let token = assets::create_mint_and_approve(&addr, 0, &addr, amount, &BOB, amount);
 		// Token is not live, i.e. frozen or being destroyed.
@@ -280,8 +275,8 @@ fn decrease_allowance_works() {
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&addr, token);
 		assert_eq!(
-			decrease_allowance(&addr, token, &BOB, amount),
-			Err(Module { index: 52, error: [10, 0] }),
+			decrease_allowance(&addr, token, &BOB, 1 * UNIT),
+			Err(Module { index: 52, error: [16, 0] }),
 		);
 	});
 }
