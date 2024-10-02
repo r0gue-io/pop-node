@@ -2,6 +2,7 @@
 //! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
 //! space.
 
+use frame_support::storage::Key;
 use frame_support::traits::nonfungibles_v2::InspectEnumerable;
 pub use pallet::*;
 use pallet_nfts::WeightInfo;
@@ -18,6 +19,14 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;
 	use types::{AccountIdOf, CollectionIdOf, ItemDetails, ItemIdOf, NftsOf, NftsWeightInfoOf};
+
+	/// Amount of tokens owned by an account in a collection.
+	#[pallet::storage]
+	pub type AccountBalance<T: Config> = StorageNMap<
+		Key = (Key<Twox64Concat, CollectionIdOf<T>>, Key<Blake2_128Concat, AccountIdOf<T>>),
+		Value = u32,
+		QueryKind = ValueQuery,
+	>;
 
 	/// State reads for the fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -240,7 +249,7 @@ pub mod pallet {
 					Self::allowance(collection, item, spender).encode()
 				},
 				BalanceOf { collection, owner } => {
-					(NftsOf::<T>::owned_in_collection(&collection, &owner).count() as u8).encode()
+					<AccountBalance<T>>::get((collection, owner)).encode()
 				},
 			}
 		}
