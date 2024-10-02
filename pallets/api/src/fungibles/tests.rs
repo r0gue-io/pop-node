@@ -272,20 +272,27 @@ fn decrease_allowance_works() {
 				BadOrigin.with_weight(WeightInfo::approve(0, 0))
 			);
 		}
-		// Check error works for `Assets::cancel_approval()`. No error test for `approve_transfer`
-		// because it is not possible.
-		assert_noop!(
-			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
-			AssetsError::Unknown.with_weight(WeightInfo::approve(0, 1))
-		);
 		assets::create_mint_and_approve(owner, token, owner, value, spender, value);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
+		// Check error works for `Assets::cancel_approval()`. No error test for `approve_transfer`
+		// because it is not possible.
+		assert_ok!(Assets::freeze_asset(signed(owner), token));
+		assert_noop!(
+			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
+			AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
+		);
+		assert_ok!(Assets::thaw_asset(signed(owner), token));
 		// Owner balance is not changed if decreased by zero.
 		assert_eq!(
 			Fungibles::decrease_allowance(signed(owner), token, spender, 0),
 			Ok(Some(WeightInfo::approve(0, 0)).into())
 		);
 		assert_eq!(Assets::allowance(token, &owner, &spender), value);
+		// "Unapproved" error is returned if the current allowance is less than `value`.
+		assert_noop!(
+			Fungibles::decrease_allowance(signed(owner), token, spender, value * 2),
+			AssetsError::Unapproved
+		);
 		// Decrease allowance successfully.
 		assert_eq!(
 			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
@@ -295,13 +302,6 @@ fn decrease_allowance_works() {
 		System::assert_last_event(
 			Event::Approval { token, owner, spender, value: value / 2 }.into(),
 		);
-		// Saturating if current allowance is decreased more than the owner balance.
-		assert_eq!(
-			Fungibles::decrease_allowance(signed(owner), token, spender, value),
-			Ok(Some(WeightInfo::approve(0, 1)).into())
-		);
-		assert_eq!(Assets::allowance(token, &owner, &spender), 0);
-		System::assert_last_event(Event::Approval { token, owner, spender, value: 0 }.into());
 	});
 }
 
@@ -677,8 +677,8 @@ mod read_weights {
 }
 
 mod ensure_codec_indexes {
-	use super::{Encode, RuntimeCall, *};
-	use crate::{fungibles, fungibles::Call::*, mock::RuntimeCall::Fungibles};
+	use super::{Encode, *};
+	use crate::{fungibles, mock::RuntimeCall::Fungibles};
 
 	#[test]
 	fn ensure_read_variant_indexes() {
