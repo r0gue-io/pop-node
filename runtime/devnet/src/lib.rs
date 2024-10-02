@@ -634,6 +634,10 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+
+	// Revive
+	#[runtime::pallet_index(255)]
+	pub type Revive = pallet_revive::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
