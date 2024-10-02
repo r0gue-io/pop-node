@@ -295,18 +295,15 @@ fn token_metadata_works() {
 		let decimals: u8 = 69;
 
 		// Token does not exist.
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Assets::name(TOKEN_ID)));
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Assets::symbol(TOKEN_ID)));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(Assets::decimals(TOKEN_ID)));
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(None));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(None));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(0));
 		// Create Token.
 		assets::create_and_set_metadata(&addr, TOKEN_ID, name.clone(), symbol.clone(), decimals);
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Assets::name(TOKEN_ID)));
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(name));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Assets::symbol(TOKEN_ID)));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(symbol));
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Some(Assets::name(TOKEN_ID))));
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Some(name)));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Some(Assets::symbol(TOKEN_ID))));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Some(symbol)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(Assets::decimals(TOKEN_ID)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(decimals));
 	});

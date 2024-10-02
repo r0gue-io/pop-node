@@ -92,10 +92,10 @@ pub mod pallet {
 		BalanceOf(BalanceOf<T>),
 		/// Allowance for a spender approved by an owner, for a specified token.
 		Allowance(BalanceOf<T>),
-		/// Name of the specified token.
-		TokenName(Vec<u8>),
-		/// Symbol for the specified token.
-		TokenSymbol(Vec<u8>),
+		/// Name of the specified token, if available.
+		TokenName(Option<Vec<u8>>),
+		/// Symbol for the specified token, if available.
+		TokenSymbol(Option<Vec<u8>>),
 		/// Decimals for the specified token.
 		TokenDecimals(u8),
 		/// Whether the specified token exists.
@@ -521,12 +521,14 @@ pub mod pallet {
 					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
 				Allowance { token, owner, spender } =>
 					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
-				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
-					AccountIdOf<T>,
-				>>::name(token)),
-				TokenSymbol(token) => ReadResult::TokenSymbol(<AssetsOf<T> as MetadataInspect<
-					AccountIdOf<T>,
-				>>::symbol(token)),
+				TokenName(token) => ReadResult::TokenName(
+					Some(<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(token))
+						.filter(|v| !v.is_empty()),
+				),
+				TokenSymbol(token) => ReadResult::TokenSymbol(
+					Some(<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(token))
+						.filter(|v| !v.is_empty()),
+				),
 				TokenDecimals(token) => ReadResult::TokenDecimals(
 					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(token),
 				),
