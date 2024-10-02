@@ -107,7 +107,7 @@ pub trait Psp22Mintable {
 	/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
 	///
 	/// The selector for this message is `0xfc3c75d4` (first 4 bytes of
-	/// `blake2b_256("PSP22Burnable::burn")`).
+	/// `blake2b_256("PSP22Mintable::mint")`).
 	///
 	/// # Parameters
 	/// - `account` - The account to be credited with the created tokens.
@@ -122,7 +122,7 @@ pub trait Psp22Burnable {
 	/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 	///
 	/// The selector for this message is `0x7a9da510` (first 4 bytes of
-	/// `blake2b_256("PSP22Mintable::mint")`).
+	/// `blake2b_256("PSP22Burnable::burn")`).
 	///
 	/// # Parameters
 	/// - `account` - The account from which the tokens will be destroyed.
