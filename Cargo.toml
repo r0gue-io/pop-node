@@ -15,11 +15,7 @@ license = "Unlicense"
 repository = "https://github.com/r0gue-io/pop-node/"
 
 [workspace]
-exclude = [
-	"extension/contract",
-	"pop-api",
-	"tests/contracts",
-]
+exclude = [ "extension/contract", "pop-api", "tests/contracts" ]
 members = [
 	"integration-tests",
 	"node",
