@@ -11,7 +11,7 @@ use super::*;
 
 /// The PSP22 trait.
 #[ink::trait_definition]
-pub trait PSP22 {
+pub trait Psp22 {
 	/// Returns the total token supply.
 	#[ink(message, selector = 0x162df8c2)]
 	fn total_supply(&self) -> Balance;
@@ -87,7 +87,7 @@ pub trait PSP22 {
 
 /// The PSP22 Metadata trait.
 #[ink::trait_definition]
-pub trait PSP22Metadata {
+pub trait Psp22Metadata {
 	/// Returns the token name.
 	#[ink(message, selector = 0x3d261bd4)]
 	fn token_name(&self) -> Option<String>;
@@ -103,7 +103,7 @@ pub trait PSP22Metadata {
 
 /// The PSP22 Mintable trait.
 #[ink::trait_definition]
-pub trait PSP22Mintable {
+pub trait Psp22Mintable {
 	/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
 	///
 	/// The selector for this message is `0xfc3c75d4` (first 4 bytes of
@@ -118,7 +118,7 @@ pub trait PSP22Mintable {
 
 /// The PSP22 Burnable trait.
 #[ink::trait_definition]
-pub trait PSP22Burnable {
+pub trait Psp22Burnable {
 	/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 	///
 	/// The selector for this message is `0x7a9da510` (first 4 bytes of
