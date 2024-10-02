@@ -47,7 +47,7 @@ mod encoding_read_result {
 
 	#[test]
 	fn token_name() {
-		let mut name = Some(vec![42, 42, 42, 42, 42]);
+		let mut name = Some("some name".as_bytes().to_vec());
 		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
 		name = None;
 		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
@@ -55,7 +55,7 @@ mod encoding_read_result {
 
 	#[test]
 	fn token_symbol() {
-		let mut symbol = Some(vec![42, 42, 42, 42, 42]);
+		let mut symbol = Some("some symbol".as_bytes().to_vec());
 		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
 		symbol = None;
 		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
@@ -498,15 +498,9 @@ fn token_metadata_works() {
 		let name: Vec<u8> = vec![11, 12, 13];
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
-		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(Default::default()));
-		assert_eq!(
-			Fungibles::read(TokenSymbol(TOKEN)),
-			ReadResult::TokenSymbol(Default::default())
-		);
-		assert_eq!(
-			Fungibles::read(TokenDecimals(TOKEN)),
-			ReadResult::TokenDecimals(Default::default())
-		);
+		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(None));
+		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(None));
+		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)), ReadResult::TokenDecimals(0));
 		assets::create_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
 		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(Some(name)));
 		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(Some(symbol)));
