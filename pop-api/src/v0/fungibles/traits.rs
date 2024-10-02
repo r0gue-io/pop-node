@@ -6,7 +6,7 @@ use ink::prelude::string::String;
 
 use super::*;
 
-/// Function selectors have been taken from the PSP22 standard: https://github.com/w3f/PSPs/blob/master/PSPs/psp-22.md.
+/// Function selectors as per the PSP22 standard: https://github.com/w3f/PSPs/blob/master/PSPs/psp-22.md.
 /// The mint and burn selectors are not defined in the standard, but have been created in the same way.
 
 /// The PSP22 trait.
@@ -106,7 +106,7 @@ pub trait Psp22Metadata {
 pub trait Psp22Mintable {
 	/// Creates `value` amount of tokens and assigns them to `account`, increasing the total supply.
 	///
-	/// The selector for this message is `0x7a9da510` (first 4 bytes of
+	/// The selector for this message is `0xfc3c75d4` (first 4 bytes of
 	/// `blake2b_256("PSP22Burnable::burn")`).
 	///
 	/// # Parameters
@@ -121,7 +121,7 @@ pub trait Psp22Mintable {
 pub trait Psp22Burnable {
 	/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 	///
-	/// The selector for this message is `0xfc3c75d4` (first 4 bytes of
+	/// The selector for this message is `0x7a9da510` (first 4 bytes of
 	/// `blake2b_256("PSP22Mintable::mint")`).
 	///
 	/// # Parameters
