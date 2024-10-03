@@ -418,7 +418,8 @@ fn increase_allowance_noop_works(mut session: Session) {
 	let contract =
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
-	// No-op if the caller and `spender` is the same address, returns success and no events are emitted.
+	// No-op if the caller and `spender` is the same address, returns success and no events are
+	// emitted.
 	assert_ok!(increase_allowance(&mut session, contract.clone(), AMOUNT));
 	assert_eq!(last_contract_event(&session), None);
 	// No-op if the `value` is zero, returns success and no events are emitted.
