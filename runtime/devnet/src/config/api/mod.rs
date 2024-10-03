@@ -14,7 +14,7 @@ use crate::{
 	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 
-mod versioning;
+pub mod versioning;
 
 type DecodingFailedError = DecodingFailed<Runtime>;
 type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<

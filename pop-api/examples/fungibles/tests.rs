@@ -1,17 +1,16 @@
 use drink::{
 	assert_ok,
-	devnet::{account_id_from_slice, AccountId, Balance, Runtime},
+	devnet::{
+		account_id_from_slice, AccountId, ArithmeticError, AssetsError, Balance, DispatchError,
+		Error as ModuleError, Runtime,
+	},
 	session::Session,
 	utils::{call, last_contract_event},
 	AssetsAPI, TestExternalities, NO_SALT,
 };
 use ink::scale::Encode;
 use pop_api::{
-	primitives::{
-		ArithmeticError::Overflow,
-		Error::{Arithmetic, Module},
-		TokenId,
-	},
+	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
 
@@ -168,7 +167,7 @@ fn transfer_fails_with_no_account() {
 	// `pallet-assets` returns `NoAccount` error.
 	assert_eq!(
 		transfer(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [1, 0] }))
+		Err(into_psp22_custom(AssetsError::NoAccount.into()))
 	);
 }
 
@@ -214,7 +213,7 @@ fn transfer_fails_with_token_not_live() {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		transfer(&mut session, BOB, AMOUNT / 2),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
 	);
 }
 
@@ -309,7 +308,7 @@ fn transfer_from_fails_with_token_not_live() {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
 	);
 }
 
@@ -367,7 +366,7 @@ fn approve_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		approve(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
 	);
 }
 
@@ -439,7 +438,7 @@ fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		increase_allowance(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
 	);
 }
 
@@ -526,7 +525,7 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		decrease_allowance(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
 	);
 }
 
@@ -617,7 +616,7 @@ fn mint_fails_with_no_permission(mut session: Session) {
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
 		mint(&mut session, BOB, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [2, 0] }))
+		Err(into_psp22_custom(AssetsError::NoPermission.into()))
 	);
 }
 
@@ -642,7 +641,10 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	session.set_actor(contract.clone());
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
-	assert_eq!(mint(&mut session, ALICE, u128::MAX), Err(into_psp22_custom(Arithmetic(Overflow))));
+	assert_eq!(
+		mint(&mut session, ALICE, u128::MAX),
+		Err(into_psp22_custom(ArithmeticError::Overflow.into()))
+	);
 }
 
 #[drink::test(sandbox = Pop)]
@@ -657,7 +659,7 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		mint(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
 	);
 }
 
@@ -696,7 +698,7 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
 		burn(&mut session, BOB, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [2, 0] }))
+		Err(into_psp22_custom(AssetsError::NoPermission.into()))
 	);
 }
 
@@ -736,7 +738,7 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `IncorrectStatus` error.
 	assert_eq!(
 		burn(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [17, 0] }))
+		Err(into_psp22_custom(AssetsError::IncorrectStatus.into()))
 	);
 }
 
@@ -901,11 +903,7 @@ fn burn(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Resu
 }
 
 // Convert into `PSP22Error::Custom` error type.
-fn into_psp22_custom<T: Encode>(err: T) -> PSP22Error {
-	let mut padded_vec = err.encode().to_vec();
-	padded_vec.resize(4, 0);
-	// Convert the `Vec<u8>` to value of `StatusCode`.
-	let array: [u8; 4] = padded_vec.try_into().map_err(|_| "Invalid length").unwrap();
-	let status_code = u32::from_le_bytes(array);
+fn into_psp22_custom(error: DispatchError) -> PSP22Error {
+	let status_code: u32 = ModuleError(error).into();
 	PSP22Error::Custom(status_code.to_string())
 }
