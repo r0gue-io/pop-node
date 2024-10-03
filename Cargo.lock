@@ -10780,8 +10780,11 @@ name = "pop-primitives"
 version = "0.0.0"
 dependencies = [
  "enum-iterator",
+ "frame-support",
+ "pallet-contracts",
  "parity-scale-codec",
  "scale-info",
+ "sp-runtime",
 ]
 
 [[package]]

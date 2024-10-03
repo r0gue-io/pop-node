@@ -102,62 +102,8 @@ impl From<VersionedError> for u32 {
 pub struct V0Error(pub pop_primitives::v0::Error);
 impl From<DispatchError> for V0Error {
 	fn from(error: DispatchError) -> Self {
-		use pop_primitives::v0::*;
-		use sp_runtime::{ArithmeticError::*, TokenError::*, TransactionalError::*};
-		use DispatchError::*;
 		// Mappings exist here to avoid taking a dependency of sp_runtime on pop-primitives
-		Self(match error {
-			Other(_message) => {
-				// Note: lossy conversion: message not used due to returned contract status code
-				// size limitation
-				Error::Other
-			},
-			CannotLookup => Error::CannotLookup,
-			BadOrigin => Error::BadOrigin,
-			Module(error) => {
-				// Note: message not used
-				let ModuleError { index, error, message: _message } = error;
-				// Map `pallet-contracts::Error::DecodingFailed` to `Error::DecodingFailed`
-				if index as usize ==
-					<crate::Contracts as frame_support::traits::PalletInfoAccess>::index() &&
-					error == DECODING_FAILED_ERROR
-				{
-					Error::DecodingFailed
-				} else {
-					// Note: lossy conversion of error value due to returned contract status code
-					// size limitation
-					Error::Module { index, error: [error[0], error[1]] }
-				}
-			},
-			ConsumerRemaining => Error::ConsumerRemaining,
-			NoProviders => Error::NoProviders,
-			TooManyConsumers => Error::TooManyConsumers,
-			Token(error) => Error::Token(match error {
-				FundsUnavailable => TokenError::FundsUnavailable,
-				OnlyProvider => TokenError::OnlyProvider,
-				BelowMinimum => TokenError::BelowMinimum,
-				CannotCreate => TokenError::CannotCreate,
-				UnknownAsset => TokenError::UnknownAsset,
-				Frozen => TokenError::Frozen,
-				Unsupported => TokenError::Unsupported,
-				CannotCreateHold => TokenError::CannotCreateHold,
-				NotExpendable => TokenError::NotExpendable,
-				Blocked => TokenError::Blocked,
-			}),
-			Arithmetic(error) => Error::Arithmetic(match error {
-				Underflow => ArithmeticError::Underflow,
-				Overflow => ArithmeticError::Overflow,
-				DivisionByZero => ArithmeticError::DivisionByZero,
-			}),
-			Transactional(error) => Error::Transactional(match error {
-				LimitReached => TransactionalError::LimitReached,
-				NoLayer => TransactionalError::NoLayer,
-			}),
-			Exhausted => Error::Exhausted,
-			Corruption => Error::Corruption,
-			Unavailable => Error::Unavailable,
-			RootNotAllowed => Error::RootNotAllowed,
-		})
+		Self(error.into())
 	}
 }
 

@@ -7,11 +7,20 @@ version = "0.0.0"
 
 [dependencies]
 codec.workspace = true
+frame-support.workspace = true
+pallet-contracts.workspace = true
 scale-info.workspace = true
+sp-runtime.workspace = true
 
 [dev-dependencies]
 enum-iterator = "2.1.0"
 
 [features]
 default = [ "std" ]
-std = [ "codec/std", "scale-info/std" ]
+std = [
+	"codec/std",
+	"frame-support/std",
+	"pallet-contracts/std",
+	"scale-info/std",
+	"sp-runtime/std",
+]
