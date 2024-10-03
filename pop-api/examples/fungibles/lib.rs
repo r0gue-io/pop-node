@@ -6,7 +6,7 @@ use pop_api::{
 	v0::fungibles::{
 		self as api,
 		events::{Approval, Created, Transfer},
-		traits::{Psp22, Psp22Burnable, Psp22Metadata, Psp22Mintable},
+		traits::{PSP22Burnable, PSP22Metadata, PSP22Mintable, PSP22},
 		PSP22Error,
 	},
 };
@@ -57,7 +57,7 @@ mod fungibles {
 		}
 	}
 
-	impl Psp22 for Fungible {
+	impl PSP22 for Fungible {
 		/// Returns the total token supply.
 		#[ink(message)]
 		fn total_supply(&self) -> Balance {
@@ -210,7 +210,7 @@ mod fungibles {
 		}
 	}
 
-	impl Psp22Metadata for Fungible {
+	impl PSP22Metadata for Fungible {
 		/// Returns the token name.
 		#[ink(message)]
 		fn token_name(&self) -> Option<String> {
@@ -236,7 +236,7 @@ mod fungibles {
 		}
 	}
 
-	impl Psp22Mintable for Fungible {
+	impl PSP22Mintable for Fungible {
 		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
 		/// supply.
 		///
@@ -255,7 +255,7 @@ mod fungibles {
 		}
 	}
 
-	impl Psp22Burnable for Fungible {
+	impl PSP22Burnable for Fungible {
 		/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 		///
 		/// # Parameters

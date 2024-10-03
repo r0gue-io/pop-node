@@ -782,18 +782,18 @@ fn deploy(
 // A set of helper methods to test the contract calls.
 
 fn total_supply(session: &mut Session<Pop>) -> Balance {
-	call::<Pop, Balance, PSP22Error>(session, "Psp22::total_supply", vec![], None).unwrap()
+	call::<Pop, Balance, PSP22Error>(session, "PSP22::total_supply", vec![], None).unwrap()
 }
 
 fn balance_of(session: &mut Session<Pop>, owner: AccountId) -> Balance {
-	call::<Pop, Balance, PSP22Error>(session, "Psp22::balance_of", vec![owner.to_string()], None)
+	call::<Pop, Balance, PSP22Error>(session, "PSP22::balance_of", vec![owner.to_string()], None)
 		.unwrap()
 }
 
 fn allowance(session: &mut Session<Pop>, owner: AccountId, spender: AccountId) -> Balance {
 	call::<Pop, Balance, PSP22Error>(
 		session,
-		"Psp22::allowance",
+		"PSP22::allowance",
 		vec![owner.to_string(), spender.to_string()],
 		None,
 	)
@@ -803,7 +803,7 @@ fn allowance(session: &mut Session<Pop>, owner: AccountId, spender: AccountId) -
 fn transfer(session: &mut Session<Pop>, to: AccountId, amount: Balance) -> Result<(), PSP22Error> {
 	call::<Pop, (), PSP22Error>(
 		session,
-		"Psp22::transfer",
+		"PSP22::transfer",
 		vec![to.to_string(), amount.to_string(), serde_json::to_string::<[u8; 0]>(&[]).unwrap()],
 		None,
 	)
@@ -817,7 +817,7 @@ fn transfer_from(
 ) -> Result<(), PSP22Error> {
 	call::<Pop, (), PSP22Error>(
 		session,
-		"Psp22::transfer_from",
+		"PSP22::transfer_from",
 		vec![
 			from.to_string(),
 			to.to_string(),
@@ -835,7 +835,7 @@ fn approve(
 ) -> Result<(), PSP22Error> {
 	call::<Pop, (), PSP22Error>(
 		session,
-		"Psp22::approve",
+		"PSP22::approve",
 		vec![spender.to_string(), value.to_string()],
 		None,
 	)
@@ -848,7 +848,7 @@ fn increase_allowance(
 ) -> Result<(), PSP22Error> {
 	call::<Pop, (), PSP22Error>(
 		session,
-		"Psp22::increase_allowance",
+		"PSP22::increase_allowance",
 		vec![spender.to_string(), value.to_string()],
 		None,
 	)
@@ -861,30 +861,30 @@ fn decrease_allowance(
 ) -> Result<(), PSP22Error> {
 	call::<Pop, (), PSP22Error>(
 		session,
-		"Psp22::decrease_allowance",
+		"PSP22::decrease_allowance",
 		vec![spender.to_string(), value.to_string()],
 		None,
 	)
 }
 
 fn token_name(session: &mut Session<Pop>) -> Option<String> {
-	call::<Pop, Option<String>, PSP22Error>(session, "Psp22Metadata::token_name", vec![], None)
+	call::<Pop, Option<String>, PSP22Error>(session, "PSP22Metadata::token_name", vec![], None)
 		.unwrap()
 }
 
 fn token_symbol(session: &mut Session<Pop>) -> Option<String> {
-	call::<Pop, Option<String>, PSP22Error>(session, "Psp22Metadata::token_symbol", vec![], None)
+	call::<Pop, Option<String>, PSP22Error>(session, "PSP22Metadata::token_symbol", vec![], None)
 		.unwrap()
 }
 
 fn token_decimals(session: &mut Session<Pop>) -> u8 {
-	call::<Pop, u8, PSP22Error>(session, "Psp22Metadata::token_decimals", vec![], None).unwrap()
+	call::<Pop, u8, PSP22Error>(session, "PSP22Metadata::token_decimals", vec![], None).unwrap()
 }
 
 fn mint(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Result<(), PSP22Error> {
 	call::<Pop, (), PSP22Error>(
 		session,
-		"Psp22Mintable::mint",
+		"PSP22Mintable::mint",
 		vec![account.to_string(), amount.to_string()],
 		None,
 	)
@@ -893,7 +893,7 @@ fn mint(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Resu
 fn burn(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Result<(), PSP22Error> {
 	call::<Pop, (), PSP22Error>(
 		session,
-		"Psp22Burnable::burn",
+		"PSP22Burnable::burn",
 		vec![account.to_string(), amount.to_string()],
 		None,
 	)
