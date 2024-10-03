@@ -4,6 +4,7 @@ use frame_support::{
 };
 use frame_system::EnsureSigned;
 
+use super::api_revive::{self, Config};
 use crate::{
 	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
 	Timestamp,
@@ -19,7 +20,7 @@ parameter_types! {
 impl pallet_revive::Config for Runtime {
 	type AddressMapper = pallet_revive::DefaultAddressMapper;
 	type CallFilter = Nothing;
-	type ChainExtension = ();
+	type ChainExtension = api_revive::Extension<Config>;
 	type ChainId = ConstU64<4001>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;

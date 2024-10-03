@@ -40,6 +40,7 @@ use frame_system::{
 	EnsureRoot,
 };
 use pallet_api::fungibles;
+use pallet_api_revive::fungibles as fungibles_revive;
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -244,10 +245,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
+				force_adjust_total_issuance { .. }
+					| force_set_balance { .. }
+					| force_transfer { .. }
+					| force_unreserve { .. }
 			)
 		)
 	}
@@ -634,6 +635,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(151)]
+	pub type FungiblesRevive = fungibles_revive::Pallet<Runtime>;
 
 	// Revive
 	#[runtime::pallet_index(255)]
