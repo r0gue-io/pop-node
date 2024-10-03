@@ -210,18 +210,16 @@ mod fungibles {
 		#[ink(message)]
 		fn token_name(&self) -> Option<String> {
 			api::token_name(self.id)
-				.ok()
-				.flatten()
-				.and_then(|vec| String::from_utf8(vec).ok())
+				.unwrap_or_default()
+				.and_then(|v| String::from_utf8(v).ok())
 		}
 
 		/// Returns the token symbol.
 		#[ink(message)]
 		fn token_symbol(&self) -> Option<String> {
 			api::token_symbol(self.id)
-				.ok()
-				.flatten()
-				.and_then(|vec| String::from_utf8(vec).ok())
+				.unwrap_or_default()
+				.and_then(|v| String::from_utf8(v).ok())
 		}
 
 		/// Returns the token decimals.
