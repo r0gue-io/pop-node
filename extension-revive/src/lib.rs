@@ -14,10 +14,13 @@ pub use functions::{
 	Converter, DefaultConverter, DispatchCall, ErrorConverter, Function, ReadState, Readable,
 };
 pub use matching::{Equals, FunctionId, Matches};
-pub use pallet_revive::chain_extension::{Result, RetVal, State};
 use pallet_revive::{
-	chain_extension::{ChainExtension, InitState, RetVal::Converging},
+	chain_extension::{ChainExtension, RetVal::Converging},
 	WeightInfo,
+};
+pub use pallet_revive::{
+	chain_extension::{Result, RetVal},
+	wasm::Memory,
 };
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
@@ -53,11 +56,11 @@ where
 	///
 	/// # Parameters
 	/// - `env`: Access to the remaining arguments and the execution environment.
-	fn call<E: pallet_revive::chain_extension::Ext<T = Runtime>>(
+	fn call<E: pallet_revive::chain_extension::Ext<T = Runtime>, M: ?Sized + Memory<E::T>>(
 		&mut self,
-		env: pallet_revive::chain_extension::Environment<E, InitState>,
+		env: pallet_revive::chain_extension::Environment<E, M>,
 	) -> Result<RetVal> {
-		let mut env = environment::Env(env.buf_in_buf_out());
+		let mut env = environment::Env(env);
 		self.call(&mut env)
 	}
 }

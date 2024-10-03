@@ -1,7 +1,11 @@
+use codec::{Decode, Encode};
 use core::fmt::Debug;
 
 use frame_support::pallet_prelude::Weight;
-use pallet_revive::chain_extension::{BufInBufOutState, ChargedAmount, Result, State};
+use pallet_revive::chain_extension::{ChargedAmount, Result};
+use pallet_revive::wasm::Memory;
+use pallet_revive::AddressMapper;
+use pallet_revive::DefaultAddressMapper;
 use sp_std::vec::Vec;
 
 use crate::AccountIdOf;
@@ -56,11 +60,13 @@ pub trait Environment {
 }
 
 /// A wrapper type for `pallet_revive::chain_extension::Environment`.
-pub(crate) struct Env<'a, 'b, E: pallet_revive::chain_extension::Ext, S: State>(
+pub(crate) struct Env<'a, 'b, E: pallet_revive::chain_extension::Ext, S: ?Sized + Memory<E::T>>(
 	pub(crate) pallet_revive::chain_extension::Environment<'a, 'b, E, S>,
 );
 
-impl<'a, 'b, E: pallet_revive::chain_extension::Ext, S: State> Environment for Env<'a, 'b, E, S> {
+impl<'a, 'b, E: pallet_revive::chain_extension::Ext, S: ?Sized + Memory<E::T>> Environment
+	for Env<'a, 'b, E, S>
+{
 	type AccountId = AccountIdOf<E::T>;
 	type ChargedAmount = ChargedAmount;
 
@@ -109,7 +115,9 @@ pub trait BufIn {
 	fn read(&self, max_len: u32) -> Result<Vec<u8>>;
 }
 
-impl<'a, 'b, E: pallet_revive::chain_extension::Ext> BufIn for Env<'a, 'b, E, BufInBufOutState> {
+impl<'a, 'b, E: pallet_revive::chain_extension::Ext, M: ?Sized + Memory<E::T>> BufIn
+	for Env<'a, 'b, E, M>
+{
 	fn in_len(&self) -> u32 {
 		self.0.in_len()
 	}
@@ -140,7 +148,9 @@ pub trait BufOut {
 	) -> Result<()>;
 }
 
-impl<'a, 'b, E: pallet_revive::chain_extension::Ext> BufOut for Env<'a, 'b, E, BufInBufOutState> {
+impl<'a, 'b, E: pallet_revive::chain_extension::Ext, M: ?Sized + Memory<E::T>> BufOut
+	for Env<'a, 'b, E, M>
+{
 	fn write(
 		&mut self,
 		buffer: &[u8],
@@ -164,14 +174,14 @@ pub trait Ext {
 	type AccountId;
 
 	/// Returns a reference to the account id of the current contract.
-	fn address(&self) -> &Self::AccountId;
+	fn address(&self) -> Self::AccountId;
 }
 
 impl Ext for () {
 	type AccountId = ();
 
-	fn address(&self) -> &Self::AccountId {
-		&()
+	fn address(&self) -> Self::AccountId {
+		()
 	}
 }
 
@@ -181,8 +191,10 @@ pub(crate) struct ExternalEnvironment<'a, T: pallet_revive::chain_extension::Ext
 impl<'a, E: pallet_revive::chain_extension::Ext> Ext for ExternalEnvironment<'a, E> {
 	type AccountId = AccountIdOf<E::T>;
 
-	fn address(&self) -> &Self::AccountId {
-		self.0.address()
+	fn address(&self) -> Self::AccountId {
+		// TODO: hacky way to get AccountId32 to match the Self::AccountId type
+		let encoded_addr = DefaultAddressMapper::to_account_id(&self.0.address()).encode();
+		Self::AccountId::decode(&mut &encoded_addr[..]).unwrap()
 	}
 }
 
