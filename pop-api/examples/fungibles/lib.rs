@@ -216,8 +216,8 @@ mod fungibles {
 		fn token_name(&self) -> Option<String> {
 			api::token_name(self.id)
 				.ok()
-				.filter(|v| !v.is_empty())
-				.and_then(|v| String::from_utf8(v).ok())
+				.flatten()
+				.and_then(|vec| String::from_utf8(vec).ok())
 		}
 
 		/// Returns the token symbol.
@@ -225,8 +225,8 @@ mod fungibles {
 		fn token_symbol(&self) -> Option<String> {
 			api::token_symbol(self.id)
 				.ok()
-				.filter(|v| !v.is_empty())
-				.and_then(|v| String::from_utf8(v).ok())
+				.flatten()
+				.and_then(|vec| String::from_utf8(vec).ok())
 		}
 
 		/// Returns the token decimals.
