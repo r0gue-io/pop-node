@@ -1,8 +1,8 @@
 use drink::{
 	assert_ok,
 	devnet::{
-		account_id_from_slice, AccountId, ArithmeticError, AssetsError, Balance, DispatchError,
-		Error as ModuleError, Runtime,
+		account_id_from_slice, AccountId, ArithmeticError, AssetsError, Balance, Runtime,
+		RuntimeError,
 	},
 	session::Session,
 	utils::{call, last_contract_event},
@@ -167,7 +167,7 @@ fn transfer_fails_with_no_account() {
 	// `pallet-assets` returns `NoAccount` error.
 	assert_eq!(
 		transfer(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(AssetsError::NoAccount.into()))
+		Err(RuntimeError(AssetsError::NoAccount.into()).into())
 	);
 }
 
@@ -213,7 +213,7 @@ fn transfer_fails_with_token_not_live() {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		transfer(&mut session, BOB, AMOUNT / 2),
-		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
+		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
 
@@ -308,7 +308,7 @@ fn transfer_from_fails_with_token_not_live() {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2),
-		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
+		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
 
@@ -366,7 +366,7 @@ fn approve_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		approve(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
+		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
 
@@ -438,7 +438,7 @@ fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		increase_allowance(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
+		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
 
@@ -525,7 +525,7 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		decrease_allowance(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
+		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
 
@@ -616,7 +616,7 @@ fn mint_fails_with_no_permission(mut session: Session) {
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
 		mint(&mut session, BOB, AMOUNT),
-		Err(into_psp22_custom(AssetsError::NoPermission.into()))
+		Err(RuntimeError(AssetsError::NoPermission.into()).into())
 	);
 }
 
@@ -643,7 +643,7 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
 	assert_eq!(
 		mint(&mut session, ALICE, u128::MAX),
-		Err(into_psp22_custom(ArithmeticError::Overflow.into()))
+		Err(RuntimeError(ArithmeticError::Overflow.into()).into())
 	);
 }
 
@@ -659,7 +659,7 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
 		mint(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(AssetsError::AssetNotLive.into()))
+		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
 
@@ -698,7 +698,7 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
 		burn(&mut session, BOB, AMOUNT),
-		Err(into_psp22_custom(AssetsError::NoPermission.into()))
+		Err(RuntimeError(AssetsError::NoPermission.into()).into())
 	);
 }
 
@@ -738,7 +738,7 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `IncorrectStatus` error.
 	assert_eq!(
 		burn(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(AssetsError::IncorrectStatus.into()))
+		Err(RuntimeError(AssetsError::IncorrectStatus.into()).into())
 	);
 }
 
@@ -900,10 +900,4 @@ fn burn(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Resu
 		vec![account.to_string(), amount.to_string()],
 		None,
 	)
-}
-
-// Convert into `PSP22Error::Custom` error type.
-fn into_psp22_custom(error: DispatchError) -> PSP22Error {
-	let status_code: u32 = ModuleError(error).into();
-	PSP22Error::Custom(status_code.to_string())
 }
