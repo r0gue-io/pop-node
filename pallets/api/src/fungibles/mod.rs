@@ -92,10 +92,10 @@ pub mod pallet {
 		BalanceOf(BalanceOf<T>),
 		/// Allowance for a spender approved by an owner, for a specified token.
 		Allowance(BalanceOf<T>),
-		/// Name of the specified token.
-		TokenName(Vec<u8>),
-		/// Symbol for the specified token.
-		TokenSymbol(Vec<u8>),
+		/// Name of the specified token, if available.
+		TokenName(Option<Vec<u8>>),
+		/// Symbol for the specified token, if available.
+		TokenSymbol(Option<Vec<u8>>),
 		/// Decimals for the specified token.
 		TokenDecimals(u8),
 		/// Whether the specified token exists.
@@ -339,10 +339,8 @@ pub mod pallet {
 			let token_param: TokenIdParameterOf<T> = token.clone().into();
 
 			// Cancel the approval and approve `new_allowance` if difference is more than zero.
-			let new_allowance = match current_allowance.checked_sub(&value) {
-				Some(allowance) => allowance,
-				None => return Err(AssetsErrorOf::<T>::Unapproved.into()),
-			};
+			let new_allowance =
+				current_allowance.checked_sub(&value).ok_or(AssetsErrorOf::<T>::Unapproved)?;
 			AssetsOf::<T>::cancel_approval(
 				origin.clone(),
 				token_param.clone(),
@@ -464,13 +462,18 @@ pub mod pallet {
 		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[pallet::call_index(20)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::burn())]
+		#[pallet::weight(<T as Config>::WeightInfo::balance_of() + AssetsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
 			token: TokenIdOf<T>,
 			account: AccountIdOf<T>,
 			value: BalanceOf<T>,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
+			let current_balance = AssetsOf::<T>::balance(token.clone(), &account);
+			if current_balance < value {
+				return Err(AssetsErrorOf::<T>::BalanceLow
+					.with_weight(<T as Config>::WeightInfo::balance_of()));
+			}
 			AssetsOf::<T>::burn(
 				origin,
 				token.clone().into(),
@@ -478,7 +481,7 @@ pub mod pallet {
 				value,
 			)?;
 			Self::deposit_event(Event::Transfer { token, from: Some(account), to: None, value });
-			Ok(())
+			Ok(().into())
 		}
 	}
 
@@ -514,16 +517,20 @@ pub mod pallet {
 			use Read::*;
 			match request {
 				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
-				BalanceOf { token, owner } =>
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
-				Allowance { token, owner, spender } =>
-					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
-				TokenName(token) => ReadResult::TokenName(<AssetsOf<T> as MetadataInspect<
-					AccountIdOf<T>,
-				>>::name(token)),
-				TokenSymbol(token) => ReadResult::TokenSymbol(<AssetsOf<T> as MetadataInspect<
-					AccountIdOf<T>,
-				>>::symbol(token)),
+				BalanceOf { token, owner } => {
+					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner))
+				},
+				Allowance { token, owner, spender } => {
+					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender))
+				},
+				TokenName(token) => ReadResult::TokenName(
+					Some(<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(token))
+						.filter(|v| !v.is_empty()),
+				),
+				TokenSymbol(token) => ReadResult::TokenSymbol(
+					Some(<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(token))
+						.filter(|v| !v.is_empty()),
+				),
 				TokenDecimals(token) => ReadResult::TokenDecimals(
 					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(token),
 				),
