@@ -115,7 +115,6 @@ pub mod v0 {
 				use sp_runtime::{
 					ArithmeticError::*, DispatchError::*, TokenError::*, TransactionalError::*,
 				};
-				// Mappings exist here to avoid taking a dependency of sp_runtime on pop-primitives
 				match error {
 					Other(_message) => {
 						// Note: lossy conversion: message not used due to returned contract status

@@ -104,7 +104,6 @@ impl From<DispatchError> for V0Error {
 	fn from(error: DispatchError) -> Self {
 		use pop_primitives::v0::*;
 		use DispatchError::*;
-		// Mappings exist here to avoid taking a dependency of sp_runtime on pop-primitives
 		Self(match error {
 			Module(error) => {
 				// Note: message not used
