@@ -8,10 +8,14 @@ version = "0.0.0"
 [dependencies]
 codec.workspace = true
 scale-info.workspace = true
+sp-runtime.workspace = true
 
 [dev-dependencies]
 enum-iterator = "2.1.0"
 
 [features]
 default = [ "std" ]
-std = [ "codec/std", "scale-info/std" ]
+
+std = [ "codec/std", "scale-info/std", "sp-runtime/std" ]
+
+runtime = []

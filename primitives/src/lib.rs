@@ -7,6 +7,8 @@ use codec::{Decode, Encode};
 use enum_iterator::Sequence;
 #[cfg(feature = "std")]
 use scale_info::TypeInfo;
+#[cfg(feature = "runtime")]
+use sp_runtime::{DispatchError, ModuleError};
 pub use v0::*;
 
 /// The identifier of a token.
@@ -107,6 +109,58 @@ pub mod v0 {
 			}
 		}
 
+		#[cfg(feature = "runtime")]
+		impl From<DispatchError> for Error {
+			fn from(error: DispatchError) -> Self {
+				use sp_runtime::{
+					ArithmeticError::*, DispatchError::*, TokenError::*, TransactionalError::*,
+				};
+				// Mappings exist here to avoid taking a dependency of sp_runtime on pop-primitives
+				match error {
+					Other(_message) => {
+						// Note: lossy conversion: message not used due to returned contract status
+						// code size limitation
+						Error::Other
+					},
+					CannotLookup => Error::CannotLookup,
+					BadOrigin => Error::BadOrigin,
+					Module(error) => {
+						// Note: message not used
+						let ModuleError { index, error, message: _message } = error;
+						Error::Module { index, error: [error[0], error[1]] }
+					},
+					ConsumerRemaining => Error::ConsumerRemaining,
+					NoProviders => Error::NoProviders,
+					TooManyConsumers => Error::TooManyConsumers,
+					Token(error) => Error::Token(match error {
+						FundsUnavailable => TokenError::FundsUnavailable,
+						OnlyProvider => TokenError::OnlyProvider,
+						BelowMinimum => TokenError::BelowMinimum,
+						CannotCreate => TokenError::CannotCreate,
+						UnknownAsset => TokenError::UnknownAsset,
+						Frozen => TokenError::Frozen,
+						Unsupported => TokenError::Unsupported,
+						CannotCreateHold => TokenError::CannotCreateHold,
+						NotExpendable => TokenError::NotExpendable,
+						Blocked => TokenError::Blocked,
+					}),
+					Arithmetic(error) => Error::Arithmetic(match error {
+						Underflow => ArithmeticError::Underflow,
+						Overflow => ArithmeticError::Overflow,
+						DivisionByZero => ArithmeticError::DivisionByZero,
+					}),
+					Transactional(error) => Error::Transactional(match error {
+						LimitReached => TransactionalError::LimitReached,
+						NoLayer => TransactionalError::NoLayer,
+					}),
+					Exhausted => Error::Exhausted,
+					Corruption => Error::Corruption,
+					Unavailable => Error::Unavailable,
+					RootNotAllowed => Error::RootNotAllowed,
+				}
+			}
+		}
+
 		/// Description of what went wrong when trying to complete an operation on a token.
 		#[derive(Encode, Decode, Debug)]
 		#[cfg_attr(test, derive(Sequence))]
@@ -194,6 +248,60 @@ pub mod v0 {
 				let error: Error = invalid_value.into();
 				assert_eq!(error, DecodingFailed,);
 			});
+		}
+
+		// Compare all the different `DispatchError` variants with the expected `Error`.
+		#[test]
+		#[cfg(feature = "runtime")]
+		fn from_dispatch_error_to_error_works() {
+			use sp_runtime::DispatchError::*;
+			let test_cases = vec![
+				(Other(""), (Error::Other)),
+				(Other("UnknownCall"), Error::Other),
+				(Other("DecodingFailed"), Error::Other),
+				(Other("Random"), (Error::Other)),
+				(CannotLookup, Error::CannotLookup),
+				(BadOrigin, Error::BadOrigin),
+				(
+					Module(ModuleError { index: 1, error: [2, 0, 0, 0], message: Some("hallo") }),
+					Error::Module { index: 1, error: [2, 0] },
+				),
+				(
+					Module(ModuleError { index: 1, error: [2, 2, 0, 0], message: Some("hallo") }),
+					Error::Module { index: 1, error: [2, 2] },
+				),
+				(
+					Module(ModuleError { index: 1, error: [2, 2, 2, 0], message: Some("hallo") }),
+					Error::Module { index: 1, error: [2, 2] },
+				),
+				(
+					Module(ModuleError { index: 1, error: [2, 2, 2, 4], message: Some("hallo") }),
+					Error::Module { index: 1, error: [2, 2] },
+				),
+				(ConsumerRemaining, Error::ConsumerRemaining),
+				(NoProviders, Error::NoProviders),
+				(TooManyConsumers, Error::TooManyConsumers),
+				(
+					Token(sp_runtime::TokenError::BelowMinimum),
+					Error::Token(TokenError::BelowMinimum),
+				),
+				(
+					Arithmetic(sp_runtime::ArithmeticError::Overflow),
+					Error::Arithmetic(ArithmeticError::Overflow),
+				),
+				(
+					Transactional(sp_runtime::TransactionalError::LimitReached),
+					Error::Transactional(TransactionalError::LimitReached),
+				),
+				(Exhausted, Error::Exhausted),
+				(Corruption, Error::Corruption),
+				(Unavailable, Error::Unavailable),
+				(RootNotAllowed, Error::RootNotAllowed),
+			];
+			for (dispatch_error, expected) in test_cases {
+				let error = Error::from(dispatch_error);
+				assert_eq!(error, expected);
+			}
 		}
 	}
 }
