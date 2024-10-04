@@ -15,7 +15,5 @@ enum-iterator = "2.1.0"
 
 [features]
 default = [ "std" ]
-
-std = [ "codec/std", "scale-info/std", "sp-runtime/std" ]
-
 runtime = []
+std = [ "codec/std", "scale-info/std", "sp-runtime/std" ]
