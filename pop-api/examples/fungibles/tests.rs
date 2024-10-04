@@ -166,7 +166,7 @@ fn transfer_fails_with_no_account() {
 	session.set_actor(contract.clone());
 	// `pallet-assets` returns `NoAccount` error.
 	assert_eq!(
-		transfer(&mut session, ALICE, AMOUNT),
+		transfer(&mut session, ALICE, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::NoAccount.into()).into())
 	);
 }
@@ -212,7 +212,7 @@ fn transfer_fails_with_token_not_live() {
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
-		transfer(&mut session, BOB, AMOUNT / 2),
+		transfer(&mut session, BOB, AMOUNT / 2).map_err(u32::from),
 		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
@@ -307,7 +307,7 @@ fn transfer_from_fails_with_token_not_live() {
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
-		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2),
+		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2).map_err(u32::from),
 		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
@@ -365,7 +365,7 @@ fn approve_fails_with_token_not_live(mut session: Session) {
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
-		approve(&mut session, ALICE, AMOUNT),
+		approve(&mut session, ALICE, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
@@ -437,7 +437,7 @@ fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
-		increase_allowance(&mut session, ALICE, AMOUNT),
+		increase_allowance(&mut session, ALICE, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
@@ -524,7 +524,7 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
-		decrease_allowance(&mut session, ALICE, AMOUNT),
+		decrease_allowance(&mut session, ALICE, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
@@ -615,7 +615,7 @@ fn mint_fails_with_no_permission(mut session: Session) {
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
-		mint(&mut session, BOB, AMOUNT),
+		mint(&mut session, BOB, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::NoPermission.into()).into())
 	);
 }
@@ -642,7 +642,7 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
 	assert_eq!(
-		mint(&mut session, ALICE, u128::MAX),
+		mint(&mut session, ALICE, u128::MAX).map_err(u32::from),
 		Err(RuntimeError(ArithmeticError::Overflow.into()).into())
 	);
 }
@@ -658,7 +658,7 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_eq!(
-		mint(&mut session, ALICE, AMOUNT),
+		mint(&mut session, ALICE, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
 	);
 }
@@ -697,7 +697,7 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
 	assert_eq!(
-		burn(&mut session, BOB, AMOUNT),
+		burn(&mut session, BOB, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::NoPermission.into()).into())
 	);
 }
@@ -737,7 +737,7 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `IncorrectStatus` error.
 	assert_eq!(
-		burn(&mut session, ALICE, AMOUNT),
+		burn(&mut session, ALICE, AMOUNT).map_err(u32::from),
 		Err(RuntimeError(AssetsError::IncorrectStatus.into()).into())
 	);
 }
