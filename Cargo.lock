@@ -10782,6 +10782,7 @@ dependencies = [
  "enum-iterator",
  "parity-scale-codec",
  "scale-info",
+ "sp-runtime",
 ]
 
 [[package]]
