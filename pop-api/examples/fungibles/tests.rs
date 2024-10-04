@@ -1,5 +1,5 @@
 use drink::{
-	assert_ok,
+	assert_ok, assert_runtime_err,
 	devnet::{
 		account_id_from_slice, AccountId, ArithmeticError, AssetsError, Balance, Runtime,
 		RuntimeError,
@@ -165,9 +165,9 @@ fn transfer_fails_with_no_account() {
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
 	// `pallet-assets` returns `NoAccount` error.
-	assert_eq!(
-		transfer(&mut session, ALICE, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::NoAccount.into()).into())
+	assert_runtime_err!(
+		transfer(&mut session, ALICE, AMOUNT),
+		RuntimeError::Assets(AssetsError::NoAccount),
 	);
 }
 
@@ -211,9 +211,9 @@ fn transfer_fails_with_token_not_live() {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		transfer(&mut session, BOB, AMOUNT / 2).map_err(u32::from),
-		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
+	assert_runtime_err!(
+		transfer(&mut session, BOB, AMOUNT / 2),
+		RuntimeError::Assets(AssetsError::AssetNotLive),
 	);
 }
 
@@ -306,9 +306,9 @@ fn transfer_from_fails_with_token_not_live() {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2).map_err(u32::from),
-		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
+	assert_runtime_err!(
+		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2),
+		RuntimeError::Assets(AssetsError::AssetNotLive),
 	);
 }
 
@@ -364,9 +364,9 @@ fn approve_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		approve(&mut session, ALICE, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
+	assert_runtime_err!(
+		approve(&mut session, ALICE, AMOUNT),
+		RuntimeError::Assets(AssetsError::AssetNotLive),
 	);
 }
 
@@ -436,9 +436,9 @@ fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		increase_allowance(&mut session, ALICE, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
+	assert_runtime_err!(
+		increase_allowance(&mut session, ALICE, AMOUNT),
+		RuntimeError::Assets(AssetsError::AssetNotLive),
 	);
 }
 
@@ -523,9 +523,9 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		decrease_allowance(&mut session, ALICE, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
+	assert_runtime_err!(
+		decrease_allowance(&mut session, ALICE, AMOUNT),
+		RuntimeError::Assets(AssetsError::AssetNotLive),
 	);
 }
 
@@ -614,9 +614,9 @@ fn mint_fails_with_no_permission(mut session: Session) {
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
-	assert_eq!(
-		mint(&mut session, BOB, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::NoPermission.into()).into())
+	assert_runtime_err!(
+		mint(&mut session, BOB, AMOUNT),
+		RuntimeError::Assets(AssetsError::NoPermission),
 	);
 }
 
@@ -641,9 +641,9 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	session.set_actor(contract.clone());
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
-	assert_eq!(
-		mint(&mut session, ALICE, u128::MAX).map_err(u32::from),
-		Err(RuntimeError(ArithmeticError::Overflow.into()).into())
+	assert_runtime_err!(
+		mint(&mut session, ALICE, u128::MAX),
+		RuntimeError::Raw(ArithmeticError::Overflow.into()),
 	);
 }
 
@@ -657,9 +657,9 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		mint(&mut session, ALICE, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::AssetNotLive.into()).into())
+	assert_runtime_err!(
+		mint(&mut session, ALICE, AMOUNT),
+		RuntimeError::Assets(AssetsError::AssetNotLive),
 	);
 }
 
@@ -696,9 +696,9 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	assert_ok!(session.sandbox().mint_into(&(TOKEN + 1), &BOB, AMOUNT));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
-	assert_eq!(
-		burn(&mut session, BOB, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::NoPermission.into()).into())
+	assert_runtime_err!(
+		burn(&mut session, BOB, AMOUNT),
+		RuntimeError::Assets(AssetsError::NoPermission),
 	);
 }
 
@@ -736,9 +736,9 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `IncorrectStatus` error.
-	assert_eq!(
-		burn(&mut session, ALICE, AMOUNT).map_err(u32::from),
-		Err(RuntimeError(AssetsError::IncorrectStatus.into()).into())
+	assert_runtime_err!(
+		burn(&mut session, ALICE, AMOUNT),
+		RuntimeError::Assets(AssetsError::IncorrectStatus),
 	);
 }
 
