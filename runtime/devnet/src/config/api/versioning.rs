@@ -99,7 +99,7 @@ impl From<VersionedError> for u32 {
 
 // Type for conversion to a versioned `pop_primitives::Error` to avoid taking a dependency of
 // sp-runtime on pop-primitives.
-pub struct V0Error(pub pop_primitives::v0::Error);
+struct V0Error(pop_primitives::v0::Error);
 impl From<DispatchError> for V0Error {
 	fn from(error: DispatchError) -> Self {
 		use pop_primitives::v0::*;
@@ -161,11 +161,6 @@ impl From<DispatchError> for V0Error {
 	}
 }
 
-impl Into<u32> for V0Error {
-	fn into(self) -> u32 {
-		self.0.into()
-	}
-}
 #[cfg(test)]
 mod tests {
 	use codec::Encode;
