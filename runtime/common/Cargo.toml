@@ -17,11 +17,21 @@ scale-info = { workspace = true, default-features = false, features = [ "derive"
 
 # Substrate
 frame-support = { workspace = true, default-features = false }
+pallet-api = { workspace = true, default-features = false }
+pallet-assets = { workspace = true, default-features = false }
+pallet-balances = { workspace = true, default-features = false }
+pallet-contracts = { workspace = true, default-features = false }
+pop-primitives = { workspace = true, features = [ "runtime" ] }
 sp-runtime = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false }
 
 parachains-common = { workspace = true, default-features = false }
 polkadot-primitives = { workspace = true, default-features = false }
+
+[dev-dependencies]
+frame-system = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
+pop-api = { path = "../../pop-api", default-features = false }
 
 [features]
 default = [ "std" ]
@@ -29,4 +39,18 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
-std = [ "frame-support/std", "sp-runtime/std" ]
+std = [
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-api/std",
+	"pallet-assets/std",
+	"pallet-balances/std",
+	"pallet-contracts/std",
+	"pallet-timestamp/std",
+	"parachains-common/std",
+	"polkadot-primitives/std",
+	"pop-api/std",
+	"pop-primitives/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]
