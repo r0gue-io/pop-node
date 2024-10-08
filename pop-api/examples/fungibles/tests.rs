@@ -3,9 +3,11 @@ use drink::{
 	devnet::{
 		account_id_from_slice,
 		error::{
-			v0::{assert_runtime_err, ArithmeticError::*, Error::*, RuntimeError},
+			v0::{assert_runtime_err, RuntimeError},
+			ArithmeticError::*,
 			Assets,
 			AssetsError::*,
+			Error::*,
 		},
 		AccountId, Balance, Runtime,
 	},
