@@ -93,8 +93,8 @@ pub enum PSP22Error {
 impl From<PSP22Error> for u32 {
 	fn from(value: PSP22Error) -> u32 {
 		match value {
-			PSP22Error::Custom(value) => value.parse::<u32>().unwrap(),
-			_ => unimplemented!(),
+			PSP22Error::Custom(value) => value.parse::<u32>().expect("Failed to parse"),
+			_ => unimplemented!("Variant is not supported"),
 		}
 	}
 }
