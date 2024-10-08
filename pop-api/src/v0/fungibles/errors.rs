@@ -89,6 +89,7 @@ pub enum PSP22Error {
 	SafeTransferCheckFailed(String),
 }
 
+#[cfg(feature = "std")]
 impl From<PSP22Error> for u32 {
 	fn from(value: PSP22Error) -> u32 {
 		match value {
@@ -109,6 +110,7 @@ impl From<StatusCode> for PSP22Error {
 			[_, ASSETS, 10, _] => PSP22Error::InsufficientAllowance,
 			// Unknown.
 			[_, ASSETS, 3, _] => PSP22Error::Custom(String::from("Unknown")),
+			// value of status code is a pop_primitves::v0::Error
 			_ => PSP22Error::Custom(value.0.to_string()),
 		}
 	}

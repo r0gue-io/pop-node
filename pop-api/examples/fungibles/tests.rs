@@ -1,9 +1,14 @@
 use drink::{
-	assert_ok, assert_runtime_err,
+	assert_ok,
 	devnet::{
-		account_id_from_slice, AccountId, Balance, DrinkError, Runtime, RuntimeError::Assets,
+		account_id_from_slice,
+		error::{
+			v0::{assert_runtime_err, ArithmeticError::*, Error::*, RuntimeError},
+			Assets,
+			AssetsError::*,
+		},
+		AccountId, Balance, Runtime,
 	},
-	error::{ArithmeticError, AssetsError::*},
 	session::Session,
 	utils::{call, last_contract_event},
 	AssetsAPI, TestExternalities, NO_SALT,
@@ -167,7 +172,7 @@ fn transfer_fails_with_no_account() {
 	// `pallet-assets` returns `NoAccount` error.
 	assert_runtime_err!(
 		transfer(&mut session, ALICE, AMOUNT),
-		DrinkError::Module(Assets(NoAccount))
+		RuntimeError::Module(Assets(NoAccount))
 	);
 }
 
@@ -213,7 +218,7 @@ fn transfer_fails_with_token_not_live() {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_runtime_err!(
 		transfer(&mut session, BOB, AMOUNT / 2),
-		DrinkError::Module(Assets(AssetNotLive))
+		RuntimeError::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -308,7 +313,7 @@ fn transfer_from_fails_with_token_not_live() {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_runtime_err!(
 		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2),
-		DrinkError::Module(Assets(AssetNotLive))
+		RuntimeError::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -366,7 +371,7 @@ fn approve_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_runtime_err!(
 		approve(&mut session, ALICE, AMOUNT),
-		DrinkError::Module(Assets(AssetNotLive))
+		RuntimeError::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -438,7 +443,7 @@ fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_runtime_err!(
 		increase_allowance(&mut session, ALICE, AMOUNT),
-		DrinkError::Module(Assets(AssetNotLive))
+		RuntimeError::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -525,7 +530,7 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_runtime_err!(
 		decrease_allowance(&mut session, ALICE, AMOUNT),
-		DrinkError::Module(Assets(AssetNotLive))
+		RuntimeError::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -614,7 +619,10 @@ fn mint_fails_with_no_permission(mut session: Session) {
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
-	assert_runtime_err!(mint(&mut session, BOB, AMOUNT), DrinkError::Module(Assets(NoPermission)));
+	assert_runtime_err!(
+		mint(&mut session, BOB, AMOUNT),
+		RuntimeError::Module(Assets(NoPermission))
+	);
 }
 
 #[drink::test(sandbox = Pop)]
@@ -640,7 +648,7 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
 	assert_runtime_err!(
 		mint(&mut session, ALICE, u128::MAX),
-		DrinkError::Raw(ArithmeticError::Overflow.into())
+		RuntimeError::Raw(Arithmetic(Overflow))
 	);
 }
 
@@ -656,7 +664,7 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `AssetNotLive` error.
 	assert_runtime_err!(
 		mint(&mut session, ALICE, AMOUNT),
-		DrinkError::Module(Assets(AssetNotLive))
+		RuntimeError::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -693,7 +701,10 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	assert_ok!(session.sandbox().mint_into(&(TOKEN + 1), &BOB, AMOUNT));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
-	assert_runtime_err!(burn(&mut session, BOB, AMOUNT), DrinkError::Module(Assets(NoPermission)));
+	assert_runtime_err!(
+		burn(&mut session, BOB, AMOUNT),
+		RuntimeError::Module(Assets(NoPermission))
+	);
 }
 
 #[drink::test(sandbox = Pop)]
@@ -732,7 +743,7 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 	// `pallet-assets` returns `IncorrectStatus` error.
 	assert_runtime_err!(
 		burn(&mut session, ALICE, AMOUNT),
-		DrinkError::Module(Assets(IncorrectStatus))
+		RuntimeError::Module(Assets(IncorrectStatus))
 	);
 }
 
