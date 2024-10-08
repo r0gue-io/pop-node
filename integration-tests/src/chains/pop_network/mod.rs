@@ -27,7 +27,6 @@ decl_test_parachains! {
 		pallets = {
 			PolkadotXcm: runtime::PolkadotXcm,
 			Balances: runtime::Balances,
-			Contracts: runtime::Contracts,
 		}
 	},
 }

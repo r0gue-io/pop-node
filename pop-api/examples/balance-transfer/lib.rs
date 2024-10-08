@@ -1,143 +1,135 @@
+// DEPRECATED
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-#![allow(clippy::new_without_default)]
+
+use pop_api::balances::*;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, scale::Encode, scale::Decode)]
+#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+pub enum ContractError {
+	BalancesError(Error),
+}
+
+impl From<Error> for ContractError {
+	fn from(value: Error) -> Self {
+		ContractError::BalancesError(value)
+	}
+}
 
 #[ink::contract]
-pub mod transfer_contract {
-	use ink::xcm::prelude::*;
+mod balance_transfer {
+	use super::*;
 
-	/// No storage is needed for this simple contract.
 	#[ink(storage)]
-	pub struct TransferContract {}
+	#[derive(Default)]
+	pub struct BalanceTransfer;
 
-	#[derive(Debug, PartialEq, Eq)]
-	#[ink::scale_derive(Encode, Decode, TypeInfo)]
-	pub enum Error {
-		TransferFailed,
-		AHTransferFailed,
-	}
-
-	impl TransferContract {
-		/// Creates a new instance of this contract.
+	impl BalanceTransfer {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			Self {}
-		}
-
-		/// Transfers `value` amount of tokens to the specified `account`.
-		///
-		/// # Arguments
-		///
-		/// * `account` - The account to which the funds should be transferred.
-		/// * `value` - The amount of tokens to transfer.
-		///
-		/// # Errors
-		///
-		/// - Panics if the contract does not have sufficient balance.
-		/// - Panics if the transfer fails.
-		#[ink(message)]
-		pub fn transfer(&mut self, account: AccountId, value: Balance) -> Result<(), Error> {
-			self.env().transfer(account, value).map_err(|_| Error::TransferFailed)
+			ink::env::debug_println!("BalanceTransfer::new");
+			Default::default()
 		}
 
 		#[ink(message)]
-		pub fn ah_transfer(
+		pub fn transfer(
 			&mut self,
+			receiver: AccountId,
 			value: Balance,
-			to: AccountId,
-			fee: Balance,
-		) -> Result<(), Error> {
-			// let ah = Junctions::from([Parachain(1000)]);
-			// let destination: Location = Location { parents: 1, interior: ah };
-			// let asset: Asset = (Location::parent(), value).into();
-			// let fee_asset: Asset = (Location::parent(), fee).into();
-			// let beneficiary = AccountId32 { network: None, id: to.0 };
-			//
-			// // XCM instructions to be executed on AssetHub
-			// let dest_xcm: Xcm<()> = Xcm::builder()
-			// 	.withdraw_asset(asset.clone().into())
-			// 	.buy_execution(fee_asset.into(), WeightLimit::Unlimited)
-			// 	.deposit_asset(asset.into(), beneficiary.into())
-			// 	.clear_origin()
-			// 	.build();
-			//
-			// // Construct the full XCM message
-			// let local_xcm: Xcm<()> = Xcm::builder()
-			// 	.withdraw_asset(asset.clone().into())
-			// 	.burn_asset(asset.clone().into())
-			// 	.build();
-			//
-			// let _hash = self
-			// 	.env()
-			// 	.xcm_send(&VersionedLocation::V4(destination), &VersionedXcm::V4(message))
-			// 	.map_err(|_| Error::AHTransferFailed)?;
-			//
-			// Ok(())
+		) -> Result<(), ContractError> {
+			ink::env::debug_println!(
+				"BalanceTransfer::transfer: \nreceiver: {:?}, \nvalue: {:?}",
+				receiver,
+				value
+			);
+
+			transfer_keep_alive(receiver, value)?;
+
+			ink::env::debug_println!("BalanceTransfer::transfer end");
+			Ok(())
 		}
 	}
 
-	#[cfg(test)]
-	mod tests {
+	#[cfg(all(test, feature = "e2e-tests"))]
+	mod e2e_tests {
 		use super::*;
+		use ink_e2e::{ChainBackend, ContractsBackend};
 
-		#[ink::test]
-		fn transfer_works() {
+		use ink::{
+			env::{test::default_accounts, DefaultEnvironment},
+			primitives::AccountId,
+		};
+
+		type E2EResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+		/// The base number of indivisible units for balances on the
+		/// `substrate-contracts-node`.
+		const UNIT: Balance = 1_000_000_000_000;
+
+		/// The contract will be given 1000 tokens during instantiation.
+		const CONTRACT_BALANCE: Balance = 1_000 * UNIT;
+
+		/// The receiver will get enough funds to have the required existential deposit.
+		///
+		/// If your chain has this threshold higher, increase the transfer value.
+		const TRANSFER_VALUE: Balance = 1 / 10 * UNIT;
+
+		/// An amount that is below the existential deposit, so that a transfer to an
+		/// empty account fails.
+		///
+		/// Must not be zero, because such an operation would be a successful no-op.
+		const INSUFFICIENT_TRANSFER_VALUE: Balance = 1;
+
+		/// Positive case scenario:
+		///  - the call is valid
+		///  - the call execution succeeds
+		#[ink_e2e::test]
+		async fn transfer_with_call_runtime_works<Client: E2EBackend>(
+			mut client: Client,
+		) -> E2EResult<()> {
 			// given
-			let contract_balance = 100;
-			let accounts = default_accounts();
-			let mut contract = create_contract(contract_balance);
+			let mut constructor = RuntimeCallerRef::new();
+			let contract = client
+				.instantiate("call-runtime", &ink_e2e::alice(), &mut constructor)
+				.value(CONTRACT_BALANCE)
+				.submit()
+				.await
+				.expect("instantiate failed");
+			let mut call_builder = contract.call_builder::<RuntimeCaller>();
+
+			let accounts = default_accounts::<DefaultEnvironment>();
+
+			let receiver: AccountId = accounts.bob;
+
+			let sender_balance_before = client
+				.free_balance(accounts.alice)
+				.await
+				.expect("Failed to get account balance");
+			let receiver_balance_before =
+				client.free_balance(receiver).await.expect("Failed to get account balance");
 
 			// when
-			set_balance(accounts.eve, 0);
-			contract.transfer(accounts.eve, 80);
+			let transfer_message = call_builder.transfer(receiver, TRANSFER_VALUE);
+
+			let call_res = client
+				.call(&ink_e2e::alice(), &transfer_message)
+				.submit()
+				.await
+				.expect("call failed");
+
+			assert!(call_res.return_value().is_ok());
 
 			// then
-			assert_eq!(get_balance(accounts.eve), 80);
-		}
+			let sender_balance_after = client
+				.free_balance(accounts.alice)
+				.await
+				.expect("Failed to get account balance");
+			let receiver_balance_after =
+				client.free_balance(receiver).await.expect("Failed to get account balance");
 
-		#[ink::test]
-		#[should_panic(expected = "insufficient funds!")]
-		fn transfer_fails_insufficient_funds() {
-			// given
-			let contract_balance = 100;
-			let accounts = default_accounts();
-			let mut contract = create_contract(contract_balance);
+			assert_eq!(contract_balance_before, contract_balance_after + TRANSFER_VALUE);
+			assert_eq!(receiver_balance_before, receiver_balance_after - TRANSFER_VALUE);
 
-			// when
-			contract.transfer(accounts.eve, 120);
-
-			// then
-			// Must panic due to insufficient funds
-		}
-
-		/// Helper functions to create contract, manage balances and accounts for testing.
-		fn create_contract(initial_balance: Balance) -> TransferContract {
-			let accounts = default_accounts();
-			set_sender(accounts.alice);
-			set_balance(contract_id(), initial_balance);
-			TransferContract::new()
-		}
-
-		fn contract_id() -> AccountId {
-			ink::env::test::callee::<ink::env::DefaultEnvironment>()
-		}
-
-		fn set_sender(sender: AccountId) {
-			ink::env::test::set_caller::<ink::env::DefaultEnvironment>(sender);
-		}
-
-		fn default_accounts() -> ink::env::test::DefaultAccounts<ink::env::DefaultEnvironment> {
-			ink::env::test::default_accounts::<ink::env::DefaultEnvironment>()
-		}
-
-		fn set_balance(account_id: AccountId, balance: Balance) {
-			ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(
-				account_id, balance,
-			);
-		}
-
-		fn get_balance(account_id: AccountId) -> Balance {
-			ink::env::test::get_account_balance::<ink::env::DefaultEnvironment>(account_id)
-				.expect("Cannot get account balance")
+			Ok(())
 		}
 	}
 }
