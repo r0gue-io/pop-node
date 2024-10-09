@@ -36,7 +36,7 @@ use crate::exec::MomentOf;
 mod limits;
 mod storage;
 mod transient_storage;
-mod wasm;
+pub mod wasm;
 
 pub mod chain_extension;
 pub mod debug;
@@ -1132,7 +1132,7 @@ where
 			executing_contract::with(|f| {
 				// Fail if already entered contract execution
 				if *f {
-					return Err(())
+					return Err(());
 				}
 				// We are entering contract execution
 				*f = true;

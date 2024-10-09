@@ -7,7 +7,7 @@ inherits = "release"
 lto = true
 
 [workspace.package]
-authors = [ "R0GUE <go@r0gue.io>" ]
+authors = ["R0GUE <go@r0gue.io>"]
 description = "Pop Network makes it easy for smart contract developers to use the Power of Polkadot."
 edition = "2021"
 homepage = "https://r0gue.io"
@@ -15,23 +15,24 @@ license = "Unlicense"
 repository = "https://github.com/r0gue-io/pop-node/"
 
 [workspace]
-exclude = [ "extension/contract", "pop-api", "tests/contracts" ]
+exclude = ["extension/contract", "pop-api", "pop-api-revive", "tests/contracts"]
 members = [
-	"integration-tests",
-	"node",
-	"pallets/*",
-	"primitives",
-	"runtime/devnet",
-	"runtime/mainnet",
-	"runtime/testnet",
+    "integration-tests",
+    "node",
+    "pallets/*",
+    "primitives",
+    "runtime/devnet",
+    "runtime/mainnet",
+    "runtime/testnet",
+    "extension-revive"
 ]
 
 resolver = "2"
 
 [workspace.dependencies]
-clap = { version = "4.4.18", features = [ "derive" ] }
+clap = { version = "4.4.18", features = ["derive"] }
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
-	"derive",
+    "derive",
 ] }
 contract-build = "4.1.1"
 enumflags2 = "0.7.9"
@@ -40,18 +41,18 @@ futures = "0.3.28"
 hex = "0.4.3"
 hex-literal = "0.4.1"
 impl-trait-for-tuples = "0.2.2"
-jsonrpsee = { version = "0.23.2", features = [ "server" ] }
+jsonrpsee = { version = "0.23.2", features = ["server"] }
 log = { version = "0.4.21", default-features = false }
 rand = "0.8.5"
 scale-info = { version = "2.11.1", default-features = false, features = [
-	"derive",
+    "derive",
 ] }
 serde = "1.0.197"
 serde_json = "1.0.114"
 smallvec = "1.11.2"
 subxt = "0.34.0"
 subxt-signer = "0.34.0"
-tokio = { version = "1.36", features = [ "macros", "rt-multi-thread", "time" ] }
+tokio = { version = "1.36", features = ["macros", "rt-multi-thread", "time"] }
 tracing-subscriber = { version = "0.3", default-features = false }
 
 # Build
@@ -60,7 +61,9 @@ substrate-wasm-builder = "23.0.0"
 
 # Local
 pallet-api = { path = "pallets/api", default-features = false }
+pallet-api-revive = { path = "pallets/api-revive", default-features = false }
 pop-chain-extension = { path = "./extension", default-features = false }
+pop-chain-extension-revive = { path = "./extension-revive", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 pop-runtime-common = { path = "runtime/common", default-features = false }
 pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
