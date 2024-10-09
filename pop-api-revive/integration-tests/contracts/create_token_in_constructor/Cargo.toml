@@ -2,10 +2,11 @@
 edition = "2021"
 name = "create_token_in_constructor"
 version = "0.1.0"
+authors = ["r0gue <go@r0gue.io>"]
 
 [dependencies]
 ink = { git = "https://github.com/peterwht/ink", branch = "peter/riscv", default-features = false }
-pop-api = { path = "../../..", default-features = false, features = ["fungibles"] }
+pop-api-revive = { path = "../../..", default-features = false, features = ["fungibles"] }
 polkavm-derive = "0.11.0"
 
 [lib]
@@ -17,5 +18,5 @@ e2e-tests = []
 ink-as-dependency = []
 std = [
     "ink/std",
-    "pop-api/std",
+    "pop-api-revive/std",
 ]

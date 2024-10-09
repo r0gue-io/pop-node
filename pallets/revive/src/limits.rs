@@ -41,7 +41,8 @@ pub const CALL_STACK_DEPTH: u32 = 10;
 /// The maximum number of topics a call to [`crate::SyscallDoc::deposit_event`] can emit.
 ///
 /// We set it to the same limit that ethereum has. It is unlikely to change.
-pub const NUM_EVENT_TOPICS: u32 = 4;
+// TOOD: debug a proper value. The original at 4 was too small
+pub const NUM_EVENT_TOPICS: u32 = 1000;
 
 /// The maximum number of code hashes a contract can lock.
 pub const DELEGATE_DEPENDENCIES: u32 = 32;
@@ -94,7 +95,7 @@ pub mod code {
 	/// for more code or more data. However, since code will decompress
 	/// into a bigger representation on compilation it will only increase
 	/// the allowed code size by [`BYTE_PER_INSTRUCTION`].
-	pub const STATIC_MEMORY_BYTES: u32 = 1024 * 1024;
+	pub const STATIC_MEMORY_BYTES: u32 = 1024 * 1024 * 1024;
 
 	/// How much memory each instruction will take in-memory after compilation.
 	///

@@ -31,8 +31,8 @@ type DecodesAs<Output, Logger = ()> = pallet_api_revive::extension::DecodesAs<
 #[repr(u8)]
 pub enum RuntimeRead {
 	/// Fungible token queries.
-	#[codec(index = 150)]
-	Fungibles(fungibles::Read<Runtime>),
+	#[codec(index = 151)]
+	FungiblesRevive(fungibles::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -43,14 +43,15 @@ impl Readable for RuntimeRead {
 	/// performed.
 	fn weight(&self) -> Weight {
 		match self {
-			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
+			RuntimeRead::FungiblesRevive(key) => fungibles::Pallet::weight(key),
 		}
 	}
 
 	/// Performs the read and returns the result.
 	fn read(self) -> Self::Result {
 		match self {
-			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+			RuntimeRead::FungiblesRevive(key) =>
+				RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 		}
 	}
 }
@@ -132,17 +133,18 @@ pub struct Filter<T>(PhantomData<T>);
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
-		T::BaseCallFilter::contains(c)
-			&& matches!(
+		T::BaseCallFilter::contains(c) &&
+			matches!(
 				c,
-				RuntimeCall::Fungibles(
-					transfer { .. }
-						| transfer_from { .. } | approve { .. }
-						| increase_allowance { .. }
-						| decrease_allowance { .. }
-						| create { .. } | set_metadata { .. }
-						| start_destroy { .. } | clear_metadata { .. }
-						| mint { .. } | burn { .. }
+				RuntimeCall::FungiblesRevive(
+					transfer { .. } |
+						transfer_from { .. } |
+						approve { .. } | increase_allowance { .. } |
+						decrease_allowance { .. } |
+						create { .. } | set_metadata { .. } |
+						start_destroy { .. } |
+						clear_metadata { .. } |
+						mint { .. } | burn { .. }
 				)
 			)
 	}
@@ -153,11 +155,13 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 		use fungibles::Read::*;
 		matches!(
 			r,
-			RuntimeRead::Fungibles(
-				TotalSupply(..)
-					| BalanceOf { .. } | Allowance { .. }
-					| TokenName(..) | TokenSymbol(..)
-					| TokenDecimals(..) | TokenExists(..)
+			RuntimeRead::FungiblesRevive(
+				TotalSupply(..) |
+					BalanceOf { .. } |
+					Allowance { .. } |
+					TokenName(..) | TokenSymbol(..) |
+					TokenDecimals(..) |
+					TokenExists(..)
 			)
 		)
 	}

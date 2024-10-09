@@ -1381,7 +1381,9 @@ pub mod env {
 	#[api_version(0)]
 	fn caller(&mut self, memory: &mut M, out_ptr: u32) -> Result<(), TrapReason> {
 		self.charge_gas(RuntimeCosts::Caller)?;
+		log::info!("CALLER: {:?}", self.ext.caller());
 		let caller = <E::T as Config>::AddressMapper::to_address(self.ext.caller().account_id()?);
+		log::info!("CALLER mapped: {:?}", caller);
 		Ok(self.write_fixed_sandbox_output(
 			memory,
 			out_ptr,

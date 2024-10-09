@@ -1,11 +1,12 @@
-use codec::{Decode, Encode};
 use core::fmt::Debug;
 
+use codec::{Decode, Encode};
 use frame_support::pallet_prelude::Weight;
-use pallet_revive::chain_extension::{ChargedAmount, Result};
-use pallet_revive::wasm::Memory;
-use pallet_revive::AddressMapper;
-use pallet_revive::DefaultAddressMapper;
+use pallet_revive::{
+	chain_extension::{ChargedAmount, Result},
+	wasm::Memory,
+	AddressMapper, DefaultAddressMapper,
+};
 use sp_std::vec::Vec;
 
 use crate::AccountIdOf;
