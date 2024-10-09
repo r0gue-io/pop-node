@@ -4,17 +4,18 @@ name = "create_token_in_constructor"
 version = "0.1.0"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
-pop-api = { path = "../../..", default-features = false, features = [ "fungibles" ] }
+ink = { git = "https://github.com/peterwht/ink", branch = "peter/riscv", default-features = false }
+pop-api = { path = "../../..", default-features = false, features = ["fungibles"] }
+polkavm-derive = "0.11.0"
 
 [lib]
 path = "lib.rs"
 
 [features]
-default = [ "std" ]
-e2e-tests = [  ]
-ink-as-dependency = [  ]
+default = ["std"]
+e2e-tests = []
+ink-as-dependency = []
 std = [
-	"ink/std",
-	"pop-api/std",
+    "ink/std",
+    "pop-api/std",
 ]

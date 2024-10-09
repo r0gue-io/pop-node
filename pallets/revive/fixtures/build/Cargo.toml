@@ -1,0 +1,19 @@
+[package]
+edition = "2021"
+name = "contracts"
+publish = false
+version = "1.0.0"
+
+# Binary targets are injected dynamically by the build script.
+[[bin]]
+
+# All paths are injected dynamically by the build script.
+[dependencies]
+common = { package = 'pallet-revive-fixtures-common', path = "" }
+polkavm-derive = { version = "0.11.0" }
+uapi = { package = 'pallet-revive-uapi', path = "", default-features = false }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
