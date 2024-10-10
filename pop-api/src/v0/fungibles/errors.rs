@@ -1,7 +1,11 @@
-//! A set of errors for use in smart contracts that interact with the fungibles api. This includes errors compliant to standards.
+//! A set of errors for use in smart contracts that interact with the fungibles api. This includes
+//! errors compliant to standards.
 
 use super::*;
-use ink::prelude::string::{String, ToString};
+use ink::{
+	prelude::string::{String, ToString},
+	scale::{Decode, Encode},
+};
 
 /// Represents various errors related to fungible tokens.
 ///
@@ -85,6 +89,16 @@ pub enum PSP22Error {
 	SafeTransferCheckFailed(String),
 }
 
+#[cfg(feature = "std")]
+impl From<PSP22Error> for u32 {
+	fn from(value: PSP22Error) -> u32 {
+		match value {
+			PSP22Error::Custom(value) => value.parse::<u32>().expect("Failed to parse"),
+			_ => unimplemented!("Variant is not supported"),
+		}
+	}
+}
+
 impl From<StatusCode> for PSP22Error {
 	/// Converts a `StatusCode` to a `PSP22Error`.
 	fn from(value: StatusCode) -> Self {
@@ -103,7 +117,7 @@ impl From<StatusCode> for PSP22Error {
 
 #[cfg(test)]
 mod tests {
-	use super::{FungiblesError, PSP22Error};
+	use super::*;
 	use crate::{
 		constants::{ASSETS, BALANCES},
 		primitives::{
@@ -114,8 +128,6 @@ mod tests {
 		},
 		StatusCode,
 	};
-	use ink::prelude::string::String;
-	use ink::scale::{Decode, Encode};
 
 	fn error_into_status_code(error: Error) -> StatusCode {
 		let mut encoded_error = error.encode();

@@ -5,8 +5,17 @@ name = "fungibles"
 version = "0.1.0"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
-pop-api = { path = "../../../pop-api", default-features = false, features = [ "fungibles" ] }
+ink = { version = "=5.0.0", default-features = false, features = [ "ink-debug" ] }
+pop-api = { path = "../../../pop-api", default-features = false, features = [
+	"fungibles",
+] }
+
+[dev-dependencies]
+env_logger = { version = "0.11.3" }
+serde_json = "1.0.114"
+
+# Local
+drink = { package = "pop-drink", path = "../../../../pop-drink/crates/pop-drink" }
 
 [lib]
 path = "lib.rs"
