@@ -1,17 +1,21 @@
 use drink::{
-	assert_ok,
-	devnet::{account_id_from_slice, AccountId, Balance, Runtime},
+	assert_err, assert_ok, call,
+	devnet::{
+		account_id_from_slice,
+		error::{
+			v0::{ApiError::*, ArithmeticError::*, Error},
+			Assets,
+			AssetsError::*,
+		},
+		AccountId, Balance, Runtime,
+	},
+	last_contract_event,
 	session::Session,
-	utils::{call, last_contract_event},
 	AssetsAPI, TestExternalities, NO_SALT,
 };
 use ink::scale::Encode;
 use pop_api::{
-	primitives::{
-		ArithmeticError::Overflow,
-		Error::{Arithmetic, Module},
-		TokenId,
-	},
+	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
 
@@ -166,10 +170,7 @@ fn transfer_fails_with_no_account() {
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
 	// `pallet-assets` returns `NoAccount` error.
-	assert_eq!(
-		transfer(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [1, 0] }))
-	);
+	assert_err!(transfer(&mut session, ALICE, AMOUNT), Error::Module(Assets(NoAccount)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -212,10 +213,7 @@ fn transfer_fails_with_token_not_live() {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		transfer(&mut session, BOB, AMOUNT / 2),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
-	);
+	assert_err!(transfer(&mut session, BOB, AMOUNT / 2), Error::Module(Assets(AssetNotLive)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -307,9 +305,9 @@ fn transfer_from_fails_with_token_not_live() {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
+	assert_err!(
 		transfer_from(&mut session, ALICE, BOB, AMOUNT / 2),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Error::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -365,10 +363,7 @@ fn approve_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		approve(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
-	);
+	assert_err!(approve(&mut session, ALICE, AMOUNT), Error::Module(Assets(AssetNotLive)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -437,9 +432,9 @@ fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
+	assert_err!(
 		increase_allowance(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Error::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -524,9 +519,9 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
+	assert_err!(
 		decrease_allowance(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
+		Error::Module(Assets(AssetNotLive))
 	);
 }
 
@@ -615,10 +610,7 @@ fn mint_fails_with_no_permission(mut session: Session) {
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
-	assert_eq!(
-		mint(&mut session, BOB, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [2, 0] }))
-	);
+	assert_err!(mint(&mut session, BOB, AMOUNT), Error::Module(Assets(NoPermission)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -642,7 +634,7 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	session.set_actor(contract.clone());
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
-	assert_eq!(mint(&mut session, ALICE, u128::MAX), Err(into_psp22_custom(Arithmetic(Overflow))));
+	assert_err!(mint(&mut session, ALICE, u128::MAX), Error::Api(Arithmetic(Overflow)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -655,10 +647,7 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `AssetNotLive` error.
-	assert_eq!(
-		mint(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [16, 0] }))
-	);
+	assert_err!(mint(&mut session, ALICE, AMOUNT), Error::Module(Assets(AssetNotLive)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -694,10 +683,7 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	assert_ok!(session.sandbox().mint_into(&(TOKEN + 1), &BOB, AMOUNT));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
-	assert_eq!(
-		burn(&mut session, BOB, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [2, 0] }))
-	);
+	assert_err!(burn(&mut session, BOB, AMOUNT), Error::Module(Assets(NoPermission)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -734,10 +720,7 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
 	// `pallet-assets` returns `IncorrectStatus` error.
-	assert_eq!(
-		burn(&mut session, ALICE, AMOUNT),
-		Err(into_psp22_custom(Module { index: 52, error: [17, 0] }))
-	);
+	assert_err!(burn(&mut session, ALICE, AMOUNT), Error::Module(Assets(IncorrectStatus)));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -769,7 +752,7 @@ fn deploy(
 	method: &str,
 	input: Vec<String>,
 ) -> Result<AccountId, PSP22Error> {
-	drink::utils::deploy::<Pop, PSP22Error>(
+	drink::deploy::<Pop, PSP22Error>(
 		session,
 		// The local contract (i.e. `fungibles`).
 		BundleProvider::local().unwrap(),
@@ -898,14 +881,4 @@ fn burn(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Resu
 		vec![account.to_string(), amount.to_string()],
 		None,
 	)
-}
-
-// Convert into `PSP22Error::Custom` error type.
-fn into_psp22_custom<T: Encode>(err: T) -> PSP22Error {
-	let mut padded_vec = err.encode().to_vec();
-	padded_vec.resize(4, 0);
-	// Convert the `Vec<u8>` to value of `StatusCode`.
-	let array: [u8; 4] = padded_vec.try_into().map_err(|_| "Invalid length").unwrap();
-	let status_code = u32::from_le_bytes(array);
-	PSP22Error::Custom(status_code.to_string())
 }

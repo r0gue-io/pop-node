@@ -89,6 +89,16 @@ pub enum PSP22Error {
 	SafeTransferCheckFailed(String),
 }
 
+#[cfg(feature = "std")]
+impl From<PSP22Error> for u32 {
+	fn from(value: PSP22Error) -> u32 {
+		match value {
+			PSP22Error::Custom(value) => value.parse::<u32>().expect("Failed to parse"),
+			_ => unimplemented!("Variant is not supported"),
+		}
+	}
+}
+
 impl From<StatusCode> for PSP22Error {
 	/// Converts a `StatusCode` to a `PSP22Error`.
 	fn from(value: StatusCode) -> Self {
