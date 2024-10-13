@@ -36,7 +36,7 @@ balances = [
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug", "--enable-offchain-indexing=true"]
+args = ["-lruntime::contracts=debug", "-lpop-api::extension=debug", "--enable-offchain-indexing=true"]
 
 [[parachains]]
 id = 1000
