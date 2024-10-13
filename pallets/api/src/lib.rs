@@ -3,6 +3,7 @@
 pub use extension::Extension;
 use frame_support::pallet_prelude::Weight;
 
+pub mod cross_chain;
 pub mod extension;
 pub mod fungibles;
 #[cfg(test)]
