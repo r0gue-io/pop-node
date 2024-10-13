@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::traits::Contains;
+use frame_support::traits::{ConstU32, Contains};
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
 use sp_core::ConstU8;
@@ -11,7 +11,8 @@ use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+	config::assets::TrustBackedAssetsInstance, cross_chain, fungibles, Balances, Ismp, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeHoldReason, TransactionByteFee,
 };
 
 mod versioning;
@@ -32,6 +33,9 @@ pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
 	Fungibles(fungibles::Read<Runtime>),
+	/// Cross chain state queries.
+	#[codec(index = 151)]
+	CrossChain(cross_chain::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -43,6 +47,7 @@ impl Readable for RuntimeRead {
 	fn weight(&self) -> Weight {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
+			RuntimeRead::CrossChain(key) => cross_chain::Pallet::weight(key),
 		}
 	}
 
@@ -50,6 +55,8 @@ impl Readable for RuntimeRead {
 	fn read(self) -> Self::Result {
 		match self {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+			RuntimeRead::CrossChain(key) =>
+				RuntimeResult::CrossChain(cross_chain::Pallet::read(key)),
 		}
 	}
 }
@@ -60,6 +67,8 @@ impl Readable for RuntimeRead {
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
+	// Cross chain state read results.
+	CrossChain(cross_chain::ReadResult<Runtime>),
 }
 
 impl RuntimeResult {
@@ -67,8 +76,26 @@ impl RuntimeResult {
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
+			RuntimeResult::CrossChain(result) => result.encode(),
 		}
 	}
+}
+
+impl cross_chain::Config for Runtime {
+	type ByteFee = TransactionByteFee;
+	type Deposit = Balances;
+	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
+	// much as onchain cost.
+	type IsmpByteFee = ();
+	type IsmpDispatcher = Ismp;
+	type MaxContextLen = ConstU32<64>;
+	type MaxDataLen = ConstU32<1024>;
+	type MaxKeyLen = ConstU32<32>;
+	type MaxKeys = ConstU32<10>;
+	// TODO: ensure within the contract buffer bounds
+	type MaxResponseLen = ConstU32<1024>;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
 }
 
 impl fungibles::Config for Runtime {
@@ -130,6 +157,7 @@ pub struct Filter<T>(PhantomData<T>);
 
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
+		use cross_chain::Call::*;
 		use fungibles::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
@@ -143,13 +171,14 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						start_destroy { .. } |
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
-				)
+				) | RuntimeCall::CrossChain(request { .. } | remove { .. })
 			)
 	}
 }
 
 impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	fn contains(r: &RuntimeRead) -> bool {
+		use cross_chain::Read::*;
 		use fungibles::Read::*;
 		matches!(
 			r,
@@ -160,7 +189,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					TokenName(..) | TokenSymbol(..) |
 					TokenDecimals(..) |
 					TokenExists(..)
-			)
+			) | RuntimeRead::CrossChain(Poll(..) | Get(..))
 		)
 	}
 }
