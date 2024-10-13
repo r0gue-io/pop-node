@@ -1,5 +1,5 @@
 [package]
-authors = [ "r0gue <go@r0gue.io>" ]
+authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
 name = "create_token_in_constructor"
 version = "0.1.0"

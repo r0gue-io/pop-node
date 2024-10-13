@@ -315,7 +315,7 @@ fn devnet_genesis(
 	id: ParaId,
 ) -> serde_json::Value {
 	use pop_runtime_devnet::EXISTENTIAL_DEPOSIT;
-	let asset_hub = ismp_parachain::ParachainData { id: 1000, slot_duration: 6000 };
+	let asset_hub = ismp_parachain::ParachainData { id: 1000, slot_duration: 12_000 };
 
 	serde_json::json!({
 		"balances": {
