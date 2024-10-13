@@ -7363,9 +7363,11 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "ismp",
  "log",
  "pallet-assets",
  "pallet-balances",
+ "pallet-ismp",
  "parity-scale-codec",
  "pop-chain-extension",
  "scale-info",
@@ -7373,6 +7375,8 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "staging-xcm",
+ "staging-xcm-executor",
 ]
 
 [[package]]
