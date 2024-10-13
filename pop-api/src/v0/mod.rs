@@ -5,6 +5,8 @@ use crate::{
 	ChainExtensionMethodApi, StatusCode,
 };
 
+#[cfg(feature = "cross-chain")]
+pub mod cross_chain;
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
