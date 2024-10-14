@@ -1,25 +1,28 @@
 use frame_support::{
 	derive_impl, parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, Everything},
+	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
+use pallet_nfts::PalletFeatures;
 use sp_core::H256;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
-	BuildStorage,
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Verify},
+	BuildStorage, MultiSignature,
 };
 
-pub(crate) const ALICE: AccountId = 1;
-pub(crate) const BOB: AccountId = 2;
-pub(crate) const CHARLIE: AccountId = 3;
+pub(crate) const ALICE: u8 = 1;
+pub(crate) const BOB: u8 = 2;
+pub(crate) const CHARLIE: u8 = 3;
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
 type Block = frame_system::mocking::MockBlock<Test>;
-pub(crate) type AccountId = u64;
+pub(crate) type AccountId = <AccountPublic as IdentifyAccount>::AccountId;
 pub(crate) type Balance = u128;
 // For terminology in tests.
 pub(crate) type TokenId = u32;
+type Signature = MultiSignature;
+type AccountPublic = <Signature as Verify>::Signer;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -29,6 +32,8 @@ frame_support::construct_runtime!(
 		Assets: pallet_assets::<Instance1>,
 		Balances: pallet_balances,
 		Fungibles: crate::fungibles,
+		Nfts: pallet_nfts,
+		NonFungibles: crate::nonfungibles
 	}
 );
 
@@ -91,10 +96,10 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 	type CallbackHandle = ();
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Currency = Balances;
 	type Extra = ();
-	type ForceOrigin = EnsureRoot<u64>;
+	type ForceOrigin = EnsureRoot<Self::AccountId>;
 	type Freezer = ();
 	type MetadataDepositBase = ConstU128<1>;
 	type MetadataDepositPerByte = ConstU128<1>;
@@ -110,13 +115,62 @@ impl crate::fungibles::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub storage Features: PalletFeatures = PalletFeatures::all_enabled();
+}
+
+impl pallet_nfts::Config for Test {
+	type ApprovalsLimit = ConstU32<10>;
+	type AttributeDepositBase = ConstU128<1>;
+	type CollectionDeposit = ConstU128<2>;
+	type CollectionId = u32;
+	type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<Self::AccountId>>;
+	type Currency = Balances;
+	type DepositPerByte = ConstU128<1>;
+	type Features = Features;
+	type ForceOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type ItemAttributesApprovalsLimit = ConstU32<2>;
+	type ItemDeposit = ConstU128<1>;
+	type ItemId = u32;
+	type KeyLimit = ConstU32<50>;
+	type Locker = ();
+	type MaxAttributesPerCall = ConstU32<2>;
+	type MaxDeadlineDuration = ConstU64<10000>;
+	type MaxTips = ConstU32<10>;
+	type MetadataDepositBase = ConstU128<1>;
+	/// Using `AccountPublic` here makes it trivial to convert to `AccountId` via `into_account()`.
+	type OffchainPublic = AccountPublic;
+	/// Off-chain = signature On-chain - therefore no conversion needed.
+	/// It needs to be From<MultiSignature> for benchmarking.
+	type OffchainSignature = Signature;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = ConstU32<50>;
+	type ValueLimit = ConstU32<50>;
+	type WeightInfo = ();
+}
+
+impl crate::nonfungibles::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
+}
+
+/// Initialize a new account ID.
+pub(crate) fn account(id: u8) -> AccountId {
+	[id; 32].into()
+}
+
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::<Test>::default()
 		.build_storage()
 		.expect("Frame system builds valid default genesis config");
 
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)],
+		balances: vec![
+			(account(ALICE), INIT_AMOUNT),
+			(account(BOB), INIT_AMOUNT),
+			(account(CHARLIE), INIT_AMOUNT),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");
