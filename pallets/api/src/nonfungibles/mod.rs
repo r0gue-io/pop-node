@@ -2,10 +2,9 @@
 //! assets. The goal is to provide a simplified, consistent API that adheres to standards in the
 //! smart contract space.
 
-use frame_support::traits::nonfungibles_v2::InspectEnumerable;
 pub use pallet::*;
 use pallet_nfts::WeightInfo;
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::{traits::StaticLookup, RuntimeDebug};
 
 #[cfg(test)]
 mod tests;
@@ -16,12 +15,16 @@ pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;
-	use types::{AccountIdOf, CollectionIdOf, ItemDetails, ItemIdOf, NftsOf, NftsWeightInfoOf};
+	use types::{
+		AccountIdOf, BalanceOf, CollectionDetailsFor, CollectionIdOf, ItemDetailsFor, ItemIdOf,
+		NftsOf, NftsWeightInfoOf,
+	};
 
 	use super::*;
 
-	/// State reads for the fungibles API with required input.
+	/// State reads for the non-fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
@@ -45,7 +48,41 @@ pub mod pallet {
 		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 		/// Whether a spender is allowed to transfer an item or items from owner.
 		#[codec(index = 6)]
-		Allowance { spender: AccountIdOf<T>, collection: CollectionIdOf<T>, item: ItemIdOf<T> },
+		Allowance {
+			collection: CollectionIdOf<T>,
+			owner: AccountIdOf<T>,
+			operator: AccountIdOf<T>,
+			item: Option<ItemIdOf<T>>,
+		},
+	}
+
+	/// Results of state reads for the non-fungibles API.
+	#[derive(Debug)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+	pub enum ReadResult<T: Config> {
+		OwnerOf(Option<AccountIdOf<T>>),
+		CollectionOwner(Option<AccountIdOf<T>>),
+		TotalSupply(u32),
+		BalanceOf(BalanceOf<T>),
+		Collection(Option<CollectionDetailsFor<T>>),
+		Item(Option<ItemDetailsFor<T>>),
+		Allowance(bool),
+	}
+
+	impl<T: Config> ReadResult<T> {
+		/// Encodes the result.
+		pub fn encode(&self) -> Vec<u8> {
+			use ReadResult::*;
+			match self {
+				OwnerOf(result) => result.encode(),
+				CollectionOwner(result) => result.encode(),
+				TotalSupply(result) => result.encode(),
+				BalanceOf(result) => result.encode(),
+				Collection(result) => result.encode(),
+				Item(result) => result.encode(),
+				Allowance(result) => result.encode(),
+			}
+		}
 	}
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
@@ -54,6 +91,32 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
+
+	#[pallet::storage]
+	type AccountBalance<T> = StorageNMap<
+		Key = (
+			// Collection ID
+			NMapKey<Twox64Concat, CollectionIdOf<T>>,
+			// Collection Owner ID
+			NMapKey<Blake2_128Concat, AccountIdOf<T>>,
+		),
+		Value = BalanceOf<T>,
+		QueryKind = ValueQuery,
+	>;
+
+	#[pallet::storage]
+	type Allowances<T> = StorageNMap<
+		Key = (
+			// Collection ID
+			NMapKey<Twox64Concat, CollectionIdOf<T>>,
+			// Collection Owner ID
+			NMapKey<Blake2_128Concat, AccountIdOf<T>>,
+			// Collection Operator ID
+			NMapKey<Blake2_128Concat, AccountIdOf<T>>,
+		),
+		Value = bool,
+		QueryKind = ValueQuery,
+	>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -221,40 +284,86 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
-		/// Reads fungible asset state based on the provided value.
-		///
-		/// This function matches the value to determine the type of state query and returns the
-		/// encoded result.
-		///
-		/// # Parameter
-		/// - `value` - An instance of `Read<T>`, which specifies the type of state query and the
-		///   associated parameters.
-		pub fn read_state(value: Read<T>) -> Vec<u8> {
-			use Read::*;
-			match value {
-				OwnerOf { collection, item } => NftsOf::<T>::owner(collection, item).encode(),
-				CollectionOwner(collection) => NftsOf::<T>::collection_owner(collection).encode(),
-				TotalSupply(collection) => (NftsOf::<T>::items(&collection).count() as u8).encode(),
-				Collection(collection) => pallet_nfts::Collection::<T>::get(&collection).encode(),
-				Item { collection, item } => pallet_nfts::Item::<T>::get(collection, item).encode(),
-				Allowance { collection, item, spender } =>
-					Self::allowance(collection, item, spender).encode(),
-				BalanceOf { collection, owner } =>
-					(NftsOf::<T>::owned_in_collection(&collection, &owner).count() as u8).encode(),
-			}
-		}
-
-		/// Check if the `spender` is approved to transfer the collection item
+		/// Check if the `spender` is approved to transfer the collection item.
 		pub(super) fn allowance(
 			collection: CollectionIdOf<T>,
+			owner: AccountIdOf<T>,
+			operator: AccountIdOf<T>,
+			maybe_item: Option<ItemIdOf<T>>,
+		) -> bool {
+			// Check if has a permission to transfer all collection items.
+			Allowances::<T>::get((collection, owner, operator.clone())) ||
+				maybe_item
+					.and_then(|item| Some(Self::allowance_item(collection, operator, item)))
+					.unwrap_or(false)
+		}
+
+		// Check the permission for the single item.
+		pub(super) fn allowance_item(
+			collection: CollectionIdOf<T>,
+			operator: AccountIdOf<T>,
 			item: ItemIdOf<T>,
-			spender: AccountIdOf<T>,
 		) -> bool {
 			let data = pallet_nfts::Item::<T>::get(collection, item).encode();
-			if let Ok(detail) = ItemDetails::<T>::decode(&mut data.as_slice()) {
-				return detail.approvals.contains_key(&spender);
+			if let Ok(detail) = ItemDetailsFor::<T>::decode(&mut data.as_slice()) {
+				return detail.approvals.contains_key(&operator);
 			}
 			false
+		}
+	}
+
+	impl<T: Config> crate::Read for Pallet<T> {
+		/// The type of read requested.
+		type Read = Read<T>;
+		/// The type or result returned.
+		type Result = ReadResult<T>;
+
+		/// Determines the weight of the requested read, used to charge the appropriate weight
+		/// before the read is performed.
+		///
+		/// # Parameters
+		/// - `request` - The read request.
+		fn weight(_request: &Self::Read) -> Weight {
+			Default::default()
+		}
+
+		/// Performs the requested read and returns the result.
+		///
+		/// # Parameters
+		/// - `request` - The read request.
+		fn read(value: Self::Read) -> Self::Result {
+			use Read::*;
+			match value {
+				OwnerOf { collection, item } =>
+					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
+				CollectionOwner(collection) =>
+					ReadResult::CollectionOwner(NftsOf::<T>::collection_owner(collection)),
+				TotalSupply(collection) => {
+					let data = pallet_nfts::Collection::<T>::get(collection).encode();
+					ReadResult::TotalSupply(
+						CollectionDetailsFor::<T>::decode(&mut data.as_slice())
+							.map(|detail| detail.items)
+							.unwrap_or_default(),
+					)
+				},
+				Collection(collection) => {
+					let data = pallet_nfts::Collection::<T>::get(collection).encode();
+					ReadResult::Collection(
+						Option::<CollectionDetailsFor<T>>::decode(&mut data.as_slice())
+							.unwrap_or(None),
+					)
+				},
+				Item { collection, item } => {
+					let data = pallet_nfts::Item::<T>::get(collection, item).encode();
+					ReadResult::Item(
+						Option::<ItemDetailsFor<T>>::decode(&mut data.as_slice()).unwrap_or(None),
+					)
+				},
+				Allowance { collection, owner, operator, item } =>
+					ReadResult::Allowance(Self::allowance(collection, owner, operator, item)),
+				BalanceOf { collection, owner } =>
+					ReadResult::BalanceOf(AccountBalance::<T>::get((collection, owner))),
+			}
 		}
 	}
 }
