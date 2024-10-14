@@ -17,6 +17,7 @@
 
 //! Tests for Nfts pallet.
 
+use crate::{mock::*, Event, SystemConfig, *};
 use enumflags2::BitFlags;
 use frame_support::{
 	assert_noop, assert_ok,
@@ -31,8 +32,6 @@ use sp_runtime::{
 	traits::{Dispatchable, IdentifyAccount},
 	MultiSignature, MultiSigner,
 };
-
-use crate::{mock::*, Event, SystemConfig, *};
 
 type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 

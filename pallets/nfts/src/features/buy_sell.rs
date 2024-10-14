@@ -20,12 +20,11 @@
 //! The bitflag [`PalletFeature::Trading`] needs to be set in the [`Config::Features`] for NFTs
 //! to have the functionality defined in this module.
 
+use crate::*;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement, ExistenceRequirement::KeepAlive},
 };
-
-use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Pays the specified tips to the corresponding receivers.
