@@ -7366,7 +7366,7 @@ dependencies = [
  "log",
  "pallet-assets",
  "pallet-balances",
- "pallet-nfts",
+ "pallet-nfts 31.0.0",
  "parity-scale-codec",
  "pop-chain-extension",
  "scale-info",
