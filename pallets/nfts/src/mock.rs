@@ -17,6 +17,9 @@
 
 //! Test environment for Nfts pallet.
 
+use super::*;
+use crate as pallet_nfts;
+
 use frame_support::{
 	construct_runtime, derive_impl, parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU32, ConstU64},
@@ -26,9 +29,6 @@ use sp_runtime::{
 	traits::{IdentifyAccount, IdentityLookup, Verify},
 	BuildStorage, MultiSignature,
 };
-
-use super::*;
-use crate as pallet_nfts;
 
 type Block = frame_system::mocking::MockBlock<Test>;
 
@@ -47,10 +47,10 @@ pub type AccountId = <AccountPublic as IdentifyAccount>::AccountId;
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
-	type AccountData = pallet_balances::AccountData<u64>;
 	type AccountId = AccountId;
-	type Block = Block;
 	type Lookup = IdentityLookup<Self::AccountId>;
+	type Block = Block;
+	type AccountData = pallet_balances::AccountData<u64>;
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
@@ -63,35 +63,35 @@ parameter_types! {
 }
 
 impl Config for Test {
-	type ApprovalsLimit = ConstU32<10>;
-	type AttributeDepositBase = ConstU64<1>;
-	type CollectionDeposit = ConstU64<2>;
+	type RuntimeEvent = RuntimeEvent;
 	type CollectionId = u32;
-	type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<Self::AccountId>>;
-	type Currency = Balances;
-	type DepositPerByte = ConstU64<1>;
-	type Features = Features;
-	type ForceOrigin = frame_system::EnsureRoot<Self::AccountId>;
-	#[cfg(feature = "runtime-benchmarks")]
-	type Helper = ();
-	type ItemAttributesApprovalsLimit = ConstU32<2>;
-	type ItemDeposit = ConstU64<1>;
 	type ItemId = u32;
-	type KeyLimit = ConstU32<50>;
+	type Currency = Balances;
+	type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<Self::AccountId>>;
+	type ForceOrigin = frame_system::EnsureRoot<Self::AccountId>;
 	type Locker = ();
-	type MaxAttributesPerCall = ConstU32<2>;
-	type MaxDeadlineDuration = ConstU64<10000>;
-	type MaxTips = ConstU32<10>;
+	type CollectionDeposit = ConstU64<2>;
+	type ItemDeposit = ConstU64<1>;
 	type MetadataDepositBase = ConstU64<1>;
-	/// Using `AccountPublic` here makes it trivial to convert to `AccountId` via `into_account()`.
-	type OffchainPublic = AccountPublic;
+	type AttributeDepositBase = ConstU64<1>;
+	type DepositPerByte = ConstU64<1>;
+	type StringLimit = ConstU32<50>;
+	type KeyLimit = ConstU32<50>;
+	type ValueLimit = ConstU32<50>;
+	type ApprovalsLimit = ConstU32<10>;
+	type ItemAttributesApprovalsLimit = ConstU32<2>;
+	type MaxTips = ConstU32<10>;
+	type MaxDeadlineDuration = ConstU64<10000>;
+	type MaxAttributesPerCall = ConstU32<2>;
+	type Features = Features;
 	/// Off-chain = signature On-chain - therefore no conversion needed.
 	/// It needs to be From<MultiSignature> for benchmarking.
 	type OffchainSignature = Signature;
-	type RuntimeEvent = RuntimeEvent;
-	type StringLimit = ConstU32<50>;
-	type ValueLimit = ConstU32<50>;
+	/// Using `AccountPublic` here makes it trivial to convert to `AccountId` via `into_account()`.
+	type OffchainPublic = AccountPublic;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
