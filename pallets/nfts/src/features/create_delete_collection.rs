@@ -18,8 +18,9 @@
 //! This module contains helper methods to perform functionality associated with creating and
 //! destroying collections for the NFTs pallet.
 
-use crate::*;
 use frame_support::pallet_prelude::*;
+
+use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Create a new collection with the given `collection`, `owner`, `admin`, `config`, `deposit`,
