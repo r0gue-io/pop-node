@@ -497,7 +497,7 @@ dependencies = [
  "pallet-collator-selection",
  "pallet-message-queue",
  "pallet-multisig",
- "pallet-nfts",
+ "pallet-nfts 30.0.0",
  "pallet-nfts-runtime-api",
  "pallet-proxy",
  "pallet-session",
@@ -8263,7 +8263,7 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-assets",
- "pallet-nfts",
+ "pallet-nfts 30.0.0",
  "parity-scale-codec",
  "scale-info",
  "sp-runtime",
@@ -8290,12 +8290,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-nfts"
+version = "31.0.0"
+dependencies = [
+ "enumflags2",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-nfts-runtime-api"
 version = "22.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0ca7a0446d2d3c27f726a016c6366218df2e0bfef9ed35886b252cfa9757f6c"
 dependencies = [
- "pallet-nfts",
+ "pallet-nfts 30.0.0",
  "parity-scale-codec",
  "sp-api",
  "sp-std",
@@ -11052,7 +11070,7 @@ dependencies = [
  "pallet-message-queue",
  "pallet-multisig",
  "pallet-nft-fractionalization",
- "pallet-nfts",
+ "pallet-nfts 31.0.0",
  "pallet-nfts-runtime-api",
  "pallet-preimage",
  "pallet-proxy",
@@ -11198,7 +11216,7 @@ dependencies = [
  "pallet-message-queue",
  "pallet-multisig",
  "pallet-nft-fractionalization",
- "pallet-nfts",
+ "pallet-nfts 31.0.0",
  "pallet-nfts-runtime-api",
  "pallet-preimage",
  "pallet-proxy",
