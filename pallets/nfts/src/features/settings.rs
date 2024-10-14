@@ -17,8 +17,9 @@
 
 //! This module provides helper methods to configure collection settings for the NFTs pallet.
 
-use crate::*;
 use frame_support::pallet_prelude::*;
+
+use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Forcefully change the configuration of a collection.
