@@ -17,8 +17,9 @@
 
 //! This module contains various basic types and data structures used in the NFTs pallet.
 
+use super::*;
+use crate::macros::*;
 use alloc::{vec, vec::Vec};
-
 use codec::EncodeLike;
 use enumflags2::{bitflags, BitFlags};
 use frame_support::{
@@ -28,9 +29,6 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use scale_info::{build::Fields, meta_type, Path, Type, TypeInfo, TypeParameter};
-
-use super::*;
-use crate::macros::*;
 
 /// A type alias for handling balance deposits.
 pub(super) type DepositBalanceOf<T, I = ()> =
@@ -278,15 +276,12 @@ impl CollectionSettings {
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
 	}
-
 	pub fn get_disabled(&self) -> BitFlags<CollectionSetting> {
 		self.0
 	}
-
 	pub fn is_disabled(&self, setting: CollectionSetting) -> bool {
 		self.0.contains(setting)
 	}
-
 	pub fn from_disabled(settings: BitFlags<CollectionSetting>) -> Self {
 		Self(settings)
 	}
@@ -382,15 +377,12 @@ impl<Price, BlockNumber, CollectionId> CollectionConfig<Price, BlockNumber, Coll
 	pub fn is_setting_enabled(&self, setting: CollectionSetting) -> bool {
 		!self.settings.is_disabled(setting)
 	}
-
 	pub fn has_disabled_setting(&self, setting: CollectionSetting) -> bool {
 		self.settings.is_disabled(setting)
 	}
-
 	pub fn enable_setting(&mut self, setting: CollectionSetting) {
 		self.settings.0.remove(setting);
 	}
-
 	pub fn disable_setting(&mut self, setting: CollectionSetting) {
 		self.settings.0.insert(setting);
 	}
@@ -417,15 +409,12 @@ impl ItemSettings {
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
 	}
-
 	pub fn get_disabled(&self) -> BitFlags<ItemSetting> {
 		self.0
 	}
-
 	pub fn is_disabled(&self, setting: ItemSetting) -> bool {
 		self.0.contains(setting)
 	}
-
 	pub fn from_disabled(settings: BitFlags<ItemSetting>) -> Self {
 		Self(settings)
 	}
@@ -446,19 +435,15 @@ impl ItemConfig {
 	pub fn is_setting_enabled(&self, setting: ItemSetting) -> bool {
 		!self.settings.is_disabled(setting)
 	}
-
 	pub fn has_disabled_setting(&self, setting: ItemSetting) -> bool {
 		self.settings.is_disabled(setting)
 	}
-
 	pub fn has_disabled_settings(&self) -> bool {
 		!self.settings.get_disabled().is_empty()
 	}
-
 	pub fn enable_setting(&mut self, setting: ItemSetting) {
 		self.settings.0.remove(setting);
 	}
-
 	pub fn disable_setting(&mut self, setting: ItemSetting) {
 		self.settings.0.insert(setting);
 	}
@@ -487,11 +472,9 @@ impl PalletFeatures {
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
 	}
-
 	pub fn from_disabled(features: BitFlags<PalletFeature>) -> Self {
 		Self(features)
 	}
-
 	pub fn is_enabled(&self, feature: PalletFeature) -> bool {
 		!self.0.contains(feature)
 	}
@@ -519,15 +502,12 @@ impl CollectionRoles {
 	pub fn none() -> Self {
 		Self(BitFlags::EMPTY)
 	}
-
 	pub fn has_role(&self, role: CollectionRole) -> bool {
 		self.0.contains(role)
 	}
-
 	pub fn add_role(&mut self, role: CollectionRole) {
 		self.0.insert(role);
 	}
-
 	pub fn max_roles() -> u8 {
 		let all: BitFlags<CollectionRole> = BitFlags::all();
 		all.len() as u8

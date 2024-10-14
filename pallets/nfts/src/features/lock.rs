@@ -18,9 +18,8 @@
 //! This module contains helper methods to configure locks on collections and items for the NFTs
 //! pallet.
 
-use frame_support::pallet_prelude::*;
-
 use crate::*;
+use frame_support::pallet_prelude::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Locks a collection with specified settings.
@@ -30,6 +29,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// Note: it's possible only to lock the setting, but not to unlock it after.
 
+	///
 	/// - `origin`: The origin of the transaction, representing the account attempting to lock the
 	///   collection.
 	/// - `collection`: The identifier of the collection to be locked.
