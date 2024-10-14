@@ -20,11 +20,12 @@
 //! The bitflag [`PalletFeature::Swaps`] needs to be set in [`Config::Features`] for NFTs
 //! to have the functionality defined in this module.
 
-use crate::*;
 use frame_support::{
 	pallet_prelude::*,
 	traits::{Currency, ExistenceRequirement::KeepAlive},
 };
+
+use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Creates a new swap offer for the specified item.
@@ -101,6 +102,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		Ok(())
 	}
+
 	/// Cancels the specified swap offer.
 	///
 	/// This function is used to cancel the specified swap offer created by the `caller` account. If
