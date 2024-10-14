@@ -17,7 +17,6 @@
 
 //! Implementations for `nonfungibles` traits.
 
-use super::*;
 use frame_support::{
 	ensure,
 	storage::KeyPrefixIterator,
@@ -26,9 +25,11 @@ use frame_support::{
 };
 use sp_runtime::{DispatchError, DispatchResult};
 
+use super::*;
+
 impl<T: Config<I>, I: 'static> Inspect<<T as SystemConfig>::AccountId> for Pallet<T, I> {
-	type ItemId = T::ItemId;
 	type CollectionId = T::CollectionId;
+	type ItemId = T::ItemId;
 
 	fn owner(
 		collection: &Self::CollectionId,
@@ -140,9 +141,11 @@ impl<T: Config<I>, I: 'static> InspectRole<<T as SystemConfig>::AccountId> for P
 	fn is_issuer(collection: &Self::CollectionId, who: &<T as SystemConfig>::AccountId) -> bool {
 		Self::has_role(collection, who, CollectionRole::Issuer)
 	}
+
 	fn is_admin(collection: &Self::CollectionId, who: &<T as SystemConfig>::AccountId) -> bool {
 		Self::has_role(collection, who, CollectionRole::Admin)
 	}
+
 	fn is_freezer(collection: &Self::CollectionId, who: &<T as SystemConfig>::AccountId) -> bool {
 		Self::has_role(collection, who, CollectionRole::Freezer)
 	}
@@ -469,9 +472,9 @@ impl<T: Config<I>, I: 'static> Trading<T::AccountId, ItemPrice<T, I>> for Pallet
 impl<T: Config<I>, I: 'static> InspectEnumerable<T::AccountId> for Pallet<T, I> {
 	type CollectionsIterator = KeyPrefixIterator<<T as Config<I>>::CollectionId>;
 	type ItemsIterator = KeyPrefixIterator<<T as Config<I>>::ItemId>;
+	type OwnedInCollectionIterator = KeyPrefixIterator<<T as Config<I>>::ItemId>;
 	type OwnedIterator =
 		KeyPrefixIterator<(<T as Config<I>>::CollectionId, <T as Config<I>>::ItemId)>;
-	type OwnedInCollectionIterator = KeyPrefixIterator<<T as Config<I>>::ItemId>;
 
 	/// Returns an iterator of the collections in existence.
 	///
