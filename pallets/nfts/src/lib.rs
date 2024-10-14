@@ -50,18 +50,18 @@ pub mod weights;
 extern crate alloc;
 
 use alloc::{boxed::Box, vec, vec::Vec};
-
 use codec::{Decode, Encode};
 use frame_support::traits::{
 	tokens::Locker, BalanceStatus::Reserved, Currency, EnsureOriginWithArg, Incrementable,
 	ReservableCurrency,
 };
 use frame_system::Config as SystemConfig;
-pub use pallet::*;
 use sp_runtime::{
 	traits::{IdentifyAccount, Saturating, StaticLookup, Verify, Zero},
 	RuntimeDebug,
 };
+
+pub use pallet::*;
 pub use types::*;
 pub use weights::WeightInfo;
 
@@ -73,10 +73,9 @@ type AccountIdLookupOf<T> = <<T as SystemConfig>::Lookup as StaticLookup>::Sourc
 
 #[frame_support::pallet]
 pub mod pallet {
+	use super::*;
 	use frame_support::{pallet_prelude::*, traits::ExistenceRequirement};
 	use frame_system::pallet_prelude::*;
-
-	use super::*;
 
 	/// The in-code storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
@@ -108,17 +107,14 @@ pub mod pallet {
 		fn collection(i: u16) -> CollectionId {
 			i.into()
 		}
-
 		fn item(i: u16) -> ItemId {
 			i.into()
 		}
-
 		fn signer() -> (sp_runtime::MultiSigner, sp_runtime::AccountId32) {
 			let public = sp_io::crypto::sr25519_generate(0.into(), None);
 			let account = sp_runtime::MultiSigner::Sr25519(public).into_account();
 			(public.into(), account)
 		}
-
 		fn sign(signer: &sp_runtime::MultiSigner, message: &[u8]) -> sp_runtime::MultiSignature {
 			sp_runtime::MultiSignature::Sr25519(
 				sp_io::crypto::sr25519_sign(0.into(), &signer.clone().try_into().unwrap(), message)

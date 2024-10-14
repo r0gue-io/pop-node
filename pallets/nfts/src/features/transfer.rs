@@ -18,9 +18,8 @@
 //! This module contains helper methods to perform the transfer functionalities
 //! of the NFTs pallet.
 
-use frame_support::pallet_prelude::*;
-
 use crate::*;
+use frame_support::pallet_prelude::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Transfer an NFT to the specified destination account.
@@ -180,7 +179,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Ok(())
 		})
 	}
-
 	/// Set or unset the ownership acceptance for an account regarding a specific collection.
 	///
 	/// - `who`: The account for which to set or unset the ownership acceptance.

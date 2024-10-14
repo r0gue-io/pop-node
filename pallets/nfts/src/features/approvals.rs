@@ -19,9 +19,8 @@
 //! The bitflag [`PalletFeature::Approvals`] needs to be set in [`Config::Features`] for NFTs
 //! to have the functionality defined in this module.
 
-use frame_support::pallet_prelude::*;
-
 use crate::*;
+use frame_support::pallet_prelude::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Approves the transfer of an item to a delegate.
