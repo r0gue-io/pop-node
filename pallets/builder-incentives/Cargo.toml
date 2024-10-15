@@ -1,0 +1,59 @@
+[package]
+authors.workspace = true
+description = "Builder incentives pallet, to incentivize builders to build on the platform"
+edition.workspace = true
+license.workspace = true
+name = "pallet-builder-incentives"
+version = "0.1.0"
+
+[package.metadata.docs.rs]
+targets = [ "x86_64-unknown-linux-gnu" ]
+
+[dependencies]
+codec.workspace = true
+log.workspace = true
+scale-info.workspace = true
+
+# Substrate
+frame-benchmarking.workspace = true
+frame-support.workspace = true
+frame-system.workspace = true
+pallet-balances.workspace = true
+pallet-contracts.workspace = true
+pallet-transaction-payment.workspace = true
+sp-runtime.workspace = true
+
+[dev-dependencies]
+sp-core = { workspace = true, default-features = true }
+sp-io = { workspace = true, default-features = true }
+
+[features]
+default = ["std"]
+std = [
+    "codec/std",
+    "frame-benchmarking/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-balances/std",
+    "pallet-contracts/std",
+    "pallet-transaction-payment/std",
+    "scale-info/std",
+    "sp-core/std",
+    "sp-io/std",
+    "sp-runtime/std",
+]
+runtime-benchmarks = [
+    "frame-benchmarking/runtime-benchmarks",
+    "frame-support/runtime-benchmarks",
+    "frame-system/runtime-benchmarks",
+    "pallet-balances/runtime-benchmarks",
+    "pallet-contracts/runtime-benchmarks",
+    "sp-runtime/runtime-benchmarks",
+]
+try-runtime = [
+    "frame-support/try-runtime",
+    "frame-system/try-runtime",
+    "sp-runtime/try-runtime",
+    "pallet-balances/try-runtime",
+    "pallet-contracts/try-runtime",
+]

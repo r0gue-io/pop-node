@@ -15,7 +15,7 @@ validator = true
 # Pop
 [[parachains]]
 id = 4001
-default_command = "./target/release/pop-node"
+default_command = "./target/debug/pop-node"
 
 [parachains.genesis_overrides.balances]
 balances = [

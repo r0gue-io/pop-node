@@ -7766,6 +7766,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-builder-incentives"
+version = "0.1.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "pallet-contracts",
+ "pallet-transaction-payment",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-child-bounties"
 version = "35.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -11008,6 +11026,7 @@ dependencies = [
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
+ "pallet-builder-incentives",
  "pallet-collator-selection",
  "pallet-contracts",
  "pallet-ismp",
