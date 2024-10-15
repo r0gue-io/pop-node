@@ -1,0 +1,193 @@
+use crate::{Call, Config, Pallet};
+use codec::HasCompact;
+use frame_support::{
+	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
+	pallet_prelude::{Decode, Encode, TypeInfo},
+	traits::{fungible::Inspect, IsSubType, IsType},
+};
+use pallet_transaction_payment::OnChargeTransaction;
+use scale_info::StaticTypeInfo;
+use sp_runtime::{
+	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension, StaticLookup},
+	transaction_validity::{TransactionValidity, TransactionValidityError, ValidTransaction},
+	FixedPointOperand,
+};
+
+/// Type aliases used for interaction with `OnChargeTransaction`.
+pub(crate) type OnChargeTransactionOf<T> =
+	<T as pallet_transaction_payment::Config>::OnChargeTransaction;
+
+/// Balance type alias.
+pub(crate) type BalanceOf<T> = <OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Balance;
+// pub(crate) type BalanceOf<T> = <T as pallet_contracts::Config>::Currency;
+
+/// Contracts Balance type
+pub(crate) type ContractsOf<T> = <T as pallet_contracts::Config>::Currency;
+
+/// Contracts Balance alias
+pub(crate) type ContractsBalanceOf<T> =
+	<ContractsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
+
+/// Liquidity info type alias (imbalances).
+pub(crate) type LiquidityInfoOf<T> =
+	<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::LiquidityInfo;
+
+/// A [`SignedExtension`] that handles fees sponsorship.
+#[derive(Encode, Decode, Clone, Eq, PartialEq)]
+pub struct LogContractCall<T: Config, S>(
+	#[codec(compact)] BalanceOf<T>,
+	core::marker::PhantomData<S>,
+);
+
+// Make this extension "invisible" from the outside (ie metadata type information)
+impl<T: Config, S: StaticTypeInfo> TypeInfo for LogContractCall<T, S> {
+	type Identity = S;
+
+	fn type_info() -> scale_info::Type {
+		S::type_info()
+	}
+}
+
+impl<T: Config, S: Encode> core::fmt::Debug for LogContractCall<T, S> {
+	#[cfg(feature = "std")]
+	fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+		write!(f, "LogContractCall<{:?}>", self.0)
+	}
+
+	#[cfg(not(feature = "std"))]
+	fn fmt(&self, _: &mut core::fmt::Formatter) -> core::fmt::Result {
+		Ok(())
+	}
+}
+
+impl<T: Config, S: SignedExtension<AccountId = T::AccountId>> LogContractCall<T, S>
+where
+	<T as frame_system::Config>::RuntimeCall:
+		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<Call<T>>,
+	BalanceOf<T>: Send + Sync + From<u64>,
+{
+	/// utility constructor. Used only in client/factory code.
+	pub fn from(fee: BalanceOf<T>) -> Self {
+		Self(fee, core::marker::PhantomData)
+	}
+
+	/// Returns the tip as being chosen by the transaction sender.
+	pub fn tip(&self) -> BalanceOf<T> {
+		self.0
+	}
+
+	fn withdraw_fee(
+		&self,
+		who: &T::AccountId,
+		call: &<T as frame_system::Config>::RuntimeCall,
+		info: &DispatchInfoOf<<T as frame_system::Config>::RuntimeCall>,
+		len: usize,
+	) -> Result<(BalanceOf<T>, LiquidityInfoOf<T>), TransactionValidityError> {
+		let tip = self.0;
+		let fee = pallet_transaction_payment::Pallet::<T>::compute_fee(len as u32, info, tip);
+		<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::withdraw_fee(
+			who, call, info, fee, tip,
+		)
+		.map(|i| (fee, i))
+	}
+}
+
+impl<T: Config + Send + Sync, S: SignedExtension<AccountId = T::AccountId>> SignedExtension
+	for LogContractCall<T, S>
+where
+	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
+		+ IsSubType<Call<T>>
+		+ IsSubType<pallet_contracts::Call<T>>,
+	BalanceOf<T>: Send + Sync + FixedPointOperand + From<u64>,
+	<ContractsBalanceOf<T> as HasCompact>::Type:
+		Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
+{
+	type AccountId = T::AccountId;
+	type AdditionalSigned = ();
+	//type Call = S::Call;
+	type Call = <T as frame_system::Config>::RuntimeCall;
+	type Pre = (
+		// tip
+		BalanceOf<T>,
+		// who
+		Self::AccountId,
+		// imbalance resulting from withdrawing the fee
+		LiquidityInfoOf<T>,
+		// contract address.
+		Option<Self::AccountId>,
+	);
+
+	// From the outside this extension should be "invisible", because it just extends the wrapped
+	// extension with an extra check in `pre_dispatch` and `post_dispatch`. Thus, we should forward
+	// the identifier of the wrapped extension to let wallets see this extension as it would only be
+	// the wrapped extension itself.
+	const IDENTIFIER: &'static str = S::IDENTIFIER;
+
+	fn additional_signed(&self) -> Result<(), TransactionValidityError> {
+		Ok(())
+	}
+
+	fn validate(
+		&self,
+		who: &Self::AccountId,
+		call: &Self::Call,
+		info: &DispatchInfoOf<Self::Call>,
+		len: usize,
+	) -> TransactionValidity {
+		let (fee, ..) = self.withdraw_fee(who, call, info, len)?;
+		let priority = pallet_transaction_payment::ChargeTransactionPayment::<T>::get_priority(
+			info, len, self.0, fee,
+		);
+		Ok(ValidTransaction { priority, ..Default::default() })
+	}
+
+	fn pre_dispatch(
+		self,
+		who: &Self::AccountId,
+		call: &Self::Call,
+		info: &DispatchInfoOf<Self::Call>,
+		len: usize,
+	) -> Result<Self::Pre, TransactionValidityError> {
+		let contract = if let Some(pallet_contracts::Call::call { dest, .. }) = call.is_sub_type() {
+			// Check if contract is registred
+			// Pallet::<T>::regsitered(dest)
+			T::Lookup::lookup(dest.clone()).ok()
+		} else {
+			None
+		};
+		let (_fee, initial_payment) = self.withdraw_fee(who, call, info, len)?;
+		Ok((self.tip(), who.clone(), initial_payment, contract))
+	}
+
+	fn post_dispatch(
+		pre: Option<Self::Pre>,
+		info: &DispatchInfoOf<Self::Call>,
+		post_info: &PostDispatchInfoOf<Self::Call>,
+		len: usize,
+		result: &DispatchResult,
+	) -> Result<(), TransactionValidityError> {
+		if let Some((tip, who, initial_payment, contract)) = pre {
+			pallet_transaction_payment::ChargeTransactionPayment::<T>::post_dispatch(
+				Some((tip, who, initial_payment)),
+				info,
+				post_info,
+				len,
+				result,
+			)?;
+			if let Some(contract) = contract {
+				let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
+					len as u32, info, post_info, tip,
+				);
+				crate::ContractUsage::<T>::mutate(contract.clone(), |fees| {
+					*fees = Some(fees.unwrap_or(0.into()) + actual_fee)
+				});
+				// Only emit if registered?
+				Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
+					contract: contract.clone(),
+					// accumulated_fees: actual_fee,
+				});
+			}
+		}
+		Ok(())
+	}
+}
