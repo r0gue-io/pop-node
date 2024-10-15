@@ -493,24 +493,26 @@ fn test_contract_interaction_on_pop_network() {
 	init_tracing();
 
 	// Setup: reserve transfer DOT from AH to Bob on Pop Network.
-	let amount_to_send: Balance = ASSET_HUB_PASEO_ED * 1000;
+	let amount: Balance = ASSET_HUB_PASEO_ED * 1000;
 	let bob_on_pop = PopNetworkParaReceiver::get();
 	fund_pop_from_system_para(
 		AssetHubPaseoParaSender::get(),
-		amount_to_send * 20,
+		amount * 20,
 		bob_on_pop.clone(),
-		(Parent, amount_to_send * 10).into(),
+		(Parent, amount * 20).into(),
 	);
 	// Fund Pop Network's SA on AH with DOT.
 	let pop_net_location_as_seen_by_ahr =
 		AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id());
 	let sov_pop_net_on_ahr =
 		AssetHubPaseoPara::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
-	AssetHubPaseoPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount_to_send * 2)]);
+	AssetHubPaseoPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount * 2)]);
 
 	// Account with empty balance.
 	let receiver = sp_runtime::AccountId32::from([1u8; 32]);
-	let mut contract = sp_runtime::AccountId32::from([0; 32]);
+	// Amounts used for doing a reserve transfer.
+	let transfer_amount = amount / 2;
+	let fee_amount = amount / 4;
 
 	PopNetwork::<PaseoMockNet>::execute_with(|| {
 		// Instantiate the contract
@@ -519,7 +521,8 @@ fn test_contract_interaction_on_pop_network() {
 		let instantiate_result =
 			<PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Contracts::bare_instantiate(
 				bob_on_pop.clone(),
-				amount_to_send * 5,
+				// Fund contract with enough funds.
+				amount * 5,
 				GAS_LIMIT,
 				None,
 				Code::Upload(wasm_binary),
@@ -531,11 +534,11 @@ fn test_contract_interaction_on_pop_network() {
 			.result
 			.expect("Contract instantiation failed");
 		assert!(!instantiate_result.result.did_revert());
-		contract = instantiate_result.account_id;
+		let contract = instantiate_result.account_id;
 
 		// Transfer funds locally.
 		let function = function_selector("transfer");
-		let params = [receiver.encode(), (amount_to_send / 2).encode()].concat();
+		let params = [receiver.encode(), (transfer_amount).encode()].concat();
 		let input = [function, params].concat();
 		let call_result = <PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Contracts::bare_call(
 			bob_on_pop.clone(),
@@ -551,16 +554,15 @@ fn test_contract_interaction_on_pop_network() {
 		let result = decoded::<Result<(), bool>>(call_result.result.unwrap()).unwrap();
 		assert!(result.is_ok());
 		assert_eq!(
-			amount_to_send / 2,
+			transfer_amount,
 			<PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Balances::balance(&receiver)
 		);
 
 		// Transfer funds to AH account.
 		// Note: you can change the function selector between "ah_transfer" and "api_ah_transfer".
-		let function = function_selector("api_ah_transfer");
+		let function = function_selector("ah_transfer");
 		let params =
-			[receiver.encode(), (amount_to_send / 2).encode(), (amount_to_send / 4).encode()]
-				.concat();
+			[receiver.encode(), (transfer_amount).encode(), (fee_amount).encode()].concat();
 		let input = [function, params].concat();
 		let call_result = <PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Contracts::bare_call(
 			bob_on_pop.clone(),
@@ -584,7 +586,7 @@ fn test_contract_interaction_on_pop_network() {
 				// Amount to reserve transfer is transferred to Parachain's Sovereign account
 				RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
 					who: *who == contract,
-					amount: *amount == (amount_to_send / 2 + amount_to_send / 4),
+					amount: *amount == (transfer_amount + fee_amount),
 				},
 			]
 		);
@@ -604,9 +606,13 @@ fn test_contract_interaction_on_pop_network() {
 					pallet_balances::Event::Burned { who, amount }
 				) => {
 					who: *who == sov_pop_net_on_ahr.clone().into(),
-					amount: *amount == amount_to_send / 2,
+					amount: *amount == transfer_amount,
 				},
-				RuntimeEventAH::Balances(pallet_balances::Event::Minted { .. }) => {},
+				RuntimeEventAH::Balances(pallet_balances::Event::Minted { who, amount }) => {
+					who: *who == receiver.clone().into(),
+					// TODO: understand why this is not the full `transfer_amount`.
+					amount: *amount < transfer_amount && *amount > 0,
+				},
 				RuntimeEventAH::MessageQueue(
 					pallet_message_queue::Event::Processed { success: true, .. }
 				) => {},
