@@ -3,37 +3,19 @@
 // Re-export pallet items so that they can be accessed from the crate namespace.
 pub use pallet::*;
 
-// // FRAME pallets require their own "mock runtimes" to be able to run unit tests. This module
-// // contains a mock runtime specific for testing this pallet's functionality.
-// #[cfg(test)]
-// mod mock;
-
-// // This module contains the unit tests for this pallet.
-// // Learn about pallet unit testing here: https://docs.substrate.io/test/unit-testing/
-// #[cfg(test)]
-// mod tests;
-
-// // Every callable function or "dispatchable" a pallet exposes must have weight values that correctly
-// // estimate a dispatchable's execution time. The benchmarking module is used to calculate weights
-// // for each dispatchable and generates this pallet's weight.rs file. Learn more about benchmarking here: https://docs.substrate.io/test/benchmark/
-// #[cfg(feature = "runtime-benchmarks")]
-// mod benchmarking;
-pub mod check_sponsored;
+pub mod contract_fee_handler;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use check_sponsored::BalanceOf;
+	use contract_fee_handler::BalanceOf;
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
 	pub(super) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 	#[pallet::config]
 	pub trait Config:
-		frame_system::Config
-		+ pallet_transaction_payment::Config
-		+ pallet_contracts::Config
-		+ pallet_balances::Config
+		frame_system::Config + pallet_transaction_payment::Config + pallet_contracts::Config
 	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
