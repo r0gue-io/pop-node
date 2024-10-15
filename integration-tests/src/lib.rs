@@ -463,7 +463,6 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let sender_balance_after = test.sender.balance;
 	let receiver_balance_after = test.receiver.balance;
 
-	// TODO: Delivery fees on destination chain
 	let delivery_fees = PopNetworkPara::execute_with(|| {
 		xcm_helpers::teleport_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
@@ -482,85 +481,6 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	assert!(receiver_balance_after < receiver_balance_before + amount_to_send);
 }
 
-/// Reserve Transfers of DOT from Pop Net to Asset Hub, paying fees with DOT on Pop Net, should
-/// work.
-#[test]
-fn reserve_transfer_native_asset_from_para_to_system_para_special() {
-	init_tracing();
-
-	// Setup: reserve transfer DOT from AH to Bob on Pop Network.
-	let amount_to_send: Balance = ASSET_HUB_PASEO_ED * 1000;
-	let bob_on_pop = PopNetworkParaReceiver::get();
-	fund_pop_from_system_para(
-		AssetHubPaseoParaSender::get(),
-		amount_to_send,
-		bob_on_pop.clone(),
-		(Parent, amount_to_send).into(),
-	);
-
-	// Init values for Pop Network Parachain.
-	// Asset Hub location from Pop Net's view.
-	let destination = PopNetworkPara::sibling_location_of(AssetHubPaseoPara::para_id());
-	// Random account on asset hub.
-	let receiver_ah = sp_runtime::AccountId32::from([1u8; 32]);
-	let amount_to_send = PopNetworkPara::account_data_of(bob_on_pop.clone()).free;
-
-	let test_args = TestContext {
-		sender: bob_on_pop,
-		receiver: receiver_ah.clone(),
-		args: TestArgs::new_para(
-			destination,
-			receiver_ah,
-			amount_to_send * 2,
-			(Parent, amount_to_send).into(),
-			None,
-			0,
-		),
-	};
-
-	let mut test = ParaToSystemParaTest::new(test_args);
-
-	let bob_on_pop_balance_before = test.sender.balance;
-	let receiver_ah_balance_before = test.receiver.balance;
-	assert_eq!(receiver_ah_balance_before, 0);
-
-	let pop_net_location_as_seen_by_ah =
-		AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id());
-	let sov_pop_net_on_ah =
-		AssetHubPaseoPara::sovereign_account_id_of(pop_net_location_as_seen_by_ah);
-	// // fund Pop Network's SA on AH with the native tokens held in reserve
-	AssetHubPaseoPara::fund_accounts(vec![(sov_pop_net_on_ah.into(), amount_to_send * 2)]);
-
-	test.set_assertion::<PopNetworkPara>(para_to_system_para_sender_assertions);
-	test.set_assertion::<AssetHubPaseoPara>(para_to_system_para_receiver_assertions);
-	test.set_dispatchable::<PopNetworkPara>(para_to_system_para_reserve_transfer_assets);
-	test.assert();
-
-	let bob_on_pop_balance_after = test.sender.balance;
-	let receiver_ah_balance_after = test.receiver.balance;
-
-	// TODO: Delivery fees on destination chain
-	let delivery_fees = PopNetworkPara::execute_with(|| {
-		xcm_helpers::teleport_assets_delivery_fees::<
-			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
-		>(
-			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
-		)
-	});
-
-	// Sender's balance is reduced
-	assert_eq!(
-		bob_on_pop_balance_before - amount_to_send - delivery_fees,
-		bob_on_pop_balance_after
-	);
-	// Receiver's balance is increased
-	assert!(receiver_ah_balance_after > receiver_ah_balance_before);
-	// Receiver's balance increased by `amount_to_send - delivery_fees - bought_execution`;
-	// `delivery_fees` might be paid from transfer or JIT, also `bought_execution` is unknown
-	// but should be non-zero
-	assert!(receiver_ah_balance_after < receiver_ah_balance_before + amount_to_send);
-}
-
 #[test]
 #[ignore]
 fn test_contract_interaction_on_pop_network() {
@@ -572,18 +492,16 @@ fn test_contract_interaction_on_pop_network() {
 	// Initialize tracing if needed
 	init_tracing();
 
-	let bob_on_pop = PopNetworkParaReceiver::get();
-	// Setup:
-	// Reserve transfer from AH to Pop, so that sovereign account accurate for return
-	// transfer.
+	// Setup: reserve transfer DOT from AH to Bob on Pop Network.
 	let amount_to_send: Balance = ASSET_HUB_PASEO_ED * 1000;
+	let bob_on_pop = PopNetworkParaReceiver::get();
 	fund_pop_from_system_para(
 		AssetHubPaseoParaSender::get(),
 		amount_to_send * 20,
 		bob_on_pop.clone(),
 		(Parent, amount_to_send * 10).into(),
 	);
-	// Fund Pop Network's SA on AH with the native tokens.
+	// Fund Pop Network's SA on AH with DOT.
 	let pop_net_location_as_seen_by_ahr =
 		AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id());
 	let sov_pop_net_on_ahr =
@@ -637,8 +555,8 @@ fn test_contract_interaction_on_pop_network() {
 			<PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Balances::balance(&receiver)
 		);
 
-		// Transfer funds to ah account.
-		// Change function selector between "ah_transfer" and "api_ah_transfer".
+		// Transfer funds to AH account.
+		// Note: you can change the function selector between "ah_transfer" and "api_ah_transfer".
 		let function = function_selector("api_ah_transfer");
 		let params =
 			[receiver.encode(), (amount_to_send / 2).encode(), (amount_to_send / 4).encode()]
@@ -658,6 +576,7 @@ fn test_contract_interaction_on_pop_network() {
 		let result = decoded::<Result<(), bool>>(call_result.result.unwrap()).unwrap();
 		assert!(result.is_ok());
 
+		// Check for events relevant to a reserve transfer from Pop.
 		type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
 		my_assert_expected_events!(
 			PopNetworkPara,
@@ -672,6 +591,7 @@ fn test_contract_interaction_on_pop_network() {
 	});
 
 	AssetHubPaseo::<PaseoMockNet>::execute_with(|| {
+		// Check for events relevant to a reserve transfer to AH.
 		type RuntimeEventAH = <AssetHubPaseoPara as Chain>::RuntimeEvent;
 		let sov_pop_net_on_ahr = AssetHubPaseoPara::sovereign_account_id_of(
 			AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id()),
