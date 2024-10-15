@@ -41,6 +41,8 @@ use frame_system::{
 };
 use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
+// TODO: Move it to primitives
+use pallet_builder_incentives::types::SmartContract;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
@@ -304,6 +306,7 @@ impl pallet_authorship::Config for Runtime {
 impl pallet_builder_incentives::Config for Runtime {
 	/// The ubiquitous event type.
 	type RuntimeEvent = RuntimeEvent;
+	type SmartContract = SmartContract<AccountId>;
 }
 
 parameter_types! {
