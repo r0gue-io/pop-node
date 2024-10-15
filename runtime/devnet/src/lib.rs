@@ -25,11 +25,9 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::{Credit, HoldConsideration},
-		tokens::nonfungibles_v2::Inspect,
-		ConstBool, ConstU32, ConstU64, ConstU8, Contains, Currency, EitherOfDiverse,
-		EqualPrivilegeOnly, EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced,
-		TransformOrigin, VariantCountOf,
+		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
+		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
+		LinearStoragePrice, TransformOrigin, VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -103,8 +101,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	//pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	pallet_builder_incentives::check_sponsored::LogContractCall<
+	pallet_builder_incentives::contract_fee_handler::ContractFeeHandler<
 		Runtime,
 		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	>,
@@ -209,24 +206,6 @@ const CONTRACTS_EVENTS: pallet_revive::CollectEvents = pallet_revive::CollectEve
 pub fn native_version() -> NativeVersion {
 	NativeVersion { runtime_version: VERSION, can_author_with: Default::default() }
 }
-
-// type NegativeImbalance = <Balances as Currency<AccountId>>::NegativeImbalance;
-// pub struct DealWithFees;
-// impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
-// 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = Credit<AccountId, Balances>>) {
-// 		if let Some(fees) = fees_then_tips.next() {
-// 			log::info!("fees: {:?}", fees.peek());
-// 			// for fees, 80% to treasury, 20% to author
-// 			let mut split = fees.ration(80, 20);
-// 			if let Some(tips) = fees_then_tips.next() {
-// 				// for tips, if any, 80% to treasury, 20% to author (though this can be anything)
-// 				//tips.ration_merge_into(80, 20, &mut split);
-// 			}
-// 			//Sudo::on_unbalanced(split.0);
-// 			drop(split.1);
-// 		}
-// 	}
-// }
 
 parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
@@ -1120,25 +1099,3 @@ fn test_lookup_config() {
 		TypeId::of::<sp_runtime::traits::AccountIdLookup<sp_runtime::AccountId32, ()>>()
 	);
 }
-
-// #[test]
-// fn test_fees_and_tip_split() {
-// 	new_test_ext().execute_with(|| {
-// 		let fee = <pallet_balances::Pallet<Test> as frame_support::traits::fungible::Balanced<
-// 			AccountId,
-// 		>>::issue(10);
-// 		let tip = <pallet_balances::Pallet<Test> as frame_support::traits::fungible::Balanced<
-// 			AccountId,
-// 		>>::issue(20);
-
-// 		assert_eq!(Balances::free_balance(Treasury::account_id()), 0);
-// 		assert_eq!(Balances::free_balance(TEST_ACCOUNT), 0);
-
-// 		DealWithFees::on_unbalanceds(vec![fee, tip].into_iter());
-
-// 		// Author gets 100% of tip and 20% of fee = 22
-// 		assert_eq!(Balances::free_balance(TEST_ACCOUNT), 22);
-// 		// Treasury gets 80% of fee
-// 		assert_eq!(Balances::free_balance(Treasury::account_id()), 8);
-// 	});
-// }

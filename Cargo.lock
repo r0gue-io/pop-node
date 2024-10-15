@@ -7773,7 +7773,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "log",
- "pallet-balances",
  "pallet-contracts",
  "pallet-transaction-payment",
  "parity-scale-codec",

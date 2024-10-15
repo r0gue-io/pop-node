@@ -3,7 +3,7 @@ use codec::HasCompact;
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	pallet_prelude::{Decode, Encode, TypeInfo},
-	traits::{fungible::Inspect, IsSubType, IsType},
+	traits::{fungible::Inspect, IsSubType},
 };
 use pallet_transaction_payment::OnChargeTransaction;
 use scale_info::StaticTypeInfo;
@@ -19,7 +19,6 @@ pub(crate) type OnChargeTransactionOf<T> =
 
 /// Balance type alias.
 pub(crate) type BalanceOf<T> = <OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Balance;
-// pub(crate) type BalanceOf<T> = <T as pallet_contracts::Config>::Currency;
 
 /// Contracts Balance type
 pub(crate) type ContractsOf<T> = <T as pallet_contracts::Config>::Currency;
@@ -34,13 +33,13 @@ pub(crate) type LiquidityInfoOf<T> =
 
 /// A [`SignedExtension`] that handles fees sponsorship.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
-pub struct LogContractCall<T: Config, S>(
+pub struct ContractFeeHandler<T: Config, S>(
 	#[codec(compact)] BalanceOf<T>,
 	core::marker::PhantomData<S>,
 );
 
 // Make this extension "invisible" from the outside (ie metadata type information)
-impl<T: Config, S: StaticTypeInfo> TypeInfo for LogContractCall<T, S> {
+impl<T: Config, S: StaticTypeInfo> TypeInfo for ContractFeeHandler<T, S> {
 	type Identity = S;
 
 	fn type_info() -> scale_info::Type {
@@ -48,10 +47,10 @@ impl<T: Config, S: StaticTypeInfo> TypeInfo for LogContractCall<T, S> {
 	}
 }
 
-impl<T: Config, S: Encode> core::fmt::Debug for LogContractCall<T, S> {
+impl<T: Config, S: Encode> core::fmt::Debug for ContractFeeHandler<T, S> {
 	#[cfg(feature = "std")]
 	fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-		write!(f, "LogContractCall<{:?}>", self.0)
+		write!(f, "ContractFeeHandler<{:?}>", self.0)
 	}
 
 	#[cfg(not(feature = "std"))]
@@ -60,7 +59,7 @@ impl<T: Config, S: Encode> core::fmt::Debug for LogContractCall<T, S> {
 	}
 }
 
-impl<T: Config, S: SignedExtension<AccountId = T::AccountId>> LogContractCall<T, S>
+impl<T: Config, S: SignedExtension<AccountId = T::AccountId>> ContractFeeHandler<T, S>
 where
 	<T as frame_system::Config>::RuntimeCall:
 		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<Call<T>>,
@@ -93,7 +92,7 @@ where
 }
 
 impl<T: Config + Send + Sync, S: SignedExtension<AccountId = T::AccountId>> SignedExtension
-	for LogContractCall<T, S>
+	for ContractFeeHandler<T, S>
 where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
