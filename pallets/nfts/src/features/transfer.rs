@@ -18,8 +18,9 @@
 //! This module contains helper methods to perform the transfer functionalities
 //! of the NFTs pallet.
 
-use crate::*;
 use frame_support::pallet_prelude::*;
+
+use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Transfer an NFT to the specified destination account.
@@ -87,11 +88,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		with_details(&collection_details, &mut details)?;
 
 		// Update account balances.
-		AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| {
+		AccountBalance::<T, I>::mutate((collection, &details.owner), |balance| {
 			balance.saturating_dec();
 		});
-		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
-			balance.saturating_inc();
+		AccountBalance::<T, I>::mutate((collection, &dest), |balance| {
+			balance.saturating_dec();
 		});
 
 		// Update account ownership information.
@@ -144,7 +145,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			// Check if the `origin` is the current owner of the collection.
 			ensure!(origin == details.owner, Error::<T, I>::NoPermission);
 			if details.owner == new_owner {
-				return Ok(());
+				return Ok(())
 			}
 
 			// Move the deposit to the new owner.
@@ -168,6 +169,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Ok(())
 		})
 	}
+
 	/// Set or unset the ownership acceptance for an account regarding a specific collection.
 	///
 	/// - `who`: The account for which to set or unset the ownership acceptance.
@@ -218,7 +220,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Collection::<T, I>::try_mutate(collection, |maybe_details| {
 			let details = maybe_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 			if details.owner == owner {
-				return Ok(());
+				return Ok(())
 			}
 
 			// Move the deposit to the new owner.

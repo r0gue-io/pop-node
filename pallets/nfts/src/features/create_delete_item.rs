@@ -18,8 +18,9 @@
 //! This module contains helper methods to perform functionality associated with minting and burning
 //! items for the NFTs pallet.
 
-use crate::*;
 use frame_support::{pallet_prelude::*, traits::ExistenceRequirement};
+
+use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Mint a new unique item with the given `collection`, `item`, and other minting configuration
@@ -68,7 +69,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 
 				collection_details.items.saturating_inc();
-				AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| {
+				AccountBalance::<T, I>::mutate((collection, &mint_to), |balance| {
 					balance.saturating_inc();
 				});
 
@@ -265,7 +266,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		ItemPriceOf::<T, I>::remove(&collection, &item);
 		PendingSwapOf::<T, I>::remove(&collection, &item);
 		ItemAttributesApprovalsOf::<T, I>::remove(&collection, &item);
-		AccountBalance::<T, I>::mutate(collection, &owner, |balance| {
+		AccountBalance::<T, I>::mutate((collection, &owner), |balance| {
 			balance.saturating_dec();
 		});
 

@@ -19,8 +19,9 @@
 //! The bitflag [`PalletFeature::Approvals`] needs to be set in [`Config::Features`] for NFTs
 //! to have the functionality defined in this module.
 
-use crate::*;
 use frame_support::pallet_prelude::*;
+
+use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Approves the transfer of an item to a delegate.
@@ -170,7 +171,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	pub(crate) fn do_approve_collection(
+	pub(crate) fn do_approve_transfer_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
@@ -179,45 +180,50 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		if !Collection::<T, I>::contains_key(collection) {
-			return Err(Error::<T, I>::UnknownCollection.into());
-		}
+		let collection_owner =
+			Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
 			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
 			Error::<T, I>::ItemsNonTransferable
 		);
 
-		let origin = maybe_check_origin.ok_or(Error::<T, I>::WrongOrigin)?;
-		Allowances::<T, I>::mutate((&collection, &origin, &delegate), |allowance| {
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == collection_owner, Error::<T, I>::NoPermission);
+		}
+
+		Allowances::<T, I>::mutate((&collection, &collection_owner, &delegate), |allowance| {
 			*allowance = true;
 		});
 
 		Self::deposit_event(Event::TransferApproved {
 			collection,
 			item: None,
-			owner: origin,
+			owner: collection_owner,
 			delegate,
 			deadline: None,
 		});
 		Ok(())
 	}
 
-	pub(crate) fn do_cancel_collection(
+	pub(crate) fn do_cancel_approval_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		if !Collection::<T, I>::contains_key(collection) {
-			return Err(Error::<T, I>::UnknownCollection.into());
+		let collection_owner =
+			Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == collection_owner, Error::<T, I>::NoPermission);
 		}
 
-		let origin = maybe_check_origin.ok_or(Error::<T, I>::WrongOrigin)?;
-		Allowances::<T, I>::remove((&collection, &origin, &delegate));
+		Allowances::<T, I>::remove((&collection, &collection_owner, &delegate));
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
-			owner: origin,
+			owner: collection_owner,
 			item: None,
 			delegate,
 		});
@@ -225,31 +231,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	pub fn check_allowance(
-		collection: &T::CollectionId,
-		item: &Option<T::ItemId>,
-		owner: &T::AccountId,
-		delegate: &T::AccountId,
-	) -> Result<(), DispatchError> {
+	pub fn allowance(
+		collection: T::CollectionId,
+		item: Option<T::ItemId>,
+		owner: T::AccountId,
+		delegate: T::AccountId,
+	) -> Option<bool> {
 		// Check if a `delegate` has a permission to spend the collection.
 		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
-			if let Some(item) = item {
-				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
-			};
-			return Ok(());
+			return Some(true);
 		}
 		// Check if a `delegate` has a permission to spend the collection item.
-		if let Some(item) = item {
-			let details =
-				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
-
-			let deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
-			if let Some(d) = deadline {
-				let block_number = frame_system::Pallet::<T>::block_number();
-				ensure!(block_number <= *d, Error::<T, I>::ApprovalExpired);
-			}
-			return Ok(());
-		};
-		Err(Error::<T, I>::NoPermission.into())
+		item.map(|item| {
+			Item::<T, I>::get(&collection, &item)
+				.map(|detail| detail.approvals.contains_key(&delegate))
+		})
+		.unwrap_or_default()
 	}
 }
