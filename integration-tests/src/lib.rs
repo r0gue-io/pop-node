@@ -512,6 +512,7 @@ fn test_contract_interaction_on_pop_network() {
 	let receiver = sp_runtime::AccountId32::from([1u8; 32]);
 	// Amounts used for doing a reserve transfer.
 	let transfer_amount = amount / 2;
+	// TODO: could we provide the max fee amount for the developer?
 	let fee_amount = amount / 4;
 
 	PopNetwork::<PaseoMockNet>::execute_with(|| {
