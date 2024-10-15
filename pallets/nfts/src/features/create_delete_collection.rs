@@ -137,6 +137,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 			}
 
+			let _ =
+				AccountBalance::<T, I>::clear_prefix((collection,), collection_details.items, None);
+			let _ = Allowances::<T, I>::clear_prefix((collection,), collection_details.items, None);
 			CollectionAccount::<T, I>::remove(&collection_details.owner, &collection);
 			T::Currency::unreserve(&collection_details.owner, collection_details.owner_deposit);
 			CollectionConfigOf::<T, I>::remove(&collection);
