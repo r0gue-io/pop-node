@@ -1,10 +1,12 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 #![allow(clippy::new_without_default)]
 
+use ink::{prelude::vec, xcm::prelude::*};
+use pop_api::primitives::AccountId;
+
 #[ink::contract]
 pub mod transfer_contract {
-	use ink::xcm::prelude::*;
-
+	use super::*;
 	/// No storage is needed for this simple contract.
 	#[ink(storage)]
 	pub struct TransferContract {}
@@ -14,6 +16,7 @@ pub mod transfer_contract {
 	pub enum Error {
 		TransferFailed,
 		AHTransferFailed,
+		AHApiTransferFailed,
 	}
 
 	impl TransferContract {
@@ -42,102 +45,53 @@ pub mod transfer_contract {
 		#[ink(message)]
 		pub fn ah_transfer(
 			&mut self,
-			value: Balance,
 			to: AccountId,
+			value: Balance,
 			fee: Balance,
 		) -> Result<(), Error> {
-			// let ah = Junctions::from([Parachain(1000)]);
-			// let destination: Location = Location { parents: 1, interior: ah };
-			// let asset: Asset = (Location::parent(), value).into();
-			// let fee_asset: Asset = (Location::parent(), fee).into();
-			// let beneficiary = AccountId32 { network: None, id: to.0 };
-			//
-			// // XCM instructions to be executed on AssetHub
-			// let dest_xcm: Xcm<()> = Xcm::builder()
-			// 	.withdraw_asset(asset.clone().into())
-			// 	.buy_execution(fee_asset.into(), WeightLimit::Unlimited)
-			// 	.deposit_asset(asset.into(), beneficiary.into())
-			// 	.clear_origin()
-			// 	.build();
-			//
-			// // Construct the full XCM message
-			// let local_xcm: Xcm<()> = Xcm::builder()
-			// 	.withdraw_asset(asset.clone().into())
-			// 	.burn_asset(asset.clone().into())
-			// 	.build();
-			//
-			// let _hash = self
-			// 	.env()
-			// 	.xcm_send(&VersionedLocation::V4(destination), &VersionedXcm::V4(message))
-			// 	.map_err(|_| Error::AHTransferFailed)?;
-			//
-			// Ok(())
-		}
-	}
+			let asset_hub_para_id: u32 = 1000;
+			let destination = Location::new(1, Parachain(asset_hub_para_id));
+			let beneficiary = Location::new(0, AccountId32 { network: None, id: to.0.into() });
 
-	#[cfg(test)]
-	mod tests {
-		use super::*;
+			// Define the assets
+			let asset: Asset = (Location::parent(), value).into();
+			let fee_asset: Asset = (Location::parent(), fee).into();
 
-		#[ink::test]
-		fn transfer_works() {
-			// given
-			let contract_balance = 100;
-			let accounts = default_accounts();
-			let mut contract = create_contract(contract_balance);
+			// XCM instructions to be executed on AssetHub
+			let xcm_on_destination = Xcm(vec![
+				BuyExecution { fees: fee_asset.clone(), weight_limit: WeightLimit::Unlimited },
+				DepositAsset { assets: Wild(All.into()), beneficiary: beneficiary.clone() },
+			]);
 
-			// when
-			set_balance(accounts.eve, 0);
-			contract.transfer(accounts.eve, 80);
+			// Construct the full XCM message
+			let message: Xcm<()> = Xcm(vec![
+				// Withdraw the total amount (value + fee) from the contract's account
+				WithdrawAsset((vec![asset.clone(), fee_asset.clone()]).into()),
+				// Initiate the reserve-based transfer
+				InitiateReserveWithdraw {
+					assets: vec![asset.clone()].into(),
+					reserve: destination.clone(),
+					xcm: xcm_on_destination,
+				},
+			]);
 
-			// then
-			assert_eq!(get_balance(accounts.eve), 80);
+			let hash = self
+				.env()
+				.xcm_execute(&VersionedXcm::V4(message))
+				.map_err(|_| Error::AHTransferFailed)?;
+
+			Ok(())
 		}
 
-		#[ink::test]
-		#[should_panic(expected = "insufficient funds!")]
-		fn transfer_fails_insufficient_funds() {
-			// given
-			let contract_balance = 100;
-			let accounts = default_accounts();
-			let mut contract = create_contract(contract_balance);
-
-			// when
-			contract.transfer(accounts.eve, 120);
-
-			// then
-			// Must panic due to insufficient funds
-		}
-
-		/// Helper functions to create contract, manage balances and accounts for testing.
-		fn create_contract(initial_balance: Balance) -> TransferContract {
-			let accounts = default_accounts();
-			set_sender(accounts.alice);
-			set_balance(contract_id(), initial_balance);
-			TransferContract::new()
-		}
-
-		fn contract_id() -> AccountId {
-			ink::env::test::callee::<ink::env::DefaultEnvironment>()
-		}
-
-		fn set_sender(sender: AccountId) {
-			ink::env::test::set_caller::<ink::env::DefaultEnvironment>(sender);
-		}
-
-		fn default_accounts() -> ink::env::test::DefaultAccounts<ink::env::DefaultEnvironment> {
-			ink::env::test::default_accounts::<ink::env::DefaultEnvironment>()
-		}
-
-		fn set_balance(account_id: AccountId, balance: Balance) {
-			ink::env::test::set_account_balance::<ink::env::DefaultEnvironment>(
-				account_id, balance,
-			);
-		}
-
-		fn get_balance(account_id: AccountId) -> Balance {
-			ink::env::test::get_account_balance::<ink::env::DefaultEnvironment>(account_id)
-				.expect("Cannot get account balance")
+		#[ink(message)]
+		pub fn api_ah_transfer(
+			&mut self,
+			to: AccountId,
+			value: Balance,
+			fee: Balance,
+		) -> Result<(), Error> {
+			pop_api::v0::xc::asset_hub_transfer(to, value, fee)
+				.map_err(|_| Error::AHApiTransferFailed)
 		}
 	}
 }

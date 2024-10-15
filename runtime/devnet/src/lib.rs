@@ -39,7 +39,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::fungibles;
+use pallet_api::{fungibles, xcm as api_xcm};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -634,6 +634,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(151)]
+	pub type ApiXcm = api_xcm::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

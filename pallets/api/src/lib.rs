@@ -5,6 +5,8 @@ use frame_support::pallet_prelude::Weight;
 
 pub mod extension;
 pub mod fungibles;
+pub mod xcm;
+
 #[cfg(test)]
 mod mock;
 

@@ -1,7 +1,7 @@
 use crate::{
 	build_extension_method,
 	constants::{DISPATCH, READ_STATE},
-	primitives::Error,
+	primitives::{AccountId, Balance, Error},
 	ChainExtensionMethodApi, StatusCode,
 };
 
@@ -33,4 +33,16 @@ fn build_dispatch(module: u8, dispatchable: u8) -> ChainExtensionMethodApi {
 // - 'state_query': The index of the runtime state query.
 fn build_read_state(module: u8, state_query: u8) -> ChainExtensionMethodApi {
 	build_extension_method(READ_STATE, V0, module, state_query)
+}
+
+pub mod xc {
+	use super::*;
+	#[inline]
+	pub fn asset_hub_transfer(to: AccountId, value: Balance, fee: Balance) -> crate::Result<()> {
+		build_dispatch(151, 0)
+			.input::<(AccountId, Balance, Balance)>()
+			.output::<crate::Result<()>, true>()
+			.handle_error_code::<StatusCode>()
+			.call(&(to, value, fee))
+	}
 }

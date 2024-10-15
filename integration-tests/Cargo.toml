@@ -8,6 +8,7 @@ repository.workspace = true
 
 [dev-dependencies]
 codec.workspace = true
+log.workspace = true
 tracing-subscriber = { workspace = true, features = [
 	"env-filter",
 	"fmt",
@@ -59,6 +60,7 @@ std = [
 	"asset-hub-paseo-runtime/std",
 	"cumulus-primitives-core/std",
 	"frame-support/std",
+	"log/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-contracts/std",

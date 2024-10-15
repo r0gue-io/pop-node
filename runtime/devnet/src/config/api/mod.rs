@@ -11,7 +11,8 @@ use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+	api_xcm, config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall,
+	RuntimeEvent,
 };
 
 mod versioning;
@@ -77,6 +78,11 @@ impl fungibles::Config for Runtime {
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
 
+impl api_xcm::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
 #[derive(Default)]
 pub struct Config;
 impl pallet_api::extension::Config for Config {
@@ -130,6 +136,7 @@ pub struct Filter<T>(PhantomData<T>);
 
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
+		use api_xcm::Call::ah_transfer;
 		use fungibles::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
@@ -143,7 +150,7 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						start_destroy { .. } |
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
-				)
+				) | RuntimeCall::ApiXcm(ah_transfer { .. })
 			)
 	}
 }
@@ -170,7 +177,7 @@ mod tests {
 	use codec::Encode;
 	use pallet_api::fungibles::Call::*;
 	use sp_core::crypto::AccountId32;
-	use RuntimeCall::{Balances, Fungibles};
+	use RuntimeCall::{Balances, Fungibles, PolkadotXcm};
 
 	use super::*;
 

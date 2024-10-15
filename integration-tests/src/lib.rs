@@ -567,37 +567,41 @@ fn test_contract_interaction_on_pop_network() {
 	use codec::Encode;
 	use frame_support::traits::fungible::Inspect;
 	use pallet_contracts::{Code, CollectEvents, Determinism};
-
 	const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
 	const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
-
 	// Initialize tracing if needed
 	init_tracing();
 
 	let bob_on_pop = PopNetworkParaReceiver::get();
-	// Setup: reserve transfer from AH to Pop, so that sovereign account accurate for return
-	// transfer
+	// Setup:
+	// Reserve transfer from AH to Pop, so that sovereign account accurate for return
+	// transfer.
 	let amount_to_send: Balance = ASSET_HUB_PASEO_ED * 1000;
 	fund_pop_from_system_para(
 		AssetHubPaseoParaSender::get(),
-		amount_to_send * 10,
+		amount_to_send * 20,
 		bob_on_pop.clone(),
 		(Parent, amount_to_send * 10).into(),
 	);
-	let path = "../pop-api/examples/balance-transfer/target/ink/balance_transfer.wasm";
-	let wasm_binary = std::fs::read(path).expect("could not read .wasm file");
+	// Fund Pop Network's SA on AH with the native tokens.
+	let pop_net_location_as_seen_by_ahr =
+		AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id());
+	let sov_pop_net_on_ahr =
+		AssetHubPaseoPara::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
+	AssetHubPaseoPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount_to_send * 2)]);
+
+	// Account with empty balance.
+	let receiver = sp_runtime::AccountId32::from([1u8; 32]);
+	let mut contract = sp_runtime::AccountId32::from([0; 32]);
 
 	PopNetwork::<PaseoMockNet>::execute_with(|| {
-		// Account with empty balance on Pop.
-		let receiver_pop = sp_runtime::AccountId32::from([1u8; 32]);
-		let balance_before =
-			<PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Balances::balance(&receiver_pop);
-
 		// Instantiate the contract
+		let path = "../pop-api/examples/balance-transfer/target/ink/balance_transfer.wasm";
+		let wasm_binary = std::fs::read(path).expect("could not read .wasm file");
 		let instantiate_result =
 			<PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Contracts::bare_instantiate(
 				bob_on_pop.clone(),
-				amount_to_send,
+				amount_to_send * 5,
 				GAS_LIMIT,
 				None,
 				Code::Upload(wasm_binary),
@@ -608,24 +612,16 @@ fn test_contract_interaction_on_pop_network() {
 			)
 			.result
 			.expect("Contract instantiation failed");
+		assert!(!instantiate_result.result.did_revert());
+		contract = instantiate_result.account_id;
 
-		assert!(
-			!instantiate_result.result.did_revert(),
-			"Deploying contract reverted: {:?}",
-			instantiate_result
-		);
-
-		let contract = instantiate_result.account_id;
-
-		// Prepare the call data
+		// Transfer funds locally.
 		let function = function_selector("transfer");
-		let params = [receiver_pop.encode(), (amount_to_send / 2).encode()].concat();
+		let params = [receiver.encode(), (amount_to_send / 2).encode()].concat();
 		let input = [function, params].concat();
-
-		// Call the contract
 		let call_result = <PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Contracts::bare_call(
 			bob_on_pop.clone(),
-			contract.into(),
+			contract.clone().into(),
 			0,
 			GAS_LIMIT,
 			None,
@@ -634,16 +630,81 @@ fn test_contract_interaction_on_pop_network() {
 			CollectEvents::Skip,
 			Determinism::Enforced,
 		);
+		let result = decoded::<Result<(), bool>>(call_result.result.unwrap()).unwrap();
+		assert!(result.is_ok());
+		assert_eq!(
+			amount_to_send / 2,
+			<PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Balances::balance(&receiver)
+		);
 
-		assert!(call_result.result.is_ok(), "Contract call failed: {:?}", call_result.result);
-		let balance_after =
-			<PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Balances::balance(&receiver_pop);
-		assert_eq!(balance_after, balance_before + (amount_to_send / 2));
+		// Transfer funds to ah account.
+		// Change function selector between "ah_transfer" and "api_ah_transfer".
+		let function = function_selector("api_ah_transfer");
+		let params =
+			[receiver.encode(), (amount_to_send / 2).encode(), (amount_to_send / 4).encode()]
+				.concat();
+		let input = [function, params].concat();
+		let call_result = <PopNetwork<PaseoMockNet> as PopNetworkParaPallet>::Contracts::bare_call(
+			bob_on_pop.clone(),
+			contract.clone().into(),
+			0,
+			GAS_LIMIT,
+			None,
+			input,
+			DEBUG_OUTPUT,
+			CollectEvents::Skip,
+			Determinism::Enforced,
+		);
+		let result = decoded::<Result<(), bool>>(call_result.result.unwrap()).unwrap();
+		assert!(result.is_ok());
+
+		type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+		my_assert_expected_events!(
+			PopNetworkPara,
+			vec![
+				// Amount to reserve transfer is transferred to Parachain's Sovereign account
+				RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
+					who: *who == contract,
+					amount: *amount == (amount_to_send / 2 + amount_to_send / 4),
+				},
+			]
+		);
+	});
+
+	AssetHubPaseo::<PaseoMockNet>::execute_with(|| {
+		type RuntimeEventAH = <AssetHubPaseoPara as Chain>::RuntimeEvent;
+		let sov_pop_net_on_ahr = AssetHubPaseoPara::sovereign_account_id_of(
+			AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id()),
+		);
+		my_assert_expected_events!(
+			AssetHubPaseoPara,
+			vec![
+				// Amount to reserve transfer is withdrawn from Parachain's Sovereign account
+				RuntimeEventAH::Balances(
+					pallet_balances::Event::Burned { who, amount }
+				) => {
+					who: *who == sov_pop_net_on_ahr.clone().into(),
+					amount: *amount == amount_to_send / 2,
+				},
+				RuntimeEventAH::Balances(pallet_balances::Event::Minted { .. }) => {},
+				RuntimeEventAH::MessageQueue(
+					pallet_message_queue::Event::Processed { success: true, .. }
+				) => {},
+			]
+		);
 	});
 }
+
+use codec::Decode;
 fn function_selector(name: &str) -> Vec<u8> {
 	let hash = sp_io::hashing::blake2_256(name.as_bytes());
 	[hash[0..4].to_vec()].concat()
+}
+
+fn decoded<T: Decode>(
+	result: pallet_contracts::ExecReturnValue,
+) -> Result<T, pallet_contracts::ExecReturnValue> {
+	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
 
 // Note: commented out until coretime added to Paseo
@@ -760,4 +821,83 @@ fn init_tracing() {
 			.with_test_writer()
 			.init();
 	});
+}
+
+pub use log;
+
+#[macro_export]
+macro_rules! my_assert_expected_events {
+    ( $chain:ident, vec![$( $event_pat:pat => { $($attr:ident : $condition:expr, )* }, )*] ) => {
+        let mut message: Vec<String> = Vec::new();
+        let mut events = <$chain as $crate::Chain>::events();
+
+        $(
+            let mut event_received = false;
+            let mut found_match = false;
+            let mut index_match = 0;
+            let mut event_message: Vec<String> = Vec::new();
+
+            for (index, event) in events.iter().enumerate() {
+                let mut meet_conditions = true;
+                match event {
+                    $event_pat => {
+                        event_received = true;
+                        let mut conditions_message: Vec<String> = Vec::new();
+
+                        $(
+                            if !$condition && event_message.is_empty() {
+                                conditions_message.push(
+                                    format!(
+                                        " - The attribute {:?} = {:?} did not meet the condition {:?}\n",
+                                        stringify!($attr),
+                                        $attr,
+                                        stringify!($condition)
+                                    )
+                                );
+                            }
+                            meet_conditions &= $condition;
+                        )*
+
+                        if meet_conditions {
+                            found_match = true;
+                            index_match = index;
+                            break;
+                        } else {
+                            event_message.extend(conditions_message);
+                        }
+                    },
+                    _ => {}
+                }
+            }
+
+            if found_match {
+                events.remove(index_match);
+            } else if event_received {
+                message.push(
+                    format!(
+                        "\n\n{}::\x1b[31m{}\x1b[0m was received but some of its attributes did not meet the conditions:\n{}",
+                        stringify!($chain),
+                        stringify!($event_pat),
+                        event_message.concat()
+                    )
+                );
+            } else {
+                message.push(
+                    format!(
+                        "\n\n{}::\x1b[31m{}\x1b[0m was never received. All events:\n{:#?}",
+                        stringify!($chain),
+                        stringify!($event_pat),
+                        <$chain as $crate::Chain>::events(),
+                    )
+                );
+            }
+        )*
+
+        if !message.is_empty() {
+            <$chain as $crate::Chain>::events().iter().for_each(|event| {
+                $crate::log::debug!(target: concat!("events::", stringify!($chain)), "{:?}", event);
+            });
+            panic!("{}", message.concat())
+        }
+    }
 }

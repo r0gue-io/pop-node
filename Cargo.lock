@@ -5213,6 +5213,7 @@ dependencies = [
  "cumulus-primitives-core",
  "emulated-integration-tests-common",
  "frame-support",
+ "log",
  "pallet-assets",
  "pallet-balances",
  "pallet-contracts",
@@ -7368,6 +7369,7 @@ dependencies = [
  "log",
  "pallet-assets",
  "pallet-balances",
+ "pallet-xcm",
  "parity-scale-codec",
  "pop-chain-extension",
  "scale-info",
@@ -7375,6 +7377,7 @@ dependencies = [
  "sp-io",
  "sp-runtime",
  "sp-std",
+ "staging-xcm",
 ]
 
 [[package]]

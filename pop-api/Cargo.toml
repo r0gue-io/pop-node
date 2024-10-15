@@ -6,7 +6,8 @@ name = "pop-api"
 version = "0.0.0"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
+#ink = { version = "5.0.0", default-features = false }
+ink = { git = "https://github.com/use-ink/ink", branch = "xcm", default-features = false }
 pop-primitives = { path = "../primitives", default-features = false }
 sp-io = { version = "37.0.0", default-features = false, features = [
 	"disable_allocator",
