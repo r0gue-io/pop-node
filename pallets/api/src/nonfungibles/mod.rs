@@ -4,7 +4,7 @@
 
 pub use pallet::*;
 use pallet_nfts::WeightInfo;
-use sp_runtime::{traits::StaticLookup, RuntimeDebug};
+use sp_runtime::traits::StaticLookup;
 
 #[cfg(test)]
 mod tests;
@@ -16,8 +16,8 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use sp_std::vec::Vec;
 	use types::{
-		AccountIdOf, BalanceOf, CollectionDetailsFor, CollectionIdOf, ItemDetailsFor, ItemIdOf,
-		NftsOf, NftsWeightInfoOf,
+		AccountIdOf, CollectionDetailsFor, CollectionIdOf, ItemDetailsFor, ItemIdOf, NftsOf,
+		NftsWeightInfoOf,
 	};
 
 	use super::*;
@@ -63,7 +63,7 @@ pub mod pallet {
 		OwnerOf(Option<AccountIdOf<T>>),
 		CollectionOwner(Option<AccountIdOf<T>>),
 		TotalSupply(u32),
-		BalanceOf(BalanceOf<T>),
+		BalanceOf(u32),
 		Collection(Option<CollectionDetailsFor<T>>),
 		Item(Option<ItemDetailsFor<T>>),
 		Allowance(bool),
@@ -91,32 +91,6 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 	}
-
-	#[pallet::storage]
-	type AccountBalance<T> = StorageNMap<
-		Key = (
-			// Collection ID
-			NMapKey<Twox64Concat, CollectionIdOf<T>>,
-			// Collection Owner ID
-			NMapKey<Blake2_128Concat, AccountIdOf<T>>,
-		),
-		Value = BalanceOf<T>,
-		QueryKind = ValueQuery,
-	>;
-
-	#[pallet::storage]
-	type Allowances<T> = StorageNMap<
-		Key = (
-			// Collection ID
-			NMapKey<Twox64Concat, CollectionIdOf<T>>,
-			// Collection Owner ID
-			NMapKey<Blake2_128Concat, AccountIdOf<T>>,
-			// Collection Operator ID
-			NMapKey<Blake2_128Concat, AccountIdOf<T>>,
-		),
-		Value = bool,
-		QueryKind = ValueQuery,
-	>;
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -283,35 +257,6 @@ pub mod pallet {
 		}
 	}
 
-	impl<T: Config> Pallet<T> {
-		/// Check if the `spender` is approved to transfer the collection item.
-		pub(super) fn allowance(
-			collection: CollectionIdOf<T>,
-			owner: AccountIdOf<T>,
-			operator: AccountIdOf<T>,
-			maybe_item: Option<ItemIdOf<T>>,
-		) -> bool {
-			// Check if has a permission to transfer all collection items.
-			Allowances::<T>::get((collection, owner, operator.clone())) ||
-				maybe_item
-					.and_then(|item| Some(Self::allowance_item(collection, operator, item)))
-					.unwrap_or(false)
-		}
-
-		// Check the permission for the single item.
-		pub(super) fn allowance_item(
-			collection: CollectionIdOf<T>,
-			operator: AccountIdOf<T>,
-			item: ItemIdOf<T>,
-		) -> bool {
-			let data = pallet_nfts::Item::<T>::get(collection, item).encode();
-			if let Ok(detail) = ItemDetailsFor::<T>::decode(&mut data.as_slice()) {
-				return detail.approvals.contains_key(&operator);
-			}
-			false
-		}
-	}
-
 	impl<T: Config> crate::Read for Pallet<T> {
 		/// The type of read requested.
 		type Read = Read<T>;
@@ -338,31 +283,19 @@ pub mod pallet {
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
 				CollectionOwner(collection) =>
 					ReadResult::CollectionOwner(NftsOf::<T>::collection_owner(collection)),
-				TotalSupply(collection) => {
-					let data = pallet_nfts::Collection::<T>::get(collection).encode();
-					ReadResult::TotalSupply(
-						CollectionDetailsFor::<T>::decode(&mut data.as_slice())
-							.map(|detail| detail.items)
-							.unwrap_or_default(),
-					)
-				},
-				Collection(collection) => {
-					let data = pallet_nfts::Collection::<T>::get(collection).encode();
-					ReadResult::Collection(
-						Option::<CollectionDetailsFor<T>>::decode(&mut data.as_slice())
-							.unwrap_or(None),
-					)
-				},
-				Item { collection, item } => {
-					let data = pallet_nfts::Item::<T>::get(collection, item).encode();
-					ReadResult::Item(
-						Option::<ItemDetailsFor<T>>::decode(&mut data.as_slice()).unwrap_or(None),
-					)
-				},
-				Allowance { collection, owner, operator, item } =>
-					ReadResult::Allowance(Self::allowance(collection, owner, operator, item)),
-				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(AccountBalance::<T>::get((collection, owner))),
+				TotalSupply(collection) => ReadResult::TotalSupply(
+					NftsOf::<T>::collection_items(collection).unwrap_or_default(),
+				),
+				Collection(collection) =>
+					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
+				Item { collection, item } =>
+					ReadResult::Item(pallet_nfts::Item::<T>::get(collection, item)),
+				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
+					NftsOf::<T>::allowance(collection, item, owner, operator).unwrap_or(false),
+				),
+				BalanceOf { collection, owner } => ReadResult::BalanceOf(
+					pallet_nfts::AccountBalance::<T>::get((collection, owner)),
+				),
 			}
 		}
 	}

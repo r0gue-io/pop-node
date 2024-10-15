@@ -65,7 +65,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if let Some(check_origin) = maybe_check_origin {
 			ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 		}
-
 		let now = frame_system::Pallet::<T>::block_number();
 		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
@@ -74,15 +73,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.try_insert(delegate.clone(), deadline)
 			.map_err(|_| Error::<T, I>::ReachedApprovalLimit)?;
 		Item::<T, I>::insert(&collection, &item, &details);
-
 		Self::deposit_event(Event::TransferApproved {
 			collection,
-			item,
+			item: Some(item),
 			owner: details.owner,
 			delegate,
 			deadline,
 		});
-
 		Ok(())
 	}
 
@@ -129,7 +126,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
-			item,
+			item: Some(item),
 			owner: details.owner,
 			delegate,
 		});
@@ -172,5 +169,83 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 
 		Ok(())
+	}
+
+	pub(crate) fn do_approve_transfer_collection(
+		maybe_check_origin: Option<T::AccountId>,
+		collection: T::CollectionId,
+		delegate: T::AccountId,
+	) -> DispatchResult {
+		ensure!(
+			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
+			Error::<T, I>::MethodDisabled
+		);
+		let collection_owner =
+			Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
+		let collection_config = Self::get_collection_config(&collection)?;
+		ensure!(
+			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
+			Error::<T, I>::ItemsNonTransferable
+		);
+
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == collection_owner, Error::<T, I>::NoPermission);
+		}
+
+		Allowances::<T, I>::mutate((&collection, &collection_owner, &delegate), |allowance| {
+			*allowance = true;
+		});
+
+		Self::deposit_event(Event::TransferApproved {
+			collection,
+			item: None,
+			owner: collection_owner,
+			delegate,
+			deadline: None,
+		});
+		Ok(())
+	}
+
+	pub(crate) fn do_cancel_approval_collection(
+		maybe_check_origin: Option<T::AccountId>,
+		collection: T::CollectionId,
+		delegate: T::AccountId,
+	) -> DispatchResult {
+		let collection_owner =
+			Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == collection_owner, Error::<T, I>::NoPermission);
+		}
+
+		Allowances::<T, I>::remove((&collection, &collection_owner, &delegate));
+
+		Self::deposit_event(Event::ApprovalCancelled {
+			collection,
+			owner: collection_owner,
+			item: None,
+			delegate,
+		});
+
+		Ok(())
+	}
+
+	pub fn allowance(
+		collection: T::CollectionId,
+		item: Option<T::ItemId>,
+		owner: T::AccountId,
+		delegate: T::AccountId,
+	) -> Option<bool> {
+		// Check if a `delegate` has a permission to spend the collection.
+		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
+			return Some(true);
+		}
+		// Check if a `delegate` has a permission to spend the collection item.
+		item.map(|item| {
+			Item::<T, I>::get(&collection, &item)
+				.map(|detail| detail.approvals.contains_key(&delegate))
+		})
+		.unwrap_or_default()
 	}
 }

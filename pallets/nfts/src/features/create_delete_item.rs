@@ -69,6 +69,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 
 				collection_details.items.saturating_inc();
+				AccountBalance::<T, I>::mutate((collection, &mint_to), |balance| {
+					balance.saturating_inc();
+				});
 
 				let collection_config = Self::get_collection_config(&collection)?;
 				let deposit_amount = match collection_config
@@ -263,6 +266,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		ItemPriceOf::<T, I>::remove(&collection, &item);
 		PendingSwapOf::<T, I>::remove(&collection, &item);
 		ItemAttributesApprovalsOf::<T, I>::remove(&collection, &item);
+		AccountBalance::<T, I>::mutate((collection, &owner), |balance| {
+			balance.saturating_dec();
+		});
 
 		if remove_config {
 			ItemConfigOf::<T, I>::remove(&collection, &item);
