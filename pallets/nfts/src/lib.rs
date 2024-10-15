@@ -398,6 +398,36 @@ pub mod pallet {
 	pub type CollectionConfigOf<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Blake2_128Concat, T::CollectionId, CollectionConfigFor<T, I>, OptionQuery>;
 
+	/// Number of collection items that accounts own.
+	#[pallet::storage]
+	pub type AccountBalance<T: Config<I>, I: 'static = ()> = StorageNMap<
+		_,
+		(
+			// Collection Id.
+			NMapKey<Twox64Concat, T::CollectionId>,
+			// Collection Owner Id.
+			NMapKey<Blake2_128Concat, T::AccountId>,
+		),
+		u32,
+		ValueQuery,
+	>;
+
+	/// Permission for the delegate to transfer all owner's items within a collection.
+	#[pallet::storage]
+	pub type Allowances<T: Config<I>, I: 'static = ()> = StorageNMap<
+		_,
+		(
+			// Collection ID.
+			NMapKey<Twox64Concat, T::CollectionId>,
+			// Collection Owner Id.
+			NMapKey<Blake2_128Concat, T::AccountId>,
+			// Delegate Id.
+			NMapKey<Blake2_128Concat, T::AccountId>,
+		),
+		bool,
+		ValueQuery,
+	>;
+
 	/// Config of an item.
 	#[pallet::storage]
 	pub type ItemConfigOf<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
@@ -456,7 +486,7 @@ pub mod pallet {
 		/// a `delegate`.
 		TransferApproved {
 			collection: T::CollectionId,
-			item: T::ItemId,
+			item: Option<T::ItemId>,
 			owner: T::AccountId,
 			delegate: T::AccountId,
 			deadline: Option<BlockNumberFor<T>>,
@@ -465,7 +495,7 @@ pub mod pallet {
 		/// `collection` was cancelled by its `owner`.
 		ApprovalCancelled {
 			collection: T::CollectionId,
-			item: T::ItemId,
+			item: Option<T::ItemId>,
 			owner: T::AccountId,
 			delegate: T::AccountId,
 		},
@@ -1926,6 +1956,60 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			Self::validate_signature(&Encode::encode(&data), &signature, &signer)?;
 			Self::do_set_attributes_pre_signed(origin, data, signer)
+		}
+
+		/// Approve an item to be transferred by a delegated third-party account.
+		///
+		/// Origin must be either `ForceOrigin` or Signed and the sender should be the Owner of the
+		/// `item`.
+		///
+		/// - `collection`: The collection of the item to be approved for delegated transfer.
+		/// - `item`: The item to be approved for delegated transfer.
+		/// - `delegate`: The account to delegate permission to transfer the item.
+		///
+		/// Emits `TransferApproved` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(39)]
+		#[pallet::weight(T::WeightInfo::approve_transfer())]
+		pub fn approve_transfer_collection(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
+				.map(|_| None)
+				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_approve_transfer_collection(maybe_check_origin, collection, delegate)
+		}
+
+		/// Cancel one of the transfer approvals for a specific item.
+		///
+		/// Origin must be either:
+		/// - the `Force` origin;
+		/// - `Signed` with the signer being the Owner of the `item`;
+		///
+		/// Arguments:
+		/// - `collection`: The collection of the item of whose approval will be cancelled.
+		/// - `item`: The item of the collection of whose approval will be cancelled.
+		/// - `delegate`: The account that is going to loose their approval.
+		///
+		/// Emits `ApprovalCancelled` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(40)]
+		#[pallet::weight(T::WeightInfo::cancel_approval())]
+		pub fn cancel_approval_collection(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
+				.map(|_| None)
+				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_cancel_approval_collection(maybe_check_origin, collection, delegate)
 		}
 	}
 }

@@ -86,6 +86,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Perform the transfer with custom details using the provided closure.
 		with_details(&collection_details, &mut details)?;
 
+		// Update account balances.
+		AccountBalance::<T, I>::mutate((collection, &details.owner), |balance| {
+			balance.saturating_dec();
+		});
+		AccountBalance::<T, I>::mutate((collection, &dest), |balance| {
+			balance.saturating_dec();
+		});
+
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));
 		Account::<T, I>::insert((&dest, &collection, &item), ());
