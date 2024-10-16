@@ -7,7 +7,7 @@ name = "pallet-api-revive"
 version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+targets = [ "x86_64-unknown-linux-gnu" ]
 
 [dependencies]
 codec.workspace = true
@@ -31,31 +31,31 @@ sp-core.workspace = true
 sp-io.workspace = true
 
 [features]
-default = ["std"]
+default = [ "std" ]
 runtime-benchmarks = [
-    "frame-benchmarking/runtime-benchmarks",
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "pallet-assets/runtime-benchmarks",
-    "pop-chain-extension-revive/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-assets/runtime-benchmarks",
+	"pop-chain-extension-revive/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
 std = [
-    "codec/std",
-    "frame-benchmarking/std",
-    "frame-support/std",
-    "frame-system/std",
-    "pallet-assets/std",
-    "pallet-balances/std",
-    "pop-chain-extension-revive/std",
-    "scale-info/std",
-    "sp-core/std",
-    "sp-io/std",
-    "sp-runtime/std",
-    "sp-std/std",
+	"codec/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-assets/std",
+	"pallet-balances/std",
+	"pop-chain-extension-revive/std",
+	"scale-info/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
 ]
 try-runtime = [
-    "frame-support/try-runtime",
-    "frame-system/try-runtime",
-    "sp-runtime/try-runtime",
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"sp-runtime/try-runtime",
 ]
