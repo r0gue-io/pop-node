@@ -1,9 +1,9 @@
-use crate::{Call, Config, Pallet};
+use crate::{types::*, Call, Config, Pallet};
 use codec::HasCompact;
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	pallet_prelude::{Decode, Encode, TypeInfo},
-	traits::{fungible::Inspect, IsSubType},
+	traits::{IsSubType, IsType},
 };
 use pallet_transaction_payment::OnChargeTransaction;
 use scale_info::StaticTypeInfo;
@@ -14,22 +14,10 @@ use sp_runtime::{
 };
 
 /// Type aliases used for interaction with `OnChargeTransaction`.
-pub(crate) type OnChargeTransactionOf<T> =
-	<T as pallet_transaction_payment::Config>::OnChargeTransaction;
+type OnChargeTransactionOf<T> = <T as pallet_transaction_payment::Config>::OnChargeTransaction;
 
 /// Balance type alias.
-pub(crate) type BalanceOf<T> = <OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Balance;
-
-/// Contracts Balance type
-pub(crate) type ContractsOf<T> = <T as pallet_contracts::Config>::Currency;
-
-/// Contracts Balance alias
-pub(crate) type ContractsBalanceOf<T> =
-	<ContractsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
-
-/// Liquidity info type alias (imbalances).
-pub(crate) type LiquidityInfoOf<T> =
-	<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::LiquidityInfo;
+type BalanceOf<T> = <OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Balance;
 
 /// A [`SignedExtension`] that handles fees sponsorship.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
@@ -97,7 +85,7 @@ where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
 		+ IsSubType<pallet_contracts::Call<T>>,
-	BalanceOf<T>: Send + Sync + FixedPointOperand + From<u64>,
+	BalanceOf<T>: Send + Sync + FixedPointOperand + From<u64> + IsType<MainBalanceOf<T>>,
 	<ContractsBalanceOf<T> as HasCompact>::Type:
 		Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
 {
@@ -178,7 +166,8 @@ where
 					len as u32, info, post_info, tip,
 				);
 				crate::ContractUsage::<T>::mutate(contract.clone(), |fees| {
-					*fees = Some(fees.unwrap_or(0.into()) + actual_fee)
+					*fees =
+						Some(fees.unwrap_or(<MainBalanceOf<T>>::from(0u32)) + actual_fee.into());
 				});
 				// Only emit if registered?
 				Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
