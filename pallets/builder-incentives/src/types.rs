@@ -1,9 +1,41 @@
-use frame_support::pallet_prelude::*;
+use frame_support::{
+	pallet_prelude::*,
+	traits::{fungible::Inspect, Currency},
+};
+use pallet_transaction_payment::OnChargeTransaction;
 use sp_core::H160;
+
+use crate::Config;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 /// Era number type
 pub type EraNumber = u32;
+/// An index to a block.
+pub type BlockNumber = u32;
+
+/// Type aliases used for interaction with `OnChargeTransaction`.
+pub(crate) type OnChargeTransactionOf<T> =
+	<T as pallet_transaction_payment::Config>::OnChargeTransaction;
+
+// /// Balance type alias.
+// pub(crate) type BalanceOf<T> = <OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Balance;
+// pub(crate) type BalanceOf<T> =
+// 	<Currency<T> as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+// pub(crate) type CurrencyOf<T> = <OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Currency;
+// pub(crate) type BalanceOf<T> =
+// 	<<T as Config>::Currency as Currency<<T as SystemConfig>::AccountId>>::Balance;
+/// Contracts Balance type
+pub(crate) type ContractsOf<T> = <T as pallet_contracts::Config>::Currency;
+
+/// Contracts Balance alias
+pub(crate) type ContractsBalanceOf<T> =
+	<ContractsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
+
+pub(crate) type MainBalanceOf<T> =
+	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+/// Liquidity info type alias (imbalances).
+pub(crate) type LiquidityInfoOf<T> =
+	<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::LiquidityInfo;
 
 /// Trait defining the interface for dApp staking `smart contract types` handler.
 ///
@@ -42,5 +74,40 @@ impl<AccountId> SmartContractHandle<AccountId> for SmartContract<AccountId> {
 
 	fn wasm(address: AccountId) -> Self {
 		Self::Wasm(address)
+	}
+}
+
+/// Info about an era, including the rewards, how much is locked, unlocking, etc.
+#[derive(Clone, Encode, Decode, Default, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct EraInfo<Balance> {
+	/// Ongoing era number.
+	pub(crate) era: EraNumber,
+	/// Block number at which the next era should start.
+	pub(crate) next_era_start: BlockNumber,
+	/// Amount received in the era.
+	pub(crate) amount: Balance,
+}
+
+impl<Balance> EraInfo<Balance> {
+	/// Ongoing era.
+	pub fn era(&self) -> EraNumber {
+		self.era
+	}
+
+	/// Block number at which the next era should start.
+	pub fn next_era_start(&self) -> BlockNumber {
+		self.next_era_start
+	}
+
+	/// Set the next era start block number.
+	/// Not perfectly clean approach but helps speed up integration tests significantly.
+	pub fn set_next_era_start(&mut self, next_era_start: BlockNumber) {
+		self.next_era_start = next_era_start;
+	}
+
+	/// Checks whether a new era should be triggered, based on the provided _current_ block number argument
+	/// or possibly other protocol state parameters.
+	pub fn is_new_era(&self, now: BlockNumber) -> bool {
+		self.next_era_start <= now
 	}
 }

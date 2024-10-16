@@ -303,10 +303,18 @@ impl pallet_authorship::Config for Runtime {
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 }
 
+parameter_types! {
+	pub const BuilderIncentivesId: PalletId = PalletId(*b"BuildInc");
+	pub const EraDuration: BlockNumber = 1 * HOURS;
+}
+
 impl pallet_builder_incentives::Config for Runtime {
 	/// The ubiquitous event type.
 	type RuntimeEvent = RuntimeEvent;
+	type Currency = Balances;
+	type EraDuration = EraDuration;
 	type SmartContract = SmartContract<AccountId>;
+	type PalletId = BuilderIncentivesId;
 }
 
 parameter_types! {
