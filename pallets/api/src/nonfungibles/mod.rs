@@ -62,7 +62,7 @@ pub mod pallet {
 	pub enum ReadResult<T: Config> {
 		OwnerOf(Option<AccountIdOf<T>>),
 		CollectionOwner(Option<AccountIdOf<T>>),
-		TotalSupply(u32),
+		TotalSupply(u128),
 		BalanceOf(u32),
 		Collection(Option<CollectionDetailsFor<T>>),
 		Item(Option<ItemDetailsFor<T>>),
@@ -99,25 +99,18 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event emitted when allowance by `owner` to `spender` canceled.
-		CancelApproval {
-			/// The collection ID.
-			collection: CollectionIdOf<T>,
-			/// the item ID.
-			item: ItemIdOf<T>,
-			/// The beneficiary of the allowance.
-			spender: AccountIdOf<T>,
-		},
-		/// Event emitted when allowance by `owner` to `spender` changes.
+		/// Event emitted when allowance by `owner` to `operator` changes.
 		Approval {
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// the item ID.
-			item: ItemIdOf<T>,
 			/// The owner providing the allowance.
 			owner: AccountIdOf<T>,
 			/// The beneficiary of the allowance.
-			spender: AccountIdOf<T>,
+			operator: AccountIdOf<T>,
+			/// The item which is (dis)approved. `None` for all owner's items.
+			item: Option<ItemIdOf<T>>,
+			/// Whether allowance is set or removed.
+			approved: bool,
 		},
 		/// Event emitted when new item is minted to the account.
 		Mint {
@@ -150,12 +143,6 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Create a new non-fungible token to the collection.
-		///
-		/// # Parameters
-		/// - `to` - The owner of the collection item.
-		/// - `collection` - The collection ID.
-		/// - `item` - The item ID.
 		#[pallet::call_index(0)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -169,11 +156,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Destroy a new non-fungible token to the collection.
-		///
-		/// # Parameters
-		/// - `collection` - The collection ID.
-		/// - `item` - The item ID.
 		#[pallet::call_index(1)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
@@ -186,12 +168,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Transfer a token from one account to the another account.
-		///
-		/// # Parameters
-		/// - `collection` - The collection ID.
-		/// - `item` - The item ID.
-		/// - `to` - The recipient account.
 		#[pallet::call_index(2)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
@@ -206,53 +182,33 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Delegate a permission to perform actions on the collection item to an account.
-		///
-		/// # Parameters
-		/// - `collection` - The collection ID.
-		/// - `item` - The item ID.
-		/// - `spender` - The account that is allowed to transfer the collection item.
 		#[pallet::call_index(3)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer())]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
-			item: ItemIdOf<T>,
-			spender: AccountIdOf<T>,
+			item: Option<ItemIdOf<T>>,
+			operator: AccountIdOf<T>,
+			approved: bool,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
-			NftsOf::<T>::approve_transfer(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(spender.clone()),
-				None,
-			)?;
-			Self::deposit_event(Event::Approval { collection, item, spender, owner });
-			Ok(())
-		}
-
-		/// Cancel one of the transfer approvals for a specific item.
-		///
-		/// # Parameters
-		/// - `collection` - The collection ID.
-		/// - `item` - The item ID.
-		/// - `spender` - The account that is revoked permission to transfer the collection item.
-		#[pallet::call_index(4)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_approval())]
-		pub fn cancel_approval(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			item: ItemIdOf<T>,
-			spender: AccountIdOf<T>,
-		) -> DispatchResult {
-			NftsOf::<T>::cancel_approval(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(spender.clone()),
-			)?;
-			Self::deposit_event(Event::CancelApproval { collection, item, spender });
+			if approved {
+				NftsOf::<T>::approve_transfer(
+					origin,
+					collection,
+					item,
+					T::Lookup::unlookup(operator.clone()),
+					None,
+				)?;
+			} else {
+				NftsOf::<T>::cancel_approval(
+					origin,
+					collection,
+					item,
+					T::Lookup::unlookup(operator.clone()),
+				)?;
+			}
+			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
 			Ok(())
 		}
 	}
@@ -284,14 +240,14 @@ pub mod pallet {
 				CollectionOwner(collection) =>
 					ReadResult::CollectionOwner(NftsOf::<T>::collection_owner(collection)),
 				TotalSupply(collection) => ReadResult::TotalSupply(
-					NftsOf::<T>::collection_items(collection).unwrap_or_default(),
+					NftsOf::<T>::collection_items(collection).unwrap_or_default().into(),
 				),
 				Collection(collection) =>
 					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
 				Item { collection, item } =>
 					ReadResult::Item(pallet_nfts::Item::<T>::get(collection, item)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
-					NftsOf::<T>::allowance(collection, item, owner, operator).unwrap_or(false),
+					NftsOf::<T>::allowance(&collection, &item, &owner, &operator).is_ok(),
 				),
 				BalanceOf { collection, owner } => ReadResult::BalanceOf(
 					pallet_nfts::AccountBalance::<T>::get((collection, owner)),
