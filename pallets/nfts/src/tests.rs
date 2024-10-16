@@ -487,7 +487,7 @@ fn transfer_should_work() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(3)),
 			0,
-			42,
+			Some(42),
 			account(2),
 			None
 		));
@@ -1777,7 +1777,7 @@ fn approval_lifecycle_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			None
 		));
@@ -1791,7 +1791,7 @@ fn approval_lifecycle_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(4)),
 			0,
-			42,
+			Some(42),
 			account(2),
 			None
 		));
@@ -1819,7 +1819,7 @@ fn approval_lifecycle_works() {
 			Nfts::approve_transfer(
 				RuntimeOrigin::signed(account(1)),
 				collection_id,
-				1,
+				Some(1),
 				account(2),
 				None
 			),
@@ -1847,30 +1847,35 @@ fn cancel_approval_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			None
 		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 1, 42, account(3)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 1, Some(42), account(3)),
 			Error::<Test>::UnknownItem
 		);
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 43, account(3)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(43), account(3)),
 			Error::<Test>::UnknownItem
 		);
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(3)), 0, 42, account(3)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(3)), 0, Some(42), account(3)),
 			Error::<Test>::NoPermission
 		);
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(4)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(42), account(4)),
 			Error::<Test>::NotDelegate
 		);
 
-		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
+		assert_ok!(Nfts::cancel_approval(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			Some(42),
+			account(3)
+		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(42), account(3)),
 			Error::<Test>::NotDelegate
 		);
 
@@ -1887,18 +1892,23 @@ fn cancel_approval_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			Some(2)
 		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(5)), 0, 42, account(3)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(5)), 0, Some(42), account(3)),
 			Error::<Test>::NoPermission
 		);
 
 		System::set_block_number(current_block + 3);
 		// 5 can cancel the approval since the deadline has passed.
-		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(5)), 0, 42, account(3)));
+		assert_ok!(Nfts::cancel_approval(
+			RuntimeOrigin::signed(account(5)),
+			0,
+			Some(42),
+			account(3)
+		));
 		assert_eq!(approvals(0, 69), vec![]);
 	});
 }
@@ -1924,21 +1934,21 @@ fn approving_multiple_accounts_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			None
 		));
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(4),
 			None
 		));
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(5),
 			Some(2)
 		));
@@ -1979,14 +1989,20 @@ fn approvals_limit_works() {
 			assert_ok!(Nfts::approve_transfer(
 				RuntimeOrigin::signed(account(2)),
 				0,
-				42,
+				Some(42),
 				account(i),
 				None
 			));
 		}
 		// the limit is 10
 		assert_noop!(
-			Nfts::approve_transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(14), None),
+			Nfts::approve_transfer(
+				RuntimeOrigin::signed(account(2)),
+				0,
+				Some(42),
+				account(14),
+				None
+			),
 			Error::<Test>::ReachedApprovalLimit
 		);
 	});
@@ -2015,7 +2031,7 @@ fn approval_deadline_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			Some(2)
 		));
@@ -2034,7 +2050,7 @@ fn approval_deadline_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(4)),
 			0,
-			42,
+			Some(42),
 			account(6),
 			Some(4)
 		));
@@ -2063,26 +2079,31 @@ fn cancel_approval_works_with_admin() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			None
 		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 1, 42, account(1)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 1, Some(42), account(1)),
 			Error::<Test>::UnknownItem
 		);
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 43, account(1)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(43), account(1)),
 			Error::<Test>::UnknownItem
 		);
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(4)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(42), account(4)),
 			Error::<Test>::NotDelegate
 		);
 
-		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
+		assert_ok!(Nfts::cancel_approval(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			Some(42),
+			account(3)
+		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(1)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(42), account(1)),
 			Error::<Test>::NotDelegate
 		);
 	});
@@ -2107,26 +2128,26 @@ fn cancel_approval_works_with_force() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			None
 		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::root(), 1, 42, account(1)),
+			Nfts::cancel_approval(RuntimeOrigin::root(), 1, Some(42), account(1)),
 			Error::<Test>::UnknownItem
 		);
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::root(), 0, 43, account(1)),
+			Nfts::cancel_approval(RuntimeOrigin::root(), 0, Some(43), account(1)),
 			Error::<Test>::UnknownItem
 		);
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::root(), 0, 42, account(4)),
+			Nfts::cancel_approval(RuntimeOrigin::root(), 0, Some(42), account(4)),
 			Error::<Test>::NotDelegate
 		);
 
-		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::root(), 0, 42, account(3)));
+		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::root(), 0, Some(42), account(3)));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::root(), 0, 42, account(1)),
+			Nfts::cancel_approval(RuntimeOrigin::root(), 0, Some(42), account(1)),
 			Error::<Test>::NotDelegate
 		);
 	});
@@ -2151,14 +2172,14 @@ fn clear_all_transfer_approvals_works() {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(3),
 			None
 		));
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
-			42,
+			Some(42),
 			account(4),
 			None
 		));
@@ -3169,7 +3190,7 @@ fn pallet_level_feature_flags_should_work() {
 			Nfts::approve_transfer(
 				RuntimeOrigin::signed(user_id.clone()),
 				collection_id,
-				item_id,
+				Some(item_id),
 				account(2),
 				None
 			),
