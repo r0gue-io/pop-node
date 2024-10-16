@@ -21,9 +21,6 @@ pub mod pallet {
 		Permill,
 	};
 
-	type BalanceOf<T> =
-		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
 	#[pallet::config]
 	pub trait Config:
 		frame_system::Config + pallet_transaction_payment::Config + pallet_contracts::Config
@@ -32,14 +29,9 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// The currency mechanism.
 		type Currency: ReservableCurrency<Self::AccountId>;
-		/// Number of blocks of an era.
+		/// Duration of an era in terms of the number of blocks.
 		#[pallet::constant]
 		type EraDuration: Get<BlockNumberFor<Self>>;
-		/// Describes smart contract in the context required by dApp staking.
-		type SmartContract: Parameter
-			+ Member
-			+ MaxEncodedLen
-			+ SmartContractHandle<Self::AccountId>;
 		/// The pallet's id, used for deriving its sovereign account ID.
 		#[pallet::constant]
 		type PalletId: Get<PalletId>;
@@ -50,14 +42,13 @@ pub mod pallet {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
-	/// Regsitered Contracts.
+	/// Registered contracts to their corresponding beneficiaries.
 	#[pallet::storage]
 	pub type RegisteredContracts<T> = StorageMap<_, Twox64Concat, AccountIdOf<T>, AccountIdOf<T>>;
 
-	// TODO: Account ID instead of SmartContract
-	/// Contract usage per Era.
+	/// Tracks the usage of each contract by era.
 	#[pallet::storage]
-	pub(super) type ContractUsage<T: Config> = StorageDoubleMap<
+	pub(super) type ContractUsagePerEra<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
 		AccountIdOf<T>,
@@ -67,54 +58,60 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
-	/// General information about the eras.
+	/// Information about each era.
 	#[pallet::storage]
-	pub type ErasInfo<T> = StorageMap<_, Twox64Concat, EraNumber, EraInfo<T>, ValueQuery>;
+	pub type EraInformation<T> = StorageMap<_, Twox64Concat, EraNumber, EraInfo<T>, ValueQuery>;
 
-	/// The current era.
+	/// Current era number.
 	#[pallet::storage]
 	pub(super) type CurrentEra<T> = StorageValue<_, EraNumber, ValueQuery>;
 
-	/// The events that can be emitted.
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A user has successfully set a new value.
-		IncentivesClaimed {
-			/// The beneficiary of the incentives.
-			beneficiary: AccountIdOf<T>,
-			// The rewared amount.
-			value: BalanceOf<T>,
-		},
-		/// A smart contract has been registered for dApp staking
-		ContractRegistered { beneficiary: T::AccountId, smart_contract: T::AccountId },
-		/// A contract has been called.
+		/// A smart contract has been called.
 		ContractCalled {
-			/// The contract which has been called.
+			/// The smart contract's account that was called.
 			contract: AccountIdOf<T>,
 		},
-		/// New rewards into the Pallet.
-		IncentivesAdded {
+		/// A smart contract has been registered to receive rewards.
+		ContractRegistered {
 			/// The beneficiary of the incentives.
-			who: AccountIdOf<T>,
-			// The rewared amount.
-			value: BalanceOf<T>,
+			beneficiary: T::AccountId,
+			/// The smart contract's account being registered.
+			contract: T::AccountId,
 		},
-		/// New era has started.
-		NewEra { era: EraNumber },
+		/// A new era has started.
+		NewEra {
+			/// The number of the newly started era.
+			era: EraNumber,
+		},
+		/// New incentives have been deposited into the reward pool.
+		IncentivesDeposited {
+			/// The account that deposited the incentives.
+			source: AccountIdOf<T>,
+			/// The amount of incentives deposited.
+			amount: BalanceOf<T>,
+		},
+		/// Incentives have been claimed from the reward pool.
+		IncentivesClaimed {
+			/// The account that received the incentives.
+			beneficiary: AccountIdOf<T>,
+			// The amount of incentives withdrawn.
+			amount: BalanceOf<T>,
+		},
 	}
 
-	/// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
-		/// Smart contract already registered.
-		ContractAlreadyExists,
-		/// Smart contract is not registered.
-		ContractIsNotRegistered,
-		/// Not the beneficiary to claim rewards.
-		NotTheBeneficiary,
-		/// Can not claim rewards for the current era.
-		CanNotClaimRewardsCurrentEra,
+		/// Unable to claim rewards for the current era.
+		CannotClaimRewardsForCurrentEra,
+		/// The smart contract is already registered.
+		ContractAlreadyRegistered,
+		/// The smart contract is not registered.
+		ContractNotRegistered,
+		/// The caller is not the beneficiary authorized to claim rewards.
+		NotAuthorizedToClaimRewards,
 	}
 
 	#[pallet::genesis_config]
@@ -141,7 +138,7 @@ pub mod pallet {
 				contract_fee_total: BalanceOf::<T>::zero(),
 				total_fee_amount: BalanceOf::<T>::zero(),
 			};
-			ErasInfo::<T>::insert(self.starting_era, era_info);
+			EraInformation::<T>::insert(self.starting_era, era_info);
 		}
 	}
 
@@ -150,14 +147,14 @@ pub mod pallet {
 		fn on_initialize(now: BlockNumberFor<T>) -> Weight {
 			let now = now.saturated_into();
 			let mut current_era = CurrentEra::<T>::get();
-			let mut current_era_info = ErasInfo::<T>::get(current_era);
+			let mut current_era_info = EraInformation::<T>::get(current_era);
 			let mut consumed_weight = T::DbWeight::get().reads(2);
 
-			// Nothing to do if it's not new era
+			// Check if is new era, if not don't do anything.
 			if !current_era_info.is_new_era(now) {
 				return consumed_weight;
 			}
-			// If is new era, update the era info
+			// If is new era, update the new era information.
 			current_era.saturating_inc();
 			current_era_info
 				.set_next_era_start(now.saturating_add(T::EraDuration::get().saturated_into()));
@@ -165,53 +162,50 @@ pub mod pallet {
 			current_era_info.resent_total_fee();
 			// Update storage items
 			CurrentEra::<T>::put(current_era);
-			ErasInfo::<T>::insert(current_era, current_era_info);
+			EraInformation::<T>::insert(current_era, current_era_info);
 			consumed_weight = T::DbWeight::get().writes(2);
 			Self::deposit_event(Event::<T>::NewEra { era: current_era });
 			consumed_weight
 		}
 		// TODO: Implement on_idle for handling rewards not claimed after X period
 		// fn on_idle(_block: BlockNumberFor<T>, remaining_weight: Weight) -> Weight {
-		// 	// Clean up if rewards not claimed
-		// 	T::DbWeight::get().reads(0)
 		// }
 	}
 
-	/// The dispatchable functions available.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Used to register a new contract for builder incentives.
+		/// Register a new contract for builder incentives.
 		///
-		/// If successful, smart contract will be assigned a simple, unique numerical identifier.
-		/// Owner is set to be initial beneficiary & manager of the dApp.
+		/// # Parameters
+		/// - `beneficiary`: The account that will be the beneficiary of the contract incentives.
+		/// - `contract`: The smart contract's account to be registered.
 		#[pallet::call_index(0)]
 		#[pallet::weight(0)]
-		pub fn register(
+		pub fn register_contract(
 			origin: OriginFor<T>,
 			beneficiary: T::AccountId,
-			smart_contract: T::AccountId,
+			contract: T::AccountId,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
-			// Deposit to register? Manager to register?
+			// TODO: Deposit to register, manager vs beneficiary?
 			ensure!(
-				!RegisteredContracts::<T>::contains_key(&smart_contract),
-				Error::<T>::ContractAlreadyExists,
+				!RegisteredContracts::<T>::contains_key(&contract),
+				Error::<T>::ContractAlreadyRegistered,
 			);
-			// Check it doesn't ExceededMaxNumberOfContracts
-			RegisteredContracts::<T>::insert(&smart_contract, &beneficiary);
-			Self::deposit_event(Event::<T>::ContractRegistered { beneficiary, smart_contract });
+			// TODO: Max number of registered contracts and check it doesn't ExceededMaxNumberOfContracts
+			RegisteredContracts::<T>::insert(&contract, &beneficiary);
+			Self::deposit_event(Event::<T>::ContractRegistered { beneficiary, contract });
 			Ok(())
 		}
 
-		/// Send a payment to the pallet.
+		/// Deposit funds into the  reward pool.
 		///
 		/// Parameters:
 		/// - 'amount': Amount to be send.
 		#[pallet::call_index(1)]
 		#[pallet::weight(0)]
-		pub fn contribute(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
+		pub fn deposit_funds(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			// Transfer the funds to the pallet's account
 			<T as pallet::Config>::Currency::transfer(
 				&who,
 				&Self::get_pallet_account(),
@@ -219,37 +213,40 @@ pub mod pallet {
 				AllowDeath,
 			)?;
 			let current_era = CurrentEra::<T>::get();
-			crate::ErasInfo::<T>::mutate_exists(current_era, |maybe_era_info| {
+			crate::EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
 				if let Some(era_info) = maybe_era_info {
 					era_info.add_total_fee(amount);
 				}
 			});
-			Self::deposit_event(Event::IncentivesAdded { who, value: amount });
+			Self::deposit_event(Event::IncentivesDeposited { source: who, amount });
 			Ok(())
 		}
 
-		/// Send the rewards for the contract (has to be called by the beneficiary?).
+		/// Claims rewards for a specific contract for a given era.
 		///
 		/// Parameters:
-		/// - 'amount': Amount to be send.
+		/// - `contract`: The account of the smart contract for which rewards are being claimed.
+		/// - `era_to_claim`: The era for which rewards are being claimed. Must be the current era.
 		#[pallet::call_index(2)]
 		#[pallet::weight(0)]
 		pub fn claim_rewards(
 			origin: OriginFor<T>,
-			smart_contract: T::AccountId,
+			contract: T::AccountId,
 			era_to_claim: EraNumber,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			let beneficiary = RegisteredContracts::<T>::get(&smart_contract)
-				.ok_or(Error::<T>::ContractIsNotRegistered)?;
-			// has to be called by the beneficiary? why?
-			ensure!(beneficiary == who, Error::<T>::NotTheBeneficiary);
+			let beneficiary = RegisteredContracts::<T>::get(&contract)
+				.ok_or(Error::<T>::ContractNotRegistered)?;
+			// TODO: Think if has to be called by the beneficiary, or anyone can call it.
+			ensure!(beneficiary == who, Error::<T>::NotAuthorizedToClaimRewards);
 			ensure!(
 				CurrentEra::<T>::get() == era_to_claim,
-				Error::<T>::CanNotClaimRewardsCurrentEra
+				Error::<T>::CannotClaimRewardsForCurrentEra
 			);
-			let contract_fees = crate::ContractUsage::<T>::take(&smart_contract, era_to_claim);
-			let era_info = crate::ErasInfo::<T>::get(era_to_claim);
+			// TODO: If already claimed, or is 0, so no need to calculate anything else.
+			// TODO: Check if is too late to claim rewards
+			let contract_fees = crate::ContractUsagePerEra::<T>::take(&smart, era_to_claim);
+			let era_info = crate::EraInformation::<T>::get(era_to_claim);
 			let calculated_rewards = Self::calculate_contract_share(
 				contract_fees,
 				era_info.contract_fee_total,
@@ -262,15 +259,15 @@ pub mod pallet {
 				calculated_rewards,
 				AllowDeath,
 			)?;
-			// Reset values
-			crate::ContractUsage::<T>::insert(
-				&smart_contract,
+			// Reset the contract fees for the era.
+			crate::ContractUsagePerEra::<T>::insert(
+				&contract,
 				era_to_claim,
 				BalanceOf::<T>::zero(),
 			);
 			Self::deposit_event(Event::IncentivesClaimed {
 				beneficiary,
-				value: calculated_rewards,
+				amount: calculated_rewards,
 			});
 			Ok(())
 		}
