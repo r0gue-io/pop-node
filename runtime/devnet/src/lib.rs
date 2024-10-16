@@ -250,10 +250,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. }
-					| force_set_balance { .. }
-					| force_transfer { .. }
-					| force_unreserve { .. }
+				force_adjust_total_issuance { .. } |
+					force_set_balance { .. } |
+					force_transfer { .. } |
+					force_unreserve { .. }
 			)
 		)
 	}
