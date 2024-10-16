@@ -8,11 +8,9 @@ pub mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
-	use crate::types::*;
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{Currency, ExistenceRequirement::AllowDeath, ReservableCurrency},
+		traits::{Currency, ExistenceRequirement::AllowDeath, Get, ReservableCurrency},
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
@@ -20,6 +18,9 @@ pub mod pallet {
 		traits::{AccountIdConversion, SaturatedConversion, Saturating, Zero},
 		Permill,
 	};
+
+	use super::*;
+	use crate::types::*;
 
 	#[pallet::config]
 	pub trait Config:
@@ -192,7 +193,8 @@ pub mod pallet {
 				!RegisteredContracts::<T>::contains_key(&contract),
 				Error::<T>::ContractAlreadyRegistered,
 			);
-			// TODO: Max number of registered contracts and check it doesn't ExceededMaxNumberOfContracts
+			// TODO: Max number of registered contracts and check it doesn't
+			// ExceededMaxNumberOfContracts
 			RegisteredContracts::<T>::insert(&contract, &beneficiary);
 			Self::deposit_event(Event::<T>::ContractRegistered { beneficiary, contract });
 			Ok(())
@@ -245,7 +247,7 @@ pub mod pallet {
 			);
 			// TODO: If already claimed, or is 0, so no need to calculate anything else.
 			// TODO: Check if is too late to claim rewards
-			let contract_fees = crate::ContractUsagePerEra::<T>::take(&smart, era_to_claim);
+			let contract_fees = crate::ContractUsagePerEra::<T>::take(&contract, era_to_claim);
 			let era_info = crate::EraInformation::<T>::get(era_to_claim);
 			let calculated_rewards = Self::calculate_contract_share(
 				contract_fees,
@@ -278,7 +280,7 @@ pub mod pallet {
 		///
 		/// This actually does computation. If you need to keep using it, then make sure you cache
 		/// the value and only call this once.
-		fn get_pallet_account() -> T::AccountId {
+		pub fn get_pallet_account() -> T::AccountId {
 			T::PalletId::get().into_account_truncating()
 		}
 
@@ -302,5 +304,18 @@ pub mod pallet {
 			let proportion = Permill::from_rational(contract_fees, total_contract_fees);
 			proportion * total_fees
 		}
+	}
+}
+
+/// TypedGet implementation to get the AccountId of the Builder Incentives Pallet.
+pub struct BuilderIncentivesAccountId<R>(core::marker::PhantomData<R>);
+impl<R> sp_runtime::traits::TypedGet for BuilderIncentivesAccountId<R>
+where
+	R: crate::Config,
+{
+	type Type = <R as frame_system::Config>::AccountId;
+
+	fn get() -> Self::Type {
+		crate::Pallet::<R>::get_pallet_account()
 	}
 }

@@ -1,4 +1,3 @@
-use crate::{types::*, Call, Config, Pallet};
 use codec::HasCompact;
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
@@ -14,6 +13,8 @@ use sp_runtime::{
 	transaction_validity::{TransactionValidity, TransactionValidityError, ValidTransaction},
 	FixedPointOperand,
 };
+
+use crate::{types::*, Call, Config, Pallet};
 
 /// A [`SignedExtension`] that handles fees sponsorship.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
@@ -88,7 +89,7 @@ where
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = ();
-	//type Call = S::Call;
+	// type Call = S::Call;
 	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = (
 		// tip
