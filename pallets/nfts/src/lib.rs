@@ -1060,7 +1060,7 @@ pub mod pallet {
 
 			Self::do_transfer(collection, item, dest, |_, details| {
 				if details.owner != origin {
-					Self::allowance(&collection, &Some(item), &details.owner, &origin)?;
+					Self::check_allowance(&collection, &Some(item), &details.owner, &origin)?;
 				}
 				Ok(())
 			})
