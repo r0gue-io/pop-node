@@ -25,9 +25,11 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf,
+		fungible::{Balanced, Credit, HoldConsideration},
+		tokens::{imbalance::ResolveTo, nonfungibles_v2::Inspect},
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -41,8 +43,7 @@ use frame_system::{
 };
 use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
-// TODO: Move it to primitives
-use pallet_builder_incentives::types::SmartContract;
+use pallet_builder_incentives::BuilderIncentivesAccountId;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
@@ -66,7 +67,9 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
-pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
+pub use sp_runtime::{
+	traits::AccountIdConversion, ExtrinsicInclusionMode, MultiAddress, Perbill, Permill,
+};
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -309,12 +312,10 @@ parameter_types! {
 }
 
 impl pallet_builder_incentives::Config for Runtime {
-	/// The ubiquitous event type.
-	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type EraDuration = EraDuration;
-	type SmartContract = SmartContract<AccountId>;
 	type PalletId = BuilderIncentivesId;
+	type RuntimeEvent = RuntimeEvent;
 }
 
 parameter_types! {
@@ -339,6 +340,35 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct ToStakingPot;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToStakingPot {
+	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
+		let incentives_pot = BuilderIncentivesId::get().into_account_truncating();
+		let _ = Balances::resolve(&incentives_pot, amount);
+		// TODO: Refresh Era Information
+		// let _ = BuilderIncentives::deposit_funds(&incentives_pot, amount);
+	}
+}
+
+pub struct DealWithFees;
+impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = Credit<AccountId, Balances>>) {
+		if let Some(fees) = fees_then_tips.next() {
+			// TODO: Change numbers -> Now for testing, Burn 50% of fees, rest goes to incentives
+			// including 100% of the tips.
+			let (to_burn, mut incentives) = fees.ration(50, 50);
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut incentives);
+			}
+			// burn part of the fees
+			drop(to_burn);
+			// TODO: Use ToResolve (ToStakingPot will be deprecated)
+			// rest go for incentives
+			<ToStakingPot as OnUnbalanced<_>>::on_unbalanced(incentives);
+		}
+	}
+}
+
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = 10 * MICROUNIT;
@@ -347,7 +377,7 @@ parameter_types! {
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
+	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightToFee = WeightToFee;
