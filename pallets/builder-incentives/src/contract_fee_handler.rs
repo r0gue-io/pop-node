@@ -8,7 +8,9 @@ use frame_support::{
 use pallet_transaction_payment::OnChargeTransaction;
 use scale_info::StaticTypeInfo;
 use sp_runtime::{
-	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension, StaticLookup},
+	traits::{
+		DispatchInfoOf, Dispatchable, PostDispatchInfoOf, Saturating, SignedExtension, StaticLookup,
+	},
 	transaction_validity::{TransactionValidity, TransactionValidityError, ValidTransaction},
 	FixedPointOperand,
 };
@@ -165,9 +167,14 @@ where
 				let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
 					len as u32, info, post_info, tip,
 				);
-				crate::ContractUsage::<T>::mutate(contract.clone(), |fees| {
-					*fees =
-						Some(fees.unwrap_or(<MainBalanceOf<T>>::from(0u32)) + actual_fee.into());
+				let era = crate::CurrentEra::<T>::get();
+				crate::ContractUsage::<T>::mutate(contract.clone(), era, |fees| {
+					*fees = fees.saturating_add(actual_fee.into())
+				});
+				crate::ErasInfo::<T>::mutate_exists(era, |maybe_era_info| {
+					if let Some(era_info) = maybe_era_info {
+						era_info.add_contract_fee(actual_fee.into());
+					}
 				});
 				// Only emit if registered?
 				Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
