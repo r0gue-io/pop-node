@@ -23,7 +23,9 @@ smallvec.workspace = true
 
 # Local
 pallet-api.workspace = true
+pallet-api-revive.workspace = true
 pop-chain-extension.workspace = true
+pop-chain-extension-revive.workspace = true
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
 
@@ -99,6 +101,9 @@ ismp-parachain-runtime-api.workspace = true
 pallet-ismp = { workspace = true, features = [ "unsigned" ] }
 pallet-ismp-runtime-api.workspace = true
 
+# revive
+pallet-revive.workspace = true
+
 [dev-dependencies]
 enumflags2.workspace = true
 env_logger.workspace = true
@@ -129,6 +134,7 @@ std = [
 	"ismp-parachain/std",
 	"ismp/std",
 	"log/std",
+	"pallet-api-revive/std",
 	"pallet-api/std",
 	"pallet-assets/std",
 	"pallet-aura/std",
@@ -145,6 +151,7 @@ std = [
 	"pallet-nfts/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
+	"pallet-revive/std",
 	"pallet-scheduler/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
@@ -157,6 +164,7 @@ std = [
 	"parachains-common/std",
 	"polkadot-parachain-primitives/std",
 	"polkadot-runtime-common/std",
+	"pop-chain-extension-revive/std",
 	"pop-chain-extension/std",
 	"pop-primitives/std",
 	"pop-runtime-common/std",
@@ -189,6 +197,7 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"frame-system-benchmarking/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"pallet-api-revive/runtime-benchmarks",
 	"pallet-api/runtime-benchmarks",
 	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
@@ -200,6 +209,7 @@ runtime-benchmarks = [
 	"pallet-nfts/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
+	"pallet-revive/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
 	"pallet-sudo/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
@@ -208,6 +218,7 @@ runtime-benchmarks = [
 	"parachains-common/runtime-benchmarks",
 	"polkadot-parachain-primitives/runtime-benchmarks",
 	"polkadot-runtime-common/runtime-benchmarks",
+	"pop-chain-extension-revive/runtime-benchmarks",
 	"pop-chain-extension/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
@@ -225,6 +236,7 @@ try-runtime = [
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
 	"ismp-parachain/try-runtime",
+	"pallet-api-revive/try-runtime",
 	"pallet-api/try-runtime",
 	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
@@ -239,6 +251,7 @@ try-runtime = [
 	"pallet-nfts/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",
+	"pallet-revive/try-runtime",
 	"pallet-scheduler/try-runtime",
 	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
@@ -250,6 +263,8 @@ try-runtime = [
 	"polkadot-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
 ]
+
+riscv = [ "pallet-revive/riscv" ]
 
 # Enable the metadata hash generation.
 #
