@@ -28,7 +28,7 @@ mod create_token_in_constructor {
 			Ok(contract)
 		}
 
-		#[ink(message, payable)]
+		#[ink(message)]
 		pub fn token_exists(&self) -> Result<bool> {
 			api::token_exists(self.token)
 		}

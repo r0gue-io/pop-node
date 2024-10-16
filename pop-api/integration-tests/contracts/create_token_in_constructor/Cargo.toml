@@ -4,8 +4,7 @@ name = "create_token_in_constructor"
 version = "0.1.0"
 
 [dependencies]
-ink = { git = "https://github.com/peterwht/ink", branch = "peter/riscv", default-features = false }
-polkavm-derive = "0.11.0"
+ink = { version = "5.0.0", default-features = false }
 pop-api = { path = "../../..", default-features = false, features = [ "fungibles" ] }
 
 [lib]
