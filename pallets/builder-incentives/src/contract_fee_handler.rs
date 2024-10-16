@@ -171,10 +171,8 @@ where
 				crate::ContractUsage::<T>::mutate(contract.clone(), era, |fees| {
 					*fees = fees.saturating_add(actual_fee.into())
 				});
-				crate::ErasInfo::<T>::mutate_exists(era, |maybe_era_info| {
-					if let Some(era_info) = maybe_era_info {
-						era_info.add_contract_fee(actual_fee.into());
-					}
+				crate::ErasInfo::<T>::mutate(era, |era_info| {
+					era_info.add_contract_fee(actual_fee.into());
 				});
 				// Only emit if registered?
 				Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {

@@ -305,7 +305,7 @@ impl pallet_authorship::Config for Runtime {
 
 parameter_types! {
 	pub const BuilderIncentivesId: PalletId = PalletId(*b"BuildInc");
-	pub const EraDuration: BlockNumber = 1 * HOURS;
+	pub const EraDuration: BlockNumber = 1 * MINUTES; // 1 minute for testing
 }
 
 impl pallet_builder_incentives::Config for Runtime {
