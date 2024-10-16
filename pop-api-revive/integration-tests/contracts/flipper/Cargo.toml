@@ -1,14 +1,14 @@
 [package]
+authors = [ "[your_name] <[your_email]>" ]
+edition = "2021"
 name = "flipper"
 version = "0.1.0"
-authors = ["[your_name] <[your_email]>"]
-edition = "2021"
 
 [dependencies]
 ink = { git = "https://github.com/peterwht/ink", branch = "peter/riscv", default-features = false }
 polkavm-derive = "0.11.0"
 
-pop-api-revive = { path = "../../..", default-features = false, features = ["fungibles"] }
+pop-api-revive = { path = "../../..", default-features = false, features = [ "fungibles" ] }
 
 [dev-dependencies]
 ink_e2e = { version = "5.0.0" }
@@ -17,9 +17,9 @@ ink_e2e = { version = "5.0.0" }
 path = "lib.rs"
 
 [features]
-default = ["std"]
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
 std = [
-    "ink/std",
+	"ink/std",
 ]
-ink-as-dependency = []
-e2e-tests = []

@@ -10,7 +10,7 @@ repository.workspace = true
 version = "0.1.0"
 
 [package.metadata.docs.rs]
-targets = ["x86_64-unknown-linux-gnu"]
+targets = [ "x86_64-unknown-linux-gnu" ]
 
 [dependencies]
 codec.workspace = true
@@ -36,25 +36,25 @@ scale-info.workspace = true
 sp-io.workspace = true
 
 [features]
-default = ["std"]
+default = [ "std" ]
 runtime-benchmarks = [
-    "frame-support/runtime-benchmarks",
-    "frame-system/runtime-benchmarks",
-    "pallet-balances/runtime-benchmarks",
-    "pallet-revive/runtime-benchmarks",
-    "pallet-timestamp/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-revive/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
 std = [
-    "codec/std",
-    "frame-support/std",
-    "frame-system/std",
-    "log/std",
-    "pallet-balances/std",
-    "pallet-revive/std",
-    "pallet-timestamp/std",
-    "sp-core/std",
-    "sp-io/std",
-    "sp-runtime/std",
-    "sp-std/std",
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"log/std",
+	"pallet-balances/std",
+	"pallet-revive/std",
+	"pallet-timestamp/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
 ]
