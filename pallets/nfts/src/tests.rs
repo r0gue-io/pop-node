@@ -1850,6 +1850,63 @@ fn approval_lifecycle_works() {
 }
 
 #[test]
+fn allowance_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			account(1),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			42,
+			account(2),
+			default_item_config()
+		));
+
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			None,
+			account(2),
+			None
+		));
+
+		// collection transfer approved.
+		assert_noop!(
+			Nfts::check_allowance(&0, &Some(43), &account(1), &account(2)),
+			Error::<Test>::UnknownItem
+		);
+		assert_noop!(
+			Nfts::check_allowance(&0, &Some(42), &account(1), &account(3)),
+			Error::<Test>::NoPermission
+		);
+		assert_ok!(Nfts::check_allowance(&0, &None, &account(1), &account(2)));
+		assert_ok!(Nfts::check_allowance(&0, &Some(42), &account(1), &account(2)));
+
+		// collection item transfer approved.
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			Some(42),
+			account(3),
+			None
+		));
+
+		assert_noop!(
+			Nfts::check_allowance(&0, &Some(43), &account(2), &account(3)),
+			Error::<Test>::UnknownItem
+		);
+		assert_noop!(
+			Nfts::check_allowance(&0, &Some(42), &account(2), &account(4)),
+			Error::<Test>::NoPermission
+		);
+		assert_ok!(Nfts::check_allowance(&0, &Some(42), &account(2), &account(3)));
+	});
+}
+
+#[test]
 fn cancel_approval_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(

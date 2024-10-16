@@ -247,7 +247,7 @@ pub mod pallet {
 				Item { collection, item } =>
 					ReadResult::Item(pallet_nfts::Item::<T>::get(collection, item)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
-					NftsOf::<T>::allowance(&collection, &item, &owner, &operator).is_ok(),
+					NftsOf::<T>::check_allowance(&collection, &item, &owner, &operator).is_ok(),
 				),
 				BalanceOf { collection, owner } => ReadResult::BalanceOf(
 					pallet_nfts::AccountBalance::<T>::get((collection, owner)),

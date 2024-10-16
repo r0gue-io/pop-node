@@ -230,7 +230,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	pub fn allowance(
+	pub fn check_allowance(
 		collection: &T::CollectionId,
 		item: &Option<T::ItemId>,
 		owner: &T::AccountId,
@@ -238,6 +238,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> Result<(), DispatchError> {
 		// Check if a `delegate` has a permission to spend the collection.
 		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
+			if let Some(item) = item {
+				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+			};
 			return Ok(());
 		}
 		// Check if a `delegate` has a permission to spend the collection item.
@@ -250,7 +253,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				let block_number = frame_system::Pallet::<T>::block_number();
 				ensure!(block_number <= *d, Error::<T, I>::ApprovalExpired);
 			}
+			return Ok(());
 		};
-		Ok(())
+		Err(Error::<T, I>::NoPermission.into())
 	}
 }
