@@ -15,16 +15,10 @@ use sp_runtime::{
 	FixedPointOperand,
 };
 
-/// Type aliases used for interaction with `OnChargeTransaction`.
-type OnChargeTransactionOf<T> = <T as pallet_transaction_payment::Config>::OnChargeTransaction;
-
-/// Balance type alias.
-type BalanceOf<T> = <OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Balance;
-
 /// A [`SignedExtension`] that handles fees sponsorship.
 #[derive(Encode, Decode, Clone, Eq, PartialEq)]
 pub struct ContractFeeHandler<T: Config, S>(
-	#[codec(compact)] BalanceOf<T>,
+	#[codec(compact)] OnChargeTransactionBalanceOf<T>,
 	core::marker::PhantomData<S>,
 );
 
@@ -53,15 +47,15 @@ impl<T: Config, S: SignedExtension<AccountId = T::AccountId>> ContractFeeHandler
 where
 	<T as frame_system::Config>::RuntimeCall:
 		Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo> + IsSubType<Call<T>>,
-	BalanceOf<T>: Send + Sync + From<u64>,
+	OnChargeTransactionBalanceOf<T>: Send + Sync + From<u64>,
 {
-	/// utility constructor. Used only in client/factory code.
-	pub fn from(fee: BalanceOf<T>) -> Self {
+	/// Utility constructor. Used only in client/factory code.
+	pub fn from(fee: OnChargeTransactionBalanceOf<T>) -> Self {
 		Self(fee, core::marker::PhantomData)
 	}
 
 	/// Returns the tip as being chosen by the transaction sender.
-	pub fn tip(&self) -> BalanceOf<T> {
+	pub fn tip(&self) -> OnChargeTransactionBalanceOf<T> {
 		self.0
 	}
 
@@ -71,7 +65,7 @@ where
 		call: &<T as frame_system::Config>::RuntimeCall,
 		info: &DispatchInfoOf<<T as frame_system::Config>::RuntimeCall>,
 		len: usize,
-	) -> Result<(BalanceOf<T>, LiquidityInfoOf<T>), TransactionValidityError> {
+	) -> Result<(OnChargeTransactionBalanceOf<T>, LiquidityInfoOf<T>), TransactionValidityError> {
 		let tip = self.0;
 		let fee = pallet_transaction_payment::Pallet::<T>::compute_fee(len as u32, info, tip);
 		<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::withdraw_fee(
@@ -87,7 +81,8 @@ where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
 		+ IsSubType<pallet_contracts::Call<T>>,
-	BalanceOf<T>: Send + Sync + FixedPointOperand + From<u64> + IsType<MainBalanceOf<T>>,
+	OnChargeTransactionBalanceOf<T>:
+		Send + Sync + FixedPointOperand + From<u64> + IsType<BalanceOf<T>>,
 	<ContractsBalanceOf<T> as HasCompact>::Type:
 		Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
 {
@@ -97,7 +92,7 @@ where
 	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = (
 		// tip
-		BalanceOf<T>,
+		OnChargeTransactionBalanceOf<T>,
 		// who
 		Self::AccountId,
 		// imbalance resulting from withdrawing the fee
@@ -138,8 +133,7 @@ where
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
 		let contract = if let Some(pallet_contracts::Call::call { dest, .. }) = call.is_sub_type() {
-			// Check if contract is registred
-			// Pallet::<T>::regsitered(dest)
+			// TODO: Check if contract is to send register the fees
 			T::Lookup::lookup(dest.clone()).ok()
 		} else {
 			None
@@ -168,16 +162,14 @@ where
 					len as u32, info, post_info, tip,
 				);
 				let era = crate::CurrentEra::<T>::get();
-				crate::ContractUsage::<T>::mutate(contract.clone(), era, |fees| {
+				crate::ContractUsagePerEra::<T>::mutate(contract.clone(), era, |fees| {
 					*fees = fees.saturating_add(actual_fee.into())
 				});
-				crate::ErasInfo::<T>::mutate(era, |era_info| {
+				crate::EraInformation::<T>::mutate(era, |era_info| {
 					era_info.add_contract_fee(actual_fee.into());
 				});
-				// Only emit if registered?
 				Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
 					contract: contract.clone(),
-					// accumulated_fees: actual_fee,
 				});
 			}
 		}
