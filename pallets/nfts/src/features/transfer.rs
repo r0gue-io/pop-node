@@ -91,7 +91,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			balance.saturating_dec();
 		});
 		AccountBalance::<T, I>::mutate((collection, &dest), |balance| {
-			balance.saturating_dec();
+			balance.saturating_inc();
 		});
 
 		// Update account ownership information.
@@ -144,7 +144,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			// Check if the `origin` is the current owner of the collection.
 			ensure!(origin == details.owner, Error::<T, I>::NoPermission);
 			if details.owner == new_owner {
-				return Ok(())
+				return Ok(());
 			}
 
 			// Move the deposit to the new owner.
@@ -218,7 +218,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Collection::<T, I>::try_mutate(collection, |maybe_details| {
 			let details = maybe_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 			if details.owner == owner {
-				return Ok(())
+				return Ok(());
 			}
 
 			// Move the deposit to the new owner.
