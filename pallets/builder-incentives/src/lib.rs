@@ -69,7 +69,7 @@ pub mod pallet {
 
 	/// General information about the eras.
 	#[pallet::storage]
-	pub type ErasInfo<T> = StorageMap<_, Twox64Concat, EraNumber, EraInfo<T>>;
+	pub type ErasInfo<T> = StorageMap<_, Twox64Concat, EraNumber, EraInfo<T>, ValueQuery>;
 
 	/// The current era.
 	#[pallet::storage]
@@ -100,6 +100,8 @@ pub mod pallet {
 			// The rewared amount.
 			value: BalanceOf<T>,
 		},
+		/// New era has started.
+		NewEra { era: EraNumber },
 	}
 
 	/// Errors inform users that something went wrong.
@@ -111,8 +113,8 @@ pub mod pallet {
 		ContractIsNotRegistered,
 		/// Not the beneficiary to claim rewards.
 		NotTheBeneficiary,
-		/// Era not available.
-		EraNotAvailable,
+		/// Can not claim rewards for the current era.
+		CanNotClaimRewardsCurrentEra,
 	}
 
 	#[pallet::genesis_config]
@@ -139,9 +141,40 @@ pub mod pallet {
 				contract_fee_total: BalanceOf::<T>::zero(),
 				total_fee_amount: BalanceOf::<T>::zero(),
 			};
-			// CurrentEra::put(0); // Probably no need
 			ErasInfo::<T>::insert(self.starting_era, era_info);
 		}
+	}
+
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(now: BlockNumberFor<T>) -> Weight {
+			let now = now.saturated_into();
+			let mut current_era = CurrentEra::<T>::get();
+			let mut current_era_info = ErasInfo::<T>::get(current_era);
+			let mut consumed_weight = T::DbWeight::get().reads(2);
+
+			// Nothing to do if it's not new era
+			if !current_era_info.is_new_era(now) {
+				return consumed_weight;
+			}
+			// If is new era, update the era info
+			current_era.saturating_inc();
+			current_era_info
+				.set_next_era_start(now.saturating_add(T::EraDuration::get().saturated_into()));
+			current_era_info.reset_contract_fee();
+			current_era_info.resent_total_fee();
+			// Update storage items
+			CurrentEra::<T>::put(current_era);
+			ErasInfo::<T>::insert(current_era, current_era_info);
+			consumed_weight = T::DbWeight::get().writes(2);
+			Self::deposit_event(Event::<T>::NewEra { era: current_era });
+			consumed_weight
+		}
+		// TODO: Implement on_idle for handling rewards not claimed after X period
+		// fn on_idle(_block: BlockNumberFor<T>, remaining_weight: Weight) -> Weight {
+		// 	// Clean up if rewards not claimed
+		// 	T::DbWeight::get().reads(0)
+		// }
 	}
 
 	/// The dispatchable functions available.
@@ -207,17 +240,16 @@ pub mod pallet {
 			era_to_claim: EraNumber,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			// has to be called by the beneficiary? why?
-			// ensure!(
-			// 	RegisteredContracts::<T>::get(&smart_contract).beneficiary == who,
-			// 	Error::<T>::NotTheBeneficiary
-			// );
 			let beneficiary = RegisteredContracts::<T>::get(&smart_contract)
 				.ok_or(Error::<T>::ContractIsNotRegistered)?;
-			// TODO: Check if unlocked (checking ERA)
-			let contract_fees = crate::ContractUsage::<T>::get(&smart_contract, era_to_claim);
-			let era_info =
-				crate::ErasInfo::<T>::get(era_to_claim).ok_or(Error::<T>::EraNotAvailable)?;
+			// has to be called by the beneficiary? why?
+			ensure!(beneficiary == who, Error::<T>::NotTheBeneficiary);
+			ensure!(
+				CurrentEra::<T>::get() == era_to_claim,
+				Error::<T>::CanNotClaimRewardsCurrentEra
+			);
+			let contract_fees = crate::ContractUsage::<T>::take(&smart_contract, era_to_claim);
+			let era_info = crate::ErasInfo::<T>::get(era_to_claim);
 			let calculated_rewards = Self::calculate_contract_share(
 				contract_fees,
 				era_info.contract_fee_total,
@@ -230,7 +262,12 @@ pub mod pallet {
 				calculated_rewards,
 				AllowDeath,
 			)?;
-			// Set to 0 the counter for the era
+			// Reset values
+			crate::ContractUsage::<T>::insert(
+				&smart_contract,
+				era_to_claim,
+				BalanceOf::<T>::zero(),
+			);
 			Self::deposit_event(Event::IncentivesClaimed {
 				beneficiary,
 				value: calculated_rewards,
