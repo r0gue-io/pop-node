@@ -232,20 +232,26 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	pub fn allowance(
-		collection: T::CollectionId,
-		item: Option<T::ItemId>,
-		owner: T::AccountId,
-		delegate: T::AccountId,
-	) -> Option<bool> {
+		collection: &T::CollectionId,
+		item: &Option<T::ItemId>,
+		owner: &T::AccountId,
+		delegate: &T::AccountId,
+	) -> Result<(), DispatchError> {
 		// Check if a `delegate` has a permission to spend the collection.
 		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
-			return Some(true);
+			return Ok(());
 		}
 		// Check if a `delegate` has a permission to spend the collection item.
-		item.map(|item| {
-			Item::<T, I>::get(&collection, &item)
-				.map(|detail| detail.approvals.contains_key(&delegate))
-		})
-		.unwrap_or_default()
+		if let Some(item) = item {
+			let details =
+				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+
+			let deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
+			if let Some(d) = deadline {
+				let block_number = frame_system::Pallet::<T>::block_number();
+				ensure!(block_number <= *d, Error::<T, I>::ApprovalExpired);
+			}
+		};
+		Ok(())
 	}
 }
