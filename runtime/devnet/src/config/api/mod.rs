@@ -176,7 +176,7 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
 				) | RuntimeCall::Messaging(
-					request { .. } |
+					send { .. } |
 						ismp_get { .. } | ismp_post { .. } |
 						xcm_new_query { .. } |
 						remove { .. }

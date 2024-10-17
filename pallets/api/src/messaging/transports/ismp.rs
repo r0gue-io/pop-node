@@ -36,7 +36,7 @@ pub(crate) type PostOf<T> = Post<MaxDataLenOf<T>>;
 
 #[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
 #[scale_info(skip_type_params(MaxContextLen, MaxKeys, MaxKeyLen, MaxDataLen))]
-pub enum Request<
+pub enum Message<
 	MaxContextLen: GetT<u32>,
 	MaxKeys: GetT<u32>,
 	MaxKeyLen: GetT<u32>,
@@ -47,12 +47,12 @@ pub enum Request<
 }
 
 impl<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MayKeyLen: GetT<u32>, MaxDataLen: GetT<u32>>
-	From<Request<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>> for DispatchRequest
+	From<Message<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>> for DispatchRequest
 {
-	fn from(value: Request<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>) -> Self {
+	fn from(value: Message<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>) -> Self {
 		match value {
-			Request::Get(get) => Self::Get(get.into()),
-			Request::Post(post) => Self::Post(post.into()),
+			Message::Get(get) => Self::Get(get.into()),
+			Message::Post(post) => Self::Post(post.into()),
 		}
 	}
 }
@@ -153,8 +153,8 @@ impl<T: Config> IsmpModule for Handler<T> {
 		Ok(())
 	}
 
-	fn on_timeout(&self, request: Timeout) -> Result<(), Error> {
-		match request {
+	fn on_timeout(&self, timeout: Timeout) -> Result<(), Error> {
+		match timeout {
 			Timeout::Request(request) => {
 				// hash request to determine key for original request id lookup
 				let id = match request {
@@ -185,7 +185,7 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 		todo!()
 	}
 
-	fn on_timeout(&self, _request: &Timeout) -> Weight {
+	fn on_timeout(&self, _timeout: &Timeout) -> Weight {
 		DbWeightOf::<T>::get().reads_writes(2, 1)
 	}
 
