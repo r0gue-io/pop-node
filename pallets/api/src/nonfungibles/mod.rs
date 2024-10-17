@@ -14,10 +14,11 @@ mod types;
 pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::pallet_prelude::*;
+	use pallet_nfts::MintWitness;
 	use sp_std::vec::Vec;
 	use types::{
-		AccountIdOf, CollectionDetailsFor, CollectionIdOf, ItemDetailsFor, ItemIdOf, NftsOf,
-		NftsWeightInfoOf,
+		AccountIdOf, AttributeNamespaceOf, BalanceOf, CollectionDetailsFor, CollectionIdOf,
+		ItemDetailsFor, ItemIdOf, ItemPriceOf, NftsOf, NftsWeightInfoOf,
 	};
 
 	use super::*;
@@ -54,6 +55,14 @@ pub mod pallet {
 			operator: AccountIdOf<T>,
 			item: Option<ItemIdOf<T>>,
 		},
+		/// Returns the attribute of `item` for the given `key`.
+		#[codec(index = 6)]
+		GetAttribute {
+			collection: CollectionIdOf<T>,
+			item: Option<ItemIdOf<T>>,
+			namespace: AttributeNamespaceOf<T>,
+			key: BoundedVec<u8, T::KeyLimit>,
+		},
 	}
 
 	/// Results of state reads for the non-fungibles API.
@@ -67,6 +76,7 @@ pub mod pallet {
 		Collection(Option<CollectionDetailsFor<T>>),
 		Item(Option<ItemDetailsFor<T>>),
 		Allowance(bool),
+		GetAttribute(Option<BoundedVec<u8, T::ValueLimit>>),
 	}
 
 	impl<T: Config> ReadResult<T> {
@@ -81,6 +91,7 @@ pub mod pallet {
 				Collection(result) => result.encode(),
 				Item(result) => result.encode(),
 				Allowance(result) => result.encode(),
+				GetAttribute(result) => result.encode(),
 			}
 		}
 	}
@@ -103,46 +114,46 @@ pub mod pallet {
 		Approval {
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
+			/// The item which is (dis)approved. `None` for all owner's items.
+			item: Option<ItemIdOf<T>>,
 			/// The owner providing the allowance.
 			owner: AccountIdOf<T>,
 			/// The beneficiary of the allowance.
 			operator: AccountIdOf<T>,
-			/// The item which is (dis)approved. `None` for all owner's items.
-			item: Option<ItemIdOf<T>>,
 			/// Whether allowance is set or removed.
 			approved: bool,
 		},
-		/// Event emitted when new item is minted to the account.
-		Mint {
-			/// The owner of the item.
-			to: AccountIdOf<T>,
-			/// The collection ID.
-			collection: CollectionIdOf<T>,
-			/// the item ID.
-			item: ItemIdOf<T>,
-		},
-		/// Event emitted when item is burned.
-		Burn {
-			/// The collection ID.
-			collection: CollectionIdOf<T>,
-			/// the item ID.
-			item: ItemIdOf<T>,
-		},
-		/// Event emitted when an item transfer occurs.
+		/// Event emitted when a token transfer occurs.
+		// Differing style: event name abides by the PSP22 standard.
 		Transfer {
 			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// the item ID.
+			/// The collection item ID.
 			item: ItemIdOf<T>,
-			/// The source of the transfer.
-			from: AccountIdOf<T>,
-			/// The recipient of the transfer.
-			to: AccountIdOf<T>,
+			/// The source of the transfer. `None` when minting.
+			from: Option<AccountIdOf<T>>,
+			/// The recipient of the transfer. `None` when burning.
+			to: Option<AccountIdOf<T>>,
+			/// The amount minted.
+			value: Option<BalanceOf<T>>,
 		},
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::call_index(20)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
+		pub fn create(_origin: OriginFor<T>) -> DispatchResult {
+			Ok(())
+		}
+
+		// TODO: Fix weight
+		#[pallet::call_index(21)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
+		pub fn destroy(_origin: OriginFor<T>) -> DispatchResult {
+			Ok(())
+		}
+
 		#[pallet::call_index(0)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -150,9 +161,24 @@ pub mod pallet {
 			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
+			mint_price: Option<ItemPriceOf<T>>,
 		) -> DispatchResult {
-			NftsOf::<T>::mint(origin, collection, item, T::Lookup::unlookup(to.clone()), None)?;
-			Self::deposit_event(Event::Mint { to, collection, item });
+			let account = ensure_signed(origin.clone())?;
+			let witness_data = MintWitness { mint_price, owned_item: Some(item) };
+			NftsOf::<T>::mint(
+				origin,
+				collection,
+				item,
+				T::Lookup::unlookup(to.clone()),
+				Some(witness_data),
+			)?;
+			Self::deposit_event(Event::Transfer {
+				collection,
+				item,
+				from: None,
+				to: Some(account),
+				value: mint_price,
+			});
 			Ok(())
 		}
 
@@ -163,8 +189,15 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 		) -> DispatchResult {
+			let account = ensure_signed(origin.clone())?;
 			NftsOf::<T>::burn(origin, collection, item)?;
-			Self::deposit_event(Event::Burn { collection, item });
+			Self::deposit_event(Event::Transfer {
+				collection,
+				item,
+				from: Some(account),
+				to: None,
+				value: None,
+			});
 			Ok(())
 		}
 
@@ -178,12 +211,18 @@ pub mod pallet {
 		) -> DispatchResult {
 			let from = ensure_signed(origin.clone())?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
-			Self::deposit_event(Event::Transfer { from, to, collection, item });
+			Self::deposit_event(Event::Transfer {
+				collection,
+				item,
+				from: Some(from),
+				to: Some(to),
+				value: None,
+			});
 			Ok(())
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer() + NftsWeightInfoOf::<T>::cancel_approval())]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -251,6 +290,10 @@ pub mod pallet {
 				),
 				BalanceOf { collection, owner } => ReadResult::BalanceOf(
 					pallet_nfts::AccountBalance::<T>::get((collection, owner)),
+				),
+				GetAttribute { collection, item, namespace, key } => ReadResult::GetAttribute(
+					pallet_nfts::Attribute::<T>::get((collection, item, namespace, key))
+						.map(|attribute| attribute.0),
 				),
 			}
 		}
