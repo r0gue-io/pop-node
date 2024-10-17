@@ -2020,6 +2020,13 @@ fn cancel_approval_collection_works() {
 		);
 
 		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, None, account(3)));
+		assert!(events().contains(&Event::<Test>::ApprovalCancelled {
+			collection: 0,
+			item: None,
+			owner: account(2),
+			delegate: account(3)
+		}));
+		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))), false);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)),
@@ -2131,6 +2138,11 @@ fn approval_collection_works() {
 			account(1),
 			default_collection_config()
 		));
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			account(1),
+			default_collection_config()
+		));
 		assert_ok!(Nfts::force_mint(
 			RuntimeOrigin::signed(account(1)),
 			0,
@@ -2139,14 +2151,47 @@ fn approval_collection_works() {
 			default_item_config()
 		));
 
-		assert_ok!(Nfts::approve_transfer(
+		// Error::ItemsNonTransferable.
+		assert_ok!(Nfts::lock_collection(
 			RuntimeOrigin::signed(account(1)),
+			1,
+			CollectionSettings::from_disabled(CollectionSetting::TransferableItems.into())
+		));
+		assert_noop!(
+			Nfts::approve_transfer(RuntimeOrigin::signed(account(1)), 1, None, account(2), None),
+			Error::<Test>::ItemsNonTransferable
+		);
+
+		// Error::MethodDisabled.
+		Features::set(&PalletFeatures::from_disabled(PalletFeature::Approvals.into()));
+		assert_noop!(
+			Nfts::approve_transfer(RuntimeOrigin::signed(account(1)), 1, None, account(2), None),
+			Error::<Test>::MethodDisabled
+		);
+		Features::set(&PalletFeatures::all_enabled());
+
+		// Error::UnknownCollection.
+		assert_noop!(
+			Nfts::approve_transfer(RuntimeOrigin::signed(account(2)), 2, None, account(3), None),
+			Error::<Test>::UnknownCollection
+		);
+
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(2)),
 			0,
 			None,
 			account(3),
 			None
 		));
-		assert_eq!(Allowances::<Test>::get((0, account(1), account(3))), true);
+		assert!(events().contains(&Event::<Test>::TransferApproved {
+			collection: 0,
+			item: None,
+			owner: account(2),
+			delegate: account(3),
+			deadline: None
+		}));
+		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))), true);
+		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});
 }
 
