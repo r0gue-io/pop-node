@@ -5,12 +5,12 @@ use crate::{
 	ChainExtensionMethodApi, StatusCode,
 };
 
-// TODO: would `messaging` be a simpler/better name?
-#[cfg(feature = "cross-chain")]
-pub mod cross_chain;
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
+/// APIs for messaging.
+#[cfg(feature = "messaging")]
+pub mod messaging;
 
 pub(crate) const V0: u8 = 0;
 

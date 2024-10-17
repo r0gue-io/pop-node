@@ -2,23 +2,22 @@
 
 use ink::prelude::vec::Vec;
 use pop_api::{
-	cross_chain::{self as api, Request, RequestId, Status},
+	messaging::{self as api, Request, RequestId, Status},
 	StatusCode,
 };
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract]
-mod cross_chain {
-	use ink::codegen::Env;
+mod messaging {
 
 	use super::*;
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct CrossChain;
+	pub struct Contract;
 
-	impl CrossChain {
+	impl Contract {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
 			ink::env::debug_println!("PopApiFungiblesExample::new");
@@ -43,7 +42,7 @@ mod cross_chain {
 
 		#[ink(message)]
 		pub fn remove(&mut self, request: RequestId) -> Result<()> {
-			api::remove(request)?;
+			api::remove([request].to_vec())?;
 			Ok(())
 		}
 	}
@@ -54,7 +53,7 @@ mod cross_chain {
 
 		#[ink::test]
 		fn default_works() {
-			CrossChain::new();
+			Contract::new();
 		}
 	}
 }

@@ -13,7 +13,7 @@ use xcm_executor::traits::OnResponse;
 pub(crate) use xcm_executor::traits::QueryHandler;
 
 use super::pallet::{Config, Event, Pallet, Requests, Responses, XcmRequests};
-use crate::cross_chain::Status;
+use crate::messaging::Status;
 
 impl<T: Config> OnResponse for Pallet<T> {
 	// todo: check origin and querier

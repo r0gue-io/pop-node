@@ -20,7 +20,7 @@ name = "pop_api"
 path = "src/lib.rs"
 
 [features]
-cross-chain = [  ]
 default = [ "std" ]
 fungibles = [  ]
+messaging = [  ]
 std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]

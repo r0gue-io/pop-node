@@ -12,7 +12,7 @@ use versioning::*;
 
 use crate::{
 	config::{assets::TrustBackedAssetsInstance, xcm::LocalOriginToLocation},
-	cross_chain, fungibles, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	fungibles, messaging, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
 	RuntimeHoldReason, TransactionByteFee,
 };
 
@@ -34,9 +34,9 @@ pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
 	Fungibles(fungibles::Read<Runtime>),
-	/// Cross chain state queries.
+	/// Messaging state queries.
 	#[codec(index = 151)]
-	CrossChain(cross_chain::Read<Runtime>),
+	Messaging(messaging::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -48,7 +48,7 @@ impl Readable for RuntimeRead {
 	fn weight(&self) -> Weight {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
-			RuntimeRead::CrossChain(key) => cross_chain::Pallet::weight(key),
+			RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
 		}
 	}
 
@@ -56,8 +56,7 @@ impl Readable for RuntimeRead {
 	fn read(self) -> Self::Result {
 		match self {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
-			RuntimeRead::CrossChain(key) =>
-				RuntimeResult::CrossChain(cross_chain::Pallet::read(key)),
+			RuntimeRead::Messaging(key) => RuntimeResult::Messaging(messaging::Pallet::read(key)),
 		}
 	}
 }
@@ -68,8 +67,8 @@ impl Readable for RuntimeRead {
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
-	// Cross chain state read results.
-	CrossChain(cross_chain::ReadResult<Runtime>),
+	// Messaging state read results.
+	Messaging(messaging::ReadResult<Runtime>),
 }
 
 impl RuntimeResult {
@@ -77,12 +76,12 @@ impl RuntimeResult {
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
-			RuntimeResult::CrossChain(result) => result.encode(),
+			RuntimeResult::Messaging(result) => result.encode(),
 		}
 	}
 }
 
-impl cross_chain::Config for Runtime {
+impl messaging::Config for Runtime {
 	type ByteFee = TransactionByteFee;
 	type Deposit = Balances;
 	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
@@ -162,8 +161,8 @@ pub struct Filter<T>(PhantomData<T>);
 
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
-		use cross_chain::Call::*;
 		use fungibles::Call::*;
+		use messaging::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
 				c,
@@ -176,15 +175,15 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						start_destroy { .. } |
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
-				) | RuntimeCall::CrossChain(request { .. } | remove { .. })
+				) | RuntimeCall::Messaging(request { .. } | remove { .. })
 			)
 	}
 }
 
 impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	fn contains(r: &RuntimeRead) -> bool {
-		use cross_chain::Read::*;
 		use fungibles::Read::*;
+		use messaging::Read::*;
 		matches!(
 			r,
 			RuntimeRead::Fungibles(
@@ -194,7 +193,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					TokenName(..) | TokenSymbol(..) |
 					TokenDecimals(..) |
 					TokenExists(..)
-			) | RuntimeRead::CrossChain(Poll(..) | Get(..) | QueryId(..))
+			) | RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..))
 		)
 	}
 }

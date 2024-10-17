@@ -1,18 +1,18 @@
 use ::ismp::router::{GetResponse, IsmpRouter, PostResponse, Response, StorageValue};
 use pallet_ismp::mmr::Leaf;
-use pop_api::cross_chain::{ismp, Request, RequestId, Status};
+use pop_api::messaging::{
+	ismp,
+	xcm::{Junction, Location, MaybeErrorCode, VersionedResponse, XcmContext, XcmHash},
+	Request, RequestId, Status,
+};
 use pop_primitives::Error;
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_runtime::offchain::OffchainOverlayedChange;
-use staging_xcm::{
-	latest::{Junction, Junctions::*, Location, MaybeErrorCode, XcmContext, XcmHash},
-	VersionedResponse,
-};
 use xcm_executor::traits::OnResponse;
 
 use super::*;
 
-const CONTRACT: &str = "contracts/cross_chain/target/ink/cross_chain.wasm";
+const CONTRACT: &str = "contracts/messaging/target/ink/messaging.wasm";
 const ASSET_HUB: u32 = 1_000;
 const HYPERBRIDGE: u32 = 4_009;
 const ISMP_MODULE_ID: [u8; 3] = *b"pop";
@@ -41,7 +41,7 @@ fn ismp_get_request_works() {
 		assert_ok!(contract.request(request));
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
 
-		// TODO: assert events from cross-chain and ismp pallets emitted
+		// TODO: assert events from messaging and ismp pallets emitted
 		println!("{:#?}", System::events());
 
 		contract
@@ -84,7 +84,7 @@ fn ismp_post_request_works() {
 		assert_ok!(contract.request(request));
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
 
-		// TODO: assert events from cross-chain and ismp pallets emitted
+		// TODO: assert events from messaging and ismp pallets emitted
 		println!("{:#?}", System::events());
 		contract
 	});
@@ -112,31 +112,39 @@ fn ismp_post_request_works() {
 #[test]
 fn xcm_request_works() {
 	let id = 42u64;
-	let request = Request::Xcm { id };
 	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
-	let response = staging_xcm::v4::Response::DispatchResult(MaybeErrorCode::Success);
-	let context = XcmContext { origin: None, message_id: XcmHash::default(), topic: None };
+	let request = Request::Xcm { id, responder: origin.clone().into_versioned(), timeout: 100 };
+	let response = pop_api::messaging::xcm::Response::DispatchResult(MaybeErrorCode::Success);
+	let context = staging_xcm::prelude::XcmContext {
+		origin: None,
+		message_id: XcmHash::default(),
+		topic: None,
+	};
 	new_test_ext().execute_with(|| {
 		let contract = Contract::new();
 		assert_ok!(contract.request(request));
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
 
-		// TODO: assert events from cross-chain pallet emitted
+		// TODO: assert events from messaging pallet emitted
 		println!("{:#?}", System::events());
 
 		// Provide a response.
-		let querier = Location::new(
+		let querier = staging_xcm::prelude::Location::new(
 			0,
-			[Junction::AccountId32 { network: None, id: contract.0.clone().into() }],
+			[staging_xcm::prelude::Junction::AccountId32 {
+				network: None,
+				id: contract.0.clone().into(),
+			}],
 		);
-		assert!(CrossChain::expecting_response(&origin, id, Some(&querier)));
+		let origin = staging_xcm::prelude::Location::decode(&mut &origin.encode()[..]).unwrap();
+		assert!(Messaging::expecting_response(&origin, id, Some(&querier)));
 		// TODO: update weight
 		assert_eq!(
-			CrossChain::on_response(
+			Messaging::on_response(
 				&origin,
 				id,
 				Some(&querier),
-				response.clone(),
+				staging_xcm::prelude::Response::decode(&mut &response.encode()[..]).unwrap(),
 				Weight::MAX,
 				&context
 			),

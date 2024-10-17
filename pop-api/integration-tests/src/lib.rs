@@ -9,7 +9,7 @@ use frame_support::{
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 use pop_runtime_devnet::{
-	config::ismp::Router, Assets, Contracts, CrossChain, Runtime, RuntimeOrigin, System, UNIT,
+	config::ismp::Router, Assets, Contracts, Messaging, Runtime, RuntimeOrigin, System, UNIT,
 };
 use scale::{Decode, Encode};
 use sp_runtime::{
@@ -17,8 +17,8 @@ use sp_runtime::{
 	AccountId32, BuildStorage, DispatchError,
 };
 
-mod cross_chain;
 mod fungibles;
+mod messaging;
 
 type Balance = u128;
 

@@ -39,7 +39,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::{cross_chain, fungibles};
+use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -635,7 +635,7 @@ mod runtime {
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
 	#[runtime::pallet_index(151)]
-	pub type CrossChain = cross_chain::Pallet<Runtime>;
+	pub type Messaging = messaging::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

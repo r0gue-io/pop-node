@@ -155,9 +155,9 @@ pub mod pallet {
 	/// A reason for the pallet placing a hold on funds.
 	#[pallet::composite_enum]
 	pub enum HoldReason {
-		/// Held for a cross chain request.
+		/// Held for the duration of a messages lifespan.
 		#[codec(index = 0)]
-		CrossChainRequest,
+		Messaging,
 	}
 
 	#[pallet::call]
@@ -169,7 +169,7 @@ pub mod pallet {
 			let requestor = ensure_signed(origin)?;
 			// Calculate deposit for request and place on hold.
 			let deposit = Self::calculate_deposit(&request);
-			T::Deposit::hold(&HoldReason::CrossChainRequest.into(), &requestor, deposit)?;
+			T::Deposit::hold(&HoldReason::Messaging.into(), &requestor, deposit)?;
 			// Process request.
 			let (id, request) = match request {
 				// TODO: does ismp allow querying to ensure that specified para id is supported?
@@ -236,12 +236,7 @@ pub mod pallet {
 				if let Some(query_id) = xcm {
 					XcmRequests::<T>::remove(query_id);
 				};
-				T::Deposit::release(
-					&HoldReason::CrossChainRequest.into(),
-					&requestor,
-					deposit,
-					Exact,
-				)?;
+				T::Deposit::release(&HoldReason::Messaging.into(), &requestor, deposit, Exact)?;
 			}
 			Pallet::<T>::deposit_event(Event::<T>::Removed {
 				requestor,

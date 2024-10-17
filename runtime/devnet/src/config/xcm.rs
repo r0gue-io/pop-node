@@ -21,7 +21,7 @@ use xcm_builder::{
 use xcm_executor::{traits::OnResponse, XcmExecutor};
 
 use crate::{
-	AccountId, AllPalletsWithSystem, Balances, CrossChain, ParachainInfo, ParachainSystem,
+	AccountId, AllPalletsWithSystem, Balances, Messaging, ParachainInfo, ParachainSystem,
 	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 
@@ -146,7 +146,7 @@ impl xcm_executor::Config for XcmConfig {
 	type MessageExporter = ();
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type PalletInstancesInfo = AllPalletsWithSystem;
-	type ResponseHandler = ResponseHandler<PolkadotXcm, CrossChain>;
+	type ResponseHandler = ResponseHandler<PolkadotXcm, Messaging>;
 	type RuntimeCall = RuntimeCall;
 	type SafeCallFilter = Everything;
 	type SubscriptionService = PolkadotXcm;

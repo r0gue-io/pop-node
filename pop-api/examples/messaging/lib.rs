@@ -10,14 +10,14 @@ use ink::{
 	},
 };
 use pop_api::{
-	cross_chain::{self as api, ismp, Request, RequestId, Status},
+	messaging::{self as api, ismp, Request, RequestId, Status},
 	StatusCode,
 };
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract]
-mod cross_chain {
+mod messaging {
 	use ink::xcm::{
 		prelude::{AccountId32, OriginKind, QueryId, QueryResponseInfo, XcmHash},
 		DoubleEncoded,
@@ -27,12 +27,12 @@ mod cross_chain {
 
 	#[ink(storage)]
 	#[derive(Default)]
-	pub struct CrossChain {
+	pub struct Messaging {
 		para: u32,
 		id: RequestId,
 	}
 
-	impl CrossChain {
+	impl Messaging {
 		#[ink(constructor, payable)]
 		pub fn new(para: u32) -> Self {
 			Self { para, id: 0 }
@@ -200,7 +200,7 @@ mod cross_chain {
 
 		#[ink::test]
 		fn default_works() {
-			CrossChain::new(1_000);
+			Messaging::new(1_000);
 		}
 
 		#[test]

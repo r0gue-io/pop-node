@@ -1,12 +1,12 @@
 [package]
 authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
-name = "cross-chain"
+name = "messaging"
 version = "0.1.0"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
-pop-api = { path = "../../../../pop-api", default-features = false, features = [ "cross-chain" ] }
+ink = { git = "https://github.com/use-ink/ink", branch = "xcm", default-features = false }
+pop-api = { path = "../../../pop-api", default-features = false, features = [ "messaging" ] }
 
 [lib]
 path = "lib.rs"

@@ -1,7 +1,5 @@
-use ink::{
-	prelude::vec::Vec,
-	xcm::{latest::QueryId, prelude::VersionedLocation},
-};
+use ink::prelude::vec::Vec;
+use xcm::{QueryId, VersionedLocation};
 
 use crate::{
 	primitives::{AccountId, Balance},
@@ -90,6 +88,13 @@ pub mod ismp {
 		Get { para: u32, height: u32, timeout: u64, context: Vec<u8>, keys: Vec<Vec<u8>> },
 		Post { para: u32, timeout: u64, data: Vec<u8> },
 	}
+}
+
+pub mod xcm {
+	pub use ink::xcm::prelude::{
+		Junction, Junctions, Location, MaybeErrorCode, QueryId, Response, VersionedLocation,
+		VersionedResponse, XcmContext, XcmHash,
+	};
 }
 
 #[derive(PartialEq)]
