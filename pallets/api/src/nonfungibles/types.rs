@@ -1,7 +1,9 @@
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
 use frame_system::pallet_prelude::BlockNumberFor;
-use pallet_nfts::{AttributeNamespace, CollectionDetails, ItemDeposit, ItemDetails};
-use sp_runtime::BoundedBTreeMap;
+use pallet_nfts::{AttributeNamespace, CollectionDetails, ItemDeposit, ItemDetails, MintType};
+use scale_info::TypeInfo;
+use sp_runtime::{BoundedBTreeMap, RuntimeDebug};
 
 // Type aliases for pallet-nfts.
 pub(super) type NftsOf<T> = pallet_nfts::Pallet<T>;
@@ -28,3 +30,14 @@ pub(super) type CollectionDetailsFor<T, I = ()> =
 pub(super) type ItemDetailsFor<T, I = ()> =
 	ItemDetails<AccountIdOf<T>, ItemDepositOf<T, I>, ApprovalsOf<T>>;
 pub(super) type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
+pub(super) type CreateCollectionConfigFor<T, I = ()> =
+	CreateCollectionConfig<ItemPriceOf<T, I>, BlockNumberFor<T>, CollectionIdOf<T>>;
+
+#[derive(Clone, Copy, Decode, Encode, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo)]
+pub struct CreateCollectionConfig<Price, BlockNumber, CollectionId> {
+	pub max_supply: Option<u32>,
+	pub mint_type: MintType<CollectionId>,
+	pub price: Option<Price>,
+	pub start_block: Option<BlockNumber>,
+	pub end_block: Option<BlockNumber>,
+}
