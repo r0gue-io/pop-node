@@ -101,7 +101,10 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_sponsorships::sponsored::Sponsored<
+		Runtime,
+		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	>,
 	cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
@@ -635,9 +638,9 @@ mod runtime {
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
 
-	// Revive
-	#[runtime::pallet_index(255)]
-	pub type Revive = pallet_revive::Pallet<Runtime>;
+	// Sponsorships
+	#[runtime::pallet_index(151)]
+	pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
