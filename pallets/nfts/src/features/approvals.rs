@@ -170,7 +170,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	pub(crate) fn do_approve_transfer_collection(
+	pub(crate) fn do_approve_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
@@ -203,7 +203,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	pub(crate) fn do_cancel_approval_collection(
+	pub(crate) fn do_cancel_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		delegate: T::AccountId,

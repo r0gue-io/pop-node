@@ -400,14 +400,12 @@ pub mod pallet {
 
 	/// Number of collection items that accounts own.
 	#[pallet::storage]
-	pub type AccountBalance<T: Config<I>, I: 'static = ()> = StorageNMap<
+	pub type AccountBalance<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
-		(
-			// Collection Id.
-			NMapKey<Twox64Concat, T::CollectionId>,
-			// Collection Owner Id.
-			NMapKey<Blake2_128Concat, T::AccountId>,
-		),
+		Twox64Concat,
+		T::CollectionId,
+		Blake2_128Concat,
+		T::AccountId,
 		u32,
 		ValueQuery,
 	>;
@@ -1329,8 +1327,7 @@ pub mod pallet {
 					delegate,
 					maybe_deadline,
 				),
-				None =>
-					Self::do_approve_transfer_collection(maybe_check_origin, collection, delegate),
+				None => Self::do_approve_collection(maybe_check_origin, collection, delegate),
 			}
 		}
 
@@ -1363,8 +1360,7 @@ pub mod pallet {
 			match maybe_item {
 				Some(item) =>
 					Self::do_cancel_approval(maybe_check_origin, collection, item, delegate),
-				None =>
-					Self::do_cancel_approval_collection(maybe_check_origin, collection, delegate),
+				None => Self::do_cancel_collection(maybe_check_origin, collection, delegate),
 			}
 		}
 
