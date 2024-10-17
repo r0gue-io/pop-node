@@ -105,6 +105,10 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
+	pallet_sponsorships::sponsored::Sponsored<
+		Runtime,
+		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	>,
 	pallet_incentives::contract_fee_handler::ContractFeeHandler<
 		Runtime,
 		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
@@ -696,6 +700,10 @@ mod runtime {
 	// Incentives
 	#[runtime::pallet_index(152)]
 	pub type Incentives = pallet_incentives::Pallet<Runtime>;
+
+	// Sponsorships
+	#[runtime::pallet_index(153)]
+	pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
 
 	// Revive
 	#[runtime::pallet_index(255)]
