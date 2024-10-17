@@ -1,11 +1,16 @@
 use ::ismp::router::{GetResponse, IsmpRouter, PostResponse, Response, StorageValue};
 use pallet_ismp::mmr::Leaf;
-use pop_api::messaging::{
-	ismp,
-	xcm::{Junction, Location, MaybeErrorCode, VersionedResponse, XcmContext, XcmHash},
-	Request, RequestId, Status,
+use pop_api::{
+	messaging::{
+		ismp::{Get, Post},
+		xcm::{
+			Junction, Location, MaybeErrorCode, QueryId, VersionedLocation, VersionedResponse,
+			XcmHash,
+		},
+		RequestId, Status,
+	},
+	primitives::{BlockNumber, Error},
 };
-use pop_primitives::Error;
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_runtime::offchain::OffchainOverlayedChange;
 use xcm_executor::traits::OnResponse;
@@ -21,24 +26,14 @@ const ISMP_MODULE_ID: [u8; 3] = *b"pop";
 fn ismp_get_request_works() {
 	let id = 42;
 	let key = "some_key".as_bytes().to_vec();
-	let request = Request::Ismp {
-		id,
-		request: ismp::Request::Get {
-			para: ASSET_HUB,
-			height: 0,
-			timeout: 0,
-			context: "some_context".as_bytes().to_vec(),
-			keys: vec![key.clone()],
-		},
-		fee: 0,
-	};
+	let request = Get::new(ASSET_HUB, 0, 0, "some_context".as_bytes().to_vec(), vec![key.clone()]);
 	let response = vec![StorageValue { key, value: Some("some_value".as_bytes().to_vec()) }];
 
 	// Create a get request.
 	let mut ext = new_test_ext();
 	let contract = ext.execute_with(|| {
 		let contract = Contract::new();
-		assert_ok!(contract.request(request));
+		assert_ok!(contract.ismp_get(id, request, 0));
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
 
 		// TODO: assert events from messaging and ismp pallets emitted
@@ -66,22 +61,14 @@ fn ismp_get_request_works() {
 #[test]
 fn ismp_post_request_works() {
 	let id = 42;
-	let request = Request::Ismp {
-		id,
-		request: ismp::Request::Post {
-			para: HYPERBRIDGE,
-			timeout: 0,
-			data: "some_data".as_bytes().to_vec(),
-		},
-		fee: 0,
-	};
+	let request = Post::new(HYPERBRIDGE, 0, "some_data".as_bytes().to_vec());
 	let response = "some_value".as_bytes().to_vec();
 
 	// Create a post request.
 	let mut ext = new_test_ext();
 	let contract = ext.execute_with(|| {
 		let contract = Contract::new();
-		assert_ok!(contract.request(request));
+		assert_ok!(contract.ismp_post(id, request, 0));
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
 
 		// TODO: assert events from messaging and ismp pallets emitted
@@ -113,7 +100,8 @@ fn ismp_post_request_works() {
 fn xcm_request_works() {
 	let id = 42u64;
 	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
-	let request = Request::Xcm { id, responder: origin.clone().into_versioned(), timeout: 100 };
+	let responder = origin.clone().into_versioned();
+	let timeout = 100;
 	let response = pop_api::messaging::xcm::Response::DispatchResult(MaybeErrorCode::Success);
 	let context = staging_xcm::prelude::XcmContext {
 		origin: None,
@@ -122,7 +110,8 @@ fn xcm_request_works() {
 	};
 	new_test_ext().execute_with(|| {
 		let contract = Contract::new();
-		assert_ok!(contract.request(request));
+		let query_id = contract.xcm_new_query(id, responder, timeout).unwrap().unwrap();
+		assert_eq!(query_id, 0);
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
 
 		// TODO: assert events from messaging pallet emitted
@@ -137,12 +126,12 @@ fn xcm_request_works() {
 			}],
 		);
 		let origin = staging_xcm::prelude::Location::decode(&mut &origin.encode()[..]).unwrap();
-		assert!(Messaging::expecting_response(&origin, id, Some(&querier)));
+		assert!(Messaging::expecting_response(&origin, query_id, Some(&querier)));
 		// TODO: update weight
 		assert_eq!(
 			Messaging::on_response(
 				&origin,
-				id,
+				query_id,
 				Some(&querier),
 				staging_xcm::prelude::Response::decode(&mut &response.encode()[..]).unwrap(),
 				Weight::MAX,
@@ -204,9 +193,26 @@ impl Contract {
 		Self(instantiate(CONTRACT, INIT_VALUE, vec![]))
 	}
 
-	fn request(&self, request: Request) -> Result<(), Error> {
-		let result = self.call("request", request.encode(), 0);
+	fn ismp_get(&self, id: RequestId, request: Get, fee: Balance) -> Result<(), Error> {
+		let result = self.call("ismp_get", (id, request, fee).encode(), 0);
 		<Result<(), Error>>::decode(&mut &result.data[1..])
+			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+	}
+
+	fn ismp_post(&self, id: RequestId, request: Post, fee: Balance) -> Result<(), Error> {
+		let result = self.call("ismp_post", (id, request, fee).encode(), 0);
+		<Result<(), Error>>::decode(&mut &result.data[1..])
+			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+	}
+
+	fn xcm_new_query(
+		&self,
+		id: RequestId,
+		responder: VersionedLocation,
+		timeout: BlockNumber,
+	) -> Result<Option<QueryId>, Error> {
+		let result = self.call("xcm_new_query", (id, responder, timeout).encode(), 0);
+		<Result<Option<QueryId>, Error>>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 

@@ -2,22 +2,32 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
+	ensure,
 	pallet_prelude::MaxEncodedLen,
-	traits::{fungible::Inspect, Get},
+	traits::{
+		fungible::{Inspect, MutateHold},
+		Get, OriginTrait,
+	},
 	CloneNoBound, DebugNoBound, EqNoBound, PartialEqNoBound,
 };
-use frame_system::pallet_prelude::BlockNumberFor;
+use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::{traits::Saturating, BoundedVec, SaturatedConversion};
+use sp_runtime::{
+	traits::{Saturating, TryConvert},
+	BoundedVec, DispatchResult, SaturatedConversion,
+};
 use sp_std::vec::Vec;
-use xcm::{Location, QueryHandler, QueryId, VersionedLocation};
+use transports::{
+	ismp::{self as ismp, FeeMetadata, GetOf, IsmpDispatcher, PostOf},
+	xcm::{self as xcm, Location, QueryHandler, QueryId, VersionedLocation},
+};
 
 use super::Weight;
 
-pub mod ismp;
-mod xcm;
+/// Messaging transports.
+pub mod transports;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
@@ -42,19 +52,12 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::DispatchResult,
 		pallet_prelude::*,
-		traits::{
-			tokens::{fungible::hold::Mutate, Precision::Exact},
-			OriginTrait,
-		},
+		traits::tokens::{fungible::hold::Mutate, Precision::Exact},
 	};
-	use frame_system::pallet_prelude::*;
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
 
-	use super::{
-		ismp::{FeeMetadata, IsmpDispatcher},
-		*,
-	};
+	use super::*;
 
 	/// Configuration of the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -155,66 +158,60 @@ pub mod pallet {
 	/// A reason for the pallet placing a hold on funds.
 	#[pallet::composite_enum]
 	pub enum HoldReason {
-		/// Held for the duration of a messages lifespan.
+		/// Held for the duration of a message's lifespan.
 		#[codec(index = 0)]
 		Messaging,
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		// Register/dispatch an async request for data.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
-		pub fn request(origin: OriginFor<T>, request: RequestOf<T>) -> DispatchResult {
-			let requestor = ensure_signed(origin)?;
-			// Calculate deposit for request and place on hold.
-			let deposit = Self::calculate_deposit(&request);
-			T::Deposit::hold(&HoldReason::Messaging.into(), &requestor, deposit)?;
-			// Process request.
-			let (id, request) = match request {
-				// TODO: does ismp allow querying to ensure that specified para id is supported?
-				Request::Ismp { id, request, fee } => {
-					ensure!(
-						!Requests::<T>::contains_key(&requestor, &id),
-						Error::<T>::RequestExists
-					);
-					// Dispatch request via ISMP.
-					let commitment = T::IsmpDispatcher::default()
-						.dispatch_request(
-							request.into(),
-							FeeMetadata { payer: requestor.clone(), fee },
-						)
-						.map_err(|_| Error::<T>::DispatchFailed)?;
-					// Store commitment for later lookup on response.
-					IsmpRequests::<T>::insert(&commitment, (&requestor, id));
-					(id, (Status::Pending, deposit, Some(commitment), None::<QueryId>))
-				},
-				Request::Xcm { id, responder, timeout } => {
-					ensure!(
-						!Requests::<T>::contains_key(&requestor, &id),
-						Error::<T>::RequestExists
-					);
-					let responder = Location::try_from(responder)
-						.map_err(|_| Error::<T>::OriginConversionFailed)?;
-					// TODO: neater way of doing this
-					let querier = T::OriginConverter::try_convert(T::RuntimeOrigin::signed(
-						requestor.clone(),
-					))
-					.map_err(|_| Error::<T>::OriginConversionFailed)?;
-					let query_id = T::Xcm::new_query(responder, timeout, querier);
-					// Store query id for later lookup on response.
-					XcmRequests::<T>::insert(&query_id, (&requestor, id));
-					(id, (Status::Pending, deposit, None::<H256>, Some(query_id)))
-				},
-			};
-			// Store request for querying, response/timeout handling
-			Requests::<T>::insert(&requestor, id, request);
-			Pallet::<T>::deposit_event(Event::<T>::Requested { requestor, id });
-			Ok(())
+		pub fn request(_origin: OriginFor<T>, _id: RequestId) -> DispatchResult {
+			todo!("Reserved for messaging abstractions - e.g. Request::State")
+		}
+
+		#[pallet::call_index(1)]
+		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
+		pub fn ismp_get(
+			origin: OriginFor<T>,
+			id: RequestId,
+			request: GetOf<T>,
+			fee: BalanceOf<T>,
+		) -> DispatchResult {
+			Self::do_request(
+				origin,
+				RequestOf::<T>::Ismp { id, request: ismp::Request::Get(request), fee },
+			)
+		}
+
+		#[pallet::call_index(2)]
+		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
+		pub fn ismp_post(
+			origin: OriginFor<T>,
+			id: RequestId,
+			request: PostOf<T>,
+			fee: BalanceOf<T>,
+		) -> DispatchResult {
+			Self::do_request(
+				origin,
+				RequestOf::<T>::Ismp { id, request: ismp::Request::Post(request), fee },
+			)
+		}
+
+		#[pallet::call_index(3)]
+		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
+		pub fn xcm_new_query(
+			origin: OriginFor<T>,
+			id: RequestId,
+			responder: VersionedLocation,
+			timeout: BlockNumberOf<T>,
+		) -> DispatchResult {
+			Self::do_request(origin, RequestOf::<T>::Xcm { id, responder, timeout })
 		}
 
 		// Remove a request/response, returning any deposit previously taken.
-		#[pallet::call_index(1)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
 		pub fn remove(
 			origin: OriginFor<T>,
@@ -269,11 +266,17 @@ impl<T: Config> Pallet<T> {
 				// Determine length of variable data included in the request.
 				// todo: use ismp::DispatchRequest types instead
 				let len = match request {
-					ismp::Request::Get { para, height, timeout, context, keys } =>
+					ismp::Request::Get(GetOf::<T> {
+						dest: para,
+						height,
+						timeout,
+						context,
+						keys,
+					}) =>
 						para.encoded_size() +
 							height.encoded_size() + timeout.encoded_size() +
 							context.len() + keys.iter().map(|k| k.len()).sum::<usize>(),
-					ismp::Request::Post { para, timeout, data } =>
+					ismp::Request::Post(PostOf::<T> { dest: para, timeout, data }) =>
 						para.encoded_size() + timeout.encoded_size() + data.len(),
 				};
 
@@ -295,6 +298,45 @@ impl<T: Config> Pallet<T> {
 		deposit.saturating_accrue(T::ByteFee::get() * T::MaxResponseLen::get().saturated_into());
 
 		deposit
+	}
+
+	fn do_request(origin: OriginFor<T>, request: RequestOf<T>) -> DispatchResult {
+		let requestor = ensure_signed(origin)?;
+		// Calculate deposit for request and place on hold.
+		let deposit = Self::calculate_deposit(&request);
+		T::Deposit::hold(&HoldReason::Messaging.into(), &requestor, deposit)?;
+		// Process request.
+		let (id, request) = match request {
+			// TODO: does ismp allow querying to ensure that specified para id is supported?
+			Request::Ismp { id, request, fee } => {
+				ensure!(!Requests::<T>::contains_key(&requestor, &id), Error::<T>::RequestExists);
+				// Dispatch request via ISMP.
+				let commitment = T::IsmpDispatcher::default()
+					.dispatch_request(request.into(), FeeMetadata { payer: requestor.clone(), fee })
+					.map_err(|_| Error::<T>::DispatchFailed)?;
+				// Store commitment for later lookup on response.
+				IsmpRequests::<T>::insert(&commitment, (&requestor, id));
+				(id, (Status::Pending, deposit, Some(commitment), None::<QueryId>))
+			},
+			Request::Xcm { id, responder, timeout } => {
+				ensure!(!Requests::<T>::contains_key(&requestor, &id), Error::<T>::RequestExists);
+				let responder = Location::try_from(responder)
+					.map_err(|_| Error::<T>::OriginConversionFailed)?;
+				// TODO: neater way of doing this
+				let querier =
+					T::OriginConverter::try_convert(T::RuntimeOrigin::signed(requestor.clone()))
+						.map_err(|_| Error::<T>::OriginConversionFailed)?;
+				let query_id = T::Xcm::new_query(responder, timeout, querier);
+				// Store query id for later lookup on response.
+				XcmRequests::<T>::insert(&query_id, (&requestor, id));
+				(id, (Status::Pending, deposit, None::<H256>, Some(query_id)))
+			},
+		};
+		// Store request for querying, response/timeout handling
+		Requests::<T>::insert(&requestor, id, request);
+		// TODO: event per dispatchable for determining usage
+		Pallet::<T>::deposit_event(Event::<T>::Requested { requestor, id });
+		Ok(())
 	}
 }
 

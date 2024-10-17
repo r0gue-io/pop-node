@@ -1,17 +1,22 @@
 use ink::prelude::vec::Vec;
-use xcm::{QueryId, VersionedLocation};
 
 use crate::{
-	primitives::{AccountId, Balance},
-	BlockNumber, ChainExtensionMethodApi, Result, StatusCode,
+	primitives::{AccountId, Balance, BlockNumber},
+	ChainExtensionMethodApi, Result, StatusCode,
 };
 
-// TODO: split api into ismp/xcm submodules
+/// APIs for messaging using the Interoperable State Machine Protocol (ISMP).
+pub mod ismp;
+/// APIs for messaging using Polkadot's Cross-Consensus Messaging (XCM).
+pub mod xcm;
 
 pub(crate) const API: u8 = 151;
 // Dispatchables
 pub(super) const REQUEST: u8 = 0;
-pub(super) const REMOVE: u8 = 1;
+pub(super) const ISMP_GET: u8 = 1;
+pub(super) const ISMP_POST: u8 = 2;
+pub(super) const XCM_NEW_QUERY: u8 = 3;
+pub(super) const REMOVE: u8 = 4;
 // Reads
 pub(super) const POLL: u8 = 0;
 pub(super) const GET: u8 = 1;
@@ -25,15 +30,6 @@ fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
 
 fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
 	crate::v0::build_read_state(API, state_query)
-}
-
-#[inline]
-pub fn request(request: Request) -> Result<()> {
-	build_dispatch(REQUEST)
-		.input::<Request>()
-		.output::<Result<()>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&request)
 }
 
 #[inline]
@@ -61,40 +57,6 @@ pub fn remove(requests: Vec<RequestId>) -> Result<()> {
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&requests)
-}
-
-#[inline]
-pub fn query_id(id: (AccountId, RequestId)) -> Result<Option<QueryId>> {
-	build_read_state(QUERY_ID)
-		.input::<(AccountId, RequestId)>()
-		.output::<Result<Option<QueryId>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&id)
-}
-
-// TODO: eliminate enum
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum Request {
-	Ismp { id: RequestId, request: ismp::Request, fee: Balance },
-	Xcm { id: RequestId, responder: VersionedLocation, timeout: BlockNumber },
-}
-
-pub mod ismp {
-	use super::*;
-
-	// TODO: eliminate enum
-	#[ink::scale_derive(Encode, Decode, TypeInfo)]
-	pub enum Request {
-		Get { para: u32, height: u32, timeout: u64, context: Vec<u8>, keys: Vec<Vec<u8>> },
-		Post { para: u32, timeout: u64, data: Vec<u8> },
-	}
-}
-
-pub mod xcm {
-	pub use ink::xcm::prelude::{
-		Junction, Junctions, Location, MaybeErrorCode, QueryId, Response, VersionedLocation,
-		VersionedResponse, XcmContext, XcmHash,
-	};
 }
 
 #[derive(PartialEq)]

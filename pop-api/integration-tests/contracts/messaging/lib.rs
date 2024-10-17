@@ -2,7 +2,12 @@
 
 use ink::prelude::vec::Vec;
 use pop_api::{
-	messaging::{self as api, Request, RequestId, Status},
+	messaging::{
+		self as api,
+		ismp::{Get, Post},
+		xcm::{QueryId, VersionedLocation},
+		RequestId, Status,
+	},
 	StatusCode,
 };
 
@@ -10,7 +15,6 @@ pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract]
 mod messaging {
-
 	use super::*;
 
 	#[ink(storage)]
@@ -20,14 +24,29 @@ mod messaging {
 	impl Contract {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
-			ink::env::debug_println!("PopApiFungiblesExample::new");
 			Default::default()
 		}
 
 		#[ink(message)]
-		pub fn request(&mut self, request: Request) -> Result<()> {
-			api::request(request)?;
+		pub fn ismp_get(&mut self, id: RequestId, request: Get, fee: Balance) -> Result<()> {
+			api::ismp::get(id, request, fee)?;
 			Ok(())
+		}
+
+		#[ink(message)]
+		pub fn ismp_post(&mut self, id: RequestId, request: Post, fee: Balance) -> Result<()> {
+			api::ismp::post(id, request, fee)?;
+			Ok(())
+		}
+
+		#[ink(message)]
+		pub fn xcm_new_query(
+			&mut self,
+			id: RequestId,
+			responder: VersionedLocation,
+			timeout: BlockNumber,
+		) -> Result<Option<QueryId>> {
+			api::xcm::new_query(id, responder, timeout)
 		}
 
 		#[ink(message)]

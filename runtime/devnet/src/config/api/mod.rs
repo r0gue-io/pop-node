@@ -175,7 +175,12 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						start_destroy { .. } |
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
-				) | RuntimeCall::Messaging(request { .. } | remove { .. })
+				) | RuntimeCall::Messaging(
+					request { .. } |
+						ismp_get { .. } | ismp_post { .. } |
+						xcm_new_query { .. } |
+						remove { .. }
+				)
 			)
 	}
 }

@@ -20,60 +20,86 @@ use ismp::{
 };
 use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
-use sp_core::{keccak_256, Get, H256};
+use sp_core::{keccak_256, Get as GetT, H256};
 use sp_runtime::BoundedVec;
 
-use super::{
+use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Pallet, Requests, Responses},
-	Status,
+	MaxContextLenOf, MaxDataLenOf, MaxKeyLenOf, MaxKeysOf, Status,
 };
 
 pub const ID: [u8; 3] = *b"pop";
 
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
+pub(crate) type GetOf<T> = Get<MaxContextLenOf<T>, MaxKeysOf<T>, MaxKeyLenOf<T>>;
+pub(crate) type PostOf<T> = Post<MaxDataLenOf<T>>;
 
 #[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
 #[scale_info(skip_type_params(MaxContextLen, MaxKeys, MaxKeyLen, MaxDataLen))]
 pub enum Request<
-	MaxContextLen: Get<u32>,
-	MaxKeys: Get<u32>,
-	MaxKeyLen: Get<u32>,
-	MaxDataLen: Get<u32>,
+	MaxContextLen: GetT<u32>,
+	MaxKeys: GetT<u32>,
+	MaxKeyLen: GetT<u32>,
+	MaxDataLen: GetT<u32>,
 > {
-	Get {
-		para: u32,
-		height: u32,
-		timeout: u64,
-		context: BoundedVec<u8, MaxContextLen>,
-		keys: BoundedVec<BoundedVec<u8, MaxKeyLen>, MaxKeys>,
-	},
-	Post {
-		para: u32,
-		timeout: u64,
-		data: BoundedVec<u8, MaxDataLen>,
-	},
+	Get(Get<MaxContextLen, MaxKeys, MaxKeyLen>),
+	Post(Post<MaxDataLen>),
 }
 
-impl<MaxContextLen: Get<u32>, MaxKeys: Get<u32>, MayKeyLen: Get<u32>, MaxDataLen: Get<u32>>
+impl<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MayKeyLen: GetT<u32>, MaxDataLen: GetT<u32>>
 	From<Request<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>> for DispatchRequest
 {
 	fn from(value: Request<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>) -> Self {
 		match value {
-			Request::Get { para, height, timeout, context, keys } => Self::Get(DispatchGet {
-				dest: StateMachine::Polkadot(para),
-				from: ID.into(),
-				keys: keys.into_iter().map(|key| key.into_inner()).collect(),
-				height: height.into(),
-				context: context.into_inner(),
-				timeout,
-			}),
-			Request::Post { para, timeout, data } => Self::Post(DispatchPost {
-				dest: StateMachine::Polkadot(para),
-				from: ID.into(),
-				to: ID.into(),
-				timeout,
-				body: data.into_inner(),
-			}),
+			Request::Get(get) => Self::Get(get.into()),
+			Request::Post(post) => Self::Post(post.into()),
+		}
+	}
+}
+
+#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[scale_info(skip_type_params(MaxContextLen, MaxKeys, MaxKeyLen))]
+pub struct Get<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MaxKeyLen: GetT<u32>> {
+	// TODO: Option<u32> to support relay?
+	pub(crate) dest: u32,
+	pub(crate) height: u32,
+	pub(crate) timeout: u64,
+	pub(crate) context: BoundedVec<u8, MaxContextLen>,
+	pub(crate) keys: BoundedVec<BoundedVec<u8, MaxKeyLen>, MaxKeys>,
+}
+
+impl<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MayKeyLen: GetT<u32>>
+	From<Get<MaxContextLen, MaxKeys, MayKeyLen>> for DispatchGet
+{
+	fn from(value: Get<MaxContextLen, MaxKeys, MayKeyLen>) -> Self {
+		DispatchGet {
+			dest: StateMachine::Polkadot(value.dest),
+			from: ID.into(),
+			keys: value.keys.into_iter().map(|key| key.into_inner()).collect(),
+			height: value.height.into(),
+			context: value.context.into_inner(),
+			timeout: value.timeout,
+		}
+	}
+}
+
+#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[scale_info(skip_type_params(MaxDataLen))]
+pub struct Post<MaxDataLen: GetT<u32>> {
+	// TODO: Option<u32> to support relay?
+	pub(crate) dest: u32,
+	pub(crate) timeout: u64,
+	pub(crate) data: BoundedVec<u8, MaxDataLen>,
+}
+
+impl<MaxDataLen: GetT<u32>> From<Post<MaxDataLen>> for DispatchPost {
+	fn from(value: Post<MaxDataLen>) -> Self {
+		DispatchPost {
+			dest: StateMachine::Polkadot(value.dest),
+			from: ID.into(),
+			to: ID.into(),
+			timeout: value.timeout,
+			body: value.data.into_inner(),
 		}
 	}
 }

@@ -12,8 +12,10 @@ use xcm::{
 use xcm_executor::traits::OnResponse;
 pub(crate) use xcm_executor::traits::QueryHandler;
 
-use super::pallet::{Config, Event, Pallet, Requests, Responses, XcmRequests};
-use crate::messaging::Status;
+use crate::messaging::{
+	pallet::{Requests, Responses, XcmRequests},
+	Config, Event, Pallet, Status,
+};
 
 impl<T: Config> OnResponse for Pallet<T> {
 	// todo: check origin and querier

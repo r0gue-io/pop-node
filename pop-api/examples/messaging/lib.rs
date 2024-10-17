@@ -10,7 +10,7 @@ use ink::{
 	},
 };
 use pop_api::{
-	messaging::{self as api, ismp, Request, RequestId, Status},
+	messaging::{self as api, ismp, RequestId, Status},
 	StatusCode,
 };
 
@@ -22,6 +22,7 @@ mod messaging {
 		prelude::{AccountId32, OriginKind, QueryId, QueryResponseInfo, XcmHash},
 		DoubleEncoded,
 	};
+	use pop_api::messaging::ismp::Get;
 
 	use super::*;
 
@@ -41,17 +42,11 @@ mod messaging {
 		#[ink(message)]
 		pub fn get(&mut self, key: Vec<u8>, height: u32) -> Result<()> {
 			self.id = self.id.saturating_add(1);
-			api::request(Request::Ismp {
-				id: self.id,
-				request: ismp::Request::Get {
-					para: self.para,
-					height,
-					timeout: 0,
-					context: Vec::default(),
-					keys: Vec::from([key.clone()]),
-				},
-				fee: 0,
-			})?;
+			ismp::get(
+				self.id,
+				Get::new(self.para, height, 0, Vec::default(), Vec::from([key.clone()])),
+				0,
+			)?;
 			self.env().emit_event(IsmpRequested { id: self.id, key, height });
 			Ok(())
 		}
@@ -90,14 +85,12 @@ mod messaging {
 			// Request query id, used to report transact status.
 			self.id = self.id.saturating_add(1);
 			let dest = Location::new(1, Parachain(self.para));
-			// TODO: merge query into local implementation of api::request as an additional
-			// instruction to make this a oneliner
-			api::request(Request::Xcm {
-				id: self.id,
-				responder: dest.clone().into_versioned(),
-				timeout: self.env().block_number().saturating_add(100),
-			})?;
-			let query_id = api::query_id((self.env().account_id(), self.id))?.unwrap();
+			let query_id = api::xcm::new_query(
+				self.id,
+				dest.clone().into_versioned(),
+				self.env().block_number().saturating_add(100),
+			)?
+			.unwrap(); // TODO: handle error
 
 			let query_response = QueryResponseInfo {
 				// Route back to this parachain.

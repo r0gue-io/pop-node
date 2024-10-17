@@ -17,7 +17,6 @@ pub mod primitives;
 /// The first version of the API.
 pub mod v0;
 
-type BlockNumber = u32;
 type ChainExtensionMethodApi = ChainExtensionMethod<(), (), (), false>;
 /// The result type used by the API, with the `StatusCode` as the error type.
 pub type Result<T> = core::result::Result<T, StatusCode>;
