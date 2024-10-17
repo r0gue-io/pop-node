@@ -1,50 +1,49 @@
-use ::xcm::latest::{Junction::AccountId32, Location, Response, XcmContext};
 use codec::Encode;
 use frame_support::pallet_prelude::Weight;
 use sp_runtime::BoundedVec;
-use xcm::VersionedResponse;
+pub(crate) use xcm::{
+	latest::{Location, QueryId},
+	VersionedLocation,
+};
+use xcm::{
+	latest::{Response, XcmContext},
+	VersionedResponse,
+};
 use xcm_executor::traits::OnResponse;
+pub(crate) use xcm_executor::traits::QueryHandler;
 
-use super::pallet::{Config, Event, Pallet, Requests, Responses};
+use super::pallet::{Config, Event, Pallet, Requests, Responses, XcmRequests};
 use crate::cross_chain::Status;
 
-impl<T: Config<AccountId: From<[u8; 32]>>> OnResponse for Pallet<T> {
-	fn expecting_response(_origin: &Location, query_id: u64, querier: Option<&Location>) -> bool {
+impl<T: Config> OnResponse for Pallet<T> {
+	// todo: check origin and querier
+	fn expecting_response(_origin: &Location, query_id: u64, _querier: Option<&Location>) -> bool {
 		// todo: weight?
-		match querier.map(|l| l.unpack()) {
-			Some((0, [AccountId32 { id, .. }])) => {
-				// todo: check origin
-				let id: T::AccountId = id.clone().into();
-				Requests::<T>::contains_key(id, query_id)
-			},
-			_ => false,
-		}
+		XcmRequests::<T>::contains_key(query_id)
 	}
 
+	// todo: check origin and querier
 	fn on_response(
 		_origin: &Location,
 		query_id: u64,
-		querier: Option<&Location>,
+		_querier: Option<&Location>,
 		response: Response,
 		_max_weight: Weight,
 		_context: &XcmContext,
 	) -> Weight {
-		match querier.map(|l| l.unpack()) {
-			Some((0, [AccountId32 { id, .. }])) => {
-				let id = (id.clone().into(), query_id);
-				// Store values for later retrieval
-				let response: BoundedVec<u8, T::MaxResponseLen> =
-					VersionedResponse::from(response).encode().try_into().unwrap(); // TODO: handle error
-				Requests::<T>::mutate(&id.0, &id.1, |v| {
-					let Some((status, ..)) = v else { panic!() }; // TODO: handle error
-					*status = Status::Complete;
-				});
-				Responses::<T>::insert(&id.0, &id.1, response);
-				Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { id });
-				// todo: weight
-				Weight::zero()
-			},
-			_ => Weight::zero(),
-		}
+		let id = XcmRequests::<T>::get(query_id).unwrap(); // TODO: handle error
+
+		// TODO: remove this in favour of using the data stored in the xcm-pallet until
+		// taken.
+		let response: BoundedVec<u8, T::MaxResponseLen> =
+			VersionedResponse::from(response).encode().try_into().unwrap(); // TODO: handle error
+		Requests::<T>::mutate(&id.0, &id.1, |v| {
+			let Some((status, ..)) = v else { panic!() }; // TODO: handle error
+			*status = Status::Complete;
+		});
+		Responses::<T>::insert(&id.0, &id.1, response);
+		Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { id });
+		// todo: weight
+		Weight::zero()
 	}
 }

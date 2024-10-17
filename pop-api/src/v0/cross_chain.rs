@@ -1,9 +1,14 @@
-use ink::prelude::vec::Vec;
+use ink::{
+	prelude::vec::Vec,
+	xcm::{latest::QueryId, prelude::VersionedLocation},
+};
 
 use crate::{
 	primitives::{AccountId, Balance},
-	ChainExtensionMethodApi, Result, StatusCode,
+	BlockNumber, ChainExtensionMethodApi, Result, StatusCode,
 };
+
+// TODO: split api into ismp/xcm submodules
 
 pub(crate) const API: u8 = 151;
 // Dispatchables
@@ -12,6 +17,7 @@ pub(super) const REMOVE: u8 = 1;
 // Reads
 pub(super) const POLL: u8 = 0;
 pub(super) const GET: u8 = 1;
+pub(super) const QUERY_ID: u8 = 2;
 
 pub type RequestId = u64;
 
@@ -59,11 +65,20 @@ pub fn remove(id: RequestId) -> Result<()> {
 		.call(&id)
 }
 
+#[inline]
+pub fn query_id(id: (AccountId, RequestId)) -> Result<Option<QueryId>> {
+	build_read_state(QUERY_ID)
+		.input::<(AccountId, RequestId)>()
+		.output::<Result<Option<QueryId>>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&id)
+}
+
 // TODO: eliminate enum
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum Request {
 	Ismp { id: RequestId, request: ismp::Request, fee: Balance },
-	Xcm { id: RequestId },
+	Xcm { id: RequestId, responder: VersionedLocation, timeout: BlockNumber },
 }
 
 pub mod ismp {

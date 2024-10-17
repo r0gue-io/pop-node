@@ -5,6 +5,7 @@ use crate::{
 	ChainExtensionMethodApi, StatusCode,
 };
 
+// TODO: would `messaging` be a simpler/better name?
 #[cfg(feature = "cross-chain")]
 pub mod cross_chain;
 /// APIs for fungible tokens.

@@ -11,8 +11,9 @@ use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, cross_chain, fungibles, Balances, Ismp, Runtime,
-	RuntimeCall, RuntimeEvent, RuntimeHoldReason, TransactionByteFee,
+	config::{assets::TrustBackedAssetsInstance, xcm::LocalOriginToLocation},
+	cross_chain, fungibles, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeHoldReason, TransactionByteFee,
 };
 
 mod versioning;
@@ -94,8 +95,10 @@ impl cross_chain::Config for Runtime {
 	type MaxKeys = ConstU32<10>;
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<1024>;
+	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type Xcm = PolkadotXcm;
 }
 
 impl fungibles::Config for Runtime {
@@ -189,7 +192,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					TokenName(..) | TokenSymbol(..) |
 					TokenDecimals(..) |
 					TokenExists(..)
-			) | RuntimeRead::CrossChain(Poll(..) | Get(..))
+			) | RuntimeRead::CrossChain(Poll(..) | Get(..) | QueryId(..))
 		)
 	}
 }

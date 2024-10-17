@@ -6,11 +6,13 @@ use frame_support::{
 	traits::{fungible::Inspect, Get},
 	CloneNoBound, DebugNoBound, EqNoBound, PartialEqNoBound,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{traits::Saturating, BoundedVec, SaturatedConversion};
 use sp_std::vec::Vec;
+use xcm::{Location, QueryHandler, QueryId, VersionedLocation};
 
 use super::Weight;
 
@@ -18,14 +20,21 @@ pub mod ismp;
 mod xcm;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type BlockNumberOf<T> = BlockNumberFor<T>;
 type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
 type MaxContextLenOf<T> = <T as Config>::MaxContextLen;
 type MaxKeysOf<T> = <T as Config>::MaxKeys;
 type MaxKeyLenOf<T> = <T as Config>::MaxKeyLen;
 type MaxDataLenOf<T> = <T as Config>::MaxDataLen;
 type RequestId = u64;
-type RequestOf<T> =
-	Request<BalanceOf<T>, MaxContextLenOf<T>, MaxKeysOf<T>, MaxKeyLenOf<T>, MaxDataLenOf<T>>;
+type RequestOf<T> = Request<
+	BalanceOf<T>,
+	BlockNumberOf<T>,
+	MaxContextLenOf<T>,
+	MaxKeysOf<T>,
+	MaxKeyLenOf<T>,
+	MaxDataLenOf<T>,
+>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -33,10 +42,14 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::DispatchResult,
 		pallet_prelude::*,
-		traits::tokens::{fungible::hold::Mutate, Precision::Exact},
+		traits::{
+			tokens::{fungible::hold::Mutate, Precision::Exact},
+			OriginTrait,
+		},
 	};
 	use frame_system::pallet_prelude::*;
 	use sp_core::H256;
+	use sp_runtime::traits::TryConvert;
 
 	use super::{
 		ismp::{FeeMetadata, IsmpDispatcher},
@@ -48,6 +61,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+
+		type OriginConverter: TryConvert<Self::RuntimeOrigin, Location>;
 
 		#[pallet::constant]
 		type ByteFee: Get<BalanceOf<Self>>;
@@ -79,6 +94,8 @@ pub mod pallet {
 
 		/// Overarching hold reason.
 		type RuntimeHoldReason: From<HoldReason>;
+
+		type Xcm: QueryHandler<BlockNumber = BlockNumberOf<Self>>;
 	}
 
 	#[pallet::pallet]
@@ -92,13 +109,17 @@ pub mod pallet {
 		Blake2_128Concat,
 		RequestId,
 		// TODO: improve
-		(Status, BalanceOf<T>, Option<H256>),
+		(Status, BalanceOf<T>, Option<H256>, Option<QueryId>),
 		OptionQuery,
 	>;
 
 	#[pallet::storage]
 	pub(super) type IsmpRequests<T: Config> =
 		StorageMap<_, Identity, H256, (T::AccountId, RequestId), OptionQuery>;
+
+	#[pallet::storage]
+	pub(super) type XcmRequests<T: Config> =
+		StorageMap<_, Identity, QueryId, (T::AccountId, RequestId), OptionQuery>;
 
 	#[pallet::storage]
 	pub(super) type Responses<T: Config> = StorageDoubleMap<
@@ -124,6 +145,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		DispatchFailed,
 		InvalidRequest,
+		OriginConversionFailed,
 		RequestExists,
 		RequestPending,
 	}
@@ -161,11 +183,21 @@ pub mod pallet {
 					// Store commitment for later lookup on response.
 					let id = (caller, id);
 					IsmpRequests::<T>::insert(&commitment, &id);
-					(id, (Status::Pending, deposit, Some(commitment)))
+					(id, (Status::Pending, deposit, Some(commitment), None::<QueryId>))
 				},
-				Request::Xcm { id } => {
+				Request::Xcm { id, responder, timeout } => {
 					ensure!(!Requests::<T>::contains_key(&caller, &id), Error::<T>::RequestExists);
-					((caller, id), (Status::Pending, deposit, None::<H256>))
+					let responder = Location::try_from(responder)
+						.map_err(|_| Error::<T>::OriginConversionFailed)?;
+					// TODO: neater way of doing this
+					let querier =
+						T::OriginConverter::try_convert(T::RuntimeOrigin::signed(caller.clone()))
+							.map_err(|_| Error::<T>::OriginConversionFailed)?;
+					let query_id = T::Xcm::new_query(responder, timeout, querier);
+					// Store query id for later lookup on response.
+					let id = (caller, id);
+					XcmRequests::<T>::insert(&query_id, &id);
+					(id, (Status::Pending, deposit, None::<H256>, Some(query_id)))
 				},
 			};
 			// Store request for querying, response/timeout handling
@@ -177,11 +209,12 @@ pub mod pallet {
 		// Remove a request/response, returning any deposit previously taken.
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::zero())]
+		// TODO: allow multiple requests to be submitted via boundedvec
 		pub fn remove(origin: OriginFor<T>, request: RequestId) -> DispatchResult {
 			let caller = ensure_signed(origin)?;
 			// Ensure request exists and is not pending.
 			let id = (caller, request);
-			let Some((status, deposit, ismp)) = Requests::<T>::take(&id.0, &id.1) else {
+			let Some((status, deposit, ismp, xcm)) = Requests::<T>::take(&id.0, &id.1) else {
 				return Err(Error::<T>::InvalidRequest.into());
 			};
 			ensure!(status != Status::Pending, Error::<T>::RequestPending);
@@ -189,6 +222,9 @@ pub mod pallet {
 			Responses::<T>::remove(&id.0, &id.1);
 			if let Some(commitment) = ismp {
 				IsmpRequests::<T>::remove(commitment);
+			};
+			if let Some(query_id) = xcm {
+				XcmRequests::<T>::remove(query_id);
 			};
 			T::Deposit::release(&HoldReason::CrossChainRequest.into(), &id.0, deposit, Exact)?;
 			Pallet::<T>::deposit_event(Event::<T>::Removed { id });
@@ -252,6 +288,7 @@ impl<T: Config> Pallet<T> {
 #[scale_info(skip_type_params(MaxContextLen, MaxKeys, MaxKeyLen, MaxDataLen))]
 pub enum Request<
 	Balance: Clone + core::fmt::Debug + PartialEq,
+	BlockNumber: Clone + core::fmt::Debug + PartialEq,
 	MaxContextLen: Get<u32>,
 	MaxKeys: Get<u32>,
 	MaxKeyLen: Get<u32>,
@@ -264,6 +301,8 @@ pub enum Request<
 	},
 	Xcm {
 		id: RequestId,
+		responder: VersionedLocation,
+		timeout: BlockNumber,
 	},
 }
 
@@ -283,6 +322,8 @@ pub enum Read<T: Config> {
 	Poll((T::AccountId, RequestId)),
 	#[codec(index = 1)]
 	Get((T::AccountId, RequestId)),
+	#[codec(index = 2)]
+	QueryId((T::AccountId, RequestId)),
 }
 
 #[derive(Debug)]
@@ -290,6 +331,7 @@ pub enum Read<T: Config> {
 pub enum ReadResult<T: Config> {
 	Poll(Option<Status>),
 	Get(Option<BoundedVec<u8, T::MaxResponseLen>>),
+	QueryId(Option<QueryId>),
 }
 
 impl<T: Config> ReadResult<T> {
@@ -298,6 +340,7 @@ impl<T: Config> ReadResult<T> {
 		match self {
 			Poll(status) => status.encode(),
 			Get(response) => response.encode(),
+			QueryId(query_id) => query_id.encode(),
 		}
 	}
 }
@@ -316,6 +359,8 @@ impl<T: Config> crate::Read for Pallet<T> {
 			Read::Poll(request) =>
 				ReadResult::Poll(Requests::<T>::get(request.0, request.1).map(|r| r.0)),
 			Read::Get(request) => ReadResult::Get(Responses::<T>::get(request.0, request.1)),
+			Read::QueryId(request) =>
+				ReadResult::QueryId(Requests::<T>::get(request.0, request.1).and_then(|r| r.3)),
 		}
 	}
 }
