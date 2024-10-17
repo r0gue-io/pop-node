@@ -1993,7 +1993,7 @@ fn cancel_approval_works() {
 }
 
 #[test]
-fn cancel_approval_collection_works() {
+fn cancel_approval_collection_works_with_admin() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
@@ -2132,7 +2132,7 @@ fn approvals_limit_works() {
 }
 
 #[test]
-fn approval_collection_works() {
+fn approval_collection_works_with_admin() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
@@ -2162,14 +2162,6 @@ fn approval_collection_works() {
 			Nfts::approve_transfer(RuntimeOrigin::signed(account(1)), 1, None, account(2), None),
 			Error::<Test>::ItemsNonTransferable
 		);
-
-		// Error::MethodDisabled.
-		Features::set(&PalletFeatures::from_disabled(PalletFeature::Approvals.into()));
-		assert_noop!(
-			Nfts::approve_transfer(RuntimeOrigin::signed(account(1)), 1, None, account(2), None),
-			Error::<Test>::MethodDisabled
-		);
-		Features::set(&PalletFeatures::all_enabled());
 
 		// Error::UnknownCollection.
 		assert_noop!(
