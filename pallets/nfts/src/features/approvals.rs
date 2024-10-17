@@ -180,27 +180,24 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		let collection_owner =
-			Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
+		if !Collection::<T, I>::contains_key(collection) {
+			return Err(Error::<T, I>::UnknownCollection.into());
+		}
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
 			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
 			Error::<T, I>::ItemsNonTransferable
 		);
 
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == collection_owner, Error::<T, I>::NoPermission);
-		}
-
-		Allowances::<T, I>::mutate((&collection, &collection_owner, &delegate), |allowance| {
+		let origin = maybe_check_origin.ok_or(Error::<T, I>::WrongOrigin)?;
+		Allowances::<T, I>::mutate((&collection, &origin, &delegate), |allowance| {
 			*allowance = true;
 		});
 
 		Self::deposit_event(Event::TransferApproved {
 			collection,
 			item: None,
-			owner: collection_owner,
+			owner: origin,
 			delegate,
 			deadline: None,
 		});
@@ -212,18 +209,16 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let collection_owner =
-			Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == collection_owner, Error::<T, I>::NoPermission);
+		if !Collection::<T, I>::contains_key(collection) {
+			return Err(Error::<T, I>::UnknownCollection.into());
 		}
 
-		Allowances::<T, I>::remove((&collection, &collection_owner, &delegate));
+		let origin = maybe_check_origin.ok_or(Error::<T, I>::WrongOrigin)?;
+		Allowances::<T, I>::remove((&collection, &origin, &delegate));
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
-			owner: collection_owner,
+			owner: origin,
 			item: None,
 			delegate,
 		});
