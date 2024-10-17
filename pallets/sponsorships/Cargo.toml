@@ -1,0 +1,53 @@
+[package]
+authors.workspace = true
+description.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "pallet-sponsorships"
+repository.workspace = true
+version = "0.1.0"
+
+[dependencies]
+codec.workspace = true
+log.workspace = true
+scale-info.workspace = true
+
+# Substrate
+frame-benchmarking.workspace = true
+frame-support.workspace = true
+frame-system.workspace = true
+pallet-contracts.workspace = true
+sp-runtime.workspace = true
+sp-std.workspace = true
+
+[dev-dependencies]
+pallet-balances.workspace = true
+sp-core.workspace = true
+sp-io.workspace = true
+
+[features]
+default = [ "std" ]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
+std = [
+	"codec/std",
+	"frame-benchmarking/std",
+	"frame-support/std",
+	"frame-system/std",
+	"pallet-contracts/std",
+	"scale-info/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]
+try-runtime = [
+	"frame-support/try-runtime",
+	"frame-system/try-runtime",
+	"sp-runtime/try-runtime",
+]

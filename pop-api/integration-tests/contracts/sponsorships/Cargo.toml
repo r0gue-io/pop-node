@@ -1,0 +1,20 @@
+[package]
+edition = "2021"
+name = "sponsorhips"
+version = "0.1.0"
+
+[dependencies]
+ink = { version = "5.0.0", default-features = false }
+pop-api = { path = "../../../../pop-api", default-features = false, features = [ "sponsorships" ] }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
+std = [
+	"ink/std",
+	"pop-api/std",
+]
