@@ -141,9 +141,9 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Requested { requestor: T::AccountId, id: RequestId },
-		Removed { requestor: T::AccountId, requests: Vec<RequestId> },
-		ResponseReceived { requestor: T::AccountId, id: RequestId },
+		Requested { origin: T::AccountId, id: RequestId },
+		Removed { origin: T::AccountId, requests: Vec<RequestId> },
+		ResponseReceived { dest: T::AccountId, id: RequestId },
 	}
 
 	#[pallet::error]
@@ -217,26 +217,26 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			requests: BoundedVec<RequestId, T::MaxRemovals>,
 		) -> DispatchResult {
-			let requestor = ensure_signed(origin)?;
+			let origin = ensure_signed(origin)?;
 			for request in &requests {
 				// Ensure request exists and is not pending.
-				let Some((status, deposit, ismp, xcm)) = Requests::<T>::take(&requestor, request)
+				let Some((status, deposit, ismp, xcm)) = Requests::<T>::take(&origin, request)
 				else {
 					return Err(Error::<T>::InvalidRequest.into());
 				};
 				ensure!(status != Status::Pending, Error::<T>::RequestPending);
 				// Remove associated data and return deposit.
-				Responses::<T>::remove(&requestor, request);
+				Responses::<T>::remove(&origin, request);
 				if let Some(commitment) = ismp {
 					IsmpRequests::<T>::remove(commitment);
 				};
 				if let Some(query_id) = xcm {
 					XcmRequests::<T>::remove(query_id);
 				};
-				T::Deposit::release(&HoldReason::Messaging.into(), &requestor, deposit, Exact)?;
+				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
 			Pallet::<T>::deposit_event(Event::<T>::Removed {
-				requestor,
+				origin,
 				requests: requests.into_inner(),
 			});
 			Ok(())
@@ -301,41 +301,41 @@ impl<T: Config> Pallet<T> {
 	}
 
 	fn do_request(origin: OriginFor<T>, request: RequestOf<T>) -> DispatchResult {
-		let requestor = ensure_signed(origin)?;
+		let origin = ensure_signed(origin)?;
 		// Calculate deposit for request and place on hold.
 		let deposit = Self::calculate_deposit(&request);
-		T::Deposit::hold(&HoldReason::Messaging.into(), &requestor, deposit)?;
+		T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 		// Process request.
 		let (id, request) = match request {
 			// TODO: does ismp allow querying to ensure that specified para id is supported?
 			Request::Ismp { id, request, fee } => {
-				ensure!(!Requests::<T>::contains_key(&requestor, &id), Error::<T>::RequestExists);
+				ensure!(!Requests::<T>::contains_key(&origin, &id), Error::<T>::RequestExists);
 				// Dispatch request via ISMP.
 				let commitment = T::IsmpDispatcher::default()
-					.dispatch_request(request.into(), FeeMetadata { payer: requestor.clone(), fee })
+					.dispatch_request(request.into(), FeeMetadata { payer: origin.clone(), fee })
 					.map_err(|_| Error::<T>::DispatchFailed)?;
 				// Store commitment for later lookup on response.
-				IsmpRequests::<T>::insert(&commitment, (&requestor, id));
+				IsmpRequests::<T>::insert(&commitment, (&origin, id));
 				(id, (Status::Pending, deposit, Some(commitment), None::<QueryId>))
 			},
 			Request::Xcm { id, responder, timeout } => {
-				ensure!(!Requests::<T>::contains_key(&requestor, &id), Error::<T>::RequestExists);
+				ensure!(!Requests::<T>::contains_key(&origin, &id), Error::<T>::RequestExists);
 				let responder = Location::try_from(responder)
 					.map_err(|_| Error::<T>::OriginConversionFailed)?;
 				// TODO: neater way of doing this
 				let querier =
-					T::OriginConverter::try_convert(T::RuntimeOrigin::signed(requestor.clone()))
+					T::OriginConverter::try_convert(T::RuntimeOrigin::signed(origin.clone()))
 						.map_err(|_| Error::<T>::OriginConversionFailed)?;
 				let query_id = T::Xcm::new_query(responder, timeout, querier);
 				// Store query id for later lookup on response.
-				XcmRequests::<T>::insert(&query_id, (&requestor, id));
+				XcmRequests::<T>::insert(&query_id, (&origin, id));
 				(id, (Status::Pending, deposit, None::<H256>, Some(query_id)))
 			},
 		};
 		// Store request for querying, response/timeout handling
-		Requests::<T>::insert(&requestor, id, request);
+		Requests::<T>::insert(&origin, id, request);
 		// TODO: event per dispatchable for determining usage
-		Pallet::<T>::deposit_event(Event::<T>::Requested { requestor, id });
+		Pallet::<T>::deposit_event(Event::<T>::Requested { origin, id });
 		Ok(())
 	}
 }

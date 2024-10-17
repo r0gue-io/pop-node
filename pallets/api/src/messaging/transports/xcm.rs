@@ -33,18 +33,18 @@ impl<T: Config> OnResponse for Pallet<T> {
 		_max_weight: Weight,
 		_context: &XcmContext,
 	) -> Weight {
-		let (requestor, id) = XcmRequests::<T>::get(query_id).unwrap(); // TODO: handle error
+		let (origin, id) = XcmRequests::<T>::get(query_id).unwrap(); // TODO: handle error
 
 		// TODO: remove this in favour of using the data stored in the xcm-pallet until
 		// taken.
 		let response: BoundedVec<u8, T::MaxResponseLen> =
 			VersionedResponse::from(response).encode().try_into().unwrap(); // TODO: handle error
-		Requests::<T>::mutate(&requestor, &id, |v| {
+		Requests::<T>::mutate(&origin, &id, |v| {
 			let Some((status, ..)) = v else { panic!() }; // TODO: handle error
 			*status = Status::Complete;
 		});
-		Responses::<T>::insert(&requestor, &id, response);
-		Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { requestor, id });
+		Responses::<T>::insert(&origin, &id, response);
+		Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { dest: origin, id });
 		// todo: weight
 		Weight::zero()
 	}

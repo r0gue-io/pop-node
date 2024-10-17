@@ -117,7 +117,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 	}
 
 	fn on_response(&self, response: Response) -> Result<(), Error> {
-		let ((requestor, id), response) = match response {
+		let ((origin, id), response) = match response {
 			Response::Get(GetResponse { get, values }) => {
 				// hash request to determine key for original request id lookup
 				(
@@ -141,15 +141,15 @@ impl<T: Config> IsmpModule for Handler<T> {
 		// Store values for later retrieval
 		let response: BoundedVec<u8, T::MaxResponseLen> =
 			response.try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
-		Requests::<T>::try_mutate(&requestor, &id, |v| {
+		Requests::<T>::try_mutate(&origin, &id, |v| {
 			let Some((status, ..)) = v else {
 				return Err(Error::Custom("response exceeds max".into()))
 			};
 			*status = Status::Complete;
 			Ok(())
 		})?;
-		Responses::<T>::insert(&requestor, &id, response);
-		Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { requestor, id });
+		Responses::<T>::insert(&origin, &id, response);
+		Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { dest: origin, id });
 		Ok(())
 	}
 
