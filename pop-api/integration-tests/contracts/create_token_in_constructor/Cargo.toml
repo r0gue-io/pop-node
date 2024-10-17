@@ -1,10 +1,11 @@
 [package]
+authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
 name = "create_token_in_constructor"
 version = "0.1.0"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
+ink = { git = "https://github.com/use-ink/ink", branch = "xcm", default-features = false }
 pop-api = { path = "../../..", default-features = false, features = [ "fungibles" ] }
 
 [lib]
