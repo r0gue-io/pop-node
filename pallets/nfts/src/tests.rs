@@ -1875,12 +1875,12 @@ fn check_allowance_works() {
 
 		// collection transfer approved.
 		assert_noop!(
-			Nfts::check_allowance(&0, &Some(43), &account(1), &account(2)),
-			Error::<Test>::UnknownItem
+			Nfts::check_allowance(&1, &None, &account(1), &account(2)),
+			Error::<Test>::NoPermission
 		);
 		assert_noop!(
-			Nfts::check_allowance(&0, &Some(42), &account(1), &account(3)),
-			Error::<Test>::NoPermission
+			Nfts::check_allowance(&1, &Some(43), &account(1), &account(2)),
+			Error::<Test>::UnknownItem
 		);
 		assert_ok!(Nfts::check_allowance(&0, &None, &account(1), &account(2)));
 		assert_ok!(Nfts::check_allowance(&0, &Some(42), &account(1), &account(2)));
@@ -1992,6 +1992,43 @@ fn cancel_approval_works() {
 }
 
 #[test]
+fn cancel_approval_collection_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			account(1),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			42,
+			account(2),
+			default_item_config()
+		));
+
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			None,
+			account(3),
+			None
+		));
+		assert_noop!(
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 1, None, account(3)),
+			Error::<Test>::UnknownCollection
+		);
+
+		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, None, account(3)));
+
+		assert_noop!(
+			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)),
+			Error::<Test>::NoPermission
+		);
+	});
+}
+
+#[test]
 fn approving_multiple_accounts_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
@@ -2083,6 +2120,33 @@ fn approvals_limit_works() {
 			),
 			Error::<Test>::ReachedApprovalLimit
 		);
+	});
+}
+
+#[test]
+fn approval_collection_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			account(1),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			42,
+			account(2),
+			default_item_config()
+		));
+
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			None,
+			account(3),
+			None
+		));
+		assert_eq!(Allowances::<Test>::get((0, account(1), account(3))), true);
 	});
 }
 
