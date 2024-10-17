@@ -26,7 +26,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::{Balanced, Credit, HoldConsideration},
-		tokens::{imbalance::ResolveTo, nonfungibles_v2::Inspect},
+		tokens::nonfungibles_v2::Inspect,
 		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
 		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
 		VariantCountOf,
@@ -43,7 +43,6 @@ use frame_system::{
 };
 use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
-use pallet_builder_incentives::BuilderIncentivesAccountId;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
@@ -340,13 +339,14 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
-pub struct ToStakingPot;
-impl OnUnbalanced<Credit<AccountId, Balances>> for ToStakingPot {
+pub struct ToBuilderIncentivesPot;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToBuilderIncentivesPot {
 	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
 		let incentives_pot = BuilderIncentivesId::get().into_account_truncating();
+		let amount_fees = amount.peek();
 		let _ = Balances::resolve(&incentives_pot, amount);
-		// TODO: Refresh Era Information
-		// let _ = BuilderIncentives::deposit_funds(&incentives_pot, amount);
+		// Refresh the incentives
+		let _ = BuilderIncentives::update_incentives(amount_fees);
 	}
 }
 
@@ -360,11 +360,9 @@ impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
 			if let Some(tips) = fees_then_tips.next() {
 				tips.merge_into(&mut incentives);
 			}
-			// burn part of the fees
 			drop(to_burn);
-			// TODO: Use ToResolve (ToStakingPot will be deprecated)
-			// rest go for incentives
-			<ToStakingPot as OnUnbalanced<_>>::on_unbalanced(incentives);
+			// TODO: Use ToResolve
+			<ToBuilderIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
 		}
 	}
 }

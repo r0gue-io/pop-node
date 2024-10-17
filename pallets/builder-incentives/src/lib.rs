@@ -242,7 +242,7 @@ pub mod pallet {
 			// TODO: Think if has to be called by the beneficiary, or anyone can call it.
 			ensure!(beneficiary == who, Error::<T>::NotAuthorizedToClaimRewards);
 			ensure!(
-				CurrentEra::<T>::get() == era_to_claim,
+				CurrentEra::<T>::get() > era_to_claim,
 				Error::<T>::CannotClaimRewardsForCurrentEra
 			);
 			// TODO: If already claimed, or is 0, so no need to calculate anything else.
@@ -304,18 +304,14 @@ pub mod pallet {
 			let proportion = Permill::from_rational(contract_fees, total_contract_fees);
 			proportion * total_fees
 		}
-	}
-}
 
-/// TypedGet implementation to get the AccountId of the Builder Incentives Pallet.
-pub struct BuilderIncentivesAccountId<R>(core::marker::PhantomData<R>);
-impl<R> sp_runtime::traits::TypedGet for BuilderIncentivesAccountId<R>
-where
-	R: crate::Config,
-{
-	type Type = <R as frame_system::Config>::AccountId;
-
-	fn get() -> Self::Type {
-		crate::Pallet::<R>::get_pallet_account()
+		pub fn update_incentives(amount: BalanceOf<T>) {
+			let current_era = CurrentEra::<T>::get();
+			crate::EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
+				if let Some(era_info) = maybe_era_info {
+					era_info.add_total_fee(amount);
+				}
+			});
+		}
 	}
 }
