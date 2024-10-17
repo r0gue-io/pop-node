@@ -57,12 +57,12 @@ pub fn get(id: (AccountId, RequestId)) -> Result<Option<Vec<u8>>> {
 }
 
 #[inline]
-pub fn remove(id: RequestId) -> Result<()> {
+pub fn remove(requests: Vec<RequestId>) -> Result<()> {
 	build_dispatch(REMOVE)
-		.input::<RequestId>()
+		.input::<Vec<RequestId>>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&id)
+		.call(&requests)
 }
 
 #[inline]

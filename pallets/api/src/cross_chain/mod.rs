@@ -81,16 +81,18 @@ pub mod pallet {
 		/// request.
 		#[pallet::constant]
 		type MaxContextLen: Get<u32>;
+		/// The maximum length of outbound (posted) data.
+		#[pallet::constant]
+		type MaxDataLen: Get<u32>;
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
 
-		/// The maximum length of outbound (posted) data.
-		#[pallet::constant]
-		type MaxDataLen: Get<u32>;
 		#[pallet::constant]
 		type MaxResponseLen: Get<u32>;
+		#[pallet::constant]
+		type MaxRemovals: Get<u32>;
 
 		/// Overarching hold reason.
 		type RuntimeHoldReason: From<HoldReason>;
@@ -136,9 +138,9 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		Requested { id: (T::AccountId, RequestId) },
-		Removed { id: (T::AccountId, RequestId) },
-		ResponseReceived { id: (T::AccountId, RequestId) },
+		Requested { requestor: T::AccountId, id: RequestId },
+		Removed { requestor: T::AccountId, requests: Vec<RequestId> },
+		ResponseReceived { requestor: T::AccountId, id: RequestId },
 	}
 
 	#[pallet::error]
@@ -162,72 +164,89 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		// Register/dispatch an async request for data.
 		#[pallet::call_index(0)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
 		pub fn request(origin: OriginFor<T>, request: RequestOf<T>) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
+			let requestor = ensure_signed(origin)?;
 			// Calculate deposit for request and place on hold.
 			let deposit = Self::calculate_deposit(&request);
-			T::Deposit::hold(&HoldReason::CrossChainRequest.into(), &caller, deposit)?;
+			T::Deposit::hold(&HoldReason::CrossChainRequest.into(), &requestor, deposit)?;
 			// Process request.
 			let (id, request) = match request {
 				// TODO: does ismp allow querying to ensure that specified para id is supported?
 				Request::Ismp { id, request, fee } => {
-					ensure!(!Requests::<T>::contains_key(&caller, &id), Error::<T>::RequestExists);
+					ensure!(
+						!Requests::<T>::contains_key(&requestor, &id),
+						Error::<T>::RequestExists
+					);
 					// Dispatch request via ISMP.
 					let commitment = T::IsmpDispatcher::default()
 						.dispatch_request(
 							request.into(),
-							FeeMetadata { payer: caller.clone(), fee },
+							FeeMetadata { payer: requestor.clone(), fee },
 						)
 						.map_err(|_| Error::<T>::DispatchFailed)?;
 					// Store commitment for later lookup on response.
-					let id = (caller, id);
-					IsmpRequests::<T>::insert(&commitment, &id);
+					IsmpRequests::<T>::insert(&commitment, (&requestor, id));
 					(id, (Status::Pending, deposit, Some(commitment), None::<QueryId>))
 				},
 				Request::Xcm { id, responder, timeout } => {
-					ensure!(!Requests::<T>::contains_key(&caller, &id), Error::<T>::RequestExists);
+					ensure!(
+						!Requests::<T>::contains_key(&requestor, &id),
+						Error::<T>::RequestExists
+					);
 					let responder = Location::try_from(responder)
 						.map_err(|_| Error::<T>::OriginConversionFailed)?;
 					// TODO: neater way of doing this
-					let querier =
-						T::OriginConverter::try_convert(T::RuntimeOrigin::signed(caller.clone()))
-							.map_err(|_| Error::<T>::OriginConversionFailed)?;
+					let querier = T::OriginConverter::try_convert(T::RuntimeOrigin::signed(
+						requestor.clone(),
+					))
+					.map_err(|_| Error::<T>::OriginConversionFailed)?;
 					let query_id = T::Xcm::new_query(responder, timeout, querier);
 					// Store query id for later lookup on response.
-					let id = (caller, id);
-					XcmRequests::<T>::insert(&query_id, &id);
+					XcmRequests::<T>::insert(&query_id, (&requestor, id));
 					(id, (Status::Pending, deposit, None::<H256>, Some(query_id)))
 				},
 			};
 			// Store request for querying, response/timeout handling
-			Requests::<T>::insert(&id.0, &id.1, request);
-			Pallet::<T>::deposit_event(Event::<T>::Requested { id });
+			Requests::<T>::insert(&requestor, id, request);
+			Pallet::<T>::deposit_event(Event::<T>::Requested { requestor, id });
 			Ok(())
 		}
 
 		// Remove a request/response, returning any deposit previously taken.
 		#[pallet::call_index(1)]
-		#[pallet::weight(Weight::zero())]
-		// TODO: allow multiple requests to be submitted via boundedvec
-		pub fn remove(origin: OriginFor<T>, request: RequestId) -> DispatchResult {
-			let caller = ensure_signed(origin)?;
-			// Ensure request exists and is not pending.
-			let id = (caller, request);
-			let Some((status, deposit, ismp, xcm)) = Requests::<T>::take(&id.0, &id.1) else {
-				return Err(Error::<T>::InvalidRequest.into());
-			};
-			ensure!(status != Status::Pending, Error::<T>::RequestPending);
-			// Remove associated data and return deposit.
-			Responses::<T>::remove(&id.0, &id.1);
-			if let Some(commitment) = ismp {
-				IsmpRequests::<T>::remove(commitment);
-			};
-			if let Some(query_id) = xcm {
-				XcmRequests::<T>::remove(query_id);
-			};
-			T::Deposit::release(&HoldReason::CrossChainRequest.into(), &id.0, deposit, Exact)?;
-			Pallet::<T>::deposit_event(Event::<T>::Removed { id });
+		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
+		pub fn remove(
+			origin: OriginFor<T>,
+			requests: BoundedVec<RequestId, T::MaxRemovals>,
+		) -> DispatchResult {
+			let requestor = ensure_signed(origin)?;
+			for request in &requests {
+				// Ensure request exists and is not pending.
+				let Some((status, deposit, ismp, xcm)) = Requests::<T>::take(&requestor, request)
+				else {
+					return Err(Error::<T>::InvalidRequest.into());
+				};
+				ensure!(status != Status::Pending, Error::<T>::RequestPending);
+				// Remove associated data and return deposit.
+				Responses::<T>::remove(&requestor, request);
+				if let Some(commitment) = ismp {
+					IsmpRequests::<T>::remove(commitment);
+				};
+				if let Some(query_id) = xcm {
+					XcmRequests::<T>::remove(query_id);
+				};
+				T::Deposit::release(
+					&HoldReason::CrossChainRequest.into(),
+					&requestor,
+					deposit,
+					Exact,
+				)?;
+			}
+			Pallet::<T>::deposit_event(Event::<T>::Removed {
+				requestor,
+				requests: requests.into_inner(),
+			});
 			Ok(())
 		}
 	}

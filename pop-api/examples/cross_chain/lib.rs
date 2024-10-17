@@ -140,7 +140,7 @@ mod cross_chain {
 			if let Ok(Some(status)) = api::poll((self.env().account_id(), request)) {
 				if status == Status::Complete {
 					let result = api::get((self.env().account_id(), request))?;
-					api::remove(request)?;
+					api::remove([request].to_vec())?;
 					self.env().emit_event(Completed { id: request, result });
 				}
 			}

@@ -93,6 +93,8 @@ impl cross_chain::Config for Runtime {
 	type MaxDataLen = ConstU32<1024>;
 	type MaxKeyLen = ConstU32<32>;
 	type MaxKeys = ConstU32<10>;
+	// TODO: size appropriately
+	type MaxRemovals = ConstU32<1024>;
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<1024>;
 	type OriginConverter = LocalOriginToLocation;
