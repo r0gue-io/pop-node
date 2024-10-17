@@ -132,6 +132,7 @@ pub struct Filter<T>(PhantomData<T>);
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
+		use pallet_sponsorships::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
 				c,
@@ -144,6 +145,8 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						start_destroy { .. } |
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
+				) | RuntimeCall::Sponsorships(
+					sponsor_account { .. } | remove_sponsorship_for { .. }
 				)
 			)
 	}
