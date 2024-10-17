@@ -40,7 +40,7 @@ pub fn sponsor_account(beneficiary: AccountId) -> Result<()> {
 /// - `beneficiary` - The account which will no longer be sponsored by caller.
 #[inline]
 pub fn remove_sponsorship_for(account: AccountId) -> Result<()> {
-    build_read_state(REMOVE_SPONSORSHIP)
+    build_dispatch(REMOVE_SPONSORSHIP)
         .input::<AccountId>()
         .output::<Result<()>, true>()
         .handle_error_code::<StatusCode>()
