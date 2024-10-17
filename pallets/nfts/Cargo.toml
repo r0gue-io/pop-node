@@ -9,7 +9,6 @@ readme = "README.md"
 repository.workspace = true
 version = "31.0.0"
 
-
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
 
