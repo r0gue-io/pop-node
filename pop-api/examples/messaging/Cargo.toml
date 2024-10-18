@@ -1,12 +1,12 @@
 [package]
 authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
-name = "fungibles"
+name = "messaging"
 version = "0.1.0"
 
 [dependencies]
 ink = { git = "https://github.com/use-ink/ink", branch = "xcm", default-features = false }
-pop-api = { path = "../../../../pop-api", default-features = false, features = [ "fungibles" ] }
+pop-api = { path = "../../../pop-api", default-features = false, features = [ "messaging" ] }
 
 [lib]
 path = "lib.rs"

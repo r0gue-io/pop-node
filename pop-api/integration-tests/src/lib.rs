@@ -8,11 +8,17 @@ use frame_support::{
 	weights::Weight,
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
-use pop_runtime_devnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{
+	config::ismp::Router, Assets, Contracts, Messaging, Runtime, RuntimeOrigin, System, UNIT,
+};
 use scale::{Decode, Encode};
-use sp_runtime::{AccountId32, BuildStorage, DispatchError};
+use sp_runtime::{
+	offchain::{testing::TestOffchainExt, OffchainDbExt},
+	AccountId32, BuildStorage, DispatchError,
+};
 
 mod fungibles;
+mod messaging;
 
 type Balance = u128;
 
@@ -39,6 +45,8 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::new(t);
+	let (offchain, _state) = TestOffchainExt::new();
+	ext.register_extension(OffchainDbExt::new(offchain));
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
