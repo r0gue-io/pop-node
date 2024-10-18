@@ -1,7 +1,10 @@
-use ink::env::{account_id, DefaultEnvironment};
 pub use ink::xcm::prelude::{
 	Junction, Junctions, Location, MaybeErrorCode, QueryId, Response, VersionedLocation,
-	VersionedResponse, XcmContext, XcmHash,
+	VersionedResponse, VersionedXcm, XcmContext, XcmHash,
+};
+use ink::{
+	env::{account_id, xcm_execute, xcm_send, DefaultEnvironment},
+	scale::Encode,
 };
 
 use super::*;
@@ -23,4 +26,17 @@ pub fn new_query(
 		.output::<Result<Option<QueryId>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(account_id::<DefaultEnvironment>(), id))
+}
+
+/// Execute an XCM message locally, using the contract's address as the origin.
+pub fn execute<Call: Encode>(msg: &VersionedXcm<Call>) -> ink::env::Result<()> {
+	xcm_execute::<DefaultEnvironment, _>(msg)
+}
+
+/// Send an XCM message, using the contract's address as the origin.
+pub fn send<Call: Encode>(
+	dest: &VersionedLocation,
+	msg: &VersionedXcm<Call>,
+) -> ink::env::Result<XcmHash> {
+	xcm_send::<DefaultEnvironment, _>(dest, msg)
 }
