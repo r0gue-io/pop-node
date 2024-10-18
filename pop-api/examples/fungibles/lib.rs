@@ -47,13 +47,13 @@ mod fungibles {
 		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
 		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, PSP22Error> {
-			let contract = Self { id };
-			let contract_id = contract.env().account_id();
+			let instance = Self { id };
+			let contract_id = instance.env().account_id();
 			api::create(id, contract_id, min_balance).map_err(PSP22Error::from)?;
-			contract
+			instance
 				.env()
 				.emit_event(Created { id, creator: contract_id, admin: contract_id });
-			Ok(contract)
+			Ok(instance)
 		}
 	}
 
