@@ -104,12 +104,8 @@ pub struct CollectionDetails<AccountId, DepositBalance> {
 	pub item_metadatas: u32,
 	/// The total number of outstanding item configs of this collection.
 	pub item_configs: u32,
-	/// The total number of accounts that hold items of the collection.
-	pub item_holders: u32,
 	/// The total number of attributes for this collection.
 	pub attributes: u32,
-	/// The total number of allowances to spend all items within collections.
-	pub allowances: u32,
 }
 
 /// Witness data for the destroy transactions.
@@ -121,15 +117,9 @@ pub struct DestroyWitness {
 	/// The total number of outstanding item configs of this collection.
 	#[codec(compact)]
 	pub item_configs: u32,
-	/// The total number of accounts that hold items of the collection.
-	#[codec(compact)]
-	pub item_holders: u32,
 	/// The total number of attributes for this collection.
 	#[codec(compact)]
 	pub attributes: u32,
-	/// The total number of allowances to spend all items within collections.
-	#[codec(compact)]
-	pub allowances: u32,
 }
 
 impl<AccountId, DepositBalance> CollectionDetails<AccountId, DepositBalance> {
@@ -137,9 +127,7 @@ impl<AccountId, DepositBalance> CollectionDetails<AccountId, DepositBalance> {
 		DestroyWitness {
 			item_metadatas: self.item_metadatas,
 			item_configs: self.item_configs,
-			item_holders: self.item_holders,
 			attributes: self.attributes,
-			allowances: self.allowances,
 		}
 	}
 }
@@ -157,21 +145,21 @@ pub struct MintWitness<ItemId, Balance> {
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 pub struct ItemDetails<AccountId, Deposit, Approvals> {
 	/// The owner of this item.
-	pub(super) owner: AccountId,
+	pub owner: AccountId,
 	/// The approved transferrer of this item, if one is set.
-	pub(super) approvals: Approvals,
+	pub approvals: Approvals,
 	/// The amount held in the pallet's default account for this item. Free-hold items will have
 	/// this as zero.
-	pub(super) deposit: Deposit,
+	pub deposit: Deposit,
 }
 
 /// Information about the reserved item deposit.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ItemDeposit<DepositBalance, AccountId> {
 	/// A depositor account.
-	pub(super) account: AccountId,
+	pub account: AccountId,
 	/// An amount that gets reserved.
-	pub(super) amount: DepositBalance,
+	pub amount: DepositBalance,
 }
 
 /// Information about the collection's metadata.
