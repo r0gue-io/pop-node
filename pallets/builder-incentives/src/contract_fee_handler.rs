@@ -134,7 +134,6 @@ where
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
 		let contract = if let Some(pallet_contracts::Call::call { dest, .. }) = call.is_sub_type() {
-			// TODO: Check if contract is to send register the fees
 			T::Lookup::lookup(dest.clone()).ok()
 		} else {
 			None
@@ -159,19 +158,22 @@ where
 				result,
 			)?;
 			if let Some(contract) = contract {
-				let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
-					len as u32, info, post_info, tip,
-				);
-				let era = crate::CurrentEra::<T>::get();
-				crate::ContractUsagePerEra::<T>::mutate(contract.clone(), era, |fees| {
-					*fees = fees.saturating_add(actual_fee.into())
-				});
-				crate::EraInformation::<T>::mutate(era, |era_info| {
-					era_info.add_contract_fee(actual_fee.into());
-				});
-				Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
-					contract: contract.clone(),
-				});
+				// Check if contract is registered to track usage.
+				if crate::RegisteredContracts::<T>::contains_key(&contract) {
+					let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
+						len as u32, info, post_info, tip,
+					);
+					let era = crate::CurrentEra::<T>::get();
+					crate::ContractUsagePerEra::<T>::mutate(contract.clone(), era, |fees| {
+						*fees = fees.saturating_add(actual_fee.into())
+					});
+					crate::EraInformation::<T>::mutate(era, |era_info| {
+						era_info.add_contract_fee(actual_fee.into());
+					});
+					Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
+						contract: contract.clone(),
+					});
+				}
 			}
 		}
 		Ok(())
