@@ -44,7 +44,7 @@ impl<T: Config> OnResponse for Pallet<T> {
 			*status = Status::Complete;
 		});
 		Responses::<T>::insert(&origin, &id, response);
-		Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { dest: origin, id });
+		Pallet::<T>::deposit_event(Event::<T>::XcmResponseReceived { dest: origin, id });
 		// todo: weight
 		Weight::zero()
 	}

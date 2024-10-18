@@ -139,22 +139,26 @@ impl<T: Config> IsmpModule for Handler<T> {
 	fn on_response(&self, response: Response) -> Result<(), Error> {
 		let ((origin, id), response) = match response {
 			Response::Get(GetResponse { get, values }) => {
-				// hash request to determine key for original request id lookup
-				(
-					IsmpRequests::<T>::get(H256::from(keccak_256(
-						&ismp::router::Request::Get(get).encode(),
-					)))
-					.ok_or(Error::Custom("request not found".into()))?,
-					values.encode(),
-				)
+				// hash request to determine key for original message id lookup
+				let id = IsmpRequests::<T>::get(H256::from(keccak_256(
+					&ismp::router::Request::Get(get).encode(),
+				)))
+				.ok_or(Error::Custom("request not found".into()))?;
+				Pallet::<T>::deposit_event(Event::<T>::IsmpGetResponseReceived {
+					dest: id.0.clone(),
+					id: id.1,
+				});
+				(id, values.encode())
 			},
 			Response::Post(PostResponse { post, response, .. }) => {
-				// hash request to determine key for original request id lookup
-				(
-					IsmpRequests::<T>::get(H256::from(keccak_256(&Post(post).encode())))
-						.ok_or(Error::Custom("request not found".into()))?,
-					response,
-				)
+				// hash request to determine key for original message id lookup
+				let id = IsmpRequests::<T>::get(H256::from(keccak_256(&Post(post).encode())))
+					.ok_or(Error::Custom("request not found".into()))?;
+				Pallet::<T>::deposit_event(Event::<T>::IsmpPostResponseReceived {
+					dest: id.0.clone(),
+					id: id.1,
+				});
+				(id, response)
 			},
 		};
 
@@ -169,7 +173,6 @@ impl<T: Config> IsmpModule for Handler<T> {
 			Ok(())
 		})?;
 		Responses::<T>::insert(&origin, &id, response);
-		Pallet::<T>::deposit_event(Event::<T>::ResponseReceived { dest: origin, id });
 		Ok(())
 	}
 

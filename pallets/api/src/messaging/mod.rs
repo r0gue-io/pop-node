@@ -123,10 +123,12 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		IsmpGetDispatched { origin: T::AccountId, id: MessageId },
+		IsmpGetResponseReceived { dest: T::AccountId, id: MessageId },
 		IsmpPostDispatched { origin: T::AccountId, id: MessageId },
+		IsmpPostResponseReceived { dest: T::AccountId, id: MessageId },
 		XcmQueryCreated { origin: T::AccountId, id: MessageId },
+		XcmResponseReceived { dest: T::AccountId, id: MessageId },
 		Removed { origin: T::AccountId, messages: Vec<MessageId> },
-		ResponseReceived { dest: T::AccountId, id: MessageId },
 	}
 
 	#[pallet::error]
