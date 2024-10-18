@@ -634,7 +634,7 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	session.set_actor(contract.clone());
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
-	assert_err!(mint(&mut session, ALICE, u128::MAX), Error::Api(Arithmetic(Overflow)));
+	assert_err!(mint(&mut session, ALICE, u128::MAX), Error::Raw(Arithmetic(Overflow)));
 }
 
 #[drink::test(sandbox = Pop)]

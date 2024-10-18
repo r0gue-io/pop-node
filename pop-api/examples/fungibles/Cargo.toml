@@ -13,9 +13,10 @@ pop-api = { path = "../../../pop-api", default-features = false, features = [
 [dev-dependencies]
 env_logger = { version = "0.11.3" }
 serde_json = "1.0.114"
+staging-xcm = { version = "=14.1.0", default-features = false }
 
 # Local
-drink = { package = "pop-drink", path = "../../../../pop-drink/crates/pop-drink" }
+drink = { package = "pop-drink", git = "https://github.com/r0gue-io/pop-drink", ath = "crates/pop-drink" }
 
 [lib]
 path = "lib.rs"
