@@ -72,7 +72,8 @@ mod messaging {
 						.build(),
 				)
 				.build();
-			self.env().xcm_execute(&VersionedXcm::V4(message)).unwrap(); // todo: handle error
+			api::xcm::execute(&VersionedXcm::V4(message)).unwrap(); // todo: handle error
+
 			self.env().emit_event(Funded {
 				account_id: beneficiary,
 				value: self.env().transferred_value(),
@@ -82,9 +83,10 @@ mod messaging {
 
 		#[ink(message, payable)]
 		pub fn transact(&mut self, call: DoubleEncoded<()>, weight: Weight) -> Result<()> {
-			// Request query id, used to report transact status.
-			self.id = self.id.saturating_add(1);
 			let dest = Location::new(1, Parachain(self.para));
+
+			// Register a new query for receiving a response, used to report transact status.
+			self.id = self.id.saturating_add(1);
 			let query_id = api::xcm::new_query(
 				self.id,
 				dest.clone().into_versioned(),
@@ -92,38 +94,20 @@ mod messaging {
 			)?
 			.unwrap(); // TODO: handle error
 
-			let query_response = QueryResponseInfo {
+			// TODO: provide an api function for determining the local para id and max weight value
+			// for processing the reported transact status on the local chain.
+			let response = QueryResponseInfo {
 				// Route back to this parachain.
 				destination: Location::new(1, Parachain(4_001)),
 				query_id,
-				// TODO: provide an api function for determining this value for processing the
-				// reported transact status on the local chain
 				max_weight: Weight::from_parts(1_000_000, 5_000),
 			};
 
 			// Send transact message.
-			let asset: Asset = (Location::parent(), self.env().transferred_value()).into();
-			let beneficiary = hashed_account(4_001, self.env().account_id()); // todo: para id getter
-			let message: Xcm<()> = Xcm::builder_unsafe()
-				.withdraw_asset(asset.clone().into())
-				.buy_execution(asset, WeightLimit::Unlimited)
-				.set_appendix(
-					Xcm::builder_unsafe()
-						.refund_surplus()
-						.deposit_asset(
-							All.into(),
-							Location::new(0, AccountId32 { network: None, id: beneficiary.0 }),
-						)
-						.build(),
-				)
-				.set_error_handler(
-					Xcm::builder_unsafe().report_error(query_response.clone()).build(),
-				)
-				.transact(OriginKind::SovereignAccount, weight, call)
-				.report_transact_status(query_response)
-				.build();
-			let hash =
-				self.env().xcm_send(&dest.into_versioned(), &VersionedXcm::V4(message)).unwrap(); // todo: handle error
+			let fees: Asset = (Location::parent(), self.env().transferred_value()).into();
+			let message: Xcm<()> = self._transact(call, weight, fees, response);
+			let hash = api::xcm::send(&dest.into_versioned(), &VersionedXcm::V4(message)).unwrap(); // todo: handle error
+
 			self.env().emit_event(XcmRequested { id: self.id, query_id, hash });
 			Ok(())
 		}
@@ -138,6 +122,32 @@ mod messaging {
 				}
 			}
 			Ok(())
+		}
+
+		fn _transact(
+			&self,
+			call: DoubleEncoded<()>,
+			weight: Weight,
+			fees: Asset,
+			response: QueryResponseInfo,
+		) -> Xcm<()> {
+			let beneficiary = hashed_account(4_001, self.env().account_id()); // todo: para id getter
+			Xcm::builder_unsafe()
+				.withdraw_asset(fees.clone().into())
+				.buy_execution(fees, WeightLimit::Unlimited)
+				.set_appendix(
+					Xcm::builder_unsafe()
+						.refund_surplus()
+						.deposit_asset(
+							All.into(),
+							Location::new(0, AccountId32 { network: None, id: beneficiary.0 }),
+						)
+						.build(),
+				)
+				.set_error_handler(Xcm::builder_unsafe().report_error(response.clone()).build())
+				.transact(OriginKind::SovereignAccount, weight, call)
+				.report_transact_status(response)
+				.build()
 		}
 	}
 
