@@ -4,7 +4,6 @@ use codec::{Decode, Encode};
 use frame_support::{
 	pallet_prelude::MaxEncodedLen,
 	traits::{fungible::Inspect, Get, OriginTrait},
-	CloneNoBound, DebugNoBound, EqNoBound, PartialEqNoBound,
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -313,13 +312,6 @@ impl<T: Config> Pallet<T> {
 
 		deposit
 	}
-}
-
-#[derive(CloneNoBound, DebugNoBound, Encode, EqNoBound, Decode, PartialEqNoBound, TypeInfo)]
-#[scale_info(skip_type_params(T))]
-pub enum Message<T: Config> {
-	Ismp { id: MessageId, message: ismp::Message<T>, fee: BalanceOf<T> },
-	Xcm { id: MessageId, responder: VersionedLocation, timeout: BlockNumberOf<T> },
 }
 
 #[derive(Clone, Decode, Debug, Encode, MaxEncodedLen, PartialEq, TypeInfo)]
