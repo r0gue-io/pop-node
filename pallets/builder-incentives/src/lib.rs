@@ -301,7 +301,10 @@ pub mod pallet {
 			if total_contract_fees.is_zero() || contract_fees.is_zero() {
 				return BalanceOf::<T>::zero();
 			}
-			let proportion = Permill::from_rational(contract_fees, total_contract_fees);
+			// TODO: This should not be hardcoded here. The 50% is specified in the runtime for
+			// DealWithFees.
+			let incentives_fee = (Permill::from_percent(50) * contract_fees);
+			let proportion = Permill::from_rational(incentives_fee, total_contract_fees);
 			proportion * total_fees
 		}
 
