@@ -9,7 +9,7 @@ use super::*;
 mod utils;
 
 const TOKEN_ID: TokenId = 1;
-const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.wasm";
+const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.riscv";
 
 /// 1. PSP-22 Interface:
 /// - total_supply
@@ -24,14 +24,14 @@ const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.wasm";
 #[test]
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(Assets::total_supply(TOKEN_ID)));
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(0));
 
 		// Tokens in circulation.
-		assets::create_and_mint_to(&addr, TOKEN_ID, &BOB, 100);
+		assets::create_and_mint_to(&account_id, TOKEN_ID, &BOB, 100);
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(Assets::total_supply(TOKEN_ID)));
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(100));
 	});
@@ -40,14 +40,14 @@ fn total_supply_works() {
 #[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(Assets::balance(TOKEN_ID, BOB)));
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(0));
 
 		// Tokens in circulation.
-		assets::create_and_mint_to(&addr, TOKEN_ID, &BOB, 100);
+		assets::create_and_mint_to(&account_id, TOKEN_ID, &BOB, 100);
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(Assets::balance(TOKEN_ID, BOB)));
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(100));
 	});
@@ -56,7 +56,7 @@ fn balance_of_works() {
 #[test]
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -66,7 +66,7 @@ fn allowance_works() {
 		assert_eq!(allowance(&addr, TOKEN_ID, BOB, ALICE), Ok(0));
 
 		// Tokens in circulation.
-		assets::create_mint_and_approve(&addr, TOKEN_ID, &BOB, 100, &ALICE, 50);
+		assets::create_mint_and_approve(&account_id, TOKEN_ID, &BOB, 100, &ALICE, 50);
 		assert_eq!(
 			allowance(&addr, TOKEN_ID, BOB, ALICE),
 			Ok(Assets::allowance(TOKEN_ID, &BOB, &ALICE))
@@ -78,13 +78,13 @@ fn allowance_works() {
 #[test]
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
 		assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0] }));
 		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 1, &account_id, amount);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::freeze(&ALICE, token);
 		assert_eq!(transfer(&addr, token, BOB, amount), Err(Module { index: 52, error: [16, 0] }));
@@ -102,7 +102,7 @@ fn transfer_works() {
 		let balance_after_transfer = Assets::balance(token, &BOB);
 		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 		// Successfully emit event.
-		let from = account_id_from_slice(addr.as_ref());
+		let from = account_id_from_slice(account_id.as_ref());
 		let to = account_id_from_slice(BOB.as_ref());
 		let expected = Transfer { from: Some(from), to: Some(to), value: amount / 2 }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
@@ -120,7 +120,7 @@ fn transfer_works() {
 #[test]
 fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
@@ -138,7 +138,7 @@ fn transfer_from_works() {
 		assert_ok!(Assets::approve_transfer(
 			RuntimeOrigin::signed(ALICE.into()),
 			token.into(),
-			addr.clone().into(),
+			account_id.clone().into(),
 			amount + 1 * UNIT,
 		));
 		// Token is not live, i.e. frozen or being destroyed.
@@ -169,34 +169,34 @@ fn transfer_from_works() {
 #[test]
 fn approve_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, 0, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, 0, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
 		assert_eq!(approve(&addr, 0, &BOB, amount), Err(Module { index: 52, error: [3, 0] }));
-		let token = assets::create_and_mint_to(&ALICE, 0, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 0, &account_id, amount);
 		assert_eq!(approve(&addr, token, &BOB, amount), Err(ConsumerRemaining));
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![1]);
 		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 1, &account_id, amount);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::freeze(&ALICE, token);
 		assert_eq!(approve(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
 		assets::thaw(&ALICE, token);
 		// Successful approvals.
-		assert_eq!(0, Assets::allowance(token, &addr, &BOB));
+		assert_eq!(0, Assets::allowance(token, &account_id, &BOB));
 		assert_ok!(approve(&addr, token, &BOB, amount));
-		assert_eq!(Assets::allowance(token, &addr, &BOB), amount);
+		assert_eq!(Assets::allowance(token, &account_id, &BOB), amount);
 		// Successfully emit event.
-		let owner = account_id_from_slice(addr.as_ref());
+		let owner = account_id_from_slice(account_id.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
 		let expected = Approval { owner, spender, value: amount }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Non-additive, sets new value.
 		assert_ok!(approve(&addr, token, &BOB, amount / 2));
-		assert_eq!(Assets::allowance(token, &addr, &BOB), amount / 2);
+		assert_eq!(Assets::allowance(token, &account_id, &BOB), amount / 2);
 		// Successfully emit event.
-		let owner = account_id_from_slice(addr.as_ref());
+		let owner = account_id_from_slice(account_id.as_ref());
 		let spender = account_id_from_slice(BOB.as_ref());
 		let expected = Approval { owner, spender, value: amount / 2 }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
@@ -211,19 +211,19 @@ fn increase_allowance_works() {
 	new_test_ext().execute_with(|| {
 		let amount: Balance = 100 * UNIT;
 		// Instantiate a contract without balance - test `ConsumerRemaining.
-		let addr = instantiate(CONTRACT, 0, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, 0, vec![]);
 		// Token does not exist.
 		assert_eq!(
 			increase_allowance(&addr, 0, &BOB, amount),
 			Err(Module { index: 52, error: [3, 0] })
 		);
-		let token = assets::create_and_mint_to(&ALICE, 0, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 0, &account_id, amount);
 		assert_eq!(increase_allowance(&addr, token, &BOB, amount), Err(ConsumerRemaining));
 
 		// Instantiate a contract with balance.
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![1]);
 		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
+		let token = assets::create_and_mint_to(&ALICE, 1, &account_id, amount);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::freeze(&ALICE, token);
 		assert_eq!(
@@ -232,12 +232,12 @@ fn increase_allowance_works() {
 		);
 		assets::thaw(&ALICE, token);
 		// Successful approvals:
-		assert_eq!(0, Assets::allowance(token, &addr, &BOB));
+		assert_eq!(0, Assets::allowance(token, &account_id, &BOB));
 		assert_ok!(increase_allowance(&addr, token, &BOB, amount));
-		assert_eq!(Assets::allowance(token, &addr, &BOB), amount);
+		assert_eq!(Assets::allowance(token, &account_id, &BOB), amount);
 		// Additive.
 		assert_ok!(increase_allowance(&addr, token, &BOB, amount));
-		assert_eq!(Assets::allowance(token, &addr, &BOB), amount * 2);
+		assert_eq!(Assets::allowance(token, &account_id, &BOB), amount * 2);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&ALICE, token);
 		assert_eq!(
@@ -250,7 +250,7 @@ fn increase_allowance_works() {
 #[test]
 fn decrease_allowance_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
@@ -259,21 +259,22 @@ fn decrease_allowance_works() {
 			Err(Module { index: 52, error: [3, 0] }),
 		);
 		// Create token and mint `amount` to contract address, then approve Bob to spend `amount`.
-		let token = assets::create_mint_and_approve(&addr, 0, &addr, amount, &BOB, amount);
+		let token =
+			assets::create_mint_and_approve(&account_id, 0, &account_id, amount, &BOB, amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::freeze(&addr, token);
+		assets::freeze(&account_id, token);
 		assert_eq!(
 			decrease_allowance(&addr, token, &BOB, amount),
 			Err(Module { index: 52, error: [16, 0] }),
 		);
-		assets::thaw(&addr, token);
+		assets::thaw(&account_id, token);
 		// Successfully decrease allowance.
-		let allowance_before = Assets::allowance(token, &addr, &BOB);
+		let allowance_before = Assets::allowance(token, &account_id, &BOB);
 		assert_ok!(decrease_allowance(&addr, 0, &BOB, amount / 2 - 1 * UNIT));
-		let allowance_after = Assets::allowance(token, &addr, &BOB);
+		let allowance_after = Assets::allowance(token, &account_id, &BOB);
 		assert_eq!(allowance_before - allowance_after, amount / 2 - 1 * UNIT);
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::start_destroy(&addr, token);
+		assets::start_destroy(&account_id, token);
 		assert_eq!(
 			decrease_allowance(&addr, token, &BOB, amount),
 			Err(Module { index: 52, error: [16, 0] }),
@@ -289,7 +290,7 @@ fn decrease_allowance_works() {
 #[test]
 fn token_metadata_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let name: Vec<u8> = vec![11, 12, 13];
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
@@ -302,7 +303,13 @@ fn token_metadata_works() {
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(Assets::decimals(TOKEN_ID)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(0));
 		// Create Token.
-		assets::create_and_set_metadata(&addr, TOKEN_ID, name.clone(), symbol.clone(), decimals);
+		assets::create_and_set_metadata(
+			&account_id,
+			TOKEN_ID,
+			name.clone(),
+			symbol.clone(),
+			decimals,
+		);
 		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Assets::name(TOKEN_ID)));
 		assert_eq!(token_name(&addr, TOKEN_ID), Ok(name));
 		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Assets::symbol(TOKEN_ID)));
@@ -322,23 +329,29 @@ fn token_metadata_works() {
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a contract without balance for fees.
-		let addr = instantiate(CONTRACT, 0, vec![0]);
+		let (addr, account_id) = instantiate(CONTRACT, 0, vec![0]);
 		// No balance to pay for fees.
-		assert_eq!(create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2, 0] }),);
+		assert_eq!(
+			create(&addr, TOKEN_ID, &account_id, 1),
+			Err(Module { index: 10, error: [2, 0] }),
+		);
 
 		// Instantiate a contract without balance for deposit.
-		let addr = instantiate(CONTRACT, 100, vec![1]);
+		let (addr, account_id) = instantiate(CONTRACT, 100, vec![1]);
 		// No balance to pay the deposit.
-		assert_eq!(create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2, 0] }),);
+		assert_eq!(
+			create(&addr, TOKEN_ID, &account_id, 1),
+			Err(Module { index: 10, error: [2, 0] }),
+		);
 
 		// Instantiate a contract with enough balance.
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![2]);
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 0), Err(Module { index: 52, error: [7, 0] }),);
 		// The minimal balance for a token must be non zero.
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 0), Err(Module { index: 52, error: [7, 0] }),);
 		// Create token successfully.
 		assert_ok!(create(&addr, TOKEN_ID, &BOB, 1));
-		assert_eq!(Assets::owner(TOKEN_ID), Some(addr.clone()));
+		assert_eq!(Assets::owner(TOKEN_ID), Some(account_id.clone()));
 		// Successfully emit event.
 		let admin = account_id_from_slice(BOB.as_ref());
 		let expected = Created { id: TOKEN_ID, creator: admin, admin }.encode();
@@ -353,7 +366,7 @@ fn create_works() {
 fn instantiate_and_create_fungible_works() {
 	new_test_ext().execute_with(|| {
 		let contract =
-			"contracts/create_token_in_constructor/target/ink/create_token_in_constructor.wasm";
+			"contracts/create_token_in_constructor/target/ink/create_token_in_constructor.riscv";
 		// Token already exists.
 		assets::create(&ALICE, 0, 1);
 		assert_eq!(
@@ -377,7 +390,7 @@ fn instantiate_and_create_fungible_works() {
 #[test]
 fn start_destroy_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![2]);
 
 		// Token does not exist.
 		assert_eq!(start_destroy(&addr, TOKEN_ID), Err(Module { index: 52, error: [3, 0] }),);
@@ -385,7 +398,7 @@ fn start_destroy_works() {
 		let token = assets::create(&ALICE, 0, 1);
 		// No Permission.
 		assert_eq!(start_destroy(&addr, token), Err(Module { index: 52, error: [2, 0] }),);
-		let token = assets::create(&addr, TOKEN_ID, 1);
+		let token = assets::create(&account_id, TOKEN_ID, 1);
 		assert_ok!(start_destroy(&addr, token));
 		// Successfully emit event.
 		let expected = DestroyStarted { token: TOKEN_ID }.encode();
@@ -399,7 +412,7 @@ fn set_metadata_works() {
 		let name = vec![42];
 		let symbol = vec![42];
 		let decimals = 42u8;
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// Token does not exist.
 		assert_eq!(
@@ -413,14 +426,14 @@ fn set_metadata_works() {
 			set_metadata(&addr, token, vec![0], vec![0], 0u8),
 			Err(Module { index: 52, error: [2, 0] }),
 		);
-		let token = assets::create(&addr, TOKEN_ID, 1);
+		let token = assets::create(&account_id, TOKEN_ID, 1);
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::freeze(&addr, token);
+		assets::freeze(&account_id, token);
 		assert_eq!(
 			set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0u8),
 			Err(Module { index: 52, error: [16, 0] }),
 		);
-		assets::thaw(&addr, token);
+		assets::thaw(&account_id, token);
 		// TODO: calling the below with a vector of length `100_000` errors in pallet contracts
 		//  `OutputBufferTooSmall. Added to security analysis issue #131 to revisit.
 		// Set bad metadata - too large values.
@@ -434,7 +447,7 @@ fn set_metadata_works() {
 		let expected = MetadataSet { token: TOKEN_ID, name, symbol, decimals }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::start_destroy(&addr, token);
+		assets::start_destroy(&account_id, token);
 		assert_eq!(
 			set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0),
 			Err(Module { index: 52, error: [16, 0] }),
@@ -448,7 +461,7 @@ fn clear_metadata_works() {
 		let name = vec![42];
 		let symbol = vec![42];
 		let decimals = 42u8;
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// Token does not exist.
 		assert_eq!(clear_metadata(&addr, 0), Err(Module { index: 52, error: [3, 0] }),);
@@ -456,21 +469,21 @@ fn clear_metadata_works() {
 		let token = assets::create_and_set_metadata(&ALICE, 0, vec![0], vec![0], 0);
 		// No Permission.
 		assert_eq!(clear_metadata(&addr, token), Err(Module { index: 52, error: [2, 0] }),);
-		let token = assets::create(&addr, TOKEN_ID, 1);
+		let token = assets::create(&account_id, TOKEN_ID, 1);
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::freeze(&addr, token);
+		assets::freeze(&account_id, token);
 		assert_eq!(clear_metadata(&addr, token), Err(Module { index: 52, error: [16, 0] }),);
-		assets::thaw(&addr, token);
+		assets::thaw(&account_id, token);
 		// No metadata set.
 		assert_eq!(clear_metadata(&addr, token), Err(Module { index: 52, error: [3, 0] }),);
-		assets::set_metadata(&addr, token, name, symbol, decimals);
+		assets::set_metadata(&account_id, token, name, symbol, decimals);
 		// Clear metadata successfully.
 		assert_ok!(clear_metadata(&addr, TOKEN_ID));
 		// Successfully emit event.
 		let expected = MetadataCleared { token: TOKEN_ID }.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::start_destroy(&addr, token);
+		assets::start_destroy(&account_id, token);
 		assert_eq!(
 			set_metadata(&addr, TOKEN_ID, vec![0], vec![0], decimals),
 			Err(Module { index: 52, error: [16, 0] }),
@@ -481,13 +494,13 @@ fn clear_metadata_works() {
 #[test]
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(token_exists(&addr, TOKEN_ID), Ok(Assets::asset_exists(TOKEN_ID)));
 
 		// Tokens in circulation.
-		assets::create(&addr, TOKEN_ID, 1);
+		assets::create(&account_id, TOKEN_ID, 1);
 		assert_eq!(token_exists(&addr, TOKEN_ID), Ok(Assets::asset_exists(TOKEN_ID)));
 	});
 }
@@ -495,7 +508,7 @@ fn token_exists_works() {
 #[test]
 fn mint_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
@@ -503,13 +516,13 @@ fn mint_works() {
 		let token = assets::create(&ALICE, 1, 1);
 		// Minting can only be done by the owner.
 		assert_eq!(mint(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
-		let token = assets::create(&addr, 2, 2);
+		let token = assets::create(&account_id, 2, 2);
 		// Minimum balance of a token can not be zero.
 		assert_eq!(mint(&addr, token, &BOB, 1), Err(Token(BelowMinimum)));
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::freeze(&addr, token);
+		assets::freeze(&account_id, token);
 		assert_eq!(mint(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
-		assets::thaw(&addr, token);
+		assets::thaw(&account_id, token);
 		// Successful mint.
 		let balance_before_mint = Assets::balance(token, &BOB);
 		assert_ok!(mint(&addr, token, &BOB, amount));
@@ -518,7 +531,7 @@ fn mint_works() {
 		// Account can not hold more tokens than Balance::MAX.
 		assert_eq!(mint(&addr, token, &BOB, Balance::MAX,), Err(Arithmetic(Overflow)));
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::start_destroy(&addr, token);
+		assets::start_destroy(&account_id, token);
 		assert_eq!(mint(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
 	});
 }
@@ -526,7 +539,7 @@ fn mint_works() {
 #[test]
 fn burn_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
@@ -537,18 +550,18 @@ fn burn_works() {
 		// Burning can only be done by the manager.
 		assets::mint(&ALICE, token, &BOB, amount);
 		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
-		let token = assets::create_and_mint_to(&addr, 2, &BOB, amount);
+		let token = assets::create_and_mint_to(&account_id, 2, &BOB, amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::freeze(&addr, token);
+		assets::freeze(&account_id, token);
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
-		assets::thaw(&addr, token);
+		assets::thaw(&account_id, token);
 		// Successful mint.
 		let balance_before_burn = Assets::balance(token, &BOB);
 		assert_ok!(burn(&addr, token, &BOB, amount));
 		let balance_after_burn = Assets::balance(token, &BOB);
 		assert_eq!(balance_after_burn, balance_before_burn - amount);
 		// Token is not live, i.e. frozen or being destroyed.
-		assets::start_destroy(&addr, token);
+		assets::start_destroy(&account_id, token);
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [17, 0] }));
 	});
 }

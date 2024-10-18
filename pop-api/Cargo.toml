@@ -6,13 +6,14 @@ name = "pop-api"
 version = "0.0.0"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
+ink = { git = "https://github.com/peterwht/ink", branch = "peter/riscv", default-features = false }
+polkavm-derive = "0.11.0"
 pop-primitives = { path = "../primitives", default-features = false }
-sp-io = { version = "37.0.0", default-features = false, features = [
-	"disable_allocator",
-	"disable_oom",
-	"disable_panic_handler",
-] }
+#sp-io = { version = "37.0.0", default-features = false, features = [
+#    "disable_allocator",
+#    "disable_oom",
+#    "disable_panic_handler",
+#] }
 
 [lib]
 crate-type = [ "rlib" ]
@@ -22,4 +23,4 @@ path = "src/lib.rs"
 [features]
 default = [ "std" ]
 fungibles = [  ]
-std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]
+std = [ "ink/std", "pop-primitives/std" ]

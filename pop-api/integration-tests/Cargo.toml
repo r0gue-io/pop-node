@@ -1,12 +1,12 @@
 [package]
-build = "build.rs"
+#build = "build.rs"
 edition = "2021"
 name = "integration-tests"
 version = "0.1.0"
 
-[build-dependencies]
-contract-build = "4.1.1"
-
+#[build-dependencies]
+#contract-build = "4.1.1"
+#
 [dev-dependencies]
 env_logger = "0.11.2"
 frame-support = { version = "36.0.0", default-features = false }
@@ -15,7 +15,7 @@ frame-system = { version = "36.1.0", default-features = false }
 log = "0.4.22"
 pallet-assets = { version = "37.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
-pallet-contracts = { version = "35.0.0", default-features = false }
+pallet-revive = { path = "../../pallets/revive", default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
 ] }
@@ -34,7 +34,7 @@ std = [
 	"frame-system/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
-	"pallet-contracts/std",
+	"pallet-revive/std",
 	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",

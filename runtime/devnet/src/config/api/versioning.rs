@@ -54,7 +54,7 @@ impl TryFrom<(RuntimeResult, Version)> for VersionedRuntimeResult {
 		match version {
 			// Allows mapping from current `RuntimeResult` to a specific/prior version
 			0 => Ok(VersionedRuntimeResult::V0(result)),
-			_ => Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into()),
+			_ => Err(pallet_revive::Error::<Runtime>::DecodingFailed.into()),
 		}
 	}
 }
@@ -84,7 +84,7 @@ impl TryFrom<(DispatchError, Version)> for VersionedError {
 		match version {
 			// Allows mapping from current `DispatchError` to a specific/prior version of `Error`
 			0 => Ok(VersionedError::V0(V0Error::from(error).0)),
-			_ => Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into()),
+			_ => Err(pallet_revive::Error::<Runtime>::DecodingFailed.into()),
 		}
 	}
 }
@@ -119,7 +119,7 @@ impl From<DispatchError> for V0Error {
 				let ModuleError { index, error, message: _message } = error;
 				// Map `pallet-contracts::Error::DecodingFailed` to `Error::DecodingFailed`
 				if index as usize ==
-					<crate::Contracts as frame_support::traits::PalletInfoAccess>::index() &&
+					<crate::Revive as frame_support::traits::PalletInfoAccess>::index() &&
 					error == DECODING_FAILED_ERROR
 				{
 					Error::DecodingFailed
@@ -202,7 +202,7 @@ mod tests {
 				RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000)),
 				1
 			)),
-			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
+			Err(pallet_revive::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
 
@@ -229,7 +229,7 @@ mod tests {
 		// Unknown version 1.
 		assert_eq!(
 			VersionedError::try_from((BadOrigin, 1)),
-			Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into())
+			Err(pallet_revive::Error::<Runtime>::DecodingFailed.into())
 		);
 	}
 
@@ -264,7 +264,7 @@ mod tests {
 				Module(ModuleError { index: 1, error: [2, 2, 2, 4], message: Some("hallo") }),
 				Error::Module { index: 1, error: [2, 2] },
 			),
-			(pallet_contracts::Error::<Runtime>::DecodingFailed.into(), Error::DecodingFailed),
+			(pallet_revive::Error::<Runtime>::DecodingFailed.into(), Error::DecodingFailed),
 			(ConsumerRemaining, Error::ConsumerRemaining),
 			(NoProviders, Error::NoProviders),
 			(TooManyConsumers, Error::TooManyConsumers),
@@ -287,7 +287,7 @@ mod tests {
 
 	#[test]
 	fn decoding_failed_error_encoding_works() {
-		let Module(error) = pallet_contracts::Error::<Runtime>::DecodingFailed.into() else {
+		let Module(error) = pallet_revive::Error::<Runtime>::DecodingFailed.into() else {
 			unreachable!()
 		};
 		assert_eq!(error.error, DECODING_FAILED_ERROR)

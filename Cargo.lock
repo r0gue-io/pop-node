@@ -7388,25 +7388,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-api-revive"
-version = "0.1.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log",
- "pallet-assets",
- "pallet-balances",
- "parity-scale-codec",
- "pop-chain-extension-revive",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
 name = "pallet-asset-conversion"
 version = "18.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -10885,28 +10866,6 @@ dependencies = [
  "impl-trait-for-tuples",
  "log",
  "pallet-balances",
- "pallet-contracts",
- "pallet-timestamp",
- "parity-scale-codec",
- "rand",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pop-chain-extension-revive"
-version = "0.1.0"
-dependencies = [
- "contract-build",
- "env_logger 0.11.5",
- "frame-support",
- "frame-system",
- "impl-trait-for-tuples",
- "log",
- "pallet-balances",
  "pallet-revive",
  "pallet-timestamp",
  "parity-scale-codec",
@@ -11041,7 +11000,6 @@ dependencies = [
  "ismp-parachain-runtime-api",
  "log",
  "pallet-api",
- "pallet-api-revive",
  "pallet-assets",
  "pallet-aura",
  "pallet-authorship",
@@ -11071,7 +11029,6 @@ dependencies = [
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
  "pop-chain-extension",
- "pop-chain-extension-revive",
  "pop-primitives",
  "pop-runtime-common",
  "scale-info",

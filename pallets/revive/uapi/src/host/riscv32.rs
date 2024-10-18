@@ -425,7 +425,6 @@ impl HostFn for HostFnImpl {
 	}
 
 	fn call_chain_extension(func_id: u32, input: &[u8], mut output: Option<&mut &mut [u8]>) -> u32 {
-		log::info!("CALL CHAIN EXTENSION");
 		let (output_ptr, mut output_len) = ptr_len_or_sentinel(&mut output);
 		let ret_code = {
 			unsafe {

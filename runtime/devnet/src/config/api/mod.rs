@@ -31,7 +31,7 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
-	Fungibles(fungibles::Read<Runtime>),
+	FungiblesRevive(fungibles::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -42,14 +42,15 @@ impl Readable for RuntimeRead {
 	/// performed.
 	fn weight(&self) -> Weight {
 		match self {
-			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
+			RuntimeRead::FungiblesRevive(key) => fungibles::Pallet::weight(key),
 		}
 	}
 
 	/// Performs the read and returns the result.
 	fn read(self) -> Self::Result {
 		match self {
-			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+			RuntimeRead::FungiblesRevive(key) =>
+				RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 		}
 	}
 }
@@ -153,7 +154,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 		use fungibles::Read::*;
 		matches!(
 			r,
-			RuntimeRead::Fungibles(
+			RuntimeRead::FungiblesRevive(
 				TotalSupply(..) |
 					BalanceOf { .. } |
 					Allowance { .. } |
