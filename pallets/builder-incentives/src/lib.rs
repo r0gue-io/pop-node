@@ -303,8 +303,9 @@ pub mod pallet {
 			}
 			// TODO: This should not be hardcoded here. The 50% is specified in the runtime for
 			// DealWithFees.
-			let incentives_fee = (Permill::from_percent(50) * contract_fees);
-			let proportion = Permill::from_rational(incentives_fee, total_contract_fees);
+			let incentives_fee = Permill::from_percent(50) * contract_fees;
+			let total_contract_incentives_fees = Permill::from_percent(50) * total_contract_fees;
+			let proportion = Permill::from_rational(incentives_fee, total_contract_incentives_fees);
 			proportion * total_fees
 		}
 
