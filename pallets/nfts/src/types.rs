@@ -92,18 +92,18 @@ pub(super) type PreSignedAttributesOf<T, I = ()> = PreSignedAttributes<
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct CollectionDetails<AccountId, DepositBalance> {
 	/// Collection's owner.
-	pub(super) owner: AccountId,
+	pub owner: AccountId,
 	/// The total balance deposited by the owner for all the storage data associated with this
 	/// collection. Used by `destroy`.
-	pub(super) owner_deposit: DepositBalance,
+	pub owner_deposit: DepositBalance,
 	/// The total number of outstanding items of this collection.
-	pub(super) items: u32,
+	pub items: u32,
 	/// The total number of outstanding item metadata of this collection.
-	pub(super) item_metadatas: u32,
+	pub item_metadatas: u32,
 	/// The total number of outstanding item configs of this collection.
-	pub(super) item_configs: u32,
+	pub item_configs: u32,
 	/// The total number of attributes for this collection.
-	pub(super) attributes: u32,
+	pub attributes: u32,
 }
 
 /// Witness data for the destroy transactions.
@@ -143,21 +143,21 @@ pub struct MintWitness<ItemId, Balance> {
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 pub struct ItemDetails<AccountId, Deposit, Approvals> {
 	/// The owner of this item.
-	pub(super) owner: AccountId,
+	pub owner: AccountId,
 	/// The approved transferrer of this item, if one is set.
-	pub(super) approvals: Approvals,
+	pub approvals: Approvals,
 	/// The amount held in the pallet's default account for this item. Free-hold items will have
 	/// this as zero.
-	pub(super) deposit: Deposit,
+	pub deposit: Deposit,
 }
 
 /// Information about the reserved item deposit.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ItemDeposit<DepositBalance, AccountId> {
 	/// A depositor account.
-	pub(super) account: AccountId,
+	pub account: AccountId,
 	/// An amount that gets reserved.
-	pub(super) amount: DepositBalance,
+	pub amount: DepositBalance,
 }
 
 /// Information about the collection's metadata.
