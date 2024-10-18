@@ -357,9 +357,10 @@ impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
 			// TODO: Change numbers -> Now for testing, Burn 50% of fees, rest goes to incentives
 			// including 100% of the tips.
 			let (to_burn, mut incentives) = fees.ration(50, 50);
-			if let Some(tips) = fees_then_tips.next() {
-				tips.merge_into(&mut incentives);
-			}
+			// TODO: Decide what to do with the tips
+			// if let Some(tips) = fees_then_tips.next() {
+			// 	tips.merge_into(&mut incentives);
+			// }
 			drop(to_burn);
 			// TODO: Use ToResolve
 			<ToBuilderIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
