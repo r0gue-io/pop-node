@@ -137,8 +137,8 @@ pub mod pallet {
 			from: Option<AccountIdOf<T>>,
 			/// The recipient of the transfer. `None` when burning.
 			to: Option<AccountIdOf<T>>,
-			/// The amount minted.
-			value: Option<BalanceOf<T>>,
+			/// The price of the collection item.
+			price: Option<BalanceOf<T>>,
 		},
 	}
 
@@ -167,7 +167,7 @@ pub mod pallet {
 				item,
 				from: None,
 				to: Some(account),
-				value: mint_price,
+				price: mint_price,
 			});
 			Ok(())
 		}
@@ -186,7 +186,7 @@ pub mod pallet {
 				item,
 				from: Some(account),
 				to: None,
-				value: None,
+				price: None,
 			});
 			Ok(())
 		}
@@ -206,7 +206,7 @@ pub mod pallet {
 				item,
 				from: Some(from),
 				to: Some(to),
-				value: None,
+				price: None,
 			});
 			Ok(())
 		}
