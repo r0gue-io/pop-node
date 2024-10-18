@@ -60,5 +60,6 @@ std = [
 try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
+	"pallet-nfts/try-runtime",
 	"sp-runtime/try-runtime",
 ]
