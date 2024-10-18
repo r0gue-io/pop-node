@@ -25,8 +25,8 @@ use sp_core::{keccak_256, H256};
 use sp_runtime::{BoundedVec, SaturatedConversion, Saturating};
 
 use crate::messaging::{
-	pallet::{Config, Event, IsmpRequests, Messages, Pallet, Responses},
-	BalanceOf, CalculateDeposit, MessageId, Status,
+	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
+	BalanceOf, CalculateDeposit, MessageId,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -165,14 +165,17 @@ impl<T: Config> IsmpModule for Handler<T> {
 		// Store values for later retrieval
 		let response: BoundedVec<u8, T::MaxResponseLen> =
 			response.try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
-		Messages::<T>::try_mutate(&origin, &id, |v| {
-			let Some((status, ..)) = v else {
-				return Err(Error::Custom("response exceeds max".into()))
+		Messages::<T>::try_mutate(&origin, &id, |message| {
+			let Some(super::super::Message::Ismp { deposit, commitment }) = message else {
+				return Err(Error::Custom("message not found".into()))
 			};
-			*status = Status::Complete;
+			*message = Some(super::super::Message::IsmpResponse {
+				deposit: *deposit,
+				commitment: *commitment,
+				response,
+			});
 			Ok(())
 		})?;
-		Responses::<T>::insert(&origin, &id, response);
 		Ok(())
 	}
 
@@ -186,11 +189,14 @@ impl<T: Config> IsmpModule for Handler<T> {
 				};
 				let key =
 					IsmpRequests::<T>::get(id).ok_or(Error::Custom("request not found".into()))?;
-				Messages::<T>::try_mutate(key.0, key.1, |v| {
-					let Some((status, ..)) = v else {
-						return Err(Error::Custom("response exceeds max".into()))
+				Messages::<T>::try_mutate(key.0, key.1, |message| {
+					let Some(super::super::Message::Ismp { deposit, commitment }) = message else {
+						return Err(Error::Custom("message not found".into()))
 					};
-					*status = Status::TimedOut;
+					*message = Some(super::super::Message::IsmpTimedOut {
+						deposit: *deposit,
+						commitment: *commitment,
+					});
 					Ok(())
 				})?;
 				Ok(())

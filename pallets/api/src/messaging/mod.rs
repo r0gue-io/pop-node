@@ -15,6 +15,7 @@ use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryHandler, QueryId, VersionedLocation},
 };
+use xcm::VersionedResponse;
 
 use super::Weight;
 
@@ -93,8 +94,7 @@ pub mod pallet {
 		T::AccountId,
 		Blake2_128Concat,
 		MessageId,
-		// TODO: improve
-		(Status, BalanceOf<T>, Option<H256>, Option<QueryId>),
+		Message<T>,
 		OptionQuery,
 	>;
 
@@ -103,19 +103,8 @@ pub mod pallet {
 		StorageMap<_, Identity, H256, (T::AccountId, MessageId), OptionQuery>;
 
 	#[pallet::storage]
-	pub(super) type XcmRequests<T: Config> =
+	pub(super) type XcmQueries<T: Config> =
 		StorageMap<_, Identity, QueryId, (T::AccountId, MessageId), OptionQuery>;
-
-	#[pallet::storage]
-	pub(super) type Responses<T: Config> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
-		MessageId,
-		BoundedVec<u8, T::MaxResponseLen>,
-		OptionQuery,
-	>;
 
 	/// The events that can be emitted.
 	#[pallet::event]
@@ -133,7 +122,7 @@ pub mod pallet {
 	#[pallet::error]
 	pub enum Error<T> {
 		DispatchFailed,
-		InvalidRequest,
+		InvalidMessage,
 		OriginConversionFailed,
 		MessageExists,
 		RequestPending,
@@ -181,11 +170,7 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying, response/timeout
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				(Status::Pending, deposit, Some(commitment), None::<QueryId>),
-			);
+			Messages::<T>::insert(&origin, id, Message::Ismp { deposit, commitment });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched { origin, id });
 			Ok(())
 		}
@@ -214,11 +199,7 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying, response/timeout
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				(Status::Pending, deposit, Some(commitment), None::<QueryId>),
-			);
+			Messages::<T>::insert(&origin, id, Message::Ismp { deposit, commitment });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched { origin, id });
 			Ok(())
 		}
@@ -248,12 +229,8 @@ pub mod pallet {
 
 			// Store query id for later lookup on response, message for querying, response/timeout
 			// handling.
-			XcmRequests::<T>::insert(&query_id, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				(Status::Pending, deposit, None::<H256>, Some(query_id)),
-			);
+			XcmQueries::<T>::insert(&query_id, (&origin, id));
+			Messages::<T>::insert(&origin, id, Message::XcmQuery { deposit, query_id });
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated { origin, id });
 			Ok(())
 		}
@@ -268,18 +245,28 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			for id in &messages {
 				// Ensure request exists and is not pending.
-				let Some((status, deposit, ismp, xcm)) = Messages::<T>::take(&origin, id) else {
-					return Err(Error::<T>::InvalidRequest.into());
+				let deposit = match Messages::<T>::take(&origin, id) {
+					Some(message) => match message {
+						Message::Ismp { .. } | Message::XcmQuery { .. } => {
+							return Err(Error::<T>::RequestPending.into());
+						},
+						Message::IsmpResponse { commitment, deposit, .. } => {
+							IsmpRequests::<T>::remove(commitment);
+							deposit
+						},
+						Message::XcmResponse { query_id, deposit, .. } => {
+							XcmQueries::<T>::remove(query_id);
+							deposit
+						},
+						Message::IsmpTimedOut { .. } => {
+							todo!()
+						},
+					},
+					None => {
+						return Err(Error::<T>::InvalidMessage.into());
+					},
 				};
-				ensure!(status != Status::Pending, Error::<T>::RequestPending);
-				// Remove associated data and return deposit.
-				Responses::<T>::remove(&origin, id);
-				if let Some(commitment) = ismp {
-					IsmpRequests::<T>::remove(commitment);
-				};
-				if let Some(query_id) = xcm {
-					XcmRequests::<T>::remove(query_id);
-				};
+				// Return deposit.
 				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
 			Pallet::<T>::deposit_event(Event::<T>::Removed {
@@ -365,14 +352,56 @@ impl<T: Config> crate::Read for Pallet<T> {
 	fn read(request: Self::Read) -> Self::Result {
 		match request {
 			Read::Poll(request) =>
-				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|r| r.0)),
-			Read::Get(request) => ReadResult::Get(Responses::<T>::get(request.0, request.1)),
-			Read::QueryId(request) =>
-				ReadResult::QueryId(Messages::<T>::get(request.0, request.1).and_then(|r| r.3)),
+				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| match m {
+					Message::Ismp { .. } | Message::XcmQuery { .. } => Status::Pending,
+					Message::IsmpTimedOut { .. } => Status::TimedOut,
+					Message::IsmpResponse { .. } | Message::XcmResponse { .. } => Status::Complete,
+				})),
+			Read::Get(request) =>
+				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
+					Message::IsmpResponse { response, .. } => Some(response),
+					Message::XcmResponse { response, .. } =>
+						Some(response.encode().try_into().unwrap()), // todo: handle error
+					_ => None,
+				})),
+			Read::QueryId(request) => ReadResult::QueryId(
+				Messages::<T>::get(request.0, request.1).and_then(|m| match m {
+					Message::XcmQuery { query_id, .. } | Message::XcmResponse { query_id, .. } =>
+						Some(query_id),
+					_ => None,
+				}),
+			),
 		}
 	}
 }
 
 trait CalculateDeposit<Deposit> {
 	fn calculate_deposit(&self) -> Deposit;
+}
+
+#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+enum Message<T: Config> {
+	Ismp {
+		commitment: H256,
+		deposit: BalanceOf<T>,
+	},
+	IsmpTimedOut {
+		commitment: H256,
+		deposit: BalanceOf<T>,
+	},
+	IsmpResponse {
+		commitment: H256,
+		deposit: BalanceOf<T>,
+		response: BoundedVec<u8, T::MaxResponseLen>,
+	},
+	XcmQuery {
+		query_id: QueryId,
+		deposit: BalanceOf<T>,
+	},
+	XcmResponse {
+		query_id: QueryId,
+		deposit: BalanceOf<T>,
+		response: VersionedResponse,
+	},
 }
