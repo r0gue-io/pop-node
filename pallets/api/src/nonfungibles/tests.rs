@@ -1,16 +1,110 @@
 use codec::Encode;
-use frame_support::{assert_ok, traits::nonfungibles_v2::InspectEnumerable};
+use frame_support::assert_ok;
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_nfts::{AccountBalance, CollectionConfig, CollectionSettings, MintSettings};
 
 use super::types::{AccountIdOf, CollectionIdOf, ItemIdOf};
 use crate::{
 	mock::*,
-	nonfungibles::{Event, Read::*},
+	nonfungibles::{Event, Read::*, ReadResult},
 	Read,
 };
 
 const ITEM: u32 = 1;
+
+mod encoding_read_result {
+	use pallet_nfts::{CollectionDetails, ItemDeposit, ItemDetails};
+	use sp_runtime::{BoundedBTreeMap, BoundedVec};
+
+	use super::*;
+
+	#[test]
+	fn total_supply() {
+		let total_supply: u32 = 1_000_000;
+		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
+	}
+
+	#[test]
+	fn balance_of() {
+		let balance: u32 = 100;
+		assert_eq!(ReadResult::BalanceOf::<Test>(balance).encode(), balance.encode());
+	}
+
+	#[test]
+	fn allowance() {
+		let allowance = false;
+		assert_eq!(ReadResult::Allowance::<Test>(allowance).encode(), allowance.encode());
+	}
+
+	#[test]
+	fn owner_of() {
+		let mut owner = Some(account(ALICE));
+		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
+		owner = None;
+		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
+	}
+
+	#[test]
+	fn get_attribute() {
+		let mut attribute = Some(BoundedVec::truncate_from("some attribute".as_bytes().to_vec()));
+		assert_eq!(
+			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
+			attribute.encode()
+		);
+		attribute = None;
+		assert_eq!(
+			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
+			attribute.encode()
+		);
+	}
+
+	#[test]
+	fn collection_owner() {
+		let mut collection_owner = Some(account(ALICE));
+		assert_eq!(
+			ReadResult::CollectionOwner::<Test>(collection_owner.clone()).encode(),
+			collection_owner.encode()
+		);
+		collection_owner = None;
+		assert_eq!(
+			ReadResult::CollectionOwner::<Test>(collection_owner.clone()).encode(),
+			collection_owner.encode()
+		);
+	}
+
+	#[test]
+	fn collection() {
+		let mut collection_details = Some(CollectionDetails {
+			owner: account(ALICE),
+			owner_deposit: 0,
+			items: 0,
+			item_metadatas: 0,
+			item_configs: 0,
+			attributes: 0,
+		});
+		assert_eq!(
+			ReadResult::Collection::<Test>(collection_details.clone()).encode(),
+			collection_details.encode()
+		);
+		collection_details = None;
+		assert_eq!(
+			ReadResult::Collection::<Test>(collection_details.clone()).encode(),
+			collection_details.encode()
+		);
+	}
+
+	#[test]
+	fn item() {
+		let mut item_details = Some(ItemDetails {
+			owner: account(ALICE),
+			approvals: BoundedBTreeMap::default(),
+			deposit: ItemDeposit { amount: 0, account: account(BOB) },
+		});
+		assert_eq!(ReadResult::Item::<Test>(item_details.clone()).encode(), item_details.encode());
+		item_details = None;
+		assert_eq!(ReadResult::Item::<Test>(item_details.clone()).encode(), item_details.encode());
+	}
+}
 
 #[test]
 fn mint_works() {
@@ -18,6 +112,8 @@ fn mint_works() {
 		let owner = account(ALICE);
 		let collection = create_collection(owner.clone());
 		// Successfully mint a new collection item.
+		let balance_before_mint = AccountBalance::<Test>::get(collection.clone(), owner.clone());
+		//
 		assert_ok!(NonFungibles::mint(
 			signed(owner.clone()),
 			owner.clone(),
@@ -25,8 +121,11 @@ fn mint_works() {
 			ITEM,
 			None
 		));
+		let balance_after_mint = AccountBalance::<Test>::get(collection.clone(), owner.clone());
+		assert_eq!(balance_after_mint, 1);
+		assert_eq!(balance_after_mint - balance_before_mint, 1);
 		System::assert_last_event(
-			Event::Transfer { collection, item: ITEM, from: None, to: Some(owner), value: None }
+			Event::Transfer { collection, item: ITEM, from: None, to: Some(owner), price: None }
 				.into(),
 		);
 	});
@@ -40,7 +139,7 @@ fn burn_works() {
 		// Successfully burn an existing new collection item.
 		assert_ok!(NonFungibles::burn(signed(owner.clone()), collection, ITEM));
 		System::assert_last_event(
-			Event::Transfer { collection, item, from: Some(owner), to: None, value: None }.into(),
+			Event::Transfer { collection, item, from: Some(owner), to: None, price: None }.into(),
 		);
 	});
 }
@@ -54,7 +153,7 @@ fn transfer() {
 		// Successfully burn an existing new collection item.
 		assert_ok!(NonFungibles::transfer(signed(owner.clone()), collection, ITEM, dest.clone()));
 		System::assert_last_event(
-			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), value: None }
+			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
 				.into(),
 		);
 	});
