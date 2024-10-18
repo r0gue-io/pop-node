@@ -7,9 +7,11 @@ use frame_support::{
 	},
 	weights::Weight,
 };
-use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
-use pop_runtime_devnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
+use pallet_revive::AddressMapper;
+use pallet_revive::{Code, CollectEvents, ExecReturnValue};
+use pop_runtime_devnet::{Assets, Revive as Contracts, Runtime, RuntimeOrigin, System, UNIT};
 use scale::{Decode, Encode};
+use sp_runtime::app_crypto::sp_core;
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 
 mod fungibles;
@@ -18,7 +20,7 @@ type Balance = u128;
 
 const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
 const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
-const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
+const DEBUG_OUTPUT: pallet_revive::DebugInfo = pallet_revive::DebugInfo::UnsafeDebug;
 const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
 const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
@@ -49,42 +51,45 @@ fn function_selector(name: &str) -> Vec<u8> {
 }
 
 fn bare_call(
-	addr: AccountId32,
+	addr: sp_core::H160,
 	input: Vec<u8>,
 	value: u128,
 ) -> Result<ExecReturnValue, DispatchError> {
 	let result = Contracts::bare_call(
-		ALICE,
+		RuntimeOrigin::signed(ALICE),
 		addr.into(),
 		value.into(),
 		GAS_LIMIT,
-		None,
+		1 * 1_000_000_000_000,
 		input,
 		DEBUG_OUTPUT,
 		CollectEvents::Skip,
-		Determinism::Enforced,
 	);
 	log::info!("contract exec result={result:?}");
 	result.result
 }
 
 // Deploy, instantiate and return contract address.
-fn instantiate(contract: &str, init_value: u128, salt: Vec<u8>) -> AccountId32 {
+fn instantiate(
+	contract: &str,
+	init_value: u128,
+	salt: Vec<u8>,
+) -> (crate::sp_core::H160, AccountId32) {
 	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
 
 	let result = Contracts::bare_instantiate(
-		ALICE,
+		RuntimeOrigin::signed(ALICE),
 		init_value,
 		GAS_LIMIT,
-		None,
+		1 * 1_000_000_000_000,
 		Code::Upload(wasm_binary),
 		function_selector("new"),
-		salt,
+		None,
 		DEBUG_OUTPUT,
 		CollectEvents::Skip,
 	)
 	.result
 	.unwrap();
 	assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-	result.account_id
+	(result.addr, pallet_revive::DefaultAddressMapper::to_account_id(&result.addr))
 }

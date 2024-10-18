@@ -5,7 +5,7 @@ use super::*;
 /// A chain extension function.
 pub trait Function {
 	/// The configuration of the contracts module.
-	type Config: pallet_contracts::Config;
+	type Config: pallet_revive::Config;
 	/// Optional error conversion.
 	type Error: ErrorConverter;
 
@@ -22,7 +22,7 @@ pub trait Function {
 pub struct DispatchCall<M, C, D, F, E = (), L = ()>(PhantomData<(M, C, D, F, E, L)>);
 impl<
 		Matcher: Matches,
-		Config: pallet_contracts::Config
+		Config: pallet_revive::Config
 			+ frame_system::Config<
 				RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 			>,
@@ -84,7 +84,7 @@ pub struct ReadState<M, C, R, D, F, RC = DefaultConverter<<R as Readable>::Resul
 );
 impl<
 		Matcher: Matches,
-		Config: pallet_contracts::Config,
+		Config: pallet_revive::Config,
 		Read: Readable + Debug,
 		Decoder: Decode<Output: codec::Decode + Into<Read>>,
 		Filter: Contains<Read>,
@@ -214,7 +214,7 @@ impl ErrorConverter for () {
 // Support tuples of at least one function (required for type resolution) and a maximum of ten.
 #[impl_trait_for_tuples::impl_for_tuples(1, 10)]
 #[tuple_types_custom_trait_bound(Function + Matches)]
-impl<Runtime: pallet_contracts::Config> Function for Tuple {
+impl<Runtime: pallet_revive::Config> Function for Tuple {
 	type Config = Runtime;
 	type Error = ();
 
@@ -233,7 +233,7 @@ impl<Runtime: pallet_contracts::Config> Function for Tuple {
 
 		// Otherwise returns error indicating an unmatched request.
 		log::error!("no function could be matched");
-		Err(pallet_contracts::Error::<Self::Config>::DecodingFailed.into())
+		Err(pallet_revive::Error::<Self::Config>::DecodingFailed.into())
 	}
 }
 
@@ -370,18 +370,18 @@ mod tests {
 
 		#[test]
 		fn dispatch_call_adjusts_weight() {
-			let migrate_weight = <Test as pallet_contracts::Config>::WeightInfo::migrate();
+			let migrate_weight = <Test as pallet_revive::Config>::WeightInfo::migrate();
 			let migration_noop_weight =
-				<Test as pallet_contracts::Config>::WeightInfo::migration_noop();
+				<Test as pallet_revive::Config>::WeightInfo::migration_noop();
 			new_test_ext().execute_with(|| {
 				// Attempt to perform non-existent migration with additional weight limit specified.
 				let extra_weight = Weight::from_parts(123456789, 12345);
 				let weight_limit = migration_noop_weight.saturating_add(extra_weight);
-				let call = RuntimeCall::Contracts(pallet_contracts::Call::migrate { weight_limit });
+				let call = RuntimeCall::Contracts(pallet_revive::Call::migrate { weight_limit });
 				let encoded_call = call.encode();
 				let mut env = MockEnvironment::new(FuncId::get(), encoded_call.clone());
 				let expected: DispatchError =
-					pallet_contracts::Error::<Test>::NoMigrationPerformed.into();
+					pallet_revive::Error::<Test>::NoMigrationPerformed.into();
 				assert_eq!(DispatchCall::execute(&mut env).err().unwrap(), expected);
 				// Ensure pre-dispatch weight is weight function + weight limit
 				assert_eq!(call.get_dispatch_info().weight, migrate_weight + weight_limit);
@@ -399,7 +399,7 @@ mod tests {
 			// Invalid encoded runtime call.
 			let input = vec![0, 99];
 			let mut env = MockEnvironment::new(FuncId::get(), input.clone());
-			let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			let error = pallet_revive::Error::<Test>::DecodingFailed.into();
 			let expected = <() as ErrorConverter>::convert(error, &mut env).err();
 			assert_eq!(DispatchCall::execute(&mut env).err(), expected);
 		}
@@ -498,7 +498,7 @@ mod tests {
 			// Invalid encoded runtime state read.
 			let input = vec![0];
 			let mut env = MockEnvironment::new(FuncId::get(), input.clone());
-			let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			let error = pallet_revive::Error::<Test>::DecodingFailed.into();
 			let expected = <() as ErrorConverter>::convert(error, &mut env).err();
 			assert_eq!(ReadState::execute(&mut env).err(), expected);
 		}
@@ -524,7 +524,7 @@ mod tests {
 	fn execute_tuple_with_invalid_function_fails() {
 		let input = vec![];
 		let mut env = MockEnvironment::new(INVALID_FUNC_ID, input.clone());
-		let error = pallet_contracts::Error::<Test>::DecodingFailed.into();
+		let error = pallet_revive::Error::<Test>::DecodingFailed.into();
 		let expected = <() as ErrorConverter>::convert(error, &mut env).err();
 		assert_eq!(Functions::execute(&mut env).err(), expected);
 	}
