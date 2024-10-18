@@ -8,9 +8,10 @@ use ::ismp::{
 	},
 	host::StateMachine,
 };
-use codec::{Decode, Encode};
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	pallet_prelude::Weight, CloneNoBound, DebugNoBound, EqNoBound, PartialEqNoBound,
+	pallet_prelude::Weight, traits::Get as _, CloneNoBound, DebugNoBound, EqNoBound,
+	PartialEqNoBound,
 };
 use ismp::{
 	dispatcher::DispatchPost,
@@ -20,58 +21,47 @@ use ismp::{
 };
 use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
-use sp_core::{keccak_256, Get as GetT, H256};
-use sp_runtime::BoundedVec;
+use sp_core::{keccak_256, H256};
+use sp_runtime::{BoundedVec, SaturatedConversion, Saturating};
 
 use crate::messaging::{
-	pallet::{Config, Event, IsmpRequests, Pallet, Requests, Responses},
-	MaxContextLenOf, MaxDataLenOf, MaxKeyLenOf, MaxKeysOf, Status,
+	pallet::{Config, Event, IsmpRequests, Messages, Pallet, Responses},
+	BalanceOf, CalculateDeposit, MessageId, Status,
 };
 
 pub const ID: [u8; 3] = *b"pop";
 
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
-pub(crate) type GetOf<T> = Get<MaxContextLenOf<T>, MaxKeysOf<T>, MaxKeyLenOf<T>>;
-pub(crate) type PostOf<T> = Post<MaxDataLenOf<T>>;
 
 #[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
-#[scale_info(skip_type_params(MaxContextLen, MaxKeys, MaxKeyLen, MaxDataLen))]
-pub enum Message<
-	MaxContextLen: GetT<u32>,
-	MaxKeys: GetT<u32>,
-	MaxKeyLen: GetT<u32>,
-	MaxDataLen: GetT<u32>,
-> {
-	Get(Get<MaxContextLen, MaxKeys, MaxKeyLen>),
-	Post(Post<MaxDataLen>),
+#[scale_info(skip_type_params(T))]
+pub enum Message<T: Config> {
+	Get(Get<T>),
+	Post(Post<T>),
 }
 
-impl<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MayKeyLen: GetT<u32>, MaxDataLen: GetT<u32>>
-	From<Message<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>> for DispatchRequest
-{
-	fn from(value: Message<MaxContextLen, MaxKeys, MayKeyLen, MaxDataLen>) -> Self {
+impl<T: Config> From<Message<T>> for DispatchRequest {
+	fn from(value: Message<T>) -> Self {
 		match value {
-			Message::Get(get) => Self::Get(get.into()),
-			Message::Post(post) => Self::Post(post.into()),
+			Message::Get(get) => get.into(),
+			Message::Post(post) => post.into(),
 		}
 	}
 }
 
 #[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
-#[scale_info(skip_type_params(MaxContextLen, MaxKeys, MaxKeyLen))]
-pub struct Get<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MaxKeyLen: GetT<u32>> {
+#[scale_info(skip_type_params(T))]
+pub struct Get<T: Config> {
 	// TODO: Option<u32> to support relay?
 	pub(crate) dest: u32,
 	pub(crate) height: u32,
 	pub(crate) timeout: u64,
-	pub(crate) context: BoundedVec<u8, MaxContextLen>,
-	pub(crate) keys: BoundedVec<BoundedVec<u8, MaxKeyLen>, MaxKeys>,
+	pub(crate) context: BoundedVec<u8, T::MaxContextLen>,
+	pub(crate) keys: BoundedVec<BoundedVec<u8, T::MaxKeyLen>, T::MaxKeys>,
 }
 
-impl<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MayKeyLen: GetT<u32>>
-	From<Get<MaxContextLen, MaxKeys, MayKeyLen>> for DispatchGet
-{
-	fn from(value: Get<MaxContextLen, MaxKeys, MayKeyLen>) -> Self {
+impl<T: Config> From<Get<T>> for DispatchGet {
+	fn from(value: Get<T>) -> Self {
 		DispatchGet {
 			dest: StateMachine::Polkadot(value.dest),
 			from: ID.into(),
@@ -83,17 +73,34 @@ impl<MaxContextLen: GetT<u32>, MaxKeys: GetT<u32>, MayKeyLen: GetT<u32>>
 	}
 }
 
+impl<T: Config> From<Get<T>> for DispatchRequest {
+	fn from(value: Get<T>) -> Self {
+		DispatchRequest::Get(value.into())
+	}
+}
+
+impl<T: Config> CalculateDeposit<BalanceOf<T>> for Get<T> {
+	fn calculate_deposit(&self) -> BalanceOf<T> {
+		let len = self.dest.encoded_size() +
+			self.height.encoded_size() +
+			self.timeout.encoded_size() +
+			self.context.len() +
+			self.keys.iter().map(|k| k.len()).sum::<usize>();
+		calculate_deposit::<T>(T::IsmpByteFee::get() * len.saturated_into())
+	}
+}
+
 #[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
-#[scale_info(skip_type_params(MaxDataLen))]
-pub struct Post<MaxDataLen: GetT<u32>> {
+#[scale_info(skip_type_params(T))]
+pub struct Post<T: Config> {
 	// TODO: Option<u32> to support relay?
 	pub(crate) dest: u32,
 	pub(crate) timeout: u64,
-	pub(crate) data: BoundedVec<u8, MaxDataLen>,
+	pub(crate) data: BoundedVec<u8, T::MaxDataLen>,
 }
 
-impl<MaxDataLen: GetT<u32>> From<Post<MaxDataLen>> for DispatchPost {
-	fn from(value: Post<MaxDataLen>) -> Self {
+impl<T: Config> From<Post<T>> for DispatchPost {
+	fn from(value: Post<T>) -> Self {
 		DispatchPost {
 			dest: StateMachine::Polkadot(value.dest),
 			from: ID.into(),
@@ -101,6 +108,19 @@ impl<MaxDataLen: GetT<u32>> From<Post<MaxDataLen>> for DispatchPost {
 			timeout: value.timeout,
 			body: value.data.into_inner(),
 		}
+	}
+}
+
+impl<T: Config> From<Post<T>> for DispatchRequest {
+	fn from(value: Post<T>) -> Self {
+		DispatchRequest::Post(value.into())
+	}
+}
+
+impl<T: Config> CalculateDeposit<BalanceOf<T>> for Post<T> {
+	fn calculate_deposit(&self) -> BalanceOf<T> {
+		let len = self.dest.encoded_size() + self.timeout.encoded_size() + self.data.len();
+		calculate_deposit::<T>(T::IsmpByteFee::get() * len.saturated_into())
 	}
 }
 
@@ -141,7 +161,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 		// Store values for later retrieval
 		let response: BoundedVec<u8, T::MaxResponseLen> =
 			response.try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
-		Requests::<T>::try_mutate(&origin, &id, |v| {
+		Messages::<T>::try_mutate(&origin, &id, |v| {
 			let Some((status, ..)) = v else {
 				return Err(Error::Custom("response exceeds max".into()))
 			};
@@ -163,7 +183,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 				};
 				let key =
 					IsmpRequests::<T>::get(id).ok_or(Error::Custom("request not found".into()))?;
-				Requests::<T>::try_mutate(key.0, key.1, |v| {
+				Messages::<T>::try_mutate(key.0, key.1, |v| {
 					let Some((status, ..)) = v else {
 						return Err(Error::Custom("response exceeds max".into()))
 					};
@@ -192,4 +212,15 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 	fn on_response(&self, _response: &Response) -> Weight {
 		DbWeightOf::<T>::get().reads_writes(2, 2)
 	}
+}
+
+fn calculate_deposit<T: Config>(mut deposit: BalanceOf<T>) -> BalanceOf<T> {
+	// Add amount for `IsmpRequests` lookup.
+	let key_len: BalanceOf<T> =
+		(T::AccountId::max_encoded_len() + MessageId::max_encoded_len()).saturated_into();
+	deposit.saturating_accrue(
+		T::ByteFee::get() * (H256::max_encoded_len().saturated_into::<BalanceOf<T>>() + key_len),
+	);
+
+	deposit
 }

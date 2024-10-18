@@ -13,7 +13,7 @@ use xcm_executor::traits::OnResponse;
 pub(crate) use xcm_executor::traits::QueryHandler;
 
 use crate::messaging::{
-	pallet::{Requests, Responses, XcmRequests},
+	pallet::{Messages, Responses, XcmRequests},
 	Config, Event, Pallet, Status,
 };
 
@@ -39,7 +39,7 @@ impl<T: Config> OnResponse for Pallet<T> {
 		// taken.
 		let response: BoundedVec<u8, T::MaxResponseLen> =
 			VersionedResponse::from(response).encode().try_into().unwrap(); // TODO: handle error
-		Requests::<T>::mutate(&origin, &id, |v| {
+		Messages::<T>::mutate(&origin, &id, |v| {
 			let Some((status, ..)) = v else { panic!() }; // TODO: handle error
 			*status = Status::Complete;
 		});
