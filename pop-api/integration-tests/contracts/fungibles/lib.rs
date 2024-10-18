@@ -140,12 +140,12 @@ mod fungibles {
 		/// - token_decimals
 
 		#[ink(message)]
-		pub fn token_name(&self, token: TokenId) -> Result<Vec<u8>> {
+		pub fn token_name(&self, token: TokenId) -> Result<Option<Vec<u8>>> {
 			api::token_name(token)
 		}
 
 		#[ink(message)]
-		pub fn token_symbol(&self, token: TokenId) -> Result<Vec<u8>> {
+		pub fn token_symbol(&self, token: TokenId) -> Result<Option<Vec<u8>>> {
 			api::token_symbol(token)
 		}
 

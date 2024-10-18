@@ -253,11 +253,6 @@ fn decrease_allowance_works() {
 		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
 
-		// Token does not exist.
-		assert_eq!(
-			decrease_allowance(&addr, 0, &BOB, amount),
-			Err(Module { index: 52, error: [3, 0] }),
-		);
 		// Create token and mint `amount` to contract address, then approve Bob to spend `amount`.
 		let token =
 			assets::create_mint_and_approve(&account_id, 0, &account_id, amount, &BOB, amount);
@@ -268,6 +263,11 @@ fn decrease_allowance_works() {
 			Err(Module { index: 52, error: [16, 0] }),
 		);
 		assets::thaw(&account_id, token);
+		// "Unapproved" error is returned if the current allowance is less than `value`.
+		assert_eq!(
+			decrease_allowance(&addr, token, &BOB, amount * 2),
+			Err(Module { index: 52, error: [10, 0] }),
+		);
 		// Successfully decrease allowance.
 		let allowance_before = Assets::allowance(token, &account_id, &BOB);
 		assert_ok!(decrease_allowance(&addr, 0, &BOB, amount / 2 - 1 * UNIT));
@@ -276,7 +276,7 @@ fn decrease_allowance_works() {
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::start_destroy(&account_id, token);
 		assert_eq!(
-			decrease_allowance(&addr, token, &BOB, amount),
+			decrease_allowance(&addr, token, &BOB, 1 * UNIT),
 			Err(Module { index: 52, error: [16, 0] }),
 		);
 	});
@@ -296,11 +296,8 @@ fn token_metadata_works() {
 		let decimals: u8 = 69;
 
 		// Token does not exist.
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Assets::name(TOKEN_ID)));
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Assets::symbol(TOKEN_ID)));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Vec::<u8>::new()));
-		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(Assets::decimals(TOKEN_ID)));
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(None));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(None));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(0));
 		// Create Token.
 		assets::create_and_set_metadata(
@@ -310,10 +307,10 @@ fn token_metadata_works() {
 			symbol.clone(),
 			decimals,
 		);
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Assets::name(TOKEN_ID)));
-		assert_eq!(token_name(&addr, TOKEN_ID), Ok(name));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Assets::symbol(TOKEN_ID)));
-		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(symbol));
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Some(Assets::name(TOKEN_ID))));
+		assert_eq!(token_name(&addr, TOKEN_ID), Ok(Some(name)));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Some(Assets::symbol(TOKEN_ID))));
+		assert_eq!(token_symbol(&addr, TOKEN_ID), Ok(Some(symbol)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(Assets::decimals(TOKEN_ID)));
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(decimals));
 	});
@@ -543,14 +540,14 @@ fn burn_works() {
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
-		assert_eq!(burn(&addr, 1, &BOB, amount), Err(Module { index: 52, error: [3, 0] }));
+		assert_eq!(burn(&addr, 1, &BOB, 0), Err(Module { index: 52, error: [3, 0] }));
 		let token = assets::create(&ALICE, 1, 1);
-		// Bob has no tokens and therefore doesn't exist.
-		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [1, 0] }));
+		// Bob has no tokens.
+		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [0, 0] }));
 		// Burning can only be done by the manager.
 		assets::mint(&ALICE, token, &BOB, amount);
 		assert_eq!(burn(&addr, token, &BOB, 1), Err(Module { index: 52, error: [2, 0] }));
-		let token = assets::create_and_mint_to(&account_id, 2, &BOB, amount);
+		let token = assets::create_and_mint_to(&account_id, 2, &BOB, amount * 2);
 		// Token is not live, i.e. frozen or being destroyed.
 		assets::freeze(&account_id, token);
 		assert_eq!(burn(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));

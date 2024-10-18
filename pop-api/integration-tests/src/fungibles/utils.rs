@@ -26,7 +26,6 @@ pub(super) fn balance_of(
 	owner: AccountId32,
 ) -> Result<Balance, Error> {
 	let params = [token_id.encode(), owner.encode()].concat();
-
 	let result = do_bare_call("balance_of", &addr, params);
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -44,15 +43,18 @@ pub(super) fn allowance(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_name(addr: &H160, token_id: TokenId) -> Result<Vec<u8>, Error> {
+pub(super) fn token_name(addr: &H160, token_id: TokenId) -> Result<Option<Vec<u8>>, Error> {
 	let result = do_bare_call("token_name", addr, token_id.encode());
-	decoded::<Result<Vec<u8>, Error>>(result.clone())
+	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_symbol(addr: &H160, token_id: TokenId) -> Result<Vec<u8>, Error> {
+pub(super) fn token_symbol(
+	addr: &H160,
+	token_id: TokenId,
+) -> Result<Option<Vec<u8>>, Error> {
 	let result = do_bare_call("token_symbol", addr, token_id.encode());
-	decoded::<Result<Vec<u8>, Error>>(result.clone())
+	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 

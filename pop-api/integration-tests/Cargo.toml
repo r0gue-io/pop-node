@@ -26,6 +26,8 @@ scale = { package = "parity-scale-codec", version = "3.6.12", default-features =
 ] }
 sp-io = { version = "37.0.0", default-features = false }
 sp-runtime = { version = "=38.0.0", default-features = false }
+# TODO: Requires to resolve a dependency version issue. See more at: https://github.com/r0gue-io/pop-node/issues/313.
+staging-xcm = { version = "=14.1.0", default-features = false }
 
 [features]
 default = [ "std" ]
@@ -41,4 +43,5 @@ std = [
 	"scale/std",
 	"sp-io/std",
 	"sp-runtime/std",
+	"staging-xcm/std",
 ]
