@@ -72,7 +72,7 @@ pub mod pallet {
 	#[derive(Debug)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
-		TotalSupply(u128),
+		TotalSupply(u32),
 		BalanceOf(u32),
 		Allowance(bool),
 		OwnerOf(Option<AccountIdOf<T>>),
@@ -390,7 +390,7 @@ pub mod pallet {
 			use Read::*;
 			match value {
 				TotalSupply(collection) => ReadResult::TotalSupply(
-					NftsOf::<T>::collection_items(collection).unwrap_or_default().into(),
+					NftsOf::<T>::collection_items(collection).unwrap_or_default(),
 				),
 				BalanceOf { collection, owner } =>
 					ReadResult::BalanceOf(pallet_nfts::AccountBalance::<T>::get(collection, owner)),
