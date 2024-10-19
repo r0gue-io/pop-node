@@ -11005,7 +11005,6 @@ dependencies = [
  "pallet-authorship",
  "pallet-balances",
  "pallet-collator-selection",
- "pallet-contracts",
  "pallet-ismp",
  "pallet-ismp-runtime-api",
  "pallet-message-queue",

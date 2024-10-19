@@ -193,12 +193,10 @@ type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::Hash,
 >;
 
-// Prints debug output of the `contracts` pallet to stdout if the node is
-// started with `-lruntime::contracts=debug`.
-const CONTRACTS_DEBUG_OUTPUT: pallet_contracts::DebugInfo =
-	pallet_contracts::DebugInfo::UnsafeDebug;
-const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
-	pallet_contracts::CollectEvents::UnsafeCollect;
+// Prints debug output of the `revive` pallet to stdout if the node is
+// started with `-lruntime::revive=debug`.
+const CONTRACTS_DEBUG_OUTPUT: pallet_revive::DebugInfo = pallet_revive::DebugInfo::UnsafeDebug;
+const CONTRACTS_EVENTS: pallet_revive::CollectEvents = pallet_revive::CollectEvents::UnsafeCollect;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -609,9 +607,9 @@ mod runtime {
 	#[runtime::pallet_index(39)]
 	pub type IsmpParachain = ismp_parachain::Pallet<Runtime>;
 
-	// Contracts
-	// #[runtime::pallet_index(40)]
-	// pub type Contracts = pallet_contracts::Pallet<Runtime>;
+	// Contracts via Revive
+	#[runtime::pallet_index(40)]
+	pub type Revive = pallet_revive::Pallet<Runtime>;
 
 	// Proxy
 	#[runtime::pallet_index(41)]
@@ -634,10 +632,6 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
-
-	// Revive
-	#[runtime::pallet_index(255)]
-	pub type Revive = pallet_revive::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
