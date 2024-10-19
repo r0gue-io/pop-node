@@ -119,7 +119,7 @@ impl From<DispatchError> for V0Error {
 				let ModuleError { index, error, message: _message } = error;
 				// Map `pallet-revive::Error::DecodingFailed` to `Error::DecodingFailed`
 				if index as usize ==
-					<crate::Revive as frame_support::traits::PalletInfoAccess>::index() &&
+					<crate::Contracts as frame_support::traits::PalletInfoAccess>::index() &&
 					error == DECODING_FAILED_ERROR
 				{
 					Error::DecodingFailed

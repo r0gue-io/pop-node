@@ -609,7 +609,7 @@ mod runtime {
 
 	// Contracts via Revive
 	#[runtime::pallet_index(40)]
-	pub type Revive = pallet_revive::Pallet<Runtime>;
+	pub type Contracts = pallet_revive::Pallet<Runtime>;
 
 	// Proxy
 	#[runtime::pallet_index(41)]
@@ -800,15 +800,15 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
 		) -> pallet_revive::ContractExecResult<Balance, EventRecord> {
-			Revive::bare_call(
+			Contracts::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
 				storage_deposit_limit.unwrap_or(u128::MAX),
 				input_data,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
 			)
 		}
 
@@ -822,7 +822,7 @@ impl_runtime_apis! {
 			salt: Option<[u8; 32]>,
 		) -> pallet_revive::ContractInstantiateResult<Balance, EventRecord>
 		{
-			Revive::bare_instantiate(
+			Contracts::bare_instantiate(
 				RuntimeOrigin::signed(origin),
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
@@ -841,7 +841,7 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 		) -> pallet_revive::CodeUploadResult<Balance>
 		{
-			Revive::bare_upload_code(
+			Contracts::bare_upload_code(
 				RuntimeOrigin::signed(origin),
 				code,
 				storage_deposit_limit.unwrap_or(u128::MAX),
@@ -852,7 +852,7 @@ impl_runtime_apis! {
 			address: H160,
 			key: [u8; 32],
 		) -> pallet_revive::GetStorageResult {
-			Revive::get_storage(
+			Contracts::get_storage(
 				address,
 				key
 			)
