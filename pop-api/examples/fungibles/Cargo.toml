@@ -1,5 +1,5 @@
 [package]
-authors = [ "[your_name] <[your_email]>" ]
+authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
 name = "fungibles"
 version = "0.1.0"
@@ -11,12 +11,13 @@ pop-api = { path = "../../../pop-api", default-features = false, features = [
 ] }
 
 [dev-dependencies]
+drink = { package = "pop-drink", git = "https://github.com/r0gue-io/pop-drink" }
 env_logger = { version = "0.11.3" }
 serde_json = "1.0.114"
-staging-xcm = { version = "=14.1.0", default-features = false }
 
-# Local
-drink = { package = "pop-drink", git = "https://github.com/r0gue-io/pop-drink" }
+# TODO: due to compilation issues caused by `staging-xcm` this dependency (with specific
+#  version) has to be added. Will be tackled by #348, please ignore for now.
+staging-xcm = { version = "=14.1.0", default-features = false }
 
 [lib]
 path = "lib.rs"

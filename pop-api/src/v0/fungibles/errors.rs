@@ -1,11 +1,12 @@
 //! A set of errors for use in smart contracts that interact with the fungibles api. This includes
 //! errors compliant to standards.
 
-use super::*;
 use ink::{
 	prelude::string::{String, ToString},
 	scale::{Decode, Encode},
 };
+
+use super::*;
 
 /// Represents various errors related to fungible tokens.
 ///
@@ -93,6 +94,8 @@ pub enum PSP22Error {
 impl From<PSP22Error> for u32 {
 	fn from(value: PSP22Error) -> u32 {
 		match value {
+			PSP22Error::InsufficientBalance => u32::from_le_bytes([3, ASSETS, 0, 0]),
+			PSP22Error::InsufficientAllowance => u32::from_le_bytes([3, ASSETS, 10, 0]),
 			PSP22Error::Custom(value) => value.parse::<u32>().expect("Failed to parse"),
 			_ => unimplemented!("Variant is not supported"),
 		}
@@ -105,11 +108,10 @@ impl From<StatusCode> for PSP22Error {
 		let encoded = value.0.to_le_bytes();
 		match encoded {
 			// BalanceLow.
-			[_, ASSETS, 0, _] => PSP22Error::InsufficientBalance,
+			[3, ASSETS, 0, _] => PSP22Error::InsufficientBalance,
 			// Unapproved.
-			[_, ASSETS, 10, _] => PSP22Error::InsufficientAllowance,
-			// Unknown.
-			[_, ASSETS, 3, _] => PSP22Error::Custom(String::from("Unknown")),
+			[3, ASSETS, 10, _] => PSP22Error::InsufficientAllowance,
+			// Custom error with status code.
 			_ => PSP22Error::Custom(value.0.to_string()),
 		}
 	}

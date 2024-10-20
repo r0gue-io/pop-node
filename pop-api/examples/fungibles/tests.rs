@@ -81,7 +81,7 @@ fn new_constructor_works(mut session: Session) {
 #[drink::test(sandbox = Pop)]
 fn new_constructor_fails_with_used_token() {
 	let _ = env_logger::try_init();
-	// Fails to deploy contract with an used token ID.
+	// Fails to deploy contract with a used token ID.
 	let token = TOKEN + 1;
 	assert_ok!(session.sandbox().create(&token, &ALICE, MIN_BALANCE));
 	// `pallet-assets` returns `InUse` error.
@@ -111,15 +111,7 @@ fn existing_constructor_fails_with_non_existing_token(&mut session: Session) {
 	);
 }
 
-// 1. PSP-22 Interface:
-// - total_supply
-// - balance_of
-// - allowance
-// - transfer
-// - transfer_from
-// - approve
-// - increase_allowance
-// - decrease_allowance
+// PSP-22 tests.
 
 #[drink::test(sandbox = Pop)]
 fn total_supply_works(mut session: Session) {
@@ -566,10 +558,7 @@ fn decrease_allowance_works(mut session: Session) {
 	);
 }
 
-// 2. PSP-22 Metadata Interface:
-// - token_name
-// - token_symbol
-// - token_decimals
+// PSP-22 Metadata tests.
 
 #[drink::test(sandbox = Pop)]
 fn token_metadata(mut session: Session) {
@@ -599,13 +588,11 @@ fn token_metadata(mut session: Session) {
 	assert_eq!(token_decimals(&mut session), decimals);
 }
 
-// 3. PSP-22 Mintable Interface:
-// - mint
+// PSP-22 Mintable & Burnable tests.
 
 #[drink::test(sandbox = Pop)]
 fn mint_fails_with_no_permission(mut session: Session) {
 	let _ = env_logger::try_init();
-	// No permission to mint.
 	// Create a new token owned by `BOB`.
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
 	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
@@ -671,13 +658,9 @@ fn mint_works(mut session: Session) {
 	);
 }
 
-// 4. PSP-22 Burnable Interface:
-// - burn
-
 #[drink::test(sandbox = Pop)]
 fn burn_fails_with_no_permission(mut session: Session) {
 	let _ = env_logger::try_init();
-	// No permission to burn.
 	// Create a new token owned by `BOB`.
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
 	assert_ok!(session.sandbox().mint_into(&(TOKEN + 1), &BOB, AMOUNT));

@@ -6,8 +6,9 @@ use ink::prelude::string::String;
 
 use super::*;
 
-/// Function selectors as per the PSP22 standard: https://github.com/w3f/PSPs/blob/master/PSPs/psp-22.md.
-/// The mint and burn selectors are not defined in the standard, but have been created in the same way.
+/// Function selectors as per the PSP22 standard: https://github.com/inkdevhub/standards/blob/master/PSPs/psp-22.md.
+/// The mint and burn selectors are not defined in the standard, but have been created in the same
+/// way.
 
 /// The PSP22 trait.
 #[ink::trait_definition]
