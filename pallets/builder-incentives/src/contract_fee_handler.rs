@@ -11,7 +11,7 @@ use sp_runtime::{
 		DispatchInfoOf, Dispatchable, PostDispatchInfoOf, Saturating, SignedExtension, StaticLookup,
 	},
 	transaction_validity::{TransactionValidity, TransactionValidityError, ValidTransaction},
-	FixedPointOperand,
+	FixedPointOperand, Permill,
 };
 
 use crate::{types::*, Call, Config, Pallet};
@@ -163,12 +163,15 @@ where
 					let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
 						len as u32, info, post_info, tip,
 					);
+					// TODO: This should not be hardcoded here. The 50% is specified in the runtime for
+					// DealWithFees.
+					let builder_incentives_fee = Permill::from_percent(50) * actual_fee;
 					let era = crate::CurrentEra::<T>::get();
 					crate::ContractUsagePerEra::<T>::mutate(contract.clone(), era, |fees| {
-						*fees = fees.saturating_add(actual_fee.into())
+						*fees = fees.saturating_add(builder_incentives_fee.into())
 					});
 					crate::EraInformation::<T>::mutate(era, |era_info| {
-						era_info.add_contract_fee(actual_fee.into());
+						era_info.add_contract_fee(builder_incentives_fee.into());
 					});
 					Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
 						contract: contract.clone(),
