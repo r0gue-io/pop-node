@@ -181,12 +181,13 @@ pub mod pallet {
 		/// - `beneficiary`: The account that will be the beneficiary of the contract incentives.
 		/// - `contract`: The smart contract's account to be registered.
 		#[pallet::call_index(0)]
-		#[pallet::weight(0)]
+		#[pallet::weight(Weight::zero())]
 		pub fn register_contract(
 			origin: OriginFor<T>,
 			beneficiary: T::AccountId,
 			contract: T::AccountId,
 		) -> DispatchResult {
+			// TODO: Check if the caller is the contract owner or the contract itself.
 			ensure_signed(origin)?;
 			// TODO: Deposit to register, manager vs beneficiary?
 			ensure!(
@@ -200,37 +201,13 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Deposit funds into the  reward pool.
-		///
-		/// Parameters:
-		/// - 'amount': Amount to be send.
-		#[pallet::call_index(1)]
-		#[pallet::weight(0)]
-		pub fn deposit_funds(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			<T as pallet::Config>::Currency::transfer(
-				&who,
-				&Self::get_pallet_account(),
-				amount,
-				AllowDeath,
-			)?;
-			let current_era = CurrentEra::<T>::get();
-			crate::EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
-				if let Some(era_info) = maybe_era_info {
-					era_info.add_total_fee(amount);
-				}
-			});
-			Self::deposit_event(Event::IncentivesDeposited { source: who, amount });
-			Ok(())
-		}
-
 		/// Claims rewards for a specific contract for a given era.
 		///
 		/// Parameters:
 		/// - `contract`: The account of the smart contract for which rewards are being claimed.
 		/// - `era_to_claim`: The era for which rewards are being claimed. Must be the current era.
-		#[pallet::call_index(2)]
-		#[pallet::weight(0)]
+		#[pallet::call_index(1)]
+		#[pallet::weight(Weight::zero())]
 		pub fn claim_rewards(
 			origin: OriginFor<T>,
 			contract: T::AccountId,
@@ -262,15 +239,35 @@ pub mod pallet {
 				AllowDeath,
 			)?;
 			// Reset the contract fees for the era.
-			crate::ContractUsagePerEra::<T>::insert(
-				&contract,
-				era_to_claim,
-				BalanceOf::<T>::zero(),
-			);
+			crate::ContractUsagePerEra::<T>::remove(&contract, era_to_claim);
 			Self::deposit_event(Event::IncentivesClaimed {
 				beneficiary,
 				amount: calculated_rewards,
 			});
+			Ok(())
+		}
+
+		/// Deposit funds into the  reward pool.
+		///
+		/// Parameters:
+		/// - 'amount': Amount to be send.
+		#[pallet::call_index(2)]
+		#[pallet::weight(Weight::zero())]
+		pub fn deposit_funds(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			<T as pallet::Config>::Currency::transfer(
+				&who,
+				&Self::get_pallet_account(),
+				amount,
+				AllowDeath,
+			)?;
+			let current_era = CurrentEra::<T>::get();
+			crate::EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
+				if let Some(era_info) = maybe_era_info {
+					era_info.add_total_fee(amount);
+				}
+			});
+			Self::deposit_event(Event::IncentivesDeposited { source: who, amount });
 			Ok(())
 		}
 	}
@@ -301,11 +298,7 @@ pub mod pallet {
 			if total_contract_fees.is_zero() || contract_fees.is_zero() {
 				return BalanceOf::<T>::zero();
 			}
-			// TODO: This should not be hardcoded here. The 50% is specified in the runtime for
-			// DealWithFees.
-			let incentives_fee = Permill::from_percent(50) * contract_fees;
-			let total_contract_incentives_fees = Permill::from_percent(50) * total_contract_fees;
-			let proportion = Permill::from_rational(incentives_fee, total_contract_incentives_fees);
+			let proportion = Permill::from_rational(contract_fees, total_contract_fees);
 			proportion * total_fees
 		}
 
