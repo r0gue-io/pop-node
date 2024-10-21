@@ -23,5 +23,5 @@ path = "src/lib.rs"
 [features]
 default = [ "std" ]
 fungibles = [  ]
-sponsorships = [ ]
+sponsorships = [  ]
 std = [ "ink/std", "pop-primitives/std" ]
