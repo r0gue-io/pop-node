@@ -16,6 +16,7 @@ impl pallet_ismp::Config for Runtime {
 	type Coprocessor = Coprocessor;
 	type Currency = Balances;
 	type HostStateMachine = HostStateMachine;
+	// State is stored in offchain database
 	type Mmr = pallet_ismp::NoOpMmrTree<Self>;
 	type Router = Router;
 	type RuntimeEvent = RuntimeEvent;
@@ -46,6 +47,10 @@ impl Get<StateMachine> for HostStateMachine {
 pub struct Router;
 impl IsmpRouter for Router {
 	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, Error> {
+		use pallet_api::messaging::transports::ismp::*;
+		if id == ID {
+			return Ok(Box::new(Handler::<Runtime>::new()));
+		}
 		Err(Error::ModuleNotFound(id))
 	}
 }
