@@ -12,12 +12,12 @@ use pop_api::{
 	primitives::{BlockNumber, Error},
 };
 use sp_io::{hashing::keccak_256, TestExternalities};
-use sp_runtime::offchain::OffchainOverlayedChange;
+use sp_runtime::{app_crypto::sp_core::H160, offchain::OffchainOverlayedChange};
 use xcm_executor::traits::OnResponse;
 
 use super::*;
 
-const CONTRACT: &str = "contracts/messaging/target/ink/messaging.wasm";
+const CONTRACT: &str = "contracts/messaging/target/ink/messaging.riscv";
 const ASSET_HUB: u32 = 1_000;
 const HYPERBRIDGE: u32 = 4_009;
 const ISMP_MODULE_ID: [u8; 3] = *b"pop";
@@ -122,7 +122,7 @@ fn xcm_request_works() {
 			0,
 			[staging_xcm::prelude::Junction::AccountId32 {
 				network: None,
-				id: contract.0.clone().into(),
+				id: contract.0 .1.clone().into(),
 			}],
 		);
 		let origin = staging_xcm::prelude::Location::decode(&mut &origin.encode()[..]).unwrap();
@@ -187,7 +187,7 @@ fn get_ismp_request(ext: &mut TestExternalities) -> ::ismp::router::Request {
 }
 
 // A simple, strongly typed wrapper for the contract.
-struct Contract(AccountId32);
+struct Contract((H160, AccountId32));
 impl Contract {
 	fn new() -> Self {
 		Self(instantiate(CONTRACT, INIT_VALUE, vec![]))
@@ -237,6 +237,6 @@ impl Contract {
 	fn call(&self, function: &str, params: Vec<u8>, value: u128) -> ExecReturnValue {
 		let function = function_selector(function);
 		let params = [function, params].concat();
-		bare_call(self.0.clone(), params, value).expect("should work")
+		bare_call(self.0.clone().0, params, value).expect("should work")
 	}
 }
