@@ -7,12 +7,14 @@ use sp_runtime::{BoundedBTreeMap, RuntimeDebug};
 
 // Type aliases for pallet-nfts.
 pub(super) type NftsOf<T> = pallet_nfts::Pallet<T>;
+pub(super) type NftsErrorOf<T> = pallet_nfts::Error<T>;
 pub(super) type NftsWeightInfoOf<T> = <T as pallet_nfts::Config>::WeightInfo;
 // Type aliases for pallet-nfts storage items.
 pub(super) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 pub(super) type BalanceOf<T, I = ()> = <<T as pallet_nfts::Config<I>>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
+pub(super) type NextCollectionIdOf<T, I = ()> = pallet_nfts::NextCollectionId<T, I>;
 pub(super) type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 pub(super) type ItemIdOf<T> =
