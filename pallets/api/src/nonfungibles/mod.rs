@@ -12,7 +12,7 @@ mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
+	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Incrementable};
 	use frame_system::pallet_prelude::*;
 	use pallet_nfts::{
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings, DestroyWitness,
@@ -21,7 +21,8 @@ pub mod pallet {
 	use sp_std::vec::Vec;
 	use types::{
 		AccountIdOf, AttributeNamespaceOf, BalanceOf, CollectionDetailsFor, CollectionIdOf,
-		CreateCollectionConfigFor, ItemDetailsFor, ItemIdOf, ItemPriceOf, NftsOf, NftsWeightInfoOf,
+		CreateCollectionConfigFor, ItemDetailsFor, ItemIdOf, ItemPriceOf, NextCollectionIdOf,
+		NftsOf, NftsWeightInfoOf,
 	};
 
 	use super::*;
@@ -32,54 +33,62 @@ pub mod pallet {
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// Number of items existing in a concrete collection.
-		#[codec(index = 2)]
+		/// Total item supply of a collection.
+		#[codec(index = 0)]
 		TotalSupply(CollectionIdOf<T>),
-		/// Returns the total number of items in the collection owned by the account.
-		#[codec(index = 3)]
+		/// Account balance for a specified collection.
+		#[codec(index = 1)]
 		BalanceOf { collection: CollectionIdOf<T>, owner: AccountIdOf<T> },
-		/// Whether a spender is allowed to transfer an item or items from owner.
-		#[codec(index = 6)]
+		/// Allowance for an operator approved by an owner, for a specified collection or item.
+		#[codec(index = 2)]
 		Allowance {
 			collection: CollectionIdOf<T>,
 			owner: AccountIdOf<T>,
 			operator: AccountIdOf<T>,
 			item: Option<ItemIdOf<T>>,
 		},
-		/// Returns the owner of an item.
-		#[codec(index = 0)]
+		/// Owner of a specified collection item.
+		#[codec(index = 3)]
 		OwnerOf { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
-		/// Returns the attribute of `item` for the given `key`.
-		#[codec(index = 6)]
+		/// Attribute value of a collection item.
+		#[codec(index = 4)]
 		GetAttribute {
 			collection: CollectionIdOf<T>,
 			item: Option<ItemIdOf<T>>,
 			namespace: AttributeNamespaceOf<T>,
 			key: BoundedVec<u8, T::KeyLimit>,
 		},
-		/// Returns the owner of a collection.
-		#[codec(index = 1)]
-		CollectionOwner(CollectionIdOf<T>),
-		/// Returns the details of a collection.
-		#[codec(index = 4)]
+		/// Details of a collection.
+		#[codec(index = 6)]
 		Collection(CollectionIdOf<T>),
-		/// Returns the details of an item.
-		#[codec(index = 5)]
+		/// Details of a collection item.
+		#[codec(index = 7)]
 		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
+		/// Next collection ID.
+		#[codec(index = 8)]
+		NextCollectionId,
 	}
 
 	/// Results of state reads for the non-fungibles API.
 	#[derive(Debug)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
+		/// Total item supply of a collection.
 		TotalSupply(u32),
+		/// Account balance for a specified collection.
 		BalanceOf(u32),
+		/// Allowance for an operator approved by an owner, for a specified collection or item.
 		Allowance(bool),
+		/// Owner of a specified collection owner.
 		OwnerOf(Option<AccountIdOf<T>>),
+		/// Attribute value of a collection item.
 		GetAttribute(Option<BoundedVec<u8, T::ValueLimit>>),
-		CollectionOwner(Option<AccountIdOf<T>>),
+		/// Details of a collection.
 		Collection(Option<CollectionDetailsFor<T>>),
+		/// Details of a collection item.
 		Item(Option<ItemDetailsFor<T>>),
+		/// Next collection ID.
+		NextCollectionId(Option<CollectionIdOf<T>>),
 	}
 
 	impl<T: Config> ReadResult<T> {
@@ -88,13 +97,13 @@ pub mod pallet {
 			use ReadResult::*;
 			match self {
 				OwnerOf(result) => result.encode(),
-				CollectionOwner(result) => result.encode(),
 				TotalSupply(result) => result.encode(),
 				BalanceOf(result) => result.encode(),
 				Collection(result) => result.encode(),
 				Item(result) => result.encode(),
 				Allowance(result) => result.encode(),
 				GetAttribute(result) => result.encode(),
+				NextCollectionId(result) => result.encode(),
 			}
 		}
 	}
@@ -139,6 +148,15 @@ pub mod pallet {
 			to: Option<AccountIdOf<T>>,
 			/// The price of the collection item.
 			price: Option<BalanceOf<T>>,
+		},
+		/// Event emitted when a collection is created.
+		Created {
+			/// The collection identifier.
+			id: CollectionIdOf<T>,
+			/// The creator of the collection.
+			creator: AccountIdOf<T>,
+			/// The administrator of the collection.
+			admin: AccountIdOf<T>,
 		},
 	}
 
@@ -248,6 +266,10 @@ pub mod pallet {
 			admin: AccountIdOf<T>,
 			config: CreateCollectionConfigFor<T>,
 		) -> DispatchResult {
+			let id = NextCollectionIdOf::<T>::get()
+				.or(T::CollectionId::initial_value())
+				.ok_or(pallet_nfts::Error::<T>::UnknownCollection)?;
+			let creator = ensure_signed(origin.clone())?;
 			let collection_config = CollectionConfig {
 				settings: CollectionSettings::all_enabled(),
 				max_supply: config.max_supply,
@@ -259,6 +281,7 @@ pub mod pallet {
 				},
 			};
 			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), collection_config)?;
+			Self::deposit_event(Event::Created { id, admin, creator });
 			Ok(())
 		}
 
@@ -403,12 +426,13 @@ pub mod pallet {
 					pallet_nfts::Attribute::<T>::get((collection, item, namespace, key))
 						.map(|attribute| attribute.0),
 				),
-				CollectionOwner(collection) =>
-					ReadResult::CollectionOwner(NftsOf::<T>::collection_owner(collection)),
 				Collection(collection) =>
 					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
 				Item { collection, item } =>
 					ReadResult::Item(pallet_nfts::Item::<T>::get(collection, item)),
+				NextCollectionId => ReadResult::NextCollectionId(
+					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
+				),
 			}
 		}
 	}
