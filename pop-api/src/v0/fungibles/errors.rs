@@ -255,7 +255,9 @@ mod tests {
 		);
 		assert_eq!(
 			into_error::<PSP22Error>(Module { index: ASSETS, error: [3, 0] }),
-			PSP22Error::Custom(String::from("Unknown"))
+			PSP22Error::Custom(
+				error_into_status_code(Module { index: ASSETS, error: [3, 0] }).0.to_string()
+			)
 		);
 	}
 }
