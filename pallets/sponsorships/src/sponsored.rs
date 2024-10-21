@@ -102,7 +102,6 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-
 		// Assure that whoever has to pay for fees, has enough balance.
 
 		let who = Self::is_contracts_call(call)
@@ -125,15 +124,13 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-
-		let sponsor = Self::is_contracts_call(call)
-			.and_then(|contract| {
-				if Self::is_sponsored(&who, &contract).is_some() {
-					Some(contract.clone())
-				} else {
-					None
-				}
-			});
+		let sponsor = Self::is_contracts_call(call).and_then(|contract| {
+			if Self::is_sponsored(&who, &contract).is_some() {
+				Some(contract.clone())
+			} else {
+				None
+			}
+		});
 		let who = sponsor.clone().unwrap_or(who.clone());
 
 		Ok((sponsor, self.0.pre_dispatch(&who, call, info, len)?))
