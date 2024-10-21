@@ -5,7 +5,8 @@ name = "messaging"
 version = "0.1.0"
 
 [dependencies]
-ink = { git = "https://github.com/use-ink/ink", branch = "xcm", default-features = false }
+ink = { git = "https://github.com/r0gue-io/ink", branch = "sub0", default-features = false }
+polkavm-derive = "0.11.0"
 pop-api = { path = "../../../pop-api", default-features = false, features = [ "messaging" ] }
 
 [lib]
