@@ -102,15 +102,20 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		let sponsor = Self::is_contracts_call(call)
-			.map(|contract| {
-				Self::is_sponsored(&who, &contract)
-					.map(|_| contract.clone())
-					.unwrap_or_else(|| who.clone())
+
+		// Assure that whoever has to pay for fees, has enough balance.
+
+		let who = Self::is_contracts_call(call)
+			.and_then(|contract| {
+				if Self::is_sponsored(&who, &contract).is_some() {
+					Some(contract.clone())
+				} else {
+					None
+				}
 			})
 			.unwrap_or_else(|| who.clone());
 
-		self.0.validate(&sponsor, call, info, len)
+		self.0.validate(&who, call, info, len)
 	}
 
 	fn pre_dispatch(
@@ -120,15 +125,18 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let sponsor = Self::is_contracts_call(call)
-			.map(|contract| {
-				Self::is_sponsored(&who, &contract)
-					.map(|_| contract.clone())
-					.unwrap_or_else(|| who.clone())
-			})
-			.unwrap_or_else(|| who.clone());
 
-		Ok((sponsor.clone().into(), self.0.pre_dispatch(who, call, info, len)?))
+		let sponsor = Self::is_contracts_call(call)
+			.and_then(|contract| {
+				if Self::is_sponsored(&who, &contract).is_some() {
+					Some(contract.clone())
+				} else {
+					None
+				}
+			});
+		let who = sponsor.clone().unwrap_or(who.clone());
+
+		Ok((sponsor, self.0.pre_dispatch(&who, call, info, len)?))
 	}
 
 	fn post_dispatch(

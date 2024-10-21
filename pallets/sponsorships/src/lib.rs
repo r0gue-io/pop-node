@@ -19,7 +19,7 @@ pub mod pallet {
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
 		/// A type representing the weights required by the dispatchables of this pallet.
-		type WeightInfo: crate::weights::WeightInfo;
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -56,7 +56,7 @@ pub mod pallet {
 			/// The account no longer being the sponsor.
 			was_sponsor: T::AccountId,
 			/// The account no longer being the sponsored.
-			was_sponsored: T::AccountId,
+			was_beneficiary: T::AccountId,
 		},
 		/// A call has been sponsored.
 		CallSponsored {
@@ -106,7 +106,7 @@ pub mod pallet {
 			if <Sponsorships<T>>::take(&who, &account).is_some() {
 				Self::deposit_event(Event::SponsorshipRemoved {
 					was_sponsor: who,
-					was_sponsored: account,
+					was_beneficiary: account,
 				});
 			}
 			Ok(())
