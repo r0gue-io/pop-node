@@ -5,6 +5,7 @@ use frame_support::{
 	weights::Weight,
 };
 use scale_info::{StaticTypeInfo, TypeInfo};
+use sp_core::U256;
 use sp_runtime::{
 	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension, StaticLookup},
 	transaction_validity::{TransactionValidity, TransactionValidityError},
@@ -47,20 +48,39 @@ impl<T: Config, S> Sponsored<T, S>
 where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
-		+ IsSubType<pallet_contracts::Call<T>>,
-	<<<T as pallet_contracts::Config>::Currency as frame_support::traits::fungible::Inspect<
+		+ IsSubType<pallet_revive::Call<T>>,
+	<<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance as HasCompact>::Type: Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
+	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance: From<U256>,
+	U256: From<
+		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+			<T as frame_system::Config>::AccountId,
+		>>::Balance,
+	>,
+	U256: From<<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment>,
 {
-	fn is_contracts_call(call: &<T as frame_system::Config>::RuntimeCall) -> Option<T::AccountId> {
+	fn is_contracts_call(call: &<T as frame_system::Config>::RuntimeCall) -> Option<T::AccountId>
+	where
+		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+			<T as frame_system::Config>::AccountId,
+		>>::Balance: From<U256>,
+	{
 		match call.is_sub_type() {
-			Some(pallet_contracts::Call::<T>::call { dest, .. }) =>
-				T::Lookup::lookup(dest.clone()).ok(),
+			Some(pallet_revive::Call::<T>::call { dest, .. }) =>
+				Some(T::Lookup::unlookup(dest.clone())),
 			_ => None,
 		}
 	}
 
-	fn is_sponsored(who: &T::AccountId, contract: &T::AccountId) -> Option<Weight> {
+	fn is_sponsored(who: &T::AccountId, contract: &T::AccountId) -> Option<Weight>
+	where
+		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+			<T as frame_system::Config>::AccountId,
+		>>::Balance: From<U256>,
+	{
 		Pallet::<T>::is_sponsored_by(who, contract)
 	}
 }
@@ -72,16 +92,23 @@ impl<
 where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
-		+ IsSubType<pallet_contracts::Call<T>>,
-	// S::Call: IsSubType<pallet_contracts::Call<T>>,
-	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_contracts::Call<T>>,
-	<<<T as pallet_contracts::Config>::Currency as frame_support::traits::fungible::Inspect<
+		+ IsSubType<pallet_revive::Call<T>>,
+	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_revive::Call<T>>,
+	<<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance as HasCompact>::Type: Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
+	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance: From<U256>,
+	U256: From<
+		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+			<T as frame_system::Config>::AccountId,
+		>>::Balance,
+	>,
+	U256: From<<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment>,
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = S::AdditionalSigned;
-	// type Call = S::Call;
 	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = (Option<Self::AccountId>, <S as SignedExtension>::Pre);
 

@@ -641,6 +641,10 @@ mod runtime {
 	// Sponsorships
 	#[runtime::pallet_index(151)]
 	pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
+
+	// Revive
+	#[runtime::pallet_index(255)]
+	pub type Revive = pallet_revive::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
