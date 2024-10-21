@@ -137,6 +137,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 			}
 
+			// TODO: Do we need another storage item to keep track of number of holders of a
+			// collection
+			let _ =
+				AccountBalance::<T, I>::clear_prefix(collection, collection_details.items, None);
+			let _ = Allowances::<T, I>::clear_prefix((collection,), collection_details.items, None);
 			CollectionAccount::<T, I>::remove(&collection_details.owner, &collection);
 			T::Currency::unreserve(&collection_details.owner, collection_details.owner_deposit);
 			CollectionConfigOf::<T, I>::remove(&collection);
