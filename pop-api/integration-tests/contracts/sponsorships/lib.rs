@@ -30,7 +30,7 @@ mod sponsorships {
 			}
 		}
 
-		#[ink(message)]
+		#[ink(message, payable)]
 		pub fn sing_up(&mut self, user: Option<AccountId>) -> Result<()> {
 			let caller = self.env().caller();
 			assert!(caller == self.owner, "Caller is not owner");
@@ -41,7 +41,7 @@ mod sponsorships {
 			Ok(())
 		}
 
-		#[ink(message)]
+		#[ink(message, payable)]
 		pub fn withdraw_sponsorship(&mut self) -> Result<()> {
 			let beneficiary = self.env().caller();
 			api::remove_sponsorship_for(beneficiary)?;
@@ -52,7 +52,7 @@ mod sponsorships {
 			Ok(())
 		}
 
-		#[ink(message)]
+		#[ink(message, payable)]
 		pub fn flip_value(&mut self) -> Result<()> {
 			self.value = !self.value;
 			Ok(())

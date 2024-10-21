@@ -7,9 +7,11 @@ use frame_support::{
 use scale_info::{StaticTypeInfo, TypeInfo};
 use sp_core::U256;
 use sp_runtime::{
-	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension, StaticLookup},
+	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension},
 	transaction_validity::{TransactionValidity, TransactionValidityError},
+	AccountId32,
 };
+use pallet_revive::{AddressMapper, DefaultAddressMapper};
 
 use super::*;
 
@@ -67,10 +69,11 @@ where
 		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 			<T as frame_system::Config>::AccountId,
 		>>::Balance: From<U256>,
+		<T as frame_system::Config>::AccountId: From<AccountId32>,
 	{
 		match call.is_sub_type() {
 			Some(pallet_revive::Call::<T>::call { dest, .. }) =>
-				Some(T::Lookup::unlookup(dest.clone())),
+				Some(DefaultAddressMapper::to_account_id(dest).into()),
 			_ => None,
 		}
 	}
@@ -106,21 +109,12 @@ where
 		>>::Balance,
 	>,
 	U256: From<<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment>,
+	<T as frame_system::Config>::AccountId: From<AccountId32>,
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = S::AdditionalSigned;
 	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = (Option<Self::AccountId>, <S as SignedExtension>::Pre);
-
-	// From the outside this extension should be "invisible", because it just extends the wrapped
-	// extension with an extra check in `pre_dispatch` and `post_dispatch`. Thus, we should forward
-	// the identifier of the wrapped extension to let wallets see this extension as it would only be
-	// the wrapped extension itself.
-	const IDENTIFIER: &'static str = S::IDENTIFIER;
-
-	fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
-		self.0.additional_signed()
-	}
 
 	fn validate(
 		&self,
@@ -142,6 +136,16 @@ where
 			.unwrap_or_else(|| who.clone());
 
 		self.0.validate(&who, call, info, len)
+	}
+
+	// From the outside this extension should be "invisible", because it just extends the wrapped
+	// extension with an extra check in `pre_dispatch` and `post_dispatch`. Thus, we should forward
+	// the identifier of the wrapped extension to let wallets see this extension as it would only be
+	// the wrapped extension itself.
+	const IDENTIFIER: &'static str = S::IDENTIFIER;
+
+	fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
+		self.0.additional_signed()
 	}
 
 	fn pre_dispatch(
