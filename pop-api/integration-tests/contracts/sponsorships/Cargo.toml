@@ -1,8 +1,8 @@
 [package]
+authors = [ "R0GUE" ]
 edition = "2021"
 name = "sponsorhips"
 version = "0.1.0"
-authors = ["R0GUE"]
 
 [dependencies]
 ink = { version = "5.0.0", default-features = false }
