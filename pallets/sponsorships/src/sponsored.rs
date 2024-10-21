@@ -4,6 +4,7 @@ use frame_support::{
 	traits::IsSubType,
 	weights::Weight,
 };
+use pallet_revive::{AddressMapper, DefaultAddressMapper};
 use scale_info::{StaticTypeInfo, TypeInfo};
 use sp_core::U256;
 use sp_runtime::{
@@ -11,7 +12,6 @@ use sp_runtime::{
 	transaction_validity::{TransactionValidity, TransactionValidityError},
 	AccountId32,
 };
-use pallet_revive::{AddressMapper, DefaultAddressMapper};
 
 use super::*;
 
@@ -116,6 +116,12 @@ where
 	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = (Option<Self::AccountId>, <S as SignedExtension>::Pre);
 
+	// From the outside this extension should be "invisible", because it just extends the wrapped
+	// extension with an extra check in `pre_dispatch` and `post_dispatch`. Thus, we should forward
+	// the identifier of the wrapped extension to let wallets see this extension as it would only be
+	// the wrapped extension itself.
+	const IDENTIFIER: &'static str = S::IDENTIFIER;
+
 	fn validate(
 		&self,
 		who: &Self::AccountId,
@@ -137,12 +143,6 @@ where
 
 		self.0.validate(&who, call, info, len)
 	}
-
-	// From the outside this extension should be "invisible", because it just extends the wrapped
-	// extension with an extra check in `pre_dispatch` and `post_dispatch`. Thus, we should forward
-	// the identifier of the wrapped extension to let wallets see this extension as it would only be
-	// the wrapped extension itself.
-	const IDENTIFIER: &'static str = S::IDENTIFIER;
 
 	fn additional_signed(&self) -> Result<Self::AdditionalSigned, TransactionValidityError> {
 		self.0.additional_signed()
