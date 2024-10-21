@@ -15,21 +15,26 @@ mod sponsorships {
 	use super::*;
 
 	#[ink(storage)]
-	#[derive(Default)]
 	pub struct Sponsorships {
 		value: bool,
+		owner: AccountId,
 	}
 
 	impl Sponsorships {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
 			ink::env::debug_println!("PopApiSponsorshipsExample::new");
-			Default::default()
+			Sponsorships {
+				value: false,
+				owner: Self::env().caller(),
+			}
 		}
 
 		#[ink(message)]
-		pub fn sing_up(&self) -> Result<()> {
-			let beneficiary = self.env().caller();
+		pub fn sing_up(&mut self, user: Option<AccountId>) -> Result<()> {
+			let caller = self.env().caller();
+			assert!(caller == self.owner, "Caller is not owner");
+			let beneficiary = user.unwrap_or(caller.clone());
 			api::sponsor_account(beneficiary)?;
 			self.env()
 				.emit_event(NewSponsorship { sponsor: self.env().account_id(), beneficiary });
@@ -37,7 +42,7 @@ mod sponsorships {
 		}
 
 		#[ink(message)]
-		pub fn withdraw_sponsorship(&self) -> Result<()> {
+		pub fn withdraw_sponsorship(&mut self) -> Result<()> {
 			let beneficiary = self.env().caller();
 			api::remove_sponsorship_for(beneficiary)?;
 			self.env().emit_event(SponsorshipRemoved {
