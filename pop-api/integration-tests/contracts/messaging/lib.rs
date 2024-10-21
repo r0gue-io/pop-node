@@ -8,10 +8,20 @@ use pop_api::{
 		xcm::{QueryId, VersionedLocation},
 		RequestId, Status,
 	},
+	primitives::AccountId,
 	StatusCode,
 };
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
+
+// Converts a H160 read as a H256 to a H256 expected by revive
+// TODO: remove once ink! updated
+fn to_account_id(address: &AccountId) -> AccountId {
+	let mut account_id = AccountId::from([0xEE; 32]);
+	<AccountId as AsMut<[u8; 32]>>::as_mut(&mut account_id)[..20]
+		.copy_from_slice(&<AccountId as AsRef<[u8; 32]>>::as_ref(&address)[..20]);
+	account_id
+}
 
 #[ink::contract]
 mod messaging {
@@ -51,12 +61,12 @@ mod messaging {
 
 		#[ink(message)]
 		pub fn poll(&self, request: RequestId) -> Result<Option<Status>> {
-			api::poll((self.env().account_id(), request))
+			api::poll((to_account_id(&self.env().account_id()), request))
 		}
 
 		#[ink(message)]
 		pub fn get(&self, request: RequestId) -> Result<Option<Vec<u8>>> {
-			api::get((self.env().account_id(), request))
+			api::get((to_account_id(&self.env().account_id()), request))
 		}
 
 		#[ink(message)]
