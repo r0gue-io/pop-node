@@ -191,7 +191,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 		use messaging::Read::*;
 		matches!(
 			r,
-			RuntimeRead::FungiblesRevive(
+			RuntimeRead::Fungibles(
 				TotalSupply(..) |
 					BalanceOf { .. } |
 					Allowance { .. } |
