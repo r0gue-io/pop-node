@@ -14,6 +14,10 @@ pub mod incentives;
 #[cfg(feature = "messaging")]
 pub mod messaging;
 
+/// APIs for nonfungible tokens.
+#[cfg(feature = "nonfungibles")]
+pub mod nonfungibles;
+
 pub(crate) const V0: u8 = 0;
 
 impl From<StatusCode> for Error {

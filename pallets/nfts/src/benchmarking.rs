@@ -578,9 +578,9 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, delegate_lookup, Some(deadline))
+	}: _(SystemOrigin::Signed(caller.clone()), collection, Some(item), delegate_lookup, Some(deadline))
 	verify {
-		assert_last_event::<T, I>(Event::TransferApproved { collection, item, owner: caller, delegate, deadline: Some(deadline) }.into());
+		assert_last_event::<T, I>(Event::TransferApproved { collection, item: Some(item), owner: caller, delegate, deadline: Some(deadline) }.into());
 	}
 
 	cancel_approval {
@@ -590,10 +590,10 @@ benchmarks_instance_pallet! {
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_transfer(origin, collection, item, delegate_lookup.clone(), Some(deadline))?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, delegate_lookup)
+		Nfts::<T, I>::approve_transfer(origin, collection, Some(item), delegate_lookup.clone(), Some(deadline))?;
+	}: _(SystemOrigin::Signed(caller.clone()), collection, Some(item), delegate_lookup)
 	verify {
-		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item, owner: caller, delegate }.into());
+		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item: Some(item), owner: caller, delegate }.into());
 	}
 
 	clear_all_transfer_approvals {
@@ -603,7 +603,7 @@ benchmarks_instance_pallet! {
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_transfer(origin, collection, item, delegate_lookup.clone(), Some(deadline))?;
+		Nfts::<T, I>::approve_transfer(origin, collection, Some(item), delegate_lookup.clone(), Some(deadline))?;
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item)
 	verify {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item, owner: caller}.into());

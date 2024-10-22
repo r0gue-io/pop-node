@@ -73,6 +73,8 @@ mod constants {
 	pub(crate) const FUNGIBLES: u8 = 150;
 	pub(crate) const MESSAGING: u8 = 151;
 	pub(crate) const INCENTIVES: u8 = 152;
+	pub(crate) const NONFUNGIBLES: u8 = 151;
+	pub(crate) const NFTS: u8 = 50;
 }
 
 // Helper method to build a dispatch call or a call to read state.
