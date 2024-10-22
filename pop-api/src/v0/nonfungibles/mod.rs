@@ -128,16 +128,6 @@ pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>>
 		.call(&(collection))
 }
 
-// TODO: ItemDetails.
-#[inline]
-pub fn item(collection: CollectionId, item: ItemId) -> Result<CollectionDetails> {
-	build_read_state(ITEM)
-		.input::<(CollectionId, ItemId)>()
-		.output::<Result<CollectionDetails>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(collection, item))
-}
-
 #[inline]
 pub fn set_attribute(
 	collection: CollectionId,
@@ -260,15 +250,14 @@ mod constants {
 	pub(super) const CREATE: u8 = 7;
 	pub(super) const DESTROY: u8 = 8;
 	pub(super) const COLLECTION: u8 = 9;
-	pub(super) const ITEM: u8 = 10;
-	pub(super) const NEXT_COLLECTION_ID: u8 = 11;
-	pub(super) const SET_ATTRIBUTE: u8 = 12;
-	pub(super) const CLEAR_ATTRIBUTE: u8 = 13;
-	pub(super) const SET_METADATA: u8 = 14;
-	pub(super) const CLEAR_METADATA: u8 = 15;
-	pub(super) const APPROVE_ITEM_ATTRIBUTE: u8 = 16;
-	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 17;
-	pub(super) const SET_MAX_SUPPLY: u8 = 18;
+	pub(super) const NEXT_COLLECTION_ID: u8 = 10;
+	pub(super) const SET_ATTRIBUTE: u8 = 11;
+	pub(super) const CLEAR_ATTRIBUTE: u8 = 12;
+	pub(super) const SET_METADATA: u8 = 13;
+	pub(super) const CLEAR_METADATA: u8 = 14;
+	pub(super) const APPROVE_ITEM_ATTRIBUTE: u8 = 15;
+	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 16;
+	pub(super) const SET_MAX_SUPPLY: u8 = 17;
 
 	/// 4. PSP-34 Mintable & Burnable
 	pub(super) const MINT: u8 = 19;

@@ -17,8 +17,9 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_nfts::{
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings, DestroyWitness,
-		MintSettings, MintWitness,
+		ItemMetadata, ItemMetadataOf, MintSettings, MintWitness,
 	};
+	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
 	use types::{
 		AccountIdOf, AttributeNamespaceOf, BalanceOf, CollectionDetailsFor, CollectionIdOf,
@@ -62,12 +63,11 @@ pub mod pallet {
 		/// Details of a collection.
 		#[codec(index = 9)]
 		Collection(CollectionIdOf<T>),
-		/// Details of a collection item.
-		#[codec(index = 10)]
-		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 		/// Next collection ID.
-		#[codec(index = 11)]
+		#[codec(index = 10)]
 		NextCollectionId,
+		#[codec(index = 11)]
+		ItemMetadata { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 	}
 
 	/// Results of state reads for the non-fungibles API.
@@ -86,10 +86,10 @@ pub mod pallet {
 		GetAttribute(Option<BoundedVec<u8, T::ValueLimit>>),
 		/// Details of a collection.
 		Collection(Option<CollectionDetailsFor<T>>),
-		/// Details of a collection item.
-		Item(Option<ItemDetailsFor<T>>),
 		/// Next collection ID.
 		NextCollectionId(Option<CollectionIdOf<T>>),
+		/// Collection item metadata.
+		ItemMetadata(Option<BoundedVec<u8, T::StringLimit>>),
 	}
 
 	impl<T: Config> ReadResult<T> {
@@ -101,10 +101,10 @@ pub mod pallet {
 				TotalSupply(result) => result.encode(),
 				BalanceOf(result) => result.encode(),
 				Collection(result) => result.encode(),
-				Item(result) => result.encode(),
 				Allowance(result) => result.encode(),
 				GetAttribute(result) => result.encode(),
 				NextCollectionId(result) => result.encode(),
+				ItemMetadata(result) => result.encode(),
 			}
 		}
 	}
@@ -253,7 +253,7 @@ pub mod pallet {
 			NftsOf::<T>::destroy(origin, collection, witness)
 		}
 
-		#[pallet::call_index(12)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_attribute())]
 		pub fn set_attribute(
 			origin: OriginFor<T>,
@@ -266,7 +266,7 @@ pub mod pallet {
 			NftsOf::<T>::set_attribute(origin, collection, item, namespace, key, value)
 		}
 
-		#[pallet::call_index(13)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_attribute())]
 		pub fn clear_attribute(
 			origin: OriginFor<T>,
@@ -278,7 +278,7 @@ pub mod pallet {
 			NftsOf::<T>::clear_attribute(origin, collection, item, namespace, key)
 		}
 
-		#[pallet::call_index(14)]
+		#[pallet::call_index(13)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_metadata())]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
@@ -289,7 +289,7 @@ pub mod pallet {
 			NftsOf::<T>::set_metadata(origin, collection, item, data)
 		}
 
-		#[pallet::call_index(15)]
+		#[pallet::call_index(14)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_metadata())]
 		pub fn clear_metadata(
 			origin: OriginFor<T>,
@@ -299,7 +299,7 @@ pub mod pallet {
 			NftsOf::<T>::clear_metadata(origin, collection, item)
 		}
 
-		#[pallet::call_index(16)]
+		#[pallet::call_index(15)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_item_attributes())]
 		pub fn approve_item_attributes(
 			origin: OriginFor<T>,
@@ -315,7 +315,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::call_index(17)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_item_attributes_approval(witness.account_attributes))]
 		pub fn cancel_item_attributes_approval(
 			origin: OriginFor<T>,
@@ -333,7 +333,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::call_index(18)]
+		#[pallet::call_index(17)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_collection_max_supply())]
 		pub fn set_max_supply(
 			origin: OriginFor<T>,
@@ -343,7 +343,7 @@ pub mod pallet {
 			NftsOf::<T>::set_collection_max_supply(origin, collection, max_supply)
 		}
 
-		#[pallet::call_index(19)]
+		#[pallet::call_index(18)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
@@ -371,7 +371,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(20)]
+		#[pallet::call_index(19)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
@@ -429,8 +429,9 @@ pub mod pallet {
 				),
 				Collection(collection) =>
 					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
-				Item { collection, item } =>
-					ReadResult::Item(pallet_nfts::Item::<T>::get(collection, item)),
+				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
+					ItemMetadataOf::<T>::get(collection, item).map(|metadata| metadata.data),
+				),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
 				),
