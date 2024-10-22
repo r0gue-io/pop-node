@@ -13,6 +13,7 @@ use scale::{Decode, Encode};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 
 mod fungibles;
+mod nonfungibles;
 
 type Balance = u128;
 
