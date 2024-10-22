@@ -6,11 +6,10 @@ use frame_support::{
 };
 use pallet_revive::{AddressMapper, DefaultAddressMapper};
 use scale_info::{StaticTypeInfo, TypeInfo};
-use sp_core::U256;
+use sp_core::{crypto::AccountId32, U256};
 use sp_runtime::{
-	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension},
+	traits::{DispatchInfoOf, Dispatchable, IdentifyAccount, PostDispatchInfoOf, SignedExtension},
 	transaction_validity::{TransactionValidity, TransactionValidityError},
-	AccountId32,
 };
 
 use super::*;
@@ -51,39 +50,26 @@ where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
 		+ IsSubType<pallet_revive::Call<T>>,
-	<<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance as HasCompact>::Type: Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
+	<T as frame_system::Config>::AccountId: From<AccountId32>,
 	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
-	>>::Balance: From<U256>,
-	U256: From<
-		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
-			<T as frame_system::Config>::AccountId,
-		>>::Balance,
-	>,
-	U256: From<<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment>,
+	>>::Balance: Into<U256>,
+	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
+	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance: TryFrom<U256>,
 {
-	fn is_contracts_call(call: &<T as frame_system::Config>::RuntimeCall) -> Option<T::AccountId>
-	where
-		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
-			<T as frame_system::Config>::AccountId,
-		>>::Balance: From<U256>,
-		<T as frame_system::Config>::AccountId: From<AccountId32>,
-	{
+	fn is_contracts_call(call: &<T as frame_system::Config>::RuntimeCall) -> Option<T::AccountId> {
 		match call.is_sub_type() {
-			Some(pallet_revive::Call::<T>::call { dest, .. }) =>
-				Some(DefaultAddressMapper::to_account_id(dest).into()),
+			Some(pallet_revive::Call::<T>::call { dest, .. }) => {
+				let acc32 = DefaultAddressMapper::to_account_id(dest);
+				Some(<T as frame_system::Config>::AccountId::from(acc32))
+			},
 			_ => None,
 		}
 	}
 
-	fn is_sponsored(who: &T::AccountId, contract: &T::AccountId) -> Option<Weight>
-	where
-		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
-			<T as frame_system::Config>::AccountId,
-		>>::Balance: From<U256>,
-	{
+	fn is_sponsored(who: &T::AccountId, contract: &T::AccountId) -> Option<Weight> {
 		Pallet::<T>::is_sponsored_by(who, contract)
 	}
 }
@@ -97,19 +83,14 @@ where
 		+ IsSubType<Call<T>>
 		+ IsSubType<pallet_revive::Call<T>>,
 	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_revive::Call<T>>,
-	<<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance as HasCompact>::Type: Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
+	<T as frame_system::Config>::AccountId: From<AccountId32>,
 	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
-	>>::Balance: From<U256>,
-	U256: From<
-		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
-			<T as frame_system::Config>::AccountId,
-		>>::Balance,
-	>,
-	U256: From<<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment>,
-	<T as frame_system::Config>::AccountId: From<AccountId32>,
+	>>::Balance: Into<U256>,
+	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
+	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance: TryFrom<U256>,
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = S::AdditionalSigned;
