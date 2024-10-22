@@ -45,14 +45,15 @@ pub mod pallet {
 
 	/// Registered contracts to their corresponding beneficiaries.
 	#[pallet::storage]
-	pub type RegisteredContracts<T> = StorageMap<_, Twox64Concat, AccountIdOf<T>, AccountIdOf<T>>;
+	pub type RegisteredContracts<T> =
+		StorageMap<_, Twox64Concat, AccountContractId, AccountIdOf<T>>;
 
 	/// Tracks the usage of each contract by era.
 	#[pallet::storage]
 	pub(super) type ContractUsagePerEra<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
-		AccountIdOf<T>,
+		AccountContractId,
 		Twox64Concat,
 		EraNumber,
 		BalanceOf<T>,
@@ -73,14 +74,14 @@ pub mod pallet {
 		/// A smart contract has been called.
 		ContractCalled {
 			/// The smart contract's account that was called.
-			contract: AccountIdOf<T>,
+			contract: AccountContractId,
 		},
 		/// A smart contract has been registered to receive rewards.
 		ContractRegistered {
 			/// The beneficiary of the incentives.
 			beneficiary: T::AccountId,
 			/// The smart contract's account being registered.
-			contract: T::AccountId,
+			contract: AccountContractId,
 		},
 		/// A new era has started.
 		NewEra {
@@ -185,7 +186,7 @@ pub mod pallet {
 		pub fn register_contract(
 			origin: OriginFor<T>,
 			beneficiary: T::AccountId,
-			contract: T::AccountId,
+			contract: AccountContractId,
 		) -> DispatchResult {
 			// TODO: Check if the caller is the contract owner or the contract itself.
 			ensure_signed(origin)?;
@@ -210,7 +211,7 @@ pub mod pallet {
 		#[pallet::weight(Weight::zero())]
 		pub fn claim_rewards(
 			origin: OriginFor<T>,
-			contract: T::AccountId,
+			contract: AccountContractId,
 			era_to_claim: EraNumber,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;

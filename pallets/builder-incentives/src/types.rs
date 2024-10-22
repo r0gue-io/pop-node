@@ -3,11 +3,14 @@ use frame_support::{
 	traits::{fungible::Inspect, Currency},
 };
 use pallet_transaction_payment::OnChargeTransaction;
+use sp_core::H160;
 use sp_runtime::traits::{Saturating, Zero};
 
 use crate::Config;
 
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+/// AccountContractId for pallet_revive
+pub type AccountContractId = H160;
 /// Era number type
 pub type EraNumber = u32;
 /// An index to a block.
