@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use ink::env::{DefaultEnvironment, Environment};
 /// 1. PSP-22
 /// 2. PSP-22 Metadata
 /// 3. Management
