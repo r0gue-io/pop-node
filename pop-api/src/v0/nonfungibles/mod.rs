@@ -90,12 +90,12 @@ pub fn owner_of(collection: CollectionId, item: ItemId) -> Result<AccountId> {
 #[inline]
 pub fn get_attribute(
 	collection: CollectionId,
-	item: AccountId,
+	item: ItemId,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
 ) -> Result<Vec<u8>> {
 	build_read_state(GET_ATTRIBUTE)
-		.input::<(CollectionId, AccountId, AttributeNamespace, Vec<u8>)>()
+		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>)>()
 		.output::<Result<Vec<u8>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection, item, namespace, key))
@@ -256,8 +256,8 @@ mod constants {
 	pub(super) const SET_METADATA: u8 = 13;
 	pub(super) const CLEAR_METADATA: u8 = 14;
 	pub(super) const APPROVE_ITEM_ATTRIBUTE: u8 = 15;
-	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 16;
-	pub(super) const SET_MAX_SUPPLY: u8 = 17;
+	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 17;
+	pub(super) const SET_MAX_SUPPLY: u8 = 18;
 
 	/// 4. PSP-34 Mintable & Burnable
 	pub(super) const MINT: u8 = 19;
