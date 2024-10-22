@@ -5,23 +5,14 @@ use pop_api::{
 	messaging::{
 		self as api,
 		ismp::{Get, Post},
-		xcm::{QueryId, VersionedLocation},
+		xcm::{Junction, Location, QueryId, VersionedLocation},
 		RequestId, Status,
 	},
-	primitives::AccountId,
+	primitives::to_account_id,
 	StatusCode,
 };
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
-
-// Converts a H160 read as a H256 to a H256 expected by revive
-// TODO: remove once ink! updated
-fn to_account_id(address: &AccountId) -> AccountId {
-	let mut account_id = AccountId::from([0xEE; 32]);
-	<AccountId as AsMut<[u8; 32]>>::as_mut(&mut account_id)[..20]
-		.copy_from_slice(&<AccountId as AsRef<[u8; 32]>>::as_ref(&address)[..20]);
-	account_id
-}
 
 #[ink::contract]
 mod messaging {
@@ -53,9 +44,17 @@ mod messaging {
 		pub fn xcm_new_query(
 			&mut self,
 			id: RequestId,
-			responder: VersionedLocation,
+			// responder: VersionedLocation,
+			// Workaround for 'polkavm::interpreter] Store of 4 bytes to 0xfffdefcc failed! (pc =
+			// 8904, cycle = 239)' when using VersionedLocation
+			responder: Option<u32>,
 			timeout: BlockNumber,
 		) -> Result<Option<QueryId>> {
+			let responder = match responder {
+				Some(para) => Location::new(1, [Junction::Parachain(para)]),
+				None => Location::parent(),
+			}
+			.into_versioned();
 			api::xcm::new_query(id, responder, timeout)
 		}
 
@@ -72,6 +71,11 @@ mod messaging {
 		#[ink(message)]
 		pub fn remove(&mut self, request: RequestId) -> Result<()> {
 			api::remove([request].to_vec())?;
+			Ok(())
+		}
+
+		#[ink(message)]
+		pub fn test(&mut self, one: VersionedLocation, two: VersionedLocation) -> Result<()> {
 			Ok(())
 		}
 	}

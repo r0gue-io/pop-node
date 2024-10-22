@@ -3,10 +3,7 @@ use pallet_ismp::mmr::Leaf;
 use pop_api::{
 	messaging::{
 		ismp::{Get, Post},
-		xcm::{
-			Junction, Location, MaybeErrorCode, QueryId, VersionedLocation, VersionedResponse,
-			XcmHash,
-		},
+		xcm::{Junction, Location, MaybeErrorCode, QueryId, VersionedResponse, XcmHash},
 		RequestId, Status,
 	},
 	primitives::{BlockNumber, Error},
@@ -100,7 +97,10 @@ fn ismp_post_request_works() {
 fn xcm_request_works() {
 	let id = 42u64;
 	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
-	let responder = origin.clone().into_versioned();
+	// Workaround for 'polkavm::interpreter] Store of 4 bytes to 0xfffdefcc failed! (pc = 8904,
+	// cycle = 239)' when using VersionedLocation
+	// let responder = origin.clone().into_versioned();
+	let responder = Some(ASSET_HUB);
 	let timeout = 100;
 	let response = pop_api::messaging::xcm::Response::DispatchResult(MaybeErrorCode::Success);
 	let context = staging_xcm::prelude::XcmContext {
@@ -110,6 +110,7 @@ fn xcm_request_works() {
 	};
 	new_test_ext().execute_with(|| {
 		let contract = Contract::new();
+
 		let query_id = contract.xcm_new_query(id, responder, timeout).unwrap().unwrap();
 		assert_eq!(query_id, 0);
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
@@ -143,6 +144,17 @@ fn xcm_request_works() {
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(VersionedResponse::from(response).encode()));
 		assert_ok!(contract.remove(id));
+	});
+}
+
+#[test]
+#[should_panic(expected = "should work")]
+fn versioned_location_fails() {
+	let location = Location::new(1, [Junction::Parachain(ASSET_HUB)]).into_versioned();
+
+	new_test_ext().execute_with(|| {
+		let contract = Contract::new();
+		contract.call("test", (&location, &location).encode(), 0);
 	});
 }
 
@@ -208,7 +220,8 @@ impl Contract {
 	fn xcm_new_query(
 		&self,
 		id: RequestId,
-		responder: VersionedLocation,
+		// responder: VersionedLocation,
+		responder: Option<u32>,
 		timeout: BlockNumber,
 	) -> Result<Option<QueryId>, Error> {
 		let result = self.call("xcm_new_query", (id, responder, timeout).encode(), 0);
