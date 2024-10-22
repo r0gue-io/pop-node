@@ -231,8 +231,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					TotalSupply(..) |
 						BalanceOf { .. } | Allowance { .. } |
 						OwnerOf { .. } | GetAttribute { .. } |
-						Collection { .. } | Item { .. } |
-						NextCollectionId
+						Collection { .. } | NextCollectionId | ItemMetadata { .. }
 				)
 		)
 	}
