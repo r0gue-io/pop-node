@@ -21,7 +21,7 @@ pub(crate) type OnChargeTransactionOf<T> =
 pub(crate) type OnChargeTransactionBalanceOf<T> =
 	<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::Balance;
 
-pub(crate) type ContractsOf<T> = <T as pallet_contracts::Config>::Currency;
+pub(crate) type ContractsOf<T> = <T as pallet_revive::Config>::Currency;
 
 /// Contracts Balance alias
 pub(crate) type ContractsBalanceOf<T> =

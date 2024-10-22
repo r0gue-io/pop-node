@@ -6,6 +6,7 @@ use frame_support::{
 };
 use pallet_transaction_payment::OnChargeTransaction;
 use scale_info::StaticTypeInfo;
+use sp_core::U256;
 use sp_runtime::{
 	traits::{
 		DispatchInfoOf, Dispatchable, PostDispatchInfoOf, Saturating, SignedExtension, StaticLookup,
@@ -81,11 +82,20 @@ impl<T: Config + Send + Sync, S: SignedExtension<AccountId = T::AccountId>> Sign
 where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
-		+ IsSubType<pallet_contracts::Call<T>>,
+		+ IsSubType<pallet_revive::Call<T>>,
 	OnChargeTransactionBalanceOf<T>:
 		Send + Sync + FixedPointOperand + From<u64> + IsType<BalanceOf<T>>,
 	<ContractsBalanceOf<T> as HasCompact>::Type:
 		Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
+	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance: From<sp_core::U256>,
+	U256: From<
+		<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+			<T as frame_system::Config>::AccountId,
+		>>::Balance,
+	>,
+	U256: From<<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment>,
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = ();
@@ -133,8 +143,9 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
-		let contract = if let Some(pallet_contracts::Call::call { dest, .. }) = call.is_sub_type() {
-			T::Lookup::lookup(dest.clone()).ok()
+		let contract = if let Some(pallet_revive::Call::call { dest, .. }) = call.is_sub_type() {
+			// dest.clone()
+			None
 		} else {
 			None
 		};
@@ -163,8 +174,8 @@ where
 					let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
 						len as u32, info, post_info, tip,
 					);
-					// TODO: This should not be hardcoded here. The 50% is specified in the runtime for
-					// DealWithFees.
+					// TODO: This should not be hardcoded here. The 50% is specified in the runtime
+					// for DealWithFees.
 					let builder_incentives_fee = Permill::from_percent(50) * actual_fee;
 					let era = crate::CurrentEra::<T>::get();
 					crate::ContractUsagePerEra::<T>::mutate(contract.clone(), era, |fees| {
