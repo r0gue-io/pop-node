@@ -22,6 +22,7 @@ mod environment;
 mod fungibles;
 mod incentives;
 mod messaging;
+mod nonfungibles;
 
 type Balance = u128;
 
