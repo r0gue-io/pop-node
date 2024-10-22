@@ -5,10 +5,11 @@
 pub use pallet::*;
 use pallet_nfts::WeightInfo;
 use sp_runtime::traits::StaticLookup;
+pub use types::*;
 
 #[cfg(test)]
 mod tests;
-mod types;
+pub mod types;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -29,7 +30,7 @@ pub mod pallet {
 
 	/// State reads for the non-fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+	#[cfg_attr(feature = "std", derive(Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
@@ -48,10 +49,10 @@ pub mod pallet {
 			item: Option<ItemIdOf<T>>,
 		},
 		/// Owner of a specified collection item.
-		#[codec(index = 3)]
+		#[codec(index = 5)]
 		OwnerOf { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
-		/// Attribute value of a collection item.
-		#[codec(index = 4)]
+		/// Attribute value of a collection item. (Error: bounded collection is not partial)
+		#[codec(index = 6)]
 		GetAttribute {
 			collection: CollectionIdOf<T>,
 			item: Option<ItemIdOf<T>>,
@@ -59,19 +60,19 @@ pub mod pallet {
 			key: BoundedVec<u8, T::KeyLimit>,
 		},
 		/// Details of a collection.
-		#[codec(index = 6)]
+		#[codec(index = 9)]
 		Collection(CollectionIdOf<T>),
 		/// Details of a collection item.
-		#[codec(index = 7)]
+		#[codec(index = 10)]
 		Item { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
 		/// Next collection ID.
-		#[codec(index = 8)]
+		#[codec(index = 11)]
 		NextCollectionId,
 	}
 
 	/// Results of state reads for the non-fungibles API.
 	#[derive(Debug)]
-	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+	#[cfg_attr(feature = "std", derive(Encode, Clone))]
 	pub enum ReadResult<T: Config> {
 		/// Total item supply of a collection.
 		TotalSupply(u32),
@@ -162,54 +163,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		#[pallet::call_index(0)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
-		pub fn mint(
-			origin: OriginFor<T>,
-			to: AccountIdOf<T>,
-			collection: CollectionIdOf<T>,
-			item: ItemIdOf<T>,
-			mint_price: Option<ItemPriceOf<T>>,
-		) -> DispatchResult {
-			let account = ensure_signed(origin.clone())?;
-			let witness_data = MintWitness { mint_price, owned_item: Some(item) };
-			NftsOf::<T>::mint(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(to.clone()),
-				Some(witness_data),
-			)?;
-			Self::deposit_event(Event::Transfer {
-				collection,
-				item,
-				from: None,
-				to: Some(account),
-				price: mint_price,
-			});
-			Ok(())
-		}
-
-		#[pallet::call_index(1)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
-		pub fn burn(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			item: ItemIdOf<T>,
-		) -> DispatchResult {
-			let account = ensure_signed(origin.clone())?;
-			NftsOf::<T>::burn(origin, collection, item)?;
-			Self::deposit_event(Event::Transfer {
-				collection,
-				item,
-				from: Some(account),
-				to: None,
-				price: None,
-			});
-			Ok(())
-		}
-
-		#[pallet::call_index(2)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
@@ -229,7 +183,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(3)]
+		#[pallet::call_index(4)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer() + NftsWeightInfoOf::<T>::cancel_approval())]
 		pub fn approve(
 			origin: OriginFor<T>,
@@ -259,7 +213,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(4)]
+		#[pallet::call_index(7)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -285,7 +239,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		#[pallet::call_index(5)]
+		#[pallet::call_index(8)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(
     		witness.item_metadatas,
     		witness.item_configs,
@@ -299,7 +253,7 @@ pub mod pallet {
 			NftsOf::<T>::destroy(origin, collection, witness)
 		}
 
-		#[pallet::call_index(6)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_attribute())]
 		pub fn set_attribute(
 			origin: OriginFor<T>,
@@ -312,7 +266,7 @@ pub mod pallet {
 			NftsOf::<T>::set_attribute(origin, collection, item, namespace, key, value)
 		}
 
-		#[pallet::call_index(7)]
+		#[pallet::call_index(13)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_attribute())]
 		pub fn clear_attribute(
 			origin: OriginFor<T>,
@@ -324,7 +278,7 @@ pub mod pallet {
 			NftsOf::<T>::clear_attribute(origin, collection, item, namespace, key)
 		}
 
-		#[pallet::call_index(8)]
+		#[pallet::call_index(14)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_metadata())]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
@@ -335,7 +289,7 @@ pub mod pallet {
 			NftsOf::<T>::set_metadata(origin, collection, item, data)
 		}
 
-		#[pallet::call_index(9)]
+		#[pallet::call_index(15)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_metadata())]
 		pub fn clear_metadata(
 			origin: OriginFor<T>,
@@ -345,7 +299,7 @@ pub mod pallet {
 			NftsOf::<T>::clear_metadata(origin, collection, item)
 		}
 
-		#[pallet::call_index(10)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_item_attributes())]
 		pub fn approve_item_attributes(
 			origin: OriginFor<T>,
@@ -361,7 +315,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::call_index(11)]
+		#[pallet::call_index(17)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_item_attributes_approval(witness.account_attributes))]
 		pub fn cancel_item_attributes_approval(
 			origin: OriginFor<T>,
@@ -379,7 +333,7 @@ pub mod pallet {
 			)
 		}
 
-		#[pallet::call_index(12)]
+		#[pallet::call_index(18)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_collection_max_supply())]
 		pub fn set_max_supply(
 			origin: OriginFor<T>,
@@ -387,6 +341,53 @@ pub mod pallet {
 			max_supply: u32,
 		) -> DispatchResult {
 			NftsOf::<T>::set_collection_max_supply(origin, collection, max_supply)
+		}
+
+		#[pallet::call_index(19)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
+		pub fn mint(
+			origin: OriginFor<T>,
+			to: AccountIdOf<T>,
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+			mint_price: Option<ItemPriceOf<T>>,
+		) -> DispatchResult {
+			let account = ensure_signed(origin.clone())?;
+			let witness_data = MintWitness { mint_price, owned_item: Some(item) };
+			NftsOf::<T>::mint(
+				origin,
+				collection,
+				item,
+				T::Lookup::unlookup(to.clone()),
+				Some(witness_data),
+			)?;
+			Self::deposit_event(Event::Transfer {
+				collection,
+				item,
+				from: None,
+				to: Some(account),
+				price: mint_price,
+			});
+			Ok(())
+		}
+
+		#[pallet::call_index(20)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
+		pub fn burn(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+		) -> DispatchResult {
+			let account = ensure_signed(origin.clone())?;
+			NftsOf::<T>::burn(origin, collection, item)?;
+			Self::deposit_event(Event::Transfer {
+				collection,
+				item,
+				from: Some(account),
+				to: None,
+				price: None,
+			});
+			Ok(())
 		}
 	}
 

@@ -24,4 +24,5 @@ path = "src/lib.rs"
 default = [ "std" ]
 fungibles = [  ]
 messaging = [  ]
-std = [ "ink/std", "pop-primitives/std" ]
+nonfungibles = [  ]
+std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]

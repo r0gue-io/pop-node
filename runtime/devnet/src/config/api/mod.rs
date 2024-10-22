@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use codec::Decode;
+use codec::{Decode, Encode};
 use cumulus_primitives_core::Weight;
 use frame_support::traits::{ConstU32, Contains};
 pub(crate) use pallet_api::Extension;
@@ -13,7 +13,7 @@ use versioning::*;
 use crate::{
 	config::{assets::TrustBackedAssetsInstance, xcm::LocalOriginToLocation},
 	fungibles, messaging, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, TransactionByteFee,
+	RuntimeHoldReason, TransactionByteFee, fungibles, nonfungibles, 
 };
 
 mod versioning;
@@ -28,7 +28,7 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 
 /// A query of runtime state.
 #[derive(Decode, Debug)]
-#[cfg_attr(test, derive(PartialEq, Clone))]
+#[cfg_attr(test, derive(Encode, Clone))]
 #[repr(u8)]
 pub enum RuntimeRead {
 	/// Fungible token queries.
@@ -37,6 +37,9 @@ pub enum RuntimeRead {
 	/// Messaging state queries.
 	#[codec(index = 151)]
 	Messaging(messaging::Read<Runtime>),
+	// Non-fungible token queries.
+	#[codec(index = 152)]
+	NonFungibles(nonfungibles::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -49,6 +52,7 @@ impl Readable for RuntimeRead {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
 			RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
+			RuntimeRead::NonFungibles(key) => nonfungibles::Pallet::weight(key),
 		}
 	}
 
@@ -57,17 +61,21 @@ impl Readable for RuntimeRead {
 		match self {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 			RuntimeRead::Messaging(key) => RuntimeResult::Messaging(messaging::Pallet::read(key)),
+			RuntimeRead::NonFungibles(key) =>
+				RuntimeResult::NonFungibles(nonfungibles::Pallet::read(key)),
 		}
 	}
 }
 
 /// The result of a runtime state read.
 #[derive(Debug)]
-#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+#[cfg_attr(test, derive(Encode, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
-	// Messaging state read results.
+	/// Non-fungible token read results.
+	NonFungibles(nonfungibles::ReadResult<Runtime>),
+	/// Messaging state read results.
 	Messaging(messaging::ReadResult),
 }
 
@@ -77,6 +85,7 @@ impl RuntimeResult {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
 			RuntimeResult::Messaging(result) => result.encode(),
+			RuntimeResult::NonFungibles(result) => result.encode(),
 		}
 	}
 }
@@ -106,6 +115,10 @@ impl fungibles::Config for Runtime {
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
+}
+
+impl nonfungibles::Config for Runtime {
+	type RuntimeEvent = RuntimeEvent;
 }
 
 #[derive(Default)]
@@ -163,6 +176,7 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
 		use messaging::Call::*;
+			use nonfungibles::Call::*;
 		use pallet_incentives::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
@@ -183,15 +197,27 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						remove { .. }
 				) | RuntimeCall::Incentives(
 					register_contract { .. } | claim_rewards { .. } | deposit_funds { .. }
+				) | RuntimeCall::NonFungibles(
+					transfer { .. } |
+						approve { .. } | create { .. } |
+						destroy { .. } | set_metadata { .. } |
+						clear_metadata { .. } |
+						set_attribute { .. } |
+						clear_attribute { .. } |
+						approve_item_attributes { .. } |
+						cancel_item_attributes_approval { .. } |
+						mint { .. } | burn { .. } |
+						set_max_supply { .. },
 				)
 			)
-	}
+		};
 }
 
 impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	fn contains(r: &RuntimeRead) -> bool {
 		use fungibles::Read::*;
 		use messaging::Read::*;
+		use nonfungibles::Read::*;
 		matches!(
 			r,
 			RuntimeRead::Fungibles(
@@ -201,7 +227,13 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					TokenName(..) | TokenSymbol(..) |
 					TokenDecimals(..) |
 					TokenExists(..)
-			) | RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..))
+			) | RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..)) | RuntimeRead::NonFungibles(
+					TotalSupply(..) |
+						BalanceOf { .. } | Allowance { .. } |
+						OwnerOf { .. } | GetAttribute { .. } |
+						Collection { .. } | Item { .. } |
+						NextCollectionId
+				)
 		)
 	}
 }
@@ -209,9 +241,8 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 #[cfg(test)]
 mod tests {
 	use codec::Encode;
-	use pallet_api::fungibles::Call::*;
-	use sp_core::crypto::AccountId32;
-	use RuntimeCall::{Balances, Fungibles};
+	use sp_core::{bounded_vec, crypto::AccountId32};
+	use RuntimeCall::{Balances, Fungibles, NonFungibles};
 
 	use super::*;
 
@@ -222,6 +253,10 @@ mod tests {
 		let value = 1_000;
 		let result = fungibles::ReadResult::<Runtime>::TotalSupply(value);
 		assert_eq!(RuntimeResult::Fungibles(result).encode(), value.encode());
+
+		let value = 1_000;
+		let result = nonfungibles::ReadResult::<Runtime>::TotalSupply(value);
+		assert_eq!(RuntimeResult::NonFungibles(result).encode(), value.encode());
 	}
 
 	#[test]
@@ -229,7 +264,7 @@ mod tests {
 		use pallet_balances::{AdjustmentDirection, Call::*};
 		use sp_runtime::MultiAddress;
 
-		const CALLS: [RuntimeCall; 4] = [
+		for call in vec![
 			Balances(force_adjust_total_issuance {
 				direction: AdjustmentDirection::Increase,
 				delta: 0,
@@ -241,16 +276,18 @@ mod tests {
 				value: 0,
 			}),
 			Balances(force_unreserve { who: MultiAddress::Address32([0u8; 32]), amount: 0 }),
-		];
-
-		for call in CALLS {
-			assert!(!Filter::<Runtime>::contains(&call))
+		]
+		.iter()
+		{
+			assert!(!Filter::<Runtime>::contains(call))
 		}
 	}
 
 	#[test]
 	fn filter_allows_fungibles_calls() {
-		const CALLS: [RuntimeCall; 11] = [
+		use pallet_api::fungibles::Call::*;
+
+		for call in vec![
 			Fungibles(transfer { token: 0, to: ACCOUNT, value: 0 }),
 			Fungibles(transfer_from { token: 0, from: ACCOUNT, to: ACCOUNT, value: 0 }),
 			Fungibles(approve { token: 0, spender: ACCOUNT, value: 0 }),
@@ -262,17 +299,80 @@ mod tests {
 			Fungibles(clear_metadata { token: 0 }),
 			Fungibles(mint { token: 0, account: ACCOUNT, value: 0 }),
 			Fungibles(burn { token: 0, account: ACCOUNT, value: 0 }),
-		];
+		]
+		.iter()
+		{
+			assert!(Filter::<Runtime>::contains(call))
+		}
+	}
 
-		for call in CALLS {
-			assert!(Filter::<Runtime>::contains(&call))
+	#[test]
+	fn filter_allows_nonfungibles_calls() {
+		use pallet_api::nonfungibles::{
+			types::{CreateCollectionConfig, MintType},
+			Call::*,
+		};
+		use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness};
+
+		for call in vec![
+			NonFungibles(transfer { collection: 0, item: 0, to: ACCOUNT }),
+			NonFungibles(approve {
+				collection: 0,
+				item: Some(0),
+				operator: ACCOUNT,
+				approved: false,
+			}),
+			NonFungibles(create {
+				admin: ACCOUNT,
+				config: CreateCollectionConfig {
+					max_supply: Some(0),
+					mint_type: MintType::Public,
+					price: None,
+					start_block: Some(0),
+					end_block: None,
+				},
+			}),
+			NonFungibles(destroy {
+				collection: 0,
+				witness: DestroyWitness { attributes: 0, item_configs: 0, item_metadatas: 0 },
+			}),
+			NonFungibles(set_attribute {
+				collection: 0,
+				item: Some(0),
+				namespace: pallet_nfts::AttributeNamespace::Pallet,
+				key: bounded_vec![],
+				value: bounded_vec![],
+			}),
+			NonFungibles(clear_attribute {
+				collection: 0,
+				item: Some(0),
+				namespace: pallet_nfts::AttributeNamespace::Pallet,
+				key: bounded_vec![],
+			}),
+			NonFungibles(set_metadata { collection: 0, item: 0, data: bounded_vec![] }),
+			NonFungibles(clear_metadata { collection: 0, item: 0 }),
+			NonFungibles(approve_item_attributes { collection: 0, item: 0, delegate: ACCOUNT }),
+			NonFungibles(cancel_item_attributes_approval {
+				collection: 0,
+				item: 0,
+				delegate: ACCOUNT,
+				witness: CancelAttributesApprovalWitness { account_attributes: 0 },
+			}),
+			NonFungibles(set_max_supply { collection: 0, max_supply: 0 }),
+			NonFungibles(mint { to: ACCOUNT, collection: 0, item: 0, mint_price: None }),
+			NonFungibles(burn { collection: 0, item: 0 }),
+		]
+		.iter()
+		{
+			assert!(Filter::<Runtime>::contains(call))
 		}
 	}
 
 	#[test]
 	fn filter_allows_fungibles_reads() {
 		use super::{fungibles::Read::*, RuntimeRead::*};
-		const READS: [RuntimeRead; 7] = [
+
+		for read in vec![
 			Fungibles(TotalSupply(1)),
 			Fungibles(BalanceOf { token: 1, owner: ACCOUNT }),
 			Fungibles(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
@@ -280,10 +380,40 @@ mod tests {
 			Fungibles(TokenSymbol(1)),
 			Fungibles(TokenDecimals(10)),
 			Fungibles(TokenExists(1)),
-		];
+		]
+		.iter()
+		{
+			assert!(Filter::<Runtime>::contains(read))
+		}
+	}
 
-		for read in READS {
-			assert!(Filter::<Runtime>::contains(&read))
+	#[test]
+	fn filter_allows_nonfungibles_reads() {
+		use super::{nonfungibles::Read::*, RuntimeRead::*};
+
+		for read in vec![
+			NonFungibles(TotalSupply(1)),
+			NonFungibles(BalanceOf { collection: 1, owner: ACCOUNT }),
+			NonFungibles(Allowance {
+				collection: 1,
+				item: None,
+				owner: ACCOUNT,
+				operator: ACCOUNT,
+			}),
+			NonFungibles(OwnerOf { collection: 1, item: 1 }),
+			// NonFungibles(GetAttribute {
+			// 	collection: 0,
+			// 	item: Some(0),
+			// 	namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
+			// 	key: bounded_vec![],
+			// }),
+			NonFungibles(Collection(1)),
+			NonFungibles(Item { collection: 1, item: 1 }),
+			NonFungibles(NextCollectionId),
+		]
+		.iter()
+		{
+			assert!(Filter::<Runtime>::contains(read))
 		}
 	}
 }

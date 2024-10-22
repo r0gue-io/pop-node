@@ -41,7 +41,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::{fungibles, messaging};
+use pallet_api::{fungibles, messaging, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -249,10 +249,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
+				force_adjust_total_issuance { .. }
+					| force_set_balance { .. }
+					| force_transfer { .. }
+					| force_unreserve { .. }
 			)
 		)
 	}
@@ -697,6 +697,9 @@ mod runtime {
 	#[runtime::pallet_index(152)]
 	pub type Incentives = pallet_incentives::Pallet<Runtime>;
 
+	#[runtime::pallet_index(153)]
+	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
+
 	// Revive
 	#[runtime::pallet_index(255)]
 	pub type Revive = pallet_revive::Pallet<Runtime>;
@@ -707,6 +710,7 @@ mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[frame_system, SystemBench::<Runtime>]
 		[fungibles, Fungibles]
+		[nonfungibles, NonFungibles],
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
