@@ -22,4 +22,5 @@ path = "src/lib.rs"
 [features]
 default = [ "std" ]
 fungibles = [  ]
+nonfungibles = [  ]
 std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]

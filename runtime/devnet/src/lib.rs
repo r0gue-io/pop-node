@@ -39,7 +39,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::fungibles;
+use pallet_api::{fungibles, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -634,6 +634,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(151)]
+	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -641,6 +643,7 @@ mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[frame_system, SystemBench::<Runtime>]
 		[fungibles, Fungibles]
+		[nonfungibles, NonFungibles],
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]

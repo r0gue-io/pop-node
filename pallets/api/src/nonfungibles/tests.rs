@@ -264,7 +264,7 @@ fn get_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
-		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
+		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
 		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		// No attribute set.
@@ -302,12 +302,17 @@ fn get_attribute_works() {
 }
 
 #[test]
+fn set_metadata_works() {
+	unimplemented!()
+}
+
+#[test]
 fn clear_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
 		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
-		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
+		let result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		assert_ok!(Nfts::set_attribute(
 			signed(ALICE),
 			collection,
@@ -342,7 +347,7 @@ fn approve_item_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
-		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
+		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
 		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		// Successfully approve delegate to set attributes.
@@ -374,9 +379,9 @@ fn cancel_item_attribute_approval_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
-		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
+		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
-		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
+		let result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		// Successfully approve delegate to set attributes.
 		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, account(BOB)));
 		assert_ok!(Nfts::set_attribute(
