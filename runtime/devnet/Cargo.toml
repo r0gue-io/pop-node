@@ -138,6 +138,7 @@ std = [
 	"pallet-aura/std",
 	"pallet-authorship/std",
 	"pallet-balances/std",
+	"pallet-builder-incentives/std",
 	"pallet-collator-selection/std",
 	"pallet-contracts/std",
 	"pallet-ismp-runtime-api/std",

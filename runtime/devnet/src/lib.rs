@@ -249,10 +249,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
+				force_adjust_total_issuance { .. }
+					| force_set_balance { .. }
+					| force_transfer { .. }
+					| force_unreserve { .. }
 			)
 		)
 	}
@@ -350,20 +350,30 @@ impl OnUnbalanced<Credit<AccountId, Balances>> for ToBuilderIncentivesPot {
 	}
 }
 
+/// Logic for the author to get a portion of fees.
+pub struct ToAuthor;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToAuthor {
+	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
+		if let Some(author) = Authorship::author() {
+			let _ = Balances::resolve(&author, amount);
+		}
+	}
+}
+
 pub struct DealWithFees;
 impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
 	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = Credit<AccountId, Balances>>) {
 		if let Some(fees) = fees_then_tips.next() {
-			// TODO: Change numbers -> Now for testing, Burn 50% of fees, rest goes to incentives
-			// including 100% of the tips.
-			let (to_burn, mut incentives) = fees.ration(50, 50);
-			// TODO: Decide what to do with the tips
-			// if let Some(tips) = fees_then_tips.next() {
-			// 	tips.merge_into(&mut incentives);
-			// }
-			drop(to_burn);
+			// TODO: Change numbers -> Now for testing: 50% of fees, to the author, rest goes to
+			// incentives including 100% of the tips.
+			let (to_author, mut incentives) = fees.ration(50, 50);
+			// TODO: Decide what to do with the tips, for now to incentives
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut incentives);
+			}
 			// TODO: Use ToResolve
 			<ToBuilderIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
+			<ToAuthor as OnUnbalanced<_>>::on_unbalanced(to_author);
 		}
 	}
 }
