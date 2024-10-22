@@ -178,7 +178,7 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 				)
 			)
 		};
-		T::BaseCallFilter::contains(c) && contains_fungibles && contains_nonfungibles
+		T::BaseCallFilter::contains(c) && (contains_fungibles || contains_nonfungibles)
 	}
 }
 
@@ -204,12 +204,11 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					TotalSupply(..) |
 						BalanceOf { .. } | Allowance { .. } |
 						OwnerOf { .. } | GetAttribute { .. } |
-						Collection { .. } | Item { .. } |
-						NextCollectionId
+						Collection { .. } | NextCollectionId
 				)
 			)
 		};
-		contains_fungibles && contains_nonfungibles
+		contains_fungibles || contains_nonfungibles
 	}
 }
 
