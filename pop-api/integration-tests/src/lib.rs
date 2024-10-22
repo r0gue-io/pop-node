@@ -80,7 +80,7 @@ fn bare_call(
 }
 
 // Deploy, instantiate and return contract address.
-fn instantiate(contract: &str, init_value: u128, salt: Vec<u8>) -> (sp_core::H160, AccountId32) {
+fn instantiate(contract: &str, init_value: u128, _salt: Vec<u8>) -> (sp_core::H160, AccountId32) {
 	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
 
 	let result = Revive::bare_instantiate(

@@ -12,7 +12,7 @@ pub mod xcm;
 
 pub(crate) const API: u8 = 151;
 // Dispatchables
-pub(super) const REQUEST: u8 = 0;
+pub(super) const _REQUEST: u8 = 0;
 pub(super) const ISMP_GET: u8 = 1;
 pub(super) const ISMP_POST: u8 = 2;
 pub(super) const XCM_NEW_QUERY: u8 = 3;
