@@ -83,18 +83,6 @@ mod encoding_read_result {
 	}
 
 	#[test]
-	fn item() {
-		let mut item_details = Some(ItemDetails {
-			owner: account(ALICE),
-			approvals: BoundedBTreeMap::default(),
-			deposit: ItemDeposit { amount: 0, account: account(BOB) },
-		});
-		assert_eq!(ReadResult::Item::<Test>(item_details.clone()).encode(), item_details.encode());
-		item_details = None;
-		assert_eq!(ReadResult::Item::<Test>(item_details.clone()).encode(), item_details.encode());
-	}
-
-	#[test]
 	fn next_collection_id_works() {
 		let mut next_collection_id = Some(0);
 		assert_eq!(
@@ -106,6 +94,14 @@ mod encoding_read_result {
 			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
 			next_collection_id.encode()
 		);
+	}
+
+	#[test]
+	fn item_metadata_works() {
+		let mut data = Some(BoundedVec::truncate_from("some metadata".as_bytes().to_vec()));
+		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
+		data = None;
+		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
 	}
 }
 
@@ -303,7 +299,33 @@ fn get_attribute_works() {
 
 #[test]
 fn set_metadata_works() {
-	unimplemented!()
+	new_test_ext().execute_with(|| {
+		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
+		let value = BoundedVec::truncate_from("some metadata".as_bytes().to_vec());
+		assert_ok!(NonFungibles::set_metadata(signed(ALICE), collection, item, value.clone()));
+		assert_eq!(
+			NonFungibles::read(ItemMetadata { collection, item }).encode(),
+			Some(value).encode()
+		);
+	});
+}
+
+#[test]
+fn clear_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
+		assert_ok!(NonFungibles::set_metadata(
+			signed(ALICE),
+			collection,
+			item,
+			BoundedVec::truncate_from("some metadata".as_bytes().to_vec())
+		));
+		assert_ok!(NonFungibles::clear_metadata(signed(ALICE), collection, item));
+		assert_eq!(
+			NonFungibles::read(ItemMetadata { collection, item }).encode(),
+			ReadResult::<Test>::ItemMetadata(None).encode()
+		);
+	});
 }
 
 #[test]
@@ -450,17 +472,6 @@ fn collection_works() {
 		assert_eq!(
 			NonFungibles::read(Collection(collection)).encode(),
 			pallet_nfts::Collection::<Test>::get(&collection).encode(),
-		);
-	});
-}
-
-#[test]
-fn item_works() {
-	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
-		assert_eq!(
-			NonFungibles::read(Item { collection, item }).encode(),
-			pallet_nfts::Item::<Test>::get(&collection, &item).encode(),
 		);
 	});
 }
