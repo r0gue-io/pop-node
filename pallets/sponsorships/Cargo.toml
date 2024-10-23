@@ -36,6 +36,7 @@ runtime-benchmarks = [
 	"frame-system/runtime-benchmarks",
 	"pallet-revive/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
+	"pallet-revive/runtime-benchmarks"
 ]
 std = [
 	"codec/std",
