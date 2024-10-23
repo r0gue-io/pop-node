@@ -39,6 +39,28 @@ fn total_supply_works() {
 	});
 }
 
+#[test]
+fn balance_of_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		// No tokens in circulation.
+		assert_eq!(
+			balance_of(&addr, COLLECTION_ID, ALICE),
+			Ok(nfts::balance_of(COLLECTION_ID, ALICE)),
+		);
+		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(0));
+
+		// Tokens in circulation.
+		nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		assert_eq!(
+			balance_of(&addr, COLLECTION_ID, ALICE),
+			Ok(nfts::balance_of(COLLECTION_ID, ALICE)),
+		);
+		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(1));
+	});
+}
+
 // Testing a contract that creates a token in the constructor.
 #[test]
 fn instantiate_and_create_fungible_works() {
