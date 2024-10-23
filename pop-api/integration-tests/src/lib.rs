@@ -9,7 +9,7 @@ use frame_support::{
 };
 use pallet_revive::{AddressMapper, Code, CollectEvents, ExecReturnValue};
 use pop_runtime_devnet::{
-	config::ismp::Router, Assets, Messaging, Revive, Runtime, RuntimeOrigin, System, UNIT,
+	config::ismp::Router, Assets, Messaging, Nfts, Revive, Runtime, RuntimeOrigin, System, UNIT,
 };
 use scale::{Decode, Encode};
 use sp_runtime::{

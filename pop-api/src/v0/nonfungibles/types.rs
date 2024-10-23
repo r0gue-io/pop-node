@@ -3,7 +3,7 @@ use crate::primitives::AccountId;
 
 pub type ItemId = u32;
 pub type CollectionId = u32;
-pub type Balance = u32;
+pub(super) type Balance = u32;
 
 /// Information about a collection.
 #[derive(Debug, PartialEq, Eq)]
