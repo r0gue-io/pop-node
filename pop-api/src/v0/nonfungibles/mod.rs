@@ -243,6 +243,14 @@ pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {
 		.call(&(collection, item))
 }
 
+#[inline]
+pub fn next_collection_id() -> Result<CollectionId> {
+	build_read_state(NEXT_COLLECTION_ID)
+		.output::<Result<CollectionId>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&())
+}
+
 mod constants {
 	/// 1. PSP-34
 	pub(super) const TOTAL_SUPPLY: u8 = 0;

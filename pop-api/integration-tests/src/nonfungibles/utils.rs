@@ -11,9 +11,12 @@ pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecRetur
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
 
-pub(super) fn total_supply(addr: &AccountId32, collection: CollectionId) -> Result<u32, Error> {
+pub(super) fn total_supply(
+	addr: &AccountId32,
+	collection: CollectionId,
+) -> Result<Option<u128>, Error> {
 	let result = do_bare_call("total_supply", addr, collection.encode());
-	decoded::<Result<u32, Error>>(result.clone())
+	decoded::<Result<Option<u128>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
@@ -208,6 +211,99 @@ pub(super) fn set_max_supply(
 	let result = do_bare_call("set_max_supply", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) fn item_metadata(
+	addr: &AccountId32,
+	collection: CollectionId,
+	item: ItemId,
+) -> Result<Option<Vec<u8>>, Error> {
+	let params = [collection.encode(), item.encode()].concat();
+	let result = do_bare_call("item_metadata", &addr, params);
+	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) mod nfts {
+	use super::*;
+
+	pub(crate) fn create_collection_and_mint_to(
+		owner: &AccountId32,
+		admin: &AccountId32,
+		to: &AccountId32,
+		item: ItemId,
+	) -> (CollectionId, ItemId) {
+		let collection = create_collection(owner, admin);
+		mint(owner, to, collection, item);
+		(collection, item)
+	}
+
+	pub(crate) fn create_collection(owner: &AccountId32, admin: &AccountId32) -> CollectionId {
+		let next_id = next_collection_id();
+		assert_ok!(Nfts::create(
+			RuntimeOrigin::signed(owner.clone()),
+			owner.clone().into(),
+			collection_config_with_all_settings_enabled()
+		));
+		next_id
+	}
+
+	pub(super) fn next_collection_id() -> u32 {
+		pallet_nfts::NextCollectionId::<Runtime>::get().unwrap_or_default()
+	}
+
+	pub(crate) fn mint(
+		owner: &AccountId32,
+		to: &AccountId32,
+		collection: CollectionId,
+		item: ItemId,
+	) -> ItemId {
+		assert_ok!(Nfts::mint(
+			RuntimeOrigin::signed(owner.clone()),
+			collection,
+			item,
+			owner.clone().into(),
+			None
+		));
+		item
+	}
+
+	pub(super) fn collection_config_with_all_settings_enabled(
+	) -> CollectionConfig<u128, BlockNumber, CollectionId> {
+		CollectionConfig {
+			settings: pallet_nfts::CollectionSettings::all_enabled(),
+			max_supply: None,
+			mint_settings: pallet_nfts::MintSettings::default(),
+		}
+	}
+}
+
+pub(super) fn instantiate_and_create_nonfungible(
+	contract: &str,
+	admin: AccountId32,
+	config: CreateCollectionConfig,
+) -> Result<AccountId32, Error> {
+	let function = function_selector("new");
+	let input = [function, admin.encode(), config.encode()].concat();
+	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
+	let result = Contracts::bare_instantiate(
+		ALICE,
+		INIT_VALUE,
+		GAS_LIMIT,
+		None,
+		Code::Upload(wasm_binary),
+		input,
+		vec![],
+		DEBUG_OUTPUT,
+		CollectEvents::Skip,
+	)
+	.result
+	.expect("should work");
+	let address = result.account_id;
+	let result = result.result;
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+		.map(|_| address)
 }
 
 /// Get the last event from pallet contracts.
