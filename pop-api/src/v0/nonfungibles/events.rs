@@ -13,33 +13,38 @@ use super::*;
 #[ink::event]
 pub struct Transfer {
 	/// The source of the transfer. `None` when minting.
-	from: Option<AccountId>,
+	#[ink(topic)]
+	pub from: Option<AccountId>,
 	/// The recipient of the transfer. `None` when burning.
-	to: Option<AccountId>,
+	#[ink(topic)]
+	pub to: Option<AccountId>,
 	/// The item transferred (or minted/burned).
-	item: ItemId,
+	pub item: ItemId,
 }
 
 /// Event emitted when a token approve occurs.
 #[ink::event]
 pub struct Approval {
 	/// The owner providing the allowance.
-	owner: AccountId,
+	#[ink(topic)]
+	pub owner: AccountId,
 	/// The beneficiary of the allowance.
-	operator: AccountId,
+	#[ink(topic)]
+	pub operator: AccountId,
 	/// The item which is (dis)approved. `None` for all owner's items.
-	item: Option<ItemId>,
+	pub item: Option<ItemId>,
 	/// Whether allowance is set or removed.
-	approved: bool,
+	pub approved: bool,
 }
 
 /// Event emitted when an attribute is set for a token.
 #[ink::event]
 pub struct AttributeSet {
 	/// The item which attribute is set.
-	item: ItemId,
+	#[ink(topic)]
+	pub item: ItemId,
 	/// The key for the attribute.
-	key: Vec<u8>,
+	pub key: Vec<u8>,
 	/// The data for the attribute.
-	data: Vec<u8>,
+	pub data: Vec<u8>,
 }
