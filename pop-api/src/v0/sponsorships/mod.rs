@@ -12,9 +12,7 @@ pub use events::*;
 pub use traits::*;
 
 use crate::{
-    constants::{SPONSORSHIPS},
-    primitives::{AccountId},
-    ChainExtensionMethodApi, Result, StatusCode,
+	constants::SPONSORSHIPS, primitives::AccountId, ChainExtensionMethodApi, Result, StatusCode,
 };
 
 pub mod errors;
@@ -27,11 +25,11 @@ pub mod traits;
 /// - `beneficiary` - The account to be sponsored.
 #[inline]
 pub fn sponsor_account(beneficiary: AccountId) -> Result<()> {
-    build_dispatch(SPONSOR_ACCOUNT)
-        .input::<AccountId>()
-        .output::<Result<()>, true>()
-        .handle_error_code::<StatusCode>()
-        .call(&(beneficiary))
+	build_dispatch(SPONSOR_ACCOUNT)
+		.input::<AccountId>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(beneficiary))
 }
 
 /// Removes the sponsorship relation between caller and the given account if it exists.
@@ -40,17 +38,17 @@ pub fn sponsor_account(beneficiary: AccountId) -> Result<()> {
 /// - `beneficiary` - The account which will no longer be sponsored by caller.
 #[inline]
 pub fn remove_sponsorship_for(account: AccountId) -> Result<()> {
-    build_dispatch(REMOVE_SPONSORSHIP)
-        .input::<AccountId>()
-        .output::<Result<()>, true>()
-        .handle_error_code::<StatusCode>()
-        .call(&(account))
+	build_dispatch(REMOVE_SPONSORSHIP)
+		.input::<AccountId>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(account))
 }
 
 mod constants {
-    ///
-    pub(super) const SPONSOR_ACCOUNT: u8 = 0;
-    pub(super) const REMOVE_SPONSORSHIP: u8 = 1;
+	///
+	pub(super) const SPONSOR_ACCOUNT: u8 = 0;
+	pub(super) const REMOVE_SPONSORSHIP: u8 = 1;
 }
 
 // Helper method to build a dispatch call.
@@ -58,7 +56,7 @@ mod constants {
 // Parameters:
 // - 'dispatchable': The index of the dispatchable function within the module.
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
-    crate::v0::build_dispatch(SPONSORSHIPS, dispatchable)
+	crate::v0::build_dispatch(SPONSORSHIPS, dispatchable)
 }
 
 // Helper method to build a call to read state.
@@ -66,5 +64,5 @@ fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
 // Parameters:
 // - 'state_query': The index of the runtime state query.
 fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
-    crate::v0::build_read_state(SPONSORSHIPS, state_query)
+	crate::v0::build_read_state(SPONSORSHIPS, state_query)
 }
