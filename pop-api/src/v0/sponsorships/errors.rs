@@ -39,6 +39,7 @@ impl From<StatusCode> for SponsorshipsError {
 
 #[cfg(test)]
 mod tests {
+    use super::SponsorshipsError;
     use crate::{
         primitives::{
             Error::{self, *}
