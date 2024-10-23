@@ -8684,7 +8684,7 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-balances",
- "pallet-contracts",
+ "pallet-revive",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
