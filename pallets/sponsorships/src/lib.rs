@@ -68,6 +68,8 @@ pub mod pallet {
 	/// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {
+		/// The account is already being sponsored.
+		AlreadySponsored,
 		/// This action cannot be sponsored.
 		CantSponsor,
 		/// The cost is higher than the max sponsored.
@@ -85,11 +87,16 @@ pub mod pallet {
 		pub fn sponsor_account(origin: OriginFor<T>, beneficiary: T::AccountId) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			let amount = Weight::from_parts(1, 1);
-			// Update sponsorships.
-			<Sponsorships<T>>::set(&who, &beneficiary, Some(amount));
 
-			Self::deposit_event(Event::NewSponsorship { sponsor: who, beneficiary });
-			Ok(().into())
+			if <Sponsorships<T>>::contains_key(&who, &beneficiary) {
+				Err(<Error<T>>::AlreadySponsored.into())
+			} else {
+				// Update sponsorships.
+				<Sponsorships<T>>::set(&who, &beneficiary, Some(amount));
+
+				Self::deposit_event(Event::NewSponsorship { sponsor: who, beneficiary });
+				Ok(().into())
+			}
 		}
 
 		/// Remove an account from the list of sponsored accounts managed by origin.

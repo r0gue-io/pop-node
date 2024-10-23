@@ -1,4 +1,4 @@
-use codec::{Decode, Encode, HasCompact};
+use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	traits::IsSubType,
@@ -8,7 +8,7 @@ use pallet_revive::AddressMapper;
 use scale_info::{StaticTypeInfo, TypeInfo};
 use sp_core::U256;
 use sp_runtime::{
-	traits::{DispatchInfoOf, Dispatchable, IdentifyAccount, PostDispatchInfoOf, SignedExtension},
+	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension},
 	transaction_validity::{TransactionValidity, TransactionValidityError},
 };
 
