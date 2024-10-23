@@ -40,7 +40,7 @@ pub trait Psp22 {
 	/// - `value` - The number of tokens to transfer.
 	/// - `data` - Additional data in unspecified format.
 	#[ink(message, selector = 0xdb20f9f5)]
-	fn transfer(&mut self, to: AccountId, value: Balance, data: Vec<u8>) -> Result<(), PSP22Error>;
+	fn transfer(&mut self, to: AccountId, value: Balance, data: Vec<u8>) -> Result<(), Psp22Error>;
 
 	/// Transfers `value` tokens on behalf of `from` to the account `to`
 	/// with additional `data` in unspecified format.
@@ -57,7 +57,7 @@ pub trait Psp22 {
 		to: AccountId,
 		value: Balance,
 		data: Vec<u8>,
-	) -> Result<(), PSP22Error>;
+	) -> Result<(), Psp22Error>;
 
 	/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
 	///
@@ -67,7 +67,7 @@ pub trait Psp22 {
 	/// - `spender` - The account that is allowed to spend the tokens.
 	/// - `value` - The number of tokens to approve.
 	#[ink(message, selector = 0xb20f1bbd)]
-	fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), PSP22Error>;
+	fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), Psp22Error>;
 
 	/// Increases the allowance of `spender` by `value` amount of tokens.
 	///
@@ -75,7 +75,7 @@ pub trait Psp22 {
 	/// - `spender` - The account that is allowed to spend the tokens.
 	/// - `value` - The number of tokens to increase the allowance by.
 	#[ink(message, selector = 0x96d6b57a)]
-	fn increase_allowance(&mut self, spender: AccountId, value: Balance) -> Result<(), PSP22Error>;
+	fn increase_allowance(&mut self, spender: AccountId, value: Balance) -> Result<(), Psp22Error>;
 
 	/// Decreases the allowance of `spender` by `value` amount of tokens.
 	///
@@ -83,7 +83,7 @@ pub trait Psp22 {
 	/// - `spender` - The account that is allowed to spend the tokens.
 	/// - `value` - The number of tokens to decrease the allowance by.
 	#[ink(message, selector = 0xfecb57d5)]
-	fn decrease_allowance(&mut self, spender: AccountId, value: Balance) -> Result<(), PSP22Error>;
+	fn decrease_allowance(&mut self, spender: AccountId, value: Balance) -> Result<(), Psp22Error>;
 }
 
 /// The PSP22 Metadata trait.
@@ -114,7 +114,7 @@ pub trait Psp22Mintable {
 	/// - `account` - The account to be credited with the created tokens.
 	/// - `value` - The number of tokens to mint.
 	#[ink(message, selector = 0xfc3c75d4)]
-	fn mint(&mut self, account: AccountId, value: Balance) -> Result<(), PSP22Error>;
+	fn mint(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error>;
 }
 
 /// The PSP22 Burnable trait.
@@ -129,5 +129,5 @@ pub trait Psp22Burnable {
 	/// - `account` - The account from which the tokens will be destroyed.
 	/// - `value` - The number of tokens to destroy.
 	#[ink(message, selector = 0x7a9da510)]
-	fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), PSP22Error>;
+	fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error>;
 }

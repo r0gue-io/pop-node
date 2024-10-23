@@ -7,7 +7,7 @@ use pop_api::{
 		self as api,
 		events::{Approval, Created, Transfer},
 		traits::{Psp22, Psp22Burnable, Psp22Metadata, Psp22Mintable},
-		PSP22Error,
+		Psp22Error,
 	},
 };
 
@@ -29,10 +29,10 @@ mod fungibles {
 		/// # Parameters
 		/// * - `token` - The token.
 		#[ink(constructor, payable)]
-		pub fn existing(id: TokenId) -> Result<Self, PSP22Error> {
+		pub fn existing(id: TokenId) -> Result<Self, Psp22Error> {
 			// Make sure token exists.
 			if !api::token_exists(id).unwrap_or_default() {
-				return Err(PSP22Error::Custom(String::from("Token does not exist")));
+				return Err(Psp22Error::Custom(String::from("Token does not exist")));
 			}
 			Ok(Self { id })
 		}
@@ -46,10 +46,10 @@ mod fungibles {
 		// The `min_balance` ensures accounts hold a minimum amount of tokens, preventing tiny,
 		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
-		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, PSP22Error> {
+		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, Psp22Error> {
 			let instance = Self { id };
 			let contract_id = instance.env().account_id();
-			api::create(id, contract_id, min_balance).map_err(PSP22Error::from)?;
+			api::create(id, contract_id, min_balance).map_err(Psp22Error::from)?;
 			instance
 				.env()
 				.emit_event(Created { id, creator: contract_id, admin: contract_id });
@@ -96,13 +96,13 @@ mod fungibles {
 			to: AccountId,
 			value: Balance,
 			_data: Vec<u8>,
-		) -> Result<(), PSP22Error> {
+		) -> Result<(), Psp22Error> {
 			let caller = self.env().caller();
 			// No-op if the caller and `to` is the same address or `value` is zero.
 			if caller == to || value == 0 {
 				return Ok(());
 			}
-			api::transfer(self.id, to, value).map_err(PSP22Error::from)?;
+			api::transfer(self.id, to, value).map_err(Psp22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			Ok(())
 		}
@@ -122,7 +122,7 @@ mod fungibles {
 			to: AccountId,
 			value: Balance,
 			_data: Vec<u8>,
-		) -> Result<(), PSP22Error> {
+		) -> Result<(), Psp22Error> {
 			let caller = self.env().caller();
 			// No-op if `from` and `to` is the same address or `value` is zero.
 			if from == to || value == 0 {
@@ -131,7 +131,7 @@ mod fungibles {
 			// If `from` and the caller are different addresses, a successful transfer results
 			// in decreased allowance by `from` to the caller and an `Approval` event with
 			// the new allowance amount is emitted.
-			api::transfer_from(self.id, from, to, value).map_err(PSP22Error::from)?;
+			api::transfer_from(self.id, from, to, value).map_err(Psp22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			self.env().emit_event(Approval {
 				owner: from,
@@ -149,13 +149,13 @@ mod fungibles {
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to approve.
 		#[ink(message)]
-		fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), PSP22Error> {
+		fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), Psp22Error> {
 			let caller = self.env().caller();
 			// No-op if the caller and `spender` is the same address.
 			if caller == spender {
 				return Ok(());
 			}
-			api::approve(self.id, spender, value).map_err(PSP22Error::from)?;
+			api::approve(self.id, spender, value).map_err(Psp22Error::from)?;
 			self.env().emit_event(Approval { owner: caller, spender, value });
 			Ok(())
 		}
@@ -170,13 +170,13 @@ mod fungibles {
 			&mut self,
 			spender: AccountId,
 			value: Balance,
-		) -> Result<(), PSP22Error> {
+		) -> Result<(), Psp22Error> {
 			let caller = self.env().caller();
 			// No-op if the caller and `spender` is the same address or `value` is zero.
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
-			api::increase_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
+			api::increase_allowance(self.id, spender, value).map_err(Psp22Error::from)?;
 			let allowance = self.allowance(caller, spender);
 			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
 			Ok(())
@@ -192,13 +192,13 @@ mod fungibles {
 			&mut self,
 			spender: AccountId,
 			value: Balance,
-		) -> Result<(), PSP22Error> {
+		) -> Result<(), Psp22Error> {
 			let caller = self.env().caller();
 			// No-op if the caller and `spender` is the same address or `value` is zero.
 			if caller == spender || value == 0 {
 				return Ok(());
 			}
-			api::decrease_allowance(self.id, spender, value).map_err(PSP22Error::from)?;
+			api::decrease_allowance(self.id, spender, value).map_err(Psp22Error::from)?;
 			let value = self.allowance(caller, spender);
 			self.env().emit_event(Approval { owner: caller, spender, value });
 			Ok(())
@@ -237,12 +237,12 @@ mod fungibles {
 		/// - `account` - The account to be credited with the created tokens.
 		/// - `value` - The number of tokens to mint.
 		#[ink(message)]
-		fn mint(&mut self, account: AccountId, value: Balance) -> Result<(), PSP22Error> {
+		fn mint(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error> {
 			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
 			}
-			api::mint(self.id, account, value).map_err(PSP22Error::from)?;
+			api::mint(self.id, account, value).map_err(Psp22Error::from)?;
 			self.env().emit_event(Transfer { from: None, to: Some(account), value });
 			Ok(())
 		}
@@ -255,12 +255,12 @@ mod fungibles {
 		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[ink(message)]
-		fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), PSP22Error> {
+		fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error> {
 			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
 			}
-			api::burn(self.id, account, value).map_err(PSP22Error::from)?;
+			api::burn(self.id, account, value).map_err(Psp22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(account), to: None, value });
 			Ok(())
 		}

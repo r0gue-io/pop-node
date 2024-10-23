@@ -75,7 +75,7 @@ impl From<StatusCode> for FungiblesError {
 // TODO: Issue https://github.com/r0gue-io/pop-node/issues/298
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum PSP22Error {
+pub enum Psp22Error {
 	/// Custom error type for implementation-based errors.
 	Custom(String),
 	/// Returned when an account does not have enough tokens to complete the operation.
@@ -91,28 +91,28 @@ pub enum PSP22Error {
 }
 
 #[cfg(feature = "std")]
-impl From<PSP22Error> for u32 {
-	fn from(value: PSP22Error) -> u32 {
+impl From<Psp22Error> for u32 {
+	fn from(value: Psp22Error) -> u32 {
 		match value {
-			PSP22Error::InsufficientBalance => u32::from_le_bytes([3, ASSETS, 0, 0]),
-			PSP22Error::InsufficientAllowance => u32::from_le_bytes([3, ASSETS, 10, 0]),
-			PSP22Error::Custom(value) => value.parse::<u32>().expect("Failed to parse"),
+			Psp22Error::InsufficientBalance => u32::from_le_bytes([3, ASSETS, 0, 0]),
+			Psp22Error::InsufficientAllowance => u32::from_le_bytes([3, ASSETS, 10, 0]),
+			Psp22Error::Custom(value) => value.parse::<u32>().expect("Failed to parse"),
 			_ => unimplemented!("Variant is not supported"),
 		}
 	}
 }
 
-impl From<StatusCode> for PSP22Error {
-	/// Converts a `StatusCode` to a `PSP22Error`.
+impl From<StatusCode> for Psp22Error {
+	/// Converts a `StatusCode` to a `Psp22Error`.
 	fn from(value: StatusCode) -> Self {
 		let encoded = value.0.to_le_bytes();
 		match encoded {
 			// BalanceLow.
-			[3, ASSETS, 0, _] => PSP22Error::InsufficientBalance,
+			[3, ASSETS, 0, _] => Psp22Error::InsufficientBalance,
 			// Unapproved.
-			[3, ASSETS, 10, _] => PSP22Error::InsufficientAllowance,
+			[3, ASSETS, 10, _] => Psp22Error::InsufficientAllowance,
 			// Custom error with status code.
-			_ => PSP22Error::Custom(value.0.to_string()),
+			_ => Psp22Error::Custom(value.0.to_string()),
 		}
 	}
 }
@@ -241,21 +241,21 @@ mod tests {
 		];
 		for error in other_errors {
 			let status_code: StatusCode = error_into_status_code(error);
-			let fungibles_error: PSP22Error = status_code.into();
-			assert_eq!(fungibles_error, PSP22Error::Custom(status_code.0.to_string()))
+			let fungibles_error: Psp22Error = status_code.into();
+			assert_eq!(fungibles_error, Psp22Error::Custom(status_code.0.to_string()))
 		}
 
 		assert_eq!(
-			into_error::<PSP22Error>(Module { index: ASSETS, error: [0, 0] }),
-			PSP22Error::InsufficientBalance
+			into_error::<Psp22Error>(Module { index: ASSETS, error: [0, 0] }),
+			Psp22Error::InsufficientBalance
 		);
 		assert_eq!(
-			into_error::<PSP22Error>(Module { index: ASSETS, error: [10, 0] }),
-			PSP22Error::InsufficientAllowance
+			into_error::<Psp22Error>(Module { index: ASSETS, error: [10, 0] }),
+			Psp22Error::InsufficientAllowance
 		);
 		assert_eq!(
-			into_error::<PSP22Error>(Module { index: ASSETS, error: [3, 0] }),
-			PSP22Error::Custom(
+			into_error::<Psp22Error>(Module { index: ASSETS, error: [3, 0] }),
+			Psp22Error::Custom(
 				error_into_status_code(Module { index: ASSETS, error: [3, 0] }).0.to_string()
 			)
 		);

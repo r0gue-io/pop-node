@@ -87,7 +87,7 @@ fn new_constructor_fails_with_used_token() {
 	// `pallet-assets` returns `InUse` error.
 	assert_eq!(
 		deploy(&mut session, "existing", vec![TOKEN.to_string()]),
-		Err(PSP22Error::Custom(String::from("Token does not exist")))
+		Err(Psp22Error::Custom(String::from("Token does not exist")))
 	);
 }
 
@@ -107,7 +107,7 @@ fn existing_constructor_fails_with_non_existing_token(&mut session: Session) {
 	// Fails to deploy contract with a non-existing token ID.
 	assert_eq!(
 		deploy(&mut session, "existing", vec![TOKEN.to_string()]),
-		Err(PSP22Error::Custom(String::from("Token does not exist")))
+		Err(Psp22Error::Custom(String::from("Token does not exist")))
 	);
 }
 
@@ -190,7 +190,7 @@ fn transfer_fails_with_insufficient_balance() {
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	// Failed with `InsufficientBalance`.
-	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(PSP22Error::InsufficientBalance));
+	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(Psp22Error::InsufficientBalance));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -263,7 +263,7 @@ fn transfer_from_fails_with_insufficient_balance() {
 	// Not enough balance. Failed with `InsufficientBalance`.
 	assert_eq!(
 		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT + 1),
-		Err(PSP22Error::InsufficientBalance)
+		Err(Psp22Error::InsufficientBalance)
 	);
 }
 
@@ -280,7 +280,7 @@ fn transfer_from_fails_with_insufficient_allowance() {
 	// Unapproved transfer. Failed with `InsufficientAllowance`.
 	assert_eq!(
 		transfer_from(&mut session, ALICE, contract.clone(), AMOUNT + 1),
-		Err(PSP22Error::InsufficientAllowance)
+		Err(Psp22Error::InsufficientAllowance)
 	);
 }
 
@@ -494,7 +494,7 @@ fn decrease_allowance_fails_with_insufficient_allowance(mut session: Session) {
 	// Failed with `InsufficientAllowance`.
 	assert_eq!(
 		decrease_allowance(&mut session, ALICE, AMOUNT),
-		Err(PSP22Error::InsufficientAllowance)
+		Err(Psp22Error::InsufficientAllowance)
 	);
 }
 
@@ -689,7 +689,7 @@ fn burn_fails_with_insufficient_balance(mut session: Session) {
 		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
 	session.set_actor(contract.clone());
 	// Failed with `InsufficientBalance`.
-	assert_eq!(burn(&mut session, ALICE, AMOUNT), Err(PSP22Error::InsufficientBalance));
+	assert_eq!(burn(&mut session, ALICE, AMOUNT), Err(Psp22Error::InsufficientBalance));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -734,8 +734,8 @@ fn deploy(
 	session: &mut Session<Pop>,
 	method: &str,
 	input: Vec<String>,
-) -> Result<AccountId, PSP22Error> {
-	drink::deploy::<Pop, PSP22Error>(
+) -> Result<AccountId, Psp22Error> {
+	drink::deploy::<Pop, Psp22Error>(
 		session,
 		// The local contract (i.e. `fungibles`).
 		BundleProvider::local().unwrap(),
@@ -749,16 +749,16 @@ fn deploy(
 // A set of helper methods to test the contract calls.
 
 fn total_supply(session: &mut Session<Pop>) -> Balance {
-	call::<Pop, Balance, PSP22Error>(session, "Psp22::total_supply", vec![], None).unwrap()
+	call::<Pop, Balance, Psp22Error>(session, "Psp22::total_supply", vec![], None).unwrap()
 }
 
 fn balance_of(session: &mut Session<Pop>, owner: AccountId) -> Balance {
-	call::<Pop, Balance, PSP22Error>(session, "Psp22::balance_of", vec![owner.to_string()], None)
+	call::<Pop, Balance, Psp22Error>(session, "Psp22::balance_of", vec![owner.to_string()], None)
 		.unwrap()
 }
 
 fn allowance(session: &mut Session<Pop>, owner: AccountId, spender: AccountId) -> Balance {
-	call::<Pop, Balance, PSP22Error>(
+	call::<Pop, Balance, Psp22Error>(
 		session,
 		"Psp22::allowance",
 		vec![owner.to_string(), spender.to_string()],
@@ -767,8 +767,8 @@ fn allowance(session: &mut Session<Pop>, owner: AccountId, spender: AccountId) -
 	.unwrap()
 }
 
-fn transfer(session: &mut Session<Pop>, to: AccountId, amount: Balance) -> Result<(), PSP22Error> {
-	call::<Pop, (), PSP22Error>(
+fn transfer(session: &mut Session<Pop>, to: AccountId, amount: Balance) -> Result<(), Psp22Error> {
+	call::<Pop, (), Psp22Error>(
 		session,
 		"Psp22::transfer",
 		vec![to.to_string(), amount.to_string(), serde_json::to_string::<[u8; 0]>(&[]).unwrap()],
@@ -781,8 +781,8 @@ fn transfer_from(
 	from: AccountId,
 	to: AccountId,
 	amount: Balance,
-) -> Result<(), PSP22Error> {
-	call::<Pop, (), PSP22Error>(
+) -> Result<(), Psp22Error> {
+	call::<Pop, (), Psp22Error>(
 		session,
 		"Psp22::transfer_from",
 		vec![
@@ -799,8 +799,8 @@ fn approve(
 	session: &mut Session<Pop>,
 	spender: AccountId,
 	value: Balance,
-) -> Result<(), PSP22Error> {
-	call::<Pop, (), PSP22Error>(
+) -> Result<(), Psp22Error> {
+	call::<Pop, (), Psp22Error>(
 		session,
 		"Psp22::approve",
 		vec![spender.to_string(), value.to_string()],
@@ -812,8 +812,8 @@ fn increase_allowance(
 	session: &mut Session<Pop>,
 	spender: AccountId,
 	value: Balance,
-) -> Result<(), PSP22Error> {
-	call::<Pop, (), PSP22Error>(
+) -> Result<(), Psp22Error> {
+	call::<Pop, (), Psp22Error>(
 		session,
 		"Psp22::increase_allowance",
 		vec![spender.to_string(), value.to_string()],
@@ -825,8 +825,8 @@ fn decrease_allowance(
 	session: &mut Session<Pop>,
 	spender: AccountId,
 	value: Balance,
-) -> Result<(), PSP22Error> {
-	call::<Pop, (), PSP22Error>(
+) -> Result<(), Psp22Error> {
+	call::<Pop, (), Psp22Error>(
 		session,
 		"Psp22::decrease_allowance",
 		vec![spender.to_string(), value.to_string()],
@@ -835,21 +835,21 @@ fn decrease_allowance(
 }
 
 fn token_name(session: &mut Session<Pop>) -> Option<String> {
-	call::<Pop, Option<String>, PSP22Error>(session, "Psp22Metadata::token_name", vec![], None)
+	call::<Pop, Option<String>, Psp22Error>(session, "Psp22Metadata::token_name", vec![], None)
 		.unwrap()
 }
 
 fn token_symbol(session: &mut Session<Pop>) -> Option<String> {
-	call::<Pop, Option<String>, PSP22Error>(session, "Psp22Metadata::token_symbol", vec![], None)
+	call::<Pop, Option<String>, Psp22Error>(session, "Psp22Metadata::token_symbol", vec![], None)
 		.unwrap()
 }
 
 fn token_decimals(session: &mut Session<Pop>) -> u8 {
-	call::<Pop, u8, PSP22Error>(session, "Psp22Metadata::token_decimals", vec![], None).unwrap()
+	call::<Pop, u8, Psp22Error>(session, "Psp22Metadata::token_decimals", vec![], None).unwrap()
 }
 
-fn mint(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Result<(), PSP22Error> {
-	call::<Pop, (), PSP22Error>(
+fn mint(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Result<(), Psp22Error> {
+	call::<Pop, (), Psp22Error>(
 		session,
 		"Psp22Mintable::mint",
 		vec![account.to_string(), amount.to_string()],
@@ -857,8 +857,8 @@ fn mint(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Resu
 	)
 }
 
-fn burn(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Result<(), PSP22Error> {
-	call::<Pop, (), PSP22Error>(
+fn burn(session: &mut Session<Pop>, account: AccountId, amount: Balance) -> Result<(), Psp22Error> {
+	call::<Pop, (), Psp22Error>(
 		session,
 		"Psp22Burnable::burn",
 		vec![account.to_string(), amount.to_string()],
