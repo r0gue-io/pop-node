@@ -4,9 +4,9 @@ use frame_support::{
 	traits::IsSubType,
 	weights::Weight,
 };
-use pallet_revive::{AddressMapper, DefaultAddressMapper};
+use pallet_revive::AddressMapper;
 use scale_info::{StaticTypeInfo, TypeInfo};
-use sp_core::{crypto::AccountId32, U256};
+use sp_core::U256;
 use sp_runtime::{
 	traits::{DispatchInfoOf, Dispatchable, IdentifyAccount, PostDispatchInfoOf, SignedExtension},
 	transaction_validity::{TransactionValidity, TransactionValidityError},
@@ -50,20 +50,19 @@ where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
 		+ IsSubType<pallet_revive::Call<T>>,
-	<T as frame_system::Config>::AccountId: From<AccountId32>,
 	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance: Into<U256>,
-	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
 	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance: TryFrom<U256>,
+	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
 {
 	fn is_contracts_call(call: &<T as frame_system::Config>::RuntimeCall) -> Option<T::AccountId> {
 		match call.is_sub_type() {
 			Some(pallet_revive::Call::<T>::call { dest, .. }) => {
-				let acc32 = DefaultAddressMapper::to_account_id(dest);
-				Some(<T as frame_system::Config>::AccountId::from(acc32))
+				let account_id = <T as pallet_revive::Config>::AddressMapper::to_account_id(dest);
+				Some(account_id)
 			},
 			_ => None,
 		}
@@ -82,15 +81,13 @@ where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
 		+ IsSubType<Call<T>>
 		+ IsSubType<pallet_revive::Call<T>>,
-	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_revive::Call<T>>,
-	<T as frame_system::Config>::AccountId: From<AccountId32>,
 	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance: Into<U256>,
-	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
 	<<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
 		<T as frame_system::Config>::AccountId,
 	>>::Balance: TryFrom<U256>,
+	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
 {
 	type AccountId = T::AccountId;
 	type AdditionalSigned = S::AdditionalSigned;
