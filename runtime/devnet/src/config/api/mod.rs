@@ -375,14 +375,13 @@ mod tests {
 				operator: ACCOUNT,
 			}),
 			NonFungibles(OwnerOf { collection: 1, item: 1 }),
-			// NonFungibles(GetAttribute {
-			// 	collection: 0,
-			// 	item: Some(0),
-			// 	namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
-			// 	key: bounded_vec![],
-			// }),
+			NonFungibles(GetAttribute {
+				collection: 0,
+				item: Some(0),
+				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
+				key: bounded_vec![],
+			}),
 			NonFungibles(Collection(1)),
-			NonFungibles(Item { collection: 1, item: 1 }),
 			NonFungibles(NextCollectionId),
 		]
 		.iter()
