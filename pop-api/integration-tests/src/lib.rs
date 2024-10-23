@@ -8,7 +8,7 @@ use frame_support::{
 	weights::Weight,
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
-use pop_runtime_devnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT};
 use scale::{Decode, Encode};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 

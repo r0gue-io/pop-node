@@ -132,8 +132,14 @@ mod nonfungibles {
 		/// - item_metadata
 
 		#[ink(message)]
-		pub fn create(&mut self, admin: AccountId, config: CreateCollectionConfig) -> Result<()> {
-			api::create(admin, config)
+		pub fn create(
+			&mut self,
+			admin: AccountId,
+			config: CreateCollectionConfig,
+		) -> Result<CollectionId> {
+			let next_collection_id = api::next_collection_id();
+			api::create(admin, config)?;
+			next_collection_id
 		}
 
 		#[ink(message)]
@@ -239,16 +245,6 @@ mod nonfungibles {
 		#[ink(message)]
 		pub fn burn(&mut self, collection: CollectionId, item: ItemId) -> Result<()> {
 			api::burn(collection, item)
-		}
-	}
-
-	#[cfg(test)]
-	mod tests {
-		use super::*;
-
-		#[ink::test]
-		fn default_works() {
-			PopApiNonFungiblesExample::new();
 		}
 	}
 }
