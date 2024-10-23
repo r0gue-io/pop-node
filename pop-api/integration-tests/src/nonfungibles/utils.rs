@@ -56,7 +56,7 @@ pub(super) fn transfer(
 pub(super) fn approve(
 	addr: &AccountId32,
 	collection: CollectionId,
-	item: ItemId,
+	item: Option<ItemId>,
 	operator: AccountId32,
 	approved: bool,
 ) -> Result<(), Error> {
@@ -231,7 +231,25 @@ pub(super) mod nfts {
 		item: ItemId,
 	) -> (CollectionId, ItemId) {
 		let collection = create_collection(owner, admin);
-		mint(owner, to, collection, item);
+		mint(collection, item, owner, to);
+		(collection, item)
+	}
+
+	pub(crate) fn create_collection_mint_and_approve(
+		owner: &AccountId32,
+		admin: &AccountId32,
+		item: ItemId,
+		to: &AccountId32,
+		operator: &AccountId32,
+	) -> (u32, u32) {
+		let (collection, item) = create_collection_and_mint_to(&owner.clone(), admin, to, item);
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(to.clone()),
+			collection,
+			Some(item),
+			operator.clone().into(),
+			None
+		));
 		(collection, item)
 	}
 
@@ -250,16 +268,16 @@ pub(super) mod nfts {
 	}
 
 	pub(crate) fn mint(
-		owner: &AccountId32,
-		to: &AccountId32,
 		collection: CollectionId,
 		item: ItemId,
+		owner: &AccountId32,
+		to: &AccountId32,
 	) -> ItemId {
 		assert_ok!(Nfts::mint(
 			RuntimeOrigin::signed(owner.clone()),
 			collection,
 			item,
-			owner.clone().into(),
+			to.clone().into(),
 			None
 		));
 		item
