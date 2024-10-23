@@ -11,12 +11,9 @@ pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecRetur
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
 
-pub(super) fn total_supply(
-	addr: &AccountId32,
-	collection: CollectionId,
-) -> Result<Option<u128>, Error> {
+pub(super) fn total_supply(addr: &AccountId32, collection: CollectionId) -> Result<u128, Error> {
 	let result = do_bare_call("total_supply", addr, collection.encode());
-	decoded::<Result<Option<u128>, Error>>(result.clone())
+	decoded::<Result<u128, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
