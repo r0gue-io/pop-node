@@ -1,8 +1,10 @@
 //! Traits that can be used by contracts. Including standard compliant traits.
 
-use super::*;
 use core::result::Result;
+
 use ink::prelude::string::String;
+
+use super::*;
 
 /// The PSP22 trait.
 #[ink::trait_definition]
