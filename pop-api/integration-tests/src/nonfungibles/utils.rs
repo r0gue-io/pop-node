@@ -265,6 +265,10 @@ pub(super) mod nfts {
 		item
 	}
 
+	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
+		pallet_nfts::AccountBalance::<Runtime>::get(collection, owner)
+	}
+
 	pub(super) fn collection_config_with_all_settings_enabled(
 	) -> CollectionConfig<u128, BlockNumber, CollectionId> {
 		CollectionConfig {
