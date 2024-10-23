@@ -25,17 +25,17 @@ fn total_supply_works() {
 		// No tokens in circulation.
 		assert_eq!(
 			total_supply(&addr, COLLECTION_ID),
-			Ok(Nfts::collection_items(COLLECTION_ID).map(|value| value as u128))
+			Ok(Nfts::collection_items(COLLECTION_ID).unwrap_or_default() as u128)
 		);
-		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(None));
+		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(0));
 
 		// Tokens in circulation.
-		nfts::create_collection_and_mint_to(&addr, &ALICE, &ALICE, COLLECTION_ID);
+		nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
 		assert_eq!(
 			total_supply(&addr, COLLECTION_ID),
-			Ok(Nfts::collection_items(COLLECTION_ID).map(|value| value as u128))
+			Ok(Nfts::collection_items(COLLECTION_ID).unwrap_or_default() as u128)
 		);
-		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(Some(100)));
+		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(1));
 	});
 }
 
