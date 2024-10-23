@@ -7,8 +7,18 @@ use pop_api::{
 	},
 	StatusCode,
 };
+use ink::env::{DefaultEnvironment, Environment};
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
+
+type AccountId = <ink::env::DefaultEnvironment as Environment>::AccountId;
+
+fn to_account_id(address: &AccountId) -> AccountId {
+	let mut account_id = AccountId::from([0xEE; 32]);
+	<AccountId as AsMut<[u8; 32]>>::as_mut(&mut account_id)[..20]
+		.copy_from_slice(&<AccountId as AsRef<[u8; 32]>>::as_ref(&address)[..20]);
+	account_id
+}
 
 #[ink::contract]
 mod sponsorships {
@@ -31,11 +41,11 @@ mod sponsorships {
 		}
 
 		#[ink(message, payable)]
-		pub fn sing_up(&mut self, user: Option<AccountId>) -> Result<()> {
-			let caller = self.env().caller();
-			assert!(caller == self.owner, "Caller is not owner");
-			let beneficiary = user.unwrap_or(caller.clone());
-			api::sponsor_account(beneficiary)?;
+		pub fn sing_up(&mut self, user: AccountId) -> Result<()> {
+			let caller = Self::env().caller();
+			//assert!(caller == self.owner, "Caller is not owner");
+			let beneficiary = user;
+			api::sponsor_account(caller)?;
 			self.env()
 				.emit_event(NewSponsorship { sponsor: self.env().account_id(), beneficiary });
 			Ok(())
@@ -43,7 +53,7 @@ mod sponsorships {
 
 		#[ink(message, payable)]
 		pub fn withdraw_sponsorship(&mut self) -> Result<()> {
-			let beneficiary = self.env().caller();
+			let beneficiary = to_account_id(&self.env().caller());
 			api::remove_sponsorship_for(beneficiary)?;
 			self.env().emit_event(SponsorshipRemoved {
 				was_sponsor: self.env().account_id(),
