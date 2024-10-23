@@ -71,7 +71,7 @@ pub fn approve(
 	operator: AccountId,
 	approved: bool,
 ) -> Result<()> {
-	build_read_state(APPROVE)
+	build_dispatch(APPROVE)
 		.input::<(CollectionId, Option<ItemId>, AccountId, bool)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -103,7 +103,7 @@ pub fn get_attribute(
 
 #[inline]
 pub fn create(admin: AccountId, config: CreateCollectionConfig) -> Result<()> {
-	build_read_state(CREATE)
+	build_dispatch(CREATE)
 		.input::<(AccountId, CreateCollectionConfig)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -112,7 +112,7 @@ pub fn create(admin: AccountId, config: CreateCollectionConfig) -> Result<()> {
 
 #[inline]
 pub fn destroy(collection: CollectionId, witness: DestroyWitness) -> Result<()> {
-	build_read_state(DESTROY)
+	build_dispatch(DESTROY)
 		.input::<(CollectionId, DestroyWitness)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -145,7 +145,7 @@ pub fn set_attribute(
 	key: Vec<u8>,
 	value: Vec<u8>,
 ) -> Result<()> {
-	build_read_state(SET_ATTRIBUTE)
+	build_dispatch(SET_ATTRIBUTE)
 		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>, Vec<u8>)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -159,7 +159,7 @@ pub fn clear_attribute(
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
 ) -> Result<()> {
-	build_read_state(CLEAR_ATTRIBUTE)
+	build_dispatch(CLEAR_ATTRIBUTE)
 		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -168,7 +168,7 @@ pub fn clear_attribute(
 
 #[inline]
 pub fn set_metadata(collection: CollectionId, item: ItemId, data: Vec<u8>) -> Result<()> {
-	build_read_state(SET_METADATA)
+	build_dispatch(SET_METADATA)
 		.input::<(CollectionId, ItemId, Vec<u8>)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -177,7 +177,7 @@ pub fn set_metadata(collection: CollectionId, item: ItemId, data: Vec<u8>) -> Re
 
 #[inline]
 pub fn clear_metadata(collection: CollectionId, item: ItemId) -> Result<()> {
-	build_read_state(CLEAR_METADATA)
+	build_dispatch(CLEAR_METADATA)
 		.input::<(CollectionId, ItemId)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -190,7 +190,7 @@ pub fn approve_item_attributes(
 	item: ItemId,
 	delegate: AccountId,
 ) -> Result<()> {
-	build_read_state(CLEAR_METADATA)
+	build_dispatch(CLEAR_METADATA)
 		.input::<(CollectionId, ItemId, AccountId)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -204,7 +204,7 @@ pub fn cancel_item_attributes_approval(
 	delegate: AccountId,
 	witness: CancelAttributesApprovalWitness,
 ) -> Result<()> {
-	build_read_state(CLEAR_METADATA)
+	build_dispatch(CLEAR_METADATA)
 		.input::<(CollectionId, ItemId, AccountId, CancelAttributesApprovalWitness)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -213,7 +213,7 @@ pub fn cancel_item_attributes_approval(
 
 #[inline]
 pub fn set_max_supply(collection: CollectionId, max_supply: u32) -> Result<()> {
-	build_read_state(SET_MAX_SUPPLY)
+	build_dispatch(SET_MAX_SUPPLY)
 		.input::<(CollectionId, u32)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -227,7 +227,7 @@ pub fn mint(
 	item: ItemId,
 	mint_price: Option<Balance>,
 ) -> Result<()> {
-	build_read_state(MINT)
+	build_dispatch(MINT)
 		.input::<(AccountId, CollectionId, ItemId, Option<Balance>)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -236,7 +236,7 @@ pub fn mint(
 
 #[inline]
 pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {
-	build_read_state(BURN)
+	build_dispatch(BURN)
 		.input::<(CollectionId, ItemId)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()

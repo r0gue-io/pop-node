@@ -1,3 +1,4 @@
+use frame_support::BoundedVec;
 use pallet_nfts::CollectionConfig;
 use pop_api::{
 	nonfungibles::{
@@ -61,28 +62,113 @@ fn balance_of_works() {
 	});
 }
 
-// Testing a contract that creates a token in the constructor.
 #[test]
-fn instantiate_and_create_fungible_works() {
+fn allowance_works() {
 	new_test_ext().execute_with(|| {
-		// let contract =
-		// 	"contracts/create_token_in_constructor/target/ink/create_token_in_constructor.wasm";
-		// // Token already exists.
-		// assets::create(&ALICE, 0, 1);
-		// assert_eq!(
-		// 	instantiate_and_create_fungible(contract, 0, 1),
-		// 	Err(Module { index: 52, error: [5, 0] })
-		// );
-		// // Successfully create a token when instantiating the contract.
-		// let result_with_address = instantiate_and_create_fungible(contract, TOKEN_ID, 1);
-		// let instantiator = result_with_address.clone().ok();
-		// assert_ok!(result_with_address);
-		// assert_eq!(&Assets::owner(TOKEN_ID), &instantiator);
-		// assert!(Assets::asset_exists(TOKEN_ID));
-		// // Successfully emit event.
-		// let instantiator = account_id_from_slice(instantiator.unwrap().as_ref());
-		// let expected =
-		// 	Created { id: TOKEN_ID, creator: instantiator.clone(), admin: instantiator }.encode();
-		// assert_eq!(last_contract_event(), expected.as_slice());
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		// No tokens in circulation.
+		assert_eq!(
+			allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, None),
+			Ok(!Nfts::check_allowance(&COLLECTION_ID, &None, &addr, &ALICE).is_err()),
+		);
+		assert_eq!(allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, None), Ok(false));
+
+		let (collection, item) =
+			nfts::create_collection_mint_and_approve(&addr, &addr, ITEM_ID, &addr, &ALICE);
+		assert_eq!(
+			allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, Some(item)),
+			Ok(Nfts::check_allowance(&COLLECTION_ID, &Some(item), &addr.clone(), &ALICE).is_ok()),
+		);
+		assert_eq!(
+			allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, Some(item)),
+			Ok(true)
+		);
+	});
+}
+
+#[test]
+fn transfer_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let before_transfer_balance = nfts::balance_of(COLLECTION_ID, ALICE);
+		assert_ok!(transfer(&addr, collection, item, ALICE));
+		let after_transfer_balance = nfts::balance_of(COLLECTION_ID, ALICE);
+		assert_eq!(after_transfer_balance - before_transfer_balance, 1);
+	});
+}
+
+#[test]
+fn approve_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		assert_ok!(approve(&addr, collection, Some(item), ALICE, true));
+		assert!(Nfts::check_allowance(&collection, &Some(item), &addr.clone(), &ALICE).is_ok(),);
+
+		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(ALICE), collection, item, BOB.into()));
+	});
+}
+
+#[test]
+fn owner_of_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
+	});
+}
+
+// TODO
+#[test]
+fn get_attribute_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+
+		assert_ok!(Nfts::set_attribute(
+			RuntimeOrigin::signed(addr.clone()),
+			collection,
+			Some(item),
+			pallet_nfts::AttributeNamespace::CollectionOwner,
+			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
+			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
+		));
+		assert_eq!(
+			get_attribute(
+				&addr.clone(),
+				collection,
+				item,
+				AttributeNamespace::CollectionOwner,
+				"some attribute".as_bytes().to_vec(),
+			),
+			Ok("some value".as_bytes().to_vec())
+		);
+	});
+}
+
+// TODO
+#[test]
+fn create_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
+	});
+}
+
+// TODO
+#[test]
+fn destroy_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
 	});
 }
