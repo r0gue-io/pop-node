@@ -23,7 +23,7 @@ mod encoding_read_result {
 
 	#[test]
 	fn total_supply() {
-		let total_supply: u32 = 1_000_000;
+		let total_supply: u128 = 1_000_000;
 		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
 	}
 
@@ -456,10 +456,13 @@ fn total_supply_works() {
 		let collection = nfts::create_collection(owner);
 		(0..10).into_iter().for_each(|i| {
 			assert_ok!(Nfts::mint(signed(owner), collection, i, account(owner), None));
-			assert_eq!(NonFungibles::read(TotalSupply(collection)).encode(), (i + 1).encode());
 			assert_eq!(
 				NonFungibles::read(TotalSupply(collection)).encode(),
-				Nfts::collection_items(collection).unwrap_or_default().encode()
+				((i + 1) as u128).encode()
+			);
+			assert_eq!(
+				NonFungibles::read(TotalSupply(collection)).encode(),
+				(Nfts::collection_items(collection).unwrap_or_default() as u128).encode()
 			);
 		});
 	});

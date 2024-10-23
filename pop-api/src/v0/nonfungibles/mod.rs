@@ -24,10 +24,10 @@ pub mod traits;
 pub mod types;
 
 #[inline]
-pub fn total_supply(collection: CollectionId) -> Result<u32> {
+pub fn total_supply(collection: CollectionId) -> Result<u128> {
 	build_read_state(TOTAL_SUPPLY)
 		.input::<CollectionId>()
-		.output::<Result<u32>, true>()
+		.output::<Result<u128>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection))
 }
@@ -67,22 +67,22 @@ pub fn transfer(collection: CollectionId, item: ItemId, to: AccountId) -> Result
 #[inline]
 pub fn approve(
 	collection: CollectionId,
-	item: ItemId,
+	item: Option<ItemId>,
 	operator: AccountId,
 	approved: bool,
 ) -> Result<()> {
 	build_read_state(APPROVE)
-		.input::<(CollectionId, ItemId, AccountId, bool)>()
+		.input::<(CollectionId, Option<ItemId>, AccountId, bool)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection, item, operator, approved))
 }
 
 #[inline]
-pub fn owner_of(collection: CollectionId, item: ItemId) -> Result<AccountId> {
+pub fn owner_of(collection: CollectionId, item: ItemId) -> Result<Option<AccountId>> {
 	build_read_state(OWNER_OF)
 		.input::<(CollectionId, ItemId)>()
-		.output::<Result<AccountId>, true>()
+		.output::<Result<Option<AccountId>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection, item))
 }
@@ -93,10 +93,10 @@ pub fn get_attribute(
 	item: ItemId,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
-) -> Result<Vec<u8>> {
+) -> Result<Option<Vec<u8>>> {
 	build_read_state(GET_ATTRIBUTE)
 		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>)>()
-		.output::<Result<Vec<u8>>, true>()
+		.output::<Result<Option<Vec<u8>>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection, item, namespace, key))
 }
@@ -126,6 +126,15 @@ pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>>
 		.output::<Result<Option<CollectionDetails>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection))
+}
+
+#[inline]
+pub fn item_metadata(collection: CollectionId, item: ItemId) -> Result<Option<Vec<u8>>> {
+	build_read_state(BURN)
+		.input::<(CollectionId, ItemId)>()
+		.output::<Result<Option<Vec<u8>>>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item))
 }
 
 #[inline]
@@ -251,11 +260,12 @@ mod constants {
 	pub(super) const DESTROY: u8 = 8;
 	pub(super) const COLLECTION: u8 = 9;
 	pub(super) const NEXT_COLLECTION_ID: u8 = 10;
-	pub(super) const SET_ATTRIBUTE: u8 = 11;
-	pub(super) const CLEAR_ATTRIBUTE: u8 = 12;
-	pub(super) const SET_METADATA: u8 = 13;
-	pub(super) const CLEAR_METADATA: u8 = 14;
-	pub(super) const APPROVE_ITEM_ATTRIBUTE: u8 = 15;
+	pub(super) const ITEM_METADATA: u8 = 11;
+	pub(super) const SET_ATTRIBUTE: u8 = 12;
+	pub(super) const CLEAR_ATTRIBUTE: u8 = 13;
+	pub(super) const SET_METADATA: u8 = 14;
+	pub(super) const CLEAR_METADATA: u8 = 15;
+	pub(super) const APPROVE_ITEM_ATTRIBUTE: u8 = 16;
 	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 17;
 	pub(super) const SET_MAX_SUPPLY: u8 = 18;
 
