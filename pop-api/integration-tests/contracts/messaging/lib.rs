@@ -8,7 +8,6 @@ use pop_api::{
 		xcm::{Junction, Location, QueryId, VersionedLocation},
 		RequestId, Status,
 	},
-	primitives::to_account_id,
 	StatusCode,
 };
 
@@ -60,12 +59,12 @@ mod messaging {
 
 		#[ink(message)]
 		pub fn poll(&self, request: RequestId) -> Result<Option<Status>> {
-			api::poll((to_account_id(&self.env().account_id()), request))
+			api::poll((self.env().account_id(), request))
 		}
 
 		#[ink(message)]
 		pub fn get(&self, request: RequestId) -> Result<Option<Vec<u8>>> {
-			api::get((to_account_id(&self.env().account_id()), request))
+			api::get((self.env().account_id(), request))
 		}
 
 		#[ink(message)]

@@ -8,7 +8,6 @@ use ink::{
 };
 
 use super::*;
-use crate::primitives::to_account_id;
 
 #[inline]
 pub fn new_query(
@@ -26,7 +25,7 @@ pub fn new_query(
 		.input::<(AccountId, RequestId)>()
 		.output::<Result<Option<QueryId>>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(to_account_id(&account_id::<DefaultEnvironment>()), id))
+		.call(&(account_id::<DefaultEnvironment>(), id))
 }
 
 /// Execute an XCM message locally, using the contract's address as the origin.
