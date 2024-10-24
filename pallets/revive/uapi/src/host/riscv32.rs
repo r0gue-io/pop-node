@@ -133,6 +133,7 @@ mod sys {
 		) -> ReturnCode;
 		pub fn return_data_size(out_ptr: *mut u8);
 		pub fn return_data_copy(out_ptr: *mut u8, out_len_ptr: *mut u32, offset: u32);
+		pub fn to_account_id(addr_ptr: *const u8, out_ptr: *mut u8);
 	}
 }
 
@@ -564,5 +565,10 @@ impl HostFn for HostFnImpl {
 			unsafe { sys::return_data_copy(output.as_mut_ptr(), &mut output_len, offset) };
 		}
 		extract_from_slice(output, output_len as usize);
+	}
+
+	/// Convert an ethereum address to a native account id.
+	fn to_account_id(addr: &[u8; 20], output: &mut [u8; 32]) {
+		unsafe { sys::to_account_id(addr.as_ptr(), output.as_mut_ptr()) };
 	}
 }

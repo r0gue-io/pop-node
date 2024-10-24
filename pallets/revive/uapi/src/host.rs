@@ -635,6 +635,9 @@ pub trait HostFn: private::Sealed {
 	/// - `output`: A reference to the output buffer to write the data.
 	/// - `offset`: Byte offset into the returned data
 	fn return_data_copy(output: &mut &mut [u8], offset: u32);
+
+	/// Convert an ethereum address to a native account id.
+	fn to_account_id(addr: &[u8; 20], output: &mut [u8; 32]);
 }
 
 mod private {
