@@ -71,6 +71,7 @@ mod constants {
 	pub(crate) const ASSETS: u8 = 52;
 	pub(crate) const BALANCES: u8 = 10;
 	pub(crate) const FUNGIBLES: u8 = 150;
+	pub(crate) const SPONSORSHIPS: u8 = 151;
 }
 
 // Helper method to build a dispatch call or a call to read state.

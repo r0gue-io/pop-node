@@ -9,6 +9,10 @@ use crate::{
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
 
+/// APIs to manage sponsorships.
+#[cfg(feature = "sponsorships")]
+pub mod sponsorships;
+
 pub(crate) const V0: u8 = 0;
 
 impl From<StatusCode> for Error {

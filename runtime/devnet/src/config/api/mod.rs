@@ -132,6 +132,7 @@ pub struct Filter<T>(PhantomData<T>);
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
+		use pallet_sponsorships::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
 				c,
@@ -144,6 +145,8 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						start_destroy { .. } |
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
+				) | RuntimeCall::Sponsorships(
+					sponsor_account { .. } | remove_sponsorship_for { .. }
 				)
 			)
 	}
@@ -233,13 +236,13 @@ mod tests {
 	fn filter_allows_fungibles_reads() {
 		use super::{fungibles::Read::*, RuntimeRead::*};
 		const READS: [RuntimeRead; 7] = [
-			Fungibles(TotalSupply(1)),
-			Fungibles(BalanceOf { token: 1, owner: ACCOUNT }),
-			Fungibles(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
-			Fungibles(TokenName(1)),
-			Fungibles(TokenSymbol(1)),
-			Fungibles(TokenDecimals(10)),
-			Fungibles(TokenExists(1)),
+			FungiblesRevive(TotalSupply(1)),
+			FungiblesRevive(BalanceOf { token: 1, owner: ACCOUNT }),
+			FungiblesRevive(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
+			FungiblesRevive(TokenName(1)),
+			FungiblesRevive(TokenSymbol(1)),
+			FungiblesRevive(TokenDecimals(10)),
+			FungiblesRevive(TokenExists(1)),
 		];
 
 		for read in READS {
