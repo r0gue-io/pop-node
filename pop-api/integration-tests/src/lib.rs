@@ -8,12 +8,15 @@ use frame_support::{
 	weights::Weight,
 };
 use pallet_revive::{AddressMapper, Code, CollectEvents, ExecReturnValue};
-use pop_runtime_devnet::{Assets, Revive, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{config::ismp::Router, Assets, Messaging, Revive, Runtime, RuntimeOrigin, System, UNIT};
 use scale::{Decode, Encode};
-use sp_runtime::{app_crypto::sp_core, AccountId32, BuildStorage, DispatchError};
+use sp_runtime::{app_crypto::sp_core,
+                 offchain::{testing::TestOffchainExt, OffchainDbExt},
+                 AccountId32, BuildStorage, DispatchError};
 
 mod environment;
 mod fungibles;
+mod messaging;
 
 type Balance = u128;
 
@@ -40,6 +43,8 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::new(t);
+	let (offchain, _state) = TestOffchainExt::new();
+	ext.register_extension(OffchainDbExt::new(offchain));
 	ext.execute_with(|| System::set_block_number(1));
 	// register account mappings
 	ext.execute_with(|| {
@@ -75,11 +80,7 @@ fn bare_call(
 }
 
 // Deploy, instantiate and return contract address.
-fn instantiate(
-	contract: &str,
-	init_value: u128,
-	salt: Vec<u8>,
-) -> (crate::sp_core::H160, AccountId32) {
+fn instantiate(contract: &str, init_value: u128, _salt: Vec<u8>) -> (sp_core::H160, AccountId32) {
 	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
 
 	let result = Revive::bare_instantiate(
