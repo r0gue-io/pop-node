@@ -38,5 +38,5 @@ impl pallet_revive::Config for Runtime {
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
-	type Xcm = ();
+	type Xcm = pallet_xcm::Pallet<Self>;
 }
