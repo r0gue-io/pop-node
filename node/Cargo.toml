@@ -92,6 +92,7 @@ substrate-build-script-utils.workspace = true
 pallet-multisig.workspace = true
 
 [features]
+default = [ "ismp" ]
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
 	"frame-benchmarking-cli/runtime-benchmarks",
