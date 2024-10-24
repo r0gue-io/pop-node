@@ -1,0 +1,23 @@
+[package]
+authors = [ "R0GUE <go@r0gue.io>" ]
+description = "Contract for testing environment integration."
+edition = "2021"
+name = "environment"
+version = "0.1.0"
+
+[dependencies]
+ink = { path = "../../../../../ink/crates/ink", default-features = false }
+polkavm-derive = "0.11.0"
+pop-api = { path = "../../..", default-features = false, features = [ "fungibles" ] }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
+std = [
+	"ink/std",
+	"pop-api/std",
+]

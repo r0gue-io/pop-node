@@ -6,7 +6,7 @@ name = "pop-api"
 version = "0.0.0"
 
 [dependencies]
-ink = { git = "https://github.com/peterwht/ink", branch = "peter/riscv", default-features = false }
+ink = { path = "../../ink/crates/ink", default-features = false }
 polkavm-derive = "0.11.0"
 pop-primitives = { path = "../primitives", default-features = false }
 #sp-io = { version = "37.0.0", default-features = false, features = [
