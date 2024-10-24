@@ -193,12 +193,10 @@ type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::Hash,
 >;
 
-// Prints debug output of the `contracts` pallet to stdout if the node is
-// started with `-lruntime::contracts=debug`.
-const CONTRACTS_DEBUG_OUTPUT: pallet_contracts::DebugInfo =
-	pallet_contracts::DebugInfo::UnsafeDebug;
-const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
-	pallet_contracts::CollectEvents::UnsafeCollect;
+// Prints debug output of the `revive` pallet to stdout if the node is
+// started with `-lruntime::revive=debug`.
+const CONTRACTS_DEBUG_OUTPUT: pallet_revive::DebugInfo = pallet_revive::DebugInfo::UnsafeDebug;
+const CONTRACTS_EVENTS: pallet_revive::CollectEvents = pallet_revive::CollectEvents::UnsafeCollect;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -609,9 +607,9 @@ mod runtime {
 	#[runtime::pallet_index(39)]
 	pub type IsmpParachain = ismp_parachain::Pallet<Runtime>;
 
-	// Contracts
-	// #[runtime::pallet_index(40)]
-	// pub type Contracts = pallet_contracts::Pallet<Runtime>;
+	// Contracts via Revive
+	#[runtime::pallet_index(40)]
+	pub type Contracts = pallet_revive::Pallet<Runtime>;
 
 	// Proxy
 	#[runtime::pallet_index(41)]
@@ -634,10 +632,6 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
-
-	// Revive
-	#[runtime::pallet_index(255)]
-	pub type Revive = pallet_revive::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -806,15 +800,15 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
 		) -> pallet_revive::ContractExecResult<Balance, EventRecord> {
-			Revive::bare_call(
+			Contracts::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
 				storage_deposit_limit.unwrap_or(u128::MAX),
 				input_data,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
 			)
 		}
 
@@ -828,7 +822,7 @@ impl_runtime_apis! {
 			salt: Option<[u8; 32]>,
 		) -> pallet_revive::ContractInstantiateResult<Balance, EventRecord>
 		{
-			Revive::bare_instantiate(
+			Contracts::bare_instantiate(
 				RuntimeOrigin::signed(origin),
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
@@ -847,7 +841,7 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 		) -> pallet_revive::CodeUploadResult<Balance>
 		{
-			Revive::bare_upload_code(
+			Contracts::bare_upload_code(
 				RuntimeOrigin::signed(origin),
 				code,
 				storage_deposit_limit.unwrap_or(u128::MAX),
@@ -858,7 +852,7 @@ impl_runtime_apis! {
 			address: H160,
 			key: [u8; 32],
 		) -> pallet_revive::GetStorageResult {
-			Revive::get_storage(
+			Contracts::get_storage(
 				address,
 				key
 			)
