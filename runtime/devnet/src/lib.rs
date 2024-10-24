@@ -39,7 +39,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::fungibles;
+use pallet_api::{fungibles, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -634,6 +634,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(151)]
+	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -645,6 +647,7 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_message_queue, MessageQueue]
+		[pallet_nfts, Nfts]
 		[pallet_sudo, Sudo]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_parachain_system, ParachainSystem]
