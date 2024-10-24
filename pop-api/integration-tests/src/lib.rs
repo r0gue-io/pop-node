@@ -9,7 +9,7 @@ use frame_support::{
 };
 use pallet_revive::AddressMapper;
 use pallet_revive::{Code, CollectEvents, ExecReturnValue};
-use pop_runtime_devnet::{Assets, Revive as Contracts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{Assets, Revive, Runtime, RuntimeOrigin, System, UNIT};
 use scale::{Decode, Encode};
 use sp_runtime::app_crypto::sp_core;
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
@@ -42,6 +42,12 @@ fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
+	// register account mappings
+	ext.execute_with(|| {
+		Revive::map_account(RuntimeOrigin::signed(ALICE));
+		Revive::map_account(RuntimeOrigin::signed(BOB));
+		Revive::map_account(RuntimeOrigin::signed(FERDIE));
+	});
 	ext
 }
 
@@ -55,7 +61,7 @@ fn bare_call(
 	input: Vec<u8>,
 	value: u128,
 ) -> Result<ExecReturnValue, DispatchError> {
-	let result = Contracts::bare_call(
+	let result = Revive::bare_call(
 		RuntimeOrigin::signed(ALICE),
 		addr.into(),
 		value.into(),
@@ -77,7 +83,7 @@ fn instantiate(
 ) -> (crate::sp_core::H160, AccountId32) {
 	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
 
-	let result = Contracts::bare_instantiate(
+	let result = Revive::bare_instantiate(
 		RuntimeOrigin::signed(ALICE),
 		init_value,
 		GAS_LIMIT,
@@ -91,5 +97,5 @@ fn instantiate(
 	.result
 	.unwrap();
 	assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
-	(result.addr, pallet_revive::DefaultAddressMapper::to_account_id(&result.addr))
+	(result.addr, pallet_revive::AccountId32Mapper::<Runtime>::to_account_id(&result.addr))
 }

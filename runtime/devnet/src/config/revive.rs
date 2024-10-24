@@ -27,7 +27,7 @@ parameter_types! {
 }
 
 impl pallet_revive::Config for Runtime {
-	type AddressMapper = pallet_revive::DefaultAddressMapper;
+	type AddressMapper = pallet_revive::AccountId32Mapper<Runtime>;
 	type CallFilter = Nothing;
 	type ChainExtension = api::Extension<Config>;
 	type ChainId = ConstU64<4001>;

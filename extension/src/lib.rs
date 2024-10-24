@@ -15,14 +15,14 @@ pub use functions::{
 };
 pub use matching::{Equals, FunctionId, Matches};
 use pallet_revive::{
-	chain_extension::{ChainExtension, RetVal::Converging},
+	chain_extension::{ChainExtension, RetVal::Converging, SysConfig},
 	WeightInfo,
 };
 pub use pallet_revive::{
 	chain_extension::{Result, RetVal},
 	wasm::Memory,
 };
-use sp_core::Get;
+use sp_core::{crypto::AccountId32, Get};
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
@@ -51,6 +51,7 @@ where
 			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 		>,
 	Config: self::Config<Functions: Function<Config = Runtime>> + 'static,
+	Runtime: SysConfig<AccountId = AccountId32>,
 {
 	/// Call the chain extension logic.
 	///

@@ -5,11 +5,12 @@ use frame_support::pallet_prelude::Weight;
 use pallet_revive::{
 	chain_extension::{ChargedAmount, Result},
 	wasm::Memory,
-	AddressMapper, DefaultAddressMapper,
+	AccountId32Mapper, AddressMapper,
 };
+use sp_core::{crypto::AccountId32, H160};
 use sp_std::vec::Vec;
 
-use crate::AccountIdOf;
+use crate::{AccountIdOf, Config};
 
 /// Provides access to the parameters passed to a chain extension and its execution environment.
 ///
@@ -67,6 +68,11 @@ pub(crate) struct Env<'a, 'b, E: pallet_revive::chain_extension::Ext, S: ?Sized 
 
 impl<'a, 'b, E: pallet_revive::chain_extension::Ext, S: ?Sized + Memory<E::T>> Environment
 	for Env<'a, 'b, E, S>
+where
+	E: pallet_revive::chain_extension::Ext,
+	E::T: frame_system::Config,
+	<E::T as frame_system::Config>::AccountId: From<AccountId32> + Decode,
+	E::T: SysConfig<AccountId = AccountId32>,
 {
 	type AccountId = AccountIdOf<E::T>;
 	type ChargedAmount = ChargedAmount;
@@ -189,13 +195,25 @@ impl Ext for () {
 /// A wrapper type for a type implementing `pallet_revive::chain_extension::Ext`.
 pub(crate) struct ExternalEnvironment<'a, T: pallet_revive::chain_extension::Ext>(&'a mut T);
 
-impl<'a, E: pallet_revive::chain_extension::Ext> Ext for ExternalEnvironment<'a, E> {
+use pallet_revive::chain_extension::SysConfig;
+
+impl<'a, E> Ext for ExternalEnvironment<'a, E>
+where
+	E: pallet_revive::chain_extension::Ext,
+	E::T: frame_system::Config,
+	<E::T as frame_system::Config>::AccountId: From<AccountId32> + Decode,
+	E::T: SysConfig<AccountId = AccountId32>,
+{
 	type AccountId = AccountIdOf<E::T>;
 
 	fn address(&self) -> Self::AccountId {
+		// Get the H160 address
+		let h160_addr = self.0.address();
+		let account_id = AccountId32Mapper::<E::T>::to_account_id(&h160_addr);
 		// TODO: hacky way to get AccountId32 to match the Self::AccountId type
-		let encoded_addr = DefaultAddressMapper::to_account_id(&self.0.address()).encode();
-		Self::AccountId::decode(&mut &encoded_addr[..]).unwrap()
+		// let encoded_addr = AccountId32Mapper::<E::T>::to_account_id(&self.0.address()).encode();
+		// Self::AccountId::decode(&mut &encoded_addr[..]).unwrap()
+		account_id.into()
 	}
 }
 

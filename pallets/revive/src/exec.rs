@@ -169,6 +169,18 @@ impl<T: Config> Origin<T> {
 			Origin::Root => Err(DispatchError::RootNotAllowed),
 		}
 	}
+
+	/// Make sure that this origin is mapped.
+	///
+	/// We require an origin to be mapped in order to be used in a `Stack`. Otherwise
+	/// [`Stack::caller`] returns an address that can't be reverted to the original address.
+	fn ensure_mapped(&self) -> DispatchResult {
+		match self {
+			Self::Root => Ok(()),
+			Self::Signed(account_id) if T::AddressMapper::is_mapped(account_id) => Ok(()),
+			Self::Signed(_) => Err(<Error<T>>::AccountUnmapped.into()),
+		}
+	}
 }
 
 /// An interface that provides access to the external environment in which the
@@ -823,6 +835,7 @@ where
 		value: BalanceOf<T>,
 		debug_message: Option<&'a mut DebugBuffer>,
 	) -> Result<Option<(Self, E)>, ExecError> {
+		origin.ensure_mapped()?;
 		let Some((first_frame, executable)) = Self::new_frame(
 			args,
 			value,
@@ -903,7 +916,7 @@ where
 					*executable.code_hash(),
 				)?;
 				(
-					T::AddressMapper::to_account_id_contract(&address),
+					T::AddressMapper::to_fallback_account_id(&address),
 					contract,
 					executable,
 					None,
@@ -1317,13 +1330,17 @@ where
 		// is caught by it.
 		self.top_frame_mut().allows_reentry = allows_reentry;
 
-		let dest = T::AddressMapper::to_account_id(dest);
-		let value = value.try_into().map_err(|_| Error::<T>::BalanceConversionFailed)?;
+		// We reset the return data now, so it is cleared out even if no new frame was executed.
+		// This is for example the case for balance transfers or when creating the frame fails.
+		*self.last_frame_output_mut() = Default::default();
 
 		let try_call = || {
+			let dest = T::AddressMapper::to_account_id(dest);
 			if !self.allows_reentry(&dest) {
 				return Err(<Error<T>>::ReentranceDenied.into());
 			}
+
+			let value = value.try_into().map_err(|_| Error::<T>::BalanceConversionFailed)?;
 
 			// We ignore instantiate frames in our search for a cached contract.
 			// Otherwise it would be possible to recursively call a contract from its own

@@ -1,7 +1,7 @@
 use super::*;
 use crate::sp_core::H160;
+use pallet_revive::AccountId32Mapper;
 use pallet_revive::AddressMapper;
-use pallet_revive::DefaultAddressMapper;
 
 fn do_bare_call(function: &str, addr: &H160, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);
@@ -49,10 +49,7 @@ pub(super) fn token_name(addr: &H160, token_id: TokenId) -> Result<Option<Vec<u8
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_symbol(
-	addr: &H160,
-	token_id: TokenId,
-) -> Result<Option<Vec<u8>>, Error> {
+pub(super) fn token_symbol(addr: &H160, token_id: TokenId) -> Result<Option<Vec<u8>>, Error> {
 	let result = do_bare_call("token_symbol", addr, token_id.encode());
 	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -324,7 +321,7 @@ pub(super) fn instantiate_and_create_fungible(
 	let function = function_selector("new");
 	let input = [function, token_id.encode(), min_balance.encode()].concat();
 	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
-	let result = Contracts::bare_instantiate(
+	let result = Revive::bare_instantiate(
 		RuntimeOrigin::signed(ALICE),
 		INIT_VALUE,
 		GAS_LIMIT,
@@ -341,7 +338,7 @@ pub(super) fn instantiate_and_create_fungible(
 	let result = result.result;
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-		.map(|_| DefaultAddressMapper::to_account_id(&address))
+		.map(|_| AccountId32Mapper::<Runtime>::to_account_id(&address))
 }
 
 /// Get the last event from pallet contracts.
