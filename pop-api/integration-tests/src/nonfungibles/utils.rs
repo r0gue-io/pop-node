@@ -1,5 +1,9 @@
 use super::*;
 
+pub(super) type AttributeKey = BoundedVec<u8, <Runtime as pallet_nfts::Config>::KeyLimit>;
+pub(super) type AttributeValue = BoundedVec<u8, <Runtime as pallet_nfts::Config>::ValueLimit>;
+pub(super) type MetadataData = BoundedVec<u8, <Runtime as pallet_nfts::Config>::StringLimit>;
+
 fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);
 	let params = [function, params].concat();
@@ -84,11 +88,18 @@ pub(super) fn get_attribute(
 	item: ItemId,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
-) -> Result<Vec<u8>, Error> {
-	let params = [collection.encode(), item.encode(), namespace.encode(), key.encode()].concat();
+) -> Result<Option<Vec<u8>>, Error> {
+	let params = [
+		collection.encode(),
+		item.encode(),
+		namespace.encode(),
+		AttributeKey::truncate_from(key).encode(),
+	]
+	.concat();
 	let result = do_bare_call("get_attribute", &addr, params);
-	decoded::<Result<Vec<u8>, Error>>(result.clone())
+	decoded::<Result<Option<AttributeValue>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+		.map(|value| value.map(|v| v.to_vec()))
 }
 
 pub(super) fn create(
@@ -130,9 +141,14 @@ pub(super) fn set_attribute(
 	key: Vec<u8>,
 	value: Vec<u8>,
 ) -> Result<(), Error> {
-	let params =
-		[collection.encode(), item.encode(), namespace.encode(), key.encode(), value.encode()]
-			.concat();
+	let params = [
+		collection.encode(),
+		item.encode(),
+		namespace.encode(),
+		AttributeKey::truncate_from(key).encode(),
+		AttributeValue::truncate_from(value).encode(),
+	]
+	.concat();
 	let result = do_bare_call("set_attribute", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -219,6 +235,7 @@ pub(super) fn item_metadata(
 	let result = do_bare_call("item_metadata", &addr, params);
 	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+		.map(|value| value.map(|v| v.to_vec()))
 }
 
 pub(super) mod nfts {
@@ -263,7 +280,7 @@ pub(super) mod nfts {
 		next_id
 	}
 
-	pub(super) fn next_collection_id() -> u32 {
+	pub(crate) fn next_collection_id() -> u32 {
 		pallet_nfts::NextCollectionId::<Runtime>::get().unwrap_or_default()
 	}
 

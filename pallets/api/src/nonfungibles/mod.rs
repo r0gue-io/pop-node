@@ -17,14 +17,14 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_nfts::{
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings, DestroyWitness,
-		ItemMetadata, ItemMetadataOf, MintSettings, MintWitness,
+		ItemMetadataOf, MintSettings, MintWitness,
 	};
 	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
 	use types::{
 		AccountIdOf, AttributeNamespaceOf, BalanceOf, CollectionDetailsFor, CollectionIdOf,
-		CreateCollectionConfigFor, ItemDetailsFor, ItemIdOf, ItemPriceOf, NextCollectionIdOf,
-		NftsOf, NftsWeightInfoOf,
+		CreateCollectionConfigFor, ItemIdOf, ItemPriceOf, NextCollectionIdOf, NftsOf,
+		NftsWeightInfoOf,
 	};
 
 	use super::*;
@@ -56,7 +56,7 @@ pub mod pallet {
 		#[codec(index = 6)]
 		GetAttribute {
 			collection: CollectionIdOf<T>,
-			item: Option<ItemIdOf<T>>,
+			item: ItemIdOf<T>,
 			namespace: AttributeNamespaceOf<T>,
 			key: BoundedVec<u8, T::KeyLimit>,
 		},
@@ -424,7 +424,7 @@ pub mod pallet {
 				OwnerOf { collection, item } =>
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
 				GetAttribute { collection, item, namespace, key } => ReadResult::GetAttribute(
-					pallet_nfts::Attribute::<T>::get((collection, item, namespace, key))
+					pallet_nfts::Attribute::<T>::get((collection, Some(item), namespace, key))
 						.map(|attribute| attribute.0),
 				),
 				Collection(collection) =>

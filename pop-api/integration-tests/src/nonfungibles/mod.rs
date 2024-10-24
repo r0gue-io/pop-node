@@ -116,19 +116,17 @@ fn approve_works() {
 fn owner_of_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
 		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
 	});
 }
 
-// TODO
 #[test]
 fn get_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
 
 		assert_ok!(Nfts::set_attribute(
 			RuntimeOrigin::signed(addr.clone()),
@@ -146,29 +144,248 @@ fn get_attribute_works() {
 				AttributeNamespace::CollectionOwner,
 				"some attribute".as_bytes().to_vec(),
 			),
-			Ok("some value".as_bytes().to_vec())
+			Ok(Some("some value".as_bytes().to_vec()))
 		);
 	});
 }
 
-// TODO
+#[test]
+fn set_attribute_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+
+		assert_ok!(set_attribute(
+			&addr.clone(),
+			collection,
+			item,
+			AttributeNamespace::CollectionOwner,
+			"some attribute".as_bytes().to_vec(),
+			"some value".as_bytes().to_vec(),
+		));
+
+		assert_eq!(
+			pallet_nfts::Attribute::<Runtime>::get((
+				collection,
+				Some(item),
+				pallet_nfts::AttributeNamespace::CollectionOwner,
+				AttributeKey::truncate_from("some attribute".as_bytes().to_vec()),
+			))
+			.map(|attribute| attribute.0),
+			Some(AttributeValue::truncate_from("some value".as_bytes().to_vec()))
+		);
+	});
+}
+
+#[test]
+fn clear_attribute_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		assert_ok!(Nfts::set_attribute(
+			RuntimeOrigin::signed(addr.clone()),
+			collection,
+			Some(item),
+			pallet_nfts::AttributeNamespace::CollectionOwner,
+			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
+			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
+		));
+		assert_ok!(clear_attribute(
+			&addr.clone(),
+			collection,
+			item,
+			AttributeNamespace::CollectionOwner,
+			"some attribute".as_bytes().to_vec()
+		));
+		assert_eq!(
+			pallet_nfts::Attribute::<Runtime>::get((
+				collection,
+				Some(item),
+				pallet_nfts::AttributeNamespace::CollectionOwner,
+				AttributeKey::truncate_from("some attribute".as_bytes().to_vec()),
+			))
+			.map(|attribute| attribute.0),
+			None
+		);
+	});
+}
+
+#[test]
+fn approve_item_attributes_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		assert_ok!(approve_item_attributes(&addr.clone(), collection, item, ALICE));
+		assert_ok!(Nfts::set_attribute(
+			RuntimeOrigin::signed(ALICE),
+			collection,
+			Some(item),
+			pallet_nfts::AttributeNamespace::Account(ALICE),
+			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
+			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
+		));
+		assert_eq!(
+			pallet_nfts::Attribute::<Runtime>::get((
+				collection,
+				Some(item),
+				pallet_nfts::AttributeNamespace::Account(ALICE),
+				AttributeKey::truncate_from("some attribute".as_bytes().to_vec()),
+			))
+			.map(|attribute| attribute.0),
+			Some(AttributeValue::truncate_from("some value".as_bytes().to_vec()))
+		);
+	});
+}
+
+#[test]
+fn cancel_item_attributes_approval_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		assert_ok!(Nfts::approve_item_attributes(
+			RuntimeOrigin::signed(addr.clone()),
+			collection,
+			item,
+			ALICE.into()
+		));
+		assert_ok!(Nfts::set_attribute(
+			RuntimeOrigin::signed(ALICE),
+			collection,
+			Some(item),
+			pallet_nfts::AttributeNamespace::Account(ALICE),
+			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
+			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
+		));
+		assert_ok!(cancel_item_attributes_approval(
+			&addr.clone(),
+			collection,
+			item,
+			ALICE,
+			CancelAttributesApprovalWitness { account_attributes: 1 }
+		));
+		assert!(Nfts::set_attribute(
+			RuntimeOrigin::signed(ALICE),
+			collection,
+			Some(item),
+			pallet_nfts::AttributeNamespace::Account(ALICE),
+			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
+			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
+		)
+		.is_err());
+	});
+}
+
+#[test]
+fn set_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		assert_ok!(set_metadata(&addr.clone(), collection, item, vec![]));
+		assert_eq!(
+			pallet_nfts::ItemMetadataOf::<Runtime>::get(collection, item)
+				.map(|metadata| metadata.data),
+			Some(MetadataData::default())
+		);
+	});
+}
+
+#[test]
+fn clear_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		assert_ok!(Nfts::set_metadata(
+			RuntimeOrigin::signed(addr.clone()),
+			collection,
+			item,
+			MetadataData::default()
+		));
+		assert_ok!(clear_metadata(&addr.clone(), collection, item));
+		assert_eq!(
+			pallet_nfts::ItemMetadataOf::<Runtime>::get(collection, item)
+				.map(|metadata| metadata.data),
+			None
+		);
+	});
+}
+
 #[test]
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
-		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
+		let collection = nfts::next_collection_id();
+		assert_ok!(create(
+			&addr.clone(),
+			addr.clone(),
+			CreateCollectionConfig {
+				max_supply: Some(100),
+				mint_type: MintType::Public,
+				price: None,
+				start_block: None,
+				end_block: None,
+			}
+		));
+		assert_eq!(
+			pallet_nfts::Collection::<Runtime>::get(collection),
+			Some(pallet_nfts::CollectionDetails {
+				owner: addr.clone(),
+				owner_deposit: 100000000000,
+				items: 0,
+				item_metadatas: 0,
+				item_configs: 0,
+				attributes: 0,
+			})
+		);
 	});
 }
 
-// TODO
 #[test]
 fn destroy_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
-		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
+		let collection = nfts::create_collection(&addr, &addr);
+		assert_ok!(destroy(
+			&addr.clone(),
+			collection,
+			DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }
+		));
+		assert_eq!(pallet_nfts::Collection::<Runtime>::get(collection), None);
+	});
+}
+
+#[test]
+fn set_max_supply_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let value = 10;
+
+		let collection = nfts::create_collection(&addr, &addr);
+		assert_ok!(set_max_supply(&addr.clone(), collection, value));
+
+		(0..value).into_iter().for_each(|i| {
+			assert_ok!(Nfts::mint(
+				RuntimeOrigin::signed(addr.clone()),
+				collection,
+				i,
+				ALICE.into(),
+				None
+			));
+		});
+		assert!(Nfts::mint(
+			RuntimeOrigin::signed(addr.clone()),
+			collection,
+			value + 1,
+			ALICE.into(),
+			None
+		)
+		.is_err());
 	});
 }

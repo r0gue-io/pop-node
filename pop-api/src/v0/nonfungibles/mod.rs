@@ -146,10 +146,10 @@ pub fn set_attribute(
 	value: Vec<u8>,
 ) -> Result<()> {
 	build_dispatch(SET_ATTRIBUTE)
-		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>, Vec<u8>)>()
+		.input::<(CollectionId, Option<ItemId>, AttributeNamespace, Vec<u8>, Vec<u8>)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(collection, item, namespace, key, value))
+		.call(&(collection, Some(item), namespace, key, value))
 }
 
 #[inline]
@@ -160,10 +160,10 @@ pub fn clear_attribute(
 	key: Vec<u8>,
 ) -> Result<()> {
 	build_dispatch(CLEAR_ATTRIBUTE)
-		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>)>()
+		.input::<(CollectionId, Option<ItemId>, AttributeNamespace, Vec<u8>)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(collection, item, namespace, key))
+		.call(&(collection, Some(item), namespace, key))
 }
 
 #[inline]
@@ -190,7 +190,7 @@ pub fn approve_item_attributes(
 	item: ItemId,
 	delegate: AccountId,
 ) -> Result<()> {
-	build_dispatch(CLEAR_METADATA)
+	build_dispatch(APPROVE_ITEM_ATTRIBUTES)
 		.input::<(CollectionId, ItemId, AccountId)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -204,7 +204,7 @@ pub fn cancel_item_attributes_approval(
 	delegate: AccountId,
 	witness: CancelAttributesApprovalWitness,
 ) -> Result<()> {
-	build_dispatch(CLEAR_METADATA)
+	build_dispatch(CANCEL_ITEM_ATTRIBUTES_APPROVAL)
 		.input::<(CollectionId, ItemId, AccountId, CancelAttributesApprovalWitness)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
@@ -273,7 +273,7 @@ mod constants {
 	pub(super) const CLEAR_ATTRIBUTE: u8 = 13;
 	pub(super) const SET_METADATA: u8 = 14;
 	pub(super) const CLEAR_METADATA: u8 = 15;
-	pub(super) const APPROVE_ITEM_ATTRIBUTE: u8 = 16;
+	pub(super) const APPROVE_ITEM_ATTRIBUTES: u8 = 16;
 	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 17;
 	pub(super) const SET_MAX_SUPPLY: u8 = 18;
 
