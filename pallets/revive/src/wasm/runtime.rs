@@ -2041,4 +2041,25 @@ pub mod env {
 		*self.ext.last_frame_output_mut() = output;
 		Ok(result?)
 	}
+
+	#[api_version(0)]
+	pub fn to_account_id(
+		&mut self,
+		memory: &mut M,
+		addr_ptr: u32,
+		out_ptr: u32,
+	) -> Result<(), TrapReason> {
+		// TODO: add specific runtime cost
+		self.charge_gas(RuntimeCosts::Caller)?;
+		let mut address = H160::zero();
+		memory.read_into_buf(addr_ptr, address.as_bytes_mut())?;
+		let account = <E::T as Config>::AddressMapper::to_account_id(&address);
+		Ok(self.write_fixed_sandbox_output(
+			memory,
+			out_ptr,
+			account.encode().as_ref(),
+			false,
+			already_charged,
+		)?)
+	}
 }
