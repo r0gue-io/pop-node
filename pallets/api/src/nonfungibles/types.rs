@@ -1,13 +1,12 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
 use frame_system::pallet_prelude::BlockNumberFor;
-use pallet_nfts::{AttributeNamespace, CollectionDetails, ItemDeposit, ItemDetails, MintType};
+pub use pallet_nfts::{AttributeNamespace, CollectionDetails, ItemDeposit, ItemDetails, MintType};
 use scale_info::TypeInfo;
 use sp_runtime::{BoundedBTreeMap, RuntimeDebug};
 
 // Type aliases for pallet-nfts.
 pub(super) type NftsOf<T> = pallet_nfts::Pallet<T>;
-pub(super) type NftsErrorOf<T> = pallet_nfts::Error<T>;
 pub(super) type NftsWeightInfoOf<T> = <T as pallet_nfts::Config>::WeightInfo;
 // Type aliases for pallet-nfts storage items.
 pub(super) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;

@@ -30,47 +30,47 @@ mod encoding_read_result {
 	#[test]
 	fn total_supply() {
 		let total_supply = 1_000_000 * UNIT;
-		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
+		assert_eq!(ReadResult::<Test>::TotalSupply(total_supply).encode(), total_supply.encode());
 	}
 
 	#[test]
 	fn balance_of() {
 		let balance = 100 * UNIT;
-		assert_eq!(ReadResult::BalanceOf::<Test>(balance).encode(), balance.encode());
+		assert_eq!(ReadResult::<Test>::BalanceOf(balance).encode(), balance.encode());
 	}
 
 	#[test]
 	fn allowance() {
 		let allowance = 100 * UNIT;
-		assert_eq!(ReadResult::Allowance::<Test>(allowance).encode(), allowance.encode());
+		assert_eq!(ReadResult::<Test>::Allowance(allowance).encode(), allowance.encode());
 	}
 
 	#[test]
 	fn token_name() {
 		let mut name = Some("some name".as_bytes().to_vec());
-		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
+		assert_eq!(ReadResult::<Test>::TokenName(name.clone()).encode(), name.encode());
 		name = None;
-		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
+		assert_eq!(ReadResult::<Test>::TokenName(name.clone()).encode(), name.encode());
 	}
 
 	#[test]
 	fn token_symbol() {
 		let mut symbol = Some("some symbol".as_bytes().to_vec());
-		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
+		assert_eq!(ReadResult::<Test>::TokenSymbol(symbol.clone()).encode(), symbol.encode());
 		symbol = None;
-		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
+		assert_eq!(ReadResult::<Test>::TokenSymbol(symbol.clone()).encode(), symbol.encode());
 	}
 
 	#[test]
 	fn token_decimals() {
 		let decimals = 42;
-		assert_eq!(ReadResult::TokenDecimals::<Test>(decimals).encode(), decimals.encode());
+		assert_eq!(ReadResult::<Test>::TokenDecimals(decimals).encode(), decimals.encode());
 	}
 
 	#[test]
 	fn token_exists() {
 		let exists = true;
-		assert_eq!(ReadResult::TokenExists::<Test>(exists).encode(), exists.encode());
+		assert_eq!(ReadResult::<Test>::TokenExists(exists).encode(), exists.encode());
 	}
 }
 
@@ -513,11 +513,14 @@ fn total_supply_works() {
 	new_test_ext().execute_with(|| {
 		let total_supply = INIT_AMOUNT;
 		assert_eq!(
-			Fungibles::read(TotalSupply(TOKEN)),
-			ReadResult::TotalSupply(Default::default())
+			Fungibles::read(TotalSupply(TOKEN)).encode(),
+			ReadResult::<Test>::TotalSupply(Default::default()).encode()
 		);
 		assets::create_and_mint_to(ALICE, TOKEN, ALICE, total_supply);
-		assert_eq!(Fungibles::read(TotalSupply(TOKEN)), ReadResult::TotalSupply(total_supply));
+		assert_eq!(
+			Fungibles::read(TotalSupply(TOKEN)).encode(),
+			ReadResult::<Test>::TotalSupply(total_supply).encode()
+		);
 		assert_eq!(
 			Fungibles::read(TotalSupply(TOKEN)).encode(),
 			Assets::total_supply(TOKEN).encode(),
@@ -530,13 +533,13 @@ fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let value = 1_000 * UNIT;
 		assert_eq!(
-			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }),
-			ReadResult::BalanceOf(Default::default())
+			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }).encode(),
+			ReadResult::<Test>::BalanceOf(Default::default()).encode()
 		);
 		assets::create_and_mint_to(ALICE, TOKEN, ALICE, value);
 		assert_eq!(
-			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }),
-			ReadResult::BalanceOf(value)
+			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }).encode(),
+			ReadResult::<Test>::BalanceOf(value).encode()
 		);
 		assert_eq!(
 			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }).encode(),
@@ -554,8 +557,9 @@ fn allowance_works() {
 				token: TOKEN,
 				owner: account(ALICE),
 				spender: account(BOB)
-			}),
-			ReadResult::Allowance(Default::default())
+			})
+			.encode(),
+			ReadResult::<Test>::Allowance(Default::default()).encode()
 		);
 		assets::create_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
 		assert_eq!(
@@ -563,8 +567,9 @@ fn allowance_works() {
 				token: TOKEN,
 				owner: account(ALICE),
 				spender: account(BOB)
-			}),
-			ReadResult::Allowance(value)
+			})
+			.encode(),
+			ReadResult::<Test>::Allowance(value).encode()
 		);
 		assert_eq!(
 			Fungibles::read(Allowance {
@@ -584,13 +589,31 @@ fn token_metadata_works() {
 		let name: Vec<u8> = vec![11, 12, 13];
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
-		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(None));
-		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(None));
-		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)), ReadResult::TokenDecimals(0));
+		assert_eq!(
+			Fungibles::read(TokenName(TOKEN)).encode(),
+			ReadResult::<Test>::TokenName(None).encode()
+		);
+		assert_eq!(
+			Fungibles::read(TokenSymbol(TOKEN)).encode(),
+			ReadResult::<Test>::TokenSymbol(None).encode()
+		);
+		assert_eq!(
+			Fungibles::read(TokenDecimals(TOKEN)).encode(),
+			ReadResult::<Test>::TokenDecimals(0).encode()
+		);
 		assets::create_and_set_metadata(ALICE, TOKEN, name.clone(), symbol.clone(), decimals);
-		assert_eq!(Fungibles::read(TokenName(TOKEN)), ReadResult::TokenName(Some(name)));
-		assert_eq!(Fungibles::read(TokenSymbol(TOKEN)), ReadResult::TokenSymbol(Some(symbol)));
-		assert_eq!(Fungibles::read(TokenDecimals(TOKEN)), ReadResult::TokenDecimals(decimals));
+		assert_eq!(
+			Fungibles::read(TokenName(TOKEN)).encode(),
+			ReadResult::<Test>::TokenName(Some(name)).encode()
+		);
+		assert_eq!(
+			Fungibles::read(TokenSymbol(TOKEN)).encode(),
+			ReadResult::<Test>::TokenSymbol(Some(symbol)).encode()
+		);
+		assert_eq!(
+			Fungibles::read(TokenDecimals(TOKEN)).encode(),
+			ReadResult::<Test>::TokenDecimals(decimals).encode()
+		);
 		assert_eq!(Fungibles::read(TokenName(TOKEN)).encode(), Some(Assets::name(TOKEN)).encode());
 		assert_eq!(
 			Fungibles::read(TokenSymbol(TOKEN)).encode(),
@@ -606,9 +629,15 @@ fn token_metadata_works() {
 #[test]
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(false));
+		assert_eq!(
+			Fungibles::read(TokenExists(TOKEN)).encode(),
+			ReadResult::<Test>::TokenExists(false).encode()
+		);
 		assert_ok!(Assets::create(signed(ALICE), TOKEN, account(ALICE), 1));
-		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(true));
+		assert_eq!(
+			Fungibles::read(TokenExists(TOKEN)).encode(),
+			ReadResult::<Test>::TokenExists(true).encode()
+		);
 		assert_eq!(
 			Fungibles::read(TokenExists(TOKEN)).encode(),
 			Assets::asset_exists(TOKEN).encode(),

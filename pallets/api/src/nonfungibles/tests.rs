@@ -2,15 +2,15 @@ use codec::Encode;
 use frame_support::{assert_noop, assert_ok, traits::Incrementable};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_nfts::{
-	AccountBalance, CollectionConfig, CollectionDetails, CollectionSettings, ItemDeposit,
+	AccountBalance, CollectionConfig, CollectionDetails, CollectionSettings, DestroyWitness,
 	ItemDetails, MintSettings,
 };
-use sp_runtime::{BoundedBTreeMap, BoundedVec, DispatchError::BadOrigin};
+use sp_runtime::{BoundedVec, DispatchError::BadOrigin};
 
 use super::types::{CollectionIdOf, ItemIdOf};
 use crate::{
 	mock::*,
-	nonfungibles::{Event, Read::*, ReadResult},
+	nonfungibles::{CreateCollectionConfig, Event, Read::*, ReadResult},
 	Read,
 };
 
@@ -23,7 +23,7 @@ mod encoding_read_result {
 
 	#[test]
 	fn total_supply() {
-		let total_supply: u32 = 1_000_000;
+		let total_supply: u128 = 1_000_000;
 		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
 	}
 
@@ -83,18 +83,6 @@ mod encoding_read_result {
 	}
 
 	#[test]
-	fn item() {
-		let mut item_details = Some(ItemDetails {
-			owner: account(ALICE),
-			approvals: BoundedBTreeMap::default(),
-			deposit: ItemDeposit { amount: 0, account: account(BOB) },
-		});
-		assert_eq!(ReadResult::Item::<Test>(item_details.clone()).encode(), item_details.encode());
-		item_details = None;
-		assert_eq!(ReadResult::Item::<Test>(item_details.clone()).encode(), item_details.encode());
-	}
-
-	#[test]
 	fn next_collection_id_works() {
 		let mut next_collection_id = Some(0);
 		assert_eq!(
@@ -106,6 +94,14 @@ mod encoding_read_result {
 			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
 			next_collection_id.encode()
 		);
+	}
+
+	#[test]
+	fn item_metadata_works() {
+		let mut data = Some(BoundedVec::truncate_from("some metadata".as_bytes().to_vec()));
+		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
+		data = None;
+		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
 	}
 }
 
@@ -263,15 +259,14 @@ fn owner_of_works() {
 fn get_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
-		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
-		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
+		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
 		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		// No attribute set.
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
-				item: Some(item),
+				item,
 				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
 				key: attribute.clone()
 			})
@@ -291,7 +286,7 @@ fn get_attribute_works() {
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
-				item: Some(item),
+				item,
 				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
 				key: attribute
 			})
@@ -302,12 +297,43 @@ fn get_attribute_works() {
 }
 
 #[test]
+fn set_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
+		let value = BoundedVec::truncate_from("some metadata".as_bytes().to_vec());
+		assert_ok!(NonFungibles::set_metadata(signed(ALICE), collection, item, value.clone()));
+		assert_eq!(
+			NonFungibles::read(ItemMetadata { collection, item }).encode(),
+			Some(value).encode()
+		);
+	});
+}
+
+#[test]
+fn clear_metadata_works() {
+	new_test_ext().execute_with(|| {
+		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
+		assert_ok!(NonFungibles::set_metadata(
+			signed(ALICE),
+			collection,
+			item,
+			BoundedVec::truncate_from("some metadata".as_bytes().to_vec())
+		));
+		assert_ok!(NonFungibles::clear_metadata(signed(ALICE), collection, item));
+		assert_eq!(
+			NonFungibles::read(ItemMetadata { collection, item }).encode(),
+			ReadResult::<Test>::ItemMetadata(None).encode()
+		);
+	});
+}
+
+#[test]
 fn clear_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
-		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
-		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
+		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
+		let result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		assert_ok!(Nfts::set_attribute(
 			signed(ALICE),
 			collection,
@@ -327,7 +353,7 @@ fn clear_attribute_works() {
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
-				item: Some(item),
+				item,
 				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
 				key: attribute
 			})
@@ -342,7 +368,7 @@ fn approve_item_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
-		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
+		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
 		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		// Successfully approve delegate to set attributes.
@@ -359,7 +385,7 @@ fn approve_item_attribute_works() {
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
-				item: Some(item),
+				item,
 				namespace: pallet_nfts::AttributeNamespace::Account(account(BOB)),
 				key: attribute
 			})
@@ -374,9 +400,8 @@ fn cancel_item_attribute_approval_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
-		let mut attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
+		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
-		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		// Successfully approve delegate to set attributes.
 		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, account(BOB)));
 		assert_ok!(Nfts::set_attribute(
@@ -429,12 +454,48 @@ fn total_supply_works() {
 		let collection = nfts::create_collection(owner);
 		(0..10).into_iter().for_each(|i| {
 			assert_ok!(Nfts::mint(signed(owner), collection, i, account(owner), None));
-			assert_eq!(NonFungibles::read(TotalSupply(collection)).encode(), (i + 1).encode());
 			assert_eq!(
 				NonFungibles::read(TotalSupply(collection)).encode(),
-				Nfts::collection_items(collection).unwrap_or_default().encode()
+				((i + 1) as u128).encode()
+			);
+			assert_eq!(
+				NonFungibles::read(TotalSupply(collection)).encode(),
+				(Nfts::collection_items(collection).unwrap_or_default() as u128).encode()
 			);
 		});
+	});
+}
+
+#[test]
+fn create_works() {
+	new_test_ext().execute_with(|| {
+		let owner = ALICE;
+		let next_collection_id = pallet_nfts::NextCollectionId::<Test>::get().unwrap_or_default();
+		assert_ok!(NonFungibles::create(
+			signed(owner),
+			account(owner),
+			CreateCollectionConfig {
+				max_supply: None,
+				mint_type: pallet_nfts::MintType::Public,
+				price: None,
+				start_block: None,
+				end_block: None,
+			},
+		));
+		assert_eq!(Nfts::collection_owner(next_collection_id), Some(account(owner)));
+	});
+}
+
+#[test]
+fn destroy_works() {
+	new_test_ext().execute_with(|| {
+		let collection = nfts::create_collection(ALICE);
+		assert_ok!(NonFungibles::destroy(
+			signed(ALICE),
+			collection,
+			DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }
+		));
+		assert_eq!(Nfts::collection_owner(collection), None);
 	});
 }
 
@@ -445,17 +506,6 @@ fn collection_works() {
 		assert_eq!(
 			NonFungibles::read(Collection(collection)).encode(),
 			pallet_nfts::Collection::<Test>::get(&collection).encode(),
-		);
-	});
-}
-
-#[test]
-fn item_works() {
-	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
-		assert_eq!(
-			NonFungibles::read(Item { collection, item }).encode(),
-			pallet_nfts::Item::<Test>::get(&collection, &item).encode(),
 		);
 	});
 }
