@@ -65,9 +65,9 @@ use crate::{
 	tests::test_utils::{get_contract, get_contract_checked},
 	wasm::Memory,
 	weights::WeightInfo,
-	BalanceOf, Code, CodeInfoOf, CollectEvents, Config, ContractInfo, ContractInfoOf, DebugInfo,
-	DefaultAddressMapper, DeletionQueueCounter, Error, HoldReason, Origin, Pallet, PristineCode,
-	H160,
+	AccountId32Mapper, BalanceOf, Code, CodeInfoOf, CollectEvents, Config, ContractInfo,
+	ContractInfoOf, DebugInfo, DefaultAddressMapper, DeletionQueueCounter, Error, HoldReason,
+	Origin, Pallet, PristineCode, H160,
 };
 
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -485,7 +485,7 @@ parameter_types! {
 
 #[derive_impl(crate::config_preludes::TestDefaultConfig)]
 impl Config for Test {
-	type AddressMapper = DefaultAddressMapper;
+	type AddressMapper = AccountId32Mapper<Self>;
 	type CallFilter = TestFilter;
 	type ChainExtension =
 		(TestExtension, DisabledExtension, RevertingExtension, TempStorageExtension);

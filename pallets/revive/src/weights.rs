@@ -59,6 +59,9 @@ pub trait WeightInfo {
 	fn upload_code_determinism_relaxed(c: u32, ) -> Weight;
 	fn remove_code() -> Weight;
 	fn set_code() -> Weight;
+	fn map_account() -> Weight;
+	fn unmap_account() -> Weight;
+	fn dispatch_as_fallback_account() -> Weight;
 	fn noop_host_fn(r: u32, ) -> Weight;
 	fn seal_caller() -> Weight;
 	fn seal_is_contract() -> Weight;
@@ -330,6 +333,44 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		Weight::from_parts(25_890_000, 6492)
 			.saturating_add(T::DbWeight::get().reads(4_u64))
 			.saturating_add(T::DbWeight::get().writes(3_u64))
+	}
+	/// Storage: `Revive::AddressSuffix` (r:1 w:1)
+	/// Proof: `Revive::AddressSuffix` (`max_values`: None, `max_size`: Some(32), added: 2507, mode: `Measured`)
+	/// Storage: `Balances::Holds` (r:1 w:1)
+	/// Proof: `Balances::Holds` (`max_values`: None, `max_size`: Some(355), added: 2830, mode: `Measured`)
+	fn map_account() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `109`
+		//  Estimated: `3574`
+		// Minimum execution time: 44_031_000 picoseconds.
+		Weight::from_parts(45_133_000, 3574)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
+	}
+	/// Storage: `Balances::Holds` (r:1 w:1)
+	/// Proof: `Balances::Holds` (`max_values`: None, `max_size`: Some(355), added: 2830, mode: `Measured`)
+	/// Storage: `Revive::AddressSuffix` (r:0 w:1)
+	/// Proof: `Revive::AddressSuffix` (`max_values`: None, `max_size`: Some(32), added: 2507, mode: `Measured`)
+	fn unmap_account() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `56`
+		//  Estimated: `3521`
+		// Minimum execution time: 35_681_000 picoseconds.
+		Weight::from_parts(36_331_000, 3521)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(2_u64))
+	}
+	/// Storage: `SafeMode::EnteredUntil` (r:1 w:0)
+	/// Proof: `SafeMode::EnteredUntil` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `Measured`)
+	/// Storage: `TxPause::PausedCalls` (r:1 w:0)
+	/// Proof: `TxPause::PausedCalls` (`max_values`: None, `max_size`: Some(532), added: 3007, mode: `Measured`)
+	fn dispatch_as_fallback_account() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `145`
+		//  Estimated: `3610`
+		// Minimum execution time: 11_550_000 picoseconds.
+		Weight::from_parts(12_114_000, 3610)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
 	}
 	/// The range of component `r` is `[0, 1600]`.
 	fn noop_host_fn(r: u32, ) -> Weight {
@@ -1154,6 +1195,44 @@ impl WeightInfo for () {
 		Weight::from_parts(25_890_000, 6492)
 			.saturating_add(RocksDbWeight::get().reads(4_u64))
 			.saturating_add(RocksDbWeight::get().writes(3_u64))
+	}
+	/// Storage: `Revive::AddressSuffix` (r:1 w:1)
+	/// Proof: `Revive::AddressSuffix` (`max_values`: None, `max_size`: Some(32), added: 2507, mode: `Measured`)
+	/// Storage: `Balances::Holds` (r:1 w:1)
+	/// Proof: `Balances::Holds` (`max_values`: None, `max_size`: Some(355), added: 2830, mode: `Measured`)
+	fn map_account() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `109`
+		//  Estimated: `3574`
+		// Minimum execution time: 44_031_000 picoseconds.
+		Weight::from_parts(45_133_000, 3574)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	/// Storage: `Balances::Holds` (r:1 w:1)
+	/// Proof: `Balances::Holds` (`max_values`: None, `max_size`: Some(355), added: 2830, mode: `Measured`)
+	/// Storage: `Revive::AddressSuffix` (r:0 w:1)
+	/// Proof: `Revive::AddressSuffix` (`max_values`: None, `max_size`: Some(32), added: 2507, mode: `Measured`)
+	fn unmap_account() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `56`
+		//  Estimated: `3521`
+		// Minimum execution time: 35_681_000 picoseconds.
+		Weight::from_parts(36_331_000, 3521)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	/// Storage: `SafeMode::EnteredUntil` (r:1 w:0)
+	/// Proof: `SafeMode::EnteredUntil` (`max_values`: Some(1), `max_size`: Some(4), added: 499, mode: `Measured`)
+	/// Storage: `TxPause::PausedCalls` (r:1 w:0)
+	/// Proof: `TxPause::PausedCalls` (`max_values`: None, `max_size`: Some(532), added: 3007, mode: `Measured`)
+	fn dispatch_as_fallback_account() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `145`
+		//  Estimated: `3610`
+		// Minimum execution time: 11_550_000 picoseconds.
+		Weight::from_parts(12_114_000, 3610)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
 	}
 	/// The range of component `r` is `[0, 1600]`.
 	fn noop_host_fn(r: u32, ) -> Weight {

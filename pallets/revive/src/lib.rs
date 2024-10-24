@@ -76,7 +76,7 @@ pub use weights::WeightInfo;
 #[cfg(doc)]
 pub use crate::wasm::SyscallDoc;
 pub use crate::{
-	address::{AddressMapper, DefaultAddressMapper},
+	address::{create1, create2, AccountId32Mapper, AddressMapper},
 	debug::Tracing,
 	pallet::*,
 };
@@ -157,10 +157,9 @@ pub mod pallet {
 
 		/// The overarching call type.
 		#[pallet::no_default_bounds]
-		type RuntimeCall: Dispatchable<RuntimeOrigin = Self::RuntimeOrigin, PostInfo = PostDispatchInfo>
-			+ GetDispatchInfo
-			+ codec::Decode
-			+ IsType<<Self as frame_system::Config>::RuntimeCall>;
+		type RuntimeCall: Parameter
+			+ Dispatchable<RuntimeOrigin = Self::RuntimeOrigin, PostInfo = PostDispatchInfo>
+			+ GetDispatchInfo;
 
 		/// Overarching hold reason.
 		#[pallet::no_default_bounds]
@@ -229,9 +228,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type CodeHashLockupDepositPercent: Get<Perbill>;
 
-		/// Only valid type is [`DefaultAddressMapper`].
-		#[pallet::no_default_bounds]
-		type AddressMapper: AddressMapper<AccountIdOf<Self>>;
+		/// Use either valid type is [`address::AccountId32Mapper`] or [`address::H160Mapper`].
+		#[pallet::no_default]
+		type AddressMapper: AddressMapper<Self>;
 
 		/// Make contract callable functions marked as `#[unstable]` available.
 		///
@@ -354,7 +353,6 @@ pub mod pallet {
 
 		#[frame_support::register_default_impl(TestDefaultConfig)]
 		impl DefaultConfig for TestDefaultConfig {
-			type AddressMapper = DefaultAddressMapper;
 			type CallFilter = ();
 			type ChainExtension = ();
 			type ChainId = ConstU64<{ 0 }>;
@@ -554,6 +552,12 @@ pub mod pallet {
 		ExecutionFailed,
 		/// Failed to convert a U256 to a Balance.
 		BalanceConversionFailed,
+		/// An `AccountID32` account tried to interact with the pallet without having a mapping.
+		///
+		/// Call [`Pallet::map_account`] in order to create a mapping for the account.
+		AccountUnmapped,
+		/// Tried to map an account that is already mapped.
+		AccountAlreadyMapped,
 	}
 
 	/// A reason for the pallet contracts placing a hold on funds.
@@ -563,6 +567,8 @@ pub mod pallet {
 		CodeUploadDepositReserve,
 		/// The Pallet has reserved it for storage deposit.
 		StorageDepositReserve,
+		/// Deposit for creating an address mapping in [`AddressSuffix`].
+		AddressMapping,
 	}
 
 	/// A mapping from a contract's code hash to its code.
@@ -589,6 +595,14 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(crate) type DeletionQueueCounter<T: Config> =
 		StorageValue<_, DeletionQueueManager<T>, ValueQuery>;
+
+	/// Map a Ethereum address to its original `AccountId32`.
+	///
+	/// Stores the last 12 byte for addresses that were originally an `AccountId32` instead
+	/// of an `H160`. Register your `AccountId32` using [`Pallet::map_account`] in order to
+	/// use it with this pallet.
+	#[pallet::storage]
+	pub(crate) type AddressSuffix<T: Config> = StorageMap<_, Identity, H160, [u8; 12]>;
 
 	#[pallet::extra_constants]
 	impl<T: Config> Pallet<T> {
@@ -943,6 +957,51 @@ pub mod pallet {
 				contract.code_hash = code_hash;
 				Ok(())
 			})
+		}
+
+		/// Register the callers account id so that it can be used in contract interactions.
+		///
+		/// This will error if the origin is already mapped or is a eth native `Address20`. It will
+		/// take a deposit that can be released by calling [`Self::unmap_account`].
+		#[pallet::call_index(7)]
+		#[pallet::weight(T::WeightInfo::map_account())]
+		pub fn map_account(origin: OriginFor<T>) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			T::AddressMapper::map(&origin)
+		}
+
+		/// Unregister the callers account id in order to free the deposit.
+		///
+		/// There is no reason to ever call this function other than freeing up the deposit.
+		/// This is only useful when the account should no longer be used.
+		#[pallet::call_index(8)]
+		#[pallet::weight(T::WeightInfo::unmap_account())]
+		pub fn unmap_account(origin: OriginFor<T>) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			T::AddressMapper::unmap(&origin)
+		}
+
+		/// Dispatch an `call` with the origin set to the callers fallback address.
+		///
+		/// Every `AccountId32` can control its corresponding fallback account. The fallback account
+		/// is the `AccountId20` with the last 12 bytes set to `0xEE`. This is essentially a
+		/// recovery function in case an `AccountId20` was used without creating a mapping first.
+		#[pallet::call_index(9)]
+		#[pallet::weight({
+			let dispatch_info = call.get_dispatch_info();
+			(
+				T::WeightInfo::dispatch_as_fallback_account().saturating_add(dispatch_info.weight),
+				dispatch_info.class
+			)
+		})]
+		pub fn dispatch_as_fallback_account(
+			origin: OriginFor<T>,
+			call: alloc::boxed::Box<<T as Config>::RuntimeCall>,
+		) -> DispatchResultWithPostInfo {
+			let origin = ensure_signed(origin)?;
+			let unmapped_account =
+				T::AddressMapper::to_fallback_account_id(&T::AddressMapper::to_address(&origin));
+			call.dispatch(RawOrigin::Signed(unmapped_account).into())
 		}
 	}
 }
