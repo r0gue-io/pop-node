@@ -1,7 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::env::DefaultEnvironment;
-use ink::env::Environment;
+use ink::{env::Environment, prelude::*};
 use pop_api::{
 	fungibles::{self as api, events::Created},
 	primitives::TokenId,
