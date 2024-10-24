@@ -377,7 +377,7 @@ mod tests {
 			NonFungibles(OwnerOf { collection: 1, item: 1 }),
 			NonFungibles(GetAttribute {
 				collection: 0,
-				item: Some(0),
+				item: 0,
 				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
 				key: bounded_vec![],
 			}),
