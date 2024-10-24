@@ -1,7 +1,8 @@
 [package]
 authors = [ "R0GUE <go@r0gue.io>" ]
+description = "Contract for testing environment integration."
 edition = "2021"
-name = "fungibles"
+name = "environment"
 version = "0.1.0"
 
 [dependencies]

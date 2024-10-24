@@ -16,6 +16,7 @@ log = "0.4.22"
 pallet-assets = { version = "37.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
 pallet-revive = { path = "../../pallets/revive", default-features = false }
+pallet-timestamp = { version = "35.0.0", default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
 ] }
@@ -37,6 +38,7 @@ std = [
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-revive/std",
+	"pallet-timestamp/std",
 	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",

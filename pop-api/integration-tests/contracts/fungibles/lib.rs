@@ -14,19 +14,8 @@ use pop_api::{
 	StatusCode,
 };
 
-use ink::env::DefaultEnvironment;
-use ink::env::Environment;
-
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
-type AccountId = <ink::env::DefaultEnvironment as Environment>::AccountId;
-
-fn to_account_id(address: &AccountId) -> AccountId {
-	let mut account_id = AccountId::from([0xEE; 32]);
-	<AccountId as AsMut<[u8; 32]>>::as_mut(&mut account_id)[..20]
-		.copy_from_slice(&<AccountId as AsRef<[u8; 32]>>::as_ref(&address)[..20]);
-	account_id
-}
 #[ink::contract]
 mod fungibles {
 	use super::*;
@@ -76,7 +65,7 @@ mod fungibles {
 		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
 			api::transfer(token, to, value)?;
 			self.env().emit_event(Transfer {
-				from: Some(to_account_id(&self.env().account_id())),
+				from: Some(self.env().account_id()),
 				to: Some(to),
 				value,
 			});
@@ -106,11 +95,8 @@ mod fungibles {
 			value: Balance,
 		) -> Result<()> {
 			api::approve(token, spender, value)?;
-			self.env().emit_event(Approval {
-				owner: to_account_id(&self.env().account_id()),
-				spender,
-				value,
-			});
+			self.env()
+				.emit_event(Approval { owner: self.env().account_id(), spender, value });
 			Ok(())
 		}
 

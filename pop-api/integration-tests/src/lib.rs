@@ -7,13 +7,12 @@ use frame_support::{
 	},
 	weights::Weight,
 };
-use pallet_revive::AddressMapper;
-use pallet_revive::{Code, CollectEvents, ExecReturnValue};
+use pallet_revive::{AddressMapper, Code, CollectEvents, ExecReturnValue};
 use pop_runtime_devnet::{Assets, Revive, Runtime, RuntimeOrigin, System, UNIT};
 use scale::{Decode, Encode};
-use sp_runtime::app_crypto::sp_core;
-use sp_runtime::{AccountId32, BuildStorage, DispatchError};
+use sp_runtime::{app_crypto::sp_core, AccountId32, BuildStorage, DispatchError};
 
+mod environment;
 mod fungibles;
 
 type Balance = u128;
