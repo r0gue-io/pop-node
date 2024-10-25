@@ -44,8 +44,11 @@ mod sponsorships {
 			Ok(())
 		}
 
+		// Execution fees for this contract will be covered by the contract itself
+		// for sponsored accounts.
+		// This call is just here to test and observe the sponsored flows.
 		#[ink(message, payable)]
-		pub fn flip_value(&mut self) -> Result<()> {
+		pub fn flip(&mut self) -> Result<()> {
 			self.value = !self.value;
 			Ok(())
 		}
