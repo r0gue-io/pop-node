@@ -18,11 +18,11 @@ use xcm_builder::{
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
 	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
 };
-use xcm_executor::XcmExecutor;
+use xcm_executor::{traits::OnResponse, XcmExecutor};
 
 use crate::{
-	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
+	AccountId, AllPalletsWithSystem, Balances, Messaging, ParachainInfo, ParachainSystem,
+	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 
 parameter_types! {
@@ -146,7 +146,7 @@ impl xcm_executor::Config for XcmConfig {
 	type MessageExporter = ();
 	type OriginConverter = XcmOriginToTransactDispatchOrigin;
 	type PalletInstancesInfo = AllPalletsWithSystem;
-	type ResponseHandler = PolkadotXcm;
+	type ResponseHandler = ResponseHandler<PolkadotXcm, Messaging>;
 	type RuntimeCall = RuntimeCall;
 	type SafeCallFilter = Everything;
 	type SubscriptionService = PolkadotXcm;
@@ -205,4 +205,40 @@ impl pallet_xcm::Config for Runtime {
 impl cumulus_pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+// TODO: improve
+pub struct ResponseHandler<A, B>(PhantomData<(A, B)>);
+impl<A: OnResponse, B: OnResponse> OnResponse for ResponseHandler<A, B> {
+	fn expecting_response(origin: &Location, query_id: u64, querier: Option<&Location>) -> bool {
+		A::expecting_response(origin, query_id, querier) ||
+			B::expecting_response(origin, query_id, querier)
+	}
+
+	fn on_response(
+		origin: &Location,
+		query_id: u64,
+		querier: Option<&Location>,
+		response: Response,
+		max_weight: Weight,
+		context: &XcmContext,
+	) -> Weight {
+		let weight = Weight::zero();
+		if A::expecting_response(origin, query_id, querier) {
+			weight.saturating_add(A::on_response(
+				origin,
+				query_id,
+				querier,
+				response.clone(),
+				max_weight,
+				context,
+			));
+		}
+		if B::expecting_response(origin, query_id, querier) {
+			weight.saturating_add(B::on_response(
+				origin, query_id, querier, response, max_weight, context,
+			));
+		}
+		weight
+	}
 }

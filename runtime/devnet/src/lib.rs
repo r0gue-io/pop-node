@@ -39,7 +39,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::fungibles;
+use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -194,11 +194,9 @@ type EventRecord = frame_system::EventRecord<
 >;
 
 // Prints debug output of the `contracts` pallet to stdout if the node is
-// started with `-lruntime::contracts=debug`.
-const CONTRACTS_DEBUG_OUTPUT: pallet_contracts::DebugInfo =
-	pallet_contracts::DebugInfo::UnsafeDebug;
-const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
-	pallet_contracts::CollectEvents::UnsafeCollect;
+// started with `-lruntime::revive=trace`.
+const CONTRACTS_DEBUG_OUTPUT: pallet_revive::DebugInfo = pallet_revive::DebugInfo::UnsafeDebug;
+const CONTRACTS_EVENTS: pallet_revive::CollectEvents = pallet_revive::CollectEvents::UnsafeCollect;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -634,6 +632,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(151)]
+	pub type Messaging = messaging::Pallet<Runtime>;
 
 	// Revive
 	#[runtime::pallet_index(255)]
@@ -813,8 +813,8 @@ impl_runtime_apis! {
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
 				storage_deposit_limit.unwrap_or(u128::MAX),
 				input_data,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
 			)
 		}
 
@@ -836,8 +836,8 @@ impl_runtime_apis! {
 				code,
 				data,
 				salt,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
+				CONTRACTS_DEBUG_OUTPUT,
+				CONTRACTS_EVENTS,
 			)
 		}
 

@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::traits::Contains;
+use frame_support::traits::{ConstU32, Contains};
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
 use sp_core::ConstU8;
@@ -11,7 +11,9 @@ use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+	config::{assets::TrustBackedAssetsInstance, xcm::LocalOriginToLocation},
+	fungibles, messaging, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeHoldReason, TransactionByteFee,
 };
 
 mod versioning;
@@ -31,7 +33,10 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
-	FungiblesRevive(fungibles::Read<Runtime>),
+	Fungibles(fungibles::Read<Runtime>),
+	/// Messaging state queries.
+	#[codec(index = 151)]
+	Messaging(messaging::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -42,15 +47,16 @@ impl Readable for RuntimeRead {
 	/// performed.
 	fn weight(&self) -> Weight {
 		match self {
-			RuntimeRead::FungiblesRevive(key) => fungibles::Pallet::weight(key),
+			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
+			RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
 		}
 	}
 
 	/// Performs the read and returns the result.
 	fn read(self) -> Self::Result {
 		match self {
-			RuntimeRead::FungiblesRevive(key) =>
-				RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+			RuntimeRead::Messaging(key) => RuntimeResult::Messaging(messaging::Pallet::read(key)),
 		}
 	}
 }
@@ -61,6 +67,8 @@ impl Readable for RuntimeRead {
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
+	// Messaging state read results.
+	Messaging(messaging::ReadResult<Runtime>),
 }
 
 impl RuntimeResult {
@@ -68,8 +76,30 @@ impl RuntimeResult {
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
+			RuntimeResult::Messaging(result) => result.encode(),
 		}
 	}
+}
+
+impl messaging::Config for Runtime {
+	type ByteFee = TransactionByteFee;
+	type Deposit = Balances;
+	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
+	// much as onchain cost.
+	type IsmpByteFee = ();
+	type IsmpDispatcher = Ismp;
+	type MaxContextLen = ConstU32<64>;
+	type MaxDataLen = ConstU32<1024>;
+	type MaxKeyLen = ConstU32<32>;
+	type MaxKeys = ConstU32<10>;
+	// TODO: size appropriately
+	type MaxRemovals = ConstU32<1024>;
+	// TODO: ensure within the contract buffer bounds
+	type MaxResponseLen = ConstU32<1024>;
+	type OriginConverter = LocalOriginToLocation;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Xcm = PolkadotXcm;
 }
 
 impl fungibles::Config for Runtime {
@@ -132,6 +162,7 @@ pub struct Filter<T>(PhantomData<T>);
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
+		use messaging::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
 				c,
@@ -144,6 +175,11 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						start_destroy { .. } |
 						clear_metadata { .. } |
 						mint { .. } | burn { .. }
+				) | RuntimeCall::Messaging(
+					send { .. } |
+						ismp_get { .. } | ismp_post { .. } |
+						xcm_new_query { .. } |
+						remove { .. }
 				)
 			)
 	}
@@ -152,16 +188,17 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	fn contains(r: &RuntimeRead) -> bool {
 		use fungibles::Read::*;
+		use messaging::Read::*;
 		matches!(
 			r,
-			RuntimeRead::FungiblesRevive(
+			RuntimeRead::Fungibles(
 				TotalSupply(..) |
 					BalanceOf { .. } |
 					Allowance { .. } |
 					TokenName(..) | TokenSymbol(..) |
 					TokenDecimals(..) |
 					TokenExists(..)
-			)
+			) | RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..))
 		)
 	}
 }

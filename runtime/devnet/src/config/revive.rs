@@ -3,15 +3,6 @@ use frame_support::{
 	traits::{ConstBool, ConstU32, ConstU64, Nothing},
 };
 use frame_system::EnsureSigned;
-use pallet_api::Extension;
-use pallet_revive::{
-	chain_extension::{
-		ChainExtension, Environment, Ext, RegisteredChainExtension, Result as ExtensionResult,
-		RetVal, ReturnFlags,
-	},
-	wasm::Memory,
-};
-use sp_std::vec;
 
 use super::api::{self, Config};
 use crate::{
@@ -47,5 +38,5 @@ impl pallet_revive::Config for Runtime {
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
-	type Xcm = ();
+	type Xcm = pallet_xcm::Pallet<Self>;
 }
