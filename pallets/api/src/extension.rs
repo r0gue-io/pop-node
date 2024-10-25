@@ -10,9 +10,9 @@ use pop_chain_extension::{
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 
-/// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within
+/// Encoded version of `pallet_revive::Error::DecodingFailed`, as found within
 /// `DispatchError::ModuleError`.
-pub const DECODING_FAILED_ERROR: [u8; 4] = [11, 0, 0, 0];
+pub const DECODING_FAILED_ERROR: [u8; 4] = [9, 0, 0, 0];
 /// The logging target for the chain extension.
 pub const LOG_TARGET: &str = "pop-api::extension";
 

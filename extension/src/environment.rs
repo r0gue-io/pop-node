@@ -1,16 +1,16 @@
 use core::fmt::Debug;
 
-use codec::{Decode, Encode};
+use codec::Decode;
 use frame_support::pallet_prelude::Weight;
 use pallet_revive::{
 	chain_extension::{ChargedAmount, Result},
 	wasm::Memory,
 	AccountId32Mapper, AddressMapper,
 };
-use sp_core::{crypto::AccountId32, H160};
+use sp_core::crypto::AccountId32;
 use sp_std::vec::Vec;
 
-use crate::{AccountIdOf, Config};
+use crate::AccountIdOf;
 
 /// Provides access to the parameters passed to a chain extension and its execution environment.
 ///
@@ -219,5 +219,5 @@ where
 
 #[test]
 fn default_ext_works() {
-	assert_eq!(().address(), &())
+	assert_eq!(().address(), ())
 }
