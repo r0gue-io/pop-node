@@ -14,6 +14,7 @@ pub mod pallet {
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
+	use pallet_revive::AddressMapper;
 	use sp_runtime::{
 		traits::{AccountIdConversion, SaturatedConversion, Saturating, Zero},
 		Permill,
@@ -176,21 +177,19 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Register a new contract for builder incentives.
+		/// Register a new contract for incentives.
 		///
 		/// # Parameters
+		/// - `origin`: The smart contract's account to be registered.
 		/// - `beneficiary`: The account that will be the beneficiary of the contract incentives.
-		/// - `contract`: The smart contract's account to be registered.
 		#[pallet::call_index(0)]
 		#[pallet::weight(Weight::zero())]
 		pub fn register_contract(
 			origin: OriginFor<T>,
 			beneficiary: T::AccountId,
-			contract: AccountContractId,
 		) -> DispatchResult {
-			// TODO: Check if the caller is the contract owner or the contract itself.
-			ensure_signed(origin)?;
-			// TODO: Deposit to register, manager vs beneficiary?
+			let who = ensure_signed(origin)?;
+			let contract = <T as pallet_revive::Config>::AddressMapper::to_address(&who);
 			ensure!(
 				!RegisteredContracts::<T>::contains_key(&contract),
 				Error::<T>::ContractAlreadyRegistered,
