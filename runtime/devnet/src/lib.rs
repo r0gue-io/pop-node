@@ -25,9 +25,11 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf,
+		fungible::{Balanced, Credit, HoldConsideration},
+		tokens::nonfungibles_v2::Inspect,
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -64,7 +66,9 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
-pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
+pub use sp_runtime::{
+	traits::AccountIdConversion, ExtrinsicInclusionMode, MultiAddress, Perbill, Permill,
+};
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -101,7 +105,10 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_incentives::contract_fee_handler::ContractFeeHandler<
+		Runtime,
+		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	>,
 	cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
@@ -299,6 +306,18 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
+	pub const IncentivesId: PalletId = PalletId(*b"BuildInc");
+	pub const EraDuration: BlockNumber = 10 * MINUTES; // 10 minute for testing, 24 * HOURS for production (1 ERA in Polkadot)
+}
+
+impl pallet_incentives::Config for Runtime {
+	type Currency = Balances;
+	type EraDuration = EraDuration;
+	type PalletId = IncentivesId;
+	type RuntimeEvent = RuntimeEvent;
+}
+
+parameter_types! {
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT;
 }
 
@@ -320,6 +339,45 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct ToIncentivesPot;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToIncentivesPot {
+	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
+		let incentives_pot = IncentivesId::get().into_account_truncating();
+		let amount_fees = amount.peek();
+		let _ = Balances::resolve(&incentives_pot, amount);
+		// Refresh the incentives
+		let _ = Incentives::update_incentives(amount_fees);
+	}
+}
+
+/// Logic for the author to get a portion of fees.
+pub struct ToAuthor;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToAuthor {
+	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
+		if let Some(author) = Authorship::author() {
+			let _ = Balances::resolve(&author, amount);
+		}
+	}
+}
+
+pub struct DealWithFees;
+impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = Credit<AccountId, Balances>>) {
+		if let Some(fees) = fees_then_tips.next() {
+			// TODO: Change numbers -> Now for testing: 50% of fees, to the author, rest goes to
+			// incentives including 100% of the tips.
+			let (to_author, mut incentives) = fees.ration(50, 50);
+			// TODO: Decide what to do with the tips, for now to incentives
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut incentives);
+			}
+			// TODO: Use ToResolve
+			<ToIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
+			<ToAuthor as OnUnbalanced<_>>::on_unbalanced(to_author);
+		}
+	}
+}
+
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = 10 * MICROUNIT;
@@ -328,7 +386,7 @@ parameter_types! {
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
+	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightToFee = WeightToFee;
@@ -634,6 +692,10 @@ mod runtime {
 	pub type Fungibles = fungibles::Pallet<Runtime>;
 	#[runtime::pallet_index(151)]
 	pub type Messaging = messaging::Pallet<Runtime>;
+
+	// Incentives
+	#[runtime::pallet_index(152)]
+	pub type Incentives = pallet_incentives::Pallet<Runtime>;
 
 	// Revive
 	#[runtime::pallet_index(255)]

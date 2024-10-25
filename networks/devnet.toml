@@ -26,6 +26,8 @@ balances = [
     ["5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy", 10000000000000000],
     ["5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw", 10000000000000000],
     ["5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL", 10000000000000000],
+    # Pallet Builder Incentives Account (ED)
+    ["5EYCAe5ZWx63mefx7GoWjmSZq46iS7tYpp2XkRHVRyU2i95M", 10000000],
 ]
 
 [[parachains.collators]]

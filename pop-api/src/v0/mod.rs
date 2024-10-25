@@ -8,6 +8,8 @@ use crate::{
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
+/// APIs for builder incentives.
+pub mod incentives;
 /// APIs for messaging.
 #[cfg(feature = "messaging")]
 pub mod messaging;

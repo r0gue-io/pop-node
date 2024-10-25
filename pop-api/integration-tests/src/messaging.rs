@@ -202,7 +202,7 @@ fn get_ismp_request(ext: &mut TestExternalities) -> ::ismp::router::Request {
 struct Contract((H160, AccountId32));
 impl Contract {
 	fn new() -> Self {
-		Self(instantiate(CONTRACT, INIT_VALUE, vec![]))
+		Self(instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]))
 	}
 
 	fn ismp_get(&self, id: RequestId, request: Get, fee: Balance) -> Result<(), Error> {
