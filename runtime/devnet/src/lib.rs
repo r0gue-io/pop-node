@@ -639,7 +639,7 @@ mod runtime {
 	pub type Fungibles = fungibles::Pallet<Runtime>;
 
 	// Sponsorships
-	#[runtime::pallet_index(151)]
+	#[runtime::pallet_index(153)]
 	pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
 
 	// Revive
