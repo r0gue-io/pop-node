@@ -1,6 +1,7 @@
 use ink::prelude::vec::Vec;
 
 use crate::{
+	constants::MESSAGING,
 	primitives::{AccountId, Balance, BlockNumber},
 	ChainExtensionMethodApi, Result, StatusCode,
 };
@@ -10,7 +11,6 @@ pub mod ismp;
 /// APIs for messaging using Polkadot's Cross-Consensus Messaging (XCM).
 pub mod xcm;
 
-pub(crate) const API: u8 = 151;
 // Dispatchables
 pub(super) const _REQUEST: u8 = 0;
 pub(super) const ISMP_GET: u8 = 1;
@@ -25,11 +25,11 @@ pub(super) const QUERY_ID: u8 = 2;
 pub type RequestId = u64;
 
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
-	crate::v0::build_dispatch(API, dispatchable)
+	crate::v0::build_dispatch(MESSAGING, dispatchable)
 }
 
 fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
-	crate::v0::build_read_state(API, state_query)
+	crate::v0::build_read_state(MESSAGING, state_query)
 }
 
 #[inline]

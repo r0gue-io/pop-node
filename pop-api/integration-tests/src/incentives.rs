@@ -1,7 +1,7 @@
-use frame_support::traits::{fungible::Inspect, Currency, Hooks};
+use frame_support::traits::{fungible::Inspect, Currency};
 use pop_api::primitives::{Era, Error};
 use pop_runtime_devnet::{Balances, Incentives, MINUTES};
-use sp_runtime::{app_crypto::sp_core::H160, Saturating};
+use sp_runtime::app_crypto::sp_core::H160;
 
 use super::*;
 
