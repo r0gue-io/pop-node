@@ -127,11 +127,7 @@ pub mod pallet {
 		/// - `account`: Potential beneficiary of the sponsorship.
 		/// - `sponsor`: The account that could be acting as a sponsor.
 		pub fn is_sponsored_by(account: &T::AccountId, sponsor: &T::AccountId) -> Option<Weight> {
-			if <Sponsorships<T>>::contains_key(sponsor, account) {
-				<Sponsorships<T>>::get(sponsor, account)
-			} else {
-				None
-			}
+			<Sponsorships<T>>::get(sponsor, account)
 		}
 	}
 }
