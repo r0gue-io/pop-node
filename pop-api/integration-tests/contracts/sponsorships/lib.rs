@@ -41,7 +41,7 @@ mod sponsorships {
 		}
 
 		#[ink(message, payable)]
-		pub fn sing_up(&mut self, user: AccountId) -> Result<()> {
+		pub fn sign_up(&mut self, user: AccountId) -> Result<()> {
 			let caller = Self::env().caller();
 			//assert!(caller == self.owner, "Caller is not owner");
 			let beneficiary = user;
