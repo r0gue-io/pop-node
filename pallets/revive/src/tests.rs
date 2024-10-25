@@ -66,8 +66,8 @@ use crate::{
 	wasm::Memory,
 	weights::WeightInfo,
 	AccountId32Mapper, BalanceOf, Code, CodeInfoOf, CollectEvents, Config, ContractInfo,
-	ContractInfoOf, DebugInfo, DefaultAddressMapper, DeletionQueueCounter, Error, HoldReason,
-	Origin, Pallet, PristineCode, H160,
+	ContractInfoOf, DebugInfo, DeletionQueueCounter, Error, HoldReason, Origin, Pallet,
+	PristineCode, H160,
 };
 
 type Block = frame_system::mocking::MockBlock<Test>;

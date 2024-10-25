@@ -1960,7 +1960,7 @@ mod tests {
 		ExtBuilder::default().build().execute_with(|| {
 			place_contract(&BOB, success_ch);
 			set_balance(&ALICE, 100);
-			let balance = get_balance(&BOB_CONTRACT_ID);
+			let balance = get_balance(&BOB_FALLBACK);
 			let origin = Origin::from_account_id(ALICE);
 			let mut storage_meter = storage::meter::Meter::new(&origin, 0, value).unwrap();
 
@@ -1976,7 +1976,7 @@ mod tests {
 			.unwrap();
 
 			assert_eq!(get_balance(&ALICE), 100 - value);
-			assert_eq!(get_balance(&BOB_CONTRACT_ID), balance + value);
+			assert_eq!(get_balance(&BOB_FALLBACK), balance + value);
 		});
 	}
 
@@ -1998,7 +1998,7 @@ mod tests {
 		ExtBuilder::default().build().execute_with(|| {
 			place_contract(&BOB, delegate_ch);
 			set_balance(&ALICE, 100);
-			let balance = get_balance(&BOB_CONTRACT_ID);
+			let balance = get_balance(&BOB_FALLBACK);
 			let origin = Origin::from_account_id(ALICE);
 			let mut storage_meter = storage::meter::Meter::new(&origin, 0, 55).unwrap();
 
@@ -2014,7 +2014,7 @@ mod tests {
 			.unwrap();
 
 			assert_eq!(get_balance(&ALICE), 100 - value);
-			assert_eq!(get_balance(&BOB_CONTRACT_ID), balance + value);
+			assert_eq!(get_balance(&BOB_FALLBACK), balance + value);
 		});
 	}
 
@@ -2636,10 +2636,11 @@ mod tests {
 					),
 					Ok((address, ref output)) if output.data == vec![80, 65, 83, 83] => address
 				);
-				let instantiated_contract_id =
-					<Test as Config>::AddressMapper::to_account_id_contract(
-						&instantiated_contract_address,
-					);
+				let instantiated_contract_id = <<Test as Config>::AddressMapper as AddressMapper<
+					Test,
+				>>::to_fallback_account_id(
+					&instantiated_contract_address
+				);
 
 				// Check that the newly created account has the expected code hash and
 				// there are instantiation event.
@@ -2691,10 +2692,11 @@ mod tests {
 					Ok((address, ref output)) if output.data == vec![70, 65, 73, 76] => address
 				);
 
-				let instantiated_contract_id =
-					<Test as Config>::AddressMapper::to_account_id_contract(
-						&instantiated_contract_address,
-					);
+				let instantiated_contract_id = <<Test as Config>::AddressMapper as AddressMapper<
+					Test,
+				>>::to_fallback_account_id(
+					&instantiated_contract_address
+				);
 
 				// Check that the account has not been created.
 				assert!(ContractInfo::<Test>::load_code_hash(&instantiated_contract_id).is_none());
@@ -2757,10 +2759,11 @@ mod tests {
 				let instantiated_contract_address =
 					*instantiated_contract_address.borrow().as_ref().unwrap();
 
-				let instantiated_contract_id =
-					<Test as Config>::AddressMapper::to_account_id_contract(
-						&instantiated_contract_address,
-					);
+				let instantiated_contract_id = <<Test as Config>::AddressMapper as AddressMapper<
+					Test,
+				>>::to_fallback_account_id(
+					&instantiated_contract_address
+				);
 
 				// Check that the newly created account has the expected code hash and
 				// there are instantiation event.
@@ -2815,7 +2818,7 @@ mod tests {
 			.build()
 			.execute_with(|| {
 				set_balance(&ALICE, 1000);
-				set_balance(&BOB_CONTRACT_ID, 100);
+				set_balance(&BOB_FALLBACK, 100);
 				place_contract(&BOB, instantiator_ch);
 				let origin = Origin::from_account_id(ALICE);
 				let mut storage_meter = storage::meter::Meter::new(&origin, 200, 0).unwrap();
@@ -3278,7 +3281,7 @@ mod tests {
 					EventRecord {
 						phase: Phase::Initialization,
 						event: MetaEvent::System(frame_system::Event::Remarked {
-							sender: BOB_CONTRACT_ID,
+							sender: BOB_FALLBACK,
 							hash: remark_hash
 						}),
 						topics: vec![],
@@ -3362,7 +3365,7 @@ mod tests {
 					EventRecord {
 						phase: Phase::Initialization,
 						event: MetaEvent::System(frame_system::Event::Remarked {
-							sender: BOB_CONTRACT_ID,
+							sender: BOB_FALLBACK,
 							hash: remark_hash
 						}),
 						topics: vec![],
@@ -3426,7 +3429,10 @@ mod tests {
 				)
 				.unwrap();
 
-			let account_id = <Test as Config>::AddressMapper::to_account_id_contract(&addr);
+			let account_id =
+				<<Test as Config>::AddressMapper as AddressMapper<Test>>::to_fallback_account_id(
+					&addr,
+				);
 
 			assert_eq!(System::account_nonce(&ALICE), alice_nonce);
 			assert_eq!(System::account_nonce(ctx.ext.account_id()), 1);
@@ -4219,7 +4225,7 @@ mod tests {
 			.build()
 			.execute_with(|| {
 				set_balance(&ALICE, 1000);
-				set_balance(&BOB_CONTRACT_ID, 100);
+				set_balance(&BOB_FALLBACK, 100);
 				place_contract(&BOB, instantiator_ch);
 				let origin = Origin::from_account_id(ALICE);
 				let mut storage_meter = storage::meter::Meter::new(&origin, 200, 0).unwrap();

@@ -27,7 +27,6 @@ mod benchmarking_dummy;
 mod exec;
 mod gas;
 mod primitives;
-use frame_support::traits::IsType;
 pub use primitives::*;
 use sp_core::U256;
 
@@ -49,22 +48,18 @@ use codec::{Codec, Decode, Encode};
 use environmental::*;
 use frame_support::{
 	dispatch::{
-		DispatchErrorWithPostInfo, DispatchResultWithPostInfo, GetDispatchInfo, Pays,
-		PostDispatchInfo, RawOrigin,
+		DispatchErrorWithPostInfo, DispatchResultWithPostInfo, GetDispatchInfo, PostDispatchInfo,
+		RawOrigin,
 	},
 	ensure,
 	traits::{
 		fungible::{Inspect, Mutate, MutateHold},
-		ConstU32, ConstU64, Contains, EnsureOrigin, Get, Time,
+		ConstU32, ConstU64, Contains, EnsureOrigin, Time,
 	},
 	weights::{Weight, WeightMeter},
 	BoundedVec, RuntimeDebugNoBound,
 };
-use frame_system::{
-	ensure_signed,
-	pallet_prelude::{BlockNumberFor, OriginFor},
-	EventRecord, Pallet as System,
-};
+use frame_system::{pallet_prelude::OriginFor, EventRecord, Pallet as System};
 use scale_info::TypeInfo;
 use sp_core::{H160, H256};
 use sp_runtime::{
