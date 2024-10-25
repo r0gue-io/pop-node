@@ -14,7 +14,6 @@ pub mod pallet {
 		PalletId,
 	};
 	use frame_system::pallet_prelude::*;
-	use pallet_revive::AddressMapper;
 	use sp_runtime::{
 		traits::{AccountIdConversion, SaturatedConversion, Saturating, Zero},
 		Permill,
@@ -46,15 +45,15 @@ pub mod pallet {
 
 	/// Registered contracts to their corresponding beneficiaries.
 	#[pallet::storage]
-	pub type RegisteredContracts<T> =
-		StorageMap<_, Twox64Concat, AccountContractId, AccountIdOf<T>>;
+	pub(crate) type RegisteredContracts<T> =
+		StorageMap<_, Twox64Concat, AccountIdOf<T>, AccountIdOf<T>>;
 
 	/// Tracks the usage of each contract by era.
 	#[pallet::storage]
 	pub(super) type ContractUsagePerEra<T: Config> = StorageDoubleMap<
 		_,
 		Twox64Concat,
-		AccountContractId,
+		AccountIdOf<T>,
 		Twox64Concat,
 		EraNumber,
 		BalanceOf<T>,
@@ -63,7 +62,8 @@ pub mod pallet {
 
 	/// Information about each era.
 	#[pallet::storage]
-	pub type EraInformation<T> = StorageMap<_, Twox64Concat, EraNumber, EraInfo<T>, ValueQuery>;
+	pub(super) type EraInformation<T> =
+		StorageMap<_, Twox64Concat, EraNumber, EraInfo<T>, ValueQuery>;
 
 	/// Current era number.
 	#[pallet::storage]
@@ -75,14 +75,14 @@ pub mod pallet {
 		/// A smart contract has been called.
 		ContractCalled {
 			/// The smart contract's account that was called.
-			contract: AccountContractId,
+			contract: AccountIdOf<T>,
 		},
 		/// A smart contract has been registered to receive rewards.
 		ContractRegistered {
 			/// The beneficiary of the incentives.
 			beneficiary: T::AccountId,
 			/// The smart contract's account being registered.
-			contract: AccountContractId,
+			contract: AccountIdOf<T>,
 		},
 		/// A new era has started.
 		NewEra {
@@ -121,12 +121,12 @@ pub mod pallet {
 	pub struct GenesisConfig<T: Config> {
 		pub starting_era: EraNumber,
 		#[serde(skip)]
-		pub _config: core::marker::PhantomData<T>,
+		pub _config: PhantomData<T>,
 	}
 
 	impl<T: Config> Default for GenesisConfig<T> {
 		fn default() -> Self {
-			Self { starting_era: 0, _config: core::marker::PhantomData }
+			Self { starting_era: 0, _config: PhantomData }
 		}
 	}
 
@@ -188,8 +188,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			beneficiary: T::AccountId,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			let contract = <T as pallet_revive::Config>::AddressMapper::to_address(&who);
+			let contract = ensure_signed(origin)?;
 			ensure!(
 				!RegisteredContracts::<T>::contains_key(&contract),
 				Error::<T>::ContractAlreadyRegistered,
@@ -205,41 +204,37 @@ pub mod pallet {
 		///
 		/// Parameters:
 		/// - `contract`: The account of the smart contract for which rewards are being claimed.
-		/// - `era_to_claim`: The era for which rewards are being claimed. Must be the current era.
+		/// - `era`: The era for which rewards are being claimed. Must be the current era.
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::zero())]
+		// TODO: allow multiple eras
 		pub fn claim_rewards(
 			origin: OriginFor<T>,
-			contract: AccountContractId,
-			era_to_claim: EraNumber,
+			contract: AccountIdOf<T>,
+			era: EraNumber,
 		) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 			let beneficiary = RegisteredContracts::<T>::get(&contract)
 				.ok_or(Error::<T>::ContractNotRegistered)?;
-			// TODO: Think if has to be called by the beneficiary, or anyone can call it.
-			ensure!(beneficiary == who, Error::<T>::NotAuthorizedToClaimRewards);
-			ensure!(
-				CurrentEra::<T>::get() > era_to_claim,
-				Error::<T>::CannotClaimRewardsForCurrentEra
-			);
+			ensure!(CurrentEra::<T>::get() > era, Error::<T>::CannotClaimRewardsForCurrentEra);
 			// TODO: If already claimed, or is 0, so no need to calculate anything else.
 			// TODO: Check if is too late to claim rewards
-			let contract_fees = crate::ContractUsagePerEra::<T>::take(&contract, era_to_claim);
-			let era_info = crate::EraInformation::<T>::get(era_to_claim);
+			let contract_fees = ContractUsagePerEra::<T>::take(&contract, era);
+			let era_info = EraInformation::<T>::get(era);
 			let calculated_rewards = Self::calculate_contract_share(
 				contract_fees,
 				era_info.contract_fee_total,
 				era_info.total_fee_amount,
 			);
 			// Transfer the funds to the beneficiary
-			<T as pallet::Config>::Currency::transfer(
+			<T as Config>::Currency::transfer(
 				&Self::get_pallet_account(),
 				&beneficiary,
 				calculated_rewards,
 				AllowDeath,
 			)?;
 			// Reset the contract fees for the era.
-			crate::ContractUsagePerEra::<T>::remove(&contract, era_to_claim);
+			ContractUsagePerEra::<T>::remove(&contract, era);
 			Self::deposit_event(Event::IncentivesClaimed {
 				beneficiary,
 				amount: calculated_rewards,
@@ -247,22 +242,22 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Deposit funds into the  reward pool.
+		/// Deposit funds into the reward pool.
 		///
 		/// Parameters:
-		/// - 'amount': Amount to be send.
+		/// - 'amount': Amount to be deposited.
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::zero())]
 		pub fn deposit_funds(origin: OriginFor<T>, amount: BalanceOf<T>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			<T as pallet::Config>::Currency::transfer(
+			<T as Config>::Currency::transfer(
 				&who,
 				&Self::get_pallet_account(),
 				amount,
 				AllowDeath,
 			)?;
 			let current_era = CurrentEra::<T>::get();
-			crate::EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
+			EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
 				if let Some(era_info) = maybe_era_info {
 					era_info.add_total_fee(amount);
 				}
@@ -304,11 +299,29 @@ pub mod pallet {
 
 		pub fn update_incentives(amount: BalanceOf<T>) {
 			let current_era = CurrentEra::<T>::get();
-			crate::EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
+			EraInformation::<T>::mutate_exists(current_era, |maybe_era_info| {
 				if let Some(era_info) = maybe_era_info {
 					era_info.add_total_fee(amount);
 				}
 			});
+		}
+
+		pub fn is_registered(account: &T::AccountId) -> bool {
+			RegisteredContracts::<T>::contains_key(account)
+		}
+
+		// For testing only
+		#[cfg(feature = "std")]
+		pub fn accrue_fees(now: BlockNumberFor<T>, contract: &AccountIdOf<T>, fees: BalanceOf<T>) {
+			Pallet::<T>::on_initialize(now);
+			let era = CurrentEra::<T>::get();
+			ContractUsagePerEra::<T>::mutate(contract, era, |contract_fees| {
+				*contract_fees = contract_fees.saturating_add(fees)
+			});
+			EraInformation::<T>::mutate(era, |era_info| {
+				era_info.add_contract_fee(fees);
+			});
+			Self::update_incentives(fees);
 		}
 	}
 }

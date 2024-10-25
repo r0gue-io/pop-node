@@ -163,6 +163,7 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
 		use messaging::Call::*;
+		use pallet_incentives::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
 				c,
@@ -180,6 +181,8 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						ismp_get { .. } | ismp_post { .. } |
 						xcm_new_query { .. } |
 						remove { .. }
+				) | RuntimeCall::Incentives(
+					register_contract { .. } | claim_rewards { .. } | deposit_funds { .. }
 				)
 			)
 	}

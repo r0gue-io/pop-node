@@ -4,6 +4,7 @@ use frame_support::{
 	pallet_prelude::{Decode, Encode, TypeInfo},
 	traits::{fungible::Inspect, IsSubType, IsType},
 };
+use pallet_revive::AddressMapper;
 use pallet_transaction_payment::OnChargeTransaction;
 use scale_info::StaticTypeInfo;
 use sp_core::{crypto::AccountId32, U256};
@@ -109,7 +110,7 @@ where
 		// imbalance resulting from withdrawing the fee
 		LiquidityInfoOf<T>,
 		// contract address.
-		Option<AccountContractId>,
+		Option<Self::AccountId>,
 	);
 
 	// From the outside this extension should be "invisible", because it just extends the wrapped
@@ -144,7 +145,7 @@ where
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
 		let contract = if let Some(pallet_revive::Call::call { dest, .. }) = call.is_sub_type() {
-			Some(dest.clone())
+			Some(<T as pallet_revive::Config>::AddressMapper::to_account_id(dest))
 		} else {
 			None
 		};

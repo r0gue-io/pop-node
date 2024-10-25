@@ -193,7 +193,7 @@ fn xcm_send_works() {
 struct Contract((H160, AccountId32));
 impl Contract {
 	fn new() -> Self {
-		Self(instantiate(CONTRACT, INIT_VALUE, vec![]))
+		Self(instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]))
 	}
 
 	fn caller(&self) -> AccountId32 {
