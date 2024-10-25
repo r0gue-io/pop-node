@@ -8,7 +8,6 @@
 
 use constants::*;
 pub use errors::*;
-pub use events::*;
 pub use traits::*;
 
 use crate::{

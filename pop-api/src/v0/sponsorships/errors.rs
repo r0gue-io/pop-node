@@ -14,6 +14,8 @@ use super::*;
 pub enum SponsorshipsError {
 	/// An unspecified or unknown error occurred.
 	Other(StatusCode),
+	/// The account is already being sponsored.
+	AlreadySponsored,
 	/// This action cannot be sponsored.
 	CantSponsor,
 	/// The cost is higher than the max sponsored.
@@ -29,8 +31,9 @@ impl From<StatusCode> for SponsorshipsError {
 	fn from(value: StatusCode) -> Self {
 		let encoded = value.0.to_le_bytes();
 		match encoded {
-			[_, SPONSORSHIPS, 0, _] => SponsorshipsError::CantSponsor,
-			[_, SPONSORSHIPS, 1, _] => SponsorshipsError::SponsorshipOutOfLimit,
+			[_, SPONSORSHIPS, 0, _] => SponsorshipsError::AlreadySponsored,
+			[_, SPONSORSHIPS, 1, _] => SponsorshipsError::CantSponsor,
+			[_, SPONSORSHIPS, 2, _] => SponsorshipsError::SponsorshipOutOfLimits,
 			_ => SponsorshipsError::Other(value),
 		}
 	}

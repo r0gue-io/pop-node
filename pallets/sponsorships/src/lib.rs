@@ -73,7 +73,7 @@ pub mod pallet {
 		/// This action cannot be sponsored.
 		CantSponsor,
 		/// The cost is higher than the max sponsored.
-		SponsorshipOutOfLimit,
+		SponsorshipOutOfLimits,
 	}
 
 	#[pallet::call]

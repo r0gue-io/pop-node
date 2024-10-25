@@ -3,11 +3,9 @@
 use pop_api::{
 	sponsorships::{
 		self as api,
-		events::{NewSponsorship, SponsorshipRemoved},
 	},
 	StatusCode,
 };
-use ink::env::{DefaultEnvironment, Environment};
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
 
@@ -34,11 +32,8 @@ mod sponsorships {
 		#[ink(message, payable)]
 		pub fn sign_up(&mut self, user: AccountId) -> Result<()> {
 			let caller = Self::env().caller();
-			//assert!(caller == self.owner, "Caller is not owner");
-			let beneficiary = user;
-			api::sponsor_account(caller)?;
-			self.env()
-				.emit_event(NewSponsorship { sponsor: self.env().account_id(), beneficiary });
+			assert!(caller == self.owner, "Caller is not owner");
+			api::sponsor_account(user)?;
 			Ok(())
 		}
 
@@ -46,10 +41,6 @@ mod sponsorships {
 		pub fn withdraw_sponsorship(&mut self) -> Result<()> {
 			let beneficiary = self.env().caller();
 			api::remove_sponsorship_for(beneficiary)?;
-			self.env().emit_event(SponsorshipRemoved {
-				was_sponsor: self.env().account_id(),
-				was_beneficiary: beneficiary,
-			});
 			Ok(())
 		}
 
