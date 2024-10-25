@@ -53,9 +53,8 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	ext.execute_with(|| System::set_block_number(1));
 	// register account mappings
 	ext.execute_with(|| {
-		Revive::map_account(RuntimeOrigin::signed(ALICE));
-		Revive::map_account(RuntimeOrigin::signed(BOB));
-		Revive::map_account(RuntimeOrigin::signed(FERDIE));
+		Revive::map_account(RuntimeOrigin::signed(ALICE)).unwrap();
+		Revive::map_account(RuntimeOrigin::signed(BOB)).unwrap();
 	});
 	ext
 }
