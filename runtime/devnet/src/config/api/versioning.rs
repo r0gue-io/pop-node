@@ -180,7 +180,7 @@ mod tests {
 
 	#[test]
 	fn from_versioned_runtime_read_to_runtime_read_works() {
-		let read = RuntimeRead::FungiblesRevive(fungibles::Read::<Runtime>::TotalSupply(42));
+		let read = RuntimeRead::Fungibles(fungibles::Read::<Runtime>::TotalSupply(42));
 		assert_eq!(RuntimeRead::from(VersionedRuntimeRead::V0(read.clone())), read);
 	}
 

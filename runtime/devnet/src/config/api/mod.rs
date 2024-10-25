@@ -31,7 +31,7 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
-	FungiblesRevive(fungibles::Read<Runtime>),
+	Fungibles(fungibles::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -42,14 +42,14 @@ impl Readable for RuntimeRead {
 	/// performed.
 	fn weight(&self) -> Weight {
 		match self {
-			RuntimeRead::FungiblesRevive(key) => fungibles::Pallet::weight(key),
+			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
 		}
 	}
 
 	/// Performs the read and returns the result.
 	fn read(self) -> Self::Result {
 		match self {
-			RuntimeRead::FungiblesRevive(key) =>
+			RuntimeRead::Fungibles(key) =>
 				RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 		}
 	}
@@ -157,7 +157,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 		use fungibles::Read::*;
 		matches!(
 			r,
-			RuntimeRead::FungiblesRevive(
+			RuntimeRead::Fungibles(
 				TotalSupply(..) |
 					BalanceOf { .. } |
 					Allowance { .. } |
@@ -236,13 +236,13 @@ mod tests {
 	fn filter_allows_fungibles_reads() {
 		use super::{fungibles::Read::*, RuntimeRead::*};
 		const READS: [RuntimeRead; 7] = [
-			FungiblesRevive(TotalSupply(1)),
-			FungiblesRevive(BalanceOf { token: 1, owner: ACCOUNT }),
-			FungiblesRevive(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
-			FungiblesRevive(TokenName(1)),
-			FungiblesRevive(TokenSymbol(1)),
-			FungiblesRevive(TokenDecimals(10)),
-			FungiblesRevive(TokenExists(1)),
+			Fungibles(TotalSupply(1)),
+			Fungibles(BalanceOf { token: 1, owner: ACCOUNT }),
+			Fungibles(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
+			Fungibles(TokenName(1)),
+			Fungibles(TokenSymbol(1)),
+			Fungibles(TokenDecimals(10)),
+			Fungibles(TokenExists(1)),
 		];
 
 		for read in READS {
