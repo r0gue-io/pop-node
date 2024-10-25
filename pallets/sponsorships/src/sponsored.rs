@@ -2,7 +2,6 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	traits::IsSubType,
-	weights::Weight,
 };
 use pallet_revive::AddressMapper;
 use scale_info::{StaticTypeInfo, TypeInfo};
@@ -58,7 +57,9 @@ where
 	>>::Balance: TryFrom<U256>,
 	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
 {
-	fn is_contracts_call(call: &<T as frame_system::Config>::RuntimeCall) -> Option<T::AccountId> {
+	fn is_contracts_call(
+		call: &<T as frame_system::Config>::RuntimeCall,
+	) -> Option<AccountIdOf<T>> {
 		match call.is_sub_type() {
 			Some(pallet_revive::Call::<T>::call { dest, .. }) => {
 				let account_id = <T as pallet_revive::Config>::AddressMapper::to_account_id(dest);
@@ -68,14 +69,17 @@ where
 		}
 	}
 
-	fn is_sponsored(who: &T::AccountId, contract: &T::AccountId) -> Option<Weight> {
+	fn is_sponsored(who: &AccountIdOf<T>, contract: &AccountIdOf<T>) -> Option<BalanceOf<T>> {
 		Pallet::<T>::is_sponsored_by(who, contract)
 	}
 }
 
 impl<
 		T: Config + Send + Sync,
-		S: SignedExtension<AccountId = T::AccountId, Call = <T as frame_system::Config>::RuntimeCall>,
+		S: SignedExtension<
+			AccountId = AccountIdOf<T>,
+			Call = <T as frame_system::Config>::RuntimeCall,
+		>,
 	> SignedExtension for Sponsored<T, S>
 where
 	<T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
@@ -89,7 +93,7 @@ where
 	>>::Balance: TryFrom<U256>,
 	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
 {
-	type AccountId = T::AccountId;
+	type AccountId = AccountIdOf<T>;
 	type AdditionalSigned = S::AdditionalSigned;
 	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = (Option<Self::AccountId>, <S as SignedExtension>::Pre);
@@ -107,8 +111,6 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		// Assure that whoever has to pay for fees, has enough balance.
-
 		let who = Self::is_contracts_call(call)
 			.and_then(|contract| {
 				if Self::is_sponsored(&who, &contract).is_some() {

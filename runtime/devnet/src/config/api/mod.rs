@@ -49,8 +49,7 @@ impl Readable for RuntimeRead {
 	/// Performs the read and returns the result.
 	fn read(self) -> Self::Result {
 		match self {
-			RuntimeRead::Fungibles(key) =>
-				RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 		}
 	}
 }

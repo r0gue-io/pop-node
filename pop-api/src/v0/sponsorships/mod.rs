@@ -21,10 +21,11 @@ pub mod traits;
 ///
 /// # Parameters
 /// - `beneficiary` - The account to be sponsored.
+/// - `amount`: How much `beneficiary` is sponsored for.
 #[inline]
-pub fn sponsor_account(beneficiary: AccountId) -> Result<()> {
+pub fn sponsor_account(beneficiary: AccountId, amount: Balance) -> Result<()> {
 	build_dispatch(SPONSOR_ACCOUNT)
-		.input::<AccountId>()
+		.input::<(AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(beneficiary))
@@ -35,7 +36,7 @@ pub fn sponsor_account(beneficiary: AccountId) -> Result<()> {
 /// # Parameters
 /// - `beneficiary` - The account which will no longer be sponsored by caller.
 #[inline]
-pub fn remove_sponsorship_for(account: AccountId) -> Result<()> {
+pub fn remove_sponsorship_for(beneficiary: AccountId) -> Result<()> {
 	build_dispatch(REMOVE_SPONSORSHIP)
 		.input::<AccountId>()
 		.output::<Result<()>, true>()
@@ -43,10 +44,25 @@ pub fn remove_sponsorship_for(account: AccountId) -> Result<()> {
 		.call(&(account))
 }
 
+/// Set the value of an existing sponsorship to a given amount.
+///
+/// Parameters
+/// - `beneficiary`: Account of the beneficiary.
+/// - `new_amount`: The new amount for the sponsorship.
+#[inline]
+pub fn set_sponsorship_amount(beneficiary: AccountId, amount: Balance) -> Result<()> {
+	build_dispatch(SET_SPONSORSHIP_AMOUNT)
+		.input::<(AccountId, Balance)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(beneficiary))
+}
+
 mod constants {
 	///
 	pub(super) const SPONSOR_ACCOUNT: u8 = 0;
 	pub(super) const REMOVE_SPONSORSHIP: u8 = 1;
+	pub(super) const SET_SPONSORSHIP_AMOUNT: u8 =2;
 }
 
 // Helper method to build a dispatch call.

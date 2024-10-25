@@ -18,6 +18,8 @@ pub enum SponsorshipsError {
 	AlreadySponsored,
 	/// This action cannot be sponsored.
 	CantSponsor,
+	/// The sponsorship doesn't exist.
+	UnknownSponsorship,
 	/// The cost is higher than the max sponsored.
 	SponsorshipOutOfLimits,
 }
@@ -33,7 +35,8 @@ impl From<StatusCode> for SponsorshipsError {
 		match encoded {
 			[_, SPONSORSHIPS, 0, _] => SponsorshipsError::AlreadySponsored,
 			[_, SPONSORSHIPS, 1, _] => SponsorshipsError::CantSponsor,
-			[_, SPONSORSHIPS, 2, _] => SponsorshipsError::SponsorshipOutOfLimits,
+			[_, SPONSORSHIPS, 2, _] => SponsorshipsError::UnknownSponsorship,
+			[_, SPONSORSHIPS, 3, _] => SponsorshipsError::SponsorshipOutOfLimits,
 			_ => SponsorshipsError::Other(value),
 		}
 	}
@@ -97,11 +100,19 @@ mod tests {
 
 		assert_eq!(
 			into_error::<SponsorshipsError>(Module { index: SPONSORSHIPS, error: [0, 0] }),
-			SponsorshipsError::CantSponsor
+			SponsorshipsError::AlreadySponsored
 		);
 		assert_eq!(
 			into_error::<SponsorshipsError>(Module { index: SPONSORSHIPS, error: [1, 0] }),
-			SponsorshipsError::SponsorshipOutOfLimit
+			SponsorshipsError::CantSponsor
+		);
+		assert_eq!(
+			into_error::<SponsorshipsError>(Module { index: SPONSORSHIPS, error: [2, 0] }),
+			SponsorshipsError::UnknownSponsorship
+		);
+		assert_eq!(
+			into_error::<SponsorshipsError>(Module { index: SPONSORSHIPS, error: [3, 0] }),
+			SponsorshipsError::SponsorshipOutOfLimits
 		);
 	}
 }
