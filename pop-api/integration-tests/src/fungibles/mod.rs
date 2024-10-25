@@ -24,7 +24,8 @@ const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.riscv";
 #[test]
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(total_supply(&addr, TOKEN_ID), Ok(Assets::total_supply(TOKEN_ID)));
@@ -40,7 +41,8 @@ fn total_supply_works() {
 #[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(balance_of(&addr, TOKEN_ID, BOB), Ok(Assets::balance(TOKEN_ID, BOB)));
@@ -56,7 +58,8 @@ fn balance_of_works() {
 #[test]
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -78,7 +81,8 @@ fn allowance_works() {
 #[test]
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
@@ -120,7 +124,8 @@ fn transfer_works() {
 #[test]
 fn transfer_from_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
@@ -169,14 +174,15 @@ fn transfer_from_works() {
 #[test]
 fn approve_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, 0, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, 0, function_selector("new"), vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
 		assert_eq!(approve(&addr, 0, &BOB, amount), Err(Module { index: 52, error: [3, 0] }));
 		let token = assets::create_and_mint_to(&ALICE, 0, &account_id, amount);
 		assert_eq!(approve(&addr, token, &BOB, amount), Err(ConsumerRemaining));
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![1]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![1]);
 		// Create token with Alice as owner and mint `amount` to contract address.
 		let token = assets::create_and_mint_to(&ALICE, 1, &account_id, amount);
 		// Token is not live, i.e. frozen or being destroyed.
@@ -211,7 +217,7 @@ fn increase_allowance_works() {
 	new_test_ext().execute_with(|| {
 		let amount: Balance = 100 * UNIT;
 		// Instantiate a contract without balance - test `ConsumerRemaining.
-		let (addr, account_id) = instantiate(CONTRACT, 0, vec![]);
+		let (addr, account_id) = instantiate(CONTRACT, 0, function_selector("new"), vec![]);
 		// Token does not exist.
 		assert_eq!(
 			increase_allowance(&addr, 0, &BOB, amount),
@@ -221,7 +227,8 @@ fn increase_allowance_works() {
 		assert_eq!(increase_allowance(&addr, token, &BOB, amount), Err(ConsumerRemaining));
 
 		// Instantiate a contract with balance.
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![1]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![1]);
 		// Create token with Alice as owner and mint `amount` to contract address.
 		let token = assets::create_and_mint_to(&ALICE, 1, &account_id, amount);
 		// Token is not live, i.e. frozen or being destroyed.
@@ -250,7 +257,8 @@ fn increase_allowance_works() {
 #[test]
 fn decrease_allowance_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Create token and mint `amount` to contract address, then approve Bob to spend `amount`.
@@ -290,7 +298,8 @@ fn decrease_allowance_works() {
 #[test]
 fn token_metadata_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		let name: Vec<u8> = vec![11, 12, 13];
 		let symbol: Vec<u8> = vec![21, 22, 23];
 		let decimals: u8 = 69;
@@ -326,7 +335,7 @@ fn token_metadata_works() {
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		// Instantiate a contract without balance for fees.
-		let (addr, account_id) = instantiate(CONTRACT, 0, vec![0]);
+		let (addr, account_id) = instantiate(CONTRACT, 0, function_selector("new"), vec![0]);
 		// No balance to pay for fees.
 		assert_eq!(
 			create(&addr, TOKEN_ID, &account_id, 1),
@@ -334,7 +343,7 @@ fn create_works() {
 		);
 
 		// Instantiate a contract without balance for deposit.
-		let (addr, account_id) = instantiate(CONTRACT, 100, vec![1]);
+		let (addr, account_id) = instantiate(CONTRACT, 100, function_selector("new"), vec![1]);
 		// No balance to pay the deposit.
 		assert_eq!(
 			create(&addr, TOKEN_ID, &account_id, 1),
@@ -342,7 +351,8 @@ fn create_works() {
 		);
 
 		// Instantiate a contract with enough balance.
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![2]);
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 0), Err(Module { index: 52, error: [7, 0] }),);
 		// The minimal balance for a token must be non zero.
 		assert_eq!(create(&addr, TOKEN_ID, &BOB, 0), Err(Module { index: 52, error: [7, 0] }),);
@@ -387,7 +397,8 @@ fn instantiate_and_create_fungible_works() {
 #[test]
 fn start_destroy_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![2]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![2]);
 
 		// Token does not exist.
 		assert_eq!(start_destroy(&addr, TOKEN_ID), Err(Module { index: 52, error: [3, 0] }),);
@@ -409,7 +420,8 @@ fn set_metadata_works() {
 		let name = vec![42];
 		let symbol = vec![42];
 		let decimals = 42u8;
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// Token does not exist.
 		assert_eq!(
@@ -458,7 +470,8 @@ fn clear_metadata_works() {
 		let name = vec![42];
 		let symbol = vec![42];
 		let decimals = 42u8;
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// Token does not exist.
 		assert_eq!(clear_metadata(&addr, 0), Err(Module { index: 52, error: [3, 0] }),);
@@ -491,7 +504,8 @@ fn clear_metadata_works() {
 #[test]
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(token_exists(&addr, TOKEN_ID), Ok(Assets::asset_exists(TOKEN_ID)));
@@ -505,7 +519,8 @@ fn token_exists_works() {
 #[test]
 fn mint_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.
@@ -536,7 +551,8 @@ fn mint_works() {
 #[test]
 fn burn_works() {
 	new_test_ext().execute_with(|| {
-		let (addr, account_id) = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		let amount: Balance = 100 * UNIT;
 
 		// Token does not exist.

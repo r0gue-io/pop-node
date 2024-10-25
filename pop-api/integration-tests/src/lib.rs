@@ -8,14 +8,19 @@ use frame_support::{
 	weights::Weight,
 };
 use pallet_revive::{AddressMapper, Code, CollectEvents, ExecReturnValue};
-use pop_runtime_devnet::{config::ismp::Router, Assets, Messaging, Revive, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{
+	config::ismp::Router, Assets, Messaging, Revive, Runtime, RuntimeOrigin, System, UNIT,
+};
 use scale::{Decode, Encode};
-use sp_runtime::{app_crypto::sp_core,
-                 offchain::{testing::TestOffchainExt, OffchainDbExt},
-                 AccountId32, BuildStorage, DispatchError};
+use sp_runtime::{
+	app_crypto::sp_core,
+	offchain::{testing::TestOffchainExt, OffchainDbExt},
+	AccountId32, BuildStorage, DispatchError,
+};
 
 mod environment;
 mod fungibles;
+mod incentives;
 mod messaging;
 
 type Balance = u128;
@@ -80,7 +85,12 @@ fn bare_call(
 }
 
 // Deploy, instantiate and return contract address.
-fn instantiate(contract: &str, init_value: u128, _salt: Vec<u8>) -> (sp_core::H160, AccountId32) {
+fn instantiate(
+	contract: &str,
+	init_value: u128,
+	data: Vec<u8>,
+	_salt: Vec<u8>,
+) -> (sp_core::H160, AccountId32) {
 	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
 
 	let result = Revive::bare_instantiate(
@@ -89,7 +99,7 @@ fn instantiate(contract: &str, init_value: u128, _salt: Vec<u8>) -> (sp_core::H1
 		GAS_LIMIT,
 		1 * 1_000_000_000_000,
 		Code::Upload(wasm_binary),
-		function_selector("new"),
+		data,
 		None,
 		DEBUG_OUTPUT,
 		CollectEvents::Skip,

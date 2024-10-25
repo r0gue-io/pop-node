@@ -16,6 +16,7 @@ ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", 
 log = "0.4.22"
 pallet-assets = { version = "37.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
+pallet-incentives = { path = "../../pallets/incentives", default-features = false }
 pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }
 pallet-revive = { path = "../../pallets/revive", default-features = false }
 pallet-timestamp = { version = "35.0.0", default-features = false }
@@ -41,6 +42,7 @@ std = [
 	"frame-system/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
+	"pallet-incentives/std",
 	"pallet-revive/std",
 	"pallet-timestamp/std",
 	"pop-api/std",
