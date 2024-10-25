@@ -17,7 +17,7 @@ pub enum SponsorshipsError {
 	/// This action cannot be sponsored.
 	CantSponsor,
 	/// The cost is higher than the max sponsored.
-	SponsorshipOutOfLimit,
+	SponsorshipOutOfLimits,
 }
 
 impl From<StatusCode> for SponsorshipsError {

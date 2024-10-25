@@ -16,7 +16,6 @@ use crate::{
 };
 
 pub mod errors;
-pub mod events;
 pub mod traits;
 
 /// Registers a new sponsorship relation between the caller and an account.
