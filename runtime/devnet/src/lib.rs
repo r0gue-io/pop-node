@@ -105,7 +105,7 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_builder_incentives::contract_fee_handler::ContractFeeHandler<
+	pallet_incentives::contract_fee_handler::ContractFeeHandler<
 		Runtime,
 		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	>,
@@ -306,14 +306,14 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	pub const BuilderIncentivesId: PalletId = PalletId(*b"BuildInc");
+	pub const IncentivesId: PalletId = PalletId(*b"BuildInc");
 	pub const EraDuration: BlockNumber = 10 * MINUTES; // 10 minute for testing, 24 * HOURS for production (1 ERA in Polkadot)
 }
 
-impl pallet_builder_incentives::Config for Runtime {
+impl pallet_incentives::Config for Runtime {
 	type Currency = Balances;
 	type EraDuration = EraDuration;
-	type PalletId = BuilderIncentivesId;
+	type PalletId = IncentivesId;
 	type RuntimeEvent = RuntimeEvent;
 }
 
@@ -339,14 +339,14 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
-pub struct ToBuilderIncentivesPot;
-impl OnUnbalanced<Credit<AccountId, Balances>> for ToBuilderIncentivesPot {
+pub struct ToIncentivesPot;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToIncentivesPot {
 	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
-		let incentives_pot = BuilderIncentivesId::get().into_account_truncating();
+		let incentives_pot = IncentivesId::get().into_account_truncating();
 		let amount_fees = amount.peek();
 		let _ = Balances::resolve(&incentives_pot, amount);
 		// Refresh the incentives
-		let _ = BuilderIncentives::update_incentives(amount_fees);
+		let _ = Incentives::update_incentives(amount_fees);
 	}
 }
 
@@ -372,7 +372,7 @@ impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
 				tips.merge_into(&mut incentives);
 			}
 			// TODO: Use ToResolve
-			<ToBuilderIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
+			<ToIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
 			<ToAuthor as OnUnbalanced<_>>::on_unbalanced(to_author);
 		}
 	}
@@ -693,9 +693,9 @@ mod runtime {
 	#[runtime::pallet_index(151)]
 	pub type Messaging = messaging::Pallet<Runtime>;
 
-	// Builer Incentives
-	#[runtime::pallet_index(151)]
-	pub type BuilderIncentives = pallet_builder_incentives::Pallet<Runtime>;
+	// Incentives
+	#[runtime::pallet_index(152)]
+	pub type Incentives = pallet_incentives::Pallet<Runtime>;
 
 	// Revive
 	#[runtime::pallet_index(255)]

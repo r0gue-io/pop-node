@@ -3,7 +3,7 @@ authors.workspace = true
 description = "Builder incentives pallet, to incentivize builders to build on the platform"
 edition.workspace = true
 license.workspace = true
-name = "pallet-builder-incentives"
+name = "pallet-incentives"
 version = "0.1.0"
 
 [package.metadata.docs.rs]

@@ -2,7 +2,7 @@ use codec::HasCompact;
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	pallet_prelude::{Decode, Encode, TypeInfo},
-	traits::{IsSubType, IsType},
+	traits::{fungible::Inspect, IsSubType, IsType},
 };
 use pallet_transaction_payment::OnChargeTransaction;
 use scale_info::StaticTypeInfo;
@@ -83,7 +83,9 @@ where
 		+ IsSubType<pallet_revive::Call<T>>,
 	OnChargeTransactionBalanceOf<T>:
 		Send + Sync + FixedPointOperand + From<u64> + IsType<BalanceOf<T>>,
-	<ContractsBalanceOf<T> as HasCompact>::Type:
+	<<<T as pallet_revive::Config>::Currency as Inspect<
+	<T as frame_system::Config>::AccountId,
+>>::Balance as HasCompact>::Type:
 		Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
 	<T as frame_system::Config>::RuntimeCall: IsSubType<pallet_revive::Call<T>>,
 	<T as frame_system::Config>::AccountId: From<AccountId32>,
@@ -173,13 +175,13 @@ where
 					);
 					// TODO: This should not be hardcoded here. The 50% is specified in the runtime
 					// for DealWithFees.
-					let builder_incentives_fee = Permill::from_percent(50) * actual_fee;
+					let incentives_fee = Permill::from_percent(50) * actual_fee;
 					let era = crate::CurrentEra::<T>::get();
 					crate::ContractUsagePerEra::<T>::mutate(contract.clone(), era, |fees| {
-						*fees = fees.saturating_add(builder_incentives_fee.into())
+						*fees = fees.saturating_add(incentives_fee.into())
 					});
 					crate::EraInformation::<T>::mutate(era, |era_info| {
-						era_info.add_contract_fee(builder_incentives_fee.into());
+						era_info.add_contract_fee(incentives_fee.into());
 					});
 					Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
 						contract: contract.clone(),
