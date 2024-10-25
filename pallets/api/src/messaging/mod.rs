@@ -323,13 +323,13 @@ pub enum Read<T: Config> {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-pub enum ReadResult<T: Config> {
+pub enum ReadResult {
 	Poll(Option<Status>),
-	Get(Option<BoundedVec<u8, T::MaxResponseLen>>),
+	Get(Option<Vec<u8>>),
 	QueryId(Option<QueryId>),
 }
 
-impl<T: Config> ReadResult<T> {
+impl ReadResult {
 	pub fn encode(&self) -> Vec<u8> {
 		use ReadResult::*;
 		match self {
@@ -342,7 +342,7 @@ impl<T: Config> ReadResult<T> {
 
 impl<T: Config> crate::Read for Pallet<T> {
 	type Read = Read<T>;
-	type Result = ReadResult<T>;
+	type Result = ReadResult;
 
 	fn weight(_read: &Self::Read) -> Weight {
 		// TODO: implement benchmarks
@@ -359,9 +359,8 @@ impl<T: Config> crate::Read for Pallet<T> {
 				})),
 			Read::Get(request) =>
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
-					Message::IsmpResponse { response, .. } => Some(response),
-					Message::XcmResponse { response, .. } =>
-						Some(response.encode().try_into().unwrap()), // todo: handle error
+					Message::IsmpResponse { response, .. } => Some(response.into_inner()),
+					Message::XcmResponse { response, .. } => Some(response.encode()),
 					_ => None,
 				})),
 			Read::QueryId(request) => ReadResult::QueryId(
