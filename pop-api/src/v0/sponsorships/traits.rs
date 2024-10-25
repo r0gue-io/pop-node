@@ -4,7 +4,7 @@ use super::*;
 
 /// The CanSponsor trait.
 #[ink::trait_definition]
-pub trait CanSponsor {
+pub trait IsSponsor {
 	/// Registers a new sponsorship relation between the caller and an account.
 	///
 	/// # Parameters
