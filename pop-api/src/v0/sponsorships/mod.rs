@@ -8,14 +8,12 @@
 
 use constants::*;
 pub use errors::*;
-pub use traits::*;
 
 use crate::{
 	constants::SPONSORSHIPS, primitives::AccountId, ChainExtensionMethodApi, Result, StatusCode,
 };
 
 pub mod errors;
-pub mod traits;
 
 /// Registers a new sponsorship relation between the caller and an account.
 ///

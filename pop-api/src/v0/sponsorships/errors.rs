@@ -113,6 +113,6 @@ mod tests {
 		assert_eq!(
 			into_error::<SponsorshipsError>(Module { index: SPONSORSHIPS, error: [3, 0] }),
 			SponsorshipsError::SponsorshipOutOfLimits
-		);
+		);	
 	}
 }

@@ -1,23 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use frame_support::traits::Currency;
 pub use pallet::*;
 
 pub mod sponsored;
+pub mod types;
 pub mod weights;
-
-/// AccountId alias
-pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-/// Balance alias
-pub(crate) type BalanceOf<T> =
-	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{pallet_prelude::*, traits::ReservableCurrency};
 	use frame_system::pallet_prelude::*;
 
-	use super::{AccountIdOf, BalanceOf};
-	use crate::weights::WeightInfo;
+	use crate::{types::*, weights::WeightInfo};
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -59,6 +52,8 @@ pub mod pallet {
 			sponsor: AccountIdOf<T>,
 			/// The sponsored account.
 			beneficiary: AccountIdOf<T>,
+			/// The sponsored amount
+			amount: BalanceOf<T>,
 		},
 		/// An account is no longer sponsored.
 		SponsorshipRemoved {
@@ -113,10 +108,9 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-
 			// Register new sponsorship.
 			<Sponsorships<T>>::set(&who, &beneficiary, Some(amount));
-			Self::deposit_event(Event::NewSponsorship { sponsor: who, beneficiary });
+			Self::deposit_event(Event::NewSponsorship { sponsor: who, beneficiary, amount });
 			Ok(())
 		}
 

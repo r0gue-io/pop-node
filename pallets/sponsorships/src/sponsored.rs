@@ -2,6 +2,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	traits::IsSubType,
+	weights::Weight,
 };
 use pallet_revive::AddressMapper;
 use scale_info::{StaticTypeInfo, TypeInfo};
@@ -10,6 +11,7 @@ use sp_runtime::{
 	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension},
 	transaction_validity::{TransactionValidity, TransactionValidityError},
 };
+use types::{AccountIdOf, BalanceOf};
 
 use super::*;
 
@@ -111,6 +113,8 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
+		// Assure that whoever has to pay for fees, has enough balance.
+
 		let who = Self::is_contracts_call(call)
 			.and_then(|contract| {
 				if Self::is_sponsored(&who, &contract).is_some() {
