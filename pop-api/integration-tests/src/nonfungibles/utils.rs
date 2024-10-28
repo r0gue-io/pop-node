@@ -85,7 +85,7 @@ pub(super) fn owner_of(
 }
 
 pub(super) fn get_attribute(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	namespace: AttributeNamespace,
@@ -105,7 +105,7 @@ addr: &H160,
 }
 
 pub(super) fn create(
-addr: &H160,
+	addr: &H160,
 	admin: AccountId32,
 	config: CreateCollectionConfig,
 ) -> Result<(), Error> {
@@ -116,7 +116,7 @@ addr: &H160,
 }
 
 pub(super) fn destroy(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	witness: DestroyWitness,
 ) -> Result<(), Error> {
@@ -127,7 +127,7 @@ addr: &H160,
 }
 
 pub(super) fn collection(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 ) -> Result<Option<CollectionDetails>, Error> {
 	let result = do_bare_call("collection", &addr, collection.encode());
@@ -136,7 +136,7 @@ addr: &H160,
 }
 
 pub(super) fn set_attribute(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	namespace: AttributeNamespace,
@@ -157,7 +157,7 @@ addr: &H160,
 }
 
 pub(super) fn clear_attribute(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	namespace: AttributeNamespace,
@@ -170,7 +170,7 @@ addr: &H160,
 }
 
 pub(super) fn set_metadata(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	data: Vec<u8>,
@@ -182,7 +182,7 @@ addr: &H160,
 }
 
 pub(super) fn clear_metadata(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 ) -> Result<(), Error> {
@@ -193,7 +193,7 @@ addr: &H160,
 }
 
 pub(super) fn approve_item_attributes(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	delegate: AccountId32,
@@ -205,7 +205,7 @@ addr: &H160,
 }
 
 pub(super) fn cancel_item_attributes_approval(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	delegate: AccountId32,
@@ -218,7 +218,7 @@ addr: &H160,
 }
 
 pub(super) fn set_max_supply(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	max_supply: u32,
 ) -> Result<(), Error> {
@@ -229,7 +229,7 @@ addr: &H160,
 }
 
 pub(super) fn item_metadata(
-addr: &H160,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 ) -> Result<Option<Vec<u8>>, Error> {
