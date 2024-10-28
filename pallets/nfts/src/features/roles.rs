@@ -17,9 +17,11 @@
 
 //! This module contains helper methods to configure account roles for existing collections.
 
-use crate::*;
 use alloc::{collections::btree_map::BTreeMap, vec::Vec};
+
 use frame_support::pallet_prelude::*;
+
+use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Set the team roles for a specific collection.

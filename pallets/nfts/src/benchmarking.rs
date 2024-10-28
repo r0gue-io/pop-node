@@ -19,7 +19,6 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use super::*;
 use enumflags2::{BitFlag, BitFlags};
 use frame_benchmarking::v1::{
 	account, benchmarks_instance_pallet, whitelist_account, whitelisted_caller, BenchmarkError,
@@ -32,6 +31,7 @@ use frame_support::{
 use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin as SystemOrigin};
 use sp_runtime::traits::{Bounded, One};
 
+use super::*;
 use crate::Pallet as Nfts;
 
 const SEED: u32 = 0;

@@ -15,12 +15,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use super::*;
 use frame_support::traits::OnRuntimeUpgrade;
 use log;
-
 #[cfg(feature = "try-runtime")]
 use sp_runtime::TryRuntimeError;
+
+use super::*;
 
 pub mod v1 {
 	use frame_support::{pallet_prelude::*, weights::Weight};
