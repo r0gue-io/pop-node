@@ -1489,4 +1489,3 @@ impl WeightInfo for () {
 			.saturating_add(Weight::from_parts(0, 2954).saturating_mul(n.into()))
 	}
 }
-

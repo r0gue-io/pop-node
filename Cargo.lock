@@ -8309,6 +8309,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-nfts"
+version = "31.0.0"
+dependencies = [
+ "enumflags2",
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-nfts-runtime-api"
 version = "22.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
