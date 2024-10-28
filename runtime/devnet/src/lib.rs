@@ -25,9 +25,11 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf,
+		fungible::{Balanced, Credit, HoldConsideration},
+		tokens::nonfungibles_v2::Inspect,
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -39,7 +41,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::fungibles;
+use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -55,7 +57,7 @@ pub use pop_runtime_common::{
 };
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256};
+use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H160, H256};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -64,7 +66,9 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
-pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
+pub use sp_runtime::{
+	traits::AccountIdConversion, ExtrinsicInclusionMode, MultiAddress, Perbill, Permill,
+};
 use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
@@ -101,7 +105,10 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	pallet_incentives::contract_fee_handler::ContractFeeHandler<
+		Runtime,
+		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+	>,
 	cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
@@ -194,11 +201,9 @@ type EventRecord = frame_system::EventRecord<
 >;
 
 // Prints debug output of the `contracts` pallet to stdout if the node is
-// started with `-lruntime::contracts=debug`.
-const CONTRACTS_DEBUG_OUTPUT: pallet_contracts::DebugInfo =
-	pallet_contracts::DebugInfo::UnsafeDebug;
-const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
-	pallet_contracts::CollectEvents::UnsafeCollect;
+// started with `-lruntime::revive=trace`.
+const CONTRACTS_DEBUG_OUTPUT: pallet_revive::DebugInfo = pallet_revive::DebugInfo::UnsafeDebug;
+const CONTRACTS_EVENTS: pallet_revive::CollectEvents = pallet_revive::CollectEvents::UnsafeCollect;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -301,6 +306,18 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
+	pub const IncentivesId: PalletId = PalletId(*b"BuildInc");
+	pub const EraDuration: BlockNumber = 10 * MINUTES; // 10 minute for testing, 24 * HOURS for production (1 ERA in Polkadot)
+}
+
+impl pallet_incentives::Config for Runtime {
+	type Currency = Balances;
+	type EraDuration = EraDuration;
+	type PalletId = IncentivesId;
+	type RuntimeEvent = RuntimeEvent;
+}
+
+parameter_types! {
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT;
 }
 
@@ -322,6 +339,45 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
+pub struct ToIncentivesPot;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToIncentivesPot {
+	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
+		let incentives_pot = IncentivesId::get().into_account_truncating();
+		let amount_fees = amount.peek();
+		let _ = Balances::resolve(&incentives_pot, amount);
+		// Refresh the incentives
+		let _ = Incentives::update_incentives(amount_fees);
+	}
+}
+
+/// Logic for the author to get a portion of fees.
+pub struct ToAuthor;
+impl OnUnbalanced<Credit<AccountId, Balances>> for ToAuthor {
+	fn on_nonzero_unbalanced(amount: Credit<AccountId, Balances>) {
+		if let Some(author) = Authorship::author() {
+			let _ = Balances::resolve(&author, amount);
+		}
+	}
+}
+
+pub struct DealWithFees;
+impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
+	fn on_unbalanceds<B>(mut fees_then_tips: impl Iterator<Item = Credit<AccountId, Balances>>) {
+		if let Some(fees) = fees_then_tips.next() {
+			// TODO: Change numbers -> Now for testing: 50% of fees, to the author, rest goes to
+			// incentives including 100% of the tips.
+			let (to_author, mut incentives) = fees.ration(50, 50);
+			// TODO: Decide what to do with the tips, for now to incentives
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut incentives);
+			}
+			// TODO: Use ToResolve
+			<ToIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
+			<ToAuthor as OnUnbalanced<_>>::on_unbalanced(to_author);
+		}
+	}
+}
+
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = 10 * MICROUNIT;
@@ -330,7 +386,7 @@ parameter_types! {
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
+	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightToFee = WeightToFee;
@@ -610,8 +666,8 @@ mod runtime {
 	pub type IsmpParachain = ismp_parachain::Pallet<Runtime>;
 
 	// Contracts
-	#[runtime::pallet_index(40)]
-	pub type Contracts = pallet_contracts::Pallet<Runtime>;
+	// #[runtime::pallet_index(40)]
+	// pub type Contracts = pallet_contracts::Pallet<Runtime>;
 
 	// Proxy
 	#[runtime::pallet_index(41)]
@@ -634,6 +690,16 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(151)]
+	pub type Messaging = messaging::Pallet<Runtime>;
+
+	// Incentives
+	#[runtime::pallet_index(152)]
+	pub type Incentives = pallet_incentives::Pallet<Runtime>;
+
+	// Revive
+	#[runtime::pallet_index(255)]
+	pub type Revive = pallet_revive::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -791,28 +857,26 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord>
-		for Runtime
+
+	impl pallet_revive::ReviveApi<Block, AccountId, Balance, BlockNumber, EventRecord> for Runtime
 	{
 		fn call(
 			origin: AccountId,
-			dest: AccountId,
+			dest: H160,
 			value: Balance,
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
-		) -> pallet_contracts::ContractExecResult<Balance, EventRecord> {
-			let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
-			Contracts::bare_call(
-				origin,
+		) -> pallet_revive::ContractExecResult<Balance, EventRecord> {
+			Revive::bare_call(
+				RuntimeOrigin::signed(origin),
 				dest,
 				value,
-				gas_limit,
-				storage_deposit_limit,
+				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
 				input_data,
 				CONTRACTS_DEBUG_OUTPUT,
 				CONTRACTS_EVENTS,
-				pallet_contracts::Determinism::Enforced,
 			)
 		}
 
@@ -821,17 +885,16 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
-			code: pallet_contracts::Code<Hash>,
+			code: pallet_revive::Code,
 			data: Vec<u8>,
-			salt: Vec<u8>,
-		) -> pallet_contracts::ContractInstantiateResult<AccountId, Balance, EventRecord>
+			salt: Option<[u8; 32]>,
+		) -> pallet_revive::ContractInstantiateResult<Balance, EventRecord>
 		{
-			let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
-			Contracts::bare_instantiate(
-				origin,
+			Revive::bare_instantiate(
+				RuntimeOrigin::signed(origin),
 				value,
-				gas_limit,
-				storage_deposit_limit,
+				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
 				code,
 				data,
 				salt,
@@ -844,17 +907,23 @@ impl_runtime_apis! {
 			origin: AccountId,
 			code: Vec<u8>,
 			storage_deposit_limit: Option<Balance>,
-			determinism: pallet_contracts::Determinism,
-		) -> pallet_contracts::CodeUploadResult<Hash, Balance>
+		) -> pallet_revive::CodeUploadResult<Balance>
 		{
-			Contracts::bare_upload_code(origin, code, storage_deposit_limit, determinism)
+			Revive::bare_upload_code(
+				RuntimeOrigin::signed(origin),
+				code,
+				storage_deposit_limit.unwrap_or(u128::MAX),
+			)
 		}
 
 		fn get_storage(
-			address: AccountId,
-			key: Vec<u8>,
-		) -> pallet_contracts::GetStorageResult {
-			Contracts::get_storage(address, key)
+			address: H160,
+			key: [u8; 32],
+		) -> pallet_revive::GetStorageResult {
+			Revive::get_storage(
+				address,
+				key
+			)
 		}
 	}
 

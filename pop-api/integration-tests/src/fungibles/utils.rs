@@ -1,6 +1,9 @@
 use super::*;
+use crate::sp_core::H160;
+use pallet_revive::AccountId32Mapper;
+use pallet_revive::AddressMapper;
 
-fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) -> ExecReturnValue {
+fn do_bare_call(function: &str, addr: &H160, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);
 	let params = [function, params].concat();
 	bare_call(addr.clone(), params, 0).expect("should work")
@@ -11,14 +14,14 @@ pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecRetur
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
 
-pub(super) fn total_supply(addr: &AccountId32, token_id: TokenId) -> Result<Balance, Error> {
+pub(super) fn total_supply(addr: &H160, token_id: TokenId) -> Result<Balance, Error> {
 	let result = do_bare_call("total_supply", addr, token_id.encode());
 	decoded::<Result<Balance, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn balance_of(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	owner: AccountId32,
 ) -> Result<Balance, Error> {
@@ -29,7 +32,7 @@ pub(super) fn balance_of(
 }
 
 pub(super) fn allowance(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	owner: AccountId32,
 	spender: AccountId32,
@@ -40,35 +43,32 @@ pub(super) fn allowance(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_name(addr: &AccountId32, token_id: TokenId) -> Result<Option<Vec<u8>>, Error> {
+pub(super) fn token_name(addr: &H160, token_id: TokenId) -> Result<Option<Vec<u8>>, Error> {
 	let result = do_bare_call("token_name", addr, token_id.encode());
 	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_symbol(
-	addr: &AccountId32,
-	token_id: TokenId,
-) -> Result<Option<Vec<u8>>, Error> {
+pub(super) fn token_symbol(addr: &H160, token_id: TokenId) -> Result<Option<Vec<u8>>, Error> {
 	let result = do_bare_call("token_symbol", addr, token_id.encode());
 	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_decimals(addr: &AccountId32, token_id: TokenId) -> Result<u8, Error> {
+pub(super) fn token_decimals(addr: &H160, token_id: TokenId) -> Result<u8, Error> {
 	let result = do_bare_call("token_decimals", addr, token_id.encode());
 	decoded::<Result<u8, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn token_exists(addr: &AccountId32, token_id: TokenId) -> Result<bool, Error> {
+pub(super) fn token_exists(addr: &H160, token_id: TokenId) -> Result<bool, Error> {
 	let result = do_bare_call("token_exists", addr, token_id.encode());
 	decoded::<Result<bool, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn transfer(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	to: AccountId32,
 	value: Balance,
@@ -80,7 +80,7 @@ pub(super) fn transfer(
 }
 
 pub(super) fn transfer_from(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	from: AccountId32,
 	to: AccountId32,
@@ -95,7 +95,7 @@ pub(super) fn transfer_from(
 }
 
 pub(super) fn approve(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	spender: &AccountId32,
 	value: Balance,
@@ -107,7 +107,7 @@ pub(super) fn approve(
 }
 
 pub(super) fn increase_allowance(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	spender: &AccountId32,
 	value: Balance,
@@ -119,7 +119,7 @@ pub(super) fn increase_allowance(
 }
 
 pub(super) fn decrease_allowance(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	spender: &AccountId32,
 	value: Balance,
@@ -131,7 +131,7 @@ pub(super) fn decrease_allowance(
 }
 
 pub(super) fn create(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	admin: &AccountId32,
 	min_balance: Balance,
@@ -142,7 +142,7 @@ pub(super) fn create(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn start_destroy(addr: &AccountId32, token_id: TokenId) -> Result<(), Error> {
+pub(super) fn start_destroy(addr: &H160, token_id: TokenId) -> Result<(), Error> {
 	let result = do_bare_call("start_destroy", addr, token_id.encode());
 	match decoded::<Result<(), Error>>(result) {
 		Ok(x) => x,
@@ -151,7 +151,7 @@ pub(super) fn start_destroy(addr: &AccountId32, token_id: TokenId) -> Result<(),
 }
 
 pub(super) fn set_metadata(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	name: Vec<u8>,
 	symbol: Vec<u8>,
@@ -163,14 +163,14 @@ pub(super) fn set_metadata(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn clear_metadata(addr: &AccountId32, token_id: TokenId) -> Result<(), Error> {
+pub(super) fn clear_metadata(addr: &H160, token_id: TokenId) -> Result<(), Error> {
 	let result = do_bare_call("clear_metadata", addr, token_id.encode());
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn mint(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	account: &AccountId32,
 	amount: Balance,
@@ -182,7 +182,7 @@ pub(super) fn mint(
 }
 
 pub(super) fn burn(
-	addr: &AccountId32,
+	addr: &H160,
 	token_id: TokenId,
 	account: &AccountId32,
 	amount: Balance,
@@ -321,34 +321,33 @@ pub(super) fn instantiate_and_create_fungible(
 	let function = function_selector("new");
 	let input = [function, token_id.encode(), min_balance.encode()].concat();
 	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
-	let result = Contracts::bare_instantiate(
-		ALICE,
+	let result = Revive::bare_instantiate(
+		RuntimeOrigin::signed(ALICE),
 		INIT_VALUE,
 		GAS_LIMIT,
-		None,
+		1 * 1_000_000_000_000,
 		Code::Upload(wasm_binary),
 		input,
-		vec![],
+		None,
 		DEBUG_OUTPUT,
 		CollectEvents::Skip,
 	)
 	.result
 	.expect("should work");
-	let address = result.account_id;
+	let address = result.addr;
 	let result = result.result;
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-		.map(|_| address)
+		.map(|_| AccountId32Mapper::<Runtime>::to_account_id(&address))
 }
 
 /// Get the last event from pallet contracts.
 pub(super) fn last_contract_event() -> Vec<u8> {
-	let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
+	let events = System::read_events_for_pallet::<pallet_revive::Event<Runtime>>();
 	let contract_events = events
 		.iter()
 		.filter_map(|event| match event {
-			pallet_contracts::Event::<Runtime>::ContractEmitted { data, .. } =>
-				Some(data.as_slice()),
+			pallet_revive::Event::<Runtime>::ContractEmitted { data, .. } => Some(data.as_slice()),
 			_ => None,
 		})
 		.collect::<Vec<&[u8]>>();

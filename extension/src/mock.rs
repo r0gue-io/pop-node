@@ -3,13 +3,14 @@ use std::marker::PhantomData;
 use codec::{Decode, Encode};
 use frame_support::{
 	derive_impl,
-	pallet_prelude::Weight,
+	pallet_prelude::{ConstU32, Weight},
 	parameter_types,
-	traits::{fungible::Inspect, ConstU32, Everything, Nothing},
+	traits::{fungible::Inspect, EnsureOrigin, Everything, Nothing},
 };
-use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
-use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
-use sp_runtime::{BuildStorage, DispatchError, Perbill};
+use frame_system::pallet_prelude::BlockNumberFor;
+use pallet_revive::{chain_extension::RetVal, AccountId32Mapper};
+use sp_core::crypto::AccountId32;
+use sp_runtime::{traits::IdentityLookup, BuildStorage, DispatchError, Perbill};
 
 use crate::{
 	decoding::Identity, environment, matching::WithFuncId, AccountIdOf, ContractWeightsOf,
@@ -17,16 +18,15 @@ use crate::{
 	Matches, Processor, ReadState, Readable,
 };
 
-pub(crate) const ALICE: u64 = 1;
-pub(crate) const DEBUG_OUTPUT: pallet_contracts::DebugInfo =
-	pallet_contracts::DebugInfo::UnsafeDebug;
+pub(crate) const ALICE: AccountId32 = AccountId32::new([1u8; 32]);
+pub(crate) const DEBUG_OUTPUT: pallet_revive::DebugInfo = pallet_revive::DebugInfo::UnsafeDebug;
 pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
 pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
 pub(crate) type AccountId = AccountIdOf<Test>;
 pub(crate) type Balance =
-	<<Test as pallet_contracts::Config>::Currency as Inspect<AccountIdOf<Test>>>::Balance;
+	<<Test as pallet_revive::Config>::Currency as Inspect<AccountIdOf<Test>>>::Balance;
 type DispatchCallWith<Id, Filter, Processor = Identity<Vec<u8>>> = DispatchCall<
 	// Registered with func id 1
 	WithFuncId<Id>,
@@ -61,15 +61,16 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		Timestamp: pallet_timestamp,
-		Contracts: pallet_contracts,
+		Contracts: pallet_revive,
 	}
 );
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<u64>;
-	type AccountId = u64;
+	type AccountId = AccountId32;
 	type Block = frame_system::mocking::MockBlock<Test>;
+	type Lookup = IdentityLookup<Self::AccountId>;
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig as pallet_balances::DefaultConfig)]
@@ -81,54 +82,36 @@ impl pallet_balances::Config for Test {
 #[derive_impl(pallet_timestamp::config_preludes::TestDefaultConfig as pallet_timestamp::DefaultConfig)]
 impl pallet_timestamp::Config for Test {}
 
-impl pallet_contracts::Config for Test {
-	type AddressGenerator = DefaultAddressGenerator;
-	type ApiVersion = ();
+#[derive_impl(pallet_revive::config_preludes::TestDefaultConfig as pallet_revive::DefaultConfig)]
+impl pallet_revive::Config for Test {
+	type AddressMapper = AccountId32Mapper<Self>;
 	type CallFilter = ();
-	// TestFilter;
-	type CallStack = [Frame<Self>; 5];
 	type ChainExtension = Extension<Config>;
+	type ChainId = ChainId;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
 	type Debug = ();
-	// TestDebug;
-	type DefaultDepositLimit = DefaultDepositLimit;
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
-	type Environment = ();
-	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
-	type MaxCodeLen = ConstU32<{ 100 * 1024 }>;
-	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
-	type MaxDelegateDependencies = MaxDelegateDependencies;
-	type MaxStorageKeyLen = ConstU32<128>;
-	type Migrations = ();
-	// crate::migration::codegen::BenchMigrations;
-	type Randomness = Test;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type Schedule = MySchedule;
+	type InstantiateOrigin = EnsureAccount<Self, InstantiateAccount>;
+	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
+	type RuntimeMemory = ConstU32<{ 128 * 1024 * 1024 }>;
 	type Time = Timestamp;
-	type UnsafeUnstableInterface = ();
-	// UnstableInterface;
-	type UploadOrigin = EnsureSigned<Self::AccountId>;
-	type WeightInfo = ();
-	type WeightPrice = ();
-	// Self;
-	type Xcm = ();
+	type UnsafeUnstableInterface = UnstableInterface;
+	type UploadOrigin = EnsureAccount<Self, UploadAccount>;
 }
 
 parameter_types! {
-	pub MySchedule: Schedule<Test> = {
-		let schedule = <Schedule<Test>>::default();
-		schedule
-	};
 	pub static DepositPerByte: <Test as pallet_balances::Config>::Balance = 1;
 	pub const DepositPerItem: <Test as pallet_balances::Config>::Balance = 2;
 	pub static MaxDelegateDependencies: u32 = 32;
 	pub static MaxTransientStorageSize: u32 = 4 * 1024;
 	pub static CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
 	pub static DefaultDepositLimit: <Test as pallet_balances::Config>::Balance = 10_000_000;
+	pub static ChainId: u64 = 909;
+	pub static UploadAccount: Option<<Test as frame_system::Config>::AccountId> = None;
+	pub static InstantiateAccount: Option<<Test as frame_system::Config>::AccountId> = None;
+	pub static UnstableInterface: bool = true;
 }
 
 impl frame_support::traits::Randomness<HashOf<Test>, BlockNumberFor<Test>> for Test {
@@ -233,13 +216,13 @@ impl Processor for RemoveFirstByte {
 
 // A function that does nothing.
 pub struct Noop<M, C>(PhantomData<(M, C)>);
-impl<Matcher: Matches, Config: pallet_contracts::Config> Function for Noop<Matcher, Config> {
+impl<Matcher: Matches, Config: pallet_revive::Config> Function for Noop<Matcher, Config> {
 	type Config = Config;
 	type Error = ();
 
 	fn execute(
 		_env: &mut (impl environment::Environment<AccountId = Config::AccountId> + crate::BufIn),
-	) -> pallet_contracts::chain_extension::Result<RetVal> {
+	) -> pallet_revive::chain_extension::Result<RetVal> {
 		Ok(RetVal::Converging(0))
 	}
 }
@@ -297,7 +280,7 @@ impl<E: environment::Ext<AccountId = AccountIdOf<Test>> + Clone> environment::En
 	fn charge_weight(
 		&mut self,
 		amount: Weight,
-	) -> pallet_contracts::chain_extension::Result<Self::ChargedAmount> {
+	) -> pallet_revive::chain_extension::Result<Self::ChargedAmount> {
 		self.charged.push(amount);
 		Ok(amount)
 	}
@@ -324,7 +307,7 @@ impl<E> environment::BufIn for Environment<E> {
 		self.buffer.len() as u32
 	}
 
-	fn read(&self, _max_len: u32) -> pallet_contracts::chain_extension::Result<Vec<u8>> {
+	fn read(&self, _max_len: u32) -> pallet_revive::chain_extension::Result<Vec<u8>> {
 		// TODO: handle max_len
 		Ok(self.buffer.clone())
 	}
@@ -336,7 +319,7 @@ impl<E> environment::BufOut for Environment<E> {
 		buffer: &[u8],
 		_allow_skip: bool,
 		_weight_per_byte: Option<Weight>,
-	) -> pallet_contracts::chain_extension::Result<()> {
+	) -> pallet_revive::chain_extension::Result<()> {
 		self.buffer = buffer.to_vec();
 		Ok(())
 	}
@@ -345,13 +328,13 @@ impl<E> environment::BufOut for Environment<E> {
 /// A mocked smart contract environment.
 #[derive(Clone, Default)]
 pub(crate) struct MockExt {
-	pub(crate) address: AccountIdOf<Test>,
+	pub(crate) address: Option<AccountIdOf<Test>>,
 }
 impl environment::Ext for MockExt {
 	type AccountId = AccountIdOf<Test>;
 
-	fn address(&self) -> &Self::AccountId {
-		&self.address
+	fn address(&self) -> Self::AccountId {
+		self.address.clone().unwrap_or(ALICE)
 	}
 }
 
@@ -367,6 +350,10 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
+	// register account mappings
+	ext.execute_with(|| {
+		Contracts::map_account(RuntimeOrigin::signed(ALICE)).unwrap();
+	});
 	ext
 }
 
@@ -386,5 +373,28 @@ impl Converter for UppercaseConverter {
 		match value {
 			RuntimeResult::Pong(value) => Ok(value.to_uppercase().encode()),
 		}
+	}
+}
+
+pub struct EnsureAccount<T, A>(PhantomData<(T, A)>);
+impl<T: pallet_revive::Config, A: sp_core::Get<Option<crate::AccountIdOf<T>>>>
+	EnsureOrigin<<T as frame_system::Config>::RuntimeOrigin> for EnsureAccount<T, A>
+where
+	<T as frame_system::Config>::AccountId: From<AccountId32>,
+{
+	type Success = T::AccountId;
+
+	fn try_origin(o: T::RuntimeOrigin) -> Result<Self::Success, T::RuntimeOrigin> {
+		let who = <frame_system::EnsureSigned<_> as EnsureOrigin<_>>::try_origin(o.clone())?;
+		if matches!(A::get(), Some(a) if who != a) {
+			return Err(o);
+		}
+
+		Ok(who)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin() -> Result<T::RuntimeOrigin, ()> {
+		Err(())
 	}
 }

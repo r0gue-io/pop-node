@@ -23,6 +23,7 @@ smallvec.workspace = true
 
 # Local
 pallet-api.workspace = true
+pallet-incentives.workspace = true
 pop-chain-extension.workspace = true
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
@@ -99,6 +100,9 @@ ismp-parachain-runtime-api.workspace = true
 pallet-ismp = { workspace = true, features = [ "unsigned" ] }
 pallet-ismp-runtime-api.workspace = true
 
+# revive
+pallet-revive.workspace = true
+
 [dev-dependencies]
 enumflags2.workspace = true
 env_logger.workspace = true
@@ -136,6 +140,7 @@ std = [
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
 	"pallet-contracts/std",
+	"pallet-incentives/std",
 	"pallet-ismp-runtime-api/std",
 	"pallet-ismp/std",
 	"pallet-message-queue/std",
@@ -145,6 +150,7 @@ std = [
 	"pallet-nfts/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
+	"pallet-revive/std",
 	"pallet-scheduler/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
@@ -194,12 +200,14 @@ runtime-benchmarks = [
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
 	"pallet-contracts/runtime-benchmarks",
+	"pallet-incentives/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
 	"pallet-nft-fractionalization/runtime-benchmarks",
 	"pallet-nfts/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
+	"pallet-revive/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
 	"pallet-sudo/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
@@ -232,6 +240,7 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
 	"pallet-contracts/try-runtime",
+	"pallet-incentives/try-runtime",
 	"pallet-ismp/try-runtime",
 	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",
@@ -239,6 +248,7 @@ try-runtime = [
 	"pallet-nfts/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",
+	"pallet-revive/try-runtime",
 	"pallet-scheduler/try-runtime",
 	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
@@ -250,6 +260,8 @@ try-runtime = [
 	"polkadot-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
 ]
+
+riscv = [ "pallet-revive/riscv" ]
 
 # Enable the metadata hash generation.
 #

@@ -3,12 +3,6 @@
 [relaychain]
 chain = "paseo-local"
 
-[relaychain.runtime_genesis_patch.balances]
-balances = [
-    # Pop sovereign account
-    ["5Ec4AhPKXY9B4ayGshkz2wFMh7N8gP7XKfAvtt1cigpG9FkJ", 60000000000000000],
-]
-
 [[relaychain.nodes]]
 name = "alice"
 rpc_port = 8833
@@ -18,6 +12,7 @@ validator = true
 name = "bob"
 validator = true
 
+# Pop
 [[parachains]]
 id = 4001
 default_command = "./target/release/pop-node"
@@ -31,18 +26,47 @@ balances = [
     ["5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy", 10000000000000000],
     ["5HGjWAeFDfFCWPsjFQdVV2Msvz2XtMktvgocEZcCj68kUMaw", 10000000000000000],
     ["5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL", 10000000000000000],
+    # Pallet Builder Incentives Account (ED)
+    ["5EYCAe5ZWx63mefx7GoWjmSZq46iS7tYpp2XkRHVRyU2i95M", 10000000],
 ]
 
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug", "--enable-offchain-indexing=true"]
+args = [
+    "-lpop-api::extension=debug",
+    "-lruntime::contracts=debug",
+    "-lruntime::revive=trace",
+    "-lruntime::revive::strace=trace",
+    "-lxcm=trace",
+    "--enable-offchain-indexing=true"
+]
 
+# Asset Hub
 [[parachains]]
 id = 1000
-chain = "asset-hub-rococo-local"
+chain = "asset-hub-paseo-local"
+
+[parachains.genesis_overrides.balances]
+balances = [
+    # Pop sovereign account
+    ["5Eg2fnt8cGL5CBhRRhi59abAwb3SPoAdPJpN9qY7bQqpzpf6", 60000000000000000],
+]
 
 [[parachains.collators]]
 name = "asset-hub"
 args = ["-lxcm=trace"]
 rpc_port = 9977
+
+# Channels
+[[hrmp_channels]]
+sender = 1000
+recipient = 4001
+max_capacity = 1000
+max_message_size = 1024
+
+[[hrmp_channels]]
+sender = 4001
+recipient = 1000
+max_capacity = 1000
+max_message_size = 1024

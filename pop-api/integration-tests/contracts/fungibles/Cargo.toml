@@ -1,11 +1,13 @@
 [package]
+authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
 name = "fungibles"
 version = "0.1.0"
 
 [dependencies]
-ink = { version = "5.0.0", default-features = false }
-pop-api = { path = "../../../../pop-api", default-features = false, features = [ "fungibles" ] }
+ink = { git = "https://github.com/r0gue-io/ink", branch = "sub0", default-features = false }
+polkavm-derive = "0.11.0"
+pop-api = { path = "../../..", default-features = false, features = [ "fungibles" ] }
 
 [lib]
 path = "lib.rs"

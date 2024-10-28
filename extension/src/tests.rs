@@ -4,7 +4,9 @@ use std::{path::Path, sync::LazyLock};
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
 use frame_system::Call;
-use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism, StorageDeposit};
+use pallet_revive::{
+	AccountId32Mapper, AddressMapper, Code, CollectEvents, ContractExecResult, StorageDeposit,
+};
 use sp_runtime::{
 	DispatchError::{self, BadOrigin, Module},
 	ModuleError,
@@ -16,7 +18,7 @@ use crate::{
 };
 
 static CONTRACT: LazyLock<Vec<u8>> =
-	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.wasm"));
+	LazyLock::new(|| initialize_contract("contract/target/ink/proxy.riscv"));
 
 mod dispatch_call {
 	use super::*;
@@ -27,7 +29,7 @@ mod dispatch_call {
 			// Instantiate a new contract.
 			let contract = instantiate();
 			let dispatch_result = call(
-				contract,
+				contract.clone(),
 				DispatchContractFuncId::get(),
 				RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() }),
 				GAS_LIMIT,
@@ -37,9 +39,9 @@ mod dispatch_call {
 			let decoded = <Result<Vec<u8>, u32>>::decode(&mut &return_value.data[..]).unwrap();
 			assert!(decoded.unwrap().is_empty());
 			// Successfully emit event.
-			assert!(dispatch_result.events.unwrap().iter().any(|e| matches!(e.event,
+			assert!(dispatch_result.events.unwrap().iter().any(|e| matches!(&e.event,
 				RuntimeEvent::System(frame_system::Event::<Test>::Remarked { sender, .. })
-					if sender == contract)));
+					if *sender == contract)));
 			assert_eq!(dispatch_result.storage_deposit, StorageDeposit::Charge(0));
 		});
 	}
@@ -126,7 +128,7 @@ mod read_state {
 			// Instantiate a new contract.
 			let contract = instantiate();
 			let read_result = call(contract, ReadExtFuncId::get(), 99u8, GAS_LIMIT);
-			let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			let expected: DispatchError = pallet_revive::Error::<Test>::DecodingFailed.into();
 			// Make sure the error is passed through the error converter.
 			let error =
 				<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
@@ -155,7 +157,7 @@ fn invalid_func_id_fails() {
 		// Instantiate a new contract.
 		let contract = instantiate();
 		let result = call(contract, INVALID_FUNC_ID, (), GAS_LIMIT);
-		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+		let expected: DispatchError = pallet_revive::Error::<Test>::DecodingFailed.into();
 		// Make sure the error is passed through the error converter.
 		let error =
 			<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
@@ -185,10 +187,10 @@ fn initialize_contract(contract_path: &str) -> Vec<u8> {
 /// Instantiating the contract.
 fn instantiate() -> AccountId {
 	let result = Contracts::bare_instantiate(
-		ALICE,
+		RuntimeOrigin::signed(ALICE),
 		0,
 		GAS_LIMIT,
-		None,
+		1_000_000_000_000,
 		Code::Upload(CONTRACT.clone()),
 		function_selector("new"),
 		Default::default(),
@@ -198,7 +200,7 @@ fn instantiate() -> AccountId {
 	log::debug!("instantiate result: {result:?}");
 	let result = result.result.unwrap();
 	assert!(!result.result.did_revert());
-	result.account_id
+	AccountId32Mapper::<Test>::to_fallback_account_id(&result.addr)
 }
 
 /// Perform a call to a specified contract.
@@ -210,15 +212,14 @@ fn call(
 ) -> ContractExecResult<Balance, EventRecord> {
 	log::debug!("call: func_id={func_id}, input={input:?}");
 	let result = Contracts::bare_call(
-		ALICE,
-		contract,
+		RuntimeOrigin::signed(ALICE),
+		AccountId32Mapper::<Test>::to_address(&contract),
 		0,
 		gas_limit,
-		None,
+		0,
 		[function_selector("call"), (func_id, input.encode()).encode()].concat(),
 		DEBUG_OUTPUT,
 		CollectEvents::UnsafeCollect,
-		Determinism::Enforced,
 	);
 	log::debug!("gas consumed: {:?}", result.gas_consumed);
 	log::debug!("call result: {result:?}");
