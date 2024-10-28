@@ -119,9 +119,9 @@ impl From<DispatchError> for V0Error {
 				// Note: message not used
 				let ModuleError { index, error, message: _message } = error;
 				// Map `pallet-contracts::Error::DecodingFailed` to `Error::DecodingFailed`
-				if index as usize
-					== <crate::Revive as frame_support::traits::PalletInfoAccess>::index()
-					&& error == DECODING_FAILED_ERROR
+				if index as usize ==
+					<crate::Revive as frame_support::traits::PalletInfoAccess>::index() &&
+					error == DECODING_FAILED_ERROR
 				{
 					Error::DecodingFailed
 				} else {
@@ -209,7 +209,7 @@ mod tests {
 			1,
 		))
 		.unwrap_err();
-		let expected_err: DispatchError = pallet_contracts::Error::<Runtime>::DecodingFailed.into();
+		let expected_err: DispatchError = pallet_revive::Error::<Runtime>::DecodingFailed.into();
 		assert_eq!(err.encode(), expected_err.encode());
 	}
 

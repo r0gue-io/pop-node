@@ -322,7 +322,7 @@ pub enum Read<T: Config> {
 }
 
 #[derive(Debug)]
-#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+#[cfg_attr(feature = "std", derive(Encode, Clone))]
 pub enum ReadResult {
 	Poll(Option<Status>),
 	Get(Option<Vec<u8>>),

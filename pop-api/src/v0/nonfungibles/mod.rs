@@ -130,7 +130,7 @@ pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>>
 
 #[inline]
 pub fn item_metadata(collection: CollectionId, item: ItemId) -> Result<Option<Vec<u8>>> {
-	build_read_state(BURN)
+	build_read_state(ITEM_METADATA)
 		.input::<(CollectionId, ItemId)>()
 		.output::<Result<Option<Vec<u8>>>, true>()
 		.handle_error_code::<StatusCode>()

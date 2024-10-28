@@ -249,10 +249,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. }
-					| force_set_balance { .. }
-					| force_transfer { .. }
-					| force_unreserve { .. }
+				force_adjust_total_issuance { .. } |
+					force_set_balance { .. } |
+					force_transfer { .. } |
+					force_unreserve { .. }
 			)
 		)
 	}
@@ -697,7 +697,7 @@ mod runtime {
 	#[runtime::pallet_index(152)]
 	pub type Incentives = pallet_incentives::Pallet<Runtime>;
 
-	#[runtime::pallet_index(153)]
+	#[runtime::pallet_index(154)]
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
 
 	// Revive

@@ -3,7 +3,7 @@ use frame_support::{assert_noop, assert_ok, traits::Incrementable};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_nfts::{
 	AccountBalance, CollectionConfig, CollectionDetails, CollectionSettings, DestroyWitness,
-	ItemDetails, MintSettings,
+	MintSettings,
 };
 use sp_runtime::{BoundedVec, DispatchError::BadOrigin};
 
@@ -370,7 +370,6 @@ fn approve_item_attribute_works() {
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
-		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
 		// Successfully approve delegate to set attributes.
 		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, account(BOB)));
 		assert_ok!(Nfts::set_attribute(
@@ -381,7 +380,7 @@ fn approve_item_attribute_works() {
 			attribute.clone(),
 			value.clone()
 		));
-		result = Some(value);
+		let result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = Some(value);
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,

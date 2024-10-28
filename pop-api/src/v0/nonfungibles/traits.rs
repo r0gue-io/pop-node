@@ -2,8 +2,6 @@
 
 use core::result::Result;
 
-use ink::prelude::string::String;
-
 use super::*;
 
 #[ink::trait_definition]

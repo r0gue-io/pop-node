@@ -16,12 +16,13 @@ mod utils;
 
 const COLLECTION_ID: CollectionId = 0;
 const ITEM_ID: ItemId = 1;
-const CONTRACT: &str = "contracts/nonfungibles/target/ink/nonfungibles.wasm";
+const CONTRACT: &str = "contracts/nonfungibles/target/ink/nonfungibles.riscv";
 
 #[test]
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -31,7 +32,7 @@ fn total_supply_works() {
 		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(0));
 
 		// Tokens in circulation.
-		nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		nfts::create_collection_and_mint_to(&account_id, &account_id, &ALICE, ITEM_ID);
 		assert_eq!(
 			total_supply(&addr, COLLECTION_ID),
 			Ok(Nfts::collection_items(COLLECTION_ID).unwrap_or_default() as u128)
@@ -43,7 +44,8 @@ fn total_supply_works() {
 #[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		// No tokens in circulation.
 		assert_eq!(
@@ -53,7 +55,7 @@ fn balance_of_works() {
 		assert_eq!(total_supply(&addr, COLLECTION_ID), Ok(0));
 
 		// Tokens in circulation.
-		nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		nfts::create_collection_and_mint_to(&account_id, &account_id, &ALICE, ITEM_ID);
 		assert_eq!(
 			balance_of(&addr, COLLECTION_ID, ALICE),
 			Ok(nfts::balance_of(COLLECTION_ID, ALICE)),
@@ -65,22 +67,32 @@ fn balance_of_works() {
 #[test]
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		// No tokens in circulation.
 		assert_eq!(
-			allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, None),
-			Ok(!Nfts::check_allowance(&COLLECTION_ID, &None, &addr, &ALICE).is_err()),
+			allowance(&addr.clone(), COLLECTION_ID, account_id.clone(), ALICE, None),
+			Ok(!Nfts::check_allowance(&COLLECTION_ID, &None, &account_id, &ALICE).is_err()),
 		);
-		assert_eq!(allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, None), Ok(false));
+		assert_eq!(
+			allowance(&addr.clone(), COLLECTION_ID, account_id.clone(), ALICE, None),
+			Ok(false)
+		);
 
-		let (collection, item) =
-			nfts::create_collection_mint_and_approve(&addr, &addr, ITEM_ID, &addr, &ALICE);
-		assert_eq!(
-			allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, Some(item)),
-			Ok(Nfts::check_allowance(&COLLECTION_ID, &Some(item), &addr.clone(), &ALICE).is_ok()),
+		let (_, item) = nfts::create_collection_mint_and_approve(
+			&account_id,
+			&account_id,
+			ITEM_ID,
+			&account_id,
+			&ALICE,
 		);
 		assert_eq!(
-			allowance(&addr.clone(), COLLECTION_ID, addr.clone(), ALICE, Some(item)),
+			allowance(&addr.clone(), COLLECTION_ID, account_id.clone(), ALICE, Some(item)),
+			Ok(Nfts::check_allowance(&COLLECTION_ID, &Some(item), &account_id.clone(), &ALICE)
+				.is_ok()),
+		);
+		assert_eq!(
+			allowance(&addr.clone(), COLLECTION_ID, account_id.clone(), ALICE, Some(item)),
 			Ok(true)
 		);
 	});
@@ -89,9 +101,11 @@ fn allowance_works() {
 #[test]
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		let before_transfer_balance = nfts::balance_of(COLLECTION_ID, ALICE);
 		assert_ok!(transfer(&addr, collection, item, ALICE));
 		let after_transfer_balance = nfts::balance_of(COLLECTION_ID, ALICE);
@@ -102,11 +116,15 @@ fn transfer_works() {
 #[test]
 fn approve_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(approve(&addr, collection, Some(item), ALICE, true));
-		assert!(Nfts::check_allowance(&collection, &Some(item), &addr.clone(), &ALICE).is_ok(),);
+		assert!(
+			Nfts::check_allowance(&collection, &Some(item), &account_id.clone(), &ALICE).is_ok(),
+		);
 
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(ALICE), collection, item, BOB.into()));
 	});
@@ -115,8 +133,10 @@ fn approve_works() {
 #[test]
 fn owner_of_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM_ID);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &ALICE, ITEM_ID);
 		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
 	});
 }
@@ -124,12 +144,14 @@ fn owner_of_works() {
 #[test]
 fn get_attribute_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 
 		assert_ok!(Nfts::set_attribute(
-			RuntimeOrigin::signed(addr.clone()),
+			RuntimeOrigin::signed(account_id.clone()),
 			collection,
 			Some(item),
 			pallet_nfts::AttributeNamespace::CollectionOwner,
@@ -152,9 +174,11 @@ fn get_attribute_works() {
 #[test]
 fn set_attribute_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 
 		assert_ok!(set_attribute(
 			&addr.clone(),
@@ -181,11 +205,13 @@ fn set_attribute_works() {
 #[test]
 fn clear_attribute_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(Nfts::set_attribute(
-			RuntimeOrigin::signed(addr.clone()),
+			RuntimeOrigin::signed(account_id.clone()),
 			collection,
 			Some(item),
 			pallet_nfts::AttributeNamespace::CollectionOwner,
@@ -215,9 +241,11 @@ fn clear_attribute_works() {
 #[test]
 fn approve_item_attributes_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(approve_item_attributes(&addr.clone(), collection, item, ALICE));
 		assert_ok!(Nfts::set_attribute(
 			RuntimeOrigin::signed(ALICE),
@@ -243,11 +271,13 @@ fn approve_item_attributes_works() {
 #[test]
 fn cancel_item_attributes_approval_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(Nfts::approve_item_attributes(
-			RuntimeOrigin::signed(addr.clone()),
+			RuntimeOrigin::signed(account_id.clone()),
 			collection,
 			item,
 			ALICE.into()
@@ -282,9 +312,11 @@ fn cancel_item_attributes_approval_works() {
 #[test]
 fn set_metadata_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(set_metadata(&addr.clone(), collection, item, vec![]));
 		assert_eq!(
 			pallet_nfts::ItemMetadataOf::<Runtime>::get(collection, item)
@@ -297,11 +329,13 @@ fn set_metadata_works() {
 #[test]
 fn clear_metadata_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM_ID);
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(Nfts::set_metadata(
-			RuntimeOrigin::signed(addr.clone()),
+			RuntimeOrigin::signed(account_id.clone()),
 			collection,
 			item,
 			MetadataData::default()
@@ -318,12 +352,13 @@ fn clear_metadata_works() {
 #[test]
 fn create_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
 		let collection = nfts::next_collection_id();
 		assert_ok!(create(
 			&addr.clone(),
-			addr.clone(),
+			account_id.clone(),
 			CreateCollectionConfig {
 				max_supply: Some(100),
 				mint_type: MintType::Public,
@@ -335,7 +370,7 @@ fn create_works() {
 		assert_eq!(
 			pallet_nfts::Collection::<Runtime>::get(collection),
 			Some(pallet_nfts::CollectionDetails {
-				owner: addr.clone(),
+				owner: account_id.clone(),
 				owner_deposit: 100000000000,
 				items: 0,
 				item_metadatas: 0,
@@ -349,9 +384,10 @@ fn create_works() {
 #[test]
 fn destroy_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 
-		let collection = nfts::create_collection(&addr, &addr);
+		let collection = nfts::create_collection(&account_id, &account_id);
 		assert_ok!(destroy(
 			&addr.clone(),
 			collection,
@@ -364,15 +400,16 @@ fn destroy_works() {
 #[test]
 fn set_max_supply_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		let value = 10;
 
-		let collection = nfts::create_collection(&addr, &addr);
+		let collection = nfts::create_collection(&account_id, &account_id);
 		assert_ok!(set_max_supply(&addr.clone(), collection, value));
 
 		(0..value).into_iter().for_each(|i| {
 			assert_ok!(Nfts::mint(
-				RuntimeOrigin::signed(addr.clone()),
+				RuntimeOrigin::signed(account_id.clone()),
 				collection,
 				i,
 				ALICE.into(),
@@ -380,7 +417,7 @@ fn set_max_supply_works() {
 			));
 		});
 		assert!(Nfts::mint(
-			RuntimeOrigin::signed(addr.clone()),
+			RuntimeOrigin::signed(account_id.clone()),
 			collection,
 			value + 1,
 			ALICE.into(),

@@ -12,8 +12,8 @@ use versioning::*;
 
 use crate::{
 	config::{assets::TrustBackedAssetsInstance, xcm::LocalOriginToLocation},
-	fungibles, messaging, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, TransactionByteFee, fungibles, nonfungibles, 
+	fungibles, messaging, nonfungibles, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall,
+	RuntimeEvent, RuntimeHoldReason, TransactionByteFee,
 };
 
 mod versioning;
@@ -38,7 +38,7 @@ pub enum RuntimeRead {
 	#[codec(index = 151)]
 	Messaging(messaging::Read<Runtime>),
 	// Non-fungible token queries.
-	#[codec(index = 152)]
+	#[codec(index = 154)]
 	NonFungibles(nonfungibles::Read<Runtime>),
 }
 
@@ -174,11 +174,8 @@ pub struct Filter<T>(PhantomData<T>);
 
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
-		use fungibles::Call::*;
-		use messaging::Call::*;
-			use nonfungibles::Call::*;
-		use pallet_incentives::Call::*;
-		T::BaseCallFilter::contains(c) &&
+		let contain_fungibles: bool = {
+			use fungibles::Call::*;
 			matches!(
 				c,
 				RuntimeCall::Fungibles(
@@ -189,15 +186,16 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						create { .. } | set_metadata { .. } |
 						start_destroy { .. } |
 						clear_metadata { .. } |
-						mint { .. } | burn { .. }
-				) | RuntimeCall::Messaging(
-					send { .. } |
-						ismp_get { .. } | ismp_post { .. } |
-						xcm_new_query { .. } |
-						remove { .. }
-				) | RuntimeCall::Incentives(
-					register_contract { .. } | claim_rewards { .. } | deposit_funds { .. }
-				) | RuntimeCall::NonFungibles(
+						mint { .. } | burn { .. },
+				)
+			)
+		};
+
+		let contain_nonfungibles: bool = {
+			use nonfungibles::Call::*;
+			matches!(
+				c,
+				RuntimeCall::NonFungibles(
 					transfer { .. } |
 						approve { .. } | create { .. } |
 						destroy { .. } | set_metadata { .. } |
@@ -211,29 +209,69 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 				)
 			)
 		};
+
+		let contain_messaging: bool = {
+			use messaging::Call::*;
+			matches!(
+				c,
+				RuntimeCall::Messaging(
+					send { .. } |
+						ismp_get { .. } | ismp_post { .. } |
+						xcm_new_query { .. } |
+						remove { .. },
+				)
+			)
+		};
+
+		let contain_incentives: bool = {
+			use pallet_incentives::Call::*;
+			matches!(
+				c,
+				RuntimeCall::Incentives(
+					register_contract { .. } | claim_rewards { .. } | deposit_funds { .. },
+				)
+			)
+		};
+
+		T::BaseCallFilter::contains(c) &&
+			contain_fungibles | contain_nonfungibles | contain_messaging | contain_incentives
+	}
 }
 
 impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	fn contains(r: &RuntimeRead) -> bool {
-		use fungibles::Read::*;
-		use messaging::Read::*;
-		use nonfungibles::Read::*;
-		matches!(
-			r,
-			RuntimeRead::Fungibles(
-				TotalSupply(..) |
-					BalanceOf { .. } |
-					Allowance { .. } |
-					TokenName(..) | TokenSymbol(..) |
-					TokenDecimals(..) |
-					TokenExists(..)
-			) | RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..)) | RuntimeRead::NonFungibles(
+		let contain_fungibles: bool = {
+			use fungibles::Read::*;
+			matches!(
+				r,
+				RuntimeRead::Fungibles(
+					TotalSupply(..) |
+						BalanceOf { .. } | Allowance { .. } |
+						TokenName(..) | TokenSymbol(..) |
+						TokenDecimals(..) | TokenExists(..),
+				)
+			)
+		};
+		let contain_nonfungibles: bool = {
+			use nonfungibles::Read::*;
+			matches!(
+				r,
+				RuntimeRead::NonFungibles(
 					TotalSupply(..) |
 						BalanceOf { .. } | Allowance { .. } |
 						OwnerOf { .. } | GetAttribute { .. } |
-						Collection { .. } | NextCollectionId | ItemMetadata { .. }
+						Collection { .. } | NextCollectionId |
+						ItemMetadata { .. },
 				)
-		)
+			)
+		};
+
+		let contain_messaging: bool = {
+			use messaging::Read::*;
+			matches!(r, RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..)))
+		};
+
+		contain_fungibles | contain_nonfungibles | contain_messaging
 	}
 }
 

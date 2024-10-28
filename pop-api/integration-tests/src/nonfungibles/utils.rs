@@ -1,10 +1,12 @@
 use super::*;
+use crate::sp_core::H160;
+use pallet_revive::AddressMapper;
 
 pub(super) type AttributeKey = BoundedVec<u8, <Runtime as pallet_nfts::Config>::KeyLimit>;
 pub(super) type AttributeValue = BoundedVec<u8, <Runtime as pallet_nfts::Config>::ValueLimit>;
 pub(super) type MetadataData = BoundedVec<u8, <Runtime as pallet_nfts::Config>::StringLimit>;
 
-fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) -> ExecReturnValue {
+fn do_bare_call(function: &str, addr: &H160, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);
 	let params = [function, params].concat();
 	bare_call(addr.clone(), params, 0).expect("should work")
@@ -15,14 +17,14 @@ pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecRetur
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
 
-pub(super) fn total_supply(addr: &AccountId32, collection: CollectionId) -> Result<u128, Error> {
+pub(super) fn total_supply(addr: &H160, collection: CollectionId) -> Result<u128, Error> {
 	let result = do_bare_call("total_supply", addr, collection.encode());
 	decoded::<Result<u128, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn balance_of(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	owner: AccountId32,
 ) -> Result<u32, Error> {
@@ -33,7 +35,7 @@ pub(super) fn balance_of(
 }
 
 pub(super) fn allowance(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	owner: AccountId32,
 	operator: AccountId32,
@@ -46,7 +48,7 @@ pub(super) fn allowance(
 }
 
 pub(super) fn transfer(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	to: AccountId32,
@@ -58,7 +60,7 @@ pub(super) fn transfer(
 }
 
 pub(super) fn approve(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: Option<ItemId>,
 	operator: AccountId32,
@@ -72,7 +74,7 @@ pub(super) fn approve(
 }
 
 pub(super) fn owner_of(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 ) -> Result<AccountId32, Error> {
@@ -83,7 +85,7 @@ pub(super) fn owner_of(
 }
 
 pub(super) fn get_attribute(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	namespace: AttributeNamespace,
@@ -103,7 +105,7 @@ pub(super) fn get_attribute(
 }
 
 pub(super) fn create(
-	addr: &AccountId32,
+	addr: &H160,
 	admin: AccountId32,
 	config: CreateCollectionConfig,
 ) -> Result<(), Error> {
@@ -114,7 +116,7 @@ pub(super) fn create(
 }
 
 pub(super) fn destroy(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	witness: DestroyWitness,
 ) -> Result<(), Error> {
@@ -125,7 +127,7 @@ pub(super) fn destroy(
 }
 
 pub(super) fn collection(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 ) -> Result<Option<CollectionDetails>, Error> {
 	let result = do_bare_call("collection", &addr, collection.encode());
@@ -134,7 +136,7 @@ pub(super) fn collection(
 }
 
 pub(super) fn set_attribute(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	namespace: AttributeNamespace,
@@ -155,7 +157,7 @@ pub(super) fn set_attribute(
 }
 
 pub(super) fn clear_attribute(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	namespace: AttributeNamespace,
@@ -168,7 +170,7 @@ pub(super) fn clear_attribute(
 }
 
 pub(super) fn set_metadata(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	data: Vec<u8>,
@@ -180,7 +182,7 @@ pub(super) fn set_metadata(
 }
 
 pub(super) fn clear_metadata(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 ) -> Result<(), Error> {
@@ -191,7 +193,7 @@ pub(super) fn clear_metadata(
 }
 
 pub(super) fn approve_item_attributes(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	delegate: AccountId32,
@@ -203,7 +205,7 @@ pub(super) fn approve_item_attributes(
 }
 
 pub(super) fn cancel_item_attributes_approval(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 	delegate: AccountId32,
@@ -216,7 +218,7 @@ pub(super) fn cancel_item_attributes_approval(
 }
 
 pub(super) fn set_max_supply(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	max_supply: u32,
 ) -> Result<(), Error> {
@@ -227,7 +229,7 @@ pub(super) fn set_max_supply(
 }
 
 pub(super) fn item_metadata(
-	addr: &AccountId32,
+	addr: &H160,
 	collection: CollectionId,
 	item: ItemId,
 ) -> Result<Option<Vec<u8>>, Error> {
@@ -274,7 +276,7 @@ pub(super) mod nfts {
 		let next_id = next_collection_id();
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(owner.clone()),
-			owner.clone().into(),
+			admin.clone().into(),
 			collection_config_with_all_settings_enabled()
 		));
 		next_id
@@ -314,42 +316,13 @@ pub(super) mod nfts {
 	}
 }
 
-pub(super) fn instantiate_and_create_nonfungible(
-	contract: &str,
-	admin: AccountId32,
-	config: CreateCollectionConfig,
-) -> Result<AccountId32, Error> {
-	let function = function_selector("new");
-	let input = [function, admin.encode(), config.encode()].concat();
-	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
-	let result = Contracts::bare_instantiate(
-		ALICE,
-		INIT_VALUE,
-		GAS_LIMIT,
-		None,
-		Code::Upload(wasm_binary),
-		input,
-		vec![],
-		DEBUG_OUTPUT,
-		CollectEvents::Skip,
-	)
-	.result
-	.expect("should work");
-	let address = result.account_id;
-	let result = result.result;
-	decoded::<Result<(), Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-		.map(|_| address)
-}
-
 /// Get the last event from pallet contracts.
 pub(super) fn last_contract_event() -> Vec<u8> {
-	let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
+	let events = System::read_events_for_pallet::<pallet_revive::Event<Runtime>>();
 	let contract_events = events
 		.iter()
 		.filter_map(|event| match event {
-			pallet_contracts::Event::<Runtime>::ContractEmitted { data, .. } =>
-				Some(data.as_slice()),
+			pallet_revive::Event::<Runtime>::ContractEmitted { data, .. } => Some(data.as_slice()),
 			_ => None,
 		})
 		.collect::<Vec<&[u8]>>();

@@ -18,9 +18,9 @@ pallet-assets = { version = "37.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
 pallet-incentives = { path = "../../pallets/incentives", default-features = false }
 pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }
+pallet-nfts = { path = "../../pallets/nfts", default-features = false }
 pallet-revive = { path = "../../pallets/revive", default-features = false }
 pallet-timestamp = { version = "35.0.0", default-features = false }
-pallet-nfts = { path = "../../pallets/nfts", default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
 	"messaging",
@@ -38,16 +38,16 @@ staging-xcm = { version = "=14.1.0", default-features = false }
 xcm-executor = { version = "15.0.0", package = "staging-xcm-executor", default-features = false }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-incentives/std",
+	"pallet-nfts/std",
 	"pallet-revive/std",
 	"pallet-timestamp/std",
-	"pallet-nfts/std",
 	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",
