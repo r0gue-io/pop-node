@@ -2,16 +2,16 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	traits::IsSubType,
-	weights::Weight,
 };
 use pallet_revive::AddressMapper;
+use pallet_transaction_payment::OnChargeTransaction;
 use scale_info::{StaticTypeInfo, TypeInfo};
 use sp_core::U256;
 use sp_runtime::{
 	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, SignedExtension},
 	transaction_validity::{TransactionValidity, TransactionValidityError},
 };
-use types::{AccountIdOf, BalanceOf};
+use types::*;
 
 use super::*;
 
@@ -94,11 +94,15 @@ where
 		<T as frame_system::Config>::AccountId,
 	>>::Balance: TryFrom<U256>,
 	<<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
+	BalanceOf<T>: Send + Sync + From<u64>,
 {
 	type AccountId = AccountIdOf<T>;
 	type AdditionalSigned = S::AdditionalSigned;
 	type Call = <T as frame_system::Config>::RuntimeCall;
-	type Pre = (Option<Self::AccountId>, <S as SignedExtension>::Pre);
+	type Pre = (
+		(Option<Self::AccountId>, Self::AccountId),
+		(BalanceOf<T>, Self::AccountId, LiquidityInfoOf<T>),
+	);
 
 	// From the outside this extension should be "invisible", because it just extends the wrapped
 	// extension with an extra check in `pre_dispatch` and `post_dispatch`. Thus, we should forward
@@ -113,15 +117,21 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> TransactionValidity {
-		// Assure that whoever has to pay for fees, has enough balance.
-
 		let who = Self::is_contracts_call(call)
 			.and_then(|contract| {
-				if Self::is_sponsored(&who, &contract).is_some() {
-					Some(contract.clone())
-				} else {
-					None
-				}
+				Self::is_sponsored(&who, &contract).and_then(|_amount| {
+					let fee = pallet_transaction_payment::Pallet::<T>::compute_fee(
+						len as u32,
+						info,
+						Default::default(), // TODO: include tip
+					);
+					if Pallet::<T>::can_decrease(&who, &contract, fee) {
+						Some(contract.clone())
+					} else {
+						// Fees cannot be withdrawn from sponsorship
+						None
+					}
+				})
 			})
 			.unwrap_or_else(|| who.clone());
 
@@ -139,16 +149,30 @@ where
 		info: &DispatchInfoOf<Self::Call>,
 		len: usize,
 	) -> Result<Self::Pre, TransactionValidityError> {
+		let caller = who.clone();
+		let fee = pallet_transaction_payment::Pallet::<T>::compute_fee(
+			len as u32,
+			info,
+			Default::default(), // TODO: include tip
+		);
+
 		let sponsor = Self::is_contracts_call(call).and_then(|contract| {
 			if Self::is_sponsored(&who, &contract).is_some() {
+				let _ = Pallet::<T>::withdraw_from_sponsorship(&who, &contract, fee);
 				Some(contract.clone())
 			} else {
 				None
 			}
 		});
 		let who = sponsor.clone().unwrap_or(who.clone());
-
-		Ok((sponsor, self.0.pre_dispatch(&who, call, info, len)?))
+		<T as pallet_transaction_payment::Config>::OnChargeTransaction::withdraw_fee(
+			&who,
+			call,
+			info,
+			fee,
+			Default::default(), // TODO: include tip
+		)
+		.map(|liquidity_info| ((sponsor, caller), (Default::default(), who, liquidity_info)))
 	}
 
 	fn post_dispatch(
@@ -158,11 +182,21 @@ where
 		len: usize,
 		result: &DispatchResult,
 	) -> Result<(), TransactionValidityError> {
-		if let Some(pre) = pre {
-			if let Some(sponsor) = pre.0 {
+		if let Some(((maybe_sponsor, caller), (tip, who, imbalance))) = pre {
+			if let Some(sponsor) = maybe_sponsor {
+				let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
+					len as u32, info, post_info, tip,
+				);
+				let _ = Pallet::<T>::withdraw_from_sponsorship(&caller, &sponsor, actual_fee);
 				Pallet::<T>::deposit_event(Event::<T>::CallSponsored { by: sponsor });
 			}
-			S::post_dispatch(Some(pre.1), info, post_info, len, result)?;
+			pallet_transaction_payment::ChargeTransactionPayment::<T>::post_dispatch(
+				Some((tip, who, imbalance)),
+				info,
+				post_info,
+				len,
+				result,
+			)?;
 		}
 		Ok(())
 	}

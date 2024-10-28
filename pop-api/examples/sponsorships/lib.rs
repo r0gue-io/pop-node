@@ -32,7 +32,7 @@ mod sponsorships {
 		pub fn sign_up(&mut self, user: AccountId) -> Result<()> {
 			let caller = Self::env().caller();
 			assert!(caller == self.owner, "Caller is not owner");
-			api::sponsor_account(user)?;
+			api::sponsor_account(user, self.env().transferred_value())?;
 			Ok(())
 		}
 

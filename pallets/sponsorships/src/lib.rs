@@ -9,14 +9,21 @@ pub mod weights;
 pub mod pallet {
 	use frame_support::{pallet_prelude::*, traits::ReservableCurrency};
 	use frame_system::pallet_prelude::*;
+	use sp_runtime::traits::CheckedSub;
 
 	use crate::{types::*, weights::WeightInfo};
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_revive::Config {
+	pub trait Config:
+		frame_system::Config + pallet_revive::Config + pallet_transaction_payment::Config
+	{
 		/// The currency mechanism.
 		type Currency: ReservableCurrency<Self::AccountId>;
+
+		/// The deposit to be paid to become a sponsor.
+		type SponsorshipDeposit: Get<BalanceOf<Self>>;
+
 		/// Overarching runtime event type
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -108,8 +115,14 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			match <Sponsorships<T>>::get(&who, &beneficiary) {
+				Some(_) => return Err(Error::<T>::AlreadySponsored.into()),
+				None => {},
+			}
+			// TODO: Reserve SponsorshipDeposit
 			// Register new sponsorship.
 			<Sponsorships<T>>::set(&who, &beneficiary, Some(amount));
+			frame_system::Pallet::<T>::inc_providers(&beneficiary);
 			Self::deposit_event(Event::NewSponsorship { sponsor: who, beneficiary, amount });
 			Ok(())
 		}
@@ -126,6 +139,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 			if <Sponsorships<T>>::take(&who, &beneficiary).is_some() {
+				let _ = frame_system::Pallet::<T>::dec_providers(&beneficiary);
 				Self::deposit_event(Event::SponsorshipRemoved {
 					was_sponsor: who,
 					was_beneficiary: beneficiary,
@@ -176,6 +190,56 @@ pub mod pallet {
 			sponsor: &AccountIdOf<T>,
 		) -> Option<BalanceOf<T>> {
 			<Sponsorships<T>>::get(sponsor, account)
+		}
+
+		/// Whether some amount can be withdrawn from the sponsored balance.
+		///
+		/// Parameters
+		/// - `sponsor`: The account that could be acting as a sponsor.
+		/// - `beneficiary`: Potential beneficiary of the sponsorship.
+		/// - `amount`: The amount representing the fee cost.
+		pub fn can_decrease(
+			sponsor: &AccountIdOf<T>,
+			beneficiary: &AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> bool {
+			let sponsored = match <Sponsorships<T>>::get(sponsor, beneficiary) {
+				Some(sponsored) => sponsored,
+				None => return false,
+			};
+			if sponsored < amount {
+				false
+			} else {
+				true
+			}
+		}
+
+		pub fn withdraw_from_sponsorship(
+			sponsor: &AccountIdOf<T>,
+			beneficiary: &AccountIdOf<T>,
+			amount: BalanceOf<T>,
+		) -> Result<BalanceOf<T>, DispatchError> {
+			Self::deposit_event(Event::NewSponsorship {
+				sponsor: sponsor.clone(),
+				beneficiary: beneficiary.clone(),
+				amount: amount.clone(),
+			});
+
+			// Check if the withdrawal can be made
+			if !Self::can_decrease(beneficiary, sponsor, amount) {
+				return Err(Error::<T>::SponsorshipOutOfLimits.into());
+			}
+			Sponsorships::<T>::mutate(beneficiary, sponsor, |maybe_sponsorship| {
+				let sponsored = maybe_sponsorship.ok_or(Error::<T>::UnknownSponsorship)?;
+				// Already checked in can_decrease
+				ensure!(sponsored >= amount, Error::<T>::SponsorshipOutOfLimits);
+				let new_value = sponsored
+					.checked_sub(&amount)
+					.ok_or_else(|| <DispatchError>::from(Error::<T>::SponsorshipOutOfLimits))?;
+				*maybe_sponsorship = Some(new_value);
+
+				Ok(new_value)
+			})
 		}
 	}
 }
