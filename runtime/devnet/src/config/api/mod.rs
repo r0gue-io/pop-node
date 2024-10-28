@@ -61,8 +61,9 @@ impl Readable for RuntimeRead {
 		match self {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 			RuntimeRead::Messaging(key) => RuntimeResult::Messaging(messaging::Pallet::read(key)),
-			RuntimeRead::NonFungibles(key) =>
-				RuntimeResult::NonFungibles(nonfungibles::Pallet::read(key)),
+			RuntimeRead::NonFungibles(key) => {
+				RuntimeResult::NonFungibles(nonfungibles::Pallet::read(key))
+			},
 		}
 	}
 }
@@ -179,14 +180,14 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 			matches!(
 				c,
 				RuntimeCall::Fungibles(
-					transfer { .. } |
-						transfer_from { .. } |
-						approve { .. } | increase_allowance { .. } |
-						decrease_allowance { .. } |
-						create { .. } | set_metadata { .. } |
-						start_destroy { .. } |
-						clear_metadata { .. } |
-						mint { .. } | burn { .. },
+					transfer { .. }
+						| transfer_from { .. }
+						| approve { .. } | increase_allowance { .. }
+						| decrease_allowance { .. }
+						| create { .. } | set_metadata { .. }
+						| start_destroy { .. }
+						| clear_metadata { .. }
+						| mint { .. } | burn { .. },
 				)
 			)
 		};
@@ -196,16 +197,16 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 			matches!(
 				c,
 				RuntimeCall::NonFungibles(
-					transfer { .. } |
-						approve { .. } | create { .. } |
-						destroy { .. } | set_metadata { .. } |
-						clear_metadata { .. } |
-						set_attribute { .. } |
-						clear_attribute { .. } |
-						approve_item_attributes { .. } |
-						cancel_item_attributes_approval { .. } |
-						mint { .. } | burn { .. } |
-						set_max_supply { .. },
+					transfer { .. }
+						| approve { .. } | create { .. }
+						| destroy { .. } | set_metadata { .. }
+						| clear_metadata { .. }
+						| set_attribute { .. }
+						| clear_attribute { .. }
+						| approve_item_attributes { .. }
+						| cancel_item_attributes_approval { .. }
+						| mint { .. } | burn { .. }
+						| set_max_supply { .. },
 				)
 			)
 		};
@@ -215,10 +216,10 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 			matches!(
 				c,
 				RuntimeCall::Messaging(
-					send { .. } |
-						ismp_get { .. } | ismp_post { .. } |
-						xcm_new_query { .. } |
-						remove { .. },
+					send { .. }
+						| ismp_get { .. } | ismp_post { .. }
+						| xcm_new_query { .. }
+						| remove { .. },
 				)
 			)
 		};
@@ -233,8 +234,8 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 			)
 		};
 
-		T::BaseCallFilter::contains(c) &&
-			contain_fungibles | contain_nonfungibles | contain_messaging | contain_incentives
+		T::BaseCallFilter::contains(c)
+			&& contain_fungibles | contain_nonfungibles | contain_messaging | contain_incentives
 	}
 }
 
@@ -245,10 +246,11 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 			matches!(
 				r,
 				RuntimeRead::Fungibles(
-					TotalSupply(..) |
-						BalanceOf { .. } | Allowance { .. } |
-						TokenName(..) | TokenSymbol(..) |
-						TokenDecimals(..) | TokenExists(..),
+					TotalSupply(..)
+						| BalanceOf { .. } | Allowance { .. }
+						| TokenName(..) | TokenSymbol(..)
+						| TokenDecimals(..)
+						| TokenExists(..),
 				)
 			)
 		};
@@ -257,11 +259,11 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 			matches!(
 				r,
 				RuntimeRead::NonFungibles(
-					TotalSupply(..) |
-						BalanceOf { .. } | Allowance { .. } |
-						OwnerOf { .. } | GetAttribute { .. } |
-						Collection { .. } | NextCollectionId |
-						ItemMetadata { .. },
+					TotalSupply(..)
+						| BalanceOf { .. } | Allowance { .. }
+						| OwnerOf { .. } | GetAttribute { .. }
+						| Collection { .. }
+						| NextCollectionId | ItemMetadata { .. },
 				)
 			)
 		};
