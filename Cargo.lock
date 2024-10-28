@@ -7380,6 +7380,7 @@ dependencies = [
  "pallet-assets",
  "pallet-balances",
  "pallet-ismp",
+ "pallet-nfts",
  "parity-scale-codec",
  "pop-chain-extension",
  "scale-info",
