@@ -11,7 +11,7 @@ pub use errors::*;
 pub use traits::*;
 
 use crate::{
-	constants::SPONSORSHIPS, primitives::AccountId, ChainExtensionMethodApi, Result, StatusCode,
+	constants::SPONSORSHIPS, primitives::{AccountId, Balance}, ChainExtensionMethodApi, Result, StatusCode,
 };
 
 pub mod errors;
@@ -28,7 +28,7 @@ pub fn sponsor_account(beneficiary: AccountId, amount: Balance) -> Result<()> {
 		.input::<(AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(beneficiary))
+		.call(&(beneficiary, amount))
 }
 
 /// Removes the sponsorship relation between caller and the given account if it exists.
@@ -41,7 +41,7 @@ pub fn remove_sponsorship_for(beneficiary: AccountId) -> Result<()> {
 		.input::<AccountId>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(account))
+		.call(&(beneficiary))
 }
 
 /// Set the value of an existing sponsorship to a given amount.
@@ -55,7 +55,7 @@ pub fn set_sponsorship_amount(beneficiary: AccountId, amount: Balance) -> Result
 		.input::<(AccountId, Balance)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(beneficiary))
+		.call(&(beneficiary, amount))
 }
 
 mod constants {
