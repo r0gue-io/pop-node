@@ -109,7 +109,10 @@ pub type SignedExtra = (
 		Runtime,
 		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	>,
-	pallet_incentives::contract_fee_handler::ContractFeeHandler<Runtime>, /* In case sponsored::Sponsored is removed, pallet_transaction_payment::ChargeTransactionPayment<Runtime> should be added here */
+	// In case sponsored::Sponsored is removed,
+	// pallet_transaction_payment::ChargeTransactionPayment<Runtime> should be added to
+	// ContractFeeHandler
+	pallet_incentives::contract_fee_handler::ContractFeeHandler<Runtime>,
 	cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
