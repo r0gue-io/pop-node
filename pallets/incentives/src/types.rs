@@ -21,10 +21,6 @@ pub(crate) type OnChargeTransactionBalanceOf<T> =
 pub(crate) type BalanceOf<T> =
 	<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-/// Liquidity info type alias (imbalances).
-pub(crate) type LiquidityInfoOf<T> =
-	<OnChargeTransactionOf<T> as OnChargeTransaction<T>>::LiquidityInfo;
-
 /// Information about an era: fees generated, and the next era start.
 #[derive(Clone, Encode, Decode, PartialEq, Eq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
