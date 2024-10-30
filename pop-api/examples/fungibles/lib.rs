@@ -1,8 +1,11 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::prelude::{string::String, vec::Vec};
+use ink::{
+	prelude::{string::String, vec::Vec},
+	storage::Mapping,
+};
 use pop_api::{
-	primitives::TokenId,
+	primitives::{AccountId, TokenId},
 	v0::fungibles::{
 		self as api,
 		events::{Approval, Created, Transfer},
@@ -21,20 +24,24 @@ mod fungibles {
 	#[ink(storage)]
 	pub struct Fungible {
 		id: TokenId,
+		owner: Option<AccountId>,
 	}
 
 	impl Fungible {
-		/// Instantiate the contract and wrap around an existing token.
+		/// Instantiate the contract and wrap an existing token.
 		///
 		/// # Parameters
-		/// * - `token` - The token.
+		/// * - `id` - The token.
 		#[ink(constructor, payable)]
 		pub fn existing(id: TokenId) -> Result<Self, Psp22Error> {
 			// Make sure token exists.
 			if !api::token_exists(id).unwrap_or_default() {
 				return Err(Psp22Error::Custom(String::from("Token does not exist")));
 			}
-			Ok(Self { id })
+			let mut instance = Self { id, owner: None };
+			let contract_id = instance.env().account_id();
+			instance.owner = Some(instance.env().caller());
+			Ok(instance)
 		}
 
 		/// Instantiate the contract and create a new token. The token identifier will be stored
@@ -47,13 +54,33 @@ mod fungibles {
 		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
 		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, Psp22Error> {
-			let instance = Self { id };
+			let mut instance = Self { id, owner: None };
 			let contract_id = instance.env().account_id();
+			instance.owner = Some(instance.env().caller());
 			api::create(id, contract_id, min_balance).map_err(Psp22Error::from)?;
 			instance
 				.env()
 				.emit_event(Created { id, creator: contract_id, admin: contract_id });
 			Ok(instance)
+		}
+
+		/// Check if a caller is an owner of the contract.
+		fn ensure_owner(&self) -> Result<(), Psp22Error> {
+			if self.owner != Some(self.env().caller()) {
+				return Err(Psp22Error::Custom(String::from("Not an owner")));
+			}
+			Ok(())
+		}
+
+		/// Transfer an ownership of the contract to another accoun.
+		///
+		/// # Parameters
+		/// - `owner` - New owner account.
+		#[ink(message)]
+		pub fn transfer_ownership(&mut self, owner: AccountId) -> Result<(), Psp22Error> {
+			self.ensure_owner()?;
+			self.owner = Some(owner);
+			Ok(())
 		}
 	}
 
@@ -83,8 +110,8 @@ mod fungibles {
 			api::allowance(self.id, owner, spender).unwrap_or_default()
 		}
 
-		/// Transfers `value` amount of tokens from the caller's account to account `to`
-		/// with additional `data` in unspecified format.
+		/// Transfers `value` amount of tokens from the contract to account `to` with
+		/// additional `data` in unspecified format.
 		///
 		/// # Parameters
 		/// - `to` - The recipient account.
@@ -97,18 +124,20 @@ mod fungibles {
 			value: Balance,
 			_data: Vec<u8>,
 		) -> Result<(), Psp22Error> {
-			let caller = self.env().caller();
-			// No-op if the caller and `to` is the same address or `value` is zero.
-			if caller == to || value == 0 {
+			self.ensure_owner()?;
+			let contract = self.env().account_id();
+
+			// No-op if the contract and `to` is the same address or `value` is zero.
+			if contract == to || value == 0 {
 				return Ok(());
 			}
 			api::transfer(self.id, to, value).map_err(Psp22Error::from)?;
-			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
+			self.env().emit_event(Transfer { from: Some(contract), to: Some(to), value });
 			Ok(())
 		}
 
 		/// Transfers `value` tokens on behalf of `from` to the account `to`
-		/// with additional `data` in unspecified format.
+		/// with additional `data` in unspecified format. Contract must be pre-approved by `from`.
 		///
 		/// # Parameters
 		/// - `from` - The account from which the token balance will be withdrawn.
@@ -123,25 +152,27 @@ mod fungibles {
 			value: Balance,
 			_data: Vec<u8>,
 		) -> Result<(), Psp22Error> {
-			let caller = self.env().caller();
+			self.ensure_owner()?;
+			let contract = self.env().account_id();
+
 			// No-op if `from` and `to` is the same address or `value` is zero.
 			if from == to || value == 0 {
 				return Ok(());
 			}
-			// If `from` and the caller are different addresses, a successful transfer results
-			// in decreased allowance by `from` to the caller and an `Approval` event with
+			// If `from` and the contract are different addresses, a successful transfer results
+			// in decreased allowance by `from` to the contract and an `Approval` event with
 			// the new allowance amount is emitted.
 			api::transfer_from(self.id, from, to, value).map_err(Psp22Error::from)?;
-			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
+			self.env().emit_event(Transfer { from: Some(contract), to: Some(to), value });
 			self.env().emit_event(Approval {
 				owner: from,
-				spender: caller,
-				value: self.allowance(from, caller),
+				spender: contract,
+				value: self.allowance(from, contract),
 			});
 			Ok(())
 		}
 
-		/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
+		/// Approves `spender` to spend `value` amount of tokens on behalf of the contract.
 		///
 		/// Successive calls of this method overwrite previous values.
 		///
@@ -150,13 +181,15 @@ mod fungibles {
 		/// - `value` - The number of tokens to approve.
 		#[ink(message)]
 		fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), Psp22Error> {
-			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address.
-			if caller == spender {
+			self.ensure_owner()?;
+			let contract = self.env().account_id();
+
+			// No-op if the contract and `spender` is the same address.
+			if contract == spender {
 				return Ok(());
 			}
 			api::approve(self.id, spender, value).map_err(Psp22Error::from)?;
-			self.env().emit_event(Approval { owner: caller, spender, value });
+			self.env().emit_event(Approval { owner: contract, spender, value });
 			Ok(())
 		}
 
@@ -171,14 +204,16 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<(), Psp22Error> {
-			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address or `value` is zero.
-			if caller == spender || value == 0 {
+			self.ensure_owner()?;
+			let contract = self.env().account_id();
+
+			// No-op if the contract and `spender` is the same address or `value` is zero.
+			if contract == spender || value == 0 {
 				return Ok(());
 			}
 			api::increase_allowance(self.id, spender, value).map_err(Psp22Error::from)?;
-			let allowance = self.allowance(caller, spender);
-			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
+			let allowance = self.allowance(contract, spender);
+			self.env().emit_event(Approval { owner: contract, spender, value: allowance });
 			Ok(())
 		}
 
@@ -193,14 +228,16 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<(), Psp22Error> {
-			let caller = self.env().caller();
-			// No-op if the caller and `spender` is the same address or `value` is zero.
-			if caller == spender || value == 0 {
+			self.ensure_owner()?;
+			let contract = self.env().account_id();
+
+			// No-op if the contract and `spender` is the same address or `value` is zero.
+			if contract == spender || value == 0 {
 				return Ok(());
 			}
 			api::decrease_allowance(self.id, spender, value).map_err(Psp22Error::from)?;
-			let value = self.allowance(caller, spender);
-			self.env().emit_event(Approval { owner: caller, spender, value });
+			let value = self.allowance(contract, spender);
+			self.env().emit_event(Approval { owner: contract, spender, value });
 			Ok(())
 		}
 	}
@@ -238,6 +275,7 @@ mod fungibles {
 		/// - `value` - The number of tokens to mint.
 		#[ink(message)]
 		fn mint(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error> {
+			self.ensure_owner()?;
 			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
@@ -256,6 +294,7 @@ mod fungibles {
 		/// - `value` - The number of tokens to destroy.
 		#[ink(message)]
 		fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error> {
+			self.ensure_owner()?;
 			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
