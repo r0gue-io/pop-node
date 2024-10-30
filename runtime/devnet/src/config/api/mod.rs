@@ -278,13 +278,13 @@ mod tests {
 	fn filter_allows_fungibles_reads() {
 		use super::{fungibles::Read::*, RuntimeRead::*};
 		const READS: [RuntimeRead; 7] = [
-			FungiblesRevive(TotalSupply(1)),
-			FungiblesRevive(BalanceOf { token: 1, owner: ACCOUNT }),
-			FungiblesRevive(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
-			FungiblesRevive(TokenName(1)),
-			FungiblesRevive(TokenSymbol(1)),
-			FungiblesRevive(TokenDecimals(10)),
-			FungiblesRevive(TokenExists(1)),
+			Fungibles(TotalSupply(1)),
+			Fungibles(BalanceOf { token: 1, owner: ACCOUNT }),
+			Fungibles(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
+			Fungibles(TokenName(1)),
+			Fungibles(TokenSymbol(1)),
+			Fungibles(TokenDecimals(10)),
+			Fungibles(TokenExists(1)),
 		];
 
 		for read in READS {
