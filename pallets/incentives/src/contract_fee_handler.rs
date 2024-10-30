@@ -5,12 +5,10 @@ use frame_support::{
 	traits::{fungible::Inspect, IsSubType, IsType},
 };
 use pallet_revive::AddressMapper;
-use pallet_transaction_payment::OnChargeTransaction;
-use scale_info::StaticTypeInfo;
 use sp_core::{crypto::AccountId32, U256};
 use sp_runtime::{
 	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, Saturating, SignedExtension},
-	transaction_validity::{TransactionValidity, TransactionValidityError, ValidTransaction},
+	transaction_validity::TransactionValidityError,
 	FixedPointOperand, Permill,
 };
 
@@ -71,10 +69,10 @@ where
 
     fn pre_dispatch(
         self,
-        who: &Self::AccountId,
+        _who: &Self::AccountId,
         call: &Self::Call,
-        info: &DispatchInfoOf<Self::Call>,
-        len: usize,
+        _info: &DispatchInfoOf<Self::Call>,
+        _len: usize,
     ) -> Result<Self::Pre, TransactionValidityError> {
         let contract = if let Some(pallet_revive::Call::call { dest, .. }) = call.is_sub_type() {
             Some(<T as pallet_revive::Config>::AddressMapper::to_account_id(dest))
@@ -89,16 +87,9 @@ where
         info: &DispatchInfoOf<Self::Call>,
         post_info: &PostDispatchInfoOf<Self::Call>,
         len: usize,
-        result: &DispatchResult,
+        _result: &DispatchResult,
     ) -> Result<(), TransactionValidityError> {
         if let Some(( contract,)) = pre {
-            // pallet_transaction_payment::ChargeTransactionPayment::<T>::post_dispatch(
-            //  Some((tip, who, initial_payment)),
-            //  info,
-            //  post_info,
-            //  len,
-            //  result,
-            // )?;
             if let Some(contract) = contract {
                 // Check if contract is registered to track usage.
                 if crate::RegisteredContracts::<T>::contains_key(&contract) {
