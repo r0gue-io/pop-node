@@ -1,5 +1,4 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use frame_support::traits::Currency;
 pub use pallet::*;
 
 pub mod sponsored;
@@ -10,15 +9,21 @@ pub mod weights;
 pub mod pallet {
 	use frame_support::{pallet_prelude::*, traits::ReservableCurrency};
 	use frame_system::pallet_prelude::*;
+	use sp_runtime::traits::CheckedSub;
 
-	use super::{AccountIdOf, BalanceOf};
-	use crate::weights::WeightInfo;
+	use crate::{types::*, weights::WeightInfo};
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_revive::Config {
+	pub trait Config:
+		frame_system::Config + pallet_revive::Config + pallet_transaction_payment::Config
+	{
 		/// The currency mechanism.
 		type Currency: ReservableCurrency<Self::AccountId>;
+
+		/// The deposit to be paid to become a sponsor.
+		type SponsorshipDeposit: Get<BalanceOf<Self>>;
+
 		/// Overarching runtime event type
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
@@ -110,8 +115,14 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
+			match <Sponsorships<T>>::get(&who, &beneficiary) {
+				Some(_) => return Err(Error::<T>::AlreadySponsored.into()),
+				None => {},
+			}
+			// TODO: Reserve SponsorshipDeposit
 			// Register new sponsorship.
 			<Sponsorships<T>>::set(&who, &beneficiary, Some(amount));
+			frame_system::Pallet::<T>::inc_providers(&beneficiary);
 			Self::deposit_event(Event::NewSponsorship { sponsor: who, beneficiary, amount });
 			Ok(())
 		}

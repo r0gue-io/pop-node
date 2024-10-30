@@ -162,9 +162,9 @@ pub struct Filter<T>(PhantomData<T>);
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
 		use fungibles::Call::*;
-		use pallet_sponsorships::Call::*;
 		use messaging::Call::*;
 		use pallet_incentives::Call::*;
+		use pallet_sponsorships::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
 				c,
@@ -185,7 +185,9 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 				) | RuntimeCall::Incentives(
 					register_contract { .. } | claim_rewards { .. } | deposit_funds { .. }
 				) | RuntimeCall::Sponsorships(
-					sponsor_account { .. } | remove_sponsorship_for { .. }
+					sponsor_account { .. } |
+						remove_sponsorship_for { .. } |
+						set_sponsorship_amount { .. }
 				)
 			)
 	}

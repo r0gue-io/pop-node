@@ -23,8 +23,8 @@ smallvec.workspace = true
 
 # Local
 pallet-api.workspace = true
-pallet-sponsorships.workspace = true
 pallet-incentives.workspace = true
+pallet-sponsorships.workspace = true
 pop-chain-extension.workspace = true
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true

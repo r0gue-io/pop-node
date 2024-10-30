@@ -1,7 +1,4 @@
-use frame_support::traits::Currency;
 use pallet_transaction_payment::OnChargeTransaction;
-
-use crate::Config;
 
 /// AccountId alias
 pub type AccountIdOf<T> = <T as frame_system::Config>::AccountId;

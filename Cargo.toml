@@ -64,8 +64,8 @@ substrate-wasm-builder = "23.0.0"
 
 # Local
 pallet-api = { path = "pallets/api", default-features = false }
-pallet-sponsorships = { path = "pallets/sponsorships", default-features = false }
 pallet-incentives = { path = "pallets/incentives", default-features = false }
+pallet-sponsorships = { path = "pallets/sponsorships", default-features = false }
 pop-chain-extension = { path = "./extension", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 pop-runtime-common = { path = "runtime/common", default-features = false }
