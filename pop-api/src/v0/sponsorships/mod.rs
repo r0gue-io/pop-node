@@ -1,16 +1,10 @@
-//! The `fungibles` module provides an API for interacting and managing fungible tokens.
-//!
-//! The API includes the following interfaces:
-//! 1. PSP-22
-//! 2. PSP-22 Metadata
-//! 3. Management
-//! 4. PSP-22 Mintable & Burnable
-
 use constants::*;
 pub use errors::*;
 
 use crate::{
-	constants::SPONSORSHIPS, primitives::{AccountId, Balance}, ChainExtensionMethodApi, Result, StatusCode,
+	constants::SPONSORSHIPS,
+	primitives::{AccountId, Balance},
+	ChainExtensionMethodApi, Result, StatusCode,
 };
 
 pub mod errors;
@@ -60,7 +54,7 @@ mod constants {
 	///
 	pub(super) const SPONSOR_ACCOUNT: u8 = 0;
 	pub(super) const REMOVE_SPONSORSHIP: u8 = 1;
-	pub(super) const SET_SPONSORSHIP_AMOUNT: u8 =2;
+	pub(super) const SET_SPONSORSHIP_AMOUNT: u8 = 2;
 }
 
 // Helper method to build a dispatch call.
