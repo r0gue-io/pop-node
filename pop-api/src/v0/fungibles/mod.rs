@@ -15,7 +15,7 @@ pub use metadata::*;
 pub use traits::*;
 
 use crate::{
-	constants::{ASSETS, BALANCES, FUNGIBLES},
+	constants::{ASSETS, BALANCES, FUNGIBLES, MODULE_ERROR},
 	primitives::{AccountId, Balance, TokenId},
 	ChainExtensionMethodApi, Result, StatusCode,
 };

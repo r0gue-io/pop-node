@@ -94,8 +94,8 @@ pub enum Psp22Error {
 impl From<Psp22Error> for u32 {
 	fn from(value: Psp22Error) -> u32 {
 		match value {
-			Psp22Error::InsufficientBalance => u32::from_le_bytes([3, ASSETS, 0, 0]),
-			Psp22Error::InsufficientAllowance => u32::from_le_bytes([3, ASSETS, 10, 0]),
+			Psp22Error::InsufficientBalance => u32::from_le_bytes([MODULE_ERROR, ASSETS, 0, 0]),
+			Psp22Error::InsufficientAllowance => u32::from_le_bytes([MODULE_ERROR, ASSETS, 10, 0]),
 			Psp22Error::Custom(value) => value.parse::<u32>().expect("Failed to parse"),
 			_ => unimplemented!("Variant is not supported"),
 		}
@@ -108,9 +108,9 @@ impl From<StatusCode> for Psp22Error {
 		let encoded = value.0.to_le_bytes();
 		match encoded {
 			// BalanceLow.
-			[3, ASSETS, 0, _] => Psp22Error::InsufficientBalance,
+			[_, ASSETS, 0, _] => Psp22Error::InsufficientBalance,
 			// Unapproved.
-			[3, ASSETS, 10, _] => Psp22Error::InsufficientAllowance,
+			[_, ASSETS, 10, _] => Psp22Error::InsufficientAllowance,
 			// Custom error with status code.
 			_ => Psp22Error::Custom(value.0.to_string()),
 		}

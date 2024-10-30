@@ -57,12 +57,15 @@ drink::impl_sandbox!(Pop, Runtime, ALICE);
 
 // Deployment and constructor method tests.
 
+fn deploy_with_default(session: &mut Session<Pop>) -> Result<AccountId, Psp22Error> {
+	deploy(session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string(), ALICE.to_string()])
+}
+
 #[drink::test(sandbox = Pop)]
 fn new_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	// Token exists after the deployment.
 	assert!(session.sandbox().asset_exists(&TOKEN));
 	// Successfully emit event.
@@ -86,7 +89,7 @@ fn new_constructor_fails_with_used_token() {
 	assert_ok!(session.sandbox().create(&token, &ALICE, MIN_BALANCE));
 	// `pallet-assets` returns `InUse` error.
 	assert_eq!(
-		deploy(&mut session, "existing", vec![TOKEN.to_string()]),
+		deploy(&mut session, "existing", vec![TOKEN.to_string(), ALICE.to_string()]),
 		Err(Psp22Error::Custom(String::from("Token does not exist")))
 	);
 }
@@ -97,7 +100,7 @@ fn existing_constructor_works(mut session: Session) {
 	// Successfully deploy contract with an existing token ID.
 	let actor = session.get_actor();
 	assert_ok!(session.sandbox().create(&TOKEN, &actor, MIN_BALANCE));
-	assert_ok!(deploy(&mut session, "existing", vec![TOKEN.to_string()]));
+	assert_ok!(deploy(&mut session, "existing", vec![TOKEN.to_string(), ALICE.to_string()]));
 	assert!(session.sandbox().asset_exists(&TOKEN));
 }
 
@@ -106,7 +109,7 @@ fn existing_constructor_fails_with_non_existing_token(&mut session: Session) {
 	let _ = env_logger::try_init();
 	// Fails to deploy contract with a non-existing token ID.
 	assert_eq!(
-		deploy(&mut session, "existing", vec![TOKEN.to_string()]),
+		deploy(&mut session, "existing", vec![TOKEN.to_string(), ALICE.to_string()]),
 		Err(Psp22Error::Custom(String::from("Token does not exist")))
 	);
 }
@@ -117,7 +120,7 @@ fn existing_constructor_fails_with_non_existing_token(&mut session: Session) {
 fn total_supply_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	assert_ok!(deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()],));
+	assert_ok!(deploy_with_default(&mut session));
 	// No tokens in circulation.
 	assert_eq!(total_supply(&mut session), 0);
 	assert_eq!(total_supply(&mut session), session.sandbox().total_supply(&TOKEN));
@@ -131,7 +134,7 @@ fn total_supply_works(mut session: Session) {
 fn balance_of_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	assert_ok!(deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]));
+	assert_ok!(deploy_with_default(&mut session));
 	// No tokens in circulation.
 	assert_eq!(balance_of(&mut session, ALICE), 0);
 	assert_eq!(balance_of(&mut session, ALICE), session.sandbox().balance_of(&TOKEN, &ALICE));
@@ -145,8 +148,7 @@ fn balance_of_works(mut session: Session) {
 fn allowance_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	// No tokens in circulation.
 	assert_eq!(allowance(&mut session, contract.clone(), ALICE), 0);
 	// Tokens in circulation.
@@ -158,10 +160,12 @@ fn allowance_works(mut session: Session) {
 fn transfer_fails_with_no_account() {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// `pallet-assets` returns `NoAccount` error.
+	assert_ok!(session
+		.sandbox()
+		.approve(&TOKEN, &contract.clone(), &contract.clone(), AMOUNT * 2));
 	assert_err!(transfer(&mut session, ALICE, AMOUNT), Error::Module(Assets(NoAccount)));
 }
 
@@ -169,8 +173,7 @@ fn transfer_fails_with_no_account() {
 fn transfer_noop_works(&mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// No-op if `value` is zero, returns success and no events are emitted.
 	assert_ok!(transfer(&mut session, ALICE, 0));
@@ -184,12 +187,14 @@ fn transfer_noop_works(&mut session: Session) {
 fn transfer_fails_with_insufficient_balance() {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	// Failed with `InsufficientBalance`.
+	assert_ok!(session
+		.sandbox()
+		.approve(&TOKEN, &contract.clone(), &contract.clone(), AMOUNT * 2));
 	assert_eq!(transfer(&mut session, BOB, AMOUNT + 1), Err(Psp22Error::InsufficientBalance));
 }
 
@@ -197,8 +202,7 @@ fn transfer_fails_with_insufficient_balance() {
 fn transfer_fails_with_token_not_live() {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
@@ -212,13 +216,13 @@ fn transfer_fails_with_token_not_live() {
 fn transfer_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let value = AMOUNT / 4;
 	// Mint tokens.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
 	// Successfully transfer.
+	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &contract.clone(), AMOUNT));
 	assert_ok!(transfer(&mut session, BOB, value));
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT - value);
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &BOB), value);
@@ -239,8 +243,7 @@ fn transfer_works(mut session: Session) {
 fn transfer_from_noop_works() {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// No-op if `value` is zero, returns success and no events are emitted.
 	assert_ok!(transfer_from(&mut session, ALICE, BOB, 0));
@@ -254,8 +257,7 @@ fn transfer_from_noop_works() {
 fn transfer_from_fails_with_insufficient_balance() {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Mint tokens and approve.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
@@ -271,8 +273,7 @@ fn transfer_from_fails_with_insufficient_balance() {
 fn transfer_from_fails_with_insufficient_allowance() {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Mint tokens and approve.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
@@ -288,8 +289,7 @@ fn transfer_from_fails_with_insufficient_allowance() {
 fn transfer_from_fails_with_token_not_live() {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Mint tokens and approve.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
@@ -307,8 +307,7 @@ fn transfer_from_fails_with_token_not_live() {
 fn transfer_from_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let value = AMOUNT / 2;
 	// Mint tokens and approve.
@@ -336,8 +335,7 @@ fn transfer_from_works(mut session: Session) {
 fn approve_noop_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// No-op if the caller and `spender` is the same address, returns success and no events are
 	// emitted.
@@ -349,8 +347,7 @@ fn approve_noop_works(mut session: Session) {
 fn approve_fails_with_token_not_live(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
@@ -362,8 +359,7 @@ fn approve_fails_with_token_not_live(mut session: Session) {
 fn approve_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let value = AMOUNT / 2;
 	// Mint tokens.
@@ -402,8 +398,7 @@ fn approve_works(mut session: Session) {
 fn increase_allowance_noop_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// No-op if the caller and `spender` is the same address, returns success and no events are
 	// emitted.
@@ -418,8 +413,7 @@ fn increase_allowance_noop_works(mut session: Session) {
 fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
@@ -434,8 +428,7 @@ fn increase_allowance_fails_with_token_not_live(mut session: Session) {
 fn increase_allowance_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let value = AMOUNT / 2;
 	// Mint tokens and approve.
@@ -475,8 +468,7 @@ fn increase_allowance_works(mut session: Session) {
 fn decrease_allowance_noop_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// No-op if the caller and `spender` is the same address, returns success and no events are
 	// emitted.
@@ -488,8 +480,7 @@ fn decrease_allowance_noop_works(mut session: Session) {
 fn decrease_allowance_fails_with_insufficient_allowance(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Failed with `InsufficientAllowance`.
 	assert_eq!(
@@ -502,8 +493,7 @@ fn decrease_allowance_fails_with_insufficient_allowance(mut session: Session) {
 fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Mint tokens and approve.
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
@@ -521,8 +511,7 @@ fn decrease_allowance_fails_with_token_not_live(mut session: Session) {
 fn decrease_allowance_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let value = 1;
 	// Mint tokens and approve.
@@ -564,8 +553,7 @@ fn decrease_allowance_works(mut session: Session) {
 fn token_metadata(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let name: String = String::from("Paseo Token");
 	let symbol: String = String::from("PAS");
@@ -595,17 +583,16 @@ fn mint_fails_with_no_permission(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Create a new token owned by `BOB`.
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
-	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
+	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string(), ALICE.to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
-	assert_err!(mint(&mut session, BOB, AMOUNT), Error::Module(Assets(NoPermission)));
+	assert_err!(mint(&mut session, ALICE, AMOUNT), Error::Module(Assets(NoPermission)));
 }
 
 #[drink::test(sandbox = Pop)]
 fn mint_noop_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// No-op if minted value is zero, returns success and no events are emitted.
 	assert_ok!(mint(&mut session, ALICE, 0));
@@ -616,8 +603,7 @@ fn mint_noop_works(mut session: Session) {
 fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	assert_ok!(mint(&mut session, ALICE, AMOUNT));
 	// Total supply increased by `value` exceeds maximal value of `u128` type.
@@ -628,8 +614,7 @@ fn mint_fails_with_arithmetic_overflow(mut session: Session) {
 fn mint_fails_with_token_not_live(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
@@ -641,8 +626,7 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 fn mint_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let value = AMOUNT;
 	// Successfully mint tokens.
@@ -664,7 +648,7 @@ fn burn_fails_with_no_permission(mut session: Session) {
 	// Create a new token owned by `BOB`.
 	assert_ok!(session.sandbox().create(&(TOKEN + 1), &BOB, MIN_BALANCE));
 	assert_ok!(session.sandbox().mint_into(&(TOKEN + 1), &BOB, AMOUNT));
-	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string()]));
+	assert_ok!(deploy(&mut session, "existing", vec![(TOKEN + 1).to_string(), ALICE.to_string()]));
 	// `pallet-assets` returns `NoPermission` error.
 	assert_err!(burn(&mut session, BOB, AMOUNT), Error::Module(Assets(NoPermission)));
 }
@@ -673,8 +657,7 @@ fn burn_fails_with_no_permission(mut session: Session) {
 fn burn_noop_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// No-op if burned value is zero, returns success and no events are emitted.
 	assert_ok!(burn(&mut session, ALICE, 0));
@@ -685,8 +668,7 @@ fn burn_noop_works(mut session: Session) {
 fn burn_fails_with_insufficient_balance(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	// Failed with `InsufficientBalance`.
 	assert_eq!(burn(&mut session, ALICE, AMOUNT), Err(Psp22Error::InsufficientBalance));
@@ -696,8 +678,7 @@ fn burn_fails_with_insufficient_balance(mut session: Session) {
 fn burn_fails_with_token_not_live(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
 	// Token is not live, i.e. frozen or being destroyed.
@@ -710,8 +691,7 @@ fn burn_fails_with_token_not_live(mut session: Session) {
 fn burn_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
-	let contract =
-		deploy(&mut session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()]).unwrap();
+	let contract = deploy_with_default(&mut session).unwrap();
 	session.set_actor(contract.clone());
 	let value = 1;
 	// Mint tokens.
