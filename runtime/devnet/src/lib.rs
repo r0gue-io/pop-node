@@ -106,8 +106,8 @@ pub type SignedExtra = (
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_sponsorships::sponsored::Sponsored<
-	 	Runtime,
-	 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
+		Runtime,
+		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	>,
 	pallet_incentives::contract_fee_handler::ContractFeeHandler<
 		Runtime,
