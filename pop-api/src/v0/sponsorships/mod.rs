@@ -51,7 +51,6 @@ pub fn set_sponsorship_amount(beneficiary: AccountId, amount: Balance) -> Result
 }
 
 mod constants {
-	///
 	pub(super) const SPONSOR_ACCOUNT: u8 = 0;
 	pub(super) const REMOVE_SPONSORSHIP: u8 = 1;
 	pub(super) const SET_SPONSORSHIP_AMOUNT: u8 = 2;
