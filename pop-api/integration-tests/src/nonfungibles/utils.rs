@@ -1,6 +1,7 @@
+use pallet_revive::AddressMapper;
+
 use super::*;
 use crate::sp_core::H160;
-use pallet_revive::AddressMapper;
 
 pub(super) type AttributeKey = BoundedVec<u8, <Runtime as pallet_nfts::Config>::KeyLimit>;
 pub(super) type AttributeValue = BoundedVec<u8, <Runtime as pallet_nfts::Config>::ValueLimit>;
@@ -106,10 +107,11 @@ pub(super) fn get_attribute(
 
 pub(super) fn create(
 	addr: &H160,
+	id: CollectionId,
 	admin: AccountId32,
 	config: CreateCollectionConfig,
 ) -> Result<(), Error> {
-	let params = [admin.encode(), config.encode()].concat();
+	let params = [id.encode(), admin.encode(), config.encode()].concat();
 	let result = do_bare_call("create", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -238,6 +240,26 @@ pub(super) fn item_metadata(
 	decoded::<Result<Option<Vec<u8>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 		.map(|value| value.map(|v| v.to_vec()))
+}
+
+pub(super) fn mint(
+	addr: &H160,
+	to: AccountId32,
+	collection: CollectionId,
+	item: ItemId,
+	witness: MintWitness,
+) -> Result<(), Error> {
+	let params = [to.encode(), collection.encode(), item.encode(), witness.encode()].concat();
+	let result = do_bare_call("mint", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) fn burn(addr: &H160, collection: CollectionId, item: ItemId) -> Result<(), Error> {
+	let params = [collection.encode(), item.encode()].concat();
+	let result = do_bare_call("burn", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) mod nfts {

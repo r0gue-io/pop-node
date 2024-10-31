@@ -28,7 +28,7 @@ pub struct CollectionDetails {
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct CreateCollectionConfig {
 	pub max_supply: Option<u32>,
-	pub mint_type: MintType<CollectionId>,
+	pub mint_type: MintType,
 	pub price: Option<Balance>,
 	pub start_block: Option<BlockNumber>,
 	pub end_block: Option<BlockNumber>,
@@ -51,7 +51,7 @@ pub enum AttributeNamespace {
 
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum MintType<CollectionId> {
+pub enum MintType {
 	/// Only an `Issuer` could mint items.
 	Issuer,
 	/// Anyone could mint items.
@@ -80,4 +80,14 @@ pub struct DestroyWitness {
 	/// The total number of attributes for this collection.
 	#[codec(compact)]
 	pub attributes: u32,
+}
+
+/// Witness data for items mint transactions.
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub struct MintWitness {
+	/// Provide the id of the item in a required collection.
+	pub owned_item: Option<ItemId>,
+	/// The price specified in mint settings.
+	pub mint_price: Option<Balance>,
 }

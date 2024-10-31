@@ -17,7 +17,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_nfts::{
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings, DestroyWitness,
-		ItemMetadataOf, MintSettings, MintWitness,
+		MintSettings, MintWitness,
 	};
 	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
@@ -217,12 +217,10 @@ pub mod pallet {
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
 			origin: OriginFor<T>,
+			id: CollectionIdOf<T>,
 			admin: AccountIdOf<T>,
 			config: CreateCollectionConfigFor<T>,
 		) -> DispatchResult {
-			let id = NextCollectionIdOf::<T>::get()
-				.or(T::CollectionId::initial_value())
-				.ok_or(pallet_nfts::Error::<T>::UnknownCollection)?;
 			let creator = ensure_signed(origin.clone())?;
 			let collection_config = CollectionConfig {
 				settings: CollectionSettings::all_enabled(),
@@ -350,16 +348,16 @@ pub mod pallet {
 			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-			mint_price: Option<ItemPriceOf<T>>,
+			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
 			let account = ensure_signed(origin.clone())?;
-			let witness_data = MintWitness { mint_price, owned_item: Some(item) };
+			let mint_price = witness.mint_price;
 			NftsOf::<T>::mint(
 				origin,
 				collection,
 				item,
 				T::Lookup::unlookup(to.clone()),
-				Some(witness_data),
+				Some(witness),
 			)?;
 			Self::deposit_event(Event::Transfer {
 				collection,
@@ -429,9 +427,8 @@ pub mod pallet {
 				),
 				Collection(collection) =>
 					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
-				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
-					ItemMetadataOf::<T>::get(collection, item).map(|metadata| metadata.data.into()),
-				),
+				ItemMetadata { collection, item } =>
+					ReadResult::ItemMetadata(NftsOf::<T>::item_metadata(collection, item)),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
 				),

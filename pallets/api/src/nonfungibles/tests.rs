@@ -3,7 +3,7 @@ use frame_support::{assert_noop, assert_ok, traits::Incrementable};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_nfts::{
 	AccountBalance, CollectionConfig, CollectionDetails, CollectionSettings, DestroyWitness,
-	MintSettings,
+	MintSettings, MintWitness,
 };
 use sp_runtime::{BoundedVec, DispatchError::BadOrigin};
 
@@ -135,9 +135,15 @@ fn mint_works() {
 		let collection = nfts::create_collection(owner);
 
 		// Successfully mint a new collection item.
-		let balance_before_mint = AccountBalance::<Test>::get(collection, owner);
-		assert_ok!(NonFungibles::mint(signed(owner), owner, collection, ITEM, None));
-		let balance_after_mint = AccountBalance::<Test>::get(collection, owner);
+		let balance_before_mint = AccountBalance::<Test>::get(collection, account(owner));
+		assert_ok!(NonFungibles::mint(
+			signed(owner),
+			account(owner),
+			collection,
+			ITEM,
+			MintWitness { mint_price: None, owned_item: None }
+		));
+		let balance_after_mint = AccountBalance::<Test>::get(collection, account(owner));
 		assert_eq!(balance_after_mint, 1);
 		assert_eq!(balance_after_mint - balance_before_mint, 1);
 		System::assert_last_event(
@@ -438,6 +444,7 @@ fn create_works() {
 		let next_collection_id = pallet_nfts::NextCollectionId::<Test>::get().unwrap_or_default();
 		assert_ok!(NonFungibles::create(
 			signed(owner),
+			next_collection_id,
 			owner,
 			CreateCollectionConfig {
 				max_supply: None,
