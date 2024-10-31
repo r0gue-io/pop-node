@@ -1,5 +1,4 @@
 use frame_support::BoundedVec;
-use pallet_nfts::CollectionConfig;
 use pop_api::{
 	nonfungibles::{
 		events::{Approval, AttributeSet, Transfer},
@@ -318,11 +317,7 @@ fn set_metadata_works() {
 		let (collection, item) =
 			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(set_metadata(&addr.clone(), collection, item, vec![]));
-		assert_eq!(
-			pallet_nfts::ItemMetadataOf::<Runtime>::get(collection, item)
-				.map(|metadata| metadata.data),
-			Some(MetadataData::default())
-		);
+		assert_eq!(Nfts::item_metadata(collection, item), Some(MetadataData::default()));
 	});
 }
 
@@ -341,11 +336,7 @@ fn clear_metadata_works() {
 			MetadataData::default()
 		));
 		assert_ok!(clear_metadata(&addr.clone(), collection, item));
-		assert_eq!(
-			pallet_nfts::ItemMetadataOf::<Runtime>::get(collection, item)
-				.map(|metadata| metadata.data),
-			None
-		);
+		assert_eq!(Nfts::item_metadata(collection, item), None);
 	});
 }
 
@@ -358,13 +349,12 @@ fn create_works() {
 		let collection = nfts::next_collection_id();
 		assert_ok!(create(
 			&addr.clone(),
+			COLLECTION_ID,
 			account_id.clone(),
-			CreateCollectionConfig {
+			CollectionConfig {
 				max_supply: Some(100),
-				mint_type: MintType::Public,
-				price: None,
-				start_block: None,
-				end_block: None,
+				mint_settings: MintSettings::default(),
+				settings: CollectionSettings::all_enabled(),
 			}
 		));
 		assert_eq!(
@@ -424,5 +414,37 @@ fn set_max_supply_works() {
 			None
 		)
 		.is_err());
+	});
+}
+
+#[test]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
+		let value = 10;
+
+		let collection = nfts::create_collection(&account_id, &account_id);
+		assert_ok!(mint(
+			&addr.clone(),
+			ALICE,
+			collection,
+			ITEM_ID,
+			MintWitness { mint_price: None, owned_item: None }
+		));
+		assert_eq!(nfts::balance_of(COLLECTION_ID, ALICE), 1);
+	});
+}
+
+#[test]
+fn burn_works() {
+	new_test_ext().execute_with(|| {
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
+
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
+		assert_ok!(burn(&addr.clone(), collection, ITEM_ID,));
+		assert_eq!(nfts::balance_of(COLLECTION_ID, account_id), 0);
 	});
 }

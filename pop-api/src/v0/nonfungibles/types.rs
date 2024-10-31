@@ -1,5 +1,7 @@
+use enumflags2::{bitflags, BitFlags};
+
 use super::*;
-use crate::primitives::AccountId;
+use crate::{macros::impl_codec_bitflags, primitives::AccountId};
 
 pub type ItemId = u32;
 pub type CollectionId = u32;
@@ -24,16 +26,6 @@ pub struct CollectionDetails {
 	pub attributes: u32,
 }
 
-#[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct CreateCollectionConfig {
-	pub max_supply: Option<u32>,
-	pub mint_type: MintType<CollectionId>,
-	pub price: Option<Balance>,
-	pub start_block: Option<BlockNumber>,
-	pub end_block: Option<BlockNumber>,
-}
-
 /// Attribute namespaces for non-fungible tokens.
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -49,9 +41,9 @@ pub enum AttributeNamespace {
 	Account(AccountId),
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum MintType<CollectionId> {
+pub enum MintType {
 	/// Only an `Issuer` could mint items.
 	Issuer,
 	/// Anyone could mint items.
@@ -80,4 +72,152 @@ pub struct DestroyWitness {
 	/// The total number of attributes for this collection.
 	#[codec(compact)]
 	pub attributes: u32,
+}
+
+/// Witness data for items mint transactions.
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub struct MintWitness {
+	/// Provide the id of the item in a required collection.
+	pub owned_item: Option<ItemId>,
+	/// The price specified in mint settings.
+	pub mint_price: Option<Balance>,
+}
+
+/// Collection's configuration.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub struct CollectionConfig {
+	/// Collection's settings.
+	pub settings: CollectionSettings,
+	/// Collection's max supply.
+	pub max_supply: Option<u32>,
+	/// Default settings each item will get during the mint.
+	pub mint_settings: MintSettings,
+}
+
+impl CollectionConfig {
+	pub fn is_setting_enabled(&self, setting: CollectionSetting) -> bool {
+		!self.settings.is_disabled(setting)
+	}
+
+	pub fn has_disabled_setting(&self, setting: CollectionSetting) -> bool {
+		self.settings.is_disabled(setting)
+	}
+
+	pub fn enable_setting(&mut self, setting: CollectionSetting) {
+		self.settings.0.remove(setting);
+	}
+
+	pub fn disable_setting(&mut self, setting: CollectionSetting) {
+		self.settings.0.insert(setting);
+	}
+}
+
+/// Support for up to 64 user-enabled features on a collection.
+#[bitflags]
+#[repr(u64)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub enum CollectionSetting {
+	/// Items in this collection are transferable.
+	TransferableItems,
+	/// The metadata of this collection can be modified.
+	UnlockedMetadata,
+	/// Attributes of this collection can be modified.
+	UnlockedAttributes,
+	/// The supply of this collection can be modified.
+	UnlockedMaxSupply,
+	/// When this isn't set then the deposit is required to hold the items of this collection.
+	DepositRequired,
+}
+
+/// Wrapper type for `BitFlags<CollectionSetting>` that implements `Codec`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CollectionSettings(pub BitFlags<CollectionSetting>);
+
+impl CollectionSettings {
+	pub fn all_enabled() -> Self {
+		Self(BitFlags::EMPTY)
+	}
+
+	pub fn get_disabled(&self) -> BitFlags<CollectionSetting> {
+		self.0
+	}
+
+	pub fn is_disabled(&self, setting: CollectionSetting) -> bool {
+		self.0.contains(setting)
+	}
+
+	pub fn from_disabled(settings: BitFlags<CollectionSetting>) -> Self {
+		Self(settings)
+	}
+}
+
+impl_codec_bitflags!(CollectionSettings, u64, CollectionSetting);
+
+/// Support for up to 64 user-enabled features on an item.
+#[bitflags]
+#[repr(u64)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub enum ItemSetting {
+	/// This item is transferable.
+	Transferable,
+	/// The metadata of this item can be modified.
+	UnlockedMetadata,
+	/// Attributes of this item can be modified.
+	UnlockedAttributes,
+}
+
+/// Wrapper type for `BitFlags<ItemSetting>` that implements `Codec`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ItemSettings(pub BitFlags<ItemSetting>);
+
+impl ItemSettings {
+	pub fn all_enabled() -> Self {
+		Self(BitFlags::EMPTY)
+	}
+
+	pub fn get_disabled(&self) -> BitFlags<ItemSetting> {
+		self.0
+	}
+
+	pub fn is_disabled(&self, setting: ItemSetting) -> bool {
+		self.0.contains(setting)
+	}
+
+	pub fn from_disabled(settings: BitFlags<ItemSetting>) -> Self {
+		Self(settings)
+	}
+}
+
+impl_codec_bitflags!(ItemSettings, u64, ItemSetting);
+
+/// Holds the information about minting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
+pub struct MintSettings {
+	/// Whether anyone can mint or if minters are restricted to some subset.
+	pub mint_type: MintType,
+	/// An optional price per mint.
+	pub price: Option<Balance>,
+	/// When the mint starts.
+	pub start_block: Option<BlockNumber>,
+	/// When the mint ends.
+	pub end_block: Option<BlockNumber>,
+	/// Default settings each item will get during the mint.
+	pub default_item_settings: ItemSettings,
+}
+
+impl Default for MintSettings {
+	fn default() -> Self {
+		Self {
+			mint_type: MintType::Issuer,
+			price: None,
+			start_block: None,
+			end_block: None,
+			default_item_settings: ItemSettings::all_enabled(),
+		}
+	}
 }

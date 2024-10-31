@@ -17,21 +17,20 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_nfts::{
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings, DestroyWitness,
-		ItemMetadataOf, MintSettings, MintWitness,
+		MintSettings, MintWitness,
 	};
 	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
 	use types::{
-		AccountIdOf, AttributeNamespaceOf, BalanceOf, CollectionDetailsFor, CollectionIdOf,
-		CreateCollectionConfigFor, ItemIdOf, ItemPriceOf, NextCollectionIdOf, NftsOf,
-		NftsWeightInfoOf,
+		AccountIdOf, AttributeNamespaceOf, BalanceOf, CollectionConfigFor, CollectionDetailsFor,
+		CollectionIdOf, ItemIdOf, ItemPriceOf, NextCollectionIdOf, NftsOf, NftsWeightInfoOf,
 	};
 
 	use super::*;
 
 	/// State reads for the non-fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Clone))]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
@@ -72,7 +71,7 @@ pub mod pallet {
 
 	/// Results of state reads for the non-fungibles API.
 	#[derive(Debug)]
-	#[cfg_attr(feature = "std", derive(Encode, Clone))]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
 		/// Total item supply of a collection.
 		TotalSupply(u128),
@@ -83,13 +82,13 @@ pub mod pallet {
 		/// Owner of a specified collection owner.
 		OwnerOf(Option<AccountIdOf<T>>),
 		/// Attribute value of a collection item.
-		GetAttribute(Option<BoundedVec<u8, T::ValueLimit>>),
+		GetAttribute(Option<Vec<u8>>),
 		/// Details of a collection.
 		Collection(Option<CollectionDetailsFor<T>>),
 		/// Next collection ID.
 		NextCollectionId(Option<CollectionIdOf<T>>),
 		/// Collection item metadata.
-		ItemMetadata(Option<BoundedVec<u8, T::StringLimit>>),
+		ItemMetadata(Option<Vec<u8>>),
 	}
 
 	impl<T: Config> ReadResult<T> {
@@ -217,24 +216,12 @@ pub mod pallet {
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
 			origin: OriginFor<T>,
+			id: CollectionIdOf<T>,
 			admin: AccountIdOf<T>,
-			config: CreateCollectionConfigFor<T>,
+			config: CollectionConfigFor<T>,
 		) -> DispatchResult {
-			let id = NextCollectionIdOf::<T>::get()
-				.or(T::CollectionId::initial_value())
-				.ok_or(pallet_nfts::Error::<T>::UnknownCollection)?;
 			let creator = ensure_signed(origin.clone())?;
-			let collection_config = CollectionConfig {
-				settings: CollectionSettings::all_enabled(),
-				max_supply: config.max_supply,
-				mint_settings: MintSettings {
-					mint_type: config.mint_type,
-					start_block: config.start_block,
-					end_block: config.end_block,
-					..MintSettings::default()
-				},
-			};
-			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), collection_config)?;
+			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), config)?;
 			Self::deposit_event(Event::Created { id, admin, creator });
 			Ok(())
 		}
@@ -350,16 +337,16 @@ pub mod pallet {
 			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-			mint_price: Option<ItemPriceOf<T>>,
+			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
 			let account = ensure_signed(origin.clone())?;
-			let witness_data = MintWitness { mint_price, owned_item: Some(item) };
+			let mint_price = witness.mint_price;
 			NftsOf::<T>::mint(
 				origin,
 				collection,
 				item,
 				T::Lookup::unlookup(to.clone()),
-				Some(witness_data),
+				Some(witness),
 			)?;
 			Self::deposit_event(Event::Transfer {
 				collection,
@@ -425,12 +412,12 @@ pub mod pallet {
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
 				GetAttribute { collection, item, namespace, key } => ReadResult::GetAttribute(
 					pallet_nfts::Attribute::<T>::get((collection, Some(item), namespace, key))
-						.map(|attribute| attribute.0),
+						.map(|attribute| attribute.0.into()),
 				),
 				Collection(collection) =>
 					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
 				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
-					ItemMetadataOf::<T>::get(collection, item).map(|metadata| metadata.data),
+					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
 				),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),

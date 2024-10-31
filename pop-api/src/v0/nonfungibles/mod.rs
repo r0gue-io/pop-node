@@ -102,12 +102,13 @@ pub fn get_attribute(
 }
 
 #[inline]
-pub fn create(admin: AccountId, config: CreateCollectionConfig) -> Result<()> {
+pub fn create(id: CollectionId, admin: AccountId, config: CollectionConfig) -> Result<()> {
 	build_dispatch(CREATE)
-		.input::<(AccountId, CreateCollectionConfig)>()
+		.input::<(CollectionId, AccountId, CollectionConfig)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(admin, config))
+		.call(&(id, admin, config))?;
+	Ok(())
 }
 
 #[inline]
@@ -225,13 +226,13 @@ pub fn mint(
 	to: AccountId,
 	collection: CollectionId,
 	item: ItemId,
-	mint_price: Option<Balance>,
+	witness: MintWitness,
 ) -> Result<()> {
 	build_dispatch(MINT)
-		.input::<(AccountId, CollectionId, ItemId, Option<Balance>)>()
+		.input::<(AccountId, CollectionId, ItemId, MintWitness)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(to, collection, item, mint_price))
+		.call(&(to, collection, item, witness))
 }
 
 #[inline]
