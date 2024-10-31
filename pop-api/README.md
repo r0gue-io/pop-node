@@ -26,7 +26,7 @@ The Pop API ink! library provides APIs for tailored use cases. The apis are vers
 
 ## Use Pop API
 
-Using Pop API in your ink! smart contract is as easy as adding one dependency to `pop-api` crate in your project manifest:
+Using the Pop API in your ink! smart contract is as easy as adding the `pop-api` crate in your project manifest:
 
 ```toml
 # Cargo.toml
