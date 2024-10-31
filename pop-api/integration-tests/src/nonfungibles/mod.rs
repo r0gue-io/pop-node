@@ -251,7 +251,7 @@ fn approve_item_attributes_works() {
 			RuntimeOrigin::signed(ALICE),
 			collection,
 			Some(item),
-			pallet_nfts::AttributeNamespace::Account(ALICE),
+			pallet_nfts::AttributeNamespace::ALICE,
 			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
 			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
 		));
@@ -259,7 +259,7 @@ fn approve_item_attributes_works() {
 			pallet_nfts::Attribute::<Runtime>::get((
 				collection,
 				Some(item),
-				pallet_nfts::AttributeNamespace::Account(ALICE),
+				pallet_nfts::AttributeNamespace::ALICE,
 				AttributeKey::truncate_from("some attribute".as_bytes().to_vec()),
 			))
 			.map(|attribute| attribute.0),
@@ -286,7 +286,7 @@ fn cancel_item_attributes_approval_works() {
 			RuntimeOrigin::signed(ALICE),
 			collection,
 			Some(item),
-			pallet_nfts::AttributeNamespace::Account(ALICE),
+			pallet_nfts::AttributeNamespace::ALICE,
 			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
 			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
 		));
@@ -301,7 +301,7 @@ fn cancel_item_attributes_approval_works() {
 			RuntimeOrigin::signed(ALICE),
 			collection,
 			Some(item),
-			pallet_nfts::AttributeNamespace::Account(ALICE),
+			pallet_nfts::AttributeNamespace::ALICE,
 			BoundedVec::truncate_from("some attribute".as_bytes().to_vec()),
 			BoundedVec::truncate_from("some value".as_bytes().to_vec()),
 		)

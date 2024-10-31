@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use codec::{Decode, Encode};
+use codec::Decode;
 use cumulus_primitives_core::Weight;
 use frame_support::traits::{ConstU32, Contains};
 pub(crate) use pallet_api::Extension;
@@ -28,7 +28,7 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 
 /// A query of runtime state.
 #[derive(Decode, Debug)]
-#[cfg_attr(test, derive(Encode, Clone))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 #[repr(u8)]
 pub enum RuntimeRead {
 	/// Fungible token queries.
@@ -37,7 +37,7 @@ pub enum RuntimeRead {
 	/// Messaging state queries.
 	#[codec(index = 151)]
 	Messaging(messaging::Read<Runtime>),
-	// Non-fungible token queries.
+	/// Non-fungible token queries.
 	#[codec(index = 154)]
 	NonFungibles(nonfungibles::Read<Runtime>),
 }
@@ -69,7 +69,7 @@ impl Readable for RuntimeRead {
 
 /// The result of a runtime state read.
 #[derive(Debug)]
-#[cfg_attr(test, derive(Encode, Clone))]
+#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
@@ -278,6 +278,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 #[cfg(test)]
 mod tests {
 	use codec::Encode;
+	use pallet_api::fungibles::Call::*;
 	use sp_core::{bounded_vec, crypto::AccountId32};
 	use RuntimeCall::{Balances, Fungibles, NonFungibles};
 
@@ -301,7 +302,7 @@ mod tests {
 		use pallet_balances::{AdjustmentDirection, Call::*};
 		use sp_runtime::MultiAddress;
 
-		for call in vec![
+		const CALLS: [RuntimeCall; 4] = [
 			Balances(force_adjust_total_issuance {
 				direction: AdjustmentDirection::Increase,
 				delta: 0,
@@ -313,18 +314,16 @@ mod tests {
 				value: 0,
 			}),
 			Balances(force_unreserve { who: MultiAddress::Address32([0u8; 32]), amount: 0 }),
-		]
-		.iter()
-		{
-			assert!(!Filter::<Runtime>::contains(call))
+		];
+
+		for call in CALLS {
+			assert!(!Filter::<Runtime>::contains(&call))
 		}
 	}
 
 	#[test]
 	fn filter_allows_fungibles_calls() {
-		use pallet_api::fungibles::Call::*;
-
-		for call in vec![
+		const CALLS: [RuntimeCall; 11] = [
 			Fungibles(transfer { token: 0, to: ACCOUNT, value: 0 }),
 			Fungibles(transfer_from { token: 0, from: ACCOUNT, to: ACCOUNT, value: 0 }),
 			Fungibles(approve { token: 0, spender: ACCOUNT, value: 0 }),
@@ -336,10 +335,10 @@ mod tests {
 			Fungibles(clear_metadata { token: 0 }),
 			Fungibles(mint { token: 0, account: ACCOUNT, value: 0 }),
 			Fungibles(burn { token: 0, account: ACCOUNT, value: 0 }),
-		]
-		.iter()
-		{
-			assert!(Filter::<Runtime>::contains(call))
+		];
+
+		for call in CALLS {
+			assert!(Filter::<Runtime>::contains(&call))
 		}
 	}
 
@@ -408,8 +407,7 @@ mod tests {
 	#[test]
 	fn filter_allows_fungibles_reads() {
 		use super::{fungibles::Read::*, RuntimeRead::*};
-
-		for read in vec![
+		const READS: [RuntimeRead; 7] = [
 			Fungibles(TotalSupply(1)),
 			Fungibles(BalanceOf { token: 1, owner: ACCOUNT }),
 			Fungibles(Allowance { token: 1, owner: ACCOUNT, spender: ACCOUNT }),
@@ -417,10 +415,10 @@ mod tests {
 			Fungibles(TokenSymbol(1)),
 			Fungibles(TokenDecimals(10)),
 			Fungibles(TokenExists(1)),
-		]
-		.iter()
-		{
-			assert!(Filter::<Runtime>::contains(read))
+		];
+
+		for read in READS {
+			assert!(Filter::<Runtime>::contains(&read))
 		}
 	}
 

@@ -41,7 +41,7 @@ mod encoding_read_result {
 
 	#[test]
 	fn owner_of() {
-		let mut owner = Some(account(ALICE));
+		let mut owner = Some(ALICE);
 		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
 		owner = None;
 		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
@@ -64,7 +64,7 @@ mod encoding_read_result {
 	#[test]
 	fn collection() {
 		let mut collection_details = Some(CollectionDetails {
-			owner: account(ALICE),
+			owner: ALICE,
 			owner_deposit: 0,
 			items: 0,
 			item_metadatas: 0,
@@ -113,26 +113,17 @@ fn transfer() {
 
 		let (collection, item) = nfts::create_collection_mint(owner, ITEM);
 		for origin in vec![root(), none()] {
-			assert_noop!(
-				NonFungibles::transfer(origin, collection, item, account(dest)),
-				BadOrigin
-			);
+			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
 		}
 		// Successfully burn an existing new collection item.
-		let balance_before_transfer = AccountBalance::<Test>::get(collection, &account(dest));
-		assert_ok!(NonFungibles::transfer(signed(owner), collection, ITEM, account(dest)));
-		let balance_after_transfer = AccountBalance::<Test>::get(collection, &account(dest));
-		assert_eq!(AccountBalance::<Test>::get(collection, &account(owner)), 0);
+		let balance_before_transfer = AccountBalance::<Test>::get(collection, &dest);
+		assert_ok!(NonFungibles::transfer(signed(owner), collection, ITEM, dest));
+		let balance_after_transfer = AccountBalance::<Test>::get(collection, &dest);
+		assert_eq!(AccountBalance::<Test>::get(collection, &owner), 0);
 		assert_eq!(balance_after_transfer - balance_before_transfer, 1);
 		System::assert_last_event(
-			Event::Transfer {
-				collection,
-				item,
-				from: Some(account(owner)),
-				to: Some(account(dest)),
-				price: None,
-			}
-			.into(),
+			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
+				.into(),
 		);
 	});
 }
@@ -144,20 +135,14 @@ fn mint_works() {
 		let collection = nfts::create_collection(owner);
 
 		// Successfully mint a new collection item.
-		let balance_before_mint = AccountBalance::<Test>::get(collection, account(owner));
-		assert_ok!(NonFungibles::mint(signed(owner), account(owner), collection, ITEM, None));
-		let balance_after_mint = AccountBalance::<Test>::get(collection, account(owner));
+		let balance_before_mint = AccountBalance::<Test>::get(collection, owner);
+		assert_ok!(NonFungibles::mint(signed(owner), owner, collection, ITEM, None));
+		let balance_after_mint = AccountBalance::<Test>::get(collection, owner);
 		assert_eq!(balance_after_mint, 1);
 		assert_eq!(balance_after_mint - balance_before_mint, 1);
 		System::assert_last_event(
-			Event::Transfer {
-				collection,
-				item: ITEM,
-				from: None,
-				to: Some(account(owner)),
-				price: None,
-			}
-			.into(),
+			Event::Transfer { collection, item: ITEM, from: None, to: Some(owner), price: None }
+				.into(),
 		);
 	});
 }
@@ -171,8 +156,7 @@ fn burn_works() {
 		let (collection, item) = nfts::create_collection_mint(owner, ITEM);
 		assert_ok!(NonFungibles::burn(signed(owner), collection, ITEM));
 		System::assert_last_event(
-			Event::Transfer { collection, item, from: Some(account(owner)), to: None, price: None }
-				.into(),
+			Event::Transfer { collection, item, from: Some(owner), to: None, price: None }.into(),
 		);
 	});
 }
@@ -184,25 +168,13 @@ fn approve_works() {
 		let operator = BOB;
 		let (collection, item) = nfts::create_collection_mint(owner, ITEM);
 		// Successfully approve `oeprator` to transfer the collection item.
-		assert_ok!(NonFungibles::approve(
-			signed(owner),
-			collection,
-			Some(item),
-			account(operator),
-			true
-		));
+		assert_ok!(NonFungibles::approve(signed(owner), collection, Some(item), operator, true));
 		System::assert_last_event(
-			Event::Approval {
-				collection,
-				item: Some(item),
-				owner: account(owner),
-				operator: account(operator),
-				approved: true,
-			}
-			.into(),
+			Event::Approval { collection, item: Some(item), owner, operator, approved: true }
+				.into(),
 		);
 		// Successfully transfer the item by the delegated account `operator`.
-		assert_ok!(Nfts::transfer(signed(operator), collection, item, account(operator)));
+		assert_ok!(Nfts::transfer(signed(operator), collection, item, operator));
 	});
 }
 
@@ -213,16 +185,10 @@ fn cancel_approval_works() {
 		let operator = BOB;
 		let (collection, item) = nfts::create_collection_mint_and_approve(owner, ITEM, operator);
 		// Successfully cancel the transfer approval of `operator` by `owner`.
-		assert_ok!(NonFungibles::approve(
-			signed(owner),
-			collection,
-			Some(item),
-			account(operator),
-			false
-		));
+		assert_ok!(NonFungibles::approve(signed(owner), collection, Some(item), operator, false));
 		// Failed to transfer the item by `operator` without permission.
 		assert_noop!(
-			Nfts::transfer(signed(operator), collection, item, account(operator)),
+			Nfts::transfer(signed(operator), collection, item, operator),
 			NftsError::NoPermission
 		);
 	});
@@ -235,10 +201,10 @@ fn set_max_supply_works() {
 		let collection = nfts::create_collection(owner);
 		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, 10));
 		(0..10).into_iter().for_each(|i| {
-			assert_ok!(Nfts::mint(signed(owner), collection, i, account(owner), None));
+			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
 		});
 		assert_noop!(
-			Nfts::mint(signed(owner), collection, 42, account(owner), None),
+			Nfts::mint(signed(owner), collection, 42, owner, None),
 			NftsError::MaxSupplyReached
 		);
 	});
@@ -371,12 +337,12 @@ fn approve_item_attribute_works() {
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
 		// Successfully approve delegate to set attributes.
-		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, account(BOB)));
+		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, BOB));
 		assert_ok!(Nfts::set_attribute(
 			signed(BOB),
 			collection,
 			Some(item),
-			pallet_nfts::AttributeNamespace::Account(account(BOB)),
+			pallet_nfts::AttributeNamespace::Account(BOB),
 			attribute.clone(),
 			value.clone()
 		));
@@ -385,7 +351,7 @@ fn approve_item_attribute_works() {
 			NonFungibles::read(GetAttribute {
 				collection,
 				item,
-				namespace: pallet_nfts::AttributeNamespace::Account(account(BOB)),
+				namespace: pallet_nfts::AttributeNamespace::Account(BOB),
 				key: attribute
 			})
 			.encode(),
@@ -402,12 +368,12 @@ fn cancel_item_attribute_approval_works() {
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
 		// Successfully approve delegate to set attributes.
-		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, account(BOB)));
+		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, BOB));
 		assert_ok!(Nfts::set_attribute(
 			signed(BOB),
 			collection,
 			Some(item),
-			pallet_nfts::AttributeNamespace::Account(account(BOB)),
+			pallet_nfts::AttributeNamespace::Account(BOB),
 			attribute.clone(),
 			value.clone()
 		));
@@ -415,7 +381,7 @@ fn cancel_item_attribute_approval_works() {
 			signed(ALICE),
 			collection,
 			item,
-			account(BOB),
+			BOB,
 			pallet_nfts::CancelAttributesApprovalWitness { account_attributes: 1 }
 		));
 		assert_noop!(
@@ -423,7 +389,7 @@ fn cancel_item_attribute_approval_works() {
 				signed(BOB),
 				collection,
 				Some(item),
-				pallet_nfts::AttributeNamespace::Account(account(BOB)),
+				pallet_nfts::AttributeNamespace::Account(BOB),
 				attribute.clone(),
 				value.clone()
 			),
@@ -452,7 +418,7 @@ fn total_supply_works() {
 		let owner = ALICE;
 		let collection = nfts::create_collection(owner);
 		(0..10).into_iter().for_each(|i| {
-			assert_ok!(Nfts::mint(signed(owner), collection, i, account(owner), None));
+			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
 			assert_eq!(
 				NonFungibles::read(TotalSupply(collection)).encode(),
 				((i + 1) as u128).encode()
@@ -472,7 +438,7 @@ fn create_works() {
 		let next_collection_id = pallet_nfts::NextCollectionId::<Test>::get().unwrap_or_default();
 		assert_ok!(NonFungibles::create(
 			signed(owner),
-			account(owner),
+			owner,
 			CreateCollectionConfig {
 				max_supply: None,
 				mint_type: pallet_nfts::MintType::Public,
@@ -481,7 +447,7 @@ fn create_works() {
 				end_block: None,
 			},
 		));
-		assert_eq!(Nfts::collection_owner(next_collection_id), Some(account(owner)));
+		assert_eq!(Nfts::collection_owner(next_collection_id), Some(owner));
 	});
 }
 
@@ -515,14 +481,14 @@ fn balance_of_works() {
 		let owner = ALICE;
 		let collection = nfts::create_collection(owner);
 		(0..10).into_iter().for_each(|i| {
-			assert_ok!(Nfts::mint(signed(owner), collection, i, account(owner), None));
+			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
 			assert_eq!(
-				NonFungibles::read(BalanceOf { collection, owner: account(owner) }).encode(),
+				NonFungibles::read(BalanceOf { collection, owner }).encode(),
 				(i + 1).encode()
 			);
 			assert_eq!(
-				NonFungibles::read(BalanceOf { collection, owner: account(owner) }).encode(),
-				AccountBalance::<Test>::get(collection, account(owner)).encode()
+				NonFungibles::read(BalanceOf { collection, owner }).encode(),
+				AccountBalance::<Test>::get(collection, owner).encode()
 			);
 		});
 	});
@@ -535,32 +501,22 @@ fn allowance_works() {
 		let operator = BOB;
 		let (collection, item) = nfts::create_collection_mint_and_approve(owner, ITEM, operator);
 		assert_eq!(
-			NonFungibles::read(Allowance {
-				collection,
-				item: Some(item),
-				owner: account(owner),
-				operator: account(operator),
-			})
-			.encode(),
+			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator })
+				.encode(),
 			true.encode()
 		);
 		assert_eq!(
-			NonFungibles::read(Allowance {
-				collection,
-				item: Some(item),
-				owner: account(owner),
-				operator: account(operator),
-			})
-			.encode(),
-			Nfts::check_allowance(&collection, &Some(item), &account(owner), &account(operator))
+			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator })
+				.encode(),
+			Nfts::check_allowance(&collection, &Some(item), &owner, &operator)
 				.is_ok()
 				.encode()
 		);
 	});
 }
 
-fn signed(account_id: u8) -> RuntimeOrigin {
-	RuntimeOrigin::signed(account(account_id))
+fn signed(account_id: AccountId) -> RuntimeOrigin {
+	RuntimeOrigin::signed(account_id)
 }
 
 fn root() -> RuntimeOrigin {
@@ -575,32 +531,26 @@ mod nfts {
 	use super::*;
 
 	pub(super) fn create_collection_mint_and_approve(
-		owner: u8,
+		owner: AccountId,
 		item: ItemIdOf<Test>,
-		operator: u8,
+		operator: AccountId,
 	) -> (u32, u32) {
 		let (collection, item) = create_collection_mint(owner, item);
-		assert_ok!(Nfts::approve_transfer(
-			signed(owner),
-			collection,
-			Some(item),
-			account(operator),
-			None
-		));
+		assert_ok!(Nfts::approve_transfer(signed(owner), collection, Some(item), operator, None));
 		(collection, item)
 	}
 
-	pub(super) fn create_collection_mint(owner: u8, item: ItemIdOf<Test>) -> (u32, u32) {
+	pub(super) fn create_collection_mint(owner: AccountId, item: ItemIdOf<Test>) -> (u32, u32) {
 		let collection = create_collection(owner);
-		assert_ok!(Nfts::mint(signed(owner), collection, item, account(owner), None));
+		assert_ok!(Nfts::mint(signed(owner), collection, item, owner, None));
 		(collection, item)
 	}
 
-	pub(super) fn create_collection(owner: u8) -> u32 {
+	pub(super) fn create_collection(owner: AccountId) -> u32 {
 		let next_id = next_collection_id();
 		assert_ok!(Nfts::create(
 			signed(owner),
-			account(owner),
+			owner,
 			collection_config_with_all_settings_enabled()
 		));
 		next_id

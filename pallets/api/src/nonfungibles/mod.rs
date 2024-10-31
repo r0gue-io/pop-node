@@ -31,7 +31,7 @@ pub mod pallet {
 
 	/// State reads for the non-fungibles API with required input.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(Clone))]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
@@ -72,7 +72,7 @@ pub mod pallet {
 
 	/// Results of state reads for the non-fungibles API.
 	#[derive(Debug)]
-	#[cfg_attr(feature = "std", derive(Encode, Clone))]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
 		/// Total item supply of a collection.
 		TotalSupply(u128),
@@ -83,13 +83,13 @@ pub mod pallet {
 		/// Owner of a specified collection owner.
 		OwnerOf(Option<AccountIdOf<T>>),
 		/// Attribute value of a collection item.
-		GetAttribute(Option<BoundedVec<u8, T::ValueLimit>>),
+		GetAttribute(Option<Vec<u8>>),
 		/// Details of a collection.
 		Collection(Option<CollectionDetailsFor<T>>),
 		/// Next collection ID.
 		NextCollectionId(Option<CollectionIdOf<T>>),
 		/// Collection item metadata.
-		ItemMetadata(Option<BoundedVec<u8, T::StringLimit>>),
+		ItemMetadata(Option<Vec<u8>>),
 	}
 
 	impl<T: Config> ReadResult<T> {
@@ -425,12 +425,12 @@ pub mod pallet {
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
 				GetAttribute { collection, item, namespace, key } => ReadResult::GetAttribute(
 					pallet_nfts::Attribute::<T>::get((collection, Some(item), namespace, key))
-						.map(|attribute| attribute.0),
+						.map(|attribute| attribute.0.into()),
 				),
 				Collection(collection) =>
 					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
 				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
-					ItemMetadataOf::<T>::get(collection, item).map(|metadata| metadata.data),
+					ItemMetadataOf::<T>::get(collection, item).map(|metadata| metadata.data.into()),
 				),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),

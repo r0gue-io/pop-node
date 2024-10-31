@@ -1,4 +1,3 @@
-use codec::Encode;
 use sp_runtime::ModuleError;
 
 use super::*;
@@ -41,7 +40,7 @@ impl From<VersionedRuntimeRead> for RuntimeRead {
 
 /// Versioned runtime state read results.
 #[derive(Debug)]
-#[cfg_attr(test, derive(Encode, Clone))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum VersionedRuntimeResult {
 	/// Version zero of runtime read results.
 	V0(RuntimeResult),
@@ -176,19 +175,13 @@ mod tests {
 	fn from_versioned_runtime_call_to_runtime_call_works() {
 		let call =
 			RuntimeCall::System(Call::remark_with_event { remark: "pop".as_bytes().to_vec() });
-		assert_eq!(
-			RuntimeCall::from(VersionedRuntimeCall::V0(call.clone())).encode(),
-			call.encode()
-		);
+		assert_eq!(RuntimeCall::from(VersionedRuntimeCall::V0(call.clone())), call);
 	}
 
 	#[test]
 	fn from_versioned_runtime_read_to_runtime_read_works() {
 		let read = RuntimeRead::Fungibles(fungibles::Read::<Runtime>::TotalSupply(42));
-		assert_eq!(
-			RuntimeRead::from(VersionedRuntimeRead::V0(read.clone())).encode(),
-			read.encode()
-		);
+		assert_eq!(RuntimeRead::from(VersionedRuntimeRead::V0(read.clone())), read);
 	}
 
 	#[test]
@@ -196,21 +189,21 @@ mod tests {
 		let result = RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000));
 		let v0 = 0;
 		assert_eq!(
-			VersionedRuntimeResult::try_from((result.clone(), v0)).unwrap().encode(),
-			VersionedRuntimeResult::V0(result.clone()).encode()
+			VersionedRuntimeResult::try_from((result.clone(), v0)),
+			Ok(VersionedRuntimeResult::V0(result.clone()))
 		);
 	}
 
 	#[test]
 	fn versioned_runtime_result_fails() {
 		// Unknown version 1.
-		let err = VersionedRuntimeResult::try_from((
-			RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000)),
-			1,
-		))
-		.unwrap_err();
-		let expected_err: DispatchError = pallet_revive::Error::<Runtime>::DecodingFailed.into();
-		assert_eq!(err.encode(), expected_err.encode());
+		assert_eq!(
+			VersionedRuntimeResult::try_from((
+				RuntimeResult::Fungibles(fungibles::ReadResult::<Runtime>::TotalSupply(1_000)),
+				1
+			)),
+			Err(pallet_revive::Error::<Runtime>::DecodingFailed.into())
+		);
 	}
 
 	#[test]
