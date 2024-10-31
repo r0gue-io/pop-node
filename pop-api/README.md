@@ -12,11 +12,33 @@ One of the core value propositions of Pop Network is to enable smart contracts t
 
 - [V0](./src/v0/README.md)
 
+
+## Use Pop API
+
+Including Pop API in your ink! smart contract is as easy as adding one dependency to `pop-api` crate in your project manifest:
+
+```toml
+# Cargo.toml
+pop-api = { git = "https://github.com/r0gue-io/pop-node", default-features = false }
+```
+
+and importing it within the contract source:
+
+```rust
+// contract.rs
+use pop_api::v0::*;
+```
+
 ## Examples
 ink! smart contract examples using the Pop API
 
 - [fungibles](./examples/fungibles/)
 - [read-runtime-state](./examples/read-runtime-state/)
+
+## Testing
+
+// cover pop-drink
+
 
 ---
 
@@ -57,7 +79,7 @@ use pop_api::fungibles::{self as api};
 // -- snip --
 #[ink(message)]
 pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
-    // Use of Pop API to call into the runtime to transfer some fungible assets.
+    // Usege of Pop API to call into the runtime to transfer some fungible assets.
     api::transfer(token, to, value)
 }
 ```
