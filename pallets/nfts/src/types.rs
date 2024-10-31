@@ -147,7 +147,7 @@ pub struct ItemDetails<AccountId, Deposit, Approvals> {
 	/// The owner of this item.
 	pub(super) owner: AccountId,
 	/// The approved transferrer of this item, if one is set.
-	pub approvals: Approvals,
+	pub(super) approvals: Approvals,
 	/// The amount held in the pallet's default account for this item. Free-hold items will have
 	/// this as zero.
 	pub(super) deposit: Deposit,
@@ -188,7 +188,7 @@ pub struct ItemMetadata<Deposit, StringLimit: Get<u32>> {
 	/// General information concerning this item. Limited in length by `StringLimit`. This will
 	/// generally be either a JSON dump or the hash of some JSON which can be found on a
 	/// hash-addressable global publication system such as IPFS.
-	pub data: BoundedVec<u8, StringLimit>,
+	pub(super) data: BoundedVec<u8, StringLimit>,
 }
 
 /// Information about the tip.

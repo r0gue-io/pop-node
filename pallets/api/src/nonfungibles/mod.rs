@@ -427,9 +427,8 @@ pub mod pallet {
 				),
 				Collection(collection) =>
 					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
-				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
-					ItemMetadataOf::<T>::get(collection, item).map(|metadata| metadata.data),
-				),
+				ItemMetadata { collection, item } =>
+					ReadResult::ItemMetadata(NftsOf::<T>::item_metadata(collection, item)),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
 				),

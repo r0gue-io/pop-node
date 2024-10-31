@@ -180,9 +180,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		let details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-		let owner = details.owner;
+		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
@@ -213,9 +211,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-		let owner = details.owner;
+		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		if let Some(check_origin) = maybe_check_origin {
 			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
