@@ -2,17 +2,25 @@
 
 _A stable runtime interface for ink! smart contracts that elevates the experience of building Web3 applications._
 
-## Examples
-ink! smart contract examples using the Pop API
-- [balance-transfer](./examples/balance-transfer/)
-- [fungibles](./examples/fungibles/)
-- [NFTs](./examples/nfts/)
-- [place-spot-order](./examples/place-spot-order/)
-- [read-runtime-state](./examples/read-runtime-state/)
+---
 
 ## What is the Pop API?
 
 One of the core value propositions of Pop Network is to enable smart contracts to easily access the power of Polkadot. As such, the Pop API was built to enable smart contracts to easily utilize the functionality provided by the Pop Network parachain runtime.
+
+## Versions
+
+- [V0](./src/v0/README.md)
+
+## Examples
+ink! smart contract examples using the Pop API
+
+- [fungibles](./examples/fungibles/)
+- [read-runtime-state](./examples/read-runtime-state/)
+
+---
+
+## Design 
 
 Substrate already exposes a Runtime API which is typically associated with the “outer node” calling into the runtime via RPC. Pop Network extends this concept in a direction that makes it usable by smart contracts, allowing untrusted contracts to make use of carefully exposed trusted functionality available within the runtime - this is the Pop API.
 
@@ -46,7 +54,12 @@ Certain types are shared between the ink! library portion of the Pop API and the
 When we use the Pop API in our smart contract like so:
 ```rust
 use pop_api::fungibles::{self as api};
-api::transfer(token, to, value)
+// -- snip --
+#[ink(message)]
+pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
+    // Use of Pop API to call into the runtime to transfer some fungible assets.
+    api::transfer(token, to, value)
+}
 ```
 
 This will call the Pop API `transfer` function in the [./src/v0/fungibles/mod.rs](./src/v0/fungibles/mod.rs) file, which is a wrapper to `dispatch` a `Runtime::Call` to the assets pallet's transfer function. This is how most of the Pop API is built. This abstraction allows for creating a developer-friendly API over runtime level features such as calling pallets, reading state, and cross-chain interactions. All Pop API versions can be found in [pop-api/src/](./src/).
@@ -82,5 +95,13 @@ When Pop API calls the runtime, it will either receive a successful result or an
 So we have covered how the ink! Pop API library calls the chain extension. But where is the chain extension actually defined? In the Pop Network runtime.
 
 Chain extensions "extend" a runtime. We can find the `PopApiExtension` chain extension in [extension.rs](../runtime/devnet/src/extensions.rs). The `PopApiExtension` chain extension is matching based on the function IDs that we defined on the ink! side of the Pop API. The chain extension here will execute the appropriate functions e.g. `dispatch` or `read_state`. These functions are defined in this file as well and interact directly with the Pop Network runtime.
+
+`PopApiExtension` implements the different **functions** that can be called by the API. Two functions are provided:
+
+- `DISPATCH`:
+The Dispatch function decodes the received bytes into a `RuntimeCall`, optionally processing them as needed (versioning). It filters out any calls that are not explicitly permitted, then charges the appropriate weight, dispatches the call, and adjusts the weight accordingly before returning the result of the dispatch call.
+
+- `READ_STATE`:
+The ReadState function decodes the received bytes into a `Readable` type, with optional processing (versioning). It filters out any unauthorised state reads, charges the appropriate weight, executes the state read, optionally converts the result (versioning), and finally returns the result.
 
 If you would like to see the whole flow, checkout the integration tests in [pop-api/integration-tests](./integration-tests/) e.g. [`instantiate_and_create_fungible_works()`](./integration-tests/src/fungibles/mod.rs).
