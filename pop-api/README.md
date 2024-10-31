@@ -1,8 +1,11 @@
 # Pop API
 
+_A stable runtime interface for ink! smart contracts that elevates the experience of building Web3 applications._
+
 ## Examples
 ink! smart contract examples using the Pop API
 - [balance-transfer](./examples/balance-transfer/)
+- [fungibles](./examples/fungibles/)
 - [NFTs](./examples/nfts/)
 - [place-spot-order](./examples/place-spot-order/)
 - [read-runtime-state](./examples/read-runtime-state/)
@@ -31,7 +34,7 @@ Everything in [`pop-api`](./src/) **is the** Pop API ink! library.
 
 So when the ink! smart contract wants to use the Pop API library, it can simply have a line like:
 ```rust
-use pop_api::nfts::*;
+use pop_api::fungibles::{self as api};
 ```
 
 ## The Glue
@@ -42,27 +45,37 @@ Certain types are shared between the ink! library portion of the Pop API and the
 
 When we use the Pop API in our smart contract like so:
 ```rust
-use pop_api::nfts::*;
-mint(collection_id, item_id, receiver)?;
+use pop_api::fungibles::{self as api};
+api::transfer(token, to, value)
 ```
 
-This will call the Pop API `mint` function in the [./src/v0/nfts.rs](./src/v0/nfts.rs) file, which is a wrapper to `dispatch` a `Runtime::Call` to the NFTs pallet's mint function. This is how most of the Pop API is built. This abstraction allows for creating a developer-friendly API over runtime level features such as calling pallets, reading state, and cross-chain interactions. All Pop API functionality can be found in [./src/v0/](./src/v0/) which is the current version of the Pop API.
+This will call the Pop API `transfer` function in the [./src/v0/fungibles/mod.rs](./src/v0/fungibles/mod.rs) file, which is a wrapper to `dispatch` a `Runtime::Call` to the assets pallet's transfer function. This is how most of the Pop API is built. This abstraction allows for creating a developer-friendly API over runtime level features such as calling pallets, reading state, and cross-chain interactions. All Pop API versions can be found in [pop-api/src/](./src/).
 
 
 ## Dispatching to the runtime ([./src/lib.rs](./src/lib.rs))
 
-### `PopApi` 
-The `PopApi` trait is an ink! chain extension trait with three functions:
-- `dispatch()`
-- `read_state()`
-- `send_xcm()`
+### `PopApi`
+The `PopApi` is an ink! [`ChainExtensionMethod`](https://docs.rs/ink_env/5.0.0/ink_env/chain_extension/struct.ChainExtensionMethod.html) instance used to derive the execution of the different calls a smart contract can do into the runtime.
 
-These are the workhorse functions of the Pop API. Through these functions all the interactions between the ink! smart contract and the runtime are carried out. So in our example above, the `mint` function in [nfts.rs](./src/v0/nfts.rs) calls a `dispatch`, this `dispatch` is defined here in the [lib.rs](./src/lib.rs) file. It is what calls into the runtime chain extension.
+Its purpose its two fold, constructing the runtime calls that are going to be executed by the chain extension and handling the information returned.
 
-> Notice how each function is assigned a function ID e.g. `#[ink(function = 1)]`. This will play a role later when we cover the runtime portion of the chain extension.
+The calls are built out of the following information:
+- The `function` Id: Identifies the specific function within the chain extension.
+- The API `version`: This byte allows the runtime to distinguish between different API versions, ensuring that older contracts call the correct, version-specific implementation..
+- A `module` index: Identifies the pallet responsible for handling the call.
+- A `dispatchable` index: Indicates the specific dispatchable or state read function within the pallet.
 
-### `PopApiError`
-When Pop API calls the runtime, it will either receive a successful result or an encoded error. `PopApiError` translates the encoded error into the appropriate module error according to the index that the pallet has been configured to.
+Multiple **functions** can be implemented for the chain extension, so whenever something needs to be added or changed, a new function will have to be implemented.
+`DISPATCH` and `READ_STATE` functions are the workhorse functions of the Pop API.
+Through these functions all the interactions between the ink! smart contract and the runtime are carried out.
+
+By embedding the **version** directly into the encoding scheme, the runtime can manage different versions of dispatch calls and queries, ensuring that both legacy and new contracts function as intended, even as the underlying system evolves. This structure provides the flexibility needed to support ongoing improvements and changes in the runtime without disrupting existing smart contracts.
+
+So in our example above, when the `trasnfer` function in [./src/v0/fungibles/mod.rs](./src/v0/fungibles/mod.rs) is called, the following is constructed `u32::from_le_bytes([DISPATCH, 0, FUNGIBLES, TRANSFER])` to be executed by the runtime chain extension.
+
+
+### `StatusCode`
+When Pop API calls the runtime, it will either receive a successful result or an encoded error. `StatusCode` translates the encoded error into the appropriate module error according to the index that the pallet has been configured to.
 
 ## The Pop API Chain Extension
 
@@ -70,4 +83,4 @@ So we have covered how the ink! Pop API library calls the chain extension. But w
 
 Chain extensions "extend" a runtime. We can find the `PopApiExtension` chain extension in [extension.rs](../runtime/devnet/src/extensions.rs). The `PopApiExtension` chain extension is matching based on the function IDs that we defined on the ink! side of the Pop API. The chain extension here will execute the appropriate functions e.g. `dispatch` or `read_state`. These functions are defined in this file as well and interact directly with the Pop Network runtime.
 
-If you would like to see the whole flow, checkout the end-to-end tests in [extensions.rs](../runtime/devnet/src/extensions.rs) file e.g. `dispatch_nfts_mint_from_contract_works()`
+If you would like to see the whole flow, checkout the integration tests in [pop-api/integration-tests](./integration-tests/) e.g. [`instantiate_and_create_fungible_works()`](./integration-tests/src/fungibles/mod.rs).
