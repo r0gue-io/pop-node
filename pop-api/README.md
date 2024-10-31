@@ -1,12 +1,23 @@
 # Pop API
 
-_A stable runtime interface for ink! smart contracts that elevates the experience of building Web3 applications._
+
+- [What is Pop API](#what-is-pop-api)
+- [Versions](#versions)
+- [Use Pop API](#use-pop-api)
+- [Examples](#examples)
+- [Testing](#testing)
+- [Design of Pop API](#design-of-pop-api-)
+- - [The Pop API ink! Library](#the-pop-api-ink-library)
+- - [The Glue](#the-glue)
+- - [The Entry into the Pop API](#the-entry-into-the-pop-api)
+- - [Dispatching to the runtime](#dispatching-to-the-runtime-srclibrs)
+- - [The Pop API Chain Extension](#the-pop-api-chain-extension)
 
 ---
 
-## What is the Pop API?
+## What is Pop API
 
-One of the core value propositions of Pop Network is to enable smart contracts to easily access the power of Polkadot. As such, the Pop API was built to enable smart contracts to easily utilize the functionality provided by the Pop Network parachain runtime.
+The Pop API ink! library provides APIs for tailored use cases. The apis are versioned ensuring compatibility across different runtime updates and preserves the functionality of existing contracts.
 
 ## Versions
 
@@ -15,7 +26,7 @@ One of the core value propositions of Pop Network is to enable smart contracts t
 
 ## Use Pop API
 
-Including Pop API in your ink! smart contract is as easy as adding one dependency to `pop-api` crate in your project manifest:
+Using Pop API in your ink! smart contract is as easy as adding one dependency to `pop-api` crate in your project manifest:
 
 ```toml
 # Cargo.toml
@@ -42,7 +53,9 @@ ink! smart contract examples using the Pop API
 
 ---
 
-## Design 
+# Design of Pop API 
+
+One of the core value propositions of Pop Network is to enable smart contracts to easily access the power of Polkadot. As such, the Pop API was built to enable smart contracts to easily utilize the functionality provided by the Pop Network parachain runtime.
 
 Substrate already exposes a Runtime API which is typically associated with the “outer node” calling into the runtime via RPC. Pop Network extends this concept in a direction that makes it usable by smart contracts, allowing untrusted contracts to make use of carefully exposed trusted functionality available within the runtime - this is the Pop API.
 
