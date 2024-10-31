@@ -318,11 +318,7 @@ fn set_metadata_works() {
 		let (collection, item) =
 			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
 		assert_ok!(set_metadata(&addr.clone(), collection, item, vec![]));
-		assert_eq!(
-			pallet_nfts::ItemMetadataOf::<Runtime>::get(collection, item)
-				.map(|metadata| metadata.data),
-			Some(MetadataData::default())
-		);
+		assert_eq!(Nfts::item_metadata(collection, item), Some(MetadataData::default()));
 	});
 }
 
@@ -341,11 +337,7 @@ fn clear_metadata_works() {
 			MetadataData::default()
 		));
 		assert_ok!(clear_metadata(&addr.clone(), collection, item));
-		assert_eq!(
-			pallet_nfts::ItemMetadataOf::<Runtime>::get(collection, item)
-				.map(|metadata| metadata.data),
-			None
-		);
+		assert_eq!(Nfts::item_metadata(collection, item), None);
 	});
 }
 
