@@ -13,7 +13,7 @@ use pop_api::{
 		Psp22Error,
 	},
 };
-use traits::MinterRole;
+use traits::{MinterRole, OwnerRole};
 
 #[cfg(test)]
 mod tests;
@@ -27,6 +27,7 @@ mod fungibles {
 	pub struct Fungible {
 		id: TokenId,
 		minters: Mapping<AccountId, ()>,
+		owner: Option<AccountId>,
 	}
 
 	impl Fungible {
@@ -43,7 +44,12 @@ mod fungibles {
 			}
 			let mut minters = Mapping::new();
 			minters.insert(minter, &());
-			Ok(Self { id, minters })
+
+			let mut instance = Self { id, minters, owner: None };
+			let contract_id = instance.env().account_id();
+			instance.owner = Some(contract_id);
+
+			Ok(instance)
 		}
 
 		/// Instantiate the contract and create a new token. The token identifier will be stored
@@ -64,8 +70,9 @@ mod fungibles {
 			let mut minters = Mapping::new();
 			minters.insert(minter, &());
 
-			let instance = Self { id, minters };
+			let mut instance = Self { id, minters, owner: None };
 			let contract_id = instance.env().account_id();
+			instance.owner = Some(contract_id);
 			api::create(id, contract_id, min_balance).map_err(Psp22Error::from)?;
 			instance
 				.env()
@@ -115,12 +122,13 @@ mod fungibles {
 			_data: Vec<u8>,
 		) -> Result<(), Psp22Error> {
 			let caller = self.env().caller();
+			self.ensure_owner(caller)?;
+
 			// No-op if the caller and `to` is the same address or `value` is zero.
 			if caller == to || value == 0 {
 				return Ok(());
 			}
-			// Contract is pre-approved to transfer from the `caller`.
-			api::transfer_from(self.id, caller, to, value).map_err(Psp22Error::from)?;
+			api::transfer(self.id, to, value).map_err(Psp22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			Ok(())
 		}
@@ -141,20 +149,22 @@ mod fungibles {
 			value: Balance,
 			_data: Vec<u8>,
 		) -> Result<(), Psp22Error> {
-			let contract = self.env().account_id();
+			let caller = self.env().caller();
+			self.ensure_owner(caller)?;
+
 			// No-op if `from` and `to` is the same address or `value` is zero.
 			if from == to || value == 0 {
 				return Ok(());
 			}
-			// If `from` and the contract are different addresses, a successful transfer results
-			// in decreased allowance by `from` to `to` and an `Approval` event with
+			// If `from` and the caller are different addresses, a successful transfer results
+			// in decreased allowance by `from` to the caller and an `Approval` event with
 			// the new allowance amount is emitted.
 			api::transfer_from(self.id, from, to, value).map_err(Psp22Error::from)?;
-			self.env().emit_event(Transfer { from: Some(from), to: Some(to), value });
+			self.env().emit_event(Transfer { from: Some(caller), to: Some(to), value });
 			self.env().emit_event(Approval {
 				owner: from,
-				spender: contract,
-				value: self.allowance(from, contract),
+				spender: caller,
+				value: self.allowance(from, caller),
 			});
 			Ok(())
 		}
@@ -168,13 +178,15 @@ mod fungibles {
 		/// - `value` - The number of tokens to approve.
 		#[ink(message)]
 		fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), Psp22Error> {
-			let contract = self.env().account_id();
-			// No-op if the contract and `spender` is the same address.
-			if contract == spender {
+			let caller = self.env().caller();
+			self.ensure_owner(caller)?;
+
+			// No-op if the caller and `spender` is the same address.
+			if caller == spender {
 				return Ok(());
 			}
 			api::approve(self.id, spender, value).map_err(Psp22Error::from)?;
-			self.env().emit_event(Approval { owner: contract, spender, value });
+			self.env().emit_event(Approval { owner: caller, spender, value });
 			Ok(())
 		}
 
@@ -189,14 +201,16 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<(), Psp22Error> {
-			let contract = self.env().account_id();
-			// No-op if the contract and `spender` is the same address or `value` is zero.
-			if contract == spender || value == 0 {
+			let caller = self.env().caller();
+			self.ensure_owner(caller)?;
+
+			// No-op if the caller and `spender` is the same address or `value` is zero.
+			if caller == spender || value == 0 {
 				return Ok(());
 			}
 			api::increase_allowance(self.id, spender, value).map_err(Psp22Error::from)?;
-			let allowance = self.allowance(contract, spender);
-			self.env().emit_event(Approval { owner: contract, spender, value: allowance });
+			let allowance = self.allowance(caller, spender);
+			self.env().emit_event(Approval { owner: caller, spender, value: allowance });
 			Ok(())
 		}
 
@@ -211,14 +225,16 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<(), Psp22Error> {
-			let contract = self.env().account_id();
-			// No-op if the contract and `spender` is the same address or `value` is zero.
-			if contract == spender || value == 0 {
+			let caller = self.env().caller();
+			self.ensure_owner(caller)?;
+
+			// No-op if the caller and `spender` is the same address or `value` is zero.
+			if caller == spender || value == 0 {
 				return Ok(());
 			}
 			api::decrease_allowance(self.id, spender, value).map_err(Psp22Error::from)?;
-			let value = self.allowance(contract, spender);
-			self.env().emit_event(Approval { owner: contract, spender, value });
+			let value = self.allowance(caller, spender);
+			self.env().emit_event(Approval { owner: caller, spender, value });
 			Ok(())
 		}
 	}
@@ -285,8 +301,36 @@ mod fungibles {
 		}
 	}
 
+	impl OwnerRole for Fungible {
+		/// Check if the account has owner permission of the contract.
+		///
+		/// # Parameters
+		/// - `owner` - The owner account.
+		#[ink(message)]
+		fn ensure_owner(&self, account: AccountId) -> Result<(), Psp22Error> {
+			if self.owner != Some(account) {
+				return Err(Psp22Error::Custom(String::from("Not an owner")));
+			}
+			Ok(())
+		}
+
+		/// Set the owner permission of the contract.
+		///
+		/// # Parameters
+		/// - `maybe_owner` - New owner account or not.
+		#[ink(message)]
+		fn set_owner(&mut self, maybe_owner: Option<AccountId>) -> Result<(), Psp22Error> {
+			self.ensure_owner(self.env().caller())?;
+			self.owner = maybe_owner;
+			Ok(())
+		}
+	}
+
 	impl MinterRole for Fungible {
-		/// Check if the caller is the minter of the contract.
+		/// Check if the account is the minter of the contract.
+		///
+		/// # Parameters
+		/// - `minter` - The minter account.
 		#[ink(message)]
 		fn ensure_minter(&self, account: AccountId) -> Result<(), Psp22Error> {
 			if !self.minters.contains(account) {
@@ -298,8 +342,7 @@ mod fungibles {
 		/// Add a new minter by existing minters.
 		///
 		/// # Parameters
-		/// - `minter` - The account that will be granted a  permission to mint.
-
+		/// - `minter` - The new minter account.
 		#[ink(message)]
 		fn add_minter(&mut self, minter: AccountId) -> Result<(), Psp22Error> {
 			self.ensure_minter(self.env().caller())?;
@@ -310,7 +353,7 @@ mod fungibles {
 		/// Remove a minter by existing minters.
 		///
 		/// # Parameters
-		/// - `minter` - The account that will be granted a  permission to mint.
+		/// - `minter` - The removed minter account.
 		#[ink(message)]
 		fn remove_minter(&mut self, minter: AccountId) -> Result<(), Psp22Error> {
 			self.ensure_minter(self.env().caller())?;

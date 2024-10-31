@@ -24,3 +24,21 @@ pub trait MinterRole {
 	#[ink(message)]
 	fn remove_minter(&mut self, minter: AccountId) -> Result<(), Psp22Error>;
 }
+
+/// A contract implementing this trait can manage which account is the owner of the contract.
+#[ink::trait_definition]
+pub trait OwnerRole {
+	/// Check if the account has owner permission of the contract.
+	///
+	/// # Parameters
+	/// - `owner` - The owner account.
+	#[ink(message)]
+	fn ensure_owner(&self, account: AccountId) -> Result<(), Psp22Error>;
+
+	/// Set the owner permission of the contract.
+	///
+	/// # Parameters
+	/// - `maybe_owner` - New owner account or not.
+	#[ink(message)]
+	fn set_owner(&mut self, maybe_owner: Option<AccountId>) -> Result<(), Psp22Error>;
+}
