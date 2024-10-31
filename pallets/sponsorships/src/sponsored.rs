@@ -100,7 +100,9 @@ where
 	type AdditionalSigned = S::AdditionalSigned;
 	type Call = <T as frame_system::Config>::RuntimeCall;
 	type Pre = (
+		// (Maybe sponsor, caller)
 		(Option<Self::AccountId>, Self::AccountId),
+		// Pre Dispatch info.
 		(BalanceOf<T>, Self::AccountId, LiquidityInfoOf<T>),
 	);
 
