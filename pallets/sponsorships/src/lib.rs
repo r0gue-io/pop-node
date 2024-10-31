@@ -115,9 +115,8 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			match <Sponsorships<T>>::get(&who, &beneficiary) {
-				Some(_) => return Err(Error::<T>::AlreadySponsored.into()),
-				None => {},
+			if let Some(_) = <Sponsorships<T>>::get(&who, &beneficiary) {
+				return Err(Error::<T>::AlreadySponsored.into())
 			}
 			// TODO: Reserve SponsorshipDeposit
 			// Register new sponsorship.
@@ -207,24 +206,20 @@ pub mod pallet {
 				Some(sponsored) => sponsored,
 				None => return false,
 			};
-			if sponsored < amount {
-				false
-			} else {
-				true
-			}
+			sponsored >= amount
 		}
 
+		/// Withdraws an amount from the sponsored value.
+		///
+		/// Parameters
+		/// - `sponsor`: The account that is acting as a sponsor.
+		/// - `beneficiary`: Beneficiary of the sponsorship.
+		/// - `amount`: The amount representing the fee cost.
 		pub fn withdraw_from_sponsorship(
 			sponsor: &AccountIdOf<T>,
 			beneficiary: &AccountIdOf<T>,
 			amount: BalanceOf<T>,
 		) -> Result<BalanceOf<T>, DispatchError> {
-			Self::deposit_event(Event::NewSponsorship {
-				sponsor: sponsor.clone(),
-				beneficiary: beneficiary.clone(),
-				amount: amount.clone(),
-			});
-
 			// Check if the withdrawal can be made
 			if !Self::can_decrease(beneficiary, sponsor, amount) {
 				return Err(Error::<T>::SponsorshipOutOfLimits.into());
