@@ -158,7 +158,7 @@ where
 
 		let sponsor = Self::is_contracts_call(call).and_then(|contract| {
 			if Self::is_sponsored(&who, &contract).is_some() {
-				let _ = Pallet::<T>::withdraw_from_sponsorship(&who, &contract, fee);
+				let _ = Pallet::<T>::withdraw_from_sponsorship(&who, &contract, fee); // TODO: Handle error.
 				Some(contract.clone())
 			} else {
 				None
@@ -187,7 +187,7 @@ where
 				let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
 					len as u32, info, post_info, tip,
 				);
-				let _ = Pallet::<T>::withdraw_from_sponsorship(&caller, &sponsor, actual_fee);
+				let _ = Pallet::<T>::withdraw_from_sponsorship(&caller, &sponsor, actual_fee); // TODO: Handle error.
 				Pallet::<T>::deposit_event(Event::<T>::CallSponsored { by: sponsor });
 			}
 			pallet_transaction_payment::ChargeTransactionPayment::<T>::post_dispatch(
