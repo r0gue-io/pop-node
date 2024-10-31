@@ -419,3 +419,35 @@ fn set_max_supply_works() {
 		.is_err());
 	});
 }
+
+#[test]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
+		let value = 10;
+
+		let collection = nfts::create_collection(&account_id, &account_id);
+		assert_ok!(mint(
+			&addr.clone(),
+			ALICE,
+			collection,
+			ITEM_ID,
+			MintWitness { mint_price: None, owned_item: None }
+		));
+		assert_eq!(nfts::balance_of(COLLECTION_ID, ALICE), 1);
+	});
+}
+
+#[test]
+fn burn_works() {
+	new_test_ext().execute_with(|| {
+		let (addr, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
+
+		let (collection, item) =
+			nfts::create_collection_and_mint_to(&account_id, &account_id, &account_id, ITEM_ID);
+		assert_ok!(burn(&addr.clone(), collection, ITEM_ID,));
+		assert_eq!(nfts::balance_of(COLLECTION_ID, account_id), 0);
+	});
+}

@@ -17,7 +17,7 @@ pub mod pallet {
 	use frame_system::pallet_prelude::*;
 	use pallet_nfts::{
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings, DestroyWitness,
-		ItemMetadataOf, MintSettings, MintWitness,
+		MintSettings, MintWitness,
 	};
 	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
@@ -348,16 +348,16 @@ pub mod pallet {
 			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-			mint_price: Option<ItemPriceOf<T>>,
+			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
 			let account = ensure_signed(origin.clone())?;
-			let witness_data = MintWitness { mint_price, owned_item: Some(item) };
+			let mint_price = witness.mint_price;
 			NftsOf::<T>::mint(
 				origin,
 				collection,
 				item,
 				T::Lookup::unlookup(to.clone()),
-				Some(witness_data),
+				Some(witness),
 			)?;
 			Self::deposit_event(Event::Transfer {
 				collection,

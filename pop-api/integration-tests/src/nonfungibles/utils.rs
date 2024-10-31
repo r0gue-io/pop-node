@@ -242,6 +242,26 @@ pub(super) fn item_metadata(
 		.map(|value| value.map(|v| v.to_vec()))
 }
 
+pub(super) fn mint(
+	addr: &H160,
+	to: AccountId32,
+	collection: CollectionId,
+	item: ItemId,
+	witness: MintWitness,
+) -> Result<(), Error> {
+	let params = [to.encode(), collection.encode(), item.encode(), witness.encode()].concat();
+	let result = do_bare_call("mint", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) fn burn(addr: &H160, collection: CollectionId, item: ItemId) -> Result<(), Error> {
+	let params = [collection.encode(), item.encode()].concat();
+	let result = do_bare_call("burn", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
 pub(super) mod nfts {
 	use super::*;
 

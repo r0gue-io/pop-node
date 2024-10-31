@@ -10,7 +10,7 @@ use pop_api::{
 		self as api,
 		events::{Approval, AttributeSet, Transfer},
 		AttributeNamespace, CancelAttributesApprovalWitness, CollectionDetails, CollectionId,
-		CreateCollectionConfig, DestroyWitness, ItemId,
+		CreateCollectionConfig, DestroyWitness, ItemId, MintWitness,
 	},
 	StatusCode,
 };
@@ -134,10 +134,11 @@ mod nonfungibles {
 		#[ink(message)]
 		pub fn create(
 			&mut self,
+			id: CollectionId,
 			admin: AccountId,
 			config: CreateCollectionConfig,
-		) -> Result<CollectionId> {
-			api::create(admin, config)
+		) -> Result<()> {
+			api::create(id, admin, config)
 		}
 
 		#[ink(message)]
@@ -235,9 +236,9 @@ mod nonfungibles {
 			to: AccountId,
 			collection: CollectionId,
 			item: ItemId,
-			mint_price: Option<u32>,
+			witness: MintWitness,
 		) -> Result<()> {
-			api::mint(to, collection, item, mint_price)
+			api::mint(to, collection, item, witness)
 		}
 
 		#[ink(message)]

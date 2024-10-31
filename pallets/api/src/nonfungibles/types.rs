@@ -1,7 +1,10 @@
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
 use frame_system::pallet_prelude::BlockNumberFor;
-pub use pallet_nfts::{AttributeNamespace, CollectionDetails, ItemDeposit, ItemDetails, MintType};
+pub use pallet_nfts::{
+	AttributeNamespace, CollectionDetails, DestroyWitness, ItemDeposit, ItemDetails, MintType,
+	MintWitness,
+};
 use scale_info::TypeInfo;
 use sp_runtime::{BoundedBTreeMap, RuntimeDebug};
 

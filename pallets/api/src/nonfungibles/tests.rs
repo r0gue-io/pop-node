@@ -3,7 +3,7 @@ use frame_support::{assert_noop, assert_ok, traits::Incrementable};
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_nfts::{
 	AccountBalance, CollectionConfig, CollectionDetails, CollectionSettings, DestroyWitness,
-	MintSettings,
+	MintSettings, MintWitness,
 };
 use sp_runtime::{BoundedVec, DispatchError::BadOrigin};
 
@@ -145,7 +145,13 @@ fn mint_works() {
 
 		// Successfully mint a new collection item.
 		let balance_before_mint = AccountBalance::<Test>::get(collection, account(owner));
-		assert_ok!(NonFungibles::mint(signed(owner), account(owner), collection, ITEM, None));
+		assert_ok!(NonFungibles::mint(
+			signed(owner),
+			account(owner),
+			collection,
+			ITEM,
+			MintWitness { mint_price: None, owned_item: None }
+		));
 		let balance_after_mint = AccountBalance::<Test>::get(collection, account(owner));
 		assert_eq!(balance_after_mint, 1);
 		assert_eq!(balance_after_mint - balance_before_mint, 1);
