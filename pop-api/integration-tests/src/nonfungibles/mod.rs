@@ -358,6 +358,7 @@ fn create_works() {
 		let collection = nfts::next_collection_id();
 		assert_ok!(create(
 			&addr.clone(),
+			COLLECTION_ID,
 			account_id.clone(),
 			CreateCollectionConfig {
 				max_supply: Some(100),

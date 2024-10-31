@@ -217,12 +217,10 @@ pub mod pallet {
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
 			origin: OriginFor<T>,
+			id: CollectionIdOf<T>,
 			admin: AccountIdOf<T>,
 			config: CreateCollectionConfigFor<T>,
 		) -> DispatchResult {
-			let id = NextCollectionIdOf::<T>::get()
-				.or(T::CollectionId::initial_value())
-				.ok_or(pallet_nfts::Error::<T>::UnknownCollection)?;
 			let creator = ensure_signed(origin.clone())?;
 			let collection_config = CollectionConfig {
 				settings: CollectionSettings::all_enabled(),

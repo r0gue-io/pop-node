@@ -318,7 +318,7 @@ fn destroy_should_work() {
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(2), None));
 		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 1);
 		assert_ok!(Nfts::approve_transfer(
-			RuntimeOrigin::signed(account(2)),
+			RuntimeOrigin::signed(account(1)),
 			0,
 			None,
 			account(3),
@@ -2017,22 +2017,22 @@ fn cancel_approval_collection_works_with_admin() {
 		));
 
 		assert_ok!(Nfts::approve_transfer(
-			RuntimeOrigin::signed(account(2)),
+			RuntimeOrigin::signed(account(1)),
 			0,
 			None,
 			account(3),
 			None
 		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 1, None, account(3)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(1)), 1, None, account(3)),
 			Error::<Test>::UnknownCollection
 		);
 
-		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, None, account(3)));
+		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(1)), 0, None, account(3)));
 		assert!(events().contains(&Event::<Test>::ApprovalCancelled {
 			collection: 0,
 			item: None,
-			owner: account(2),
+			owner: account(1),
 			delegate: account(3)
 		}));
 		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))), false);
@@ -2156,7 +2156,7 @@ fn approval_collection_works_with_admin() {
 			RuntimeOrigin::signed(account(1)),
 			0,
 			42,
-			account(2),
+			account(1),
 			default_item_config()
 		));
 
@@ -2178,7 +2178,7 @@ fn approval_collection_works_with_admin() {
 		);
 
 		assert_ok!(Nfts::approve_transfer(
-			RuntimeOrigin::signed(account(2)),
+			RuntimeOrigin::signed(account(1)),
 			0,
 			None,
 			account(3),
@@ -2187,11 +2187,11 @@ fn approval_collection_works_with_admin() {
 		assert!(events().contains(&Event::<Test>::TransferApproved {
 			collection: 0,
 			item: None,
-			owner: account(2),
+			owner: account(1),
 			delegate: account(3),
 			deadline: None
 		}));
-		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))), true);
+		assert_eq!(Allowances::<Test>::get((0, account(1), account(3))), true);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});
 }

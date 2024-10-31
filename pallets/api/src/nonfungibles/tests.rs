@@ -472,6 +472,7 @@ fn create_works() {
 		let next_collection_id = pallet_nfts::NextCollectionId::<Test>::get().unwrap_or_default();
 		assert_ok!(NonFungibles::create(
 			signed(owner),
+			next_collection_id,
 			account(owner),
 			CreateCollectionConfig {
 				max_supply: None,

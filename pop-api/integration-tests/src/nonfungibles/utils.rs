@@ -1,6 +1,7 @@
+use pallet_revive::AddressMapper;
+
 use super::*;
 use crate::sp_core::H160;
-use pallet_revive::AddressMapper;
 
 pub(super) type AttributeKey = BoundedVec<u8, <Runtime as pallet_nfts::Config>::KeyLimit>;
 pub(super) type AttributeValue = BoundedVec<u8, <Runtime as pallet_nfts::Config>::ValueLimit>;
@@ -106,10 +107,11 @@ pub(super) fn get_attribute(
 
 pub(super) fn create(
 	addr: &H160,
+	id: CollectionId,
 	admin: AccountId32,
 	config: CreateCollectionConfig,
 ) -> Result<(), Error> {
-	let params = [admin.encode(), config.encode()].concat();
+	let params = [id.encode(), admin.encode(), config.encode()].concat();
 	let result = do_bare_call("create", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))

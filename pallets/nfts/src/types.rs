@@ -145,21 +145,21 @@ pub struct MintWitness<ItemId, Balance> {
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 pub struct ItemDetails<AccountId, Deposit, Approvals> {
 	/// The owner of this item.
-	pub owner: AccountId,
+	pub(super) owner: AccountId,
 	/// The approved transferrer of this item, if one is set.
 	pub approvals: Approvals,
 	/// The amount held in the pallet's default account for this item. Free-hold items will have
 	/// this as zero.
-	pub deposit: Deposit,
+	pub(super) deposit: Deposit,
 }
 
 /// Information about the reserved item deposit.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ItemDeposit<DepositBalance, AccountId> {
 	/// A depositor account.
-	pub account: AccountId,
+	pub(super) account: AccountId,
 	/// An amount that gets reserved.
-	pub amount: DepositBalance,
+	pub(super) amount: DepositBalance,
 }
 
 /// Information about the collection's metadata.
@@ -184,7 +184,7 @@ pub struct ItemMetadata<Deposit, StringLimit: Get<u32>> {
 	/// The balance deposited for this metadata.
 	///
 	/// This pays for the data stored in this struct.
-	pub deposit: Deposit,
+	pub(super) deposit: Deposit,
 	/// General information concerning this item. Limited in length by `StringLimit`. This will
 	/// generally be either a JSON dump or the hash of some JSON which can be found on a
 	/// hash-addressable global publication system such as IPFS.

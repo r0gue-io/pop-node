@@ -137,9 +137,7 @@ mod nonfungibles {
 			admin: AccountId,
 			config: CreateCollectionConfig,
 		) -> Result<CollectionId> {
-			let next_collection_id = api::next_collection_id();
-			api::create(admin, config)?;
-			next_collection_id
+			api::create(admin, config)
 		}
 
 		#[ink(message)]
