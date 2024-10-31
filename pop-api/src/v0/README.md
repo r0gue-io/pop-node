@@ -14,5 +14,6 @@ The fungibles pallet offers a streamlined interface for interacting with fungibl
 goal is to provide a simplified, consistent API that adheres to standards in the smart contract
 space.
 
-For more details please refer to: 
-[Fungibles API](./fungibles/README.md)
+For more details please refer to the [Fungibles API documentation](./fungibles/README.md).
+
+Find examples in: [`../../examples/fungibles/`](../../examples/fungibles/).
