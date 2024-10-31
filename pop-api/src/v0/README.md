@@ -17,3 +17,5 @@ space.
 For more details please refer to the [Fungibles API documentation](./fungibles/README.md).
 
 Find examples in: [`../../examples/fungibles/`](../../examples/fungibles/).
+
+The fungibles pallet can be found in [`pallets/api/src/fungibles/`](../../../pallets/api/src/fungibles/)
