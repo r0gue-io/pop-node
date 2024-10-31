@@ -1,8 +1,9 @@
 use super::*;
 
+/// A contract implementing this trait can manage minting permissions for accounts.
 #[ink::trait_definition]
 pub trait MinterRole {
-	/// Check if the caller is the minter of the contract.
+	/// Check if the account is the minter of the contract.
 	///
 	/// # Parameters
 	/// - `minter` - The minter account.

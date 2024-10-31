@@ -74,40 +74,6 @@ mod fungibles {
 		}
 	}
 
-	impl MinterRole for Fungible {
-		/// Check if the caller is the minter of the contract.
-		#[ink(message)]
-		fn ensure_minter(&self, account: AccountId) -> Result<(), Psp22Error> {
-			if !self.minters.contains(account) {
-				return Err(Psp22Error::Custom(String::from("Must be a minter")));
-			}
-			Ok(())
-		}
-
-		/// Add a new minter by existing minters.
-		///
-		/// # Parameters
-		/// - `minter` - The account that will be granted a  permission to mint.
-
-		#[ink(message)]
-		fn add_minter(&mut self, minter: AccountId) -> Result<(), Psp22Error> {
-			self.ensure_minter(self.env().caller())?;
-			self.minters.insert(minter, &());
-			Ok(())
-		}
-
-		/// Remove a minter by existing minters.
-		///
-		/// # Parameters
-		/// - `minter` - The account that will be granted a  permission to mint.
-		#[ink(message)]
-		fn remove_minter(&mut self, minter: AccountId) -> Result<(), Psp22Error> {
-			self.ensure_minter(self.env().caller())?;
-			self.minters.remove(minter);
-			Ok(())
-		}
-	}
-
 	impl Psp22 for Fungible {
 		/// Returns the total token supply.
 		#[ink(message)]
@@ -315,6 +281,40 @@ mod fungibles {
 			}
 			api::burn(self.id, account, value).map_err(Psp22Error::from)?;
 			self.env().emit_event(Transfer { from: Some(account), to: None, value });
+			Ok(())
+		}
+	}
+
+	impl MinterRole for Fungible {
+		/// Check if the caller is the minter of the contract.
+		#[ink(message)]
+		fn ensure_minter(&self, account: AccountId) -> Result<(), Psp22Error> {
+			if !self.minters.contains(account) {
+				return Err(Psp22Error::Custom(String::from("Must be a minter")));
+			}
+			Ok(())
+		}
+
+		/// Add a new minter by existing minters.
+		///
+		/// # Parameters
+		/// - `minter` - The account that will be granted a  permission to mint.
+
+		#[ink(message)]
+		fn add_minter(&mut self, minter: AccountId) -> Result<(), Psp22Error> {
+			self.ensure_minter(self.env().caller())?;
+			self.minters.insert(minter, &());
+			Ok(())
+		}
+
+		/// Remove a minter by existing minters.
+		///
+		/// # Parameters
+		/// - `minter` - The account that will be granted a  permission to mint.
+		#[ink(message)]
+		fn remove_minter(&mut self, minter: AccountId) -> Result<(), Psp22Error> {
+			self.ensure_minter(self.env().caller())?;
+			self.minters.remove(minter);
 			Ok(())
 		}
 	}
