@@ -218,7 +218,7 @@ pub mod pallet {
 		) -> Result<BalanceOf<T>, DispatchError> {
 			// Check if the withdrawal can be made
 			ensure!(
-				!Self::can_decrease(beneficiary, sponsor, amount),
+				Self::can_decrease(beneficiary, sponsor, amount),
 				Error::<T>::SponsorshipOutOfLimits
 			);
 			Sponsorships::<T>::mutate(beneficiary, sponsor, |maybe_sponsorship| {
