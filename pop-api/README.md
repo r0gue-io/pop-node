@@ -2,7 +2,7 @@
 
 The `pop-api` crate provides a high-level interface that allows smart contracts to seamlessly interact with Pop, a
 blockchain built to power innovative and impactful solutions on Polkadot. Designed for stability, simplicity and
-efficiency, the api abstracts away the complexities of the runtime, enabling developers to focus on building powerful
+efficiency, the API abstracts away the complexities of the runtime, enabling developers to focus on building powerful
 applications rather than managing intricate blockchain details.
 
 ### Design Goals
@@ -21,14 +21,15 @@ applications rather than managing intricate blockchain details.
   error, making troubleshooting and development easier.
 - **Use Cases**:
     - [Fungibles](./src/v0/fungibles/README.md): Interacting and managing fungible tokens.
-    - Planned:
-        - Non Fungibles (Dec)
-        - Messaging; ISMP and XCM rails (Jan - Feb)
-        - Sponsorship (TBD)
+    - Coming soon:
+        - Non Fungibles (Dec): Interacting and managing non fungible tokens.
+        - Messaging; cross chain rails (TBD): Enabling cross chain interaction using ISMP & XCM.
+        - Sponsorship (exploring): Allowing smart contracts to sponsor transactions.
+        - Incentives (exploring): Incentivise smart contracts by sharing chain revenue.
 
 ### Getting Started
 
-Using the api in your ink! smart contract is as easy as adding the `pop-api` crate in your `Cargo.toml`:
+Using the API in your ink! smart contract is as easy as adding the `pop-api` crate in your `Cargo.toml`:
 
 ```toml
 pop-api = { git = "https://github.com/r0gue-io/pop-node", default-features = false }
@@ -40,17 +41,24 @@ and importing it within the contract source:
 use pop_api::*;
 ```
 
-Check out the ink! smart contract [examples](./example) using the api.
+Check out the ink! smart contract [examples](./example) using the API.
 
 ### Learn more
 
-The true strength of the api lies in the Pop runtime, where a single, unified chain extension provides flexible and
+The true strength of the API lies in the Pop runtime, where a single, unified chain extension provides flexible and
 efficient access to all runtime features, while specialized API modules deliver stable, intuitive interfaces for
-developers. Together, these elements make the api a powerful tool for creating decentralized applications on Polkadot.
+developers. Together, these elements make the API a powerful tool for creating decentralized applications on Polkadot.
 
 Want to explore how it all works? Check out:
 
 - [Chain Extension Implementation](../extension)
-    - [Devnet Configuration](../runtime/devnet/src/config/api)
 - [API Modules](../pallets/api)
 
+### Support
+
+Be part of our passionate community of Web3 builders. [Join our Telegram](https://t.me/onpopio)!
+
+Feel free to raise issues if anything is unclear, have ideas or want to contribute to Pop!
+
+For any questions related to ink! you can also go to [Polkadot Stack Exchange](https://polkadot.stackexchange.com/) or
+ask the [ink! community](https://t.me/inkathon/1).
