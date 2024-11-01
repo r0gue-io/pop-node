@@ -1,12 +1,9 @@
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet_nfts::{
 	AttributeNamespace, CollectionConfig, CollectionDetails, CollectionSetting, CollectionSettings,
 	DestroyWitness, ItemDeposit, ItemDetails, ItemSetting, MintSettings, MintType, MintWitness,
 };
-use scale_info::TypeInfo;
-use sp_runtime::RuntimeDebug;
 
 // Type aliases for pallet-nfts.
 pub(super) type NftsOf<T> = pallet_nfts::Pallet<T>;

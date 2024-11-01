@@ -132,13 +132,8 @@ mod nonfungibles {
 		/// - item_metadata
 
 		#[ink(message)]
-		pub fn create(
-			&mut self,
-			id: CollectionId,
-			admin: AccountId,
-			config: CollectionConfig,
-		) -> Result<()> {
-			api::create(id, admin, config)
+		pub fn create(&mut self, admin: AccountId, config: CollectionConfig) -> Result<()> {
+			api::create(admin, config)
 		}
 
 		#[ink(message)]

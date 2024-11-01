@@ -102,12 +102,12 @@ pub fn get_attribute(
 }
 
 #[inline]
-pub fn create(id: CollectionId, admin: AccountId, config: CollectionConfig) -> Result<()> {
+pub fn create(admin: AccountId, config: CollectionConfig) -> Result<()> {
 	build_dispatch(CREATE)
-		.input::<(CollectionId, AccountId, CollectionConfig)>()
+		.input::<(AccountId, CollectionConfig)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(id, admin, config))?;
+		.call(&(admin, config))?;
 	Ok(())
 }
 

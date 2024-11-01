@@ -15,10 +15,7 @@ pub mod types;
 pub mod pallet {
 	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Incrementable};
 	use frame_system::pallet_prelude::*;
-	use pallet_nfts::{
-		CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings, DestroyWitness,
-		MintSettings, MintWitness,
-	};
+	use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness, MintWitness};
 	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
 	use types::{
@@ -216,10 +213,14 @@ pub mod pallet {
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
 			origin: OriginFor<T>,
-			id: CollectionIdOf<T>,
 			admin: AccountIdOf<T>,
 			config: CollectionConfigFor<T>,
 		) -> DispatchResult {
+			// TODO: re-evaluate next collection id in nfts pallet. The `Incrementable` trait causes
+			//  issues for setting it to xcm's `Location`. This can easily be done differently.
+			let id = NextCollectionIdOf::<T>::get()
+				.or(T::CollectionId::initial_value())
+				.ok_or(pallet_nfts::Error::<T>::UnknownCollection)?;
 			let creator = ensure_signed(origin.clone())?;
 			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), config)?;
 			Self::deposit_event(Event::Created { id, admin, creator });

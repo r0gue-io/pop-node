@@ -107,11 +107,10 @@ pub(super) fn get_attribute(
 
 pub(super) fn create(
 	addr: &H160,
-	id: CollectionId,
 	admin: AccountId32,
 	config: CollectionConfig,
 ) -> Result<(), Error> {
-	let params = [id.encode(), admin.encode(), config.encode()].concat();
+	let params = [admin.encode(), config.encode()].concat();
 	let result = do_bare_call("create", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
