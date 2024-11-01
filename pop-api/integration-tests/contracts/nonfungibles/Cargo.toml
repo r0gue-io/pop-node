@@ -1,0 +1,22 @@
+[package]
+authors = [ "R0GUE <go@r0gue.io>" ]
+edition = "2021"
+name = "nonfungibles"
+version = "0.1.0"
+
+[dependencies]
+ink = { git = "https://github.com/r0gue-io/ink", branch = "sub0", default-features = false }
+polkavm-derive = "0.11.0"
+pop-api = { path = "../../..", default-features = false, features = [ "nonfungibles" ] }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
+std = [
+	"ink/std",
+	"pop-api/std",
+]

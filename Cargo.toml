@@ -65,6 +65,7 @@ substrate-wasm-builder = "23.0.0"
 # Local
 pallet-api = { path = "pallets/api", default-features = false }
 pallet-incentives = { path = "pallets/incentives", default-features = false }
+pallet-nfts = { path = "pallets/nfts", default-features = false }
 pallet-sponsorships = { path = "pallets/sponsorships", default-features = false }
 pop-chain-extension = { path = "./extension", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
@@ -92,7 +93,6 @@ pallet-contracts = { version = "35.0.0", default-features = false }
 pallet-message-queue = { version = "39.0.0", default-features = false }
 pallet-multisig = { version = "36.0.0", default-features = false }
 pallet-nft-fractionalization = { version = "18.0.0", default-features = false }
-pallet-nfts = { version = "30.0.0", default-features = false }
 pallet-nfts-runtime-api = { version = "22.0.0", default-features = false }
 pallet-preimage = { version = "36.0.0", default-features = false }
 pallet-proxy = { version = "36.0.0", default-features = false }

@@ -12,6 +12,8 @@ use constants::DECODING_FAILED;
 use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 pub use v0::*;
 
+/// Module providing macros.
+pub mod macros;
 /// Module providing primitives types.
 pub mod primitives;
 /// The first version of the API.
@@ -73,6 +75,7 @@ mod constants {
 	pub(crate) const FUNGIBLES: u8 = 150;
 	pub(crate) const MESSAGING: u8 = 151;
 	pub(crate) const INCENTIVES: u8 = 152;
+	pub(crate) const NONFUNGIBLES: u8 = 154;
 	pub(crate) const SPONSORSHIPS: u8 = 153;
 }
 

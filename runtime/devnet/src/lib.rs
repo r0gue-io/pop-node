@@ -41,7 +41,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::{fungibles, messaging};
+use pallet_api::{fungibles, messaging, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -705,6 +705,9 @@ mod runtime {
 	#[runtime::pallet_index(153)]
 	pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
 
+	#[runtime::pallet_index(154)]
+	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
+
 	// Revive
 	#[runtime::pallet_index(255)]
 	pub type Revive = pallet_revive::Pallet<Runtime>;
@@ -719,6 +722,7 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_message_queue, MessageQueue]
+		[pallet_nfts, Nfts]
 		[pallet_sudo, Sudo]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_parachain_system, ParachainSystem]
