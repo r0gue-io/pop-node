@@ -1,7 +1,7 @@
 [package]
 authors = [ "R0GUE" ]
 edition = "2021"
-name = "sponsorhips"
+name = "sponsorships"
 version = "0.1.0"
 
 [dependencies]
