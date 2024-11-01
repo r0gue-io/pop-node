@@ -22,6 +22,7 @@ mod environment;
 mod fungibles;
 mod incentives;
 mod messaging;
+mod sponsorships;
 
 type Balance = u128;
 
@@ -71,6 +72,26 @@ fn bare_call(
 ) -> Result<ExecReturnValue, DispatchError> {
 	let result = Revive::bare_call(
 		RuntimeOrigin::signed(ALICE),
+		addr.into(),
+		value.into(),
+		GAS_LIMIT,
+		1 * 1_000_000_000_000,
+		input,
+		DEBUG_OUTPUT,
+		CollectEvents::Skip,
+	);
+	log::info!("contract exec result={result:?}");
+	result.result
+}
+
+fn bare_call_with_signer(
+	addr: sp_core::H160,
+	input: Vec<u8>,
+	value: u128,
+	signer: AccountId32,
+) -> Result<ExecReturnValue, DispatchError> {
+	let result = Revive::bare_call(
+		RuntimeOrigin::signed(signer),
 		addr.into(),
 		value.into(),
 		GAS_LIMIT,

@@ -105,10 +105,14 @@ pub type SignedExtra = (
 	frame_system::CheckEra<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
-	pallet_incentives::contract_fee_handler::ContractFeeHandler<
+	pallet_sponsorships::sponsored::Sponsored<
 		Runtime,
 		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
 	>,
+	// In case sponsored::Sponsored is removed,
+	// pallet_transaction_payment::ChargeTransactionPayment<Runtime> should be added to
+	// ContractFeeHandler
+	pallet_incentives::contract_fee_handler::ContractFeeHandler<Runtime>,
 	cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim<Runtime>,
 	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
 );
@@ -366,10 +370,10 @@ impl OnUnbalanced<Credit<AccountId, Balances>> for DealWithFees {
 		if let Some(fees) = fees_then_tips.next() {
 			// TODO: Change numbers -> Now for testing: 50% of fees, to the author, rest goes to
 			// incentives including 100% of the tips.
-			let (to_author, mut incentives) = fees.ration(50, 50);
-			// TODO: Decide what to do with the tips, for now to incentives
+			let (mut to_author, incentives) = fees.ration(50, 50);
+			// Tips to collators
 			if let Some(tips) = fees_then_tips.next() {
-				tips.merge_into(&mut incentives);
+				tips.merge_into(&mut to_author);
 			}
 			// TODO: Use ToResolve
 			<ToIncentivesPot as OnUnbalanced<_>>::on_unbalanced(incentives);
@@ -696,6 +700,10 @@ mod runtime {
 	// Incentives
 	#[runtime::pallet_index(152)]
 	pub type Incentives = pallet_incentives::Pallet<Runtime>;
+
+	// Sponsorships
+	#[runtime::pallet_index(153)]
+	pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
 
 	// Revive
 	#[runtime::pallet_index(255)]

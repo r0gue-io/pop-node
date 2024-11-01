@@ -164,6 +164,7 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 		use fungibles::Call::*;
 		use messaging::Call::*;
 		use pallet_incentives::Call::*;
+		use pallet_sponsorships::Call::*;
 		T::BaseCallFilter::contains(c) &&
 			matches!(
 				c,
@@ -183,6 +184,10 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						remove { .. }
 				) | RuntimeCall::Incentives(
 					register_contract { .. } | claim_rewards { .. } | deposit_funds { .. }
+				) | RuntimeCall::Sponsorships(
+					sponsor_account { .. } |
+						remove_sponsorship_for { .. } |
+						set_sponsorship_amount { .. }
 				)
 			)
 	}

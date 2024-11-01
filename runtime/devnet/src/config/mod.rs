@@ -3,7 +3,7 @@ mod api;
 pub mod assets;
 pub mod ismp;
 mod proxy;
+mod revive;
+mod sponsorships;
 // Public due to integration tests crate.
 pub mod xcm;
-
-mod revive;
