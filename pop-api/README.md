@@ -23,7 +23,7 @@ applications rather than managing intricate blockchain details.
     - [Fungibles](./src/v0/fungibles/README.md): Interacting and managing fungible tokens.
     - Coming soon:
         - Non Fungibles (Dec): Interacting and managing non fungible tokens.
-        - Messaging; cross chain rails (TBD): Enabling cross chain interaction using ISMP & XCM.
+        - Messaging (TBD): Cross chain rails for interaction with other chains using ISMP & XCM.
         - Sponsorship (exploring): Allowing smart contracts to sponsor transactions.
         - Incentives (exploring): Incentivise smart contracts by sharing chain revenue.
 
