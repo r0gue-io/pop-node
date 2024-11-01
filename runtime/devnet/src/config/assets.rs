@@ -6,7 +6,7 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
-use sp_runtime::traits::Verify;
+use sp_runtime::traits::{Get, Verify};
 
 use crate::{
 	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
@@ -37,6 +37,15 @@ parameter_types! {
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
 
+#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+pub struct KeyLimit<const N: u32>;
+impl<const N: u32> Get<u32> for KeyLimit<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
 impl pallet_nfts::Config for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
@@ -56,7 +65,7 @@ impl pallet_nfts::Config for Runtime {
 	// TODO: source from primitives
 	type ItemId = ItemId;
 	// TODO: source from primitives
-	type KeyLimit = ConstU32<64>;
+	type KeyLimit = KeyLimit<64>;
 	type Locker = ();
 	type MaxAttributesPerCall = ConstU32<10>;
 	type MaxDeadlineDuration = NftsMaxDeadlineDuration;

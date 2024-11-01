@@ -87,6 +87,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Perform the transfer with custom details using the provided closure.
 		with_details(&collection_details, &mut details)?;
 
+		// Update account balances.
+		AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| {
+			balance.saturating_dec();
+		});
+		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
+			balance.saturating_inc();
+		});
+
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));
 		Account::<T, I>::insert((&dest, &collection, &item), ());
@@ -137,7 +145,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			// Check if the `origin` is the current owner of the collection.
 			ensure!(origin == details.owner, Error::<T, I>::NoPermission);
 			if details.owner == new_owner {
-				return Ok(())
+				return Ok(());
 			}
 
 			// Move the deposit to the new owner.
@@ -212,7 +220,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Collection::<T, I>::try_mutate(collection, |maybe_details| {
 			let details = maybe_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 			if details.owner == owner {
-				return Ok(())
+				return Ok(());
 			}
 
 			// Move the deposit to the new owner.

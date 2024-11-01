@@ -13,6 +13,9 @@ pub mod incentives;
 /// APIs for messaging.
 #[cfg(feature = "messaging")]
 pub mod messaging;
+/// APIs for nonfungible tokens.
+#[cfg(feature = "nonfungibles")]
+pub mod nonfungibles;
 
 /// APIs to manage sponsorships.
 #[cfg(feature = "sponsorships")]

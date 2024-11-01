@@ -34,6 +34,19 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Collection::<T, I>::get(collection).map(|i| i.owner)
 	}
 
+	/// Get the total number of items in the collection, if the collection exists.
+	pub fn collection_items(collection: T::CollectionId) -> Option<u32> {
+		Collection::<T, I>::get(collection).map(|i| i.items)
+	}
+
+	/// Get the metadata of the collection item.
+	pub fn item_metadata(
+		collection: T::CollectionId,
+		item: T::ItemId,
+	) -> Option<BoundedVec<u8, T::StringLimit>> {
+		ItemMetadataOf::<T, I>::get(collection, item).map(|metadata| metadata.data)
+	}
+
 	/// Validates the signature of the given data with the provided signer's account ID.
 	///
 	/// # Errors
@@ -46,7 +59,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		signer: &T::AccountId,
 	) -> DispatchResult {
 		if signature.verify(&**data, &signer) {
-			return Ok(())
+			return Ok(());
 		}
 
 		// NOTE: for security reasons modern UIs implicitly wrap the data requested to sign into
