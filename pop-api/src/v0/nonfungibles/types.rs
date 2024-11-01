@@ -96,24 +96,6 @@ pub struct CollectionConfig {
 	pub mint_settings: MintSettings,
 }
 
-impl CollectionConfig {
-	pub fn is_setting_enabled(&self, setting: CollectionSetting) -> bool {
-		!self.settings.is_disabled(setting)
-	}
-
-	pub fn has_disabled_setting(&self, setting: CollectionSetting) -> bool {
-		self.settings.is_disabled(setting)
-	}
-
-	pub fn enable_setting(&mut self, setting: CollectionSetting) {
-		self.settings.0.remove(setting);
-	}
-
-	pub fn disable_setting(&mut self, setting: CollectionSetting) {
-		self.settings.0.insert(setting);
-	}
-}
-
 /// Support for up to 64 user-enabled features on a collection.
 #[bitflags]
 #[repr(u64)]
@@ -137,20 +119,13 @@ pub enum CollectionSetting {
 pub struct CollectionSettings(pub BitFlags<CollectionSetting>);
 
 impl CollectionSettings {
-	pub fn all_enabled() -> Self {
-		Self(BitFlags::EMPTY)
-	}
-
-	pub fn get_disabled(&self) -> BitFlags<CollectionSetting> {
-		self.0
-	}
-
-	pub fn is_disabled(&self, setting: CollectionSetting) -> bool {
-		self.0.contains(setting)
-	}
-
 	pub fn from_disabled(settings: BitFlags<CollectionSetting>) -> Self {
 		Self(settings)
+	}
+
+	#[cfg(feature = "std")]
+	pub fn all_enabled() -> Self {
+		Self(BitFlags::EMPTY)
 	}
 }
 
@@ -179,14 +154,7 @@ impl ItemSettings {
 		Self(BitFlags::EMPTY)
 	}
 
-	pub fn get_disabled(&self) -> BitFlags<ItemSetting> {
-		self.0
-	}
-
-	pub fn is_disabled(&self, setting: ItemSetting) -> bool {
-		self.0.contains(setting)
-	}
-
+	#[cfg(feature = "std")]
 	pub fn from_disabled(settings: BitFlags<ItemSetting>) -> Self {
 		Self(settings)
 	}
@@ -210,6 +178,7 @@ pub struct MintSettings {
 	pub default_item_settings: ItemSettings,
 }
 
+#[cfg(feature = "std")]
 impl Default for MintSettings {
 	fn default() -> Self {
 		Self {
