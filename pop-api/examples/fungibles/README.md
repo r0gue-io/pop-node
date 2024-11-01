@@ -1,32 +1,47 @@
-# PSP22 Example Contract with Pop Fungibles API
+# PSP22 Fungible Token with Pop API
 
-This contract is an example implementation of the [PSP22 standard](https://github.com/inkdevhub/standards/blob/master/PSPs/psp-22.md), utilizing the Pop API Fungibles module.
+PSP22 is a fungible token standard for WebAssembly smart contracts running on blockchains based on the [Substrate][substrate] framework. It is an equivalent of Ethereum's [ERC-20][erc20]. The definition of the PSP22 standard can be found [here][psp22].
 
-- This contract provides core functionalities to manage a PSP22 standard token that exists as an asset on the Pop Network, rather than being confined solely to the contract.
+This repository contains a simple, minimal implementation of the PSP22 token in [ink!][ink] smart contract programming language (EDSL based on Rust), utilizing the [Pop API Fungibles][pop-api-fungibles] feature.
+
+> [!IMPORTANT] > This version of the PSP22 contract is compatible with ink! 5.
+
+## Design Goals
+
+- Token exists as an asset on the Pop Network via [pallet-assets][pallet-assets], rather than being confined solely to the contract.
+- Contract is the `origin` of the calls made by `pop-api`.
 - Only the contract owner has a permission to call specific methods.
 
-This design choice is due to the fact that `pop-api` invokes runtime calls with the contract itself as the `origin`. For examples, methods like `transfer` and `transfer_from` will operate on the contract's own account balance, not on the balance of the caller.
+[Learn more how Pop API works.](/pop-api/README.md)
 
-To learn more about Pop API and how Pop API works under the hood: [Read here](/pop-api/README.md)
+## Test with Pop DR!nk
 
-## Security risks prevention
-
-To prevent potential misuse of contract methods by malicious actors—such as using `approve` to grant unauthorized transfer permissions—the contract restricts access exclusively to the `owner` (the account that instantiated the contract).
-
-```rs
-self.ensure_owner()?;
-```
-
-Only the `owner` is permitted to call these methods, ensuring the contract’s balance remains secure. The owner of the contract can be updated by an existing `owner` by calling the method `transfer_ownership`.
+Because the contract uses `pop-api` which calls to the runtime, it requires a special crate called [pop-drink][pop-drink] to test the contract. See how the contract is tested in [tests](./tests.rs).
 
 ## What can be improved?
 
-- Instead of restricting ownership to a single `owner`, the contract could be designed to accommodate multiple owners. Therefore, the `transfer_ownership` is also need to be updated to support this feature.
+- **Multiple owner management**: Instead of restricting ownership to a single `owner`, the contract could be designed to accommodate multiple owners.
 
 ## Use cases
 
 This contract can be used in multiple different real world cases such as:
 
-- **Use case for a governance token within a [DAO (Decentralized Autonomous Organization)](https://www.investopedia.com/tech/what-dao/)**: The DAO contract performs cross-contract calls to this PSP22 example contract to create a new token, with the DAO authority as the token’s owner. This allows the DAO authority to manage governance tokens for its members by performing actions such as mint and burn.
+- **Governance Token in DAO**: The DAO uses this PSP22 contract to create a governance token, with DAO authority as owner, enabling actions like minting and burning tokens to manage member governance.
+- **Staking Rewards**: This contract mints and burns tokens for a staking rewards program, allowing the staking authority to distribute rewards only to eligible participants.
 
-- **Staking Rewards Program**: This contract can be used to issue rewards in a staking program, where users lock tokens for network security or liquidity. The staking contract calls this PSP22 contract to mint and burn tokens, allowing the staking authority to manage rewards and ensure distribution only to eligible participants.
+## Support
+
+Be part of our passionate community of Web3 builders. [Join our Telegram](https://t.me/onpopio)!
+
+Feel free to raise issues if anything is unclear, have ideas or want to contribute to Pop!
+
+For any questions related to ink! you can also go to [Polkadot Stack Exchange](https://polkadot.stackexchange.com/) or
+ask the [ink! community](https://t.me/inkathon/1).
+
+[ink]: https://use.ink
+[substrate]: https://substrate.io
+[erc20]: https://ethereum.org/en/developers/docs/standards/tokens/erc-20/
+[psp22]: https://github.com/inkdevhub/standards/blob/master/PSPs/psp-22.md
+[pop-api-fungibles]: https://github.com/r0gue-io/pop-node/tree/main/pop-api/src/v0/fungibles
+[pallet-assets]: https://crates.io/crates/pallet-assets
+[pop-drink]: https://github.com/r0gue-io/pop-drink
