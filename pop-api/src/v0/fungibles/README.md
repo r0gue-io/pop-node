@@ -1,4 +1,4 @@
-# Fungibles API
+## Fungibles API
 
 The `fungibles` module provides an api for interacting and managing fungible tokens.
 
