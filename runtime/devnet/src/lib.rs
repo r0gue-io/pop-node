@@ -701,9 +701,9 @@ mod runtime {
 	#[runtime::pallet_index(152)]
 	pub type Incentives = pallet_incentives::Pallet<Runtime>;
 
-    // Sponsorships
-    #[runtime::pallet_index(153)]
-    pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
+	// Sponsorships
+	#[runtime::pallet_index(153)]
+	pub type Sponsorships = pallet_sponsorships::Pallet<Runtime>;
 
 	#[runtime::pallet_index(154)]
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;

@@ -26,6 +26,6 @@ path = "src/lib.rs"
 default = [ "std" ]
 fungibles = [  ]
 messaging = [  ]
-sponsorships = [  ]
 nonfungibles = [  ]
+sponsorships = [  ]
 std = [ "ink/std", "pop-primitives/std" ]
