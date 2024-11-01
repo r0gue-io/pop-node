@@ -1,7 +1,7 @@
+use pallet_revive::{AccountId32Mapper, AddressMapper};
+
 use super::*;
 use crate::sp_core::H160;
-use pallet_revive::AccountId32Mapper;
-use pallet_revive::AddressMapper;
 
 fn do_bare_call(function: &str, addr: &H160, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);

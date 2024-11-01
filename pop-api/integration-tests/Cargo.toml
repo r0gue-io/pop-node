@@ -21,6 +21,7 @@ pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.
 pallet-revive = { path = "../../pallets/revive", default-features = false }
 pallet-sponsorships = { path = "../../pallets/sponsorships", default-features = false }
 pallet-timestamp = { version = "35.0.0", default-features = false }
+pallet-transaction-payment = { version = "36.0.0", default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
 	"messaging",
@@ -47,6 +48,7 @@ std = [
 	"pallet-revive/std",
 	"pallet-sponsorships/std",
 	"pallet-timestamp/std",
+	"pallet-transaction-payment/std",
 	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",
