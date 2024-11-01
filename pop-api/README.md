@@ -21,11 +21,11 @@ applications rather than managing intricate blockchain details.
   error, making troubleshooting and development easier.
 - **Use Cases**:
     - [Fungibles](./src/v0/fungibles/README.md): Interacting and managing fungible tokens.
-    - Coming soon:
-        - Non Fungibles (Dec): Interacting and managing non fungible tokens.
-        - Messaging (TBD): Cross chain rails for interaction with other chains using ISMP & XCM.
-        - Sponsorship (exploring): Allowing smart contracts to sponsor transactions.
-        - Incentives (exploring): Incentivise smart contracts by sharing chain revenue.
+    - In development:
+        - Non Fungibles: Interacting and managing non fungible tokens.
+        - Messaging: Cross chain rails for interaction with other chains using ISMP & XCM.
+        - Sponsorship: Allowing smart contracts to sponsor transactions.
+        - Incentives: Incentivise smart contracts by sharing chain revenue.
 
 ### Getting Started
 
