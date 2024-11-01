@@ -64,10 +64,10 @@ fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
 	crate::v0::build_dispatch(SPONSORSHIPS, dispatchable)
 }
 
-// Helper method to build a call to read state.
-//
-// Parameters:
-// - 'state_query': The index of the runtime state query.
-fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
-	crate::v0::build_read_state(SPONSORSHIPS, state_query)
-}
+// // Helper method to build a call to read state.
+// //
+// // Parameters:
+// // - 'state_query': The index of the runtime state query.
+// fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
+// 	crate::v0::build_read_state(SPONSORSHIPS, state_query)
+// }

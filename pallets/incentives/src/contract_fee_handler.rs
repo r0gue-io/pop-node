@@ -1,15 +1,14 @@
-use codec::HasCompact;
 use frame_support::{
 	dispatch::{DispatchInfo, DispatchResult, PostDispatchInfo},
 	pallet_prelude::{Decode, Encode, TypeInfo},
-	traits::{fungible::Inspect, IsSubType, IsType},
+	traits::{fungible::Inspect, IsSubType},
 };
 use pallet_revive::AddressMapper;
-use sp_core::{crypto::AccountId32, U256};
+use sp_core::U256;
 use sp_runtime::{
 	traits::{DispatchInfoOf, Dispatchable, PostDispatchInfoOf, Saturating, SignedExtension},
 	transaction_validity::TransactionValidityError,
-	FixedPointOperand, Permill,
+	Permill,
 };
 
 use crate::{types::*, Call, Config, Pallet};
@@ -35,31 +34,23 @@ impl<T: Config + Send + Sync> SignedExtension
     for ContractFeeHandler<T>
 where
     <T as frame_system::Config>::RuntimeCall: Dispatchable<Info = DispatchInfo, PostInfo = PostDispatchInfo>
-        + IsSubType<Call<T>>
-        + IsSubType<pallet_revive::Call<T>>,
-    OnChargeTransactionBalanceOf<T>:
-        Send + Sync + FixedPointOperand + From<u64> + IsType<BalanceOf<T>>,
-    <<<T as pallet_revive::Config>::Currency as Inspect<
-    <T as frame_system::Config>::AccountId,
->>::Balance as HasCompact>::Type:
-        Clone + Eq + PartialEq + core::fmt::Debug + TypeInfo + Encode,
-    <T as frame_system::Config>::RuntimeCall: IsSubType<pallet_revive::Call<T>>,
-    <T as frame_system::Config>::AccountId: From<AccountId32>,
-    <<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+    + IsSubType<Call<T>>
+    + IsSubType<pallet_revive::Call<T>>,
+    <<T as pallet_revive::Config>::Currency as Inspect<
         <T as frame_system::Config>::AccountId,
     >>::Balance: Into<U256>,
-    <<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
-    <<T as pallet_revive::Config>::Currency as frame_support::traits::fungible::Inspect<
+    <<T as pallet_revive::Config>::Currency as Inspect<
         <T as frame_system::Config>::AccountId,
     >>::Balance: TryFrom<U256>,
+    <<T as pallet_revive::Config>::Time as frame_support::traits::Time>::Moment: Into<U256>,
+    BalanceOf<T>: From<OnChargeTransactionBalanceOf<T>>,
 {
     type AccountId = T::AccountId;
     type AdditionalSigned = ();
     type Call = <T as frame_system::Config>::RuntimeCall;
-    type Pre = (
+    type Pre =
         // contract address.
-        Option<Self::AccountId>,
-    );
+        Option<Self::AccountId>;
 
     const IDENTIFIER: &'static str = "Incentives";
 
@@ -79,7 +70,7 @@ where
         } else {
             None
         };
-        Ok((contract,))
+        Ok(contract)
     }
 
     fn post_dispatch(
@@ -89,12 +80,12 @@ where
         len: usize,
         _result: &DispatchResult,
     ) -> Result<(), TransactionValidityError> {
-        if let Some(( contract,)) = pre {
-            if let Some(contract) = contract {
+        if let Some(Some(contract)) = pre {
                 // Check if contract is registered to track usage.
                 if crate::RegisteredContracts::<T>::contains_key(&contract) {
+                    // TODO: no tip considered.
                     let actual_fee = pallet_transaction_payment::Pallet::<T>::compute_actual_fee(
-                        len as u32, info, post_info, OnChargeTransactionBalanceOf::<T>::from(0),
+                        len as u32, info, post_info, OnChargeTransactionBalanceOf::<T>::from(0u32),
                     );
                     // TODO: This should not be hardcoded here. The 50% is specified in the runtime
                     // for DealWithFees.
@@ -109,7 +100,6 @@ where
                     Pallet::<T>::deposit_event(crate::Event::<T>::ContractCalled {
                         contract: contract.clone(),
                     });
-                }
             }
         }
         Ok(())

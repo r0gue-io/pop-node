@@ -49,6 +49,7 @@ pub mod pallet {
 		OptionQuery,
 	>;
 
+	// TODO: simplify events.
 	/// Pallets use events to inform users when important changes are made.
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -115,9 +116,10 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-			if let Some(_) = <Sponsorships<T>>::get(&who, &beneficiary) {
-				return Err(Error::<T>::AlreadySponsored.into())
-			}
+			ensure!(
+				!Sponsorships::<T>::contains_key(&who, &beneficiary),
+				Error::<T>::AlreadySponsored,
+			);
 			// TODO: Reserve SponsorshipDeposit
 			// Register new sponsorship.
 			<Sponsorships<T>>::set(&who, &beneficiary, Some(amount));
@@ -160,21 +162,18 @@ pub mod pallet {
 			new_amount: BalanceOf<T>,
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-
-			if let Some(old_amount) = <Sponsorships<T>>::get(&who, &beneficiary) {
-				<Sponsorships<T>>::set(&who, &beneficiary, Some(new_amount));
-
+			Sponsorships::<T>::try_mutate(&who, &beneficiary, |maybe_amount| -> DispatchResult {
+				let amount = maybe_amount.as_mut().ok_or(Error::<T>::UnknownSponsorship)?;
+				let old_amount = *amount;
+				*amount = new_amount;
 				Self::deposit_event(Event::SponsorshipUpdated {
 					sponsor: who.clone(),
-					beneficiary,
+					beneficiary: beneficiary.clone(),
 					old_amount,
 					new_amount,
 				});
 				Ok(())
-			} else {
-				Err(Error::<T>::UnknownSponsorship)
-			}?;
-			Ok(())
+			})
 		}
 	}
 
@@ -202,11 +201,8 @@ pub mod pallet {
 			beneficiary: &AccountIdOf<T>,
 			amount: BalanceOf<T>,
 		) -> bool {
-			let sponsored = match <Sponsorships<T>>::get(sponsor, beneficiary) {
-				Some(sponsored) => sponsored,
-				None => return false,
-			};
-			sponsored >= amount
+			<Sponsorships<T>>::get(sponsor, beneficiary)
+				.map_or(false, |sponsored| sponsored >= amount)
 		}
 
 		/// Withdraws an amount from the sponsored value.
@@ -221,9 +217,10 @@ pub mod pallet {
 			amount: BalanceOf<T>,
 		) -> Result<BalanceOf<T>, DispatchError> {
 			// Check if the withdrawal can be made
-			if !Self::can_decrease(beneficiary, sponsor, amount) {
-				return Err(Error::<T>::SponsorshipOutOfLimits.into());
-			}
+			ensure!(
+				!Self::can_decrease(beneficiary, sponsor, amount),
+				Error::<T>::SponsorshipOutOfLimits
+			);
 			Sponsorships::<T>::mutate(beneficiary, sponsor, |maybe_sponsorship| {
 				let sponsored = maybe_sponsorship.ok_or(Error::<T>::UnknownSponsorship)?;
 				// Already checked in can_decrease

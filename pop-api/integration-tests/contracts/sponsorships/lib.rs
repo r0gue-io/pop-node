@@ -1,9 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use pop_api::{
-	sponsorships::{
-		self as api,
-	},
+	sponsorships::{self as api},
 	StatusCode,
 };
 
@@ -23,10 +21,7 @@ mod sponsorships {
 		#[ink(constructor, payable)]
 		pub fn new() -> Self {
 			ink::env::debug_println!("PopApiSponsorshipsExample::new");
-			Sponsorships {
-				value: false,
-				owner: Self::env().caller(),
-			}
+			Sponsorships { value: false, owner: Self::env().caller() }
 		}
 
 		#[ink(message, payable)]
@@ -38,7 +33,7 @@ mod sponsorships {
 		}
 
 		#[ink(message, payable)]
-		pub fn withdraw_sponsorship(&mut self) -> Result<()> {
+		pub fn remove_sponsorship(&mut self) -> Result<()> {
 			let beneficiary = self.env().caller();
 			api::remove_sponsorship_for(beneficiary)?;
 			Ok(())
