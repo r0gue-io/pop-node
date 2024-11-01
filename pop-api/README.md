@@ -1,7 +1,7 @@
 ## Pop API
 
 The `pop-api` crate provides a high-level interface that allows smart contracts to seamlessly interact with Pop, a
-blockchain built to power innovative and impactful solutions on Polkadot. Designed for stability, simplicity and
+blockchain built to power innovative and impactful solutions on Polkadot. Designed for stability, simplicity, and
 efficiency, the API abstracts away the complexities of the runtime, enabling developers to focus on building powerful
 applications rather than managing intricate blockchain details.
 
