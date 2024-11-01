@@ -61,4 +61,4 @@ Be part of our passionate community of Web3 builders. [Join our Telegram](https:
 Feel free to raise issues if anything is unclear, have ideas or want to contribute to Pop!
 
 For any questions related to ink! you can also go to [Polkadot Stack Exchange](https://polkadot.stackexchange.com/) or
-ask the [ink! community](https://t.me/inkathon/1).
+ask the [ink! community](https://t.me/inkathon/).
