@@ -1,30 +1,22 @@
 # PSP22 Fungible Token with Pop API
 
+This [ink!][ink] contract demonstrates a [PSP22-compliant][psp22] fungible token utilizing the [Pop API Fungibles][pop-api-fungibles]. Unlike typical token contracts, where the contract itself manages the token, tokens created by this contract are managed directly by Pop. Instead of users interacting with the contract to handle their tokens, they interact with Pop’s runtime.
 
-This [ink!][ink] contract shows a contract that allows interaction and management of a fungible token following the [PSP22 standard][psp22], utilizing the [Pop API Fungibles][pop-api-fungibles] feature. In this specific contract only the contract owner has a permission to call specific methods.
+As the token owner, the contract has permissions to mint and burn tokens, but it can only transfer and approve tokens on its own behalf and requires explicit approval to transfer tokens for other accounts. This structure enables seamless integration and interoperability across the Polkadot ecosystem and its applications.
 
-## Design Goals
+## Use Cases
 
-- Token exists as an asset on the Pop Network, rather than being confined solely to the contract.
-- Contract is the `origin` of the calls made by `pop-api`.
-- Only the contract owner has a permission to call specific methods.
+This contract can serve a variety of purposes where owner-controlled token management is essential. Example use cases include:
+- **DAO Token**: A DAO can use this contract to manage a governance token, with the DAO overseeing token issuance and removal based on governance decisions.
+- **Staking and Rewards**: This contract supports minting tokens specifically for reward distribution.
+- **Loyalty Programs**: Businesses or platforms can use this contract to issue loyalty points, with the owner managing token balances for users based on participation or purchases.ints and burns tokens for a staking rewards program, allowing the staking authority to distribute rewards only to eligible participants.
 
-[Learn more how Pop API works.](/pop-api/README.md)
+## Test with Pop Drink
 
-## Test with Pop DR!nk
-
-Because the contract uses `pop-api` which calls to the runtime, it requires a special crate called [pop-drink][pop-drink] to test the contract. See how the contract is tested in [tests](./tests.rs).
-
-## What can be improved?
+Since this contract interacts directly with Pop’s runtime through the Pop API, it requires [Pop Drink](https://github.com/r0gue-io/pop-drink) for testing. See how the contract is tested in [tests](./tests.rs).
+## Potential Improvements
 
 - **Multiple owner management**: Instead of restricting ownership to a single `owner`, the contract could be designed to accommodate multiple owners.
-
-## Use cases
-
-This contract can be used in multiple different real world cases such as:
-
-- **Governance Token in DAO**: The DAO uses this PSP22 contract to create a governance token, with DAO authority as owner, enabling actions like minting and burning tokens to manage member governance.
-- **Staking Rewards**: This contract mints and burns tokens for a staking rewards program, allowing the staking authority to distribute rewards only to eligible participants.
 
 ## Support
 
