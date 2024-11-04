@@ -10949,7 +10949,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime-testnet"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
