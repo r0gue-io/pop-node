@@ -13,7 +13,7 @@ use super::*;
 /// Event emitted when allowance by `owner` to `spender` changes.
 // Differing style: event name abides by the PSP22 standard.
 #[ink::event]
-#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Approval {
 	/// The owner providing the allowance.
 	#[ink(topic)]
@@ -28,7 +28,7 @@ pub struct Approval {
 /// Event emitted when transfer of tokens occurs.
 // Differing style: event name abides by the PSP22 standard.
 #[ink::event]
-#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Transfer {
 	/// The source of the transfer. `None` when minting.
 	#[ink(topic)]
@@ -42,7 +42,7 @@ pub struct Transfer {
 
 /// Event emitted when a token is created.
 #[ink::event]
-#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Created {
 	/// The token identifier.
 	#[ink(topic)]
@@ -57,7 +57,7 @@ pub struct Created {
 
 /// Event emitted when a token is in the process of being destroyed.
 #[ink::event]
-#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct DestroyStarted {
 	/// The token.
 	#[ink(topic)]
@@ -66,7 +66,7 @@ pub struct DestroyStarted {
 
 /// Event emitted when new metadata is set for a token.
 #[ink::event]
-#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct MetadataSet {
 	/// The token.
 	#[ink(topic)]
@@ -83,7 +83,7 @@ pub struct MetadataSet {
 
 /// Event emitted when metadata is cleared for a token.
 #[ink::event]
-#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct MetadataCleared {
 	/// The token.
 	#[ink(topic)]
