@@ -24,7 +24,7 @@ mod fungibles {
 	#[ink(storage)]
 	pub struct Fungible {
 		id: TokenId,
-		owner: Option<AccountId>,
+		owner: AccountId,
 	}
 
 	impl Fungible {
@@ -38,9 +38,8 @@ mod fungibles {
 		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
 		pub fn new(id: TokenId, min_balance: Balance) -> Result<Self, Psp22Error> {
-			let mut instance = Self { id, owner: None };
+			let instance = Self { id, owner: Self::env().caller() };
 			let contract_id = instance.env().account_id();
-			instance.owner = Some(instance.env().caller());
 			api::create(id, contract_id, min_balance).map_err(Psp22Error::from)?;
 			instance
 				.env()
@@ -89,7 +88,7 @@ mod fungibles {
 			value: Balance,
 			_data: Vec<u8>,
 		) -> Result<(), Psp22Error> {
-			self.ensure()?;
+			self.ensure_owner()?;
 			let contract = self.env().account_id();
 
 			// No-op if the contract and `to` is the same address or `value` is zero.
@@ -117,7 +116,7 @@ mod fungibles {
 			value: Balance,
 			_data: Vec<u8>,
 		) -> Result<(), Psp22Error> {
-			self.ensure()?;
+			self.ensure_owner()?;
 			let contract = self.env().account_id();
 
 			// No-op if `from` and `to` is the same address or `value` is zero.
@@ -145,7 +144,7 @@ mod fungibles {
 		/// - `value` - The number of tokens to approve.
 		#[ink(message)]
 		fn approve(&mut self, spender: AccountId, value: Balance) -> Result<(), Psp22Error> {
-			self.ensure()?;
+			self.ensure_owner()?;
 			let contract = self.env().account_id();
 
 			// No-op if the contract and `spender` is the same address.
@@ -168,7 +167,7 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<(), Psp22Error> {
-			self.ensure()?;
+			self.ensure_owner()?;
 			let contract = self.env().account_id();
 
 			// No-op if the contract and `spender` is the same address or `value` is zero.
@@ -192,7 +191,7 @@ mod fungibles {
 			spender: AccountId,
 			value: Balance,
 		) -> Result<(), Psp22Error> {
-			self.ensure()?;
+			self.ensure_owner()?;
 			let contract = self.env().account_id();
 
 			// No-op if the contract and `spender` is the same address or `value` is zero.
@@ -239,7 +238,7 @@ mod fungibles {
 		/// - `value` - The number of tokens to mint.
 		#[ink(message)]
 		fn mint(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error> {
-			self.ensure()?;
+			self.ensure_owner()?;
 			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
@@ -258,7 +257,7 @@ mod fungibles {
 		/// - `value` - The number of tokens to destroy.
 		#[ink(message)]
 		fn burn(&mut self, account: AccountId, value: Balance) -> Result<(), Psp22Error> {
-			self.ensure()?;
+			self.ensure_owner()?;
 			// No-op if `value` is zero.
 			if value == 0 {
 				return Ok(());
@@ -271,8 +270,8 @@ mod fungibles {
 
 	impl Fungible {
 		/// Check if the caller is the owner of the contract.
-		fn ensure(&self) -> Result<(), Psp22Error> {
-			if self.owner != Some(self.env().caller()) {
+		fn ensure_owner(&self) -> Result<(), Psp22Error> {
+			if self.owner != self.env().caller() {
 				return Err(Psp22Error::Custom(String::from("Not the owner")));
 			}
 			Ok(())
@@ -284,8 +283,8 @@ mod fungibles {
 		/// - `owner` - New owner account.
 		#[ink(message)]
 		pub fn transfer_ownership(&mut self, owner: AccountId) -> Result<(), Psp22Error> {
-			self.ensure()?;
-			self.owner = Some(owner);
+			self.ensure_owner()?;
+			self.owner = owner;
 			Ok(())
 		}
 	}
