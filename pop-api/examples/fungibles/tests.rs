@@ -1,5 +1,5 @@
 use drink::{
-	assert_err, assert_ok, call,
+	assert_err, assert_last_contract_event, assert_ok, call,
 	devnet::{
 		account_id_from_slice,
 		error::{
@@ -69,15 +69,13 @@ fn new_constructor_works(mut session: Session) {
 	// Token exists after the deployment.
 	assert!(session.sandbox().asset_exists(&TOKEN));
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Created {
 			id: TOKEN,
 			creator: account_id_from_slice(&contract),
 			admin: account_id_from_slice(&contract),
 		}
-		.encode()
-		.as_slice()
 	);
 }
 
@@ -194,15 +192,13 @@ fn transfer_works(mut session: Session) {
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &contract), AMOUNT - value);
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &BOB), value);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Transfer {
 			from: Some(account_id_from_slice(&contract)),
 			to: Some(account_id_from_slice(&BOB)),
 			value,
 		}
-		.encode()
-		.as_slice()
 	);
 }
 
@@ -286,15 +282,13 @@ fn transfer_from_works(mut session: Session) {
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), value);
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &BOB), value);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Approval {
 			owner: account_id_from_slice(&ALICE),
 			spender: account_id_from_slice(&contract),
 			value,
 		}
-		.encode()
-		.as_slice()
 	);
 }
 
@@ -335,29 +329,25 @@ fn approve_works(mut session: Session) {
 	assert_ok!(approve(&mut session, BOB, value));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &BOB), value);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Approval {
 			owner: account_id_from_slice(&contract),
 			spender: account_id_from_slice(&BOB),
 			value,
 		}
-		.encode()
-		.as_slice()
 	);
 	// Non-additive, sets new value.
 	assert_ok!(approve(&mut session, ALICE, value - 1));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), value - 1);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Approval {
 			owner: account_id_from_slice(&contract),
 			spender: account_id_from_slice(&ALICE),
 			value: value - 1,
 		}
-		.encode()
-		.as_slice()
 	);
 }
 
@@ -405,29 +395,25 @@ fn increase_allowance_works(mut session: Session) {
 	assert_ok!(increase_allowance(&mut session, ALICE, value));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT + value);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Approval {
 			owner: account_id_from_slice(&contract),
 			spender: account_id_from_slice(&ALICE),
 			value: AMOUNT + value,
 		}
-		.encode()
-		.as_slice()
 	);
 	// Additive.
 	assert_ok!(increase_allowance(&mut session, ALICE, value));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT + value * 2);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Approval {
 			owner: account_id_from_slice(&contract),
 			spender: account_id_from_slice(&ALICE),
 			value: AMOUNT + value * 2,
 		}
-		.encode()
-		.as_slice()
 	);
 }
 
@@ -488,29 +474,25 @@ fn decrease_allowance_works(mut session: Session) {
 	assert_ok!(decrease_allowance(&mut session, ALICE, value));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT - value);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Approval {
 			owner: account_id_from_slice(&contract),
 			spender: account_id_from_slice(&ALICE),
 			value: AMOUNT - value,
 		}
-		.encode()
-		.as_slice()
 	);
 	// Additive.
 	assert_ok!(decrease_allowance(&mut session, ALICE, value));
 	assert_eq!(session.sandbox().allowance(&TOKEN, &contract, &ALICE), AMOUNT - value * 2);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Approval {
 			owner: account_id_from_slice(&contract),
 			spender: account_id_from_slice(&ALICE),
 			value: AMOUNT - value * 2,
 		}
-		.encode()
-		.as_slice()
 	);
 }
 
@@ -591,11 +573,9 @@ fn mint_works(mut session: Session) {
 	assert_eq!(session.sandbox().total_supply(&TOKEN), value);
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), value);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Transfer { from: None, to: Some(account_id_from_slice(&ALICE)), value }
-			.encode()
-			.as_slice()
 	);
 }
 
@@ -647,11 +627,9 @@ fn burn_works(mut session: Session) {
 	assert_eq!(session.sandbox().total_supply(&TOKEN), AMOUNT - value);
 	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT - value);
 	// Successfully emit event.
-	assert_eq!(
-		last_contract_event(&session).unwrap(),
+	assert_last_contract_event!(
+		&session,
 		Transfer { from: Some(account_id_from_slice(&ALICE)), to: None, value }
-			.encode()
-			.as_slice()
 	);
 }
 
