@@ -21,6 +21,7 @@ pop-api = { path = "../../pop-api", default-features = false, features = [
 ] }
 pop-primitives = { path = "../../primitives", default-features = false }
 pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
+pop-runtime-testnet = { path = "../../runtime/testnet", default-features = false }
 scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
 	"derive",
 ] }
@@ -31,6 +32,7 @@ staging-xcm = { version = "=14.1.0", default-features = false }
 
 [features]
 default = [ "std" ]
+devnet = [  ]
 std = [
 	"frame-support/std",
 	"frame-system/std",
@@ -40,8 +42,10 @@ std = [
 	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",
+	"pop-runtime-testnet/std",
 	"scale/std",
 	"sp-io/std",
 	"sp-runtime/std",
 	"staging-xcm/std",
 ]
+testnet = [  ]

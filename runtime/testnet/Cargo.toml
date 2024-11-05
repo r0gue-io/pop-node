@@ -6,7 +6,7 @@ homepage.workspace = true
 license = "Unlicense"
 name = "pop-runtime-testnet"
 repository.workspace = true
-version = "0.4.1"
+version = "0.4.2"
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
@@ -22,6 +22,8 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
+pallet-api.workspace = true
+pop-chain-extension.workspace = true
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
 
@@ -116,6 +118,7 @@ std = [
 	"frame-system/std",
 	"frame-try-runtime/std",
 	"log/std",
+	"pallet-api/std",
 	"pallet-assets/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
@@ -141,6 +144,7 @@ std = [
 	"parachains-common/std",
 	"polkadot-parachain-primitives/std",
 	"polkadot-runtime-common/std",
+	"pop-chain-extension/std",
 	"pop-primitives/std",
 	"pop-runtime-common/std",
 	"scale-info/std",
@@ -172,6 +176,7 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"frame-system-benchmarking/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"pallet-api/runtime-benchmarks",
 	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
@@ -190,6 +195,7 @@ runtime-benchmarks = [
 	"parachains-common/runtime-benchmarks",
 	"polkadot-parachain-primitives/runtime-benchmarks",
 	"polkadot-runtime-common/runtime-benchmarks",
+	"pop-chain-extension/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
@@ -205,6 +211,7 @@ try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
+	"pallet-api/try-runtime",
 	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
 	"pallet-authorship/try-runtime",
