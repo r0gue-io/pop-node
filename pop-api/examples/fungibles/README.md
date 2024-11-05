@@ -1,8 +1,8 @@
 # PSP22 Fungible Token with Pop API
 
-This [ink!][ink] contract demonstrates a [PSP22-compliant][psp22] fungible token utilizing the [Pop API Fungibles][pop-api-fungibles]. Unlike typical token contracts, where the contract itself manages the token, tokens created by this contract are managed directly by Pop. Instead of users interacting with the contract to handle their tokens, they interact with Pop’s runtime.
+This [ink!][ink] contract implements a [PSP22-compliant][psp22] fungible token by leveraging the [Pop API Fungibles][pop-api-fungibles]. Unlike typical token contracts, where the contract itself manages the token, tokens created by this contract are managed directly by Pop. This enables seamless integration and interoperability of the token across the Polkadot ecosystem and its applications. 
 
-As the token owner, the contract has permissions to mint and burn tokens, but it can only transfer and approve tokens on its own behalf and requires explicit approval to transfer tokens for other accounts. This structure enables seamless integration and interoperability across the Polkadot ecosystem and its applications.
+As the creator of the token, the contract has permissions to mint and burn tokens, but it can only transfer and approve tokens on its own behalf and requires explicit approval to transfer tokens for other accounts. Instead of users interacting with the contract to handle their tokens, they interact primarily with Pop’s runtime. 
 
 ## Use Cases
 
