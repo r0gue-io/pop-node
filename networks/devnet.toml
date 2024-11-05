@@ -49,6 +49,8 @@ chain = "asset-hub-paseo-local"
 
 [parachains.genesis_overrides.balances]
 balances = [
+    ["5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY", 10000000000000000],
+    ["5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty", 10000000000000000],
     # Pop sovereign account
     ["5Eg2fnt8cGL5CBhRRhi59abAwb3SPoAdPJpN9qY7bQqpzpf6", 60000000000000000],
 ]
@@ -70,3 +72,4 @@ sender = 4001
 recipient = 1000
 max_capacity = 1000
 max_message_size = 1024
+

@@ -23,6 +23,7 @@ use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
 use sp_core::{keccak_256, H256};
 use sp_runtime::{BoundedVec, SaturatedConversion, Saturating};
+use sp_std::vec::Vec;
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
@@ -57,7 +58,7 @@ pub struct Get<T: Config> {
 	pub(crate) height: u32,
 	pub(crate) timeout: u64,
 	pub(crate) context: BoundedVec<u8, T::MaxContextLen>,
-	pub(crate) keys: BoundedVec<BoundedVec<u8, T::MaxKeyLen>, T::MaxKeys>,
+	pub keys: BoundedVec<BoundedVec<u8, T::MaxKeyLen>, T::MaxKeys>,
 }
 
 impl<T: Config> From<Get<T>> for DispatchGet {
@@ -163,12 +164,14 @@ impl<T: Config> IsmpModule for Handler<T> {
 		};
 
 		// Store values for later retrieval
-		let response: BoundedVec<u8, T::MaxResponseLen> =
-			response.try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
 		Messages::<T>::try_mutate(&origin, &id, |message| {
-			let Some(super::super::Message::Ismp { deposit, commitment }) = message else {
+			let Some(super::super::Message::Ismp { deposit, commitment, key }) = message else {
 				return Err(Error::Custom("message not found".into()))
 			};
+			let result = find_extra_bytes_at_end(response, key.clone().into());
+			// Store values for later retrieval
+			let response: BoundedVec<u8, T::MaxResponseLen> =
+				result.try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
 			*message = Some(super::super::Message::IsmpResponse {
 				deposit: *deposit,
 				commitment: *commitment,
@@ -190,7 +193,8 @@ impl<T: Config> IsmpModule for Handler<T> {
 				let key =
 					IsmpRequests::<T>::get(id).ok_or(Error::Custom("request not found".into()))?;
 				Messages::<T>::try_mutate(key.0, key.1, |message| {
-					let Some(super::super::Message::Ismp { deposit, commitment }) = message else {
+					let Some(super::super::Message::Ismp { deposit, commitment, key }) = message
+					else {
 						return Err(Error::Custom("message not found".into()))
 					};
 					*message = Some(super::super::Message::IsmpTimedOut {
@@ -232,4 +236,21 @@ fn calculate_deposit<T: Config>(mut deposit: BalanceOf<T>) -> BalanceOf<T> {
 	);
 
 	deposit
+}
+
+fn find_extra_bytes_at_end(v1: Vec<u8>, v2: Vec<u8>) -> Vec<u8> {
+	// Ensure `v1` is the longer vector.
+	let (longer, shorter) = if v1.len() > v2.len() { (v1, v2) } else { (v2, v1) };
+
+	// Find where the common section starts.
+	let start_offset = longer
+		.windows(shorter.len())
+		.position(|window| window == shorter)
+		.expect("Shorter vector not found in longer vector");
+
+	// Calculate where the common section ends in `longer`.
+	let common_end_index = start_offset + shorter.len();
+
+	// Return a new Vec containing the extra bytes at the end.
+	longer[common_end_index..].to_vec()
 }

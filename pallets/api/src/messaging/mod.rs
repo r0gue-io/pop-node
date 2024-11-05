@@ -88,7 +88,7 @@ pub mod pallet {
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type Messages<T: Config> = StorageDoubleMap<
+	pub type Messages<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -158,19 +158,27 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 
 			// Calculate deposit and place on hold.
-			let deposit = Self::calculate_deposit(message.calculate_deposit());
+			let deposit = Self::calculate_deposit(message.clone().calculate_deposit());
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
+				.dispatch_request(
+					message.clone().into(),
+					FeeMetadata { payer: origin.clone(), fee },
+				)
 				.map_err(|_| Error::<T>::DispatchFailed)?;
 
 			// Store commitment for lookup on response, message for querying, response/timeout
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { deposit, commitment });
+			let ismp::Get::<T> { keys, .. } = message;
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp { deposit, commitment, key: keys[0].clone() },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched { origin, id });
 			Ok(())
 		}
@@ -199,7 +207,11 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying, response/timeout
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { deposit, commitment });
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp { deposit, commitment, key: BoundedVec::new() },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched { origin, id });
 			Ok(())
 		}
@@ -351,12 +363,14 @@ impl<T: Config> crate::Read for Pallet<T> {
 
 	fn read(request: Self::Read) -> Self::Result {
 		match request {
-			Read::Poll(request) =>
+			Read::Poll(request) => {
+				log::debug!("request: {:?}, {}", &request.0, &request.1);
 				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| match m {
 					Message::Ismp { .. } | Message::XcmQuery { .. } => Status::Pending,
 					Message::IsmpTimedOut { .. } => Status::TimedOut,
 					Message::IsmpResponse { .. } | Message::XcmResponse { .. } => Status::Complete,
-				})),
+				}))
+			},
 			Read::Get(request) =>
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
 					Message::IsmpResponse { response, .. } => Some(response.into_inner()),
@@ -380,10 +394,11 @@ trait CalculateDeposit<Deposit> {
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-enum Message<T: Config> {
+pub enum Message<T: Config> {
 	Ismp {
 		commitment: H256,
 		deposit: BalanceOf<T>,
+		key: BoundedVec<u8, T::MaxKeyLen>,
 	},
 	IsmpTimedOut {
 		commitment: H256,

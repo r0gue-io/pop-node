@@ -1,0 +1,27 @@
+[package]
+authors = [ "[your_name] <[your_email]>" ]
+edition = "2021"
+name = "dao"
+version = "0.1.0"
+
+[dependencies]
+ink = { git = "https://github.com/r0gue-io/ink", branch = "sub0", default-features = false }
+nft-verifier = { path = "../nft-verifier", default-features = false, features = [ "ink-as-dependency" ] }
+polkavm-derive = "0.11.0"
+pop-api = { path = "../../../pop-api", default-features = false, features = [ "messaging", "nonfungibles", "sponsorships" ] }
+
+[dev-dependencies]
+ink_e2e = { version = "5.0.0" }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
+std = [
+	"ink/std",
+	"nft-verifier/std",
+	"pop-api/std",
+]

@@ -23,6 +23,7 @@ pub(super) const GET: u8 = 1;
 pub(super) const QUERY_ID: u8 = 2;
 
 pub type RequestId = u64;
+pub type ParaId = u32;
 
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
 	crate::v0::build_dispatch(MESSAGING, dispatchable)

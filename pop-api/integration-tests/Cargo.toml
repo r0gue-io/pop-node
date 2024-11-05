@@ -14,6 +14,7 @@ frame-support-procedural = { version = "=30.0.1", default-features = false }
 frame-system = { version = "36.1.0", default-features = false }
 ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }
 log = "0.4.22"
+pallet-api = { path = "../../pallets/api", default-features = false }
 pallet-assets = { version = "37.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
 pallet-incentives = { path = "../../pallets/incentives", default-features = false }
@@ -31,7 +32,10 @@ pop-api = { path = "../../pop-api", default-features = false, features = [
 pop-primitives = { path = "../../primitives", default-features = false }
 pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
 scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
-	"derive",
+    "derive",
+] }
+scale-info = { version = "2.11.1", default-features = false, features = [
+    "derive",
 ] }
 sp-io = { version = "37.0.0", default-features = false }
 sp-runtime = { version = "=38.0.0", default-features = false }
@@ -42,20 +46,21 @@ xcm-executor = { version = "15.0.0", package = "staging-xcm-executor", default-f
 [features]
 default = [ "std" ]
 std = [
-	"frame-support/std",
-	"frame-system/std",
-	"pallet-assets/std",
-	"pallet-balances/std",
-	"pallet-incentives/std",
+    "frame-support/std",
+    "frame-system/std",
+    "pallet-api/std",
+    "pallet-assets/std",
+    "pallet-balances/std",
+    "pallet-incentives/std",
 	"pallet-nfts/std",
 	"pallet-revive/std",
-	"pallet-sponsorships/std",
+    "pallet-sponsorships/std",
 	"pallet-timestamp/std",
-	"pop-api/std",
-	"pop-primitives/std",
-	"pop-runtime-devnet/std",
-	"scale/std",
-	"sp-io/std",
-	"sp-runtime/std",
-	"staging-xcm/std",
+    "pop-api/std",
+    "pop-primitives/std",
+    "pop-runtime-devnet/std",
+    "scale/std",
+    "sp-io/std",
+    "sp-runtime/std",
+    "staging-xcm/std",
 ]

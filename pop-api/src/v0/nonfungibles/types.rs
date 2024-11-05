@@ -123,7 +123,7 @@ impl CollectionSettings {
 		Self(settings)
 	}
 
-	#[cfg(feature = "std")]
+	// #[cfg(feature = "std")]
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
 	}
@@ -150,13 +150,13 @@ pub enum ItemSetting {
 pub struct ItemSettings(pub BitFlags<ItemSetting>);
 
 impl ItemSettings {
-	pub fn all_enabled() -> Self {
-		Self(BitFlags::EMPTY)
-	}
-
-	#[cfg(feature = "std")]
 	pub fn from_disabled(settings: BitFlags<ItemSetting>) -> Self {
 		Self(settings)
+	}
+
+	// #[cfg(feature = "std")]
+	pub fn all_enabled() -> Self {
+		Self(BitFlags::EMPTY)
 	}
 }
 
@@ -178,7 +178,7 @@ pub struct MintSettings {
 	pub default_item_settings: ItemSettings,
 }
 
-#[cfg(feature = "std")]
+// #[cfg(feature = "std")]
 impl Default for MintSettings {
 	fn default() -> Self {
 		Self {
