@@ -14,6 +14,7 @@ This contract can serve a variety of purposes where owner-controlled token manag
 ## Test with Pop Drink
 
 Since this contract interacts directly with Pop’s runtime through the Pop API, it requires [Pop Drink](https://github.com/r0gue-io/pop-drink) for testing. See how the contract is tested in [tests](./tests.rs).
+
 ## Potential Improvements
 
 - **Multiple owner management**: Instead of restricting ownership to a single `owner`, the contract could be designed to accommodate multiple owners.
