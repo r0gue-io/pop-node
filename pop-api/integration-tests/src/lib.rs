@@ -24,6 +24,7 @@ mod incentives;
 mod messaging;
 mod nonfungibles;
 mod sponsorships;
+mod dao;
 
 type Balance = u128;
 
@@ -129,4 +130,10 @@ fn instantiate(
 	.unwrap();
 	assert!(!result.result.did_revert(), "deploying contract reverted {:?}", result);
 	(result.addr, pallet_revive::AccountId32Mapper::<Runtime>::to_account_id(&result.addr))
+}
+
+fn upload(contract: &str, init_value: u128) -> sp_core::H256 {
+	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
+	let result = Revive::bare_upload_code(RuntimeOrigin::signed(ALICE), wasm_binary, init_value).unwrap();
+	result.code_hash
 }

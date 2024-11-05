@@ -107,7 +107,7 @@ impl messaging::Config for Runtime {
 	type IsmpDispatcher = Ismp;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
-	type MaxKeyLen = ConstU32<32>;
+	type MaxKeyLen = ConstU32<1000>;
 	type MaxKeys = ConstU32<10>;
 	// TODO: size appropriately
 	type MaxRemovals = ConstU32<1024>;
