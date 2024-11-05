@@ -6,8 +6,8 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
+// Public due to integration tests crate.
 pub mod config;
-mod extensions;
 mod weights;
 
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
@@ -252,14 +252,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 					force_unreserve { .. }
 			)
 		)
-	}
-}
-
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	fn contains(_c: &RuntimeCall) -> bool {
-		false
 	}
 }
 
