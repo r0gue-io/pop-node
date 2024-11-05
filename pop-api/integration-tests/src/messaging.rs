@@ -31,12 +31,6 @@ fn ismp_get_request_works() {
 	let contract = ext.execute_with(|| {
 		let contract = Contract::new();
 		assert_ok!(contract.ismp_get(id, request, 0));
-		// let (h160, id32) = contract.clone().0;
-		// let result = pallet_api::messaging::pallet::Messages::<Runtime>::get(id32.clone(), id);
-		// println!("result: {:?}", result);
-		// log::debug!("request: {:?}, {}", &id32, &id);
-		// assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-
 		// TODO: assert events from messaging and ismp pallets emitted
 		println!("{:#?}", System::events());
 
