@@ -10949,7 +10949,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime-testnet"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "cumulus-pallet-aura-ext",
  "cumulus-pallet-parachain-system",
@@ -10973,6 +10973,7 @@ dependencies = [
  "hex",
  "hex-literal 0.4.1",
  "log",
+ "pallet-api",
  "pallet-assets",
  "pallet-aura",
  "pallet-authorship",
@@ -10998,6 +10999,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "polkadot-runtime-common",
+ "pop-chain-extension",
  "pop-primitives",
  "pop-runtime-common",
  "scale-info",

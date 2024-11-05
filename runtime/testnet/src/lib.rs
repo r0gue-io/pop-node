@@ -6,8 +6,8 @@
 #[cfg(feature = "std")]
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
-mod config;
-mod extensions;
+// Public due to integration tests crate.
+pub mod config;
 mod weights;
 
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
@@ -33,6 +33,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
+use pallet_api::fungibles;
 use pallet_balances::Call as BalancesCall;
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
@@ -104,8 +105,9 @@ pub type UncheckedExtrinsic =
 
 /// Migrations to apply on runtime upgrade.
 pub type Migrations = (
-	pallet_contracts::Migration<Runtime>,
 	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
+	// Permanent.
+	pallet_contracts::Migration<Runtime>,
 	pallet_xcm::migration::MigrateToLatestXcmVersion<Runtime>,
 );
 
@@ -181,7 +183,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_name: create_runtime_str!("pop"),
 	authoring_version: 1,
 	#[allow(clippy::zero_prefixed_literal)]
-	spec_version: 00_04_01,
+	spec_version: 00_04_02,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -253,14 +255,6 @@ impl Contains<RuntimeCall> for FilteredCalls {
 	}
 }
 
-/// A type to identify allowed calls to the Runtime from contracts. Used by Pop API
-pub struct AllowedApiCalls;
-impl Contains<RuntimeCall> for AllowedApiCalls {
-	fn contains(_c: &RuntimeCall) -> bool {
-		false
-	}
-}
-
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.
@@ -299,6 +293,9 @@ impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ConstU64<0>;
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
+	#[cfg(feature = "std")]
+	type OnTimestampSet = ();
+	#[cfg(not(feature = "std"))]
 	type OnTimestampSet = Aura;
 	type WeightInfo = ();
 }
@@ -639,12 +636,17 @@ mod runtime {
 	pub type NftFractionalization = pallet_nft_fractionalization::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]
 	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
+
+	// Pop API
+	#[runtime::pallet_index(150)]
+	pub type Fungibles = fungibles::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benches {
 	frame_benchmarking::define_benchmarks!(
 		[frame_system, SystemBench::<Runtime>]
+		[fungibles, Fungibles]
 		[pallet_balances, Balances]
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
