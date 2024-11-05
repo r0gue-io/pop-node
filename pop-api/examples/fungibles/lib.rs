@@ -277,7 +277,7 @@ mod fungibles {
 			Ok(())
 		}
 
-		/// Transfer the ownership of the contract to another account.
+		/// Change the ownership of the contract to another account.
 		///
 		/// # Parameters
 		/// - `owner` - New owner account.
