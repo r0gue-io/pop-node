@@ -4,6 +4,13 @@ This [ink!][ink] contract implements a [PSP22-compliant][psp22] fungible token b
 
 As the creator of the token, the contract has permissions to mint and burn tokens, but it can only transfer and approve tokens on its own behalf and requires explicit approval to transfer tokens for other accounts. Instead of users interacting with the contract to handle their token approvals, they interact primarily with Pop’s runtime.
 
+## Key benefits of using the Pop API
+
+- The token operates live on the Pop Network, beyond just within the contract.
+- Simplify token management with high-level interfaces to significantly reduce contract size and complexity.
+
+[Learn more how Pop API works.](pop-api)
+
 ## Use Cases
 
 This contract can serve a variety of purposes where owner-controlled token management is essential. Example use cases include:
@@ -30,5 +37,6 @@ ask the [ink! community](https://t.me/inkathon/1).
 
 [ink]: https://use.ink
 [psp22]: https://github.com/inkdevhub/standards/blob/master/PSPs/psp-22.md
+[pop-api]: https://github.com/r0gue-io/pop-node/tree/main/pop-api/
 [pop-api-fungibles]: https://github.com/r0gue-io/pop-node/tree/main/pop-api/src/v0/fungibles
 [pop-drink]: https://github.com/r0gue-io/pop-drink

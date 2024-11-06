@@ -1,11 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{
-	prelude::{string::String, vec::Vec},
-	storage::Mapping,
-};
+use ink::prelude::{string::String, vec::Vec};
 use pop_api::{
-	primitives::{AccountId, TokenId},
+	primitives::TokenId,
 	v0::fungibles::{
 		self as api,
 		events::{Approval, Created, Transfer},
@@ -277,12 +274,12 @@ mod fungibles {
 			Ok(())
 		}
 
-		/// Change the ownership of the contract to another account.
+		/// Transfer the ownership of the contract to another account.
 		///
 		/// # Parameters
 		/// - `owner` - New owner account.
 		#[ink(message)]
-		pub fn change_ownership(&mut self, owner: AccountId) -> Result<(), Psp22Error> {
+		pub fn transfer_ownership(&mut self, owner: AccountId) -> Result<(), Psp22Error> {
 			self.ensure_owner()?;
 			self.owner = owner;
 			Ok(())
