@@ -232,10 +232,9 @@ fn process_response<T: Config>(
 	};
 
 	// Attempt callback with result if specified.
-	if let Some((selector, prepaid_weight)) = callback {
+	if let Some(callback) = callback {
 		// TODO: check response length
-		if Pallet::<T>::call(origin.clone(), selector, id, &encode, prepaid_weight, deposit).is_ok()
-		{
+		if Pallet::<T>::call(origin.clone(), callback, id, &encode, deposit).is_ok() {
 			Pallet::<T>::deposit_event(event(origin, id));
 			return Ok(());
 		}

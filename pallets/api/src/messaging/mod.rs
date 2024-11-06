@@ -124,15 +124,87 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		IsmpGetDispatched { origin: T::AccountId, id: MessageId },
-		IsmpGetResponseReceived { dest: T::AccountId, id: MessageId },
-		IsmpPostDispatched { origin: T::AccountId, id: MessageId },
-		IsmpPostResponseReceived { dest: T::AccountId, id: MessageId },
-		XcmQueryCreated { origin: T::AccountId, id: MessageId },
-		XcmResponseReceived { dest: T::AccountId, id: MessageId },
-		CallbackExecuted { dest: T::AccountId, id: MessageId },
-		CallbackFailed { dest: T::AccountId, id: MessageId, error: DispatchError },
-		Removed { origin: T::AccountId, messages: Vec<MessageId> },
+		/// A GET has been dispatched via ISMP.
+		IsmpGetDispatched {
+			/// The origin of the request.
+			origin: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+			/// The ISMP request commitment.
+			commitment: H256,
+			/// An optional callback to be used to return the response.
+			callback: Option<Callback>,
+		},
+		/// A response to a GET has been received via ISMP.
+		IsmpGetResponseReceived {
+			/// The destination of the response.
+			dest: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+		},
+		/// A POST has been dispatched via ISMP.
+		IsmpPostDispatched {
+			/// The origin of the request.
+			origin: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+			/// The ISMP request commitment.
+			commitment: H256,
+			/// An optional callback to be used to return the response.
+			callback: Option<Callback>,
+		},
+		/// A response to a POST has been received via ISMP.
+		IsmpPostResponseReceived {
+			/// The destination of the response.
+			dest: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+		},
+		/// A XCM query has been created.
+		XcmQueryCreated {
+			/// The origin of the request.
+			origin: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+			/// The identifier of the created XCM query.
+			query_id: QueryId,
+			/// An optional callback to be used to return the response.
+			callback: Option<Callback>,
+		},
+		/// A response to a XCM query has been received.
+		XcmResponseReceived {
+			/// The destination of the response.
+			dest: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+		},
+		/// A callback has been executed successfully.
+		CallbackExecuted {
+			/// The origin of the callback.
+			origin: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+			/// The successful callback.
+			callback: Callback,
+		},
+		/// A callback has failed.
+		CallbackFailed {
+			/// The origin of the callback.
+			origin: T::AccountId,
+			/// The identifier specified for the request.
+			id: MessageId,
+			/// The callback which failed.
+			callback: Callback,
+			/// The error which occurred.
+			error: DispatchError,
+		},
+		/// One or more messages have been removed for the origin.
+		Removed {
+			/// The origin of the messages.
+			origin: T::AccountId,
+			/// The messages which were removed.
+			messages: Vec<MessageId>,
+		},
 	}
 
 	#[pallet::error]
@@ -202,7 +274,12 @@ pub mod pallet {
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
 			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
-			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched { origin, id });
+			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
+				origin,
+				id,
+				commitment,
+				callback,
+			});
 			Ok(())
 		}
 
@@ -245,7 +322,12 @@ pub mod pallet {
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
 			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
-			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched { origin, id });
+			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
+				origin,
+				id,
+				commitment,
+				callback,
+			});
 			Ok(())
 		}
 
@@ -290,10 +372,16 @@ pub mod pallet {
 			// response/timeout handling.
 			XcmQueries::<T>::insert(&query_id, (&origin, id));
 			Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback, deposit });
-			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated { origin, id });
+			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
+				origin,
+				id,
+				query_id,
+				callback,
+			});
 			Ok(())
 		}
 
+		// NOTE: dispatchable should not fail, otherwise response will be lost.
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::zero())] // todo: benchmarking
 		pub fn xcm_response(
@@ -312,10 +400,8 @@ pub mod pallet {
 			};
 
 			// Attempt callback with response if specified.
-			if let Some((selector, prepaid_weight)) = callback {
-				if Self::call(origin.clone(), selector, id, &response, prepaid_weight, deposit)
-					.is_ok()
-				{
+			if let Some(callback) = callback {
+				if Self::call(origin.clone(), callback, id, &response, deposit).is_ok() {
 					Self::deposit_event(Event::<T>::XcmResponseReceived { dest: origin, id });
 					return Ok(());
 				}
@@ -385,18 +471,17 @@ impl<T: Config> Pallet<T> {
 	// Attempt to notify via callback.
 	fn call(
 		origin: AccountIdOf<T>,
-		selector: [u8; 4],
+		callback: Callback,
 		id: MessageId,
 		data: &impl Encode,
-		weight: Weight,
 		deposit: BalanceOf<T>,
 	) -> DispatchResult {
 		// TODO: check weight removed from block weight - may need dispatching via executive
 		// instead
 		let result = T::Callback::execute(
 			origin.clone(),
-			[selector.to_vec(), (id, data).encode()].concat(),
-			weight,
+			[callback.0.to_vec(), (id, data).encode()].concat(),
+			callback.1,
 		);
 		match result {
 			Ok(_post_info) => {
@@ -404,7 +489,11 @@ impl<T: Config> Pallet<T> {
 				// Return deposit.
 				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 				Messages::<T>::remove(&origin, &id);
-				Self::deposit_event(Event::<T>::CallbackExecuted { dest: origin.clone(), id });
+				Self::deposit_event(Event::<T>::CallbackExecuted {
+					origin: origin.clone(),
+					id,
+					callback,
+				});
 				Self::deposit_event(Event::<T>::Removed {
 					origin: origin.clone(),
 					messages: [id].to_vec(),
@@ -414,8 +503,9 @@ impl<T: Config> Pallet<T> {
 			Err(error) => {
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {
-					dest: origin.clone(),
+					origin: origin.clone(),
 					id,
+					callback,
 					error: error.error,
 				});
 				// TODO: logging

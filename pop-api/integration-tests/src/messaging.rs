@@ -36,7 +36,12 @@ fn ismp_get_request_works() {
 
         assert_ok!(contract.ismp_get(id, request, 0, false));
         assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-        System::assert_has_event(IsmpGetDispatched { origin: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(IsmpGetDispatched { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+		}));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -81,7 +86,12 @@ fn ismp_get_request_with_callback_works() {
 
         assert_ok!(contract.ismp_get(id, request, 0, true));
         assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-        System::assert_has_event(IsmpGetDispatched { origin: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(IsmpGetDispatched { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+		}));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -105,7 +115,12 @@ fn ismp_get_request_with_callback_works() {
 
 		assert_eq!(contract.last_event(), IsmpGetCompleted { id, values: response }.encode());
 		assert_eq!(contract.poll(id).unwrap(), None);
-		System::assert_has_event(CallbackExecuted { dest: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+		}));
 		System::assert_has_event(
 			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
 		);
@@ -125,7 +140,12 @@ fn ismp_post_request_works() {
 
         assert_ok!(contract.ismp_post(id, request, 0, false));
         assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-        System::assert_has_event(IsmpPostDispatched { origin: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(IsmpPostDispatched { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+		}));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -173,7 +193,12 @@ fn ismp_post_request_with_callback_works() {
 
         assert_ok!(contract.ismp_post(id, request, 0, true));
         assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-        System::assert_has_event(IsmpPostDispatched { origin: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(IsmpPostDispatched { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+		}));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -201,7 +226,12 @@ fn ismp_post_request_with_callback_works() {
 
 		assert_eq!(contract.last_event(), IsmpPostCompleted { id, response }.encode());
 		assert_eq!(contract.poll(id).unwrap(), None);
-		System::assert_has_event(CallbackExecuted { dest: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+		}));
 		System::assert_has_event(
 			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
 		);
@@ -222,7 +252,12 @@ fn xcm_query_works() {
 		let query_id = contract.xcm_new_query(id, responder, timeout, false).unwrap().unwrap();
 		assert_eq!(query_id, 0);
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-		System::assert_has_event(XcmQueryCreated { origin: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(XcmQueryCreated { origin, id: message_id, query_id, ..})
+				if origin == &contract.id && *message_id == id && *query_id == 0
+			)
+		}));
 
 		// Provide a response.
 		let origin = translate(&origin);
@@ -265,7 +300,12 @@ fn xcm_query_with_callback_works() {
 		let query_id = contract.xcm_new_query(id, responder, timeout, true).unwrap().unwrap();
 		assert_eq!(query_id, 0);
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-		System::assert_has_event(XcmQueryCreated { origin: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(XcmQueryCreated { origin, id: message_id, query_id, ..})
+				if origin == &contract.id && *message_id == id && *query_id == 0
+			)
+		}));
 
 		// Provide a response.
 		let origin = translate(&origin);
@@ -287,7 +327,12 @@ fn xcm_query_with_callback_works() {
 
 		assert_eq!(contract.last_event(), XcmCompleted { id, result: response }.encode());
 		assert_eq!(contract.poll(id).unwrap(), None);
-		System::assert_has_event(CallbackExecuted { dest: contract.id.clone(), id }.into());
+		assert!(System::events().iter().any(|e| {
+			matches!(&e.event,
+			RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+		}));
 		System::assert_has_event(
 			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
 		);
