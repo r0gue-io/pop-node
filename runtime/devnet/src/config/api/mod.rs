@@ -2,18 +2,25 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::traits::{ConstU32, Contains};
+use frame_support::{
+	dispatch::{DispatchErrorWithPostInfo, DispatchResultWithPostInfo, PostDispatchInfo},
+	traits::{ConstU32, Contains, EnsureOrigin},
+};
 pub(crate) use pallet_api::Extension;
-use pallet_api::{extension::*, Read};
+use pallet_api::{extension::*, messaging::NotifyQueryHandler, Read};
+use pallet_revive::{AddressMapper, CollectEvents, DebugInfo};
+use pallet_xcm::Origin;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use sp_std::vec::Vec;
 use versioning::*;
+use xcm::latest::Location;
 
 use crate::{
 	config::{assets::TrustBackedAssetsInstance, xcm::LocalOriginToLocation},
-	fungibles, messaging, nonfungibles, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeHoldReason, TransactionByteFee,
+	fungibles, messaging, nonfungibles, AccountId, Balances, BlockNumber, Ismp, PolkadotXcm,
+	Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
+	TransactionByteFee,
 };
 
 mod versioning;
@@ -92,6 +99,7 @@ impl RuntimeResult {
 
 impl messaging::Config for Runtime {
 	type ByteFee = TransactionByteFee;
+	type Callback = Callback;
 	type Deposit = Balances;
 	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
 	// much as onchain cost.
@@ -108,7 +116,86 @@ impl messaging::Config for Runtime {
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
-	type Xcm = PolkadotXcm;
+	type Xcm = QueryHandler;
+	type XcmResponseOrigin = EnsureResponse;
+}
+
+pub struct EnsureResponse;
+impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureResponse {
+	type Success = Location;
+
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			Origin::Response(location) => Ok(location),
+			r => Err(O::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin() -> Result<O, ()> {
+		todo!()
+	}
+}
+
+pub struct Callback;
+impl messaging::CallbackT<Runtime> for Callback {
+	fn execute(account: AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
+		type AddressMapper = <Runtime as pallet_revive::Config>::AddressMapper;
+
+		// Default
+		#[cfg(not(feature = "std"))]
+		let debug = DebugInfo::Skip;
+		#[cfg(not(feature = "std"))]
+		let collect_events = CollectEvents::Skip;
+		// Testing
+		#[cfg(feature = "std")]
+		let debug = DebugInfo::UnsafeDebug;
+		#[cfg(feature = "std")]
+		let collect_events = CollectEvents::UnsafeCollect;
+
+		let mut output = Revive::bare_call(
+			RuntimeOrigin::signed(account.clone()),
+			AddressMapper::to_address(&account),
+			Default::default(),
+			weight,
+			Default::default(),
+			data,
+			debug,
+			collect_events,
+		);
+		if let Ok(return_value) = &output.result {
+			if return_value.did_revert() {
+				output.result = Err(pallet_revive::Error::<Runtime>::ContractReverted.into());
+			}
+		}
+
+		let post_info = PostDispatchInfo {
+			actual_weight: Some(output.gas_consumed.saturating_add(Self::weight())),
+			pays_fee: Default::default(),
+		};
+
+		output
+			.result
+			.map(|_| post_info)
+			.map_err(|e| DispatchErrorWithPostInfo { post_info, error: e })
+	}
+
+	fn weight() -> Weight {
+		use pallet_revive::WeightInfo;
+		<Runtime as pallet_revive::Config>::WeightInfo::call()
+	}
+}
+
+pub struct QueryHandler;
+impl NotifyQueryHandler<Runtime> for QueryHandler {
+	fn new_notify_query(
+		responder: impl Into<Location>,
+		notify: messaging::Call<Runtime>,
+		timeout: BlockNumber,
+		match_querier: impl Into<Location>,
+	) -> u64 {
+		PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
+	}
 }
 
 impl fungibles::Config for Runtime {

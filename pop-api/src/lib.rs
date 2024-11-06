@@ -13,6 +13,7 @@ use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 pub use v0::*;
 
 /// Module providing macros.
+#[cfg(feature = "nonfungibles")]
 pub mod macros;
 /// Module providing primitives types.
 pub mod primitives;
@@ -70,12 +71,18 @@ mod constants {
 	pub(crate) const READ_STATE: u8 = 1;
 
 	// Modules.
+	#[cfg(feature = "fungibles")]
 	pub(crate) const ASSETS: u8 = 52;
+	#[cfg(feature = "fungibles")]
 	pub(crate) const BALANCES: u8 = 10;
+	#[cfg(feature = "fungibles")]
 	pub(crate) const FUNGIBLES: u8 = 150;
+	#[cfg(feature = "messaging")]
 	pub(crate) const MESSAGING: u8 = 151;
 	pub(crate) const INCENTIVES: u8 = 152;
+	#[cfg(feature = "nonfungibles")]
 	pub(crate) const NONFUNGIBLES: u8 = 154;
+	#[cfg(feature = "sponsorships")]
 	pub(crate) const SPONSORSHIPS: u8 = 153;
 }
 

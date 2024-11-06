@@ -2,8 +2,14 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
+	dispatch::{DispatchResult, DispatchResultWithPostInfo},
 	pallet_prelude::MaxEncodedLen,
-	traits::{fungible::Inspect, Get, OriginTrait},
+	storage::KeyLenOf,
+	traits::{
+		fungible::Inspect,
+		tokens::{fungible::hold::Mutate, Precision::Exact},
+		Get, OriginTrait,
+	},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
@@ -13,9 +19,10 @@ use sp_runtime::{traits::Saturating, BoundedVec, SaturatedConversion};
 use sp_std::vec::Vec;
 use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
-	xcm::{self as xcm, Location, QueryHandler, QueryId, VersionedLocation},
+	xcm::{self as xcm, Location, QueryId},
 };
-use xcm::VersionedResponse;
+pub use xcm::NotifyQueryHandler;
+use xcm::Response;
 
 use super::Weight;
 
@@ -25,7 +32,9 @@ pub mod transports;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
 type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
-type MessageId = u64;
+// Callback: Message selector and pre-paid weight used as gas limit
+type Callback = ([u8; 4], Weight);
+pub type MessageId = u64;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -33,6 +42,7 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::DispatchResult,
 		pallet_prelude::*,
+		storage::KeyLenOf,
 		traits::tokens::{fungible::hold::Mutate, Precision::Exact},
 	};
 	use sp_core::H256;
@@ -50,6 +60,8 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type ByteFee: Get<BalanceOf<Self>>;
+
+		type Callback: CallbackT<Self>;
 
 		/// The deposit mechanism.
 		type Deposit: Mutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
@@ -81,7 +93,9 @@ pub mod pallet {
 		/// Overarching hold reason.
 		type RuntimeHoldReason: From<HoldReason>;
 
-		type Xcm: QueryHandler<BlockNumber = BlockNumberOf<Self>>;
+		type Xcm: NotifyQueryHandler<Self>;
+
+		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 	}
 
 	#[pallet::pallet]
@@ -116,6 +130,8 @@ pub mod pallet {
 		IsmpPostResponseReceived { dest: T::AccountId, id: MessageId },
 		XcmQueryCreated { origin: T::AccountId, id: MessageId },
 		XcmResponseReceived { dest: T::AccountId, id: MessageId },
+		CallbackExecuted { dest: T::AccountId, id: MessageId },
+		CallbackFailed { dest: T::AccountId, id: MessageId, error: DispatchError },
 		Removed { origin: T::AccountId, messages: Vec<MessageId> },
 	}
 
@@ -123,6 +139,7 @@ pub mod pallet {
 	pub enum Error<T> {
 		DispatchFailed,
 		InvalidMessage,
+		InvalidQuery,
 		OriginConversionFailed,
 		MessageExists,
 		RequestPending,
@@ -148,17 +165,31 @@ pub mod pallet {
 
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
 		#[pallet::call_index(1)]
-		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
+		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
+			// Add any additional gas limit specified for callback execution
+			.saturating_add(callback.map(|(_, weight)| {
+				T::Callback::weight().saturating_add(weight)
+			}).unwrap_or_default())
+		)]
 		pub fn ismp_get(
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
 			fee: BalanceOf<T>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
 			// Calculate deposit and place on hold.
-			let deposit = Self::calculate_deposit(message.calculate_deposit());
+			let deposit = Self::calculate_deposit(
+				message.calculate_deposit() +
+					// IsmpRequests
+					(KeyLenOf::<IsmpRequests<T>>::get() as usize +
+						AccountIdOf::<T>::max_encoded_len() +
+						MessageId::max_encoded_len())
+					.saturated_into::<BalanceOf<T>>() *
+						T::ByteFee::get(),
+			);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -170,24 +201,38 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying, response/timeout
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { deposit, commitment });
+			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched { origin, id });
 			Ok(())
 		}
 
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
 		#[pallet::call_index(2)]
-		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
+		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
+			// Add any additional gas limit specified for callback execution
+			.saturating_add(callback.map(|(_, weight)| {
+				T::Callback::weight().saturating_add(weight)
+			}).unwrap_or_default())
+		)]
 		pub fn ismp_post(
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Post<T>,
 			fee: BalanceOf<T>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
 			// Calculate deposit and place on hold.
-			let deposit = Self::calculate_deposit(message.calculate_deposit());
+			let deposit = Self::calculate_deposit(
+				message.calculate_deposit() +
+					// IsmpRequests
+					(KeyLenOf::<IsmpRequests<T>>::get() as usize +
+						AccountIdOf::<T>::max_encoded_len() +
+						MessageId::max_encoded_len())
+						.saturated_into::<BalanceOf<T>>() *
+						T::ByteFee::get(),
+			);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -199,44 +244,95 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying, response/timeout
 			// handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { deposit, commitment });
+			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched { origin, id });
 			Ok(())
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
+		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
+			// Add any additional gas limit specified for callback execution
+			.saturating_add(callback.map(|(_, weight)| {
+				T::Callback::weight().saturating_add(weight)
+			}).unwrap_or_default())
+			// TODO: add weight of xcm_response dispatchable once benchmarked
+		)]
 		pub fn xcm_new_query(
 			origin: OriginFor<T>,
 			id: u64,
-			responder: VersionedLocation,
+			responder: Location,
 			timeout: BlockNumberOf<T>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
 			// Calculate deposit and place on hold.
-			let deposit = Self::calculate_deposit(Default::default());
+			let deposit = Self::calculate_deposit(
+				// XcmQueries
+				(KeyLenOf::<XcmQueries<T>>::get() as usize +
+					AccountIdOf::<T>::max_encoded_len() +
+					MessageId::max_encoded_len() +
+					Option::<Callback>::max_encoded_len())
+				.saturated_into::<BalanceOf<T>>() *
+					T::ByteFee::get(),
+			);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by creating new query via XCM.
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
-			let responder =
-				Location::try_from(responder).map_err(|_| Error::<T>::OriginConversionFailed)?;
-			// TODO: neater way of doing this
+			// Xcm only uses/stores pallet, index - i.e. (u8,u8)
+			let notify = Call::<T>::xcm_response { query_id: 0, response: Default::default() };
 			let querier = T::OriginConverter::try_convert(T::RuntimeOrigin::signed(origin.clone()))
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
-			let query_id = T::Xcm::new_query(responder, timeout, querier);
+			let query_id = T::Xcm::new_notify_query(responder, notify, timeout, querier);
 
-			// Store query id for later lookup on response, message for querying, response/timeout
-			// handling.
+			// Store query id for later lookup on response, message for querying status,
+			// response/timeout handling.
 			XcmQueries::<T>::insert(&query_id, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::XcmQuery { deposit, query_id });
+			Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated { origin, id });
 			Ok(())
 		}
 
-		// Remove a request/response, returning any deposit previously taken.
 		#[pallet::call_index(4)]
+		#[pallet::weight(Weight::zero())] // todo: benchmarking
+		pub fn xcm_response(
+			origin: OriginFor<T>,
+			query_id: QueryId,
+			response: Response,
+		) -> DispatchResult {
+			T::XcmResponseOrigin::ensure_origin(origin)?;
+
+			// Lookup message from query id.
+			let (origin, id) = XcmQueries::<T>::take(query_id).ok_or(Error::<T>::InvalidQuery)?;
+			let Some(Message::XcmQuery { query_id, callback, deposit }) =
+				Messages::<T>::get(&origin, &id)
+			else {
+				return Err(Error::<T>::InvalidMessage.into())
+			};
+
+			// Attempt callback with response if specified.
+			if let Some((selector, prepaid_weight)) = callback {
+				if Self::call(origin.clone(), selector, id, &response, prepaid_weight, deposit)
+					.is_ok()
+				{
+					Self::deposit_event(Event::<T>::XcmResponseReceived { dest: origin, id });
+					return Ok(());
+				}
+			}
+
+			// Otherwise store response for manual retrieval and removal.
+			Messages::<T>::insert(
+				&origin,
+				&id,
+				Message::XcmResponse { query_id, response, deposit },
+			);
+			Self::deposit_event(Event::<T>::XcmResponseReceived { dest: origin, id });
+			Ok(())
+		}
+
+		// Remove a request/response, returning any deposit previously taken.
+		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::zero())] // todo: benchmarking after consolidating storage
 		pub fn remove(
 			origin: OriginFor<T>,
@@ -269,35 +365,63 @@ pub mod pallet {
 				// Return deposit.
 				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
-			Pallet::<T>::deposit_event(Event::<T>::Removed {
-				origin,
-				messages: messages.into_inner(),
-			});
+			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
 			Ok(())
 		}
 	}
 }
 
 impl<T: Config> Pallet<T> {
-	// Calculate the deposit required for a particular request.
-	fn calculate_deposit(mut deposit: BalanceOf<T>) -> BalanceOf<T> {
-		// Add amount for `Requests` key.
-		let request_key_len: BalanceOf<T> =
-			(T::AccountId::max_encoded_len() + MessageId::max_encoded_len()).saturated_into();
-		deposit.saturating_accrue(T::ByteFee::get() * request_key_len);
+	// Calculate the deposit required for a particular message.
+	fn calculate_deposit(deposit: BalanceOf<T>) -> BalanceOf<T> {
+		// Add amount for `Messages` key and value
+		deposit.saturating_add(
+			(KeyLenOf::<Messages<T>>::get().saturated_into::<BalanceOf<T>>() +
+				Message::<T>::max_encoded_len().saturated_into::<BalanceOf<T>>()) *
+				T::ByteFee::get(),
+		)
+	}
 
-		// Add amount for `Requests` value.
-		let request_value_len = Status::max_encoded_len() +
-			BalanceOf::<T>::max_encoded_len() +
-			// todo: could be optimised away
-			Option::<H256>::max_encoded_len();
-		deposit.saturating_accrue(T::ByteFee::get() * request_value_len.saturated_into());
-
-		// Add amount for storing response.
-		deposit.saturating_accrue(T::ByteFee::get() * request_key_len);
-		deposit.saturating_accrue(T::ByteFee::get() * T::MaxResponseLen::get().saturated_into());
-
-		deposit
+	// Attempt to notify via callback.
+	fn call(
+		origin: AccountIdOf<T>,
+		selector: [u8; 4],
+		id: MessageId,
+		data: &impl Encode,
+		weight: Weight,
+		deposit: BalanceOf<T>,
+	) -> DispatchResult {
+		// TODO: check weight removed from block weight - may need dispatching via executive
+		// instead
+		let result = T::Callback::execute(
+			origin.clone(),
+			[selector.to_vec(), (id, data).encode()].concat(),
+			weight,
+		);
+		match result {
+			Ok(_post_info) => {
+				// TODO: do something with post_info: e.g. refund unused weight
+				// Return deposit.
+				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
+				Messages::<T>::remove(&origin, &id);
+				Self::deposit_event(Event::<T>::CallbackExecuted { dest: origin.clone(), id });
+				Self::deposit_event(Event::<T>::Removed {
+					origin: origin.clone(),
+					messages: [id].to_vec(),
+				});
+				Ok(())
+			},
+			Err(error) => {
+				// Fallback to storing the message for polling - pre-paid weight is lost.
+				Self::deposit_event(Event::<T>::CallbackFailed {
+					dest: origin.clone(),
+					id,
+					error: error.error,
+				});
+				// TODO: logging
+				Err(error.error)
+			},
+		}
 	}
 }
 
@@ -383,6 +507,7 @@ trait CalculateDeposit<Deposit> {
 enum Message<T: Config> {
 	Ismp {
 		commitment: H256,
+		callback: Option<Callback>,
 		deposit: BalanceOf<T>,
 	},
 	IsmpTimedOut {
@@ -396,11 +521,18 @@ enum Message<T: Config> {
 	},
 	XcmQuery {
 		query_id: QueryId,
+		callback: Option<Callback>,
 		deposit: BalanceOf<T>,
 	},
 	XcmResponse {
 		query_id: QueryId,
 		deposit: BalanceOf<T>,
-		response: VersionedResponse,
+		response: Response,
 	},
+}
+
+pub trait CallbackT<T: Config> {
+	fn execute(account: T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
+
+	fn weight() -> Weight;
 }

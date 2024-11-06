@@ -1,13 +1,16 @@
 use ::ismp::router::{GetResponse, IsmpRouter, PostResponse, Response, StorageValue};
+use ismp::host::StateMachine;
+use pallet_api::messaging::Event::*;
 use pallet_ismp::mmr::Leaf;
 use pop_api::{
 	messaging::{
 		ismp::{Get, Post},
-		xcm::{Junction, Location, MaybeErrorCode, QueryId, VersionedResponse, XcmHash},
-		RequestId, Status,
+		xcm::{self, Junction, Location, MaybeErrorCode, NetworkId, QueryId},
+		MessageId, Status,
 	},
 	primitives::{BlockNumber, Error},
 };
+use pop_runtime_devnet::RuntimeEvent;
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_runtime::{app_crypto::sp_core::H160, offchain::OffchainOverlayedChange};
 use xcm_executor::traits::OnResponse;
@@ -29,18 +32,23 @@ fn ismp_get_request_works() {
 	// Create a get request.
 	let mut ext = new_test_ext();
 	let contract = ext.execute_with(|| {
-		let contract = Contract::new();
-		assert_ok!(contract.ismp_get(id, request, 0));
-		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        let contract = Contract::new();
 
-		// TODO: assert events from messaging and ismp pallets emitted
-		println!("{:#?}", System::events());
+        assert_ok!(contract.ismp_get(id, request, 0, false));
+        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        System::assert_has_event(IsmpGetDispatched { origin: contract.id.clone(), id }.into());
+        assert!(System::events().iter().any(|e| {
+            matches!(e.event,
+			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
+				if dest_chain == StateMachine::Polkadot(ASSET_HUB) && source_chain == StateMachine::Polkadot(100)
+			)
+        }));
 
-		contract
-	});
+        contract
+    });
 
 	// Look up the request within offchain state in order to provide a response.
-	let ::ismp::router::Request::Get(get) = get_ismp_request(&mut ext) else { panic!() };
+	let ismp::router::Request::Get(get) = get_ismp_request(&mut ext) else { panic!() };
 
 	// Provide a response.
 	ext.execute_with(|| {
@@ -48,10 +56,59 @@ fn ismp_get_request_works() {
 		module
 			.on_response(Response::Get(GetResponse { get, values: response.clone() }))
 			.unwrap();
+		System::assert_has_event(IsmpGetResponseReceived { dest: contract.id.clone(), id }.into());
 
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(response.encode()));
 		assert_ok!(contract.remove(id));
+		System::assert_has_event(
+			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
+		);
+	});
+}
+
+#[test]
+fn ismp_get_request_with_callback_works() {
+	let id = 42;
+	let key = "some_key".as_bytes().to_vec();
+	let request = Get::new(ASSET_HUB, 0, 0, "some_context".as_bytes().to_vec(), vec![key.clone()]);
+	let response = vec![StorageValue { key, value: Some("some_value".as_bytes().to_vec()) }];
+
+	// Create a get request with callback.
+	let mut ext = new_test_ext();
+	let contract = ext.execute_with(|| {
+        let contract = Contract::new();
+
+        assert_ok!(contract.ismp_get(id, request, 0, true));
+        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        System::assert_has_event(IsmpGetDispatched { origin: contract.id.clone(), id }.into());
+        assert!(System::events().iter().any(|e| {
+            matches!(e.event,
+			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
+				if dest_chain == StateMachine::Polkadot(ASSET_HUB) && source_chain == StateMachine::Polkadot(100)
+			)
+        }));
+
+        contract
+    });
+
+	// Look up the request within offchain state in order to provide a response.
+	let ismp::router::Request::Get(get) = get_ismp_request(&mut ext) else { panic!() };
+
+	// Provide a response.
+	ext.execute_with(|| {
+		let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+		module
+			.on_response(Response::Get(GetResponse { get, values: response.clone() }))
+			.unwrap();
+		System::assert_has_event(IsmpGetResponseReceived { dest: contract.id.clone(), id }.into());
+
+		assert_eq!(contract.last_event(), IsmpGetCompleted { id, values: response }.encode());
+		assert_eq!(contract.poll(id).unwrap(), None);
+		System::assert_has_event(CallbackExecuted { dest: contract.id.clone(), id }.into());
+		System::assert_has_event(
+			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
+		);
 	});
 }
 
@@ -64,17 +121,23 @@ fn ismp_post_request_works() {
 	// Create a post request.
 	let mut ext = new_test_ext();
 	let contract = ext.execute_with(|| {
-		let contract = Contract::new();
-		assert_ok!(contract.ismp_post(id, request, 0));
-		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        let contract = Contract::new();
 
-		// TODO: assert events from messaging and ismp pallets emitted
-		println!("{:#?}", System::events());
-		contract
-	});
+        assert_ok!(contract.ismp_post(id, request, 0, false));
+        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        System::assert_has_event(IsmpPostDispatched { origin: contract.id.clone(), id }.into());
+        assert!(System::events().iter().any(|e| {
+            matches!(e.event,
+			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
+				if dest_chain == StateMachine::Polkadot(HYPERBRIDGE) && source_chain == StateMachine::Polkadot(100)
+			)
+        }));
+
+        contract
+    });
 
 	// Look up the request within offchain state in order to provide a response.
-	let ::ismp::router::Request::Post(post) = get_ismp_request(&mut ext) else { panic!() };
+	let ismp::router::Request::Post(post) = get_ismp_request(&mut ext) else { panic!() };
 
 	// Provide a response.
 	ext.execute_with(|| {
@@ -86,80 +149,153 @@ fn ismp_post_request_works() {
 				timeout_timestamp: 0,
 			}))
 			.unwrap();
+		System::assert_has_event(IsmpPostResponseReceived { dest: contract.id.clone(), id }.into());
 
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(response));
 		assert_ok!(contract.remove(id));
+		System::assert_has_event(
+			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
+		);
 	});
 }
 
 #[test]
-fn xcm_request_works() {
+fn ismp_post_request_with_callback_works() {
+	let id = 42;
+	let request = Post::new(HYPERBRIDGE, 0, "some_data".as_bytes().to_vec());
+	let response = "some_value".as_bytes().to_vec();
+
+	// Create a post request with callback.
+	let mut ext = new_test_ext();
+	let contract = ext.execute_with(|| {
+        let contract = Contract::new();
+
+        assert_ok!(contract.ismp_post(id, request, 0, true));
+        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        System::assert_has_event(IsmpPostDispatched { origin: contract.id.clone(), id }.into());
+        assert!(System::events().iter().any(|e| {
+            matches!(e.event,
+			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
+				if dest_chain == StateMachine::Polkadot(HYPERBRIDGE) && source_chain == StateMachine::Polkadot(100)
+			)
+        }));
+
+        contract
+    });
+
+	// Look up the request within offchain state in order to provide a response.
+	let ismp::router::Request::Post(post) = get_ismp_request(&mut ext) else { panic!() };
+
+	// Provide a response.
+	ext.execute_with(|| {
+		let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+		module
+			.on_response(Response::Post(PostResponse {
+				post,
+				response: response.clone(),
+				timeout_timestamp: 0,
+			}))
+			.unwrap();
+		System::assert_has_event(IsmpPostResponseReceived { dest: contract.id.clone(), id }.into());
+
+		assert_eq!(contract.last_event(), IsmpPostCompleted { id, response }.encode());
+		assert_eq!(contract.poll(id).unwrap(), None);
+		System::assert_has_event(CallbackExecuted { dest: contract.id.clone(), id }.into());
+		System::assert_has_event(
+			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
+		);
+	});
+}
+
+#[test]
+fn xcm_query_works() {
 	let id = 42u64;
 	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
-	// Workaround for 'polkavm::interpreter] Store of 4 bytes to 0xfffdefcc failed! (pc = 8904,
-	// cycle = 239)' when using VersionedLocation
-	// let responder = origin.clone().into_versioned();
-	let responder = Some(ASSET_HUB);
+	let responder = origin.clone();
 	let timeout = 100;
-	let response = pop_api::messaging::xcm::Response::DispatchResult(MaybeErrorCode::Success);
-	let context = staging_xcm::prelude::XcmContext {
-		origin: None,
-		message_id: XcmHash::default(),
-		topic: None,
-	};
+	let response = xcm::Response::DispatchResult(MaybeErrorCode::Success);
 	new_test_ext().execute_with(|| {
 		let contract = Contract::new();
 
-		let query_id = contract.xcm_new_query(id, responder, timeout).unwrap().unwrap();
+		// Create a new query and check its status
+		let query_id = contract.xcm_new_query(id, responder, timeout, false).unwrap().unwrap();
 		assert_eq!(query_id, 0);
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-
-		// TODO: assert events from messaging pallet emitted
-		println!("{:#?}", System::events());
+		System::assert_has_event(XcmQueryCreated { origin: contract.id.clone(), id }.into());
 
 		// Provide a response.
-		let querier = staging_xcm::prelude::Location::new(
-			0,
-			[staging_xcm::prelude::Junction::AccountId32 {
-				network: None,
-				id: contract.0 .1.clone().into(),
-			}],
-		);
-		let origin = staging_xcm::prelude::Location::decode(&mut &origin.encode()[..]).unwrap();
-		assert!(Messaging::expecting_response(&origin, query_id, Some(&querier)));
-		// TODO: update weight
-		assert_eq!(
-			Messaging::on_response(
-				&origin,
-				query_id,
-				Some(&querier),
-				staging_xcm::prelude::Response::decode(&mut &response.encode()[..]).unwrap(),
-				Weight::MAX,
-				&context
-			),
-			Weight::zero()
-		);
+		let origin = translate(&origin);
+		let querier: Location = Junction::AccountId32 {
+			network: Some(NetworkId::Polkadot),
+			id: contract.id.clone().into(),
+		}
+		.into();
+		assert!(pop_runtime_devnet::PolkadotXcm::expecting_response(
+			&origin,
+			query_id,
+			Some(&translate(&querier))
+		));
+		assert_ok!(Messaging::xcm_response(
+			pallet_xcm::Origin::Response(origin).into(),
+			query_id,
+			translate(&response)
+		));
 
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
-		assert_eq!(contract.get(id).unwrap(), Some(VersionedResponse::from(response).encode()));
+		assert_eq!(contract.get(id).unwrap(), Some(response.encode()));
 		assert_ok!(contract.remove(id));
+		System::assert_has_event(
+			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
+		);
 	});
 }
 
 #[test]
-#[should_panic(expected = "should work")]
-fn versioned_location_fails() {
-	let location = Location::new(1, [Junction::Parachain(ASSET_HUB)]).into_versioned();
-
+fn xcm_query_with_callback_works() {
+	let id = 42u64;
+	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
+	let responder = origin.clone();
+	let timeout = 100;
+	let response = xcm::Response::DispatchResult(MaybeErrorCode::Success);
 	new_test_ext().execute_with(|| {
 		let contract = Contract::new();
-		contract.call("test", (&location, &location).encode(), 0);
+
+		// Create a new query and check its status
+		let query_id = contract.xcm_new_query(id, responder, timeout, true).unwrap().unwrap();
+		assert_eq!(query_id, 0);
+		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+		System::assert_has_event(XcmQueryCreated { origin: contract.id.clone(), id }.into());
+
+		// Provide a response.
+		let origin = translate(&origin);
+		let querier: Location = Junction::AccountId32 {
+			network: Some(NetworkId::Polkadot),
+			id: contract.id.clone().into(),
+		}
+		.into();
+		assert!(pop_runtime_devnet::PolkadotXcm::expecting_response(
+			&origin,
+			query_id,
+			Some(&translate(&querier))
+		));
+		assert_ok!(Messaging::xcm_response(
+			pallet_xcm::Origin::Response(origin).into(),
+			query_id,
+			translate(&response)
+		));
+
+		assert_eq!(contract.last_event(), XcmCompleted { id, result: response }.encode());
+		assert_eq!(contract.poll(id).unwrap(), None);
+		System::assert_has_event(CallbackExecuted { dest: contract.id.clone(), id }.into());
+		System::assert_has_event(
+			Removed { origin: contract.id.clone(), messages: vec![id] }.into(),
+		);
 	});
 }
 
 // Get the last ismp request.
-fn get_ismp_request(ext: &mut TestExternalities) -> ::ismp::router::Request {
+fn get_ismp_request(ext: &mut TestExternalities) -> ismp::router::Request {
 	// Get commitment from last ismp request event.
 	let commitment = ext.execute_with(|| {
 		System::read_events_for_pallet::<pallet_ismp::Event<Runtime>>()
@@ -198,50 +334,72 @@ fn get_ismp_request(ext: &mut TestExternalities) -> ::ismp::router::Request {
 	request
 }
 
+// Translate a source type into a target type via encoding/decoding.
+fn translate<S: Encode, T: Decode>(source: &S) -> T {
+	T::decode(&mut &source.encode()[..]).unwrap()
+}
+
 // A simple, strongly typed wrapper for the contract.
-struct Contract((H160, AccountId32));
+struct Contract {
+	address: H160,
+	id: AccountId32,
+}
 impl Contract {
 	fn new() -> Self {
-		Self(instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]))
+		let (address, account_id) =
+			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
+		Self { address, id: account_id }
 	}
 
-	fn ismp_get(&self, id: RequestId, request: Get, fee: Balance) -> Result<(), Error> {
-		let result = self.call("ismp_get", (id, request, fee).encode(), 0);
+	fn ismp_get(
+		&self,
+		id: MessageId,
+		request: Get,
+		fee: Balance,
+		callback: bool,
+	) -> Result<(), Error> {
+		let result = self.call("ismp_get", (id, request, fee, callback).encode(), 0);
 		<Result<(), Error>>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 
-	fn ismp_post(&self, id: RequestId, request: Post, fee: Balance) -> Result<(), Error> {
-		let result = self.call("ismp_post", (id, request, fee).encode(), 0);
+	fn ismp_post(
+		&self,
+		id: MessageId,
+		request: Post,
+		fee: Balance,
+		callback: bool,
+	) -> Result<(), Error> {
+		let result = self.call("ismp_post", (id, request, fee, callback).encode(), 0);
 		<Result<(), Error>>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 
 	fn xcm_new_query(
 		&self,
-		id: RequestId,
-		// responder: VersionedLocation,
-		responder: Option<u32>,
+		id: MessageId,
+		responder: Location,
 		timeout: BlockNumber,
+		callback: bool,
 	) -> Result<Option<QueryId>, Error> {
-		let result = self.call("xcm_new_query", (id, responder, timeout).encode(), 0);
+		let result = self.call("xcm_new_query", (id, responder, timeout, callback).encode(), 0);
 		<Result<Option<QueryId>, Error>>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 
-	fn poll(&self, request: RequestId) -> Result<Option<Status>, Error> {
+	fn poll(&self, request: MessageId) -> Result<Option<Status>, Error> {
 		let result = self.call("poll", request.encode(), 0);
 		Result::<Option<Status>, Error>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 
-	fn get(&self, request: RequestId) -> Result<Option<Vec<u8>>, Error> {
+	fn get(&self, request: MessageId) -> Result<Option<Vec<u8>>, Error> {
 		let result = self.call("get", request.encode(), 0);
 		Result::<Option<Vec<u8>>, Error>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 
-	fn remove(&self, request: RequestId) -> Result<(), Error> {
+	fn remove(&self, request: MessageId) -> Result<(), Error> {
 		let result = self.call("remove", request.encode(), 0);
 		<Result<(), Error>>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -250,6 +408,38 @@ impl Contract {
 	fn call(&self, function: &str, params: Vec<u8>, value: u128) -> ExecReturnValue {
 		let function = function_selector(function);
 		let params = [function, params].concat();
-		bare_call(self.0.clone().0, params, value).expect("should work")
+		bare_call(self.address.clone(), params, value).expect("should work")
 	}
+
+	fn last_event(&self) -> Vec<u8> {
+		let events = System::read_events_for_pallet::<pallet_revive::Event<Runtime>>();
+		let contract_events = events
+			.iter()
+			.filter_map(|event| match event {
+				pallet_revive::Event::<Runtime>::ContractEmitted { contract, data, .. }
+					if contract == &self.address =>
+					Some(data.as_slice()),
+				_ => None,
+			})
+			.collect::<Vec<&[u8]>>();
+		contract_events.last().unwrap().to_vec()
+	}
+}
+
+#[derive(Decode, Encode)]
+pub struct IsmpGetCompleted {
+	pub id: MessageId,
+	pub values: Vec<StorageValue>,
+}
+
+#[derive(Decode, Encode)]
+pub struct IsmpPostCompleted {
+	pub id: MessageId,
+	pub response: Vec<u8>,
+}
+
+#[derive(Decode, Encode)]
+pub struct XcmCompleted {
+	pub id: MessageId,
+	pub result: xcm::Response,
 }

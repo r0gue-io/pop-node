@@ -26,7 +26,7 @@ use sp_runtime::{BoundedVec, SaturatedConversion, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	BalanceOf, CalculateDeposit, MessageId,
+	AccountIdOf, BalanceOf, CalculateDeposit, MessageId, Vec,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -137,46 +137,27 @@ impl<T: Config> IsmpModule for Handler<T> {
 	}
 
 	fn on_response(&self, response: Response) -> Result<(), Error> {
-		let ((origin, id), response) = match response {
+		// Hash request to determine key for message lookup.
+		match response {
 			Response::Get(GetResponse { get, values }) => {
-				// hash request to determine key for original message id lookup
-				let id = IsmpRequests::<T>::get(H256::from(keccak_256(
-					&ismp::router::Request::Get(get).encode(),
-				)))
-				.ok_or(Error::Custom("request not found".into()))?;
-				Pallet::<T>::deposit_event(Event::<T>::IsmpGetResponseReceived {
-					dest: id.0.clone(),
-					id: id.1,
-				});
-				(id, values.encode())
+				let commitment = keccak_256(&ismp::router::Request::Get(get).encode());
+				process_response(
+					commitment,
+					&values,
+					|| values.encode(),
+					|dest, id| Event::<T>::IsmpGetResponseReceived { dest, id },
+				)
 			},
 			Response::Post(PostResponse { post, response, .. }) => {
-				// hash request to determine key for original message id lookup
-				let id = IsmpRequests::<T>::get(H256::from(keccak_256(&Post(post).encode())))
-					.ok_or(Error::Custom("request not found".into()))?;
-				Pallet::<T>::deposit_event(Event::<T>::IsmpPostResponseReceived {
-					dest: id.0.clone(),
-					id: id.1,
-				});
-				(id, response)
+				let commitment = keccak_256(&Post(post).encode());
+				process_response(
+					commitment,
+					&response,
+					|| response.clone(), // TODO: resolve unnecessary clone
+					|dest, id| Event::<T>::IsmpPostResponseReceived { dest, id },
+				)
 			},
-		};
-
-		// Store values for later retrieval
-		let response: BoundedVec<u8, T::MaxResponseLen> =
-			response.try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
-		Messages::<T>::try_mutate(&origin, &id, |message| {
-			let Some(super::super::Message::Ismp { deposit, commitment }) = message else {
-				return Err(Error::Custom("message not found".into()))
-			};
-			*message = Some(super::super::Message::IsmpResponse {
-				deposit: *deposit,
-				commitment: *commitment,
-				response,
-			});
-			Ok(())
-		})?;
-		Ok(())
+		}
 	}
 
 	fn on_timeout(&self, timeout: Timeout) -> Result<(), Error> {
@@ -190,7 +171,8 @@ impl<T: Config> IsmpModule for Handler<T> {
 				let key =
 					IsmpRequests::<T>::get(id).ok_or(Error::Custom("request not found".into()))?;
 				Messages::<T>::try_mutate(key.0, key.1, |message| {
-					let Some(super::super::Message::Ismp { deposit, commitment }) = message else {
+					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
+					else {
 						return Err(Error::Custom("message not found".into()))
 					};
 					*message = Some(super::super::Message::IsmpTimedOut {
@@ -232,4 +214,41 @@ fn calculate_deposit<T: Config>(mut deposit: BalanceOf<T>) -> BalanceOf<T> {
 	);
 
 	deposit
+}
+
+fn process_response<T: Config>(
+	commitment: impl Into<H256>,
+	encode: &impl Encode,
+	store: impl Fn() -> Vec<u8>,
+	event: impl Fn(AccountIdOf<T>, MessageId) -> Event<T>,
+) -> Result<(), Error> {
+	let (origin, id) = IsmpRequests::<T>::get(commitment.into())
+		.ok_or(Error::Custom("request not found".into()))?;
+
+	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
+		Messages::<T>::get(&origin, &id)
+	else {
+		return Err(Error::Custom("message not found".into()))
+	};
+
+	// Attempt callback with result if specified.
+	if let Some((selector, prepaid_weight)) = callback {
+		// TODO: check response length
+		if Pallet::<T>::call(origin.clone(), selector, id, &encode, prepaid_weight, deposit).is_ok()
+		{
+			Pallet::<T>::deposit_event(event(origin, id));
+			return Ok(());
+		}
+	}
+
+	// Otherwise store response for manual retrieval and removal.
+	let response: BoundedVec<u8, T::MaxResponseLen> =
+		store().try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
+	Messages::<T>::insert(
+		&origin,
+		&id,
+		super::super::Message::IsmpResponse { commitment, deposit, response },
+	);
+	Pallet::<T>::deposit_event(event(origin, id));
+	Ok(())
 }
