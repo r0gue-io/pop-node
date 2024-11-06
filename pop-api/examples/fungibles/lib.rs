@@ -75,7 +75,7 @@ mod fungibles {
 		}
 
 		/// Transfers `value` amount of tokens from the contract to account `to` with
-		/// additional `data` in unspecified format.
+		/// additional `data` in unspecified format. Contract must be pre-approved by `from`.
 		///
 		/// # Parameters
 		/// - `to` - The recipient account.

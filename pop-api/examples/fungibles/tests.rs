@@ -33,7 +33,7 @@ const TOKEN: TokenId = 1;
 
 // The contract bundle provider.
 //
-// See https://github.com/r0gue-io/pop-drink/blob/main/drink/test-macro/src/lib.rs for more information.
+// See https://github.com/r0gue-io/pop-drink/blob/main/crates/drink/drink/test-macro/src/lib.rs for more information.
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
 
