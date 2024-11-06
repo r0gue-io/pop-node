@@ -277,12 +277,12 @@ mod fungibles {
 			Ok(())
 		}
 
-		/// Transfer the ownership of the contract to another account.
+		/// Change the ownership of the contract to another account.
 		///
 		/// # Parameters
 		/// - `owner` - New owner account.
 		#[ink(message)]
-		pub fn transfer_ownership(&mut self, owner: AccountId) -> Result<(), Psp22Error> {
+		pub fn change_ownership(&mut self, owner: AccountId) -> Result<(), Psp22Error> {
 			self.ensure_owner()?;
 			self.owner = owner;
 			Ok(())
