@@ -1,17 +1,26 @@
-use drink::{
-	assert_err, assert_ok, call,
-	devnet::{
-		account_id_from_slice,
-		error::{
-			v0::{ApiError::*, ArithmeticError::*, Error},
-			Assets,
-			AssetsError::*,
-		},
-		AccountId, Balance, Runtime,
+#[cfg(feature = "devnet")]
+use drink::devnet::{
+	account_id_from_slice,
+	error::{
+		v0::{ApiError::*, ArithmeticError::*, Error},
+		Assets,
+		AssetsError::*,
 	},
-	last_contract_event,
-	session::Session,
-	AssetsAPI, TestExternalities, NO_SALT,
+	AccountId, Balance, Runtime,
+};
+#[cfg(feature = "testnet")]
+use drink::testnet::{
+	account_id_from_slice,
+	error::{
+		v0::{ApiError::*, ArithmeticError::*, Error},
+		Assets,
+		AssetsError::*,
+	},
+	AccountId, Balance, Runtime,
+};
+use drink::{
+	assert_err, assert_ok, call, last_contract_event, session::Session, AssetsAPI,
+	TestExternalities, NO_SALT,
 };
 use ink::scale::Encode;
 use pop_api::{
