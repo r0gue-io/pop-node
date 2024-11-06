@@ -32,8 +32,6 @@ pub mod transports;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
 type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
-// Callback: Message selector and pre-paid weight used as gas limit
-type Callback = ([u8; 4], Weight);
 pub type MessageId = u64;
 
 #[frame_support::pallet]
@@ -247,8 +245,8 @@ pub mod pallet {
 		#[pallet::call_index(1)]
 		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
 			// Add any additional gas limit specified for callback execution
-			.saturating_add(callback.map(|(_, weight)| {
-				T::Callback::weight().saturating_add(weight)
+			.saturating_add(callback.map(|cb| {
+				T::Callback::weight().saturating_add(cb.weight)
 			}).unwrap_or_default())
 		)]
 		pub fn ismp_get(
@@ -295,8 +293,8 @@ pub mod pallet {
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
 			// Add any additional gas limit specified for callback execution
-			.saturating_add(callback.map(|(_, weight)| {
-				T::Callback::weight().saturating_add(weight)
+			.saturating_add(callback.map(|cb| {
+				T::Callback::weight().saturating_add(cb.weight)
 			}).unwrap_or_default())
 		)]
 		pub fn ismp_post(
@@ -342,8 +340,8 @@ pub mod pallet {
 		#[pallet::call_index(3)]
 		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
 			// Add any additional gas limit specified for callback execution
-			.saturating_add(callback.map(|(_, weight)| {
-				T::Callback::weight().saturating_add(weight)
+			.saturating_add(callback.map(|cb| {
+				T::Callback::weight().saturating_add(cb.weight)
 			}).unwrap_or_default())
 			// TODO: add weight of xcm_response dispatchable once benchmarked
 		)]
@@ -498,8 +496,8 @@ impl<T: Config> Pallet<T> {
 		// instead
 		let result = T::Callback::execute(
 			origin.clone(),
-			[callback.0.to_vec(), (id, data).encode()].concat(),
-			callback.1,
+			[callback.selector.to_vec(), (id, data).encode()].concat(),
+			callback.weight,
 		);
 		match result {
 			Ok(_post_info) => {
@@ -637,6 +635,13 @@ enum Message<T: Config> {
 		deposit: BalanceOf<T>,
 		response: Response,
 	},
+}
+
+// Message selector and pre-paid weight used as gas limit
+#[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+pub struct Callback {
+	pub selector: [u8; 4],
+	pub weight: Weight,
 }
 
 pub trait CallbackT<T: Config> {
