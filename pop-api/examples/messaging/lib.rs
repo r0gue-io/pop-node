@@ -22,9 +22,11 @@ pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract]
 mod messaging {
-	use pop_api::messaging::Callback;
+	use pop_api::messaging::{ismp::StorageValue, Callback};
 
 	use super::*;
+
+	const UNAUTHORIZED: u32 = u32::MAX;
 
 	#[ink(storage)]
 	#[derive(Default)]
@@ -48,7 +50,7 @@ mod messaging {
 				self.id,
 				Get::new(self.para, height, 0, Vec::default(), Vec::from([key.clone()])),
 				0,
-				None,
+				Some(Callback::to(0x57ad942b, Weight::from_parts(800_000_000, 500_000))),
 			)?;
 			self.env().emit_event(IsmpRequested { id: self.id, key, height });
 			Ok(())
@@ -94,7 +96,6 @@ mod messaging {
 				self.id,
 				dest.clone(),
 				self.env().block_number().saturating_add(100),
-				// callback
 				Some(Callback::to(0x641b0b03, Weight::from_parts(800_000_000, 500_000))),
 			)?
 			.unwrap(); // TODO: handle error
@@ -156,10 +157,23 @@ mod messaging {
 		}
 	}
 
+	impl api::ismp::OnGetResponse for Messaging {
+		#[ink(message)]
+		fn on_response(&mut self, id: MessageId, values: Vec<StorageValue>) -> pop_api::Result<()> {
+			if self.env().caller() != self.env().account_id() {
+				return Err(UNAUTHORIZED.into())
+			}
+			self.env().emit_event(GetCompleted { id, values });
+			Ok(())
+		}
+	}
+
 	impl api::xcm::OnResponse for Messaging {
 		#[ink(message)]
 		fn on_response(&mut self, id: MessageId, response: Response) -> Result<()> {
-			// todo: ensure caller is self (runtime)
+			if self.env().caller() != self.env().account_id() {
+				return Err(UNAUTHORIZED.into())
+			}
 			self.env().emit_event(XcmCompleted { id, result: response });
 			Ok(())
 		}
@@ -202,6 +216,13 @@ mod messaging {
 		#[ink(topic)]
 		pub id: MessageId,
 		pub result: Response,
+	}
+
+	#[ink::event]
+	pub struct GetCompleted {
+		#[ink(topic)]
+		pub id: MessageId,
+		pub values: Vec<StorageValue>,
 	}
 
 	// todo: make hasher generic and move to pop-api
