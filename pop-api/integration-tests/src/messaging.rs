@@ -12,7 +12,7 @@ use pop_api::{
 };
 use pop_runtime_devnet::RuntimeEvent;
 use sp_io::{hashing::keccak_256, TestExternalities};
-use sp_runtime::{app_crypto::sp_core::H160, offchain::OffchainOverlayedChange};
+use sp_runtime::{app_crypto::sp_core::H160, offchain::OffchainOverlayedChange, testing::H256};
 use xcm_executor::traits::OnResponse;
 
 use super::*;
@@ -58,10 +58,13 @@ fn ismp_get_request_works() {
 	// Provide a response.
 	ext.execute_with(|| {
 		let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+		let commitment = H256::from(keccak_256(&ismp::router::Request::Get(get.clone()).encode()));
 		module
 			.on_response(Response::Get(GetResponse { get, values: response.clone() }))
 			.unwrap();
-		System::assert_has_event(IsmpGetResponseReceived { dest: contract.id.clone(), id }.into());
+		System::assert_has_event(
+			IsmpGetResponseReceived { dest: contract.id.clone(), id, commitment }.into(),
+		);
 
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(response.encode()));
@@ -108,10 +111,13 @@ fn ismp_get_request_with_callback_works() {
 	// Provide a response.
 	ext.execute_with(|| {
 		let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+		let commitment = H256::from(keccak_256(&ismp::router::Request::Get(get.clone()).encode()));
 		module
 			.on_response(Response::Get(GetResponse { get, values: response.clone() }))
 			.unwrap();
-		System::assert_has_event(IsmpGetResponseReceived { dest: contract.id.clone(), id }.into());
+		System::assert_has_event(
+			IsmpGetResponseReceived { dest: contract.id.clone(), id, commitment }.into(),
+		);
 
 		assert_eq!(contract.last_event(), IsmpGetCompleted { id, values: response }.encode());
 		assert_eq!(contract.poll(id).unwrap(), None);
@@ -162,6 +168,8 @@ fn ismp_post_request_works() {
 	// Provide a response.
 	ext.execute_with(|| {
 		let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+		let commitment =
+			H256::from(keccak_256(&ismp::router::Request::Post(post.clone()).encode()));
 		module
 			.on_response(Response::Post(PostResponse {
 				post,
@@ -169,7 +177,9 @@ fn ismp_post_request_works() {
 				timeout_timestamp: 0,
 			}))
 			.unwrap();
-		System::assert_has_event(IsmpPostResponseReceived { dest: contract.id.clone(), id }.into());
+		System::assert_has_event(
+			IsmpPostResponseReceived { dest: contract.id.clone(), id, commitment }.into(),
+		);
 
 		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(response));
@@ -215,6 +225,8 @@ fn ismp_post_request_with_callback_works() {
 	// Provide a response.
 	ext.execute_with(|| {
 		let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+		let commitment =
+			H256::from(keccak_256(&ismp::router::Request::Post(post.clone()).encode()));
 		module
 			.on_response(Response::Post(PostResponse {
 				post,
@@ -222,7 +234,9 @@ fn ismp_post_request_with_callback_works() {
 				timeout_timestamp: 0,
 			}))
 			.unwrap();
-		System::assert_has_event(IsmpPostResponseReceived { dest: contract.id.clone(), id }.into());
+		System::assert_has_event(
+			IsmpPostResponseReceived { dest: contract.id.clone(), id, commitment }.into(),
+		);
 
 		assert_eq!(contract.last_event(), IsmpPostCompleted { id, response }.encode());
 		assert_eq!(contract.poll(id).unwrap(), None);

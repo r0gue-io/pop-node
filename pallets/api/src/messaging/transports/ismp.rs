@@ -140,21 +140,21 @@ impl<T: Config> IsmpModule for Handler<T> {
 		// Hash request to determine key for message lookup.
 		match response {
 			Response::Get(GetResponse { get, values }) => {
-				let commitment = keccak_256(&ismp::router::Request::Get(get).encode());
+				let commitment = H256::from(keccak_256(&ismp::router::Request::Get(get).encode()));
 				process_response(
-					commitment,
+					&commitment,
 					&values,
 					|| values.encode(),
-					|dest, id| Event::<T>::IsmpGetResponseReceived { dest, id },
+					|dest, id| Event::<T>::IsmpGetResponseReceived { dest, id, commitment },
 				)
 			},
 			Response::Post(PostResponse { post, response, .. }) => {
-				let commitment = keccak_256(&Post(post).encode());
+				let commitment = H256::from(keccak_256(&Post(post).encode()));
 				process_response(
-					commitment,
+					&commitment,
 					&response,
 					|| response.clone(), // TODO: resolve unnecessary clone
-					|dest, id| Event::<T>::IsmpPostResponseReceived { dest, id },
+					|dest, id| Event::<T>::IsmpPostResponseReceived { dest, id, commitment },
 				)
 			},
 		}
@@ -217,13 +217,13 @@ fn calculate_deposit<T: Config>(mut deposit: BalanceOf<T>) -> BalanceOf<T> {
 }
 
 fn process_response<T: Config>(
-	commitment: impl Into<H256>,
+	commitment: &H256,
 	encode: &impl Encode,
 	store: impl Fn() -> Vec<u8>,
 	event: impl Fn(AccountIdOf<T>, MessageId) -> Event<T>,
 ) -> Result<(), Error> {
-	let (origin, id) = IsmpRequests::<T>::get(commitment.into())
-		.ok_or(Error::Custom("request not found".into()))?;
+	let (origin, id) =
+		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
 
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
 		Messages::<T>::get(&origin, &id)

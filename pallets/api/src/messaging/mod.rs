@@ -141,6 +141,8 @@ pub mod pallet {
 			dest: T::AccountId,
 			/// The identifier specified for the request.
 			id: MessageId,
+			/// The ISMP request commitment.
+			commitment: H256,
 		},
 		/// A POST has been dispatched via ISMP.
 		IsmpPostDispatched {
@@ -159,6 +161,8 @@ pub mod pallet {
 			dest: T::AccountId,
 			/// The identifier specified for the request.
 			id: MessageId,
+			/// The ISMP request commitment.
+			commitment: H256,
 		},
 		/// A XCM query has been created.
 		XcmQueryCreated {
@@ -177,6 +181,10 @@ pub mod pallet {
 			dest: T::AccountId,
 			/// The identifier specified for the request.
 			id: MessageId,
+			/// The identifier of the XCM query.
+			query_id: QueryId,
+			/// The query response.
+			response: Response,
 		},
 		/// A callback has been executed successfully.
 		CallbackExecuted {
@@ -402,7 +410,12 @@ pub mod pallet {
 			// Attempt callback with response if specified.
 			if let Some(callback) = callback {
 				if Self::call(origin.clone(), callback, id, &response, deposit).is_ok() {
-					Self::deposit_event(Event::<T>::XcmResponseReceived { dest: origin, id });
+					Self::deposit_event(Event::<T>::XcmResponseReceived {
+						dest: origin,
+						id,
+						query_id,
+						response,
+					});
 					return Ok(());
 				}
 			}
@@ -411,9 +424,14 @@ pub mod pallet {
 			Messages::<T>::insert(
 				&origin,
 				&id,
-				Message::XcmResponse { query_id, response, deposit },
+				Message::XcmResponse { query_id, response: response.clone(), deposit },
 			);
-			Self::deposit_event(Event::<T>::XcmResponseReceived { dest: origin, id });
+			Self::deposit_event(Event::<T>::XcmResponseReceived {
+				dest: origin,
+				id,
+				query_id,
+				response,
+			});
 			Ok(())
 		}
 
