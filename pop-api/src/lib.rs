@@ -62,6 +62,8 @@ impl From<ink::scale::Error> for StatusCode {
 mod constants {
 	// Error.
 	pub(crate) const DECODING_FAILED: u32 = 255;
+	// Runtime Errors.
+	pub(crate) const MODULE_ERROR: u8 = 3;
 
 	// Function IDs.
 	pub(crate) const DISPATCH: u8 = 0;
