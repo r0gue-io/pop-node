@@ -1,23 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{
-	env::hash::{Blake2x128, CryptoHash},
-	prelude::vec::Vec,
-	scale::{Decode, Encode},
+	env::{hash::{Blake2x256, Blake2x128, CryptoHash}},
+	prelude::{vec::Vec},
+	scale::{Compact, Encode},
 	storage::Mapping,
+	xcm::{prelude::*},
 };
 use pop_api::{
-	incentives,
 	messaging::{
-		self as api,
-		ismp::{self, Get},
-		ParaId, RequestId, Status,
+		ismp::{self, Get, StorageValue},
+		ParaId, MessageId, Callback,
 	},
 	nonfungibles::{
 		self, CollectionConfig, CollectionId, CollectionSetting, CollectionSettings, ItemId,
 		ItemSetting, ItemSettings, MintSettings, MintType, MintWitness,
 	},
-	sponsorships, StatusCode,
+	StatusCode,
 };
 
 pub type Result<T> = core::result::Result<T, Error>;
@@ -30,6 +29,8 @@ pub enum Error {
 	Unknown,
 	DecodingFailed,
 	Rejected,
+	Failed,
+	TransferFailed,
 }
 
 impl From<StatusCode> for Error {
@@ -54,8 +55,8 @@ mod dao {
 	pub struct NftVerifier {
 		parachain: ParaId,
 		collection: CollectionId,
-		requests: Mapping<(AccountId, ItemId), RequestId>,
-		next_request: RequestId,
+		requests: Mapping<MessageId, (AccountId, ItemId)>,
+		next_request: MessageId,
 	}
 
 	impl NftVerifier {
@@ -63,42 +64,17 @@ mod dao {
 			Self { parachain, collection, requests: Mapping::default(), next_request: 0 }
 		}
 
-		fn verify(&mut self, height: u32, item: ItemId, account: AccountId) -> Result<()> {
+		fn verify(&mut self, height: u32, account: AccountId, item: ItemId) -> Result<()> {
 			self.next_request = self.next_request.saturating_add(1);
 			let key: Vec<u8> = generate_key(account.clone(), self.collection, item);
 			ismp::get(
 				self.next_request,
 				Get::new(self.parachain, height, 0, Vec::default(), Vec::from([key])),
 				0,
+				Some(Callback::to(0x57ad942b, Weight::from_parts(2_000_000_000, 500_000))),
 			)?;
-			self.requests.insert((account, item), &self.next_request);
+			self.requests.insert(&self.next_request, &(account, item));
 			Ok(())
-		}
-
-		fn complete(
-			&mut self,
-			item: ItemId,
-			caller: AccountId,
-			_dao: AccountId,
-			outcome: bool,
-		) -> Result<bool> {
-			let request = self.requests.get((&caller, item)).ok_or(Unknown)?;
-			// if let Ok(Some(status)) = api::poll((dao, request)) {
-			// 	if status == Status::Complete {
-			// 		if let Some(result) = api::get((dao, request))? {
-			// 			api::remove([request].to_vec())?;
-			// 			let result = match Option::<()>::decode(&mut &result[..])
-			// 				.map_err(|_| DecodingFailed)?
-			// 			{
-			// 				Some(()) => true,
-			// 				None => false,
-			// 			};
-			// 			return Ok(result)
-			// 		}
-			// 	}
-			// }
-			// Err(NotReady)
-			Ok(outcome)
 		}
 	}
 
@@ -116,48 +92,64 @@ mod dao {
 			let verifier = NftVerifier::new(1000, 0);
 			// Create membership token using the non fungibles api.
 			let collection_id = create_collection(Self::env().account_id())?;
-			Ok(Self {
+			let dao = Self {
 				verifier,
 				collection_id,
 				next_item_id: 0,
 				registered_items: Mapping::default(),
-			})
+			};
+
+			// Fund the contract
+			let dest = Location::new(1, Parachain(dao.verifier.parachain));
+			// Reserve transfer specified assets to contract account on destination.
+			let asset: Asset = (Location::parent(), dao.env().transferred_value() / 10).into();
+			let beneficiary = hashed_account(4_001, dao.env().account_id()); // todo: para id getter
+			let message: Xcm<()> = Xcm::builder_unsafe()
+				.withdraw_asset(asset.clone().into())
+				.initiate_reserve_withdraw(
+					asset.clone().into(),
+					dest.clone(),
+					Xcm::builder_unsafe()
+						.buy_execution(asset.clone(), WeightLimit::Unlimited)
+						.deposit_asset(
+							All.into(),
+							Location::new(0, AccountId32 { network: None, id: beneficiary.0 }),
+						)
+						.build(),
+				)
+				.build();
+			pop_api::messaging::xcm::execute(&VersionedXcm::V4(message)).unwrap(); // todo: handle error
+			Ok(dao)
 		}
 
-		// Register contract to incentives api.
-		// incentives::register(Self::env().account_id())?;
-
-		#[ink(message, payable)]
+		#[ink(message)]
 		pub fn register(&mut self, height: u32, item: ItemId) -> Result<()> {
-			self.registered_items.insert(item, &RegistrationStatus::Pending);
 			let account = self.env().caller();
-			self.verifier.verify(height, item, account.clone())?;
+			self.verifier.verify(height, account.clone(), item)?;
+			self.registered_items.insert(item, &RegistrationStatus::Pending);
 			self.env().emit_event(RegistrationRequested { account, item });
 			Ok(())
 		}
 
-		#[ink(message, payable)]
-		pub fn complete(&mut self, item: ItemId, outcome: bool) -> Result<ItemId> {
-			let account = self.env().caller();
-			if self
-				.verifier
-				.complete(item, account.clone(), self.env().account_id(), outcome)?
-			{
-				self.next_item_id = self.next_item_id.saturating_add(1);
-				let item = self.next_item_id;
-				nonfungibles::mint(
-					account,
-					self.collection_id,
-					item,
-					MintWitness { owned_item: None, mint_price: None },
-				)?;
-				// let balance = self.env().balance();
-				// sponsorships::sponsor_account(account, balance / 100)?;
-				self.registered_items.insert(item, &RegistrationStatus::Used);
-				Ok(item)
+		#[ink(message, selector = 0x57ad942b)]
+		pub fn complete_registration(&mut self, id: MessageId, values: Vec<StorageValue>) -> Result<()> {
+			let (account, verified_item) = self.verifier.requests.get(id).ok_or(Unknown)?;
+			let membership = if values[0].value.is_some() {
+					self.next_item_id = self.next_item_id.saturating_add(1);
+					let item = self.next_item_id;
+					nonfungibles::mint(
+						account,
+						self.collection_id,
+						item,
+						MintWitness { owned_item: None, mint_price: None },
+					)?;
+					self.registered_items.insert(verified_item, &RegistrationStatus::Used);
+					Some(item)
 			} else {
-				return Err(Rejected);
-			}
+				None
+			};
+			self.env().emit_event(RegistrationCompleted { account, verified_item, membership });
+			Ok(())
 		}
 
 		#[ink(message)]
@@ -165,14 +157,65 @@ mod dao {
 			self.collection_id
 		}
 
-		// #[ink(message)]
-		// pub fn flip(&mut self) {
-		// 	if self.value {
-		// 		self.value = false
-		// 	} else {
-		// 		self.value = true
-		// 	}
-		// }
+		#[ink(message)]
+		pub fn transact(&mut self, call: Vec<u8>) -> Result<()> {
+			let dest = Location::new(1, Parachain(self.verifier.parachain));
+
+			// Register a new query for receiving a response, used to report transact status.
+			self.verifier.next_request = self.verifier.next_request.saturating_add(1);
+			let query_id = pop_api::messaging::xcm::new_query(
+				self.verifier.next_request,
+				dest.clone(),
+				self.env().block_number().saturating_add(100),
+				Some(Callback::to(0x641b0b03, Weight::from_parts(800_000_000, 500_000))),
+			)?
+				.unwrap();
+
+			let response = QueryResponseInfo {
+				// Route back to this parachain.
+				destination: Location::new(1, Parachain(4_001)),
+				query_id,
+				max_weight: Weight::from_parts(1_000_000, 5_000),
+			};
+
+			let fees: Asset = (Location::parent(), self.env().balance() / 100).into();
+
+			let beneficiary = hashed_account(4_001, self.env().account_id());
+			let message: Xcm<()> = Xcm::builder_unsafe()
+				.withdraw_asset(fees.clone().into())
+				.buy_execution(fees, WeightLimit::Unlimited)
+				.set_appendix(
+					Xcm::builder_unsafe()
+						.refund_surplus()
+						.deposit_asset(
+							All.into(),
+							Location::new(0, AccountId32 { network: None, id: beneficiary.0 }),
+						)
+						.build(),
+				)
+				.set_error_handler(Xcm::builder_unsafe().report_error(response.clone()).build())
+				.transact(OriginKind::SovereignAccount, Weight::from_parts(500_000_000, 500_000), call.into())
+				.report_transact_status(response)
+				.build();
+
+			let hash = pop_api::messaging::xcm::send(&dest.into_versioned(), &VersionedXcm::V4(message)).unwrap(); // todo: handle error
+			self.env().emit_event(XcmRequested { id: self.verifier.next_request, query_id, hash });
+			Ok(())
+		}
+
+		#[ink(message, selector = 0x641b0b03)]
+		pub fn process_transfer_result(&mut self, _id: MessageId, response: Response) -> Result<()> {
+			match response {
+				// Emit an event on a successful xcm transact.
+				Response::DispatchResult(MaybeErrorCode::Success) => {
+					self.env().emit_event(TransferCompleted);
+				}
+				_ => {
+				}
+			};
+			Ok(())
+		}
+
 	}
 
 	// Create a collection using the non fungibles api.
@@ -230,6 +273,18 @@ mod dao {
 		result
 	}
 
+	fn hashed_account(para_id: u32, account_id: AccountId) -> AccountId {
+		let location = (
+			b"SiblingChain",
+			Compact::<u32>::from(para_id),
+			(b"AccountId32", account_id.0).encode(),
+		)
+			.encode();
+		let mut output = [0u8; 32];
+		Blake2x256::hash(&location, &mut output);
+		AccountId::from(output)
+	}
+
 	#[ink::event]
 	#[cfg_attr(feature = "std", derive(Debug))]
 	pub struct RegistrationRequested {
@@ -239,10 +294,24 @@ mod dao {
 
 	#[ink::event]
 	#[cfg_attr(feature = "std", derive(Debug))]
-	pub struct RegistrationResult {
+	pub struct RegistrationCompleted {
 		pub account: AccountId,
-		pub used_item: ItemId,
-		pub received_membership: Option<ItemId>,
+		pub verified_item: ItemId,
+		pub membership: Option<ItemId>,
+	}
+
+	#[ink::event]
+	#[cfg_attr(feature = "std", derive(Debug))]
+	pub struct TransferCompleted;
+
+	#[ink::event]
+	pub struct XcmRequested {
+		#[ink(topic)]
+		pub id: MessageId,
+		#[ink(topic)]
+		pub query_id: QueryId,
+		#[ink(topic)]
+		pub hash: XcmHash,
 	}
 
 	#[cfg(test)]

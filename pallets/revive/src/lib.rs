@@ -568,7 +568,7 @@ pub mod pallet {
 
 	/// A mapping from a contract's code hash to its code.
 	#[pallet::storage]
-	pub type PristineCode<T: Config> = StorageMap<_, Identity, H256, CodeVec>;
+	pub(crate) type PristineCode<T: Config> = StorageMap<_, Identity, H256, CodeVec>;
 
 	/// A mapping from a contract's code hash to its code info.
 	#[pallet::storage]

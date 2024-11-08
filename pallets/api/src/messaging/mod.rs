@@ -2,7 +2,7 @@
 
 use codec::{Decode, Encode};
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo},
+	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
 	pallet_prelude::MaxEncodedLen,
 	storage::KeyLenOf,
 	traits::{
@@ -201,6 +201,7 @@ pub mod pallet {
 			id: MessageId,
 			/// The callback which failed.
 			callback: Callback,
+			post_info: PostDispatchInfo,
 			/// The error which occurred.
 			error: DispatchError,
 		},
@@ -407,6 +408,7 @@ pub mod pallet {
 
 			// Attempt callback with response if specified.
 			if let Some(callback) = callback {
+				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, response);
 				if Self::call(origin.clone(), callback, id, &response, deposit).is_ok() {
 					Self::deposit_event(Event::<T>::XcmResponseReceived {
 						dest: origin,
@@ -499,6 +501,7 @@ impl<T: Config> Pallet<T> {
 			[callback.selector.to_vec(), (id, data).encode()].concat(),
 			callback.weight,
 		);
+		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
 		match result {
 			Ok(_post_info) => {
 				// TODO: do something with post_info: e.g. refund unused weight
@@ -516,16 +519,17 @@ impl<T: Config> Pallet<T> {
 				});
 				Ok(())
 			},
-			Err(error) => {
+			Err(sp_runtime::DispatchErrorWithPostInfo::<PostDispatchInfo> { post_info, error }) => {
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {
 					origin: origin.clone(),
 					id,
 					callback,
-					error: error.error,
+					post_info,
+					error,
 				});
 				// TODO: logging
-				Err(error.error)
+				Err(error)
 			},
 		}
 	}

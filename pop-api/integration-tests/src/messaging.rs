@@ -20,7 +20,7 @@ use super::*;
 const CONTRACT: &str = "contracts/messaging/target/ink/messaging.riscv";
 const ASSET_HUB: u32 = 1_000;
 const HYPERBRIDGE: u32 = 4_009;
-const ISMP_MODULE_ID: [u8; 3] = *b"pop";
+pub(crate) const ISMP_MODULE_ID: [u8; 3] = *b"pop";
 
 #[test]
 fn ismp_get_request_works() {
@@ -354,7 +354,7 @@ fn xcm_query_with_callback_works() {
 }
 
 // Get the last ismp request.
-fn get_ismp_request(ext: &mut TestExternalities) -> ismp::router::Request {
+pub(crate) fn get_ismp_request(ext: &mut TestExternalities) -> ismp::router::Request {
 	// Get commitment from last ismp request event.
 	let commitment = ext.execute_with(|| {
 		System::read_events_for_pallet::<pallet_ismp::Event<Runtime>>()

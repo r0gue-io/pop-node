@@ -35,6 +35,9 @@ pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
 scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
 	"derive",
 ] }
+scale-info = { version = "2.11.1", default-features = false, features = [
+	"derive",
+] }
 sp-io = { version = "37.0.0", default-features = false }
 sp-runtime = { version = "=38.0.0", default-features = false }
 # TODO: Requires to resolve a dependency version issue. See more at: https://github.com/r0gue-io/pop-node/issues/313.

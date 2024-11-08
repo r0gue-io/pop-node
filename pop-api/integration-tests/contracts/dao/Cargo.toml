@@ -5,10 +5,10 @@ name = "dao"
 version = "0.1.0"
 
 [dependencies]
+hex = { version = "0.4.3", default-features = false }
 ink = { git = "https://github.com/r0gue-io/ink", branch = "sub0", default-features = false }
-nft-verifier = { path = "./nft-verifier", default-features = false, features = [ "ink-as-dependency" ] }
 polkavm-derive = "0.11.0"
-pop-api = { path = "../../..", default-features = false, features = [ "messaging", "nonfungibles", "sponsorships" ] }
+pop-api = { path = "../../..", default-features = false, features = [ "fungibles", "messaging", "nonfungibles", "sponsorships" ] }
 sp-core = { version = "32.0.0", default-features = false }
 
 [dev-dependencies]
@@ -22,8 +22,8 @@ default = [ "std" ]
 e2e-tests = [  ]
 ink-as-dependency = [  ]
 std = [
+	"hex/std",
 	"ink/std",
-	"nft-verifier/std",
 	"pop-api/std",
 	"sp-core/std",
 ]

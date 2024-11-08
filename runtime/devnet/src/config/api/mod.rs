@@ -8,7 +8,7 @@ use frame_support::{
 };
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, messaging::NotifyQueryHandler, Read};
-use pallet_revive::{AddressMapper, CollectEvents, DebugInfo};
+use pallet_revive::{AddressMapper, CollectEvents, DebugInfo, ExecReturnValue};
 use pallet_xcm::Origin;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
@@ -163,7 +163,10 @@ impl messaging::CallbackT<Runtime> for Callback {
 			debug,
 			collect_events,
 		);
+		log::debug!(target: "pop-api::extension", "callback weight consumed={:?}, weight required={:?}", output.gas_consumed, output.gas_required);
 		if let Ok(return_value) = &output.result {
+			let pallet_revive::ExecReturnValue { flags, data } = return_value;
+			log::debug!(target: "pop-api::extension", "return data={:?}", data);
 			if return_value.did_revert() {
 				output.result = Err(pallet_revive::Error::<Runtime>::ContractReverted.into());
 			}

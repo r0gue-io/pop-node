@@ -140,6 +140,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 		// Hash request to determine key for message lookup.
 		match response {
 			Response::Get(GetResponse { get, values }) => {
+				log::debug!(target: "pop-api::extension", "StorageValue={:?}", values[0]);
 				let commitment = H256::from(keccak_256(&ismp::router::Request::Get(get).encode()));
 				process_response(
 					&commitment,
