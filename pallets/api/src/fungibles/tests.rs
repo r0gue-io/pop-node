@@ -83,21 +83,17 @@ fn transfer_works() {
 		let to = BOB;
 
 		for origin in vec![root(), none()] {
-			assert_noop!(Fungibles::transfer(origin, token, account(to), value), BadOrigin);
+			assert_noop!(Fungibles::transfer(origin, token, to, value), BadOrigin);
 		}
 		// Check error works for `Assets::transfer_keep_alive()`.
-		assert_noop!(
-			Fungibles::transfer(signed(from), token, account(to), value),
-			AssetsError::Unknown
-		);
+		assert_noop!(Fungibles::transfer(signed(from), token, to, value), AssetsError::Unknown);
 		assets::create_and_mint_to(from, token, from, value * 2);
-		let balance_before_transfer = Assets::balance(token, &account(to));
-		assert_ok!(Fungibles::transfer(signed(from), token, account(to), value));
-		let balance_after_transfer = Assets::balance(token, &account(to));
+		let balance_before_transfer = Assets::balance(token, &to);
+		assert_ok!(Fungibles::transfer(signed(from), token, to, value));
+		let balance_after_transfer = Assets::balance(token, &to);
 		assert_eq!(balance_after_transfer, balance_before_transfer + value);
 		System::assert_last_event(
-			Event::Transfer { token, from: Some(account(from)), to: Some(account(to)), value }
-				.into(),
+			Event::Transfer { token, from: Some(from), to: Some(to), value }.into(),
 		);
 	});
 }
@@ -112,36 +108,26 @@ fn transfer_from_works() {
 		let spender = CHARLIE;
 
 		for origin in vec![root(), none()] {
-			assert_noop!(
-				Fungibles::transfer_from(origin, token, account(from), account(to), value),
-				BadOrigin
-			);
+			assert_noop!(Fungibles::transfer_from(origin, token, from, to, value), BadOrigin);
 		}
 		// Check error works for `Assets::transfer_approved()`.
 		assert_noop!(
-			Fungibles::transfer_from(signed(spender), token, account(from), account(to), value),
+			Fungibles::transfer_from(signed(spender), token, from, to, value),
 			AssetsError::Unknown
 		);
 		// Approve `spender` to transfer up to `value`.
 		assets::create_mint_and_approve(spender, token, from, value * 2, spender, value);
 		// Successfully call transfer from.
-		let from_balance_before_transfer = Assets::balance(token, &account(from));
-		let to_balance_before_transfer = Assets::balance(token, &account(to));
-		assert_ok!(Fungibles::transfer_from(
-			signed(spender),
-			token,
-			account(from),
-			account(to),
-			value
-		));
-		let from_balance_after_transfer = Assets::balance(token, &account(from));
-		let to_balance_after_transfer = Assets::balance(token, &account(to));
+		let from_balance_before_transfer = Assets::balance(token, &from);
+		let to_balance_before_transfer = Assets::balance(token, &to);
+		assert_ok!(Fungibles::transfer_from(signed(spender), token, from, to, value));
+		let from_balance_after_transfer = Assets::balance(token, &from);
+		let to_balance_after_transfer = Assets::balance(token, &to);
 		// Check that `to` has received the `value` tokens from `from`.
 		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + value);
 		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - value);
 		System::assert_last_event(
-			Event::Transfer { token, from: Some(account(from)), to: Some(account(to)), value }
-				.into(),
+			Event::Transfer { token, from: Some(from), to: Some(to), value }.into(),
 		);
 	});
 }
@@ -158,7 +144,7 @@ mod approve {
 
 			for origin in vec![root(), none()] {
 				assert_noop!(
-					Fungibles::approve(origin, token, account(spender), value),
+					Fungibles::approve(origin, token, spender, value),
 					BadOrigin.with_weight(WeightInfo::approve(0, 0))
 				);
 			}
@@ -175,20 +161,20 @@ mod approve {
 
 			for origin in vec![root(), none()] {
 				assert_noop!(
-					Fungibles::approve(origin, token, account(spender), value),
+					Fungibles::approve(origin, token, spender, value),
 					BadOrigin.with_weight(WeightInfo::approve(0, 0))
 				);
 			}
 			// Check error works for `Assets::approve_transfer()` in `Greater` match arm.
 			assert_noop!(
-				Fungibles::approve(signed(owner), token, account(spender), value),
+				Fungibles::approve(signed(owner), token, spender, value),
 				AssetsError::Unknown.with_weight(WeightInfo::approve(1, 0))
 			);
 			assets::create_mint_and_approve(owner, token, owner, value, spender, value);
 			// Check error works for `Assets::cancel_approval()` in `Less` match arm.
 			assert_ok!(Assets::freeze_asset(signed(owner), token));
 			assert_noop!(
-				Fungibles::approve(signed(owner), token, account(spender), value / 2),
+				Fungibles::approve(signed(owner), token, spender, value / 2),
 				AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
 			);
 			assert_ok!(Assets::thaw_asset(signed(owner), token));
@@ -207,61 +193,38 @@ mod approve {
 
 			// Approves a value to spend that is higher than the current allowance.
 			assets::create_and_mint_to(owner, token, owner, value);
-			assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), 0);
+			assert_eq!(Assets::allowance(token, &owner, &spender), 0);
 			assert_eq!(
-				Fungibles::approve(signed(owner), token, account(spender), value),
+				Fungibles::approve(signed(owner), token, spender, value),
 				Ok(Some(WeightInfo::approve(1, 0)).into())
 			);
-			assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value);
-			System::assert_last_event(
-				Event::Approval { token, owner: account(owner), spender: account(spender), value }
-					.into(),
-			);
+			assert_eq!(Assets::allowance(token, &owner, &spender), value);
+			System::assert_last_event(Event::Approval { token, owner, spender, value }.into());
 			// Approves a value to spend that is lower than the current allowance.
 			assert_eq!(
-				Fungibles::approve(signed(owner), token, account(spender), value / 2),
+				Fungibles::approve(signed(owner), token, spender, value / 2),
 				Ok(Some(WeightInfo::approve(1, 1)).into())
 			);
-			assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value / 2);
+			assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 			System::assert_last_event(
-				Event::Approval {
-					token,
-					owner: account(owner),
-					spender: account(spender),
-					value: value / 2,
-				}
-				.into(),
+				Event::Approval { token, owner, spender, value: value / 2 }.into(),
 			);
 			// Approves a value to spend that is equal to the current allowance.
 			assert_eq!(
-				Fungibles::approve(signed(owner), token, account(spender), value / 2),
+				Fungibles::approve(signed(owner), token, spender, value / 2),
 				Ok(Some(WeightInfo::approve(0, 0)).into())
 			);
-			assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value / 2);
+			assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 			System::assert_last_event(
-				Event::Approval {
-					token,
-					owner: account(owner),
-					spender: account(spender),
-					value: value / 2,
-				}
-				.into(),
+				Event::Approval { token, owner, spender, value: value / 2 }.into(),
 			);
 			// Sets allowance to zero.
 			assert_eq!(
-				Fungibles::approve(signed(owner), token, account(spender), 0),
+				Fungibles::approve(signed(owner), token, spender, 0),
 				Ok(Some(WeightInfo::approve(0, 1)).into())
 			);
-			assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), 0);
-			System::assert_last_event(
-				Event::Approval {
-					token,
-					owner: account(owner),
-					spender: account(spender),
-					value: 0,
-				}
-				.into(),
-			);
+			assert_eq!(Assets::allowance(token, &owner, &spender), 0);
+			System::assert_last_event(Event::Approval { token, owner, spender, value: 0 }.into());
 		});
 	}
 }
@@ -276,34 +239,25 @@ fn increase_allowance_works() {
 
 		for origin in vec![root(), none()] {
 			assert_noop!(
-				Fungibles::increase_allowance(origin, token, account(spender), value),
+				Fungibles::increase_allowance(origin, token, spender, value),
 				BadOrigin.with_weight(WeightInfo::approve(0, 0))
 			);
 		}
 		// Check error works for `Assets::approve_transfer()`.
 		assert_noop!(
-			Fungibles::increase_allowance(signed(owner), token, account(spender), value),
+			Fungibles::increase_allowance(signed(owner), token, spender, value),
 			AssetsError::Unknown.with_weight(AssetsWeightInfo::approve_transfer())
 		);
 		assets::create_and_mint_to(owner, token, owner, value);
-		assert_eq!(0, Assets::allowance(token, &account(owner), &account(spender)));
-		assert_ok!(Fungibles::increase_allowance(signed(owner), token, account(spender), value));
-		assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value);
-		System::assert_last_event(
-			Event::Approval { token, owner: account(owner), spender: account(spender), value }
-				.into(),
-		);
+		assert_eq!(0, Assets::allowance(token, &owner, &spender));
+		assert_ok!(Fungibles::increase_allowance(signed(owner), token, spender, value));
+		assert_eq!(Assets::allowance(token, &owner, &spender), value);
+		System::assert_last_event(Event::Approval { token, owner, spender, value }.into());
 		// Additive.
-		assert_ok!(Fungibles::increase_allowance(signed(owner), token, account(spender), value));
-		assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value * 2);
+		assert_ok!(Fungibles::increase_allowance(signed(owner), token, spender, value));
+		assert_eq!(Assets::allowance(token, &owner, &spender), value * 2);
 		System::assert_last_event(
-			Event::Approval {
-				token,
-				owner: account(owner),
-				spender: account(spender),
-				value: value * 2,
-			}
-			.into(),
+			Event::Approval { token, owner, spender, value: value * 2 }.into(),
 		);
 	});
 }
@@ -318,46 +272,40 @@ fn decrease_allowance_works() {
 
 		for origin in vec![root(), none()] {
 			assert_noop!(
-				Fungibles::decrease_allowance(origin, token, account(spender), 0),
+				Fungibles::decrease_allowance(origin, token, spender, 0),
 				BadOrigin.with_weight(WeightInfo::approve(0, 0))
 			);
 		}
 		assets::create_mint_and_approve(owner, token, owner, value, spender, value);
-		assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value);
 		// Check error works for `Assets::cancel_approval()`. No error test for `approve_transfer`
 		// because it is not possible.
 		assert_ok!(Assets::freeze_asset(signed(owner), token));
 		assert_noop!(
-			Fungibles::decrease_allowance(signed(owner), token, account(spender), value / 2),
+			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
 			AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
 		);
 		assert_ok!(Assets::thaw_asset(signed(owner), token));
 		// Owner balance is not changed if decreased by zero.
 		assert_eq!(
-			Fungibles::decrease_allowance(signed(owner), token, account(spender), 0),
+			Fungibles::decrease_allowance(signed(owner), token, spender, 0),
 			Ok(Some(WeightInfo::approve(0, 0)).into())
 		);
-		assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value);
 		// "Unapproved" error is returned if the current allowance is less than amount to decrease
 		// with.
 		assert_noop!(
-			Fungibles::decrease_allowance(signed(owner), token, account(spender), value * 2),
+			Fungibles::decrease_allowance(signed(owner), token, spender, value * 2),
 			AssetsError::Unapproved
 		);
 		// Decrease allowance successfully.
 		assert_eq!(
-			Fungibles::decrease_allowance(signed(owner), token, account(spender), value / 2),
+			Fungibles::decrease_allowance(signed(owner), token, spender, value / 2),
 			Ok(Some(WeightInfo::approve(1, 1)).into())
 		);
-		assert_eq!(Assets::allowance(token, &account(owner), &account(spender)), value / 2);
+		assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 		System::assert_last_event(
-			Event::Approval {
-				token,
-				owner: account(owner),
-				spender: account(spender),
-				value: value / 2,
-			}
-			.into(),
+			Event::Approval { token, owner, spender, value: value / 2 }.into(),
 		);
 	});
 }
@@ -370,19 +318,14 @@ fn create_works() {
 		let admin = ALICE;
 
 		for origin in vec![root(), none()] {
-			assert_noop!(Fungibles::create(origin, id, account(admin), 100), BadOrigin);
+			assert_noop!(Fungibles::create(origin, id, admin, 100), BadOrigin);
 		}
 		assert!(!Assets::asset_exists(id));
-		assert_ok!(Fungibles::create(signed(creator), id, account(admin), 100));
+		assert_ok!(Fungibles::create(signed(creator), id, admin, 100));
 		assert!(Assets::asset_exists(id));
-		System::assert_last_event(
-			Event::Created { id, creator: account(creator), admin: account(admin) }.into(),
-		);
+		System::assert_last_event(Event::Created { id, creator, admin }.into());
 		// Check error works for `Assets::create()`.
-		assert_noop!(
-			Fungibles::create(signed(creator), id, account(admin), 100),
-			AssetsError::InUse
-		);
+		assert_noop!(Fungibles::create(signed(creator), id, admin, 100), AssetsError::InUse);
 	});
 }
 
@@ -393,11 +336,11 @@ fn start_destroy_works() {
 
 		// Check error works for `Assets::start_destroy()`.
 		assert_noop!(Fungibles::start_destroy(signed(ALICE), token), AssetsError::Unknown);
-		assert_ok!(Assets::create(signed(ALICE), token, account(ALICE), 1));
+		assert_ok!(Assets::create(signed(ALICE), token, ALICE, 1));
 		assert_ok!(Fungibles::start_destroy(signed(ALICE), token));
 		// Check that the token is not live after starting the destroy process.
 		assert_noop!(
-			Assets::mint(signed(ALICE), token, account(ALICE), 10 * UNIT),
+			Assets::mint(signed(ALICE), token, ALICE, 10 * UNIT),
 			AssetsError::AssetNotLive
 		);
 	});
@@ -416,7 +359,7 @@ fn set_metadata_works() {
 			Fungibles::set_metadata(signed(ALICE), token, name.clone(), symbol.clone(), decimals),
 			AssetsError::Unknown
 		);
-		assert_ok!(Assets::create(signed(ALICE), token, account(ALICE), 1));
+		assert_ok!(Assets::create(signed(ALICE), token, ALICE, 1));
 		assert_ok!(Fungibles::set_metadata(
 			signed(ALICE),
 			token,
@@ -455,16 +398,16 @@ fn mint_works() {
 
 		// Check error works for `Assets::mint()`.
 		assert_noop!(
-			Fungibles::mint(signed(from), token, account(to), value),
+			Fungibles::mint(signed(from), token, to, value),
 			sp_runtime::TokenError::UnknownAsset
 		);
-		assert_ok!(Assets::create(signed(from), token, account(from), 1));
-		let balance_before_mint = Assets::balance(token, &account(to));
-		assert_ok!(Fungibles::mint(signed(from), token, account(to), value));
-		let balance_after_mint = Assets::balance(token, &account(to));
+		assert_ok!(Assets::create(signed(from), token, from, 1));
+		let balance_before_mint = Assets::balance(token, &to);
+		assert_ok!(Fungibles::mint(signed(from), token, to, value));
+		let balance_after_mint = Assets::balance(token, &to);
 		assert_eq!(balance_after_mint, balance_before_mint + value);
 		System::assert_last_event(
-			Event::Transfer { token, from: None, to: Some(account(to)), value }.into(),
+			Event::Transfer { token, from: None, to: Some(to), value }.into(),
 		);
 	});
 }
@@ -480,30 +423,27 @@ fn burn_works() {
 
 		// "BalanceLow" error is returned if token is not created.
 		assert_noop!(
-			Fungibles::burn(signed(owner), token, account(from), value),
+			Fungibles::burn(signed(owner), token, from, value),
 			AssetsError::BalanceLow.with_weight(WeightInfo::balance_of())
 		);
 		assets::create_and_mint_to(owner, token, from, total_supply);
 		assert_eq!(Assets::total_supply(TOKEN), total_supply);
 		// Check error works for `Assets::burn()`.
 		assert_ok!(Assets::freeze_asset(signed(owner), token));
-		assert_noop!(
-			Fungibles::burn(signed(owner), token, account(from), value),
-			AssetsError::AssetNotLive
-		);
+		assert_noop!(Fungibles::burn(signed(owner), token, from, value), AssetsError::AssetNotLive);
 		assert_ok!(Assets::thaw_asset(signed(owner), token));
 		// "BalanceLow" error is returned if the balance is less than amount to burn.
 		assert_noop!(
-			Fungibles::burn(signed(owner), token, account(from), total_supply * 2),
+			Fungibles::burn(signed(owner), token, from, total_supply * 2),
 			AssetsError::BalanceLow.with_weight(WeightInfo::balance_of())
 		);
-		let balance_before_burn = Assets::balance(token, &account(from));
-		assert_ok!(Fungibles::burn(signed(owner), token, account(from), value));
+		let balance_before_burn = Assets::balance(token, &from);
+		assert_ok!(Fungibles::burn(signed(owner), token, from, value));
 		assert_eq!(Assets::total_supply(TOKEN), total_supply - value);
-		let balance_after_burn = Assets::balance(token, &account(from));
+		let balance_after_burn = Assets::balance(token, &from);
 		assert_eq!(balance_after_burn, balance_before_burn - value);
 		System::assert_last_event(
-			Event::Transfer { token, from: Some(account(from)), to: None, value }.into(),
+			Event::Transfer { token, from: Some(from), to: None, value }.into(),
 		);
 	});
 }
@@ -530,17 +470,17 @@ fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let value = 1_000 * UNIT;
 		assert_eq!(
-			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }),
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }),
 			ReadResult::BalanceOf(Default::default())
 		);
 		assets::create_and_mint_to(ALICE, TOKEN, ALICE, value);
 		assert_eq!(
-			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }),
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }),
 			ReadResult::BalanceOf(value)
 		);
 		assert_eq!(
-			Fungibles::read(BalanceOf { token: TOKEN, owner: account(ALICE) }).encode(),
-			Assets::balance(TOKEN, account(ALICE)).encode(),
+			Fungibles::read(BalanceOf { token: TOKEN, owner: ALICE }).encode(),
+			Assets::balance(TOKEN, ALICE).encode(),
 		);
 	});
 }
@@ -550,30 +490,17 @@ fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let value = 1_000 * UNIT;
 		assert_eq!(
-			Fungibles::read(Allowance {
-				token: TOKEN,
-				owner: account(ALICE),
-				spender: account(BOB)
-			}),
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }),
 			ReadResult::Allowance(Default::default())
 		);
 		assets::create_mint_and_approve(ALICE, TOKEN, ALICE, value * 2, BOB, value);
 		assert_eq!(
-			Fungibles::read(Allowance {
-				token: TOKEN,
-				owner: account(ALICE),
-				spender: account(BOB)
-			}),
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }),
 			ReadResult::Allowance(value)
 		);
 		assert_eq!(
-			Fungibles::read(Allowance {
-				token: TOKEN,
-				owner: account(ALICE),
-				spender: account(BOB)
-			})
-			.encode(),
-			Assets::allowance(TOKEN, &account(ALICE), &account(BOB)).encode(),
+			Fungibles::read(Allowance { token: TOKEN, owner: ALICE, spender: BOB }).encode(),
+			Assets::allowance(TOKEN, &ALICE, &BOB).encode(),
 		);
 	});
 }
@@ -607,7 +534,7 @@ fn token_metadata_works() {
 fn token_exists_works() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(false));
-		assert_ok!(Assets::create(signed(ALICE), TOKEN, account(ALICE), 1));
+		assert_ok!(Assets::create(signed(ALICE), TOKEN, ALICE, 1));
 		assert_eq!(Fungibles::read(TokenExists(TOKEN)), ReadResult::TokenExists(true));
 		assert_eq!(
 			Fungibles::read(TokenExists(TOKEN)).encode(),
@@ -616,8 +543,8 @@ fn token_exists_works() {
 	});
 }
 
-fn signed(account_id: u8) -> RuntimeOrigin {
-	RuntimeOrigin::signed(account(account_id))
+fn signed(account: AccountId) -> RuntimeOrigin {
+	RuntimeOrigin::signed(account)
 }
 
 fn root() -> RuntimeOrigin {
@@ -632,31 +559,36 @@ fn none() -> RuntimeOrigin {
 mod assets {
 	use super::*;
 
-	pub(super) fn create_and_mint_to(owner: u8, token: TokenId, to: u8, value: Balance) {
-		assert_ok!(Assets::create(signed(owner), token, account(owner), 1));
-		assert_ok!(Assets::mint(signed(owner), token, account(to), value));
+	pub(super) fn create_and_mint_to(
+		owner: AccountId,
+		token: TokenId,
+		to: AccountId,
+		value: Balance,
+	) {
+		assert_ok!(Assets::create(signed(owner), token, owner, 1));
+		assert_ok!(Assets::mint(signed(owner), token, to, value));
 	}
 
 	pub(super) fn create_mint_and_approve(
-		owner: u8,
+		owner: AccountId,
 		token: TokenId,
-		to: u8,
+		to: AccountId,
 		mint: Balance,
-		spender: u8,
+		spender: AccountId,
 		approve: Balance,
 	) {
 		create_and_mint_to(owner, token, to, mint);
-		assert_ok!(Assets::approve_transfer(signed(to), token, account(spender), approve,));
+		assert_ok!(Assets::approve_transfer(signed(to), token, spender, approve,));
 	}
 
 	pub(super) fn create_and_set_metadata(
-		owner: u8,
+		owner: AccountId,
 		token: TokenId,
 		name: Vec<u8>,
 		symbol: Vec<u8>,
 		decimals: u8,
 	) {
-		assert_ok!(Assets::create(signed(owner), token, account(owner), 1));
+		assert_ok!(Assets::create(signed(owner), token, owner, 1));
 		assert_ok!(Assets::set_metadata(signed(owner), token, name, symbol, decimals));
 	}
 }
@@ -681,11 +613,11 @@ mod read_weights {
 		fn new() -> Self {
 			Self {
 				total_supply: Fungibles::weight(&TotalSupply(TOKEN)),
-				balance_of: Fungibles::weight(&BalanceOf { token: TOKEN, owner: account(ALICE) }),
+				balance_of: Fungibles::weight(&BalanceOf { token: TOKEN, owner: ALICE }),
 				allowance: Fungibles::weight(&Allowance {
 					token: TOKEN,
-					owner: account(ALICE),
-					spender: account(BOB),
+					owner: ALICE,
+					spender: BOB,
 				}),
 				token_name: Fungibles::weight(&TokenName(TOKEN)),
 				token_symbol: Fungibles::weight(&TokenSymbol(TOKEN)),
@@ -767,15 +699,15 @@ mod ensure_codec_indexes {
 		[
 			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
 			(
-				BalanceOf::<Test> { token: Default::default(), owner: account(Default::default()) },
+				BalanceOf::<Test> { token: Default::default(), owner: Default::default() },
 				1,
 				"BalanceOf",
 			),
 			(
 				Allowance::<Test> {
 					token: Default::default(),
-					owner: account(Default::default()),
-					spender: account(Default::default()),
+					owner: Default::default(),
+					spender: Default::default(),
 				},
 				2,
 				"Allowance",
@@ -799,7 +731,7 @@ mod ensure_codec_indexes {
 			(
 				transfer {
 					token: Default::default(),
-					to: account(Default::default()),
+					to: Default::default(),
 					value: Default::default(),
 				},
 				3u8,
@@ -808,8 +740,8 @@ mod ensure_codec_indexes {
 			(
 				transfer_from {
 					token: Default::default(),
-					from: account(Default::default()),
-					to: account(Default::default()),
+					from: Default::default(),
+					to: Default::default(),
 					value: Default::default(),
 				},
 				4,
@@ -818,7 +750,7 @@ mod ensure_codec_indexes {
 			(
 				approve {
 					token: Default::default(),
-					spender: account(Default::default()),
+					spender: Default::default(),
 					value: Default::default(),
 				},
 				5,
@@ -827,7 +759,7 @@ mod ensure_codec_indexes {
 			(
 				increase_allowance {
 					token: Default::default(),
-					spender: account(Default::default()),
+					spender: Default::default(),
 					value: Default::default(),
 				},
 				6,
@@ -836,7 +768,7 @@ mod ensure_codec_indexes {
 			(
 				decrease_allowance {
 					token: Default::default(),
-					spender: account(Default::default()),
+					spender: Default::default(),
 					value: Default::default(),
 				},
 				7,
@@ -845,7 +777,7 @@ mod ensure_codec_indexes {
 			(
 				create {
 					id: Default::default(),
-					admin: account(Default::default()),
+					admin: Default::default(),
 					min_balance: Default::default(),
 				},
 				11,
@@ -866,7 +798,7 @@ mod ensure_codec_indexes {
 			(
 				mint {
 					token: Default::default(),
-					account: account(Default::default()),
+					account: Default::default(),
 					value: Default::default(),
 				},
 				19,
@@ -875,7 +807,7 @@ mod ensure_codec_indexes {
 			(
 				burn {
 					token: Default::default(),
-					account: account(Default::default()),
+					account: Default::default(),
 					value: Default::default(),
 				},
 				20,
