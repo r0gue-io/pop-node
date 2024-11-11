@@ -145,21 +145,21 @@ pub struct MintWitness<ItemId, Balance> {
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, Default, TypeInfo, MaxEncodedLen)]
 pub struct ItemDetails<AccountId, Deposit, Approvals> {
 	/// The owner of this item.
-	pub owner: AccountId,
+	pub(super) owner: AccountId,
 	/// The approved transferrer of this item, if one is set.
-	pub approvals: Approvals,
+	pub(super) approvals: Approvals,
 	/// The amount held in the pallet's default account for this item. Free-hold items will have
 	/// this as zero.
-	pub deposit: Deposit,
+	pub(super) deposit: Deposit,
 }
 
 /// Information about the reserved item deposit.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct ItemDeposit<DepositBalance, AccountId> {
 	/// A depositor account.
-	pub account: AccountId,
+	pub(super) account: AccountId,
 	/// An amount that gets reserved.
-	pub amount: DepositBalance,
+	pub(super) amount: DepositBalance,
 }
 
 /// Information about the collection's metadata.

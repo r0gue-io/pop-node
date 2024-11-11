@@ -180,24 +180,26 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		if !Collection::<T, I>::contains_key(collection) {
-			return Err(Error::<T, I>::UnknownCollection.into());
-		}
+		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
 			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
 			Error::<T, I>::ItemsNonTransferable
 		);
 
-		let origin = maybe_check_origin.ok_or(Error::<T, I>::WrongOrigin)?;
-		Allowances::<T, I>::mutate((&collection, &origin, &delegate), |allowance| {
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
+		}
+
+		Allowances::<T, I>::mutate((&collection, &owner, &delegate), |allowance| {
 			*allowance = true;
 		});
 
 		Self::deposit_event(Event::TransferApproved {
 			collection,
 			item: None,
-			owner: origin,
+			owner,
 			delegate,
 			deadline: None,
 		});
@@ -209,19 +211,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		if !Collection::<T, I>::contains_key(collection) {
-			return Err(Error::<T, I>::UnknownCollection.into());
+		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
 		}
+		Allowances::<T, I>::remove((&collection, &owner, &delegate));
 
-		let origin = maybe_check_origin.ok_or(Error::<T, I>::WrongOrigin)?;
-		Allowances::<T, I>::remove((&collection, &origin, &delegate));
-
-		Self::deposit_event(Event::ApprovalCancelled {
-			collection,
-			owner: origin,
-			item: None,
-			delegate,
-		});
+		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
 
 		Ok(())
 	}
