@@ -1,9 +1,9 @@
 [package]
 authors.workspace = true
-description = "FRAME NFTs pallet (polkadot v1.15.0)"
+description = "Fork of FRAME NFTs pallet (polkadot v1.15.0)"
 edition.workspace = true
 homepage = "https://substrate.io"
-license = "Apache-2.0"
+license.workspace = true
 name = "pallet-nfts"
 readme = "README.md"
 repository.workspace = true
@@ -16,11 +16,13 @@ targets = [ "x86_64-unknown-linux-gnu" ]
 [dependencies]
 codec = { workspace = true }
 enumflags2 = { workspace = true }
+log = { workspace = true }
+scale-info = { features = [ "derive" ], workspace = true }
+
+# Substrate
 frame-benchmarking = { optional = true, workspace = true }
 frame-support.workspace = true
 frame-system.workspace = true
-log = { workspace = true }
-scale-info = { features = [ "derive" ], workspace = true }
 sp-core.workspace = true
 sp-io.workspace = true
 sp-runtime.workspace = true
