@@ -1,73 +1,64 @@
-# Pop API
+## Pop API
 
-## Examples
-ink! smart contract examples using the Pop API
-- [balance-transfer](./examples/balance-transfer/)
-- [NFTs](./examples/nfts/)
-- [place-spot-order](./examples/place-spot-order/)
-- [read-runtime-state](./examples/read-runtime-state/)
+The `pop-api` crate provides a high-level interface that allows smart contracts to seamlessly interact with Pop, a
+blockchain built to power innovative and impactful solutions on Polkadot. Designed for stability, simplicity, and
+efficiency, the API abstracts away the complexities of the runtime, enabling developers to focus on building powerful
+applications rather than managing intricate blockchain details.
 
-## What is the Pop API?
+### Design Goals
 
-One of the core value propositions of Pop Network is to enable smart contracts to easily access the power of Polkadot. As such, the Pop API was built to enable smart contracts to easily utilize the functionality provided by the Pop Network parachain runtime.
+- **Simple**: enhance the developer experience by abstracting away the complexities of runtime functionality, making it
+  easy for developers to build advanced applications.
+- **Versioned**: offer a stable, versioned interface that ensures smart contracts stay compatible as the runtime
+  evolves, enabling seamless integration of new features without disrupting existing contracts.
+- **Efficient**: optimise for minimal contract size, having the lowest possible deployment and execution costs.
 
-Substrate already exposes a Runtime API which is typically associated with the “outer node” calling into the runtime via RPC. Pop Network extends this concept in a direction that makes it usable by smart contracts, allowing untrusted contracts to make use of carefully exposed trusted functionality available within the runtime - this is the Pop API.
+### Key Features
 
-The Pop API is designed to be:
-- **Stable**: contracts are generally immutable and therefore need a stable interface, especially as the runtime evolves over time.
-- **Future Proof**: technologies improve, so the Pop API implementation is adaptable to new approaches without affecting the interface. The Pop API implementation also selects the optimal approach to realize a use case from a range of possible technical implementations.
-- **Versioned**: not every future technology can be retro-fitted, so the API is versioned.
-- **Simple**: providing an abstraction layer over runtime-level features. Hand-rolled with love, Pop API is easy to use for smart contract development.
+- **Versioned Interface**: Provides backward compatibility, ensuring that existing contract functionality remains stable
+  as new features are added to the runtime.
+- **Error Handling**: Supports rich, versioned error types, enabling contracts to receive and interpret any runtime
+  error, making troubleshooting and development easier.
+- **Use Cases**:
+    - [Fungibles](./src/v0/fungibles/README.md): Interacting and managing fungible tokens.
+    - In development:
+        - Non Fungibles: Interacting and managing non fungible tokens.
+        - Messaging: Cross chain rails for interaction with other chains using ISMP & XCM.
+        - Sponsorship: Allowing smart contracts to sponsor transactions.
+        - Incentives: Incentivise smart contracts by sharing chain revenue.
 
-The Pop API consists of three main parts:
-- the Pop API ink! library
-- the Pop API runtime code (chain extension)
-- shared primitive types between the Pop API ink! library and the Pop API runtime code
+### Getting Started
 
-Let's go over the flow.
+Using the API in your ink! smart contract is as easy as adding the `pop-api` crate in your `Cargo.toml`:
 
-## The Pop API ink! Library
-Everything in [`pop-api`](./src/) **is the** Pop API ink! library.
-
-So when the ink! smart contract wants to use the Pop API library, it can simply have a line like:
-```rust
-use pop_api::nfts::*;
+```toml
+pop-api = { git = "https://github.com/r0gue-io/pop-node", default-features = false }
 ```
 
-## The Glue
+and importing it within the contract source:
 
-Certain types are shared between the ink! library portion of the Pop API and the runtime portion of the Pop API. These types can be found in [`pop_primitives`](../primitives/src/), outside the [`pop-api`](./src/) folder.
-
-## The Entry into the Pop API
-
-When we use the Pop API in our smart contract like so:
 ```rust
-use pop_api::nfts::*;
-mint(collection_id, item_id, receiver)?;
+use pop_api::*;
 ```
 
-This will call the Pop API `mint` function in the [./src/v0/nfts.rs](./src/v0/nfts.rs) file, which is a wrapper to `dispatch` a `Runtime::Call` to the NFTs pallet's mint function. This is how most of the Pop API is built. This abstraction allows for creating a developer-friendly API over runtime level features such as calling pallets, reading state, and cross-chain interactions. All Pop API functionality can be found in [./src/v0/](./src/v0/) which is the current version of the Pop API.
+Check out the ink! smart contract [examples](./example) using the API.
 
+### Learn more
 
-## Dispatching to the runtime ([./src/lib.rs](./src/lib.rs))
+The true strength of the API lies in the Pop runtime, where a single, unified chain extension provides flexible and
+efficient access to all runtime features, while specialized API modules deliver stable, intuitive interfaces for
+developers. Together, these elements make the API a powerful tool for creating decentralized applications on Polkadot.
 
-### `PopApi` 
-The `PopApi` trait is an ink! chain extension trait with three functions:
-- `dispatch()`
-- `read_state()`
-- `send_xcm()`
+Want to explore how it all works? Check out:
 
-These are the workhorse functions of the Pop API. Through these functions all the interactions between the ink! smart contract and the runtime are carried out. So in our example above, the `mint` function in [nfts.rs](./src/v0/nfts.rs) calls a `dispatch`, this `dispatch` is defined here in the [lib.rs](./src/lib.rs) file. It is what calls into the runtime chain extension.
+- [Chain Extension Implementation](../extension)
+- [API Modules](../pallets/api)
 
-> Notice how each function is assigned a function ID e.g. `#[ink(function = 1)]`. This will play a role later when we cover the runtime portion of the chain extension.
+### Support
 
-### `PopApiError`
-When Pop API calls the runtime, it will either receive a successful result or an encoded error. `PopApiError` translates the encoded error into the appropriate module error according to the index that the pallet has been configured to.
+Be part of our passionate community of Web3 builders. [Join our Telegram](https://t.me/onpopio)!
 
-## The Pop API Chain Extension
+Feel free to raise issues if anything is unclear, if you have ideas or want to contribute to Pop!
 
-So we have covered how the ink! Pop API library calls the chain extension. But where is the chain extension actually defined? In the Pop Network runtime.
-
-Chain extensions "extend" a runtime. We can find the `PopApiExtension` chain extension in [extension.rs](../runtime/devnet/src/extensions.rs). The `PopApiExtension` chain extension is matching based on the function IDs that we defined on the ink! side of the Pop API. The chain extension here will execute the appropriate functions e.g. `dispatch` or `read_state`. These functions are defined in this file as well and interact directly with the Pop Network runtime.
-
-If you would like to see the whole flow, checkout the end-to-end tests in [extensions.rs](../runtime/devnet/src/extensions.rs) file e.g. `dispatch_nfts_mint_from_contract_works()`
+For any questions related to ink! you can also go to [Polkadot Stack Exchange](https://polkadot.stackexchange.com/) or
+ask the [ink! community](https://t.me/inkathon/).

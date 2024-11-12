@@ -4,9 +4,10 @@ use frame_support::{
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
+use super::api::{self, Config};
 use crate::{
-	deposit, extensions, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp,
+	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	Timestamp,
 };
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
@@ -43,7 +44,7 @@ impl pallet_contracts::Config for Runtime {
 	// IMPORTANT: only runtime calls through the api are allowed.
 	type CallFilter = Nothing;
 	type CallStack = [pallet_contracts::Frame<Self>; 23];
-	type ChainExtension = extensions::PopApiExtension;
+	type ChainExtension = api::Extension<Config>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
 	type Debug = ();
@@ -64,7 +65,7 @@ impl pallet_contracts::Config for Runtime {
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type MaxDelegateDependencies = ConstU32<32>;
 	type MaxStorageKeyLen = ConstU32<128>;
-	type Migrations = (pallet_contracts::migration::v16::Migration<Runtime>,);
+	type Migrations = ();
 	type Randomness = DummyRandomness<Self>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
