@@ -142,6 +142,25 @@ impl Verify for Noop {
 	}
 }
 
+#[cfg(feature = "runtime-benchmarks")]
+impl pallet_nfts::pallet::BenchmarkHelper<u32, u32, Noop, u64, Noop> for () {
+	fn collection(i: u16) -> u32 {
+		i.into()
+	}
+
+	fn item(i: u16) -> u32 {
+		i.into()
+	}
+
+	fn signer() -> (Noop, u64) {
+		unimplemented!()
+	}
+
+	fn sign(signer: &Noop, message: &[u8]) -> Noop {
+		unimplemented!()
+	}
+}
+
 impl pallet_nfts::Config for Test {
 	type ApprovalsLimit = ConstU32<10>;
 	type AttributeDepositBase = ConstU128<1>;
