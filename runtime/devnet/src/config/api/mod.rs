@@ -2,7 +2,7 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::traits::{ConstU32, Contains};
+use frame_support::traits::Contains;
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
 use sp_core::ConstU8;
@@ -11,9 +11,8 @@ use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{
-	config::{assets::TrustBackedAssetsInstance, xcm::LocalOriginToLocation},
-	fungibles, nonfungibles, Balances, Ismp, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, TransactionByteFee,
+	config::assets::TrustBackedAssetsInstance, fungibles, nonfungibles, Runtime, RuntimeCall,
+	RuntimeEvent,
 };
 
 mod versioning;
