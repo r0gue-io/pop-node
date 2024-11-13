@@ -5,7 +5,7 @@ use pop_runtime_common::proxy::{
 };
 use sp_runtime::traits::BlakeTwo256;
 
-use super::assets::TrustBackedAssetsCall;
+use super::assets::{NftsCall, TrustBackedAssetsCall};
 use crate::{Balances, Runtime, RuntimeCall, RuntimeEvent};
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
@@ -45,13 +45,13 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Assets(TrustBackedAssetsCall::set_metadata { .. }) |
 					RuntimeCall::Assets(TrustBackedAssetsCall::clear_metadata { .. }) |
 					RuntimeCall::Assets(TrustBackedAssetsCall::set_min_balance { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::create { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::destroy { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::redeposit { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::transfer_ownership { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_team { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_collection_max_supply { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::lock_collection { .. }) |
+					RuntimeCall::Nfts(NftsCall::create { .. }) |
+					RuntimeCall::Nfts(NftsCall::destroy { .. }) |
+					RuntimeCall::Nfts(NftsCall::redeposit { .. }) |
+					RuntimeCall::Nfts(NftsCall::transfer_ownership { .. }) |
+					RuntimeCall::Nfts(NftsCall::set_team { .. }) |
+					RuntimeCall::Nfts(NftsCall::set_collection_max_supply { .. }) |
+					RuntimeCall::Nfts(NftsCall::lock_collection { .. }) |
 					RuntimeCall::Utility { .. } |
 					RuntimeCall::Multisig { .. }
 			),
@@ -66,17 +66,17 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Assets(TrustBackedAssetsCall::thaw_asset { .. }) |
 					RuntimeCall::Assets(TrustBackedAssetsCall::touch_other { .. }) |
 					RuntimeCall::Assets(TrustBackedAssetsCall::refund_other { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::force_mint { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::update_mint_settings { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::mint_pre_signed { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_attributes_pre_signed { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::lock_item_transfer { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::unlock_item_transfer { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::lock_item_properties { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_metadata { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::clear_metadata { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_collection_metadata { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::clear_collection_metadata { .. }) |
+					RuntimeCall::Nfts(NftsCall::force_mint { .. }) |
+					RuntimeCall::Nfts(NftsCall::update_mint_settings { .. }) |
+					RuntimeCall::Nfts(NftsCall::mint_pre_signed { .. }) |
+					RuntimeCall::Nfts(NftsCall::set_attributes_pre_signed { .. }) |
+					RuntimeCall::Nfts(NftsCall::lock_item_transfer { .. }) |
+					RuntimeCall::Nfts(NftsCall::unlock_item_transfer { .. }) |
+					RuntimeCall::Nfts(NftsCall::lock_item_properties { .. }) |
+					RuntimeCall::Nfts(NftsCall::set_metadata { .. }) |
+					RuntimeCall::Nfts(NftsCall::clear_metadata { .. }) |
+					RuntimeCall::Nfts(NftsCall::set_collection_metadata { .. }) |
+					RuntimeCall::Nfts(NftsCall::clear_collection_metadata { .. }) |
 					RuntimeCall::Utility { .. } |
 					RuntimeCall::Multisig { .. }
 			),

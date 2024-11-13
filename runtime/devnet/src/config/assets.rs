@@ -46,7 +46,9 @@ impl<const N: u32> Get<u32> for KeyLimit<N> {
 	}
 }
 
-impl pallet_nfts::Config for Runtime {
+pub(crate) type NftsInstance = pallet_nfts::Instance1;
+pub type NftsCall = pallet_nfts::Call<Runtime, NftsInstance>;
+impl pallet_nfts::Config<NftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
@@ -95,8 +97,8 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type Deposit = AssetDeposit;
 	type NewAssetName = NewAssetName;
 	type NewAssetSymbol = NewAssetSymbol;
-	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
-	type NftId = <Self as pallet_nfts::Config>::ItemId;
+	type NftCollectionId = <Self as pallet_nfts::Config<NftsInstance>>::CollectionId;
+	type NftId = <Self as pallet_nfts::Config<NftsInstance>>::ItemId;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
 	type RuntimeEvent = RuntimeEvent;
