@@ -32,7 +32,7 @@ frame_support::construct_runtime!(
 		Assets: pallet_assets::<Instance1>,
 		Balances: pallet_balances,
 		Fungibles: crate::fungibles,
-		Nfts: pallet_nfts,
+		Nfts: pallet_nfts::<Instance1>,
 		NonFungibles: crate::nonfungibles
 	}
 );
@@ -161,7 +161,8 @@ impl pallet_nfts::pallet::BenchmarkHelper<u32, u32, Noop, u64, Noop> for () {
 	}
 }
 
-impl pallet_nfts::Config for Test {
+type NftsInstance = pallet_nfts::Instance1;
+impl pallet_nfts::Config<NftsInstance> for Test {
 	type ApprovalsLimit = ConstU32<10>;
 	type AttributeDepositBase = ConstU128<1>;
 	type CollectionDeposit = ConstU128<2>;
@@ -191,7 +192,9 @@ impl pallet_nfts::Config for Test {
 }
 
 impl crate::nonfungibles::Config for Test {
+	type NftsInstance = NftsInstance;
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {

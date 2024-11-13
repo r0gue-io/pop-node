@@ -1,22 +1,24 @@
 use codec::Encode;
-use frame_support::{assert_noop, assert_ok, traits::Incrementable};
-use frame_system::pallet_prelude::BlockNumberFor;
-use pallet_nfts::{
-	AccountBalance, CollectionConfig, CollectionDetails, CollectionSettings, DestroyWitness,
-	MintSettings, MintWitness,
+use frame_support::{
+	assert_noop, assert_ok,
+	sp_runtime::{BoundedVec, DispatchError::BadOrigin},
+	traits::Incrementable,
 };
-use sp_runtime::{BoundedVec, DispatchError::BadOrigin};
 
-use super::types::{CollectionIdOf, ItemIdOf};
 use crate::{
 	mock::*,
-	nonfungibles::{Event, Read::*, ReadResult},
+	nonfungibles::{
+		AccountBalanceOf, BlockNumberFor, CollectionConfig, CollectionDetails, CollectionIdOf,
+		CollectionOf, CollectionSettings, DestroyWitness, ItemIdOf, MintSettings, MintWitness,
+		NextCollectionIdOf, NftsInstanceOf, Read::*, ReadResult,
+	},
 	Read,
 };
 
 const ITEM: u32 = 1;
 
-type NftsError = pallet_nfts::Error<Test>;
+type NftsError = pallet_nfts::Error<Test, NftsInstanceOf<Test>>;
+type Event = crate::nonfungibles::Event<Test>;
 
 mod encoding_read_result {
 	use super::*;
@@ -116,10 +118,10 @@ fn transfer() {
 			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
 		}
 		// Successfully burn an existing new collection item.
-		let balance_before_transfer = AccountBalance::<Test>::get(collection, &dest);
+		let balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, ITEM, dest));
-		let balance_after_transfer = AccountBalance::<Test>::get(collection, &dest);
-		assert_eq!(AccountBalance::<Test>::get(collection, &owner), 0);
+		let balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
+		assert_eq!(AccountBalanceOf::<Test>::get(collection, &owner), 0);
 		assert_eq!(balance_after_transfer - balance_before_transfer, 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
@@ -135,7 +137,7 @@ fn mint_works() {
 		let collection = nfts::create_collection(owner);
 
 		// Successfully mint a new collection item.
-		let balance_before_mint = AccountBalance::<Test>::get(collection, owner);
+		let balance_before_mint = AccountBalanceOf::<Test>::get(collection, owner);
 		assert_ok!(NonFungibles::mint(
 			signed(owner),
 			owner,
@@ -143,7 +145,7 @@ fn mint_works() {
 			ITEM,
 			MintWitness { mint_price: None, owned_item: None }
 		));
-		let balance_after_mint = AccountBalance::<Test>::get(collection, owner);
+		let balance_after_mint = AccountBalanceOf::<Test>::get(collection, owner);
 		assert_eq!(balance_after_mint, 1);
 		assert_eq!(balance_after_mint - balance_before_mint, 1);
 		System::assert_last_event(
@@ -233,7 +235,9 @@ fn get_attribute_works() {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
-		let mut result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
+		let mut result: Option<
+			BoundedVec<u8, <Test as pallet_nfts::Config<NftsInstanceOf<Test>>>::ValueLimit>,
+		> = None;
 		// No attribute set.
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
@@ -305,7 +309,9 @@ fn clear_attribute_works() {
 		let (collection, item) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
-		let result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = None;
+		let result: Option<
+			BoundedVec<u8, <Test as pallet_nfts::Config<NftsInstanceOf<Test>>>::ValueLimit>,
+		> = None;
 		assert_ok!(Nfts::set_attribute(
 			signed(ALICE),
 			collection,
@@ -352,7 +358,9 @@ fn approve_item_attribute_works() {
 			attribute.clone(),
 			value.clone()
 		));
-		let result: Option<BoundedVec<u8, <Test as pallet_nfts::Config>::ValueLimit>> = Some(value);
+		let result: Option<
+			BoundedVec<u8, <Test as pallet_nfts::Config<NftsInstanceOf<Test>>>::ValueLimit>,
+		> = Some(value);
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
@@ -411,7 +419,7 @@ fn next_collection_id_works() {
 		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
 		assert_eq!(
 			NonFungibles::read(NextCollectionId).encode(),
-			pallet_nfts::NextCollectionId::<Test>::get()
+			NextCollectionIdOf::<Test>::get()
 				.or(CollectionIdOf::<Test>::initial_value())
 				.encode(),
 		);
@@ -441,7 +449,7 @@ fn total_supply_works() {
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
-		let next_collection_id = pallet_nfts::NextCollectionId::<Test>::get().unwrap_or_default();
+		let next_collection_id = NextCollectionIdOf::<Test>::get().unwrap_or_default();
 		assert_ok!(NonFungibles::create(
 			signed(owner),
 			owner,
@@ -474,7 +482,7 @@ fn collection_works() {
 		let (collection, _) = nfts::create_collection_mint(ALICE, ITEM);
 		assert_eq!(
 			NonFungibles::read(Collection(collection)).encode(),
-			pallet_nfts::Collection::<Test>::get(&collection).encode(),
+			CollectionOf::<Test>::get(&collection).encode(),
 		);
 	});
 }
@@ -492,7 +500,7 @@ fn balance_of_works() {
 			);
 			assert_eq!(
 				NonFungibles::read(BalanceOf { collection, owner }).encode(),
-				AccountBalance::<Test>::get(collection, owner).encode()
+				AccountBalanceOf::<Test>::get(collection, owner).encode()
 			);
 		});
 	});
@@ -561,7 +569,7 @@ mod nfts {
 	}
 
 	pub(super) fn next_collection_id() -> u32 {
-		pallet_nfts::NextCollectionId::<Test>::get().unwrap_or_default()
+		NextCollectionIdOf::<Test>::get().unwrap_or_default()
 	}
 
 	pub(super) fn collection_config_with_all_settings_enabled(
