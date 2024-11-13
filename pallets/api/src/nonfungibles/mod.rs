@@ -2,14 +2,40 @@
 //! assets. The goal is to provide a simplified, consistent API that adheres to standards in the
 //! smart contract space.
 
+use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
+use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
 use pallet_nfts::WeightInfo;
+pub use pallet_nfts::{
+	AttributeNamespace, CollectionConfig, CollectionDetails, CollectionSetting, CollectionSettings,
+	DestroyWitness, ItemDeposit, ItemDetails, ItemSetting, MintSettings, MintType, MintWitness,
+};
 use sp_runtime::traits::StaticLookup;
-pub use types::*;
 
 #[cfg(test)]
 mod tests;
-pub mod types;
+
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
+type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
+type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
+type NftsInstanceOf<T> = <T as Config>::NftsInstance;
+type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
+type CollectionIdOf<T> =
+	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
+type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
+type ItemPriceOf<T> = BalanceOf<T>;
+type CollectionDetailsFor<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
+type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
+type CollectionConfigFor<T> =
+	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
+// Type aliases for storage items.
+pub(super) type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
+pub(super) type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
+pub(super) type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
+pub(super) type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -18,10 +44,6 @@ pub mod pallet {
 	use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness, MintWitness};
 	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
-	use types::{
-		AccountIdOf, AttributeNamespaceOf, BalanceOf, CollectionConfigFor, CollectionDetailsFor,
-		CollectionIdOf, ItemIdOf, ItemPriceOf, NextCollectionIdOf, NftsOf, NftsWeightInfoOf,
-	};
 
 	use super::*;
 
@@ -31,39 +53,64 @@ pub mod pallet {
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// Total item supply of a collection.
+		/// Total item supply of a specified collection.
 		#[codec(index = 0)]
 		TotalSupply(CollectionIdOf<T>),
 		/// Account balance for a specified collection.
 		#[codec(index = 1)]
-		BalanceOf { collection: CollectionIdOf<T>, owner: AccountIdOf<T> },
+		BalanceOf {
+			// The collection.
+			collection: CollectionIdOf<T>,
+			// The owner of the collection .
+			owner: AccountIdOf<T>,
+		},
 		/// Allowance for an operator approved by an owner, for a specified collection or item.
 		#[codec(index = 2)]
 		Allowance {
+			// The collection.
 			collection: CollectionIdOf<T>,
-			owner: AccountIdOf<T>,
-			operator: AccountIdOf<T>,
+			// The collection item.
 			item: Option<ItemIdOf<T>>,
+			// The owner of the collection item.
+			owner: AccountIdOf<T>,
+			// The delegated operator of collection item.
+			operator: AccountIdOf<T>,
 		},
 		/// Owner of a specified collection item.
 		#[codec(index = 5)]
-		OwnerOf { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
-		/// Attribute value of a collection item. (Error: bounded collection is not partial)
+		OwnerOf {
+			// The collection.
+			collection: CollectionIdOf<T>,
+			// The collection item.
+			item: ItemIdOf<T>,
+		},
+		/// Attribute value of a specified collection item. (Error: bounded collection is not
+		/// partial)
 		#[codec(index = 6)]
 		GetAttribute {
+			// The collection.
 			collection: CollectionIdOf<T>,
+			// The collection item.
 			item: ItemIdOf<T>,
+			// The namespace of the attribute.
 			namespace: AttributeNamespaceOf<T>,
+			// The key of the attribute.
 			key: BoundedVec<u8, T::KeyLimit>,
 		},
-		/// Details of a collection.
+		/// Details of a specified collection.
 		#[codec(index = 9)]
 		Collection(CollectionIdOf<T>),
 		/// Next collection ID.
 		#[codec(index = 10)]
 		NextCollectionId,
+		/// Metadata of a specified collection item.
 		#[codec(index = 11)]
-		ItemMetadata { collection: CollectionIdOf<T>, item: ItemIdOf<T> },
+		ItemMetadata {
+			// The collection.
+			collection: CollectionIdOf<T>,
+			// The collection item.
+			item: ItemIdOf<T>,
+		},
 	}
 
 	/// Results of state reads for the non-fungibles API.
@@ -78,13 +125,13 @@ pub mod pallet {
 		Allowance(bool),
 		/// Owner of a specified collection owner.
 		OwnerOf(Option<AccountIdOf<T>>),
-		/// Attribute value of a collection item.
+		/// Attribute value of a specified collection item.
 		GetAttribute(Option<Vec<u8>>),
-		/// Details of a collection.
+		/// Details of a specified collection.
 		Collection(Option<CollectionDetailsFor<T>>),
 		/// Next collection ID.
 		NextCollectionId(Option<CollectionIdOf<T>>),
-		/// Collection item metadata.
+		/// Metadata of a specified collection item.
 		ItemMetadata(Option<Vec<u8>>),
 	}
 
@@ -107,9 +154,13 @@ pub mod pallet {
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_nfts::Config {
+	pub trait Config: frame_system::Config + pallet_nfts::Config<Self::NftsInstance> {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		/// The instance of pallet-nfts.
+		type NftsInstance;
+		/// Weight information for dispatchables in this pallet.
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -159,6 +210,12 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		/// Transfers the collection item from the caller's account to account `to`.
+		///
+		/// # Parameters
+		/// - `collection` - The collection of the item to be transferred.
+		/// - `item` - The item to be transferred.
+		/// - `to` - The recipient account.
 		#[pallet::call_index(3)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
@@ -179,6 +236,13 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Approves `operator` to spend the collection item on behalf of the caller.
+		///
+		/// # Parameters
+		/// - `collection` - The collection of the item to be approved for delegated transfer.
+		/// - `item` - The item to be approved for delegated transfer.
+		/// - `operator` - The account that is allowed to spend the collection item.
+		/// - `approved` - The approval status of the collection item.
 		#[pallet::call_index(4)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer() + NftsWeightInfoOf::<T>::cancel_approval())]
 		pub fn approve(
@@ -209,6 +273,12 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Issue a new collection of non-fungible items from a public origin.
+		///
+		/// # Parameters
+		/// - `admin` - The admin of this collection. The admin is the initial address of each
+		/// member of the collection's admin team.
+		/// - `config` - The configuration of the collection.
 		#[pallet::call_index(7)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
@@ -220,13 +290,19 @@ pub mod pallet {
 			//  issues for setting it to xcm's `Location`. This can easily be done differently.
 			let id = NextCollectionIdOf::<T>::get()
 				.or(T::CollectionId::initial_value())
-				.ok_or(pallet_nfts::Error::<T>::UnknownCollection)?;
+				.ok_or(NftsErrorOf::<T>::UnknownCollection)?;
 			let creator = ensure_signed(origin.clone())?;
 			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), config)?;
 			Self::deposit_event(Event::Created { id, admin, creator });
 			Ok(())
 		}
 
+		/// Destroy a collection of fungible items.
+		///
+		/// # Parameters
+		/// - `collection` - The identifier of the collection to be destroyed.
+		/// - `witness` - Information on the items minted in the collection. This must be
+		/// correct.
 		#[pallet::call_index(8)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(
     		witness.item_metadatas,
@@ -241,6 +317,14 @@ pub mod pallet {
 			NftsOf::<T>::destroy(origin, collection, witness)
 		}
 
+		/// Set an attribute for a collection or item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection whose item's metadata to set.
+		/// - `maybe_item` - The item whose metadata to set.
+		/// - `namespace` - Attribute's namespace.
+		/// - `key` - The key of the attribute.
+		/// - `value` - The value to which to set the attribute.
 		#[pallet::call_index(12)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_attribute())]
 		pub fn set_attribute(
@@ -254,6 +338,13 @@ pub mod pallet {
 			NftsOf::<T>::set_attribute(origin, collection, item, namespace, key, value)
 		}
 
+		/// Clear an attribute for the collection or item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection whose item's metadata to clear.
+		/// - `maybe_item` - The item whose metadata to clear.
+		/// - `namespace` - Attribute's namespace.
+		/// - `key` - The key of the attribute.
 		#[pallet::call_index(13)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_attribute())]
 		pub fn clear_attribute(
@@ -266,6 +357,12 @@ pub mod pallet {
 			NftsOf::<T>::clear_attribute(origin, collection, item, namespace, key)
 		}
 
+		/// Set the metadata for an item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection whose item's metadata to set.
+		/// - `item` - The item whose metadata to set.
+		/// - `data` - The general information of this item. Limited in length by `StringLimit`.
 		#[pallet::call_index(14)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_metadata())]
 		pub fn set_metadata(
@@ -287,6 +384,12 @@ pub mod pallet {
 			NftsOf::<T>::clear_metadata(origin, collection, item)
 		}
 
+		/// Approve item's attributes to be changed by a delegated third-party account.
+		///
+		/// # Parameters
+		/// - `collection` - The collection of the item.
+		/// - `item` - The item that holds attributes.
+		/// - `delegate` - The account to delegate permission to change attributes of the item.
 		#[pallet::call_index(16)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_item_attributes())]
 		pub fn approve_item_attributes(
@@ -303,6 +406,14 @@ pub mod pallet {
 			)
 		}
 
+		/// Cancel the previously provided approval to change item's attributes.
+		/// All the previously set attributes by the `delegate` will be removed.
+		///
+		/// # Parameters
+		/// - `collection` - Collection that the item is contained within.
+		/// - `item` - The item that holds attributes.
+		/// - `delegate` - The previously approved account to remove.
+		/// - `witness` - A witness data to cancel attributes approval operation.
 		#[pallet::call_index(17)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_item_attributes_approval(witness.account_attributes))]
 		pub fn cancel_item_attributes_approval(
@@ -321,6 +432,11 @@ pub mod pallet {
 			)
 		}
 
+		/// Set the maximum number of items a collection could have.
+		///
+		/// # Parameters
+		/// - `collection` - The identifier of the collection to change.
+		/// - `max_supply` - The maximum number of items a collection could have.
 		#[pallet::call_index(18)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_collection_max_supply())]
 		pub fn set_max_supply(
@@ -331,6 +447,15 @@ pub mod pallet {
 			NftsOf::<T>::set_collection_max_supply(origin, collection, max_supply)
 		}
 
+		/// Mint an item of a particular collection.
+		///
+		/// # Parameters
+		/// - `collection` - The collection of the item to be minted.
+		/// - `item` - An identifier of the new item.
+		/// - `mint_to` - Account into which the item will be minted.
+		/// - `witness_data` - When the mint type is `HolderOf(collection_id)`, then the owned
+		///   item_id from that collection needs to be provided within the witness data object. If
+		///   the mint price is set, then it should be additionally confirmed in the `witness_data`.
 		#[pallet::call_index(19)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -359,6 +484,11 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Destroy a single collection item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection of the item to be burned.
+		/// - `item` - The item to be burned.
 		#[pallet::call_index(20)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
@@ -405,18 +535,18 @@ pub mod pallet {
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
 				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(pallet_nfts::AccountBalance::<T>::get(collection, owner)),
+					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_allowance(&collection, &item, &owner, &operator).is_ok(),
 				),
 				OwnerOf { collection, item } =>
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
 				GetAttribute { collection, item, namespace, key } => ReadResult::GetAttribute(
-					pallet_nfts::Attribute::<T>::get((collection, Some(item), namespace, key))
+					AttributeOf::<T>::get((collection, Some(item), namespace, key))
 						.map(|attribute| attribute.0.into()),
 				),
 				Collection(collection) =>
-					ReadResult::Collection(pallet_nfts::Collection::<T>::get(collection)),
+					ReadResult::Collection(CollectionOf::<T>::get(collection)),
 				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
 					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
 				),
