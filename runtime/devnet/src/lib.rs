@@ -628,7 +628,7 @@ mod runtime {
 
 	// Assets
 	#[runtime::pallet_index(50)]
-	pub type Nfts = pallet_nfts::Pallet<Runtime>;
+	pub type Nfts = pallet_nfts::Pallet<Runtime, Instance1>;
 	#[runtime::pallet_index(51)]
 	pub type NftFractionalization = pallet_nft_fractionalization::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]

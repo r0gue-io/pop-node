@@ -11,8 +11,8 @@ use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, nonfungibles, Runtime, RuntimeCall,
-	RuntimeEvent,
+	config::assets::{NftsInstance, TrustBackedAssetsInstance},
+	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 
 mod versioning;
@@ -88,7 +88,9 @@ impl fungibles::Config for Runtime {
 }
 
 impl nonfungibles::Config for Runtime {
+	type NftsInstance = NftsInstance;
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 #[derive(Default)]
@@ -287,8 +289,7 @@ mod tests {
 	#[test]
 	fn filter_allows_nonfungibles_calls() {
 		use pallet_api::nonfungibles::{
-			types::{CollectionConfig, CollectionSettings, MintSettings},
-			Call::*,
+			Call::*, CollectionConfig, CollectionSettings, MintSettings,
 		};
 		use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness};
 
