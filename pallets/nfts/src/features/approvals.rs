@@ -65,6 +65,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if let Some(check_origin) = maybe_check_origin {
 			ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 		}
+
 		let now = frame_system::Pallet::<T>::block_number();
 		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
@@ -73,13 +74,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.try_insert(delegate.clone(), deadline)
 			.map_err(|_| Error::<T, I>::ReachedApprovalLimit)?;
 		Item::<T, I>::insert(&collection, &item, &details);
+
 		Self::deposit_event(Event::TransferApproved {
 			collection,
-			item: Some(item),
+			item,
 			owner: details.owner,
 			delegate,
 			deadline,
 		});
+
 		Ok(())
 	}
 
@@ -126,7 +129,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
-			item: Some(item),
+			item,
 			owner: details.owner,
 			delegate,
 		});
@@ -169,103 +172,5 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 
 		Ok(())
-	}
-
-	pub(crate) fn do_approve_collection(
-		maybe_check_origin: Option<T::AccountId>,
-		collection: T::CollectionId,
-		delegate: T::AccountId,
-	) -> DispatchResult {
-		ensure!(
-			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
-			Error::<T, I>::MethodDisabled
-		);
-		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		let collection_config = Self::get_collection_config(&collection)?;
-		ensure!(
-			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
-			Error::<T, I>::ItemsNonTransferable
-		);
-
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-		}
-
-		Allowances::<T, I>::mutate((&collection, &owner, &delegate), |allowance| {
-			*allowance = true;
-		});
-		Collection::<T, I>::try_mutate(
-			&collection,
-			|maybe_collection_details| -> Result<(), DispatchError> {
-				let collection_details =
-					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
-				collection_details.allowances.saturating_inc();
-				Ok(())
-			},
-		)?;
-
-		Self::deposit_event(Event::TransferApproved {
-			collection,
-			item: None,
-			owner,
-			delegate,
-			deadline: None,
-		});
-		Ok(())
-	}
-
-	pub(crate) fn do_cancel_collection(
-		maybe_check_origin: Option<T::AccountId>,
-		collection: T::CollectionId,
-		delegate: T::AccountId,
-	) -> DispatchResult {
-		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-		}
-		Allowances::<T, I>::remove((&collection, &owner, &delegate));
-		Collection::<T, I>::try_mutate(
-			&collection,
-			|maybe_collection_details| -> Result<(), DispatchError> {
-				let collection_details =
-					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
-				collection_details.allowances.saturating_dec();
-				Ok(())
-			},
-		)?;
-
-		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
-
-		Ok(())
-	}
-
-	pub fn check_allowance(
-		collection: &T::CollectionId,
-		item: &Option<T::ItemId>,
-		owner: &T::AccountId,
-		delegate: &T::AccountId,
-	) -> Result<(), DispatchError> {
-		// Check if a `delegate` has a permission to spend the collection.
-		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
-			if let Some(item) = item {
-				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
-			};
-			return Ok(());
-		}
-		// Check if a `delegate` has a permission to spend the collection item.
-		if let Some(item) = item {
-			let details =
-				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
-
-			let deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
-			if let Some(d) = deadline {
-				let block_number = frame_system::Pallet::<T>::block_number();
-				ensure!(block_number <= *d, Error::<T, I>::ApprovalExpired);
-			}
-			return Ok(());
-		};
-		Err(Error::<T, I>::NoPermission.into())
 	}
 }
