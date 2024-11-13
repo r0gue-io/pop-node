@@ -18,7 +18,6 @@
 //! This module contains helper methods to configure the metadata of collections and items.
 
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 
 use frame_support::pallet_prelude::*;
 
@@ -51,14 +50,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		if let Some(check_origin) = &maybe_check_origin {
 			ensure!(
-				Self::has_role(&collection, check_origin, CollectionRole::Admin),
+				Self::has_role(&collection, &check_origin, CollectionRole::Admin),
 				Error::<T, I>::NoPermission
 			);
 		}
 
 		let is_root = maybe_check_origin.is_none();
 		let mut collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let item_config = Self::get_item_config(&collection, &item)?;
 		ensure!(
@@ -107,7 +106,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				data: data.clone(),
 			});
 
-			Collection::<T, I>::insert(collection, &collection_details);
+			Collection::<T, I>::insert(&collection, &collection_details);
 			Self::deposit_event(Event::ItemMetadataSet { collection, item, data });
 			Ok(())
 		})
@@ -133,7 +132,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		if let Some(check_origin) = &maybe_check_origin {
 			ensure!(
-				Self::has_role(&collection, check_origin, CollectionRole::Admin),
+				Self::has_role(&collection, &check_origin, CollectionRole::Admin),
 				Error::<T, I>::NoPermission
 			);
 		}
@@ -142,7 +141,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let metadata = ItemMetadataOf::<T, I>::take(collection, item)
 			.ok_or(Error::<T, I>::MetadataNotFound)?;
 		let mut collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let depositor_account =
 			metadata.deposit.account.unwrap_or(collection_details.owner.clone());
@@ -160,7 +159,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			collection_details.owner_deposit.saturating_reduce(metadata.deposit.amount);
 		}
 
-		Collection::<T, I>::insert(collection, &collection_details);
+		Collection::<T, I>::insert(&collection, &collection_details);
 		Self::deposit_event(Event::ItemMetadataCleared { collection, item });
 
 		Ok(())
@@ -186,7 +185,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		if let Some(check_origin) = &maybe_check_origin {
 			ensure!(
-				Self::has_role(&collection, check_origin, CollectionRole::Admin),
+				Self::has_role(&collection, &check_origin, CollectionRole::Admin),
 				Error::<T, I>::NoPermission
 			);
 		}
@@ -199,7 +198,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 
 		let mut details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		CollectionMetadataOf::<T, I>::try_mutate_exists(collection, |metadata| {
 			let old_deposit = metadata.take().map_or(Zero::zero(), |m| m.deposit);
@@ -211,18 +210,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					.saturating_mul(((data.len()) as u32).into())
 					.saturating_add(T::MetadataDepositBase::get());
 			}
-			match deposit.cmp(&old_deposit) {
-				Ordering::Greater => {
-					T::Currency::reserve(&details.owner, deposit - old_deposit)?;
-				},
-				Ordering::Less => {
-					T::Currency::unreserve(&details.owner, old_deposit - deposit);
-				},
-				_ => {},
+			if deposit > old_deposit {
+				T::Currency::reserve(&details.owner, deposit - old_deposit)?;
+			} else if deposit < old_deposit {
+				T::Currency::unreserve(&details.owner, old_deposit - deposit);
 			}
 			details.owner_deposit.saturating_accrue(deposit);
 
-			Collection::<T, I>::insert(collection, details);
+			Collection::<T, I>::insert(&collection, details);
 
 			*metadata = Some(CollectionMetadata { deposit, data: data.clone() });
 
@@ -250,13 +245,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		if let Some(check_origin) = &maybe_check_origin {
 			ensure!(
-				Self::has_role(&collection, check_origin, CollectionRole::Admin),
+				Self::has_role(&collection, &check_origin, CollectionRole::Admin),
 				Error::<T, I>::NoPermission
 			);
 		}
 
 		let mut details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 		let collection_config = Self::get_collection_config(&collection)?;
 
 		ensure!(
@@ -269,7 +264,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			let deposit = metadata.take().ok_or(Error::<T, I>::UnknownCollection)?.deposit;
 			T::Currency::unreserve(&details.owner, deposit);
 			details.owner_deposit.saturating_reduce(deposit);
-			Collection::<T, I>::insert(collection, details);
+			Collection::<T, I>::insert(&collection, details);
 			Self::deposit_event(Event::CollectionMetadataCleared { collection });
 			Ok(())
 		})

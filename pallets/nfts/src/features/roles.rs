@@ -81,7 +81,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			// Insert new records.
 			for (account, roles) in account_to_role {
-				CollectionRoleOf::<T, I>::insert(collection, &account, roles);
+				CollectionRoleOf::<T, I>::insert(&collection, &account, roles);
 			}
 
 			Self::deposit_event(Event::TeamChanged { collection, issuer, admin, freezer });
@@ -98,7 +98,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// may need to be adjusted.
 	pub(crate) fn clear_roles(collection_id: &T::CollectionId) -> Result<(), DispatchError> {
 		let res = CollectionRoleOf::<T, I>::clear_prefix(
-			collection_id,
+			&collection_id,
 			CollectionRoles::max_roles() as u32,
 			None,
 		);
@@ -118,7 +118,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		account_id: &T::AccountId,
 		role: CollectionRole,
 	) -> bool {
-		CollectionRoleOf::<T, I>::get(collection_id, account_id)
+		CollectionRoleOf::<T, I>::get(&collection_id, &account_id)
 			.map_or(false, |roles| roles.has_role(role))
 	}
 
@@ -132,13 +132,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection_id: &T::CollectionId,
 		role: CollectionRole,
 	) -> Option<T::AccountId> {
-		CollectionRoleOf::<T, I>::iter_prefix(collection_id).find_map(|(account, roles)| {
-			if roles.has_role(role) {
-				Some(account.clone())
-			} else {
-				None
-			}
-		})
+		CollectionRoleOf::<T, I>::iter_prefix(&collection_id).into_iter().find_map(
+			|(account, roles)| if roles.has_role(role) { Some(account.clone()) } else { None },
+		)
 	}
 
 	/// Groups provided roles by account, given one account could have multiple roles.
