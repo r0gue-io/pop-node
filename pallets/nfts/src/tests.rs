@@ -2036,6 +2036,7 @@ fn cancel_approval_collection_works_with_admin() {
 			delegate: account(3)
 		}));
 		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))), false);
+		assert_eq!(Nfts::collection_allowances(0).unwrap(), 0);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)),
@@ -2192,6 +2193,7 @@ fn approval_collection_works_with_admin() {
 			deadline: None
 		}));
 		assert_eq!(Allowances::<Test>::get((0, account(1), account(3))), true);
+		assert_eq!(Nfts::collection_allowances(0).unwrap(), 1);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});
 }
@@ -4114,7 +4116,7 @@ fn clear_collection_metadata_works() {
 		assert_ok!(Nfts::destroy(
 			RuntimeOrigin::signed(account(1)),
 			0,
-			DestroyWitness { item_configs: 0, item_metadatas: 0, attributes: 0 }
+			DestroyWitness { item_configs: 0, item_metadatas: 0, attributes: 0, allowances: 0 }
 		));
 		assert_eq!(Collection::<Test>::get(0), None);
 		assert_eq!(Balances::reserved_balance(&account(1)), 10);

@@ -311,7 +311,12 @@ mod tests {
 			}),
 			NonFungibles(destroy {
 				collection: 0,
-				witness: DestroyWitness { attributes: 0, item_configs: 0, item_metadatas: 0 },
+				witness: DestroyWitness {
+					attributes: 0,
+					item_configs: 0,
+					item_metadatas: 0,
+					allowances: 0,
+				},
 			}),
 			NonFungibles(set_attribute {
 				collection: 0,

@@ -46,6 +46,7 @@ pub mod v1 {
 				item_metadatas: self.item_metadatas,
 				item_configs,
 				attributes: self.attributes,
+				allowances: 0,
 			}
 		}
 	}
