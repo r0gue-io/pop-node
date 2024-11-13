@@ -54,9 +54,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				items: 0,
 				item_metadatas: 0,
 				item_configs: 0,
-				item_holders: 0,
 				attributes: 0,
-				allowances: 0,
 			},
 		);
 		CollectionRoleOf::<T, I>::insert(
@@ -121,11 +119,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				collection_details.item_configs == witness.item_configs,
 				Error::<T, I>::BadWitness
 			);
-			ensure!(
-				collection_details.item_holders == witness.item_holders,
-				Error::<T, I>::BadWitness
-			);
-			ensure!(collection_details.allowances == witness.allowances, Error::<T, I>::BadWitness);
 
 			for (_, metadata) in ItemMetadataOf::<T, I>::drain_prefix(&collection) {
 				if let Some(depositor) = metadata.deposit.account {
@@ -144,9 +137,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 			}
 
-			let _ =
-				AccountBalance::<T, I>::clear_prefix(collection, collection_details.items, None);
-			let _ = Allowances::<T, I>::clear_prefix((collection,), collection_details.items, None);
 			CollectionAccount::<T, I>::remove(&collection_details.owner, &collection);
 			T::Currency::unreserve(&collection_details.owner, collection_details.owner_deposit);
 			CollectionConfigOf::<T, I>::remove(&collection);
@@ -157,9 +147,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Ok(DestroyWitness {
 				item_metadatas: collection_details.item_metadatas,
 				item_configs: collection_details.item_configs,
-				item_holders: collection_details.item_holders,
 				attributes: collection_details.attributes,
-				allowances: collection_details.allowances,
 			})
 		})
 	}
