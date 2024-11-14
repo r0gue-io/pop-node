@@ -472,7 +472,13 @@ fn destroy_works() {
 		assert_ok!(NonFungibles::destroy(
 			signed(ALICE),
 			collection,
-			DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0, allowances: 0 }
+			DestroyWitness {
+				item_metadatas: 0,
+				item_configs: 0,
+				item_holders: 0,
+				attributes: 0,
+				allowances: 0,
+			}
 		));
 		assert_eq!(Nfts::collection_owner(collection), None);
 	});
