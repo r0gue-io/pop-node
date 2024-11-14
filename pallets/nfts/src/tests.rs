@@ -223,6 +223,7 @@ fn lifecycle_should_work() {
 		assert_eq!(Collection::<Test>::get(0).unwrap().items, 3);
 		assert_eq!(Collection::<Test>::get(0).unwrap().item_metadatas, 0);
 		assert_eq!(Collection::<Test>::get(0).unwrap().item_configs, 3);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 3);
 
 		assert_eq!(Balances::reserved_balance(&account(1)), 8);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 70, account(2)));
@@ -317,6 +318,7 @@ fn destroy_should_work() {
 
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(2), None));
 		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(1)),
 			0,
@@ -360,6 +362,7 @@ fn mint_should_work() {
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
 		assert_eq!(AccountBalance::<Test>::get(0, account(1)), 1);
 		assert_eq!(Nfts::owner(0, 42).unwrap(), account(1));
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_eq!(collections(), vec![(account(1), 0)]);
 		assert_eq!(items(), vec![(account(1), 0, 42)]);
 
@@ -425,6 +428,7 @@ fn mint_should_work() {
 			Some(MintWitness { mint_price: Some(1), ..Default::default() })
 		));
 		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 2);
 		assert_eq!(Balances::total_balance(&account(2)), 99);
 
 		// validate types
@@ -464,6 +468,7 @@ fn mint_should_work() {
 			Some(MintWitness { owned_item: Some(43), ..Default::default() })
 		));
 		assert_eq!(AccountBalance::<Test>::get(1, account(2)), 1);
+		assert_eq!(Collection::<Test>::get(1).unwrap().item_holders, 1);
 		assert!(events().contains(&Event::<Test>::PalletAttributeSet {
 			collection: 0,
 			item: Some(43),
@@ -1775,6 +1780,7 @@ fn burn_works() {
 			default_item_config()
 		));
 		assert_eq!(AccountBalance::<Test>::get(0, account(5)), 2);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_eq!(Balances::reserved_balance(account(1)), 2);
 
 		assert_noop!(
@@ -1783,8 +1789,10 @@ fn burn_works() {
 		);
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42));
 		assert_eq!(AccountBalance::<Test>::get(0, account(5)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 69));
 		assert_eq!(AccountBalance::<Test>::get(0, account(5)), 0);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 0);
 		assert_eq!(Balances::reserved_balance(account(1)), 0);
 	});
 }
@@ -4116,7 +4124,13 @@ fn clear_collection_metadata_works() {
 		assert_ok!(Nfts::destroy(
 			RuntimeOrigin::signed(account(1)),
 			0,
-			DestroyWitness { item_configs: 0, item_metadatas: 0, attributes: 0, allowances: 0 }
+			DestroyWitness {
+				item_configs: 0,
+				item_metadatas: 0,
+				attributes: 0,
+				allowances: 0,
+				item_holders: 0
+			}
 		));
 		assert_eq!(Collection::<Test>::get(0), None);
 		assert_eq!(Balances::reserved_balance(&account(1)), 10);

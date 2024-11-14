@@ -11,7 +11,7 @@ use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{
-	config::assets::{NftsInstance, TrustBackedAssetsInstance},
+	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
 	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 
@@ -88,7 +88,7 @@ impl fungibles::Config for Runtime {
 }
 
 impl nonfungibles::Config for Runtime {
-	type NftsInstance = NftsInstance;
+	type NftsInstance = TrustBackedNftsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
