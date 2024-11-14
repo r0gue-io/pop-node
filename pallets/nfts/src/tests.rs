@@ -165,6 +165,7 @@ fn basic_minting_should_work() {
 		assert_eq!(collections(), vec![(account(1), 0)]);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
 		assert_eq!(AccountBalance::<Test>::get(0, account(1)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_eq!(items(), vec![(account(1), 0, 42)]);
 
 		assert_ok!(Nfts::force_create(
@@ -175,7 +176,34 @@ fn basic_minting_should_work() {
 		assert_eq!(collections(), vec![(account(1), 0), (account(2), 1)]);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(2)), 1, 69, account(1), None));
 		assert_eq!(AccountBalance::<Test>::get(1, account(1)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_eq!(items(), vec![(account(1), 0, 42), (account(1), 1, 69)]);
+	});
+}
+
+#[test]
+fn collection_item_holders_should_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			account(1),
+			default_collection_config()
+		));
+		assert_eq!(collections(), vec![(account(1), 0)]);
+		let total = 5;
+		for i in 0..total {
+			assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, i, account(1), None));
+		}
+		assert_eq!(AccountBalance::<Test>::get(0, account(1)), total);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
+
+		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, total, account(2), None));
+		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 2);
+
+		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(2)), 0, total));
+		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 0);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 	});
 }
 

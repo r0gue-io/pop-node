@@ -263,7 +263,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					}
 				}
 
-				if AccountBalance::<T, I>::get(collection, &details.owner) == 0 {
+				if AccountBalance::<T, I>::get(collection, &details.owner) == 1 {
 					collection_details.item_holders.saturating_dec();
 				}
 
