@@ -505,10 +505,11 @@ fn transfer_should_work() {
 			account(2),
 			default_item_config()
 		));
-
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
 		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 0);
 		assert_eq!(AccountBalance::<Test>::get(0, account(3)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		assert_eq!(items(), vec![(account(3), 0, 42)]);
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(4)),
@@ -526,6 +527,7 @@ fn transfer_should_work() {
 		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 0);
 		assert_eq!(AccountBalance::<Test>::get(0, account(3)), 0);
 		assert_eq!(AccountBalance::<Test>::get(0, account(4)), 1);
+		assert_eq!(Collection::<Test>::get(0).unwrap().item_holders, 1);
 		// validate we can't transfer non-transferable items
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(

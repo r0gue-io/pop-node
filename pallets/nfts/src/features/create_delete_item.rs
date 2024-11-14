@@ -72,11 +72,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 				let account_balance =
 					AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| -> u32 {
-						let old_balance = balance.clone();
 						balance.saturating_inc();
-						old_balance
+						balance.clone()
 					});
-				if account_balance == 0 {
+				if account_balance == 1 {
 					collection_details.item_holders.saturating_inc();
 				}
 
@@ -264,7 +263,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					}
 				}
 
-				if AccountBalance::<T, I>::get(collection, &details.owner) == 1 {
+				if AccountBalance::<T, I>::get(collection, &details.owner) == 0 {
 					collection_details.item_holders.saturating_dec();
 				}
 
