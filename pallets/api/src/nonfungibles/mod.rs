@@ -12,6 +12,8 @@ pub use pallet_nfts::{
 };
 use sp_runtime::traits::StaticLookup;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod tests;
 
