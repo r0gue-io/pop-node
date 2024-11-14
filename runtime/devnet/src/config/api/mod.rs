@@ -315,6 +315,7 @@ mod tests {
 					attributes: 0,
 					item_configs: 0,
 					item_metadatas: 0,
+					item_holders: 0,
 					allowances: 0,
 				},
 			}),
