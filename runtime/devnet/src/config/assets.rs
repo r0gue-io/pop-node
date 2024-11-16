@@ -47,7 +47,7 @@ impl<const N: u32> Get<u32> for KeyLimit<N> {
 }
 
 pub(crate) type TrustBackedNftsInstance = pallet_nfts::Instance1;
-pub type NftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
+pub type TrustBackedNftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
 impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
