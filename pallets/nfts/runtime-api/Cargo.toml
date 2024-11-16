@@ -1,6 +1,6 @@
 [package]
-authors.workspace = true
-description = "Runtime API for the FRAME NFTs pallet. (polkadot v1.15.0)"
+authors = [ "Parity Technologies <admin@parity.io>", "R0GUE <go@r0gue.io>" ]
+description = "Runtime API for the FRAME NFTs pallet."
 edition.workspace = true
 homepage = "https://substrate.io"
 license = "Apache-2.0"

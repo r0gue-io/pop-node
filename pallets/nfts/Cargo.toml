@@ -1,6 +1,6 @@
 [package]
-authors.workspace = true
-description = "Fork of FRAME NFTs pallet (polkadot v1.15.0)"
+authors = [ "Parity Technologies <admin@parity.io>", "R0GUE <go@r0gue.io>" ]
+description = "Fork of FRAME NFTs pallet"
 edition.workspace = true
 homepage = "https://substrate.io"
 license.workspace = true
@@ -8,7 +8,6 @@ name = "pallet-nfts"
 readme = "README.md"
 repository.workspace = true
 version = "31.0.0"
-
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
@@ -28,8 +27,8 @@ sp-io.workspace = true
 sp-runtime.workspace = true
 
 [dev-dependencies]
-pallet-balances = { default-features = true, workspace = true }
-sp-keystore = { default-features = true, workspace = true }
+pallet-balances.workspace = true
+sp-keystore.workspace = true
 
 [features]
 default = [ "std" ]
@@ -46,9 +45,11 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"log/std",
+	"pallet-balances/std",
 	"scale-info/std",
 	"sp-core/std",
 	"sp-io/std",
+	"sp-keystore/std",
 	"sp-runtime/std",
 ]
 try-runtime = [
