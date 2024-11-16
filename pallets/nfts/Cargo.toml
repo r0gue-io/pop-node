@@ -1,6 +1,6 @@
 [package]
-authors.workspace = true
-description = "Fork of FRAME NFTs pallet (polkadot v1.15.0)"
+authors = [ "Parity Technologies <admin@parity.io>", "R0GUE <go@r0gue.io>" ]
+description = "Fork of FRAME NFTs pallet"
 edition.workspace = true
 homepage = "https://substrate.io"
 license.workspace = true
@@ -8,7 +8,6 @@ name = "pallet-nfts"
 readme = "README.md"
 repository.workspace = true
 version = "31.0.0"
-
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
