@@ -10,7 +10,7 @@ use crate::Read as _;
 const SEED: u32 = 1;
 
 #[benchmarks(
-		where
+	where
 	<pallet_nfts::Pallet<T, NftsInstanceOf<T>> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId: Zero,
 	<pallet_nfts::Pallet<T, NftsInstanceOf<T>> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId: Zero,
 )]
@@ -18,7 +18,7 @@ mod benchmarks {
 	use super::*;
 
 	#[benchmark]
-	// Storage: ???
+	// Storage: `Collection`
 	fn total_supply() {
 		#[block]
 		{
@@ -27,6 +27,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	// Storage: `AccountBalance`
 	fn balance_of() {
 		#[block]
 		{
@@ -38,6 +39,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	// Storage: `Allowances`, `Item`
 	fn allowance() {
 		#[block]
 		{
@@ -51,6 +53,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	// Storage: `Item`
 	fn owner_of() {
 		#[block]
 		{
@@ -62,6 +65,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	// Storage: `Attribute`
 	fn get_attribute() {
 		#[block]
 		{
@@ -75,6 +79,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	// Storage: `Collection`
 	fn collection() {
 		#[block]
 		{
@@ -83,6 +88,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	// Storage: `NextCollectionId`
 	fn next_collection_id() {
 		#[block]
 		{
@@ -91,6 +97,7 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	// Storage: `ItemMetadata`
 	fn item_metadata() {
 		#[block]
 		{

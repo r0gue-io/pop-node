@@ -831,6 +831,8 @@ pub mod pallet {
 			witness.item_metadatas,
 			witness.item_configs,
 			witness.attributes,
+			witness.item_holders,
+			witness.allowances,
  		))]
 		pub fn destroy(
 			origin: OriginFor<T>,
@@ -846,6 +848,8 @@ pub mod pallet {
 				details.item_metadatas,
 				details.item_configs,
 				details.attributes,
+				details.item_holders,
+				details.allowances,
 			))
 			.into())
 		}
@@ -1310,7 +1314,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(15)]
-		#[pallet::weight(T::WeightInfo::approve_transfer())]
+		#[pallet::weight(T::WeightInfo::approve_transfer(maybe_item.is_some() as u32))]
 		pub fn approve_transfer(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
@@ -1349,7 +1353,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(16)]
-		#[pallet::weight(T::WeightInfo::cancel_approval())]
+		#[pallet::weight(T::WeightInfo::cancel_approval(maybe_item.is_some() as u32))]
 		pub fn cancel_approval(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,

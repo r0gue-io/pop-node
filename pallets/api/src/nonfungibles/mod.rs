@@ -5,17 +5,20 @@
 use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
-use pallet_nfts::WeightInfo;
+use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
 pub use pallet_nfts::{
-	AttributeNamespace, CollectionConfig, CollectionDetails, CollectionSetting, CollectionSettings,
-	DestroyWitness, ItemDeposit, ItemDetails, ItemSetting, MintSettings, MintType, MintWitness,
+	AttributeNamespace, CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails,
+	CollectionSetting, CollectionSettings, DestroyWitness, ItemDeposit, ItemDetails, ItemMetadata,
+	ItemSetting, MintSettings, MintType, MintWitness,
 };
 use sp_runtime::traits::StaticLookup;
+use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 #[cfg(test)]
 mod tests;
+pub mod weights;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
@@ -34,9 +37,9 @@ type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
 type CollectionConfigFor<T> =
 	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
 // Type aliases for pallet-nfts storage items.
-pub(super) type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
 pub(super) type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
 pub(super) type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
+pub(super) type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
 pub(super) type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 
 #[frame_support::pallet]
@@ -250,7 +253,10 @@ pub mod pallet {
 		/// - `operator` - The account that is allowed to spend the collection item.
 		/// - `approved` - The approval status of the collection item.
 		#[pallet::call_index(4)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer() + NftsWeightInfoOf::<T>::cancel_approval())]
+		#[pallet::weight(
+            NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32) +
+    		NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
+        )]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -267,8 +273,10 @@ pub mod pallet {
 					T::Lookup::unlookup(operator.clone()),
 					None,
 				)
-				.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
-				NftsWeightInfoOf::<T>::approve_transfer()
+				.map_err(|e| {
+					e.with_weight(NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32))
+				})?;
+				NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32)
 			} else {
 				NftsOf::<T>::cancel_approval(
 					origin,
@@ -276,8 +284,10 @@ pub mod pallet {
 					item,
 					T::Lookup::unlookup(operator.clone()),
 				)
-				.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
-				NftsWeightInfoOf::<T>::cancel_approval()
+				.map_err(|e| {
+					e.with_weight(NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32))
+				})?;
+				NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
 			};
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
 			Ok(Some(weight).into())
@@ -296,14 +306,14 @@ pub mod pallet {
 			admin: AccountIdOf<T>,
 			config: CollectionConfigFor<T>,
 		) -> DispatchResult {
+			let creator = ensure_signed(origin.clone())?;
 			// TODO: re-evaluate next collection id in nfts pallet. The `Incrementable` trait causes
 			//  issues for setting it to xcm's `Location`. This can easily be done differently.
 			let id = NextCollectionIdOf::<T>::get()
 				.or(T::CollectionId::initial_value())
 				.ok_or(NftsErrorOf::<T>::UnknownCollection)?;
-			let creator = ensure_signed(origin.clone())?;
 			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), config)?;
-			Self::deposit_event(Event::Created { id, admin, creator });
+			Self::deposit_event(Event::Created { id, creator, admin });
 			Ok(())
 		}
 
@@ -318,6 +328,8 @@ pub mod pallet {
     		witness.item_metadatas,
     		witness.item_configs,
     		witness.attributes,
+            witness.item_holders,
+            witness.allowances,
 		))]
 		pub fn destroy(
 			origin: OriginFor<T>,
@@ -530,8 +542,18 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `request` - The read request.
-		fn weight(_request: &Self::Read) -> Weight {
-			Default::default()
+		fn weight(request: &Self::Read) -> Weight {
+			use Read::*;
+			match request {
+				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
+				BalanceOf { .. } => <T as Config>::WeightInfo::balance_of(),
+				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
+				OwnerOf { .. } => <T as Config>::WeightInfo::owner_of(),
+				GetAttribute { .. } => <T as Config>::WeightInfo::get_attribute(),
+				Collection(_) => <T as Config>::WeightInfo::collection(),
+				ItemMetadata { .. } => <T as Config>::WeightInfo::item_metadata(),
+				NextCollectionId => <T as Config>::WeightInfo::next_collection_id(),
+			}
 		}
 
 		/// Performs the requested read and returns the result.

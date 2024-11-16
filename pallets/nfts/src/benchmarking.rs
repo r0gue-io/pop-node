@@ -603,27 +603,45 @@ benchmarks_instance_pallet! {
 	}
 
 	approve_transfer {
+		let i in 0..1;
+
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-		let deadline = BlockNumberFor::<T>::max_value();
-	}: _(SystemOrigin::Signed(caller.clone()), collection, Some(item), delegate_lookup, Some(deadline))
+		let maybe_deadline = if i == 0 {
+			None
+		} else {
+			Some(BlockNumberFor::<T>::max_value())
+		};
+		let maybe_item = if i == 0 {
+			None
+		} else {
+			Some(item)
+		};
+	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, delegate_lookup, maybe_deadline)
 	verify {
-		assert_last_event::<T, I>(Event::TransferApproved { collection, item: Some(item), owner: caller, delegate, deadline: Some(deadline) }.into());
+		assert_last_event::<T, I>(Event::TransferApproved { collection, item: maybe_item, owner: caller, delegate, deadline: maybe_deadline }.into());
 	}
 
 	cancel_approval {
+		let i in 0..1;
+
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_transfer(origin, collection, Some(item), delegate_lookup.clone(), Some(deadline))?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, Some(item), delegate_lookup)
+		let maybe_item = if i == 0 {
+		  None
+		} else {
+		  Some(item)
+		};
+		Nfts::<T, I>::approve_transfer(origin, collection, maybe_item, delegate_lookup.clone(), Some(deadline))?;
+	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, delegate_lookup)
 	verify {
-		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item: Some(item), owner: caller, delegate }.into());
+		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item: maybe_item, owner: caller, delegate }.into());
 	}
 
 	clear_all_transfer_approvals {
