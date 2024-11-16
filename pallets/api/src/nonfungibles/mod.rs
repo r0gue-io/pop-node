@@ -5,15 +5,20 @@
 use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
-use pallet_nfts::WeightInfo;
+use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
 pub use pallet_nfts::{
-	AttributeNamespace, CollectionConfig, CollectionDetails, CollectionSetting, CollectionSettings,
-	DestroyWitness, ItemDeposit, ItemDetails, ItemSetting, MintSettings, MintType, MintWitness,
+	AttributeNamespace, CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails,
+	CollectionSetting, CollectionSettings, DestroyWitness, ItemDeposit, ItemDetails, ItemMetadata,
+	ItemSetting, MintSettings, MintType, MintWitness,
 };
 use sp_runtime::traits::StaticLookup;
+use weights::WeightInfo;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod tests;
+pub mod weights;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
@@ -31,15 +36,19 @@ type CollectionDetailsFor<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
 type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
 type CollectionConfigFor<T> =
 	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
-// Type aliases for storage items.
-pub(super) type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
+// Type aliases for pallet-nfts storage items.
 pub(super) type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
 pub(super) type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
+pub(super) type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
 pub(super) type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Incrementable};
+	use frame_support::{
+		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
+		pallet_prelude::*,
+		traits::Incrementable,
+	};
 	use frame_system::pallet_prelude::*;
 	use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness, MintWitness};
 	use sp_runtime::BoundedVec;
@@ -59,42 +68,42 @@ pub mod pallet {
 		/// Account balance for a specified collection.
 		#[codec(index = 1)]
 		BalanceOf {
-			// The collection.
+			/// The collection.
 			collection: CollectionIdOf<T>,
-			// The owner of the collection .
+			/// The owner of the collection .
 			owner: AccountIdOf<T>,
 		},
 		/// Allowance for an operator approved by an owner, for a specified collection or item.
 		#[codec(index = 2)]
 		Allowance {
-			// The collection.
+			/// The collection.
 			collection: CollectionIdOf<T>,
-			// The collection item.
+			/// The collection item.
 			item: Option<ItemIdOf<T>>,
-			// The owner of the collection item.
+			/// The owner of the collection item.
 			owner: AccountIdOf<T>,
-			// The delegated operator of collection item.
+			/// The delegated operator of collection item.
 			operator: AccountIdOf<T>,
 		},
 		/// Owner of a specified collection item.
 		#[codec(index = 5)]
 		OwnerOf {
-			// The collection.
+			/// The collection.
 			collection: CollectionIdOf<T>,
-			// The collection item.
+			/// The collection item.
 			item: ItemIdOf<T>,
 		},
 		/// Attribute value of a specified collection item. (Error: bounded collection is not
 		/// partial)
 		#[codec(index = 6)]
 		GetAttribute {
-			// The collection.
+			/// The collection.
 			collection: CollectionIdOf<T>,
-			// The collection item.
+			/// The collection item.
 			item: ItemIdOf<T>,
-			// The namespace of the attribute.
+			/// The namespace of the attribute.
 			namespace: AttributeNamespaceOf<T>,
-			// The key of the attribute.
+			/// The key of the attribute.
 			key: BoundedVec<u8, T::KeyLimit>,
 		},
 		/// Details of a specified collection.
@@ -106,9 +115,9 @@ pub mod pallet {
 		/// Metadata of a specified collection item.
 		#[codec(index = 11)]
 		ItemMetadata {
-			// The collection.
+			/// The collection.
 			collection: CollectionIdOf<T>,
-			// The collection item.
+			/// The collection item.
 			item: ItemIdOf<T>,
 		},
 	}
@@ -213,8 +222,8 @@ pub mod pallet {
 		/// Transfers the collection item from the caller's account to account `to`.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to be transferred.
-		/// - `item` - The item to be transferred.
+		/// - `collection` - The collection of the item to transfer.
+		/// - `item` - The item to transfer.
 		/// - `to` - The recipient account.
 		#[pallet::call_index(3)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
@@ -239,38 +248,49 @@ pub mod pallet {
 		/// Approves `operator` to spend the collection item on behalf of the caller.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to be approved for delegated transfer.
-		/// - `item` - The item to be approved for delegated transfer.
+		/// - `collection` - The collection of the item to approve for a delegated transfer.
+		/// - `item` - The item to approve for a delegated transfer.
 		/// - `operator` - The account that is allowed to spend the collection item.
 		/// - `approved` - The approval status of the collection item.
 		#[pallet::call_index(4)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer() + NftsWeightInfoOf::<T>::cancel_approval())]
+		#[pallet::weight(
+            NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32) +
+    		NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
+        )]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: Option<ItemIdOf<T>>,
 			operator: AccountIdOf<T>,
 			approved: bool,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())?;
-			if approved {
+			let weight = if approved {
 				NftsOf::<T>::approve_transfer(
 					origin,
 					collection,
 					item,
 					T::Lookup::unlookup(operator.clone()),
 					None,
-				)?;
+				)
+				.map_err(|e| {
+					e.with_weight(NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32))
+				})?;
+				NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32)
 			} else {
 				NftsOf::<T>::cancel_approval(
 					origin,
 					collection,
 					item,
 					T::Lookup::unlookup(operator.clone()),
-				)?;
-			}
+				)
+				.map_err(|e| {
+					e.with_weight(NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32))
+				})?;
+				NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
+			};
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
-			Ok(())
+			Ok(Some(weight).into())
 		}
 
 		/// Issue a new collection of non-fungible items from a public origin.
@@ -286,21 +306,21 @@ pub mod pallet {
 			admin: AccountIdOf<T>,
 			config: CollectionConfigFor<T>,
 		) -> DispatchResult {
+			let creator = ensure_signed(origin.clone())?;
 			// TODO: re-evaluate next collection id in nfts pallet. The `Incrementable` trait causes
 			//  issues for setting it to xcm's `Location`. This can easily be done differently.
 			let id = NextCollectionIdOf::<T>::get()
 				.or(T::CollectionId::initial_value())
 				.ok_or(NftsErrorOf::<T>::UnknownCollection)?;
-			let creator = ensure_signed(origin.clone())?;
 			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), config)?;
-			Self::deposit_event(Event::Created { id, admin, creator });
+			Self::deposit_event(Event::Created { id, creator, admin });
 			Ok(())
 		}
 
 		/// Destroy a collection of fungible items.
 		///
 		/// # Parameters
-		/// - `collection` - The identifier of the collection to be destroyed.
+		/// - `collection` - The collection to destroy.
 		/// - `witness` - Information on the items minted in the collection. This must be
 		/// correct.
 		#[pallet::call_index(8)]
@@ -308,6 +328,8 @@ pub mod pallet {
     		witness.item_metadatas,
     		witness.item_configs,
     		witness.attributes,
+            witness.item_holders,
+            witness.allowances,
 		))]
 		pub fn destroy(
 			origin: OriginFor<T>,
@@ -410,7 +432,7 @@ pub mod pallet {
 		/// All the previously set attributes by the `delegate` will be removed.
 		///
 		/// # Parameters
-		/// - `collection` - Collection that the item is contained within.
+		/// - `collection` - The collection that the item is contained within.
 		/// - `item` - The item that holds attributes.
 		/// - `delegate` - The previously approved account to remove.
 		/// - `witness` - A witness data to cancel attributes approval operation.
@@ -450,9 +472,9 @@ pub mod pallet {
 		/// Mint an item of a particular collection.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to be minted.
+		/// - `to` - Account into which the item will be minted.
+		/// - `collection` - The collection of the item to mint.
 		/// - `item` - An identifier of the new item.
-		/// - `mint_to` - Account into which the item will be minted.
 		/// - `witness_data` - When the mint type is `HolderOf(collection_id)`, then the owned
 		///   item_id from that collection needs to be provided within the witness data object. If
 		///   the mint price is set, then it should be additionally confirmed in the `witness_data`.
@@ -487,8 +509,8 @@ pub mod pallet {
 		/// Destroy a single collection item.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to be burned.
-		/// - `item` - The item to be burned.
+		/// - `collection` - The collection of the item to burn.
+		/// - `item` - The item to burn.
 		#[pallet::call_index(20)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
@@ -520,8 +542,18 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `request` - The read request.
-		fn weight(_request: &Self::Read) -> Weight {
-			Default::default()
+		fn weight(request: &Self::Read) -> Weight {
+			use Read::*;
+			match request {
+				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
+				BalanceOf { .. } => <T as Config>::WeightInfo::balance_of(),
+				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
+				OwnerOf { .. } => <T as Config>::WeightInfo::owner_of(),
+				GetAttribute { .. } => <T as Config>::WeightInfo::get_attribute(),
+				Collection(_) => <T as Config>::WeightInfo::collection(),
+				ItemMetadata { .. } => <T as Config>::WeightInfo::item_metadata(),
+				NextCollectionId => <T as Config>::WeightInfo::next_collection_id(),
+			}
 		}
 
 		/// Performs the requested read and returns the result.
