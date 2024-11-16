@@ -1,16 +1,19 @@
 //! Benchmarking setup for pallet_api::nonfungibles
 
 use frame_benchmarking::{account, v2::*};
+use frame_support::{traits::nonfungibles_v2::Inspect, BoundedVec};
 use sp_runtime::traits::Zero;
 
-use super::{
-	AccountIdOf, BalanceOf, Call, CollectionIdOf, Config, NftsInstanceOf, NftsOf, Pallet, Read,
-};
+use super::{AttributeNamespace, CollectionIdOf, Config, ItemIdOf, NftsInstanceOf, Pallet, Read};
 use crate::Read as _;
 
 const SEED: u32 = 1;
 
-#[benchmarks]
+#[benchmarks(
+		where
+	<pallet_nfts::Pallet<T, NftsInstanceOf<T>> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId: Zero,
+	<pallet_nfts::Pallet<T, NftsInstanceOf<T>> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId: Zero,
+)]
 mod benchmarks {
 	use super::*;
 
@@ -27,7 +30,10 @@ mod benchmarks {
 	fn balance_of() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(CollectionIdOf::<T>::zero()));
+			Pallet::<T>::read(Read::BalanceOf {
+				collection: CollectionIdOf::<T>::zero(),
+				owner: account("Alice", 0, SEED),
+			});
 		}
 	}
 
@@ -35,7 +41,12 @@ mod benchmarks {
 	fn allowance() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(CollectionIdOf::<T>::zero()));
+			Pallet::<T>::read(Read::Allowance {
+				collection: CollectionIdOf::<T>::zero(),
+				owner: account("Alice", 0, SEED),
+				operator: account("Bob", 0, SEED),
+				item: Some(ItemIdOf::<T>::zero()),
+			});
 		}
 	}
 
@@ -43,7 +54,10 @@ mod benchmarks {
 	fn owner_of() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(CollectionIdOf::<T>::zero()));
+			Pallet::<T>::read(Read::OwnerOf {
+				collection: CollectionIdOf::<T>::zero(),
+				item: ItemIdOf::<T>::zero(),
+			});
 		}
 	}
 
@@ -51,7 +65,12 @@ mod benchmarks {
 	fn get_attribute() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(CollectionIdOf::<T>::zero()));
+			Pallet::<T>::read(Read::GetAttribute {
+				key: BoundedVec::default(),
+				collection: CollectionIdOf::<T>::zero(),
+				item: ItemIdOf::<T>::zero(),
+				namespace: AttributeNamespace::CollectionOwner,
+			});
 		}
 	}
 
@@ -59,7 +78,7 @@ mod benchmarks {
 	fn collection() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(CollectionIdOf::<T>::zero()));
+			Pallet::<T>::read(Read::Collection(CollectionIdOf::<T>::zero()));
 		}
 	}
 
@@ -67,7 +86,7 @@ mod benchmarks {
 	fn next_collection_id() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(CollectionIdOf::<T>::zero()));
+			Pallet::<T>::read(Read::NextCollectionId);
 		}
 	}
 
@@ -75,7 +94,10 @@ mod benchmarks {
 	fn item_metadata() {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(CollectionIdOf::<T>::zero()));
+			Pallet::<T>::read(Read::ItemMetadata {
+				collection: CollectionIdOf::<T>::zero(),
+				item: ItemIdOf::<T>::zero(),
+			});
 		}
 	}
 }
