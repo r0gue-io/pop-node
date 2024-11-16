@@ -54,7 +54,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		) -> DispatchResult,
 	) -> DispatchResult {
 		// Retrieve collection details.
-		let collection_details =
+		let mut collection_details =
 			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		// Ensure the item is not locked.
@@ -87,13 +87,23 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Perform the transfer with custom details using the provided closure.
 		with_details(&collection_details, &mut details)?;
 
-		// Update account balances.
-		AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| {
-			balance.saturating_dec();
-		});
-		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
+		// Update account balance of the owner.
+		let owner_balance =
+			AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| -> u32 {
+				balance.saturating_dec();
+				balance.clone()
+			});
+		if owner_balance == 0 {
+			collection_details.item_holders.saturating_dec();
+		}
+		// Update account balance of the destination account.
+		let dest_balance = AccountBalance::<T, I>::mutate(collection, &dest, |balance| -> u32 {
 			balance.saturating_inc();
+			balance.clone()
 		});
+		if dest_balance == 1 {
+			collection_details.item_holders.saturating_inc();
+		}
 
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));
@@ -108,6 +118,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		// Update item details.
 		Item::<T, I>::insert(&collection, &item, &details);
+		Collection::<T, I>::insert(&collection, &collection_details);
 		ItemPriceOf::<T, I>::remove(&collection, &item);
 		PendingSwapOf::<T, I>::remove(&collection, &item);
 

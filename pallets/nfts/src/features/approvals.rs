@@ -195,6 +195,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Allowances::<T, I>::mutate((&collection, &owner, &delegate), |allowance| {
 			*allowance = true;
 		});
+		Collection::<T, I>::try_mutate(
+			&collection,
+			|maybe_collection_details| -> Result<(), DispatchError> {
+				let collection_details =
+					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
+				collection_details.allowances.saturating_inc();
+				Ok(())
+			},
+		)?;
 
 		Self::deposit_event(Event::TransferApproved {
 			collection,
@@ -217,6 +226,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
 		}
 		Allowances::<T, I>::remove((&collection, &owner, &delegate));
+		Collection::<T, I>::try_mutate(
+			&collection,
+			|maybe_collection_details| -> Result<(), DispatchError> {
+				let collection_details =
+					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
+				collection_details.allowances.saturating_dec();
+				Ok(())
+			},
+		)?;
 
 		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
 
