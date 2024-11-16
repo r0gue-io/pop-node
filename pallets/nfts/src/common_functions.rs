@@ -39,6 +39,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Collection::<T, I>::get(collection).map(|i| i.items)
 	}
 
+	/// Get the allowances to spend items within the collection.
+	pub fn collection_allowances(collection: T::CollectionId) -> Option<u32> {
+		Collection::<T, I>::get(collection).map(|i| i.allowances)
+	}
+
 	/// Get the metadata of the collection item.
 	pub fn item_metadata(
 		collection: T::CollectionId,

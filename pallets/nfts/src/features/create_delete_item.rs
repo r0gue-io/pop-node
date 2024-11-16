@@ -69,9 +69,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 
 				collection_details.items.saturating_inc();
-				AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| {
-					balance.saturating_inc();
-				});
+
+				let account_balance =
+					AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| -> u32 {
+						balance.saturating_inc();
+						balance.clone()
+					});
+				if account_balance == 1 {
+					collection_details.item_holders.saturating_inc();
+				}
 
 				let collection_config = Self::get_collection_config(&collection)?;
 				let deposit_amount = match collection_config
@@ -255,6 +261,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 								.saturating_reduce(metadata.deposit.amount);
 						}
 					}
+				}
+
+				if AccountBalance::<T, I>::get(collection, &details.owner) == 1 {
+					collection_details.item_holders.saturating_dec();
 				}
 
 				Ok(details.owner)
