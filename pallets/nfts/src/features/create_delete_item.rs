@@ -259,10 +259,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					}
 				}
 
-				if AccountBalance::<T, I>::get(collection, &details.owner) == 1 {
-					collection_details.item_holders.saturating_dec();
-				}
-
 				Ok(details.owner)
 			},
 		)?;
@@ -272,9 +268,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		ItemPriceOf::<T, I>::remove(&collection, &item);
 		PendingSwapOf::<T, I>::remove(&collection, &item);
 		ItemAttributesApprovalsOf::<T, I>::remove(&collection, &item);
-		AccountBalance::<T, I>::mutate(collection, &owner, |balance| {
-			balance.saturating_dec();
-		});
 
 		if remove_config {
 			ItemConfigOf::<T, I>::remove(collection, item);
