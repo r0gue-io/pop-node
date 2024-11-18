@@ -91,7 +91,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let owner_balance =
 			AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| -> u32 {
 				balance.saturating_dec();
-				balance.clone()
+				*balance
 			});
 		if owner_balance == 0 {
 			collection_details.item_holders.saturating_dec();
@@ -99,7 +99,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Update account balance of the destination account.
 		let dest_balance = AccountBalance::<T, I>::mutate(collection, &dest, |balance| -> u32 {
 			balance.saturating_inc();
-			balance.clone()
+			*balance
 		});
 		if dest_balance == 1 {
 			collection_details.item_holders.saturating_inc();
