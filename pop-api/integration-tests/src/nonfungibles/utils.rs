@@ -1,9 +1,5 @@
 use super::*;
 
-pub(super) type AttributeKey = BoundedVec<u8, <Runtime as pallet_nfts::Config>::KeyLimit>;
-pub(super) type AttributeValue = BoundedVec<u8, <Runtime as pallet_nfts::Config>::ValueLimit>;
-pub(super) type MetadataData = BoundedVec<u8, <Runtime as pallet_nfts::Config>::StringLimit>;
-
 pub(super) fn total_supply(addr: &AccountId32, collection: CollectionId) -> Result<u128, Error> {
 	let result = do_bare_call("total_supply", addr, collection.encode());
 	decoded::<Result<u128, Error>>(result.clone())
@@ -24,11 +20,11 @@ pub(super) fn balance_of(
 pub(super) fn allowance(
 	addr: &AccountId32,
 	collection: CollectionId,
+	item: Option<ItemId>,
 	owner: AccountId32,
 	operator: AccountId32,
-	item: Option<ItemId>,
 ) -> Result<bool, Error> {
-	let params = [collection.encode(), owner.encode(), operator.encode(), item.encode()].concat();
+	let params = [collection.encode(), item.encode(), owner.encode(), operator.encode()].concat();
 	let result = do_bare_call("allowance", &addr, params);
 	decoded::<Result<bool, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -82,11 +78,11 @@ pub(super) fn get_attribute(
 		collection.encode(),
 		item.encode(),
 		namespace.encode(),
-		AttributeKey::truncate_from(key).encode(),
+		AttributeKey::<Runtime>::truncate_from(key).encode(),
 	]
 	.concat();
 	let result = do_bare_call("get_attribute", &addr, params);
-	decoded::<Result<Option<AttributeValue>, Error>>(result.clone())
+	decoded::<Result<Option<AttributeValue<Runtime>>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 		.map(|value| value.map(|v| v.to_vec()))
 }
@@ -134,8 +130,8 @@ pub(super) fn set_attribute(
 		collection.encode(),
 		item.encode(),
 		namespace.encode(),
-		AttributeKey::truncate_from(key).encode(),
-		AttributeValue::truncate_from(value).encode(),
+		AttributeKey::<Runtime>::truncate_from(key).encode(),
+		AttributeValue::<Runtime>::truncate_from(value).encode(),
 	]
 	.concat();
 	let result = do_bare_call("set_attribute", &addr, params);
@@ -293,10 +289,6 @@ pub(super) mod nfts {
 		next_id
 	}
 
-	pub(crate) fn next_collection_id() -> u32 {
-		pallet_nfts::NextCollectionId::<Runtime>::get().unwrap_or_default()
-	}
-
 	pub(crate) fn mint(
 		collection: CollectionId,
 		item: ItemId,
@@ -313,8 +305,38 @@ pub(super) mod nfts {
 		item
 	}
 
+	pub(crate) fn burn(collection: CollectionId, item: ItemId, owner: &AccountId32) {
+		assert_ok!(Nfts::burn(RuntimeOrigin::signed(owner.clone()), collection, item));
+	}
+
+	pub(crate) fn lock_item_transfer(owner: &AccountId32, collection: CollectionId, item: ItemId) {
+		assert_ok!(Nfts::lock_item_transfer(
+			RuntimeOrigin::signed(owner.clone()),
+			collection,
+			item
+		));
+	}
+
+	pub(crate) fn unlock_item_transfer(
+		owner: &AccountId32,
+		collection: CollectionId,
+		item: ItemId,
+	) {
+		assert_ok!(Nfts::unlock_item_transfer(
+			RuntimeOrigin::signed(owner.clone()),
+			collection,
+			item
+		));
+	}
+
 	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
-		pallet_nfts::AccountBalance::<Runtime>::get(collection, owner)
+		AccountBalanceOf::<Runtime>::get(collection, owner)
+	}
+
+	pub(crate) fn max_supply(collection: CollectionId) -> Option<u32> {
+		CollectionConfigOf::<Runtime>::get(collection)
+			.map(|config| config.max_supply)
+			.unwrap_or_default()
 	}
 
 	pub(super) fn collection_config_with_all_settings_enabled(
@@ -324,5 +346,9 @@ pub(super) mod nfts {
 			max_supply: None,
 			mint_settings: pallet_nfts::MintSettings::default(),
 		}
+	}
+
+	pub(crate) fn next_collection_id() -> u32 {
+		NextCollectionIdOf::<Runtime>::get().unwrap_or_default()
 	}
 }

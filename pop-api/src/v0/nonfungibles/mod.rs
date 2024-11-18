@@ -44,15 +44,15 @@ pub fn balance_of(collection: CollectionId, owner: AccountId) -> Result<u32> {
 #[inline]
 pub fn allowance(
 	collection: CollectionId,
+	item: Option<ItemId>,
 	owner: AccountId,
 	operator: AccountId,
-	item: Option<ItemId>,
 ) -> Result<bool> {
 	build_read_state(ALLOWANCE)
-		.input::<(CollectionId, AccountId, AccountId, Option<ItemId>)>()
+		.input::<(CollectionId, Option<ItemId>, AccountId, AccountId)>()
 		.output::<Result<bool>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(collection, owner, operator, item))
+		.call(&(collection, item, owner, operator))
 }
 
 #[inline]

@@ -54,11 +54,11 @@ mod nonfungibles {
 		pub fn allowance(
 			&self,
 			collection: CollectionId,
+			item: Option<ItemId>,
 			owner: AccountId,
 			operator: AccountId,
-			item: Option<ItemId>,
 		) -> Result<bool> {
-			api::allowance(collection, owner, operator, item)
+			api::allowance(collection, item, owner, operator)
 		}
 
 		#[ink(message)]

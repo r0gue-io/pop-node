@@ -22,8 +22,12 @@ pub struct CollectionDetails {
 	pub item_metadatas: u32,
 	/// The total number of outstanding item configs of this collection.
 	pub item_configs: u32,
+	/// The total number of accounts that hold items of the collection.
+	pub item_holders: u32,
 	/// The total number of attributes for this collection.
 	pub attributes: u32,
+	/// The total number of allowances to spend all items within collections.
+	pub allowances: u32,
 }
 
 /// Attribute namespaces for non-fungible tokens.
@@ -69,9 +73,15 @@ pub struct DestroyWitness {
 	/// The total number of outstanding item configs of this collection.
 	#[codec(compact)]
 	pub item_configs: u32,
+	/// The total number of accounts that hold items of the collection.
+	#[codec(compact)]
+	pub item_holders: u32,
 	/// The total number of attributes for this collection.
 	#[codec(compact)]
 	pub attributes: u32,
+	/// The total number of allowances to spend all items within collections.
+	#[codec(compact)]
+	pub allowances: u32,
 }
 
 /// Witness data for items mint transactions.

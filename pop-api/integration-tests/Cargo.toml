@@ -13,6 +13,7 @@ frame-support = { version = "36.0.0", default-features = false }
 frame-support-procedural = { version = "=30.0.1", default-features = false }
 frame-system = { version = "36.1.0", default-features = false }
 log = "0.4.22"
+pallet-api = { path = "../../pallets/api", default-features = false }
 pallet-assets = { version = "37.0.0", default-features = false }
 pallet-balances = { version = "37.0.0", default-features = false }
 pallet-contracts = { version = "35.0.0", default-features = false }
@@ -38,6 +39,7 @@ devnet = [  ]
 std = [
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-api/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-contracts/std",
