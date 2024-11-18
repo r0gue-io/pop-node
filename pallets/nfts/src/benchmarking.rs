@@ -295,7 +295,7 @@ benchmarks_instance_pallet! {
 			burn_item::<T, I>(i as u16);
 		}
 		for i in 0..l {
-			approve_collection::<T, I>(i as u32);
+			approve_collection::<T, I>(i);
 		}
 		let witness = Collection::<T, I>::get(collection).unwrap().destroy_witness();
 	}: _(SystemOrigin::Signed(caller), collection, witness)
