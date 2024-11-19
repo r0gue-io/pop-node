@@ -2213,7 +2213,7 @@ fn approval_collection_works_with_admin() {
 		// Error::UnknownCollection.
 		assert_noop!(
 			Nfts::approve_transfer(RuntimeOrigin::signed(account(2)), 2, None, account(3), None),
-			Error::<Test>::UnknownCollection
+			Error::<Test>::NoConfig
 		);
 
 		assert_ok!(Nfts::approve_transfer(
