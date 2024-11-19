@@ -180,7 +180,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
@@ -188,20 +187,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::ItemsNonTransferable
 		);
 
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-		}
-
-		Allowances::<T, I>::mutate((&collection, &owner, &delegate), |allowance| {
-			*allowance = true;
-		});
-		Collection::<T, I>::try_mutate(
+		let owner = Collection::<T, I>::try_mutate(
 			&collection,
-			|maybe_collection_details| -> Result<(), DispatchError> {
+			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
+				let owner = collection_details.clone().owner;
+
+				if let Some(check_origin) = maybe_check_origin {
+					ensure!(check_origin == owner, Error::<T, I>::NoPermission);
+				}
+				Allowances::<T, I>::mutate((&collection, &owner, &delegate), |allowance| {
+					*allowance = true;
+				});
 				collection_details.allowances.saturating_inc();
-				Ok(())
+				Ok(owner)
 			},
 		)?;
 
