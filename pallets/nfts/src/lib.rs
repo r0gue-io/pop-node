@@ -425,10 +425,8 @@ pub mod pallet {
 			NMapKey<Twox64Concat, T::CollectionId>,
 			// Collection Owner Id.
 			NMapKey<Blake2_128Concat, T::AccountId>,
-			// Delegate Id.
-			NMapKey<Blake2_128Concat, T::AccountId>,
 		),
-		bool,
+		ApprovalsOf<T, I>,
 		ValueQuery,
 	>;
 
@@ -681,7 +679,7 @@ pub mod pallet {
 		NotForSale,
 		/// The provided bid is too low.
 		BidTooLow,
-		/// The item has reached its approval limit.
+		/// The collection or item has reached its approval limit.
 		ReachedApprovalLimit,
 		/// The deadline has already expired.
 		DeadlineExpired,
@@ -1339,7 +1337,12 @@ pub mod pallet {
 					delegate,
 					maybe_deadline,
 				),
-				None => Self::do_approve_collection(maybe_check_origin, collection, delegate),
+				None => Self::do_approve_collection(
+					maybe_check_origin,
+					collection,
+					delegate,
+					maybe_deadline,
+				),
 			}
 		}
 
