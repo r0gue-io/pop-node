@@ -23,7 +23,6 @@ type NftsError = pallet_nfts::Error<Test, NftsInstanceOf<Test>>;
 type Event = crate::nonfungibles::Event<Test>;
 
 mod encoding_read_result {
-
 	use super::*;
 
 	#[test]
@@ -880,7 +879,7 @@ mod ensure_codec_indexes {
 						item_metadatas: Default::default(),
 						item_configs: Default::default(),
 						attributes: Default::default(),
-					},
+					}
 				},
 				8,
 				"destroy",
