@@ -16,7 +16,9 @@ use scale::{Decode, Encode};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 use utils::*;
 
+#[cfg(any(feature = "devnet", feature = "testnet"))]
 mod fungibles;
+#[cfg(any(feature = "devnet"))]
 mod nonfungibles;
 mod utils;
 
