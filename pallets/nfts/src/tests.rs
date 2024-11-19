@@ -2043,7 +2043,7 @@ fn cancel_approval_collection_works_with_admin() {
 			owner: account(1),
 			delegate: account(3)
 		}));
-		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))), false);
+		assert_eq!(Allowances::<Test>::get((0, account(2))).contains_key(&account(3)), false);
 		assert_eq!(Nfts::collection_allowances(0).unwrap(), 0);
 
 		assert_noop!(
@@ -2200,7 +2200,7 @@ fn approval_collection_works_with_admin() {
 			delegate: account(3),
 			deadline: None
 		}));
-		assert_eq!(Allowances::<Test>::get((0, account(1), account(3))), true);
+		assert!(Allowances::<Test>::get((0, account(1))).contains_key(&account(3)));
 		assert_eq!(Nfts::collection_allowances(0).unwrap(), 1);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});

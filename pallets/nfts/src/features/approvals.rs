@@ -20,6 +20,7 @@
 //! to have the functionality defined in this module.
 
 use frame_support::pallet_prelude::*;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::*;
 
@@ -189,6 +190,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
+		maybe_deadline: Option<frame_system::pallet_prelude::BlockNumberFor<T>>,
 	) -> DispatchResult {
 		ensure!(
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
@@ -201,9 +203,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::ItemsNonTransferable
 		);
 
-		let owner = Collection::<T, I>::try_mutate(
+		let (owner, deadline) = Collection::<T, I>::try_mutate(
 			collection,
-			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
+			|maybe_collection_details| -> Result<(T::AccountId, Option<BlockNumberFor<T>>), DispatchError> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 				let owner = collection_details.clone().owner;
@@ -211,11 +213,20 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				if let Some(check_origin) = maybe_check_origin {
 					ensure!(check_origin == owner, Error::<T, I>::NoPermission);
 				}
-				Allowances::<T, I>::mutate((&collection, &owner, &delegate), |allowance| {
-					*allowance = true;
-				});
+				let now = frame_system::Pallet::<T>::block_number();
+				let deadline = maybe_deadline.map(|d| d.saturating_add(now));
+
+				Allowances::<T, I>::try_mutate(
+					(&collection, &owner),
+					|approvals| -> Result<(), DispatchError> {
+						approvals
+							.try_insert(delegate.clone(), deadline)
+							.map_err(|_| Error::<T, I>::ReachedApprovalLimit)?;
+						Ok(())
+					},
+				)?;
 				collection_details.allowances.saturating_inc();
-				Ok(owner)
+				Ok((owner, deadline))
 			},
 		)?;
 
@@ -224,7 +235,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			item: None,
 			owner,
 			delegate,
-			deadline: None,
+			deadline,
 		});
 		Ok(())
 	}
@@ -254,6 +265,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 				let owner = collection_details.clone().owner;
+
+				let maybe_deadline = allowances.get(&delegate).ok_or(Error::<T, I>::NotDelegate)?;
+
+				let is_past_deadline = if let Some(deadline) = maybe_deadline {
+					let now = frame_system::Pallet::<T>::block_number();
+					now > *deadline
+				} else {
+					false
+				};
+
+				if !is_past_deadline {
+					if let Some(check_origin) = maybe_check_origin {
+						ensure!(check_origin == owner, Error::<T, I>::NoPermission);
+					}
+				}
 
 				Allowances::<T, I>::remove((&collection, &owner, &delegate));
 				if let Some(check_origin) = maybe_check_origin {
@@ -286,20 +312,28 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		delegate: &T::AccountId,
 	) -> Result<(), DispatchError> {
 		// Check if a `delegate` has a permission to spend the collection.
-		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
+		let allowances = Allowances::<T, I>::get((&collection, &owner));
+		if let Some(maybe_deadline) = allowances.get(&delegate) {
 			if let Some(item) = item {
 				Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 			};
+
+			if let Some(deadline) = maybe_deadline {
+				let block_number = frame_system::Pallet::<T>::block_number();
+				ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
+			}
 			return Ok(());
 		}
+
 		// Check if a `delegate` has a permission to spend the collection item.
 		if let Some(item) = item {
 			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
-			let deadline = details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
-			if let Some(d) = deadline {
+			let maybe_deadline =
+				details.approvals.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
+			if let Some(deadline) = maybe_deadline {
 				let block_number = frame_system::Pallet::<T>::block_number();
-				ensure!(block_number <= *d, Error::<T, I>::ApprovalExpired);
+				ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
 			}
 			return Ok(());
 		};
