@@ -282,9 +282,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 
 				Allowances::<T, I>::remove((&collection, &owner, &delegate));
-				if let Some(check_origin) = maybe_check_origin {
-					ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-				}
 				collection_details.allowances.saturating_dec();
 				Ok(owner)
 			},
