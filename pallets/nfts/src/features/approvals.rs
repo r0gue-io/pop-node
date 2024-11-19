@@ -332,6 +332,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if Self::check_collection_allowance(collection, owner, delegate).is_ok() {
 			return Ok(());
 		}
+
 		// Check if a `delegate` has a permission to spend the collection item.
 		if let Some(item) = item {
 			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
