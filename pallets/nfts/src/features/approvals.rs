@@ -72,7 +72,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.try_insert(delegate.clone(), deadline)
 			.map_err(|_| Error::<T, I>::ReachedApprovalLimit)?;
 		Item::<T, I>::insert(collection, item, &details);
-
 		Self::deposit_event(Event::TransferApproved {
 			collection,
 			item: Some(item),
