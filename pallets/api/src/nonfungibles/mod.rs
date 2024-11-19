@@ -353,11 +353,11 @@ pub mod pallet {
 		///   - `false` to revoke the operator's approval.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
-            NftsWeightInfoOf::<T>::approve_transfer() +
-            NftsWeightInfoOf::<T>::approve_collection_transfer() +
-            NftsWeightInfoOf::<T>::cancel_collection_approval() +
+						NftsWeightInfoOf::<T>::approve_transfer() +
+						NftsWeightInfoOf::<T>::approve_collection_transfer() +
+						NftsWeightInfoOf::<T>::cancel_collection_approval() +
     		NftsWeightInfoOf::<T>::cancel_approval()
-        )]
+		)]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -646,19 +646,22 @@ pub mod pallet {
 				TotalSupply(collection) => ReadResult::TotalSupply(
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
-				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner)),
+				BalanceOf { collection, owner } => {
+					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner))
+				},
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
 				),
-				OwnerOf { collection, item } =>
-					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
+				OwnerOf { collection, item } => {
+					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item))
+				},
 				GetAttribute { collection, item, namespace, key } => ReadResult::GetAttribute(
 					AttributeOf::<T>::get((collection, Some(item), namespace, key))
 						.map(|attribute| attribute.0.into()),
 				),
-				Collection(collection) =>
-					ReadResult::Collection(CollectionOf::<T>::get(collection)),
+				Collection(collection) => {
+					ReadResult::Collection(CollectionOf::<T>::get(collection))
+				},
 				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
 					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
 				),

@@ -9,8 +9,8 @@ use crate::{
 	mock::*,
 	nonfungibles::{
 		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
-		CancelAttributesApprovalWitness, CollectionConfig, CollectionIdOf, CollectionOf,
-		CollectionSettings, DestroyWitness, ItemIdOf, MintSettings, MintWitness,
+		CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails, CollectionIdOf,
+		CollectionOf, CollectionSettings, DestroyWitness, ItemIdOf, MintSettings, MintWitness,
 		NextCollectionIdOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
 	},
 	Read,
@@ -23,7 +23,6 @@ type NftsError = pallet_nfts::Error<Test, NftsInstanceOf<Test>>;
 type Event = crate::nonfungibles::Event<Test>;
 
 mod encoding_read_result {
-
 	use super::*;
 
 	#[test]
@@ -63,6 +62,29 @@ mod encoding_read_result {
 		assert_eq!(
 			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
 			attribute.encode()
+		);
+	}
+
+	#[test]
+	fn collection() {
+		let mut collection_details = Some(CollectionDetails {
+			owner: ALICE,
+			owner_deposit: 0,
+			items: 0,
+			item_metadatas: 0,
+			item_configs: 0,
+			item_holders: 0,
+			attributes: 0,
+			allowances: 0,
+		});
+		assert_eq!(
+			ReadResult::Collection::<Test>(collection_details.clone()).encode(),
+			collection_details.encode()
+		);
+		collection_details = None;
+		assert_eq!(
+			ReadResult::Collection::<Test>(collection_details.clone()).encode(),
+			collection_details.encode()
 		);
 	}
 
@@ -165,9 +187,9 @@ fn approve_works() {
 		// Successfully approve `operator` to transfer the collection item.
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
+			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer(1)).into())
 		);
-		assert_ok!(Nfts::check_approval(&collection, &Some(item), &owner, &operator));
+		assert_ok!(Nfts::check_allowance(&collection, &Some(item), &owner, &operator));
 		System::assert_last_event(
 			Event::Approval { collection, item: Some(item), owner, operator, approved: true }
 				.into(),
@@ -186,9 +208,9 @@ fn approve_collection_works() {
 		// Successfully approve `operator` to transfer all items within the collection.
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, None, operator, true),
-			Ok(Some(NftsWeightInfoOf::<Test>::approve_collection_transfer()).into())
+			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer(0)).into())
 		);
-		assert_ok!(Nfts::check_approval(&collection, &None, &owner, &operator));
+		assert_ok!(Nfts::check_allowance(&collection, &None, &owner, &operator));
 		System::assert_last_event(
 			Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
 		);
@@ -206,10 +228,10 @@ fn cancel_approval_works() {
 		// Successfully cancel the transfer approval of `operator` by `owner`.
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
-			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval()).into())
+			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval(1)).into())
 		);
 		assert_eq!(
-			Nfts::check_approval(&collection, &Some(item), &owner, &operator),
+			Nfts::check_allowance(&collection, &Some(item), &owner, &operator),
 			Err(NftsError::NoPermission.into())
 		);
 		// Failed to transfer the item by `operator` without permission.
@@ -227,13 +249,13 @@ fn cancel_collection_approval_works() {
 		let operator = BOB;
 		let (collection, item) = nfts::create_collection_mint(owner, ITEM);
 		// Successfully cancel the transfer collection approval of `operator` by `owner`.
-		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
+		assert_ok!(Nfts::approve_transfer(signed(owner), collection, None, operator, None));
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, None, operator, false),
-			Ok(Some(NftsWeightInfoOf::<Test>::cancel_collection_approval()).into())
+			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval(0)).into())
 		);
 		assert_eq!(
-			Nfts::check_approval(&collection, &None, &owner, &operator),
+			Nfts::check_allowance(&collection, &None, &owner, &operator),
 			Err(NftsError::NoPermission.into())
 		);
 		// Failed to transfer the item by `operator` without permission.
@@ -438,7 +460,13 @@ fn create_works() {
 fn destroy_works() {
 	new_test_ext().execute_with(|| {
 		let collection = COLLECTION;
-		let witness = DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 };
+		let witness = DestroyWitness {
+			item_metadatas: 0,
+			item_configs: 0,
+			item_holders: 0,
+			attributes: 0,
+			allowances: 0,
+		};
 		// Check error works for `Nfts::destroy()`.
 		assert_noop!(
 			NonFungibles::destroy(signed(ALICE), collection, witness),
@@ -506,7 +534,7 @@ fn allowance_works() {
 		assert_eq!(
 			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator })
 				.encode(),
-			Nfts::check_approval(&collection, &Some(item), &owner, &operator)
+			Nfts::check_allowance(&collection, &Some(item), &owner, &operator)
 				.is_ok()
 				.encode()
 		);
@@ -660,7 +688,7 @@ mod nfts {
 		operator: AccountId,
 	) -> (u32, u32) {
 		let (collection, item) = create_collection_mint(owner, item);
-		assert_ok!(Nfts::approve_transfer(signed(owner), collection, item, operator, None));
+		assert_ok!(Nfts::approve_transfer(signed(owner), collection, Some(item), operator, None));
 		(collection, item)
 	}
 
@@ -879,7 +907,9 @@ mod ensure_codec_indexes {
 					witness: DestroyWitness {
 						item_metadatas: Default::default(),
 						item_configs: Default::default(),
+						item_holders: Default::default(),
 						attributes: Default::default(),
+						allowances: Default::default(),
 					},
 				},
 				8,
