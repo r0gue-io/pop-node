@@ -64,7 +64,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if let Some(check_origin) = maybe_check_origin {
 			ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 		}
-
 		let now = frame_system::Pallet::<T>::block_number();
 		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
@@ -75,12 +74,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Item::<T, I>::insert(collection, item, &details);
 		Self::deposit_event(Event::TransferApproved {
 			collection,
-			item,
+			item: Some(item),
 			owner: details.owner,
 			delegate,
 			deadline,
 		});
-
 		Ok(())
 	}
 
@@ -126,7 +124,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
-			item,
+			item: Some(item),
 			owner: details.owner,
 			delegate,
 		});
