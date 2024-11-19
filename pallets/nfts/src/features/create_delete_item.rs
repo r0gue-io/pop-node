@@ -68,6 +68,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			collection_details.items.saturating_inc();
 
+			let account_balance =
+				AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| -> u32 {
+					balance.saturating_inc();
+					*balance
+				});
+			if account_balance == 1 {
+				collection_details.item_holders.saturating_inc();
+			}
+
 			let collection_config = Self::get_collection_config(&collection)?;
 			let deposit_amount =
 				match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
@@ -250,15 +259,22 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					}
 				}
 
+				if AccountBalance::<T, I>::get(collection, &details.owner) == 1 {
+					collection_details.item_holders.saturating_dec();
+				}
+
 				Ok(details.owner)
 			},
 		)?;
 
 		Item::<T, I>::remove(collection, item);
 		Account::<T, I>::remove((&owner, &collection, &item));
-		ItemPriceOf::<T, I>::remove(collection, item);
-		PendingSwapOf::<T, I>::remove(collection, item);
-		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
+		ItemPriceOf::<T, I>::remove(&collection, &item);
+		PendingSwapOf::<T, I>::remove(&collection, &item);
+		ItemAttributesApprovalsOf::<T, I>::remove(&collection, &item);
+		AccountBalance::<T, I>::mutate(collection, &owner, |balance| {
+			balance.saturating_dec();
+		});
 
 		if remove_config {
 			ItemConfigOf::<T, I>::remove(collection, item);
