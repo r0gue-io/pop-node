@@ -16,7 +16,6 @@ use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-mod impls;
 #[cfg(test)]
 mod tests;
 pub mod weights;
@@ -46,7 +45,7 @@ pub(super) type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
-		dispatch::{DispatchResult, DispatchResultWithPostInfo},
+		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
 		pallet_prelude::*,
 		traits::Incrementable,
 	};
@@ -63,10 +62,10 @@ pub mod pallet {
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// Total item supply of a specified `collection`.
+		/// Total item supply of a specified collection.
 		#[codec(index = 0)]
 		TotalSupply(CollectionIdOf<T>),
-		/// Account balance for a specified `collection`.
+		/// Account balance for a specified collection.
 		#[codec(index = 1)]
 		BalanceOf {
 			/// The collection.
@@ -74,7 +73,7 @@ pub mod pallet {
 			/// The owner of the collection .
 			owner: AccountIdOf<T>,
 		},
-		/// Allowance for an `operator` approved by an `owner`, for a specified collection or item.
+		/// Allowance for an operator approved by an owner, for a specified collection or item.
 		#[codec(index = 2)]
 		Allowance {
 			/// The collection.
@@ -94,7 +93,8 @@ pub mod pallet {
 			/// The collection item.
 			item: ItemIdOf<T>,
 		},
-		/// Attribute value of a specified collection item.
+		/// Attribute value of a specified collection item. (Error: bounded collection is not
+		/// partial)
 		#[codec(index = 6)]
 		GetAttribute {
 			/// The collection.
@@ -181,10 +181,9 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `operator` changes.
 		Approval {
-			/// The identifier of the collection.
+			/// The collection ID.
 			collection: CollectionIdOf<T>,
-			/// The item which is (dis)approved. `None` for all collection items owned by the
-			/// `owner`.
+			/// The item which is (dis)approved. `None` for all owner's items.
 			item: Option<ItemIdOf<T>>,
 			/// The owner providing the allowance.
 			owner: AccountIdOf<T>,
@@ -220,53 +219,44 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfers the collection item from the `origin` to account `to`.
+		/// Transfers the collection item from the caller's account to account `to`.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to be transferred.
+		/// - `collection` - The collection of the item to transfer.
 		/// - `item` - The item to transfer.
 		/// - `to` - The recipient account.
 		#[pallet::call_index(3)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::transfer() + T::DbWeight::get().reads_writes(1, 0))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 			to: AccountIdOf<T>,
 		) -> DispatchResult {
-			ensure_signed(origin.clone())?;
-			let owner =
-				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
+			let from = ensure_signed(origin.clone())?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
 			Self::deposit_event(Event::Transfer {
 				collection,
 				item,
-				from: Some(owner),
+				from: Some(from),
 				to: Some(to),
 				price: None,
 			});
 			Ok(())
 		}
 
-		/// Either approve or cancel approval for an `operator` to perform transfers of a specific
-		/// collection item or all collection items owned by the `origin`.
+		/// Approves `operator` to spend the collection item on behalf of the caller.
 		///
 		/// # Parameters
-		/// - `collection` - The identifier of the collection.
-		/// - `item` - An optional parameter specifying the item to approve for the delegated
-		///   transfer. If `None`, all owner's collection items will be approved.
-		/// - `operator` - The account being granted or revoked approval to transfer the specified
-		///   collection item(s).
-		/// - `approved` - A boolean indicating the desired approval status:
-		///   - `true` to approve the `operator`.
-		///   - `false` to cancel the approval granted to the `operator`.
+		/// - `collection` - The collection of the item to approve for a delegated transfer.
+		/// - `item` - The item to approve for a delegated transfer.
+		/// - `operator` - The account that is allowed to spend the collection item.
+		/// - `approved` - The approval status of the collection item.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
-			NftsWeightInfoOf::<T>::approve_transfer() +
-			NftsWeightInfoOf::<T>::approve_collection_transfer() +
-			NftsWeightInfoOf::<T>::cancel_collection_approval() +
-    		NftsWeightInfoOf::<T>::cancel_approval()
-		)]
+            NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32) +
+    		NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
+        )]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -275,43 +265,32 @@ pub mod pallet {
 			approved: bool,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())?;
-			let result = if approved {
-				Self::do_approve(origin, collection, item, &operator)
+			let weight = if approved {
+				NftsOf::<T>::approve_transfer(
+					origin,
+					collection,
+					item,
+					T::Lookup::unlookup(operator.clone()),
+					None,
+				)
+				.map_err(|e| {
+					e.with_weight(NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32))
+				})?;
+				NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32)
 			} else {
-				Self::do_cancel_approval(origin, collection, item, &operator)
+				NftsOf::<T>::cancel_approval(
+					origin,
+					collection,
+					item,
+					T::Lookup::unlookup(operator.clone()),
+				)
+				.map_err(|e| {
+					e.with_weight(NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32))
+				})?;
+				NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
 			};
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
-			result
-		}
-
-		/// Cancel all the approvals of a specific item.
-		///
-		/// # Parameters
-		/// - `collection` - The collection of the item of whose approvals will be cleared.
-		/// - `item` - The item of the collection of whose approvals will be cleared.
-		#[pallet::call_index(5)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::clear_all_transfer_approvals())]
-		pub fn clear_all_transfer_approvals(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			item: ItemIdOf<T>,
-		) -> DispatchResult {
-			NftsOf::<T>::clear_all_transfer_approvals(origin, collection, item)
-		}
-
-		/// Cancel approvals to transfer all owner's collection items.
-		///
-		/// # Parameters
-		/// - `collection` - The collection whose approvals will be cleared.
-		/// - `limit` - The amount of collection approvals that will be cleared.
-		#[pallet::call_index(6)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::clear_collection_approvals(*limit))]
-		pub fn clear_collection_approvals(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			limit: u32,
-		) -> DispatchResultWithPostInfo {
-			NftsOf::<T>::clear_collection_approvals(origin, collection, limit)
+			Ok(Some(weight).into())
 		}
 
 		/// Issue a new collection of non-fungible items from a public origin.
@@ -349,6 +328,8 @@ pub mod pallet {
     		witness.item_metadatas,
     		witness.item_configs,
     		witness.attributes,
+            witness.item_holders,
+            witness.allowances,
 		))]
 		pub fn destroy(
 			origin: OriginFor<T>,
@@ -506,7 +487,7 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin.clone())?;
+			let account = ensure_signed(origin.clone())?;
 			let mint_price = witness.mint_price;
 			NftsOf::<T>::mint(
 				origin,
@@ -519,7 +500,7 @@ pub mod pallet {
 				collection,
 				item,
 				from: None,
-				to: Some(owner),
+				to: Some(account),
 				price: mint_price,
 			});
 			Ok(())
@@ -537,12 +518,12 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 		) -> DispatchResult {
-			let owner = ensure_signed(origin.clone())?;
+			let account = ensure_signed(origin.clone())?;
 			NftsOf::<T>::burn(origin, collection, item)?;
 			Self::deposit_event(Event::Transfer {
 				collection,
 				item,
-				from: Some(owner),
+				from: Some(account),
 				to: None,
 				price: None,
 			});
@@ -591,7 +572,7 @@ pub mod pallet {
 						.unwrap_or_default(),
 				),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
-					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
+					NftsOf::<T>::check_allowance(&collection, &item, &owner, &operator).is_ok(),
 				),
 				OwnerOf { collection, item } =>
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
