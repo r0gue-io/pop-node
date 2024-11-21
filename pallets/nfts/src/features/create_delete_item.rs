@@ -68,19 +68,18 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			collection_details.items.saturating_inc();
 
-				let account_balance =
-					AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| -> u32 {
-						balance.saturating_inc();
-						*balance
-					});
-				if account_balance == 1 {
-					collection_details.item_holders.saturating_inc();
-				}
+			let account_balance =
+				AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| -> u32 {
+					balance.saturating_inc();
+					*balance
+				});
+			if account_balance == 1 {
+				collection_details.item_holders.saturating_inc();
+			}
 
-				let collection_config = Self::get_collection_config(&collection)?;
-				let deposit_amount = match collection_config
-					.is_setting_enabled(CollectionSetting::DepositRequired)
-				{
+			let collection_config = Self::get_collection_config(&collection)?;
+			let deposit_amount =
+				match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
 					true => T::ItemDeposit::get(),
 					false => Zero::zero(),
 				};
