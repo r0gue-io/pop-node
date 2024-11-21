@@ -87,7 +87,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		let mut collection_details =
-			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let attribute = Attribute::<T, I>::get((collection, maybe_item, &namespace, &key));
 		let attribute_exists = attribute.is_some();
@@ -183,7 +183,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		value: BoundedVec<u8, T::ValueLimit>,
 	) -> DispatchResult {
 		let mut collection_details =
-			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let attribute = Attribute::<T, I>::get((collection, maybe_item, &namespace, &key));
 		if let Some((_, deposit)) = attribute {
@@ -229,8 +229,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let now = frame_system::Pallet::<T>::block_number();
 		ensure!(deadline >= now, Error::<T, I>::DeadlineExpired);
 
-		let item_details =
-			Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+		let item_details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(item_details.owner == origin, Error::<T, I>::NoPermission);
 
 		// Only the CollectionOwner and Account() namespaces could be updated in this way.
@@ -239,7 +238,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			AttributeNamespace::CollectionOwner => {},
 			AttributeNamespace::Account(account) => {
 				ensure!(account == &signer, Error::<T, I>::NoPermission);
-				let approvals = ItemAttributesApprovalsOf::<T, I>::get(&collection, &item);
+				let approvals = ItemAttributesApprovalsOf::<T, I>::get(collection, item);
 				if !approvals.contains(account) {
 					Self::do_approve_item_attributes(
 						origin.clone(),
@@ -274,7 +273,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// `depositor` account. The deposit associated with the attribute, if any, will be unreserved.
 	///
 	/// - `maybe_check_origin`: An optional account that acts as an additional security check when
-	/// clearing the attribute. This can be `None` if no additional check is required.
+	///   clearing the attribute. This can be `None` if no additional check is required.
 	/// - `collection`: The identifier of the collection to which the item belongs, or the
 	///   collection itself if clearing a collection attribute.
 	/// - `maybe_item`: The identifier of the item to which the attribute belongs, or `None` if
@@ -298,7 +297,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			// the same as the `deposit.account` (e.g. the deposit was paid by different account)
 			if deposit.account != maybe_check_origin {
 				ensure!(
-					Self::is_valid_namespace(&check_origin, &namespace, &collection, &maybe_item)?,
+					Self::is_valid_namespace(check_origin, &namespace, &collection, &maybe_item)?,
 					Error::<T, I>::NoPermission
 				);
 			}
@@ -327,7 +326,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 							// e.g. in off-chain mints, the attribute's depositor will be the item's
 							// owner, that's why we need to do this extra check.
 							ensure!(
-								Self::has_role(&collection, &check_origin, CollectionRole::Admin),
+								Self::has_role(&collection, check_origin, CollectionRole::Admin),
 								Error::<T, I>::NoPermission
 							);
 						}
@@ -338,7 +337,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		let mut collection_details =
-			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		collection_details.attributes.saturating_dec();
 
@@ -381,7 +380,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 
-		let details = Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+		let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 
 		ItemAttributesApprovalsOf::<T, I>::try_mutate(collection, item, |approvals| {
@@ -422,7 +421,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 
-		let details = Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+		let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 
 		ItemAttributesApprovalsOf::<T, I>::try_mutate(collection, item, |approvals| {
@@ -463,17 +462,17 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let mut result = false;
 		match namespace {
 			AttributeNamespace::CollectionOwner =>
-				result = Self::has_role(&collection, &origin, CollectionRole::Admin),
+				result = Self::has_role(collection, origin, CollectionRole::Admin),
 			AttributeNamespace::ItemOwner =>
 				if let Some(item) = maybe_item {
 					let item_details =
-						Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+						Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 					result = origin == &item_details.owner
 				},
 			AttributeNamespace::Account(account_id) =>
 				if let Some(item) = maybe_item {
-					let approvals = ItemAttributesApprovalsOf::<T, I>::get(&collection, &item);
-					result = account_id == origin && approvals.contains(&origin)
+					let approvals = ItemAttributesApprovalsOf::<T, I>::get(collection, item);
+					result = account_id == origin && approvals.contains(origin)
 				},
 			_ => (),
 		};

@@ -29,7 +29,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// settings on the collection. The only setting that can't be disabled is `DepositRequired`.
 	///
 	/// Note: it's possible only to lock the setting, but not to unlock it after.
-
+	///
 	/// - `origin`: The origin of the transaction, representing the account attempting to lock the
 	///   collection.
 	/// - `collection`: The identifier of the collection to be locked.
@@ -80,7 +80,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if !config.has_disabled_setting(ItemSetting::Transferable) {
 			config.disable_setting(ItemSetting::Transferable);
 		}
-		ItemConfigOf::<T, I>::insert(&collection, &item, config);
+		ItemConfigOf::<T, I>::insert(collection, item, config);
 
 		Self::deposit_event(Event::<T, I>::ItemTransferLocked { collection, item });
 		Ok(())
@@ -110,7 +110,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if config.has_disabled_setting(ItemSetting::Transferable) {
 			config.enable_setting(ItemSetting::Transferable);
 		}
-		ItemConfigOf::<T, I>::insert(&collection, &item, config);
+		ItemConfigOf::<T, I>::insert(collection, item, config);
 
 		Self::deposit_event(Event::<T, I>::ItemTransferUnlocked { collection, item });
 		Ok(())
@@ -140,7 +140,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		if let Some(check_origin) = &maybe_check_origin {
 			ensure!(
-				Self::has_role(&collection, &check_origin, CollectionRole::Admin),
+				Self::has_role(&collection, check_origin, CollectionRole::Admin),
 				Error::<T, I>::NoPermission
 			);
 		}

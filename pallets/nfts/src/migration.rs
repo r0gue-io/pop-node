@@ -71,7 +71,7 @@ pub mod v1 {
 					OldCollectionDetails<T::AccountId, DepositBalanceOf<T>>,
 					_,
 				>(|key, old_value| {
-					let item_configs = ItemConfigOf::<T>::iter_prefix(&key).count() as u32;
+					let item_configs = ItemConfigOf::<T>::iter_prefix(key).count() as u32;
 					configs_iterated += item_configs as u64;
 					translated.saturating_inc();
 					Some(old_value.migrate_to_v1(item_configs))

@@ -67,7 +67,7 @@ pub use types::*;
 pub use weights::WeightInfo;
 
 /// The log target of this pallet.
-pub const LOG_TARGET: &'static str = "runtime::nfts";
+pub const LOG_TARGET: &str = "runtime::nfts";
 
 /// A type alias for the account ID type used in the dispatchable functions of this pallet.
 type AccountIdLookupOf<T> = <<T as SystemConfig>::Lookup as StaticLookup>::Source;
@@ -1068,7 +1068,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 
 			let collection_details =
-				Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
+				Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 			ensure!(collection_details.owner == origin, Error::<T, I>::NoPermission);
 
 			let config = Self::get_collection_config(&collection)?;
@@ -1079,7 +1079,7 @@ pub mod pallet {
 
 			let mut successful = Vec::with_capacity(items.len());
 			for item in items.into_iter() {
-				let mut details = match Item::<T, I>::get(&collection, &item) {
+				let mut details = match Item::<T, I>::get(collection, item) {
 					Some(x) => x,
 					None => continue,
 				};
@@ -1096,7 +1096,7 @@ pub mod pallet {
 					continue
 				}
 				details.deposit.amount = deposit;
-				Item::<T, I>::insert(&collection, &item, &details);
+				Item::<T, I>::insert(collection, item, &details);
 				successful.push(item);
 			}
 

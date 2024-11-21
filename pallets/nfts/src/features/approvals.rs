@@ -53,8 +53,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		let mut details =
-			Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+		let mut details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
@@ -73,7 +72,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.approvals
 			.try_insert(delegate.clone(), deadline)
 			.map_err(|_| Error::<T, I>::ReachedApprovalLimit)?;
-		Item::<T, I>::insert(&collection, &item, &details);
+		Item::<T, I>::insert(collection, item, &details);
 
 		Self::deposit_event(Event::TransferApproved {
 			collection,
@@ -106,8 +105,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		item: T::ItemId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let mut details =
-			Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+		let mut details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
 		let maybe_deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NotDelegate)?;
 
@@ -125,7 +123,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		details.approvals.remove(&delegate);
-		Item::<T, I>::insert(&collection, &item, &details);
+		Item::<T, I>::insert(collection, item, &details);
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
@@ -156,14 +154,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		item: T::ItemId,
 	) -> DispatchResult {
 		let mut details =
-			Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownCollection)?;
+			Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		if let Some(check_origin) = maybe_check_origin {
 			ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 		}
 
 		details.approvals.clear();
-		Item::<T, I>::insert(&collection, &item, &details);
+		Item::<T, I>::insert(collection, item, &details);
 
 		Self::deposit_event(Event::AllApprovalsCancelled {
 			collection,
