@@ -124,16 +124,11 @@ impl<T: Config<I>, I: 'static> Inspect<<T as SystemConfig>::AccountId> for Palle
 			Ok(transfer_disabled) if transfer_disabled => return false,
 			_ => (),
 		}
-		match (
-			CollectionConfigOf::<T, I>::get(collection),
-			ItemConfigOf::<T, I>::get(collection, item),
-		) {
-			(Some(cc), Some(ic))
-				if cc.is_setting_enabled(CollectionSetting::TransferableItems) &&
-					ic.is_setting_enabled(ItemSetting::Transferable) =>
-				true,
-			_ => false,
-		}
+		matches!(
+			(CollectionConfigOf::<T, I>::get(collection), ItemConfigOf::<T, I>::get(collection, item)),
+			(Some(cc), Some(ic)) if cc.is_setting_enabled(CollectionSetting::TransferableItems)
+			&& ic.is_setting_enabled(ItemSetting::Transferable)
+		)
 	}
 }
 

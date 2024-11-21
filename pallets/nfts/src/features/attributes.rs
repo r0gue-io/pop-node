@@ -69,8 +69,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		// for the `CollectionOwner` namespace we need to check if the collection/item is not locked
-		match namespace {
-			AttributeNamespace::CollectionOwner => match maybe_item {
+		if namespace == AttributeNamespace::CollectionOwner {
+			match maybe_item {
 				None => {
 					ensure!(
 						collection_config.is_setting_enabled(CollectionSetting::UnlockedAttributes),
@@ -82,8 +82,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 						.map(|c| c.has_disabled_setting(ItemSetting::UnlockedAttributes))?;
 					ensure!(!maybe_is_locked, Error::<T, I>::LockedItemAttributes);
 				},
-			},
-			_ => (),
+			}
 		}
 
 		let mut collection_details =
@@ -303,8 +302,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			}
 
 			// can't clear `CollectionOwner` type attributes if the collection/item is locked
-			match namespace {
-				AttributeNamespace::CollectionOwner => match maybe_item {
+			if namespace == AttributeNamespace::CollectionOwner {
+				match maybe_item {
 					None => {
 						let collection_config = Self::get_collection_config(&collection)?;
 						ensure!(
@@ -331,8 +330,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 							);
 						}
 					},
-				},
-				_ => (),
+				}
 			};
 		}
 
