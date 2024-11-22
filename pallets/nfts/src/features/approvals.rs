@@ -268,6 +268,17 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
+	/// Checks whether the `delegate` has the necessary allowance to transfer items within the
+	/// collection or a specific item in the collection. If the `delegate` has approval to transfer
+	/// all items in the collection, they can transfer a specific item without requiring explicit
+	/// approval for that item.
+	///
+	/// - `collection`: The identifier of the collection
+	/// - `maybe_item`: The optional item of the collection that the delegated account has an
+	///   approval to transfer. If not provided, an approval to transfer all items within the
+	///   collection will be checked.
+	/// - `delegate`: The account that was previously allowed to take control of all items within
+	///   the collection.
 	pub fn check_allowance(
 		collection: &T::CollectionId,
 		item: &Option<T::ItemId>,

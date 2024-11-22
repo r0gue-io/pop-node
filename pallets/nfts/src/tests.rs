@@ -4124,7 +4124,7 @@ fn clear_collection_metadata_works() {
 		assert_ok!(Nfts::destroy(
 			RuntimeOrigin::signed(account(1)),
 			0,
-			DestroyWitness { item_configs: 0, item_metadatas: 0, attributes: 0, allowances: 0 }
+			DestroyWitness { item_configs: 0, item_metadatas: 0, attributes: 0 }
 		));
 		assert_eq!(Collection::<Test>::get(0), None);
 		assert_eq!(Balances::reserved_balance(&account(1)), 10);

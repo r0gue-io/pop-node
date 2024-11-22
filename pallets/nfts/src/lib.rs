@@ -1309,7 +1309,8 @@ pub mod pallet {
 		/// `item`.
 		///
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
-		/// - `item`: The item to be approved for delegated transfer.
+		/// - `maybe_item`: The optional item to be approved for delegated transfer. If not
+		///   provided, all items within the collection will be approved.
 		/// - `delegate`: The account to delegate permission to transfer the item.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
 		/// 	number of blocks after which the approval will expire
@@ -1350,7 +1351,9 @@ pub mod pallet {
 		///
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approval will be cancelled.
-		/// - `item`: The item of the collection of whose approval will be cancelled.
+		/// - `item`: The optional item of the collection of whose approval will be cancelled. If
+		///   not provided, an allowance to transfer all items within the collection will be
+		///   cancelled.
 		/// - `delegate`: The account that is going to loose their approval.
 		///
 		/// Emits `ApprovalCancelled` on success.
