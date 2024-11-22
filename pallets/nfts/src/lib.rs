@@ -1371,8 +1371,9 @@ pub mod pallet {
 				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
 			let delegate = T::Lookup::lookup(delegate)?;
 			match maybe_item {
-				Some(item) =>
-					Self::do_cancel_approval(maybe_check_origin, collection, item, delegate),
+				Some(item) => {
+					Self::do_cancel_approval(maybe_check_origin, collection, item, delegate)
+				},
 				None => Self::do_cancel_collection(maybe_check_origin, collection, delegate),
 			}
 		}
@@ -1475,8 +1476,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			let depositor = match namespace {
-				AttributeNamespace::CollectionOwner =>
-					Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?,
+				AttributeNamespace::CollectionOwner => {
+					Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?
+				},
 				_ => origin.clone(),
 			};
 			Self::do_set_attribute(origin, collection, maybe_item, namespace, key, value, depositor)
