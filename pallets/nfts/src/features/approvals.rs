@@ -179,13 +179,18 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// a `delegate`. If `maybe_check_origin` is specified, the function ensures that the
 	/// `check_origin` account is the owner of the collection, granting them permission to approve
 	/// the transfer. The `delegate` is the account that will be allowed to take control of all
-	/// items within the collection.
+	/// items within the collection. Optionally, a `deadline` can be specified to set a time limit
+	/// for the approval. The `deadline` is expressed in block numbers and is added to the current
+	/// block number to determine the absolute deadline for the approval. After approving the
+	/// transfer, the function emits the `TransferApproved` event.
 	///
 	/// - `maybe_check_origin`: The optional account that is required to be the owner of the item,
 	///   granting permission to approve the transfer. If `None`, no permission check is performed.
 	/// - `collection`: The identifier of the collection.
 	/// - `delegate`: The account that will be allowed to take control of all items within the
 	///   collection.
+	/// - `maybe_deadline`: The optional deadline (in block numbers) specifying the time limit for
+	///   the approval.
 	pub(crate) fn do_approve_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
@@ -249,8 +254,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// function emits the `ApprovalCancelled` event.
 	///
 	/// - `maybe_check_origin`: The optional account that is required to be the owner of the
-	///   collection, granting permission to cancel the approval. If `None`, no permission check is
-	///   performed.
+	///   collection or that the approval is past its deadline, granting permission to cancel the
+	///   approval. If `None`, no permission check is performed.
 	/// - `collection`: The identifier of the collection
 	/// - `delegate`: The account that was previously allowed to take control of all items within
 	///   the collection.
@@ -265,7 +270,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 				let owner = collection_details.clone().owner;
-
+				let allowances = Allowances::<T, I>::get((&collection, &owner));
 				let maybe_deadline = allowances.get(&delegate).ok_or(Error::<T, I>::NotDelegate)?;
 
 				let is_past_deadline = if let Some(deadline) = maybe_deadline {
@@ -281,7 +286,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					}
 				}
 
-				Allowances::<T, I>::remove((&collection, &owner, &delegate));
+				Allowances::<T, I>::remove((&collection, &owner));
 				collection_details.allowances.saturating_dec();
 				Ok(owner)
 			},
