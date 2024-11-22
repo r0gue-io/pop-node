@@ -122,9 +122,6 @@ pub struct DestroyWitness {
 	/// The total number of attributes for this collection.
 	#[codec(compact)]
 	pub attributes: u32,
-	/// The total number of allowances to spend all items within collections.
-	#[codec(compact)]
-	pub allowances: u32,
 }
 
 impl<AccountId, DepositBalance> CollectionDetails<AccountId, DepositBalance> {
@@ -133,7 +130,6 @@ impl<AccountId, DepositBalance> CollectionDetails<AccountId, DepositBalance> {
 			item_metadatas: self.item_metadatas,
 			item_configs: self.item_configs,
 			attributes: self.attributes,
-			allowances: self.allowances,
 		}
 	}
 }
