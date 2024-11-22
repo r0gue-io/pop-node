@@ -55,7 +55,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		// Retrieve collection details.
 		let collection_details =
-			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		// Ensure the item is not locked.
 		ensure!(!T::Locker::is_locked(collection, item), Error::<T, I>::ItemLocked);
