@@ -303,7 +303,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		delegate: &T::AccountId,
 	) -> Result<(), DispatchError> {
 		let allowances = Allowances::<T, I>::get((&collection, &owner));
-		let maybe_deadline = allowances.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
+		let maybe_deadline = allowances.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
 		if let Some(deadline) = maybe_deadline {
 			let block_number = frame_system::Pallet::<T>::block_number();
 			ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
@@ -337,7 +337,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
 			let maybe_deadline =
-				details.approvals.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
+				details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
 			if let Some(deadline) = maybe_deadline {
 				let block_number = frame_system::Pallet::<T>::block_number();
 				ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
