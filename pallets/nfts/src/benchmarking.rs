@@ -17,8 +17,6 @@
 
 //! Nfts pallet benchmarking.
 
-#![cfg(feature = "runtime-benchmarks")]
-
 use enumflags2::{BitFlag, BitFlags};
 use frame_benchmarking::v1::{
 	account, benchmarks_instance_pallet, whitelist_account, whitelisted_caller, BenchmarkError,
@@ -95,8 +93,8 @@ fn mint_item<T: Config<I>, I: 'static>(
 		whitelist_account!(caller);
 	}
 	let caller_lookup = T::Lookup::unlookup(caller.clone());
-	let item_exists = Item::<T, I>::contains_key(&collection, &item);
-	let item_config = ItemConfigOf::<T, I>::get(&collection, &item);
+	let item_exists = Item::<T, I>::contains_key(collection, item);
+	let item_config = ItemConfigOf::<T, I>::get(collection, item);
 	if item_exists {
 		return (item, caller, caller_lookup);
 	} else if let Some(item_config) = item_config {
@@ -730,7 +728,7 @@ benchmarks_instance_pallet! {
 	}
 
 	pay_tips {
-		let n in 0 .. T::MaxTips::get() as u32;
+		let n in 0 .. T::MaxTips::get();
 		let amount = BalanceOf::<T, I>::from(100u32);
 		let caller: T::AccountId = whitelisted_caller();
 		let collection = T::Helper::collection(0);
@@ -836,7 +834,7 @@ benchmarks_instance_pallet! {
 	}
 
 	mint_pre_signed {
-		let n in 0 .. T::MaxAttributesPerCall::get() as u32;
+		let n in 0 .. T::MaxAttributesPerCall::get();
 		let (caller_public, caller) = T::Helper::signer();
 		T::Currency::make_free_balance_be(&caller, DepositBalanceOf::<T, I>::max_value());
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
@@ -871,14 +869,14 @@ benchmarks_instance_pallet! {
 		let target: T::AccountId = account("target", 0, SEED);
 		T::Currency::make_free_balance_be(&target, DepositBalanceOf::<T, I>::max_value());
 		frame_system::Pallet::<T>::set_block_number(One::one());
-	}: _(SystemOrigin::Signed(target.clone()), Box::new(mint_data), signature.into(), caller)
+	}: _(SystemOrigin::Signed(target.clone()), Box::new(mint_data), signature, caller)
 	verify {
 		let metadata: BoundedVec<_, _> = metadata.try_into().unwrap();
 		assert_last_event::<T, I>(Event::ItemMetadataSet { collection, item, data: metadata }.into());
 	}
 
 	set_attributes_pre_signed {
-		let n in 0 .. T::MaxAttributesPerCall::get() as u32;
+		let n in 0 .. T::MaxAttributesPerCall::get();
 		let (collection, _, _) = create_collection::<T, I>();
 
 		let item_owner: T::AccountId = account("item_owner", 0, SEED);
@@ -914,7 +912,7 @@ benchmarks_instance_pallet! {
 		let signature = T::Helper::sign(&signer_public, &message);
 
 		frame_system::Pallet::<T>::set_block_number(One::one());
-	}: _(SystemOrigin::Signed(item_owner.clone()), pre_signed_data, signature.into(), signer.clone())
+	}: _(SystemOrigin::Signed(item_owner.clone()), pre_signed_data, signature, signer.clone())
 	verify {
 		assert_last_event::<T, I>(
 			Event::PreSignedAttributesSet {

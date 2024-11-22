@@ -120,20 +120,15 @@ impl<T: Config<I>, I: 'static> Inspect<<T as SystemConfig>::AccountId> for Palle
 	/// Default implementation is that all items are transferable.
 	fn can_transfer(collection: &Self::CollectionId, item: &Self::ItemId) -> bool {
 		use PalletAttributes::TransferDisabled;
-		match Self::has_system_attribute(&collection, &item, TransferDisabled) {
+		match Self::has_system_attribute(collection, item, TransferDisabled) {
 			Ok(transfer_disabled) if transfer_disabled => return false,
 			_ => (),
 		}
-		match (
-			CollectionConfigOf::<T, I>::get(collection),
-			ItemConfigOf::<T, I>::get(collection, item),
-		) {
-			(Some(cc), Some(ic))
-				if cc.is_setting_enabled(CollectionSetting::TransferableItems) &&
-					ic.is_setting_enabled(ItemSetting::Transferable) =>
-				true,
-			_ => false,
-		}
+		matches!(
+			(CollectionConfigOf::<T, I>::get(collection), ItemConfigOf::<T, I>::get(collection, item)),
+			(Some(cc), Some(ic)) if cc.is_setting_enabled(CollectionSetting::TransferableItems)
+			&& ic.is_setting_enabled(ItemSetting::Transferable)
+		)
 	}
 }
 
@@ -259,7 +254,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 		Self::do_burn(*collection, *item, |d| {
 			if let Some(check_owner) = maybe_check_owner {
 				if &d.owner != check_owner {
-					return Err(Error::<T, I>::NoPermission.into())
+					return Err(Error::<T, I>::NoPermission.into());
 				}
 			}
 			Ok(())
@@ -421,10 +416,10 @@ impl<T: Config<I>, I: 'static> Transfer<T::AccountId> for Pallet<T, I> {
 
 	fn disable_transfer(collection: &Self::CollectionId, item: &Self::ItemId) -> DispatchResult {
 		let transfer_disabled =
-			Self::has_system_attribute(&collection, &item, PalletAttributes::TransferDisabled)?;
+			Self::has_system_attribute(collection, item, PalletAttributes::TransferDisabled)?;
 		// Can't lock the item twice
 		if transfer_disabled {
-			return Err(Error::<T, I>::ItemLocked.into())
+			return Err(Error::<T, I>::ItemLocked.into());
 		}
 
 		<Self as Mutate<T::AccountId, ItemConfig>>::set_attribute(

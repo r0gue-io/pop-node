@@ -63,8 +63,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		signature: &T::OffchainSignature,
 		signer: &T::AccountId,
 	) -> DispatchResult {
-		if signature.verify(&**data, &signer) {
-			return Ok(())
+		if signature.verify(&**data, signer) {
+			return Ok(());
 		}
 
 		// NOTE: for security reasons modern UIs implicitly wrap the data requested to sign into
@@ -76,7 +76,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		wrapped.extend(data);
 		wrapped.extend(suffix);
 
-		ensure!(signature.verify(&*wrapped, &signer), Error::<T, I>::WrongSignature);
+		ensure!(signature.verify(&*wrapped, signer), Error::<T, I>::WrongSignature);
 
 		Ok(())
 	}
@@ -87,6 +87,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
 	}
 
+	#[allow(missing_docs)]
 	#[cfg(any(test, feature = "runtime-benchmarks"))]
 	pub fn set_next_id(id: T::CollectionId) {
 		NextCollectionId::<T, I>::set(Some(id));
