@@ -291,6 +291,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
+	// Check if a `delegate` has a permission to spend the collection.
+	fn check_collection_allowance(
+		collection: &T::CollectionId,
+		owner: &T::AccountId,
+		delegate: &T::AccountId,
+	) -> Result<(), DispatchError> {
+		let allowances = Allowances::<T, I>::get((&collection, &owner));
+		let maybe_deadline = allowances.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
+		if let Some(deadline) = maybe_deadline {
+			let block_number = frame_system::Pallet::<T>::block_number();
+			ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
+		}
+		Ok(())
+	}
+
 	/// Checks whether the `delegate` has the necessary allowance to transfer items within the
 	/// collection or a specific item in the collection. If the `delegate` has approval to transfer
 	/// all items in the collection, they can transfer a specific item without requiring explicit
@@ -309,19 +324,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		delegate: &T::AccountId,
 	) -> Result<(), DispatchError> {
 		// Check if a `delegate` has a permission to spend the collection.
-		let allowances = Allowances::<T, I>::get((&collection, &owner));
-		if let Some(maybe_deadline) = allowances.get(&delegate) {
-			if let Some(item) = item {
-				Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
-			};
-
-			if let Some(deadline) = maybe_deadline {
-				let block_number = frame_system::Pallet::<T>::block_number();
-				ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
-			}
+		if Self::check_collection_allowance(collection, owner, delegate).is_ok() {
 			return Ok(());
 		}
-
 		// Check if a `delegate` has a permission to spend the collection item.
 		if let Some(item) = item {
 			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
