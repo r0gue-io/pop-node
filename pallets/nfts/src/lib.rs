@@ -719,6 +719,8 @@ pub mod pallet {
 		CollectionNotEmpty,
 		/// The witness data should be provided.
 		WitnessRequired,
+		/// Cant' delete collections whose allowances.
+		AllowancesNotEmpty,
 	}
 
 	#[pallet::call]
@@ -835,8 +837,6 @@ pub mod pallet {
 			witness.item_metadatas,
 			witness.item_configs,
 			witness.attributes,
-			witness.item_holders,
-			witness.allowances,
  		))]
 		pub fn destroy(
 			origin: OriginFor<T>,
@@ -852,8 +852,6 @@ pub mod pallet {
 				details.item_metadatas,
 				details.item_configs,
 				details.attributes,
-				details.item_holders,
-				details.allowances,
 			))
 			.into())
 		}
