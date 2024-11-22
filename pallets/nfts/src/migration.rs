@@ -22,12 +22,14 @@ use sp_runtime::TryRuntimeError;
 
 use super::*;
 
+#[allow(missing_docs)]
 pub mod v1 {
 	use frame_support::{pallet_prelude::*, weights::Weight};
 
 	use super::*;
 
 	#[derive(Decode)]
+	#[allow(missing_docs)]
 	pub struct OldCollectionDetails<AccountId, DepositBalance> {
 		pub owner: AccountId,
 		pub owner_deposit: DepositBalance,

@@ -69,6 +69,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
 	}
 
+	#[allow(missing_docs)]
 	#[cfg(any(test, feature = "runtime-benchmarks"))]
 	pub fn set_next_id(id: T::CollectionId) {
 		NextCollectionId::<T, I>::set(Some(id));

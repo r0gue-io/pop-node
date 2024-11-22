@@ -18,6 +18,7 @@
 //! This module contains helper methods to configure the metadata of collections and items.
 
 use alloc::vec::Vec;
+use core::cmp::Ordering;
 
 use frame_support::pallet_prelude::*;
 
@@ -210,10 +211,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					.saturating_mul(((data.len()) as u32).into())
 					.saturating_add(T::MetadataDepositBase::get());
 			}
-			if deposit > old_deposit {
-				T::Currency::reserve(&details.owner, deposit - old_deposit)?;
-			} else if deposit < old_deposit {
-				T::Currency::unreserve(&details.owner, old_deposit - deposit);
+			match deposit.cmp(&old_deposit) {
+				Ordering::Greater => {
+					T::Currency::reserve(&details.owner, deposit - old_deposit)?;
+				},
+				Ordering::Less => {
+					T::Currency::unreserve(&details.owner, old_deposit - deposit);
+				},
+				_ => {},
 			}
 			details.owner_deposit.saturating_accrue(deposit);
 

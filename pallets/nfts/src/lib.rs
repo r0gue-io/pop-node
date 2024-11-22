@@ -30,6 +30,7 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+#[allow(missing_docs)]
 pub mod migration;
 #[cfg(test)]
 pub mod mock;
@@ -45,12 +46,14 @@ mod features;
 mod impl_nonfungibles;
 mod types;
 
+#[allow(missing_docs)]
 pub mod macros;
 pub mod weights;
 
 extern crate alloc;
 
 use alloc::{boxed::Box, vec, vec::Vec};
+use core::cmp::Ordering;
 
 use codec::{Decode, Encode};
 use frame_support::traits::{
@@ -87,6 +90,7 @@ pub mod pallet {
 	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[cfg(feature = "runtime-benchmarks")]
+	#[allow(missing_docs)]
 	pub trait BenchmarkHelper<CollectionId, ItemId, Public, AccountId, Signature> {
 		fn collection(i: u16) -> CollectionId;
 		fn item(i: u16) -> ItemId;
@@ -416,6 +420,7 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
+	#[allow(missing_docs)]
 	pub enum Event<T: Config<I>, I: 'static = ()> {
 		/// A `collection` was created.
 		Created { collection: T::CollectionId, creator: T::AccountId, owner: T::AccountId },
@@ -1084,16 +1089,18 @@ pub mod pallet {
 					None => continue,
 				};
 				let old = details.deposit.amount;
-				if old > deposit {
-					T::Currency::unreserve(&details.deposit.account, old - deposit);
-				} else if deposit > old {
-					if T::Currency::reserve(&details.deposit.account, deposit - old).is_err() {
-						// NOTE: No alterations made to collection_details in this iteration so far,
-						// so this is OK to do.
-						continue
-					}
-				} else {
-					continue
+				match old.cmp(&deposit) {
+					Ordering::Greater => {
+						T::Currency::unreserve(&details.deposit.account, old - deposit);
+					},
+					Ordering::Less => {
+						if T::Currency::reserve(&details.deposit.account, deposit - old).is_err() {
+							// NOTE: No alterations made to collection_details in this iteration so
+							// far, so this is OK to do.
+							continue
+						}
+					},
+					_ => continue,
 				}
 				details.deposit.amount = deposit;
 				Item::<T, I>::insert(collection, item, &details);
