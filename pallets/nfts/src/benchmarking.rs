@@ -577,19 +577,15 @@ benchmarks_instance_pallet! {
 		let (item, ..) = mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-		let maybe_deadline = if i == 0 {
-			None
-		} else {
-			Some(BlockNumberFor::<T>::max_value())
-		};
+		let deadline = BlockNumberFor::<T>::max_value();
 		let maybe_item = if i == 0 {
 			None
 		} else {
 			Some(item)
 		};
-	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, delegate_lookup, maybe_deadline)
+	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, delegate_lookup, Some(deadline))
 	verify {
-		assert_last_event::<T, I>(Event::TransferApproved { collection, item: maybe_item, owner: caller, delegate, deadline: maybe_deadline }.into());
+		assert_last_event::<T, I>(Event::TransferApproved { collection, item: maybe_item, owner: caller, delegate, deadline: Some(deadline) }.into());
 	}
 
 	cancel_approval {

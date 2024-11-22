@@ -169,6 +169,19 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
+	/// Approves the transfer of all items within the collection to a delegate.
+	///
+	/// This function is used to approve the transfer of all items within the `collection` to
+	/// a `delegate`. If `maybe_check_origin` is specified, the function ensures that the
+	/// `check_origin` account is the owner of the collection, granting them permission to approve
+	/// the transfer. The `delegate` is the account that will be allowed to take control of all
+	/// items within the collection.
+	///
+	/// - `maybe_check_origin`: The optional account that is required to be the owner of the item,
+	///   granting permission to approve the transfer. If `None`, no permission check is performed.
+	/// - `collection`: The identifier of the collection.
+	/// - `delegate`: The account that will be allowed to take control of all items within the
+	///   collection.
 	pub(crate) fn do_approve_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
@@ -186,7 +199,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 
 		let owner = Collection::<T, I>::try_mutate(
-			&collection,
+			collection,
 			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
@@ -213,29 +226,42 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
+	/// Cancels the approval for the transfer of all items within the collection to a delegate.
+	///
+	/// This function is used to cancel the approval for the transfer of all items in the
+	/// `collection` to a `delegate`. If `maybe_check_origin` is specified, the function ensures
+	/// that the `check_origin` account is the owner of the item or that the approval is past its
+	/// deadline, granting permission to cancel the approval. After canceling the approval, the
+	/// function emits the `ApprovalCancelled` event.
+	///
+	/// - `maybe_check_origin`: The optional account that is required to be the owner of the
+	///   collection, granting permission to cancel the approval. If `None`, no permission check is
+	///   performed.
+	/// - `collection`: The identifier of the collection
+	/// - `delegate`: The account that was previously allowed to take control of all items within
+	///   the collection.
 	pub(crate) fn do_cancel_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let owner = Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-		}
-		Allowances::<T, I>::remove((&collection, &owner, &delegate));
-		Collection::<T, I>::try_mutate(
-			&collection,
-			|maybe_collection_details| -> Result<(), DispatchError> {
+		let owner = Collection::<T, I>::try_mutate(
+			collection,
+			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
+				let owner = collection_details.clone().owner;
+
+				Allowances::<T, I>::remove((&collection, &owner, &delegate));
+				if let Some(check_origin) = maybe_check_origin {
+					ensure!(check_origin == owner, Error::<T, I>::NoPermission);
+				}
 				collection_details.allowances.saturating_dec();
-				Ok(())
+				Ok(owner)
 			},
 		)?;
 
 		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
-
 		Ok(())
 	}
 
@@ -248,16 +274,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Check if a `delegate` has a permission to spend the collection.
 		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
 			if let Some(item) = item {
-				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+				Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 			};
 			return Ok(());
 		}
 		// Check if a `delegate` has a permission to spend the collection item.
 		if let Some(item) = item {
-			let details =
-				Item::<T, I>::get(&collection, &item).ok_or(Error::<T, I>::UnknownItem)?;
+			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
-			let deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NoPermission)?;
+			let deadline = details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
 			if let Some(d) = deadline {
 				let block_number = frame_system::Pallet::<T>::block_number();
 				ensure!(block_number <= *d, Error::<T, I>::ApprovalExpired);
