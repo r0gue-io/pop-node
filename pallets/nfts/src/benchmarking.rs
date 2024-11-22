@@ -62,27 +62,6 @@ fn add_collection_metadata<T: Config<I>, I: 'static>() -> (T::AccountId, Account
 	(caller, caller_lookup)
 }
 
-fn approve_collection<T: Config<I>, I: 'static>(
-	index: u32,
-) -> (T::AccountId, AccountIdLookupOf<T>) {
-	let caller = Collection::<T, I>::get(T::Helper::collection(0)).unwrap().owner;
-	if caller != whitelisted_caller() {
-		whitelist_account!(caller);
-	}
-	let caller_lookup = T::Lookup::unlookup(caller.clone());
-	let delegate: T::AccountId = account("delegate", 0, SEED + index);
-	let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-	let deadline = BlockNumberFor::<T>::max_value();
-	assert_ok!(Nfts::<T, I>::approve_transfer(
-		SystemOrigin::Signed(caller.clone()).into(),
-		T::Helper::collection(0),
-		None,
-		delegate_lookup.clone(),
-		Some(deadline),
-	));
-	(caller, caller_lookup)
-}
-
 fn mint_item<T: Config<I>, I: 'static>(
 	index: u16,
 ) -> (T::ItemId, T::AccountId, AccountIdLookupOf<T>) {
@@ -269,8 +248,6 @@ benchmarks_instance_pallet! {
 		let m in 0 .. 1_000;
 		let c in 0 .. 1_000;
 		let a in 0 .. 1_000;
-		let h in 0 .. 1_000;
-		let l in 0 .. 1_000;
 
 		let (collection, caller, _) = create_collection::<T, I>();
 		add_collection_metadata::<T, I>();
@@ -287,13 +264,6 @@ benchmarks_instance_pallet! {
 		}
 		for i in 0..a {
 			add_collection_attribute::<T, I>(i as u16);
-		}
-		for i in 0..h {
-			mint_item::<T, I>(i as u16);
-			burn_item::<T, I>(i as u16);
-		}
-		for i in 0..l {
-			approve_collection::<T, I>(i);
 		}
 		let witness = Collection::<T, I>::get(collection).unwrap().destroy_witness();
 	}: _(SystemOrigin::Signed(caller), collection, witness)
