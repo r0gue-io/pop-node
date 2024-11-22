@@ -22,12 +22,14 @@ use sp_runtime::TryRuntimeError;
 
 use super::*;
 
+#[allow(missing_docs)]
 pub mod v1 {
 	use frame_support::{pallet_prelude::*, weights::Weight};
 
 	use super::*;
 
 	#[derive(Decode)]
+	#[allow(missing_docs)]
 	pub struct OldCollectionDetails<AccountId, DepositBalance> {
 		pub owner: AccountId,
 		pub owner_deposit: DepositBalance,
@@ -71,7 +73,7 @@ pub mod v1 {
 					OldCollectionDetails<T::AccountId, DepositBalanceOf<T>>,
 					_,
 				>(|key, old_value| {
-					let item_configs = ItemConfigOf::<T>::iter_prefix(&key).count() as u32;
+					let item_configs = ItemConfigOf::<T>::iter_prefix(key).count() as u32;
 					configs_iterated += item_configs as u64;
 					translated.saturating_inc();
 					Some(old_value.migrate_to_v1(item_configs))
