@@ -146,7 +146,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			// Check if the `origin` is the current owner of the collection.
 			ensure!(origin == details.owner, Error::<T, I>::NoPermission);
 			if details.owner == new_owner {
-				return Ok(());
+				return Ok(())
 			}
 
 			// All collection approvals need to be removed because otherwise
