@@ -149,19 +149,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				return Ok(());
 			}
 
-			AccountAllowances::<T, I>::try_mutate(
-				collection,
-				&details.owner,
-				|allowances| -> Result<(), DispatchError> {
-					// The approved accounts have to be reset to `None`, because otherwise
-					// pre-approve attack would be possible, where the owner can approve their
-					// second account before making the transaction and then claiming all items
-					// within the collection back.
-					ensure!(*allowances == 0, Error::<T, I>::CollectionApprovalsNotEmpty);
-					*allowances = 0;
-					Ok(())
-				},
-			)?;
+			// All collection approvals need to be removed because otherwise
+			// pre-approve attack would be possible, where the owner can approve their
+			// second account before making the transaction and then claiming all items
+			// within the collection back.
+			ensure!(
+				AccountAllowances::<T, I>::get(collection, &details.owner) == 0,
+				Error::<T, I>::CollectionApprovalsNotEmpty
+			);
 
 			// Move the deposit to the new owner.
 			T::Currency::repatriate_reserved(
