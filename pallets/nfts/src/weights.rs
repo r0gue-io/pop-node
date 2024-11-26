@@ -588,14 +588,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Proof: `Nfts::Allowances` (`max_values`: None, `max_size`: Some(113), added: 2588, mode: `MaxEncodedLen`)
 	/// The range of component `i` is `[0, 1]`.
 	/// The range of component `n` is `[0, 20]`.
-	fn clear_all_transfer_approvals(i: u32, n: u32, ) -> Weight {
+	fn clear_all_transfer_approvals(i: u32, _n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1614`
 		//  Estimated: `52750 + i * (4325 ±496_172_781_796_926)`
 		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(34_351_559, 52750)
-			// Standard Error: 3_279
-			.saturating_add(Weight::from_parts(46_401, 0).saturating_mul(n.into()))
+		Weight::from_parts(35_525_221, 52750)
 			.saturating_add(T::DbWeight::get().reads(22_u64))
 			.saturating_add(T::DbWeight::get().writes(22_u64))
 			.saturating_add(Weight::from_parts(0, 4325).saturating_mul(i.into()))
@@ -1320,14 +1318,12 @@ impl WeightInfo for () {
 	/// Proof: `Nfts::Allowances` (`max_values`: None, `max_size`: Some(113), added: 2588, mode: `MaxEncodedLen`)
 	/// The range of component `i` is `[0, 1]`.
 	/// The range of component `n` is `[0, 20]`.
-	fn clear_all_transfer_approvals(i: u32, n: u32, ) -> Weight {
+	fn clear_all_transfer_approvals(i: u32, _n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `1614`
 		//  Estimated: `52750 + i * (4325 ±496_172_781_796_926)`
 		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(34_351_559, 52750)
-			// Standard Error: 3_279
-			.saturating_add(Weight::from_parts(46_401, 0).saturating_mul(n.into()))
+		Weight::from_parts(35_525_221, 52750)
 			.saturating_add(RocksDbWeight::get().reads(22_u64))
 			.saturating_add(RocksDbWeight::get().writes(22_u64))
 			.saturating_add(Weight::from_parts(0, 4325).saturating_mul(i.into()))

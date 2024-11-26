@@ -229,7 +229,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				let now = frame_system::Pallet::<T>::block_number();
 				let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
-				AccountAllowances::<T,I>::try_mutate(&collection, &owner, |allowances| -> Result<(), DispatchError> {
+				AccountAllowances::<T,I>::try_mutate(collection, &owner, |allowances| -> Result<(), DispatchError> {
     				ensure!(*allowances < T::ApprovalsLimit::get(), Error::<T, I>::ReachedApprovalLimit);
     				Allowances::<T, I>::mutate(
     					(&collection, &owner, &delegate),
@@ -297,7 +297,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 
 				Allowances::<T, I>::remove((&collection, &owner, &delegate));
-				AccountAllowances::<T, I>::mutate(&collection, &owner, |allowances| {
+				AccountAllowances::<T, I>::mutate(collection, &owner, |allowances| {
 					allowances.saturating_dec();
 				});
 				Ok(owner)
@@ -323,7 +323,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	pub(crate) fn do_clear_all_collection_approvals(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
-		witness: ClearAllApprovalsWitness,
+		witness_allowances: u32,
 	) -> DispatchResult {
 		let owner = Collection::<T, I>::try_mutate(
 			collection,
@@ -337,10 +337,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 
 				AccountAllowances::<T, I>::try_mutate(
-					&collection,
+					collection,
 					&owner,
 					|allowances| -> Result<(), DispatchError> {
-						ensure!(*allowances == witness.allowances, Error::<T, I>::BadWitness);
+						ensure!(*allowances == witness_allowances, Error::<T, I>::BadWitness);
 						let _ = Allowances::<T, I>::clear_prefix(
 							(collection, owner.clone()),
 							*allowances,

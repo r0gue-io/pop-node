@@ -1417,15 +1417,17 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(17)]
-		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(
-		    maybe_item.is_some() as u32,
-			witness.allowances
-		))]
+		#[pallet::weight(
+		    T::WeightInfo::clear_all_transfer_approvals(
+				maybe_item.is_some() as u32,
+				witness_allowances.unwrap_or_default()
+			)
+		)]
 		pub fn clear_all_transfer_approvals(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
 			maybe_item: Option<T::ItemId>,
-			witness: ClearAllApprovalsWitness,
+			witness_allowances: Option<u32>,
 		) -> DispatchResult {
 			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
 				.map(|_| None)
@@ -1434,8 +1436,11 @@ pub mod pallet {
 			match maybe_item {
 				Some(item) =>
 					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item),
-				None =>
-					Self::do_clear_all_collection_approvals(maybe_check_origin, collection, witness),
+				None => Self::do_clear_all_collection_approvals(
+					maybe_check_origin,
+					collection,
+					witness_allowances.unwrap_or_default(),
+				),
 			}
 		}
 

@@ -122,14 +122,6 @@ pub struct DestroyWitness {
 	pub attributes: u32,
 }
 
-/// Witness data for the destroy transactions.
-#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
-pub struct ClearAllApprovalsWitness {
-	/// The total number of collection approvals in the collection.
-	#[codec(compact)]
-	pub allowances: u32,
-}
-
 impl<AccountId, DepositBalance> CollectionDetails<AccountId, DepositBalance> {
 	pub fn destroy_witness(&self) -> DestroyWitness {
 		DestroyWitness {
