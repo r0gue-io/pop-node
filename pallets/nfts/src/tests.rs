@@ -1880,7 +1880,7 @@ fn approval_lifecycle_works() {
 }
 
 #[test]
-fn check_allowance_works() {
+fn check_approval_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),

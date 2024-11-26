@@ -1411,7 +1411,7 @@ pub mod pallet {
 		/// - `collection`: The collection of the item of whose approvals will be cleared.
 		/// - `maybe_item`: The item of the collection of whose approvals will be cleared. The
 		///   optional item of the collection of whose approval will be cleared. If not provided,
-		///   all approvals to transfer items within collection
+		///   all approvals to transfer items within collection.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
