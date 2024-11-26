@@ -20,7 +20,6 @@
 //! to have the functionality defined in this module.
 
 use frame_support::pallet_prelude::*;
-use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::*;
 
@@ -220,33 +219,24 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::ItemsNonTransferable
 		);
 
-		let (owner, deadline) = Collection::<T, I>::try_mutate(
+		let owner =
+			Pallet::<T, I>::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
+		}
+
+		let now = frame_system::Pallet::<T>::block_number();
+		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
+
+		AccountApprovals::<T, I>::try_mutate(
 			collection,
-			|maybe_collection_details| -> Result<(T::AccountId, Option<BlockNumberFor<T>>), DispatchError> {
-				let collection_details =
-					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
-				let owner = collection_details.clone().owner;
-
-				if let Some(check_origin) = maybe_check_origin {
-					ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-				}
-				let now = frame_system::Pallet::<T>::block_number();
-				let deadline = maybe_deadline.map(|d| d.saturating_add(now));
-
-				AccountApprovals::<T, I>::try_mutate(
-					collection,
-					&owner,
-					|approvals| -> Result<(), DispatchError> {
-						ensure!(
-							*approvals < T::ApprovalsLimit::get(),
-							Error::<T, I>::ReachedApprovalLimit
-						);
-						CollectionApprovals::<T, I>::insert((&collection, &owner, &delegate), deadline);
-						approvals.saturating_inc();
-						Ok(())
-					},
-				)?;
-				Ok((owner, deadline))
+			&owner,
+			|approvals| -> Result<(), DispatchError> {
+				ensure!(*approvals < T::ApprovalsLimit::get(), Error::<T, I>::ReachedApprovalLimit);
+				CollectionApprovals::<T, I>::insert((&collection, &owner, &delegate), deadline);
+				approvals.saturating_inc();
+				Ok(())
 			},
 		)?;
 
@@ -280,36 +270,29 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let owner = Collection::<T, I>::try_mutate(
-			collection,
-			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
-				let collection_details =
-					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
-				let owner = collection_details.clone().owner;
-				let maybe_deadline =
-					CollectionApprovals::<T, I>::get((&collection, &owner, &delegate))
-						.ok_or(Error::<T, I>::NotDelegate)?;
+		let owner =
+			Pallet::<T, I>::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
-				let is_past_deadline = if let Some(deadline) = maybe_deadline {
-					let now = frame_system::Pallet::<T>::block_number();
-					now > deadline
-				} else {
-					false
-				};
+		let maybe_deadline = CollectionApprovals::<T, I>::get((&collection, &owner, &delegate))
+			.ok_or(Error::<T, I>::NotDelegate)?;
 
-				if !is_past_deadline {
-					if let Some(check_origin) = maybe_check_origin {
-						ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-					}
-				}
+		let is_past_deadline = if let Some(deadline) = maybe_deadline {
+			let now = frame_system::Pallet::<T>::block_number();
+			now > deadline
+		} else {
+			false
+		};
 
-				CollectionApprovals::<T, I>::remove((&collection, &owner, &delegate));
-				AccountApprovals::<T, I>::mutate(collection, &owner, |approvals| {
-					approvals.saturating_dec();
-				});
-				Ok(owner)
-			},
-		)?;
+		if !is_past_deadline {
+			if let Some(check_origin) = maybe_check_origin {
+				ensure!(check_origin == owner, Error::<T, I>::NoPermission);
+			}
+		}
+
+		CollectionApprovals::<T, I>::remove((&collection, &owner, &delegate));
+		AccountApprovals::<T, I>::mutate(collection, &owner, |approvals| {
+			approvals.saturating_dec();
+		});
 
 		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
 
@@ -334,33 +317,25 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		witness_approvals: u32,
 	) -> DispatchResult {
-		let owner = Collection::<T, I>::try_mutate(
+		let owner =
+			Pallet::<T, I>::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
+		if let Some(check_origin) = maybe_check_origin {
+			ensure!(check_origin == owner.clone(), Error::<T, I>::NoPermission);
+		}
+
+		AccountApprovals::<T, I>::try_mutate(
 			collection,
-			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
-				let collection_details =
-					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
-				let owner = collection_details.clone().owner;
-
-				if let Some(check_origin) = maybe_check_origin {
-					ensure!(check_origin == owner.clone(), Error::<T, I>::NoPermission);
-				}
-
-				AccountApprovals::<T, I>::try_mutate(
-					collection,
-					&owner,
-					|approvals| -> Result<(), DispatchError> {
-						ensure!(*approvals == witness_approvals, Error::<T, I>::BadWitness);
-						let _ = CollectionApprovals::<T, I>::clear_prefix(
-							(collection, owner.clone()),
-							*approvals,
-							None,
-						);
-						*approvals = 0;
-
-						Ok(())
-					},
-				)?;
-				Ok(owner)
+			&owner,
+			|approvals| -> Result<(), DispatchError> {
+				ensure!(*approvals == witness_approvals, Error::<T, I>::BadWitness);
+				let _ = CollectionApprovals::<T, I>::clear_prefix(
+					(collection, owner.clone()),
+					*approvals,
+					None,
+				);
+				*approvals = 0;
+				Ok(())
 			},
 		)?;
 
