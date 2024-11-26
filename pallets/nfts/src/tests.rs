@@ -343,7 +343,7 @@ fn destroy_should_work() {
 				0,
 				Nfts::get_destroy_witness(&0).unwrap()
 			),
-			Error::<Test>::AllowancesNotEmpty
+			Error::<Test>::CollectionApprovalsNotEmpty
 		);
 		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(1)), 0, None, account(3)));
 		assert_ok!(Nfts::destroy(
@@ -2043,8 +2043,8 @@ fn cancel_approval_collection_works_with_admin() {
 			owner: account(1),
 			delegate: account(3)
 		}));
-		assert_eq!(Allowances::<Test>::get((0, account(2))).contains_key(&account(3)), false);
-		assert_eq!(Nfts::collection_allowances(0).unwrap(), 0);
+		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))).is_some(), false);
+		assert_eq!(AccountAllowances::<Test>::get(0, account(2)), 0);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)),
@@ -2200,8 +2200,8 @@ fn approval_collection_works_with_admin() {
 			delegate: account(3),
 			deadline: None
 		}));
-		assert!(Allowances::<Test>::get((0, account(1))).contains_key(&account(3)));
-		assert_eq!(Nfts::collection_allowances(0).unwrap(), 1);
+		assert!(Allowances::<Test>::get((0, account(1), account(3))).is_some());
+		assert_eq!(AccountAllowances::<Test>::get(0, account(1)), 1);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});
 }
@@ -2383,18 +2383,77 @@ fn clear_all_transfer_approvals_works() {
 		));
 
 		assert_noop!(
-			Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(3)), 0, 42),
+			Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(3)), 0, Some(42)),
 			Error::<Test>::NoPermission
 		);
 
-		assert_ok!(Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(2)), 0, 42));
+		assert_ok!(Nfts::clear_all_transfer_approvals(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			Some(42)
+		));
 
 		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
 			collection: 0,
-			item: 42,
+			item: Some(42),
 			owner: account(2),
 		}));
 		assert_eq!(approvals(0, 42), vec![]);
+
+		assert_noop!(
+			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(5)),
+			Error::<Test>::NoPermission
+		);
+		assert_noop!(
+			Nfts::transfer(RuntimeOrigin::signed(account(4)), 0, 42, account(5)),
+			Error::<Test>::NoPermission
+		);
+	});
+}
+
+#[test]
+fn clear_all_collection_approvals_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			account(1),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			42,
+			account(2),
+			default_item_config()
+		));
+
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			None,
+			account(3),
+			None
+		));
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			None,
+			account(4),
+			None
+		));
+
+		assert_noop!(
+			Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(2)), 0, None),
+			Error::<Test>::NoPermission
+		);
+
+		assert_ok!(Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(1)), 0, None));
+		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
+			collection: 0,
+			item: None,
+			owner: account(1),
+		}));
+		assert_eq!(Allowances::<Test>::iter_prefix((0, account(1))).count(), 0);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(5)),

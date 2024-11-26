@@ -106,8 +106,6 @@ pub struct CollectionDetails<AccountId, DepositBalance> {
 	pub item_configs: u32,
 	/// The total number of attributes for this collection.
 	pub attributes: u32,
-	/// The total number of allowances to spend all items within collections.
-	pub allowances: u32,
 }
 
 /// Witness data for the destroy transactions.
@@ -122,6 +120,14 @@ pub struct DestroyWitness {
 	/// The total number of attributes for this collection.
 	#[codec(compact)]
 	pub attributes: u32,
+}
+
+/// Witness data for the destroy transactions.
+#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub struct ClearAllApprovalsWitness {
+	/// The total number of collection approvals in the collection.
+	#[codec(compact)]
+	pub allowances: u32,
 }
 
 impl<AccountId, DepositBalance> CollectionDetails<AccountId, DepositBalance> {

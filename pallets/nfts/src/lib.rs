@@ -425,8 +425,22 @@ pub mod pallet {
 			NMapKey<Twox64Concat, T::CollectionId>,
 			// Collection Owner Id.
 			NMapKey<Blake2_128Concat, T::AccountId>,
+			// Delegate Id.
+			NMapKey<Blake2_128Concat, T::AccountId>,
 		),
-		ApprovalsOf<T, I>,
+		Option<BlockNumberFor<T>>,
+		OptionQuery,
+	>;
+
+	/// Number of collection approvals that owners granted.
+	#[pallet::storage]
+	pub type AccountAllowances<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		T::CollectionId,
+		Blake2_128Concat,
+		T::AccountId,
+		u32,
 		ValueQuery,
 	>;
 
@@ -502,8 +516,12 @@ pub mod pallet {
 			owner: T::AccountId,
 			delegate: T::AccountId,
 		},
-		/// All approvals of an item got cancelled.
-		AllApprovalsCancelled { collection: T::CollectionId, item: T::ItemId, owner: T::AccountId },
+		/// All approvals of an item or a collection got cancelled.
+		AllApprovalsCancelled {
+			collection: T::CollectionId,
+			item: Option<T::ItemId>,
+			owner: T::AccountId,
+		},
 		/// A `collection` has had its config changed by the `Force` origin.
 		CollectionConfigChanged { collection: T::CollectionId },
 		/// New metadata has been set for a `collection`.
@@ -717,8 +735,10 @@ pub mod pallet {
 		CollectionNotEmpty,
 		/// The witness data should be provided.
 		WitnessRequired,
-		/// Cant' delete collections whose allowances.
-		AllowancesNotEmpty,
+		/// Cant' delete collections whose approvals.
+		CollectionApprovalsNotEmpty,
+		/// Collection approval and item approval conflicts.
+		DelegateApprovalConflict,
 	}
 
 	#[pallet::call]
@@ -1354,8 +1374,8 @@ pub mod pallet {
 		///
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approval will be cancelled.
-		/// - `item`: The optional item of the collection of whose approval will be cancelled. If
-		///   not provided, an allowance to transfer all items within the collection will be
+		/// - `maybe_item`: The optional item of the collection of whose approval will be cancelled.
+		///   If not provided, an allowance to transfer all items within the collection will be
 		///   cancelled.
 		/// - `delegate`: The account that is going to loose their approval.
 		///
@@ -1389,22 +1409,34 @@ pub mod pallet {
 		///
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approvals will be cleared.
-		/// - `item`: The item of the collection of whose approvals will be cleared.
+		/// - `maybe_item`: The item of the collection of whose approvals will be cleared. The
+		///   optional item of the collection of whose approval will be cleared. If not provided,
+		///   all approvals to transfer items within collection
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(17)]
-		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals())]
+		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(
+		    maybe_item.is_some() as u32,
+			witness.allowances
+		))]
 		pub fn clear_all_transfer_approvals(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
-			item: T::ItemId,
+			maybe_item: Option<T::ItemId>,
+			witness: ClearAllApprovalsWitness,
 		) -> DispatchResult {
 			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
 				.map(|_| None)
 				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
-			Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)
+
+			match maybe_item {
+				Some(item) =>
+					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item),
+				None =>
+					Self::do_clear_all_collection_approvals(maybe_check_origin, collection, witness),
+			}
 		}
 
 		/// Disallows changing the metadata or attributes of the item.

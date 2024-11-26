@@ -55,7 +55,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				item_metadatas: 0,
 				item_configs: 0,
 				attributes: 0,
-				allowances: 0,
 			},
 		);
 		CollectionRoleOf::<T, I>::insert(
@@ -97,6 +96,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///   ([`NoPermission`](crate::Error::NoPermission)).
 	/// - If the collection is not empty (contains items)
 	///   ([`CollectionNotEmpty`](crate::Error::CollectionNotEmpty)).
+	/// - If the collection approvals is not empty (contains permissions to transfer all items
+	///   within the collection)
+	///   ([`CollectionApprovalsNotEmpty`](crate::Error::CollectionApprovalsNotEmpty)).
 	/// - If the `witness` does not match the actual collection details
 	///   ([`BadWitness`](crate::Error::BadWitness)).
 	pub fn do_destroy_collection(
@@ -110,8 +112,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			if let Some(check_owner) = maybe_check_owner {
 				ensure!(collection_details.owner == check_owner, Error::<T, I>::NoPermission);
 			}
+			let allowances = AccountAllowances::<T, I>::get(collection, &collection_details.owner);
 			ensure!(collection_details.items == 0, Error::<T, I>::CollectionNotEmpty);
-			ensure!(collection_details.allowances == 0, Error::<T, I>::AllowancesNotEmpty);
+			ensure!(allowances == 0, Error::<T, I>::CollectionApprovalsNotEmpty);
 			ensure!(collection_details.attributes == witness.attributes, Error::<T, I>::BadWitness);
 			ensure!(
 				collection_details.item_metadatas == witness.item_metadatas,
