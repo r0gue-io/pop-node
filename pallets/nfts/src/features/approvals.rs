@@ -108,6 +108,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		let mut details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
+		ensure!(
+			!Allowances::<T, I>::contains_key((collection, &details.owner, &delegate)),
+			Error::<T, I>::DelegateApprovalConflict
+		);
+
 		let maybe_deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NotDelegate)?;
 
 		let is_past_deadline = if let Some(deadline) = maybe_deadline {
