@@ -236,13 +236,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				AccountApprovals::<T, I>::try_mutate(
 					collection,
 					&owner,
-					|allowances| -> Result<(), DispatchError> {
+					|approvals| -> Result<(), DispatchError> {
 						ensure!(
-							*allowances < T::ApprovalsLimit::get(),
+							*approvals < T::ApprovalsLimit::get(),
 							Error::<T, I>::ReachedApprovalLimit
 						);
 						CollectionApprovals::<T, I>::insert((&collection, &owner, &delegate), deadline);
-						allowances.saturating_inc();
+						approvals.saturating_inc();
 						Ok(())
 					},
 				)?;
@@ -304,8 +304,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 
 				CollectionApprovals::<T, I>::remove((&collection, &owner, &delegate));
-				AccountApprovals::<T, I>::mutate(collection, &owner, |allowances| {
-					allowances.saturating_dec();
+				AccountApprovals::<T, I>::mutate(collection, &owner, |approvals| {
+					approvals.saturating_dec();
 				});
 				Ok(owner)
 			},
@@ -327,12 +327,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///   collection, granting permission to clear all collection approvals. If `None`, no
 	///   permission check is performed.
 	/// - `collection`: The collection ID containing the item.
-	/// - `witness_allowances`: Information on the collection approvals cleared. This must be
+	/// - `witness_approvals`: Information on the collection approvals cleared. This must be
 	///   correct.
 	pub(crate) fn do_clear_all_collection_approvals(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
-		witness_allowances: u32,
+		witness_approvals: u32,
 	) -> DispatchResult {
 		let owner = Collection::<T, I>::try_mutate(
 			collection,
@@ -348,14 +348,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				AccountApprovals::<T, I>::try_mutate(
 					collection,
 					&owner,
-					|allowances| -> Result<(), DispatchError> {
-						ensure!(*allowances == witness_allowances, Error::<T, I>::BadWitness);
+					|approvals| -> Result<(), DispatchError> {
+						ensure!(*approvals == witness_approvals, Error::<T, I>::BadWitness);
 						let _ = CollectionApprovals::<T, I>::clear_prefix(
 							(collection, owner.clone()),
-							*allowances,
+							*approvals,
 							None,
 						);
-						*allowances = 0;
+						*approvals = 0;
 
 						Ok(())
 					},

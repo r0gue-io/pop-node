@@ -635,7 +635,7 @@ benchmarks_instance_pallet! {
 
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
-		let (maybe_item, witness_allowances) = if i == 0 {
+		let (maybe_item, witness_approvals) = if i == 0 {
 			for i in 0 .. n {
 				approve_collection::<T, I>(i);
 			}
@@ -648,7 +648,7 @@ benchmarks_instance_pallet! {
 			Nfts::<T, I>::approve_transfer(origin, collection, Some(item), delegate_lookup.clone(), Some(deadline))?;
 			(Some(item), None)
 		};
-	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, witness_allowances)
+	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, witness_approvals)
 	verify {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: maybe_item, owner: caller}.into());
 	}
