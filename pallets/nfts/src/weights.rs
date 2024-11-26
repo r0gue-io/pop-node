@@ -20,7 +20,7 @@
 // --no-min-squares
 // --wasm-execution=compiled
 // --heap-pages=4096
-// --output=./pallets/nfts/src/weights_temp.rs
+// --output=./pallets/nfts/src/weights.rs
 // --template=./scripts/pallet-weights-template.hbs
 // --extrinsic=
 
