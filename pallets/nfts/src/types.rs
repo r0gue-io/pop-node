@@ -106,8 +106,6 @@ pub struct CollectionDetails<AccountId, DepositBalance> {
 	pub item_configs: u32,
 	/// The total number of attributes for this collection.
 	pub attributes: u32,
-	/// The total number of allowances to spend all items within collections.
-	pub allowances: u32,
 }
 
 /// Witness data for the destroy transactions.

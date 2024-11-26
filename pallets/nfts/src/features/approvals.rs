@@ -20,6 +20,7 @@
 //! to have the functionality defined in this module.
 
 use frame_support::pallet_prelude::*;
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::*;
 
@@ -153,6 +154,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		item: T::ItemId,
 	) -> DispatchResult {
+		let collection_details =
+			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+
+		ensure!(
+			AccountAllowances::<T, I>::get(collection, collection_details.owner) == 0,
+			Error::<T, I>::DelegateApprovalConflict
+		);
+
 		let mut details =
 			Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
 
@@ -165,7 +174,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		Self::deposit_event(Event::AllApprovalsCancelled {
 			collection,
-			item,
+			item: Some(item),
 			owner: details.owner,
 		});
 
@@ -178,17 +187,23 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// a `delegate`. If `maybe_check_origin` is specified, the function ensures that the
 	/// `check_origin` account is the owner of the collection, granting them permission to approve
 	/// the transfer. The `delegate` is the account that will be allowed to take control of all
-	/// items within the collection.
+	/// items within the collection. Optionally, a `deadline` can be specified to set a time limit
+	/// for the approval. The `deadline` is expressed in block numbers and is added to the current
+	/// block number to determine the absolute deadline for the approval. After approving the
+	/// transfer, the function emits the `TransferApproved` event.
 	///
 	/// - `maybe_check_origin`: The optional account that is required to be the owner of the item,
 	///   granting permission to approve the transfer. If `None`, no permission check is performed.
 	/// - `collection`: The identifier of the collection.
 	/// - `delegate`: The account that will be allowed to take control of all items within the
 	///   collection.
+	/// - `maybe_deadline`: The optional deadline (in block numbers) specifying the time limit for
+	///   the approval.
 	pub(crate) fn do_approve_collection(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
+		maybe_deadline: Option<frame_system::pallet_prelude::BlockNumberFor<T>>,
 	) -> DispatchResult {
 		ensure!(
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
@@ -201,9 +216,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::ItemsNonTransferable
 		);
 
-		let owner = Collection::<T, I>::try_mutate(
+		let (owner, deadline) = Collection::<T, I>::try_mutate(
 			collection,
-			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
+			|maybe_collection_details| -> Result<(T::AccountId, Option<BlockNumberFor<T>>), DispatchError> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 				let owner = collection_details.clone().owner;
@@ -211,11 +226,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				if let Some(check_origin) = maybe_check_origin {
 					ensure!(check_origin == owner, Error::<T, I>::NoPermission);
 				}
-				Allowances::<T, I>::mutate((&collection, &owner, &delegate), |allowance| {
-					*allowance = true;
-				});
-				collection_details.allowances.saturating_inc();
-				Ok(owner)
+				let now = frame_system::Pallet::<T>::block_number();
+				let deadline = maybe_deadline.map(|d| d.saturating_add(now));
+
+				AccountAllowances::<T,I>::try_mutate(collection, &owner, |allowances| -> Result<(), DispatchError> {
+    				ensure!(*allowances < T::ApprovalsLimit::get(), Error::<T, I>::ReachedApprovalLimit);
+    				Allowances::<T, I>::mutate(
+    					(&collection, &owner, &delegate),
+    					|maybe_deadline| {
+    					   *maybe_deadline = Some(deadline);
+    					},
+    				);
+    				allowances.saturating_inc();
+                    Ok(())
+				})?;
+				Ok((owner, deadline))
 			},
 		)?;
 
@@ -224,8 +249,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			item: None,
 			owner,
 			delegate,
-			deadline: None,
+			deadline,
 		});
+
 		Ok(())
 	}
 
@@ -238,8 +264,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// function emits the `ApprovalCancelled` event.
 	///
 	/// - `maybe_check_origin`: The optional account that is required to be the owner of the
-	///   collection, granting permission to cancel the approval. If `None`, no permission check is
-	///   performed.
+	///   collection or that the approval is past its deadline, granting permission to cancel the
+	///   approval. If `None`, no permission check is performed.
 	/// - `collection`: The identifier of the collection
 	/// - `delegate`: The account that was previously allowed to take control of all items within
 	///   the collection.
@@ -254,17 +280,98 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 				let owner = collection_details.clone().owner;
+				let maybe_deadline = Allowances::<T, I>::get((&collection, &owner, &delegate))
+					.ok_or(Error::<T, I>::NotDelegate)?;
+
+				let is_past_deadline = if let Some(deadline) = maybe_deadline {
+					let now = frame_system::Pallet::<T>::block_number();
+					now > deadline
+				} else {
+					false
+				};
+
+				if !is_past_deadline {
+					if let Some(check_origin) = maybe_check_origin {
+						ensure!(check_origin == owner, Error::<T, I>::NoPermission);
+					}
+				}
 
 				Allowances::<T, I>::remove((&collection, &owner, &delegate));
-				if let Some(check_origin) = maybe_check_origin {
-					ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-				}
-				collection_details.allowances.saturating_dec();
+				AccountAllowances::<T, I>::mutate(collection, &owner, |allowances| {
+					allowances.saturating_dec();
+				});
 				Ok(owner)
 			},
 		)?;
 
 		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
+
+		Ok(())
+	}
+
+	/// Clears all collection approvals.
+	///
+	/// This function is used to clear all approvals to transfer all items within the collections.
+	/// If `maybe_check_origin` is specified, the function ensures that the `check_origin` account
+	/// is the owner of the item, granting permission to clear all collection approvals. After
+	/// clearing all approvals, the function emits the `AllApprovalsCancelled` event.
+	///
+	/// - `maybe_check_origin`: The optional account that is required to be the owner of the
+	///   collection, granting permission to clear all collection approvals. If `None`, no
+	///   permission check is performed.
+	/// - `collection`: The collection ID containing the item.
+	pub(crate) fn do_clear_all_collection_approvals(
+		maybe_check_origin: Option<T::AccountId>,
+		collection: T::CollectionId,
+		witness_allowances: u32,
+	) -> DispatchResult {
+		let owner = Collection::<T, I>::try_mutate(
+			collection,
+			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
+				let collection_details =
+					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
+				let owner = collection_details.clone().owner;
+
+				if let Some(check_origin) = maybe_check_origin {
+					ensure!(check_origin == owner.clone(), Error::<T, I>::NoPermission);
+				}
+
+				AccountAllowances::<T, I>::try_mutate(
+					collection,
+					&owner,
+					|allowances| -> Result<(), DispatchError> {
+						ensure!(*allowances == witness_allowances, Error::<T, I>::BadWitness);
+						let _ = Allowances::<T, I>::clear_prefix(
+							(collection, owner.clone()),
+							*allowances,
+							None,
+						);
+						*allowances = 0;
+
+						Ok(())
+					},
+				)?;
+				Ok(owner)
+			},
+		)?;
+
+		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner });
+
+		Ok(())
+	}
+
+	// Check if a `delegate` has a permission to spend the collection.
+	fn check_collection_allowance(
+		collection: &T::CollectionId,
+		owner: &T::AccountId,
+		delegate: &T::AccountId,
+	) -> Result<(), DispatchError> {
+		let maybe_deadline = Allowances::<T, I>::get((&collection, &owner, &delegate))
+			.ok_or(Error::<T, I>::NoPermission)?;
+		if let Some(deadline) = maybe_deadline {
+			let block_number = frame_system::Pallet::<T>::block_number();
+			ensure!(block_number <= deadline, Error::<T, I>::ApprovalExpired);
+		}
 		Ok(())
 	}
 
@@ -286,23 +393,23 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		delegate: &T::AccountId,
 	) -> Result<(), DispatchError> {
 		// Check if a `delegate` has a permission to spend the collection.
-		if Allowances::<T, I>::get((&collection, &owner, &delegate)) {
-			if let Some(item) = item {
-				Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let check_collection_allowance_error =
+			match Self::check_collection_allowance(collection, owner, delegate) {
+				Ok(()) => return Ok(()),
+				Err(error) => error,
 			};
-			return Ok(());
-		}
 		// Check if a `delegate` has a permission to spend the collection item.
 		if let Some(item) = item {
 			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
-			let deadline = details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
-			if let Some(d) = deadline {
+			let maybe_deadline =
+				details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
+			if let Some(deadline) = maybe_deadline {
 				let block_number = frame_system::Pallet::<T>::block_number();
-				ensure!(block_number <= *d, Error::<T, I>::ApprovalExpired);
+				ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
 			}
 			return Ok(());
 		};
-		Err(Error::<T, I>::NoPermission.into())
+		Err(check_collection_allowance_error)
 	}
 }

@@ -149,6 +149,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				return Ok(());
 			}
 
+			// All collection approvals need to be removed because otherwise
+			// pre-approve attack would be possible, where the owner can approve their
+			// second account before making the transaction and then claiming all items
+			// within the collection back.
+			ensure!(
+				AccountAllowances::<T, I>::get(collection, &details.owner) == 0,
+				Error::<T, I>::CollectionApprovalsNotEmpty
+			);
+
 			// Move the deposit to the new owner.
 			T::Currency::repatriate_reserved(
 				&details.owner,
