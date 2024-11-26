@@ -2091,6 +2091,10 @@ fn cancel_approval_collection_works_with_admin() {
 		}));
 		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))).is_some(), false);
 		assert_eq!(AccountAllowances::<Test>::get(0, account(2)), 0);
+		assert_eq!(
+			AccountAllowances::<Test>::get(0, account(2)),
+			Allowances::<Test>::iter_prefix((0, account(2))).count() as u32
+		);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)),
@@ -2274,6 +2278,10 @@ fn approval_collection_works_with_admin() {
 		}));
 		assert!(Allowances::<Test>::get((0, account(1), account(3))).is_some());
 		assert_eq!(AccountAllowances::<Test>::get(0, account(1)), 1);
+		assert_eq!(
+			AccountAllowances::<Test>::get(0, account(1)),
+			Allowances::<Test>::iter_prefix((0, account(1))).count() as u32
+		);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});
 }
@@ -2543,6 +2551,10 @@ fn clear_all_collection_approvals_works() {
 		}));
 		assert_eq!(Allowances::<Test>::iter_prefix((0, account(1))).count(), 0);
 		assert_eq!(AccountAllowances::<Test>::get(0, account(1)), 0);
+		assert_eq!(
+			AccountAllowances::<Test>::get(0, account(1)),
+			Allowances::<Test>::iter_prefix((0, account(1))).count() as u32
+		);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(5)),
