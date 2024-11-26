@@ -112,7 +112,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			if let Some(check_owner) = maybe_check_owner {
 				ensure!(collection_details.owner == check_owner, Error::<T, I>::NoPermission);
 			}
-			let allowances = AccountAllowances::<T, I>::get(collection, &collection_details.owner);
+			let allowances = AccountApprovals::<T, I>::get(collection, &collection_details.owner);
 			ensure!(collection_details.items == 0, Error::<T, I>::CollectionNotEmpty);
 			ensure!(allowances == 0, Error::<T, I>::CollectionApprovalsNotEmpty);
 			ensure!(collection_details.attributes == witness.attributes, Error::<T, I>::BadWitness);

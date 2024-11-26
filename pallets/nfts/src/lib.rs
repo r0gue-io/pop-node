@@ -418,7 +418,7 @@ pub mod pallet {
 
 	/// Permission for the delegate to transfer all owner's items within a collection.
 	#[pallet::storage]
-	pub type Allowances<T: Config<I>, I: 'static = ()> = StorageNMap<
+	pub type CollectionApprovals<T: Config<I>, I: 'static = ()> = StorageNMap<
 		_,
 		(
 			// Collection ID.
@@ -434,7 +434,7 @@ pub mod pallet {
 
 	/// Number of collection approvals that owners granted.
 	#[pallet::storage]
-	pub type AccountAllowances<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
+	pub type AccountApprovals<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
 		Twox64Concat,
 		T::CollectionId,
@@ -838,7 +838,7 @@ pub mod pallet {
 		/// The origin must conform to `ForceOrigin` or must be `Signed` and the sender must be the
 		/// owner of the `collection`.
 		///
-		/// NOTE: The collection must have 0 items to be destroyed.
+		/// NOTE: The collection must have 0 items and 0 collection approvals to be destroyed.
 		///
 		/// - `collection`: The identifier of the collection to be destroyed.
 		/// - `witness`: Information on the items minted in the collection. This must be
@@ -1081,7 +1081,7 @@ pub mod pallet {
 
 			Self::do_transfer(collection, item, dest, |_, details| {
 				if details.owner != origin {
-					Self::check_allowance(&collection, &Some(item), &details.owner, &origin)?;
+					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
 				}
 				Ok(())
 			})

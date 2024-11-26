@@ -352,7 +352,7 @@ fn destroy_should_work() {
 			Nfts::get_destroy_witness(&0).unwrap()
 		));
 		assert_eq!(AccountBalance::<Test>::get(0, account(1)), 0);
-		assert_eq!(Allowances::<Test>::iter_prefix((0,)).count(), 0);
+		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0,)).count(), 0);
 		assert!(!ItemConfigOf::<Test>::contains_key(0, 42));
 		assert_eq!(ItemConfigOf::<Test>::iter_prefix(0).count() as u32, 0);
 	});
@@ -1905,15 +1905,15 @@ fn check_allowance_works() {
 
 		// transfer all items within the collection approved (without deadline).
 		assert_noop!(
-			Nfts::check_allowance(&1, &None, &account(1), &account(2)),
+			Nfts::check_approval(&1, &None, &account(1), &account(2)),
 			Error::<Test>::NoPermission
 		);
 		assert_noop!(
-			Nfts::check_allowance(&1, &Some(43), &account(1), &account(2)),
+			Nfts::check_approval(&1, &Some(43), &account(1), &account(2)),
 			Error::<Test>::UnknownItem
 		);
-		assert_ok!(Nfts::check_allowance(&0, &None, &account(1), &account(2)));
-		assert_ok!(Nfts::check_allowance(&0, &Some(42), &account(1), &account(2)));
+		assert_ok!(Nfts::check_approval(&0, &None, &account(1), &account(2)));
+		assert_ok!(Nfts::check_approval(&0, &Some(42), &account(1), &account(2)));
 
 		// transfer a collection item approved (without deadline).
 		assert_ok!(Nfts::approve_transfer(
@@ -1925,14 +1925,14 @@ fn check_allowance_works() {
 		));
 
 		assert_noop!(
-			Nfts::check_allowance(&0, &Some(43), &account(2), &account(3)),
+			Nfts::check_approval(&0, &Some(43), &account(2), &account(3)),
 			Error::<Test>::UnknownItem
 		);
 		assert_noop!(
-			Nfts::check_allowance(&0, &Some(42), &account(2), &account(4)),
+			Nfts::check_approval(&0, &Some(42), &account(2), &account(4)),
 			Error::<Test>::NoPermission
 		);
-		assert_ok!(Nfts::check_allowance(&0, &Some(42), &account(2), &account(3)));
+		assert_ok!(Nfts::check_approval(&0, &Some(42), &account(2), &account(3)));
 
 		// transfer all items within the collection approved (with deadline).
 		let current_block = 1;
@@ -1953,17 +1953,17 @@ fn check_allowance_works() {
 		));
 		System::set_block_number(deadline + 2);
 		assert_noop!(
-			Nfts::check_allowance(&0, &Some(42), &account(2), &account(3)),
+			Nfts::check_approval(&0, &Some(42), &account(2), &account(3)),
 			Error::<Test>::ApprovalExpired
 		);
-		assert_ok!(Nfts::check_allowance(&0, &None, &account(1), &account(3)));
+		assert_ok!(Nfts::check_approval(&0, &None, &account(1), &account(3)));
 		System::set_block_number(deadline + 3);
 		assert_noop!(
-			Nfts::check_allowance(&0, &Some(42), &account(2), &account(3)),
+			Nfts::check_approval(&0, &Some(42), &account(2), &account(3)),
 			Error::<Test>::ApprovalExpired
 		);
 		assert_noop!(
-			Nfts::check_allowance(&0, &None, &account(1), &account(3)),
+			Nfts::check_approval(&0, &None, &account(1), &account(3)),
 			Error::<Test>::ApprovalExpired
 		);
 	});
@@ -2089,11 +2089,11 @@ fn cancel_approval_collection_works_with_admin() {
 			owner: account(1),
 			delegate: account(3)
 		}));
-		assert_eq!(Allowances::<Test>::get((0, account(2), account(3))).is_some(), false);
-		assert_eq!(AccountAllowances::<Test>::get(0, account(2)), 0);
+		assert_eq!(CollectionApprovals::<Test>::get((0, account(2), account(3))).is_some(), false);
+		assert_eq!(AccountApprovals::<Test>::get(0, account(2)), 0);
 		assert_eq!(
-			AccountAllowances::<Test>::get(0, account(2)),
-			Allowances::<Test>::iter_prefix((0, account(2))).count() as u32
+			AccountApprovals::<Test>::get(0, account(2)),
+			CollectionApprovals::<Test>::iter_prefix((0, account(2))).count() as u32
 		);
 
 		assert_noop!(
@@ -2276,11 +2276,11 @@ fn approval_collection_works_with_admin() {
 			delegate: account(3),
 			deadline: None
 		}));
-		assert!(Allowances::<Test>::get((0, account(1), account(3))).is_some());
-		assert_eq!(AccountAllowances::<Test>::get(0, account(1)), 1);
+		assert!(CollectionApprovals::<Test>::get((0, account(1), account(3))).is_some());
+		assert_eq!(AccountApprovals::<Test>::get(0, account(1)), 1);
 		assert_eq!(
-			AccountAllowances::<Test>::get(0, account(1)),
-			Allowances::<Test>::iter_prefix((0, account(1))).count() as u32
+			AccountApprovals::<Test>::get(0, account(1)),
+			CollectionApprovals::<Test>::iter_prefix((0, account(1))).count() as u32
 		);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});
@@ -2575,11 +2575,11 @@ fn clear_all_collection_approvals_works() {
 			item: None,
 			owner: account(1),
 		}));
-		assert_eq!(Allowances::<Test>::iter_prefix((0, account(1))).count(), 0);
-		assert_eq!(AccountAllowances::<Test>::get(0, account(1)), 0);
+		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, account(1))).count(), 0);
+		assert_eq!(AccountApprovals::<Test>::get(0, account(1)), 0);
 		assert_eq!(
-			AccountAllowances::<Test>::get(0, account(1)),
-			Allowances::<Test>::iter_prefix((0, account(1))).count() as u32
+			AccountApprovals::<Test>::get(0, account(1)),
+			CollectionApprovals::<Test>::iter_prefix((0, account(1))).count() as u32
 		);
 
 		assert_noop!(

@@ -154,7 +154,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			// second account before making the transaction and then claiming all items
 			// within the collection back.
 			ensure!(
-				AccountAllowances::<T, I>::get(collection, &details.owner) == 0,
+				AccountApprovals::<T, I>::get(collection, &details.owner) == 0,
 				Error::<T, I>::CollectionApprovalsNotEmpty
 			);
 
