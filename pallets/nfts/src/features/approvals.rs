@@ -393,9 +393,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		delegate: &T::AccountId,
 	) -> Result<(), DispatchError> {
 		// Check if a `delegate` has a permission to spend the collection.
-		if Self::check_collection_allowance(collection, owner, delegate).is_ok() {
-			return Ok(());
-		}
+		let check_collection_allowance_error =
+			match Self::check_collection_allowance(collection, owner, delegate) {
+				Ok(()) => return Ok(()),
+				Err(error) => error,
+			};
 		// Check if a `delegate` has a permission to spend the collection item.
 		if let Some(item) = item {
 			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
@@ -408,6 +410,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			}
 			return Ok(());
 		};
-		Err(Error::<T, I>::NoPermission.into())
+		Err(check_collection_allowance_error)
 	}
 }

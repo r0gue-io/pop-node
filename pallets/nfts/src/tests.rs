@@ -1903,7 +1903,7 @@ fn check_allowance_works() {
 			None
 		));
 
-		// collection transfer approved.
+		// transfer all items within the collection approved (without deadline).
 		assert_noop!(
 			Nfts::check_allowance(&1, &None, &account(1), &account(2)),
 			Error::<Test>::NoPermission
@@ -1915,7 +1915,7 @@ fn check_allowance_works() {
 		assert_ok!(Nfts::check_allowance(&0, &None, &account(1), &account(2)));
 		assert_ok!(Nfts::check_allowance(&0, &Some(42), &account(1), &account(2)));
 
-		// collection item transfer approved.
+		// transfer a collection item approved (without deadline).
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
 			0,
@@ -1933,6 +1933,39 @@ fn check_allowance_works() {
 			Error::<Test>::NoPermission
 		);
 		assert_ok!(Nfts::check_allowance(&0, &Some(42), &account(2), &account(3)));
+
+		// transfer all items within the collection approved (with deadline).
+		let current_block = 1;
+		let deadline = current_block + 10;
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			Some(42),
+			account(3),
+			Some(deadline)
+		));
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			None,
+			account(3),
+			Some(deadline + 1)
+		));
+		System::set_block_number(deadline + 2);
+		assert_noop!(
+			Nfts::check_allowance(&0, &Some(42), &account(2), &account(3)),
+			Error::<Test>::ApprovalExpired
+		);
+		assert_ok!(Nfts::check_allowance(&0, &None, &account(1), &account(3)));
+		System::set_block_number(deadline + 3);
+		assert_noop!(
+			Nfts::check_allowance(&0, &Some(42), &account(2), &account(3)),
+			Error::<Test>::ApprovalExpired
+		);
+		assert_noop!(
+			Nfts::check_allowance(&0, &None, &account(1), &account(3)),
+			Error::<Test>::ApprovalExpired
+		);
 	});
 }
 
@@ -2156,6 +2189,32 @@ fn approvals_limit_works() {
 				account(14),
 				None
 			),
+			Error::<Test>::ReachedApprovalLimit
+		);
+	});
+}
+
+#[test]
+fn collection_approvals_limit_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			account(1),
+			default_collection_config()
+		));
+
+		for i in 3..13 {
+			assert_ok!(Nfts::approve_transfer(
+				RuntimeOrigin::signed(account(1)),
+				0,
+				None,
+				account(i),
+				None
+			));
+		}
+		// the limit is 10
+		assert_noop!(
+			Nfts::approve_transfer(RuntimeOrigin::signed(account(1)), 0, None, account(14), None),
 			Error::<Test>::ReachedApprovalLimit
 		);
 	});
