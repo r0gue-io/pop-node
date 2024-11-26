@@ -236,12 +236,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 				AccountAllowances::<T,I>::try_mutate(collection, &owner, |allowances| -> Result<(), DispatchError> {
     				ensure!(*allowances < T::ApprovalsLimit::get(), Error::<T, I>::ReachedApprovalLimit);
-    				Allowances::<T, I>::mutate(
-    					(&collection, &owner, &delegate),
-    					|maybe_deadline| {
-    					   *maybe_deadline = Some(deadline);
-    					},
-    				);
+    				Allowances::<T, I>::insert((&collection, &owner, &delegate), deadline);
     				allowances.saturating_inc();
                     Ok(())
 				})?;
