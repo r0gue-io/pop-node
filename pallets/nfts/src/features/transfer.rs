@@ -18,7 +18,7 @@
 //! This module contains helper methods to perform the transfer functionalities
 //! of the NFTs pallet.
 
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError};
 
 use crate::*;
 
@@ -86,14 +86,19 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Perform the transfer with custom details using the provided closure.
 		with_details(&collection_details, &mut details)?;
 
-		// Update account balance of the owner.
-		AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| {
-			balance.saturating_dec();
-		});
 		// Update account balance of the destination account.
 		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
 			balance.saturating_inc();
 		});
+		// Update account balance of the owner.
+		let balance = AccountBalance::<T, I>::get(collection, &details.owner)
+			.checked_sub(1)
+			.ok_or(ArithmeticError::Overflow)?;
+		if balance == 0 {
+			AccountBalance::<T, I>::remove(collection, &details.owner);
+		} else {
+			AccountBalance::<T, I>::insert(collection, &details.owner, balance);
+		}
 
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));
