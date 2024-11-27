@@ -105,12 +105,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// would be possible, where the owner can approve their second account before making the
 		// transaction and then claiming the item back.
 		details.approvals.clear();
-		// Likewise, all collection approvals need to be removed because otherwise pre-approve
-		// attack would be possible.
-		ensure!(
-			CollectionApprovalCount::<T, I>::get(collection, Some(&details.owner)) == 0,
-			Error::<T, I>::CollectionApprovalsExist
-		);
 
 		// Update item details.
 		Item::<T, I>::insert(collection, item, &details);
