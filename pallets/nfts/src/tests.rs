@@ -353,7 +353,7 @@ fn destroy_should_work() {
 		));
 		assert_eq!(AccountBalance::<Test>::get(account(1), 0), 0);
 		assert_eq!(
-			TotalCollectionApprovals::<Test>::contains_key(0, Option::<AccountIdOf<Test>>::None),
+			CollectionApprovalCount::<Test>::contains_key(0, Option::<AccountIdOf<Test>>::None),
 			false
 		);
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0,)).count(), 0);
@@ -2090,10 +2090,10 @@ fn cancel_approval_collection_works() {
 			delegate: account(3)
 		}));
 		assert_eq!(CollectionApprovals::<Test>::get((0, account(2), account(3))).is_some(), false);
-		assert_eq!(TotalCollectionApprovals::<Test>::get(0, Some(account(2))), 0);
-		assert_eq!(TotalCollectionApprovals::<Test>::get(0, Option::<AccountIdOf<Test>>::None), 0);
+		assert_eq!(CollectionApprovalCount::<Test>::get(0, Some(account(2))), 0);
+		assert_eq!(CollectionApprovalCount::<Test>::get(0, Option::<AccountIdOf<Test>>::None), 0);
 		assert_eq!(
-			TotalCollectionApprovals::<Test>::get(0, Some(account(2))),
+			CollectionApprovalCount::<Test>::get(0, Some(account(2))),
 			CollectionApprovals::<Test>::iter_prefix((0, account(2))).count() as u32
 		);
 
@@ -2293,10 +2293,10 @@ fn approve_transfer_collection_works() {
 			deadline: None
 		}));
 		assert!(CollectionApprovals::<Test>::get((0, account(2), account(3))).is_some());
-		assert_eq!(TotalCollectionApprovals::<Test>::get(0, Some(account(2))), 1);
-		assert_eq!(TotalCollectionApprovals::<Test>::get(0, Option::<AccountIdOf<Test>>::None), 2);
+		assert_eq!(CollectionApprovalCount::<Test>::get(0, Some(account(2))), 1);
+		assert_eq!(CollectionApprovalCount::<Test>::get(0, Option::<AccountIdOf<Test>>::None), 2);
 		assert_eq!(
-			TotalCollectionApprovals::<Test>::get(0, Some(account(2))),
+			CollectionApprovalCount::<Test>::get(0, Some(account(2))),
 			CollectionApprovals::<Test>::iter_prefix((0, account(2))).count() as u32
 		);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
@@ -2528,7 +2528,7 @@ fn clear_all_transfer_approvals_works() {
 			owner: account(2),
 		}));
 		assert_eq!(approvals(0, 42), vec![]);
-		assert_eq!(TotalCollectionApprovals::<Test>::contains_key(0, Some(account(2))), false);
+		assert_eq!(CollectionApprovalCount::<Test>::contains_key(0, Some(account(2))), false);
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, account(2))).count(), 0);
 
 		assert_noop!(
@@ -2590,10 +2590,10 @@ fn clear_all_collection_approvals_works() {
 			owner: account(1),
 		}));
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, account(1))).count(), 0);
-		assert_eq!(TotalCollectionApprovals::<Test>::contains_key(0, Some(account(1))), false);
-		assert_eq!(TotalCollectionApprovals::<Test>::get(0, Option::<AccountIdOf<Test>>::None), 0);
+		assert_eq!(CollectionApprovalCount::<Test>::contains_key(0, Some(account(1))), false);
+		assert_eq!(CollectionApprovalCount::<Test>::get(0, Option::<AccountIdOf<Test>>::None), 0);
 		assert_eq!(
-			TotalCollectionApprovals::<Test>::get(0, Some(account(1))),
+			CollectionApprovalCount::<Test>::get(0, Some(account(1))),
 			CollectionApprovals::<Test>::iter_prefix((0, account(1))).count() as u32
 		);
 
@@ -3570,9 +3570,9 @@ fn collection_locking_should_work() {
 
 		let stored_config = CollectionConfigOf::<Test>::get(collection_id).unwrap();
 		let full_lock_config = collection_config_from_disabled_settings(
-			CollectionSetting::TransferableItems |
-				CollectionSetting::UnlockedMetadata |
-				CollectionSetting::UnlockedAttributes,
+			CollectionSetting::TransferableItems
+				| CollectionSetting::UnlockedMetadata
+				| CollectionSetting::UnlockedAttributes,
 		);
 		assert_eq!(stored_config, full_lock_config);
 	});

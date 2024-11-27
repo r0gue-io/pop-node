@@ -108,7 +108,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Likewise, all collection approvals need to be removed because otherwise pre-approve
 		// attack would be possible.
 		ensure!(
-			TotalCollectionApprovals::<T, I>::get(collection, Some(&details.owner)) == 0,
+			CollectionApprovalCount::<T, I>::get(collection, Some(&details.owner)) == 0,
 			Error::<T, I>::CollectionApprovalsExist
 		);
 

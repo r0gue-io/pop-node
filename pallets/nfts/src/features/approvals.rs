@@ -161,7 +161,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		ensure!(
-			TotalCollectionApprovals::<T, I>::get(collection, Some(collection_details.owner)) == 0,
+			CollectionApprovalCount::<T, I>::get(collection, Some(collection_details.owner)) == 0,
 			Error::<T, I>::DelegateApprovalConflict
 		);
 
@@ -223,7 +223,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			|maybe_approval| -> Result<(), DispatchError> {
 				if maybe_approval.is_none() {
 					// Increment approval counts for the `origin`, ensuring limits are respected.
-					TotalCollectionApprovals::<T, I>::try_mutate(
+					CollectionApprovalCount::<T, I>::try_mutate(
 						collection,
 						Some(&origin),
 						|approvals| -> Result<(), DispatchError> {
@@ -237,7 +237,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					)?;
 
 					// Increment the total approval count for the collection.
-					TotalCollectionApprovals::<T, I>::mutate(
+					CollectionApprovalCount::<T, I>::mutate(
 						collection,
 						Option::<T::AccountId>::None,
 						|approvals| approvals.saturating_inc(),
@@ -278,10 +278,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		CollectionApprovals::<T, I>::take((&collection, &origin, &delegate))
 			.ok_or(Error::<T, I>::UnknownCollection)?;
-		TotalCollectionApprovals::<T, I>::mutate(collection, Some(&origin), |approvals| {
+		CollectionApprovalCount::<T, I>::mutate(collection, Some(&origin), |approvals| {
 			approvals.saturating_dec();
 		});
-		TotalCollectionApprovals::<T, I>::mutate(
+		CollectionApprovalCount::<T, I>::mutate(
 			collection,
 			Option::<T::AccountId>::None,
 			|approvals| approvals.saturating_dec(),
@@ -312,10 +312,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		witness_approvals: u32,
 	) -> DispatchResult {
-		let approvals = TotalCollectionApprovals::<T, I>::take(collection, Some(&origin));
+		let approvals = CollectionApprovalCount::<T, I>::take(collection, Some(&origin));
 		ensure!(approvals == witness_approvals, Error::<T, I>::BadWitness);
 		let _ = CollectionApprovals::<T, I>::clear_prefix((collection, &origin), approvals, None);
-		TotalCollectionApprovals::<T, I>::mutate(
+		CollectionApprovalCount::<T, I>::mutate(
 			collection,
 			Option::<T::AccountId>::None,
 			|total_approvals| *total_approvals = total_approvals.saturating_sub(approvals),

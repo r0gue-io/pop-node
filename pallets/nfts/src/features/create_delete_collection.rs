@@ -110,7 +110,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			let collection_details =
 				maybe_details.take().ok_or(Error::<T, I>::UnknownCollection)?;
 			let collection_approvals =
-				TotalCollectionApprovals::<T, I>::take(collection, Option::<T::AccountId>::None);
+				CollectionApprovalCount::<T, I>::take(collection, Option::<T::AccountId>::None);
 			if let Some(check_owner) = maybe_check_owner {
 				ensure!(collection_details.owner == check_owner, Error::<T, I>::NoPermission);
 			}
