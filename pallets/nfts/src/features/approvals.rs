@@ -19,7 +19,7 @@
 //! The bitflag [`PalletFeature::Approvals`] needs to be set in [`Config::Features`] for NFTs
 //! to have the functionality defined in this module.
 
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError};
 
 use crate::*;
 
@@ -187,11 +187,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Approves the transfer of items in the collection that owned by the origin to a delegate.
 	///
 	/// This function is used to approve the transfer of items in the `collection` that owned by the
-	/// `origin` to a `delegate`.The `delegate` is the account that will be allowed to take control
+	/// `origin` to a `delegate`. The `delegate` is the account that will be allowed to take control
 	/// of items in the collection that owned by the `origin`. Optionally, a `deadline` can be
 	/// specified to set a time limit for the approval. The `deadline` is expressed in block
 	/// numbers and is added to the current block number to determine the absolute deadline for the
 	/// approval. After approving the transfer, the function emits the `TransferApproved` event.
+	///
+	/// This function reserves the required deposit from the owner's account. If an approval already
+	/// exists, the new amount is added to such existing approval.
 	///
 	/// - `origin`: The account grants permission to approve the transfer.
 	/// - `collection`: The identifier of the collection.
@@ -220,31 +223,40 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		CollectionApprovals::<T, I>::try_mutate_exists(
 			(&collection, &origin, &delegate),
-			|maybe_approval| -> Result<(), DispatchError> {
-				if maybe_approval.is_none() {
-					// Increment approval counts for the `origin`, ensuring limits are respected.
-					CollectionApprovalCount::<T, I>::try_mutate(
-						collection,
-						Some(&origin),
-						|approvals| -> Result<(), DispatchError> {
-							ensure!(
-								*approvals < T::ApprovalsLimit::get(),
-								Error::<T, I>::ReachedApprovalLimit
-							);
-							approvals.saturating_inc();
-							Ok(())
-						},
-					)?;
+			|maybe_approval| -> DispatchResult {
+				let deposit_required = T::CollectionApprovalDeposit::get();
+				let mut current_deposit = match maybe_approval.take() {
+					Some((_, deposit)) => deposit,
+					None => {
+						// Increment approval counts for the `origin`, ensuring limits are
+						// respected.
+						CollectionApprovalCount::<T, I>::try_mutate(
+							collection,
+							Some(&origin),
+							|approvals| -> DispatchResult {
+								ensure!(
+									*approvals < T::ApprovalsLimit::get(),
+									Error::<T, I>::ReachedApprovalLimit
+								);
+								approvals.saturating_inc();
+								Ok(())
+							},
+						)?;
+						// Increment the total approval count for the collection.
+						CollectionApprovalCount::<T, I>::mutate(
+							collection,
+							Option::<T::AccountId>::None,
+							|approvals| approvals.saturating_inc(),
+						);
+						Zero::zero()
+					},
+				};
 
-					// Increment the total approval count for the collection.
-					CollectionApprovalCount::<T, I>::mutate(
-						collection,
-						Option::<T::AccountId>::None,
-						|approvals| approvals.saturating_inc(),
-					);
+				if current_deposit < deposit_required {
+					T::Currency::reserve(&origin, deposit_required - current_deposit)?;
+					current_deposit = deposit_required;
 				}
-				*maybe_approval = Some(deadline);
-
+				*maybe_approval = Some((deadline, current_deposit));
 				Ok(())
 			},
 		)?;
@@ -264,8 +276,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// a delegate.
 	///
 	/// This function is used to cancel the approval for the transfer of items in the `collection`
-	/// that owned by the `origin` to a `delegate`. After canceling the approval, the function emits
-	/// the `ApprovalCancelled` event.
+	/// that owned by the `origin` to a `delegate`. After canceling the approval, the function
+	/// returns the `origin` back the deposited fund and emits the `ApprovalCancelled` event.
 	///
 	/// - `origin`: The account grants permission to cancel the transfer.
 	/// - `collection`: The identifier of the collection.
@@ -276,16 +288,22 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		CollectionApprovals::<T, I>::take((&collection, &origin, &delegate))
+		let (_, deposit) = CollectionApprovals::<T, I>::take((&collection, &origin, &delegate))
 			.ok_or(Error::<T, I>::UnknownCollection)?;
-		CollectionApprovalCount::<T, I>::mutate(collection, Some(&origin), |approvals| {
-			approvals.saturating_dec();
-		});
-		CollectionApprovalCount::<T, I>::mutate(
-			collection,
-			Option::<T::AccountId>::None,
-			|approvals| approvals.saturating_dec(),
-		);
+
+		// Update the approval count for the `origin` account and the whole collection.
+		for key in vec![Some(&origin), Option::<&T::AccountId>::None] {
+			let count = CollectionApprovalCount::<T, I>::get(collection, key)
+				.checked_sub(1)
+				.ok_or(ArithmeticError::Overflow)?;
+			if count == 0 {
+				CollectionApprovalCount::<T, I>::remove(collection, key);
+			} else {
+				CollectionApprovalCount::<T, I>::insert(collection, key, count);
+			}
+		}
+
+		T::Currency::unreserve(&origin, deposit);
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
@@ -300,7 +318,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Clears all collection approvals.
 	///
 	/// This function is used to clear all approvals to transfer items in the `collection` that
-	/// owned by the `origin` to a `delegate`. After clearing all approvals, the function emits the
+	/// owned by the `origin` to a `delegate`. After clearing all approvals, the function returns
+	/// the `origin` back the deposited fund of each collection approval and emits the
 	/// `AllApprovalsCancelled` event.
 	///
 	/// - `origin`: The account grants permission to clear the transfer.
@@ -311,19 +330,40 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		origin: T::AccountId,
 		collection: T::CollectionId,
 		witness_approvals: u32,
-	) -> DispatchResult {
-		let approvals = CollectionApprovalCount::<T, I>::take(collection, Some(&origin));
-		ensure!(approvals == witness_approvals, Error::<T, I>::BadWitness);
-		let _ = CollectionApprovals::<T, I>::clear_prefix((collection, &origin), approvals, None);
-		CollectionApprovalCount::<T, I>::mutate(
+	) -> Result<u32, DispatchError> {
+		let mut removed_approvals: u32 = 0;
+		CollectionApprovalCount::<T, I>::try_mutate_exists(
 			collection,
 			Option::<T::AccountId>::None,
-			|total_approvals| *total_approvals = total_approvals.saturating_sub(approvals),
-		);
+			|maybe_collection| -> DispatchResult {
+				let total_approvals =
+					maybe_collection.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 
-		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner: origin });
+				// Remove the total number of collection approvals from the `origin`.
+				let approvals = CollectionApprovalCount::<T, I>::take(collection, Some(&origin));
+				ensure!(approvals == witness_approvals, Error::<T, I>::BadWitness);
 
-		Ok(())
+				// Iterate and remove each collection approval, return the deposited fund back to
+				// the `origin`.
+				for (_, (_, deposit)) in
+					CollectionApprovals::<T, I>::drain_prefix((collection, &origin))
+				{
+					T::Currency::unreserve(&origin, deposit);
+					removed_approvals.saturating_inc();
+					total_approvals.saturating_dec();
+					if removed_approvals >= approvals {
+						break
+					}
+				}
+				Self::deposit_event(Event::AllApprovalsCancelled {
+					collection,
+					item: None,
+					owner: origin,
+				});
+				Ok(())
+			},
+		)?;
+		Ok(removed_approvals)
 	}
 
 	/// Checks whether the `delegate` has the necessary allowance to transfer items in the
@@ -340,9 +380,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: &T::CollectionId,
 		account: &T::AccountId,
 		delegate: &T::AccountId,
-	) -> Result<(), DispatchError> {
-		let maybe_deadline = CollectionApprovals::<T, I>::get((&collection, &account, &delegate))
-			.ok_or(Error::<T, I>::NoPermission)?;
+	) -> DispatchResult {
+		let (maybe_deadline, _) =
+			CollectionApprovals::<T, I>::get((&collection, &account, &delegate))
+				.ok_or(Error::<T, I>::NoPermission)?;
 		if let Some(deadline) = maybe_deadline {
 			let block_number = frame_system::Pallet::<T>::block_number();
 			ensure!(block_number <= deadline, Error::<T, I>::ApprovalExpired);
@@ -368,7 +409,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		maybe_item: &Option<T::ItemId>,
 		account: &T::AccountId,
 		delegate: &T::AccountId,
-	) -> Result<(), DispatchError> {
+	) -> DispatchResult {
 		// Check if a `delegate` has a permission to transfer items in the collection that owned by
 		// the `owner`.
 		let error = match Self::check_collection_approval(collection, account, delegate) {

@@ -87,11 +87,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		with_details(&collection_details, &mut details)?;
 
 		// Update account balance of the owner.
-		AccountBalance::<T, I>::mutate(&details.owner, collection, |balance| {
+		AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| {
 			balance.saturating_dec();
 		});
 		// Update account balance of the destination account.
-		AccountBalance::<T, I>::mutate(&dest, collection, |balance| {
+		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
 			balance.saturating_inc();
 		});
 

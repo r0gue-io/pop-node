@@ -175,6 +175,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type CollectionDeposit: Get<DepositBalanceOf<Self, I>>;
 
+		/// The basic amount of funds that must be reserved for collection approvals.
+		#[pallet::constant]
+		type CollectionApprovalDeposit: Get<DepositBalanceOf<Self, I>>;
+
 		/// The basic amount of funds that must be reserved for an item.
 		#[pallet::constant]
 		type ItemDeposit: Get<DepositBalanceOf<Self, I>>;
@@ -411,9 +415,9 @@ pub mod pallet {
 	pub type AccountBalance<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
-		T::AccountId,
-		Blake2_128Concat,
 		T::CollectionId,
+		Blake2_128Concat,
+		T::AccountId,
 		u32,
 		ValueQuery,
 	>;
@@ -425,12 +429,12 @@ pub mod pallet {
 		(
 			// Collection ID.
 			NMapKey<Blake2_128Concat, T::CollectionId>,
-			// Collection Owner Id.
+			// Collection Account Id.
 			NMapKey<Blake2_128Concat, T::AccountId>,
 			// Delegate Id.
 			NMapKey<Blake2_128Concat, T::AccountId>,
 		),
-		Option<BlockNumberFor<T>>,
+		(Option<BlockNumberFor<T>>, DepositBalanceOf<T, I>),
 	>;
 
 	/// Total number approvals of a whole collection or a specified account.
@@ -1325,7 +1329,8 @@ pub mod pallet {
 		/// Approve an item to be transferred by a delegated third-party account.
 		///
 		/// Origin must be either `ForceOrigin` or Signed and the sender should be the Owner of the
-		/// `item`.
+		/// `item` if the `item` is provided. If not, the sender must have sufficient funds to grant
+		/// a collection approval.
 		///
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `maybe_item`: The optional item to be approved for delegated transfer. If not
@@ -1378,7 +1383,7 @@ pub mod pallet {
 		///
 		/// Origin must be either:
 		/// - the `Force` origin;
-		/// - `Signed` with the signer being the Owner of the `item`;
+		/// - `Signed` with the signer being the Owner of the `item` if the `item` is provided;
 		///
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approval will be cancelled.
@@ -1418,7 +1423,7 @@ pub mod pallet {
 		///
 		/// Origin must be either:
 		/// - the `Force` origin;
-		/// - `Signed` with the signer being the Owner of the `item`;
+		/// - `Signed` with the signer being the Owner of the `item` if the `item` is provided;
 		///
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approvals will be cleared.
@@ -1435,7 +1440,7 @@ pub mod pallet {
 		#[pallet::weight(
 		    T::WeightInfo::clear_all_transfer_approvals(
 				maybe_item.is_some() as u32,
-				witness_approvals.unwrap_or_default()
+				T::ApprovalsLimit::get()
 			)
 		)]
 		pub fn clear_all_transfer_approvals(
@@ -1443,24 +1448,27 @@ pub mod pallet {
 			collection: T::CollectionId,
 			maybe_item: Option<T::ItemId>,
 			witness_approvals: Option<u32>,
-		) -> DispatchResult {
-			match maybe_item {
+		) -> DispatchResultWithPostInfo {
+			let weight = match maybe_item {
 				Some(item) => {
 					let maybe_check_origin =
 						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
 							ensure_signed(origin).map(Some).map_err(DispatchError::from)
 						})?;
-					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)
+					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)?;
+					T::WeightInfo::clear_all_transfer_approvals(1, 0)
 				},
 				None => {
 					let origin = ensure_signed(origin)?;
-					Self::do_clear_all_collection_approvals(
+					let removed_approvals = Self::do_clear_all_collection_approvals(
 						origin,
 						collection,
 						witness_approvals.unwrap_or_default(),
-					)
+					)?;
+					T::WeightInfo::clear_all_transfer_approvals(0, removed_approvals)
 				},
-			}
+			};
+			Ok(Some(weight).into())
 		}
 
 		/// Disallows changing the metadata or attributes of the item.

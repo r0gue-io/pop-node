@@ -30,6 +30,7 @@ parameter_types! {
 parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
 	pub const NftsCollectionDeposit: Balance = 10 * UNIT;
+	pub const NftsCollectionApprovalDeposit: Balance = UNIT / 100;
 	pub const NftsItemDeposit: Balance = UNIT / 100;
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 129);
 	pub const NftsAttributeDepositBase: Balance = deposit(1, 0);
@@ -41,6 +42,7 @@ impl pallet_nfts::Config for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
+	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
 	type CollectionId = CollectionId;

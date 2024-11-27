@@ -18,7 +18,7 @@
 //! This module contains helper methods to perform functionality associated with minting and burning
 //! items for the NFTs pallet.
 
-use frame_support::{pallet_prelude::*, traits::ExistenceRequirement};
+use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError, traits::ExistenceRequirement};
 
 use crate::*;
 
@@ -68,7 +68,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			collection_details.items.saturating_inc();
 
-			AccountBalance::<T, I>::mutate(&mint_to, collection, |balance| {
+			AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| {
 				balance.saturating_inc();
 			});
 
@@ -263,9 +263,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		ItemPriceOf::<T, I>::remove(collection, item);
 		PendingSwapOf::<T, I>::remove(collection, item);
 		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
-		AccountBalance::<T, I>::mutate(&owner, collection, |balance| {
-			balance.saturating_dec();
-		});
+
+		let balance = AccountBalance::<T, I>::get(collection, &owner)
+			.checked_sub(1)
+			.ok_or(ArithmeticError::Overflow)?;
+		if balance == 0 {
+			AccountBalance::<T, I>::remove(collection, &owner);
+		} else {
+			AccountBalance::<T, I>::insert(collection, &owner, balance);
+		}
 
 		if remove_config {
 			ItemConfigOf::<T, I>::remove(collection, item);
