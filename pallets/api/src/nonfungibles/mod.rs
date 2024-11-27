@@ -328,8 +328,6 @@ pub mod pallet {
     		witness.item_metadatas,
     		witness.item_configs,
     		witness.attributes,
-            witness.item_holders,
-            witness.allowances,
 		))]
 		pub fn destroy(
 			origin: OriginFor<T>,
@@ -567,9 +565,9 @@ pub mod pallet {
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
 				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner)),
+					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(owner, collection)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
-					NftsOf::<T>::check_allowance(&collection, &item, &owner, &operator).is_ok(),
+					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
 				),
 				OwnerOf { collection, item } =>
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
