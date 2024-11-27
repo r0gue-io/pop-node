@@ -292,7 +292,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.ok_or(Error::<T, I>::UnknownCollection)?;
 
 		// Update the approval count for the `origin` account and the whole collection.
-		for key in vec![Some(&origin), Option::<&T::AccountId>::None] {
+		for key in [Some(&origin), Option::<&T::AccountId>::None] {
 			let count = CollectionApprovalCount::<T, I>::get(collection, key)
 				.checked_sub(1)
 				.ok_or(ArithmeticError::Overflow)?;
