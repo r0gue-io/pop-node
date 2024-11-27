@@ -68,7 +68,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			collection_details.items.saturating_inc();
 
-			AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| {
+			AccountBalance::<T, I>::mutate(&mint_to, collection, |balance| {
 				balance.saturating_inc();
 			});
 
@@ -263,7 +263,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		ItemPriceOf::<T, I>::remove(collection, item);
 		PendingSwapOf::<T, I>::remove(collection, item);
 		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
-		AccountBalance::<T, I>::mutate(collection, &owner, |balance| {
+		AccountBalance::<T, I>::mutate(&owner, collection, |balance| {
 			balance.saturating_dec();
 		});
 

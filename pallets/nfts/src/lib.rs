@@ -30,6 +30,8 @@
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+#[allow(missing_docs)]
+pub mod migration;
 #[cfg(test)]
 pub mod mock;
 #[cfg(test)]
@@ -408,38 +410,37 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type AccountBalance<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
-		Twox64Concat,
-		T::CollectionId,
 		Blake2_128Concat,
 		T::AccountId,
+		Blake2_128Concat,
+		T::CollectionId,
 		u32,
 		ValueQuery,
 	>;
 
-	/// Permission for the delegate to transfer all owner's items within a collection.
+	/// Permission for a delegate to transfer all owner's items within a collection.
 	#[pallet::storage]
 	pub type CollectionApprovals<T: Config<I>, I: 'static = ()> = StorageNMap<
 		_,
 		(
 			// Collection ID.
-			NMapKey<Twox64Concat, T::CollectionId>,
+			NMapKey<Blake2_128Concat, T::CollectionId>,
 			// Collection Owner Id.
 			NMapKey<Blake2_128Concat, T::AccountId>,
 			// Delegate Id.
 			NMapKey<Blake2_128Concat, T::AccountId>,
 		),
 		Option<BlockNumberFor<T>>,
-		OptionQuery,
 	>;
 
-	/// Number of collection approvals that owners granted.
+	/// Total number approvals of a whole collection or a specified account.
 	#[pallet::storage]
-	pub type AccountApprovals<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
+	pub type TotalCollectionApprovals<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
-		Twox64Concat,
+		Blake2_128Concat,
 		T::CollectionId,
 		Blake2_128Concat,
-		T::AccountId,
+		Option<T::AccountId>,
 		u32,
 		ValueQuery,
 	>;
@@ -516,7 +517,7 @@ pub mod pallet {
 			owner: T::AccountId,
 			delegate: T::AccountId,
 		},
-		/// All approvals of an item or a collection got cancelled.
+		/// All approvals of a collection or item were cancelled.
 		AllApprovalsCancelled {
 			collection: T::CollectionId,
 			item: Option<T::ItemId>,
@@ -735,9 +736,9 @@ pub mod pallet {
 		CollectionNotEmpty,
 		/// The witness data should be provided.
 		WitnessRequired,
-		/// Cant' delete collections whose approvals.
-		CollectionApprovalsNotEmpty,
-		/// Collection approval and item approval conflicts.
+		/// The collection has existing approvals.
+		CollectionApprovalsExist,
+		/// Collection and item approval conflicts.
 		DelegateApprovalConflict,
 	}
 
@@ -838,7 +839,7 @@ pub mod pallet {
 		/// The origin must conform to `ForceOrigin` or must be `Signed` and the sender must be the
 		/// owner of the `collection`.
 		///
-		/// NOTE: The collection must have 0 items and 0 collection approvals to be destroyed.
+		/// NOTE: The collection must have 0 items and 0 approvals to be destroyed.
 		///
 		/// - `collection`: The identifier of the collection to be destroyed.
 		/// - `witness`: Information on the items minted in the collection. This must be
@@ -1328,7 +1329,8 @@ pub mod pallet {
 		///
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `maybe_item`: The optional item to be approved for delegated transfer. If not
-		///   provided, all items within the collection will be approved.
+		///   provided, items in the collection that owned by the `origin` will be approved for
+		///   delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer the item.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
 		/// 	number of blocks after which the approval will expire
@@ -1345,24 +1347,30 @@ pub mod pallet {
 			delegate: AccountIdLookupOf<T>,
 			maybe_deadline: Option<BlockNumberFor<T>>,
 		) -> DispatchResult {
-			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
-				.map(|_| None)
-				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
 			let delegate = T::Lookup::lookup(delegate)?;
 			match maybe_item {
-				Some(item) => Self::do_approve_transfer(
-					maybe_check_origin,
-					collection,
-					item,
-					delegate,
-					maybe_deadline,
-				),
-				None => Self::do_approve_collection(
-					maybe_check_origin,
-					collection,
-					delegate,
-					maybe_deadline,
-				),
+				Some(item) => {
+					let maybe_check_origin =
+						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
+							ensure_signed(origin).map(Some).map_err(DispatchError::from)
+						})?;
+					Self::do_approve_transfer(
+						maybe_check_origin,
+						collection,
+						item,
+						delegate,
+						maybe_deadline,
+					)
+				},
+				None => {
+					let origin = ensure_signed(origin)?;
+					Self::do_approve_collection_transfer(
+						origin,
+						collection,
+						delegate,
+						maybe_deadline,
+					)
+				},
 			}
 		}
 
@@ -1375,8 +1383,8 @@ pub mod pallet {
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approval will be cancelled.
 		/// - `maybe_item`: The optional item of the collection of whose approval will be cancelled.
-		///   If not provided, an allowance to transfer all items within the collection will be
-		///   cancelled.
+		///   If not provided, approval to transfer items in the collection that owned by `origin`
+		///   will be cancelled.
 		/// - `delegate`: The account that is going to loose their approval.
 		///
 		/// Emits `ApprovalCancelled` on success.
@@ -1390,14 +1398,19 @@ pub mod pallet {
 			maybe_item: Option<T::ItemId>,
 			delegate: AccountIdLookupOf<T>,
 		) -> DispatchResult {
-			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
-				.map(|_| None)
-				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
 			let delegate = T::Lookup::lookup(delegate)?;
 			match maybe_item {
-				Some(item) =>
-					Self::do_cancel_approval(maybe_check_origin, collection, item, delegate),
-				None => Self::do_cancel_collection(maybe_check_origin, collection, delegate),
+				Some(item) => {
+					let maybe_check_origin =
+						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
+							ensure_signed(origin).map(Some).map_err(DispatchError::from)
+						})?;
+					Self::do_cancel_approval(maybe_check_origin, collection, item, delegate)
+				},
+				None => {
+					let origin = ensure_signed(origin)?;
+					Self::do_cancel_collection_approval(origin, collection, delegate)
+				},
 			}
 		}
 
@@ -1412,6 +1425,8 @@ pub mod pallet {
 		/// - `maybe_item`: The item of the collection of whose approvals will be cleared. The
 		///   optional item of the collection of whose approval will be cleared. If not provided,
 		///   all approvals to transfer items within collection.
+		/// - `witness_approvals`: Information on the collection approvals cleared. This must be
+		///   correct.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
@@ -1429,18 +1444,22 @@ pub mod pallet {
 			maybe_item: Option<T::ItemId>,
 			witness_approvals: Option<u32>,
 		) -> DispatchResult {
-			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
-				.map(|_| None)
-				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
-
 			match maybe_item {
-				Some(item) =>
-					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item),
-				None => Self::do_clear_all_collection_approvals(
-					maybe_check_origin,
-					collection,
-					witness_approvals.unwrap_or_default(),
-				),
+				Some(item) => {
+					let maybe_check_origin =
+						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
+							ensure_signed(origin).map(Some).map_err(DispatchError::from)
+						})?;
+					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)
+				},
+				None => {
+					let origin = ensure_signed(origin)?;
+					Self::do_clear_all_collection_approvals(
+						origin,
+						collection,
+						witness_approvals.unwrap_or_default(),
+					)
+				},
 			}
 		}
 
