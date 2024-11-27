@@ -94,18 +94,18 @@ pub(super) type PreSignedAttributesOf<T, I = ()> = PreSignedAttributes<
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct CollectionDetails<AccountId, DepositBalance> {
 	/// Collection's owner.
-	pub owner: AccountId,
+	pub(super) owner: AccountId,
 	/// The total balance deposited by the owner for all the storage data associated with this
 	/// collection. Used by `destroy`.
-	pub owner_deposit: DepositBalance,
+	pub(super) owner_deposit: DepositBalance,
 	/// The total number of outstanding items of this collection.
-	pub items: u32,
+	pub(super) items: u32,
 	/// The total number of outstanding item metadata of this collection.
-	pub item_metadatas: u32,
+	pub(super) item_metadatas: u32,
 	/// The total number of outstanding item configs of this collection.
-	pub item_configs: u32,
+	pub(super) item_configs: u32,
 	/// The total number of attributes for this collection.
-	pub attributes: u32,
+	pub(super) attributes: u32,
 }
 
 /// Witness data for the destroy transactions.

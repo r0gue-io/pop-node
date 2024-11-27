@@ -161,7 +161,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		ensure!(
-			AccountApprovals::<T, I>::get(collection, collection_details.owner) == 0,
+			CollectionApprovalCount::<T, I>::get(collection, Some(collection_details.owner)) == 0,
 			Error::<T, I>::DelegateApprovalConflict
 		);
 
@@ -184,26 +184,23 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	/// Approves the transfer of all items within the collection to a delegate.
+	/// Approves the transfer of items in the collection that owned by the origin to a delegate.
 	///
-	/// This function is used to approve the transfer of all items within the `collection` to
-	/// a `delegate`. If `maybe_check_origin` is specified, the function ensures that the
-	/// `check_origin` account is the owner of the collection, granting them permission to approve
-	/// the transfer. The `delegate` is the account that will be allowed to take control of all
-	/// items within the collection. Optionally, a `deadline` can be specified to set a time limit
-	/// for the approval. The `deadline` is expressed in block numbers and is added to the current
-	/// block number to determine the absolute deadline for the approval. After approving the
-	/// transfer, the function emits the `TransferApproved` event.
+	/// This function is used to approve the transfer of items in the `collection` that owned by the
+	/// `origin` to a `delegate`.The `delegate` is the account that will be allowed to take control
+	/// of items in the collection that owned by the `origin`. Optionally, a `deadline` can be
+	/// specified to set a time limit for the approval. The `deadline` is expressed in block
+	/// numbers and is added to the current block number to determine the absolute deadline for the
+	/// approval. After approving the transfer, the function emits the `TransferApproved` event.
 	///
-	/// - `maybe_check_origin`: The optional account that is required to be the owner of the item,
-	///   granting permission to approve the transfer. If `None`, no permission check is performed.
+	/// - `origin`: The account grants permission to approve the transfer.
 	/// - `collection`: The identifier of the collection.
-	/// - `delegate`: The account that will be allowed to take control of all items within the
-	///   collection.
+	/// - `delegate`: The account that will be allowed to take control of items in the collection
+	///   that owned by the `origin`.
 	/// - `maybe_deadline`: The optional deadline (in block numbers) specifying the time limit for
 	///   the approval.
-	pub(crate) fn do_approve_collection(
-		maybe_check_origin: Option<T::AccountId>,
+	pub(crate) fn do_approve_collection_transfer(
+		origin: T::AccountId,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 		maybe_deadline: Option<frame_system::pallet_prelude::BlockNumberFor<T>>,
@@ -218,24 +215,36 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
 			Error::<T, I>::ItemsNonTransferable
 		);
-
-		let owner =
-			Pallet::<T, I>::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-		}
-
 		let now = frame_system::Pallet::<T>::block_number();
 		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
-		AccountApprovals::<T, I>::try_mutate(
-			collection,
-			&owner,
-			|approvals| -> Result<(), DispatchError> {
-				ensure!(*approvals < T::ApprovalsLimit::get(), Error::<T, I>::ReachedApprovalLimit);
-				CollectionApprovals::<T, I>::insert((&collection, &owner, &delegate), deadline);
-				approvals.saturating_inc();
+		CollectionApprovals::<T, I>::try_mutate_exists(
+			(&collection, &origin, &delegate),
+			|maybe_approval| -> Result<(), DispatchError> {
+				if maybe_approval.is_none() {
+					// Increment approval counts for the `origin`, ensuring limits are respected.
+					CollectionApprovalCount::<T, I>::try_mutate(
+						collection,
+						Some(&origin),
+						|approvals| -> Result<(), DispatchError> {
+							ensure!(
+								*approvals < T::ApprovalsLimit::get(),
+								Error::<T, I>::ReachedApprovalLimit
+							);
+							approvals.saturating_inc();
+							Ok(())
+						},
+					)?;
+
+					// Increment the total approval count for the collection.
+					CollectionApprovalCount::<T, I>::mutate(
+						collection,
+						Option::<T::AccountId>::None,
+						|approvals| approvals.saturating_inc(),
+					);
+				}
+				*maybe_approval = Some(deadline);
+
 				Ok(())
 			},
 		)?;
@@ -243,7 +252,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::deposit_event(Event::TransferApproved {
 			collection,
 			item: None,
-			owner,
+			owner: origin,
 			delegate,
 			deadline,
 		});
@@ -251,113 +260,88 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	/// Cancels the approval for the transfer of all items within the collection to a delegate.
+	/// Cancels the transfer of items in the collection that owned by the origin to
+	/// a delegate.
 	///
-	/// This function is used to cancel the approval for the transfer of all items in the
-	/// `collection` to a `delegate`. If `maybe_check_origin` is specified, the function ensures
-	/// that the `check_origin` account is the owner of the item or that the approval is past its
-	/// deadline, granting permission to cancel the approval. After canceling the approval, the
-	/// function emits the `ApprovalCancelled` event.
+	/// This function is used to cancel the approval for the transfer of items in the `collection`
+	/// that owned by the `origin` to a `delegate`. After canceling the approval, the function emits
+	/// the `ApprovalCancelled` event.
 	///
-	/// - `maybe_check_origin`: The optional account that is required to be the owner of the
-	///   collection or that the approval is past its deadline, granting permission to cancel the
-	///   approval. If `None`, no permission check is performed.
-	/// - `collection`: The identifier of the collection
-	/// - `delegate`: The account that was previously allowed to take control of all items within
-	///   the collection.
-	pub(crate) fn do_cancel_collection(
-		maybe_check_origin: Option<T::AccountId>,
+	/// - `origin`: The account grants permission to cancel the transfer.
+	/// - `collection`: The identifier of the collection.
+	/// - `delegate`: The account that was previously allowed to take control of items in the
+	///   collection that owned by the origin.
+	pub(crate) fn do_cancel_collection_approval(
+		origin: T::AccountId,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let owner =
-			Pallet::<T, I>::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		let maybe_deadline = CollectionApprovals::<T, I>::get((&collection, &owner, &delegate))
-			.ok_or(Error::<T, I>::NotDelegate)?;
-
-		let is_past_deadline = if let Some(deadline) = maybe_deadline {
-			let now = frame_system::Pallet::<T>::block_number();
-			now > deadline
-		} else {
-			false
-		};
-
-		if !is_past_deadline {
-			if let Some(check_origin) = maybe_check_origin {
-				ensure!(check_origin == owner, Error::<T, I>::NoPermission);
-			}
-		}
-
-		CollectionApprovals::<T, I>::remove((&collection, &owner, &delegate));
-		AccountApprovals::<T, I>::mutate(collection, &owner, |approvals| {
+		CollectionApprovals::<T, I>::take((&collection, &origin, &delegate))
+			.ok_or(Error::<T, I>::UnknownCollection)?;
+		CollectionApprovalCount::<T, I>::mutate(collection, Some(&origin), |approvals| {
 			approvals.saturating_dec();
 		});
+		CollectionApprovalCount::<T, I>::mutate(
+			collection,
+			Option::<T::AccountId>::None,
+			|approvals| approvals.saturating_dec(),
+		);
 
-		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
+		Self::deposit_event(Event::ApprovalCancelled {
+			collection,
+			owner: origin,
+			item: None,
+			delegate,
+		});
 
 		Ok(())
 	}
 
 	/// Clears all collection approvals.
 	///
-	/// This function is used to clear all approvals to transfer all items within the collections.
-	/// If `maybe_check_origin` is specified, the function ensures that the `check_origin` account
-	/// is the owner of the item, granting permission to clear all collection approvals. After
-	/// clearing all approvals, the function emits the `AllApprovalsCancelled` event.
+	/// This function is used to clear all approvals to transfer items in the `collection` that
+	/// owned by the `origin` to a `delegate`. After clearing all approvals, the function emits the
+	/// `AllApprovalsCancelled` event.
 	///
-	/// - `maybe_check_origin`: The optional account that is required to be the owner of the
-	///   collection, granting permission to clear all collection approvals. If `None`, no
-	///   permission check is performed.
+	/// - `origin`: The account grants permission to clear the transfer.
 	/// - `collection`: The collection ID containing the item.
 	/// - `witness_approvals`: Information on the collection approvals cleared. This must be
 	///   correct.
 	pub(crate) fn do_clear_all_collection_approvals(
-		maybe_check_origin: Option<T::AccountId>,
+		origin: T::AccountId,
 		collection: T::CollectionId,
 		witness_approvals: u32,
 	) -> DispatchResult {
-		let owner =
-			Pallet::<T, I>::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		if let Some(check_origin) = maybe_check_origin {
-			ensure!(check_origin == owner.clone(), Error::<T, I>::NoPermission);
-		}
-
-		AccountApprovals::<T, I>::try_mutate(
+		let approvals = CollectionApprovalCount::<T, I>::take(collection, Some(&origin));
+		ensure!(approvals == witness_approvals, Error::<T, I>::BadWitness);
+		let _ = CollectionApprovals::<T, I>::clear_prefix((collection, &origin), approvals, None);
+		CollectionApprovalCount::<T, I>::mutate(
 			collection,
-			&owner,
-			|approvals| -> Result<(), DispatchError> {
-				ensure!(*approvals == witness_approvals, Error::<T, I>::BadWitness);
-				let _ = CollectionApprovals::<T, I>::clear_prefix(
-					(collection, owner.clone()),
-					*approvals,
-					None,
-				);
-				*approvals = 0;
-				Ok(())
-			},
-		)?;
+			Option::<T::AccountId>::None,
+			|total_approvals| *total_approvals = total_approvals.saturating_sub(approvals),
+		);
 
-		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner });
+		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner: origin });
 
 		Ok(())
 	}
 
-	/// Checks whether the `delegate` has the necessary allowance to transfer all items within the
-	/// collection. If the `delegate` has approval to transfer all items in the collection, they can
-	/// transfer every item without requiring explicit approval for that item.
+	/// Checks whether the `delegate` has the necessary allowance to transfer items in the
+	/// `collection` that owned by the `account`. If the `delegate` has an approval to
+	/// transfer items in the collection that owned by the `account`, they can transfer every item
+	/// without requiring explicit approval for that item.
 	///
 	/// - `collection`: The identifier of the collection
-	/// - `owner`: The owner of the collection or the collection item.
-	/// - `delegate`: The account that was previously allowed to take control of all items within
-	///   the collection.
+	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
+	///   `collection`.
+	/// - `delegate`: The account that was previously allowed to take control of items in the
+	///   collection that owned by the `account`.
 	fn check_collection_approval(
 		collection: &T::CollectionId,
-		owner: &T::AccountId,
+		account: &T::AccountId,
 		delegate: &T::AccountId,
 	) -> Result<(), DispatchError> {
-		let maybe_deadline = CollectionApprovals::<T, I>::get((&collection, &owner, &delegate))
+		let maybe_deadline = CollectionApprovals::<T, I>::get((&collection, &account, &delegate))
 			.ok_or(Error::<T, I>::NoPermission)?;
 		if let Some(deadline) = maybe_deadline {
 			let block_number = frame_system::Pallet::<T>::block_number();
@@ -367,30 +351,31 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	/// Checks whether the `delegate` has the necessary allowance to transfer items within the
-	/// collection or a specific item in the collection. If the `delegate` has approval to transfer
-	/// all items in the collection, they can transfer every item without requiring explicit
-	/// approval for that item.
+	/// collection or a specific item in the collection. If the `delegate` has an approval to
+	/// transfer items in the collection that owned by the `account`, they can transfer every item
+	/// without requiring explicit approval for that item.
 	///
 	/// - `collection`: The identifier of the collection
 	/// - `maybe_item`: The optional item of the collection that the delegated account has an
-	///   approval to transfer. If not provided, an approval to transfer all items within the
-	///   collection will be checked.
-	/// - `owner`: The owner of the collection or the collection item.
-	/// - `delegate`: The account that was previously allowed to take control of all items within
-	///   the collection.
+	///   approval to transfer. If not provided, an approval to transfer items in the collection
+	///   that owned by the `account` will be checked.
+	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
+	///   `collection` or the owner of the specified collection item.
+	/// - `delegate`: The account that was previously allowed to take control of items in the
+	///   collection that owned by the `owner`.
 	pub fn check_approval(
 		collection: &T::CollectionId,
 		maybe_item: &Option<T::ItemId>,
-		owner: &T::AccountId,
+		account: &T::AccountId,
 		delegate: &T::AccountId,
 	) -> Result<(), DispatchError> {
-		// Check if a `delegate` has a permission to spend the collection.
-		let check_collection_approval_error =
-			match Self::check_collection_approval(collection, owner, delegate) {
-				Ok(()) => return Ok(()),
-				Err(error) => error,
-			};
-		// Check if a `delegate` has a permission to spend the collection item.
+		// Check if a `delegate` has a permission to transfer items in the collection that owned by
+		// the `owner`.
+		let error = match Self::check_collection_approval(collection, account, delegate) {
+			Ok(()) => return Ok(()),
+			Err(error) => error,
+		};
+		// Check if a `delegate` has a permission to transfer the collection item.
 		if let Some(item) = maybe_item {
 			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
@@ -402,6 +387,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			}
 			return Ok(());
 		};
-		Err(check_collection_approval_error)
+		Err(error)
 	}
 }

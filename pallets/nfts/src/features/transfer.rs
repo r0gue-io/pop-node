@@ -87,11 +87,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		with_details(&collection_details, &mut details)?;
 
 		// Update account balance of the owner.
-		AccountBalance::<T, I>::mutate(collection, &details.owner, |balance| {
+		AccountBalance::<T, I>::mutate(&details.owner, collection, |balance| {
 			balance.saturating_dec();
 		});
 		// Update account balance of the destination account.
-		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
+		AccountBalance::<T, I>::mutate(&dest, collection, |balance| {
 			balance.saturating_inc();
 		});
 
@@ -108,7 +108,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		// Update item details.
 		Item::<T, I>::insert(collection, item, &details);
-		Collection::<T, I>::insert(collection, &collection_details);
 		ItemPriceOf::<T, I>::remove(collection, item);
 		PendingSwapOf::<T, I>::remove(collection, item);
 
@@ -148,15 +147,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			if details.owner == new_owner {
 				return Ok(())
 			}
-
-			// All collection approvals need to be removed because otherwise
-			// pre-approve attack would be possible, where the owner can approve their
-			// second account before making the transaction and then claiming all items
-			// within the collection back.
-			ensure!(
-				AccountApprovals::<T, I>::get(collection, &details.owner) == 0,
-				Error::<T, I>::CollectionApprovalsNotEmpty
-			);
 
 			// Move the deposit to the new owner.
 			T::Currency::repatriate_reserved(
