@@ -647,7 +647,7 @@ pub mod pallet {
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
 				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner)),
+					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(owner, collection)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
 				),
