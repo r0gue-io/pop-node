@@ -99,10 +99,10 @@ fn transfer() {
 			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
 		}
 		// Successfully burn an existing new collection item.
-		let balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
+		let balance_before_transfer = AccountBalanceOf::<Test>::get(&dest, collection);
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, ITEM, dest));
-		let balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
-		assert_eq!(AccountBalanceOf::<Test>::get(collection, &owner), 0);
+		let balance_after_transfer = AccountBalanceOf::<Test>::get(&dest, collection);
+		assert_eq!(AccountBalanceOf::<Test>::get(&owner, collection), 0);
 		assert_eq!(balance_after_transfer - balance_before_transfer, 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
@@ -118,7 +118,7 @@ fn mint_works() {
 		let collection = nfts::create_collection(owner);
 
 		// Successfully mint a new collection item.
-		let balance_before_mint = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_before_mint = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_ok!(NonFungibles::mint(
 			signed(owner),
 			owner,
@@ -126,7 +126,7 @@ fn mint_works() {
 			ITEM,
 			MintWitness { mint_price: None, owned_item: None }
 		));
-		let balance_after_mint = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_after_mint = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_eq!(balance_after_mint, 1);
 		assert_eq!(balance_after_mint - balance_before_mint, 1);
 		System::assert_last_event(
@@ -145,9 +145,9 @@ fn burn_works() {
 		assert_noop!(NonFungibles::burn(signed(owner), COLLECTION, ITEM), NftsError::UnknownItem);
 		// Successfully burn an existing new collection item.
 		let (collection, item) = nfts::create_collection_mint(owner, ITEM);
-		let balance_before_burn = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_before_burn = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_ok!(NonFungibles::burn(signed(owner), collection, ITEM));
-		let balance_after_burn = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_after_burn = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_eq!(balance_after_burn, balance_before_burn - 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: None, price: None }.into(),
@@ -486,7 +486,7 @@ fn balance_of_works() {
 			);
 			assert_eq!(
 				NonFungibles::read(BalanceOf { collection, owner }).encode(),
-				AccountBalanceOf::<Test>::get(collection, owner).encode()
+				AccountBalanceOf::<Test>::get(owner, collection).encode()
 			);
 		});
 	});
