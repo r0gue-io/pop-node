@@ -73,9 +73,7 @@ mod encoding_read_result {
 			items: 0,
 			item_metadatas: 0,
 			item_configs: 0,
-			item_holders: 0,
 			attributes: 0,
-			allowances: 0,
 		});
 		assert_eq!(
 			ReadResult::Collection::<Test>(collection_details.clone()).encode(),
@@ -122,10 +120,10 @@ fn transfer() {
 			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
 		}
 		// Successfully burn an existing new collection item.
-		let balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
+		let balance_before_transfer = AccountBalanceOf::<Test>::get(&dest, collection);
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, ITEM, dest));
-		let balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
-		assert_eq!(AccountBalanceOf::<Test>::get(collection, &owner), 0);
+		let balance_after_transfer = AccountBalanceOf::<Test>::get(&dest, collection);
+		assert_eq!(AccountBalanceOf::<Test>::get(&owner, collection), 0);
 		assert_eq!(balance_after_transfer - balance_before_transfer, 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
@@ -141,7 +139,7 @@ fn mint_works() {
 		let collection = nfts::create_collection(owner);
 
 		// Successfully mint a new collection item.
-		let balance_before_mint = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_before_mint = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_ok!(NonFungibles::mint(
 			signed(owner),
 			owner,
@@ -149,7 +147,7 @@ fn mint_works() {
 			ITEM,
 			MintWitness { mint_price: None, owned_item: None }
 		));
-		let balance_after_mint = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_after_mint = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_eq!(balance_after_mint, 1);
 		assert_eq!(balance_after_mint - balance_before_mint, 1);
 		System::assert_last_event(
@@ -168,9 +166,9 @@ fn burn_works() {
 		assert_noop!(NonFungibles::burn(signed(owner), COLLECTION, ITEM), NftsError::UnknownItem);
 		// Successfully burn an existing new collection item.
 		let (collection, item) = nfts::create_collection_mint(owner, ITEM);
-		let balance_before_burn = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_before_burn = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_ok!(NonFungibles::burn(signed(owner), collection, ITEM));
-		let balance_after_burn = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_after_burn = AccountBalanceOf::<Test>::get(owner, collection);
 		assert_eq!(balance_after_burn, balance_before_burn - 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: None, price: None }.into(),
@@ -189,7 +187,7 @@ fn approve_works() {
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
 			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer(1)).into())
 		);
-		assert_ok!(Nfts::check_allowance(&collection, &Some(item), &owner, &operator));
+		assert_ok!(Nfts::check_approval(&collection, &Some(item), &owner, &operator));
 		System::assert_last_event(
 			Event::Approval { collection, item: Some(item), owner, operator, approved: true }
 				.into(),
@@ -210,7 +208,7 @@ fn approve_collection_works() {
 			NonFungibles::approve(signed(owner), collection, None, operator, true),
 			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer(0)).into())
 		);
-		assert_ok!(Nfts::check_allowance(&collection, &None, &owner, &operator));
+		assert_ok!(Nfts::check_approval(&collection, &None, &owner, &operator));
 		System::assert_last_event(
 			Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
 		);
@@ -231,7 +229,7 @@ fn cancel_approval_works() {
 			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval(1)).into())
 		);
 		assert_eq!(
-			Nfts::check_allowance(&collection, &Some(item), &owner, &operator),
+			Nfts::check_approval(&collection, &Some(item), &owner, &operator),
 			Err(NftsError::NoPermission.into())
 		);
 		// Failed to transfer the item by `operator` without permission.
@@ -255,7 +253,7 @@ fn cancel_collection_approval_works() {
 			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval(0)).into())
 		);
 		assert_eq!(
-			Nfts::check_allowance(&collection, &None, &owner, &operator),
+			Nfts::check_approval(&collection, &None, &owner, &operator),
 			Err(NftsError::NoPermission.into())
 		);
 		// Failed to transfer the item by `operator` without permission.
@@ -460,13 +458,7 @@ fn create_works() {
 fn destroy_works() {
 	new_test_ext().execute_with(|| {
 		let collection = COLLECTION;
-		let witness = DestroyWitness {
-			item_metadatas: 0,
-			item_configs: 0,
-			item_holders: 0,
-			attributes: 0,
-			allowances: 0,
-		};
+		let witness = DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 };
 		// Check error works for `Nfts::destroy()`.
 		assert_noop!(
 			NonFungibles::destroy(signed(ALICE), collection, witness),
@@ -515,7 +507,7 @@ fn balance_of_works() {
 			);
 			assert_eq!(
 				NonFungibles::read(BalanceOf { collection, owner }).encode(),
-				AccountBalanceOf::<Test>::get(collection, owner).encode()
+				AccountBalanceOf::<Test>::get(owner, collection).encode()
 			);
 		});
 	});
@@ -534,7 +526,7 @@ fn allowance_works() {
 		assert_eq!(
 			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator })
 				.encode(),
-			Nfts::check_allowance(&collection, &Some(item), &owner, &operator)
+			Nfts::check_approval(&collection, &Some(item), &owner, &operator)
 				.is_ok()
 				.encode()
 		);
