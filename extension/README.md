@@ -1,18 +1,21 @@
 ## Pop Chain Extension
 _A Chain Extension for Polkadot SDK Runtimes_
 
-The pop-chain-extension crate provides a chain extension designed to be integrated with any Polkadot SDK runtime. Instead of being limited to a single pallet, the extension offers a flexible solution that can cater to any feature exposed by the runtime. It provides functionality to dispatch runtime calls or query runtime state from smart contracts.
+The pop-chain-extension crate introduces a versatile chain extension for seamless integration with any Polkadot SDK runtime. Unlike being confined to a single pallet, it offers a flexible, runtime-agnostic solution that adapts to any feature exposed by the runtime. Optimized for smart contracts, it enables backward-compatible dispatch of runtime calls and state queries, ensuring robust and future-proof functionality.
 
 ### Key Features
 **Precise Weight Charging**: Handles accurate weight charging ensuring secure execution.
 
 **I/O handling**:
+
+_Motivation: versioning, enabling contracts to interact with different versions of the runtime, providing backward compatibility._
 - **Error Handling**: Supports flexible error processing returned by the runtime and send back to the smart contracts.
 
 - **Input Handling**: Supports flexible input processing for interacting with the runtime.
 
-_Motivation: versioning, enabling contracts to interact with different versions of the runtime, providing backward compatibility._
-
 **Rich Logging for Debugging**: Provides detailed logging capabilities with customizable log targets, aiding developers in debugging and monitoring contract interactions with the runtime.
 
 ### Learn more
+The Pop Chain Extension is integrated into Pop's runtime, serving as the foundation for the [Pop API ink! library](https://github.com/r0gue-io/pop-node/tree/main/pop-api).
+
+Check out how the extension is [configured in the Testnet runtime](https://github.com/r0gue-io/pop-node/tree/main/runtime/devnet/src/config/api) and find out how the api modules come into play as well!

@@ -46,13 +46,7 @@ Check out the ink! smart contract [examples](./example) using the API.
 ### Learn more
 
 The true strength of the API lies in the Pop runtime, where a single, unified chain extension provides flexible and
-efficient access to all runtime features, while specialized API modules deliver stable, intuitive interfaces for
-developers. Together, these elements make the API a powerful tool for creating decentralized applications on Polkadot.
-
-Want to explore how it all works? Check out:
-
-- [Chain Extension Implementation](../extension)
-- [API Modules](../pallets/api)
+efficient access to all runtime features. Go check out the [extension](../extension) if you want to learn more!
 
 ### Support
 
