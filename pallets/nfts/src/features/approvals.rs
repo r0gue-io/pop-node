@@ -20,6 +20,7 @@
 //! to have the functionality defined in this module.
 
 use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError};
+use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::*;
 
@@ -47,7 +48,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		item: T::ItemId,
 		delegate: T::AccountId,
-		maybe_deadline: Option<frame_system::pallet_prelude::BlockNumberFor<T>>,
+		maybe_deadline: Option<BlockNumberFor<T>>,
 	) -> DispatchResult {
 		ensure!(
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
@@ -188,13 +189,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// This function is used to approve the transfer of items in the `collection` that owned by the
 	/// `origin` to a `delegate`. The `delegate` is the account that will be allowed to take control
-	/// of items in the collection that owned by the `origin`. Optionally, a `deadline` can be
-	/// specified to set a time limit for the approval. The `deadline` is expressed in block
-	/// numbers and is added to the current block number to determine the absolute deadline for the
-	/// approval. After approving the transfer, the function emits the `TransferApproved` event.
+	/// of items in the collection. Optionally, a `deadline` can be specified to set a time limit
+	/// for the approval. The `deadline` is expressed in block numbers and is added to the current
+	/// block number to determine the absolute deadline for the approval. After approving the
+	/// transfer, the function emits the `TransferApproved` event.
 	///
-	/// This function reserves the required deposit from the owner's account. If an approval already
-	/// exists, the new amount is added to such existing approval.
+	/// This function reserves the required deposit from the `origin` account. If an approval
+	/// already exists, the new amount is added to such existing approval.
 	///
 	/// - `origin`: The account grants permission to approve the transfer.
 	/// - `collection`: The identifier of the collection.
@@ -206,7 +207,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		origin: T::AccountId,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
-		maybe_deadline: Option<frame_system::pallet_prelude::BlockNumberFor<T>>,
+		maybe_deadline: Option<BlockNumberFor<T>>,
 	) -> DispatchResult {
 		ensure!(
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
@@ -367,9 +368,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	}
 
 	/// Checks whether the `delegate` has the necessary allowance to transfer items in the
-	/// `collection` that owned by the `account`. If the `delegate` has an approval to
-	/// transfer items in the collection that owned by the `account`, they can transfer every item
-	/// without requiring explicit approval for that item.
+	/// `collection` that owned by the `account`.
 	///
 	/// - `collection`: The identifier of the collection
 	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
@@ -403,7 +402,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
 	///   `collection` or the owner of the specified collection item.
 	/// - `delegate`: The account that was previously allowed to take control of items in the
-	///   collection that owned by the `owner`.
+	///   collection that owned by the `account` or the specified collection item.
 	pub fn check_approval(
 		collection: &T::CollectionId,
 		maybe_item: &Option<T::ItemId>,
