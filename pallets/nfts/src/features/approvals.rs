@@ -273,8 +273,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	/// Cancels the transfer of items in the collection that owned by the origin to
-	/// a delegate.
+	/// Cancels the transfer of items in the collection that owned by the origin to a delegate.
 	///
 	/// This function is used to cancel the approval for the transfer of items in the `collection`
 	/// that owned by the `origin` to a `delegate`. After canceling the approval, the function
@@ -370,7 +369,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Checks whether the `delegate` has the necessary allowance to transfer items in the
 	/// `collection` that owned by the `account`.
 	///
-	/// - `collection`: The identifier of the collection
+	/// - `collection`: The identifier of the collection.
 	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
 	///   `collection`.
 	/// - `delegate`: The account that was previously allowed to take control of items in the
@@ -390,12 +389,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	/// Checks whether the `delegate` has the necessary allowance to transfer items within the
-	/// collection or a specific item in the collection. If the `delegate` has an approval to
+	/// Checks whether the `delegate` has the necessary allowance to transfer items owned by the
+	/// `account` or a specific item in the collection. If the `delegate` has an approval to
 	/// transfer items in the collection that owned by the `account`, they can transfer every item
 	/// without requiring explicit approval for that item.
 	///
-	/// - `collection`: The identifier of the collection
+	/// - `collection`: The identifier of the collection.
 	/// - `maybe_item`: The optional item of the collection that the delegated account has an
 	///   approval to transfer. If not provided, an approval to transfer items in the collection
 	///   that owned by the `account` will be checked.
