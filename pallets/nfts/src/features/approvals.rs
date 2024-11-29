@@ -302,6 +302,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Iterate and remove each collection approval, return the deposited fund back to the
 		// `origin`.
 		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &origin)) {
+			ensure!(removed_approvals < witness_approvals, Error::<T, I>::BadWitness);
 			T::Currency::unreserve(&origin, deposit);
 			removed_approvals.saturating_inc();
 		}
