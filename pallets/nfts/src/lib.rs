@@ -63,7 +63,7 @@ use frame_support::traits::{
 use frame_system::Config as SystemConfig;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{CheckedSub, IdentifyAccount, One, Saturating, StaticLookup, Verify, Zero},
+	traits::{IdentifyAccount, Saturating, StaticLookup, Verify, Zero},
 	RuntimeDebug,
 };
 pub use types::*;
@@ -151,15 +151,7 @@ pub mod pallet {
 		type CollectionId: Member + Parameter + MaxEncodedLen + Copy + Incrementable;
 
 		/// The type used to identify a unique item within a collection.
-		type ItemId: Member
-			+ Parameter
-			+ MaxEncodedLen
-			+ Copy
-			+ Default
-			+ One
-			+ Zero
-			+ CheckedSub
-			+ Saturating;
+		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
 
 		/// The currency mechanism, used for paying for reserves.
 		type Currency: ReservableCurrency<Self::AccountId>;
@@ -418,7 +410,7 @@ pub mod pallet {
 	pub type CollectionConfigOf<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Blake2_128Concat, T::CollectionId, CollectionConfigFor<T, I>, OptionQuery>;
 
-	/// Number of collection items that accounts own.
+	/// Number of collection items owned by an account.
 	#[pallet::storage]
 	pub type AccountBalance<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
 		_,
@@ -426,7 +418,7 @@ pub mod pallet {
 		T::CollectionId,
 		Blake2_128Concat,
 		T::AccountId,
-		T::ItemId,
+		u32,
 		ValueQuery,
 	>;
 
@@ -435,12 +427,9 @@ pub mod pallet {
 	pub type CollectionApprovals<T: Config<I>, I: 'static = ()> = StorageNMap<
 		_,
 		(
-			// Collection ID.
 			NMapKey<Blake2_128Concat, T::CollectionId>,
-			// Collection Account Id.
-			NMapKey<Blake2_128Concat, T::AccountId>,
-			// Delegate Id.
-			NMapKey<Blake2_128Concat, T::AccountId>,
+			NMapKey<Blake2_128Concat, T::AccountId>, // owner
+			NMapKey<Blake2_128Concat, T::AccountId>, // delegate
 		),
 		(Option<BlockNumberFor<T>>, DepositBalanceOf<T, I>),
 	>;
@@ -732,6 +721,8 @@ pub mod pallet {
 		MaxAttributesLimitReached,
 		/// The provided namespace isn't supported in this call.
 		WrongNamespace,
+		/// The collection has no items.
+		CollectionEmpty,
 		/// Can't delete non-empty collections.
 		CollectionNotEmpty,
 		/// The witness data should be provided.
@@ -1330,8 +1321,8 @@ pub mod pallet {
 		///
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `maybe_item`: The optional item to be approved for delegated transfer. If not
-		///   provided, items in the collection that owned by the `origin` will be approved for
-		///   delegated transfer.
+		///   provided, all collection items owned by the `origin` will be approved for delegated
+		///   transfer.
 		/// - `delegate`: The account to delegate permission to transfer the item.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
 		/// 	number of blocks after which the approval will expire
@@ -1384,8 +1375,8 @@ pub mod pallet {
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approval will be cancelled.
 		/// - `maybe_item`: The optional item of the collection of whose approval will be cancelled.
-		///   If not provided, approval to transfer items in the collection that owned by `origin`
-		///   will be cancelled.
+		///   If not provided, approval to transfer items in the collection owned by `origin` will
+		///   be cancelled.
 		/// - `delegate`: The account that is going to loose their approval.
 		///
 		/// Emits `ApprovalCancelled` on success.
@@ -1433,17 +1424,12 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(17)]
-		#[pallet::weight(
-		    T::WeightInfo::clear_all_transfer_approvals(
-				maybe_item.is_some() as u32,
-				T::ApprovalsLimit::get()
-			)
-		)]
+		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(maybe_item.is_some() as u32, *witness_approvals))]
 		pub fn clear_all_transfer_approvals(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
 			maybe_item: Option<T::ItemId>,
-			witness_approvals: Option<u32>,
+			witness_approvals: u32,
 		) -> DispatchResultWithPostInfo {
 			let weight = match maybe_item {
 				Some(item) => {
@@ -1451,12 +1437,16 @@ pub mod pallet {
 						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
 							ensure_signed(origin).map(Some).map_err(DispatchError::from)
 						})?;
-					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)?;
-					T::WeightInfo::clear_all_transfer_approvals(1, 0)
+					Self::do_clear_all_transfer_approvals(
+						maybe_check_origin,
+						collection,
+						item,
+						witness_approvals,
+					)?;
+					T::WeightInfo::clear_all_transfer_approvals(1, T::ApprovalsLimit::get())
 				},
 				None => {
 					let origin = ensure_signed(origin)?;
-					let witness_approvals = witness_approvals.unwrap_or_default();
 					Self::do_clear_all_collection_approvals(origin, collection, witness_approvals)?;
 					T::WeightInfo::clear_all_transfer_approvals(0, witness_approvals)
 				},

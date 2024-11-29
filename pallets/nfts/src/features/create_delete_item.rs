@@ -264,12 +264,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		PendingSwapOf::<T, I>::remove(collection, item);
 		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
 
-		let balance = AccountBalance::<T, I>::get(collection, &owner)
-			.checked_sub(&One::one())
-			.ok_or(ArithmeticError::Overflow)?;
-		if balance == Zero::zero() {
-			AccountBalance::<T, I>::remove(collection, &owner);
-		} else {
+		let balance = AccountBalance::<T, I>::take(collection, &owner)
+			.checked_sub(1)
+			.ok_or(ArithmeticError::Underflow)?;
+		if balance > 0 {
 			AccountBalance::<T, I>::insert(collection, &owner, balance);
 		}
 

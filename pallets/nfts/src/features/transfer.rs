@@ -91,12 +91,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			balance.saturating_inc();
 		});
 		// Update account balance of the owner.
-		let balance = AccountBalance::<T, I>::get(collection, &details.owner)
-			.checked_sub(&One::one())
-			.ok_or(ArithmeticError::Overflow)?;
-		if balance == Zero::zero() {
-			AccountBalance::<T, I>::remove(collection, &details.owner);
-		} else {
+		let balance = AccountBalance::<T, I>::take(collection, &details.owner)
+			.checked_sub(1)
+			.ok_or(ArithmeticError::Underflow)?;
+		if balance > 0 {
 			AccountBalance::<T, I>::insert(collection, &details.owner, balance);
 		}
 
