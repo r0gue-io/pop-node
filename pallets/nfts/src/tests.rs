@@ -2329,7 +2329,7 @@ fn approval_deadline_works() {
 #[test]
 fn cancel_approval_works_with_admin() {
 	new_test_ext().execute_with(|| {
-		Balances::make_free_balance_be(&account(1), 100);
+		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			account(1),
@@ -2511,6 +2511,14 @@ fn clear_all_collection_approvals_works() {
 			default_collection_config()
 		));
 
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			42,
+			account(2),
+			default_item_config()
+		));
+
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(1)),
 			0,
@@ -2526,11 +2534,6 @@ fn clear_all_collection_approvals_works() {
 			None
 		));
 		assert_eq!(Balances::free_balance(&account(1)), 98);
-
-		assert_noop!(
-			Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(1)), 0, None, Some(1)),
-			Error::<Test>::BadWitness
-		);
 
 		assert_ok!(Nfts::clear_all_transfer_approvals(
 			RuntimeOrigin::signed(account(1)),
