@@ -19,7 +19,7 @@
 //! The bitflag [`PalletFeature::Approvals`] needs to be set in [`Config::Features`] for NFTs
 //! to have the functionality defined in this module.
 
-use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError};
+use frame_support::pallet_prelude::*;
 use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::*;
@@ -158,18 +158,17 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		item: T::ItemId,
 	) -> DispatchResult {
-		let collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		ensure!(
-			CollectionApprovalCount::<T, I>::get(collection, Some(collection_details.owner)) == 0,
-			Error::<T, I>::DelegateApprovalConflict
-		);
-
 		let mut details =
 			Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		if let Some(check_origin) = maybe_check_origin {
+			ensure!(
+				CollectionApprovals::<T, I>::iter_prefix((collection, &check_origin))
+					.take(1)
+					.next()
+					.is_none(),
+				Error::<T, I>::DelegateApprovalConflict
+			);
 			ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 		}
 
@@ -228,29 +227,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				let deposit_required = T::CollectionApprovalDeposit::get();
 				let mut current_deposit = match maybe_approval.take() {
 					Some((_, deposit)) => deposit,
-					None => {
-						// Increment approval counts for the `origin`, ensuring limits are
-						// respected.
-						CollectionApprovalCount::<T, I>::try_mutate(
-							collection,
-							Some(&origin),
-							|approvals| -> DispatchResult {
-								ensure!(
-									*approvals < T::ApprovalsLimit::get(),
-									Error::<T, I>::ReachedApprovalLimit
-								);
-								approvals.saturating_inc();
-								Ok(())
-							},
-						)?;
-						// Increment the total approval count for the collection.
-						CollectionApprovalCount::<T, I>::mutate(
-							collection,
-							Option::<T::AccountId>::None,
-							|approvals| approvals.saturating_inc(),
-						);
-						Zero::zero()
-					},
+					None => Zero::zero(),
 				};
 
 				if current_deposit < deposit_required {
@@ -291,18 +268,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let (_, deposit) = CollectionApprovals::<T, I>::take((&collection, &origin, &delegate))
 			.ok_or(Error::<T, I>::UnknownCollection)?;
 
-		// Update the approval count for the `origin` account and the whole collection.
-		for key in [Some(&origin), Option::<&T::AccountId>::None] {
-			let count = CollectionApprovalCount::<T, I>::get(collection, key)
-				.checked_sub(1)
-				.ok_or(ArithmeticError::Overflow)?;
-			if count == 0 {
-				CollectionApprovalCount::<T, I>::remove(collection, key);
-			} else {
-				CollectionApprovalCount::<T, I>::insert(collection, key, count);
-			}
-		}
-
 		T::Currency::unreserve(&origin, deposit);
 
 		Self::deposit_event(Event::ApprovalCancelled {
@@ -330,40 +295,17 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		origin: T::AccountId,
 		collection: T::CollectionId,
 		witness_approvals: u32,
-	) -> Result<u32, DispatchError> {
+	) -> DispatchResult {
 		let mut removed_approvals: u32 = 0;
-		CollectionApprovalCount::<T, I>::try_mutate_exists(
-			collection,
-			Option::<T::AccountId>::None,
-			|maybe_collection| -> DispatchResult {
-				let total_approvals =
-					maybe_collection.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
-
-				// Remove the total number of collection approvals from the `origin`.
-				let approvals = CollectionApprovalCount::<T, I>::take(collection, Some(&origin));
-				ensure!(approvals == witness_approvals, Error::<T, I>::BadWitness);
-
-				// Iterate and remove each collection approval, return the deposited fund back to
-				// the `origin`.
-				for (_, (_, deposit)) in
-					CollectionApprovals::<T, I>::drain_prefix((collection, &origin))
-				{
-					T::Currency::unreserve(&origin, deposit);
-					removed_approvals.saturating_inc();
-					total_approvals.saturating_dec();
-					if removed_approvals >= approvals {
-						break
-					}
-				}
-				Self::deposit_event(Event::AllApprovalsCancelled {
-					collection,
-					item: None,
-					owner: origin,
-				});
-				Ok(())
-			},
-		)?;
-		Ok(removed_approvals)
+		// Iterate and remove each collection approval, return the deposited fund back to the
+		// `origin`.
+		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &origin)) {
+			T::Currency::unreserve(&origin, deposit);
+			removed_approvals.saturating_inc();
+		}
+		ensure!(removed_approvals == witness_approvals, Error::<T, I>::BadWitness);
+		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner: origin });
+		Ok(())
 	}
 
 	/// Checks whether the `delegate` has the necessary allowance to transfer items in the

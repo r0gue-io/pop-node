@@ -36,8 +36,6 @@ use crate::{mock::*, Event, SystemConfig, *};
 
 type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 
-const NO_ACCOUNT: Option<AccountId> = Option::<AccountId>::None;
-
 fn account(id: u8) -> AccountIdOf<Test> {
 	[id; 32].into()
 }
@@ -355,10 +353,7 @@ fn destroy_should_work() {
 		));
 		assert_eq!(AccountBalance::<Test>::get(0, account(1)), 0);
 		assert_eq!(AccountBalance::<Test>::contains_key(0, account(5)), false);
-		assert_eq!(CollectionApprovalCount::<Test>::contains_key(0, NO_ACCOUNT), false);
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0,)).count(), 0);
-		assert_eq!(CollectionApprovalCount::<Test>::contains_key(0, Some(account(5))), false);
-		assert_eq!(CollectionApprovalCount::<Test>::contains_key(0, NO_ACCOUNT), false);
 		assert!(!ItemConfigOf::<Test>::contains_key(0, 42));
 		assert_eq!(ItemConfigOf::<Test>::iter_prefix(0).count() as u32, 0);
 	});
@@ -2097,12 +2092,6 @@ fn cancel_approval_collection_works() {
 			delegate: account(3)
 		}));
 		assert_eq!(CollectionApprovals::<Test>::get((0, account(2), account(3))), None);
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, Some(account(2))), 0);
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, NO_ACCOUNT), 0);
-		assert_eq!(
-			CollectionApprovalCount::<Test>::get(0, Some(account(2))),
-			CollectionApprovals::<Test>::iter_prefix((0, account(2))).count() as u32
-		);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)),
@@ -2207,32 +2196,6 @@ fn approvals_limit_works() {
 }
 
 #[test]
-fn collection_approvals_limit_works() {
-	new_test_ext().execute_with(|| {
-		Balances::make_free_balance_be(&account(1), 100);
-		assert_ok!(Nfts::force_create(
-			RuntimeOrigin::root(),
-			account(1),
-			default_collection_config()
-		));
-		for i in 3..13 {
-			assert_ok!(Nfts::approve_transfer(
-				RuntimeOrigin::signed(account(1)),
-				0,
-				None,
-				account(i),
-				None
-			));
-		}
-		// the limit is 10
-		assert_noop!(
-			Nfts::approve_transfer(RuntimeOrigin::signed(account(1)), 0, None, account(14), None),
-			Error::<Test>::ReachedApprovalLimit
-		);
-	});
-}
-
-#[test]
 fn approve_transfer_collection_works() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&account(2), 100);
@@ -2279,8 +2242,6 @@ fn approve_transfer_collection_works() {
 			account(3),
 			None
 		));
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, Some(account(2))), 1);
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, NO_ACCOUNT), 1);
 		assert_eq!(Balances::reserved_balance(&account(2)), 1);
 
 		// must not update the total collection approvals.
@@ -2291,8 +2252,6 @@ fn approve_transfer_collection_works() {
 			account(3),
 			None
 		));
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, Some(account(2))), 1);
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, NO_ACCOUNT), 1);
 		assert_eq!(Balances::reserved_balance(&account(2)), 1);
 
 		assert_ok!(Nfts::approve_transfer(
@@ -2303,8 +2262,6 @@ fn approve_transfer_collection_works() {
 			None
 		));
 		assert_eq!(Balances::reserved_balance(&account(2)), 1);
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, Some(account(3))), 1);
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, NO_ACCOUNT), 2);
 		assert!(events().contains(&Event::<Test>::TransferApproved {
 			collection: 0,
 			item: None,
@@ -2313,10 +2270,6 @@ fn approve_transfer_collection_works() {
 			deadline: None
 		}));
 		assert_eq!(CollectionApprovals::<Test>::get((0, account(2), account(3))), Some((None, 1)));
-		assert_eq!(
-			CollectionApprovalCount::<Test>::get(0, Some(account(2))),
-			CollectionApprovals::<Test>::iter_prefix((0, account(2))).count() as u32
-		);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(4)));
 	});
 }
@@ -2546,7 +2499,6 @@ fn clear_all_transfer_approvals_works() {
 			owner: account(2),
 		}));
 		assert_eq!(approvals(0, 42), vec![]);
-		assert_eq!(CollectionApprovalCount::<Test>::contains_key(0, Some(account(2))), false);
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, account(2))).count(), 0);
 
 		assert_noop!(
@@ -2611,12 +2563,6 @@ fn clear_all_collection_approvals_works() {
 		}));
 		assert_eq!(Balances::free_balance(&account(1)), 100);
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, account(1))).count(), 0);
-		assert_eq!(CollectionApprovalCount::<Test>::contains_key(0, Some(account(1))), false);
-		assert_eq!(CollectionApprovalCount::<Test>::get(0, NO_ACCOUNT), 0);
-		assert_eq!(
-			CollectionApprovalCount::<Test>::get(0, Some(account(1))),
-			CollectionApprovals::<Test>::iter_prefix((0, account(1))).count() as u32
-		);
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(5)),
