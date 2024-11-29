@@ -107,11 +107,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		let mut details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
-		ensure!(
-			!CollectionApprovals::<T, I>::contains_key((collection, &details.owner, &delegate)),
-			Error::<T, I>::DelegateApprovalConflict
-		);
-
 		let maybe_deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NotDelegate)?;
 
 		let is_past_deadline = if let Some(deadline) = maybe_deadline {
@@ -126,6 +121,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 			}
 		}
+
+		// Cannot revoke approval for a specific collection item if the delegate already has
+		// permission to transfer all items owned by the origin in the collection.
+		ensure!(
+			!CollectionApprovals::<T, I>::contains_key((collection, &details.owner, &delegate)),
+			Error::<T, I>::DelegateApprovalConflict
+		);
 
 		details.approvals.remove(&delegate);
 		Item::<T, I>::insert(collection, item, &details);
@@ -308,14 +310,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	/// Checks whether the `delegate` has the necessary allowance to transfer items in the
-	/// `collection` that owned by the `account`.
+	/// Checks whether the `delegate` is approved to transfer items in the `collection` that owned
+	/// by the `account`.
 	///
 	/// - `collection`: The identifier of the collection.
-	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
-	///   `collection`.
+	/// - `account`: The account that granted the permission for `delegate` to transfer items.
 	/// - `delegate`: The account that was previously allowed to take control of items in the
-	///   collection that owned by the `account`.
+	///   `collection` that owned by the `account`.
 	fn check_collection_approval(
 		collection: &T::CollectionId,
 		account: &T::AccountId,
@@ -331,10 +332,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	/// Checks whether the `delegate` has the necessary allowance to transfer items owned by the
-	/// `account` or a specific item in the collection. If the `delegate` has an approval to
-	/// transfer items in the collection that owned by the `account`, they can transfer every item
-	/// without requiring explicit approval for that item.
+	/// Checks whether the `delegate` is approved by the `account` to transfer items that owned by
+	/// the `account` or a specific item in the collection. If the `delegate` has
+	/// an approval to transfer items in the collection that owned by the `account`, they can
+	/// transfer every item without requiring explicit approval for that item.
 	///
 	/// - `collection`: The identifier of the collection.
 	/// - `maybe_item`: The optional item of the collection that the delegated account has an

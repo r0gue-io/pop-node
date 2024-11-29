@@ -2342,13 +2342,6 @@ fn cancel_approval_works_with_admin() {
 			account(2),
 			default_item_config()
 		));
-		assert_ok!(Nfts::force_mint(
-			RuntimeOrigin::signed(account(1)),
-			0,
-			50,
-			account(1),
-			default_item_config()
-		));
 
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(2)),
@@ -2370,24 +2363,20 @@ fn cancel_approval_works_with_admin() {
 			Error::<Test>::NotDelegate
 		);
 
+		// delegate approval conflicts.
 		assert_ok!(Nfts::approve_transfer(
-			RuntimeOrigin::signed(account(1)),
-			0,
-			Some(50),
-			account(3),
-			None
-		));
-		assert_ok!(Nfts::approve_transfer(
-			RuntimeOrigin::signed(account(1)),
+			RuntimeOrigin::signed(account(2)),
 			0,
 			None,
 			account(3),
 			None
 		));
 		assert_noop!(
-			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(50), account(3)),
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, Some(42), account(3)),
 			Error::<Test>::DelegateApprovalConflict
 		);
+		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, None, account(3)));
+
 		assert_ok!(Nfts::cancel_approval(
 			RuntimeOrigin::signed(account(2)),
 			0,
@@ -2520,13 +2509,6 @@ fn clear_all_collection_approvals_works() {
 			RuntimeOrigin::root(),
 			account(1),
 			default_collection_config()
-		));
-		assert_ok!(Nfts::force_mint(
-			RuntimeOrigin::signed(account(1)),
-			0,
-			42,
-			account(2),
-			default_item_config()
 		));
 
 		assert_ok!(Nfts::approve_transfer(
