@@ -109,13 +109,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Collection::<T, I>::try_mutate_exists(collection, |maybe_details| {
 			let collection_details =
 				maybe_details.take().ok_or(Error::<T, I>::UnknownCollection)?;
-			let collection_approvals =
-				CollectionApprovalCount::<T, I>::take(collection, Option::<T::AccountId>::None);
 			if let Some(check_owner) = maybe_check_owner {
 				ensure!(collection_details.owner == check_owner, Error::<T, I>::NoPermission);
 			}
 			ensure!(collection_details.items == 0, Error::<T, I>::CollectionNotEmpty);
-			ensure!(collection_approvals == 0, Error::<T, I>::CollectionApprovalsExist);
+			ensure!(
+				CollectionApprovals::<T, I>::iter_prefix((collection,)).take(1).next().is_none(),
+				Error::<T, I>::CollectionApprovalsExist
+			);
 			ensure!(collection_details.attributes == witness.attributes, Error::<T, I>::BadWitness);
 			ensure!(
 				collection_details.item_metadatas == witness.item_metadatas,

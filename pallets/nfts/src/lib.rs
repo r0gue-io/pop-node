@@ -63,7 +63,7 @@ use frame_support::traits::{
 use frame_system::Config as SystemConfig;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{IdentifyAccount, Saturating, StaticLookup, Verify, Zero},
+	traits::{CheckedSub, IdentifyAccount, One, Saturating, StaticLookup, Verify, Zero},
 	RuntimeDebug,
 };
 pub use types::*;
@@ -151,7 +151,15 @@ pub mod pallet {
 		type CollectionId: Member + Parameter + MaxEncodedLen + Copy + Incrementable;
 
 		/// The type used to identify a unique item within a collection.
-		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
+		type ItemId: Member
+			+ Parameter
+			+ MaxEncodedLen
+			+ Copy
+			+ Default
+			+ One
+			+ Zero
+			+ CheckedSub
+			+ Saturating;
 
 		/// The currency mechanism, used for paying for reserves.
 		type Currency: ReservableCurrency<Self::AccountId>;
@@ -418,7 +426,7 @@ pub mod pallet {
 		T::CollectionId,
 		Blake2_128Concat,
 		T::AccountId,
-		u32,
+		T::ItemId,
 		ValueQuery,
 	>;
 
@@ -435,18 +443,6 @@ pub mod pallet {
 			NMapKey<Blake2_128Concat, T::AccountId>,
 		),
 		(Option<BlockNumberFor<T>>, DepositBalanceOf<T, I>),
-	>;
-
-	/// Total number approvals of a whole collection or a specified account.
-	#[pallet::storage]
-	pub type CollectionApprovalCount<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::CollectionId,
-		Blake2_128Concat,
-		Option<T::AccountId>,
-		u32,
-		ValueQuery,
 	>;
 
 	/// Config of an item.
@@ -702,7 +698,7 @@ pub mod pallet {
 		NotForSale,
 		/// The provided bid is too low.
 		BidTooLow,
-		/// The collection or item has reached its approval limit.
+		/// The item has reached its approval limit.
 		ReachedApprovalLimit,
 		/// The deadline has already expired.
 		DeadlineExpired,
@@ -1460,12 +1456,9 @@ pub mod pallet {
 				},
 				None => {
 					let origin = ensure_signed(origin)?;
-					let removed_approvals = Self::do_clear_all_collection_approvals(
-						origin,
-						collection,
-						witness_approvals.unwrap_or_default(),
-					)?;
-					T::WeightInfo::clear_all_transfer_approvals(0, removed_approvals)
+					let witness_approvals = witness_approvals.unwrap_or_default();
+					Self::do_clear_all_collection_approvals(origin, collection, witness_approvals)?;
+					T::WeightInfo::clear_all_transfer_approvals(0, witness_approvals)
 				},
 			};
 			Ok(Some(weight).into())

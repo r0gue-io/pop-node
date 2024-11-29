@@ -92,9 +92,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 		// Update account balance of the owner.
 		let balance = AccountBalance::<T, I>::get(collection, &details.owner)
-			.checked_sub(1)
+			.checked_sub(&One::one())
 			.ok_or(ArithmeticError::Overflow)?;
-		if balance == 0 {
+		if balance == Zero::zero() {
 			AccountBalance::<T, I>::remove(collection, &details.owner);
 		} else {
 			AccountBalance::<T, I>::insert(collection, &details.owner, balance);

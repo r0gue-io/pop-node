@@ -265,9 +265,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
 
 		let balance = AccountBalance::<T, I>::get(collection, &owner)
-			.checked_sub(1)
+			.checked_sub(&One::one())
 			.ok_or(ArithmeticError::Overflow)?;
-		if balance == 0 {
+		if balance == Zero::zero() {
 			AccountBalance::<T, I>::remove(collection, &owner);
 		} else {
 			AccountBalance::<T, I>::insert(collection, &owner, balance);
