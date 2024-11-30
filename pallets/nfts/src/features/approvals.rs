@@ -368,7 +368,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Check if a `delegate` has permission to transfer items in the collection owned by
 		// the `owner`.
 		match Self::check_collection_approval(collection, account, delegate) {
-			Ok(()) => return Ok(()),
+			Ok(()) => Ok(()),
 			Err(error) => {
 				// Check if a `delegate` has permission to transfer the collection item.
 				if let Some(item) = maybe_item {
@@ -383,7 +383,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					}
 					return Ok(());
 				};
-				return Err(error);
+				Err(error)
 			},
 		}
 	}

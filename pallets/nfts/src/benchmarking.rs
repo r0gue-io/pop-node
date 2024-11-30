@@ -638,7 +638,7 @@ benchmarks_instance_pallet! {
 			for i in 0 .. n {
 				approve_collection::<T, I>(i);
 			}
-			(None, Some(n))
+			(None, n)
 		} else {
 			let (item, ..) = mint_item::<T, I>(0);
 			let delegate: T::AccountId = account("delegate", 0, SEED);
@@ -646,7 +646,7 @@ benchmarks_instance_pallet! {
 			let origin = SystemOrigin::Signed(caller.clone()).into();
 			let deadline = BlockNumberFor::<T>::max_value();
 			Nfts::<T, I>::approve_transfer(origin, collection, Some(item), delegate_lookup.clone(), Some(deadline))?;
-			(Some(item), None)
+			(Some(item), T::ApprovalsLimit::get())
 		};
 	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, witness_approvals)
 	verify {
