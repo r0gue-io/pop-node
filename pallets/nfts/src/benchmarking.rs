@@ -595,13 +595,13 @@ benchmarks_instance_pallet! {
 		let i in 0 .. 1;
 
 		let (collection, caller, _) = create_collection::<T, I>();
+		let (item, ..) = mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
 		let maybe_item = if i == 0 {
 			None
 		} else {
-			let (item, ..) = mint_item::<T, I>(0);
 			Some(item)
 		};
 	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, delegate_lookup, Some(deadline))
@@ -613,6 +613,7 @@ benchmarks_instance_pallet! {
 		let i in 0 .. 1;
 
 		let (collection, caller, _) = create_collection::<T, I>();
+		let (item, ..) = mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
@@ -620,7 +621,6 @@ benchmarks_instance_pallet! {
 		let maybe_item = if i == 0 {
 			None
 		} else {
-			let (item, ..) = mint_item::<T, I>(0);
 			Some(item)
 		};
 		Nfts::<T, I>::approve_transfer(origin, collection, maybe_item, delegate_lookup.clone(), Some(deadline))?;
@@ -634,13 +634,13 @@ benchmarks_instance_pallet! {
 		let n in 0 .. T::ApprovalsLimit::get();
 
 		let (collection, caller, _) = create_collection::<T, I>();
+		let (item, ..) = mint_item::<T, I>(0);
 		let (maybe_item, witness_approvals) = if i == 0 {
 			for i in 0 .. n {
 				approve_collection::<T, I>(i);
 			}
 			(None, n)
 		} else {
-			let (item, ..) = mint_item::<T, I>(0);
 			let delegate: T::AccountId = account("delegate", 0, SEED);
 			let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 			let origin = SystemOrigin::Signed(caller.clone()).into();
