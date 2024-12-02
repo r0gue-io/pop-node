@@ -646,7 +646,7 @@ benchmarks_instance_pallet! {
 			let origin = SystemOrigin::Signed(caller.clone()).into();
 			let deadline = BlockNumberFor::<T>::max_value();
 			Nfts::<T, I>::approve_transfer(origin, collection, Some(item), delegate_lookup.clone(), Some(deadline))?;
-			(Some(item), T::ApprovalsLimit::get())
+			(Some(item), 1)
 		};
 	}: _(SystemOrigin::Signed(caller.clone()), collection, maybe_item, witness_approvals)
 	verify {

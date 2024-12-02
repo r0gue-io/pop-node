@@ -176,6 +176,10 @@ pub mod pallet {
 		type CollectionDeposit: Get<DepositBalanceOf<Self, I>>;
 
 		/// The basic amount of funds that must be reserved for collection approvals.
+		///
+		/// This is held for an additional storage item whose value size is
+		/// `sizeof((Option<BlockNumber>, Balance))` bytes and whose key size is
+		/// `sizeof((CollectionId, AccountId, AccountId))` bytes.
 		#[pallet::constant]
 		type CollectionApprovalDeposit: Get<DepositBalanceOf<Self, I>>;
 

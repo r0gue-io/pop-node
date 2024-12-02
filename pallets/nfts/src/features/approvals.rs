@@ -268,8 +268,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// - `origin`: The account grants permission to cancel the transfer.
 	/// - `collection`: The identifier of the collection.
-	/// - `delegate`: The account that was previously allowed to take control of items in the
-	///   collection owned by the origin.
+	/// - `delegate`: The account that had permission to manage collection items owned by the
+	///   `account`.
 	pub(crate) fn do_cancel_collection_approval(
 		origin: T::AccountId,
 		collection: T::CollectionId,
@@ -329,8 +329,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// - `collection`: The identifier of the collection.
 	/// - `account`: The account that granted the permission for `delegate` to transfer items.
-	/// - `delegate`: The account that was previously allowed to take control of items in the
-	///   collection owned by the `account`.
+	/// - `delegate`: The account that had permission to manage collection items owned by the
+	///   `account`.
 	fn check_collection_approval(
 		collection: &T::CollectionId,
 		account: &T::AccountId,
@@ -357,8 +357,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///   owned by the `account` will be checked.
 	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
 	///   `collection` or the owner of the specified collection item.
-	/// - `delegate`: The account that was previously allowed to take control of items in the
-	///   collection owned by the `account` or the specified collection item.
+	/// - `delegate`: The account that had permission to manage collection items owned by the
+	///   `account` or the specified collection item.
 	pub fn check_approval(
 		collection: &T::CollectionId,
 		maybe_item: &Option<T::ItemId>,

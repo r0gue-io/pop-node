@@ -30,7 +30,8 @@ parameter_types! {
 parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
 	pub const NftsCollectionDeposit: Balance = 10 * UNIT;
-	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 0);
+	/// Key = 68 bytes (4+32+32), Value = 32 bytes (16+16)
+	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 100);
 	pub const NftsItemDeposit: Balance = UNIT / 100;
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 129);
 	pub const NftsAttributeDepositBase: Balance = deposit(1, 0);
