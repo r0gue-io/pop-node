@@ -223,7 +223,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Collection::<T, I>::try_mutate(collection, |maybe_details| {
 			let details = maybe_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 			if details.owner == owner {
-				return Ok(());
+				return Ok(())
 			}
 
 			// Move the deposit to the new owner.

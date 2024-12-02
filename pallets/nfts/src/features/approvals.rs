@@ -123,7 +123,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		// Cannot revoke approval for a specific collection item if the delegate has
-		// permission to transfer all collection items owned by the origin.
+		// permission to transfer collection items owned by the origin.
 		ensure!(
 			!CollectionApprovals::<T, I>::contains_key((collection, &details.owner, &delegate)),
 			Error::<T, I>::DelegateApprovalConflict
@@ -268,7 +268,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// - `origin`: The account grants permission to cancel the transfer.
 	/// - `collection`: The identifier of the collection.
-	/// - `delegate`: The account that had permission to manage collection items owned by the
+	/// - `delegate`: The account that had permission to transfer collection items owned by the
 	///   `account`.
 	pub(crate) fn do_cancel_collection_approval(
 		origin: T::AccountId,
@@ -292,10 +292,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 	/// Clears all collection approvals.
 	///
-	/// This function is used to clear all approvals to transfer items in the `collection` that
-	/// owned by the `origin` to a `delegate`. After clearing all approvals, the function returns
-	/// the `origin` back the deposited fund of each collection approval and emits the
-	/// `AllApprovalsCancelled` event.
+	/// This function is used to clear all approvals to transfer collection items owned by the
+	/// `origin` to a `delegate`. After clearing all approvals, the function returns the `origin`
+	/// back the deposited fund of each collection approval and emits the `AllApprovalsCancelled`
+	/// event.
 	///
 	/// - `origin`: The account grants permission to clear the transfer.
 	/// - `collection`: The collection ID containing the item.
@@ -329,7 +329,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// - `collection`: The identifier of the collection.
 	/// - `account`: The account that granted the permission for `delegate` to transfer items.
-	/// - `delegate`: The account that had permission to manage collection items owned by the
+	/// - `delegate`: The account that had permission to transfer collection items owned by the
 	///   `account`.
 	fn check_collection_approval(
 		collection: &T::CollectionId,
@@ -353,11 +353,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// - `collection`: The identifier of the collection.
 	/// - `maybe_item`: The optional item of the collection that the delegated account has an
-	///   approval to transfer. If not provided, an approval to transfer items in the collection
-	///   owned by the `account` will be checked.
+	///   approval to transfer. If not provided, an approval to transfer collection items owned by
+	///   the `account` will be checked.
 	/// - `account`: The account that granted the permission for `delegate` to transfer items in the
 	///   `collection` or the owner of the specified collection item.
-	/// - `delegate`: The account that had permission to manage collection items owned by the
+	/// - `delegate`: The account that had permission to transfer collection items owned by the
 	///   `account` or the specified collection item.
 	pub fn check_approval(
 		collection: &T::CollectionId,
