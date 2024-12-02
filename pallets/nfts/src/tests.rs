@@ -309,6 +309,7 @@ fn destroy_with_bad_witness_should_not_work() {
 fn destroy_should_work() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&account(1), 100);
+		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(account(1)),
 			account(1),
@@ -318,7 +319,7 @@ fn destroy_should_work() {
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(2), None));
 		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 1);
 		assert_ok!(Nfts::approve_transfer(
-			RuntimeOrigin::signed(account(1)),
+			RuntimeOrigin::signed(account(2)),
 			0,
 			None,
 			account(3),
@@ -345,7 +346,7 @@ fn destroy_should_work() {
 			),
 			Error::<Test>::CollectionApprovalsExist
 		);
-		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(1)), 0, None, account(3)));
+		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, None, account(3)));
 		assert_ok!(Nfts::destroy(
 			RuntimeOrigin::signed(account(1)),
 			0,
@@ -2202,10 +2203,10 @@ fn approve_transfer_collection_works() {
 			default_collection_config()
 		));
 
-		// throws error `Error::CollectionEmpty`.
+		// approve collection without items, throws error `Error::NoItemOwned`.
 		assert_noop!(
 			Nfts::approve_transfer(RuntimeOrigin::signed(account(2)), 0, None, account(3), None),
-			Error::<Test>::CollectionEmpty
+			Error::<Test>::NoItemOwned
 		);
 
 		assert_ok!(Nfts::force_mint(
@@ -2222,6 +2223,13 @@ fn approve_transfer_collection_works() {
 			account(2),
 			default_item_config()
 		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			43,
+			account(3),
+			default_item_config()
+		));
 
 		// throws error `Error::ItemsNonTransferable`.
 		assert_ok!(Nfts::lock_collection(
@@ -2234,10 +2242,10 @@ fn approve_transfer_collection_works() {
 			Error::<Test>::ItemsNonTransferable
 		);
 
-		// throws error `Error::UnknownCollection`.
+		// approve unknown collection, throws error `Error::NoItemOwned`.
 		assert_noop!(
 			Nfts::approve_transfer(RuntimeOrigin::signed(account(2)), 2, None, account(3), None),
-			Error::<Test>::UnknownCollection
+			Error::<Test>::NoItemOwned
 		);
 
 		assert_ok!(Nfts::approve_transfer(
@@ -2515,7 +2523,7 @@ fn clear_all_collection_approvals_works() {
 			RuntimeOrigin::signed(account(1)),
 			0,
 			42,
-			account(2),
+			account(1),
 			default_item_config()
 		));
 

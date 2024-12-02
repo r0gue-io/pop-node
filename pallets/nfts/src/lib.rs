@@ -641,7 +641,7 @@ pub mod pallet {
 	pub enum Error<T, I = ()> {
 		/// The signing account has no permission to do the operation.
 		NoPermission,
-		/// The given item ID is unknown.
+		/// The given collection ID is unknown.
 		UnknownCollection,
 		/// The item ID has already been used for an item.
 		AlreadyExists,
@@ -725,12 +725,12 @@ pub mod pallet {
 		MaxAttributesLimitReached,
 		/// The provided namespace isn't supported in this call.
 		WrongNamespace,
-		/// The collection has no items.
-		CollectionEmpty,
 		/// Can't delete non-empty collections.
 		CollectionNotEmpty,
 		/// The witness data should be provided.
 		WitnessRequired,
+		/// The account owns zero item in the collection.
+		NoItemOwned,
 		/// The collection has existing approvals.
 		CollectionApprovalsExist,
 		/// Collection and item approval conflicts.
@@ -1320,8 +1320,8 @@ pub mod pallet {
 		/// Approve an item to be transferred by a delegated third-party account.
 		///
 		/// Origin must be either `ForceOrigin` or Signed and the sender should be the Owner of the
-		/// `item` if the `item` is provided. If not, the sender must have sufficient funds to grant
-		/// a collection approval.
+		/// `maybe_item` if the `maybe_item` is provided. If not, the sender must have sufficient
+		/// funds to grant a collection approval.
 		///
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `maybe_item`: The optional item to be approved for delegated transfer. If not
@@ -1374,7 +1374,8 @@ pub mod pallet {
 		///
 		/// Origin must be either:
 		/// - the `Force` origin;
-		/// - `Signed` with the signer being the Owner of the `item` if the `item` is provided;
+		/// - `Signed` with the signer being the Owner of the `maybe_item` if the `maybe_item` is
+		///   provided;
 		///
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approval will be cancelled.
@@ -1414,7 +1415,8 @@ pub mod pallet {
 		///
 		/// Origin must be either:
 		/// - the `Force` origin;
-		/// - `Signed` with the signer being the Owner of the `item` if the `item` is provided;
+		/// - `Signed` with the signer being the Owner of the `maybe_item` if the `maybe_item` is
+		///   provided;
 		///
 		/// Arguments:
 		/// - `collection`: The collection of the item of whose approvals will be cleared.
@@ -1441,12 +1443,7 @@ pub mod pallet {
 						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
 							ensure_signed(origin).map(Some).map_err(DispatchError::from)
 						})?;
-					Self::do_clear_all_transfer_approvals(
-						maybe_check_origin,
-						collection,
-						item,
-						witness_approvals,
-					)?;
+					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)?;
 					T::WeightInfo::clear_all_transfer_approvals(1, T::ApprovalsLimit::get())
 				},
 				None => {

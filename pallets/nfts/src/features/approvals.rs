@@ -155,18 +155,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///   performed.
 	/// - `collection`: The collection ID containing the item.
 	/// - `item`: The item ID for which transfer approvals will be cleared.
-	/// - `witness_approvals`: Information on the collection approvals cleared. This must be
-	///   correct.
 	pub(crate) fn do_clear_all_transfer_approvals(
 		maybe_check_origin: Option<T::AccountId>,
 		collection: T::CollectionId,
 		item: T::ItemId,
-		witness_approvals: u32,
 	) -> DispatchResult {
 		let mut details =
 			Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
-
-		ensure!(details.approvals.len() as u32 == witness_approvals, Error::<T, I>::BadWitness);
 
 		if let Some(check_origin) = maybe_check_origin {
 			ensure!(
@@ -201,7 +196,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// transfer, the function emits the `TransferApproved` event.
 	///
 	/// This function reserves the required deposit from the `origin` account. If an approval
-	/// already exists, the new amount is added to such existing approval.
+	/// already exists, the deposit amount is incremented, and the approval's existing deadline is
+	/// overridden.
 	///
 	/// - `origin`: The account grants permission to approve the transfer.
 	/// - `collection`: The identifier of the collection.
@@ -219,9 +215,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		let collection_items =
-			Self::collection_items(collection).ok_or(Error::<T, I>::UnknownCollection)?;
-		ensure!(collection_items > 0, Error::<T, I>::CollectionEmpty);
+		ensure!(AccountBalance::<T, I>::get(collection, &origin) > 0, Error::<T, I>::NoItemOwned);
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
