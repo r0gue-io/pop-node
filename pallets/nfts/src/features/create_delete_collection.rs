@@ -96,8 +96,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///   ([`NoPermission`](crate::Error::NoPermission)).
 	/// - If the collection is not empty (contains items)
 	///   ([`CollectionNotEmpty`](crate::Error::CollectionNotEmpty)).
-	/// - If there are collection approvals (contains permissions to transfer items in the
-	///   collection granted by accounts).
+	/// - If there are collection approvals
 	///   ([`CollectionApprovalsExist`](crate::Error::CollectionApprovalsExist)).
 	/// - If the `witness` does not match the actual collection details
 	///   ([`BadWitness`](crate::Error::BadWitness)).
