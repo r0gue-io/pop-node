@@ -1335,39 +1335,59 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(15)]
-		#[pallet::weight(T::WeightInfo::approve_transfer(maybe_item.is_some() as u32))]
+		#[pallet::weight(T::WeightInfo::approve_transfer(1))]
 		pub fn approve_transfer(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
-			maybe_item: Option<T::ItemId>,
+			item: T::ItemId,
 			delegate: AccountIdLookupOf<T>,
 			maybe_deadline: Option<BlockNumberFor<T>>,
 		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
-			match maybe_item {
-				Some(item) => {
-					let maybe_check_origin =
-						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
-							ensure_signed(origin).map(Some).map_err(DispatchError::from)
-						})?;
-					Self::do_approve_transfer(
-						maybe_check_origin,
-						collection,
-						item,
-						delegate,
-						maybe_deadline,
-					)
-				},
-				None => {
-					let origin = ensure_signed(origin)?;
-					Self::do_approve_collection_transfer(
-						origin,
-						collection,
-						delegate,
-						maybe_deadline,
-					)
-				},
-			}
+			Self::do_approve_transfer(Some(origin), collection, item, delegate, maybe_deadline)
+		}
+
+		#[pallet::call_index(99)]
+		#[pallet::weight(T::WeightInfo::approve_transfer(0))]
+		pub fn approve_collection_transfer(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+			maybe_deadline: Option<BlockNumberFor<T>>,
+		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_approve_collection_transfer(origin, collection, delegate, maybe_deadline)
+		}
+
+		#[pallet::call_index(100)]
+		#[pallet::weight(T::WeightInfo::approve_transfer(0))]
+		pub fn force_approve_collection_transfer(
+			origin: OriginFor<T>,
+			approve_as: AccountIdLookupOf<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+			maybe_deadline: Option<BlockNumberFor<T>>,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			let account = T::Lookup::lookup(approve_as)?;
+			Self::do_approve_collection_transfer(account, collection, delegate, maybe_deadline)
+		}
+
+		#[pallet::call_index(101)]
+		#[pallet::weight(T::WeightInfo::approve_transfer(1))]
+		pub fn force_approve_transfer(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			item: T::ItemId,
+			delegate: AccountIdLookupOf<T>,
+			maybe_deadline: Option<BlockNumberFor<T>>,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_approve_transfer(None, collection, item, delegate, maybe_deadline)
 		}
 
 		/// Cancel one of the transfer approvals for a specific item.
@@ -1388,27 +1408,55 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(16)]
-		#[pallet::weight(T::WeightInfo::cancel_approval(maybe_item.is_some() as u32))]
+		#[pallet::weight(T::WeightInfo::cancel_approval(1))]
 		pub fn cancel_approval(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
-			maybe_item: Option<T::ItemId>,
+			item: T::ItemId,
 			delegate: AccountIdLookupOf<T>,
 		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
-			match maybe_item {
-				Some(item) => {
-					let maybe_check_origin =
-						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
-							ensure_signed(origin).map(Some).map_err(DispatchError::from)
-						})?;
-					Self::do_cancel_approval(maybe_check_origin, collection, item, delegate)
-				},
-				None => {
-					let origin = ensure_signed(origin)?;
-					Self::do_cancel_collection_approval(origin, collection, delegate)
-				},
-			}
+			Self::do_cancel_approval(Some(origin), collection, item, delegate)
+		}
+
+		#[pallet::call_index(200)]
+		#[pallet::weight(T::WeightInfo::cancel_approval(0))]
+		pub fn cancel_collection_approval(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_cancel_collection_approval(origin, collection, delegate)
+		}
+
+		#[pallet::call_index(201)]
+		#[pallet::weight(T::WeightInfo::cancel_approval(1))]
+		pub fn force_cancel_approval(
+			origin: OriginFor<T>,
+			item: T::ItemId,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_cancel_approval(None, collection, item, delegate)
+		}
+
+		#[pallet::call_index(202)]
+		#[pallet::weight(T::WeightInfo::cancel_approval(0))]
+		pub fn force_cancel_collection_approval(
+			origin: OriginFor<T>,
+			cancel_as: AccountIdLookupOf<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			let account = T::Lookup::lookup(cancel_as)?;
+			Self::do_cancel_collection_approval(account, collection, delegate)
 		}
 
 		/// Cancel all the approvals of a specific item.
