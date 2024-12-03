@@ -1478,29 +1478,53 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(17)]
-		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(maybe_item.is_some() as u32, *witness_approvals))]
+		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(1, T::ApprovalsLimit::get()))]
 		pub fn clear_all_transfer_approvals(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
-			maybe_item: Option<T::ItemId>,
+			item: T::ItemId,
+		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			Self::do_clear_all_transfer_approvals(Some(origin), collection, item)?;
+			Ok(())
+		}
+
+		#[pallet::call_index(203)]
+		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(0, *witness_approvals))]
+		pub fn clear_all_collection_approvals(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
 			witness_approvals: u32,
-		) -> DispatchResultWithPostInfo {
-			let weight = match maybe_item {
-				Some(item) => {
-					let maybe_check_origin =
-						T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
-							ensure_signed(origin).map(Some).map_err(DispatchError::from)
-						})?;
-					Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)?;
-					T::WeightInfo::clear_all_transfer_approvals(1, T::ApprovalsLimit::get())
-				},
-				None => {
-					let origin = ensure_signed(origin)?;
-					Self::do_clear_all_collection_approvals(origin, collection, witness_approvals)?;
-					T::WeightInfo::clear_all_transfer_approvals(0, witness_approvals)
-				},
-			};
-			Ok(Some(weight).into())
+		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			Self::do_clear_all_collection_approvals(origin, collection, witness_approvals)?;
+			Ok(())
+		}
+
+		#[pallet::call_index(204)]
+		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(1, T::ApprovalsLimit::get()))]
+		pub fn force_clear_all_transfer_approvals(
+			origin: OriginFor<T>,
+			item: T::ItemId,
+			collection: T::CollectionId,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			Self::do_clear_all_transfer_approvals(None, collection, item)?;
+			Ok(())
+		}
+
+		#[pallet::call_index(205)]
+		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals(0, *witness_approvals))]
+		pub fn force_clear_collection_approvals(
+			origin: OriginFor<T>,
+			clear_as: AccountIdLookupOf<T>,
+			collection: T::CollectionId,
+			witness_approvals: u32,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			let account = T::Lookup::lookup(clear_as)?;
+			Self::do_clear_all_collection_approvals(account, collection, witness_approvals)?;
+			Ok(())
 		}
 
 		/// Disallows changing the metadata or attributes of the item.
