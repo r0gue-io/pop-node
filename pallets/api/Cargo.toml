@@ -31,7 +31,6 @@ sp-std.workspace = true
 ismp.workspace = true
 pallet-ismp.workspace = true
 xcm.workspace = true
-xcm-executor.workspace = true
 
 [dev-dependencies]
 pallet-balances.workspace = true

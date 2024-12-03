@@ -5,12 +5,16 @@ use ink::{
 	prelude::vec::Vec,
 	scale::{Compact, Encode},
 	xcm::{
-		prelude::{All, Asset, Junction::Parachain, Location, Weight, WeightLimit, Xcm},
-		VersionedXcm,
+		prelude::{
+			AccountId32, All, Asset, Junction::Parachain, Location, OriginKind, QueryId,
+			QueryResponseInfo, Weight, WeightLimit, Xcm, XcmHash,
+		},
+		DoubleEncoded, VersionedXcm,
 	},
 };
 use pop_api::{
-	messaging::{self as api, ismp, RequestId, Status},
+	incentives,
+	messaging::{self as api, ismp, ismp::Get, xcm::Response, MessageId, Status},
 	StatusCode,
 };
 
@@ -18,25 +22,25 @@ pub type Result<T> = core::result::Result<T, StatusCode>;
 
 #[ink::contract]
 mod messaging {
-	use ink::xcm::{
-		prelude::{AccountId32, OriginKind, QueryId, QueryResponseInfo, XcmHash},
-		DoubleEncoded,
-	};
-	use pop_api::messaging::ismp::Get;
+	use pop_api::messaging::{ismp::StorageValue, Callback};
 
 	use super::*;
+
+	const UNAUTHORIZED: u32 = u32::MAX;
 
 	#[ink(storage)]
 	#[derive(Default)]
 	pub struct Messaging {
 		para: u32,
-		id: RequestId,
+		id: MessageId,
 	}
 
 	impl Messaging {
 		#[ink(constructor, payable)]
-		pub fn new(para: u32) -> Self {
-			Self { para, id: 0 }
+		pub fn new(para: u32) -> Result<Self> {
+			let instance = Self { para, id: 0 };
+			incentives::register(instance.env().account_id())?;
+			Ok(instance)
 		}
 
 		#[ink(message)]
@@ -46,6 +50,7 @@ mod messaging {
 				self.id,
 				Get::new(self.para, height, 0, Vec::default(), Vec::from([key.clone()])),
 				0,
+				Some(Callback::to(0x57ad942b, Weight::from_parts(800_000_000, 500_000))),
 			)?;
 			self.env().emit_event(IsmpRequested { id: self.id, key, height });
 			Ok(())
@@ -89,8 +94,9 @@ mod messaging {
 			self.id = self.id.saturating_add(1);
 			let query_id = api::xcm::new_query(
 				self.id,
-				dest.clone().into_versioned(),
+				dest.clone(),
 				self.env().block_number().saturating_add(100),
+				Some(Callback::to(0x641b0b03, Weight::from_parts(800_000_000, 500_000))),
 			)?
 			.unwrap(); // TODO: handle error
 
@@ -113,12 +119,12 @@ mod messaging {
 		}
 
 		#[ink(message)]
-		pub fn complete(&mut self, request: RequestId) -> Result<()> {
-			if let Ok(Some(status)) = api::poll((self.env().account_id(), request)) {
+		pub fn complete(&mut self, id: MessageId) -> Result<()> {
+			if let Ok(Some(status)) = api::poll((self.env().account_id(), id)) {
 				if status == Status::Complete {
-					let result = api::get((self.env().account_id(), request))?;
-					api::remove([request].to_vec())?;
-					self.env().emit_event(Completed { id: request, result });
+					let result = api::get((self.env().account_id(), id))?;
+					api::remove([id].to_vec())?;
+					self.env().emit_event(Completed { id, result });
 				}
 			}
 			Ok(())
@@ -151,10 +157,32 @@ mod messaging {
 		}
 	}
 
+	impl api::ismp::OnGetResponse for Messaging {
+		#[ink(message)]
+		fn on_response(&mut self, id: MessageId, values: Vec<StorageValue>) -> pop_api::Result<()> {
+			if self.env().caller() != self.env().account_id() {
+				return Err(UNAUTHORIZED.into())
+			}
+			self.env().emit_event(GetCompleted { id, values });
+			Ok(())
+		}
+	}
+
+	impl api::xcm::OnResponse for Messaging {
+		#[ink(message)]
+		fn on_response(&mut self, id: MessageId, response: Response) -> Result<()> {
+			if self.env().caller() != self.env().account_id() {
+				return Err(UNAUTHORIZED.into())
+			}
+			self.env().emit_event(XcmCompleted { id, result: response });
+			Ok(())
+		}
+	}
+
 	#[ink::event]
 	pub struct IsmpRequested {
 		#[ink(topic)]
-		pub id: RequestId,
+		pub id: MessageId,
 		pub key: Vec<u8>,
 		pub height: BlockNumber,
 	}
@@ -169,7 +197,7 @@ mod messaging {
 	#[ink::event]
 	pub struct XcmRequested {
 		#[ink(topic)]
-		pub id: RequestId,
+		pub id: MessageId,
 		#[ink(topic)]
 		pub query_id: QueryId,
 		#[ink(topic)]
@@ -179,8 +207,22 @@ mod messaging {
 	#[ink::event]
 	pub struct Completed {
 		#[ink(topic)]
-		pub id: RequestId,
+		pub id: MessageId,
 		pub result: Option<Vec<u8>>,
+	}
+
+	#[ink::event]
+	pub struct XcmCompleted {
+		#[ink(topic)]
+		pub id: MessageId,
+		pub result: Response,
+	}
+
+	#[ink::event]
+	pub struct GetCompleted {
+		#[ink(topic)]
+		pub id: MessageId,
+		pub values: Vec<StorageValue>,
 	}
 
 	// todo: make hasher generic and move to pop-api
