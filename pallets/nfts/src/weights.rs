@@ -61,9 +61,13 @@ pub trait WeightInfo {
 	fn clear_collection_metadata() -> Weight;
 	fn approve_transfer() -> Weight;
 	fn approve_collection_transfer() -> Weight;
+	fn force_approve_collection_transfer() -> Weight;
 	fn cancel_approval() -> Weight;
 	fn cancel_collection_approval() -> Weight;
+	fn force_cancel_collection_approval() -> Weight;
 	fn clear_all_transfer_approvals() -> Weight;
+	fn clear_all_collection_approvals(n: u32, ) -> Weight;
+	fn force_clear_all_collection_approvals(n: u32, ) -> Weight;
 	fn set_accept_ownership() -> Weight;
 	fn set_collection_max_supply() -> Weight;
 	fn update_mint_settings() -> Weight;
@@ -546,8 +550,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `337`
 		//  Estimated: `4326`
-		// Minimum execution time: 13_000_000 picoseconds.
-		Weight::from_parts(14_000_000, 4326)
+		// Minimum execution time: 11_000_000 picoseconds.
+		Weight::from_parts(12_000_000, 4326)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -561,8 +565,23 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `450`
 		//  Estimated: `3602`
-		// Minimum execution time: 26_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 3602)
+		// Minimum execution time: 22_000_000 picoseconds.
+		Weight::from_parts(30_000_000, 3602)
+			.saturating_add(T::DbWeight::get().reads(3_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
+	/// Storage: `Nfts::AccountBalance` (r:1 w:0)
+	/// Proof: `Nfts::AccountBalance` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+	/// Storage: `Nfts::CollectionConfigOf` (r:1 w:0)
+	/// Proof: `Nfts::CollectionConfigOf` (`max_values`: None, `max_size`: Some(73), added: 2548, mode: `MaxEncodedLen`)
+	/// Storage: `Nfts::CollectionApprovals` (r:1 w:1)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	fn force_approve_collection_transfer() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `450`
+		//  Estimated: `3602`
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(22_000_000, 3602)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -574,8 +593,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 15_000_000 picoseconds.
-		Weight::from_parts(16_000_000, 4326)
+		// Minimum execution time: 12_000_000 picoseconds.
+		Weight::from_parts(36_000_000, 4326)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -585,8 +604,19 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `359`
 		//  Estimated: `3602`
-		// Minimum execution time: 21_000_000 picoseconds.
-		Weight::from_parts(22_000_000, 3602)
+		// Minimum execution time: 17_000_000 picoseconds.
+		Weight::from_parts(18_000_000, 3602)
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
+	/// Storage: `Nfts::CollectionApprovals` (r:1 w:1)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	fn force_cancel_collection_approval() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `359`
+		//  Estimated: `3602`
+		// Minimum execution time: 17_000_000 picoseconds.
+		Weight::from_parts(18_000_000, 3602)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -598,10 +628,42 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 15_000_000 picoseconds.
-		Weight::from_parts(16_000_000, 4326)
+		// Minimum execution time: 14_000_000 picoseconds.
+		Weight::from_parts(21_000_000, 4326)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
+	}
+	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	/// The range of component `n` is `[1, 21]`.
+	fn clear_all_collection_approvals(n: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `349 + n * (75 ±0)`
+		//  Estimated: `3602 + n * (2612 ±0)`
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(16_630_042, 3602)
+			// Standard Error: 121_416
+			.saturating_add(Weight::from_parts(3_823_189, 0).saturating_mul(n.into()))
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
+			.saturating_add(Weight::from_parts(0, 2612).saturating_mul(n.into()))
+	}
+	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	/// The range of component `n` is `[1, 21]`.
+	fn force_clear_all_collection_approvals(n: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `349 + n * (75 ±0)`
+		//  Estimated: `3602 + n * (2612 ±0)`
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(13_455_783, 3602)
+			// Standard Error: 146_830
+			.saturating_add(Weight::from_parts(4_223_404, 0).saturating_mul(n.into()))
+			.saturating_add(T::DbWeight::get().reads(1_u64))
+			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
+			.saturating_add(Weight::from_parts(0, 2612).saturating_mul(n.into()))
 	}
 	/// Storage: `Nfts::OwnershipAcceptance` (r:1 w:1)
 	/// Proof: `Nfts::OwnershipAcceptance` (`max_values`: None, `max_size`: Some(52), added: 2527, mode: `MaxEncodedLen`)
@@ -1279,8 +1341,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `337`
 		//  Estimated: `4326`
-		// Minimum execution time: 13_000_000 picoseconds.
-		Weight::from_parts(14_000_000, 4326)
+		// Minimum execution time: 11_000_000 picoseconds.
+		Weight::from_parts(12_000_000, 4326)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1294,8 +1356,23 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `450`
 		//  Estimated: `3602`
-		// Minimum execution time: 26_000_000 picoseconds.
-		Weight::from_parts(28_000_000, 3602)
+		// Minimum execution time: 22_000_000 picoseconds.
+		Weight::from_parts(30_000_000, 3602)
+			.saturating_add(RocksDbWeight::get().reads(3_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	/// Storage: `Nfts::AccountBalance` (r:1 w:0)
+	/// Proof: `Nfts::AccountBalance` (`max_values`: None, `max_size`: Some(72), added: 2547, mode: `MaxEncodedLen`)
+	/// Storage: `Nfts::CollectionConfigOf` (r:1 w:0)
+	/// Proof: `Nfts::CollectionConfigOf` (`max_values`: None, `max_size`: Some(73), added: 2548, mode: `MaxEncodedLen`)
+	/// Storage: `Nfts::CollectionApprovals` (r:1 w:1)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	fn force_approve_collection_transfer() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `450`
+		//  Estimated: `3602`
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(22_000_000, 3602)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1307,8 +1384,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 15_000_000 picoseconds.
-		Weight::from_parts(16_000_000, 4326)
+		// Minimum execution time: 12_000_000 picoseconds.
+		Weight::from_parts(36_000_000, 4326)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1318,8 +1395,19 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `359`
 		//  Estimated: `3602`
-		// Minimum execution time: 21_000_000 picoseconds.
-		Weight::from_parts(22_000_000, 3602)
+		// Minimum execution time: 17_000_000 picoseconds.
+		Weight::from_parts(18_000_000, 3602)
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	/// Storage: `Nfts::CollectionApprovals` (r:1 w:1)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	fn force_cancel_collection_approval() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `359`
+		//  Estimated: `3602`
+		// Minimum execution time: 17_000_000 picoseconds.
+		Weight::from_parts(18_000_000, 3602)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1331,10 +1419,42 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 15_000_000 picoseconds.
-		Weight::from_parts(16_000_000, 4326)
+		// Minimum execution time: 14_000_000 picoseconds.
+		Weight::from_parts(21_000_000, 4326)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
+	}
+	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	/// The range of component `n` is `[1, 21]`.
+	fn clear_all_collection_approvals(n: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `349 + n * (75 ±0)`
+		//  Estimated: `3602 + n * (2612 ±0)`
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(16_630_042, 3602)
+			// Standard Error: 121_416
+			.saturating_add(Weight::from_parts(3_823_189, 0).saturating_mul(n.into()))
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n.into())))
+			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n.into())))
+			.saturating_add(Weight::from_parts(0, 2612).saturating_mul(n.into()))
+	}
+	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
+	/// The range of component `n` is `[1, 21]`.
+	fn force_clear_all_collection_approvals(n: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `349 + n * (75 ±0)`
+		//  Estimated: `3602 + n * (2612 ±0)`
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(13_455_783, 3602)
+			// Standard Error: 146_830
+			.saturating_add(Weight::from_parts(4_223_404, 0).saturating_mul(n.into()))
+			.saturating_add(RocksDbWeight::get().reads(1_u64))
+			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n.into())))
+			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n.into())))
+			.saturating_add(Weight::from_parts(0, 2612).saturating_mul(n.into()))
 	}
 	/// Storage: `Nfts::OwnershipAcceptance` (r:1 w:1)
 	/// Proof: `Nfts::OwnershipAcceptance` (`max_values`: None, `max_size`: Some(52), added: 2527, mode: `MaxEncodedLen`)
