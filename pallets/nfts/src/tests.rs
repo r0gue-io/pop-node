@@ -1902,11 +1902,11 @@ fn check_approval_works() {
 			Error::<Test>::NoPermission
 		);
 		assert_noop!(
-			Nfts::check_approval(&1, &Some(43), &account(2), &account(3)),
-			Error::<Test>::UnknownItem
+			Nfts::check_approval(&1, &Item::<Test>::get(0, 43), &account(2), &account(3)),
+			Error::<Test>::NoPermission
 		);
 		assert_ok!(Nfts::check_approval(&0, &None, &account(2), &account(3)));
-		assert_ok!(Nfts::check_approval(&0, &Some(42), &account(2), &account(3)));
+		assert_ok!(Nfts::check_approval(&0, &Item::<Test>::get(0, 42), &account(2), &account(3)));
 
 		// Test collection item approvals without deadline.
 		assert_ok!(Nfts::approve_transfer(
@@ -1918,14 +1918,14 @@ fn check_approval_works() {
 		));
 
 		assert_noop!(
-			Nfts::check_approval(&0, &Some(43), &account(2), &account(4)),
-			Error::<Test>::UnknownItem
-		);
-		assert_noop!(
-			Nfts::check_approval(&0, &Some(42), &account(2), &account(4)),
+			Nfts::check_approval(&0, &Item::<Test>::get(0, 43), &account(2), &account(4)),
 			Error::<Test>::NoPermission
 		);
-		assert_ok!(Nfts::check_approval(&0, &Some(42), &account(2), &account(3)));
+		assert_noop!(
+			Nfts::check_approval(&0, &Item::<Test>::get(0, 42), &account(2), &account(4)),
+			Error::<Test>::NoPermission
+		);
+		assert_ok!(Nfts::check_approval(&0, &Item::<Test>::get(0, 42), &account(2), &account(3)));
 
 		// Test collection approvals with deadline.
 		let deadline = 10;
@@ -1948,14 +1948,14 @@ fn check_approval_works() {
 			Nfts::check_approval(&0, &None, &account(2), &account(3)),
 			Error::<Test>::ApprovalExpired
 		);
-		assert_ok!(Nfts::check_approval(&0, &Some(42), &account(2), &account(3)));
+		assert_ok!(Nfts::check_approval(&0, &Item::<Test>::get(0, 42), &account(2), &account(3)));
 		System::set_block_number(14);
 		assert_noop!(
 			Nfts::check_approval(&0, &None, &account(2), &account(3)),
 			Error::<Test>::ApprovalExpired
 		);
 		assert_noop!(
-			Nfts::check_approval(&0, &Some(42), &account(2), &account(3)),
+			Nfts::check_approval(&0, &Item::<Test>::get(0, 42), &account(2), &account(3)),
 			Error::<Test>::ApprovalExpired
 		);
 	});
