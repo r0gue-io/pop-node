@@ -1087,7 +1087,12 @@ pub mod pallet {
 
 			Self::do_transfer(collection, item, dest, |_, details| {
 				if details.owner != origin {
-					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
+					Self::check_approval(
+						&collection,
+						&Some(details.clone()),
+						&details.owner,
+						&origin,
+					)?;
 				}
 				Ok(())
 			})
@@ -1379,7 +1384,7 @@ pub mod pallet {
 		/// Emits `TransferApproved` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(16)]
+		#[pallet::call_index(39)]
 		#[pallet::weight(T::WeightInfo::approve_collection_transfer())]
 		pub fn approve_collection_transfer(
 			origin: OriginFor<T>,
@@ -1394,34 +1399,34 @@ pub mod pallet {
 
 		/// Force-approve collection items owned by the origin to be transferred by a delegated
 		/// third-party account. This function reserves the required deposit
-		/// `CollectionApprovalDeposit` from the `approve_as` account.
+		/// `CollectionApprovalDeposit` from the `owner` account.
 		///
 		/// Origin must be the `ForceOrigin`.
 		///
-		/// - `approve_as`: The account granting approval for delegated transfer.
+		/// - `owner`: The account granting approval for delegated transfer.
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `item`: The item to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
-		///   the `approve_as`.
+		///   the `owner`.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
 		/// 	number of blocks after which the approval will expire.
 		///
 		/// Emits `TransferApproved` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(17)]
+		#[pallet::call_index(40)]
 		#[pallet::weight(T::WeightInfo::force_approve_collection_transfer())]
 		pub fn force_approve_collection_transfer(
 			origin: OriginFor<T>,
-			approve_as: AccountIdLookupOf<T>,
+			owner: AccountIdLookupOf<T>,
 			collection: T::CollectionId,
 			delegate: AccountIdLookupOf<T>,
 			maybe_deadline: Option<BlockNumberFor<T>>,
 		) -> DispatchResult {
 			T::ForceOrigin::ensure_origin(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
-			let account = T::Lookup::lookup(approve_as)?;
-			Self::do_approve_collection_transfer(account, collection, delegate, maybe_deadline)
+			let owner = T::Lookup::lookup(owner)?;
+			Self::do_approve_collection_transfer(owner, collection, delegate, maybe_deadline)
 		}
 
 		/// Cancel one of the transfer approvals for a specific item.
@@ -1438,7 +1443,7 @@ pub mod pallet {
 		/// Emits `ApprovalCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(18)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(T::WeightInfo::cancel_approval())]
 		pub fn cancel_approval(
 			origin: OriginFor<T>,
@@ -1453,7 +1458,7 @@ pub mod pallet {
 			Self::do_cancel_approval(maybe_check_origin, collection, item, delegate)
 		}
 
-		/// Cancel one of the collection approvals.
+		/// Cancel a collection approval.
 		///
 		/// Origin must be Signed.
 		///
@@ -1464,7 +1469,7 @@ pub mod pallet {
 		/// Emits `ApprovalCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(19)]
+		#[pallet::call_index(41)]
 		#[pallet::weight(T::WeightInfo::cancel_collection_approval())]
 		pub fn cancel_collection_approval(
 			origin: OriginFor<T>,
@@ -1476,30 +1481,30 @@ pub mod pallet {
 			Self::do_cancel_collection_approval(origin, collection, delegate)
 		}
 
-		/// Force-cancel a collection approval granted by `cancel_as` account.
+		/// Force-cancel a collection approval granted by `owner` account.
 		///
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
-		/// - `cancel_as`: The account cancelling approval for delegated transfer.
+		/// - `owner`: The account cancelling approval for delegated transfer.
 		/// - `collection`: The collection of whose approval will be cancelled.
 		/// - `delegate`: The account that is going to loose their approval.
 		///
 		/// Emits `ApprovalCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(20)]
+		#[pallet::call_index(42)]
 		#[pallet::weight(T::WeightInfo::force_cancel_collection_approval())]
 		pub fn force_cancel_collection_approval(
 			origin: OriginFor<T>,
-			cancel_as: AccountIdLookupOf<T>,
+			owner: AccountIdLookupOf<T>,
 			collection: T::CollectionId,
 			delegate: AccountIdLookupOf<T>,
 		) -> DispatchResult {
 			T::ForceOrigin::ensure_origin(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
-			let account = T::Lookup::lookup(cancel_as)?;
-			Self::do_cancel_collection_approval(account, collection, delegate)
+			let owner = T::Lookup::lookup(owner)?;
+			Self::do_cancel_collection_approval(owner, collection, delegate)
 		}
 
 		/// Cancel all the approvals of a specific item.
@@ -1515,7 +1520,7 @@ pub mod pallet {
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(21)]
+		#[pallet::call_index(17)]
 		#[pallet::weight(T::WeightInfo::clear_all_transfer_approvals())]
 		pub fn clear_all_transfer_approvals(
 			origin: OriginFor<T>,
@@ -1534,13 +1539,12 @@ pub mod pallet {
 		///
 		/// Arguments:
 		/// - `collection`: The collection whose approvals will be cleared.
-		/// - `witness_approvals`: Information on the collection approvals cleared. This must be
-		///   correct.
+		/// - `witness_approvals`: The amount of collection approvals that will be cleared.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(22)]
+		#[pallet::call_index(43)]
 		#[pallet::weight(T::WeightInfo::clear_all_collection_approvals(*witness_approvals))]
 		pub fn clear_all_collection_approvals(
 			origin: OriginFor<T>,
@@ -1551,30 +1555,29 @@ pub mod pallet {
 			Self::do_clear_all_collection_approvals(origin, collection, witness_approvals)
 		}
 
-		/// Force-cancel all the collection approvals granted by `clear_as` account.
+		/// Force-cancel all the collection approvals granted by `owner` account.
 		///
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
 		/// - `collection`: The collection whose approvals will be cleared.
-		/// - `clear_as`: The account clearing all collection approvals.
-		/// - `witness_approvals`: Information on the collection approvals cleared. This must be
-		///   correct.
+		/// - `owner`: The account clearing all collection approvals.
+		/// - `witness_approvals`: The amount of collection approvals that will be cleared.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(23)]
+		#[pallet::call_index(44)]
 		#[pallet::weight(T::WeightInfo::force_clear_all_collection_approvals(*witness_approvals))]
 		pub fn force_clear_all_collection_approvals(
 			origin: OriginFor<T>,
-			clear_as: AccountIdLookupOf<T>,
+			owner: AccountIdLookupOf<T>,
 			collection: T::CollectionId,
 			witness_approvals: u32,
 		) -> DispatchResult {
 			T::ForceOrigin::ensure_origin(origin)?;
-			let account = T::Lookup::lookup(clear_as)?;
-			Self::do_clear_all_collection_approvals(account, collection, witness_approvals)
+			let owner = T::Lookup::lookup(owner)?;
+			Self::do_clear_all_collection_approvals(owner, collection, witness_approvals)
 		}
 
 		/// Disallows changing the metadata or attributes of the item.
@@ -1594,7 +1597,7 @@ pub mod pallet {
 		/// Emits `ItemPropertiesLocked`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(24)]
+		#[pallet::call_index(18)]
 		#[pallet::weight(T::WeightInfo::lock_item_properties())]
 		pub fn lock_item_properties(
 			origin: OriginFor<T>,
@@ -1637,7 +1640,7 @@ pub mod pallet {
 		/// Emits `AttributeSet`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(25)]
+		#[pallet::call_index(19)]
 		#[pallet::weight(T::WeightInfo::set_attribute())]
 		pub fn set_attribute(
 			origin: OriginFor<T>,
@@ -1673,7 +1676,7 @@ pub mod pallet {
 		/// Emits `AttributeSet`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(26)]
+		#[pallet::call_index(20)]
 		#[pallet::weight(T::WeightInfo::force_set_attribute())]
 		pub fn force_set_attribute(
 			origin: OriginFor<T>,
@@ -1703,7 +1706,7 @@ pub mod pallet {
 		/// Emits `AttributeCleared`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(27)]
+		#[pallet::call_index(21)]
 		#[pallet::weight(T::WeightInfo::clear_attribute())]
 		pub fn clear_attribute(
 			origin: OriginFor<T>,
@@ -1727,7 +1730,7 @@ pub mod pallet {
 		/// - `delegate`: The account to delegate permission to change attributes of the item.
 		///
 		/// Emits `ItemAttributesApprovalAdded` on success.
-		#[pallet::call_index(28)]
+		#[pallet::call_index(22)]
 		#[pallet::weight(T::WeightInfo::approve_item_attributes())]
 		pub fn approve_item_attributes(
 			origin: OriginFor<T>,
@@ -1750,7 +1753,7 @@ pub mod pallet {
 		/// - `delegate`: The previously approved account to remove.
 		///
 		/// Emits `ItemAttributesApprovalRemoved` on success.
-		#[pallet::call_index(29)]
+		#[pallet::call_index(23)]
 		#[pallet::weight(T::WeightInfo::cancel_item_attributes_approval(
 			witness.account_attributes
 		))]
@@ -1782,7 +1785,7 @@ pub mod pallet {
 		/// Emits `ItemMetadataSet`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(30)]
+		#[pallet::call_index(24)]
 		#[pallet::weight(T::WeightInfo::set_metadata())]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
@@ -1809,7 +1812,7 @@ pub mod pallet {
 		/// Emits `ItemMetadataCleared`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(31)]
+		#[pallet::call_index(25)]
 		#[pallet::weight(T::WeightInfo::clear_metadata())]
 		pub fn clear_metadata(
 			origin: OriginFor<T>,
@@ -1837,7 +1840,7 @@ pub mod pallet {
 		/// Emits `CollectionMetadataSet`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(32)]
+		#[pallet::call_index(26)]
 		#[pallet::weight(T::WeightInfo::set_collection_metadata())]
 		pub fn set_collection_metadata(
 			origin: OriginFor<T>,
@@ -1862,7 +1865,7 @@ pub mod pallet {
 		/// Emits `CollectionMetadataCleared`.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(33)]
+		#[pallet::call_index(27)]
 		#[pallet::weight(T::WeightInfo::clear_collection_metadata())]
 		pub fn clear_collection_metadata(
 			origin: OriginFor<T>,
@@ -1884,7 +1887,7 @@ pub mod pallet {
 		///   ownership transferal.
 		///
 		/// Emits `OwnershipAcceptanceChanged`.
-		#[pallet::call_index(34)]
+		#[pallet::call_index(28)]
 		#[pallet::weight(T::WeightInfo::set_accept_ownership())]
 		pub fn set_accept_ownership(
 			origin: OriginFor<T>,
@@ -1903,7 +1906,7 @@ pub mod pallet {
 		/// - `max_supply`: The maximum number of items a collection could have.
 		///
 		/// Emits `CollectionMaxSupplySet` event when successful.
-		#[pallet::call_index(35)]
+		#[pallet::call_index(29)]
 		#[pallet::weight(T::WeightInfo::set_collection_max_supply())]
 		pub fn set_collection_max_supply(
 			origin: OriginFor<T>,
@@ -1925,7 +1928,7 @@ pub mod pallet {
 		/// - `mint_settings`: The new mint settings.
 		///
 		/// Emits `CollectionMintSettingsUpdated` event when successful.
-		#[pallet::call_index(36)]
+		#[pallet::call_index(30)]
 		#[pallet::weight(T::WeightInfo::update_mint_settings())]
 		pub fn update_mint_settings(
 			origin: OriginFor<T>,
@@ -1949,7 +1952,7 @@ pub mod pallet {
 		///
 		/// Emits `ItemPriceSet` on success if the price is not `None`.
 		/// Emits `ItemPriceRemoved` on success if the price is `None`.
-		#[pallet::call_index(37)]
+		#[pallet::call_index(31)]
 		#[pallet::weight(T::WeightInfo::set_price())]
 		pub fn set_price(
 			origin: OriginFor<T>,
@@ -1972,7 +1975,7 @@ pub mod pallet {
 		/// - `bid_price`: The price the sender is willing to pay.
 		///
 		/// Emits `ItemBought` on success.
-		#[pallet::call_index(38)]
+		#[pallet::call_index(32)]
 		#[pallet::weight(T::WeightInfo::buy_item())]
 		pub fn buy_item(
 			origin: OriginFor<T>,
@@ -1991,7 +1994,7 @@ pub mod pallet {
 		/// - `tips`: Tips array.
 		///
 		/// Emits `TipSent` on every tip transfer.
-		#[pallet::call_index(39)]
+		#[pallet::call_index(33)]
 		#[pallet::weight(T::WeightInfo::pay_tips(tips.len() as u32))]
 		pub fn pay_tips(
 			origin: OriginFor<T>,
@@ -2017,7 +2020,7 @@ pub mod pallet {
 		/// 	after which the swap will expire.
 		///
 		/// Emits `SwapCreated` on success.
-		#[pallet::call_index(40)]
+		#[pallet::call_index(34)]
 		#[pallet::weight(T::WeightInfo::create_swap())]
 		pub fn create_swap(
 			origin: OriginFor<T>,
@@ -2049,7 +2052,7 @@ pub mod pallet {
 		/// - `item`: The item an owner wants to give.
 		///
 		/// Emits `SwapCancelled` on success.
-		#[pallet::call_index(41)]
+		#[pallet::call_index(35)]
 		#[pallet::weight(T::WeightInfo::cancel_swap())]
 		pub fn cancel_swap(
 			origin: OriginFor<T>,
@@ -2072,7 +2075,7 @@ pub mod pallet {
 		/// - `witness_price`: A price that was previously agreed on.
 		///
 		/// Emits `SwapClaimed` on success.
-		#[pallet::call_index(42)]
+		#[pallet::call_index(36)]
 		#[pallet::weight(T::WeightInfo::claim_swap())]
 		pub fn claim_swap(
 			origin: OriginFor<T>,
@@ -2106,7 +2109,7 @@ pub mod pallet {
 		/// Emits `Issued` on success.
 		/// Emits `AttributeSet` if the attributes were provided.
 		/// Emits `ItemMetadataSet` if the metadata was not empty.
-		#[pallet::call_index(43)]
+		#[pallet::call_index(37)]
 		#[pallet::weight(T::WeightInfo::mint_pre_signed(mint_data.attributes.len() as u32))]
 		pub fn mint_pre_signed(
 			origin: OriginFor<T>,
@@ -2132,7 +2135,7 @@ pub mod pallet {
 		/// Emits `AttributeSet` for each provided attribute.
 		/// Emits `ItemAttributesApprovalAdded` if the approval wasn't set before.
 		/// Emits `PreSignedAttributesSet` on success.
-		#[pallet::call_index(44)]
+		#[pallet::call_index(38)]
 		#[pallet::weight(T::WeightInfo::set_attributes_pre_signed(data.attributes.len() as u32))]
 		pub fn set_attributes_pre_signed(
 			origin: OriginFor<T>,
