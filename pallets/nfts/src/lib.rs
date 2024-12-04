@@ -1403,7 +1403,7 @@ pub mod pallet {
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `item`: The item to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
-		///   the origin.
+		///   the `approve_as`.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
 		/// 	number of blocks after which the approval will expire.
 		///
