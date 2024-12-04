@@ -175,11 +175,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type CollectionDeposit: Get<DepositBalanceOf<Self, I>>;
 
-		/// The basic amount of funds that must be reserved for collection approvals.
+		/// The basic amount of funds that must be reserved for a collection approval.
 		///
-		/// This is held for an additional storage item whose value size is
-		/// `sizeof((Option<BlockNumber>, Balance))` bytes and whose key size is
-		/// `sizeof((CollectionId, AccountId, AccountId))` bytes.
+		/// Key: `sizeof((CollectionId, AccountId, AccountId))` bytes.
+		/// Value: `sizeof((Option<BlockNumber>, Balance))` bytes.
 		#[pallet::constant]
 		type CollectionApprovalDeposit: Get<DepositBalanceOf<Self, I>>;
 
@@ -426,7 +425,7 @@ pub mod pallet {
 		ValueQuery,
 	>;
 
-	/// Permission for a delegate to transfer all owner's items within a collection.
+	/// Permission for a delegate to transfer all owner's collection items.
 	#[pallet::storage]
 	pub type CollectionApprovals<T: Config<I>, I: 'static = ()> = StorageNMap<
 		_,
@@ -729,7 +728,7 @@ pub mod pallet {
 		CollectionNotEmpty,
 		/// The witness data should be provided.
 		WitnessRequired,
-		/// The account owns zero item in the collection.
+		/// The account owns zero items in the collection.
 		NoItemOwned,
 		/// The collection has existing approvals.
 		CollectionApprovalsExist,
@@ -1477,7 +1476,7 @@ pub mod pallet {
 			Self::do_cancel_collection_approval(origin, collection, delegate)
 		}
 
-		/// Force-cancel one of the collection approvals granted by `cancel_as` account.
+		/// Force-cancel a collection approval granted by `cancel_as` account.
 		///
 		/// Origin must be `ForceOrigin`.
 		///
