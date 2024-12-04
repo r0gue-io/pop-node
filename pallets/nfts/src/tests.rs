@@ -2037,7 +2037,7 @@ fn cancel_approval_works() {
 }
 
 #[test]
-fn cancel_approval_collection_works() {
+fn cancel_collection_approval_works() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::force_create(
@@ -2176,7 +2176,7 @@ fn approvals_limit_works() {
 }
 
 #[test]
-fn approve_transfer_collection_works() {
+fn approve_collection_transfer_works() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&account(2), 100);
 		Balances::make_free_balance_be(&account(3), 100);

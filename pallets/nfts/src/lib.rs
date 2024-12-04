@@ -737,6 +737,17 @@ pub mod pallet {
 		DelegateApprovalConflict,
 	}
 
+	#[pallet::hooks]
+	impl<T: Config<I>, I: 'static> Hooks<BlockNumberFor<T>> for Pallet<T, I> {
+		#[cfg(any(feature = "std", test))]
+		fn integrity_test() {
+			assert!(
+				size_of::<<T as Config<I>>::ItemId>() == size_of::<u32>(),
+				"ItemId must be bounded by u32 type."
+			);
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		/// Issue a new collection of non-fungible items from a public origin.
