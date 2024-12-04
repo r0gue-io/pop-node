@@ -1384,7 +1384,7 @@ pub mod pallet {
 
 		/// Force-approve collection items owned by the origin to be transferred by a delegated
 		/// third-party account. This function reserves the required deposit
-		/// `CollectionApprovalDeposit` from the `origin` account.
+		/// `CollectionApprovalDeposit` from the `approve_as` account.
 		///
 		/// Origin must be the `ForceOrigin`.
 		///
@@ -1421,7 +1421,7 @@ pub mod pallet {
 		/// - `Signed` with the signer being the Owner of the `item`;
 		///
 		/// Arguments:
-		/// - `collection`: The collection the item of whose approval will be cancelled.
+		/// - `collection`: The collection of the item of whose approval will be cancelled.
 		/// - `item`: The item of the collection of whose approval will be cancelled.
 		/// - `delegate`: The account that is going to loose their approval.
 		///
@@ -1466,7 +1466,7 @@ pub mod pallet {
 			Self::do_cancel_collection_approval(origin, collection, delegate)
 		}
 
-		/// Force-cancel one of the collection approvals.
+		/// Force-cancel one of the collection approvals granted by `cancel_as` account.
 		///
 		/// Origin must be `ForceOrigin`.
 		///
@@ -1541,7 +1541,7 @@ pub mod pallet {
 			Self::do_clear_all_collection_approvals(origin, collection, witness_approvals)
 		}
 
-		/// Force-cancel all the collection approvals.
+		/// Force-cancel all the collection approvals granted by `clear_as` account.
 		///
 		/// Origin must be `ForceOrigin`.
 		///

@@ -657,9 +657,8 @@ benchmarks_instance_pallet! {
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-		let origin = SystemOrigin::Signed(caller.clone()).into();
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_collection_transfer(origin, collection, delegate_lookup.clone(), Some(deadline))?;
+		Nfts::<T, I>::approve_collection_transfer(SystemOrigin::Signed(caller.clone()).into(), collection, delegate_lookup.clone(), Some(deadline))?;
 	}: _(SystemOrigin::Root, caller_lookup, collection, delegate_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item: None, owner: caller, delegate }.into());
