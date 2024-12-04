@@ -217,6 +217,94 @@ pub mod pallet {
 		},
 	}
 
+	impl<T: Config> Pallet<T> {
+		/// Approves the transfer of a specific item or all collection items owned by the origin to
+		/// an operator.
+		///
+		/// # Parameters
+		/// - `origin` - The account originating the approval. Must be Signed or owner of the
+		///   specified item if the `maybe_item` is provided.
+		/// - `collection` - The ID of the collection to which the approval applies.
+		/// - `maybe_item` - An optional parameter specifying the ID of the item to approve. If
+		///   `None`, the approval applies to the entire collection.
+		/// - `operator` - The account being approved for the transfer.
+		fn do_approve(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			maybe_item: Option<ItemIdOf<T>>,
+			operator: &AccountIdOf<T>,
+		) -> DispatchResultWithPostInfo {
+			let weight = match maybe_item {
+				Some(item) => {
+					NftsOf::<T>::approve_transfer(
+						origin,
+						collection,
+						item,
+						T::Lookup::unlookup(operator.clone()),
+						None,
+					)
+					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
+					NftsWeightInfoOf::<T>::approve_transfer()
+				},
+				None => {
+					NftsOf::<T>::approve_collection_transfer(
+						origin,
+						collection,
+						T::Lookup::unlookup(operator.clone()),
+						None,
+					)
+					.map_err(|e| {
+						e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer())
+					})?;
+					NftsWeightInfoOf::<T>::approve_collection_transfer()
+				},
+			};
+			Ok(Some(weight).into())
+		}
+
+		/// Revokes the transfer approval of a specific item or all collection items owned by the
+		/// origin for a specified operator.
+		///
+		/// # Parameters
+		/// - `origin` - The account originating the unapproval. Must be Signed and the owner of the
+		///   specified item or collection.
+		/// - `collection` - The ID of the collection to which the unapproval applies.
+		/// - `maybe_item` - An optional parameter specifying the ID of the item to unapprove. If
+		///   `None`, the unapproval applies to the entire collection.
+		/// - `operator` - The account whose approval is being revoked.
+		fn do_unapprove(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			maybe_item: Option<ItemIdOf<T>>,
+			operator: &AccountIdOf<T>,
+		) -> DispatchResultWithPostInfo {
+			let weight = match maybe_item {
+				Some(item) => {
+					NftsOf::<T>::cancel_approval(
+						origin,
+						collection,
+						item,
+						T::Lookup::unlookup(operator.clone()),
+					)
+					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
+					NftsWeightInfoOf::<T>::cancel_approval()
+				},
+				None => {
+					NftsOf::<T>::cancel_collection_approval(
+						origin,
+						collection,
+						T::Lookup::unlookup(operator.clone()),
+					)
+					.map_err(|e| {
+						e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval())
+					})?;
+					NftsWeightInfoOf::<T>::cancel_collection_approval()
+				},
+			};
+			Ok(Some(weight).into())
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Transfers the collection item from the caller's account to account `to`.
@@ -245,17 +333,30 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Approves `operator` to spend the collection item on behalf of the caller.
+		/// Manages approval for an operator to transfer a collection item or all items within a
+		/// collection on behalf of the caller.
+		///
+		/// This function allows the caller to either approve or revoke approval for an `operator`
+		/// to perform transfers of a specific collection item or all items within a collection.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to approve for a delegated transfer.
-		/// - `item` - The item to approve for a delegated transfer.
-		/// - `operator` - The account that is allowed to spend the collection item.
-		/// - `approved` - The approval status of the collection item.
+		/// - `origin` - The account originating the request. Must be Signed and the owner of the
+		///   collection or item.
+		/// - `collection` - The ID of the collection containing the item or items to manage
+		///   approval for.
+		/// - `item` - An optional parameter specifying the ID of the item to manage approval for.
+		///   If `None`, the approval applies to all items in the collection owned by the `origin`.
+		/// - `operator` - The account being granted or revoked approval to manage the specified
+		///   collection item(s).
+		/// - `approved` - A boolean indicating the desired approval status:
+		///   - `true` to approve the operator.
+		///   - `false` to revoke the operator's approval.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
-            NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32) +
-    		NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
+            NftsWeightInfoOf::<T>::approve_transfer() +
+            NftsWeightInfoOf::<T>::approve_collection_transfer() +
+            NftsWeightInfoOf::<T>::cancel_collection_approval() +
+    		NftsWeightInfoOf::<T>::cancel_approval()
         )]
 		pub fn approve(
 			origin: OriginFor<T>,
@@ -265,32 +366,13 @@ pub mod pallet {
 			approved: bool,
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())?;
-			let weight = if approved {
-				NftsOf::<T>::approve_transfer(
-					origin,
-					collection,
-					item,
-					T::Lookup::unlookup(operator.clone()),
-					None,
-				)
-				.map_err(|e| {
-					e.with_weight(NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32))
-				})?;
-				NftsWeightInfoOf::<T>::approve_transfer(item.is_some() as u32)
+			let result = if approved {
+				Self::do_approve(origin, collection, item, &operator)
 			} else {
-				NftsOf::<T>::cancel_approval(
-					origin,
-					collection,
-					item,
-					T::Lookup::unlookup(operator.clone()),
-				)
-				.map_err(|e| {
-					e.with_weight(NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32))
-				})?;
-				NftsWeightInfoOf::<T>::cancel_approval(item.is_some() as u32)
+				Self::do_unapprove(origin, collection, item, &operator)
 			};
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
-			Ok(Some(weight).into())
+			result
 		}
 
 		/// Issue a new collection of non-fungible items from a public origin.
@@ -565,7 +647,7 @@ pub mod pallet {
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
 				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(owner, collection)),
+					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
 				),
