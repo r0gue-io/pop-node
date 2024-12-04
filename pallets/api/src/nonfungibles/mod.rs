@@ -353,11 +353,11 @@ pub mod pallet {
 		///   - `false` to revoke the operator's approval.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
-            NftsWeightInfoOf::<T>::approve_transfer() +
-            NftsWeightInfoOf::<T>::approve_collection_transfer() +
-            NftsWeightInfoOf::<T>::cancel_collection_approval() +
+						NftsWeightInfoOf::<T>::approve_transfer() +
+      NftsWeightInfoOf::<T>::approve_collection_transfer() +
+      NftsWeightInfoOf::<T>::cancel_collection_approval() +
     		NftsWeightInfoOf::<T>::cancel_approval()
-        )]
+		)]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
