@@ -62,27 +62,6 @@ fn add_collection_metadata<T: Config<I>, I: 'static>() -> (T::AccountId, Account
 	(caller, caller_lookup)
 }
 
-fn approve_collection<T: Config<I>, I: 'static>(
-	collection: T::CollectionId,
-	index: u32,
-) -> (T::AccountId, AccountIdLookupOf<T>) {
-	let caller = Collection::<T, I>::get(collection).unwrap().owner;
-	if caller != whitelisted_caller() {
-		whitelist_account!(caller);
-	}
-	let caller_lookup = T::Lookup::unlookup(caller.clone());
-	let delegate: T::AccountId = account("delegate", index, SEED);
-	let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-	let deadline = BlockNumberFor::<T>::max_value();
-	assert_ok!(Nfts::<T, I>::approve_collection_transfer(
-		SystemOrigin::Signed(caller.clone()).into(),
-		collection,
-		delegate_lookup.clone(),
-		Some(deadline),
-	));
-	(caller, caller_lookup)
-}
-
 fn mint_item<T: Config<I>, I: 'static>(
 	index: u16,
 ) -> (T::ItemId, T::AccountId, AccountIdLookupOf<T>) {
@@ -682,7 +661,15 @@ benchmarks_instance_pallet! {
 		let (collection, caller, _) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
 		for i in 0 .. n {
-			approve_collection::<T, I>(collection, i);
+			let delegate: T::AccountId = account("delegate", i, SEED);
+			let delegate_lookup = T::Lookup::unlookup(delegate.clone());
+			let deadline = BlockNumberFor::<T>::max_value();
+			Nfts::<T, I>::approve_collection_transfer(
+				SystemOrigin::Signed(caller.clone()).into(),
+				collection,
+				delegate_lookup.clone(),
+				Some(deadline),
+			)?;
 		}
 	}: _(SystemOrigin::Signed(caller.clone()), collection)
 	verify {
@@ -695,7 +682,15 @@ benchmarks_instance_pallet! {
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
 		mint_item::<T, I>(0);
 		for i in 0 .. n {
-			approve_collection::<T, I>(collection, i);
+			let delegate: T::AccountId = account("delegate", i, SEED);
+			let delegate_lookup = T::Lookup::unlookup(delegate.clone());
+			let deadline = BlockNumberFor::<T>::max_value();
+			Nfts::<T, I>::approve_collection_transfer(
+				SystemOrigin::Signed(caller.clone()).into(),
+				collection,
+				delegate_lookup.clone(),
+				Some(deadline),
+			)?;
 		}
 	}: _(SystemOrigin::Root, caller_lookup, collection)
 	verify {
