@@ -6,23 +6,28 @@ use frame_support::{
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
+use pallet_nfts::ItemConfig;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
-use xcm::latest::prelude::*;
+use xcm::{latest::prelude::*, opaque::v3::MultiLocation};
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
 	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
-	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, NativeAsset, ParentIsPreset,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
+	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, NativeAsset, NoChecking,
+	ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
 	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
 };
-use xcm_executor::XcmExecutor;
+use xcm_executor::{
+	traits::{Error as MatchError, MatchesNonFungibles},
+	XcmExecutor,
+};
 
 use crate::{
-	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
+	config::nonfungibles::{MultiLocationCollectionId, NonFungiblesAdapterPop},
+	AccountId, AllPalletsWithSystem, Balances, ForeignNfts, ParachainInfo, ParachainSystem,
+	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 
 parameter_types! {
@@ -84,6 +89,42 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	XcmPassthrough<RuntimeOrigin>,
 );
 
+pub struct MultiAssetToNftsConverter;
+impl MatchesNonFungibles<MultiLocationCollectionId, AssetInstance> for MultiAssetToNftsConverter {
+	fn matches_nonfungibles(
+		a: &Asset,
+	) -> Result<(MultiLocationCollectionId, AssetInstance), MatchError> {
+		let (location, instance) = match (&a.id, &a.fun) {
+			(AssetId(location), NonFungible(instance)) => (location, instance),
+			_ => return Err(MatchError::AssetNotHandled),
+		};
+
+		let collection_id = MultiLocationCollectionId(MultiLocation {
+			parents: location.parents,
+			interior: location.interior.clone().try_into().unwrap(),
+		});
+
+		let item_id = instance;
+
+		Ok((collection_id, *item_id))
+	}
+}
+
+pub type NonFungiblesTransactor = NonFungiblesAdapterPop<
+	// Use the non-fungibles pallet:
+	ForeignNfts,
+	MultiAssetToNftsConverter,
+	// Convert an XCM Location into a local account id:
+	LocationToAccountId,
+	// Our chain's account ID type (we can't get away without mentioning it explicitly):
+	AccountId,
+	// We don't support teleport so no need to check any assets.
+	NoChecking,
+	// We don't support teleport so this is just a dummy account.
+	(),
+	ItemConfig,
+>;
+
 parameter_types! {
 	// One XCM operation is 1_000_000_000 weight - almost certainly a conservative estimate.
 	pub UnitWeightCost: Weight = Weight::from_parts(1_000_000_000, 64 * 1024);
@@ -132,7 +173,7 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetExchanger = ();
 	type AssetLocker = ();
 	// How to withdraw and deposit an asset.
-	type AssetTransactor = LocalAssetTransactor;
+	type AssetTransactor = (LocalAssetTransactor, NonFungiblesTransactor);
 	type AssetTrap = PolkadotXcm;
 	type Barrier = Barrier;
 	type CallDispatcher = RuntimeCall;

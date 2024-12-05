@@ -1,16 +1,17 @@
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU32},
+	traits::{AsEnsureOriginWithArg, ConstU32, EnsureOriginWithArg, Everything},
 	BoundedVec, PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
-use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
+use parachains_common::{AssetIdForTrustBackedAssets, Signature};
 use sp_runtime::traits::Verify;
 
 use crate::{
+	config::{nonfungibles::MultiLocationCollectionId, xcm::LocationToAccountId},
 	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	RuntimeHoldReason, RuntimeOrigin, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -39,14 +40,74 @@ parameter_types! {
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
 
-impl pallet_nfts::Config for Runtime {
+pub struct ForeignCreatorsNfts;
+
+impl EnsureOriginWithArg<RuntimeOrigin, MultiLocationCollectionId> for ForeignCreatorsNfts {
+	type Success = AccountId;
+
+	fn try_origin(
+		o: RuntimeOrigin,
+		a: &MultiLocationCollectionId,
+	) -> sp_std::result::Result<Self::Success, RuntimeOrigin> {
+		let origin_location = pallet_xcm::EnsureXcm::<Everything>::try_origin(o.clone())?;
+		if !a.inner().starts_with(&origin_location.clone().try_into().unwrap()) {
+			return Err(o)
+		}
+		LocationToAccountId::convert_location(&origin_location).ok_or(o)
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin(a: &MultiLocationCollectionId) -> Result<RuntimeOrigin, ()> {
+		Ok(pallet_xcm::Origin::Xcm(a.clone().into()).into())
+	}
+}
+
+pub(crate) type ForeignNftsInstance = pallet_nfts::Instance2;
+pub type ForeignNftsCall = pallet_nfts::Call<Runtime, ForeignNftsInstance>;
+impl pallet_nfts::Config<ForeignNftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
 	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
-	type CollectionId = CollectionId;
+	type CollectionId = <Self as pallet_nfts::Config<ForeignNftsInstance>>::CollectionId;
+	type CreateOrigin = ForeignCreatorsNfts;
+	type Currency = Balances;
+	type DepositPerByte = NftsDepositPerByte;
+	type Features = NftsPalletFeatures;
+	type ForceOrigin = AssetsForceOrigin;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type ItemAttributesApprovalsLimit = ConstU32<30>;
+	type ItemDeposit = NftsItemDeposit;
+	// TODO: source from primitives
+	type ItemId = <Self as pallet_nfts::Config<ForeignNftsInstance>>::ItemId;
+	// TODO: source from primitives
+	type KeyLimit = ConstU32<64>;
+	type Locker = ();
+	type MaxAttributesPerCall = ConstU32<10>;
+	type MaxDeadlineDuration = NftsMaxDeadlineDuration;
+	type MaxTips = ConstU32<10>;
+	type MetadataDepositBase = NftsMetadataDepositBase;
+	type OffchainPublic = <Signature as Verify>::Signer;
+	type OffchainSignature = Signature;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = ConstU32<256>;
+	type ValueLimit = ConstU32<256>;
+	type WeightInfo = pallet_nfts::weights::SubstrateWeight<Self>;
+}
+
+pub(crate) type TrustBackedNftsInstance = pallet_nfts::Instance1;
+pub type TrustBackedNftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
+impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
+	// TODO: source from primitives
+	type ApprovalsLimit = ConstU32<20>;
+	type AttributeDepositBase = NftsAttributeDepositBase;
+	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
+	type CollectionDeposit = NftsCollectionDeposit;
+	// TODO: source from primitives
+	type CollectionId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::CollectionId;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
 	type DepositPerByte = NftsDepositPerByte;
@@ -57,7 +118,7 @@ impl pallet_nfts::Config for Runtime {
 	type ItemAttributesApprovalsLimit = ConstU32<30>;
 	type ItemDeposit = NftsItemDeposit;
 	// TODO: source from primitives
-	type ItemId = ItemId;
+	type ItemId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::ItemId;
 	// TODO: source from primitives
 	type KeyLimit = ConstU32<64>;
 	type Locker = ();
@@ -89,8 +150,8 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type Deposit = AssetDeposit;
 	type NewAssetName = NewAssetName;
 	type NewAssetSymbol = NewAssetSymbol;
-	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
-	type NftId = <Self as pallet_nfts::Config>::ItemId;
+	type NftCollectionId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::CollectionId;
+	type NftId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::ItemId;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
 	type RuntimeEvent = RuntimeEvent;
