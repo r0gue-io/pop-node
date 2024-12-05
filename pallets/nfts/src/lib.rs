@@ -1542,14 +1542,14 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(43)]
-		#[pallet::weight(T::WeightInfo::clear_all_collection_approvals(T::ApprovalsLimit::get()))]
+		#[pallet::weight(T::WeightInfo::clear_collection_approvals(T::ApprovalsLimit::get()))]
 		pub fn clear_collection_approvals(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
 		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-			let removed_approvals = Self::do_clear_all_collection_approvals(origin, collection)?;
-			Ok(Some(T::WeightInfo::clear_all_collection_approvals(removed_approvals)).into())
+			let removed_approvals = Self::do_clear_collection_approvals(origin, collection)?;
+			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
 		}
 
 		/// Force-cancel collection approvals granted by `owner` account.
@@ -1567,9 +1567,7 @@ pub mod pallet {
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(44)]
-		#[pallet::weight(T::WeightInfo::force_clear_all_collection_approvals(
-			T::ApprovalsLimit::get()
-		))]
+		#[pallet::weight(T::WeightInfo::force_clear_collection_approvals(T::ApprovalsLimit::get()))]
 		pub fn force_clear_collection_approvals(
 			origin: OriginFor<T>,
 			owner: AccountIdLookupOf<T>,
@@ -1577,8 +1575,8 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			T::ForceOrigin::ensure_origin(origin)?;
 			let owner = T::Lookup::lookup(owner)?;
-			let removed_approvals = Self::do_clear_all_collection_approvals(owner, collection)?;
-			Ok(Some(T::WeightInfo::force_clear_all_collection_approvals(removed_approvals)).into())
+			let removed_approvals = Self::do_clear_collection_approvals(owner, collection)?;
+			Ok(Some(T::WeightInfo::force_clear_collection_approvals(removed_approvals)).into())
 		}
 
 		/// Disallows changing the metadata or attributes of the item.

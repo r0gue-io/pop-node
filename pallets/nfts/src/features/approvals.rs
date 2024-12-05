@@ -282,15 +282,16 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Ok(())
 	}
 
-	/// Clears all collection approvals.
+	/// Clears collection approvals.
 	///
-	/// This function is used to clear all approvals for the collection items of `owner`. After
-	/// clearing all approvals, the deposit of each collection approval is returned to the `owner`
-	/// account and the `AllApprovalsCancelled` event is emitted.
+	/// This function is used to clear up to `ApprovalsLimit` collection approvals for the
+	/// collection items of `owner`. After clearing collection approvals, the deposit of each
+	/// collection approval is returned to the `owner` account and the `AllApprovalsCancelled`
+	/// event is emitted.
 	///
 	/// - `owner`: The owner of the collection items.
 	/// - `collection`: The collection ID containing the item.
-	pub(crate) fn do_clear_all_collection_approvals(
+	pub(crate) fn do_clear_collection_approvals(
 		origin: T::AccountId,
 		collection: T::CollectionId,
 	) -> Result<u32, DispatchError> {
