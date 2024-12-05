@@ -290,29 +290,25 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///
 	/// - `owner`: The owner of the collection items.
 	/// - `collection`: The collection ID containing the item.
-	/// - `witness_approvals`: Information on the collection approvals cleared. This must be
-	///   correct.
 	pub(crate) fn do_clear_all_collection_approvals(
 		origin: T::AccountId,
 		collection: T::CollectionId,
-		witness_approvals: u32,
-	) -> DispatchResult {
-		ensure!(
-			witness_approvals > 0 && witness_approvals <= T::ApprovalsLimit::get(),
-			Error::<T, I>::BadWitness
-		);
+	) -> Result<u32, DispatchError> {
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
 		// Iterate and remove each collection approval, returning the deposit back to the `owner`.
-		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &origin)) {
-			ensure!(removed_approvals < witness_approvals, Error::<T, I>::BadWitness);
+		for (i, (_, (_, deposit))) in
+			CollectionApprovals::<T, I>::drain_prefix((collection, &origin)).enumerate()
+		{
 			removed_approvals.saturating_inc();
 			deposits = deposits.saturating_add(deposit);
+			if i + 1 >= (T::ApprovalsLimit::get() as usize) {
+				break
+			};
 		}
-		ensure!(removed_approvals == witness_approvals, Error::<T, I>::BadWitness);
 		T::Currency::unreserve(&origin, deposits);
 		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner: origin });
-		Ok(())
+		Ok(removed_approvals)
 	}
 
 	/// Checks whether the `delegate` is approved to transfer collection items of `owner`.
@@ -340,14 +336,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// without requiring explicit approval for an item.
 	///
 	/// - `collection`: The identifier of the collection.
-	/// - `maybe_details`: The optional collection item details that the delegated account has an
+	/// - `maybe_item`: The optional item of the collection that the delegated account has an
 	///   approval to transfer. If not provided, an approval to transfer all `owner`'s collection
 	///   items will be checked.
 	/// - `owner`: The owner of the specified collection item.
 	/// - `delegate`: The account to check for approval to transfer collection item(s) of owner.
 	pub fn check_approval(
 		collection: &T::CollectionId,
-		maybe_details: &Option<ItemDetailsFor<T, I>>,
+		maybe_item: &Option<T::ItemId>,
 		owner: &T::AccountId,
 		delegate: &T::AccountId,
 	) -> DispatchResult {
@@ -356,7 +352,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Ok(()) => Ok(()),
 			Err(error) => {
 				// Check if a `delegate` has permission to transfer the given collection item.
-				if let Some(details) = maybe_details {
+				if let Some(item) = maybe_item {
+					let details =
+						Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 					let maybe_deadline =
 						details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
 					if let Some(deadline) = maybe_deadline {

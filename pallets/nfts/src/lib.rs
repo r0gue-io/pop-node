@@ -1087,12 +1087,7 @@ pub mod pallet {
 
 			Self::do_transfer(collection, item, dest, |_, details| {
 				if details.owner != origin {
-					Self::check_approval(
-						&collection,
-						&Some(details.clone()),
-						&details.owner,
-						&origin,
-					)?;
+					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
 				}
 				Ok(())
 			})
@@ -1533,51 +1528,57 @@ pub mod pallet {
 			Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)
 		}
 
-		/// Cancel all the collection approvals.
+		/// Cancel collection approvals.
+		///
+		/// Due to weight restrictions, this function may need to be called multiple times to fully
+		/// cancel all collection approvals. It will cancel `ApprovalsLimit` approvals at a time.
 		///
 		/// Origin must be Signed.
 		///
 		/// Arguments:
 		/// - `collection`: The collection whose approvals will be cleared.
-		/// - `witness_approvals`: The amount of collection approvals that will be cleared.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(43)]
-		#[pallet::weight(T::WeightInfo::clear_all_collection_approvals(*witness_approvals))]
-		pub fn clear_all_collection_approvals(
+		#[pallet::weight(T::WeightInfo::clear_all_collection_approvals(T::ApprovalsLimit::get()))]
+		pub fn clear_collection_approvals(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
-			witness_approvals: u32,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let origin = ensure_signed(origin)?;
-			Self::do_clear_all_collection_approvals(origin, collection, witness_approvals)
+			let removed_approvals = Self::do_clear_all_collection_approvals(origin, collection)?;
+			Ok(Some(T::WeightInfo::clear_all_collection_approvals(removed_approvals)).into())
 		}
 
-		/// Force-cancel all the collection approvals granted by `owner` account.
+		/// Force-cancel collection approvals granted by `owner` account.
+		///
+		/// Due to weight restrictions, this function may need to be called multiple times to fully
+		/// cancel all collection approvals. It will cancel `ApprovalsLimit` approvals at a time.
 		///
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
 		/// - `collection`: The collection whose approvals will be cleared.
 		/// - `owner`: The account clearing all collection approvals.
-		/// - `witness_approvals`: The amount of collection approvals that will be cleared.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(44)]
-		#[pallet::weight(T::WeightInfo::force_clear_all_collection_approvals(*witness_approvals))]
-		pub fn force_clear_all_collection_approvals(
+		#[pallet::weight(T::WeightInfo::force_clear_all_collection_approvals(
+			T::ApprovalsLimit::get()
+		))]
+		pub fn force_clear_collection_approvals(
 			origin: OriginFor<T>,
 			owner: AccountIdLookupOf<T>,
 			collection: T::CollectionId,
-			witness_approvals: u32,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			T::ForceOrigin::ensure_origin(origin)?;
 			let owner = T::Lookup::lookup(owner)?;
-			Self::do_clear_all_collection_approvals(owner, collection, witness_approvals)
+			let removed_approvals = Self::do_clear_all_collection_approvals(owner, collection)?;
+			Ok(Some(T::WeightInfo::force_clear_all_collection_approvals(removed_approvals)).into())
 		}
 
 		/// Disallows changing the metadata or attributes of the item.
