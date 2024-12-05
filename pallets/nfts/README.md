@@ -98,7 +98,7 @@ The NFTs pallet in Substrate is designed to make the following possible:
 * `force_collection_owner`: Change collection's owner.
 * `force_collection_config`: Change collection's config.
 * `force_set_attribute`: Set an attribute.
-* `force_approve_collection_transfer`: Name a delegate who may authorize a transfer of all collection items owned by the account.
+* `force_approve_collection_transfer`: Name a delegate who may authorize a transfer of all collection items owned by the specified account.
 * `force_cancel_collection_transfer`: Revert the effects of a previous `approve_collection_transfer`.
 * `force_clear_all_collection_approvals`: Clears all collection approvals set by calling the `approve_collection_transfer`.
 
