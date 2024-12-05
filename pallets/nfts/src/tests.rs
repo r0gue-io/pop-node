@@ -222,7 +222,7 @@ fn lifecycle_should_work() {
 			collection_config_with_all_settings_enabled()
 		));
 		assert_eq!(Balances::reserved_balance(&owner), 2);
-		assert_eq!(collections(), vec![(owner.clone(), 0)]);
+		assert_eq!(collections(), vec![(owner.clone(), collection_id)]);
 		assert_ok!(Nfts::set_collection_metadata(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
@@ -288,7 +288,7 @@ fn lifecycle_should_work() {
 			bvec![42, 42]
 		));
 		assert_eq!(Balances::reserved_balance(&owner), 11);
-		assert!(ItemMetadataOf::<Test>::contains_key(0, 42));
+		assert!(ItemMetadataOf::<Test>::contains_key(collection_id, 42));
 		assert_ok!(Nfts::set_metadata(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
@@ -302,7 +302,7 @@ fn lifecycle_should_work() {
 		assert_eq!(w.item_metadatas, 2);
 		assert_eq!(w.item_configs, 3);
 		assert_noop!(
-			Nfts::destroy(RuntimeOrigin::signed(owner.clone()), 0, w),
+			Nfts::destroy(RuntimeOrigin::signed(owner.clone()), collection_id, w),
 			Error::<Test>::CollectionNotEmpty
 		);
 		assert_eq!(AccountBalance::<Test>::get(collection_id, &owner), 0);
@@ -317,15 +317,15 @@ fn lifecycle_should_work() {
 		));
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(10)), collection_id, 42));
 		assert_eq!(AccountBalance::<Test>::get(collection_id, account(10)), 0);
-		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(20)), 0, 69));
+		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(20)), collection_id, 69));
 		assert_eq!(AccountBalance::<Test>::get(collection_id, account(10)), 0);
 		assert_ok!(Nfts::burn(RuntimeOrigin::root(), collection_id, 70));
 
-		let w = Nfts::get_destroy_witness(&0).unwrap();
+		let w = Nfts::get_destroy_witness(&collection_id).unwrap();
 		assert_eq!(w.attributes, 1);
 		assert_eq!(w.item_metadatas, 0);
 		assert_eq!(w.item_configs, 0);
-		assert_ok!(Nfts::destroy(RuntimeOrigin::signed(owner.clone()), 0, w));
+		assert_ok!(Nfts::destroy(RuntimeOrigin::signed(owner.clone()), collection_id, w));
 		assert_eq!(AccountBalance::<Test>::get(collection_id, &owner), 0);
 		assert_eq!(Balances::reserved_balance(&owner), 0);
 
@@ -333,7 +333,7 @@ fn lifecycle_should_work() {
 		assert!(!CollectionConfigOf::<Test>::contains_key(collection_id));
 		assert!(!Item::<Test>::contains_key(collection_id, 42));
 		assert!(!Item::<Test>::contains_key(collection_id, 69));
-		assert!(!CollectionMetadataOf::<Test>::contains_key(0));
+		assert!(!CollectionMetadataOf::<Test>::contains_key(collection_id));
 		assert!(!ItemMetadataOf::<Test>::contains_key(collection_id, 42));
 		assert!(!ItemMetadataOf::<Test>::contains_key(collection_id, 69));
 		assert!(!ItemConfigOf::<Test>::contains_key(collection_id, 69));
@@ -389,7 +389,7 @@ fn destroy_should_work() {
 			item_owner.clone(),
 			None
 		));
-		assert_eq!(AccountBalance::<Test>::get(0, &item_owner), 1);
+		assert_eq!(AccountBalance::<Test>::get(collection_id, &item_owner), 1);
 		assert_ok!(Nfts::approve_collection_transfer(
 			RuntimeOrigin::signed(item_owner.clone()),
 			collection_id,
@@ -400,7 +400,7 @@ fn destroy_should_work() {
 			Nfts::destroy(
 				RuntimeOrigin::signed(collection_owner.clone()),
 				collection_id,
-				Nfts::get_destroy_witness(&0).unwrap()
+				Nfts::get_destroy_witness(&collection_id).unwrap()
 			),
 			Error::<Test>::CollectionNotEmpty
 		);
@@ -1981,7 +1981,7 @@ fn check_approval_works() {
 		for case in Vec::<(
 			// Deadline of the collection and item approval.
 			(Option<BlockNumberFor<Test>>, Option<BlockNumberFor<Test>>),
-			// Check results when collection or item approval deadline has padded.
+			// Check results when collection or item approval deadline has passed.
 			(DispatchResult, DispatchResult),
 			// Check results when both collection and item approval deadline has passed.
 			(DispatchResult, DispatchResult),
@@ -2009,7 +2009,7 @@ fn check_approval_works() {
 				item_deadline
 			));
 
-			// Collection or item approval deadline has padded.
+			// Collection or item approval deadline has passed.
 			System::set_block_number(deadline + 1);
 			let (collection_result, item_result) = case.1;
 			assert_eq!(
@@ -2116,17 +2116,18 @@ fn cancel_collection_approval_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let item_id = 42;
+		let collection_owner = account(1);
 		let item_owner = account(2);
 		let delegate = account(3);
 
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
-			account(1),
+			collection_owner.clone(),
 			default_collection_config()
 		));
 		assert_ok!(Nfts::force_mint(
-			RuntimeOrigin::signed(account(1)),
+			RuntimeOrigin::signed(collection_owner),
 			collection_id,
 			item_id,
 			item_owner.clone(),
@@ -2181,17 +2182,18 @@ fn force_cancel_collection_approvals_work() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let item_id = 42;
+		let collection_owner = account(1);
 		let item_owner = account(2);
 		let delegate = account(3);
 
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
-			account(1),
+			collection_owner.clone(),
 			default_collection_config()
 		));
 		assert_ok!(Nfts::force_mint(
-			RuntimeOrigin::signed(account(1)),
+			RuntimeOrigin::signed(collection_owner),
 			collection_id,
 			item_id,
 			item_owner.clone(),
@@ -2407,7 +2409,7 @@ fn approve_collection_transfer_works() {
 			Error::<Test>::NoItemOwned
 		);
 
-		// Test with deadline.
+		// Approval expires after `deadline`.
 		let deadline = 10;
 		assert_ok!(Nfts::approve_collection_transfer(
 			RuntimeOrigin::signed(item_owner.clone()),
@@ -2430,6 +2432,18 @@ fn approve_collection_transfer_works() {
 			Some(deadline)
 		));
 		assert_eq!(Balances::reserved_balance(&account(2)), 1);
+		let now = System::block_number();
+		assert!(events().contains(&Event::<Test>::TransferApproved {
+			collection: 0,
+			item: None,
+			owner: item_owner.clone(),
+			delegate: delegate.clone(),
+			deadline: Some(now + deadline)
+		}));
+		assert_eq!(
+			CollectionApprovals::<Test>::get((0, item_owner.clone(), delegate.clone())),
+			Some((Some(now + deadline), 1))
+		);
 
 		// Approve same delegate again not updating the total reserved funds.
 		assert_ok!(Nfts::approve_collection_transfer(
@@ -2440,23 +2454,12 @@ fn approve_collection_transfer_works() {
 		));
 		assert_eq!(Balances::reserved_balance(&item_owner), 1);
 
-		assert!(events().contains(&Event::<Test>::TransferApproved {
-			collection: 0,
-			item: None,
-			owner: item_owner.clone(),
-			delegate: delegate.clone(),
-			deadline: None
-		}));
-		assert_eq!(
-			CollectionApprovals::<Test>::get((0, item_owner, delegate.clone())),
-			Some((None, 1))
-		);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(delegate), collection, item, account(4)));
 	});
 }
 
 #[test]
-fn force_approve_collection_transfer_work() {
+fn force_approve_collection_transfer_works() {
 	new_test_ext().execute_with(|| {
 		let (collection, locked_collection) = (0, 1);
 		let item = 42;
@@ -2533,7 +2536,7 @@ fn force_approve_collection_transfer_work() {
 			Error::<Test>::NoItemOwned
 		);
 
-		// Test with deadline.
+		// Approval expires after `deadline`.
 		let deadline = 10;
 		assert_ok!(Nfts::force_approve_collection_transfer(
 			RuntimeOrigin::root(),
@@ -2558,6 +2561,18 @@ fn force_approve_collection_transfer_work() {
 			Some(deadline)
 		));
 		assert_eq!(Balances::reserved_balance(&account(2)), 1);
+		let now = System::block_number();
+		assert!(events().contains(&Event::<Test>::TransferApproved {
+			collection: 0,
+			item: None,
+			owner: item_owner.clone(),
+			delegate: delegate.clone(),
+			deadline: Some(now + deadline)
+		}));
+		assert_eq!(
+			CollectionApprovals::<Test>::get((0, item_owner.clone(), delegate.clone())),
+			Some((Some(now + deadline), 1))
+		);
 
 		// Approve same delegate again not updating the total reserved funds.
 		assert_ok!(Nfts::force_approve_collection_transfer(
@@ -2569,17 +2584,6 @@ fn force_approve_collection_transfer_work() {
 		));
 		assert_eq!(Balances::reserved_balance(&item_owner), 1);
 
-		assert!(events().contains(&Event::<Test>::TransferApproved {
-			collection: 0,
-			item: None,
-			owner: item_owner.clone(),
-			delegate: delegate.clone(),
-			deadline: None
-		}));
-		assert_eq!(
-			CollectionApprovals::<Test>::get((0, item_owner, delegate.clone())),
-			Some((None, 1))
-		);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(delegate), collection, item, account(4)));
 	});
 }
