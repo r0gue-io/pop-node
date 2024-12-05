@@ -66,8 +66,8 @@ pub trait WeightInfo {
 	fn cancel_collection_approval() -> Weight;
 	fn force_cancel_collection_approval() -> Weight;
 	fn clear_all_transfer_approvals() -> Weight;
-	fn clear_all_collection_approvals(n: u32, ) -> Weight;
-	fn force_clear_all_collection_approvals(n: u32, ) -> Weight;
+	fn clear_collection_approvals(n: u32, ) -> Weight;
+	fn force_clear_collection_approvals(n: u32, ) -> Weight;
 	fn set_accept_ownership() -> Weight;
 	fn set_collection_max_supply() -> Weight;
 	fn update_mint_settings() -> Weight;
@@ -565,8 +565,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `450`
 		//  Estimated: `3602`
-		// Minimum execution time: 22_000_000 picoseconds.
-		Weight::from_parts(30_000_000, 3602)
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(21_000_000, 3602)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -581,7 +581,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `450`
 		//  Estimated: `3602`
 		// Minimum execution time: 20_000_000 picoseconds.
-		Weight::from_parts(22_000_000, 3602)
+		Weight::from_parts(21_000_000, 3602)
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -593,8 +593,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 12_000_000 picoseconds.
-		Weight::from_parts(36_000_000, 4326)
+		// Minimum execution time: 11_000_000 picoseconds.
+		Weight::from_parts(12_000_000, 4326)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -604,8 +604,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `359`
 		//  Estimated: `3602`
-		// Minimum execution time: 17_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3602)
+		// Minimum execution time: 16_000_000 picoseconds.
+		Weight::from_parts(17_000_000, 3602)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -616,7 +616,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `359`
 		//  Estimated: `3602`
 		// Minimum execution time: 17_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3602)
+		Weight::from_parts(17_000_000, 3602)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -628,38 +628,38 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(21_000_000, 4326)
+		// Minimum execution time: 12_000_000 picoseconds.
+		Weight::from_parts(12_000_000, 4326)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
-	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
-	/// The range of component `n` is `[1, 21]`.
-	fn clear_all_collection_approvals(n: u32, ) -> Weight {
+	/// The range of component `n` is `[0, 20]`.
+	fn clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `349 + n * (75 ±0)`
+		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
-		// Minimum execution time: 20_000_000 picoseconds.
-		Weight::from_parts(16_630_042, 3602)
-			// Standard Error: 121_416
-			.saturating_add(Weight::from_parts(3_823_189, 0).saturating_mul(n.into()))
+		// Minimum execution time: 6_000_000 picoseconds.
+		Weight::from_parts(14_440_852, 3602)
+			// Standard Error: 22_164
+			.saturating_add(Weight::from_parts(3_380_372, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
 			.saturating_add(Weight::from_parts(0, 2612).saturating_mul(n.into()))
 	}
-	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
-	/// The range of component `n` is `[1, 21]`.
-	fn force_clear_all_collection_approvals(n: u32, ) -> Weight {
+	/// The range of component `n` is `[0, 20]`.
+	fn force_clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `349 + n * (75 ±0)`
+		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
-		// Minimum execution time: 20_000_000 picoseconds.
-		Weight::from_parts(13_455_783, 3602)
-			// Standard Error: 146_830
-			.saturating_add(Weight::from_parts(4_223_404, 0).saturating_mul(n.into()))
+		// Minimum execution time: 6_000_000 picoseconds.
+		Weight::from_parts(14_472_321, 3602)
+			// Standard Error: 21_742
+			.saturating_add(Weight::from_parts(3_333_999, 0).saturating_mul(n.into()))
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 			.saturating_add(T::DbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(n.into())))
@@ -1356,8 +1356,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `450`
 		//  Estimated: `3602`
-		// Minimum execution time: 22_000_000 picoseconds.
-		Weight::from_parts(30_000_000, 3602)
+		// Minimum execution time: 20_000_000 picoseconds.
+		Weight::from_parts(21_000_000, 3602)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1372,7 +1372,7 @@ impl WeightInfo for () {
 		//  Measured:  `450`
 		//  Estimated: `3602`
 		// Minimum execution time: 20_000_000 picoseconds.
-		Weight::from_parts(22_000_000, 3602)
+		Weight::from_parts(21_000_000, 3602)
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1384,8 +1384,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 12_000_000 picoseconds.
-		Weight::from_parts(36_000_000, 4326)
+		// Minimum execution time: 11_000_000 picoseconds.
+		Weight::from_parts(12_000_000, 4326)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1395,8 +1395,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `359`
 		//  Estimated: `3602`
-		// Minimum execution time: 17_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3602)
+		// Minimum execution time: 16_000_000 picoseconds.
+		Weight::from_parts(17_000_000, 3602)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1407,7 +1407,7 @@ impl WeightInfo for () {
 		//  Measured:  `359`
 		//  Estimated: `3602`
 		// Minimum execution time: 17_000_000 picoseconds.
-		Weight::from_parts(18_000_000, 3602)
+		Weight::from_parts(17_000_000, 3602)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -1419,38 +1419,38 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `345`
 		//  Estimated: `4326`
-		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(21_000_000, 4326)
+		// Minimum execution time: 12_000_000 picoseconds.
+		Weight::from_parts(12_000_000, 4326)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
-	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
-	/// The range of component `n` is `[1, 21]`.
-	fn clear_all_collection_approvals(n: u32, ) -> Weight {
+	/// The range of component `n` is `[0, 20]`.
+	fn clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `349 + n * (75 ±0)`
+		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
-		// Minimum execution time: 20_000_000 picoseconds.
-		Weight::from_parts(16_630_042, 3602)
-			// Standard Error: 121_416
-			.saturating_add(Weight::from_parts(3_823_189, 0).saturating_mul(n.into()))
+		// Minimum execution time: 6_000_000 picoseconds.
+		Weight::from_parts(14_440_852, 3602)
+			// Standard Error: 22_164
+			.saturating_add(Weight::from_parts(3_380_372, 0).saturating_mul(n.into()))
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n.into())))
 			.saturating_add(Weight::from_parts(0, 2612).saturating_mul(n.into()))
 	}
-	/// Storage: `Nfts::CollectionApprovals` (r:22 w:21)
+	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
-	/// The range of component `n` is `[1, 21]`.
-	fn force_clear_all_collection_approvals(n: u32, ) -> Weight {
+	/// The range of component `n` is `[0, 20]`.
+	fn force_clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
-		//  Measured:  `349 + n * (75 ±0)`
+		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
-		// Minimum execution time: 20_000_000 picoseconds.
-		Weight::from_parts(13_455_783, 3602)
-			// Standard Error: 146_830
-			.saturating_add(Weight::from_parts(4_223_404, 0).saturating_mul(n.into()))
+		// Minimum execution time: 6_000_000 picoseconds.
+		Weight::from_parts(14_472_321, 3602)
+			// Standard Error: 21_742
+			.saturating_add(Weight::from_parts(3_333_999, 0).saturating_mul(n.into()))
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 			.saturating_add(RocksDbWeight::get().reads((1_u64).saturating_mul(n.into())))
 			.saturating_add(RocksDbWeight::get().writes((1_u64).saturating_mul(n.into())))
