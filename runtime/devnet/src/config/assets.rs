@@ -39,7 +39,45 @@ parameter_types! {
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
 
-impl pallet_nfts::Config for Runtime {
+pub(crate) type ForeignNftsInstance = pallet_nfts::Instance2;
+pub type ForeignNftsCall = pallet_nfts::Call<Runtime, ForeignNftsInstance>;
+impl pallet_nfts::Config<ForeignNftsInstance> for Runtime {
+	// TODO: source from primitives
+	type ApprovalsLimit = ConstU32<20>;
+	type AttributeDepositBase = NftsAttributeDepositBase;
+	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
+	type CollectionDeposit = NftsCollectionDeposit;
+	// TODO: source from primitives
+	type CollectionId = CollectionId;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type DepositPerByte = NftsDepositPerByte;
+	type Features = NftsPalletFeatures;
+	type ForceOrigin = AssetsForceOrigin;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type ItemAttributesApprovalsLimit = ConstU32<30>;
+	type ItemDeposit = NftsItemDeposit;
+	// TODO: source from primitives
+	type ItemId = ItemId;
+	// TODO: source from primitives
+	type KeyLimit = ConstU32<64>;
+	type Locker = ();
+	type MaxAttributesPerCall = ConstU32<10>;
+	type MaxDeadlineDuration = NftsMaxDeadlineDuration;
+	type MaxTips = ConstU32<10>;
+	type MetadataDepositBase = NftsMetadataDepositBase;
+	type OffchainPublic = <Signature as Verify>::Signer;
+	type OffchainSignature = Signature;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = ConstU32<256>;
+	type ValueLimit = ConstU32<256>;
+	type WeightInfo = pallet_nfts::weights::SubstrateWeight<Self>;
+}
+
+pub(crate) type TrustBackedNftsInstance = pallet_nfts::Instance1;
+pub type TrustBackedNftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
+impl pallet_nfts::Config<TrustBackedAssetsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
@@ -89,8 +127,8 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type Deposit = AssetDeposit;
 	type NewAssetName = NewAssetName;
 	type NewAssetSymbol = NewAssetSymbol;
-	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
-	type NftId = <Self as pallet_nfts::Config>::ItemId;
+	type NftCollectionId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::CollectionId;
+	type NftId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::ItemId;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
 	type RuntimeEvent = RuntimeEvent;
