@@ -2877,11 +2877,29 @@ fn clear_collection_approvals_works() {
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
 
-		// Should refund approvals and return a correct weight.
-		assert_eq!(
-			Nfts::clear_collection_approvals(RuntimeOrigin::signed(owner.clone()), collection_id),
-			Ok(Some(WeightInfo::clear_collection_approvals(2)).into())
+		// Throws error `BadWitness` for zero witness data.
+		assert_noop!(
+			Nfts::clear_collection_approvals_limit(
+				RuntimeOrigin::signed(owner.clone()),
+				collection_id,
+				0
+			),
+			Error::<Test>::BadWitness
 		);
+		// Throws error `BadWitness` for invalid witness data.
+		assert_noop!(
+			Nfts::clear_collection_approvals_limit(
+				RuntimeOrigin::signed(owner.clone()),
+				collection_id,
+				1
+			),
+			Error::<Test>::BadWitness
+		);
+		assert_ok!(Nfts::clear_collection_approvals_limit(
+			RuntimeOrigin::signed(owner.clone()),
+			collection_id,
+			2
+		));
 		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
 			collection: collection_id,
 			item: None,
@@ -2939,15 +2957,32 @@ fn force_clear_collection_approvals_work() {
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
 
-		// Should refund approvals and return a correct weight.
-		assert_eq!(
-			Nfts::force_clear_collection_approvals(
+		// Throws error `BadWitness` for zero witness data.
+		assert_noop!(
+			Nfts::force_clear_collection_approvals_limit(
 				RuntimeOrigin::root(),
 				owner.clone(),
-				collection_id
+				collection_id,
+				0
 			),
-			Ok(Some(WeightInfo::force_clear_collection_approvals(2)).into())
+			Error::<Test>::BadWitness
 		);
+		// Throws error `BadWitness` for invalid witness data.
+		assert_noop!(
+			Nfts::force_clear_collection_approvals_limit(
+				RuntimeOrigin::root(),
+				owner.clone(),
+				collection_id,
+				1
+			),
+			Error::<Test>::BadWitness
+		);
+		assert_ok!(Nfts::force_clear_collection_approvals_limit(
+			RuntimeOrigin::root(),
+			owner.clone(),
+			collection_id,
+			2
+		));
 		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
 			collection: collection_id,
 			item: None,
