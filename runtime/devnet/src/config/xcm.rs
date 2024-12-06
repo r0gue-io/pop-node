@@ -10,6 +10,9 @@ use pallet_nfts::ItemConfig;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
+use pop_runtime_common::xcm::nonfungibles_adapter::{
+	MultiLocationCollectionId, NonFungiblesAdapterPop,
+};
 use xcm::{latest::prelude::*, opaque::v3::MultiLocation};
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
@@ -25,7 +28,6 @@ use xcm_executor::{
 };
 
 use crate::{
-	config::nonfungibles::{MultiLocationCollectionId, NonFungiblesAdapterPop},
 	AccountId, AllPalletsWithSystem, Balances, ForeignNfts, ParachainInfo, ParachainSystem,
 	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
 };

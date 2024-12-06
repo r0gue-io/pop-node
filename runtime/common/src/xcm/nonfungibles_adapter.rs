@@ -23,12 +23,12 @@ pub struct MultiLocationCollectionId(pub MultiLocation);
 
 impl MultiLocationCollectionId {
 	/// Consume `self` and return the inner MultiLocation.
-	pub(crate) fn into_inner(self) -> MultiLocation {
+	pub fn into_inner(self) -> MultiLocation {
 		self.0
 	}
 
 	/// Return a reference to the inner MultiLocation.
-	pub(crate) fn inner(&self) -> &MultiLocation {
+	pub fn inner(&self) -> &MultiLocation {
 		&self.0
 	}
 }
