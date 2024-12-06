@@ -741,8 +741,8 @@ pub mod pallet {
 		#[cfg(any(feature = "std", test))]
 		fn integrity_test() {
 			assert!(
-				size_of::<<T as Config<I>>::ItemId>() == size_of::<u32>(),
-				"ItemId must be bounded by u32 type."
+				size_of::<<T as Config<I>>::ItemId>() <= size_of::<u32>(),
+				"ItemId must fit within the size of a u32."
 			);
 		}
 	}
