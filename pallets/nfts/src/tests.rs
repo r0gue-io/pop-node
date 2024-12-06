@@ -245,7 +245,7 @@ fn lifecycle_should_work() {
 			account(20),
 			default_item_config()
 		));
-		assert_eq!(AccountBalance::<Test>::get(collection_id, account(20)), 1);
+		assert_eq!(AccountBalance::<Test>::get(0, account(20)), 1);
 		assert_eq!(Balances::reserved_balance(&owner), 7);
 		assert_ok!(Nfts::mint(
 			RuntimeOrigin::signed(owner.clone()),
@@ -576,70 +576,57 @@ fn mint_should_work() {
 #[test]
 fn transfer_should_work() {
 	new_test_ext().execute_with(|| {
-		let collection_id = 0;
-		let item_id = 42;
-		let owner = account(1);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
-			owner.clone(),
+			account(1),
 			default_collection_config()
 		));
 		assert_ok!(Nfts::force_mint(
 			RuntimeOrigin::signed(account(1)),
-			collection_id,
-			item_id,
+			0,
+			42,
 			account(2),
 			default_item_config()
 		));
-		assert_ok!(Nfts::transfer(
-			RuntimeOrigin::signed(account(2)),
-			collection_id,
-			item_id,
-			account(3)
-		));
-		assert_eq!(AccountBalance::<Test>::get(collection_id, account(2)), 0);
-		assert_eq!(AccountBalance::<Test>::get(collection_id, account(3)), 1);
-		assert_eq!(items(), vec![(account(3), collection_id, item_id)]);
+		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
+		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 0);
+		assert_eq!(AccountBalance::<Test>::get(0, account(3)), 1);
+		assert_eq!(items(), vec![(account(3), 0, 42)]);
 		assert_noop!(
-			Nfts::transfer(RuntimeOrigin::signed(account(2)), collection_id, item_id, account(4)),
+			Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(4)),
 			Error::<Test>::NoPermission
 		);
 
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(account(3)),
-			collection_id,
-			item_id,
+			0,
+			42,
 			account(2),
 			None
 		));
-		assert_ok!(Nfts::transfer(
-			RuntimeOrigin::signed(account(2)),
-			collection_id,
-			item_id,
-			account(4)
-		));
-		assert_eq!(AccountBalance::<Test>::get(collection_id, account(3)), 0);
-		assert_eq!(AccountBalance::<Test>::get(collection_id, account(4)), 1);
+		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(4)));
+		assert_eq!(AccountBalance::<Test>::get(0, account(3)), 0);
+		assert_eq!(AccountBalance::<Test>::get(0, account(4)), 1);
 		// validate we can't transfer non-transferable items
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
-			owner.clone(),
+			account(1),
 			collection_config_from_disabled_settings(
 				CollectionSetting::TransferableItems | CollectionSetting::DepositRequired
 			)
 		));
 
 		assert_ok!(Nfts::force_mint(
-			RuntimeOrigin::signed(owner.clone()),
-			collection_id,
+			RuntimeOrigin::signed(account(1)),
+			1,
 			1,
 			account(42),
 			default_item_config()
 		));
 
 		assert_noop!(
-			Nfts::transfer(RuntimeOrigin::signed(owner), collection_id, item_id, account(3)),
+			Nfts::transfer(RuntimeOrigin::signed(account(1)), collection_id, 42, account(3)),
 			Error::<Test>::ItemsNonTransferable
 		);
 	});
