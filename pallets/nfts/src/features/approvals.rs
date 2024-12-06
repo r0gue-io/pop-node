@@ -284,32 +284,32 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 	/// Clears collection approvals.
 	///
-	/// This function is used to clear up to `ApprovalsLimit` collection approvals for the
-	/// collection items of `owner`. After clearing collection approvals, the deposit of each
-	/// collection approval is returned to the `owner` account and the `AllApprovalsCancelled`
-	/// event is emitted.
+	/// This function is used to clear `witness_approvals` collection approvals for the
+	/// collection items of `owner`. After clearing all approvals, the deposit of each collection
+	/// approval is returned to the `owner` account and the `AllApprovalsCancelled` event is
+	/// emitted.
 	///
 	/// - `owner`: The owner of the collection items.
 	/// - `collection`: The collection ID containing the item.
-	pub(crate) fn do_clear_collection_approvals(
+	/// - `witness_approvals`: The amount of collection approvals that will be cleared.
+	pub(crate) fn do_clear_collection_approvals_limit(
 		origin: T::AccountId,
 		collection: T::CollectionId,
-	) -> Result<u32, DispatchError> {
+		witness_approvals: u32,
+	) -> DispatchResult {
+		ensure!(witness_approvals > 0, Error::<T, I>::BadWitness);
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
 		// Iterate and remove each collection approval, returning the deposit back to the `owner`.
-		for (i, (_, (_, deposit))) in
-			CollectionApprovals::<T, I>::drain_prefix((collection, &origin)).enumerate()
-		{
+		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &origin)) {
+			ensure!(removed_approvals < witness_approvals, Error::<T, I>::BadWitness);
 			removed_approvals.saturating_inc();
 			deposits = deposits.saturating_add(deposit);
-			if i + 1 >= (T::ApprovalsLimit::get() as usize) {
-				break
-			};
 		}
+		ensure!(removed_approvals == witness_approvals, Error::<T, I>::BadWitness);
 		T::Currency::unreserve(&origin, deposits);
 		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner: origin });
-		Ok(removed_approvals)
+		Ok(())
 	}
 
 	/// Checks whether the `delegate` is approved to transfer collection items of `owner`.

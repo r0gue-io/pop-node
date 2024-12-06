@@ -75,7 +75,7 @@ fn mint_item<T: Config<I>, I: 'static>(
 	let item_exists = Item::<T, I>::contains_key(collection, item);
 	let item_config = ItemConfigOf::<T, I>::get(collection, item);
 	if item_exists {
-		return (item, caller, caller_lookup);
+		return (item, caller, caller_lookup)
 	} else if let Some(item_config) = item_config {
 		assert_ok!(Nfts::<T, I>::force_mint(
 			SystemOrigin::Signed(caller.clone()).into(),
@@ -656,43 +656,39 @@ benchmarks_instance_pallet! {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: Some(item), owner: caller}.into());
 	}
 
-	clear_collection_approvals {
-		let n in 0 .. T::ApprovalsLimit::get();
+	clear_collection_approvals_limit {
+		let n in 1 .. T::ApprovalsLimit::get();
 		let (collection, caller, _) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
 		for i in 0 .. n {
 			let delegate: T::AccountId = account("delegate", i, SEED);
-			let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-			let deadline = BlockNumberFor::<T>::max_value();
 			Nfts::<T, I>::approve_collection_transfer(
 				SystemOrigin::Signed(caller.clone()).into(),
 				collection,
-				delegate_lookup.clone(),
-				Some(deadline),
+				T::Lookup::unlookup(delegate),
+				Some(BlockNumberFor::<T>::max_value()),
 			)?;
 		}
-	}: _(SystemOrigin::Signed(caller.clone()), collection)
+	}: _(SystemOrigin::Signed(caller.clone()), collection, n)
 	verify {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: None, owner: caller}.into());
 	}
 
-	force_clear_collection_approvals {
-		let n in 0 .. T::ApprovalsLimit::get();
+	force_clear_collection_approvals_limit {
+		let n in 1 .. T::ApprovalsLimit::get();
 		let (collection, caller, _) = create_collection::<T, I>();
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
 		mint_item::<T, I>(0);
 		for i in 0 .. n {
 			let delegate: T::AccountId = account("delegate", i, SEED);
-			let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-			let deadline = BlockNumberFor::<T>::max_value();
 			Nfts::<T, I>::approve_collection_transfer(
 				SystemOrigin::Signed(caller.clone()).into(),
 				collection,
-				delegate_lookup.clone(),
-				Some(deadline),
+				T::Lookup::unlookup(delegate),
+				Some(BlockNumberFor::<T>::max_value()),
 			)?;
 		}
-	}: _(SystemOrigin::Root, caller_lookup, collection)
+	}: _(SystemOrigin::Root, caller_lookup, collection, n)
 	verify {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: None, owner: caller}.into());
 	}
