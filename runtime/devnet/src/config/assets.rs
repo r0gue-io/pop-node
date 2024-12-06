@@ -1,12 +1,14 @@
+use cumulus_primitives_core::AssetInstance;
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU32, EnsureOriginWithArg, Everything},
+	traits::{AsEnsureOriginWithArg, ConstU32, EnsureOrigin, EnsureOriginWithArg, Everything},
 	BoundedVec, PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
-use parachains_common::{AssetIdForTrustBackedAssets, Signature};
+use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
 use sp_runtime::traits::Verify;
+use xcm_executor::traits::ConvertLocation;
 
 use crate::{
 	config::{nonfungibles::MultiLocationCollectionId, xcm::LocationToAccountId},
@@ -71,7 +73,7 @@ impl pallet_nfts::Config<ForeignNftsInstance> for Runtime {
 	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
-	type CollectionId = <Self as pallet_nfts::Config<ForeignNftsInstance>>::CollectionId;
+	type CollectionId = MultiLocationCollectionId;
 	type CreateOrigin = ForeignCreatorsNfts;
 	type Currency = Balances;
 	type DepositPerByte = NftsDepositPerByte;
@@ -82,7 +84,7 @@ impl pallet_nfts::Config<ForeignNftsInstance> for Runtime {
 	type ItemAttributesApprovalsLimit = ConstU32<30>;
 	type ItemDeposit = NftsItemDeposit;
 	// TODO: source from primitives
-	type ItemId = <Self as pallet_nfts::Config<ForeignNftsInstance>>::ItemId;
+	type ItemId = AssetInstance;
 	// TODO: source from primitives
 	type KeyLimit = ConstU32<64>;
 	type Locker = ();
@@ -107,7 +109,7 @@ impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
-	type CollectionId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::CollectionId;
+	type CollectionId = CollectionId;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
 	type DepositPerByte = NftsDepositPerByte;
@@ -118,7 +120,7 @@ impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	type ItemAttributesApprovalsLimit = ConstU32<30>;
 	type ItemDeposit = NftsItemDeposit;
 	// TODO: source from primitives
-	type ItemId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::ItemId;
+	type ItemId = ItemId;
 	// TODO: source from primitives
 	type KeyLimit = ConstU32<64>;
 	type Locker = ();
