@@ -228,11 +228,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			(&collection, &origin, &delegate),
 			|maybe_approval| -> DispatchResult {
 				let deposit_required = T::CollectionApprovalDeposit::get();
-				let mut current_deposit = match maybe_approval.take() {
-					Some((_, deposit)) => deposit,
-					None => Zero::zero(),
-				};
-
+				let mut current_deposit =
+					maybe_approval.take().map(|(_, deposit)| deposit).unwrap_or_default();
 				if current_deposit < deposit_required {
 					T::Currency::reserve(&origin, deposit_required - current_deposit)?;
 					current_deposit = deposit_required;
