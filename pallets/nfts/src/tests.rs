@@ -2057,17 +2057,17 @@ fn check_approval_with_deadline_works() {
 			// Move past the deadline by 1 block.
 			System::set_block_number(deadline + 1);
 
-			// Block 1: Collection or item approval deadline has passed.
+			// (deadline + 1): Collection or item approval deadline has passed.
 			assert_eq!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate), case.2);
 			assert_eq!(
 				Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
 				case.3
 			);
 
-			// Move past the deadline by 2 block.
+			// Move past the deadline by 2 blocks.
 			System::set_block_number(deadline + 2);
 
-			// Block 2: Both collection and item approval expires.
+			// (deadline + 2): Both collection and item approval expires.
 			assert_eq!(
 				Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
 				Err(Error::<Test>::ApprovalExpired.into())
