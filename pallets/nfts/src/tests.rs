@@ -34,10 +34,9 @@ use sp_runtime::{
 	MultiSignature, MultiSigner,
 };
 
-use crate::{mock::*, Event, SystemConfig, WeightInfo as WeightInfoTrait, *};
+use crate::{mock::*, Event, SystemConfig, *};
 
 type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
-type WeightInfo = <Test as Config>::WeightInfo;
 
 fn account(id: u8) -> AccountIdOf<Test> {
 	[id; 32].into()
@@ -1954,7 +1953,7 @@ fn approval_lifecycle_works() {
 }
 
 #[test]
-fn check_approval_works() {
+fn check_approval_without_deadline_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let item_id = 42;
@@ -1976,61 +1975,107 @@ fn check_approval_works() {
 			default_item_config()
 		));
 
-		let deadline = 10;
-		let error = Err(Error::<Test>::ApprovalExpired.into());
-		for case in Vec::<(
-			// Deadline of the collection and item approval.
-			(Option<BlockNumberFor<Test>>, Option<BlockNumberFor<Test>>),
-			// Check results when collection or item approval deadline has passed.
-			(DispatchResult, DispatchResult),
-			// Check results when both collection and item approval deadline has passed.
-			(DispatchResult, DispatchResult),
-		)>::from(vec![
-			// No deadline set for both collection and item approval.
-			((None, None), (Ok(()), Ok(())), (Ok(()), Ok(()))),
-			// Set deadline for both. Collection approval expires first.
-			((Some(deadline), Some(deadline + 1)), (error, Ok(())), (error, error)),
-			// Set deadline for both. Item approval expires first.
-			((Some(deadline + 1), Some(deadline)), (Ok(()), Ok(())), (error, error)),
-		]) {
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(item_owner.clone()),
+			collection_id,
+			item_id,
+			delegate.clone(),
+			None
+		));
+		// Has only item approval.
+		assert_ok!(Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate));
+		assert_noop!(
+			Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+			Error::<Test>::NoPermission
+		);
+
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(item_owner.clone()),
+			collection_id,
+			delegate.clone(),
+			None
+		));
+		// Has both collection and item approval.
+		assert_ok!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate));
+		assert_ok!(Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate));
+	});
+}
+
+#[test]
+fn check_approval_with_deadline_works() {
+	new_test_ext().execute_with(|| {
+		let collection_id = 0;
+		let item_id = 42;
+		let collection_owner = account(1);
+		let item_owner = account(2);
+		let delegate = account(3);
+
+		Balances::make_free_balance_be(&item_owner, 100);
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			collection_owner.clone(),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(collection_owner.clone()),
+			collection_id,
+			item_id,
+			item_owner.clone(),
+			default_item_config()
+		));
+
+		let deadline: BlockNumberFor<Test> = 10;
+		for case in [
+			// Collection approval expires first.
+			(deadline, deadline + 1, Err(Error::<Test>::ApprovalExpired.into()), Ok(())),
+			// Item approval expires first.
+			(deadline + 1, deadline, Ok(()), Ok(())),
+		] {
 			System::set_block_number(0);
-			let (collection_deadline, item_deadline) = case.0;
 			assert_ok!(Nfts::approve_collection_transfer(
 				RuntimeOrigin::signed(item_owner.clone()),
 				collection_id,
 				delegate.clone(),
-				collection_deadline
+				Some(case.0)
 			));
 			assert_ok!(Nfts::approve_transfer(
 				RuntimeOrigin::signed(item_owner.clone()),
 				collection_id,
 				item_id,
 				delegate.clone(),
-				item_deadline
+				Some(case.1)
 			));
 
-			// Collection or item approval deadline has passed.
+			// Block 0: Initially, all approvals should be valid
+			assert_ok!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate));
+			assert_ok!(Nfts::check_approval(
+				&collection_id,
+				&Some(item_id),
+				&item_owner,
+				&delegate
+			));
+
+			// Move past the deadline by 1 block.
 			System::set_block_number(deadline + 1);
-			let (collection_result, item_result) = case.1;
-			assert_eq!(
-				Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
-				collection_result
-			);
+
+			// Block 1: Collection or item approval deadline has passed.
+			assert_eq!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate), case.2);
 			assert_eq!(
 				Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
-				item_result
+				case.3
 			);
 
-			// Both collection and item approval deadline has passed.
+			// Move past the deadline by 2 block.
 			System::set_block_number(deadline + 2);
-			let (collection_result, item_result) = case.2;
+
+			// Block 2: Both collection and item approval expires.
 			assert_eq!(
 				Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
-				collection_result
+				Err(Error::<Test>::ApprovalExpired.into())
 			);
 			assert_eq!(
 				Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
-				item_result
+				Err(Error::<Test>::ApprovalExpired.into())
 			);
 		}
 	});
