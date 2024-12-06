@@ -20,7 +20,6 @@
 use enumflags2::BitFlags;
 use frame_support::{
 	assert_noop, assert_ok,
-	dispatch::DispatchResult,
 	traits::{
 		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate},
 		Currency, Get,
@@ -2920,26 +2919,30 @@ fn clear_collection_approvals_works() {
 			delegate_2.clone(),
 			None
 		));
+		// Remove zero collection approvals, no event emitted.
+		assert_ok!(Nfts::clear_collection_approvals_limit(
+			RuntimeOrigin::signed(owner.clone()),
+			collection_id,
+			0
+		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
+		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 2);
+		assert!(!events().contains(&Event::<Test>::AllApprovalsCancelled {
+			collection: collection_id,
+			item: None,
+			owner: owner.clone(),
+		}));
 
-		// Throws error `BadWitness` for zero witness data.
-		assert_noop!(
-			Nfts::clear_collection_approvals_limit(
-				RuntimeOrigin::signed(owner.clone()),
-				collection_id,
-				0
-			),
-			Error::<Test>::BadWitness
-		);
-		// Throws error `BadWitness` for invalid witness data.
-		assert_noop!(
-			Nfts::clear_collection_approvals_limit(
-				RuntimeOrigin::signed(owner.clone()),
-				collection_id,
-				1
-			),
-			Error::<Test>::BadWitness
-		);
+		// Partially removes collection approvals.
+		assert_ok!(Nfts::clear_collection_approvals_limit(
+			RuntimeOrigin::signed(owner.clone()),
+			collection_id,
+			1
+		));
+		assert_eq!(Balances::free_balance(&owner), balance - 1);
+		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 1);
+
+		// Successfully remove all collection approvals.
 		assert_ok!(Nfts::clear_collection_approvals_limit(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
@@ -3000,28 +3003,32 @@ fn force_clear_collection_approvals_work() {
 			delegate_2.clone(),
 			None
 		));
+		// Remove zero collection approvals, no event emitted.
+		assert_ok!(Nfts::force_clear_collection_approvals_limit(
+			RuntimeOrigin::root(),
+			owner.clone(),
+			collection_id,
+			0
+		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
+		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 2);
+		assert!(!events().contains(&Event::<Test>::AllApprovalsCancelled {
+			collection: collection_id,
+			item: None,
+			owner: owner.clone(),
+		}));
 
-		// Throws error `BadWitness` for zero witness data.
-		assert_noop!(
-			Nfts::force_clear_collection_approvals_limit(
-				RuntimeOrigin::root(),
-				owner.clone(),
-				collection_id,
-				0
-			),
-			Error::<Test>::BadWitness
-		);
-		// Throws error `BadWitness` for invalid witness data.
-		assert_noop!(
-			Nfts::force_clear_collection_approvals_limit(
-				RuntimeOrigin::root(),
-				owner.clone(),
-				collection_id,
-				1
-			),
-			Error::<Test>::BadWitness
-		);
+		// Partially removes collection approvals.
+		assert_ok!(Nfts::force_clear_collection_approvals_limit(
+			RuntimeOrigin::root(),
+			owner.clone(),
+			collection_id,
+			1
+		));
+		assert_eq!(Balances::free_balance(&owner), balance - 1);
+		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 1);
+
+		// Successfully remove all collection approvals.
 		assert_ok!(Nfts::force_clear_collection_approvals_limit(
 			RuntimeOrigin::root(),
 			owner.clone(),
