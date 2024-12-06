@@ -205,7 +205,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - `maybe_deadline`: The optional deadline (in block numbers) specifying the time limit for
 	///   the approval.
 	pub(crate) fn do_approve_collection_transfer(
-		origin: T::AccountId,
+		owner: T::AccountId,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 		maybe_deadline: Option<BlockNumberFor<T>>,
@@ -214,7 +214,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		ensure!(AccountBalance::<T, I>::get(collection, &origin) > 0, Error::<T, I>::NoItemOwned);
+		ensure!(AccountBalance::<T, I>::get(collection, &owner) > 0, Error::<T, I>::NoItemOwned);
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
@@ -225,13 +225,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
 		CollectionApprovals::<T, I>::try_mutate_exists(
-			(&collection, &origin, &delegate),
+			(&collection, &owner, &delegate),
 			|maybe_approval| -> DispatchResult {
 				let deposit_required = T::CollectionApprovalDeposit::get();
 				let mut current_deposit =
 					maybe_approval.take().map(|(_, deposit)| deposit).unwrap_or_default();
 				if current_deposit < deposit_required {
-					T::Currency::reserve(&origin, deposit_required - current_deposit)?;
+					T::Currency::reserve(&owner, deposit_required - current_deposit)?;
 					current_deposit = deposit_required;
 				}
 				*maybe_approval = Some((deadline, current_deposit));
@@ -242,7 +242,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::deposit_event(Event::TransferApproved {
 			collection,
 			item: None,
-			owner: origin,
+			owner,
 			delegate,
 			deadline,
 		});
@@ -260,52 +260,46 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - `collection`: The identifier of the collection.
 	/// - `delegate`: The account that had permission to transfer collection items.
 	pub(crate) fn do_cancel_collection_approval(
-		origin: T::AccountId,
+		owner: T::AccountId,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let (_, deposit) = CollectionApprovals::<T, I>::take((&collection, &origin, &delegate))
+		let (_, deposit) = CollectionApprovals::<T, I>::take((&collection, &owner, &delegate))
 			.ok_or(Error::<T, I>::Unapproved)?;
 
-		T::Currency::unreserve(&origin, deposit);
+		T::Currency::unreserve(&owner, deposit);
 
-		Self::deposit_event(Event::ApprovalCancelled {
-			collection,
-			owner: origin,
-			item: None,
-			delegate,
-		});
+		Self::deposit_event(Event::ApprovalCancelled { collection, owner, item: None, delegate });
 
 		Ok(())
 	}
 
 	/// Clears collection approvals.
 	///
-	/// This function is used to clear `witness_approvals` collection approvals for the
+	/// This function is used to clear `limit` collection approvals for the
 	/// collection items of `owner`. After clearing all approvals, the deposit of each collection
 	/// approval is returned to the `owner` account and the `AllApprovalsCancelled` event is
 	/// emitted.
 	///
 	/// - `owner`: The owner of the collection items.
 	/// - `collection`: The collection ID containing the item.
-	/// - `witness_approvals`: The amount of collection approvals that will be cleared.
+	/// - `limit`: The amount of collection approvals that will be cleared.
 	pub(crate) fn do_clear_collection_approvals_limit(
-		origin: T::AccountId,
+		owner: T::AccountId,
 		collection: T::CollectionId,
-		witness_approvals: u32,
+		limit: u32,
 	) -> DispatchResult {
-		ensure!(witness_approvals > 0, Error::<T, I>::BadWitness);
+		ensure!(limit > 0, Error::<T, I>::BadWitness);
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
 		// Iterate and remove each collection approval, returning the deposit back to the `owner`.
-		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &origin)) {
-			ensure!(removed_approvals < witness_approvals, Error::<T, I>::BadWitness);
+		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &owner)) {
+			ensure!(removed_approvals < limit, Error::<T, I>::BadWitness);
 			removed_approvals.saturating_inc();
 			deposits = deposits.saturating_add(deposit);
 		}
-		ensure!(removed_approvals == witness_approvals, Error::<T, I>::BadWitness);
-		T::Currency::unreserve(&origin, deposits);
-		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner: origin });
+		T::Currency::unreserve(&owner, deposits);
+		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner });
 		Ok(())
 	}
 

@@ -1527,55 +1527,52 @@ pub mod pallet {
 			Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)
 		}
 
-		/// Cancel collection approvals.
-		///
-		/// Due to weight restrictions, this function may need to be called multiple times to fully
-		/// cancel all collection approvals. It will cancel `ApprovalsLimit` approvals at a time.
+		/// Cancel collection approvals, up to a specified limit.
 		///
 		/// Origin must be Signed.
 		///
 		/// Arguments:
 		/// - `collection`: The collection whose approvals will be cleared.
-		/// - `witness_approvals`: The amount of collection approvals that will be cleared.
+		/// - `limit`: The amount of collection approvals that will be cleared.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(43)]
-		#[pallet::weight(T::WeightInfo::clear_collection_approvals_limit(*witness_approvals))]
+		#[pallet::weight(T::WeightInfo::clear_collection_approvals_limit(*limit))]
 		pub fn clear_collection_approvals_limit(
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
-			witness_approvals: u32,
+			limit: u32,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
-			Self::do_clear_collection_approvals_limit(origin, collection, witness_approvals)?;
+			Self::do_clear_collection_approvals_limit(origin, collection, limit)?;
 			Ok(())
 		}
 
-		/// Force-cancel collection approvals granted by `owner` account.
+		/// Force-cancel collection approvals granted by `owner` account, up to a specified limit.
 		///
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
 		/// - `owner`: The account clearing all collection approvals.
 		/// - `collection`: The collection whose approvals will be cleared.
-		/// - `witness_approvals`: The amount of collection approvals that will be cleared.
+		/// - `limit`: The amount of collection approvals that will be cleared.
 		///
 		/// Emits `AllApprovalsCancelled` on success.
 		///
 		/// Weight: `O(1)`
 		#[pallet::call_index(44)]
-		#[pallet::weight(T::WeightInfo::force_clear_collection_approvals_limit(*witness_approvals))]
+		#[pallet::weight(T::WeightInfo::force_clear_collection_approvals_limit(*limit))]
 		pub fn force_clear_collection_approvals_limit(
 			origin: OriginFor<T>,
 			owner: AccountIdLookupOf<T>,
 			collection: T::CollectionId,
-			witness_approvals: u32,
+			limit: u32,
 		) -> DispatchResult {
 			T::ForceOrigin::ensure_origin(origin)?;
 			let owner = T::Lookup::lookup(owner)?;
-			Self::do_clear_collection_approvals_limit(owner, collection, witness_approvals)?;
+			Self::do_clear_collection_approvals_limit(owner, collection, limit)?;
 			Ok(())
 		}
 
