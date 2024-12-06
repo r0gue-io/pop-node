@@ -2045,7 +2045,7 @@ fn check_approval_with_deadline_works() {
 				Some(case.1)
 			));
 
-			// Block 0: Initially, all approvals should be valid
+			// Initially, all approvals should be valid.
 			assert_ok!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate));
 			assert_ok!(Nfts::check_approval(
 				&collection_id,
