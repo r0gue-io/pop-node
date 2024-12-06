@@ -289,15 +289,20 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		limit: u32,
 	) -> DispatchResult {
-		ensure!(limit > 0, Error::<T, I>::BadWitness);
+		if limit == 0 {
+			return Ok(());
+		}
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
 		// Iterate and remove each collection approval, returning the deposit back to the `owner`.
 		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &owner)) {
-			ensure!(removed_approvals < limit, Error::<T, I>::BadWitness);
-			removed_approvals.saturating_inc();
 			deposits = deposits.saturating_add(deposit);
+			removed_approvals.saturating_inc();
+			if removed_approvals == limit {
+				break;
+			}
 		}
+
 		T::Currency::unreserve(&owner, deposits);
 		Self::deposit_event(Event::AllApprovalsCancelled { collection, item: None, owner });
 		Ok(())
