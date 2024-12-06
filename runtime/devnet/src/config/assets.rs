@@ -7,13 +7,13 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
+use pop_runtime_common::xcm::nonfungibles_adapter::MultiLocationCollectionId;
 use sp_runtime::traits::Verify;
 use xcm_executor::traits::ConvertLocation;
 
 use crate::{
-	config::{nonfungibles::MultiLocationCollectionId, xcm::LocationToAccountId},
-	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, RuntimeOrigin, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	config::xcm::LocationToAccountId, deposit, AccountId, Assets, Balance, Balances, BlockNumber,
+	Nfts, Runtime, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// We allow root to execute privileged asset operations.
