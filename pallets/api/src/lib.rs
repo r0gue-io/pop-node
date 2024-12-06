@@ -7,6 +7,7 @@ pub mod extension;
 pub mod fungibles;
 #[cfg(test)]
 mod mock;
+pub mod nonfungibles;
 
 /// Trait for performing reads of runtime state.
 pub trait Read {
