@@ -1,5 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
-
+mod traits;
+pub use traits::{Api, ApiImpl};
 use ink::prelude::{string::String, vec::Vec};
 use pop_api::{
 	primitives::TokenId,
@@ -206,17 +207,13 @@ mod fungibles {
 		/// Returns the token name.
 		#[ink(message)]
 		fn token_name(&self) -> Option<String> {
-			api::token_name(self.id)
-				.unwrap_or_default()
-				.and_then(|v| String::from_utf8(v).ok())
+			ApiImpl.token_name(self.id)
 		}
 
 		/// Returns the token symbol.
 		#[ink(message)]
 		fn token_symbol(&self) -> Option<String> {
-			api::token_symbol(self.id)
-				.unwrap_or_default()
-				.and_then(|v| String::from_utf8(v).ok())
+			ApiImpl::token_symbol(self.id)
 		}
 
 		/// Returns the token decimals.
