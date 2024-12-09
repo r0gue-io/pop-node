@@ -234,28 +234,18 @@ pub mod pallet {
 			maybe_item: Option<ItemIdOf<T>>,
 			operator: &AccountIdOf<T>,
 		) -> DispatchResultWithPostInfo {
+			let operator = T::Lookup::unlookup(operator.clone());
 			let weight = match maybe_item {
 				Some(item) => {
-					NftsOf::<T>::approve_transfer(
-						origin,
-						collection,
-						item,
-						T::Lookup::unlookup(operator.clone()),
-						None,
-					)
-					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
+					NftsOf::<T>::approve_transfer(origin, collection, item, operator, None)
+						.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
 					NftsWeightInfoOf::<T>::approve_transfer()
 				},
 				None => {
-					NftsOf::<T>::approve_collection_transfer(
-						origin,
-						collection,
-						T::Lookup::unlookup(operator.clone()),
-						None,
-					)
-					.map_err(|e| {
-						e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer())
-					})?;
+					NftsOf::<T>::approve_collection_transfer(origin, collection, operator, None)
+						.map_err(|e| {
+							e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer())
+						})?;
 					NftsWeightInfoOf::<T>::approve_collection_transfer()
 				},
 			};
@@ -278,26 +268,17 @@ pub mod pallet {
 			maybe_item: Option<ItemIdOf<T>>,
 			operator: &AccountIdOf<T>,
 		) -> DispatchResultWithPostInfo {
+			let operator = T::Lookup::unlookup(operator.clone());
 			let weight = match maybe_item {
 				Some(item) => {
-					NftsOf::<T>::cancel_approval(
-						origin,
-						collection,
-						item,
-						T::Lookup::unlookup(operator.clone()),
-					)
-					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
+					NftsOf::<T>::cancel_approval(origin, collection, item, operator)
+						.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
 					NftsWeightInfoOf::<T>::cancel_approval()
 				},
 				None => {
-					NftsOf::<T>::cancel_collection_approval(
-						origin,
-						collection,
-						T::Lookup::unlookup(operator.clone()),
-					)
-					.map_err(|e| {
-						e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval())
-					})?;
+					NftsOf::<T>::cancel_collection_approval(origin, collection, operator).map_err(
+						|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval()),
+					)?;
 					NftsWeightInfoOf::<T>::cancel_collection_approval()
 				},
 			};
@@ -321,12 +302,15 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			to: AccountIdOf<T>,
 		) -> DispatchResult {
-			let from = ensure_signed(origin.clone())?;
+			// TODO Write a weight function for this method
+			ensure_signed(origin.clone())?;
+			let owner =
+				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::NoPermission)?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
 			Self::deposit_event(Event::Transfer {
 				collection,
 				item,
-				from: Some(from),
+				from: Some(owner),
 				to: Some(to),
 				price: None,
 			});
@@ -353,9 +337,9 @@ pub mod pallet {
 		///   - `false` to revoke the operator's approval.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
-						NftsWeightInfoOf::<T>::approve_transfer() +
-      NftsWeightInfoOf::<T>::approve_collection_transfer() +
-      NftsWeightInfoOf::<T>::cancel_collection_approval() +
+			NftsWeightInfoOf::<T>::approve_transfer() +
+            NftsWeightInfoOf::<T>::approve_collection_transfer() +
+            NftsWeightInfoOf::<T>::cancel_collection_approval() +
     		NftsWeightInfoOf::<T>::cancel_approval()
 		)]
 		pub fn approve(
@@ -476,6 +460,11 @@ pub mod pallet {
 			NftsOf::<T>::set_metadata(origin, collection, item, data)
 		}
 
+		/// Clear the metadata of an item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection whose item's metadata to be cleared.
+		/// - `item` - The item whose metadata to be cleared.
 		#[pallet::call_index(15)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_metadata())]
 		pub fn clear_metadata(
@@ -647,7 +636,7 @@ pub mod pallet {
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
 				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(owner, collection)),
+					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
 				),
