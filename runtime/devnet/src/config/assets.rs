@@ -53,7 +53,7 @@ impl EnsureOriginWithArg<RuntimeOrigin, MultiLocationCollectionId> for ForeignCr
 	) -> sp_std::result::Result<Self::Success, RuntimeOrigin> {
 		let origin_location = pallet_xcm::EnsureXcm::<Everything>::try_origin(o.clone())?;
 		if !a.inner().starts_with(&origin_location.clone().try_into().unwrap()) {
-			return Err(o)
+			return Err(o);
 		}
 		LocationToAccountId::convert_location(&origin_location).ok_or(o)
 	}

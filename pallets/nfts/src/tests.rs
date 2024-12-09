@@ -20,10 +20,12 @@
 use enumflags2::BitFlags;
 use frame_support::{
 	assert_noop, assert_ok,
+	pallet_prelude::MaxEncodedLen,
 	traits::{
 		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate},
 		Currency, Get,
 	},
+	Blake2_128Concat, StorageHasher,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_balances::Error as BalancesError;
@@ -2920,21 +2922,21 @@ fn clear_collection_approvals_works() {
 			None
 		));
 		// Remove zero collection approvals, no event emitted.
-		assert_ok!(Nfts::clear_collection_approvals_limit(
+		assert_ok!(Nfts::clear_collection_approvals(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
 			0
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 2);
-		assert!(!events().contains(&Event::<Test>::AllApprovalsCancelled {
+		assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
 			item: None,
 			owner: owner.clone(),
 		}));
 
 		// Partially removes collection approvals.
-		assert_ok!(Nfts::clear_collection_approvals_limit(
+		assert_ok!(Nfts::clear_collection_approvals(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
 			1
@@ -2943,12 +2945,12 @@ fn clear_collection_approvals_works() {
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 1);
 
 		// Successfully remove all collection approvals.
-		assert_ok!(Nfts::clear_collection_approvals_limit(
+		assert_ok!(Nfts::clear_collection_approvals(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
 			2
 		));
-		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
 			item: None,
 			owner: owner.clone(),
@@ -3004,7 +3006,7 @@ fn force_clear_collection_approvals_work() {
 			None
 		));
 		// Remove zero collection approvals, no event emitted.
-		assert_ok!(Nfts::force_clear_collection_approvals_limit(
+		assert_ok!(Nfts::force_clear_collection_approvals(
 			RuntimeOrigin::root(),
 			owner.clone(),
 			collection_id,
@@ -3012,14 +3014,14 @@ fn force_clear_collection_approvals_work() {
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 2);
-		assert!(!events().contains(&Event::<Test>::AllApprovalsCancelled {
+		assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
 			item: None,
 			owner: owner.clone(),
 		}));
 
 		// Partially removes collection approvals.
-		assert_ok!(Nfts::force_clear_collection_approvals_limit(
+		assert_ok!(Nfts::force_clear_collection_approvals(
 			RuntimeOrigin::root(),
 			owner.clone(),
 			collection_id,
@@ -3029,13 +3031,13 @@ fn force_clear_collection_approvals_work() {
 		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 1);
 
 		// Successfully remove all collection approvals.
-		assert_ok!(Nfts::force_clear_collection_approvals_limit(
+		assert_ok!(Nfts::force_clear_collection_approvals(
 			RuntimeOrigin::root(),
 			owner.clone(),
 			collection_id,
 			2
 		));
-		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
 			item: None,
 			owner: owner.clone(),
@@ -4774,4 +4776,14 @@ fn clear_collection_metadata_works() {
 		assert_eq!(Collection::<Test>::get(0), None);
 		assert_eq!(Balances::reserved_balance(&account(1)), 10);
 	});
+}
+
+#[test]
+fn ensure_collection_approval_bytes() {
+	let key = Blake2_128Concat::max_len::<<Test as crate::Config>::CollectionId>() +
+		Blake2_128Concat::max_len::<AccountId>() +
+		Blake2_128Concat::max_len::<AccountId>();
+	let value = Option::<BlockNumberFor<Test>>::max_encoded_len()
+		.saturating_add(BalanceOf::<Test>::max_encoded_len());
+	assert_eq!(key + value, 133);
 }

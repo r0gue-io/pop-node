@@ -66,8 +66,8 @@ pub trait WeightInfo {
 	fn cancel_collection_approval() -> Weight;
 	fn force_cancel_collection_approval() -> Weight;
 	fn clear_all_transfer_approvals() -> Weight;
-	fn clear_collection_approvals_limit(n: u32, ) -> Weight;
-	fn force_clear_collection_approvals_limit(n: u32, ) -> Weight;
+	fn clear_collection_approvals(n: u32, ) -> Weight;
+	fn force_clear_collection_approvals(n: u32, ) -> Weight;
 	fn set_accept_ownership() -> Weight;
 	fn set_collection_max_supply() -> Weight;
 	fn update_mint_settings() -> Weight;
@@ -636,7 +636,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[1, 20]`.
-	fn clear_collection_approvals_limit(n: u32, ) -> Weight {
+	fn clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
@@ -652,7 +652,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[1, 20]`.
-	fn force_clear_collection_approvals_limit(n: u32, ) -> Weight {
+	fn force_clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
@@ -1427,7 +1427,7 @@ impl WeightInfo for () {
 	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[1, 20]`.
-	fn clear_collection_approvals_limit(n: u32, ) -> Weight {
+	fn clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
@@ -1443,7 +1443,7 @@ impl WeightInfo for () {
 	/// Storage: `Nfts::CollectionApprovals` (r:21 w:20)
 	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
 	/// The range of component `n` is `[1, 20]`.
-	fn force_clear_collection_approvals_limit(n: u32, ) -> Weight {
+	fn force_clear_collection_approvals(n: u32, ) -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `348 + n * (75 ±0)`
 		//  Estimated: `3602 + n * (2612 ±0)`
