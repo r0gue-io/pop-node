@@ -5,30 +5,28 @@ use frame_support::{
 };
 use scale_info::TypeInfo;
 use sp_std::{marker::PhantomData, prelude::*};
-use xcm::{latest::prelude::*, opaque::v3::MultiLocation};
+use xcm::latest::prelude::*;
 use xcm_builder::{AssetChecking, MintLocation};
 use xcm_executor::{
 	traits::{ConvertLocation, Error as MatchError, MatchesNonFungibles, TransactAsset},
 	AssetsInHolding,
 };
 
-#[derive(
-	Copy, Clone, Decode, Encode, Eq, PartialEq, Ord, PartialOrd, Debug, TypeInfo, MaxEncodedLen,
-)]
+#[derive(Clone, Decode, Encode, Eq, PartialEq, Ord, PartialOrd, Debug, TypeInfo, MaxEncodedLen)]
 /// Represents a collection ID based on a MultiLocation.
 ///
 /// This structure provides a way to map a MultiLocation to a collection ID,
 /// which is useful for describing collections that do not follow an incremental pattern.
-pub struct MultiLocationCollectionId(pub MultiLocation);
+pub struct MultiLocationCollectionId(pub Location);
 
 impl MultiLocationCollectionId {
 	/// Consume `self` and return the inner MultiLocation.
-	pub fn into_inner(self) -> MultiLocation {
+	pub fn into_inner(self) -> Location {
 		self.0
 	}
 
 	/// Return a reference to the inner MultiLocation.
-	pub fn inner(&self) -> &MultiLocation {
+	pub fn inner(&self) -> &Location {
 		&self.0
 	}
 }
@@ -49,14 +47,14 @@ impl Incrementable for MultiLocationCollectionId {
 	}
 }
 
-impl From<MultiLocation> for MultiLocationCollectionId {
-	fn from(value: MultiLocation) -> Self {
+impl From<Location> for MultiLocationCollectionId {
+	fn from(value: Location) -> Self {
 		MultiLocationCollectionId(value)
 	}
 }
 
-impl From<MultiLocationCollectionId> for MultiLocation {
-	fn from(value: MultiLocationCollectionId) -> MultiLocation {
+impl From<MultiLocationCollectionId> for Location {
+	fn from(value: MultiLocationCollectionId) -> Location {
 		value.into_inner()
 	}
 }
