@@ -656,7 +656,7 @@ benchmarks_instance_pallet! {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: Some(item), owner: caller}.into());
 	}
 
-	clear_collection_approvals_limit {
+	clear_collection_approvals {
 		let n in 1 .. T::ApprovalsLimit::get();
 		let (collection, caller, _) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
@@ -671,10 +671,10 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Signed(caller.clone()), collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: None, owner: caller}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller}.into());
 	}
 
-	force_clear_collection_approvals_limit {
+	force_clear_collection_approvals {
 		let n in 1 .. T::ApprovalsLimit::get();
 		let (collection, caller, _) = create_collection::<T, I>();
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
@@ -690,7 +690,7 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Root, caller_lookup, collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: None, owner: caller}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller}.into());
 	}
 
 	set_accept_ownership {
