@@ -33,6 +33,12 @@ impl MultiLocationCollectionId {
 	}
 }
 
+impl From<u16> for MultiLocationCollectionId {
+	fn from(_: u16) -> Self {
+		unimplemented!("Not implemented. Requires for becnhmarking Helper config.")
+	}
+}
+
 impl Incrementable for MultiLocationCollectionId {
 	fn increment(&self) -> Option<Self> {
 		None
