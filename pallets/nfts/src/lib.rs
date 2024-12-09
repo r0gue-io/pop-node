@@ -1370,7 +1370,6 @@ pub mod pallet {
 		/// Origin must be Signed.
 		///
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
-		/// - `item`: The item to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the origin.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
@@ -1392,7 +1391,7 @@ pub mod pallet {
 			Self::do_approve_collection_transfer(origin, collection, delegate, maybe_deadline)
 		}
 
-		/// Force-approve collection items owned by the origin to be transferred by a delegated
+		/// Force-approve collection items owned by the `owner` to be transferred by a delegated
 		/// third-party account. This function reserves the required deposit
 		/// `CollectionApprovalDeposit` from the `owner` account.
 		///
