@@ -879,7 +879,7 @@ mod ensure_codec_indexes {
 						item_metadatas: Default::default(),
 						item_configs: Default::default(),
 						attributes: Default::default(),
-					}
+					},
 				},
 				8,
 				"destroy",
