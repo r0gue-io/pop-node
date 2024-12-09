@@ -195,9 +195,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// determine the absolute deadline for the approval. After approving the transfer, the
 	/// function emits the `TransferApproved` event.
 	///
-	/// This function reserves the required deposit from the `owner` account. If an approval
-	/// already exists, the deposit amount is incremented, and the approval's existing deadline is
-	/// overridden.
+	/// This function reserves the necessary deposit from the owner account. If an approval already
+	/// exists, additional funds are reserved only if the updated deposit exceeds the currently
+	/// reserved amount. The existing approval's deadline is also updated.
 	///
 	/// - `owner`: The owner of the collection items.
 	/// - `collection`: The identifier of the collection.
@@ -345,23 +345,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		delegate: &T::AccountId,
 	) -> DispatchResult {
 		// Check if `delegate` has permission to transfer `owner`'s collection items.
-		match Self::check_collection_approval(collection, owner, delegate) {
-			Ok(()) => Ok(()),
-			Err(error) => {
-				// Check if a `delegate` has permission to transfer the given collection item.
-				if let Some(item) = maybe_item {
-					let details =
-						Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
-					let maybe_deadline =
-						details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
-					if let Some(deadline) = maybe_deadline {
-						let block_number = frame_system::Pallet::<T>::block_number();
-						ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
-					}
-					return Ok(());
-				};
-				Err(error)
-			},
+		if let Err(error) = Self::check_collection_approval(collection, owner, delegate) {
+			// Check if a `delegate` has permission to transfer the given collection item.
+			if let Some(item) = maybe_item {
+				let details =
+					Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+				let maybe_deadline =
+					details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
+				if let Some(deadline) = maybe_deadline {
+					let block_number = frame_system::Pallet::<T>::block_number();
+					ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
+				}
+				return Ok(());
+			};
+			return Err(error);
 		}
+		Ok(())
 	}
 }

@@ -3061,7 +3061,7 @@ fn collection_item_works() {
 		let user_id = account(1);
 		let total_items = 10;
 
-		// no collection.
+		// No collection.
 		assert_eq!(Nfts::collection_items(collection_id), None);
 
 		assert_ok!(Nfts::force_create(
@@ -3070,7 +3070,7 @@ fn collection_item_works() {
 			default_collection_config()
 		));
 
-		// mint items and validate the total supply.
+		// Mint items and validate the total supply.
 		(0..total_items).into_iter().for_each(|i| {
 			assert_ok!(Nfts::force_mint(
 				RuntimeOrigin::root(),
