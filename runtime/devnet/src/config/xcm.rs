@@ -13,7 +13,7 @@ use polkadot_runtime_common::impls::ToAuthor;
 use pop_runtime_common::xcm::nonfungibles_adapter::{
 	MultiLocationCollectionId, NonFungiblesAdapterPop,
 };
-use xcm::{latest::prelude::*, opaque::v3::MultiLocation};
+use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
 	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
@@ -101,7 +101,7 @@ impl MatchesNonFungibles<MultiLocationCollectionId, AssetInstance> for MultiAsse
 			_ => return Err(MatchError::AssetNotHandled),
 		};
 
-		let collection_id = MultiLocationCollectionId(MultiLocation {
+		let collection_id = MultiLocationCollectionId(Location {
 			parents: location.parents,
 			interior: location.interior.clone().try_into().unwrap(),
 		});
