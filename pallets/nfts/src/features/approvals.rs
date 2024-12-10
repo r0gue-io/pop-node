@@ -223,7 +223,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 		ensure!(
-			AccountBalance::<T, I>::get(collection.clone(), &origin) > 0,
+			AccountBalance::<T, I>::get(collection.clone(), &owner) > 0,
 			Error::<T, I>::NoItemOwned
 		);
 
