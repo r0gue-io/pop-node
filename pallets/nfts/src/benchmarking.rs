@@ -67,19 +67,19 @@ fn mint_item<T: Config<I>, I: 'static>(
 ) -> (T::ItemId, T::AccountId, AccountIdLookupOf<T>) {
 	let item = T::Helper::item(index);
 	let collection = T::Helper::collection(0);
-	let caller = Collection::<T, I>::get(collection).unwrap().owner;
+	let caller = Collection::<T, I>::get(collection.clone()).unwrap().owner;
 	if caller != whitelisted_caller() {
 		whitelist_account!(caller);
 	}
 	let caller_lookup = T::Lookup::unlookup(caller.clone());
-	let item_exists = Item::<T, I>::contains_key(collection, item);
-	let item_config = ItemConfigOf::<T, I>::get(collection, item);
+	let item_exists = Item::<T, I>::contains_key(collection.clone(), item);
+	let item_config = ItemConfigOf::<T, I>::get(collection.clone(), item);
 	if item_exists {
 		return (item, caller, caller_lookup)
 	} else if let Some(item_config) = item_config {
 		assert_ok!(Nfts::<T, I>::force_mint(
 			SystemOrigin::Signed(caller.clone()).into(),
-			collection,
+			collection.clone(),
 			item,
 			caller_lookup.clone(),
 			item_config,
@@ -87,7 +87,7 @@ fn mint_item<T: Config<I>, I: 'static>(
 	} else {
 		assert_ok!(Nfts::<T, I>::mint(
 			SystemOrigin::Signed(caller.clone()).into(),
-			collection,
+			collection.clone(),
 			item,
 			caller_lookup.clone(),
 			None,
@@ -265,8 +265,8 @@ benchmarks_instance_pallet! {
 		for i in 0..a {
 			add_collection_attribute::<T, I>(i as u16);
 		}
-		let witness = Collection::<T, I>::get(collection).unwrap().destroy_witness();
-	}: _(SystemOrigin::Signed(caller), collection, witness)
+		let witness = Collection::<T, I>::get(collection.clone()).unwrap().destroy_witness();
+	}: _(SystemOrigin::Signed(caller), collection.clone(), witness)
 	verify {
 		assert_last_event::<T, I>(Event::Destroyed { collection }.into());
 	}
@@ -274,7 +274,7 @@ benchmarks_instance_pallet! {
 	mint {
 		let (collection, caller, caller_lookup) = create_collection::<T, I>();
 		let item = T::Helper::item(0);
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, caller_lookup, None)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item, caller_lookup, None)
 	verify {
 		assert_last_event::<T, I>(Event::Issued { collection, item, owner: caller }.into());
 	}
@@ -282,7 +282,7 @@ benchmarks_instance_pallet! {
 	force_mint {
 		let (collection, caller, caller_lookup) = create_collection::<T, I>();
 		let item = T::Helper::item(0);
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, caller_lookup, default_item_config())
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item, caller_lookup, default_item_config())
 	verify {
 		assert_last_event::<T, I>(Event::Issued { collection, item, owner: caller }.into());
 	}
@@ -290,7 +290,7 @@ benchmarks_instance_pallet! {
 	burn {
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item)
 	verify {
 		assert_last_event::<T, I>(Event::Burned { collection, item, owner: caller }.into());
 	}
@@ -302,7 +302,7 @@ benchmarks_instance_pallet! {
 		let target: T::AccountId = account("target", 0, SEED);
 		let target_lookup = T::Lookup::unlookup(target.clone());
 		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance());
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, target_lookup)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item, target_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::Transferred { collection, item, from: caller, to: target }.into());
 	}
@@ -313,10 +313,10 @@ benchmarks_instance_pallet! {
 		let items = (0..i).map(|x| mint_item::<T, I>(x as u16).0).collect::<Vec<_>>();
 		Nfts::<T, I>::force_collection_config(
 			SystemOrigin::Root.into(),
-			collection,
+			collection.clone(),
 			make_collection_config::<T, I>(CollectionSetting::DepositRequired.into()),
 		)?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, items.clone())
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), items.clone())
 	verify {
 		assert_last_event::<T, I>(Event::Redeposited { collection, successful_items: items }.into());
 	}
@@ -334,10 +334,10 @@ benchmarks_instance_pallet! {
 		let (item, ..) = mint_item::<T, I>(0);
 		Nfts::<T, I>::lock_item_transfer(
 			SystemOrigin::Signed(caller.clone()).into(),
-			collection,
+			collection.clone(),
 			item,
 		)?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item)
 	verify {
 		assert_last_event::<T, I>(Event::ItemTransferUnlocked { collection, item }.into());
 	}
@@ -350,7 +350,7 @@ benchmarks_instance_pallet! {
 				CollectionSetting::UnlockedAttributes |
 				CollectionSetting::UnlockedMaxSupply,
 		);
-	}: _(SystemOrigin::Signed(caller.clone()), collection, lock_settings)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), lock_settings)
 	verify {
 		assert_last_event::<T, I>(Event::CollectionLocked { collection }.into());
 	}
@@ -361,8 +361,8 @@ benchmarks_instance_pallet! {
 		let target_lookup = T::Lookup::unlookup(target.clone());
 		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance());
 		let origin = SystemOrigin::Signed(target.clone()).into();
-		Nfts::<T, I>::set_accept_ownership(origin, Some(collection))?;
-	}: _(SystemOrigin::Signed(caller), collection, target_lookup)
+		Nfts::<T, I>::set_accept_ownership(origin, Some(collection.clone()))?;
+	}: _(SystemOrigin::Signed(caller), collection.clone(), target_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::OwnerChanged { collection, new_owner: target }.into());
 	}
@@ -372,7 +372,7 @@ benchmarks_instance_pallet! {
 		let target0 = Some(T::Lookup::unlookup(account("target", 0, SEED)));
 		let target1 = Some(T::Lookup::unlookup(account("target", 1, SEED)));
 		let target2 = Some(T::Lookup::unlookup(account("target", 2, SEED)));
-	}: _(SystemOrigin::Signed(caller), collection, target0, target1, target2)
+	}: _(SystemOrigin::Signed(caller), collection.clone(), target0, target1, target2)
 	verify {
 		assert_last_event::<T, I>(Event::TeamChanged{
 			collection,
@@ -390,7 +390,7 @@ benchmarks_instance_pallet! {
 		let target_lookup = T::Lookup::unlookup(target.clone());
 		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance());
 		let call = Call::<T, I>::force_collection_owner {
-			collection,
+			collection: collection.clone(),
 			owner: target_lookup,
 		};
 	}: { call.dispatch_bypass_filter(origin)? }
@@ -403,7 +403,7 @@ benchmarks_instance_pallet! {
 		let origin =
 			T::ForceOrigin::try_successful_origin().map_err(|_| BenchmarkError::Weightless)?;
 		let call = Call::<T, I>::force_collection_config {
-			collection,
+			collection: collection.clone(),
 			config: make_collection_config::<T, I>(CollectionSetting::DepositRequired.into()),
 		};
 	}: { call.dispatch_bypass_filter(origin)? }
@@ -416,7 +416,7 @@ benchmarks_instance_pallet! {
 		let (item, ..) = mint_item::<T, I>(0);
 		let lock_metadata = true;
 		let lock_attributes = true;
-	}: _(SystemOrigin::Signed(caller), collection, item, lock_metadata, lock_attributes)
+	}: _(SystemOrigin::Signed(caller), collection.clone(), item, lock_metadata, lock_attributes)
 	verify {
 		assert_last_event::<T, I>(Event::ItemPropertiesLocked { collection, item, lock_metadata, lock_attributes }.into());
 	}
@@ -427,7 +427,7 @@ benchmarks_instance_pallet! {
 
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
-	}: _(SystemOrigin::Signed(caller), collection, Some(item), AttributeNamespace::CollectionOwner, key.clone(), value.clone())
+	}: _(SystemOrigin::Signed(caller), collection.clone(), Some(item), AttributeNamespace::CollectionOwner, key.clone(), value.clone())
 	verify {
 		assert_last_event::<T, I>(
 			Event::AttributeSet {
@@ -447,7 +447,7 @@ benchmarks_instance_pallet! {
 
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
-	}: _(SystemOrigin::Root, Some(caller), collection, Some(item), AttributeNamespace::CollectionOwner, key.clone(), value.clone())
+	}: _(SystemOrigin::Root, Some(caller), collection.clone(), Some(item), AttributeNamespace::CollectionOwner, key.clone(), value.clone())
 	verify {
 		assert_last_event::<T, I>(
 			Event::AttributeSet {
@@ -466,7 +466,7 @@ benchmarks_instance_pallet! {
 		let (item, ..) = mint_item::<T, I>(0);
 		add_item_metadata::<T, I>(item);
 		let (key, ..) = add_item_attribute::<T, I>(item);
-	}: _(SystemOrigin::Signed(caller), collection, Some(item), AttributeNamespace::CollectionOwner, key.clone())
+	}: _(SystemOrigin::Signed(caller), collection.clone(), Some(item), AttributeNamespace::CollectionOwner, key.clone())
 	verify {
 		assert_last_event::<T, I>(
 			Event::AttributeCleared {
@@ -483,7 +483,7 @@ benchmarks_instance_pallet! {
 		let (item, ..) = mint_item::<T, I>(0);
 		let target: T::AccountId = account("target", 0, SEED);
 		let target_lookup = T::Lookup::unlookup(target.clone());
-	}: _(SystemOrigin::Signed(caller), collection, item, target_lookup)
+	}: _(SystemOrigin::Signed(caller), collection.clone(), item, target_lookup)
 	verify {
 		assert_last_event::<T, I>(
 			Event::ItemAttributesApprovalAdded {
@@ -504,7 +504,7 @@ benchmarks_instance_pallet! {
 		let target_lookup = T::Lookup::unlookup(target.clone());
 		Nfts::<T, I>::approve_item_attributes(
 			SystemOrigin::Signed(caller.clone()).into(),
-			collection,
+			collection.clone(),
 			item,
 			target_lookup.clone(),
 		)?;
@@ -522,7 +522,7 @@ benchmarks_instance_pallet! {
 			)?;
 		}
 		let witness = CancelAttributesApprovalWitness { account_attributes: n };
-	}: _(SystemOrigin::Signed(caller), collection, item, target_lookup, witness)
+	}: _(SystemOrigin::Signed(caller), collection.clone(), item, target_lookup, witness)
 	verify {
 		assert_last_event::<T, I>(
 			Event::ItemAttributesApprovalRemoved {
@@ -539,7 +539,7 @@ benchmarks_instance_pallet! {
 
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
-	}: _(SystemOrigin::Signed(caller), collection, item, data.clone())
+	}: _(SystemOrigin::Signed(caller), collection.clone(), item, data.clone())
 	verify {
 		assert_last_event::<T, I>(Event::ItemMetadataSet { collection, item, data }.into());
 	}
@@ -548,7 +548,7 @@ benchmarks_instance_pallet! {
 		let (collection, caller, _) = create_collection::<T, I>();
 		let (item, ..) = mint_item::<T, I>(0);
 		add_item_metadata::<T, I>(item);
-	}: _(SystemOrigin::Signed(caller), collection, item)
+	}: _(SystemOrigin::Signed(caller), collection.clone(), item)
 	verify {
 		assert_last_event::<T, I>(Event::ItemMetadataCleared { collection, item }.into());
 	}
@@ -557,7 +557,7 @@ benchmarks_instance_pallet! {
 		let data: BoundedVec<_, _> = vec![0u8; T::StringLimit::get() as usize].try_into().unwrap();
 
 		let (collection, caller, _) = create_collection::<T, I>();
-	}: _(SystemOrigin::Signed(caller), collection, data.clone())
+	}: _(SystemOrigin::Signed(caller), collection.clone(), data.clone())
 	verify {
 		assert_last_event::<T, I>(Event::CollectionMetadataSet { collection, data }.into());
 	}
@@ -565,7 +565,7 @@ benchmarks_instance_pallet! {
 	clear_collection_metadata {
 		let (collection, caller, _) = create_collection::<T, I>();
 		add_collection_metadata::<T, I>();
-	}: _(SystemOrigin::Signed(caller), collection)
+	}: _(SystemOrigin::Signed(caller), collection.clone())
 	verify {
 		assert_last_event::<T, I>(Event::CollectionMetadataCleared { collection }.into());
 	}
@@ -576,7 +576,7 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, delegate_lookup, Some(deadline))
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item, delegate_lookup, Some(deadline))
 	verify {
 		assert_last_event::<T, I>(Event::TransferApproved { collection, item: Some(item), owner: caller, delegate, deadline: Some(deadline) }.into());
 	}
@@ -587,7 +587,7 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
-	}: _(SystemOrigin::Signed(caller.clone()), collection, delegate_lookup, Some(deadline))
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), delegate_lookup, Some(deadline))
 	verify {
 		assert_last_event::<T, I>(Event::TransferApproved { collection, item: None, owner: caller, delegate, deadline: Some(deadline) }.into());
 	}
@@ -599,7 +599,7 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
-	}: _(SystemOrigin::Root, caller_lookup, collection, delegate_lookup, Some(deadline))
+	}: _(SystemOrigin::Root, caller_lookup, collection.clone(), delegate_lookup, Some(deadline))
 	verify {
 		assert_last_event::<T, I>(Event::TransferApproved { collection, item: None, owner: caller, delegate, deadline: Some(deadline) }.into());
 	}
@@ -611,8 +611,8 @@ benchmarks_instance_pallet! {
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_transfer(origin, collection, item, delegate_lookup.clone(), Some(deadline))?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, delegate_lookup)
+		Nfts::<T, I>::approve_transfer(origin, collection.clone(), item, delegate_lookup.clone(), Some(deadline))?;
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item, delegate_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item: Some(item), owner: caller, delegate }.into());
 	}
@@ -624,8 +624,8 @@ benchmarks_instance_pallet! {
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_collection_transfer(origin, collection, delegate_lookup.clone(), Some(deadline))?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, delegate_lookup)
+		Nfts::<T, I>::approve_collection_transfer(origin, collection.clone(), delegate_lookup.clone(), Some(deadline))?;
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), delegate_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item: None, owner: caller, delegate }.into());
 	}
@@ -637,8 +637,8 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_collection_transfer(SystemOrigin::Signed(caller.clone()).into(), collection, delegate_lookup.clone(), Some(deadline))?;
-	}: _(SystemOrigin::Root, caller_lookup, collection, delegate_lookup)
+		Nfts::<T, I>::approve_collection_transfer(SystemOrigin::Signed(caller.clone()).into(), collection.clone(), delegate_lookup.clone(), Some(deadline))?;
+	}: _(SystemOrigin::Root, caller_lookup, collection.clone(), delegate_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::ApprovalCancelled { collection, item: None, owner: caller, delegate }.into());
 	}
@@ -650,8 +650,8 @@ benchmarks_instance_pallet! {
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
 		let deadline = BlockNumberFor::<T>::max_value();
-		Nfts::<T, I>::approve_transfer(origin, collection, item, delegate_lookup.clone(), Some(deadline))?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item)
+		Nfts::<T, I>::approve_transfer(origin, collection.clone(), item, delegate_lookup.clone(), Some(deadline))?;
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item)
 	verify {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: Some(item), owner: caller}.into());
 	}
@@ -664,12 +664,12 @@ benchmarks_instance_pallet! {
 			let delegate: T::AccountId = account("delegate", i, SEED);
 			Nfts::<T, I>::approve_collection_transfer(
 				SystemOrigin::Signed(caller.clone()).into(),
-				collection,
+				collection.clone(),
 				T::Lookup::unlookup(delegate),
 				Some(BlockNumberFor::<T>::max_value()),
 			)?;
 		}
-	}: _(SystemOrigin::Signed(caller.clone()), collection, n)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), n)
 	verify {
 		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller}.into());
 	}
@@ -683,12 +683,12 @@ benchmarks_instance_pallet! {
 			let delegate: T::AccountId = account("delegate", i, SEED);
 			Nfts::<T, I>::approve_collection_transfer(
 				SystemOrigin::Signed(caller.clone()).into(),
-				collection,
+				collection.clone(),
 				T::Lookup::unlookup(delegate),
 				Some(BlockNumberFor::<T>::max_value()),
 			)?;
 		}
-	}: _(SystemOrigin::Root, caller_lookup, collection, n)
+	}: _(SystemOrigin::Root, caller_lookup, collection.clone(), n)
 	verify {
 		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller}.into());
 	}
@@ -697,7 +697,7 @@ benchmarks_instance_pallet! {
 		let caller: T::AccountId = whitelisted_caller();
 		T::Currency::make_free_balance_be(&caller, DepositBalanceOf::<T, I>::max_value());
 		let collection = T::Helper::collection(0);
-	}: _(SystemOrigin::Signed(caller.clone()), Some(collection))
+	}: _(SystemOrigin::Signed(caller.clone()), Some(collection.clone()))
 	verify {
 		assert_last_event::<T, I>(Event::OwnershipAcceptanceChanged {
 			who: caller,
@@ -707,7 +707,7 @@ benchmarks_instance_pallet! {
 
 	set_collection_max_supply {
 		let (collection, caller, _) = create_collection::<T, I>();
-	}: _(SystemOrigin::Signed(caller.clone()), collection, u32::MAX)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), u32::MAX)
 	verify {
 		assert_last_event::<T, I>(Event::CollectionMaxSupplySet {
 			collection,
@@ -724,7 +724,7 @@ benchmarks_instance_pallet! {
 			price: Some(ItemPrice::<T, I>::from(1u32)),
 			default_item_settings: ItemSettings::all_enabled(),
 		};
-	}: _(SystemOrigin::Signed(caller.clone()), collection, mint_settings)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), mint_settings)
 	verify {
 		assert_last_event::<T, I>(Event::CollectionMintSettingsUpdated { collection }.into());
 	}
@@ -735,7 +735,7 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let price = ItemPrice::<T, I>::from(100u32);
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, Some(price), Some(delegate_lookup))
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item, Some(price), Some(delegate_lookup))
 	verify {
 		assert_last_event::<T, I>(Event::ItemPriceSet {
 			collection,
@@ -752,9 +752,9 @@ benchmarks_instance_pallet! {
 		let buyer_lookup = T::Lookup::unlookup(buyer.clone());
 		let price = ItemPrice::<T, I>::from(0u32);
 		let origin = SystemOrigin::Signed(seller.clone()).into();
-		Nfts::<T, I>::set_price(origin, collection, item, Some(price), Some(buyer_lookup))?;
+		Nfts::<T, I>::set_price(origin, collection.clone(), item, Some(price), Some(buyer_lookup))?;
 		T::Currency::make_free_balance_be(&buyer, DepositBalanceOf::<T, I>::max_value());
-	}: _(SystemOrigin::Signed(buyer.clone()), collection, item, price)
+	}: _(SystemOrigin::Signed(buyer.clone()), collection.clone(), item, price)
 	verify {
 		assert_last_event::<T, I>(Event::ItemBought {
 			collection,
@@ -773,7 +773,7 @@ benchmarks_instance_pallet! {
 		let item = T::Helper::item(0);
 		let tips: BoundedVec<_, _> = vec![
 			ItemTip
-				{ collection, item, receiver: caller.clone(), amount }; n as usize
+				{ collection: collection.clone(), item, receiver: caller.clone(), amount }; n as usize
 		].try_into().unwrap();
 	}: _(SystemOrigin::Signed(caller.clone()), tips)
 	verify {
@@ -797,11 +797,11 @@ benchmarks_instance_pallet! {
 		let price_with_direction = PriceWithDirection { amount: price, direction: price_direction };
 		let duration = T::MaxDeadlineDuration::get();
 		frame_system::Pallet::<T>::set_block_number(One::one());
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item1, collection, Some(item2), Some(price_with_direction.clone()), duration)
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item1, collection.clone(), Some(item2), Some(price_with_direction.clone()), duration)
 	verify {
 		let current_block = frame_system::Pallet::<T>::block_number();
 		assert_last_event::<T, I>(Event::SwapCreated {
-			offered_collection: collection,
+			offered_collection: collection.clone(),
 			offered_item: item1,
 			desired_collection: collection,
 			desired_item: Some(item2),
@@ -820,11 +820,11 @@ benchmarks_instance_pallet! {
 		let price_direction = PriceDirection::Receive;
 		let price_with_direction = PriceWithDirection { amount: price, direction: price_direction };
 		frame_system::Pallet::<T>::set_block_number(One::one());
-		Nfts::<T, I>::create_swap(origin, collection, item1, collection, Some(item2), Some(price_with_direction.clone()), duration)?;
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item1)
+		Nfts::<T, I>::create_swap(origin, collection.clone(), item1, collection.clone(), Some(item2), Some(price_with_direction.clone()), duration)?;
+	}: _(SystemOrigin::Signed(caller.clone()), collection.clone(), item1)
 	verify {
 		assert_last_event::<T, I>(Event::SwapCancelled {
-			offered_collection: collection,
+			offered_collection: collection.clone(),
 			offered_item: item1,
 			desired_collection: collection,
 			desired_item: Some(item2),
@@ -846,21 +846,21 @@ benchmarks_instance_pallet! {
 		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance());
 		let origin = SystemOrigin::Signed(caller.clone());
 		frame_system::Pallet::<T>::set_block_number(One::one());
-		Nfts::<T, I>::transfer(origin.clone().into(), collection, item2, target_lookup)?;
+		Nfts::<T, I>::transfer(origin.clone().into(), collection.clone(), item2, target_lookup)?;
 		Nfts::<T, I>::create_swap(
 			origin.clone().into(),
-			collection,
+			collection.clone(),
 			item1,
-			collection,
+			collection.clone(),
 			Some(item2),
 			Some(price_with_direction.clone()),
 			duration,
 		)?;
-	}: _(SystemOrigin::Signed(target.clone()), collection, item2, collection, item1, Some(price_with_direction.clone()))
+	}: _(SystemOrigin::Signed(target.clone()), collection.clone(), item2, collection.clone(), item1, Some(price_with_direction.clone()))
 	verify {
 		let current_block = frame_system::Pallet::<T>::block_number();
 		assert_last_event::<T, I>(Event::SwapClaimed {
-			sent_collection: collection,
+			sent_collection: collection.clone(),
 			sent_item: item2,
 			sent_item_owner: target,
 			received_collection: collection,
@@ -893,7 +893,7 @@ benchmarks_instance_pallet! {
 			attributes.push((attribute_key, attribute_value.clone()));
 		}
 		let mint_data = PreSignedMint {
-			collection,
+			collection: collection.clone(),
 			item,
 			attributes,
 			metadata: metadata.clone(),
@@ -927,7 +927,7 @@ benchmarks_instance_pallet! {
 		let item = T::Helper::item(0);
 		assert_ok!(Nfts::<T, I>::force_mint(
 			SystemOrigin::Root.into(),
-			collection,
+			collection.clone(),
 			item,
 			item_owner_lookup.clone(),
 			default_item_config(),
@@ -940,7 +940,7 @@ benchmarks_instance_pallet! {
 			attributes.push((attribute_key, attribute_value.clone()));
 		}
 		let pre_signed_data = PreSignedAttributes {
-			collection,
+			collection: collection.clone(),
 			item,
 			attributes,
 			namespace: AttributeNamespace::Account(signer.clone()),
