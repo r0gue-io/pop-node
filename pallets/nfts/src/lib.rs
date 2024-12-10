@@ -151,7 +151,7 @@ pub mod pallet {
 		/// the `create_collection_with_id` function. However, if the `Incrementable` trait
 		/// implementation has an incremental order, the `create_collection_with_id` function
 		/// should not be used as it can claim a value in the ID sequence.
-		type CollectionId: Member + Parameter + MaxEncodedLen + Copy + Incrementable;
+		type CollectionId: Member + Parameter + MaxEncodedLen + Clone + Incrementable;
 
 		/// The type used to identify a unique item within a collection.
 		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
@@ -794,12 +794,12 @@ pub mod pallet {
 			);
 
 			Self::do_create_collection(
-				collection,
+				collection.clone(),
 				owner.clone(),
 				admin.clone(),
 				config,
 				T::CollectionDeposit::get(),
-				Event::Created { collection, creator: owner, owner: admin },
+				Event::Created { collection: collection.clone(), creator: owner, owner: admin },
 			)?;
 
 			Self::set_next_collection_id(collection);
@@ -836,12 +836,12 @@ pub mod pallet {
 				.ok_or(Error::<T, I>::UnknownCollection)?;
 
 			Self::do_create_collection(
-				collection,
+				collection.clone(),
 				owner.clone(),
 				owner.clone(),
 				config,
 				Zero::zero(),
-				Event::ForceCreated { collection, owner },
+				Event::ForceCreated { collection: collection.clone(), owner },
 			)?;
 
 			Self::set_next_collection_id(collection);
@@ -920,13 +920,13 @@ pub mod pallet {
 				ItemConfig { settings: Self::get_default_item_settings(&collection)? };
 
 			Self::do_mint(
-				collection,
+				collection.clone(),
 				item,
 				Some(caller.clone()),
 				mint_to.clone(),
 				item_config,
 				|collection_details, collection_config| {
-					let mint_settings = collection_config.mint_settings;
+					let mint_settings = collection_config.clone().mint_settings;
 					let now = frame_system::Pallet::<T>::block_number();
 
 					if let Some(start_block) = mint_settings.start_block {
@@ -1094,7 +1094,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
 
-			Self::do_transfer(collection, item, dest, |_, details| {
+			Self::do_transfer(collection.clone(), item, dest, |_, details| {
 				if details.owner != origin {
 					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
 				}
@@ -1128,11 +1128,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
-			let collection_details =
-				Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			let collection_details = Collection::<T, I>::get(collection.clone())
+				.ok_or(Error::<T, I>::UnknownCollection)?;
 			ensure!(collection_details.owner == origin, Error::<T, I>::NoPermission);
 
-			let config = Self::get_collection_config(&collection)?;
+			let config = Self::get_collection_config(&collection.clone())?;
 			let deposit = match config.is_setting_enabled(CollectionSetting::DepositRequired) {
 				true => T::ItemDeposit::get(),
 				false => Zero::zero(),
@@ -1140,7 +1140,7 @@ pub mod pallet {
 
 			let mut successful = Vec::with_capacity(items.len());
 			for item in items.into_iter() {
-				let mut details = match Item::<T, I>::get(collection, item) {
+				let mut details = match Item::<T, I>::get(collection.clone(), item) {
 					Some(x) => x,
 					None => continue,
 				};
@@ -1159,7 +1159,7 @@ pub mod pallet {
 					_ => continue,
 				}
 				details.deposit.amount = deposit;
-				Item::<T, I>::insert(collection, item, &details);
+				Item::<T, I>::insert(collection.clone(), item, &details);
 				successful.push(item);
 			}
 
@@ -1659,8 +1659,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			let depositor = match namespace {
-				AttributeNamespace::CollectionOwner =>
-					Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?,
+				AttributeNamespace::CollectionOwner => Self::collection_owner(collection.clone())
+					.ok_or(Error::<T, I>::UnknownCollection)?,
 				_ => origin.clone(),
 			};
 			Self::do_set_attribute(origin, collection, maybe_item, namespace, key, value, depositor)

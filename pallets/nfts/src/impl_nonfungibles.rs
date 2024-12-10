@@ -166,15 +166,19 @@ impl<T: Config<I>, I: 'static> Create<<T as SystemConfig>::AccountId, Collection
 			.ok_or(Error::<T, I>::UnknownCollection)?;
 
 		Self::do_create_collection(
-			collection,
+			collection.clone(),
 			who.clone(),
 			admin.clone(),
-			*config,
+			config.clone(),
 			T::CollectionDeposit::get(),
-			Event::Created { collection, creator: who.clone(), owner: admin.clone() },
+			Event::Created {
+				collection: collection.clone(),
+				creator: who.clone(),
+				owner: admin.clone(),
+			},
 		)?;
 
-		Self::set_next_collection_id(collection);
+		Self::set_next_collection_id(collection.clone());
 
 		Ok(collection)
 	}
@@ -199,12 +203,16 @@ impl<T: Config<I>, I: 'static> Create<<T as SystemConfig>::AccountId, Collection
 		);
 
 		Self::do_create_collection(
-			collection,
+			collection.clone(),
 			who.clone(),
 			admin.clone(),
-			*config,
+			config.clone(),
 			T::CollectionDeposit::get(),
-			Event::Created { collection, creator: who.clone(), owner: admin.clone() },
+			Event::Created {
+				collection: collection.clone(),
+				creator: who.clone(),
+				owner: admin.clone(),
+			},
 		)
 	}
 }
@@ -234,7 +242,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 		deposit_collection_owner: bool,
 	) -> DispatchResult {
 		Self::do_mint(
-			*collection,
+			collection.clone(),
 			*item,
 			match deposit_collection_owner {
 				true => None,
@@ -251,7 +259,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 		item: &Self::ItemId,
 		maybe_check_owner: Option<&T::AccountId>,
 	) -> DispatchResult {
-		Self::do_burn(*collection, *item, |d| {
+		Self::do_burn(collection.clone(), *item, |d| {
 			if let Some(check_owner) = maybe_check_owner {
 				if &d.owner != check_owner {
 					return Err(Error::<T, I>::NoPermission.into())
@@ -269,7 +277,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 	) -> DispatchResult {
 		Self::do_force_set_attribute(
 			None,
-			*collection,
+			collection.clone(),
 			Some(*item),
 			AttributeNamespace::Pallet,
 			Self::construct_attribute_key(key.to_vec())?,
@@ -297,7 +305,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 	) -> DispatchResult {
 		Self::do_force_set_attribute(
 			None,
-			*collection,
+			collection.clone(),
 			None,
 			AttributeNamespace::Pallet,
 			Self::construct_attribute_key(key.to_vec())?,
@@ -327,7 +335,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 	) -> DispatchResult {
 		Self::do_set_item_metadata(
 			who.cloned(),
-			*collection,
+			collection.clone(),
 			*item,
 			Self::construct_metadata(data.to_vec())?,
 			None,
@@ -341,7 +349,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 	) -> DispatchResult {
 		Self::do_set_collection_metadata(
 			who.cloned(),
-			*collection,
+			collection.clone(),
 			Self::construct_metadata(data.to_vec())?,
 		)
 	}
@@ -353,7 +361,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 	) -> DispatchResult {
 		Self::do_clear_attribute(
 			None,
-			*collection,
+			collection.clone(),
 			Some(*item),
 			AttributeNamespace::Pallet,
 			Self::construct_attribute_key(key.to_vec())?,
@@ -373,7 +381,7 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 	fn clear_collection_attribute(collection: &Self::CollectionId, key: &[u8]) -> DispatchResult {
 		Self::do_clear_attribute(
 			None,
-			*collection,
+			collection.clone(),
 			None,
 			AttributeNamespace::Pallet,
 			Self::construct_attribute_key(key.to_vec())?,
@@ -394,14 +402,14 @@ impl<T: Config<I>, I: 'static> Mutate<<T as SystemConfig>::AccountId, ItemConfig
 		collection: &Self::CollectionId,
 		item: &Self::ItemId,
 	) -> DispatchResult {
-		Self::do_clear_item_metadata(who.cloned(), *collection, *item)
+		Self::do_clear_item_metadata(who.cloned(), collection.clone(), *item)
 	}
 
 	fn clear_collection_metadata(
 		who: Option<&T::AccountId>,
 		collection: &Self::CollectionId,
 	) -> DispatchResult {
-		Self::do_clear_collection_metadata(who.cloned(), *collection)
+		Self::do_clear_collection_metadata(who.cloned(), collection.clone())
 	}
 }
 
@@ -411,7 +419,7 @@ impl<T: Config<I>, I: 'static> Transfer<T::AccountId> for Pallet<T, I> {
 		item: &Self::ItemId,
 		destination: &T::AccountId,
 	) -> DispatchResult {
-		Self::do_transfer(*collection, *item, destination.clone(), |_, _| Ok(()))
+		Self::do_transfer(collection.clone(), *item, destination.clone(), |_, _| Ok(()))
 	}
 
 	fn disable_transfer(collection: &Self::CollectionId, item: &Self::ItemId) -> DispatchResult {
@@ -446,7 +454,7 @@ impl<T: Config<I>, I: 'static> Trading<T::AccountId, ItemPrice<T, I>> for Pallet
 		buyer: &T::AccountId,
 		bid_price: &ItemPrice<T, I>,
 	) -> DispatchResult {
-		Self::do_buy_item(*collection, *item, buyer.clone(), *bid_price)
+		Self::do_buy_item(collection.clone(), *item, buyer.clone(), *bid_price)
 	}
 
 	fn set_price(
@@ -456,7 +464,7 @@ impl<T: Config<I>, I: 'static> Trading<T::AccountId, ItemPrice<T, I>> for Pallet
 		price: Option<ItemPrice<T, I>>,
 		whitelisted_buyer: Option<T::AccountId>,
 	) -> DispatchResult {
-		Self::do_set_price(*collection, *item, sender.clone(), price, whitelisted_buyer)
+		Self::do_set_price(collection.clone(), *item, sender.clone(), price, whitelisted_buyer)
 	}
 
 	fn item_price(collection: &Self::CollectionId, item: &Self::ItemId) -> Option<ItemPrice<T, I>> {

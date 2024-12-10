@@ -88,7 +88,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 	pub(crate) fn set_next_collection_id(collection: T::CollectionId) {
 		let next_id = collection.increment();
-		NextCollectionId::<T, I>::set(next_id);
+		NextCollectionId::<T, I>::set(next_id.clone());
 		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
 	}
 

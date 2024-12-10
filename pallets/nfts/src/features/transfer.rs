@@ -55,10 +55,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		// Retrieve collection details.
 		let collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(collection.clone()).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		// Ensure the item is not locked.
-		ensure!(!T::Locker::is_locked(collection, item), Error::<T, I>::ItemLocked);
+		ensure!(!T::Locker::is_locked(collection.clone(), item), Error::<T, I>::ItemLocked);
 
 		// Ensure the item is not transfer disabled on the system level attribute.
 		ensure!(
@@ -81,21 +81,22 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 
 		// Retrieve the item details.
-		let mut details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let mut details =
+			Item::<T, I>::get(collection.clone(), item).ok_or(Error::<T, I>::UnknownItem)?;
 
 		// Perform the transfer with custom details using the provided closure.
 		with_details(&collection_details, &mut details)?;
 
 		// Update account balance of the destination account.
-		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
+		AccountBalance::<T, I>::mutate(collection.clone(), &dest, |balance| {
 			balance.saturating_inc();
 		});
 		// Update account balance of the owner.
-		let balance = AccountBalance::<T, I>::take(collection, &details.owner)
+		let balance = AccountBalance::<T, I>::take(collection.clone(), &details.owner)
 			.checked_sub(1)
 			.ok_or(ArithmeticError::Underflow)?;
 		if balance > 0 {
-			AccountBalance::<T, I>::insert(collection, &details.owner, balance);
+			AccountBalance::<T, I>::insert(collection.clone(), &details.owner, balance);
 		}
 
 		// Update account ownership information.
@@ -110,9 +111,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		details.approvals.clear();
 
 		// Update item details.
-		Item::<T, I>::insert(collection, item, &details);
-		ItemPriceOf::<T, I>::remove(collection, item);
-		PendingSwapOf::<T, I>::remove(collection, item);
+		Item::<T, I>::insert(collection.clone(), item, &details);
+		ItemPriceOf::<T, I>::remove(collection.clone(), item);
+		PendingSwapOf::<T, I>::remove(collection.clone(), item);
 
 		// Emit `Transferred` event.
 		Self::deposit_event(Event::Transferred {
@@ -143,7 +144,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		ensure!(acceptable_collection.as_ref() == Some(&collection), Error::<T, I>::Unaccepted);
 
 		// Try to retrieve and mutate the collection details.
-		Collection::<T, I>::try_mutate(collection, |maybe_details| {
+		Collection::<T, I>::try_mutate(collection.clone(), |maybe_details| {
 			let details = maybe_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 			// Check if the `origin` is the current owner of the collection.
 			ensure!(origin == details.owner, Error::<T, I>::NoPermission);
@@ -160,8 +161,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			)?;
 
 			// Update account ownership information.
-			CollectionAccount::<T, I>::remove(&details.owner, collection);
-			CollectionAccount::<T, I>::insert(&new_owner, collection, ());
+			CollectionAccount::<T, I>::remove(&details.owner, collection.clone());
+			CollectionAccount::<T, I>::insert(&new_owner, collection.clone(), ());
 
 			details.owner = new_owner.clone();
 			OwnershipAcceptance::<T, I>::remove(&new_owner);
@@ -220,7 +221,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		owner: T::AccountId,
 	) -> DispatchResult {
 		// Try to retrieve and mutate the collection details.
-		Collection::<T, I>::try_mutate(collection, |maybe_details| {
+		Collection::<T, I>::try_mutate(collection.clone(), |maybe_details| {
 			let details = maybe_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 			if details.owner == owner {
 				return Ok(())
@@ -235,8 +236,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			)?;
 
 			// Update collection accounts and set the new owner.
-			CollectionAccount::<T, I>::remove(&details.owner, collection);
-			CollectionAccount::<T, I>::insert(&owner, collection, ());
+			CollectionAccount::<T, I>::remove(&details.owner, collection.clone());
+			CollectionAccount::<T, I>::insert(&owner, collection.clone(), ());
 			details.owner = owner.clone();
 
 			// Emit `OwnerChanged` event.
