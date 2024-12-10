@@ -44,7 +44,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		admin: Option<T::AccountId>,
 		freezer: Option<T::AccountId>,
 	) -> DispatchResult {
-		Collection::<T, I>::try_mutate(collection, |maybe_details| {
+		Collection::<T, I>::try_mutate(collection.clone(), |maybe_details| {
 			let details = maybe_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 			let is_root = maybe_check_owner.is_none();
 			if let Some(check_origin) = maybe_check_owner {
@@ -81,7 +81,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			// Insert new records.
 			for (account, roles) in account_to_role {
-				CollectionRoleOf::<T, I>::insert(collection, &account, roles);
+				CollectionRoleOf::<T, I>::insert(collection.clone(), &account, roles);
 			}
 
 			Self::deposit_event(Event::TeamChanged { collection, issuer, admin, freezer });
