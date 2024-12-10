@@ -296,7 +296,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
 		// Iterate and remove each collection approval, returning the deposit back to the `owner`.
-		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection.clone(), &owner)) {
+		for (_, (_, deposit)) in
+			CollectionApprovals::<T, I>::drain_prefix((collection.clone(), &owner))
+		{
 			deposits = deposits.saturating_add(deposit);
 			removed_approvals.saturating_inc();
 			if removed_approvals == limit {
