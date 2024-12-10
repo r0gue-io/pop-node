@@ -82,7 +82,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 
-		let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let details =
+			Item::<T, I>::get(collection.clone(), item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(details.owner == sender, Error::<T, I>::NoPermission);
 
 		let collection_config = Self::get_collection_config(&collection)?;
@@ -98,7 +99,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 
 		if let Some(ref price) = price {
-			ItemPriceOf::<T, I>::insert(collection, item, (price, whitelisted_buyer.clone()));
+			ItemPriceOf::<T, I>::insert(
+				collection.clone(),
+				item,
+				(price, whitelisted_buyer.clone()),
+			);
 			Self::deposit_event(Event::ItemPriceSet {
 				collection,
 				item,
@@ -106,7 +111,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				whitelisted_buyer,
 			});
 		} else {
-			ItemPriceOf::<T, I>::remove(collection, item);
+			ItemPriceOf::<T, I>::remove(collection.clone(), item);
 			Self::deposit_event(Event::ItemPriceRemoved { collection, item });
 		}
 
@@ -137,11 +142,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 
-		let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let details =
+			Item::<T, I>::get(collection.clone(), item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(details.owner != buyer, Error::<T, I>::NoPermission);
 
 		let price_info =
-			ItemPriceOf::<T, I>::get(collection, item).ok_or(Error::<T, I>::NotForSale)?;
+			ItemPriceOf::<T, I>::get(collection.clone(), item).ok_or(Error::<T, I>::NotForSale)?;
 
 		ensure!(bid_price >= price_info.0, Error::<T, I>::BidTooLow);
 
@@ -158,7 +164,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		let old_owner = details.owner.clone();
 
-		Self::do_transfer(collection, item, buyer.clone(), |_, _| Ok(()))?;
+		Self::do_transfer(collection.clone(), item, buyer.clone(), |_, _| Ok(()))?;
 
 		Self::deposit_event(Event::ItemBought {
 			collection,
