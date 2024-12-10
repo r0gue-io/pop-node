@@ -164,6 +164,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		if let Some(check_origin) = maybe_check_origin {
+			// Cannot revoke approvals for individual items when there are existing approvals to
+			// transfer all items in the collection owned by the origin.
 			ensure!(
 				CollectionApprovals::<T, I>::iter_prefix((collection, &check_origin))
 					.take(1)

@@ -247,7 +247,7 @@ fn lifecycle_should_work() {
 			account(20),
 			default_item_config()
 		));
-		assert_eq!(AccountBalance::<Test>::get(0, account(20)), 1);
+		assert_eq!(AccountBalance::<Test>::get(collection_id, account(20)), 1);
 		assert_eq!(Balances::reserved_balance(&owner), 7);
 		assert_ok!(Nfts::mint(
 			RuntimeOrigin::signed(owner.clone()),
@@ -2438,7 +2438,7 @@ fn approve_collection_transfer_works() {
 			Nfts::approve_collection_transfer(
 				RuntimeOrigin::signed(item_owner.clone()),
 				locked_collection,
-				account(3),
+				delegate.clone(),
 				None
 			),
 			Error::<Test>::ItemsNonTransferable
@@ -2477,7 +2477,7 @@ fn approve_collection_transfer_works() {
 			delegate.clone(),
 			Some(deadline)
 		));
-		assert_eq!(Balances::reserved_balance(&account(2)), 1);
+		assert_eq!(Balances::reserved_balance(&item_owner), 1);
 		let now = System::block_number();
 		assert!(events().contains(&Event::<Test>::TransferApproved {
 			collection: 0,
@@ -2564,7 +2564,7 @@ fn force_approve_collection_transfer_works() {
 				RuntimeOrigin::root(),
 				item_owner.clone(),
 				locked_collection,
-				account(3),
+				delegate.clone(),
 				None
 			),
 			Error::<Test>::ItemsNonTransferable
@@ -2606,7 +2606,7 @@ fn force_approve_collection_transfer_works() {
 			delegate.clone(),
 			Some(deadline)
 		));
-		assert_eq!(Balances::reserved_balance(&account(2)), 1);
+		assert_eq!(Balances::reserved_balance(&item_owner), 1);
 		let now = System::block_number();
 		assert!(events().contains(&Event::<Test>::TransferApproved {
 			collection: 0,
@@ -2928,7 +2928,10 @@ fn clear_collection_approvals_works() {
 			0
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
-		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 2);
+		assert_eq!(
+			CollectionApprovals::<Test>::iter_prefix((collection_id, owner.clone())).count(),
+			2
+		);
 		assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
 			item: None,
@@ -2942,7 +2945,10 @@ fn clear_collection_approvals_works() {
 			1
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 1);
-		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 1);
+		assert_eq!(
+			CollectionApprovals::<Test>::iter_prefix((collection_id, owner.clone())).count(),
+			1
+		);
 
 		// Successfully remove all collection approvals.
 		assert_ok!(Nfts::clear_collection_approvals(
@@ -2956,7 +2962,9 @@ fn clear_collection_approvals_works() {
 			owner: owner.clone(),
 		}));
 		assert_eq!(Balances::free_balance(&owner), balance);
-		assert!(CollectionApprovals::<Test>::iter_prefix((0, owner)).count().is_zero());
+		assert!(CollectionApprovals::<Test>::iter_prefix((collection_id, owner))
+			.count()
+			.is_zero());
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(delegate_1), collection_id, item_id, account(5)),
@@ -3013,7 +3021,10 @@ fn force_clear_collection_approvals_work() {
 			0
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 2);
-		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 2);
+		assert_eq!(
+			CollectionApprovals::<Test>::iter_prefix((collection_id, owner.clone())).count(),
+			2
+		);
 		assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
 			item: None,
@@ -3028,7 +3039,10 @@ fn force_clear_collection_approvals_work() {
 			1
 		));
 		assert_eq!(Balances::free_balance(&owner), balance - 1);
-		assert_eq!(CollectionApprovals::<Test>::iter_prefix((0, owner.clone())).count(), 1);
+		assert_eq!(
+			CollectionApprovals::<Test>::iter_prefix((collection_id, owner.clone())).count(),
+			1
+		);
 
 		// Successfully remove all collection approvals.
 		assert_ok!(Nfts::force_clear_collection_approvals(
@@ -3043,7 +3057,9 @@ fn force_clear_collection_approvals_work() {
 			owner: owner.clone(),
 		}));
 		assert_eq!(Balances::free_balance(&owner), balance);
-		assert!(CollectionApprovals::<Test>::iter_prefix((0, owner)).count().is_zero());
+		assert!(CollectionApprovals::<Test>::iter_prefix((collection_id, owner))
+			.count()
+			.is_zero());
 
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(delegate_1), collection_id, item_id, account(5)),
