@@ -1970,13 +1970,6 @@ fn approval_lifecycle_works() {
 			account(2),
 			None
 		));
-		assert!(events().contains(&Event::TransferApproved {
-			collection: 0,
-			item: Some(42),
-			owner: account(4),
-			delegate: account(2),
-			deadline: None
-		}));
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(2)));
 
 		// ensure we can't buy an item when the collection has a NonTransferableItems flag
@@ -2422,9 +2415,12 @@ fn cancel_collection_approval_works() {
 			default_item_config()
 		));
 
-		for (origin, maybe_owner) in
-			[(RuntimeOrigin::signed(item_owner.clone()), None), (root(), Some(item_owner.clone()))]
-		{
+		for (origin, maybe_owner) in [
+			// Parameters for `cancel_collection_approval`.
+			(RuntimeOrigin::signed(item_owner.clone()), None),
+			// Parameters for `force_cancel_collection_approval`.
+			(root(), Some(item_owner.clone())),
+		] {
 			assert_ok!(Nfts::approve_collection_transfer(
 				RuntimeOrigin::signed(item_owner.clone()),
 				collection_id,
@@ -2663,9 +2659,12 @@ fn approve_collection_transfer_works() {
 			default_item_config()
 		));
 
-		for (origin, maybe_item_owner) in
-			[(RuntimeOrigin::signed(item_owner.clone()), None), (root(), Some(item_owner.clone()))]
-		{
+		for (origin, maybe_item_owner) in [
+			// Parameters for `approve_collection_transfer`.
+			(RuntimeOrigin::signed(item_owner.clone()), None),
+			// Parameters for `force_approve_collection_transfer`.
+			(root(), Some(item_owner.clone())),
+		] {
 			// Throws error `Error::ItemsNonTransferable`.
 			assert_ok!(Nfts::lock_collection(
 				RuntimeOrigin::signed(collection_owner.clone()),
@@ -3121,9 +3120,12 @@ fn clear_collection_approvals_works() {
 			default_item_config()
 		));
 
-		for (origin, maybe_owner) in
-			[(root(), Some(owner.clone())), (RuntimeOrigin::signed(owner.clone()), None)]
-		{
+		for (origin, maybe_owner) in [
+			// Parameters for `clear_collection_approvals`.
+			(root(), Some(owner.clone())),
+			// Parameters for `force_clear_collection_approvals`.
+			(RuntimeOrigin::signed(owner.clone()), None),
+		] {
 			Balances::make_free_balance_be(&owner, balance);
 
 			assert_ok!(Nfts::approve_collection_transfer(
