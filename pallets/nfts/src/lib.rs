@@ -750,8 +750,8 @@ pub mod pallet {
 		fn integrity_test() {
 			use core::any::TypeId;
 			assert!(
-				TypeId::of::<<T as Config<I>>::ItemId>() != TypeId::of::<u64>() &&
-					TypeId::of::<<T as Config<I>>::ItemId>() != TypeId::of::<u128>()
+				TypeId::of::<<T as Config<I>>::ItemId>() != TypeId::of::<u64>()
+					&& TypeId::of::<<T as Config<I>>::ItemId>() != TypeId::of::<u128>()
 			);
 		}
 	}
@@ -1153,7 +1153,7 @@ pub mod pallet {
 						if T::Currency::reserve(&details.deposit.account, deposit - old).is_err() {
 							// NOTE: No alterations made to collection_details in this iteration so
 							// far, so this is OK to do.
-							continue
+							continue;
 						}
 					},
 					_ => continue,
@@ -1406,7 +1406,7 @@ pub mod pallet {
 		///
 		/// Origin must be the `ForceOrigin`.
 		///
-		/// - `owner`: The owner of the approvals granted by the `origin`.
+		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the `owner`.
@@ -1488,7 +1488,7 @@ pub mod pallet {
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
-		/// - `owner`: The owner of the approval to be cancelled by the `origin`.
+		/// - `owner`: The owner of the approval to be force-cancelled by the `origin`.
 		/// - `collection`: The collection of whose approval will be cancelled.
 		/// - `delegate`: The account that is going to lose their approval.
 		///
@@ -1565,7 +1565,7 @@ pub mod pallet {
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
-		/// - `owner`: The owner of the approvals to be cleared by the `origin`.
+		/// - `owner`: The owner of the approvals to be force-cancelled by the `origin`.
 		/// - `collection`: The collection whose approvals will be cleared.
 		/// - `limit`: The amount of collection approvals that will be cleared.
 		///
@@ -1659,8 +1659,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			let depositor = match namespace {
-				AttributeNamespace::CollectionOwner =>
-					Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?,
+				AttributeNamespace::CollectionOwner => {
+					Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?
+				},
 				_ => origin.clone(),
 			};
 			Self::do_set_attribute(origin, collection, maybe_item, namespace, key, value, depositor)
