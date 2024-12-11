@@ -56,9 +56,12 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use core::cmp::Ordering;
 
 use codec::{Decode, Encode};
-use frame_support::traits::{
-	tokens::Locker, BalanceStatus::Reserved, Currency, EnsureOriginWithArg, Incrementable,
-	ReservableCurrency,
+use frame_support::{
+	dispatch::WithPostDispatchInfo,
+	traits::{
+		tokens::Locker, BalanceStatus::Reserved, Currency, EnsureOriginWithArg, Incrementable,
+		ReservableCurrency,
+	},
 };
 use frame_system::Config as SystemConfig;
 pub use pallet::*;
@@ -1403,7 +1406,7 @@ pub mod pallet {
 		///
 		/// Origin must be the `ForceOrigin`.
 		///
-		/// - `owner`: The account granting approval for delegated transfer.
+		/// - `owner`: The owner of the approvals granted by the `origin`.
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the `owner`.
@@ -1485,7 +1488,7 @@ pub mod pallet {
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
-		/// - `owner`: The account cancelling approval for delegated transfer.
+		/// - `owner`: The owner of the approval to be cancelled by the `origin`.
 		/// - `collection`: The collection of whose approval will be cancelled.
 		/// - `delegate`: The account that is going to lose their approval.
 		///
@@ -1549,10 +1552,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
 			limit: u32,
-		) -> DispatchResult {
-			let origin = ensure_signed(origin)?;
-			Self::do_clear_collection_approvals(origin, collection, limit)?;
-			Ok(())
+		) -> DispatchResultWithPostInfo {
+			let origin = ensure_signed(origin)
+				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
+			let removed_approvals = Self::do_clear_collection_approvals(origin, collection, limit)?;
+			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
 		}
 
 		/// Force-cancel all collection approvals granted by `owner` account, up to a specified
@@ -1561,7 +1565,7 @@ pub mod pallet {
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
-		/// - `owner`: The account clearing all collection approvals.
+		/// - `owner`: The owner of the approvals to be cleared by the `origin`.
 		/// - `collection`: The collection whose approvals will be cleared.
 		/// - `limit`: The amount of collection approvals that will be cleared.
 		///
@@ -1575,11 +1579,12 @@ pub mod pallet {
 			owner: AccountIdLookupOf<T>,
 			collection: T::CollectionId,
 			limit: u32,
-		) -> DispatchResult {
-			T::ForceOrigin::ensure_origin(origin)?;
+		) -> DispatchResultWithPostInfo {
+			T::ForceOrigin::ensure_origin(origin)
+				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
 			let owner = T::Lookup::lookup(owner)?;
-			Self::do_clear_collection_approvals(owner, collection, limit)?;
-			Ok(())
+			let removed_approvals = Self::do_clear_collection_approvals(owner, collection, limit)?;
+			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
 		}
 
 		/// Disallows changing the metadata or attributes of the item.

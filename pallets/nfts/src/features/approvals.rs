@@ -289,9 +289,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		owner: T::AccountId,
 		collection: T::CollectionId,
 		limit: u32,
-	) -> DispatchResult {
+	) -> Result<u32, DispatchError> {
 		if limit == 0 {
-			return Ok(());
+			return Ok(0);
 		}
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
@@ -306,7 +306,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		T::Currency::unreserve(&owner, deposits);
 		Self::deposit_event(Event::ApprovalsCancelled { collection, item: None, owner });
-		Ok(())
+		Ok(removed_approvals)
 	}
 
 	/// Checks whether the `delegate` is approved to transfer collection items of `owner`.

@@ -72,7 +72,7 @@ The NFTs pallet in Substrate is designed to make the following possible:
 * `lock_item_transfer`: Prevent an individual item from being transferred.
 * `unlock_item_transfer`: Revert the effects of a previous `lock_item_transfer`.
 * `clear_all_transfer_approvals`: Clears all transfer approvals set by calling the `approve_transfer`.
-* `clear_all_collection_approvals`: Clears all collection approvals set by calling the `approve_collection_transfer`.
+* `clear_collection_approvals`: Clears collection approvals set by calling the `approve_collection_transfer`.
 * `lock_collection`: Prevent all items within a collection from being transferred (making them all `soul bound`).
 * `lock_item_properties`: Lock item's metadata or attributes.
 * `transfer_ownership`: Alter the owner of a collection, moving all associated deposits. (Ownership of individual items
