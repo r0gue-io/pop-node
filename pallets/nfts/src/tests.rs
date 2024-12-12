@@ -2651,6 +2651,9 @@ fn approve_collection_transfer_works() {
 				default_item_config()
 			));
 
+			// Approving a collection with no deadline (`None`) and a deadline. The repetition is to
+			// demonstrate all cases possible (e.g. approving a delegate with no deadline to with a
+			// deadline).
 			for deadline in [None, None, Some(deadline), Some(deadline * 2), Some(deadline), None] {
 				// Approve same delegate with no deadline.
 				assert_ok!(approve_collection_transfer(
