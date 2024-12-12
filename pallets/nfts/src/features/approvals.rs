@@ -304,8 +304,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			}
 		}
 
-		T::Currency::unreserve(&owner, deposits);
-		Self::deposit_event(Event::ApprovalsCancelled { collection, item: None, owner });
+		if removed_approvals > 0 {
+			T::Currency::unreserve(&owner, deposits);
+			Self::deposit_event(Event::ApprovalsCancelled { collection, item: None, owner });
+		}
 		Ok(removed_approvals)
 	}
 

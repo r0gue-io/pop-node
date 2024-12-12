@@ -2004,7 +2004,7 @@ fn approval_lifecycle_works() {
 }
 
 #[test]
-fn check_approval_works_without_deadline_works() {
+fn check_approval_without_deadline_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let collection_owner = account(1);
@@ -2622,6 +2622,18 @@ fn approve_collection_transfer_works() {
 			Error::<Test>::NoItemOwned
 		);
 
+		// Force-approve unknown collection, throws error `Error::NoItemOwned`.
+		assert_noop!(
+			Nfts::force_approve_collection_transfer(
+				RuntimeOrigin::root(),
+				item_owner.clone(),
+				collection_id,
+				delegate.clone(),
+				None
+			),
+			Error::<Test>::NoItemOwned
+		);
+
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			collection_owner.clone(),
@@ -2637,6 +2649,18 @@ fn approve_collection_transfer_works() {
 		assert_noop!(
 			Nfts::approve_collection_transfer(
 				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone(),
+				None
+			),
+			Error::<Test>::NoItemOwned
+		);
+
+		// Force-approve collection without items, throws error `Error::NoItemOwned`.
+		assert_noop!(
+			Nfts::force_approve_collection_transfer(
+				RuntimeOrigin::root(),
+				item_owner.clone(),
 				collection_id,
 				delegate.clone(),
 				None
@@ -2680,18 +2704,6 @@ fn approve_collection_transfer_works() {
 					None
 				),
 				Error::<Test>::ItemsNonTransferable
-			);
-
-			// Approve unknown collection, throws error `Error::NoItemOwned`.
-			assert_noop!(
-				approve_collection_transfer(
-					origin.clone(),
-					maybe_item_owner.clone(),
-					2,
-					delegate.clone(),
-					None
-				),
-				Error::<Test>::NoItemOwned
 			);
 
 			assert_ok!(approve_collection_transfer(
@@ -3182,6 +3194,17 @@ fn clear_collection_approvals_works() {
 			assert!(CollectionApprovals::<Test>::iter_prefix((collection_id, owner.clone()))
 				.count()
 				.is_zero());
+
+			// Emitting no event if zero approvals removed.
+			assert_eq!(
+				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 10),
+				Ok(Some(WeightOf::<Test>::clear_collection_approvals(0)).into())
+			);
+			assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
+				collection: collection_id,
+				item: None,
+				owner: owner.clone(),
+			}));
 
 			assert_noop!(
 				Nfts::transfer(

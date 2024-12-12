@@ -657,7 +657,7 @@ benchmarks_instance_pallet! {
 	}
 
 	clear_collection_approvals {
-		let n in 1 .. T::ApprovalsLimit::get();
+		let n in 1 .. 1_000;
 		let (collection, caller, _) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
 		for i in 0 .. n {
@@ -675,7 +675,7 @@ benchmarks_instance_pallet! {
 	}
 
 	force_clear_collection_approvals {
-		let n in 1 .. T::ApprovalsLimit::get();
+		let n in 1 .. 1_000;
 		let (collection, caller, _) = create_collection::<T, I>();
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
 		mint_item::<T, I>(0);
