@@ -39,10 +39,10 @@ use sp_runtime::{
 
 use crate::{mock::*, Event, SystemConfig, *};
 
-type CollectionId = <Test as Config>::CollectionId;
-type CollectionApprovalDeposit = <Test as Config>::CollectionApprovalDeposit;
-type CollectionApprovals = crate::CollectionApprovals<Test>;
 type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
+type CollectionApprovals = crate::CollectionApprovals<Test>;
+type CollectionApprovalDeposit = <Test as Config>::CollectionApprovalDeposit;
+type CollectionId = <Test as Config>::CollectionId;
 type WeightOf = <Test as Config>::WeightInfo;
 
 fn account(id: u8) -> AccountIdOf<Test> {
