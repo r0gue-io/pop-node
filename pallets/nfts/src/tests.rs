@@ -39,9 +39,9 @@ use sp_runtime::{
 
 use crate::{mock::*, Event, SystemConfig, *};
 
-type CollectionId = <Test as crate::Config>::CollectionId;
+type CollectionId = <Test as Config>::CollectionId;
 type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
-type WeightOf<Test> = <Test as crate::Config>::WeightInfo;
+type WeightOf<Test> = <Test as Config>::WeightInfo;
 
 fn account(id: u8) -> AccountIdOf<Test> {
 	[id; 32].into()
