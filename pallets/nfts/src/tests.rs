@@ -2013,10 +2013,6 @@ fn check_approval_without_deadline_works() {
 		let item_owner = account(2);
 
 		Balances::make_free_balance_be(&item_owner, 100);
-		// TODO: we should return a clear error for smart contracts.
-		// assert_noop!(Nfts::check_collection_approval(&collection_id, &None, &delegate),
-		// Error::<Test>::UnknownCollection); assert_noop!(Nfts::check_collection_approval(&
-		// collection_id, &Some(item_owner), &delegate), Error::<Test>::UnknownCollection);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			collection_owner.clone(),
