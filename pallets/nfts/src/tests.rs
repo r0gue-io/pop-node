@@ -171,7 +171,8 @@ fn clear_collection_approvals(
 	limit: u32,
 ) -> DispatchResultWithPostInfo {
 	match maybe_owner {
-		Some(owner) => Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit),
+		Some(owner) =>
+			Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit),
 		None => Nfts::clear_collection_approvals(origin, collection, limit),
 	}
 }
@@ -191,7 +192,8 @@ fn approve_collection_transfer(
 			delegate.clone(),
 			maybe_deadline,
 		),
-		None => Nfts::approve_collection_transfer(origin, collection, delegate.clone(), maybe_deadline),
+		None =>
+			Nfts::approve_collection_transfer(origin, collection, delegate.clone(), maybe_deadline),
 	}
 }
 
@@ -202,7 +204,12 @@ fn cancel_collection_approval(
 	delegate: &AccountId,
 ) -> DispatchResult {
 	match maybe_owner {
-		Some(owner) => Nfts::force_cancel_collection_approval(origin, owner.clone(), collection, delegate.clone()),
+		Some(owner) => Nfts::force_cancel_collection_approval(
+			origin,
+			owner.clone(),
+			collection,
+			delegate.clone(),
+		),
 		None => Nfts::cancel_collection_approval(origin, collection, delegate.clone()),
 	}
 }
@@ -2427,12 +2434,7 @@ fn cancel_collection_approval_works() {
 			));
 			// Cancel an approval for a non existing collection.
 			assert_noop!(
-				cancel_collection_approval(
-					origin.clone(),
-					maybe_owner,
-					1,
-					&delegate
-				),
+				cancel_collection_approval(origin.clone(), maybe_owner, 1, &delegate),
 				Error::<Test>::Unapproved
 			);
 			// Cancel an unapproved delegate.
@@ -2455,12 +2457,15 @@ fn cancel_collection_approval_works() {
 			));
 			assert_eq!(Balances::reserved_balance(&item_owner), 0);
 			assert!(!CollectionApprovals::contains_key((collection_id, &item_owner, &delegate)));
-			System::assert_last_event(Event::<Test>::ApprovalCancelled {
-				collection: collection_id,
-				item: None,
-				owner: item_owner.clone(),
-				delegate: delegate.clone()
-			}.into());
+			System::assert_last_event(
+				Event::<Test>::ApprovalCancelled {
+					collection: collection_id,
+					item: None,
+					owner: item_owner.clone(),
+					delegate: delegate.clone(),
+				}
+				.into(),
+			);
 		}
 	});
 }
@@ -2656,19 +2661,25 @@ fn approve_collection_transfer_works() {
 					deadline,
 				));
 				let deadline = deadline.map(|d| d + 1);
-				System::assert_last_event(Event::<Test>::TransferApproved {
-					collection: collection_id,
-					item: None,
-					owner: item_owner.clone(),
-					delegate: delegate.clone(),
-					deadline,
-				}.into());
+				System::assert_last_event(
+					Event::<Test>::TransferApproved {
+						collection: collection_id,
+						item: None,
+						owner: item_owner.clone(),
+						delegate: delegate.clone(),
+						deadline,
+					}
+					.into(),
+				);
 				assert_eq!(Balances::reserved_balance(&item_owner), 1);
-				assert_eq!(CollectionApprovals::get((collection_id, &item_owner, &delegate)), Some((deadline, CollectionApprovalDeposit::get())));
-
+				assert_eq!(
+					CollectionApprovals::get((collection_id, &item_owner, &delegate)),
+					Some((deadline, CollectionApprovalDeposit::get()))
+				);
 			}
 
-			// Set collection settings to non transferable, throws error `Error::ItemsNonTransferable`.
+			// Set collection settings to non transferable, throws error
+			// `Error::ItemsNonTransferable`.
 			assert_ok!(Nfts::lock_collection(
 				RuntimeOrigin::signed(collection_owner.clone()),
 				collection_id,
@@ -3066,7 +3077,12 @@ fn clear_collection_approvals_works() {
 		// Origin checks for the `force_clear_collection_approvals`.
 		for origin in [RuntimeOrigin::signed(item_owner.clone()), none()] {
 			assert_noop!(
-				Nfts::force_clear_collection_approvals(origin, item_owner.clone(), collection_id, 0),
+				Nfts::force_clear_collection_approvals(
+					origin,
+					item_owner.clone(),
+					collection_id,
+					0
+				),
 				BadOrigin.with_weight(WeightOf::clear_collection_approvals(0))
 			);
 		}
@@ -3091,7 +3107,6 @@ fn clear_collection_approvals_works() {
 			// Parameters for `force_clear_collection_approvals`.
 			(RuntimeOrigin::signed(item_owner.clone()), None),
 		] {
-
 			// Approve 10 accounts.
 			let mut approvals = 0u64;
 			for i in 10..20 {
