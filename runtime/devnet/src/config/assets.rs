@@ -6,7 +6,7 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
-use sp_runtime::traits::Verify;
+use sp_runtime::traits::{Get, Verify};
 
 use crate::{
 	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
@@ -39,7 +39,18 @@ parameter_types! {
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
 
-impl pallet_nfts::Config for Runtime {
+#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+pub struct KeyLimit<const N: u32>;
+impl<const N: u32> Get<u32> for KeyLimit<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+pub(crate) type TrustBackedNftsInstance = pallet_nfts::Instance1;
+pub type TrustBackedNftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
+impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
@@ -59,7 +70,7 @@ impl pallet_nfts::Config for Runtime {
 	// TODO: source from primitives
 	type ItemId = ItemId;
 	// TODO: source from primitives
-	type KeyLimit = ConstU32<64>;
+	type KeyLimit = KeyLimit<64>;
 	type Locker = ();
 	type MaxAttributesPerCall = ConstU32<10>;
 	type MaxDeadlineDuration = NftsMaxDeadlineDuration;
@@ -89,8 +100,8 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type Deposit = AssetDeposit;
 	type NewAssetName = NewAssetName;
 	type NewAssetSymbol = NewAssetSymbol;
-	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
-	type NftId = <Self as pallet_nfts::Config>::ItemId;
+	type NftCollectionId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::CollectionId;
+	type NftId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::ItemId;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
 	type RuntimeEvent = RuntimeEvent;
