@@ -669,7 +669,8 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Signed(caller.clone()), collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone()}.into());
+		assert!(CollectionApprovals::<T, I>::iter_prefix((collection, caller,)).take(1).next().is_none());
 	}
 
 	force_clear_collection_approvals {
@@ -687,7 +688,8 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Root, caller_lookup, collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone()}.into());
+		assert!(CollectionApprovals::<T, I>::iter_prefix((collection, caller,)).take(1).next().is_none());
 	}
 
 	set_accept_ownership {
