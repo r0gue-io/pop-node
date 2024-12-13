@@ -2651,11 +2651,25 @@ fn approve_collection_transfer_works() {
 				default_item_config()
 			));
 
-			// Approving a collection with no deadline (`None`) and a deadline. The repetition is to
-			// demonstrate all cases possible (e.g. approving a delegate with no deadline to with a
-			// deadline).
-			for deadline in [None, None, Some(deadline), Some(deadline * 2), Some(deadline), None] {
-				// Approve same delegate with no deadline.
+			// Approving a collection to a delegate with:
+			// 1. no deadline.
+			// 2. no deadline, again.
+			// 3. deadline.
+			// 3. equal deadline.
+			// 4. larger deadline.
+			// 5. smaller deadline.
+			// 6. no deadline, again.
+			//
+			// This tests all cases of approving the same delegate.
+			for deadline in [
+				None,
+				None,
+				Some(deadline),
+				Some(deadline),
+				Some(deadline * 2),
+				Some(deadline),
+				None,
+			] {
 				assert_ok!(approve_collection_transfer(
 					origin.clone(),
 					maybe_item_owner,
@@ -3069,6 +3083,7 @@ fn clear_collection_approvals_works() {
 		let collection_id = 0;
 		let item_id = 42;
 		let item_owner = account(1);
+		let delegates = 10..20;
 
 		// Origin checks for the `clear_collection_approvals`.
 		for origin in [root(), none()] {
@@ -3110,9 +3125,9 @@ fn clear_collection_approvals_works() {
 			// Parameters for `force_clear_collection_approvals`.
 			(RuntimeOrigin::signed(item_owner.clone()), None),
 		] {
-			// Approve 10 accounts.
+			// Approve delegates.
 			let mut approvals = 0u64;
-			for i in 10..20 {
+			for i in delegates.clone() {
 				assert_ok!(Nfts::approve_collection_transfer(
 					RuntimeOrigin::signed(item_owner.clone()),
 					collection_id,
@@ -3122,7 +3137,7 @@ fn clear_collection_approvals_works() {
 				approvals.saturating_inc();
 			}
 
-			// Removes zero collection approval.
+			// Remove zero collection approvals.
 			assert_eq!(
 				clear_collection_approvals(origin.clone(), maybe_owner, collection_id, 0),
 				Ok(Some(WeightOf::clear_collection_approvals(0)).into())
@@ -3138,7 +3153,7 @@ fn clear_collection_approvals_works() {
 				owner: item_owner.clone(),
 			}));
 
-			// Partially removes collection approvals.
+			// Partially remove collection approvals.
 			assert_eq!(
 				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 1),
 				Ok(Some(WeightOf::clear_collection_approvals(1)).into())
@@ -3169,6 +3184,18 @@ fn clear_collection_approvals_works() {
 				item: None,
 				owner: item_owner.clone(),
 			}));
+			// Ensure delegates are not able to transfer.
+			for i in delegates.clone() {
+				assert_noop!(
+					Nfts::transfer(
+						RuntimeOrigin::signed(account(i)),
+						collection_id,
+						item_id,
+						account(5)
+					),
+					Error::<Test>::NoPermission
+				);
+			}
 		}
 	});
 }
