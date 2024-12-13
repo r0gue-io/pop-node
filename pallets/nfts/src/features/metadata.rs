@@ -58,7 +58,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		let is_root = maybe_check_origin.is_none();
 		let mut collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let item_config = Self::get_item_config(&collection, &item)?;
 		ensure!(
@@ -68,7 +68,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		let collection_config = Self::get_collection_config(&collection)?;
 
-		ItemMetadataOf::<T, I>::try_mutate_exists(collection, item, |metadata| {
+		ItemMetadataOf::<T, I>::try_mutate_exists(collection.clone(), item, |metadata| {
 			if metadata.is_none() {
 				collection_details.item_metadatas.saturating_inc();
 			}
@@ -107,7 +107,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				data: data.clone(),
 			});
 
-			Collection::<T, I>::insert(collection, &collection_details);
+			Collection::<T, I>::insert(&collection, &collection_details);
 			Self::deposit_event(Event::ItemMetadataSet { collection, item, data });
 			Ok(())
 		})
@@ -139,10 +139,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		let is_root = maybe_check_origin.is_none();
-		let metadata = ItemMetadataOf::<T, I>::take(collection, item)
+		let metadata = ItemMetadataOf::<T, I>::take(&collection, item)
 			.ok_or(Error::<T, I>::MetadataNotFound)?;
 		let mut collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		let depositor_account =
 			metadata.deposit.account.unwrap_or(collection_details.owner.clone());
@@ -160,7 +160,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			collection_details.owner_deposit.saturating_reduce(metadata.deposit.amount);
 		}
 
-		Collection::<T, I>::insert(collection, &collection_details);
+		Collection::<T, I>::insert(&collection, &collection_details);
 		Self::deposit_event(Event::ItemMetadataCleared { collection, item });
 
 		Ok(())
@@ -199,9 +199,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 
 		let mut details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
-		CollectionMetadataOf::<T, I>::try_mutate_exists(collection, |metadata| {
+		CollectionMetadataOf::<T, I>::try_mutate_exists(collection.clone(), |metadata| {
 			let old_deposit = metadata.take().map_or(Zero::zero(), |m| m.deposit);
 			details.owner_deposit.saturating_reduce(old_deposit);
 			let mut deposit = Zero::zero();
@@ -222,7 +222,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			}
 			details.owner_deposit.saturating_accrue(deposit);
 
-			Collection::<T, I>::insert(collection, details);
+			Collection::<T, I>::insert(&collection, details);
 
 			*metadata = Some(CollectionMetadata { deposit, data: data.clone() });
 
@@ -256,7 +256,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		let mut details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 		let collection_config = Self::get_collection_config(&collection)?;
 
 		ensure!(
@@ -265,11 +265,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::LockedCollectionMetadata
 		);
 
-		CollectionMetadataOf::<T, I>::try_mutate_exists(collection, |metadata| {
+		CollectionMetadataOf::<T, I>::try_mutate_exists(collection.clone(), |metadata| {
 			let deposit = metadata.take().ok_or(Error::<T, I>::UnknownCollection)?.deposit;
 			T::Currency::unreserve(&details.owner, deposit);
 			details.owner_deposit.saturating_reduce(deposit);
-			Collection::<T, I>::insert(collection, details);
+			Collection::<T, I>::insert(&collection, details);
 			Self::deposit_event(Event::CollectionMetadataCleared { collection });
 			Ok(())
 		})

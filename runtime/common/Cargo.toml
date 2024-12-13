@@ -13,6 +13,7 @@ targets = [ "x86_64-unknown-linux-gnu" ]
 
 [dependencies]
 codec = { workspace = true, default-features = false, features = [ "derive" ] }
+log = { workspace = true, default-features = false }
 scale-info = { workspace = true, default-features = false, features = [ "derive" ] }
 
 # Substrate
@@ -22,6 +23,9 @@ sp-std = { workspace = true, default-features = false }
 
 parachains-common = { workspace = true, default-features = false }
 polkadot-primitives = { workspace = true, default-features = false }
+xcm = { workspace = true, default-features = false }
+xcm-builder = { workspace = true, default-features = false }
+xcm-executor = { workspace = true, default-features = false }
 
 [features]
 default = [ "std" ]
@@ -29,4 +33,11 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
-std = [ "frame-support/std", "sp-runtime/std" ]
+std = [
+	"frame-support/std",
+	"log/std",
+	"sp-runtime/std",
+	"xcm-builder/std",
+	"xcm-executor/std",
+	"xcm/std",
+]

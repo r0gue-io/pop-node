@@ -86,9 +86,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		let mut collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
-		let attribute = Attribute::<T, I>::get((collection, maybe_item, &namespace, &key));
+		let attribute = Attribute::<T, I>::get((&collection, maybe_item, &namespace, &key));
 		let attribute_exists = attribute.is_some();
 		if !attribute_exists {
 			collection_details.attributes.saturating_inc();
@@ -151,7 +151,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			(&value, AttributeDeposit { account: new_deposit_owner, amount: deposit }),
 		);
 
-		Collection::<T, I>::insert(collection, &collection_details);
+		Collection::<T, I>::insert(&collection, &collection_details);
 		Self::deposit_event(Event::AttributeSet { collection, maybe_item, key, value, namespace });
 		Ok(())
 	}
@@ -182,9 +182,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		value: BoundedVec<u8, T::ValueLimit>,
 	) -> DispatchResult {
 		let mut collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
-		let attribute = Attribute::<T, I>::get((collection, maybe_item, &namespace, &key));
+		let attribute = Attribute::<T, I>::get((&collection, maybe_item, &namespace, &key));
 		if let Some((_, deposit)) = attribute {
 			if deposit.account != set_as && deposit.amount != Zero::zero() {
 				if let Some(deposit_account) = deposit.account {
@@ -199,7 +199,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			(&collection, maybe_item, &namespace, &key),
 			(&value, AttributeDeposit { account: set_as, amount: Zero::zero() }),
 		);
-		Collection::<T, I>::insert(collection, &collection_details);
+		Collection::<T, I>::insert(&collection, &collection_details);
 		Self::deposit_event(Event::AttributeSet { collection, maybe_item, key, value, namespace });
 		Ok(())
 	}
@@ -228,7 +228,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let now = frame_system::Pallet::<T>::block_number();
 		ensure!(deadline >= now, Error::<T, I>::DeadlineExpired);
 
-		let item_details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let item_details =
+			Item::<T, I>::get(&collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(item_details.owner == origin, Error::<T, I>::NoPermission);
 
 		// Only the CollectionOwner and Account() namespaces could be updated in this way.
@@ -237,11 +238,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			AttributeNamespace::CollectionOwner => {},
 			AttributeNamespace::Account(account) => {
 				ensure!(account == &signer, Error::<T, I>::NoPermission);
-				let approvals = ItemAttributesApprovalsOf::<T, I>::get(collection, item);
+				let approvals = ItemAttributesApprovalsOf::<T, I>::get(&collection, item);
 				if !approvals.contains(account) {
 					Self::do_approve_item_attributes(
 						origin.clone(),
-						collection,
+						collection.clone(),
 						item,
 						account.clone(),
 					)?;
@@ -253,7 +254,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		for (key, value) in attributes {
 			Self::do_set_attribute(
 				signer.clone(),
-				collection,
+				collection.clone(),
 				Some(item),
 				namespace.clone(),
 				Self::construct_attribute_key(key)?,
@@ -288,7 +289,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		namespace: AttributeNamespace<T::AccountId>,
 		key: BoundedVec<u8, T::KeyLimit>,
 	) -> DispatchResult {
-		let (_, deposit) = Attribute::<T, I>::take((collection, maybe_item, &namespace, &key))
+		let (_, deposit) = Attribute::<T, I>::take((&collection, maybe_item, &namespace, &key))
 			.ok_or(Error::<T, I>::AttributeNotFound)?;
 
 		if let Some(check_origin) = &maybe_check_origin {
@@ -335,7 +336,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		let mut collection_details =
-			Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		collection_details.attributes.saturating_dec();
 
@@ -350,7 +351,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			_ => (),
 		}
 
-		Collection::<T, I>::insert(collection, &collection_details);
+		Collection::<T, I>::insert(&collection, &collection_details);
 		Self::deposit_event(Event::AttributeCleared { collection, maybe_item, key, namespace });
 
 		Ok(())
@@ -378,10 +379,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 
-		let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let details = Item::<T, I>::get(&collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 
-		ItemAttributesApprovalsOf::<T, I>::try_mutate(collection, item, |approvals| {
+		ItemAttributesApprovalsOf::<T, I>::try_mutate(collection.clone(), item, |approvals| {
 			approvals
 				.try_insert(delegate.clone())
 				.map_err(|_| Error::<T, I>::ReachedApprovalLimit)?;
@@ -419,10 +420,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 
-		let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let details = Item::<T, I>::get(&collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 
-		ItemAttributesApprovalsOf::<T, I>::try_mutate(collection, item, |approvals| {
+		ItemAttributesApprovalsOf::<T, I>::try_mutate(collection.clone(), item, |approvals| {
 			approvals.remove(&delegate);
 
 			let mut attributes: u32 = 0;

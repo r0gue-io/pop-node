@@ -62,17 +62,17 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 		ensure!(duration <= T::MaxDeadlineDuration::get(), Error::<T, I>::WrongDuration);
 
-		let item = Item::<T, I>::get(offered_collection_id, offered_item_id)
+		let item = Item::<T, I>::get(offered_collection_id.clone(), offered_item_id)
 			.ok_or(Error::<T, I>::UnknownItem)?;
 		ensure!(item.owner == caller, Error::<T, I>::NoPermission);
 
 		match maybe_desired_item_id {
 			Some(desired_item_id) => ensure!(
-				Item::<T, I>::contains_key(desired_collection_id, desired_item_id),
+				Item::<T, I>::contains_key(desired_collection_id.clone(), desired_item_id),
 				Error::<T, I>::UnknownItem
 			),
 			None => ensure!(
-				Collection::<T, I>::contains_key(desired_collection_id),
+				Collection::<T, I>::contains_key(desired_collection_id.clone()),
 				Error::<T, I>::UnknownCollection
 			),
 		};
@@ -81,10 +81,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let deadline = duration.saturating_add(now);
 
 		PendingSwapOf::<T, I>::insert(
-			offered_collection_id,
+			offered_collection_id.clone(),
 			offered_item_id,
 			PendingSwap {
-				desired_collection: desired_collection_id,
+				desired_collection: desired_collection_id.clone(),
 				desired_item: maybe_desired_item_id,
 				price: maybe_price.clone(),
 				deadline,
@@ -118,17 +118,17 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		offered_collection_id: T::CollectionId,
 		offered_item_id: T::ItemId,
 	) -> DispatchResult {
-		let swap = PendingSwapOf::<T, I>::get(offered_collection_id, offered_item_id)
+		let swap = PendingSwapOf::<T, I>::get(offered_collection_id.clone(), offered_item_id)
 			.ok_or(Error::<T, I>::UnknownSwap)?;
 
 		let now = frame_system::Pallet::<T>::block_number();
 		if swap.deadline > now {
-			let item = Item::<T, I>::get(offered_collection_id, offered_item_id)
+			let item = Item::<T, I>::get(offered_collection_id.clone(), offered_item_id)
 				.ok_or(Error::<T, I>::UnknownItem)?;
 			ensure!(item.owner == caller, Error::<T, I>::NoPermission);
 		}
 
-		PendingSwapOf::<T, I>::remove(offered_collection_id, offered_item_id);
+		PendingSwapOf::<T, I>::remove(offered_collection_id.clone(), offered_item_id);
 
 		Self::deposit_event(Event::SwapCancelled {
 			offered_collection: offered_collection_id,
@@ -172,11 +172,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 
-		let send_item = Item::<T, I>::get(send_collection_id, send_item_id)
+		let send_item = Item::<T, I>::get(send_collection_id.clone(), send_item_id)
 			.ok_or(Error::<T, I>::UnknownItem)?;
-		let receive_item = Item::<T, I>::get(receive_collection_id, receive_item_id)
+		let receive_item = Item::<T, I>::get(receive_collection_id.clone(), receive_item_id)
 			.ok_or(Error::<T, I>::UnknownItem)?;
-		let swap = PendingSwapOf::<T, I>::get(receive_collection_id, receive_item_id)
+		let swap = PendingSwapOf::<T, I>::get(receive_collection_id.clone(), receive_item_id)
 			.ok_or(Error::<T, I>::UnknownSwap)?;
 
 		ensure!(send_item.owner == caller, Error::<T, I>::NoPermission);
@@ -210,11 +210,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		// This also removes the swap.
-		Self::do_transfer(send_collection_id, send_item_id, receive_item.owner.clone(), |_, _| {
-			Ok(())
-		})?;
 		Self::do_transfer(
-			receive_collection_id,
+			send_collection_id.clone(),
+			send_item_id,
+			receive_item.owner.clone(),
+			|_, _| Ok(()),
+		)?;
+		Self::do_transfer(
+			receive_collection_id.clone(),
 			receive_item_id,
 			send_item.owner.clone(),
 			|_, _| Ok(()),

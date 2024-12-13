@@ -54,7 +54,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		let mut details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let mut details = Item::<T, I>::get(&collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
@@ -73,7 +73,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			.approvals
 			.try_insert(delegate.clone(), deadline)
 			.map_err(|_| Error::<T, I>::ReachedApprovalLimit)?;
-		Item::<T, I>::insert(collection, item, &details);
+		Item::<T, I>::insert(&collection, item, &details);
 
 		Self::deposit_event(Event::TransferApproved {
 			collection,
@@ -105,7 +105,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		item: T::ItemId,
 		delegate: T::AccountId,
 	) -> DispatchResult {
-		let mut details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+		let mut details = Item::<T, I>::get(&collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 
 		let maybe_deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NotDelegate)?;
 
@@ -125,12 +125,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Cannot revoke approval for a specific collection item if the delegate has
 		// permission to transfer all collection items owned by the origin.
 		ensure!(
-			!CollectionApprovals::<T, I>::contains_key((collection, &details.owner, &delegate)),
+			!CollectionApprovals::<T, I>::contains_key((&collection, &details.owner, &delegate)),
 			Error::<T, I>::DelegateApprovalConflict
 		);
 
 		details.approvals.remove(&delegate);
-		Item::<T, I>::insert(collection, item, &details);
+		Item::<T, I>::insert(&collection, item, &details);
 
 		Self::deposit_event(Event::ApprovalCancelled {
 			collection,
@@ -161,13 +161,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		item: T::ItemId,
 	) -> DispatchResult {
 		let mut details =
-			Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
+			Item::<T, I>::get(&collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
 
 		if let Some(check_origin) = maybe_check_origin {
 			// Cannot revoke approvals for individual items when there are existing approvals to
 			// transfer all items in the collection owned by the origin.
 			ensure!(
-				CollectionApprovals::<T, I>::iter_prefix((collection, &check_origin))
+				CollectionApprovals::<T, I>::iter_prefix((&collection, &check_origin))
 					.take(1)
 					.next()
 					.is_none(),
@@ -177,7 +177,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		details.approvals.clear();
-		Item::<T, I>::insert(collection, item, &details);
+		Item::<T, I>::insert(&collection, item, &details);
 
 		Self::deposit_event(Event::AllApprovalsCancelled {
 			collection,
@@ -216,7 +216,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		ensure!(AccountBalance::<T, I>::get(collection, &owner) > 0, Error::<T, I>::NoItemOwned);
+		ensure!(AccountBalance::<T, I>::get(&collection, &owner) > 0, Error::<T, I>::NoItemOwned);
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
@@ -296,7 +296,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
 		// Iterate and remove each collection approval, returning the deposit back to the `owner`.
-		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &owner)) {
+		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((&collection, &owner)) {
 			deposits = deposits.saturating_add(deposit);
 			removed_approvals.saturating_inc();
 			if removed_approvals == limit {
@@ -354,7 +354,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		// Check if a `delegate` has permission to transfer the given collection item.
 		if let Some(item) = maybe_item {
-			let details = Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownItem)?;
+			let details = Item::<T, I>::get(&collection, item).ok_or(Error::<T, I>::UnknownItem)?;
 			let maybe_deadline =
 				details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
 			if let Some(deadline) = maybe_deadline {

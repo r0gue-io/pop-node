@@ -6,6 +6,8 @@ pub use parachains_common::{AccountId, AuraId, Balance, Block, BlockNumber, Hash
 pub use polkadot_primitives::MAX_POV_SIZE;
 use sp_runtime::Perbill;
 
+pub mod xcm;
+
 /// Nonce for an account
 pub type Nonce = u32;
 

@@ -56,12 +56,9 @@ use alloc::{boxed::Box, vec, vec::Vec};
 use core::cmp::Ordering;
 
 use codec::{Decode, Encode};
-use frame_support::{
-	dispatch::WithPostDispatchInfo,
-	traits::{
-		tokens::Locker, BalanceStatus::Reserved, Currency, EnsureOriginWithArg, Incrementable,
-		ReservableCurrency,
-	},
+use frame_support::traits::{
+	tokens::Locker, BalanceStatus::Reserved, Currency, EnsureOriginWithArg, Incrementable,
+	ReservableCurrency,
 };
 use frame_system::Config as SystemConfig;
 pub use pallet::*;
@@ -151,7 +148,7 @@ pub mod pallet {
 		/// the `create_collection_with_id` function. However, if the `Incrementable` trait
 		/// implementation has an incremental order, the `create_collection_with_id` function
 		/// should not be used as it can claim a value in the ID sequence.
-		type CollectionId: Member + Parameter + MaxEncodedLen + Copy + Incrementable;
+		type CollectionId: Member + Parameter + MaxEncodedLen + Clone + Incrementable;
 
 		/// The type used to identify a unique item within a collection.
 		type ItemId: Member + Parameter + MaxEncodedLen + Copy;
@@ -794,12 +791,12 @@ pub mod pallet {
 			);
 
 			Self::do_create_collection(
-				collection,
+				collection.clone(),
 				owner.clone(),
 				admin.clone(),
 				config,
 				T::CollectionDeposit::get(),
-				Event::Created { collection, creator: owner, owner: admin },
+				Event::Created { collection: collection.clone(), creator: owner, owner: admin },
 			)?;
 
 			Self::set_next_collection_id(collection);
@@ -836,12 +833,12 @@ pub mod pallet {
 				.ok_or(Error::<T, I>::UnknownCollection)?;
 
 			Self::do_create_collection(
-				collection,
+				collection.clone(),
 				owner.clone(),
 				owner.clone(),
 				config,
 				Zero::zero(),
-				Event::ForceCreated { collection, owner },
+				Event::ForceCreated { collection: collection.clone(), owner },
 			)?;
 
 			Self::set_next_collection_id(collection);
@@ -920,13 +917,13 @@ pub mod pallet {
 				ItemConfig { settings: Self::get_default_item_settings(&collection)? };
 
 			Self::do_mint(
-				collection,
+				collection.clone(),
 				item,
 				Some(caller.clone()),
 				mint_to.clone(),
 				item_config,
 				|collection_details, collection_config| {
-					let mint_settings = collection_config.mint_settings;
+					let mint_settings = collection_config.clone().mint_settings;
 					let now = frame_system::Pallet::<T>::block_number();
 
 					if let Some(start_block) = mint_settings.start_block {
@@ -1094,7 +1091,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
 
-			Self::do_transfer(collection, item, dest, |_, details| {
+			Self::do_transfer(collection.clone(), item, dest, |_, details| {
 				if details.owner != origin {
 					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
 				}
@@ -1129,7 +1126,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 
 			let collection_details =
-				Collection::<T, I>::get(collection).ok_or(Error::<T, I>::UnknownCollection)?;
+				Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 			ensure!(collection_details.owner == origin, Error::<T, I>::NoPermission);
 
 			let config = Self::get_collection_config(&collection)?;
@@ -1140,7 +1137,7 @@ pub mod pallet {
 
 			let mut successful = Vec::with_capacity(items.len());
 			for item in items.into_iter() {
-				let mut details = match Item::<T, I>::get(collection, item) {
+				let mut details = match Item::<T, I>::get(&collection, item) {
 					Some(x) => x,
 					None => continue,
 				};
@@ -1153,13 +1150,13 @@ pub mod pallet {
 						if T::Currency::reserve(&details.deposit.account, deposit - old).is_err() {
 							// NOTE: No alterations made to collection_details in this iteration so
 							// far, so this is OK to do.
-							continue
+							continue;
 						}
 					},
 					_ => continue,
 				}
 				details.deposit.amount = deposit;
-				Item::<T, I>::insert(collection, item, &details);
+				Item::<T, I>::insert(&collection, item, &details);
 				successful.push(item);
 			}
 
@@ -1406,7 +1403,7 @@ pub mod pallet {
 		///
 		/// Origin must be the `ForceOrigin`.
 		///
-		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
+		/// - `owner`: The account granting approval for delegated transfer.
 		/// - `collection`: The collection of the item to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the `owner`.
@@ -1488,7 +1485,7 @@ pub mod pallet {
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
-		/// - `owner`: The owner of the approval to be force-cancelled by the `origin`.
+		/// - `owner`: The account cancelling approval for delegated transfer.
 		/// - `collection`: The collection of whose approval will be cancelled.
 		/// - `delegate`: The account that is going to lose their approval.
 		///
@@ -1552,11 +1549,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection: T::CollectionId,
 			limit: u32,
-		) -> DispatchResultWithPostInfo {
-			let origin = ensure_signed(origin)
-				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
-			let removed_approvals = Self::do_clear_collection_approvals(origin, collection, limit)?;
-			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
+		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			Self::do_clear_collection_approvals(origin, collection, limit)?;
+			Ok(())
 		}
 
 		/// Force-cancel all collection approvals granted by `owner` account, up to a specified
@@ -1565,7 +1561,7 @@ pub mod pallet {
 		/// Origin must be `ForceOrigin`.
 		///
 		/// Arguments:
-		/// - `owner`: The owner of the approvals to be force-cancelled by the `origin`.
+		/// - `owner`: The account clearing all collection approvals.
 		/// - `collection`: The collection whose approvals will be cleared.
 		/// - `limit`: The amount of collection approvals that will be cleared.
 		///
@@ -1579,12 +1575,11 @@ pub mod pallet {
 			owner: AccountIdLookupOf<T>,
 			collection: T::CollectionId,
 			limit: u32,
-		) -> DispatchResultWithPostInfo {
-			T::ForceOrigin::ensure_origin(origin)
-				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
 			let owner = T::Lookup::lookup(owner)?;
-			let removed_approvals = Self::do_clear_collection_approvals(owner, collection, limit)?;
-			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
+			Self::do_clear_collection_approvals(owner, collection, limit)?;
+			Ok(())
 		}
 
 		/// Disallows changing the metadata or attributes of the item.
@@ -1659,8 +1654,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			let depositor = match namespace {
-				AttributeNamespace::CollectionOwner =>
-					Self::collection_owner(collection).ok_or(Error::<T, I>::UnknownCollection)?,
+				AttributeNamespace::CollectionOwner => Self::collection_owner(collection.clone())
+					.ok_or(Error::<T, I>::UnknownCollection)?,
 				_ => origin.clone(),
 			};
 			Self::do_set_attribute(origin, collection, maybe_item, namespace, key, value, depositor)

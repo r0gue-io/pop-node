@@ -39,12 +39,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		lock_settings: CollectionSettings,
 	) -> DispatchResult {
-		ensure!(Self::collection_owner(collection) == Some(origin), Error::<T, I>::NoPermission);
+		ensure!(
+			Self::collection_owner(collection.clone()) == Some(origin),
+			Error::<T, I>::NoPermission
+		);
 		ensure!(
 			!lock_settings.is_disabled(CollectionSetting::DepositRequired),
 			Error::<T, I>::WrongSetting
 		);
-		CollectionConfigOf::<T, I>::try_mutate(collection, |maybe_config| {
+		CollectionConfigOf::<T, I>::try_mutate(collection.clone(), |maybe_config| {
 			let config = maybe_config.as_mut().ok_or(Error::<T, I>::NoConfig)?;
 
 			for setting in lock_settings.get_disabled() {
@@ -80,7 +83,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if !config.has_disabled_setting(ItemSetting::Transferable) {
 			config.disable_setting(ItemSetting::Transferable);
 		}
-		ItemConfigOf::<T, I>::insert(collection, item, config);
+		ItemConfigOf::<T, I>::insert(&collection, item, config);
 
 		Self::deposit_event(Event::<T, I>::ItemTransferLocked { collection, item });
 		Ok(())
@@ -110,7 +113,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if config.has_disabled_setting(ItemSetting::Transferable) {
 			config.enable_setting(ItemSetting::Transferable);
 		}
-		ItemConfigOf::<T, I>::insert(collection, item, config);
+		ItemConfigOf::<T, I>::insert(&collection, item, config);
 
 		Self::deposit_event(Event::<T, I>::ItemTransferUnlocked { collection, item });
 		Ok(())
@@ -145,7 +148,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			);
 		}
 
-		ItemConfigOf::<T, I>::try_mutate(collection, item, |maybe_config| {
+		ItemConfigOf::<T, I>::try_mutate(collection.clone(), item, |maybe_config| {
 			let config = maybe_config.as_mut().ok_or(Error::<T, I>::UnknownItem)?;
 
 			if lock_metadata {
