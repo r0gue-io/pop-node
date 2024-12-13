@@ -321,12 +321,14 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			to: AccountIdOf<T>,
 		) -> DispatchResult {
-			let from = ensure_signed(origin.clone())?;
+			ensure_signed(origin.clone())?;
+			let owner =
+				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
 			Self::deposit_event(Event::Transfer {
 				collection,
 				item,
-				from: Some(from),
+				from: Some(owner),
 				to: Some(to),
 				price: None,
 			});
