@@ -167,6 +167,7 @@ fn basic_minting_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id_1.clone(),
 			owner_1.clone(),
 			default_collection_config()
 		));
@@ -183,6 +184,7 @@ fn basic_minting_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id_2.clone(),
 			owner_2.clone(),
 			default_collection_config()
 		));
@@ -218,6 +220,7 @@ fn lifecycle_should_work() {
 		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(owner.clone()),
+			collection_id.clone(),
 			owner.clone(),
 			collection_config_with_all_settings_enabled()
 		));
@@ -349,6 +352,7 @@ fn destroy_with_bad_witness_should_not_work() {
 		Balances::make_free_balance_be(&account(1), 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(account(1)),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -378,6 +382,7 @@ fn destroy_should_work() {
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(collection_owner.clone()),
+			collection_id.clone(),
 			collection_owner.clone(),
 			collection_config_with_all_settings_enabled()
 		));
@@ -444,6 +449,7 @@ fn mint_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -520,6 +526,7 @@ fn mint_should_work() {
 		// validate types
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			1,
 			account(1),
 			default_collection_config()
 		));
@@ -580,6 +587,7 @@ fn transfer_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -613,6 +621,7 @@ fn transfer_should_work() {
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			account(1),
 			collection_config_from_disabled_settings(
 				CollectionSetting::TransferableItems | CollectionSetting::DepositRequired
@@ -639,6 +648,7 @@ fn locking_transfer_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -674,6 +684,7 @@ fn origin_guards_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -728,6 +739,7 @@ fn transfer_owner_should_work() {
 		Balances::make_free_balance_be(&account(3), 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(account(1)),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -792,6 +804,7 @@ fn set_team_should_work() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config(),
 		));
@@ -867,6 +880,7 @@ fn set_collection_metadata_should_work() {
 		);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -956,6 +970,7 @@ fn set_item_metadata_should_work() {
 		// Cannot add metadata to unknown item
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1026,6 +1041,7 @@ fn set_collection_owner_attributes_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1116,6 +1132,7 @@ fn set_collection_system_attributes_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1198,6 +1215,7 @@ fn set_item_owner_attributes_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1382,6 +1400,7 @@ fn set_external_account_attributes_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1470,6 +1489,7 @@ fn validate_deposit_required_setting() {
 		// attributes for free.
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -1555,6 +1575,7 @@ fn set_attribute_should_respect_lock() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled(),
 		));
@@ -1660,6 +1681,7 @@ fn preserve_config_for_frozen_items() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1716,6 +1738,7 @@ fn force_update_collection_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1839,6 +1862,7 @@ fn burn_works() {
 		Balances::make_free_balance_be(&collection_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			collection_owner.clone(),
 			collection_config_with_all_settings_enabled()
 		));
@@ -1889,6 +1913,7 @@ fn approval_lifecycle_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -1926,6 +1951,7 @@ fn approval_lifecycle_works() {
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			account(1),
 			collection_config_from_disabled_settings(
 				CollectionSetting::TransferableItems | CollectionSetting::DepositRequired
@@ -1965,6 +1991,7 @@ fn check_approval_without_deadline_works() {
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			collection_owner.clone(),
 			default_collection_config()
 		));
@@ -2014,6 +2041,7 @@ fn check_approval_with_deadline_works() {
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			collection_owner.clone(),
 			default_collection_config()
 		));
@@ -2087,6 +2115,7 @@ fn cancel_approval_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -2169,6 +2198,7 @@ fn cancel_collection_approval_works() {
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			collection_owner.clone(),
 			default_collection_config()
 		));
@@ -2235,6 +2265,7 @@ fn force_cancel_collection_approvals_work() {
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			collection_owner.clone(),
 			default_collection_config()
 		));
@@ -2296,6 +2327,7 @@ fn approving_multiple_accounts_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -2352,6 +2384,7 @@ fn approvals_limit_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -2393,11 +2426,13 @@ fn approve_collection_transfer_works() {
 		Balances::make_free_balance_be(&delegate, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection,
 			collection_owner.clone(),
 			default_collection_config()
 		));
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			locked_collection,
 			collection_owner.clone(),
 			default_collection_config()
 		));
@@ -2517,11 +2552,13 @@ fn force_approve_collection_transfer_works() {
 		Balances::make_free_balance_be(&delegate, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection,
 			collection_owner.clone(),
 			default_collection_config()
 		));
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			locked_collection,
 			collection_owner.clone(),
 			default_collection_config()
 		));
@@ -2642,6 +2679,7 @@ fn approval_deadline_works() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			collection_config_from_disabled_settings(CollectionSetting::DepositRequired.into())
 		));
@@ -2698,6 +2736,7 @@ fn cancel_approval_works_with_admin() {
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			collection_owner.clone(),
 			default_collection_config()
 		));
@@ -2789,6 +2828,7 @@ fn cancel_approval_works_with_force() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -2833,6 +2873,7 @@ fn clear_all_transfer_approvals_works() {
 	new_test_ext().execute_with(|| {
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			account(1),
 			default_collection_config()
 		));
@@ -2898,6 +2939,7 @@ fn clear_collection_approvals_works() {
 		Balances::make_free_balance_be(&owner, balance);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			owner.clone(),
 			default_collection_config()
 		));
@@ -2990,6 +3032,7 @@ fn force_clear_collection_approvals_work() {
 		Balances::make_free_balance_be(&owner, balance);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			owner.clone(),
 			default_collection_config()
 		));
@@ -3084,6 +3127,7 @@ fn collection_item_works() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			user_id.clone(),
 			default_collection_config()
 		));
@@ -3112,6 +3156,7 @@ fn max_supply_should_work() {
 		// validate set_collection_max_supply
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			0,
 			user_id.clone(),
 			default_collection_config()
 		));
@@ -3185,6 +3230,7 @@ fn max_supply_should_work() {
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			CollectionConfig { max_supply: Some(max_supply), ..default_collection_config() }
 		));
@@ -3208,6 +3254,7 @@ fn mint_settings_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			default_collection_config()
 		));
@@ -3229,6 +3276,7 @@ fn mint_settings_should_work() {
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			CollectionConfig {
 				mint_settings: MintSettings {
@@ -3268,6 +3316,7 @@ fn set_price_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			default_collection_config()
 		));
@@ -3336,6 +3385,7 @@ fn set_price_should_work() {
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			collection_config_from_disabled_settings(
 				CollectionSetting::TransferableItems | CollectionSetting::DepositRequired
@@ -3383,6 +3433,7 @@ fn buy_item_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_1.clone(),
 			default_collection_config()
 		));
@@ -3608,6 +3659,7 @@ fn create_cancel_swap_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			default_collection_config()
 		));
@@ -3766,6 +3818,7 @@ fn claim_swap_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_1.clone(),
 			default_collection_config()
 		));
@@ -3963,7 +4016,7 @@ fn various_collection_settings() {
 		// when we set only one value it's required to call .into() on it
 		let config =
 			collection_config_from_disabled_settings(CollectionSetting::TransferableItems.into());
-		assert_ok!(Nfts::force_create(RuntimeOrigin::root(), account(1), config));
+		assert_ok!(Nfts::force_create(RuntimeOrigin::root(), 0, account(1), config));
 
 		let config = CollectionConfigOf::<Test>::get(0).unwrap();
 		assert!(!config.is_setting_enabled(CollectionSetting::TransferableItems));
@@ -3973,7 +4026,7 @@ fn various_collection_settings() {
 		let config = collection_config_from_disabled_settings(
 			CollectionSetting::UnlockedMetadata | CollectionSetting::TransferableItems,
 		);
-		assert_ok!(Nfts::force_create(RuntimeOrigin::root(), account(1), config));
+		assert_ok!(Nfts::force_create(RuntimeOrigin::root(), 1, account(1), config));
 
 		let config = CollectionConfigOf::<Test>::get(1).unwrap();
 		assert!(!config.is_setting_enabled(CollectionSetting::TransferableItems));
@@ -3981,6 +4034,7 @@ fn various_collection_settings() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			2,
 			account(1),
 			default_collection_config()
 		));
@@ -3995,6 +4049,7 @@ fn collection_locking_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			collection_config_with_all_settings_enabled()
 		));
@@ -4053,6 +4108,7 @@ fn pallet_level_feature_flags_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_id.clone(),
 			default_collection_config()
 		));
@@ -4150,6 +4206,7 @@ fn add_remove_item_attributes_approval_should_work() {
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
+			collection_id,
 			user_1.clone(),
 			default_collection_config()
 		));
@@ -4260,6 +4317,7 @@ fn pre_signed_mints_should_work() {
 		Balances::make_free_balance_be(&user_2, 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(user_0.clone()),
+			0,
 			user_1.clone(),
 			collection_config_with_all_settings_enabled(),
 		));
@@ -4425,6 +4483,7 @@ fn pre_signed_attributes_should_work() {
 		Balances::make_free_balance_be(&user_3, 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(user_1.clone()),
+			collection_id,
 			user_1.clone(),
 			collection_config_with_all_settings_enabled(),
 		));
@@ -4763,6 +4822,7 @@ fn clear_collection_metadata_works() {
 		// Creating a collection increases owner deposit by 2
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(account(1)),
+			0,
 			account(1),
 			collection_config_with_all_settings_enabled()
 		));

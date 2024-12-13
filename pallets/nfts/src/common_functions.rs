@@ -85,23 +85,4 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		Ok(())
 	}
-
-	pub(crate) fn set_next_collection_id(collection: T::CollectionId) {
-		let next_id = collection.increment();
-		NextCollectionId::<T, I>::set(next_id.clone());
-		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
-	}
-
-	#[allow(missing_docs)]
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
-	pub fn set_next_id(id: T::CollectionId) {
-		NextCollectionId::<T, I>::set(Some(id));
-	}
-
-	#[cfg(test)]
-	pub fn get_next_id() -> T::CollectionId {
-		NextCollectionId::<T, I>::get()
-			.or(T::CollectionId::initial_value())
-			.expect("Failed to get next collection ID")
-	}
 }

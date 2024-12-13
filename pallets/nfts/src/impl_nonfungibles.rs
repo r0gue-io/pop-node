@@ -151,36 +151,11 @@ impl<T: Config<I>, I: 'static> Create<<T as SystemConfig>::AccountId, Collection
 {
 	/// Create a `collection` of nonfungible items to be owned by `who` and managed by `admin`.
 	fn create_collection(
-		who: &T::AccountId,
-		admin: &T::AccountId,
-		config: &CollectionConfigFor<T, I>,
+		_who: &T::AccountId,
+		_admin: &T::AccountId,
+		_config: &CollectionConfigFor<T, I>,
 	) -> Result<T::CollectionId, DispatchError> {
-		// DepositRequired can be disabled by calling the force_create() only
-		ensure!(
-			!config.has_disabled_setting(CollectionSetting::DepositRequired),
-			Error::<T, I>::WrongSetting
-		);
-
-		let collection = NextCollectionId::<T, I>::get()
-			.or(T::CollectionId::initial_value())
-			.ok_or(Error::<T, I>::UnknownCollection)?;
-
-		Self::do_create_collection(
-			collection.clone(),
-			who.clone(),
-			admin.clone(),
-			config.clone(),
-			T::CollectionDeposit::get(),
-			Event::Created {
-				collection: collection.clone(),
-				creator: who.clone(),
-				owner: admin.clone(),
-			},
-		)?;
-
-		Self::set_next_collection_id(collection.clone());
-
-		Ok(collection)
+		unimplemented!("This function can be used with XCM location.");
 	}
 
 	/// Create a collection of nonfungible items with `collection` Id to be owned by `who` and

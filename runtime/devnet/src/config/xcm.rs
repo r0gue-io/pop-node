@@ -10,22 +10,17 @@ use pallet_nfts::ItemConfig;
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
-use pop_runtime_common::xcm::nonfungibles_adapter::{
-	MultiLocationCollectionId, NonFungiblesAdapterPop,
-};
+use pop_runtime_common::xcm::nonfungibles_adapter::NonFungiblesAdapterPop;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
-	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
+	AllowTopLevelPaidExecutionFrom, ConvertedConcreteId, EnsureXcmOrigin, FixedWeightBounds,
 	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, NativeAsset, NoChecking,
 	ParentIsPreset, RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
 	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
 };
-use xcm_executor::{
-	traits::{Error as MatchError, MatchesNonFungibles},
-	XcmExecutor,
-};
+use xcm_executor::{traits::JustTry, XcmExecutor};
 
 use crate::{
 	AccountId, AllPalletsWithSystem, Balances, ForeignNfts, ParachainInfo, ParachainSystem,
@@ -91,31 +86,10 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	XcmPassthrough<RuntimeOrigin>,
 );
 
-pub struct MultiAssetToNftsConverter;
-impl MatchesNonFungibles<MultiLocationCollectionId, AssetInstance> for MultiAssetToNftsConverter {
-	fn matches_nonfungibles(
-		a: &Asset,
-	) -> Result<(MultiLocationCollectionId, AssetInstance), MatchError> {
-		let (location, instance) = match (&a.id, &a.fun) {
-			(AssetId(location), NonFungible(instance)) => (location, instance),
-			_ => return Err(MatchError::AssetNotHandled),
-		};
-
-		let collection_id = MultiLocationCollectionId(Location {
-			parents: location.parents,
-			interior: location.interior.clone().try_into().unwrap(),
-		});
-
-		let item_id = instance;
-
-		Ok((collection_id, *item_id))
-	}
-}
-
 pub type NonFungiblesTransactor = NonFungiblesAdapterPop<
 	// Use the non-fungibles pallet:
 	ForeignNfts,
-	MultiAssetToNftsConverter,
+	ConvertedConcreteId<Location, AssetInstance, JustTry, JustTry>,
 	// Convert an XCM Location into a local account id:
 	LocationToAccountId,
 	// Our chain's account ID type (we can't get away without mentioning it explicitly):
