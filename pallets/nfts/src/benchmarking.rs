@@ -42,6 +42,7 @@ fn create_collection<T: Config<I>, I: 'static>(
 	T::Currency::make_free_balance_be(&caller, DepositBalanceOf::<T, I>::max_value());
 	assert_ok!(Nfts::<T, I>::force_create(
 		SystemOrigin::Root.into(),
+		collection.clone(),
 		caller_lookup.clone(),
 		default_collection_config::<T, I>()
 	));
@@ -230,19 +231,14 @@ benchmarks_instance_pallet! {
 		whitelist_account!(caller);
 		let admin = T::Lookup::unlookup(caller.clone());
 		T::Currency::make_free_balance_be(&caller, DepositBalanceOf::<T, I>::max_value());
-		let call = Call::<T, I>::create { admin, config: default_collection_config::<T, I>() };
+		let call = Call::<T, I>::create { admin, collection, config: default_collection_config::<T, I>() };
 	}: { call.dispatch_bypass_filter(origin)? }
-	verify {
-		assert_last_event::<T, I>(Event::NextCollectionIdIncremented { next_id: Some(T::Helper::collection(1)) }.into());
-	}
 
 	force_create {
+		let collection = T::Helper::collection(0);
 		let caller: T::AccountId = whitelisted_caller();
 		let caller_lookup = T::Lookup::unlookup(caller.clone());
-	}: _(SystemOrigin::Root, caller_lookup, default_collection_config::<T, I>())
-	verify {
-		assert_last_event::<T, I>(Event::NextCollectionIdIncremented { next_id: Some(T::Helper::collection(1)) }.into());
-	}
+	}: _(SystemOrigin::Root, collection, caller_lookup, default_collection_config::<T, I>())
 
 	destroy {
 		let m in 0 .. 1_000;
@@ -881,6 +877,7 @@ benchmarks_instance_pallet! {
 		let item = T::Helper::item(0);
 		assert_ok!(Nfts::<T, I>::force_create(
 			SystemOrigin::Root.into(),
+			collection.clone(),
 			caller_lookup.clone(),
 			default_collection_config::<T, I>()
 		));

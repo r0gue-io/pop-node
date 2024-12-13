@@ -1,9 +1,7 @@
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
-	traits::{tokens::nonfungibles_v2, Get, Incrementable},
+	traits::{tokens::nonfungibles_v2, Get},
 };
-use scale_info::TypeInfo;
 use sp_std::{marker::PhantomData, prelude::*};
 use xcm::latest::prelude::*;
 use xcm_builder::{AssetChecking, MintLocation};
@@ -11,53 +9,6 @@ use xcm_executor::{
 	traits::{ConvertLocation, Error as MatchError, MatchesNonFungibles, TransactAsset},
 	AssetsInHolding,
 };
-
-#[derive(Clone, Decode, Encode, Eq, PartialEq, Ord, PartialOrd, Debug, TypeInfo, MaxEncodedLen)]
-/// Represents a collection ID based on a MultiLocation.
-///
-/// This structure provides a way to map a MultiLocation to a collection ID,
-/// which is useful for describing collections that do not follow an incremental pattern.
-pub struct MultiLocationCollectionId(pub Location);
-
-impl MultiLocationCollectionId {
-	/// Consume `self` and return the inner MultiLocation.
-	pub fn into_inner(self) -> Location {
-		self.0
-	}
-
-	/// Return a reference to the inner MultiLocation.
-	pub fn inner(&self) -> &Location {
-		&self.0
-	}
-}
-
-impl From<u16> for MultiLocationCollectionId {
-	fn from(_: u16) -> Self {
-		unimplemented!("Not implemented. Requires for becnhmarking Helper config.")
-	}
-}
-
-impl Incrementable for MultiLocationCollectionId {
-	fn increment(&self) -> Option<Self> {
-		None
-	}
-
-	fn initial_value() -> Option<Self> {
-		None
-	}
-}
-
-impl From<Location> for MultiLocationCollectionId {
-	fn from(value: Location) -> Self {
-		MultiLocationCollectionId(value)
-	}
-}
-
-impl From<MultiLocationCollectionId> for Location {
-	fn from(value: MultiLocationCollectionId) -> Location {
-		value.into_inner()
-	}
-}
 
 const LOG_TARGET: &str = "xcm::nonfungibles_adapter_pop";
 /// Adapter for transferring non-fungible tokens (NFTs) using [`nonfungibles_v2`].

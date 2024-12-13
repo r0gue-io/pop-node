@@ -1,19 +1,18 @@
 use cumulus_primitives_core::AssetInstance;
 use frame_support::{
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU32, EnsureOrigin, EnsureOriginWithArg, Everything},
+	traits::{AsEnsureOriginWithArg, ConstU32},
 	BoundedVec, PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
-use pop_runtime_common::xcm::nonfungibles_adapter::MultiLocationCollectionId;
 use sp_runtime::traits::Verify;
-use xcm_executor::traits::ConvertLocation;
+use xcm::latest::Location;
 
 use crate::{
-	config::xcm::LocationToAccountId, deposit, AccountId, Assets, Balance, Balances, BlockNumber,
-	Nfts, Runtime, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
+	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -42,28 +41,6 @@ parameter_types! {
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
 
-pub struct ForeignCreatorsNfts;
-
-impl EnsureOriginWithArg<RuntimeOrigin, MultiLocationCollectionId> for ForeignCreatorsNfts {
-	type Success = AccountId;
-
-	fn try_origin(
-		o: RuntimeOrigin,
-		a: &MultiLocationCollectionId,
-	) -> sp_std::result::Result<Self::Success, RuntimeOrigin> {
-		let origin_location = pallet_xcm::EnsureXcm::<Everything>::try_origin(o.clone())?;
-		if !a.inner().starts_with(&origin_location.clone().try_into().unwrap()) {
-			return Err(o);
-		}
-		LocationToAccountId::convert_location(&origin_location).ok_or(o)
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin(a: &MultiLocationCollectionId) -> Result<RuntimeOrigin, ()> {
-		Ok(pallet_xcm::Origin::Xcm(a.clone().into()).into())
-	}
-}
-
 pub(crate) type ForeignNftsInstance = pallet_nfts::Instance2;
 pub type ForeignNftsCall = pallet_nfts::Call<Runtime, ForeignNftsInstance>;
 impl pallet_nfts::Config<ForeignNftsInstance> for Runtime {
@@ -73,8 +50,8 @@ impl pallet_nfts::Config<ForeignNftsInstance> for Runtime {
 	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
-	type CollectionId = MultiLocationCollectionId;
-	type CreateOrigin = ForeignCreatorsNfts;
+	type CollectionId = Location;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Currency = Balances;
 	type DepositPerByte = NftsDepositPerByte;
 	type Features = NftsPalletFeatures;
