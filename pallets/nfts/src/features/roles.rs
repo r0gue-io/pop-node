@@ -81,7 +81,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			// Insert new records.
 			for (account, roles) in account_to_role {
-				CollectionRoleOf::<T, I>::insert(collection.clone(), &account, roles);
+				CollectionRoleOf::<T, I>::insert(&collection, &account, roles);
 			}
 
 			Self::deposit_event(Event::TeamChanged { collection, issuer, admin, freezer });

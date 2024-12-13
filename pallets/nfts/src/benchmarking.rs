@@ -67,19 +67,19 @@ fn mint_item<T: Config<I>, I: 'static>(
 ) -> (T::ItemId, T::AccountId, AccountIdLookupOf<T>) {
 	let item = T::Helper::item(index);
 	let collection = T::Helper::collection(0);
-	let caller = Collection::<T, I>::get(collection.clone()).unwrap().owner;
+	let caller = Collection::<T, I>::get(&collection).unwrap().owner;
 	if caller != whitelisted_caller() {
 		whitelist_account!(caller);
 	}
 	let caller_lookup = T::Lookup::unlookup(caller.clone());
-	let item_exists = Item::<T, I>::contains_key(collection.clone(), item);
-	let item_config = ItemConfigOf::<T, I>::get(collection.clone(), item);
+	let item_exists = Item::<T, I>::contains_key(&collection, item);
+	let item_config = ItemConfigOf::<T, I>::get(&collection, item);
 	if item_exists {
-		return (item, caller, caller_lookup)
+		return (item, caller, caller_lookup);
 	} else if let Some(item_config) = item_config {
 		assert_ok!(Nfts::<T, I>::force_mint(
 			SystemOrigin::Signed(caller.clone()).into(),
-			collection.clone(),
+			collection,
 			item,
 			caller_lookup.clone(),
 			item_config,
@@ -87,7 +87,7 @@ fn mint_item<T: Config<I>, I: 'static>(
 	} else {
 		assert_ok!(Nfts::<T, I>::mint(
 			SystemOrigin::Signed(caller.clone()).into(),
-			collection.clone(),
+			collection,
 			item,
 			caller_lookup.clone(),
 			None,
@@ -265,7 +265,7 @@ benchmarks_instance_pallet! {
 		for i in 0..a {
 			add_collection_attribute::<T, I>(i as u16);
 		}
-		let witness = Collection::<T, I>::get(collection.clone()).unwrap().destroy_witness();
+		let witness = Collection::<T, I>::get(&collection).unwrap().destroy_witness();
 	}: _(SystemOrigin::Signed(caller), collection.clone(), witness)
 	verify {
 		assert_last_event::<T, I>(Event::Destroyed { collection }.into());

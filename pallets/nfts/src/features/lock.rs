@@ -83,7 +83,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if !config.has_disabled_setting(ItemSetting::Transferable) {
 			config.disable_setting(ItemSetting::Transferable);
 		}
-		ItemConfigOf::<T, I>::insert(collection.clone(), item, config);
+		ItemConfigOf::<T, I>::insert(&collection, item, config);
 
 		Self::deposit_event(Event::<T, I>::ItemTransferLocked { collection, item });
 		Ok(())
@@ -113,7 +113,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		if config.has_disabled_setting(ItemSetting::Transferable) {
 			config.enable_setting(ItemSetting::Transferable);
 		}
-		ItemConfigOf::<T, I>::insert(collection.clone(), item, config);
+		ItemConfigOf::<T, I>::insert(&collection, item, config);
 
 		Self::deposit_event(Event::<T, I>::ItemTransferUnlocked { collection, item });
 		Ok(())

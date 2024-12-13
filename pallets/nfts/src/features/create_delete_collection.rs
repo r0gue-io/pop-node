@@ -42,15 +42,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		deposit: DepositBalanceOf<T, I>,
 		event: Event<T, I>,
 	) -> DispatchResult {
-		ensure!(
-			!Collection::<T, I>::contains_key(collection.clone()),
-			Error::<T, I>::CollectionIdInUse
-		);
+		ensure!(!Collection::<T, I>::contains_key(&collection), Error::<T, I>::CollectionIdInUse);
 
 		T::Currency::reserve(&owner, deposit)?;
 
 		Collection::<T, I>::insert(
-			collection.clone(),
+			&collection,
 			CollectionDetails {
 				owner: owner.clone(),
 				owner_deposit: deposit,
@@ -61,15 +58,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			},
 		);
 		CollectionRoleOf::<T, I>::insert(
-			collection.clone(),
+			&collection,
 			admin,
 			CollectionRoles(
 				CollectionRole::Admin | CollectionRole::Freezer | CollectionRole::Issuer,
 			),
 		);
 
-		CollectionConfigOf::<T, I>::insert(collection.clone(), config.clone());
-		CollectionAccount::<T, I>::insert(&owner, collection.clone(), ());
+		CollectionConfigOf::<T, I>::insert(&collection, config.clone());
+		CollectionAccount::<T, I>::insert(&owner, &collection, ());
 
 		Self::deposit_event(event);
 
@@ -116,7 +113,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			}
 			ensure!(collection_details.items == 0, Error::<T, I>::CollectionNotEmpty);
 			ensure!(
-				CollectionApprovals::<T, I>::iter_prefix((collection.clone(),))
+				CollectionApprovals::<T, I>::iter_prefix((&collection,))
 					.take(1)
 					.next()
 					.is_none(),
@@ -132,13 +129,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				Error::<T, I>::BadWitness
 			);
 
-			for (_, metadata) in ItemMetadataOf::<T, I>::drain_prefix(collection.clone()) {
+			for (_, metadata) in ItemMetadataOf::<T, I>::drain_prefix(&collection) {
 				if let Some(depositor) = metadata.deposit.account {
 					T::Currency::unreserve(&depositor, metadata.deposit.amount);
 				}
 			}
 
-			CollectionMetadataOf::<T, I>::remove(collection.clone());
+			CollectionMetadataOf::<T, I>::remove(&collection);
 			Self::clear_roles(&collection)?;
 
 			for (_, (_, deposit)) in Attribute::<T, I>::drain_prefix((&collection,)) {
@@ -149,11 +146,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				}
 			}
 
-			CollectionAccount::<T, I>::remove(&collection_details.owner, collection.clone());
+			CollectionAccount::<T, I>::remove(&collection_details.owner, &collection);
 			T::Currency::unreserve(&collection_details.owner, collection_details.owner_deposit);
-			CollectionConfigOf::<T, I>::remove(collection.clone());
-			let _ =
-				ItemConfigOf::<T, I>::clear_prefix(collection.clone(), witness.item_configs, None);
+			CollectionConfigOf::<T, I>::remove(&collection);
+			let _ = ItemConfigOf::<T, I>::clear_prefix(&collection, witness.item_configs, None);
 
 			Self::deposit_event(Event::Destroyed { collection });
 

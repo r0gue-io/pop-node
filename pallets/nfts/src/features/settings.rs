@@ -33,11 +33,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		config: CollectionConfigFor<T, I>,
 	) -> DispatchResult {
-		ensure!(
-			Collection::<T, I>::contains_key(collection.clone()),
-			Error::<T, I>::UnknownCollection
-		);
-		CollectionConfigOf::<T, I>::insert(collection.clone(), config);
+		ensure!(Collection::<T, I>::contains_key(&collection), Error::<T, I>::UnknownCollection);
+		CollectionConfigOf::<T, I>::insert(&collection, config);
 		Self::deposit_event(Event::CollectionConfigChanged { collection });
 		Ok(())
 	}
@@ -70,7 +67,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 
 		let details =
-			Collection::<T, I>::get(collection.clone()).ok_or(Error::<T, I>::UnknownCollection)?;
+			Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 		if let Some(check_owner) = &maybe_check_owner {
 			ensure!(check_owner == &details.owner, Error::<T, I>::NoPermission);
 		}

@@ -1125,11 +1125,11 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
-			let collection_details = Collection::<T, I>::get(collection.clone())
-				.ok_or(Error::<T, I>::UnknownCollection)?;
+			let collection_details =
+				Collection::<T, I>::get(&collection).ok_or(Error::<T, I>::UnknownCollection)?;
 			ensure!(collection_details.owner == origin, Error::<T, I>::NoPermission);
 
-			let config = Self::get_collection_config(&collection.clone())?;
+			let config = Self::get_collection_config(&collection)?;
 			let deposit = match config.is_setting_enabled(CollectionSetting::DepositRequired) {
 				true => T::ItemDeposit::get(),
 				false => Zero::zero(),
@@ -1137,7 +1137,7 @@ pub mod pallet {
 
 			let mut successful = Vec::with_capacity(items.len());
 			for item in items.into_iter() {
-				let mut details = match Item::<T, I>::get(collection.clone(), item) {
+				let mut details = match Item::<T, I>::get(&collection, item) {
 					Some(x) => x,
 					None => continue,
 				};
@@ -1150,13 +1150,13 @@ pub mod pallet {
 						if T::Currency::reserve(&details.deposit.account, deposit - old).is_err() {
 							// NOTE: No alterations made to collection_details in this iteration so
 							// far, so this is OK to do.
-							continue
+							continue;
 						}
 					},
 					_ => continue,
 				}
 				details.deposit.amount = deposit;
-				Item::<T, I>::insert(collection.clone(), item, &details);
+				Item::<T, I>::insert(&collection, item, &details);
 				successful.push(item);
 			}
 
