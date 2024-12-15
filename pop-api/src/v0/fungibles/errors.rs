@@ -3,7 +3,6 @@
 
 use ink::{
 	prelude::string::{String, ToString},
-	scale::{Decode, Encode},
 };
 
 use super::*;
