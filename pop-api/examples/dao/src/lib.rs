@@ -1,5 +1,4 @@
 #[cfg(test)]
-
 #[ink::contract]
 mod dao {
 	use ink::{
@@ -10,11 +9,10 @@ mod dao {
 		primitives::TokenId,
 		v0::fungibles::{
 			self as api,
-			events::{Created, Transfer},
+			events::{Approval, Created, Transfer},
 			Psp22Error,
 		},
 	};
-
 
 	/// Structure of the proposal used by the Dao governance sysytem
 	#[derive(scale::Decode, scale::Encode, Debug)]
@@ -81,6 +79,7 @@ mod dao {
 	}
 
 	impl Dao {
+		
 		/// Instantiate a new Dao contract and create the associated token
 		///
 		/// # Parameters:
@@ -114,12 +113,12 @@ mod dao {
 		}
 
 		/// Allows members to create new spending proposals
-		/// 
+		///
 		/// # Parameters
-		/// - `beneficiary` - The account that will receive the payment 
+		/// - `beneficiary` - The account that will receive the payment
 		/// if the proposal is accepted.
 		/// - `amount` - Amount requested for this proposal
-		/// - `description` - Description of the proposal 
+		/// - `description` - Description of the proposal
 		#[ink(message)]
 		pub fn create_proposal(
 			&mut self,
@@ -129,7 +128,7 @@ mod dao {
 		) -> Result<(), Error> {
 			let _caller = self.env().caller();
 			let current_block = self.env().block_number();
-			let proposal_id = self.proposals.len();
+			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
 			let proposal = Proposal {
 				description,
 				vote_start: current_block,
@@ -147,10 +146,11 @@ mod dao {
 		}
 
 		/// Allows Dao's members to vote for a proposal
-		/// 
+		///
 		/// # Parameters
 		/// - `proposal_id` - Identifier of the proposal
-		/// - `approve` - Indicates whether the vote is in favor (true) or against (false) the proposal.
+		/// - `approve` - Indicates whether the vote is in favor (true) or against (false) the
+		///   proposal.
 		#[ink(message)]
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
@@ -184,7 +184,7 @@ mod dao {
 		}
 
 		/// Enact a proposal approved by the Dao members
-		/// 
+		///
 		/// # Parameters
 		/// - `proposal_id` - Identifier of the proposal
 		#[ink(message)]
@@ -219,6 +219,11 @@ mod dao {
 					to: Some(proposal.beneficiary),
 					value: proposal.amount,
 				});
+				self.env().emit_event(Approval {
+					owner: contract,
+					spender: contract,
+					value: proposal.amount,
+				});
 
 				if let Some(proposal) = self.proposals.get_mut(proposal_id_usize) {
 					proposal.executed = true;
@@ -231,13 +236,13 @@ mod dao {
 
 		/// Allows a user to become a member of the Dao
 		/// by transferring some tokens to the DAO's treasury.
-		/// The amount of tokens transferred will be stored as the 
+		/// The amount of tokens transferred will be stored as the
 		/// voting power of this member.
 		///
 		/// # Parameters
-		/// - `amount` - Balance transferred to the Dao and representing 
+		/// - `amount` - Balance transferred to the Dao and representing
 		/// the voting power of the member.
-    
+
 		#[ink(message)]
 		pub fn join(&mut self, amount: Balance) -> Result<(), Error> {
 			let caller = self.env().caller();
@@ -286,6 +291,36 @@ mod dao {
 			match error {
 				Error::Psp22(psp22_error) => psp22_error,
 				_ => Psp22Error::Custom(String::from("Unknown error")),
+			}
+		}
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use super::*;
+		const UNIT: Balance = 10_000_000_000;
+		const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
+		const INIT_VALUE: Balance = 100 * UNIT;
+		const AMOUNT: Balance = MIN_BALANCE * 4;
+		const MIN_BALANCE: Balance = 10_000;
+		const TOKEN: TokenId = 1;
+
+		#[ink::test]
+		fn test_join() {
+			// Setup
+			let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
+			// Test joining the DAO
+			ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
+
+			if let Ok(mut dao) = Dao::new(TOKEN, 10, MIN_BALANCE) {
+				// Give some tokens to Alice
+				let _ = api::transfer(TOKEN, accounts.alice, INIT_AMOUNT);
+
+				assert_eq!(dao.join(AMOUNT), Ok(()));
+				// Verify member was added correctly
+				let member = dao.members.get(accounts.alice).unwrap();
+				assert_eq!(member.voting_power, AMOUNT);
+				assert_eq!(member.last_vote, 0);
 			}
 		}
 	}
