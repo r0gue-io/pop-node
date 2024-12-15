@@ -1,3 +1,6 @@
+#[cfg(test)]
+mod tests;
+
 #[ink::contract]
 mod dao {
 	use ink::{
@@ -8,13 +11,14 @@ mod dao {
 		primitives::TokenId,
 		v0::fungibles::{
 			self as api,
-			events::{Approval, Created, Transfer},
+			events::{Created, Transfer},
 			Psp22Error,
 		},
 	};
 
+
 	/// Structure of the proposal used by the Dao governance sysytem
-	#[derive(scale::Decode, scale::Encode)]
+	#[derive(scale::Decode, scale::Encode, Debug)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 	pub struct Proposal {
 		// Description of the proposal
@@ -86,7 +90,11 @@ mod dao {
 			};
 			let contract_id = instance.env().account_id();
 			api::create(token_id, contract_id, min_balance).map_err(Psp22Error::from)?;
-			instance.env();
+			instance.env().emit_event(Created {
+				id: token_id,
+				creator: contract_id,
+				admin: contract_id,
+			});
 
 			Ok(instance)
 		}
@@ -161,20 +169,28 @@ mod dao {
 			}
 
 			// If we've passed the checks, now we can mutably borrow the proposal
-			let proposal =
-				self.proposals.get_mut(proposal_id as usize).ok_or(Error::ProposalNotFound)?;
+			let proposal_id_usize = proposal_id as usize;
+			let proposal = self.proposals.get(proposal_id_usize).ok_or(Error::ProposalNotFound)?;
 
 			if proposal.executed {
 				return Err(Error::ProposalAlreadyExecuted);
 			}
 
 			if proposal.yes_votes > proposal.no_votes {
+				let contract = self.env().account_id();
 				// ToDo: Check that there is enough funds in the treasury
 				// Execute the proposal
 				api::transfer(self.token_id, proposal.beneficiary, proposal.amount)
 					.map_err(Psp22Error::from)?;
+				self.env().emit_event(Transfer {
+					from: Some(contract),
+					to: Some(proposal.beneficiary),
+					value: proposal.amount,
+				});
 
-				proposal.executed = true;
+				if let Some(proposal) = self.proposals.get_mut(proposal_id_usize) {
+					proposal.executed = true;
+				}
 				Ok(())
 			} else {
 				Err(Error::ProposalRejected)
@@ -184,8 +200,14 @@ mod dao {
 		#[ink(message)]
 		pub fn join(&mut self, amount: Balance) -> Result<(), Error> {
 			let caller = self.env().caller();
-			api::transfer_from(self.token_id, caller, self.env().account_id(), amount)
+			let contract = self.env().account_id();
+			api::transfer_from(self.token_id, caller.clone(), contract.clone(), amount)
 				.map_err(Psp22Error::from)?;
+			self.env().emit_event(Transfer {
+				from: Some(caller),
+				to: Some(contract),
+				value: amount,
+			});
 
 			let member =
 				self.members.get(caller).unwrap_or(Member { voting_power: 0, last_vote: 0 });
