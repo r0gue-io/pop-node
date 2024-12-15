@@ -1,18 +1,22 @@
+use ink::{
+	prelude::{string::String, vec::Vec},
+	storage::Mapping,
+};
+use pop_api::{
+	primitives::TokenId,
+	v0::fungibles::{
+		self as api,
+		events::{Approval, Created, Transfer},
+		Psp22Error,
+	},
+};
+
 #[cfg(test)]
+mod tests;
+
 #[ink::contract]
 mod dao {
-	use ink::{
-		prelude::{string::String, vec::Vec},
-		storage::Mapping,
-	};
-	use pop_api::{
-		primitives::TokenId,
-		v0::fungibles::{
-			self as api,
-			events::{Approval, Created, Transfer},
-			Psp22Error,
-		},
-	};
+	use super::*;
 
 	/// Structure of the proposal used by the Dao governance sysytem
 	#[derive(scale::Decode, scale::Encode, Debug)]
@@ -79,7 +83,6 @@ mod dao {
 	}
 
 	impl Dao {
-		
 		/// Instantiate a new Dao contract and create the associated token
 		///
 		/// # Parameters:
@@ -99,7 +102,7 @@ mod dao {
 				members: Mapping::default(),
 				last_votes: Mapping::default(),
 				voting_period,
-				token_id: token_id.clone(),
+				token_id: token_id,
 			};
 			let contract_id = instance.env().account_id();
 			api::create(token_id, contract_id, min_balance).map_err(Psp22Error::from)?;
@@ -129,10 +132,11 @@ mod dao {
 			let _caller = self.env().caller();
 			let current_block = self.env().block_number();
 			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
+			let vote_end = current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
 			let proposal = Proposal {
 				description,
 				vote_start: current_block,
-				vote_end: current_block + self.voting_period,
+				vote_end,
 				yes_votes: 0,
 				no_votes: 0,
 				executed: false,
@@ -170,9 +174,9 @@ mod dao {
 			}
 
 			if approve {
-				proposal.yes_votes += member.voting_power;
+				proposal.yes_votes.checked_add(member.voting_power).ok_or(Error::ArithmeticOverflow)?;
 			} else {
-				proposal.no_votes += member.voting_power;
+				proposal.no_votes.checked_add(member.voting_power).ok_or(Error::ArithmeticOverflow)?;
 			}
 
 			self.members.insert(
@@ -258,9 +262,10 @@ mod dao {
 			let member =
 				self.members.get(caller).unwrap_or(Member { voting_power: 0, last_vote: 0 });
 
+			let voting_power = member.voting_power.checked_add(amount).ok_or(Error::ArithmeticOverflow)?;
 			self.members.insert(
 				caller,
-				&Member { voting_power: member.voting_power + amount, last_vote: member.last_vote },
+				&Member { voting_power, last_vote: member.last_vote },
 			);
 
 			Ok(())
@@ -270,6 +275,7 @@ mod dao {
 	#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
 	pub enum Error {
+		ArithmeticOverflow,
 		ProposalNotFound,
 		VotingPeriodEnded,
 		NotAMember,
@@ -291,36 +297,6 @@ mod dao {
 			match error {
 				Error::Psp22(psp22_error) => psp22_error,
 				_ => Psp22Error::Custom(String::from("Unknown error")),
-			}
-		}
-	}
-
-	#[cfg(test)]
-	mod tests {
-		use super::*;
-		const UNIT: Balance = 10_000_000_000;
-		const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
-		const INIT_VALUE: Balance = 100 * UNIT;
-		const AMOUNT: Balance = MIN_BALANCE * 4;
-		const MIN_BALANCE: Balance = 10_000;
-		const TOKEN: TokenId = 1;
-
-		#[ink::test]
-		fn test_join() {
-			// Setup
-			let accounts = ink::env::test::default_accounts::<ink::env::DefaultEnvironment>();
-			// Test joining the DAO
-			ink::env::test::set_caller::<ink::env::DefaultEnvironment>(accounts.alice);
-
-			if let Ok(mut dao) = Dao::new(TOKEN, 10, MIN_BALANCE) {
-				// Give some tokens to Alice
-				let _ = api::transfer(TOKEN, accounts.alice, INIT_AMOUNT);
-
-				assert_eq!(dao.join(AMOUNT), Ok(()));
-				// Verify member was added correctly
-				let member = dao.members.get(accounts.alice).unwrap();
-				assert_eq!(member.voting_power, AMOUNT);
-				assert_eq!(member.last_vote, 0);
 			}
 		}
 	}
