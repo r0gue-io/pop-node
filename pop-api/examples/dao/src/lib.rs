@@ -43,12 +43,19 @@ mod dao {
 
 		// Amount of tokens to be awarded to the beneficiary
 		amount: Balance,
+
+		// Identifier of the proposal
+		proposal_id: u32,
 	}
 
+	/// Representation of a member in the voting system
 	#[derive(scale::Decode, scale::Encode)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
 	pub struct Member {
+		// Stores the member's voting influence by using his balance
 		voting_power: Balance,
+
+		// Keeps track of the last vote casted by the member
 		last_vote: BlockNumber,
 	}
 
@@ -74,6 +81,14 @@ mod dao {
 	}
 
 	impl Dao {
+		/// Instantiate a new Dao contract and create the associated token
+		///
+		/// # Parameters:
+		/// - `token_id` - The identifier of the token to be created
+		/// - `voting_period` - Amount of blocks during which members can cast their votes
+		/// - `min_balance` - The minimum balance required for accounts holding this token.
+		// The `min_balance` ensures accounts hold a minimum amount of tokens, preventing tiny,
+		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
 		pub fn new(
 			token_id: TokenId,
@@ -98,6 +113,13 @@ mod dao {
 			Ok(instance)
 		}
 
+		/// Allows members to create new spending proposals
+		/// 
+		/// # Parameters
+		/// - `beneficiary` - The account that will receive the payment 
+		/// if the proposal is accepted.
+		/// - `amount` - Amount requested for this proposal
+		/// - `description` - Description of the proposal 
 		#[ink(message)]
 		pub fn create_proposal(
 			&mut self,
@@ -107,6 +129,7 @@ mod dao {
 		) -> Result<(), Error> {
 			let _caller = self.env().caller();
 			let current_block = self.env().block_number();
+			let proposal_id = self.proposals.len() - 1;
 			let proposal = Proposal {
 				description,
 				vote_start: current_block,
@@ -116,12 +139,18 @@ mod dao {
 				executed: false,
 				beneficiary,
 				amount,
+				proposal_id,
 			};
 
 			self.proposals.push(proposal);
 			Ok(())
 		}
 
+		/// Allows Dao's members to vote for a proposal
+		/// 
+		/// # Parameters
+		/// - `proposal_id` - Identifier of the proposal
+		/// - `approve` - Indicates whether the vote is in favor (true) or against (false) the proposal.
 		#[ink(message)]
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
@@ -154,6 +183,10 @@ mod dao {
 			Ok(())
 		}
 
+		/// Enact a proposal approved by the Dao members
+		/// 
+		/// # Parameters
+		/// - `proposal_id` - Identifier of the proposal
 		#[ink(message)]
 		pub fn execute_proposal(&mut self, proposal_id: u32) -> Result<(), Error> {
 			let vote_end = self
@@ -196,6 +229,15 @@ mod dao {
 			}
 		}
 
+		/// Allows a user to become a member of the Dao
+		/// by transferring some tokens to the DAO's treasury.
+		/// The amount of tokens transferred will be stored as the 
+		/// voting power of this member.
+		///
+		/// # Parameters
+		/// - `amount` - Balance transferred to the Dao and representing 
+		/// the voting power of the member.
+    
 		#[ink(message)]
 		pub fn join(&mut self, amount: Balance) -> Result<(), Error> {
 			let caller = self.env().caller();
