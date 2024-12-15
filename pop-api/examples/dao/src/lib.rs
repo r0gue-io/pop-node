@@ -1,5 +1,4 @@
 #[cfg(test)]
-mod tests;
 
 #[ink::contract]
 mod dao {
