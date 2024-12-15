@@ -129,7 +129,7 @@ mod dao {
 		) -> Result<(), Error> {
 			let _caller = self.env().caller();
 			let current_block = self.env().block_number();
-			let proposal_id = self.proposals.len() - 1;
+			let proposal_id = self.proposals.len();
 			let proposal = Proposal {
 				description,
 				vote_start: current_block,
