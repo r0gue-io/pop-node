@@ -415,6 +415,18 @@ pub mod pallet {
 	pub type CollectionConfigOf<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Blake2_128Concat, T::CollectionId, CollectionConfigFor<T, I>, OptionQuery>;
 
+	/// Config of an item.
+	#[pallet::storage]
+	pub type ItemConfigOf<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
+		_,
+		Blake2_128Concat,
+		T::CollectionId,
+		Blake2_128Concat,
+		T::ItemId,
+		ItemConfig,
+		OptionQuery,
+	>;
+
 	/// Number of collection items owned by an account.
 	#[pallet::storage]
 	pub type AccountBalance<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
@@ -437,18 +449,6 @@ pub mod pallet {
 			NMapKey<Blake2_128Concat, T::AccountId>, // delegate
 		),
 		(Option<BlockNumberFor<T>>, DepositBalanceOf<T, I>),
-	>;
-
-	/// Config of an item.
-	#[pallet::storage]
-	pub type ItemConfigOf<T: Config<I>, I: 'static = ()> = StorageDoubleMap<
-		_,
-		Blake2_128Concat,
-		T::CollectionId,
-		Blake2_128Concat,
-		T::ItemId,
-		ItemConfig,
-		OptionQuery,
 	>;
 
 	#[pallet::event]
@@ -510,12 +510,6 @@ pub mod pallet {
 			item: Option<T::ItemId>,
 			owner: T::AccountId,
 			delegate: T::AccountId,
-		},
-		/// Multiple approvals of a collection or item were cancelled.
-		ApprovalsCancelled {
-			collection: T::CollectionId,
-			item: Option<T::ItemId>,
-			owner: T::AccountId,
 		},
 		/// All approvals of a collection or item were cancelled.
 		AllApprovalsCancelled {
@@ -641,6 +635,12 @@ pub mod pallet {
 			item: Option<T::ItemId>,
 			attribute: PalletAttributes<T::CollectionId>,
 			value: BoundedVec<u8, T::ValueLimit>,
+		},
+		/// Multiple approvals of a collection or item were cancelled.
+		ApprovalsCancelled {
+			collection: T::CollectionId,
+			item: Option<T::ItemId>,
+			owner: T::AccountId,
 		},
 	}
 
@@ -1372,65 +1372,6 @@ pub mod pallet {
 			)
 		}
 
-		/// Approve collection items owned by the origin to be transferred by a delegated
-		/// third-party account. This function reserves the required deposit
-		/// `CollectionApprovalDeposit` from the `origin` account.
-		///
-		/// Origin must be Signed.
-		///
-		/// - `collection`: The collection of the item to be approved for delegated transfer.
-		/// - `delegate`: The account to delegate permission to transfer collection items owned by
-		///   the origin.
-		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
-		/// 	number of blocks after which the approval will expire
-		///
-		/// Emits `TransferApproved` on success.
-		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(39)]
-		#[pallet::weight(T::WeightInfo::approve_collection_transfer())]
-		pub fn approve_collection_transfer(
-			origin: OriginFor<T>,
-			collection: T::CollectionId,
-			delegate: AccountIdLookupOf<T>,
-			maybe_deadline: Option<BlockNumberFor<T>>,
-		) -> DispatchResult {
-			let origin = ensure_signed(origin)?;
-			let delegate = T::Lookup::lookup(delegate)?;
-			Self::do_approve_collection_transfer(origin, collection, delegate, maybe_deadline)
-		}
-
-		/// Force-approve collection items owned by the `owner` to be transferred by a delegated
-		/// third-party account. This function reserves the required deposit
-		/// `CollectionApprovalDeposit` from the `owner` account.
-		///
-		/// Origin must be the `ForceOrigin`.
-		///
-		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
-		/// - `collection`: The collection of the item to be approved for delegated transfer.
-		/// - `delegate`: The account to delegate permission to transfer collection items owned by
-		///   the `owner`.
-		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
-		/// 	number of blocks after which the approval will expire.
-		///
-		/// Emits `TransferApproved` on success.
-		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(40)]
-		#[pallet::weight(T::WeightInfo::force_approve_collection_transfer())]
-		pub fn force_approve_collection_transfer(
-			origin: OriginFor<T>,
-			owner: AccountIdLookupOf<T>,
-			collection: T::CollectionId,
-			delegate: AccountIdLookupOf<T>,
-			maybe_deadline: Option<BlockNumberFor<T>>,
-		) -> DispatchResult {
-			T::ForceOrigin::ensure_origin(origin)?;
-			let delegate = T::Lookup::lookup(delegate)?;
-			let owner = T::Lookup::lookup(owner)?;
-			Self::do_approve_collection_transfer(owner, collection, delegate, maybe_deadline)
-		}
-
 		/// Cancel one of the transfer approvals for a specific item.
 		///
 		/// Origin must be either:
@@ -1460,55 +1401,6 @@ pub mod pallet {
 			Self::do_cancel_approval(maybe_check_origin, collection, item, delegate)
 		}
 
-		/// Cancel a collection approval.
-		///
-		/// Origin must be Signed.
-		///
-		/// Arguments:
-		/// - `collection`: The collection whose approval will be cancelled.
-		/// - `delegate`: The account that is going to lose their approval.
-		///
-		/// Emits `ApprovalCancelled` on success.
-		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(41)]
-		#[pallet::weight(T::WeightInfo::cancel_collection_approval())]
-		pub fn cancel_collection_approval(
-			origin: OriginFor<T>,
-			collection: T::CollectionId,
-			delegate: AccountIdLookupOf<T>,
-		) -> DispatchResult {
-			let origin = ensure_signed(origin)?;
-			let delegate = T::Lookup::lookup(delegate)?;
-			Self::do_cancel_collection_approval(origin, collection, delegate)
-		}
-
-		/// Force-cancel a collection approval granted by `owner` account.
-		///
-		/// Origin must be `ForceOrigin`.
-		///
-		/// Arguments:
-		/// - `owner`: The owner of the approval to be force-cancelled by the `origin`.
-		/// - `collection`: The collection of whose approval will be cancelled.
-		/// - `delegate`: The account that is going to lose their approval.
-		///
-		/// Emits `ApprovalCancelled` on success.
-		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(42)]
-		#[pallet::weight(T::WeightInfo::force_cancel_collection_approval())]
-		pub fn force_cancel_collection_approval(
-			origin: OriginFor<T>,
-			owner: AccountIdLookupOf<T>,
-			collection: T::CollectionId,
-			delegate: AccountIdLookupOf<T>,
-		) -> DispatchResult {
-			T::ForceOrigin::ensure_origin(origin)?;
-			let delegate = T::Lookup::lookup(delegate)?;
-			let owner = T::Lookup::lookup(owner)?;
-			Self::do_cancel_collection_approval(owner, collection, delegate)
-		}
-
 		/// Cancel all the approvals of a specific item.
 		///
 		/// Origin must be either:
@@ -1533,58 +1425,6 @@ pub mod pallet {
 				.map(|_| None)
 				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
 			Self::do_clear_all_transfer_approvals(maybe_check_origin, collection, item)
-		}
-
-		/// Cancel all collection approvals, up to a specified limit.
-		///
-		/// Origin must be Signed.
-		///
-		/// Arguments:
-		/// - `collection`: The collection whose approvals will be cleared.
-		/// - `limit`: The amount of collection approvals that will be cleared.
-		///
-		/// Emits `ApprovalsCancelled` on success.
-		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(43)]
-		#[pallet::weight(T::WeightInfo::clear_collection_approvals(*limit))]
-		pub fn clear_collection_approvals(
-			origin: OriginFor<T>,
-			collection: T::CollectionId,
-			limit: u32,
-		) -> DispatchResultWithPostInfo {
-			let origin = ensure_signed(origin)
-				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
-			let removed_approvals = Self::do_clear_collection_approvals(origin, collection, limit)?;
-			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
-		}
-
-		/// Force-cancel all collection approvals granted by `owner` account, up to a specified
-		/// limit.
-		///
-		/// Origin must be `ForceOrigin`.
-		///
-		/// Arguments:
-		/// - `owner`: The owner of the approvals to be force-cancelled by the `origin`.
-		/// - `collection`: The collection whose approvals will be cleared.
-		/// - `limit`: The amount of collection approvals that will be cleared.
-		///
-		/// Emits `ApprovalsCancelled` on success.
-		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(44)]
-		#[pallet::weight(T::WeightInfo::force_clear_collection_approvals(*limit))]
-		pub fn force_clear_collection_approvals(
-			origin: OriginFor<T>,
-			owner: AccountIdLookupOf<T>,
-			collection: T::CollectionId,
-			limit: u32,
-		) -> DispatchResultWithPostInfo {
-			T::ForceOrigin::ensure_origin(origin)
-				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
-			let owner = T::Lookup::lookup(owner)?;
-			let removed_approvals = Self::do_clear_collection_approvals(owner, collection, limit)?;
-			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
 		}
 
 		/// Disallows changing the metadata or attributes of the item.
@@ -2153,6 +1993,166 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			Self::validate_signature(&Encode::encode(&data), &signature, &signer)?;
 			Self::do_set_attributes_pre_signed(origin, data, signer)
+		}
+
+		/// Approve collection items owned by the origin to be transferred by a delegated
+		/// third-party account. This function reserves the required deposit
+		/// `CollectionApprovalDeposit` from the `origin` account.
+		///
+		/// Origin must be Signed.
+		///
+		/// - `collection`: The collection of the item to be approved for delegated transfer.
+		/// - `delegate`: The account to delegate permission to transfer collection items owned by
+		///   the origin.
+		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
+		/// 	number of blocks after which the approval will expire
+		///
+		/// Emits `TransferApproved` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(39)]
+		#[pallet::weight(T::WeightInfo::approve_collection_transfer())]
+		pub fn approve_collection_transfer(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+			maybe_deadline: Option<BlockNumberFor<T>>,
+		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_approve_collection_transfer(origin, collection, delegate, maybe_deadline)
+		}
+
+		/// Force-approve collection items owned by the `owner` to be transferred by a delegated
+		/// third-party account. This function reserves the required deposit
+		/// `CollectionApprovalDeposit` from the `owner` account.
+		///
+		/// Origin must be the `ForceOrigin`.
+		///
+		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
+		/// - `collection`: The collection of the item to be approved for delegated transfer.
+		/// - `delegate`: The account to delegate permission to transfer collection items owned by
+		///   the `owner`.
+		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
+		/// 	number of blocks after which the approval will expire.
+		///
+		/// Emits `TransferApproved` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(40)]
+		#[pallet::weight(T::WeightInfo::force_approve_collection_transfer())]
+		pub fn force_approve_collection_transfer(
+			origin: OriginFor<T>,
+			owner: AccountIdLookupOf<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+			maybe_deadline: Option<BlockNumberFor<T>>,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			let owner = T::Lookup::lookup(owner)?;
+			Self::do_approve_collection_transfer(owner, collection, delegate, maybe_deadline)
+		}
+
+		/// Cancel a collection approval.
+		///
+		/// Origin must be Signed.
+		///
+		/// Arguments:
+		/// - `collection`: The collection whose approval will be cancelled.
+		/// - `delegate`: The account that is going to lose their approval.
+		///
+		/// Emits `ApprovalCancelled` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(41)]
+		#[pallet::weight(T::WeightInfo::cancel_collection_approval())]
+		pub fn cancel_collection_approval(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			let origin = ensure_signed(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			Self::do_cancel_collection_approval(origin, collection, delegate)
+		}
+
+		/// Force-cancel a collection approval granted by `owner` account.
+		///
+		/// Origin must be `ForceOrigin`.
+		///
+		/// Arguments:
+		/// - `owner`: The owner of the approval to be force-cancelled by the `origin`.
+		/// - `collection`: The collection of whose approval will be cancelled.
+		/// - `delegate`: The account that is going to lose their approval.
+		///
+		/// Emits `ApprovalCancelled` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(42)]
+		#[pallet::weight(T::WeightInfo::force_cancel_collection_approval())]
+		pub fn force_cancel_collection_approval(
+			origin: OriginFor<T>,
+			owner: AccountIdLookupOf<T>,
+			collection: T::CollectionId,
+			delegate: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			T::ForceOrigin::ensure_origin(origin)?;
+			let delegate = T::Lookup::lookup(delegate)?;
+			let owner = T::Lookup::lookup(owner)?;
+			Self::do_cancel_collection_approval(owner, collection, delegate)
+		}
+
+		/// Cancel all collection approvals, up to a specified limit.
+		///
+		/// Origin must be Signed.
+		///
+		/// Arguments:
+		/// - `collection`: The collection whose approvals will be cleared.
+		/// - `limit`: The amount of collection approvals that will be cleared.
+		///
+		/// Emits `ApprovalsCancelled` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(43)]
+		#[pallet::weight(T::WeightInfo::clear_collection_approvals(*limit))]
+		pub fn clear_collection_approvals(
+			origin: OriginFor<T>,
+			collection: T::CollectionId,
+			limit: u32,
+		) -> DispatchResultWithPostInfo {
+			let origin = ensure_signed(origin)
+				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
+			let removed_approvals = Self::do_clear_collection_approvals(origin, collection, limit)?;
+			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
+		}
+
+		/// Force-cancel all collection approvals granted by `owner` account, up to a specified
+		/// limit.
+		///
+		/// Origin must be `ForceOrigin`.
+		///
+		/// Arguments:
+		/// - `owner`: The owner of the approvals to be force-cancelled by the `origin`.
+		/// - `collection`: The collection whose approvals will be cleared.
+		/// - `limit`: The amount of collection approvals that will be cleared.
+		///
+		/// Emits `ApprovalsCancelled` on success.
+		///
+		/// Weight: `O(1)`
+		#[pallet::call_index(44)]
+		#[pallet::weight(T::WeightInfo::force_clear_collection_approvals(*limit))]
+		pub fn force_clear_collection_approvals(
+			origin: OriginFor<T>,
+			owner: AccountIdLookupOf<T>,
+			collection: T::CollectionId,
+			limit: u32,
+		) -> DispatchResultWithPostInfo {
+			T::ForceOrigin::ensure_origin(origin)
+				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
+			let owner = T::Lookup::lookup(owner)?;
+			let removed_approvals = Self::do_clear_collection_approvals(owner, collection, limit)?;
+			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
 		}
 	}
 }
