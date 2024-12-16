@@ -641,6 +641,7 @@ pub mod pallet {
 			collection: T::CollectionId,
 			item: Option<T::ItemId>,
 			owner: T::AccountId,
+			approvals: u32,
 		},
 	}
 

@@ -669,7 +669,7 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Signed(caller.clone()), collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone()}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone(), approvals: n}.into());
 		assert!(CollectionApprovals::<T, I>::iter_prefix((collection, caller,)).take(1).next().is_none());
 	}
 
@@ -688,7 +688,7 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Root, caller_lookup, collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone()}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone(), approvals: n}.into());
 		assert!(CollectionApprovals::<T, I>::iter_prefix((collection, caller,)).take(1).next().is_none());
 	}
 

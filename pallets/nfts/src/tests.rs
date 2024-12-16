@@ -3136,7 +3136,7 @@ fn clear_collection_approvals_works() {
 			(RuntimeOrigin::signed(item_owner.clone()), None),
 		] {
 			// Approve delegates.
-			let mut approvals = 0u64;
+			let mut approvals = 0u32;
 			for i in delegates.clone() {
 				assert_ok!(Nfts::approve_collection_transfer(
 					RuntimeOrigin::signed(item_owner.clone()),
@@ -3152,7 +3152,7 @@ fn clear_collection_approvals_works() {
 				clear_collection_approvals(origin.clone(), maybe_owner, collection_id, 0),
 				Ok(Some(WeightOf::clear_collection_approvals(0)).into())
 			);
-			assert_eq!(Balances::free_balance(&item_owner), balance - approvals);
+			assert_eq!(Balances::free_balance(&item_owner), balance - approvals as u64);
 			assert_eq!(
 				CollectionApprovals::iter_prefix((collection_id, &item_owner)).count(),
 				approvals as usize
@@ -3161,6 +3161,7 @@ fn clear_collection_approvals_works() {
 				collection: collection_id,
 				item: None,
 				owner: item_owner.clone(),
+				approvals
 			}));
 
 			// Partially remove collection approvals.
@@ -3168,7 +3169,7 @@ fn clear_collection_approvals_works() {
 				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 1),
 				Ok(Some(WeightOf::clear_collection_approvals(1)).into())
 			);
-			assert_eq!(Balances::free_balance(&item_owner), balance - approvals + 1);
+			assert_eq!(Balances::free_balance(&item_owner), balance - (approvals as u64) + 1);
 			assert_eq!(
 				CollectionApprovals::iter_prefix((collection_id, item_owner.clone())).count(),
 				approvals as usize - 1
@@ -3177,6 +3178,7 @@ fn clear_collection_approvals_works() {
 				collection: collection_id,
 				item: None,
 				owner: item_owner.clone(),
+				approvals: 1
 			}));
 
 			// Successfully remove all collection approvals. Only charges post-dispatch weight for
@@ -3193,6 +3195,7 @@ fn clear_collection_approvals_works() {
 				collection: collection_id,
 				item: None,
 				owner: item_owner.clone(),
+				approvals: approvals - 1
 			}));
 			// Ensure delegates are not able to transfer.
 			for i in delegates.clone() {
