@@ -4,7 +4,7 @@ use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	sp_runtime::{BoundedVec, DispatchError::BadOrigin},
 };
-use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
+use pallet_nfts::{Config, WeightInfo as NftsWeightInfoTrait};
 
 use crate::{
 	mock::*,
@@ -95,14 +95,17 @@ fn transfer_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
 		let dest = BOB;
+		let collection = COLLECTION;
+		let item = ITEM;
 
-		let (collection, item) = nfts::create_collection_mint(owner, owner, ITEM);
+		nfts::create_collection_mint(owner, owner, item);
+		// Origin checks.
 		for origin in vec![root(), none()] {
 			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
 		}
 		// Successfully transfer a collection item.
 		let balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
-		assert_ok!(NonFungibles::transfer(signed(owner), collection, ITEM, dest));
+		assert_ok!(NonFungibles::transfer(signed(owner), collection, item, dest));
 		let balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
 		assert_eq!(AccountBalanceOf::<Test>::get(collection, &owner), 0);
 		assert_eq!(balance_after_transfer - balance_before_transfer, 1);
@@ -119,11 +122,14 @@ fn approved_transfer_works() {
 		let owner = ALICE;
 		let operator = BOB;
 		let dest = CHARLIE;
+		let collection = COLLECTION;
+		let item = ITEM;
 
-		let (collection, item) = nfts::create_collection_mint(owner, owner, ITEM);
+		// Origin checks.
 		for origin in vec![root(), none()] {
 			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
 		}
+		nfts::create_collection_mint(owner, owner, item);
 		// No permission to transfer.
 		assert_noop!(
 			NonFungibles::transfer(signed(operator), collection, item, dest),
@@ -155,6 +161,7 @@ fn mint_works() {
 		let item = ITEM;
 		let witness_data = MintWitness { mint_price: None, owned_item: None };
 
+		// Origin checks.
 		for origin in vec![root(), none()] {
 			assert_noop!(
 				NonFungibles::mint(origin, owner, collection, item, witness_data.clone()),
@@ -177,13 +184,19 @@ fn mint_works() {
 fn burn_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
+		let collection = COLLECTION;
+		let item = ITEM;
 
+		// Origin checks.
+		for origin in vec![root(), none()] {
+			assert_noop!(NonFungibles::burn(origin, collection, item), BadOrigin);
+		}
 		// `UnknownItem` error is returned if collection item is not created.
-		assert_noop!(NonFungibles::burn(signed(owner), COLLECTION, ITEM), NftsError::UnknownItem);
+		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
 		// Successfully burns an existing new collection item.
-		let (collection, item) = nfts::create_collection_mint(owner, owner, ITEM);
+		nfts::create_collection_mint(owner, owner, ITEM);
 		let balance_before_burn = AccountBalanceOf::<Test>::get(collection, owner);
-		assert_ok!(NonFungibles::burn(signed(owner), collection, ITEM));
+		assert_ok!(NonFungibles::burn(signed(owner), collection, item));
 		let balance_after_burn = AccountBalanceOf::<Test>::get(collection, owner);
 		assert_eq!(balance_after_burn, balance_before_burn - 1);
 		System::assert_last_event(
@@ -199,6 +212,13 @@ fn approve_works() {
 		let operator = BOB;
 		let (collection, item) = nfts::create_collection_mint(owner, owner, ITEM);
 
+		// Origin checks for `approve`.
+		for origin in vec![root(), none()] {
+			assert_noop!(
+				NonFungibles::approve(origin, collection, Some(item), operator, true),
+				BadOrigin
+			);
+		}
 		// Successfully approves `operator` to transfer the collection item.
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
@@ -219,10 +239,19 @@ fn approve_collection_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
 		let operator = BOB;
-		let (collection, item) = nfts::create_collection_mint(owner, owner, ITEM);
+		let collection = COLLECTION;
+		let item = ITEM;
 
+		// Origin checks.
+		for origin in vec![root(), none()] {
+			assert_noop!(
+				NonFungibles::approve(origin, collection, None, operator, true),
+				BadOrigin
+			);
+		}
+		nfts::create_collection_mint(owner, owner, item);
 		// Approves a collection throws insufficient funds.
-		assert_ok!(Nfts::mint(signed(owner), collection, ITEM + 1, 99, None));
+		assert_ok!(Nfts::mint(signed(owner), collection, item + 1, 99, None));
 		assert_noop!(
 			NonFungibles::approve(signed(99), collection, None, operator, true),
 			BalancesError::InsufficientBalance
@@ -257,8 +286,17 @@ fn cancel_approval_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
 		let operator = BOB;
-		let (collection, item) =
-			nfts::create_collection_mint_and_approve(owner, owner, ITEM, operator);
+		let collection = COLLECTION;
+		let item = ITEM;
+
+		// Origin checks.
+		for origin in vec![root(), none()] {
+			assert_noop!(
+				NonFungibles::approve(origin, collection, Some(item), operator, false),
+				BadOrigin
+			);
+		}
+		nfts::create_collection_mint_and_approve(owner, owner, item, operator);
 		// Successfully cancels the transfer approval of `operator` by `owner`.
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
@@ -281,7 +319,17 @@ fn cancel_collection_approval_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
 		let operator = BOB;
-		let (collection, item) = nfts::create_collection_mint(owner, owner, ITEM);
+		let collection = COLLECTION;
+		let item = ITEM;
+
+		// Origin checks.
+		for origin in vec![root(), none()] {
+			assert_noop!(
+				NonFungibles::approve(origin, collection, None, operator, false),
+				BadOrigin
+			);
+		}
+		nfts::create_collection_mint(owner, owner, item);
 		// Successfully cancel the transfer collection approval of `operator` by `owner`.
 		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
 		assert_eq!(
@@ -305,14 +353,24 @@ fn set_max_supply_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
 		let collection = nfts::create_collection(owner);
+
+		// Origin checks.
+		for origin in vec![root(), none()] {
+			assert_noop!(NonFungibles::set_max_supply(origin, collection, 10), BadOrigin);
+		}
+		// Successfully set the max supply for the collection.
 		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, 10));
 		(0..10).into_iter().for_each(|i| {
 			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
 		});
+		// Throws `MaxSupplyReached` error if number of minted items is over the max supply.
 		assert_noop!(
 			Nfts::mint(signed(owner), collection, 42, owner, None),
 			NftsError::MaxSupplyReached
 		);
+		// Override the max supply.
+		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, 20));
+		assert_ok!(Nfts::mint(signed(owner), collection, 42, owner, None));
 	});
 }
 
@@ -332,14 +390,23 @@ fn set_metadata_works() {
 #[test]
 fn clear_metadata_works() {
 	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ALICE, ITEM);
+		let owner = ALICE;
+		let item = ITEM;
+		let collection = COLLECTION;
+
+		nfts::create_collection_mint(owner, owner, item);
+		// Origin checks.
+		for origin in vec![root(), none()] {
+			assert_noop!(NonFungibles::clear_metadata(origin, collection, item), BadOrigin);
+		}
+		// Successfully set the collection metadata.
 		assert_ok!(NonFungibles::set_metadata(
-			signed(ALICE),
+			signed(owner),
 			collection,
 			item,
 			BoundedVec::truncate_from("some metadata".as_bytes().to_vec())
 		));
-		assert_ok!(NonFungibles::clear_metadata(signed(ALICE), collection, item));
+		assert_ok!(NonFungibles::clear_metadata(signed(owner), collection, item));
 		assert_eq!(
 			NonFungibles::read(ItemMetadata { collection, item }).encode(),
 			ReadResult::<Test>::ItemMetadata(None).encode()
@@ -348,39 +415,58 @@ fn clear_metadata_works() {
 }
 
 #[test]
+fn set_attribute_works() {
+	new_test_ext().execute_with(|| unimplemented!());
+}
+
+#[test]
 fn clear_attribute_works() {
 	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ALICE, ITEM);
-		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
+		let collection = COLLECTION;
+		let item = ITEM;
+		let owner = ALICE;
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
-		let result: Option<
-			BoundedVec<u8, <Test as pallet_nfts::Config<NftsInstanceOf<Test>>>::ValueLimit>,
-		> = None;
+		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
+
+		// Origin checks.
+		for origin in vec![root(), none()] {
+			assert_noop!(
+				NonFungibles::clear_attribute(
+					origin,
+					collection,
+					Some(item),
+					AttributeNamespace::CollectionOwner,
+					attribute.clone()
+				),
+				BadOrigin
+			);
+		}
+
+		nfts::create_collection_mint(owner, owner, item);
 		assert_ok!(Nfts::set_attribute(
-			signed(ALICE),
+			signed(owner),
 			collection,
 			Some(item),
 			AttributeNamespace::CollectionOwner,
 			attribute.clone(),
-			BoundedVec::truncate_from("some value".as_bytes().to_vec())
+			value.clone()
 		));
 		// Successfully clear an attribute.
-		assert_ok!(Nfts::clear_attribute(
-			signed(ALICE),
+		assert_ok!(NonFungibles::clear_attribute(
+			signed(owner),
 			collection,
 			Some(item),
 			AttributeNamespace::CollectionOwner,
 			attribute.clone(),
 		));
 		assert_eq!(
-			NonFungibles::read(GetAttribute {
+			nfts::get_attribute(
 				collection,
-				item,
-				namespace: AttributeNamespace::CollectionOwner,
-				key: attribute
-			})
-			.encode(),
-			result.encode()
+				Some(item),
+				AttributeNamespace::CollectionOwner,
+				attribute
+			),
+			Some(value.into())
 		);
 	});
 }
@@ -388,68 +474,60 @@ fn clear_attribute_works() {
 #[test]
 fn approve_item_attribute_works() {
 	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ALICE, ITEM);
-		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
+		let collection = COLLECTION;
+		let item = ITEM;
+		let owner = ALICE;
+		let delegate = BOB;
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
+
+		nfts::create_collection_mint(owner, owner, item);
 		// Successfully approve delegate to set attributes.
-		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, BOB));
+		assert_ok!(NonFungibles::approve_item_attributes(
+			signed(owner),
+			collection,
+			item,
+			delegate
+		));
 		assert_ok!(Nfts::set_attribute(
-			signed(BOB),
+			signed(delegate),
 			collection,
 			Some(item),
-			AttributeNamespace::Account(BOB),
+			AttributeNamespace::Account(delegate),
 			attribute.clone(),
 			value.clone()
 		));
-		let result: Option<
-			BoundedVec<u8, <Test as pallet_nfts::Config<NftsInstanceOf<Test>>>::ValueLimit>,
-		> = Some(value);
-		assert_eq!(
-			NonFungibles::read(GetAttribute {
-				collection,
-				item,
-				namespace: AttributeNamespace::Account(BOB),
-				key: attribute
-			})
-			.encode(),
-			result.encode()
-		);
 	});
 }
 
 #[test]
 fn cancel_item_attribute_approval_works() {
 	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ALICE, ITEM);
-		assert_eq!(NonFungibles::read(NextCollectionId).encode(), Some(1).encode());
+		let collection = COLLECTION;
+		let item = ITEM;
+		let owner = ALICE;
+		let delegate = BOB;
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
-		// Successfully approve delegate to set attributes.
-		assert_ok!(Nfts::approve_item_attributes(signed(ALICE), collection, item, BOB));
-		assert_ok!(Nfts::set_attribute(
-			signed(BOB),
-			collection,
-			Some(item),
-			AttributeNamespace::Account(BOB),
-			attribute.clone(),
-			value.clone()
-		));
+
+		nfts::create_collection_mint(owner, owner, item);
+		assert_ok!(Nfts::approve_item_attributes(signed(owner), collection, item, delegate));
+		// Successfully cancel item attribute approval.
 		assert_ok!(Nfts::cancel_item_attributes_approval(
-			signed(ALICE),
+			signed(owner),
 			collection,
 			item,
-			BOB,
+			delegate,
 			CancelAttributesApprovalWitness { account_attributes: 1 }
 		));
 		assert_noop!(
 			Nfts::set_attribute(
-				signed(BOB),
+				signed(delegate),
 				collection,
 				Some(item),
-				AttributeNamespace::Account(BOB),
-				attribute.clone(),
-				value.clone()
+				AttributeNamespace::Account(delegate),
+				attribute,
+				value
 			),
 			NftsError::NoPermission
 		);
@@ -554,8 +632,10 @@ fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
 		let operator = BOB;
-		let (collection, item) =
-			nfts::create_collection_mint_and_approve(owner, owner, ITEM, operator);
+		let collection = COLLECTION;
+		let item = ITEM;
+
+		nfts::create_collection_mint_and_approve(owner, owner, item, operator);
 		assert_eq!(
 			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator }),
 			ReadResult::Allowance(true)
@@ -573,18 +653,19 @@ fn allowance_works() {
 #[test]
 fn owner_of_works() {
 	new_test_ext().execute_with(|| {
+		let owner = ALICE;
+		let collection = COLLECTION;
+		let item = ITEM;
+
+		assert_eq!(NonFungibles::read(OwnerOf { collection, item }), ReadResult::OwnerOf(None));
+		nfts::create_collection_mint(owner, owner, item);
 		assert_eq!(
-			NonFungibles::read(OwnerOf { collection: COLLECTION, item: ITEM }),
-			ReadResult::OwnerOf(None)
+			NonFungibles::read(OwnerOf { collection, item }),
+			ReadResult::OwnerOf(Some(owner))
 		);
-		nfts::create_collection_mint(ALICE, ALICE, ITEM);
 		assert_eq!(
-			NonFungibles::read(OwnerOf { collection: COLLECTION, item: ITEM }),
-			ReadResult::OwnerOf(Some(ALICE))
-		);
-		assert_eq!(
-			NonFungibles::read(OwnerOf { collection: COLLECTION, item: ITEM }).encode(),
-			Nfts::owner(COLLECTION, ITEM).encode()
+			NonFungibles::read(OwnerOf { collection, item }).encode(),
+			Nfts::owner(collection, item).encode()
 		);
 	});
 }
@@ -710,16 +791,16 @@ fn none() -> RuntimeOrigin {
 // Helper functions for interacting with pallet-nfts.
 mod nfts {
 	use super::*;
+	use crate::nonfungibles::AttributeNamespaceOf;
 
 	pub(super) fn create_collection_mint_and_approve(
 		owner: AccountId,
 		mint_to: AccountId,
 		item: ItemIdOf<Test>,
 		operator: AccountId,
-	) -> (u32, u32) {
+	) {
 		let (collection, item) = create_collection_mint(owner, mint_to, item);
 		assert_ok!(Nfts::approve_transfer(signed(owner), collection, item, operator, None));
-		(collection, item)
 	}
 
 	pub(super) fn create_collection_mint(
@@ -749,6 +830,16 @@ mod nfts {
 			max_supply: None,
 			mint_settings: MintSettings::default(),
 		}
+	}
+
+	pub(super) fn get_attribute(
+		collection: CollectionIdOf<Test>,
+		maybe_item: Option<ItemIdOf<Test>>,
+		namespace: AttributeNamespaceOf<Test>,
+		key: BoundedVec<u8, <Test as Config<NftsInstanceOf<Test>>>::KeyLimit>,
+	) -> Option<Vec<u8>> {
+		AttributeOf::<Test>::get((collection, maybe_item, namespace, key))
+			.map(|attribute| attribute.0.into())
 	}
 }
 

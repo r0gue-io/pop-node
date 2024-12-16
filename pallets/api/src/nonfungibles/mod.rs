@@ -16,6 +16,7 @@ use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
+mod impls;
 #[cfg(test)]
 mod tests;
 pub mod weights;
@@ -45,7 +46,7 @@ pub(super) type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
-		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
+		dispatch::{DispatchResult, DispatchResultWithPostInfo},
 		pallet_prelude::*,
 		traits::Incrementable,
 	};
@@ -62,10 +63,10 @@ pub mod pallet {
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// Total item supply of a specified collection.
+		/// Total item supply of a specified `collection`.
 		#[codec(index = 0)]
 		TotalSupply(CollectionIdOf<T>),
-		/// Account balance for a specified collection.
+		/// Account balance for a specified `collection`.
 		#[codec(index = 1)]
 		BalanceOf {
 			/// The collection.
@@ -73,7 +74,7 @@ pub mod pallet {
 			/// The owner of the collection .
 			owner: AccountIdOf<T>,
 		},
-		/// Allowance for an operator approved by an owner, for a specified collection or item.
+		/// Allowance for an `operator` approved by an `owner`, for a specified collection or item.
 		#[codec(index = 2)]
 		Allowance {
 			/// The collection.
@@ -93,8 +94,7 @@ pub mod pallet {
 			/// The collection item.
 			item: ItemIdOf<T>,
 		},
-		/// Attribute value of a specified collection item. (Error: bounded collection is not
-		/// partial)
+		/// Attribute value of a specified collection item.
 		#[codec(index = 6)]
 		GetAttribute {
 			/// The collection.
@@ -181,9 +181,10 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `operator` changes.
 		Approval {
-			/// The collection ID.
+			/// The identifier of the collection.
 			collection: CollectionIdOf<T>,
-			/// The item which is (dis)approved. `None` for all owner's items.
+			/// The item which is (dis)approved. `None` for all collection items owned by the
+			/// `owner`.
 			item: Option<ItemIdOf<T>>,
 			/// The owner providing the allowance.
 			owner: AccountIdOf<T>,
@@ -217,94 +218,6 @@ pub mod pallet {
 		},
 	}
 
-	impl<T: Config> Pallet<T> {
-		/// Approves the transfer of a specific item or all collection items owned by the origin to
-		/// an operator.
-		///
-		/// # Parameters
-		/// - `origin` - The account originating the approval. Must be Signed or owner of the
-		///   specified item if the `maybe_item` is provided.
-		/// - `collection` - The ID of the collection to which the approval applies.
-		/// - `maybe_item` - An optional parameter specifying the ID of the item to approve. If
-		///   `None`, the approval applies to the entire collection.
-		/// - `operator` - The account being approved for the transfer.
-		fn do_approve(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			maybe_item: Option<ItemIdOf<T>>,
-			operator: &AccountIdOf<T>,
-		) -> DispatchResultWithPostInfo {
-			let weight = match maybe_item {
-				Some(item) => {
-					NftsOf::<T>::approve_transfer(
-						origin,
-						collection,
-						item,
-						T::Lookup::unlookup(operator.clone()),
-						None,
-					)
-					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
-					NftsWeightInfoOf::<T>::approve_transfer()
-				},
-				None => {
-					NftsOf::<T>::approve_collection_transfer(
-						origin,
-						collection,
-						T::Lookup::unlookup(operator.clone()),
-						None,
-					)
-					.map_err(|e| {
-						e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer())
-					})?;
-					NftsWeightInfoOf::<T>::approve_collection_transfer()
-				},
-			};
-			Ok(Some(weight).into())
-		}
-
-		/// Revokes the transfer approval of a specific item or all collection items owned by the
-		/// origin for a specified operator.
-		///
-		/// # Parameters
-		/// - `origin` - The account originating the unapproval. Must be Signed and the owner of the
-		///   specified item or collection.
-		/// - `collection` - The ID of the collection to which the unapproval applies.
-		/// - `maybe_item` - An optional parameter specifying the ID of the item to unapprove. If
-		///   `None`, the unapproval applies to the entire collection.
-		/// - `operator` - The account whose approval is being revoked.
-		fn do_unapprove(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			maybe_item: Option<ItemIdOf<T>>,
-			operator: &AccountIdOf<T>,
-		) -> DispatchResultWithPostInfo {
-			let weight = match maybe_item {
-				Some(item) => {
-					NftsOf::<T>::cancel_approval(
-						origin,
-						collection,
-						item,
-						T::Lookup::unlookup(operator.clone()),
-					)
-					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
-					NftsWeightInfoOf::<T>::cancel_approval()
-				},
-				None => {
-					NftsOf::<T>::cancel_collection_approval(
-						origin,
-						collection,
-						T::Lookup::unlookup(operator.clone()),
-					)
-					.map_err(|e| {
-						e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval())
-					})?;
-					NftsWeightInfoOf::<T>::cancel_collection_approval()
-				},
-			};
-			Ok(Some(weight).into())
-		}
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Transfers the collection item from the caller's account to account `to`.
@@ -314,7 +227,7 @@ pub mod pallet {
 		/// - `item` - The item to transfer.
 		/// - `to` - The recipient account.
 		#[pallet::call_index(3)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::transfer() + T::DbWeight::get().reads_writes(1, 0))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -335,19 +248,14 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Manages approval for an operator to transfer a collection item or all items within a
-		/// collection on behalf of the caller.
-		///
-		/// This function allows the caller to either approve or revoke approval for an `operator`
-		/// to perform transfers of a specific collection item or all items within a collection.
+		/// Either approve or revoke approval for an `operator` to perform transfers of a specific
+		/// collection item or all collection items owned by the `origin`.
 		///
 		/// # Parameters
-		/// - `origin` - The account originating the request. Must be Signed and the owner of the
-		///   collection or item.
 		/// - `collection` - The ID of the collection containing the item or items to manage
 		///   approval for.
 		/// - `item` - An optional parameter specifying the ID of the item to manage approval for.
-		///   If `None`, the approval applies to all items in the collection owned by the `origin`.
+		///   If `None`, the approval applies to all collection items owned by the `origin`.
 		/// - `operator` - The account being granted or revoked approval to manage the specified
 		///   collection item(s).
 		/// - `approved` - A boolean indicating the desired approval status:
@@ -355,9 +263,9 @@ pub mod pallet {
 		///   - `false` to revoke the operator's approval.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
-						NftsWeightInfoOf::<T>::approve_transfer() +
-						NftsWeightInfoOf::<T>::approve_collection_transfer() +
-						NftsWeightInfoOf::<T>::cancel_collection_approval() +
+			NftsWeightInfoOf::<T>::approve_transfer() +
+			NftsWeightInfoOf::<T>::approve_collection_transfer() +
+			NftsWeightInfoOf::<T>::cancel_collection_approval() +
     		NftsWeightInfoOf::<T>::cancel_approval()
 		)]
 		pub fn approve(
@@ -371,13 +279,13 @@ pub mod pallet {
 			let result = if approved {
 				Self::do_approve(origin, collection, item, &operator)
 			} else {
-				Self::do_unapprove(origin, collection, item, &operator)
+				Self::do_cancel_approval(origin, collection, item, &operator)
 			};
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
 			result
 		}
 
-		/// Issue a new collection of non-fungible items from a public origin.
+		/// Issue a new collection of non-fungible items.
 		///
 		/// # Parameters
 		/// - `admin` - The admin of this collection. The admin is the initial address of each
