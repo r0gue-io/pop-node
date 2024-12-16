@@ -1,3 +1,4 @@
+#![cfg_attr(not(feature = "std"), no_std, no_main)]
 use ink::{
 	prelude::{string::String, vec::Vec},
 	storage::Mapping,
@@ -19,8 +20,9 @@ mod dao {
 	use super::*;
 
 	/// Structure of the proposal used by the Dao governance sysytem
-	#[derive(scale::Decode, scale::Encode, Debug)]
-	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+	#[derive(Debug)]
+    #[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]  
 	pub struct Proposal {
 		// Description of the proposal
 		description: String,
@@ -51,8 +53,8 @@ mod dao {
 	}
 
 	/// Representation of a member in the voting system
-	#[derive(scale::Decode, scale::Encode)]
-	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink::storage::traits::StorageLayout))]
+    #[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct Member {
 		// Stores the member's voting influence by using his balance
 		voting_power: Balance,
@@ -102,7 +104,7 @@ mod dao {
 				members: Mapping::default(),
 				last_votes: Mapping::default(),
 				voting_period,
-				token_id: token_id,
+				token_id,
 			};
 			let contract_id = instance.env().account_id();
 			api::create(token_id, contract_id, min_balance).map_err(Psp22Error::from)?;
@@ -251,7 +253,7 @@ mod dao {
 		pub fn join(&mut self, amount: Balance) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
-			api::transfer_from(self.token_id, caller.clone(), contract.clone(), amount)
+			api::transfer_from(self.token_id, caller, contract, amount)
 				.map_err(Psp22Error::from)?;
 			self.env().emit_event(Transfer {
 				from: Some(caller),
@@ -272,8 +274,8 @@ mod dao {
 		}
 	}
 
-	#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
-	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+	#[derive(Debug, PartialEq, Eq)]
+    #[ink::scale_derive(Encode, Decode, TypeInfo)]
 	pub enum Error {
 		ArithmeticOverflow,
 		ProposalNotFound,

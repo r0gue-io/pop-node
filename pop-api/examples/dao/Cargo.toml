@@ -22,6 +22,9 @@ frame-support-procedural = { version = "=30.0.1", default-features = false }
 sp-runtime = { version = "=38.0.0", default-features = false }
 staging-xcm = { version = "=14.1.0", default-features = false }
 
+[lib]
+path = "src/lib.rs"
+
 [features]
 default = ["std"]
 e2e-tests = []
@@ -29,6 +32,4 @@ ink-as-dependency = []
 std = [
 	"ink/std",
 	"pop-api/std",
-	"scale-info/std",
-	"scale/std",
 ]
