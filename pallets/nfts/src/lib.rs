@@ -2002,7 +2002,7 @@ pub mod pallet {
 		///
 		/// Origin must be Signed.
 		///
-		/// - `collection`: The collection of the item to be approved for delegated transfer.
+		/// - `collection`: The collection of the items to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the origin.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
@@ -2031,7 +2031,7 @@ pub mod pallet {
 		/// Origin must be the `ForceOrigin`.
 		///
 		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
-		/// - `collection`: The collection of the item to be approved for delegated transfer.
+		/// - `collection`: The collection of the items to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the `owner`.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
@@ -2084,7 +2084,7 @@ pub mod pallet {
 		///
 		/// Arguments:
 		/// - `owner`: The owner of the approval to be force-cancelled by the `origin`.
-		/// - `collection`: The collection of whose approval will be cancelled.
+		/// - `collection`: The collection whose approval will be cancelled.
 		/// - `delegate`: The account that is going to lose their approval.
 		///
 		/// Emits `ApprovalCancelled` on success.
