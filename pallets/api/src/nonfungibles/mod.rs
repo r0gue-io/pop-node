@@ -220,10 +220,10 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfers the collection item from the caller's account to account `to`.
+		/// Transfers the collection item from the `origin` to account `to`.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to transfer.
+		/// - `collection` - The collection of the item to be transferred.
 		/// - `item` - The item to transfer.
 		/// - `to` - The recipient account.
 		#[pallet::call_index(3)]
@@ -248,19 +248,18 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Either approve or revoke approval for an `operator` to perform transfers of a specific
+		/// Either approve or cancel approval for an `operator` to perform transfers of a specific
 		/// collection item or all collection items owned by the `origin`.
 		///
 		/// # Parameters
-		/// - `collection` - The ID of the collection containing the item or items to manage
-		///   approval for.
-		/// - `item` - An optional parameter specifying the ID of the item to manage approval for.
-		///   If `None`, the approval applies to all collection items owned by the `origin`.
-		/// - `operator` - The account being granted or revoked approval to manage the specified
+		/// - `collection` - The identifier of the collection.
+		/// - `item` - An optional parameter specifying the item to approve for the delegated
+		///   transfer. If `None`, all owner's collection items will be approved.
+		/// - `operator` - The account being granted or revoked approval to transfer the specified
 		///   collection item(s).
 		/// - `approved` - A boolean indicating the desired approval status:
-		///   - `true` to approve the operator.
-		///   - `false` to revoke the operator's approval.
+		///   - `true` to approve the `operator`.
+		///   - `false` to cancel the approval granted to the `operator`.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
 			NftsWeightInfoOf::<T>::approve_transfer() +
@@ -285,7 +284,37 @@ pub mod pallet {
 			result
 		}
 
-		/// Issue a new collection of non-fungible items.
+		/// Cancel all the approvals of a specific item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection of the item of whose approvals will be cleared.
+		/// - `item` - The item of the collection of whose approvals will be cleared.
+		#[pallet::call_index(5)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::clear_all_transfer_approvals())]
+		pub fn clear_all_transfer_approvals(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			item: ItemIdOf<T>,
+		) -> DispatchResult {
+			NftsOf::<T>::clear_all_transfer_approvals(origin, collection, item)
+		}
+
+		/// Cancel approvals to transfer all owner's collection items.
+		///
+		/// # Parameters
+		/// - `collection` - The collection whose approvals will be cleared.
+		/// - `limit` - The amount of collection approvals that will be cleared.
+		#[pallet::call_index(6)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::clear_collection_approvals(*limit))]
+		pub fn clear_collection_approvals(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			limit: u32,
+		) -> DispatchResultWithPostInfo {
+			NftsOf::<T>::clear_collection_approvals(origin, collection, limit)
+		}
+
+		/// Issue a new collection of non-fungible items from a public origin.
 		///
 		/// # Parameters
 		/// - `admin` - The admin of this collection. The admin is the initial address of each
@@ -477,7 +506,7 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
-			let account = ensure_signed(origin.clone())?;
+			let owner = ensure_signed(origin.clone())?;
 			let mint_price = witness.mint_price;
 			NftsOf::<T>::mint(
 				origin,
@@ -490,7 +519,7 @@ pub mod pallet {
 				collection,
 				item,
 				from: None,
-				to: Some(account),
+				to: Some(owner),
 				price: mint_price,
 			});
 			Ok(())
@@ -508,12 +537,12 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 		) -> DispatchResult {
-			let account = ensure_signed(origin.clone())?;
+			let owner = ensure_signed(origin.clone())?;
 			NftsOf::<T>::burn(origin, collection, item)?;
 			Self::deposit_event(Event::Transfer {
 				collection,
 				item,
-				from: Some(account),
+				from: Some(owner),
 				to: None,
 				price: None,
 			});

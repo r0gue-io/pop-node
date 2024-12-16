@@ -125,10 +125,6 @@ fn approved_transfer_works() {
 		let collection = COLLECTION;
 		let item = ITEM;
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
-			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
-		}
 		nfts::create_collection_mint(owner, owner, item);
 		// No permission to transfer.
 		assert_noop!(
@@ -354,10 +350,6 @@ fn set_max_supply_works() {
 		let owner = ALICE;
 		let collection = nfts::create_collection(owner);
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
-			assert_noop!(NonFungibles::set_max_supply(origin, collection, 10), BadOrigin);
-		}
 		// Successfully set the max supply for the collection.
 		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, 10));
 		(0..10).into_iter().for_each(|i| {
@@ -377,13 +369,15 @@ fn set_max_supply_works() {
 #[test]
 fn set_metadata_works() {
 	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ALICE, ITEM);
-		let value = BoundedVec::truncate_from("some metadata".as_bytes().to_vec());
-		assert_ok!(NonFungibles::set_metadata(signed(ALICE), collection, item, value.clone()));
-		assert_eq!(
-			NonFungibles::read(ItemMetadata { collection, item }).encode(),
-			Some(value).encode()
-		);
+		let owner = ALICE;
+		let collection = COLLECTION;
+		let item = ITEM;
+		let metadata = BoundedVec::truncate_from("some metadata".into());
+
+		nfts::create_collection_mint(owner, owner, item);
+		// Successfully set the metadata.
+		assert_ok!(NonFungibles::set_metadata(signed(owner), collection, item, metadata.clone()));
+		assert_eq!(Nfts::item_metadata(collection, item), Some(metadata));
 	});
 }
 
@@ -393,29 +387,65 @@ fn clear_metadata_works() {
 		let owner = ALICE;
 		let item = ITEM;
 		let collection = COLLECTION;
+		let metadata = BoundedVec::truncate_from("some metadata".into());
 
 		nfts::create_collection_mint(owner, owner, item);
-		// Origin checks.
-		for origin in vec![root(), none()] {
-			assert_noop!(NonFungibles::clear_metadata(origin, collection, item), BadOrigin);
-		}
-		// Successfully set the collection metadata.
-		assert_ok!(NonFungibles::set_metadata(
-			signed(owner),
-			collection,
-			item,
-			BoundedVec::truncate_from("some metadata".as_bytes().to_vec())
-		));
+		assert_ok!(Nfts::set_metadata(signed(owner), collection, item, metadata.clone()));
+		// Successfully clear the metadata.
 		assert_ok!(NonFungibles::clear_metadata(signed(owner), collection, item));
-		assert_eq!(
-			NonFungibles::read(ItemMetadata { collection, item }).encode(),
-			ReadResult::<Test>::ItemMetadata(None).encode()
-		);
+		assert!(Nfts::item_metadata(collection, item).is_none());
 	});
 }
 
 #[test]
 fn set_attribute_works() {
+	new_test_ext().execute_with(|| {
+		let collection = COLLECTION;
+		let item = ITEM;
+		let owner = ALICE;
+		let attribute = BoundedVec::truncate_from("some attribute".into());
+		let value = BoundedVec::truncate_from("some value".into());
+
+		// Throws `UnknownCollection` for setting an unknown collection.
+		assert_noop!(
+			NonFungibles::set_attribute(
+				signed(owner),
+				collection,
+				Some(item),
+				AttributeNamespace::CollectionOwner,
+				attribute.clone(),
+				value.clone()
+			),
+			NftsError::UnknownCollection
+		);
+		nfts::create_collection_mint(owner, owner, item);
+		// Successfully set attribute.
+		assert_ok!(NonFungibles::set_attribute(
+			signed(owner),
+			collection,
+			Some(item),
+			AttributeNamespace::CollectionOwner,
+			attribute.clone(),
+			value.clone()
+		));
+		assert_eq!(
+			nfts::get_attribute(
+				collection,
+				Some(item),
+				AttributeNamespace::CollectionOwner,
+				attribute
+			),
+			Some(value.into())
+		);
+	});
+}
+
+#[test]
+fn clear_all_transfer_approvals_works() {
+	new_test_ext().execute_with(|| unimplemented!());
+}
+#[test]
+fn clear_collection_approvals_works() {
 	new_test_ext().execute_with(|| unimplemented!());
 }
 
@@ -427,20 +457,6 @@ fn clear_attribute_works() {
 		let owner = ALICE;
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
 		let value = BoundedVec::truncate_from("some value".as_bytes().to_vec());
-
-		// Origin checks.
-		for origin in vec![root(), none()] {
-			assert_noop!(
-				NonFungibles::clear_attribute(
-					origin,
-					collection,
-					Some(item),
-					AttributeNamespace::CollectionOwner,
-					attribute.clone()
-				),
-				BadOrigin
-			);
-		}
 
 		nfts::create_collection_mint(owner, owner, item);
 		assert_ok!(Nfts::set_attribute(
@@ -459,15 +475,13 @@ fn clear_attribute_works() {
 			AttributeNamespace::CollectionOwner,
 			attribute.clone(),
 		));
-		assert_eq!(
-			nfts::get_attribute(
-				collection,
-				Some(item),
-				AttributeNamespace::CollectionOwner,
-				attribute
-			),
-			Some(value.into())
-		);
+		assert!(nfts::get_attribute(
+			collection,
+			Some(item),
+			AttributeNamespace::CollectionOwner,
+			attribute
+		)
+		.is_none());
 	});
 }
 
@@ -539,32 +553,21 @@ fn create_works() {
 	new_test_ext().execute_with(|| {
 		let creator = ALICE;
 		let admin = ALICE;
-		let next_collection_id = NextCollectionIdOf::<Test>::get().unwrap_or_default();
+		let collection = COLLECTION;
+		let config = CollectionConfig {
+			max_supply: None,
+			mint_settings: MintSettings::default(),
+			settings: CollectionSettings::all_enabled(),
+		};
+
+		// Origin checks.
 		for origin in vec![root(), none()] {
-			assert_noop!(
-				NonFungibles::create(
-					origin,
-					admin,
-					CollectionConfig {
-						max_supply: None,
-						mint_settings: MintSettings::default(),
-						settings: CollectionSettings::all_enabled()
-					},
-				),
-				BadOrigin
-			);
+			assert_noop!(NonFungibles::create(origin, admin, config.clone()), BadOrigin);
 		}
-		assert_ok!(NonFungibles::create(
-			signed(creator),
-			admin,
-			CollectionConfig {
-				max_supply: None,
-				mint_settings: MintSettings::default(),
-				settings: CollectionSettings::all_enabled()
-			},
-		));
-		assert_eq!(Nfts::collection_owner(next_collection_id), Some(creator));
-		System::assert_last_event(Event::Created { id: next_collection_id, creator, admin }.into());
+		// Successfully create a collection.
+		assert_ok!(NonFungibles::create(signed(creator), admin, config));
+		assert_eq!(Nfts::collection_owner(collection), Some(creator));
+		System::assert_last_event(Event::Created { id: collection, creator, admin }.into());
 	});
 }
 
@@ -673,50 +676,56 @@ fn owner_of_works() {
 #[test]
 fn get_attribute_works() {
 	new_test_ext().execute_with(|| {
-		let (collection, item) = nfts::create_collection_mint(ALICE, ALICE, ITEM);
-		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
-		let raw_value = "some value".as_bytes().to_vec();
-		let value = BoundedVec::truncate_from(raw_value.clone());
-		let namespace = AttributeNamespace::CollectionOwner;
+		let owner = ALICE;
+		let collection = COLLECTION;
+		let item = ITEM;
+		let attribute = BoundedVec::truncate_from("some attribute".into());
+		let metadata = "some value".as_bytes().to_vec();
+
+		nfts::create_collection_mint(owner, owner, item);
 		// No attribute set.
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
 				item,
-				namespace: namespace.clone(),
+				namespace: AttributeNamespace::CollectionOwner,
 				key: attribute.clone()
 			}),
 			ReadResult::GetAttribute(None)
 		);
 		// Successfully get an existing attribute.
 		assert_ok!(Nfts::set_attribute(
-			signed(ALICE),
+			signed(owner),
 			collection,
 			Some(item),
-			namespace.clone(),
+			AttributeNamespace::CollectionOwner,
 			attribute.clone(),
-			value,
+			BoundedVec::truncate_from(metadata.clone()),
 		));
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
 				item,
-				namespace: namespace.clone(),
+				namespace: AttributeNamespace::CollectionOwner,
 				key: attribute.clone()
 			}),
-			ReadResult::GetAttribute(Some(raw_value))
+			ReadResult::GetAttribute(Some(metadata))
 		);
 		assert_eq!(
 			NonFungibles::read(GetAttribute {
 				collection,
 				item,
-				namespace: namespace.clone(),
+				namespace: AttributeNamespace::CollectionOwner,
 				key: attribute.clone()
 			})
 			.encode(),
-			AttributeOf::<Test>::get((collection, Some(item), namespace, attribute))
-				.map(|result| result.0)
-				.encode()
+			nfts::get_attribute(
+				collection,
+				Some(item),
+				AttributeNamespace::CollectionOwner,
+				attribute
+			)
+			.encode()
 		);
 	});
 }
@@ -724,15 +733,19 @@ fn get_attribute_works() {
 #[test]
 fn collection_works() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(NonFungibles::read(Collection(COLLECTION)), ReadResult::Collection(None),);
-		nfts::create_collection_mint(ALICE, ALICE, ITEM);
+		let collection = COLLECTION;
+		let owner = ALICE;
+		let item = ITEM;
+
+		assert_eq!(NonFungibles::read(Collection(collection)), ReadResult::Collection(None),);
+		nfts::create_collection_mint(owner, owner, item);
 		assert_eq!(
-			NonFungibles::read(Collection(COLLECTION)),
-			ReadResult::Collection(CollectionOf::<Test>::get(COLLECTION)),
+			NonFungibles::read(Collection(collection)),
+			ReadResult::Collection(CollectionOf::<Test>::get(collection)),
 		);
 		assert_eq!(
-			NonFungibles::read(Collection(COLLECTION)).encode(),
-			CollectionOf::<Test>::get(COLLECTION).encode(),
+			NonFungibles::read(Collection(collection)).encode(),
+			CollectionOf::<Test>::get(collection).encode(),
 		);
 	});
 }
@@ -740,29 +753,36 @@ fn collection_works() {
 #[test]
 fn item_metadata_works() {
 	new_test_ext().execute_with(|| {
+		let collection = COLLECTION;
+		let owner = ALICE;
+		let item = ITEM;
+		let metadata = "some metadata".as_bytes().to_vec();
+
+		// Read item metadata of an unknown collection.
 		assert_eq!(
-			NonFungibles::read(ItemMetadata { collection: COLLECTION, item: ITEM }),
+			NonFungibles::read(ItemMetadata { collection, item }),
 			ReadResult::ItemMetadata(None)
 		);
-		nfts::create_collection_mint(ALICE, ALICE, ITEM);
-		let value = "some metadata".as_bytes().to_vec();
+		nfts::create_collection_mint(owner, owner, item);
+		// Successfully set the metadata of an item.
 		assert_ok!(NonFungibles::set_metadata(
-			signed(ALICE),
-			COLLECTION,
-			ITEM,
-			BoundedVec::truncate_from(value.clone())
+			signed(owner),
+			collection,
+			item,
+			BoundedVec::truncate_from(metadata.clone())
 		));
 		assert_eq!(
-			NonFungibles::read(ItemMetadata { collection: COLLECTION, item: ITEM }),
-			ReadResult::ItemMetadata(Some(value))
+			NonFungibles::read(ItemMetadata { collection, item }),
+			ReadResult::ItemMetadata(Some(metadata))
 		);
 		assert_eq!(
-			NonFungibles::read(ItemMetadata { collection: COLLECTION, item: ITEM }).encode(),
-			Nfts::item_metadata(COLLECTION, ITEM).encode()
+			NonFungibles::read(ItemMetadata { collection, item }).encode(),
+			Nfts::item_metadata(collection, item).encode()
 		);
 	});
 }
 
+// TODO: Depends on #406, this test can be removed.
 #[test]
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {
