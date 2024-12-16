@@ -593,9 +593,8 @@ benchmarks_instance_pallet! {
 	}
 
 	force_approve_collection_transfer {
-		let (collection, caller, _) = create_collection::<T, I>();
+		let (collection, caller, caller_lookup) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
-		let caller_lookup = T::Lookup::unlookup(caller.clone());
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
@@ -631,9 +630,8 @@ benchmarks_instance_pallet! {
 	}
 
 	force_cancel_collection_approval {
-		let (collection, caller, _) = create_collection::<T, I>();
+		let (collection, caller, caller_lookup) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
-		let caller_lookup = T::Lookup::unlookup(caller.clone());
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let deadline = BlockNumberFor::<T>::max_value();
@@ -656,8 +654,8 @@ benchmarks_instance_pallet! {
 		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: Some(item), owner: caller}.into());
 	}
 
-	clear_collection_approvals_limit {
-		let n in 1 .. T::ApprovalsLimit::get();
+	clear_collection_approvals {
+		let n in 1 .. 1_000;
 		let (collection, caller, _) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
 		for i in 0 .. n {
@@ -671,13 +669,13 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Signed(caller.clone()), collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: None, owner: caller}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone(), approvals: n}.into());
+		assert!(CollectionApprovals::<T, I>::iter_prefix((collection, caller,)).take(1).next().is_none());
 	}
 
-	force_clear_collection_approvals_limit {
-		let n in 1 .. T::ApprovalsLimit::get();
-		let (collection, caller, _) = create_collection::<T, I>();
-		let caller_lookup = T::Lookup::unlookup(caller.clone());
+	force_clear_collection_approvals {
+		let n in 1 .. 1_000;
+		let (collection, caller, caller_lookup) = create_collection::<T, I>();
 		mint_item::<T, I>(0);
 		for i in 0 .. n {
 			let delegate: T::AccountId = account("delegate", i, SEED);
@@ -690,7 +688,8 @@ benchmarks_instance_pallet! {
 		}
 	}: _(SystemOrigin::Root, caller_lookup, collection, n)
 	verify {
-		assert_last_event::<T, I>(Event::AllApprovalsCancelled {collection, item: None, owner: caller}.into());
+		assert_last_event::<T, I>(Event::ApprovalsCancelled {collection, item: None, owner: caller.clone(), approvals: n}.into());
+		assert!(CollectionApprovals::<T, I>::iter_prefix((collection, caller,)).take(1).next().is_none());
 	}
 
 	set_accept_ownership {
