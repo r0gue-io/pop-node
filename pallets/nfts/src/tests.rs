@@ -2539,6 +2539,16 @@ fn approving_multiple_accounts_works() {
 			approvals(0, 42),
 			vec![(account(3), None), (account(4), None), (account(5), Some(current_block + 2))]
 		);
+
+		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(4)), 0, 42, account(6)));
+		assert_noop!(
+			Nfts::transfer(RuntimeOrigin::signed(account(3)), 0, 42, account(7)),
+			Error::<Test>::NoPermission
+		);
+		assert_noop!(
+			Nfts::transfer(RuntimeOrigin::signed(account(5)), 0, 42, account(8)),
+			Error::<Test>::NoPermission
+		);
 	});
 }
 
