@@ -1,10 +1,11 @@
 [package]
+authors = [ "R0GUE <go@r0gue.io>" ]
+edition = "2021"
 name = "dao"
 version = "0.1.0"
-edition = "2021"
 
 [dependencies]
-ink = { version = "=5.0.0", default-features = false, features = ["ink-debug"] }
+ink = { version = "=5.0.0", default-features = false, features = [ "ink-debug" ] }
 pop-api = { path = "../../../pop-api", default-features = false, features = [
 	"fungibles",
 ] }
@@ -24,9 +25,9 @@ staging-xcm = { version = "=14.1.0", default-features = false }
 path = "src/lib.rs"
 
 [features]
-default = ["std"]
-e2e-tests = []
-ink-as-dependency = []
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
 std = [
 	"ink/std",
 	"pop-api/std",
