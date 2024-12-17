@@ -1,4 +1,5 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
+
 use ink::{
 	prelude::{string::String, vec::Vec},
 	storage::Mapping,
@@ -12,6 +13,7 @@ use pop_api::{
 	},
 };
 
+pub const STRINGLIMIT: u8 = u8::MAX;
 #[cfg(test)]
 mod tests;
 
@@ -25,7 +27,7 @@ mod dao {
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]  
 	pub struct Proposal {
 		// Description of the proposal
-		description: String,
+		description: Vec<u8>,
 
 		// Beginnning of the voting period for this proposal
 		vote_start: BlockNumber,
@@ -135,8 +137,12 @@ mod dao {
 			let current_block = self.env().block_number();
 			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
 			let vote_end = current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
+			let description_vec: Vec<u8> = description.as_bytes().to_vec();
+			if description_vec.len() >= STRINGLIMIT.into(){
+				return Err(Error::StringLimitReached);
+			}
 			let proposal = Proposal {
-				description,
+				description: description_vec,
 				vote_start: current_block,
 				vote_end,
 				yes_votes: 0,
@@ -285,6 +291,7 @@ mod dao {
 		VotingPeriodNotEnded,
 		ProposalAlreadyExecuted,
 		ProposalRejected,
+		StringLimitReached,
 		Psp22(Psp22Error),
 	}
 
