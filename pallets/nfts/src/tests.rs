@@ -3066,7 +3066,7 @@ fn clear_all_transfer_approvals_works() {
 
 		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
 			collection: collection_id,
-			item: Some(item_id),
+			item: item_id,
 			owner: item_owner.clone(),
 		}));
 		assert_eq!(approvals(collection_id, item_id), vec![]);
@@ -3159,7 +3159,6 @@ fn clear_collection_approvals_works() {
 			);
 			assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
 				collection: collection_id,
-				item: None,
 				owner: item_owner.clone(),
 				approvals
 			}));
@@ -3176,7 +3175,6 @@ fn clear_collection_approvals_works() {
 			);
 			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 				collection: collection_id,
-				item: None,
 				owner: item_owner.clone(),
 				approvals: 1
 			}));
@@ -3193,7 +3191,6 @@ fn clear_collection_approvals_works() {
 				.is_zero());
 			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 				collection: collection_id,
-				item: None,
 				owner: item_owner.clone(),
 				approvals: approvals - 1
 			}));
@@ -3206,7 +3203,6 @@ fn clear_collection_approvals_works() {
 			assert_eq!(Balances::free_balance(&item_owner), balance);
 			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 				collection: collection_id,
-				item: None,
 				owner: item_owner.clone(),
 				approvals: 0
 			}));

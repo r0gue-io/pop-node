@@ -66,8 +66,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 		}
 
-		let now = frame_system::Pallet::<T>::block_number();
-		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
+		let deadline =
+			maybe_deadline.map(|d| d.saturating_add(frame_system::Pallet::<T>::block_number()));
 
 		details
 			.approvals
@@ -181,7 +181,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		Self::deposit_event(Event::AllApprovalsCancelled {
 			collection,
-			item: Some(item),
+			item,
 			owner: details.owner,
 		});
 
@@ -223,8 +223,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
 			Error::<T, I>::ItemsNonTransferable
 		);
-		let now = frame_system::Pallet::<T>::block_number();
-		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
+		let deadline =
+			maybe_deadline.map(|d| d.saturating_add(frame_system::Pallet::<T>::block_number()));
 
 		CollectionApprovals::<T, I>::try_mutate_exists(
 			(&collection, &owner, &delegate),
@@ -278,7 +278,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Clears all collection approvals.
 	///
 	/// This function is used to clear `limit` collection approvals for the
-	/// collection items of `owner`. After clearing all approvals, the deposit of each collection
+	/// collection items of `owner`. After clearing the approvals, the deposit of each collection
 	/// approval is returned to the `owner` account and the `ApprovalsCancelled` event is
 	/// emitted.
 	///
@@ -296,18 +296,16 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let mut removed_approvals: u32 = 0;
 		let mut deposits: BalanceOf<T, I> = Zero::zero();
 		// Iterate and remove each collection approval, returning the deposit back to the `owner`.
-		for (_, (_, deposit)) in CollectionApprovals::<T, I>::drain_prefix((collection, &owner)) {
-			deposits = deposits.saturating_add(deposit);
+		for (_, (_, deposit)) in
+			CollectionApprovals::<T, I>::drain_prefix((collection, &owner)).take(limit as usize)
+		{
+			deposits.saturating_accrue(deposit);
 			removed_approvals.saturating_inc();
-			if removed_approvals == limit {
-				break;
-			}
 		}
 
 		T::Currency::unreserve(&owner, deposits);
 		Self::deposit_event(Event::ApprovalsCancelled {
 			collection,
-			item: None,
 			owner,
 			approvals: removed_approvals,
 		});

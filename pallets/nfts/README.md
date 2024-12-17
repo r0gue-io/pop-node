@@ -53,7 +53,7 @@ The NFTs pallet in Substrate is designed to make the following possible:
 * `approve_transfer`: Name a delegate who may authorize a transfer.
 * `approve_collection_transfer`: Name a delegate who may authorize a transfer of all collection items owned by the account.
 * `cancel_approval`: Revert the effects of a previous `approve_transfer`.
-* `cancel_collection_transfer`: Revert the effects of a previous `approve_collection_transfer`.
+* `cancel_collection_approval`: Revert the effects of a previous `approve_collection_transfer`.
 * `approve_item_attributes`: Name a delegate who may change item's attributes within a namespace.
 * `cancel_item_attributes_approval`: Revert the effects of a previous `approve_item_attributes`.
 * `set_price`: Set the price for an item.
@@ -99,8 +99,8 @@ The NFTs pallet in Substrate is designed to make the following possible:
 * `force_collection_config`: Change collection's config.
 * `force_set_attribute`: Set an attribute.
 * `force_approve_collection_transfer`: Name a delegate who may authorize a transfer of all collection items owned by the specified account.
-* `force_cancel_collection_transfer`: Revert the effects of a previous `approve_collection_transfer`.
-* `force_clear_collection_approvals`: Reverts the effects of all previous `approve_collection_transfer` calls for the collection.
+* `force_cancel_collection_approval`: Revert the effects of a previous `approve_collection_transfer`.
+* `force_clear_collection_approvals`: Revert the effects of all previous `approve_collection_transfer` calls for the collection.
 
 Please refer to the [`Call`](https://paritytech.github.io/substrate/master/pallet_nfts/pallet/enum.Call.html) enum and
 its associated variants for documentation on each function.
