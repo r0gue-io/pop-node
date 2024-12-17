@@ -5,11 +5,11 @@ use emulated_integration_tests_common::{
 use sp_core::storage::Storage;
 
 use crate::chains::asset_hub::{
+	constants::currency::EXISTENTIAL_DEPOSIT,
 	runtime::{
 		BalancesConfig, CollatorSelectionConfig, ParachainInfoConfig, PolkadotXcmConfig,
 		RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig, WASM_BINARY,
 	},
-	constants::currency::EXISTENTIAL_DEPOSIT,
 };
 
 pub(crate) const ED: Balance = EXISTENTIAL_DEPOSIT;

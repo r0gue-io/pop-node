@@ -3,11 +3,14 @@
 use asset_test_utils::xcm_helpers;
 use chains::{
 	asset_hub::{
-		runtime::xcm_config::XcmConfig as AssetHubXcmConfig, AssetHub, AssetHubParaPallet,
-		genesis::ED as ASSET_HUB_ED,
+		genesis::ED as ASSET_HUB_ED, runtime::xcm_config::XcmConfig as AssetHubXcmConfig, AssetHub,
+		AssetHubParaPallet,
 	},
 	pop_network::{PopNetwork, PopNetworkParaPallet},
-	relay::genesis::ED as RELAY_ED,
+	relay::{
+		genesis::ED as RELAY_ED, runtime::xcm_config::XcmConfig as RelayXcmConfig, Relay,
+		RelayRelayPallet as RelayPallet,
+	},
 };
 use emulated_integration_tests_common::{
 	accounts::{ALICE, BOB},
@@ -21,16 +24,6 @@ use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
 use pop_runtime_common::Balance;
 use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
-#[cfg(feature = "paseo")]
-use {
-	chains::paseo::{Paseo as Relay, PaseoRelayPallet as RelayPallet},
-	paseo_runtime::xcm_config::XcmConfig as RelayXcmConfig,
-};
-#[cfg(feature = "westend")]
-use {
-	chains::westend::{Westend as Relay, WestendRelayPallet as RelayPallet},
-	westend_runtime::xcm_config::XcmConfig as RelayXcmConfig,
-};
 
 mod chains;
 

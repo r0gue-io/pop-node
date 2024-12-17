@@ -1,5 +1,3 @@
-pub(crate) mod genesis;
-
 use emulated_integration_tests_common::{
 	impl_accounts_helpers_for_parachain, impl_assert_events_helpers_for_parachain,
 	impl_assets_helpers_for_parachain, impl_foreign_assets_helpers_for_parachain,
@@ -10,6 +8,8 @@ use frame_support::traits::OnInitialize;
 pub(crate) use {asset_hub_paseo_runtime as runtime, paseo_runtime_constants as constants};
 #[cfg(feature = "westend")]
 pub(crate) use {asset_hub_westend_runtime as runtime, westend_runtime_constants as constants};
+
+pub(crate) mod genesis;
 
 // AssetHub Parachain declaration
 decl_test_parachains! {
