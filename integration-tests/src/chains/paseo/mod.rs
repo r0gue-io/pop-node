@@ -1,10 +1,10 @@
-pub(crate) mod genesis;
-
 use emulated_integration_tests_common::{
 	impl_accounts_helpers_for_relay_chain, impl_assert_events_helpers_for_relay_chain,
 	impl_hrmp_channels_helpers_for_relay_chain, impl_send_transact_helpers_for_relay_chain,
 	xcm_emulator::decl_test_relay_chains,
 };
+
+pub(crate) mod genesis;
 
 // Paseo declaration
 decl_test_relay_chains! {
@@ -18,8 +18,6 @@ decl_test_relay_chains! {
 		},
 		pallets = {
 			XcmPallet: paseo_runtime::XcmPallet,
-			// TODO: sudo pallet is not configured in polkadot runtime
-			// Sudo: paseo_runtime::Sudo,
 			Balances: paseo_runtime::Balances,
 			Hrmp: paseo_runtime::Hrmp,
 		}

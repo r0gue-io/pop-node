@@ -1,36 +1,45 @@
 #![cfg(test)]
 
-use asset_hub_paseo_runtime::xcm_config::XcmConfig as AssetHubPaseoXcmConfig;
 use asset_test_utils::xcm_helpers;
-use chains::{asset_hub_paseo::AssetHubPaseo, paseo::Paseo, pop_network::PopNetwork};
+use chains::{
+	asset_hub::{
+		runtime::xcm_config::XcmConfig as AssetHubXcmConfig, AssetHub, AssetHubParaPallet,
+		genesis::ED as ASSET_HUB_ED,
+	},
+	pop_network::{PopNetwork, PopNetworkParaPallet},
+	relay::genesis::ED as RELAY_ED,
+};
 use emulated_integration_tests_common::{
 	accounts::{ALICE, BOB},
 	xcm_emulator::{
 		assert_expected_events, bx, decl_test_networks,
-		decl_test_sender_receiver_accounts_parameter_types, Chain, Parachain as Para,
-		RelayChain as Relay, Test, TestArgs, TestContext, TestExt,
+		decl_test_sender_receiver_accounts_parameter_types, Chain, Parachain as Para, RelayChain,
+		Test, TestArgs, TestContext, TestExt,
 	},
 };
 use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
-use paseo_runtime::xcm_config::XcmConfig as PaseoXcmConfig;
 use pop_runtime_common::Balance;
 use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
-
-use crate::chains::{
-	asset_hub_paseo::{genesis::ED as ASSET_HUB_PASEO_ED, AssetHubPaseoParaPallet},
-	paseo::{genesis::ED as PASEO_ED, PaseoRelayPallet},
-	pop_network::PopNetworkParaPallet,
+#[cfg(feature = "paseo")]
+use {
+	chains::paseo::{Paseo as Relay, PaseoRelayPallet as RelayPallet},
+	paseo_runtime::xcm_config::XcmConfig as RelayXcmConfig,
+};
+#[cfg(feature = "westend")]
+use {
+	chains::westend::{Westend as Relay, WestendRelayPallet as RelayPallet},
+	westend_runtime::xcm_config::XcmConfig as RelayXcmConfig,
 };
 
 mod chains;
 
 decl_test_networks! {
 	// `pub` mandatory for the macro
-	pub struct PaseoMockNet {
-		relay_chain = Paseo,
+	pub struct MockNet {
+		relay_chain = Relay,
 		parachains = vec![
-			AssetHubPaseo,
+			AssetHub,
 			PopNetwork,
 		],
 		bridge = ()
@@ -38,28 +47,28 @@ decl_test_networks! {
 }
 
 decl_test_sender_receiver_accounts_parameter_types! {
-	PaseoRelay { sender: ALICE, receiver: BOB },
-	AssetHubPaseoPara { sender: ALICE, receiver: BOB },
+	RelayRelay { sender: ALICE, receiver: BOB },
+	AssetHubPara { sender: ALICE, receiver: BOB },
 	PopNetworkPara { sender: ALICE, receiver: BOB}
 }
 
-type RelayToParaTest = Test<PaseoRelay, PopNetworkPara>;
-type SystemParaToParaTest = Test<AssetHubPaseoPara, PopNetworkPara>;
-type ParaToSystemParaTest = Test<PopNetworkPara, AssetHubPaseoPara>;
-type ParaToRelayTest = Test<PopNetworkPara, PaseoRelay>;
+type RelayToParaTest = Test<RelayRelay, PopNetworkPara>;
+type SystemParaToParaTest = Test<AssetHubPara, PopNetworkPara>;
+type ParaToSystemParaTest = Test<PopNetworkPara, AssetHubPara>;
+type ParaToRelayTest = Test<PopNetworkPara, RelayRelay>;
 
 fn relay_to_para_sender_assertions(t: RelayToParaTest) {
-	type RuntimeEvent = <PaseoRelay as Chain>::RuntimeEvent;
-	PaseoRelay::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(864_610_000, 8_799)));
+	type RuntimeEvent = <RelayRelay as Chain>::RuntimeEvent;
+	RelayRelay::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(864_610_000, 8_799)));
 	assert_expected_events!(
-		PaseoRelay,
+		RelayRelay,
 		vec![
 			// Amount to reserve transfer is transferred to Parachain's Sovereign account
 			RuntimeEvent::Balances(
 				pallet_balances::Event::Transfer { from, to, amount }
 			) => {
 				from: *from == t.sender.account_id,
-				to: *to == PaseoRelay::sovereign_account_id_of(
+				to: *to == RelayRelay::sovereign_account_id_of(
 					t.args.dest.clone()
 				),
 				amount: *amount == t.args.amount,
@@ -69,20 +78,20 @@ fn relay_to_para_sender_assertions(t: RelayToParaTest) {
 }
 
 fn system_para_to_para_sender_assertions(t: SystemParaToParaTest) {
-	type RuntimeEvent = <AssetHubPaseoPara as Chain>::RuntimeEvent;
-	AssetHubPaseoPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+	type RuntimeEvent = <AssetHubPara as Chain>::RuntimeEvent;
+	AssetHubPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
 		864_610_000,
 		8_799,
 	)));
 	assert_expected_events!(
-		AssetHubPaseoPara,
+		AssetHubPara,
 		vec![
 			// Amount to reserve transfer is transferred to Parachain's Sovereign account
 			RuntimeEvent::Balances(
 				pallet_balances::Event::Transfer { from, to, amount }
 			) => {
 				from: *from == t.sender.account_id,
-				to: *to == AssetHubPaseoPara::sovereign_account_id_of(
+				to: *to == AssetHubPara::sovereign_account_id_of(
 					t.args.dest.clone()
 				),
 				amount: *amount == t.args.amount,
@@ -141,12 +150,12 @@ fn para_to_relay_sender_assertions(t: ParaToRelayTest) {
 }
 
 fn para_to_system_para_receiver_assertions(t: ParaToSystemParaTest) {
-	type RuntimeEvent = <AssetHubPaseoPara as Chain>::RuntimeEvent;
-	let sov_pop_net_on_ahr = AssetHubPaseoPara::sovereign_account_id_of(
-		AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id()),
+	type RuntimeEvent = <AssetHubPara as Chain>::RuntimeEvent;
+	let sov_pop_net_on_ahr = AssetHubPara::sovereign_account_id_of(
+		AssetHubPara::sibling_location_of(PopNetworkPara::para_id()),
 	);
 	assert_expected_events!(
-		AssetHubPaseoPara,
+		AssetHubPara,
 		vec![
 			// Amount to reserve transfer is withdrawn from Parachain's Sovereign account
 			RuntimeEvent::Balances(
@@ -164,12 +173,12 @@ fn para_to_system_para_receiver_assertions(t: ParaToSystemParaTest) {
 }
 
 fn para_to_relay_receiver_assertions(t: ParaToRelayTest) {
-	type RuntimeEvent = <PaseoRelay as Chain>::RuntimeEvent;
-	let sov_pop_net_on_relay = PaseoRelay::sovereign_account_id_of(PaseoRelay::child_location_of(
+	type RuntimeEvent = <RelayRelay as Chain>::RuntimeEvent;
+	let sov_pop_net_on_relay = RelayRelay::sovereign_account_id_of(RelayRelay::child_location_of(
 		PopNetworkPara::para_id(),
 	));
 	assert_expected_events!(
-		PaseoRelay,
+		RelayRelay,
 		vec![
 			// Amount to reserve transfer is withdrawn from Parachain's Sovereign account
 			RuntimeEvent::Balances(
@@ -187,7 +196,7 @@ fn para_to_relay_receiver_assertions(t: ParaToRelayTest) {
 }
 
 fn relay_to_para_reserve_transfer_assets(t: RelayToParaTest) -> DispatchResult {
-	<PaseoRelay as PaseoRelayPallet>::XcmPallet::limited_reserve_transfer_assets(
+	<RelayRelay as RelayPallet>::XcmPallet::limited_reserve_transfer_assets(
 		t.signed_origin,
 		bx!(t.args.dest.into()),
 		bx!(t.args.beneficiary.into()),
@@ -198,7 +207,7 @@ fn relay_to_para_reserve_transfer_assets(t: RelayToParaTest) -> DispatchResult {
 }
 
 fn system_para_to_para_reserve_transfer_assets(t: SystemParaToParaTest) -> DispatchResult {
-	<AssetHubPaseoPara as AssetHubPaseoParaPallet>::PolkadotXcm::limited_reserve_transfer_assets(
+	<AssetHubPara as AssetHubParaPallet>::PolkadotXcm::limited_reserve_transfer_assets(
 		t.signed_origin,
 		bx!(t.args.dest.into()),
 		bx!(t.args.beneficiary.into()),
@@ -236,7 +245,7 @@ fn fund_pop_from_relay(
 	amount_to_send: Balance,
 	beneficiary: sp_runtime::AccountId32,
 ) {
-	let destination = PaseoRelay::child_location_of(PopNetworkPara::para_id());
+	let destination = RelayRelay::child_location_of(PopNetworkPara::para_id());
 	let test_args = TestContext {
 		sender,
 		receiver: beneficiary.clone(),
@@ -244,7 +253,7 @@ fn fund_pop_from_relay(
 	};
 
 	let mut test = RelayToParaTest::new(test_args);
-	test.set_dispatchable::<PaseoRelay>(relay_to_para_reserve_transfer_assets);
+	test.set_dispatchable::<RelayRelay>(relay_to_para_reserve_transfer_assets);
 	test.assert();
 }
 
@@ -255,7 +264,7 @@ fn fund_pop_from_system_para(
 	beneficiary: sp_runtime::AccountId32,
 	assets: Assets,
 ) {
-	let destination = AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id());
+	let destination = AssetHubPara::sibling_location_of(PopNetworkPara::para_id());
 	let test_args = TestContext {
 		sender,
 		receiver: beneficiary.clone(),
@@ -263,7 +272,7 @@ fn fund_pop_from_system_para(
 	};
 
 	let mut test = SystemParaToParaTest::new(test_args);
-	test.set_dispatchable::<AssetHubPaseoPara>(system_para_to_para_reserve_transfer_assets);
+	test.set_dispatchable::<AssetHubPara>(system_para_to_para_reserve_transfer_assets);
 	test.assert();
 }
 
@@ -273,12 +282,12 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 	init_tracing();
 
 	// Init values for Relay
-	let destination = PaseoRelay::child_location_of(PopNetworkPara::para_id());
+	let destination = RelayRelay::child_location_of(PopNetworkPara::para_id());
 	let beneficiary_id = PopNetworkParaReceiver::get();
-	let amount_to_send: Balance = PASEO_ED * 1000;
+	let amount_to_send: Balance = RELAY_ED * 1000;
 
 	let test_args = TestContext {
-		sender: PaseoRelaySender::get(),
+		sender: RelayRelaySender::get(),
 		receiver: PopNetworkParaReceiver::get(),
 		args: TestArgs::new_relay(destination, beneficiary_id, amount_to_send),
 	};
@@ -288,14 +297,14 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 	let sender_balance_before = test.sender.balance;
 	let receiver_balance_before = test.receiver.balance;
 
-	test.set_assertion::<PaseoRelay>(relay_to_para_sender_assertions);
+	test.set_assertion::<RelayRelay>(relay_to_para_sender_assertions);
 	test.set_assertion::<PopNetworkPara>(para_receiver_assertions);
-	test.set_dispatchable::<PaseoRelay>(relay_to_para_reserve_transfer_assets);
+	test.set_dispatchable::<RelayRelay>(relay_to_para_reserve_transfer_assets);
 	test.assert();
 
-	let delivery_fees = PaseoRelay::execute_with(|| {
+	let delivery_fees = RelayRelay::execute_with(|| {
 		xcm_helpers::teleport_assets_delivery_fees::<
-			<PaseoXcmConfig as xcm_executor::Config>::XcmSender,
+			<RelayXcmConfig as xcm_executor::Config>::XcmSender,
 		>(
 			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
 		)
@@ -321,18 +330,18 @@ fn reserve_transfer_native_asset_from_para_to_relay() {
 
 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
 	// transfer
-	let amount_to_send: Balance = PASEO_ED * 1_000;
-	fund_pop_from_relay(PaseoRelaySender::get(), amount_to_send, PopNetworkParaReceiver::get()); // alice on relay > bob on pop
+	let amount_to_send: Balance = RELAY_ED * 1_000;
+	fund_pop_from_relay(RelayRelaySender::get(), amount_to_send, PopNetworkParaReceiver::get()); // alice on relay > bob on pop
 
 	// Init values for Pop Network Parachain
 	let destination = PopNetworkPara::parent_location(); // relay
-	let beneficiary_id = PaseoRelayReceiver::get(); // bob on relay
+	let beneficiary_id = RelayRelayReceiver::get(); // bob on relay
 	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free; // bob on pop balance
 	let assets = (Parent, amount_to_send).into();
 
 	let test_args = TestContext {
 		sender: PopNetworkParaReceiver::get(), // bob on pop
-		receiver: PaseoRelayReceiver::get(),   // bob on relay
+		receiver: RelayRelayReceiver::get(),   // bob on relay
 		args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
 	};
 
@@ -342,7 +351,7 @@ fn reserve_transfer_native_asset_from_para_to_relay() {
 	let receiver_balance_before = test.receiver.balance;
 
 	test.set_assertion::<PopNetworkPara>(para_to_relay_sender_assertions);
-	test.set_assertion::<PaseoRelay>(para_to_relay_receiver_assertions);
+	test.set_assertion::<RelayRelay>(para_to_relay_receiver_assertions);
 	test.set_dispatchable::<PopNetworkPara>(para_to_relay_reserve_transfer_assets);
 	test.assert();
 
@@ -373,13 +382,13 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 	init_tracing();
 
 	// Init values for System Parachain
-	let destination = AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id());
+	let destination = AssetHubPara::sibling_location_of(PopNetworkPara::para_id());
 	let beneficiary_id = PopNetworkParaReceiver::get();
-	let amount_to_send: Balance = ASSET_HUB_PASEO_ED * 1000;
+	let amount_to_send: Balance = ASSET_HUB_ED * 1000;
 	let assets = (Parent, amount_to_send).into();
 
 	let test_args = TestContext {
-		sender: AssetHubPaseoParaSender::get(),
+		sender: AssetHubParaSender::get(),
 		receiver: PopNetworkParaReceiver::get(),
 		args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
 	};
@@ -389,17 +398,17 @@ fn reserve_transfer_native_asset_from_system_para_to_para() {
 	let sender_balance_before = test.sender.balance;
 	let receiver_balance_before = test.receiver.balance;
 
-	test.set_assertion::<AssetHubPaseoPara>(system_para_to_para_sender_assertions);
+	test.set_assertion::<AssetHubPara>(system_para_to_para_sender_assertions);
 	test.set_assertion::<PopNetworkPara>(para_receiver_assertions);
-	test.set_dispatchable::<AssetHubPaseoPara>(system_para_to_para_reserve_transfer_assets);
+	test.set_dispatchable::<AssetHubPara>(system_para_to_para_reserve_transfer_assets);
 	test.assert();
 
 	let sender_balance_after = test.sender.balance;
 	let receiver_balance_after = test.receiver.balance;
 
-	let delivery_fees = AssetHubPaseoPara::execute_with(|| {
+	let delivery_fees = AssetHubPara::execute_with(|| {
 		xcm_helpers::teleport_assets_delivery_fees::<
-			<AssetHubPaseoXcmConfig as xcm_executor::Config>::XcmSender,
+			<AssetHubXcmConfig as xcm_executor::Config>::XcmSender,
 		>(
 			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
 		)
@@ -422,23 +431,23 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 
 	// Setup: reserve transfer from AH to Pop, so that sovereign account accurate for return
 	// transfer
-	let amount_to_send: Balance = ASSET_HUB_PASEO_ED * 1000;
+	let amount_to_send: Balance = ASSET_HUB_ED * 1000;
 	fund_pop_from_system_para(
-		AssetHubPaseoParaSender::get(),
+		AssetHubParaSender::get(),
 		amount_to_send,
 		PopNetworkParaReceiver::get(),
 		(Parent, amount_to_send).into(),
 	); // alice on asset hub > bob on pop
 
 	// Init values for Pop Network Parachain
-	let destination = PopNetworkPara::sibling_location_of(AssetHubPaseoPara::para_id());
-	let beneficiary_id = AssetHubPaseoParaReceiver::get(); // bob on asset hub
+	let destination = PopNetworkPara::sibling_location_of(AssetHubPara::para_id());
+	let beneficiary_id = AssetHubParaReceiver::get(); // bob on asset hub
 	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free; // bob on pop balance
 	let assets = (Parent, amount_to_send).into();
 
 	let test_args = TestContext {
-		sender: PopNetworkParaReceiver::get(),      // bob on pop
-		receiver: AssetHubPaseoParaReceiver::get(), // bob on asset hub
+		sender: PopNetworkParaReceiver::get(), // bob on pop
+		receiver: AssetHubParaReceiver::get(), // bob on asset hub
 		args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
 	};
 
@@ -448,15 +457,14 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let receiver_balance_before = test.receiver.balance;
 
 	let pop_net_location_as_seen_by_ahr =
-		AssetHubPaseoPara::sibling_location_of(PopNetworkPara::para_id());
-	let sov_pop_net_on_ahr =
-		AssetHubPaseoPara::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
+		AssetHubPara::sibling_location_of(PopNetworkPara::para_id());
+	let sov_pop_net_on_ahr = AssetHubPara::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
 
 	// fund Pop Network's SA on AHR with the native tokens held in reserve
-	AssetHubPaseoPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount_to_send * 2)]);
+	AssetHubPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount_to_send * 2)]);
 
 	test.set_assertion::<PopNetworkPara>(para_to_system_para_sender_assertions);
-	test.set_assertion::<AssetHubPaseoPara>(para_to_system_para_receiver_assertions);
+	test.set_assertion::<AssetHubPara>(para_to_system_para_receiver_assertions);
 	test.set_dispatchable::<PopNetworkPara>(para_to_system_para_reserve_transfer_assets);
 	test.assert();
 
@@ -490,15 +498,15 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 //
 // 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
 // transfer 	let amount_to_send: Balance = pop_runtime::UNIT * 1000;
-// 	fund_pop_from_relay(PaseoRelaySender::get(), amount_to_send, beneficiary.clone());
+// 	fund_pop_from_relay(RelayRelaySender::get(), amount_to_send, beneficiary.clone());
 //
 // 	let message = {
 // 		let assets: Asset = (Here, 10 * pop_runtime::UNIT).into();
 // 		let beneficiary = AccountId32 { id: beneficiary.clone().into(), network: None }.into();
-// 		let spot_order = <PaseoRelay as Chain>::RuntimeCall::OnDemandAssignmentProvider(
-// 			assigner_on_demand::Call::<<PaseoRelay as Chain>::Runtime>::place_order_keep_alive {
+// 		let spot_order = <RelayRelay as Chain>::RuntimeCall::OnDemandAssignmentProvider(
+// 			assigner_on_demand::Call::<<RelayRelay as Chain>::Runtime>::place_order_keep_alive {
 // 				max_amount: 1 * pop_runtime::UNIT,
-// 				para_id: AssetHubPaseoPara::para_id().into(),
+// 				para_id: AssetHubPara::para_id().into(),
 // 			},
 // 		);
 //
@@ -521,7 +529,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 // 				spot_order.encode().into(),
 // 			)
 // 			.report_transact_status(QueryResponseInfo {
-// 				destination: PaseoRelay::child_location_of(PopNetworkPara::para_id()),
+// 				destination: RelayRelay::child_location_of(PopNetworkPara::para_id()),
 // 				query_id,
 // 				max_weight: Weight::from_parts(250_000_000, 10_000),
 // 			})
@@ -554,10 +562,10 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 // 		);
 // 	});
 //
-// 	PaseoRelay::execute_with(|| {
-// 		type RuntimeEvent = <PaseoRelay as Chain>::RuntimeEvent;
+// 	RelayRelay::execute_with(|| {
+// 		type RuntimeEvent = <RelayRelay as Chain>::RuntimeEvent;
 // 		assert_expected_events!(
-// 			PaseoRelay,
+// 			RelayRelay,
 // 			vec![
 // 				// We currently only check that the message was processed successfully
 // 				RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success: true, .. }) =>
