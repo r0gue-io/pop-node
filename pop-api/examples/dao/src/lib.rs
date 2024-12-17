@@ -134,7 +134,8 @@ mod dao {
 			amount: Balance,
 			description: String,
 		) -> Result<(), Error> {
-			let _caller = self.env().caller();
+			let caller = self.env().caller();
+			let contract = self.env().account_id();
 			let current_block = self.env().block_number();
 			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
 			let vote_end =
@@ -156,6 +157,13 @@ mod dao {
 			};
 
 			self.proposals.push(proposal);
+
+			self.env().emit_event(Created {
+				id: proposal_id,
+				creator: caller,
+				admin: contract,
+			});
+
 			Ok(())
 		}
 
