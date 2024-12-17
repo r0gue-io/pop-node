@@ -55,18 +55,3 @@ pub(crate) fn genesis() -> Storage {
 		WASM_BINARY.expect("WASM binary was not built, please build it!"),
 	)
 }
-
-// In case we want to add Polkadot in the future.
-//
-// #[cfg(feature = "polkadot")]
-// use emulated_integration_tests_common::{get_account_id_from_seed, get_from_seed};
-// use sp_core::sr25519;
-// use polkadot_primitives::{AccountId, Balance};
-//
-// type AuraId = sp_consensus_aura::ed25519::AuthorityId;
-// pub fn invulnerables() -> Vec<(AccountId, AuraId)> {
-// 	vec![
-// 		(get_account_id_from_seed::<sr25519::Public>("Alice"), get_from_seed::<AuraId>("Alice")),
-// 		(get_account_id_from_seed::<sr25519::Public>("Bob"), get_from_seed::<AuraId>("Bob")),
-// 	]
-// }

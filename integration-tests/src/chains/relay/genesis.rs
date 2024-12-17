@@ -67,3 +67,19 @@ fn session_keys(
 ) -> SessionKeys {
 	SessionKeys { babe, grandpa, para_validator, para_assignment, authority_discovery, beefy }
 }
+
+// In case we want to add Polkadot in the future, the following change in `invulnerables` is
+// required.
+//
+// #[cfg(feature = "polkadot")]
+// use emulated_integration_tests_common::{get_account_id_from_seed, get_from_seed};
+// use sp_core::sr25519;
+// use polkadot_primitives::{AccountId, Balance};
+//
+// type AuraId = sp_consensus_aura::ed25519::AuthorityId;
+// pub fn invulnerables() -> Vec<(AccountId, AuraId)> {
+// 	vec![
+// 		(get_account_id_from_seed::<sr25519::Public>("Alice"), get_from_seed::<AuraId>("Alice")),
+// 		(get_account_id_from_seed::<sr25519::Public>("Bob"), get_from_seed::<AuraId>("Bob")),
+// 	]
+// }
