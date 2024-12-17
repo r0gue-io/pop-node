@@ -1,5 +1,5 @@
 use drink::{
-	assert_err, assert_last_contract_event, assert_ok, call, deploy,
+	assert_err, assert_last_contract_event, assert_ok, call,
 	devnet::{
 		account_id_from_slice,
 		error::{
@@ -20,6 +20,7 @@ use pop_api::{
 };
 
 use super::*;
+
 const UNIT: Balance = 10_000_000_000;
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
@@ -75,3 +76,22 @@ fn new_constructor_works(mut session: Session) {
 		}
 	);
 }
+
+
+// Deploy the contract with `NO_SALT and `INIT_VALUE`.
+fn deploy(
+	session: &mut Session<Pop>,
+	method: &str,
+	input: Vec<String>,
+) -> Result<AccountId, Psp22Error> {
+	drink::deploy::<Pop, Psp22Error>(
+		session,
+		// The local contract (i.e. `fungibles`).
+		BundleProvider::local().unwrap(),
+		method,
+		input,
+		NO_SALT,
+		Some(INIT_VALUE),
+	)
+}
+
