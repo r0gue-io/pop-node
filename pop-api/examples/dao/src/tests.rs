@@ -3,7 +3,7 @@ use drink::{
 	devnet::{
 		account_id_from_slice,
 		error::{
-			v0::{ApiError::*, ArithmeticError::*, Error},
+			v0::{ApiError::*, ArithmeticError::*},
 			Assets,
 			AssetsError::*,
 		},
@@ -20,6 +20,7 @@ use pop_api::{
 };
 
 use super::*;
+use crate::dao::{Error, Member};
 
 const UNIT: Balance = 10_000_000_000;
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
@@ -60,7 +61,7 @@ fn deploy_with_default(session: &mut Session<Pop>) -> Result<AccountId, Psp22Err
 
 #[drink::test(sandbox = Pop)]
 fn new_constructor_works(mut session: Session) {
-    let _ = env_logger::try_init();
+	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
 	println!("{:?}", contract);
@@ -77,6 +78,36 @@ fn new_constructor_works(mut session: Session) {
 	);
 }
 
+#[drink::test(sandbox = Pop)]
+fn join_dao_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	let value = AMOUNT / 2;
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	session.set_actor(ALICE);
+	// Mint tokens and approve.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &ALICE, AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN, &ALICE, &contract.clone(), AMOUNT));
+	assert_eq!(session.sandbox().allowance(&TOKEN, &ALICE, &contract.clone()), AMOUNT);
+	assert_eq!(session.sandbox().balance_of(&TOKEN, &ALICE), AMOUNT);
+
+	// Alice joins the dao
+	assert_ok!(join(&mut session, value));
+	// assert_ok!(members(&mut session, ALICE));
+
+	// Successfully emit event.
+	assert_last_contract_event!(
+		&session,
+		Transfer {
+			from: Some(account_id_from_slice(&ALICE)),
+			to: Some(account_id_from_slice(&contract)),
+			value,
+		}
+	);
+	if let Ok(member) = members(&mut session, ALICE) {
+		assert_eq!(member.voting_power, 20000);
+	}
+}
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.
 fn deploy(
@@ -95,3 +126,10 @@ fn deploy(
 	)
 }
 
+fn join(session: &mut Session<Pop>, value: Balance) -> Result<(), Error> {
+	call::<Pop, (), Error>(session, "join", vec![value.to_string()], None)
+}
+
+fn members(session: &mut Session<Pop>, account: AccountId) -> Result<Member, Error> {
+	call::<Pop, Member, Error>(session, "get_member", vec![account.to_string()], None)
+}

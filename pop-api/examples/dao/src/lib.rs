@@ -23,46 +23,47 @@ mod dao {
 
 	/// Structure of the proposal used by the Dao governance sysytem
 	#[derive(Debug)]
-    #[ink::scale_derive(Encode, Decode, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]  
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct Proposal {
 		// Description of the proposal
-		description: Vec<u8>,
+		pub description: Vec<u8>,
 
 		// Beginnning of the voting period for this proposal
-		vote_start: BlockNumber,
+		pub vote_start: BlockNumber,
 
 		// End of the voting period for this proposal
-		vote_end: BlockNumber,
+		pub vote_end: BlockNumber,
 
 		// Balance representing the total votes for this proposal
-		yes_votes: Balance,
+		pub yes_votes: Balance,
 
 		// Balance representing the total votes against this proposal
-		no_votes: Balance,
+		pub no_votes: Balance,
 
 		// Flag that indicates if the proposal was executed
-		executed: bool,
+		pub executed: bool,
 
 		// AccountId of the recipient of the proposal
-		beneficiary: AccountId,
+		pub beneficiary: AccountId,
 
 		// Amount of tokens to be awarded to the beneficiary
-		amount: Balance,
+		pub amount: Balance,
 
 		// Identifier of the proposal
-		proposal_id: u32,
+		pub proposal_id: u32,
 	}
 
 	/// Representation of a member in the voting system
-    #[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[derive(Debug)]
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct Member {
 		// Stores the member's voting influence by using his balance
-		voting_power: Balance,
+		pub voting_power: Balance,
 
 		// Keeps track of the last vote casted by the member
-		last_vote: BlockNumber,
+		pub last_vote: BlockNumber,
 	}
 
 	/// Structure of a DAO (Decentralized Autonomous Organization)
@@ -136,9 +137,10 @@ mod dao {
 			let _caller = self.env().caller();
 			let current_block = self.env().block_number();
 			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
-			let vote_end = current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
+			let vote_end =
+				current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
 			let description_vec: Vec<u8> = description.as_bytes().to_vec();
-			if description_vec.len() >= STRINGLIMIT.into(){
+			if description_vec.len() >= STRINGLIMIT.into() {
 				return Err(Error::StringLimitReached);
 			}
 			let proposal = Proposal {
@@ -182,9 +184,15 @@ mod dao {
 			}
 
 			if approve {
-				proposal.yes_votes.checked_add(member.voting_power).ok_or(Error::ArithmeticOverflow)?;
+				proposal
+					.yes_votes
+					.checked_add(member.voting_power)
+					.ok_or(Error::ArithmeticOverflow)?;
 			} else {
-				proposal.no_votes.checked_add(member.voting_power).ok_or(Error::ArithmeticOverflow)?;
+				proposal
+					.no_votes
+					.checked_add(member.voting_power)
+					.ok_or(Error::ArithmeticOverflow)?;
 			}
 
 			self.members.insert(
@@ -261,27 +269,31 @@ mod dao {
 			let contract = self.env().account_id();
 			api::transfer_from(self.token_id, caller, contract, amount)
 				.map_err(Psp22Error::from)?;
+			let member =
+				self.members.get(caller).unwrap_or(Member { voting_power: 0, last_vote: 0 });
+
+			let voting_power =
+				member.voting_power.checked_add(amount).ok_or(Error::ArithmeticOverflow)?;
+			self.members
+				.insert(caller, &Member { voting_power, last_vote: member.last_vote });
+
 			self.env().emit_event(Transfer {
 				from: Some(caller),
 				to: Some(contract),
 				value: amount,
 			});
 
-			let member =
-				self.members.get(caller).unwrap_or(Member { voting_power: 0, last_vote: 0 });
-
-			let voting_power = member.voting_power.checked_add(amount).ok_or(Error::ArithmeticOverflow)?;
-			self.members.insert(
-				caller,
-				&Member { voting_power, last_vote: member.last_vote },
-			);
-
 			Ok(())
+		}
+
+		#[ink(message)]
+		pub fn get_member(&mut self, account: AccountId) -> Member {
+			self.members.get(account).unwrap_or(Member { voting_power: 0, last_vote: 0 })
 		}
 	}
 
 	#[derive(Debug, PartialEq, Eq)]
-    #[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	pub enum Error {
 		ArithmeticOverflow,
 		ProposalNotFound,
@@ -292,6 +304,7 @@ mod dao {
 		ProposalAlreadyExecuted,
 		ProposalRejected,
 		StringLimitReached,
+		None,
 		Psp22(Psp22Error),
 	}
 
