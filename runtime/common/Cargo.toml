@@ -36,5 +36,6 @@ std = [
 	"frame-support/std",
 	"parachains-common/std",
 	"polkadot-primitives/std",
+	"scale-info/std",
 	"sp-runtime/std",
 ]
