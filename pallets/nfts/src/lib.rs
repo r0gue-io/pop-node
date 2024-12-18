@@ -259,6 +259,9 @@ pub mod pallet {
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
+
+		#[pallet::constant]
+		type BalanceDeposit: Get<DepositBalanceOf<Self, I>>;
 	}
 
 	/// Details of a collection.
@@ -435,8 +438,7 @@ pub mod pallet {
 		T::CollectionId,
 		Blake2_128Concat,
 		T::AccountId,
-		u32,
-		ValueQuery,
+		(u32, (T::AccountId, DepositBalanceOf<T, I>)),
 	>;
 
 	/// Permission for a delegate to transfer all owner's collection items.

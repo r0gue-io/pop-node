@@ -68,10 +68,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 			collection_details.items.saturating_inc();
 
-			AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| {
-				balance.saturating_inc();
-			});
-
 			let collection_config = Self::get_collection_config(&collection)?;
 			let deposit_amount =
 				match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
@@ -82,6 +78,31 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				None => collection_details.owner.clone(),
 				Some(depositor) => depositor,
 			};
+
+			AccountBalance::<T, I>::mutate(
+				collection,
+				&mint_to,
+				|maybe_balance| -> DispatchResult {
+					match maybe_balance {
+						None => {
+							// This is questionable - should collection config be able to override
+							// chain security?
+							let deposit_amount = match collection_config
+								.is_setting_enabled(CollectionSetting::DepositRequired)
+							{
+								true => T::BalanceDeposit::get(),
+								false => Zero::zero(),
+							};
+							T::Currency::reserve(&deposit_account, deposit_amount)?;
+							*maybe_balance = Some((1, (deposit_account.clone(), deposit_amount)));
+						},
+						Some((balance, _deposit)) => {
+							balance.saturating_inc();
+						},
+					}
+					Ok(())
+				},
+			)?;
 
 			let item_owner = mint_to.clone();
 			Account::<T, I>::insert((&item_owner, &collection, &item), ());
@@ -264,12 +285,23 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		PendingSwapOf::<T, I>::remove(collection, item);
 		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
 
-		let balance = AccountBalance::<T, I>::take(collection, &owner)
-			.checked_sub(1)
-			.ok_or(ArithmeticError::Underflow)?;
-		if balance > 0 {
-			AccountBalance::<T, I>::insert(collection, &owner, balance);
-		}
+		AccountBalance::<T, I>::try_mutate_exists(
+			collection,
+			&owner,
+			|maybe_balance| -> DispatchResult {
+				match maybe_balance {
+					None => return Err(Error::<T, I>::NoItemOwned.into()),
+					Some((mut balance, (depositor_account, deposit_amount))) => {
+						balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
+						if balance == 0 {
+							T::Currency::unreserve(&depositor_account, *deposit_amount);
+							*maybe_balance = None;
+						}
+						Ok(())
+					},
+				}
+			},
+		)?;
 
 		if remove_config {
 			ItemConfigOf::<T, I>::remove(collection, item);
