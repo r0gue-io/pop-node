@@ -56,7 +56,8 @@ jobs:
           
           # if devnet, build the node with ismp feature
           if [ "$RUNTIME" == "devnet" ]; then
-            echo "NODE_BUILD_OPTS=--features on-chain-release-build,ismp" >> $GITHUB_ENV
+#            echo "NODE_BUILD_OPTS=--features on-chain-release-build,ismp" >> $GITHUB_ENV
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build" >> $GITHUB_ENV
           else
             echo "NODE_BUILD_OPTS=--features on-chain-release-build" >> $GITHUB_ENV
           fi
