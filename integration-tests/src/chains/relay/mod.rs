@@ -5,18 +5,18 @@ use emulated_integration_tests_common::{
 };
 #[cfg(feature = "paseo")]
 pub(crate) use {
-	paseo_runtime as runtime, paseo_runtime_constants as constants,
-	runtime::xcm_config::SovereignAccountOf,
+	paseo_runtime::{self as runtime, xcm_config::SovereignAccountOf},
+	paseo_runtime_constants as constants,
 };
 #[cfg(feature = "westend")]
 pub(crate) use {
-	runtime::xcm_config::LocationConverter as SovereignAccountOf, westend_runtime as runtime,
+	westend_runtime::{self as runtime, xcm_config::LocationConverter as SovereignAccountOf},
 	westend_runtime_constants as constants,
 };
 
 pub(crate) mod genesis;
 
-// Relay declaration
+// Relay declaration.
 decl_test_relay_chains! {
 	#[api_version(11)]
 	pub struct Relay {
@@ -34,7 +34,7 @@ decl_test_relay_chains! {
 	},
 }
 
-// Relay implementation
+// Relay implementation.
 impl_accounts_helpers_for_relay_chain!(Relay);
 impl_assert_events_helpers_for_relay_chain!(Relay);
 impl_hrmp_channels_helpers_for_relay_chain!(Relay);

@@ -11,7 +11,7 @@ pub(crate) use {asset_hub_westend_runtime as runtime, westend_runtime_constants 
 
 pub(crate) mod genesis;
 
-// AssetHub Parachain declaration
+// AssetHub Parachain declaration.
 decl_test_parachains! {
 	pub struct AssetHub {
 		genesis = genesis::genesis(),
@@ -34,7 +34,7 @@ decl_test_parachains! {
 	},
 }
 
-// AssetHub implementation
+// AssetHub implementation.
 impl_accounts_helpers_for_parachain!(AssetHub);
 impl_assert_events_helpers_for_parachain!(AssetHub);
 impl_assets_helpers_for_parachain!(AssetHub);

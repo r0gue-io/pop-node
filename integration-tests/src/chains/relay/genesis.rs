@@ -9,7 +9,7 @@ use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::storage::Storage;
 
 use crate::chains::relay::{
-	constants::currency::{EXISTENTIAL_DEPOSIT, UNITS as PAS},
+	constants::currency::{EXISTENTIAL_DEPOSIT, UNITS},
 	runtime::{
 		BabeConfig, BalancesConfig, ConfigurationConfig, RegistrarConfig, RuntimeGenesisConfig,
 		SessionConfig, SessionKeys, SystemConfig, BABE_GENESIS_EPOCH_CONFIG, WASM_BINARY,
@@ -17,7 +17,7 @@ use crate::chains::relay::{
 };
 
 pub(crate) const ED: Balance = EXISTENTIAL_DEPOSIT;
-const ENDOWMENT: u128 = 1_000_000 * PAS;
+const ENDOWMENT: u128 = 1_000_000 * UNITS;
 
 pub(crate) fn genesis() -> Storage {
 	let genesis_config = RuntimeGenesisConfig {
