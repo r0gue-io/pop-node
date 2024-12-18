@@ -315,7 +315,7 @@ fn devnet_genesis(
 	id: ParaId,
 ) -> serde_json::Value {
 	use pop_runtime_devnet::EXISTENTIAL_DEPOSIT;
-	let asset_hub = ismp_parachain::ParachainData { id: 1000, slot_duration: 6000 };
+	// let asset_hub = ismp_parachain::ParachainData { id: 1000, slot_duration: 6000 };
 
 	serde_json::json!({
 		"balances": {
@@ -344,12 +344,12 @@ fn devnet_genesis(
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
 		},
 		"sudo": { "key": Some(root) },
-		// Set the following parachains to be tracked via ISMP.
-		"ismpParachain": pop_runtime_devnet::IsmpParachainConfig {
-			// Asset Hub
-			parachains: vec![asset_hub],
-			..Default::default()
-		},
+		// // Set the following parachains to be tracked via ISMP.
+		// "ismpParachain": pop_runtime_devnet::IsmpParachainConfig {
+		// 	// Asset Hub
+		// 	parachains: vec![asset_hub],
+		// 	..Default::default()
+		// },
 	})
 }
 
