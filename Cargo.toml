@@ -184,10 +184,10 @@ parachains-common = { version = "18.0.0", default-features = false }
 
 # Runtimes
 asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-asset-hub-westend-runtime = { version = "0.26.0", default-features = false }
+asset-hub-westend-runtime = { version = "0.26.2", default-features = false }
 paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
 paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-westend-runtime = { version = "18.0.0", default-features = false }
+westend-runtime = { version = "18.0.1", default-features = false }
 westend-runtime-constants = { version = "17.0.0", default-features = false }
 
 ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }
