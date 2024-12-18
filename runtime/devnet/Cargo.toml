@@ -172,12 +172,13 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 	"xcm/std",
-	#"ismp-parachain-runtime-api/std",
-	#"ismp-parachain/std",
-	#"ismp/std",
-	#"pallet-ismp-runtime-api/std",
-	#"pallet-ismp/std",
 ]
+
+#"ismp-parachain-runtime-api/std",
+#"ismp-parachain/std",
+#"ismp/std",
+#"pallet-ismp-runtime-api/std",
+#"pallet-ismp/std",]
 
 runtime-benchmarks = [
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
@@ -213,8 +214,9 @@ runtime-benchmarks = [
 	"sp-runtime/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
-	#	"pallet-ismp/runtime-benchmarks",
 ]
+
+#"pallet-ismp/runtime-benchmarks",
 
 try-runtime = [
 	"cumulus-pallet-aura-ext/try-runtime",
@@ -248,9 +250,10 @@ try-runtime = [
 	"parachain-info/try-runtime",
 	"polkadot-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
-	#	"pallet-ismp/try-runtime",
-	#	"ismp-parachain/try-runtime",
 ]
+
+#"pallet-ismp/try-runtime",
+#"ismp-parachain/try-runtime",
 
 # Enable the metadata hash generation.
 #
