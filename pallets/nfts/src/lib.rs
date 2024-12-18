@@ -511,12 +511,8 @@ pub mod pallet {
 			owner: T::AccountId,
 			delegate: T::AccountId,
 		},
-		/// All approvals of a collection or item were cancelled.
-		AllApprovalsCancelled {
-			collection: T::CollectionId,
-			item: Option<T::ItemId>,
-			owner: T::AccountId,
-		},
+		/// All approvals of an item were cancelled.
+		AllApprovalsCancelled { collection: T::CollectionId, item: T::ItemId, owner: T::AccountId },
 		/// A `collection` has had its config changed by the `Force` origin.
 		CollectionConfigChanged { collection: T::CollectionId },
 		/// New metadata has been set for a `collection`.
@@ -636,13 +632,8 @@ pub mod pallet {
 			attribute: PalletAttributes<T::CollectionId>,
 			value: BoundedVec<u8, T::ValueLimit>,
 		},
-		/// Multiple approvals of a collection or item were cancelled.
-		ApprovalsCancelled {
-			collection: T::CollectionId,
-			item: Option<T::ItemId>,
-			owner: T::AccountId,
-			approvals: u32,
-		},
+		/// Multiple approvals of a collection were cancelled.
+		ApprovalsCancelled { collection: T::CollectionId, owner: T::AccountId, approvals: u32 },
 	}
 
 	#[pallet::error]
@@ -1346,7 +1337,7 @@ pub mod pallet {
 		/// - `item`: The item to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer the item.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
-		/// 	number of blocks after which the approval will expire
+		/// 	number of blocks after which the approval will expire.
 		///
 		/// Emits `TransferApproved` on success.
 		///
@@ -2002,7 +1993,7 @@ pub mod pallet {
 		///
 		/// Origin must be Signed.
 		///
-		/// - `collection`: The collection of the item to be approved for delegated transfer.
+		/// - `collection`: The collection of the items to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the origin.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
@@ -2011,7 +2002,7 @@ pub mod pallet {
 		/// Emits `TransferApproved` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(39)]
+		#[pallet::call_index(50)]
 		#[pallet::weight(T::WeightInfo::approve_collection_transfer())]
 		pub fn approve_collection_transfer(
 			origin: OriginFor<T>,
@@ -2031,7 +2022,7 @@ pub mod pallet {
 		/// Origin must be the `ForceOrigin`.
 		///
 		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
-		/// - `collection`: The collection of the item to be approved for delegated transfer.
+		/// - `collection`: The collection of the items to be approved for delegated transfer.
 		/// - `delegate`: The account to delegate permission to transfer collection items owned by
 		///   the `owner`.
 		/// - `maybe_deadline`: Optional deadline for the approval. Specified by providing the
@@ -2040,7 +2031,7 @@ pub mod pallet {
 		/// Emits `TransferApproved` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(40)]
+		#[pallet::call_index(51)]
 		#[pallet::weight(T::WeightInfo::force_approve_collection_transfer())]
 		pub fn force_approve_collection_transfer(
 			origin: OriginFor<T>,
@@ -2066,7 +2057,7 @@ pub mod pallet {
 		/// Emits `ApprovalCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(41)]
+		#[pallet::call_index(52)]
 		#[pallet::weight(T::WeightInfo::cancel_collection_approval())]
 		pub fn cancel_collection_approval(
 			origin: OriginFor<T>,
@@ -2084,13 +2075,13 @@ pub mod pallet {
 		///
 		/// Arguments:
 		/// - `owner`: The owner of the approval to be force-cancelled by the `origin`.
-		/// - `collection`: The collection of whose approval will be cancelled.
+		/// - `collection`: The collection whose approval will be cancelled.
 		/// - `delegate`: The account that is going to lose their approval.
 		///
 		/// Emits `ApprovalCancelled` on success.
 		///
 		/// Weight: `O(1)`
-		#[pallet::call_index(42)]
+		#[pallet::call_index(53)]
 		#[pallet::weight(T::WeightInfo::force_cancel_collection_approval())]
 		pub fn force_cancel_collection_approval(
 			origin: OriginFor<T>,
@@ -2114,8 +2105,9 @@ pub mod pallet {
 		///
 		/// Emits `ApprovalsCancelled` on success.
 		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(43)]
+		/// Weight: `O(n)` where:
+		/// - `n = limit`
+		#[pallet::call_index(54)]
 		#[pallet::weight(T::WeightInfo::clear_collection_approvals(*limit))]
 		pub fn clear_collection_approvals(
 			origin: OriginFor<T>,
@@ -2140,8 +2132,9 @@ pub mod pallet {
 		///
 		/// Emits `ApprovalsCancelled` on success.
 		///
-		/// Weight: `O(1)`
-		#[pallet::call_index(44)]
+		/// Weight: `O(n)` where:
+		/// - `n = limit`
+		#[pallet::call_index(55)]
 		#[pallet::weight(T::WeightInfo::force_clear_collection_approvals(*limit))]
 		pub fn force_clear_collection_approvals(
 			origin: OriginFor<T>,

@@ -3066,7 +3066,7 @@ fn clear_all_transfer_approvals_works() {
 
 		assert!(events().contains(&Event::<Test>::AllApprovalsCancelled {
 			collection: collection_id,
-			item: Some(item_id),
+			item: item_id,
 			owner: item_owner.clone(),
 		}));
 		assert_eq!(approvals(collection_id, item_id), vec![]);
@@ -3159,7 +3159,6 @@ fn clear_collection_approvals_works() {
 			);
 			assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
 				collection: collection_id,
-				item: None,
 				owner: item_owner.clone(),
 				approvals
 			}));
@@ -3176,7 +3175,6 @@ fn clear_collection_approvals_works() {
 			);
 			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 				collection: collection_id,
-				item: None,
 				owner: item_owner.clone(),
 				approvals: 1
 			}));
@@ -3193,10 +3191,22 @@ fn clear_collection_approvals_works() {
 				.is_zero());
 			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 				collection: collection_id,
-				item: None,
 				owner: item_owner.clone(),
 				approvals: approvals - 1
 			}));
+
+			// Remove zero collection approvals.
+			assert_eq!(
+				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 10),
+				Ok(Some(WeightOf::clear_collection_approvals(0)).into())
+			);
+			assert_eq!(Balances::free_balance(&item_owner), balance);
+			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+				collection: collection_id,
+				owner: item_owner.clone(),
+				approvals: 0
+			}));
+
 			// Ensure delegates are not able to transfer.
 			for i in delegates.clone() {
 				assert_noop!(
