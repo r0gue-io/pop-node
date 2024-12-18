@@ -41,7 +41,6 @@ cumulus-primitives-core.workspace = true
 emulated-integration-tests-common.workspace = true
 
 # Runtimes
-
 asset-hub-paseo-runtime = { workspace = true, optional = true }
 asset-hub-westend-runtime = { workspace = true, optional = true }
 paseo-runtime = { workspace = true, optional = true }
