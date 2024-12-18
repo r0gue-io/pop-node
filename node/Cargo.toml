@@ -52,6 +52,7 @@ sp-block-builder.workspace = true
 sp-blockchain.workspace = true
 sp-consensus-aura.workspace = true
 sp-core.workspace = true
+sp-genesis-builder = { workspace = true, default-features = true }
 sp-io.workspace = true
 sp-keystore.workspace = true
 sp-offchain.workspace = true
@@ -93,6 +94,7 @@ substrate-build-script-utils.workspace = true
 pallet-multisig.workspace = true
 
 [features]
+default = [ "std" ]
 runtime-benchmarks = [
 	"cumulus-primitives-core/runtime-benchmarks",
 	"frame-benchmarking-cli/runtime-benchmarks",
@@ -105,6 +107,14 @@ runtime-benchmarks = [
 	"pop-runtime-testnet/runtime-benchmarks",
 	"sc-service/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
+]
+std = [
+	"pop-runtime-devnet/std",
+	"log/std",
+	"pop-runtime-common/std",
+	"pop-runtime-testnet/std",
+	"pop-runtime-mainnet/std",
+	"xcm/std",
 ]
 try-runtime = [
 	"polkadot-cli/try-runtime",

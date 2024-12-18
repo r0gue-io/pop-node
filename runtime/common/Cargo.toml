@@ -27,6 +27,14 @@ polkadot-primitives.workspace = true
 default = [ "std" ]
 runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
+	"parachains-common/runtime-benchmarks",
+	"polkadot-primitives/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 ]
-std = [ "frame-support/std", "sp-runtime/std" ]
+std = [
+	"codec/std",
+	"frame-support/std",
+	"parachains-common/std",
+	"polkadot-primitives/std",
+	"sp-runtime/std",
+]
