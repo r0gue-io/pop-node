@@ -422,29 +422,29 @@ where
 		client.clone(),
 	);
 
-	#[cfg(not(feature = "ismp"))]
+	// #[cfg(not(feature = "ismp"))]
 	let create_inherent_data_providers = move |_, ()| async move { Ok(()) };
 
-	#[cfg(feature = "ismp")]
-	let create_inherent_data_providers = {
-		let (client_clone, relay_chain_interface_clone) =
-			(client.clone(), relay_chain_interface.clone());
-		move |parent, ()| {
-			let client = client_clone.clone();
-			let relay_chain_interface = relay_chain_interface_clone.clone();
-
-			async move {
-				let inherent = ismp_parachain_inherent::ConsensusInherentProvider::create(
-					parent,
-					client,
-					relay_chain_interface,
-				)
-				.await?;
-
-				Ok(inherent)
-			}
-		}
-	};
+	// #[cfg(feature = "ismp")]
+	// let create_inherent_data_providers = {
+	// 	let (client_clone, relay_chain_interface_clone) =
+	// 		(client.clone(), relay_chain_interface.clone());
+	// 	move |parent, ()| {
+	// 		let client = client_clone.clone();
+	// 		let relay_chain_interface = relay_chain_interface_clone.clone();
+	//
+	// 		async move {
+	// 			let inherent = ismp_parachain_inherent::ConsensusInherentProvider::create(
+	// 				parent,
+	// 				client,
+	// 				relay_chain_interface,
+	// 			)
+	// 			.await?;
+	//
+	// 			Ok(inherent)
+	// 		}
+	// 	}
+	// };
 
 	let params = AuraParams {
 		create_inherent_data_providers,
@@ -499,7 +499,7 @@ where
 	.await
 }
 
-#[cfg(not(feature = "ismp"))]
+// #[cfg(not(feature = "ismp"))]
 mod traits {
 	use pop_runtime_common::{AccountId, AuraId, Balance, Block, Nonce};
 	use sp_core::Pair;
@@ -538,47 +538,47 @@ mod traits {
 	}
 }
 
-#[cfg(feature = "ismp")]
-mod traits {
-	use pop_runtime_common::{AccountId, AuraId, Balance, Block, Nonce};
-	use sp_core::{Pair, H256};
-	use sp_runtime::app_crypto::AppCrypto;
-
-	// Trait alias refactored out from above to simplify repeated trait bounds
-	pub(crate) trait RuntimeApiExt<RuntimeApi>:
-		sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-		+ sp_api::Metadata<Block>
-		+ sp_session::SessionKeys<Block>
-		+ sp_api::ApiExt<Block>
-		+ sp_offchain::OffchainWorkerApi<Block>
-		+ sp_block_builder::BlockBuilder<Block>
-		+ cumulus_primitives_core::CollectCollationInfo<Block>
-		+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
-		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
-		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
-		+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>
-		+ ismp_parachain_runtime_api::IsmpParachainApi<Block>
-		+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>
-	{
-	}
-	impl<
-			T: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
-				+ sp_api::Metadata<Block>
-				+ sp_session::SessionKeys<Block>
-				+ sp_api::ApiExt<Block>
-				+ sp_offchain::OffchainWorkerApi<Block>
-				+ sp_block_builder::BlockBuilder<Block>
-				+ cumulus_primitives_core::CollectCollationInfo<Block>
-				+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
-				+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
-				+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
-				+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>
-				+ ismp_parachain_runtime_api::IsmpParachainApi<Block>
-				+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>,
-			RuntimeApi,
-		> RuntimeApiExt<RuntimeApi> for T
-	{
-	}
-}
+// #[cfg(feature = "ismp")]
+// mod traits {
+// 	use pop_runtime_common::{AccountId, AuraId, Balance, Block, Nonce};
+// 	use sp_core::{Pair, H256};
+// 	use sp_runtime::app_crypto::AppCrypto;
+//
+// 	// Trait alias refactored out from above to simplify repeated trait bounds
+// 	pub(crate) trait RuntimeApiExt<RuntimeApi>:
+// 		sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+// 		+ sp_api::Metadata<Block>
+// 		+ sp_session::SessionKeys<Block>
+// 		+ sp_api::ApiExt<Block>
+// 		+ sp_offchain::OffchainWorkerApi<Block>
+// 		+ sp_block_builder::BlockBuilder<Block>
+// 		+ cumulus_primitives_core::CollectCollationInfo<Block>
+// 		+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
+// 		+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
+// 		+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
+// 		+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>
+// 		+ ismp_parachain_runtime_api::IsmpParachainApi<Block>
+// 		+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>
+// 	{
+// 	}
+// 	impl<
+// 			T: sp_transaction_pool::runtime_api::TaggedTransactionQueue<Block>
+// 				+ sp_api::Metadata<Block>
+// 				+ sp_session::SessionKeys<Block>
+// 				+ sp_api::ApiExt<Block>
+// 				+ sp_offchain::OffchainWorkerApi<Block>
+// 				+ sp_block_builder::BlockBuilder<Block>
+// 				+ cumulus_primitives_core::CollectCollationInfo<Block>
+// 				+ sp_consensus_aura::AuraApi<Block, <<AuraId as AppCrypto>::Pair as Pair>::Public>
+// 				+ pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>
+// 				+ substrate_frame_rpc_system::AccountNonceApi<Block, AccountId, Nonce>
+// 				+ cumulus_primitives_aura::AuraUnincludedSegmentApi<Block>
+// 				+ ismp_parachain_runtime_api::IsmpParachainApi<Block>
+// 				+ pallet_ismp_runtime_api::IsmpRuntimeApi<Block, H256>,
+// 			RuntimeApi,
+// 		> RuntimeApiExt<RuntimeApi> for T
+// 	{
+// 	}
+// }
 
 use traits::RuntimeApiExt;

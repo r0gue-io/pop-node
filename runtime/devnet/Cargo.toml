@@ -92,12 +92,12 @@ pallet-collator-selection.workspace = true
 parachain-info.workspace = true
 parachains-common.workspace = true
 
-# ISMP
-ismp.workspace = true
-ismp-parachain.workspace = true
-ismp-parachain-runtime-api.workspace = true
-pallet-ismp = { workspace = true, features = [ "unsigned" ] }
-pallet-ismp-runtime-api.workspace = true
+## ISMP
+#ismp.workspace = true
+#ismp-parachain.workspace = true
+#ismp-parachain-runtime-api.workspace = true
+#pallet-ismp = { workspace = true, features = [ "unsigned" ] }
+#pallet-ismp-runtime-api.workspace = true
 
 [dev-dependencies]
 enumflags2.workspace = true
@@ -125,9 +125,6 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-try-runtime/std",
-	"ismp-parachain-runtime-api/std",
-	"ismp-parachain/std",
-	"ismp/std",
 	"log/std",
 	"pallet-api/std",
 	"pallet-assets/std",
@@ -136,8 +133,6 @@ std = [
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
 	"pallet-contracts/std",
-	"pallet-ismp-runtime-api/std",
-	"pallet-ismp/std",
 	"pallet-message-queue/std",
 	"pallet-multisig/std",
 	"pallet-nft-fractionalization/std",
@@ -177,6 +172,11 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 	"xcm/std",
+	#"ismp-parachain-runtime-api/std",
+	#"ismp-parachain/std",
+	#"ismp/std",
+	#"pallet-ismp-runtime-api/std",
+	#"pallet-ismp/std",
 ]
 
 runtime-benchmarks = [
@@ -213,6 +213,7 @@ runtime-benchmarks = [
 	"sp-runtime/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
+	#	"pallet-ismp/runtime-benchmarks",
 ]
 
 try-runtime = [
@@ -224,7 +225,6 @@ try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
-	"ismp-parachain/try-runtime",
 	"pallet-api/try-runtime",
 	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
@@ -232,7 +232,6 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
 	"pallet-contracts/try-runtime",
-	"pallet-ismp/try-runtime",
 	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",
 	"pallet-nft-fractionalization/try-runtime",
@@ -249,6 +248,8 @@ try-runtime = [
 	"parachain-info/try-runtime",
 	"polkadot-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
+	#	"pallet-ismp/try-runtime",
+	#	"ismp-parachain/try-runtime",
 ]
 
 # Enable the metadata hash generation.

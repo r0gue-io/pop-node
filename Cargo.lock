@@ -485,7 +485,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.4.1",
+ "hex-literal",
  "kusama-runtime-constants",
  "log",
  "pallet-asset-conversion",
@@ -1685,15 +1685,6 @@ dependencies = [
  "crypto-common",
  "inout",
  "zeroize",
-]
-
-[[package]]
-name = "ckb-merkle-mountain-range"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "56ccb671c5921be8a84686e6212ca184cb1d7c51cadcdbfcbd1cc3f042f5dfb8"
-dependencies = [
- "cfg-if",
 ]
 
 [[package]]
@@ -3816,17 +3807,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fortuples"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "87630a8087e9cac4b7edfb6ee5e250ddca9112b57b6b17d8f5107375a3a8eace"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "forwarded-header-value"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4599,12 +4579,6 @@ checksum = "212ab92002354b4819390025006c897e8140934349e8635c9b077f47b4dcbd20"
 
 [[package]]
 name = "hex-literal"
-version = "0.3.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ebdb29d2ea9ed0083cd8cece49bbd968021bd99b0849edb4a9a7ee0fdf6a4e0"
-
-[[package]]
-name = "hex-literal"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
@@ -5297,77 +5271,6 @@ name = "is_terminal_polyfill"
 version = "1.70.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
-
-[[package]]
-name = "ismp"
-version = "0.2.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "anyhow",
- "derive_more",
- "hex",
- "parity-scale-codec",
- "primitive-types",
- "scale-info",
- "serde",
- "serde-utils",
- "serde_json",
-]
-
-[[package]]
-name = "ismp-parachain"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "cumulus-pallet-parachain-system",
- "cumulus-primitives-core",
- "frame-support",
- "frame-system",
- "hex-literal 0.4.1",
- "ismp",
- "log",
- "pallet-ismp",
- "parity-scale-codec",
- "primitive-types",
- "scale-info",
- "serde",
- "sp-consensus-aura",
- "sp-inherents",
- "sp-io",
- "sp-runtime",
- "sp-trie",
- "substrate-state-machine",
-]
-
-[[package]]
-name = "ismp-parachain-inherent"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "anyhow",
- "async-trait",
- "cumulus-primitives-core",
- "cumulus-relay-chain-interface",
- "ismp",
- "ismp-parachain",
- "ismp-parachain-runtime-api",
- "log",
- "pallet-ismp-runtime-api",
- "parity-scale-codec",
- "sp-api",
- "sp-blockchain",
- "sp-inherents",
- "sp-runtime",
-]
-
-[[package]]
-name = "ismp-parachain-runtime-api"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "cumulus-pallet-parachain-system",
- "sp-api",
-]
 
 [[package]]
 name = "itertools"
@@ -6286,7 +6189,7 @@ dependencies = [
  "ed25519-dalek",
  "futures",
  "futures-timer",
- "hex-literal 0.4.1",
+ "hex-literal",
  "indexmap 2.2.6",
  "libc",
  "mockall 0.12.1",
@@ -6652,24 +6555,6 @@ dependencies = [
  "sp-core",
  "sp-mmr-primitives",
  "sp-runtime",
-]
-
-[[package]]
-name = "mmr-primitives"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "ckb-merkle-mountain-range",
- "frame-system",
- "ismp",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-mmr-primitives",
- "sp-runtime",
- "sp-std",
 ]
 
 [[package]]
@@ -8076,72 +7961,6 @@ dependencies = [
  "sp-keyring",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-ismp"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "fortuples",
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "ismp",
- "log",
- "mmr-primitives",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-api",
- "sp-core",
- "sp-io",
- "sp-mmr-primitives",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-ismp-rpc"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "anyhow",
- "frame-system",
- "hash-db",
- "hex",
- "hex-literal 0.3.4",
- "ismp",
- "jsonrpsee",
- "pallet-ismp",
- "pallet-ismp-runtime-api",
- "parity-scale-codec",
- "sc-client-api",
- "sc-rpc",
- "serde",
- "serde_json",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-mmr-primitives",
- "sp-runtime",
- "sp-storage",
- "sp-trie",
- "trie-db",
-]
-
-[[package]]
-name = "pallet-ismp-runtime-api"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "ismp",
- "pallet-ismp",
- "parity-scale-codec",
- "primitive-types",
- "serde",
- "sp-api",
- "sp-mmr-primitives",
 ]
 
 [[package]]
@@ -10123,7 +9942,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a4879609f4340138930c3c7313256941104a3ff6f7ecb2569d15223da9b35b2"
 dependencies = [
  "bitvec",
- "hex-literal 0.4.1",
+ "hex-literal",
  "log",
  "parity-scale-codec",
  "polkadot-core-primitives",
@@ -10421,7 +10240,7 @@ dependencies = [
  "frame-system",
  "frame-system-rpc-runtime-api",
  "futures",
- "hex-literal 0.4.1",
+ "hex-literal",
  "is_executable",
  "kvdb",
  "kvdb-rocksdb",
@@ -10741,13 +10560,8 @@ dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
  "futures",
- "ismp-parachain",
- "ismp-parachain-inherent",
- "ismp-parachain-runtime-api",
  "jsonrpsee",
  "log",
- "pallet-ismp-rpc",
- "pallet-ismp-runtime-api",
  "pallet-multisig",
  "pallet-transaction-payment-rpc",
  "parity-scale-codec",
@@ -10839,10 +10653,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal 0.4.1",
- "ismp",
- "ismp-parachain",
- "ismp-parachain-runtime-api",
+ "hex-literal",
  "log",
  "pallet-api",
  "pallet-assets",
@@ -10851,8 +10662,6 @@ dependencies = [
  "pallet-balances",
  "pallet-collator-selection",
  "pallet-contracts",
- "pallet-ismp",
- "pallet-ismp-runtime-api",
  "pallet-message-queue",
  "pallet-multisig",
  "pallet-nft-fractionalization",
@@ -10989,7 +10798,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
- "hex-literal 0.4.1",
+ "hex-literal",
  "log",
  "pallet-api",
  "pallet-assets",
@@ -11854,7 +11663,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.4.1",
+ "hex-literal",
  "log",
  "pallet-asset-rate",
  "pallet-authority-discovery",
@@ -13765,16 +13574,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde-utils"
-version = "0.1.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "anyhow",
- "hex",
- "serde",
-]
-
-[[package]]
 name = "serde_bytes"
 version = "0.11.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -14257,7 +14056,7 @@ dependencies = [
  "ethabi-decode",
  "frame-support",
  "frame-system",
- "hex-literal 0.4.1",
+ "hex-literal",
  "parity-scale-codec",
  "polkadot-parachain-primitives",
  "scale-info",
@@ -14281,7 +14080,7 @@ dependencies = [
  "ethabi-decode",
  "ethbloom",
  "ethereum-types",
- "hex-literal 0.4.1",
+ "hex-literal",
  "parity-bytes",
  "parity-scale-codec",
  "rlp",
@@ -14315,7 +14114,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e8e6707ced1308d763117bfe68f85e3f22fcdca7987b32e438c0485570f6ac7"
 dependencies = [
  "frame-support",
- "hex-literal 0.4.1",
+ "hex-literal",
  "log",
  "parity-scale-codec",
  "scale-info",
@@ -15475,24 +15274,6 @@ dependencies = [
  "prometheus",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "substrate-state-machine"
-version = "1.15.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-v1.14.0#f95ee188c3b73ca3c4d6319ab85cff12fe757c4c"
-dependencies = [
- "frame-support",
- "hash-db",
- "ismp",
- "pallet-ismp",
- "parity-scale-codec",
- "primitive-types",
- "scale-info",
- "serde",
- "sp-consensus-aura",
- "sp-runtime",
- "sp-trie",
 ]
 
 [[package]]
@@ -17043,7 +16824,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
- "hex-literal 0.4.1",
+ "hex-literal",
  "log",
  "pallet-asset-rate",
  "pallet-authority-discovery",

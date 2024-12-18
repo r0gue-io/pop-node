@@ -173,9 +173,9 @@ macro_rules! construct_async_run {
 				})
 			}
 			Runtime::Testnet => {
-				#[cfg(feature = "ismp")]
-				unimplemented!("ISMP is not supported in testnet");
-				#[cfg(not(feature = "ismp"))]
+				// #[cfg(feature = "ismp")]
+				// unimplemented!("ISMP is not supported in testnet");
+				// #[cfg(not(feature = "ismp"))]
 				{
 					runner.async_run(|$config| {
 						let $components = new_partial::<pop_runtime_testnet::RuntimeApi>(
@@ -187,9 +187,9 @@ macro_rules! construct_async_run {
 				}
 			}
 			Runtime::Mainnet => {
-				#[cfg(feature = "ismp")]
-				unimplemented!("ISMP is not supported in mainnet");
-				#[cfg(not(feature = "ismp"))]
+				// #[cfg(feature = "ismp")]
+				// unimplemented!("ISMP is not supported in mainnet");
+				// #[cfg(not(feature = "ismp"))]
 				{
 					runner.async_run(|$config| {
 						let $components = new_partial::<pop_runtime_mainnet::RuntimeApi>(
@@ -212,18 +212,18 @@ macro_rules! construct_benchmark_partials {
 				$code
 			},
 			Runtime::Testnet => {
-				#[cfg(feature = "ismp")]
-				unimplemented!("ISMP is not supported in testnet");
-				#[cfg(not(feature = "ismp"))]
+				// #[cfg(feature = "ismp")]
+				// unimplemented!("ISMP is not supported in testnet");
+				// #[cfg(not(feature = "ismp"))]
 				{
 					let $partials = new_partial::<pop_runtime_testnet::RuntimeApi>(&$config)?;
 					$code
 				}
 			},
 			Runtime::Mainnet => {
-				#[cfg(feature = "ismp")]
-				unimplemented!("ISMP is not supported in mainnet");
-				#[cfg(not(feature = "ismp"))]
+				// #[cfg(feature = "ismp")]
+				// unimplemented!("ISMP is not supported in mainnet");
+				// #[cfg(not(feature = "ismp"))]
 				{
 					let $partials = new_partial::<pop_runtime_mainnet::RuntimeApi>(&$config)?;
 					$code
@@ -387,9 +387,9 @@ pub fn run() -> Result<()> {
 						.map_err(Into::into)
 					},
 					Runtime::Testnet => {
-						#[cfg(feature = "ismp")]
-						unimplemented!("ISMP is not supported in testnet");
-						#[cfg(not(feature = "ismp"))]
+						// #[cfg(feature = "ismp")]
+						// unimplemented!("ISMP is not supported in testnet");
+						// #[cfg(not(feature = "ismp"))]
 						{
 							sp_core::crypto::set_default_ss58_version(
 								pop_runtime_testnet::SS58Prefix::get().into(),
@@ -407,9 +407,9 @@ pub fn run() -> Result<()> {
 						}
 					},
 					Runtime::Mainnet => {
-						#[cfg(feature = "ismp")]
-						unimplemented!("ISMP is not supported in mainnet");
-						#[cfg(not(feature = "ismp"))]
+						// #[cfg(feature = "ismp")]
+						// unimplemented!("ISMP is not supported in mainnet");
+						// #[cfg(not(feature = "ismp"))]
 						{
 							sp_core::crypto::set_default_ss58_version(
 								pop_runtime_mainnet::SS58Prefix::get().into(),

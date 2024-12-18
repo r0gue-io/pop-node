@@ -78,12 +78,12 @@ cumulus-primitives-core.workspace = true
 cumulus-primitives-parachain-inherent.workspace = true
 cumulus-relay-chain-interface.workspace = true
 
-# ismp
-ismp-parachain.workspace = true
-ismp-parachain-inherent.workspace = true
-ismp-parachain-runtime-api.workspace = true
-pallet-ismp-rpc.workspace = true
-pallet-ismp-runtime-api.workspace = true
+## ismp
+#ismp-parachain.workspace = true
+#ismp-parachain-inherent.workspace = true
+#ismp-parachain-runtime-api.workspace = true
+#pallet-ismp-rpc.workspace = true
+#pallet-ismp-runtime-api.workspace = true
 
 [build-dependencies]
 substrate-build-script-utils.workspace = true
@@ -113,5 +113,5 @@ try-runtime = [
 	"sp-runtime/try-runtime",
 ]
 
-ismp = [ "pop-runtime-devnet/default" ]
+#ismp = [ "pop-runtime-devnet/default" ]
 on-chain-release-build = [ "pop-runtime-mainnet/on-chain-release-build" ]
