@@ -34,7 +34,7 @@ flowchart LR
     G --> H{Proposal Accepted?}
     H -- Yes --> I[Proposal Enactment]
     H -- No --> J[End of Process]
-    I --> K[Subscriber A claims reward for B]
+    I --> K[Subscriber A claims reward for proposal's beneficiary]
     K --> L[Funds transferred to beneficiary]
 
     style A fill:#f9f,stroke:#333,stroke-width:2px
