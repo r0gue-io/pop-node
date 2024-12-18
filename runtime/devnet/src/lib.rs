@@ -10,6 +10,9 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 pub mod config;
 mod weights;
 
+extern crate alloc;
+use alloc::vec::Vec;
+
 // ISMP imports
 use ::ismp::{
 	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
@@ -65,7 +68,6 @@ use sp_runtime::{
 	ApplyExtrinsicResult,
 };
 pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
-use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -351,6 +353,7 @@ parameter_types! {
 	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
 }
 
+#[docify::export]
 type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
 	Runtime,
 	RELAY_CHAIN_SLOT_DURATION_MILLIS,
@@ -439,6 +442,7 @@ impl pallet_session::Config for Runtime {
 	type WeightInfo = ();
 }
 
+#[docify::export(aura_config)]
 impl pallet_aura::Config for Runtime {
 	type AllowMultipleBlocksPerSlot = ConstBool<true>;
 	type AuthorityId = AuraId;
@@ -655,11 +659,27 @@ mod benches {
 	);
 }
 
+// We move some impls outside so we can easily use them with `docify`.
+impl Runtime {
+	#[docify::export]
+	fn impl_slot_duration() -> sp_consensus_aura::SlotDuration {
+		sp_consensus_aura::SlotDuration::from_millis(SLOT_DURATION)
+	}
+
+	#[docify::export]
+	fn impl_can_build_upon(
+		included_hash: <Block as BlockT>::Hash,
+		slot: cumulus_primitives_aura::Slot,
+	) -> bool {
+		ConsensusHook::can_build_upon(included_hash, slot)
+	}
+}
+
 impl_runtime_apis! {
 
 	impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
 		fn slot_duration() -> sp_consensus_aura::SlotDuration {
-			sp_consensus_aura::SlotDuration::from_millis(SLOT_DURATION)
+			Runtime::impl_slot_duration()
 		}
 
 		fn authorities() -> Vec<AuraId> {
@@ -866,7 +886,7 @@ impl_runtime_apis! {
 			included_hash: <Block as BlockT>::Hash,
 			slot: cumulus_primitives_aura::Slot,
 		) -> bool {
-			ConsensusHook::can_build_upon(included_hash, slot)
+			Runtime::impl_can_build_upon(included_hash, slot)
 		}
 	}
 
@@ -1064,10 +1084,9 @@ impl_runtime_apis! {
 			IsmpParachain::current_relay_chain_state()
 		}
 	}
-
-
 }
 
+#[docify::export(register_validate_block)]
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,

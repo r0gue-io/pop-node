@@ -6,6 +6,7 @@ use std::{sync::Arc, time::Duration};
 use cumulus_client_cli::CollatorOptions;
 // Cumulus Imports
 use cumulus_client_collator::service::CollatorService;
+#[docify::export(lookahead_collator)]
 use cumulus_client_consensus_aura::collators::lookahead::{self as aura, Params as AuraParams};
 use cumulus_client_consensus_common::ParachainBlockImport as TParachainBlockImport;
 use cumulus_client_consensus_proposer::Proposer;
@@ -13,6 +14,7 @@ use cumulus_client_service::{
 	build_network, build_relay_chain_interface, prepare_node_config, start_relay_chain_tasks,
 	BuildNetworkParams, CollatorSybilResistance, DARecoveryProfile, StartRelayChainTasksParams,
 };
+#[docify::export(cumulus_primitives)]
 use cumulus_primitives_core::{
 	relay_chain::{CollatorPair, ValidationCode},
 	ParaId,
