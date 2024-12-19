@@ -2,7 +2,7 @@ use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::WithPostDispatchInfo,
-	sp_runtime::{traits::Zero, DispatchError::BadOrigin},
+	sp_runtime::{traits::Zero, DispatchError::BadOrigin, TokenError},
 	traits::fungibles::{
 		approvals::Inspect as ApprovalInspect, metadata::Inspect as MetadataInspect, Inspect,
 	},
@@ -341,7 +341,7 @@ fn start_destroy_works() {
 		// Check that the token is not live after starting the destroy process.
 		assert_noop!(
 			Assets::mint(signed(ALICE), token, ALICE, 10 * UNIT),
-			AssetsError::AssetNotLive
+			TokenError::UnknownAsset
 		);
 	});
 }
