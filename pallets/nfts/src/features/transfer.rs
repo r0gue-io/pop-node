@@ -19,13 +19,13 @@
 //! of the NFTs pallet.
 
 use frame_support::pallet_prelude::*;
-use sp_runtime::ArithmeticError;
 
 use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Transfer an NFT to the specified destination account.
 	///
+	/// - `caller`: The account calling the method to transfer the collection item.
 	/// - `collection`: The ID of the collection to which the NFT belongs.
 	/// - `item`: The ID of the NFT to transfer.
 	/// - `dest`: The destination account to which the NFT will be transferred.
@@ -46,6 +46,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - If the collection or item is non-transferable
 	///   ([`ItemsNonTransferable`](crate::Error::ItemsNonTransferable)).
 	pub fn do_transfer(
+		caller: T::AccountId,
 		collection: T::CollectionId,
 		item: T::ItemId,
 		dest: T::AccountId,
@@ -88,57 +89,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		with_details(&collection_details, &mut details)?;
 
 		// Update account balance of the owner.
-		AccountBalance::<T, I>::try_mutate_exists(
-			collection,
-			&details.owner,
-			|maybe_balance| -> DispatchResult {
-				// NOTE: same code as do_burn implementation - should be refactored into a
-				// reusable function for both burn and the source part of the transfer
-				match maybe_balance {
-					None => return Err(Error::<T, I>::NoItemOwned.into()),
-					Some((mut balance, (depositor_account, deposit_amount))) => {
-						balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-						if balance == 0 {
-							T::Currency::unreserve(&depositor_account, *deposit_amount);
-							*maybe_balance = None;
-						}
-						Ok(())
-					},
-				}
-			},
-		)?;
+		Self::decrement_account_balance(collection, &details.owner)?;
+
 		// Update account balance of the destination account.
-		AccountBalance::<T, I>::mutate(collection, &dest, |maybe_balance| -> DispatchResult {
-			// NOTE: very similar code to do_mint implementation - should be refactored into a
-			// reusable function for both minting and the dest part of the transfer
-			match maybe_balance {
-				None => {
-					let deposit_account = match frame_system::Pallet::<T>::account_exists(&dest) {
-						// NOTE: no balance check, would fail in reservation below if dest has
-						// insufficient funds. As it is just a transfer and not a mint, could caller
-						// just resubmit once dest balance rectified?
-						true => dest.clone(),
-						// TODO: replace with signed origin account, which requires a parameter to
-						// be added to the function
-						false => collection_details.owner,
-					};
-					// This is questionable - should collection config be able to override
-					// chain security?
-					let deposit_amount = match collection_config
-						.is_setting_enabled(CollectionSetting::DepositRequired)
-					{
-						true => T::BalanceDeposit::get(),
-						false => Zero::zero(),
-					};
-					T::Currency::reserve(&deposit_account, deposit_amount)?;
-					*maybe_balance = Some((1, (deposit_account, deposit_amount)));
-				},
-				Some((balance, _deposit)) => {
-					balance.saturating_inc();
-				},
-			}
-			Ok(())
-		})?;
+		let deposit_amount =
+			match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
+				true => T::BalanceDeposit::get(),
+				false => Zero::zero(),
+			};
+		// If the destination account exists, it reserves the `BalanceDeposit` for the new
+		// `AccountBalance`. Otherwise, the caller is responsible.
+		let deposit_account = match frame_system::Pallet::<T>::account_exists(&dest) {
+			true => dest.clone(),
+			false => caller,
+		};
+		Self::increment_account_balance(collection, &dest, deposit_account, deposit_amount)?;
 
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));

@@ -411,7 +411,9 @@ impl<T: Config<I>, I: 'static> Transfer<T::AccountId> for Pallet<T, I> {
 		item: &Self::ItemId,
 		destination: &T::AccountId,
 	) -> DispatchResult {
-		Self::do_transfer(*collection, *item, destination.clone(), |_, _| Ok(()))
+		Self::do_transfer(destination.clone(), *collection, *item, destination.clone(), |_, _| {
+			Ok(())
+		})
 	}
 
 	fn disable_transfer(collection: &Self::CollectionId, item: &Self::ItemId) -> DispatchResult {

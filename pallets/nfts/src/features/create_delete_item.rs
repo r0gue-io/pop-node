@@ -18,7 +18,7 @@
 //! This module contains helper methods to perform functionality associated with minting and burning
 //! items for the NFTs pallet.
 
-use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError, traits::ExistenceRequirement};
+use frame_support::{pallet_prelude::*, traits::ExistenceRequirement};
 
 use crate::*;
 
@@ -74,34 +74,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					true => T::ItemDeposit::get(),
 					false => Zero::zero(),
 				};
-			let deposit_account = match maybe_depositor {
-				None => collection_details.owner.clone(),
-				Some(depositor) => depositor,
-			};
+			let deposit_account = maybe_depositor.unwrap_or(collection_details.owner.clone());
 
-			AccountBalance::<T, I>::mutate(
+			Self::increment_account_balance(
 				collection,
 				&mint_to,
-				|maybe_balance| -> DispatchResult {
-					match maybe_balance {
-						None => {
-							// This is questionable - should collection config be able to override
-							// chain security?
-							let deposit_amount = match collection_config
-								.is_setting_enabled(CollectionSetting::DepositRequired)
-							{
-								true => T::BalanceDeposit::get(),
-								false => Zero::zero(),
-							};
-							T::Currency::reserve(&deposit_account, deposit_amount)?;
-							*maybe_balance = Some((1, (deposit_account.clone(), deposit_amount)));
-						},
-						Some((balance, _deposit)) => {
-							balance.saturating_inc();
-						},
-					}
-					Ok(())
-				},
+				deposit_account.clone(),
+				deposit_amount,
 			)?;
 
 			let item_owner = mint_to.clone();
@@ -285,23 +264,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		PendingSwapOf::<T, I>::remove(collection, item);
 		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
 
-		AccountBalance::<T, I>::try_mutate_exists(
-			collection,
-			&owner,
-			|maybe_balance| -> DispatchResult {
-				match maybe_balance {
-					None => return Err(Error::<T, I>::NoItemOwned.into()),
-					Some((mut balance, (depositor_account, deposit_amount))) => {
-						balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-						if balance == 0 {
-							T::Currency::unreserve(&depositor_account, *deposit_amount);
-							*maybe_balance = None;
-						}
-						Ok(())
-					},
-				}
-			},
-		)?;
+		Self::decrement_account_balance(collection, &owner)?;
 
 		if remove_config {
 			ItemConfigOf::<T, I>::remove(collection, item);
