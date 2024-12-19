@@ -27,6 +27,7 @@ const INIT_VALUE: Balance = 100 * UNIT;
 const ALICE: AccountId = AccountId::new([1u8; 32]);
 const BOB: AccountId = AccountId::new([2_u8; 32]);
 const CHARLIE: AccountId = AccountId::new([3_u8; 32]);
+const NON_MEMBER: AccountId = AccountId::new([4_u8; 32]);
 const AMOUNT: Balance = MIN_BALANCE * 4;
 const MIN_BALANCE: Balance = 10_000;
 const TOKEN: TokenId = 1;
@@ -43,8 +44,10 @@ pub struct Pop {
 impl Default for Pop {
 	fn default() -> Self {
 		// Initialising genesis state, providing accounts with an initial balance.
+		
 		let balances: Vec<(AccountId, u128)> =
 			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
+		ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
@@ -161,6 +164,26 @@ fn members_vote_system_works(mut session: Session) {
 }
 
 #[drink::test(sandbox = Pop)]
+fn vote_fails_if_not_a_member(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	// Prepare voters accounts
+	let _ = prepare_dao(&mut session, contract.clone());
+
+	// Alice create a proposal
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
+	let amount = AMOUNT * 3;
+	session.set_actor(ALICE);
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+
+	session.set_actor(NON_MEMBER);
+	assert_eq!(vote(&mut session, 0, true), Err(Error::NotAMember) );
+	//assert_eq!(last_contract_event(&session), None);
+
+}
+
+#[drink::test(sandbox = Pop)]
 fn proposal_enactment_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
@@ -178,7 +201,12 @@ fn proposal_enactment_works(mut session: Session) {
 	// Charlie vote
 	assert_ok!(vote(&mut session, 0, true));
 	let next_block = block(&mut session).saturating_add(VOTING_PERIOD);
-	let mut now = block(&mut session);
+	let mut now = ink::env::block_number::<ink::env::DefaultEnvironment>();//block(&mut session);
+	println!("Current block number: {:?}", now);
+	ink::env::test::set_block_number::<ink::env::DefaultEnvironment>(next_block);
+	let block = block(&mut session);
+	now = ink::env::block_number::<ink::env::DefaultEnvironment>();
+	println!("new block number_1: {:?}\nnew block number_2: {:?}", block,now);
 
 	//ToDo: move to next block to end the voting_period
 

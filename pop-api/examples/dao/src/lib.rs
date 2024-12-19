@@ -145,7 +145,7 @@ mod dao {
 		) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
-			let current_block = self.env().block_number();
+			let current_block = ink::env::block_number::<Environment>();
 			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
 			let vote_end =
 				current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
@@ -181,8 +181,8 @@ mod dao {
 		#[ink(message)]
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
-			let current_block = self.env().block_number();
-			let now = self.env().block_number();
+			let current_block = ink::env::block_number::<Environment>();
+			let now = ink::env::block_number::<Environment>();
 
 			let proposal =
 				self.proposals.get_mut(proposal_id as usize).ok_or(Error::ProposalNotFound)?;
@@ -232,7 +232,7 @@ mod dao {
 				.vote_end;
 
 			// Check the voting period
-			if self.env().block_number() <= vote_end {
+			if ink::env::block_number::<Environment>() <= vote_end {
 				return Err(Error::VotingPeriodNotEnded);
 			}
 
@@ -309,6 +309,7 @@ mod dao {
 
 		#[ink(message)]
 		pub fn get_block_number(&mut self) -> BlockNumber {
+			//ink::env::block_number::<Environment>()
 			self.env().block_number()
 		}
 	}
