@@ -1,4 +1,4 @@
-use alloc::core::marker::PhantomData;
+use core::marker::PhantomData;
 
 use frame_support::{
 	parameter_types,
@@ -67,7 +67,7 @@ impl pallet_contracts::Config for Runtime {
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type MaxDelegateDependencies = ConstU32<32>;
 	type MaxStorageKeyLen = ConstU32<128>;
-	type MaxTransientStorageSize = ConstU32<{ 1024 * 1024 }>;
+	type MaxTransientStorageSize = ConstU32<{ 1 * 1024 * 1024 }>;
 	type Migrations = (pallet_contracts::migration::v16::Migration<Runtime>,);
 	type Randomness = DummyRandomness<Self>;
 	type RuntimeCall = RuntimeCall;

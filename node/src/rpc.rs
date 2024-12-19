@@ -10,7 +10,6 @@ use std::sync::Arc;
 use pallet_transaction_payment_rpc::{TransactionPayment, TransactionPaymentApiServer};
 use pop_runtime_common::{AccountId, Balance, Block, Nonce};
 use sc_client_api::{AuxStore, BlockBackend, ProofProvider};
-pub use sc_rpc::DenyUnsafe;
 use sc_transaction_pool_api::TransactionPool;
 use sp_api::ProvideRuntimeApi;
 use sp_block_builder::BlockBuilder;
@@ -28,8 +27,6 @@ pub struct FullDeps<C, P, B> {
 	pub client: Arc<C>,
 	/// Transaction pool instance.
 	pub pool: Arc<P>,
-	/// Whether to deny unsafe calls
-	pub deny_unsafe: DenyUnsafe,
 	/// Backend used by the node.
 	pub backend: Arc<B>,
 }
@@ -57,9 +54,9 @@ where
 	B::State: sc_client_api::StateBackend<sp_runtime::traits::HashingFor<Block>>,
 {
 	let mut module = RpcExtension::new(());
-	let FullDeps { client, pool, deny_unsafe, backend: _ } = deps;
+	let FullDeps { client, pool, backend: _ } = deps;
 
-	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+	module.merge(System::new(client.clone(), pool).into_rpc())?;
 	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
 	Ok(module)
@@ -89,9 +86,9 @@ where
 	B::State: sc_client_api::StateBackend<sp_runtime::traits::HashingFor<Block>>,
 {
 	let mut module = RpcExtension::new(());
-	let FullDeps { client, pool, deny_unsafe, backend } = deps;
+	let FullDeps { client, pool, backend } = deps;
 
-	module.merge(System::new(client.clone(), pool, deny_unsafe).into_rpc())?;
+	module.merge(System::new(client.clone(), pool).into_rpc())?;
 	module.merge(TransactionPayment::new(client.clone()).into_rpc())?;
 
 	use pallet_ismp_rpc::{IsmpApiServer, IsmpRpcHandler};

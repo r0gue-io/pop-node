@@ -46,15 +46,15 @@ pub const MAXIMUM_BLOCK_WEIGHT: Weight =
 // Unit = the base number of indivisible units for balances
 pub const UNIT: Balance = 10_000_000_000; // 10 decimals
 
-pub const MILLIUNIT: Balance = UNIT / 1_000; // 10_000_000
-pub const MICROUNIT: Balance = UNIT / 1_000_000; // 10_000
+pub const MILLI_UNIT: Balance = UNIT / 1_000; // 10_000_000
+pub const MICRO_UNIT: Balance = UNIT / 1_000_000; // 10_000
 
 // Deposits
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
-	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLIUNIT / 100)) / 10
+	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLI_UNIT / 100)) / 10
 }
 /// The existential deposit. Set to 1/1_000 of the Connected Relay Chain.
-pub const EXISTENTIAL_DEPOSIT: Balance = MILLIUNIT;
+pub const EXISTENTIAL_DEPOSIT: Balance = MILLI_UNIT;
 
 #[docify::export]
 mod async_backing_params {
