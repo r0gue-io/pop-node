@@ -101,7 +101,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		deposit_account: T::AccountId,
 		deposit_amount: DepositBalanceOf<T, I>,
 	) -> DispatchResult {
-		AccountBalance::<T, I>::mutate(collection, &account, |maybe_balance| -> DispatchResult {
+		AccountBalance::<T, I>::mutate(collection, account, |maybe_balance| -> DispatchResult {
 			match maybe_balance {
 				None => {
 					T::Currency::reserve(&deposit_account, deposit_amount)?;
@@ -124,7 +124,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		AccountBalance::<T, I>::try_mutate_exists(
 			collection,
-			&account,
+			account,
 			|maybe_balance| -> DispatchResult {
 				let (balance, (depositor_account, deposit_amount)) =
 					maybe_balance.as_mut().ok_or(Error::<T, I>::NoItemOwned)?;
