@@ -40,8 +40,8 @@ use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use pop_runtime_common::{
 	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
-	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICROUNIT,
-	MILLIUNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
+	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICRO_UNIT,
+	MILLI_UNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
 	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
 };
 use sp_api::impl_runtime_apis;
@@ -102,8 +102,11 @@ pub type SignedExtra = (
 pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
-/// Migrations to apply on runtime upgrade.
-pub type Migrations = ();
+/// All migrations of the runtime, aside from the ones declared in the pallets.
+///
+/// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
+#[allow(unused_parens)]
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -130,11 +133,11 @@ pub mod fee {
 			WeightToFeeCoefficients, WeightToFeePolynomial,
 		},
 	};
-	use pop_runtime_common::{Balance, MILLIUNIT};
+	use pop_runtime_common::{Balance, MILLI_UNIT};
 	use smallvec::smallvec;
 	pub use sp_runtime::Perbill;
 
-	pub const CENTS: Balance = MILLIUNIT * 10; // 100_000_000
+	pub const CENTS: Balance = MILLI_UNIT * 10; // 100_000_000
 	pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
 
 	/// Cost of every transaction byte at Polkadot system parachains.
@@ -1001,8 +1004,8 @@ mod tests {
 	fn units_are_correct() {
 		// UNIT should have 10 decimals
 		assert_eq!(UNIT, 10_000_000_000);
-		assert_eq!(MILLIUNIT, 10_000_000);
-		assert_eq!(MICROUNIT, 10_000);
+		assert_eq!(MILLI_UNIT, 10_000_000);
+		assert_eq!(MICRO_UNIT, 10_000);
 
 		// fee specific units
 		assert_eq!(fee::CENTS, 100_000_000);

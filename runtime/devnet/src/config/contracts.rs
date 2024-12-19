@@ -1,4 +1,4 @@
-use alloc::core::marker::PhantomData;
+use core::marker::PhantomData;
 
 use frame_support::{
 	parameter_types,
