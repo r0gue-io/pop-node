@@ -31,7 +31,7 @@ const NON_MEMBER: AccountId = AccountId::new([4_u8; 32]);
 const AMOUNT: Balance = MIN_BALANCE * 4;
 const MIN_BALANCE: Balance = 10_000;
 const TOKEN: TokenId = 1;
-const VOTING_PERIOD: u32 = 10;
+const VOTING_PERIOD: u64 = 10;
 
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
@@ -47,7 +47,7 @@ impl Default for Pop {
 		
 		let balances: Vec<(AccountId, u128)> =
 			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
-		ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
+		//ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
@@ -153,7 +153,7 @@ fn members_vote_system_works(mut session: Session) {
 
 	session.set_actor(CHARLIE);
 	// Charlie vote
-	let now = block(&mut session);
+	let now = block(&mut session).unwrap();
 	assert_ok!(vote(&mut session, 0, true));
 	
 
@@ -221,20 +221,22 @@ fn proposal_enactment_works(mut session: Session) {
 	// Charlie vote
 	assert_ok!(vote(&mut session, 0, true));
 
-	let next_block = block(&mut session).saturating_add(VOTING_PERIOD);
-	let mut now = ink::env::block_number::<ink::env::DefaultEnvironment>();//block(&mut session);
-	println!("Current block number: {:?}", now);
+	let next_block = block(&mut session).unwrap().saturating_add(VOTING_PERIOD);
+	let mut now = ink::env::block_timestamp::<ink::env::DefaultEnvironment>();//block(&mut session);
+	let block1 = block(&mut session);
+	println!("Non updated blocknumber: {:?}\nExpected updated blocknumber_2: {:?}", block1,now);
+	
 
 	// Changing block number
-	ink::env::test::set_block_number::<ink::env::DefaultEnvironment>(next_block);
+	ink::env::test::set_block_timestamp::<ink::env::DefaultEnvironment>(next_block);
 
-	// This variable is coming from the contract, but is not changed by set_block_number
+	// This variable is coming from the contract, but is not changed by set_block_timestamp
 	let block = block(&mut session);
 
-	now = ink::env::block_number::<ink::env::DefaultEnvironment>();
+	now = ink::env::block_timestamp::<ink::env::DefaultEnvironment>();
 	println!("Non updated blocknumber: {:?}\nExpected updated blocknumber_2: {:?}", block,now);
 
-	//ToDo: move to next block to end the voting_period
+	//assert_ok!(execute_proposal(&mut session, 0));
 
 }
 
@@ -263,8 +265,8 @@ fn members(session: &mut Session<Pop>, account: AccountId) -> Result<Member, Err
 	call::<Pop, Member, Error>(session, "get_member", vec![account.to_string()], None)
 }
 
-fn block(session: &mut Session<Pop>) -> u32{
-	call::<Pop, u32, Error>(session, "get_block_number", vec![], None).unwrap()
+fn block(session: &mut Session<Pop>) -> Option<u64>{
+	call::<Pop, Option<u64>, Error>(session, "get_block_timestamp", vec![], None).unwrap()
 }
 
 fn create_proposal(

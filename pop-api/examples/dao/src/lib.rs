@@ -30,10 +30,10 @@ mod dao {
 		pub description: Vec<u8>,
 
 		// Beginnning of the voting period for this proposal
-		pub vote_start: BlockNumber,
+		pub vote_start: Timestamp,
 
 		// End of the voting period for this proposal
-		pub vote_end: BlockNumber,
+		pub vote_end: Timestamp,
 
 		// Balance representing the total votes for this proposal
 		pub yes_votes: Balance,
@@ -63,7 +63,7 @@ mod dao {
 		pub voting_power: Balance,
 
 		// Keeps track of the last vote casted by the member
-		pub last_vote: BlockNumber,
+		pub last_vote: Timestamp,
 	}
 
 	/// Structure of a DAO (Decentralized Autonomous Organization)
@@ -81,7 +81,7 @@ mod dao {
 		last_votes: Mapping<AccountId, Timestamp>,
 
 		// Duration of the voting period
-		voting_period: BlockNumber,
+		voting_period: Timestamp,
 
 		// Identifier of the Psp22 token associated with this DAO
 		token_id: TokenId,
@@ -93,7 +93,7 @@ mod dao {
 	#[ink(event)]
 	pub struct Voted {
 		pub who: Option<AccountId>,
-		pub when: Option<BlockNumber>,
+		pub when: Option<Timestamp>,
 	}
 
 	impl Dao {
@@ -108,7 +108,7 @@ mod dao {
 		#[ink(constructor, payable)]
 		pub fn new(
 			token_id: TokenId,
-			voting_period: BlockNumber,
+			voting_period: Timestamp,
 			min_balance: Balance,
 		) -> Result<Self, Psp22Error> {
 			let instance = Self {
@@ -145,7 +145,7 @@ mod dao {
 		) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
-			let current_block = self.env().block_number();
+			let current_block = self.env().block_timestamp();
 			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
 			let vote_end =
 				current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
@@ -181,8 +181,8 @@ mod dao {
 		#[ink(message)]
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
-			let current_block = self.env().block_number();
-			let now = self.env().block_number();
+			let current_block = self.env().block_timestamp();
+			let now = self.env().block_timestamp();
 
 			let proposal =
 				self.proposals.get_mut(proposal_id as usize).ok_or(Error::ProposalNotFound)?;
@@ -232,7 +232,7 @@ mod dao {
 				.vote_end;
 
 			// Check the voting period
-			if self.env().block_number() <= vote_end {
+			if self.env().block_timestamp() <= vote_end {
 				return Err(Error::VotingPeriodNotEnded);
 			}
 
@@ -308,8 +308,8 @@ mod dao {
 		}
 
 		#[ink(message)]
-		pub fn get_block_number(&mut self) -> BlockNumber {
-			self.env().block_number()
+		pub fn get_block_timestamp(&mut self) -> Option<Timestamp> {
+			Some(self.env().block_timestamp())
 		}
 	}
 
