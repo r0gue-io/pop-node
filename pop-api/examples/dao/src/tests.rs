@@ -205,13 +205,14 @@ fn proposal_enactment_works(mut session: Session) {
 	let mut now = ink::env::block_number::<ink::env::DefaultEnvironment>();//block(&mut session);
 	println!("Current block number: {:?}", now);
 
+	// Changing block number
 	ink::env::test::set_block_number::<ink::env::DefaultEnvironment>(next_block);
 
-	// this variable is coming from the contract, but is not changed by set_block_number 
+	// This variable is coming from the contract, but is not changed by set_block_number
 	let block = block(&mut session);
-	
+
 	now = ink::env::block_number::<ink::env::DefaultEnvironment>();
-	println!("new block number_1: {:?}\nnew block number_2: {:?}", block,now);
+	println!("Non updated blocknumber: {:?}\nExpected updated blocknumber_2: {:?}", block,now);
 
 	//ToDo: move to next block to end the voting_period
 
