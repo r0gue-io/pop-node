@@ -309,7 +309,6 @@ mod dao {
 
 		#[ink(message)]
 		pub fn get_block_number(&mut self) -> BlockNumber {
-			//self.env().block_number()
 			self.env().block_number()
 		}
 	}
