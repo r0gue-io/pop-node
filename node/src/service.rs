@@ -189,7 +189,7 @@ where
 		_,
 		_,
 		sc_network::NetworkWorker<Block, Hash>,
-	>::new(&parachain_config.network, prometheus_registry);
+	>::new(&parachain_config.network, prometheus_registry.clone());
 
 	let client = params.client.clone();
 	let backend = params.backend.clone();

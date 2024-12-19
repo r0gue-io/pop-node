@@ -134,7 +134,7 @@ impl xcm_executor::Config for XcmConfig {
 	type CallDispatcher = RuntimeCall;
 	type FeeManager = XcmFeeManagerFromComponents<
 		WaivedLocations,
-		SendXcmFeeToAccount<Self::AssetTransactor, AccountId>,
+		SendXcmFeeToAccount<Self::AssetTransactor, SudoAddress>,
 	>;
 	type HrmpChannelAcceptedHandler = ();
 	type HrmpChannelClosingHandler = ();
