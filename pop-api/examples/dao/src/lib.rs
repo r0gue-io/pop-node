@@ -87,6 +87,14 @@ mod dao {
 		token_id: TokenId,
 	}
 
+	/// Defines an event that is emitted
+	/// every time a member voted.
+	#[ink(event)]
+	pub struct Voted {
+		who: Option<AccountId>,
+		when: Option<BlockNumber>,
+	}
+
 	impl Dao {
 		/// Instantiate a new Dao contract and create the associated token
 		///
@@ -157,11 +165,8 @@ mod dao {
 
 			self.proposals.push(proposal);
 
-			self.env().emit_event(Created {
-				id: proposal_id,
-				creator: caller,
-				admin: contract,
-			});
+			self.env()
+				.emit_event(Created { id: proposal_id, creator: caller, admin: contract });
 
 			Ok(())
 		}
@@ -184,7 +189,7 @@ mod dao {
 				return Err(Error::VotingPeriodEnded);
 			}
 
-			let member = self.members.get(caller).ok_or(Error::NotAMember)?;
+			let member = self.members.get(caller.clone()).ok_or(Error::NotAMember)?;
 
 			if member.last_vote >= proposal.vote_start {
 				return Err(Error::AlreadyVoted);
@@ -203,9 +208,12 @@ mod dao {
 			}
 
 			self.members.insert(
-				caller,
+				caller.clone(),
 				&Member { voting_power: member.voting_power, last_vote: current_block },
 			);
+
+			let now = self.env().block_number();
+			self.env().emit_event(Voted { who: Some(caller), when: Some(now) });
 
 			Ok(())
 		}

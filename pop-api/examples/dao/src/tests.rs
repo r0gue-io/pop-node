@@ -124,7 +124,7 @@ fn member_create_proposal_works(mut session: Session) {
 	let amount = AMOUNT * 3;
 	session.set_actor(ALICE);
 	assert_ok!(create_proposal(&mut session, BOB, amount, description));
-	
+
 	assert_last_contract_event!(
 		&session,
 		Created {
@@ -132,6 +132,31 @@ fn member_create_proposal_works(mut session: Session) {
 			creator: account_id_from_slice(&ALICE),
 			admin: account_id_from_slice(&contract),
 		}
+	);
+}
+
+#[drink::test(sandbox = Pop)]
+fn members_vote_system_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	// Prepare voters accounts
+	let _ = prepare_dao(&mut session, contract.clone());
+
+	// Alice create a proposal
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
+	let amount = AMOUNT * 3;
+	session.set_actor(ALICE);
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+
+	session.set_actor(CHARLIE);
+	// Charlie vote
+	assert_ok!(vote(&mut session, 0, true));
+	let now = ink::env::block_number::<ink::env::DefaultEnvironment>();
+
+	assert_last_contract_event!(
+		&session,
+		Voted { who: account_id_from_slice(&CHARLIE), when: now }
 	);
 }
 
@@ -153,21 +178,11 @@ fn deploy(
 }
 
 fn join(session: &mut Session<Pop>, value: Balance) -> Result<(), Error> {
-	call::<Pop, (), Error>(
-		session, 
-		"join", 
-		vec![value.to_string()], 
-		None,
-	)
+	call::<Pop, (), Error>(session, "join", vec![value.to_string()], None)
 }
 
 fn members(session: &mut Session<Pop>, account: AccountId) -> Result<Member, Error> {
-	call::<Pop, Member, Error>(
-		session, 
-		"get_member", 
-		vec![account.to_string()], 
-		None,
-	)
+	call::<Pop, Member, Error>(session, "get_member", vec![account.to_string()], None)
 }
 
 fn create_proposal(
@@ -180,13 +195,17 @@ fn create_proposal(
 	call::<Pop, (), Error>(
 		session,
 		"create_proposal",
-		vec![beneficiary.to_string(), amount.to_string(), serde_json::to_string::<[u8]>(desc).unwrap()],
+		vec![
+			beneficiary.to_string(),
+			amount.to_string(),
+			serde_json::to_string::<[u8]>(desc).unwrap(),
+		],
 		None,
 	)
 }
 
-fn vote( session: &mut Session<Pop>, proposal_id: u32, approve: bool) -> Result<(), Error> {
-	call::<Pop, (), Error> (
+fn vote(session: &mut Session<Pop>, proposal_id: u32, approve: bool) -> Result<(), Error> {
+	call::<Pop, (), Error>(
 		session,
 		"vote",
 		vec![proposal_id.to_string(), approve.to_string()],
@@ -194,13 +213,8 @@ fn vote( session: &mut Session<Pop>, proposal_id: u32, approve: bool) -> Result<
 	)
 }
 
-fn execute_proposal( session: &mut Session<Pop>, proposal_id: u32) -> Result<(), Error> {
-	call::<Pop, (), Error> (
-		session, 
-		"execute_proposal", 
-		vec![proposal_id.to_string()], 
-		None, 
-	)
+fn execute_proposal(session: &mut Session<Pop>, proposal_id: u32) -> Result<(), Error> {
+	call::<Pop, (), Error>(session, "execute_proposal", vec![proposal_id.to_string()], None)
 }
 
 fn prepare_dao(session: &mut Session<Pop>, contract: AccountId) -> Result<(), Error> {
