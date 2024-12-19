@@ -19,7 +19,7 @@
 
 use alloc::vec::Vec;
 
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError};
 
 use crate::*;
 
@@ -90,6 +90,53 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let next_id = collection.increment();
 		NextCollectionId::<T, I>::set(next_id);
 		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
+	}
+
+	/// Increase the number of `collection` items owned by the `account`. If the `account` does not
+	/// have an existing balance, create a new `AccountBalance` record and reserve `deposit_amount`
+	/// from the `deposit_account`.
+	pub(crate) fn increment_account_balance(
+		collection: T::CollectionId,
+		account: &T::AccountId,
+		deposit_account: T::AccountId,
+		deposit_amount: DepositBalanceOf<T, I>,
+	) -> DispatchResult {
+		AccountBalance::<T, I>::mutate(collection, &account, |maybe_balance| -> DispatchResult {
+			match maybe_balance {
+				None => {
+					T::Currency::reserve(&deposit_account, deposit_amount)?;
+					*maybe_balance = Some((1, (deposit_account, deposit_amount)));
+				},
+				Some((balance, _deposit)) => {
+					balance.saturating_inc();
+				},
+			}
+			Ok(())
+		})
+	}
+
+	/// Reduce the number of `collection` items owned by the `account`. If the `account` balance
+	/// reaches zero after the reduction, remove the `AccountBalance` record and unreserve the
+	/// associated deposited funds.
+	pub(crate) fn decrement_account_balance(
+		collection: T::CollectionId,
+		account: &T::AccountId,
+	) -> DispatchResult {
+		AccountBalance::<T, I>::try_mutate_exists(
+			collection,
+			&account,
+			|maybe_balance| -> DispatchResult {
+				let (balance, (depositor_account, deposit_amount)) =
+					maybe_balance.as_mut().ok_or(Error::<T, I>::NoItemOwned)?;
+
+				*balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
+				if *balance == 0 {
+					T::Currency::unreserve(depositor_account, *deposit_amount);
+					*maybe_balance = None;
+				}
+				Ok(())
+			},
+		)
 	}
 
 	#[allow(missing_docs)]
