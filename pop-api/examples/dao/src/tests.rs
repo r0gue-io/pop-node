@@ -117,13 +117,22 @@ fn member_create_proposal_works(mut session: Session) {
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
 	// Prepare voters accounts
-	let _ = prepare_dao(&mut session, contract);
+	let _ = prepare_dao(&mut session, contract.clone());
 
 	// Alice create a proposal
-	let description: String = "Funds for creation of a Dao contract".to_string();
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = AMOUNT * 3;
 	session.set_actor(ALICE);
-	//assert_ok!(create_proposal(&mut session, BOB, amount, description));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+	
+	assert_last_contract_event!(
+		&session,
+		Created {
+			id: 0,
+			creator: account_id_from_slice(&ALICE),
+			admin: account_id_from_slice(&contract),
+		}
+	);
 }
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.
@@ -165,12 +174,13 @@ fn create_proposal(
 	session: &mut Session<Pop>,
 	beneficiary: AccountId,
 	amount: Balance,
-	description: String,
+	description: Vec<u8>,
 ) -> Result<(), Error> {
+	let desc: &[u8] = &description;
 	call::<Pop, (), Error>(
 		session,
 		"create_proposal",
-		vec![beneficiary.to_string(), amount.to_string(), description],
+		vec![beneficiary.to_string(), amount.to_string(), serde_json::to_string::<[u8]>(desc).unwrap()],
 		None,
 	)
 }

@@ -132,7 +132,7 @@ mod dao {
 			&mut self,
 			beneficiary: AccountId,
 			amount: Balance,
-			description: String,
+			description: Vec<u8>,
 		) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
@@ -140,12 +140,11 @@ mod dao {
 			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
 			let vote_end =
 				current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
-			let description_vec: Vec<u8> = description.as_bytes().to_vec();
-			if description_vec.len() >= STRINGLIMIT.into() {
+			if description.len() >= STRINGLIMIT.into() {
 				return Err(Error::StringLimitReached);
 			}
 			let proposal = Proposal {
-				description: description_vec,
+				description,
 				vote_start: current_block,
 				vote_end,
 				yes_votes: 0,
