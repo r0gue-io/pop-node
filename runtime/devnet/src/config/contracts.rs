@@ -1,3 +1,5 @@
+use alloc::core::marker::PhantomData;
+
 use frame_support::{
 	parameter_types,
 	traits::{ConstBool, ConstU32, Nothing, Randomness},
@@ -22,7 +24,7 @@ fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 
 // randomness-collective-flip is insecure. Provide dummy randomness as placeholder for the
 // deprecated trait. https://github.com/paritytech/polkadot-sdk/blob/9bf1a5e23884921498b381728bfddaae93f83744/substrate/frame/contracts/mock-network/src/parachain/contracts_config.rs#L45
-pub struct DummyRandomness<T: pallet_contracts::Config>(sp_std::marker::PhantomData<T>);
+pub struct DummyRandomness<T: pallet_contracts::Config>(PhantomData<T>);
 
 impl<T: pallet_contracts::Config> Randomness<T::Hash, BlockNumberFor<T>> for DummyRandomness<T> {
 	fn random(_subject: &[u8]) -> (T::Hash, BlockNumberFor<T>) {
@@ -65,6 +67,7 @@ impl pallet_contracts::Config for Runtime {
 	type MaxDebugBufferLen = ConstU32<{ 2 * 1024 * 1024 }>;
 	type MaxDelegateDependencies = ConstU32<32>;
 	type MaxStorageKeyLen = ConstU32<128>;
+	type MaxTransientStorageSize = ConstU32<{ 1024 * 1024 }>;
 	type Migrations = ();
 	type Randomness = DummyRandomness<Self>;
 	type RuntimeCall = RuntimeCall;
