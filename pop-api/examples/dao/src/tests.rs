@@ -18,9 +18,8 @@ use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
-
 use super::*;
-use crate::dao::{Error, Member};
+use crate::dao::{Error, Member, Voted};
 
 const UNIT: Balance = 10_000_000_000;
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
@@ -31,6 +30,7 @@ const CHARLIE: AccountId = AccountId::new([3_u8; 32]);
 const AMOUNT: Balance = MIN_BALANCE * 4;
 const MIN_BALANCE: Balance = 10_000;
 const TOKEN: TokenId = 1;
+const VOTING_PERIOD: u32 = 10;
 
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
@@ -56,7 +56,7 @@ drink::impl_sandbox!(Pop, Runtime, ALICE);
 // Deployment and constructor method tests.
 
 fn deploy_with_default(session: &mut Session<Pop>) -> Result<AccountId, Psp22Error> {
-	deploy(session, "new", vec![TOKEN.to_string(), 10.to_string(), MIN_BALANCE.to_string()])
+	deploy(session, "new", vec![TOKEN.to_string(), VOTING_PERIOD.to_string(), MIN_BALANCE.to_string()])
 }
 
 #[drink::test(sandbox = Pop)]
@@ -93,7 +93,6 @@ fn join_dao_works(mut session: Session) {
 
 	// Alice joins the dao
 	assert_ok!(join(&mut session, value));
-	// assert_ok!(members(&mut session, ALICE));
 
 	// Successfully emit event.
 	assert_last_contract_event!(
@@ -151,13 +150,38 @@ fn members_vote_system_works(mut session: Session) {
 
 	session.set_actor(CHARLIE);
 	// Charlie vote
+	let now = block(&mut session);
 	assert_ok!(vote(&mut session, 0, true));
-	let now = ink::env::block_number::<ink::env::DefaultEnvironment>();
+	
 
 	assert_last_contract_event!(
 		&session,
-		Voted { who: account_id_from_slice(&CHARLIE), when: now }
+		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
+}
+
+#[drink::test(sandbox = Pop)]
+fn proposal_enactment_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	// Prepare voters accounts
+	let _ = prepare_dao(&mut session, contract.clone());
+
+	// Alice create a proposal
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
+	let amount = AMOUNT * 3;
+	session.set_actor(ALICE);
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+
+	session.set_actor(CHARLIE);
+	// Charlie vote
+	assert_ok!(vote(&mut session, 0, true));
+	let next_block = block(&mut session).saturating_add(VOTING_PERIOD);
+	let mut now = block(&mut session);
+
+	//ToDo: move to next block to end the voting_period
+
 }
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.
@@ -183,6 +207,10 @@ fn join(session: &mut Session<Pop>, value: Balance) -> Result<(), Error> {
 
 fn members(session: &mut Session<Pop>, account: AccountId) -> Result<Member, Error> {
 	call::<Pop, Member, Error>(session, "get_member", vec![account.to_string()], None)
+}
+
+fn block(session: &mut Session<Pop>) -> u32{
+	call::<Pop, u32, Error>(session, "get_block_number", vec![], None).unwrap()
 }
 
 fn create_proposal(

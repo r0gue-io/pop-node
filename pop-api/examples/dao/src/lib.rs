@@ -89,10 +89,11 @@ mod dao {
 
 	/// Defines an event that is emitted
 	/// every time a member voted.
+	#[derive(Debug)]
 	#[ink(event)]
 	pub struct Voted {
-		who: Option<AccountId>,
-		when: Option<BlockNumber>,
+		pub who: Option<AccountId>,
+		pub when: Option<BlockNumber>,
 	}
 
 	impl Dao {
@@ -181,6 +182,7 @@ mod dao {
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let current_block = self.env().block_number();
+			let now = self.env().block_number();
 
 			let proposal =
 				self.proposals.get_mut(proposal_id as usize).ok_or(Error::ProposalNotFound)?;
@@ -212,7 +214,6 @@ mod dao {
 				&Member { voting_power: member.voting_power, last_vote: current_block },
 			);
 
-			let now = self.env().block_number();
 			self.env().emit_event(Voted { who: Some(caller), when: Some(now) });
 
 			Ok(())
@@ -304,6 +305,11 @@ mod dao {
 		#[ink(message)]
 		pub fn get_member(&mut self, account: AccountId) -> Member {
 			self.members.get(account).unwrap_or(Member { voting_power: 0, last_vote: 0 })
+		}
+
+		#[ink(message)]
+		pub fn get_block_number(&mut self) -> BlockNumber {
+			self.env().block_number()
 		}
 	}
 
