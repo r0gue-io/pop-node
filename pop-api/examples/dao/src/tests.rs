@@ -164,6 +164,26 @@ fn members_vote_system_works(mut session: Session) {
 }
 
 #[drink::test(sandbox = Pop)]
+fn double_vote_fails(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	// Prepare voters accounts
+	let _ = prepare_dao(&mut session, contract.clone());
+
+	// Alice create a proposal
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
+	let amount = AMOUNT * 3;
+	session.set_actor(ALICE);
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+
+	session.set_actor(CHARLIE);
+	// Charlie tries to vote twice for the same proposal
+	assert_ok!(vote(&mut session, 0, true));
+	assert_eq!(vote(&mut session, 0, false), Err(Error::AlreadyVoted));
+}
+
+#[drink::test(sandbox = Pop)]
 fn vote_fails_if_not_a_member(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
