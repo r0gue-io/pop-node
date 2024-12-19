@@ -768,7 +768,7 @@ fn transfer_owner_should_work() {
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 42, account(2)));
 		// reserved_balance of accounts 1 & 2 should be unchanged:
 		assert_eq!(Balances::reserved_balance(&account(1)), 1);
-		// reserves account 2's balance for the transfer.
+		// transfer the collection item reserves account 2's balance.
 		assert_eq!(Balances::reserved_balance(&account(2)), 1); // 1 - balance deposit
 
 		// 2's acceptance from before is reset when it became an owner, so it cannot be transferred
