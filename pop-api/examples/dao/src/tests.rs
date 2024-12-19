@@ -10,6 +10,7 @@ use drink::{
 		AccountId, Balance, Runtime,
 	},
 	last_contract_event,
+	sandbox_api::system_api::SystemAPI,
 	session::Session,
 	AssetsAPI, TestExternalities, NO_SALT,
 };
@@ -18,6 +19,7 @@ use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
+
 use super::*;
 use crate::dao::{Error, Member, Voted};
 
@@ -31,7 +33,7 @@ const NON_MEMBER: AccountId = AccountId::new([4_u8; 32]);
 const AMOUNT: Balance = MIN_BALANCE * 4;
 const MIN_BALANCE: Balance = 10_000;
 const TOKEN: TokenId = 1;
-const VOTING_PERIOD: u64 = 10;
+const VOTING_PERIOD: u32 = 10;
 
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
@@ -44,10 +46,10 @@ pub struct Pop {
 impl Default for Pop {
 	fn default() -> Self {
 		// Initialising genesis state, providing accounts with an initial balance.
-		
+
 		let balances: Vec<(AccountId, u128)> =
 			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
-		//ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
+		// ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
@@ -59,7 +61,11 @@ drink::impl_sandbox!(Pop, Runtime, ALICE);
 // Deployment and constructor method tests.
 
 fn deploy_with_default(session: &mut Session<Pop>) -> Result<AccountId, Psp22Error> {
-	deploy(session, "new", vec![TOKEN.to_string(), VOTING_PERIOD.to_string(), MIN_BALANCE.to_string()])
+	deploy(
+		session,
+		"new",
+		vec![TOKEN.to_string(), VOTING_PERIOD.to_string(), MIN_BALANCE.to_string()],
+	)
 }
 
 #[drink::test(sandbox = Pop)]
@@ -67,7 +73,6 @@ fn new_constructor_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
-	println!("{:?}", contract);
 	// Token exists after the deployment.
 	assert!(session.sandbox().asset_exists(&TOKEN));
 	// Successfully emit event.
@@ -130,7 +135,7 @@ fn member_create_proposal_works(mut session: Session) {
 	assert_last_contract_event!(
 		&session,
 		Created {
-			id: 0,
+			id: 1,
 			creator: account_id_from_slice(&ALICE),
 			admin: account_id_from_slice(&contract),
 		}
@@ -154,13 +159,13 @@ fn members_vote_system_works(mut session: Session) {
 	session.set_actor(CHARLIE);
 	// Charlie vote
 	let now = block(&mut session).unwrap();
-	assert_ok!(vote(&mut session, 0, true));
-	
+	assert_ok!(vote(&mut session, 1, true));
 
 	assert_last_contract_event!(
 		&session,
 		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
+	let val = yes_votes(&mut session, 1).unwrap();
 }
 
 #[drink::test(sandbox = Pop)]
@@ -179,8 +184,8 @@ fn double_vote_fails(mut session: Session) {
 
 	session.set_actor(CHARLIE);
 	// Charlie tries to vote twice for the same proposal
-	assert_ok!(vote(&mut session, 0, true));
-	assert_eq!(vote(&mut session, 0, false), Err(Error::AlreadyVoted));
+	assert_ok!(vote(&mut session, 1, true));
+	assert_eq!(vote(&mut session, 1, false), Err(Error::AlreadyVoted));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -198,9 +203,7 @@ fn vote_fails_if_not_a_member(mut session: Session) {
 	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	session.set_actor(NON_MEMBER);
-	assert_eq!(vote(&mut session, 0, true), Err(Error::NotAMember) );
-	//assert_eq!(last_contract_event(&session), None);
-
+	assert_eq!(vote(&mut session, 1, true), Err(Error::NotAMember));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -213,31 +216,47 @@ fn proposal_enactment_works(mut session: Session) {
 
 	// Alice create a proposal
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
-	let amount = AMOUNT * 3;
+	let amount = MIN_BALANCE;
 	session.set_actor(ALICE);
 	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
+	let now = block(&mut session).unwrap();
 	session.set_actor(CHARLIE);
 	// Charlie vote
-	assert_ok!(vote(&mut session, 0, true));
+	assert_ok!(vote(&mut session, 1, true));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
+	);
+	// Alice vote
+	session.set_actor(ALICE);
+	assert_ok!(vote(&mut session, 1, true));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
+	);
+	// BOB vote
+	session.set_actor(BOB);
+	assert_ok!(vote(&mut session, 1, true));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
+	);
 
+	let val = yes_votes(&mut session, 1).unwrap();
 	let next_block = block(&mut session).unwrap().saturating_add(VOTING_PERIOD);
-	let mut now = ink::env::block_timestamp::<ink::env::DefaultEnvironment>();//block(&mut session);
-	let block1 = block(&mut session);
-	println!("Non updated blocknumber: {:?}\nExpected updated blocknumber_2: {:?}", block1,now);
-	
+	session.sandbox().build_blocks(VOTING_PERIOD + 1);
 
-	// Changing block number
-	ink::env::test::set_block_timestamp::<ink::env::DefaultEnvironment>(next_block);
-
-	// This variable is coming from the contract, but is not changed by set_block_timestamp
-	let block = block(&mut session);
-
-	now = ink::env::block_timestamp::<ink::env::DefaultEnvironment>();
-	println!("Non updated blocknumber: {:?}\nExpected updated blocknumber_2: {:?}", block,now);
-
-	//assert_ok!(execute_proposal(&mut session, 0));
-
+	assert_ok!(execute_proposal(&mut session, 1));
+	// Successfully emit event.
+	assert_last_contract_event!(
+		&session,
+		Approval {
+			owner: account_id_from_slice(&contract),
+			spender: account_id_from_slice(&contract),
+			value: MIN_BALANCE,
+		}
+	)
 }
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.
@@ -265,8 +284,8 @@ fn members(session: &mut Session<Pop>, account: AccountId) -> Result<Member, Err
 	call::<Pop, Member, Error>(session, "get_member", vec![account.to_string()], None)
 }
 
-fn block(session: &mut Session<Pop>) -> Option<u64>{
-	call::<Pop, Option<u64>, Error>(session, "get_block_timestamp", vec![], None).unwrap()
+fn block(session: &mut Session<Pop>) -> Option<u32> {
+	call::<Pop, Option<u32>, Error>(session, "get_block_number", vec![], None).unwrap()
 }
 
 fn create_proposal(
@@ -299,6 +318,26 @@ fn vote(session: &mut Session<Pop>, proposal_id: u32, approve: bool) -> Result<(
 
 fn execute_proposal(session: &mut Session<Pop>, proposal_id: u32) -> Result<(), Error> {
 	call::<Pop, (), Error>(session, "execute_proposal", vec![proposal_id.to_string()], None)
+}
+
+fn yes_votes(session: &mut Session<Pop>, proposal_id: u32) -> Option<Balance> {
+	call::<Pop, Option<Balance>, Error>(
+		session,
+		"positive_votes",
+		vec![proposal_id.to_string()],
+		None,
+	)
+	.unwrap()
+}
+
+fn no_votes(session: &mut Session<Pop>, proposal_id: u32) -> Option<Balance> {
+	call::<Pop, Option<Balance>, Error>(
+		session,
+		"negative_votes",
+		vec![proposal_id.to_string()],
+		None,
+	)
+	.unwrap()
 }
 
 fn prepare_dao(session: &mut Session<Pop>, contract: AccountId) -> Result<(), Error> {

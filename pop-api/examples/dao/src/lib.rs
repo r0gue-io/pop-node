@@ -22,7 +22,7 @@ mod dao {
 	use super::*;
 
 	/// Structure of the proposal used by the Dao governance sysytem
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct Proposal {
@@ -30,10 +30,10 @@ mod dao {
 		pub description: Vec<u8>,
 
 		// Beginnning of the voting period for this proposal
-		pub vote_start: Timestamp,
+		pub vote_start: BlockNumber,
 
 		// End of the voting period for this proposal
-		pub vote_end: Timestamp,
+		pub vote_end: BlockNumber,
 
 		// Balance representing the total votes for this proposal
 		pub yes_votes: Balance,
@@ -63,7 +63,7 @@ mod dao {
 		pub voting_power: Balance,
 
 		// Keeps track of the last vote casted by the member
-		pub last_vote: Timestamp,
+		pub last_vote: BlockNumber,
 	}
 
 	/// Structure of a DAO (Decentralized Autonomous Organization)
@@ -72,19 +72,22 @@ mod dao {
 	#[ink(storage)]
 	pub struct Dao {
 		// Funding proposals
-		proposals: Vec<Proposal>,
+		proposals: Mapping<u32, Proposal>,
 
 		// Mapping of AccountId to Member structs, representing DAO membership.
 		members: Mapping<AccountId, Member>,
 
 		// Mapping tracking the last time each account voted.
-		last_votes: Mapping<AccountId, Timestamp>,
+		last_votes: Mapping<AccountId, BlockNumber>,
 
 		// Duration of the voting period
-		voting_period: Timestamp,
+		voting_period: BlockNumber,
 
 		// Identifier of the Psp22 token associated with this DAO
 		token_id: TokenId,
+
+		// Proposals created in the history of the Dao
+		proposals_created: u32,
 	}
 
 	/// Defines an event that is emitted
@@ -93,7 +96,7 @@ mod dao {
 	#[ink(event)]
 	pub struct Voted {
 		pub who: Option<AccountId>,
-		pub when: Option<Timestamp>,
+		pub when: Option<BlockNumber>,
 	}
 
 	impl Dao {
@@ -108,15 +111,16 @@ mod dao {
 		#[ink(constructor, payable)]
 		pub fn new(
 			token_id: TokenId,
-			voting_period: Timestamp,
+			voting_period: BlockNumber,
 			min_balance: Balance,
 		) -> Result<Self, Psp22Error> {
 			let instance = Self {
-				proposals: Vec::new(),
+				proposals: Mapping::default(),
 				members: Mapping::default(),
 				last_votes: Mapping::default(),
 				voting_period,
 				token_id,
+				proposals_created: 0,
 			};
 			let contract_id = instance.env().account_id();
 			api::create(token_id, contract_id, min_balance).map_err(Psp22Error::from)?;
@@ -145,8 +149,8 @@ mod dao {
 		) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
-			let current_block = self.env().block_timestamp();
-			let proposal_id: u32 = self.proposals.len().try_into().unwrap_or(0u32);
+			let current_block = self.env().block_number();
+			let proposal_id: u32 = self.proposals_created.saturating_add(1);
 			let vote_end =
 				current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
 			if description.len() >= STRINGLIMIT.into() {
@@ -164,7 +168,7 @@ mod dao {
 				proposal_id,
 			};
 
-			self.proposals.push(proposal);
+			self.proposals.insert(proposal_id, &proposal);
 
 			self.env()
 				.emit_event(Created { id: proposal_id, creator: caller, admin: contract });
@@ -181,11 +185,11 @@ mod dao {
 		#[ink(message)]
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
-			let current_block = self.env().block_timestamp();
-			let now = self.env().block_timestamp();
+			let current_block = self.env().block_number();
+			let now = self.env().block_number();
+			// let props = self.proposals.clone();
 
-			let proposal =
-				self.proposals.get_mut(proposal_id as usize).ok_or(Error::ProposalNotFound)?;
+			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
 			if current_block < proposal.vote_start || current_block > proposal.vote_end {
 				return Err(Error::VotingPeriodEnded);
@@ -198,16 +202,15 @@ mod dao {
 			}
 
 			if approve {
-				proposal
-					.yes_votes
-					.checked_add(member.voting_power)
-					.ok_or(Error::ArithmeticOverflow)?;
+				proposal.yes_votes = proposal.yes_votes.saturating_add(member.voting_power);
 			} else {
-				proposal
-					.no_votes
-					.checked_add(member.voting_power)
-					.ok_or(Error::ArithmeticOverflow)?;
+				proposal.no_votes = proposal.no_votes.saturating_add(member.voting_power);
 			}
+
+			debug_assert!(proposal.yes_votes > 0);
+
+			self.proposals.remove(proposal_id);
+			self.proposals.insert(proposal_id, &proposal);
 
 			self.members.insert(
 				caller.clone(),
@@ -225,20 +228,16 @@ mod dao {
 		/// - `proposal_id` - Identifier of the proposal
 		#[ink(message)]
 		pub fn execute_proposal(&mut self, proposal_id: u32) -> Result<(), Error> {
-			let vote_end = self
-				.proposals
-				.get(proposal_id as usize)
-				.ok_or(Error::ProposalNotFound)?
-				.vote_end;
+			let vote_end = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?.vote_end;
 
 			// Check the voting period
-			if self.env().block_timestamp() <= vote_end {
+			if self.env().block_number() <= vote_end {
 				return Err(Error::VotingPeriodNotEnded);
 			}
 
 			// If we've passed the checks, now we can mutably borrow the proposal
-			let proposal_id_usize = proposal_id as usize;
-			let proposal = self.proposals.get(proposal_id_usize).ok_or(Error::ProposalNotFound)?;
+			// let proposal_id_usize = proposal_id as usize;
+			let proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
 			if proposal.executed {
 				return Err(Error::ProposalAlreadyExecuted);
@@ -246,8 +245,9 @@ mod dao {
 
 			if proposal.yes_votes > proposal.no_votes {
 				let contract = self.env().account_id();
-				
+
 				// Execute the proposal
+				// ToDo: Check that the contract has enough tokens
 				api::transfer(self.token_id, proposal.beneficiary, proposal.amount)
 					.map_err(Psp22Error::from)?;
 				self.env().emit_event(Transfer {
@@ -261,7 +261,7 @@ mod dao {
 					value: proposal.amount,
 				});
 
-				if let Some(proposal) = self.proposals.get_mut(proposal_id_usize) {
+				if let Some(mut proposal) = self.proposals.get(proposal_id) {
 					proposal.executed = true;
 				}
 				Ok(())
@@ -308,8 +308,20 @@ mod dao {
 		}
 
 		#[ink(message)]
-		pub fn get_block_timestamp(&mut self) -> Option<Timestamp> {
-			Some(self.env().block_timestamp())
+		pub fn get_block_number(&mut self) -> Option<BlockNumber> {
+			Some(self.env().block_number())
+		}
+
+		#[ink(message)]
+		pub fn positive_votes(&mut self, proposal_id: u32) -> Option<Balance> {
+			let proposal = &self.proposals.get(proposal_id).unwrap();
+			Some(proposal.yes_votes)
+		}
+
+		#[ink(message)]
+		pub fn negative_votes(&mut self, proposal_id: u32) -> Option<Balance> {
+			let proposal = &self.proposals.get(proposal_id).unwrap();
+			Some(proposal.no_votes)
 		}
 	}
 
