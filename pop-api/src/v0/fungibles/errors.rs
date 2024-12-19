@@ -3,7 +3,6 @@
 
 use ink::{
 	prelude::string::{String, ToString},
-	scale::{Decode, Encode},
 };
 
 use super::*;
@@ -130,6 +129,7 @@ mod tests {
 		},
 		StatusCode,
 	};
+	use ink::scale::{Decode, Encode};
 
 	fn error_into_status_code(error: Error) -> StatusCode {
 		let mut encoded_error = error.encode();
