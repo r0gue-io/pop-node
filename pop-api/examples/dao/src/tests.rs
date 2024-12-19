@@ -200,11 +200,16 @@ fn proposal_enactment_works(mut session: Session) {
 	session.set_actor(CHARLIE);
 	// Charlie vote
 	assert_ok!(vote(&mut session, 0, true));
+
 	let next_block = block(&mut session).saturating_add(VOTING_PERIOD);
 	let mut now = ink::env::block_number::<ink::env::DefaultEnvironment>();//block(&mut session);
 	println!("Current block number: {:?}", now);
+
 	ink::env::test::set_block_number::<ink::env::DefaultEnvironment>(next_block);
+
+	// this variable is coming from the contract, but is not changed by set_block_number 
 	let block = block(&mut session);
+	
 	now = ink::env::block_number::<ink::env::DefaultEnvironment>();
 	println!("new block number_1: {:?}\nnew block number_2: {:?}", block,now);
 
