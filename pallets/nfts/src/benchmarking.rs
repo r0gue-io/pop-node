@@ -301,7 +301,7 @@ benchmarks_instance_pallet! {
 
 		let target: T::AccountId = account("target", 0, SEED);
 		let target_lookup = T::Lookup::unlookup(target.clone());
-		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance());
+		T::Currency::make_free_balance_be(&target, DepositBalanceOf::<T, I>::max_value());
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item, target_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::Transferred { collection, item, from: caller, to: target }.into());
@@ -757,7 +757,7 @@ benchmarks_instance_pallet! {
 		let duration = T::MaxDeadlineDuration::get();
 		let target: T::AccountId = account("target", 0, SEED);
 		let target_lookup = T::Lookup::unlookup(target.clone());
-		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance());
+		T::Currency::make_free_balance_be(&target, DepositBalanceOf::<T, I>::max_value());
 		let origin = SystemOrigin::Signed(caller.clone());
 		frame_system::Pallet::<T>::set_block_number(One::one());
 		Nfts::<T, I>::transfer(origin.clone().into(), collection, item2, target_lookup)?;
