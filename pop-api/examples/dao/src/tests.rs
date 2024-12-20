@@ -265,7 +265,61 @@ fn proposal_enactment_works(mut session: Session) {
 			spender: account_id_from_slice(&contract),
 			value: MIN_BALANCE,
 		}
-	)
+	);
+}
+
+#[drink::test(sandbox = Pop)]
+fn same_proposal_consecutive_claim_fails(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	// Prepare voters accounts
+	let _ = prepare_dao(&mut session, contract.clone());
+
+	// Alice create a proposal
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
+	let amount = MIN_BALANCE;
+	session.set_actor(ALICE);
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+
+	let now = block(&mut session).unwrap();
+	session.set_actor(CHARLIE);
+	// Charlie vote
+	assert_ok!(vote(&mut session, 1, true));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
+	);
+	// Alice vote
+	session.set_actor(ALICE);
+	assert_ok!(vote(&mut session, 1, true));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
+	);
+	// BOB vote
+	session.set_actor(BOB);
+	assert_ok!(vote(&mut session, 1, true));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
+	);
+
+	session.sandbox().build_blocks(VOTING_PERIOD + 1);
+
+	assert_ok!(execute_proposal(&mut session, 1));
+	// Successfully emit event.
+	assert_last_contract_event!(
+		&session,
+		Approval {
+			owner: account_id_from_slice(&contract),
+			spender: account_id_from_slice(&contract),
+			value: MIN_BALANCE,
+		}
+	);
+	session.sandbox().build_block();
+	// Second consecutive claim for same proposal fails
+	assert_eq!(execute_proposal(&mut session, 1), Err(Error::ProposalAlreadyExecuted));
 }
 
 #[drink::test(sandbox = Pop)]

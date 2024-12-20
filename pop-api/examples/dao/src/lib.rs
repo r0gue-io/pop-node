@@ -236,9 +236,9 @@ mod dao {
 
 			// If we've passed the checks, now we can mutably borrow the proposal
 			// let proposal_id_usize = proposal_id as usize;
-			let proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
+			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
-			if proposal.executed {
+			if proposal.executed == true {
 				return Err(Error::ProposalAlreadyExecuted);
 			}
 
@@ -265,9 +265,10 @@ mod dao {
 					value: proposal.amount,
 				});
 
-				if let Some(mut proposal) = self.proposals.get(proposal_id) {
-					proposal.executed = true;
-				}
+				proposal.executed = true;
+
+				self.proposals.remove(proposal_id);
+				self.proposals.insert(proposal_id, &proposal);
 				Ok(())
 			} else {
 				Err(Error::ProposalRejected)
