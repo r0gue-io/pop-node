@@ -26,9 +26,11 @@ path = "lib.rs"
 
 [features]
 default = [ "std" ]
+devnet = [  ]
 e2e-tests = [  ]
 ink-as-dependency = [  ]
 std = [
 	"ink/std",
 	"pop-api/std",
 ]
+testnet = [  ]
