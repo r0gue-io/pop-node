@@ -65,6 +65,7 @@ parameter_types! {
 impl Config for Test {
 	type ApprovalsLimit = ConstU32<10>;
 	type AttributeDepositBase = ConstU64<1>;
+	type CollectionApprovalDeposit = ConstU64<1>;
 	type CollectionDeposit = ConstU64<2>;
 	type CollectionId = u32;
 	type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<Self::AccountId>>;

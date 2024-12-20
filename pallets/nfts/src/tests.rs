@@ -20,24 +20,41 @@
 use enumflags2::BitFlags;
 use frame_support::{
 	assert_noop, assert_ok,
+	dispatch::{DispatchResultWithPostInfo, WithPostDispatchInfo},
+	pallet_prelude::MaxEncodedLen,
 	traits::{
 		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate},
 		Currency, Get,
 	},
+	Blake2_128Concat, StorageHasher,
 };
+use frame_system::pallet_prelude::BlockNumberFor;
 use pallet_balances::Error as BalancesError;
 use sp_core::{bounded::BoundedVec, Pair};
 use sp_runtime::{
 	traits::{Dispatchable, IdentifyAccount},
-	MultiSignature, MultiSigner,
+	DispatchError::BadOrigin,
+	DispatchResult, MultiSignature, MultiSigner,
 };
 
 use crate::{mock::*, Event, SystemConfig, *};
 
 type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
+type CollectionApprovals = crate::CollectionApprovals<Test>;
+type CollectionApprovalDeposit = <Test as Config>::CollectionApprovalDeposit;
+type CollectionId = <Test as Config>::CollectionId;
+type WeightOf = <Test as Config>::WeightInfo;
 
 fn account(id: u8) -> AccountIdOf<Test> {
 	[id; 32].into()
+}
+
+fn root() -> RuntimeOrigin {
+	RuntimeOrigin::root()
+}
+
+fn none() -> RuntimeOrigin {
+	RuntimeOrigin::none()
 }
 
 fn items() -> Vec<(AccountIdOf<Test>, u32, u32)> {
@@ -147,6 +164,56 @@ fn item_config_from_disabled_settings(settings: BitFlags<ItemSetting>) -> ItemCo
 	ItemConfig { settings: ItemSettings::from_disabled(settings) }
 }
 
+fn clear_collection_approvals(
+	origin: RuntimeOrigin,
+	maybe_owner: Option<&AccountId>,
+	collection: CollectionId,
+	limit: u32,
+) -> DispatchResultWithPostInfo {
+	match maybe_owner {
+		Some(owner) =>
+			Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit),
+		None => Nfts::clear_collection_approvals(origin, collection, limit),
+	}
+}
+
+fn approve_collection_transfer(
+	origin: RuntimeOrigin,
+	maybe_owner: Option<&AccountId>,
+	collection: CollectionId,
+	delegate: &AccountId,
+	maybe_deadline: Option<BlockNumberFor<Test>>,
+) -> DispatchResult {
+	match maybe_owner {
+		Some(owner) => Nfts::force_approve_collection_transfer(
+			origin,
+			owner.clone(),
+			collection,
+			delegate.clone(),
+			maybe_deadline,
+		),
+		None =>
+			Nfts::approve_collection_transfer(origin, collection, delegate.clone(), maybe_deadline),
+	}
+}
+
+fn cancel_collection_approval(
+	origin: RuntimeOrigin,
+	maybe_owner: Option<&AccountId>,
+	collection: CollectionId,
+	delegate: &AccountId,
+) -> DispatchResult {
+	match maybe_owner {
+		Some(owner) => Nfts::force_cancel_collection_approval(
+			origin,
+			owner.clone(),
+			collection,
+			delegate.clone(),
+		),
+		None => Nfts::cancel_collection_approval(origin, collection, delegate.clone()),
+	}
+}
+
 #[test]
 fn basic_setup_works() {
 	new_test_ext().execute_with(|| {
@@ -164,6 +231,7 @@ fn basic_minting_should_work() {
 		));
 		assert_eq!(collections(), vec![(account(1), 0)]);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
+		assert_eq!(AccountBalance::<Test>::get(0, &account(1)), 1);
 		assert_eq!(items(), vec![(account(1), 0, 42)]);
 
 		assert_ok!(Nfts::force_create(
@@ -173,6 +241,7 @@ fn basic_minting_should_work() {
 		));
 		assert_eq!(collections(), vec![(account(1), 0), (account(2), 1)]);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(2)), 1, 69, account(1), None));
+		assert_eq!(AccountBalance::<Test>::get(1, &account(1)), 1);
 		assert_eq!(items(), vec![(account(1), 0, 42), (account(1), 1, 69)]);
 	});
 }
@@ -212,8 +281,10 @@ fn lifecycle_should_work() {
 			account(20),
 			default_item_config()
 		));
+		assert_eq!(AccountBalance::<Test>::get(0, account(20)), 1);
 		assert_eq!(Balances::reserved_balance(&account(1)), 7);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 70, account(1), None));
+		assert_eq!(AccountBalance::<Test>::get(0, &account(1)), 1);
 		assert_eq!(items(), vec![(account(1), 0, 70), (account(10), 0, 42), (account(20), 0, 69)]);
 		assert_eq!(Collection::<Test>::get(0).unwrap().items, 3);
 		assert_eq!(Collection::<Test>::get(0).unwrap().item_metadatas, 0);
@@ -221,6 +292,8 @@ fn lifecycle_should_work() {
 
 		assert_eq!(Balances::reserved_balance(&account(1)), 8);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 70, account(2)));
+		assert_eq!(AccountBalance::<Test>::get(0, &account(1)), 0);
+		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 1);
 		assert_eq!(Balances::reserved_balance(&account(1)), 8);
 		assert_eq!(Balances::reserved_balance(&account(2)), 0);
 
@@ -248,7 +321,9 @@ fn lifecycle_should_work() {
 			bvec![0],
 		));
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(10)), 0, 42));
+		assert_eq!(AccountBalance::<Test>::get(0, account(10)), 0);
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(20)), 0, 69));
+		assert_eq!(AccountBalance::<Test>::get(0, account(20)), 0);
 		assert_ok!(Nfts::burn(RuntimeOrigin::root(), 0, 70));
 
 		let w = Nfts::get_destroy_witness(&0).unwrap();
@@ -256,6 +331,7 @@ fn lifecycle_should_work() {
 		assert_eq!(w.item_metadatas, 0);
 		assert_eq!(w.item_configs, 0);
 		assert_ok!(Nfts::destroy(RuntimeOrigin::signed(account(1)), 0, w));
+		assert_eq!(AccountBalance::<Test>::get(0, &account(1)), 0);
 		assert_eq!(Balances::reserved_balance(&account(1)), 0);
 
 		assert!(!Collection::<Test>::contains_key(0));
@@ -298,6 +374,7 @@ fn destroy_with_bad_witness_should_not_work() {
 fn destroy_should_work() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&account(1), 100);
+		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(account(1)),
 			account(1),
@@ -305,6 +382,12 @@ fn destroy_should_work() {
 		));
 
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(2), None));
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3),
+			None
+		));
 		assert_noop!(
 			Nfts::destroy(
 				RuntimeOrigin::signed(account(1)),
@@ -318,6 +401,19 @@ fn destroy_should_work() {
 		assert_eq!(Collection::<Test>::get(0).unwrap().item_configs, 1);
 		assert_eq!(ItemConfigOf::<Test>::iter_prefix(0).count() as u32, 1);
 		assert!(ItemConfigOf::<Test>::contains_key(0, 42));
+		assert_noop!(
+			Nfts::destroy(
+				RuntimeOrigin::signed(account(1)),
+				0,
+				Nfts::get_destroy_witness(&0).unwrap()
+			),
+			Error::<Test>::CollectionApprovalsExist
+		);
+		assert_ok!(Nfts::cancel_collection_approval(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3)
+		));
 		assert_ok!(Nfts::destroy(
 			RuntimeOrigin::signed(account(1)),
 			0,
@@ -337,6 +433,7 @@ fn mint_should_work() {
 			default_collection_config()
 		));
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
+		assert_eq!(AccountBalance::<Test>::get(0, account(1)), 1);
 		assert_eq!(Nfts::owner(0, 42).unwrap(), account(1));
 		assert_eq!(collections(), vec![(account(1), 0)]);
 		assert_eq!(items(), vec![(account(1), 0, 42)]);
@@ -402,6 +499,7 @@ fn mint_should_work() {
 			account(2),
 			Some(MintWitness { mint_price: Some(1), ..Default::default() })
 		));
+		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 1);
 		assert_eq!(Balances::total_balance(&account(2)), 99);
 
 		// validate types
@@ -440,6 +538,7 @@ fn mint_should_work() {
 			account(2),
 			Some(MintWitness { owned_item: Some(43), ..Default::default() })
 		));
+		assert_eq!(AccountBalance::<Test>::get(1, account(2)), 1);
 		assert!(events().contains(&Event::<Test>::PalletAttributeSet {
 			collection: 0,
 			item: Some(43),
@@ -476,8 +575,9 @@ fn transfer_should_work() {
 			account(2),
 			default_item_config()
 		));
-
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
+		assert_eq!(AccountBalance::<Test>::get(0, account(2)), 0);
+		assert_eq!(AccountBalance::<Test>::get(0, account(3)), 1);
 		assert_eq!(items(), vec![(account(3), 0, 42)]);
 		assert_noop!(
 			Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(4)),
@@ -492,7 +592,8 @@ fn transfer_should_work() {
 			None
 		));
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(4)));
-
+		assert_eq!(AccountBalance::<Test>::get(0, account(3)), 0);
+		assert_eq!(AccountBalance::<Test>::get(0, account(4)), 1);
 		// validate we can't transfer non-transferable items
 		let collection_id = 1;
 		assert_ok!(Nfts::force_create(
@@ -1755,6 +1856,7 @@ fn burn_works() {
 
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42));
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 69));
+		assert!(!AccountBalance::<Test>::contains_key(0, &account(5)));
 		assert_eq!(Balances::reserved_balance(account(1)), 0);
 	});
 }
@@ -1831,6 +1933,7 @@ fn approval_lifecycle_works() {
 #[test]
 fn cancel_approval_works() {
 	new_test_ext().execute_with(|| {
+		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			account(1),
@@ -1868,7 +1971,31 @@ fn cancel_approval_works() {
 			Error::<Test>::NotDelegate
 		);
 
+		// Throws `DelegateApprovalConflict`` if the delegate has been granted a collection
+		// approval.
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3),
+			None
+		));
+		assert_noop!(
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)),
+			Error::<Test>::DelegateApprovalConflict
+		);
+		assert_ok!(Nfts::cancel_collection_approval(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3)
+		));
+
 		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
+		assert!(events().contains(&Event::<Test>::ApprovalCancelled {
+			collection: 0,
+			item: Some(42),
+			owner: account(2),
+			delegate: account(3)
+		}));
 		assert_noop!(
 			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)),
 			Error::<Test>::NotDelegate
@@ -1942,6 +2069,32 @@ fn approving_multiple_accounts_works() {
 			account(5),
 			Some(2)
 		));
+		assert_eq!(
+			events().last_chunk::<3>(),
+			Some(&[
+				Event::TransferApproved {
+					collection: 0,
+					item: Some(42),
+					owner: account(2),
+					delegate: account(3),
+					deadline: None
+				},
+				Event::TransferApproved {
+					collection: 0,
+					item: Some(42),
+					owner: account(2),
+					delegate: account(4),
+					deadline: None
+				},
+				Event::TransferApproved {
+					collection: 0,
+					item: Some(42),
+					owner: account(2),
+					delegate: account(5),
+					deadline: Some(current_block + 2)
+				}
+			])
+		);
 		assert_eq!(
 			approvals(0, 42),
 			vec![(account(3), None), (account(4), None), (account(5), Some(current_block + 2))]
@@ -2047,6 +2200,7 @@ fn approval_deadline_works() {
 #[test]
 fn cancel_approval_works_with_admin() {
 	new_test_ext().execute_with(|| {
+		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			account(1),
@@ -2080,7 +2234,32 @@ fn cancel_approval_works_with_admin() {
 			Error::<Test>::NotDelegate
 		);
 
+		// Throws `DelegateApprovalConflict`` if the delegate has been granted a collection
+		// approval.
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3),
+			None
+		));
+		assert_noop!(
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)),
+			Error::<Test>::DelegateApprovalConflict
+		);
+		assert_ok!(Nfts::cancel_collection_approval(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3)
+		));
+
 		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
+		assert!(events().contains(&Event::<Test>::ApprovalCancelled {
+			collection: 0,
+			item: Some(42),
+			owner: account(2),
+			delegate: account(3)
+		}));
+
 		assert_noop!(
 			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(1)),
 			Error::<Test>::NotDelegate
@@ -2091,6 +2270,7 @@ fn cancel_approval_works_with_admin() {
 #[test]
 fn cancel_approval_works_with_force() {
 	new_test_ext().execute_with(|| {
+		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			account(1),
@@ -2124,7 +2304,31 @@ fn cancel_approval_works_with_force() {
 			Error::<Test>::NotDelegate
 		);
 
+		// Throws `DelegateApprovalConflict`` if the delegate has been granted a collection
+		// approval.
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3),
+			None
+		));
+		assert_noop!(
+			Nfts::cancel_approval(RuntimeOrigin::signed(account(2)), 0, 42, account(3)),
+			Error::<Test>::DelegateApprovalConflict
+		);
+		assert_ok!(Nfts::cancel_collection_approval(
+			RuntimeOrigin::signed(account(2)),
+			0,
+			account(3)
+		));
+
 		assert_ok!(Nfts::cancel_approval(RuntimeOrigin::root(), 0, 42, account(3)));
+		assert!(events().contains(&Event::<Test>::ApprovalCancelled {
+			collection: 0,
+			item: Some(42),
+			owner: account(2),
+			delegate: account(3)
+		}));
 		assert_noop!(
 			Nfts::cancel_approval(RuntimeOrigin::root(), 0, 42, account(1)),
 			Error::<Test>::NotDelegate
@@ -2135,10 +2339,18 @@ fn cancel_approval_works_with_force() {
 #[test]
 fn clear_all_transfer_approvals_works() {
 	new_test_ext().execute_with(|| {
+		Balances::make_free_balance_be(&account(1), 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			account(1),
 			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			43,
+			account(1),
+			default_item_config()
 		));
 		assert_ok!(Nfts::force_mint(
 			RuntimeOrigin::signed(account(1)),
@@ -2167,6 +2379,25 @@ fn clear_all_transfer_approvals_works() {
 			Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(3)), 0, 42),
 			Error::<Test>::NoPermission
 		);
+
+		assert_ok!(Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(2)), 0, 42));
+
+		// Throws `DelegateApprovalConflict` if there are existing collection approvals.
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			account(3),
+			None
+		));
+		assert_noop!(
+			Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(1)), 0, 42),
+			Error::<Test>::DelegateApprovalConflict
+		);
+		assert_ok!(Nfts::cancel_collection_approval(
+			RuntimeOrigin::signed(account(1)),
+			0,
+			account(3)
+		));
 
 		assert_ok!(Nfts::clear_all_transfer_approvals(RuntimeOrigin::signed(account(2)), 0, 42));
 
@@ -2524,6 +2755,7 @@ fn buy_item_should_work() {
 			item_1,
 			price_1 + 1,
 		));
+		assert_eq!(AccountBalance::<Test>::get(collection_id, &user_2), 1);
 
 		// validate the new owner & balances
 		let item = Item::<Test>::get(collection_id, item_1).unwrap();
@@ -2981,6 +3213,8 @@ fn claim_swap_should_work() {
 			item_1,
 			Some(price_with_direction.clone()),
 		));
+		assert_eq!(AccountBalance::<Test>::get(collection_id, &user_1), 2);
+		assert_eq!(AccountBalance::<Test>::get(collection_id, &user_2), 3);
 
 		// validate the new owner
 		let item = Item::<Test>::get(collection_id, item_1).unwrap();
@@ -3875,4 +4109,631 @@ fn clear_collection_metadata_works() {
 		assert_eq!(Collection::<Test>::get(0), None);
 		assert_eq!(Balances::reserved_balance(&account(1)), 10);
 	});
+}
+
+#[test]
+fn collection_item_works() {
+	new_test_ext().execute_with(|| {
+		let collection_id = 0;
+		let total_items = 10;
+		let user_id = account(1);
+
+		// No collection.
+		assert_eq!(Nfts::collection_items(collection_id), None);
+
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			user_id.clone(),
+			default_collection_config()
+		));
+
+		// Mint items and validate the total supply.
+		(0..total_items).into_iter().for_each(|i| {
+			assert_ok!(Nfts::force_mint(
+				RuntimeOrigin::root(),
+				collection_id,
+				i,
+				user_id.clone(),
+				ItemConfig::default()
+			));
+		});
+		assert_eq!(Nfts::collection_items(collection_id), Some(total_items));
+	});
+}
+
+#[test]
+fn clear_collection_approvals_works() {
+	new_test_ext().execute_with(|| {
+		let balance = 100;
+		let collection_id = 0;
+		let item_id = 42;
+		let item_owner = account(1);
+		let delegates = 10..20;
+
+		// Origin checks for the `clear_collection_approvals`.
+		for origin in [root(), none()] {
+			assert_noop!(
+				Nfts::clear_collection_approvals(origin, collection_id, 0),
+				BadOrigin.with_weight(WeightOf::clear_collection_approvals(0))
+			);
+		}
+		// Origin checks for the `force_clear_collection_approvals`.
+		for origin in [RuntimeOrigin::signed(item_owner.clone()), none()] {
+			assert_noop!(
+				Nfts::force_clear_collection_approvals(
+					origin,
+					item_owner.clone(),
+					collection_id,
+					0
+				),
+				BadOrigin.with_weight(WeightOf::clear_collection_approvals(0))
+			);
+		}
+
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			item_owner.clone(),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(item_owner.clone()),
+			collection_id,
+			item_id,
+			item_owner.clone(),
+			default_item_config()
+		));
+		Balances::make_free_balance_be(&item_owner, balance);
+
+		for (origin, maybe_owner) in [
+			// Parameters for `clear_collection_approvals`.
+			(root(), Some(&item_owner)),
+			// Parameters for `force_clear_collection_approvals`.
+			(RuntimeOrigin::signed(item_owner.clone()), None),
+		] {
+			// Approve delegates.
+			let mut approvals = 0u32;
+			for i in delegates.clone() {
+				assert_ok!(Nfts::approve_collection_transfer(
+					RuntimeOrigin::signed(item_owner.clone()),
+					collection_id,
+					account(i),
+					None
+				));
+				approvals.saturating_inc();
+			}
+
+			// Remove zero collection approvals.
+			assert_eq!(
+				clear_collection_approvals(origin.clone(), maybe_owner, collection_id, 0),
+				Ok(Some(WeightOf::clear_collection_approvals(0)).into())
+			);
+			assert_eq!(Balances::free_balance(&item_owner), balance - approvals as u64);
+			assert_eq!(
+				CollectionApprovals::iter_prefix((collection_id, &item_owner)).count(),
+				approvals as usize
+			);
+			assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
+				collection: collection_id,
+				owner: item_owner.clone(),
+				approvals
+			}));
+
+			// Partially remove collection approvals.
+			assert_eq!(
+				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 1),
+				Ok(Some(WeightOf::clear_collection_approvals(1)).into())
+			);
+			assert_eq!(Balances::free_balance(&item_owner), balance - (approvals as u64) + 1);
+			assert_eq!(
+				CollectionApprovals::iter_prefix((collection_id, item_owner.clone())).count(),
+				approvals as usize - 1
+			);
+			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+				collection: collection_id,
+				owner: item_owner.clone(),
+				approvals: 1
+			}));
+
+			// Successfully remove all collection approvals. Only charges post-dispatch weight for
+			// the removed approvals.
+			assert_eq!(
+				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 10),
+				Ok(Some(WeightOf::clear_collection_approvals(9)).into())
+			);
+			assert_eq!(Balances::free_balance(&item_owner), balance);
+			assert!(CollectionApprovals::iter_prefix((collection_id, item_owner.clone()))
+				.count()
+				.is_zero());
+			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+				collection: collection_id,
+				owner: item_owner.clone(),
+				approvals: approvals - 1
+			}));
+
+			// Remove zero collection approvals.
+			assert_eq!(
+				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 10),
+				Ok(Some(WeightOf::clear_collection_approvals(0)).into())
+			);
+			assert_eq!(Balances::free_balance(&item_owner), balance);
+			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+				collection: collection_id,
+				owner: item_owner.clone(),
+				approvals: 0
+			}));
+
+			// Ensure delegates are not able to transfer.
+			for i in delegates.clone() {
+				assert_noop!(
+					Nfts::transfer(
+						RuntimeOrigin::signed(account(i)),
+						collection_id,
+						item_id,
+						account(5)
+					),
+					Error::<Test>::NoPermission
+				);
+			}
+		}
+	});
+}
+
+#[test]
+fn approve_collection_transfer_works() {
+	new_test_ext().execute_with(|| {
+		let mut collection_id = 0;
+		let collection_owner = account(1);
+		let deadline: BlockNumberFor<Test> = 20;
+		let delegate = account(3);
+		let item_id = 42;
+		let item_owner = account(2);
+
+		// Origin checks for the `approve_collection_transfer`.
+		for origin in [root(), none()] {
+			assert_noop!(
+				Nfts::approve_collection_transfer(origin, collection_id, delegate.clone(), None),
+				BadOrigin
+			);
+		}
+		// Origin checks for the `force_approve_collection_transfer`.
+		for origin in [RuntimeOrigin::signed(item_owner.clone()), none()] {
+			assert_noop!(
+				Nfts::force_approve_collection_transfer(
+					origin,
+					item_owner.clone(),
+					collection_id,
+					delegate.clone(),
+					None
+				),
+				BadOrigin
+			);
+		}
+
+		// Provide balance to accounts.
+		Balances::make_free_balance_be(&item_owner, 100);
+		Balances::make_free_balance_be(&delegate, 100);
+
+		for (origin, maybe_item_owner) in [
+			// Parameters for `approve_collection_transfer`.
+			(RuntimeOrigin::signed(item_owner.clone()), None),
+			// Parameters for `force_approve_collection_transfer`.
+			(root(), Some(&item_owner)),
+		] {
+			// Approve unknown collection, throws error `Error::NoItemOwned`.
+			assert_noop!(
+				approve_collection_transfer(
+					origin.clone(),
+					maybe_item_owner,
+					collection_id,
+					&delegate,
+					None
+				),
+				Error::<Test>::NoItemOwned
+			);
+			assert_ok!(Nfts::force_create(
+				RuntimeOrigin::root(),
+				collection_owner.clone(),
+				default_collection_config()
+			));
+
+			// Approve collection without items, throws error `Error::NoItemOwned`.
+			assert_noop!(
+				Nfts::approve_collection_transfer(
+					RuntimeOrigin::signed(item_owner.clone()),
+					collection_id,
+					delegate.clone(),
+					None
+				),
+				Error::<Test>::NoItemOwned
+			);
+			assert_ok!(Nfts::force_mint(
+				RuntimeOrigin::signed(collection_owner.clone()),
+				collection_id,
+				item_id,
+				item_owner.clone(),
+				default_item_config()
+			));
+
+			// Approving a collection to a delegate with:
+			// 1. no deadline.
+			// 2. no deadline, again.
+			// 3. deadline.
+			// 3. equal deadline.
+			// 4. larger deadline.
+			// 5. smaller deadline.
+			// 6. no deadline, again.
+			//
+			// This tests all cases of approving the same delegate.
+			for deadline in [
+				None,
+				None,
+				Some(deadline),
+				Some(deadline),
+				Some(deadline * 2),
+				Some(deadline),
+				None,
+			] {
+				assert_ok!(approve_collection_transfer(
+					origin.clone(),
+					maybe_item_owner,
+					collection_id,
+					&delegate,
+					deadline,
+				));
+				let deadline = deadline.map(|d| d + 1);
+				System::assert_last_event(
+					Event::<Test>::TransferApproved {
+						collection: collection_id,
+						item: None,
+						owner: item_owner.clone(),
+						delegate: delegate.clone(),
+						deadline,
+					}
+					.into(),
+				);
+				assert_eq!(Balances::reserved_balance(&item_owner), 1);
+				assert_eq!(
+					CollectionApprovals::get((collection_id, &item_owner, &delegate)),
+					Some((deadline, CollectionApprovalDeposit::get()))
+				);
+			}
+
+			// Set collection settings to non transferable, throws error
+			// `Error::ItemsNonTransferable`.
+			assert_ok!(Nfts::lock_collection(
+				RuntimeOrigin::signed(collection_owner.clone()),
+				collection_id,
+				CollectionSettings::from_disabled(CollectionSetting::TransferableItems.into())
+			));
+			assert_noop!(
+				approve_collection_transfer(
+					origin.clone(),
+					maybe_item_owner,
+					collection_id,
+					&delegate,
+					None
+				),
+				Error::<Test>::ItemsNonTransferable
+			);
+
+			// To reset reserved balance.
+			assert_ok!(Nfts::cancel_collection_approval(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone()
+			));
+			collection_id.saturating_inc();
+		}
+	});
+}
+
+#[test]
+fn cancel_collection_approval_works() {
+	new_test_ext().execute_with(|| {
+		let collection_id = 0;
+		let collection_owner = account(1);
+		let delegate = account(3);
+		let item_id = 42;
+		let item_owner = account(2);
+
+		// Origin checks for the `cancel_collection_approval`.
+		for origin in [root(), none()] {
+			assert_noop!(
+				Nfts::cancel_collection_approval(origin, collection_id, delegate.clone()),
+				BadOrigin
+			);
+		}
+		// Origin checks for the `force_cancel_collection_approval`.
+		for origin in [RuntimeOrigin::signed(item_owner.clone()), none()] {
+			assert_noop!(
+				Nfts::force_cancel_collection_approval(
+					origin,
+					item_owner.clone(),
+					collection_id,
+					delegate.clone()
+				),
+				BadOrigin
+			);
+		}
+
+		Balances::make_free_balance_be(&item_owner, 100);
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			collection_owner.clone(),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(collection_owner),
+			collection_id,
+			item_id,
+			item_owner.clone(),
+			default_item_config()
+		));
+
+		for (origin, maybe_owner) in [
+			// Parameters for `cancel_collection_approval`.
+			(RuntimeOrigin::signed(item_owner.clone()), None),
+			// Parameters for `force_cancel_collection_approval`.
+			(root(), Some(&item_owner)),
+		] {
+			assert_ok!(Nfts::approve_collection_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone(),
+				None
+			));
+			// Cancel an approval for a non existing collection.
+			assert_noop!(
+				cancel_collection_approval(origin.clone(), maybe_owner, 1, &delegate),
+				Error::<Test>::Unapproved
+			);
+			// Cancel an unapproved delegate.
+			assert_noop!(
+				cancel_collection_approval(
+					origin.clone(),
+					maybe_owner,
+					collection_id,
+					&account(69),
+				),
+				Error::<Test>::Unapproved
+			);
+
+			// Successfully cancel a collection approval.
+			assert_ok!(cancel_collection_approval(
+				origin.clone(),
+				maybe_owner,
+				collection_id,
+				&delegate
+			));
+			assert_eq!(Balances::reserved_balance(&item_owner), 0);
+			assert!(!CollectionApprovals::contains_key((collection_id, &item_owner, &delegate)));
+			System::assert_last_event(
+				Event::<Test>::ApprovalCancelled {
+					collection: collection_id,
+					item: None,
+					owner: item_owner.clone(),
+					delegate: delegate.clone(),
+				}
+				.into(),
+			);
+		}
+	});
+}
+
+#[test]
+fn check_approval_without_deadline_works() {
+	new_test_ext().execute_with(|| {
+		let collection_id = 0;
+		let collection_owner = account(1);
+		let delegate = account(3);
+		let item_id = 42;
+		let item_owner = account(2);
+
+		Balances::make_free_balance_be(&item_owner, 100);
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			collection_owner.clone(),
+			default_collection_config()
+		));
+		// Item doesn't exist.
+		assert_noop!(
+			Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+			Error::<Test>::NoPermission
+		);
+		assert_noop!(
+			Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
+			Error::<Test>::UnknownItem
+		);
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(collection_owner.clone()),
+			collection_id,
+			item_id,
+			item_owner.clone(),
+			default_item_config()
+		));
+		// No approval.
+		assert_noop!(
+			Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+			Error::<Test>::NoPermission
+		);
+		assert_noop!(
+			Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
+			Error::<Test>::NoPermission
+		);
+		// Approve collection without deadline.
+		{
+			assert_ok!(Nfts::approve_collection_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone(),
+				None
+			));
+			assert_ok!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate));
+			assert_ok!(Nfts::check_approval(
+				&collection_id,
+				&Some(item_id),
+				&item_owner,
+				&delegate
+			));
+			assert_ok!(Nfts::cancel_collection_approval(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone()
+			));
+		}
+		// Approve item without deadline.
+		{
+			assert_ok!(Nfts::approve_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				item_id,
+				delegate.clone(),
+				None
+			));
+			assert_noop!(
+				Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+				Error::<Test>::NoPermission
+			);
+			assert_ok!(Nfts::check_approval(
+				&collection_id,
+				&Some(item_id),
+				&item_owner,
+				&delegate
+			));
+			assert_ok!(Nfts::cancel_approval(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				item_id,
+				delegate.clone()
+			));
+		}
+		// Approve collection and item without deadline.
+		assert_ok!(Nfts::approve_transfer(
+			RuntimeOrigin::signed(item_owner.clone()),
+			collection_id,
+			item_id,
+			delegate.clone(),
+			None
+		));
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(item_owner.clone()),
+			collection_id,
+			delegate.clone(),
+			None
+		));
+		assert_ok!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate));
+		assert_ok!(Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate));
+	});
+}
+
+#[test]
+fn check_approval_with_deadline_works() {
+	new_test_ext().execute_with(|| {
+		let collection_id = 0;
+		let collection_owner = account(1);
+		let delegate = account(3);
+		let item_id = 42;
+		let item_owner = account(2);
+
+		Balances::make_free_balance_be(&item_owner, 100);
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			collection_owner.clone(),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(collection_owner.clone()),
+			collection_id,
+			item_id,
+			item_owner.clone(),
+			default_item_config()
+		));
+		// Approve collection with deadline.
+		{
+			let deadline: BlockNumberFor<Test> = 10;
+			assert_ok!(Nfts::approve_collection_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone(),
+				Some(deadline),
+			));
+			assert_ok!(Nfts::check_approval(&collection_id, &None, &item_owner, &delegate));
+			assert_ok!(Nfts::check_approval(
+				&collection_id,
+				&Some(item_id),
+				&item_owner,
+				&delegate
+			));
+			// Expire approval.
+			System::set_block_number(deadline + System::block_number() + 1);
+			assert_noop!(
+				Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+				Error::<Test>::ApprovalExpired
+			);
+			assert_noop!(
+				Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
+				Error::<Test>::NoPermission
+			);
+			assert_ok!(Nfts::cancel_collection_approval(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone(),
+			));
+		}
+		// Approve item with deadline.
+		{
+			let deadline: BlockNumberFor<Test> = 20;
+			assert_ok!(Nfts::approve_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				item_id,
+				delegate.clone(),
+				Some(deadline),
+			));
+			assert_noop!(
+				Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+				Error::<Test>::NoPermission
+			);
+			assert_ok!(Nfts::check_approval(
+				&collection_id,
+				&Some(item_id),
+				&item_owner,
+				&delegate
+			));
+			// Expire approval.
+			System::set_block_number(deadline + System::block_number() + 1);
+			assert_noop!(
+				Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+				Error::<Test>::NoPermission
+			);
+			assert_noop!(
+				Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
+				Error::<Test>::ApprovalExpired
+			);
+			assert_ok!(Nfts::cancel_approval(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				item_id,
+				delegate.clone(),
+			));
+		}
+		assert_noop!(
+			Nfts::check_approval(&collection_id, &None, &item_owner, &delegate),
+			Error::<Test>::NoPermission
+		);
+		assert_noop!(
+			Nfts::check_approval(&collection_id, &Some(item_id), &item_owner, &delegate),
+			Error::<Test>::NoPermission
+		);
+	});
+}
+
+#[test]
+fn ensure_collection_approval_bytes() {
+	let key = Blake2_128Concat::max_len::<<Test as crate::Config>::CollectionId>() +
+		Blake2_128Concat::max_len::<AccountId>() +
+		Blake2_128Concat::max_len::<AccountId>();
+	let value = Option::<BlockNumberFor<Test>>::max_encoded_len()
+		.saturating_add(BalanceOf::<Test>::max_encoded_len());
+	assert_eq!(key + value, 133);
 }

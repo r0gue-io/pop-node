@@ -77,8 +77,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			),
 		};
 
-		let now = frame_system::Pallet::<T>::block_number();
-		let deadline = duration.saturating_add(now);
+		let deadline = duration.saturating_add(frame_system::Pallet::<T>::block_number());
 
 		PendingSwapOf::<T, I>::insert(
 			offered_collection_id,

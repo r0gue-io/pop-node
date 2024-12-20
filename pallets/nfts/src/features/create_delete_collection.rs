@@ -96,6 +96,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	///   ([`NoPermission`](crate::Error::NoPermission)).
 	/// - If the collection is not empty (contains items)
 	///   ([`CollectionNotEmpty`](crate::Error::CollectionNotEmpty)).
+	/// - If there are collection approvals
+	///   ([`CollectionApprovalsExist`](crate::Error::CollectionApprovalsExist)).
 	/// - If the `witness` does not match the actual collection details
 	///   ([`BadWitness`](crate::Error::BadWitness)).
 	pub fn do_destroy_collection(
@@ -110,6 +112,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				ensure!(collection_details.owner == check_owner, Error::<T, I>::NoPermission);
 			}
 			ensure!(collection_details.items == 0, Error::<T, I>::CollectionNotEmpty);
+			ensure!(
+				CollectionApprovals::<T, I>::iter_prefix((collection,)).take(1).next().is_none(),
+				Error::<T, I>::CollectionApprovalsExist
+			);
 			ensure!(collection_details.attributes == witness.attributes, Error::<T, I>::BadWitness);
 			ensure!(
 				collection_details.item_metadatas == witness.item_metadatas,
