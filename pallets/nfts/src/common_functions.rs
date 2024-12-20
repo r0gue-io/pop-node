@@ -25,26 +25,31 @@ use crate::*;
 
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Get the owner of the item, if the item exists.
+	///
+	/// - `collection`: The identifier of the collection.
+	/// - `item`: The identifier of the collection item.
 	pub fn owner(collection: T::CollectionId, item: T::ItemId) -> Option<T::AccountId> {
 		Item::<T, I>::get(collection, item).map(|i| i.owner)
 	}
 
 	/// Get the owner of the collection, if the collection exists.
+	///
+	/// - `collection`: The identifier of the collection.
 	pub fn collection_owner(collection: T::CollectionId) -> Option<T::AccountId> {
 		Collection::<T, I>::get(collection).map(|i| i.owner)
 	}
 
 	/// Get the total number of items in the collection, if the collection exists.
+	///
+	/// - `collection`: The identifier of the collection.
 	pub fn collection_items(collection: T::CollectionId) -> Option<u32> {
 		Collection::<T, I>::get(collection).map(|i| i.items)
 	}
 
-	/// Get the allowances to spend items within the collection.
-	pub fn collection_allowances(collection: T::CollectionId) -> Option<u32> {
-		Collection::<T, I>::get(collection).map(|i| i.allowances)
-	}
-
 	/// Get the metadata of the collection item.
+	///
+	/// - `collection`: The identifier of the collection.
+	/// - `item`: The identifier of the collection item.
 	pub fn item_metadata(
 		collection: T::CollectionId,
 		item: T::ItemId,
@@ -63,8 +68,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		signature: &T::OffchainSignature,
 		signer: &T::AccountId,
 	) -> DispatchResult {
-		if signature.verify(&**data, &signer) {
-			return Ok(());
+		if signature.verify(&**data, signer) {
+			return Ok(())
 		}
 
 		// NOTE: for security reasons modern UIs implicitly wrap the data requested to sign into
@@ -76,7 +81,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		wrapped.extend(data);
 		wrapped.extend(suffix);
 
-		ensure!(signature.verify(&*wrapped, &signer), Error::<T, I>::WrongSignature);
+		ensure!(signature.verify(&*wrapped, signer), Error::<T, I>::WrongSignature);
 
 		Ok(())
 	}
@@ -87,6 +92,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
 	}
 
+	#[allow(missing_docs)]
 	#[cfg(any(test, feature = "runtime-benchmarks"))]
 	pub fn set_next_id(id: T::CollectionId) {
 		NextCollectionId::<T, I>::set(Some(id));

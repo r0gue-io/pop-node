@@ -18,7 +18,7 @@
 //! This module contains helper methods to perform functionality associated with minting and burning
 //! items for the NFTs pallet.
 
-use frame_support::{pallet_prelude::*, traits::ExistenceRequirement};
+use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError, traits::ExistenceRequirement};
 
 use crate::*;
 
@@ -55,64 +55,55 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	) -> DispatchResult {
 		ensure!(!Item::<T, I>::contains_key(collection, item), Error::<T, I>::AlreadyExists);
 
-		Collection::<T, I>::try_mutate(
-			&collection,
-			|maybe_collection_details| -> DispatchResult {
-				let collection_details =
-					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
+		Collection::<T, I>::try_mutate(collection, |maybe_collection_details| -> DispatchResult {
+			let collection_details =
+				maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
 
-				let collection_config = Self::get_collection_config(&collection)?;
-				with_details_and_config(collection_details, &collection_config)?;
+			let collection_config = Self::get_collection_config(&collection)?;
+			with_details_and_config(collection_details, &collection_config)?;
 
-				if let Some(max_supply) = collection_config.max_supply {
-					ensure!(collection_details.items < max_supply, Error::<T, I>::MaxSupplyReached);
-				}
+			if let Some(max_supply) = collection_config.max_supply {
+				ensure!(collection_details.items < max_supply, Error::<T, I>::MaxSupplyReached);
+			}
 
-				collection_details.items.saturating_inc();
+			collection_details.items.saturating_inc();
 
-				let account_balance =
-					AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| -> u32 {
-						balance.saturating_inc();
-						*balance
-					});
-				if account_balance == 1 {
-					collection_details.item_holders.saturating_inc();
-				}
+			AccountBalance::<T, I>::mutate(collection, &mint_to, |balance| {
+				balance.saturating_inc();
+			});
 
-				let collection_config = Self::get_collection_config(&collection)?;
-				let deposit_amount = match collection_config
-					.is_setting_enabled(CollectionSetting::DepositRequired)
-				{
+			let collection_config = Self::get_collection_config(&collection)?;
+			let deposit_amount =
+				match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
 					true => T::ItemDeposit::get(),
 					false => Zero::zero(),
 				};
-				let deposit_account = match maybe_depositor {
-					None => collection_details.owner.clone(),
-					Some(depositor) => depositor,
-				};
+			let deposit_account = match maybe_depositor {
+				None => collection_details.owner.clone(),
+				Some(depositor) => depositor,
+			};
 
-				let item_owner = mint_to.clone();
-				Account::<T, I>::insert((&item_owner, &collection, &item), ());
+			let item_owner = mint_to.clone();
+			Account::<T, I>::insert((&item_owner, &collection, &item), ());
 
-				if let Ok(existing_config) = ItemConfigOf::<T, I>::try_get(&collection, &item) {
-					ensure!(existing_config == item_config, Error::<T, I>::InconsistentItemConfig);
-				} else {
-					ItemConfigOf::<T, I>::insert(&collection, &item, item_config);
-					collection_details.item_configs.saturating_inc();
-				}
+			if let Ok(existing_config) = ItemConfigOf::<T, I>::try_get(collection, item) {
+				ensure!(existing_config == item_config, Error::<T, I>::InconsistentItemConfig);
+			} else {
+				ItemConfigOf::<T, I>::insert(collection, item, item_config);
+				collection_details.item_configs.saturating_inc();
+			}
 
-				T::Currency::reserve(&deposit_account, deposit_amount)?;
+			T::Currency::reserve(&deposit_account, deposit_amount)?;
 
-				let deposit = ItemDeposit { account: deposit_account, amount: deposit_amount };
-				let details = ItemDetails {
-					owner: item_owner,
-					approvals: ApprovalsOf::<T, I>::default(),
-					deposit,
-				};
-				Item::<T, I>::insert(&collection, &item, details);
-				Ok(())
-			},
-		)?;
+			let deposit = ItemDeposit { account: deposit_account, amount: deposit_amount };
+			let details = ItemDetails {
+				owner: item_owner,
+				approvals: ApprovalsOf::<T, I>::default(),
+				deposit,
+			};
+			Item::<T, I>::insert(collection, item, details);
+			Ok(())
+		})?;
 
 		Self::deposit_event(Event::Issued { collection, item, owner: mint_to });
 		Ok(())
@@ -230,12 +221,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// then we keep the config record and don't remove it
 		let remove_config = !item_config.has_disabled_settings();
 		let owner = Collection::<T, I>::try_mutate(
-			&collection,
+			collection,
 			|maybe_collection_details| -> Result<T::AccountId, DispatchError> {
 				let collection_details =
 					maybe_collection_details.as_mut().ok_or(Error::<T, I>::UnknownCollection)?;
-				let details = Item::<T, I>::get(&collection, &item)
-					.ok_or(Error::<T, I>::UnknownCollection)?;
+				let details =
+					Item::<T, I>::get(collection, item).ok_or(Error::<T, I>::UnknownCollection)?;
 				with_details(&details)?;
 
 				// Return the deposit.
@@ -248,7 +239,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 				// Clear the metadata if it's not locked.
 				if item_config.is_setting_enabled(ItemSetting::UnlockedMetadata) {
-					if let Some(metadata) = ItemMetadataOf::<T, I>::take(&collection, &item) {
+					if let Some(metadata) = ItemMetadataOf::<T, I>::take(collection, item) {
 						let depositor_account =
 							metadata.deposit.account.unwrap_or(collection_details.owner.clone());
 
@@ -263,25 +254,25 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					}
 				}
 
-				if AccountBalance::<T, I>::get(collection, &details.owner) == 1 {
-					collection_details.item_holders.saturating_dec();
-				}
-
 				Ok(details.owner)
 			},
 		)?;
 
-		Item::<T, I>::remove(&collection, &item);
+		Item::<T, I>::remove(collection, item);
 		Account::<T, I>::remove((&owner, &collection, &item));
-		ItemPriceOf::<T, I>::remove(&collection, &item);
-		PendingSwapOf::<T, I>::remove(&collection, &item);
-		ItemAttributesApprovalsOf::<T, I>::remove(&collection, &item);
-		AccountBalance::<T, I>::mutate(collection, &owner, |balance| {
-			balance.saturating_dec();
-		});
+		ItemPriceOf::<T, I>::remove(collection, item);
+		PendingSwapOf::<T, I>::remove(collection, item);
+		ItemAttributesApprovalsOf::<T, I>::remove(collection, item);
+
+		let balance = AccountBalance::<T, I>::take(collection, &owner)
+			.checked_sub(1)
+			.ok_or(ArithmeticError::Underflow)?;
+		if balance > 0 {
+			AccountBalance::<T, I>::insert(collection, &owner, balance);
+		}
 
 		if remove_config {
-			ItemConfigOf::<T, I>::remove(&collection, &item);
+			ItemConfigOf::<T, I>::remove(collection, item);
 		}
 
 		Self::deposit_event(Event::Burned { collection, item, owner });

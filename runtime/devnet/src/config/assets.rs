@@ -30,6 +30,8 @@ parameter_types! {
 parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
 	pub const NftsCollectionDeposit: Balance = 10 * UNIT;
+	// Key = 116 bytes (4+16+32+16+32+16), Value = 17 bytes (1+8+8)
+	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 133);
 	pub const NftsItemDeposit: Balance = UNIT / 100;
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 129);
 	pub const NftsAttributeDepositBase: Balance = deposit(1, 0);
@@ -39,7 +41,7 @@ parameter_types! {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-pub struct KeyLimit<const N: u32>;
+struct KeyLimit<const N: u32>;
 impl<const N: u32> Get<u32> for KeyLimit<N> {
 	fn get() -> u32 {
 		N
@@ -52,6 +54,7 @@ impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
+	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
 	type CollectionId = CollectionId;

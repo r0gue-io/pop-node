@@ -63,7 +63,7 @@ impl Readable for RuntimeRead {
 
 /// The result of a runtime state read.
 #[derive(Debug)]
-#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
@@ -163,24 +163,25 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 			)
 		};
 
-		let contain_nonfungibles: bool = {
-			use nonfungibles::Call::*;
-			matches!(
-				c,
-				RuntimeCall::NonFungibles(
-					transfer { .. } |
-						approve { .. } | create { .. } |
-						destroy { .. } | set_metadata { .. } |
-						clear_metadata { .. } |
-						set_attribute { .. } |
-						clear_attribute { .. } |
-						approve_item_attributes { .. } |
-						cancel_item_attributes_approval { .. } |
-						mint { .. } | burn { .. } |
-						set_max_supply { .. },
+		let contain_nonfungibles: bool =
+			{
+				use nonfungibles::Call::*;
+				matches!(
+					c,
+					RuntimeCall::NonFungibles(
+						transfer { .. } |
+							approve { .. } | clear_all_transfer_approvals { .. } |
+							clear_collection_approvals { .. } |
+							create { .. } | destroy { .. } |
+							set_metadata { .. } | clear_metadata { .. } |
+							set_attribute { .. } | clear_attribute { .. } |
+							approve_item_attributes { .. } |
+							cancel_item_attributes_approval { .. } |
+							mint { .. } | burn { .. } |
+							set_max_supply { .. },
+					)
 				)
-			)
-		};
+			};
 
 		T::BaseCallFilter::contains(c) && contain_fungibles | contain_nonfungibles
 	}
@@ -301,6 +302,8 @@ mod tests {
 				operator: ACCOUNT,
 				approved: false,
 			}),
+			NonFungibles(clear_all_transfer_approvals { collection: 0, item: 0 }),
+			NonFungibles(clear_collection_approvals { collection: 0, limit: 0 }),
 			NonFungibles(create {
 				admin: ACCOUNT,
 				config: CollectionConfig {
@@ -311,13 +314,7 @@ mod tests {
 			}),
 			NonFungibles(destroy {
 				collection: 0,
-				witness: DestroyWitness {
-					attributes: 0,
-					item_configs: 0,
-					item_metadatas: 0,
-					item_holders: 0,
-					allowances: 0,
-				},
+				witness: DestroyWitness { attributes: 0, item_configs: 0, item_metadatas: 0 },
 			}),
 			NonFungibles(set_attribute {
 				collection: 0,
@@ -389,13 +386,14 @@ mod tests {
 			}),
 			NonFungibles(OwnerOf { collection: 1, item: 1 }),
 			NonFungibles(GetAttribute {
-				collection: 0,
-				item: 0,
+				collection: 1,
+				item: 1,
 				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
 				key: bounded_vec![],
 			}),
 			NonFungibles(Collection(1)),
 			NonFungibles(NextCollectionId),
+			NonFungibles(ItemMetadata { collection: 1, item: 1 }),
 		]
 		.iter()
 		{
