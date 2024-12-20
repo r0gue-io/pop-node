@@ -189,6 +189,29 @@ fn double_vote_fails(mut session: Session) {
 }
 
 #[drink::test(sandbox = Pop)]
+fn vote_fails_if_voting_period_ended(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	// Prepare voters accounts
+	let _ = prepare_dao(&mut session, contract.clone());
+
+	// Alice create a proposal
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
+	let amount = AMOUNT * 3;
+	session.set_actor(ALICE);
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+
+	// Moving to blocks beyond voting period
+	let next_block = block(&mut session).unwrap().saturating_add(VOTING_PERIOD);
+	session.sandbox().build_blocks(VOTING_PERIOD + 1); 
+
+	session.set_actor(CHARLIE);
+	// Charlie tries to vote
+	assert_eq!(vote(&mut session, 1, true), Err(Error::VotingPeriodEnded));
+}
+
+#[drink::test(sandbox = Pop)]
 fn vote_fails_if_not_a_member(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.

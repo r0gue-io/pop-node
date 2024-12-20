@@ -247,7 +247,13 @@ mod dao {
 				let contract = self.env().account_id();
 
 				// Execute the proposal
-				// ToDo: Check that the contract has enough tokens
+				let treasury_balance = api::balance_of(self.token_id, contract.clone()).unwrap_or_default();
+				if treasury_balance < proposal.amount {
+    // Not enough tokens in treasury to distribute
+    return Err(Error::TryAgainLater);
+  }
+
+  
 				api::transfer(self.token_id, proposal.beneficiary, proposal.amount)
 					.map_err(Psp22Error::from)?;
 				self.env().emit_event(Transfer {
@@ -337,6 +343,7 @@ mod dao {
 		ProposalAlreadyExecuted,
 		ProposalRejected,
 		StringLimitReached,
+		TryAgainLater,
 		None,
 		Psp22(Psp22Error),
 	}
