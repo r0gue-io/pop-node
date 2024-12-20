@@ -1,9 +1,6 @@
 use drink::{
 	assert_last_contract_event, assert_ok, call,
-	devnet::{
-		account_id_from_slice,
-		AccountId, Balance, Runtime,
-	},
+	devnet::{account_id_from_slice, AccountId, Balance, Runtime},
 	sandbox_api::system_api::SystemAPI,
 	session::Session,
 	AssetsAPI, TestExternalities, NO_SALT,
@@ -195,7 +192,7 @@ fn vote_fails_if_voting_period_ended(mut session: Session) {
 	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	// Moving to blocks beyond voting period
-	session.sandbox().build_blocks(VOTING_PERIOD + 1); 
+	session.sandbox().build_blocks(VOTING_PERIOD + 1);
 
 	session.set_actor(CHARLIE);
 	// Charlie tries to vote
@@ -311,7 +308,6 @@ fn proposal_enactment_fails_if_proposal_is_rejected(mut session: Session) {
 	session.sandbox().build_blocks(VOTING_PERIOD + 1);
 
 	assert_eq!(execute_proposal(&mut session, 1), Err(Error::ProposalRejected));
-	
 }
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.
