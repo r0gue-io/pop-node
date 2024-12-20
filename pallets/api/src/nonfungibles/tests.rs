@@ -98,12 +98,17 @@ fn transfer_works() {
 		let item = ITEM;
 		let owner = ALICE;
 
-		nfts::create_collection_mint(owner, owner, item);
 		// Origin checks.
 		for origin in vec![root(), none()] {
 			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
 		}
+		// Check error works for `Nfts::transfer`.
+		assert_noop!(
+			NonFungibles::transfer(signed(owner), collection, item, dest),
+			NftsError::UnknownCollection
+		);
 		// Successfully transfer a collection item.
+		nfts::create_collection_mint(owner, owner, item);
 		let balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, item, dest));
 		let balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
@@ -125,12 +130,12 @@ fn approved_transfer_works() {
 		let operator = BOB;
 		let owner = ALICE;
 
-		nfts::create_collection_mint(owner, owner, item);
 		// No permission to transfer.
 		assert_noop!(
 			NonFungibles::transfer(signed(operator), collection, item, dest),
 			NftsError::NoPermission
 		);
+		nfts::create_collection_mint(owner, owner, item);
 		// Approve `operator` to transfer `collection` items owned by the `owner`.
 		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
 		// Successfully transfers a collection item.
@@ -318,8 +323,8 @@ fn cancel_approval_works() {
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
 			NftsError::UnknownItem.with_weight(NftsWeightInfoOf::<Test>::cancel_approval())
 		);
-		nfts::create_collection_mint_and_approve(owner, owner, item, operator);
 		// Successfully cancels the transfer approval of `operator` by `owner`.
+		nfts::create_collection_mint_and_approve(owner, owner, item, operator);
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
 			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval()).into())
@@ -352,8 +357,8 @@ fn cancel_collection_approval_works() {
 			NftsError::Unapproved
 				.with_weight(NftsWeightInfoOf::<Test>::cancel_collection_approval())
 		);
-		nfts::create_collection_mint(owner, owner, item);
 		// Successfully cancel the transfer collection approval of `operator` by `owner`.
+		nfts::create_collection_mint(owner, owner, item);
 		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, None, operator, false),
@@ -384,6 +389,7 @@ fn clear_all_transfer_approvals_works() {
 			NonFungibles::clear_all_transfer_approvals(signed(owner), collection, item),
 			NftsError::UnknownCollection
 		);
+
 		nfts::create_collection_mint(owner, owner, item);
 		delegates.clone().for_each(|delegate| {
 			assert_ok!(Nfts::approve_transfer(signed(owner), collection, item, delegate, None));
