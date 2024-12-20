@@ -1,20 +1,13 @@
 use drink::{
-	assert_err, assert_last_contract_event, assert_ok, call,
+	assert_last_contract_event, assert_ok, call,
 	devnet::{
 		account_id_from_slice,
-		error::{
-			v0::{ApiError::*, ArithmeticError::*},
-			Assets,
-			AssetsError::*,
-		},
 		AccountId, Balance, Runtime,
 	},
-	last_contract_event,
 	sandbox_api::system_api::SystemAPI,
 	session::Session,
 	AssetsAPI, TestExternalities, NO_SALT,
 };
-use ink::scale::Encode;
 use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
@@ -165,7 +158,6 @@ fn members_vote_system_works(mut session: Session) {
 		&session,
 		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
-	let val = yes_votes(&mut session, 1).unwrap();
 }
 
 #[drink::test(sandbox = Pop)]
@@ -203,7 +195,6 @@ fn vote_fails_if_voting_period_ended(mut session: Session) {
 	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	// Moving to blocks beyond voting period
-	let next_block = block(&mut session).unwrap().saturating_add(VOTING_PERIOD);
 	session.sandbox().build_blocks(VOTING_PERIOD + 1); 
 
 	session.set_actor(CHARLIE);
@@ -266,8 +257,6 @@ fn proposal_enactment_works(mut session: Session) {
 		Voted { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
 	);
 
-	let val = yes_votes(&mut session, 1).unwrap();
-	let next_block = block(&mut session).unwrap().saturating_add(VOTING_PERIOD);
 	session.sandbox().build_blocks(VOTING_PERIOD + 1);
 
 	assert_ok!(execute_proposal(&mut session, 1));
@@ -280,6 +269,49 @@ fn proposal_enactment_works(mut session: Session) {
 			value: MIN_BALANCE,
 		}
 	)
+}
+
+#[drink::test(sandbox = Pop)]
+fn proposal_enactment_fails_if_proposal_is_rejected(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	// Prepare voters accounts
+	let _ = prepare_dao(&mut session, contract.clone());
+
+	// Alice create a proposal
+	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
+	let amount = MIN_BALANCE;
+	session.set_actor(ALICE);
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
+
+	let now = block(&mut session).unwrap();
+	session.set_actor(CHARLIE);
+	// Charlie vote
+	assert_ok!(vote(&mut session, 1, false));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
+	);
+	// Alice vote
+	session.set_actor(ALICE);
+	assert_ok!(vote(&mut session, 1, false));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
+	);
+	// BOB vote
+	session.set_actor(BOB);
+	assert_ok!(vote(&mut session, 1, false));
+	assert_last_contract_event!(
+		&session,
+		Voted { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
+	);
+
+	session.sandbox().build_blocks(VOTING_PERIOD + 1);
+
+	assert_eq!(execute_proposal(&mut session, 1), Err(Error::ProposalRejected));
+	
 }
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.

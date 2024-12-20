@@ -101,7 +101,6 @@ mod dao {
 
 	impl Dao {
 		/// Instantiate a new Dao contract and create the associated token
-		///
 		/// # Parameters:
 		/// - `token_id` - The identifier of the token to be created
 		/// - `voting_period` - Amount of blocks during which members can cast their votes
@@ -195,7 +194,7 @@ mod dao {
 				return Err(Error::VotingPeriodEnded);
 			}
 
-			let member = self.members.get(caller.clone()).ok_or(Error::NotAMember)?;
+			let member = self.members.get(caller).ok_or(Error::NotAMember)?;
 
 			if member.last_vote >= proposal.vote_start {
 				return Err(Error::AlreadyVoted);
@@ -213,7 +212,7 @@ mod dao {
 			self.proposals.insert(proposal_id, &proposal);
 
 			self.members.insert(
-				caller.clone(),
+				caller,
 				&Member { voting_power: member.voting_power, last_vote: current_block },
 			);
 
@@ -247,7 +246,7 @@ mod dao {
 				let contract = self.env().account_id();
 
 				// Execute the proposal
-				let treasury_balance = api::balance_of(self.token_id, contract.clone()).unwrap_or_default();
+				let treasury_balance = api::balance_of(self.token_id, contract).unwrap_or_default();
 				if treasury_balance < proposal.amount {
     // Not enough tokens in treasury to distribute
     return Err(Error::TryAgainLater);
