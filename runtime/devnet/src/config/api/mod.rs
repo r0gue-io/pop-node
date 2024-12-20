@@ -63,7 +63,7 @@ impl Readable for RuntimeRead {
 
 /// The result of a runtime state read.
 #[derive(Debug)]
-#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+#[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
