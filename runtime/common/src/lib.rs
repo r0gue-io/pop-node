@@ -26,8 +26,11 @@ mod block_times {
 pub use block_times::*;
 
 // Time is measured by number of blocks.
+/// Time is measured by number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
+/// An hour, measured by number of blocks.
 pub const HOURS: BlockNumber = MINUTES * 60;
+/// A day, measured by number of blocks.
 pub const DAYS: BlockNumber = HOURS * 24;
 
 /// We assume that ~5% of the block weight is consumed by `on_initialize` handlers. This is
@@ -43,13 +46,14 @@ pub const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 pub const MAXIMUM_BLOCK_WEIGHT: Weight =
 	Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), MAX_POV_SIZE as u64);
 
-// Unit = the base number of indivisible units for balances
+/// A unit of the native asset.
 pub const UNIT: Balance = 10_000_000_000; // 10 decimals
-
+/// A milli-unit of the native asset.
 pub const MILLI_UNIT: Balance = UNIT / 1_000; // 10_000_000
+/// A micro-unit of the native asset.
 pub const MICRO_UNIT: Balance = UNIT / 1_000_000; // 10_000
 
-// Deposits
+/// Deposits.
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLI_UNIT / 100)) / 10
 }
