@@ -964,15 +964,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
-name = "beef"
-version = "0.5.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3a8241f3ebb85c056b509d4327ad0358fbbba6ffb340bf388f26350aeda225b1"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "binary-merkle-tree"
 version = "15.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3218,7 +3209,7 @@ dependencies = [
  "async-trait",
  "cumulus-primitives-core 0.16.0",
  "futures",
- "jsonrpsee-core 0.24.7",
+ "jsonrpsee-core",
  "parity-scale-codec",
  "polkadot-overseer",
  "sc-client-api",
@@ -3277,7 +3268,7 @@ dependencies = [
  "either",
  "futures",
  "futures-timer",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "parity-scale-codec",
  "pin-project",
  "polkadot-overseer",
@@ -5974,7 +5965,7 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 [[package]]
 name = "ismp"
 version = "0.2.2"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "anyhow",
  "derive_more 1.0.0",
@@ -5991,7 +5982,7 @@ dependencies = [
 [[package]]
 name = "ismp-parachain"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "cumulus-pallet-parachain-system 0.17.1",
  "cumulus-primitives-core 0.16.0",
@@ -6016,7 +6007,7 @@ dependencies = [
 [[package]]
 name = "ismp-parachain-inherent"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6037,7 +6028,7 @@ dependencies = [
 [[package]]
 name = "ismp-parachain-runtime-api"
 version = "1.15.1"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "cumulus-pallet-parachain-system 0.17.1",
  "sp-api 34.0.0",
@@ -6117,28 +6108,14 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62b089779ad7f80768693755a031cc14a7766aba707cbe886674e3f79e9b7e47"
-dependencies = [
- "jsonrpsee-core 0.23.2",
- "jsonrpsee-proc-macros 0.23.2",
- "jsonrpsee-server 0.23.2",
- "jsonrpsee-types 0.23.2",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "jsonrpsee"
 version = "0.24.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5c71d8c1a731cc4227c2f698d377e7848ca12c8a48866fc5e6951c43a4db843"
 dependencies = [
- "jsonrpsee-core 0.24.7",
- "jsonrpsee-proc-macros 0.24.7",
- "jsonrpsee-server 0.24.7",
- "jsonrpsee-types 0.24.7",
+ "jsonrpsee-core",
+ "jsonrpsee-proc-macros",
+ "jsonrpsee-server",
+ "jsonrpsee-types",
  "jsonrpsee-ws-client",
  "tokio",
  "tracing",
@@ -6153,7 +6130,7 @@ dependencies = [
  "base64 0.22.1",
  "futures-util",
  "http 1.2.0",
- "jsonrpsee-core 0.24.7",
+ "jsonrpsee-core",
  "pin-project",
  "rustls 0.23.20",
  "rustls-pki-types",
@@ -6169,31 +6146,6 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-core"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79712302e737d23ca0daa178e752c9334846b08321d439fd89af9a384f8c830b"
-dependencies = [
- "anyhow",
- "async-trait",
- "beef",
- "bytes",
- "futures-util",
- "http 1.2.0",
- "http-body 1.0.1",
- "http-body-util",
- "jsonrpsee-types 0.23.2",
- "parking_lot 0.12.3",
- "rand",
- "rustc-hash 1.1.0",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tokio",
- "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-core"
 version = "0.24.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2882f6f8acb9fdaec7cefc4fd607119a9bd709831df7d7672a1d3b644628280"
@@ -6205,7 +6157,7 @@ dependencies = [
  "http 1.2.0",
  "http-body 1.0.1",
  "http-body-util",
- "jsonrpsee-types 0.24.7",
+ "jsonrpsee-types",
  "parking_lot 0.12.3",
  "pin-project",
  "rand",
@@ -6216,19 +6168,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-proc-macros"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7895f186d5921065d96e16bd795e5ca89ac8356ec423fafc6e3d7cf8ec11aee4"
-dependencies = [
- "heck 0.5.0",
- "proc-macro-crate 3.2.0",
- "proc-macro2",
- "quote",
- "syn 2.0.90",
 ]
 
 [[package]]
@@ -6246,34 +6185,6 @@ dependencies = [
 
 [[package]]
 name = "jsonrpsee-server"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "654afab2e92e5d88ebd8a39d6074483f3f2bfdf91c5ac57fe285e7127cdd4f51"
-dependencies = [
- "anyhow",
- "futures-util",
- "http 1.2.0",
- "http-body 1.0.1",
- "http-body-util",
- "hyper 1.5.2",
- "hyper-util",
- "jsonrpsee-core 0.23.2",
- "jsonrpsee-types 0.23.2",
- "pin-project",
- "route-recognizer",
- "serde",
- "serde_json",
- "soketto 0.8.1",
- "thiserror 1.0.69",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tower",
- "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-server"
 version = "0.24.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82ad8ddc14be1d4290cd68046e7d1d37acd408efed6d3ca08aefcc3ad6da069c"
@@ -6284,8 +6195,8 @@ dependencies = [
  "http-body-util",
  "hyper 1.5.2",
  "hyper-util",
- "jsonrpsee-core 0.24.7",
- "jsonrpsee-types 0.24.7",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
  "pin-project",
  "route-recognizer",
  "serde",
@@ -6297,19 +6208,6 @@ dependencies = [
  "tokio-util",
  "tower",
  "tracing",
-]
-
-[[package]]
-name = "jsonrpsee-types"
-version = "0.23.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9c465fbe385238e861fdc4d1c85e04ada6c1fd246161d26385c1b311724d2af"
-dependencies = [
- "beef",
- "http 1.2.0",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -6332,8 +6230,8 @@ checksum = "0fe322e0896d0955a3ebdd5bf813571c53fea29edd713bc315b76620b327e86d"
 dependencies = [
  "http 1.2.0",
  "jsonrpsee-client-transport",
- "jsonrpsee-core 0.24.7",
- "jsonrpsee-types 0.24.7",
+ "jsonrpsee-core",
+ "jsonrpsee-types",
  "url",
 ]
 
@@ -7435,7 +7333,7 @@ version = "38.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d22406b7326c857113e02916e4e39358598f110e0b50c7c646e146c8b273e530"
 dependencies = [
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "parity-scale-codec",
  "serde",
  "sp-api 34.0.0",
@@ -9340,7 +9238,7 @@ dependencies = [
 [[package]]
 name = "pallet-ismp"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "anyhow",
  "fortuples",
@@ -9363,7 +9261,7 @@ dependencies = [
 [[package]]
 name = "pallet-ismp-rpc"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "anyhow",
  "frame-system 38.0.0",
@@ -9371,7 +9269,7 @@ dependencies = [
  "hex",
  "hex-literal",
  "ismp",
- "jsonrpsee 0.23.2",
+ "jsonrpsee",
  "pallet-ismp",
  "pallet-ismp-runtime-api",
  "parity-scale-codec",
@@ -9393,7 +9291,7 @@ dependencies = [
 [[package]]
 name = "pallet-ismp-runtime-api"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "ismp",
  "pallet-ismp",
@@ -10416,7 +10314,7 @@ version = "41.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "291a021e6828d43b5165042d31691c5c20b5748ea8d5fc51e0359752482a04c2"
 dependencies = [
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "pallet-transaction-payment-rpc-runtime-api 38.0.0",
  "parity-scale-codec",
  "sp-api 34.0.0",
@@ -12218,7 +12116,7 @@ version = "19.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59f9c2afc4e401e76e3438514bdf2a22137ce908ad413ebaca9c8c3db4de0d70"
 dependencies = [
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "mmr-rpc",
  "pallet-transaction-payment-rpc",
  "polkadot-primitives 16.0.0",
@@ -12818,7 +12716,7 @@ dependencies = [
  "ismp-parachain",
  "ismp-parachain-inherent",
  "ismp-parachain-runtime-api",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "pallet-ismp-rpc",
  "pallet-ismp-runtime-api",
@@ -14672,7 +14570,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "78556a2fc64c45518eab6f059ad379da808431fe351475df216e2bc66ac7af65"
 dependencies = [
  "futures",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "sc-consensus-babe",
  "sc-consensus-epochs",
  "sc-rpc-api",
@@ -14732,7 +14630,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8edff310519f0be6ff5fac5a6643ea323fb3658ee3b1f36668940c72cdd6da30"
 dependencies = [
  "futures",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
@@ -14813,7 +14711,7 @@ checksum = "fe70de1362284b9a3f2bffea380222347a252dee098c4dfccdb2c7a1a9061f91"
 dependencies = [
  "finality-grandpa",
  "futures",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "sc-client-api",
@@ -15223,7 +15121,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7137ecfd837c9b6e57244b59a99320a53c7e31f160b5581a325734f3c169aaba"
 dependencies = [
  "futures",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
@@ -15255,7 +15153,7 @@ version = "0.44.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "147274633577e55db73dbdc64168c25b54cca6cac4fcde118bd9946cf7b24838"
 dependencies = [
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "parity-scale-codec",
  "sc-chain-spec",
  "sc-mixnet",
@@ -15284,7 +15182,7 @@ dependencies = [
  "http-body-util",
  "hyper 1.5.2",
  "ip_network",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "sc-rpc-api",
  "serde",
@@ -15305,7 +15203,7 @@ dependencies = [
  "futures",
  "futures-util",
  "hex",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
@@ -15339,7 +15237,7 @@ dependencies = [
  "exit-future",
  "futures",
  "futures-timer",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "parking_lot 0.12.3",
@@ -15425,7 +15323,7 @@ version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "732368e1e11b335af0db58d654dff87605ea8531e1944d329cf22751eb23c44d"
 dependencies = [
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "parity-scale-codec",
  "sc-chain-spec",
  "sc-client-api",
@@ -15858,7 +15756,7 @@ dependencies = [
 [[package]]
 name = "serde-hex-utils"
 version = "0.1.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "anyhow",
  "hex",
@@ -18117,7 +18015,7 @@ dependencies = [
  "docify",
  "frame-system-rpc-runtime-api 34.0.0",
  "futures",
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "log",
  "parity-scale-codec",
  "sc-rpc-api",
@@ -18145,7 +18043,7 @@ dependencies = [
 [[package]]
 name = "substrate-state-machine"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#b23478008e2eb7fa84173a08a7208ec9002e2c7f"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2409#f8ba589e0eb8be1d9d3e12ba679fe2e1d743ba67"
 dependencies = [
  "frame-support 38.0.0",
  "hash-db",
@@ -18167,7 +18065,7 @@ version = "38.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26c01d7d5bab5b2c1c3ad29858646664ecba13d0e5ed3bcc2923571d49a88cec"
 dependencies = [
- "jsonrpsee 0.24.7",
+ "jsonrpsee",
  "parity-scale-codec",
  "sc-client-api",
  "sc-rpc-api",
