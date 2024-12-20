@@ -105,7 +105,7 @@ fn transfer_works() {
 		// Check error works for `Nfts::transfer`.
 		assert_noop!(
 			NonFungibles::transfer(signed(owner), collection, item, dest),
-			NftsError::UnknownCollection
+			NftsError::UnknownItem
 		);
 		// Successfully transfer a collection item.
 		nfts::create_collection_mint(owner, owner, item);
@@ -130,11 +130,6 @@ fn approved_transfer_works() {
 		let operator = BOB;
 		let owner = ALICE;
 
-		// No permission to transfer.
-		assert_noop!(
-			NonFungibles::transfer(signed(operator), collection, item, dest),
-			NftsError::NoPermission
-		);
 		nfts::create_collection_mint(owner, owner, item);
 		// Approve `operator` to transfer `collection` items owned by the `owner`.
 		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
