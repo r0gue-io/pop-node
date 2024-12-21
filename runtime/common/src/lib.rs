@@ -26,7 +26,7 @@ mod block_times {
 pub use block_times::*;
 
 // Time is measured by number of blocks.
-/// Time is measured by number of blocks.
+/// A minute, measured by number of blocks.
 pub const MINUTES: BlockNumber = 60_000 / (MILLISECS_PER_BLOCK as BlockNumber);
 /// An hour, measured by number of blocks.
 pub const HOURS: BlockNumber = MINUTES * 60;
