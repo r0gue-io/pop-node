@@ -74,13 +74,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					true => T::ItemDeposit::get(),
 					false => Zero::zero(),
 				};
-			let deposit_account = maybe_depositor.unwrap_or(collection_details.owner.clone());
+			let deposit_account =
+				maybe_depositor.unwrap_or_else(|| collection_details.owner.clone());
 
 			Self::increment_account_balance(
 				collection,
 				&mint_to,
-				deposit_account.clone(),
-				deposit_amount,
+				(&deposit_account, deposit_amount),
 			)?;
 
 			let item_owner = mint_to.clone();

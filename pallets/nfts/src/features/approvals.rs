@@ -217,7 +217,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Error::<T, I>::MethodDisabled
 		);
 		ensure!(
-			AccountBalance::<T, I>::contains_key(collection, &owner),
+			AccountBalance::<T, I>::get(collection, &owner)
+				.filter(|(balance, _)| *balance > 0)
+				.is_some(),
 			Error::<T, I>::NoItemOwned
 		);
 

@@ -210,14 +210,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		// This also removes the swap.
 		Self::do_transfer(
-			caller,
+			&caller,
 			send_collection_id,
 			send_item_id,
 			receive_item.owner.clone(),
 			|_, _| Ok(()),
 		)?;
 		Self::do_transfer(
-			receive_item.owner.clone(),
+			&caller,
 			receive_collection_id,
 			receive_item_id,
 			send_item.owner.clone(),

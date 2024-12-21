@@ -4865,8 +4865,8 @@ fn increment_account_balance_works() {
 		let collection_id = 0;
 
 		Balances::make_free_balance_be(&account(1), 100);
-		// Increment the balance of a new account.
-		assert_ok!(Nfts::increment_account_balance(collection_id, &account(1), account(1), 1));
+		// Increment the balance of owned collection items of a new account.
+		assert_ok!(Nfts::increment_account_balance(collection_id, &account(1), (&account(1), 1)));
 		assert_eq!(Balances::reserved_balance(&account(1)), 1);
 		assert_eq!(
 			AccountBalance::<Test>::get(collection_id, &account(1)),
@@ -4875,7 +4875,11 @@ fn increment_account_balance_works() {
 
 		// Increment the balance of a non-zero balance account. No additional reserves.
 		(1..10u64).into_iter().for_each(|i| {
-			assert_ok!(Nfts::increment_account_balance(collection_id, &account(1), account(1), 1));
+			assert_ok!(Nfts::increment_account_balance(
+				collection_id,
+				&account(1),
+				(&account(1), 1)
+			));
 			assert_eq!(Balances::reserved_balance(&account(1)), 1);
 			assert_eq!(
 				AccountBalance::<Test>::get(collection_id, &account(1)),
@@ -4899,7 +4903,11 @@ fn decrement_account_balance_works() {
 		);
 
 		(0..balance).into_iter().for_each(|_| {
-			assert_ok!(Nfts::increment_account_balance(collection_id, &account(1), account(1), 1));
+			assert_ok!(Nfts::increment_account_balance(
+				collection_id,
+				&account(1),
+				(&account(1), 1)
+			));
 		});
 
 		// Successfully decrement the account balance.

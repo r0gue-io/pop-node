@@ -25,7 +25,7 @@ use crate::*;
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Transfer an NFT to the specified destination account.
 	///
-	/// - `caller`: The account calling the method to transfer the collection item.
+	/// - `caller`: The account transferring the collection item.
 	/// - `collection`: The ID of the collection to which the NFT belongs.
 	/// - `item`: The ID of the NFT to transfer.
 	/// - `dest`: The destination account to which the NFT will be transferred.
@@ -46,7 +46,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - If the collection or item is non-transferable
 	///   ([`ItemsNonTransferable`](crate::Error::ItemsNonTransferable)).
 	pub fn do_transfer(
-		caller: T::AccountId,
+		caller: &T::AccountId,
 		collection: T::CollectionId,
 		item: T::ItemId,
 		dest: T::AccountId,
@@ -97,13 +97,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				true => T::BalanceDeposit::get(),
 				false => Zero::zero(),
 			};
-		// If the destination account exists, it reserves the `BalanceDeposit` for the new
-		// `AccountBalance`. Otherwise, the caller is responsible.
-		let deposit_account = match frame_system::Pallet::<T>::account_exists(&dest) {
-			true => dest.clone(),
-			false => caller,
+		// The destination account covers the `BalanceDeposit` if it has sufficient balance.
+		// Otherwise, the caller is accountable for it.
+		let deposit_account = match T::Currency::free_balance(&dest) >= T::BalanceDeposit::get() {
+			true => &dest,
+			false => &caller,
 		};
-		Self::increment_account_balance(collection, &dest, deposit_account, deposit_amount)?;
+
+		Self::increment_account_balance(collection, &dest, (deposit_account, deposit_amount))?;
 
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));
