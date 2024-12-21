@@ -9,13 +9,13 @@ contract-build = "4.1.1"
 
 [dev-dependencies]
 env_logger = "0.11.2"
-frame-support = { version = "37.0.0", default-features = false }
-frame-support-procedural = { version = "30.0.2", default-features = false }
-frame-system = { version = "37.0.0", default-features = false }
+frame-support = { version = "38.0.0", default-features = false }
+frame-support-procedural = { version = "30.0.3", default-features = false }
+frame-system = { version = "38.0.0", default-features = false }
 log = "0.4.22"
-pallet-assets = { version = "39.0.0", default-features = false }
-pallet-balances = { version = "38.0.0", default-features = false }
-pallet-contracts = { version = "37.0.0", default-features = false }
+pallet-assets = { version = "40.0.0", default-features = false }
+pallet-balances = { version = "39.0.0", default-features = false }
+pallet-contracts = { version = "38.0.0", default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
 ] }
@@ -26,8 +26,8 @@ scale = { package = "parity-scale-codec", version = "3.6.12", default-features =
 	"derive",
 ] }
 sp-io = { version = "38.0.0", default-features = false }
-sp-runtime = { version = "39.0.0", default-features = false }
-staging-xcm = { version = "14.1.0", default-features = false }
+sp-runtime = { version = "39.0.1", default-features = false }
+staging-xcm = { version = "14.2.0", default-features = false }
 
 [features]
 default = [ "std" ]

@@ -99,6 +99,7 @@ std = [
 	"cumulus-primitives-core/std",
 	"cumulus-primitives-storage-weight-reclaim/std",
 	"cumulus-primitives-utility/std",
+	"enumflags2/std",
 	"frame-benchmarking/std",
 	"frame-executive/std",
 	"frame-metadata-hash-extension/std",
