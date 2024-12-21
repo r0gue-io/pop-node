@@ -178,12 +178,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type CollectionDeposit: Get<DepositBalanceOf<Self, I>>;
 
-		/// The basic amount of funds that must be reserved for a collection approval.
-		// Key: `sizeof((CollectionId, AccountId, AccountId))` bytes.
-		// Value: `sizeof((Option<BlockNumber>, Balance))` bytes.
-		#[pallet::constant]
-		type CollectionApprovalDeposit: Get<DepositBalanceOf<Self, I>>;
-
 		/// The basic amount of funds that must be reserved for an item.
 		#[pallet::constant]
 		type ItemDeposit: Get<DepositBalanceOf<Self, I>>;
@@ -259,6 +253,18 @@ pub mod pallet {
 
 		/// Weight information for extrinsics in this pallet.
 		type WeightInfo: WeightInfo;
+
+		/// The basic amount of funds that must be reserved for a collection approval.
+		// Key: `sizeof((CollectionId, AccountId, AccountId))` bytes.
+		// Value: `sizeof((Option<BlockNumber>, Balance))` bytes.
+		#[pallet::constant]
+		type CollectionApprovalDeposit: Get<DepositBalanceOf<Self, I>>;
+
+		/// The basic amount of funds that must be reversed for an account balance.
+		// Key: `sizeof((CollectionId, AccountId))` bytes.
+		// Value: `sizeof((u32, Some(AccountId, Balance)))` bytes.
+		#[pallet::constant]
+		type BalanceDeposit: Get<DepositBalanceOf<Self, I>>;
 	}
 
 	/// Details of a collection.
@@ -435,8 +441,7 @@ pub mod pallet {
 		T::CollectionId,
 		Blake2_128Concat,
 		T::AccountId,
-		u32,
-		ValueQuery,
+		(u32, AccountDepositOf<T, I>),
 	>;
 
 	/// Permission for a delegate to transfer all owner's collection items.
@@ -1086,7 +1091,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
 
-			Self::do_transfer(collection, item, dest, |_, details| {
+			Self::do_transfer(&origin, collection, item, dest, |_, details| {
 				if details.owner != origin {
 					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
 				}

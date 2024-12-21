@@ -89,6 +89,9 @@ pub(super) type PreSignedAttributesOf<T, I = ()> = PreSignedAttributes<
 	<T as SystemConfig>::AccountId,
 	BlockNumberFor<T>,
 >;
+/// A type alias for the depositor account and its associated deposited amount.
+pub(super) type AccountDepositOf<T, I = ()> =
+	(<T as SystemConfig>::AccountId, DepositBalanceOf<T, I>);
 
 /// Information about a collection.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
