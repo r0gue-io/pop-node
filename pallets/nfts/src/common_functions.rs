@@ -92,20 +92,22 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
 	}
 
-	/// Increase the number of `collection` items owned by the `account`. If the `account` does not
-	/// have an existing balance, create a new `AccountBalance` record and reserve `deposit_amount`
-	/// from the `deposit_account`.
+	/// Increment the number of items in the `collection` owned by the `owner`. If no entry exists
+	/// for the `owner` in `AccountBalance`, create a new record and reserve `deposit_amount` from
+	/// the `deposit_account`.
 	pub(crate) fn increment_account_balance(
 		collection: T::CollectionId,
-		account: &T::AccountId,
-		deposit_account: T::AccountId,
-		deposit_amount: DepositBalanceOf<T, I>,
+		owner: &T::AccountId,
+		(deposit_account, deposit_amount): (
+			&<T as SystemConfig>::AccountId,
+			DepositBalanceOf<T, I>,
+		),
 	) -> DispatchResult {
-		AccountBalance::<T, I>::mutate(collection, account, |maybe_balance| -> DispatchResult {
+		AccountBalance::<T, I>::mutate(collection, owner, |maybe_balance| -> DispatchResult {
 			match maybe_balance {
 				None => {
 					T::Currency::reserve(&deposit_account, deposit_amount)?;
-					*maybe_balance = Some((1, (deposit_account, deposit_amount)));
+					*maybe_balance = Some((1, (deposit_account.clone(), deposit_amount)));
 				},
 				Some((balance, _deposit)) => {
 					balance.saturating_inc();
@@ -115,23 +117,23 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		})
 	}
 
-	/// Reduce the number of `collection` items owned by the `account`. If the `account` balance
-	/// reaches zero after the reduction, remove the `AccountBalance` record and unreserve the
-	/// associated deposited funds.
+	/// Decrement the number of `collection` items owned by the `owner`. If the `owner`'s item
+	/// count reaches zero after the reduction, remove the `AccountBalance` record and unreserve
+	/// the deposited funds.
 	pub(crate) fn decrement_account_balance(
 		collection: T::CollectionId,
-		account: &T::AccountId,
+		owner: &T::AccountId,
 	) -> DispatchResult {
 		AccountBalance::<T, I>::try_mutate_exists(
 			collection,
-			account,
+			owner,
 			|maybe_balance| -> DispatchResult {
-				let (balance, (depositor_account, deposit_amount)) =
+				let (balance, (deposit_account, deposit_amount)) =
 					maybe_balance.as_mut().ok_or(Error::<T, I>::NoItemOwned)?;
 
 				*balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
 				if *balance == 0 {
-					T::Currency::unreserve(depositor_account, *deposit_amount);
+					T::Currency::unreserve(deposit_account, *deposit_amount);
 					*maybe_balance = None;
 				}
 				Ok(())

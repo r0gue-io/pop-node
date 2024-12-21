@@ -1029,7 +1029,7 @@ impl WeightInfo for () {
 			.saturating_add(RocksDbWeight::get().reads(6_u64))
 			.saturating_add(RocksDbWeight::get().writes(8_u64))
 	}
-/// Storage: `Nfts::Collection` (r:1 w:0)
+    /// Storage: `Nfts::Collection` (r:1 w:0)
 	/// Proof: `Nfts::Collection` (`max_values`: None, `max_size`: Some(84), added: 2559, mode: `MaxEncodedLen`)
 	/// Storage: `Nfts::Attribute` (r:1 w:0)
 	/// Proof: `Nfts::Attribute` (`max_values`: None, `max_size`: Some(479), added: 2954, mode: `MaxEncodedLen`)

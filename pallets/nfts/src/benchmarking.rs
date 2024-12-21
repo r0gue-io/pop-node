@@ -274,6 +274,7 @@ benchmarks_instance_pallet! {
 	mint {
 		let (collection, caller, caller_lookup) = create_collection::<T, I>();
 		let item = T::Helper::item(0);
+		T::Currency::make_free_balance_be(&caller, T::Currency::minimum_balance() + T::CollectionDeposit::get() + T::BalanceDeposit::get());
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item, caller_lookup, None)
 	verify {
 		assert_last_event::<T, I>(Event::Issued { collection, item, owner: caller }.into());
@@ -282,6 +283,7 @@ benchmarks_instance_pallet! {
 	force_mint {
 		let (collection, caller, caller_lookup) = create_collection::<T, I>();
 		let item = T::Helper::item(0);
+		T::Currency::make_free_balance_be(&caller, T::Currency::minimum_balance() + T::CollectionDeposit::get() + T::BalanceDeposit::get());
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item, caller_lookup, default_item_config())
 	verify {
 		assert_last_event::<T, I>(Event::Issued { collection, item, owner: caller }.into());
@@ -301,7 +303,7 @@ benchmarks_instance_pallet! {
 
 		let target: T::AccountId = account("target", 0, SEED);
 		let target_lookup = T::Lookup::unlookup(target.clone());
-		T::Currency::make_free_balance_be(&target, DepositBalanceOf::<T, I>::max_value());
+		T::Currency::make_free_balance_be(&target, T::BalanceDeposit::get() + T::BalanceDeposit::get());
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item, target_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::Transferred { collection, item, from: caller, to: target }.into());
@@ -667,7 +669,7 @@ benchmarks_instance_pallet! {
 		let price = ItemPrice::<T, I>::from(0u32);
 		let origin = SystemOrigin::Signed(seller.clone()).into();
 		Nfts::<T, I>::set_price(origin, collection, item, Some(price), Some(buyer_lookup))?;
-		T::Currency::make_free_balance_be(&buyer, DepositBalanceOf::<T, I>::max_value());
+		T::Currency::make_free_balance_be(&buyer, T::Currency::minimum_balance() + price + T::BalanceDeposit::get());
 	}: _(SystemOrigin::Signed(buyer.clone()), collection, item, price)
 	verify {
 		assert_last_event::<T, I>(Event::ItemBought {
@@ -757,7 +759,7 @@ benchmarks_instance_pallet! {
 		let duration = T::MaxDeadlineDuration::get();
 		let target: T::AccountId = account("target", 0, SEED);
 		let target_lookup = T::Lookup::unlookup(target.clone());
-		T::Currency::make_free_balance_be(&target, DepositBalanceOf::<T, I>::max_value());
+		T::Currency::make_free_balance_be(&target, T::BalanceDeposit::get() + T::BalanceDeposit::get());
 		let origin = SystemOrigin::Signed(caller.clone());
 		frame_system::Pallet::<T>::set_block_number(One::one());
 		Nfts::<T, I>::transfer(origin.clone().into(), collection, item2, target_lookup)?;
