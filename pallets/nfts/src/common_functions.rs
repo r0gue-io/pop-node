@@ -106,7 +106,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		AccountBalance::<T, I>::mutate(collection, owner, |maybe_balance| -> DispatchResult {
 			match maybe_balance {
 				None => {
-					T::Currency::reserve(&deposit_account, deposit_amount)?;
+					T::Currency::reserve(deposit_account, deposit_amount)?;
 					*maybe_balance = Some((1, (deposit_account.clone(), deposit_amount)));
 				},
 				Some((balance, _deposit)) => {

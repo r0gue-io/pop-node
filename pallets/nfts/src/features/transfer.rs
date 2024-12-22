@@ -99,9 +99,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			};
 		// The destination account covers the `BalanceDeposit` if it has sufficient balance.
 		// Otherwise, the caller is accountable for it.
-		let deposit_account = match T::Currency::free_balance(&dest) >= T::BalanceDeposit::get() {
+		let deposit_account = match T::Currency::can_reserve(&dest, T::BalanceDeposit::get()) {
 			true => &dest,
-			false => &caller,
+			false => caller,
 		};
 
 		Self::increment_account_balance(collection, &dest, (deposit_account, deposit_amount))?;
