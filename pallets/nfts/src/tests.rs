@@ -1835,6 +1835,7 @@ fn burn_works() {
 			Some(account(4)),
 		));
 
+		// Throws error `UnknownItem` if burning an unknown collection item.
 		assert_noop!(
 			Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42),
 			Error::<Test>::UnknownItem
@@ -1855,6 +1856,15 @@ fn burn_works() {
 			default_item_config()
 		));
 
+		// Throws error `NoItemOwned` due to `do_transfer`.
+		let account_balance = AccountBalance::take(0, account(5));
+		assert_noop!(
+			Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42),
+			Error::<Test>::NoItemOwned
+		);
+		AccountBalance::set(0, account(5), account_balance);
+
+		// Throws error `NoPermission`.
 		assert_noop!(
 			Nfts::burn(RuntimeOrigin::signed(account(0)), 0, 42),
 			Error::<Test>::NoPermission
