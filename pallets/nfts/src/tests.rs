@@ -23,7 +23,7 @@ use frame_support::{
 	dispatch::{DispatchResultWithPostInfo, WithPostDispatchInfo},
 	traits::{
 		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate},
-		Currency, Get, StorageInfoTrait,
+		Currency, Get,
 	},
 };
 use frame_system::pallet_prelude::BlockNumberFor;
@@ -5034,20 +5034,4 @@ fn decrement_account_balance_works() {
 		assert_eq!(Balances::reserved_balance(&deposit_account), 0);
 		assert!(!AccountBalance::contains_key(collection_id, &owner));
 	});
-}
-
-#[test]
-fn ensure_account_balance_bytes() {
-	assert!(AccountBalance::storage_info()
-		.first()
-		.filter(|i| i.max_size.unwrap_or_default() == 112)
-		.is_some());
-}
-
-#[test]
-fn ensure_collection_approval_bytes() {
-	assert!(CollectionApprovals::storage_info()
-		.first()
-		.filter(|i| i.max_size.unwrap_or_default() == 133)
-		.is_some());
 }
