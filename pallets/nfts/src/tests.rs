@@ -37,8 +37,8 @@ use sp_runtime::{
 
 use crate::{mock::*, Event, SystemConfig, *};
 
-type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 type AccountBalance = crate::AccountBalance<Test>;
+type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 type CollectionApprovals = crate::CollectionApprovals<Test>;
 type CollectionApprovalDeposit = <Test as Config>::CollectionApprovalDeposit;
 type CollectionId = <Test as Config>::CollectionId;
