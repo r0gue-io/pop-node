@@ -19,7 +19,7 @@
 
 use alloc::vec::Vec;
 
-use frame_support::pallet_prelude::*;
+use frame_support::{pallet_prelude::*, sp_runtime::ArithmeticError};
 
 use crate::*;
 
@@ -90,6 +90,55 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let next_id = collection.increment();
 		NextCollectionId::<T, I>::set(next_id);
 		Self::deposit_event(Event::NextCollectionIdIncremented { next_id });
+	}
+
+	/// Increment the number of items in the `collection` owned by the `owner`. If no entry exists
+	/// for the `owner` in `AccountBalance`, create a new record and reserve `deposit_amount` from
+	/// the `deposit_account`.
+	pub(crate) fn increment_account_balance(
+		collection: T::CollectionId,
+		owner: &T::AccountId,
+		(deposit_account, deposit_amount): (
+			&<T as SystemConfig>::AccountId,
+			DepositBalanceOf<T, I>,
+		),
+	) -> DispatchResult {
+		AccountBalance::<T, I>::mutate(collection, owner, |maybe_balance| -> DispatchResult {
+			match maybe_balance {
+				None => {
+					T::Currency::reserve(deposit_account, deposit_amount)?;
+					*maybe_balance = Some((1, (deposit_account.clone(), deposit_amount)));
+				},
+				Some((balance, _deposit)) => {
+					balance.saturating_inc();
+				},
+			}
+			Ok(())
+		})
+	}
+
+	/// Decrement the number of `collection` items owned by the `owner`. If the `owner`'s item
+	/// count reaches zero after the reduction, remove the `AccountBalance` record and unreserve
+	/// the deposited funds.
+	pub(crate) fn decrement_account_balance(
+		collection: T::CollectionId,
+		owner: &T::AccountId,
+	) -> DispatchResult {
+		AccountBalance::<T, I>::try_mutate_exists(
+			collection,
+			owner,
+			|maybe_balance| -> DispatchResult {
+				let (balance, (deposit_account, deposit_amount)) =
+					maybe_balance.as_mut().ok_or(Error::<T, I>::NoItemOwned)?;
+
+				*balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
+				if *balance == 0 {
+					T::Currency::unreserve(deposit_account, *deposit_amount);
+					*maybe_balance = None;
+				}
+				Ok(())
+			},
+		)
 	}
 
 	#[allow(missing_docs)]

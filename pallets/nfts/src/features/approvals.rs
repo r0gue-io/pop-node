@@ -216,7 +216,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
 			Error::<T, I>::MethodDisabled
 		);
-		ensure!(AccountBalance::<T, I>::get(collection, &owner) > 0, Error::<T, I>::NoItemOwned);
+		ensure!(
+			AccountBalance::<T, I>::get(collection, &owner)
+				.filter(|(balance, _)| *balance > 0)
+				.is_some(),
+			Error::<T, I>::NoItemOwned
+		);
 
 		let collection_config = Self::get_collection_config(&collection)?;
 		ensure!(
