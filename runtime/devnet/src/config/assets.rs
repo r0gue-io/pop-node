@@ -41,7 +41,7 @@ parameter_types! {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-struct KeyLimit<const N: u32>;
+pub struct KeyLimit<const N: u32>;
 impl<const N: u32> Get<u32> for KeyLimit<N> {
 	fn get() -> u32 {
 		N

@@ -11,7 +11,8 @@ pub use pallet_nfts::{
 	CollectionSetting, CollectionSettings, DestroyWitness, ItemDeposit, ItemDetails, ItemMetadata,
 	ItemSetting, MintSettings, MintType, MintWitness,
 };
-use sp_runtime::traits::StaticLookup;
+use sp_runtime::{traits::StaticLookup, BoundedVec};
+use types::*;
 use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -19,29 +20,8 @@ mod benchmarking;
 mod impls;
 #[cfg(test)]
 mod tests;
+pub mod types;
 pub mod weights;
-
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
-type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
-type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
-type NftsInstanceOf<T> = <T as Config>::NftsInstance;
-type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
-type CollectionIdOf<T> =
-	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
-type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
-type ItemPriceOf<T> = BalanceOf<T>;
-type CollectionDetailsFor<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
-type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
-type CollectionConfigFor<T> =
-	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
-// Type aliases for pallet-nfts storage items.
-pub(super) type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
-pub(super) type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
-pub(super) type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
-pub(super) type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {

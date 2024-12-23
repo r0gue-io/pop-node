@@ -109,15 +109,6 @@ pub(super) fn destroy(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn collection(
-	addr: &AccountId32,
-	collection: CollectionId,
-) -> Result<Option<CollectionDetails>, Error> {
-	let result = do_bare_call("collection", &addr, collection.encode());
-	decoded::<Result<Option<CollectionDetails>, Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-}
-
 pub(super) fn set_attribute(
 	addr: &AccountId32,
 	collection: CollectionId,
@@ -272,7 +263,7 @@ pub(super) mod nfts {
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(to.clone()),
 			collection,
-			Some(item),
+			item,
 			operator.clone().into(),
 			None
 		));
