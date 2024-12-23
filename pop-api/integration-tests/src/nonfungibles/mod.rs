@@ -61,6 +61,7 @@ fn balance_of_works() {
 fn allowance_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
 		// No collection item is created.
 		assert_eq!(
 			allowance(&addr.clone(), COLLECTION, None, addr.clone(), ALICE),
@@ -83,7 +84,7 @@ fn transfer_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		// Collection item does not exist. Throws error `UnknownItem`.
+		// Collection item does not exist, throws module error `UnknownItem`.
 		assert_eq!(
 			transfer(&addr, COLLECTION, ITEM, ALICE),
 			Err(Module { index: 50, error: [20, 0] })
@@ -121,7 +122,7 @@ fn approve_item_transfer_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		// Collection item does not exist.
+		// Collection does not exist, throws module error `UnknownItem`.
 		assert_eq!(
 			approve(&addr, COLLECTION, Some(ITEM), ALICE, true),
 			Err(Module { index: 50, error: [20, 0] })
@@ -146,7 +147,7 @@ fn approve_collection_transfer_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		// Account ownes zero items in the collection.
+		// Collection does not exist, throws module error `NoItemOwned`.
 		assert_eq!(
 			approve(&addr, COLLECTION, None, ALICE, true),
 			Err(Module { index: 50, error: [45, 0] })
