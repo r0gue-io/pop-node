@@ -24,10 +24,10 @@ mod dao {
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub enum ProposalStatus {
-		SUBMITTED,
-		APPROVED,
-		REJECTED,
-		EXECUTED,
+		Submitted,
+		Approved,
+		Rejected,
+		Executed,
 	}
 
 	/// Structure of the proposal used by the Dao governance sysytem
@@ -50,7 +50,7 @@ mod dao {
 		// Balance representing the total votes against this proposal
 		pub no_votes: Balance,
 
-		// Flag that indicates if the proposal was executed
+		// Flag that indicates if the proposal was Executed
 		pub status: ProposalStatus,
 
 		// The recipient of the proposal
@@ -110,7 +110,7 @@ mod dao {
 
 	impl Dao {
 		/// Instantiate a new Dao contract and create the associated token
-
+		///
 		/// # Parameters:
 		/// - `token_id` - The identifier of the token to be created
 		/// - `voting_period` - Amount of blocks during which members can cast their votes
@@ -170,7 +170,7 @@ mod dao {
 				vote_end,
 				yes_votes: 0,
 				no_votes: 0,
-				status: ProposalStatus::SUBMITTED,
+				status: ProposalStatus::Submitted,
 				beneficiary,
 				amount,
 				proposal_id,
@@ -197,14 +197,12 @@ mod dao {
 			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
 			if current_block > proposal.vote_end {
-				match proposal.status {
-					ProposalStatus::SUBMITTED =>
-						if proposal.yes_votes > proposal.no_votes {
-							proposal.status = ProposalStatus::APPROVED;
-						} else {
-							proposal.status = ProposalStatus::REJECTED;
-						},
-					_ => (),
+				if proposal.status == ProposalStatus::Submitted {
+					if proposal.yes_votes > proposal.no_votes {
+						proposal.status = ProposalStatus::Approved;
+					} else {
+						proposal.status = ProposalStatus::Rejected;
+					}
 				};
 
 				return Err(Error::VotingPeriodEnded);
@@ -236,7 +234,7 @@ mod dao {
 			Ok(())
 		}
 
-		/// Enact a proposal approved by the Dao members
+		/// Enact a proposal Approved by the Dao members
 		///
 		/// # Parameters
 		/// - `proposal_id` - Identifier of the proposal
@@ -249,7 +247,7 @@ mod dao {
 				return Err(Error::VotingPeriodNotEnded);
 			}
 
-			if proposal.status == ProposalStatus::EXECUTED {
+			if proposal.status == ProposalStatus::Executed {
 				return Err(Error::ProposalExecuted);
 			}
 
@@ -277,7 +275,7 @@ mod dao {
 					value: proposal.amount,
 				});
 
-				proposal.status = ProposalStatus::EXECUTED;
+				proposal.status = ProposalStatus::Executed;
 
 				self.proposals.insert(proposal_id, &proposal);
 				Ok(())
@@ -324,18 +322,12 @@ mod dao {
 
 		#[ink(message)]
 		pub fn positive_votes(&mut self, proposal_id: u32) -> Option<Balance> {
-			match &self.proposals.get(proposal_id) {
-				Some(x) => Some(x.yes_votes),
-				_ => None,
-			}
+			self.proposals.get(proposal_id).as_ref().map(|x| x.yes_votes)
 		}
 
 		#[ink(message)]
 		pub fn negative_votes(&mut self, proposal_id: u32) -> Option<Balance> {
-			match &self.proposals.get(proposal_id) {
-				Some(x) => Some(x.no_votes),
-				_ => None,
-			}
+			self.proposals.get(proposal_id).as_ref().map(|x| x.no_votes)
 		}
 	}
 
@@ -357,10 +349,10 @@ mod dao {
 		/// The voting period for this proposal is still ongoing
 		VotingPeriodNotEnded,
 
-		/// This proposal has already been executed
+		/// This proposal has already been Executed
 		ProposalExecuted,
 
-		/// This proposal has been rejected
+		/// This proposal has been Rejected
 		ProposalRejected,
 
 		/// The proposal description is too long
