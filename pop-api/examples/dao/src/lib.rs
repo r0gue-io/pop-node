@@ -20,6 +20,16 @@ mod tests;
 mod dao {
 	use super::*;
 
+	#[derive(Debug, Clone, PartialEq)]
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+	pub enum ProposalStatus{
+		SUBMITTED,
+		APPROVED,
+		REJECTED,
+		EXECUTED,
+	}
+
 	/// Structure of the proposal used by the Dao governance sysytem
 	#[derive(Debug, Clone)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -41,7 +51,7 @@ mod dao {
 		pub no_votes: Balance,
 
 		// Flag that indicates if the proposal was executed
-		pub executed: bool,
+		pub status: ProposalStatus,
 
 		// The recipient of the proposal
 		pub beneficiary: AccountId,
@@ -161,7 +171,7 @@ mod dao {
 				vote_end,
 				yes_votes: 0,
 				no_votes: 0,
-				executed: false,
+				status: ProposalStatus::SUBMITTED,
 				beneficiary,
 				amount,
 				proposal_id,
@@ -185,15 +195,27 @@ mod dao {
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let current_block = self.env().block_number();
-			let proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
+			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
-			if current_block < proposal.vote_start || current_block > proposal.vote_end {
+			if current_block > proposal.vote_end {
+				match proposal.status{
+					ProposalStatus::SUBMITTED => {
+						if proposal.yes_votes > proposal.no_votes {
+							proposal.status = ProposalStatus::APPROVED;
+						}else{
+							proposal.status = ProposalStatus::REJECTED;
+						}
+					},
+					_ => () 
+				};
+				
 				return Err(Error::VotingPeriodEnded);
 			}
 
 			let member = self.members.get(caller).ok_or(Error::MemberNotFound)?;
 
 			if member.last_vote >= proposal.vote_start {
+
 				return Err(Error::AlreadyVoted);
 			}
 
@@ -201,7 +223,7 @@ mod dao {
 				true => proposal.yes_votes,  
 				false => proposal.no_votes  
 			  };  
-			  
+			
 			  let _ = votes.saturating_add(member.voting_power);  
 
 			self.proposals.insert(proposal_id, &proposal);
@@ -230,7 +252,7 @@ mod dao {
 				return Err(Error::VotingPeriodNotEnded);
 			}
 
-			if proposal.executed == true {
+			if proposal.status == ProposalStatus::EXECUTED {
 				return Err(Error::ProposalExecuted);
 			}
 
@@ -256,7 +278,7 @@ mod dao {
 					value: proposal.amount,
 				});
 
-				proposal.executed = true;
+				proposal.status = ProposalStatus::EXECUTED;
 
 				self.proposals.insert(proposal_id, &proposal);
 				Ok(())
