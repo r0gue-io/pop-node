@@ -13,7 +13,6 @@ use pop_api::{
 	},
 };
 
-pub const STRINGLIMIT: u8 = u8::MAX;
 #[cfg(test)]
 mod tests;
 
@@ -44,7 +43,7 @@ mod dao {
 		// Flag that indicates if the proposal was executed
 		pub executed: bool,
 
-		// AccountId of the recipient of the proposal
+		// The recipient of the proposal
 		pub beneficiary: AccountId,
 
 		// Amount of tokens to be awarded to the beneficiary
@@ -101,6 +100,7 @@ mod dao {
 
 	impl Dao {
 		/// Instantiate a new Dao contract and create the associated token
+		
 		/// # Parameters:
 		/// - `token_id` - The identifier of the token to be created
 		/// - `voting_period` - Amount of blocks during which members can cast their votes
@@ -151,9 +151,9 @@ mod dao {
 			let current_block = self.env().block_number();
 			let proposal_id: u32 = self.proposals_created.saturating_add(1);
 			let vote_end =
-				current_block.checked_add(self.voting_period).ok_or(Error::ArithmeticOverflow)?;
-			if description.len() >= STRINGLIMIT.into() {
-				return Err(Error::StringLimitReached);
+				current_block.saturating_add(self.voting_period);
+			if description.len() >= u8::MAX.into() {
+				return Err(Error::ExceedeMaxDescriptionLength);
 			}
 			let proposal = Proposal {
 				description,
@@ -185,38 +185,34 @@ mod dao {
 		pub fn vote(&mut self, proposal_id: u32, approve: bool) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let current_block = self.env().block_number();
-			let now = self.env().block_number();
-			// let props = self.proposals.clone();
-
-			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
+			let proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
 			if current_block < proposal.vote_start || current_block > proposal.vote_end {
 				return Err(Error::VotingPeriodEnded);
 			}
 
-			let member = self.members.get(caller).ok_or(Error::NotAMember)?;
+			let member = self.members.get(caller).ok_or(Error::MemberNotFound)?;
 
 			if member.last_vote >= proposal.vote_start {
 				return Err(Error::AlreadyVoted);
 			}
 
-			if approve {
-				proposal.yes_votes = proposal.yes_votes.saturating_add(member.voting_power);
-			} else {
-				proposal.no_votes = proposal.no_votes.saturating_add(member.voting_power);
-			}
+			let votes = match approve {  
+				true => proposal.yes_votes,  
+				false => proposal.no_votes  
+			  };  
+			  
+			  let _ = votes.saturating_add(member.voting_power);  
 
-			debug_assert!(proposal.yes_votes > 0);
-
-			self.proposals.remove(proposal_id);
 			self.proposals.insert(proposal_id, &proposal);
 
 			self.members.insert(
 				caller,
 				&Member { voting_power: member.voting_power, last_vote: current_block },
 			);
+			self.last_votes.insert(caller, &current_block);
 
-			self.env().emit_event(Voted { who: Some(caller), when: Some(now) });
+			self.env().emit_event(Voted { who: Some(caller), when: Some(current_block) });
 
 			Ok(())
 		}
@@ -227,19 +223,15 @@ mod dao {
 		/// - `proposal_id` - Identifier of the proposal
 		#[ink(message)]
 		pub fn execute_proposal(&mut self, proposal_id: u32) -> Result<(), Error> {
-			let vote_end = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?.vote_end;
+			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 
 			// Check the voting period
-			if self.env().block_number() <= vote_end {
+			if self.env().block_number() <= proposal.vote_end {
 				return Err(Error::VotingPeriodNotEnded);
 			}
 
-			// If we've passed the checks, now we can mutably borrow the proposal
-			// let proposal_id_usize = proposal_id as usize;
-			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
-
 			if proposal.executed == true {
-				return Err(Error::ProposalAlreadyExecuted);
+				return Err(Error::ProposalExecuted);
 			}
 
 			if proposal.yes_votes > proposal.no_votes {
@@ -248,8 +240,7 @@ mod dao {
 				// Execute the proposal
 				let treasury_balance = api::balance_of(self.token_id, contract).unwrap_or_default();
 				if treasury_balance < proposal.amount {
-					// Not enough tokens in treasury to distribute
-					return Err(Error::TryAgainLater);
+					return Err(Error::NotEnoughFundsAvailable);
 				}
 
 				api::transfer(self.token_id, proposal.beneficiary, proposal.amount)
@@ -267,7 +258,6 @@ mod dao {
 
 				proposal.executed = true;
 
-				self.proposals.remove(proposal_id);
 				self.proposals.insert(proposal_id, &proposal);
 				Ok(())
 			} else {
@@ -294,7 +284,7 @@ mod dao {
 				self.members.get(caller).unwrap_or(Member { voting_power: 0, last_vote: 0 });
 
 			let voting_power =
-				member.voting_power.checked_add(amount).ok_or(Error::ArithmeticOverflow)?;
+				member.voting_power.saturating_add(amount);
 			self.members
 				.insert(caller, &Member { voting_power, last_vote: member.last_vote });
 
@@ -312,37 +302,36 @@ mod dao {
 			self.members.get(account).unwrap_or(Member { voting_power: 0, last_vote: 0 })
 		}
 
-		#[ink(message)]
-		pub fn get_block_number(&mut self) -> Option<BlockNumber> {
-			Some(self.env().block_number())
-		}
 
 		#[ink(message)]
 		pub fn positive_votes(&mut self, proposal_id: u32) -> Option<Balance> {
-			let proposal = &self.proposals.get(proposal_id).unwrap();
-			Some(proposal.yes_votes)
+			match &self.proposals.get(proposal_id){
+				Some(x) => Some(x.yes_votes),
+				_ => None,
+			}
+
 		}
 
 		#[ink(message)]
 		pub fn negative_votes(&mut self, proposal_id: u32) -> Option<Balance> {
-			let proposal = &self.proposals.get(proposal_id).unwrap();
-			Some(proposal.no_votes)
-		}
-	}
+			match &self.proposals.get(proposal_id){
+				Some(x) => Some(x.no_votes),
+				_ => None,
+			}
+	}}
 
 	#[derive(Debug, PartialEq, Eq)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	pub enum Error {
-		ArithmeticOverflow,
 		ProposalNotFound,
 		VotingPeriodEnded,
-		NotAMember,
+		MemberNotFound,
 		AlreadyVoted,
 		VotingPeriodNotEnded,
-		ProposalAlreadyExecuted,
+		ProposalExecuted,
 		ProposalRejected,
-		StringLimitReached,
-		TryAgainLater,
+		ExceedeMaxDescriptionLength,
+		NotEnoughFundsAvailable,
 		None,
 		Psp22(Psp22Error),
 	}
@@ -353,12 +342,12 @@ mod dao {
 		}
 	}
 
-	impl From<Error> for Psp22Error {
+	/*impl From<Error> for Psp22Error {
 		fn from(error: Error) -> Self {
 			match error {
 				Error::Psp22(psp22_error) => psp22_error,
 				_ => Psp22Error::Custom(String::from("Unknown error")),
 			}
 		}
-	}
+	}*/
 }

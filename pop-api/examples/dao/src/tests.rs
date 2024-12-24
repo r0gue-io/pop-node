@@ -214,7 +214,7 @@ fn vote_fails_if_not_a_member(mut session: Session) {
 	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	session.set_actor(NON_MEMBER);
-	assert_eq!(vote(&mut session, 1, true), Err(Error::NotAMember));
+	assert_eq!(vote(&mut session, 1, true), Err(Error::MemberNotFound));
 }
 
 #[drink::test(sandbox = Pop)]
@@ -319,7 +319,7 @@ fn same_proposal_consecutive_claim_fails(mut session: Session) {
 	);
 	session.sandbox().build_block();
 	// Second consecutive claim for same proposal fails
-	assert_eq!(execute_proposal(&mut session, 1), Err(Error::ProposalAlreadyExecuted));
+	assert_eq!(execute_proposal(&mut session, 1), Err(Error::ProposalExecuted));
 }
 
 #[drink::test(sandbox = Pop)]
