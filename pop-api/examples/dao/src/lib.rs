@@ -345,16 +345,34 @@ mod dao {
 	#[derive(Debug, PartialEq, Eq)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	pub enum Error {
+		/// This proposal does not exists
 		ProposalNotFound,
+
+		/// The end of the voting period has been reached
 		VotingPeriodEnded,
+
+		/// User is not a member of this Dao
 		MemberNotFound,
+
+		/// User already voted for this proposal
 		AlreadyVoted,
+
+		/// The voting period for this proposal is still ongoing
 		VotingPeriodNotEnded,
+
+		/// This proposal has already been executed
 		ProposalExecuted,
+
+		/// This proposal has been rejected
 		ProposalRejected,
+
+		/// The proposal description is too long
 		ExceedeMaxDescriptionLength,
+
+		/// There are not enough funds in the Dao treasury 
 		NotEnoughFundsAvailable,
-		None,
+
+		/// PSP22 specific error
 		Psp22(Psp22Error),
 	}
 
