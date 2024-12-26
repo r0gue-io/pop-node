@@ -36,10 +36,8 @@ pub struct Pop {
 impl Default for Pop {
 	fn default() -> Self {
 		// Initialising genesis state, providing accounts with an initial balance.
-
 		let balances: Vec<(AccountId, u128)> =
 			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
-		// ink::env::test::advance_block::<ink::env::DefaultEnvironment>();
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
@@ -51,11 +49,7 @@ drink::impl_sandbox!(Pop, Runtime, ALICE);
 // Deployment and constructor method tests.
 
 fn deploy_with_default(session: &mut Session<Pop>) -> Result<AccountId, Psp22Error> {
-	deploy(
-		session,
-		"new",
-		vec![TOKEN.to_string(), VOTING_PERIOD.to_string(), MIN_BALANCE.to_string()],
-	)
+	deploy(session, "new", vec![TOKEN.to_string(), MIN_BALANCE.to_string()])
 }
 
 #[drink::test(sandbox = Pop)]
