@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{
-	prelude::{string::String, vec::Vec},
+	prelude::vec::Vec,
 	storage::Mapping,
 };
 use pop_api::{
