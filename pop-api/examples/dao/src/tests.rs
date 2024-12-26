@@ -128,6 +128,20 @@ fn member_create_proposal_works(mut session: Session) {
 			admin: account_id_from_slice(&contract),
 		}
 	);
+
+	// Another proposal created by Bob
+	let description_bis = "Funds for creation of another Dao contract".to_string().as_bytes().to_vec();
+	session.set_actor(BOB);
+	assert_ok!(create_proposal(&mut session, ALICE, amount, description_bis));
+	assert_last_contract_event!(
+		&session,
+		Created {
+			id: 2,
+			creator: account_id_from_slice(&BOB),
+			admin: account_id_from_slice(&contract),
+		}
+	);
+
 }
 
 #[drink::test(sandbox = Pop)]
@@ -154,8 +168,9 @@ fn members_vote_system_works(mut session: Session) {
 		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
 	let prop = proposal(&mut session, 1).unwrap();
-	let yes = prop.yes_votes;
-	assert_eq!(yes > 0, true);
+	let infos = prop.votes_infos.unwrap();
+	assert_eq!(infos.yes_votes > 0, true);
+	assert_eq!(infos.no_votes == 0, true);
 }
 
 #[drink::test(sandbox = Pop)]

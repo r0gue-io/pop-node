@@ -35,29 +35,39 @@ mod dao {
 		// Description of the proposal
 		pub description: Vec<u8>,
 
-		// Beginnning of the voting period for this proposal
-		pub vote_start: BlockNumber,
-
-		// End of the voting period for this proposal
-		pub vote_end: BlockNumber,
-
-		// Balance representing the total votes for this proposal
-		pub yes_votes: Balance,
-
-		// Balance representing the total votes against this proposal
-		pub no_votes: Balance,
-
 		// Flag that indicates if the proposal was Executed
 		pub status: ProposalStatus,
 
-		// The recipient of the proposal
-		pub beneficiary: AccountId,
-
-		// Amount of tokens to be awarded to the beneficiary
-		pub amount: Balance,
-
 		// Identifier of the proposal
 		pub proposal_id: u32,
+
+		// Information relative to voting
+		pub votes_infos: Option<Votes>,
+
+		// Information relative to proposal execution if approved
+		pub transaction_infos: Option<Transaction>,
+	}
+
+	impl Default for Proposal {
+		fn default() -> Self {
+			let fetch_dao = ink::env::get_contract_storage::<u32, Dao>(&0u32)
+				.expect("The dao should have been created already");
+
+			// The dao is supposed to exist at this point
+			let dao = fetch_dao.unwrap_or_default();
+			let voting_period = dao.voting_period;
+			let current_block = ink::env::block_number::<Environment>();
+			let vote_end = current_block.saturating_add(voting_period);
+			let votes_infos =
+				Some(Votes { vote_start: current_block, vote_end, yes_votes: 0, no_votes: 0 });
+			Proposal {
+				description: Vec::new(),
+				status: ProposalStatus::Submitted,
+				proposal_id: 0,
+				votes_infos,
+				transaction_infos: None,
+			}
+		}
 	}
 
 	/// Representation of a member in the voting system
@@ -72,9 +82,37 @@ mod dao {
 		pub last_vote: BlockNumber,
 	}
 
+	#[derive(Debug, Clone)]
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+	pub struct Votes {
+		// Beginnning of the voting period for this proposal
+		pub vote_start: BlockNumber,
+
+		// End of the voting period for this proposal
+		pub vote_end: BlockNumber,
+
+		// Balance representing the total votes for this proposal
+		pub yes_votes: Balance,
+
+		// Balance representing the total votes against this proposal
+		pub no_votes: Balance,
+	}
+
+	#[derive(Debug, Clone)]
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+	pub struct Transaction {
+		// The recipient of the proposal
+		pub beneficiary: AccountId,
+		// Amount of tokens to be awarded to the beneficiary
+		pub amount: Balance,
+	}
+
 	/// Structure of a DAO (Decentralized Autonomous Organization)
 	/// that uses Psp22 to manage the Dao treasury and funds projects
 	/// selected by the members through governance
+	#[derive(Default)]
 	#[ink(storage)]
 	pub struct Dao {
 		// Funding proposals
@@ -151,32 +189,28 @@ mod dao {
 			&mut self,
 			beneficiary: AccountId,
 			amount: Balance,
-			description: Vec<u8>,
+			mut description: Vec<u8>,
 		) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
-			let current_block = self.env().block_number();
-			let proposal_id: u32 = self.proposals_created.saturating_add(1);
-			let vote_end = current_block.saturating_add(self.voting_period);
+			self.proposals_created = self.proposals_created.saturating_add(1);
+
 			if description.len() >= u8::MAX.into() {
 				return Err(Error::ExceedeMaxDescriptionLength);
 			}
-			let proposal = Proposal {
-				description,
-				vote_start: current_block,
-				vote_end,
-				yes_votes: 0,
-				no_votes: 0,
-				status: ProposalStatus::Submitted,
-				beneficiary,
-				amount,
-				proposal_id,
-			};
 
-			self.proposals.insert(proposal_id, &proposal);
+			let mut proposal = Proposal { proposal_id: self.proposals_created, ..Default::default() };
+			proposal.description.append(&mut description);
+			let transaction_infos = Transaction { beneficiary, amount };
+			proposal.transaction_infos = Some(transaction_infos);
 
-			self.env()
-				.emit_event(Created { id: proposal_id, creator: caller, admin: contract });
+			self.proposals.insert(proposal.proposal_id, &proposal);
+
+			self.env().emit_event(Created {
+				id: proposal.proposal_id,
+				creator: caller,
+				admin: contract,
+			});
 
 			Ok(())
 		}
@@ -192,10 +226,11 @@ mod dao {
 			let caller = self.env().caller();
 			let current_block = self.env().block_number();
 			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
+			let mut votes_infos = proposal.votes_infos.ok_or(Error::WrongContract)?;
 
-			if current_block > proposal.vote_end {
+			if current_block > votes_infos.vote_end {
 				if proposal.status == ProposalStatus::Submitted {
-					if proposal.yes_votes > proposal.no_votes {
+					if votes_infos.yes_votes > votes_infos.no_votes {
 						proposal.status = ProposalStatus::Approved;
 					} else {
 						proposal.status = ProposalStatus::Rejected;
@@ -207,18 +242,20 @@ mod dao {
 
 			let member = self.members.get(caller).ok_or(Error::MemberNotFound)?;
 
-			if member.last_vote >= proposal.vote_start {
+			if member.last_vote >= votes_infos.vote_start {
 				return Err(Error::AlreadyVoted);
 			}
 
 			match approve {
 				true => {
-					proposal.yes_votes = proposal.yes_votes.saturating_add(member.voting_power);
+					votes_infos.yes_votes =
+						votes_infos.yes_votes.saturating_add(member.voting_power);
 				},
 				false => {
-					proposal.no_votes = proposal.no_votes.saturating_add(member.voting_power);
+					votes_infos.no_votes = votes_infos.no_votes.saturating_add(member.voting_power);
 				},
 			};
+			proposal.votes_infos = Some(votes_infos);
 
 			self.proposals.insert(proposal_id, &proposal);
 
@@ -240,9 +277,13 @@ mod dao {
 		#[ink(message)]
 		pub fn execute_proposal(&mut self, proposal_id: u32) -> Result<(), Error> {
 			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
+			let votes_infos = proposal.votes_infos.clone().ok_or(Error::WrongContract)?;
+
+			let transaction_infos =
+				proposal.transaction_infos.clone().ok_or(Error::WrongContract)?;
 
 			// Check the voting period
-			if self.env().block_number() <= proposal.vote_end {
+			if self.env().block_number() <= votes_infos.vote_end {
 				return Err(Error::VotingPeriodNotEnded);
 			}
 
@@ -250,28 +291,32 @@ mod dao {
 				return Err(Error::ProposalExecuted);
 			}
 
-			if proposal.yes_votes > proposal.no_votes {
+			if votes_infos.yes_votes > votes_infos.no_votes {
 				let contract = self.env().account_id();
 
 				// Execute the proposal
 				let _treasury_balance = match api::balance_of(self.token_id, contract) {
-					Ok(val) if val > proposal.amount => val,
+					Ok(val) if val > transaction_infos.amount => val,
 					_ => {
 						return Err(Error::NotEnoughFundsAvailable);
 					},
 				};
 
-				api::transfer(self.token_id, proposal.beneficiary, proposal.amount)
-					.map_err(Psp22Error::from)?;
+				api::transfer(
+					self.token_id,
+					transaction_infos.beneficiary,
+					transaction_infos.amount,
+				)
+				.map_err(Psp22Error::from)?;
 				self.env().emit_event(Transfer {
 					from: Some(contract),
-					to: Some(proposal.beneficiary),
-					value: proposal.amount,
+					to: Some(transaction_infos.beneficiary),
+					value: transaction_infos.amount,
 				});
 				self.env().emit_event(Approval {
 					owner: contract,
 					spender: contract,
-					value: proposal.amount,
+					value: transaction_infos.amount,
 				});
 
 				proposal.status = ProposalStatus::Executed;
@@ -354,6 +399,9 @@ mod dao {
 
 		/// There are not enough funds in the Dao treasury
 		NotEnoughFundsAvailable,
+
+		/// The contract creation failed, a new contract is needed
+		WrongContract,
 
 		/// PSP22 specific error
 		Psp22(Psp22Error),
