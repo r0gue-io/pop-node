@@ -213,6 +213,10 @@ fn cancel_collection_approval(
 	}
 }
 
+fn balance_deposit() -> DepositBalanceOf<Test> {
+	<<Test as Config>::BalanceDeposit>::get()
+}
+
 #[test]
 fn basic_setup_works() {
 	new_test_ext().execute_with(|| {
@@ -250,6 +254,7 @@ fn basic_minting_should_work() {
 #[test]
 fn lifecycle_should_work() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
 		Balances::make_free_balance_be(&account(1), 100);
 		Balances::make_free_balance_be(&account(2), 100);
 		assert_ok!(Nfts::create(
@@ -274,7 +279,7 @@ fn lifecycle_should_work() {
 			account(10),
 			default_item_config()
 		));
-		assert_eq!(Balances::reserved_balance(&account(1)), 6 + 1); // 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(&account(1)), 6 + balance_deposit);
 		assert_ok!(Nfts::force_mint(
 			RuntimeOrigin::signed(account(1)),
 			0,
@@ -283,7 +288,7 @@ fn lifecycle_should_work() {
 			default_item_config()
 		));
 		assert_eq!(AccountBalance::get(0, account(20)), Some((1, (account(1), 1))));
-		assert_eq!(Balances::reserved_balance(&account(1)), 7 + 2); // 2 - balance deposit
+		assert_eq!(Balances::reserved_balance(&account(1)), 7 + 2 * balance_deposit);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 70, account(1), None));
 		assert_eq!(AccountBalance::get(0, &account(1)), Some((1, (account(1), 1))));
 		assert_eq!(items(), vec![(account(1), 0, 70), (account(10), 0, 42), (account(20), 0, 69)]);
@@ -291,18 +296,18 @@ fn lifecycle_should_work() {
 		assert_eq!(Collection::<Test>::get(0).unwrap().item_metadatas, 0);
 		assert_eq!(Collection::<Test>::get(0).unwrap().item_configs, 3);
 
-		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 3); // 3 - balance deposit
+		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 3 * balance_deposit);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 70, account(2)));
 		assert!(!AccountBalance::contains_key(0, &account(1)));
 		assert_eq!(AccountBalance::get(0, account(2)), Some((1, (account(2), 1))));
-		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 2); // 2 - balance deposit
-		assert_eq!(Balances::reserved_balance(&account(2)), 1); // 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 2 * balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(2)), balance_deposit);
 
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![42, 42]));
-		assert_eq!(Balances::reserved_balance(&account(1)), 11 + 2); // 2 - balance deposit
+		assert_eq!(Balances::reserved_balance(&account(1)), 11 + 2 * balance_deposit);
 		assert!(ItemMetadataOf::<Test>::contains_key(0, 42));
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 69, bvec![69, 69]));
-		assert_eq!(Balances::reserved_balance(&account(1)), 14 + 2); // 2 - balance deposit
+		assert_eq!(Balances::reserved_balance(&account(1)), 14 + 2 * balance_deposit);
 		assert!(ItemMetadataOf::<Test>::contains_key(0, 69));
 		assert!(ItemConfigOf::<Test>::contains_key(0, 69));
 		let w = Nfts::get_destroy_witness(&0).unwrap();
@@ -714,6 +719,8 @@ fn origin_guards_should_work() {
 #[test]
 fn transfer_owner_should_work() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
+
 		Balances::make_free_balance_be(&account(1), 100);
 		Balances::make_free_balance_be(&account(2), 100);
 		Balances::make_free_balance_be(&account(3), 100);
@@ -754,7 +761,7 @@ fn transfer_owner_should_work() {
 			bvec![0u8; 20],
 		));
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
-		assert_eq!(Balances::reserved_balance(&account(1)), 2); // 1 - metadata deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(&account(1)), 1 + balance_deposit);
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![0u8; 20]));
 		assert_ok!(Nfts::set_accept_ownership(RuntimeOrigin::signed(account(3)), Some(0)));
 		assert_ok!(Nfts::transfer_ownership(RuntimeOrigin::signed(account(2)), 0, account(3)));
@@ -765,10 +772,10 @@ fn transfer_owner_should_work() {
 		assert_eq!(Balances::reserved_balance(&account(3)), 44);
 
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 42, account(2)));
-		// reserved_balance of accounts 1 & 2 should be unchanged:
-		assert_eq!(Balances::reserved_balance(&account(1)), 1);
-		// transfer the collection item reserves account 2's balance.
-		assert_eq!(Balances::reserved_balance(&account(2)), 1); // 1 - balance deposit
+		// Reserve `balance_deposit` from account 2 and reserved balance of account 1 remains the
+		// same.
+		assert_eq!(Balances::reserved_balance(&account(1)), balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(2)), balance_deposit);
 
 		// 2's acceptance from before is reset when it became an owner, so it cannot be transferred
 		// without a fresh acceptance.
@@ -943,6 +950,8 @@ fn set_collection_metadata_should_work() {
 #[test]
 fn set_item_metadata_should_work() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
+
 		Balances::make_free_balance_be(&account(1), 30);
 
 		// Cannot add metadata to unknown item
@@ -960,7 +969,7 @@ fn set_item_metadata_should_work() {
 
 		// Successfully add metadata and take deposit
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![0u8; 20]));
-		assert_eq!(Balances::free_balance(&account(1)), 7); // free_balance - metadata deposit - item deposit - balance deposit
+		assert_eq!(Balances::free_balance(&account(1)), 8 - balance_deposit);
 		assert!(ItemMetadataOf::<Test>::contains_key(0, 42));
 
 		// Force origin works, too.
@@ -968,9 +977,9 @@ fn set_item_metadata_should_work() {
 
 		// Update deposit
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![0u8; 15]));
-		assert_eq!(Balances::free_balance(&account(1)), 12); // free_balance - metadata deposit - item deposit - balance deposit
+		assert_eq!(Balances::free_balance(&account(1)), 13 - balance_deposit);
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![0u8; 25]));
-		assert_eq!(Balances::free_balance(&account(1)), 2); // free_balance - metadata deposit - item deposit - balance deposit
+		assert_eq!(Balances::free_balance(&account(1)), 3 - balance_deposit);
 
 		// Cannot over-reserve
 		assert_noop!(
@@ -1014,6 +1023,8 @@ fn set_item_metadata_should_work() {
 #[test]
 fn set_collection_owner_attributes_should_work() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
+
 		Balances::make_free_balance_be(&account(1), 100);
 
 		assert_ok!(Nfts::force_create(
@@ -1055,7 +1066,7 @@ fn set_collection_owner_attributes_should_work() {
 				(Some(0), AttributeNamespace::CollectionOwner, bvec![1], bvec![0]),
 			]
 		);
-		assert_eq!(Balances::reserved_balance(account(1)), 10 + 1); // 10 - attribute deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 10 + balance_deposit);
 		assert_eq!(Collection::<Test>::get(0).unwrap().owner_deposit, 9);
 
 		assert_ok!(Nfts::set_attribute(
@@ -1074,7 +1085,7 @@ fn set_collection_owner_attributes_should_work() {
 				(Some(0), AttributeNamespace::CollectionOwner, bvec![1], bvec![0]),
 			]
 		);
-		assert_eq!(Balances::reserved_balance(account(1)), 19 + 1); // 19 - attribute deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 19 + balance_deposit);
 		assert_eq!(Collection::<Test>::get(0).unwrap().owner_deposit, 18);
 
 		assert_ok!(Nfts::clear_attribute(
@@ -1091,7 +1102,7 @@ fn set_collection_owner_attributes_should_work() {
 				(Some(0), AttributeNamespace::CollectionOwner, bvec![0], bvec![0]),
 			]
 		);
-		assert_eq!(Balances::reserved_balance(account(1)), 16 + 1); // 16 - attribute deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 16 + balance_deposit);
 
 		assert_ok!(Nfts::burn(RuntimeOrigin::root(), 0, 0));
 		let w = Nfts::get_destroy_witness(&0).unwrap();
@@ -1184,6 +1195,8 @@ fn set_collection_system_attributes_should_work() {
 #[test]
 fn set_item_owner_attributes_should_work() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
+
 		Balances::make_free_balance_be(&account(1), 100);
 		Balances::make_free_balance_be(&account(2), 100);
 		Balances::make_free_balance_be(&account(3), 100);
@@ -1336,7 +1349,7 @@ fn set_item_owner_attributes_should_work() {
 		assert_eq!(deposit.account, Some(account(3)));
 		assert_eq!(deposit.amount, 13);
 		assert_eq!(Balances::reserved_balance(account(2)), 3);
-		assert_eq!(Balances::reserved_balance(account(3)), 13 + 1); // 13 - attribute deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(3)), 13 + balance_deposit);
 
 		// validate attributes on item deletion
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(3)), 0, 0));
@@ -1543,6 +1556,8 @@ fn validate_deposit_required_setting() {
 #[test]
 fn set_attribute_should_respect_lock() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
+
 		Balances::make_free_balance_be(&account(1), 100);
 
 		assert_ok!(Nfts::force_create(
@@ -1585,7 +1600,7 @@ fn set_attribute_should_respect_lock() {
 				(Some(1), AttributeNamespace::CollectionOwner, bvec![0], bvec![0]),
 			]
 		);
-		assert_eq!(Balances::reserved_balance(account(1)), 11 + 1); // 12 - attribute deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 11 + balance_deposit);
 
 		assert_ok!(Nfts::set_collection_metadata(RuntimeOrigin::signed(account(1)), 0, bvec![]));
 		assert_ok!(Nfts::lock_collection(
@@ -1704,6 +1719,8 @@ fn preserve_config_for_frozen_items() {
 #[test]
 fn force_update_collection_should_work() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
+
 		Balances::make_free_balance_be(&account(1), 100);
 
 		assert_ok!(Nfts::force_create(
@@ -1726,7 +1743,7 @@ fn force_update_collection_should_work() {
 		));
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![0; 20]));
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 69, bvec![0; 20]));
-		assert_eq!(Balances::reserved_balance(account(1)), 65 + 2); // 65 - metadata deposit, 2 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 65 + 2 * balance_deposit);
 
 		// force item status to be free holding
 		assert_ok!(Nfts::force_collection_config(
@@ -1755,7 +1772,7 @@ fn force_update_collection_should_work() {
 			Some(account(4)),
 		));
 		assert_eq!(collections(), vec![(account(5), 0)]);
-		assert_eq!(Balances::reserved_balance(account(1)), 2 + 2); // 2 - metadata deposit, 2 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 2 + 2 * balance_deposit);
 		assert_eq!(Balances::reserved_balance(account(5)), 63);
 
 		assert_ok!(Nfts::redeposit(
@@ -1763,7 +1780,7 @@ fn force_update_collection_should_work() {
 			0,
 			bvec![0, 42, 50, 69, 100]
 		));
-		assert_eq!(Balances::reserved_balance(account(1)), 2); // 2 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 2 * balance_deposit);
 
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(5)), 0, 42, bvec![0; 20]));
 		assert_eq!(Balances::reserved_balance(account(5)), 42);
@@ -1821,6 +1838,8 @@ fn force_update_collection_should_work() {
 #[test]
 fn burn_works() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
+
 		Balances::make_free_balance_be(&account(1), 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
@@ -1871,11 +1890,11 @@ fn burn_works() {
 			Error::<Test>::NoPermission
 		);
 
-		assert_eq!(Balances::reserved_balance(account(1)), 2 + 1); // 2 - item deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 2 + balance_deposit);
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42));
 		// Burn an item unreserving the item deposit while retaining the reservation for `balance
 		// deposit`.
-		assert_eq!(Balances::reserved_balance(account(1)), 1 + 1); // 1 - item deposit, 1 - balance deposit
+		assert_eq!(Balances::reserved_balance(account(1)), 1 + balance_deposit);
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 69));
 		// Burn an item unreserving the balance deposit when the value of `AccountBalance` reaches
 		// zero. Remove the `AccountBalance` record.
@@ -4142,6 +4161,7 @@ fn mint_requires_deposit_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let collection_owner = account(1);
+		let balance_deposit = balance_deposit();
 		let mut item_id = 42;
 		let mut item_owner = account(2);
 
@@ -4177,7 +4197,7 @@ fn mint_requires_deposit_works() {
 				AccountBalance::get(collection_id, item_owner.clone()),
 				Some((1, (collection_owner.clone(), 1)))
 			);
-			assert_eq!(Balances::reserved_balance(&collection_owner), 1 + 1); // 1 - item deposit, 1 - balance deposit
+			assert_eq!(Balances::reserved_balance(&collection_owner), 1 + balance_deposit);
 			assert_eq!(Nfts::owner(collection_id, item_id).unwrap(), item_owner);
 		}
 
@@ -4195,7 +4215,7 @@ fn mint_requires_deposit_works() {
 				AccountBalance::get(collection_id, &item_owner),
 				Some((2, (collection_owner.clone(), 1)))
 			);
-			assert_eq!(Balances::reserved_balance(&collection_owner), 2 + 1); // 2 - item deposit, 1 - balance deposit
+			assert_eq!(Balances::reserved_balance(&collection_owner), 2 + balance_deposit);
 			assert_eq!(Nfts::owner(collection_id, item_id).unwrap(), item_owner);
 		}
 
@@ -4214,7 +4234,7 @@ fn mint_requires_deposit_works() {
 				AccountBalance::get(collection_id, &item_owner),
 				Some((1, (collection_owner.clone(), 1)))
 			);
-			assert_eq!(Balances::reserved_balance(&collection_owner), 3 + 2); // 3 - item deposit, 2 - balance deposit
+			assert_eq!(Balances::reserved_balance(&collection_owner), 3 + 2 * balance_deposit);
 			assert_eq!(Nfts::owner(collection_id, item_id).unwrap(), item_owner);
 		}
 
@@ -4227,6 +4247,7 @@ fn mint_requires_deposit_works() {
 fn transfer_requires_deposit_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
+		let balance_deposit = balance_deposit();
 		let mut dest = account(3);
 		let mut item_id = 42;
 		let owner = account(2);
@@ -4281,7 +4302,7 @@ fn transfer_requires_deposit_works() {
 				dest.clone()
 			));
 			assert_eq!(AccountBalance::get(0, &dest), Some((1, (owner.clone(), 1))));
-			assert_eq!(Balances::reserved_balance(&owner), 1); // 1 - balance deposit
+			assert_eq!(Balances::reserved_balance(&owner), balance_deposit);
 			assert_eq!(Balances::reserved_balance(&dest), 0);
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
@@ -4299,7 +4320,7 @@ fn transfer_requires_deposit_works() {
 				default_item_config()
 			));
 
-			Balances::make_free_balance_be(&dest, 1); // 1 - ED
+			Balances::make_free_balance_be(&dest, 1);
 			assert_ok!(Nfts::transfer(
 				RuntimeOrigin::signed(owner.clone()),
 				collection_id,
@@ -4307,7 +4328,7 @@ fn transfer_requires_deposit_works() {
 				dest.clone()
 			));
 			assert_eq!(AccountBalance::get(collection_id, &dest), Some((1, (owner.clone(), 1))));
-			assert_eq!(Balances::reserved_balance(&owner), 2); // 2 - balance deposit
+			assert_eq!(Balances::reserved_balance(&owner), 2 * balance_deposit);
 			assert_eq!(Balances::reserved_balance(&dest), 0);
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
@@ -4324,7 +4345,7 @@ fn transfer_requires_deposit_works() {
 				owner.clone(),
 				default_item_config()
 			));
-			Balances::make_free_balance_be(&dest, 2); // 1 - ED, 1 - balance deposit
+			Balances::make_free_balance_be(&dest, 1 + balance_deposit);
 			assert_ok!(Nfts::transfer(
 				RuntimeOrigin::signed(owner.clone()),
 				collection_id,
@@ -4332,8 +4353,8 @@ fn transfer_requires_deposit_works() {
 				dest.clone()
 			));
 			assert_eq!(AccountBalance::get(collection_id, &dest), Some((1, (dest.clone(), 1))));
-			assert_eq!(Balances::reserved_balance(&owner), 2); // 2 - balance deposit
-			assert_eq!(Balances::reserved_balance(&dest), 1); // 1 - balance deposit
+			assert_eq!(Balances::reserved_balance(&owner), 2 * balance_deposit);
+			assert_eq!(Balances::reserved_balance(&dest), balance_deposit);
 			assert!(Balances::usable_balance(&dest).is_zero());
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
@@ -4962,36 +4983,40 @@ fn increment_account_balance_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let deposit_account = account(1);
+		let deposit_amount = balance_deposit();
 		let owner = account(2);
-
 		// Throws error `BalancesError::InsufficientBalance`.
 		assert_noop!(
-			Nfts::increment_account_balance(collection_id, &owner, (&deposit_account, 1)),
-			BalancesError::<Test>::InsufficientBalance
-		);
-
-		Balances::make_free_balance_be(&deposit_account, 100);
-		// Initialize `AccountBalance` and increase the collection item count for the new account.
-		assert_ok!(Nfts::increment_account_balance(collection_id, &owner, (&deposit_account, 1)));
-		assert_eq!(Balances::reserved_balance(&account(1)), 1);
-		assert_eq!(
-			AccountBalance::get(collection_id, &owner),
-			Some((1, (deposit_account.clone(), 1)))
-		);
-
-		// Increment the balance of a non-zero balance account. No additional reserves.
-		(1..10).into_iter().for_each(|i| {
-			assert_ok!(Nfts::increment_account_balance(
+			Nfts::increment_account_balance(
 				collection_id,
 				&owner,
-				(&deposit_account, 1)
-			));
-			assert_eq!(Balances::reserved_balance(&deposit_account), 1);
-			assert_eq!(
-				AccountBalance::get(collection_id, &owner),
-				Some((i + 1, (deposit_account.clone(), 1)))
-			);
-		});
+				(&deposit_account, deposit_amount)
+			),
+			BalancesError::<Test>::InsufficientBalance
+		);
+		Balances::make_free_balance_be(&deposit_account, 100);
+		// Initialize `AccountBalance` and increase the collection item count for the new account.
+		assert_ok!(Nfts::increment_account_balance(
+			collection_id,
+			&owner,
+			(&deposit_account, deposit_amount)
+		));
+		assert_eq!(Balances::reserved_balance(&deposit_account), deposit_amount);
+		assert_eq!(
+			AccountBalance::get(collection_id, &owner),
+			Some((1, (deposit_account.clone(), deposit_amount)))
+		);
+		// Increment the balance of a non-zero balance account. No additional reserves.
+		assert_ok!(Nfts::increment_account_balance(
+			collection_id,
+			&owner,
+			(&deposit_account, deposit_amount)
+		));
+		assert_eq!(Balances::reserved_balance(&deposit_account), deposit_amount);
+		assert_eq!(
+			AccountBalance::get(collection_id, &owner),
+			Some((2, (deposit_account.clone(), deposit_amount)))
+		);
 	});
 }
 
@@ -4999,8 +5024,9 @@ fn increment_account_balance_works() {
 fn decrement_account_balance_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
-		let balance = 3u32;
+		let balance = 2u32;
 		let deposit_account = account(1);
+		let deposit_amount = balance_deposit();
 		let owner = account(2);
 
 		Balances::make_free_balance_be(&deposit_account, 100);
@@ -5009,36 +5035,20 @@ fn decrement_account_balance_works() {
 			Nfts::decrement_account_balance(collection_id, &deposit_account),
 			Error::<Test>::NoItemOwned
 		);
-
-		(0..balance).into_iter().for_each(|_| {
-			assert_ok!(Nfts::increment_account_balance(
-				collection_id,
-				&owner,
-				(&deposit_account, 1)
-			));
-		});
-
+		// Set account balance and reserve `DepositBalance`.
+		AccountBalance::insert(
+			collection_id,
+			&owner,
+			(&balance, (&deposit_account, deposit_amount)),
+		);
+		<Test as Config>::Currency::reserve(&deposit_account, deposit_amount).expect("should work");
 		// Successfully decrement the value of the `AccountBalance` entry.
-		let balance_before_decrement =
-			AccountBalance::get(collection_id, &owner).map(|a| a.0).unwrap();
 		assert_ok!(Nfts::decrement_account_balance(collection_id, &owner));
-		let balance_after_decrement =
-			AccountBalance::get(collection_id, &owner).map(|a| a.0).unwrap();
-		assert_eq!(balance_before_decrement - 1, balance_after_decrement);
-		assert_eq!(Balances::reserved_balance(&deposit_account), 1);
 		assert_eq!(
 			AccountBalance::get(collection_id, &owner),
-			Some((balance - 1, (deposit_account.clone(), 1)))
+			Some((balance - 1, (deposit_account.clone(), deposit_amount)))
 		);
-
-		// Decrement value of `AccountBalance` if it is non-zero.
-		assert_ok!(Nfts::decrement_account_balance(collection_id, &owner));
-		assert_eq!(Balances::reserved_balance(&deposit_account), 1);
-		assert_eq!(
-			AccountBalance::get(collection_id, &owner),
-			Some((balance - 2, (deposit_account.clone(), 1)))
-		);
-
+		assert_eq!(Balances::reserved_balance(&deposit_account), deposit_amount);
 		// `AccountBalance` record is deleted, and the depositor's funds are unreserved if
 		// the `AccountBalance` value reaches zero after decrementing.
 		assert_ok!(Nfts::decrement_account_balance(collection_id, &owner));

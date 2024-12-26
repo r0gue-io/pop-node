@@ -98,10 +98,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	pub(crate) fn increment_account_balance(
 		collection: T::CollectionId,
 		owner: &T::AccountId,
-		(deposit_account, deposit_amount): (
-			&<T as SystemConfig>::AccountId,
-			DepositBalanceOf<T, I>,
-		),
+		(deposit_account, deposit_amount): (&T::AccountId, DepositBalanceOf<T, I>),
 	) -> DispatchResult {
 		AccountBalance::<T, I>::mutate(collection, owner, |maybe_balance| -> DispatchResult {
 			match maybe_balance {
