@@ -155,6 +155,7 @@ fn members_vote_system_works(mut session: Session) {
 	);
 	let prop = proposal(&mut session, 1).unwrap();
 	let yes = prop.yes_votes;
+	assert_eq!(yes > 0, true);
 }
 
 #[drink::test(sandbox = Pop)]
@@ -309,17 +310,17 @@ fn same_proposal_consecutive_claim_fails(mut session: Session) {
 
 	assert_ok!(execute_proposal(&mut session, 1));
 	// Successfully emit event.
-	// assert_last_contract_event!(
-	// &session,
-	// Approval {
-	// owner: account_id_from_slice(&contract),
-	// spender: account_id_from_slice(&contract),
-	// value: MIN_BALANCE,
-	// }
-	// );
-	// session.sandbox().build_block();
+	assert_last_contract_event!(
+		&session,
+		Approval {
+			owner: account_id_from_slice(&contract),
+			spender: account_id_from_slice(&contract),
+			value: MIN_BALANCE,
+		}
+	);
+	session.sandbox().build_block();
 	// Second consecutive claim for same proposal fails
-	// assert_eq!(execute_proposal(&mut session, 1), Err(Error::ProposalExecuted));
+	assert_eq!(execute_proposal(&mut session, 1), Err(Error::ProposalExecuted));
 }
 
 #[drink::test(sandbox = Pop)]
