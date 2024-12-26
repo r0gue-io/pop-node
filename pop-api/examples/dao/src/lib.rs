@@ -199,7 +199,8 @@ mod dao {
 				return Err(Error::ExceedeMaxDescriptionLength);
 			}
 
-			let mut proposal = Proposal { proposal_id: self.proposals_created, ..Default::default() };
+			let mut proposal =
+				Proposal { proposal_id: self.proposals_created, ..Default::default() };
 			proposal.description.append(&mut description);
 			let transaction_infos = Transaction { beneficiary, amount };
 			proposal.transaction_infos = Some(transaction_infos);

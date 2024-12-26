@@ -130,7 +130,8 @@ fn member_create_proposal_works(mut session: Session) {
 	);
 
 	// Another proposal created by Bob
-	let description_bis = "Funds for creation of another Dao contract".to_string().as_bytes().to_vec();
+	let description_bis =
+		"Funds for creation of another Dao contract".to_string().as_bytes().to_vec();
 	session.set_actor(BOB);
 	assert_ok!(create_proposal(&mut session, ALICE, amount, description_bis));
 	assert_last_contract_event!(
@@ -141,7 +142,6 @@ fn member_create_proposal_works(mut session: Session) {
 			admin: account_id_from_slice(&contract),
 		}
 	);
-
 }
 
 #[drink::test(sandbox = Pop)]
