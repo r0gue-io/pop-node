@@ -211,12 +211,14 @@ mod dao {
 				return Err(Error::AlreadyVoted);
 			}
 
-			let votes = match approve {
-				true => proposal.yes_votes,
-				false => proposal.no_votes,
+			match approve {
+				true => {
+					proposal.yes_votes = proposal.yes_votes.saturating_add(member.voting_power);
+				},
+				false => {
+					proposal.no_votes = proposal.no_votes.saturating_add(member.voting_power);
+				},
 			};
-
-			let _ = votes.saturating_add(member.voting_power);
 
 			self.proposals.insert(proposal_id, &proposal);
 
@@ -318,13 +320,8 @@ mod dao {
 		}
 
 		#[ink(message)]
-		pub fn positive_votes(&mut self, proposal_id: u32) -> Option<Balance> {
-			self.proposals.get(proposal_id).as_ref().map(|x| x.yes_votes)
-		}
-
-		#[ink(message)]
-		pub fn negative_votes(&mut self, proposal_id: u32) -> Option<Balance> {
-			self.proposals.get(proposal_id).as_ref().map(|x| x.no_votes)
+		pub fn get_proposal(&mut self, proposal_id: u32) -> Option<Proposal> {
+			self.proposals.get(proposal_id)
 		}
 	}
 
@@ -367,13 +364,4 @@ mod dao {
 			Error::Psp22(error)
 		}
 	}
-
-	// impl From<Error> for Psp22Error {
-	// fn from(error: Error) -> Self {
-	// match error {
-	// Error::Psp22(psp22_error) => psp22_error,
-	// _ => Psp22Error::Custom(String::from("Unknown error")),
-	// }
-	// }
-	// }
 }
