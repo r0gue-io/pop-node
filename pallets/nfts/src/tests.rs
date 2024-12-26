@@ -233,8 +233,9 @@ fn basic_minting_should_work() {
 			default_collection_config()
 		));
 		assert_eq!(collections(), vec![(account(1), 0)]);
+		// Minting doesn't require a reserve because the collection's DepositRequired setting is
+		// disabled.
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
-		// Minting skips deposit as `DepositRequired` is disabled.
 		assert_eq!(AccountBalance::get(0, &account(1)), Some((1, (account(1), 0))));
 		assert_eq!(items(), vec![(account(1), 0, 42)]);
 
@@ -245,7 +246,6 @@ fn basic_minting_should_work() {
 		));
 		assert_eq!(collections(), vec![(account(1), 0), (account(2), 1)]);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(2)), 1, 69, account(1), None));
-		// Minting skips deposit as `DepositRequired` is disabled.
 		assert_eq!(AccountBalance::get(1, &account(1)), Some((1, (account(2), 0))));
 		assert_eq!(items(), vec![(account(1), 0, 42), (account(1), 1, 69)]);
 	});
@@ -438,7 +438,8 @@ fn mint_should_work() {
 			account(1),
 			default_collection_config()
 		));
-		// Minting skips deposit as `DepositRequired` is disabled.
+		// Minting doesn't require a reserve because the collection's DepositRequired setting is
+		// disabled.
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
 		assert_eq!(AccountBalance::get(0, account(1)), Some((1, (account(1), 0))));
 		assert_eq!(Nfts::owner(0, 42).unwrap(), account(1));
