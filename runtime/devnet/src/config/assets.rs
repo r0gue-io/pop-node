@@ -43,7 +43,7 @@ parameter_types! {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-struct KeyLimit<const N: u32>;
+pub struct KeyLimit<const N: u32>;
 impl<const N: u32> Get<u32> for KeyLimit<N> {
 	fn get() -> u32 {
 		N
@@ -146,19 +146,21 @@ mod tests {
 
 	#[test]
 	fn ensure_account_balance_deposit() {
-		let max_size = pallet_nfts::AccountBalance::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
+		let max_size =
+			pallet_nfts::AccountBalance::<Runtime, TrustBackedNftsInstance>::storage_info()
+				.first()
+				.and_then(|info| info.max_size)
+				.unwrap_or_default();
 		assert_eq!(deposit(1, max_size), NftsBalanceDeposit::get());
 	}
 
 	#[test]
 	fn ensure_collection_approval_deposit() {
-		let max_size = pallet_nfts::CollectionApprovals::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
+		let max_size =
+			pallet_nfts::CollectionApprovals::<Runtime, TrustBackedNftsInstance>::storage_info()
+				.first()
+				.and_then(|info| info.max_size)
+				.unwrap_or_default();
 		assert_eq!(deposit(1, max_size), NftsCollectionApprovalDeposit::get());
 	}
 }
