@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{prelude::vec::Vec, storage::Mapping};
+use ink::{env::Error as EnvError, prelude::vec::Vec, storage::Mapping};
 use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::{
@@ -25,6 +25,19 @@ mod dao {
 		Approved,
 		Rejected,
 		Executed,
+	}
+
+	#[ink::scale_derive(Encode)]
+	pub enum RuntimeCall {
+		/// We can add additional pallets we might want to use here
+		#[codec(index = 150)]
+		Fungibles(FungiblesCall),
+	}
+
+	#[ink::scale_derive(Encode)]
+	pub enum FungiblesCall {
+		#[codec(index = 3)]
+		Transfer { token: TokenId, to: AccountId, value: Balance },
 	}
 
 	/// Structure of the proposal used by the Dao governance sysytem
@@ -303,6 +316,15 @@ mod dao {
 					},
 				};
 
+				// first attempt at RuntimeCall use fails
+				// self.env()
+				// 	.call_runtime(&RuntimeCall::Fungibles(FungiblesCall::Transfer {
+				// 		token: self.token_id,
+				// 		to: transaction_infos.beneficiary,
+				// 		value: transaction_infos.amount,
+				// 	}))
+				// 	.map_err(EnvError::from)?;
+
 				api::transfer(
 					self.token_id,
 					transaction_infos.beneficiary,
@@ -404,6 +426,9 @@ mod dao {
 		/// The contract creation failed, a new contract is needed
 		WrongContract,
 
+		/// The Runtime Call failed
+		CallRuntimeFailed,
+
 		/// PSP22 specific error
 		Psp22(Psp22Error),
 	}
@@ -411,6 +436,16 @@ mod dao {
 	impl From<Psp22Error> for Error {
 		fn from(error: Psp22Error) -> Self {
 			Error::Psp22(error)
+		}
+	}
+
+	impl From<EnvError> for Error {
+		fn from(e: EnvError) -> Self {
+			use ink::env::ReturnErrorCode;
+			match e {
+				EnvError::ReturnError(ReturnErrorCode::CallRuntimeFailed) => e.into(),
+				_ => panic!("Unexpected error from `pallet-contracts`."),
+			}
 		}
 	}
 }

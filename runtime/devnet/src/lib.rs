@@ -41,6 +41,7 @@ use frame_system::{
 };
 use pallet_api::fungibles;
 use pallet_balances::Call as BalancesCall;
+use pallet_fungibles::Call as FungiblesCall;
 use pallet_ismp::mmr::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
