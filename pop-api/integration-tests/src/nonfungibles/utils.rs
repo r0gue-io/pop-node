@@ -322,6 +322,8 @@ pub(super) mod nfts {
 
 	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
 		AccountBalanceOf::<Runtime>::get(collection, owner)
+			.map(|(balance, _)| balance)
+			.unwrap_or_default()
 	}
 
 	pub(crate) fn max_supply(collection: CollectionId) -> Option<u32> {
