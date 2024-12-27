@@ -25,6 +25,7 @@ use crate::*;
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Transfer an NFT to the specified destination account.
 	///
+	/// - `caller`: The account transferring the collection item.
 	/// - `collection`: The ID of the collection to which the NFT belongs.
 	/// - `item`: The ID of the NFT to transfer.
 	/// - `dest`: The destination account to which the NFT will be transferred.
@@ -45,6 +46,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - If the collection or item is non-transferable
 	///   ([`ItemsNonTransferable`](crate::Error::ItemsNonTransferable)).
 	pub fn do_transfer(
+		caller: &T::AccountId,
 		collection: T::CollectionId,
 		item: T::ItemId,
 		dest: T::AccountId,
@@ -87,16 +89,22 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		with_details(&collection_details, &mut details)?;
 
 		// Update account balance of the owner.
-		let balance = AccountBalance::<T, I>::take(collection, &details.owner)
-			.checked_sub(1)
-			.ok_or(Error::<T, I>::NoItemOwned)?;
-		if balance > 0 {
-			AccountBalance::<T, I>::insert(collection, &details.owner, balance);
-		}
+		Self::decrement_account_balance(collection, &details.owner)?;
+
 		// Update account balance of the destination account.
-		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
-			balance.saturating_inc();
-		});
+		let deposit_amount =
+			match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
+				true => T::BalanceDeposit::get(),
+				false => Zero::zero(),
+			};
+		// The destination account covers the `BalanceDeposit` if it has sufficient balance.
+		// Otherwise, the caller is accountable for it.
+		let deposit_account = match T::Currency::can_reserve(&dest, T::BalanceDeposit::get()) {
+			true => &dest,
+			false => caller,
+		};
+
+		Self::increment_account_balance(collection, &dest, (deposit_account, deposit_amount))?;
 
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));

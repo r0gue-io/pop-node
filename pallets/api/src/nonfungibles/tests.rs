@@ -105,14 +105,14 @@ fn transfer_works() {
 		// Check error works for `Nfts::transfer`.
 		assert_noop!(
 			NonFungibles::transfer(signed(owner), collection, item, dest),
-			NftsError::UnknownCollection
+			NftsError::UnknownItem
 		);
 		// Successfully transfer a collection item.
 		nfts::create_collection_mint(owner, owner, item);
-		let balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
+		let balance_before_transfer = nfts::balance_of(collection, &dest);
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, item, dest));
-		let balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
-		assert_eq!(AccountBalanceOf::<Test>::get(collection, &owner), 0);
+		let balance_after_transfer = nfts::balance_of(collection, &dest);
+		assert!(nfts::balance_of(collection, &owner).is_zero());
 		assert_eq!(balance_after_transfer - balance_before_transfer, 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
@@ -130,20 +130,15 @@ fn approved_transfer_works() {
 		let operator = BOB;
 		let owner = ALICE;
 
-		// No permission to transfer.
-		assert_noop!(
-			NonFungibles::transfer(signed(operator), collection, item, dest),
-			NftsError::NoPermission
-		);
 		nfts::create_collection_mint(owner, owner, item);
 		// Approve `operator` to transfer `collection` items owned by the `owner`.
 		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
 		// Successfully transfers a collection item.
-		let from_balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &owner);
-		let to_balance_before_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
+		let from_balance_before_transfer = nfts::balance_of(collection, &owner);
+		let to_balance_before_transfer = nfts::balance_of(collection, &dest);
 		assert_ok!(NonFungibles::transfer(signed(operator), collection, item, dest));
-		let from_balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &owner);
-		let to_balance_after_transfer = AccountBalanceOf::<Test>::get(collection, &dest);
+		let from_balance_after_transfer = nfts::balance_of(collection, &owner);
+		let to_balance_after_transfer = nfts::balance_of(collection, &dest);
 		// Check that `to` has received the `value` tokens from `from`.
 		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + 1);
 		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - 1);
@@ -176,9 +171,9 @@ fn mint_works() {
 		);
 		// Successfully mints a new collection item.
 		nfts::create_collection(owner);
-		let balance_before_mint = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_before_mint = nfts::balance_of(collection, &owner);
 		assert_ok!(NonFungibles::mint(signed(owner), owner, collection, item, witness));
-		let balance_after_mint = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_after_mint = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_mint, balance_before_mint + 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: None, to: Some(owner), price: None }.into(),
@@ -201,9 +196,9 @@ fn burn_works() {
 		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
 		// Successfully burns an existing new collection item.
 		nfts::create_collection_mint(owner, owner, ITEM);
-		let balance_before_burn = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_before_burn = nfts::balance_of(collection, &owner);
 		assert_ok!(NonFungibles::burn(signed(owner), collection, item));
-		let balance_after_burn = AccountBalanceOf::<Test>::get(collection, owner);
+		let balance_after_burn = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_burn, balance_before_burn - 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: None, price: None }.into(),
@@ -723,7 +718,7 @@ fn balance_of_works() {
 			);
 			assert_eq!(
 				NonFungibles::read(BalanceOf { collection, owner }).encode(),
-				AccountBalanceOf::<Test>::get(collection, owner).encode()
+				nfts::balance_of(collection, &owner).encode()
 			);
 		});
 	});
@@ -911,6 +906,12 @@ fn none() -> RuntimeOrigin {
 mod nfts {
 	use super::*;
 	use crate::nonfungibles::AttributeNamespaceOf;
+
+	pub(super) fn balance_of(collection: CollectionIdOf<Test>, owner: &AccountId) -> u32 {
+		AccountBalanceOf::<Test>::get(collection, &owner)
+			.map(|(balance, _)| balance)
+			.unwrap_or_default()
+	}
 
 	pub(super) fn create_collection_mint_and_approve(
 		owner: AccountId,

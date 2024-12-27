@@ -565,8 +565,11 @@ pub mod pallet {
 				TotalSupply(collection) => ReadResult::TotalSupply(
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
-				BalanceOf { collection, owner } =>
-					ReadResult::BalanceOf(AccountBalanceOf::<T>::get(collection, owner)),
+				BalanceOf { collection, owner } => ReadResult::BalanceOf(
+					AccountBalanceOf::<T>::get(collection, owner)
+						.map(|(balance, _)| balance)
+						.unwrap_or_default(),
+				),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
 				),
