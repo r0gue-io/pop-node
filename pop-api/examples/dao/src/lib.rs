@@ -36,8 +36,8 @@ mod dao {
 
 	#[ink::scale_derive(Encode)]
 	pub enum FungiblesCall {
-		#[codec(index = 3)]
-		Transfer { token: TokenId, to: AccountId, value: Balance },
+		#[codec(index = 4)]
+		TransferFrom { token: TokenId, from: AccountId, to: AccountId, value: Balance },
 	}
 
 	/// Structure of the proposal used by the Dao governance sysytem
@@ -316,10 +316,11 @@ mod dao {
 					},
 				};
 
-				// first attempt at RuntimeCall use fails
+				// First attempt at RuntimeCall transfer, you must comment api::transfer() below
 				// self.env()
-				// 	.call_runtime(&RuntimeCall::Fungibles(FungiblesCall::Transfer {
+				// 	.call_runtime(&RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
 				// 		token: self.token_id,
+				// 		from: contract,
 				// 		to: transaction_infos.beneficiary,
 				// 		value: transaction_infos.amount,
 				// 	}))
@@ -331,6 +332,7 @@ mod dao {
 					transaction_infos.amount,
 				)
 				.map_err(Psp22Error::from)?;
+
 				self.env().emit_event(Transfer {
 					from: Some(contract),
 					to: Some(transaction_infos.beneficiary),
@@ -443,7 +445,8 @@ mod dao {
 		fn from(e: EnvError) -> Self {
 			use ink::env::ReturnErrorCode;
 			match e {
-				EnvError::ReturnError(ReturnErrorCode::CallRuntimeFailed) => e.into(),
+				EnvError::ReturnError(ReturnErrorCode::CallRuntimeFailed) =>
+					Error::CallRuntimeFailed,
 				_ => panic!("Unexpected error from `pallet-contracts`."),
 			}
 		}
