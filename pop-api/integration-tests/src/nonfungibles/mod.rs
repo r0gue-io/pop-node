@@ -15,8 +15,8 @@ use super::*;
 
 mod utils;
 
-const COLLECTION: CollectionId = 0;
 const ITEM: ItemId = 0;
+const COLLECTION: CollectionId = 0;
 const CONTRACT: &str = "contracts/nonfungibles/target/ink/nonfungibles.wasm";
 
 #[test]
@@ -384,8 +384,6 @@ fn clear_metadata_works() {
 fn create_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-
-		let collection = nfts::next_collection_id();
 		assert_ok!(create(
 			&addr.clone(),
 			addr.clone(),
@@ -395,7 +393,7 @@ fn create_works() {
 				settings: CollectionSettings::all_enabled(),
 			}
 		));
-		// TODO: check the collection owner after creaton.
+		assert_eq!(Nfts::collection_owner(COLLECTION), Some(addr.clone()));
 	});
 }
 
