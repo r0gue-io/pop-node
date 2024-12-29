@@ -316,23 +316,23 @@ mod dao {
 					},
 				};
 
-				// First attempt at RuntimeCall transfer, you must comment api::transfer() below
-				// self.env()
-				// 	.call_runtime(&RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-				// 		token: self.token_id,
-				// 		from: contract,
-				// 		to: transaction_infos.beneficiary,
-				// 		value: transaction_infos.amount,
-				// 	}))
-				// 	.map_err(EnvError::from)?;
+				// RuntimeCall transfer, you must comment api::transfer_from() below
+				let _ = self.env()
+					.call_runtime(&RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
+						token: self.token_id,
+						from: contract,
+						to: transaction_infos.beneficiary,
+						value: transaction_infos.amount,
+					}))
+					.map_err(EnvError::from);
 
-				api::transfer_from(
-					self.token_id,
-					contract,
-					transaction_infos.beneficiary,
-					transaction_infos.amount,
-				)
-				.map_err(Psp22Error::from)?;
+				// api::transfer_from(
+				// 	self.token_id,
+				// 	contract,
+				// 	transaction_infos.beneficiary,
+				// 	transaction_infos.amount,
+				// )
+				// .map_err(Psp22Error::from)?;
 
 				self.env().emit_event(Transfer {
 					from: Some(contract),
