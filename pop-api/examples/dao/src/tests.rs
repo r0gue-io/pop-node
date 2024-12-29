@@ -238,6 +238,9 @@ fn proposal_enactment_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
+	// Mint tokens.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &contract.clone(), AMOUNT));
 	// Prepare voters accounts
 	let _ = prepare_dao(&mut session, contract.clone());
 
@@ -289,6 +292,9 @@ fn same_proposal_consecutive_claim_fails(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
+	// Mint tokens.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &contract.clone(), AMOUNT));
 	// Prepare voters accounts
 	let _ = prepare_dao(&mut session, contract.clone());
 
@@ -343,6 +349,9 @@ fn proposal_enactment_fails_if_proposal_is_rejected(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
+	// Mint tokens.
+	assert_ok!(session.sandbox().mint_into(&TOKEN, &contract.clone(), AMOUNT));
+	assert_ok!(session.sandbox().approve(&TOKEN, &contract.clone(), &contract.clone(), AMOUNT));
 	// Prepare voters accounts
 	let _ = prepare_dao(&mut session, contract.clone());
 

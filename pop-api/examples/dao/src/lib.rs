@@ -326,8 +326,9 @@ mod dao {
 				// 	}))
 				// 	.map_err(EnvError::from)?;
 
-				api::transfer(
+				api::transfer_from(
 					self.token_id,
+					contract,
 					transaction_infos.beneficiary,
 					transaction_infos.amount,
 				)
