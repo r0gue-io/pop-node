@@ -1845,13 +1845,13 @@ fn burn_works() {
 			account(5),
 			default_item_config()
 		));
+		assert_eq!(Balances::reserved_balance(account(1)), 2 + balance_deposit);
 
 		assert_noop!(
 			Nfts::burn(RuntimeOrigin::signed(account(0)), 0, 42),
 			Error::<Test>::NoPermission
 		);
 
-		assert_eq!(Balances::reserved_balance(account(1)), 2 + balance_deposit);
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42));
 		// Burn an item unreserving the item deposit while retaining the reservation for `balance
 		// deposit`.
@@ -3527,7 +3527,7 @@ fn pre_signed_mints_should_work() {
 		assert_eq!(deposit.amount, 3);
 
 		assert_eq!(Balances::free_balance(&user_0), 100 - 2 + 10); // 2 - collection deposit, 10 - mint price
-		assert_eq!(Balances::free_balance(&user_2), 100 - balance_deposit - 1 - 3 - 6 - 10); // 1 - item deposit, 3 - metadata, 6 - attributes, 10 - mint price
+		assert_eq!(Balances::free_balance(&user_2), 100 - balance_deposit() - 1 - 3 - 6 - 10); // 1 - item deposit, 3 - metadata, 6 - attributes, 10 - mint price
 
 		assert_noop!(
 			Nfts::mint_pre_signed(
@@ -5195,7 +5195,7 @@ fn pre_signed_mint_requires_deposit_works() {
 			AccountBalance::get(0, user_2.clone()),
 			Some((1, (user_2.clone(), balance_deposit)))
 		);
-		assert_eq!(items(), vec![(user_2.clone(), 0, 0)]);
+		assert_eq!(items(), vec![(user_2, 0, 0)]);
 	})
 }
 
