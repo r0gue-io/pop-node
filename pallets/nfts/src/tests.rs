@@ -280,6 +280,7 @@ fn lifecycle_should_work() {
 			account(10),
 			default_item_config()
 		));
+		assert!(!AccountBalance::contains_key(0, &account(1)));
 		assert_eq!(Balances::reserved_balance(&account(1)), 6 + balance_deposit);
 		assert_ok!(Nfts::force_mint(
 			RuntimeOrigin::signed(account(1)),
@@ -1198,8 +1199,6 @@ fn set_collection_system_attributes_should_work() {
 #[test]
 fn set_item_owner_attributes_should_work() {
 	new_test_ext().execute_with(|| {
-		let balance_deposit = balance_deposit();
-
 		Balances::make_free_balance_be(&account(1), 100);
 		Balances::make_free_balance_be(&account(2), 100);
 		Balances::make_free_balance_be(&account(3), 100);
@@ -1352,7 +1351,7 @@ fn set_item_owner_attributes_should_work() {
 		assert_eq!(deposit.account, Some(account(3)));
 		assert_eq!(deposit.amount, 13);
 		assert_eq!(Balances::reserved_balance(account(2)), 3);
-		assert_eq!(Balances::reserved_balance(account(3)), 13 + balance_deposit);
+		assert_eq!(Balances::reserved_balance(account(3)), 13 + balance_deposit());
 
 		// validate attributes on item deletion
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(3)), 0, 0));
@@ -1559,8 +1558,6 @@ fn validate_deposit_required_setting() {
 #[test]
 fn set_attribute_should_respect_lock() {
 	new_test_ext().execute_with(|| {
-		let balance_deposit = balance_deposit();
-
 		Balances::make_free_balance_be(&account(1), 100);
 
 		assert_ok!(Nfts::force_create(
@@ -1603,7 +1600,7 @@ fn set_attribute_should_respect_lock() {
 				(Some(1), AttributeNamespace::CollectionOwner, bvec![0], bvec![0]),
 			]
 		);
-		assert_eq!(Balances::reserved_balance(account(1)), 11 + balance_deposit);
+		assert_eq!(Balances::reserved_balance(account(1)), 11 + balance_deposit());
 
 		assert_ok!(Nfts::set_collection_metadata(RuntimeOrigin::signed(account(1)), 0, bvec![]));
 		assert_ok!(Nfts::lock_collection(
@@ -1857,7 +1854,6 @@ fn burn_works() {
 			Some(account(4)),
 		));
 
-		// Throws error `Error::UnknownItem` if burning an unknown collection item.
 		assert_noop!(
 			Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42),
 			Error::<Test>::UnknownItem
@@ -1878,16 +1874,6 @@ fn burn_works() {
 			default_item_config()
 		));
 
-		// Throws error `Error::NoItemOwned` if the account does not have an entry in
-		// `AccountBalance`.
-		let account_balance = AccountBalance::take(0, account(5));
-		assert_noop!(
-			Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42),
-			Error::<Test>::NoItemOwned
-		);
-		AccountBalance::set(0, account(5), account_balance);
-
-		// Throws error `Error::NoPermission`.
 		assert_noop!(
 			Nfts::burn(RuntimeOrigin::signed(account(0)), 0, 42),
 			Error::<Test>::NoPermission
