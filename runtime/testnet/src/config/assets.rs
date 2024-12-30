@@ -30,8 +30,8 @@ parameter_types! {
 parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
 	pub const NftsCollectionDeposit: Balance = 10 * UNIT;
-	// Key = 116 bytes (4+16+32+16+32+16), Value = 17 bytes (1+8+8)
-	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 133);
+	// Key = 116 bytes (4+16+32+16+32+16), Value = 21 bytes (1+4+16)
+	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 137);
 	pub const NftsItemDeposit: Balance = UNIT / 100;
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 129);
 	pub const NftsAttributeDepositBase: Balance = deposit(1, 0);
@@ -122,4 +122,20 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = AssetsStringLimit;
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
+}
+
+#[cfg(test)]
+mod tests {
+	use frame_support::traits::StorageInfoTrait;
+
+	use super::*;
+
+	#[test]
+	fn ensure_collection_approval_deposit() {
+		let max_size = pallet_nfts::CollectionApprovals::<Runtime>::storage_info()
+			.first()
+			.and_then(|info| info.max_size)
+			.unwrap_or_default();
+		assert_eq!(deposit(1, max_size), NftsCollectionApprovalDeposit::get());
+	}
 }
