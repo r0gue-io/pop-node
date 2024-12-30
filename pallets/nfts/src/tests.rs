@@ -233,7 +233,7 @@ fn basic_minting_should_work() {
 			default_collection_config()
 		));
 		assert_eq!(collections(), vec![(account(1), 0)]);
-		// Minting doesn't require a reserve because the collection's `DepositRequired` setting is
+		// Minting doesn't require a deposit because the collection's `DepositRequired` setting is
 		// disabled.
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
 		assert_eq!(AccountBalance::get(0, &account(1)), Some((1, (account(1), 0))));
@@ -439,7 +439,7 @@ fn mint_should_work() {
 			account(1),
 			default_collection_config()
 		));
-		// Minting doesn't require a reserve because the collection's `DepositRequired` setting is
+		// Minting doesn't require a deposit because the collection's `DepositRequired` setting is
 		// disabled.
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
 		assert_eq!(AccountBalance::get(0, account(1)), Some((1, (account(1), 0))));
@@ -585,7 +585,7 @@ fn transfer_should_work() {
 			default_item_config()
 		));
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(2)), 0, 42, account(3)));
-		// Transferring doesn't require a reserve because the collection's `DepositRequired` is
+		// Transferring doesn't require a deposit because the collection's `DepositRequired` is
 		// disabled.
 		assert!(!AccountBalance::contains_key(0, account(2)));
 		assert_eq!(AccountBalance::get(0, account(3)), Some((1, (account(2), 0))));
@@ -775,8 +775,8 @@ fn transfer_owner_should_work() {
 		assert_eq!(Balances::reserved_balance(&account(3)), 44);
 
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 42, account(2)));
-		// Reserve `balance_deposit` from account 2 and reserved balance of account 1 remains the
-		// same.
+		// The reserved balance of account 1 should remain the same. For account 2 the `balance_deposit`  is 
+                // reserved because it is the new item owner. 
 		assert_eq!(Balances::reserved_balance(&account(1)), 1);
 		assert_eq!(Balances::reserved_balance(&account(2)), balance_deposit);
 
@@ -3666,7 +3666,7 @@ fn pre_signed_mints_should_work() {
 		assert_eq!(deposit.amount, 3);
 
 		assert_eq!(Balances::free_balance(&user_0), 100 - 2 + 10); // 2 - collection deposit, 10 - mint price
-		assert_eq!(Balances::free_balance(&user_2), 100 - balance_deposit - 1 - 3 - 6 - 10); // 1 - balance deposit, 1 - item deposit, 3 - metadata, 6 - attributes, 10 - mint price
+		assert_eq!(Balances::free_balance(&user_2), 100 - balance_deposit - 1 - 3 - 6 - 10); // 1 - item deposit, 3 - metadata, 6 - attributes, 10 - mint price
 
 		assert_noop!(
 			Nfts::mint_pre_signed(
@@ -3841,7 +3841,7 @@ fn pre_signed_attributes_should_work() {
 		assert_eq!(deposit.account, Some(user_2.clone()));
 		assert_eq!(deposit.amount, 3);
 
-		assert_eq!(Balances::free_balance(&user_1), 100 - 2 - 1 - 1); // 2 - collection deposit, 1 - item deposit, 1 - balance deposit
+		assert_eq!(Balances::free_balance(&user_1), 100 - 2 - 1 - balance_deposit()); // 2 - collection deposit, 1 - item deposit
 		assert_eq!(Balances::free_balance(&user_2), 100 - 6); // 6 - attributes
 
 		// validate the deposit gets returned on attribute update from collection's owner
