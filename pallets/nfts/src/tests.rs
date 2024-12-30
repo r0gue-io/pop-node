@@ -749,7 +749,7 @@ fn transfer_owner_should_work() {
 
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 42, account(2)));
 		// The reserved balance of account 1 should remain the same. For account 2 the
-		// `balance_deposit`  is reserved because it is the new item owner.
+		// `balance_deposit` is reserved because it is the new item owner.
 		assert_eq!(Balances::reserved_balance(&account(1)), 1);
 		assert_eq!(Balances::reserved_balance(&account(2)), balance_deposit);
 
