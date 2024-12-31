@@ -170,9 +170,8 @@ fn clear_collection_approvals(
 	limit: u32,
 ) -> DispatchResultWithPostInfo {
 	match maybe_owner {
-		Some(owner) => {
-			Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit)
-		},
+		Some(owner) =>
+			Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit),
 		None => Nfts::clear_collection_approvals(origin, collection, limit),
 	}
 }
@@ -192,9 +191,8 @@ fn approve_collection_transfer(
 			delegate.clone(),
 			maybe_deadline,
 		),
-		None => {
-			Nfts::approve_collection_transfer(origin, collection, delegate.clone(), maybe_deadline)
-		},
+		None =>
+			Nfts::approve_collection_transfer(origin, collection, delegate.clone(), maybe_deadline),
 	}
 }
 
@@ -588,11 +586,13 @@ fn mint_should_update_account_balance_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let owner = account(1);
+		let balance_deposit = balance_deposit();
 
+		Balances::make_free_balance_be(&owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			owner.clone(),
-			default_collection_config()
+			collection_config_with_all_settings_enabled()
 		));
 
 		assert_ok!(Nfts::mint(
@@ -602,7 +602,10 @@ fn mint_should_update_account_balance_works() {
 			owner.clone(),
 			None
 		));
-		assert_eq!(AccountBalance::get(collection_id, &owner), 1);
+		assert_eq!(
+			AccountBalance::get(collection_id, &owner),
+			Some((1, (owner.clone(), balance_deposit)))
+		);
 
 		// Additive.
 		assert_ok!(Nfts::mint(
@@ -612,7 +615,10 @@ fn mint_should_update_account_balance_works() {
 			owner.clone(),
 			None
 		));
-		assert_eq!(AccountBalance::get(collection_id, &owner), 2);
+		assert_eq!(
+			AccountBalance::get(collection_id, &owner),
+			Some((2, (owner.clone(), balance_deposit)))
+		);
 	});
 }
 
@@ -756,7 +762,7 @@ fn transfer_should_update_account_balance_works() {
 			dest.clone()
 		));
 		assert!(!AccountBalance::contains_key(collection_id, &owner));
-		assert_eq!(AccountBalance::get(collection_id, &dest), 1);
+		assert_eq!(AccountBalance::get(collection_id, &dest), Some((1, (owner.clone(), 0))));
 	});
 }
 
@@ -2146,7 +2152,10 @@ fn burn_should_update_account_balance_works() {
 		));
 
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(owner.clone()), collection_id, 42));
-		assert_eq!(AccountBalance::get(collection_id, &owner), 1);
+		assert_eq!(
+			AccountBalance::get(collection_id, &owner),
+			Some((1, (owner.clone(), balance_deposit())))
+		);
 
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(owner.clone()), collection_id, 43));
 		assert!(!AccountBalance::contains_key(collection_id, &owner));
@@ -3206,8 +3215,8 @@ fn buy_item_should_update_account_balance_works() {
 			item_1,
 			price_1 + 1,
 		));
-		assert_eq!(AccountBalance::get(collection_id, &user_1), 0);
-		assert_eq!(AccountBalance::get(collection_id, &user_2), 1);
+		assert!(!AccountBalance::contains_key(collection_id, &user_1));
+		assert_eq!(AccountBalance::get(collection_id, &user_2), Some((1, (user_2, 0))));
 	});
 }
 
@@ -3683,8 +3692,8 @@ fn claim_swap_should_update_account_balance_works() {
 			item_1,
 			Some(price_with_direction),
 		));
-		assert_eq!(AccountBalance::get(collection_id, &user_1), 1);
-		assert_eq!(AccountBalance::get(collection_id, &user_2), 1);
+		assert_eq!(AccountBalance::get(collection_id, &user_1), Some((1, (user_1, 0))));
+		assert_eq!(AccountBalance::get(collection_id, &user_2), Some((1, (user_2, 0))));
 	});
 }
 
@@ -3763,9 +3772,9 @@ fn collection_locking_should_work() {
 
 		let stored_config = CollectionConfigOf::<Test>::get(collection_id).unwrap();
 		let full_lock_config = collection_config_from_disabled_settings(
-			CollectionSetting::TransferableItems
-				| CollectionSetting::UnlockedMetadata
-				| CollectionSetting::UnlockedAttributes,
+			CollectionSetting::TransferableItems |
+				CollectionSetting::UnlockedMetadata |
+				CollectionSetting::UnlockedAttributes,
 		);
 		assert_eq!(stored_config, full_lock_config);
 	});
