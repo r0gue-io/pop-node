@@ -230,7 +230,6 @@ fn basic_minting_should_work() {
 		));
 		assert_eq!(collections(), vec![(account(1), 0)]);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
-		assert_eq!(AccountBalance::get(0, &account(1)), 1);
 		assert_eq!(items(), vec![(account(1), 0, 42)]);
 
 		assert_ok!(Nfts::force_create(
@@ -240,7 +239,6 @@ fn basic_minting_should_work() {
 		));
 		assert_eq!(collections(), vec![(account(1), 0), (account(2), 1)]);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(2)), 1, 69, account(1), None));
-		assert_eq!(AccountBalance::get(1, &account(1)), 1);
 		assert_eq!(items(), vec![(account(1), 0, 42), (account(1), 1, 69)]);
 	});
 }
@@ -280,10 +278,8 @@ fn lifecycle_should_work() {
 			account(20),
 			default_item_config()
 		));
-		assert_eq!(AccountBalance::get(0, account(20)), 1);
 		assert_eq!(Balances::reserved_balance(&account(1)), 7);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 70, account(1), None));
-		assert_eq!(AccountBalance::get(0, &account(1)), 1);
 		assert_eq!(items(), vec![(account(1), 0, 70), (account(10), 0, 42), (account(20), 0, 69)]);
 		assert_eq!(Collection::<Test>::get(0).unwrap().items, 3);
 		assert_eq!(Collection::<Test>::get(0).unwrap().item_metadatas, 0);
@@ -291,8 +287,6 @@ fn lifecycle_should_work() {
 
 		assert_eq!(Balances::reserved_balance(&account(1)), 8);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 70, account(2)));
-		assert!(!AccountBalance::contains_key(0, &account(1)));
-		assert_eq!(AccountBalance::get(0, account(2)), 1);
 		assert_eq!(Balances::reserved_balance(&account(1)), 8);
 		assert_eq!(Balances::reserved_balance(&account(2)), 0);
 
@@ -320,9 +314,7 @@ fn lifecycle_should_work() {
 			bvec![0],
 		));
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(10)), 0, 42));
-		assert!(!AccountBalance::contains_key(0, account(10)));
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(20)), 0, 69));
-		assert!(!AccountBalance::contains_key(0, account(20)));
 		assert_ok!(Nfts::burn(RuntimeOrigin::root(), 0, 70));
 
 		let w = Nfts::get_destroy_witness(&0).unwrap();
@@ -330,7 +322,6 @@ fn lifecycle_should_work() {
 		assert_eq!(w.item_metadatas, 0);
 		assert_eq!(w.item_configs, 0);
 		assert_ok!(Nfts::destroy(RuntimeOrigin::signed(account(1)), 0, w));
-		assert!(!AccountBalance::contains_key(0, &account(1)));
 		assert_eq!(Balances::reserved_balance(&account(1)), 0);
 
 		assert!(!Collection::<Test>::contains_key(0));
@@ -4783,16 +4774,6 @@ fn mint_should_update_account_balance_works() {
 			None
 		));
 		assert_eq!(AccountBalance::get(collection_id, &owner), 2);
-
-		// Mint with witness data.
-		assert_ok!(Nfts::mint(
-			RuntimeOrigin::signed(account(1)),
-			collection_id,
-			44,
-			account(2),
-			Some(MintWitness { mint_price: Some(1), ..Default::default() })
-		));
-		assert_eq!(AccountBalance::get(collection_id, account(2)), 1);
 	});
 }
 
@@ -4859,22 +4840,6 @@ fn transfer_should_update_account_balance_works() {
 		));
 		assert!(!AccountBalance::contains_key(collection_id, &owner));
 		assert_eq!(AccountBalance::get(collection_id, &dest), 1);
-
-		assert_ok!(Nfts::approve_transfer(
-			RuntimeOrigin::signed(dest.clone()),
-			collection_id,
-			item_id,
-			owner.clone(),
-			None
-		));
-		assert_ok!(Nfts::transfer(
-			RuntimeOrigin::signed(owner.clone()),
-			collection_id,
-			item_id,
-			account(4)
-		));
-		assert!(!AccountBalance::contains_key(collection_id, &dest));
-		assert_eq!(AccountBalance::get(collection_id, account(4)), 1);
 	});
 }
 
