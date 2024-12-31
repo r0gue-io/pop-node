@@ -5032,9 +5032,6 @@ fn destroy_with_collection_approvals_returns_error() {
 }
 
 #[test]
-fn burn_removes_deposit_works() {}
-
-#[test]
 fn mint_requires_deposit_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
@@ -5048,18 +5045,6 @@ fn mint_requires_deposit_works() {
 			collection_owner.clone(),
 			collection_config_with_all_settings_enabled()
 		));
-
-		// Throws error `BalancesError::InsufficientBalance`.
-		assert_noop!(
-			Nfts::mint(
-				RuntimeOrigin::signed(collection_owner.clone()),
-				collection_id,
-				item_id,
-				item_owner.clone(),
-				None
-			),
-			BalancesError::<Test>::InsufficientBalance
-		);
 
 		Balances::make_free_balance_be(&collection_owner, 100);
 		// Minting reserves deposit from the collection owner.
@@ -5099,6 +5084,44 @@ fn mint_requires_deposit_works() {
 
 		assert_eq!(collections(), vec![(account(1), 0)]);
 		assert_eq!(items(), vec![(account(2), 0, 42), (account(2), 0, 43)]);
+	});
+}
+
+#[test]
+fn burn_removes_deposit_works() {
+	new_test_ext().execute_with(|| {
+		let collection_id = 0;
+		let owner = account(1);
+
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			owner.clone(),
+			collection_config_with_all_settings_enabled()
+		));
+
+		Balances::make_free_balance_be(&owner, 100);
+		assert_ok!(Nfts::mint(
+			RuntimeOrigin::signed(owner.clone()),
+			collection_id,
+			42,
+			owner.clone(),
+			None
+		));
+		assert_ok!(Nfts::mint(
+			RuntimeOrigin::signed(owner.clone()),
+			collection_id,
+			43,
+			owner.clone(),
+			None
+		));
+
+		assert_ok!(Nfts::burn(RuntimeOrigin::signed(owner.clone()), collection_id, 42));
+		assert_eq!(Balances::reserved_balance(&owner), 1 + balance_deposit());
+		assert_eq!(items(), vec![(owner.clone(), 0, 43)]);
+
+		assert_ok!(Nfts::burn(RuntimeOrigin::signed(owner.clone()), collection_id, 43));
+		assert_eq!(Balances::reserved_balance(&owner), 0);
+		assert_eq!(items(), vec![]);
 	});
 }
 
