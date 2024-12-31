@@ -84,7 +84,7 @@ mod dao {
 	}
 
 	/// Representation of a member in the voting system
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct Member {
@@ -110,6 +110,31 @@ mod dao {
 
 		// Balance representing the total votes against this proposal
 		pub no_votes: Balance,
+	}
+
+	impl VoteRound {
+		fn get_status(&self, mut proposal: Proposal) -> Proposal {
+			if proposal.status == ProposalStatus::Submitted {
+				if self.yes_votes > self.no_votes {
+					proposal.status = ProposalStatus::Approved;
+				} else {
+					proposal.status = ProposalStatus::Rejected;
+				}
+			};
+			proposal
+		}
+
+		fn update_votes(&mut self, approved: bool, member: Member) {
+			match approved {
+				true => {
+					self.yes_votes =
+						self.yes_votes.saturating_add(member.voting_power);
+				},
+				false => {
+					self.no_votes = self.no_votes.saturating_add(member.voting_power);
+				},
+			};
+		}
 	}
 
 	#[derive(Debug, Clone)]
@@ -241,17 +266,12 @@ mod dao {
 			let caller = self.env().caller();
 			let current_block = self.env().block_number();
 			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
-			let mut round = proposal.round.ok_or(Error::ProblemWithTheContract)?;
+			let mut round = proposal.round.clone().ok_or(Error::ProblemWithTheContract)?;
 
 			if current_block > round.end {
-				if proposal.status == ProposalStatus::Submitted {
-					if round.yes_votes > round.no_votes {
-						proposal.status = ProposalStatus::Approved;
-					} else {
-						proposal.status = ProposalStatus::Rejected;
-					}
-				};
-
+				// Update the Proposal status if needed
+				proposal = round.get_status(proposal);
+				self.proposals.insert(proposal.proposal_id, &proposal);
 				return Err(Error::VotingPeriodEnded);
 			}
 
@@ -261,15 +281,7 @@ mod dao {
 				return Err(Error::AlreadyVoted);
 			}
 
-			match approve {
-				true => {
-					round.yes_votes =
-						round.yes_votes.saturating_add(member.voting_power);
-				},
-				false => {
-					round.no_votes = round.no_votes.saturating_add(member.voting_power);
-				},
-			};
+			round.update_votes(approve, member.clone());
 			proposal.round = Some(round);
 
 			self.proposals.insert(proposal_id, &proposal);
