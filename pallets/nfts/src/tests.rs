@@ -233,8 +233,6 @@ fn basic_minting_should_work() {
 			default_collection_config()
 		));
 		assert_eq!(collections(), vec![(account(1), 0)]);
-		// Minting doesn't require a deposit because the collection's `DepositRequired` setting is
-		// disabled.
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 42, account(1), None));
 		assert_eq!(items(), vec![(account(1), 0, 42)]);
 
@@ -278,7 +276,6 @@ fn lifecycle_should_work() {
 			account(10),
 			default_item_config()
 		));
-		assert!(!AccountBalance::contains_key(0, &account(1)));
 		assert_eq!(Balances::reserved_balance(&account(1)), 6 + balance_deposit);
 		assert_ok!(Nfts::force_mint(
 			RuntimeOrigin::signed(account(1)),
@@ -287,7 +284,7 @@ fn lifecycle_should_work() {
 			account(20),
 			default_item_config()
 		));
-		assert_eq!(Balances::reserved_balance(&account(1)), 7);
+		assert_eq!(Balances::reserved_balance(&account(1)), 7 + 2 * balance_deposit);
 		assert_ok!(Nfts::mint(RuntimeOrigin::signed(account(1)), 0, 70, account(1), None));
 		assert_eq!(items(), vec![(account(1), 0, 70), (account(10), 0, 42), (account(20), 0, 69)]);
 		assert_eq!(Collection::<Test>::get(0).unwrap().items, 3);
@@ -296,8 +293,8 @@ fn lifecycle_should_work() {
 
 		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 3 * balance_deposit);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 70, account(2)));
-		assert_eq!(Balances::reserved_balance(&account(1)), 8);
-		assert_eq!(Balances::reserved_balance(&account(2)), 0);
+		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 2 * balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(2)), balance_deposit);
 
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![42, 42]));
 		assert_eq!(Balances::reserved_balance(&account(1)), 11 + 2 * balance_deposit);
