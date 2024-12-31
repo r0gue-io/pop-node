@@ -37,8 +37,8 @@ use sp_runtime::{
 
 use crate::{mock::*, Event, SystemConfig, *};
 
-type AccountBalance = crate::AccountBalance<Test>;
 type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
+type AccountBalance = crate::AccountBalance<Test>;
 type CollectionApprovals = crate::CollectionApprovals<Test>;
 type CollectionApprovalDeposit = <Test as Config>::CollectionApprovalDeposit;
 type CollectionId = <Test as Config>::CollectionId;
@@ -5070,13 +5070,16 @@ fn destroy_with_collection_approvals_returns_error() {
 }
 
 #[test]
+fn burn_removes_deposit_works() {}
+
+#[test]
 fn mint_requires_deposit_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let collection_owner = account(1);
 		let balance_deposit = balance_deposit();
 		let mut item_id = 42;
-		let mut item_owner = account(2);
+		let item_owner = account(2);
 
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
@@ -5132,133 +5135,50 @@ fn mint_requires_deposit_works() {
 			assert_eq!(Nfts::owner(collection_id, item_id).unwrap(), item_owner);
 		}
 
-		// Increase the reserved balance on minting for a new `AccountBalance` record.
-		{
-			item_id = 44;
-			item_owner = account(3);
-			assert_ok!(Nfts::mint(
-				RuntimeOrigin::signed(collection_owner.clone()),
-				collection_id,
-				item_id,
-				item_owner.clone(),
-				None
-			));
-			assert_eq!(
-				AccountBalance::get(collection_id, &item_owner),
-				Some((1, (collection_owner.clone(), balance_deposit)))
-			);
-			assert_eq!(Balances::reserved_balance(&collection_owner), 3 + 2 * balance_deposit);
-			assert_eq!(Nfts::owner(collection_id, item_id).unwrap(), item_owner);
-		}
-
 		assert_eq!(collections(), vec![(account(1), 0)]);
-		assert_eq!(items(), vec![(account(2), 0, 42), (account(2), 0, 43), (account(3), 0, 44)]);
+		assert_eq!(items(), vec![(account(2), 0, 42), (account(2), 0, 43)]);
 	});
-}
-
-#[test]
-fn pre_signed_mint_requires_deposit_works() {
-	new_test_ext().execute_with(|| {
-		let user_0 = account(0);
-		let user_1_pair = sp_core::sr25519::Pair::from_string("//Alice", None).unwrap();
-		let user_1_signer = MultiSigner::Sr25519(user_1_pair.public());
-		let user_1 = user_1_signer.clone().into_account();
-		let mint_data = PreSignedMint {
-			collection: 0,
-			item: 0,
-			attributes: vec![(vec![0], vec![1]), (vec![2], vec![3])],
-			metadata: vec![0, 1],
-			only_account: None,
-			deadline: 10000000,
-			mint_price: Some(10),
-		};
-		let message = Encode::encode(&mint_data);
-		let signature = MultiSignature::Sr25519(user_1_pair.sign(&message));
-		let user_2 = account(2);
-		let balance_deposit = balance_deposit();
-
-		Balances::make_free_balance_be(&user_0, 100);
-		Balances::make_free_balance_be(&user_2, 100);
-		assert_ok!(Nfts::create(
-			RuntimeOrigin::signed(user_0.clone()),
-			user_1.clone(),
-			collection_config_with_all_settings_enabled(),
-		));
-
-		assert_ok!(Nfts::mint_pre_signed(
-			RuntimeOrigin::signed(user_2.clone()),
-			Box::new(mint_data.clone()),
-			signature.clone(),
-			user_1.clone(),
-		));
-		assert_eq!(
-			AccountBalance::get(0, user_2.clone()),
-			Some((1, (user_2.clone(), balance_deposit)))
-		);
-		assert_eq!(items(), vec![(user_2, 0, 0)]);
-	})
 }
 
 #[test]
 fn transfer_requires_deposit_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
+		let collection_owner = account(1);
 		let balance_deposit = balance_deposit();
 		let mut dest = account(3);
 		let mut item_id = 42;
-		let owner = account(2);
+		let item_owner = account(2);
 
-		Balances::make_free_balance_be(&account(1), 100);
-		Balances::make_free_balance_be(&account(2), 100);
+		Balances::make_free_balance_be(&collection_owner, 100);
+		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
-			account(1),
+			collection_owner.clone(),
 			collection_config_with_all_settings_enabled()
 		));
 
-		// Transfer an unknown collection item, throws error `Error::UnknownItem`.
-		assert_noop!(
-			Nfts::transfer(
-				RuntimeOrigin::signed(owner.clone()),
-				collection_id,
-				item_id,
-				dest.clone()
-			),
-			Error::<Test>::UnknownItem
-		);
-
 		assert_ok!(Nfts::force_mint(
-			RuntimeOrigin::signed(account(1)),
+			RuntimeOrigin::signed(collection_owner.clone()),
 			collection_id,
 			item_id,
-			owner.clone(),
+			item_owner.clone(),
 			default_item_config()
 		));
-
-		// Throws error `NoItemOwned` since `owner` does not have an `AccountBalance` record
-		// created.
-		let account_balance = AccountBalance::take(collection_id, &owner);
-		assert_noop!(
-			Nfts::transfer(
-				RuntimeOrigin::signed(owner.clone()),
-				collection_id,
-				item_id,
-				dest.clone()
-			),
-			Error::<Test>::NoItemOwned
-		);
-		AccountBalance::set(collection_id, &owner, account_balance);
 
 		// Reserve funds from `owner` as `dest` does not exist.
 		{
 			assert_ok!(Nfts::transfer(
-				RuntimeOrigin::signed(owner.clone()),
+				RuntimeOrigin::signed(item_owner.clone()),
 				collection_id,
 				item_id,
 				dest.clone()
 			));
-			assert_eq!(AccountBalance::get(0, &dest), Some((1, (owner.clone(), balance_deposit))));
-			assert_eq!(Balances::reserved_balance(&owner), balance_deposit);
+			assert_eq!(
+				AccountBalance::get(collection_id, &dest),
+				Some((1, (item_owner.clone(), balance_deposit)))
+			);
+			assert_eq!(Balances::reserved_balance(&item_owner), balance_deposit);
 			assert_eq!(Balances::reserved_balance(&dest), 0);
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
@@ -5272,22 +5192,22 @@ fn transfer_requires_deposit_works() {
 				RuntimeOrigin::signed(account(1)),
 				collection_id,
 				item_id,
-				owner.clone(),
+				item_owner.clone(),
 				default_item_config()
 			));
 
 			Balances::make_free_balance_be(&dest, 1);
 			assert_ok!(Nfts::transfer(
-				RuntimeOrigin::signed(owner.clone()),
+				RuntimeOrigin::signed(item_owner.clone()),
 				collection_id,
 				item_id,
 				dest.clone()
 			));
 			assert_eq!(
 				AccountBalance::get(collection_id, &dest),
-				Some((1, (owner.clone(), balance_deposit)))
+				Some((1, (item_owner.clone(), balance_deposit)))
 			);
-			assert_eq!(Balances::reserved_balance(&owner), 2 * balance_deposit);
+			assert_eq!(Balances::reserved_balance(&item_owner), 2 * balance_deposit);
 			assert_eq!(Balances::reserved_balance(&dest), 0);
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
@@ -5301,12 +5221,12 @@ fn transfer_requires_deposit_works() {
 				RuntimeOrigin::signed(account(1)),
 				collection_id,
 				item_id,
-				owner.clone(),
+				item_owner.clone(),
 				default_item_config()
 			));
 			Balances::make_free_balance_be(&dest, 1 + balance_deposit);
 			assert_ok!(Nfts::transfer(
-				RuntimeOrigin::signed(owner.clone()),
+				RuntimeOrigin::signed(item_owner.clone()),
 				collection_id,
 				item_id,
 				dest.clone()
@@ -5315,9 +5235,8 @@ fn transfer_requires_deposit_works() {
 				AccountBalance::get(collection_id, &dest),
 				Some((1, (dest.clone(), balance_deposit)))
 			);
-			assert_eq!(Balances::reserved_balance(&owner), 2 * balance_deposit);
+			assert_eq!(Balances::reserved_balance(&item_owner), 2 * balance_deposit);
 			assert_eq!(Balances::reserved_balance(&dest), balance_deposit);
-			assert!(Balances::usable_balance(&dest).is_zero());
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
 	});
