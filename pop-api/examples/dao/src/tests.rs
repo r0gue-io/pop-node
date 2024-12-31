@@ -11,7 +11,7 @@ use pop_api::{
 };
 
 use super::*;
-use crate::dao::{Error, Member, Proposal, Voted};
+use crate::dao::{Error, Member, Proposal, Vote};
 
 const UNIT: Balance = 10_000_000_000;
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
@@ -165,10 +165,10 @@ fn members_vote_system_works(mut session: Session) {
 
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
 	let prop = proposal(&mut session, 1).unwrap();
-	let infos = prop.votes_infos.unwrap();
+	let infos = prop.round.unwrap();
 	assert_eq!(infos.yes_votes > 0, true);
 	assert_eq!(infos.no_votes == 0, true);
 }
@@ -256,21 +256,21 @@ fn proposal_enactment_works(mut session: Session) {
 	assert_ok!(vote(&mut session, 1, true));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
 	// Alice vote
 	session.set_actor(ALICE);
 	assert_ok!(vote(&mut session, 1, true));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
 	);
 	// BOB vote
 	session.set_actor(BOB);
 	assert_ok!(vote(&mut session, 1, true));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
 	);
 
 	session.sandbox().build_blocks(VOTING_PERIOD + 1);
@@ -310,21 +310,21 @@ fn same_proposal_consecutive_claim_fails(mut session: Session) {
 	assert_ok!(vote(&mut session, 1, true));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
 	// Alice vote
 	session.set_actor(ALICE);
 	assert_ok!(vote(&mut session, 1, true));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
 	);
 	// BOB vote
 	session.set_actor(BOB);
 	assert_ok!(vote(&mut session, 1, true));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
 	);
 
 	session.sandbox().build_blocks(VOTING_PERIOD + 1);
@@ -367,21 +367,21 @@ fn proposal_enactment_fails_if_proposal_is_rejected(mut session: Session) {
 	assert_ok!(vote(&mut session, 1, false));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&CHARLIE)), when: Some(now) }
 	);
 	// Alice vote
 	session.set_actor(ALICE);
 	assert_ok!(vote(&mut session, 1, false));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&ALICE)), when: Some(now) }
 	);
 	// BOB vote
 	session.set_actor(BOB);
 	assert_ok!(vote(&mut session, 1, false));
 	assert_last_contract_event!(
 		&session,
-		Voted { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
+		Vote { who: Some(account_id_from_slice(&BOB)), when: Some(now) }
 	);
 
 	session.sandbox().build_blocks(VOTING_PERIOD + 1);
