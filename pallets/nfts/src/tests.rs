@@ -2474,7 +2474,7 @@ fn clear_all_transfer_approvals_with_conflict_returns_error() {
 			None
 		));
 
-		// Throws `DelegateApprovalConflict` if there are existing collection approvals.
+		// Throws `DelegateApprovalConflict` if collection approvals exists.
 		assert_ok!(Nfts::approve_collection_transfer(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
