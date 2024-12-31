@@ -45,6 +45,7 @@ std = [
 	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
+	"log/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pop-chain-extension/std",
