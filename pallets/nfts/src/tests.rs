@@ -170,9 +170,8 @@ fn clear_collection_approvals(
 	limit: u32,
 ) -> DispatchResultWithPostInfo {
 	match maybe_owner {
-		Some(owner) => {
-			Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit)
-		},
+		Some(owner) =>
+			Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit),
 		None => Nfts::clear_collection_approvals(origin, collection, limit),
 	}
 }
@@ -192,9 +191,8 @@ fn approve_collection_transfer(
 			delegate.clone(),
 			maybe_deadline,
 		),
-		None => {
-			Nfts::approve_collection_transfer(origin, collection, delegate.clone(), maybe_deadline)
-		},
+		None =>
+			Nfts::approve_collection_transfer(origin, collection, delegate.clone(), maybe_deadline),
 	}
 }
 
@@ -3255,9 +3253,9 @@ fn collection_locking_should_work() {
 
 		let stored_config = CollectionConfigOf::<Test>::get(collection_id).unwrap();
 		let full_lock_config = collection_config_from_disabled_settings(
-			CollectionSetting::TransferableItems
-				| CollectionSetting::UnlockedMetadata
-				| CollectionSetting::UnlockedAttributes,
+			CollectionSetting::TransferableItems |
+				CollectionSetting::UnlockedMetadata |
+				CollectionSetting::UnlockedAttributes,
 		);
 		assert_eq!(stored_config, full_lock_config);
 	});
