@@ -9,6 +9,9 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 pub mod config;
 mod weights;
 
+extern crate alloc;
+use alloc::vec::Vec;
+
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
@@ -37,8 +40,8 @@ use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use pop_runtime_common::{
 	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
-	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICROUNIT,
-	MILLIUNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
+	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICRO_UNIT,
+	MILLI_UNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
 	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
 };
 use sp_api::impl_runtime_apis;
@@ -55,7 +58,6 @@ use sp_runtime::{
 	ApplyExtrinsicResult,
 };
 pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
-use sp_std::prelude::*;
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -100,8 +102,11 @@ pub type SignedExtra = (
 pub type UncheckedExtrinsic =
 	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
 
-/// Migrations to apply on runtime upgrade.
-pub type Migrations = ();
+/// All migrations of the runtime, aside from the ones declared in the pallets.
+///
+/// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
+#[allow(unused_parens)]
+type Migrations = ();
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
@@ -128,11 +133,11 @@ pub mod fee {
 			WeightToFeeCoefficients, WeightToFeePolynomial,
 		},
 	};
-	use pop_runtime_common::{Balance, MILLIUNIT};
+	use pop_runtime_common::{Balance, MILLI_UNIT};
 	use smallvec::smallvec;
 	pub use sp_runtime::Perbill;
 
-	pub const CENTS: Balance = MILLIUNIT * 10; // 100_000_000
+	pub const CENTS: Balance = MILLI_UNIT * 10; // 100_000_000
 	pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
 
 	/// Cost of every transaction byte at Polkadot system parachains.
@@ -395,6 +400,7 @@ parameter_types! {
 	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
 }
 
+#[docify::export]
 type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
 	Runtime,
 	RELAY_CHAIN_SLOT_DURATION_MILLIS,
@@ -483,6 +489,7 @@ impl pallet_session::Config for Runtime {
 	type WeightInfo = ();
 }
 
+#[docify::export(aura_config)]
 impl pallet_aura::Config for Runtime {
 	type AllowMultipleBlocksPerSlot = ConstBool<true>;
 	type AuthorityId = AuraId;
@@ -677,11 +684,27 @@ mod benches {
 	);
 }
 
+// We move some impls outside so we can easily use them with `docify`.
+impl Runtime {
+	#[docify::export]
+	fn impl_slot_duration() -> sp_consensus_aura::SlotDuration {
+		sp_consensus_aura::SlotDuration::from_millis(SLOT_DURATION)
+	}
+
+	#[docify::export]
+	fn impl_can_build_upon(
+		included_hash: <Block as BlockT>::Hash,
+		slot: cumulus_primitives_aura::Slot,
+	) -> bool {
+		ConsensusHook::can_build_upon(included_hash, slot)
+	}
+}
+
 impl_runtime_apis! {
 
 	impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
 		fn slot_duration() -> sp_consensus_aura::SlotDuration {
-			sp_consensus_aura::SlotDuration::from_millis(SLOT_DURATION)
+			Runtime::impl_slot_duration()
 		}
 
 		fn authorities() -> Vec<AuraId> {
@@ -712,7 +735,7 @@ impl_runtime_apis! {
 			Runtime::metadata_at_version(version)
 		}
 
-		fn metadata_versions() -> sp_std::vec::Vec<u32> {
+		fn metadata_versions() -> Vec<u32> {
 			Runtime::metadata_versions()
 		}
 	}
@@ -821,7 +844,7 @@ impl_runtime_apis! {
 			included_hash: <Block as BlockT>::Hash,
 			slot: cumulus_primitives_aura::Slot,
 		) -> bool {
-			ConsensusHook::can_build_upon(included_hash, slot)
+			Runtime::impl_can_build_upon(included_hash, slot)
 		}
 	}
 
@@ -875,7 +898,7 @@ impl_runtime_apis! {
 
 			use frame_system_benchmarking::Pallet as SystemBench;
 			impl frame_system_benchmarking::Config for Runtime {
-				fn setup_set_code_requirements(code: &sp_std::vec::Vec<u8>) -> Result<(), BenchmarkError> {
+				fn setup_set_code_requirements(code: &Vec<u8>) -> Result<(), BenchmarkError> {
 					ParachainSystem::initialize_for_set_code_benchmark(code.len() as u32);
 					Ok(())
 				}
@@ -915,6 +938,7 @@ impl_runtime_apis! {
 	}
 }
 
+#[docify::export(register_validate_block)]
 cumulus_pallet_parachain_system::register_validate_block! {
 	Runtime = Runtime,
 	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
@@ -980,8 +1004,8 @@ mod tests {
 	fn units_are_correct() {
 		// UNIT should have 10 decimals
 		assert_eq!(UNIT, 10_000_000_000);
-		assert_eq!(MILLIUNIT, 10_000_000);
-		assert_eq!(MICROUNIT, 10_000);
+		assert_eq!(MILLI_UNIT, 10_000_000);
+		assert_eq!(MICRO_UNIT, 10_000);
 
 		// fee specific units
 		assert_eq!(fee::CENTS, 100_000_000);

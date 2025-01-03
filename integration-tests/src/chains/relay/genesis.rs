@@ -43,6 +43,7 @@ pub(crate) fn genesis() -> Storage {
 					)
 				})
 				.collect::<Vec<_>>(),
+			..Default::default()
 		},
 		babe: BabeConfig {
 			authorities: Default::default(),
