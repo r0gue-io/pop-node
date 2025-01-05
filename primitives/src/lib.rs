@@ -66,6 +66,7 @@ pub mod v0 {
 			Unavailable = 12,
 			/// Root origin is not allowed.
 			RootNotAllowed = 13,
+			Trie = 14,
 			/// Decoding failed.
 			DecodingFailed = 254,
 			/// An unknown error occurred. This variant captures any unexpected errors that the

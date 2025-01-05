@@ -246,7 +246,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
-	state_version: 1,
+	system_version: 1,
 };
 
 /// The version information used to identify this runtime when compiled natively.
@@ -293,10 +293,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
+				force_adjust_total_issuance { .. }
+					| force_set_balance { .. }
+					| force_transfer { .. }
+					| force_unreserve { .. }
 			)
 		)
 	}
@@ -359,6 +359,7 @@ impl pallet_balances::Config for Runtime {
 	/// The type for recording an account's balance.
 	type Balance = Balance;
 	type DustRemoval = ();
+	type DoneSlashHandler = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
@@ -386,6 +387,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightToFee = fee::WeightToFee;
+	type WeightInfo = ();
 }
 
 impl pallet_sudo::Config for Runtime {
@@ -417,6 +419,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
+	type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type WeightInfo = ();
 	type XcmpMessageHandler = XcmpQueue;
