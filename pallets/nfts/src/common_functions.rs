@@ -129,7 +129,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					maybe_balance.as_mut().ok_or(Error::<T, I>::NoItemOwned)?;
 
 				*balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-				if *balance == 0 {
+				if balance.is_zero() {
 					T::Currency::unreserve(deposit_account, *deposit_amount);
 					*maybe_balance = None;
 				}

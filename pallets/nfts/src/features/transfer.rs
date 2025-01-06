@@ -94,15 +94,16 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Update account balance of the destination account.
 		let deposit_amount =
 			match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
-				true => T::BalanceDeposit::get(),
+				true => T::CollectionBalanceDeposit::get(),
 				false => Zero::zero(),
 			};
-		// The destination account covers the `BalanceDeposit` if it has sufficient balance.
-		// Otherwise, the caller is accountable for it.
-		let deposit_account = match T::Currency::can_reserve(&dest, T::BalanceDeposit::get()) {
-			true => &dest,
-			false => caller,
-		};
+		// The destination account covers the `CollectionBalanceDeposit` if it has sufficient
+		// balance. Otherwise, the caller is accountable for it.
+		let deposit_account =
+			match T::Currency::can_reserve(&dest, T::CollectionBalanceDeposit::get()) {
+				true => &dest,
+				false => caller,
+			};
 
 		Self::increment_account_balance(collection, &dest, (deposit_account, deposit_amount))?;
 

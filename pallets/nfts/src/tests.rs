@@ -214,7 +214,7 @@ fn cancel_collection_approval(
 }
 
 fn balance_deposit() -> DepositBalanceOf<Test> {
-	<<Test as Config>::BalanceDeposit>::get()
+	<<Test as Config>::CollectionBalanceDeposit>::get()
 }
 
 #[test]

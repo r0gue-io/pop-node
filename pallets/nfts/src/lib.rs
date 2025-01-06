@@ -260,11 +260,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type CollectionApprovalDeposit: Get<DepositBalanceOf<Self, I>>;
 
-		/// The basic amount of funds that must be reversed for an account balance.
+		/// The basic amount of funds that must be reversed for an account's collection balance.
 		// Key: `sizeof((CollectionId, AccountId))` bytes.
 		// Value: `sizeof((u32, Some(AccountId, Balance)))` bytes.
 		#[pallet::constant]
-		type BalanceDeposit: Get<DepositBalanceOf<Self, I>>;
+		type CollectionBalanceDeposit: Get<DepositBalanceOf<Self, I>>;
 	}
 
 	/// Details of a collection.
@@ -441,6 +441,7 @@ pub mod pallet {
 		T::CollectionId,
 		Blake2_128Concat,
 		T::AccountId,
+		// (Account's collection items, Deposit details).
 		(u32, AccountDepositOf<T, I>),
 	>;
 

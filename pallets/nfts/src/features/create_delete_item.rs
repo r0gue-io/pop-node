@@ -74,8 +74,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			let deposit_account =
 				maybe_depositor.unwrap_or_else(|| collection_details.owner.clone());
 
-			let balance_deposit =
-				deposit_required.then_some(T::BalanceDeposit::get()).unwrap_or_default();
+			let balance_deposit = deposit_required
+				.then_some(T::CollectionBalanceDeposit::get())
+				.unwrap_or_default();
 			Self::increment_account_balance(
 				collection,
 				&mint_to,

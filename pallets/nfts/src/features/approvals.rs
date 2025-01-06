@@ -218,7 +218,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		);
 		ensure!(
 			AccountBalance::<T, I>::get(collection, &owner)
-				.filter(|(balance, _)| *balance > 0)
+				.filter(|(balance, _)| !balance.is_zero())
 				.is_some(),
 			Error::<T, I>::NoItemOwned
 		);
