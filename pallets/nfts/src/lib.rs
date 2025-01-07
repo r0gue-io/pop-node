@@ -1092,7 +1092,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
 
-			Self::do_transfer(&origin, collection, item, dest, |_, details| {
+			Self::do_transfer(None, collection, item, dest, |_, details| {
 				if details.owner != origin {
 					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
 				}

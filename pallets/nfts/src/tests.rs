@@ -293,14 +293,14 @@ fn lifecycle_should_work() {
 
 		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 3 * balance_deposit);
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 70, account(2)));
-		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 2 * balance_deposit);
-		assert_eq!(Balances::reserved_balance(&account(2)), balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(1)), 8 + 3 * balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(2)), 0);
 
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 42, bvec![42, 42]));
-		assert_eq!(Balances::reserved_balance(&account(1)), 11 + 2 * balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(1)), 11 + 3 * balance_deposit);
 		assert!(ItemMetadataOf::<Test>::contains_key(0, 42));
 		assert_ok!(Nfts::set_metadata(RuntimeOrigin::signed(account(1)), 0, 69, bvec![69, 69]));
-		assert_eq!(Balances::reserved_balance(&account(1)), 14 + 2 * balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(1)), 14 + 3 * balance_deposit);
 		assert!(ItemMetadataOf::<Test>::contains_key(0, 69));
 		assert!(ItemConfigOf::<Test>::contains_key(0, 69));
 		let w = Nfts::get_destroy_witness(&0).unwrap();
@@ -859,10 +859,10 @@ fn transfer_requires_deposit_works() {
 			));
 			assert_eq!(
 				AccountBalance::get(collection_id, &dest),
-				Some((1, (dest.clone(), balance_deposit)))
+				Some((1, (item_owner.clone(), balance_deposit)))
 			);
-			assert_eq!(Balances::reserved_balance(&item_owner), 2 * balance_deposit);
-			assert_eq!(Balances::reserved_balance(&dest), balance_deposit);
+			assert_eq!(Balances::reserved_balance(&item_owner), 3 * balance_deposit);
+			assert_eq!(Balances::reserved_balance(&dest), 0);
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
 	});
@@ -1011,10 +1011,10 @@ fn transfer_owner_should_work() {
 		assert_eq!(Balances::reserved_balance(&account(3)), 44);
 
 		assert_ok!(Nfts::transfer(RuntimeOrigin::signed(account(1)), 0, 42, account(2)));
-		// The reserved balance of account 1 should remain the same. For account 2 the
-		// `balance_deposit` is reserved because it is the new item owner.
-		assert_eq!(Balances::reserved_balance(&account(1)), 1);
-		assert_eq!(Balances::reserved_balance(&account(2)), balance_deposit);
+		// The reserved balance of account 1 is incremented to create a new storage record for the
+		// account 2.
+		assert_eq!(Balances::reserved_balance(&account(1)), 1 + balance_deposit);
+		assert_eq!(Balances::reserved_balance(&account(2)), 0);
 
 		// 2's acceptance from before is reset when it became an owner, so it cannot be transferred
 		// without a fresh acceptance.
@@ -1585,8 +1585,8 @@ fn set_item_owner_attributes_should_work() {
 			Attribute::<Test>::get((0, Some(0), AttributeNamespace::ItemOwner, &key)).unwrap();
 		assert_eq!(deposit.account, Some(account(3)));
 		assert_eq!(deposit.amount, 13);
-		assert_eq!(Balances::reserved_balance(account(2)), 3);
-		assert_eq!(Balances::reserved_balance(account(3)), 13 + balance_deposit());
+		assert_eq!(Balances::reserved_balance(account(2)), 3 + balance_deposit());
+		assert_eq!(Balances::reserved_balance(account(3)), 13);
 
 		// validate attributes on item deletion
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(3)), 0, 0));

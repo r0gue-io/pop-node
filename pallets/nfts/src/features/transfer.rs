@@ -46,7 +46,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - If the collection or item is non-transferable
 	///   ([`ItemsNonTransferable`](crate::Error::ItemsNonTransferable)).
 	pub fn do_transfer(
-		caller: &T::AccountId,
+		caller: Option<&T::AccountId>,
 		collection: T::CollectionId,
 		item: T::ItemId,
 		dest: T::AccountId,
@@ -97,13 +97,9 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				true => T::CollectionBalanceDeposit::get(),
 				false => Zero::zero(),
 			};
-		// The destination account covers the `CollectionBalanceDeposit` if it has sufficient
-		// balance. Otherwise, the caller is accountable for it.
-		let deposit_account =
-			match T::Currency::can_reserve(&dest, T::CollectionBalanceDeposit::get()) {
-				true => &dest,
-				false => caller,
-			};
+		// Reserve `CollectionBalanceDeposit` from the caller if provided. Otherwise, reserve from
+		// the collection item's owner.
+		let deposit_account = caller.unwrap_or(&details.owner);
 
 		Self::increment_account_balance(collection, &dest, (deposit_account, deposit_amount))?;
 
