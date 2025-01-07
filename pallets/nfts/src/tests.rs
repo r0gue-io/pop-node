@@ -2119,10 +2119,10 @@ fn cancel_approval_ensures_no_active_collection_approval() {
 			delegate.clone()
 		));
 		assert_ok!(Nfts::cancel_approval(
-			RuntimeOrigin::signed(owner.clone()),
+			RuntimeOrigin::signed(owner),
 			collection_id,
 			item_id,
-			delegate.clone()
+			delegate
 		));
 	});
 }
@@ -2500,7 +2500,7 @@ fn clear_all_transfer_approvals_ensures_no_active_collection_approval() {
 			delegate
 		));
 		assert_ok!(Nfts::clear_all_transfer_approvals(
-			RuntimeOrigin::signed(owner.clone()),
+			RuntimeOrigin::signed(owner),
 			collection_id,
 			item_id
 		));
@@ -4441,7 +4441,7 @@ fn clear_collection_approvals_works() {
 		assert_eq!(Balances::free_balance(&item_owner), balance);
 		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
-			owner: item_owner.clone(),
+			owner: item_owner,
 			approvals: 0
 		}));
 
@@ -4568,7 +4568,7 @@ fn force_clear_collection_approvals_works() {
 		assert_eq!(Balances::free_balance(&item_owner), balance);
 		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
 			collection: collection_id,
-			owner: item_owner.clone(),
+			owner: item_owner,
 			approvals: 0
 		}));
 
@@ -4687,13 +4687,13 @@ fn approve_collection_transfer_works() {
 
 		// Set collection settings to non transferable.
 		assert_ok!(Nfts::lock_collection(
-			RuntimeOrigin::signed(collection_owner.clone()),
+			RuntimeOrigin::signed(collection_owner),
 			collection_id,
 			CollectionSettings::from_disabled(CollectionSetting::TransferableItems.into())
 		));
 		assert_noop!(
 			Nfts::approve_collection_transfer(
-				RuntimeOrigin::signed(item_owner.clone()),
+				RuntimeOrigin::signed(item_owner),
 				collection_id,
 				delegate,
 				None
@@ -4813,16 +4813,16 @@ fn force_approve_collection_transfer_works() {
 
 		// Set collection settings to non transferable.
 		assert_ok!(Nfts::lock_collection(
-			RuntimeOrigin::signed(collection_owner.clone()),
+			RuntimeOrigin::signed(collection_owner),
 			collection_id,
 			CollectionSettings::from_disabled(CollectionSetting::TransferableItems.into())
 		));
 		assert_noop!(
 			Nfts::force_approve_collection_transfer(
 				root(),
-				item_owner.clone(),
+				item_owner,
 				collection_id,
-				delegate.clone(),
+				delegate,
 				None
 			),
 			Error::<Test>::ItemsNonTransferable
@@ -4894,8 +4894,8 @@ fn cancel_collection_approval_works() {
 			Event::<Test>::ApprovalCancelled {
 				collection: collection_id,
 				item: None,
-				owner: item_owner.clone(),
-				delegate: delegate.clone(),
+				owner: item_owner,
+				delegate,
 			}
 			.into(),
 		);
@@ -4974,8 +4974,8 @@ fn force_cancel_collection_approval_works() {
 			Event::<Test>::ApprovalCancelled {
 				collection: collection_id,
 				item: None,
-				owner: item_owner.clone(),
-				delegate: delegate.clone(),
+				owner: item_owner,
+				delegate,
 			}
 			.into(),
 		);
