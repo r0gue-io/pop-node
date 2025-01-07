@@ -20,7 +20,7 @@
 use enumflags2::BitFlags;
 use frame_support::{
 	assert_noop, assert_ok,
-	dispatch::{DispatchResultWithPostInfo, WithPostDispatchInfo},
+	dispatch::{WithPostDispatchInfo},
 	traits::{
 		tokens::nonfungibles_v2::{Create, Destroy, Inspect, Mutate},
 		Currency, Get,
@@ -41,7 +41,6 @@ type AccountIdOf<Test> = <Test as frame_system::Config>::AccountId;
 type AccountBalance = crate::AccountBalance<Test>;
 type CollectionApprovals = crate::CollectionApprovals<Test>;
 type CollectionApprovalDeposit = <Test as Config>::CollectionApprovalDeposit;
-type CollectionId = <Test as Config>::CollectionId;
 type WeightOf = <Test as Config>::WeightInfo;
 
 fn account(id: u8) -> AccountIdOf<Test> {
@@ -161,19 +160,6 @@ fn default_item_config() -> ItemConfig {
 
 fn item_config_from_disabled_settings(settings: BitFlags<ItemSetting>) -> ItemConfig {
 	ItemConfig { settings: ItemSettings::from_disabled(settings) }
-}
-
-fn clear_collection_approvals(
-	origin: RuntimeOrigin,
-	maybe_owner: Option<&AccountId>,
-	collection: CollectionId,
-	limit: u32,
-) -> DispatchResultWithPostInfo {
-	match maybe_owner {
-		Some(owner) =>
-			Nfts::force_clear_collection_approvals(origin, owner.clone(), collection, limit),
-		None => Nfts::clear_collection_approvals(origin, collection, limit),
-	}
 }
 
 #[test]
@@ -4354,26 +4340,12 @@ fn clear_collection_approvals_works() {
 		let item_owner = account(1);
 		let delegates = 10..20;
 
-		// Origin checks for the `clear_collection_approvals`.
 		for origin in [root(), none()] {
 			assert_noop!(
 				Nfts::clear_collection_approvals(origin, collection_id, 0),
 				BadOrigin.with_weight(WeightOf::clear_collection_approvals(0))
 			);
 		}
-		// Origin checks for the `force_clear_collection_approvals`.
-		for origin in [RuntimeOrigin::signed(item_owner.clone()), none()] {
-			assert_noop!(
-				Nfts::force_clear_collection_approvals(
-					origin,
-					item_owner.clone(),
-					collection_id,
-					0
-				),
-				BadOrigin.with_weight(WeightOf::clear_collection_approvals(0))
-			);
-		}
-
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
 			item_owner.clone(),
@@ -4387,97 +4359,213 @@ fn clear_collection_approvals_works() {
 			default_item_config()
 		));
 		Balances::make_free_balance_be(&item_owner, balance);
+		// Approve delegates.
+		let mut approvals = 0u32;
+		for i in delegates.clone() {
+			assert_ok!(Nfts::approve_collection_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				account(i),
+				None
+			));
+			approvals.saturating_inc();
+		}
 
-		for (origin, maybe_owner) in [
-			// Parameters for `clear_collection_approvals`.
-			(root(), Some(&item_owner)),
-			// Parameters for `force_clear_collection_approvals`.
-			(RuntimeOrigin::signed(item_owner.clone()), None),
-		] {
-			// Approve delegates.
-			let mut approvals = 0u32;
-			for i in delegates.clone() {
-				assert_ok!(Nfts::approve_collection_transfer(
-					RuntimeOrigin::signed(item_owner.clone()),
+		// Remove zero collection approvals.
+		assert_eq!(
+			Nfts::clear_collection_approvals(RuntimeOrigin::signed(item_owner.clone()), collection_id, 0),
+			Ok(Some(WeightOf::clear_collection_approvals(0)).into())
+		);
+		assert_eq!(Balances::free_balance(&item_owner), balance - approvals as u64);
+		assert_eq!(
+			CollectionApprovals::iter_prefix((collection_id, &item_owner)).count(),
+			approvals as usize
+		);
+		assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals
+		}));
+
+		// Partially remove collection approvals.
+		let limit = 1;
+		assert_eq!(
+			Nfts::clear_collection_approvals(RuntimeOrigin::signed(item_owner.clone()), collection_id, limit),
+			Ok(Some(WeightOf::clear_collection_approvals(limit)).into())
+		);
+		approvals = approvals - limit;
+		assert_eq!(Balances::free_balance(&item_owner), balance - approvals as u64);
+		assert_eq!(
+			CollectionApprovals::iter_prefix((collection_id, item_owner.clone())).count(),
+			approvals as usize
+		);
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals: limit
+		}));
+
+		// Successfully remove all collection approvals. Only charges post-dispatch weight for
+		// the removed approvals.
+		assert_eq!(
+			Nfts::clear_collection_approvals(RuntimeOrigin::signed(item_owner.clone()), collection_id, 10),
+			Ok(Some(WeightOf::clear_collection_approvals(approvals)).into())
+		);
+		assert_eq!(Balances::free_balance(&item_owner), balance);
+		assert!(CollectionApprovals::iter_prefix((collection_id, item_owner.clone()))
+			.count()
+			.is_zero());
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals,
+		}));
+		
+		// Remove collection approvals while there are none.
+		assert_eq!(
+			Nfts::force_clear_collection_approvals(root(), item_owner.clone(), collection_id, 10),
+			Ok(Some(WeightOf::clear_collection_approvals(0)).into())
+		);
+		assert_eq!(Balances::free_balance(&item_owner), balance);
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals: 0
+		}));
+
+		// Ensure delegates are not able to transfer.
+		for i in delegates.clone() {
+			assert_noop!(
+				Nfts::transfer(
+					RuntimeOrigin::signed(account(i)),
 					collection_id,
-					account(i),
-					None
-				));
-				approvals.saturating_inc();
-			}
+					item_id,
+					account(5)
+				),
+				Error::<Test>::NoPermission
+			);
+		}
+	});
+}
 
-			// Remove zero collection approvals.
-			assert_eq!(
-				clear_collection_approvals(origin.clone(), maybe_owner, collection_id, 0),
-				Ok(Some(WeightOf::clear_collection_approvals(0)).into())
-			);
-			assert_eq!(Balances::free_balance(&item_owner), balance - approvals as u64);
-			assert_eq!(
-				CollectionApprovals::iter_prefix((collection_id, &item_owner)).count(),
-				approvals as usize
-			);
-			assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
-				collection: collection_id,
-				owner: item_owner.clone(),
-				approvals
-			}));
+#[test]
+fn force_clear_collection_approvals_works() {
+	new_test_ext().execute_with(|| {
+		let balance = 100;
+		let collection_id = 0;
+		let item_id = 42;
+		let item_owner = account(1);
+		let delegates = 10..20;
 
-			// Partially remove collection approvals.
-			assert_eq!(
-				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 1),
-				Ok(Some(WeightOf::clear_collection_approvals(1)).into())
+		for origin in [RuntimeOrigin::signed(item_owner.clone()), none()] {
+			assert_noop!(
+				Nfts::force_clear_collection_approvals(
+					origin,
+					item_owner.clone(),
+					collection_id,
+					0
+				),
+				BadOrigin.with_weight(WeightOf::clear_collection_approvals(0))
 			);
-			assert_eq!(Balances::free_balance(&item_owner), balance - (approvals as u64) + 1);
-			assert_eq!(
-				CollectionApprovals::iter_prefix((collection_id, item_owner.clone())).count(),
-				approvals as usize - 1
-			);
-			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
-				collection: collection_id,
-				owner: item_owner.clone(),
-				approvals: 1
-			}));
+		}
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			item_owner.clone(),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(item_owner.clone()),
+			collection_id,
+			item_id,
+			item_owner.clone(),
+			default_item_config()
+		));
+		Balances::make_free_balance_be(&item_owner, balance);
+		// Approve delegates.
+		let mut approvals = 0u32;
+		for i in delegates.clone() {
+			assert_ok!(Nfts::approve_collection_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				account(i),
+				None
+			));
+			approvals.saturating_inc();
+		}
 
-			// Successfully remove all collection approvals. Only charges post-dispatch weight for
-			// the removed approvals.
-			assert_eq!(
-				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 10),
-				Ok(Some(WeightOf::clear_collection_approvals(9)).into())
-			);
-			assert_eq!(Balances::free_balance(&item_owner), balance);
-			assert!(CollectionApprovals::iter_prefix((collection_id, item_owner.clone()))
-				.count()
-				.is_zero());
-			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
-				collection: collection_id,
-				owner: item_owner.clone(),
-				approvals: approvals - 1
-			}));
+		// Remove zero collection approvals.
+		assert_eq!(
+			Nfts::force_clear_collection_approvals(root(), item_owner.clone(), collection_id, 0),
+			Ok(Some(WeightOf::clear_collection_approvals(0)).into())
+		);
+		assert_eq!(Balances::free_balance(&item_owner), balance - approvals as u64);
+		assert_eq!(
+			CollectionApprovals::iter_prefix((collection_id, &item_owner)).count(),
+			approvals as usize
+		);
+		assert!(!events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals
+		}));
 
-			// Remove zero collection approvals.
-			assert_eq!(
-				clear_collection_approvals(origin.clone(), maybe_owner.clone(), collection_id, 10),
-				Ok(Some(WeightOf::clear_collection_approvals(0)).into())
-			);
-			assert_eq!(Balances::free_balance(&item_owner), balance);
-			assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
-				collection: collection_id,
-				owner: item_owner.clone(),
-				approvals: 0
-			}));
+		// Partially remove collection approvals.
+		let limit = 1;
+		assert_eq!(
+			Nfts::force_clear_collection_approvals(root(), item_owner.clone(), collection_id, limit),
+			Ok(Some(WeightOf::clear_collection_approvals(limit)).into())
+		);
+		approvals = approvals - limit;
+		assert_eq!(Balances::free_balance(&item_owner), balance - approvals as u64);
+		assert_eq!(
+			CollectionApprovals::iter_prefix((collection_id, item_owner.clone())).count(),
+			approvals as usize
+		);
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals: limit
+		}));
 
-			// Ensure delegates are not able to transfer.
-			for i in delegates.clone() {
-				assert_noop!(
-					Nfts::transfer(
-						RuntimeOrigin::signed(account(i)),
-						collection_id,
-						item_id,
-						account(5)
-					),
-					Error::<Test>::NoPermission
-				);
-			}
+		// Successfully remove all collection approvals. Only charges post-dispatch weight for
+		// the removed approvals.
+		assert_eq!(
+			Nfts::force_clear_collection_approvals(root(), item_owner.clone(), collection_id, 10),
+			Ok(Some(WeightOf::clear_collection_approvals(approvals)).into())
+		);
+		assert_eq!(Balances::free_balance(&item_owner), balance);
+		assert!(CollectionApprovals::iter_prefix((collection_id, item_owner.clone()))
+			.count()
+			.is_zero());
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals,
+		}));
+
+		// Remove collection approvals while there are none.
+		assert_eq!(
+			Nfts::force_clear_collection_approvals(root(), item_owner.clone(), collection_id, 10),
+			Ok(Some(WeightOf::clear_collection_approvals(0)).into())
+		);
+		assert_eq!(Balances::free_balance(&item_owner), balance);
+		assert!(events().contains(&Event::<Test>::ApprovalsCancelled {
+			collection: collection_id,
+			owner: item_owner.clone(),
+			approvals: 0
+		}));
+
+		// Ensure delegates are not able to transfer.
+		for i in delegates.clone() {
+			assert_noop!(
+				Nfts::transfer(
+					RuntimeOrigin::signed(account(i)),
+					collection_id,
+					item_id,
+					account(5)
+				),
+				Error::<Test>::NoPermission
+			);
 		}
 	});
 }
