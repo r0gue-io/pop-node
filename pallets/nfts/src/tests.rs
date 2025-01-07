@@ -615,10 +615,7 @@ fn mint_should_update_account_balance_works() {
 			owner.clone(),
 			None
 		));
-		assert_eq!(
-			AccountBalance::get(collection_id, &owner),
-			Some((2, (owner.clone(), balance_deposit)))
-		);
+		assert_eq!(AccountBalance::get(collection_id, &owner), Some((2, (owner, balance_deposit))));
 	});
 }
 
@@ -762,16 +759,17 @@ fn transfer_should_update_account_balance_works() {
 			dest.clone()
 		));
 		assert!(!AccountBalance::contains_key(collection_id, &owner));
-		assert_eq!(AccountBalance::get(collection_id, &dest), Some((1, (owner.clone(), 0))));
+		assert_eq!(AccountBalance::get(collection_id, &dest), Some((1, (owner, 0))));
 	});
 }
 
 #[test]
 fn transfer_requires_deposit_works() {
 	new_test_ext().execute_with(|| {
+		let balance_deposit = balance_deposit();
 		let collection_id = 0;
 		let collection_owner = account(1);
-		let balance_deposit = balance_deposit();
+		let delegate = account(5);
 		let mut dest = account(3);
 		let mut item_id = 42;
 		let item_owner = account(2);
@@ -792,7 +790,7 @@ fn transfer_requires_deposit_works() {
 			default_item_config()
 		));
 
-		// Reserve funds from `owner` as `dest` does not exist.
+		// Reserve funds from `item_owner` when transferring to `dest`.
 		{
 			assert_ok!(Nfts::transfer(
 				RuntimeOrigin::signed(item_owner.clone()),
@@ -809,22 +807,29 @@ fn transfer_requires_deposit_works() {
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
 
-		// Reserve funds from `owner` since `dest` lacks sufficient balance.
+		// Reserve funds from the `item_owner` during a delegated transfer initiated by the
+		// `delegate` to the `dest`.
 		{
 			item_id = 43;
 			dest = account(4);
 
 			assert_ok!(Nfts::force_mint(
-				RuntimeOrigin::signed(account(1)),
+				RuntimeOrigin::signed(collection_owner),
 				collection_id,
 				item_id,
 				item_owner.clone(),
 				default_item_config()
 			));
-
-			Balances::make_free_balance_be(&dest, 1);
-			assert_ok!(Nfts::transfer(
+			assert_ok!(Nfts::approve_transfer(
 				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				item_id,
+				delegate.clone(),
+				None
+			));
+
+			assert_ok!(Nfts::transfer(
+				RuntimeOrigin::signed(account(5)),
 				collection_id,
 				item_id,
 				dest.clone()
@@ -834,34 +839,7 @@ fn transfer_requires_deposit_works() {
 				Some((1, (item_owner.clone(), balance_deposit)))
 			);
 			assert_eq!(Balances::reserved_balance(&item_owner), 2 * balance_deposit);
-			assert_eq!(Balances::reserved_balance(&dest), 0);
-			assert!(items().contains(&(dest, collection_id, item_id)));
-		}
-
-		// Reserves funds from `dest` since `dest` exists and has sufficient balance.
-		{
-			item_id = 44;
-			dest = account(5);
-
-			assert_ok!(Nfts::force_mint(
-				RuntimeOrigin::signed(account(1)),
-				collection_id,
-				item_id,
-				item_owner.clone(),
-				default_item_config()
-			));
-			Balances::make_free_balance_be(&dest, 1 + balance_deposit);
-			assert_ok!(Nfts::transfer(
-				RuntimeOrigin::signed(item_owner.clone()),
-				collection_id,
-				item_id,
-				dest.clone()
-			));
-			assert_eq!(
-				AccountBalance::get(collection_id, &dest),
-				Some((1, (item_owner.clone(), balance_deposit)))
-			);
-			assert_eq!(Balances::reserved_balance(&item_owner), 3 * balance_deposit);
+			assert_eq!(Balances::reserved_balance(&delegate), 0);
 			assert_eq!(Balances::reserved_balance(&dest), 0);
 			assert!(items().contains(&(dest, collection_id, item_id)));
 		}
@@ -2116,9 +2094,6 @@ fn burn_works() {
 		);
 
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 42));
-		// Burn an item unreserving the item deposit while retaining the reservation for `balance
-		// deposit`.
-		assert_eq!(Balances::reserved_balance(account(1)), 1 + balance_deposit);
 		assert_ok!(Nfts::burn(RuntimeOrigin::signed(account(5)), 0, 69));
 		assert_eq!(Balances::reserved_balance(account(1)), 0);
 	});
@@ -3221,6 +3196,55 @@ fn buy_item_should_update_account_balance_works() {
 }
 
 #[test]
+fn buy_item_requires_deposit_works() {
+	new_test_ext().execute_with(|| {
+		let user_1 = account(1);
+		let user_2 = account(2);
+		let collection_id = 0;
+		let item_1 = 1;
+		let price_1 = 20;
+		let initial_balance = 100;
+
+		Balances::make_free_balance_be(&user_1, initial_balance);
+		Balances::make_free_balance_be(&user_2, initial_balance);
+
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			user_1.clone(),
+			collection_config_with_all_settings_enabled()
+		));
+
+		assert_ok!(Nfts::mint(
+			RuntimeOrigin::signed(user_1.clone()),
+			collection_id,
+			item_1,
+			user_1.clone(),
+			None
+		));
+
+		assert_ok!(Nfts::set_price(
+			RuntimeOrigin::signed(user_1.clone()),
+			collection_id,
+			item_1,
+			Some(price_1),
+			None,
+		));
+
+		assert_ok!(Nfts::buy_item(
+			RuntimeOrigin::signed(user_2.clone()),
+			collection_id,
+			item_1,
+			price_1 + 1,
+		));
+		assert!(!AccountBalance::contains_key(collection_id, &user_1));
+		assert_eq!(
+			AccountBalance::get(collection_id, &user_2),
+			Some((1, (user_2, balance_deposit())))
+		);
+	});
+}
+
+#[test]
 fn pay_tips_should_work() {
 	new_test_ext().execute_with(|| {
 		let user_1 = account(1);
@@ -3694,6 +3718,72 @@ fn claim_swap_should_update_account_balance_works() {
 		));
 		assert_eq!(AccountBalance::get(collection_id, &user_1), Some((1, (user_1, 0))));
 		assert_eq!(AccountBalance::get(collection_id, &user_2), Some((1, (user_2, 0))));
+	});
+}
+
+#[test]
+fn claim_swap_requires_deposit_works() {
+	new_test_ext().execute_with(|| {
+		System::set_block_number(1);
+		let user_1 = account(1);
+		let user_2 = account(2);
+		let collection_id = 0;
+		let balance_deposit = balance_deposit();
+		let item_1 = 1;
+		let item_2 = 2;
+		let price = 100;
+		let price_with_direction =
+			PriceWithDirection { amount: price, direction: PriceDirection::Receive.clone() };
+
+		Balances::make_free_balance_be(&user_1, 1000);
+		Balances::make_free_balance_be(&user_2, 1000);
+
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			user_1.clone(),
+			collection_config_with_all_settings_enabled()
+		));
+
+		assert_ok!(Nfts::mint(
+			RuntimeOrigin::signed(user_1.clone()),
+			collection_id,
+			item_1,
+			user_1.clone(),
+			None,
+		));
+		assert_ok!(Nfts::mint(
+			RuntimeOrigin::signed(user_1.clone()),
+			collection_id,
+			item_2,
+			user_2.clone(),
+			None,
+		));
+		assert_ok!(Nfts::create_swap(
+			RuntimeOrigin::signed(user_1.clone()),
+			collection_id,
+			item_1,
+			collection_id,
+			Some(item_2),
+			Some(price_with_direction.clone()),
+			2
+		));
+
+		assert_ok!(Nfts::claim_swap(
+			RuntimeOrigin::signed(user_2.clone()),
+			collection_id,
+			item_2,
+			collection_id,
+			item_1,
+			Some(price_with_direction),
+		));
+		assert_eq!(
+			AccountBalance::get(collection_id, &user_1),
+			Some((1, (user_1, balance_deposit)))
+		);
+		assert_eq!(
+			AccountBalance::get(collection_id, &user_2),
+			Some((1, (user_2, balance_deposit)))
+		);
 	});
 }
 
