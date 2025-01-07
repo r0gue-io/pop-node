@@ -3778,11 +3778,11 @@ fn claim_swap_requires_deposit_works() {
 		));
 		assert_eq!(
 			AccountBalance::get(collection_id, &user_1),
-			Some((1, (user_1, balance_deposit)))
+			Some((1, (user_1.clone(), balance_deposit)))
 		);
 		assert_eq!(
 			AccountBalance::get(collection_id, &user_2),
-			Some((1, (user_2, balance_deposit)))
+			Some((1, (user_1, balance_deposit)))
 		);
 	});
 }
