@@ -4394,7 +4394,11 @@ fn clear_collection_approvals_works() {
 		// Partially remove collection approvals.
 		let limit = 1;
 		assert_eq!(
-			Nfts::clear_collection_approvals(RuntimeOrigin::signed(item_owner.clone()), collection_id, limit),
+			Nfts::clear_collection_approvals(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				limit
+			),
 			Ok(Some(WeightOf::clear_collection_approvals(limit)).into())
 		);
 		approvals = approvals - limit;
@@ -4412,7 +4416,11 @@ fn clear_collection_approvals_works() {
 		// Successfully remove all collection approvals. Only charges post-dispatch weight for
 		// the removed approvals.
 		assert_eq!(
-			Nfts::clear_collection_approvals(RuntimeOrigin::signed(item_owner.clone()), collection_id, 10),
+			Nfts::clear_collection_approvals(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				10
+			),
 			Ok(Some(WeightOf::clear_collection_approvals(approvals)).into())
 		);
 		assert_eq!(Balances::free_balance(&item_owner), balance);
@@ -4424,7 +4432,7 @@ fn clear_collection_approvals_works() {
 			owner: item_owner.clone(),
 			approvals,
 		}));
-		
+
 		// Remove collection approvals while there are none.
 		assert_eq!(
 			Nfts::force_clear_collection_approvals(root(), item_owner.clone(), collection_id, 10),
@@ -4516,7 +4524,12 @@ fn force_clear_collection_approvals_works() {
 		// Partially remove collection approvals.
 		let limit = 1;
 		assert_eq!(
-			Nfts::force_clear_collection_approvals(root(), item_owner.clone(), collection_id, limit),
+			Nfts::force_clear_collection_approvals(
+				root(),
+				item_owner.clone(),
+				collection_id,
+				limit
+			),
 			Ok(Some(WeightOf::clear_collection_approvals(limit)).into())
 		);
 		approvals = approvals - limit;
@@ -4847,7 +4860,11 @@ fn cancel_collection_approval_works() {
 		));
 		// Cancel an approval for a non existing collection.
 		assert_noop!(
-			Nfts::cancel_collection_approval(RuntimeOrigin::signed(item_owner.clone()), collection_id, delegate.clone()),
+			Nfts::cancel_collection_approval(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone()
+			),
 			Error::<Test>::Unapproved
 		);
 		assert_ok!(Nfts::approve_collection_transfer(
@@ -4858,7 +4875,11 @@ fn cancel_collection_approval_works() {
 		));
 		// Cancel an unapproved delegate.
 		assert_noop!(
-			Nfts::cancel_collection_approval(RuntimeOrigin::signed(item_owner.clone()), collection_id, account(69)),
+			Nfts::cancel_collection_approval(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				account(69)
+			),
 			Error::<Test>::Unapproved
 		);
 		// Successfully cancel a collection approval.
@@ -4876,7 +4897,7 @@ fn cancel_collection_approval_works() {
 				owner: item_owner.clone(),
 				delegate: delegate.clone(),
 			}
-				.into(),
+			.into(),
 		);
 	});
 }
@@ -4916,7 +4937,12 @@ fn force_cancel_collection_approval_works() {
 		));
 		// Cancel an approval for a non existing collection.
 		assert_noop!(
-			Nfts::force_cancel_collection_approval(root(), item_owner.clone(), collection_id, delegate.clone()),
+			Nfts::force_cancel_collection_approval(
+				root(),
+				item_owner.clone(),
+				collection_id,
+				delegate.clone()
+			),
 			Error::<Test>::Unapproved
 		);
 		assert_ok!(Nfts::approve_collection_transfer(
@@ -4927,12 +4953,21 @@ fn force_cancel_collection_approval_works() {
 		));
 		// Cancel an unapproved delegate.
 		assert_noop!(
-			Nfts::force_cancel_collection_approval(root(), item_owner.clone(), collection_id, account(69)),
+			Nfts::force_cancel_collection_approval(
+				root(),
+				item_owner.clone(),
+				collection_id,
+				account(69)
+			),
 			Error::<Test>::Unapproved
 		);
 		// Successfully cancel a collection approval.
-		assert_ok!(
-			Nfts::force_cancel_collection_approval(root(), item_owner.clone(), collection_id, delegate.clone()));
+		assert_ok!(Nfts::force_cancel_collection_approval(
+			root(),
+			item_owner.clone(),
+			collection_id,
+			delegate.clone()
+		));
 		assert_eq!(Balances::reserved_balance(&item_owner), 0);
 		assert!(!CollectionApprovals::contains_key((collection_id, &item_owner, &delegate)));
 		System::assert_last_event(
