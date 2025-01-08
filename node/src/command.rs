@@ -72,11 +72,13 @@ impl RuntimeResolver for PathBuf {
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
-		"dev" | "devnet" | "dev-paseo" =>
-			Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+		"dev" | "devnet" | "dev-paseo" => {
+			Box::new(chain_spec::development_config(Relay::PaseoLocal))
+		},
 		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
-		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
-			Box::new(chain_spec::mainnet_config(Relay::Polkadot)),
+		"pop" | "mainnet" | "pop-polkadot" | "pop-network" => {
+			Box::new(chain_spec::mainnet_config(Relay::Polkadot))
+		},
 		"" | "local" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
 		path => {
 			let path: PathBuf = path.into();
@@ -303,7 +305,7 @@ pub fn run() -> Result<()> {
 			let runner = cli.create_runner(cmd)?;
 			// Switch on the concrete benchmark sub-command-
 			match cmd {
-				BenchmarkCmd::Pallet(cmd) =>
+				BenchmarkCmd::Pallet(cmd) => {
 					if cfg!(feature = "runtime-benchmarks") {
 						runner.sync_run(|config| {
 							cmd.run_with_spec::<HashingFor<Block>, ReclaimHostFunctions>(Some(
@@ -314,7 +316,8 @@ pub fn run() -> Result<()> {
 						Err("Benchmarking wasn't enabled when building the node. You can enable \
 						     it with `--features runtime-benchmarks`."
 							.into())
-					},
+					}
+				},
 				BenchmarkCmd::Block(cmd) => runner.sync_run(|config| {
 					construct_benchmark_partials!(config, |partials| cmd.run(partials.client))
 				}),
@@ -331,8 +334,9 @@ pub fn run() -> Result<()> {
 						cmd.run(config, partials.client.clone(), db, storage)
 					})
 				}),
-				BenchmarkCmd::Machine(cmd) =>
-					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone())),
+				BenchmarkCmd::Machine(cmd) => {
+					runner.sync_run(|config| cmd.run(&config, SUBSTRATE_REFERENCE_HARDWARE.clone()))
+				},
 				// NOTE: this allows the Client to leniently implement
 				// new benchmark commands without requiring a companion MR.
 				#[allow(unreachable_patterns)]
@@ -346,13 +350,15 @@ pub fn run() -> Result<()> {
 
 			runner.run_node_until_exit(|config| async move {
 				let hwbench = (!cli.no_hardware_benchmarks)
-					.then_some(config.database.path().map(|database_path| {
-						let _ = std::fs::create_dir_all(database_path);
-						sc_sysinfo::gather_hwbench(
-							Some(database_path),
-							&SUBSTRATE_REFERENCE_HARDWARE,
-						)
-					}))
+					.then(|| {
+						config.database.path().map(|database_path| {
+							let _ = std::fs::create_dir_all(database_path);
+							sc_sysinfo::gather_hwbench(
+								Some(database_path),
+								&SUBSTRATE_REFERENCE_HARDWARE,
+							)
+						})
+					})
 					.flatten();
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)

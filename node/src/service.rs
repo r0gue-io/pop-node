@@ -231,7 +231,6 @@ where
 	if parachain_config.offchain_worker.enabled {
 		use futures::FutureExt;
 
-		// TODO: double check
 		let offchain_workers =
 			sc_offchain::OffchainWorkers::new(sc_offchain::OffchainWorkerOptions {
 				runtime_api_provider: client.clone(),
