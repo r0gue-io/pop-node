@@ -25,7 +25,8 @@ use crate::*;
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Transfer an NFT to the specified destination account.
 	///
-	/// - `caller`: The account transferring the collection item.
+	/// - `depositor`: The account reserving the `CollectionBalanceDeposit` from if `dest` holds no
+	///   items in the collection.
 	/// - `collection`: The ID of the collection to which the NFT belongs.
 	/// - `item`: The ID of the NFT to transfer.
 	/// - `dest`: The destination account to which the NFT will be transferred.
@@ -46,7 +47,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - If the collection or item is non-transferable
 	///   ([`ItemsNonTransferable`](crate::Error::ItemsNonTransferable)).
 	pub fn do_transfer(
-		caller: Option<&T::AccountId>,
+		depositor: Option<&T::AccountId>,
 		collection: T::CollectionId,
 		item: T::ItemId,
 		dest: T::AccountId,
@@ -91,16 +92,15 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		// Update account balance of the owner.
 		Self::decrement_account_balance(collection, &details.owner)?;
 
-		// Update account balance of the destination account.
-		let deposit_amount =
-			match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
-				true => T::CollectionBalanceDeposit::get(),
-				false => Zero::zero(),
-			};
-		// Reserve `CollectionBalanceDeposit` from the caller if provided. Otherwise, reserve from
-		// the collection item's owner.
-		let deposit_account = caller.unwrap_or(&details.owner);
+		let deposit_amount = collection_config
+			.is_setting_enabled(CollectionSetting::DepositRequired)
+			.then_some(T::CollectionBalanceDeposit::get())
+			.unwrap_or_default();
+		// Reserve `CollectionBalanceDeposit` from the depositor if provided. Otherwise, reserve
+		// from the item's owner.
+		let deposit_account = depositor.unwrap_or(&details.owner);
 
+		// Update account balance of the destination account.
 		Self::increment_account_balance(collection, &dest, (deposit_account, deposit_amount))?;
 
 		// Update account ownership information.
