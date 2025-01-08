@@ -9,6 +9,7 @@ use pop_api::{
 		Psp22Error,
 	},
 };
+use sp_runtime::serde::Serialize;
 
 #[cfg(test)]
 mod tests;
@@ -27,14 +28,18 @@ mod dao {
 		Executed,
 	}
 
-	#[ink::scale_derive(Encode)]
+	#[derive(Debug, Clone, PartialEq, Serialize)]
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub enum RuntimeCall {
 		/// We can add additional pallets we might want to use here
 		#[codec(index = 150)]
 		Fungibles(FungiblesCall),
 	}
 
-	#[ink::scale_derive(Encode)]
+	#[derive(Debug, Clone, PartialEq, Serialize)]
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub enum FungiblesCall {
 		#[codec(index = 4)]
 		TransferFrom { token: TokenId, from: AccountId, to: AccountId, value: Balance },
@@ -59,6 +64,9 @@ mod dao {
 
 		// Information relative to proposal execution if approved
 		pub transaction: Option<Transaction>,
+
+		// Call top be executed
+		pub call: Option<RuntimeCall>
 	}
 
 	impl Default for Proposal {
@@ -71,6 +79,7 @@ mod dao {
 			let voting_period = dao.voting_period;
 			let current_block = ink::env::block_number::<Environment>();
 			let end = current_block.saturating_add(voting_period);
+			let call = None;
 			let round =
 				Some(VoteRound { start: current_block, end, yes_votes: 0, no_votes: 0 });
 			Proposal {
@@ -79,6 +88,7 @@ mod dao {
 				proposal_id: 0,
 				round,
 				transaction: None,
+				call,
 			}
 		}
 	}
@@ -228,10 +238,11 @@ mod dao {
 			beneficiary: AccountId,
 			amount: Balance,
 			mut description: Vec<u8>,
+			call: RuntimeCall,
 		) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
-			
+			let wrapped_call = Some(call);
 
 			if description.len() >= u8::MAX.into() {
 				return Err(Error::MaxDescriptionLengthReached);
@@ -239,7 +250,7 @@ mod dao {
 
 			self.proposal_count = self.proposal_count.saturating_add(1);
 			let mut proposal =
-				Proposal { proposal_id: self.proposal_count, ..Default::default() };
+				Proposal { proposal_id: self.proposal_count, call: wrapped_call,  ..Default::default() };
 			proposal.description.append(&mut description);
 			let transaction = Transaction { beneficiary, amount };
 			proposal.transaction = Some(transaction);
@@ -330,14 +341,16 @@ mod dao {
 				};
 
 				// RuntimeCall.
-				let _ = self.env()
+				let call = proposal.call.clone().expect("There should be a call");
+				let _ = self.env().call_runtime(&call).map_err(EnvError::from);
+				/*let _ = self.env()
 					.call_runtime(&RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
 						token: self.token_id,
 						from: contract,
 						to: transaction.beneficiary,
 						value: transaction.amount,
 					}))
-					.map_err(EnvError::from);
+					.map_err(EnvError::from);*/
 
 				self.env().emit_event(Transfer {
 					from: Some(contract),
@@ -436,6 +449,9 @@ mod dao {
 
 		/// The Runtime Call failed
 		ProposalExecutionFailed,
+
+		/// The Runtime Call is missing or invalid
+		NoValidRuntimeCall,
 
 		/// PSP22 specific error
 		Psp22(Psp22Error),
