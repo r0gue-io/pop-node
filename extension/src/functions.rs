@@ -324,7 +324,7 @@ mod tests {
 			assert_eq!(
 				env.charged(),
 				read_from_buffer_weight(encoded_call.len() as u32)
-					+ call.get_dispatch_info().weight
+					+ call.get_dispatch_info().total_weight()
 			);
 		}
 
@@ -363,7 +363,7 @@ mod tests {
 				assert_eq!(
 					env.charged(),
 					read_from_buffer_weight(encoded_call.len() as u32)
-						+ call.get_dispatch_info().weight
+						+ call.get_dispatch_info().total_weight()
 				);
 			})
 		}
@@ -384,11 +384,11 @@ mod tests {
 					pallet_contracts::Error::<Test>::NoMigrationPerformed.into();
 				assert_eq!(DispatchCall::execute(&mut env).err().unwrap(), expected);
 				// Ensure pre-dispatch weight is weight function + weight limit
-				assert_eq!(call.get_dispatch_info().weight, migrate_weight + weight_limit);
+				assert_eq!(call.get_dispatch_info().total_weight(), migrate_weight + weight_limit);
 				assert_eq!(
 					env.charged(),
 					read_from_buffer_weight(encoded_call.len() as u32)
-						+ call.get_dispatch_info().weight
+						+ call.get_dispatch_info().total_weight()
 						- extra_weight
 				);
 			})
