@@ -25,11 +25,11 @@ use crate::*;
 impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Transfer an NFT to the specified destination account.
 	///
-	/// - `depositor`: The account reserving the `CollectionBalanceDeposit` from if `dest` holds no
-	///   items in the collection.
 	/// - `collection`: The ID of the collection to which the NFT belongs.
 	/// - `item`: The ID of the NFT to transfer.
 	/// - `dest`: The destination account to which the NFT will be transferred.
+	/// - `depositor`: The account reserving the `CollectionBalanceDeposit` from if `dest` holds no
+	///   items in the collection.
 	/// - `with_details`: A closure that provides access to the collection and item details,
 	///   allowing customization of the transfer process.
 	///
@@ -47,10 +47,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - If the collection or item is non-transferable
 	///   ([`ItemsNonTransferable`](crate::Error::ItemsNonTransferable)).
 	pub fn do_transfer(
-		depositor: Option<&T::AccountId>,
 		collection: T::CollectionId,
 		item: T::ItemId,
 		dest: T::AccountId,
+		depositor: Option<&T::AccountId>,
 		with_details: impl FnOnce(
 			&CollectionDetailsFor<T, I>,
 			&mut ItemDetailsFor<T, I>,

@@ -210,19 +210,19 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		// This also removes the swap.
 		Self::do_transfer(
-			Some(&receive_item.owner),
 			send_collection_id,
 			send_item_id,
 			receive_item.owner.clone(),
+			Some(&receive_item.owner),
 			|_, _| Ok(()),
 		)?;
 		// Owner of `send_item` is responsible for the deposit if the collection balance
 		// went to zero due to the previous transfer.
 		Self::do_transfer(
-			Some(&send_item.owner),
 			receive_collection_id,
 			receive_item_id,
 			send_item.owner.clone(),
+			Some(&send_item.owner),
 			|_, _| Ok(()),
 		)?;
 

@@ -1096,7 +1096,7 @@ pub mod pallet {
 			// items in `collection`. A malicious actor could have a deposit reserved from `dest`
 			// without them knowing about the transfer. The deposit amount can be accounted for
 			// in the off chain price of the NFT.
-			Self::do_transfer(None, collection, item, dest, |_, details| {
+			Self::do_transfer(collection, item, dest, None, |_, details| {
 				if details.owner != origin {
 					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
 				}

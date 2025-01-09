@@ -412,10 +412,10 @@ impl<T: Config<I>, I: 'static> Transfer<T::AccountId> for Pallet<T, I> {
 		destination: &T::AccountId,
 	) -> DispatchResult {
 		// The item's owner pays for the deposit of `AccountBalance` if the `dest` holds no items
-		// in `collection`. A malicious actor could have a deposit reserved from `dest` without
-		// them knowing about the transfer. The deposit amount can be accounted for in the off chain
-		// price of the NFT.
-		Self::do_transfer(None, *collection, *item, destination.clone(), |_, _| Ok(()))
+		// in `collection`. If `dest` paid the deposit, a malicious actor could transfer NFTs to
+		// reserve involuntary deposits for `dest` . The deposit amount can be accounted for in the
+		// off chain price of the NFT.
+		Self::do_transfer(*collection, *item, destination.clone(), None, |_, _| Ok(()))
 	}
 
 	fn disable_transfer(collection: &Self::CollectionId, item: &Self::ItemId) -> DispatchResult {
