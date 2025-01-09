@@ -5,10 +5,12 @@ use emulated_integration_tests_common::{
 	impl_xcm_helpers_for_parachain, impls::Parachain, xcm_emulator::decl_test_parachains,
 };
 use frame_support::traits::OnInitialize;
-#[cfg(not(feature = "mainnet"))]
+#[cfg(feature = "devnet")]
 use pop_runtime_devnet as runtime;
 #[cfg(feature = "mainnet")]
 use pop_runtime_mainnet as runtime;
+#[cfg(feature = "testnet")]
+use pop_runtime_testnet as runtime;
 
 // PopNetwork Parachain declaration
 decl_test_parachains! {

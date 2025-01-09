@@ -270,7 +270,9 @@ fn fund_pop_from_system_para(
 }
 
 /// Reserve Transfers of native asset from Relay to Parachain should work
+#[cfg(not(feature = "testnet"))]
 #[test]
+#[should_panic]
 fn reserve_transfer_native_asset_from_relay_to_para() {
 	init_tracing();
 
@@ -317,7 +319,9 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 }
 
 /// Reserve Transfers of native asset from Parachain to Relay should work
+#[cfg(not(feature = "testnet"))]
 #[test]
+#[should_panic]
 fn reserve_transfer_native_asset_from_para_to_relay() {
 	init_tracing();
 
