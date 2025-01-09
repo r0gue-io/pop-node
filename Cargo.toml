@@ -189,18 +189,10 @@ paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes", d
 westend-runtime = { git = "https://github.com/r0gue-io/polkadot-sdk", branch = "stable2412" }
 westend-runtime-constants = { git = "https://github.com/r0gue-io/polkadot-sdk", branch = "stable2412", default-features = false }
 
-#ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2409", default-features = false }
-#ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2409", default-features = false }
-#ismp-parachain-inherent = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2409", default-features = false }
-#ismp-parachain-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2409", default-features = false }
-#pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2409", default-features = false }
-#pallet-ismp-rpc = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2409", default-features = false }
-#pallet-ismp-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2409", default-features = false }
-
-ismp = { path = "../ismp/modules/ismp/core/", default-features = false }
-ismp-parachain = { path = "../ismp/modules/ismp/clients/parachain/client", default-features = false }
-ismp-parachain-inherent = { path = "../ismp/modules/ismp/clients/parachain/inherent", default-features = false }
-ismp-parachain-runtime-api = { path = "../ismp/modules/ismp/clients/parachain/runtime-api", default-features = false }
-pallet-ismp = { path = "../ismp/modules/ismp/pallets/pallet", default-features = false }
-pallet-ismp-rpc = { path = "../ismp/modules/ismp/pallets/rpc", default-features = false }
-pallet-ismp-runtime-api = { path = "../ismp/modules/ismp/pallets/runtime-api", default-features = false }
+ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+ismp-parachain-inherent = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+ismp-parachain-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+pallet-ismp-rpc = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+pallet-ismp-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
