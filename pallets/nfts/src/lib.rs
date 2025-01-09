@@ -59,8 +59,8 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	traits::{
-		tokens::Locker, BalanceStatus::Reserved, Currency, EnsureOriginWithArg, Incrementable,
-		ReservableCurrency,
+		nonfungibles_v2::InspectRole, tokens::Locker, BalanceStatus::Reserved, Currency,
+		EnsureOriginWithArg, Incrementable, ReservableCurrency,
 	},
 };
 use frame_system::Config as SystemConfig;
@@ -448,7 +448,13 @@ pub mod pallet {
 			NMapKey<Blake2_128Concat, T::AccountId>, // owner
 			NMapKey<Blake2_128Concat, T::AccountId>, // delegate
 		),
-		(Option<BlockNumberFor<T>>, DepositBalanceOf<T, I>),
+		(
+			// The optional deadline for the approval. If specified, the approval is valid on or
+			// before the given block number.
+			Option<BlockNumberFor<T>>,
+			// The balance to be deposited.
+			DepositBalanceOf<T, I>,
+		),
 	>;
 
 	#[pallet::event]
@@ -494,8 +500,9 @@ pub mod pallet {
 			admin: Option<T::AccountId>,
 			freezer: Option<T::AccountId>,
 		},
-		/// An `item` of a `collection` has been approved by the `owner` for transfer by
-		/// a `delegate`.
+		/// A provided `item` of a `collection`, or if no `item` is provided, all items in the
+		/// `collection` owned by the `owner` have been approved by the `owner` for transfer by a
+		/// `delegate`.
 		TransferApproved {
 			collection: T::CollectionId,
 			item: Option<T::ItemId>,
@@ -503,8 +510,9 @@ pub mod pallet {
 			delegate: T::AccountId,
 			deadline: Option<BlockNumberFor<T>>,
 		},
-		/// An approval for a `delegate` account to transfer a specific `item` in a `collection` or
-		/// all collection items owned by the `owner` has been cancelled by the owner.
+		/// An approval for a `delegate` account to transfer a specific `item` in a `collection`,
+		/// or if no `item` is provided, all collection items owned by the `owner` have been
+		/// cancelled by the `owner`.
 		ApprovalCancelled {
 			collection: T::CollectionId,
 			item: Option<T::ItemId>,
@@ -658,8 +666,6 @@ pub mod pallet {
 		NotDelegate,
 		/// The delegate turned out to be different to what was expected.
 		WrongDelegate,
-		/// No approval exists that would allow the transfer.
-		Unapproved,
 		/// The named owner has not signed ownership acceptance of the collection.
 		Unaccepted,
 		/// The item is locked (non-transferable).
@@ -1088,7 +1094,12 @@ pub mod pallet {
 
 			Self::do_transfer(collection, item, dest, |_, details| {
 				if details.owner != origin {
-					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
+					Self::check_approval_permission(
+						&collection,
+						&Some(item),
+						&details.owner,
+						&origin,
+					)?;
 				}
 				Ok(())
 			})
@@ -2089,9 +2100,19 @@ pub mod pallet {
 			collection: T::CollectionId,
 			delegate: AccountIdLookupOf<T>,
 		) -> DispatchResult {
-			T::ForceOrigin::ensure_origin(origin)?;
+			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
+				.map(|_| None)
+				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
 			let delegate = T::Lookup::lookup(delegate)?;
 			let owner = T::Lookup::lookup(owner)?;
+
+			if let Some(check_origin) = maybe_check_origin {
+				ensure!(
+					Self::is_admin(&collection, &check_origin) ||
+						Self::is_issuer(&collection, &check_origin),
+					Error::<T, I>::NoPermission
+				);
+			}
 			Self::do_cancel_collection_approval(owner, collection, delegate)
 		}
 
@@ -2142,9 +2163,23 @@ pub mod pallet {
 			collection: T::CollectionId,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
-			T::ForceOrigin::ensure_origin(origin)
-				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
+			let maybe_check_origin =
+				T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
+					ensure_signed(origin).map(Some).map_err(|e| {
+						DispatchError::from(e)
+							.with_weight(T::WeightInfo::clear_collection_approvals(0))
+					})
+				})?;
 			let owner = T::Lookup::lookup(owner)?;
+
+			if let Some(check_origin) = maybe_check_origin {
+				ensure!(
+					Self::is_admin(&collection, &check_origin) ||
+						Self::is_issuer(&collection, &check_origin),
+					Error::<T, I>::NoPermission
+						.with_weight(T::WeightInfo::clear_collection_approvals(0))
+				);
+			}
 			let removed_approvals = Self::do_clear_collection_approvals(owner, collection, limit)?;
 			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
 		}
