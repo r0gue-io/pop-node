@@ -117,7 +117,7 @@ fn configure_for_relay(
 	}
 }
 
-pub fn development_config(relay: Relay) -> DevnetChainSpec {
+pub fn development_chain_spec(relay: Relay) -> DevnetChainSpec {
 	// Give your base currency a unit name and decimal places
 	let mut properties = sc_chain_spec::Properties::new();
 	let (extensions, para_id) = configure_for_relay(relay, &mut properties);
@@ -149,7 +149,7 @@ pub fn development_config(relay: Relay) -> DevnetChainSpec {
 	.build()
 }
 
-pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
+pub fn testnet_chain_spec(relay: Relay) -> TestnetChainSpec {
 	// Give your base currency a unit name and decimal places
 	let mut properties = sc_chain_spec::Properties::new();
 	let (extensions, para_id) = configure_for_relay(relay, &mut properties);
@@ -195,7 +195,7 @@ pub fn testnet_config(relay: Relay) -> TestnetChainSpec {
 	.build()
 }
 
-pub fn mainnet_config(relay: Relay) -> MainnetChainSpec {
+pub fn mainnet_chain_spec(relay: Relay) -> MainnetChainSpec {
 	let mut properties = sc_chain_spec::Properties::new();
 	let (extensions, para_id) = configure_for_relay(relay, &mut properties);
 
