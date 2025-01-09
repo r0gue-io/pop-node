@@ -2,6 +2,9 @@
 
 ## Description
 This contract implements a Decentralized Autonomous Organization using Psp22.
+The objectivbe of this DAO is to allow its members to vote for funding of projects they would like to see developped.
+To become a member, a user needs to pay some amount of the Dao_token to the Dao Treasury(Dao_tokens obtained through airdrops or token purchase...) ⇒ The subscription payment becomes the Member voting_power. 
+Approved projects are funded by the Dao Treasury.  
 The key functionalities include:
 - **Membership Management**: It maintains a registry of DAO members.
 - **Proposal Lifecycle**: The contract manages the creation, voting, and execution of proposals. Each proposal includes details like description, voting period, vote tallies, execution status, beneficiary, and amount to be awarded.
