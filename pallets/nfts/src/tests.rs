@@ -4905,6 +4905,81 @@ fn cancel_collection_approval_works() {
 }
 
 #[test]
+fn cancel_collection_approval_works_with_admin() {
+	new_test_ext().execute_with(|| {
+		let admin = account(4);
+		let collection_id = 0;
+		let collection_owner = account(1);
+		let delegate = account(3);
+		let freezer = account(6);
+		let issuer = account(5);
+		let item_id = 42;
+		let item_owner = account(2);
+
+		for origin in [root(), none()] {
+			assert_noop!(
+				Nfts::cancel_collection_approval(origin, collection_id, delegate.clone()),
+				BadOrigin
+			);
+		}
+		Balances::make_free_balance_be(&item_owner, 100);
+		assert_ok!(Nfts::force_create(
+			RuntimeOrigin::root(),
+			collection_owner.clone(),
+			default_collection_config()
+		));
+		assert_ok!(Nfts::set_team(
+			RuntimeOrigin::signed(collection_owner.clone()),
+			collection_id,
+			Some(issuer.clone()),
+			Some(admin.clone()),
+			Some(freezer.clone())
+		));
+		assert_ok!(Nfts::force_mint(
+			RuntimeOrigin::signed(issuer.clone()),
+			collection_id,
+			item_id,
+			item_owner.clone(),
+			default_item_config()
+		));
+
+		// Successfully cancel a collection approval.
+		for origin in [issuer, admin] {
+			assert_ok!(Nfts::approve_collection_transfer(
+				RuntimeOrigin::signed(item_owner.clone()),
+				collection_id,
+				delegate.clone(),
+				None
+			));
+			assert_ok!(Nfts::force_cancel_collection_approval(
+				RuntimeOrigin::signed(origin.clone()),
+				item_owner.clone(),
+				collection_id,
+				delegate.clone()
+			));
+			assert_eq!(Balances::reserved_balance(&item_owner), 0);
+			assert!(!CollectionApprovals::contains_key((collection_id, &item_owner, &delegate)));
+		}
+
+		assert_ok!(Nfts::approve_collection_transfer(
+			RuntimeOrigin::signed(item_owner.clone()),
+			collection_id,
+			delegate.clone(),
+			None
+		));
+		assert_noop!(
+			Nfts::force_cancel_collection_approval(
+				RuntimeOrigin::signed(freezer),
+				item_owner,
+				collection_id,
+				delegate
+			),
+			Error::<Test>::NoPermission
+		);
+	});
+}
+
+#[test]
 fn force_cancel_collection_approval_works() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;

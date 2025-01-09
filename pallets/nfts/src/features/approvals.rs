@@ -231,7 +231,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			|maybe_approval| -> DispatchResult {
 				let deposit_required = T::CollectionApprovalDeposit::get();
 				let current_deposit =
-					maybe_approval.take().map(|(_, deposit)| deposit).unwrap_or_default();
+					maybe_approval.map(|(_, deposit)| deposit).unwrap_or_default();
 				T::Currency::reserve(&owner, deposit_required - current_deposit)?;
 				*maybe_approval = Some((deadline, deposit_required));
 				Ok(())
