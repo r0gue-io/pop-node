@@ -118,9 +118,9 @@ impl From<DispatchError> for V0Error {
 				// Note: message not used
 				let ModuleError { index, error, message: _message } = error;
 				// Map `pallet-contracts::Error::DecodingFailed` to `Error::DecodingFailed`
-				if index as usize
-					== <crate::Contracts as frame_support::traits::PalletInfoAccess>::index()
-					&& error == DECODING_FAILED_ERROR
+				if index as usize ==
+					<crate::Contracts as frame_support::traits::PalletInfoAccess>::index() &&
+					error == DECODING_FAILED_ERROR
 				{
 					Error::DecodingFailed
 				} else {

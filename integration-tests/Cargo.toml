@@ -9,10 +9,10 @@ repository.workspace = true
 [dependencies]
 codec.workspace = true
 tracing-subscriber = { workspace = true, features = [
-    "env-filter",
-    "fmt",
-    "std",
-    "tracing-log",
+	"env-filter",
+	"fmt",
+	"std",
+	"tracing-log",
 ] }
 
 # Substrate
@@ -54,15 +54,15 @@ pop-runtime-devnet.workspace = true
 pop-runtime-mainnet.workspace = true
 
 [features]
-default = ["westend"]
-mainnet = ["pop-runtime-mainnet/default"]
+default = [ "westend" ]
+mainnet = [ "pop-runtime-mainnet/default" ]
 paseo = [
-    "asset-hub-paseo-runtime",
-    "paseo-runtime",
-    "paseo-runtime-constants",
+	"asset-hub-paseo-runtime",
+	"paseo-runtime",
+	"paseo-runtime-constants",
 ]
 westend = [
-    "asset-hub-westend-runtime",
-    "westend-runtime",
-    "westend-runtime-constants",
+	"asset-hub-westend-runtime",
+	"westend-runtime",
+	"westend-runtime-constants",
 ]

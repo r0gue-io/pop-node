@@ -11,8 +11,7 @@ mod weights;
 
 extern crate alloc;
 
-use alloc::borrow::Cow;
-use alloc::vec::Vec;
+use alloc::{borrow::Cow, vec::Vec};
 
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
@@ -295,10 +294,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. }
-					| force_set_balance { .. }
-					| force_transfer { .. }
-					| force_unreserve { .. }
+				force_adjust_total_issuance { .. } |
+					force_set_balance { .. } |
+					force_transfer { .. } |
+					force_unreserve { .. }
 			)
 		)
 	}
@@ -360,8 +359,8 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	/// The type for recording an account's balance.
 	type Balance = Balance;
-	type DustRemoval = ();
 	type DoneSlashHandler = ();
+	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
@@ -388,8 +387,8 @@ impl pallet_transaction_payment::Config for Runtime {
 		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightToFee = fee::WeightToFee;
 	type WeightInfo = ();
+	type WeightToFee = fee::WeightToFee;
 }
 
 impl pallet_sudo::Config for Runtime {
