@@ -9,10 +9,10 @@ repository.workspace = true
 [dependencies]
 codec.workspace = true
 tracing-subscriber = { workspace = true, features = [
-	"env-filter",
-	"fmt",
-	"std",
-	"tracing-log",
+    "env-filter",
+    "fmt",
+    "std",
+    "tracing-log",
 ] }
 
 # Substrate
@@ -54,80 +54,15 @@ pop-runtime-devnet.workspace = true
 pop-runtime-mainnet.workspace = true
 
 [features]
-default = [ "westend" ]
-mainnet = [ "pop-runtime-mainnet/default" ]
+default = ["westend"]
+mainnet = ["pop-runtime-mainnet/default"]
 paseo = [
-	"asset-hub-paseo-runtime",
-	"paseo-runtime",
-	"paseo-runtime-constants",
-	"std",
-]
-runtime-benchmarks = [
-	"asset-hub-paseo-runtime?/runtime-benchmarks",
-	"asset-hub-westend-runtime?/runtime-benchmarks",
-	"cumulus-primitives-core/runtime-benchmarks",
-	"frame-support/runtime-benchmarks",
-	"pallet-assets/runtime-benchmarks",
-	"pallet-balances/runtime-benchmarks",
-	"pallet-message-queue/runtime-benchmarks",
-	"pallet-xcm/runtime-benchmarks",
-	"paseo-runtime?/runtime-benchmarks",
-	"polkadot-primitives/runtime-benchmarks",
-	"polkadot-runtime-parachains/runtime-benchmarks",
-	"pop-runtime-common/runtime-benchmarks",
-	"pop-runtime-devnet/runtime-benchmarks",
-	"pop-runtime-mainnet/runtime-benchmarks",
-	"sp-runtime/runtime-benchmarks",
-	"westend-runtime?/runtime-benchmarks",
-	"xcm-executor/runtime-benchmarks",
-]
-std = [
-	"asset-hub-paseo-runtime?/std",
-	"asset-hub-westend-runtime?/std",
-	"asset-test-utils/std",
-	"codec/std",
-	"cumulus-primitives-core/std",
-	"frame-support/std",
-	"pallet-assets/std",
-	"pallet-balances/std",
-	"pallet-message-queue/std",
-	"pallet-xcm/std",
-	"paseo-runtime-constants?/std",
-	"paseo-runtime?/std",
-	"polkadot-primitives/std",
-	"polkadot-runtime-parachains/std",
-	"pop-runtime-common/std",
-	"pop-runtime-devnet/std",
-	"pop-runtime-mainnet/std",
-	"sp-authority-discovery/std",
-	"sp-consensus-aura/std",
-	"sp-consensus-babe/std",
-	"sp-consensus-beefy/std",
-	"sp-consensus-grandpa/std",
-	"sp-core/std",
-	"sp-runtime/std",
-	"tracing-subscriber/std",
-	"westend-runtime-constants?/std",
-	"westend-runtime?/std",
-	"xcm-executor/std",
-	"xcm/std",
-]
-try-runtime = [
-	"asset-hub-paseo-runtime?/try-runtime",
-	"asset-hub-westend-runtime?/try-runtime",
-	"frame-support/try-runtime",
-	"pallet-assets/try-runtime",
-	"pallet-balances/std",
-	"pallet-message-queue/try-runtime",
-	"paseo-runtime?/try-runtime",
-	"pop-runtime-devnet/try-runtime",
-	"pop-runtime-mainnet/try-runtime",
-	"sp-runtime/try-runtime",
-	"westend-runtime?/try-runtime",
+    "asset-hub-paseo-runtime",
+    "paseo-runtime",
+    "paseo-runtime-constants",
 ]
 westend = [
-	"asset-hub-westend-runtime",
-	"std",
-	"westend-runtime",
-	"westend-runtime-constants",
+    "asset-hub-westend-runtime",
+    "westend-runtime",
+    "westend-runtime-constants",
 ]
