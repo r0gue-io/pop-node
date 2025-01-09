@@ -5,14 +5,13 @@ use drink::{
 	session::Session,
 	AssetsAPI, TestExternalities, NO_SALT,
 };
-use ink::scale::Decode;
 use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},
 };
 
 use super::*;
-use crate::dao::{Error, FungiblesCall, Member, Proposal, RuntimeCall, Vote};
+use crate::dao::{Error, Member, Proposal, Vote};
 
 const UNIT: Balance = 10_000_000_000;
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
@@ -119,15 +118,7 @@ fn member_create_proposal_works(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = AMOUNT * 3;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	assert_last_contract_event!(
 		&session,
@@ -142,15 +133,7 @@ fn member_create_proposal_works(mut session: Session) {
 	let description_bis =
 		"Funds for creation of another Dao contract".to_string().as_bytes().to_vec();
 	session.set_actor(BOB);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&ALICE),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, ALICE, amount, description_bis, call_f));
+	assert_ok!(create_proposal(&mut session, ALICE, amount, description_bis));
 	assert_last_contract_event!(
 		&session,
 		Created {
@@ -173,15 +156,7 @@ fn members_vote_system_works(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = AMOUNT * 3;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	session.set_actor(CHARLIE);
 	// Charlie vote
@@ -210,15 +185,7 @@ fn double_vote_fails(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = AMOUNT * 3;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	session.set_actor(CHARLIE);
 	// Charlie tries to vote twice for the same proposal
@@ -238,15 +205,7 @@ fn vote_fails_if_voting_period_ended(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = AMOUNT * 3;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	// Moving to blocks beyond voting period
 	session.sandbox().build_blocks(VOTING_PERIOD + 1);
@@ -268,15 +227,7 @@ fn vote_fails_if_not_a_member(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = AMOUNT * 3;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	session.set_actor(NON_MEMBER);
 	assert_eq!(vote(&mut session, 1, true), Err(Error::MemberNotFound));
@@ -297,15 +248,7 @@ fn proposal_enactment_works(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = MIN_BALANCE;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	let now = session.sandbox().block_number();
 	session.set_actor(CHARLIE);
@@ -359,15 +302,7 @@ fn same_proposal_consecutive_claim_fails(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = MIN_BALANCE;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	let now = session.sandbox().block_number();
 	session.set_actor(CHARLIE);
@@ -424,15 +359,7 @@ fn proposal_enactment_fails_if_proposal_is_rejected(mut session: Session) {
 	let description = "Funds for creation of a Dao contract".to_string().as_bytes().to_vec();
 	let amount = MIN_BALANCE;
 	session.set_actor(ALICE);
-	let mut call_f = Vec::new();
-	let call0 = RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
-		token: TOKEN,
-		from: account_id_from_slice(&contract),
-		to: account_id_from_slice(&BOB),
-		value: amount,
-	})
-	.encode(&mut call_f);
-	assert_ok!(create_proposal(&mut session, BOB, amount, description, call_f));
+	assert_ok!(create_proposal(&mut session, BOB, amount, description));
 
 	let now = session.sandbox().block_number();
 	session.set_actor(CHARLIE);
@@ -492,10 +419,8 @@ fn create_proposal(
 	beneficiary: AccountId,
 	amount: Balance,
 	description: Vec<u8>,
-	runtimecall: Vec<u8>,
 ) -> Result<(), Error> {
 	let desc: &[u8] = &description;
-	let call0: &[u8] = &runtimecall;
 	call::<Pop, (), Error>(
 		session,
 		"create_proposal",
@@ -503,7 +428,6 @@ fn create_proposal(
 			beneficiary.to_string(),
 			amount.to_string(),
 			serde_json::to_string::<[u8]>(desc).unwrap(),
-			serde_json::to_string::<[u8]>(call0).unwrap(),
 		],
 		None,
 	)
