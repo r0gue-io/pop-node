@@ -4905,23 +4905,17 @@ fn cancel_collection_approval_works() {
 }
 
 #[test]
-fn cancel_collection_approval_works_with_admin() {
+fn force_cancel_collection_approval_works_with_admin() {
 	new_test_ext().execute_with(|| {
-		let admin = account(4);
 		let collection_id = 0;
-		let collection_owner = account(1);
-		let delegate = account(3);
-		let freezer = account(6);
-		let issuer = account(5);
 		let item_id = 42;
+		let collection_owner = account(1);
 		let item_owner = account(2);
+		let delegate = account(3);
+		let admin = account(4);
+		let issuer = account(5);
+		let freezer = account(6);
 
-		for origin in [root(), none()] {
-			assert_noop!(
-				Nfts::cancel_collection_approval(origin, collection_id, delegate.clone()),
-				BadOrigin
-			);
-		}
 		Balances::make_free_balance_be(&item_owner, 100);
 		assert_ok!(Nfts::force_create(
 			RuntimeOrigin::root(),
