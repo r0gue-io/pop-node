@@ -1,10 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{
-	env::Error as EnvError,
-	prelude::vec::Vec,
-	storage::{traits::Storable, Mapping},
-};
+use ink::{env::Error as EnvError, prelude::vec::Vec, storage::Mapping};
 use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::{
@@ -31,18 +27,14 @@ mod dao {
 		Executed,
 	}
 
-	#[derive(Debug, Clone, PartialEq)]
-	#[ink::scale_derive(Encode, Decode, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+	#[ink::scale_derive(Encode)]
 	pub enum RuntimeCall {
 		/// We can add additional pallets we might want to use here
 		#[codec(index = 150)]
 		Fungibles(FungiblesCall),
 	}
 
-	#[derive(Debug, Clone, PartialEq)]
-	#[ink::scale_derive(Encode, Decode, TypeInfo)]
-	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
+	#[ink::scale_derive(Encode)]
 	pub enum FungiblesCall {
 		#[codec(index = 4)]
 		TransferFrom { token: TokenId, from: AccountId, to: AccountId, value: Balance },
@@ -67,9 +59,6 @@ mod dao {
 
 		// Information relative to proposal execution if approved
 		pub transaction: Option<Transaction>,
-
-		// Call top be executed
-		pub call: Option<Vec<u8>>,
 	}
 
 	impl Default for Proposal {
@@ -82,15 +71,14 @@ mod dao {
 			let voting_period = dao.voting_period;
 			let current_block = ink::env::block_number::<Environment>();
 			let end = current_block.saturating_add(voting_period);
-			let call = None;
-			let round = Some(VoteRound { start: current_block, end, yes_votes: 0, no_votes: 0 });
+			let round =
+				Some(VoteRound { start: current_block, end, yes_votes: 0, no_votes: 0 });
 			Proposal {
 				description: Vec::new(),
 				status: ProposalStatus::Submitted,
 				proposal_id: 0,
 				round,
 				transaction: None,
-				call,
 			}
 		}
 	}
@@ -139,7 +127,8 @@ mod dao {
 		fn update_votes(&mut self, approved: bool, member: Member) {
 			match approved {
 				true => {
-					self.yes_votes = self.yes_votes.saturating_add(member.voting_power);
+					self.yes_votes =
+						self.yes_votes.saturating_add(member.voting_power);
 				},
 				false => {
 					self.no_votes = self.no_votes.saturating_add(member.voting_power);
@@ -233,29 +222,24 @@ mod dao {
 		/// if the proposal is accepted.
 		/// - `amount` - Amount requested for this proposal
 		/// - `description` - Description of the proposal
-		/// - `call` - Proposal call to be executed
 		#[ink(message)]
 		pub fn create_proposal(
 			&mut self,
 			beneficiary: AccountId,
 			amount: Balance,
 			mut description: Vec<u8>,
-			call: Vec<u8>,
 		) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
-			let wrapped_call = Some(call);
+			
 
 			if description.len() >= u8::MAX.into() {
 				return Err(Error::MaxDescriptionLengthReached);
 			}
 
 			self.proposal_count = self.proposal_count.saturating_add(1);
-			let mut proposal = Proposal {
-				proposal_id: self.proposal_count,
-				call: wrapped_call,
-				..Default::default()
-			};
+			let mut proposal =
+				Proposal { proposal_id: self.proposal_count, ..Default::default() };
 			proposal.description.append(&mut description);
 			let transaction = Transaction { beneficiary, amount };
 			proposal.transaction = Some(transaction);
@@ -322,7 +306,8 @@ mod dao {
 			let mut proposal = self.proposals.get(proposal_id).ok_or(Error::ProposalNotFound)?;
 			let round = proposal.round.clone().ok_or(Error::ProblemWithTheContract)?;
 
-			let transaction = proposal.transaction.clone().ok_or(Error::ProblemWithTheContract)?;
+			let transaction =
+				proposal.transaction.clone().ok_or(Error::ProblemWithTheContract)?;
 
 			// Check the voting period
 			if self.env().block_number() <= round.end {
@@ -345,10 +330,14 @@ mod dao {
 				};
 
 				// RuntimeCall.
-				let call = &proposal.call.clone().expect("There should be a call");
-				if let Ok(call0) = RuntimeCall::decode(&mut &call[..]) {
-					let _ = self.env().call_runtime(&call0).map_err(EnvError::from);
-				}
+				let _ = self.env()
+					.call_runtime(&RuntimeCall::Fungibles(FungiblesCall::TransferFrom {
+						token: self.token_id,
+						from: contract,
+						to: transaction.beneficiary,
+						value: transaction.amount,
+					}))
+					.map_err(EnvError::from);
 
 				self.env().emit_event(Transfer {
 					from: Some(contract),
@@ -447,9 +436,6 @@ mod dao {
 
 		/// The Runtime Call failed
 		ProposalExecutionFailed,
-
-		/// The Runtime Call is missing or invalid
-		NoValidRuntimeCall,
 
 		/// PSP22 specific error
 		Psp22(Psp22Error),
