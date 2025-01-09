@@ -344,7 +344,7 @@ fn destroy_should_work() {
 }
 
 #[test]
-fn destroy_with_collection_approvals_returns_error() {
+fn destroy_ensures_no_active_collection_approval() {
 	new_test_ext().execute_with(|| {
 		let collection_id = 0;
 		let collection_owner = account(1);
