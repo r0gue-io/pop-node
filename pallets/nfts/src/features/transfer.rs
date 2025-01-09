@@ -28,6 +28,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - `collection`: The ID of the collection to which the NFT belongs.
 	/// - `item`: The ID of the NFT to transfer.
 	/// - `dest`: The destination account to which the NFT will be transferred.
+	/// - `depositor`: The account reserving the `CollectionBalanceDeposit` from if `dest` holds no
+	///   items in the collection.
 	/// - `with_details`: A closure that provides access to the collection and item details,
 	///   allowing customization of the transfer process.
 	///
@@ -48,6 +50,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		item: T::ItemId,
 		dest: T::AccountId,
+		depositor: Option<&T::AccountId>,
 		with_details: impl FnOnce(
 			&CollectionDetailsFor<T, I>,
 			&mut ItemDetailsFor<T, I>,
@@ -87,16 +90,18 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		with_details(&collection_details, &mut details)?;
 
 		// Update account balance of the owner.
-		let balance = AccountBalance::<T, I>::take(collection, &details.owner)
-			.checked_sub(1)
-			.ok_or(Error::<T, I>::NoItemOwned)?;
-		if balance > 0 {
-			AccountBalance::<T, I>::insert(collection, &details.owner, balance);
-		}
+		Self::decrement_account_balance(collection, &details.owner)?;
+
+		let deposit_amount = collection_config
+			.is_setting_enabled(CollectionSetting::DepositRequired)
+			.then_some(T::CollectionBalanceDeposit::get())
+			.unwrap_or_default();
+		// Reserve `CollectionBalanceDeposit` from the depositor if provided. Otherwise, reserve
+		// from the item's owner.
+		let deposit_account = depositor.unwrap_or(&details.owner);
+
 		// Update account balance of the destination account.
-		AccountBalance::<T, I>::mutate(collection, &dest, |balance| {
-			balance.saturating_inc();
-		});
+		Self::increment_account_balance(collection, &dest, (deposit_account, deposit_amount))?;
 
 		// Update account ownership information.
 		Account::<T, I>::remove((&details.owner, &collection, &item));
