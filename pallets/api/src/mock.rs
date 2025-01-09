@@ -68,6 +68,7 @@ impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type Balance = Balance;
 	type DustRemoval = ();
+	type DoneSlashHandler = ();
 	type ExistentialDeposit = ConstU128<1>;
 	type FreezeIdentifier = ();
 	type MaxFreezes = ConstU32<0>;
