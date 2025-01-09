@@ -12,8 +12,7 @@ mod weights;
 
 extern crate alloc;
 
-use alloc::borrow::Cow;
-use alloc::vec::Vec;
+use alloc::{borrow::Cow, vec::Vec};
 
 // ISMP imports
 use ::ismp::{
@@ -255,10 +254,10 @@ impl Contains<RuntimeCall> for FilteredCalls {
 		matches!(
 			c,
 			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. }
-					| force_set_balance { .. }
-					| force_transfer { .. }
-					| force_unreserve { .. }
+				force_adjust_total_issuance { .. } |
+					force_set_balance { .. } |
+					force_transfer { .. } |
+					force_unreserve { .. }
 			)
 		)
 	}
@@ -322,8 +321,8 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	/// The type for recording an account's balance.
 	type Balance = Balance;
-	type DustRemoval = ();
 	type DoneSlashHandler = ();
+	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
@@ -348,8 +347,8 @@ impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightToFee = WeightToFee;
 	type WeightInfo = ();
+	type WeightToFee = WeightToFee;
 }
 
 impl pallet_sudo::Config for Runtime {
