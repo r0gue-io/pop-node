@@ -42,7 +42,7 @@ jobs:
 
       - name: Check Build
         run: |
-          cargo check --release --locked --features=runtime-benchmarks,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,try-runtime
 
   check-ismp:
     needs: lint
@@ -52,7 +52,7 @@ jobs:
       - uses: "./.github/actions/init"
       - name: Check Build with ISMP
         run: |
-          cargo check --release --locked --features=ismp,runtime-benchmarks,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,runtime-benchmarks,try-runtime
 
   clippy:
     needs: lint
@@ -71,7 +71,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --release --locked --features=runtime-benchmarks
+          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks
 
   clippy-ismp:
     needs: lint
@@ -90,7 +90,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --release --locked --features=runtime-benchmarks,ismp
+          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,ismp
 
   test:
     needs: lint
@@ -101,18 +101,24 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        run: cargo test --release --locked --workspace --features=runtime-benchmarks --exclude integration-tests
+        run: cargo test --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks
 
   integration-tests:
     needs: lint
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - "westend,testnet"
+          - "paseo,testnet"
     steps:
       - uses: actions/checkout@v4
 
       - uses: "./.github/actions/init"
 
       - name: Run integration tests
-        run: cargo test --release --locked --package integration-tests
+        working-directory: integration-tests
+        run: cargo test --release --locked --features "${{ matrix.features }}"
 
   api-tests:
     runs-on: ubuntu-latest
