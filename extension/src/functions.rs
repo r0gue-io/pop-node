@@ -50,7 +50,7 @@ impl<
 		// Charge weight before dispatch.
 		let dispatch_info = call.get_dispatch_info();
 		log::debug!(target: Logger::LOG_TARGET, "pre-dispatch info: dispatch_info={dispatch_info:?}");
-		let charged = env.charge_weight(dispatch_info.total_weight())?;
+		let charged = env.charge_weight(dispatch_info.call_weight)?;
 		log::debug!(target: Logger::LOG_TARGET, "pre-dispatch weight charged: charged={charged:?}");
 		// Contract is the origin by default.
 		let origin = RawOrigin::Signed(env.ext().address().clone());
@@ -323,8 +323,8 @@ mod tests {
 			assert!(DispatchCallWithFilter::<Nothing>::execute(&mut env).is_err());
 			assert_eq!(
 				env.charged(),
-				read_from_buffer_weight(encoded_call.len() as u32) +
-					call.get_dispatch_info().total_weight()
+				read_from_buffer_weight(encoded_call.len() as u32)
+					+ call.get_dispatch_info().call_weight
 			);
 		}
 
@@ -362,8 +362,8 @@ mod tests {
 				assert!(DispatchCall::execute(&mut env).is_ok());
 				assert_eq!(
 					env.charged(),
-					read_from_buffer_weight(encoded_call.len() as u32) +
-						call.get_dispatch_info().total_weight()
+					read_from_buffer_weight(encoded_call.len() as u32)
+						+ call.get_dispatch_info().call_weight
 				);
 			})
 		}
@@ -384,12 +384,12 @@ mod tests {
 					pallet_contracts::Error::<Test>::NoMigrationPerformed.into();
 				assert_eq!(DispatchCall::execute(&mut env).err().unwrap(), expected);
 				// Ensure pre-dispatch weight is weight function + weight limit
-				assert_eq!(call.get_dispatch_info().total_weight(), migrate_weight + weight_limit);
+				assert_eq!(call.get_dispatch_info().call_weight, migrate_weight + weight_limit);
 				assert_eq!(
 					env.charged(),
-					read_from_buffer_weight(encoded_call.len() as u32) +
-						call.get_dispatch_info().total_weight() -
-						extra_weight
+					read_from_buffer_weight(encoded_call.len() as u32)
+						+ call.get_dispatch_info().call_weight
+						- extra_weight
 				);
 			})
 		}
@@ -488,8 +488,8 @@ mod tests {
 			let expected = "pop".as_bytes().encode();
 			assert_eq!(
 				env.charged(),
-				read_from_buffer_weight(encoded_read.len() as u32) +
-					read.weight() + write_to_contract_weight(expected.len() as u32)
+				read_from_buffer_weight(encoded_read.len() as u32)
+					+ read.weight() + write_to_contract_weight(expected.len() as u32)
 			);
 		}
 
