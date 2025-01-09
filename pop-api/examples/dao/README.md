@@ -1,4 +1,4 @@
-# PSP22 DAO contract example
+# PSP22 DAO contract example_01
 
 ## Description
 This contract implements a Decentralized Autonomous Organization using Psp22.
