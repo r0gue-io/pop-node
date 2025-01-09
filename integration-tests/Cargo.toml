@@ -49,10 +49,12 @@ paseo-runtime-constants.workspace = true
 pop-runtime-common.workspace = true
 pop-runtime-devnet.workspace = true
 pop-runtime-mainnet.workspace = true
+pop-runtime-testnet.workspace = true
 
 [features]
-default = [ "std" ]
-mainnet = [ "pop-runtime-mainnet/default" ]
+default = [ "devnet", "std" ]
+devnet = [ "pop-runtime-devnet/std" ]
+mainnet = [ "pop-runtime-mainnet/std" ]
 std = [
 	"asset-hub-paseo-runtime/std",
 	"cumulus-primitives-core/std",
@@ -78,6 +80,7 @@ std = [
 	"xcm-executor/std",
 	"xcm/std",
 ]
+testnet = [ "pop-runtime-testnet/std" ]
 
 runtime-benchmarks = [
 	"asset-hub-paseo-runtime/runtime-benchmarks",
