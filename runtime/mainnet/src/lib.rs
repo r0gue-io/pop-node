@@ -16,6 +16,8 @@ use alloc::{borrow::Cow, vec::Vec};
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
+use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
+use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
@@ -31,9 +33,11 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	CheckGenesis, CheckMortality, CheckNonZeroSender, CheckNonce, CheckSpecVersion, CheckTxVersion,
+	CheckWeight, EnsureRoot,
 };
 use pallet_balances::Call as BalancesCall;
+use pallet_transaction_payment::ChargeTransactionPayment;
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
@@ -87,16 +91,16 @@ pub type BlockId = generic::BlockId<Block>;
 
 /// The SignedExtension to the basic transaction logic.
 pub type TxExtension = (
-	frame_system::CheckNonZeroSender<Runtime>,
-	frame_system::CheckSpecVersion<Runtime>,
-	frame_system::CheckTxVersion<Runtime>,
-	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckMortality<Runtime>,
-	frame_system::CheckNonce<Runtime>,
-	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim<Runtime>,
-	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
+	CheckNonZeroSender<Runtime>,
+	CheckSpecVersion<Runtime>,
+	CheckTxVersion<Runtime>,
+	CheckGenesis<Runtime>,
+	CheckMortality<Runtime>,
+	CheckNonce<Runtime>,
+	CheckWeight<Runtime>,
+	ChargeTransactionPayment<Runtime>,
+	StorageWeightReclaim<Runtime>,
+	CheckMetadataHash<Runtime>,
 );
 
 /// Unchecked extrinsic type as expected by this runtime.
@@ -953,6 +957,7 @@ mod tests {
 	use std::any::TypeId;
 
 	use pallet_balances::AdjustmentDirection;
+	use sp_runtime::MultiSignature;
 	use BalancesCall::*;
 	use RuntimeCall::Balances;
 
@@ -1039,5 +1044,63 @@ mod tests {
 		}
 
 		assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
+	}
+
+	#[test]
+	fn block_header_configured() {
+		assert_eq!(TypeId::of::<Header>(), TypeId::of::<generic::Header<u32, BlakeTwo256>>());
+	}
+
+	#[test]
+	fn unchecked_extrinsic_configured() {
+		assert_eq!(
+			TypeId::of::<UncheckedExtrinsic>(),
+			TypeId::of::<
+				generic::UncheckedExtrinsic<
+					// Multiple address formats supported.
+					MultiAddress<AccountId, ()>,
+					// The runtime calls available.
+					RuntimeCall,
+					// The signature scheme(s) supported.
+					MultiSignature,
+					// The transaction extensions.
+					TxExtension,
+				>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn transaction_extension_checks() {
+		assert_eq!(
+			TypeId::of::<TxExtension>(),
+			TypeId::of::<(
+				// Ensures sender is not the zero address.
+				CheckNonZeroSender<Runtime>,
+				// Ensures the runtime version included within in the transaction is the same as at
+				// present.
+				CheckSpecVersion<Runtime>,
+				// Ensures the transaction version included in the transaction is the same as at
+				// present.
+				CheckTxVersion<Runtime>,
+				// Ensures the genesis hash to provide replay protection between different
+				// networks.
+				CheckGenesis<Runtime>,
+				// Checks transaction mortality.
+				CheckMortality<Runtime>,
+				// Nonce check and increment to give replay protection for transactions.
+				CheckNonce<Runtime>,
+				// Block resource (weight) limit check.
+				CheckWeight<Runtime>,
+				// Require the transactor pay for themselves and maybe include a tip to gain
+				// additional priority in the queue.
+				ChargeTransactionPayment<Runtime>,
+				// Checks the size of the node-side storage proof before and after executing a
+				// given extrinsic.
+				StorageWeightReclaim<Runtime>,
+				// Extension for optionally verifying the metadata hash.
+				CheckMetadataHash<Runtime>
+			)>(),
+		);
 	}
 }
