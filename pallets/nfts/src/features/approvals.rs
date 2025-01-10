@@ -237,7 +237,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				let deposit_required = T::CollectionApprovalDeposit::get();
 				let current_deposit =
 					maybe_approval.map(|(_, deposit)| deposit).unwrap_or_default();
-				T::Currency::reserve(&owner, deposit_required - current_deposit)?;
+				T::Currency::reserve(&owner, deposit_required.saturating_sub(current_deposit))?;
 				*maybe_approval = Some((deadline, deposit_required));
 				Ok(())
 			},
