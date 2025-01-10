@@ -155,9 +155,9 @@ mod extension {
 			// Charges weight.
 			assert_eq!(
 				env.charged(),
-				overhead_weight(encoded_call.len() as u32)
-					+ read_from_buffer_weight(encoded_call.len() as u32)
-					+ call.get_dispatch_info().call_weight
+				overhead_weight(encoded_call.len() as u32) +
+					read_from_buffer_weight(encoded_call.len() as u32) +
+					call.get_dispatch_info().call_weight
 			);
 		});
 	}
@@ -187,10 +187,10 @@ mod extension {
 		// Charges weight.
 		assert_eq!(
 			env.charged(),
-			overhead_weight(encoded_read.len() as u32)
-				+ read_from_buffer_weight(encoded_read.len() as u32)
-				+ read.weight()
-				+ write_to_contract_weight(expected.len() as u32)
+			overhead_weight(encoded_read.len() as u32) +
+				read_from_buffer_weight(encoded_read.len() as u32) +
+				read.weight() +
+				write_to_contract_weight(expected.len() as u32)
 		);
 		// Check if the contract environment buffer is written correctly.
 		assert_eq!(env.buffer, expected);
