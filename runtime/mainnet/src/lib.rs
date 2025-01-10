@@ -661,6 +661,10 @@ mod runtime {
 	#[runtime::pallet_index(33)]
 	pub type MessageQueue = pallet_message_queue::Pallet<Runtime>;
 
+	// Contracts (using pallet-revive)
+	#[runtime::pallet_index(40)]
+	pub type Revive = pallet_revive::Pallet<Runtime>;
+
 	// Proxy
 	#[runtime::pallet_index(41)]
 	pub type Proxy = pallet_proxy::Pallet<Runtime>;
