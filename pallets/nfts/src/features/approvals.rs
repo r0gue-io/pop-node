@@ -204,12 +204,14 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// - `owner`: The owner of the collection items.
 	/// - `collection`: The identifier of the collection.
 	/// - `delegate`: The account that will be approved to take control of the collection items.
+	/// - `deposit`: The reserved amount for granting a collection approval.
 	/// - `maybe_deadline`: The optional deadline (in block numbers) specifying the time limit for
 	///   the approval.
 	pub(crate) fn do_approve_collection_transfer(
 		owner: T::AccountId,
 		collection: T::CollectionId,
 		delegate: T::AccountId,
+		deposit: DepositBalanceOf<T, I>,
 		maybe_deadline: Option<BlockNumberFor<T>>,
 	) -> DispatchResult {
 		ensure!(
@@ -234,11 +236,10 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		CollectionApprovals::<T, I>::try_mutate_exists(
 			(&collection, &owner, &delegate),
 			|maybe_approval| -> DispatchResult {
-				let deposit_required = T::CollectionApprovalDeposit::get();
 				let current_deposit =
 					maybe_approval.map(|(_, deposit)| deposit).unwrap_or_default();
-				T::Currency::reserve(&owner, deposit_required.saturating_sub(current_deposit))?;
-				*maybe_approval = Some((deadline, deposit_required));
+				T::Currency::reserve(&owner, deposit.saturating_sub(current_deposit))?;
+				*maybe_approval = Some((deadline, deposit));
 				Ok(())
 			},
 		)?;

@@ -2033,14 +2033,21 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
-			Self::do_approve_collection_transfer(origin, collection, delegate, maybe_deadline)
+			Self::do_approve_collection_transfer(
+				origin,
+				collection,
+				delegate,
+				T::CollectionApprovalDeposit::get(),
+				maybe_deadline,
+			)
 		}
 
 		/// Force-approve collection items owned by the `owner` to be transferred by a delegated
-		/// third-party account. This function reserves the required deposit
-		/// `CollectionApprovalDeposit` from the `owner` account.
+		/// third-party account.
 		///
 		/// Origin must be the `ForceOrigin`.
+		///
+		/// Any deposit is left alone.
 		///
 		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
 		/// - `collection`: The collection of the items to be approved for delegated transfer.
@@ -2064,7 +2071,13 @@ pub mod pallet {
 			T::ForceOrigin::ensure_origin(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
 			let owner = T::Lookup::lookup(owner)?;
-			Self::do_approve_collection_transfer(owner, collection, delegate, maybe_deadline)
+			Self::do_approve_collection_transfer(
+				owner,
+				collection,
+				delegate,
+				Zero::zero(),
+				maybe_deadline,
+			)
 		}
 
 		/// Cancel a collection approval.

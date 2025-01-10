@@ -4815,7 +4815,6 @@ fn force_approve_collection_transfer_works() {
 		let collection_owner = account(1);
 		let deadline: BlockNumberFor<Test> = 20;
 		let delegate = account(3);
-		let deposit = CollectionApprovalDeposit::get();
 		let item_id = 42;
 		let item_owner = account(2);
 
@@ -4866,16 +4865,13 @@ fn force_approve_collection_transfer_works() {
 			default_item_config()
 		));
 		// Approve collection without balance.
-		assert_noop!(
-			Nfts::force_approve_collection_transfer(
-				RuntimeOrigin::root(),
-				item_owner.clone(),
-				collection_id,
-				delegate.clone(),
-				None
-			),
-			BalancesError::<Test, _>::InsufficientBalance,
-		);
+		assert_ok!(Nfts::force_approve_collection_transfer(
+			RuntimeOrigin::root(),
+			item_owner.clone(),
+			collection_id,
+			delegate.clone(),
+			None
+		));
 
 		Balances::make_free_balance_be(&item_owner, 100);
 		// Approving a collection to a delegate with:
@@ -4909,10 +4905,10 @@ fn force_approve_collection_transfer_works() {
 				}
 				.into(),
 			);
-			assert_eq!(Balances::reserved_balance(&item_owner), deposit);
+			assert_eq!(Balances::reserved_balance(&item_owner), 0);
 			assert_eq!(
 				CollectionApprovals::get((collection_id, &item_owner, &delegate)),
-				Some((deadline, deposit))
+				Some((deadline, 0))
 			);
 		}
 
