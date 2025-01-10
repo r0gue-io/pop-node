@@ -59,8 +59,8 @@ use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	traits::{
-		nonfungibles_v2::InspectRole, tokens::Locker, BalanceStatus::Reserved, Currency,
-		EnsureOriginWithArg, Incrementable, ReservableCurrency,
+		tokens::Locker, BalanceStatus::Reserved, Currency, EnsureOriginWithArg, Incrementable,
+		ReservableCurrency,
 	},
 };
 use frame_system::Config as SystemConfig;
@@ -2110,19 +2110,9 @@ pub mod pallet {
 			collection: T::CollectionId,
 			delegate: AccountIdLookupOf<T>,
 		) -> DispatchResult {
-			let maybe_check_origin = T::ForceOrigin::try_origin(origin)
-				.map(|_| None)
-				.or_else(|origin| ensure_signed(origin).map(Some).map_err(DispatchError::from))?;
+			T::ForceOrigin::ensure_origin(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
 			let owner = T::Lookup::lookup(owner)?;
-
-			if let Some(check_origin) = maybe_check_origin {
-				ensure!(
-					Self::is_admin(&collection, &check_origin) ||
-						Self::is_issuer(&collection, &check_origin),
-					Error::<T, I>::NoPermission
-				);
-			}
 			Self::do_cancel_collection_approval(owner, collection, delegate)
 		}
 
@@ -2173,23 +2163,9 @@ pub mod pallet {
 			collection: T::CollectionId,
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
-			let maybe_check_origin =
-				T::ForceOrigin::try_origin(origin).map(|_| None).or_else(|origin| {
-					ensure_signed(origin).map(Some).map_err(|e| {
-						DispatchError::from(e)
-							.with_weight(T::WeightInfo::clear_collection_approvals(0))
-					})
-				})?;
+			T::ForceOrigin::ensure_origin(origin)
+				.map_err(|e| e.with_weight(T::WeightInfo::clear_collection_approvals(0)))?;
 			let owner = T::Lookup::lookup(owner)?;
-
-			if let Some(check_origin) = maybe_check_origin {
-				ensure!(
-					Self::is_admin(&collection, &check_origin) ||
-						Self::is_issuer(&collection, &check_origin),
-					Error::<T, I>::NoPermission
-						.with_weight(T::WeightInfo::clear_collection_approvals(0))
-				);
-			}
 			let removed_approvals = Self::do_clear_collection_approvals(owner, collection, limit)?;
 			Ok(Some(T::WeightInfo::clear_collection_approvals(removed_approvals)).into())
 		}
