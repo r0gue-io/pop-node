@@ -15,7 +15,7 @@ clap.workspace = true
 codec.workspace = true
 docify.workspace = true
 futures.workspace = true
-jsonrpsee = { workspace = true, features = ["server"] }
+jsonrpsee = { workspace = true, features = [ "server" ] }
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -95,53 +95,53 @@ substrate-build-script-utils.workspace = true
 pallet-multisig.workspace = true
 
 [features]
-default = ["std"]
+default = [ "std" ]
 runtime-benchmarks = [
-    "cumulus-primitives-core/runtime-benchmarks",
-    "frame-benchmarking-cli/runtime-benchmarks",
-    "frame-benchmarking/runtime-benchmarks",
-    "polkadot-cli/runtime-benchmarks",
-    "polkadot-primitives/runtime-benchmarks",
-    "pop-runtime-common/runtime-benchmarks",
-    "pop-runtime-devnet/runtime-benchmarks",
-    "pop-runtime-mainnet/runtime-benchmarks",
-    "pop-runtime-testnet/runtime-benchmarks",
-    "sc-service/runtime-benchmarks",
-    "sp-runtime/runtime-benchmarks",
+	"cumulus-primitives-core/runtime-benchmarks",
+	"frame-benchmarking-cli/runtime-benchmarks",
+	"frame-benchmarking/runtime-benchmarks",
+	"polkadot-cli/runtime-benchmarks",
+	"polkadot-primitives/runtime-benchmarks",
+	"pop-runtime-common/runtime-benchmarks",
+	"pop-runtime-devnet/runtime-benchmarks",
+	"pop-runtime-mainnet/runtime-benchmarks",
+	"pop-runtime-testnet/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
 ]
 std = [
-    "codec/std",
-    "cumulus-primitives-aura/std",
-    "cumulus-primitives-core/std",
-    "frame-benchmarking/std",
-    "ismp-parachain-runtime-api/std",
-    "ismp-parachain/std",
-    "log/std",
-    "pallet-ismp-runtime-api/std",
-    "pallet-multisig/std",
-    "polkadot-primitives/std",
-    "pop-runtime-common/std",
-    "pop-runtime-devnet/std",
-    "pop-runtime-mainnet/std",
-    "pop-runtime-testnet/std",
-    "sp-api/std",
-    "sp-block-builder/std",
-    "sp-consensus-aura/std",
-    "sp-core/std",
-    "sp-io/std",
-    "sp-offchain/std",
-    "sp-runtime/std",
-    "sp-session/std",
-    "sp-transaction-pool/std",
-    "xcm/std",
+	"codec/std",
+	"cumulus-primitives-aura/std",
+	"cumulus-primitives-core/std",
+	"frame-benchmarking/std",
+	"ismp-parachain-runtime-api/std",
+	"ismp-parachain/std",
+	"log/std",
+	"pallet-ismp-runtime-api/std",
+	"pallet-multisig/std",
+	"polkadot-primitives/std",
+	"pop-runtime-common/std",
+	"pop-runtime-devnet/std",
+	"pop-runtime-mainnet/std",
+	"pop-runtime-testnet/std",
+	"sp-api/std",
+	"sp-block-builder/std",
+	"sp-consensus-aura/std",
+	"sp-core/std",
+	"sp-io/std",
+	"sp-offchain/std",
+	"sp-runtime/std",
+	"sp-session/std",
+	"sp-transaction-pool/std",
+	"xcm/std",
 ]
 try-runtime = [
-    "polkadot-cli/try-runtime",
-    "pop-runtime-devnet/try-runtime",
-    "pop-runtime-mainnet/try-runtime",
-    "pop-runtime-testnet/try-runtime",
-    "sp-runtime/try-runtime",
+	"polkadot-cli/try-runtime",
+	"pop-runtime-devnet/try-runtime",
+	"pop-runtime-mainnet/try-runtime",
+	"pop-runtime-testnet/try-runtime",
+	"sp-runtime/try-runtime",
 ]
 
-ismp = ["pop-runtime-devnet/default"]
-on-chain-release-build = ["pop-runtime-mainnet/on-chain-release-build"]
+ismp = [ "pop-runtime-devnet/default" ]
+on-chain-release-build = [ "pop-runtime-mainnet/on-chain-release-build" ]

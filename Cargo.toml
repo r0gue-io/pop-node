@@ -7,7 +7,7 @@ inherits = "release"
 lto = true
 
 [workspace.package]
-authors = ["R0GUE <go@r0gue.io>"]
+authors = [ "R0GUE <go@r0gue.io>" ]
 description = "Pop Network makes it easy for smart contract developers to use the Power of Polkadot."
 edition = "2021"
 homepage = "https://r0gue.io"
@@ -16,27 +16,27 @@ repository = "https://github.com/r0gue-io/pop-node/"
 
 [workspace]
 exclude = [
-    "extension/contract",
-    "pop-api",
-    "tests/contracts",
+	"extension/contract",
+	"pop-api",
+	"tests/contracts",
 ]
 members = [
-    #    "integration-tests",
-    "node",
-    "pallets/*",
-    "primitives",
-    "runtime/devnet",
-    "runtime/mainnet",
-    "runtime/testnet",
+	#    "integration-tests",
+	"node",
+	"pallets/*",
+	"primitives",
+	"runtime/devnet",
+	"runtime/mainnet",
+	"runtime/testnet",
 ]
 
 resolver = "2"
 
 [workspace.dependencies]
 anyhow = { version = "1.0", default-features = false }
-clap = { version = "4.5.10", features = ["derive"] }
+clap = { version = "4.5.10", features = [ "derive" ] }
 codec = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
-    "derive",
+	"derive",
 ] }
 color-print = "0.3.4"
 contract-build = "5.0.2"
@@ -47,18 +47,18 @@ futures = "0.3.30"
 hex = "0.4.3"
 hex-literal = "0.4.1"
 impl-trait-for-tuples = "0.2.2"
-jsonrpsee = { version = "0.24.3", features = ["server"] }
+jsonrpsee = { version = "0.24.3", features = [ "server" ] }
 log = { version = "0.4.22", default-features = false }
 rand = "0.8.5"
 scale-info = { version = "2.11.1", default-features = false, features = [
-    "derive",
+	"derive",
 ] }
 serde = "1.0.209"
 serde_json = "1.0.127"
 smallvec = "1.11.2"
 subxt = "0.38.0"
 subxt-signer = "0.38.0"
-tokio = { version = "1.36", features = ["macros", "rt-multi-thread", "time"] }
+tokio = { version = "1.36", features = [ "macros", "rt-multi-thread", "time" ] }
 tracing-subscriber = { version = "0.3.18", default-features = false }
 
 # Build
