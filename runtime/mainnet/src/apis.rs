@@ -4,8 +4,7 @@ use codec::Encode;
 use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	traits::tokens::{Fortitude::Polite, Preservation::Preserve},
-    weights::{Weight, WeightToFee as _},
-
+	weights::{Weight, WeightToFee as _},
 };
 use pallet_revive::AddressMapper;
 use sp_api::impl_runtime_apis;
@@ -29,12 +28,11 @@ use xcm_runtime_apis::{
 
 // Local module imports
 use super::{
-    AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, Contracts, EventRecord,
-    Executive, ExtrinsicInclusionMode, InherentDataExt, Nonce, OriginCaller, ParachainSystem,
-    PolkadotXcm, Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig,
-    RuntimeOrigin, SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
-    config::xcm as xcm_config,
-    fee::WeightToFee,
+	config::xcm as xcm_config, fee::WeightToFee, AccountId, Balance, Balances, Block, BlockNumber,
+	BlockWeights, Contracts, EventRecord, Executive, ExtrinsicInclusionMode, InherentDataExt,
+	Nonce, OriginCaller, ParachainSystem, PolkadotXcm, Runtime, RuntimeBlockWeights, RuntimeCall,
+	RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin, SessionKeys, System, TransactionPayment,
+	UncheckedExtrinsic, VERSION,
 };
 
 impl_runtime_apis! {
