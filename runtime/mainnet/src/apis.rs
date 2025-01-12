@@ -1,12 +1,16 @@
 use alloc::vec::Vec;
 
+use codec::Encode;
 use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
-	weights::{Weight, WeightToFee as _},
+	traits::tokens::{Fortitude::Polite, Preservation::Preserve},
+    weights::{Weight, WeightToFee as _},
+
 };
+use pallet_revive::AddressMapper;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
 	traits::Block as BlockT,
 	transaction_validity::{TransactionSource, TransactionValidity},
@@ -25,10 +29,12 @@ use xcm_runtime_apis::{
 
 // Local module imports
 use super::{
-	config::xcm as xcm_config, fee::WeightToFee, AccountId, Balance, Block, Executive,
-	ExtrinsicInclusionMode, InherentDataExt, Nonce, OriginCaller, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, SessionKeys, System,
-	TransactionPayment, VERSION,
+    AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, Contracts, EventRecord,
+    Executive, ExtrinsicInclusionMode, InherentDataExt, Nonce, OriginCaller, ParachainSystem,
+    PolkadotXcm, Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig,
+    RuntimeOrigin, SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
+    config::xcm as xcm_config,
+    fee::WeightToFee,
 };
 
 impl_runtime_apis! {
@@ -336,6 +342,118 @@ impl_runtime_apis! {
 
 		fn is_trusted_teleporter(asset: VersionedAsset, location: VersionedLocation) -> XcmTrustedQueryResult {
 			PolkadotXcm::is_trusted_teleporter(asset, location)
+		}
+	}
+
+	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber, EventRecord> for Runtime
+	{
+		fn balance(address: H160) -> Balance {
+			use frame_support::traits::fungible::Inspect;
+			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
+			Balances::reducible_balance(&account, Preserve, Polite)
+		}
+
+		fn nonce(address: H160) -> Nonce {
+			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
+			System::account_nonce(account)
+		}
+
+		fn eth_transact(
+			from: H160,
+			dest: Option<H160>,
+			value: Balance,
+			input: Vec<u8>,
+			gas_limit: Option<Weight>,
+			storage_deposit_limit: Option<Balance>,
+		) -> pallet_revive::EthContractResult<Balance>
+		{
+			use pallet_revive::AddressMapper;
+			let blockweights: BlockWeights = <Runtime as frame_system::Config>::BlockWeights::get();
+			let origin = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&from);
+
+			let encoded_size = |pallet_call| {
+				let call = RuntimeCall::Contracts(pallet_call);
+				let uxt: UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
+				uxt.encoded_size() as u32
+			};
+
+			Contracts::bare_eth_transact(
+				origin,
+				dest,
+				value,
+				input,
+				gas_limit.unwrap_or(blockweights.max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
+				encoded_size,
+				pallet_revive::DebugInfo::UnsafeDebug,
+				pallet_revive::CollectEvents::UnsafeCollect,
+			)
+		}
+
+		fn call(
+			origin: AccountId,
+			dest: H160,
+			value: Balance,
+			gas_limit: Option<Weight>,
+			storage_deposit_limit: Option<Balance>,
+			input_data: Vec<u8>,
+		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance, EventRecord> {
+			Contracts::bare_call(
+				RuntimeOrigin::signed(origin),
+				dest,
+				value,
+				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
+				input_data,
+				pallet_revive::DebugInfo::UnsafeDebug,
+				pallet_revive::CollectEvents::UnsafeCollect,
+			)
+		}
+
+		fn instantiate(
+			origin: AccountId,
+			value: Balance,
+			gas_limit: Option<Weight>,
+			storage_deposit_limit: Option<Balance>,
+			code: pallet_revive::Code,
+			data: Vec<u8>,
+			salt: Option<[u8; 32]>,
+		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance, EventRecord>
+		{
+			Contracts::bare_instantiate(
+				RuntimeOrigin::signed(origin),
+				value,
+				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
+				code,
+				data,
+				salt,
+				pallet_revive::DebugInfo::UnsafeDebug,
+				pallet_revive::CollectEvents::UnsafeCollect,
+			)
+		}
+
+		fn upload_code(
+			origin: AccountId,
+			code: Vec<u8>,
+			storage_deposit_limit: Option<Balance>,
+		) -> pallet_revive::CodeUploadResult<Balance>
+		{
+			Contracts::bare_upload_code(
+				RuntimeOrigin::signed(origin),
+				code,
+				storage_deposit_limit.unwrap_or(u128::MAX),
+			)
+		}
+
+		fn get_storage(
+			address: H160,
+			key: [u8; 32],
+		) -> pallet_revive::GetStorageResult {
+			Contracts::get_storage(
+				address,
+				key
+			)
 		}
 	}
 }
