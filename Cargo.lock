@@ -10635,6 +10635,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "frame-try-runtime",
  "hex",
+ "log",
  "pallet-aura",
  "pallet-authorship",
  "pallet-balances",
@@ -10675,6 +10676,7 @@ dependencies = [
  "staging-xcm-builder",
  "staging-xcm-executor",
  "substrate-wasm-builder",
+ "xcm-runtime-apis",
 ]
 
 [[package]]

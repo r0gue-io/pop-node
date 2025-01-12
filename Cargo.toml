@@ -158,6 +158,7 @@ rococo-runtime-constants = { git = "https://github.com/r0gue-io/polkadot-sdk", b
 xcm = { git = "https://github.com/r0gue-io/polkadot-sdk", branch = "stable2412", package = "staging-xcm", default-features = false }
 xcm-builder = { git = "https://github.com/r0gue-io/polkadot-sdk", branch = "stable2412", package = "staging-xcm-builder", default-features = false }
 xcm-executor = { git = "https://github.com/r0gue-io/polkadot-sdk", branch = "stable2412", package = "staging-xcm-executor", default-features = false }
+xcm-runtime-apis = { git = "https://github.com/r0gue-io/polkadot-sdk", branch = "stable2412", default-features = false }
 
 # Cumulus
 asset-test-utils = { git = "https://github.com/r0gue-io/polkadot-sdk", branch = "stable2412", default-features = false }

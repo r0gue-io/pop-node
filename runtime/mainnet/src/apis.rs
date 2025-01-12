@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
-	weights::Weight,
+	weights::{Weight, WeightToFee as _},
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -13,12 +13,22 @@ use sp_runtime::{
 	ApplyExtrinsicResult,
 };
 use sp_version::RuntimeVersion;
+use xcm::{
+	latest::prelude::AssetId, VersionedAsset, VersionedAssetId, VersionedAssets, VersionedLocation,
+	VersionedXcm,
+};
+use xcm_runtime_apis::{
+	dry_run::{CallDryRunEffects, Error as XcmDryRunApiError, XcmDryRunEffects},
+	fees::Error as XcmPaymentApiError,
+	trusted_query::XcmTrustedQueryResult,
+};
 
 // Local module imports
 use super::{
-	AccountId, Balance, Block, Executive,
-	ExtrinsicInclusionMode, InherentDataExt, Nonce, ParachainSystem, Runtime,
-	RuntimeCall, RuntimeGenesisConfig, SessionKeys, System, TransactionPayment, VERSION,
+	config::xcm as xcm_config, fee::WeightToFee, AccountId, Balance, Block, Executive,
+	ExtrinsicInclusionMode, InherentDataExt, Nonce, OriginCaller, ParachainSystem, PolkadotXcm,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, SessionKeys, System,
+	TransactionPayment, VERSION,
 };
 
 impl_runtime_apis! {
@@ -255,6 +265,73 @@ impl_runtime_apis! {
 
 		fn preset_names() -> Vec<sp_genesis_builder::PresetId> {
 			Default::default()
+		}
+	}
+
+	impl xcm_runtime_apis::fees::XcmPaymentApi<Block> for Runtime {
+		fn query_acceptable_payment_assets(xcm_version: xcm::Version) -> Result<Vec<VersionedAssetId>, XcmPaymentApiError> {
+			let native_token = xcm_config::RelayLocation::get();
+			let acceptable_assets = Vec::from([AssetId(native_token)]);
+			PolkadotXcm::query_acceptable_payment_assets(xcm_version, acceptable_assets)
+		}
+
+		fn query_weight_to_asset_fee(weight: Weight, asset: VersionedAssetId) -> Result<u128, XcmPaymentApiError> {
+			let native_asset = xcm_config::RelayLocation::get();
+			let fee_in_native = WeightToFee::weight_to_fee(&weight);
+			match asset.try_as::<AssetId>() {
+				Ok(asset_id) if asset_id.0 == native_asset => {
+					// for native asset
+					Ok(fee_in_native)
+				},
+				Ok(asset_id) => {
+					log::trace!(target: "xcm::xcm_runtime_apis", "query_weight_to_asset_fee - unhandled asset_id: {asset_id:?}!");
+					Err(XcmPaymentApiError::AssetNotFound)
+				},
+				Err(_) => {
+					log::trace!(target: "xcm::xcm_runtime_apis", "query_weight_to_asset_fee - failed to convert asset: {asset:?}!");
+					Err(XcmPaymentApiError::VersionedConversionFailed)
+				}
+			}
+		}
+
+		fn query_xcm_weight(message: VersionedXcm<()>) -> Result<Weight, XcmPaymentApiError> {
+			PolkadotXcm::query_xcm_weight(message)
+		}
+
+		fn query_delivery_fees(destination: VersionedLocation, message: VersionedXcm<()>) -> Result<VersionedAssets, XcmPaymentApiError> {
+			PolkadotXcm::query_delivery_fees(destination, message)
+		}
+	}
+
+	impl xcm_runtime_apis::dry_run::DryRunApi<Block, RuntimeCall, RuntimeEvent, OriginCaller> for Runtime {
+		fn dry_run_call(origin: OriginCaller, call: RuntimeCall) -> Result<CallDryRunEffects<RuntimeEvent>, XcmDryRunApiError> {
+			PolkadotXcm::dry_run_call::<Runtime, xcm_config::XcmRouter, OriginCaller, RuntimeCall>(origin, call)
+		}
+
+		fn dry_run_xcm(origin_location: VersionedLocation, xcm: VersionedXcm<RuntimeCall>) -> Result<XcmDryRunEffects<RuntimeEvent>, XcmDryRunApiError> {
+			PolkadotXcm::dry_run_xcm::<Runtime, xcm_config::XcmRouter, RuntimeCall, xcm_config::XcmConfig>(origin_location, xcm)
+		}
+	}
+
+	impl xcm_runtime_apis::conversions::LocationToAccountApi<Block, AccountId> for Runtime {
+		fn convert_location(location: VersionedLocation) -> Result<
+			AccountId,
+			xcm_runtime_apis::conversions::Error
+		> {
+			xcm_runtime_apis::conversions::LocationToAccountHelper::<
+				AccountId,
+				xcm_config::LocationToAccountId,
+			>::convert_location(location)
+		}
+	}
+
+		impl xcm_runtime_apis::trusted_query::TrustedQueryApi<Block> for Runtime {
+		fn is_trusted_reserve(asset: VersionedAsset, location: VersionedLocation) -> XcmTrustedQueryResult {
+			PolkadotXcm::is_trusted_reserve(asset, location)
+		}
+
+		fn is_trusted_teleporter(asset: VersionedAsset, location: VersionedLocation) -> XcmTrustedQueryResult {
+			PolkadotXcm::is_trusted_teleporter(asset, location)
 		}
 	}
 }
