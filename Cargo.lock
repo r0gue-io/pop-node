@@ -13905,6 +13905,7 @@ dependencies = [
  "staging-xcm-builder 18.0.0",
  "staging-xcm-executor 18.0.0",
  "substrate-wasm-builder 25.0.0",
+ "xcm-runtime-apis 0.5.0",
 ]
 
 [[package]]
