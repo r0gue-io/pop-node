@@ -228,3 +228,50 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
+
+#[cfg(test)]
+mod tests {
+	use std::any::TypeId;
+
+	use super::*;
+
+	// Reserves accepted for native assets (except relay) and relay asset from Asset Hub.
+	#[test]
+	fn reserves() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
+			TypeId::of::<(NativeAssetExceptRelay, RelayAssetFromAssetHub,)>(),
+		);
+	}
+
+	#[test]
+	fn asset_hub_accepted_as_relay_asset_reserve() {
+		assert!(TrustedReserves::contains(
+			&Asset::from((AssetId::from(Parent), Fungibility::from(100u128))),
+			&AssetHub::get(),
+		));
+	}
+
+	#[test]
+	fn accept_native_assets_except_of_relay() {
+		let chain = Location::new(1, [Parachain(4242)]);
+		let native_asset = Asset::from((AssetId::from(chain.clone()), Fungibility::from(100u128)));
+		assert!(TrustedReserves::contains(&native_asset, &chain));
+
+		let relay_asset = Asset::from((AssetId::from(Parent), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&relay_asset, &Parent.into()));
+	}
+
+	#[test]
+	fn decline_non_native_assets() {
+		// Native asset X of chain Y example.
+		let chain_x = Location::new(1, [Parachain(4242)]);
+		let chain_y = Location::new(1, [Parachain(6969)]);
+		let chain_x_asset = Asset::from((AssetId::from(chain_x), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&chain_x_asset, &chain_y));
+		// `pallet-assets` example.
+		let usd = Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1337)]);
+		let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&usd_asset, &chain_y));
+	}
+}
