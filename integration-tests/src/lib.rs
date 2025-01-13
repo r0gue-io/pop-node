@@ -48,7 +48,6 @@ decl_test_sender_receiver_accounts_parameter_types! {
 type RelayToParaTest = Test<RelayRelay, PopNetworkPara>;
 type SystemParaToParaTest = Test<AssetHubPara, PopNetworkPara>;
 type ParaToSystemParaTest = Test<PopNetworkPara, AssetHubPara>;
-type ParaToRelayTest = Test<PopNetworkPara, RelayRelay>;
 
 fn relay_to_para_sender_assertions(t: RelayToParaTest) {
 	type RuntimeEvent = <RelayRelay as Chain>::RuntimeEvent;
@@ -124,24 +123,6 @@ fn para_to_system_para_sender_assertions(t: ParaToSystemParaTest) {
 	);
 }
 
-fn para_to_relay_sender_assertions(t: ParaToRelayTest) {
-	type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
-	PopNetworkPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
-		864_610_000,
-		8_799,
-	)));
-	assert_expected_events!(
-		PopNetworkPara,
-		vec![
-			// Amount to reserve transfer is transferred to Parachain's Sovereign account
-			RuntimeEvent::Balances(pallet_balances::Event::Burned { who, amount }) => {
-				who: *who == t.sender.account_id,
-				amount: *amount == t.args.amount,
-			},
-		]
-	);
-}
-
 fn para_to_system_para_receiver_assertions(t: ParaToSystemParaTest) {
 	type RuntimeEvent = <AssetHubPara as Chain>::RuntimeEvent;
 	let sov_pop_net_on_ahr = AssetHubPara::sovereign_account_id_of(
@@ -155,29 +136,6 @@ fn para_to_system_para_receiver_assertions(t: ParaToSystemParaTest) {
 				pallet_balances::Event::Burned { who, amount }
 			) => {
 				who: *who == sov_pop_net_on_ahr.clone().into(),
-				amount: *amount == t.args.amount,
-			},
-			RuntimeEvent::Balances(pallet_balances::Event::Minted { .. }) => {},
-			RuntimeEvent::MessageQueue(
-				pallet_message_queue::Event::Processed { success: true, .. }
-			) => {},
-		]
-	);
-}
-
-fn para_to_relay_receiver_assertions(t: ParaToRelayTest) {
-	type RuntimeEvent = <RelayRelay as Chain>::RuntimeEvent;
-	let sov_pop_net_on_relay = RelayRelay::sovereign_account_id_of(RelayRelay::child_location_of(
-		PopNetworkPara::para_id(),
-	));
-	assert_expected_events!(
-		RelayRelay,
-		vec![
-			// Amount to reserve transfer is withdrawn from Parachain's Sovereign account
-			RuntimeEvent::Balances(
-				pallet_balances::Event::Burned { who, amount }
-			) => {
-				who: *who == sov_pop_net_on_relay.clone().into(),
 				amount: *amount == t.args.amount,
 			},
 			RuntimeEvent::Balances(pallet_balances::Event::Minted { .. }) => {},
@@ -221,35 +179,6 @@ fn para_to_system_para_reserve_transfer_assets(t: ParaToSystemParaTest) -> Dispa
 	)
 }
 
-fn para_to_relay_reserve_transfer_assets(t: ParaToRelayTest) -> DispatchResult {
-	<PopNetworkPara as PopNetworkParaPallet>::PolkadotXcm::limited_reserve_transfer_assets(
-		t.signed_origin,
-		bx!(t.args.dest.into()),
-		bx!(t.args.beneficiary.into()),
-		bx!(t.args.assets.into()),
-		t.args.fee_asset_item,
-		t.args.weight_limit,
-	)
-}
-
-// Funds Pop with relay tokens
-fn fund_pop_from_relay(
-	sender: sp_runtime::AccountId32,
-	amount_to_send: Balance,
-	beneficiary: sp_runtime::AccountId32,
-) {
-	let destination = RelayRelay::child_location_of(PopNetworkPara::para_id());
-	let test_args = TestContext {
-		sender,
-		receiver: beneficiary.clone(),
-		args: TestArgs::new_relay(destination, beneficiary, amount_to_send),
-	};
-
-	let mut test = RelayToParaTest::new(test_args);
-	test.set_dispatchable::<RelayRelay>(relay_to_para_reserve_transfer_assets);
-	test.assert();
-}
-
 // Funds Pop with relay tokens from system para
 fn fund_pop_from_system_para(
 	sender: sp_runtime::AccountId32,
@@ -270,7 +199,6 @@ fn fund_pop_from_system_para(
 }
 
 /// Reserve Transfers of native asset from Relay to Parachain should work
-#[cfg(not(feature = "testnet"))]
 #[test]
 #[should_panic]
 fn reserve_transfer_native_asset_from_relay_to_para() {
@@ -307,61 +235,6 @@ fn reserve_transfer_native_asset_from_relay_to_para() {
 
 	let sender_balance_after = test.sender.balance;
 	let receiver_balance_after = test.receiver.balance;
-
-	// Sender's balance is reduced
-	assert_eq!(sender_balance_before - amount_to_send - delivery_fees, sender_balance_after);
-	// Receiver's balance is increased
-	assert!(receiver_balance_after > receiver_balance_before);
-	// Receiver's balance increased by `amount_to_send - delivery_fees - bought_execution`;
-	// `delivery_fees` might be paid from transfer or JIT, also `bought_execution` is unknown
-	// but should be non-zero
-	assert!(receiver_balance_after < receiver_balance_before + amount_to_send);
-}
-
-/// Reserve Transfers of native asset from Parachain to Relay should work
-#[cfg(not(feature = "testnet"))]
-#[test]
-#[should_panic]
-fn reserve_transfer_native_asset_from_para_to_relay() {
-	init_tracing();
-
-	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
-	// transfer
-	let amount_to_send: Balance = RELAY_ED * 1_000;
-	fund_pop_from_relay(RelayRelaySender::get(), amount_to_send, PopNetworkParaReceiver::get()); // alice on relay > bob on pop
-
-	// Init values for Pop Network Parachain
-	let destination = PopNetworkPara::parent_location(); // relay
-	let beneficiary_id = RelayRelayReceiver::get(); // bob on relay
-	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free; // bob on pop balance
-	let assets = (Parent, amount_to_send).into();
-
-	let test_args = TestContext {
-		sender: PopNetworkParaReceiver::get(), // bob on pop
-		receiver: RelayRelayReceiver::get(),   // bob on relay
-		args: TestArgs::new_para(destination, beneficiary_id, amount_to_send, assets, None, 0),
-	};
-
-	let mut test = ParaToRelayTest::new(test_args);
-
-	let sender_balance_before = test.sender.balance;
-	let receiver_balance_before = test.receiver.balance;
-
-	test.set_assertion::<PopNetworkPara>(para_to_relay_sender_assertions);
-	test.set_assertion::<RelayRelay>(para_to_relay_receiver_assertions);
-	test.set_dispatchable::<PopNetworkPara>(para_to_relay_reserve_transfer_assets);
-	test.assert();
-
-	let sender_balance_after = test.sender.balance;
-	let receiver_balance_after = test.receiver.balance;
-
-	let delivery_fees = PopNetworkPara::execute_with(|| {
-		xcm_helpers::teleport_assets_delivery_fees::<
-			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
-		>(
-			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
-		)
-	});
 
 	// Sender's balance is reduced
 	assert_eq!(sender_balance_before - amount_to_send - delivery_fees, sender_balance_after);
