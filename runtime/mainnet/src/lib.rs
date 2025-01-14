@@ -693,7 +693,7 @@ mod runtime {
 
 	// Contracts (using pallet-revive)
 	#[runtime::pallet_index(40)]
-	pub type Contracts = pallet_revive::Pallet<Runtime>;
+	pub type Revive = pallet_revive::Pallet<Runtime>;
 
 	// Proxy
 	#[runtime::pallet_index(41)]

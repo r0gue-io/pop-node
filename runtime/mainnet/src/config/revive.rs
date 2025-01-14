@@ -52,7 +52,7 @@ impl TryFrom<RuntimeCall> for pallet_revive::Call<Runtime> {
 
 	fn try_from(value: RuntimeCall) -> Result<Self, Self::Error> {
 		match value {
-			RuntimeCall::Contracts(call) => Ok(call),
+			RuntimeCall::Revive(call) => Ok(call),
 			_ => Err(()),
 		}
 	}

@@ -29,8 +29,8 @@ use xcm_runtime_apis::{
 // Local module imports
 use super::{
 	config::xcm as xcm_config, fee::WeightToFee, AccountId, Balance, Balances, Block, BlockNumber,
-	BlockWeights, Contracts, EventRecord, Executive, ExtrinsicInclusionMode, InherentDataExt,
-	Nonce, OriginCaller, ParachainSystem, PolkadotXcm, Runtime, RuntimeBlockWeights, RuntimeCall,
+	BlockWeights, EventRecord, Executive, ExtrinsicInclusionMode, InherentDataExt, Nonce,
+	OriginCaller, ParachainSystem, PolkadotXcm, Revive, Runtime, RuntimeBlockWeights, RuntimeCall,
 	RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin, SessionKeys, System, TransactionPayment,
 	UncheckedExtrinsic, VERSION,
 };
@@ -370,12 +370,12 @@ impl_runtime_apis! {
 			let origin = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&from);
 
 			let encoded_size = |pallet_call| {
-				let call = RuntimeCall::Contracts(pallet_call);
+				let call = RuntimeCall::Revive(pallet_call);
 				let uxt: UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
 				uxt.encoded_size() as u32
 			};
 
-			Contracts::bare_eth_transact(
+			Revive::bare_eth_transact(
 				origin,
 				dest,
 				value,
@@ -396,7 +396,7 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
 		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance, EventRecord> {
-			Contracts::bare_call(
+			Revive::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
 				value,
@@ -418,7 +418,7 @@ impl_runtime_apis! {
 			salt: Option<[u8; 32]>,
 		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance, EventRecord>
 		{
-			Contracts::bare_instantiate(
+			Revive::bare_instantiate(
 				RuntimeOrigin::signed(origin),
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
@@ -437,7 +437,7 @@ impl_runtime_apis! {
 			storage_deposit_limit: Option<Balance>,
 		) -> pallet_revive::CodeUploadResult<Balance>
 		{
-			Contracts::bare_upload_code(
+			Revive::bare_upload_code(
 				RuntimeOrigin::signed(origin),
 				code,
 				storage_deposit_limit.unwrap_or(u128::MAX),
@@ -448,7 +448,7 @@ impl_runtime_apis! {
 			address: H160,
 			key: [u8; 32],
 		) -> pallet_revive::GetStorageResult {
-			Contracts::get_storage(
+			Revive::get_storage(
 				address,
 				key
 			)
