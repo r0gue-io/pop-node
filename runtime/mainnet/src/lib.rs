@@ -847,15 +847,13 @@ mod tests {
 		assert_eq!(
 			TypeId::of::<UncheckedExtrinsic>(),
 			TypeId::of::<
-				generic::UncheckedExtrinsic<
+				pallet_revive::evm::runtime::UncheckedExtrinsic<
 					// Multiple address formats supported.
 					MultiAddress<AccountId, ()>,
-					// The runtime calls available.
-					RuntimeCall,
 					// The signature scheme(s) supported.
 					MultiSignature,
 					// The transaction extensions.
-					TxExtension,
+					EthExtraImpl,
 				>,
 			>(),
 		);
