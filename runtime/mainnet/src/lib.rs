@@ -599,25 +599,26 @@ parameter_types! {
 }
 
 impl pallet_treasury::Config for Runtime {
-		type Currency = pallet_balances::Pallet<Runtime>;
-		type RejectOrigin = EnsureRoot<AccountId>;
-		type RuntimeEvent = RuntimeEvent;
-		type SpendPeriod = SpendPeriod;
-		type Burn = Burn;
-		type PalletId = TreasuryPalletId;
-		type BurnDestination = (); // Just Burn it
-		type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
-		type SpendFunds = ();
-		type MaxApprovals = MaxApprovals;
-		type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
-		type AssetKind = (); 
-		type Beneficiary = AccountId;
-		type BeneficiaryLookup = sp_runtime::traits::IdentityLookup<Self::Beneficiary>;
-		type Paymaster = frame_support::traits::tokens::PayFromAccount<Self::Currency, TreasuryAccount>;
-		type BalanceConverter = frame_support::traits::tokens::UnityAssetBalanceConversion;
-		type PayoutPeriod = PayoutPeriod;
-		#[cfg(feature = "runtime-benchmarks")]
-		type BenchmarkHelper = ();
+	type AssetKind = ();
+	type BalanceConverter = frame_support::traits::tokens::UnityAssetBalanceConversion;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type Beneficiary = AccountId;
+	type BeneficiaryLookup = sp_runtime::traits::IdentityLookup<Self::Beneficiary>;
+	type Burn = Burn;
+	type BurnDestination = ();
+	type Currency = pallet_balances::Pallet<Runtime>;
+	type MaxApprovals = MaxApprovals;
+	type PalletId = TreasuryPalletId;
+	type Paymaster = frame_support::traits::tokens::PayFromAccount<Self::Currency, TreasuryAccount>;
+	type PayoutPeriod = PayoutPeriod;
+	type RejectOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type SpendFunds = ();
+	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
+	type SpendPeriod = SpendPeriod;
+	// Just Burn it
+	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 }
 
 #[frame_support::runtime]
