@@ -846,8 +846,7 @@ mod tests {
 				// Ensures the transaction version included in the transaction is the same as at
 				// present.
 				CheckTxVersion<Runtime>,
-				// Ensures the genesis hash to provide replay protection between different
-				// networks.
+				// Genesis hash check to provide replay protection between different networks.
 				CheckGenesis<Runtime>,
 				// Checks transaction mortality.
 				CheckMortality<Runtime>,
@@ -855,8 +854,8 @@ mod tests {
 				CheckNonce<Runtime>,
 				// Block resource (weight) limit check.
 				CheckWeight<Runtime>,
-				// Require the transactor pay for themselves and maybe include a tip to gain
-				// additional priority in the queue.
+				// Require the transactor pay for the transaction, optionally including a tip to
+				// gain additional priority in the queue.
 				ChargeTransactionPayment<Runtime>,
 				// Checks the size of the node-side storage proof before and after executing a
 				// given extrinsic.
