@@ -298,13 +298,15 @@ benchmarks_instance_pallet! {
 	}
 
 	transfer {
-		let (collection, caller, _) = create_collection::<T, I>();
-		let (item, ..) = mint_item::<T, I>(0);
-
+		let (collection, ..) = create_collection::<T, I>();
+		let (item, caller, _) = mint_item::<T, I>(0);
+		let delegate: T::AccountId = account("delegate", 0, SEED);
+		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let target: T::AccountId = account("target", 0, SEED);
 		let target_lookup = T::Lookup::unlookup(target.clone());
-		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance());
-	}: _(SystemOrigin::Signed(caller.clone()), collection, item, target_lookup)
+		let origin = SystemOrigin::Signed(caller.clone()).into();
+		Nfts::<T, I>::approve_transfer(origin, collection, item, delegate_lookup, None)?;
+	}: _(SystemOrigin::Signed(delegate), collection, item, target_lookup)
 	verify {
 		assert_last_event::<T, I>(Event::Transferred { collection, item, from: caller, to: target }.into());
 	}
