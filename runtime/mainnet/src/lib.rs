@@ -584,6 +584,39 @@ impl pallet_utility::Config for Runtime {
 	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	// TODO: Agree on exact parameters, many of these taken from polkadot.
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
+	pub const Burn: Permill = Permill::from_perthousand(2);
+	pub const TreasuryPalletId: PalletId = PalletId(*b"treasury");
+	pub const MaxApprovals: u32 = 100;
+	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
+	pub const TreasuryAccount: AccountId = AccountId::new(*b"treasury_accounttreasury_account");
+	pub const MaxSpend: Balance = u32::MAX as u128;
+}
+
+impl pallet_treasury::Config for Runtime {
+		type Currency = pallet_balances::Pallet<Runtime>;
+		type RejectOrigin = EnsureRoot<AccountId>;
+		type RuntimeEvent = RuntimeEvent;
+		type SpendPeriod = SpendPeriod;
+		type Burn = Burn;
+		type PalletId = TreasuryPalletId;
+		type BurnDestination = (); // Just Burn it
+		type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+		type SpendFunds = ();
+		type MaxApprovals = MaxApprovals;
+		type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
+		type AssetKind = (); 
+		type Beneficiary = AccountId;
+		type BeneficiaryLookup = sp_runtime::traits::IdentityLookup<Self::Beneficiary>;
+		type Paymaster = frame_support::traits::tokens::PayFromAccount<Self::Currency, TreasuryAccount>;
+		type BalanceConverter = frame_support::traits::tokens::UnityAssetBalanceConversion;
+		type PayoutPeriod = PayoutPeriod;
+		#[cfg(feature = "runtime-benchmarks")]
+		type BenchmarkHelper = ();
+}
+
 #[frame_support::runtime]
 mod runtime {
 	// Create the runtime by composing the FRAME pallets that were previously configured.
@@ -616,6 +649,8 @@ mod runtime {
 	pub type Balances = pallet_balances::Pallet<Runtime>;
 	#[runtime::pallet_index(11)]
 	pub type TransactionPayment = pallet_transaction_payment::Pallet<Runtime>;
+	#[runtime::pallet_index(12)]
+	pub type Treasury = pallet_treasury::Pallet<Runtime>;
 
 	// Governance
 	#[runtime::pallet_index(15)]
