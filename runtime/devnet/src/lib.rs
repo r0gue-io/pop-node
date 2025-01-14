@@ -541,6 +541,7 @@ impl pallet_utility::Config for Runtime {
 	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
 }
 
+
 #[frame_support::runtime]
 mod runtime {
 	// Create the runtime by composing the FRAME pallets that were previously configured.
@@ -573,6 +574,8 @@ mod runtime {
 	pub type Balances = pallet_balances::Pallet<Runtime>;
 	#[runtime::pallet_index(11)]
 	pub type TransactionPayment = pallet_transaction_payment::Pallet<Runtime>;
+	#[runtime::pallet_index(12)]
+	pub type Treasury = pallet_treasury::Pallet<Runtime>;
 
 	// Governance
 	#[runtime::pallet_index(15)]

@@ -101,6 +101,7 @@ pallet-timestamp = { version = "35.0.0", default-features = false }
 pallet-transaction-payment = { version = "36.0.0", default-features = false }
 pallet-transaction-payment-rpc = "38.0.0"
 pallet-transaction-payment-rpc-runtime-api = { version = "36.0.0", default-features = false }
+pallet-treasury = { version = "35.0.0", default-features = false }
 pallet-utility = { version = "36.0.0", default-features = false }
 prometheus-endpoint = { version = "0.17.0", default-features = false, package = "substrate-prometheus-endpoint" }
 sc-basic-authorship = "0.42.0"
