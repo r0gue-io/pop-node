@@ -584,14 +584,17 @@ impl pallet_utility::Config for Runtime {
 	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
 }
 
+use sp_runtime::traits::AccountIdConversion;
+const TREASURY_PALLET_ID: PalletId = PalletId(*b"treasury");
+
 parameter_types! {
 	// TODO: Agree on exact parameters, many of these taken from polkadot.
 	pub const SpendPeriod: BlockNumber = 6 * DAYS;
 	pub const Burn: Permill = Permill::from_perthousand(2);
-	pub const TreasuryPalletId: PalletId = PalletId(*b"treasury");
+	pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
 	pub const MaxApprovals: u32 = 100;
 	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
-	pub const TreasuryAccount: AccountId = AccountId::new(*b"treasury_accounttreasury_account");
+	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID.into_account_truncating();
 	pub const MaxSpend: Balance = u32::MAX as u128;
 }
 
