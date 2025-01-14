@@ -606,7 +606,7 @@ impl pallet_treasury::Config for Runtime {
 	type Beneficiary = AccountId;
 	type BeneficiaryLookup = sp_runtime::traits::IdentityLookup<Self::Beneficiary>;
 	type Burn = Burn;
-	type BurnDestination = ();
+	type BurnDestination = (); 
 	type Currency = pallet_balances::Pallet<Runtime>;
 	type MaxApprovals = MaxApprovals;
 	type PalletId = TreasuryPalletId;
@@ -617,7 +617,6 @@ impl pallet_treasury::Config for Runtime {
 	type SpendFunds = ();
 	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
 	type SpendPeriod = SpendPeriod;
-	// Just Burn it
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 }
 
