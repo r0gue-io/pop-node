@@ -1,6 +1,8 @@
+use core::marker::PhantomData;
+
 use frame_support::{
 	parameter_types,
-	traits::{tokens::imbalance::ResolveTo, ConstU32, ContainsPair, Everything, Nothing},
+	traits::{tokens::imbalance::ResolveTo, ConstU32, ContainsPair, Everything, Get, Nothing},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
@@ -101,37 +103,20 @@ pub type Barrier = TrailingSetTopicAsId<(
 	>,
 )>;
 
-/// Accepts the relay asset from Asset Hub.
-pub struct RelayAssetFromAssetHub;
-impl ContainsPair<Asset, Location> for RelayAssetFromAssetHub {
+/// Asset filter that allows native/relay asset if coming from a certain location.
+// Borrowed from https://github.com/paritytech/polkadot-sdk/blob/ea458d0b95d819d31683a8a09ca7973ae10b49be/cumulus/parachains/runtimes/testing/penpal/src/xcm_config.rs#L239 for now
+pub struct NativeAssetFrom<T>(PhantomData<T>);
+impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 	fn contains(asset: &Asset, origin: &Location) -> bool {
-		let loc = AssetHub::get();
+		let loc = T::get();
 		&loc == origin &&
 			matches!(asset, Asset { id: AssetId(asset_loc), fun: Fungible(_a) }
 			if *asset_loc == Location::from(Parent))
 	}
 }
 
-/// Accepts native assets, except from the relay because AH functions as the reserve.
-pub struct NativeAssetExceptRelay;
-impl ContainsPair<Asset, Location> for NativeAssetExceptRelay {
-	fn contains(asset: &Asset, origin: &Location) -> bool {
-		log::trace!(
-			target: "xcm::contains",
-			"asset: {:?}, origin: {:?}",
-			asset,
-			origin
-		);
-		// Exclude the relay location.
-		if matches!(origin, Location { parents: 1, interior: Here }) {
-			return false;
-		}
-		matches!(asset.id, AssetId(ref id) if id == origin)
-	}
-}
-
 /// Combinations of (Asset, Location) pairs which we trust as reserves.
-pub type TrustedReserves = (NativeAssetExceptRelay, RelayAssetFromAssetHub);
+pub type TrustedReserves = NativeAssetFrom<AssetHub>;
 
 /// Locations that will not be charged fees in the executor,
 /// either execution or delivery.
@@ -235,17 +220,17 @@ mod tests {
 
 	use super::*;
 
-	// Reserves accepted for native assets (except relay) and relay asset from Asset Hub.
+	// Only reserve accepted is the relay asset from Asset Hub.
 	#[test]
 	fn reserves() {
 		assert_eq!(
 			TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
-			TypeId::of::<(NativeAssetExceptRelay, RelayAssetFromAssetHub,)>(),
+			TypeId::of::<NativeAssetFrom<AssetHub>>(),
 		);
 	}
 
 	#[test]
-	fn asset_hub_accepted_as_relay_asset_reserve() {
+	fn asset_hub_as_relay_asset_reserve() {
 		assert!(TrustedReserves::contains(
 			&Asset::from((AssetId::from(Parent), Fungibility::from(100u128))),
 			&AssetHub::get(),
@@ -253,13 +238,17 @@ mod tests {
 	}
 
 	#[test]
-	fn accept_native_assets_except_of_relay() {
-		let chain = Location::new(1, [Parachain(4242)]);
-		let native_asset = Asset::from((AssetId::from(chain.clone()), Fungibility::from(100u128)));
-		assert!(TrustedReserves::contains(&native_asset, &chain));
-
+	fn relay_as_relay_asset_reserve_fails() {
 		let relay_asset = Asset::from((AssetId::from(Parent), Fungibility::from(100u128)));
 		assert!(!TrustedReserves::contains(&relay_asset, &Parent.into()));
+	}
+
+	#[test]
+	fn decline_native_assets() {
+		let chain_x = Location::new(1, [Parachain(4242)]);
+		let chain_x_asset =
+			Asset::from((AssetId::from(chain_x.clone()), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&chain_x_asset, &chain_x));
 	}
 
 	#[test]

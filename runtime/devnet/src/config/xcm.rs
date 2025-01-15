@@ -1,6 +1,8 @@
+use core::marker::PhantomData;
+
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Contains, ContainsPair, Everything, Nothing},
+	traits::{ConstU32, Contains, ContainsPair, Everything, Get, Nothing},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
@@ -11,10 +13,10 @@ use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
 	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
-	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, ParentIsPreset, RelayChainAsNative,
-	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
-	SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId,
-	UsingComponents, WithComputedOrigin, WithUniqueTopic,
+	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, NativeAsset, ParentIsPreset,
+	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
 };
 use xcm_executor::XcmExecutor;
 
@@ -110,11 +112,12 @@ pub type Barrier = TrailingSetTopicAsId<(
 	>,
 )>;
 
-/// Accepts the relay asset from Asset Hub.
-pub struct RelayAssetFromAssetHub;
-impl ContainsPair<Asset, Location> for RelayAssetFromAssetHub {
+/// Asset filter that allows native/relay asset if coming from a certain location.
+// Borrowed from https://github.com/paritytech/polkadot-sdk/blob/ea458d0b95d819d31683a8a09ca7973ae10b49be/cumulus/parachains/runtimes/testing/penpal/src/xcm_config.rs#L239 for now
+pub struct NativeAssetFrom<T>(PhantomData<T>);
+impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 	fn contains(asset: &Asset, origin: &Location) -> bool {
-		let loc = AssetHub::get();
+		let loc = T::get();
 		&loc == origin &&
 			matches!(asset, Asset { id: AssetId(asset_loc), fun: Fungible(_a) }
 			if *asset_loc == Location::from(Parent))
@@ -140,7 +143,7 @@ impl ContainsPair<Asset, Location> for NativeAssetExceptRelay {
 }
 
 /// Combinations of (Asset, Location) pairs which we trust as reserves.
-pub type TrustedReserves = (NativeAssetExceptRelay, RelayAssetFromAssetHub);
+pub type TrustedReserves = (NativeAssetFrom<AssetHub>, NativeAssetExceptRelay);
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
