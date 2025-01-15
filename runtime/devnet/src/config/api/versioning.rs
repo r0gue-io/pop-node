@@ -103,7 +103,9 @@ struct V0Error(pop_primitives::v0::Error);
 impl From<DispatchError> for V0Error {
 	fn from(error: DispatchError) -> Self {
 		use pop_primitives::v0::*;
-		use sp_runtime::{ArithmeticError::*, TokenError::*, TransactionalError::*};
+		use sp_runtime::{
+			proving_trie::TrieError::*, ArithmeticError::*, TokenError::*, TransactionalError::*,
+		};
 		use DispatchError::*;
 		// Mappings exist here to avoid taking a dependency of sp_runtime on pop-primitives
 		Self(match error {
@@ -157,8 +159,22 @@ impl From<DispatchError> for V0Error {
 			Corruption => Error::Corruption,
 			Unavailable => Error::Unavailable,
 			RootNotAllowed => Error::RootNotAllowed,
-			// TODO: need to handle error
-			Trie(_) => Error::Trie,
+			Trie(error) => Error::Trie(match error {
+				InvalidStateRoot => TrieError::InvalidStateRoot,
+				IncompleteDatabase => TrieError::IncompleteDatabase,
+				ValueAtIncompleteKey => TrieError::ValueAtIncompleteKey,
+				DecoderError => TrieError::DecoderError,
+				InvalidHash => TrieError::InvalidHash,
+				DuplicateKey => TrieError::DuplicateKey,
+				ExtraneousNode => TrieError::ExtraneousNode,
+				ExtraneousValue => TrieError::ExtraneousValue,
+				ExtraneousHashReference => TrieError::ExtraneousHashReference,
+				InvalidChildReference => TrieError::InvalidChildReference,
+				ValueMismatch => TrieError::ValueMismatch,
+				IncompleteProof => TrieError::IncompleteProof,
+				RootMismatch => TrieError::RootMismatch,
+				DecodeError => TrieError::DecodeError,
+			}),
 		})
 	}
 }

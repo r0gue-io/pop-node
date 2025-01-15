@@ -66,7 +66,8 @@ pub mod v0 {
 			Unavailable = 12,
 			/// Root origin is not allowed.
 			RootNotAllowed = 13,
-			Trie = 14,
+			/// An error related to tries.
+			Trie(TrieError) = 14,
 			/// Decoding failed.
 			DecodingFailed = 254,
 			/// An unknown error occurred. This variant captures any unexpected errors that the
@@ -158,6 +159,46 @@ pub mod v0 {
 			LimitReached,
 			/// A transactional layer was expected, but does not exist.
 			NoLayer,
+		}
+
+		/// A runtime friendly error type for tries.
+		/// https://docs.rs/sp-runtime/latest/sp_runtime/proving_trie/enum.TrieError.html
+		#[derive(Encode, Decode, Debug)]
+		#[cfg_attr(test, derive(Sequence))]
+		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
+		pub enum TrieError {
+			// From TrieError
+			/// Attempted to create a trie with a state root not in the DB.
+			InvalidStateRoot,
+			/// Trie item not found in the database,
+			IncompleteDatabase,
+			/// A value was found in the trie with a nibble key that was not byte-aligned.
+			ValueAtIncompleteKey,
+			/// Corrupt Trie item.
+			DecoderError,
+			/// Hash is not value.
+			InvalidHash,
+			// From VerifyError
+			/// The statement being verified contains multiple key-value pairs with the same key.
+			DuplicateKey,
+			/// The proof contains at least one extraneous node.
+			ExtraneousNode,
+			/// The proof contains at least one extraneous value which should have been omitted
+			/// from the proof.
+			ExtraneousValue,
+			/// The proof contains at least one extraneous hash reference the should have been
+			/// omitted.
+			ExtraneousHashReference,
+			/// The proof contains an invalid child reference that exceeds the hash length.
+			InvalidChildReference,
+			/// The proof indicates that an expected value was not found in the trie.
+			ValueMismatch,
+			/// The proof is missing trie nodes required to verify.
+			IncompleteProof,
+			/// The root hash computed from the proof is incorrect.
+			RootMismatch,
+			/// One of the proof nodes could not be decoded.
+			DecodeError,
 		}
 	}
 

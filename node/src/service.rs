@@ -117,7 +117,6 @@ where
 		telemetry
 	});
 
-	// TOOD: double check
 	let transaction_pool = Arc::from(
 		sc_transaction_pool::Builder::new(
 			task_manager.spawn_essential_handle(),
