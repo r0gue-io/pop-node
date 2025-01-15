@@ -18,9 +18,10 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice,
-		TransformOrigin, VariantCountOf, tokens::{UnityAssetBalanceConversion, PayFromAccount}
+		fungible::HoldConsideration,
+		tokens::{imbalance::ResolveTo, PayFromAccount, UnityAssetBalanceConversion},
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, LinearStoragePrice, TransformOrigin, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -50,7 +51,9 @@ use sp_core::{
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify, AccountIdConversion, IdentityLookup},
+	traits::{
+		AccountIdConversion, BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Verify,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -584,7 +587,6 @@ impl pallet_utility::Config for Runtime {
 	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
 }
 
-
 const TREASURY_PALLET_ID: PalletId = PalletId(*b"treasury");
 pub(crate) type TreasuryPaymaster<T> = PayFromAccount<T, TreasuryAccount>;
 
@@ -606,7 +608,7 @@ impl pallet_treasury::Config for Runtime {
 	type Beneficiary = AccountId;
 	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
 	type Burn = Burn;
-	type BurnDestination = (); 
+	type BurnDestination = ();
 	type Currency = pallet_balances::Pallet<Runtime>;
 	type MaxApprovals = MaxApprovals;
 	type PalletId = TreasuryPalletId;
@@ -1049,10 +1051,10 @@ mod tests {
 		}
 
 		assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
- 	}
+	}
 
-	 #[test]
-	 fn treasury_account_is_pallet_id_truncated() {
-		 assert_eq!(TreasuryAccount::get(), TREASURY_PALLET_ID.into_account_truncating());	
-	 }
+	#[test]
+	fn treasury_account_is_pallet_id_truncated() {
+		assert_eq!(TreasuryAccount::get(), TREASURY_PALLET_ID.into_account_truncating());
+	}
 }
