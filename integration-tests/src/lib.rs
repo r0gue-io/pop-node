@@ -201,7 +201,7 @@ fn fund_pop_from_system_para(
 /// Reserve Transfers of native asset from Relay to Parachain should work
 #[test]
 #[should_panic]
-fn reserve_transfer_native_asset_from_relay_to_para() {
+fn reserve_transfer_native_asset_from_relay_to_para_should_fail() {
 	init_tracing();
 
 	// Init values for Relay
