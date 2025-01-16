@@ -243,16 +243,19 @@ mod tests {
 		assert!(!TrustedReserves::contains(&relay_asset, &Parent.into()));
 	}
 
+	// Decline native asset from another parachain.
 	#[test]
-	fn decline_native_assets() {
+	fn decline_sibling_native_assets() {
 		let chain_x = Location::new(1, [Parachain(4242)]);
 		let chain_x_asset =
 			Asset::from((AssetId::from(chain_x.clone()), Fungibility::from(100u128)));
 		assert!(!TrustedReserves::contains(&chain_x_asset, &chain_x));
 	}
 
+	// Decline non native asset from another parachain. Either a native asset as foreign asset on
+	// another parachain or a local asset from e.g. `pallet-assets`.
 	#[test]
-	fn decline_non_native_assets() {
+	fn decline_sibling_non_native_assets() {
 		// Native asset X of chain Y example.
 		let chain_x = Location::new(1, [Parachain(4242)]);
 		let chain_y = Location::new(1, [Parachain(6969)]);
