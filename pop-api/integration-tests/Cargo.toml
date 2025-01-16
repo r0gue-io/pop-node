@@ -11,14 +11,14 @@ contract-build.workspace = true
 env_logger.workspace = true
 log.workspace = true
 
+codec = { workspace = true, default-features = false, features = [
+	"derive",
+] }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 pallet-assets = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
-codec = { workspace = true, default-features = false, features = [
-	"derive",
-] }
 sp-io = { workspace = true, default-features = false }
 sp-runtime = { workspace = true, default-features = false }
 
@@ -33,6 +33,7 @@ pop-runtime-testnet.workspace = true
 default = [ "std" ]
 devnet = [ "pop-runtime-devnet/default" ]
 std = [
+	"codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-assets/std",
@@ -42,7 +43,6 @@ std = [
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",
 	"pop-runtime-testnet/std",
-	"codec/std",
 	"sp-io/std",
 	"sp-runtime/std",
 ]
