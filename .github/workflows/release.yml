@@ -16,11 +16,11 @@ on:
         description: Build node
         default: true
       runtime:
-        description: 'Runtime to build (devnet, testnet, mainnet)'
-        default: ''
+        description: 'Runtime to build (none, devnet, testnet, mainnet)'
+        default: none
         type: choice
         options:
-          - ''
+          - none
           - devnet
           - testnet
           - mainnet
@@ -33,7 +33,7 @@ jobs:
       startsWith(github.event.release.tag_name, 'devnet') ||
       startsWith(github.event.release.tag_name, 'mainnet') ||
       github.event_name == 'workflow_dispatch' &&
-      github.event.inputs.runtime != ''
+      github.event.inputs.runtime != 'none'
     permissions:
       contents: write
     steps:
@@ -151,7 +151,8 @@ jobs:
 
   build-node:
     runs-on: ${{ matrix.platform.os }}
-    if: github.event_name != 'workflow_dispatch' && 'true' || inputs.node
+    if: |
+      startsWith(github.event.release.tag_name, 'node') || (github.event_name == 'workflow_dispatch' && inputs.node == 'true')
     permissions:
       contents: write
     strategy:
