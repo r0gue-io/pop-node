@@ -28,6 +28,7 @@ members = [
 	"runtime/devnet",
 	"runtime/mainnet",
 	"runtime/testnet",
+	"pop-api/integration-tests"
 ]
 
 resolver = "2"
