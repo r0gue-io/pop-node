@@ -6,8 +6,8 @@ use sp_runtime::traits::StaticLookup;
 use super::{pallet::*, AccountIdOf, CollectionIdOf, ItemIdOf, NftsOf, NftsWeightInfoOf};
 
 impl<T: Config> Pallet<T> {
-	/// Approves the transfer of a specific item or all collection items owned by the origin to
-	/// an operator.
+	/// Approves the transfer of a specific item or all collection items owned by the `owner` to an
+	/// `operator`.
 	///
 	/// # Parameters
 	/// - `owner` - The owner of the specified collection item(s).
@@ -22,26 +22,18 @@ impl<T: Config> Pallet<T> {
 		maybe_item: Option<ItemIdOf<T>>,
 		operator: &AccountIdOf<T>,
 	) -> DispatchResultWithPostInfo {
+		let operator = T::Lookup::unlookup(operator.clone());
 		Ok(Some(match maybe_item {
 			Some(item) => {
-				NftsOf::<T>::approve_transfer(
-					owner,
-					collection,
-					item,
-					T::Lookup::unlookup(operator.clone()),
-					None,
-				)
-				.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
+				NftsOf::<T>::approve_transfer(owner, collection, item, operator, None)
+					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
 				NftsWeightInfoOf::<T>::approve_transfer()
 			},
 			None => {
-				NftsOf::<T>::approve_collection_transfer(
-					owner,
-					collection,
-					T::Lookup::unlookup(operator.clone()),
-					None,
-				)
-				.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer()))?;
+				NftsOf::<T>::approve_collection_transfer(owner, collection, operator, None)
+					.map_err(|e| {
+						e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer())
+					})?;
 				NftsWeightInfoOf::<T>::approve_collection_transfer()
 			},
 		})
@@ -49,7 +41,7 @@ impl<T: Config> Pallet<T> {
 	}
 
 	/// Cancel an approval to transfer a specific item or all items within a collection owned by
-	/// the origin.
+	/// the `owner`.
 	///
 	/// # Parameters
 	/// - `owner` - The owner of the specified collection item(s).
@@ -65,24 +57,17 @@ impl<T: Config> Pallet<T> {
 		maybe_item: Option<ItemIdOf<T>>,
 		operator: &AccountIdOf<T>,
 	) -> DispatchResultWithPostInfo {
+		let operator = T::Lookup::unlookup(operator.clone());
 		Ok(Some(match maybe_item {
 			Some(item) => {
-				NftsOf::<T>::cancel_approval(
-					owner,
-					collection,
-					item,
-					T::Lookup::unlookup(operator.clone()),
-				)
-				.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
+				NftsOf::<T>::cancel_approval(owner, collection, item, operator)
+					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
 				NftsWeightInfoOf::<T>::cancel_approval()
 			},
 			None => {
-				NftsOf::<T>::cancel_collection_approval(
-					owner,
-					collection,
-					T::Lookup::unlookup(operator.clone()),
-				)
-				.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval()))?;
+				NftsOf::<T>::cancel_collection_approval(owner, collection, operator).map_err(
+					|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval()),
+				)?;
 				NftsWeightInfoOf::<T>::cancel_collection_approval()
 			},
 		})
