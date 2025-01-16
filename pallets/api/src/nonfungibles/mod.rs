@@ -259,13 +259,13 @@ pub mod pallet {
 		///   collection item(s).
 		/// - `approved` - A boolean indicating the desired approval status:
 		///   - `true` to approve the `operator`.
-		///   - `false` to cancel the approval granted to the `operator`.
+		///   - `false` to cancel the approval delegated to the `operator`.
 		#[pallet::call_index(4)]
 		#[pallet::weight(
 			NftsWeightInfoOf::<T>::approve_transfer() +
 			NftsWeightInfoOf::<T>::approve_collection_transfer() +
 			NftsWeightInfoOf::<T>::cancel_collection_approval() +
-    		NftsWeightInfoOf::<T>::cancel_approval()
+			NftsWeightInfoOf::<T>::cancel_approval()
 		)]
 		pub fn approve(
 			origin: OriginFor<T>,
@@ -578,9 +578,9 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `request` - The read request.
-		fn read(value: Self::Read) -> Self::Result {
+		fn read(request: Self::Read) -> Self::Result {
 			use Read::*;
-			match value {
+			match request {
 				TotalSupply(collection) => ReadResult::TotalSupply(
 					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
 				),
