@@ -17,12 +17,12 @@ sp-io = { version = "37.0.0", default-features = false, features = [
 ] }
 
 [lib]
-crate-type = ["rlib"]
+crate-type = [ "rlib" ]
 name = "pop_api"
 path = "src/lib.rs"
 
 [features]
-default = ["std"]
-fungibles = []
-nonfungibles = []
-std = ["ink/std", "pop-primitives/std", "sp-io/std"]
+default = [ "std" ]
+fungibles = [  ]
+nonfungibles = [  ]
+std = [ "ink/std", "pop-primitives/std", "sp-io/std" ]
