@@ -13,7 +13,6 @@ use drink::{
 	session::Session,
 	AssetsAPI, TestExternalities, NO_SALT,
 };
-use ink::scale::Encode;
 use pop_api::{
 	primitives::TokenId,
 	v0::fungibles::events::{Approval, Created, Transfer},

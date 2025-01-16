@@ -123,7 +123,7 @@ jobs:
 
       - name: Run tests
         working-directory: pop-api
-        run: cargo test --release --all-features
+        run: cargo test --release --locked --all-features
 
   api-integration-tests-devnet:
     runs-on: ubuntu-latest
@@ -134,7 +134,7 @@ jobs:
 
       - name: Run integration tests
         working-directory: pop-api/integration-tests
-        run: cargo test --release --features devnet
+        run: cargo test --release --locked --features devnet
 
   api-integration-tests-testnet:
     runs-on: ubuntu-latest
@@ -145,7 +145,7 @@ jobs:
 
       - name: Run integration tests
         working-directory: pop-api/integration-tests
-        run: cargo test --release --features testnet
+        run: cargo test --release --locked --features testnet
 
   coverage:
     needs: lint

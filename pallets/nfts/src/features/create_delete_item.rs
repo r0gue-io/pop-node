@@ -69,18 +69,18 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			collection_details.items.saturating_inc();
 
 			let collection_config = Self::get_collection_config(&collection)?;
-			let deposit_amount =
-				match collection_config.is_setting_enabled(CollectionSetting::DepositRequired) {
-					true => T::ItemDeposit::get(),
-					false => Zero::zero(),
-				};
+			let deposit_required =
+				collection_config.is_setting_enabled(CollectionSetting::DepositRequired);
 			let deposit_account =
 				maybe_depositor.unwrap_or_else(|| collection_details.owner.clone());
 
+			let balance_deposit = deposit_required
+				.then_some(T::CollectionBalanceDeposit::get())
+				.unwrap_or_default();
 			Self::increment_account_balance(
 				collection,
 				&mint_to,
-				(&deposit_account, deposit_amount),
+				(&deposit_account, balance_deposit),
 			)?;
 
 			let item_owner = mint_to.clone();
@@ -93,9 +93,11 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				collection_details.item_configs.saturating_inc();
 			}
 
-			T::Currency::reserve(&deposit_account, deposit_amount)?;
+			let item_deposit =
+				deposit_required.then_some(T::ItemDeposit::get()).unwrap_or_default();
+			T::Currency::reserve(&deposit_account, item_deposit)?;
 
-			let deposit = ItemDeposit { account: deposit_account, amount: deposit_amount };
+			let deposit = ItemDeposit { account: deposit_account, amount: item_deposit };
 			let details = ItemDetails {
 				owner: item_owner,
 				approvals: ApprovalsOf::<T, I>::default(),
