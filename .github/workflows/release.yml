@@ -152,7 +152,7 @@ jobs:
   build-node:
     runs-on: ${{ matrix.platform.os }}
     if: |
-      startsWith(github.event.release.tag_name, 'node') || (github.event_name == 'workflow_dispatch' && inputs.node == 'true')
+      startsWith(github.event.release.tag_name, 'node') || (github.event_name == 'workflow_dispatch' && inputs.node)
     permissions:
       contents: write
     strategy:
