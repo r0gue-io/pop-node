@@ -260,11 +260,11 @@ pub mod pallet {
 		#[pallet::constant]
 		type CollectionApprovalDeposit: Get<DepositBalanceOf<Self, I>>;
 
-		/// The basic amount of funds that must be reversed for an account balance.
+		/// The basic amount of funds that must be reversed for an account's collection balance.
 		// Key: `sizeof((CollectionId, AccountId))` bytes.
 		// Value: `sizeof((u32, Some(AccountId, Balance)))` bytes.
 		#[pallet::constant]
-		type BalanceDeposit: Get<DepositBalanceOf<Self, I>>;
+		type CollectionBalanceDeposit: Get<DepositBalanceOf<Self, I>>;
 	}
 
 	/// Details of a collection.
@@ -441,6 +441,7 @@ pub mod pallet {
 		T::CollectionId,
 		Blake2_128Concat,
 		T::AccountId,
+		// (Account's collection items, Deposit details).
 		(u32, AccountDepositOf<T, I>),
 	>;
 
@@ -453,7 +454,13 @@ pub mod pallet {
 			NMapKey<Blake2_128Concat, T::AccountId>, // owner
 			NMapKey<Blake2_128Concat, T::AccountId>, // delegate
 		),
-		(Option<BlockNumberFor<T>>, DepositBalanceOf<T, I>),
+		(
+			// The optional deadline for the approval. If specified, the approval is valid on or
+			// before the given block number.
+			Option<BlockNumberFor<T>>,
+			// The balance to be deposited.
+			DepositBalanceOf<T, I>,
+		),
 	>;
 
 	#[pallet::event]
@@ -499,8 +506,9 @@ pub mod pallet {
 			admin: Option<T::AccountId>,
 			freezer: Option<T::AccountId>,
 		},
-		/// An `item` of a `collection` has been approved by the `owner` for transfer by
-		/// a `delegate`.
+		/// A provided `item` of a `collection`, or if no `item` is provided, all items in the
+		/// `collection` owned by the `owner` have been approved by the `owner` for transfer by a
+		/// `delegate`.
 		TransferApproved {
 			collection: T::CollectionId,
 			item: Option<T::ItemId>,
@@ -508,8 +516,9 @@ pub mod pallet {
 			delegate: T::AccountId,
 			deadline: Option<BlockNumberFor<T>>,
 		},
-		/// An approval for a `delegate` account to transfer a specific `item` in a `collection` or
-		/// all collection items owned by the `owner` has been cancelled by the owner.
+		/// An approval for a `delegate` account to transfer a specific `item` in a `collection`,
+		/// or if no `item` is provided, all collection items owned by the `owner` have been
+		/// cancelled by the `owner`.
 		ApprovalCancelled {
 			collection: T::CollectionId,
 			item: Option<T::ItemId>,
@@ -663,8 +672,6 @@ pub mod pallet {
 		NotDelegate,
 		/// The delegate turned out to be different to what was expected.
 		WrongDelegate,
-		/// No approval exists that would allow the transfer.
-		Unapproved,
 		/// The named owner has not signed ownership acceptance of the collection.
 		Unaccepted,
 		/// The item is locked (non-transferable).
@@ -1091,9 +1098,18 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			let dest = T::Lookup::lookup(dest)?;
 
-			Self::do_transfer(&origin, collection, item, dest, |_, details| {
+			// The item's owner pays for the deposit of `AccountBalance` if the `dest` holds no
+			// items in `collection`. A malicious actor could have a deposit reserved from `dest`
+			// without them knowing about the transfer. The deposit amount can be accounted for
+			// in the off chain price of the NFT.
+			Self::do_transfer(collection, item, dest, None, |_, details| {
 				if details.owner != origin {
-					Self::check_approval(&collection, &Some(item), &details.owner, &origin)?;
+					Self::check_approval_permission(
+						&collection,
+						&Some(item),
+						&details.owner,
+						&origin,
+					)?;
 				}
 				Ok(())
 			})
@@ -2017,14 +2033,21 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
-			Self::do_approve_collection_transfer(origin, collection, delegate, maybe_deadline)
+			Self::do_approve_collection_transfer(
+				origin,
+				collection,
+				delegate,
+				T::CollectionApprovalDeposit::get(),
+				maybe_deadline,
+			)
 		}
 
 		/// Force-approve collection items owned by the `owner` to be transferred by a delegated
-		/// third-party account. This function reserves the required deposit
-		/// `CollectionApprovalDeposit` from the `owner` account.
+		/// third-party account.
 		///
 		/// Origin must be the `ForceOrigin`.
+		///
+		/// Any deposit is left alone.
 		///
 		/// - `owner`: The owner of the collection items to be force-approved by the `origin`.
 		/// - `collection`: The collection of the items to be approved for delegated transfer.
@@ -2048,7 +2071,13 @@ pub mod pallet {
 			T::ForceOrigin::ensure_origin(origin)?;
 			let delegate = T::Lookup::lookup(delegate)?;
 			let owner = T::Lookup::lookup(owner)?;
-			Self::do_approve_collection_transfer(owner, collection, delegate, maybe_deadline)
+			Self::do_approve_collection_transfer(
+				owner,
+				collection,
+				delegate,
+				Zero::zero(),
+				maybe_deadline,
+			)
 		}
 
 		/// Cancel a collection approval.

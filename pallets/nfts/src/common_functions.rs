@@ -98,10 +98,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	pub(crate) fn increment_account_balance(
 		collection: T::CollectionId,
 		owner: &T::AccountId,
-		(deposit_account, deposit_amount): (
-			&<T as SystemConfig>::AccountId,
-			DepositBalanceOf<T, I>,
-		),
+		(deposit_account, deposit_amount): (&T::AccountId, DepositBalanceOf<T, I>),
 	) -> DispatchResult {
 		AccountBalance::<T, I>::mutate(collection, owner, |maybe_balance| -> DispatchResult {
 			match maybe_balance {
@@ -132,7 +129,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 					maybe_balance.as_mut().ok_or(Error::<T, I>::NoItemOwned)?;
 
 				*balance = balance.checked_sub(1).ok_or(ArithmeticError::Underflow)?;
-				if *balance == 0 {
+				if balance.is_zero() {
 					T::Currency::unreserve(deposit_account, *deposit_amount);
 					*maybe_balance = None;
 				}
@@ -152,5 +149,89 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		NextCollectionId::<T, I>::get()
 			.or(T::CollectionId::initial_value())
 			.expect("Failed to get next collection ID")
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use crate::{mock::*, tests::*, Currency, Error, ReservableCurrency};
+
+	#[test]
+	fn increment_account_balance_works() {
+		new_test_ext().execute_with(|| {
+			let collection_id = 0;
+			let deposit_account = account(1);
+			let deposit_amount = balance_deposit();
+			let owner = account(2);
+			assert_noop!(
+				Nfts::increment_account_balance(
+					collection_id,
+					&owner,
+					(&deposit_account, deposit_amount)
+				),
+				BalancesError::<Test>::InsufficientBalance
+			);
+			Balances::make_free_balance_be(&deposit_account, 100);
+			// Initialize `AccountBalance` and increase the collection item count for the new
+			// account.
+			assert_ok!(Nfts::increment_account_balance(
+				collection_id,
+				&owner,
+				(&deposit_account, deposit_amount)
+			));
+			assert_eq!(Balances::reserved_balance(&deposit_account), deposit_amount);
+			assert_eq!(
+				AccountBalance::get(collection_id, &owner),
+				Some((1, (deposit_account.clone(), deposit_amount)))
+			);
+			// Increment the balance of a non-zero balance account. No additional reserves.
+			assert_ok!(Nfts::increment_account_balance(
+				collection_id,
+				&owner,
+				(&deposit_account, deposit_amount)
+			));
+			assert_eq!(Balances::reserved_balance(&deposit_account), deposit_amount);
+			assert_eq!(
+				AccountBalance::get(collection_id, &owner),
+				Some((2, (deposit_account.clone(), deposit_amount)))
+			);
+		});
+	}
+
+	#[test]
+	fn decrement_account_balance_works() {
+		new_test_ext().execute_with(|| {
+			let collection_id = 0;
+			let balance = 2u32;
+			let deposit_account = account(1);
+			let deposit_amount = balance_deposit();
+			let owner = account(2);
+
+			Balances::make_free_balance_be(&deposit_account, 100);
+			// Decrement non-existing `AccountBalance` record.
+			assert_noop!(
+				Nfts::decrement_account_balance(collection_id, &deposit_account),
+				Error::<Test>::NoItemOwned
+			);
+			// Set account balance and reserve `DepositBalance`.
+			AccountBalance::insert(
+				collection_id,
+				&owner,
+				(&balance, (&deposit_account, deposit_amount)),
+			);
+			Balances::reserve(&deposit_account, deposit_amount).expect("should work");
+			// Successfully decrement the value of the `AccountBalance` entry.
+			assert_ok!(Nfts::decrement_account_balance(collection_id, &owner));
+			assert_eq!(
+				AccountBalance::get(collection_id, &owner),
+				Some((balance - 1, (deposit_account.clone(), deposit_amount)))
+			);
+			assert_eq!(Balances::reserved_balance(&deposit_account), deposit_amount);
+			// `AccountBalance` record is deleted, and the depositor's funds are unreserved if
+			// the `AccountBalance` value reaches zero after decrementing.
+			assert_ok!(Nfts::decrement_account_balance(collection_id, &owner));
+			assert_eq!(Balances::reserved_balance(&deposit_account), 0);
+			assert!(!AccountBalance::contains_key(collection_id, &owner));
+		});
 	}
 }

@@ -65,7 +65,7 @@ fn allowance_works() {
 		// No collection item is created.
 		assert_eq!(
 			allowance(&addr.clone(), COLLECTION, None, addr.clone(), ALICE),
-			Ok(!Nfts::check_approval(&COLLECTION, &None, &addr, &ALICE).is_err()),
+			Ok(!Nfts::check_approval_permission(&COLLECTION, &None, &addr, &ALICE).is_err()),
 		);
 		assert_eq!(allowance(&addr.clone(), COLLECTION, None, addr.clone(), ALICE), Ok(false));
 
@@ -73,7 +73,8 @@ fn allowance_works() {
 		let (_, item) = nfts::create_collection_mint_and_approve(&addr, &addr, ITEM, &addr, &ALICE);
 		assert_eq!(
 			allowance(&addr.clone(), COLLECTION, Some(item), addr.clone(), ALICE),
-			Ok(Nfts::check_approval(&COLLECTION, &Some(item), &addr.clone(), &ALICE).is_ok()),
+			Ok(Nfts::check_approval_permission(&COLLECTION, &Some(item), &addr.clone(), &ALICE)
+				.is_ok()),
 		);
 		assert_eq!(allowance(&addr.clone(), COLLECTION, Some(item), addr.clone(), ALICE), Ok(true));
 	});
@@ -130,7 +131,8 @@ fn approve_item_transfer_works() {
 		// Successful approvals.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		assert_ok!(approve(&addr, collection, Some(item), ALICE, true));
-		assert!(Nfts::check_approval(&collection, &Some(item), &addr.clone(), &ALICE).is_ok());
+		assert!(Nfts::check_approval_permission(&collection, &Some(item), &addr.clone(), &ALICE)
+			.is_ok());
 		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let operator = account_id_from_slice(ALICE.as_ref());
@@ -138,7 +140,8 @@ fn approve_item_transfer_works() {
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// New value overrides old value.
 		assert_ok!(approve(&addr, collection, Some(item), ALICE, false));
-		assert!(Nfts::check_approval(&collection, &Some(item), &addr.clone(), &ALICE).is_err());
+		assert!(Nfts::check_approval_permission(&collection, &Some(item), &addr.clone(), &ALICE)
+			.is_err());
 	});
 }
 
@@ -155,7 +158,7 @@ fn approve_collection_transfer_works() {
 		// Successful approvals.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		assert_ok!(approve(&addr, collection, None, ALICE, true));
-		assert!(Nfts::check_approval(&collection, &None, &addr.clone(), &ALICE).is_ok());
+		assert!(Nfts::check_approval_permission(&collection, &None, &addr.clone(), &ALICE).is_ok());
 		// Successfully emit event.
 		let owner = account_id_from_slice(addr.as_ref());
 		let operator = account_id_from_slice(ALICE.as_ref());
@@ -163,7 +166,7 @@ fn approve_collection_transfer_works() {
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// New value overrides old value.
 		assert_ok!(approve(&addr, collection, None, ALICE, false));
-		assert!(Nfts::check_approval(&collection, &None, &addr.clone(), &ALICE).is_err());
+		assert!(Nfts::check_approval_permission(&collection, &None, &addr.clone(), &ALICE).is_err());
 	});
 }
 
