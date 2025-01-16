@@ -591,7 +591,8 @@ pub mod pallet {
 						.unwrap_or_default(),
 				),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
-					NftsOf::<T>::check_approval(&collection, &item, &owner, &operator).is_ok(),
+					NftsOf::<T>::check_approval_permission(&collection, &item, &owner, &operator)
+						.is_ok(),
 				),
 				OwnerOf { collection, item } =>
 					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),

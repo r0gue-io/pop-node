@@ -232,7 +232,7 @@ fn approve_works() {
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
 			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
 		);
-		assert_ok!(Nfts::check_approval(&collection, &Some(item), &owner, &operator));
+		assert_ok!(Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator));
 		System::assert_last_event(
 			Event::Approval { collection, item: Some(item), owner, operator, approved: true }
 				.into(),
@@ -242,7 +242,7 @@ fn approve_works() {
 			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
 			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
 		);
-		assert_ok!(Nfts::check_approval(&collection, &Some(item), &owner, &operator));
+		assert_ok!(Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator));
 		System::assert_last_event(
 			Event::Approval { collection, item: Some(item), owner, operator, approved: true }
 				.into(),
@@ -282,14 +282,14 @@ fn approve_collection_works() {
 		);
 		let reserved_balance_after_approve = Balances::reserved_balance(&owner);
 		assert_eq!(reserved_balance_after_approve - reserved_balance_before_approve, 1);
-		assert_ok!(Nfts::check_approval(&collection, &None, &owner, &operator));
+		assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
 		// Re-approving the transfer of `collection` does not require reserving additional funds.
 		assert_eq!(
 			NonFungibles::approve(signed(owner), collection, None, operator, true),
 			Ok(Some(NftsWeightInfoOf::<Test>::approve_collection_transfer()).into())
 		);
 		assert_eq!(Balances::reserved_balance(&owner), reserved_balance_after_approve);
-		assert_ok!(Nfts::check_approval(&collection, &None, &owner, &operator));
+		assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
 		System::assert_last_event(
 			Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
 		);
@@ -325,7 +325,7 @@ fn cancel_approval_works() {
 			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval()).into())
 		);
 		assert_eq!(
-			Nfts::check_approval(&collection, &Some(item), &owner, &operator),
+			Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator),
 			Err(NftsError::NoPermission.into())
 		);
 	});
@@ -349,7 +349,7 @@ fn cancel_collection_approval_works() {
 		// Check error works for `Nfts::cancel_approval()`.
 		assert_noop!(
 			NonFungibles::approve(signed(owner), collection, None, operator, false),
-			NftsError::Unapproved
+			NftsError::NotDelegate
 				.with_weight(NftsWeightInfoOf::<Test>::cancel_collection_approval())
 		);
 		// Successfully cancel the transfer collection approval of `operator` by `owner`.
@@ -360,7 +360,7 @@ fn cancel_collection_approval_works() {
 			Ok(Some(NftsWeightInfoOf::<Test>::cancel_collection_approval()).into())
 		);
 		assert_eq!(
-			Nfts::check_approval(&collection, &None, &owner, &operator),
+			Nfts::check_approval_permission(&collection, &None, &owner, &operator),
 			Err(NftsError::NoPermission.into())
 		);
 		// Failed to transfer the item by `operator` without permission.
@@ -392,7 +392,8 @@ fn clear_all_transfer_approvals_works() {
 		// Successfully clear all transfer approvals.
 		assert_ok!(NonFungibles::clear_all_transfer_approvals(signed(owner), collection, item));
 		delegates.for_each(|delegate| {
-			assert!(Nfts::check_approval(&collection, &Some(item), &owner, &delegate).is_err());
+			assert!(Nfts::check_approval_permission(&collection, &Some(item), &owner, &delegate)
+				.is_err());
 		});
 	});
 }
@@ -740,7 +741,7 @@ fn allowance_works() {
 		assert_eq!(
 			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator })
 				.encode(),
-			Nfts::check_approval(&collection, &Some(item), &owner, &operator)
+			Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator)
 				.is_ok()
 				.encode()
 		);
