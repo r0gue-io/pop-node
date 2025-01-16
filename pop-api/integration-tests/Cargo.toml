@@ -16,7 +16,7 @@ frame-system = { workspace = true, default-features = false }
 pallet-assets = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
-scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
+codec = { workspace = true, default-features = false, features = [
 	"derive",
 ] }
 sp-io = { workspace = true, default-features = false }
@@ -42,7 +42,7 @@ std = [
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",
 	"pop-runtime-testnet/std",
-	"scale/std",
+	"codec/std",
 	"sp-io/std",
 	"sp-runtime/std",
 ]
