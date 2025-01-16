@@ -17,6 +17,7 @@ substrate-wasm-builder.workspace = true
 [dependencies]
 codec.workspace = true
 docify.workspace = true
+log.workspace = true
 scale-info.workspace = true
 smallvec.workspace = true
 

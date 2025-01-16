@@ -52,15 +52,16 @@ westend-runtime-constants = { workspace = true, optional = true }
 pop-runtime-common.workspace = true
 pop-runtime-devnet.workspace = true
 pop-runtime-mainnet.workspace = true
+pop-runtime-testnet.workspace = true
 
 [features]
-default = [ "westend" ]
-mainnet = [ "pop-runtime-mainnet/default" ]
+default = [ "std" ]
+devnet = [ "pop-runtime-devnet/std" ]
+mainnet = [ "pop-runtime-mainnet/std" ]
 paseo = [
 	"asset-hub-paseo-runtime",
 	"paseo-runtime",
 	"paseo-runtime-constants",
-	"std",
 ]
 runtime-benchmarks = [
 	"asset-hub-paseo-runtime?/runtime-benchmarks",
@@ -77,6 +78,7 @@ runtime-benchmarks = [
 	"pop-runtime-common/runtime-benchmarks",
 	"pop-runtime-devnet/runtime-benchmarks",
 	"pop-runtime-mainnet/runtime-benchmarks",
+	"pop-runtime-testnet/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"westend-runtime?/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
@@ -112,6 +114,7 @@ std = [
 	"xcm-executor/std",
 	"xcm/std",
 ]
+testnet = [ "pop-runtime-testnet/std" ]
 try-runtime = [
 	"asset-hub-paseo-runtime?/try-runtime",
 	"asset-hub-westend-runtime?/try-runtime",
@@ -122,12 +125,12 @@ try-runtime = [
 	"paseo-runtime?/try-runtime",
 	"pop-runtime-devnet/try-runtime",
 	"pop-runtime-mainnet/try-runtime",
+	"pop-runtime-testnet/try-runtime",
 	"sp-runtime/try-runtime",
 	"westend-runtime?/try-runtime",
 ]
 westend = [
 	"asset-hub-westend-runtime",
-	"std",
 	"westend-runtime",
 	"westend-runtime-constants",
 ]

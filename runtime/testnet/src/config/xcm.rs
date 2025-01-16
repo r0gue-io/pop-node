@@ -13,10 +13,10 @@ use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
 	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
-	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, NativeAsset, ParentIsPreset,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
-	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
+	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, ParentIsPreset, RelayChainAsNative,
+	SiblingParachainAsNative, SiblingParachainConvertsVia, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId,
+	UsingComponents, WithComputedOrigin, WithUniqueTopic,
 };
 use xcm_executor::XcmExecutor;
 
@@ -123,7 +123,27 @@ impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 			if *asset_loc == Location::from(Parent))
 	}
 }
-pub type TrustedReserves = (NativeAsset, NativeAssetFrom<AssetHub>);
+
+/// Accepts native assets, except from the relay because AH functions as the reserve.
+pub struct NativeAssetExceptRelay;
+impl ContainsPair<Asset, Location> for NativeAssetExceptRelay {
+	fn contains(asset: &Asset, origin: &Location) -> bool {
+		log::trace!(
+			target: "xcm::contains",
+			"asset: {:?}, origin: {:?}",
+			asset,
+			origin
+		);
+		// Exclude the relay location.
+		if matches!(origin, Location { parents: 1, interior: Here }) {
+			return false;
+		}
+		matches!(asset.id, AssetId(ref id) if id == origin)
+	}
+}
+
+/// Combinations of (Asset, Location) pairs which we trust as reserves.
+pub type TrustedReserves = (NativeAssetFrom<AssetHub>, NativeAssetExceptRelay);
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
