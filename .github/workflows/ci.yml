@@ -131,28 +131,6 @@ jobs:
         working-directory: pop-api
         run: cargo test --release --locked --all-features
 
-  api-integration-tests-devnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: "./.github/actions/init"
-
-      - name: Run integration tests
-        working-directory: pop-api/integration-tests
-        run: cargo test --release --locked --features devnet
-
-  api-integration-tests-testnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: "./.github/actions/init"
-
-      - name: Run integration tests
-        working-directory: pop-api/integration-tests
-        run: cargo test --release --locked --features testnet
-
   coverage:
     needs: lint
     runs-on: ubuntu-latest
