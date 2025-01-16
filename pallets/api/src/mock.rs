@@ -214,3 +214,15 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
+
+pub(crate) fn signed(account: AccountId) -> RuntimeOrigin {
+	RuntimeOrigin::signed(account)
+}
+
+pub(crate) fn root() -> RuntimeOrigin {
+	RuntimeOrigin::root()
+}
+
+pub(crate) fn none() -> RuntimeOrigin {
+	RuntimeOrigin::none()
+}

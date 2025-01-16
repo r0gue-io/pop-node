@@ -543,18 +543,6 @@ fn token_exists_works() {
 	});
 }
 
-fn signed(account: AccountId) -> RuntimeOrigin {
-	RuntimeOrigin::signed(account)
-}
-
-fn root() -> RuntimeOrigin {
-	RuntimeOrigin::root()
-}
-
-fn none() -> RuntimeOrigin {
-	RuntimeOrigin::none()
-}
-
 // Helper functions for interacting with pallet-assets.
 mod assets {
 	use super::*;

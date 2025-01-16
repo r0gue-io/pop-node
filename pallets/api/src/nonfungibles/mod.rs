@@ -362,7 +362,7 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection whose item's metadata to set.
-		/// - `maybe_item` - The item whose metadata to set.
+		/// - `item` - The item whose metadata to set.
 		/// - `namespace` - Attribute's namespace.
 		/// - `key` - The key of the attribute.
 		/// - `value` - The value to which to set the attribute.
@@ -383,7 +383,7 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection whose item's metadata to clear.
-		/// - `maybe_item` - The item whose metadata to clear.
+		/// - `item` - The item whose metadata to clear.
 		/// - `namespace` - Attribute's namespace.
 		/// - `key` - The key of the attribute.
 		#[pallet::call_index(13)]
@@ -415,6 +415,11 @@ pub mod pallet {
 			NftsOf::<T>::set_metadata(origin, collection, item, data)
 		}
 
+		/// Clear the metadata for an item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection whose item's metadata to clear.
+		/// - `item` - The item whose metadata to clear.
 		#[pallet::call_index(15)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_metadata())]
 		pub fn clear_metadata(
@@ -508,13 +513,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
 			let mint_price = witness.mint_price;
-			NftsOf::<T>::mint(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(to.clone()),
-				Some(witness),
-			)?;
+			NftsOf::<T>::mint(origin, collection, item, T::Lookup::unlookup(to), Some(witness))?;
 			Self::deposit_event(Event::Transfer {
 				collection,
 				item,
@@ -570,8 +569,8 @@ pub mod pallet {
 				OwnerOf { .. } => <T as Config>::WeightInfo::owner_of(),
 				GetAttribute { .. } => <T as Config>::WeightInfo::get_attribute(),
 				Collection(_) => <T as Config>::WeightInfo::collection(),
-				ItemMetadata { .. } => <T as Config>::WeightInfo::item_metadata(),
 				NextCollectionId => <T as Config>::WeightInfo::next_collection_id(),
+				ItemMetadata { .. } => <T as Config>::WeightInfo::item_metadata(),
 			}
 		}
 
@@ -602,11 +601,11 @@ pub mod pallet {
 				),
 				Collection(collection) =>
 					ReadResult::Collection(CollectionOf::<T>::get(collection)),
-				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
-					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
-				),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
+				),
+				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
+					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
 				),
 			}
 		}
