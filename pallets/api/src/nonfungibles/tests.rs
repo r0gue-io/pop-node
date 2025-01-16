@@ -109,11 +109,14 @@ fn transfer_works() {
 		);
 		// Successfully transfer a collection item.
 		nfts::create_collection_mint(owner, owner, item);
-		let balance_before_transfer = nfts::balance_of(collection, &dest);
+		let from_balance_before_transfer = nfts::balance_of(collection, &owner);
+		let to_balance_before_transfer = nfts::balance_of(collection, &dest);
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, item, dest));
-		let balance_after_transfer = nfts::balance_of(collection, &dest);
-		assert!(nfts::balance_of(collection, &owner).is_zero());
-		assert_eq!(balance_after_transfer - balance_before_transfer, 1);
+		let from_balance_after_transfer = nfts::balance_of(collection, &owner);
+		let to_balance_after_transfer = nfts::balance_of(collection, &dest);
+		// Check that `to` has received the `value` tokens from `from`.
+		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + 1);
+		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - 1);
 		System::assert_last_event(
 			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
 				.into(),
@@ -206,169 +209,166 @@ fn burn_works() {
 	});
 }
 
-#[test]
-fn approve_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let item = ITEM;
-		let operator = BOB;
-		let owner = ALICE;
+mod approve {
+	use super::*;
 
-		// Origin checks for `approve`.
-		for origin in vec![root(), none()] {
+	#[test]
+	fn ensure_origin_works() {
+		new_test_ext().execute_with(|| {
+			for origin in vec![root(), none()] {
+				assert_noop!(
+					NonFungibles::approve(origin, COLLECTION, Some(ITEM), ALICE, false),
+					BadOrigin
+				);
+			}
+		});
+	}
+
+	#[test]
+	fn approve_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let item = ITEM;
+			let operator = BOB;
+			let owner = ALICE;
+
+			// Check error works for `Nfts::approve_transfer()`.
 			assert_noop!(
-				NonFungibles::approve(origin, collection, Some(item), operator, true),
-				BadOrigin
+				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
+				NftsError::UnknownItem.with_weight(NftsWeightInfoOf::<Test>::approve_transfer())
 			);
-		}
-		// Check error works for `Nfts::approve_transfer()`.
-		assert_noop!(
-			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-			NftsError::UnknownItem.with_weight(NftsWeightInfoOf::<Test>::approve_transfer())
-		);
-		nfts::create_collection_mint(owner, owner, item);
-		// Successfully approves `operator` to transfer the collection item.
-		assert_eq!(
-			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
-		);
-		assert_ok!(Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator));
-		System::assert_last_event(
-			Event::Approval { collection, item: Some(item), owner, operator, approved: true }
-				.into(),
-		);
-		// Re-approves `operator` to transfer the collection item.
-		assert_eq!(
-			NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-			Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
-		);
-		assert_ok!(Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator));
-		System::assert_last_event(
-			Event::Approval { collection, item: Some(item), owner, operator, approved: true }
-				.into(),
-		);
-		// Successfully transfers the item by the delegated account `operator`.
-		assert_ok!(Nfts::transfer(signed(operator), collection, item, operator));
-	});
-}
+			nfts::create_collection_mint(owner, owner, item);
+			// Successfully approves `operator` to transfer the collection item.
+			assert_eq!(
+				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
+				Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
+			);
+			assert_ok!(Nfts::check_approval_permission(
+				&collection,
+				&Some(item),
+				&owner,
+				&operator
+			));
+			System::assert_last_event(
+				Event::Approval { collection, item: Some(item), owner, operator, approved: true }
+					.into(),
+			);
+			// Re-approves `operator` to transfer the collection item.
+			assert_eq!(
+				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
+				Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
+			);
+			assert_ok!(Nfts::check_approval_permission(
+				&collection,
+				&Some(item),
+				&owner,
+				&operator
+			));
+			System::assert_last_event(
+				Event::Approval { collection, item: Some(item), owner, operator, approved: true }
+					.into(),
+			);
+			// Successfully transfers the item by the delegated account `operator`.
+			assert_ok!(Nfts::transfer(signed(operator), collection, item, operator));
+		});
+	}
 
-#[test]
-fn approve_collection_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let item = ITEM;
-		let operator = BOB;
-		let owner = ALICE;
+	#[test]
+	fn approve_collection_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let item = ITEM;
+			let operator = BOB;
+			let owner = ALICE;
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
+			// Check error works for `Nfts::approve_collection_transfer()`.
 			assert_noop!(
-				NonFungibles::approve(origin, collection, None, operator, true),
-				BadOrigin
+				NonFungibles::approve(signed(owner), collection, None, operator, true),
+				NftsError::NoItemOwned
+					.with_weight(NftsWeightInfoOf::<Test>::approve_collection_transfer())
 			);
-		}
-		// Check error works for `Nfts::approve_collection_transfer()`.
-		assert_noop!(
-			NonFungibles::approve(signed(owner), collection, None, operator, true),
-			NftsError::NoItemOwned
-				.with_weight(NftsWeightInfoOf::<Test>::approve_collection_transfer())
-		);
-		// Approving to transfer `collection` reserves funds from the `operator`.
-		nfts::create_collection_mint(owner, owner, item);
-		let reserved_balance_before_approve = Balances::reserved_balance(&owner);
-		assert_eq!(
-			NonFungibles::approve(signed(owner), collection, None, operator, true),
-			Ok(Some(NftsWeightInfoOf::<Test>::approve_collection_transfer()).into())
-		);
-		let reserved_balance_after_approve = Balances::reserved_balance(&owner);
-		assert_eq!(reserved_balance_after_approve - reserved_balance_before_approve, 1);
-		assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
-		// Re-approving the transfer of `collection` does not require reserving additional funds.
-		assert_eq!(
-			NonFungibles::approve(signed(owner), collection, None, operator, true),
-			Ok(Some(NftsWeightInfoOf::<Test>::approve_collection_transfer()).into())
-		);
-		assert_eq!(Balances::reserved_balance(&owner), reserved_balance_after_approve);
-		assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
-		System::assert_last_event(
-			Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
-		);
-		// Successfully transfer the item by the delegated account `operator`.
-		assert_ok!(Nfts::transfer(signed(operator), collection, item, operator));
-	});
-}
+			// Approving to transfer `collection` reserves funds from the `operator`.
+			nfts::create_collection_mint(owner, owner, item);
+			let reserved_balance_before_approve = Balances::reserved_balance(&owner);
+			assert_eq!(
+				NonFungibles::approve(signed(owner), collection, None, operator, true),
+				Ok(Some(NftsWeightInfoOf::<Test>::approve_collection_transfer()).into())
+			);
+			let reserved_balance_after_approve = Balances::reserved_balance(&owner);
+			assert_eq!(reserved_balance_after_approve - reserved_balance_before_approve, 1);
+			assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
+			System::assert_last_event(
+				Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
+			);
+			// Successfully transfer the item by the delegated account `operator`.
+			assert_ok!(Nfts::transfer(signed(operator), collection, item, operator));
+		});
+	}
 
-#[test]
-fn cancel_approval_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let item = ITEM;
-		let operator = BOB;
-		let owner = ALICE;
+	#[test]
+	fn cancel_approval_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let item = ITEM;
+			let operator = BOB;
+			let owner = ALICE;
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
+			// Check error works for `Nfts::cancel_approval()`.
 			assert_noop!(
-				NonFungibles::approve(origin, collection, Some(item), operator, false),
-				BadOrigin
+				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
+				NftsError::UnknownItem.with_weight(NftsWeightInfoOf::<Test>::cancel_approval())
 			);
-		}
-		// Check error works for `Nfts::cancel_approval()`.
-		assert_noop!(
-			NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
-			NftsError::UnknownItem.with_weight(NftsWeightInfoOf::<Test>::cancel_approval())
-		);
-		// Successfully cancels the transfer approval of `operator` by `owner`.
-		nfts::create_collection_mint_and_approve(owner, owner, item, operator);
-		assert_eq!(
-			NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
-			Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval()).into())
-		);
-		assert_eq!(
-			Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator),
-			Err(NftsError::NoPermission.into())
-		);
-	});
-}
+			// Successfully cancels the transfer approval of `operator` by `owner`.
+			nfts::create_collection_mint_and_approve(owner, owner, item, operator);
+			assert_eq!(
+				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
+				Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval()).into())
+			);
+			assert_eq!(
+				Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator),
+				Err(NftsError::NoPermission.into())
+			);
+		});
+	}
 
-#[test]
-fn cancel_collection_approval_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let item = ITEM;
-		let operator = BOB;
-		let owner = ALICE;
+	#[test]
+	fn cancel_collection_approval_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let item = ITEM;
+			let operator = BOB;
+			let owner = ALICE;
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
+			// Check error works for `Nfts::cancel_approval()`.
 			assert_noop!(
-				NonFungibles::approve(origin, collection, None, operator, false),
-				BadOrigin
+				NonFungibles::approve(signed(owner), collection, None, operator, false),
+				NftsError::NotDelegate
+					.with_weight(NftsWeightInfoOf::<Test>::cancel_collection_approval())
 			);
-		}
-		// Check error works for `Nfts::cancel_approval()`.
-		assert_noop!(
-			NonFungibles::approve(signed(owner), collection, None, operator, false),
-			NftsError::NotDelegate
-				.with_weight(NftsWeightInfoOf::<Test>::cancel_collection_approval())
-		);
-		// Successfully cancel the transfer collection approval of `operator` by `owner`.
-		nfts::create_collection_mint(owner, owner, item);
-		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
-		assert_eq!(
-			NonFungibles::approve(signed(owner), collection, None, operator, false),
-			Ok(Some(NftsWeightInfoOf::<Test>::cancel_collection_approval()).into())
-		);
-		assert_eq!(
-			Nfts::check_approval_permission(&collection, &None, &owner, &operator),
-			Err(NftsError::NoPermission.into())
-		);
-		// Failed to transfer the item by `operator` without permission.
-		assert_noop!(
-			Nfts::transfer(signed(operator), collection, item, operator),
-			NftsError::NoPermission
-		);
-	});
+
+			nfts::create_collection_mint(owner, owner, item);
+			assert_ok!(Nfts::approve_collection_transfer(
+				signed(owner),
+				collection,
+				operator,
+				None
+			));
+			// Successfully cancel the transfer collection approval of `operator` by `owner`.
+			assert_eq!(
+				NonFungibles::approve(signed(owner), collection, None, operator, false),
+				Ok(Some(NftsWeightInfoOf::<Test>::cancel_collection_approval()).into())
+			);
+			assert_eq!(
+				Nfts::check_approval_permission(&collection, &None, &owner, &operator),
+				Err(NftsError::NoPermission.into())
+			);
+			// Failed to transfer the item by `operator` without permission.
+			assert_noop!(
+				Nfts::transfer(signed(operator), collection, item, operator),
+				NftsError::NoPermission
+			);
+		});
+	}
 }
 
 #[test]
@@ -889,18 +889,6 @@ fn next_collection_id_works() {
 			Some(NextCollectionIdOf::<Test>::get().unwrap_or_default()).encode(),
 		);
 	});
-}
-
-fn signed(account_id: AccountId) -> RuntimeOrigin {
-	RuntimeOrigin::signed(account_id)
-}
-
-fn root() -> RuntimeOrigin {
-	RuntimeOrigin::root()
-}
-
-fn none() -> RuntimeOrigin {
-	RuntimeOrigin::none()
 }
 
 // Helper functions for interacting with pallet-nfts.
