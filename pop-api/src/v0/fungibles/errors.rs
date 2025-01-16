@@ -1,10 +1,7 @@
 //! A set of errors for use in smart contracts that interact with the fungibles api. This includes
 //! errors compliant to standards.
 
-use ink::{
-	prelude::string::{String, ToString},
-	scale::{Decode, Encode},
-};
+use ink::prelude::string::{String, ToString};
 
 use super::*;
 
@@ -119,6 +116,8 @@ impl From<StatusCode> for Psp22Error {
 
 #[cfg(test)]
 mod tests {
+	use ink::scale::{Decode, Encode};
+
 	use super::*;
 	use crate::{
 		constants::{ASSETS, BALANCES},

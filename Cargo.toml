@@ -181,15 +181,13 @@ pallet-collator-selection = { version = "17.0.0", default-features = false }
 parachain-info = { version = "0.15.0", package = "staging-parachain-info", default-features = false }
 parachains-common = { version = "15.0.0", default-features = false }
 
-# TODO: Paseo (note: using polkadot as stopgap until paseo updated to polkadot sdk v1.14.0)
-asset-hub-paseo-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "asset-hub-polkadot-runtime" }
-paseo-runtime = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "polkadot-runtime" }
-paseo-runtime-constants = { git = "https://github.com/polkadot-fellows/runtimes", default-features = false, package = "polkadot-runtime-constants" }
-
-# Paseo
-# asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
-# paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
-# paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.2.5-system-chains", default-features = false }
+# Runtimes
+asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
+asset-hub-westend-runtime = { version = "0.23.0", default-features = false }
+paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
+paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
+westend-runtime = { version = "15.0.0", default-features = false }
+westend-runtime-constants = { version = "15.0.0", default-features = false }
 
 ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }
 ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }

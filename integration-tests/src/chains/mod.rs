@@ -1,3 +1,3 @@
-pub(crate) mod asset_hub_paseo;
-pub(crate) mod paseo;
+pub(crate) mod asset_hub;
 pub(crate) mod pop_network;
+pub(crate) mod relay;
