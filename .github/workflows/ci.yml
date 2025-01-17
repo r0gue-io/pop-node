@@ -101,7 +101,7 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        run: cargo test --release --locked --workspace --exclude integration-tests,pop-api-integration-tests --features=runtime-benchmarks
+        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests --features=runtime-benchmarks
 
   integration-tests:
     needs: lint
@@ -120,7 +120,7 @@ jobs:
         working-directory: integration-tests
         run: cargo test --release --locked --features "${{ matrix.features }}"
 
-  pop-api-integration-tests:
+  api-integration-tests:
     needs: lint
     runs-on: ubuntu-latest
     strategy:
@@ -133,7 +133,7 @@ jobs:
 
       - uses: "./.github/actions/init"
 
-      - name: Run pop api integration tests
+      - name: Run API integration tests
         run: cargo test -p pop-api-integration-tests --release --locked --features "${{ matrix.features }}"
 
   api-tests:
