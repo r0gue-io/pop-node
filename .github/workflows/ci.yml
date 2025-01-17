@@ -109,8 +109,9 @@ jobs:
     strategy:
       matrix:
         features:
+          - "westend,devnet"
           - "westend,testnet"
-          - "paseo,testnet"
+          - "westend,mainnet"
     steps:
       - uses: actions/checkout@v4
 
