@@ -126,6 +126,7 @@ jobs:
     strategy:
       matrix:
         features:
+          # different features use a different runtime to run the api-integration-tests against
           - "devnet"
           - "testnet"
     steps:
