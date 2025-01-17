@@ -4,8 +4,7 @@ use emulated_integration_tests_common::{
 use polkadot_primitives::{AssignmentId, Balance, ValidatorId, LOWEST_PUBLIC_ID};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_consensus_beefy::ecdsa_crypto::AuthorityId as BeefyId;
-use sp_consensus_beefy::test_utils::Keyring;
+use sp_consensus_beefy::{ecdsa_crypto::AuthorityId as BeefyId, test_utils::Keyring};
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::storage::Storage;
 
