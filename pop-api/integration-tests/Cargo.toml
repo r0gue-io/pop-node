@@ -8,12 +8,10 @@ version = "0.1.0"
 contract-build.workspace = true
 
 [dev-dependencies]
+codec.workspace = true
 env_logger.workspace = true
 log.workspace = true
 
-codec = { workspace = true, default-features = false, features = [
-	"derive",
-] }
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 pallet-assets = { workspace = true, default-features = false }
