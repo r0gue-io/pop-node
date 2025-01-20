@@ -11,7 +11,8 @@ use sp_runtime::DispatchError;
 use versioning::*;
 
 use crate::{
-	config::assets::TrustBackedAssetsInstance, fungibles, Runtime, RuntimeCall, RuntimeEvent,
+	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
+	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 
 mod versioning;
@@ -32,6 +33,9 @@ pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
 	Fungibles(fungibles::Read<Runtime>),
+	/// Non-fungible token queries.
+	#[codec(index = 151)]
+	NonFungibles(nonfungibles::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -43,6 +47,7 @@ impl Readable for RuntimeRead {
 	fn weight(&self) -> Weight {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
+			RuntimeRead::NonFungibles(key) => (nonfungibles::Pallet::weight(key)),
 		}
 	}
 
@@ -50,6 +55,8 @@ impl Readable for RuntimeRead {
 	fn read(self) -> Self::Result {
 		match self {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
+			RuntimeRead::NonFungibles(key) =>
+				RuntimeResult::NonFungibles(nonfungibles::Pallet::read(key)),
 		}
 	}
 }
@@ -60,6 +67,8 @@ impl Readable for RuntimeRead {
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
+	/// Non-fungible token read results.
+	NonFungibles(nonfungibles::ReadResult<Runtime>),
 }
 
 impl RuntimeResult {
@@ -67,6 +76,7 @@ impl RuntimeResult {
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
+			RuntimeResult::NonFungibles(result) => result.encode(),
 		}
 	}
 }
@@ -75,6 +85,12 @@ impl fungibles::Config for Runtime {
 	type AssetsInstance = TrustBackedAssetsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
+}
+
+impl nonfungibles::Config for Runtime {
+	type NftsInstance = TrustBackedNftsInstance;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 #[derive(Default)]
@@ -130,8 +146,8 @@ pub struct Filter<T>(PhantomData<T>);
 
 impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> for Filter<T> {
 	fn contains(c: &RuntimeCall) -> bool {
-		use fungibles::Call::*;
-		T::BaseCallFilter::contains(c) &&
+		let contain_fungibles: bool = {
+			use fungibles::Call::*;
 			matches!(
 				c,
 				RuntimeCall::Fungibles(
@@ -145,23 +161,62 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 						mint { .. } | burn { .. }
 				)
 			)
+		};
+
+		let contain_nonfungibles: bool =
+			{
+				use nonfungibles::Call::*;
+				matches!(
+					c,
+					RuntimeCall::NonFungibles(
+						transfer { .. } |
+							approve { .. } | clear_all_transfer_approvals { .. } |
+							clear_collection_approvals { .. } |
+							create { .. } | destroy { .. } |
+							set_metadata { .. } | clear_metadata { .. } |
+							set_attribute { .. } | clear_attribute { .. } |
+							approve_item_attributes { .. } |
+							cancel_item_attributes_approval { .. } |
+							mint { .. } | burn { .. } |
+							set_max_supply { .. },
+					)
+				)
+			};
+
+		T::BaseCallFilter::contains(c) && (contain_fungibles | contain_nonfungibles)
 	}
 }
 
 impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	fn contains(r: &RuntimeRead) -> bool {
-		use fungibles::Read::*;
-		matches!(
-			r,
-			RuntimeRead::Fungibles(
-				TotalSupply(..) |
-					BalanceOf { .. } |
-					Allowance { .. } |
-					TokenName(..) | TokenSymbol(..) |
-					TokenDecimals(..) |
-					TokenExists(..)
+		let contain_fungibles: bool = {
+			use fungibles::Read::*;
+			matches!(
+				r,
+				RuntimeRead::Fungibles(
+					TotalSupply(..) |
+						BalanceOf { .. } | Allowance { .. } |
+						TokenName(..) | TokenSymbol(..) |
+						TokenDecimals(..) | TokenExists(..)
+				)
 			)
-		)
+		};
+
+		let contain_nonfungibles: bool = {
+			use nonfungibles::Read::*;
+			matches!(
+				r,
+				RuntimeRead::NonFungibles(
+					TotalSupply(..) |
+						BalanceOf { .. } | Allowance { .. } |
+						OwnerOf { .. } | GetAttribute { .. } |
+						Collection { .. } | NextCollectionId |
+						ItemMetadata { .. },
+				)
+			)
+		};
+
+		contain_fungibles | contain_nonfungibles
 	}
 }
 

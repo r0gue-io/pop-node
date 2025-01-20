@@ -4,15 +4,15 @@ use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	sp_runtime::{traits::Zero, BoundedVec, DispatchError::BadOrigin},
 };
-use pallet_nfts::{Config, WeightInfo as NftsWeightInfoTrait};
+use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
 
 use crate::{
 	mock::*,
 	nonfungibles::{
-		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
-		CancelAttributesApprovalWitness, CollectionConfig, CollectionIdOf, CollectionOf,
-		CollectionSettings, DestroyWitness, ItemIdOf, MintSettings, MintWitness,
-		NextCollectionIdOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
+		weights::WeightInfo as WeightInfoTrait, AccountBalanceOf, AttributeNamespace, AttributeOf,
+		BlockNumberFor, CancelAttributesApprovalWitness, CollectionConfig, CollectionIdOf,
+		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
+		MintWitness, NextCollectionIdOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
 	},
 	Read,
 };
@@ -20,9 +20,10 @@ use crate::{
 const COLLECTION: u32 = 0;
 const ITEM: u32 = 1;
 
-type NftsError = pallet_nfts::Error<Test, NftsInstanceOf<Test>>;
-type Event = crate::nonfungibles::Event<Test>;
 type CollectionApprovals = pallet_nfts::CollectionApprovals<Test, NftsInstanceOf<Test>>;
+type Event = crate::nonfungibles::Event<Test>;
+type NftsError = pallet_nfts::Error<Test, NftsInstanceOf<Test>>;
+type WeightInfo = <Test as Config>::WeightInfo;
 
 mod encoding_read_result {
 	use super::*;
@@ -229,13 +230,13 @@ mod approve {
 			// Check error works for `Nfts::approve_transfer()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-				NftsError::UnknownItem.with_weight(NftsWeightInfoOf::<Test>::approve_transfer())
+				NftsError::UnknownItem.with_weight(WeightInfo::approve(1, 1))
 			);
 			nfts::create_collection_mint(owner, owner, item);
 			// Successfully approves `operator` to transfer the collection item.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-				Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
+				Ok(Some(WeightInfo::approve(1, 1)).into())
 			);
 			assert_ok!(Nfts::check_approval_permission(
 				&collection,
@@ -250,7 +251,7 @@ mod approve {
 			// Re-approves `operator` to transfer the collection item.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-				Ok(Some(NftsWeightInfoOf::<Test>::approve_transfer()).into())
+				Ok(Some(WeightInfo::approve(1, 1)).into())
 			);
 			assert_ok!(Nfts::check_approval_permission(
 				&collection,
@@ -278,15 +279,14 @@ mod approve {
 			// Check error works for `Nfts::approve_collection_transfer()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, None, operator, true),
-				NftsError::NoItemOwned
-					.with_weight(NftsWeightInfoOf::<Test>::approve_collection_transfer())
+				NftsError::NoItemOwned.with_weight(WeightInfo::approve(1, 0))
 			);
 			// Approving to transfer `collection` reserves funds from the `operator`.
 			nfts::create_collection_mint(owner, owner, item);
 			let reserved_balance_before_approve = Balances::reserved_balance(&owner);
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, None, operator, true),
-				Ok(Some(NftsWeightInfoOf::<Test>::approve_collection_transfer()).into())
+				Ok(Some(WeightInfo::approve(1, 0)).into())
 			);
 			let reserved_balance_after_approve = Balances::reserved_balance(&owner);
 			assert_eq!(reserved_balance_after_approve - reserved_balance_before_approve, 1);
@@ -310,13 +310,13 @@ mod approve {
 			// Check error works for `Nfts::cancel_approval()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
-				NftsError::UnknownItem.with_weight(NftsWeightInfoOf::<Test>::cancel_approval())
+				NftsError::UnknownItem.with_weight(WeightInfo::approve(0, 1))
 			);
 			// Successfully cancels the transfer approval of `operator` by `owner`.
 			nfts::create_collection_mint_and_approve(owner, owner, item, operator);
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
-				Ok(Some(NftsWeightInfoOf::<Test>::cancel_approval()).into())
+				Ok(Some(WeightInfo::approve(0, 1)).into())
 			);
 			assert_eq!(
 				Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator),
@@ -336,8 +336,7 @@ mod approve {
 			// Check error works for `Nfts::cancel_approval()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, None, operator, false),
-				NftsError::NotDelegate
-					.with_weight(NftsWeightInfoOf::<Test>::cancel_collection_approval())
+				NftsError::NotDelegate.with_weight(WeightInfo::approve(0, 0))
 			);
 
 			nfts::create_collection_mint(owner, owner, item);
@@ -350,7 +349,7 @@ mod approve {
 			// Successfully cancel the transfer collection approval of `operator` by `owner`.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, None, operator, false),
-				Ok(Some(NftsWeightInfoOf::<Test>::cancel_collection_approval()).into())
+				Ok(Some(WeightInfo::approve(0, 0)).into())
 			);
 			assert_eq!(
 				Nfts::check_approval_permission(&collection, &None, &owner, &operator),
@@ -939,7 +938,7 @@ mod nfts {
 		collection: CollectionIdOf<Test>,
 		maybe_item: Option<ItemIdOf<Test>>,
 		namespace: AttributeNamespaceOf<Test>,
-		key: BoundedVec<u8, <Test as Config<NftsInstanceOf<Test>>>::KeyLimit>,
+		key: BoundedVec<u8, <Test as pallet_nfts::Config<NftsInstanceOf<Test>>>::KeyLimit>,
 	) -> Option<Vec<u8>> {
 		AttributeOf::<Test>::get((collection, maybe_item, namespace, key))
 			.map(|attribute| attribute.0.into())
@@ -950,7 +949,6 @@ mod read_weights {
 	use frame_support::weights::Weight;
 
 	use super::*;
-	use crate::nonfungibles::{weights::WeightInfo, Config};
 
 	struct ReadWeightInfo {
 		total_supply: Weight,
@@ -1007,14 +1005,14 @@ mod read_weights {
 			total_supply,
 		} = ReadWeightInfo::new();
 
-		assert_eq!(total_supply, <Test as Config>::WeightInfo::total_supply());
-		assert_eq!(balance_of, <Test as Config>::WeightInfo::balance_of());
-		assert_eq!(allowance, <Test as Config>::WeightInfo::allowance());
-		assert_eq!(owner_of, <Test as Config>::WeightInfo::owner_of());
-		assert_eq!(get_attribute, <Test as Config>::WeightInfo::get_attribute());
-		assert_eq!(collection, <Test as Config>::WeightInfo::collection());
-		assert_eq!(next_collection_id, <Test as Config>::WeightInfo::next_collection_id());
-		assert_eq!(item_metadata, <Test as Config>::WeightInfo::item_metadata());
+		assert_eq!(total_supply, WeightInfo::total_supply());
+		assert_eq!(balance_of, WeightInfo::balance_of());
+		assert_eq!(allowance, WeightInfo::allowance());
+		assert_eq!(owner_of, WeightInfo::owner_of());
+		assert_eq!(get_attribute, WeightInfo::get_attribute());
+		assert_eq!(collection, WeightInfo::collection());
+		assert_eq!(next_collection_id, WeightInfo::next_collection_id());
+		assert_eq!(item_metadata, WeightInfo::item_metadata());
 	}
 
 	// These types read from the `Collection` storage.
@@ -1041,12 +1039,12 @@ mod read_weights {
 		} = ReadWeightInfo::new();
 
 		// These values come from `weights.rs`.
-		assert_eq!(total_supply.proof_size(), 3557);
-		assert_eq!(balance_of.proof_size(), 3529);
+		assert_eq!(total_supply.proof_size(), 3549);
+		assert_eq!(balance_of.proof_size(), 3585);
 		assert_eq!(allowance.proof_size(), 4326);
 		assert_eq!(owner_of.proof_size(), 4326);
 		assert_eq!(get_attribute.proof_size(), 3944);
-		assert_eq!(collection.proof_size(), 3557);
+		assert_eq!(collection.proof_size(), 3549);
 		assert_eq!(next_collection_id.proof_size(), 1489);
 		assert_eq!(item_metadata.proof_size(), 3812);
 	}
