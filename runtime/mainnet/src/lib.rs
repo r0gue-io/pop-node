@@ -15,7 +15,7 @@ extern crate alloc;
 use alloc::{borrow::Cow, vec::Vec};
 
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
-use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
+use config::xcm::XcmOriginToTransactDispatchOrigin;
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
@@ -26,7 +26,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice,
+		ConstU8, Contains, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice,
 		TransformOrigin, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
@@ -62,8 +62,6 @@ pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
-// XCM Imports
-use xcm::latest::prelude::BodyId;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.

@@ -1,8 +1,8 @@
-use pop_runtime_common::SLOT_DURATION;
+use pop_runtime_common::{HOURS, SLOT_DURATION};
 
 use crate::{
-    Aura, AuraId, CollatorSelection, ConstBool, ConstU32,
-    ConstU64, Runtime,
+    parameter_types, AccountId, Aura, AuraId, Balances, CollatorSelection, ConstBool, ConstU32,
+    ConstU64, EnsureRoot, PalletId, Runtime, RuntimeEvent, Session,
 };
 
 impl pallet_authorship::Config for Runtime {
@@ -17,6 +17,31 @@ impl pallet_aura::Config for Runtime {
     type DisabledValidators = ();
     type MaxAuthorities = ConstU32<3600>;
     type SlotDuration = ConstU64<SLOT_DURATION>;
+}
+
+parameter_types! {
+	pub const PotId: PalletId = PalletId(*b"PotStake");
+    pub const Period: u32 = 6 * HOURS;
+	pub const Offset: u32 = 0;
+}
+
+/// We allow root to execute privileged collator selection operations.
+pub type CollatorSelectionUpdateOrigin = EnsureRoot<AccountId>;
+
+impl pallet_collator_selection::Config for Runtime {
+    type Currency = Balances;
+    // should be a multiple of session or things will get inconsistent
+    type KickThreshold = Period;
+    type MaxCandidates = ConstU32<0>;
+    type MaxInvulnerables = ConstU32<20>;
+    type MinEligibleCollators = ConstU32<3>;
+    type PotId = PotId;
+    type RuntimeEvent = RuntimeEvent;
+    type UpdateOrigin = CollatorSelectionUpdateOrigin;
+    type ValidatorId = <Self as frame_system::Config>::AccountId;
+    type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
+    type ValidatorRegistration = Session;
+    type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
 }
 
 #[cfg(test)]
