@@ -12,7 +12,7 @@ pub use pallet_nfts::{
 	ItemMetadata, ItemSetting, ItemSettings, MintSettings, MintType, MintWitness,
 };
 use sp_runtime::traits::StaticLookup;
-use weights::WeightInfo;
+pub(crate) use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
@@ -22,9 +22,6 @@ mod tests;
 pub mod weights;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
-	<T as frame_system::Config>::AccountId,
->>::Balance;
 type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
@@ -36,6 +33,10 @@ type CollectionConfigFor<T> =
 
 type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
 type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
+pub(super) type BalanceOf<T> =
+	<<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
+		<T as frame_system::Config>::AccountId,
+	>>::Balance;
 pub(super) type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
 pub(super) type NftsInstanceOf<T> = <T as Config>::NftsInstance;
 // Type aliases for pallet-nfts storage items.
@@ -258,12 +259,7 @@ pub mod pallet {
 		///   - `true` to approve the `operator`.
 		///   - `false` to cancel the approval delegated to the `operator`.
 		#[pallet::call_index(4)]
-		#[pallet::weight(
-			NftsWeightInfoOf::<T>::approve_transfer() +
-			NftsWeightInfoOf::<T>::approve_collection_transfer() +
-			NftsWeightInfoOf::<T>::cancel_collection_approval() +
-			NftsWeightInfoOf::<T>::cancel_approval()
-		)]
+		#[pallet::weight(<T as Config>::WeightInfo::approve(*approved as u32, item.is_some() as u32))]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,

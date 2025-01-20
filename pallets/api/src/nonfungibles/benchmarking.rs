@@ -3,24 +3,30 @@
 use frame_benchmarking::{account, v2::*};
 use frame_support::{
 	assert_ok,
-	traits::tokens::nonfungibles_v2::{Create, Mutate},
+	traits::{
+		tokens::nonfungibles_v2::{Create, Mutate},
+		Currency,
+	},
 	BoundedVec,
 };
 use frame_system::RawOrigin;
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{Bounded, StaticLookup, Zero};
 
 use super::{
-	AttributeNamespace, CollectionIdOf, Config, ItemIdOf, NftsInstanceOf, NftsOf, Pallet, Read,
+	AccountIdOf, AttributeNamespace, BalanceOf, Call, CollectionConfig, CollectionConfigFor,
+	CollectionIdOf, CollectionSettings, Config, Inspect, ItemConfig, ItemIdOf, ItemSettings,
+	MintSettings, NftsInstanceOf, NftsOf, Pallet, Read,
 };
-use crate::{
-	nonfungibles::{
-		AccountIdOf, Call, CollectionConfig, CollectionConfigFor, CollectionSettings, Inspect,
-		ItemConfig, ItemSettings, MintSettings,
-	},
-	Read as _,
-};
+use crate::Read as _;
 
 const SEED: u32 = 1;
+
+// See if `generic_event` has been emitted.
+fn assert_has_event<T: Config>(
+	generic_event: <T as pallet_nfts::Config<NftsInstanceOf<T>>>::RuntimeEvent,
+) {
+	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+}
 
 #[benchmarks(
 	where
@@ -35,11 +41,14 @@ mod benchmarks {
 	// - 'i': whether `item` is provided.
 	#[benchmark]
 	fn approve(a: Linear<0, 1>, i: Linear<0, 1>) -> Result<(), BenchmarkError> {
-		let item_id = ItemIdOf::<T>::zero();
 		let collection_id = CollectionIdOf::<T>::zero();
+		let item_id = ItemIdOf::<T>::zero();
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		let operator: AccountIdOf<T> = account("Bob", 0, SEED);
+		let operator_lookup = T::Lookup::unlookup(operator.clone());
+		let origin = RawOrigin::Signed(owner.clone());
 
+		T::Currency::make_free_balance_be(&owner, BalanceOf::<T>::max_value());
 		assert_ok!(
 			<NftsOf<T> as Create<AccountIdOf<T>, CollectionConfigFor<T>>>::create_collection(
 				&owner,
@@ -59,21 +68,61 @@ mod benchmarks {
 			false
 		));
 
-		let approved = a == 0;
-		let maybe_item = if i == 0 { None } else { Some(item_id) };
+		let (approved, maybe_item) = match (a, i) {
+			(0, 0) => {
+				NftsOf::<T>::approve_collection_transfer(
+					origin.clone().into(),
+					collection_id,
+					operator_lookup,
+					None,
+				)?;
+				(false, None)
+			},
+			(0, 1) => {
+				NftsOf::<T>::approve_transfer(
+					origin.clone().into(),
+					collection_id,
+					item_id,
+					operator_lookup,
+					None,
+				)?;
+				(false, Some(item_id))
+			},
+			(1, 0) => (true, None),
+			(1, 1) => (true, Some(item_id)),
+			_ => unreachable!("values can only be 0 or 1"),
+		};
 
 		#[extrinsic_call]
-		_(RawOrigin::Signed(owner.clone()), collection_id, maybe_item, operator.clone(), approved);
+		_(origin, collection_id, maybe_item, operator.clone(), approved);
 
 		assert!(
-			NftsOf::<T>::check_approval_permission(
-				&collection_id,
-				&Some(item_id),
-				&owner,
-				&operator
-			)
-			.is_ok() == approved
+			NftsOf::<T>::check_approval_permission(&collection_id, &maybe_item, &owner, &operator)
+				.is_ok() == approved
 		);
+
+		if approved {
+			assert_has_event::<T>(
+				pallet_nfts::Event::TransferApproved {
+					collection: collection_id,
+					item: maybe_item,
+					owner,
+					delegate: operator,
+					deadline: None,
+				}
+				.into(),
+			);
+		} else {
+			assert_has_event::<T>(
+				pallet_nfts::Event::ApprovalCancelled {
+					collection: collection_id,
+					item: maybe_item,
+					owner,
+					delegate: operator,
+				}
+				.into(),
+			);
+		}
 
 		Ok(())
 	}
@@ -168,4 +217,6 @@ mod benchmarks {
 			});
 		}
 	}
+
+	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
