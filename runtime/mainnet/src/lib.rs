@@ -519,27 +519,6 @@ impl pallet_collator_selection::Config for Runtime {
 	type WeightInfo = ();
 }
 
-parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(60) *
-		RuntimeBlockWeights::get().max_block;
-}
-
-impl pallet_scheduler::Config for Runtime {
-	#[cfg(feature = "runtime-benchmarks")]
-	type MaxScheduledPerBlock = ConstU32<512>;
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type MaxScheduledPerBlock = ConstU32<50>;
-	type MaximumWeight = MaximumSchedulerWeight;
-	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type PalletsOrigin = OriginCaller;
-	type Preimages = Preimage;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type ScheduleOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
-}
-
 #[frame_support::runtime]
 mod runtime {
 	// Create the runtime by composing the FRAME pallets that were previously configured.
