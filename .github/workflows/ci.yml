@@ -101,7 +101,7 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        run: cargo test --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks
+        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests --features=runtime-benchmarks
 
   integration-tests:
     needs: lint
@@ -121,6 +121,23 @@ jobs:
         working-directory: integration-tests
         run: cargo test --release --locked --features "${{ matrix.features }}"
 
+  api-integration-tests:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          # different features use a different runtime to run the api-integration-tests against
+          - "devnet"
+          - "testnet"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run API integration tests
+        run: cargo test -p pop-api-integration-tests --release --locked --features "${{ matrix.features }}"
+
   api-tests:
     runs-on: ubuntu-latest
     steps:
@@ -131,28 +148,6 @@ jobs:
       - name: Run tests
         working-directory: pop-api
         run: cargo test --release --locked --all-features
-
-  api-integration-tests-devnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: "./.github/actions/init"
-
-      - name: Run integration tests
-        working-directory: pop-api/integration-tests
-        run: cargo test --release --locked --features devnet
-
-  api-integration-tests-testnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: "./.github/actions/init"
-
-      - name: Run integration tests
-        working-directory: pop-api/integration-tests
-        run: cargo test --release --locked --features testnet
 
   coverage:
     needs: lint
