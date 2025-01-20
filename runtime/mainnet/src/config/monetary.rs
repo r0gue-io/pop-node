@@ -141,12 +141,18 @@ impl pallet_transaction_payment::Config for Runtime {
 mod tests {
 	use std::any::TypeId;
 
-	use frame_support::{dispatch::GetDispatchInfo, traits::Get};
+	use frame_support::{
+		dispatch::GetDispatchInfo,
+		traits::{fungible::Mutate, Get},
+	};
+	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
 	use pop_runtime_common::{MICRO_UNIT, MILLI_UNIT};
 	use sp_runtime::{traits::Dispatchable, BuildStorage};
 
 	use super::*;
-	use crate::UNIT;
+	use crate::{RuntimeCall, RuntimeOrigin, UNIT};
+
+	type OnChargeTransaction = <Runtime as pallet_transaction_payment::Config>::OnChargeTransaction;
 
 	fn new_test_ext() -> sp_io::TestExternalities {
 		let storage = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
@@ -280,6 +286,90 @@ mod tests {
 		assert_ne!(
 			TypeId::of::<<Runtime as pallet_balances::Config>::WeightInfo>(),
 			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn transaction_payment_uses_slow_adjusting_fee_multiplier() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::FeeMultiplierUpdate>(),
+			TypeId::of::<SlowAdjustingFeeUpdate<Runtime>>(),
+		);
+	}
+
+	#[test]
+	fn transaction_payment_uses_constant_length_to_fee_multiplier() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::LengthToFee>(),
+			TypeId::of::<ConstantMultiplier<Balance, TransactionByteFee>>(),
+		);
+	}
+
+	#[test]
+	fn transaction_payment_charges_fees_via_balances_and_funds_sudo() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
+			TypeId::of::<
+				pallet_transaction_payment::FungibleAdapter<
+					Balances,
+					ResolveTo<SudoAddress, Balances>,
+				>,
+			>(),
+		);
+
+		new_test_ext().execute_with(|| {
+			let who = AccountId::from([1u8; 32]);
+			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
+			let fee = UNIT / 10;
+			let tip = UNIT / 2;
+			let fee_plus_tip = fee + tip;
+			let sudo_balance = Balances::free_balance(&SudoAddress::get());
+			let dispatch_info = call.get_dispatch_info();
+			let existential_deposit =
+				<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
+
+			// NOTE: OnChargeTransaction functions expect tip to be included within fee
+			Balances::set_balance(&who, fee + tip + existential_deposit);
+			let liquidity_info =
+				<OnChargeTransaction as OnChargeTransactionT<Runtime>>::withdraw_fee(
+					&who,
+					&call,
+					&dispatch_info,
+					fee_plus_tip,
+					0,
+				)
+					.unwrap();
+			<OnChargeTransaction as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
+				&who,
+				&dispatch_info,
+				&call.dispatch(RuntimeOrigin::signed(who.clone())).unwrap(),
+				fee_plus_tip,
+				0,
+				liquidity_info,
+			)
+				.unwrap();
+
+			assert_eq!(Balances::free_balance(&SudoAddress::get()), sudo_balance + fee + tip);
+			assert_eq!(Balances::free_balance(&who), existential_deposit);
+		})
+	}
+
+	#[test]
+	fn transaction_payment_uses_5x_operational_fee_multiplier() {
+		assert_eq!(
+			<<Runtime as pallet_transaction_payment::Config>::OperationalFeeMultiplier as Get<
+				u8,
+			>>::get(),
+			5
+		);
+	}
+
+	#[test]
+	#[ignore]
+	fn transaction_payment_uses_weight_to_fee_conversion() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightToFee>(),
+			TypeId::of::<fee::WeightToFee>(),
 		);
 	}
 }
