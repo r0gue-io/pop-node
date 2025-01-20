@@ -104,4 +104,53 @@ mod tests {
 			TypeId::of::<()>(),
 		);
     }
+
+    #[test]
+    fn preimage_uses_balances_as_currency() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_preimage::Config>::Currency>(),
+			TypeId::of::<Balances>(),
+		);
+    }
+
+    #[test]
+    fn preimage_manage_origin_is_root() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_preimage::Config>::ManagerOrigin>(),
+			TypeId::of::<EnsureRoot<AccountId>>(),
+		);
+    }
+
+    #[test]
+    fn preimage_does_not_use_default_weights() {
+        assert_ne!(
+            TypeId::of::<<Runtime as pallet_preimage::Config>::WeightInfo>(),
+            TypeId::of::<()>()
+        );
+    }
+
+    #[test]
+    fn preimage_hold_reason_uses_linear_price() {
+        assert_eq!(
+            TypeId::of::<<Runtime as pallet_preimage::Config>::Consideration>(),
+            TypeId::of::<
+                HoldConsideration<
+                    AccountId,
+                    Balances,
+                    PreimageHoldReason,
+                    LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+                >,
+            >()
+        );
+    }
+
+    #[test]
+    fn preimage_base_deposit() {
+        assert_eq!(PreimageBaseDeposit::get(), deposit(2, 64));
+    }
+
+    #[test]
+    fn preimage_byte_deposit() {
+        assert_eq!(PreimageByteDeposit::get(), deposit(0, 1));
+    }
 }
