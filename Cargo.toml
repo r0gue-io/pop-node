@@ -184,10 +184,10 @@ parachain-info = { git = "https://github.com/paritytech/polkadot-sdk", branch = 
 parachains-common = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 
 # Runtimes
-asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.3" }
+asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.4" }
 asset-hub-westend-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
-paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.3" }
-paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.3" }
+paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.4" }
+paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.4" }
 westend-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
 westend-runtime-constants = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 

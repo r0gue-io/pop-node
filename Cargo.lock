@@ -467,7 +467,7 @@ checksum = "9b34d609dfbaf33d6889b2b7106d3ca345eacad44200913df5ba02bfd31d2ba9"
 [[package]]
 name = "asset-hub-paseo-runtime"
 version = "1.0.0"
-source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.3#871469acf97f0f233d0d50ebf80b414305a5c055"
+source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.4#313b81aa2b2cb076b4f99c9b2bea040a8bcf709f"
 dependencies = [
  "assets-common 0.15.0",
  "bp-asset-hub-paseo",
@@ -547,7 +547,7 @@ dependencies = [
  "staging-xcm-builder 15.0.0",
  "staging-xcm-executor 15.0.0",
  "substrate-wasm-builder 23.0.0",
- "system-parachains-constants 1.0.0 (git+https://github.com/paseo-network/runtimes?tag=v1.3.3)",
+ "system-parachains-constants 1.0.0 (git+https://github.com/paseo-network/runtimes?tag=v1.3.4)",
  "xcm-runtime-apis 0.2.0",
 ]
 
@@ -1316,7 +1316,7 @@ dependencies = [
 [[package]]
 name = "bp-asset-hub-paseo"
 version = "1.0.0"
-source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.3#871469acf97f0f233d0d50ebf80b414305a5c055"
+source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.4#313b81aa2b2cb076b4f99c9b2bea040a8bcf709f"
 dependencies = [
  "bp-xcm-bridge-hub-router 0.13.0",
  "frame-support 36.0.1",
@@ -1324,7 +1324,7 @@ dependencies = [
  "scale-info",
  "sp-std 14.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "staging-xcm 14.0.3",
- "system-parachains-constants 1.0.0 (git+https://github.com/paseo-network/runtimes?tag=v1.3.3)",
+ "system-parachains-constants 1.0.0 (git+https://github.com/paseo-network/runtimes?tag=v1.3.4)",
 ]
 
 [[package]]
@@ -1387,7 +1387,7 @@ dependencies = [
 [[package]]
 name = "bp-bridge-hub-kusama"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3#55bd514d60311b67cb11400a545cb64ce7a87c0e"
+source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4#3b18d942c766c7f358da50608b44edbe218284a4"
 dependencies = [
  "bp-bridge-hub-cumulus 0.15.0",
  "bp-messages 0.15.0",
@@ -1398,13 +1398,13 @@ dependencies = [
  "sp-api 33.0.0",
  "sp-runtime 38.0.1",
  "sp-std 14.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "system-parachains-constants 1.0.0 (git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3)",
+ "system-parachains-constants 1.0.0 (git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4)",
 ]
 
 [[package]]
 name = "bp-bridge-hub-paseo"
 version = "1.0.0"
-source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.3#871469acf97f0f233d0d50ebf80b414305a5c055"
+source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.4#313b81aa2b2cb076b4f99c9b2bea040a8bcf709f"
 dependencies = [
  "bp-bridge-hub-cumulus 0.15.0",
  "bp-messages 0.15.0",
@@ -1418,13 +1418,13 @@ dependencies = [
  "sp-runtime 38.0.1",
  "sp-std 14.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "staging-xcm 14.0.3",
- "system-parachains-constants 1.0.0 (git+https://github.com/paseo-network/runtimes?tag=v1.3.3)",
+ "system-parachains-constants 1.0.0 (git+https://github.com/paseo-network/runtimes?tag=v1.3.4)",
 ]
 
 [[package]]
 name = "bp-bridge-hub-polkadot"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3#55bd514d60311b67cb11400a545cb64ce7a87c0e"
+source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4#3b18d942c766c7f358da50608b44edbe218284a4"
 dependencies = [
  "bp-bridge-hub-cumulus 0.15.0",
  "bp-messages 0.15.0",
@@ -1438,7 +1438,7 @@ dependencies = [
  "sp-runtime 38.0.1",
  "sp-std 14.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "staging-xcm 14.0.3",
- "system-parachains-constants 1.0.0 (git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3)",
+ "system-parachains-constants 1.0.0 (git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4)",
 ]
 
 [[package]]
@@ -2116,7 +2116,7 @@ dependencies = [
 [[package]]
 name = "collectives-polkadot-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3#55bd514d60311b67cb11400a545cb64ce7a87c0e"
+source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4#3b18d942c766c7f358da50608b44edbe218284a4"
 
 [[package]]
 name = "color-print"
@@ -7175,7 +7175,7 @@ checksum = "c33070833c9ee02266356de0c43f723152bd38bd96ddf52c82b3af10c9138b28"
 [[package]]
 name = "kusama-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3#55bd514d60311b67cb11400a545cb64ce7a87c0e"
+source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4#3b18d942c766c7f358da50608b44edbe218284a4"
 dependencies = [
  "frame-support 36.0.1",
  "polkadot-primitives 14.0.0",
@@ -11797,8 +11797,8 @@ checksum = "7924d1d0ad836f665c9065e26d016c673ece3993f30d340068b16f282afc1156"
 
 [[package]]
 name = "paseo-runtime"
-version = "1.3.3"
-source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.3#871469acf97f0f233d0d50ebf80b414305a5c055"
+version = "1.3.4"
+source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.4#313b81aa2b2cb076b4f99c9b2bea040a8bcf709f"
 dependencies = [
  "binary-merkle-tree 15.0.1",
  "frame-benchmarking 36.0.0",
@@ -11828,7 +11828,6 @@ dependencies = [
  "pallet-election-provider-support-benchmarking 35.0.0",
  "pallet-fast-unstake 35.0.0",
  "pallet-grandpa 36.0.0",
- "pallet-im-online 35.0.0",
  "pallet-indices 36.0.0",
  "pallet-message-queue 39.0.2",
  "pallet-mmr 35.0.0",
@@ -11900,7 +11899,7 @@ dependencies = [
 [[package]]
 name = "paseo-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.3#871469acf97f0f233d0d50ebf80b414305a5c055"
+source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.4#313b81aa2b2cb076b4f99c9b2bea040a8bcf709f"
 dependencies = [
  "frame-support 36.0.1",
  "polkadot-primitives 14.0.0",
@@ -13068,7 +13067,7 @@ dependencies = [
 [[package]]
 name = "polkadot-runtime-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3#55bd514d60311b67cb11400a545cb64ce7a87c0e"
+source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4#3b18d942c766c7f358da50608b44edbe218284a4"
 dependencies = [
  "frame-support 36.0.1",
  "polkadot-primitives 14.0.0",
@@ -14673,7 +14672,7 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 [[package]]
 name = "relay-common"
 version = "1.0.0"
-source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.3#871469acf97f0f233d0d50ebf80b414305a5c055"
+source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.4#313b81aa2b2cb076b4f99c9b2bea040a8bcf709f"
 dependencies = [
  "pallet-staking-reward-fn 22.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "parity-scale-codec",
@@ -19911,7 +19910,7 @@ dependencies = [
 [[package]]
 name = "system-parachains-constants"
 version = "1.0.0"
-source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.3#871469acf97f0f233d0d50ebf80b414305a5c055"
+source = "git+https://github.com/paseo-network/runtimes?tag=v1.3.4#313b81aa2b2cb076b4f99c9b2bea040a8bcf709f"
 dependencies = [
  "frame-support 36.0.1",
  "parachains-common 15.0.0",
@@ -19928,7 +19927,7 @@ dependencies = [
 [[package]]
 name = "system-parachains-constants"
 version = "1.0.0"
-source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.3#55bd514d60311b67cb11400a545cb64ce7a87c0e"
+source = "git+https://github.com/polkadot-fellows/runtimes?tag=v1.3.4#3b18d942c766c7f358da50608b44edbe218284a4"
 dependencies = [
  "frame-support 36.0.1",
  "kusama-runtime-constants",

@@ -45,8 +45,8 @@ asset-hub-paseo-runtime = { workspace = true, optional = true }
 asset-hub-westend-runtime = { workspace = true, optional = true, default-features = true }
 paseo-runtime = { workspace = true, optional = true }
 paseo-runtime-constants = { workspace = true, optional = true }
-westend-runtime = { workspace = true, optional = true, default-features = true }
-westend-runtime-constants = { workspace = true, optional = true, default-features = true }
+westend-runtime = { workspace = true, optional = true }
+westend-runtime-constants = { workspace = true, optional = true }
 
 # Local
 pop-runtime-common.workspace = true
