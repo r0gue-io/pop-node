@@ -47,7 +47,8 @@ impl pallet_collator_selection::Config for Runtime {
 #[cfg(test)]
 mod tests {
     use std::any::TypeId;
-    use sp_runtime::traits::Get;
+    use sp_core::crypto::Ss58Codec;
+    use sp_runtime::traits::{AccountIdConversion, Get};
 
     use super::*;
 
@@ -64,6 +65,97 @@ mod tests {
         assert_eq!(
 			TypeId::of::<<Runtime as pallet_authorship::Config>::EventHandler>(),
 			TypeId::of::<(CollatorSelection,)>(),
+		);
+    }
+
+    #[test]
+    fn collator_selection_uses_native_asset() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_collator_selection::Config>::Currency>(),
+			TypeId::of::<Balances>(),
+		);
+    }
+
+    #[test]
+    fn collator_selection_update_origin_limited_to_root() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_collator_selection::Config>::UpdateOrigin>(),
+			TypeId::of::<EnsureRoot<<Runtime as frame_system::Config>::AccountId>>(),
+		);
+    }
+
+    #[test]
+    fn collator_selection_distributes_block_rewards_via_pot() {
+        // Context: block author receives rewards from 'pot', less ED. A keyless account
+        // 'pot' is generated from the `PotId` value configured for the pallet.
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_collator_selection::Config>::PotId>(),
+			TypeId::of::<PotId>(),
+		);
+        assert_eq!(CollatorSelection::account_id(), PotId::get().into_account_truncating());
+    }
+
+    #[test]
+    fn collator_selection_pot_account_is_valid() {
+        // "PotStake" module id to address via  https://www.shawntabrizi.com/substrate-js-utilities/
+        let expected =
+            AccountId::from_ss58check("5EYCAe5cKPAoFh2HnQQvpKqRYZGqBpaA87u4Zzw89qPE58is").unwrap();
+        assert_eq!(CollatorSelection::account_id(), expected);
+    }
+
+    #[test]
+    fn collator_selection_candidates_disabled() {
+        // Disabled to start until sufficient distribution/value to allow candidates to provide
+        // candidacy bond
+        assert_eq!(
+            <<Runtime as pallet_collator_selection::Config>::MaxCandidates as Get<u32>>::get(),
+            0
+        );
+    }
+
+    #[test]
+    fn collator_selection_requires_at_least_five_collators() {
+        assert_eq!(
+            <<Runtime as pallet_collator_selection::Config>::MinEligibleCollators as Get<u32>>::get(
+            ),
+            3
+        );
+    }
+
+    #[test]
+    fn collator_selection_allows_max_twenty_invulnerables() {
+        // Additional invulnerables can be added after genesis via `UpdateOrigin`
+        assert_eq!(
+            <<Runtime as pallet_collator_selection::Config>::MaxInvulnerables as Get<u32>>::get(),
+            20
+        );
+    }
+
+    #[test]
+    fn collator_selection_identifies_collators_using_account_id() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_collator_selection::Config>::ValidatorId>(),
+			TypeId::of::<<Runtime as frame_system::Config>::AccountId>(),
+		);
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_collator_selection::Config>::ValidatorIdOf>(),
+			TypeId::of::<pallet_collator_selection::IdentityCollator>(),
+		);
+    }
+
+    #[test]
+    fn collator_selection_ensures_session_keys_registered() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_collator_selection::Config>::ValidatorRegistration>(),
+			TypeId::of::<Session>(),
+		);
+    }
+
+    #[test]
+    fn collator_selection_does_not_use_default_weights() {
+        assert_ne!(
+			TypeId::of::<<Runtime as pallet_collator_selection::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
 		);
     }
 
