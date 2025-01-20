@@ -24,8 +24,9 @@ use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 use crate::{
-	fee::WeightToFee, AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, SudoAddress, XcmpQueue,
+	config::monetary::{fee::WeightToFee, SudoAddress},
+	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, XcmpQueue,
 };
 
 parameter_types! {

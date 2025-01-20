@@ -264,22 +264,6 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	/// Relay Chain `TransactionByteFee` / 10
-	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
-}
-
-impl pallet_transaction_payment::Config for Runtime {
-	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction =
-		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
-	type OperationalFeeMultiplier = ConstU8<5>;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-	type WeightToFee = fee::WeightToFee;
-}
-
-parameter_types! {
 	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
 	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
 	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;

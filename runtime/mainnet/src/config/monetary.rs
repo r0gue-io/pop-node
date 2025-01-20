@@ -120,6 +120,23 @@ impl pallet_balances::Config for Runtime {
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	/// Relay Chain `TransactionByteFee` / 10
+	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
+	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").expect("sudo address is valid SS58");
+}
+
+impl pallet_transaction_payment::Config for Runtime {
+	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
+	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
+	type OnChargeTransaction =
+		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
+	type OperationalFeeMultiplier = ConstU8<5>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
+	type WeightToFee = fee::WeightToFee;
+}
+
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
