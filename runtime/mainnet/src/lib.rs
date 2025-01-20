@@ -17,6 +17,7 @@ use alloc::{borrow::Cow, vec::Vec};
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::{
 	governance::SudoAddress,
+	monetary::deposit,
 	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
 };
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
@@ -350,30 +351,6 @@ impl pallet_timestamp::Config for Runtime {
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = (CollatorSelection,);
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-}
-
-parameter_types! {
-	// increase ED 100 times to match system chains: 1_000_000_000
-	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
-}
-
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	/// The type for recording an account's balance.
-	type Balance = Balance;
-	type DoneSlashHandler = ();
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = RuntimeFreezeReason;
-	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
-	type MaxLocks = ConstU32<50>;
-	type MaxReserves = ConstU32<50>;
-	type ReserveIdentifier = [u8; 8];
-	/// The ubiquitous event type.
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeFreezeReason = RuntimeFreezeReason;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
