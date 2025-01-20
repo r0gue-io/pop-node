@@ -8,7 +8,7 @@ use crate::{
 
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	// src: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L70
-	(items as Balance * 20 * UNIT + (bytes as Balance) * 100 * fee::MILLICENTS) / 100
+	(items as Balance * 20 * UNIT + (bytes as Balance) * 100 * fee::MILLI_CENTS) / 100
 }
 
 /// Constants related to Polkadot fee payment.
@@ -26,12 +26,12 @@ pub mod fee {
 	pub use sp_runtime::Perbill;
 
 	pub const CENTS: Balance = MILLI_UNIT * 10; // 100_000_000
-	pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+	pub const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
 
 	/// Cost of every transaction byte at Polkadot system parachains.
 	///
 	/// It is the Relay Chain (Polkadot) `TransactionByteFee` / 20.
-	pub const TRANSACTION_BYTE_FEE: Balance = MILLICENTS / 2;
+	pub const TRANSACTION_BYTE_FEE: Balance = MILLI_CENTS / 2;
 
 	/// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
 	/// node's balance type.
@@ -170,7 +170,7 @@ mod tests {
 
 		// fee specific units
 		assert_eq!(fee::CENTS, 100_000_000);
-		assert_eq!(fee::MILLICENTS, 100_000);
+		assert_eq!(fee::MILLI_CENTS, 100_000);
 	}
 
 	#[test]
@@ -365,7 +365,6 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore]
 	fn transaction_payment_uses_weight_to_fee_conversion() {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightToFee>(),

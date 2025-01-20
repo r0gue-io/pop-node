@@ -1,3 +1,4 @@
+mod collation;
 pub(crate) mod monetary;
 mod proxy;
 mod utility;

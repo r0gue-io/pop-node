@@ -13,10 +13,7 @@ extern crate alloc;
 
 use alloc::{borrow::Cow, vec::Vec};
 
-use config::{
-	monetary::deposit,
-	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
-};
+use config::{monetary::deposit, xcm::XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
@@ -26,8 +23,8 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice,
-		TransformOrigin, VariantCountOf,
+		ConstU8, Contains, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -37,7 +34,6 @@ use frame_system::{
 	EnsureRoot,
 };
 use pallet_balances::Call as BalancesCall;
-use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 // Polkadot imports
@@ -66,8 +62,6 @@ pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
-// XCM Imports
-use xcm::latest::prelude::BodyId;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
@@ -258,11 +252,6 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_authorship::Config for Runtime {
-	type EventHandler = (CollatorSelection,);
-	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-}
-
 impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -327,8 +316,6 @@ impl pallet_message_queue::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl cumulus_pallet_aura_ext::Config for Runtime {}
-
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
 	type ControllerOrigin = EnsureRoot<AccountId>;
@@ -344,62 +331,6 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type WeightInfo = ();
 	// Enqueue XCMP messages from siblings for later processing.
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
-}
-
-parameter_types! {
-	pub const Period: u32 = 6 * HOURS;
-	pub const Offset: u32 = 0;
-}
-
-impl pallet_session::Config for Runtime {
-	type Keys = SessionKeys;
-	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type RuntimeEvent = RuntimeEvent;
-	// Essentially just Aura, but let's be pedantic.
-	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
-	type SessionManager = CollatorSelection;
-	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	// we don't have stash and controller, thus we don't need the convert as well.
-	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type WeightInfo = ();
-}
-
-#[docify::export(aura_config)]
-impl pallet_aura::Config for Runtime {
-	type AllowMultipleBlocksPerSlot = ConstBool<true>;
-	type AuthorityId = AuraId;
-	type DisabledValidators = ();
-	type MaxAuthorities = ConstU32<100_000>;
-	type SlotDuration = ConstU64<SLOT_DURATION>;
-}
-
-parameter_types! {
-	pub const PotId: PalletId = PalletId(*b"PotStake");
-	// StakingAdmin pluralistic body.
-	pub const StakingAdminBodyId: BodyId = BodyId::Defense;
-}
-
-/// We allow root and the StakingAdmin to execute privileged collator selection operations.
-pub type CollatorSelectionUpdateOrigin = EitherOfDiverse<
-	EnsureRoot<AccountId>,
-	EnsureXcm<IsVoiceOfBody<RelayLocation, StakingAdminBodyId>>,
->;
-
-impl pallet_collator_selection::Config for Runtime {
-	type Currency = Balances;
-	// should be a multiple of session or things will get inconsistent
-	type KickThreshold = Period;
-	type MaxCandidates = ConstU32<0>;
-	type MaxInvulnerables = ConstU32<20>;
-	type MinEligibleCollators = ConstU32<3>;
-	type PotId = PotId;
-	type RuntimeEvent = RuntimeEvent;
-	type UpdateOrigin = CollatorSelectionUpdateOrigin;
-	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type ValidatorRegistration = Session;
-	type WeightInfo = ();
 }
 
 parameter_types! {
