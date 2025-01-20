@@ -133,6 +133,70 @@ mod tests {
 	}
 
 	#[test]
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	fn scheduler_call_queue_per_block_is_limited() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_scheduler::Config>::MaxScheduledPerBlock>(),
+			TypeId::of::<ConstU32<50>>(),
+		);
+	}
+
+	#[test]
+	#[cfg(feature = "runtime-benchmarks")]
+	fn scheduler_call_queue_per_block_is_limited() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_scheduler::Config>::MaxScheduledPerBlock>(),
+			TypeId::of::<ConstU32<512>>(),
+		);
+	}
+
+	#[test]
+	fn scheduler_has_max_weight_per_dispatchable() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_scheduler::Config>::MaximumWeight>(),
+			TypeId::of::<MaximumSchedulerWeight>(),
+		);
+
+		assert_eq!(
+			<<Runtime as pallet_scheduler::Config>::MaximumWeight as Get<Weight>>::get(),
+			Perbill::from_percent(60) * RuntimeBlockWeights::get().max_block,
+		);
+	}
+
+	#[test]
+	fn scheduler_privilege_cmp_is_equal_privilege_only() {
+		// EqualPrvilegeOnly can be used while ScheduleOrigin is reserve to Root.
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_scheduler::Config>::OriginPrivilegeCmp>(),
+			TypeId::of::<EqualPrivilegeOnly>(),
+		);
+	}
+
+	#[test]
+	fn only_root_can_schedule() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_scheduler::Config>::ScheduleOrigin>(),
+			TypeId::of::<EnsureRoot<AccountId>>(),
+		);
+	}
+
+	#[test]
+	fn scheduler_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as pallet_scheduler::Config>::WeightInfo>(),
+			TypeId::of::<()>()
+		);
+	}
+
+	#[test]
+	fn scheduler_uses_preimage_to_look_up_calls() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_scheduler::Config>::Preimages>(),
+			TypeId::of::<Preimage>(),
+		);
+	}
+
+	#[test]
 	fn preimage_uses_balances_as_currency() {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_preimage::Config>::Currency>(),
