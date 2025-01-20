@@ -10,3 +10,4 @@ pub mod system;
 mod utility;
 /// XCM.
 pub mod xcm;
+mod collation;
