@@ -171,20 +171,35 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	/// Relay Chain `TransactionByteFee` / 10
-	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
 }
 
-impl pallet_transaction_payment::Config for Runtime {
-	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction =
-		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
-	type OperationalFeeMultiplier = ConstU8<5>;
+#[docify::export]
+type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
+	Runtime,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS,
+	BLOCK_PROCESSING_VELOCITY,
+	UNINCLUDED_SEGMENT_CAPACITY,
+>;
+
+impl cumulus_pallet_parachain_system::Config for Runtime {
+	type CheckAssociatedRelayNumber = RelayNumberMonotonicallyIncreases;
+	type ConsensusHook = ConsensusHook;
+	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
+	type OnSystemEvent = ();
+	type OutboundXcmpMessageSource = XcmpQueue;
+	type ReservedDmpWeight = ReservedDmpWeight;
+	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
+	type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
+	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type WeightInfo = ();
-	type WeightToFee = fee::WeightToFee;
+	type XcmpMessageHandler = XcmpQueue;
 }
+
+impl parachain_info::Config for Runtime {}
 
 parameter_types! {
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
