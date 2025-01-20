@@ -1,4 +1,5 @@
 use frame_support::{
+	pallet_prelude::Get,
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU32},
 	BoundedVec, PalletId,
@@ -41,6 +42,16 @@ parameter_types! {
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
 
+#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+pub struct KeyLimit<const N: u32>;
+
+impl<const N: u32> Get<u32> for KeyLimit<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
 pub(crate) type TrustBackedNftsInstance = pallet_nfts::Instance1;
 pub type TrustBackedNftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
 impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
@@ -64,7 +75,7 @@ impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ItemId = ItemId;
 	// TODO: source from primitives
-	type KeyLimit = ConstU32<64>;
+	type KeyLimit = KeyLimit<64>;
 	type Locker = ();
 	type MaxAttributesPerCall = ConstU32<10>;
 	type MaxDeadlineDuration = NftsMaxDeadlineDuration;
@@ -137,19 +148,21 @@ mod tests {
 
 	#[test]
 	fn ensure_account_balance_deposit() {
-		let max_size = pallet_nfts::AccountBalance::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
+		let max_size =
+			pallet_nfts::AccountBalance::<Runtime, TrustBackedNftsInstance>::storage_info()
+				.first()
+				.and_then(|info| info.max_size)
+				.unwrap_or_default();
 		assert_eq!(deposit(1, max_size), NftsCollectionBalanceDeposit::get());
 	}
 
 	#[test]
 	fn ensure_collection_approval_deposit() {
-		let max_size = pallet_nfts::CollectionApprovals::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
+		let max_size =
+			pallet_nfts::CollectionApprovals::<Runtime, TrustBackedNftsInstance>::storage_info()
+				.first()
+				.and_then(|info| info.max_size)
+				.unwrap_or_default();
 		assert_eq!(deposit(1, max_size), NftsCollectionApprovalDeposit::get());
 	}
 }
