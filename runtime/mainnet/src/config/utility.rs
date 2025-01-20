@@ -19,3 +19,49 @@ impl pallet_multisig::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
 }
+
+#[cfg(test)]
+mod tests {
+    use std::any::TypeId;
+
+    use frame_support::traits::Get;
+
+    use super::*;
+
+    #[test]
+    fn multisig_uses_balances_for_deposits() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_multisig::Config>::Currency>(),
+			TypeId::of::<Balances>(),
+		);
+    }
+
+    #[test]
+    fn multisig_call_deposit_has_base_amount() {
+        assert_eq!(
+            <<Runtime as pallet_multisig::Config>::DepositBase as Get<Balance>>::get(),
+            deposit(1, 120)
+        );
+    }
+
+    #[test]
+    fn multisig_call_deposit_has_additional_factor() {
+        assert_eq!(
+            <<Runtime as pallet_multisig::Config>::DepositFactor as Get<Balance>>::get(),
+            deposit(0, 32)
+        );
+    }
+
+    #[test]
+    fn multisig_restricts_max_signatories() {
+        assert_eq!(<<Runtime as pallet_multisig::Config>::MaxSignatories as Get<u32>>::get(), 100);
+    }
+
+    #[test]
+    fn multisig_does_not_use_default_weights() {
+        assert_ne!(
+			TypeId::of::<<Runtime as pallet_multisig::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+    }
+}
