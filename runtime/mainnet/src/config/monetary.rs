@@ -21,11 +21,11 @@ pub mod fee {
 			WeightToFeeCoefficients, WeightToFeePolynomial,
 		},
 	};
-	use pop_runtime_common::{Balance, MILLIUNIT};
+	use pop_runtime_common::{Balance, MILLI_UNIT};
 	use smallvec::smallvec;
 	pub use sp_runtime::Perbill;
 
-	pub const CENTS: Balance = MILLIUNIT * 10; // 100_000_000
+	pub const CENTS: Balance = MILLI_UNIT * 10; // 100_000_000
 	pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
 
 	/// Cost of every transaction byte at Polkadot system parachains.
@@ -105,6 +105,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	/// The type for recording an account's balance.
 	type Balance = Balance;
+	type DoneSlashHandler = ();
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = RuntimeFreezeReason;
@@ -132,6 +133,7 @@ impl pallet_transaction_payment::Config for Runtime {
 		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
 	type WeightToFee = fee::WeightToFee;
 }
 
@@ -144,7 +146,7 @@ mod tests {
 		traits::{fungible::Mutate, Get},
 	};
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
-	use pop_runtime_common::{MICROUNIT, MILLIUNIT};
+	use pop_runtime_common::{MICRO_UNIT, MILLI_UNIT};
 	use sp_runtime::{traits::Dispatchable, BuildStorage};
 
 	use super::*;
@@ -163,8 +165,8 @@ mod tests {
 	fn units_are_correct() {
 		// UNIT should have 10 decimals
 		assert_eq!(UNIT, 10_000_000_000);
-		assert_eq!(MILLIUNIT, 10_000_000);
-		assert_eq!(MICROUNIT, 10_000);
+		assert_eq!(MILLI_UNIT, 10_000_000);
+		assert_eq!(MICRO_UNIT, 10_000);
 
 		// fee specific units
 		assert_eq!(fee::CENTS, 100_000_000);
@@ -181,11 +183,11 @@ mod tests {
 		const UNITS: Balance = 10_000_000_000;
 		const DOLLARS: Balance = UNITS; // 10_000_000_000
 		const CENTS: Balance = DOLLARS / 100; // 100_000_000
-		const MILLICENTS: Balance = CENTS / 1_000; // 100_000
+		const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
 
 		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
 		fn relay_deposit(items: u32, bytes: u32) -> Balance {
-			items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLICENTS
+			items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLI_CENTS
 		}
 
 		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70

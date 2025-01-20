@@ -9,7 +9,6 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 pub mod config;
 mod weights;
 
-
 extern crate alloc;
 
 use alloc::{borrow::Cow, vec::Vec};
