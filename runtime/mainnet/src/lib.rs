@@ -13,7 +13,7 @@ extern crate alloc;
 
 use alloc::{borrow::Cow, vec::Vec};
 
-use config::{monetary::deposit, xcm::XcmOriginToTransactDispatchOrigin};
+use config::xcm::XcmOriginToTransactDispatchOrigin;
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
@@ -241,25 +241,6 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type WeightInfo = ();
 	// Enqueue XCMP messages from siblings for later processing.
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
-}
-
-parameter_types! {
-	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
-	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
-	pub const PreimageByteDeposit: Balance = deposit(0, 1);
-}
-
-impl pallet_preimage::Config for Runtime {
-	type Consideration = HoldConsideration<
-		AccountId,
-		Balances,
-		PreimageHoldReason,
-		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
-	>;
-	type Currency = Balances;
-	type ManagerOrigin = EnsureRoot<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
 }
 
 #[frame_support::runtime]
