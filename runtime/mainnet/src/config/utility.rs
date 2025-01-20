@@ -36,6 +36,22 @@ mod tests {
     use super::*;
 
     #[test]
+    fn utility_caller_origin_provided_by_runtime() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_utility::Config>::PalletsOrigin>(),
+			TypeId::of::<OriginCaller>(),
+		);
+    }
+
+    #[test]
+    fn utility_does_not_use_default_weights() {
+        assert_ne!(
+			TypeId::of::<<Runtime as pallet_utility::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+    }
+
+    #[test]
     fn multisig_uses_balances_for_deposits() {
         assert_eq!(
 			TypeId::of::<<Runtime as pallet_multisig::Config>::Currency>(),
