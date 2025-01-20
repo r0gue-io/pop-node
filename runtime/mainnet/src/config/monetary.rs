@@ -119,3 +119,150 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
 }
+
+#[cfg(test)]
+mod tests {
+	use std::any::TypeId;
+
+	use frame_support::{dispatch::GetDispatchInfo, traits::Get};
+	use pop_runtime_common::{MICRO_UNIT, MILLI_UNIT};
+	use sp_runtime::{traits::Dispatchable, BuildStorage};
+
+	use super::*;
+	use crate::UNIT;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let storage = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+		let mut ext = sp_io::TestExternalities::new(storage);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	#[test]
+	fn units_are_correct() {
+		// UNIT should have 10 decimals
+		assert_eq!(UNIT, 10_000_000_000);
+		assert_eq!(MILLI_UNIT, 10_000_000);
+		assert_eq!(MICRO_UNIT, 10_000);
+
+		// fee specific units
+		assert_eq!(fee::CENTS, 100_000_000);
+		assert_eq!(fee::MILLI_CENTS, 100_000);
+	}
+
+	#[test]
+	fn transaction_byte_fee_is_correct() {
+		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
+	}
+
+	#[test]
+	fn deposit_works() {
+		const UNITS: Balance = 10_000_000_000;
+		const DOLLARS: Balance = UNITS; // 10_000_000_000
+		const CENTS: Balance = DOLLARS / 100; // 100_000_000
+		const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
+
+		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
+		fn relay_deposit(items: u32, bytes: u32) -> Balance {
+			items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLI_CENTS
+		}
+
+		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70
+		fn system_para_deposit(items: u32, bytes: u32) -> Balance {
+			relay_deposit(items, bytes) / 100
+		}
+
+		assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
+	}
+
+	#[test]
+	fn balances_stores_account_balances_in_system() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::AccountStore>(),
+			TypeId::of::<System>(),
+		);
+	}
+
+	#[test]
+	fn balances_uses_u128_balance() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::Balance>(),
+			TypeId::of::<u128>(),
+		);
+	}
+
+	#[test]
+	fn balances_dust_removal_handler_burns_tokens() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::DustRemoval>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn balances_requires_existential_deposit() {
+		assert_eq!(ExistentialDeposit::get(), EXISTENTIAL_DEPOSIT * 100);
+		assert_eq!(ExistentialDeposit::get(), 1_000_000_000);
+	}
+
+	#[test]
+	fn balances_freeze_identifier_uses_runtime_freeze_reason() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::FreezeIdentifier>(),
+			TypeId::of::<RuntimeFreezeReason>(),
+		);
+	}
+
+	#[test]
+	fn balances_max_freezes_uses_runtime_freeze_reason() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::MaxFreezes>(),
+			TypeId::of::<VariantCountOf<RuntimeFreezeReason>>(),
+		);
+	}
+
+	#[test]
+	fn balances_max_locks_disabled() {
+		// Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
+		assert_eq!(<<Runtime as pallet_balances::Config>::MaxLocks as Get<u32>>::get(), 0);
+	}
+
+	#[test]
+	fn balances_max_reserves_disabled() {
+		// Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+		assert_eq!(<<Runtime as pallet_balances::Config>::MaxReserves as Get<u32>>::get(), 0);
+	}
+
+	#[test]
+	fn balances_reserve_identifier_disabled() {
+		// Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::ReserveIdentifier>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn balances_uses_runtime_freeze_reason() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::RuntimeFreezeReason>(),
+			TypeId::of::<RuntimeFreezeReason>(),
+		);
+	}
+
+	#[test]
+	fn balances_uses_runtime_hold_reason() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::RuntimeHoldReason>(),
+			TypeId::of::<RuntimeHoldReason>(),
+		);
+	}
+
+	#[test]
+	fn balances_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+	}
+}
