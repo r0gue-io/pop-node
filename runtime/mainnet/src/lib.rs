@@ -229,15 +229,6 @@ impl pallet_session::Config for Runtime {
 	type WeightInfo = ();
 }
 
-#[docify::export(aura_config)]
-impl pallet_aura::Config for Runtime {
-	type AllowMultipleBlocksPerSlot = ConstBool<true>;
-	type AuthorityId = AuraId;
-	type DisabledValidators = ();
-	type MaxAuthorities = ConstU32<100_000>;
-	type SlotDuration = ConstU64<SLOT_DURATION>;
-}
-
 parameter_types! {
 	pub const PotId: PalletId = PalletId(*b"PotStake");
 	// StakingAdmin pluralistic body.
