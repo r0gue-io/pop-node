@@ -47,7 +47,7 @@ impl Readable for RuntimeRead {
 	fn weight(&self) -> Weight {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
-			RuntimeRead::NonFungibles(key) => (nonfungibles::Pallet::weight(key)),
+			RuntimeRead::NonFungibles(key) => nonfungibles::Pallet::weight(key),
 		}
 	}
 
@@ -224,8 +224,9 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 mod tests {
 	use codec::Encode;
 	use pallet_api::fungibles::Call::*;
-	use sp_core::crypto::AccountId32;
-	use RuntimeCall::{Balances, Fungibles};
+	use pallet_nfts::MintWitness;
+	use sp_core::{bounded_vec, crypto::AccountId32};
+	use RuntimeCall::{Balances, Fungibles, NonFungibles};
 
 	use super::*;
 
@@ -236,6 +237,10 @@ mod tests {
 		let value = 1_000;
 		let result = fungibles::ReadResult::<Runtime>::TotalSupply(value);
 		assert_eq!(RuntimeResult::Fungibles(result).encode(), value.encode());
+
+		let value = 1_000;
+		let result = nonfungibles::ReadResult::<Runtime>::TotalSupply(value);
+		assert_eq!(RuntimeResult::NonFungibles(result).encode(), value.encode());
 	}
 
 	#[test]
@@ -298,6 +303,102 @@ mod tests {
 
 		for read in READS {
 			assert!(Filter::<Runtime>::contains(&read))
+		}
+	}
+
+	#[test]
+	fn filter_allows_nonfungibles_calls() {
+		use pallet_api::nonfungibles::{
+			Call::*, CollectionConfig, CollectionSettings, MintSettings,
+		};
+		use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness};
+
+		for call in vec![
+			NonFungibles(transfer { collection: 0, item: 0, to: ACCOUNT }),
+			NonFungibles(approve {
+				collection: 0,
+				item: Some(0),
+				operator: ACCOUNT,
+				approved: false,
+			}),
+			NonFungibles(clear_all_transfer_approvals { collection: 0, item: 0 }),
+			NonFungibles(clear_collection_approvals { collection: 0, limit: 0 }),
+			NonFungibles(create {
+				admin: ACCOUNT,
+				config: CollectionConfig {
+					max_supply: Some(0),
+					mint_settings: MintSettings::default(),
+					settings: CollectionSettings::all_enabled(),
+				},
+			}),
+			NonFungibles(destroy {
+				collection: 0,
+				witness: DestroyWitness { attributes: 0, item_configs: 0, item_metadatas: 0 },
+			}),
+			NonFungibles(set_attribute {
+				collection: 0,
+				item: Some(0),
+				namespace: pallet_nfts::AttributeNamespace::Pallet,
+				key: bounded_vec![],
+				value: bounded_vec![],
+			}),
+			NonFungibles(clear_attribute {
+				collection: 0,
+				item: Some(0),
+				namespace: pallet_nfts::AttributeNamespace::Pallet,
+				key: bounded_vec![],
+			}),
+			NonFungibles(set_metadata { collection: 0, item: 0, data: bounded_vec![] }),
+			NonFungibles(clear_metadata { collection: 0, item: 0 }),
+			NonFungibles(approve_item_attributes { collection: 0, item: 0, delegate: ACCOUNT }),
+			NonFungibles(cancel_item_attributes_approval {
+				collection: 0,
+				item: 0,
+				delegate: ACCOUNT,
+				witness: CancelAttributesApprovalWitness { account_attributes: 0 },
+			}),
+			NonFungibles(set_max_supply { collection: 0, max_supply: 0 }),
+			NonFungibles(mint {
+				to: ACCOUNT,
+				collection: 0,
+				item: 0,
+				witness: MintWitness { mint_price: None, owned_item: None },
+			}),
+			NonFungibles(burn { collection: 0, item: 0 }),
+		]
+		.iter()
+		{
+			assert!(Filter::<Runtime>::contains(call))
+		}
+	}
+
+	#[test]
+	fn filter_allows_nonfungibles_reads() {
+		use super::{nonfungibles::Read::*, RuntimeRead::*};
+
+		for read in vec![
+			NonFungibles(TotalSupply(1)),
+			NonFungibles(BalanceOf { collection: 1, owner: ACCOUNT }),
+			NonFungibles(Allowance {
+				collection: 1,
+				item: None,
+				owner: ACCOUNT,
+				operator: ACCOUNT,
+			}),
+			NonFungibles(OwnerOf { collection: 1, item: 1 }),
+			NonFungibles(GetAttribute {
+				collection: 1,
+				item: 1,
+				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
+				key: bounded_vec![],
+			}),
+			NonFungibles(Collection(1)),
+			NonFungibles(NextCollectionId),
+			NonFungibles(ItemMetadata { collection: 1, item: 1 }),
+		]
+		.iter()
+		{
+			assert!(Filter::<Runtime>::contains(read))
 		}
 	}
 }
