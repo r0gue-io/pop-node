@@ -1,9 +1,8 @@
 use frame_support::dispatch::{DispatchResultWithPostInfo, WithPostDispatchInfo};
 use frame_system::pallet_prelude::*;
-use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
 use sp_runtime::traits::StaticLookup;
 
-use super::{pallet::*, AccountIdOf, CollectionIdOf, ItemIdOf, NftsOf, NftsWeightInfoOf};
+use super::{pallet::*, AccountIdOf, CollectionIdOf, ItemIdOf, NftsOf, WeightInfo};
 
 impl<T: Config> Pallet<T> {
 	/// Approves the transfer of a specific item or all collection items owned by the `owner` to an
@@ -26,15 +25,13 @@ impl<T: Config> Pallet<T> {
 		Ok(Some(match maybe_item {
 			Some(item) => {
 				NftsOf::<T>::approve_transfer(owner, collection, item, operator, None)
-					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
-				NftsWeightInfoOf::<T>::approve_transfer()
+					.map_err(|e| e.with_weight(<T as Config>::WeightInfo::approve(1, 1)))?;
+				<T as Config>::WeightInfo::approve(1, 1)
 			},
 			None => {
 				NftsOf::<T>::approve_collection_transfer(owner, collection, operator, None)
-					.map_err(|e| {
-						e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer())
-					})?;
-				NftsWeightInfoOf::<T>::approve_collection_transfer()
+					.map_err(|e| e.with_weight(<T as Config>::WeightInfo::approve(1, 0)))?;
+				<T as Config>::WeightInfo::approve(1, 0)
 			},
 		})
 		.into())
@@ -61,14 +58,13 @@ impl<T: Config> Pallet<T> {
 		Ok(Some(match maybe_item {
 			Some(item) => {
 				NftsOf::<T>::cancel_approval(owner, collection, item, operator)
-					.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
-				NftsWeightInfoOf::<T>::cancel_approval()
+					.map_err(|e| e.with_weight(<T as Config>::WeightInfo::approve(0, 1)))?;
+				<T as Config>::WeightInfo::approve(0, 1)
 			},
 			None => {
-				NftsOf::<T>::cancel_collection_approval(owner, collection, operator).map_err(
-					|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval()),
-				)?;
-				NftsWeightInfoOf::<T>::cancel_collection_approval()
+				NftsOf::<T>::cancel_collection_approval(owner, collection, operator)
+					.map_err(|e| e.with_weight(<T as Config>::WeightInfo::approve(0, 0)))?;
+				<T as Config>::WeightInfo::approve(0, 0)
 			},
 		})
 		.into())
