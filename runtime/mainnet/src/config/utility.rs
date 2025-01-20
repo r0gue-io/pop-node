@@ -1,6 +1,6 @@
 use frame_support::parameter_types;
 
-use crate::{deposit, Balance, Balances, Runtime, RuntimeCall, RuntimeEvent};
+use crate::{deposit, Balance, Balances, OriginCaller, Runtime, RuntimeCall, RuntimeEvent};
 
 parameter_types! {
 	// One storage item; key size is 32 + 32; value is size 4+4+16+32 bytes = 120 bytes.
@@ -18,6 +18,13 @@ impl pallet_multisig::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+}
+
+impl pallet_utility::Config for Runtime {
+    type PalletsOrigin = OriginCaller;
+    type RuntimeCall = RuntimeCall;
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
 }
 
 #[cfg(test)]
