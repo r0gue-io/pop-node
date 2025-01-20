@@ -8,8 +8,8 @@ pub use pallet::*;
 use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
 pub use pallet_nfts::{
 	AttributeNamespace, CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails,
-	CollectionSetting, CollectionSettings, DestroyWitness, ItemDeposit, ItemDetails, ItemMetadata,
-	ItemSetting, MintSettings, MintType, MintWitness,
+	CollectionSetting, CollectionSettings, DestroyWitness, ItemConfig, ItemDeposit, ItemDetails,
+	ItemMetadata, ItemSetting, ItemSettings, MintSettings, MintType, MintWitness,
 };
 use sp_runtime::traits::StaticLookup;
 use weights::WeightInfo;
@@ -22,10 +22,6 @@ mod tests;
 pub mod weights;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
-type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
-type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
-type NftsInstanceOf<T> = <T as Config>::NftsInstance;
 type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
@@ -33,10 +29,15 @@ type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 type ItemPriceOf<T> = BalanceOf<T>;
-type CollectionDetailsFor<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
+type CollectionDetailsOf<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
 type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
 type CollectionConfigFor<T> =
 	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
+
+type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
+type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
+pub(super) type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
+pub(super) type NftsInstanceOf<T> = <T as Config>::NftsInstance;
 // Type aliases for pallet-nfts storage items.
 pub(super) type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
 pub(super) type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
@@ -137,7 +138,7 @@ pub mod pallet {
 		/// Attribute value of a specified collection item.
 		GetAttribute(Option<Vec<u8>>),
 		/// Details of a specified collection.
-		Collection(Option<CollectionDetailsFor<T>>),
+		Collection(Option<CollectionDetailsOf<T>>),
 		/// Next collection ID.
 		NextCollectionId(Option<CollectionIdOf<T>>),
 		/// Metadata of a specified collection item.
@@ -204,8 +205,6 @@ pub mod pallet {
 			from: Option<AccountIdOf<T>>,
 			/// The recipient of the transfer. `None` when burning.
 			to: Option<AccountIdOf<T>>,
-			/// The price of the collection item.
-			price: Option<BalanceOf<T>>,
 		},
 		/// Event emitted when a collection is created.
 		Created {
@@ -234,7 +233,6 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			to: AccountIdOf<T>,
 		) -> DispatchResult {
-			ensure_signed(origin.clone())?;
 			let owner =
 				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
@@ -243,7 +241,6 @@ pub mod pallet {
 				item,
 				from: Some(owner),
 				to: Some(to),
-				price: None,
 			});
 			Ok(())
 		}
@@ -328,8 +325,6 @@ pub mod pallet {
 			config: CollectionConfigFor<T>,
 		) -> DispatchResult {
 			let creator = ensure_signed(origin.clone())?;
-			// TODO: re-evaluate next collection id in nfts pallet. The `Incrementable` trait causes
-			//  issues for setting it to xcm's `Location`. This can easily be done differently.
 			let id = NextCollectionIdOf::<T>::get()
 				.or(T::CollectionId::initial_value())
 				.ok_or(NftsErrorOf::<T>::UnknownCollection)?;
@@ -512,15 +507,14 @@ pub mod pallet {
 			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
-			let mint_price = witness.mint_price;
-			NftsOf::<T>::mint(origin, collection, item, T::Lookup::unlookup(to), Some(witness))?;
-			Self::deposit_event(Event::Transfer {
+			NftsOf::<T>::mint(
+				origin,
 				collection,
 				item,
-				from: None,
-				to: Some(owner),
-				price: mint_price,
-			});
+				T::Lookup::unlookup(to),
+				Some(witness.clone()),
+			)?;
+			Self::deposit_event(Event::Transfer { collection, item, from: None, to: Some(owner) });
 			Ok(())
 		}
 
@@ -538,13 +532,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
 			NftsOf::<T>::burn(origin, collection, item)?;
-			Self::deposit_event(Event::Transfer {
-				collection,
-				item,
-				from: Some(owner),
-				to: None,
-				price: None,
-			});
+			Self::deposit_event(Event::Transfer { collection, item, from: Some(owner), to: None });
 			Ok(())
 		}
 	}

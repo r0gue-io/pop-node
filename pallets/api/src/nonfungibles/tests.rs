@@ -98,17 +98,13 @@ fn transfer_works() {
 		let item = ITEM;
 		let owner = ALICE;
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
-			assert_noop!(NonFungibles::transfer(origin, collection, item, dest), BadOrigin);
-		}
 		// Check error works for `Nfts::transfer`.
 		assert_noop!(
 			NonFungibles::transfer(signed(owner), collection, item, dest),
 			NftsError::UnknownItem
 		);
-		// Successfully transfer a collection item.
 		nfts::create_collection_mint(owner, owner, item);
+		// Successfully transfer a collection item.
 		let from_balance_before_transfer = nfts::balance_of(collection, &owner);
 		let to_balance_before_transfer = nfts::balance_of(collection, &dest);
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, item, dest));
@@ -118,8 +114,7 @@ fn transfer_works() {
 		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + 1);
 		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - 1);
 		System::assert_last_event(
-			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
-				.into(),
+			Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
 		);
 	});
 }
@@ -146,8 +141,7 @@ fn approved_transfer_works() {
 		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + 1);
 		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - 1);
 		System::assert_last_event(
-			Event::Transfer { collection, item, from: Some(owner), to: Some(dest), price: None }
-				.into(),
+			Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
 		);
 	});
 }
@@ -179,7 +173,7 @@ fn mint_works() {
 		let balance_after_mint = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_mint, balance_before_mint + 1);
 		System::assert_last_event(
-			Event::Transfer { collection, item, from: None, to: Some(owner), price: None }.into(),
+			Event::Transfer { collection, item, from: None, to: Some(owner) }.into(),
 		);
 	});
 }
@@ -204,7 +198,7 @@ fn burn_works() {
 		let balance_after_burn = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_burn, balance_before_burn - 1);
 		System::assert_last_event(
-			Event::Transfer { collection, item, from: Some(owner), to: None, price: None }.into(),
+			Event::Transfer { collection, item, from: Some(owner), to: None }.into(),
 		);
 	});
 }
