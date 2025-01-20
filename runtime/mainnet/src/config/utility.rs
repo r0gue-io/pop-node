@@ -1,6 +1,4 @@
-use frame_support::parameter_types;
-
-use crate::{deposit, Balance, Balances, OriginCaller, Runtime, RuntimeCall, RuntimeEvent};
+use crate::{deposit, parameter_types, AccountId, Balance, Balances, EnsureRoot, HoldConsideration, LinearStoragePrice, OriginCaller, Runtime, RuntimeCall, RuntimeHoldReason, RuntimeEvent};
 
 parameter_types! {
 	// One storage item; key size is 32 + 32; value is size 4+4+16+32 bytes = 120 bytes.
@@ -18,6 +16,25 @@ impl pallet_multisig::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+}
+
+parameter_types! {
+	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
+	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+	pub const PreimageByteDeposit: Balance = deposit(0, 1);
+}
+
+impl pallet_preimage::Config for Runtime {
+    type Consideration = HoldConsideration<
+        AccountId,
+        Balances,
+        PreimageHoldReason,
+        LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+    >;
+    type Currency = Balances;
+    type ManagerOrigin = EnsureRoot<AccountId>;
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_utility::Config for Runtime {
