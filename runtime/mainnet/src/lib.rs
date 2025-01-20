@@ -344,11 +344,6 @@ impl pallet_timestamp::Config for Runtime {
 	type WeightInfo = ();
 }
 
-impl pallet_authorship::Config for Runtime {
-	type EventHandler = (CollatorSelection,);
-	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-}
-
 parameter_types! {
 	// increase ED 100 times to match system chains: 1_000_000_000
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
