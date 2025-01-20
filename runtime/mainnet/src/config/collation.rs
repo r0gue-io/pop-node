@@ -22,6 +22,7 @@ impl pallet_aura::Config for Runtime {
 #[cfg(test)]
 mod tests {
     use std::any::TypeId;
+    use sp_runtime::traits::Get;
 
     use super::*;
 
@@ -39,5 +40,39 @@ mod tests {
 			TypeId::of::<<Runtime as pallet_authorship::Config>::EventHandler>(),
 			TypeId::of::<(CollatorSelection,)>(),
 		);
+    }
+
+    #[test]
+    fn aura_uses_sr25519_for_authority_id() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_aura::Config>::AuthorityId>(),
+			TypeId::of::<sp_consensus_aura::sr25519::AuthorityId>(),
+		);
+    }
+
+    #[test]
+    fn aura_max_authorities() {
+        assert_eq!(<<Runtime as pallet_aura::Config>::MaxAuthorities as Get<u32>>::get(), 3_600);
+    }
+
+    #[test]
+    fn aura_disabled_validators_not_used() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_aura::Config>::DisabledValidators>(),
+			TypeId::of::<()>(),
+		);
+    }
+
+    #[test]
+    fn aura_allows_multiple_blocks_per_slot() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_aura::Config>::AllowMultipleBlocksPerSlot>(),
+			TypeId::of::<ConstBool<true>>(),
+		);
+    }
+
+    #[test]
+    fn aura_has_six_second_blocks() {
+        assert_eq!(<<Runtime as pallet_aura::Config>::SlotDuration as Get<u64>>::get(), 6_000);
     }
 }
