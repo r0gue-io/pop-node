@@ -24,6 +24,7 @@ members = [
 	"integration-tests",
 	"node",
 	"pallets/*",
+	"pop-api/integration-tests",
 	"primitives",
 	"runtime/devnet",
 	"runtime/mainnet",
