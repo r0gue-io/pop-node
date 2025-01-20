@@ -1,10 +1,22 @@
+use pop_runtime_common::SLOT_DURATION;
+
 use crate::{
-    Aura, CollatorSelection, Runtime,
+    Aura, AuraId, CollatorSelection, ConstBool, ConstU32,
+    ConstU64, Runtime,
 };
 
 impl pallet_authorship::Config for Runtime {
     type EventHandler = (CollatorSelection,);
     type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
+}
+
+#[docify::export(aura_config)]
+impl pallet_aura::Config for Runtime {
+    type AllowMultipleBlocksPerSlot = ConstBool<true>;
+    type AuthorityId = AuraId;
+    type DisabledValidators = ();
+    type MaxAuthorities = ConstU32<3600>;
+    type SlotDuration = ConstU64<SLOT_DURATION>;
 }
 
 #[cfg(test)]
