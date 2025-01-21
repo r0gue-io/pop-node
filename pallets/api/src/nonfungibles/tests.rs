@@ -499,6 +499,15 @@ fn set_attribute_works() {
 			attribute.clone(),
 			value.clone()
 		));
+		System::assert_last_event(
+			Event::AttributeSet {
+				collection,
+				item: Some(item),
+				key: attribute.to_vec(),
+				data: value.to_vec(),
+			}
+			.into(),
+		);
 		assert_eq!(
 			nfts::get_attribute(
 				collection,

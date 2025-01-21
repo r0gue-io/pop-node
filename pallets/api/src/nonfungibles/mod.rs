@@ -114,6 +114,17 @@ pub mod pallet {
 			/// The administrator of the collection.
 			admin: AccountIdOf<T>,
 		},
+		/// Event emitted when an attribute is set for a token.
+		AttributeSet {
+			/// The collection identifier.
+			collection: CollectionIdOf<T>,
+			/// The item which attribute is set.
+			item: Option<ItemIdOf<T>>,
+			/// The key for the attribute.
+			key: Vec<u8>,
+			/// The data for the attribute.
+			data: Vec<u8>,
+		},
 	}
 
 	#[pallet::call]
@@ -252,7 +263,8 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection whose item's metadata to set.
-		/// - `item` - The item whose metadata to set.
+		/// - `item` - The item whose metadata to set. If not provided, the collection's attribute
+		///   is set.
 		/// - `namespace` - Attribute's namespace.
 		/// - `key` - The key of the attribute.
 		/// - `value` - The value to which to set the attribute.
@@ -266,7 +278,21 @@ pub mod pallet {
 			key: BoundedVec<u8, T::KeyLimit>,
 			value: BoundedVec<u8, T::ValueLimit>,
 		) -> DispatchResult {
-			NftsOf::<T>::set_attribute(origin, collection, item, namespace, key, value)
+			NftsOf::<T>::set_attribute(
+				origin,
+				collection,
+				item,
+				namespace,
+				key.clone(),
+				value.clone(),
+			)?;
+			Self::deposit_event(Event::AttributeSet {
+				collection,
+				item,
+				key: key.to_vec(),
+				data: value.to_vec(),
+			});
+			Ok(())
 		}
 
 		/// Clear an attribute for the collection or item.
