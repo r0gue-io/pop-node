@@ -2,7 +2,10 @@
 //! assets. The goal is to provide a simplified, consistent API that adheres to standards in the
 //! smart contract space.
 
-use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
+use frame_support::{
+	dispatch::WithPostDispatchInfo,
+	traits::{nonfungibles_v2::Inspect, Currency},
+};
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
 use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
@@ -227,15 +230,16 @@ pub mod pallet {
 		/// - `item` - The item to transfer.
 		/// - `to` - The recipient account.
 		#[pallet::call_index(3)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::transfer() + T::DbWeight::get().reads_writes(1, 0))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::transfer() + T::DbWeight::get().reads(1))]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 			to: AccountIdOf<T>,
-		) -> DispatchResult {
-			let owner =
-				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
+		) -> DispatchResultWithPostInfo {
+			let owner = NftsOf::<T>::owner(collection, item)
+				.ok_or(NftsErrorOf::<T>::UnknownItem)
+				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
 			Self::deposit_event(Event::Transfer {
 				collection,
@@ -243,7 +247,7 @@ pub mod pallet {
 				from: Some(owner),
 				to: Some(to),
 			});
-			Ok(())
+			Ok(().into())
 		}
 
 		/// Either approve or cancel approval for an `operator` to perform transfers of a specific

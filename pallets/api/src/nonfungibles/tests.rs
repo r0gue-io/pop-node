@@ -3,6 +3,7 @@ use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::WithPostDispatchInfo,
 	sp_runtime::{traits::Zero, BoundedVec, DispatchError::BadOrigin},
+	weights::Weight,
 };
 use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
 
@@ -102,7 +103,7 @@ fn transfer_works() {
 		// Check error works for `Nfts::transfer`.
 		assert_noop!(
 			NonFungibles::transfer(signed(owner), collection, item, dest),
-			NftsError::UnknownItem
+			NftsError::UnknownItem.with_weight(Weight::from_parts(0, 0))
 		);
 		nfts::create_collection_mint(owner, owner, item);
 		// Successfully transfer a collection item.
