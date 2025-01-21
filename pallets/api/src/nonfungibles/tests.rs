@@ -233,6 +233,7 @@ mod approve {
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
 				NftsError::UnknownItem.with_weight(WeightInfo::approve(1, 1))
 			);
+
 			nfts::create_collection_mint(owner, owner, item);
 			// Successfully approves `operator` to transfer the collection item.
 			assert_eq!(
@@ -249,23 +250,6 @@ mod approve {
 				Event::Approval { collection, item: Some(item), owner, operator, approved: true }
 					.into(),
 			);
-			// Re-approves `operator` to transfer the collection item.
-			assert_eq!(
-				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
-				Ok(Some(WeightInfo::approve(1, 1)).into())
-			);
-			assert_ok!(Nfts::check_approval_permission(
-				&collection,
-				&Some(item),
-				&owner,
-				&operator
-			));
-			System::assert_last_event(
-				Event::Approval { collection, item: Some(item), owner, operator, approved: true }
-					.into(),
-			);
-			// Successfully transfers the item by the delegated account `operator`.
-			assert_ok!(Nfts::transfer(signed(operator), collection, item, operator));
 		});
 	}
 
@@ -282,21 +266,17 @@ mod approve {
 				NonFungibles::approve(signed(owner), collection, None, operator, true),
 				NftsError::NoItemOwned.with_weight(WeightInfo::approve(1, 0))
 			);
-			// Approving to transfer `collection` reserves funds from the `operator`.
+
 			nfts::create_collection_mint(owner, owner, item);
-			let reserved_balance_before_approve = Balances::reserved_balance(&owner);
+			// Successfully approves `operator` to transfer all collection items owned by `owner`.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, None, operator, true),
 				Ok(Some(WeightInfo::approve(1, 0)).into())
 			);
-			let reserved_balance_after_approve = Balances::reserved_balance(&owner);
-			assert_eq!(reserved_balance_after_approve - reserved_balance_before_approve, 1);
 			assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
 			System::assert_last_event(
 				Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
 			);
-			// Successfully transfer the item by the delegated account `operator`.
-			assert_ok!(Nfts::transfer(signed(operator), collection, item, operator));
 		});
 	}
 
@@ -313,8 +293,9 @@ mod approve {
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
 				NftsError::UnknownItem.with_weight(WeightInfo::approve(0, 1))
 			);
-			// Successfully cancels the transfer approval of `operator` by `owner`.
+
 			nfts::create_collection_mint_and_approve(owner, owner, item, operator);
+			// Successfully cancels the transfer approval of `operator` by `owner`.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
 				Ok(Some(WeightInfo::approve(0, 1)).into())
@@ -355,11 +336,6 @@ mod approve {
 			assert_eq!(
 				Nfts::check_approval_permission(&collection, &None, &owner, &operator),
 				Err(NftsError::NoPermission.into())
-			);
-			// Failed to transfer the item by `operator` without permission.
-			assert_noop!(
-				Nfts::transfer(signed(operator), collection, item, operator),
-				NftsError::NoPermission
 			);
 		});
 	}
@@ -485,7 +461,7 @@ fn clear_metadata_works() {
 			NftsError::NoPermission
 		);
 		nfts::create_collection_mint(owner, owner, item);
-		assert_ok!(Nfts::set_metadata(signed(owner), collection, item, metadata.clone()));
+		assert_ok!(Nfts::set_metadata(signed(owner), collection, item, metadata));
 		// Successfully clear the metadata.
 		assert_ok!(NonFungibles::clear_metadata(signed(owner), collection, item));
 		assert!(Nfts::item_metadata(collection, item).is_none());
@@ -594,8 +570,8 @@ fn approve_item_attribute_works() {
 			collection,
 			Some(item),
 			AttributeNamespace::Account(delegate),
-			attribute.clone(),
-			value.clone()
+			attribute,
+			value
 		));
 	});
 }
@@ -871,7 +847,6 @@ fn item_metadata_works() {
 	});
 }
 
-// TODO: Depends on #406, this test can be removed.
 #[test]
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {

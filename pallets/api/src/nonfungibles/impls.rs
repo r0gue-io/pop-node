@@ -13,7 +13,7 @@ impl<T: Config> Pallet<T> {
 	/// - `collection` - The identifier of the collection.
 	/// - `maybe_item` - The optional item of the collection to be approved for delegated transfer.
 	///   If `None`, the approval applies to all `owner`'s collection items.
-	/// - `operator`: The account to delegate permission to transfer a specified collection item or
+	/// - `operator` - The account to delegate permission to transfer a specified collection item or
 	///   all collection items owned by the `owner`.
 	pub(crate) fn do_approve(
 		owner: OriginFor<T>,
@@ -46,8 +46,8 @@ impl<T: Config> Pallet<T> {
 	/// - `maybe_item` - The optional item of the collection that the operator has an approval to
 	///   transfer. If not provided, an approval to transfer all `owner`'s collection items will be
 	///   cancelled.
-	/// - `operator`: The account that had permission to transfer a specified collection item or all
-	///   collection items owned by the `owner`.
+	/// - `operator` - The account that had permission to transfer a specified collection item or
+	///   all collection items owned by the `owner`.
 	pub(crate) fn do_cancel_approval(
 		owner: OriginFor<T>,
 		collection: CollectionIdOf<T>,
