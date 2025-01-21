@@ -652,7 +652,6 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
-	/// Non-fungible token queries.
 	#[runtime::pallet_index(151)]
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
 }
