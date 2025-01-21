@@ -162,12 +162,11 @@ pub mod v0 {
 		}
 
 		/// A runtime friendly error type for tries.
-		/// https://docs.rs/sp-runtime/latest/sp_runtime/proving_trie/enum.TrieError.html
+		// https://docs.rs/sp-runtime/latest/sp_runtime/proving_trie/enum.TrieError.html
 		#[derive(Encode, Decode, Debug)]
 		#[cfg_attr(test, derive(Sequence))]
 		#[cfg_attr(feature = "std", derive(TypeInfo, Eq, PartialEq, Clone))]
 		pub enum TrieError {
-			// From TrieError
 			/// Attempted to create a trie with a state root not in the DB.
 			InvalidStateRoot,
 			/// Trie item not found in the database,
@@ -178,7 +177,6 @@ pub mod v0 {
 			DecoderError,
 			/// Hash is not value.
 			InvalidHash,
-			// From VerifyError
 			/// The statement being verified contains multiple key-value pairs with the same key.
 			DuplicateKey,
 			/// The proof contains at least one extraneous node.
