@@ -63,7 +63,8 @@ impl pallet_session::Config for Runtime {
 #[cfg(test)]
 mod tests {
     use std::any::TypeId;
-    use sp_core::crypto::Ss58Codec;
+
+    use sp_core::{crypto::Ss58Codec, ByteArray};
     use sp_runtime::traits::{AccountIdConversion, Get};
 
     use super::*;
@@ -171,6 +172,69 @@ mod tests {
     fn collator_selection_does_not_use_default_weights() {
         assert_ne!(
 			TypeId::of::<<Runtime as pallet_collator_selection::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+    }
+
+    #[test]
+    fn session_identifies_collators_using_account_id() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::ValidatorId>(),
+			TypeId::of::<<Runtime as frame_system::Config>::AccountId>(),
+		);
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::ValidatorIdOf>(),
+			TypeId::of::<pallet_collator_selection::IdentityCollator>(),
+		);
+    }
+
+    #[test]
+    fn session_length_is_predefined_period_of_blocks() {
+        assert_eq!(Period::get(), 6 * HOURS);
+        assert_eq!(Period::get(), (60 / 6) * 60 * 6); // 6s blocks per minute * minutes in an hour * hours
+        let periodic_sessions = TypeId::of::<pallet_session::PeriodicSessions<Period, Offset>>();
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::ShouldEndSession>(),
+			periodic_sessions,
+		);
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::NextSessionRotation>(),
+			periodic_sessions,
+		);
+    }
+
+    #[test]
+    fn session_collators_managed_by_collator_selection() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::SessionManager>(),
+			TypeId::of::<CollatorSelection>(),
+		);
+    }
+
+    #[test]
+    fn session_handled_by_aura() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::SessionHandler>(),
+			TypeId::of::<(Aura,)>(),
+		);
+    }
+
+    #[test]
+    fn session_keys_provided_by_aura() {
+        assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::Keys>(),
+			TypeId::of::<SessionKeys>(),
+		);
+        // Session keys implementation uses aura-defined authority identifier type
+        SessionKeys {
+            aura: <Runtime as pallet_aura::Config>::AuthorityId::from_slice(&[0u8; 32]).unwrap(),
+        };
+    }
+
+    #[test]
+    fn session_does_not_use_default_weights() {
+        assert_ne!(
+			TypeId::of::<<Runtime as pallet_session::Config>::WeightInfo>(),
 			TypeId::of::<()>(),
 		);
     }
