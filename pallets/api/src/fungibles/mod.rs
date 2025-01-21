@@ -41,83 +41,6 @@ pub mod pallet {
 
 	use super::*;
 
-	/// State reads for the fungibles API with required input.
-	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-	#[repr(u8)]
-	#[allow(clippy::unnecessary_cast)]
-	pub enum Read<T: Config> {
-		/// Total token supply for a specified token.
-		#[codec(index = 0)]
-		TotalSupply(TokenIdOf<T>),
-		/// Account balance for a specified `token` and `owner`.
-		#[codec(index = 1)]
-		BalanceOf {
-			/// The token.
-			token: TokenIdOf<T>,
-			/// The owner of the token.
-			owner: AccountIdOf<T>,
-		},
-		/// Allowance for a `spender` approved by an `owner`, for a specified `token`.
-		#[codec(index = 2)]
-		Allowance {
-			/// The token.
-			token: TokenIdOf<T>,
-			/// The owner of the token.
-			owner: AccountIdOf<T>,
-			/// The spender with an allowance.
-			spender: AccountIdOf<T>,
-		},
-		/// Name of the specified token.
-		#[codec(index = 8)]
-		TokenName(TokenIdOf<T>),
-		/// Symbol for the specified token.
-		#[codec(index = 9)]
-		TokenSymbol(TokenIdOf<T>),
-		/// Decimals for the specified token.
-		#[codec(index = 10)]
-		TokenDecimals(TokenIdOf<T>),
-		/// Whether a specified token exists.
-		#[codec(index = 18)]
-		TokenExists(TokenIdOf<T>),
-	}
-
-	/// Results of state reads for the fungibles API.
-	#[derive(Debug)]
-	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-	pub enum ReadResult<T: Config> {
-		/// Total token supply for a specified token.
-		TotalSupply(BalanceOf<T>),
-		/// Account balance for a specified token and owner.
-		BalanceOf(BalanceOf<T>),
-		/// Allowance for a spender approved by an owner, for a specified token.
-		Allowance(BalanceOf<T>),
-		/// Name of the specified token, if available.
-		TokenName(Option<Vec<u8>>),
-		/// Symbol for the specified token, if available.
-		TokenSymbol(Option<Vec<u8>>),
-		/// Decimals for the specified token.
-		TokenDecimals(u8),
-		/// Whether the specified token exists.
-		TokenExists(bool),
-	}
-
-	impl<T: Config> ReadResult<T> {
-		/// Encodes the result.
-		pub fn encode(&self) -> Vec<u8> {
-			use ReadResult::*;
-			match self {
-				TotalSupply(result) => result.encode(),
-				BalanceOf(result) => result.encode(),
-				Allowance(result) => result.encode(),
-				TokenName(result) => result.encode(),
-				TokenSymbol(result) => result.encode(),
-				TokenDecimals(result) => result.encode(),
-				TokenExists(result) => result.encode(),
-			}
-		}
-	}
-
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
@@ -482,6 +405,83 @@ pub mod pallet {
 			)?;
 			Self::deposit_event(Event::Transfer { token, from: Some(account), to: None, value });
 			Ok(().into())
+		}
+	}
+
+	/// State reads for the fungibles API with required input.
+	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+	#[repr(u8)]
+	#[allow(clippy::unnecessary_cast)]
+	pub enum Read<T: Config> {
+		/// Total token supply for a specified token.
+		#[codec(index = 0)]
+		TotalSupply(TokenIdOf<T>),
+		/// Account balance for a specified `token` and `owner`.
+		#[codec(index = 1)]
+		BalanceOf {
+			/// The token.
+			token: TokenIdOf<T>,
+			/// The owner of the token.
+			owner: AccountIdOf<T>,
+		},
+		/// Allowance for a `spender` approved by an `owner`, for a specified `token`.
+		#[codec(index = 2)]
+		Allowance {
+			/// The token.
+			token: TokenIdOf<T>,
+			/// The owner of the token.
+			owner: AccountIdOf<T>,
+			/// The spender with an allowance.
+			spender: AccountIdOf<T>,
+		},
+		/// Name of the specified token.
+		#[codec(index = 8)]
+		TokenName(TokenIdOf<T>),
+		/// Symbol for the specified token.
+		#[codec(index = 9)]
+		TokenSymbol(TokenIdOf<T>),
+		/// Decimals for the specified token.
+		#[codec(index = 10)]
+		TokenDecimals(TokenIdOf<T>),
+		/// Whether a specified token exists.
+		#[codec(index = 18)]
+		TokenExists(TokenIdOf<T>),
+	}
+
+	/// Results of state reads for the fungibles API.
+	#[derive(Debug)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+	pub enum ReadResult<T: Config> {
+		/// Total token supply for a specified token.
+		TotalSupply(BalanceOf<T>),
+		/// Account balance for a specified token and owner.
+		BalanceOf(BalanceOf<T>),
+		/// Allowance for a spender approved by an owner, for a specified token.
+		Allowance(BalanceOf<T>),
+		/// Name of the specified token, if available.
+		TokenName(Option<Vec<u8>>),
+		/// Symbol for the specified token, if available.
+		TokenSymbol(Option<Vec<u8>>),
+		/// Decimals for the specified token.
+		TokenDecimals(u8),
+		/// Whether the specified token exists.
+		TokenExists(bool),
+	}
+
+	impl<T: Config> ReadResult<T> {
+		/// Encodes the result.
+		pub fn encode(&self) -> Vec<u8> {
+			use ReadResult::*;
+			match self {
+				TotalSupply(result) => result.encode(),
+				BalanceOf(result) => result.encode(),
+				Allowance(result) => result.encode(),
+				TokenName(result) => result.encode(),
+				TokenSymbol(result) => result.encode(),
+				TokenDecimals(result) => result.encode(),
+				TokenExists(result) => result.encode(),
+			}
 		}
 	}
 

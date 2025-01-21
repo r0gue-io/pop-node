@@ -24,56 +24,6 @@ type AssetsWeightInfo = AssetsWeightInfoOf<Test>;
 type Event = crate::fungibles::Event<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
-mod encoding_read_result {
-	use super::*;
-
-	#[test]
-	fn total_supply() {
-		let total_supply = 1_000_000 * UNIT;
-		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
-	}
-
-	#[test]
-	fn balance_of() {
-		let balance = 100 * UNIT;
-		assert_eq!(ReadResult::BalanceOf::<Test>(balance).encode(), balance.encode());
-	}
-
-	#[test]
-	fn allowance() {
-		let allowance = 100 * UNIT;
-		assert_eq!(ReadResult::Allowance::<Test>(allowance).encode(), allowance.encode());
-	}
-
-	#[test]
-	fn token_name() {
-		let mut name = Some("some name".as_bytes().to_vec());
-		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
-		name = None;
-		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
-	}
-
-	#[test]
-	fn token_symbol() {
-		let mut symbol = Some("some symbol".as_bytes().to_vec());
-		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
-		symbol = None;
-		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
-	}
-
-	#[test]
-	fn token_decimals() {
-		let decimals = 42;
-		assert_eq!(ReadResult::TokenDecimals::<Test>(decimals).encode(), decimals.encode());
-	}
-
-	#[test]
-	fn token_exists() {
-		let exists = true;
-		assert_eq!(ReadResult::TokenExists::<Test>(exists).encode(), exists.encode());
-	}
-}
-
 #[test]
 fn transfer_works() {
 	new_test_ext().execute_with(|| {
@@ -543,18 +493,6 @@ fn token_exists_works() {
 	});
 }
 
-fn signed(account: AccountId) -> RuntimeOrigin {
-	RuntimeOrigin::signed(account)
-}
-
-fn root() -> RuntimeOrigin {
-	RuntimeOrigin::root()
-}
-
-fn none() -> RuntimeOrigin {
-	RuntimeOrigin::none()
-}
-
 // Helper functions for interacting with pallet-assets.
 mod assets {
 	use super::*;
@@ -593,135 +531,9 @@ mod assets {
 	}
 }
 
-mod read_weights {
-	use frame_support::weights::Weight;
-
-	use super::*;
-	use crate::fungibles::{weights::WeightInfo, Config};
-
-	struct ReadWeightInfo {
-		total_supply: Weight,
-		balance_of: Weight,
-		allowance: Weight,
-		token_name: Weight,
-		token_symbol: Weight,
-		token_decimals: Weight,
-		token_exists: Weight,
-	}
-
-	impl ReadWeightInfo {
-		fn new() -> Self {
-			Self {
-				total_supply: Fungibles::weight(&TotalSupply(TOKEN)),
-				balance_of: Fungibles::weight(&BalanceOf { token: TOKEN, owner: ALICE }),
-				allowance: Fungibles::weight(&Allowance {
-					token: TOKEN,
-					owner: ALICE,
-					spender: BOB,
-				}),
-				token_name: Fungibles::weight(&TokenName(TOKEN)),
-				token_symbol: Fungibles::weight(&TokenSymbol(TOKEN)),
-				token_decimals: Fungibles::weight(&TokenDecimals(TOKEN)),
-				token_exists: Fungibles::weight(&TokenExists(TOKEN)),
-			}
-		}
-	}
-
-	#[test]
-	fn ensure_read_matches_benchmarks() {
-		let ReadWeightInfo {
-			allowance,
-			balance_of,
-			token_decimals,
-			token_name,
-			token_symbol,
-			total_supply,
-			token_exists,
-		} = ReadWeightInfo::new();
-
-		assert_eq!(total_supply, <Test as Config>::WeightInfo::total_supply());
-		assert_eq!(balance_of, <Test as Config>::WeightInfo::balance_of());
-		assert_eq!(allowance, <Test as Config>::WeightInfo::allowance());
-		assert_eq!(token_name, <Test as Config>::WeightInfo::token_name());
-		assert_eq!(token_symbol, <Test as Config>::WeightInfo::token_symbol());
-		assert_eq!(token_decimals, <Test as Config>::WeightInfo::token_decimals());
-		assert_eq!(token_exists, <Test as Config>::WeightInfo::token_exists());
-	}
-
-	// These types read from the `AssetMetadata` storage.
-	#[test]
-	fn ensure_asset_metadata_variants_match() {
-		let ReadWeightInfo { token_decimals, token_name, token_symbol, .. } = ReadWeightInfo::new();
-
-		assert_eq!(token_decimals, token_name);
-		assert_eq!(token_decimals, token_symbol);
-	}
-
-	// These types read from the `Assets` storage.
-	#[test]
-	fn ensure_asset_variants_match() {
-		let ReadWeightInfo { total_supply, token_exists, .. } = ReadWeightInfo::new();
-
-		assert_eq!(total_supply, token_exists);
-	}
-
-	// Proof size is based on `MaxEncodedLen`, not hardware.
-	// This test ensures that the data structure sizes do not change with upgrades.
-	#[test]
-	fn ensure_expected_proof_size_does_not_change() {
-		let ReadWeightInfo {
-			allowance,
-			balance_of,
-			token_decimals,
-			token_name,
-			token_symbol,
-			total_supply,
-			token_exists,
-		} = ReadWeightInfo::new();
-
-		// These values come from `weights.rs`.
-		assert_eq!(allowance.proof_size(), 3613);
-		assert_eq!(balance_of.proof_size(), 3599);
-		assert_eq!(token_name.proof_size(), 3605);
-		assert_eq!(token_symbol.proof_size(), 3605);
-		assert_eq!(token_decimals.proof_size(), 3605);
-		assert_eq!(total_supply.proof_size(), 3675);
-		assert_eq!(token_exists.proof_size(), 3675);
-	}
-}
-
 mod ensure_codec_indexes {
 	use super::{Encode, *};
 	use crate::{fungibles, mock::RuntimeCall::Fungibles};
-
-	#[test]
-	fn ensure_read_variant_indexes() {
-		[
-			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
-			(
-				BalanceOf::<Test> { token: Default::default(), owner: Default::default() },
-				1,
-				"BalanceOf",
-			),
-			(
-				Allowance::<Test> {
-					token: Default::default(),
-					owner: Default::default(),
-					spender: Default::default(),
-				},
-				2,
-				"Allowance",
-			),
-			(TokenName::<Test>(Default::default()), 8, "TokenName"),
-			(TokenSymbol::<Test>(Default::default()), 9, "TokenSymbol"),
-			(TokenDecimals::<Test>(Default::default()), 10, "TokenDecimals"),
-			(TokenExists::<Test>(Default::default()), 18, "TokenExists"),
-		]
-		.iter()
-		.for_each(|(variant, expected_index, name)| {
-			assert_eq!(variant.encode()[0], *expected_index, "{name} variant index changed");
-		})
-	}
 
 	#[test]
 	fn ensure_dispatchable_indexes() {
@@ -822,5 +634,181 @@ mod ensure_codec_indexes {
 				"{name} dispatchable index changed"
 			);
 		})
+	}
+
+	#[test]
+	fn ensure_read_variant_indexes() {
+		[
+			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
+			(
+				BalanceOf::<Test> { token: Default::default(), owner: Default::default() },
+				1,
+				"BalanceOf",
+			),
+			(
+				Allowance::<Test> {
+					token: Default::default(),
+					owner: Default::default(),
+					spender: Default::default(),
+				},
+				2,
+				"Allowance",
+			),
+			(TokenName::<Test>(Default::default()), 8, "TokenName"),
+			(TokenSymbol::<Test>(Default::default()), 9, "TokenSymbol"),
+			(TokenDecimals::<Test>(Default::default()), 10, "TokenDecimals"),
+			(TokenExists::<Test>(Default::default()), 18, "TokenExists"),
+		]
+		.iter()
+		.for_each(|(variant, expected_index, name)| {
+			assert_eq!(variant.encode()[0], *expected_index, "{name} variant index changed");
+		})
+	}
+}
+
+mod read_weights {
+	use frame_support::weights::Weight;
+
+	use super::*;
+	use crate::fungibles::{weights::WeightInfo, Config};
+
+	struct ReadWeightInfo {
+		total_supply: Weight,
+		balance_of: Weight,
+		allowance: Weight,
+		token_name: Weight,
+		token_symbol: Weight,
+		token_decimals: Weight,
+		token_exists: Weight,
+	}
+
+	impl ReadWeightInfo {
+		fn new() -> Self {
+			Self {
+				total_supply: Fungibles::weight(&TotalSupply(TOKEN)),
+				balance_of: Fungibles::weight(&BalanceOf { token: TOKEN, owner: ALICE }),
+				allowance: Fungibles::weight(&Allowance {
+					token: TOKEN,
+					owner: ALICE,
+					spender: BOB,
+				}),
+				token_name: Fungibles::weight(&TokenName(TOKEN)),
+				token_symbol: Fungibles::weight(&TokenSymbol(TOKEN)),
+				token_decimals: Fungibles::weight(&TokenDecimals(TOKEN)),
+				token_exists: Fungibles::weight(&TokenExists(TOKEN)),
+			}
+		}
+	}
+
+	#[test]
+	fn ensure_read_matches_benchmarks() {
+		let ReadWeightInfo {
+			allowance,
+			balance_of,
+			token_decimals,
+			token_name,
+			token_symbol,
+			total_supply,
+			token_exists,
+		} = ReadWeightInfo::new();
+
+		assert_eq!(total_supply, <Test as Config>::WeightInfo::total_supply());
+		assert_eq!(balance_of, <Test as Config>::WeightInfo::balance_of());
+		assert_eq!(allowance, <Test as Config>::WeightInfo::allowance());
+		assert_eq!(token_name, <Test as Config>::WeightInfo::token_name());
+		assert_eq!(token_symbol, <Test as Config>::WeightInfo::token_symbol());
+		assert_eq!(token_decimals, <Test as Config>::WeightInfo::token_decimals());
+		assert_eq!(token_exists, <Test as Config>::WeightInfo::token_exists());
+	}
+
+	// These types read from the `AssetMetadata` storage.
+	#[test]
+	fn ensure_asset_metadata_variants_match() {
+		let ReadWeightInfo { token_decimals, token_name, token_symbol, .. } = ReadWeightInfo::new();
+
+		assert_eq!(token_decimals, token_name);
+		assert_eq!(token_decimals, token_symbol);
+	}
+
+	// These types read from the `Assets` storage.
+	#[test]
+	fn ensure_asset_variants_match() {
+		let ReadWeightInfo { total_supply, token_exists, .. } = ReadWeightInfo::new();
+
+		assert_eq!(total_supply, token_exists);
+	}
+
+	// Proof size is based on `MaxEncodedLen`, not hardware.
+	// This test ensures that the data structure sizes do not change with upgrades.
+	#[test]
+	fn ensure_expected_proof_size_does_not_change() {
+		let ReadWeightInfo {
+			allowance,
+			balance_of,
+			token_decimals,
+			token_name,
+			token_symbol,
+			total_supply,
+			token_exists,
+		} = ReadWeightInfo::new();
+
+		// These values come from `weights.rs`.
+		assert_eq!(allowance.proof_size(), 3613);
+		assert_eq!(balance_of.proof_size(), 3599);
+		assert_eq!(token_name.proof_size(), 3605);
+		assert_eq!(token_symbol.proof_size(), 3605);
+		assert_eq!(token_decimals.proof_size(), 3605);
+		assert_eq!(total_supply.proof_size(), 3675);
+		assert_eq!(token_exists.proof_size(), 3675);
+	}
+}
+
+mod encoding_read_result {
+	use super::*;
+
+	#[test]
+	fn total_supply() {
+		let total_supply = 1_000_000 * UNIT;
+		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
+	}
+
+	#[test]
+	fn balance_of() {
+		let balance = 100 * UNIT;
+		assert_eq!(ReadResult::BalanceOf::<Test>(balance).encode(), balance.encode());
+	}
+
+	#[test]
+	fn allowance() {
+		let allowance = 100 * UNIT;
+		assert_eq!(ReadResult::Allowance::<Test>(allowance).encode(), allowance.encode());
+	}
+
+	#[test]
+	fn token_name() {
+		let mut name = Some("some name".as_bytes().to_vec());
+		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
+		name = None;
+		assert_eq!(ReadResult::TokenName::<Test>(name.clone()).encode(), name.encode());
+	}
+
+	#[test]
+	fn token_symbol() {
+		let mut symbol = Some("some symbol".as_bytes().to_vec());
+		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
+		symbol = None;
+		assert_eq!(ReadResult::TokenSymbol::<Test>(symbol.clone()).encode(), symbol.encode());
+	}
+
+	#[test]
+	fn token_decimals() {
+		let decimals = 42;
+		assert_eq!(ReadResult::TokenDecimals::<Test>(decimals).encode(), decimals.encode());
+	}
+
+	#[test]
+	fn token_exists() {
+		let exists = true;
+		assert_eq!(ReadResult::TokenExists::<Test>(exists).encode(), exists.encode());
 	}
 }
