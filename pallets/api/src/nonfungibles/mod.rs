@@ -339,7 +339,7 @@ pub mod pallet {
 				origin,
 				collection,
 				item,
-				T::Lookup::unlookup(delegate.clone()),
+				T::Lookup::unlookup(delegate),
 			)
 		}
 
@@ -364,7 +364,7 @@ pub mod pallet {
 				origin,
 				collection,
 				item,
-				T::Lookup::unlookup(delegate.clone()),
+				T::Lookup::unlookup(delegate),
 				witness,
 			)
 		}
@@ -390,9 +390,9 @@ pub mod pallet {
 		/// - `to` - Account into which the item will be minted.
 		/// - `collection` - The collection of the item to mint.
 		/// - `item` - An identifier of the new item.
-		/// - `witness_data` - When the mint type is `HolderOf(collection_id)`, then the owned
-		///   item_id from that collection needs to be provided within the witness data object. If
-		///   the mint price is set, then it should be additionally confirmed in the `witness_data`.
+		/// - `witness` - When the mint type is `HolderOf(collection_id)`, then the owned item_id
+		///   from that collection needs to be provided within the witness data object. If the mint
+		///   price is set, then it should be additionally confirmed in the `witness`.
 		#[pallet::call_index(19)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -403,13 +403,7 @@ pub mod pallet {
 			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
-			NftsOf::<T>::mint(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(to),
-				Some(witness.clone()),
-			)?;
+			NftsOf::<T>::mint(origin, collection, item, T::Lookup::unlookup(to), Some(witness))?;
 			Self::deposit_event(Event::Transfer { collection, item, from: None, to: Some(owner) });
 			Ok(())
 		}
