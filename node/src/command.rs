@@ -73,11 +73,11 @@ impl RuntimeResolver for PathBuf {
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
 		"dev" | "devnet" | "dev-paseo" =>
-			Box::new(chain_spec::development_config(Relay::PaseoLocal)),
-		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+			Box::new(chain_spec::development_chain_spec(Relay::PaseoLocal)),
+		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_chain_spec(Relay::Paseo)),
 		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
-			Box::new(chain_spec::mainnet_config(Relay::Polkadot)),
-		"" | "local" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+			Box::new(chain_spec::mainnet_chain_spec(Relay::Polkadot)),
+		"" | "local" => Box::new(chain_spec::development_chain_spec(Relay::PaseoLocal)),
 		path => {
 			let path: PathBuf = path.into();
 			match path.runtime() {
@@ -346,13 +346,15 @@ pub fn run() -> Result<()> {
 
 			runner.run_node_until_exit(|config| async move {
 				let hwbench = (!cli.no_hardware_benchmarks)
-					.then_some(config.database.path().map(|database_path| {
-						let _ = std::fs::create_dir_all(database_path);
-						sc_sysinfo::gather_hwbench(
-							Some(database_path),
-							&SUBSTRATE_REFERENCE_HARDWARE,
-						)
-					}))
+					.then(|| {
+						config.database.path().map(|database_path| {
+							let _ = std::fs::create_dir_all(database_path);
+							sc_sysinfo::gather_hwbench(
+								Some(database_path),
+								&SUBSTRATE_REFERENCE_HARDWARE,
+							)
+						})
+					})
 					.flatten();
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)

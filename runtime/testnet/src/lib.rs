@@ -11,7 +11,8 @@ pub mod config;
 mod weights;
 
 extern crate alloc;
-use alloc::vec::Vec;
+
+use alloc::{borrow::Cow, vec::Vec};
 
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
@@ -55,7 +56,7 @@ use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
-	create_runtime_str, generic, impl_opaque_keys,
+	generic, impl_opaque_keys,
 	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
@@ -88,12 +89,12 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 
 /// The SignedExtension to the basic transaction logic.
-pub type SignedExtra = (
+pub type TxExtension = (
 	frame_system::CheckNonZeroSender<Runtime>,
 	frame_system::CheckSpecVersion<Runtime>,
 	frame_system::CheckTxVersion<Runtime>,
 	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckEra<Runtime>,
+	frame_system::CheckMortality<Runtime>,
 	frame_system::CheckNonce<Runtime>,
 	frame_system::CheckWeight<Runtime>,
 	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
@@ -103,7 +104,7 @@ pub type SignedExtra = (
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, SignedExtra>;
+	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
 
 /// Migrations to apply on runtime upgrade.
 ///
@@ -183,15 +184,15 @@ impl_opaque_keys! {
 
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("pop"),
-	impl_name: create_runtime_str!("pop"),
+	spec_name: Cow::Borrowed("pop"),
+	impl_name: Cow::Borrowed("pop"),
 	authoring_version: 1,
 	#[allow(clippy::zero_prefixed_literal)]
 	spec_version: 00_04_02,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
-	state_version: 1,
+	system_version: 1,
 };
 
 type EventRecord = frame_system::EventRecord<
@@ -317,6 +318,7 @@ impl pallet_balances::Config for Runtime {
 	type AccountStore = System;
 	/// The type for recording an account's balance.
 	type Balance = Balance;
+	type DoneSlashHandler = ();
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = RuntimeFreezeReason;
@@ -342,6 +344,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 	type WeightToFee = WeightToFee;
 }
 
@@ -374,6 +377,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
+	type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type WeightInfo = ();
 	type XcmpMessageHandler = XcmpQueue;
@@ -984,7 +988,7 @@ impl_runtime_apis! {
 
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
-		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, sp_runtime::RuntimeString> {
+		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
 			use frame_benchmarking::{BenchmarkError, Benchmarking, BenchmarkBatch};
 
 			use frame_system_benchmarking::Pallet as SystemBench;
