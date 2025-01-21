@@ -8,7 +8,7 @@ use crate::{
 	parameter_types,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 	AccountId, Balance, BlakeTwo256, Block, BlockLength, BlockWeights, DispatchClass, Everything,
-	Hash, PalletInfo, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask,
+	Hash, PalletInfo, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask,
 	RuntimeVersion, VERSION,
 };
 
@@ -97,4 +97,259 @@ impl frame_system::Config for Runtime {
 	type SystemWeightInfo = frame_system::weights::SubstrateWeight<Self>;
 	/// Runtime version.
 	type Version = Version;
+}
+
+#[cfg(test)]
+mod tests {
+	use alloc::borrow::Cow;
+	use std::any::TypeId;
+
+	use cumulus_primitives_core::relay_chain::MAX_POV_SIZE;
+	use frame_support::{
+		dispatch::PerDispatchClass, traits::Get, weights::constants::WEIGHT_REF_TIME_PER_SECOND,
+	};
+	use frame_system::limits::WeightsPerClass;
+	use sp_core::crypto::AccountId32;
+	use sp_runtime::generic;
+
+	use super::*;
+	use crate::{Header, UncheckedExtrinsic, Weight};
+
+	#[test]
+	fn base_call_filter_allows_everything() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
+			TypeId::of::<Everything>(),
+		);
+	}
+
+	#[test]
+	fn system_account_id_is_32_bytes() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::AccountId>(),
+			TypeId::of::<AccountId32>(),
+		);
+	}
+
+	#[test]
+	fn system_block_configured() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::Block>(),
+			TypeId::of::<generic::Block<Header, UncheckedExtrinsic>>(),
+		);
+	}
+
+	#[test]
+	fn system_block_hash_count() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::BlockHashCount>(),
+			TypeId::of::<BlockHashCount>(),
+		);
+		assert_eq!(BlockHashCount::get(), 4096);
+	}
+
+	#[test]
+	fn system_block_length_restricted_by_pov() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::BlockLength>(),
+			TypeId::of::<RuntimeBlockLength>(),
+		);
+		// Normal extrinsics limited to 75% of max PoV size
+		assert_eq!(
+			*RuntimeBlockLength::get().max.get(DispatchClass::Normal),
+			Perbill::from_percent(75) * MAX_POV_SIZE
+		);
+		// Operational / mandatory (inherents) limited to max PoV size
+		assert_eq!(*RuntimeBlockLength::get().max.get(DispatchClass::Operational), MAX_POV_SIZE);
+		assert_eq!(*RuntimeBlockLength::get().max.get(DispatchClass::Mandatory), MAX_POV_SIZE);
+	}
+
+	#[test]
+	fn system_block_weights_restricted_by_dispatch_class() {
+		let max_block_weight =
+			// Two seconds compute per 6s block, max PoV size
+			Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), MAX_POV_SIZE as u64);
+		let base_extrinsic = ExtrinsicBaseWeight::get();
+		let expected_per_class = PerDispatchClass::new(|dc| match dc {
+			DispatchClass::Normal => {
+				let max_total = Perbill::from_percent(75) * max_block_weight; // 75% of block
+				WeightsPerClass {
+					base_extrinsic,
+					max_extrinsic: Some(
+						max_total - (Perbill::from_percent(5) * max_block_weight) - base_extrinsic,
+					), // max - average initialise ratio - base weight
+					max_total: Some(max_total),
+					reserved: Some(Weight::zero()),
+				}
+			},
+			DispatchClass::Operational => WeightsPerClass {
+				base_extrinsic,
+				max_extrinsic: Some(
+					max_block_weight -
+						(Perbill::from_percent(5) * max_block_weight) -
+						base_extrinsic,
+				),
+				max_total: Some(max_block_weight),
+				reserved: Some(Perbill::from_percent(25) * max_block_weight),
+			},
+			DispatchClass::Mandatory => WeightsPerClass {
+				base_extrinsic,
+				max_extrinsic: None,
+				max_total: None,
+				reserved: None,
+			},
+		});
+
+		assert_eq!(MAXIMUM_BLOCK_WEIGHT, max_block_weight);
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::BlockWeights>(),
+			TypeId::of::<RuntimeBlockWeights>(),
+		);
+		assert_eq!(RuntimeBlockWeights::get().base_block, BlockExecutionWeight::get());
+		assert_eq!(RuntimeBlockWeights::get().max_block, max_block_weight);
+
+		let actual = RuntimeBlockWeights::get();
+		for class in [DispatchClass::Normal, DispatchClass::Operational, DispatchClass::Mandatory] {
+			let actual = actual.per_class.get(class);
+			let expected = expected_per_class.get(class);
+			println!("{class:?}\nactual   {actual:?}\nexpected {expected:?}\n");
+			assert_eq!(actual.base_extrinsic, expected.base_extrinsic);
+			assert_eq!(actual.max_extrinsic, expected.max_extrinsic);
+			assert_eq!(actual.max_total, expected.max_total);
+			assert_eq!(actual.reserved, expected.reserved);
+		}
+	}
+
+	#[test]
+	fn system_db_weight_uses_rocks_db() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::DbWeight>(),
+			TypeId::of::<RocksDbWeight>(),
+		);
+	}
+
+	#[test]
+	fn system_uses_blake2_hashing() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::Hashing>(),
+			TypeId::of::<BlakeTwo256>(),
+		);
+	}
+
+	#[test]
+	fn system_uses_multi_address_lookup() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
+			TypeId::of::<AccountIdLookup<AccountId, ()>>(),
+		);
+	}
+
+	#[test]
+	fn system_max_consumers_limited_to_16() {
+		assert_eq!(<<Runtime as frame_system::Config>::MaxConsumers as Get<u32>>::get(), 16);
+	}
+
+	#[test]
+	fn system_multi_block_migrator_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::MultiBlockMigrator>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_nonce_uses_u32() {
+		assert_eq!(TypeId::of::<<Runtime as frame_system::Config>::Nonce>(), TypeId::of::<u32>(),);
+	}
+
+	#[test]
+	fn system_account_killed_handler_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::OnKilledAccount>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_new_account_handler_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::OnNewAccount>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_set_code_handler_managed_by_parachain_system() {
+		// Runtime upgrades orchestrated by parachain system pallet
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::OnSetCode>(),
+			TypeId::of::<cumulus_pallet_parachain_system::ParachainSetCode<Runtime>>(),
+		);
+	}
+
+	#[test]
+	fn system_post_inherent_handler_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::PostInherents>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_post_transactions_handler_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::PostTransactions>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_pre_inherent_handler_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::PreInherents>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_single_block_migrations_is_empty() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::SingleBlockMigrations>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_ss58_prefix_matches_relay() {
+		assert_eq!(<<Runtime as frame_system::Config>::SS58Prefix>::get(), 0);
+	}
+
+	#[test]
+	fn system_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as frame_system::Config>::SystemWeightInfo>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	#[ignore]
+	fn system_extensions_do_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as frame_system::Config>::ExtensionsWeightInfo>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn system_versions_runtime() {
+		assert_eq!(
+			TypeId::of::<<Runtime as frame_system::Config>::Version>(),
+			TypeId::of::<Version>(),
+		);
+
+		assert_eq!(Version::get().spec_name, Cow::Borrowed("pop"));
+		assert_eq!(Version::get().impl_name, Cow::Borrowed("pop"));
+		assert_eq!(Version::get().spec_version, 100);
+	}
 }
