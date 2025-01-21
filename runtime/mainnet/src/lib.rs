@@ -560,13 +560,6 @@ cumulus_pallet_parachain_system::register_validate_block! {
 
 #[cfg(test)]
 mod tests {
-	use std::any::TypeId;
-
-	use pallet_balances::AdjustmentDirection;
-	use sp_runtime::MultiSignature;
-	use BalancesCall::*;
-	use RuntimeCall::Balances;
-
 	use super::*;
 
 	#[test]
