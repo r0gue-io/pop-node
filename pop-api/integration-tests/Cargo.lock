@@ -3473,6 +3473,7 @@ dependencies = [
  "frame-system",
  "log",
  "pallet-assets",
+ "pallet-nfts 31.0.0",
  "parity-scale-codec",
  "pop-chain-extension",
  "scale-info",
