@@ -13,7 +13,7 @@ use frame_system::RawOrigin;
 use sp_runtime::traits::{Bounded, StaticLookup, Zero};
 
 use super::{
-	AccountIdOf, AttributeNamespace, BalanceOf, Call, CollectionConfig, CollectionConfigFor,
+	AccountIdOf, AttributeNamespace, BalanceOf, Call, CollectionConfig, CollectionConfigOf,
 	CollectionIdOf, CollectionSettings, Config, Inspect, ItemConfig, ItemIdOf, ItemSettings,
 	MintSettings, NftsInstanceOf, NftsOf, Pallet, Read,
 };
@@ -50,7 +50,7 @@ mod benchmarks {
 
 		T::Currency::make_free_balance_be(&owner, BalanceOf::<T>::max_value());
 		assert_ok!(
-			<NftsOf<T> as Create<AccountIdOf<T>, CollectionConfigFor<T>>>::create_collection(
+			<NftsOf<T> as Create<AccountIdOf<T>, CollectionConfigOf<T>>>::create_collection(
 				&owner,
 				&owner,
 				&CollectionConfig {

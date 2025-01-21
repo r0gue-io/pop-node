@@ -1,5 +1,5 @@
 //! The non-fungibles pallet offers a streamlined interface for interacting with non-fungible
-//! assets. The goal is to provide a simplified, consistent API that adheres to standards in the
+//! tokens. The goal is to provide a simplified, consistent API that adheres to standards in the
 //! smart contract space.
 
 use frame_support::{
@@ -31,9 +31,7 @@ type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>
 type ItemPriceOf<T> = BalanceOf<T>;
 type CollectionDetailsOf<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
 type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
-type CollectionConfigFor<T> =
-	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
-
+type CollectionConfigOf<T> = CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
 type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
 type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
 pub(super) type BalanceOf<T> =
@@ -81,8 +79,9 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// Event emitted when allowance by `owner` to `operator` changes.
+		// Differing style: event name abides by the PSP34 standard.
 		Approval {
-			/// The identifier of the collection.
+			/// The collection identifier.
 			collection: CollectionIdOf<T>,
 			/// The item which is (dis)approved. `None` for all collection items owned by the
 			/// `owner`.
@@ -95,11 +94,11 @@ pub mod pallet {
 			approved: bool,
 		},
 		/// Event emitted when a token transfer occurs.
-		// Differing style: event name abides by the PSP22 standard.
+		// Differing style: event name abides by the PSP34 standard.
 		Transfer {
-			/// The collection ID.
+			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The collection item ID.
+			/// The item which is transferred.
 			item: ItemIdOf<T>,
 			/// The source of the transfer. `None` when minting.
 			from: Option<AccountIdOf<T>>,
@@ -150,7 +149,7 @@ pub mod pallet {
 		/// collection item or all collection items owned by the `origin`.
 		///
 		/// # Parameters
-		/// - `collection` - The identifier of the collection.
+		/// - `collection` - The collection identifier.
 		/// - `item` - An optional parameter specifying the item to approve for the delegated
 		///   transfer. If `None`, all owner's collection items will be approved.
 		/// - `operator` - The account being granted or revoked approval to transfer the specified
@@ -218,7 +217,7 @@ pub mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: AccountIdOf<T>,
-			config: CollectionConfigFor<T>,
+			config: CollectionConfigOf<T>,
 		) -> DispatchResult {
 			let creator = ensure_signed(origin.clone())?;
 			let id = NextCollectionIdOf::<T>::get()
@@ -372,7 +371,7 @@ pub mod pallet {
 		/// Set the maximum number of items a collection could have.
 		///
 		/// # Parameters
-		/// - `collection` - The identifier of the collection to change.
+		/// - `collection` - The collection identifier.
 		/// - `max_supply` - The maximum number of items a collection could have.
 		#[pallet::call_index(18)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_collection_max_supply())]
@@ -479,7 +478,7 @@ pub mod pallet {
 		/// Details of a specified collection.
 		#[codec(index = 9)]
 		Collection(CollectionIdOf<T>),
-		/// Next collection ID.
+		/// Next collection identifier.
 		#[codec(index = 10)]
 		NextCollectionId,
 		/// Metadata of a specified collection item.
@@ -508,7 +507,7 @@ pub mod pallet {
 		GetAttribute(Option<Vec<u8>>),
 		/// Details of a specified collection.
 		Collection(Option<CollectionDetailsOf<T>>),
-		/// Next collection ID.
+		/// Next collection identifier.
 		NextCollectionId(Option<CollectionIdOf<T>>),
 		/// Metadata of a specified collection item.
 		ItemMetadata(Option<Vec<u8>>),
