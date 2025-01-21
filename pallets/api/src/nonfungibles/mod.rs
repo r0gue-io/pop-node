@@ -53,10 +53,10 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::{DispatchResult, DispatchResultWithPostInfo},
 		pallet_prelude::*,
-		traits::Incrementable,
+		traits::{nonfungibles_v2::Destroy, Incrementable},
 	};
 	use frame_system::pallet_prelude::*;
-	use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness, MintWitness};
+	use pallet_nfts::{CancelAttributesApprovalWitness, MintWitness};
 	use sp_runtime::BoundedVec;
 	use sp_std::vec::Vec;
 
@@ -233,19 +233,15 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection to destroy.
-		/// - `witness` - Information on the items minted in the collection. This must be
-		/// correct.
 		#[pallet::call_index(8)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(
-    		witness.item_metadatas,
-    		witness.item_configs,
-    		witness.attributes,
-		))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(u32::MAX, u32::MAX, u32::MAX))]
 		pub fn destroy(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
-			witness: DestroyWitness,
 		) -> DispatchResultWithPostInfo {
+			let witness = <NftsOf<T> as Destroy<<T as frame_system::Config>::AccountId>>::get_destroy_witness(&collection)
+			.ok_or(NftsErrorOf::<T>::UnknownCollection)
+			.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
 			NftsOf::<T>::destroy(origin, collection, witness)
 		}
 
@@ -390,9 +386,9 @@ pub mod pallet {
 		/// - `to` - Account into which the item will be minted.
 		/// - `collection` - The collection of the item to mint.
 		/// - `item` - An identifier of the new item.
-		/// - `witness_data` - When the mint type is `HolderOf(collection_id)`, then the owned
-		///   item_id from that collection needs to be provided within the witness data object. If
-		///   the mint price is set, then it should be additionally confirmed in the `witness_data`.
+		/// - `witness` - When the mint type is `HolderOf(collection_id)`, then the owned item_id
+		///   from that collection needs to be provided within the witness data object. If the mint
+		///   price is set, then it should be additionally confirmed in the `witness`.
 		#[pallet::call_index(19)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
