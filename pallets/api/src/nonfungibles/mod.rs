@@ -62,110 +62,6 @@ pub mod pallet {
 
 	use super::*;
 
-	/// State reads for the non-fungibles API with required input.
-	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
-	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-	#[repr(u8)]
-	#[allow(clippy::unnecessary_cast)]
-	pub enum Read<T: Config> {
-		/// Total item supply of a specified `collection`.
-		#[codec(index = 0)]
-		TotalSupply(CollectionIdOf<T>),
-		/// Account balance for a specified `collection`.
-		#[codec(index = 1)]
-		BalanceOf {
-			/// The collection.
-			collection: CollectionIdOf<T>,
-			/// The owner of the collection .
-			owner: AccountIdOf<T>,
-		},
-		/// Allowance for an `operator` approved by an `owner`, for a specified collection or item.
-		#[codec(index = 2)]
-		Allowance {
-			/// The collection.
-			collection: CollectionIdOf<T>,
-			/// The collection item.
-			item: Option<ItemIdOf<T>>,
-			/// The owner of the collection item.
-			owner: AccountIdOf<T>,
-			/// The delegated operator of collection item.
-			operator: AccountIdOf<T>,
-		},
-		/// Owner of a specified collection item.
-		#[codec(index = 5)]
-		OwnerOf {
-			/// The collection.
-			collection: CollectionIdOf<T>,
-			/// The collection item.
-			item: ItemIdOf<T>,
-		},
-		/// Attribute value of a specified collection item.
-		#[codec(index = 6)]
-		GetAttribute {
-			/// The collection.
-			collection: CollectionIdOf<T>,
-			/// The collection item.
-			item: ItemIdOf<T>,
-			/// The namespace of the attribute.
-			namespace: AttributeNamespaceOf<T>,
-			/// The key of the attribute.
-			key: BoundedVec<u8, T::KeyLimit>,
-		},
-		/// Details of a specified collection.
-		#[codec(index = 9)]
-		Collection(CollectionIdOf<T>),
-		/// Next collection ID.
-		#[codec(index = 10)]
-		NextCollectionId,
-		/// Metadata of a specified collection item.
-		#[codec(index = 11)]
-		ItemMetadata {
-			/// The collection.
-			collection: CollectionIdOf<T>,
-			/// The collection item.
-			item: ItemIdOf<T>,
-		},
-	}
-
-	/// Results of state reads for the non-fungibles API.
-	#[derive(Debug)]
-	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-	pub enum ReadResult<T: Config> {
-		/// Total item supply of a collection.
-		TotalSupply(u128),
-		/// Account balance for a specified collection.
-		BalanceOf(u32),
-		/// Allowance for an operator approved by an owner, for a specified collection or item.
-		Allowance(bool),
-		/// Owner of a specified collection owner.
-		OwnerOf(Option<AccountIdOf<T>>),
-		/// Attribute value of a specified collection item.
-		GetAttribute(Option<Vec<u8>>),
-		/// Details of a specified collection.
-		Collection(Option<CollectionDetailsOf<T>>),
-		/// Next collection ID.
-		NextCollectionId(Option<CollectionIdOf<T>>),
-		/// Metadata of a specified collection item.
-		ItemMetadata(Option<Vec<u8>>),
-	}
-
-	impl<T: Config> ReadResult<T> {
-		/// Encodes the result.
-		pub fn encode(&self) -> Vec<u8> {
-			use ReadResult::*;
-			match self {
-				OwnerOf(result) => result.encode(),
-				TotalSupply(result) => result.encode(),
-				BalanceOf(result) => result.encode(),
-				Collection(result) => result.encode(),
-				Allowance(result) => result.encode(),
-				GetAttribute(result) => result.encode(),
-				NextCollectionId(result) => result.encode(),
-				ItemMetadata(result) => result.encode(),
-			}
-		}
-	}
-
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config + pallet_nfts::Config<Self::NftsInstance> {
@@ -534,6 +430,110 @@ pub mod pallet {
 			NftsOf::<T>::burn(origin, collection, item)?;
 			Self::deposit_event(Event::Transfer { collection, item, from: Some(owner), to: None });
 			Ok(())
+		}
+	}
+
+	/// State reads for the non-fungibles API with required input.
+	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+	#[repr(u8)]
+	#[allow(clippy::unnecessary_cast)]
+	pub enum Read<T: Config> {
+		/// Total item supply of a specified `collection`.
+		#[codec(index = 0)]
+		TotalSupply(CollectionIdOf<T>),
+		/// Account balance for a specified `collection`.
+		#[codec(index = 1)]
+		BalanceOf {
+			/// The collection.
+			collection: CollectionIdOf<T>,
+			/// The owner of the collection .
+			owner: AccountIdOf<T>,
+		},
+		/// Allowance for an `operator` approved by an `owner`, for a specified collection or item.
+		#[codec(index = 2)]
+		Allowance {
+			/// The collection.
+			collection: CollectionIdOf<T>,
+			/// The collection item.
+			item: Option<ItemIdOf<T>>,
+			/// The owner of the collection item.
+			owner: AccountIdOf<T>,
+			/// The delegated operator of collection item.
+			operator: AccountIdOf<T>,
+		},
+		/// Owner of a specified collection item.
+		#[codec(index = 5)]
+		OwnerOf {
+			/// The collection.
+			collection: CollectionIdOf<T>,
+			/// The collection item.
+			item: ItemIdOf<T>,
+		},
+		/// Attribute value of a specified collection item.
+		#[codec(index = 6)]
+		GetAttribute {
+			/// The collection.
+			collection: CollectionIdOf<T>,
+			/// The collection item.
+			item: ItemIdOf<T>,
+			/// The namespace of the attribute.
+			namespace: AttributeNamespaceOf<T>,
+			/// The key of the attribute.
+			key: BoundedVec<u8, T::KeyLimit>,
+		},
+		/// Details of a specified collection.
+		#[codec(index = 9)]
+		Collection(CollectionIdOf<T>),
+		/// Next collection ID.
+		#[codec(index = 10)]
+		NextCollectionId,
+		/// Metadata of a specified collection item.
+		#[codec(index = 11)]
+		ItemMetadata {
+			/// The collection.
+			collection: CollectionIdOf<T>,
+			/// The collection item.
+			item: ItemIdOf<T>,
+		},
+	}
+
+	/// Results of state reads for the non-fungibles API.
+	#[derive(Debug)]
+	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+	pub enum ReadResult<T: Config> {
+		/// Total item supply of a collection.
+		TotalSupply(u128),
+		/// Account balance for a specified collection.
+		BalanceOf(u32),
+		/// Allowance for an operator approved by an owner, for a specified collection or item.
+		Allowance(bool),
+		/// Owner of a specified collection owner.
+		OwnerOf(Option<AccountIdOf<T>>),
+		/// Attribute value of a specified collection item.
+		GetAttribute(Option<Vec<u8>>),
+		/// Details of a specified collection.
+		Collection(Option<CollectionDetailsOf<T>>),
+		/// Next collection ID.
+		NextCollectionId(Option<CollectionIdOf<T>>),
+		/// Metadata of a specified collection item.
+		ItemMetadata(Option<Vec<u8>>),
+	}
+
+	impl<T: Config> ReadResult<T> {
+		/// Encodes the result.
+		pub fn encode(&self) -> Vec<u8> {
+			use ReadResult::*;
+			match self {
+				OwnerOf(result) => result.encode(),
+				TotalSupply(result) => result.encode(),
+				BalanceOf(result) => result.encode(),
+				Collection(result) => result.encode(),
+				Allowance(result) => result.encode(),
+				GetAttribute(result) => result.encode(),
+				NextCollectionId(result) => result.encode(),
+				ItemMetadata(result) => result.encode(),
+			}
 		}
 	}
 
