@@ -109,8 +109,9 @@ jobs:
     strategy:
       matrix:
         features:
+          - "westend,devnet"
           - "westend,testnet"
-          - "paseo,testnet"
+          - "westend,mainnet"
     steps:
       - uses: actions/checkout@v4
 
@@ -162,7 +163,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --all-features --workspace --exclude integration-tests --lib --bins --codecov --output-path codecov.json
+        run: cargo llvm-cov --all-features --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4

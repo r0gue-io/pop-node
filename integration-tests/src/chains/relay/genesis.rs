@@ -1,10 +1,10 @@
 use emulated_integration_tests_common::{
-	accounts, build_genesis_storage, get_from_seed, get_host_config, validators,
+	accounts, build_genesis_storage, get_host_config, validators,
 };
 use polkadot_primitives::{AssignmentId, Balance, ValidatorId, LOWEST_PUBLIC_ID};
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
 use sp_consensus_babe::AuthorityId as BabeId;
-use sp_consensus_beefy::ecdsa_crypto::AuthorityId as BeefyId;
+use sp_consensus_beefy::{ecdsa_crypto::AuthorityId as BeefyId, test_utils::Keyring};
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_core::storage::Storage;
 
@@ -38,11 +38,12 @@ pub(crate) fn genesis() -> Storage {
 							x.4.clone(),
 							x.5.clone(),
 							x.6.clone(),
-							get_from_seed::<BeefyId>("Alice"),
+							Keyring::Alice.into(),
 						),
 					)
 				})
 				.collect::<Vec<_>>(),
+			..Default::default()
 		},
 		babe: BabeConfig {
 			authorities: Default::default(),

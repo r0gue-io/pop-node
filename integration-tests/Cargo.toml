@@ -42,7 +42,7 @@ emulated-integration-tests-common.workspace = true
 
 # Runtimes
 asset-hub-paseo-runtime = { workspace = true, optional = true }
-asset-hub-westend-runtime = { workspace = true, optional = true }
+asset-hub-westend-runtime = { workspace = true, optional = true, default-features = true }
 paseo-runtime = { workspace = true, optional = true }
 paseo-runtime-constants = { workspace = true, optional = true }
 westend-runtime = { workspace = true, optional = true }
@@ -71,8 +71,10 @@ runtime-benchmarks = [
 	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
+	"pallet-xcm/runtime-benchmarks",
 	"paseo-runtime?/runtime-benchmarks",
 	"polkadot-primitives/runtime-benchmarks",
+	"polkadot-runtime-parachains/runtime-benchmarks",
 	"pop-runtime-common/runtime-benchmarks",
 	"pop-runtime-devnet/runtime-benchmarks",
 	"pop-runtime-mainnet/runtime-benchmarks",
@@ -84,6 +86,8 @@ runtime-benchmarks = [
 std = [
 	"asset-hub-paseo-runtime?/std",
 	"asset-hub-westend-runtime?/std",
+	"asset-test-utils/std",
+	"codec/std",
 	"cumulus-primitives-core/std",
 	"frame-support/std",
 	"pallet-assets/std",
@@ -104,6 +108,7 @@ std = [
 	"sp-consensus-grandpa/std",
 	"sp-core/std",
 	"sp-runtime/std",
+	"tracing-subscriber/std",
 	"westend-runtime-constants?/std",
 	"westend-runtime?/std",
 	"xcm-executor/std",
