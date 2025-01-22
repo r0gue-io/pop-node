@@ -626,27 +626,27 @@ parameter_types! {
 	pub const MaxSpend: Balance = u32::MAX as u128;
 }
 
-impl pallet_treasury::Config for Runtime {
-	type AssetKind = ();
-	type BalanceConverter = UnityAssetBalanceConversion;
-	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = ();
-	type Beneficiary = AccountId;
-	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
-	type Burn = Burn;
-	type BurnDestination = ();
-	type Currency = pallet_balances::Pallet<Runtime>;
-	type MaxApprovals = MaxApprovals;
-	type PalletId = TreasuryPalletId;
-	type Paymaster = TreasuryPaymaster<Self::Currency>;
-	type PayoutPeriod = PayoutPeriod;
-	type RejectOrigin = EnsureRoot<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type SpendFunds = ();
-	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
-	type SpendPeriod = SpendPeriod;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
-}
+// impl pallet_treasury::Config for Runtime {
+// 	type AssetKind = ();
+// 	type BalanceConverter = UnityAssetBalanceConversion;
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	type BenchmarkHelper = ();
+// 	type Beneficiary = AccountId;
+// 	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
+// 	type Burn = Burn;
+// 	type BurnDestination = ();
+// 	type Currency = pallet_balances::Pallet<Runtime>;
+// 	type MaxApprovals = MaxApprovals;
+// 	type PalletId = TreasuryPalletId;
+// 	type Paymaster = TreasuryPaymaster<Self::Currency>;
+// 	type PayoutPeriod = PayoutPeriod;
+// 	type RejectOrigin = EnsureRoot<AccountId>;
+// 	type RuntimeEvent = RuntimeEvent;
+// 	type SpendFunds = ();
+// 	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
+// 	type SpendPeriod = SpendPeriod;
+// 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+// }
 
 #[frame_support::runtime]
 mod runtime {
@@ -680,8 +680,8 @@ mod runtime {
 	pub type Balances = pallet_balances::Pallet<Runtime>;
 	#[runtime::pallet_index(11)]
 	pub type TransactionPayment = pallet_transaction_payment::Pallet<Runtime>;
-	#[runtime::pallet_index(12)]
-	pub type Treasury = pallet_treasury::Pallet<Runtime>;
+	// #[runtime::pallet_index(12)]
+	// pub type Treasury = pallet_treasury::Pallet<Runtime>;
 
 	// Governance
 	#[runtime::pallet_index(15)]
