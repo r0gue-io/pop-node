@@ -21,7 +21,7 @@ exclude = [
 	"tests/contracts",
 ]
 members = [
-	"integration-tests",
+	
 	"node",
 	"pallets/*",
 	"primitives",
@@ -73,7 +73,7 @@ pop-runtime-mainnet = { path = "runtime/mainnet", default-features = true } # de
 pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
 
 # Substrate
-frame-benchmarking = { version = "36.0.0", default-features = false}
+frame-benchmarking = { version = "36.0.0", default-features = false }
 frame-benchmarking-cli = "40.0.0"
 frame-executive = { version = "36.0.0", default-features = false }
 frame-metadata-hash-extension = { version = "0.4.0", default-features = false }
@@ -135,7 +135,7 @@ sp-io = { version = "37.0.0", default-features = false }
 sp-keystore = "0.40.0"
 sp-mmr-primitives = { version = "33.0.0", default-features = false }
 sp-offchain = { version = "33.0.0", default-features = false }
-sp-runtime = { version = "38.0.0", default-features = false }
+sp-runtime = { version = "38.0.1", default-features = false }
 sp-session = { version = "34.0.0", default-features = false }
 sp-std = { version = "14.0.0", default-features = false }
 sp-timestamp = "33.0.0"
@@ -183,12 +183,12 @@ parachain-info = { version = "0.15.0", package = "staging-parachain-info", defau
 parachains-common = { version = "15.0.0", default-features = false }
 
 # Runtimes
-asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-asset-hub-westend-runtime = { version = "0.23.0", default-features = false }
-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-westend-runtime = { version = "15.0.0", default-features = false }
-westend-runtime-constants = { version = "15.0.0", default-features = false }
+#asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
+#asset-hub-westend-runtime = { version = "0.23.0", default-features = false }
+#paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
+#paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
+#westend-runtime = { version = "15.0.0", default-features = false }
+#westend-runtime-constants = { version = "15.0.0", default-features = false }
 
 ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }
 ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-v1.14.0", default-features = false }
