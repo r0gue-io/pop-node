@@ -573,8 +573,6 @@ mod runtime {
 	pub type Balances = pallet_balances::Pallet<Runtime>;
 	#[runtime::pallet_index(11)]
 	pub type TransactionPayment = pallet_transaction_payment::Pallet<Runtime>;
-	#[runtime::pallet_index(12)]
-	pub type Treasury = pallet_treasury::Pallet<Runtime>;
 
 	// Governance
 	#[runtime::pallet_index(15)]

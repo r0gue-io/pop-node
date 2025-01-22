@@ -374,7 +374,33 @@ parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
 	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").expect("sudo address is valid SS58");
+	pub MaintenancePot: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
 }
+
+// pub struct DealWithFees<R>(PhantomData<R>);
+// impl<R> OnUnbalanced<fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
+// where
+// 	R: pallet_balances::Config
+// 	AccountIdOf<R>: From<polkadot_primitives::AccountId> + Into<polkadot_primitives::AccountId>,
+// 	<R as frame_system::Config>::RuntimeEvent: From<pallet_balances::Event<R>>,
+// {
+// 	fn on_unbalanceds(
+// 		mut fees_then_tips: impl Iterator<
+// 			Item = fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>,
+// 		>,
+// 	) {
+// 		if let Some(mut fees) = fees_then_tips.next() {
+// 			if let Some(tips) = fees_then_tips.next() {
+// 				tips.merge_into(&mut fees);
+// 			}
+
+// 			let split = fees.ration(50, 50);
+
+// 			ResolveTo::<<TreasuryAccount, pallet_balances::Pallet<R>>::on_unbalanced(fees.0)
+// 			ResolveTo::<<MaintenancePot, pallet_balances::Pallet<R>>::on_unbalanced(fees.1)
+// 		}
+// 	}
+// }
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
