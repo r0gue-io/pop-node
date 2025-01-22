@@ -140,7 +140,7 @@ fn burn_works() {
 		}
 		// Check error works for `Nfts::burn()`.
 		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
-		nfts::create_collection_mint(owner, owner, ITEM);
+		nfts::create_collection_mint(owner, owner, item);
 		// Successfully burn a collection item.
 		let balance_before_burn = nfts::balance_of(collection, &owner);
 		assert_ok!(NonFungibles::burn(signed(owner), collection, item));
@@ -262,7 +262,7 @@ mod approve {
 			let operator = BOB;
 			let owner = ALICE;
 
-			// Check error works for `Nfts::cancel_approval()`.
+			// Check error works for `Nfts::cancel_collection_approval()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, None, operator, false),
 				NftsError::NotDelegate.with_weight(WeightInfo::approve(0, 0))
@@ -758,7 +758,7 @@ fn collection_works() {
 		let item = ITEM;
 		let owner = ALICE;
 
-		assert_eq!(NonFungibles::read(Collection(collection)), ReadResult::Collection(None),);
+		assert_eq!(NonFungibles::read(Collection(collection)), ReadResult::Collection(None));
 		nfts::create_collection_mint(owner, owner, item);
 		assert_eq!(
 			NonFungibles::read(Collection(collection)),
