@@ -25,13 +25,13 @@ mod tests;
 pub mod weights;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
+type CollectionConfigOf<T> = CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
+type CollectionDetailsOf<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
 type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 type ItemPriceOf<T> = BalanceOf<T>;
-type CollectionDetailsOf<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
-type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
-type CollectionConfigOf<T> = CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
 type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
 type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
 pub(super) type BalanceOf<T> =
@@ -118,7 +118,7 @@ pub mod pallet {
 		AttributeSet {
 			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The item which attribute is set.
+			/// The item whose attribute is set.
 			item: Option<ItemIdOf<T>>,
 			/// The key for the attribute.
 			key: Vec<u8>,
@@ -162,7 +162,7 @@ pub mod pallet {
 		/// # Parameters
 		/// - `collection` - The collection identifier.
 		/// - `item` - An optional parameter specifying the item to approve for the delegated
-		///   transfer. If `None`, all owner's collection items will be approved.
+		///   transfer. If `None`, all `origin`'s collection items will be approved.
 		/// - `operator` - The account being granted or revoked approval to transfer the specified
 		///   collection item(s).
 		/// - `approved` - A boolean indicating the desired approval status:
@@ -217,11 +217,10 @@ pub mod pallet {
 			NftsOf::<T>::clear_collection_approvals(origin, collection, limit)
 		}
 
-		/// Issue a new collection of non-fungible items from a public origin.
+		/// Issue a new collection of non-fungible items.
 		///
 		/// # Parameters
-		/// - `admin` - The admin of this collection. The admin is the initial address of each
-		/// member of the collection's admin team.
+		/// - `admin` - The admin of this collection.
 		/// - `config` - The configuration of the collection.
 		#[pallet::call_index(7)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
@@ -239,7 +238,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Destroy a collection of fungible items.
+		/// Destroy a collection of items.
 		///
 		/// # Parameters
 		/// - `collection` - The collection to destroy.
@@ -461,40 +460,41 @@ pub mod pallet {
 		/// Total item supply of a specified `collection`.
 		#[codec(index = 0)]
 		TotalSupply(CollectionIdOf<T>),
-		/// Account balance for a specified `collection`.
+		/// Amount of items the `owner` has within a `collection`.
 		#[codec(index = 1)]
 		BalanceOf {
-			/// The collection.
+			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The owner of the collection .
+			/// The account whose balance is being queried.
 			owner: AccountIdOf<T>,
 		},
-		/// Allowance for an `operator` approved by an `owner`, for a specified collection or item.
+		/// Allowance for an `operator` approved by an `owner` to transfer a specified `item` or
+		/// all collection items owned by the `owner`.
 		#[codec(index = 2)]
 		Allowance {
-			/// The collection.
+			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The collection item.
+			/// The item whose attribute is set.
 			item: Option<ItemIdOf<T>>,
-			/// The owner of the collection item.
+			/// The owner of the collection item(s).
 			owner: AccountIdOf<T>,
-			/// The delegated operator of collection item.
+			/// The account that is allowed to transfer the collection item(s).
 			operator: AccountIdOf<T>,
 		},
-		/// Owner of a specified collection item.
+		/// Owner of an `item` within a specified `collection`, if any.
 		#[codec(index = 5)]
 		OwnerOf {
-			/// The collection.
+			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The collection item.
+			/// The collection item identifier.
 			item: ItemIdOf<T>,
 		},
-		/// Attribute value of a specified collection item.
+		/// Attribute value of a specified collection item for a given `key`, if any.
 		#[codec(index = 6)]
 		GetAttribute {
-			/// The collection.
+			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The collection item.
+			/// The collection item identifier.
 			item: ItemIdOf<T>,
 			/// The namespace of the attribute.
 			namespace: AttributeNamespaceOf<T>,
@@ -510,9 +510,9 @@ pub mod pallet {
 		/// Metadata of a specified collection item.
 		#[codec(index = 11)]
 		ItemMetadata {
-			/// The collection.
+			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The collection item.
+			/// The collection item identifier.
 			item: ItemIdOf<T>,
 		},
 	}
@@ -521,17 +521,18 @@ pub mod pallet {
 	#[derive(Debug)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
-		/// Total item supply of a collection.
+		/// Total item supply of a specified `collection`.
 		TotalSupply(u128),
-		/// Account balance for a specified collection.
+		/// Amount of items the `owner` has within a `collection`.
 		BalanceOf(u32),
-		/// Allowance for an operator approved by an owner, for a specified collection or item.
+		/// Allowance for an `operator` approved by an `owner` to transfer a specified `item` or
+		/// all collection items owned by the `owner`.
 		Allowance(bool),
-		/// Owner of a specified collection owner.
+		/// Owner of an `item` within a specified `collection`, if any.
 		OwnerOf(Option<AccountIdOf<T>>),
-		/// Attribute value of a specified collection item.
+		/// Attribute value of a specified collection item for a given `key`, if any.
 		GetAttribute(Option<Vec<u8>>),
-		/// Details of a specified collection.
+		/// Details of a specified collection, if any.
 		Collection(Option<CollectionDetailsOf<T>>),
 		/// Next collection identifier.
 		NextCollectionId(Option<CollectionIdOf<T>>),
@@ -544,14 +545,14 @@ pub mod pallet {
 		pub fn encode(&self) -> Vec<u8> {
 			use ReadResult::*;
 			match self {
-				OwnerOf(result) => result.encode(),
 				TotalSupply(result) => result.encode(),
 				BalanceOf(result) => result.encode(),
-				Collection(result) => result.encode(),
 				Allowance(result) => result.encode(),
+				OwnerOf(result) => result.encode(),
 				GetAttribute(result) => result.encode(),
-				NextCollectionId(result) => result.encode(),
 				ItemMetadata(result) => result.encode(),
+				Collection(result) => result.encode(),
+				NextCollectionId(result) => result.encode(),
 			}
 		}
 	}
@@ -575,9 +576,9 @@ pub mod pallet {
 				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
 				OwnerOf { .. } => <T as Config>::WeightInfo::owner_of(),
 				GetAttribute { .. } => <T as Config>::WeightInfo::get_attribute(),
+				ItemMetadata { .. } => <T as Config>::WeightInfo::item_metadata(),
 				Collection(_) => <T as Config>::WeightInfo::collection(),
 				NextCollectionId => <T as Config>::WeightInfo::next_collection_id(),
-				ItemMetadata { .. } => <T as Config>::WeightInfo::item_metadata(),
 			}
 		}
 
@@ -606,13 +607,13 @@ pub mod pallet {
 					AttributeOf::<T>::get((collection, Some(item), namespace, key))
 						.map(|attribute| attribute.0.into()),
 				),
+				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
+					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
+				),
 				Collection(collection) =>
 					ReadResult::Collection(CollectionOf::<T>::get(collection)),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
-				),
-				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
-					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
 				),
 			}
 		}

@@ -1,4 +1,4 @@
-use codec::Encode;
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::WithPostDispatchInfo,
@@ -6,14 +6,16 @@ use frame_support::{
 	weights::Weight,
 };
 use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
+use scale_info::TypeInfo;
 
 use crate::{
 	mock::*,
 	nonfungibles::{
-		weights::WeightInfo as WeightInfoTrait, AccountBalanceOf, AttributeNamespace, AttributeOf,
-		BlockNumberFor, CancelAttributesApprovalWitness, CollectionConfig, CollectionIdOf,
-		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
-		MintWitness, NextCollectionIdOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
+		weights::WeightInfo as WeightInfoTrait, AccountBalanceOf, AccountIdOf, AttributeNamespace,
+		AttributeOf, BalanceOf as DepositBalanceOf, BlockNumberFor,
+		CancelAttributesApprovalWitness, CollectionConfig, CollectionIdOf, CollectionOf,
+		CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings, MintWitness,
+		NextCollectionIdOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
 	},
 	Read,
 };
@@ -26,70 +28,15 @@ type Event = crate::nonfungibles::Event<Test>;
 type NftsError = pallet_nfts::Error<Test, NftsInstanceOf<Test>>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
-mod encoding_read_result {
-	use super::*;
-
-	#[test]
-	fn total_supply() {
-		let total_supply: u128 = 1_000_000;
-		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
-	}
-
-	#[test]
-	fn balance_of() {
-		let balance: u32 = 100;
-		assert_eq!(ReadResult::BalanceOf::<Test>(balance).encode(), balance.encode());
-	}
-
-	#[test]
-	fn allowance() {
-		let allowance = false;
-		assert_eq!(ReadResult::Allowance::<Test>(allowance).encode(), allowance.encode());
-	}
-
-	#[test]
-	fn owner_of() {
-		let mut owner = Some(ALICE);
-		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
-		owner = None;
-		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
-	}
-
-	#[test]
-	fn get_attribute() {
-		let mut attribute = Some("some attribute".as_bytes().to_vec());
-		assert_eq!(
-			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
-			attribute.encode()
-		);
-		attribute = None;
-		assert_eq!(
-			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
-			attribute.encode()
-		);
-	}
-
-	#[test]
-	fn next_collection_id_works() {
-		let mut next_collection_id = Some(0);
-		assert_eq!(
-			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
-			next_collection_id.encode()
-		);
-		next_collection_id = None;
-		assert_eq!(
-			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
-			next_collection_id.encode()
-		);
-	}
-
-	#[test]
-	fn item_metadata_works() {
-		let mut data = Some("some metadata".as_bytes().to_vec());
-		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
-		data = None;
-		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
-	}
+/// Information about a collection.
+#[derive(Clone, Encode, Decode, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
+struct CollectionDetails {
+	pub(super) owner: AccountIdOf<Test>,
+	pub(super) owner_deposit: DepositBalanceOf<Test>,
+	pub(super) items: u32,
+	pub(super) item_metadatas: u32,
+	pub(super) item_configs: u32,
+	pub(super) attributes: u32,
 }
 
 #[test]
@@ -112,7 +59,7 @@ fn transfer_works() {
 		assert_ok!(NonFungibles::transfer(signed(owner), collection, item, dest));
 		let from_balance_after_transfer = nfts::balance_of(collection, &owner);
 		let to_balance_after_transfer = nfts::balance_of(collection, &dest);
-		// Check that `to` has received the `value` tokens from `from`.
+		// Check that `to` has received the collection item from `from`.
 		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + 1);
 		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - 1);
 		System::assert_last_event(
@@ -133,13 +80,13 @@ fn approved_transfer_works() {
 		nfts::create_collection_mint(owner, owner, item);
 		// Approve `operator` to transfer `collection` items owned by the `owner`.
 		assert_ok!(Nfts::approve_collection_transfer(signed(owner), collection, operator, None));
-		// Successfully transfers a collection item.
+		// Successfully transfer a collection item.
 		let from_balance_before_transfer = nfts::balance_of(collection, &owner);
 		let to_balance_before_transfer = nfts::balance_of(collection, &dest);
 		assert_ok!(NonFungibles::transfer(signed(operator), collection, item, dest));
 		let from_balance_after_transfer = nfts::balance_of(collection, &owner);
 		let to_balance_after_transfer = nfts::balance_of(collection, &dest);
-		// Check that `to` has received the `value` tokens from `from`.
+		// Check that `to` has received the collection item from `from`.
 		assert_eq!(to_balance_after_transfer, to_balance_before_transfer + 1);
 		assert_eq!(from_balance_after_transfer, from_balance_before_transfer - 1);
 		System::assert_last_event(
@@ -168,7 +115,7 @@ fn mint_works() {
 			NonFungibles::mint(signed(owner), owner, collection, item, witness.clone()),
 			NftsError::NoConfig
 		);
-		// Successfully mints a new collection item.
+		// Successfully mint a new collection item.
 		nfts::create_collection(owner);
 		let balance_before_mint = nfts::balance_of(collection, &owner);
 		assert_ok!(NonFungibles::mint(signed(owner), owner, collection, item, witness));
@@ -191,10 +138,10 @@ fn burn_works() {
 		for origin in vec![root(), none()] {
 			assert_noop!(NonFungibles::burn(origin, collection, item), BadOrigin);
 		}
-		//  Check error works for `Nfts::burn()`.
+		// Check error works for `Nfts::burn()`.
 		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
-		// Successfully burns an existing new collection item.
 		nfts::create_collection_mint(owner, owner, ITEM);
+		// Successfully burn a collection item.
 		let balance_before_burn = nfts::balance_of(collection, &owner);
 		assert_ok!(NonFungibles::burn(signed(owner), collection, item));
 		let balance_after_burn = nfts::balance_of(collection, &owner);
@@ -235,7 +182,7 @@ mod approve {
 			);
 
 			nfts::create_collection_mint(owner, owner, item);
-			// Successfully approves `operator` to transfer the collection item.
+			// Successfully approve `operator` to transfer the collection item.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
 				Ok(Some(WeightInfo::approve(1, 1)).into())
@@ -268,7 +215,7 @@ mod approve {
 			);
 
 			nfts::create_collection_mint(owner, owner, item);
-			// Successfully approves `operator` to transfer all collection items owned by `owner`.
+			// Successfully approve `operator` to transfer all collection items owned by `owner`.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, None, operator, true),
 				Ok(Some(WeightInfo::approve(1, 0)).into())
@@ -295,7 +242,7 @@ mod approve {
 			);
 
 			nfts::create_collection_mint_and_approve(owner, owner, item, operator);
-			// Successfully cancels the transfer approval of `operator` by `owner`.
+			// Successfully cancel the transfer approval of `operator` by `owner`.
 			assert_eq!(
 				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
 				Ok(Some(WeightInfo::approve(0, 1)).into())
@@ -930,162 +877,9 @@ mod nfts {
 	}
 }
 
-mod read_weights {
-	use frame_support::weights::Weight;
-
-	use super::*;
-
-	struct ReadWeightInfo {
-		total_supply: Weight,
-		balance_of: Weight,
-		allowance: Weight,
-		owner_of: Weight,
-		get_attribute: Weight,
-		collection: Weight,
-		next_collection_id: Weight,
-		item_metadata: Weight,
-	}
-
-	impl ReadWeightInfo {
-		fn new() -> Self {
-			Self {
-				total_supply: NonFungibles::weight(&TotalSupply(COLLECTION)),
-				balance_of: NonFungibles::weight(&BalanceOf {
-					collection: COLLECTION,
-					owner: ALICE,
-				}),
-				allowance: NonFungibles::weight(&Allowance {
-					collection: COLLECTION,
-					item: Some(ITEM),
-					owner: ALICE,
-					operator: BOB,
-				}),
-				owner_of: NonFungibles::weight(&OwnerOf { collection: COLLECTION, item: ITEM }),
-				get_attribute: NonFungibles::weight(&GetAttribute {
-					collection: COLLECTION,
-					item: ITEM,
-					namespace: AttributeNamespace::CollectionOwner,
-					key: BoundedVec::default(),
-				}),
-				collection: NonFungibles::weight(&Collection(COLLECTION)),
-				next_collection_id: NonFungibles::weight(&NextCollectionId),
-				item_metadata: NonFungibles::weight(&ItemMetadata {
-					collection: COLLECTION,
-					item: ITEM,
-				}),
-			}
-		}
-	}
-
-	#[test]
-	fn ensure_read_matches_benchmarks() {
-		let ReadWeightInfo {
-			allowance,
-			balance_of,
-			collection,
-			get_attribute,
-			item_metadata,
-			next_collection_id,
-			owner_of,
-			total_supply,
-		} = ReadWeightInfo::new();
-
-		assert_eq!(total_supply, WeightInfo::total_supply());
-		assert_eq!(balance_of, WeightInfo::balance_of());
-		assert_eq!(allowance, WeightInfo::allowance());
-		assert_eq!(owner_of, WeightInfo::owner_of());
-		assert_eq!(get_attribute, WeightInfo::get_attribute());
-		assert_eq!(collection, WeightInfo::collection());
-		assert_eq!(next_collection_id, WeightInfo::next_collection_id());
-		assert_eq!(item_metadata, WeightInfo::item_metadata());
-	}
-
-	// These types read from the `Collection` storage.
-	#[test]
-	fn ensure_collection_variants_match() {
-		let ReadWeightInfo { total_supply, collection, .. } = ReadWeightInfo::new();
-
-		assert_eq!(total_supply, collection);
-	}
-
-	// Proof size is based on `MaxEncodedLen`, not hardware.
-	// This test ensures that the data structure sizes do not change with upgrades.
-	#[test]
-	fn ensure_expected_proof_size_does_not_change() {
-		let ReadWeightInfo {
-			allowance,
-			balance_of,
-			collection,
-			get_attribute,
-			item_metadata,
-			next_collection_id,
-			owner_of,
-			total_supply,
-		} = ReadWeightInfo::new();
-
-		// These values come from `weights.rs`.
-		assert_eq!(total_supply.proof_size(), 3549);
-		assert_eq!(balance_of.proof_size(), 3585);
-		assert_eq!(allowance.proof_size(), 4326);
-		assert_eq!(owner_of.proof_size(), 4326);
-		assert_eq!(get_attribute.proof_size(), 3944);
-		assert_eq!(collection.proof_size(), 3549);
-		assert_eq!(next_collection_id.proof_size(), 1489);
-		assert_eq!(item_metadata.proof_size(), 3812);
-	}
-}
-
 mod ensure_codec_indexes {
 	use super::{Encode, *};
 	use crate::{mock::RuntimeCall::NonFungibles, nonfungibles};
-
-	#[test]
-	fn ensure_read_variant_indexes() {
-		[
-			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
-			(
-				BalanceOf::<Test> { collection: Default::default(), owner: Default::default() },
-				1,
-				"BalanceOf",
-			),
-			(
-				Allowance::<Test> {
-					collection: Default::default(),
-					item: Default::default(),
-					owner: Default::default(),
-					operator: Default::default(),
-				},
-				2,
-				"Allowance",
-			),
-			(
-				OwnerOf::<Test> { collection: Default::default(), item: Default::default() },
-				5,
-				"OwnerOf",
-			),
-			(
-				GetAttribute::<Test> {
-					collection: Default::default(),
-					item: Default::default(),
-					namespace: AttributeNamespace::CollectionOwner,
-					key: Default::default(),
-				},
-				6,
-				"GetAttribute",
-			),
-			(Collection::<Test>(Default::default()), 9, "Collection"),
-			(NextCollectionId, 10, "NextCollectionId"),
-			(
-				ItemMetadata { collection: Default::default(), item: Default::default() },
-				11,
-				"ItemMetadata",
-			),
-		]
-		.iter()
-		.for_each(|(variant, expected_index, name)| {
-			assert_eq!(variant.encode()[0], *expected_index, "{name} variant index changed");
-		})
-	}
 
 	#[test]
 	fn ensure_dispatchable_indexes() {
@@ -1224,5 +1018,242 @@ mod ensure_codec_indexes {
 				"{name} dispatchable index changed"
 			);
 		})
+	}
+
+	#[test]
+	fn ensure_read_variant_indexes() {
+		[
+			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
+			(
+				BalanceOf::<Test> { collection: Default::default(), owner: Default::default() },
+				1,
+				"BalanceOf",
+			),
+			(
+				Allowance::<Test> {
+					collection: Default::default(),
+					item: Default::default(),
+					owner: Default::default(),
+					operator: Default::default(),
+				},
+				2,
+				"Allowance",
+			),
+			(
+				OwnerOf::<Test> { collection: Default::default(), item: Default::default() },
+				5,
+				"OwnerOf",
+			),
+			(
+				GetAttribute::<Test> {
+					collection: Default::default(),
+					item: Default::default(),
+					namespace: AttributeNamespace::CollectionOwner,
+					key: Default::default(),
+				},
+				6,
+				"GetAttribute",
+			),
+			(Collection::<Test>(Default::default()), 9, "Collection"),
+			(NextCollectionId, 10, "NextCollectionId"),
+			(
+				ItemMetadata { collection: Default::default(), item: Default::default() },
+				11,
+				"ItemMetadata",
+			),
+		]
+		.iter()
+		.for_each(|(variant, expected_index, name)| {
+			assert_eq!(variant.encode()[0], *expected_index, "{name} variant index changed");
+		})
+	}
+}
+
+mod read_weights {
+	use frame_support::weights::Weight;
+
+	use super::*;
+
+	struct ReadWeightInfo {
+		total_supply: Weight,
+		balance_of: Weight,
+		allowance: Weight,
+		owner_of: Weight,
+		get_attribute: Weight,
+		collection: Weight,
+		next_collection_id: Weight,
+		item_metadata: Weight,
+	}
+
+	impl ReadWeightInfo {
+		fn new() -> Self {
+			Self {
+				total_supply: NonFungibles::weight(&TotalSupply(COLLECTION)),
+				balance_of: NonFungibles::weight(&BalanceOf {
+					collection: COLLECTION,
+					owner: ALICE,
+				}),
+				allowance: NonFungibles::weight(&Allowance {
+					collection: COLLECTION,
+					item: Some(ITEM),
+					owner: ALICE,
+					operator: BOB,
+				}),
+				owner_of: NonFungibles::weight(&OwnerOf { collection: COLLECTION, item: ITEM }),
+				get_attribute: NonFungibles::weight(&GetAttribute {
+					collection: COLLECTION,
+					item: ITEM,
+					namespace: AttributeNamespace::CollectionOwner,
+					key: BoundedVec::default(),
+				}),
+				collection: NonFungibles::weight(&Collection(COLLECTION)),
+				next_collection_id: NonFungibles::weight(&NextCollectionId),
+				item_metadata: NonFungibles::weight(&ItemMetadata {
+					collection: COLLECTION,
+					item: ITEM,
+				}),
+			}
+		}
+	}
+
+	#[test]
+	fn ensure_read_matches_benchmarks() {
+		let ReadWeightInfo {
+			allowance,
+			balance_of,
+			collection,
+			get_attribute,
+			item_metadata,
+			next_collection_id,
+			owner_of,
+			total_supply,
+		} = ReadWeightInfo::new();
+
+		assert_eq!(total_supply, WeightInfo::total_supply());
+		assert_eq!(balance_of, WeightInfo::balance_of());
+		assert_eq!(allowance, WeightInfo::allowance());
+		assert_eq!(owner_of, WeightInfo::owner_of());
+		assert_eq!(get_attribute, WeightInfo::get_attribute());
+		assert_eq!(collection, WeightInfo::collection());
+		assert_eq!(next_collection_id, WeightInfo::next_collection_id());
+		assert_eq!(item_metadata, WeightInfo::item_metadata());
+	}
+
+	// These types read from the `Collection` storage.
+	#[test]
+	fn ensure_collection_variants_match() {
+		let ReadWeightInfo { total_supply, collection, .. } = ReadWeightInfo::new();
+
+		assert_eq!(total_supply, collection);
+	}
+
+	// Proof size is based on `MaxEncodedLen`, not hardware.
+	// This test ensures that the data structure sizes do not change with upgrades.
+	#[test]
+	fn ensure_expected_proof_size_does_not_change() {
+		let ReadWeightInfo {
+			allowance,
+			balance_of,
+			collection,
+			get_attribute,
+			item_metadata,
+			next_collection_id,
+			owner_of,
+			total_supply,
+		} = ReadWeightInfo::new();
+
+		// These values come from `weights.rs`.
+		assert_eq!(total_supply.proof_size(), 3549);
+		assert_eq!(balance_of.proof_size(), 3585);
+		assert_eq!(allowance.proof_size(), 4326);
+		assert_eq!(owner_of.proof_size(), 4326);
+		assert_eq!(get_attribute.proof_size(), 3944);
+		assert_eq!(collection.proof_size(), 3549);
+		assert_eq!(next_collection_id.proof_size(), 1489);
+		assert_eq!(item_metadata.proof_size(), 3812);
+	}
+}
+
+mod encoding_read_result {
+	use super::*;
+	use crate::nonfungibles::CollectionDetailsOf;
+
+	#[test]
+	fn total_supply() {
+		let total_supply: u128 = 1_000_000;
+		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
+	}
+
+	#[test]
+	fn balance_of() {
+		let balance: u32 = 100;
+		assert_eq!(ReadResult::BalanceOf::<Test>(balance).encode(), balance.encode());
+	}
+
+	#[test]
+	fn allowance() {
+		let allowance = false;
+		assert_eq!(ReadResult::Allowance::<Test>(allowance).encode(), allowance.encode());
+	}
+
+	#[test]
+	fn owner_of() {
+		let mut owner = Some(ALICE);
+		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
+		owner = None;
+		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
+	}
+
+	#[test]
+	fn get_attribute() {
+		let mut attribute = Some("some attribute".as_bytes().to_vec());
+		assert_eq!(
+			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
+			attribute.encode()
+		);
+		attribute = None;
+		assert_eq!(
+			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
+			attribute.encode()
+		);
+	}
+
+	#[test]
+	fn collection() {
+		let bytes = CollectionDetails {
+			owner: ALICE,
+			owner_deposit: 0,
+			items: 0,
+			item_metadatas: 0,
+			item_configs: 0,
+			attributes: 0,
+		}
+		.encode();
+		let mut details = Some(CollectionDetailsOf::<Test>::decode(&mut &bytes[..]).unwrap());
+		assert_eq!(ReadResult::Collection::<Test>(details.clone()).encode(), details.encode());
+		details = None;
+		assert_eq!(ReadResult::Collection::<Test>(details.clone()).encode(), details.encode());
+	}
+
+	#[test]
+	fn next_collection_id_works() {
+		let mut next_collection_id = Some(0);
+		assert_eq!(
+			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
+			next_collection_id.encode()
+		);
+		next_collection_id = None;
+		assert_eq!(
+			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
+			next_collection_id.encode()
+		);
+	}
+
+	#[test]
+	fn item_metadata_works() {
+		let mut data = Some("some metadata".as_bytes().to_vec());
+		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
+		data = None;
+		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
 	}
 }
