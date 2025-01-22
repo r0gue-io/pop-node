@@ -157,7 +157,7 @@ mod extension {
 				env.charged(),
 				overhead_weight(encoded_call.len() as u32) +
 					read_from_buffer_weight(encoded_call.len() as u32) +
-					call.get_dispatch_info().weight
+					call.get_dispatch_info().call_weight
 			);
 		});
 	}

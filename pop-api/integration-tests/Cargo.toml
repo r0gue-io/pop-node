@@ -1,39 +1,37 @@
 [package]
 build = "build.rs"
 edition = "2021"
-name = "integration-tests"
+name = "pop-api-integration-tests"
 version = "0.1.0"
 
 [build-dependencies]
-contract-build = "4.1.1"
+contract-build.workspace = true
 
 [dev-dependencies]
-env_logger = "0.11.2"
-frame-support = { version = "36.0.0", default-features = false }
-frame-support-procedural = { version = "=30.0.1", default-features = false }
-frame-system = { version = "36.1.0", default-features = false }
-log = "0.4.22"
-pallet-assets = { version = "37.0.0", default-features = false }
-pallet-balances = { version = "37.0.0", default-features = false }
-pallet-contracts = { version = "35.0.0", default-features = false }
+codec.workspace = true
+env_logger.workspace = true
+log.workspace = true
+
+frame-support = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+pallet-assets = { workspace = true, default-features = false }
+pallet-balances = { workspace = true, default-features = false }
+pallet-contracts = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
 ] }
-pop-primitives = { path = "../../primitives", default-features = false }
-pop-runtime-devnet = { path = "../../runtime/devnet", default-features = false }
-pop-runtime-testnet = { path = "../../runtime/testnet", default-features = false }
-scale = { package = "parity-scale-codec", version = "3.6.12", default-features = false, features = [
-	"derive",
-] }
-sp-io = { version = "37.0.0", default-features = false }
-sp-runtime = { version = "=38.0.0", default-features = false }
-# TODO: Requires to resolve a dependency version issue. See more at: https://github.com/r0gue-io/pop-node/issues/313.
-staging-xcm = { version = "=14.1.0", default-features = false }
+pop-primitives = { workspace = true, default-features = false }
+pop-runtime-devnet.workspace = true
+pop-runtime-testnet.workspace = true
 
 [features]
 default = [ "std" ]
-devnet = [  ]
+devnet = [ "pop-runtime-devnet/default" ]
 std = [
+	"codec/std",
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-assets/std",
@@ -43,9 +41,7 @@ std = [
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",
 	"pop-runtime-testnet/std",
-	"scale/std",
 	"sp-io/std",
 	"sp-runtime/std",
-	"staging-xcm/std",
 ]
-testnet = [  ]
+testnet = [ "pop-runtime-testnet/default" ]

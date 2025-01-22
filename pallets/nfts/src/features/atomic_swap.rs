@@ -77,8 +77,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			),
 		};
 
-		let now = frame_system::Pallet::<T>::block_number();
-		let deadline = duration.saturating_add(now);
+		let deadline = duration.saturating_add(frame_system::Pallet::<T>::block_number());
 
 		PendingSwapOf::<T, I>::insert(
 			offered_collection_id,
@@ -210,13 +209,20 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		}
 
 		// This also removes the swap.
-		Self::do_transfer(send_collection_id, send_item_id, receive_item.owner.clone(), |_, _| {
-			Ok(())
-		})?;
+		Self::do_transfer(
+			send_collection_id,
+			send_item_id,
+			receive_item.owner.clone(),
+			Some(&receive_item.owner),
+			|_, _| Ok(()),
+		)?;
+		// Owner of `send_item` is responsible for the deposit if the collection balance
+		// went to zero due to the previous transfer.
 		Self::do_transfer(
 			receive_collection_id,
 			receive_item_id,
 			send_item.owner.clone(),
+			Some(&send_item.owner),
 			|_, _| Ok(()),
 		)?;
 

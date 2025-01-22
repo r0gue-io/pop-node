@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 use codec::Decode;
@@ -7,7 +8,6 @@ pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
-use sp_std::vec::Vec;
 use versioning::*;
 
 use crate::{

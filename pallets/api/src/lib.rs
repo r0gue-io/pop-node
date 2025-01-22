@@ -12,7 +12,7 @@ mod mock;
 pub trait Read {
 	/// The type of read requested.
 	type Read;
-	/// The type or result returned.
+	/// The type of result returned.
 	type Result;
 
 	/// Determines the weight of the requested read, used to charge the appropriate weight before
@@ -20,7 +20,7 @@ pub trait Read {
 	///
 	/// # Parameters
 	/// - `request` - The read request.
-	fn weight(read: &Self::Read) -> Weight;
+	fn weight(request: &Self::Read) -> Weight;
 
 	/// Performs the requested read and returns the result.
 	///

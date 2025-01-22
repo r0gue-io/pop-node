@@ -1,8 +1,9 @@
+use alloc::{boxed::Box, vec::Vec};
+
 use frame_support::traits::Get;
 use frame_system::EnsureRoot;
-use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
+use ismp::{host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_parachain::ParachainConsensusClient;
-use sp_std::prelude::*;
 
 use crate::{
 	AccountId, Balance, Balances, Ismp, IsmpParachain, ParachainInfo, Runtime, RuntimeEvent,
@@ -16,7 +17,7 @@ impl pallet_ismp::Config for Runtime {
 	type Coprocessor = Coprocessor;
 	type Currency = Balances;
 	type HostStateMachine = HostStateMachine;
-	type Mmr = pallet_ismp::NoOpMmrTree<Self>;
+	type OffchainDB = ();
 	type Router = Router;
 	type RuntimeEvent = RuntimeEvent;
 	type TimestampProvider = Timestamp;
@@ -45,7 +46,7 @@ impl Get<StateMachine> for HostStateMachine {
 #[derive(Default)]
 pub struct Router;
 impl IsmpRouter for Router {
-	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, Error> {
-		Err(Error::ModuleNotFound(id))
+	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
+		Err(anyhow::anyhow!("Module not found: {:?}", id))
 	}
 }
