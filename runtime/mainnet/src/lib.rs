@@ -20,17 +20,18 @@ use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
+	pallet_prelude::PhantomData,
 	parameter_types,
 	traits::{
-		fungible::{HoldConsideration}, fungible, OnUnbalanced,
+		fungible,
+		fungible::HoldConsideration,
 		tokens::{imbalance::ResolveTo, PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
-		EverythingBut, LinearStoragePrice, TransformOrigin, VariantCountOf, Imbalance
+		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
-	pallet_prelude::PhantomData,
-
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -57,7 +58,9 @@ use sp_core::{
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify, AccountIdConversion, IdentityLookup},
+	traits::{
+		AccountIdConversion, BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Verify,
+	},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -644,6 +647,7 @@ impl pallet_treasury::Config for Runtime {
 	type BenchmarkHelper = ();
 	type Beneficiary = AccountId;
 	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
+	type BlockNumberProvider = System;
 	type Burn = Burn;
 	type BurnDestination = ();
 	type Currency = pallet_balances::Pallet<Runtime>;
@@ -657,7 +661,6 @@ impl pallet_treasury::Config for Runtime {
 	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
 	type SpendPeriod = SpendPeriod;
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
-	type BlockNumberProvider = System;
 }
 
 #[frame_support::runtime]
