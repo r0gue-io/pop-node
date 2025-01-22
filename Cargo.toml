@@ -77,77 +77,6 @@ pop-runtime-mainnet = { path = "runtime/mainnet", default-features = true } # de
 pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
 
 # Substrate
-<<<<<<< HEAD
-frame-benchmarking = { version = "36.0.0", default-features = false }
-frame-benchmarking-cli = "40.0.0"
-frame-executive = { version = "36.0.0", default-features = false }
-frame-metadata-hash-extension = { version = "0.4.0", default-features = false }
-frame-support = { version = "36.0.0", default-features = false }
-frame-support-procedural = { version = "=30.0.1", default-features = false }
-frame-system = { version = "36.1.0", default-features = false }
-frame-system-benchmarking = { version = "36.0.0", default-features = false }
-frame-system-rpc-runtime-api = { version = "33.0.0", default-features = false }
-frame-try-runtime = { version = "0.42.0", default-features = false }
-pallet-assets = { version = "37.0.0", default-features = false }
-pallet-aura = { version = "35.0.0", default-features = false }
-pallet-authorship = { version = "36.0.0", default-features = false }
-pallet-balances = { version = "37.0.0", default-features = false }
-pallet-contracts = { version = "35.0.0", default-features = false }
-pallet-message-queue = { version = "39.0.0", default-features = false }
-pallet-multisig = { version = "36.0.0", default-features = false }
-pallet-nft-fractionalization = { version = "18.0.0", default-features = false }
-pallet-nfts-runtime-api = { version = "22.0.0", default-features = false }
-pallet-preimage = { version = "36.0.0", default-features = false }
-pallet-proxy = { version = "36.0.0", default-features = false }
-pallet-scheduler = { version = "37.0.0", default-features = false }
-pallet-session = { version = "36.0.0", default-features = false }
-pallet-sudo = { version = "36.0.0", default-features = false }
-pallet-timestamp = { version = "35.0.0", default-features = false }
-pallet-transaction-payment = { version = "36.0.0", default-features = false }
-pallet-transaction-payment-rpc = "38.0.0"
-pallet-transaction-payment-rpc-runtime-api = { version = "36.0.0", default-features = false }
-pallet-treasury = { version = "35.0.0", default-features = false }
-pallet-utility = { version = "36.0.0", default-features = false }
-prometheus-endpoint = { version = "0.17.0", default-features = false, package = "substrate-prometheus-endpoint" }
-sc-basic-authorship = "0.42.0"
-sc-chain-spec = "35.0.0"
-sc-cli = "0.44.0"
-sc-client-api = "35.1.0"
-sc-consensus = "0.41.0"
-sc-executor = "0.39.0"
-sc-network = "0.42.0"
-sc-network-sync = "0.41.0"
-sc-offchain = "37.0.0"
-sc-rpc = "37.0.0"
-sc-service = "0.43.0"
-sc-sysinfo = "35.0.0"
-sc-telemetry = "22.0.0"
-sc-tracing = "35.0.0"
-sc-transaction-pool = "35.0.0"
-sc-transaction-pool-api = "35.0.0"
-sp-api = { version = "33.0.0", default-features = false }
-sp-authority-discovery = { version = "33.0.0", default-features = false }
-sp-block-builder = { version = "33.0.0", default-features = false }
-sp-blockchain = "35.1.0"
-sp-consensus-aura = { version = "0.39.0", default-features = false }
-sp-consensus-babe = { version = "0.39.0", default-features = false }
-sp-consensus-beefy = { version = "20.0.0", default-features = false }
-sp-consensus-grandpa = { version = "20.0.0", default-features = false }
-sp-core = { version = "34.0.0", default-features = false }
-sp-genesis-builder = { version = "0.14.0", default-features = false }
-sp-inherents = { version = "33.0.0", default-features = false }
-sp-io = { version = "37.0.0", default-features = false }
-sp-keystore = "0.40.0"
-sp-mmr-primitives = { version = "33.0.0", default-features = false }
-sp-offchain = { version = "33.0.0", default-features = false }
-sp-runtime = { version = "38.0.1", default-features = false }
-sp-session = { version = "34.0.0", default-features = false }
-sp-std = { version = "14.0.0", default-features = false }
-sp-timestamp = "33.0.0"
-sp-transaction-pool = { version = "33.0.0", default-features = false }
-sp-version = { version = "36.0.0", default-features = false }
-substrate-frame-rpc-system = "36.0.0"
-=======
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 frame-benchmarking-cli = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
 frame-executive = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
@@ -175,6 +104,7 @@ pallet-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch 
 pallet-transaction-payment = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 pallet-transaction-payment-rpc = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
 pallet-transaction-payment-rpc-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
+pallet-treasury = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 pallet-utility = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 prometheus-endpoint = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false, package = "substrate-prometheus-endpoint" }
 sc-basic-authorship = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
@@ -216,7 +146,6 @@ sp-timestamp = { git = "https://github.com/paritytech/polkadot-sdk", branch = "s
 sp-transaction-pool = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 sp-version = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
->>>>>>> 8b2438b693630926484db3f02a65ab5a9cea060c
 
 # Polkadot
 pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
@@ -256,21 +185,12 @@ parachain-info = { git = "https://github.com/paritytech/polkadot-sdk", branch = 
 parachains-common = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 
 # Runtimes
-<<<<<<< HEAD
-#asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-#asset-hub-westend-runtime = { version = "0.23.0", default-features = false }
-#paseo-runtime = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-#paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes/", tag = "v1.3.3", default-features = false }
-#westend-runtime = { version = "15.0.0", default-features = false }
-#westend-runtime-constants = { version = "15.0.0", default-features = false }
-=======
 asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.4" }
 asset-hub-westend-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
 paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.4" }
 paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.3.4" }
 westend-runtime = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
 westend-runtime-constants = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
->>>>>>> 8b2438b693630926484db3f02a65ab5a9cea060c
 
 ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
 ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }

@@ -22,13 +22,15 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration,
+		fungible::{HoldConsideration}, fungible, OnUnbalanced,
 		tokens::{imbalance::ResolveTo, PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
-		EverythingBut, LinearStoragePrice, TransformOrigin, VariantCountOf,
+		EverythingBut, LinearStoragePrice, TransformOrigin, VariantCountOf, Imbalance
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
+	pallet_prelude::PhantomData,
+
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
@@ -55,7 +57,7 @@ use sp_core::{
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify, AccountIdConversion},
+	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify, AccountIdConversion, IdentityLookup},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -382,36 +384,36 @@ parameter_types! {
 	pub MaintenancePot: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
 }
 
-// pub struct DealWithFees<R>(PhantomData<R>);
-// impl<R> OnUnbalanced<fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
-// where
-// 	R: pallet_balances::Config
-// 	AccountIdOf<R>: From<polkadot_primitives::AccountId> + Into<polkadot_primitives::AccountId>,
-// 	<R as frame_system::Config>::RuntimeEvent: From<pallet_balances::Event<R>>,
-// {
-// 	fn on_unbalanceds(
-// 		mut fees_then_tips: impl Iterator<
-// 			Item = fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>,
-// 		>,
-// 	) {
-// 		if let Some(mut fees) = fees_then_tips.next() {
-// 			if let Some(tips) = fees_then_tips.next() {
-// 				tips.merge_into(&mut fees);
-// 			}
+pub struct DealWithFees<R>(PhantomData<R>);
+impl<R> OnUnbalanced<fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
+where
+	R: pallet_balances::Config<Balance = Balance, AccountId = AccountId>,
+	<R as frame_system::Config>::AccountId: From<AccountId> + Into<AccountId>,
+	<R as frame_system::Config>::RuntimeEvent: From<pallet_balances::Event<R>>,
+{
+	fn on_unbalanceds(
+		mut fees_then_tips: impl Iterator<
+			Item = fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>,
+		>,
+	) {
+		if let Some(mut fees) = fees_then_tips.next() {
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut fees);
+			}
 
-// 			let split = fees.ration(50, 50);
+			let split = fees.ration(50, 50);
 
-// 			ResolveTo::<<TreasuryAccount, pallet_balances::Pallet<R>>::on_unbalanced(fees.0)
-// 			ResolveTo::<<MaintenancePot, pallet_balances::Pallet<R>>::on_unbalanced(fees.1)
-// 		}
-// 	}
-// }
+			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_unbalanced(split.0);
+			ResolveTo::<MaintenancePot, pallet_balances::Pallet<R>>::on_unbalanced(split.1);
+		}
+	}
+}
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type OnChargeTransaction =
-		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
+		pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees<Runtime>>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -635,27 +637,28 @@ parameter_types! {
 	pub const MaxSpend: Balance = u32::MAX as u128;
 }
 
-// impl pallet_treasury::Config for Runtime {
-// 	type AssetKind = ();
-// 	type BalanceConverter = UnityAssetBalanceConversion;
-// 	#[cfg(feature = "runtime-benchmarks")]
-// 	type BenchmarkHelper = ();
-// 	type Beneficiary = AccountId;
-// 	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
-// 	type Burn = Burn;
-// 	type BurnDestination = ();
-// 	type Currency = pallet_balances::Pallet<Runtime>;
-// 	type MaxApprovals = MaxApprovals;
-// 	type PalletId = TreasuryPalletId;
-// 	type Paymaster = TreasuryPaymaster<Self::Currency>;
-// 	type PayoutPeriod = PayoutPeriod;
-// 	type RejectOrigin = EnsureRoot<AccountId>;
-// 	type RuntimeEvent = RuntimeEvent;
-// 	type SpendFunds = ();
-// 	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
-// 	type SpendPeriod = SpendPeriod;
-// 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
-// }
+impl pallet_treasury::Config for Runtime {
+	type AssetKind = ();
+	type BalanceConverter = UnityAssetBalanceConversion;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type Beneficiary = AccountId;
+	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
+	type Burn = Burn;
+	type BurnDestination = ();
+	type Currency = pallet_balances::Pallet<Runtime>;
+	type MaxApprovals = MaxApprovals;
+	type PalletId = TreasuryPalletId;
+	type Paymaster = TreasuryPaymaster<Self::Currency>;
+	type PayoutPeriod = PayoutPeriod;
+	type RejectOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type SpendFunds = ();
+	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
+	type SpendPeriod = SpendPeriod;
+	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+	type BlockNumberProvider = System;
+}
 
 #[frame_support::runtime]
 mod runtime {
@@ -689,8 +692,8 @@ mod runtime {
 	pub type Balances = pallet_balances::Pallet<Runtime>;
 	#[runtime::pallet_index(11)]
 	pub type TransactionPayment = pallet_transaction_payment::Pallet<Runtime>;
-	// #[runtime::pallet_index(12)]
-	// pub type Treasury = pallet_treasury::Pallet<Runtime>;
+	#[runtime::pallet_index(12)]
+	pub type Treasury = pallet_treasury::Pallet<Runtime>;
 
 	// Governance
 	#[runtime::pallet_index(15)]
