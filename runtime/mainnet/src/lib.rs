@@ -406,12 +406,8 @@ where
 
 			let split = fees.ration(50, 50);
 
-			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(
-				split.0,
-			);
-			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(
-				split.1,
-			);
+			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_unbalanced(split.0);
+			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<R>>::on_unbalanced(split.1);
 		}
 	}
 }
