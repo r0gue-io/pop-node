@@ -28,7 +28,7 @@ use frame_support::{
 		tokens::{imbalance::ResolveTo, PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
 		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
-		VariantCountOf,
+		VariantCountOf, NeverEnsureOrigin
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -384,7 +384,7 @@ parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
 	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").expect("sudo address is valid SS58");
-	pub MaintenancePot: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
+	pub MaintenanceAccount: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
 }
 
 pub struct DealWithFees<R>(PhantomData<R>);
@@ -403,20 +403,20 @@ where
 			if let Some(tips) = fees_then_tips.next() {
 				tips.merge_into(&mut fees);
 			}
-
+			
 			let split = fees.ration(50, 50);
 
-			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_unbalanced(split.0);
-			ResolveTo::<MaintenancePot, pallet_balances::Pallet<R>>::on_unbalanced(split.1);
+			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(split.0);
+			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(split.1);
 		}
 	}
 }
+pub type OnChargeTransaction<T> = pallet_transaction_payment::FungibleAdapter<pallet_balances::Pallet<T>, DealWithFees<T>>;
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction =
-		pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees<Runtime>>;
+	type OnChargeTransaction = OnChargeTransaction<Runtime>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -632,23 +632,41 @@ pub(crate) type TreasuryPaymaster<T> = PayFromAccount<T, TreasuryAccount>;
 
 parameter_types! {
 	pub const SpendPeriod: BlockNumber = 6 * DAYS;
-	pub const Burn: Permill = ();
 	pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
 	pub const MaxApprovals: u32 = 100;
 	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
 	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID.into_account_truncating();
-	pub const MaxSpend: Balance = u32::MAX as u128;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct BenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl pallet_treasury::ArgumentsFactory<(), AccountId> for BenchmarkHelper {
+	fn create_asset_kind(_seed: u32) -> () {
+		()
+	}
+
+	fn create_beneficiary(seed: [u8; 32]) -> AccountId {
+		let account_id = AccountId::from(seed);
+		Balances::force_set_balance(
+			crate::RuntimeOrigin::root(),
+			account_id.clone().into(),
+			EXISTENTIAL_DEPOSIT,
+		)
+		.unwrap();
+		account_id
+	}
 }
 
 impl pallet_treasury::Config for Runtime {
 	type AssetKind = ();
 	type BalanceConverter = UnityAssetBalanceConversion;
 	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = ();
+	type BenchmarkHelper = BenchmarkHelper;
 	type Beneficiary = AccountId;
 	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
 	type BlockNumberProvider = System;
-	type Burn = Burn;
+	type Burn = ();
 	type BurnDestination = ();
 	type Currency = pallet_balances::Pallet<Runtime>;
 	type MaxApprovals = MaxApprovals;
@@ -658,7 +676,7 @@ impl pallet_treasury::Config for Runtime {
 	type RejectOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
-	type SpendOrigin = frame_system::EnsureRootWithSuccess<AccountId, MaxSpend>;
+	type SpendOrigin = NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 }
@@ -1021,10 +1039,12 @@ cumulus_pallet_parachain_system::register_validate_block! {
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
-
 	use pallet_balances::AdjustmentDirection;
 	use BalancesCall::*;
 	use RuntimeCall::Balances;
+	use sp_runtime::traits::Dispatchable;
+	use frame_support::dispatch::GetDispatchInfo;
+	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
 
 	use super::*;
 	#[test]
@@ -1114,5 +1134,94 @@ mod tests {
 	#[test]
 	fn treasury_account_is_pallet_id_truncated() {
 		assert_eq!(TreasuryAccount::get(), TREASURY_PALLET_ID.into_account_truncating());
+	}
+
+	const ALICE: [u8; 32] = [1; 32];
+	pub fn new_test_ext() -> sp_io::TestExternalities {
+		let initial_balance = 100_000_000 * UNIT;
+		let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(TreasuryAccount::get(), initial_balance), (MaintenanceAccount::get(), initial_balance), (ALICE.into(), initial_balance)],
+		}
+			.assimilate_storage(&mut t)
+			.unwrap();
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	#[test]
+	fn type_of_on_charge_transaction_is_correct() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
+			TypeId::of::<OnChargeTransaction<Runtime>>(),
+		);
+	}
+
+	#[test]
+	fn transaction_payment_charges_fees_via_balances_and_funds_treasury_and_maintenance_equally() {
+		new_test_ext().execute_with(|| {
+			let who: AccountId = ALICE.into();
+			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
+			let fee = UNIT / 10;
+			let tip = UNIT / 2;
+			let fee_plus_tip = fee + tip;
+			let treasury_balance = pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
+			let maintenance_balance = pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
+			let who_balance = pallet_balances::Pallet::<Runtime>::free_balance(&who);
+			let dispatch_info = call.get_dispatch_info();
+
+			// NOTE: OnChargeTransaction functions expect tip to be included within fee
+			let liquidity_info =
+				<OnChargeTransaction<Runtime> as OnChargeTransactionT<Runtime>>::withdraw_fee(
+					&who,
+					&call,
+					&dispatch_info,
+					fee_plus_tip,
+					0,
+				)
+				.unwrap();
+			<OnChargeTransaction<Runtime> as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
+				&who,
+				&dispatch_info,
+				&call.dispatch(RuntimeOrigin::signed(who.clone())).unwrap(),
+				fee_plus_tip,
+				0,
+				liquidity_info,
+			)
+			.unwrap();
+
+			let treasury_expected_balance = treasury_balance + (fee_plus_tip / 2);
+			let maintenance_expected_balance = maintenance_balance + (fee_plus_tip / 2);
+			let who_expected_balance = who_balance - fee_plus_tip;
+
+			assert!(treasury_balance != 0);
+			assert!(maintenance_expected_balance != 0);
+
+			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()), treasury_expected_balance);
+			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()), maintenance_expected_balance);
+			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&who), who_expected_balance);
+		})
+	}
+
+	#[test]
+	fn test_fees_and_tip_split() {
+		new_test_ext().execute_with(|| {
+			let fee =
+				<pallet_balances::Pallet<Runtime> as frame_support::traits::fungible::Balanced<
+					AccountId,
+				>>::issue(10);
+			let tip =
+				<pallet_balances::Pallet<Runtime> as frame_support::traits::fungible::Balanced<
+					AccountId,
+				>>::issue(20);
+			let treasury_balance = pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
+			let maintenance_balance = pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
+			DealWithFees::<Runtime>::on_unbalanceds(vec![fee, tip].into_iter());
+
+			// Each to get 50%, total is 30 so 15 each.
+			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()),  treasury_balance + 15);
+			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()), maintenance_balance + 15);
+		});
 	}
 }
