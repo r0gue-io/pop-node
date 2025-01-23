@@ -1044,7 +1044,7 @@ cumulus_pallet_parachain_system::register_validate_block! {
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
-
+	use frame_support::pallet_prelude::Encode;
 	use frame_support::dispatch::GetDispatchInfo;
 	use pallet_balances::AdjustmentDirection;
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
@@ -1253,4 +1253,74 @@ mod tests {
 			);
 		});
 	}
+
+	#[test]
+	fn treasury_paymaster_is_correct_type() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_treasury::Config>::Paymaster>(),
+			TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
+		);
+	}
+
+	#[test]
+fn treasury_spend_period_is_set() {
+	assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
+}
+
+#[test]
+fn treasury_pallet_id_is_set() {
+	assert_eq!(<Runtime as pallet_treasury::Config>::PalletId::get().encode(), PalletId(*b"treasury").encode());
+}
+
+#[test]
+fn treasury_max_approvals_is_set() {
+	assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
+}
+
+#[test]
+fn treasury_payout_period_is_set() {
+	assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
+}
+
+
+#[test]
+fn treasury_spend_origin_is_correct() {
+	assert_eq!(
+		TypeId::of::<<Runtime as pallet_treasury::Config>::SpendOrigin>(),
+		TypeId::of::<NeverEnsureOrigin<Balance>>(),
+	);
+}
+
+#[test]
+fn treasury_reject_origin_is_correct() {
+	assert_eq!(
+		TypeId::of::<<Runtime as pallet_treasury::Config>::RejectOrigin>(),
+		TypeId::of::<EnsureRoot<AccountId>>(),
+	);
+}
+
+#[test]
+fn treasury_burn_is_nothing() {
+	assert_eq!(
+		TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(),
+		TypeId::of::<()>(),
+	);
+}
+
+#[test]
+fn treasury_balance_converter_is_set() {
+	assert_eq!(
+		TypeId::of::<<Runtime as pallet_treasury::Config>::BalanceConverter>(),
+		TypeId::of::<UnityAssetBalanceConversion>(),
+	);
+}
+
+#[test]
+fn treasury_block_number_provider_is_set() {
+	assert_eq!(
+		TypeId::of::<<Runtime as pallet_treasury::Config>::BlockNumberProvider>(),
+		TypeId::of::<System>(),
+	);
+}
+
 }
