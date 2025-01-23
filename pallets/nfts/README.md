@@ -51,7 +51,9 @@ The NFTs pallet in Substrate is designed to make the following possible:
 * `transfer`: Send an item to a new owner.
 * `redeposit`: Update the deposit amount of an item, potentially freeing funds.
 * `approve_transfer`: Name a delegate who may authorize a transfer.
+* `approve_collection_transfer`: Name a delegate who may authorize a transfer of all collection items owned by the account.
 * `cancel_approval`: Revert the effects of a previous `approve_transfer`.
+* `cancel_collection_approval`: Revert the effects of a previous `approve_collection_transfer`.
 * `approve_item_attributes`: Name a delegate who may change item's attributes within a namespace.
 * `cancel_item_attributes_approval`: Revert the effects of a previous `approve_item_attributes`.
 * `set_price`: Set the price for an item.
@@ -70,6 +72,7 @@ The NFTs pallet in Substrate is designed to make the following possible:
 * `lock_item_transfer`: Prevent an individual item from being transferred.
 * `unlock_item_transfer`: Revert the effects of a previous `lock_item_transfer`.
 * `clear_all_transfer_approvals`: Clears all transfer approvals set by calling the `approve_transfer`.
+* `clear_collection_approvals`: Clears collection approvals set by calling the `approve_collection_transfer`.
 * `lock_collection`: Prevent all items within a collection from being transferred (making them all `soul bound`).
 * `lock_item_properties`: Lock item's metadata or attributes.
 * `transfer_ownership`: Alter the owner of a collection, moving all associated deposits. (Ownership of individual items
@@ -95,6 +98,9 @@ The NFTs pallet in Substrate is designed to make the following possible:
 * `force_collection_owner`: Change collection's owner.
 * `force_collection_config`: Change collection's config.
 * `force_set_attribute`: Set an attribute.
+* `force_approve_collection_transfer`: Name a delegate who may authorize a transfer of all collection items owned by the specified account.
+* `force_cancel_collection_approval`: Revert the effects of a previous `approve_collection_transfer`.
+* `force_clear_collection_approvals`: Revert the effects of all previous `approve_collection_transfer` calls for the collection.
 
 Please refer to the [`Call`](https://paritytech.github.io/substrate/master/pallet_nfts/pallet/enum.Call.html) enum and
 its associated variants for documentation on each function.

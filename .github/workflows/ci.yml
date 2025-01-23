@@ -42,7 +42,7 @@ jobs:
 
       - name: Check Build
         run: |
-          cargo check --release --locked --features=runtime-benchmarks,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,try-runtime
 
   check-ismp:
     needs: lint
@@ -52,7 +52,7 @@ jobs:
       - uses: "./.github/actions/init"
       - name: Check Build with ISMP
         run: |
-          cargo check --release --locked --features=ismp,runtime-benchmarks,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,runtime-benchmarks,try-runtime
 
   clippy:
     needs: lint
@@ -71,7 +71,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --release --locked --features=runtime-benchmarks
+          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks
 
   clippy-ismp:
     needs: lint
@@ -90,7 +90,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --release --locked --features=runtime-benchmarks,ismp
+          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,ismp
 
   test:
     needs: lint
@@ -101,18 +101,42 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        run: cargo test --release --locked --workspace --features=runtime-benchmarks --exclude integration-tests
+        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests --features=runtime-benchmarks
 
   integration-tests:
     needs: lint
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          - "westend,devnet"
+          - "westend,testnet"
+          - "westend,mainnet"
     steps:
       - uses: actions/checkout@v4
 
       - uses: "./.github/actions/init"
 
       - name: Run integration tests
-        run: cargo test --release --locked --package integration-tests
+        working-directory: integration-tests
+        run: cargo test --release --locked --features "${{ matrix.features }}"
+
+  api-integration-tests:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        features:
+          # different features use a different runtime to run the api-integration-tests against
+          - "devnet"
+          - "testnet"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run API integration tests
+        run: cargo test -p pop-api-integration-tests --release --locked --features "${{ matrix.features }}"
 
   api-tests:
     runs-on: ubuntu-latest
@@ -123,29 +147,7 @@ jobs:
 
       - name: Run tests
         working-directory: pop-api
-        run: cargo test --release --all-features
-
-  api-integration-tests-devnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: "./.github/actions/init"
-
-      - name: Run integration tests
-        working-directory: pop-api/integration-tests
-        run: cargo test --release --features devnet
-
-  api-integration-tests-testnet:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: "./.github/actions/init"
-
-      - name: Run integration tests
-        working-directory: pop-api/integration-tests
-        run: cargo test --release --features testnet
+        run: cargo test --release --locked --all-features
 
   coverage:
     needs: lint
@@ -161,7 +163,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --all-features --workspace --exclude integration-tests --lib --bins --codecov --output-path codecov.json
+        run: cargo llvm-cov --all-features --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4

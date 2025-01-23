@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, path::PathBuf};
+use std::path::PathBuf;
 
 use cumulus_client_service::storage_proof_size::HostFunctions as ReclaimHostFunctions;
 use cumulus_primitives_core::ParaId;
@@ -7,7 +7,7 @@ use log::info;
 use pop_runtime_common::Block;
 use sc_cli::{
 	ChainSpec, CliConfiguration, DefaultConfigurationValues, ImportParams, KeystoreParams,
-	NetworkParams, Result, SharedParams, SubstrateCli,
+	NetworkParams, Result, RpcEndpoint, SharedParams, SubstrateCli,
 };
 use sc_service::config::{BasePath, PrometheusConfig};
 use sp_runtime::traits::HashingFor;
@@ -73,11 +73,11 @@ impl RuntimeResolver for PathBuf {
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
 		"dev" | "devnet" | "dev-paseo" =>
-			Box::new(chain_spec::development_config(Relay::PaseoLocal)),
-		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_config(Relay::Paseo)),
+			Box::new(chain_spec::development_chain_spec(Relay::PaseoLocal)),
+		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_chain_spec(Relay::Paseo)),
 		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
-			Box::new(chain_spec::mainnet_config(Relay::Polkadot)),
-		"" | "local" => Box::new(chain_spec::development_config(Relay::PaseoLocal)),
+			Box::new(chain_spec::mainnet_chain_spec(Relay::Polkadot)),
+		"" | "local" => Box::new(chain_spec::development_chain_spec(Relay::PaseoLocal)),
 		path => {
 			let path: PathBuf = path.into();
 			match path.runtime() {
@@ -346,10 +346,15 @@ pub fn run() -> Result<()> {
 
 			runner.run_node_until_exit(|config| async move {
 				let hwbench = (!cli.no_hardware_benchmarks)
-					.then_some(config.database.path().map(|database_path| {
-						let _ = std::fs::create_dir_all(database_path);
-						sc_sysinfo::gather_hwbench(Some(database_path))
-					}))
+					.then(|| {
+						config.database.path().map(|database_path| {
+							let _ = std::fs::create_dir_all(database_path);
+							sc_sysinfo::gather_hwbench(
+								Some(database_path),
+								&SUBSTRATE_REFERENCE_HARDWARE,
+							)
+						})
+					})
 					.flatten();
 
 				let para_id = chain_spec::Extensions::try_get(&*config.chain_spec)
@@ -470,7 +475,7 @@ impl CliConfiguration<Self> for RelayChainCli {
 			.or_else(|| self.base_path.clone().map(Into::into)))
 	}
 
-	fn rpc_addr(&self, default_listen_port: u16) -> Result<Option<SocketAddr>> {
+	fn rpc_addr(&self, default_listen_port: u16) -> Result<Option<Vec<RpcEndpoint>>> {
 		self.base.base.rpc_addr(default_listen_port)
 	}
 
@@ -482,15 +487,9 @@ impl CliConfiguration<Self> for RelayChainCli {
 		self.base.base.prometheus_config(default_listen_port, chain_spec)
 	}
 
-	fn init<F>(
-		&self,
-		_support_url: &String,
-		_impl_version: &String,
-		_logger_hook: F,
-		_config: &sc_service::Configuration,
-	) -> Result<()>
+	fn init<F>(&self, _support_url: &String, _impl_version: &String, _logger_hook: F) -> Result<()>
 	where
-		F: FnOnce(&mut sc_cli::LoggerBuilder, &sc_service::Configuration),
+		F: FnOnce(&mut sc_cli::LoggerBuilder),
 	{
 		unreachable!("PolkadotCli is never initialized; qed");
 	}

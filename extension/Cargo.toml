@@ -53,6 +53,7 @@ std = [
 	"pallet-balances/std",
 	"pallet-contracts/std",
 	"pallet-timestamp/std",
+	"scale-info/std",
 	"sp-core/std",
 	"sp-io/std",
 	"sp-runtime/std",
