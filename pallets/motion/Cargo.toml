@@ -1,0 +1,54 @@
+[package]
+authors = [ "Substrate DevHub <https://github.com/substrate-developer-hub>" ]
+description = "FRAME pallet to wrap council calls providing root origin to the council."
+edition = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+name = "pallet-motion"
+publish = false
+repository = { workspace = true }
+version = "4.0.0-dev"
+
+[package.metadata.docs.rs]
+targets = [ "x86_64-unknown-linux-gnu" ]
+
+[dependencies]
+codec = { workspace = true, default-features = false, features = [
+	"derive",
+] }
+frame-benchmarking = { workspace = true, default-features = false, optional = true }
+frame-support = { workspace = true }
+frame-system = { workspace = true }
+log = { workspace = true, default-features = false }
+pallet-collective = { workspace = true, default-features = false }
+scale-info = { workspace = true, default-features = false, features = [
+	"derive",
+] }
+sp-runtime = { workspace = true, default-features = false }
+sp-std = { workspace = true }
+
+[dev-dependencies]
+pallet-balances = { workspace = true, default-features = false }
+pallet-membership = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-io = { workspace = true, default-features = false }
+
+[features]
+default = [ "std" ]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
+]
+std = [
+	"codec/std",
+	"frame-benchmarking?/std",
+	"frame-support/std",
+	"frame-system/std",
+	"log/std",
+	"pallet-balances/std",
+	"pallet-collective/std",
+	"scale-info/std",
+	"sp-runtime/std",
+	"sp-std/std",
+]
+try-runtime = [ "frame-support/try-runtime" ]
