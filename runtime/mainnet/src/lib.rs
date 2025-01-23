@@ -632,7 +632,7 @@ pub(crate) type TreasuryPaymaster<T> = PayFromAccount<T, TreasuryAccount>;
 
 parameter_types! {
 	pub const SpendPeriod: BlockNumber = 6 * DAYS;
-	pub const Burn: Permill = Permill::from_perthousand(2);
+	pub const Burn: Permill = ();
 	pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
 	pub const MaxApprovals: u32 = 100;
 	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
