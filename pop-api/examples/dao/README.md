@@ -1,4 +1,5 @@
 # PSP22 DAO contract example
+This contract implements a Decentralized Autonomous Organization with token-based voting system built with Pop API. Members can submit a proposal, vote for or against it, and enact approved proposals.
 
 ## Description
 This contract implements a Decentralized Autonomous Organization using Psp22.
@@ -6,7 +7,7 @@ The key functionalities include:
 - **Membership Management**: It maintains a registry of DAO members.
 - **Proposal Lifecycle**: The contract manages the creation, voting, and execution of proposals. Each proposal includes details like description, voting period, vote tallies, execution status, beneficiary, and amount to be awarded.
 - **Voting Mechanism**: It implements a voting system where members can vote with their balance on proposals. The contract tracks voting periods and maintains vote counts for each proposal.
-- **Token Integration**: The DAO is associated with a specific Psp22 token_id.
+- **Token Integration**: The Pop API is used to create and manage the DAO token.
 - **Governance Parameters**: governance parameters such as voting periods are customizable.
 - **Vote Tracking**: The contract keeps track of when members last voted.
 - **Proposal Execution**: Once a proposal's voting period ends and passes, the contract handles its execution: transferring funds to the chosen beneficiary.
@@ -18,7 +19,19 @@ The key functionalities include:
 - **Vote**: Members of the Dao can vote for or against a given proposal, through the selection of the corresponding proposal ID. The vote has to be cast within the voting period of the selected proposal.
 - **Proposal enactment**: After the end of the voting period, If the proposal has been accepted by the Dao Members, the proposal can be enacted, i.e. funds can be claimed/transferred to the account specified as the beneficiary in the proposal. Any member can claim the reward for the winning proposal.
 
-*It is assumed that after Dao & associated token creation, potential members own the Dao Token through airdrop, token purchase, etc... (These mechanisms are not part of the contract). 
+
+## Test with Pop Drink
+
+Since this contract interacts directly with Pop’s runtime through the Pop API, it requires [Pop Drink](https://github.com/r0gue-io/pop-drink) for testing. See how the contract is tested in [tests](./tests.rs).
+
+## Support
+
+Be part of our passionate community of Web3 builders. [Join our Telegram](https://t.me/onpopio)!
+
+Feel free to raise issues if anything is unclear, you have ideas or want to contribute to Pop! Examples using the fungibles API are always welcome!
+
+For any questions related to ink! you can also go to [Polkadot Stack Exchange](https://polkadot.stackexchange.com/) or
+ask the [ink! community](https://t.me/inkathon/1).
 
 ### Flowchart
 

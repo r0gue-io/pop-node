@@ -96,7 +96,7 @@ mod dao {
 	}
 
 	/// Representation of a member in the voting system
-	#[derive(Debug, Clone)]
+	#[derive(Debug, Clone, Default)]
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct Member {
@@ -378,15 +378,13 @@ mod dao {
 		/// # Parameters
 		/// - `amount` - Balance transferred to the Dao and representing
 		/// the voting power of the member.
-
 		#[ink(message)]
 		pub fn join(&mut self, amount: Balance) -> Result<(), Error> {
 			let caller = self.env().caller();
 			let contract = self.env().account_id();
 			api::transfer_from(self.token_id, caller, contract, amount)
 				.map_err(Psp22Error::from)?;
-			let member =
-				self.members.get(caller).unwrap_or(Member { voting_power: 0, last_vote: 0 });
+			let member = self.members.get(caller).unwrap_or_default();
 
 			let voting_power = member.voting_power.saturating_add(amount);
 			self.members
@@ -403,7 +401,7 @@ mod dao {
 
 		#[ink(message)]
 		pub fn get_member(&mut self, account: AccountId) -> Member {
-			self.members.get(account).unwrap_or(Member { voting_power: 0, last_vote: 0 })
+			self.members.get(account).unwrap_or_default()
 		}
 
 		#[ink(message)]
@@ -457,7 +455,7 @@ mod dao {
 
 	impl From<Psp22Error> for Error {
 		fn from(error: Psp22Error) -> Self {
-			Error::Psp22(error)
+			Self::Psp22(error)
 		}
 	}
 
