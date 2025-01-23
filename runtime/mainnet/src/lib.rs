@@ -27,8 +27,8 @@ use frame_support::{
 		fungible::HoldConsideration,
 		tokens::{imbalance::ResolveTo, PayFromAccount, UnityAssetBalanceConversion},
 		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
-		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
-		VariantCountOf, NeverEnsureOrigin
+		EverythingBut, Imbalance, LinearStoragePrice, NeverEnsureOrigin, OnUnbalanced,
+		TransformOrigin, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -403,15 +403,20 @@ where
 			if let Some(tips) = fees_then_tips.next() {
 				tips.merge_into(&mut fees);
 			}
-			
+
 			let split = fees.ration(50, 50);
 
-			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(split.0);
-			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(split.1);
+			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(
+				split.0,
+			);
+			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<R>>::on_nonzero_unbalanced(
+				split.1,
+			);
 		}
 	}
 }
-pub type OnChargeTransaction<T> = pallet_transaction_payment::FungibleAdapter<pallet_balances::Pallet<T>, DealWithFees<T>>;
+pub type OnChargeTransaction<T> =
+	pallet_transaction_payment::FungibleAdapter<pallet_balances::Pallet<T>, DealWithFees<T>>;
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
@@ -1039,12 +1044,13 @@ cumulus_pallet_parachain_system::register_validate_block! {
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
+
+	use frame_support::dispatch::GetDispatchInfo;
 	use pallet_balances::AdjustmentDirection;
+	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
+	use sp_runtime::traits::Dispatchable;
 	use BalancesCall::*;
 	use RuntimeCall::Balances;
-	use sp_runtime::traits::Dispatchable;
-	use frame_support::dispatch::GetDispatchInfo;
-	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
 
 	use super::*;
 	#[test]
@@ -1141,10 +1147,14 @@ mod tests {
 		let initial_balance = 100_000_000 * UNIT;
 		let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
 		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![(TreasuryAccount::get(), initial_balance), (MaintenanceAccount::get(), initial_balance), (ALICE.into(), initial_balance)],
+			balances: vec![
+				(TreasuryAccount::get(), initial_balance),
+				(MaintenanceAccount::get(), initial_balance),
+				(ALICE.into(), initial_balance),
+			],
 		}
-			.assimilate_storage(&mut t)
-			.unwrap();
+		.assimilate_storage(&mut t)
+		.unwrap();
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
@@ -1166,8 +1176,10 @@ mod tests {
 			let fee = UNIT / 10;
 			let tip = UNIT / 2;
 			let fee_plus_tip = fee + tip;
-			let treasury_balance = pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
-			let maintenance_balance = pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
+			let treasury_balance =
+				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
+			let maintenance_balance =
+				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
 			let who_balance = pallet_balances::Pallet::<Runtime>::free_balance(&who);
 			let dispatch_info = call.get_dispatch_info();
 
@@ -1198,9 +1210,18 @@ mod tests {
 			assert!(treasury_balance != 0);
 			assert!(maintenance_expected_balance != 0);
 
-			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()), treasury_expected_balance);
-			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()), maintenance_expected_balance);
-			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&who), who_expected_balance);
+			assert_eq!(
+				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()),
+				treasury_expected_balance
+			);
+			assert_eq!(
+				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()),
+				maintenance_expected_balance
+			);
+			assert_eq!(
+				pallet_balances::Pallet::<Runtime>::free_balance(&who),
+				who_expected_balance
+			);
 		})
 	}
 
@@ -1215,13 +1236,21 @@ mod tests {
 				<pallet_balances::Pallet<Runtime> as frame_support::traits::fungible::Balanced<
 					AccountId,
 				>>::issue(20);
-			let treasury_balance = pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
-			let maintenance_balance = pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
+			let treasury_balance =
+				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
+			let maintenance_balance =
+				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
 			DealWithFees::<Runtime>::on_unbalanceds(vec![fee, tip].into_iter());
 
 			// Each to get 50%, total is 30 so 15 each.
-			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()),  treasury_balance + 15);
-			assert_eq!(pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()), maintenance_balance + 15);
+			assert_eq!(
+				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()),
+				treasury_balance + 15
+			);
+			assert_eq!(
+				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()),
+				maintenance_balance + 15
+			);
 		});
 	}
 }
