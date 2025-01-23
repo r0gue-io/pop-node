@@ -67,6 +67,7 @@ impl frame_system::Config for Test {
 impl pallet_balances::Config for Test {
 	type AccountStore = System;
 	type Balance = Balance;
+	type DoneSlashHandler = ();
 	type DustRemoval = ();
 	type ExistentialDeposit = ConstU128<1>;
 	type FreezeIdentifier = ();
@@ -124,4 +125,16 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| System::set_block_number(1));
 	ext
+}
+
+pub(crate) fn signed(account: AccountId) -> RuntimeOrigin {
+	RuntimeOrigin::signed(account)
+}
+
+pub(crate) fn root() -> RuntimeOrigin {
+	RuntimeOrigin::root()
+}
+
+pub(crate) fn none() -> RuntimeOrigin {
+	RuntimeOrigin::none()
 }

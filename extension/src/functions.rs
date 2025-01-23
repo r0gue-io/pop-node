@@ -50,7 +50,7 @@ impl<
 		// Charge weight before dispatch.
 		let dispatch_info = call.get_dispatch_info();
 		log::debug!(target: Logger::LOG_TARGET, "pre-dispatch info: dispatch_info={dispatch_info:?}");
-		let charged = env.charge_weight(dispatch_info.weight)?;
+		let charged = env.charge_weight(dispatch_info.call_weight)?;
 		log::debug!(target: Logger::LOG_TARGET, "pre-dispatch weight charged: charged={charged:?}");
 		// Contract is the origin by default.
 		let origin = RawOrigin::Signed(env.ext().address().clone());
@@ -324,7 +324,7 @@ mod tests {
 			assert_eq!(
 				env.charged(),
 				read_from_buffer_weight(encoded_call.len() as u32) +
-					call.get_dispatch_info().weight
+					call.get_dispatch_info().call_weight
 			);
 		}
 
@@ -363,7 +363,7 @@ mod tests {
 				assert_eq!(
 					env.charged(),
 					read_from_buffer_weight(encoded_call.len() as u32) +
-						call.get_dispatch_info().weight
+						call.get_dispatch_info().call_weight
 				);
 			})
 		}
@@ -384,11 +384,11 @@ mod tests {
 					pallet_contracts::Error::<Test>::NoMigrationPerformed.into();
 				assert_eq!(DispatchCall::execute(&mut env).err().unwrap(), expected);
 				// Ensure pre-dispatch weight is weight function + weight limit
-				assert_eq!(call.get_dispatch_info().weight, migrate_weight + weight_limit);
+				assert_eq!(call.get_dispatch_info().call_weight, migrate_weight + weight_limit);
 				assert_eq!(
 					env.charged(),
 					read_from_buffer_weight(encoded_call.len() as u32) +
-						call.get_dispatch_info().weight -
+						call.get_dispatch_info().call_weight -
 						extra_weight
 				);
 			})

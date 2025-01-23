@@ -1,5 +1,6 @@
 #![cfg(test)]
 
+use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok,
 	traits::fungibles::{
@@ -12,7 +13,6 @@ use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 use pop_runtime_devnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
 #[cfg(feature = "testnet")]
 use pop_runtime_testnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
-use scale::{Decode, Encode};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 
 mod fungibles;

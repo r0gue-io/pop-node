@@ -15,11 +15,11 @@ use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
-	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, NativeAsset, ParentIsPreset,
-	RelayChainAsNative, SiblingParachainAsNative, SiblingParachainConvertsVia,
+	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, ParentIsPreset, RelayChainAsNative,
+	SendXcmFeeToAccount, SiblingParachainAsNative, SiblingParachainConvertsVia,
 	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
 	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
-	XcmFeeManagerFromComponents, XcmFeeToAccount,
+	XcmFeeManagerFromComponents,
 };
 use xcm_executor::XcmExecutor;
 
@@ -114,7 +114,9 @@ impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 			if *asset_loc == Location::from(Parent))
 	}
 }
-pub type TrustedReserves = (NativeAsset, NativeAssetFrom<AssetHub>);
+
+/// Combinations of (Asset, Location) pairs which we trust as reserves.
+pub type TrustedReserves = NativeAssetFrom<AssetHub>;
 
 /// Locations that will not be charged fees in the executor,
 /// either execution or delivery.
@@ -134,7 +136,7 @@ impl xcm_executor::Config for XcmConfig {
 	type CallDispatcher = RuntimeCall;
 	type FeeManager = XcmFeeManagerFromComponents<
 		WaivedLocations,
-		XcmFeeToAccount<Self::AssetTransactor, AccountId, SudoAddress>,
+		SendXcmFeeToAccount<Self::AssetTransactor, SudoAddress>,
 	>;
 	type HrmpChannelAcceptedHandler = ();
 	type HrmpChannelClosingHandler = ();
@@ -210,4 +212,58 @@ impl pallet_xcm::Config for Runtime {
 impl cumulus_pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+#[cfg(test)]
+mod tests {
+	use std::any::TypeId;
+
+	use super::*;
+
+	// Only reserve accepted is the relay asset from Asset Hub.
+	#[test]
+	fn reserves() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
+			TypeId::of::<NativeAssetFrom<AssetHub>>(),
+		);
+	}
+
+	#[test]
+	fn asset_hub_as_relay_asset_reserve() {
+		assert!(TrustedReserves::contains(
+			&Asset::from((AssetId::from(Parent), Fungibility::from(100u128))),
+			&AssetHub::get(),
+		));
+	}
+
+	#[test]
+	fn relay_as_relay_asset_reserve_fails() {
+		let relay_asset = Asset::from((AssetId::from(Parent), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&relay_asset, &Parent.into()));
+	}
+
+	// Decline native asset from another parachain.
+	#[test]
+	fn decline_sibling_native_assets() {
+		let chain_x = Location::new(1, [Parachain(4242)]);
+		let chain_x_asset =
+			Asset::from((AssetId::from(chain_x.clone()), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&chain_x_asset, &chain_x));
+	}
+
+	// Decline non native asset from another parachain. Either a native asset as foreign asset on
+	// another parachain or a local asset from e.g. `pallet-assets`.
+	#[test]
+	fn decline_sibling_non_native_assets() {
+		// Native asset X of chain Y example.
+		let chain_x = Location::new(1, [Parachain(4242)]);
+		let chain_y = Location::new(1, [Parachain(6969)]);
+		let chain_x_asset = Asset::from((AssetId::from(chain_x), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&chain_x_asset, &chain_y));
+		// `pallet-assets` example.
+		let usd = Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1337)]);
+		let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
+		assert!(!TrustedReserves::contains(&usd_asset, &chain_y));
+	}
 }
