@@ -6,7 +6,10 @@ extern crate alloc;
 
 use frame_support::{
 	dispatch::WithPostDispatchInfo,
-	traits::{nonfungibles_v2::Inspect, Currency},
+	traits::{
+		nonfungibles_v2::{Destroy, Inspect},
+		Currency,
+	},
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
@@ -259,11 +262,11 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-			/// Destroy a collection of fungible items.
+		/// Destroy a collection of fungible items.
 		///
 		/// # Parameters
 		/// - `collection` - The collection to destroy.
-		#[pallet::call_index(8)]
+		#[pallet::call_index(13)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(u32::MAX, u32::MAX, u32::MAX))]
 		pub fn destroy(
 			origin: OriginFor<T>,

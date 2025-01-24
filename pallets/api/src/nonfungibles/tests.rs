@@ -11,9 +11,9 @@ use crate::{
 	nonfungibles::{
 		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails, CollectionIdOf,
-		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
-		MintWitness, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*,
-		ReadResult, WeightInfo as WeightInfoTrait,
+		CollectionOf, CollectionSettings, Config, ItemIdOf, MintSettings, MintWitness,
+		NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
+		WeightInfo as WeightInfoTrait,
 	},
 	Read,
 };
@@ -327,7 +327,7 @@ fn destroy_works() {
 		// Check error works for `Nfts::destroy()`.
 		assert_noop!(
 			NonFungibles::destroy(signed(ALICE), collection),
-			NftsError::UnknownCollection.with_weight(Weight::from_parts(0, 0))
+			NftsError::UnknownCollection.with_weight(DbWeight::get().reads(1))
 		);
 		nfts::create_collection(ALICE);
 		assert_eq!(
@@ -1022,18 +1022,7 @@ mod ensure_codec_indexes {
 			),
 			(burn { collection: Default::default(), item: Default::default() }, 8, "burn"),
 			(create { admin: Default::default(), config: Default::default() }, 12, "create"),
-			(
-				destroy {
-					collection: Default::default(),
-					witness: DestroyWitness {
-						item_metadatas: Default::default(),
-						item_configs: Default::default(),
-						attributes: Default::default(),
-					},
-				},
-				13,
-				"destroy",
-			),
+			(destroy { collection: Default::default() }, 13, "destroy"),
 			(
 				set_attribute {
 					collection: Default::default(),
