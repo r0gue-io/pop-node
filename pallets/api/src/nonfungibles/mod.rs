@@ -6,7 +6,10 @@ extern crate alloc;
 
 use frame_support::{
 	dispatch::WithPostDispatchInfo,
-	traits::{nonfungibles_v2::Inspect, Currency},
+	traits::{
+		nonfungibles_v2::{Destroy, Inspect},
+		Currency,
+	},
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
@@ -259,23 +262,19 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Destroy a collection of items.
+		/// Destroy a collection of fungible items.
 		///
 		/// # Parameters
 		/// - `collection` - The collection to destroy.
-		/// - `witness` - Information on the items minted in the `collection`. This must be
-		/// correct.
 		#[pallet::call_index(13)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(
-    		witness.item_metadatas,
-    		witness.item_configs,
-    		witness.attributes,
-		))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(u32::MAX, u32::MAX, u32::MAX))]
 		pub fn destroy(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
-			witness: DestroyWitness,
 		) -> DispatchResultWithPostInfo {
+			let witness = <NftsOf<T> as Destroy<<T as frame_system::Config>::AccountId>>::get_destroy_witness(&collection)
+			.ok_or(NftsErrorOf::<T>::UnknownCollection)
+			.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
 			NftsOf::<T>::destroy(origin, collection, witness)
 		}
 

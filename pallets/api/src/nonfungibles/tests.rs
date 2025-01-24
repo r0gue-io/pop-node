@@ -11,9 +11,9 @@ use crate::{
 	nonfungibles::{
 		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails, CollectionIdOf,
-		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
-		MintWitness, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*,
-		ReadResult, WeightInfo as WeightInfoTrait,
+		CollectionOf, CollectionSettings, Config, ItemIdOf, MintSettings, MintWitness,
+		NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
+		WeightInfo as WeightInfoTrait,
 	},
 	Read,
 };
@@ -323,16 +323,17 @@ fn create_works() {
 fn destroy_works() {
 	new_test_ext().execute_with(|| {
 		let collection = COLLECTION;
-		let witness = DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 };
 
 		// Check error works for `Nfts::destroy()`.
 		assert_noop!(
-			NonFungibles::destroy(signed(ALICE), collection, witness),
-			NftsError::UnknownCollection
+			NonFungibles::destroy(signed(ALICE), collection),
+			NftsError::UnknownCollection.with_weight(DbWeight::get().reads(1))
 		);
 		nfts::create_collection(ALICE);
-		// Successfully destroy a collection.
-		assert_ok!(NonFungibles::destroy(signed(ALICE), collection, witness));
+		assert_eq!(
+			NonFungibles::destroy(signed(ALICE), collection),
+			Ok(Some(NftsWeightInfoOf::<Test>::destroy(0, 0, 0)).into())
+		);
 		assert_eq!(Nfts::collection_owner(collection), None);
 	});
 }
@@ -1021,18 +1022,7 @@ mod ensure_codec_indexes {
 			),
 			(burn { collection: Default::default(), item: Default::default() }, 8, "burn"),
 			(create { admin: Default::default(), config: Default::default() }, 12, "create"),
-			(
-				destroy {
-					collection: Default::default(),
-					witness: DestroyWitness {
-						item_metadatas: Default::default(),
-						item_configs: Default::default(),
-						attributes: Default::default(),
-					},
-				},
-				13,
-				"destroy",
-			),
+			(destroy { collection: Default::default() }, 13, "destroy"),
 			(
 				set_attribute {
 					collection: Default::default(),
