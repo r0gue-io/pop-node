@@ -272,13 +272,14 @@ fn burn_works() {
 		let owner = ALICE;
 		let item = ITEM;
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
-			assert_noop!(NonFungibles::burn(origin, collection, item), BadOrigin);
-		}
-		// Check error works for `Nfts::burn()`.
-		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
+		// Throw `NftsError::UnknownItem` if no owner found for the item.
+		assert_noop!(
+			NonFungibles::burn(signed(owner), collection, item),
+			NftsError::UnknownItem.with_weight(DbWeight::get().reads(1))
+		);
 		nfts::create_collection_and_mint(owner, owner, item);
+		// Check error works for `Nfts::burn()`.
+		assert_noop!(NonFungibles::burn(signed(BOB), collection, item), NftsError::NoPermission);
 		// Successfully burn a collection item.
 		let balance_before_burn = nfts::balance_of(collection, &owner);
 		assert_ok!(NonFungibles::burn(signed(owner), collection, item));

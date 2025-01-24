@@ -21,35 +21,31 @@ pub(crate) use weights::WeightInfo;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-mod impls;
 #[cfg(test)]
 mod tests;
 pub mod weights;
 
+type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
+type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
+type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
+type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
+	<T as frame_system::Config>::AccountId,
+>>::Balance;
 type CollectionConfigOf<T> = CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
 type CollectionDetailsOf<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
 type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
+type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 type ItemPriceOf<T> = BalanceOf<T>;
+type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
 type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
+type NftsInstanceOf<T> = <T as Config>::NftsInstance;
+type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
 type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
 type WeightOf<T> = <T as Config>::WeightInfo;
-pub(crate) type AccountIdLookupOf<T> =
-	<<T as frame_system::Config>::Lookup as StaticLookup>::Source;
-pub(crate) type BalanceOf<T> =
-	<<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
-		<T as frame_system::Config>::AccountId,
-	>>::Balance;
-pub(crate) type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
-pub(crate) type NftsInstanceOf<T> = <T as Config>::NftsInstance;
-// Type aliases for pallet-nfts storage items.
-pub(crate) type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
-pub(crate) type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
-pub(crate) type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
-pub(crate) type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -227,16 +223,18 @@ pub mod pallet {
 		/// - `collection` - The collection identifier.
 		/// - `item` - The item to burn.
 		#[pallet::call_index(8)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
+		#[pallet::weight(NftsWeightInfoOf::<T>::burn() + T::DbWeight::get().reads(1))]
 		pub fn burn(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-		) -> DispatchResult {
-			let owner = ensure_signed(origin.clone())?;
+		) -> DispatchResultWithPostInfo {
+			let owner = NftsOf::<T>::owner(collection, item)
+				.ok_or(NftsErrorOf::<T>::UnknownItem)
+				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
 			NftsOf::<T>::burn(origin, collection, item)?;
 			Self::deposit_event(Event::Transfer { collection, item, from: Some(owner), to: None });
-			Ok(())
+			Ok(().into())
 		}
 
 		/// Issue a new collection of non-fungible items.
@@ -460,6 +458,37 @@ pub mod pallet {
 			limit: u32,
 		) -> DispatchResultWithPostInfo {
 			NftsOf::<T>::clear_collection_approvals(origin, collection, limit)
+		}
+	}
+
+	impl<T: Config> Pallet<T> {
+		// Approves the transfer of a specific item or all collection items owned by the `owner` to
+		// an `operator`.
+		fn do_approve(
+			owner: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			maybe_item: Option<ItemIdOf<T>>,
+			operator: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			match maybe_item {
+				Some(item) =>
+					NftsOf::<T>::approve_transfer(owner, collection, item, operator, None),
+				None => NftsOf::<T>::approve_collection_transfer(owner, collection, operator, None),
+			}
+		}
+
+		// Cancel an approval to transfer a specific item or all items within a collection owned by
+		// the `owner`.
+		fn do_cancel_approval(
+			owner: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			maybe_item: Option<ItemIdOf<T>>,
+			operator: AccountIdLookupOf<T>,
+		) -> DispatchResult {
+			match maybe_item {
+				Some(item) => NftsOf::<T>::cancel_approval(owner, collection, item, operator),
+				None => NftsOf::<T>::cancel_collection_approval(owner, collection, operator),
+			}
 		}
 	}
 
