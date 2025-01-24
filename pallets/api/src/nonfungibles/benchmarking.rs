@@ -13,7 +13,7 @@ use frame_system::RawOrigin;
 use sp_runtime::traits::{Bounded, StaticLookup, Zero};
 
 use super::{
-	AccountIdOf, AttributeNamespace, BalanceOf, Call, CollectionConfig, CollectionConfigFor,
+	AccountIdOf, AttributeNamespace, BalanceOf, Call, CollectionConfig, CollectionConfigOf,
 	CollectionIdOf, CollectionSettings, Config, Inspect, ItemConfig, ItemIdOf, ItemSettings,
 	MintSettings, NftsInstanceOf, NftsOf, Pallet, Read,
 };
@@ -50,7 +50,7 @@ mod benchmarks {
 
 		T::Currency::make_free_balance_be(&owner, BalanceOf::<T>::max_value());
 		assert_ok!(
-			<NftsOf<T> as Create<AccountIdOf<T>, CollectionConfigFor<T>>>::create_collection(
+			<NftsOf<T> as Create<AccountIdOf<T>, CollectionConfigOf<T>>>::create_collection(
 				&owner,
 				&owner,
 				&CollectionConfig {
@@ -96,9 +96,10 @@ mod benchmarks {
 		#[extrinsic_call]
 		_(origin, collection_id, maybe_item, operator.clone(), approved);
 
-		assert!(
+		assert_eq!(
 			NftsOf::<T>::check_approval_permission(&collection_id, &maybe_item, &owner, &operator)
-				.is_ok() == approved
+				.is_ok(),
+			approved
 		);
 
 		if approved {
@@ -182,7 +183,7 @@ mod benchmarks {
 			Pallet::<T>::read(Read::GetAttribute {
 				key: BoundedVec::default(),
 				collection: CollectionIdOf::<T>::zero(),
-				item: ItemIdOf::<T>::zero(),
+				item: Some(ItemIdOf::<T>::zero()),
 				namespace: AttributeNamespace::CollectionOwner,
 			});
 		}

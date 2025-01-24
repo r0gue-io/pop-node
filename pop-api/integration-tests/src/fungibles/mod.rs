@@ -514,9 +514,9 @@ fn mint_works() {
 		assert_eq!(balance_after_mint, balance_before_mint + amount);
 		// Account can not hold more tokens than Balance::MAX.
 		assert_eq!(mint(&addr, token, &BOB, Balance::MAX,), Err(Arithmetic(Overflow)));
-		// Token is not live, i.e. frozen or being destroyed.
+		// Token is being destroyed.
 		assets::start_destroy(&addr, token);
-		assert_eq!(mint(&addr, token, &BOB, amount), Err(Module { index: 52, error: [16, 0] }));
+		assert_eq!(mint(&addr, token, &BOB, amount), Err(Token(UnknownAsset)));
 	});
 }
 
