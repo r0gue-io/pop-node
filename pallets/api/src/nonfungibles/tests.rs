@@ -1,20 +1,19 @@
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::WithPostDispatchInfo,
 	sp_runtime::{traits::Zero, BoundedVec, DispatchError::BadOrigin},
 };
 use pallet_nfts::{CollectionSetting, WeightInfo as NftsWeightInfoTrait};
-use scale_info::TypeInfo;
 
 use crate::{
 	mock::*,
 	nonfungibles::{
-		AccountBalanceOf, AccountIdOf, AttributeNamespace, AttributeOf,
-		BalanceOf as DepositBalanceOf, BlockNumberFor, CancelAttributesApprovalWitness,
-		CollectionConfig, CollectionIdOf, CollectionOf, CollectionSettings, Config, DestroyWitness,
-		ItemIdOf, MintSettings, MintWitness, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf,
-		NftsWeightInfoOf, Read::*, ReadResult, WeightInfo as WeightInfoTrait,
+		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
+		CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails, CollectionIdOf,
+		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
+		MintWitness, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*,
+		ReadResult, WeightInfo as WeightInfoTrait,
 	},
 	Read,
 };
@@ -27,17 +26,6 @@ type DbWeight = <Test as frame_system::Config>::DbWeight;
 type Event = crate::nonfungibles::Event<Test>;
 type NftsError = NftsErrorOf<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
-
-/// Information about a collection.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, TypeInfo, MaxEncodedLen)]
-struct CollectionDetails {
-	pub(super) owner: AccountIdOf<Test>,
-	pub(super) owner_deposit: DepositBalanceOf<Test>,
-	pub(super) items: u32,
-	pub(super) item_metadatas: u32,
-	pub(super) item_configs: u32,
-	pub(super) attributes: u32,
-}
 
 mod transfer {
 	use super::*;
@@ -1288,7 +1276,6 @@ mod read_weights {
 
 mod encoding_read_result {
 	use super::*;
-	use crate::nonfungibles::CollectionDetailsOf;
 
 	#[test]
 	fn total_supply() {
@@ -1332,16 +1319,14 @@ mod encoding_read_result {
 
 	#[test]
 	fn collection() {
-		let bytes = CollectionDetails {
+		let mut details = Some(CollectionDetails {
 			owner: ALICE,
 			owner_deposit: 0,
 			items: 0,
 			item_metadatas: 0,
 			item_configs: 0,
 			attributes: 0,
-		}
-		.encode();
-		let mut details = Some(CollectionDetailsOf::<Test>::decode(&mut &bytes[..]).unwrap());
+		});
 		assert_eq!(ReadResult::Collection::<Test>(details.clone()).encode(), details.encode());
 		details = None;
 		assert_eq!(ReadResult::Collection::<Test>(details.clone()).encode(), details.encode());
