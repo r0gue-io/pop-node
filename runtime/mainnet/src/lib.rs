@@ -386,12 +386,10 @@ parameter_types! {
 	pub MaintenanceAccount: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
 }
 
-
 /// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
 /// by implementing OnUnbalanced.
 pub struct DealWithFees;
-impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>> for DealWithFees
-{
+impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>> for DealWithFees {
 	fn on_unbalanceds(
 		mut fees_then_tips: impl Iterator<
 			Item = fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>,
@@ -405,7 +403,9 @@ impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>>
 			let split = fees.ration(50, 50);
 
 			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<Runtime>>::on_unbalanced(split.0);
-			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<Runtime>>::on_unbalanced(split.1);
+			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<Runtime>>::on_unbalanced(
+				split.1,
+			);
 		}
 	}
 }
@@ -1154,8 +1154,6 @@ mod tests {
 		ext
 	}
 
-	
-
 	#[test]
 	fn transaction_payment_charges_fees_via_balances_and_funds_treasury_and_maintenance_equally() {
 		new_test_ext().execute_with(|| {
@@ -1260,7 +1258,7 @@ mod tests {
 		);
 	}
 
-		#[test]
+	#[test]
 	fn treasury_burn_is_nothing() {
 		assert_eq!(TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(), TypeId::of::<()>(),);
 	}
@@ -1285,7 +1283,7 @@ mod tests {
 			TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
 		);
 	}
-	
+
 	#[test]
 	fn treasury_payout_period_is_set() {
 		assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
@@ -1313,13 +1311,11 @@ mod tests {
 			TypeId::of::<NeverEnsureOrigin<Balance>>(),
 		);
 	}
-	
+
 	#[test]
 	fn treasury_spend_period_is_set() {
 		assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
 	}
-
-	
 
 	#[test]
 	fn type_of_on_charge_transaction_is_correct() {
@@ -1328,6 +1324,4 @@ mod tests {
 			TypeId::of::<OnChargeTransaction>(),
 		);
 	}
-
-
 }
