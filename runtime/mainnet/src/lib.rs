@@ -409,6 +409,8 @@ impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>>
 		}
 	}
 }
+
+/// The type responsible for payment in pallet_transaction_payment.
 pub type OnChargeTransaction =
 	pallet_transaction_payment::FungibleAdapter<pallet_balances::Pallet<Runtime>, DealWithFees>;
 
