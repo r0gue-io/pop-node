@@ -66,7 +66,7 @@ use frame_support::{
 use frame_system::Config as SystemConfig;
 pub use pallet::*;
 use sp_runtime::{
-	traits::{IdentifyAccount, Saturating, StaticLookup, Verify},
+	traits::{IdentifyAccount, Saturating, StaticLookup, Verify, Zero},
 	RuntimeDebug,
 };
 pub use types::*;
