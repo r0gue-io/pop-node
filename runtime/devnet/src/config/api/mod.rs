@@ -207,9 +207,9 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 			matches!(
 				r,
 				RuntimeRead::NonFungibles(
-					TotalSupply(..) |
-						BalanceOf { .. } | Allowance { .. } |
-						OwnerOf { .. } | GetAttribute { .. } |
+					BalanceOf { .. } |
+						OwnerOf { .. } | Allowance { .. } |
+						TotalSupply(..) | GetAttribute { .. } |
 						Collection { .. } | ItemMetadata { .. } |
 						NextCollectionId,
 				)
@@ -377,15 +377,15 @@ mod tests {
 		use super::{nonfungibles::Read::*, RuntimeRead::*};
 
 		for read in vec![
-			NonFungibles(TotalSupply(1)),
 			NonFungibles(BalanceOf { collection: 1, owner: ACCOUNT }),
+			NonFungibles(OwnerOf { collection: 1, item: 1 }),
 			NonFungibles(Allowance {
 				collection: 1,
 				item: None,
 				owner: ACCOUNT,
 				operator: ACCOUNT,
 			}),
-			NonFungibles(OwnerOf { collection: 1, item: 1 }),
+			NonFungibles(TotalSupply(1)),
 			NonFungibles(GetAttribute {
 				collection: 1,
 				item: Some(1),
@@ -393,8 +393,8 @@ mod tests {
 				key: bounded_vec![],
 			}),
 			NonFungibles(Collection(1)),
-			NonFungibles(ItemMetadata { collection: 1, item: 1 }),
 			NonFungibles(NextCollectionId),
+			NonFungibles(ItemMetadata { collection: 1, item: 1 }),
 		]
 		.iter()
 		{

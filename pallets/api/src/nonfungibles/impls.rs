@@ -6,7 +6,7 @@ use super::{pallet::*, AccountIdLookupOf, CollectionIdOf, ItemIdOf, NftsOf};
 impl<T: Config> Pallet<T> {
 	// Approves the transfer of a specific item or all collection items owned by the `owner` to an
 	// `operator`.
-	///
+	//
 	// # Parameters
 	// - `owner` - The owner of the specified collection item(s).
 	// - `collection` - The collection identifier.
@@ -27,7 +27,7 @@ impl<T: Config> Pallet<T> {
 
 	// Cancel an approval to transfer a specific item or all items within a collection owned by
 	// the `owner`.
-	///
+	//
 	// # Parameters
 	// - `owner` - The owner of the specified collection item(s).
 	// - `collection` - The collection identifier.

@@ -10,11 +10,11 @@ use scale_info::TypeInfo;
 use crate::{
 	mock::*,
 	nonfungibles::{
-		weights::WeightInfo as WeightInfoTrait, AccountBalanceOf, AccountIdOf, AttributeNamespace,
-		AttributeOf, BalanceOf as DepositBalanceOf, BlockNumberFor,
-		CancelAttributesApprovalWitness, CollectionConfig, CollectionIdOf, CollectionOf,
-		CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings, MintWitness,
-		NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
+		AccountBalanceOf, AccountIdOf, AttributeNamespace, AttributeOf,
+		BalanceOf as DepositBalanceOf, BlockNumberFor, CancelAttributesApprovalWitness,
+		CollectionConfig, CollectionIdOf, CollectionOf, CollectionSettings, Config, DestroyWitness,
+		ItemIdOf, MintSettings, MintWitness, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf,
+		NftsWeightInfoOf, Read::*, ReadResult, WeightInfo as WeightInfoTrait,
 	},
 	Read,
 };
@@ -658,27 +658,6 @@ fn clear_collection_approvals_works() {
 }
 
 #[test]
-fn total_supply_works() {
-	new_test_ext().execute_with(|| {
-		let owner = ALICE;
-		let collection = nfts::create_collection(owner);
-
-		assert_eq!(NonFungibles::read(TotalSupply(collection)), ReadResult::TotalSupply(0));
-		(0..10).into_iter().for_each(|i| {
-			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
-			assert_eq!(
-				NonFungibles::read(TotalSupply(collection)),
-				ReadResult::TotalSupply((i + 1).into())
-			);
-			assert_eq!(
-				NonFungibles::read(TotalSupply(collection)).encode(),
-				(Nfts::collection_items(collection).unwrap_or_default() as u128).encode()
-			);
-		});
-	});
-}
-
-#[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
@@ -699,6 +678,26 @@ fn balance_of_works() {
 				nfts::balance_of(collection, &owner).encode()
 			);
 		});
+	});
+}
+
+#[test]
+fn owner_of_works() {
+	new_test_ext().execute_with(|| {
+		let collection = COLLECTION;
+		let item = ITEM;
+		let owner = ALICE;
+
+		assert_eq!(NonFungibles::read(OwnerOf { collection, item }), ReadResult::OwnerOf(None));
+		nfts::create_collection_and_mint(owner, owner, item);
+		assert_eq!(
+			NonFungibles::read(OwnerOf { collection, item }),
+			ReadResult::OwnerOf(Some(owner))
+		);
+		assert_eq!(
+			NonFungibles::read(OwnerOf { collection, item }).encode(),
+			Nfts::owner(collection, item).encode()
+		);
 	});
 }
 
@@ -726,22 +725,23 @@ fn allowance_works() {
 }
 
 #[test]
-fn owner_of_works() {
+fn total_supply_works() {
 	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let item = ITEM;
 		let owner = ALICE;
+		let collection = nfts::create_collection(owner);
 
-		assert_eq!(NonFungibles::read(OwnerOf { collection, item }), ReadResult::OwnerOf(None));
-		nfts::create_collection_and_mint(owner, owner, item);
-		assert_eq!(
-			NonFungibles::read(OwnerOf { collection, item }),
-			ReadResult::OwnerOf(Some(owner))
-		);
-		assert_eq!(
-			NonFungibles::read(OwnerOf { collection, item }).encode(),
-			Nfts::owner(collection, item).encode()
-		);
+		assert_eq!(NonFungibles::read(TotalSupply(collection)), ReadResult::TotalSupply(0));
+		(0..10).into_iter().for_each(|i| {
+			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
+			assert_eq!(
+				NonFungibles::read(TotalSupply(collection)),
+				ReadResult::TotalSupply((i + 1).into())
+			);
+			assert_eq!(
+				NonFungibles::read(TotalSupply(collection)).encode(),
+				(Nfts::collection_items(collection).unwrap_or_default() as u128).encode()
+			);
+		});
 	});
 }
 
@@ -1135,11 +1135,15 @@ mod ensure_codec_indexes {
 	#[test]
 	fn ensure_read_variant_indexes() {
 		[
-			(TotalSupply::<Test>(Default::default()), 0u8, "TotalSupply"),
 			(
 				BalanceOf::<Test> { collection: Default::default(), owner: Default::default() },
-				1,
+				0u8,
 				"BalanceOf",
+			),
+			(
+				OwnerOf::<Test> { collection: Default::default(), item: Default::default() },
+				1,
+				"OwnerOf",
 			),
 			(
 				Allowance::<Test> {
@@ -1151,11 +1155,7 @@ mod ensure_codec_indexes {
 				2,
 				"Allowance",
 			),
-			(
-				OwnerOf::<Test> { collection: Default::default(), item: Default::default() },
-				5,
-				"OwnerOf",
-			),
+			(TotalSupply::<Test>(Default::default()), 5, "TotalSupply"),
 			(
 				GetAttribute::<Test> {
 					collection: Default::default(),

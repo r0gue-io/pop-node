@@ -36,6 +36,7 @@ type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>
 type ItemPriceOf<T> = BalanceOf<T>;
 type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
 type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
+type WeightOf<T> = <T as Config>::WeightInfo;
 pub(crate) type AccountIdLookupOf<T> =
 	<<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 pub(crate) type BalanceOf<T> =
@@ -44,7 +45,6 @@ pub(crate) type BalanceOf<T> =
 	>>::Balance;
 pub(crate) type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
 pub(crate) type NftsInstanceOf<T> = <T as Config>::NftsInstance;
-pub(crate) type WeightOf<T> = <T as Config>::WeightInfo;
 // Type aliases for pallet-nfts storage items.
 pub(crate) type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
 pub(crate) type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
@@ -164,13 +164,13 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Approves operator to withdraw item(s) from the contract's account.
+		/// Approves operator to transfer item(s) from the `owner`'s account.
 		///
 		/// # Parameters
 		/// - `collection` - The collection identifier.
-		/// - `item` - Optional item. `None` means all items owned in the specified collection.
-		/// - `operator` - The account that is allowed to withdraw the item.
-		/// - `approved` - Whether the operator is given or removed the right to withdraw the
+		/// - `item` - Optional item. `None` means all collection items owned by the `owner`.
+		/// - `operator` - The account that is allowed to transfer the item.
+		/// - `approved` - Whether the operator is given or removed the right to transfer the
 		///   item(s).
 		#[pallet::call_index(4)]
 		#[pallet::weight(WeightOf::<T>::approve(*approved as u32, item.is_some() as u32))]
@@ -192,12 +192,12 @@ pub mod pallet {
 			result
 		}
 
-		/// Mints an item to the specified address.
+		/// Mints an item to the specified recipient account.
 		///
 		/// # Parameters
 		/// - `collection` - The collection of the item to mint.
 		/// - `item` - An identifier of the new item.
-		/// - `to` - Account into which the item will be minted.
+		/// - `to` - The recipient account.
 		/// - `witness` - When the mint type is `HolderOf(collection_id)`, then the owned item_id
 		///   from that collection needs to be provided within the witness data object. If the mint
 		///   price is set, then it should be additionally confirmed in the `witness`.
@@ -221,7 +221,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Destroy a single collection item. Clearing the corresponding approvals.
+		/// Destroy a single collection item.
 		///
 		/// # Parameters
 		/// - `collection` - The collection identifier.
@@ -265,7 +265,7 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection to destroy.
-		/// - `witness` - Information on the items minted in the collection. This must be
+		/// - `witness` - Information on the items minted in the `collection`. This must be
 		/// correct.
 		#[pallet::call_index(13)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(
@@ -469,17 +469,25 @@ pub mod pallet {
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// The total supply of a collection.
+		/// Amount of items the owner has within a `collection`.
 		#[codec(index = 0)]
-		TotalSupply(CollectionIdOf<T>),
-		/// Amount of items the owner has within a collection.
-		#[codec(index = 1)]
 		BalanceOf {
 			/// The collection identifier.
 			collection: CollectionIdOf<T>,
 			/// The account whose balance is being queried.
 			owner: AccountIdOf<T>,
 		},
+		/// Owner of an item within a specified collection, if any.
+		#[codec(index = 1)]
+		OwnerOf {
+			/// The collection identifier.
+			collection: CollectionIdOf<T>,
+			/// The item.
+			item: ItemIdOf<T>,
+		},
+		/// Returns whether the `operator` is approved by the `owner` to withdraw `item`. If `item`
+		/// is `None`, it returns whether the `operator` is approved to withdraw all `owner`'s
+		/// items for the given `collection`.
 		#[codec(index = 2)]
 		Allowance {
 			/// The collection identifier.
@@ -491,20 +499,15 @@ pub mod pallet {
 			/// The account that is allowed to transfer the collection item(s).
 			operator: AccountIdOf<T>,
 		},
-		/// Owner of an item within a specified collection, if any.
+		/// The total supply of a collection.
 		#[codec(index = 5)]
-		OwnerOf {
-			/// The collection identifier.
-			collection: CollectionIdOf<T>,
-			/// The item.
-			item: ItemIdOf<T>,
-		},
+		TotalSupply(CollectionIdOf<T>),
 		/// Attribute value of a specified collection item for a given key, if any.
 		#[codec(index = 6)]
 		GetAttribute {
 			/// The collection identifier.
 			collection: CollectionIdOf<T>,
-			/// The item. If not provided, the attributes for the collection are queried.
+			/// The item. If not provided, the attributes for the `collection` are queried.
 			item: Option<ItemIdOf<T>>,
 			/// The namespace of the attribute.
 			namespace: AttributeNamespaceOf<T>,
@@ -531,16 +534,17 @@ pub mod pallet {
 	#[derive(Debug)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
+		/// Amount of items the owner has within a collection.
+		BalanceOf(u32),
+		/// Owner of an item within a specified collection, if any.
+		OwnerOf(Option<AccountIdOf<T>>),
+		/// Returns whether the operator is approved by the owner to withdraw item. If item is not
+		/// provided, it returns whether the operator is approved to withdraw all owner's items for
+		/// the given collection.
+		Allowance(bool),
 		/// The total supply of a collection.
 		TotalSupply(u128),
-		/// Amount of items the `owner` has within a `collection`.
-		BalanceOf(u32),
-		/// Allowance for an `operator` approved by an `owner` to transfer a specified `item` or
-		/// all collection items owned by the `owner`.
-		Allowance(bool),
-		/// Owner of an `item` within a specified `collection`, if any.
-		OwnerOf(Option<AccountIdOf<T>>),
-		/// Attribute value of a specified collection item for a given `key`, if any.
+		/// Attribute value of a specified collection item for a given key, if any.
 		GetAttribute(Option<Vec<u8>>),
 		/// Details of a specified collection, if any.
 		Collection(Option<CollectionDetailsOf<T>>),
@@ -555,14 +559,14 @@ pub mod pallet {
 		pub fn encode(&self) -> Vec<u8> {
 			use ReadResult::*;
 			match self {
-				TotalSupply(result) => result.encode(),
 				BalanceOf(result) => result.encode(),
-				Allowance(result) => result.encode(),
 				OwnerOf(result) => result.encode(),
+				Allowance(result) => result.encode(),
+				TotalSupply(result) => result.encode(),
 				GetAttribute(result) => result.encode(),
 				Collection(result) => result.encode(),
-				ItemMetadata(result) => result.encode(),
 				NextCollectionId(result) => result.encode(),
+				ItemMetadata(result) => result.encode(),
 			}
 		}
 	}
@@ -581,14 +585,14 @@ pub mod pallet {
 		fn weight(request: &Self::Read) -> Weight {
 			use Read::*;
 			match request {
-				TotalSupply(_) => WeightOf::<T>::total_supply(),
 				BalanceOf { .. } => WeightOf::<T>::balance_of(),
-				Allowance { .. } => WeightOf::<T>::allowance(),
 				OwnerOf { .. } => WeightOf::<T>::owner_of(),
+				Allowance { .. } => WeightOf::<T>::allowance(),
+				TotalSupply(_) => WeightOf::<T>::total_supply(),
 				GetAttribute { .. } => WeightOf::<T>::get_attribute(),
 				Collection(_) => WeightOf::<T>::collection(),
-				ItemMetadata { .. } => WeightOf::<T>::item_metadata(),
 				NextCollectionId => WeightOf::<T>::next_collection_id(),
+				ItemMetadata { .. } => WeightOf::<T>::item_metadata(),
 			}
 		}
 
@@ -599,31 +603,31 @@ pub mod pallet {
 		fn read(request: Self::Read) -> Self::Result {
 			use Read::*;
 			match request {
-				TotalSupply(collection) => ReadResult::TotalSupply(
-					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
-				),
 				BalanceOf { collection, owner } => ReadResult::BalanceOf(
 					AccountBalanceOf::<T>::get(collection, owner)
 						.map(|(balance, _)| balance)
 						.unwrap_or_default(),
 				),
+				OwnerOf { collection, item } =>
+					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_approval_permission(&collection, &item, &owner, &operator)
 						.is_ok(),
 				),
-				OwnerOf { collection, item } =>
-					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
+				TotalSupply(collection) => ReadResult::TotalSupply(
+					NftsOf::<T>::collection_items(collection).unwrap_or_default() as u128,
+				),
 				GetAttribute { collection, item, namespace, key } => ReadResult::GetAttribute(
 					AttributeOf::<T>::get((collection, item, namespace, key))
 						.map(|attribute| attribute.0.into()),
 				),
 				Collection(collection) =>
 					ReadResult::Collection(CollectionOf::<T>::get(collection)),
-				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
-					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
-				),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
+				),
+				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
+					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
 				),
 			}
 		}
