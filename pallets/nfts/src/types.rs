@@ -97,18 +97,18 @@ pub(super) type AccountDepositOf<T, I = ()> =
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 pub struct CollectionDetails<AccountId, DepositBalance> {
 	/// Collection's owner.
-	pub(super) owner: AccountId,
+	pub owner: AccountId,
 	/// The total balance deposited by the owner for all the storage data associated with this
 	/// collection. Used by `destroy`.
-	pub(super) owner_deposit: DepositBalance,
+	pub owner_deposit: DepositBalance,
 	/// The total number of outstanding items of this collection.
-	pub(super) items: u32,
+	pub items: u32,
 	/// The total number of outstanding item metadata of this collection.
-	pub(super) item_metadatas: u32,
+	pub item_metadatas: u32,
 	/// The total number of outstanding item configs of this collection.
-	pub(super) item_configs: u32,
+	pub item_configs: u32,
 	/// The total number of attributes for this collection.
-	pub(super) attributes: u32,
+	pub attributes: u32,
 }
 
 /// Witness data for the destroy transactions.
