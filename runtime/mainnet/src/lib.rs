@@ -20,7 +20,6 @@ use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
-	pallet_prelude::PhantomData,
 	parameter_types,
 	traits::{
 		fungible,
@@ -387,16 +386,15 @@ parameter_types! {
 	pub MaintenanceAccount: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
 }
 
-pub struct DealWithFees<R>(PhantomData<R>);
-impl<R> OnUnbalanced<fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>> for DealWithFees<R>
-where
-	R: pallet_balances::Config<Balance = Balance, AccountId = AccountId>,
-	<R as frame_system::Config>::AccountId: From<AccountId> + Into<AccountId>,
-	<R as frame_system::Config>::RuntimeEvent: From<pallet_balances::Event<R>>,
+
+/// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
+/// by implementing OnUnbalanced.
+pub struct DealWithFees;
+impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>> for DealWithFees
 {
 	fn on_unbalanceds(
 		mut fees_then_tips: impl Iterator<
-			Item = fungible::Credit<R::AccountId, pallet_balances::Pallet<R>>,
+			Item = fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>,
 		>,
 	) {
 		if let Some(mut fees) = fees_then_tips.next() {
@@ -406,18 +404,18 @@ where
 
 			let split = fees.ration(50, 50);
 
-			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<R>>::on_unbalanced(split.0);
-			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<R>>::on_unbalanced(split.1);
+			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<Runtime>>::on_unbalanced(split.0);
+			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<Runtime>>::on_unbalanced(split.1);
 		}
 	}
 }
-pub type OnChargeTransaction<T> =
-	pallet_transaction_payment::FungibleAdapter<pallet_balances::Pallet<T>, DealWithFees<T>>;
+pub type OnChargeTransaction =
+	pallet_transaction_payment::FungibleAdapter<pallet_balances::Pallet<Runtime>, DealWithFees>;
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = OnChargeTransaction<Runtime>;
+	type OnChargeTransaction = OnChargeTransaction;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -669,7 +667,7 @@ impl pallet_treasury::Config for Runtime {
 	type BlockNumberProvider = System;
 	type Burn = ();
 	type BurnDestination = ();
-	type Currency = pallet_balances::Pallet<Runtime>;
+	type Currency = Balances;
 	type MaxApprovals = MaxApprovals;
 	type PalletId = TreasuryPalletId;
 	type Paymaster = TreasuryPaymaster<Self::Currency>;
@@ -1156,13 +1154,7 @@ mod tests {
 		ext
 	}
 
-	#[test]
-	fn type_of_on_charge_transaction_is_correct() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
-			TypeId::of::<OnChargeTransaction<Runtime>>(),
-		);
-	}
+	
 
 	#[test]
 	fn transaction_payment_charges_fees_via_balances_and_funds_treasury_and_maintenance_equally() {
@@ -1181,7 +1173,7 @@ mod tests {
 
 			// NOTE: OnChargeTransaction functions expect tip to be included within fee
 			let liquidity_info =
-				<OnChargeTransaction<Runtime> as OnChargeTransactionT<Runtime>>::withdraw_fee(
+				<OnChargeTransaction as OnChargeTransactionT<Runtime>>::withdraw_fee(
 					&who,
 					&call,
 					&dispatch_info,
@@ -1189,7 +1181,7 @@ mod tests {
 					0,
 				)
 				.unwrap();
-			<OnChargeTransaction<Runtime> as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
+			<OnChargeTransaction as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
 				&who,
 				&dispatch_info,
 				&call.dispatch(RuntimeOrigin::signed(who.clone())).unwrap(),
@@ -1224,82 +1216,32 @@ mod tests {
 	#[test]
 	fn test_fees_and_tip_split() {
 		new_test_ext().execute_with(|| {
+			let fee_amount = 10;
 			let fee =
 				<pallet_balances::Pallet<Runtime> as frame_support::traits::fungible::Balanced<
 					AccountId,
-				>>::issue(10);
+				>>::issue(fee_amount);
+			let tip_amount = 20;
 			let tip =
 				<pallet_balances::Pallet<Runtime> as frame_support::traits::fungible::Balanced<
 					AccountId,
-				>>::issue(20);
+				>>::issue(tip_amount);
 			let treasury_balance =
 				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
 			let maintenance_balance =
 				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
-			DealWithFees::<Runtime>::on_unbalanceds(vec![fee, tip].into_iter());
+			DealWithFees::on_unbalanceds(vec![fee, tip].into_iter());
 
 			// Each to get 50%, total is 30 so 15 each.
 			assert_eq!(
 				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()),
-				treasury_balance + 15
+				treasury_balance + ((fee_amount + tip_amount) / 2)
 			);
 			assert_eq!(
 				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()),
-				maintenance_balance + 15
+				maintenance_balance + ((fee_amount + tip_amount) / 2)
 			);
 		});
-	}
-
-	#[test]
-	fn treasury_paymaster_is_correct_type() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::Paymaster>(),
-			TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
-		);
-	}
-
-	#[test]
-	fn treasury_spend_period_is_set() {
-		assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
-	}
-
-	#[test]
-	fn treasury_pallet_id_is_set() {
-		assert_eq!(
-			<Runtime as pallet_treasury::Config>::PalletId::get().encode(),
-			PalletId(*b"treasury").encode()
-		);
-	}
-
-	#[test]
-	fn treasury_max_approvals_is_set() {
-		assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
-	}
-
-	#[test]
-	fn treasury_payout_period_is_set() {
-		assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
-	}
-
-	#[test]
-	fn treasury_spend_origin_is_correct() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::SpendOrigin>(),
-			TypeId::of::<NeverEnsureOrigin<Balance>>(),
-		);
-	}
-
-	#[test]
-	fn treasury_reject_origin_is_correct() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::RejectOrigin>(),
-			TypeId::of::<EnsureRoot<AccountId>>(),
-		);
-	}
-
-	#[test]
-	fn treasury_burn_is_nothing() {
-		assert_eq!(TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(), TypeId::of::<()>(),);
 	}
 
 	#[test]
@@ -1317,4 +1259,75 @@ mod tests {
 			TypeId::of::<System>(),
 		);
 	}
+
+		#[test]
+	fn treasury_burn_is_nothing() {
+		assert_eq!(TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(), TypeId::of::<()>(),);
+	}
+
+	#[test]
+	fn treasury_max_approvals_is_set() {
+		assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
+	}
+
+	#[test]
+	fn treasury_pallet_id_is_set() {
+		assert_eq!(
+			<Runtime as pallet_treasury::Config>::PalletId::get().encode(),
+			PalletId(*b"treasury").encode()
+		);
+	}
+
+	#[test]
+	fn treasury_paymaster_is_correct_type() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_treasury::Config>::Paymaster>(),
+			TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
+		);
+	}
+	
+	#[test]
+	fn treasury_payout_period_is_set() {
+		assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
+	}
+
+	#[test]
+	fn treasury_reject_origin_is_correct() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_treasury::Config>::RejectOrigin>(),
+			TypeId::of::<EnsureRoot<AccountId>>(),
+		);
+	}
+	#[test]
+	fn treasury_spend_funds_is_correct() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_treasury::Config>::SpendFunds>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn treasury_spend_origin_is_correct() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_treasury::Config>::SpendOrigin>(),
+			TypeId::of::<NeverEnsureOrigin<Balance>>(),
+		);
+	}
+	
+	#[test]
+	fn treasury_spend_period_is_set() {
+		assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
+	}
+
+	
+
+	#[test]
+	fn type_of_on_charge_transaction_is_correct() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
+			TypeId::of::<OnChargeTransaction>(),
+		);
+	}
+
+
 }
