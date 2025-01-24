@@ -15,7 +15,10 @@ extern crate alloc;
 use alloc::{borrow::Cow, vec::Vec};
 
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
-use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
+use config::{
+	governance::SudoAddress,
+	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
+};
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
@@ -376,7 +379,6 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
-	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").expect("sudo address is valid SS58");
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -388,12 +390,6 @@ impl pallet_transaction_payment::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 	type WeightToFee = fee::WeightToFee;
-}
-
-impl pallet_sudo::Config for Runtime {
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
 }
 
 parameter_types! {
