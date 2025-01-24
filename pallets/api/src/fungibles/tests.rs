@@ -670,7 +670,6 @@ mod read_weights {
 	use frame_support::weights::Weight;
 
 	use super::*;
-	use crate::fungibles::{weights::WeightInfo, Config};
 
 	struct ReadWeightInfo {
 		total_supply: Weight,
@@ -712,13 +711,13 @@ mod read_weights {
 			token_exists,
 		} = ReadWeightInfo::new();
 
-		assert_eq!(total_supply, <Test as Config>::WeightInfo::total_supply());
-		assert_eq!(balance_of, <Test as Config>::WeightInfo::balance_of());
-		assert_eq!(allowance, <Test as Config>::WeightInfo::allowance());
-		assert_eq!(token_name, <Test as Config>::WeightInfo::token_name());
-		assert_eq!(token_symbol, <Test as Config>::WeightInfo::token_symbol());
-		assert_eq!(token_decimals, <Test as Config>::WeightInfo::token_decimals());
-		assert_eq!(token_exists, <Test as Config>::WeightInfo::token_exists());
+		assert_eq!(total_supply, WeightInfo::total_supply());
+		assert_eq!(balance_of, WeightInfo::balance_of());
+		assert_eq!(allowance, WeightInfo::allowance());
+		assert_eq!(token_name, WeightInfo::token_name());
+		assert_eq!(token_symbol, WeightInfo::token_symbol());
+		assert_eq!(token_decimals, WeightInfo::token_decimals());
+		assert_eq!(token_exists, WeightInfo::token_exists());
 	}
 
 	// These types read from the `AssetMetadata` storage.
