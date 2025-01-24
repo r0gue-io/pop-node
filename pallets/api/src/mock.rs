@@ -2,6 +2,7 @@ use codec::{Decode, Encode};
 use frame_support::{
 	derive_impl, parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything},
+	weights::constants::RocksDbWeight,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
@@ -51,7 +52,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type BlockLength = ();
 	type BlockWeights = ();
-	type DbWeight = ();
+	type DbWeight = RocksDbWeight;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type Lookup = IdentityLookup<Self::AccountId>;

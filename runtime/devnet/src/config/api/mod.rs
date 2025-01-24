@@ -170,15 +170,15 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 					c,
 					RuntimeCall::NonFungibles(
 						transfer { .. } |
-							approve { .. } | clear_all_transfer_approvals { .. } |
-							clear_collection_approvals { .. } |
-							create { .. } | destroy { .. } |
-							set_metadata { .. } | clear_metadata { .. } |
-							set_attribute { .. } | clear_attribute { .. } |
+							approve { .. } | mint { .. } |
+							burn { .. } | create { .. } |
+							destroy { .. } | set_metadata { .. } |
+							clear_metadata { .. } | set_attribute { .. } |
+							clear_attribute { .. } |
 							approve_item_attributes { .. } |
 							cancel_item_attributes_approval { .. } |
-							mint { .. } | burn { .. } |
-							set_max_supply { .. },
+							set_max_supply { .. } | clear_all_transfer_approvals { .. } |
+							clear_collection_approvals { .. },
 					)
 				)
 			};
@@ -210,8 +210,8 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					TotalSupply(..) |
 						BalanceOf { .. } | Allowance { .. } |
 						OwnerOf { .. } | GetAttribute { .. } |
-						Collection { .. } | NextCollectionId |
-						ItemMetadata { .. },
+						Collection { .. } | ItemMetadata { .. } |
+						NextCollectionId,
 				)
 			)
 		};
@@ -321,8 +321,13 @@ mod tests {
 				operator: ACCOUNT,
 				approved: false,
 			}),
-			NonFungibles(clear_all_transfer_approvals { collection: 0, item: 0 }),
-			NonFungibles(clear_collection_approvals { collection: 0, limit: 0 }),
+			NonFungibles(mint {
+				to: ACCOUNT,
+				collection: 0,
+				item: 0,
+				witness: MintWitness { mint_price: None, owned_item: None },
+			}),
+			NonFungibles(burn { collection: 0, item: 0 }),
 			NonFungibles(create {
 				admin: ACCOUNT,
 				config: CollectionConfig {
@@ -358,13 +363,8 @@ mod tests {
 				witness: CancelAttributesApprovalWitness { account_attributes: 0 },
 			}),
 			NonFungibles(set_max_supply { collection: 0, max_supply: 0 }),
-			NonFungibles(mint {
-				to: ACCOUNT,
-				collection: 0,
-				item: 0,
-				witness: MintWitness { mint_price: None, owned_item: None },
-			}),
-			NonFungibles(burn { collection: 0, item: 0 }),
+			NonFungibles(clear_all_transfer_approvals { collection: 0, item: 0 }),
+			NonFungibles(clear_collection_approvals { collection: 0, limit: 0 }),
 		]
 		.iter()
 		{
@@ -388,13 +388,13 @@ mod tests {
 			NonFungibles(OwnerOf { collection: 1, item: 1 }),
 			NonFungibles(GetAttribute {
 				collection: 1,
-				item: 1,
+				item: Some(1),
 				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
 				key: bounded_vec![],
 			}),
 			NonFungibles(Collection(1)),
-			NonFungibles(NextCollectionId),
 			NonFungibles(ItemMetadata { collection: 1, item: 1 }),
+			NonFungibles(NextCollectionId),
 		]
 		.iter()
 		{
