@@ -87,6 +87,7 @@ parachains-common.workspace = true
 enumflags2 = "0.7.9"
 env_logger = "0.11.2"
 hex = "0.4.3"
+sp-keyring.workspace = true
 
 [features]
 default = [ "std" ]

@@ -1049,6 +1049,8 @@ mod tests {
 	use sp_runtime::traits::Dispatchable;
 	use BalancesCall::*;
 	use RuntimeCall::Balances as BalancesRuntimeCall;
+	use sp_keyring::AccountKeyring as Keyring;
+
 
 	use super::*;
 	#[test]
@@ -1140,7 +1142,6 @@ mod tests {
 		assert_eq!(TreasuryAccount::get(), TREASURY_PALLET_ID.into_account_truncating());
 	}
 
-	const ALICE: [u8; 32] = [1; 32];
 	pub fn new_test_ext() -> sp_io::TestExternalities {
 		let initial_balance = 100_000_000 * UNIT;
 		let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
@@ -1148,7 +1149,7 @@ mod tests {
 			balances: vec![
 				(TreasuryAccount::get(), initial_balance),
 				(MaintenanceAccount::get(), initial_balance),
-				(ALICE.into(), initial_balance),
+				(Keyring::Alice.to_account_id(), initial_balance),
 			],
 		}
 		.assimilate_storage(&mut t)
@@ -1161,7 +1162,7 @@ mod tests {
 	#[test]
 	fn transaction_payment_charges_fees_via_balances_and_funds_treasury_and_maintenance_equally() {
 		new_test_ext().execute_with(|| {
-			let who: AccountId = ALICE.into();
+			let who: AccountId = Keyring::Alice.to_account_id();
 			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 			let fee = UNIT / 10;
 			let tip = UNIT / 2;
@@ -1246,86 +1247,91 @@ mod tests {
 		});
 	}
 
-	#[test]
-	fn treasury_balance_converter_is_set() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::BalanceConverter>(),
-			TypeId::of::<UnityAssetBalanceConversion>(),
-		);
+	mod treasury {
+		use super::*;
+		#[test]
+		fn balance_converter_is_set() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BalanceConverter>(),
+				TypeId::of::<UnityAssetBalanceConversion>(),
+			);
+		}
+	
+		#[test]
+		fn block_number_provider_is_set() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BlockNumberProvider>(),
+				TypeId::of::<System>(),
+			);
+		}
+	
+		#[test]
+		fn burn_is_nothing() {
+			assert_eq!(TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(), TypeId::of::<()>(),);
+		}
+	
+		#[test]
+		fn max_approvals_is_set() {
+			assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
+		}
+	
+		#[test]
+		fn pallet_id_is_set() {
+			assert_eq!(
+				<Runtime as pallet_treasury::Config>::PalletId::get().encode(),
+				PalletId(*b"treasury").encode()
+			);
+		}
+	
+		#[test]
+		fn paymaster_is_correct_type() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::Paymaster>(),
+				TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
+			);
+		}
+	
+		#[test]
+		fn payout_period_is_set() {
+			assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
+		}
+	
+		#[test]
+		fn reject_origin_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::RejectOrigin>(),
+				TypeId::of::<EnsureRoot<AccountId>>(),
+			);
+		}
+		#[test]
+		fn spend_funds_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::SpendFunds>(),
+				TypeId::of::<()>(),
+			);
+		}
+	
+		#[test]
+		fn spend_origin_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::SpendOrigin>(),
+				TypeId::of::<NeverEnsureOrigin<Balance>>(),
+			);
+		}
+	
+		#[test]
+		fn spend_period_is_six_days() {
+			assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
+		}
+	
+		#[test]
+		fn type_of_on_charge_transaction_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
+				TypeId::of::<OnChargeTransaction>(),
+			);
+		}
+	
 	}
 
-	#[test]
-	fn treasury_block_number_provider_is_set() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::BlockNumberProvider>(),
-			TypeId::of::<System>(),
-		);
-	}
-
-	#[test]
-	fn treasury_burn_is_nothing() {
-		assert_eq!(TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(), TypeId::of::<()>(),);
-	}
-
-	#[test]
-	fn treasury_max_approvals_is_set() {
-		assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
-	}
-
-	#[test]
-	fn treasury_pallet_id_is_set() {
-		assert_eq!(
-			<Runtime as pallet_treasury::Config>::PalletId::get().encode(),
-			PalletId(*b"treasury").encode()
-		);
-	}
-
-	#[test]
-	fn treasury_paymaster_is_correct_type() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::Paymaster>(),
-			TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
-		);
-	}
-
-	#[test]
-	fn treasury_payout_period_is_set() {
-		assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
-	}
-
-	#[test]
-	fn treasury_reject_origin_is_correct() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::RejectOrigin>(),
-			TypeId::of::<EnsureRoot<AccountId>>(),
-		);
-	}
-	#[test]
-	fn treasury_spend_funds_is_correct() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::SpendFunds>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn treasury_spend_origin_is_correct() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_treasury::Config>::SpendOrigin>(),
-			TypeId::of::<NeverEnsureOrigin<Balance>>(),
-		);
-	}
-
-	#[test]
-	fn treasury_spend_period_is_set() {
-		assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
-	}
-
-	#[test]
-	fn type_of_on_charge_transaction_is_correct() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
-			TypeId::of::<OnChargeTransaction>(),
-		);
-	}
 }
