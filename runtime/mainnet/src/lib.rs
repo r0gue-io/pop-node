@@ -389,10 +389,10 @@ parameter_types! {
 /// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
 /// by implementing OnUnbalanced.
 pub struct DealWithFees;
-impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>> for DealWithFees {
+impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
 	fn on_unbalanceds(
 		mut fees_then_tips: impl Iterator<
-			Item = fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>,
+			Item = fungible::Credit<AccountId, Balances>,
 		>,
 	) {
 		if let Some(mut fees) = fees_then_tips.next() {
@@ -402,8 +402,8 @@ impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>>
 
 			let split = fees.ration(50, 50);
 
-			ResolveTo::<TreasuryAccount, pallet_balances::Pallet<Runtime>>::on_unbalanced(split.0);
-			ResolveTo::<MaintenanceAccount, pallet_balances::Pallet<Runtime>>::on_unbalanced(
+			ResolveTo::<TreasuryAccount, Balances>::on_unbalanced(split.0);
+			ResolveTo::<MaintenanceAccount, Balances>::on_unbalanced(
 				split.1,
 			);
 		}
@@ -412,7 +412,7 @@ impl OnUnbalanced<fungible::Credit<AccountId, pallet_balances::Pallet<Runtime>>>
 
 /// The type responsible for payment in pallet_transaction_payment.
 pub type OnChargeTransaction =
-	pallet_transaction_payment::FungibleAdapter<pallet_balances::Pallet<Runtime>, DealWithFees>;
+	pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
@@ -677,6 +677,7 @@ impl pallet_treasury::Config for Runtime {
 	type RejectOrigin = EnsureRoot<AccountId>;
 	type RuntimeEvent = RuntimeEvent;
 	type SpendFunds = ();
+	/// Never allow origins except via the proposals process.
 	type SpendOrigin = NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
 	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
@@ -1041,17 +1042,18 @@ cumulus_pallet_parachain_system::register_validate_block! {
 mod tests {
 	use std::any::TypeId;
 
+	use crate::Balances;
 	use frame_support::{dispatch::GetDispatchInfo, pallet_prelude::Encode};
 	use pallet_balances::AdjustmentDirection;
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
 	use sp_runtime::traits::Dispatchable;
 	use BalancesCall::*;
-	use RuntimeCall::Balances;
+	use RuntimeCall::Balances as BalancesRuntimeCall;
 
 	use super::*;
 	#[test]
 	fn filtering_force_adjust_total_issuance_works() {
-		assert!(FilteredCalls::contains(&Balances(force_adjust_total_issuance {
+		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_adjust_total_issuance {
 			direction: AdjustmentDirection::Increase,
 			delta: 0
 		})));
@@ -1059,7 +1061,7 @@ mod tests {
 
 	#[test]
 	fn filtering_force_set_balance_works() {
-		assert!(FilteredCalls::contains(&Balances(force_set_balance {
+		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_set_balance {
 			who: MultiAddress::Address32([0u8; 32]),
 			new_free: 0,
 		})));
@@ -1067,7 +1069,7 @@ mod tests {
 
 	#[test]
 	fn filtering_force_transfer_works() {
-		assert!(FilteredCalls::contains(&Balances(force_transfer {
+		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_transfer {
 			source: MultiAddress::Address32([0u8; 32]),
 			dest: MultiAddress::Address32([0u8; 32]),
 			value: 0,
@@ -1076,7 +1078,7 @@ mod tests {
 
 	#[test]
 	fn filtering_force_unreserve_works() {
-		assert!(FilteredCalls::contains(&Balances(force_unreserve {
+		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_unreserve {
 			who: MultiAddress::Address32([0u8; 32]),
 			amount: 0
 		})));
@@ -1165,10 +1167,10 @@ mod tests {
 			let tip = UNIT / 2;
 			let fee_plus_tip = fee + tip;
 			let treasury_balance =
-				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
+				Balances::free_balance(&TreasuryAccount::get());
 			let maintenance_balance =
-				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
-			let who_balance = pallet_balances::Pallet::<Runtime>::free_balance(&who);
+				Balances::free_balance(&MaintenanceAccount::get());
+			let who_balance = Balances::free_balance(&who);
 			let dispatch_info = call.get_dispatch_info();
 
 			// NOTE: OnChargeTransaction functions expect tip to be included within fee
@@ -1199,15 +1201,15 @@ mod tests {
 			assert!(maintenance_expected_balance != 0);
 
 			assert_eq!(
-				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()),
+				Balances::free_balance(&TreasuryAccount::get()),
 				treasury_expected_balance
 			);
 			assert_eq!(
-				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()),
+				Balances::free_balance(&MaintenanceAccount::get()),
 				maintenance_expected_balance
 			);
 			assert_eq!(
-				pallet_balances::Pallet::<Runtime>::free_balance(&who),
+				Balances::free_balance(&who),
 				who_expected_balance
 			);
 		})
@@ -1218,27 +1220,27 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			let fee_amount = 10;
 			let fee =
-				<pallet_balances::Pallet<Runtime> as frame_support::traits::fungible::Balanced<
+				<Balances as fungible::Balanced<
 					AccountId,
 				>>::issue(fee_amount);
 			let tip_amount = 20;
 			let tip =
-				<pallet_balances::Pallet<Runtime> as frame_support::traits::fungible::Balanced<
+				<Balances as fungible::Balanced<
 					AccountId,
 				>>::issue(tip_amount);
 			let treasury_balance =
-				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get());
+				Balances::free_balance(&TreasuryAccount::get());
 			let maintenance_balance =
-				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get());
+				Balances::free_balance(&MaintenanceAccount::get());
 			DealWithFees::on_unbalanceds(vec![fee, tip].into_iter());
 
 			// Each to get 50%, total is 30 so 15 each.
 			assert_eq!(
-				pallet_balances::Pallet::<Runtime>::free_balance(&TreasuryAccount::get()),
+				Balances::free_balance(&TreasuryAccount::get()),
 				treasury_balance + ((fee_amount + tip_amount) / 2)
 			);
 			assert_eq!(
-				pallet_balances::Pallet::<Runtime>::free_balance(&MaintenanceAccount::get()),
+				Balances::free_balance(&MaintenanceAccount::get()),
 				maintenance_balance + ((fee_amount + tip_amount) / 2)
 			);
 		});
