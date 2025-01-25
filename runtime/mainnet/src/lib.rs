@@ -391,9 +391,7 @@ parameter_types! {
 pub struct DealWithFees;
 impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
 	fn on_unbalanceds(
-		mut fees_then_tips: impl Iterator<
-			Item = fungible::Credit<AccountId, Balances>,
-		>,
+		mut fees_then_tips: impl Iterator<Item = fungible::Credit<AccountId, Balances>>,
 	) {
 		if let Some(mut fees) = fees_then_tips.next() {
 			if let Some(tips) = fees_then_tips.next() {
@@ -403,16 +401,13 @@ impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
 			let split = fees.ration(50, 50);
 
 			ResolveTo::<TreasuryAccount, Balances>::on_unbalanced(split.0);
-			ResolveTo::<MaintenanceAccount, Balances>::on_unbalanced(
-				split.1,
-			);
+			ResolveTo::<MaintenanceAccount, Balances>::on_unbalanced(split.1);
 		}
 	}
 }
 
 /// The type responsible for payment in pallet_transaction_payment.
-pub type OnChargeTransaction =
-	pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
+pub type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
@@ -1042,17 +1037,16 @@ cumulus_pallet_parachain_system::register_validate_block! {
 mod tests {
 	use std::any::TypeId;
 
-	use crate::Balances;
 	use frame_support::{dispatch::GetDispatchInfo, pallet_prelude::Encode};
 	use pallet_balances::AdjustmentDirection;
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
+	use sp_keyring::AccountKeyring as Keyring;
 	use sp_runtime::traits::Dispatchable;
 	use BalancesCall::*;
 	use RuntimeCall::Balances as BalancesRuntimeCall;
-	use sp_keyring::AccountKeyring as Keyring;
-
 
 	use super::*;
+	use crate::Balances;
 	#[test]
 	fn filtering_force_adjust_total_issuance_works() {
 		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_adjust_total_issuance {
@@ -1167,10 +1161,8 @@ mod tests {
 			let fee = UNIT / 10;
 			let tip = UNIT / 2;
 			let fee_plus_tip = fee + tip;
-			let treasury_balance =
-				Balances::free_balance(&TreasuryAccount::get());
-			let maintenance_balance =
-				Balances::free_balance(&MaintenanceAccount::get());
+			let treasury_balance = Balances::free_balance(&TreasuryAccount::get());
+			let maintenance_balance = Balances::free_balance(&MaintenanceAccount::get());
 			let who_balance = Balances::free_balance(&who);
 			let dispatch_info = call.get_dispatch_info();
 
@@ -1201,18 +1193,12 @@ mod tests {
 			assert!(treasury_balance != 0);
 			assert!(maintenance_expected_balance != 0);
 
-			assert_eq!(
-				Balances::free_balance(&TreasuryAccount::get()),
-				treasury_expected_balance
-			);
+			assert_eq!(Balances::free_balance(&TreasuryAccount::get()), treasury_expected_balance);
 			assert_eq!(
 				Balances::free_balance(&MaintenanceAccount::get()),
 				maintenance_expected_balance
 			);
-			assert_eq!(
-				Balances::free_balance(&who),
-				who_expected_balance
-			);
+			assert_eq!(Balances::free_balance(&who), who_expected_balance);
 		})
 	}
 
@@ -1220,19 +1206,11 @@ mod tests {
 	fn test_fees_and_tip_split() {
 		new_test_ext().execute_with(|| {
 			let fee_amount = 10;
-			let fee =
-				<Balances as fungible::Balanced<
-					AccountId,
-				>>::issue(fee_amount);
+			let fee = <Balances as fungible::Balanced<AccountId>>::issue(fee_amount);
 			let tip_amount = 20;
-			let tip =
-				<Balances as fungible::Balanced<
-					AccountId,
-				>>::issue(tip_amount);
-			let treasury_balance =
-				Balances::free_balance(&TreasuryAccount::get());
-			let maintenance_balance =
-				Balances::free_balance(&MaintenanceAccount::get());
+			let tip = <Balances as fungible::Balanced<AccountId>>::issue(tip_amount);
+			let treasury_balance = Balances::free_balance(&TreasuryAccount::get());
+			let maintenance_balance = Balances::free_balance(&MaintenanceAccount::get());
 			DealWithFees::on_unbalanceds(vec![fee, tip].into_iter());
 
 			// Each to get 50%, total is 30 so 15 each.
@@ -1256,7 +1234,7 @@ mod tests {
 				TypeId::of::<UnityAssetBalanceConversion>(),
 			);
 		}
-	
+
 		#[test]
 		fn block_number_provider_is_set() {
 			assert_eq!(
@@ -1264,17 +1242,20 @@ mod tests {
 				TypeId::of::<System>(),
 			);
 		}
-	
+
 		#[test]
 		fn burn_is_nothing() {
-			assert_eq!(TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(), TypeId::of::<()>(),);
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(),
+				TypeId::of::<()>(),
+			);
 		}
-	
+
 		#[test]
 		fn max_approvals_is_set() {
 			assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
 		}
-	
+
 		#[test]
 		fn pallet_id_is_set() {
 			assert_eq!(
@@ -1282,7 +1263,7 @@ mod tests {
 				PalletId(*b"treasury").encode()
 			);
 		}
-	
+
 		#[test]
 		fn paymaster_is_correct_type() {
 			assert_eq!(
@@ -1290,12 +1271,12 @@ mod tests {
 				TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
 			);
 		}
-	
+
 		#[test]
 		fn payout_period_is_set() {
 			assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
 		}
-	
+
 		#[test]
 		fn reject_origin_is_correct() {
 			assert_eq!(
@@ -1310,7 +1291,7 @@ mod tests {
 				TypeId::of::<()>(),
 			);
 		}
-	
+
 		#[test]
 		fn spend_origin_is_correct() {
 			assert_eq!(
@@ -1318,20 +1299,19 @@ mod tests {
 				TypeId::of::<NeverEnsureOrigin<Balance>>(),
 			);
 		}
-	
+
 		#[test]
 		fn spend_period_is_six_days() {
 			assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
 		}
-	
+
 		#[test]
 		fn type_of_on_charge_transaction_is_correct() {
 			assert_eq!(
-				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(
+				),
 				TypeId::of::<OnChargeTransaction>(),
 			);
 		}
-	
 	}
-
 }
