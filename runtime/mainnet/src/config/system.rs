@@ -8,7 +8,7 @@ use crate::{
 	parameter_types,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 	AccountId, Balance, BlakeTwo256, Block, BlockLength, BlockWeights, DispatchClass, Everything,
-	Hash, PalletInfo, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask,
+	Hash, PalletInfo, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask,
 	RuntimeVersion, VERSION,
 };
 
