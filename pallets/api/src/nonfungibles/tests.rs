@@ -3,7 +3,7 @@ use frame_support::{
 	assert_noop, assert_ok,
 	sp_runtime::{traits::Zero, BoundedVec, DispatchError::BadOrigin},
 };
-use pallet_nfts::{CollectionSetting, WeightInfo as NftsWeightInfoTrait};
+use pallet_nfts::{CollectionSetting, MintWitness, WeightInfo as NftsWeightInfoTrait};
 
 use crate::{
 	mock::*,
@@ -237,17 +237,18 @@ fn mint_works() {
 		let collection = COLLECTION;
 		let item = ITEM;
 		let owner = ALICE;
+		let witness = MintWitness { mint_price: None, owned_item: None };
 
 		// Check error works for `Nfts::mint()`.
 		assert_noop!(
-			NonFungibles::mint(signed(owner), collection, owner, item, None),
+			NonFungibles::mint(signed(owner), collection, owner, item, witness.clone()),
 			NftsError::NoConfig
 		);
 
 		// Successfully mint a new collection item.
 		nfts::create_collection(owner);
 		let balance_before_mint = nfts::balance_of(collection, &owner);
-		assert_ok!(NonFungibles::mint(signed(owner), collection, owner, item, None));
+		assert_ok!(NonFungibles::mint(signed(owner), collection, owner, item, witness));
 		let balance_after_mint = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_mint, balance_before_mint + 1);
 		System::assert_last_event(
@@ -999,7 +1000,10 @@ mod ensure_codec_indexes {
 					collection: Default::default(),
 					to: Default::default(),
 					item: Default::default(),
-					price: Default::default(),
+					witness: MintWitness {
+						owned_item: Default::default(),
+						mint_price: Default::default(),
+					},
 				},
 				7,
 				"mint",

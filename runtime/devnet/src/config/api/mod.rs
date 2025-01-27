@@ -308,9 +308,9 @@ mod tests {
 	#[test]
 	fn filter_allows_nonfungibles_calls() {
 		use pallet_api::nonfungibles::{
-			Call::*, CollectionConfig, CollectionSettings, MintSettings,
+			Call::*, CancelAttributesApprovalWitness, CollectionConfig, CollectionSettings,
+			DestroyWitness, MintSettings, MintWitness,
 		};
-		use pallet_nfts::{CancelAttributesApprovalWitness, DestroyWitness};
 
 		for call in vec![
 			NonFungibles(transfer { collection: 0, item: 0, to: ACCOUNT }),
@@ -320,7 +320,12 @@ mod tests {
 				operator: ACCOUNT,
 				approved: false,
 			}),
-			NonFungibles(mint { to: ACCOUNT, collection: 0, item: 0, price: None }),
+			NonFungibles(mint {
+				to: ACCOUNT,
+				collection: 0,
+				item: 0,
+				witness: MintWitness { owned_item: None, mint_price: None },
+			}),
 			NonFungibles(burn { collection: 0, item: 0 }),
 			NonFungibles(create {
 				admin: ACCOUNT,

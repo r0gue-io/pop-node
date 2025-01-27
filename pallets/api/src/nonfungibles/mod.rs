@@ -190,7 +190,9 @@ pub mod pallet {
 		/// - `collection` - The collection.
 		/// - `to` - The recipient account.
 		/// - `item` - An identifier of the new item.
-		/// - `price` - Optional mint price of the collection item.
+		/// - `witness` - When the mint type is `HolderOf(collection_id)`, then the owned item_id
+		///   from that collection needs to be provided within the witness data object. If the mint
+		///   price is set, then it should be additionally confirmed in the `witness`.
 		#[pallet::call_index(7)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -198,14 +200,14 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			to: AccountIdOf<T>,
 			item: ItemIdOf<T>,
-			price: Option<ItemPriceOf<T>>,
+			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
 		) -> DispatchResult {
 			NftsOf::<T>::mint(
 				origin,
 				collection,
 				item,
 				T::Lookup::unlookup(to.clone()),
-				Some(MintWitness { owned_item: Some(item), mint_price: price }),
+				Some(witness),
 			)?;
 			Self::deposit_event(Event::Transfer { collection, item, from: None, to: Some(to) });
 			Ok(())
