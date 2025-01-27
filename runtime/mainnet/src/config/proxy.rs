@@ -74,34 +74,25 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn proxy_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_proxy::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn pallet_proxy_uses_proxy_type() {
+	fn proxy_has_announcement_deposit_base() {
 		assert_eq!(
-			TypeId::of::<<Runtime as pallet_proxy::Config>::ProxyType>(),
-			TypeId::of::<ProxyType>(),
-		);
-	}
-
-	#[test]
-	fn proxy_has_deposit_factor() {
-		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::ProxyDepositFactor as Get<Balance>>::get(),
-			deposit(0, 37),
-		);
-	}
-
-	#[test]
-	fn proxy_has_deposit_base() {
-		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::ProxyDepositBase as Get<Balance>>::get(),
+			<<Runtime as pallet_proxy::Config>::AnnouncementDepositBase as Get<Balance>>::get(),
 			deposit(1, 48),
+		);
+	}
+	#[test]
+	fn proxy_has_announcement_deposit_factor() {
+		assert_eq!(
+			<<Runtime as pallet_proxy::Config>::AnnouncementDepositFactor as Get<Balance>>::get(),
+			deposit(0, 68),
+		);
+	}
+
+	#[test]
+	fn proxy_uses_blaketwo256_as_hasher() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_proxy::Config>::CallHasher>(),
+			TypeId::of::<BlakeTwo256>(),
 		);
 	}
 
@@ -114,36 +105,44 @@ mod tests {
 	}
 
 	#[test]
-	fn proxy_configures_max_num_of_proxies() {
-		assert_eq!(<<Runtime as pallet_proxy::Config>::MaxProxies>::get(), 32,);
-	}
-
-	#[test]
 	fn proxy_configures_max_pending() {
 		assert_eq!(<<Runtime as pallet_proxy::Config>::MaxPending>::get(), 32,);
 	}
 
 	#[test]
-	fn proxy_uses_blaketwo256_as_hasher() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_proxy::Config>::CallHasher>(),
-			TypeId::of::<BlakeTwo256>(),
-		);
+	fn proxy_configures_max_num_of_proxies() {
+		assert_eq!(<<Runtime as pallet_proxy::Config>::MaxProxies>::get(), 32,);
 	}
 
 	#[test]
-	fn proxy_has_announcement_deposit_factor() {
+	fn proxy_has_deposit_base() {
 		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::AnnouncementDepositFactor as Get<Balance>>::get(),
-			deposit(0, 68),
-		);
-	}
-
-	#[test]
-	fn proxy_has_announcement_deposit_base() {
-		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::AnnouncementDepositBase as Get<Balance>>::get(),
+			<<Runtime as pallet_proxy::Config>::ProxyDepositBase as Get<Balance>>::get(),
 			deposit(1, 48),
+		);
+	}
+
+	#[test]
+	fn proxy_has_deposit_factor() {
+		assert_eq!(
+			<<Runtime as pallet_proxy::Config>::ProxyDepositFactor as Get<Balance>>::get(),
+			deposit(0, 37),
+		);
+	}
+
+	#[test]
+	fn pallet_proxy_uses_proxy_type() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_proxy::Config>::ProxyType>(),
+			TypeId::of::<ProxyType>(),
+		);
+	}
+
+	#[test]
+	fn proxy_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as pallet_proxy::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
 		);
 	}
 }
