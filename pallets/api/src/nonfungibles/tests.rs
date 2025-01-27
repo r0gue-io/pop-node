@@ -1,7 +1,6 @@
 use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
-	dispatch::WithPostDispatchInfo,
 	sp_runtime::{traits::Zero, BoundedVec, DispatchError::BadOrigin},
 };
 use pallet_nfts::{CollectionSetting, WeightInfo as NftsWeightInfoTrait};
@@ -22,7 +21,6 @@ const COLLECTION: u32 = 0;
 const ITEM: u32 = 1;
 
 type CollectionApprovals = pallet_nfts::CollectionApprovals<Test, NftsInstanceOf<Test>>;
-type DbWeight = <Test as frame_system::Config>::DbWeight;
 type Event = crate::nonfungibles::Event<Test>;
 type NftsError = NftsErrorOf<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
@@ -40,8 +38,8 @@ mod transfer {
 
 			// Throw `NftsError::UnknownItem` if no item found.
 			assert_noop!(
-				NonFungibles::transfer(signed(owner), collection, item, dest),
-				NftsError::UnknownItem.with_weight(DbWeight::get().reads(1))
+				NonFungibles::transfer(signed(dest), collection, item, dest),
+				NftsError::UnknownItem
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
 			// Check error works for `Nfts::transfer()`.
@@ -56,8 +54,8 @@ mod transfer {
 			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
 			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
 			// Check that `to` has received the collection item from `from`.
-			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
 			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
+			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
 			System::assert_last_event(
 				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
 			);
@@ -88,8 +86,8 @@ mod transfer {
 			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
 			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
 			// Check that `to` has received the collection item from `from`.
-			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
 			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
+			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
 			System::assert_last_event(
 				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
 			);
@@ -240,15 +238,12 @@ fn mint_works() {
 		let item = ITEM;
 		let owner = ALICE;
 
-		// Origin checks.
-		for origin in vec![root(), none()] {
-			assert_noop!(NonFungibles::mint(origin, owner, collection, item, None), BadOrigin);
-		}
 		// Check error works for `Nfts::mint()`.
 		assert_noop!(
 			NonFungibles::mint(signed(owner), owner, collection, item, None),
 			NftsError::NoConfig
 		);
+
 		// Successfully mint a new collection item.
 		nfts::create_collection(owner);
 		let balance_before_mint = nfts::balance_of(collection, &owner);

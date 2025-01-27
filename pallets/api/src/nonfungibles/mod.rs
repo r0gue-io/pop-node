@@ -147,9 +147,8 @@ pub mod pallet {
 			item: ItemIdOf<T>,
 			to: AccountIdOf<T>,
 		) -> DispatchResultWithPostInfo {
-			let owner = NftsOf::<T>::owner(collection, item)
-				.ok_or(NftsErrorOf::<T>::UnknownItem)
-				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
+			let owner =
+				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
 			Self::deposit_event(Event::Transfer {
 				collection,
