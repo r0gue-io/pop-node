@@ -349,6 +349,7 @@ mod tests {
 			}),
 			NonFungibles(set_metadata { collection: 0, item: 0, data: bounded_vec![] }),
 			NonFungibles(clear_metadata { collection: 0, item: 0 }),
+			NonFungibles(set_max_supply { collection: 0, max_supply: 0 }),
 			NonFungibles(approve_item_attributes { collection: 0, item: 0, delegate: ACCOUNT }),
 			NonFungibles(cancel_item_attributes_approval {
 				collection: 0,
@@ -356,7 +357,6 @@ mod tests {
 				delegate: ACCOUNT,
 				witness: CancelAttributesApprovalWitness { account_attributes: 0 },
 			}),
-			NonFungibles(set_max_supply { collection: 0, max_supply: 0 }),
 			NonFungibles(clear_all_transfer_approvals { collection: 0, item: 0 }),
 			NonFungibles(clear_collection_approvals { collection: 0, limit: 0 }),
 		]
@@ -375,9 +375,9 @@ mod tests {
 			NonFungibles(OwnerOf { collection: 1, item: 1 }),
 			NonFungibles(Allowance {
 				collection: 1,
-				item: None,
 				owner: ACCOUNT,
 				operator: ACCOUNT,
+				item: None,
 			}),
 			NonFungibles(TotalSupply(1)),
 			NonFungibles(GetAttribute {

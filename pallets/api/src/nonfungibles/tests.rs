@@ -38,19 +38,19 @@ mod transfer {
 
 			// Throw `NftsError::UnknownItem` if no item found.
 			assert_noop!(
-				NonFungibles::transfer(signed(dest), collection, item, dest),
+				NonFungibles::transfer(signed(dest), collection, dest, item),
 				NftsError::UnknownItem
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
 			// Check error works for `Nfts::transfer()`.
 			assert_noop!(
-				NonFungibles::transfer(signed(dest), collection, item, dest),
+				NonFungibles::transfer(signed(dest), collection, dest, item),
 				NftsError::NoPermission
 			);
 			// Successfully transfer a collection item.
 			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
 			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
-			assert_ok!(NonFungibles::transfer(signed(owner), collection, item, dest));
+			assert_ok!(NonFungibles::transfer(signed(owner), collection, dest, item));
 			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
 			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
 			// Check that `to` has received the collection item from `from`.
@@ -82,7 +82,7 @@ mod transfer {
 			// Successfully transfer a collection item.
 			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
 			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
-			assert_ok!(NonFungibles::transfer(signed(operator), collection, item, dest));
+			assert_ok!(NonFungibles::transfer(signed(operator), collection, dest, item));
 			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
 			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
 			// Check that `to` has received the collection item from `from`.
@@ -103,7 +103,7 @@ mod approve {
 		new_test_ext().execute_with(|| {
 			for origin in vec![root(), none()] {
 				assert_noop!(
-					NonFungibles::approve(origin, COLLECTION, Some(ITEM), ALICE, false),
+					NonFungibles::approve(origin, ALICE, COLLECTION, Some(ITEM), false),
 					BadOrigin
 				);
 			}
@@ -120,7 +120,7 @@ mod approve {
 
 			// Check error works for `Nfts::approve_transfer()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, Some(item), operator, true),
+				NonFungibles::approve(signed(owner), operator, collection, Some(item), true),
 				NftsError::UnknownItem
 			);
 
@@ -128,9 +128,9 @@ mod approve {
 			// Successfully approve `operator` to transfer the collection item.
 			assert_ok!(NonFungibles::approve(
 				signed(owner),
+				operator,
 				collection,
 				Some(item),
-				operator,
 				true
 			));
 			assert_ok!(Nfts::check_approval_permission(
@@ -156,13 +156,13 @@ mod approve {
 
 			// Check error works for `Nfts::approve_collection_transfer()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, None, operator, true),
+				NonFungibles::approve(signed(owner), operator, collection, None, true),
 				NftsError::NoItemOwned
 			);
 
 			nfts::create_collection_and_mint(owner, owner, item);
 			// Successfully approve `operator` to transfer all collection items owned by `owner`.
-			assert_ok!(NonFungibles::approve(signed(owner), collection, None, operator, true));
+			assert_ok!(NonFungibles::approve(signed(owner), operator, collection, None, true));
 			assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
 			System::assert_last_event(
 				Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
@@ -180,7 +180,7 @@ mod approve {
 
 			// Check error works for `Nfts::cancel_approval()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, Some(item), operator, false),
+				NonFungibles::approve(signed(owner), operator, collection, Some(item), false),
 				NftsError::UnknownItem
 			);
 
@@ -188,9 +188,9 @@ mod approve {
 			// Successfully cancel the transfer approval of `operator` by `owner`.
 			assert_ok!(NonFungibles::approve(
 				signed(owner),
+				operator,
 				collection,
 				Some(item),
-				operator,
 				false
 			));
 			assert_eq!(
@@ -210,7 +210,7 @@ mod approve {
 
 			// Check error works for `Nfts::cancel_collection_approval()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, None, operator, false),
+				NonFungibles::approve(signed(owner), operator, collection, None, false),
 				NftsError::NotDelegate
 			);
 
@@ -222,7 +222,7 @@ mod approve {
 				None
 			));
 			// Successfully cancel the transfer collection approval of `operator` by `owner`.
-			assert_ok!(NonFungibles::approve(signed(owner), collection, None, operator, false));
+			assert_ok!(NonFungibles::approve(signed(owner), operator, collection, None, false));
 			assert_eq!(
 				Nfts::check_approval_permission(&collection, &None, &owner, &operator),
 				Err(NftsError::NoPermission.into())
@@ -240,14 +240,14 @@ fn mint_works() {
 
 		// Check error works for `Nfts::mint()`.
 		assert_noop!(
-			NonFungibles::mint(signed(owner), owner, collection, item, None),
+			NonFungibles::mint(signed(owner), collection, owner, item, None),
 			NftsError::NoConfig
 		);
 
 		// Successfully mint a new collection item.
 		nfts::create_collection(owner);
 		let balance_before_mint = nfts::balance_of(collection, &owner);
-		assert_ok!(NonFungibles::mint(signed(owner), owner, collection, item, None));
+		assert_ok!(NonFungibles::mint(signed(owner), collection, owner, item, None));
 		let balance_after_mint = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_mint, balance_before_mint + 1);
 		System::assert_last_event(
@@ -468,6 +468,30 @@ fn clear_metadata_works() {
 }
 
 #[test]
+fn set_max_supply_works() {
+	new_test_ext().execute_with(|| {
+		let collection = COLLECTION;
+		let owner = ALICE;
+		let max_supply = 10;
+
+		nfts::create_collection(owner);
+		// Successfully set the max supply for the collection.
+		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, max_supply));
+		(0..max_supply).into_iter().for_each(|i| {
+			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
+		});
+		// Throws `MaxSupplyReached` error if number of minted items is over the max supply.
+		assert_noop!(
+			Nfts::mint(signed(owner), collection, 42, owner, None),
+			NftsError::MaxSupplyReached
+		);
+		// Override the max supply.
+		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, max_supply * 2));
+		assert_ok!(Nfts::mint(signed(owner), collection, 42, owner, None));
+	});
+}
+
+#[test]
 fn approve_item_attribute_works() {
 	new_test_ext().execute_with(|| {
 		let attribute = BoundedVec::truncate_from("some attribute".as_bytes().to_vec());
@@ -545,30 +569,6 @@ fn cancel_item_attribute_approval_works() {
 			),
 			NftsError::NoPermission
 		);
-	});
-}
-
-#[test]
-fn set_max_supply_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let owner = ALICE;
-		let max_supply = 10;
-
-		nfts::create_collection(owner);
-		// Successfully set the max supply for the collection.
-		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, max_supply));
-		(0..max_supply).into_iter().for_each(|i| {
-			assert_ok!(Nfts::mint(signed(owner), collection, i, owner, None));
-		});
-		// Throws `MaxSupplyReached` error if number of minted items is over the max supply.
-		assert_noop!(
-			Nfts::mint(signed(owner), collection, 42, owner, None),
-			NftsError::MaxSupplyReached
-		);
-		// Override the max supply.
-		assert_ok!(NonFungibles::set_max_supply(signed(owner), collection, max_supply * 2));
-		assert_ok!(Nfts::mint(signed(owner), collection, 42, owner, None));
 	});
 }
 
@@ -688,11 +688,11 @@ fn allowance_works() {
 
 		nfts::create_collection_mint_and_approve(owner, owner, item, operator);
 		assert_eq!(
-			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator }),
+			NonFungibles::read(Allowance { collection, owner, operator, item: Some(item) }),
 			ReadResult::Allowance(true)
 		);
 		assert_eq!(
-			NonFungibles::read(Allowance { collection, item: Some(item), owner, operator })
+			NonFungibles::read(Allowance { collection, owner, operator, item: Some(item) })
 				.encode(),
 			Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator)
 				.is_ok()
@@ -977,18 +977,18 @@ mod ensure_codec_indexes {
 		[
 			(
 				transfer {
+					to: Default::default(),
 					collection: Default::default(),
 					item: Default::default(),
-					to: Default::default(),
 				},
 				3u8,
 				"transfer",
 			),
 			(
 				approve {
+					operator: Default::default(),
 					collection: Default::default(),
 					item: Default::default(),
-					operator: Default::default(),
 					approved: Default::default(),
 				},
 				4,
@@ -996,8 +996,8 @@ mod ensure_codec_indexes {
 			),
 			(
 				mint {
-					to: Default::default(),
 					collection: Default::default(),
+					to: Default::default(),
 					item: Default::default(),
 					price: Default::default(),
 				},
@@ -1054,12 +1054,17 @@ mod ensure_codec_indexes {
 				"clear_metadata",
 			),
 			(
+				set_max_supply { collection: Default::default(), max_supply: Default::default() },
+				18,
+				"set_max_supply",
+			),
+			(
 				approve_item_attributes {
 					collection: Default::default(),
 					item: Default::default(),
 					delegate: Default::default(),
 				},
-				18,
+				19,
 				"approve_item_attributes",
 			),
 			(
@@ -1071,13 +1076,8 @@ mod ensure_codec_indexes {
 						account_attributes: Default::default(),
 					},
 				},
-				19,
-				"cancel_item_attributes_approval",
-			),
-			(
-				set_max_supply { collection: Default::default(), max_supply: Default::default() },
 				20,
-				"set_max_supply",
+				"cancel_item_attributes_approval",
 			),
 			(
 				clear_all_transfer_approvals {

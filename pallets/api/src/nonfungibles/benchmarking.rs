@@ -14,7 +14,7 @@ use sp_runtime::traits::{Bounded, StaticLookup, Zero};
 
 use super::{
 	AccountIdOf, AttributeNamespace, BalanceOf, Call, CollectionConfig, CollectionConfigOf,
-	CollectionIdOf, CollectionSettings, Config, Inspect, ItemConfig, ItemIdOf, ItemSettings,
+	CollectionIdOf, CollectionSettings, Config, Event, Inspect, ItemConfig, ItemIdOf, ItemSettings,
 	MintSettings, NftsInstanceOf, NftsOf, Pallet, Read,
 };
 use crate::Read as _;
@@ -22,9 +22,7 @@ use crate::Read as _;
 const SEED: u32 = 1;
 
 // See if `generic_event` has been emitted.
-fn assert_has_event<T: Config>(
-	generic_event: <T as pallet_nfts::Config<NftsInstanceOf<T>>>::RuntimeEvent,
-) {
+fn assert_has_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
 	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
@@ -94,7 +92,7 @@ mod benchmarks {
 		};
 
 		#[extrinsic_call]
-		_(origin, collection_id, maybe_item, operator.clone(), approved);
+		_(origin, operator.clone(), collection_id, maybe_item, approved);
 
 		assert_eq!(
 			NftsOf::<T>::check_approval_permission(&collection_id, &maybe_item, &owner, &operator)
@@ -102,28 +100,16 @@ mod benchmarks {
 			approved
 		);
 
-		if approved {
-			assert_has_event::<T>(
-				pallet_nfts::Event::TransferApproved {
-					collection: collection_id,
-					item: maybe_item,
-					owner,
-					delegate: operator,
-					deadline: None,
-				}
-				.into(),
-			);
-		} else {
-			assert_has_event::<T>(
-				pallet_nfts::Event::ApprovalCancelled {
-					collection: collection_id,
-					item: maybe_item,
-					owner,
-					delegate: operator,
-				}
-				.into(),
-			);
-		}
+		assert_has_event::<T>(
+			Event::Approval {
+				owner,
+				operator,
+				collection: collection_id,
+				item: maybe_item,
+				approved,
+			}
+			.into(),
+		);
 
 		Ok(())
 	}

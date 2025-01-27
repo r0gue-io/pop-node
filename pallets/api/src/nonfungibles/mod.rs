@@ -4,10 +4,7 @@
 
 extern crate alloc;
 
-use frame_support::{
-	dispatch::WithPostDispatchInfo,
-	traits::{nonfungibles_v2::Inspect, Currency},
-};
+use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
 use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
@@ -79,36 +76,36 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// Event emitted when allowance by `owner` to `operator` changes.
-		// Differing style: event name abides by the PSP34 standard.
-		Approval {
-			/// The collection identifier.
-			collection: CollectionIdOf<T>,
-			/// The item. If `None`, it is regarding all owner's items in collection.
-			item: Option<ItemIdOf<T>>,
-			/// The account that owns the item(s).
-			owner: AccountIdOf<T>,
-			/// The account that is allowed to withdraw the item(s).
-			operator: AccountIdOf<T>,
-			/// Whether allowance is set or removed.
-			approved: bool,
-		},
 		/// Event emitted when a token transfer occurs.
 		// Differing style: event name abides by the PSP34 standard.
 		Transfer {
-			/// The collection identifier.
-			collection: CollectionIdOf<T>,
-			/// The item which is transferred.
-			item: ItemIdOf<T>,
 			/// The source of the transfer. `None` when minting.
 			from: Option<AccountIdOf<T>>,
 			/// The recipient of the transfer. `None` when burning.
 			to: Option<AccountIdOf<T>>,
+			/// The collection.
+			collection: CollectionIdOf<T>,
+			/// The item transferred (or minted/burned).
+			item: ItemIdOf<T>,
+		},
+		/// Event emitted when a token approve occurs.
+		// Differing style: event name abides by the PSP34 standard.
+		Approval {
+			/// The owner providing the allowance.
+			owner: AccountIdOf<T>,
+			/// The beneficiary of the allowance.
+			operator: AccountIdOf<T>,
+			/// The collection.
+			collection: CollectionIdOf<T>,
+			/// The item which is (dis)approved. `None` for all owner's items.
+			item: Option<ItemIdOf<T>>,
+			/// Whether allowance is set or removed.
+			approved: bool,
 		},
 		/// Event emitted when an attribute is set for a token.
 		// Differing style: event name abides by the PSP34 standard.
 		AttributeSet {
-			/// The collection identifier.
+			/// The collection.
 			collection: CollectionIdOf<T>,
 			/// The item whose attribute is set.
 			item: Option<ItemIdOf<T>>,
@@ -136,16 +133,16 @@ pub mod pallet {
 		/// transfer the item.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
-		/// - `item` - The item.
+		/// - `collection` - The collection.
 		/// - `to` - The recipient account.
+		/// - `item` - The item.
 		#[pallet::call_index(3)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
-			item: ItemIdOf<T>,
 			to: AccountIdOf<T>,
+			item: ItemIdOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let owner =
 				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
@@ -159,21 +156,21 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Approves operator to transfer item(s) from the `owner`'s account.
+		/// Approves operator to transfer item(s) from the owner's account.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
-		/// - `item` - Optional item. `None` means all collection items owned by the `owner`.
 		/// - `operator` - The account that is allowed to transfer the item.
+		/// - `collection` - The collection.
+		/// - `item` - Optional item. `None` means all items owned in the specified collection.
 		/// - `approved` - Whether the operator is given or removed the right to transfer the
 		///   item(s).
 		#[pallet::call_index(4)]
 		#[pallet::weight(WeightOf::<T>::approve(*approved as u32, item.is_some() as u32))]
 		pub fn approve(
 			origin: OriginFor<T>,
+			operator: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
 			item: Option<ItemIdOf<T>>,
-			operator: AccountIdOf<T>,
 			approved: bool,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
@@ -190,16 +187,16 @@ pub mod pallet {
 		/// Mints an item to the specified recipient account.
 		///
 		/// # Parameters
-		/// - `collection` - The collection of the item to mint.
-		/// - `item` - An identifier of the new item.
+		/// - `collection` - The collection.
 		/// - `to` - The recipient account.
+		/// - `item` - An identifier of the new item.
 		/// - `price` - Optional mint price of the collection item.
 		#[pallet::call_index(7)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
-			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
+			to: AccountIdOf<T>,
 			item: ItemIdOf<T>,
 			price: Option<ItemPriceOf<T>>,
 		) -> DispatchResult {
@@ -214,10 +211,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Destroy a single collection item.
+		/// Destroys the specified item. Clearing the corresponding approvals.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
+		/// - `collection` - The collection.
 		/// - `item` - The item to burn.
 		#[pallet::call_index(8)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
@@ -233,11 +230,11 @@ pub mod pallet {
 			Ok(().into())
 		}
 
-		/// Issue a new collection of non-fungible items.
+		/// Creates an NFT collection.
 		///
 		/// # Parameters
-		/// - `admin` - The admin of this collection.
-		/// - `config` - The configuration of the collection.
+		/// - `admin` - The admin account of the collection.
+		/// - `config` - Settings and config to be set for the new collection.
 		#[pallet::call_index(12)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
@@ -254,10 +251,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Destroy a collection of items.
+		/// Destroy an NFT collection.
 		///
 		/// # Parameters
-		/// - `collection` - The collection to destroy.
+		/// - `collection` - The collection to be destroyed.
 		/// - `witness` - Information on the items minted in the `collection`. This must be
 		/// correct.
 		#[pallet::call_index(13)]
@@ -276,11 +273,18 @@ pub mod pallet {
 
 		/// Set an attribute for a collection or item.
 		///
+		/// Origin must be Signed and must conform to the namespace ruleset:
+		/// - `CollectionOwner` namespace could be modified by the `collection` Admin only;
+		/// - `ItemOwner` namespace could be modified by the `item` owner only. `item` should be set
+		///   in that case;
+		/// - `Account(AccountId)` namespace could be modified only when the `origin` was given a
+		///   permission to do so;
+		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
-		/// - `item` - Optional item whose attribute to set. If not provided, the `collection`'s
+		/// - `collection` - The collection.
+		/// - `item` - The optional item whose attribute to set. If `None`, the `collection`'s
 		///   attribute is set.
-		/// - `namespace` - Attribute's namespace.
+		/// - `namespace` - The attribute's namespace.
 		/// - `key` - The key of the attribute.
 		/// - `value` - The value to which to set the attribute.
 		#[pallet::call_index(14)]
@@ -308,10 +312,10 @@ pub mod pallet {
 		/// Clear an attribute for the collection or item.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
-		/// - `item` - Optional item whose metadata to clear. If `None`, metadata of the
+		/// - `collection` - The collection.
+		/// - `item` - The optional item whose metadata to clear. If `None`, metadata of the
 		///   `collection` will be cleared.
-		/// - `namespace` - Attribute's namespace.
+		/// - `namespace` - The attribute's namespace.
 		/// - `key` - The key of the attribute.
 		#[pallet::call_index(15)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_attribute())]
@@ -327,10 +331,12 @@ pub mod pallet {
 
 		/// Set the metadata for an item.
 		///
+		/// Caller must be the admin of the collection.
+		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
-		/// - `item` - The item whose metadata to set.
-		/// - `data` - The general information of this item. Limited in length by `StringLimit`.
+		/// - `collection` - The collection.
+		/// - `item` - The item. If `None`, set metadata for the collection.
+		/// - `data` - The metadata. Limited in length by `StringLimit`.
 		#[pallet::call_index(16)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_metadata())]
 		pub fn set_metadata(
@@ -342,11 +348,13 @@ pub mod pallet {
 			NftsOf::<T>::set_metadata(origin, collection, item, data)
 		}
 
-		/// Clear the metadata for an item.
+		/// Clear the metadata for an item or collection.
+		///
+		/// Caller must be the admin of the collection.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
-		/// - `item` - The item whose metadata to clear.
+		/// - `collection` - The collection.
+		/// - `item` - The item.
 		#[pallet::call_index(17)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_metadata())]
 		pub fn clear_metadata(
@@ -357,13 +365,32 @@ pub mod pallet {
 			NftsOf::<T>::clear_metadata(origin, collection, item)
 		}
 
-		/// Approve item's attributes to be changed by a delegated third-party account.
+		/// Set the maximum number of items a collection could have.
+		///
+		/// Caller must be the owner of the collection.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
+		/// - `collection` - The collection.
+		/// - `max_supply` - The collection's max supply.
+		#[pallet::call_index(18)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::set_collection_max_supply())]
+		pub fn set_max_supply(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			max_supply: u32,
+		) -> DispatchResult {
+			NftsOf::<T>::set_collection_max_supply(origin, collection, max_supply)
+		}
+
+		/// Approve item's attributes to be changed by a delegated third-party account.
+		///
+		/// Caller must be the owner of the item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection.
 		/// - `item` - The item that holds attributes.
 		/// - `delegate` - The account to delegate permission to change attributes of the item.
-		#[pallet::call_index(18)]
+		#[pallet::call_index(19)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_item_attributes())]
 		pub fn approve_item_attributes(
 			origin: OriginFor<T>,
@@ -383,11 +410,11 @@ pub mod pallet {
 		/// All the previously set attributes by the `delegate` will be removed.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
+		/// - `collection` - The collection.
 		/// - `item` - The item that holds attributes.
 		/// - `delegate` - The previously approved account to remove.
 		/// - `witness` - A witness data to cancel attributes approval operation.
-		#[pallet::call_index(19)]
+		#[pallet::call_index(20)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_item_attributes_approval(witness.account_attributes))]
 		pub fn cancel_item_attributes_approval(
 			origin: OriginFor<T>,
@@ -405,25 +432,10 @@ pub mod pallet {
 			)
 		}
 
-		/// Set the maximum number of items a collection could have.
-		///
-		/// # Parameters
-		/// - `collection` - The collection identifier.
-		/// - `max_supply` - The maximum number of items a collection could have.
-		#[pallet::call_index(20)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::set_collection_max_supply())]
-		pub fn set_max_supply(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			max_supply: u32,
-		) -> DispatchResult {
-			NftsOf::<T>::set_collection_max_supply(origin, collection, max_supply)
-		}
-
 		/// Cancel all the approvals of a specific item.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
+		/// - `collection` - The collection.
 		/// - `item` - The item of the collection of whose approvals will be cleared.
 		#[pallet::call_index(21)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_all_transfer_approvals())]
@@ -438,7 +450,7 @@ pub mod pallet {
 		/// Cancel approvals to transfer all owner's collection items.
 		///
 		/// # Parameters
-		/// - `collection` - The collection identifier.
+		/// - `collection` - The collection.
 		/// - `limit` - The amount of collection approvals that will be cleared.
 		#[pallet::call_index(22)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_collection_approvals(*limit))]
@@ -491,7 +503,7 @@ pub mod pallet {
 		/// Returns the amount of items the owner has within a `collection`.
 		#[codec(index = 0)]
 		BalanceOf {
-			/// The collection identifier.
+			/// The collection.
 			collection: CollectionIdOf<T>,
 			/// The account whose balance is being queried.
 			owner: AccountIdOf<T>,
@@ -499,7 +511,7 @@ pub mod pallet {
 		/// Returns the owner of an item within a specified collection, if any.
 		#[codec(index = 1)]
 		OwnerOf {
-			/// The collection identifier.
+			/// The collection.
 			collection: CollectionIdOf<T>,
 			/// The item.
 			item: ItemIdOf<T>,
@@ -509,26 +521,26 @@ pub mod pallet {
 		/// items for the given `collection`.
 		#[codec(index = 2)]
 		Allowance {
-			/// The collection identifier.
+			/// The collection.
 			collection: CollectionIdOf<T>,
-			/// The item. If not provided, it is regarding all owner's collection items.
-			item: Option<ItemIdOf<T>>,
-			/// The account that owns the item(s).
+			/// The owner providing the allowance.
 			owner: AccountIdOf<T>,
 			/// The account that is allowed to transfer the collection item(s).
 			operator: AccountIdOf<T>,
+			/// The item. If `None`, it is regarding all owner's collection items.
+			item: Option<ItemIdOf<T>>,
 		},
 		/// Returns the total supply of a collection.
 		#[codec(index = 5)]
 		TotalSupply(CollectionIdOf<T>),
-		/// Returns the attribute value of item for a given key, if any.
+		/// Returns the attribute value of `item` for a given `key`, if any.
 		#[codec(index = 6)]
 		GetAttribute {
-			/// The collection identifier.
+			/// The collection.
 			collection: CollectionIdOf<T>,
-			/// The item. If not provided, the attributes for the `collection` are queried.
+			/// The item. If `None` the attributes for the collection are queried.
 			item: Option<ItemIdOf<T>>,
-			/// The namespace of the attribute.
+			/// The attribute's namespace.
 			namespace: AttributeNamespaceOf<T>,
 			/// The key of the attribute.
 			key: BoundedVec<u8, T::KeyLimit>,
@@ -542,7 +554,7 @@ pub mod pallet {
 		/// Returns the metadata of a specified collection item, if any.
 		#[codec(index = 11)]
 		ItemMetadata {
-			/// The collection identifier.
+			/// The collection.
 			collection: CollectionIdOf<T>,
 			/// The item.
 			item: ItemIdOf<T>,
