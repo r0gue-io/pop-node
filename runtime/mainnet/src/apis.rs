@@ -25,10 +25,10 @@ use xcm_runtime_apis::{
 
 // Local module imports
 use super::{
-	config::xcm as xcm_config, fee::WeightToFee, AccountId, Balance, Block, Executive,
-	ExtrinsicInclusionMode, InherentDataExt, Nonce, OriginCaller, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, SessionKeys, System,
-	TransactionPayment, VERSION,
+	config::{monetary::fee::WeightToFee, xcm as xcm_config},
+	AccountId, Balance, Block, Executive, ExtrinsicInclusionMode, InherentDataExt, Nonce,
+	OriginCaller, ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeGenesisConfig, SessionKeys, System, TransactionPayment, VERSION,
 };
 
 impl_runtime_apis! {
