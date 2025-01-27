@@ -16,7 +16,6 @@ use alloc::{borrow::Cow, vec::Vec};
 
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::{
-	governance::SudoAddress,
 	monetary::deposit,
 	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
 };

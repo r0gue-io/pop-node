@@ -1,9 +1,9 @@
 use pop_runtime_common::UNIT;
 
 use crate::{
-	parameter_types, AccountId, Balance, Balances, ConstU32, ConstU8, ConstantMultiplier,
-	ResolveTo, Runtime, RuntimeEvent, RuntimeFreezeReason, RuntimeHoldReason,
-	SlowAdjustingFeeUpdate, Ss58Codec, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
+	config::governance::SudoAddress, parameter_types, Balance, Balances, ConstU32, ConstU8,
+	ConstantMultiplier, ResolveTo, Runtime, RuntimeEvent, RuntimeFreezeReason, RuntimeHoldReason,
+	SlowAdjustingFeeUpdate, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
 };
 
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
@@ -123,7 +123,6 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
-	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").expect("sudo address is valid SS58");
 }
 
 impl pallet_transaction_payment::Config for Runtime {
@@ -144,13 +143,14 @@ mod tests {
 	use frame_support::{
 		dispatch::GetDispatchInfo,
 		traits::{fungible::Mutate, Get},
+		weights::{constants::ExtrinsicBaseWeight, Weight, WeightToFee},
 	};
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
 	use pop_runtime_common::{MICRO_UNIT, MILLI_UNIT};
 	use sp_runtime::{traits::Dispatchable, BuildStorage};
 
 	use super::*;
-	use crate::{RuntimeCall, RuntimeOrigin, UNIT};
+	use crate::{AccountId, RuntimeCall, RuntimeOrigin, UNIT};
 
 	type OnChargeTransaction = <Runtime as pallet_transaction_payment::Config>::OnChargeTransaction;
 
@@ -159,23 +159,6 @@ mod tests {
 		let mut ext = sp_io::TestExternalities::new(storage);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
-	}
-
-	#[test]
-	fn units_are_correct() {
-		// UNIT should have 10 decimals
-		assert_eq!(UNIT, 10_000_000_000);
-		assert_eq!(MILLI_UNIT, 10_000_000);
-		assert_eq!(MICRO_UNIT, 10_000);
-
-		// fee specific units
-		assert_eq!(fee::CENTS, 100_000_000);
-		assert_eq!(fee::MILLI_CENTS, 100_000);
-	}
-
-	#[test]
-	fn transaction_byte_fee_is_correct() {
-		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
 	}
 
 	#[test]
@@ -199,6 +182,23 @@ mod tests {
 	}
 
 	#[test]
+	fn units_are_correct() {
+		// UNIT should have 10 decimals
+		assert_eq!(UNIT, 10_000_000_000);
+		assert_eq!(MILLI_UNIT, 10_000_000);
+		assert_eq!(MICRO_UNIT, 10_000);
+
+		// fee specific units
+		assert_eq!(fee::CENTS, 100_000_000);
+		assert_eq!(fee::MILLI_CENTS, 100_000);
+	}
+
+	#[test]
+	fn transaction_byte_fee_is_correct() {
+		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
+	}
+
+	#[test]
 	fn balances_stores_account_balances_in_system() {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_balances::Config>::AccountStore>(),
@@ -211,6 +211,14 @@ mod tests {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_balances::Config>::Balance>(),
 			TypeId::of::<u128>(),
+		);
+	}
+
+	#[test]
+	fn balances_done_slash_handler_does_not_have_callbacks() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::DoneSlashHandler>(),
+			TypeId::of::<()>(),
 		);
 	}
 
@@ -338,7 +346,7 @@ mod tests {
 					fee_plus_tip,
 					0,
 				)
-					.unwrap();
+				.unwrap();
 			<OnChargeTransaction as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
 				&who,
 				&dispatch_info,
@@ -347,7 +355,7 @@ mod tests {
 				0,
 				liquidity_info,
 			)
-				.unwrap();
+			.unwrap();
 
 			assert_eq!(Balances::free_balance(&SudoAddress::get()), sudo_balance + fee + tip);
 			assert_eq!(Balances::free_balance(&who), existential_deposit);
@@ -365,11 +373,37 @@ mod tests {
 	}
 
 	#[test]
-	#[ignore]
+	fn transaction_payment_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
 	fn transaction_payment_uses_weight_to_fee_conversion() {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightToFee>(),
 			TypeId::of::<fee::WeightToFee>(),
 		);
+	}
+
+	#[test]
+	fn transaction_payment_weight_to_fee_as_expected() {
+		let arb_weight = Weight::from_parts(126_142_001, 123_456);
+		let no_proof_size_weight = Weight::from_parts(126_142_001, 0);
+		let weights: [Weight; 4] = [
+			Weight::zero(),
+			<ExtrinsicBaseWeight as Get<Weight>>::get(),
+			arb_weight,
+			no_proof_size_weight,
+		];
+		let fees: [u128; 4] = [0, 500_000, 617_280_000, 583_143];
+		for (w, f) in weights.iter().zip(fees.iter()) {
+			assert_eq!(
+				<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(w),
+				*f
+			);
+		}
 	}
 }
