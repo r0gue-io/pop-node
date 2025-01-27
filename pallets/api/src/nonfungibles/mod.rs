@@ -140,7 +140,7 @@ pub mod pallet {
 		/// - `item` - The item.
 		/// - `to` - The recipient account.
 		#[pallet::call_index(3)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::transfer() + T::DbWeight::get().reads(1))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -194,9 +194,7 @@ pub mod pallet {
 		/// - `collection` - The collection of the item to mint.
 		/// - `item` - An identifier of the new item.
 		/// - `to` - The recipient account.
-		/// - `witness` - When the mint type is `HolderOf(collection_id)`, then the owned item_id
-		///   from that collection needs to be provided within the witness data object. If the mint
-		///   price is set, then it should be additionally confirmed in the `witness`.
+		/// - `price` - Optional mint price of the collection item.
 		#[pallet::call_index(7)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -204,14 +202,14 @@ pub mod pallet {
 			to: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
+			price: Option<ItemPriceOf<T>>,
 		) -> DispatchResult {
 			NftsOf::<T>::mint(
 				origin,
 				collection,
 				item,
 				T::Lookup::unlookup(to.clone()),
-				Some(witness),
+				Some(MintWitness { owned_item: Some(item), mint_price: price }),
 			)?;
 			Self::deposit_event(Event::Transfer { collection, item, from: None, to: Some(to) });
 			Ok(())
@@ -223,15 +221,14 @@ pub mod pallet {
 		/// - `collection` - The collection identifier.
 		/// - `item` - The item to burn.
 		#[pallet::call_index(8)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::burn() + T::DbWeight::get().reads(1))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
 		) -> DispatchResultWithPostInfo {
-			let owner = NftsOf::<T>::owner(collection, item)
-				.ok_or(NftsErrorOf::<T>::UnknownItem)
-				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
+			let owner =
+				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
 			NftsOf::<T>::burn(origin, collection, item)?;
 			Self::deposit_event(Event::Transfer { collection, item, from: Some(owner), to: None });
 			Ok(().into())
@@ -243,20 +240,19 @@ pub mod pallet {
 		/// - `admin` - The admin of this collection.
 		/// - `config` - The configuration of the collection.
 		#[pallet::call_index(12)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::create() + T::DbWeight::get().reads(1))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: AccountIdOf<T>,
 			config: CollectionConfigOf<T>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let creator = ensure_signed(origin.clone())?;
 			let id = NextCollectionIdOf::<T>::get()
 				.or(T::CollectionId::initial_value())
-				.ok_or(NftsErrorOf::<T>::UnknownCollection)
-				.map_err(|e| e.with_weight(T::DbWeight::get().reads(1)))?;
+				.ok_or(NftsErrorOf::<T>::UnknownCollection)?;
 			NftsOf::<T>::create(origin, T::Lookup::unlookup(admin.clone()), config)?;
 			Self::deposit_event(Event::Created { id, creator, admin });
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Destroy a collection of items.
@@ -298,19 +294,14 @@ pub mod pallet {
 			key: BoundedVec<u8, T::KeyLimit>,
 			value: BoundedVec<u8, T::ValueLimit>,
 		) -> DispatchResult {
-			NftsOf::<T>::set_attribute(
-				origin,
-				collection,
-				item,
-				namespace,
-				key.clone(),
-				value.clone(),
-			)?;
+			let key_vec = key.to_vec();
+			let value_vec = value.to_vec();
+			NftsOf::<T>::set_attribute(origin, collection, item, namespace, key, value)?;
 			Self::deposit_event(Event::AttributeSet {
 				collection,
 				item,
-				key: key.to_vec(),
-				data: value.to_vec(),
+				key: key_vec,
+				data: value_vec,
 			});
 			Ok(())
 		}

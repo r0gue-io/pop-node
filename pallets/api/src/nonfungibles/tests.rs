@@ -12,8 +12,8 @@ use crate::{
 		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
 		CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails, CollectionIdOf,
 		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
-		MintWitness, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*,
-		ReadResult, WeightInfo as WeightInfoTrait,
+		NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
+		WeightInfo as WeightInfoTrait,
 	},
 	Read,
 };
@@ -239,24 +239,20 @@ fn mint_works() {
 		let collection = COLLECTION;
 		let item = ITEM;
 		let owner = ALICE;
-		let witness = MintWitness { mint_price: None, owned_item: None };
 
 		// Origin checks.
 		for origin in vec![root(), none()] {
-			assert_noop!(
-				NonFungibles::mint(origin, owner, collection, item, witness.clone()),
-				BadOrigin
-			);
+			assert_noop!(NonFungibles::mint(origin, owner, collection, item, None), BadOrigin);
 		}
 		// Check error works for `Nfts::mint()`.
 		assert_noop!(
-			NonFungibles::mint(signed(owner), owner, collection, item, witness.clone()),
+			NonFungibles::mint(signed(owner), owner, collection, item, None),
 			NftsError::NoConfig
 		);
 		// Successfully mint a new collection item.
 		nfts::create_collection(owner);
 		let balance_before_mint = nfts::balance_of(collection, &owner);
-		assert_ok!(NonFungibles::mint(signed(owner), owner, collection, item, witness));
+		assert_ok!(NonFungibles::mint(signed(owner), owner, collection, item, None));
 		let balance_after_mint = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_mint, balance_before_mint + 1);
 		System::assert_last_event(
@@ -273,10 +269,7 @@ fn burn_works() {
 		let item = ITEM;
 
 		// Throw `NftsError::UnknownItem` if no owner found for the item.
-		assert_noop!(
-			NonFungibles::burn(signed(owner), collection, item),
-			NftsError::UnknownItem.with_weight(DbWeight::get().reads(1))
-		);
+		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
 		nfts::create_collection_and_mint(owner, owner, item);
 		// Check error works for `Nfts::burn()`.
 		assert_noop!(NonFungibles::burn(signed(BOB), collection, item), NftsError::NoPermission);
@@ -1011,10 +1004,7 @@ mod ensure_codec_indexes {
 					to: Default::default(),
 					collection: Default::default(),
 					item: Default::default(),
-					witness: MintWitness {
-						owned_item: Default::default(),
-						mint_price: Default::default(),
-					},
+					price: Default::default(),
 				},
 				7,
 				"mint",

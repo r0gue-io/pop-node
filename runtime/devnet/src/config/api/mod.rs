@@ -224,7 +224,6 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 mod tests {
 	use codec::Encode;
 	use pallet_api::fungibles::Call::*;
-	use pallet_nfts::MintWitness;
 	use sp_core::{bounded_vec, crypto::AccountId32};
 	use RuntimeCall::{Balances, Fungibles, NonFungibles};
 
@@ -321,12 +320,7 @@ mod tests {
 				operator: ACCOUNT,
 				approved: false,
 			}),
-			NonFungibles(mint {
-				to: ACCOUNT,
-				collection: 0,
-				item: 0,
-				witness: MintWitness { mint_price: None, owned_item: None },
-			}),
+			NonFungibles(mint { to: ACCOUNT, collection: 0, item: 0, price: None }),
 			NonFungibles(burn { collection: 0, item: 0 }),
 			NonFungibles(create {
 				admin: ACCOUNT,
