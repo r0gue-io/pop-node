@@ -159,8 +159,8 @@ pub mod pallet {
 		/// Approves operator to transfer item(s) from the owner's account.
 		///
 		/// # Parameters
-		/// - `operator` - The account that is allowed to transfer the item.
 		/// - `collection` - The collection.
+		/// - `operator` - The account that is allowed to transfer the item.
 		/// - `item` - Optional item. `None` means all items owned in the specified collection.
 		/// - `approved` - Whether the operator is given or removed the right to transfer the
 		///   item(s).
@@ -168,8 +168,8 @@ pub mod pallet {
 		#[pallet::weight(WeightOf::<T>::approve(*approved as u32, item.is_some() as u32))]
 		pub fn approve(
 			origin: OriginFor<T>,
-			operator: AccountIdOf<T>,
 			collection: CollectionIdOf<T>,
+			operator: AccountIdOf<T>,
 			item: Option<ItemIdOf<T>>,
 			approved: bool,
 		) -> DispatchResult {

@@ -92,7 +92,7 @@ mod benchmarks {
 		};
 
 		#[extrinsic_call]
-		_(origin, operator.clone(), collection_id, maybe_item, approved);
+		_(origin, collection_id, operator.clone(), maybe_item, approved);
 
 		assert_eq!(
 			NftsOf::<T>::check_approval_permission(&collection_id, &maybe_item, &owner, &operator)
