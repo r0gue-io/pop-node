@@ -1,3 +1,5 @@
+use frame_support::{pallet_prelude::ConstU32, traits::EqualPrivilegeOnly};
+
 use crate::{
 	config::system::RuntimeBlockWeights, deposit, parameter_types, AccountId, Balance, Balances,
 	ConstU32, EnsureRoot, EqualPrivilegeOnly, HoldConsideration, LinearStoragePrice, OriginCaller,
