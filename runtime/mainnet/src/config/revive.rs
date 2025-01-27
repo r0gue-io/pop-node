@@ -9,12 +9,11 @@ use crate::{
 	RuntimeHoldReason, Timestamp, TransactionPayment, UNIT,
 };
 
+// 18 decimals
 const ETH: u128 = 1_000_000_000_000_000_000;
 
 parameter_types! {
-	// TODO: review implications of this
 	pub const DepositPerItem: Balance = deposit(1, 0);
-	// TODO: review implications of this
 	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
 	pub const NativeToEthRatio: u32 = (ETH/UNIT) as u32;
@@ -22,24 +21,29 @@ parameter_types! {
 
 impl pallet_revive::Config for Runtime {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Self>;
+	// No runtime dispatchables are callable from contracts.
 	type CallFilter = Nothing;
 	type ChainExtension = ();
-	type ChainId = ConstU64<3395>;
+	// EVM chain id. 3,395 is a unique ID still.
+	type ChainId = ConstU64<3_395>;
+	// 30 percent of storage deposit held for using a code hash.
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
 	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
+	// 1 ETH : 1_000_000 UNIT
 	type NativeToEthRatio = NativeToEthRatio;
-	// TODO: review implications of this
+	// 512 MB. Used in an integrity test that verifies the runtime has enough memory.
 	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
-	// TODO: review implications of this
+	// 128 MB. Used in an integrity that verifies the runtime has enough memory.
 	type RuntimeMemory = ConstU32<{ 128 * 1024 * 1024 }>;
 	type Time = Timestamp;
+	// Disables access to unsafe host fns such as xcm_send.
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
