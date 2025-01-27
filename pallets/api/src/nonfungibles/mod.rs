@@ -489,7 +489,7 @@ pub mod pallet {
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// Amount of items the owner has within a `collection`.
+		/// Returns the amount of items the owner has within a `collection`.
 		#[codec(index = 0)]
 		BalanceOf {
 			/// The collection identifier.
@@ -497,7 +497,7 @@ pub mod pallet {
 			/// The account whose balance is being queried.
 			owner: AccountIdOf<T>,
 		},
-		/// Owner of an item within a specified collection, if any.
+		/// Returns the owner of an item within a specified collection, if any.
 		#[codec(index = 1)]
 		OwnerOf {
 			/// The collection identifier.
@@ -519,10 +519,10 @@ pub mod pallet {
 			/// The account that is allowed to transfer the collection item(s).
 			operator: AccountIdOf<T>,
 		},
-		/// The total supply of a collection.
+		/// Returns the total supply of a collection.
 		#[codec(index = 5)]
 		TotalSupply(CollectionIdOf<T>),
-		/// Attribute value of a specified collection item for a given key, if any.
+		/// Returns the attribute value of item for a given key, if any.
 		#[codec(index = 6)]
 		GetAttribute {
 			/// The collection identifier.
@@ -534,13 +534,13 @@ pub mod pallet {
 			/// The key of the attribute.
 			key: BoundedVec<u8, T::KeyLimit>,
 		},
-		/// Details of a specified collection.
+		/// Returns the details of a specified collection, if any.
 		#[codec(index = 9)]
 		Collection(CollectionIdOf<T>),
-		/// Next collection identifier.
+		/// Returns the next collection identifier, if any.
 		#[codec(index = 10)]
 		NextCollectionId,
-		/// Metadata of a specified collection item.
+		/// Returns the metadata of a specified collection item, if any.
 		#[codec(index = 11)]
 		ItemMetadata {
 			/// The collection identifier.
@@ -554,23 +554,23 @@ pub mod pallet {
 	#[derive(Debug)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
-		/// Amount of items the owner has within a collection.
+		/// Returns the amount of items the owner has within a collection.
 		BalanceOf(u32),
-		/// Owner of an item within a specified collection, if any.
+		/// Returns the owner of an item within a specified collection, if any.
 		OwnerOf(Option<AccountIdOf<T>>),
 		/// Returns whether the operator is approved by the owner to withdraw item. If item is not
 		/// provided, it returns whether the operator is approved to withdraw all owner's items for
 		/// the given collection.
 		Allowance(bool),
-		/// The total supply of a collection.
+		/// Returns the total supply of a collection.
 		TotalSupply(u128),
-		/// Attribute value of a specified collection item for a given key, if any.
+		/// Returns the attribute value of item for a given key, if any.
 		GetAttribute(Option<Vec<u8>>),
-		/// Details of a specified collection, if any.
+		/// Returns the details of a specified collection, if any.
 		Collection(Option<CollectionDetailsOf<T>>),
-		/// Next collection identifier.
+		/// Returns the next collection identifier, if any.
 		NextCollectionId(Option<CollectionIdOf<T>>),
-		/// Metadata of a specified collection item.
+		/// Returns the metadata of a specified collection item, if any.
 		ItemMetadata(Option<Vec<u8>>),
 	}
 

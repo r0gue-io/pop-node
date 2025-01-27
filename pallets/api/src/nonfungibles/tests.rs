@@ -1166,10 +1166,10 @@ mod read_weights {
 	use super::*;
 
 	struct ReadWeightInfo {
-		total_supply: Weight,
 		balance_of: Weight,
-		allowance: Weight,
 		owner_of: Weight,
+		allowance: Weight,
+		total_supply: Weight,
 		get_attribute: Weight,
 		collection: Weight,
 		next_collection_id: Weight,
@@ -1179,18 +1179,18 @@ mod read_weights {
 	impl ReadWeightInfo {
 		fn new() -> Self {
 			Self {
-				total_supply: NonFungibles::weight(&TotalSupply(COLLECTION)),
 				balance_of: NonFungibles::weight(&BalanceOf {
 					collection: COLLECTION,
 					owner: ALICE,
 				}),
+				owner_of: NonFungibles::weight(&OwnerOf { collection: COLLECTION, item: ITEM }),
 				allowance: NonFungibles::weight(&Allowance {
 					collection: COLLECTION,
 					item: Some(ITEM),
 					owner: ALICE,
 					operator: BOB,
 				}),
-				owner_of: NonFungibles::weight(&OwnerOf { collection: COLLECTION, item: ITEM }),
+				total_supply: NonFungibles::weight(&TotalSupply(COLLECTION)),
 				get_attribute: NonFungibles::weight(&GetAttribute {
 					collection: COLLECTION,
 					item: Some(ITEM),
@@ -1210,20 +1210,20 @@ mod read_weights {
 	#[test]
 	fn ensure_read_matches_benchmarks() {
 		let ReadWeightInfo {
-			allowance,
 			balance_of,
-			collection,
-			get_attribute,
-			item_metadata,
-			next_collection_id,
 			owner_of,
+			allowance,
 			total_supply,
+			get_attribute,
+			collection,
+			next_collection_id,
+			item_metadata,
 		} = ReadWeightInfo::new();
 
-		assert_eq!(total_supply, WeightInfo::total_supply());
 		assert_eq!(balance_of, WeightInfo::balance_of());
-		assert_eq!(allowance, WeightInfo::allowance());
 		assert_eq!(owner_of, WeightInfo::owner_of());
+		assert_eq!(allowance, WeightInfo::allowance());
+		assert_eq!(total_supply, WeightInfo::total_supply());
 		assert_eq!(get_attribute, WeightInfo::get_attribute());
 		assert_eq!(collection, WeightInfo::collection());
 		assert_eq!(next_collection_id, WeightInfo::next_collection_id());
@@ -1243,21 +1243,21 @@ mod read_weights {
 	#[test]
 	fn ensure_expected_proof_size_does_not_change() {
 		let ReadWeightInfo {
-			allowance,
 			balance_of,
-			collection,
-			get_attribute,
-			item_metadata,
-			next_collection_id,
 			owner_of,
+			allowance,
 			total_supply,
+			get_attribute,
+			collection,
+			next_collection_id,
+			item_metadata,
 		} = ReadWeightInfo::new();
 
 		// These values come from `weights.rs`.
-		assert_eq!(total_supply.proof_size(), 3549);
 		assert_eq!(balance_of.proof_size(), 3585);
-		assert_eq!(allowance.proof_size(), 4326);
 		assert_eq!(owner_of.proof_size(), 4326);
+		assert_eq!(allowance.proof_size(), 4326);
+		assert_eq!(total_supply.proof_size(), 3549);
 		assert_eq!(get_attribute.proof_size(), 3944);
 		assert_eq!(collection.proof_size(), 3549);
 		assert_eq!(next_collection_id.proof_size(), 1489);
@@ -1269,15 +1269,17 @@ mod encoding_read_result {
 	use super::*;
 
 	#[test]
-	fn total_supply() {
-		let total_supply: u128 = 1_000_000;
-		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
-	}
-
-	#[test]
 	fn balance_of() {
 		let balance: u32 = 100;
 		assert_eq!(ReadResult::BalanceOf::<Test>(balance).encode(), balance.encode());
+	}
+
+	#[test]
+	fn owner_of() {
+		let mut owner = Some(ALICE);
+		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
+		owner = None;
+		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
 	}
 
 	#[test]
@@ -1287,11 +1289,9 @@ mod encoding_read_result {
 	}
 
 	#[test]
-	fn owner_of() {
-		let mut owner = Some(ALICE);
-		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
-		owner = None;
-		assert_eq!(ReadResult::OwnerOf::<Test>(owner.clone()).encode(), owner.encode());
+	fn total_supply() {
+		let total_supply: u128 = 1_000_000;
+		assert_eq!(ReadResult::TotalSupply::<Test>(total_supply).encode(), total_supply.encode());
 	}
 
 	#[test]
