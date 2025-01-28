@@ -169,10 +169,7 @@ pub mod pallet {
 		/// - `deadline`: The optional deadline (in block numbers) specifying the time limit for the
 		///   approval, only required if `approved` is true.
 		#[pallet::call_index(4)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer()
-			.max(NftsWeightInfoOf::<T>::approve_collection_transfer())
-			.max(NftsWeightInfoOf::<T>::cancel_approval())
-			.max(NftsWeightInfoOf::<T>::cancel_collection_approval()))]
+		#[pallet::weight(Weight::from_parts(200000000, 4326))]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
