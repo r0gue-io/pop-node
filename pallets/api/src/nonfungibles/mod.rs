@@ -4,7 +4,11 @@
 
 extern crate alloc;
 
-use frame_support::traits::{nonfungibles_v2::Inspect, Currency};
+use frame_support::{
+	dispatch::WithPostDispatchInfo,
+	traits::{nonfungibles_v2::Inspect, Currency},
+	weights::Weight,
+};
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
 use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
@@ -177,16 +181,17 @@ pub mod pallet {
 			item: Option<ItemIdOf<T>>,
 			approved: bool,
 			deadline: Option<BlockNumberFor<T>>,
-		) -> DispatchResult {
-			let owner = ensure_signed(origin.clone())?;
+		) -> DispatchResultWithPostInfo {
+			let owner = ensure_signed(origin.clone())
+				.map_err(|e| e.with_weight(Weight::from_parts(0, 0)))?;
 			let operator_lookup = T::Lookup::unlookup(operator.clone());
 			let result = if approved {
-				Self::do_approve(origin, collection, item, operator_lookup, deadline)
+				Self::do_approve(origin, collection, item, operator_lookup, deadline)?
 			} else {
-				Self::do_cancel_approval(origin, collection, item, operator_lookup)
+				Self::do_cancel_approval(origin, collection, item, operator_lookup)?
 			};
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
-			result
+			Ok(result)
 		}
 
 		/// Mints an item to the specified recipient account.
@@ -479,13 +484,22 @@ pub mod pallet {
 			maybe_item: Option<ItemIdOf<T>>,
 			operator: AccountIdLookupOf<T>,
 			deadline: Option<BlockNumberFor<T>>,
-		) -> DispatchResult {
-			match maybe_item {
-				Some(item) =>
-					NftsOf::<T>::approve_transfer(owner, collection, item, operator, deadline),
-				None =>
-					NftsOf::<T>::approve_collection_transfer(owner, collection, operator, deadline),
-			}
+		) -> DispatchResultWithPostInfo {
+			Ok(Some(match maybe_item {
+				Some(item) => {
+					NftsOf::<T>::approve_transfer(owner, collection, item, operator, deadline)
+						.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::approve_transfer()))?;
+					NftsWeightInfoOf::<T>::approve_transfer()
+				},
+				None => {
+					NftsOf::<T>::approve_collection_transfer(owner, collection, operator, deadline)
+						.map_err(|e| {
+							e.with_weight(NftsWeightInfoOf::<T>::approve_collection_transfer())
+						})?;
+					NftsWeightInfoOf::<T>::approve_collection_transfer()
+				},
+			})
+			.into())
 		}
 
 		// Cancel an approval to transfer a specific item or all items within a collection owned by
@@ -495,11 +509,21 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			maybe_item: Option<ItemIdOf<T>>,
 			operator: AccountIdLookupOf<T>,
-		) -> DispatchResult {
-			match maybe_item {
-				Some(item) => NftsOf::<T>::cancel_approval(owner, collection, item, operator),
-				None => NftsOf::<T>::cancel_collection_approval(owner, collection, operator),
-			}
+		) -> DispatchResultWithPostInfo {
+			Ok(Some(match maybe_item {
+				Some(item) => {
+					NftsOf::<T>::cancel_approval(owner, collection, item, operator)
+						.map_err(|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_approval()))?;
+					NftsWeightInfoOf::<T>::cancel_approval()
+				},
+				None => {
+					NftsOf::<T>::cancel_collection_approval(owner, collection, operator).map_err(
+						|e| e.with_weight(NftsWeightInfoOf::<T>::cancel_collection_approval()),
+					)?;
+					NftsWeightInfoOf::<T>::cancel_collection_approval()
+				},
+			})
+			.into())
 		}
 	}
 

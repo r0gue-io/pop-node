@@ -3,6 +3,7 @@ use frame_support::{
 	assert_noop, assert_ok,
 	dispatch::WithPostDispatchInfo,
 	sp_runtime::{traits::Zero, BoundedVec, DispatchError::BadOrigin},
+	weights::Weight,
 };
 use pallet_nfts::{CollectionSetting, MintWitness, WeightInfo as NftsWeightInfoTrait};
 
@@ -24,6 +25,7 @@ const ITEM: u32 = 1;
 type CollectionApprovals = pallet_nfts::CollectionApprovals<Test, NftsInstanceOf<Test>>;
 type Event = crate::nonfungibles::Event<Test>;
 type NftsError = NftsErrorOf<Test>;
+type NftsWeightInfo = NftsWeightInfoOf<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
 mod transfer {
@@ -105,7 +107,7 @@ mod approve {
 			for origin in vec![root(), none()] {
 				assert_noop!(
 					NonFungibles::approve(origin, COLLECTION, ALICE, Some(ITEM), false, None),
-					BadOrigin
+					BadOrigin.with_weight(Weight::from_parts(0, 0))
 				);
 			}
 		});
@@ -122,7 +124,7 @@ mod approve {
 			// Check error works for `Nfts::approve_transfer()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, operator, Some(item), true, None),
-				NftsError::UnknownItem
+				NftsError::UnknownItem.with_weight(NftsWeightInfo::approve_transfer())
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
 			// Successfully approve `operator` to transfer the collection item.
@@ -158,7 +160,7 @@ mod approve {
 			// Check error works for `Nfts::approve_collection_transfer()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, operator, None, true, None),
-				NftsError::NoItemOwned
+				NftsError::NoItemOwned.with_weight(NftsWeightInfo::approve_collection_transfer())
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
 			// Successfully approve `operator` to transfer all collection items owned by `owner`.
@@ -188,7 +190,7 @@ mod approve {
 			// Check error works for `Nfts::cancel_approval()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, operator, Some(item), false, None),
-				NftsError::UnknownItem
+				NftsError::UnknownItem.with_weight(NftsWeightInfo::cancel_approval())
 			);
 			nfts::create_collection_mint_and_approve(owner, owner, item, operator);
 			// Successfully cancel the transfer approval of `operator` by `owner`.
@@ -218,7 +220,7 @@ mod approve {
 			// Check error works for `Nfts::cancel_collection_approval()`.
 			assert_noop!(
 				NonFungibles::approve(signed(owner), collection, operator, None, false, None),
-				NftsError::NotDelegate
+				NftsError::NotDelegate.with_weight(NftsWeightInfo::cancel_collection_approval())
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
 			assert_ok!(Nfts::approve_collection_transfer(
@@ -626,7 +628,7 @@ fn clear_collection_approvals_works() {
 		// Check error works for `Nfts::clear_collection_approvals()`.
 		assert_noop!(
 			NonFungibles::clear_collection_approvals(none(), collection, 1),
-			BadOrigin.with_weight(NftsWeightInfoOf::<Test>::clear_collection_approvals(0))
+			BadOrigin.with_weight(NftsWeightInfo::clear_collection_approvals(0))
 		);
 		nfts::create_collection_and_mint(owner, owner, ITEM);
 		delegates.clone().for_each(|delegate| {
@@ -640,7 +642,7 @@ fn clear_collection_approvals_works() {
 		// Partially clear collection approvals.
 		assert_eq!(
 			NonFungibles::clear_collection_approvals(signed(owner), collection, 1),
-			Ok(Some(NftsWeightInfoOf::<Test>::clear_collection_approvals(1)).into())
+			Ok(Some(NftsWeightInfo::clear_collection_approvals(1)).into())
 		);
 		assert_eq!(
 			CollectionApprovals::iter_prefix((collection, owner,)).count(),
@@ -649,7 +651,7 @@ fn clear_collection_approvals_works() {
 		// Successfully clear all collection approvals.
 		assert_eq!(
 			NonFungibles::clear_collection_approvals(signed(owner), collection, approvals),
-			Ok(Some(NftsWeightInfoOf::<Test>::clear_collection_approvals(approvals - 1)).into())
+			Ok(Some(NftsWeightInfo::clear_collection_approvals(approvals - 1)).into())
 		);
 		assert!(CollectionApprovals::iter_prefix((collection, owner,)).count().is_zero());
 	});
@@ -1181,8 +1183,6 @@ mod ensure_codec_indexes {
 }
 
 mod read_weights {
-	use frame_support::weights::Weight;
-
 	use super::*;
 
 	struct ReadWeightInfo {
@@ -1369,10 +1369,10 @@ mod encoding_read_result {
 #[test]
 fn ensure_approve_weight() {
 	assert_eq!(
-		NftsWeightInfoOf::<Test>::approve_transfer()
-			.max(NftsWeightInfoOf::<Test>::approve_collection_transfer())
-			.max(NftsWeightInfoOf::<Test>::cancel_approval())
-			.max(NftsWeightInfoOf::<Test>::cancel_collection_approval()),
+		NftsWeightInfo::approve_transfer()
+			.max(NftsWeightInfo::approve_collection_transfer())
+			.max(NftsWeightInfo::cancel_approval())
+			.max(NftsWeightInfo::cancel_collection_approval()),
 		Weight::from_parts(200000000, 4326)
 	);
 }
