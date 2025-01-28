@@ -1,6 +1,6 @@
-//! A set of events for use in smart contracts interacting with the non-fungibles API.
+//! A set of events for use in smart contracts interacting with the nonfungibles API.
 //!
-//! The `Transfer`, `Approval` and `AttributeSet` events conform to the PSP-34 standard.
+//! The `Transfer` and `Approval` events conform to the PSP-34 standard.
 //!
 //! These events are not emitted by the API itself but can be used in your contracts to
 //! track token operations. Be mindful of the costs associated with emitting events.
