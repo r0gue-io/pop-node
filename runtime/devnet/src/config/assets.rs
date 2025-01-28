@@ -44,7 +44,7 @@ parameter_types! {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
-/// Public because `pallet_nfts::Config` is a public trait.
+/// The maximum length of an attribute key.
 pub struct KeyLimit<const N: u32>;
 
 impl<const N: u32> Get<u32> for KeyLimit<N> {

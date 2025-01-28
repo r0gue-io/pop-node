@@ -125,6 +125,8 @@ pub mod pallet {
 		},
 	}
 
+	/// The non-fungibles dispatchables. For more information about a dispatchable refer to
+	/// `pallet-nfts`.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Transfers an owned or approved item to the specified recipient.
@@ -167,7 +169,10 @@ pub mod pallet {
 		/// - `deadline`: The optional deadline (in block numbers) specifying the time limit for the
 		///   approval, only required if `approved` is true.
 		#[pallet::call_index(4)]
-		#[pallet::weight(WeightOf::<T>::approve(*approved as u32, item.is_some() as u32))]
+		#[pallet::weight(NftsWeightInfoOf::<T>::approve_transfer()
+			.max(NftsWeightInfoOf::<T>::approve_collection_transfer())
+			.max(NftsWeightInfoOf::<T>::cancel_approval())
+			.max(NftsWeightInfoOf::<T>::cancel_collection_approval()))]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
