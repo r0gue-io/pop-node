@@ -10,10 +10,10 @@ use pallet_nfts::{CollectionSetting, MintWitness, WeightInfo as NftsWeightInfoTr
 use crate::{
 	mock::*,
 	nonfungibles::{
-		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
-		CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails, CollectionIdOf,
-		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
-		NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
+		AccountBalanceOf, AttributeNamespace, AttributeOf, CancelAttributesApprovalWitness,
+		CollectionConfig, CollectionConfigFor, CollectionDetails, CollectionIdOf, CollectionOf,
+		CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings, NextCollectionIdOf,
+		NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
 		WeightInfo as WeightInfoTrait,
 	},
 	Read,
@@ -957,8 +957,7 @@ mod nfts {
 		assert_ok!(Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator));
 	}
 
-	pub(super) fn collection_config_with_all_settings_enabled(
-	) -> CollectionConfig<Balance, BlockNumberFor<Test>, CollectionIdOf<Test>> {
+	pub(super) fn collection_config_with_all_settings_enabled() -> CollectionConfigFor<Test> {
 		CollectionConfig {
 			settings: CollectionSettings::all_enabled(),
 			max_supply: None,
