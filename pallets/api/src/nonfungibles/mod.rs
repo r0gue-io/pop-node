@@ -7,6 +7,7 @@ extern crate alloc;
 use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	traits::{nonfungibles_v2::Inspect, Currency},
+	BoundedVec,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
@@ -26,25 +27,35 @@ mod tests;
 /// Weights for non-fungibles dispatchables.
 pub mod weights;
 
-type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
 type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AttributeNamespaceOf<T> = AttributeNamespace<AccountIdOf<T>>;
-type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
 type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
-type CollectionConfigOf<T> = CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
+type CollectionConfigFor<T> =
+	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
+type CollectionDetailsOf<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
 type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 type ItemPriceOf<T> = BalanceOf<T>;
-type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
 type NftsErrorOf<T> = pallet_nfts::Error<T, NftsInstanceOf<T>>;
 type NftsInstanceOf<T> = <T as Config>::NftsInstance;
 type NftsOf<T> = pallet_nfts::Pallet<T, NftsInstanceOf<T>>;
 type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::WeightInfo;
 type WeightOf<T> = <T as Config>::WeightInfo;
+// Public due to pop-api integration tests crate.
+pub type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
+pub type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
+pub type AttributeKey<T> = BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::KeyLimit>;
+pub type AttributeValue<T> =
+	BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::ValueLimit>;
+pub type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
+pub type CollectionConfigOf<T> = pallet_nfts::CollectionConfigOf<T, NftsInstanceOf<T>>;
+pub type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
+pub type MetadataData<T> =
+	BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::StringLimit>;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -207,7 +218,7 @@ pub mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: AccountIdOf<T>,
-			config: CollectionConfigOf<T>,
+			config: CollectionConfigFor<T>,
 		) -> DispatchResult {
 			let creator = ensure_signed(origin.clone())?;
 			let id = NextCollectionIdOf::<T>::get()
@@ -668,8 +679,9 @@ pub mod pallet {
 						.map(|(balance, _)| balance)
 						.unwrap_or_default(),
 				),
-				OwnerOf { collection, item } =>
-					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item)),
+				OwnerOf { collection, item } => {
+					ReadResult::OwnerOf(NftsOf::<T>::owner(collection, item))
+				},
 				Allowance { collection, owner, operator, item } => ReadResult::Allowance(
 					NftsOf::<T>::check_approval_permission(&collection, &item, &owner, &operator)
 						.is_ok(),
