@@ -209,8 +209,6 @@ pub mod pallet {
 
 		/// Creates an NFT collection.
 		///
-		/// `CollectionDeposit` funds of sender are reserved.
-		///
 		/// # Parameters
 		/// - `admin` - The admin account of the collection.
 		/// - `config` - Settings and config to be set for the new collection.
@@ -231,11 +229,6 @@ pub mod pallet {
 		}
 
 		/// Destroy an NFT collection.
-		///
-		/// The origin must conform to `ForceOrigin` or must be `Signed` and the sender must be the
-		/// owner of the `collection`.
-		///
-		/// NOTE: The collection must have 0 items and 0 approvals to be destroyed.
 		///
 		/// # Parameters
 		/// - `collection` - The collection to be destroyed.
@@ -299,8 +292,6 @@ pub mod pallet {
 
 		/// Clear an attribute for the collection or item.
 		///
-		/// Any deposit is freed for the collection's owner.
-		///
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `item` - The optional item whose metadata to clear. If `None`, metadata of the
@@ -323,10 +314,6 @@ pub mod pallet {
 		///
 		/// Caller must be the admin of the collection.
 		///
-		/// If the `origin` is Signed, then funds of signer are reserved according to the formula:
-		/// `MetadataDepositBase + DepositPerByte * data.len` taking into
-		/// account any already reserved funds.
-		///
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `item` - The item. If `None`, set metadata for the collection.
@@ -345,8 +332,6 @@ pub mod pallet {
 		/// Clear the metadata for an item or collection.
 		///
 		/// Caller must be the admin of the collection.
-		///
-		/// Any deposit is freed for the collection's owner.
 		///
 		/// # Parameters
 		/// - `collection` - The collection.
