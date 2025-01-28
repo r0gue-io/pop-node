@@ -44,6 +44,7 @@ parameter_types! {
 
 #[derive(Debug)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+/// Public because `pallet_nfts::Config` is a public trait.
 pub struct KeyLimit<const N: u32>;
 
 impl<const N: u32> Get<u32> for KeyLimit<N> {
@@ -52,7 +53,12 @@ impl<const N: u32> Get<u32> for KeyLimit<N> {
 	}
 }
 
+// Trust backed NFTs as an instance of the `pallet-nfts` module. The name "TrustBacked" reflects the
+// assumption that non-fungible tokens are registered by an account and are trusted to have some
+// claimed backing.
 pub(crate) type TrustBackedNftsInstance = pallet_nfts::Instance1;
+/// Call type for trust backed NFTs. The type represents the calls that can be made to the
+/// `pallet-nfts` module with the `TrustBackedNftsInstance` configuration.
 pub type TrustBackedNftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
 impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	// TODO: source from primitives
