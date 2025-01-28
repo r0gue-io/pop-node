@@ -2,9 +2,9 @@ use pop_runtime_common::UNIT;
 use sp_runtime::traits::AccountIdConversion;
 
 use crate::{
-	config::governance::SudoAddress, parameter_types, AccountId, Balance, Balances, ConstU32,
-	ConstU8, ConstantMultiplier, PalletId, ResolveTo, Runtime, RuntimeEvent, RuntimeFreezeReason,
-	RuntimeHoldReason, SlowAdjustingFeeUpdate, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
+	parameter_types, AccountId, Balance, Balances, ConstU32, ConstU8, ConstantMultiplier, PalletId,
+	ResolveTo, Runtime, RuntimeEvent, RuntimeFreezeReason, RuntimeHoldReason,
+	SlowAdjustingFeeUpdate, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
 };
 
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
@@ -131,7 +131,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
 	type OnChargeTransaction =
-		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<SudoAddress, Balances>>;
+		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<TreasuryAccount, Balances>>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
@@ -249,7 +249,7 @@ mod tests {
 			// `who` has been dusted.
 			assert_eq!(Balances::free_balance(&who), 0);
 			System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::DustLost {
-				account: who.clone(),
+				account: who,
 				amount: existential_deposit / 2,
 			}));
 			// Treasury balance equals its initial balance + the dusted amount from `who`.
@@ -344,13 +344,13 @@ mod tests {
 	}
 
 	#[test]
-	fn transaction_payment_charges_fees_via_balances_and_funds_sudo() {
+	fn transaction_payment_charges_fees_via_balances_and_funds_treasury() {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
 			TypeId::of::<
 				pallet_transaction_payment::FungibleAdapter<
 					Balances,
-					ResolveTo<SudoAddress, Balances>,
+					ResolveTo<TreasuryAccount, Balances>,
 				>,
 			>(),
 		);
@@ -361,7 +361,7 @@ mod tests {
 			let fee = UNIT / 10;
 			let tip = UNIT / 2;
 			let fee_plus_tip = fee + tip;
-			let sudo_balance = Balances::free_balance(&SudoAddress::get());
+			let tsry_balance = Balances::free_balance(&TreasuryAccount::get());
 			let dispatch_info = call.get_dispatch_info();
 			let existential_deposit =
 				<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
@@ -387,7 +387,7 @@ mod tests {
 			)
 			.unwrap();
 
-			assert_eq!(Balances::free_balance(&SudoAddress::get()), sudo_balance + fee + tip);
+			assert_eq!(Balances::free_balance(&TreasuryAccount::get()), tsry_balance + fee + tip);
 			assert_eq!(Balances::free_balance(&who), existential_deposit);
 		})
 	}
