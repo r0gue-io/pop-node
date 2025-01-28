@@ -1,9 +1,10 @@
 use pop_runtime_common::UNIT;
+use sp_runtime::traits::AccountIdConversion;
 
 use crate::{
-	config::governance::SudoAddress, parameter_types, Balance, Balances, ConstU32, ConstU8,
-	ConstantMultiplier, ResolveTo, Runtime, RuntimeEvent, RuntimeFreezeReason, RuntimeHoldReason,
-	SlowAdjustingFeeUpdate, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
+	config::governance::SudoAddress, parameter_types, AccountId, Balance, Balances, ConstU32,
+	ConstU8, ConstantMultiplier, PalletId, ResolveTo, Runtime, RuntimeEvent, RuntimeFreezeReason,
+	RuntimeHoldReason, SlowAdjustingFeeUpdate, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
 };
 
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
@@ -99,6 +100,7 @@ pub mod fee {
 parameter_types! {
 	// increase ED 100 times to match system chains: 1_000_000_000
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
+	pub TreasuryAccount: AccountId = PalletId(*b"treasury").into_account_truncating();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -106,7 +108,7 @@ impl pallet_balances::Config for Runtime {
 	/// The type for recording an account's balance.
 	type Balance = Balance;
 	type DoneSlashHandler = ();
-	type DustRemoval = ();
+	type DustRemoval = ResolveTo<TreasuryAccount, Balances>;
 	type ExistentialDeposit = ExistentialDeposit;
 	type FreezeIdentifier = RuntimeFreezeReason;
 	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
@@ -141,8 +143,9 @@ mod tests {
 	use std::any::TypeId;
 
 	use frame_support::{
+		assert_ok,
 		dispatch::GetDispatchInfo,
-		traits::{fungible::Mutate, Get},
+		traits::{fungible::Mutate, Get, OnUnbalanced},
 		weights::{constants::ExtrinsicBaseWeight, Weight, WeightToFee},
 	};
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
@@ -223,11 +226,38 @@ mod tests {
 	}
 
 	#[test]
-	fn balances_dust_removal_handler_burns_tokens() {
+	fn balances_dust_removal_handler_resolves_to_treasury_account() {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_balances::Config>::DustRemoval>(),
-			TypeId::of::<()>(),
+			TypeId::of::<ResolveTo<TreasuryAccount, Balances>>(),
 		);
+
+		new_test_ext().execute_with(|| {
+			let existential_deposit =
+				<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
+			let who = AccountId::from([1u8; 32]);
+			let beneficiary = AccountId::from([2u8; 32]);
+			let call = RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+				dest: sp_runtime::MultiAddress::Id(beneficiary),
+				value: UNIT + (existential_deposit / 2),
+			});
+			Balances::set_balance(&who, existential_deposit + UNIT);
+			Balances::set_balance(&TreasuryAccount::get(), UNIT);
+
+			// `who`'s balance goes under ED.
+			assert_ok!(call.dispatch(RuntimeOrigin::signed(who.clone())));
+			// `who` has been dusted.
+			assert_eq!(Balances::free_balance(&who), 0);
+			System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::DustLost {
+				account: who.clone(),
+				amount: existential_deposit / 2,
+			}));
+			// Treasury balance equals its initial balance + the dusted amount from `who`.
+			assert_eq!(
+				Balances::free_balance(&TreasuryAccount::get()),
+				UNIT + existential_deposit / 2
+			);
+		})
 	}
 
 	#[test]
