@@ -9,7 +9,7 @@ use frame_support::{
 	},
 	BoundedVec,
 };
-use frame_system::RawOrigin;
+use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin};
 use sp_runtime::traits::{Bounded, StaticLookup, Zero};
 
 use super::{
@@ -40,6 +40,7 @@ mod benchmarks {
 	#[benchmark]
 	fn approve(a: Linear<0, 1>, i: Linear<0, 1>) -> Result<(), BenchmarkError> {
 		let collection_id = CollectionIdOf::<T>::zero();
+		let deadline = BlockNumberFor::<T>::max_value();
 		let item_id = ItemIdOf::<T>::zero();
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		let operator: AccountIdOf<T> = account("Bob", 0, SEED);
@@ -76,6 +77,7 @@ mod benchmarks {
 				)?;
 				(false, None)
 			},
+			(1, 0) => (true, None),
 			(0, 1) => {
 				NftsOf::<T>::approve_transfer(
 					origin.clone().into(),
@@ -86,13 +88,12 @@ mod benchmarks {
 				)?;
 				(false, Some(item_id))
 			},
-			(1, 0) => (true, None),
 			(1, 1) => (true, Some(item_id)),
 			_ => unreachable!("values can only be 0 or 1"),
 		};
 
 		#[extrinsic_call]
-		_(origin, collection_id, operator.clone(), maybe_item, approved);
+		_(origin, collection_id, operator.clone(), maybe_item, approved, Some(deadline));
 
 		assert_eq!(
 			NftsOf::<T>::check_approval_permission(&collection_id, &maybe_item, &owner, &operator)

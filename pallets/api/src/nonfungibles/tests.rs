@@ -104,7 +104,7 @@ mod approve {
 		new_test_ext().execute_with(|| {
 			for origin in vec![root(), none()] {
 				assert_noop!(
-					NonFungibles::approve(origin, COLLECTION, ALICE, Some(ITEM), false),
+					NonFungibles::approve(origin, COLLECTION, ALICE, Some(ITEM), false, None),
 					BadOrigin
 				);
 			}
@@ -121,7 +121,7 @@ mod approve {
 
 			// Check error works for `Nfts::approve_transfer()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, operator, Some(item), true),
+				NonFungibles::approve(signed(owner), collection, operator, Some(item), true, None),
 				NftsError::UnknownItem
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
@@ -131,7 +131,8 @@ mod approve {
 				collection,
 				operator,
 				Some(item),
-				true
+				true,
+				None
 			));
 			assert_ok!(Nfts::check_approval_permission(
 				&collection,
@@ -156,12 +157,19 @@ mod approve {
 
 			// Check error works for `Nfts::approve_collection_transfer()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, operator, None, true),
+				NonFungibles::approve(signed(owner), collection, operator, None, true, None),
 				NftsError::NoItemOwned
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
 			// Successfully approve `operator` to transfer all collection items owned by `owner`.
-			assert_ok!(NonFungibles::approve(signed(owner), collection, operator, None, true));
+			assert_ok!(NonFungibles::approve(
+				signed(owner),
+				collection,
+				operator,
+				None,
+				true,
+				None
+			));
 			assert_ok!(Nfts::check_approval_permission(&collection, &None, &owner, &operator));
 			System::assert_last_event(
 				Event::Approval { collection, item: None, owner, operator, approved: true }.into(),
@@ -179,7 +187,7 @@ mod approve {
 
 			// Check error works for `Nfts::cancel_approval()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, operator, Some(item), false),
+				NonFungibles::approve(signed(owner), collection, operator, Some(item), false, None),
 				NftsError::UnknownItem
 			);
 			nfts::create_collection_mint_and_approve(owner, owner, item, operator);
@@ -189,7 +197,8 @@ mod approve {
 				collection,
 				operator,
 				Some(item),
-				false
+				false,
+				None
 			));
 			assert_eq!(
 				Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator),
@@ -208,7 +217,7 @@ mod approve {
 
 			// Check error works for `Nfts::cancel_collection_approval()`.
 			assert_noop!(
-				NonFungibles::approve(signed(owner), collection, operator, None, false),
+				NonFungibles::approve(signed(owner), collection, operator, None, false, None),
 				NftsError::NotDelegate
 			);
 			nfts::create_collection_and_mint(owner, owner, item);
@@ -219,7 +228,14 @@ mod approve {
 				None
 			));
 			// Successfully cancel the transfer collection approval of `operator` by `owner`.
-			assert_ok!(NonFungibles::approve(signed(owner), collection, operator, None, false));
+			assert_ok!(NonFungibles::approve(
+				signed(owner),
+				collection,
+				operator,
+				None,
+				false,
+				None
+			));
 			assert_eq!(
 				Nfts::check_approval_permission(&collection, &None, &owner, &operator),
 				Err(NftsError::NoPermission.into())
@@ -238,13 +254,13 @@ fn mint_works() {
 
 		// Check error works for `Nfts::mint()`.
 		assert_noop!(
-			NonFungibles::mint(signed(owner), collection, owner, item, witness.clone()),
+			NonFungibles::mint(signed(owner), collection, owner, item, Some(witness.clone())),
 			NftsError::NoConfig
 		);
 		// Successfully mint a new collection item.
 		nfts::create_collection(owner);
 		let balance_before_mint = nfts::balance_of(collection, &owner);
-		assert_ok!(NonFungibles::mint(signed(owner), collection, owner, item, witness));
+		assert_ok!(NonFungibles::mint(signed(owner), collection, owner, item, Some(witness)));
 		let balance_after_mint = nfts::balance_of(collection, &owner);
 		assert_eq!(balance_after_mint, balance_before_mint + 1);
 		System::assert_last_event(
@@ -995,6 +1011,7 @@ mod ensure_codec_indexes {
 					operator: Default::default(),
 					item: Default::default(),
 					approved: Default::default(),
+					deadline: Default::default(),
 				},
 				4,
 				"approve",
@@ -1004,10 +1021,10 @@ mod ensure_codec_indexes {
 					collection: Default::default(),
 					to: Default::default(),
 					item: Default::default(),
-					witness: MintWitness {
+					witness: Some(MintWitness {
 						owned_item: Default::default(),
 						mint_price: Default::default(),
-					},
+					}),
 				},
 				7,
 				"mint",
@@ -1238,7 +1255,7 @@ mod read_weights {
 	fn ensure_collection_variants_match() {
 		let ReadWeightInfo { total_supply, collection, .. } = ReadWeightInfo::new();
 
-		assert_eq!(total_supply, collection);
+		assert_eq!(total_supply.proof_size(), collection.proof_size());
 	}
 
 	// Proof size is based on `MaxEncodedLen`, not hardware.

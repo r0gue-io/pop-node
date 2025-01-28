@@ -143,7 +143,7 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			to: AccountIdOf<T>,
 			item: ItemIdOf<T>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let owner =
 				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
 			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
@@ -153,7 +153,7 @@ pub mod pallet {
 				from: Some(owner),
 				to: Some(to),
 			});
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Approves operator to transfer item(s) from the owner's account.
@@ -164,6 +164,8 @@ pub mod pallet {
 		/// - `item` - Optional item. `None` means all items owned in the specified collection.
 		/// - `approved` - Whether the operator is given or removed the right to transfer the
 		///   item(s).
+		/// - `deadline`: The optional deadline (in block numbers) specifying the time limit for the
+		///   approval, only required if `approved` is true.
 		#[pallet::call_index(4)]
 		#[pallet::weight(WeightOf::<T>::approve(*approved as u32, item.is_some() as u32))]
 		pub fn approve(
@@ -172,11 +174,12 @@ pub mod pallet {
 			operator: AccountIdOf<T>,
 			item: Option<ItemIdOf<T>>,
 			approved: bool,
+			deadline: Option<BlockNumberFor<T>>,
 		) -> DispatchResult {
 			let owner = ensure_signed(origin.clone())?;
 			let operator_lookup = T::Lookup::unlookup(operator.clone());
 			let result = if approved {
-				Self::do_approve(origin, collection, item, operator_lookup)
+				Self::do_approve(origin, collection, item, operator_lookup, deadline)
 			} else {
 				Self::do_cancel_approval(origin, collection, item, operator_lookup)
 			};
@@ -189,10 +192,12 @@ pub mod pallet {
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `to` - The recipient account.
-		/// - `item` - An identifier of the new item.
+		/// - `item` - The identifier for the new item.
 		/// - `witness` - When the mint type is `HolderOf(collection_id)`, then the owned item_id
 		///   from that collection needs to be provided within the witness data object. If the mint
 		///   price is set, then it should be additionally confirmed in the `witness`.
+		///
+		/// Note: The deposit will be taken from the `origin` and not the `owner` of the `item`.
 		#[pallet::call_index(7)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
@@ -200,15 +205,9 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			to: AccountIdOf<T>,
 			item: ItemIdOf<T>,
-			witness: MintWitness<ItemIdOf<T>, ItemPriceOf<T>>,
+			witness: Option<MintWitness<ItemIdOf<T>, ItemPriceOf<T>>>,
 		) -> DispatchResult {
-			NftsOf::<T>::mint(
-				origin,
-				collection,
-				item,
-				T::Lookup::unlookup(to.clone()),
-				Some(witness),
-			)?;
+			NftsOf::<T>::mint(origin, collection, item, T::Lookup::unlookup(to.clone()), witness)?;
 			Self::deposit_event(Event::Transfer { collection, item, from: None, to: Some(to) });
 			Ok(())
 		}
@@ -224,12 +223,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
 			item: ItemIdOf<T>,
-		) -> DispatchResultWithPostInfo {
+		) -> DispatchResult {
 			let owner =
 				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
 			NftsOf::<T>::burn(origin, collection, item)?;
 			Self::deposit_event(Event::Transfer { collection, item, from: Some(owner), to: None });
-			Ok(().into())
+			Ok(())
 		}
 
 		/// Creates an NFT collection.
@@ -281,6 +280,10 @@ pub mod pallet {
 		///   in that case;
 		/// - `Account(AccountId)` namespace could be modified only when the `origin` was given a
 		///   permission to do so;
+		///
+		/// The funds of `origin` are reserved according to the formula:
+		/// `AttributeDepositBase + DepositPerByte * (key.len + value.len)` taking into
+		/// account any already reserved funds.
 		///
 		/// # Parameters
 		/// - `collection` - The collection.
@@ -473,11 +476,13 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			maybe_item: Option<ItemIdOf<T>>,
 			operator: AccountIdLookupOf<T>,
+			deadline: Option<BlockNumberFor<T>>,
 		) -> DispatchResult {
 			match maybe_item {
 				Some(item) =>
-					NftsOf::<T>::approve_transfer(owner, collection, item, operator, None),
-				None => NftsOf::<T>::approve_collection_transfer(owner, collection, operator, None),
+					NftsOf::<T>::approve_transfer(owner, collection, item, operator, deadline),
+				None =>
+					NftsOf::<T>::approve_collection_transfer(owner, collection, operator, deadline),
 			}
 		}
 
