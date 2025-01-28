@@ -340,25 +340,3 @@ pub(super) fn instantiate_and_create_fungible(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 		.map(|_| address)
 }
-
-/// Get the last event from pallet contracts.
-pub(super) fn last_contract_event() -> Vec<u8> {
-	let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
-	let contract_events = events
-		.iter()
-		.filter_map(|event| match event {
-			pallet_contracts::Event::<Runtime>::ContractEmitted { data, .. } =>
-				Some(data.as_slice()),
-			_ => None,
-		})
-		.collect::<Vec<&[u8]>>();
-	contract_events.last().unwrap().to_vec()
-}
-
-/// Decodes a byte slice into an `AccountId` as defined in `primitives`.
-///
-/// This is used to resolve type mismatches between the `AccountId` in the integration tests and the
-/// contract environment.
-pub fn account_id_from_slice(s: &[u8; 32]) -> pop_api::primitives::AccountId {
-	pop_api::primitives::AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
-}

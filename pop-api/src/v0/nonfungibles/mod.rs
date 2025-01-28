@@ -1,0 +1,321 @@
+//! The `nonfungibles` module provides an API for interacting and managing nonfungible tokens.
+//!
+//! The API includes the following interfaces:
+//! 1. PSP-34
+//! 2. PSP-34 Metadata
+//! 3. PSP-22 Mintable & Burnable
+//! 4. Management
+
+use constants::*;
+pub use errors::*;
+pub use events::*;
+use ink::prelude::vec::Vec;
+pub use traits::*;
+pub use types::*;
+
+use crate::{
+	constants::NONFUNGIBLES,
+	primitives::{AccountId, BlockNumber},
+	ChainExtensionMethodApi, Result, StatusCode,
+};
+
+pub mod errors;
+pub mod events;
+pub mod traits;
+pub mod types;
+
+#[inline]
+pub fn balance_of(collection: CollectionId, owner: AccountId) -> Result<u32> {
+	build_read_state(BALANCE_OF)
+		.input::<(CollectionId, AccountId)>()
+		.output::<Result<u32>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, owner))
+}
+
+#[inline]
+pub fn owner_of(collection: CollectionId, item: ItemId) -> Result<Option<AccountId>> {
+	build_read_state(OWNER_OF)
+		.input::<(CollectionId, ItemId)>()
+		.output::<Result<Option<AccountId>>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item))
+}
+
+#[inline]
+pub fn allowance(
+	collection: CollectionId,
+	owner: AccountId,
+	operator: AccountId,
+	item: Option<ItemId>,
+) -> Result<bool> {
+	build_read_state(ALLOWANCE)
+		.input::<(CollectionId, AccountId, AccountId, Option<ItemId>)>()
+		.output::<Result<bool>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, owner, operator, item))
+}
+
+#[inline]
+pub fn transfer(collection: CollectionId, to: AccountId, item: ItemId) -> Result<()> {
+	build_dispatch(TRANSFER)
+		.input::<(CollectionId, AccountId, ItemId)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, to, item))
+}
+
+#[inline]
+pub fn approve(
+	collection: CollectionId,
+	operator: AccountId,
+	item: Option<ItemId>,
+	approved: bool,
+) -> Result<()> {
+	build_dispatch(APPROVE)
+		.input::<(CollectionId, AccountId, Option<ItemId>, bool, Option<BlockNumber>)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, operator, item, approved, None))
+}
+
+#[inline]
+pub fn total_supply(collection: CollectionId) -> Result<u128> {
+	build_read_state(TOTAL_SUPPLY)
+		.input::<CollectionId>()
+		.output::<Result<u128>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection))
+}
+
+#[inline]
+pub fn get_attribute(
+	collection: CollectionId,
+	item: ItemId,
+	namespace: AttributeNamespace,
+	key: Vec<u8>,
+) -> Result<Option<Vec<u8>>> {
+	build_read_state(GET_ATTRIBUTE)
+		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>)>()
+		.output::<Result<Option<Vec<u8>>>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item, namespace, key))
+}
+
+#[inline]
+pub fn mint(
+	to: AccountId,
+	collection: CollectionId,
+	item: ItemId,
+	witness: MintWitness,
+) -> Result<()> {
+	build_dispatch(MINT)
+		.input::<(AccountId, CollectionId, ItemId, MintWitness)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(to, collection, item, witness))
+}
+
+#[inline]
+pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {
+	build_dispatch(BURN)
+		.input::<(CollectionId, ItemId)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item))
+}
+
+#[inline]
+pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>> {
+	build_read_state(COLLECTION)
+		.input::<CollectionId>()
+		.output::<Result<Option<CollectionDetails>>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection))
+}
+
+#[inline]
+pub fn next_collection_id() -> Result<CollectionId> {
+	build_read_state(NEXT_COLLECTION_ID)
+		.output::<Result<CollectionId>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&())
+}
+
+#[inline]
+pub fn item_metadata(collection: CollectionId, item: ItemId) -> Result<Option<Vec<u8>>> {
+	build_read_state(ITEM_METADATA)
+		.input::<(CollectionId, ItemId)>()
+		.output::<Result<Option<Vec<u8>>>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item))
+}
+
+#[inline]
+pub fn create(admin: AccountId, config: CollectionConfig) -> Result<()> {
+	build_dispatch(CREATE)
+		.input::<(AccountId, CollectionConfig)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(admin, config))?;
+	Ok(())
+}
+
+#[inline]
+pub fn destroy(collection: CollectionId, witness: DestroyWitness) -> Result<()> {
+	build_dispatch(DESTROY)
+		.input::<(CollectionId, DestroyWitness)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, witness))
+}
+
+#[inline]
+pub fn set_attribute(
+	collection: CollectionId,
+	item: Option<ItemId>,
+	namespace: AttributeNamespace,
+	key: Vec<u8>,
+	value: Vec<u8>,
+) -> Result<()> {
+	build_dispatch(SET_ATTRIBUTE)
+		.input::<(CollectionId, Option<ItemId>, AttributeNamespace, Vec<u8>, Vec<u8>)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item, namespace, key, value))
+}
+
+#[inline]
+pub fn clear_attribute(
+	collection: CollectionId,
+	item: Option<ItemId>,
+	namespace: AttributeNamespace,
+	key: Vec<u8>,
+) -> Result<()> {
+	build_dispatch(CLEAR_ATTRIBUTE)
+		.input::<(CollectionId, Option<ItemId>, AttributeNamespace, Vec<u8>)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item, namespace, key))
+}
+
+#[inline]
+pub fn set_metadata(collection: CollectionId, item: ItemId, data: Vec<u8>) -> Result<()> {
+	build_dispatch(SET_METADATA)
+		.input::<(CollectionId, ItemId, Vec<u8>)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item, data))
+}
+
+#[inline]
+pub fn clear_metadata(collection: CollectionId, item: ItemId) -> Result<()> {
+	build_dispatch(CLEAR_METADATA)
+		.input::<(CollectionId, ItemId)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item))
+}
+
+#[inline]
+pub fn set_max_supply(collection: CollectionId, max_supply: u32) -> Result<()> {
+	build_dispatch(SET_MAX_SUPPLY)
+		.input::<(CollectionId, u32)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, max_supply))
+}
+
+#[inline]
+pub fn approve_item_attributes(
+	collection: CollectionId,
+	item: ItemId,
+	delegate: AccountId,
+) -> Result<()> {
+	build_dispatch(APPROVE_ITEM_ATTRIBUTES)
+		.input::<(CollectionId, ItemId, AccountId)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item, delegate))
+}
+
+#[inline]
+pub fn cancel_item_attributes_approval(
+	collection: CollectionId,
+	item: ItemId,
+	delegate: AccountId,
+	witness: CancelAttributesApprovalWitness,
+) -> Result<()> {
+	build_dispatch(CANCEL_ITEM_ATTRIBUTES_APPROVAL)
+		.input::<(CollectionId, ItemId, AccountId, CancelAttributesApprovalWitness)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item, delegate, witness))
+}
+
+#[inline]
+pub fn clear_all_transfer_approvals(collection: CollectionId, item: ItemId) -> Result<()> {
+	build_dispatch(CLEAR_ALL_TRANSFER_APPROVALS)
+		.input::<(CollectionId, ItemId)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item))
+}
+
+#[inline]
+pub fn clear_collection_approvals(collection: CollectionId, limit: u32) -> Result<()> {
+	build_dispatch(CLEAR_COLLECTION_APPROVALS)
+		.input::<(CollectionId, u32)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, limit))
+}
+
+mod constants {
+	/// 1. PSP-34
+	pub(super) const BALANCE_OF: u8 = 0;
+	pub(super) const OWNER_OF: u8 = 1;
+	pub(super) const ALLOWANCE: u8 = 2;
+	pub(super) const TRANSFER: u8 = 3;
+	pub(super) const APPROVE: u8 = 4;
+	pub(super) const TOTAL_SUPPLY: u8 = 5;
+
+	/// 2. PSP-34 Metadata
+	pub(super) const GET_ATTRIBUTE: u8 = 6;
+
+	/// 3. PSP-34 Mintable & Burnable
+	pub(super) const MINT: u8 = 7;
+	pub(super) const BURN: u8 = 8;
+
+	/// 4. Management
+	pub(super) const COLLECTION: u8 = 9;
+	pub(super) const NEXT_COLLECTION_ID: u8 = 10;
+	pub(super) const ITEM_METADATA: u8 = 11;
+	pub(super) const CREATE: u8 = 12;
+	pub(super) const DESTROY: u8 = 13;
+	pub(super) const SET_ATTRIBUTE: u8 = 14;
+	pub(super) const CLEAR_ATTRIBUTE: u8 = 15;
+	pub(super) const SET_METADATA: u8 = 16;
+	pub(super) const CLEAR_METADATA: u8 = 17;
+	pub(super) const SET_MAX_SUPPLY: u8 = 18;
+	pub(super) const APPROVE_ITEM_ATTRIBUTES: u8 = 19;
+	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 20;
+	pub(super) const CLEAR_ALL_TRANSFER_APPROVALS: u8 = 21;
+	pub(super) const CLEAR_COLLECTION_APPROVALS: u8 = 22;
+}
+
+// Helper method to build a dispatch call.
+//
+// Parameters:
+// - 'dispatchable': The index of the dispatchable function within the module.
+fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
+	crate::v0::build_dispatch(NONFUNGIBLES, dispatchable)
+}
+
+// Helper method to build a call to read state.
+//
+// Parameters:
+// - 'state_query': The index of the runtime state query.
+fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
+	crate::v0::build_read_state(NONFUNGIBLES, state_query)
+}
