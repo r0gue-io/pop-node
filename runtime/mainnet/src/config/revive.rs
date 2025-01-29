@@ -105,10 +105,13 @@ mod tests {
 
 	#[test]
 	fn code_hash_lockup_deposit_percent_is_correct() {
-		// 30 percent
 		assert_eq!(
 			TypeId::of::<<Runtime as Config>::CodeHashLockupDepositPercent>(),
 			TypeId::of::<CodeHashLockupDepositPercent>(),
+		);
+		assert_eq!(
+			<<Runtime as Config>::CodeHashLockupDepositPercent as Get<Perbill>>::get(),
+			Perbill::from_percent(30),
 		);
 	}
 
