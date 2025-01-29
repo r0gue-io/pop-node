@@ -104,7 +104,7 @@ pub type TxExtension = (
 	CheckMetadataHash<Runtime>,
 );
 
-/// Default extensions applied to Ethereum transactions.
+/// EthExtra converts an unsigned Call::eth_transact into a CheckedExtrinsic.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct EthExtraImpl;
 
@@ -852,7 +852,8 @@ mod tests {
 					MultiAddress<AccountId, ()>,
 					// The signature scheme(s) supported.
 					MultiSignature,
-					// The transaction extensions.
+					// The transaction extensions that has an additional extension to convert
+					// an eth transaction into a checked extrinsic.
 					EthExtraImpl,
 				>,
 			>(),
