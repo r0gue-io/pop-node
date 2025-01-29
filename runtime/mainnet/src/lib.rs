@@ -72,6 +72,12 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
 
+/// Record of an event happening.
+pub type EventRecord = frame_system::EventRecord<
+	<Runtime as frame_system::Config>::RuntimeEvent,
+	<Runtime as frame_system::Config>::Hash,
+>;
+
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 
@@ -98,9 +104,33 @@ pub type TxExtension = (
 	CheckMetadataHash<Runtime>,
 );
 
+/// EthExtra converts an unsigned Call::eth_transact into a CheckedExtrinsic.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct EthExtraImpl;
+
+impl pallet_revive::evm::runtime::EthExtra for EthExtraImpl {
+	type Config = Runtime;
+	type Extension = TxExtension;
+
+	fn get_eth_extension(nonce: u32, tip: Balance) -> Self::Extension {
+		(
+			CheckNonZeroSender::<Runtime>::new(),
+			CheckSpecVersion::<Runtime>::new(),
+			CheckTxVersion::<Runtime>::new(),
+			CheckGenesis::<Runtime>::new(),
+			CheckMortality::from(generic::Era::Immortal),
+			CheckNonce::<Runtime>::from(nonce),
+			CheckWeight::<Runtime>::new(),
+			ChargeTransactionPayment::<Runtime>::from(tip),
+			StorageWeightReclaim::<Runtime>::new(),
+			CheckMetadataHash::<Runtime>::new(false),
+		)
+	}
+}
+
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
+	pallet_revive::evm::runtime::UncheckedExtrinsic<Address, Signature, EthExtraImpl>;
 
 /// All migrations of the runtime, aside from the ones declared in the pallets.
 ///
@@ -661,6 +691,10 @@ mod runtime {
 	#[runtime::pallet_index(33)]
 	pub type MessageQueue = pallet_message_queue::Pallet<Runtime>;
 
+	// Contracts (using pallet-revive)
+	#[runtime::pallet_index(40)]
+	pub type Revive = pallet_revive::Pallet<Runtime>;
+
 	// Proxy
 	#[runtime::pallet_index(41)]
 	pub type Proxy = pallet_proxy::Pallet<Runtime>;
@@ -813,15 +847,14 @@ mod tests {
 		assert_eq!(
 			TypeId::of::<UncheckedExtrinsic>(),
 			TypeId::of::<
-				generic::UncheckedExtrinsic<
+				pallet_revive::evm::runtime::UncheckedExtrinsic<
 					// Multiple address formats supported.
 					MultiAddress<AccountId, ()>,
-					// The runtime calls available.
-					RuntimeCall,
 					// The signature scheme(s) supported.
 					MultiSignature,
-					// The transaction extensions.
-					TxExtension,
+					// The transaction extensions that has an additional extension to convert
+					// an eth transaction into a checked extrinsic.
+					EthExtraImpl,
 				>,
 			>(),
 		);
