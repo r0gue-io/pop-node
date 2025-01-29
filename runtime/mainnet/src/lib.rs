@@ -804,8 +804,7 @@ mod tests {
 	use pallet_balances::AdjustmentDirection;
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
 	use sp_keyring::AccountKeyring as Keyring;
-	use sp_runtime::traits::Dispatchable;
-	use sp_runtime::MultiSignature;
+	use sp_runtime::{traits::Dispatchable, MultiSignature};
 	use BalancesCall::*;
 	use RuntimeCall::Balances as BalancesRuntimeCall;
 
