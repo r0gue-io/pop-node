@@ -116,6 +116,12 @@ pub mod proxy {
 		NonTransfer,
 		/// Proxy with the ability to reject time-delay proxy announcements.
 		CancelProxy,
+		/// Assets proxy. Can execute any call from `assets`, **including asset transfers**.
+		Assets,
+		/// Owner proxy. Can execute calls related to asset ownership.
+		AssetOwner,
+		/// Asset manager. Can execute calls related to asset management.
+		AssetManager,
 		/// Collator selection proxy. Can execute calls related to collator selection mechanism.
 		Collator,
 	}
@@ -131,6 +137,8 @@ pub mod proxy {
 				(x, y) if x == y => true,
 				(ProxyType::Any, _) => true,
 				(_, ProxyType::Any) => false,
+				(ProxyType::Assets, ProxyType::AssetOwner) => true,
+				(ProxyType::Assets, ProxyType::AssetManager) => true,
 				(ProxyType::NonTransfer, ProxyType::Collator) => true,
 				_ => false,
 			}

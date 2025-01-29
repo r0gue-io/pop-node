@@ -1,9 +1,53 @@
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::InstanceFilter;
-use pop_runtime_common::proxy::{MaxPending, MaxProxies, ProxyType};
+use pop_runtime_common::proxy::{MaxPending, MaxProxies};
+use sp_runtime::RuntimeDebug;
 
 use crate::{
 	deposit, parameter_types, Balance, Balances, BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
 };
+
+/// The type used to represent the kinds of proxying allowed.
+#[derive(
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	Encode,
+	Decode,
+	RuntimeDebug,
+	MaxEncodedLen,
+	scale_info::TypeInfo,
+)]
+pub enum ProxyType {
+	/// Fully permissioned proxy. Can execute any call on behalf of _proxied_.
+	Any,
+	/// Can execute any call that does not transfer funds or assets.
+	NonTransfer,
+	/// Proxy with the ability to reject time-delay proxy announcements.
+	CancelProxy,
+	/// Collator selection proxy. Can execute calls related to collator selection mechanism.
+	Collator,
+}
+impl Default for ProxyType {
+	fn default() -> Self {
+		Self::Any
+	}
+}
+
+impl ProxyType {
+	pub fn is_superset(s: &ProxyType, o: &ProxyType) -> bool {
+		match (s, o) {
+			(x, y) if x == y => true,
+			(ProxyType::Any, _) => true,
+			(_, ProxyType::Any) => false,
+			(ProxyType::NonTransfer, ProxyType::Collator) => true,
+			_ => false,
+		}
+	}
+}
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
@@ -63,6 +107,37 @@ mod tests {
 	use frame_support::traits::Get;
 
 	use super::*;
+
+	#[test]
+	fn proxy_type_default_is_any() {
+		assert_eq!(ProxyType::default(), ProxyType::Any);
+	}
+
+	#[test]
+	fn proxy_type_superset_as_defined() {
+		let all_proxies = vec![
+			ProxyType::Any,
+			ProxyType::NonTransfer,
+			ProxyType::CancelProxy,
+			ProxyType::Collator,
+		];
+		for proxy in all_proxies {
+			// Every proxy is part of itself.
+			assert!(ProxyType::is_superset(&proxy, &proxy));
+
+			// Any contains all others, but is not contained.
+			if proxy != ProxyType::Any {
+				assert!(ProxyType::is_superset(&ProxyType::Any, &proxy));
+				assert!(!ProxyType::is_superset(&proxy, &ProxyType::Any));
+			}
+			// CancelProxy does not contain any other proxy.
+			if proxy != ProxyType::CancelProxy {
+				assert!(!ProxyType::is_superset(&ProxyType::CancelProxy, &proxy));
+			}
+		}
+		assert!(ProxyType::is_superset(&ProxyType::NonTransfer, &ProxyType::Collator));
+		assert!(!ProxyType::is_superset(&ProxyType::Collator, &ProxyType::NonTransfer));
+	}
 
 	#[test]
 	fn proxy_has_announcement_deposit_base() {
