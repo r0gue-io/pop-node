@@ -224,14 +224,14 @@ mod tests {
 
 	#[test]
 	fn session_keys_provided_by_aura() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_session::Config>::Keys>(),
-			TypeId::of::<SessionKeys>(),
-		);
 		// Session keys implementation uses aura-defined authority identifier type
 		SessionKeys {
 			aura: <Runtime as pallet_aura::Config>::AuthorityId::from_slice(&[0u8; 32]).unwrap(),
 		};
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_session::Config>::Keys>(),
+			TypeId::of::<SessionKeys>(),
+		);
 	}
 
 	#[test]
