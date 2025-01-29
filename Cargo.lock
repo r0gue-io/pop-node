@@ -13874,6 +13874,7 @@ dependencies = [
  "pallet-multisig 39.0.0",
  "pallet-preimage 39.0.0",
  "pallet-proxy 39.0.0",
+ "pallet-revive",
  "pallet-scheduler 40.0.0",
  "pallet-session 39.0.0",
  "pallet-sudo 39.0.0",
