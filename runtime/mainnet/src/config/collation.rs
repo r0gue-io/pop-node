@@ -114,7 +114,7 @@ mod tests {
 	}
 
 	#[test]
-	fn aura_max_authorities() {
+	fn aura_max_authorities_is_3600() {
 		assert_eq!(<<Runtime as pallet_aura::Config>::MaxAuthorities as Get<u32>>::get(), 3_600);
 	}
 
