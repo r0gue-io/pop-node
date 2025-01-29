@@ -145,7 +145,7 @@ mod tests {
 	use frame_support::{
 		assert_ok,
 		dispatch::GetDispatchInfo,
-		traits::{fungible::Mutate, Get, OnUnbalanced},
+		traits::{fungible::Mutate, Get},
 		weights::{constants::ExtrinsicBaseWeight, Weight, WeightToFee},
 	};
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
@@ -242,7 +242,7 @@ mod tests {
 				value: UNIT + (existential_deposit / 2),
 			});
 			Balances::set_balance(&who, existential_deposit + UNIT);
-			Balances::set_balance(&TreasuryAccount::get(), UNIT);
+			Balances::set_balance(&TreasuryAccount::get(), existential_deposit);
 
 			// `who`'s balance goes under ED.
 			assert_ok!(call.dispatch(RuntimeOrigin::signed(who.clone())));
@@ -255,7 +255,7 @@ mod tests {
 			// Treasury balance equals its initial balance + the dusted amount from `who`.
 			assert_eq!(
 				Balances::free_balance(&TreasuryAccount::get()),
-				UNIT + existential_deposit / 2
+				existential_deposit + existential_deposit / 2
 			);
 		})
 	}
