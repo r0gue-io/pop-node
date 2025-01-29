@@ -84,18 +84,12 @@ mod tests {
 
 	#[test]
 	fn call_filter_is_nothing() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_revive::Config>::CallFilter>(),
-			TypeId::of::<Nothing>(),
-		);
+		assert_eq!(TypeId::of::<<Runtime as Config>::CallFilter>(), TypeId::of::<Nothing>(),);
 	}
 
 	#[test]
 	fn chain_extension_is_unset() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_revive::Config>::ChainExtension>(),
-			TypeId::of::<()>(),
-		);
+		assert_eq!(TypeId::of::<<Runtime as Config>::ChainExtension>(), TypeId::of::<()>(),);
 	}
 
 	#[test]
