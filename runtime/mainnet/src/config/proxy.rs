@@ -16,15 +16,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Utility { .. } |
 					RuntimeCall::Multisig { .. }
 			),
-			ProxyType::Assets => {
-				matches!(c, RuntimeCall::Utility { .. } | RuntimeCall::Multisig { .. })
-			},
-			ProxyType::AssetOwner => {
-				matches!(c, RuntimeCall::Utility { .. } | RuntimeCall::Multisig { .. })
-			},
-			ProxyType::AssetManager => {
-				matches!(c, RuntimeCall::Utility { .. } | RuntimeCall::Multisig { .. })
-			},
 			ProxyType::Collator => matches!(
 				c,
 				RuntimeCall::CollatorSelection { .. } |
