@@ -184,7 +184,7 @@ mod tests {
 	fn proxy_has_deposit_base() {
 		assert_eq!(
 			<<Runtime as pallet_proxy::Config>::ProxyDepositBase as Get<Balance>>::get(),
-			deposit(1, 48),
+			deposit(1, 40),
 		);
 	}
 
