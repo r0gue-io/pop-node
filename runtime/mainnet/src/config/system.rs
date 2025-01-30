@@ -1,4 +1,5 @@
-use frame_support::traits::ConstU32;
+use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
+use frame_support::traits::{ConstU32, EnqueueWithOrigin};
 use polkadot_runtime_common::BlockHashCount;
 use pop_runtime_common::{
 	Nonce, AVERAGE_ON_INITIALIZE_RATIO, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
@@ -9,15 +10,17 @@ use crate::{
 	parameter_types,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 	AccountId, Balance, BlakeTwo256, Block, BlockLength, BlockWeights, DispatchClass, Everything,
-	Hash, PalletInfo, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask,
-	RuntimeVersion, VERSION,
+	Executive, Hash, MessageQueue, PalletInfo, RelayOrigin, ReservedDmpWeight, ReservedXcmpWeight,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, XcmpQueue,
+	BLOCK_PROCESSING_VELOCITY, RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY,
+	VERSION,
 };
 
 parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 	pub const SS58Prefix: u16 = 0;
 	// This part is copied from Substrate's `bin/node/runtime/src/lib.rs`.
-	//  The `RuntimeBlockLength` and `RuntimeBlockWeights` exist here because the
+	// The `RuntimeBlockLength` and `RuntimeBlockWeights` exist here because the
 	// `DeletionWeightLimit` and `DeletionQueueDepth` depend on those to parameterize
 	// the lazy contract deletion.
 	pub RuntimeBlockLength: BlockLength =
@@ -100,6 +103,35 @@ impl frame_system::Config for Runtime {
 	type Version = Version;
 }
 
+#[docify::export]
+pub type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
+	Runtime,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS,
+	BLOCK_PROCESSING_VELOCITY,
+	UNINCLUDED_SEGMENT_CAPACITY,
+>;
+
+#[docify::export(register_validate_block)]
+cumulus_pallet_parachain_system::register_validate_block! {
+	Runtime = Runtime,
+	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
+}
+
+impl cumulus_pallet_parachain_system::Config for Runtime {
+	type CheckAssociatedRelayNumber = RelayNumberMonotonicallyIncreases;
+	type ConsensusHook = ConsensusHook;
+	type DmpQueue = EnqueueWithOrigin<MessageQueue, RelayOrigin>;
+	type OnSystemEvent = ();
+	type OutboundXcmpMessageSource = XcmpQueue;
+	type ReservedDmpWeight = ReservedDmpWeight;
+	type ReservedXcmpWeight = ReservedXcmpWeight;
+	type RuntimeEvent = RuntimeEvent;
+	type SelectCore = cumulus_pallet_parachain_system::LookaheadCoreSelector<Runtime>;
+	type SelfParaId = parachain_info::Pallet<Runtime>;
+	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
+	type XcmpMessageHandler = XcmpQueue;
+}
+
 #[cfg(test)]
 mod tests {
 	use alloc::borrow::Cow;
@@ -123,7 +155,6 @@ mod tests {
 			TypeId::of::<Everything>(),
 		);
 	}
-
 	#[test]
 	fn system_account_id_is_32_bytes() {
 		assert_eq!(
