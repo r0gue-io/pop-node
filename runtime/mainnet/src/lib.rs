@@ -1045,11 +1045,45 @@ mod tests {
 
 	mod treasury {
 		use super::*;
+
+		#[test]
+		fn asset_kind_is_nothing() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::AssetKind>(),
+				TypeId::of::<()>(),
+			);
+		}
+
 		#[test]
 		fn balance_converter_is_set() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_treasury::Config>::BalanceConverter>(),
 				TypeId::of::<UnityAssetBalanceConversion>(),
+			);
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		#[test]
+		fn benchmark_helper_is_correct_type() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BenchmarkHelper>(),
+				TypeId::of::<BenchmarkHelper>(),
+			);
+		}
+
+		#[test]
+		fn beneficiary_is_account_id() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::Beneficiary>(),
+				TypeId::of::<AccountId>(),
+			);
+		}
+
+		#[test]
+		fn beneficiary_lookup_is_identity_lookup() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BeneficiaryLookup>(),
+				TypeId::of::<IdentityLookup<AccountId>>(),
 			);
 		}
 
@@ -1129,6 +1163,14 @@ mod tests {
 				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(
 				),
 				TypeId::of::<OnChargeTransaction>(),
+			);
+		}
+
+		#[test]
+		fn weight_info_is_not_default() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
 			);
 		}
 	}
