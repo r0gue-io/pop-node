@@ -1,20 +1,24 @@
 use core::marker::PhantomData;
 
-use cumulus_primitives_core::AggregateMessageOrigin;
+use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
 	parameter_types,
-	traits::{tokens::imbalance::ResolveTo, ConstU32, ContainsPair, Everything, Get, Nothing},
+	traits::{
+		tokens::imbalance::ResolveTo, ConstU32, ContainsPair, Everything, Get, Nothing,
+		TransformOrigin,
+	},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
 use pallet_xcm::XcmPassthrough;
 use parachains_common::{
-	message_queue::NarrowOriginToSibling,
+	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	xcm_config::{
 		AllSiblingSystemParachains, ParentRelayOrSiblingParachains, RelayOrOtherSystemParachains,
 	},
 };
 use polkadot_parachain_primitives::primitives::Sibling;
+use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -30,8 +34,8 @@ use xcm_executor::XcmExecutor;
 use crate::{
 	config::{governance::SudoAddress, monetary::fee::WeightToFee, system::RuntimeBlockWeights},
 	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem,
-	, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
-	, XcmpQueue, Perbill,
+	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+	XcmpQueue, Perbill,
 };
 
 parameter_types! {
@@ -242,6 +246,21 @@ impl pallet_xcm::Config for Runtime {
 impl cumulus_pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+}
+
+impl cumulus_pallet_xcmp_queue::Config for Runtime {
+	type ChannelInfo = ParachainSystem;
+	type ControllerOrigin = EnsureRoot<AccountId>;
+	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	type MaxActiveOutboundChannels = ConstU32<128>;
+	type MaxInboundSuspended = ConstU32<128>;
+	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
+	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+	type RuntimeEvent = RuntimeEvent;
+	type VersionWrapper = PolkadotXcm;
+	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Runtime>;
+	// Enqueue XCMP messages from siblings for later processing.
+	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
 }
 
 #[cfg(test)]
