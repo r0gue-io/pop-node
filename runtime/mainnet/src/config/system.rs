@@ -384,4 +384,107 @@ mod tests {
 		assert_eq!(Version::get().impl_name, Cow::Borrowed("pop"));
 		assert_eq!(Version::get().spec_version, 100);
 	}
+
+	#[test]
+	fn parachain_system_ensures_relay_block_increases_monotonically() {
+		assert_eq!(
+			TypeId::of::<
+				<Runtime as cumulus_pallet_parachain_system::Config>::CheckAssociatedRelayNumber,
+			>(),
+			TypeId::of::<RelayNumberMonotonicallyIncreases>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_manages_unincluded_block_authoring() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ConsensusHook>(),
+			TypeId::of::<
+				cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
+					Runtime,
+					6000, // Relay chain slot duration of 6s.
+					1,    // Para blocks per slot.
+					3,    // Max unincluded blocks accepted by runtime simultaneously
+				>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_enqueues_dmp_messages() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::DmpQueue>(),
+			TypeId::of::<EnqueueWithOrigin<MessageQueue, RelayOrigin>>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_system_event_handler_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::OnSystemEvent>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_outbound_messages_sourced_from_xcmp_queue() {
+		assert_eq!(
+			TypeId::of::<
+				<Runtime as cumulus_pallet_parachain_system::Config>::OutboundXcmpMessageSource,
+			>(),
+			TypeId::of::<XcmpQueue>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_reserves_weight_for_dmp_messages() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ReservedDmpWeight>(),
+			TypeId::of::<ReservedDmpWeight>(),
+		);
+		assert_eq!(ReservedDmpWeight::get(), MAXIMUM_BLOCK_WEIGHT / 4);
+	}
+
+	#[test]
+	fn parachain_system_reserves_weight_for_xcmp_messages() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ReservedXcmpWeight>(
+			),
+			TypeId::of::<ReservedXcmpWeight>(),
+		);
+		assert_eq!(ReservedXcmpWeight::get(), MAXIMUM_BLOCK_WEIGHT / 4);
+	}
+
+	#[test]
+	fn parachain_system_uses_lookahead_core_selector() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelectCore>(),
+			TypeId::of::<cumulus_pallet_parachain_system::LookaheadCoreSelector::<Runtime>>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_looks_up_para_id_from_parachain_info() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelfParaId>(),
+			TypeId::of::<parachain_info::Pallet<Runtime>>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn parachain_system_uses_xcmp_queue_as_xcmp_message_handler() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::XcmpMessageHandler>(
+			),
+			TypeId::of::<XcmpQueue>(),
+		);
+	}
 }
