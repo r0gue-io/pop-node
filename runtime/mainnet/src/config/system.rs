@@ -1,5 +1,5 @@
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
-use frame_support::traits::{ConstU32, EnqueueWithOrigin};
+use frame_support::traits::{ConstU32, ConstU64, EnqueueWithOrigin};
 use polkadot_runtime_common::BlockHashCount;
 use pop_runtime_common::{
 	Nonce, AVERAGE_ON_INITIALIZE_RATIO, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
@@ -9,9 +9,9 @@ use sp_runtime::traits::AccountIdLookup;
 use crate::{
 	parameter_types,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-	AccountId, AggregateMessageOrigin, Balance, BlakeTwo256, Block, BlockLength, BlockWeights,
-	DispatchClass, Everything, Executive, Hash, MessageQueue, PalletInfo, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue,
+	AccountId, AggregateMessageOrigin, Aura, Balance, BlakeTwo256, Block, BlockLength,
+	BlockWeights, DispatchClass, Everything, Executive, Hash, MessageQueue, PalletInfo, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue,
 	BLOCK_PROCESSING_VELOCITY, RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY,
 	VERSION,
 };
@@ -136,6 +136,14 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
+}
+
+impl pallet_timestamp::Config for Runtime {
+	type MinimumPeriod = ConstU64<0>;
+	/// A timestamp: milliseconds since the unix epoch.
+	type Moment = u64;
+	type OnTimestampSet = Aura;
+	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Runtime>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -493,6 +501,35 @@ mod tests {
 			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::XcmpMessageHandler>(
 			),
 			TypeId::of::<XcmpQueue>(),
+		);
+	}
+
+	#[test]
+	fn timestamp_min_period_is_zero() {
+		assert_eq!(<<Runtime as pallet_timestamp::Config>::MinimumPeriod as Get<u64>>::get(), 0);
+	}
+
+	#[test]
+	fn timestamp_uses_u64_moment() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_timestamp::Config>::Moment>(),
+			TypeId::of::<u64>(),
+		);
+	}
+
+	#[test]
+	fn timestamp_handler_is_aura() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_timestamp::Config>::OnTimestampSet>(),
+			TypeId::of::<Aura>(),
+		);
+	}
+
+	#[test]
+	fn timestamp_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as pallet_timestamp::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
 		);
 	}
 }
