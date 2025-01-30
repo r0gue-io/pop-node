@@ -254,14 +254,6 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion { runtime_version: VERSION, can_author_with: Default::default() }
 }
 
-impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<0>;
-	/// A timestamp: milliseconds since the unix epoch.
-	type Moment = u64;
-	type OnTimestampSet = Aura;
-	type WeightInfo = ();
-}
-
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = (CollatorSelection,);
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
