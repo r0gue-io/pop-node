@@ -9,9 +9,9 @@ use sp_runtime::traits::AccountIdLookup;
 use crate::{
 	parameter_types,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
-	AccountId, Balance, BlakeTwo256, Block, BlockLength, BlockWeights, DispatchClass, Everything,
-	Executive, Hash, MessageQueue, PalletInfo, RelayOrigin, ReservedDmpWeight, ReservedXcmpWeight,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, XcmpQueue,
+	AccountId, AggregateMessageOrigin, Balance, BlakeTwo256, Block, BlockLength, BlockWeights,
+	DispatchClass, Everything, Executive, Hash, MessageQueue, PalletInfo, Runtime, RuntimeCall,
+	RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue,
 	BLOCK_PROCESSING_VELOCITY, RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY,
 	VERSION,
 };
@@ -103,6 +103,12 @@ impl frame_system::Config for Runtime {
 	type Version = Version;
 }
 
+parameter_types! {
+	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
+	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
+}
+
 #[docify::export]
 pub type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
 	Runtime,
@@ -131,6 +137,8 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
 }
+
+impl parachain_info::Config for Runtime {}
 
 #[cfg(test)]
 mod tests {
