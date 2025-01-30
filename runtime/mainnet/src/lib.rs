@@ -17,10 +17,9 @@ use alloc::{borrow::Cow, vec::Vec};
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::{
 	governance::SudoAddress,
-	system::RuntimeBlockWeights,
+	system::{ConsensusHook, RuntimeBlockWeights},
 	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
 };
-use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
@@ -314,29 +313,6 @@ parameter_types! {
 	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
 }
 
-#[docify::export]
-type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
-	Runtime,
-	RELAY_CHAIN_SLOT_DURATION_MILLIS,
-	BLOCK_PROCESSING_VELOCITY,
-	UNINCLUDED_SEGMENT_CAPACITY,
->;
-
-impl cumulus_pallet_parachain_system::Config for Runtime {
-	type CheckAssociatedRelayNumber = RelayNumberMonotonicallyIncreases;
-	type ConsensusHook = ConsensusHook;
-	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
-	type OnSystemEvent = ();
-	type OutboundXcmpMessageSource = XcmpQueue;
-	type ReservedDmpWeight = ReservedDmpWeight;
-	type ReservedXcmpWeight = ReservedXcmpWeight;
-	type RuntimeEvent = RuntimeEvent;
-	type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
-	type SelfParaId = parachain_info::Pallet<Runtime>;
-	type WeightInfo = ();
-	type XcmpMessageHandler = XcmpQueue;
-}
-
 impl parachain_info::Config for Runtime {}
 
 parameter_types! {
@@ -548,12 +524,6 @@ impl Runtime {
 	) -> bool {
 		ConsensusHook::can_build_upon(included_hash, slot)
 	}
-}
-
-#[docify::export(register_validate_block)]
-cumulus_pallet_parachain_system::register_validate_block! {
-	Runtime = Runtime,
-	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
 }
 
 #[cfg(test)]
