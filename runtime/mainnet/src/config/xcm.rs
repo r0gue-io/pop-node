@@ -373,4 +373,67 @@ mod tests {
 			TypeId::of::<()>(),
 		);
 	}
+
+	#[test]
+	fn location_to_account_id_matches_configuration() {
+		assert_eq!(
+			TypeId::of::<LocationToAccountId>(),
+			TypeId::of::<(
+				ParentIsPreset<AccountId>,
+				SiblingParachainConvertsVia<Sibling, AccountId>,
+				AccountId32Aliases<RelayNetwork, AccountId>,
+			)>()
+		);
+	}
+
+	#[test]
+	fn local_asset_transactor_matches_configuration() {
+		assert_eq!(
+			TypeId::of::<LocalAssetTransactor>(),
+			TypeId::of::<
+				FungibleAdapter<
+					Balances,
+					IsConcrete<RelayLocation>,
+					LocationToAccountId,
+					AccountId,
+					(),
+				>,
+			>()
+		);
+	}
+
+	#[test]
+	fn xcm_origin_to_transact_dispatch_origin_matches_configuration() {
+		assert_eq!(
+			TypeId::of::<XcmOriginToTransactDispatchOrigin>(),
+			TypeId::of::<(
+				SovereignSignedViaLocation<LocationToAccountId, RuntimeOrigin>,
+				RelayChainAsNative<RelayChainOrigin, RuntimeOrigin>,
+				SiblingParachainAsNative<cumulus_pallet_xcm::Origin, RuntimeOrigin>,
+				SignedAccountId32AsNative<RelayNetwork, RuntimeOrigin>,
+				XcmPassthrough<RuntimeOrigin>,
+			)>()
+		);
+	}
+
+	#[test]
+	fn barrier_configuration() {
+		assert_eq!(
+			TypeId::of::<Barrier>(),
+			TypeId::of::<
+				TrailingSetTopicAsId<(
+					TakeWeightCredit,
+					AllowKnownQueryResponses<PolkadotXcm>,
+					WithComputedOrigin<
+						(
+							AllowTopLevelPaidExecutionFrom<Everything>,
+							AllowSubscriptionsFrom<ParentRelayOrSiblingParachains>,
+						),
+						UniversalLocation,
+						ConstU32<8>,
+					>,
+				)>,
+			>()
+		);
+	}
 }
