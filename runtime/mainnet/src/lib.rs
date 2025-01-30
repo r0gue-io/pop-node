@@ -15,12 +15,9 @@ extern crate alloc;
 use alloc::{borrow::Cow, vec::Vec};
 
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
-use config::{
-	governance::SudoAddress,
-	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
-};
+use config::{governance::SudoAddress, xcm::RelayLocation};
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
-use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
+use cumulus_primitives_core::AggregateMessageOrigin;
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
@@ -29,8 +26,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, Contains, EitherOfDiverse, EverythingBut, LinearStoragePrice, TransformOrigin,
-		VariantCountOf,
+		ConstU8, Contains, EitherOfDiverse, EverythingBut, LinearStoragePrice, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -43,8 +39,6 @@ use frame_system::{
 use pallet_balances::Call as BalancesCall;
 use pallet_transaction_payment::ChargeTransactionPayment;
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
-use parachains_common::message_queue::ParaIdToSibling;
-use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 // Polkadot imports
 use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
 pub use pop_runtime_common::{
@@ -424,23 +418,6 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 impl parachain_info::Config for Runtime {}
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
-
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type ChannelInfo = ParachainSystem;
-	type ControllerOrigin = EnsureRoot<AccountId>;
-	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	// Limit the number of messages and signals a HRMP channel can have at most
-	type MaxActiveOutboundChannels = ConstU32<128>;
-	type MaxInboundSuspended = ConstU32<1_000>;
-	// Limit the number of HRMP channels
-	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
-	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
-	type RuntimeEvent = RuntimeEvent;
-	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = ();
-	// Enqueue XCMP messages from siblings for later processing.
-	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
-}
 
 parameter_types! {
 	pub const Period: u32 = 6 * HOURS;
