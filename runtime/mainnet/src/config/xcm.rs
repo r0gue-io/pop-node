@@ -456,4 +456,91 @@ mod tests {
 			>()
 		);
 	}
+
+	#[test]
+	fn pallet_xcmp_queue_channel_info_via_parachain_system() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::ChannelInfo>(),
+			TypeId::of::<ParachainSystem>()
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_controller_origin_ensures_root() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::ControllerOrigin>(),
+			TypeId::of::<EnsureRoot<AccountId>>()
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_controller_origin_converter_configuration() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::ControllerOriginConverter>(
+			),
+			TypeId::of::<XcmOriginToTransactDispatchOrigin>()
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_limits_outbound_channels() {
+		assert_eq!(
+			<<Runtime as cumulus_pallet_xcmp_queue::Config>::MaxActiveOutboundChannels as Get<
+				u32,
+			>>::get(),
+			128
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_limits_inbound_suspended_channels() {
+		assert_eq!(
+			<<Runtime as cumulus_pallet_xcmp_queue::Config>::MaxInboundSuspended as Get<u32>>::get(
+			),
+			128
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_limits_hrmp_message_page_size() {
+		assert_eq!(
+			<<Runtime as cumulus_pallet_xcmp_queue::Config>::MaxPageSize as Get<u32>>::get(),
+			103 * 1024
+		);
+	}
+
+	#[test]
+	#[ignore]
+	fn pallet_xcmp_queue_price_for_sibling_delivery() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(),
+			TypeId::of::<NoPriceForMessageDelivery<ParaId>>()
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_versions_xcm() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::VersionWrapper>(),
+			TypeId::of::<PolkadotXcm>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcmp_queue_uses_message_queue() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::XcmpQueue>(),
+			TypeId::of::<
+				TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>,
+			>(),
+		);
+	}
 }
