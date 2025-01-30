@@ -295,4 +295,82 @@ mod tests {
 		let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
 		assert!(!TrustedReserves::contains(&usd_asset, &chain_y));
 	}
+
+	#[test]
+	fn message_queue_heap_size() {
+		assert_eq!(
+			<<Runtime as pallet_message_queue::Config>::HeapSize as Get<u32>>::get(),
+			64 * 1024
+		);
+	}
+
+	#[test]
+	fn message_queue_limits_idle_max_service_weight() {
+		assert_eq!(
+			<<Runtime as pallet_message_queue::Config>::IdleMaxServiceWeight as Get<Weight>>::get(),
+			Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block
+		);
+	}
+
+	#[test]
+	fn message_queue_limits_max_stale_pages() {
+		assert_eq!(<<Runtime as pallet_message_queue::Config>::MaxStale as Get<u32>>::get(), 8);
+	}
+
+	#[test]
+	fn message_queue_processing_delegated_to_executor() {
+		#[cfg(feature = "runtime-benchmarks")]
+		type MessageProcessor =
+			pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
+		#[cfg(not(feature = "runtime-benchmarks"))]
+		type MessageProcessor = xcm_builder::ProcessXcmMessage<
+			AggregateMessageOrigin,
+			XcmExecutor<XcmConfig>,
+			RuntimeCall,
+		>;
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_message_queue::Config>::MessageProcessor>(),
+			TypeId::of::<MessageProcessor>()
+		);
+	}
+
+	#[test]
+	fn message_queue_change_handler_uses_xcmp_queue() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_message_queue::Config>::QueueChangeHandler>(),
+			TypeId::of::<NarrowOriginToSibling<XcmpQueue>>()
+		);
+	}
+
+	#[test]
+	fn message_queue_paused_query_handler_uses_xcmp_queue() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_message_queue::Config>::QueuePausedQuery>(),
+			TypeId::of::<NarrowOriginToSibling<XcmpQueue>>()
+		);
+	}
+
+	#[test]
+	fn message_queue_limits_service_weight() {
+		assert_eq!(
+			<<Runtime as pallet_message_queue::Config>::ServiceWeight as Get<Weight>>::get(),
+			Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block
+		);
+	}
+
+	#[test]
+	fn message_queue_uses_u32_page_size() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_message_queue::Config>::Size>(),
+			TypeId::of::<u32>()
+		);
+	}
+
+	#[test]
+	fn message_queue_does_not_use_default_weights() {
+		assert_ne!(
+			TypeId::of::<<Runtime as pallet_message_queue::Config>::WeightInfo>(),
+			TypeId::of::<()>(),
+		);
+	}
 }
