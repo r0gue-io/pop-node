@@ -558,6 +558,10 @@ cumulus_pallet_parachain_system::register_validate_block! {
 
 #[cfg(test)]
 mod tests {
+	use std::any::TypeId;
+
+	use sp_runtime::MultiSignature;
+
 	use super::*;
 
 	#[test]

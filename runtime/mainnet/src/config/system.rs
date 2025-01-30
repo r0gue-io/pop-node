@@ -1,3 +1,4 @@
+use frame_support::traits::ConstU32;
 use polkadot_runtime_common::BlockHashCount;
 use pop_runtime_common::{
 	Nonce, AVERAGE_ON_INITIALIZE_RATIO, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
@@ -66,7 +67,7 @@ impl frame_system::Config for Runtime {
 	type Hashing = BlakeTwo256;
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = AccountIdLookup<Self::AccountId, ()>;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
+	type MaxConsumers = ConstU32<16>;
 	type MultiBlockMigrator = ();
 	/// The index type for storing how many extrinsics an account has signed.
 	type Nonce = Nonce;
@@ -113,7 +114,7 @@ mod tests {
 	use sp_runtime::generic;
 
 	use super::*;
-	use crate::{Header, UncheckedExtrinsic, Weight};
+	use crate::{Header, Perbill, UncheckedExtrinsic, Weight};
 
 	#[test]
 	fn base_call_filter_allows_everything() {
