@@ -110,6 +110,7 @@ parameter_types! {
 }
 
 #[docify::export]
+/// Provides means to manage the backlog of unincluded blocks.
 pub type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
 	Runtime,
 	RELAY_CHAIN_SLOT_DURATION_MILLIS,
@@ -419,7 +420,7 @@ mod tests {
 				cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
 					Runtime,
 					6000, // Relay chain slot duration of 6s.
-					1,    // Para blocks per slot.
+					1,    // Blocks per slot.
 					3,    // Max unincluded blocks accepted by runtime simultaneously
 				>,
 			>(),
