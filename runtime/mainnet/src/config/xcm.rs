@@ -4,7 +4,7 @@ use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
 	parameter_types,
 	traits::{
-		tokens::imbalance::ResolveTo, ConstU32, ContainsPair, Everything, Get, Nothing,
+		tokens::imbalance::ResolveTo, ConstU32, Contains, ContainsPair, Everything, Get, Nothing,
 		TransformOrigin,
 	},
 	weights::Weight,
@@ -19,7 +19,7 @@ use parachains_common::{
 };
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
-use sp_runtime::traits::AccountIdConversion;
+use sp_runtime::{traits::AccountIdConversion, Vec};
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -143,6 +143,16 @@ impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 	}
 }
 
+impl<T: Get<Location>> Contains<(Location, Vec<Asset>)> for NativeAssetFrom<T> {
+	fn contains(t: &(Location, Vec<Asset>)) -> bool {
+		t.1.iter().all(|a| {
+			t.0 == T::get() &&
+				matches!(a, Asset { id: AssetId(asset_loc), fun: Fungible(_a) }
+				if *asset_loc == Location::from(Parent))
+		})
+	}
+}
+
 /// Combinations of (Asset, Location) pairs which we trust as reserves.
 pub type TrustedReserves = NativeAssetFrom<AssetHub>;
 
@@ -232,7 +242,7 @@ impl pallet_xcm::Config for Runtime {
 	type WeightInfo = pallet_xcm::TestWeightInfo;
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmReserveTransferFilter = Everything;
+	type XcmReserveTransferFilter = NativeAssetFrom<AssetHub>;
 	type XcmRouter = XcmRouter;
 	type XcmTeleportFilter = Nothing;
 
@@ -282,43 +292,53 @@ mod tests {
 			);
 		}
 
-		#[test]
-		fn asset_hub_as_relay_asset_reserve() {
-			assert!(TrustedReserves::contains(
-				&Asset::from((AssetId::from(Parent), Fungibility::from(100u128))),
-				&AssetHub::get(),
-			));
-		}
+	#[test]
+	fn asset_hub_as_relay_asset_reserve() {
+		assert!(<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+			&Asset::from((AssetId::from(Parent), Fungibility::from(100u128))),
+			&AssetHub::get(),
+		));
+	}
 
-		#[test]
-		fn relay_as_relay_asset_reserve_fails() {
-			let relay_asset = Asset::from((AssetId::from(Parent), Fungibility::from(100u128)));
-			assert!(!TrustedReserves::contains(&relay_asset, &Parent.into()));
-		}
+	#[test]
+	fn relay_as_relay_asset_reserve_fails() {
+		let relay_asset = Asset::from((AssetId::from(Parent), Fungibility::from(100u128)));
+		assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+			&relay_asset,
+			&Parent.into()
+		));
+	}
 
-		// Decline native asset from another parachain.
-		#[test]
-		fn decline_sibling_native_assets() {
-			let chain_x = Location::new(1, [Parachain(4242)]);
-			let chain_x_asset =
-				Asset::from((AssetId::from(chain_x.clone()), Fungibility::from(100u128)));
-			assert!(!TrustedReserves::contains(&chain_x_asset, &chain_x));
-		}
+	// Decline native asset from another parachain.
+	#[test]
+	fn decline_sibling_native_assets() {
+		let chain_x = Location::new(1, [Parachain(4242)]);
+		let chain_x_asset =
+			Asset::from((AssetId::from(chain_x.clone()), Fungibility::from(100u128)));
+		assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+			&chain_x_asset,
+			&chain_x
+		));
+	}
 
-		// Decline non native asset from another parachain. Either a native asset as foreign asset
-		// on another parachain or a local asset from e.g. `pallet-assets`.
-		#[test]
-		fn decline_sibling_non_native_assets() {
-			// Native asset X of chain Y example.
-			let chain_x = Location::new(1, [Parachain(4242)]);
-			let chain_y = Location::new(1, [Parachain(6969)]);
-			let chain_x_asset = Asset::from((AssetId::from(chain_x), Fungibility::from(100u128)));
-			assert!(!TrustedReserves::contains(&chain_x_asset, &chain_y));
-			// `pallet-assets` example.
-			let usd = Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1337)]);
-			let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
-			assert!(!TrustedReserves::contains(&usd_asset, &chain_y));
-		}
+	// Decline non native asset from another parachain. Either a native asset as foreign asset on
+	// another parachain or a local asset from e.g. `pallet-assets`.
+	#[test]
+	fn decline_sibling_non_native_assets() {
+		// Native asset X of chain Y example.
+		let chain_x = Location::new(1, [Parachain(4242)]);
+		let chain_y = Location::new(1, [Parachain(6969)]);
+		let chain_x_asset = Asset::from((AssetId::from(chain_x), Fungibility::from(100u128)));
+		assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+			&chain_x_asset,
+			&chain_y
+		));
+		// `pallet-assets` example.
+		let usd = Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1337)]);
+		let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
+		assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+			&usd_asset, &chain_y
+		));
 	}
 
 	mod message_queue {
@@ -858,13 +878,59 @@ mod tests {
 			);
 		}
 
-		#[test]
-		fn reserve_transfer_filter_only_allows_dot_from_ah() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
-				TypeId::of::<Everything>(),
-			);
+	#[test]
+	fn pallet_xcm_reserve_transfer_filter_only_allows_dot_from_ah() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
+			TypeId::of::<NativeAssetFrom<AssetHub>>(),
+		);
+
+		let different_assets = [
+			(
+				Location::parent(),
+				vec![
+					Asset { id: AssetId(Location::parent()), fun: 0_u32.into() },
+					Asset { id: AssetId(AssetHub::get()), fun: 0_u32.into() },
+					Asset {
+						id: AssetId(Location::new(
+							1,
+							[Parachain(1000), PalletInstance(50), GeneralIndex(1984)],
+						)),
+						fun: 0_u32.into(),
+					},
+				],
+			),
+			(
+				AssetHub::get(),
+				vec![
+					Asset { id: AssetId(Location::new(1, Parachain(1000))), fun: 0_u32.into() },
+					Asset {
+						id: AssetId(Location::new(
+							1,
+							[Parachain(1000), PalletInstance(50), GeneralIndex(1984)],
+						)),
+						fun: 0_u32.into(),
+					},
+				],
+			),
+		];
+
+		for a in different_assets {
+			assert!(!<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<(
+				Location,
+				Vec<Asset>
+			)>>::contains(&a));
 		}
+
+		let dot_from_ah = (
+			AssetHub::get(),
+			vec![Asset { id: AssetId(Location::from(Parent)), fun: 0_u32.into() }],
+		);
+		assert!(<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<(
+			Location,
+			Vec<Asset>
+		)>>::contains(&dot_from_ah));
+	}
 
 		#[test]
 		fn router_uses_ump_for_relay_and_xcmp_for_para() {
