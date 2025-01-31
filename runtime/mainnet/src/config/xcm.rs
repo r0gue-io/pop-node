@@ -13,9 +13,7 @@ use frame_system::EnsureRoot;
 use pallet_xcm::XcmPassthrough;
 use parachains_common::{
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
-	xcm_config::{
-		AllSiblingSystemParachains, ParentRelayOrSiblingParachains, RelayOrOtherSystemParachains,
-	},
+	xcm_config::ParentRelayOrSiblingParachains,
 };
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
@@ -146,11 +144,6 @@ impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 /// Combinations of (Asset, Location) pairs which we trust as reserves.
 pub type TrustedReserves = NativeAssetFrom<AssetHub>;
 
-/// Locations that will not be charged fees in the executor,
-/// either execution or delivery.
-/// We only waive fees for system functions, which these locations represent.
-pub type WaivedLocations = (RelayOrOtherSystemParachains<AllSiblingSystemParachains, Runtime>,);
-
 parameter_types! {
 	// One XCM operation is 1_000_000_000 weight - almost certainly a conservative estimate.
 	pub UnitWeightCost: Weight = Weight::from_parts(1_000_000_000, 64 * 1024);
@@ -170,7 +163,7 @@ impl xcm_executor::Config for XcmConfig {
 	type Barrier = Barrier;
 	type CallDispatcher = RuntimeCall;
 	type FeeManager = XcmFeeManagerFromComponents<
-		WaivedLocations,
+		(),
 		SendXcmFeeToAccount<Self::AssetTransactor, TreasuryAccount>,
 	>;
 	type HrmpChannelAcceptedHandler = ();
@@ -263,6 +256,8 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 mod tests {
 	use std::any::TypeId;
 
+	use xcm_executor::traits::{FeeManager, FeeReason};
+
 	use super::*;
 
 	// Only reserve accepted is the relay asset from Asset Hub.
@@ -310,6 +305,26 @@ mod tests {
 		let usd = Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1337)]);
 		let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
 		assert!(!TrustedReserves::contains(&usd_asset, &chain_y));
+	}
+
+	#[test]
+	fn no_locations_are_waived() {
+		let locations = [
+			Location::here(),
+			Location::parent(),
+			Location::new(1, [Parachain(1000)]),
+			Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1984)]),
+			Location::new(
+				1,
+				[Parachain(1000), AccountId32 { network: None, id: Default::default() }],
+			),
+		];
+		for location in locations {
+			assert!(!<<XcmConfig as xcm_executor::Config>::FeeManager>::is_waived(
+				Some(&location),
+				FeeReason::TransferReserveAsset
+			));
+		}
 	}
 
 	#[test]
@@ -523,7 +538,7 @@ mod tests {
 			TypeId::of::<<XcmConfig as xcm_executor::Config>::FeeManager>(),
 			TypeId::of::<
 				XcmFeeManagerFromComponents<
-					WaivedLocations,
+					(),
 					SendXcmFeeToAccount<
 						<XcmConfig as xcm_executor::Config>::AssetTransactor,
 						TreasuryAccount,
