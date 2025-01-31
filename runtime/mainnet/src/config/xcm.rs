@@ -19,6 +19,7 @@ use parachains_common::{
 };
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
+use sp_runtime::traits::AccountIdConversion;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -46,6 +47,7 @@ parameter_types! {
 	pub UniversalLocation: InteriorLocation = [GlobalConsensus(RelayNetwork::get().unwrap()), Parachain(ParachainInfo::parachain_id().into())].into();
 	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block;
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
+	pub TreasuryAccount: AccountId = PalletId(*b"treasury").into_account_truncating();
 }
 
 impl pallet_message_queue::Config for Runtime {
@@ -454,6 +456,243 @@ mod tests {
 					>,
 				)>,
 			>()
+		);
+	}
+
+	#[test]
+	fn xcm_executor_does_not_have_aliasers() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::Aliasers>(),
+			TypeId::of::<Nothing>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_asset_claims_via_xcm() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::AssetClaims>(),
+			TypeId::of::<PolkadotXcm>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_asset_exchanger_is_disabled() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::AssetExchanger>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_asset_locker_is_disabled() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::AssetLocker>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_uses_local_asset_transactor() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::AssetTransactor>(),
+			TypeId::of::<LocalAssetTransactor>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_traps_assets_via_xcm() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::AssetTrap>(),
+			TypeId::of::<PolkadotXcm>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_configures_barrier() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::Barrier>(),
+			TypeId::of::<Barrier>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_call_dispatcher_is_runtime_call() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::CallDispatcher>(),
+			TypeId::of::<RuntimeCall>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_fee_manager_resolves_to_treasury() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::FeeManager>(),
+			TypeId::of::<
+				XcmFeeManagerFromComponents<
+					WaivedLocations,
+					SendXcmFeeToAccount<
+						<XcmConfig as xcm_executor::Config>::AssetTransactor,
+						TreasuryAccount,
+					>,
+				>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_hrmp_accepted_handler_is_disabled() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::HrmpChannelAcceptedHandler>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_hrmp_closed_handler_is_disabled() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::HrmpChannelClosingHandler>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_hrmp_new_request_handler_is_disabled() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::HrmpNewChannelOpenRequestHandler>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_is_reser_is_trusted_reserves() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
+			TypeId::of::<TrustedReserves>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_does_not_configure_teleporters() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::IsTeleporter>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_limits_assets_in_holdings() {
+		assert_eq!(
+			<<XcmConfig as xcm_executor::Config>::MaxAssetsIntoHolding as Get<u32>>::get(),
+			64,
+		);
+	}
+
+	#[test]
+	fn xcm_executor_message_exporter_is_dissabled() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::MessageExporter>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_converts_origin() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::OriginConverter>(),
+			TypeId::of::<XcmOriginToTransactDispatchOrigin>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_uses_all_pallets_with_system() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::PalletInstancesInfo>(),
+			TypeId::of::<AllPalletsWithSystem>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_transact_filter_allows_everything() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::SafeCallFilter>(),
+			TypeId::of::<Everything>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_handles_version_subscriptions_via_xcm() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::SubscriptionService>(),
+			TypeId::of::<PolkadotXcm>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_trader_is_configured() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::Trader>(),
+			TypeId::of::<
+				UsingComponents<
+					WeightToFee,
+					RelayLocation,
+					AccountId,
+					Balances,
+					ResolveTo<TreasuryAccount, Balances>,
+				>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_transactional_processor_uses_frame() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::TransactionalProcessor>(),
+			TypeId::of::<FrameTransactionalProcessor>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_universal_aliases_disabled() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::UniversalAliases>(),
+			TypeId::of::<Nothing>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_weigher_uses_fixed_wieght_bounds() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::Weigher>(),
+			TypeId::of::<FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_uses_xcm_as_recorder_for_dry_runs() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::XcmRecorder>(),
+			TypeId::of::<PolkadotXcm>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_uses_ump_for_relay_and_xcmp_for_paras() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::XcmSender>(),
+			TypeId::of::<
+				WithUniqueTopic<(
+					cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+					XcmpQueue,
+				)>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn xcm_executor_routes_query_responses() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as xcm_executor::Config>::ResponseHandler>(),
+			TypeId::of::<PolkadotXcm>(),
 		);
 	}
 
