@@ -202,7 +202,6 @@ impl xcm_executor::Config for XcmConfig {
 	type XcmSender = XcmRouter;
 }
 
-/// No local origins on this chain are allowed to dispatch XCM sends/executions.
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 
 /// The means for routing XCM messages which are not for local execution into the right message
@@ -216,7 +215,6 @@ pub type XcmRouter = WithUniqueTopic<(
 
 impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
-	// ^ Override for AdvertisedXcmVersion default.
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
 	type Currency = Balances;
 	type CurrencyMatcher = ();
@@ -233,11 +231,8 @@ impl pallet_xcm::Config for Runtime {
 	type UniversalLocation = UniversalLocation;
 	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
 	type WeightInfo = pallet_xcm::TestWeightInfo;
-	type XcmExecuteFilter = Nothing;
-	// ^ Disable dispatchable execute on the XCM pallet.
-	// Needs to be `Everything` for local testing.
+	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	// TODO: add filter to only allow reserve transfers of native to relay/asset hub
 	type XcmReserveTransferFilter = Everything;
 	type XcmRouter = XcmRouter;
 	type XcmTeleportFilter = Nothing;
@@ -697,11 +692,174 @@ mod tests {
 	}
 
 	#[test]
+	fn pallet_xcm_admin_origin_ensures_root() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as pallet_xcm::Config>::AdminOrigin>(),
+			TypeId::of::<EnsureRoot<AccountId>>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_advertises_current_xcm_version() {
+		assert_eq!(
+			TypeId::of::<<XcmConfig as pallet_xcm::Config>::AdvertisedXcmVersion>(),
+			TypeId::of::<pallet_xcm::CurrentXcmVersion>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_uses_balances() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::Currency>(),
+			TypeId::of::<Balances>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_asset_matching_is_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::CurrencyMatcher>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_message_execute_xcm_origin_uses_signed_to_accountid32() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::ExecuteXcmOrigin>(),
+			TypeId::of::<
+				EnsureXcmOrigin<
+					RuntimeOrigin,
+					SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>,
+				>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_limits_max_lockers() {
+		assert_eq!(<<Runtime as pallet_xcm::Config>::MaxLockers as Get<u32>>::get(), 8);
+	}
+
+	#[test]
+	fn pallet_xcm_max_remote_lock_consumers_is_0() {
+		assert_eq!(<<Runtime as pallet_xcm::Config>::MaxRemoteLockConsumers as Get<u32>>::get(), 0);
+	}
+
+	#[test]
+	fn pallet_xcm_remote_consider_identifier_is_disabled() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::RemoteLockConsumerIdentifier>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_send_xcm_origin_is_configured() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::SendXcmOrigin>(),
+			TypeId::of::<
+				EnsureXcmOrigin<
+					RuntimeOrigin,
+					SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>,
+				>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_sovereign_account_uses_location_converter() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::SovereignAccountOf>(),
+			TypeId::of::<LocationToAccountId>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_does_not_have_trusted_lockers() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::TrustedLockers>(),
+			TypeId::of::<()>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_universal_location_is_configured() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::UniversalLocation>(),
+			TypeId::of::<UniversalLocation>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_weigher_uses_fixed_weight_bounds() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::Weigher>(),
+			TypeId::of::<FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_does_not_use_default_weights() {
+		assert_ne!(TypeId::of::<<Runtime as pallet_xcm::Config>::WeightInfo>(), TypeId::of::<()>(),);
+	}
+
+	#[test]
 	fn pallet_xcmp_queue_channel_info_via_parachain_system() {
 		assert_eq!(
 			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::ChannelInfo>(),
 			TypeId::of::<ParachainSystem>()
 		);
+	}
+
+	#[test]
+	fn pallet_xcm_execute_filters_nothing() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::XcmExecuteFilter>(),
+			TypeId::of::<Everything>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_executor_is_configured() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::XcmExecutor>(),
+			TypeId::of::<XcmExecutor<XcmConfig>>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_reserve_transfer_filter_only_allows_dot_from_ah() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
+			TypeId::of::<NativeAssetFrom<AssetHub>>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_router_uses_ump_for_relay_and_xcmp_for_para() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::XcmRouter>(),
+			TypeId::of::<
+				WithUniqueTopic<(
+					cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+					XcmpQueue,
+				)>,
+			>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_teleport_filter_is_nothing() {
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_xcm::Config>::XcmTeleportFilter>(),
+			TypeId::of::<Nothing>(),
+		);
+	}
+
+	#[test]
+	fn pallet_xcm_declares_version_discovery_queue_size() {
+		assert_eq!(<Runtime as pallet_xcm::Config>::VERSION_DISCOVERY_QUEUE_SIZE, 100);
 	}
 
 	#[test]
