@@ -340,19 +340,6 @@ mod tests {
 		use super::*;
 
 		#[test]
-		fn no_locations_are_waived() {
-			assert!(!<<XcmConfig as xcm_executor::Config>::FeeManager>::is_waived(
-				Some(&Location::new(1, [Parachain(1000)])),
-				FeeReason::TransferReserveAsset
-			));
-
-			assert!(!<<XcmConfig as xcm_executor::Config>::FeeManager>::is_waived(
-				Some(&Location::parent()),
-				FeeReason::TransferReserveAsset
-			));
-		}
-
-		#[test]
 		fn heap_size() {
 			assert_eq!(
 				<<Runtime as pallet_message_queue::Config>::HeapSize as Get<u32>>::get(),
@@ -579,6 +566,26 @@ mod tests {
 					>,
 				>(),
 			);
+		}
+
+		#[test]
+		fn no_locations_are_waived() {
+			let locations = [
+				Location::here(),
+				Location::parent(),
+				Location::new(1, [Parachain(1000)]),
+				Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1984)]),
+				Location::new(
+					1,
+					[Parachain(1000), AccountId32 { network: None, id: Default::default() }],
+				),
+			];
+			for location in locations {
+				assert!(!<<XcmConfig as xcm_executor::Config>::FeeManager>::is_waived(
+					Some(&location),
+					FeeReason::TransferReserveAsset
+				));
+			}
 		}
 
 		#[test]
