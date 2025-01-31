@@ -1,4 +1,5 @@
 pub mod governance;
-mod proxy;
+pub(crate) mod proxy;
+pub mod system;
 mod utility;
 pub mod xcm;
