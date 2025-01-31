@@ -693,7 +693,7 @@ mod tests {
 	#[test]
 	fn pallet_xcm_admin_origin_ensures_root() {
 		assert_eq!(
-			TypeId::of::<<XcmConfig as pallet_xcm::Config>::AdminOrigin>(),
+			TypeId::of::<<Runtime as pallet_xcm::Config>::AdminOrigin>(),
 			TypeId::of::<EnsureRoot<AccountId>>(),
 		);
 	}
@@ -701,7 +701,7 @@ mod tests {
 	#[test]
 	fn pallet_xcm_advertises_current_xcm_version() {
 		assert_eq!(
-			TypeId::of::<<XcmConfig as pallet_xcm::Config>::AdvertisedXcmVersion>(),
+			TypeId::of::<<Runtime as pallet_xcm::Config>::AdvertisedXcmVersion>(),
 			TypeId::of::<pallet_xcm::CurrentXcmVersion>(),
 		);
 	}
