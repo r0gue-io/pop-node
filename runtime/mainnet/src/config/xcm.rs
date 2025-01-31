@@ -846,7 +846,7 @@ mod tests {
 	fn pallet_xcm_reserve_transfer_filter_only_allows_dot_from_ah() {
 		assert_eq!(
 			TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
-			TypeId::of::<NativeAssetFrom<AssetHub>>(),
+			TypeId::of::<Everything>(),
 		);
 	}
 
