@@ -220,7 +220,7 @@ impl pallet_xcm::Config for Runtime {
 	type CurrencyMatcher = ();
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
 	type MaxLockers = ConstU32<8>;
-	type MaxRemoteLockConsumers = ConstU32<0>;
+	type MaxRemoteLockConsumers = ();
 	type RemoteLockConsumerIdentifier = ();
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
