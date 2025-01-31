@@ -18,7 +18,7 @@ use parachains_common::{
 	},
 };
 use polkadot_parachain_primitives::primitives::Sibling;
-use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
+use polkadot_runtime_common::xcm_sender::ExponentialPrice;
 use sp_runtime::traits::AccountIdConversion;
 use xcm::latest::prelude::*;
 use xcm_builder::{
@@ -33,13 +33,15 @@ use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 use crate::{
-	fee::WeightToFee, AccountId, AllPalletsWithSystem, Balances, MessageQueue, PalletId,
-	ParachainInfo, ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeBlockWeights,
-	RuntimeCall, RuntimeEvent, RuntimeOrigin, XcmpQueue,
+	fee::{WeightToFee, CENTS},
+	AccountId, AllPalletsWithSystem, Balances, MessageQueue, PalletId, ParachainInfo,
+	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent,
+	RuntimeOrigin, TransactionByteFee, XcmpQueue,
 };
 
 parameter_types! {
 	pub const RelayLocation: Location = Location::parent();
+	pub RelayAsset: AssetId = AssetId(Location::parent());
 	pub AssetHub: Location = Location::new(1, [Parachain(1000)]);
 	pub const RelayNetwork: Option<NetworkId> = Some(Polkadot);
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
@@ -47,6 +49,7 @@ parameter_types! {
 	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block;
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
 	pub TreasuryAccount: AccountId = PalletId(*b"treasury").into_account_truncating();
+	pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
 }
 
 impl pallet_message_queue::Config for Runtime {
@@ -251,7 +254,8 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type MaxActiveOutboundChannels = ConstU32<128>;
 	type MaxInboundSuspended = ConstU32<128>;
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
-	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+	type PriceForSiblingDelivery =
+		ExponentialPrice<RelayAsset, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Runtime>;
@@ -263,7 +267,18 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 mod tests {
 	use std::any::TypeId;
 
+	use polkadot_runtime_common::xcm_sender::*;
+	use polkadot_runtime_parachains::FeeTracker;
+	use sp_runtime::FixedPointNumber;
+
 	use super::*;
+	use crate::System;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let mut ext = sp_io::TestExternalities::new_empty();
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
 
 	// Only reserve accepted is the relay asset from Asset Hub.
 	#[test]
@@ -910,8 +925,31 @@ mod tests {
 	fn pallet_xcmp_queue_price_for_sibling_delivery() {
 		assert_eq!(
 			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(),
-			TypeId::of::<NoPriceForMessageDelivery<ParaId>>()
+			TypeId::of::<
+				ExponentialPrice<RelayAsset, BaseDeliveryFee, TransactionByteFee, XcmpQueue>,
+			>()
 		);
+
+		new_test_ext().execute_with(|| {
+			type ExponentialDeliveryPrice =
+				ExponentialPrice<RelayAsset, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+			let id: ParaId = 420.into();
+			let b: u128 = BaseDeliveryFee::get();
+			let m: u128 = TransactionByteFee::get();
+
+			// F * (B + msg_length * M)
+			// A: RelayAsset
+			// B: BaseDeliveryFee
+			// M: TransactionByteFee
+			// F: XcmpQueue
+			//
+			// message_length = 1
+			let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
+			assert_eq!(
+				ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
+				(RelayAsset::get(), result).into()
+			);
+		})
 	}
 
 	#[test]
