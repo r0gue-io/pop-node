@@ -172,365 +172,394 @@ mod tests {
 			TypeId::of::<Everything>(),
 		);
 	}
-	#[test]
-	fn system_account_id_is_32_bytes() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::AccountId>(),
-			TypeId::of::<AccountId32>(),
-		);
-	}
 
-	#[test]
-	fn system_block_configured() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::Block>(),
-			TypeId::of::<generic::Block<Header, UncheckedExtrinsic>>(),
-		);
-	}
+	mod system {
+		use super::*;
 
-	#[test]
-	fn system_block_hash_count() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::BlockHashCount>(),
-			TypeId::of::<BlockHashCount>(),
-		);
-		assert_eq!(BlockHashCount::get(), 4096);
-	}
+		#[test]
+		fn system_account_id_is_32_bytes() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::AccountId>(),
+				TypeId::of::<AccountId32>(),
+			);
+		}
 
-	#[test]
-	fn system_block_length_restricted_by_pov() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::BlockLength>(),
-			TypeId::of::<RuntimeBlockLength>(),
-		);
-		// Normal extrinsics limited to 75% of max PoV size
-		assert_eq!(
-			*RuntimeBlockLength::get().max.get(DispatchClass::Normal),
-			Perbill::from_percent(75) * MAX_POV_SIZE
-		);
-		// Operational / mandatory (inherents) limited to max PoV size
-		assert_eq!(*RuntimeBlockLength::get().max.get(DispatchClass::Operational), MAX_POV_SIZE);
-		assert_eq!(*RuntimeBlockLength::get().max.get(DispatchClass::Mandatory), MAX_POV_SIZE);
-	}
+		#[test]
+		fn system_block_configured() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::Block>(),
+				TypeId::of::<generic::Block<Header, UncheckedExtrinsic>>(),
+			);
+		}
 
-	#[test]
-	fn system_block_weights_restricted_by_dispatch_class() {
-		let max_block_weight =
-			// Two seconds compute per 6s block, max PoV size
-			Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), MAX_POV_SIZE as u64);
-		let base_extrinsic = ExtrinsicBaseWeight::get();
-		let expected_per_class = PerDispatchClass::new(|dc| match dc {
-			DispatchClass::Normal => {
-				let max_total = Perbill::from_percent(75) * max_block_weight; // 75% of block
-				WeightsPerClass {
+		#[test]
+		fn system_block_hash_count() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::BlockHashCount>(),
+				TypeId::of::<BlockHashCount>(),
+			);
+			assert_eq!(BlockHashCount::get(), 4096);
+		}
+
+		#[test]
+		fn system_block_length_restricted_by_pov() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::BlockLength>(),
+				TypeId::of::<RuntimeBlockLength>(),
+			);
+			// Normal extrinsics limited to 75% of max PoV size
+			assert_eq!(
+				*RuntimeBlockLength::get().max.get(DispatchClass::Normal),
+				Perbill::from_percent(75) * MAX_POV_SIZE
+			);
+			// Operational / mandatory (inherents) limited to max PoV size
+			assert_eq!(
+				*RuntimeBlockLength::get().max.get(DispatchClass::Operational),
+				MAX_POV_SIZE
+			);
+			assert_eq!(*RuntimeBlockLength::get().max.get(DispatchClass::Mandatory), MAX_POV_SIZE);
+		}
+
+		#[test]
+		fn system_block_weights_restricted_by_dispatch_class() {
+			let max_block_weight =
+				// Two seconds compute per 6s block, max PoV size
+				Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), MAX_POV_SIZE as u64);
+			let base_extrinsic = ExtrinsicBaseWeight::get();
+			let expected_per_class = PerDispatchClass::new(|dc| match dc {
+				DispatchClass::Normal => {
+					let max_total = Perbill::from_percent(75) * max_block_weight; // 75% of block
+					WeightsPerClass {
+						base_extrinsic,
+						max_extrinsic: Some(
+							max_total -
+								(Perbill::from_percent(5) * max_block_weight) -
+								base_extrinsic,
+						), // max - average initialise ratio - base weight
+						max_total: Some(max_total),
+						reserved: Some(Weight::zero()),
+					}
+				},
+				DispatchClass::Operational => WeightsPerClass {
 					base_extrinsic,
 					max_extrinsic: Some(
-						max_total - (Perbill::from_percent(5) * max_block_weight) - base_extrinsic,
-					), // max - average initialise ratio - base weight
-					max_total: Some(max_total),
-					reserved: Some(Weight::zero()),
-				}
-			},
-			DispatchClass::Operational => WeightsPerClass {
-				base_extrinsic,
-				max_extrinsic: Some(
-					max_block_weight -
-						(Perbill::from_percent(5) * max_block_weight) -
-						base_extrinsic,
-				),
-				max_total: Some(max_block_weight),
-				reserved: Some(Perbill::from_percent(25) * max_block_weight),
-			},
-			DispatchClass::Mandatory => WeightsPerClass {
-				base_extrinsic,
-				max_extrinsic: None,
-				max_total: None,
-				reserved: None,
-			},
-		});
+						max_block_weight -
+							(Perbill::from_percent(5) * max_block_weight) -
+							base_extrinsic,
+					),
+					max_total: Some(max_block_weight),
+					reserved: Some(Perbill::from_percent(25) * max_block_weight),
+				},
+				DispatchClass::Mandatory => WeightsPerClass {
+					base_extrinsic,
+					max_extrinsic: None,
+					max_total: None,
+					reserved: None,
+				},
+			});
 
-		assert_eq!(MAXIMUM_BLOCK_WEIGHT, max_block_weight);
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::BlockWeights>(),
-			TypeId::of::<RuntimeBlockWeights>(),
-		);
-		assert_eq!(RuntimeBlockWeights::get().base_block, BlockExecutionWeight::get());
-		assert_eq!(RuntimeBlockWeights::get().max_block, max_block_weight);
+			assert_eq!(MAXIMUM_BLOCK_WEIGHT, max_block_weight);
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::BlockWeights>(),
+				TypeId::of::<RuntimeBlockWeights>(),
+			);
+			assert_eq!(RuntimeBlockWeights::get().base_block, BlockExecutionWeight::get());
+			assert_eq!(RuntimeBlockWeights::get().max_block, max_block_weight);
 
-		let actual = RuntimeBlockWeights::get();
-		for class in [DispatchClass::Normal, DispatchClass::Operational, DispatchClass::Mandatory] {
-			let actual = actual.per_class.get(class);
-			let expected = expected_per_class.get(class);
-			println!("{class:?}\nactual   {actual:?}\nexpected {expected:?}\n");
-			assert_eq!(actual.base_extrinsic, expected.base_extrinsic);
-			assert_eq!(actual.max_extrinsic, expected.max_extrinsic);
-			assert_eq!(actual.max_total, expected.max_total);
-			assert_eq!(actual.reserved, expected.reserved);
+			let actual = RuntimeBlockWeights::get();
+			for class in
+				[DispatchClass::Normal, DispatchClass::Operational, DispatchClass::Mandatory]
+			{
+				let actual = actual.per_class.get(class);
+				let expected = expected_per_class.get(class);
+				println!("{class:?}\nactual   {actual:?}\nexpected {expected:?}\n");
+				assert_eq!(actual.base_extrinsic, expected.base_extrinsic);
+				assert_eq!(actual.max_extrinsic, expected.max_extrinsic);
+				assert_eq!(actual.max_total, expected.max_total);
+				assert_eq!(actual.reserved, expected.reserved);
+			}
+		}
+
+		#[test]
+		fn system_db_weight_uses_rocks_db() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::DbWeight>(),
+				TypeId::of::<RocksDbWeight>(),
+			);
+		}
+
+		#[test]
+		fn system_uses_blake2_hashing() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::Hashing>(),
+				TypeId::of::<BlakeTwo256>(),
+			);
+		}
+
+		#[test]
+		fn system_uses_multi_address_lookup() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
+				TypeId::of::<AccountIdLookup<AccountId, ()>>(),
+			);
+		}
+
+		#[test]
+		fn system_max_consumers_limited_to_16() {
+			assert_eq!(<<Runtime as frame_system::Config>::MaxConsumers as Get<u32>>::get(), 16);
+		}
+
+		#[test]
+		fn system_multi_block_migrator_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::MultiBlockMigrator>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_nonce_uses_u32() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::Nonce>(),
+				TypeId::of::<u32>(),
+			);
+		}
+
+		#[test]
+		fn system_account_killed_handler_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::OnKilledAccount>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_new_account_handler_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::OnNewAccount>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_set_code_handler_managed_by_parachain_system() {
+			// Runtime upgrades orchestrated by parachain system pallet
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::OnSetCode>(),
+				TypeId::of::<cumulus_pallet_parachain_system::ParachainSetCode<Runtime>>(),
+			);
+		}
+
+		#[test]
+		fn system_post_inherent_handler_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::PostInherents>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_post_transactions_handler_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::PostTransactions>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_pre_inherent_handler_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::PreInherents>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_single_block_migrations_is_empty() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::SingleBlockMigrations>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_ss58_prefix_matches_relay() {
+			assert_eq!(<<Runtime as frame_system::Config>::SS58Prefix>::get(), 0);
+		}
+
+		#[test]
+		fn system_does_not_use_default_weights() {
+			assert_ne!(
+				TypeId::of::<<Runtime as frame_system::Config>::SystemWeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		#[ignore]
+		fn system_extensions_do_not_use_default_weights() {
+			assert_ne!(
+				TypeId::of::<<Runtime as frame_system::Config>::ExtensionsWeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn system_versions_runtime() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::Version>(),
+				TypeId::of::<Version>(),
+			);
+
+			assert_eq!(Version::get().spec_name, Cow::Borrowed("pop"));
+			assert_eq!(Version::get().impl_name, Cow::Borrowed("pop"));
+			assert_eq!(Version::get().spec_version, 100);
 		}
 	}
 
-	#[test]
-	fn system_db_weight_uses_rocks_db() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::DbWeight>(),
-			TypeId::of::<RocksDbWeight>(),
-		);
-	}
+	mod parachain_system {
+		use super::*;
 
-	#[test]
-	fn system_uses_blake2_hashing() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::Hashing>(),
-			TypeId::of::<BlakeTwo256>(),
-		);
-	}
-
-	#[test]
-	fn system_uses_multi_address_lookup() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
-			TypeId::of::<AccountIdLookup<AccountId, ()>>(),
-		);
-	}
-
-	#[test]
-	fn system_max_consumers_limited_to_16() {
-		assert_eq!(<<Runtime as frame_system::Config>::MaxConsumers as Get<u32>>::get(), 16);
-	}
-
-	#[test]
-	fn system_multi_block_migrator_disabled() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::MultiBlockMigrator>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_nonce_uses_u32() {
-		assert_eq!(TypeId::of::<<Runtime as frame_system::Config>::Nonce>(), TypeId::of::<u32>(),);
-	}
-
-	#[test]
-	fn system_account_killed_handler_disabled() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::OnKilledAccount>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_new_account_handler_disabled() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::OnNewAccount>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_set_code_handler_managed_by_parachain_system() {
-		// Runtime upgrades orchestrated by parachain system pallet
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::OnSetCode>(),
-			TypeId::of::<cumulus_pallet_parachain_system::ParachainSetCode<Runtime>>(),
-		);
-	}
-
-	#[test]
-	fn system_post_inherent_handler_disabled() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::PostInherents>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_post_transactions_handler_disabled() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::PostTransactions>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_pre_inherent_handler_disabled() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::PreInherents>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_single_block_migrations_is_empty() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::SingleBlockMigrations>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_ss58_prefix_matches_relay() {
-		assert_eq!(<<Runtime as frame_system::Config>::SS58Prefix>::get(), 0);
-	}
-
-	#[test]
-	fn system_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as frame_system::Config>::SystemWeightInfo>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	#[ignore]
-	fn system_extensions_do_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as frame_system::Config>::ExtensionsWeightInfo>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn system_versions_runtime() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::Version>(),
-			TypeId::of::<Version>(),
-		);
-
-		assert_eq!(Version::get().spec_name, Cow::Borrowed("pop"));
-		assert_eq!(Version::get().impl_name, Cow::Borrowed("pop"));
-		assert_eq!(Version::get().spec_version, 100);
-	}
-
-	#[test]
-	fn parachain_system_ensures_relay_block_increases_monotonically() {
-		assert_eq!(
+		#[test]
+		fn parachain_system_ensures_relay_block_increases_monotonically() {
+			assert_eq!(
 			TypeId::of::<
 				<Runtime as cumulus_pallet_parachain_system::Config>::CheckAssociatedRelayNumber,
 			>(),
 			TypeId::of::<RelayNumberMonotonicallyIncreases>(),
 		);
+		}
+
+		#[test]
+		fn parachain_system_manages_unincluded_block_authoring() {
+			assert_eq!(
+				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ConsensusHook>(),
+				TypeId::of::<
+					cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
+						Runtime,
+						6000, // Relay chain slot duration of 6s.
+						1,    // Blocks per slot.
+						3,    // Max unincluded blocks accepted by runtime simultaneously
+					>,
+				>(),
+			);
+		}
+
+		#[test]
+		fn parachain_system_enqueues_dmp_messages() {
+			assert_eq!(
+				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::DmpQueue>(),
+				TypeId::of::<EnqueueWithOrigin<MessageQueue, RelayOrigin>>(),
+			);
+		}
+
+		#[test]
+		fn parachain_system_system_event_handler_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::OnSystemEvent>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn parachain_system_outbound_messages_sourced_from_xcmp_queue() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as cumulus_pallet_parachain_system::Config>::OutboundXcmpMessageSource,
+				>(),
+				TypeId::of::<XcmpQueue>(),
+			);
+		}
+
+		#[test]
+		fn parachain_system_reserves_weight_for_dmp_messages() {
+			assert_eq!(
+				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ReservedDmpWeight>(
+				),
+				TypeId::of::<ReservedDmpWeight>(),
+			);
+			assert_eq!(ReservedDmpWeight::get(), MAXIMUM_BLOCK_WEIGHT / 4);
+		}
+
+		#[test]
+		fn parachain_system_reserves_weight_for_xcmp_messages() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as cumulus_pallet_parachain_system::Config>::ReservedXcmpWeight,
+				>(),
+				TypeId::of::<ReservedXcmpWeight>(),
+			);
+			assert_eq!(ReservedXcmpWeight::get(), MAXIMUM_BLOCK_WEIGHT / 4);
+		}
+
+		#[test]
+		fn parachain_system_uses_lookahead_core_selector() {
+			assert_eq!(
+				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelectCore>(),
+				TypeId::of::<cumulus_pallet_parachain_system::LookaheadCoreSelector::<Runtime>>(),
+			);
+		}
+
+		#[test]
+		fn parachain_system_looks_up_para_id_from_parachain_info() {
+			assert_eq!(
+				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelfParaId>(),
+				TypeId::of::<parachain_info::Pallet<Runtime>>(),
+			);
+		}
+
+		#[test]
+		fn parachain_system_does_not_use_default_weights() {
+			assert_ne!(
+				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn parachain_system_uses_xcmp_queue_as_xcmp_message_handler() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as cumulus_pallet_parachain_system::Config>::XcmpMessageHandler,
+				>(),
+				TypeId::of::<XcmpQueue>(),
+			);
+		}
 	}
 
-	#[test]
-	fn parachain_system_manages_unincluded_block_authoring() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ConsensusHook>(),
-			TypeId::of::<
-				cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
-					Runtime,
-					6000, // Relay chain slot duration of 6s.
-					1,    // Blocks per slot.
-					3,    // Max unincluded blocks accepted by runtime simultaneously
-				>,
-			>(),
-		);
-	}
+	mod timestamp {
+		use super::*;
 
-	#[test]
-	fn parachain_system_enqueues_dmp_messages() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::DmpQueue>(),
-			TypeId::of::<EnqueueWithOrigin<MessageQueue, RelayOrigin>>(),
-		);
-	}
+		#[test]
+		fn timestamp_min_period_is_zero() {
+			assert_eq!(
+				<<Runtime as pallet_timestamp::Config>::MinimumPeriod as Get<u64>>::get(),
+				0
+			);
+		}
 
-	#[test]
-	fn parachain_system_system_event_handler_disabled() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::OnSystemEvent>(),
-			TypeId::of::<()>(),
-		);
-	}
+		#[test]
+		fn timestamp_uses_u64_moment() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_timestamp::Config>::Moment>(),
+				TypeId::of::<u64>(),
+			);
+		}
 
-	#[test]
-	fn parachain_system_outbound_messages_sourced_from_xcmp_queue() {
-		assert_eq!(
-			TypeId::of::<
-				<Runtime as cumulus_pallet_parachain_system::Config>::OutboundXcmpMessageSource,
-			>(),
-			TypeId::of::<XcmpQueue>(),
-		);
-	}
+		#[test]
+		fn timestamp_handler_is_aura() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_timestamp::Config>::OnTimestampSet>(),
+				TypeId::of::<Aura>(),
+			);
+		}
 
-	#[test]
-	fn parachain_system_reserves_weight_for_dmp_messages() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ReservedDmpWeight>(),
-			TypeId::of::<ReservedDmpWeight>(),
-		);
-		assert_eq!(ReservedDmpWeight::get(), MAXIMUM_BLOCK_WEIGHT / 4);
-	}
-
-	#[test]
-	fn parachain_system_reserves_weight_for_xcmp_messages() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ReservedXcmpWeight>(
-			),
-			TypeId::of::<ReservedXcmpWeight>(),
-		);
-		assert_eq!(ReservedXcmpWeight::get(), MAXIMUM_BLOCK_WEIGHT / 4);
-	}
-
-	#[test]
-	fn parachain_system_uses_lookahead_core_selector() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelectCore>(),
-			TypeId::of::<cumulus_pallet_parachain_system::LookaheadCoreSelector::<Runtime>>(),
-		);
-	}
-
-	#[test]
-	fn parachain_system_looks_up_para_id_from_parachain_info() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelfParaId>(),
-			TypeId::of::<parachain_info::Pallet<Runtime>>(),
-		);
-	}
-
-	#[test]
-	fn parachain_system_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn parachain_system_uses_xcmp_queue_as_xcmp_message_handler() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::XcmpMessageHandler>(
-			),
-			TypeId::of::<XcmpQueue>(),
-		);
-	}
-
-	#[test]
-	fn timestamp_min_period_is_zero() {
-		assert_eq!(<<Runtime as pallet_timestamp::Config>::MinimumPeriod as Get<u64>>::get(), 0);
-	}
-
-	#[test]
-	fn timestamp_uses_u64_moment() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_timestamp::Config>::Moment>(),
-			TypeId::of::<u64>(),
-		);
-	}
-
-	#[test]
-	fn timestamp_handler_is_aura() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_timestamp::Config>::OnTimestampSet>(),
-			TypeId::of::<Aura>(),
-		);
-	}
-
-	#[test]
-	fn timestamp_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_timestamp::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
+		#[test]
+		fn timestamp_does_not_use_default_weights() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_timestamp::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
 	}
 }
