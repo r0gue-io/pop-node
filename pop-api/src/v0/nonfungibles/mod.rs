@@ -24,6 +24,11 @@ pub mod events;
 pub mod traits;
 pub mod types;
 
+/// Returns the amount of items the owner has within a collection.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `owner` - The account whose balance is being queried.
 #[inline]
 pub fn balance_of(collection: CollectionId, owner: AccountId) -> Result<u32> {
 	build_read_state(BALANCE_OF)
@@ -33,6 +38,11 @@ pub fn balance_of(collection: CollectionId, owner: AccountId) -> Result<u32> {
 		.call(&(collection, owner))
 }
 
+/// Returns the owner of an item within a specified collection, if any.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The item.
 #[inline]
 pub fn owner_of(collection: CollectionId, item: ItemId) -> Result<Option<AccountId>> {
 	build_read_state(OWNER_OF)
@@ -42,6 +52,15 @@ pub fn owner_of(collection: CollectionId, item: ItemId) -> Result<Option<Account
 		.call(&(collection, item))
 }
 
+/// Returns whether the operator is approved by the owner to withdraw `item`. If `item` is
+/// `None`, it returns whether the operator is approved to withdraw all owner's items for the
+/// given collection.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `owner` - The account that owns the item(s).
+/// - `operator` - the account that is allowed to withdraw the item(s).
+/// - `item` - The item. If `None`, it is regarding all owner's items in collection.
 #[inline]
 pub fn allowance(
 	collection: CollectionId,
@@ -56,15 +75,13 @@ pub fn allowance(
 		.call(&(collection, owner, operator, item))
 }
 
-#[inline]
-pub fn transfer(collection: CollectionId, to: AccountId, item: ItemId) -> Result<()> {
-	build_dispatch(TRANSFER)
-		.input::<(CollectionId, AccountId, ItemId)>()
-		.output::<Result<()>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(collection, to, item))
-}
-
+/// Approves operator to withdraw item(s) from the owner's account.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `operator` - The account that is allowed to withdraw the item.
+/// - `item` - Optional item. `None` means all items owned in the specified collection.
+/// - `approved` - Whether the operator is given or removed the right to withdraw the item(s).
 #[inline]
 pub fn approve(
 	collection: CollectionId,
@@ -79,6 +96,25 @@ pub fn approve(
 		.call(&(collection, operator, item, approved, None))
 }
 
+/// Transfers an owned or approved item to the specified recipient.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `to` - The recipient account.
+/// - `item` - The item.
+#[inline]
+pub fn transfer(collection: CollectionId, to: AccountId, item: ItemId) -> Result<()> {
+	build_dispatch(TRANSFER)
+		.input::<(CollectionId, AccountId, ItemId)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, to, item))
+}
+
+/// Returns the total supply of a collection.
+///
+/// # Parameters
+/// - `collection` - The collection.
 #[inline]
 pub fn total_supply(collection: CollectionId) -> Result<u128> {
 	build_read_state(TOTAL_SUPPLY)
@@ -88,6 +124,13 @@ pub fn total_supply(collection: CollectionId) -> Result<u128> {
 		.call(&(collection))
 }
 
+/// Returns the attribute of `item` for the given `key`.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The item. If `None` the attributes for the collection are queried.
+/// - `namespace` - The attribute's namespace.
+/// - `key` - The key of the attribute.
 #[inline]
 pub fn get_attribute(
 	collection: CollectionId,
@@ -102,6 +145,10 @@ pub fn get_attribute(
 		.call(&(collection, item, namespace, key))
 }
 
+/// Returns the details of the `collection`.
+///
+/// # Parameters
+/// - `collection` - The collection.
 #[inline]
 pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>> {
 	build_read_state(COLLECTION)
@@ -111,6 +158,7 @@ pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>>
 		.call(&(collection))
 }
 
+/// Returns the next collection identifier.
 #[inline]
 pub fn next_collection_id() -> Result<CollectionId> {
 	build_read_state(NEXT_COLLECTION_ID)
@@ -119,6 +167,11 @@ pub fn next_collection_id() -> Result<CollectionId> {
 		.call(&())
 }
 
+/// Returns the metadata of the specified collection `item`.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The item.
 #[inline]
 pub fn item_metadata(collection: CollectionId, item: ItemId) -> Result<Option<Vec<u8>>> {
 	build_read_state(ITEM_METADATA)
@@ -128,16 +181,26 @@ pub fn item_metadata(collection: CollectionId, item: ItemId) -> Result<Option<Ve
 		.call(&(collection, item))
 }
 
+/// Creates an NFT collection.
+///
+/// # Parameters
+/// - `admin` - The admin account of the collection.
+/// - `config` - Settings and config to be set for the new collection.
 #[inline]
 pub fn create(admin: AccountId, config: CollectionConfig) -> Result<()> {
 	build_dispatch(CREATE)
 		.input::<(AccountId, CollectionConfig)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(admin, config))?;
-	Ok(())
+		.call(&(admin, config))
 }
 
+/// Destroy an NFT collection.
+///
+/// # Parameters
+/// - `collection` - The collection to be destroyed.
+/// - `witness` - Information on the items minted in the `collection`. This must be
+/// correct.
 #[inline]
 pub fn destroy(collection: CollectionId, witness: DestroyWitness) -> Result<()> {
 	build_dispatch(DESTROY)
@@ -147,6 +210,21 @@ pub fn destroy(collection: CollectionId, witness: DestroyWitness) -> Result<()> 
 		.call(&(collection, witness))
 }
 
+/// Set an attribute for a collection or an item.
+///
+/// Namespace must be provided following the below ruleset:
+/// - `CollectionOwner` namespace could be modified by the `collection` Admin only;
+/// - `ItemOwner` namespace could be modified by the `item` owner only. `item` should be set in that
+///   case;
+/// - `Account(AccountId)` namespace could be modified only when the provided account was given a
+///   permission to do so;
+
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The optional item.
+/// - `namespace` - The attribute's namespace.
+/// - `key` - The key of the attribute.
+/// - `value` - The value to which to set the attribute.
 #[inline]
 pub fn set_attribute(
 	collection: CollectionId,
@@ -162,6 +240,13 @@ pub fn set_attribute(
 		.call(&(collection, item, namespace, key, value))
 }
 
+/// Clear an attribute for a collection or an item.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The optional item.
+/// - `namespace` - The attribute's namespace.
+/// - `key` - The key of the attribute.
 #[inline]
 pub fn clear_attribute(
 	collection: CollectionId,
@@ -176,6 +261,14 @@ pub fn clear_attribute(
 		.call(&(collection, item, namespace, key))
 }
 
+/// Set the metadata for an item.
+///
+/// Caller must be the admin of the collection.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The item. If `None`, set metadata for the collection.
+/// - `data` - the metadata.
 #[inline]
 pub fn set_metadata(collection: CollectionId, item: ItemId, data: Vec<u8>) -> Result<()> {
 	build_dispatch(SET_METADATA)
@@ -185,6 +278,13 @@ pub fn set_metadata(collection: CollectionId, item: ItemId, data: Vec<u8>) -> Re
 		.call(&(collection, item, data))
 }
 
+/// Clear the metadata for an item or collection.
+///
+/// Caller must be the admin of the collection.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The item.
 #[inline]
 pub fn clear_metadata(collection: CollectionId, item: ItemId) -> Result<()> {
 	build_dispatch(CLEAR_METADATA)
@@ -194,6 +294,13 @@ pub fn clear_metadata(collection: CollectionId, item: ItemId) -> Result<()> {
 		.call(&(collection, item))
 }
 
+/// Set the maximum number of items a collection could have.
+///
+/// Caller must be the owner of the collection.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `max_supply` - The collection's max supply.
 #[inline]
 pub fn set_max_supply(collection: CollectionId, max_supply: u32) -> Result<()> {
 	build_dispatch(SET_MAX_SUPPLY)
@@ -203,6 +310,14 @@ pub fn set_max_supply(collection: CollectionId, max_supply: u32) -> Result<()> {
 		.call(&(collection, max_supply))
 }
 
+/// Approve item's attributes to be changed by a delegated third-party account.
+///
+/// Caller must be the owner of the item.
+///
+/// # Parameters
+/// - `collection` - The colleciton.
+/// - `item` - The item.
+/// - `delegate` - The account to delegate permission to change attributes of the item.
 #[inline]
 pub fn approve_item_attributes(
 	collection: CollectionId,
@@ -216,6 +331,15 @@ pub fn approve_item_attributes(
 		.call(&(collection, item, delegate))
 }
 
+/// Cancel the previously provided approval to change item's attributes.
+/// All the previously set attributes by the `delegate` will be removed.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The item that holds attributes.
+/// - `delegate` - The previously approved account to remove.
+/// - `witness` - A witness data to cancel attributes approval operation.
+/// The account to delegate permission to change attributes of the item.
 #[inline]
 pub fn cancel_item_attributes_approval(
 	collection: CollectionId,
@@ -230,6 +354,11 @@ pub fn cancel_item_attributes_approval(
 		.call(&(collection, item, delegate, witness))
 }
 
+/// Cancel all the approvals of a specific item.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `item` - The item of the collection of whose approvals will be cleared.
 #[inline]
 pub fn clear_all_transfer_approvals(collection: CollectionId, item: ItemId) -> Result<()> {
 	build_dispatch(CLEAR_ALL_TRANSFER_APPROVALS)
@@ -239,6 +368,11 @@ pub fn clear_all_transfer_approvals(collection: CollectionId, item: ItemId) -> R
 		.call(&(collection, item))
 }
 
+/// Cancel approvals to transfer all owner's collection items.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `limit` - The amount of collection approvals that will be cleared.
 #[inline]
 pub fn clear_collection_approvals(collection: CollectionId, limit: u32) -> Result<()> {
 	build_dispatch(CLEAR_COLLECTION_APPROVALS)
@@ -248,6 +382,12 @@ pub fn clear_collection_approvals(collection: CollectionId, limit: u32) -> Resul
 		.call(&(collection, limit))
 }
 
+/// Mints an item to the specified address.
+///
+/// # Parameters
+/// - `collection` - The collection.
+/// - `to` - The recipient account.
+/// - `item` - The ID for the item.
 #[inline]
 pub fn mint(
 	to: AccountId,
@@ -262,6 +402,11 @@ pub fn mint(
 		.call(&(to, collection, item, witness))
 }
 
+/// Destroys the specified item. Clearing the corresponding approvals.
+///
+/// # Parameters
+/// - `collection` - The colleciton.
+/// - `item` - The item.
 #[inline]
 pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {
 	build_dispatch(BURN)
@@ -276,8 +421,8 @@ mod constants {
 	pub(super) const BALANCE_OF: u8 = 0;
 	pub(super) const OWNER_OF: u8 = 1;
 	pub(super) const ALLOWANCE: u8 = 2;
-	pub(super) const TRANSFER: u8 = 3;
-	pub(super) const APPROVE: u8 = 4;
+	pub(super) const APPROVE: u8 = 3;
+	pub(super) const TRANSFER: u8 = 4;
 	pub(super) const TOTAL_SUPPLY: u8 = 5;
 
 	/// 2. PSP-34 Metadata

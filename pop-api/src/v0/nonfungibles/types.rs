@@ -1,3 +1,5 @@
+//! A set of data types used as returned types or parameter types of the non-fungibles API methods.
+
 use enumflags2::{bitflags, BitFlags};
 
 use super::*;
