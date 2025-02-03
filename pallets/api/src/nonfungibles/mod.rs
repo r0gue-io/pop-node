@@ -133,35 +133,6 @@ pub mod pallet {
 	/// `pallet-nfts`.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		/// Transfers an owned or approved item to the specified recipient.
-		///
-		/// Origin must be either the item's owner or an account approved by the owner to
-		/// transfer the item.
-		///
-		/// # Parameters
-		/// - `collection` - The collection.
-		/// - `to` - The recipient account.
-		/// - `item` - The item.
-		#[pallet::call_index(3)]
-		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
-		pub fn transfer(
-			origin: OriginFor<T>,
-			collection: CollectionIdOf<T>,
-			to: AccountIdOf<T>,
-			item: ItemIdOf<T>,
-		) -> DispatchResult {
-			let owner =
-				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
-			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
-			Self::deposit_event(Event::Transfer {
-				collection,
-				item,
-				from: Some(owner),
-				to: Some(to),
-			});
-			Ok(())
-		}
-
 		/// Approves operator to transfer item(s) from the owner's account.
 		///
 		/// # Parameters
@@ -172,7 +143,7 @@ pub mod pallet {
 		///   item(s).
 		/// - `deadline`: The optional deadline (in block numbers) specifying the time limit for the
 		///   approval, only required if `approved` is true.
-		#[pallet::call_index(4)]
+		#[pallet::call_index(3)]
 		#[pallet::weight(
 			NftsWeightInfoOf::<T>::approve_transfer()
 			.max(NftsWeightInfoOf::<T>::approve_collection_transfer())
@@ -196,6 +167,35 @@ pub mod pallet {
 			let owner = ensure_signed(origin)?;
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
 			Ok(result)
+		}
+
+		/// Transfers an owned or approved item to the specified recipient.
+		///
+		/// Origin must be either the item's owner or an account approved by the owner to
+		/// transfer the item.
+		///
+		/// # Parameters
+		/// - `collection` - The collection.
+		/// - `to` - The recipient account.
+		/// - `item` - The item.
+		#[pallet::call_index(4)]
+		#[pallet::weight(NftsWeightInfoOf::<T>::transfer())]
+		pub fn transfer(
+			origin: OriginFor<T>,
+			collection: CollectionIdOf<T>,
+			to: AccountIdOf<T>,
+			item: ItemIdOf<T>,
+		) -> DispatchResult {
+			let owner =
+				NftsOf::<T>::owner(collection, item).ok_or(NftsErrorOf::<T>::UnknownItem)?;
+			NftsOf::<T>::transfer(origin, collection, item, T::Lookup::unlookup(to.clone()))?;
+			Self::deposit_event(Event::Transfer {
+				collection,
+				item,
+				from: Some(owner),
+				to: Some(to),
+			});
+			Ok(())
 		}
 
 		/// Creates an NFT collection.

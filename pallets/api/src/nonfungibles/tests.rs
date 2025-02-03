@@ -28,76 +28,6 @@ type NftsError = NftsErrorOf<Test>;
 type NftsWeightInfo = NftsWeightInfoOf<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
-mod transfer {
-	use super::*;
-
-	#[test]
-	fn transfer_works() {
-		new_test_ext().execute_with(|| {
-			let collection = COLLECTION;
-			let dest = BOB;
-			let item = ITEM;
-			let owner = ALICE;
-
-			// Throw `NftsError::UnknownItem` if no item found.
-			assert_noop!(
-				NonFungibles::transfer(signed(dest), collection, dest, item),
-				NftsError::UnknownItem
-			);
-			nfts::create_collection_and_mint(owner, owner, item);
-			// Check error works for `Nfts::transfer()`.
-			assert_noop!(
-				NonFungibles::transfer(signed(dest), collection, dest, item),
-				NftsError::NoPermission
-			);
-			// Successfully transfer a collection item.
-			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
-			assert_ok!(NonFungibles::transfer(signed(owner), collection, dest, item));
-			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
-			// Check that `to` has received the collection item from `from`.
-			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
-			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
-			System::assert_last_event(
-				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
-			);
-		});
-	}
-
-	#[test]
-	fn approved_transfer_works() {
-		new_test_ext().execute_with(|| {
-			let collection = COLLECTION;
-			let dest = CHARLIE;
-			let item = ITEM;
-			let operator = BOB;
-			let owner = ALICE;
-
-			nfts::create_collection_and_mint(owner, owner, item);
-			// Approve `operator` to transfer all `collection` items owned by the `owner`.
-			assert_ok!(Nfts::approve_collection_transfer(
-				signed(owner),
-				collection,
-				operator,
-				None
-			));
-			// Successfully transfer a collection item.
-			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
-			assert_ok!(NonFungibles::transfer(signed(operator), collection, dest, item));
-			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
-			// Check that `to` has received the collection item from `from`.
-			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
-			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
-			System::assert_last_event(
-				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
-			);
-		});
-	}
-}
-
 mod approve {
 	use super::*;
 
@@ -229,6 +159,76 @@ mod approve {
 			assert_eq!(
 				Nfts::check_approval_permission(&collection, &None, &owner, &operator),
 				Err(NftsError::NoPermission.into())
+			);
+		});
+	}
+}
+
+mod transfer {
+	use super::*;
+
+	#[test]
+	fn transfer_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let dest = BOB;
+			let item = ITEM;
+			let owner = ALICE;
+
+			// Throw `NftsError::UnknownItem` if no item found.
+			assert_noop!(
+				NonFungibles::transfer(signed(dest), collection, dest, item),
+				NftsError::UnknownItem
+			);
+			nfts::create_collection_and_mint(owner, owner, item);
+			// Check error works for `Nfts::transfer()`.
+			assert_noop!(
+				NonFungibles::transfer(signed(dest), collection, dest, item),
+				NftsError::NoPermission
+			);
+			// Successfully transfer a collection item.
+			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
+			assert_ok!(NonFungibles::transfer(signed(owner), collection, dest, item));
+			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
+			// Check that `to` has received the collection item from `from`.
+			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
+			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
+			System::assert_last_event(
+				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
+			);
+		});
+	}
+
+	#[test]
+	fn approved_transfer_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let dest = CHARLIE;
+			let item = ITEM;
+			let operator = BOB;
+			let owner = ALICE;
+
+			nfts::create_collection_and_mint(owner, owner, item);
+			// Approve `operator` to transfer all `collection` items owned by the `owner`.
+			assert_ok!(Nfts::approve_collection_transfer(
+				signed(owner),
+				collection,
+				operator,
+				None
+			));
+			// Successfully transfer a collection item.
+			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
+			assert_ok!(NonFungibles::transfer(signed(operator), collection, dest, item));
+			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
+			// Check that `to` has received the collection item from `from`.
+			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
+			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
+			System::assert_last_event(
+				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
 			);
 		});
 	}
@@ -987,15 +987,6 @@ mod ensure_codec_indexes {
 
 		[
 			(
-				transfer {
-					to: Default::default(),
-					collection: Default::default(),
-					item: Default::default(),
-				},
-				3u8,
-				"transfer",
-			),
-			(
 				approve {
 					collection: Default::default(),
 					operator: Default::default(),
@@ -1003,8 +994,17 @@ mod ensure_codec_indexes {
 					approved: Default::default(),
 					deadline: Default::default(),
 				},
-				4,
+				3u8,
 				"approve",
+			),
+			(
+				transfer {
+					to: Default::default(),
+					collection: Default::default(),
+					item: Default::default(),
+				},
+				4,
+				"transfer",
 			),
 			(create { admin: Default::default(), config: Default::default() }, 10, "create"),
 			(
