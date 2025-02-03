@@ -15,7 +15,7 @@ pub const fn deposit(items: u32, bytes: u32) -> Balance {
 }
 
 /// Constants related to Polkadot fee payment.
-/// Source: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L65C47-L65C58
+// Source: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L65C47-L65C58
 pub mod fee {
 	use frame_support::{
 		pallet_prelude::Weight,
