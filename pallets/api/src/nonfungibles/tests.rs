@@ -28,76 +28,6 @@ type NftsError = NftsErrorOf<Test>;
 type NftsWeightInfo = NftsWeightInfoOf<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 
-mod transfer {
-	use super::*;
-
-	#[test]
-	fn transfer_works() {
-		new_test_ext().execute_with(|| {
-			let collection = COLLECTION;
-			let dest = BOB;
-			let item = ITEM;
-			let owner = ALICE;
-
-			// Throw `NftsError::UnknownItem` if no item found.
-			assert_noop!(
-				NonFungibles::transfer(signed(dest), collection, dest, item),
-				NftsError::UnknownItem
-			);
-			nfts::create_collection_and_mint(owner, owner, item);
-			// Check error works for `Nfts::transfer()`.
-			assert_noop!(
-				NonFungibles::transfer(signed(dest), collection, dest, item),
-				NftsError::NoPermission
-			);
-			// Successfully transfer a collection item.
-			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
-			assert_ok!(NonFungibles::transfer(signed(owner), collection, dest, item));
-			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
-			// Check that `to` has received the collection item from `from`.
-			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
-			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
-			System::assert_last_event(
-				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
-			);
-		});
-	}
-
-	#[test]
-	fn approved_transfer_works() {
-		new_test_ext().execute_with(|| {
-			let collection = COLLECTION;
-			let dest = CHARLIE;
-			let item = ITEM;
-			let operator = BOB;
-			let owner = ALICE;
-
-			nfts::create_collection_and_mint(owner, owner, item);
-			// Approve `operator` to transfer all `collection` items owned by the `owner`.
-			assert_ok!(Nfts::approve_collection_transfer(
-				signed(owner),
-				collection,
-				operator,
-				None
-			));
-			// Successfully transfer a collection item.
-			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
-			assert_ok!(NonFungibles::transfer(signed(operator), collection, dest, item));
-			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
-			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
-			// Check that `to` has received the collection item from `from`.
-			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
-			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
-			System::assert_last_event(
-				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
-			);
-		});
-	}
-}
-
 mod approve {
 	use super::*;
 
@@ -234,52 +164,74 @@ mod approve {
 	}
 }
 
-#[test]
-fn mint_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let item = ITEM;
-		let owner = ALICE;
-		let witness = MintWitness { mint_price: None, owned_item: None };
+mod transfer {
+	use super::*;
 
-		// Check error works for `Nfts::mint()`.
-		assert_noop!(
-			NonFungibles::mint(signed(owner), collection, owner, item, Some(witness.clone())),
-			NftsError::NoConfig
-		);
-		// Successfully mint a new collection item.
-		nfts::create_collection(owner);
-		let balance_before_mint = nfts::balance_of(collection, &owner);
-		assert_ok!(NonFungibles::mint(signed(owner), collection, owner, item, Some(witness)));
-		let balance_after_mint = nfts::balance_of(collection, &owner);
-		assert_eq!(balance_after_mint, balance_before_mint + 1);
-		System::assert_last_event(
-			Event::Transfer { collection, item, from: None, to: Some(owner) }.into(),
-		);
-	});
-}
+	#[test]
+	fn transfer_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let dest = BOB;
+			let item = ITEM;
+			let owner = ALICE;
 
-#[test]
-fn burn_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let owner = ALICE;
-		let item = ITEM;
+			// Throw `NftsError::UnknownItem` if no item found.
+			assert_noop!(
+				NonFungibles::transfer(signed(dest), collection, dest, item),
+				NftsError::UnknownItem
+			);
+			nfts::create_collection_and_mint(owner, owner, item);
+			// Check error works for `Nfts::transfer()`.
+			assert_noop!(
+				NonFungibles::transfer(signed(dest), collection, dest, item),
+				NftsError::NoPermission
+			);
+			// Successfully transfer a collection item.
+			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
+			assert_ok!(NonFungibles::transfer(signed(owner), collection, dest, item));
+			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
+			// Check that `to` has received the collection item from `from`.
+			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
+			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
+			System::assert_last_event(
+				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
+			);
+		});
+	}
 
-		// Throw `NftsError::UnknownItem` if no owner found for the item.
-		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
-		nfts::create_collection_and_mint(owner, owner, item);
-		// Check error works for `Nfts::burn()`.
-		assert_noop!(NonFungibles::burn(signed(BOB), collection, item), NftsError::NoPermission);
-		// Successfully burn a collection item.
-		let balance_before_burn = nfts::balance_of(collection, &owner);
-		assert_ok!(NonFungibles::burn(signed(owner), collection, item));
-		let balance_after_burn = nfts::balance_of(collection, &owner);
-		assert_eq!(balance_after_burn, balance_before_burn - 1);
-		System::assert_last_event(
-			Event::Transfer { collection, item, from: Some(owner), to: None }.into(),
-		);
-	});
+	#[test]
+	fn approved_transfer_works() {
+		new_test_ext().execute_with(|| {
+			let collection = COLLECTION;
+			let dest = CHARLIE;
+			let item = ITEM;
+			let operator = BOB;
+			let owner = ALICE;
+
+			nfts::create_collection_and_mint(owner, owner, item);
+			// Approve `operator` to transfer all `collection` items owned by the `owner`.
+			assert_ok!(Nfts::approve_collection_transfer(
+				signed(owner),
+				collection,
+				operator,
+				None
+			));
+			// Successfully transfer a collection item.
+			let owner_balance_before_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_before_transfer = nfts::balance_of(collection, &dest);
+			assert_ok!(NonFungibles::transfer(signed(operator), collection, dest, item));
+			let owner_balance_after_transfer = nfts::balance_of(collection, &owner);
+			let dest_balance_after_transfer = nfts::balance_of(collection, &dest);
+			// Check that `to` has received the collection item from `from`.
+			assert_eq!(owner_balance_after_transfer, owner_balance_before_transfer - 1);
+			assert_eq!(dest_balance_after_transfer, dest_balance_before_transfer + 1);
+			System::assert_last_event(
+				Event::Transfer { collection, item, from: Some(owner), to: Some(dest) }.into(),
+			);
+		});
+	}
 }
 
 #[test]
@@ -646,6 +598,54 @@ fn clear_collection_approvals_works() {
 }
 
 #[test]
+fn mint_works() {
+	new_test_ext().execute_with(|| {
+		let collection = COLLECTION;
+		let item = ITEM;
+		let owner = ALICE;
+		let witness = MintWitness { mint_price: None, owned_item: None };
+
+		// Check error works for `Nfts::mint()`.
+		assert_noop!(
+			NonFungibles::mint(signed(owner), collection, owner, item, Some(witness.clone())),
+			NftsError::NoConfig
+		);
+		// Successfully mint a new collection item.
+		nfts::create_collection(owner);
+		let balance_before_mint = nfts::balance_of(collection, &owner);
+		assert_ok!(NonFungibles::mint(signed(owner), collection, owner, item, Some(witness)));
+		let balance_after_mint = nfts::balance_of(collection, &owner);
+		assert_eq!(balance_after_mint, balance_before_mint + 1);
+		System::assert_last_event(
+			Event::Transfer { collection, item, from: None, to: Some(owner) }.into(),
+		);
+	});
+}
+
+#[test]
+fn burn_works() {
+	new_test_ext().execute_with(|| {
+		let collection = COLLECTION;
+		let owner = ALICE;
+		let item = ITEM;
+
+		// Throw `NftsError::UnknownItem` if no owner found for the item.
+		assert_noop!(NonFungibles::burn(signed(owner), collection, item), NftsError::UnknownItem);
+		nfts::create_collection_and_mint(owner, owner, item);
+		// Check error works for `Nfts::burn()`.
+		assert_noop!(NonFungibles::burn(signed(BOB), collection, item), NftsError::NoPermission);
+		// Successfully burn a collection item.
+		let balance_before_burn = nfts::balance_of(collection, &owner);
+		assert_ok!(NonFungibles::burn(signed(owner), collection, item));
+		let balance_after_burn = nfts::balance_of(collection, &owner);
+		assert_eq!(balance_after_burn, balance_before_burn - 1);
+		System::assert_last_event(
+			Event::Transfer { collection, item, from: Some(owner), to: None }.into(),
+		);
+	});
+}
+
+#[test]
 fn balance_of_works() {
 	new_test_ext().execute_with(|| {
 		let owner = ALICE;
@@ -987,15 +987,6 @@ mod ensure_codec_indexes {
 
 		[
 			(
-				transfer {
-					to: Default::default(),
-					collection: Default::default(),
-					item: Default::default(),
-				},
-				3u8,
-				"transfer",
-			),
-			(
 				approve {
 					collection: Default::default(),
 					operator: Default::default(),
@@ -1003,24 +994,19 @@ mod ensure_codec_indexes {
 					approved: Default::default(),
 					deadline: Default::default(),
 				},
-				4,
+				3u8,
 				"approve",
 			),
 			(
-				mint {
-					collection: Default::default(),
+				transfer {
 					to: Default::default(),
+					collection: Default::default(),
 					item: Default::default(),
-					witness: Some(MintWitness {
-						owned_item: Default::default(),
-						mint_price: Default::default(),
-					}),
 				},
-				7,
-				"mint",
+				4,
+				"transfer",
 			),
-			(burn { collection: Default::default(), item: Default::default() }, 8, "burn"),
-			(create { admin: Default::default(), config: Default::default() }, 12, "create"),
+			(create { admin: Default::default(), config: Default::default() }, 10, "create"),
 			(
 				destroy {
 					collection: Default::default(),
@@ -1030,7 +1016,7 @@ mod ensure_codec_indexes {
 						attributes: Default::default(),
 					},
 				},
-				13,
+				11,
 				"destroy",
 			),
 			(
@@ -1041,7 +1027,7 @@ mod ensure_codec_indexes {
 					key: Default::default(),
 					value: Default::default(),
 				},
-				14,
+				12,
 				"set_attribute",
 			),
 			(
@@ -1051,7 +1037,7 @@ mod ensure_codec_indexes {
 					namespace: AttributeNamespace::CollectionOwner,
 					key: Default::default(),
 				},
-				15,
+				13,
 				"clear_attribute",
 			),
 			(
@@ -1060,17 +1046,17 @@ mod ensure_codec_indexes {
 					item: Default::default(),
 					data: Default::default(),
 				},
-				16,
+				14,
 				"set_metadata",
 			),
 			(
 				clear_metadata { collection: Default::default(), item: Default::default() },
-				17,
+				15,
 				"clear_metadata",
 			),
 			(
 				set_max_supply { collection: Default::default(), max_supply: Default::default() },
-				18,
+				16,
 				"set_max_supply",
 			),
 			(
@@ -1079,7 +1065,7 @@ mod ensure_codec_indexes {
 					item: Default::default(),
 					delegate: Default::default(),
 				},
-				19,
+				17,
 				"approve_item_attributes",
 			),
 			(
@@ -1091,7 +1077,7 @@ mod ensure_codec_indexes {
 						account_attributes: Default::default(),
 					},
 				},
-				20,
+				18,
 				"cancel_item_attributes_approval",
 			),
 			(
@@ -1099,7 +1085,7 @@ mod ensure_codec_indexes {
 					collection: Default::default(),
 					item: Default::default(),
 				},
-				21,
+				19,
 				"clear_all_transfer_approvals",
 			),
 			(
@@ -1107,9 +1093,23 @@ mod ensure_codec_indexes {
 					collection: Default::default(),
 					limit: Default::default(),
 				},
-				22,
+				20,
 				"clear_collection_approvals",
 			),
+			(
+				mint {
+					collection: Default::default(),
+					to: Default::default(),
+					item: Default::default(),
+					witness: Some(MintWitness {
+						owned_item: Default::default(),
+						mint_price: Default::default(),
+					}),
+				},
+				21,
+				"mint",
+			),
+			(burn { collection: Default::default(), item: Default::default() }, 22, "burn"),
 		]
 		.iter()
 		.for_each(|(variant, expected_index, name)| {
@@ -1155,11 +1155,11 @@ mod ensure_codec_indexes {
 				6,
 				"GetAttribute",
 			),
-			(Collection::<Test>(Default::default()), 9, "Collection"),
-			(NextCollectionId, 10, "NextCollectionId"),
+			(Collection::<Test>(Default::default()), 7, "Collection"),
+			(NextCollectionId, 8, "NextCollectionId"),
 			(
 				ItemMetadata { collection: Default::default(), item: Default::default() },
-				11,
+				9,
 				"ItemMetadata",
 			),
 		]
