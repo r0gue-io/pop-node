@@ -42,6 +42,10 @@ impl Default for ProxyType {
 }
 
 impl ProxyType {
+	/// Defines proxies permission hierarchy.
+	// Example: A proxy that is not superset of another one won't be able to remove
+	// that proxy relationship
+	// src: https://github.com/paritytech/polkadot-sdk/blob/4cd07c56378291fddb9fceab3b508cf99034126a/substrate/frame/proxy/src/lib.rs#L802
 	pub fn is_superset(s: &ProxyType, o: &ProxyType) -> bool {
 		match (s, o) {
 			(x, y) if x == y => true,
