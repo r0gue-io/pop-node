@@ -1,7 +1,7 @@
-# Simple PSP22 DAO contract example
-This contract implements a Decentralized Autonomous Organization with token-based voting system built with Pop API. Members can submit a funding proposal, vote for or against it, and enact funds transfer.
+# Simple DAO contract example
+A basic Decentralized Autonomous Organization (DAO) that lets members vote on funding proposals using tokens. Built with Pop API.
 ## Description
-This contract implements a Decentralized Autonomous Organization using Psp22.
+This contract implements a Decentralized Autonomous Organization.
 The objectivbe of this DAO is to allow its members to vote for funding of projects they would like to see developped.
 To become a member, a user needs to pay some amount of the Dao_token to the Dao Treasury(Dao_tokens obtained through airdrops or token purchase...) ⇒ The subscription payment becomes the Member voting_power. 
 Approved projects are funded by the Dao Treasury.  

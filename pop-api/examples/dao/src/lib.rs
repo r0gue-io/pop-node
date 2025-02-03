@@ -45,16 +45,13 @@ mod dao {
 	#[ink::scale_derive(Encode, Decode, TypeInfo)]
 	#[cfg_attr(feature = "std", derive(ink::storage::traits::StorageLayout))]
 	pub struct Proposal {
-		// Description of the proposal
+		/// Description of the proposal
 		pub description: Vec<u8>,
-
-		// Flag that indicates if the proposal was Executed
+		/// Flag that indicates if the proposal was Executed
 		pub status: ProposalStatus,
-
-		// Identifier of the proposal
+		/// Identifier of the proposal
 		pub proposal_id: u32,
-
-		// Information relative to voting
+		/// Information related to voting
 		pub round: Option<VoteRound>,
 
 		// Information relative to proposal execution if approved
@@ -255,7 +252,7 @@ mod dao {
 			Ok(())
 		}
 
-		/// Allows Dao's members to vote for a proposal
+		/// Vote on a proposal. Only members can vote.
 		///
 		/// # Parameters
 		/// - `proposal_id` - Identifier of the proposal
