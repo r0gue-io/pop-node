@@ -43,7 +43,7 @@ pub type CollatorSelectionUpdateOrigin = EnsureRoot<AccountId>;
 
 impl pallet_collator_selection::Config for Runtime {
 	type Currency = Balances;
-	// should be a multiple of session or things will get inconsistent
+	// Should be a multiple of session or things will get inconsistent.
 	type KickThreshold = Period;
 	type MaxCandidates = ConstU32<0>;
 	type MaxInvulnerables = ConstU32<20>;
@@ -63,12 +63,11 @@ impl pallet_session::Config for Runtime {
 	type Keys = SessionKeys;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
-	// Essentially just Aura, but let's be pedantic.
+	// `impl_opaque_keys!` resolves `KeyTypeIdProviders` to use Aura.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type SessionManager = CollatorSelection;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = AccountId;
-	// we don't have stash and controller, thus we don't need the convert as well.
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
 }
