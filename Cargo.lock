@@ -13628,6 +13628,7 @@ dependencies = [
  "frame-support 39.0.0",
  "frame-system 39.0.0",
  "log",
+ "pallet-api",
  "pallet-assets 41.0.0",
  "pallet-balances 40.0.0",
  "pallet-contracts",
