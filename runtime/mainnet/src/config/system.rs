@@ -6,12 +6,18 @@ use pop_runtime_common::{
 };
 use sp_runtime::traits::AccountIdLookup;
 
+// Allowing `unsued_imports` here because `Executive` is being used in the
+// `register_validate_block` macro but yet the compiler warns about it not being used.
+// Duplicating the crate import to reduce the amount of imports that could pass unnoticed
+// because of this.
+#[allow(unused_imports)]
+use crate::Executive;
 use crate::{
 	parameter_types,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 	AccountId, AggregateMessageOrigin, Aura, Balance, BlakeTwo256, Block, BlockLength,
-	BlockWeights, DispatchClass, Everything, Executive, Hash, MessageQueue, PalletInfo, Runtime,
-	RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue,
+	BlockWeights, DispatchClass, Everything, Hash, MessageQueue, PalletInfo, Runtime, RuntimeCall,
+	RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue,
 	BLOCK_PROCESSING_VELOCITY, RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY,
 	VERSION,
 };
