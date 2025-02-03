@@ -7,7 +7,6 @@ extern crate alloc;
 use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	traits::{nonfungibles_v2::Inspect, Currency},
-	weights::Weight,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
@@ -24,6 +23,7 @@ pub(crate) use weights::WeightInfo;
 mod benchmarking;
 #[cfg(test)]
 mod tests;
+/// Weights for non-fungibles dispatchables.
 pub mod weights;
 
 type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
@@ -173,7 +173,12 @@ pub mod pallet {
 		/// - `deadline`: The optional deadline (in block numbers) specifying the time limit for the
 		///   approval, only required if `approved` is true.
 		#[pallet::call_index(4)]
-		#[pallet::weight(Weight::from_parts(200000000, 4326))]
+		#[pallet::weight(
+			NftsWeightInfoOf::<T>::approve_transfer()
+			.max(NftsWeightInfoOf::<T>::approve_collection_transfer())
+			.max(NftsWeightInfoOf::<T>::cancel_approval())
+			.max(NftsWeightInfoOf::<T>::cancel_collection_approval()))
+		]
 		pub fn approve(
 			origin: OriginFor<T>,
 			collection: CollectionIdOf<T>,
@@ -182,14 +187,13 @@ pub mod pallet {
 			approved: bool,
 			deadline: Option<BlockNumberFor<T>>,
 		) -> DispatchResultWithPostInfo {
-			let owner = ensure_signed(origin.clone())
-				.map_err(|e| e.with_weight(Weight::from_parts(0, 0)))?;
 			let operator_lookup = T::Lookup::unlookup(operator.clone());
 			let result = if approved {
-				Self::do_approve(origin, collection, item, operator_lookup, deadline)?
+				Self::do_approve(origin.clone(), collection, item, operator_lookup, deadline)?
 			} else {
-				Self::do_cancel_approval(origin, collection, item, operator_lookup)?
+				Self::do_cancel_approval(origin.clone(), collection, item, operator_lookup)?
 			};
+			let owner = ensure_signed(origin)?;
 			Self::deposit_event(Event::Approval { collection, item, operator, owner, approved });
 			Ok(result)
 		}

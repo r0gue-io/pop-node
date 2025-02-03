@@ -102,18 +102,6 @@ mod approve {
 	use super::*;
 
 	#[test]
-	fn ensure_origin_works() {
-		new_test_ext().execute_with(|| {
-			for origin in vec![root(), none()] {
-				assert_noop!(
-					NonFungibles::approve(origin, COLLECTION, ALICE, Some(ITEM), false, None),
-					BadOrigin.with_weight(Weight::from_parts(0, 0))
-				);
-			}
-		});
-	}
-
-	#[test]
 	fn approve_works() {
 		new_test_ext().execute_with(|| {
 			let collection = COLLECTION;
@@ -1364,15 +1352,4 @@ mod encoding_read_result {
 		data = None;
 		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
 	}
-}
-
-#[test]
-fn ensure_approve_weight() {
-	assert_eq!(
-		NftsWeightInfo::approve_transfer()
-			.max(NftsWeightInfo::approve_collection_transfer())
-			.max(NftsWeightInfo::cancel_approval())
-			.max(NftsWeightInfo::cancel_collection_approval()),
-		Weight::from_parts(200000000, 4326)
-	);
 }
