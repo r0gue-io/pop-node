@@ -8,6 +8,10 @@ use crate::{
 };
 
 /// The type used to represent the kinds of proxying allowed.
+// Mainnet will use this definition of ProxyType instead of the ones in
+// `pop-common` crates until `pallet-assets` is integrated in the runtime.
+// `ProxyType` in `pop-common` include Assets specific proxies which won't
+// make much sense in this runtime.
 #[derive(
 	Copy,
 	Clone,
