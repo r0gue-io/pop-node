@@ -39,7 +39,6 @@ use crate::{
 
 parameter_types! {
 	pub const RelayLocation: Location = Location::parent();
-	pub RelayAsset: AssetId = AssetId(Location::parent());
 	pub AssetHub: Location = Location::new(1, [Parachain(1000)]);
 	pub const RelayNetwork: Option<NetworkId> = Some(Polkadot);
 	pub RelayChainOrigin: RuntimeOrigin = cumulus_pallet_xcm::Origin::Relay.into();
@@ -264,7 +263,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	// note: https://github.com/polkadot-fellows/runtimes/blob/76d1fa680d00c3e447e40199e7b2250862ad4bfa/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L692C2-L693C90
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 	type PriceForSiblingDelivery =
-		ExponentialPrice<RelayAsset, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+		ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Runtime>;
@@ -1051,37 +1050,36 @@ mod tests {
 			);
 		}
 
-		#[test]
-		fn price_for_sibling_delivery() {
+	#[test]
+	fn price_for_sibling_delivery() {
+		assert_eq!(
+			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(),
+			TypeId::of::<
+				ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>,
+			>()
+		);
+
+		new_test_ext().execute_with(|| {
+			type ExponentialDeliveryPrice =
+				ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+			let id: ParaId = 420.into();
+			let b: u128 = BaseDeliveryFee::get();
+			let m: u128 = TransactionByteFee::get();
+
+			// F * (B + msg_length * M)
+			// A: RelayLocation
+			// B: BaseDeliveryFee
+			// M: TransactionByteFee
+			// F: XcmpQueue
+			//
+			// message_length = 1
+			let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
 			assert_eq!(
-				TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(
-				),
-				TypeId::of::<
-					ExponentialPrice<RelayAsset, BaseDeliveryFee, TransactionByteFee, XcmpQueue>,
-				>()
+				ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
+				(RelayLocation::get(), result).into()
 			);
-
-			new_test_ext().execute_with(|| {
-				type ExponentialDeliveryPrice =
-					ExponentialPrice<RelayAsset, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
-				let id: ParaId = 420.into();
-				let b: u128 = BaseDeliveryFee::get();
-				let m: u128 = TransactionByteFee::get();
-
-				// F * (B + msg_length * M)
-				// A: RelayAsset
-				// B: BaseDeliveryFee
-				// M: TransactionByteFee
-				// F: XcmpQueue
-				//
-				// message_length = 1
-				let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
-				assert_eq!(
-					ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
-					(RelayAsset::get(), result).into()
-				);
-			})
-		}
+		})
+	}
 
 		#[test]
 		fn versions_xcm() {
