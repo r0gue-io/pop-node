@@ -9,7 +9,7 @@ use crate::{
 
 /// The type used to represent the kinds of proxying allowed.
 // Mainnet will use this definition of ProxyType instead of the ones in
-// `pop-common` crates until `pallet-assets` is integrated in the runtime.
+// `pop-common` crates until `pallet-assets` is in runtime.
 // `ProxyType` in `pop-common` include Assets specific proxies which won't
 // make much sense in this runtime.
 #[derive(
@@ -87,8 +87,8 @@ parameter_types! {
 	pub const ProxyDepositBase: Balance = deposit(1, 40);
 	// Additional storage item size of AccountId 32 bytes + ProxyType 1 byte + BlockNum 4 bytes.
 	pub const ProxyDepositFactor: Balance = deposit(0, 37);
-	// One storage item; key size 32, value size 16.
-	pub const AnnouncementDepositBase: Balance = deposit(1, 48);
+	// One storage item; key size 32, value size 16 + hash size 8.
+	pub const AnnouncementDepositBase: Balance = deposit(1, 56);
 	// Additional storage item 32 bytes AccountId + 32 bytes Hash + 4 bytes BlockNum.
 	pub const AnnouncementDepositFactor: Balance = deposit(0, 68);
 }
@@ -112,9 +112,13 @@ impl pallet_proxy::Config for Runtime {
 mod tests {
 	use std::any::TypeId;
 
-	use frame_support::traits::Get;
+	use frame_support::{traits::Get, StorageHasher, Twox64Concat};
+	use pallet_proxy::Config;
+	use parachains_common::BlockNumber;
+	use sp_runtime::traits::Hash;
 
 	use super::*;
+	use crate::AccountId;
 
 	#[test]
 	fn proxy_type_default_is_any() {
@@ -149,74 +153,79 @@ mod tests {
 
 	#[test]
 	fn proxy_has_announcement_deposit_base() {
+		// AnnouncementDepositBase #bytes.
+		let base_bytes = Twox64Concat::max_len::<AccountId>() + Balance::max_encoded_len();
+		assert_eq!(base_bytes, 56);
+
 		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::AnnouncementDepositBase as Get<Balance>>::get(),
-			deposit(1, 48),
+			<<Runtime as Config>::AnnouncementDepositBase as Get<Balance>>::get(),
+			deposit(1, 56),
 		);
 	}
 	#[test]
 	fn proxy_has_announcement_deposit_factor() {
+		// AnnouncementDepositFactor #bytes.
+		let factor_bytes = AccountId::max_encoded_len() +
+			<<Runtime as Config>::CallHasher as Hash>::Output::max_encoded_len() +
+			BlockNumber::max_encoded_len();
+		assert_eq!(factor_bytes, 68);
+
 		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::AnnouncementDepositFactor as Get<Balance>>::get(),
+			<<Runtime as Config>::AnnouncementDepositFactor as Get<Balance>>::get(),
 			deposit(0, 68),
 		);
 	}
 
 	#[test]
 	fn proxy_uses_blaketwo256_as_hasher() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_proxy::Config>::CallHasher>(),
-			TypeId::of::<BlakeTwo256>(),
-		);
+		assert_eq!(TypeId::of::<<Runtime as Config>::CallHasher>(), TypeId::of::<BlakeTwo256>(),);
 	}
 
 	#[test]
 	fn proxy_uses_balances_as_currency() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_proxy::Config>::Currency>(),
-			TypeId::of::<Balances>(),
-		);
+		assert_eq!(TypeId::of::<<Runtime as Config>::Currency>(), TypeId::of::<Balances>(),);
 	}
 
 	#[test]
 	fn proxy_configures_max_pending() {
-		assert_eq!(<<Runtime as pallet_proxy::Config>::MaxPending>::get(), 32,);
+		assert_eq!(<<Runtime as Config>::MaxPending>::get(), 32,);
 	}
 
 	#[test]
 	fn proxy_configures_max_num_of_proxies() {
-		assert_eq!(<<Runtime as pallet_proxy::Config>::MaxProxies>::get(), 32,);
+		assert_eq!(<<Runtime as Config>::MaxProxies>::get(), 32,);
 	}
 
 	#[test]
 	fn proxy_has_deposit_base() {
-		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::ProxyDepositBase as Get<Balance>>::get(),
-			deposit(1, 40),
-		);
+		// ProxyDepositBase #bytes
+		let base_bytes = Twox64Concat::max_len::<AccountId>();
+		assert_eq!(base_bytes, 40);
+
+		assert_eq!(<<Runtime as Config>::ProxyDepositBase as Get<Balance>>::get(), deposit(1, 40),);
 	}
 
 	#[test]
 	fn proxy_has_deposit_factor() {
+		// ProxyDepositFactor #bytes
+		let factor_bytes = AccountId::max_encoded_len() +
+			ProxyType::max_encoded_len() +
+			BlockNumber::max_encoded_len();
+		assert_eq!(factor_bytes, 37);
+
 		assert_eq!(
-			<<Runtime as pallet_proxy::Config>::ProxyDepositFactor as Get<Balance>>::get(),
+			<<Runtime as Config>::ProxyDepositFactor as Get<Balance>>::get(),
 			deposit(0, 37),
 		);
 	}
 
 	#[test]
 	fn pallet_proxy_uses_proxy_type() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_proxy::Config>::ProxyType>(),
-			TypeId::of::<ProxyType>(),
-		);
+		assert_eq!(TypeId::of::<<Runtime as Config>::ProxyType>(), TypeId::of::<ProxyType>(),);
 	}
 
 	#[test]
 	fn proxy_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_proxy::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
+		assert_ne!(TypeId::of::<<Runtime as Config>::WeightInfo>(), TypeId::of::<()>(),);
 	}
 }
