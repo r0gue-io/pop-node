@@ -1,10 +1,10 @@
-//! The `nonfungibles` module provides an API for interacting and managing non-fungible tokens.
+//! The `nonfungibles` module provides an API for interacting and managing nonfungible tokens.
 //!
 //! The API includes the following interfaces:
 //! 1. PSP-34
 //! 2. PSP-34 Metadata
 //! 3. Management
-//! 4. PSP-34 Mintable & Burnable
+//! 4. PSP-22 Mintable & Burnable
 
 use constants::*;
 pub use errors::*;

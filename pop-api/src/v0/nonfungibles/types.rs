@@ -41,9 +41,6 @@ pub enum AttributeNamespace {
 	Account(AccountId),
 }
 
-/// Mint type. Can the NFT be create by anyone, or only the creator of the collection,
-/// or only by wallets that already hold an NFT from a certain collection?
-/// The ownership of a privately minted NFT is still publicly visible.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum MintType {
@@ -55,7 +52,6 @@ pub enum MintType {
 	HolderOf(CollectionId),
 }
 
-/// A witness data to cancel attributes approval operation.
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct CancelAttributesApprovalWitness {
