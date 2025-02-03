@@ -14,7 +14,6 @@ log.workspace = true
 
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
-pallet-api = { workspace = true, default-features = false }
 pallet-assets = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
@@ -24,7 +23,6 @@ sp-runtime = { workspace = true, default-features = false }
 
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
-	"nonfungibles",
 ] }
 pop-primitives = { workspace = true, default-features = false }
 pop-runtime-devnet.workspace = true
@@ -37,11 +35,9 @@ std = [
 	"codec/std",
 	"frame-support/std",
 	"frame-system/std",
-	"pallet-api/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-contracts/std",
-	"pallet-nfts/std",
 	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",

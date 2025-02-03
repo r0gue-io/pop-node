@@ -10,15 +10,12 @@ use frame_support::{
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 #[cfg(feature = "devnet")]
-use pop_runtime_devnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
 #[cfg(feature = "testnet")]
-use pop_runtime_testnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_testnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
-use utils::*;
 
 mod fungibles;
-mod nonfungibles;
-mod utils;
 
 type Balance = u128;
 
@@ -26,13 +23,9 @@ const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
 const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
 const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
-const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
+const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
-
-pub(crate) fn account(id: u8) -> AccountId32 {
-	AccountId32::new([id; 32])
-}
 
 fn new_test_ext() -> sp_io::TestExternalities {
 	let _ = env_logger::try_init();
