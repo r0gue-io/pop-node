@@ -33,21 +33,25 @@ mod nonfungibles {
 		}
 
 		/// 1. PSP-34 Interface:
-		/// - total_supply
 		/// - balance_of
-		/// - allowance
-		/// - transfer
-		/// - approve
 		/// - owner_of
-
-		#[ink(message)]
-		pub fn total_supply(&self, collection: CollectionId) -> Result<u128> {
-			api::total_supply(collection)
-		}
+		/// - allowance
+		/// - approve
+		/// - transfer
+		/// - total_supply
 
 		#[ink(message)]
 		pub fn balance_of(&self, collection: CollectionId, owner: AccountId) -> Result<u32> {
 			api::balance_of(collection, owner)
+		}
+
+		#[ink(message)]
+		pub fn owner_of(
+			&self,
+			collection: CollectionId,
+			item: ItemId,
+		) -> Result<Option<AccountId>> {
+			api::owner_of(collection, item)
 		}
 
 		#[ink(message)]
@@ -59,22 +63,6 @@ mod nonfungibles {
 			operator: AccountId,
 		) -> Result<bool> {
 			api::allowance(collection, owner, operator, item)
-		}
-
-		#[ink(message)]
-		pub fn transfer(
-			&mut self,
-			collection: CollectionId,
-			item: ItemId,
-			to: AccountId,
-		) -> Result<()> {
-			api::transfer(collection, to, item)?;
-			self.env().emit_event(Transfer {
-				from: Some(self.env().account_id()),
-				to: Some(to),
-				item,
-			});
-			Ok(())
 		}
 
 		#[ink(message)]
@@ -96,12 +84,24 @@ mod nonfungibles {
 		}
 
 		#[ink(message)]
-		pub fn owner_of(
-			&self,
+		pub fn transfer(
+			&mut self,
 			collection: CollectionId,
 			item: ItemId,
-		) -> Result<Option<AccountId>> {
-			api::owner_of(collection, item)
+			to: AccountId,
+		) -> Result<()> {
+			api::transfer(collection, to, item)?;
+			self.env().emit_event(Transfer {
+				from: Some(self.env().account_id()),
+				to: Some(to),
+				item,
+			});
+			Ok(())
+		}
+
+		#[ink(message)]
+		pub fn total_supply(&self, collection: CollectionId) -> Result<u128> {
+			api::total_supply(collection)
 		}
 
 		/// 2. PSP-34 Metadata Interface:
@@ -111,7 +111,7 @@ mod nonfungibles {
 		pub fn get_attribute(
 			&self,
 			collection: CollectionId,
-			item: ItemId,
+			item: Option<ItemId>,
 			namespace: AttributeNamespace,
 			key: Vec<u8>,
 		) -> Result<Option<Vec<u8>>> {
@@ -119,17 +119,39 @@ mod nonfungibles {
 		}
 
 		/// 3. Asset Management:
+		/// - collection
+		/// - next_collection_id
+		/// - item_metadata
 		/// - create
 		/// - destroy
-		/// - collection
 		/// - set_attribute
 		/// - clear_attribute
 		/// - set_metadata
 		/// - clear_metadata
+		/// - set_max_supply
 		/// - approve_item_attributes
 		/// - cancel_item_attributes_approval
-		/// - set_max_supply
-		/// - item_metadata
+		/// - clear_all_transfer_approvals
+		/// - clear_collection_approvals
+
+		#[ink(message)]
+		pub fn collection(&self, collection: CollectionId) -> Result<Option<CollectionDetails>> {
+			api::collection(collection)
+		}
+
+		#[ink(message)]
+		pub fn next_collection_id(&self) -> Result<CollectionId> {
+			api::next_collection_id()
+		}
+
+		#[ink(message)]
+		pub fn item_metadata(
+			&mut self,
+			collection: CollectionId,
+			item: ItemId,
+		) -> Result<Option<Vec<u8>>> {
+			api::item_metadata(collection, item)
+		}
 
 		#[ink(message)]
 		pub fn create(&mut self, admin: AccountId, config: CollectionConfig) -> Result<()> {
@@ -139,11 +161,6 @@ mod nonfungibles {
 		#[ink(message)]
 		pub fn destroy(&mut self, collection: CollectionId, witness: DestroyWitness) -> Result<()> {
 			api::destroy(collection, witness)
-		}
-
-		#[ink(message)]
-		pub fn collection(&self, collection: CollectionId) -> Result<Option<CollectionDetails>> {
-			api::collection(collection)
 		}
 
 		#[ink(message)]
@@ -187,6 +204,11 @@ mod nonfungibles {
 		}
 
 		#[ink(message)]
+		pub fn set_max_supply(&mut self, collection: CollectionId, max_supply: u32) -> Result<()> {
+			api::set_max_supply(collection, max_supply)
+		}
+
+		#[ink(message)]
 		pub fn approve_item_attributes(
 			&mut self,
 			collection: CollectionId,
@@ -208,17 +230,21 @@ mod nonfungibles {
 		}
 
 		#[ink(message)]
-		pub fn set_max_supply(&mut self, collection: CollectionId, max_supply: u32) -> Result<()> {
-			api::set_max_supply(collection, max_supply)
-		}
-
-		#[ink(message)]
-		pub fn item_metadata(
+		pub fn clear_all_transfer_approvals(
 			&mut self,
 			collection: CollectionId,
 			item: ItemId,
-		) -> Result<Option<Vec<u8>>> {
-			api::item_metadata(collection, item)
+		) -> Result<()> {
+			api::clear_all_transfer_approvals(collection, item)
+		}
+
+		#[ink(message)]
+		pub fn clear_collection_approvals(
+			&mut self,
+			collection: CollectionId,
+			limit: u32,
+		) -> Result<()> {
+			api::clear_collection_approvals(collection, limit)
 		}
 
 		/// 4. PSP-22 Mintable & Burnable Interface:
@@ -231,7 +257,7 @@ mod nonfungibles {
 			to: AccountId,
 			collection: CollectionId,
 			item: ItemId,
-			witness: MintWitness,
+			witness: Option<MintWitness>,
 		) -> Result<()> {
 			api::mint(to, collection, item, witness)
 		}
