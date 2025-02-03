@@ -22,6 +22,7 @@ pub(super) fn account_id_from_slice(s: &[u8; 32]) -> pop_api::primitives::Accoun
 	pop_api::primitives::AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
 }
 
+// TODO - issue #263 - why result.data[1..]
 pub(super) fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) -> ExecReturnValue {
 	let function = function_selector(function);
 	let params = [function, params].concat();

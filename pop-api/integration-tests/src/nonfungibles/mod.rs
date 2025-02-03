@@ -19,8 +19,8 @@ use super::*;
 mod utils;
 
 type Attribute = AttributeOf<Runtime>;
-type AttributeValue = AttributeValueOf<Runtime>;
 type AttributeKey = AttributeKeyOf<Runtime>;
+type AttributeValue = AttributeValueOf<Runtime>;
 type CollectionDetails = CollectionDetailsOf<Runtime>;
 type Metadata = MetadataOf<Runtime>;
 
@@ -249,7 +249,7 @@ fn collection_works() {
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-		assert_eq!(next_collection_id(&addr), Ok(Some(COLLECTION)));
+		assert_eq!(next_collection_id(&addr), Ok(COLLECTION + 1));
 	});
 }
 
@@ -342,7 +342,13 @@ fn set_attribute_works() {
 			attribute_key.clone(),
 			attribute_value.clone()
 		));
-
+		let expected = AttributeSet {
+			item: Some(item),
+			key: attribute_key.clone(),
+			data: attribute_value.clone(),
+		}
+		.encode();
+		assert_eq!(last_contract_event(), expected.as_slice());
 		assert_eq!(
 			Attribute::get((
 				collection,

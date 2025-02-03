@@ -1,16 +1,5 @@
 use super::*;
 
-fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) -> ExecReturnValue {
-	let function = function_selector(function);
-	let params = [function, params].concat();
-	bare_call(addr.clone(), params, 0).expect("should work")
-}
-
-// TODO - issue #263 - why result.data[1..]
-pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecReturnValue> {
-	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
-}
-
 pub(super) fn total_supply(addr: &AccountId32, token_id: TokenId) -> Result<Balance, Error> {
 	let result = do_bare_call("total_supply", addr, token_id.encode());
 	decoded::<Result<Balance, Error>>(result.clone())
