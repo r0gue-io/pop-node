@@ -8,7 +8,7 @@ use crate::{
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
-/// APIs for nonfungible tokens.
+/// APIs for non-fungible tokens.
 #[cfg(feature = "nonfungibles")]
 pub mod nonfungibles;
 
