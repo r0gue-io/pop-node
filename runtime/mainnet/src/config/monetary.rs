@@ -165,281 +165,300 @@ mod tests {
 		ext
 	}
 
-	#[test]
-	fn deposit_works() {
-		const UNITS: Balance = 10_000_000_000;
-		const CENTS: Balance = UNIT / 100; // 100_000_000
-		const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
+	mod deposit_and_fees {
+		use super::*;
 
-		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
-		fn relay_deposit(items: u32, bytes: u32) -> Balance {
-			items as Balance * 20 * UNIT + (bytes as Balance) * 100 * MILLI_CENTS
+		#[test]
+		fn deposit_works() {
+			const UNITS: Balance = 10_000_000_000;
+			const CENTS: Balance = UNIT / 100; // 100_000_000
+			const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
+
+			// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
+			fn relay_deposit(items: u32, bytes: u32) -> Balance {
+				items as Balance * 20 * UNIT + (bytes as Balance) * 100 * MILLI_CENTS
+			}
+
+			// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70
+			fn system_para_deposit(items: u32, bytes: u32) -> Balance {
+				relay_deposit(items, bytes) / 100
+			}
+
+			assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
 		}
 
-		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70
-		fn system_para_deposit(items: u32, bytes: u32) -> Balance {
-			relay_deposit(items, bytes) / 100
+		#[test]
+		fn units_are_correct() {
+			// UNIT should have 10 decimals
+			assert_eq!(UNIT, 10_000_000_000);
+			assert_eq!(MILLI_UNIT, 10_000_000);
+			assert_eq!(MICRO_UNIT, 10_000);
+
+			// fee specific units
+			assert_eq!(fee::CENTS, 100_000_000);
+			assert_eq!(fee::MILLI_CENTS, 100_000);
 		}
 
-		assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
-	}
+		#[test]
+		fn transaction_byte_fee_is_correct() {
+			assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
+		}
 
-	#[test]
-	fn units_are_correct() {
-		// UNIT should have 10 decimals
-		assert_eq!(UNIT, 10_000_000_000);
-		assert_eq!(MILLI_UNIT, 10_000_000);
-		assert_eq!(MICRO_UNIT, 10_000);
-
-		// fee specific units
-		assert_eq!(fee::CENTS, 100_000_000);
-		assert_eq!(fee::MILLI_CENTS, 100_000);
-	}
-
-	#[test]
-	fn transaction_byte_fee_is_correct() {
-		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
-	}
-
-	#[test]
-	fn balances_stores_account_balances_in_system() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::AccountStore>(),
-			TypeId::of::<System>(),
-		);
-	}
-
-	#[test]
-	fn balances_uses_u128_balance() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::Balance>(),
-			TypeId::of::<u128>(),
-		);
-	}
-
-	#[test]
-	fn balances_done_slash_handler_does_not_have_callbacks() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::DoneSlashHandler>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn balances_dust_removal_handler_resolves_to_treasury_account() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::DustRemoval>(),
-			TypeId::of::<ResolveTo<TreasuryAccount, Balances>>(),
-		);
-
-		new_test_ext().execute_with(|| {
-			let existential_deposit =
-				<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
-			let who = AccountId::from([1u8; 32]);
-			let beneficiary = AccountId::from([2u8; 32]);
-			let call = RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
-				dest: sp_runtime::MultiAddress::Id(beneficiary),
-				value: UNIT + (existential_deposit / 2),
-			});
-			Balances::set_balance(&who, existential_deposit + UNIT);
-			Balances::set_balance(&TreasuryAccount::get(), existential_deposit);
-
-			// `who`'s balance goes under ED.
-			assert_ok!(call.dispatch(RuntimeOrigin::signed(who.clone())));
-			// `who` has been dusted.
-			assert_eq!(Balances::free_balance(&who), 0);
-			System::assert_has_event(RuntimeEvent::Balances(pallet_balances::Event::DustLost {
-				account: who,
-				amount: existential_deposit / 2,
-			}));
-			// Treasury balance equals its initial balance + the dusted amount from `who`.
+		#[test]
+		fn balances_stores_account_balances_in_system() {
 			assert_eq!(
-				Balances::free_balance(&TreasuryAccount::get()),
-				existential_deposit + existential_deposit / 2
+				TypeId::of::<<Runtime as pallet_balances::Config>::AccountStore>(),
+				TypeId::of::<System>(),
 			);
-		})
+		}
 	}
 
-	#[test]
-	fn balances_requires_existential_deposit() {
-		// Verify type definition.
-		assert_eq!(ExistentialDeposit::get(), EXISTENTIAL_DEPOSIT * 100);
-		assert_eq!(ExistentialDeposit::get(), 1_000_000_000);
-		// Verify pallet configuration.
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::ExistentialDeposit>(),
-			TypeId::of::<ExistentialDeposit>()
-		);
+	mod balances {
+		use super::*;
+
+		#[test]
+		fn balances_uses_u128_balance() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::Balance>(),
+				TypeId::of::<u128>(),
+			);
+		}
+
+		#[test]
+		fn balances_done_slash_handler_does_not_have_callbacks() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::DoneSlashHandler>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn balances_dust_removal_handler_resolves_to_treasury_account() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::DustRemoval>(),
+				TypeId::of::<ResolveTo<TreasuryAccount, Balances>>(),
+			);
+
+			new_test_ext().execute_with(|| {
+				let existential_deposit =
+					<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
+				let who = AccountId::from([1u8; 32]);
+				let beneficiary = AccountId::from([2u8; 32]);
+				let call = RuntimeCall::Balances(pallet_balances::Call::transfer_allow_death {
+					dest: sp_runtime::MultiAddress::Id(beneficiary),
+					value: UNIT + (existential_deposit / 2),
+				});
+				Balances::set_balance(&who, existential_deposit + UNIT);
+				Balances::set_balance(&TreasuryAccount::get(), existential_deposit);
+
+				// `who`'s balance goes under ED.
+				assert_ok!(call.dispatch(RuntimeOrigin::signed(who.clone())));
+				// `who` has been dusted.
+				assert_eq!(Balances::free_balance(&who), 0);
+				System::assert_has_event(RuntimeEvent::Balances(
+					pallet_balances::Event::DustLost {
+						account: who,
+						amount: existential_deposit / 2,
+					},
+				));
+				// Treasury balance equals its initial balance + the dusted amount from `who`.
+				assert_eq!(
+					Balances::free_balance(&TreasuryAccount::get()),
+					existential_deposit + existential_deposit / 2
+				);
+			})
+		}
+
+		#[test]
+		fn balances_requires_existential_deposit() {
+			// Verify type definition.
+			assert_eq!(ExistentialDeposit::get(), EXISTENTIAL_DEPOSIT * 100);
+			assert_eq!(ExistentialDeposit::get(), 1_000_000_000);
+			// Verify pallet configuration.
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::ExistentialDeposit>(),
+				TypeId::of::<ExistentialDeposit>()
+			);
+		}
+
+		#[test]
+		fn balances_freeze_identifier_uses_runtime_freeze_reason() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::FreezeIdentifier>(),
+				TypeId::of::<RuntimeFreezeReason>(),
+			);
+		}
+
+		#[test]
+		fn balances_max_freezes_uses_runtime_freeze_reason() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::MaxFreezes>(),
+				TypeId::of::<VariantCountOf<RuntimeFreezeReason>>(),
+			);
+		}
+
+		#[test]
+		fn balances_max_locks_disabled() {
+			// Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
+			assert_eq!(<<Runtime as pallet_balances::Config>::MaxLocks as Get<u32>>::get(), 0);
+		}
+
+		#[test]
+		fn balances_max_reserves_disabled() {
+			// Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+			assert_eq!(<<Runtime as pallet_balances::Config>::MaxReserves as Get<u32>>::get(), 0);
+		}
+
+		#[test]
+		fn balances_reserve_identifier_disabled() {
+			// Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::ReserveIdentifier>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn balances_uses_runtime_freeze_reason() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::RuntimeFreezeReason>(),
+				TypeId::of::<RuntimeFreezeReason>(),
+			);
+		}
+
+		#[test]
+		fn balances_uses_runtime_hold_reason() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::RuntimeHoldReason>(),
+				TypeId::of::<RuntimeHoldReason>(),
+			);
+		}
+
+		#[test]
+		fn balances_does_not_use_default_weights() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_balances::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
 	}
 
-	#[test]
-	fn balances_freeze_identifier_uses_runtime_freeze_reason() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::FreezeIdentifier>(),
-			TypeId::of::<RuntimeFreezeReason>(),
-		);
-	}
+	mod transaction_payment {
+		use super::*;
 
-	#[test]
-	fn balances_max_freezes_uses_runtime_freeze_reason() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::MaxFreezes>(),
-			TypeId::of::<VariantCountOf<RuntimeFreezeReason>>(),
-		);
-	}
+		#[test]
+		fn transaction_payment_uses_slow_adjusting_fee_multiplier() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::FeeMultiplierUpdate>(
+				),
+				TypeId::of::<SlowAdjustingFeeUpdate<Runtime>>(),
+			);
+		}
 
-	#[test]
-	fn balances_max_locks_disabled() {
-		// Use of locks is deprecated in favour of freezes. See `https://github.com/paritytech/substrate/pull/12951/`
-		assert_eq!(<<Runtime as pallet_balances::Config>::MaxLocks as Get<u32>>::get(), 0);
-	}
+		#[test]
+		fn transaction_payment_uses_constant_length_to_fee_multiplier() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::LengthToFee>(),
+				TypeId::of::<ConstantMultiplier<Balance, TransactionByteFee>>(),
+			);
+		}
 
-	#[test]
-	fn balances_max_reserves_disabled() {
-		// Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
-		assert_eq!(<<Runtime as pallet_balances::Config>::MaxReserves as Get<u32>>::get(), 0);
-	}
+		#[test]
+		fn transaction_payment_charges_fees_via_balances_and_funds_treasury() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(
+				),
+				TypeId::of::<
+					pallet_transaction_payment::FungibleAdapter<
+						Balances,
+						ResolveTo<TreasuryAccount, Balances>,
+					>,
+				>(),
+			);
 
-	#[test]
-	fn balances_reserve_identifier_disabled() {
-		// Use of reserves is deprecated in favour of holds. See `https://github.com/paritytech/substrate/pull/12951/`
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::ReserveIdentifier>(),
-			TypeId::of::<()>(),
-		);
-	}
+			new_test_ext().execute_with(|| {
+				let who = AccountId::from([1u8; 32]);
+				let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
+				let fee = UNIT / 10;
+				let tip = UNIT / 2;
+				let fee_plus_tip = fee + tip;
+				let tsry_balance = Balances::free_balance(&TreasuryAccount::get());
+				let dispatch_info = call.get_dispatch_info();
+				let existential_deposit =
+					<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
 
-	#[test]
-	fn balances_uses_runtime_freeze_reason() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::RuntimeFreezeReason>(),
-			TypeId::of::<RuntimeFreezeReason>(),
-		);
-	}
-
-	#[test]
-	fn balances_uses_runtime_hold_reason() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::RuntimeHoldReason>(),
-			TypeId::of::<RuntimeHoldReason>(),
-		);
-	}
-
-	#[test]
-	fn balances_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_balances::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn transaction_payment_uses_slow_adjusting_fee_multiplier() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::FeeMultiplierUpdate>(),
-			TypeId::of::<SlowAdjustingFeeUpdate<Runtime>>(),
-		);
-	}
-
-	#[test]
-	fn transaction_payment_uses_constant_length_to_fee_multiplier() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::LengthToFee>(),
-			TypeId::of::<ConstantMultiplier<Balance, TransactionByteFee>>(),
-		);
-	}
-
-	#[test]
-	fn transaction_payment_charges_fees_via_balances_and_funds_treasury() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(),
-			TypeId::of::<
-				pallet_transaction_payment::FungibleAdapter<
-					Balances,
-					ResolveTo<TreasuryAccount, Balances>,
-				>,
-			>(),
-		);
-
-		new_test_ext().execute_with(|| {
-			let who = AccountId::from([1u8; 32]);
-			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
-			let fee = UNIT / 10;
-			let tip = UNIT / 2;
-			let fee_plus_tip = fee + tip;
-			let tsry_balance = Balances::free_balance(&TreasuryAccount::get());
-			let dispatch_info = call.get_dispatch_info();
-			let existential_deposit =
-				<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
-
-			// NOTE: OnChargeTransaction functions expect tip to be included within fee
-			Balances::set_balance(&who, fee + tip + existential_deposit);
-			let liquidity_info =
-				<OnChargeTransaction as OnChargeTransactionT<Runtime>>::withdraw_fee(
+				// NOTE: OnChargeTransaction functions expect tip to be included within fee
+				Balances::set_balance(&who, fee + tip + existential_deposit);
+				let liquidity_info =
+					<OnChargeTransaction as OnChargeTransactionT<Runtime>>::withdraw_fee(
+						&who,
+						&call,
+						&dispatch_info,
+						fee_plus_tip,
+						0,
+					)
+					.unwrap();
+				<OnChargeTransaction as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
 					&who,
-					&call,
 					&dispatch_info,
+					&call.dispatch(RuntimeOrigin::signed(who.clone())).unwrap(),
 					fee_plus_tip,
 					0,
+					liquidity_info,
 				)
 				.unwrap();
-			<OnChargeTransaction as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
-				&who,
-				&dispatch_info,
-				&call.dispatch(RuntimeOrigin::signed(who.clone())).unwrap(),
-				fee_plus_tip,
-				0,
-				liquidity_info,
-			)
-			.unwrap();
 
-			assert_eq!(Balances::free_balance(&TreasuryAccount::get()), tsry_balance + fee + tip);
-			assert_eq!(Balances::free_balance(&who), existential_deposit);
-		})
-	}
+				assert_eq!(
+					Balances::free_balance(&TreasuryAccount::get()),
+					tsry_balance + fee + tip
+				);
+				assert_eq!(Balances::free_balance(&who), existential_deposit);
+			})
+		}
 
-	#[test]
-	fn transaction_payment_uses_5x_operational_fee_multiplier() {
-		assert_eq!(
-			<<Runtime as pallet_transaction_payment::Config>::OperationalFeeMultiplier as Get<
-				u8,
-			>>::get(),
-			5
-		);
-	}
-
-	#[test]
-	fn transaction_payment_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	fn transaction_payment_uses_weight_to_fee_conversion() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightToFee>(),
-			TypeId::of::<fee::WeightToFee>(),
-		);
-	}
-
-	#[test]
-	fn transaction_payment_weight_to_fee_as_expected() {
-		let arb_weight = Weight::from_parts(126_142_001, 123_456);
-		let no_proof_size_weight = Weight::from_parts(126_142_001, 0);
-		let weights: [Weight; 4] = [
-			Weight::zero(),
-			<ExtrinsicBaseWeight as Get<Weight>>::get(),
-			arb_weight,
-			no_proof_size_weight,
-		];
-		let fees: [u128; 4] = [0, 500_000, 617_280_000, 583_143];
-		for (w, f) in weights.iter().zip(fees.iter()) {
+		#[test]
+		fn transaction_payment_uses_5x_operational_fee_multiplier() {
 			assert_eq!(
-				<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(w),
-				*f
+				<<Runtime as pallet_transaction_payment::Config>::OperationalFeeMultiplier as Get<
+					u8,
+				>>::get(),
+				5
 			);
+		}
+
+		#[test]
+		fn transaction_payment_does_not_use_default_weights() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn transaction_payment_uses_weight_to_fee_conversion() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::WeightToFee>(),
+				TypeId::of::<fee::WeightToFee>(),
+			);
+		}
+
+		#[test]
+		fn transaction_payment_weight_to_fee_as_expected() {
+			let arb_weight = Weight::from_parts(126_142_001, 123_456);
+			let no_proof_size_weight = Weight::from_parts(126_142_001, 0);
+			let weights: [Weight; 4] = [
+				Weight::zero(),
+				<ExtrinsicBaseWeight as Get<Weight>>::get(),
+				arb_weight,
+				no_proof_size_weight,
+			];
+			let fees: [u128; 4] = [0, 500_000, 617_280_000, 583_143];
+			for (w, f) in weights.iter().zip(fees.iter()) {
+				assert_eq!(
+					<Runtime as pallet_transaction_payment::Config>::WeightToFee::weight_to_fee(w),
+					*f
+				);
+			}
 		}
 	}
 }
