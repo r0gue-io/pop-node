@@ -31,9 +31,8 @@ pub mod fee {
 	pub const CENTS: Balance = UNIT / 100; // 100_000_000
 	pub const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
 
-	/// Cost of every transaction byte at Polkadot system parachains.
-	///
-	/// It is the Relay Chain (Polkadot) `TransactionByteFee` / 20.
+	/// Cost of every transaction byte.
+	// It is the Relay Chain (Polkadot) `TransactionByteFee` / 20.
 	pub const TRANSACTION_BYTE_FEE: Balance = MILLI_CENTS / 2;
 
 	/// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
@@ -125,7 +124,7 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	/// Relay Chain `TransactionByteFee` / 10
+	/// Relay Chain `TransactionByteFee` / 20.
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
 }
 
