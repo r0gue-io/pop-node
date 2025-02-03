@@ -22,11 +22,11 @@ pub mod fee {
 			WeightToFeeCoefficients, WeightToFeePolynomial,
 		},
 	};
-	use pop_runtime_common::{Balance, MILLI_UNIT};
+	use pop_runtime_common::{Balance, UNIT};
 	use smallvec::smallvec;
 	pub use sp_runtime::Perbill;
 
-	pub const CENTS: Balance = MILLI_UNIT * 10; // 100_000_000
+	pub const CENTS: Balance = UNIT / 100; // 100_000_000
 	pub const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
 
 	/// Cost of every transaction byte at Polkadot system parachains.
@@ -98,7 +98,7 @@ pub mod fee {
 }
 
 parameter_types! {
-	// increase ED 100 times to match system chains: 1_000_000_000
+	// Increase ED 100 times to match system chains: 1_000_000_000.
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
 	pub TreasuryAccount: AccountId = PalletId(*b"treasury").into_account_truncating();
 }
@@ -167,13 +167,12 @@ mod tests {
 	#[test]
 	fn deposit_works() {
 		const UNITS: Balance = 10_000_000_000;
-		const DOLLARS: Balance = UNITS; // 10_000_000_000
-		const CENTS: Balance = DOLLARS / 100; // 100_000_000
+		const CENTS: Balance = UNIT / 100; // 100_000_000
 		const MILLI_CENTS: Balance = CENTS / 1_000; // 100_000
 
 		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
 		fn relay_deposit(items: u32, bytes: u32) -> Balance {
-			items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLI_CENTS
+			items as Balance * 20 * UNIT + (bytes as Balance) * 100 * MILLI_CENTS
 		}
 
 		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70
@@ -262,8 +261,14 @@ mod tests {
 
 	#[test]
 	fn balances_requires_existential_deposit() {
+		// Verify type definition.
 		assert_eq!(ExistentialDeposit::get(), EXISTENTIAL_DEPOSIT * 100);
 		assert_eq!(ExistentialDeposit::get(), 1_000_000_000);
+		// Verify pallet configuration.
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_balances::Config>::ExistentialDeposit>(),
+			TypeId::of::<ExistentialDeposit>()
+		);
 	}
 
 	#[test]
