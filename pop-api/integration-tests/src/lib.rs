@@ -1,8 +1,8 @@
 #![cfg(test)]
 
-use codec::{Decode, Encode};
 use frame_support::{
 	assert_ok,
+	pallet_prelude::{Decode, Encode},
 	traits::fungibles::{
 		approvals::Inspect as _, metadata::Inspect as _, roles::Inspect as _, Inspect,
 	},

@@ -13631,6 +13631,7 @@ dependencies = [
  "pallet-assets 41.0.0",
  "pallet-balances 40.0.0",
  "pallet-contracts",
+ "pallet-nfts 31.0.0",
  "parity-scale-codec",
  "pop-api",
  "pop-primitives",
