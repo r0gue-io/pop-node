@@ -32,7 +32,6 @@ use core::marker::PhantomData;
 
 /// Weight functions needed for `nonfungibles`.
 pub trait WeightInfo {
-	fn approve(a: u32, c: u32, ) -> Weight;
 	fn total_supply() -> Weight;
 	fn balance_of() -> Weight;
 	fn allowance() -> Weight;
@@ -46,31 +45,6 @@ pub trait WeightInfo {
 /// Weights for `nonfungibles` using the Substrate node and recommended hardware.
 pub struct SubstrateWeight<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
-	/// Storage: `Nfts::Item` (r:1 w:1)
-	/// Proof: `Nfts::Item` (`max_values`: None, `max_size`: Some(861), added: 3336, mode: `MaxEncodedLen`)
-	/// Storage: `Nfts::CollectionConfigOf` (r:1 w:0)
-	/// Proof: `Nfts::CollectionConfigOf` (`max_values`: None, `max_size`: Some(73), added: 2548, mode: `MaxEncodedLen`)
-	/// Storage: `Nfts::AccountBalance` (r:1 w:0)
-	/// Proof: `Nfts::AccountBalance` (`max_values`: None, `max_size`: Some(120), added: 2595, mode: `MaxEncodedLen`)
-	/// Storage: `Nfts::CollectionApprovals` (r:1 w:1)
-	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:1)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	/// The range of component `a` is `[0, 1]`.
-	/// The range of component `c` is `[0, 1]`.
-	fn approve(a: u32, c: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `606`
-		//  Estimated: `68341938741594600 + a * (3168 ±44_956_152_011_428) + c * (2663 ±729_819_634_434_010)`
-		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(28_496_938, 68341938741594600)
-			// Standard Error: 134_903
-			.saturating_add(Weight::from_parts(66_326, 0).saturating_mul(a.into()))
-			.saturating_add(T::DbWeight::get().reads(4_u64))
-			.saturating_add(T::DbWeight::get().writes(2_u64))
-			.saturating_add(Weight::from_parts(0, 3168).saturating_mul(a.into()))
-			.saturating_add(Weight::from_parts(0, 2663).saturating_mul(c.into()))
-	}
 	/// Storage: `Nfts::Collection` (r:1 w:0)
 	/// Proof: `Nfts::Collection` (`max_values`: None, `max_size`: Some(84), added: 2559, mode: `MaxEncodedLen`)
 	fn total_supply() -> Weight {
@@ -157,31 +131,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 
 // For backwards compatibility and tests.
 impl WeightInfo for () {
-	/// Storage: `Nfts::Item` (r:1 w:1)
-	/// Proof: `Nfts::Item` (`max_values`: None, `max_size`: Some(861), added: 3336, mode: `MaxEncodedLen`)
-	/// Storage: `Nfts::CollectionConfigOf` (r:1 w:0)
-	/// Proof: `Nfts::CollectionConfigOf` (`max_values`: None, `max_size`: Some(73), added: 2548, mode: `MaxEncodedLen`)
-	/// Storage: `Nfts::AccountBalance` (r:1 w:0)
-	/// Proof: `Nfts::AccountBalance` (`max_values`: None, `max_size`: Some(120), added: 2595, mode: `MaxEncodedLen`)
-	/// Storage: `Nfts::CollectionApprovals` (r:1 w:1)
-	/// Proof: `Nfts::CollectionApprovals` (`max_values`: None, `max_size`: Some(137), added: 2612, mode: `MaxEncodedLen`)
-	/// Storage: `System::Account` (r:1 w:1)
-	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	/// The range of component `a` is `[0, 1]`.
-	/// The range of component `c` is `[0, 1]`.
-	fn approve(a: u32, c: u32, ) -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `606`
-		//  Estimated: `68341938741594600 + a * (3168 ±44_956_152_011_428) + c * (2663 ±729_819_634_434_010)`
-		// Minimum execution time: 14_000_000 picoseconds.
-		Weight::from_parts(28_496_938, 68341938741594600)
-			// Standard Error: 134_903
-			.saturating_add(Weight::from_parts(66_326, 0).saturating_mul(a.into()))
-			.saturating_add(RocksDbWeight::get().reads(4_u64))
-			.saturating_add(RocksDbWeight::get().writes(2_u64))
-			.saturating_add(Weight::from_parts(0, 3168).saturating_mul(a.into()))
-			.saturating_add(Weight::from_parts(0, 2663).saturating_mul(c.into()))
-	}
 	/// Storage: `Nfts::Collection` (r:1 w:0)
 	/// Proof: `Nfts::Collection` (`max_values`: None, `max_size`: Some(84), added: 2559, mode: `MaxEncodedLen`)
 	fn total_supply() -> Weight {
