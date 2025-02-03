@@ -30,6 +30,10 @@ const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
 
+pub(crate) fn account(id: u8) -> AccountId32 {
+	AccountId32::new([id; 32])
+}
+
 fn new_test_ext() -> sp_io::TestExternalities {
 	let _ = env_logger::try_init();
 

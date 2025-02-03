@@ -3,8 +3,8 @@
 //! The API includes the following interfaces:
 //! 1. PSP-34
 //! 2. PSP-34 Metadata
-//! 3. PSP-22 Mintable & Burnable
-//! 4. Management
+//! 3. Management
+//! 4. PSP-22 Mintable & Burnable
 
 use constants::*;
 pub use errors::*;
@@ -91,38 +91,15 @@ pub fn total_supply(collection: CollectionId) -> Result<u128> {
 #[inline]
 pub fn get_attribute(
 	collection: CollectionId,
-	item: ItemId,
+	item: Option<ItemId>,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
 ) -> Result<Option<Vec<u8>>> {
 	build_read_state(GET_ATTRIBUTE)
-		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>)>()
+		.input::<(CollectionId, Option<ItemId>, AttributeNamespace, Vec<u8>)>()
 		.output::<Result<Option<Vec<u8>>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection, item, namespace, key))
-}
-
-#[inline]
-pub fn mint(
-	to: AccountId,
-	collection: CollectionId,
-	item: ItemId,
-	witness: MintWitness,
-) -> Result<()> {
-	build_dispatch(MINT)
-		.input::<(AccountId, CollectionId, ItemId, MintWitness)>()
-		.output::<Result<()>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(to, collection, item, witness))
-}
-
-#[inline]
-pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {
-	build_dispatch(BURN)
-		.input::<(CollectionId, ItemId)>()
-		.output::<Result<()>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(collection, item))
 }
 
 #[inline]
@@ -271,6 +248,29 @@ pub fn clear_collection_approvals(collection: CollectionId, limit: u32) -> Resul
 		.call(&(collection, limit))
 }
 
+#[inline]
+pub fn mint(
+	to: AccountId,
+	collection: CollectionId,
+	item: ItemId,
+	witness: Option<MintWitness>,
+) -> Result<()> {
+	build_dispatch(MINT)
+		.input::<(AccountId, CollectionId, ItemId, Option<MintWitness>)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(to, collection, item, witness))
+}
+
+#[inline]
+pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {
+	build_dispatch(BURN)
+		.input::<(CollectionId, ItemId)>()
+		.output::<Result<()>, true>()
+		.handle_error_code::<StatusCode>()
+		.call(&(collection, item))
+}
+
 mod constants {
 	/// 1. PSP-34
 	pub(super) const BALANCE_OF: u8 = 0;
@@ -283,11 +283,7 @@ mod constants {
 	/// 2. PSP-34 Metadata
 	pub(super) const GET_ATTRIBUTE: u8 = 6;
 
-	/// 3. PSP-34 Mintable & Burnable
-	pub(super) const MINT: u8 = 7;
-	pub(super) const BURN: u8 = 8;
-
-	/// 4. Management
+	/// 3. Management
 	pub(super) const COLLECTION: u8 = 9;
 	pub(super) const NEXT_COLLECTION_ID: u8 = 10;
 	pub(super) const ITEM_METADATA: u8 = 11;
@@ -302,6 +298,10 @@ mod constants {
 	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 20;
 	pub(super) const CLEAR_ALL_TRANSFER_APPROVALS: u8 = 21;
 	pub(super) const CLEAR_COLLECTION_APPROVALS: u8 = 22;
+
+	/// 4. PSP-34 Mintable & Burnable
+	pub(super) const MINT: u8 = 7;
+	pub(super) const BURN: u8 = 8;
 }
 
 // Helper method to build a dispatch call.

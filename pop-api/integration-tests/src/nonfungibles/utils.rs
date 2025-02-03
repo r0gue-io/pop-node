@@ -1,5 +1,3 @@
-use pop_api::nonfungibles::CollectionDetails;
-
 use super::*;
 
 pub(super) fn balance_of(
@@ -72,7 +70,7 @@ pub(super) fn total_supply(addr: &AccountId32, collection: CollectionId) -> Resu
 pub(super) fn get_attribute(
 	addr: &AccountId32,
 	collection: CollectionId,
-	item: ItemId,
+	item: Option<ItemId>,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
 ) -> Result<Option<Vec<u8>>, Error> {
@@ -80,37 +78,13 @@ pub(super) fn get_attribute(
 		collection.encode(),
 		item.encode(),
 		namespace.encode(),
-		AttributeKey::<Runtime>::truncate_from(key).encode(),
+		AttributeKey::truncate_from(key).encode(),
 	]
 	.concat();
 	let result = do_bare_call("get_attribute", &addr, params);
-	decoded::<Result<Option<AttributeValue<Runtime>>, Error>>(result.clone())
+	decoded::<Result<Option<AttributeValue>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 		.map(|value| value.map(|v| v.to_vec()))
-}
-
-pub(super) fn mint(
-	addr: &AccountId32,
-	to: AccountId32,
-	collection: CollectionId,
-	item: ItemId,
-	witness: MintWitness,
-) -> Result<(), Error> {
-	let params = [to.encode(), collection.encode(), item.encode(), witness.encode()].concat();
-	let result = do_bare_call("mint", &addr, params);
-	decoded::<Result<(), Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-}
-
-pub(super) fn burn(
-	addr: &AccountId32,
-	collection: CollectionId,
-	item: ItemId,
-) -> Result<(), Error> {
-	let params = [collection.encode(), item.encode()].concat();
-	let result = do_bare_call("burn", &addr, params);
-	decoded::<Result<(), Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn collection(
@@ -124,8 +98,7 @@ pub(super) fn collection(
 }
 
 pub(super) fn next_collection_id(addr: &AccountId32) -> Result<Option<CollectionId>, Error> {
-	let params = [collection.encode()].concat();
-	let result = do_bare_call("next_collection_id", &addr, params);
+	let result = do_bare_call("next_collection_id", &addr, vec![]);
 	decoded::<Result<Option<CollectionId>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
@@ -167,7 +140,7 @@ pub(super) fn destroy(
 pub(super) fn set_attribute(
 	addr: &AccountId32,
 	collection: CollectionId,
-	item: ItemId,
+	item: Option<ItemId>,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
 	value: Vec<u8>,
@@ -176,8 +149,8 @@ pub(super) fn set_attribute(
 		collection.encode(),
 		item.encode(),
 		namespace.encode(),
-		AttributeKey::<Runtime>::truncate_from(key).encode(),
-		AttributeValue::<Runtime>::truncate_from(value).encode(),
+		AttributeKey::truncate_from(key).encode(),
+		AttributeValue::truncate_from(value).encode(),
 	]
 	.concat();
 	let result = do_bare_call("set_attribute", &addr, params);
@@ -188,7 +161,7 @@ pub(super) fn set_attribute(
 pub(super) fn clear_attribute(
 	addr: &AccountId32,
 	collection: CollectionId,
-	item: ItemId,
+	item: Option<ItemId>,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
 ) -> Result<(), Error> {
@@ -262,7 +235,10 @@ pub(super) fn clear_all_transfer_approvals(
 	collection: CollectionId,
 	item: ItemId,
 ) -> Result<(), Error> {
-	unimplemented!()
+	let params = [collection.encode(), item.encode()].concat();
+	let result = do_bare_call("clear_all_transfer_approvals", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn clear_collection_approvals(
@@ -270,7 +246,34 @@ pub(super) fn clear_collection_approvals(
 	collection: CollectionId,
 	limit: u32,
 ) -> Result<(), Error> {
-	unimplemented!()
+	let params = [collection.encode(), limit.encode()].concat();
+	let result = do_bare_call("clear_collection_approvals", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) fn mint(
+	addr: &AccountId32,
+	collection: CollectionId,
+	to: AccountId32,
+	item: ItemId,
+	witness: Option<MintWitness>,
+) -> Result<(), Error> {
+	let params = [collection.encode(), to.encode(), item.encode(), witness.encode()].concat();
+	let result = do_bare_call("mint", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) fn burn(
+	addr: &AccountId32,
+	collection: CollectionId,
+	item: ItemId,
+) -> Result<(), Error> {
+	let params = [collection.encode(), item.encode()].concat();
+	let result = do_bare_call("burn", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) mod nfts {
@@ -283,7 +286,7 @@ pub(super) mod nfts {
 		item: ItemId,
 	) -> (CollectionId, ItemId) {
 		let collection = create_collection(owner, admin);
-		mint(collection, item, owner, to);
+		mint(owner, collection, item, to);
 		(collection, item)
 	}
 
@@ -293,8 +296,8 @@ pub(super) mod nfts {
 		item: ItemId,
 		to: &AccountId32,
 		operator: &AccountId32,
-	) -> (u32, u32) {
-		let (collection, item) = create_collection_and_mint_to(&owner.clone(), admin, to, item);
+	) -> (CollectionId, ItemId) {
+		let (collection, item) = create_collection_and_mint_to(&owner, admin, to, item);
 		assert_ok!(Nfts::approve_transfer(
 			RuntimeOrigin::signed(to.clone()),
 			collection,
@@ -315,10 +318,22 @@ pub(super) mod nfts {
 		next_id
 	}
 
+	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
+		AccountBalanceOf::<Runtime>::get(collection, owner)
+			.map(|(balance, _)| balance)
+			.unwrap_or_default()
+	}
+
+	pub(crate) fn max_supply(collection: CollectionId) -> Option<u32> {
+		CollectionConfigOf::<Runtime>::get(collection)
+			.map(|config| config.max_supply)
+			.unwrap_or_default()
+	}
+
 	pub(crate) fn mint(
+		owner: &AccountId32,
 		collection: CollectionId,
 		item: ItemId,
-		owner: &AccountId32,
 		to: &AccountId32,
 	) -> ItemId {
 		assert_ok!(Nfts::mint(
@@ -353,18 +368,6 @@ pub(super) mod nfts {
 			collection,
 			item
 		));
-	}
-
-	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
-		AccountBalanceOf::<Runtime>::get(collection, owner)
-			.map(|(balance, _)| balance)
-			.unwrap_or_default()
-	}
-
-	pub(crate) fn max_supply(collection: CollectionId) -> Option<u32> {
-		CollectionConfigOf::<Runtime>::get(collection)
-			.map(|config| config.max_supply)
-			.unwrap_or_default()
 	}
 
 	pub(super) fn collection_config_with_all_settings_enabled(
