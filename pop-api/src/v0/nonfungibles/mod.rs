@@ -14,7 +14,7 @@ pub use traits::*;
 pub use types::*;
 
 use crate::{
-	constants::NONFUNGIBLES,
+	constants::{MODULE_ERROR, NFTS, NONFUNGIBLES},
 	primitives::{AccountId, BlockNumber},
 	ChainExtensionMethodApi, Result, StatusCode,
 };
@@ -143,19 +143,6 @@ pub fn get_attribute(
 		.output::<Result<Option<Vec<u8>>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection, item, namespace, key))
-}
-
-/// Returns the details of the `collection`.
-///
-/// # Parameters
-/// - `collection` - The collection.
-#[inline]
-pub fn collection(collection: CollectionId) -> Result<Option<CollectionDetails>> {
-	build_read_state(COLLECTION)
-		.input::<CollectionId>()
-		.output::<Result<Option<CollectionDetails>>, true>()
-		.handle_error_code::<StatusCode>()
-		.call(&(collection))
 }
 
 /// Returns the next collection identifier.
@@ -385,9 +372,10 @@ pub fn clear_collection_approvals(collection: CollectionId, limit: u32) -> Resul
 /// Mints an item to the specified address.
 ///
 /// # Parameters
-/// - `collection` - The collection.
 /// - `to` - The recipient account.
+/// - `collection` - The collection.
 /// - `item` - The ID for the item.
+/// - `witness` - The optional witness data for items mint transactions.
 #[inline]
 pub fn mint(
 	to: AccountId,
@@ -429,7 +417,7 @@ mod constants {
 	pub(super) const GET_ATTRIBUTE: u8 = 6;
 
 	/// 3. Management
-	pub(super) const COLLECTION: u8 = 7;
+	/// TODO: Replacement of `Collection` read.
 	pub(super) const NEXT_COLLECTION_ID: u8 = 8;
 	pub(super) const ITEM_METADATA: u8 = 9;
 	pub(super) const CREATE: u8 = 10;

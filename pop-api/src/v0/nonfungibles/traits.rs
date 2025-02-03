@@ -4,6 +4,7 @@ use core::result::Result;
 
 use super::*;
 
+/// The PSP34 trait.
 #[ink::trait_definition]
 pub trait Psp34 {
 	/// Returns the collection `Id`.
@@ -51,7 +52,7 @@ pub trait Psp34 {
 	fn approve(
 		&mut self,
 		operator: AccountId,
-		id: Option<ItemId>,
+		item: Option<ItemId>,
 		approved: bool,
 	) -> Result<(), Psp34Error>;
 
@@ -63,6 +64,7 @@ pub trait Psp34 {
 	fn owner_of(&self, id: ItemId) -> Option<AccountId>;
 }
 
+/// The PSP34 Metadata trait.
 #[ink::trait_definition]
 pub trait Psp34Metadata {
 	/// Returns the attribute of `item` for the given `key`.
@@ -73,13 +75,4 @@ pub trait Psp34Metadata {
 	/// * `key` - The key of the attribute.
 	#[ink(message, selector = 0xf19d48d1)]
 	fn get_attribute(&self, id: ItemId, key: Vec<u8>) -> Option<Vec<u8>>;
-}
-
-#[ink::trait_definition]
-pub trait Psp34Enumerable {
-	#[ink(message, selector = 0x3bcfb511)]
-	fn owners_token_by_index(&self, owner: AccountId, index: u128) -> Result<ItemId, Psp34Error>;
-
-	#[ink(message, selector = 0xcd0340d0)]
-	fn token_by_index(&self, index: u128) -> Result<ItemId, Psp34Error>;
 }
