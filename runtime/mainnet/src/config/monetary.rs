@@ -7,6 +7,8 @@ use crate::{
 	SlowAdjustingFeeUpdate, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
 };
 
+/// Deposit rate for stored data. 1/100th of the Relay Chain's deposit rate. `items` is the
+/// number of keys in storage and `bytes` is the size of the value.
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	// src: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L70
 	(items as Balance * 20 * UNIT + (bytes as Balance) * 100 * fee::MILLI_CENTS) / 100
