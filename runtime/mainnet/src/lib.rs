@@ -28,7 +28,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, EitherOfDiverse, Everything, LinearStoragePrice, TransformOrigin, VariantCountOf,
+		ConstU8, EitherOfDiverse, LinearStoragePrice, TransformOrigin, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,

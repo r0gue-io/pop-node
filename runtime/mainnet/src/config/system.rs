@@ -1,5 +1,6 @@
 use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
-use frame_support::traits::{ConstU32, ConstU64, EnqueueWithOrigin};
+use frame_support::traits::{ConstU32, ConstU64, Contains, EnqueueWithOrigin, EverythingBut};
+use pallet_balances::Call as BalancesCall;
 use polkadot_runtime_common::BlockHashCount;
 use pop_runtime_common::{
 	Nonce, AVERAGE_ON_INITIALIZE_RATIO, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
@@ -16,7 +17,7 @@ use crate::{
 	parameter_types,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 	AccountId, AggregateMessageOrigin, Aura, Balance, BlakeTwo256, Block, BlockLength,
-	BlockWeights, DispatchClass, Everything, Hash, MessageQueue, PalletInfo, Runtime, RuntimeCall,
+	BlockWeights, DispatchClass, Hash, MessageQueue, PalletInfo, Runtime, RuntimeCall,
 	RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue,
 	BLOCK_PROCESSING_VELOCITY, RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY,
 	VERSION,
@@ -50,6 +51,22 @@ parameter_types! {
 		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
 		.build_or_panic();
 }
+/// A type to identify filtered calls.
+pub struct FilteredCalls;
+impl Contains<RuntimeCall> for FilteredCalls {
+	fn contains(c: &RuntimeCall) -> bool {
+		use BalancesCall::*;
+		matches!(
+			c,
+			RuntimeCall::Balances(
+				force_adjust_total_issuance { .. } |
+					force_set_balance { .. } |
+					force_transfer { .. } |
+					force_unreserve { .. }
+			)
+		)
+	}
+}
 
 impl frame_system::Config for Runtime {
 	/// The data to be stored in an account.
@@ -57,7 +74,7 @@ impl frame_system::Config for Runtime {
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
 	/// The basic call filter to use in dispatchable. Supports everything as the default.
-	type BaseCallFilter = Everything;
+	type BaseCallFilter = EverythingBut<FilteredCalls>;
 	/// The block type.
 	type Block = Block;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
@@ -171,15 +188,11 @@ mod tests {
 	use super::*;
 	use crate::{Header, Perbill, UncheckedExtrinsic, Weight};
 
-	#[test]
-	fn base_call_filter_allows_everything() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
-			TypeId::of::<Everything>(),
-		);
-	}
-
 	mod system {
+		use pallet_balances::AdjustmentDirection;
+		use sp_runtime::MultiAddress;
+		use BalancesCall::*;
+
 		use super::*;
 
 		#[test]
@@ -188,6 +201,33 @@ mod tests {
 				TypeId::of::<<Runtime as frame_system::Config>::AccountId>(),
 				TypeId::of::<AccountId32>(),
 			);
+		}
+
+		#[test]
+		fn system_base_call_filter_allows_everything_but_filtered_calls() {
+			assert_eq!(
+				TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
+				TypeId::of::<EverythingBut<FilteredCalls>>(),
+			);
+			let dummy_acc = MultiAddress::from(AccountId32::from([0; 32]));
+			let filtered_calls = [
+				RuntimeCall::Balances(force_adjust_total_issuance {
+					direction: AdjustmentDirection::Increase,
+					delta: 0,
+				}),
+				RuntimeCall::Balances(force_set_balance { who: dummy_acc.clone(), new_free: 0 }),
+				RuntimeCall::Balances(force_transfer {
+					source: dummy_acc.clone(),
+					dest: dummy_acc.clone(),
+					value: 1,
+				}),
+				RuntimeCall::Balances(force_unreserve { who: dummy_acc, amount: 0 }),
+			];
+
+			for call in filtered_calls {
+				assert!(FilteredCalls::contains(&call));
+				assert!(!<<Runtime as frame_system::Config>::BaseCallFilter>::contains(&call));
+			}
 		}
 
 		#[test]
