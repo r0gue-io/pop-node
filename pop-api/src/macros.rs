@@ -7,6 +7,7 @@
 /// - `MaxEncodedLen`: Calculates the maximum encoded length for the wrapper type.
 /// - `Encode`: Encodes the wrapper type using the provided encoding function.
 /// - `Decode`: Decodes the wrapper type from the input.
+/// - `TypeInfo`: Provides type information for the wrapper type.
 macro_rules! impl_codec_bitflags {
 	($wrapper:ty, $size:ty, $bitflag_enum:ty) => {
 		impl ink::scale::MaxEncodedLen for $wrapper {
