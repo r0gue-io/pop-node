@@ -604,7 +604,7 @@ mod tests {
 		}
 
 		#[test]
-		fn message_exporter_is_dissabled() {
+		fn message_exporter_is_disabled() {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::MessageExporter>(),
 				TypeId::of::<()>(),
