@@ -273,9 +273,9 @@ mod tests {
 	mod reserves_config {
 		use super::*;
 
-		// Only reserve accepted is the relay asset from Asset Hub.
+		// There's only one reserve and it is AssetHub for DOT token.
 		#[test]
-		fn reserves() {
+		fn only_reserve_is_ah_for_dot() {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
 				TypeId::of::<NativeAssetFrom<AssetHub>>(),
