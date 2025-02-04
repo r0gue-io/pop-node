@@ -17,20 +17,18 @@ use alloc::{borrow::Cow, vec::Vec};
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::{
 	governance::SudoAddress,
+	system::{ConsensusHook, RuntimeBlockWeights},
 	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
 };
-use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
-	derive_impl,
 	dispatch::DispatchClass,
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, Contains, EitherOfDiverse, EverythingBut, LinearStoragePrice, TransformOrigin,
-		VariantCountOf,
+		ConstU8, EitherOfDiverse, LinearStoragePrice, TransformOrigin, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -40,13 +38,12 @@ use frame_system::{
 	CheckGenesis, CheckMortality, CheckNonZeroSender, CheckNonce, CheckSpecVersion, CheckTxVersion,
 	CheckWeight, EnsureRoot,
 };
-use pallet_balances::Call as BalancesCall;
 use pallet_transaction_payment::ChargeTransactionPayment;
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 // Polkadot imports
-use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::SlowAdjustingFeeUpdate;
 pub use pop_runtime_common::{
 	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICRO_UNIT,
@@ -64,7 +61,6 @@ pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
@@ -258,95 +254,6 @@ pub fn native_version() -> NativeVersion {
 	NativeVersion { runtime_version: VERSION, can_author_with: Default::default() }
 }
 
-parameter_types! {
-	pub const Version: RuntimeVersion = VERSION;
-
-	// This part is copied from Substrate's `bin/node/runtime/src/lib.rs`.
-	//  The `RuntimeBlockLength` and `RuntimeBlockWeights` exist here because the
-	// `DeletionWeightLimit` and `DeletionQueueDepth` depend on those to parameterize
-	// the lazy contract deletion.
-	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
-		.base_block(BlockExecutionWeight::get())
-		.for_class(DispatchClass::all(), |weights| {
-			weights.base_extrinsic = ExtrinsicBaseWeight::get();
-		})
-		.for_class(DispatchClass::Normal, |weights| {
-			weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
-		})
-		.for_class(DispatchClass::Operational, |weights| {
-			weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
-			// Operational transactions have some extra reserved space, so that they
-			// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
-			weights.reserved = Some(
-				MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
-			);
-		})
-		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
-		.build_or_panic();
-	pub const SS58Prefix: u16 = 0;
-}
-
-/// A type to identify filtered calls.
-pub struct FilteredCalls;
-impl Contains<RuntimeCall> for FilteredCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use BalancesCall::*;
-		matches!(
-			c,
-			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
-			)
-		)
-	}
-}
-
-/// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
-/// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
-/// but overridden as needed.
-#[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig)]
-impl frame_system::Config for Runtime {
-	/// The data to be stored in an account.
-	type AccountData = pallet_balances::AccountData<Balance>;
-	/// The identifier used to distinguish between accounts.
-	type AccountId = AccountId;
-	/// The basic call filter to use in dispatchable. Supports everything as the default.
-	type BaseCallFilter = EverythingBut<FilteredCalls>;
-	/// The block type.
-	type Block = Block;
-	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
-	type BlockHashCount = BlockHashCount;
-	/// The maximum length of a block (in bytes).
-	type BlockLength = RuntimeBlockLength;
-	/// Block & extrinsics weights: base values and limits.
-	type BlockWeights = RuntimeBlockWeights;
-	/// The weight of database operations that the runtime can invoke.
-	type DbWeight = RocksDbWeight;
-	/// The type for hashing blocks and tries.
-	type Hash = Hash;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	/// The index type for storing how many extrinsics an account has signed.
-	type Nonce = Nonce;
-	/// The action to take on a Runtime Upgrade
-	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
-	/// This is used as an identifier of the chain. 42 is the generic substrate prefix.
-	type SS58Prefix = SS58Prefix;
-	/// Runtime version.
-	type Version = Version;
-}
-
-impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<0>;
-	/// A timestamp: milliseconds since the unix epoch.
-	type Moment = u64;
-	type OnTimestampSet = Aura;
-	type WeightInfo = ();
-}
-
 impl pallet_authorship::Config for Runtime {
 	type EventHandler = (CollatorSelection,);
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
@@ -391,37 +298,6 @@ impl pallet_transaction_payment::Config for Runtime {
 	type WeightInfo = ();
 	type WeightToFee = fee::WeightToFee;
 }
-
-parameter_types! {
-	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
-}
-
-#[docify::export]
-type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
-	Runtime,
-	RELAY_CHAIN_SLOT_DURATION_MILLIS,
-	BLOCK_PROCESSING_VELOCITY,
-	UNINCLUDED_SEGMENT_CAPACITY,
->;
-
-impl cumulus_pallet_parachain_system::Config for Runtime {
-	type CheckAssociatedRelayNumber = RelayNumberMonotonicallyIncreases;
-	type ConsensusHook = ConsensusHook;
-	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
-	type OnSystemEvent = ();
-	type OutboundXcmpMessageSource = XcmpQueue;
-	type ReservedDmpWeight = ReservedDmpWeight;
-	type ReservedXcmpWeight = ReservedXcmpWeight;
-	type RuntimeEvent = RuntimeEvent;
-	type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
-	type SelfParaId = parachain_info::Pallet<Runtime>;
-	type WeightInfo = ();
-	type XcmpMessageHandler = XcmpQueue;
-}
-
-impl parachain_info::Config for Runtime {}
 
 parameter_types! {
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
@@ -634,62 +510,13 @@ impl Runtime {
 	}
 }
 
-#[docify::export(register_validate_block)]
-cumulus_pallet_parachain_system::register_validate_block! {
-	Runtime = Runtime,
-	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
-}
-
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
 
-	use pallet_balances::AdjustmentDirection;
 	use sp_runtime::MultiSignature;
-	use BalancesCall::*;
-	use RuntimeCall::Balances;
 
 	use super::*;
-	#[test]
-	fn filtering_force_adjust_total_issuance_works() {
-		assert!(FilteredCalls::contains(&Balances(force_adjust_total_issuance {
-			direction: AdjustmentDirection::Increase,
-			delta: 0
-		})));
-	}
-
-	#[test]
-	fn filtering_force_set_balance_works() {
-		assert!(FilteredCalls::contains(&Balances(force_set_balance {
-			who: MultiAddress::Address32([0u8; 32]),
-			new_free: 0,
-		})));
-	}
-
-	#[test]
-	fn filtering_force_transfer_works() {
-		assert!(FilteredCalls::contains(&Balances(force_transfer {
-			source: MultiAddress::Address32([0u8; 32]),
-			dest: MultiAddress::Address32([0u8; 32]),
-			value: 0,
-		})));
-	}
-
-	#[test]
-	fn filtering_force_unreserve_works() {
-		assert!(FilteredCalls::contains(&Balances(force_unreserve {
-			who: MultiAddress::Address32([0u8; 32]),
-			amount: 0
-		})));
-	}
-
-	#[test]
-	fn filtering_configured() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
-			TypeId::of::<EverythingBut<FilteredCalls>>(),
-		);
-	}
 
 	#[test]
 	fn ed_is_correct() {
