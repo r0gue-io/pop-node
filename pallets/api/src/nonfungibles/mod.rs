@@ -142,6 +142,7 @@ pub mod pallet {
 		/// - `deadline`: The optional deadline (in block numbers) specifying the time limit for the
 		///   approval, only required if `approved` is true.
 		#[pallet::call_index(3)]
+		// TODO: Resolve weight with a proper approach (#463).
 		#[pallet::weight(
 			NftsWeightInfoOf::<T>::approve_transfer()
 			.max(NftsWeightInfoOf::<T>::approve_collection_transfer())
