@@ -205,7 +205,7 @@ pub fn destroy(collection: CollectionId, witness: DestroyWitness) -> Result<()> 
 ///   case;
 /// - `Account(AccountId)` namespace could be modified only when the provided account was given a
 ///   permission to do so;
-
+///
 /// # Parameters
 /// - `collection` - The collection.
 /// - `item` - The optional item.
