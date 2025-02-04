@@ -1,18 +1,19 @@
 use pallet_api::nonfungibles::{
 	AccountBalanceOf, AttributeKeyOf, AttributeOf, AttributeValueOf, CollectionApprovalsOf,
-	CollectionConfigOf, CollectionDetailsOf, CollectionOf, MetadataOf, NextCollectionIdOf,
+	CollectionConfigOf, CollectionOf, MetadataOf, NextCollectionIdOf,
 };
 use pop_api::{
 	nonfungibles::{
 		events::{Approval, AttributeSet, Transfer},
 		AttributeNamespace, CancelAttributesApprovalWitness, CollectionConfig, CollectionId,
-		CollectionSettings, DestroyWitness, ItemId, MintSettings, MintWitness,
+		CollectionSettings, DestroyWitness, ItemId, ItemSettings, MintSettings, MintType,
+		MintWitness,
 	},
 	primitives::BlockNumber,
 };
 use pop_primitives::{Error, Error::*};
 use sp_runtime::traits::Zero;
-use utils::{collection, *};
+use utils::*;
 
 use super::*;
 
@@ -21,7 +22,6 @@ mod utils;
 type Attribute = AttributeOf<Runtime>;
 type AttributeKey = AttributeKeyOf<Runtime>;
 type AttributeValue = AttributeValueOf<Runtime>;
-type CollectionDetails = CollectionDetailsOf<Runtime>;
 type Metadata = MetadataOf<Runtime>;
 
 const ITEM: ItemId = 0;
@@ -222,30 +222,6 @@ fn get_attribute_works() {
 }
 
 #[test]
-fn collection_works() {
-	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-
-		// Collection does not exist.
-		assert_eq!(collection(&addr, COLLECTION), Ok(None));
-
-		// Collection is created.
-		nfts::create_collection(&addr, &ALICE);
-		assert_eq!(
-			collection(&addr, COLLECTION),
-			Ok(Some(CollectionDetails {
-				owner: addr,
-				owner_deposit: 0,
-				items: 0,
-				item_metadatas: 0,
-				item_configs: 0,
-				attributes: 0,
-			}))
-		);
-	});
-}
-
-#[test]
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
@@ -257,7 +233,7 @@ fn next_collection_id_works() {
 fn item_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-		let metadata = Metadata::truncate_from("some metadata".as_bytes().to_vec());
+		let metadata = "some metadata".as_bytes().to_vec();
 
 		// Collection metadata is not set.
 		assert_eq!(Nfts::item_metadata(COLLECTION, ITEM), None);
@@ -267,9 +243,9 @@ fn item_metadata_works() {
 			RuntimeOrigin::signed(addr.clone()),
 			collection,
 			item,
-			metadata.clone()
+			Metadata::truncate_from(metadata.clone())
 		));
-		assert_eq!(Nfts::item_metadata(collection, item), Some(metadata));
+		assert_eq!(item_metadata(&addr, collection, item), Ok(Some(metadata)));
 	});
 }
 
@@ -282,7 +258,13 @@ fn create_works() {
 			addr.clone(),
 			CollectionConfig {
 				max_supply: Some(100),
-				mint_settings: MintSettings::default(),
+				mint_settings: MintSettings {
+					mint_type: MintType::Issuer,
+					price: None,
+					start_block: None,
+					end_block: None,
+					default_item_settings: ItemSettings::all_enabled(),
+				},
 				settings: CollectionSettings::all_enabled(),
 			}
 		));

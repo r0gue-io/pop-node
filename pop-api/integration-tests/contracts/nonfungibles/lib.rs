@@ -9,8 +9,8 @@ use pop_api::{
 	nonfungibles::{
 		self as api,
 		events::{Approval, AttributeSet, Transfer},
-		AttributeNamespace, CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails,
-		CollectionId, DestroyWitness, ItemId, MintWitness,
+		AttributeNamespace, CancelAttributesApprovalWitness, CollectionConfig, CollectionId,
+		DestroyWitness, ItemId, MintWitness,
 	},
 	StatusCode,
 };
@@ -119,7 +119,6 @@ mod nonfungibles {
 		}
 
 		/// 3. Asset Management:
-		/// - collection
 		/// - next_collection_id
 		/// - item_metadata
 		/// - create
@@ -133,11 +132,6 @@ mod nonfungibles {
 		/// - cancel_item_attributes_approval
 		/// - clear_all_transfer_approvals
 		/// - clear_collection_approvals
-
-		#[ink(message)]
-		pub fn collection(&self, collection: CollectionId) -> Result<Option<CollectionDetails>> {
-			api::collection(collection)
-		}
 
 		#[ink(message)]
 		pub fn next_collection_id(&self) -> Result<CollectionId> {

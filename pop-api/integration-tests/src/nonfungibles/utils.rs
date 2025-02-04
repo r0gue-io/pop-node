@@ -87,16 +87,6 @@ pub(super) fn get_attribute(
 		.map(|value| value.map(|v| v.to_vec()))
 }
 
-pub(super) fn collection(
-	addr: &AccountId32,
-	collection: CollectionId,
-) -> Result<Option<CollectionDetails>, Error> {
-	let params = [collection.encode()].concat();
-	let result = do_bare_call("collection", &addr, params);
-	decoded::<Result<Option<CollectionDetails>, Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-}
-
 pub(super) fn next_collection_id(addr: &AccountId32) -> Result<CollectionId, Error> {
 	let result = do_bare_call("next_collection_id", &addr, vec![]);
 	decoded::<Result<CollectionId, Error>>(result.clone())
