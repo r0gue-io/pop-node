@@ -1050,36 +1050,37 @@ mod tests {
 			);
 		}
 
-	#[test]
-	fn price_for_sibling_delivery() {
-		assert_eq!(
-			TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(),
-			TypeId::of::<
-				ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>,
-			>()
-		);
-
-		new_test_ext().execute_with(|| {
-			type ExponentialDeliveryPrice =
-				ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
-			let id: ParaId = 420.into();
-			let b: u128 = BaseDeliveryFee::get();
-			let m: u128 = TransactionByteFee::get();
-
-			// F * (B + msg_length * M)
-			// A: RelayLocation
-			// B: BaseDeliveryFee
-			// M: TransactionByteFee
-			// F: XcmpQueue
-			//
-			// message_length = 1
-			let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
+		#[test]
+		fn price_for_sibling_delivery() {
 			assert_eq!(
-				ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
-				(RelayLocation::get(), result).into()
+				TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(
+				),
+				TypeId::of::<
+					ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>,
+				>()
 			);
-		})
-	}
+
+			new_test_ext().execute_with(|| {
+				type ExponentialDeliveryPrice =
+					ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+				let id: ParaId = 420.into();
+				let b: u128 = BaseDeliveryFee::get();
+				let m: u128 = TransactionByteFee::get();
+
+				// F * (B + msg_length * M)
+				// A: RelayLocation
+				// B: BaseDeliveryFee
+				// M: TransactionByteFee
+				// F: XcmpQueue
+				//
+				// message_length = 1
+				let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
+				assert_eq!(
+					ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
+					(RelayLocation::get(), result).into()
+				);
+			})
+		}
 
 		#[test]
 		fn versions_xcm() {

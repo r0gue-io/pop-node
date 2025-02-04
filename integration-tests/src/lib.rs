@@ -22,6 +22,9 @@ use emulated_integration_tests_common::{
 };
 use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
 use pop_runtime_common::Balance;
+#[cfg(not(feature = "mainnet"))]
+use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
+#[cfg(feature = "mainnet")]
 use pop_runtime_mainnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
 
@@ -318,11 +321,15 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let delivery_fees = PopNetworkPara::execute_with(|| {
 		xcm_helpers::teleport_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
-		>(assets, 0, Unlimited, Location::from(beneficiary_id.clone()), destination.clone())
+		>(
+			assets.clone(), 0, Unlimited, Location::from(beneficiary_id.clone()), destination.clone()
+		)
 	});
-
+	#[cfg(feature = "mainnet")]
 	let amount_to_send = amount_to_send - (ASSET_HUB_ED + delivery_fees);
+	#[cfg(feature = "mainnet")]
 	let assets: Assets = (Parent, amount_to_send).into();
+
 	let test_args = TestContext {
 		sender: PopNetworkParaReceiver::get(), // bob on pop
 		receiver: AssetHubParaReceiver::get(), // bob on asset hub
@@ -352,6 +359,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	// Sender's balance is reduced
 	assert_eq!(sender_balance_before - amount_to_send - delivery_fees, sender_balance_after);
 	// Sender's balance is the remaining ED.
+	#[cfg(feature = "mainnet")]
 	assert_eq!(ASSET_HUB_ED, sender_balance_after);
 	// Receiver's balance is increased
 	assert!(receiver_balance_after > receiver_balance_before);
