@@ -2,7 +2,7 @@
 pub mod governance;
 /// Proxy configuration of pop.
 pub(crate) mod proxy;
-/// Configuration related to pop's system modules.
+/// System functionality.
 pub mod system;
 mod utility;
 /// XCM.
