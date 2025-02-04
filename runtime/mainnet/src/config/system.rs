@@ -268,8 +268,8 @@ mod tests {
 
 		#[test]
 		fn block_weights_restricted_by_dispatch_class() {
+			// Two seconds compute per 6s block, max PoV size
 			let max_block_weight =
-				// Two seconds compute per 6s block, max PoV size
 				Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), MAX_POV_SIZE as u64);
 			let base_extrinsic = ExtrinsicBaseWeight::get();
 			let expected_per_class = PerDispatchClass::new(|dc| match dc {
