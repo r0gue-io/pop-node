@@ -11,15 +11,7 @@ impl pallet_authorship::Config for Runtime {
 }
 
 parameter_types! {
-	// Length of time used to determine:
-	// - `session`:
-	// - - The end of a session via: `ShouldEndSession` trait.
-	// - - Session rotation via: `EstimateNextSessionRotation` trait.
-	// - `collator_selection`:
-	// - - Kick threshold
-	// - `aura`:
-	// - - `MaxAuthorities`; Aura will only rotate as many authorities as blocks produced
-	// - - within a session.
+	/// 6 Hours in number of blocks.
 	pub const Period: u32 = 6 * HOURS;
 }
 

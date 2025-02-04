@@ -1,7 +1,7 @@
 use crate::{
-	deposit, parameter_types, AccountId, Balance, Balances, ConstU32, EnsureRoot,
-	EqualPrivilegeOnly, HoldConsideration, LinearStoragePrice, OriginCaller, Perbill, Preimage,
-	Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
+	config::system::RuntimeBlockWeights, deposit, parameter_types, AccountId, Balance, Balances,
+	ConstU32, EnsureRoot, EqualPrivilegeOnly, HoldConsideration, LinearStoragePrice, OriginCaller,
+	Perbill, Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
 	Weight,
 };
 

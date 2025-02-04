@@ -18,8 +18,7 @@ pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::{
 	monetary::deposit,
 	system::{ConsensusHook, RuntimeBlockWeights},
-	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
-	governance::SudoAddress,
+	xcm::XcmOriginToTransactDispatchOrigin,
 };
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
@@ -29,8 +28,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, Contains, EqualPrivilegeOnly, EverythingBut, LinearStoragePrice, TransformOrigin,
-		VariantCountOf,
+		ConstU8, EqualPrivilegeOnly, LinearStoragePrice, TransformOrigin, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -62,7 +60,6 @@ pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
