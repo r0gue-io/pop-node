@@ -1,67 +1,19 @@
+//! A set of data types for use in smart contracts interacting with the non-fungibles API.
+
 use enumflags2::{bitflags, BitFlags};
 
 use super::*;
-use crate::{macros::impl_codec_bitflags, primitives::AccountId};
+use crate::primitives::AccountId;
 
-pub type ItemId = u32;
+type Balance = u32;
+/// The identifier of a collection.
 pub type CollectionId = u32;
-pub(super) type Balance = u32;
-
-/// Information about a collection.
-#[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct CollectionDetails {
-	/// Collection's owner.
-	pub owner: AccountId,
-	/// The total balance deposited by the owner for all the storage data associated with this
-	/// collection. Used by `destroy`.
-	pub owner_deposit: Balance,
-	/// The total number of outstanding items of this collection.
-	pub items: u32,
-	/// The total number of outstanding item metadata of this collection.
-	pub item_metadatas: u32,
-	/// The total number of outstanding item configs of this collection.
-	pub item_configs: u32,
-	/// The total number of attributes for this collection.
-	pub attributes: u32,
-}
-
-/// Attribute namespaces for non-fungible tokens.
-#[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum AttributeNamespace {
-	/// An attribute set by collection's owner.
-	#[codec(index = 1)]
-	CollectionOwner,
-	/// An attribute set by item's owner.
-	#[codec(index = 2)]
-	ItemOwner,
-	/// An attribute set by a pre-approved account.
-	#[codec(index = 3)]
-	Account(AccountId),
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub enum MintType {
-	/// Only an `Issuer` could mint items.
-	Issuer,
-	/// Anyone could mint items.
-	Public,
-	/// Only holders of items in specified collection could mint new items.
-	HolderOf(CollectionId),
-}
-
-#[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct CancelAttributesApprovalWitness {
-	/// An amount of attributes previously created by account.
-	pub account_attributes: u32,
-}
+/// The identifier of an item.
+pub type ItemId = u32;
 
 /// Witness data for the destroy transactions.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[ink::scale_derive(Encode)]
 pub struct DestroyWitness {
 	/// The total number of items in this collection that have outstanding item metadata.
 	#[codec(compact)]
@@ -76,7 +28,7 @@ pub struct DestroyWitness {
 
 /// Witness data for items mint transactions.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[ink::scale_derive(Encode)]
 pub struct MintWitness {
 	/// Provide the id of the item in a required collection.
 	pub owned_item: Option<ItemId>,
@@ -84,23 +36,11 @@ pub struct MintWitness {
 	pub mint_price: Option<Balance>,
 }
 
-/// Collection's configuration.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct CollectionConfig {
-	/// Collection's settings.
-	pub settings: CollectionSettings,
-	/// Collection's max supply.
-	pub max_supply: Option<u32>,
-	/// Default settings each item will get during the mint.
-	pub mint_settings: MintSettings,
-}
-
 /// Support for up to 64 user-enabled features on a collection.
 #[bitflags]
 #[repr(u64)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[ink::scale_derive(Encode)]
 pub enum CollectionSetting {
 	/// Items in this collection are transferable.
 	TransferableItems,
@@ -119,23 +59,93 @@ pub enum CollectionSetting {
 pub struct CollectionSettings(pub BitFlags<CollectionSetting>);
 
 impl CollectionSettings {
-	pub fn from_disabled(settings: BitFlags<CollectionSetting>) -> Self {
-		Self(settings)
-	}
-
-	#[cfg(feature = "std")]
+	/// Enable all features on a collection.
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
 	}
+
+	/// Provide `settings` bit flags indicate which features are turned off.
+	pub fn from_disabled(settings: BitFlags<CollectionSetting>) -> Self {
+		Self(settings)
+	}
 }
 
-impl_codec_bitflags!(CollectionSettings, u64, CollectionSetting);
+impl ink::scale::Encode for CollectionSettings {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.bits().using_encoded(f)
+	}
+}
+
+/// Collection's configuration.
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode)]
+pub struct CollectionConfig {
+	/// Collection's settings.
+	pub settings: CollectionSettings,
+	/// Collection's max supply.
+	pub max_supply: Option<u32>,
+	/// Default settings each item will get during the mint.
+	pub mint_settings: MintSettings,
+}
+
+/// Mint type. Can the NFT be create by anyone, or only the creator of the collection,
+/// or only by wallets that already hold an NFT from a certain collection?
+/// The ownership of a privately minted NFT is still publicly visible.
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode)]
+pub enum MintType {
+	/// Only an `Issuer` could mint items.
+	Issuer,
+	/// Anyone could mint items.
+	Public,
+	/// Only holders of items in specified collection could mint new items.
+	HolderOf(CollectionId),
+}
+
+/// Holds the information about minting.
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode)]
+pub struct MintSettings {
+	/// Whether anyone can mint or if minters are restricted to some subset.
+	pub mint_type: MintType,
+	/// An optional price per mint.
+	pub price: Option<Balance>,
+	/// When the mint starts.
+	pub start_block: Option<BlockNumber>,
+	/// When the mint ends.
+	pub end_block: Option<BlockNumber>,
+	/// Default settings each item will get during the mint.
+	pub default_item_settings: ItemSettings,
+}
+
+/// Attribute namespaces for non-fungible tokens.
+#[derive(Debug, PartialEq, Eq)]
+#[ink::scale_derive(Encode)]
+pub enum AttributeNamespace {
+	/// An attribute set by collection's owner.
+	#[codec(index = 1)]
+	CollectionOwner,
+	/// An attribute set by item's owner.
+	#[codec(index = 2)]
+	ItemOwner,
+	/// An attribute set by a pre-approved account.
+	#[codec(index = 3)]
+	Account(AccountId),
+}
+
+/// A witness data to cancel attributes approval operation.
+#[derive(Debug)]
+#[ink::scale_derive(Encode)]
+pub struct CancelAttributesApprovalWitness {
+	/// An amount of attributes previously created by account.
+	pub account_attributes: u32,
+}
 
 /// Support for up to 64 user-enabled features on an item.
 #[bitflags]
 #[repr(u64)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[ink::scale_derive(Encode)]
 pub enum ItemSetting {
 	/// This item is transferable.
 	Transferable,
@@ -150,43 +160,19 @@ pub enum ItemSetting {
 pub struct ItemSettings(pub BitFlags<ItemSetting>);
 
 impl ItemSettings {
+	/// Enable all features on an item.
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
 	}
 
-	#[cfg(feature = "std")]
+	/// Provide `settings` bit flags indicate which features are turned off.
 	pub fn from_disabled(settings: BitFlags<ItemSetting>) -> Self {
 		Self(settings)
 	}
 }
 
-impl_codec_bitflags!(ItemSettings, u64, ItemSetting);
-
-/// Holds the information about minting.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode, Decode, TypeInfo)]
-pub struct MintSettings {
-	/// Whether anyone can mint or if minters are restricted to some subset.
-	pub mint_type: MintType,
-	/// An optional price per mint.
-	pub price: Option<Balance>,
-	/// When the mint starts.
-	pub start_block: Option<BlockNumber>,
-	/// When the mint ends.
-	pub end_block: Option<BlockNumber>,
-	/// Default settings each item will get during the mint.
-	pub default_item_settings: ItemSettings,
-}
-
-#[cfg(feature = "std")]
-impl Default for MintSettings {
-	fn default() -> Self {
-		Self {
-			mint_type: MintType::Issuer,
-			price: None,
-			start_block: None,
-			end_block: None,
-			default_item_settings: ItemSettings::all_enabled(),
-		}
+impl ink::scale::Encode for ItemSettings {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.bits().using_encoded(f)
 	}
 }

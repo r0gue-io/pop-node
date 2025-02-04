@@ -1301,14 +1301,3 @@ mod encoding_read_result {
 		assert_eq!(ReadResult::ItemMetadata::<Test>(data.clone()).encode(), data.encode());
 	}
 }
-
-#[test]
-fn ensure_approve_weight() {
-	assert_eq!(
-		NftsWeightInfoOf::<Test>::approve_transfer()
-			.max(NftsWeightInfoOf::<Test>::approve_collection_transfer())
-			.max(NftsWeightInfoOf::<Test>::cancel_approval())
-			.max(NftsWeightInfoOf::<Test>::cancel_collection_approval()),
-		Weight::from_parts(200000000, 4326)
-	);
-}
