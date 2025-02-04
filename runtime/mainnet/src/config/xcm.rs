@@ -172,6 +172,7 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTrap = PolkadotXcm;
 	type Barrier = Barrier;
 	type CallDispatcher = RuntimeCall;
+	// No locations have waived fees.
 	type FeeManager = XcmFeeManagerFromComponents<
 		(),
 		SendXcmFeeToAccount<Self::AssetTransactor, TreasuryAccount>,
