@@ -1,4 +1,4 @@
-/// Governance configuration of pop.
+/// Governance.
 pub mod governance;
 /// Proxy.
 pub(crate) mod proxy;
