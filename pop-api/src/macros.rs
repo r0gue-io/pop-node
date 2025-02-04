@@ -5,20 +5,11 @@
 ///
 /// This macro provides implementations for the following traits:
 /// - `Encode`: Encodes the wrapper type using the provided encoding function.
-/// - `Decode`: Decodes the wrapper type from the input.
 macro_rules! impl_codec_bitflags {
 	($wrapper:ty, $size:ty, $bitflag_enum:ty) => {
 		impl ink::scale::Encode for $wrapper {
 			fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
 				self.0.bits().using_encoded(f)
-			}
-		}
-		impl ink::scale::Decode for $wrapper {
-			fn decode<I: ink::scale::Input>(
-				input: &mut I,
-			) -> ::core::result::Result<Self, ink::scale::Error> {
-				let field = <$size>::decode(input)?;
-				Ok(Self(BitFlags::from_bits(field as $size).map_err(|_| "invalid value")?))
 			}
 		}
 	};

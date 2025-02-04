@@ -11,10 +11,9 @@ use crate::{
 	mock::*,
 	nonfungibles::{
 		AccountBalanceOf, AttributeNamespace, AttributeOf, CancelAttributesApprovalWitness,
-		CollectionConfig, CollectionConfigFor, CollectionDetails, CollectionIdOf, CollectionOf,
-		CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings, NextCollectionIdOf,
-		NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
-		WeightInfo as WeightInfoTrait,
+		CollectionConfig, CollectionConfigFor, CollectionIdOf, CollectionSettings, Config,
+		DestroyWitness, ItemIdOf, MintSettings, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf,
+		NftsWeightInfoOf, Read::*, ReadResult, WeightInfo as WeightInfoTrait,
 	},
 	Read,
 };
