@@ -417,24 +417,23 @@ mod constants {
 	pub(super) const GET_ATTRIBUTE: u8 = 6;
 
 	/// 3. Management
-	/// TODO: Replacement of `Collection` read.
-	pub(super) const NEXT_COLLECTION_ID: u8 = 8;
-	pub(super) const ITEM_METADATA: u8 = 9;
-	pub(super) const CREATE: u8 = 10;
-	pub(super) const DESTROY: u8 = 11;
-	pub(super) const SET_ATTRIBUTE: u8 = 12;
-	pub(super) const CLEAR_ATTRIBUTE: u8 = 13;
-	pub(super) const SET_METADATA: u8 = 14;
-	pub(super) const CLEAR_METADATA: u8 = 15;
-	pub(super) const SET_MAX_SUPPLY: u8 = 16;
-	pub(super) const APPROVE_ITEM_ATTRIBUTES: u8 = 17;
-	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 18;
-	pub(super) const CLEAR_ALL_TRANSFER_APPROVALS: u8 = 19;
-	pub(super) const CLEAR_COLLECTION_APPROVALS: u8 = 20;
+	pub(super) const NEXT_COLLECTION_ID: u8 = 7;
+	pub(super) const ITEM_METADATA: u8 = 8;
+	pub(super) const CREATE: u8 = 9;
+	pub(super) const DESTROY: u8 = 10;
+	pub(super) const SET_ATTRIBUTE: u8 = 11;
+	pub(super) const CLEAR_ATTRIBUTE: u8 = 12;
+	pub(super) const SET_METADATA: u8 = 13;
+	pub(super) const CLEAR_METADATA: u8 = 14;
+	pub(super) const SET_MAX_SUPPLY: u8 = 15;
+	pub(super) const APPROVE_ITEM_ATTRIBUTES: u8 = 16;
+	pub(super) const CANCEL_ITEM_ATTRIBUTES_APPROVAL: u8 = 17;
+	pub(super) const CLEAR_ALL_TRANSFER_APPROVALS: u8 = 18;
+	pub(super) const CLEAR_COLLECTION_APPROVALS: u8 = 19;
 
 	/// 4. PSP-34 Mintable & Burnable
-	pub(super) const MINT: u8 = 21;
-	pub(super) const BURN: u8 = 22;
+	pub(super) const MINT: u8 = 20;
+	pub(super) const BURN: u8 = 21;
 }
 
 // Helper method to build a dispatch call.

@@ -5,9 +5,11 @@ use enumflags2::{bitflags, BitFlags};
 use super::*;
 use crate::{macros::impl_codec_bitflags, primitives::AccountId};
 
-pub type ItemId = u32;
-pub type CollectionId = u32;
 type Balance = u32;
+/// The identifier of a collection.
+pub type CollectionId = u32;
+/// The identifier of an item.
+pub type ItemId = u32;
 
 /// Witness data for the destroy transactions.
 #[derive(Debug, PartialEq, Eq)]
@@ -57,8 +59,14 @@ pub enum CollectionSetting {
 pub struct CollectionSettings(pub BitFlags<CollectionSetting>);
 
 impl CollectionSettings {
+	/// Enable all features on a collection.
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
+	}
+
+	/// Provide `settings` bit flags indicate which features are turned off.
+	pub fn from_disabled(settings: BitFlags<CollectionSetting>) -> Self {
+		Self(settings)
 	}
 }
 
@@ -106,19 +114,6 @@ pub struct MintSettings {
 	pub default_item_settings: ItemSettings,
 }
 
-#[cfg(feature = "std")]
-impl Default for MintSettings {
-	fn default() -> Self {
-		Self {
-			mint_type: MintType::Issuer,
-			price: None,
-			start_block: None,
-			end_block: None,
-			default_item_settings: ItemSettings::all_enabled(),
-		}
-	}
-}
-
 /// Attribute namespaces for non-fungible tokens.
 #[derive(Debug, PartialEq, Eq)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
@@ -161,8 +156,14 @@ pub enum ItemSetting {
 pub struct ItemSettings(pub BitFlags<ItemSetting>);
 
 impl ItemSettings {
+	/// Enable all features on an item.
 	pub fn all_enabled() -> Self {
 		Self(BitFlags::EMPTY)
+	}
+
+	/// Provide `settings` bit flags indicate which features are turned off.
+	pub fn from_disabled(settings: BitFlags<ItemSetting>) -> Self {
+		Self(settings)
 	}
 }
 

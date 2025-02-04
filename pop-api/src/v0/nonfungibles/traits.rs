@@ -40,7 +40,7 @@ pub trait Psp34 {
 	/// * `item` - The item.
 	/// - `data` - Additional data in unspecified format.
 	#[ink(message, selector = 0x3128d61b)]
-	fn transfer(&mut self, to: AccountId, id: ItemId, data: Vec<u8>) -> Result<(), Psp34Error>;
+	fn transfer(&mut self, to: AccountId, item: ItemId, data: Vec<u8>) -> Result<(), Psp34Error>;
 
 	/// Approves operator to withdraw item(s) from the contract's account.
 	///
@@ -61,7 +61,7 @@ pub trait Psp34 {
 	/// # Parameters
 	/// * `item` - The item.
 	#[ink(message, selector = 0x1168624d)]
-	fn owner_of(&self, id: ItemId) -> Option<AccountId>;
+	fn owner_of(&self, item: ItemId) -> Option<AccountId>;
 }
 
 /// The PSP34 Metadata trait.
@@ -71,8 +71,7 @@ pub trait Psp34Metadata {
 	///
 	/// # Parameters
 	/// * `item` - The item. If `None` the attributes for the collection are queried.
-	/// * `namespace` - The attribute's namespace.
 	/// * `key` - The key of the attribute.
 	#[ink(message, selector = 0xf19d48d1)]
-	fn get_attribute(&self, id: ItemId, key: Vec<u8>) -> Option<Vec<u8>>;
+	fn get_attribute(&self, item: ItemId, key: Vec<u8>) -> Option<Vec<u8>>;
 }
