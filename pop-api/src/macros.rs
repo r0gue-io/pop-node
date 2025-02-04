@@ -27,6 +27,24 @@ macro_rules! impl_codec_bitflags {
 				Ok(Self(BitFlags::from_bits(field as $size).map_err(|_| "invalid value")?))
 			}
 		}
+
+		#[cfg(feature = "std")]
+		impl ink::scale_info::TypeInfo for $wrapper {
+			type Identity = Self;
+
+			fn type_info() -> ink::scale_info::Type {
+				ink::scale_info::Type::builder()
+					.path(ink::scale_info::Path::new("BitFlags", module_path!()))
+					.type_params(vec![ink::scale_info::TypeParameter::new(
+						"T",
+						Some(ink::scale_info::meta_type::<$bitflag_enum>()),
+					)])
+					.composite(
+						ink::scale_info::build::Fields::unnamed()
+							.field(|f| f.ty::<$size>().type_name(stringify!($bitflag_enum))),
+					)
+			}
+		}
 	};
 }
 pub(crate) use impl_codec_bitflags;
