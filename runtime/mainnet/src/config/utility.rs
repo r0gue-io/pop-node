@@ -1,9 +1,8 @@
-use frame_support::{pallet_prelude::ConstU32, traits::EqualPrivilegeOnly};
-
 use crate::{
-	deposit, parameter_types, AccountId, Balance, Balances, EnsureRoot, HoldConsideration,
-	LinearStoragePrice, OriginCaller, Perbill, Preimage, Runtime, RuntimeBlockWeights, RuntimeCall,
-	RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, Weight,
+	config::system::RuntimeBlockWeights, deposit, parameter_types, AccountId, Balance, Balances,
+	ConstU32, EnsureRoot, EqualPrivilegeOnly, HoldConsideration, LinearStoragePrice, OriginCaller,
+	Perbill, Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
+	Weight,
 };
 
 parameter_types! {
