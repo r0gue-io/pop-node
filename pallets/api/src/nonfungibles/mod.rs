@@ -35,10 +35,8 @@ type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as 
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
 type CollectionConfigOf<T> = CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
-type CollectionDetailsOf<T> = CollectionDetails<AccountIdOf<T>, BalanceOf<T>>;
 type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
-type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
 type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
 type ItemPriceOf<T> = BalanceOf<T>;
 type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
@@ -144,6 +142,7 @@ pub mod pallet {
 		/// - `deadline`: The optional deadline (in block numbers) specifying the time limit for the
 		///   approval, only required if `approved` is true.
 		#[pallet::call_index(3)]
+		// TODO: Resolve weight with a proper approach (#463).
 		#[pallet::weight(
 			NftsWeightInfoOf::<T>::approve_transfer()
 			.max(NftsWeightInfoOf::<T>::approve_collection_transfer())
@@ -203,7 +202,7 @@ pub mod pallet {
 		/// # Parameters
 		/// - `admin` - The admin account of the collection.
 		/// - `config` - Settings and config to be set for the new collection.
-		#[pallet::call_index(10)]
+		#[pallet::call_index(9)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::create())]
 		pub fn create(
 			origin: OriginFor<T>,
@@ -225,7 +224,7 @@ pub mod pallet {
 		/// - `collection` - The collection to be destroyed.
 		/// - `witness` - Information on the items minted in the `collection`. This must be
 		/// correct.
-		#[pallet::call_index(11)]
+		#[pallet::call_index(10)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::destroy(
     		witness.item_metadatas,
     		witness.item_configs,
@@ -259,7 +258,7 @@ pub mod pallet {
 		/// - `namespace` - The attribute's namespace.
 		/// - `key` - The key of the attribute.
 		/// - `value` - The value to which to set the attribute.
-		#[pallet::call_index(12)]
+		#[pallet::call_index(11)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_attribute())]
 		pub fn set_attribute(
 			origin: OriginFor<T>,
@@ -289,7 +288,7 @@ pub mod pallet {
 		///   `collection` will be cleared.
 		/// - `namespace` - The attribute's namespace.
 		/// - `key` - The key of the attribute.
-		#[pallet::call_index(13)]
+		#[pallet::call_index(12)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_attribute())]
 		pub fn clear_attribute(
 			origin: OriginFor<T>,
@@ -309,7 +308,7 @@ pub mod pallet {
 		/// - `collection` - The collection.
 		/// - `item` - The item. If `None`, set metadata for the collection.
 		/// - `data` - The metadata. Limited in length by `StringLimit`.
-		#[pallet::call_index(14)]
+		#[pallet::call_index(13)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_metadata())]
 		pub fn set_metadata(
 			origin: OriginFor<T>,
@@ -327,7 +326,7 @@ pub mod pallet {
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `item` - The item.
-		#[pallet::call_index(15)]
+		#[pallet::call_index(14)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_metadata())]
 		pub fn clear_metadata(
 			origin: OriginFor<T>,
@@ -344,7 +343,7 @@ pub mod pallet {
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `max_supply` - The collection's max supply.
-		#[pallet::call_index(16)]
+		#[pallet::call_index(15)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::set_collection_max_supply())]
 		pub fn set_max_supply(
 			origin: OriginFor<T>,
@@ -362,7 +361,7 @@ pub mod pallet {
 		/// - `collection` - The collection.
 		/// - `item` - The item that holds attributes.
 		/// - `delegate` - The account to delegate permission to change attributes of the item.
-		#[pallet::call_index(17)]
+		#[pallet::call_index(16)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::approve_item_attributes())]
 		pub fn approve_item_attributes(
 			origin: OriginFor<T>,
@@ -386,7 +385,7 @@ pub mod pallet {
 		/// - `item` - The item that holds attributes.
 		/// - `delegate` - The previously approved account to remove.
 		/// - `witness` - A witness data to cancel attributes approval operation.
-		#[pallet::call_index(18)]
+		#[pallet::call_index(17)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::cancel_item_attributes_approval(witness.account_attributes))]
 		pub fn cancel_item_attributes_approval(
 			origin: OriginFor<T>,
@@ -409,7 +408,7 @@ pub mod pallet {
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `item` - The item of the collection of whose approvals will be cleared.
-		#[pallet::call_index(19)]
+		#[pallet::call_index(18)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_all_transfer_approvals())]
 		pub fn clear_all_transfer_approvals(
 			origin: OriginFor<T>,
@@ -424,7 +423,7 @@ pub mod pallet {
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `limit` - The amount of collection approvals that will be cleared.
-		#[pallet::call_index(20)]
+		#[pallet::call_index(19)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_collection_approvals(*limit))]
 		pub fn clear_collection_approvals(
 			origin: OriginFor<T>,
@@ -445,7 +444,7 @@ pub mod pallet {
 		///   price is set, then it should be additionally confirmed in the `witness`.
 		///
 		/// Note: The deposit will be taken from the `origin` and not the `owner` of the `item`.
-		#[pallet::call_index(21)]
+		#[pallet::call_index(20)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::mint())]
 		pub fn mint(
 			origin: OriginFor<T>,
@@ -464,7 +463,7 @@ pub mod pallet {
 		/// # Parameters
 		/// - `collection` - The collection.
 		/// - `item` - The item to burn.
-		#[pallet::call_index(22)]
+		#[pallet::call_index(21)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::burn())]
 		pub fn burn(
 			origin: OriginFor<T>,
@@ -582,14 +581,11 @@ pub mod pallet {
 			/// The key of the attribute.
 			key: BoundedVec<u8, T::KeyLimit>,
 		},
-		/// Returns the details of a specified collection, if any.
-		#[codec(index = 7)]
-		Collection(CollectionIdOf<T>),
 		/// Returns the next collection identifier, if any.
-		#[codec(index = 8)]
+		#[codec(index = 7)]
 		NextCollectionId,
 		/// Returns the metadata of a specified collection item, if any.
-		#[codec(index = 9)]
+		#[codec(index = 8)]
 		ItemMetadata {
 			/// The collection.
 			collection: CollectionIdOf<T>,
@@ -614,8 +610,6 @@ pub mod pallet {
 		TotalSupply(u128),
 		/// Returns the attribute value of item for a given key, if any.
 		GetAttribute(Option<Vec<u8>>),
-		/// Returns the details of a specified collection, if any.
-		Collection(Option<CollectionDetailsOf<T>>),
 		/// Returns the next collection identifier, if any.
 		NextCollectionId(Option<CollectionIdOf<T>>),
 		/// Returns the metadata of a specified collection item, if any.
@@ -632,7 +626,6 @@ pub mod pallet {
 				Allowance(result) => result.encode(),
 				TotalSupply(result) => result.encode(),
 				GetAttribute(result) => result.encode(),
-				Collection(result) => result.encode(),
 				NextCollectionId(result) => result.encode(),
 				ItemMetadata(result) => result.encode(),
 			}
@@ -658,7 +651,6 @@ pub mod pallet {
 				Allowance { .. } => WeightOf::<T>::allowance(),
 				TotalSupply(_) => WeightOf::<T>::total_supply(),
 				GetAttribute { .. } => WeightOf::<T>::get_attribute(),
-				Collection(_) => WeightOf::<T>::collection(),
 				NextCollectionId => WeightOf::<T>::next_collection_id(),
 				ItemMetadata { .. } => WeightOf::<T>::item_metadata(),
 			}
@@ -689,8 +681,6 @@ pub mod pallet {
 					AttributeOf::<T>::get((collection, item, namespace, key))
 						.map(|attribute| attribute.0.into()),
 				),
-				Collection(collection) =>
-					ReadResult::Collection(CollectionOf::<T>::get(collection)),
 				NextCollectionId => ReadResult::NextCollectionId(
 					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
 				),
