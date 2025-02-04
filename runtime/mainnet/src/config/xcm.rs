@@ -248,8 +248,13 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
 	type ControllerOrigin = EnsureRoot<AccountId>;
 	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
+	// Limit the number of messages and signals a HRMP channel can have at most.
 	type MaxActiveOutboundChannels = ConstU32<128>;
+	// Limits the number of inbound channels that we can suspend at the same time.
+	// A value close to the number of possible channels seems to be a sensible configuration.
 	type MaxInboundSuspended = ConstU32<128>;
+	// Limit the number of HRMP channels.
+	// note: https://github.com/polkadot-fellows/runtimes/blob/76d1fa680d00c3e447e40199e7b2250862ad4bfa/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L692C2-L693C90
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
 	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
 	type RuntimeEvent = RuntimeEvent;
