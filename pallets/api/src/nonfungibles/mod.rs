@@ -46,14 +46,15 @@ type NftsWeightInfoOf<T> = <T as pallet_nfts::Config<NftsInstanceOf<T>>>::Weight
 type WeightOf<T> = <T as Config>::WeightInfo;
 // Public due to pop-api integration tests crate.
 pub type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
-pub type AttributeKey<T> = BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::KeyLimit>;
+pub type AttributeKeyOf<T> =
+	BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::KeyLimit>;
 pub type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
-pub type AttributeValue<T> =
+pub type AttributeValueOf<T> =
 	BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::ValueLimit>;
+pub type CollectionApprovalsOf<T> = pallet_nfts::CollectionApprovals<T, NftsInstanceOf<T>>;
 pub type CollectionConfigOf<T> = pallet_nfts::CollectionConfigOf<T, NftsInstanceOf<T>>;
 pub type CollectionOf<T> = pallet_nfts::Collection<T, NftsInstanceOf<T>>;
-pub type MetadataData<T> =
-	BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::StringLimit>;
+pub type MetadataOf<T> = BoundedVec<u8, <T as pallet_nfts::Config<NftsInstanceOf<T>>>::StringLimit>;
 pub type NextCollectionIdOf<T> = pallet_nfts::NextCollectionId<T, NftsInstanceOf<T>>;
 
 #[frame_support::pallet]
