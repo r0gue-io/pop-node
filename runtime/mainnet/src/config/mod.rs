@@ -5,5 +5,5 @@ pub(crate) mod proxy;
 /// Configuration related to pop's system modules.
 pub mod system;
 mod utility;
-/// Cross chain configuration of pop.
+/// XCM.
 pub mod xcm;
