@@ -11,3 +11,5 @@ mod utility;
 mod revive;
 /// XCM.
 pub mod xcm;
+// Collation.
+mod collation;
