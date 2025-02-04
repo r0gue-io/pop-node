@@ -868,7 +868,8 @@ mod tests {
 		}
 
 		#[test]
-		fn teleport_filter_is_nothing() {
+		fn teleport_filters_everything() {
+			// Nothing can be teleported.
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmTeleportFilter>(),
 				TypeId::of::<Nothing>(),
