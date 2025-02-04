@@ -3,7 +3,7 @@
 use enumflags2::{bitflags, BitFlags};
 
 use super::*;
-use crate::primitives::AccountId;
+use crate::{macros::impl_codec_bitflags, primitives::AccountId};
 
 type Balance = u32;
 /// The identifier of a collection.
@@ -13,7 +13,7 @@ pub type ItemId = u32;
 
 /// Witness data for the destroy transactions.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub struct DestroyWitness {
 	/// The total number of items in this collection that have outstanding item metadata.
 	#[codec(compact)]
@@ -28,7 +28,7 @@ pub struct DestroyWitness {
 
 /// Witness data for items mint transactions.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub struct MintWitness {
 	/// Provide the id of the item in a required collection.
 	pub owned_item: Option<ItemId>,
@@ -40,7 +40,7 @@ pub struct MintWitness {
 #[bitflags]
 #[repr(u64)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub enum CollectionSetting {
 	/// Items in this collection are transferable.
 	TransferableItems,
@@ -70,15 +70,11 @@ impl CollectionSettings {
 	}
 }
 
-impl ink::scale::Encode for CollectionSettings {
-	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-		self.0.bits().using_encoded(f)
-	}
-}
+impl_codec_bitflags!(CollectionSettings, u64, CollectionSetting);
 
 /// Collection's configuration.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub struct CollectionConfig {
 	/// Collection's settings.
 	pub settings: CollectionSettings,
@@ -92,7 +88,7 @@ pub struct CollectionConfig {
 /// or only by wallets that already hold an NFT from a certain collection?
 /// The ownership of a privately minted NFT is still publicly visible.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub enum MintType {
 	/// Only an `Issuer` could mint items.
 	Issuer,
@@ -104,7 +100,7 @@ pub enum MintType {
 
 /// Holds the information about minting.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub struct MintSettings {
 	/// Whether anyone can mint or if minters are restricted to some subset.
 	pub mint_type: MintType,
@@ -120,7 +116,7 @@ pub struct MintSettings {
 
 /// Attribute namespaces for non-fungible tokens.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub enum AttributeNamespace {
 	/// An attribute set by collection's owner.
 	#[codec(index = 1)]
@@ -135,7 +131,7 @@ pub enum AttributeNamespace {
 
 /// A witness data to cancel attributes approval operation.
 #[derive(Debug)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub struct CancelAttributesApprovalWitness {
 	/// An amount of attributes previously created by account.
 	pub account_attributes: u32,
@@ -145,7 +141,7 @@ pub struct CancelAttributesApprovalWitness {
 #[bitflags]
 #[repr(u64)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode)]
 pub enum ItemSetting {
 	/// This item is transferable.
 	Transferable,
@@ -171,8 +167,4 @@ impl ItemSettings {
 	}
 }
 
-impl ink::scale::Encode for ItemSettings {
-	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
-		self.0.bits().using_encoded(f)
-	}
-}
+impl_codec_bitflags!(ItemSettings, u64, ItemSetting);
