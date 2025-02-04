@@ -28,7 +28,7 @@ impl pallet_aura::Config for Runtime {
 	type AllowMultipleBlocksPerSlot = ConstBool<true>;
 	type AuthorityId = AuraId;
 	type DisabledValidators = ();
-	// Number of blocks we can produce per session.
+	// With 6 seconds per block and 6h sessions, aura can rotate 3_600 authorities.
 	type MaxAuthorities = Period;
 	type SlotDuration = ConstU64<SLOT_DURATION>;
 }
@@ -63,7 +63,7 @@ impl pallet_session::Config for Runtime {
 	type Keys = SessionKeys;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
-	// `impl_opaque_keys!` resolves `KeyTypeIdProviders` to use Aura.
+	// We delegate to Aura's session handler.
 	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
 	type SessionManager = CollatorSelection;
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;

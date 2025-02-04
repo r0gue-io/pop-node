@@ -20,7 +20,6 @@ use config::{
 	system::{ConsensusHook, RuntimeBlockWeights},
 	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
 	governance::SudoAddress,
-	xcm::XcmOriginToTransactDispatchOrigin,
 };
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
