@@ -124,7 +124,6 @@ impl pallet_balances::Config for Runtime {
 }
 
 parameter_types! {
-	/// Relay Chain `TransactionByteFee` / 20.
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
 }
 
