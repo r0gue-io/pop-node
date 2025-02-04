@@ -148,7 +148,7 @@ impl<T: Get<Location>> Contains<(Location, Vec<Asset>)> for NativeAssetFrom<T> {
 		t.1.iter().all(|a| {
 			t.0 == T::get() &&
 				matches!(a, Asset { id: AssetId(asset_loc), fun: Fungible(_a) }
-				if *asset_loc == Location::from(Parent))
+				if *asset_loc == Location::parent())
 		})
 	}
 }
@@ -885,46 +885,50 @@ mod tests {
 			TypeId::of::<NativeAssetFrom<AssetHub>>(),
 		);
 
-		let different_assets = [
+		let location_assets = [
+			(
+				Location::parent(),
+				vec![Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) }],
+			),
 			(
 				Location::parent(),
 				vec![
-					Asset { id: AssetId(Location::parent()), fun: 0_u32.into() },
-					Asset { id: AssetId(AssetHub::get()), fun: 0_u32.into() },
+					Asset { id: AssetId(Location::parent()), fun: Fungible(0) },
+					Asset { id: AssetId(AssetHub::get()), fun: Fungible(0) },
 					Asset {
 						id: AssetId(Location::new(
 							1,
 							[Parachain(1000), PalletInstance(50), GeneralIndex(1984)],
 						)),
-						fun: 0_u32.into(),
+						fun: Fungible(0),
 					},
 				],
 			),
 			(
 				AssetHub::get(),
 				vec![
-					Asset { id: AssetId(Location::new(1, Parachain(1000))), fun: 0_u32.into() },
+					Asset { id: AssetId(Location::new(1, Parachain(1000))), fun: Fungible(0) },
 					Asset {
 						id: AssetId(Location::new(
 							1,
 							[Parachain(1000), PalletInstance(50), GeneralIndex(1984)],
 						)),
-						fun: 0_u32.into(),
+						fun: Fungible(0),
 					},
 				],
 			),
 		];
 
-		for a in different_assets {
+		for la in location_assets {
 			assert!(!<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<(
 				Location,
 				Vec<Asset>
-			)>>::contains(&a));
+			)>>::contains(&la));
 		}
 
 		let dot_from_ah = (
 			AssetHub::get(),
-			vec![Asset { id: AssetId(Location::from(Parent)), fun: 0_u32.into() }],
+			vec![Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) }],
 		);
 		assert!(<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<(
 			Location,
