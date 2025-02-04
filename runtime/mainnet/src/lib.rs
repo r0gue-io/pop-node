@@ -16,7 +16,7 @@ use alloc::{borrow::Cow, vec::Vec};
 
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::{
-	governance::SudoAddress,
+	monetary::deposit,
 	system::{ConsensusHook, RuntimeBlockWeights},
 	xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin},
 };
@@ -153,96 +153,6 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-pub const fn deposit(items: u32, bytes: u32) -> Balance {
-	// src: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L70
-	(items as Balance * 20 * UNIT + (bytes as Balance) * 100 * fee::MILLICENTS) / 100
-}
-
-/// Constants related to Polkadot fee payment.
-/// Source: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L65C47-L65C58
-pub mod fee {
-	use frame_support::{
-		pallet_prelude::Weight,
-		weights::{
-			constants::ExtrinsicBaseWeight, FeePolynomial, WeightToFeeCoefficient,
-			WeightToFeeCoefficients, WeightToFeePolynomial,
-		},
-	};
-	use pop_runtime_common::{Balance, MILLI_UNIT};
-	use smallvec::smallvec;
-	pub use sp_runtime::Perbill;
-
-	pub const CENTS: Balance = MILLI_UNIT * 10; // 100_000_000
-	pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
-
-	/// Cost of every transaction byte at Polkadot system parachains.
-	///
-	/// It is the Relay Chain (Polkadot) `TransactionByteFee` / 20.
-	pub const TRANSACTION_BYTE_FEE: Balance = MILLICENTS / 2;
-
-	/// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
-	/// node's balance type.
-	///
-	/// This should typically create a mapping between the following ranges:
-	///   - [0, MAXIMUM_BLOCK_WEIGHT]
-	///   - [Balance::min, Balance::max]
-	///
-	/// Yet, it can be used for any other sort of change to weight-fee. Some examples being:
-	///   - Setting it to `0` will essentially disable the weight fee.
-	///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
-	pub struct WeightToFee;
-	impl frame_support::weights::WeightToFee for WeightToFee {
-		type Balance = Balance;
-
-		fn weight_to_fee(weight: &Weight) -> Self::Balance {
-			let time_poly: FeePolynomial<Balance> = RefTimeToFee::polynomial().into();
-			let proof_poly: FeePolynomial<Balance> = ProofSizeToFee::polynomial().into();
-
-			// Take the maximum instead of the sum to charge by the more scarce resource.
-			time_poly.eval(weight.ref_time()).max(proof_poly.eval(weight.proof_size()))
-		}
-	}
-
-	/// Maps the reference time component of `Weight` to a fee.
-	pub struct RefTimeToFee;
-	impl WeightToFeePolynomial for RefTimeToFee {
-		type Balance = Balance;
-
-		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// In Polkadot, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
-			// The standard system parachain configuration is 1/20 of that, as in 1/200 CENT.
-			let p = CENTS;
-			let q = 200 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
-
-			smallvec![WeightToFeeCoefficient {
-				degree: 1,
-				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q),
-				coeff_integer: p / q,
-			}]
-		}
-	}
-
-	/// Maps the proof size component of `Weight` to a fee.
-	pub struct ProofSizeToFee;
-	impl WeightToFeePolynomial for ProofSizeToFee {
-		type Balance = Balance;
-
-		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// Map 20kb proof to 1 CENT.
-			let p = CENTS;
-			let q = 20_000;
-
-			smallvec![WeightToFeeCoefficient {
-				degree: 1,
-				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q),
-				coeff_integer: p / q,
-			}]
-		}
-	}
-}
-
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -294,71 +204,6 @@ impl pallet_authorship::Config for Runtime {
 	type EventHandler = (CollatorSelection,);
 	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
 }
-
-parameter_types! {
-	// increase ED 100 times to match system chains: 1_000_000_000
-	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
-}
-
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	/// The type for recording an account's balance.
-	type Balance = Balance;
-	type DoneSlashHandler = ();
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = RuntimeFreezeReason;
-	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
-	type MaxLocks = ConstU32<50>;
-	type MaxReserves = ConstU32<50>;
-	type ReserveIdentifier = [u8; 8];
-	/// The ubiquitous event type.
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeFreezeReason = RuntimeFreezeReason;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
-}
-
-parameter_types! {
-	/// Relay Chain `TransactionByteFee` / 10
-	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
-	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").expect("sudo address is valid SS58");
-	pub MaintenanceAccount: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
-}
-
-/// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
-/// by implementing OnUnbalanced.
-pub struct DealWithFees;
-impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
-	fn on_unbalanceds(
-		mut fees_then_tips: impl Iterator<Item = fungible::Credit<AccountId, Balances>>,
-	) {
-		if let Some(mut fees) = fees_then_tips.next() {
-			if let Some(tips) = fees_then_tips.next() {
-				tips.merge_into(&mut fees);
-			}
-
-			let split = fees.ration(50, 50);
-
-			ResolveTo::<TreasuryAccount, Balances>::on_unbalanced(split.0);
-			ResolveTo::<MaintenanceAccount, Balances>::on_unbalanced(split.1);
-		}
-	}
-}
-
-/// The type responsible for payment in pallet_transaction_payment.
-pub type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
-
-impl pallet_transaction_payment::Config for Runtime {
-	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = OnChargeTransaction;
-	type OperationalFeeMultiplier = ConstU8<5>;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-	type WeightToFee = fee::WeightToFee;
-}
-
 parameter_types! {
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
 	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block;
@@ -634,49 +479,6 @@ mod tests {
 			TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
 			TypeId::of::<EverythingBut<FilteredCalls>>(),
 		);
-	}
-
-	#[test]
-	fn ed_is_correct() {
-		assert_eq!(ExistentialDeposit::get(), EXISTENTIAL_DEPOSIT * 100);
-		assert_eq!(ExistentialDeposit::get(), 1_000_000_000);
-	}
-
-	#[test]
-	fn units_are_correct() {
-		// UNIT should have 10 decimals
-		assert_eq!(UNIT, 10_000_000_000);
-		assert_eq!(MILLI_UNIT, 10_000_000);
-		assert_eq!(MICRO_UNIT, 10_000);
-
-		// fee specific units
-		assert_eq!(fee::CENTS, 100_000_000);
-		assert_eq!(fee::MILLICENTS, 100_000);
-	}
-
-	#[test]
-	fn transaction_byte_fee_is_correct() {
-		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
-	}
-
-	#[test]
-	fn deposit_works() {
-		const UNITS: Balance = 10_000_000_000;
-		const DOLLARS: Balance = UNITS; // 10_000_000_000
-		const CENTS: Balance = DOLLARS / 100; // 100_000_000
-		const MILLICENTS: Balance = CENTS / 1_000; // 100_000
-
-		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
-		fn relay_deposit(items: u32, bytes: u32) -> Balance {
-			items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLICENTS
-		}
-
-		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70
-		fn system_para_deposit(items: u32, bytes: u32) -> Balance {
-			relay_deposit(items, bytes) / 100
-		}
-
-		assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
 	}
 
 	#[test]
