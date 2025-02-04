@@ -75,3 +75,26 @@ pub trait Psp34Metadata {
 	#[ink(message, selector = 0xf19d48d1)]
 	fn get_attribute(&self, item: ItemId, key: Vec<u8>) -> Option<Vec<u8>>;
 }
+
+/// The PSP34 Mintable trait.
+#[ink::trait_definition]
+pub trait Psp34Mintable {
+	/// Mints an item to the specified address.
+	///
+	/// # Parameters
+	/// - `to` - The recipient account.
+	/// - `item` - The ID for the item.
+	#[ink(message, selector = 0x6c41f2ec)]
+	fn mint(&mut self, to: AccountId, item: Id) -> Result<(), PSP34Error>;
+}
+
+/// The PSP34 Burnable trait.
+#[ink::trait_definition]
+pub trait Psp34Burnable {
+	/// Destroys the specified item. Clearing the corresponding approvals.
+	///
+	/// # Parameters
+	/// - `item` - The item.
+	#[ink(message, selector = 0x63c9877a)]
+	fn burn(&mut self, item: Id) -> Result<(), PSP34Error>;
+}
