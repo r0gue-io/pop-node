@@ -191,6 +191,7 @@ mod tests {
 
 	mod system {
 		use pallet_balances::AdjustmentDirection;
+		use sp_runtime::MultiAddress;
 		use BalancesCall::*;
 
 		use super::*;
