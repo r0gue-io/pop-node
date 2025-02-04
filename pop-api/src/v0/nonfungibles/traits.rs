@@ -85,7 +85,7 @@ pub trait Psp34Mintable {
 	/// - `to` - The recipient account.
 	/// - `item` - The ID for the item.
 	#[ink(message, selector = 0x6c41f2ec)]
-	fn mint(&mut self, to: AccountId, item: Id) -> Result<(), PSP34Error>;
+	fn mint(&mut self, to: AccountId, item: Id) -> Result<(), Psp34Error>;
 }
 
 /// The PSP34 Burnable trait.
@@ -96,5 +96,5 @@ pub trait Psp34Burnable {
 	/// # Parameters
 	/// - `item` - The item.
 	#[ink(message, selector = 0x63c9877a)]
-	fn burn(&mut self, item: Id) -> Result<(), PSP34Error>;
+	fn burn(&mut self, item: Id) -> Result<(), Psp34Error>;
 }
