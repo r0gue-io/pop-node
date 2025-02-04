@@ -574,7 +574,7 @@ mod tests {
 		}
 
 		#[test]
-		fn is_reser_is_trusted_reserves() {
+		fn trusted_reserves_are_provided() {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
 				TypeId::of::<TrustedReserves>(),
@@ -618,6 +618,14 @@ mod tests {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::PalletInstancesInfo>(),
 				TypeId::of::<AllPalletsWithSystem>(),
+			);
+		}
+
+		#[test]
+		fn routes_query_responses() {
+			assert_eq!(
+				TypeId::of::<<XcmConfig as xcm_executor::Config>::ResponseHandler>(),
+				TypeId::of::<PolkadotXcm>(),
 			);
 		}
 
@@ -670,6 +678,14 @@ mod tests {
 		}
 
 		#[test]
+		fn universal_location_is_set() {
+			assert_eq!(
+				TypeId::of::<<XcmConfig as xcm_executor::Config>::UniversalLocation>(),
+				TypeId::of::<UniversalLocation>(),
+			);
+		}
+
+		#[test]
 		fn weigher_uses_fixed_wieght_bounds() {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::Weigher>(),
@@ -695,14 +711,6 @@ mod tests {
 						XcmpQueue,
 					)>,
 				>(),
-			);
-		}
-
-		#[test]
-		fn routes_query_responses() {
-			assert_eq!(
-				TypeId::of::<<XcmConfig as xcm_executor::Config>::ResponseHandler>(),
-				TypeId::of::<PolkadotXcm>(),
 			);
 		}
 	}
