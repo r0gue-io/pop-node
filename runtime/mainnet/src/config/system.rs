@@ -26,12 +26,13 @@ use crate::{
 parameter_types! {
 	pub const Version: RuntimeVersion = VERSION;
 	pub const SS58Prefix: u16 = 0;
-	// This part is copied from Substrate's `bin/node/runtime/src/lib.rs`.
-	// The `RuntimeBlockLength` and `RuntimeBlockWeights` exist here because the
-	// `DeletionWeightLimit` and `DeletionQueueDepth` depend on those to parameterize
-	// the lazy contract deletion.
+
+	/// Defines the length limit in bytes for a block.
+	// BlockLength is created with max for Operational & Mandatory and normal * max for Normal `DispatchClass`.
 	pub RuntimeBlockLength: BlockLength =
 		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+
+	/// Defines the block weight in terms of the different `DispatchClass` limits.
 	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
 		.base_block(BlockExecutionWeight::get())
 		.for_class(DispatchClass::all(), |weights| {
