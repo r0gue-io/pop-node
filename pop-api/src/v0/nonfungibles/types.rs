@@ -3,7 +3,7 @@
 use enumflags2::{bitflags, BitFlags};
 
 use super::*;
-use crate::{macros::impl_codec_bitflags, primitives::AccountId};
+use crate::primitives::AccountId;
 
 type Balance = u32;
 /// The identifier of a collection.
@@ -70,7 +70,11 @@ impl CollectionSettings {
 	}
 }
 
-impl_codec_bitflags!(CollectionSettings, u64, CollectionSetting);
+impl ink::scale::Encode for CollectionSettings {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.bits().using_encoded(f)
+	}
+}
 
 /// Collection's configuration.
 #[derive(Debug, PartialEq, Eq)]
@@ -167,4 +171,8 @@ impl ItemSettings {
 	}
 }
 
-impl_codec_bitflags!(ItemSettings, u64, ItemSetting);
+impl ink::scale::Encode for ItemSettings {
+	fn using_encoded<R, F: FnOnce(&[u8]) -> R>(&self, f: F) -> R {
+		self.0.bits().using_encoded(f)
+	}
+}

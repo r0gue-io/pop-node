@@ -12,8 +12,6 @@ use constants::DECODING_FAILED;
 use ink::env::chain_extension::{ChainExtensionMethod, FromStatusCode};
 pub use v0::*;
 
-/// Module providing macros.
-pub mod macros;
 /// Module providing primitives types.
 pub mod primitives;
 /// The first version of the API.
