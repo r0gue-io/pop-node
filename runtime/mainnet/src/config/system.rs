@@ -196,7 +196,7 @@ mod tests {
 		use super::*;
 
 		#[test]
-		fn system_account_id_is_32_bytes() {
+		fn account_id_is_32_bytes() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::AccountId>(),
 				TypeId::of::<AccountId32>(),
@@ -204,7 +204,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_base_call_filter_allows_everything_but_filtered_calls() {
+		fn base_call_filter_allows_everything_but_filtered_calls() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
 				TypeId::of::<EverythingBut<FilteredCalls>>(),
@@ -231,7 +231,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_block_configured() {
+		fn block_configured() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::Block>(),
 				TypeId::of::<generic::Block<Header, UncheckedExtrinsic>>(),
@@ -239,7 +239,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_block_hash_count() {
+		fn block_hash_count() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::BlockHashCount>(),
 				TypeId::of::<BlockHashCount>(),
@@ -248,7 +248,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_block_length_restricted_by_pov() {
+		fn block_length_restricted_by_pov() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::BlockLength>(),
 				TypeId::of::<RuntimeBlockLength>(),
@@ -267,7 +267,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_block_weights_restricted_by_dispatch_class() {
+		fn block_weights_restricted_by_dispatch_class() {
 			let max_block_weight =
 				// Two seconds compute per 6s block, max PoV size
 				Weight::from_parts(WEIGHT_REF_TIME_PER_SECOND.saturating_mul(2), MAX_POV_SIZE as u64);
@@ -327,7 +327,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_db_weight_uses_rocks_db() {
+		fn db_weight_uses_rocks_db() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::DbWeight>(),
 				TypeId::of::<RocksDbWeight>(),
@@ -335,7 +335,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_uses_blake2_hashing() {
+		fn uses_blake2_hashing() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::Hashing>(),
 				TypeId::of::<BlakeTwo256>(),
@@ -343,7 +343,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_uses_multi_address_lookup() {
+		fn uses_multi_address_lookup() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::Lookup>(),
 				TypeId::of::<AccountIdLookup<AccountId, ()>>(),
@@ -351,12 +351,12 @@ mod tests {
 		}
 
 		#[test]
-		fn system_max_consumers_limited_to_16() {
+		fn max_consumers_limited_to_16() {
 			assert_eq!(<<Runtime as frame_system::Config>::MaxConsumers as Get<u32>>::get(), 16);
 		}
 
 		#[test]
-		fn system_multi_block_migrator_disabled() {
+		fn multi_block_migrator_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::MultiBlockMigrator>(),
 				TypeId::of::<()>(),
@@ -364,7 +364,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_nonce_uses_u32() {
+		fn nonce_uses_u32() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::Nonce>(),
 				TypeId::of::<u32>(),
@@ -372,7 +372,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_account_killed_handler_disabled() {
+		fn account_killed_handler_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::OnKilledAccount>(),
 				TypeId::of::<()>(),
@@ -380,7 +380,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_new_account_handler_disabled() {
+		fn new_account_handler_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::OnNewAccount>(),
 				TypeId::of::<()>(),
@@ -388,7 +388,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_set_code_handler_managed_by_parachain_system() {
+		fn set_code_handler_managed_by_parachain_system() {
 			// Runtime upgrades orchestrated by parachain system pallet
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::OnSetCode>(),
@@ -397,7 +397,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_post_inherent_handler_disabled() {
+		fn post_inherent_handler_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::PostInherents>(),
 				TypeId::of::<()>(),
@@ -405,7 +405,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_post_transactions_handler_disabled() {
+		fn post_transactions_handler_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::PostTransactions>(),
 				TypeId::of::<()>(),
@@ -413,7 +413,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_pre_inherent_handler_disabled() {
+		fn pre_inherent_handler_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::PreInherents>(),
 				TypeId::of::<()>(),
@@ -421,7 +421,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_single_block_migrations_is_empty() {
+		fn single_block_migrations_is_empty() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::SingleBlockMigrations>(),
 				TypeId::of::<()>(),
@@ -429,12 +429,12 @@ mod tests {
 		}
 
 		#[test]
-		fn system_ss58_prefix_matches_relay() {
+		fn ss58_prefix_matches_relay() {
 			assert_eq!(<<Runtime as frame_system::Config>::SS58Prefix>::get(), 0);
 		}
 
 		#[test]
-		fn system_does_not_use_default_weights() {
+		fn does_not_use_default_weights() {
 			assert_ne!(
 				TypeId::of::<<Runtime as frame_system::Config>::SystemWeightInfo>(),
 				TypeId::of::<()>(),
@@ -443,7 +443,7 @@ mod tests {
 
 		#[test]
 		#[ignore]
-		fn system_extensions_do_not_use_default_weights() {
+		fn extensions_do_not_use_default_weights() {
 			assert_ne!(
 				TypeId::of::<<Runtime as frame_system::Config>::ExtensionsWeightInfo>(),
 				TypeId::of::<()>(),
@@ -451,7 +451,7 @@ mod tests {
 		}
 
 		#[test]
-		fn system_versions_runtime() {
+		fn versions_runtime() {
 			assert_eq!(
 				TypeId::of::<<Runtime as frame_system::Config>::Version>(),
 				TypeId::of::<Version>(),
@@ -467,7 +467,7 @@ mod tests {
 		use super::*;
 
 		#[test]
-		fn parachain_system_ensures_relay_block_increases_monotonically() {
+		fn ensures_relay_block_increases_monotonically() {
 			assert_eq!(
 			TypeId::of::<
 				<Runtime as cumulus_pallet_parachain_system::Config>::CheckAssociatedRelayNumber,
@@ -477,7 +477,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_manages_unincluded_block_authoring() {
+		fn manages_unincluded_block_authoring() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ConsensusHook>(),
 				TypeId::of::<
@@ -492,7 +492,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_enqueues_dmp_messages() {
+		fn enqueues_dmp_messages() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::DmpQueue>(),
 				TypeId::of::<EnqueueWithOrigin<MessageQueue, RelayOrigin>>(),
@@ -500,7 +500,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_system_event_handler_disabled() {
+		fn event_handler_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::OnSystemEvent>(),
 				TypeId::of::<()>(),
@@ -508,7 +508,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_outbound_messages_sourced_from_xcmp_queue() {
+		fn outbound_messages_sourced_from_xcmp_queue() {
 			assert_eq!(
 				TypeId::of::<
 					<Runtime as cumulus_pallet_parachain_system::Config>::OutboundXcmpMessageSource,
@@ -518,7 +518,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_reserves_weight_for_dmp_messages() {
+		fn reserves_weight_for_dmp_messages() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::ReservedDmpWeight>(
 				),
@@ -528,7 +528,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_reserves_weight_for_xcmp_messages() {
+		fn reserves_weight_for_xcmp_messages() {
 			assert_eq!(
 				TypeId::of::<
 					<Runtime as cumulus_pallet_parachain_system::Config>::ReservedXcmpWeight,
@@ -539,7 +539,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_uses_lookahead_core_selector() {
+		fn uses_lookahead_core_selector() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelectCore>(),
 				TypeId::of::<cumulus_pallet_parachain_system::LookaheadCoreSelector::<Runtime>>(),
@@ -547,7 +547,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_looks_up_para_id_from_parachain_info() {
+		fn looks_up_para_id_from_parachain_info() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::SelfParaId>(),
 				TypeId::of::<parachain_info::Pallet<Runtime>>(),
@@ -555,7 +555,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_does_not_use_default_weights() {
+		fn does_not_use_default_weights() {
 			assert_ne!(
 				TypeId::of::<<Runtime as cumulus_pallet_parachain_system::Config>::WeightInfo>(),
 				TypeId::of::<()>(),
@@ -563,7 +563,7 @@ mod tests {
 		}
 
 		#[test]
-		fn parachain_system_uses_xcmp_queue_as_xcmp_message_handler() {
+		fn uses_xcmp_queue_as_xcmp_message_handler() {
 			assert_eq!(
 				TypeId::of::<
 					<Runtime as cumulus_pallet_parachain_system::Config>::XcmpMessageHandler,
@@ -577,7 +577,7 @@ mod tests {
 		use super::*;
 
 		#[test]
-		fn timestamp_min_period_is_zero() {
+		fn min_period_is_zero() {
 			assert_eq!(
 				<<Runtime as pallet_timestamp::Config>::MinimumPeriod as Get<u64>>::get(),
 				0
@@ -585,7 +585,7 @@ mod tests {
 		}
 
 		#[test]
-		fn timestamp_uses_u64_moment() {
+		fn uses_u64_moment() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_timestamp::Config>::Moment>(),
 				TypeId::of::<u64>(),
@@ -593,7 +593,7 @@ mod tests {
 		}
 
 		#[test]
-		fn timestamp_handler_is_aura() {
+		fn handler_is_aura() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_timestamp::Config>::OnTimestampSet>(),
 				TypeId::of::<Aura>(),
@@ -601,7 +601,7 @@ mod tests {
 		}
 
 		#[test]
-		fn timestamp_does_not_use_default_weights() {
+		fn does_not_use_default_weights() {
 			assert_ne!(
 				TypeId::of::<<Runtime as pallet_timestamp::Config>::WeightInfo>(),
 				TypeId::of::<()>(),
