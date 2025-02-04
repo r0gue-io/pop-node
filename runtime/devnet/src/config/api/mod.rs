@@ -169,16 +169,16 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 				matches!(
 					c,
 					RuntimeCall::NonFungibles(
-						transfer { .. } |
-							approve { .. } | mint { .. } |
-							burn { .. } | create { .. } |
+						approve { .. } |
+							transfer { .. } | create { .. } |
 							destroy { .. } | set_metadata { .. } |
 							clear_metadata { .. } | set_attribute { .. } |
 							clear_attribute { .. } |
-							approve_item_attributes { .. } |
+							set_max_supply { .. } | approve_item_attributes { .. } |
 							cancel_item_attributes_approval { .. } |
-							set_max_supply { .. } | clear_all_transfer_approvals { .. } |
-							clear_collection_approvals { .. },
+							clear_all_transfer_approvals { .. } |
+							clear_collection_approvals { .. } |
+							mint { .. } | burn { .. },
 					)
 				)
 			};
@@ -210,7 +210,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 					BalanceOf { .. } |
 						OwnerOf { .. } | Allowance { .. } |
 						TotalSupply(..) | GetAttribute { .. } |
-						Collection { .. } | ItemMetadata { .. } |
+						ItemMetadata { .. } |
 						NextCollectionId,
 				)
 			)
@@ -313,7 +313,6 @@ mod tests {
 		};
 
 		for call in vec![
-			NonFungibles(transfer { collection: 0, item: 0, to: ACCOUNT }),
 			NonFungibles(approve {
 				collection: 0,
 				item: Some(0),
@@ -321,8 +320,7 @@ mod tests {
 				approved: false,
 				deadline: None,
 			}),
-			NonFungibles(mint { to: ACCOUNT, collection: 0, item: 0, witness: None }),
-			NonFungibles(burn { collection: 0, item: 0 }),
+			NonFungibles(transfer { collection: 0, item: 0, to: ACCOUNT }),
 			NonFungibles(create {
 				admin: ACCOUNT,
 				config: CollectionConfig {
@@ -360,6 +358,8 @@ mod tests {
 			}),
 			NonFungibles(clear_all_transfer_approvals { collection: 0, item: 0 }),
 			NonFungibles(clear_collection_approvals { collection: 0, limit: 0 }),
+			NonFungibles(mint { to: ACCOUNT, collection: 0, item: 0, witness: None }),
+			NonFungibles(burn { collection: 0, item: 0 }),
 		]
 		.iter()
 		{
@@ -387,7 +387,6 @@ mod tests {
 				namespace: pallet_nfts::AttributeNamespace::CollectionOwner,
 				key: bounded_vec![],
 			}),
-			NonFungibles(Collection(1)),
 			NonFungibles(NextCollectionId),
 			NonFungibles(ItemMetadata { collection: 1, item: 1 }),
 		]

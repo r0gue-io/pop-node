@@ -11,10 +11,9 @@ use crate::{
 	mock::*,
 	nonfungibles::{
 		AccountBalanceOf, AttributeNamespace, AttributeOf, BlockNumberFor,
-		CancelAttributesApprovalWitness, CollectionConfig, CollectionDetails, CollectionIdOf,
-		CollectionOf, CollectionSettings, Config, DestroyWitness, ItemIdOf, MintSettings,
-		NextCollectionIdOf, NftsErrorOf, NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult,
-		WeightInfo as WeightInfoTrait,
+		CancelAttributesApprovalWitness, CollectionConfig, CollectionIdOf, CollectionSettings,
+		Config, DestroyWitness, ItemIdOf, MintSettings, NextCollectionIdOf, NftsErrorOf,
+		NftsInstanceOf, NftsWeightInfoOf, Read::*, ReadResult, WeightInfo as WeightInfoTrait,
 	},
 	Read,
 };
@@ -851,26 +850,6 @@ mod get_attribute {
 }
 
 #[test]
-fn collection_works() {
-	new_test_ext().execute_with(|| {
-		let collection = COLLECTION;
-		let item = ITEM;
-		let owner = ALICE;
-
-		assert_eq!(NonFungibles::read(Collection(collection)), ReadResult::Collection(None));
-		nfts::create_collection_and_mint(owner, owner, item);
-		assert_eq!(
-			NonFungibles::read(Collection(collection)),
-			ReadResult::Collection(CollectionOf::<Test>::get(collection)),
-		);
-		assert_eq!(
-			NonFungibles::read(Collection(collection)).encode(),
-			CollectionOf::<Test>::get(collection).encode(),
-		);
-	});
-}
-
-#[test]
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {
 		assert_eq!(NonFungibles::read(NextCollectionId), ReadResult::NextCollectionId(Some(0)));
@@ -1006,7 +985,7 @@ mod ensure_codec_indexes {
 				4,
 				"transfer",
 			),
-			(create { admin: Default::default(), config: Default::default() }, 10, "create"),
+			(create { admin: Default::default(), config: Default::default() }, 9, "create"),
 			(
 				destroy {
 					collection: Default::default(),
@@ -1016,7 +995,7 @@ mod ensure_codec_indexes {
 						attributes: Default::default(),
 					},
 				},
-				11,
+				10,
 				"destroy",
 			),
 			(
@@ -1027,7 +1006,7 @@ mod ensure_codec_indexes {
 					key: Default::default(),
 					value: Default::default(),
 				},
-				12,
+				11,
 				"set_attribute",
 			),
 			(
@@ -1037,7 +1016,7 @@ mod ensure_codec_indexes {
 					namespace: AttributeNamespace::CollectionOwner,
 					key: Default::default(),
 				},
-				13,
+				12,
 				"clear_attribute",
 			),
 			(
@@ -1046,17 +1025,17 @@ mod ensure_codec_indexes {
 					item: Default::default(),
 					data: Default::default(),
 				},
-				14,
+				13,
 				"set_metadata",
 			),
 			(
 				clear_metadata { collection: Default::default(), item: Default::default() },
-				15,
+				14,
 				"clear_metadata",
 			),
 			(
 				set_max_supply { collection: Default::default(), max_supply: Default::default() },
-				16,
+				15,
 				"set_max_supply",
 			),
 			(
@@ -1065,7 +1044,7 @@ mod ensure_codec_indexes {
 					item: Default::default(),
 					delegate: Default::default(),
 				},
-				17,
+				16,
 				"approve_item_attributes",
 			),
 			(
@@ -1077,7 +1056,7 @@ mod ensure_codec_indexes {
 						account_attributes: Default::default(),
 					},
 				},
-				18,
+				17,
 				"cancel_item_attributes_approval",
 			),
 			(
@@ -1085,7 +1064,7 @@ mod ensure_codec_indexes {
 					collection: Default::default(),
 					item: Default::default(),
 				},
-				19,
+				18,
 				"clear_all_transfer_approvals",
 			),
 			(
@@ -1093,7 +1072,7 @@ mod ensure_codec_indexes {
 					collection: Default::default(),
 					limit: Default::default(),
 				},
-				20,
+				19,
 				"clear_collection_approvals",
 			),
 			(
@@ -1106,10 +1085,10 @@ mod ensure_codec_indexes {
 						mint_price: Default::default(),
 					}),
 				},
-				21,
+				20,
 				"mint",
 			),
-			(burn { collection: Default::default(), item: Default::default() }, 22, "burn"),
+			(burn { collection: Default::default(), item: Default::default() }, 21, "burn"),
 		]
 		.iter()
 		.for_each(|(variant, expected_index, name)| {
@@ -1155,11 +1134,10 @@ mod ensure_codec_indexes {
 				6,
 				"GetAttribute",
 			),
-			(Collection::<Test>(Default::default()), 7, "Collection"),
-			(NextCollectionId, 8, "NextCollectionId"),
+			(NextCollectionId, 7, "NextCollectionId"),
 			(
 				ItemMetadata { collection: Default::default(), item: Default::default() },
-				9,
+				8,
 				"ItemMetadata",
 			),
 		]
@@ -1179,7 +1157,6 @@ mod read_weights {
 		allowance: Weight,
 		total_supply: Weight,
 		get_attribute: Weight,
-		collection: Weight,
 		next_collection_id: Weight,
 		item_metadata: Weight,
 	}
@@ -1205,7 +1182,6 @@ mod read_weights {
 					namespace: AttributeNamespace::CollectionOwner,
 					key: BoundedVec::default(),
 				}),
-				collection: NonFungibles::weight(&Collection(COLLECTION)),
 				next_collection_id: NonFungibles::weight(&NextCollectionId),
 				item_metadata: NonFungibles::weight(&ItemMetadata {
 					collection: COLLECTION,
@@ -1223,7 +1199,6 @@ mod read_weights {
 			allowance,
 			total_supply,
 			get_attribute,
-			collection,
 			next_collection_id,
 			item_metadata,
 		} = ReadWeightInfo::new();
@@ -1233,17 +1208,8 @@ mod read_weights {
 		assert_eq!(allowance, WeightInfo::allowance());
 		assert_eq!(total_supply, WeightInfo::total_supply());
 		assert_eq!(get_attribute, WeightInfo::get_attribute());
-		assert_eq!(collection, WeightInfo::collection());
 		assert_eq!(next_collection_id, WeightInfo::next_collection_id());
 		assert_eq!(item_metadata, WeightInfo::item_metadata());
-	}
-
-	// These types read from the `Collection` storage.
-	#[test]
-	fn ensure_collection_variants_match() {
-		let ReadWeightInfo { total_supply, collection, .. } = ReadWeightInfo::new();
-
-		assert_eq!(total_supply.proof_size(), collection.proof_size());
 	}
 
 	// Proof size is based on `MaxEncodedLen`, not hardware.
@@ -1256,7 +1222,6 @@ mod read_weights {
 			allowance,
 			total_supply,
 			get_attribute,
-			collection,
 			next_collection_id,
 			item_metadata,
 		} = ReadWeightInfo::new();
@@ -1267,7 +1232,6 @@ mod read_weights {
 		assert_eq!(allowance.proof_size(), 4326);
 		assert_eq!(total_supply.proof_size(), 3549);
 		assert_eq!(get_attribute.proof_size(), 3944);
-		assert_eq!(collection.proof_size(), 3549);
 		assert_eq!(next_collection_id.proof_size(), 1489);
 		assert_eq!(item_metadata.proof_size(), 3812);
 	}
@@ -1314,21 +1278,6 @@ mod encoding_read_result {
 			ReadResult::GetAttribute::<Test>(attribute.clone()).encode(),
 			attribute.encode()
 		);
-	}
-
-	#[test]
-	fn collection() {
-		let mut details = Some(CollectionDetails {
-			owner: ALICE,
-			owner_deposit: 0,
-			items: 0,
-			item_metadatas: 0,
-			item_configs: 0,
-			attributes: 0,
-		});
-		assert_eq!(ReadResult::Collection::<Test>(details.clone()).encode(), details.encode());
-		details = None;
-		assert_eq!(ReadResult::Collection::<Test>(details.clone()).encode(), details.encode());
 	}
 
 	#[test]

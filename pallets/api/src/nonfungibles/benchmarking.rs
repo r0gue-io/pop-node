@@ -81,15 +81,6 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	// Storage: `Collection`
-	fn collection() {
-		#[block]
-		{
-			Pallet::<T>::read(Read::Collection(CollectionIdOf::<T>::zero()));
-		}
-	}
-
-	#[benchmark]
 	// Storage: `NextCollectionId`
 	fn next_collection_id() {
 		#[block]

@@ -37,7 +37,6 @@ pub trait WeightInfo {
 	fn allowance() -> Weight;
 	fn owner_of() -> Weight;
 	fn get_attribute() -> Weight;
-	fn collection() -> Weight;
 	fn next_collection_id() -> Weight;
 	fn item_metadata() -> Weight;
 }
@@ -95,16 +94,6 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Estimated: `3944`
 		// Minimum execution time: 3_000_000 picoseconds.
 		Weight::from_parts(4_000_000, 3944)
-			.saturating_add(T::DbWeight::get().reads(1_u64))
-	}
-	/// Storage: `Nfts::Collection` (r:1 w:0)
-	/// Proof: `Nfts::Collection` (`max_values`: None, `max_size`: Some(84), added: 2559, mode: `MaxEncodedLen`)
-	fn collection() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3`
-		//  Estimated: `3549`
-		// Minimum execution time: 1_000_000 picoseconds.
-		Weight::from_parts(2_000_000, 3549)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Nfts::NextCollectionId` (r:1 w:0)
@@ -181,16 +170,6 @@ impl WeightInfo for () {
 		//  Estimated: `3944`
 		// Minimum execution time: 3_000_000 picoseconds.
 		Weight::from_parts(4_000_000, 3944)
-			.saturating_add(RocksDbWeight::get().reads(1_u64))
-	}
-	/// Storage: `Nfts::Collection` (r:1 w:0)
-	/// Proof: `Nfts::Collection` (`max_values`: None, `max_size`: Some(84), added: 2559, mode: `MaxEncodedLen`)
-	fn collection() -> Weight {
-		// Proof Size summary in bytes:
-		//  Measured:  `3`
-		//  Estimated: `3549`
-		// Minimum execution time: 1_000_000 picoseconds.
-		Weight::from_parts(2_000_000, 3549)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Nfts::NextCollectionId` (r:1 w:0)
