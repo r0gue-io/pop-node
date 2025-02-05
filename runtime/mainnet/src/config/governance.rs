@@ -1,4 +1,8 @@
-use frame_support::{parameter_types, traits::EitherOfDiverse, weights::Weight};
+use frame_support::{
+	parameter_types,
+	traits::{EitherOfDiverse, NeverEnsureOrigin},
+	weights::Weight,
+};
 use frame_system::EnsureRoot;
 use parachains_common::BlockNumber;
 use pop_runtime_common::DAYS;
@@ -7,9 +11,14 @@ use crate::{
 	AccountId, Council, Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent, RuntimeOrigin,
 };
 
-type MoreThanHalfCouncil = EitherOfDiverse<
+type UnanimousCouncilVote = EitherOfDiverse<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
+>;
+
+type AtLeastThreeFourthsOfCouncil = EitherOfDiverse<
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
 
 parameter_types! {
@@ -20,7 +29,6 @@ parameter_types! {
 }
 
 pub type CouncilCollective = pallet_collective::Instance1;
-
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Consideration = ();
 	type DefaultVote = pallet_collective::PrimeDefaultVote;
@@ -37,27 +45,30 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
 }
 
-impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
-	type AddOrigin = MoreThanHalfCouncil;
+pub type CouncilMembership = pallet_collective::Instance1;
+impl pallet_membership::Config<CouncilMembership> for Runtime {
+	type AddOrigin = UnanimousCouncilVote;
 	type MaxMembers = CouncilMaxMembers;
 	type MembershipChanged = Council;
 	type MembershipInitialized = Council;
-	type PrimeOrigin = MoreThanHalfCouncil;
-	type RemoveOrigin = MoreThanHalfCouncil;
-	type ResetOrigin = MoreThanHalfCouncil;
+	type PrimeOrigin = AtLeastThreeFourthsOfCouncil;
+	type RemoveOrigin = AtLeastThreeFourthsOfCouncil;
+	type ResetOrigin = AtLeastThreeFourthsOfCouncil;
 	type RuntimeEvent = RuntimeEvent;
-	type SwapOrigin = MoreThanHalfCouncil;
+	type SwapOrigin = AtLeastThreeFourthsOfCouncil;
 	type WeightInfo = pallet_membership::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_motion::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type SimpleMajorityOrigin =
-		pallet_collective::EnsureProportionMoreThan<AccountId, CouncilCollective, 1, 2>;
-	type SuperMajorityOrigin =
-		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 2, 3>;
+	// SimpleMajority origin check will always fail.
+	// Making it not possible for SimpleMajority to dispatch as root.
+	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
+	// SuperMajority origin check will always fail.
+	// Making it not possible for SimpleMajority to dispatch as root.
+	type SuperMajorityOrigin = NeverEnsureOrigin<()>;
 	type UnanimousOrigin =
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
-	type WeightInfo = ();
+	type WeightInfo = pallet_motion::weights::SubstrateWeight<Runtime>;
 }
