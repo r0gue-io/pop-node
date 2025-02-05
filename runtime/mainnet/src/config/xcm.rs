@@ -16,7 +16,7 @@ use parachains_common::{
 	xcm_config::ParentRelayOrSiblingParachains,
 };
 use polkadot_parachain_primitives::primitives::Sibling;
-use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
+use polkadot_runtime_common::xcm_sender::ExponentialPrice;
 use sp_runtime::{traits::AccountIdConversion, Vec};
 use xcm::latest::prelude::*;
 use xcm_builder::{
@@ -31,10 +31,16 @@ use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 use crate::{
-	config::{governance::SudoAddress, monetary::fee::WeightToFee, system::RuntimeBlockWeights},
-	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem,
-	PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
-	XcmpQueue, Perbill,
+	config::{
+		monetary::{
+			fee::{WeightToFee, CENTS},
+			TransactionByteFee,
+		},
+		system::RuntimeBlockWeights,
+	},
+	AccountId, AllPalletsWithSystem, Balances, MessageQueue, PalletId, ParachainInfo,
+	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+	XcmpQueue,
 };
 
 parameter_types! {
@@ -46,6 +52,7 @@ parameter_types! {
 	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block;
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
 	pub TreasuryAccount: AccountId = PalletId(*b"treasury").into_account_truncating();
+	pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
 }
 
 impl pallet_message_queue::Config for Runtime {
@@ -261,7 +268,8 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	// Limit the number of HRMP channels.
 	// note: https://github.com/polkadot-fellows/runtimes/blob/76d1fa680d00c3e447e40199e7b2250862ad4bfa/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L692C2-L693C90
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
-	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
+	type PriceForSiblingDelivery =
+		ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Runtime>;
@@ -273,9 +281,19 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 mod tests {
 	use std::any::TypeId;
 
+	use polkadot_runtime_common::xcm_sender::*;
+	use polkadot_runtime_parachains::FeeTracker;
+	use sp_runtime::FixedPointNumber;
 	use xcm_executor::traits::{FeeManager, FeeReason};
 
 	use super::*;
+	use crate::System;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let mut ext = sp_io::TestExternalities::new_empty();
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
 
 	mod reserves_config {
 		use super::*;
@@ -338,6 +356,7 @@ mod tests {
 			));
 		}
 	}
+
 	mod message_queue {
 		use super::*;
 
@@ -1038,13 +1057,35 @@ mod tests {
 		}
 
 		#[test]
-		#[ignore]
 		fn price_for_sibling_delivery() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(
 				),
-				TypeId::of::<NoPriceForMessageDelivery<ParaId>>()
+				TypeId::of::<
+					ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>,
+				>()
 			);
+
+			new_test_ext().execute_with(|| {
+				type ExponentialDeliveryPrice =
+					ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+				let id: ParaId = 420.into();
+				let b: u128 = BaseDeliveryFee::get();
+				let m: u128 = TransactionByteFee::get();
+
+				// F * (B + msg_length * M)
+				// A: RelayLocation
+				// B: BaseDeliveryFee
+				// M: TransactionByteFee
+				// F: XcmpQueue
+				//
+				// message_length = 1
+				let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
+				assert_eq!(
+					ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
+					(RelayLocation::get(), result).into()
+				);
+			})
 		}
 
 		#[test]
