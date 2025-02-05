@@ -168,3 +168,168 @@ impl ItemSettings {
 }
 
 impl_codec_bitflags!(ItemSettings, u64, ItemSetting);
+
+#[cfg(test)]
+mod tests {
+	use scale::Encode;
+
+	use super::*;
+
+	#[test]
+	fn ensure_destroy_witness() {
+		assert_eq!(
+			DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }.encode(),
+			pallet_nfts::DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }
+				.encode()
+		);
+	}
+
+	#[test]
+	fn ensure_mint_witness() {
+		assert_eq!(
+			MintWitness { owned_item: None, mint_price: None }.encode(),
+			pallet_nfts::MintWitness::<ItemId, Balance> { owned_item: None, mint_price: None }
+				.encode()
+		);
+	}
+
+	#[test]
+	fn ensure_collection_setting() {
+		assert_eq!(
+			vec![
+				CollectionSetting::TransferableItems,
+				CollectionSetting::UnlockedMetadata,
+				CollectionSetting::UnlockedAttributes,
+				CollectionSetting::UnlockedMaxSupply,
+				CollectionSetting::DepositRequired,
+			]
+			.encode(),
+			vec![
+				pallet_nfts::CollectionSetting::TransferableItems,
+				pallet_nfts::CollectionSetting::UnlockedMetadata,
+				pallet_nfts::CollectionSetting::UnlockedAttributes,
+				pallet_nfts::CollectionSetting::UnlockedMaxSupply,
+				pallet_nfts::CollectionSetting::DepositRequired,
+			]
+			.encode()
+		);
+	}
+
+	#[test]
+	fn ensure_collection_settings() {
+		assert_eq!(
+			CollectionSettings::all_enabled().encode(),
+			pallet_nfts::CollectionSettings::all_enabled().encode()
+		);
+	}
+
+	#[test]
+	fn ensure_collection_config() {
+		assert_eq!(
+			CollectionConfig {
+				settings: CollectionSettings::all_enabled(),
+				max_supply: None,
+				mint_settings: default_mint_settings(),
+			}
+			.encode(),
+			pallet_nfts::CollectionConfig {
+				settings: pallet_nfts::CollectionSettings::all_enabled(),
+				max_supply: None,
+				mint_settings: default_pallet_mint_settings(),
+			}
+			.encode()
+		);
+	}
+
+	#[test]
+	fn ensure_mint_type() {
+		assert_eq!(
+			vec![MintType::Issuer, MintType::Public, MintType::HolderOf(0),].encode(),
+			vec![
+				pallet_nfts::MintType::Issuer,
+				pallet_nfts::MintType::Public,
+				pallet_nfts::MintType::HolderOf(0)
+			]
+			.encode()
+		);
+	}
+
+	#[test]
+	fn ensure_mint_settings() {
+		assert_eq!(default_mint_settings().encode(), default_pallet_mint_settings().encode());
+	}
+
+	#[test]
+	fn ensure_attribute_namespace() {
+		let account: AccountId = [0; 32].into();
+		assert_eq!(
+			vec![
+				AttributeNamespace::CollectionOwner,
+				AttributeNamespace::ItemOwner,
+				AttributeNamespace::Account(account),
+			]
+			.encode(),
+			vec![
+				pallet_nfts::AttributeNamespace::<AccountId>::CollectionOwner,
+				pallet_nfts::AttributeNamespace::<AccountId>::ItemOwner,
+				pallet_nfts::AttributeNamespace::<AccountId>::Account(account)
+			]
+			.encode()
+		);
+	}
+
+	#[test]
+	fn ensure_cancel_attributes_approval_witness() {
+		assert_eq!(
+			CancelAttributesApprovalWitness { account_attributes: 0 }.encode(),
+			pallet_nfts::CancelAttributesApprovalWitness { account_attributes: 0 }.encode(),
+		);
+	}
+
+	#[test]
+	fn ensure_item_setting() {
+		assert_eq!(
+			vec![
+				ItemSetting::Transferable,
+				ItemSetting::UnlockedMetadata,
+				ItemSetting::UnlockedAttributes,
+			]
+			.encode(),
+			vec![
+				pallet_nfts::ItemSetting::Transferable,
+				pallet_nfts::ItemSetting::UnlockedMetadata,
+				pallet_nfts::ItemSetting::UnlockedAttributes
+			]
+			.encode()
+		);
+	}
+
+	#[test]
+	fn ensure_item_settings() {
+		assert_eq!(
+			ItemSettings::all_enabled().encode(),
+			pallet_nfts::ItemSettings::all_enabled().encode()
+		);
+	}
+
+	fn default_mint_settings() -> MintSettings {
+		MintSettings {
+			mint_type: MintType::Public,
+			price: None,
+			start_block: None,
+			end_block: None,
+			default_item_settings: ItemSettings::all_enabled(),
+		}
+	}
+
+	fn default_pallet_mint_settings(
+	) -> pallet_nfts::MintSettings<Balance, BlockNumber, CollectionId> {
+		pallet_nfts::MintSettings::<Balance, BlockNumber, CollectionId> {
+			mint_type: pallet_nfts::MintType::Public,
+			price: None,
+			start_block: None,
+			end_block: None,
+			default_item_settings: pallet_nfts::ItemSettings::all_enabled(),
+		}
+	}
+}
