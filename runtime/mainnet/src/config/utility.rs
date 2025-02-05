@@ -78,169 +78,196 @@ mod tests {
 
 	use super::*;
 
-	#[test]
-	fn utility_caller_origin_provided_by_runtime() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_utility::Config>::PalletsOrigin>(),
-			TypeId::of::<OriginCaller>(),
-		);
+	mod multisig {
+		use super::*;
+
+		#[test]
+		fn balances_is_used_for_deposits() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_multisig::Config>::Currency>(),
+				TypeId::of::<Balances>(),
+			);
+		}
+
+		#[test]
+		fn call_deposit_has_base_amount() {
+			assert_eq!(
+				<<Runtime as pallet_multisig::Config>::DepositBase as Get<Balance>>::get(),
+				deposit(1, 120)
+			);
+		}
+
+		#[test]
+		fn call_deposit_has_additional_factor() {
+			assert_eq!(
+				<<Runtime as pallet_multisig::Config>::DepositFactor as Get<Balance>>::get(),
+				deposit(0, 32)
+			);
+		}
+
+		#[test]
+		fn number_of_signatories_is_limited() {
+			assert_eq!(
+				<<Runtime as pallet_multisig::Config>::MaxSignatories as Get<u32>>::get(),
+				100
+			);
+		}
+
+		#[test]
+		fn default_weights_are_not_used() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_multisig::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
 	}
 
-	#[test]
-	fn utility_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_utility::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
+	mod preimage {
+		use super::*;
+
+		#[test]
+		fn base_deposit_matches_configuration() {
+			assert_eq!(PreimageBaseDeposit::get(), deposit(2, 64));
+		}
+
+		#[test]
+		fn byte_deposit_matches_configuration() {
+			assert_eq!(PreimageByteDeposit::get(), deposit(0, 1));
+		}
+
+		#[test]
+		fn hold_reason_uses_linear_price() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_preimage::Config>::Consideration>(),
+				TypeId::of::<
+					HoldConsideration<
+						AccountId,
+						Balances,
+						PreimageHoldReason,
+						LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+					>,
+				>()
+			);
+		}
+
+		#[test]
+		fn balances_provides_currency() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_preimage::Config>::Currency>(),
+				TypeId::of::<Balances>(),
+			);
+		}
+
+		#[test]
+		fn manage_origin_is_root() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_preimage::Config>::ManagerOrigin>(),
+				TypeId::of::<EnsureRoot<AccountId>>(),
+			);
+		}
+
+		#[test]
+		fn default_weights_are_not_used() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_preimage::Config>::WeightInfo>(),
+				TypeId::of::<()>()
+			);
+		}
 	}
 
-	#[test]
-	fn multisig_uses_balances_for_deposits() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_multisig::Config>::Currency>(),
-			TypeId::of::<Balances>(),
-		);
+	mod scheduler {
+		use super::*;
+
+		#[test]
+		#[cfg(feature = "runtime-benchmarks")]
+		fn call_queue_per_block_is_limited() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::MaxScheduledPerBlock>(),
+				TypeId::of::<ConstU32<512>>(),
+			);
+		}
+
+		#[test]
+		#[cfg(not(feature = "runtime-benchmarks"))]
+		fn call_queue_per_block_is_limited() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::MaxScheduledPerBlock>(),
+				TypeId::of::<ConstU32<50>>(),
+			);
+		}
+
+		#[test]
+		fn weight_per_dispatchable_is_limited() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::MaximumWeight>(),
+				TypeId::of::<MaximumSchedulerWeight>(),
+			);
+
+			assert_eq!(
+				<<Runtime as pallet_scheduler::Config>::MaximumWeight as Get<Weight>>::get(),
+				Perbill::from_percent(60) * RuntimeBlockWeights::get().max_block,
+			);
+		}
+
+		#[test]
+		fn privilege_cmp_is_equal_privilege_only() {
+			// EqualPrvilegeOnly can be used while ScheduleOrigin is reserve to Root.
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::OriginPrivilegeCmp>(),
+				TypeId::of::<EqualPrivilegeOnly>(),
+			);
+		}
+
+		#[test]
+		fn pallets_origin_provided_by_runtime() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::PalletsOrigin>(),
+				TypeId::of::<OriginCaller>(),
+			);
+		}
+
+		#[test]
+		fn preimage_is_used_to_look_up_calls() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::Preimages>(),
+				TypeId::of::<Preimage>(),
+			);
+		}
+
+		#[test]
+		fn only_root_can_schedule() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::ScheduleOrigin>(),
+				TypeId::of::<EnsureRoot<AccountId>>(),
+			);
+		}
+
+		#[test]
+		fn default_weights_are_not_used() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::WeightInfo>(),
+				TypeId::of::<()>()
+			);
+		}
 	}
 
-	#[test]
-	fn multisig_call_deposit_has_base_amount() {
-		assert_eq!(
-			<<Runtime as pallet_multisig::Config>::DepositBase as Get<Balance>>::get(),
-			deposit(1, 120)
-		);
-	}
+	mod utility {
+		use super::*;
 
-	#[test]
-	fn multisig_call_deposit_has_additional_factor() {
-		assert_eq!(
-			<<Runtime as pallet_multisig::Config>::DepositFactor as Get<Balance>>::get(),
-			deposit(0, 32)
-		);
-	}
+		#[test]
+		fn caller_origin_provided_by_runtime() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_utility::Config>::PalletsOrigin>(),
+				TypeId::of::<OriginCaller>(),
+			);
+		}
 
-	#[test]
-	fn multisig_restricts_max_signatories() {
-		assert_eq!(<<Runtime as pallet_multisig::Config>::MaxSignatories as Get<u32>>::get(), 100);
-	}
-
-	#[test]
-	fn multisig_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_multisig::Config>::WeightInfo>(),
-			TypeId::of::<()>(),
-		);
-	}
-
-	#[test]
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	fn scheduler_call_queue_per_block_is_limited() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_scheduler::Config>::MaxScheduledPerBlock>(),
-			TypeId::of::<ConstU32<50>>(),
-		);
-	}
-
-	#[test]
-	#[cfg(feature = "runtime-benchmarks")]
-	fn scheduler_call_queue_per_block_is_limited() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_scheduler::Config>::MaxScheduledPerBlock>(),
-			TypeId::of::<ConstU32<512>>(),
-		);
-	}
-
-	#[test]
-	fn scheduler_has_max_weight_per_dispatchable() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_scheduler::Config>::MaximumWeight>(),
-			TypeId::of::<MaximumSchedulerWeight>(),
-		);
-
-		assert_eq!(
-			<<Runtime as pallet_scheduler::Config>::MaximumWeight as Get<Weight>>::get(),
-			Perbill::from_percent(60) * RuntimeBlockWeights::get().max_block,
-		);
-	}
-
-	#[test]
-	fn scheduler_privilege_cmp_is_equal_privilege_only() {
-		// EqualPrvilegeOnly can be used while ScheduleOrigin is reserve to Root.
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_scheduler::Config>::OriginPrivilegeCmp>(),
-			TypeId::of::<EqualPrivilegeOnly>(),
-		);
-	}
-
-	#[test]
-	fn only_root_can_schedule() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_scheduler::Config>::ScheduleOrigin>(),
-			TypeId::of::<EnsureRoot<AccountId>>(),
-		);
-	}
-
-	#[test]
-	fn scheduler_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_scheduler::Config>::WeightInfo>(),
-			TypeId::of::<()>()
-		);
-	}
-
-	#[test]
-	fn scheduler_uses_preimage_to_look_up_calls() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_scheduler::Config>::Preimages>(),
-			TypeId::of::<Preimage>(),
-		);
-	}
-
-	#[test]
-	fn preimage_uses_balances_as_currency() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_preimage::Config>::Currency>(),
-			TypeId::of::<Balances>(),
-		);
-	}
-
-	#[test]
-	fn preimage_manage_origin_is_root() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_preimage::Config>::ManagerOrigin>(),
-			TypeId::of::<EnsureRoot<AccountId>>(),
-		);
-	}
-
-	#[test]
-	fn preimage_does_not_use_default_weights() {
-		assert_ne!(
-			TypeId::of::<<Runtime as pallet_preimage::Config>::WeightInfo>(),
-			TypeId::of::<()>()
-		);
-	}
-
-	#[test]
-	fn preimage_hold_reason_uses_linear_price() {
-		assert_eq!(
-			TypeId::of::<<Runtime as pallet_preimage::Config>::Consideration>(),
-			TypeId::of::<
-				HoldConsideration<
-					AccountId,
-					Balances,
-					PreimageHoldReason,
-					LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
-				>,
-			>()
-		);
-	}
-
-	#[test]
-	fn preimage_base_deposit() {
-		assert_eq!(PreimageBaseDeposit::get(), deposit(2, 64));
-	}
-
-	#[test]
-	fn preimage_byte_deposit() {
-		assert_eq!(PreimageByteDeposit::get(), deposit(0, 1));
+		#[test]
+		fn default_weights_are_not_used() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_utility::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
 	}
 }
