@@ -15,12 +15,8 @@ extern crate alloc;
 use alloc::{borrow::Cow, vec::Vec};
 
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
-use config::{
-	monetary::deposit,
-	system::{ConsensusHook, RuntimeBlockWeights},
-	xcm::XcmOriginToTransactDispatchOrigin,
-};
-use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
+use config::{monetary::deposit, system::ConsensusHook};
+use cumulus_primitives_core::AggregateMessageOrigin;
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
@@ -28,8 +24,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
-		ConstU8, Contains, EitherOfDiverse, EverythingBut, LinearStoragePrice, VariantCountOf,
-		EqualPrivilegeOnly, TransformOrigin,
+		ConstU8, EqualPrivilegeOnly, LinearStoragePrice, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
