@@ -7,11 +7,11 @@ use super::*;
 /// The PSP34 trait.
 #[ink::trait_definition]
 pub trait Psp34 {
-	/// Returns the collection `Id`.
+	/// Returns the collection ID.
 	#[ink(message, selector = 0xffa27a5f)]
-	fn collection_id(&self) -> ItemId;
+	fn collection_id(&self) -> CollectionId;
 
-	// Returns the current total supply of the NFT.
+	// Returns the current total supply of the NFT collection.
 	#[ink(message, selector = 0x628413fe)]
 	fn total_supply(&self) -> u128;
 
@@ -31,7 +31,7 @@ pub trait Psp34 {
 	/// - `operator` - the account that is allowed to withdraw the item(s).
 	/// - `item` - The item. If `None`, it is regarding all owner's items in collection.
 	#[ink(message, selector = 0x4790f55a)]
-	fn allowance(&self, owner: AccountId, operator: AccountId, id: Option<ItemId>) -> bool;
+	fn allowance(&self, owner: AccountId, operator: AccountId, item: Option<ItemId>) -> bool;
 
 	/// Transfers an owned or approved item to the specified recipient.
 	///
@@ -73,7 +73,7 @@ pub trait Psp34Metadata {
 	/// - `item` - The item. If `None` the attributes for the collection are queried.
 	/// - `key` - The key of the attribute.
 	#[ink(message, selector = 0xf19d48d1)]
-	fn get_attribute(&self, item: ItemId, key: Vec<u8>) -> Option<Vec<u8>>;
+	fn get_attribute(&self, item: Option<ItemId>, key: Vec<u8>) -> Option<Vec<u8>>;
 }
 
 /// The PSP34 Mintable trait.
@@ -85,7 +85,7 @@ pub trait Psp34Mintable {
 	/// - `to` - The recipient account.
 	/// - `item` - The ID for the item.
 	#[ink(message, selector = 0x6c41f2ec)]
-	fn mint(&mut self, to: AccountId, item: Id) -> Result<(), Psp34Error>;
+	fn mint(&mut self, to: AccountId, item: ItemId) -> Result<(), Psp34Error>;
 }
 
 /// The PSP34 Burnable trait.
@@ -96,5 +96,5 @@ pub trait Psp34Burnable {
 	/// # Parameters
 	/// - `item` - The item.
 	#[ink(message, selector = 0x63c9877a)]
-	fn burn(&mut self, item: Id) -> Result<(), Psp34Error>;
+	fn burn(&mut self, item: ItemId) -> Result<(), Psp34Error>;
 }
