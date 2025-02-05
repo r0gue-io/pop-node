@@ -1,10 +1,17 @@
+use frame_support::traits::{
+	fungible,
+	tokens::{PayFromAccount, UnityAssetBalanceConversion},
+	Imbalance, NeverEnsureOrigin, OnUnbalanced,
+};
 use pop_runtime_common::UNIT;
-use sp_runtime::traits::AccountIdConversion;
+use sp_core::crypto::Ss58Codec;
+use sp_runtime::traits::{AccountIdConversion, IdentityLookup};
 
 use crate::{
-	parameter_types, AccountId, Balance, Balances, ConstU32, ConstU8, ConstantMultiplier, PalletId,
-	ResolveTo, Runtime, RuntimeEvent, RuntimeFreezeReason, RuntimeHoldReason,
-	SlowAdjustingFeeUpdate, System, VariantCountOf, EXISTENTIAL_DEPOSIT,
+	parameter_types, AccountId, Balance, Balances, BlockNumber, ConstU32, ConstU8,
+	ConstantMultiplier, EnsureRoot, PalletId, ResolveTo, Runtime, RuntimeEvent,
+	RuntimeFreezeReason, RuntimeHoldReason, SlowAdjustingFeeUpdate, System, VariantCountOf, DAYS,
+	EXISTENTIAL_DEPOSIT,
 };
 
 /// Deposit rate for stored data. 1/100th of the Relay Chain's deposit rate. `items` is the
@@ -98,10 +105,12 @@ pub mod fee {
 	}
 }
 
+const TREASURY_PALLET_ID: PalletId = PalletId(*b"treasury");
+
 parameter_types! {
 	// Increase ED 100 times to match system chains: 1_000_000_000.
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
-	pub TreasuryAccount: AccountId = PalletId(*b"treasury").into_account_truncating();
+	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID.into_account_truncating();
 }
 
 impl pallet_balances::Config for Runtime {
@@ -125,23 +134,96 @@ impl pallet_balances::Config for Runtime {
 
 parameter_types! {
 	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
+	pub MaintenanceAccount: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
 }
+
+/// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
+/// by implementing OnUnbalanced.
+pub struct DealWithFees;
+impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
+	fn on_unbalanceds(
+		mut fees_then_tips: impl Iterator<Item = fungible::Credit<AccountId, Balances>>,
+	) {
+		if let Some(mut fees) = fees_then_tips.next() {
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut fees);
+			}
+			let split = fees.ration(50, 50);
+			ResolveTo::<TreasuryAccount, Balances>::on_unbalanced(split.0);
+			ResolveTo::<MaintenanceAccount, Balances>::on_unbalanced(split.1);
+		}
+	}
+}
+
+/// The type responsible for payment in pallet_transaction_payment.
+pub type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction =
-		pallet_transaction_payment::FungibleAdapter<Balances, ResolveTo<TreasuryAccount, Balances>>;
+	type OnChargeTransaction = OnChargeTransaction;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
 	type WeightToFee = fee::WeightToFee;
 }
 
+pub(crate) type TreasuryPaymaster<T> = PayFromAccount<T, TreasuryAccount>;
+parameter_types! {
+	pub const SpendPeriod: BlockNumber = 6 * DAYS;
+	pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
+	pub const MaxApprovals: u32 = 100;
+	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+pub struct BenchmarkHelper;
+#[cfg(feature = "runtime-benchmarks")]
+impl pallet_treasury::ArgumentsFactory<(), AccountId> for BenchmarkHelper {
+	fn create_asset_kind(_seed: u32) -> () {
+		()
+	}
+
+	fn create_beneficiary(seed: [u8; 32]) -> AccountId {
+		let account_id = AccountId::from(seed);
+		Balances::force_set_balance(
+			crate::RuntimeOrigin::root(),
+			account_id.clone().into(),
+			EXISTENTIAL_DEPOSIT,
+		)
+		.unwrap();
+		account_id
+	}
+}
+impl pallet_treasury::Config for Runtime {
+	type AssetKind = ();
+	type BalanceConverter = UnityAssetBalanceConversion;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = BenchmarkHelper;
+	type Beneficiary = AccountId;
+	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
+	type BlockNumberProvider = System;
+	type Burn = ();
+	type BurnDestination = ();
+	type Currency = Balances;
+	type MaxApprovals = MaxApprovals;
+	type PalletId = TreasuryPalletId;
+	type Paymaster = TreasuryPaymaster<Self::Currency>;
+	type PayoutPeriod = PayoutPeriod;
+	type RejectOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type SpendFunds = ();
+	/// Never allow origins except via the proposals process.
+	type SpendOrigin = NeverEnsureOrigin<Balance>;
+	type SpendPeriod = SpendPeriod;
+	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+}
+
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
 
+	use codec::Encode;
 	use frame_support::{
 		assert_ok,
 		dispatch::GetDispatchInfo,
@@ -150,6 +232,7 @@ mod tests {
 	};
 	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
 	use pop_runtime_common::{MICRO_UNIT, MILLI_UNIT};
+	use sp_keyring::sr25519::Keyring;
 	use sp_runtime::{traits::Dispatchable, BuildStorage};
 
 	use super::*;
@@ -157,9 +240,26 @@ mod tests {
 
 	type OnChargeTransaction = <Runtime as pallet_transaction_payment::Config>::OnChargeTransaction;
 
-	fn new_test_ext() -> sp_io::TestExternalities {
-		let storage = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
-		let mut ext = sp_io::TestExternalities::new(storage);
+	// fn new_test_ext() -> sp_io::TestExternalities {
+	// 	let storage = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+	// 	let mut ext = sp_io::TestExternalities::new(storage);
+	// 	ext.execute_with(|| System::set_block_number(1));
+	// 	ext
+	// }
+
+	pub fn new_test_ext() -> sp_io::TestExternalities {
+		let initial_balance = 100_000_000 * UNIT;
+		let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![
+				(TreasuryAccount::get(), initial_balance),
+				(MaintenanceAccount::get(), initial_balance),
+				(Keyring::Alice.to_account_id(), initial_balance),
+			],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
 	}
@@ -345,6 +445,29 @@ mod tests {
 		use super::*;
 
 		#[test]
+		fn test_fees_and_tip_split() {
+			new_test_ext().execute_with(|| {
+				let fee_amount = 10;
+				let fee = <Balances as fungible::Balanced<AccountId>>::issue(fee_amount);
+				let tip_amount = 20;
+				let tip = <Balances as fungible::Balanced<AccountId>>::issue(tip_amount);
+				let treasury_balance = Balances::free_balance(&TreasuryAccount::get());
+				let maintenance_balance = Balances::free_balance(&MaintenanceAccount::get());
+				DealWithFees::on_unbalanceds(vec![fee, tip].into_iter());
+
+				// Each to get 50%, total is 30 so 15 each.
+				assert_eq!(
+					Balances::free_balance(&TreasuryAccount::get()),
+					treasury_balance + ((fee_amount + tip_amount) / 2)
+				);
+				assert_eq!(
+					Balances::free_balance(&MaintenanceAccount::get()),
+					maintenance_balance + ((fee_amount + tip_amount) / 2)
+				);
+			});
+		}
+
+		#[test]
 		fn uses_slow_adjusting_fee_multiplier() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::FeeMultiplierUpdate>(
@@ -362,31 +485,19 @@ mod tests {
 		}
 
 		#[test]
-		fn charges_fees_via_balances_and_funds_treasury() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(
-				),
-				TypeId::of::<
-					pallet_transaction_payment::FungibleAdapter<
-						Balances,
-						ResolveTo<TreasuryAccount, Balances>,
-					>,
-				>(),
-			);
-
+		fn charges_fees_via_balances_and_funds_treasury_and_maintenance_equally() {
 			new_test_ext().execute_with(|| {
-				let who = AccountId::from([1u8; 32]);
+				let who: AccountId = Keyring::Alice.to_account_id();
 				let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
 				let fee = UNIT / 10;
 				let tip = UNIT / 2;
 				let fee_plus_tip = fee + tip;
-				let tsry_balance = Balances::free_balance(&TreasuryAccount::get());
+				let treasury_balance = Balances::free_balance(&TreasuryAccount::get());
+				let maintenance_balance = Balances::free_balance(&MaintenanceAccount::get());
+				let who_balance = Balances::free_balance(&who);
 				let dispatch_info = call.get_dispatch_info();
-				let existential_deposit =
-					<<Runtime as pallet_balances::Config>::ExistentialDeposit>::get();
 
 				// NOTE: OnChargeTransaction functions expect tip to be included within fee
-				Balances::set_balance(&who, fee + tip + existential_deposit);
 				let liquidity_info =
 					<OnChargeTransaction as OnChargeTransactionT<Runtime>>::withdraw_fee(
 						&who,
@@ -406,11 +517,22 @@ mod tests {
 				)
 				.unwrap();
 
+				let treasury_expected_balance = treasury_balance + (fee_plus_tip / 2);
+				let maintenance_expected_balance = maintenance_balance + (fee_plus_tip / 2);
+				let who_expected_balance = who_balance - fee_plus_tip;
+
+				assert_ne!(treasury_balance, 0);
+				assert_ne!(maintenance_expected_balance, 0);
+
 				assert_eq!(
 					Balances::free_balance(&TreasuryAccount::get()),
-					tsry_balance + fee + tip
+					treasury_expected_balance
 				);
-				assert_eq!(Balances::free_balance(&who), existential_deposit);
+				assert_eq!(
+					Balances::free_balance(&MaintenanceAccount::get()),
+					maintenance_expected_balance
+				);
+				assert_eq!(Balances::free_balance(&who), who_expected_balance);
 			})
 		}
 
@@ -457,6 +579,143 @@ mod tests {
 					*f
 				);
 			}
+		}
+	}
+
+	mod treasury {
+		use super::*;
+
+		#[test]
+		fn asset_kind_is_nothing() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::AssetKind>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn balance_converter_is_set() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BalanceConverter>(),
+				TypeId::of::<UnityAssetBalanceConversion>(),
+			);
+		}
+
+		#[cfg(feature = "runtime-benchmarks")]
+		#[test]
+		fn benchmark_helper_is_correct_type() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BenchmarkHelper>(),
+				TypeId::of::<BenchmarkHelper>(),
+			);
+		}
+
+		#[test]
+		fn beneficiary_is_account_id() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::Beneficiary>(),
+				TypeId::of::<AccountId>(),
+			);
+		}
+
+		#[test]
+		fn beneficiary_lookup_is_identity_lookup() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BeneficiaryLookup>(),
+				TypeId::of::<IdentityLookup<AccountId>>(),
+			);
+		}
+
+		#[test]
+		fn block_number_provider_is_set() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::BlockNumberProvider>(),
+				TypeId::of::<System>(),
+			);
+		}
+
+		#[test]
+		fn burn_is_nothing() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn max_approvals_is_set() {
+			assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
+		}
+
+		#[test]
+		fn pallet_id_is_set() {
+			assert_eq!(
+				<Runtime as pallet_treasury::Config>::PalletId::get().encode(),
+				PalletId(*b"treasury").encode()
+			);
+		}
+
+		#[test]
+		fn treasury_account_is_pallet_id_truncated() {
+			assert_eq!(TreasuryAccount::get(), TREASURY_PALLET_ID.into_account_truncating());
+		}
+
+		#[test]
+		fn paymaster_is_correct_type() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::Paymaster>(),
+				TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
+			);
+		}
+
+		#[test]
+		fn payout_period_is_set() {
+			assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
+		}
+
+		#[test]
+		fn reject_origin_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::RejectOrigin>(),
+				TypeId::of::<EnsureRoot<AccountId>>(),
+			);
+		}
+		#[test]
+		fn spend_funds_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::SpendFunds>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn spend_origin_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::SpendOrigin>(),
+				TypeId::of::<NeverEnsureOrigin<Balance>>(),
+			);
+		}
+
+		#[test]
+		fn spend_period_is_six_days() {
+			assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
+		}
+
+		#[test]
+		fn type_of_on_charge_transaction_is_correct() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(
+				),
+				TypeId::of::<OnChargeTransaction>(),
+			);
+		}
+
+		#[test]
+		fn weight_info_is_not_default() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_treasury::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
 		}
 	}
 }
