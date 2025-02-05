@@ -189,7 +189,7 @@ pub fn mainnet_chain_spec(relay: Relay) -> MainnetChainSpec {
 	)
 	.with_name("Pop Network")
 	.with_id("pop")
-	.with_chain_type(ChainType::Development)
+	.with_chain_type(ChainType::Live)
 	.with_genesis_config_patch(mainnet_genesis(
 		// initial collators.
 		vec![
