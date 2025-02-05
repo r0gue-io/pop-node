@@ -4,12 +4,11 @@ use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
 	parameter_types,
 	traits::{
-		tokens::imbalance::ResolveTo, ConstU32, Contains, ContainsPair, Everything, Get, Nothing,
-		TransformOrigin,
+		tokens::imbalance::ResolveTo, ConstU32, Contains, ContainsPair, Equals, Everything, Get,
+		Nothing, TransformOrigin,
 	},
 	weights::Weight,
 };
-use frame_support::traits::Equals;
 use frame_system::EnsureRoot;
 use pallet_xcm::XcmPassthrough;
 use parachains_common::{
@@ -182,8 +181,8 @@ impl xcm_executor::Config for XcmConfig {
 	type AssetTrap = PolkadotXcm;
 	type Barrier = Barrier;
 	type CallDispatcher = RuntimeCall;
-	// No locations have waived fees.
 	type FeeManager = XcmFeeManagerFromComponents<
+		// No locations have waived fees.
 		(),
 		SendXcmFeeToAccount<Self::AssetTransactor, TreasuryAccount>,
 	>;
@@ -296,68 +295,6 @@ mod tests {
 		let mut ext = sp_io::TestExternalities::new_empty();
 		ext.execute_with(|| System::set_block_number(1));
 		ext
-	}
-
-	mod reserves_config {
-		use super::*;
-
-		// There's only one reserve and it is AssetHub for DOT token.
-		#[test]
-		fn only_reserve_is_ah_for_dot() {
-			assert_eq!(
-				TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
-				TypeId::of::<NativeAssetFrom<AssetHub>>(),
-			);
-		}
-
-		#[test]
-		fn asset_hub_as_relay_asset_reserve() {
-			assert!(<TrustedReserves as ContainsPair<Asset, Location>>::contains(
-				&Asset::from((AssetId::from(Parent), Fungibility::from(100u128))),
-				&AssetHub::get(),
-			));
-		}
-
-		#[test]
-		fn relay_as_relay_asset_reserve_fails() {
-			let relay_asset = Asset::from((AssetId::from(Parent), Fungibility::from(100u128)));
-			assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
-				&relay_asset,
-				&Parent.into()
-			));
-		}
-
-		// Decline native asset from another parachain.
-		#[test]
-		fn decline_sibling_native_assets() {
-			let chain_x = Location::new(1, [Parachain(4242)]);
-			let chain_x_asset =
-				Asset::from((AssetId::from(chain_x.clone()), Fungibility::from(100u128)));
-			assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
-				&chain_x_asset,
-				&chain_x
-			));
-		}
-
-		// Decline non native asset from another parachain. Either a native asset as foreign asset
-		// on another parachain or a local asset from e.g. `pallet-assets`.
-		#[test]
-		fn decline_sibling_non_native_assets() {
-			// Native asset X of chain Y example.
-			let chain_x = Location::new(1, [Parachain(4242)]);
-			let chain_y = Location::new(1, [Parachain(6969)]);
-			let chain_x_asset = Asset::from((AssetId::from(chain_x), Fungibility::from(100u128)));
-			assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
-				&chain_x_asset,
-				&chain_y
-			));
-			// `pallet-assets` example.
-			let usd = Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1337)]);
-			let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
-			assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
-				&usd_asset, &chain_y
-			));
-		}
 	}
 
 	mod message_queue {
@@ -511,6 +448,70 @@ mod tests {
 
 	mod xcm_executor_configuration {
 		use super::*;
+
+		mod reserves_config {
+			use super::*;
+
+			// There's only one reserve and it is AssetHub for DOT token.
+			#[test]
+			fn only_reserve_is_ah_for_dot() {
+				assert_eq!(
+					TypeId::of::<<XcmConfig as xcm_executor::Config>::IsReserve>(),
+					TypeId::of::<NativeAssetFrom<AssetHub>>(),
+				);
+			}
+
+			#[test]
+			fn asset_hub_as_relay_asset_reserve() {
+				assert!(<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+					&Asset::from((AssetId::from(Parent), Fungibility::from(100u128))),
+					&AssetHub::get(),
+				));
+			}
+
+			#[test]
+			fn relay_as_relay_asset_reserve_fails() {
+				let relay_asset = Asset::from((AssetId::from(Parent), Fungibility::from(100u128)));
+				assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+					&relay_asset,
+					&Parent.into()
+				));
+			}
+
+			// Decline native asset from another parachain.
+			#[test]
+			fn decline_sibling_native_assets() {
+				let chain_x = Location::new(1, [Parachain(4242)]);
+				let chain_x_asset =
+					Asset::from((AssetId::from(chain_x.clone()), Fungibility::from(100u128)));
+				assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+					&chain_x_asset,
+					&chain_x
+				));
+			}
+
+			// Decline non native asset from another parachain. Either a native asset as foreign
+			// asset on another parachain or a local asset from e.g. `pallet-assets`.
+			#[test]
+			fn decline_sibling_non_native_assets() {
+				// Native asset X of chain Y example.
+				let chain_x = Location::new(1, [Parachain(4242)]);
+				let chain_y = Location::new(1, [Parachain(6969)]);
+				let chain_x_asset =
+					Asset::from((AssetId::from(chain_x), Fungibility::from(100u128)));
+				assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+					&chain_x_asset,
+					&chain_y
+				));
+				// `pallet-assets` example.
+				let usd =
+					Location::new(1, [Parachain(1000), PalletInstance(50), GeneralIndex(1337)]);
+				let usd_asset = Asset::from((AssetId::from(usd), Fungibility::from(100u128)));
+				assert!(!<TrustedReserves as ContainsPair<Asset, Location>>::contains(
+					&usd_asset, &chain_y
+				));
+			}
+		}
 
 		#[test]
 		fn does_not_have_aliasers() {
