@@ -267,6 +267,12 @@ mod runtime {
 	// Utility
 	#[runtime::pallet_index(43)]
 	pub type Utility = pallet_utility::Pallet<Runtime>;
+
+	// Assets
+	#[runtime::pallet_index(50)]
+	pub type Nfts = pallet_nfts::Pallet<Runtime>;
+	#[runtime::pallet_index(52)]
+	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

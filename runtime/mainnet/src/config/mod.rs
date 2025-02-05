@@ -1,3 +1,5 @@
+// Assets.
+mod assets;
 // Collation.
 mod collation;
 /// Governance.
