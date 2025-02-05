@@ -7,8 +7,8 @@ pub(crate) mod proxy;
 /// System functionality.
 pub mod system;
 // Utility.
-mod utility;
 mod revive;
+mod utility;
 /// XCM.
 pub mod xcm;
 // Collation.

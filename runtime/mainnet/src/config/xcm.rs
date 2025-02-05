@@ -24,7 +24,7 @@ use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 use crate::{
-	config::{governance::SudoAddress, monetary::fee::WeightToFee},
+	config::monetary::{fee::WeightToFee, TreasuryAccount},
 	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
 	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, XcmpQueue,
 };
@@ -137,7 +137,7 @@ impl xcm_executor::Config for XcmConfig {
 	type CallDispatcher = RuntimeCall;
 	type FeeManager = XcmFeeManagerFromComponents<
 		WaivedLocations,
-		SendXcmFeeToAccount<Self::AssetTransactor, SudoAddress>,
+		SendXcmFeeToAccount<Self::AssetTransactor, TreasuryAccount>,
 	>;
 	type HrmpChannelAcceptedHandler = ();
 	type HrmpChannelClosingHandler = ();
@@ -157,7 +157,7 @@ impl xcm_executor::Config for XcmConfig {
 		RelayLocation,
 		AccountId,
 		Balances,
-		ResolveTo<SudoAddress, Balances>,
+		ResolveTo<TreasuryAccount, Balances>,
 	>;
 	type TransactionalProcessor = FrameTransactionalProcessor;
 	type UniversalAliases = Nothing;

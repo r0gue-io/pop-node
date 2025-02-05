@@ -184,14 +184,13 @@ mod tests {
 	};
 	use frame_system::limits::WeightsPerClass;
 	use sp_core::crypto::AccountId32;
-	use sp_runtime::generic;
+	use sp_runtime::{generic, MultiAddress};
 
 	use super::*;
 	use crate::{Header, Perbill, UncheckedExtrinsic, Weight};
 
 	mod system {
 		use pallet_balances::AdjustmentDirection;
-		use sp_runtime::MultiAddress;
 		use BalancesCall::*;
 
 		use super::*;
