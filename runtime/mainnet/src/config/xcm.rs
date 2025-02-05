@@ -9,6 +9,7 @@ use frame_support::{
 	},
 	weights::Weight,
 };
+use frame_support::traits::Equals;
 use frame_system::EnsureRoot;
 use pallet_xcm::XcmPassthrough;
 use parachains_common::{
@@ -124,6 +125,7 @@ pub type XcmOriginToTransactDispatchOrigin = (
 	XcmPassthrough<RuntimeOrigin>,
 );
 
+/// Rules defining whether we should execute a given XCM.
 pub type Barrier = TrailingSetTopicAsId<(
 	TakeWeightCredit,
 	AllowKnownQueryResponses<PolkadotXcm>,
@@ -149,13 +151,12 @@ impl<T: Get<Location>> ContainsPair<Asset, Location> for NativeAssetFrom<T> {
 	}
 }
 
-impl<T: Get<Location>> Contains<(Location, Vec<Asset>)> for NativeAssetFrom<T> {
+/// Filter to determine if all specified assets are supported, used with
+/// reserve-transfers.
+pub struct FilterByAssets<Assets>(PhantomData<Assets>);
+impl<Assets: Contains<Location>> Contains<(Location, Vec<Asset>)> for FilterByAssets<Assets> {
 	fn contains(t: &(Location, Vec<Asset>)) -> bool {
-		t.1.iter().all(|a| {
-			// Asset id matches parent location.
-			matches!(a, Asset { id: AssetId(asset_loc), fun: Fungible(_a) }
-			if *asset_loc == Location::parent())
-		})
+		t.1.iter().all(|a| Assets::contains(&a.id.0))
 	}
 }
 
@@ -169,6 +170,7 @@ parameter_types! {
 	pub const MaxAssetsIntoHolding: u32 = 64;
 }
 
+/// XCM executor configuration.
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
 	type Aliasers = Nothing;
@@ -213,6 +215,7 @@ impl xcm_executor::Config for XcmConfig {
 	type XcmSender = XcmRouter;
 }
 
+/// Convert from some a Signed (system) Origin into an AccountId32.
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 
 /// The means for routing XCM messages which are not for local execution into the right message
@@ -244,7 +247,7 @@ impl pallet_xcm::Config for Runtime {
 	type WeightInfo = pallet_xcm::TestWeightInfo;
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
-	type XcmReserveTransferFilter = NativeAssetFrom<AssetHub>;
+	type XcmReserveTransferFilter = FilterByAssets<Equals<RelayLocation>>;
 	type XcmRouter = XcmRouter;
 	type XcmTeleportFilter = Nothing;
 
@@ -915,12 +918,13 @@ mod tests {
 		}
 
 		#[test]
-		fn reserve_transfer_filter_only_allows_dot_from_ah() {
+		fn reserve_transfer_filter_only_allows_relay_asset_from_ah() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
-				TypeId::of::<NativeAssetFrom<AssetHub>>(),
+				TypeId::of::<FilterByAssets<Equals<RelayLocation>>>(),
 			);
 
+			// Two tuples containing various different assets.
 			let location_assets = [
 				(
 					Location::parent(),
@@ -951,6 +955,8 @@ mod tests {
 				),
 			];
 			for la in location_assets {
+				// We only care about the native relay asset.
+				// If other assets are involved in the transfer, the transfer is filtered.
 				assert!(!<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<
 					(Location, Vec<Asset>),
 				>>::contains(&la));
