@@ -72,3 +72,285 @@ impl pallet_motion::Config for Runtime {
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
 	type WeightInfo = pallet_motion::weights::SubstrateWeight<Runtime>;
 }
+
+#[cfg(test)]
+mod tests {
+	use std::any::TypeId;
+
+	use sp_runtime::traits::Get;
+
+	use super::*;
+
+	mod council_collective {
+		use super::*;
+
+		#[test]
+		fn consideration_is_not_configured() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as pallet_collective::Config<CouncilCollective>>::Consideration,
+				>(),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn default_vote_is_prime_vote() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote>(
+				),
+				TypeId::of::<pallet_collective::PrimeDefaultVote>(),
+			);
+		}
+
+		#[test]
+		fn disapprove_origin_ensures_root() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as pallet_collective::Config<CouncilCollective>>::DisapproveOrigin,
+				>(),
+				TypeId::of::<EnsureRoot<AccountId>>(),
+			);
+		}
+
+		#[test]
+		fn kill_origin_ensures_root() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_collective::Config<CouncilCollective>>::KillOrigin>(
+				),
+				TypeId::of::<EnsureRoot<AccountId>>(),
+			);
+		}
+
+		#[test]
+		fn number_of_councilors_is_limited() {
+			assert_eq!(
+				<<Runtime as pallet_collective::Config<CouncilCollective>>::MaxMembers as Get<
+					u32,
+				>>::get(),
+				100,
+			);
+		}
+
+		#[test]
+		fn proposal_weight_is_limited() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposalWeight,
+				>(),
+				TypeId::of::<MaxProposalWeight>(),
+			);
+
+			assert_eq!(
+				<<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposalWeight as Get<Weight>>::get(),
+				sp_runtime::Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block,
+			);
+		}
+
+		#[test]
+		fn number_of_proposals_is_limited() {
+			assert_eq!(
+				<<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposals as Get<
+					u32,
+				>>::get(),
+				100,
+			);
+		}
+
+		#[test]
+		fn motion_duration_is_7_days() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as pallet_collective::Config<CouncilCollective>>::MotionDuration,
+				>(),
+				TypeId::of::<CouncilMotionDuration>(),
+			);
+
+			assert_eq!(
+				<<Runtime as pallet_collective::Config<CouncilCollective>>::MotionDuration as Get<BlockNumber>>::get(),
+				7 * DAYS,
+			);
+		}
+
+		#[test]
+		fn proposals_are_runtime_calls() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_collective::Config<CouncilCollective>>::Proposal>(),
+				TypeId::of::<RuntimeCall>(),
+			);
+		}
+
+		#[test]
+		fn set_members_origin_ensures_root() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as pallet_collective::Config<CouncilCollective>>::SetMembersOrigin,
+				>(),
+				TypeId::of::<EnsureRoot<AccountId>>(),
+			);
+		}
+
+		#[test]
+		fn default_weights_are_not_used() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_collective::Config<CouncilCollective>>::WeightInfo>(
+				),
+				TypeId::of::<()>(),
+			);
+		}
+	}
+
+	mod membership {
+		use super::*;
+
+		#[test]
+		fn add_origin_requires_unanimous_vote() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::AddOrigin>(
+				),
+				TypeId::of::<UnanimousCouncilVote>(),
+			);
+
+			assert_eq!(
+				TypeId::of::<UnanimousCouncilVote>(),
+				TypeId::of::<
+					EitherOfDiverse<
+						EnsureRoot<AccountId>,
+						pallet_collective::EnsureProportionAtLeast<
+							AccountId,
+							CouncilCollective,
+							1,
+							1,
+						>,
+					>,
+				>(),
+			);
+		}
+
+		#[test]
+		fn number_of_members_is_limited() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::MaxMembers>(
+				),
+				TypeId::of::<CouncilMaxMembers>(),
+			);
+
+			assert_eq!(CouncilMaxMembers::get(), 100);
+		}
+
+		#[test]
+		fn council_handles_membership_changes() {
+			assert_eq!(
+				TypeId::of::<
+					<Runtime as pallet_membership::Config<CouncilMembership>>::MembershipChanged,
+				>(),
+				TypeId::of::<Council>(),
+			);
+		}
+
+		#[test]
+		fn council_handles_membership_initialization() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::MembershipInitialized>(),
+				TypeId::of::<Council>(),
+			);
+		}
+
+		#[test]
+		fn prime_origin_ensures_at_least_three_fourths() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::PrimeOrigin>(
+				),
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
+			);
+			assert_eq!(
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
+				TypeId::of::<
+					EitherOfDiverse<
+						EnsureRoot<AccountId>,
+						pallet_collective::EnsureProportionAtLeast<
+							AccountId,
+							CouncilCollective,
+							3,
+							4,
+						>,
+					>,
+				>(),
+			);
+		}
+
+		#[test]
+		fn remove_origin_ensures_at_least_three_fourths() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::RemoveOrigin>(
+				),
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
+			);
+		}
+
+		#[test]
+		fn reset_origin_ensures_at_least_three_fourths() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::ResetOrigin>(
+				),
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
+			);
+		}
+
+		#[test]
+		fn swap_origin_ensures_at_least_three_fourths() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::SwapOrigin>(
+				),
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
+			);
+		}
+
+		#[test]
+		fn default_weights_are_not_used() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::WeightInfo>(
+				),
+				TypeId::of::<()>(),
+			);
+		}
+	}
+
+	mod motion {
+		use super::*;
+
+		#[test]
+		fn simple_majority_always_fails() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_motion::Config>::SimpleMajorityOrigin>(),
+				TypeId::of::<NeverEnsureOrigin<()>>(),
+			);
+		}
+
+		#[test]
+		fn super_majority_always_fails() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_motion::Config>::SuperMajorityOrigin>(),
+				TypeId::of::<NeverEnsureOrigin<()>>(),
+			);
+		}
+
+		#[test]
+		fn unanimous_origin_ensures_unanimous_vote() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_motion::Config>::UnanimousOrigin>(),
+				TypeId::of::<
+					pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
+				>(),
+			);
+		}
+
+		#[test]
+		fn default_weights_are_not_used() {
+			assert_ne!(
+				TypeId::of::<<Runtime as pallet_motion::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
+			);
+		}
+	}
+}
