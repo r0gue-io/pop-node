@@ -10103,7 +10103,6 @@ dependencies = [
  "log",
  "pallet-balances 40.0.0",
  "pallet-collective",
- "pallet-membership",
  "parity-scale-codec",
  "scale-info",
  "sp-core 35.0.0",

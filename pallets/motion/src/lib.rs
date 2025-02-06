@@ -11,8 +11,10 @@ mod benchmarking;
 pub mod weights;
 pub use pallet::*;
 use sp_runtime::DispatchResult;
-use sp_std::prelude::*;
 pub use weights::WeightInfo;
+
+extern crate alloc;
+use alloc::{boxed::Box, vec};
 
 #[frame_support::pallet]
 pub mod pallet {
