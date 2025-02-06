@@ -7,8 +7,7 @@ use chains::{
 		AssetHubParaPallet,
 	},
 	pop_network::{
-		genesis::ED as POP_ED, runtime::config::xcm::XcmConfig as PopNetworkXcmConfig, PopNetwork,
-		PopNetworkParaPallet,
+		runtime::config::xcm::XcmConfig as PopNetworkXcmConfig, PopNetwork, PopNetworkParaPallet,
 	},
 	relay::{
 		genesis::ED as RELAY_ED, runtime::xcm_config::XcmConfig as RelayXcmConfig, Relay,
