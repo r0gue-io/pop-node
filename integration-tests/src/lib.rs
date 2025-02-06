@@ -6,7 +6,7 @@ use chains::{
 		genesis::ED as ASSET_HUB_ED, runtime::xcm_config::XcmConfig as AssetHubXcmConfig, AssetHub,
 		AssetHubParaPallet,
 	},
-	pop_network::{PopNetwork, PopNetworkParaPallet},
+	pop_network::{genesis::ED as POP_ED, PopNetwork, PopNetworkParaPallet},
 	relay::{
 		genesis::ED as RELAY_ED, runtime::xcm_config::XcmConfig as RelayXcmConfig, Relay,
 		RelayRelayPallet as RelayPallet,
@@ -325,9 +325,12 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 			assets.clone(), 0, Unlimited, Location::from(beneficiary_id.clone()), destination.clone()
 		)
 	});
-	#[cfg(feature = "mainnet")]
-	let amount_to_send = amount_to_send - (ASSET_HUB_ED + delivery_fees);
-	#[cfg(feature = "mainnet")]
+
+	// Mainnet ED is 100 times higher.
+	let pop_mainnet_ed = POP_ED * 100;
+	// We need to keep `delivery_fees` in balance to pay for these fees locally.
+	// To avoid the account from being reaped we need to ensure its balance is >= ED.
+	let amount_to_send = amount_to_send - (pop_mainnet_ed + delivery_fees);
 	let assets: Assets = (Parent, amount_to_send).into();
 
 	let test_args = TestContext {
@@ -358,9 +361,8 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 
 	// Sender's balance is reduced
 	assert_eq!(sender_balance_before - amount_to_send - delivery_fees, sender_balance_after);
-	// Sender's balance is the remaining ED.
-	#[cfg(feature = "mainnet")]
-	assert_eq!(ASSET_HUB_ED, sender_balance_after);
+	// Sender's remaining balance equals ED.
+	assert_eq!(pop_mainnet_ed, sender_balance_after);
 	// Receiver's balance is increased
 	assert!(receiver_balance_after > receiver_balance_before);
 	// Receiver's balance increased by `amount_to_send - delivery_fees - bought_execution`;
