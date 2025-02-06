@@ -145,4 +145,3 @@ try-runtime = [
 
 ismp = [ "pop-runtime-devnet/default" ]
 on-chain-release-build = [ "pop-runtime-mainnet/on-chain-release-build" ]
-simple-majority = [ "pop-runtime-mainnet/simple-majority" ]

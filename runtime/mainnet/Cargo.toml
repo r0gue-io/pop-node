@@ -244,6 +244,3 @@ metadata-hash = [ "substrate-wasm-builder/metadata-hash" ]
 # A convenience feature for enabling things when doing a build
 # for an on-chain release.
 on-chain-release-build = [ "metadata-hash" ]
-
-# Compiles `pallet-motion` including `SimpleMajorityOrigin`.
-simple-majority = [ "pallet-motion/simple-majority" ]

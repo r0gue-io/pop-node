@@ -18,7 +18,6 @@ where
 mod benchmarks {
 	use super::*;
 
-	#[cfg(feature = "simple-majority")]
 	#[benchmark]
 	fn simple_majority() {
 		let call: <T as Config>::RuntimeCall = frame_system::Call::remark { remark: vec![] }.into();

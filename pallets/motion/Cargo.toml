@@ -38,8 +38,6 @@ runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 ]
-# Compiles the pallet including `SimpleMajorityOrigin` in its `Config` trait.
-simple-majority = [  ]
 std = [
 	"codec/std",
 	"frame-benchmarking?/std",

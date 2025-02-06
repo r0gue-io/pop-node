@@ -1,4 +1,8 @@
-use frame_support::{parameter_types, traits::EitherOfDiverse, weights::Weight};
+use frame_support::{
+	parameter_types,
+	traits::{EitherOfDiverse, NeverEnsureOrigin},
+	weights::Weight,
+};
 use frame_system::EnsureRoot;
 use pallet_collective::EnsureProportionAtLeast;
 use parachains_common::BlockNumber;
@@ -59,6 +63,8 @@ impl pallet_membership::Config<CouncilMembership> for Runtime {
 impl pallet_motion::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
+	// SimpleMajorityOrigin won't ever ensure origin.
+	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
 	// At least 3/4 of the council vote is needed.
 	type SuperMajorityOrigin = AtLeastThreeFourthsOfCouncil;
 	// A unanimous council vote is needed.

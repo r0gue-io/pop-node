@@ -56,7 +56,6 @@ fn setup_proposal(threshold: u32, motion_type: MotionType) -> Proposal {
 	Proposal { len: proposal_len, weight: proposal_weight, hash }
 }
 
-#[cfg(feature = "simple-majority")]
 #[test]
 fn simple_majority_works() {
 	new_test_ext().execute_with(|| {
