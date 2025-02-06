@@ -30,3 +30,9 @@ impl pallet_motion::Config for Runtime {
 		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
 }
 ```
+
+---
+
+### Credit:
+
+Original source at: https://github.com/Watr-Protocol/watr/tree/main/pallets/motion
