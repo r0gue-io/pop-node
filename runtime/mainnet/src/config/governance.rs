@@ -228,7 +228,7 @@ mod tests {
 		}
 
 		#[test]
-		fn number_of_members_is_limited() {
+		fn number_of_members_is_100() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::MaxMembers>(
 				),
