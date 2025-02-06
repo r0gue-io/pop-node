@@ -66,9 +66,9 @@ impl pallet_motion::Config for Runtime {
 	// SimpleMajority origin check will always fail.
 	// Making it not possible for SimpleMajority to dispatch as root.
 	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
-	// At least 3/4 of the council votes are needed.
+	// At least 3/4 of the council vote is needed.
 	type SuperMajorityOrigin = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
-	// Unanimous council votes are needed.
+	// A unanimous council vote is needed.
 	type UnanimousOrigin = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
 	type WeightInfo = pallet_motion::weights::SubstrateWeight<Runtime>;
 }
