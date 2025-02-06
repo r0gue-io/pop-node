@@ -28,14 +28,20 @@ pub mod pallet {
 
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
+		/// The runtime event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
+		/// The runtime call type.
 		type RuntimeCall: Parameter
 			+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
 			+ GetDispatchInfo;
 		#[cfg(feature = "simple-majority")]
+		/// Origin that can act as `Root` origin if a collective has achieved a simple majority
+		/// consensus.
 		type SimpleMajorityOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+		/// Origin that can act as `Root` origin if a collective has achieved a super majority
+		/// consensus.
 		type SuperMajorityOrigin: EnsureOrigin<Self::RuntimeOrigin>;
+		/// Origin that can act as `Root` origin if a collective has achieved a unanimous consensus.
 		type UnanimousOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		/// Type representing the weight of this pallet
 		type WeightInfo: WeightInfo;
@@ -44,12 +50,12 @@ pub mod pallet {
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
-		/// A SimpleMajority motion was executed. motion_result contains the call result
+		/// A [SimpleMajorityOrigin] motion was executed. [motion_result] contains the call result
 		#[cfg(feature = "simple-majority")]
 		DispatchSimpleMajority { motion_result: DispatchResult },
-		/// A SuperMajority motion was executed. motion_result contains the call result
+		/// A [SuperMajorityOrigin] motion was executed. [motion_result] contains the call result
 		DispatchSuperMajority { motion_result: DispatchResult },
-		/// A Unanimous motion was executed. motion_result contains the call result
+		/// A [UnanimousOrigin] motion was executed. [motion_result] contains the call result
 		DispatchUnanimous { motion_result: DispatchResult },
 	}
 
