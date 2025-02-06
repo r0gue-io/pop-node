@@ -39,6 +39,7 @@ runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 ]
+simple-majority = [  ]
 std = [
 	"codec/std",
 	"frame-benchmarking?/std",

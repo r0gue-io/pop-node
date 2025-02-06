@@ -33,7 +33,7 @@ pub mod pallet {
 		type RuntimeCall: Parameter
 			+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
 			+ GetDispatchInfo;
-
+		#[cfg(feature = "simple-majority")]
 		type SimpleMajorityOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type SuperMajorityOrigin: EnsureOrigin<Self::RuntimeOrigin>;
 		type UnanimousOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -45,6 +45,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A SimpleMajority motion was executed. motion_result contains the call result
+		#[cfg(feature = "simple-majority")]
 		DispatchSimpleMajority { motion_result: DispatchResult },
 		/// A SuperMajority motion was executed. motion_result contains the call result
 		DispatchSuperMajority { motion_result: DispatchResult },
@@ -65,6 +66,7 @@ pub mod pallet {
 		/// - One DB write (event).
 		/// - Weight of derivative `call` execution + 10,000.
 		/// # </weight>
+		#[cfg(feature = "simple-majority")]
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
 			(T::WeightInfo::simple_majority().saturating_add(dispatch_info.call_weight), dispatch_info.class)
