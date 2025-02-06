@@ -320,7 +320,7 @@ mod tests {
 		fn super_majority_ensures_ensures_at_least_three_fourths() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_motion::Config>::SuperMajorityOrigin>(),
-				TypeId::of::<EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>>(),
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
 			);
 		}
 
@@ -328,7 +328,7 @@ mod tests {
 		fn unanimous_origin_ensures_unanimous_vote() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_motion::Config>::UnanimousOrigin>(),
-				TypeId::of::<EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>>(),
+				TypeId::of::<UnanimousCouncilVote>(),
 			);
 		}
 
