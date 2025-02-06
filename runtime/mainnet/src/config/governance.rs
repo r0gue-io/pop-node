@@ -4,6 +4,7 @@ use frame_support::{
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
+use pallet_collective::EnsureProportionAtLeast;
 use parachains_common::BlockNumber;
 use pop_runtime_common::DAYS;
 
@@ -13,12 +14,12 @@ use crate::{
 
 type UnanimousCouncilVote = EitherOfDiverse<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
+	EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
 >;
 
 type AtLeastThreeFourthsOfCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
+	EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 >;
 
 parameter_types! {
@@ -65,11 +66,10 @@ impl pallet_motion::Config for Runtime {
 	// SimpleMajority origin check will always fail.
 	// Making it not possible for SimpleMajority to dispatch as root.
 	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
-	// SuperMajority origin check will always fail.
-	// Making it not possible for SimpleMajority to dispatch as root.
-	type SuperMajorityOrigin = NeverEnsureOrigin<()>;
-	type UnanimousOrigin =
-		pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
+	// At least 3/4 of the council votes are needed.
+	type SuperMajorityOrigin = EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>;
+	// Unanimous council votes are needed.
+	type UnanimousOrigin = EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>;
 	type WeightInfo = pallet_motion::weights::SubstrateWeight<Runtime>;
 }
 
@@ -216,12 +216,7 @@ mod tests {
 				TypeId::of::<
 					EitherOfDiverse<
 						EnsureRoot<AccountId>,
-						pallet_collective::EnsureProportionAtLeast<
-							AccountId,
-							CouncilCollective,
-							1,
-							1,
-						>,
+						EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
 					>,
 				>(),
 			);
@@ -268,12 +263,7 @@ mod tests {
 				TypeId::of::<
 					EitherOfDiverse<
 						EnsureRoot<AccountId>,
-						pallet_collective::EnsureProportionAtLeast<
-							AccountId,
-							CouncilCollective,
-							3,
-							4,
-						>,
+						EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
 					>,
 				>(),
 			);
@@ -320,7 +310,7 @@ mod tests {
 		use super::*;
 
 		#[test]
-		fn simple_majority_always_fails() {
+		fn simple_majority_is_never_origin() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_motion::Config>::SimpleMajorityOrigin>(),
 				TypeId::of::<NeverEnsureOrigin<()>>(),
@@ -328,10 +318,10 @@ mod tests {
 		}
 
 		#[test]
-		fn super_majority_always_fails() {
+		fn super_majority_ensures_ensures_at_least_three_fourths() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_motion::Config>::SuperMajorityOrigin>(),
-				TypeId::of::<NeverEnsureOrigin<()>>(),
+				TypeId::of::<EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>>(),
 			);
 		}
 
@@ -339,9 +329,7 @@ mod tests {
 		fn unanimous_origin_ensures_unanimous_vote() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_motion::Config>::UnanimousOrigin>(),
-				TypeId::of::<
-					pallet_collective::EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
-				>(),
+				TypeId::of::<EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>>(),
 			);
 		}
 
