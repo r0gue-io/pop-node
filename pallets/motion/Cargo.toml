@@ -29,7 +29,6 @@ sp-std = { workspace = true }
 
 [dev-dependencies]
 pallet-balances = { workspace = true, default-features = false }
-pallet-membership = { workspace = true, default-features = false }
 sp-core = { workspace = true, default-features = false }
 sp-io = { workspace = true, default-features = false }
 
@@ -39,6 +38,7 @@ runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 ]
+# Compiles the pallet including `SimpleMajorityOrigin` in its `Config` trait.
 simple-majority = [  ]
 std = [
 	"codec/std",
