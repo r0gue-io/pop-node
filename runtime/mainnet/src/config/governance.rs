@@ -111,7 +111,7 @@ mod tests {
 			let prime = None;
 			let seats: u32 = 5;
 			// We want unanimous consensus.
-			let thold = seats;
+			let threshold = seats;
 
 			let aye_votes: u32 = 3;
 			let nay_votes: u32 = 0;
@@ -121,7 +121,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 3;
 			let nay_votes: u32 = 1;
@@ -131,7 +131,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= thold);
+			assert!(!aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 2;
 			let nay_votes: u32 = 1;
@@ -141,7 +141,7 @@ mod tests {
 			assert_eq!(default, false);
 			// Abstentions will be added to nay votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= thold);
+			assert!(!aye_votes + abstentions >= threshold);
 		}
 
 		#[test]
@@ -150,7 +150,7 @@ mod tests {
 			let prime = Some(true);
 			let seats: u32 = 5;
 			// We want unanimous consensus.
-			let thold = seats;
+			let threshold = seats;
 
 			let aye_votes: u32 = 3;
 			let nay_votes: u32 = 0;
@@ -160,7 +160,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 3;
 			let nay_votes: u32 = 1;
@@ -170,7 +170,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= thold);
+			assert!(!aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 2;
 			let nay_votes: u32 = 1;
@@ -180,7 +180,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= thold);
+			assert!(!aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 1;
 			let nay_votes: u32 = 0;
@@ -190,7 +190,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 		}
 
 		#[test]
@@ -199,7 +199,7 @@ mod tests {
 			let prime = None;
 			let seats: u32 = 5;
 			// We want super majority consensus.
-			let thold = 4;
+			let threshold = 4;
 
 			let aye_votes: u32 = 3;
 			let nay_votes: u32 = 1;
@@ -209,7 +209,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 3;
 			let nay_votes: u32 = 1;
@@ -219,7 +219,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 2;
 			let nay_votes: u32 = 1;
@@ -229,7 +229,7 @@ mod tests {
 			assert_eq!(default, false);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= thold);
+			assert!(!aye_votes + abstentions >= threshold);
 		}
 
 		#[test]
@@ -238,7 +238,7 @@ mod tests {
 			let prime = Some(true);
 			let seats: u32 = 5;
 			// We want super majority consensus.
-			let thold = 4;
+			let threshold = 4;
 
 			let aye_votes: u32 = 3;
 			let nay_votes: u32 = 0;
@@ -248,7 +248,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 2;
 			let nay_votes: u32 = 2;
@@ -258,7 +258,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= thold);
+			assert!(!aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 1;
 			let nay_votes: u32 = 1;
@@ -268,7 +268,7 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 
 			let aye_votes: u32 = 1;
 			let nay_votes: u32 = 0;
@@ -278,14 +278,14 @@ mod tests {
 			assert_eq!(default, true);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(aye_votes + abstentions >= thold);
+			assert!(aye_votes + abstentions >= threshold);
 		}
 
 		#[test]
 		fn default_votes_more_than_than_majority_for_super_majority_is_disapproved() {
 			let seats: u32 = 5;
 			// We want super majority consensus.
-			let thold = 4;
+			let threshold = 4;
 			let aye_votes: u32 = 2;
 			let nay_votes: u32 = 2;
 			let abstentions = seats - (aye_votes + nay_votes);
@@ -296,7 +296,7 @@ mod tests {
 			assert_eq!(default, false);
 			// Abstentions will be added to aye votes.
 			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= thold);
+			assert!(!aye_votes + abstentions >= threshold);
 		}
 
 		#[test]
