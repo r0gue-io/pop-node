@@ -25,7 +25,6 @@ scale-info = { workspace = true, default-features = false, features = [
 	"derive",
 ] }
 sp-runtime = { workspace = true, default-features = false }
-sp-std = { workspace = true }
 
 [dev-dependencies]
 pallet-balances = { workspace = true, default-features = false }
@@ -48,6 +47,5 @@ std = [
 	"pallet-collective/std",
 	"scale-info/std",
 	"sp-runtime/std",
-	"sp-std/std",
 ]
 try-runtime = [ "frame-support/try-runtime" ]

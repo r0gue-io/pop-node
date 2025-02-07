@@ -10108,7 +10108,6 @@ dependencies = [
  "sp-core 35.0.0",
  "sp-io 39.0.0",
  "sp-runtime 40.1.0",
- "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=stable2412)",
 ]
 
 [[package]]
