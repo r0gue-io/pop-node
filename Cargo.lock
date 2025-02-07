@@ -13615,8 +13615,6 @@ dependencies = [
  "bitflags 1.3.2",
  "enumflags2",
  "ink",
- "pallet-nfts 31.0.0",
- "parity-scale-codec",
  "pop-primitives",
  "sp-io 38.0.0",
 ]
