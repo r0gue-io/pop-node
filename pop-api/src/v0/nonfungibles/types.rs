@@ -84,7 +84,7 @@ pub struct CollectionConfig {
 	pub mint_settings: MintSettings,
 }
 
-/// Mint type. Can the NFT be create by anyone, or only the creator of the collection,
+/// Mint type. Can the NFT be created by anyone, or only the creator of the collection,
 /// or only by wallets that already hold an NFT from a certain collection?
 /// The ownership of a privately minted NFT is still publicly visible.
 #[derive(Debug, PartialEq, Eq)]
