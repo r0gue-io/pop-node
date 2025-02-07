@@ -34,7 +34,7 @@ use crate::{
 	config::{
 		monetary::{
 			fee::{WeightToFee, CENTS},
-			TransactionByteFee,
+			TransactionByteFee, TreasuryAccount,
 		},
 		system::RuntimeBlockWeights,
 	},
@@ -51,7 +51,6 @@ parameter_types! {
 	pub UniversalLocation: InteriorLocation = [GlobalConsensus(RelayNetwork::get().unwrap()), Parachain(ParachainInfo::parachain_id().into())].into();
 	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block;
 	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
-	pub TreasuryAccount: AccountId = PalletId(*b"treasury").into_account_truncating();
 	pub const BaseDeliveryFee: u128 = CENTS.saturating_mul(3);
 }
 
