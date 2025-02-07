@@ -4,7 +4,7 @@ use frame_support::{
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
-use pallet_collective::EnsureProportionAtLeast;
+use pallet_collective::{EnsureMembers, EnsureProportionAtLeast};
 use parachains_common::BlockNumber;
 use pop_runtime_common::DAYS;
 
@@ -12,14 +12,19 @@ use crate::{
 	AccountId, Council, Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent, RuntimeOrigin,
 };
 
-type UnanimousCouncilVote = EitherOfDiverse<
+// Type aliases for council origins.
+type AllMembersButOne = EitherOfDiverse<
 	EnsureRoot<AccountId>,
-	EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
+	// Currently we set 4 members at genesis.
+	EnsureMembers<AccountId, CouncilCollective, 3>,
 >;
-
 type AtLeastThreeFourthsOfCouncil = EitherOfDiverse<
 	EnsureRoot<AccountId>,
 	EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
+>;
+type UnanimousCouncilVote = EitherOfDiverse<
+	EnsureRoot<AccountId>,
+	EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
 >;
 
 parameter_types! {
@@ -53,7 +58,7 @@ impl pallet_membership::Config<CouncilMembership> for Runtime {
 	type MembershipChanged = Council;
 	type MembershipInitialized = Council;
 	type PrimeOrigin = AtLeastThreeFourthsOfCouncil;
-	type RemoveOrigin = AtLeastThreeFourthsOfCouncil;
+	type RemoveOrigin = AllMembersButOne;
 	type ResetOrigin = AtLeastThreeFourthsOfCouncil;
 	type RuntimeEvent = RuntimeEvent;
 	type SwapOrigin = AtLeastThreeFourthsOfCouncil;
@@ -312,7 +317,7 @@ mod tests {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::RemoveOrigin>(
 				),
-				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
+				TypeId::of::<AllMembersButOne>(),
 			);
 		}
 
