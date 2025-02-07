@@ -6,8 +6,10 @@ mod mock;
 mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
+/// Dispatchable function benchmarks.
 mod benchmarking;
 
+/// Dispatchable function weights.
 pub mod weights;
 pub use pallet::*;
 use sp_runtime::DispatchResult;
@@ -16,6 +18,7 @@ pub use weights::WeightInfo;
 extern crate alloc;
 use alloc::{boxed::Box, vec};
 
+/// The motion pallet.
 #[frame_support::pallet]
 pub mod pallet {
 	use frame_support::{
@@ -28,6 +31,7 @@ pub mod pallet {
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
+	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
 		/// The runtime event type.
@@ -48,6 +52,7 @@ pub mod pallet {
 		type WeightInfo: WeightInfo;
 	}
 
+	/// The events that can be emitted.
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
@@ -59,9 +64,11 @@ pub mod pallet {
 		DispatchUnanimous { motion_result: DispatchResult },
 	}
 
+	/// Errors inform users that something went wrong.
 	#[pallet::error]
 	pub enum Error<T> {}
 
+	/// The dispatchable functions available.
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Ensures the simple majority is met and dispatches a call with `Root` origin.

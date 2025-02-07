@@ -106,72 +106,30 @@ mod tests {
 		}
 
 		#[test]
-		fn default_votes_super_majority_threshold_prime_is_nay() {
-			// Prime does not exist. (prime vote defaults to false)
-			let prime = None;
-			let seats: u32 = 5;
-			// We want super majority consensus.
-			let threshold = 4;
-
-			let aye_votes: u32 = 3;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 3;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 2;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, false);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= threshold);
-		}
-
-		#[test]
 		fn default_votes_match_the_expected() {
 			let seats = 5;
-			let prime_ayes = Some(true);
-			let prime_nays = None;
-			let votes = [
-				// (prime, aye, nay, expected_default)
-				(prime_nays, 3, 0, true),
-				(prime_nays, 3, 1, true),
-				(prime_nays, 2, 1, false),
-				(prime_ayes, 3, 0, true),
-				(prime_ayes, 3, 1, true),
-				(prime_ayes, 2, 1, true),
-				(prime_ayes, 1, 0, true),
-				(prime_nays, 1, 0, true),
-				(prime_nays, 3, 1, true),
-				(prime_nays, 2, 1, true),
-				(prime_ayes, 3, 0, true),
-				(prime_ayes, 2, 2, true),
-				(prime_ayes, 1, 1, true),
-				(prime_ayes, 1, 0, true),
-			];
+			let range = 0..6;
 
-			for (prime, ayes, nays, expected_default) in votes {
-				assert_eq!(
-					<Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, ayes, nays, seats),
-					expected_default
-				);
+			for ayes in range.clone() {
+				for nays in range.clone() {
+					if ayes + nays <= seats {
+						if ayes * 2 > seats {
+							// Prime is nay.
+							// More than half ayes condition holds over prime.
+							assert_eq!(
+								<Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(None, ayes, nays, seats),
+								true
+							);
+						} else {
+							// Prime is aye.
+							// More than half ayes condition is not met, prime vote is default.
+							assert_eq!(
+								<Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(Some(true), ayes, nays, seats),
+								true
+							);
+						}
+					}
+				}
 			}
 		}
 
