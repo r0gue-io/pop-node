@@ -81,6 +81,7 @@ mod tests {
 	use super::*;
 
 	mod council_collective {
+		use frame_system::WeightInfo;
 		use pallet_collective::DefaultVote;
 
 		use super::*;
@@ -340,6 +341,14 @@ mod tests {
 				<<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposalWeight as Get<Weight>>::get(),
 				sp_runtime::Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block,
 			);
+		}
+
+		#[test]
+		fn authorize_upgrade_does_not_saturate_weight_limit() {
+			let authorize_upgrade_weight =
+				<<Runtime as frame_system::Config>::SystemWeightInfo>::authorize_upgrade();
+			let max_proposal_weight = <<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposalWeight as Get<Weight>>::get();
+			assert!(authorize_upgrade_weight.all_lt(max_proposal_weight));
 		}
 
 		#[test]
