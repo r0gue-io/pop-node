@@ -36,8 +36,8 @@ pub mod pallet {
 	pub trait Config: frame_system::Config {
 		/// The runtime call type.
 		type RuntimeCall: Parameter
-		+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-		+ GetDispatchInfo;
+			+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+			+ GetDispatchInfo;
 		/// The runtime event type.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Origin that can act as `Root` origin if a collective has achieved a simple majority
