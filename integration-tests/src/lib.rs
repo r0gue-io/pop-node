@@ -313,6 +313,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	// Init values for Pop Network Parachain
 	let destination = PopNetworkPara::sibling_location_of(AssetHubPara::para_id());
 	let beneficiary_id = AssetHubParaReceiver::get(); // bob on asset hub
+												   // `amount_to_send` is such that bob has some remaining balance > ED + delivery_fees.
 	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free / 4; // bob on pop balance
 	let assets = (Parent, amount_to_send).into();
 
@@ -326,18 +327,6 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 
 	let sender_balance_before = test.sender.balance;
 	let receiver_balance_before = test.receiver.balance;
-
-	let delivery_fees = PopNetworkPara::execute_with(|| {
-		xcm_helpers::teleport_assets_delivery_fees::<
-			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
-		>(
-			test.args.assets.clone(),
-			0,
-			test.args.weight_limit.clone(),
-			test.args.beneficiary.clone(),
-			test.args.dest.clone(),
-		)
-	});
 
 	let pop_net_location_as_seen_by_ahr =
 		AssetHubPara::sibling_location_of(PopNetworkPara::para_id());
@@ -353,6 +342,12 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 
 	let sender_balance_after = test.sender.balance;
 	let receiver_balance_after = test.receiver.balance;
+
+	let delivery_fees = PopNetworkPara::execute_with(|| {
+		xcm_helpers::teleport_assets_delivery_fees::<
+			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
+		>(test.args.assets, 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
+	});
 
 	// Sender's balance is reduced
 	assert_eq!(sender_balance_before - amount_to_send - delivery_fees, sender_balance_after);
