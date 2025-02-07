@@ -63,7 +63,7 @@ impl pallet_membership::Config<CouncilMembership> for Runtime {
 impl pallet_motion::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	// SimpleMajorityOrigin won't ever ensure origin.
+	// Simple majority is disabled.
 	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
 	// At least 3/4 of the council vote is needed.
 	type SuperMajorityOrigin = AtLeastThreeFourthsOfCouncil;

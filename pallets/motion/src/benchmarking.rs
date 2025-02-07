@@ -22,6 +22,7 @@ mod benchmarks {
 	fn simple_majority() {
 		let call: <T as Config>::RuntimeCall = frame_system::Call::remark { remark: vec![] }.into();
 		let origin = <T as Config>::SimpleMajorityOrigin::try_successful_origin().unwrap();
+
 		#[extrinsic_call]
 		_(origin as T::RuntimeOrigin, Box::new(call));
 
@@ -32,6 +33,7 @@ mod benchmarks {
 	fn super_majority() {
 		let call: <T as Config>::RuntimeCall = frame_system::Call::remark { remark: vec![] }.into();
 		let origin = <T as Config>::SuperMajorityOrigin::try_successful_origin().unwrap();
+
 		#[extrinsic_call]
 		_(origin as T::RuntimeOrigin, Box::new(call));
 
@@ -42,10 +44,12 @@ mod benchmarks {
 	fn unanimous() {
 		let call: <T as Config>::RuntimeCall = frame_system::Call::remark { remark: vec![] }.into();
 		let origin = <T as Config>::UnanimousOrigin::try_successful_origin().unwrap();
+
 		#[extrinsic_call]
 		_(origin as T::RuntimeOrigin, Box::new(call));
 
 		assert_last_event::<T>(Event::DispatchUnanimous { motion_result: Ok(()) }.into())
 	}
+
 	impl_benchmark_test_suite!(Motion, crate::mock::new_test_ext(), crate::mock::Test);
 }
