@@ -1,5 +1,5 @@
 [package]
-authors = [ "Substrate DevHub <https://github.com/substrate-developer-hub>" ]
+authors = [ "Parity Technologies <admin@parity.io>", "R0GUE <go@r0gue.io>" ]
 description = "FRAME pallet to wrap council calls providing root origin to the council."
 edition = { workspace = true }
 homepage = { workspace = true }
