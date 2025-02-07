@@ -214,7 +214,7 @@ impl xcm_executor::Config for XcmConfig {
 	type XcmSender = XcmRouter;
 }
 
-/// Convert from some a Signed (system) Origin into an AccountId32.
+/// Convert an `Origin` into an `AccountId32`.
 pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, RelayNetwork>;
 
 /// The means for routing XCM messages which are not for local execution into the right message
