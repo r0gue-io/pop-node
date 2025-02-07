@@ -106,94 +106,6 @@ mod tests {
 		}
 
 		#[test]
-		fn default_votes_unanimous_threshold_prime_is_nay() {
-			// Prime does not exist. (prime vote defaults to false)
-			let prime = None;
-			let seats: u32 = 5;
-			// We want unanimous consensus.
-			let threshold = seats;
-
-			let aye_votes: u32 = 3;
-			let nay_votes: u32 = 0;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 3;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 2;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, false);
-			// Abstentions will be added to nay votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= threshold);
-		}
-
-		#[test]
-		fn default_votes_unanimous_threshold_prime_is_aye() {
-			// Prime is aye.
-			let prime = Some(true);
-			let seats: u32 = 5;
-			// We want unanimous consensus.
-			let threshold = seats;
-
-			let aye_votes: u32 = 3;
-			let nay_votes: u32 = 0;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 3;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 2;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 1;
-			let nay_votes: u32 = 0;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(aye_votes + abstentions >= threshold);
-		}
-
-		#[test]
 		fn default_votes_super_majority_threshold_prime_is_nay() {
 			// Prime does not exist. (prime vote defaults to false)
 			let prime = None;
@@ -233,70 +145,34 @@ mod tests {
 		}
 
 		#[test]
-		fn default_votes_super_majority_threshold_prime_is_aye() {
-			// Prime is aye.
-			let prime = Some(true);
-			let seats: u32 = 5;
-			// We want super majority consensus.
-			let threshold = 4;
+		fn default_votes_match_the_expected() {
+			let seats = 5;
+			let prime_ayes = Some(true);
+			let prime_nays = None;
+			let votes = [
+				// (prime, aye, nay, expected_default)
+				(prime_nays, 3, 0, true),
+				(prime_nays, 3, 1, true),
+				(prime_nays, 2, 1, false),
+				(prime_ayes, 3, 0, true),
+				(prime_ayes, 3, 1, true),
+				(prime_ayes, 2, 1, true),
+				(prime_ayes, 1, 0, true),
+				(prime_nays, 1, 0, true),
+				(prime_nays, 3, 1, true),
+				(prime_nays, 2, 1, true),
+				(prime_ayes, 3, 0, true),
+				(prime_ayes, 2, 2, true),
+				(prime_ayes, 1, 1, true),
+				(prime_ayes, 1, 0, true),
+			];
 
-			let aye_votes: u32 = 3;
-			let nay_votes: u32 = 0;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 2;
-			let nay_votes: u32 = 2;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 1;
-			let nay_votes: u32 = 1;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold will be met and the proposal approved.
-			assert!(aye_votes + abstentions >= threshold);
-
-			let aye_votes: u32 = 1;
-			let nay_votes: u32 = 0;
-			let abstentions = seats - (aye_votes + nay_votes);
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, true);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(aye_votes + abstentions >= threshold);
-		}
-
-		#[test]
-		fn default_votes_more_than_than_majority_for_super_majority_is_disapproved() {
-			let seats: u32 = 5;
-			// We want super majority consensus.
-			let threshold = 4;
-			let aye_votes: u32 = 2;
-			let nay_votes: u32 = 2;
-			let abstentions = seats - (aye_votes + nay_votes);
-			// Prime does not exist or prime vote is nay.
-			let prime = None;
-
-			let default = <Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, aye_votes, nay_votes, seats);
-			assert_eq!(default, false);
-			// Abstentions will be added to aye votes.
-			// Threshold won't be met and the proposal disapproved.
-			assert!(!aye_votes + abstentions >= threshold);
+			for (prime, ayes, nays, expected_default) in votes {
+				assert_eq!(
+					<Runtime as pallet_collective::Config<CouncilCollective>>::DefaultVote::default_vote(prime, ayes, nays, seats),
+					expected_default
+				);
+			}
 		}
 
 		#[test]
