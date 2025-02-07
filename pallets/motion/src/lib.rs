@@ -5,8 +5,8 @@ mod mock;
 #[cfg(test)]
 mod tests;
 
-#[cfg(feature = "runtime-benchmarks")]
 /// Dispatchable function benchmarks.
+#[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
 
 /// Dispatchable function weights.
@@ -34,12 +34,12 @@ pub mod pallet {
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
-		/// The runtime event type.
-		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// The runtime call type.
 		type RuntimeCall: Parameter
-			+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
-			+ GetDispatchInfo;
+		+ UnfilteredDispatchable<RuntimeOrigin = Self::RuntimeOrigin>
+		+ GetDispatchInfo;
+		/// The runtime event type.
+		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// Origin that can act as `Root` origin if a collective has achieved a simple majority
 		/// consensus.
 		type SimpleMajorityOrigin: EnsureOrigin<Self::RuntimeOrigin>;
@@ -57,11 +57,20 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A [SimpleMajorityOrigin] motion was executed. [motion_result] contains the call result
-		DispatchSimpleMajority { motion_result: DispatchResult },
+		DispatchSimpleMajority {
+			/// Result of dispatching the proposed call.
+			motion_result: DispatchResult,
+		},
 		/// A [SuperMajorityOrigin] motion was executed. [motion_result] contains the call result
-		DispatchSuperMajority { motion_result: DispatchResult },
+		DispatchSuperMajority {
+			/// Result of dispatching the proposed call.
+			motion_result: DispatchResult,
+		},
 		/// A [UnanimousOrigin] motion was executed. [motion_result] contains the call result
-		DispatchUnanimous { motion_result: DispatchResult },
+		DispatchUnanimous {
+			/// Result of dispatching the proposed call.
+			motion_result: DispatchResult,
+		},
 	}
 
 	/// Errors inform users that something went wrong.
