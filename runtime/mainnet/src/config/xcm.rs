@@ -913,7 +913,7 @@ mod tests {
 		}
 
 		#[test]
-		fn reserve_transfer_filter_only_allows_relay_asset_from_ah() {
+		fn reserve_transfer_filter_filters_assets_that_are_not_only_parent() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
 				TypeId::of::<FilterByAssets<Equals<RelayLocation>>>(),
@@ -956,6 +956,14 @@ mod tests {
 					(Location, Vec<Asset>),
 				>>::contains(&la));
 			}
+		}
+
+		#[test]
+		fn reserve_transfer_filter_contains_parent_asset() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
+				TypeId::of::<FilterByAssets<Equals<RelayLocation>>>(),
+			);
 
 			let asset_is_parent = [
 				(
@@ -972,6 +980,9 @@ mod tests {
 					(Location, Vec<Asset>),
 				>>::contains(&la));
 			}
+			// But only AH is considered as reserve.
+			assert!(TrustedReserves::contains(&Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) }, &AssetHub::get()));
+			assert!(!TrustedReserves::contains(&Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) }, &Location::parent()))
 		}
 
 		#[test]
