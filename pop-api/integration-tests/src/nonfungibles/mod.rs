@@ -104,7 +104,6 @@ mod approve {
 				approve(&addr, COLLECTION, ALICE, Some(ITEM), true),
 				Err(Module { index: 50, error: [19, 0] })
 			);
-
 			// Successfully approve item transfer.
 			let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 			assert_ok!(approve(&addr, collection, ALICE, Some(item), true));
@@ -116,7 +115,6 @@ mod approve {
 			let operator = account_id_from_slice(ALICE.as_ref());
 			let expected = Approval { owner, operator, item: Some(item), approved: true }.encode();
 			assert_eq!(last_contract_event(), expected.as_slice());
-
 			// New value overrides old value.
 			assert_ok!(approve(&addr, collection, ALICE, Some(item), false));
 			assert!(
@@ -162,7 +160,7 @@ mod approve {
 			);
 			// Successfully cancel item transfer.
 			let (collection, item) =
-				nfts::create_collection_mint_and_approve(&addr, &addr, ITEM, &addr, &operator);
+				nfts::create_collection_mint_and_approve(&addr, &addr, ITEM, &addr, &ALICE);
 			assert_ok!(approve(&addr, collection, ALICE, Some(item), false));
 			assert!(
 				Nfts::check_approval_permission(&collection, &Some(item), &addr, &ALICE).is_err()
