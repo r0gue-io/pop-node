@@ -312,8 +312,9 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 
 	// Init values for Pop Network Parachain
 	let destination = PopNetworkPara::sibling_location_of(AssetHubPara::para_id());
-	let beneficiary_id = AssetHubParaReceiver::get(); // bob on asset hub
-												   // `amount_to_send` is such that bob has some remaining balance > ED + delivery_fees.
+	// bob on asset hub
+	let beneficiary_id = AssetHubParaReceiver::get();
+	// `amount_to_send` is such that bob has some remaining balance > ED + delivery_fees.
 	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free / 4; // bob on pop balance
 	let assets = (Parent, amount_to_send).into();
 
