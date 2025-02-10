@@ -913,7 +913,7 @@ mod tests {
 		}
 
 		#[test]
-		fn reserve_transfer_filter_filters_assets_that_are_not_only_parent() {
+		fn reserve_transfer_only_allows_relay_asset() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
 				TypeId::of::<FilterByAssets<Equals<RelayLocation>>>(),
