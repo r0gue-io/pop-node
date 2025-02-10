@@ -3,7 +3,7 @@
 use enumflags2::{bitflags, BitFlags};
 
 use super::*;
-use crate::primitives::AccountId;
+use crate::{macros::impl_codec_bitflags, primitives::AccountId};
 
 type Balance = u32;
 /// The identifier of a collection.
@@ -13,7 +13,7 @@ pub type ItemId = u32;
 
 /// Witness data for the destroy transactions.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct DestroyWitness {
 	/// The total number of items in this collection that have outstanding item metadata.
 	#[codec(compact)]
@@ -28,7 +28,7 @@ pub struct DestroyWitness {
 
 /// Witness data for items mint transactions.
 #[derive(Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub struct MintWitness {
 	/// Provide the id of the item in a required collection.
 	pub owned_item: Option<ItemId>,
@@ -40,7 +40,7 @@ pub struct MintWitness {
 #[bitflags]
 #[repr(u64)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum CollectionSetting {
 	/// Items in this collection are transferable.
 	TransferableItems,
@@ -141,7 +141,7 @@ pub struct CancelAttributesApprovalWitness {
 #[bitflags]
 #[repr(u64)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[ink::scale_derive(Encode)]
+#[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum ItemSetting {
 	/// This item is transferable.
 	Transferable,

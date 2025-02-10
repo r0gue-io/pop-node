@@ -66,22 +66,6 @@ mod nonfungibles {
 		}
 
 		#[ink(message)]
-		pub fn transfer(
-			&mut self,
-			collection: CollectionId,
-			item: ItemId,
-			to: AccountId,
-		) -> Result<()> {
-			api::transfer(collection, to, item)?;
-			self.env().emit_event(Transfer {
-				from: Some(self.env().account_id()),
-				to: Some(to),
-				item,
-			});
-			Ok(())
-		}
-
-		#[ink(message)]
 		pub fn approve(
 			&mut self,
 			collection: CollectionId,

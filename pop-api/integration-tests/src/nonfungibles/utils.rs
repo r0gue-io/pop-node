@@ -309,13 +309,13 @@ pub(super) mod nfts {
 	}
 
 	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
-		AccountBalanceOf::<Runtime>::get(collection, owner)
+		AccountBalance::get(collection, owner)
 			.map(|(balance, _)| balance)
 			.unwrap_or_default()
 	}
 
 	pub(crate) fn max_supply(collection: CollectionId) -> Option<u32> {
-		CollectionConfigOf::<Runtime>::get(collection)
+		pallet_nfts::CollectionConfigOf::<Runtime, NftsInstance>::get(collection)
 			.map(|config| config.max_supply)
 			.unwrap_or_default()
 	}
@@ -370,6 +370,6 @@ pub(super) mod nfts {
 	}
 
 	pub(crate) fn next_collection_id() -> u32 {
-		NextCollectionIdOf::<Runtime>::get().unwrap_or_default()
+		NextCollectionId::get().unwrap_or_default()
 	}
 }
