@@ -7,7 +7,6 @@ extern crate alloc;
 use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	traits::{nonfungibles_v2::Inspect, Currency},
-	BoundedVec,
 };
 use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
@@ -35,8 +34,7 @@ type AttributeOf<T> = pallet_nfts::Attribute<T, NftsInstanceOf<T>>;
 type BalanceOf<T> = <<T as pallet_nfts::Config<NftsInstanceOf<T>>>::Currency as Currency<
 	<T as frame_system::Config>::AccountId,
 >>::Balance;
-type CollectionConfigFor<T> =
-	CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
+type CollectionConfigOf<T> = CollectionConfig<ItemPriceOf<T>, BlockNumberFor<T>, CollectionIdOf<T>>;
 type CollectionIdOf<T> =
 	<NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 type ItemIdOf<T> = <NftsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
@@ -209,7 +207,7 @@ pub mod pallet {
 		pub fn create(
 			origin: OriginFor<T>,
 			admin: AccountIdOf<T>,
-			config: CollectionConfigFor<T>,
+			config: CollectionConfigOf<T>,
 		) -> DispatchResult {
 			let creator = ensure_signed(origin.clone())?;
 			let id = NextCollectionIdOf::<T>::get()
