@@ -62,6 +62,7 @@ impl CollectionSettings {
 	pub fn from_disabled(settings: BitFlags<CollectionSetting>) -> Self {
 		Self(settings)
 	}
+}
 
 impl_codec_bitflags!(CollectionSettings, u64, CollectionSetting);
 
