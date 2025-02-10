@@ -78,44 +78,6 @@ fn allowance_works() {
 	});
 }
 
-#[test]
-fn transfer_works() {
-	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-
-		// Collection item does not exist, throws module error `UnknownItem`.
-		assert_eq!(
-			transfer(&addr, COLLECTION, ITEM, ALICE),
-			Err(Module { index: 50, error: [19, 0] })
-		);
-		// Create a collection and mint to a contract address.
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
-		// Privilege to transfer a collection item is locked.
-		nfts::lock_item_transfer(&addr, COLLECTION, ITEM);
-		assert_eq!(
-			transfer(&addr, COLLECTION, ITEM, ALICE),
-			Err(Module { index: 50, error: [11, 0] })
-		);
-		nfts::unlock_item_transfer(&addr, COLLECTION, ITEM);
-		// Successfully transfer.
-		let before_transfer_balance = nfts::balance_of(COLLECTION, ALICE);
-		assert_ok!(transfer(&addr, collection, item, ALICE));
-		let after_transfer_balance = nfts::balance_of(COLLECTION, ALICE);
-		assert_eq!(after_transfer_balance - before_transfer_balance, 1);
-		// Successfully emit event.
-		let from = account_id_from_slice(addr.as_ref());
-		let to = account_id_from_slice(ALICE.as_ref());
-		let expected = Transfer { from: Some(from), to: Some(to), item: ITEM }.encode();
-		assert_eq!(last_contract_event(), expected.as_slice());
-		// Collection item does not exist, i.e. burnt.
-		nfts::burn(COLLECTION, ITEM, &ALICE);
-		assert_eq!(
-			transfer(&addr, COLLECTION, ITEM, ALICE),
-			Err(Module { index: 50, error: [19, 0] })
-		);
-	});
-}
-
 mod approve {
 	use super::*;
 
@@ -172,6 +134,44 @@ mod approve {
 			assert!(Nfts::check_approval_permission(&collection, &None, &addr, &ALICE).is_err());
 		});
 	}
+}
+
+#[test]
+fn transfer_works() {
+	new_test_ext().execute_with(|| {
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+		// Collection item does not exist, throws module error `UnknownItem`.
+		assert_eq!(
+			transfer(&addr, COLLECTION, ITEM, ALICE),
+			Err(Module { index: 50, error: [19, 0] })
+		);
+		// Create a collection and mint to a contract address.
+		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
+		// Privilege to transfer a collection item is locked.
+		nfts::lock_item_transfer(&addr, COLLECTION, ITEM);
+		assert_eq!(
+			transfer(&addr, COLLECTION, ITEM, ALICE),
+			Err(Module { index: 50, error: [11, 0] })
+		);
+		nfts::unlock_item_transfer(&addr, COLLECTION, ITEM);
+		// Successfully transfer.
+		let before_transfer_balance = nfts::balance_of(COLLECTION, ALICE);
+		assert_ok!(transfer(&addr, collection, item, ALICE));
+		let after_transfer_balance = nfts::balance_of(COLLECTION, ALICE);
+		assert_eq!(after_transfer_balance - before_transfer_balance, 1);
+		// Successfully emit event.
+		let from = account_id_from_slice(addr.as_ref());
+		let to = account_id_from_slice(ALICE.as_ref());
+		let expected = Transfer { from: Some(from), to: Some(to), item: ITEM }.encode();
+		assert_eq!(last_contract_event(), expected.as_slice());
+		// Collection item does not exist, i.e. burnt.
+		nfts::burn(COLLECTION, ITEM, &ALICE);
+		assert_eq!(
+			transfer(&addr, COLLECTION, ITEM, ALICE),
+			Err(Module { index: 50, error: [19, 0] })
+		);
+	});
 }
 
 #[test]

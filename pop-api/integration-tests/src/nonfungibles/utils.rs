@@ -35,18 +35,6 @@ pub(super) fn allowance(
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
-pub(super) fn transfer(
-	addr: &AccountId32,
-	collection: CollectionId,
-	item: ItemId,
-	to: AccountId32,
-) -> Result<(), Error> {
-	let params = [collection.encode(), item.encode(), to.encode()].concat();
-	let result = do_bare_call("transfer", &addr, params);
-	decoded::<Result<(), Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-}
-
 pub(super) fn approve(
 	addr: &AccountId32,
 	collection: CollectionId,
@@ -57,6 +45,18 @@ pub(super) fn approve(
 	let params =
 		[collection.encode(), item.encode(), operator.encode(), approved.encode()].concat();
 	let result = do_bare_call("approve", &addr, params);
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+}
+
+pub(super) fn transfer(
+	addr: &AccountId32,
+	collection: CollectionId,
+	item: ItemId,
+	to: AccountId32,
+) -> Result<(), Error> {
+	let params = [collection.encode(), item.encode(), to.encode()].concat();
+	let result = do_bare_call("transfer", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
