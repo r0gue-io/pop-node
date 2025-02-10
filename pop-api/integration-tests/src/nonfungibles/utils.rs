@@ -15,21 +15,21 @@ pub(super) fn owner_of(
 	addr: &AccountId32,
 	collection: CollectionId,
 	item: ItemId,
-) -> Result<AccountId32, Error> {
+) -> Result<Option<AccountId32>, Error> {
 	let params = [collection.encode(), item.encode()].concat();
 	let result = do_bare_call("owner_of", &addr, params);
-	decoded::<Result<AccountId32, Error>>(result.clone())
+	decoded::<Result<Option<AccountId32>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
 pub(super) fn allowance(
 	addr: &AccountId32,
 	collection: CollectionId,
-	item: Option<ItemId>,
 	owner: AccountId32,
 	operator: AccountId32,
+	item: Option<ItemId>,
 ) -> Result<bool, Error> {
-	let params = [collection.encode(), item.encode(), owner.encode(), operator.encode()].concat();
+	let params = [collection.encode(), owner.encode(), operator.encode(), item.encode()].concat();
 	let result = do_bare_call("allowance", &addr, params);
 	decoded::<Result<bool, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -38,12 +38,12 @@ pub(super) fn allowance(
 pub(super) fn approve(
 	addr: &AccountId32,
 	collection: CollectionId,
-	item: Option<ItemId>,
 	operator: AccountId32,
+	item: Option<ItemId>,
 	approved: bool,
 ) -> Result<(), Error> {
 	let params =
-		[collection.encode(), item.encode(), operator.encode(), approved.encode()].concat();
+		[collection.encode(), operator.encode(), item.encode(), approved.encode()].concat();
 	let result = do_bare_call("approve", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -52,10 +52,10 @@ pub(super) fn approve(
 pub(super) fn transfer(
 	addr: &AccountId32,
 	collection: CollectionId,
-	item: ItemId,
 	to: AccountId32,
+	item: ItemId,
 ) -> Result<(), Error> {
-	let params = [collection.encode(), item.encode(), to.encode()].concat();
+	let params = [collection.encode(), to.encode(), item.encode()].concat();
 	let result = do_bare_call("transfer", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
@@ -269,6 +269,25 @@ pub(super) fn burn(
 pub(super) mod nfts {
 	use super::*;
 
+	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
+		AccountBalance::get(collection, owner)
+			.map(|(balance, _)| balance)
+			.unwrap_or_default()
+	}
+
+	pub(crate) fn burn(collection: CollectionId, item: ItemId, owner: &AccountId32) {
+		assert_ok!(Nfts::burn(RuntimeOrigin::signed(owner.clone()), collection, item));
+	}
+
+	pub(super) fn collection_config_with_all_settings_enabled(
+	) -> pallet_nfts::CollectionConfig<u128, BlockNumber, CollectionId> {
+		pallet_nfts::CollectionConfig {
+			settings: pallet_nfts::CollectionSettings::all_enabled(),
+			max_supply: None,
+			mint_settings: pallet_nfts::MintSettings::default(),
+		}
+	}
+
 	pub(crate) fn create_collection_and_mint_to(
 		owner: &AccountId32,
 		admin: &AccountId32,
@@ -299,19 +318,13 @@ pub(super) mod nfts {
 	}
 
 	pub(crate) fn create_collection(owner: &AccountId32, admin: &AccountId32) -> CollectionId {
-		let next_id = next_collection_id();
+		let next_id = NextCollectionId::get().unwrap_or_default();
 		assert_ok!(Nfts::create(
 			RuntimeOrigin::signed(owner.clone()),
 			admin.clone().into(),
 			collection_config_with_all_settings_enabled()
 		));
 		next_id
-	}
-
-	pub(crate) fn balance_of(collection: CollectionId, owner: AccountId32) -> u32 {
-		AccountBalance::get(collection, owner)
-			.map(|(balance, _)| balance)
-			.unwrap_or_default()
 	}
 
 	pub(crate) fn max_supply(collection: CollectionId) -> Option<u32> {
@@ -336,10 +349,6 @@ pub(super) mod nfts {
 		item
 	}
 
-	pub(crate) fn burn(collection: CollectionId, item: ItemId, owner: &AccountId32) {
-		assert_ok!(Nfts::burn(RuntimeOrigin::signed(owner.clone()), collection, item));
-	}
-
 	pub(crate) fn lock_item_transfer(owner: &AccountId32, collection: CollectionId, item: ItemId) {
 		assert_ok!(Nfts::lock_item_transfer(
 			RuntimeOrigin::signed(owner.clone()),
@@ -360,16 +369,49 @@ pub(super) mod nfts {
 		));
 	}
 
-	pub(super) fn collection_config_with_all_settings_enabled(
-	) -> pallet_nfts::CollectionConfig<u128, BlockNumber, CollectionId> {
-		pallet_nfts::CollectionConfig {
-			settings: pallet_nfts::CollectionSettings::all_enabled(),
-			max_supply: None,
-			mint_settings: pallet_nfts::MintSettings::default(),
+	pub(crate) fn default_mint_settings() -> MintSettings {
+		MintSettings {
+			mint_type: MintType::Issuer,
+			price: None,
+			start_block: None,
+			end_block: None,
+			default_item_settings: ItemSettings::all_enabled(),
 		}
 	}
 
-	pub(crate) fn next_collection_id() -> u32 {
-		NextCollectionId::get().unwrap_or_default()
+	pub(crate) fn default_collection_config() -> CollectionConfig {
+		CollectionConfig {
+			max_supply: Some(u32::MAX),
+			mint_settings: default_mint_settings(),
+			settings: CollectionSettings::all_enabled(),
+		}
 	}
+}
+
+pub(super) fn instantiate_and_create_collection(
+	contract: &str,
+	admin: AccountId32,
+	config: CollectionConfig,
+) -> Result<AccountId32, Error> {
+	let function = function_selector("new");
+	let input = [function, admin.encode(), config.encode()].concat();
+	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
+	let result = Contracts::bare_instantiate(
+		ALICE,
+		INIT_VALUE,
+		GAS_LIMIT,
+		None,
+		Code::Upload(wasm_binary),
+		input,
+		vec![],
+		DEBUG_OUTPUT,
+		CollectEvents::Skip,
+	)
+	.result
+	.expect("should work");
+	let address = result.account_id;
+	let result = result.result;
+	decoded::<Result<(), Error>>(result.clone())
+		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
+		.map(|_| address)
 }

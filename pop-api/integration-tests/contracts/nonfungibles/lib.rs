@@ -58,9 +58,9 @@ mod nonfungibles {
 		pub fn allowance(
 			&self,
 			collection: CollectionId,
-			item: Option<ItemId>,
 			owner: AccountId,
 			operator: AccountId,
+			item: Option<ItemId>,
 		) -> Result<bool> {
 			api::allowance(collection, owner, operator, item)
 		}
@@ -69,8 +69,8 @@ mod nonfungibles {
 		pub fn approve(
 			&mut self,
 			collection: CollectionId,
-			item: Option<ItemId>,
 			operator: AccountId,
+			item: Option<ItemId>,
 			approved: bool,
 		) -> Result<()> {
 			api::approve(collection, operator, item, approved)?;
@@ -87,8 +87,8 @@ mod nonfungibles {
 		pub fn transfer(
 			&mut self,
 			collection: CollectionId,
-			item: ItemId,
 			to: AccountId,
+			item: ItemId,
 		) -> Result<()> {
 			api::transfer(collection, to, item)?;
 			self.env().emit_event(Transfer {
@@ -241,7 +241,7 @@ mod nonfungibles {
 			api::clear_collection_approvals(collection, limit)
 		}
 
-		/// 4. PSP-22 Mintable & Burnable Interface:
+		/// 4. PSP-34 Mintable & Burnable Interface:
 		/// - mint
 		/// - burn
 

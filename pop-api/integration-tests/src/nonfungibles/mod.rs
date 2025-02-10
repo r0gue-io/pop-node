@@ -27,9 +27,17 @@ type Collection = pallet_nfts::Collection<Runtime, NftsInstance>;
 type Metadata = BoundedVec<u8, <Runtime as pallet_nfts::Config<NftsInstance>>::StringLimit>;
 type NextCollectionId = pallet_nfts::NextCollectionId<Runtime, NftsInstance>;
 
-const ITEM: ItemId = 0;
 const COLLECTION: CollectionId = 0;
 const CONTRACT: &str = "contracts/nonfungibles/target/ink/nonfungibles.wasm";
+const ITEM: ItemId = 0;
+
+/// 1. PSP-34 Interface:
+/// - balance_of
+/// - owner_of
+/// - allowance
+/// - approve
+/// - transfer
+/// - total_supply
 
 #[test]
 fn balance_of_works() {
@@ -37,13 +45,13 @@ fn balance_of_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
 		// No collection item is created.
-		assert_eq!(balance_of(&addr, COLLECTION, ALICE), Ok(nfts::balance_of(COLLECTION, ALICE)),);
-		assert_eq!(total_supply(&addr, COLLECTION), Ok(0));
+		assert_eq!(balance_of(&addr, COLLECTION, ALICE), Ok(nfts::balance_of(COLLECTION, ALICE)));
+		assert_eq!(balance_of(&addr, COLLECTION, ALICE), Ok(0));
 
 		// Collection item is created.
 		nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM);
 		assert_eq!(balance_of(&addr, COLLECTION, ALICE), Ok(nfts::balance_of(COLLECTION, ALICE)),);
-		assert_eq!(total_supply(&addr, COLLECTION), Ok(1));
+		assert_eq!(balance_of(&addr, COLLECTION, ALICE), Ok(1));
 	});
 }
 
@@ -51,8 +59,13 @@ fn balance_of_works() {
 fn owner_of_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM);
-		assert_eq!(owner_of(&addr, collection, item), Ok(ALICE));
+
+		// No owner found.
+		assert_eq!(owner_of(&addr, COLLECTION, ITEM), Ok(None));
+
+		// Owner found for the collection item.
+		nfts::create_collection_and_mint_to(&addr, &addr, &ALICE, ITEM);
+		assert_eq!(owner_of(&addr, COLLECTION, ITEM), Ok(Some(ALICE)));
 	});
 }
 
@@ -63,18 +76,18 @@ fn allowance_works() {
 
 		// No collection item is created.
 		assert_eq!(
-			allowance(&addr, COLLECTION, None, addr.clone(), ALICE),
+			allowance(&addr, COLLECTION, addr.clone(), ALICE, None),
 			Ok(!Nfts::check_approval_permission(&COLLECTION, &None, &addr, &ALICE).is_err()),
 		);
-		assert_eq!(allowance(&addr, COLLECTION, None, addr.clone(), ALICE), Ok(false));
+		assert_eq!(allowance(&addr, COLLECTION, addr.clone(), ALICE, None), Ok(false));
 
 		// Collection item is created.
-		let (_, item) = nfts::create_collection_mint_and_approve(&addr, &addr, ITEM, &addr, &ALICE);
+		nfts::create_collection_mint_and_approve(&addr, &addr, ITEM, &addr, &ALICE);
 		assert_eq!(
-			allowance(&addr, COLLECTION, Some(item), addr.clone(), ALICE),
-			Ok(Nfts::check_approval_permission(&COLLECTION, &Some(item), &addr, &ALICE).is_ok()),
+			allowance(&addr, COLLECTION, addr.clone(), ALICE, Some(ITEM)),
+			Ok(Nfts::check_approval_permission(&COLLECTION, &Some(ITEM), &addr, &ALICE).is_ok()),
 		);
-		assert_eq!(allowance(&addr, COLLECTION, Some(item), addr.clone(), ALICE), Ok(true));
+		assert_eq!(allowance(&addr, COLLECTION, addr.clone(), ALICE, Some(ITEM)), Ok(true));
 	});
 }
 
@@ -88,12 +101,13 @@ mod approve {
 
 			// Collection does not exist, throws module error `UnknownItem`.
 			assert_eq!(
-				approve(&addr, COLLECTION, Some(ITEM), ALICE, true),
+				approve(&addr, COLLECTION, ALICE, Some(ITEM), true),
 				Err(Module { index: 50, error: [19, 0] })
 			);
-			// Successfully approvals.
+
+			// Successfully approve item transfer.
 			let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
-			assert_ok!(approve(&addr, collection, Some(item), ALICE, true));
+			assert_ok!(approve(&addr, collection, ALICE, Some(item), true));
 			assert!(
 				Nfts::check_approval_permission(&collection, &Some(item), &addr, &ALICE).is_ok()
 			);
@@ -102,8 +116,9 @@ mod approve {
 			let operator = account_id_from_slice(ALICE.as_ref());
 			let expected = Approval { owner, operator, item: Some(item), approved: true }.encode();
 			assert_eq!(last_contract_event(), expected.as_slice());
+
 			// New value overrides old value.
-			assert_ok!(approve(&addr, collection, Some(item), ALICE, false));
+			assert_ok!(approve(&addr, collection, ALICE, Some(item), false));
 			assert!(
 				Nfts::check_approval_permission(&collection, &Some(item), &addr, &ALICE).is_err()
 			);
@@ -117,12 +132,12 @@ mod approve {
 
 			// Collection does not exist, throws module error `NoItemOwned`.
 			assert_eq!(
-				approve(&addr, COLLECTION, None, ALICE, true),
+				approve(&addr, COLLECTION, ALICE, None, true),
 				Err(Module { index: 50, error: [44, 0] })
 			);
-			// Successfully approvals.
+			// Successfully approve collection transfer.
 			let (collection, _) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
-			assert_ok!(approve(&addr, collection, None, ALICE, true));
+			assert_ok!(approve(&addr, collection, ALICE, None, true));
 			assert!(Nfts::check_approval_permission(&collection, &None, &addr, &ALICE).is_ok());
 			// Successfully emit event.
 			let owner = account_id_from_slice(addr.as_ref());
@@ -130,7 +145,50 @@ mod approve {
 			let expected = Approval { owner, operator, item: None, approved: true }.encode();
 			assert_eq!(last_contract_event(), expected.as_slice());
 			// New value overrides old value.
-			assert_ok!(approve(&addr, collection, None, ALICE, false));
+			assert_ok!(approve(&addr, collection, ALICE, None, false));
+			assert!(Nfts::check_approval_permission(&collection, &None, &addr, &ALICE).is_err());
+		});
+	}
+
+	#[test]
+	fn cancel_item_transfer_works() {
+		new_test_ext().execute_with(|| {
+			let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+			// Collection does not exist, throws module error `UnknownItem`.
+			assert_eq!(
+				approve(&addr, COLLECTION, ALICE, Some(ITEM), false),
+				Err(Module { index: 50, error: [19, 0] })
+			);
+			// Successfully cancel item transfer.
+			let (collection, item) =
+				nfts::create_collection_mint_and_approve(&addr, &addr, ITEM, &addr, &operator);
+			assert_ok!(approve(&addr, collection, ALICE, Some(item), false));
+			assert!(
+				Nfts::check_approval_permission(&collection, &Some(item), &addr, &ALICE).is_err()
+			);
+		});
+	}
+
+	#[test]
+	fn cancel_collection_transfer_works() {
+		new_test_ext().execute_with(|| {
+			let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
+
+			// Collection does not exist, throws module error `UnknownItem`.
+			assert_eq!(
+				approve(&addr, COLLECTION, ALICE, Some(ITEM), true),
+				Err(Module { index: 50, error: [19, 0] })
+			);
+			// Successfully cancel collection transfer.
+			let (collection, _) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
+			assert_ok!(Nfts::approve_collection_transfer(
+				RuntimeOrigin::signed(addr.clone()),
+				collection,
+				ALICE.into(),
+				None
+			));
+			assert_ok!(approve(&addr, collection, ALICE, None, false));
 			assert!(Nfts::check_approval_permission(&collection, &None, &addr, &ALICE).is_err());
 		});
 	}
@@ -143,32 +201,34 @@ fn transfer_works() {
 
 		// Collection item does not exist, throws module error `UnknownItem`.
 		assert_eq!(
-			transfer(&addr, COLLECTION, ITEM, ALICE),
+			transfer(&addr, COLLECTION, ALICE, ITEM),
 			Err(Module { index: 50, error: [19, 0] })
 		);
-		// Create a collection and mint to a contract address.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		// Privilege to transfer a collection item is locked.
-		nfts::lock_item_transfer(&addr, COLLECTION, ITEM);
+		nfts::lock_item_transfer(&addr, collection, item);
 		assert_eq!(
-			transfer(&addr, COLLECTION, ITEM, ALICE),
+			transfer(&addr, collection, ALICE, item),
 			Err(Module { index: 50, error: [11, 0] })
 		);
-		nfts::unlock_item_transfer(&addr, COLLECTION, ITEM);
+		nfts::unlock_item_transfer(&addr, collection, item);
 		// Successfully transfer.
-		let before_transfer_balance = nfts::balance_of(COLLECTION, ALICE);
-		assert_ok!(transfer(&addr, collection, item, ALICE));
-		let after_transfer_balance = nfts::balance_of(COLLECTION, ALICE);
+		let before_transfer_balance = nfts::balance_of(collection, ALICE);
+		assert_ok!(transfer(&addr, collection, ALICE, item));
+		let after_transfer_balance = nfts::balance_of(collection, ALICE);
 		assert_eq!(after_transfer_balance - before_transfer_balance, 1);
 		// Successfully emit event.
-		let from = account_id_from_slice(addr.as_ref());
-		let to = account_id_from_slice(ALICE.as_ref());
-		let expected = Transfer { from: Some(from), to: Some(to), item: ITEM }.encode();
+		let expected = Transfer {
+			from: Some(account_id_from_slice(addr.as_ref())),
+			to: Some(account_id_from_slice(ALICE.as_ref())),
+			item,
+		}
+		.encode();
 		assert_eq!(last_contract_event(), expected.as_slice());
 		// Collection item does not exist, i.e. burnt.
-		nfts::burn(COLLECTION, ITEM, &ALICE);
+		nfts::burn(collection, item, &ALICE);
 		assert_eq!(
-			transfer(&addr, COLLECTION, ITEM, ALICE),
+			transfer(&addr, collection, ALICE, item),
 			Err(Module { index: 50, error: [19, 0] })
 		);
 	});
@@ -196,6 +256,9 @@ fn total_supply_works() {
 	});
 }
 
+/// 2. PSP-34 Metadata Interface:
+/// - get_attribute
+
 #[test]
 fn get_attribute_works() {
 	new_test_ext().execute_with(|| {
@@ -203,6 +266,19 @@ fn get_attribute_works() {
 
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 
+		// No attribute value found for key.
+		assert_eq!(
+			get_attribute(
+				&addr,
+				collection,
+				Some(item),
+				AttributeNamespace::CollectionOwner,
+				"some attribute".as_bytes().to_vec(),
+			),
+			Ok(None)
+		);
+
+		// Attribute is set.
 		assert_ok!(Nfts::set_attribute(
 			RuntimeOrigin::signed(addr.clone()),
 			collection,
@@ -224,11 +300,27 @@ fn get_attribute_works() {
 	});
 }
 
+/// 3. Asset Management:
+/// - next_collection_id
+/// - item_metadata
+/// - create
+/// - destroy
+/// - set_attribute
+/// - clear_attribute
+/// - set_metadata
+/// - clear_metadata
+/// - set_max_supply
+/// - approve_item_attributes
+/// - cancel_item_attributes_approval
+/// - clear_all_transfer_approvals
+/// - clear_collection_approvals
+
 #[test]
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		assert_eq!(next_collection_id(&addr), Ok(COLLECTION + 1));
+		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap_or_default() + 1))
 	});
 }
 
@@ -238,9 +330,10 @@ fn item_metadata_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let metadata = "some metadata".as_bytes().to_vec();
 
-		// Collection metadata is not set.
+		// No item metadata found.
 		assert_eq!(Nfts::item_metadata(COLLECTION, ITEM), None);
-		// Successfully set metadata.
+
+		// Item metadata is set.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		assert_ok!(Nfts::set_metadata(
 			RuntimeOrigin::signed(addr.clone()),
@@ -255,23 +348,34 @@ fn item_metadata_works() {
 #[test]
 fn create_works() {
 	new_test_ext().execute_with(|| {
-		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-		assert_ok!(create(
-			&addr,
-			addr.clone(),
-			CollectionConfig {
-				max_supply: Some(100),
-				mint_settings: MintSettings {
-					mint_type: MintType::Issuer,
-					price: None,
-					start_block: None,
-					end_block: None,
-					default_item_settings: ItemSettings::all_enabled(),
-				},
-				settings: CollectionSettings::all_enabled(),
-			}
-		));
-		assert_eq!(Nfts::collection_owner(COLLECTION), Some(addr.clone()));
+		// Instantiate a contract without balance for fees.
+		let addr = instantiate(CONTRACT, 0, vec![0]);
+
+		// No balance to pay for fees.
+		assert_eq!(
+			create(&addr, addr.clone(), nfts::default_collection_config()),
+			Err(Module { index: 10, error: [2, 0] })
+		);
+
+		let addr = instantiate(CONTRACT, INIT_VALUE, vec![1]);
+		// Successfully create a collection.
+		assert_ok!(create(&addr, addr.clone(), nfts::default_collection_config()));
+		assert_eq!(Nfts::collection_owner(COLLECTION), Some(addr));
+	});
+}
+
+// Testing a contract that creates a NFT collection in the constructor.
+#[test]
+fn instantiate_and_create_collection_works() {
+	new_test_ext().execute_with(|| {
+		let contract = "contracts/create_collection_in_constructor/target/ink/\
+		                create_collection_in_constructor.wasm";
+		// Successfully create a collection when instantiating the contract.
+		let result_with_address =
+			instantiate_and_create_collection(contract, ALICE, nfts::default_collection_config());
+		let instantiator = result_with_address.clone().ok();
+		assert_ok!(result_with_address);
+		assert_eq!(Nfts::collection_owner(COLLECTION), instantiator);
 	});
 }
 
@@ -280,7 +384,7 @@ fn destroy_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		// Collection does not exist.
+		// Collection does not exist, throws module error `UnknownCollection`.
 		assert_eq!(
 			destroy(
 				&addr,
@@ -317,8 +421,20 @@ fn set_attribute_works() {
 		let attribute_key = "some attribute".as_bytes().to_vec();
 		let attribute_value = "some value".as_bytes().to_vec();
 
+		// Collection does not exist, throws module error `UnknownCollection`.
+		assert_eq!(
+			set_attribute(
+				&addr,
+				COLLECTION,
+				Some(ITEM),
+				AttributeNamespace::CollectionOwner,
+				attribute_key.clone(),
+				attribute_value.clone()
+			),
+			Err(Module { index: 50, error: [1, 0] })
+		);
+		// Successfully set attribute.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
-
 		assert_ok!(set_attribute(
 			&addr,
 			collection,
@@ -327,13 +443,16 @@ fn set_attribute_works() {
 			attribute_key.clone(),
 			attribute_value.clone()
 		));
-		let expected = AttributeSet {
-			item: Some(item),
-			key: attribute_key.clone(),
-			data: attribute_value.clone(),
-		}
-		.encode();
-		assert_eq!(last_contract_event(), expected.as_slice());
+		assert_eq!(
+			last_contract_event(),
+			AttributeSet {
+				item: Some(item),
+				key: attribute_key.clone(),
+				data: attribute_value.clone(),
+			}
+			.encode()
+			.as_slice()
+		);
 		assert_eq!(
 			Attribute::get((
 				collection,
@@ -355,6 +474,18 @@ fn clear_attribute_works() {
 		let attribute_value = "some value".as_bytes().to_vec();
 
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
+		// Attribute does not exist, throws module error `MetadataNotFound`.
+		assert_eq!(
+			clear_attribute(
+				&addr,
+				collection,
+				Some(item),
+				AttributeNamespace::CollectionOwner,
+				attribute_key.clone()
+			),
+			Err(Module { index: 50, error: [22, 0] })
+		);
+		// Successfully clear attribute.
 		assert_ok!(Nfts::set_attribute(
 			RuntimeOrigin::signed(addr.clone()),
 			collection,
@@ -411,7 +542,7 @@ fn clear_metadata_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		// Collection does not exist.
+		// Collection does not exist, throws module error `NoPermission`.
 		assert_eq!(
 			clear_metadata(&addr, COLLECTION, ITEM),
 			Err(Module { index: 50, error: [0, 0] })
@@ -435,7 +566,7 @@ fn set_max_supply_works() {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let value = 10;
 
-		// Collection does not exist.
+		// Collection does not exist, throws module error `NoConfig`.
 		assert_eq!(
 			set_max_supply(&addr, COLLECTION, value),
 			Err(Module { index: 50, error: [31, 0] })
@@ -457,6 +588,12 @@ fn approve_item_attributes_works() {
 		let attribute_key = AttributeKey::truncate_from("some attribute".as_bytes().to_vec());
 		let attribute_value = AttributeValue::truncate_from("some value".as_bytes().to_vec());
 
+		// Collection does not exist, throws module error `UnknownItem`.
+		assert_eq!(
+			approve_item_attributes(&addr, COLLECTION, ITEM, ALICE),
+			Err(Module { index: 50, error: [19, 0] })
+		);
+		// Successfully approve attribute.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		assert_ok!(approve_item_attributes(&addr, collection, item, ALICE));
 		assert_ok!(Nfts::set_attribute(
@@ -487,6 +624,18 @@ fn cancel_item_attributes_approval_works() {
 		let attribute_key = AttributeKey::truncate_from("some attribute".as_bytes().to_vec());
 		let attribute_value = AttributeValue::truncate_from("some value".as_bytes().to_vec());
 
+		// Collection does not exist, throws module error `UnknownItem`.
+		assert_eq!(
+			cancel_item_attributes_approval(
+				&addr,
+				COLLECTION,
+				ITEM,
+				ALICE,
+				CancelAttributesApprovalWitness { account_attributes: 1 }
+			),
+			Err(Module { index: 50, error: [19, 0] })
+		);
+		// Successfully cancel item attributes approval.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		assert_ok!(Nfts::approve_item_attributes(
 			RuntimeOrigin::signed(addr.clone()),
@@ -532,10 +681,9 @@ fn clear_all_transfer_approvals_works() {
 			clear_all_transfer_approvals(&addr, COLLECTION, ITEM),
 			Err(Module { index: 50, error: [1, 0] })
 		);
-
+		// Successfully clear all transfer approvals.
 		let (collection, item) =
 			nfts::create_collection_mint_and_approve(&addr, &addr, ITEM, &addr, &operator);
-		// Successfully clear all transfer approvals.
 		assert_ok!(clear_all_transfer_approvals(&addr, collection, item));
 		assert!(
 			Nfts::check_approval_permission(&collection, &Some(item), &addr, &operator).is_err()
@@ -566,7 +714,6 @@ fn clear_collection_approvals_works() {
 			CollectionApprovals::iter_prefix((collection, &addr)).count(),
 			operators.len() - approvals as usize
 		);
-
 		// Successfully clear all collection approvals.
 		assert_ok!(clear_collection_approvals(
 			&addr,
@@ -576,6 +723,10 @@ fn clear_collection_approvals_works() {
 		assert!(CollectionApprovals::iter_prefix((collection, &addr)).count().is_zero());
 	});
 }
+
+/// 4. PSP-34 Mintable & Burnable Interface:
+/// - mint
+/// - burn
 
 #[test]
 fn mint_works() {
@@ -610,14 +761,15 @@ fn burn_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 
-		// Collection item does not exist.
+		// Collection item does not exist, throws module error `UnknownItem`.
 		assert_eq!(burn(&addr, COLLECTION, ITEM), Err(Module { index: 50, error: [19, 0] }));
-		// Burning can only be done by the collection item owner.
+		// Burning can only be done by the collection item owner, throws module error
+		// `NoPermission`.
 		let (collection, item) = nfts::create_collection_and_mint_to(&ALICE, &ALICE, &BOB, ITEM);
 		assert_eq!(burn(&addr, collection, item), Err(Module { index: 50, error: [0, 0] }));
 		// Successfully burn.
 		let (collection, item) = nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		assert_ok!(burn(&addr, collection, item));
-		assert_eq!(nfts::balance_of(COLLECTION, addr.clone()), 0);
+		assert_eq!(nfts::balance_of(COLLECTION, addr), 0);
 	});
 }
