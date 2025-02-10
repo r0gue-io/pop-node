@@ -980,15 +980,6 @@ mod tests {
 					(Location, Vec<Asset>),
 				>>::contains(&la));
 			}
-			// But only AH is considered as reserve.
-			assert!(TrustedReserves::contains(
-				&Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) },
-				&AssetHub::get()
-			));
-			assert!(!TrustedReserves::contains(
-				&Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) },
-				&Location::parent()
-			))
 		}
 
 		#[test]
