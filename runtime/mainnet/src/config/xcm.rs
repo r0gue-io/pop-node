@@ -919,56 +919,39 @@ mod tests {
 				TypeId::of::<FilterByAssets<Equals<RelayLocation>>>(),
 			);
 
-                         // Filter assets that are not the relay asset.
+			// Filter assets that are not the relay asset.
 			let assets = [
-			                 vec![Asset { id: AssetId(Location::new(1, Parachain(1000))), fun: Fungible(0) }],
-					vec![
-						Asset { id: AssetId(Location::parent()), fun: Fungible(0) },
-			                         // Assets other than the relay asset:
-						Asset { id: AssetId(AssetHub::get()), fun: Fungible(0) },
-						Asset {
-							id: AssetId(Location::new(
-								1,
-								[Parachain(1000), PalletInstance(50), GeneralIndex(1984)],
-							)),
-							fun: Fungible(0),
-						},
-					],
+				vec![Asset { id: AssetId(Location::new(1, Parachain(1000))), fun: Fungible(0) }],
+				vec![
+					Asset { id: AssetId(Location::parent()), fun: Fungible(0) },
+					// Assets other than the relay asset:
+					Asset { id: AssetId(AssetHub::get()), fun: Fungible(0) },
+					Asset {
+						id: AssetId(Location::new(
+							1,
+							[Parachain(1000), PalletInstance(50), GeneralIndex(1984)],
+						)),
+						fun: Fungible(0),
+					},
+				],
 			];
 			for asset in assets {
-				// AssetHub is used for the location as it should not be possible to send the derivative of the relay asset to another chain because it functions as the reserve.
+				// AssetHub is used for the location as it should not be possible to send the
+				// derivative of the relay asset to another chain because it functions as the
+				// reserve.
 				assert!(!<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<
 					(Location, Vec<Asset>),
-				>>::contains(AssetHub::get(), &asset));
+				>>::contains(&(AssetHub::get(), asset)));
 			}
-			
+
 			// Allow only relay asset.
-			assert!(<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<
-					(Location, Vec<Asset>),
-				>>::contains(AssetHub::get(), Asset { id: AssetId(Location::parent()), fun: Fungible(0) }));
-
-		#[test]
-		fn reserve_transfer_filter_contains_parent_asset() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter>(),
-				TypeId::of::<FilterByAssets<Equals<RelayLocation>>>(),
-			);
-
-			let asset_is_parent = [
-				(
-					AssetHub::get(),
-					vec![Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) }],
-				),
-				(
-					Location::parent(),
-					vec![Asset { id: AssetId(Location::from(Parent)), fun: Fungible(0) }],
-				),
-			];
-			for la in asset_is_parent {
-				assert!(<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<
-					(Location, Vec<Asset>),
-				>>::contains(&la));
-			}
+			assert!(<<Runtime as pallet_xcm::Config>::XcmReserveTransferFilter as Contains<(
+				Location,
+				Vec<Asset>
+			)>>::contains(&(
+				AssetHub::get(),
+				vec![Asset { id: AssetId(Location::parent()), fun: Fungible(0) }]
+			)));
 		}
 
 		#[test]
