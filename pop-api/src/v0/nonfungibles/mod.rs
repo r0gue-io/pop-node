@@ -134,12 +134,12 @@ pub fn total_supply(collection: CollectionId) -> Result<u128> {
 #[inline]
 pub fn get_attribute(
 	collection: CollectionId,
-	item: ItemId,
+	item: Option<ItemId>,
 	namespace: AttributeNamespace,
 	key: Vec<u8>,
 ) -> Result<Option<Vec<u8>>> {
 	build_read_state(GET_ATTRIBUTE)
-		.input::<(CollectionId, ItemId, AttributeNamespace, Vec<u8>)>()
+		.input::<(CollectionId, Option<ItemId>, AttributeNamespace, Vec<u8>)>()
 		.output::<Result<Option<Vec<u8>>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&(collection, item, namespace, key))
