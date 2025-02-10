@@ -11,7 +11,7 @@ use crate::{
 	mock::*,
 	nonfungibles::{
 		AccountBalanceOf, AttributeNamespace, AttributeOf, CancelAttributesApprovalWitness,
-		CollectionConfig, CollectionConfigFor, CollectionIdOf, CollectionSettings, Config,
+		CollectionConfig, CollectionConfigOf, CollectionIdOf, CollectionSettings, Config,
 		DestroyWitness, ItemIdOf, MintSettings, NextCollectionIdOf, NftsErrorOf, NftsInstanceOf,
 		NftsWeightInfoOf, Read::*, ReadResult, WeightInfo as WeightInfoTrait,
 	},
@@ -936,7 +936,7 @@ mod nfts {
 		assert_ok!(Nfts::check_approval_permission(&collection, &Some(item), &owner, &operator));
 	}
 
-	pub(super) fn collection_config_with_all_settings_enabled() -> CollectionConfigFor<Test> {
+	pub(super) fn collection_config_with_all_settings_enabled() -> CollectionConfigOf<Test> {
 		CollectionConfig {
 			settings: CollectionSettings::all_enabled(),
 			max_supply: None,
