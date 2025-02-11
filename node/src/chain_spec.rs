@@ -1,6 +1,6 @@
 use cumulus_primitives_core::ParaId;
 use pop_runtime_common::{AccountId, AuraId};
-use pop_runtime_mainnet::SudoAddress;
+use pop_runtime_mainnet::config::governance::SudoAddress;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::ChainType;
 use serde::{Deserialize, Serialize};
