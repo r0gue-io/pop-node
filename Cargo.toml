@@ -69,12 +69,13 @@ substrate-wasm-builder = { git = "https://github.com/paritytech/polkadot-sdk", b
 # Local
 pallet-api = { path = "pallets/api", default-features = false }
 pallet-nfts = { path = "pallets/nfts", default-features = false }
+pallet-nfts-runtime-api = { path = "pallets/nfts", default-features = false }
 pop-chain-extension = { path = "./extension", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 pop-runtime-common = { path = "runtime/common", default-features = false }
-pop-runtime-devnet = { path = "runtime/devnet", default-features = true }   # default-features=true required for `-p pop-node` builds
-pop-runtime-mainnet = { path = "runtime/mainnet", default-features = true } # default-features=true required for `-p pop-node` builds
-pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # default-features=true required for `-p pop-node` builds
+pop-runtime-devnet = { path = "runtime/devnet", default-features = true }     # default-features=true required for `-p pop-node` builds
+pop-runtime-mainnet = { path = "runtime/mainnet", default-features = true }   # default-features=true required for `-p pop-node` builds
+pop-runtime-testnet = { path = "runtime/testnet", default-features = true }   # default-features=true required for `-p pop-node` builds
 
 # Substrate
 frame-benchmarking = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
@@ -94,7 +95,6 @@ pallet-contracts = { git = "https://github.com/paritytech/polkadot-sdk", branch 
 pallet-message-queue = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 pallet-multisig = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 pallet-nft-fractionalization = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
-pallet-nfts-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 pallet-revive = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
