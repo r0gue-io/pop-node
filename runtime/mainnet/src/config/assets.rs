@@ -22,9 +22,9 @@ parameter_types! {
 	pub const AssetAccountDeposit: Balance = deposit(1, 16);
 	pub const ApprovalDeposit: Balance = ExistentialDeposit::get();
 	pub const AssetsStringLimit: u32 = 50;
-	// Key = AssetId 4 bytes + Hash length 16 bytes; Value = 26 bytes (16+4+4+1+1)
+	// Key = AssetId 4 bytes + Hash length 16 bytes; Value = 18 bytes (16+1+1)
 	// https://github.com/paritytech/polkadot-sdk/blob/7a7e016a1da297adc13f855979232e0059df258a/substrate/frame/assets/src/types.rs#L188
-	pub const MetadataDepositBase: Balance = deposit(1, 46);
+	pub const MetadataDepositBase: Balance = deposit(1, 38);
 	pub const MetadataDepositPerByte: Balance = deposit(0, 1);
 }
 
@@ -260,9 +260,13 @@ mod tests {
 
 		#[test]
 		fn ensure_metadata_deposit_base() {
+			// Accounts for the key length +
+			// Value max length without name and symbol, which are accounted per byte.
 			let max_size = Blake2_128Concat::max_len::<
 				<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId,
-			>() + pallet_assets::AssetMetadata::<Balance, u32>::max_encoded_len();
+			>() + Balance::max_encoded_len() +
+				u8::max_encoded_len() +
+				bool::max_encoded_len();
 			assert_eq!(deposit(1, max_size as u32), MetadataDepositBase::get());
 
 			assert_eq!(
