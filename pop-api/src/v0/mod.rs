@@ -8,6 +8,9 @@ use crate::{
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
+/// APIs for non-fungible tokens.
+#[cfg(feature = "nonfungibles")]
+pub mod nonfungibles;
 
 pub(crate) const V0: u8 = 0;
 
