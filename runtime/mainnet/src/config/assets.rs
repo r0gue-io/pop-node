@@ -16,6 +16,7 @@ use crate::{
 pub type AssetsForceOrigin = EnsureRoot<AccountId>;
 
 parameter_types! {
+	// Accounts for `Asset` max size.
 	pub const AssetDeposit: Balance = deposit(1, 210);
 	// Enough to keep the balance in state.
 	pub const AssetAccountDeposit: Balance = deposit(1, 16);
@@ -56,7 +57,7 @@ parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
 	// Key = 68 bytes (4+16+32+16), Value = 52 bytes (4+32+16)
 	pub const NftsCollectionBalanceDeposit: Balance = deposit(1, 120);
-	// Accounts for `Collection` +
+	// Accounts for state from `Collection` +
 	// `CollectionRoleOf` +
 	// `CollectionConfigOf` +
 	// `CollectionAccount`
@@ -66,7 +67,9 @@ parameter_types! {
 	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 137);
 	// Accounts for `Item` storage item max size.
 	pub const NftsItemDeposit: Balance = deposit(1, 861);
+	// Key = max(size_of(item_metadata_key), size_of(collection_metadata_key)) + Balance: 16 bytes
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 56);
+	// Accounts for key size of `Attribute`.
 	pub const NftsAttributeDepositBase: Balance = deposit(1, 175);
 	pub const NftsDepositPerByte: Balance = deposit(0, 1);
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
@@ -527,7 +530,7 @@ mod tests {
 			let item_metadata_key_size =
 				Blake2_128Concat::max_len::<CollectionId>() + Blake2_128Concat::max_len::<ItemId>();
 			let collection_metadata_key_size = Blake2_128Concat::max_len::<CollectionId>();
-			// We take the bigger of both sizes and size_of(Balance) which is always written.
+			// We use max of both key sizes and add size_of(Balance) which is always written.
 			let base_size = item_metadata_key_size.max(collection_metadata_key_size) +
 				Balance::max_encoded_len();
 			assert_eq!(NftsMetadataDepositBase::get(), deposit(1, base_size as u32));
