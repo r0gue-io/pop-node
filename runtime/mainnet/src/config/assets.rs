@@ -55,6 +55,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 
 parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
+	// Accounts for `AccountBalance` max size.
 	// Key = 68 bytes (4+16+32+16), Value = 52 bytes (4+32+16)
 	pub const NftsCollectionBalanceDeposit: Balance = deposit(1, 120);
 	// Accounts for state from `Collection` +
@@ -63,6 +64,7 @@ parameter_types! {
 	// `CollectionAccount`
 	// Refer to `ensure_collection_deposit` test for specifics.
 	pub const NftsCollectionDeposit: Balance = deposit(4, 294);
+	// Accounts for `CollectionApprovals` max size.
 	// Key = 116 bytes (4+16+32+16+32+16), Value = 21 bytes (1+4+16)
 	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 137);
 	// Accounts for `Item` storage item max size.
@@ -76,13 +78,11 @@ parameter_types! {
 }
 
 impl pallet_nfts::Config for Runtime {
-	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
 	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionBalanceDeposit = NftsCollectionBalanceDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
-	// TODO: source from primitives
 	type CollectionId = CollectionId;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
@@ -93,9 +93,7 @@ impl pallet_nfts::Config for Runtime {
 	type Helper = ();
 	type ItemAttributesApprovalsLimit = ConstU32<30>;
 	type ItemDeposit = NftsItemDeposit;
-	// TODO: source from primitives
 	type ItemId = ItemId;
-	// TODO: source from primitives
 	type KeyLimit = ConstU32<64>;
 	type Locker = ();
 	type MaxAttributesPerCall = ConstU32<10>;
@@ -368,8 +366,8 @@ mod tests {
 			// Left for the reviewer to verify discrepancy.
 			// println!("STORAGE INFO MAX SIZE: {:?}", &max_collection_size);
 			// let key = Blake2_128Concat::max_len::<CollectionId>();
-			// let value_size = AccountId::max_encoded_len() + Balance::max_encoded_len() + 8 + 8 +
-			// 8 + 8; println!("MAX CALCULATED SIZE: {:?}", key + value_size);
+			// let value_size = AccountId::max_encoded_len() + Balance::max_encoded_len() + (8 * 4);
+			// println!("MAX CALCULATED SIZE: {:?}", key + value_size);
 
 			let max_collection_role_size = pallet_nfts::CollectionRoleOf::<Runtime>::storage_info()
 				.first()
@@ -392,7 +390,7 @@ mod tests {
 				max_collection_role_size +
 				max_collection_config_size +
 				max_collection_account_size;
-
+			println!("{:?}", deposit(4, total_collection_size));
 			// 4 different storage items means 4 different keys.
 			assert_eq!(deposit(4, total_collection_size), NftsCollectionDeposit::get());
 		}
