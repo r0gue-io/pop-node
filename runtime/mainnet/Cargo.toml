@@ -22,6 +22,8 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
+pallet-nfts.workspace = true
+pallet-nfts-runtime-api.workspace = true
 pop-runtime-common = { workspace = true, default-features = false }
 
 # Substrate
@@ -39,8 +41,6 @@ pallet-authorship.workspace = true
 pallet-balances.workspace = true
 pallet-message-queue.workspace = true
 pallet-multisig.workspace = true
-pallet-nfts.workspace = true
-pallet-nfts-runtime-api.workspace = true
 pallet-preimage.workspace = true
 pallet-proxy.workspace = true
 pallet-revive.workspace = true
