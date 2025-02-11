@@ -23,7 +23,7 @@ parameter_types! {
 	pub const ApprovalDeposit: Balance = ExistentialDeposit::get();
 	pub const AssetsStringLimit: u32 = 50;
 	// Key = AssetId 4 bytes + Hash length 16 bytes; Value = 26 bytes (16+4+4+1+1)
-	// https://github.com/paritytech/substrate/blob/069917b/frame/assets/src/lib.rs#L257L271
+	// https://github.com/paritytech/polkadot-sdk/blob/7a7e016a1da297adc13f855979232e0059df258a/substrate/frame/assets/src/types.rs#L188
 	pub const MetadataDepositBase: Balance = deposit(1, 46);
 	pub const MetadataDepositPerByte: Balance = deposit(0, 1);
 }
