@@ -198,6 +198,8 @@ pub fn mainnet_chain_spec(relay: Relay) -> MainnetChainSpec {
 		],
 		sudo_account_id,
 		para_id.into(),
+		// councillors
+		vec![],
 	))
 	.with_protocol_id("pop")
 	.with_properties(properties)
@@ -208,6 +210,7 @@ fn mainnet_genesis(
 	invulnerables: Vec<(AccountId, AuraId)>,
 	root: AccountId,
 	id: ParaId,
+	councillors: Vec<AccountId>,
 ) -> serde_json::Value {
 	use pop_runtime_mainnet::EXISTENTIAL_DEPOSIT;
 
@@ -238,7 +241,10 @@ fn mainnet_genesis(
 		"polkadotXcm": {
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
 		},
-		"sudo": { "key": Some(root) }
+		"sudo": { "key": Some(root) },
+		"councilMembership": {
+			"members": councillors,
+		}
 	})
 }
 
