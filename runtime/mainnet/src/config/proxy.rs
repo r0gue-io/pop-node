@@ -27,11 +27,11 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 						c,
 						RuntimeCall::Utility(pallet_utility::Call::batch { calls }) |
 						RuntimeCall::Utility(pallet_utility::Call::batch_all { calls })
-						if !calls.iter().any(|call| is_transfer_call(&call))
+						if !calls.iter().any(|call| is_transfer_call(call))
 					) && matches!(
 					c,
 					RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
-					if !is_transfer_call(&call)
+					if !is_transfer_call(call)
 				),
 			ProxyType::CancelProxy => matches!(
 				c,
