@@ -46,8 +46,6 @@ pub enum ProxyType {
 	AssetManager,
 	/// Collator selection proxy. Can execute calls related to collator selection mechanism.
 	Collator,
-	/// Smart contract proxy. Can execute calls related to smart contract management.
-	SmartContract,
 }
 impl Default for ProxyType {
 	fn default() -> Self {

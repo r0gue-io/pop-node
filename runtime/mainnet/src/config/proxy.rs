@@ -101,12 +101,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Utility { .. } |
 					RuntimeCall::Multisig { .. }
 			),
-			ProxyType::SmartContract => matches!(
-				c,
-				RuntimeCall::Revive { .. } |
-					RuntimeCall::Utility { .. } |
-					RuntimeCall::Multisig { .. }
-			),
 		}
 	}
 
@@ -162,16 +156,8 @@ mod tests {
 
 	#[test]
 	fn proxy_type_supersets_as_defined() {
-		let all_proxies = vec![
-			Any,
-			NonTransfer,
-			CancelProxy,
-			Assets,
-			AssetOwner,
-			AssetManager,
-			Collator,
-			SmartContract,
-		];
+		let all_proxies =
+			vec![Any, NonTransfer, CancelProxy, Assets, AssetOwner, AssetManager, Collator];
 		for proxy in all_proxies {
 			// Every proxy is part of itself.
 			assert!(ProxyType::is_superset(&proxy, &proxy));
@@ -205,10 +191,6 @@ mod tests {
 				} else if proxy != Any {
 					assert!(!ProxyType::is_superset(&proxy, &Assets));
 				}
-			}
-			// `SmartContract` does not contain any other proxy.
-			if proxy != SmartContract {
-				assert!(!ProxyType::is_superset(&SmartContract, &proxy));
 			}
 		}
 	}

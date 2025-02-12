@@ -86,12 +86,6 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Utility { .. } |
 					RuntimeCall::Multisig { .. }
 			),
-			ProxyType::SmartContract => matches!(
-				c,
-				RuntimeCall::Contracts { .. } |
-					RuntimeCall::Utility { .. } |
-					RuntimeCall::Multisig { .. }
-			),
 		}
 	}
 
