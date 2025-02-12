@@ -3,7 +3,10 @@ use alloc::vec::Vec;
 use codec::Encode;
 use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
-	traits::tokens::{Fortitude::Polite, Preservation::Preserve},
+	traits::{
+		nonfungibles_v2::Inspect,
+		tokens::{Fortitude::Polite, Preservation::Preserve},
+	},
 	weights::{Weight, WeightToFee as _},
 };
 use pallet_revive::AddressMapper;
@@ -30,9 +33,9 @@ use xcm_runtime_apis::{
 use super::{
 	config::{monetary::fee::WeightToFee, system::RuntimeBlockWeights, xcm as xcm_config},
 	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, EventRecord, Executive,
-	ExtrinsicInclusionMode, InherentDataExt, Nonce, OriginCaller, ParachainSystem, PolkadotXcm,
-	Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin, SessionKeys,
-	System, TransactionPayment, UncheckedExtrinsic, VERSION,
+	ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
+	PolkadotXcm, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin,
+	SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
 };
 
 impl_runtime_apis! {
@@ -186,6 +189,50 @@ impl_runtime_apis! {
 	impl cumulus_primitives_core::CollectCollationInfo<Block> for Runtime {
 		fn collect_collation_info(header: &<Block as BlockT>::Header) -> cumulus_primitives_core::CollationInfo {
 			ParachainSystem::collect_collation_info(header)
+		}
+	}
+
+	impl pallet_nfts_runtime_api::NftsApi<Block, AccountId, u32, u32> for Runtime {
+		fn owner(collection: u32, item: u32) -> Option<AccountId> {
+			<Nfts as Inspect<AccountId>>::owner(&collection, &item)
+		}
+
+		fn collection_owner(collection: u32) -> Option<AccountId> {
+			<Nfts as Inspect<AccountId>>::collection_owner(&collection)
+		}
+
+		fn attribute(
+			collection: u32,
+			item: u32,
+			key: Vec<u8>,
+		) -> Option<Vec<u8>> {
+			<Nfts as Inspect<AccountId>>::attribute(&collection, &item, &key)
+		}
+
+		fn custom_attribute(
+			account: AccountId,
+			collection: u32,
+			item: u32,
+			key: Vec<u8>,
+		) -> Option<Vec<u8>> {
+			<Nfts as Inspect<AccountId>>::custom_attribute(
+				&account,
+				&collection,
+				&item,
+				&key,
+			)
+		}
+
+		fn system_attribute(
+			collection: u32,
+			item: Option<u32>,
+			key: Vec<u8>,
+		) -> Option<Vec<u8>> {
+			<Nfts as Inspect<AccountId>>::system_attribute(&collection, item.as_ref(), &key)
+		}
+
+		fn collection_attribute(collection: u32, key: Vec<u8>) -> Option<Vec<u8>> {
+			<Nfts as Inspect<AccountId>>::collection_attribute(&collection, &key)
 		}
 	}
 
