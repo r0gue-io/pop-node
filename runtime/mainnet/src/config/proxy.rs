@@ -1,97 +1,70 @@
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::InstanceFilter;
-use pop_runtime_common::proxy::{MaxPending, MaxProxies, ProxyType};
+use pop_runtime_common::proxy::{MaxPending, MaxProxies};
+use sp_runtime::RuntimeDebug;
 
 use crate::{
-	config::assets::TrustBackedAssetsCall, deposit, parameter_types, Balance, Balances,
-	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
+	deposit, parameter_types, Balance, Balances, BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
 };
 
-fn is_transfer_call(call: &RuntimeCall) -> bool {
-	matches!(
-		call,
-		RuntimeCall::Balances { .. } |
-			RuntimeCall::Assets { .. } |
-			RuntimeCall::Nfts { .. } |
-			RuntimeCall::Treasury { .. }
-	)
+/// The type used to represent the kinds of proxying allowed.
+// Mainnet will use this definition of ProxyType instead of the ones in
+// `pop-common` crates until `pallet-assets` is in runtime.
+// `ProxyType` in `pop-common` include Assets specific proxies which won't
+// make much sense in this runtime.
+#[derive(
+	Copy,
+	Clone,
+	Eq,
+	PartialEq,
+	Ord,
+	PartialOrd,
+	Encode,
+	Decode,
+	RuntimeDebug,
+	MaxEncodedLen,
+	scale_info::TypeInfo,
+)]
+pub enum ProxyType {
+	/// Fully permissioned proxy. Can execute any call on behalf of _proxied_.
+	Any,
+	/// Can execute any call that does not transfer funds or assets.
+	NonTransfer,
+	/// Proxy with the ability to reject time-delay proxy announcements.
+	CancelProxy,
+	/// Collator selection proxy. Can execute calls related to collator selection mechanism.
+	Collator,
+}
+impl Default for ProxyType {
+	fn default() -> Self {
+		Self::Any
+	}
+}
+
+impl ProxyType {
+	/// Defines proxies permission hierarchy.
+	// Example: A proxy that is not superset of another one won't be able to remove
+	// that proxy relationship
+	// src: https://github.com/paritytech/polkadot-sdk/blob/4cd07c56378291fddb9fceab3b508cf99034126a/substrate/frame/proxy/src/lib.rs#L802
+	pub fn is_superset(s: &ProxyType, o: &ProxyType) -> bool {
+		match (s, o) {
+			(x, y) if x == y => true,
+			(ProxyType::Any, _) => true,
+			(_, ProxyType::Any) => false,
+			(ProxyType::NonTransfer, ProxyType::Collator) => true,
+			_ => false,
+		}
+	}
 }
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
 		match self {
 			ProxyType::Any => true,
-			ProxyType::NonTransfer =>
-				!is_transfer_call(c) &&
-					// Wrapped transfer calls are filtered too.
-					matches!(
-						c,
-						RuntimeCall::Utility(pallet_utility::Call::batch { calls }) |
-						RuntimeCall::Utility(pallet_utility::Call::batch_all { calls })
-						if !calls.iter().any(|call| is_transfer_call(call))
-					) && matches!(
-					c,
-					RuntimeCall::Utility(pallet_utility::Call::as_derivative { call, .. })
-					if !is_transfer_call(call)
-				),
+			ProxyType::NonTransfer => !matches!(c, RuntimeCall::Balances { .. }),
 			ProxyType::CancelProxy => matches!(
 				c,
 				RuntimeCall::Proxy(pallet_proxy::Call::reject_announcement { .. }) |
-					RuntimeCall::Utility { .. } |
-					RuntimeCall::Multisig { .. }
-			),
-			ProxyType::Assets => {
-				matches!(
-					c,
-					RuntimeCall::Assets { .. } |
-						RuntimeCall::Utility { .. } |
-						RuntimeCall::Multisig { .. } |
-						RuntimeCall::Nfts { .. }
-				)
-			},
-			ProxyType::AssetOwner => matches!(
-				c,
-				RuntimeCall::Assets(TrustBackedAssetsCall::create { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::start_destroy { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::destroy_accounts { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::destroy_approvals { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::finish_destroy { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::transfer_ownership { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::set_team { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::set_metadata { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::clear_metadata { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::set_min_balance { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::create { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::destroy { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::redeposit { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::transfer_ownership { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_team { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_collection_max_supply { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::lock_collection { .. }) |
-					RuntimeCall::Utility { .. } |
-					RuntimeCall::Multisig { .. }
-			),
-			ProxyType::AssetManager => matches!(
-				c,
-				RuntimeCall::Assets(TrustBackedAssetsCall::mint { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::burn { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::freeze { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::block { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::thaw { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::freeze_asset { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::thaw_asset { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::touch_other { .. }) |
-					RuntimeCall::Assets(TrustBackedAssetsCall::refund_other { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::force_mint { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::update_mint_settings { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::mint_pre_signed { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_attributes_pre_signed { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::lock_item_transfer { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::unlock_item_transfer { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::lock_item_properties { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_metadata { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::clear_metadata { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::set_collection_metadata { .. }) |
-					RuntimeCall::Nfts(pallet_nfts::Call::clear_collection_metadata { .. }) |
 					RuntimeCall::Utility { .. } |
 					RuntimeCall::Multisig { .. }
 			),
@@ -139,101 +112,43 @@ impl pallet_proxy::Config for Runtime {
 mod tests {
 	use std::any::TypeId;
 
-	use codec::MaxEncodedLen;
 	use frame_support::{traits::Get, StorageHasher, Twox64Concat};
 	use pallet_proxy::Config;
 	use parachains_common::BlockNumber;
-	use pop_runtime_common::proxy::ProxyType::*;
-	use sp_runtime::{traits::Hash, MultiAddress};
+	use sp_runtime::traits::Hash;
 
 	use super::*;
 	use crate::AccountId;
 
 	#[test]
 	fn proxy_type_default_is_any() {
-		assert_eq!(ProxyType::default(), Any);
+		assert_eq!(ProxyType::default(), ProxyType::Any);
 	}
 
 	#[test]
-	fn proxy_type_supersets_as_defined() {
-		let all_proxies =
-			vec![Any, NonTransfer, CancelProxy, Assets, AssetOwner, AssetManager, Collator];
+	fn proxy_type_superset_as_defined() {
+		let all_proxies = vec![
+			ProxyType::Any,
+			ProxyType::NonTransfer,
+			ProxyType::CancelProxy,
+			ProxyType::Collator,
+		];
 		for proxy in all_proxies {
 			// Every proxy is part of itself.
 			assert!(ProxyType::is_superset(&proxy, &proxy));
 
-			// `Any` contains all others, but it is not contained.
-			if proxy != Any {
-				assert!(ProxyType::is_superset(&Any, &proxy));
-				assert!(!ProxyType::is_superset(&proxy, &Any));
+			// Any contains all others, but is not contained.
+			if proxy != ProxyType::Any {
+				assert!(ProxyType::is_superset(&ProxyType::Any, &proxy));
+				assert!(!ProxyType::is_superset(&proxy, &ProxyType::Any));
 			}
-			if proxy != NonTransfer {
-				if proxy == Collator {
-					// `NonTransfer` is superset for `Collator`.
-					assert!(ProxyType::is_superset(&NonTransfer, &proxy));
-					assert!(!ProxyType::is_superset(&proxy, &NonTransfer));
-				} else if proxy != Any {
-					assert!(!ProxyType::is_superset(&proxy, &NonTransfer));
-				}
-			}
-			// `CancelProxy` does not contain any other proxy.
-			if proxy != CancelProxy {
-				assert!(!ProxyType::is_superset(&CancelProxy, &proxy));
-			}
-			// `Asset` proxy type is superset of `AssetOwner` and `AssetManager`.
-			if proxy != Assets {
-				if proxy == AssetOwner {
-					assert!(ProxyType::is_superset(&Assets, &proxy));
-					assert!(!ProxyType::is_superset(&proxy, &Assets));
-				} else if proxy == AssetManager {
-					assert!(ProxyType::is_superset(&Assets, &proxy));
-					assert!(!ProxyType::is_superset(&proxy, &Assets));
-				} else if proxy != Any {
-					assert!(!ProxyType::is_superset(&proxy, &Assets));
-				}
+			// CancelProxy does not contain any other proxy.
+			if proxy != ProxyType::CancelProxy {
+				assert!(!ProxyType::is_superset(&ProxyType::CancelProxy, &proxy));
 			}
 		}
-	}
-
-	#[test]
-	fn non_transfer_instance_filter_works() {
-		use sp_keyring::AccountKeyring::Alice;
-		let alice_address = MultiAddress::Id(Alice.to_account_id());
-		let transfer_calls = [
-			RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive {
-				dest: alice_address.clone(),
-				value: 0,
-			}),
-			RuntimeCall::Assets(pallet_assets::Call::transfer_keep_alive {
-				id: codec::Compact(0),
-				target: alice_address.clone(),
-				amount: 0,
-			}),
-			RuntimeCall::Nfts(pallet_nfts::Call::transfer {
-				collection: 0,
-				item: 0,
-				dest: alice_address.clone(),
-			}),
-			RuntimeCall::Treasury(pallet_treasury::Call::spend_local {
-				amount: 0,
-				beneficiary: alice_address,
-			}),
-		];
-
-		for call in transfer_calls {
-			// Transfers related calls are filtered.
-			assert!(!NonTransfer.filter(&call));
-			// Wrapped transfer calls are filtered too.
-			assert!(!NonTransfer.filter(&RuntimeCall::Utility(pallet_utility::Call::batch {
-				calls: vec![call.clone()]
-			})));
-			assert!(!NonTransfer.filter(&RuntimeCall::Utility(pallet_utility::Call::batch_all {
-				calls: vec![call.clone()]
-			})));
-			assert!(!NonTransfer.filter(&RuntimeCall::Utility(
-				pallet_utility::Call::as_derivative { index: 0, call: Box::new(call) }
-			)));
-		}
+		assert!(ProxyType::is_superset(&ProxyType::NonTransfer, &ProxyType::Collator));
+		assert!(!ProxyType::is_superset(&ProxyType::Collator, &ProxyType::NonTransfer));
 	}
 
 	#[test]
