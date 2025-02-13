@@ -8,9 +8,7 @@ use pallet_collective::EnsureProportionAtLeast;
 use parachains_common::BlockNumber;
 use pop_runtime_common::DAYS;
 
-use crate::{
-	AccountId, Council, Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent, RuntimeOrigin,
-};
+use crate::{AccountId, Runtime, RuntimeBlockWeights, RuntimeCall, RuntimeEvent, RuntimeOrigin};
 
 // Type aliases for council origins.
 type AtLeastThreeFourthsOfCouncil = EitherOfDiverse<
@@ -44,20 +42,6 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type RuntimeOrigin = RuntimeOrigin;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
-}
-
-pub type CouncilMembership = pallet_collective::Instance1;
-impl pallet_membership::Config<CouncilMembership> for Runtime {
-	type AddOrigin = UnanimousCouncilVote;
-	type MaxMembers = CouncilMaxMembers;
-	type MembershipChanged = Council;
-	type MembershipInitialized = Council;
-	type PrimeOrigin = AtLeastThreeFourthsOfCouncil;
-	type RemoveOrigin = AtLeastThreeFourthsOfCouncil;
-	type ResetOrigin = AtLeastThreeFourthsOfCouncil;
-	type RuntimeEvent = RuntimeEvent;
-	type SwapOrigin = AtLeastThreeFourthsOfCouncil;
-	type WeightInfo = pallet_membership::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_motion::Config for Runtime {
@@ -232,112 +216,6 @@ mod tests {
 		fn default_weights_are_not_used() {
 			assert_ne!(
 				TypeId::of::<<Runtime as pallet_collective::Config<CouncilCollective>>::WeightInfo>(
-				),
-				TypeId::of::<()>(),
-			);
-		}
-	}
-
-	mod membership {
-		use super::*;
-
-		#[test]
-		fn add_origin_requires_unanimous_vote() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::AddOrigin>(
-				),
-				TypeId::of::<UnanimousCouncilVote>(),
-			);
-
-			assert_eq!(
-				TypeId::of::<UnanimousCouncilVote>(),
-				TypeId::of::<
-					EitherOfDiverse<
-						EnsureRoot<AccountId>,
-						EnsureProportionAtLeast<AccountId, CouncilCollective, 1, 1>,
-					>,
-				>(),
-			);
-		}
-
-		#[test]
-		fn max_members_is_100() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::MaxMembers>(
-				),
-				TypeId::of::<CouncilMaxMembers>(),
-			);
-
-			assert_eq!(CouncilMaxMembers::get(), 100);
-		}
-
-		#[test]
-		fn council_handles_membership_changes() {
-			assert_eq!(
-				TypeId::of::<
-					<Runtime as pallet_membership::Config<CouncilMembership>>::MembershipChanged,
-				>(),
-				TypeId::of::<Council>(),
-			);
-		}
-
-		#[test]
-		fn council_handles_membership_initialization() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::MembershipInitialized>(),
-				TypeId::of::<Council>(),
-			);
-		}
-
-		#[test]
-		fn prime_origin_ensures_at_least_three_fourths() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::PrimeOrigin>(
-				),
-				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
-			);
-			assert_eq!(
-				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
-				TypeId::of::<
-					EitherOfDiverse<
-						EnsureRoot<AccountId>,
-						EnsureProportionAtLeast<AccountId, CouncilCollective, 3, 4>,
-					>,
-				>(),
-			);
-		}
-
-		#[test]
-		fn remove_origin_ensures_at_least_three_fourths() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::RemoveOrigin>(
-				),
-				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
-			);
-		}
-
-		#[test]
-		fn reset_origin_ensures_at_least_three_fourths() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::ResetOrigin>(
-				),
-				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
-			);
-		}
-
-		#[test]
-		fn swap_origin_ensures_at_least_three_fourths() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::SwapOrigin>(
-				),
-				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
-			);
-		}
-
-		#[test]
-		fn default_weights_are_not_used() {
-			assert_ne!(
-				TypeId::of::<<Runtime as pallet_membership::Config<CouncilMembership>>::WeightInfo>(
 				),
 				TypeId::of::<()>(),
 			);

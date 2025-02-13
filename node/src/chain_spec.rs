@@ -242,7 +242,7 @@ fn mainnet_genesis(
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
 		},
 		"sudo": { "key": Some(root) },
-		"councilMembership": {
+		"council": {
 			"members": councillors,
 		}
 	})

@@ -747,8 +747,6 @@ mod runtime {
 	pub type Sudo = pallet_sudo;
 	#[runtime::pallet_index(16)]
 	pub type Council = pallet_collective::Pallet<Runtime, Instance1>;
-	#[runtime::pallet_index(17)]
-	pub type CouncilMembership = pallet_membership::Pallet<Runtime, Instance1>;
 	#[runtime::pallet_index(18)]
 	pub type Motion = pallet_motion;
 

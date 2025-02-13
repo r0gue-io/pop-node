@@ -34,7 +34,7 @@ balances = [
     ["5CiPPseXPECbkjWCa6MnjNokrgYjMqmKndv2rSnekmSK2DjL", 10000000000000000],
 ]
 
-[parachains.genesis_overrides.councilMembership]
+[parachains.genesis_overrides.council]
 members = [
     # Dev accounts
     "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY",
