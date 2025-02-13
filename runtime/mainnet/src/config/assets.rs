@@ -4,6 +4,7 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
+use pallet_nfts_sdk as pallet_nfts;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
 use sp_runtime::traits::Verify;
 
@@ -65,7 +66,7 @@ parameter_types! {
 	// Key = max(size_of(item_metadata_key), size_of(collection_metadata_key)) + Balance: 16 bytes
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 56) / 100;
 	// Accounts for key size of `Attribute`.
-	pub const NftsAttributeDepositBase: Balance = deposit(1, 175) / 100;
+	pub const NftsAttributeDepositBase: Balance = deposit(1, 89) / 100;
 	pub const NftsDepositPerByte: Balance = deposit(0, 1);
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
@@ -306,7 +307,7 @@ mod tests {
 	}
 
 	mod nfts {
-		use pallet_nfts::PalletFeature::*;
+		use pallet_nfts::{AttributeNamespace, PalletFeature::*};
 		use sp_runtime::{MultiSignature, MultiSigner};
 
 		use super::*;
@@ -318,17 +319,12 @@ mod tests {
 
 		#[test]
 		fn ensure_attribute_deposit_base() {
-			// Max possible size of Attribute.
-			let max_size = pallet_nfts::Attribute::<Runtime>::storage_info()
-				.first()
-				.and_then(|info| info.max_size)
-				.unwrap_or_default();
-			// Size of Attribute value: `(BoundedVec<u8, T::ValueLimit>, AttributeDepositOf<T, I>)`.
-			let value_size = <<Runtime as pallet_nfts::Config>::ValueLimit as Get<u32>>::get() +
-				AccountId::max_encoded_len() as u32 +
-				Balance::max_encoded_len() as u32;
-			// We only account for the key length as the deposit base.
-			assert_eq!(deposit(1, max_size - value_size) / 100, NftsAttributeDepositBase::get());
+			// We only account for key length without the `BoundedVec<u8, T::KeyLimit>` element.
+			// as per: https://github.com/paritytech/polkadot-sdk/blob/1866c3b4673b66a62b1eb9c8c82f2cd827cbd388/substrate/frame/nfts/src/lib.rs#L1414
+			let key_size = Blake2_128Concat::max_len::<CollectionId>() +
+				Blake2_128Concat::max_len::<ItemId>() +
+				Blake2_128Concat::max_len::<AttributeNamespace<AccountId>>();
+			assert_eq!(deposit(1, key_size as u32) / 100, NftsAttributeDepositBase::get());
 		}
 
 		#[test]

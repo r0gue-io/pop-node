@@ -22,8 +22,6 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
-pallet-nfts.workspace = true
-pallet-nfts-runtime-api.workspace = true
 pop-runtime-common = { workspace = true, default-features = false }
 
 # Substrate
@@ -41,6 +39,8 @@ pallet-authorship.workspace = true
 pallet-balances.workspace = true
 pallet-message-queue.workspace = true
 pallet-multisig.workspace = true
+pallet-nfts-runtime-api.workspace = true
+pallet-nfts-sdk.workspace = true
 pallet-preimage.workspace = true
 pallet-proxy.workspace = true
 pallet-revive.workspace = true
@@ -125,7 +125,7 @@ std = [
 	"pallet-message-queue/std",
 	"pallet-multisig/std",
 	"pallet-nfts-runtime-api/std",
-	"pallet-nfts/std",
+	"pallet-nfts-sdk/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
 	"pallet-revive/std",
@@ -177,7 +177,7 @@ runtime-benchmarks = [
 	"pallet-collator-selection/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
-	"pallet-nfts/runtime-benchmarks",
+	"pallet-nfts-sdk/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
 	"pallet-revive/runtime-benchmarks",
@@ -214,7 +214,7 @@ try-runtime = [
 	"pallet-collator-selection/try-runtime",
 	"pallet-message-queue/try-runtime",
 	"pallet-multisig/try-runtime",
-	"pallet-nfts/try-runtime",
+	"pallet-nfts-sdk/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",
 	"pallet-revive/try-runtime",
