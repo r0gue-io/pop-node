@@ -252,7 +252,9 @@ mod tests {
 
 		#[test]
 		fn ensure_metadata_deposit_base() {
-			// Size doesn't include metadata name and symbol, which are accounted per byte.
+			// Size doesn't include metadata name and symbol, these aren't part of the base cost,
+			// rather the cost of those parameters will be calculated based on their length times
+			// `NftsDepositPerByte`.
 			// Everything else but these two fields is part of this deposit base.
 			let max_size = Blake2_128Concat::max_len::<
 				<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId,
