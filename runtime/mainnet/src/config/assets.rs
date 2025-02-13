@@ -54,18 +54,12 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 
 parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
-	// Accounts for `AccountBalance` max size.
-	// Key = 68 bytes (4+16+32+16), Value = 52 bytes (4+32+16)
-	pub const NftsCollectionBalanceDeposit: Balance = deposit(1, 120) / 100;
 	// Accounts for state from `Collection` +
 	// `CollectionRoleOf` +
 	// `CollectionConfigOf` +
 	// `CollectionAccount`
 	// Refer to `ensure_collection_deposit` test for specifics.
 	pub const NftsCollectionDeposit: Balance = deposit(4, 294);
-	// Accounts for `CollectionApprovals` max size.
-	// Key = 116 bytes (4+16+32+16+32+16), Value = 21 bytes (1+4+16)
-	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 137) / 100;
 	// Accounts for `Item` storage item max size.
 	pub const NftsItemDeposit: Balance = deposit(1, 861) / 100;
 	// Key = max(size_of(item_metadata_key), size_of(collection_metadata_key)) + Balance: 16 bytes
@@ -79,8 +73,6 @@ parameter_types! {
 impl pallet_nfts::Config for Runtime {
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
-	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
-	type CollectionBalanceDeposit = NftsCollectionBalanceDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	type CollectionId = CollectionId;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
@@ -337,26 +329,6 @@ mod tests {
 				Balance::max_encoded_len() as u32;
 			// We only account for the key length as the deposit base.
 			assert_eq!(deposit(1, max_size - value_size) / 100, NftsAttributeDepositBase::get());
-			println!("{:?}", NftsAttributeDepositBase::get());
-		}
-
-		#[test]
-		fn ensure_collection_approval_deposit() {
-			let max_size = pallet_nfts::CollectionApprovals::<Runtime>::storage_info()
-				.first()
-				.and_then(|info| info.max_size)
-				.unwrap_or_default();
-			assert_eq!(deposit(1, max_size) / 100, NftsCollectionApprovalDeposit::get());
-		}
-
-		#[test]
-		fn ensure_account_balance_deposit() {
-			// src: https://github.com/r0gue-io/pop-node/pull/413
-			let max_size = pallet_nfts::AccountBalance::<Runtime>::storage_info()
-				.first()
-				.and_then(|info| info.max_size)
-				.unwrap_or_default();
-			assert_eq!(deposit(1, max_size) / 100, NftsCollectionBalanceDeposit::get());
 		}
 
 		#[test]
