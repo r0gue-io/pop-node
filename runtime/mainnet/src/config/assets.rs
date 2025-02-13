@@ -257,8 +257,8 @@ mod tests {
 
 		#[test]
 		fn ensure_metadata_deposit_base() {
-			// Accounts for the key length +
-			// Value max length without name and symbol, which are accounted per byte.
+			// Size doesn't include metadata name and symbol, which are accounted per byte.
+			// Everything else but these two fields is part of this deposit base.
 			let max_size = Blake2_128Concat::max_len::<
 				<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId,
 			>() + Balance::max_encoded_len() +
@@ -361,12 +361,6 @@ mod tests {
 				.first()
 				.and_then(|info| info.max_size)
 				.unwrap_or_default();
-
-			// Left for the reviewer to verify discrepancy.
-			// println!("STORAGE INFO MAX SIZE: {:?}", &max_collection_size);
-			// let key = Blake2_128Concat::max_len::<CollectionId>();
-			// let value_size = AccountId::max_encoded_len() + Balance::max_encoded_len() + (8 * 4);
-			// println!("MAX CALCULATED SIZE: {:?}", key + value_size);
 
 			let max_collection_role_size = pallet_nfts::CollectionRoleOf::<Runtime>::storage_info()
 				.first()
