@@ -18,8 +18,8 @@ pub type AssetsForceOrigin = EnsureRoot<AccountId>;
 parameter_types! {
 	// Accounts for `Asset` max size.
 	pub const AssetDeposit: Balance = deposit(1, 210);
-	// Enough to keep the balance in state.
-	pub const AssetAccountDeposit: Balance = deposit(1, 16);
+	// Enough to keep the balance in state / 100.
+	pub const AssetAccountDeposit: Balance = deposit(1, 16) / 100;
 	pub const ApprovalDeposit: Balance = ExistentialDeposit::get();
 	pub const AssetsStringLimit: u32 = 50;
 	// Key = AssetId 4 bytes + Hash length 16 bytes; Value = 18 bytes (16+1+1)
@@ -135,7 +135,10 @@ mod tests {
 		#[test]
 		fn ensure_asset_account_deposit() {
 			// Provide a deposit enough to keep the balance in state.
-			assert_eq!(deposit(1, Balance::max_encoded_len() as u32), AssetAccountDeposit::get());
+			assert_eq!(
+				deposit(1, Balance::max_encoded_len() as u32) / 100,
+				AssetAccountDeposit::get()
+			);
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetAccountDeposit>(),
 				TypeId::of::<AssetAccountDeposit>(),
