@@ -56,7 +56,7 @@ parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
 	// Accounts for `AccountBalance` max size.
 	// Key = 68 bytes (4+16+32+16), Value = 52 bytes (4+32+16)
-	pub const NftsCollectionBalanceDeposit: Balance = deposit(1, 120);
+	pub const NftsCollectionBalanceDeposit: Balance = deposit(1, 120) / 100;
 	// Accounts for state from `Collection` +
 	// `CollectionRoleOf` +
 	// `CollectionConfigOf` +
@@ -65,13 +65,13 @@ parameter_types! {
 	pub const NftsCollectionDeposit: Balance = deposit(4, 294);
 	// Accounts for `CollectionApprovals` max size.
 	// Key = 116 bytes (4+16+32+16+32+16), Value = 21 bytes (1+4+16)
-	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 137);
+	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 137) / 100;
 	// Accounts for `Item` storage item max size.
-	pub const NftsItemDeposit: Balance = deposit(1, 861);
+	pub const NftsItemDeposit: Balance = deposit(1, 861) / 100;
 	// Key = max(size_of(item_metadata_key), size_of(collection_metadata_key)) + Balance: 16 bytes
-	pub const NftsMetadataDepositBase: Balance = deposit(1, 56);
+	pub const NftsMetadataDepositBase: Balance = deposit(1, 56) / 100;
 	// Accounts for key size of `Attribute`.
-	pub const NftsAttributeDepositBase: Balance = deposit(1, 175);
+	pub const NftsAttributeDepositBase: Balance = deposit(1, 175) / 100;
 	pub const NftsDepositPerByte: Balance = deposit(0, 1);
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
@@ -113,7 +113,6 @@ mod tests {
 
 	use codec::MaxEncodedLen;
 	use frame_support::{traits::StorageInfoTrait, Blake2_128Concat, StorageHasher};
-	use pop_runtime_common::MILLI_UNIT;
 	use sp_runtime::traits::Get;
 
 	use super::*;
@@ -334,7 +333,8 @@ mod tests {
 				AccountId::max_encoded_len() as u32 +
 				Balance::max_encoded_len() as u32;
 			// We only account for the key length as the deposit base.
-			assert_eq!(deposit(1, max_size - value_size), NftsAttributeDepositBase::get());
+			assert_eq!(deposit(1, max_size - value_size) / 100, NftsAttributeDepositBase::get());
+			println!("{:?}", NftsAttributeDepositBase::get());
 		}
 
 		#[test]
@@ -343,16 +343,17 @@ mod tests {
 				.first()
 				.and_then(|info| info.max_size)
 				.unwrap_or_default();
-			assert_eq!(deposit(1, max_size), NftsCollectionApprovalDeposit::get());
+			assert_eq!(deposit(1, max_size) / 100, NftsCollectionApprovalDeposit::get());
 		}
 
 		#[test]
 		fn ensure_account_balance_deposit() {
+			// src: https://github.com/r0gue-io/pop-node/pull/413
 			let max_size = pallet_nfts::AccountBalance::<Runtime>::storage_info()
 				.first()
 				.and_then(|info| info.max_size)
 				.unwrap_or_default();
-			assert_eq!(deposit(1, max_size), NftsCollectionBalanceDeposit::get());
+			assert_eq!(deposit(1, max_size) / 100, NftsCollectionBalanceDeposit::get());
 		}
 
 		#[test]
@@ -383,7 +384,6 @@ mod tests {
 				max_collection_role_size +
 				max_collection_config_size +
 				max_collection_account_size;
-			println!("{:?}", deposit(4, total_collection_size));
 			// 4 different storage items means 4 different keys.
 			assert_eq!(deposit(4, total_collection_size), NftsCollectionDeposit::get());
 		}
@@ -469,7 +469,7 @@ mod tests {
 				.first()
 				.and_then(|info| info.max_size)
 				.unwrap_or_default();
-			assert_eq!(deposit(1, max_size), NftsItemDeposit::get());
+			assert_eq!(deposit(1, max_size) / 100, NftsItemDeposit::get());
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_nfts::Config>::ItemDeposit>(),
 				TypeId::of::<NftsItemDeposit>(),
@@ -528,7 +528,7 @@ mod tests {
 			// We use max of both key sizes and add size_of(Balance) which is always written.
 			let base_size = item_metadata_key_size.max(collection_metadata_key_size) +
 				Balance::max_encoded_len();
-			assert_eq!(NftsMetadataDepositBase::get(), deposit(1, base_size as u32));
+			assert_eq!(NftsMetadataDepositBase::get(), deposit(1, base_size as u32) / 100);
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_nfts::Config>::MetadataDepositBase>(),
 				TypeId::of::<NftsMetadataDepositBase>(),
