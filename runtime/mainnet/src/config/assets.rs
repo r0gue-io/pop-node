@@ -125,7 +125,7 @@ mod tests {
 
 		#[test]
 		fn ensure_asset_approval_deposit() {
-			assert_eq!(MILLI_UNIT * 100, ApprovalDeposit::get());
+			assert_eq!(ExistentialDeposit::get(), ApprovalDeposit::get());
 			assert_eq!(
 				TypeId::of::<
 					<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::ApprovalDeposit,
@@ -492,7 +492,7 @@ mod tests {
 		}
 
 		#[test]
-		fn attribute_key_maximum_lenght_is_64() {
+		fn attribute_key_maximum_length_is_64() {
 			assert_eq!(<<Runtime as pallet_nfts::Config>::KeyLimit as Get<u32>>::get(), 64,);
 		}
 
