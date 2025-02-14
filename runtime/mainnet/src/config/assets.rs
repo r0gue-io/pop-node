@@ -18,13 +18,15 @@ pub type AssetsForceOrigin = EnsureRoot<AccountId>;
 
 parameter_types! {
 	// Accounts for `Asset` max size.
+	// For details, refer to `ensure_asset_deposit`.
 	pub const AssetDeposit: Balance = deposit(1, 210);
 	// Enough to keep the balance in state / 100.
+	// For details, refer to `ensure_asset_account_deposit`.
 	pub const AssetAccountDeposit: Balance = deposit(1, 16) / 100;
 	pub const ApprovalDeposit: Balance = ExistentialDeposit::get();
 	pub const AssetsStringLimit: u32 = 50;
-	// Key = AssetId 4 bytes + Hash length 16 bytes; Value = 18 bytes (16+1+1)
-	// https://github.com/paritytech/polkadot-sdk/blob/7a7e016a1da297adc13f855979232e0059df258a/substrate/frame/assets/src/types.rs#L188
+	// Accounts for `Metadata` key size + some elements from `AssetMetadata`.
+	// For details, refer to `ensure_metadata_deposit_base`.
 	pub const MetadataDepositBase: Balance = deposit(1, 38);
 	pub const MetadataDepositPerByte: Balance = deposit(0, 1);
 }
@@ -54,18 +56,19 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 }
 
 parameter_types! {
+	// All features enabled.
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
-	// Accounts for state from `Collection` +
-	// `CollectionRoleOf` +
-	// `CollectionConfigOf` +
-	// `CollectionAccount`
-	// Refer to `ensure_collection_deposit` test for specifics.
+	// Accounts for all the required elements to store a collection.
+	// For details, refer to `ensure_collection_deposit`.
 	pub const NftsCollectionDeposit: Balance = deposit(4, 294);
-	// Accounts for `Item` storage item max size.
+	// Accounts for the required elements to keep one item of a collection in state.
+	// For details, refer to `ensure_item_deposit_deposit`.
 	pub const NftsItemDeposit: Balance = deposit(1, 861) / 100;
-	// Key = max(size_of(item_metadata_key), size_of(collection_metadata_key)) + Balance: 16 bytes
+	// Accounts for the base cost to include metadata for a collection or item.
+	// For details, refer to `ensure_metadata_deposit_base`.
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 56) / 100;
-	// Accounts for key size of `Attribute`.
+	// Accounts for the base cost to include attributes to a collection or item.
+	// For details, refer to `ensure_attribute_deposit_base`.
 	pub const NftsAttributeDepositBase: Balance = deposit(1, 89) / 100;
 	pub const NftsDepositPerByte: Balance = deposit(0, 1);
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
@@ -128,10 +131,12 @@ mod tests {
 		#[test]
 		fn ensure_asset_account_deposit() {
 			// Provide a deposit enough to keep the balance in state.
+			assert_eq!(Balance::max_encoded_len(), 16);
 			assert_eq!(
 				deposit(1, Balance::max_encoded_len() as u32) / 100,
 				AssetAccountDeposit::get()
 			);
+
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetAccountDeposit>(),
 				TypeId::of::<AssetAccountDeposit>(),
@@ -144,6 +149,7 @@ mod tests {
 				<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId,
 			>() +
 				pallet_assets::AssetDetails::<Balance, AccountId, Balance>::max_encoded_len();
+			assert_eq!(max_size as u32, 210);
 			assert_eq!(deposit(1, max_size as u32), AssetDeposit::get());
 			assert_eq!(
 				TypeId::of::<
@@ -256,6 +262,7 @@ mod tests {
 			// rather the cost of those parameters will be calculated based on their length times
 			// `NftsDepositPerByte`.
 			// Everything else but these two fields is part of this deposit base.
+			// src: https://github.com/paritytech/polkadot-sdk/blob/7a7e016a1da297adc13f855979232e0059df258a/substrate/frame/assets/src/types.rs#L188
 			let max_size = Blake2_128Concat::max_len::<
 				<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId,
 			>() + Balance::max_encoded_len() +
@@ -326,6 +333,7 @@ mod tests {
 			let key_size = Blake2_128Concat::max_len::<CollectionId>() +
 				Blake2_128Concat::max_len::<ItemId>() +
 				Blake2_128Concat::max_len::<AttributeNamespace<AccountId>>();
+			assert_eq!(key_size, 89);
 			assert_eq!(deposit(1, key_size as u32) / 100, NftsAttributeDepositBase::get());
 		}
 
@@ -357,6 +365,7 @@ mod tests {
 				max_collection_role_size +
 				max_collection_config_size +
 				max_collection_account_size;
+			assert_eq!(total_collection_size, 294);
 			// 4 different storage items means 4 different keys.
 			assert_eq!(deposit(4, total_collection_size), NftsCollectionDeposit::get());
 		}
@@ -438,10 +447,12 @@ mod tests {
 
 		#[test]
 		fn ensure_item_deposit_deposit() {
+			// Accounts for `Item` storage item max size.
 			let max_size = pallet_nfts::Item::<Runtime>::storage_info()
 				.first()
 				.and_then(|info| info.max_size)
 				.unwrap_or_default();
+			assert_eq!(max_size, 861);
 			assert_eq!(deposit(1, max_size) / 100, NftsItemDeposit::get());
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_nfts::Config>::ItemDeposit>(),
@@ -498,9 +509,10 @@ mod tests {
 			let item_metadata_key_size =
 				Blake2_128Concat::max_len::<CollectionId>() + Blake2_128Concat::max_len::<ItemId>();
 			let collection_metadata_key_size = Blake2_128Concat::max_len::<CollectionId>();
-			// We use max of both key sizes and add size_of(Balance) which is always written.
+			// We use max of both key sizes and add size_of(Balance) which is always stored.
 			let base_size = item_metadata_key_size.max(collection_metadata_key_size) +
 				Balance::max_encoded_len();
+			assert_eq!(base_size, 56);
 			assert_eq!(NftsMetadataDepositBase::get(), deposit(1, base_size as u32) / 100);
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_nfts::Config>::MetadataDepositBase>(),
