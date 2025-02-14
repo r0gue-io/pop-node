@@ -5,6 +5,7 @@ use crate::{
 	ChainExtensionMethodApi, StatusCode,
 };
 
+pub mod foreign_fungibles;
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;

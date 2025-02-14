@@ -16,17 +16,17 @@ type AssetsInstanceOf<T, I = ()> = <T as Config<I>>::AssetsInstance;
 type AssetsOf<T, I = ()> = pallet_assets::Pallet<T, AssetsInstanceOf<T, I>>;
 type TokenIdOf<T, I = ()> = <AssetsOf<T, I> as Inspect<AccountIdOf<T>>>::AssetId;
 type TokenIdParameterOf<T, I = ()> =
-<T as pallet_assets::Config<AssetsInstanceOf<T, I>>>::AssetIdParameter;
+	<T as pallet_assets::Config<AssetsInstanceOf<T, I>>>::AssetIdParameter;
 type AssetsErrorOf<T, I = ()> = pallet_assets::Error<T, AssetsInstanceOf<T, I>>;
 type AssetsWeightInfoOf<T, I = ()> =
-<T as pallet_assets::Config<AssetsInstanceOf<T, I>>>::WeightInfo;
+	<T as pallet_assets::Config<AssetsInstanceOf<T, I>>>::WeightInfo;
 type BalanceOf<T, I = ()> = <AssetsOf<T, I> as Inspect<AccountIdOf<T>>>::Balance;
 type WeightOf<T, I = ()> = <T as Config<I>>::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use super::*;
-	use core::cmp::Ordering::*;
+	use core::{cmp::Ordering::*, marker::PhantomData};
+
 	use frame_support::{
 		dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
 		pallet_prelude::*,
@@ -38,15 +38,19 @@ pub mod pallet {
 		Saturating,
 	};
 	use sp_std::vec::Vec;
-	use core::marker::PhantomData;
+
+	use super::*;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	/// The pallet is instantiable via the generic parameter `I` (defaulting to `()`),
 	/// and the associated type `AssetsInstance` determines the pallet-assets instance to use.
 	#[pallet::config]
-	pub trait Config<I: 'static = ()>: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
+	pub trait Config<I: 'static = ()>:
+		frame_system::Config + pallet_assets::Config<Self::AssetsInstance>
+	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		type RuntimeEvent: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
+		type RuntimeEvent: From<Event<Self, I>>
+			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
 		/// The instance of pallet-assets.
 		type AssetsInstance;
 		/// Weight information for dispatchables in this pallet.
@@ -75,11 +79,7 @@ pub mod pallet {
 			value: BalanceOf<T, I>,
 		},
 		/// Event emitted when a token is created.
-		Created {
-			id: TokenIdOf<T, I>,
-			creator: AccountIdOf<T>,
-			admin: AccountIdOf<T>,
-		},
+		Created { id: TokenIdOf<T, I>, creator: AccountIdOf<T>, admin: AccountIdOf<T> },
 	}
 
 	#[pallet::call]
@@ -100,12 +100,7 @@ pub mod pallet {
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer {
-				token,
-				from: Some(from),
-				to: Some(to),
-				value,
-			});
+			Self::deposit_event(Event::Transfer { token, from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -126,12 +121,7 @@ pub mod pallet {
 				T::Lookup::unlookup(to.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer {
-				token,
-				from: Some(from),
-				to: Some(to),
-				value,
-			});
+			Self::deposit_event(Event::Transfer { token, from: Some(from), to: Some(to), value });
 			Ok(())
 		}
 
@@ -146,8 +136,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let owner = ensure_signed(origin.clone())
 				.map_err(|e| e.with_weight(WeightOf::<T, I>::approve(0, 0)))?;
-			let current_allowance =
-				AssetsOf::<T, I>::allowance(token.clone(), &owner, &spender);
+			let current_allowance = AssetsOf::<T, I>::allowance(token.clone(), &owner, &spender);
 
 			let weight = match value.cmp(&current_allowance) {
 				Equal => WeightOf::<T, I>::approve(0, 0),
@@ -158,7 +147,7 @@ pub mod pallet {
 						T::Lookup::unlookup(spender.clone()),
 						value.saturating_sub(current_allowance),
 					)
-						.map_err(|e| e.with_weight(WeightOf::<T, I>::approve(1, 0)))?;
+					.map_err(|e| e.with_weight(WeightOf::<T, I>::approve(1, 0)))?;
 					WeightOf::<T, I>::approve(1, 0)
 				},
 				Less => {
@@ -169,7 +158,7 @@ pub mod pallet {
 						token_param.clone(),
 						spender_source.clone(),
 					)
-						.map_err(|e| e.with_weight(WeightOf::<T, I>::approve(0, 1)))?;
+					.map_err(|e| e.with_weight(WeightOf::<T, I>::approve(0, 1)))?;
 					if value.is_zero() {
 						WeightOf::<T, I>::approve(0, 1)
 					} else {
@@ -183,12 +172,7 @@ pub mod pallet {
 					}
 				},
 			};
-			Self::deposit_event(Event::Approval {
-				token,
-				owner,
-				spender,
-				value,
-			});
+			Self::deposit_event(Event::Approval { token, owner, spender, value });
 			Ok(Some(weight).into())
 		}
 
@@ -209,14 +193,9 @@ pub mod pallet {
 				T::Lookup::unlookup(spender.clone()),
 				value,
 			)
-				.map_err(|e| e.with_weight(AssetsWeightInfoOf::<T, I>::approve_transfer()))?;
+			.map_err(|e| e.with_weight(AssetsWeightInfoOf::<T, I>::approve_transfer()))?;
 			let value = AssetsOf::<T, I>::allowance(token.clone(), &owner, &spender);
-			Self::deposit_event(Event::Approval {
-				token,
-				owner,
-				spender,
-				value,
-			});
+			Self::deposit_event(Event::Approval { token, owner, spender, value });
 			Ok(().into())
 		}
 
@@ -234,20 +213,18 @@ pub mod pallet {
 			if value.is_zero() {
 				return Ok(Some(WeightOf::<T, I>::approve(0, 0)).into());
 			}
-			let current_allowance =
-				AssetsOf::<T, I>::allowance(token.clone(), &owner, &spender);
+			let current_allowance = AssetsOf::<T, I>::allowance(token.clone(), &owner, &spender);
 			let spender_source = T::Lookup::unlookup(spender.clone());
 			let token_param: TokenIdParameterOf<T, I> = token.clone().into();
 
-			let new_allowance = current_allowance
-				.checked_sub(&value)
-				.ok_or(AssetsErrorOf::<T, I>::Unapproved)?;
+			let new_allowance =
+				current_allowance.checked_sub(&value).ok_or(AssetsErrorOf::<T, I>::Unapproved)?;
 			AssetsOf::<T, I>::cancel_approval(
 				origin.clone(),
 				token_param.clone(),
 				spender_source.clone(),
 			)
-				.map_err(|e| e.with_weight(WeightOf::<T, I>::approve(0, 1)))?;
+			.map_err(|e| e.with_weight(WeightOf::<T, I>::approve(0, 1)))?;
 			let weight = if new_allowance.is_zero() {
 				WeightOf::<T, I>::approve(0, 1)
 			} else {
@@ -259,12 +236,7 @@ pub mod pallet {
 				)?;
 				WeightOf::<T, I>::approve(1, 1)
 			};
-			Self::deposit_event(Event::Approval {
-				token,
-				owner,
-				spender,
-				value: new_allowance,
-			});
+			Self::deposit_event(Event::Approval { token, owner, spender, value: new_allowance });
 			Ok(Some(weight).into())
 		}
 
@@ -284,21 +256,14 @@ pub mod pallet {
 				T::Lookup::unlookup(admin.clone()),
 				min_balance,
 			)?;
-			Self::deposit_event(Event::Created {
-				id,
-				creator,
-				admin,
-			});
+			Self::deposit_event(Event::Created { id, creator, admin });
 			Ok(())
 		}
 
 		/// Begin destroying a token.
 		#[pallet::call_index(12)]
 		#[pallet::weight(AssetsWeightInfoOf::<T, I>::start_destroy())]
-		pub fn start_destroy(
-			origin: OriginFor<T>,
-			token: TokenIdOf<T, I>,
-		) -> DispatchResult {
+		pub fn start_destroy(origin: OriginFor<T>, token: TokenIdOf<T, I>) -> DispatchResult {
 			AssetsOf::<T, I>::start_destroy(origin, token.into())
 		}
 
@@ -312,22 +277,13 @@ pub mod pallet {
 			symbol: Vec<u8>,
 			decimals: u8,
 		) -> DispatchResult {
-			AssetsOf::<T, I>::set_metadata(
-				origin,
-				token.into(),
-				name,
-				symbol,
-				decimals,
-			)
+			AssetsOf::<T, I>::set_metadata(origin, token.into(), name, symbol, decimals)
 		}
 
 		/// Clear the metadata for a token.
 		#[pallet::call_index(17)]
 		#[pallet::weight(AssetsWeightInfoOf::<T, I>::clear_metadata())]
-		pub fn clear_metadata(
-			origin: OriginFor<T>,
-			token: TokenIdOf<T, I>,
-		) -> DispatchResult {
+		pub fn clear_metadata(origin: OriginFor<T>, token: TokenIdOf<T, I>) -> DispatchResult {
 			AssetsOf::<T, I>::clear_metadata(origin, token.into())
 		}
 
@@ -346,12 +302,7 @@ pub mod pallet {
 				T::Lookup::unlookup(account.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer {
-				token,
-				from: None,
-				to: Some(account),
-				value,
-			});
+			Self::deposit_event(Event::Transfer { token, from: None, to: Some(account), value });
 			Ok(())
 		}
 
@@ -364,13 +315,10 @@ pub mod pallet {
 			account: AccountIdOf<T>,
 			value: BalanceOf<T, I>,
 		) -> DispatchResultWithPostInfo {
-			let current_balance =
-				AssetsOf::<T, I>::balance(token.clone(), &account);
+			let current_balance = AssetsOf::<T, I>::balance(token.clone(), &account);
 			if current_balance < value {
-				return Err(
-					AssetsErrorOf::<T, I>::BalanceLow
-						.with_weight(<T as Config<I>>::WeightInfo::balance_of())
-				);
+				return Err(AssetsErrorOf::<T, I>::BalanceLow
+					.with_weight(<T as Config<I>>::WeightInfo::balance_of()));
 			}
 			AssetsOf::<T, I>::burn(
 				origin,
@@ -378,12 +326,7 @@ pub mod pallet {
 				T::Lookup::unlookup(account.clone()),
 				value,
 			)?;
-			Self::deposit_event(Event::Transfer {
-				token,
-				from: Some(account),
-				to: None,
-				value,
-			});
+			Self::deposit_event(Event::Transfer { token, from: Some(account), to: None, value });
 			Ok(().into())
 		}
 	}
@@ -397,16 +340,9 @@ pub mod pallet {
 		#[codec(index = 0)]
 		TotalSupply(TokenIdOf<T, I>),
 		#[codec(index = 1)]
-		BalanceOf {
-			token: TokenIdOf<T, I>,
-			owner: AccountIdOf<T>,
-		},
+		BalanceOf { token: TokenIdOf<T, I>, owner: AccountIdOf<T> },
 		#[codec(index = 2)]
-		Allowance {
-			token: TokenIdOf<T, I>,
-			owner: AccountIdOf<T>,
-			spender: AccountIdOf<T>,
-		},
+		Allowance { token: TokenIdOf<T, I>, owner: AccountIdOf<T>, spender: AccountIdOf<T> },
 		#[codec(index = 8)]
 		TokenName(TokenIdOf<T, I>),
 		#[codec(index = 9)]
@@ -466,7 +402,8 @@ pub mod pallet {
 		fn read(request: Self::Read) -> Self::Result {
 			use Read::*;
 			match request {
-				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T, I>::total_supply(token)),
+				TotalSupply(token) =>
+					ReadResult::TotalSupply(AssetsOf::<T, I>::total_supply(token)),
 				BalanceOf { token, owner } =>
 					ReadResult::BalanceOf(AssetsOf::<T, I>::balance(token, owner)),
 				Allowance { token, owner, spender } =>
@@ -482,7 +419,8 @@ pub mod pallet {
 				TokenDecimals(token) => ReadResult::TokenDecimals(
 					<AssetsOf<T, I> as MetadataInspect<AccountIdOf<T>>>::decimals(token),
 				),
-				TokenExists(token) => ReadResult::TokenExists(AssetsOf::<T, I>::asset_exists(token)),
+				TokenExists(token) =>
+					ReadResult::TokenExists(AssetsOf::<T, I>::asset_exists(token)),
 			}
 		}
 	}

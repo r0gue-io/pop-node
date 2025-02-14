@@ -10,11 +10,12 @@ use frame_support::{
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 #[cfg(feature = "devnet")]
-use pop_runtime_devnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{Assets, Contracts, ForeignAssets, Runtime, RuntimeOrigin, System, UNIT};
 #[cfg(feature = "testnet")]
 use pop_runtime_testnet::{Assets, Contracts, Runtime, RuntimeOrigin, System, UNIT};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 
+mod foreign_fungibles;
 mod fungibles;
 
 type Balance = u128;
