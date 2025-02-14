@@ -13775,6 +13775,7 @@ dependencies = [
  "parity-scale-codec",
  "polkadot-parachain-primitives 15.0.0",
  "polkadot-runtime-common 18.0.0",
+ "polkadot-runtime-parachains 18.0.1",
  "pop-runtime-common",
  "scale-info",
  "smallvec",
