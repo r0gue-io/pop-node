@@ -6,7 +6,9 @@ use chains::{
 		genesis::ED as ASSET_HUB_ED, runtime::xcm_config::XcmConfig as AssetHubXcmConfig, AssetHub,
 		AssetHubParaPallet,
 	},
-	pop_network::{PopNetwork, PopNetworkParaPallet},
+	pop_network::{
+		runtime::config::xcm::XcmConfig as PopNetworkXcmConfig, PopNetwork, PopNetworkParaPallet,
+	},
 	relay::{
 		genesis::ED as RELAY_ED, runtime::xcm_config::XcmConfig as RelayXcmConfig, Relay,
 		RelayRelayPallet as RelayPallet,
@@ -22,7 +24,6 @@ use emulated_integration_tests_common::{
 };
 use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
 use pop_runtime_common::Balance;
-use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
 
 mod chains;
@@ -311,8 +312,10 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 
 	// Init values for Pop Network Parachain
 	let destination = PopNetworkPara::sibling_location_of(AssetHubPara::para_id());
-	let beneficiary_id = AssetHubParaReceiver::get(); // bob on asset hub
-	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free; // bob on pop balance
+	// bob on asset hub
+	let beneficiary_id = AssetHubParaReceiver::get();
+	// `amount_to_send` is such that bob has some remaining balance > ED + delivery_fees.
+	let amount_to_send = PopNetworkPara::account_data_of(PopNetworkParaReceiver::get()).free / 4; // bob on pop balance
 	let assets = (Parent, amount_to_send).into();
 
 	let test_args = TestContext {
@@ -344,9 +347,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 	let delivery_fees = PopNetworkPara::execute_with(|| {
 		xcm_helpers::teleport_assets_delivery_fees::<
 			<PopNetworkXcmConfig as xcm_executor::Config>::XcmSender,
-		>(
-			test.args.assets.clone(), 0, test.args.weight_limit, test.args.beneficiary, test.args.dest
-		)
+		>(test.args.assets, 0, test.args.weight_limit, test.args.beneficiary, test.args.dest)
 	});
 
 	// Sender's balance is reduced

@@ -1,9 +1,13 @@
 use emulated_integration_tests_common::{build_genesis_storage, collators};
 use pop_runtime_common::Balance;
-use pop_runtime_devnet as runtime;
 use sp_core::storage::Storage;
 
+use super::runtime;
+
+#[cfg(not(feature = "mainnet"))]
 pub(crate) const ED: Balance = runtime::EXISTENTIAL_DEPOSIT;
+#[cfg(feature = "mainnet")]
+pub(crate) const ED: Balance = runtime::EXISTENTIAL_DEPOSIT * 100;
 const PARA_ID: u32 = 9090;
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
