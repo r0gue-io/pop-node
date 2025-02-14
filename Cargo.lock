@@ -13751,7 +13751,6 @@ dependencies = [
  "pallet-balances 40.0.0",
  "pallet-collator-selection 20.0.0",
  "pallet-collective",
- "pallet-membership",
  "pallet-message-queue 42.0.0",
  "pallet-motion",
  "pallet-multisig 39.0.0",
