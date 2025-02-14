@@ -240,13 +240,6 @@ mod tests {
 
 	type OnChargeTransaction = <Runtime as pallet_transaction_payment::Config>::OnChargeTransaction;
 
-	// fn new_test_ext() -> sp_io::TestExternalities {
-	// 	let storage = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
-	// 	let mut ext = sp_io::TestExternalities::new(storage);
-	// 	ext.execute_with(|| System::set_block_number(1));
-	// 	ext
-	// }
-
 	pub fn new_test_ext() -> sp_io::TestExternalities {
 		let initial_balance = 100_000_000 * UNIT;
 		let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
