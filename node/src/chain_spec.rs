@@ -2,13 +2,13 @@ use cumulus_primitives_core::ParaId;
 use pop_runtime_common::{AccountId, AuraId};
 use pop_runtime_mainnet::config::governance::SudoAddress;
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
-use sc_service::ChainType;
+use sc_service::{ChainType, GenericChainSpec};
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::Ss58Codec;
 pub use sp_keyring::sr25519::Keyring;
 
-/// Specialized `ChainSpec` for the development parachain runtime.
-pub type DevnetChainSpec = sc_service::GenericChainSpec<Extensions>;
+/// Generic `ChainSpec` for a parachain runtime.
+pub type ChainSpec = GenericChainSpec<Extensions>;
 
 /// Specialized `ChainSpec` for the testnet parachain runtime.
 pub type TestnetChainSpec = sc_service::GenericChainSpec<Extensions>;
@@ -23,6 +23,35 @@ pub(crate) enum Relay {
 	Paseo,
 	PaseoLocal,
 	Polkadot,
+}
+
+/// Chainspec builder trait: to be implemented for the different runtimes (i.e. `devnet`, `testnet`
+/// & `mainnet`) to ease building.
+trait ChainSpecBuilder {
+	fn build(
+		id: &str,
+		name: &str,
+		chain_type: ChainType,
+		genesis_preset: &str,
+		protocol_id: &str,
+		relay_chain: &str,
+	) -> ChainSpec {
+		ChainSpec::builder(
+			Self::wasm_binary(),
+			Extensions { relay_chain: relay_chain.into(), para_id: Self::para_id() },
+		)
+		.with_name(name)
+		.with_id(id)
+		.with_chain_type(chain_type)
+		.with_genesis_config_preset_name(genesis_preset)
+		.with_protocol_id(protocol_id)
+		.with_properties(Self::properties())
+		.build()
+	}
+
+	fn para_id() -> u32;
+	fn properties() -> sc_chain_spec::Properties;
+	fn wasm_binary() -> &'static [u8];
 }
 
 /// The extensions for the [`ChainSpec`].
@@ -43,12 +72,59 @@ impl Extensions {
 	}
 }
 
-/// Generate the session keys from individual elements.
-///
-/// The input must be a tuple of individual keys (a single arg for now since we have just one key).
-pub fn pop_devnet_session_keys(keys: AuraId) -> pop_runtime_devnet::SessionKeys {
-	pop_runtime_devnet::SessionKeys { aura: keys }
+pub mod devnet {
+	use pop_runtime_devnet as runtime;
+	use pop_runtime_devnet::Runtime;
+	pub use runtime::genesis::{DEVNET, DEVNET_DEV, DEVNET_LOCAL};
+
+	use super::*;
+
+	impl ChainSpecBuilder for Runtime {
+		fn para_id() -> u32 {
+			runtime::genesis::PARA_ID.into()
+		}
+
+		fn properties() -> sc_chain_spec::Properties {
+			let mut properties = sc_chain_spec::Properties::new();
+			properties.insert("tokenSymbol".into(), "PAS".into());
+			properties.insert("tokenDecimals".into(), 10.into());
+			properties.insert("ss58Format".into(), 0.into());
+			properties
+		}
+
+		fn wasm_binary() -> &'static [u8] {
+			runtime::WASM_BINARY.expect("WASM binary was not built, please build it!")
+		}
+	}
+
+	/// Configures a development chain running on a single node, using the devnet runtime.
+	pub fn development_chain_spec() -> ChainSpec {
+		const ID: &str = DEVNET_DEV;
+		Runtime::build(
+			ID,
+			"POP Devnet (Development)",
+			ChainType::Development,
+			ID,
+			ID,
+			"paseo-local",
+		)
+	}
+
+	/// Configures a local chain running on multiple nodes for testing purposes, using the devnet
+	/// runtime.
+	pub fn local_chain_spec() -> ChainSpec {
+		const ID: &str = DEVNET_LOCAL;
+		Runtime::build(ID, "POP Devnet (Local)", ChainType::Local, ID, ID, "paseo-local")
+	}
+
+	/// Configures a live chain running on multiple nodes on private devnet, using the devnet
+	/// runtime.
+	pub fn live_chain_spec() -> ChainSpec {
+		const ID: &str = DEVNET;
+		Runtime::build(ID, "POP Devnet", ChainType::Live, ID, ID, "paseo")
+	}
 }
+
 /// Generate the session keys from individual elements.
 ///
 /// The input must be a tuple of individual keys (a single arg for now since we have just one key).
