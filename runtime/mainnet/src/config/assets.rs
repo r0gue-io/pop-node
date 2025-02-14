@@ -410,17 +410,15 @@ mod tests {
 		}
 
 		#[test]
-		fn all_feature_are_active() {
+		fn all_features_are_active() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_nfts::Config>::Features>(),
 				TypeId::of::<NftsPalletFeatures>(),
 			);
 
-			let features = [Trading, Attributes, Approvals, Swaps];
-
-			for feat in features {
-				assert!(<Runtime as pallet_nfts::Config>::Features::get().is_enabled(feat));
-			}
+			assert!([Trading, Attributes, Approvals, Swaps]
+				.iter()
+				.all(|feat| <Runtime as pallet_nfts::Config>::Features::get().is_enabled(*feat)));
 		}
 
 		#[test]
@@ -449,7 +447,7 @@ mod tests {
 		}
 
 		#[test]
-		fn ensure_item_deposit_deposit() {
+		fn ensure_item_deposit() {
 			// Accounts for `Item` storage item max size.
 			let max_size = pallet_nfts::Item::<Runtime>::storage_info()
 				.first()
