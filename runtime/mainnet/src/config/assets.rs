@@ -339,6 +339,9 @@ mod tests {
 
 		#[test]
 		fn ensure_collection_deposit() {
+			// We account for the different elements stored when creating a new collection:
+			// src: https://github.com/paritytech/polkadot-sdk/blob/7aac8861752428e623b48741193d9a9d82e29cbf/substrate/frame/nfts/src/features/create_delete_collection.rs#L36
+
 			let max_collection_size = pallet_nfts::Collection::<Runtime>::storage_info()
 				.first()
 				.and_then(|info| info.max_size)
