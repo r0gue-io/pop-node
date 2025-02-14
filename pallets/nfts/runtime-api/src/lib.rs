@@ -22,6 +22,7 @@
 extern crate alloc;
 
 use alloc::vec::Vec;
+
 use codec::{Decode, Encode};
 
 sp_api::decl_runtime_apis! {
