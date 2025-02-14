@@ -13631,10 +13631,13 @@ version = "0.0.0"
 dependencies = [
  "docify",
  "frame-support 39.0.0",
+ "pallet-multisig 39.0.0",
  "parachains-common 19.0.0",
  "parity-scale-codec",
  "polkadot-primitives 17.0.0",
  "scale-info",
+ "serde_json",
+ "sp-keyring 40.0.0",
  "sp-runtime 40.1.0",
 ]
 

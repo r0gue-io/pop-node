@@ -13,12 +13,13 @@ use sc_service::config::{BasePath, PrometheusConfig};
 use sp_runtime::traits::HashingFor;
 
 use crate::{
-	chain_spec,
-	chain_spec::Relay,
+	chain_spec::{self, devnet::*, Relay},
 	cli::{Cli, RelayChainCli, Subcommand},
 	service::new_partial,
 };
 
+/// Helper enum that is used for better distinction of different parachain/runtime configuration
+/// (it is based/calculated on ChainSpec's 'chain_spec' attribute)
 #[derive(Debug, PartialEq)]
 enum Runtime {
 	Devnet,
@@ -32,7 +33,7 @@ trait RuntimeResolver {
 /// Private helper that pattern matches on the input (which is expected to be a ChainSpec ID)
 /// and returns the Runtime accordingly.
 fn runtime(id: &str) -> Runtime {
-	if id.starts_with("dev") || id.ends_with("devnet") {
+	if [DEVNET_DEV, DEVNET_LOCAL, DEVNET].contains(&id) {
 		Runtime::Devnet
 	} else if id.starts_with("test") || id.ends_with("testnet") {
 		Runtime::Testnet
@@ -72,20 +73,17 @@ impl RuntimeResolver for PathBuf {
 
 fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 	Ok(match id {
-		"dev" | "devnet" | "dev-paseo" =>
-			Box::new(chain_spec::development_chain_spec(Relay::PaseoLocal)),
+		// Devnet.
+		"" | DEVNET_DEV => Box::new(chain_spec::devnet::development_chain_spec()),
+		"local" | DEVNET_LOCAL => Box::new(chain_spec::devnet::local_chain_spec()),
+		DEVNET => Box::new(chain_spec::devnet::live_chain_spec()),
+		// Testnet.
 		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_chain_spec(Relay::Paseo)),
+		// Mainnet.
 		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
 			Box::new(chain_spec::mainnet_chain_spec(Relay::Polkadot)),
-		"" | "local" => Box::new(chain_spec::development_chain_spec(Relay::PaseoLocal)),
-		path => {
-			let path: PathBuf = path.into();
-			match path.runtime() {
-				Runtime::Devnet => Box::new(chain_spec::DevnetChainSpec::from_json_file(path)?),
-				Runtime::Testnet => Box::new(chain_spec::TestnetChainSpec::from_json_file(path)?),
-				Runtime::Mainnet => Box::new(chain_spec::MainnetChainSpec::from_json_file(path)?),
-			}
-		},
+		// Path.
+		path => Box::new(chain_spec::ChainSpec::from_json_file(path.into())?),
 	})
 }
 
