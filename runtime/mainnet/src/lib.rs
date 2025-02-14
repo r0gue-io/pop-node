@@ -34,6 +34,7 @@ use frame_system::{
 	CheckGenesis, CheckMortality, CheckNonZeroSender, CheckNonce, CheckSpecVersion, CheckTxVersion,
 	CheckWeight, EnsureRoot,
 };
+use pallet_nfts_sdk as pallet_nfts;
 use pallet_transaction_payment::ChargeTransactionPayment;
 // Polkadot imports
 use polkadot_runtime_common::SlowAdjustingFeeUpdate;
@@ -271,6 +272,12 @@ mod runtime {
 	// Utility
 	#[runtime::pallet_index(43)]
 	pub type Utility = pallet_utility::Pallet<Runtime>;
+
+	// Assets
+	#[runtime::pallet_index(50)]
+	pub type Nfts = pallet_nfts::Pallet<Runtime>;
+	#[runtime::pallet_index(52)]
+	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
