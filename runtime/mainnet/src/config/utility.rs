@@ -6,7 +6,8 @@ use crate::{
 };
 
 parameter_types! {
-	// One storage item; key size is 32 + 32; value is size 4+4+16+32 bytes = 120 bytes.
+	// Accounts for the base cost of creating a multisig execution.
+	// For details, refer to `call_deposit_has_base_amount`.
 	pub const DepositBase: Balance = deposit(1, 120);
 	// Additional storage item size of 32 bytes.
 	pub const DepositFactor: Balance = deposit(0, 32);
@@ -25,7 +26,9 @@ impl pallet_multisig::Config for Runtime {
 
 parameter_types! {
 	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
-	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
+	// Accounts for the base cost of noting a preimage.
+	// For details, refer to `base_deposit_matches_configuration`.
+	pub const PreimageBaseDeposit: Balance = deposit(2, 68);
 	pub const PreimageByteDeposit: Balance = deposit(0, 1);
 }
 
@@ -79,6 +82,9 @@ mod tests {
 	use super::*;
 
 	mod multisig {
+		use codec::MaxEncodedLen;
+		use parachains_common::BlockNumber;
+
 		use super::*;
 
 		#[test]
@@ -91,6 +97,17 @@ mod tests {
 
 		#[test]
 		fn call_deposit_has_base_amount() {
+			// From pallet_multisig:
+			// This is held for an additional storage item whose value size is 4 +
+			// sizeof((BlockNumber, Balance, AccountId)) bytes, and whose key size is 32 +
+			// sizeof(AccountId) bytes.
+			let key_size = 32 + AccountId::max_encoded_len();
+			let value_size = 4 +
+				BlockNumber::max_encoded_len() +
+				Balance::max_encoded_len() +
+				AccountId::max_encoded_len();
+			let max_size = key_size + value_size;
+			assert_eq!(max_size, 120);
 			assert_eq!(
 				<<Runtime as pallet_multisig::Config>::DepositBase as Get<Balance>>::get(),
 				deposit(1, 120)
@@ -123,11 +140,22 @@ mod tests {
 	}
 
 	mod preimage {
+		use frame_support::{Identity, StorageHasher};
+
 		use super::*;
 
 		#[test]
 		fn base_deposit_matches_configuration() {
-			assert_eq!(PreimageBaseDeposit::get(), deposit(2, 64));
+			// Accounts for the key size of:
+			// `RequestStatusFor` +
+			// `PreimageFor`
+			let preimage_for_key_size =
+				Identity::max_len::<(<Runtime as frame_system::Config>::Hash, u32)>();
+			let request_status_for_key_size =
+				Identity::max_len::<<Runtime as frame_system::Config>::Hash>();
+			let base_key_size = preimage_for_key_size + request_status_for_key_size;
+			assert_eq!(base_key_size, 68);
+			assert_eq!(PreimageBaseDeposit::get(), deposit(2, base_key_size as u32));
 		}
 
 		#[test]
