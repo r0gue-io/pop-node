@@ -86,7 +86,7 @@ pub mod pallet {
 		/// - O(1).
 		/// - Limited storage reads.
 		/// - One DB write (event).
-		/// - Weight of derivative `call` execution + 10,000.
+		/// - Weight of derivative `call` execution.
 		/// # </weight>
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
@@ -111,7 +111,7 @@ pub mod pallet {
 		/// - O(1).
 		/// - Limited storage reads.
 		/// - One DB write (event).
-		/// - Weight of derivative `call` execution + 10,000.
+		/// - Weight of derivative `call` execution.
 		/// # </weight>
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
@@ -136,7 +136,7 @@ pub mod pallet {
 		/// - O(1).
 		/// - Limited storage reads.
 		/// - One DB write (event).
-		/// - Weight of derivative `call` execution + 10,000.
+		/// - Weight of derivative `call` execution.
 		/// # </weight>
 		#[pallet::weight({
 			let dispatch_info = call.get_dispatch_info();
