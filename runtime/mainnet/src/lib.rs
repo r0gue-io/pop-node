@@ -745,6 +745,10 @@ mod runtime {
 	// Governance
 	#[runtime::pallet_index(15)]
 	pub type Sudo = pallet_sudo;
+	#[runtime::pallet_index(16)]
+	pub type Council = pallet_collective::Pallet<Runtime, Instance1>;
+	#[runtime::pallet_index(18)]
+	pub type Motion = pallet_motion;
 
 	// Collator support. The order of these 4 are important and shall not change.
 	#[runtime::pallet_index(20)]
