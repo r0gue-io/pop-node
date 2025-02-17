@@ -13,7 +13,7 @@ use sc_service::config::{BasePath, PrometheusConfig};
 use sp_runtime::traits::HashingFor;
 
 use crate::{
-	chain_spec::{self, devnet::*, testnet::*, Relay},
+	chain_spec::{self, devnet::*, mainnet::*, testnet::*, Relay},
 	cli::{Cli, RelayChainCli, Subcommand},
 	service::new_partial,
 };
@@ -82,8 +82,9 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 		TESTNET_LOCAL => Box::new(chain_spec::testnet::local_chain_spec()),
 		TESTNET => Box::new(chain_spec::testnet::live_chain_spec()),
 		// Mainnet.
-		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
-			Box::new(chain_spec::mainnet_chain_spec(Relay::Polkadot)),
+		MAINNET_DEV => Box::new(chain_spec::mainnet::development_chain_spec()),
+		MAINNET_LOCAL => Box::new(chain_spec::mainnet::local_chain_spec()),
+		MAINNET => Box::new(chain_spec::mainnet::live_chain_spec()),
 		// Path.
 		path => Box::new(chain_spec::ChainSpec::from_json_file(path.into())?),
 	})
