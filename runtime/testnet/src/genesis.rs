@@ -1,3 +1,5 @@
+use alloc::{vec, vec::Vec};
+
 use cumulus_primitives_core::ParaId;
 use parachains_common::{AccountId, AuraId, Balance};
 use pop_runtime_common::genesis::*;
@@ -26,8 +28,13 @@ const ENDOWMENT: Balance = 10_000_000 * UNIT;
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
 /// SUDO account set at genesis.
-const TESTNET_SUDO_ACCOUNT: AccountId =
-	AccountId::from_ss58check("5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD").unwrap();
+const TESTNET_SUDO_ACCOUNT: &str = "5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD";
+
+// Returns the SUDO account's address as an `AccountId`.
+// This function will return an error if the SS58 address is invalid.
+fn sudo_account_id() -> AccountId {
+	AccountId::from_ss58check(TESTNET_SUDO_ACCOUNT).expect("sudo address is valid SS58")
+}
 
 /// Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by `id`.
 pub(crate) fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
@@ -67,7 +74,7 @@ fn development_config() -> Value {
 /// runtime.
 fn local_config() -> Value {
 	let mut endowed_accounts = dev_accounts();
-	endowed_accounts.push(TESTNET_SUDO_ACCOUNT);
+	endowed_accounts.push(sudo_account_id());
 
 	genesis(
 		// Initial collators.
@@ -77,7 +84,7 @@ fn local_config() -> Value {
 			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
 		]),
 		endowed_accounts,
-		TESTNET_SUDO_ACCOUNT,
+		sudo_account_id(),
 		PARA_ID,
 	)
 }
@@ -97,8 +104,6 @@ fn live_config() -> Value {
 		AccountId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
 	let collator_2_aura_id: AuraId =
 		AuraId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
-	let sudo_account_id: AccountId =
-		AccountId::from_ss58check("5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD").unwrap();
 
 	genesis(
 		// Initial collators.
@@ -111,7 +116,7 @@ fn live_config() -> Value {
 			(collator_2_account_id, collator_2_aura_id),
 		],
 		vec![],
-		TESTNET_SUDO_ACCOUNT,
+		sudo_account_id(),
 		PARA_ID,
 	)
 }
@@ -123,7 +128,6 @@ fn genesis(
 	sudo_key: AccountId,
 	id: ParaId,
 ) -> Value {
-	const DECIMALS: u8 = 6;
 	json!({
 		"balances": BalancesConfig { balances: balances(endowed_accounts) },
 		"parachainInfo": { "parachainId": id },
@@ -150,6 +154,6 @@ fn genesis(
 
 // The initial balances at genesis.
 fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
-	let mut balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
+	let balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
 	balances
 }
