@@ -1,61 +1,11 @@
-use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::traits::InstanceFilter;
-use pop_runtime_common::proxy::{MaxPending, MaxProxies};
-use sp_runtime::RuntimeDebug;
+use pallet_nfts_sdk as pallet_nfts;
+use pop_runtime_common::proxy::{MaxPending, MaxProxies, ProxyType};
 
 use crate::{
-	deposit, parameter_types, Balance, Balances, BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
+	config::assets::TrustBackedAssetsCall, deposit, parameter_types, Balance, Balances,
+	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
 };
-
-/// The type used to represent the kinds of proxying allowed.
-// Mainnet will use this definition of ProxyType instead of the ones in
-// `pop-common` crates until `pallet-assets` is in runtime.
-// `ProxyType` in `pop-common` include Assets specific proxies which won't
-// make much sense in this runtime.
-#[derive(
-	Copy,
-	Clone,
-	Eq,
-	PartialEq,
-	Ord,
-	PartialOrd,
-	Encode,
-	Decode,
-	RuntimeDebug,
-	MaxEncodedLen,
-	scale_info::TypeInfo,
-)]
-pub enum ProxyType {
-	/// Fully permissioned proxy. Can execute any call on behalf of _proxied_.
-	Any,
-	/// Can execute any call that does not transfer funds or assets.
-	NonTransfer,
-	/// Proxy with the ability to reject time-delay proxy announcements.
-	CancelProxy,
-	/// Collator selection proxy. Can execute calls related to collator selection mechanism.
-	Collator,
-}
-impl Default for ProxyType {
-	fn default() -> Self {
-		Self::Any
-	}
-}
-
-impl ProxyType {
-	/// Defines proxies permission hierarchy.
-	// Example: A proxy that is not superset of another one won't be able to remove
-	// that proxy relationship
-	// src: https://github.com/paritytech/polkadot-sdk/blob/4cd07c56378291fddb9fceab3b508cf99034126a/substrate/frame/proxy/src/lib.rs#L802
-	pub fn is_superset(s: &ProxyType, o: &ProxyType) -> bool {
-		match (s, o) {
-			(x, y) if x == y => true,
-			(ProxyType::Any, _) => true,
-			(_, ProxyType::Any) => false,
-			(ProxyType::NonTransfer, ProxyType::Collator) => true,
-			_ => false,
-		}
-	}
-}
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
@@ -68,6 +18,66 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 					RuntimeCall::Utility { .. } |
 					RuntimeCall::Multisig { .. }
 			),
+			ProxyType::Assets => {
+				matches!(
+					c,
+					RuntimeCall::Assets { .. } |
+						RuntimeCall::Multisig { .. } |
+						RuntimeCall::Nfts { .. } |
+						RuntimeCall::Utility { .. }
+				)
+			},
+			ProxyType::AssetOwner => {
+				matches!(
+					c,
+					RuntimeCall::Assets(TrustBackedAssetsCall::create { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::start_destroy { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::destroy_accounts { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::destroy_approvals { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::finish_destroy { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::transfer_ownership { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::set_team { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::set_metadata { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::clear_metadata { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::set_min_balance { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::create { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::destroy { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::redeposit { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::transfer_ownership { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::set_team { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::set_collection_max_supply { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::lock_collection { .. }) |
+						RuntimeCall::Multisig { .. } |
+						RuntimeCall::Utility { .. }
+				)
+			},
+			ProxyType::AssetManager => {
+				matches!(
+					c,
+					RuntimeCall::Assets(TrustBackedAssetsCall::mint { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::burn { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::freeze { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::block { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::thaw { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::freeze_asset { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::thaw_asset { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::touch_other { .. }) |
+						RuntimeCall::Assets(TrustBackedAssetsCall::refund_other { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::force_mint { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::update_mint_settings { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::mint_pre_signed { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::set_attributes_pre_signed { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::lock_item_transfer { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::unlock_item_transfer { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::lock_item_properties { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::set_metadata { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::clear_metadata { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::set_collection_metadata { .. }) |
+						RuntimeCall::Nfts(pallet_nfts::Call::clear_collection_metadata { .. }) |
+						RuntimeCall::Multisig { .. } |
+						RuntimeCall::Utility { .. }
+				)
+			},
 			ProxyType::Collator => matches!(
 				c,
 				RuntimeCall::CollatorSelection { .. } |
@@ -112,43 +122,49 @@ impl pallet_proxy::Config for Runtime {
 mod tests {
 	use std::any::TypeId;
 
+	use codec::MaxEncodedLen;
 	use frame_support::{traits::Get, StorageHasher, Twox64Concat};
 	use pallet_proxy::Config;
 	use parachains_common::BlockNumber;
-	use sp_runtime::traits::Hash;
+	use sp_runtime::{traits::Hash, MultiAddress};
+	use ProxyType::*;
 
 	use super::*;
 	use crate::AccountId;
 
 	#[test]
-	fn proxy_type_default_is_any() {
-		assert_eq!(ProxyType::default(), ProxyType::Any);
+	fn proxy_type_assets_can_only_transfer_assets() {
+		use sp_keyring::AccountKeyring::Alice;
+		let alice_address = MultiAddress::Id(Alice.to_account_id());
+
+		// Assert proxy type whitelists any asset related call.
+		asset_transfer_calls().iter().for_each(|call| {
+			assert!(Assets.filter(&call));
+		});
+
+		let balances_transfer_call =
+			RuntimeCall::Balances(pallet_balances::Call::transfer_keep_alive {
+				dest: alice_address.clone(),
+				value: 0,
+			});
+		// Asset proxy type filters transfer calls from Balances pallet.
+		assert!(!Assets.filter(&balances_transfer_call));
 	}
 
 	#[test]
-	fn proxy_type_superset_as_defined() {
-		let all_proxies = vec![
-			ProxyType::Any,
-			ProxyType::NonTransfer,
-			ProxyType::CancelProxy,
-			ProxyType::Collator,
-		];
-		for proxy in all_proxies {
-			// Every proxy is part of itself.
-			assert!(ProxyType::is_superset(&proxy, &proxy));
+	fn asset_owner_cannot_transfer_assets() {
+		// AssetOwner won't be able to transfer assets.
+		asset_transfer_calls().iter().for_each(|call| {
+			assert!(!AssetOwner.filter(&call));
+		});
+	}
 
-			// Any contains all others, but is not contained.
-			if proxy != ProxyType::Any {
-				assert!(ProxyType::is_superset(&ProxyType::Any, &proxy));
-				assert!(!ProxyType::is_superset(&proxy, &ProxyType::Any));
-			}
-			// CancelProxy does not contain any other proxy.
-			if proxy != ProxyType::CancelProxy {
-				assert!(!ProxyType::is_superset(&ProxyType::CancelProxy, &proxy));
-			}
-		}
-		assert!(ProxyType::is_superset(&ProxyType::NonTransfer, &ProxyType::Collator));
-		assert!(!ProxyType::is_superset(&ProxyType::Collator, &ProxyType::NonTransfer));
+	#[test]
+	fn asset_manager_cannot_transfer_assets() {
+		// AssetManager won't be able to transfer assets.
+		asset_transfer_calls().iter().for_each(|call| {
+			assert!(!AssetManager.filter(&call));
+		});
 	}
 
 	#[test]
@@ -227,5 +243,24 @@ mod tests {
 	#[test]
 	fn proxy_does_not_use_default_weights() {
 		assert_ne!(TypeId::of::<<Runtime as Config>::WeightInfo>(), TypeId::of::<()>(),);
+	}
+
+	// Returns a list with some calls transferring assets.
+	fn asset_transfer_calls() -> Vec<RuntimeCall> {
+		use sp_keyring::AccountKeyring::Alice;
+		let alice_address = MultiAddress::Id(Alice.to_account_id());
+
+		vec![
+			RuntimeCall::Assets(pallet_assets::Call::transfer_keep_alive {
+				id: codec::Compact(0),
+				target: alice_address.clone(),
+				amount: 0,
+			}),
+			RuntimeCall::Nfts(pallet_nfts::Call::transfer {
+				collection: 0,
+				item: 0,
+				dest: alice_address.clone(),
+			}),
+		]
 	}
 }

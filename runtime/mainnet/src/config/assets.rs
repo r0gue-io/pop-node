@@ -32,6 +32,7 @@ parameter_types! {
 }
 
 pub(crate) type TrustBackedAssetsInstance = pallet_assets::Instance1;
+pub(crate) type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
 impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type ApprovalDeposit = ApprovalDeposit;
 	type AssetAccountDeposit = AssetAccountDeposit;
