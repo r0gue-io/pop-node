@@ -163,7 +163,7 @@ mod tests {
 				// Every proxy is part of itself.
 				assert!(ProxyType::is_superset(&proxy, &proxy));
 
-				// `Any` contains all others, but it is not contained.
+				// `Any` is superset of every other proxy type.
 				if proxy != Any {
 					assert!(ProxyType::is_superset(&Any, &proxy));
 					assert!(!ProxyType::is_superset(&proxy, &Any));
@@ -177,7 +177,7 @@ mod tests {
 						assert!(!ProxyType::is_superset(&proxy, &NonTransfer));
 					}
 				}
-				// `CancelProxy` does not contain any other proxy.
+				// `CancelProxy` isn't superset of any other proxy type.
 				if proxy != CancelProxy {
 					assert!(!ProxyType::is_superset(&CancelProxy, &proxy));
 				}
