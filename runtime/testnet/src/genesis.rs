@@ -44,6 +44,11 @@ pub(crate) fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
 	)
 }
 
+/// Returns a list of identifiers for available builtin `RuntimeGenesisConfig` presets.
+pub(crate) fn presets() -> Vec<PresetId> {
+	PRESETS.map(PresetId::from).to_vec()
+}
+
 /// Configures a development chain running on a single node, using the `testnet` runtime.
 fn development_config() -> Value {
 	genesis(
