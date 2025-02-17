@@ -108,10 +108,14 @@ mod benchmarks {
 
 	#[benchmark]
 	// Storage: `Assets`
-	fn total_supply() {
+	fn total_supply(a: Linear<0, 1>) {
 		#[block]
 		{
-			Pallet::<T>::read(Read::TotalSupply(TokenIdOf::<T>::zero()));
+			match a {
+				0 => Pallet::<T>::read(Read::TotalSupply(TokenIdOf::<T>::TrustBacked(0))),
+				1 =>
+					Pallet::<T>::read(Read::TotalSupply(TokenIdOf::<T>::Foreign(Location::Parent))),
+			}
 		}
 	}
 	#[benchmark]
