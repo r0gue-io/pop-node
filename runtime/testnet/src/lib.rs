@@ -8,6 +8,9 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 // Public due to integration tests crate.
 pub mod config;
+
+/// The genesis state presets available.
+pub mod genesis;
 mod weights;
 
 extern crate alloc;

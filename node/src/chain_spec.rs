@@ -9,9 +9,6 @@ use sp_core::crypto::Ss58Codec;
 /// Generic `ChainSpec` for a parachain runtime.
 pub type ChainSpec = GenericChainSpec<Extensions>;
 
-/// Specialized `ChainSpec` for the testnet parachain runtime.
-pub type TestnetChainSpec = sc_service::GenericChainSpec<Extensions>;
-
 /// Specialized `ChainSpec` for the mainnet parachain runtime.
 pub type MainnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 
@@ -124,12 +121,59 @@ pub mod devnet {
 	}
 }
 
-/// Generate the session keys from individual elements.
-///
-/// The input must be a tuple of individual keys (a single arg for now since we have just one key).
-pub fn pop_testnet_session_keys(keys: AuraId) -> pop_runtime_testnet::SessionKeys {
-	pop_runtime_testnet::SessionKeys { aura: keys }
+pub mod testnet {
+	use pop_runtime_testnet as runtime;
+	use pop_runtime_testnet::Runtime;
+	pub use runtime::genesis::{TESTNET, TESTNET_DEV, TESTNET_LOCAL};
+
+	use super::*;
+
+	impl ChainSpecBuilder for Runtime {
+		fn para_id() -> u32 {
+			runtime::genesis::PARA_ID.into()
+		}
+
+		fn properties() -> sc_chain_spec::Properties {
+			let mut properties = sc_chain_spec::Properties::new();
+			properties.insert("tokenSymbol".into(), "PAS".into());
+			properties.insert("tokenDecimals".into(), 10.into());
+			properties.insert("ss58Format".into(), 0.into());
+			properties
+		}
+
+		fn wasm_binary() -> &'static [u8] {
+			runtime::WASM_BINARY.expect("WASM binary was not built, please build it!")
+		}
+	}
+
+	/// Configures a development chain running on a single node, using the devnet runtime.
+	pub fn development_chain_spec() -> ChainSpec {
+		const ID: &str = TESTNET_DEV;
+		Runtime::build(
+			ID,
+			"POP Testnet (Development)",
+			ChainType::Development,
+			ID,
+			ID,
+			"paseo-local",
+		)
+	}
+
+	/// Configures a local chain running on multiple nodes for testing purposes, using the devnet
+	/// runtime.
+	pub fn local_chain_spec() -> ChainSpec {
+		const ID: &str = TESTNET_LOCAL;
+		Runtime::build(ID, "POP Testnet (Local)", ChainType::Local, ID, ID, "paseo-local")
+	}
+
+	/// Configures a live chain running on multiple nodes on private devnet, using the devnet
+	/// runtime.
+	pub fn live_chain_spec() -> ChainSpec {
+		const ID: &str = TESTNET;
+		Runtime::build(ID, "POP Testnet", ChainType::Live, ID, ID, "paseo")
+	}
 }
+
 /// Generate the session keys from individual elements.
 ///
 /// The input must be a tuple of individual keys (a single arg for now since we have just one key).
@@ -166,52 +210,6 @@ fn configure_for_relay(
 			(Extensions { relay_chain: "polkadot".into(), para_id }, para_id)
 		},
 	}
-}
-
-pub fn testnet_chain_spec(relay: Relay) -> TestnetChainSpec {
-	// Give your base currency a unit name and decimal places
-	let mut properties = sc_chain_spec::Properties::new();
-	let (extensions, para_id) = configure_for_relay(relay, &mut properties);
-
-	let collator_0_account_id: AccountId =
-		AccountId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
-	let collator_0_aura_id: AuraId =
-		AuraId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
-	let collator_1_account_id: AccountId =
-		AccountId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_1_aura_id: AuraId =
-		AuraId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_2_account_id: AccountId =
-		AccountId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
-	let collator_2_aura_id: AuraId =
-		AuraId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
-	let sudo_account_id: AccountId =
-		AccountId::from_ss58check("5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD").unwrap();
-
-	#[allow(deprecated)]
-	TestnetChainSpec::builder(
-		pop_runtime_testnet::WASM_BINARY.expect("WASM binary was not built, please build it!"),
-		extensions,
-	)
-	.with_name("Pop Network Testnet")
-	.with_id("pop-testnet")
-	.with_chain_type(ChainType::Live)
-	.with_genesis_config_patch(testnet_genesis(
-		// initial collators.
-		vec![
-			// POP COLLATOR 0
-			(collator_0_account_id, collator_0_aura_id),
-			// POP COLLATOR 1
-			(collator_1_account_id, collator_1_aura_id),
-			// POP COLLATOR 2
-			(collator_2_account_id, collator_2_aura_id),
-		],
-		sudo_account_id,
-		para_id.into(),
-	))
-	.with_protocol_id("pop-testnet")
-	.with_properties(properties)
-	.build()
 }
 
 pub fn mainnet_chain_spec(relay: Relay) -> MainnetChainSpec {
@@ -294,43 +292,6 @@ fn mainnet_genesis(
 		"council": {
 			"members": councillors,
 		}
-	})
-}
-
-fn testnet_genesis(
-	invulnerables: Vec<(AccountId, AuraId)>,
-	root: AccountId,
-	id: ParaId,
-) -> serde_json::Value {
-	use pop_runtime_testnet::EXISTENTIAL_DEPOSIT;
-
-	serde_json::json!({
-		"balances": {
-			"balances": [],
-		},
-		"parachainInfo": {
-			"parachainId": id,
-		},
-		"collatorSelection": {
-			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
-			"candidacyBond": EXISTENTIAL_DEPOSIT * 16,
-		},
-		"session": {
-			"keys": invulnerables
-				.into_iter()
-				.map(|(acc, aura)| {
-					(
-						acc.clone(),                 // account id
-						acc,                         // validator id
-						pop_testnet_session_keys(aura),      // session keys
-					)
-				})
-			.collect::<Vec<_>>(),
-		},
-		"polkadotXcm": {
-			"safeXcmVersion": Some(SAFE_XCM_VERSION),
-		},
-		"sudo": { "key": Some(root) }
 	})
 }
 
