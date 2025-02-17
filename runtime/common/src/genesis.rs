@@ -1,10 +1,10 @@
-use parachains_common::AccountId;
-pub use serde_json::{json, to_string, Value};
-pub use sp_keyring::sr25519::Keyring;
-extern crate alloc;
 #[cfg(not(feature = "std"))]
 use alloc::format;
 use alloc::vec::Vec;
+
+use parachains_common::AccountId;
+pub use serde_json::{json, to_string, Value};
+pub use sp_keyring::sr25519::Keyring;
 
 /// A set of dev accounts, typically used for endowments at genesis for development chains.
 pub fn dev_accounts() -> Vec<AccountId> {

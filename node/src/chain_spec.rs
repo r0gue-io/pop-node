@@ -169,32 +169,6 @@ fn configure_for_relay(
 	}
 }
 
-pub fn development_chain_spec(relay: Relay) -> DevnetChainSpec {
-	// Give your base currency a unit name and decimal places
-	let mut properties = sc_chain_spec::Properties::new();
-	let (extensions, para_id) = configure_for_relay(relay, &mut properties);
-
-	DevnetChainSpec::builder(
-		pop_runtime_devnet::WASM_BINARY.expect("WASM binary was not built, please build it!"),
-		extensions,
-	)
-	.with_name("Pop Network Development")
-	.with_id("pop-devnet")
-	.with_chain_type(ChainType::Development)
-	.with_genesis_config_patch(devnet_genesis(
-		// initial collators.
-		vec![
-			(Keyring::Alice.to_account_id(), Keyring::Alice.public().into()),
-			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
-		],
-		Keyring::Alice.to_account_id(),
-		para_id.into(),
-	))
-	.with_protocol_id("pop-devnet")
-	.with_properties(properties)
-	.build()
-}
-
 pub fn testnet_chain_spec(relay: Relay) -> TestnetChainSpec {
 	// Give your base currency a unit name and decimal places
 	let mut properties = sc_chain_spec::Properties::new();
@@ -358,50 +332,6 @@ fn testnet_genesis(
 			"safeXcmVersion": Some(SAFE_XCM_VERSION),
 		},
 		"sudo": { "key": Some(root) }
-	})
-}
-
-fn devnet_genesis(
-	invulnerables: Vec<(AccountId, AuraId)>,
-	root: AccountId,
-	id: ParaId,
-) -> serde_json::Value {
-	use pop_runtime_devnet::EXISTENTIAL_DEPOSIT;
-	let asset_hub = ismp_parachain::ParachainData { id: 1000, slot_duration: 6000 };
-
-	serde_json::json!({
-		"balances": {
-			"balances": [],
-		},
-		"parachainInfo": {
-			"parachainId": id,
-		},
-		"collatorSelection": {
-			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
-			"candidacyBond": EXISTENTIAL_DEPOSIT * 16,
-		},
-		"session": {
-			"keys": invulnerables
-				.into_iter()
-				.map(|(acc, aura)| {
-					(
-						acc.clone(),                 // account id
-						acc,                         // validator id
-						pop_devnet_session_keys(aura),      // session keys
-					)
-				})
-			.collect::<Vec<_>>(),
-		},
-		"polkadotXcm": {
-			"safeXcmVersion": Some(SAFE_XCM_VERSION),
-		},
-		"sudo": { "key": Some(root) },
-		// Set the following parachains to be tracked via ISMP.
-		"ismpParachain": pop_runtime_devnet::IsmpParachainConfig {
-			// Asset Hub
-			parachains: vec![asset_hub],
-			..Default::default()
-		},
 	})
 }
 

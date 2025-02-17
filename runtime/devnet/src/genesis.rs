@@ -4,7 +4,7 @@ use parachains_common::{AccountId, AuraId, Balance};
 use pop_runtime_common::genesis::*;
 use sp_genesis_builder::PresetId;
 
-use crate::{BalancesConfig, IsmpParachainConfig, SessionKeys, EXISTENTIAL_DEPOSIT};
+use crate::{BalancesConfig, IsmpParachainConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT};
 
 /// A development chain running on a single node, using the `devnet` runtime.
 pub const DEVNET_DEV: &str = "pop-devnet-dev";
@@ -20,6 +20,9 @@ const PRESETS: [&str; 3] = [DEVNET_DEV, DEVNET_LOCAL, DEVNET];
 pub const PARA_ID: ParaId = ParaId::new(4_001);
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
+
+/// Initial balance for genesis endowed accounts.
+const ENDOWMENT: Balance = 10_000_000 * UNIT;
 
 /// Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by `id`.
 pub(crate) fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
@@ -76,6 +79,7 @@ fn live_config() -> Value {
 			// Multiple collators for live development chain.
 			(Keyring::Alice.to_account_id(), Keyring::Alice.public().into()),
 			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
+			(Keyring::Charlie.to_account_id(), Keyring::Charlie.public().into()),
 		]),
 		dev_accounts(),
 		Keyring::Alice.to_account_id(),
@@ -87,14 +91,14 @@ fn live_config() -> Value {
 #[allow(clippy::too_many_arguments)]
 fn genesis(
 	invulnerables: Vec<(AccountId, AuraId)>,
-	_endowed_accounts: Vec<AccountId>,
+	endowed_accounts: Vec<AccountId>,
 	sudo_key: AccountId,
 	id: ParaId,
 	ismp_parachains: Vec<ParachainData>,
 ) -> Value {
 	const DECIMALS: u8 = 6;
 	json!({
-		"balances": BalancesConfig { balances: vec![] },
+		"balances": BalancesConfig { balances: balances(endowed_accounts) },
 		"parachainInfo": { "parachainId": id },
 		"collatorSelection": {
 			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
@@ -120,4 +124,10 @@ fn genesis(
 			..Default::default()
 		},
 	})
+}
+
+// The initial balances at genesis.
+fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
+	let mut balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
+	balances
 }

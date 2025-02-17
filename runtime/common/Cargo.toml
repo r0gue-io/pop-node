@@ -41,5 +41,6 @@ std = [
 	"parachains-common/std",
 	"polkadot-primitives/std",
 	"scale-info/std",
+	"serde_json/std",
 	"sp-runtime/std",
 ]
