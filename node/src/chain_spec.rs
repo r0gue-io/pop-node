@@ -12,12 +12,6 @@ pub type MainnetChainSpec = sc_service::GenericChainSpec<Extensions>;
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
-pub(crate) enum Relay {
-	Paseo,
-	PaseoLocal,
-	Polkadot,
-}
-
 /// Chainspec builder trait: to be implemented for the different runtimes (i.e. `devnet`, `testnet`
 /// & `mainnet`) to ease building.
 trait ChainSpecBuilder {
