@@ -1,3 +1,5 @@
+use alloc::{vec, vec::Vec};
+
 use cumulus_primitives_core::ParaId;
 use parachains_common::{AccountId, AuraId, Balance};
 use pop_runtime_common::genesis::*;
@@ -5,8 +7,7 @@ use sp_core::crypto::Ss58Codec;
 use sp_genesis_builder::PresetId;
 
 use crate::{
-	config::governance::SudoAddress, BalancesConfig, RuntimeError::Sudo, SessionKeys,
-	EXISTENTIAL_DEPOSIT, UNIT,
+	config::governance::SudoAddress, BalancesConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// A development chain running on a single node, using the `mainnet` runtime.
@@ -134,7 +135,7 @@ fn genesis(
 
 // The initial balances at genesis.
 fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
-	let mut balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
+	let balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
 	balances
 }
 

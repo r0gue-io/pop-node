@@ -13,7 +13,7 @@ use sc_service::config::{BasePath, PrometheusConfig};
 use sp_runtime::traits::HashingFor;
 
 use crate::{
-	chain_spec::{self, devnet::*, mainnet::*, testnet::*, Relay},
+	chain_spec::{self, devnet::*, mainnet::*, testnet::*},
 	cli::{Cli, RelayChainCli, Subcommand},
 	service::new_partial,
 };

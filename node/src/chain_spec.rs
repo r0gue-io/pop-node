@@ -1,16 +1,9 @@
 use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, GenericChainSpec};
 use serde::{Deserialize, Serialize};
-use sp_core::crypto::Ss58Codec;
 
 /// Generic `ChainSpec` for a parachain runtime.
 pub type ChainSpec = GenericChainSpec<Extensions>;
-
-/// Specialized `ChainSpec` for the mainnet parachain runtime.
-pub type MainnetChainSpec = sc_service::GenericChainSpec<Extensions>;
-
-/// The default XCM version to set in genesis config.
-const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
 /// Chainspec builder trait: to be implemented for the different runtimes (i.e. `devnet`, `testnet`
 /// & `mainnet`) to ease building.
