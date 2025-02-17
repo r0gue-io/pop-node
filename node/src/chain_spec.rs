@@ -5,7 +5,6 @@ use sc_chain_spec::{ChainSpecExtension, ChainSpecGroup};
 use sc_service::{ChainType, GenericChainSpec};
 use serde::{Deserialize, Serialize};
 use sp_core::crypto::Ss58Codec;
-pub use sp_keyring::sr25519::Keyring;
 
 /// Generic `ChainSpec` for a parachain runtime.
 pub type ChainSpec = GenericChainSpec<Extensions>;

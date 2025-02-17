@@ -1,3 +1,5 @@
+use alloc::vec::Vec;
+
 use cumulus_primitives_core::ParaId;
 use ismp_parachain::ParachainData;
 use parachains_common::{AccountId, AuraId, Balance};
@@ -101,7 +103,6 @@ fn genesis(
 	id: ParaId,
 	ismp_parachains: Vec<ParachainData>,
 ) -> Value {
-	const DECIMALS: u8 = 6;
 	json!({
 		"balances": BalancesConfig { balances: balances(endowed_accounts) },
 		"parachainInfo": { "parachainId": id },
@@ -133,6 +134,6 @@ fn genesis(
 
 // The initial balances at genesis.
 fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
-	let mut balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
+	let balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
 	balances
 }
