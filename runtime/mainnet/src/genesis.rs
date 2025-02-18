@@ -211,11 +211,12 @@ fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::Runtime;
 
 	#[test]
 	fn ensure_sudo_account() {
 		assert_eq!(
-			derive_multisig(
+			derive_multisig::<Runtime>(
 				vec![
 					AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg")
 						.unwrap(),
