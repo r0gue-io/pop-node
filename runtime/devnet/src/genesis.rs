@@ -90,7 +90,7 @@ fn live_config() -> Value {
 			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
 			(Keyring::Charlie.to_account_id(), Keyring::Charlie.public().into()),
 		]),
-		dev_accounts(),
+		vec![],
 		Keyring::Alice.to_account_id(),
 		PARA_ID,
 		Vec::from([ParachainData { id: 1000, slot_duration: 6000 }]),
