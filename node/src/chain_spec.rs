@@ -151,7 +151,7 @@ pub mod testnet {
 		const ID: &str = TESTNET_DEV;
 		Runtime::build(
 			ID,
-			"POP Testnet (Development)",
+			"Pop Testnet (Development)",
 			ChainType::Development,
 			ID,
 			ID,
@@ -163,13 +163,13 @@ pub mod testnet {
 	/// runtime.
 	pub fn local_chain_spec() -> ChainSpec {
 		const ID: &str = TESTNET_LOCAL;
-		Runtime::build(ID, "POP Testnet (Local)", ChainType::Local, ID, ID, "paseo-local")
+		Runtime::build(ID, "Pop Testnet (Local)", ChainType::Local, ID, ID, "paseo-local")
 	}
 
 	/// Configures a live chain running on multiple nodes, using the testnet runtime.
 	pub fn live_chain_spec() -> ChainSpec {
 		const ID: &str = TESTNET;
-		Runtime::build(ID, "POP Testnet", ChainType::Live, ID, ID, "paseo")
+		Runtime::build(ID, "Pop Testnet", ChainType::Live, ID, ID, "paseo")
 	}
 }
 
