@@ -3,8 +3,15 @@ use alloc::format;
 use alloc::vec::Vec;
 
 use parachains_common::AccountId;
+use polkadot_parachain_primitives::primitives::Sibling;
 pub use serde_json::{json, to_string, Value};
 pub use sp_keyring::sr25519::Keyring;
+use sp_runtime::traits::AccountIdConversion;
+
+/// Sovereign account of AssetHub on Pop.
+pub fn asset_hub_sa_on_pop() -> AccountId {
+	Sibling::from(1_000).into_account_truncating()
+}
 
 /// A set of dev accounts, typically used for endowments at genesis for development chains.
 pub fn dev_accounts() -> Vec<AccountId> {

@@ -26,6 +26,7 @@ sp-runtime.workspace = true
 # Cumulus
 parachains-common.workspace = true
 polkadot-primitives.workspace = true
+polkadot-parachain-primitives.workspace = true
 
 [features]
 default = [ "std" ]
@@ -40,6 +41,7 @@ std = [
 	"frame-support/std",
 	"parachains-common/std",
 	"polkadot-primitives/std",
+	"polkadot-parachain-primitives/std",
 	"scale-info/std",
 	"serde_json/std",
 	"sp-runtime/std",
