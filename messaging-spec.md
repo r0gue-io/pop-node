@@ -1,5 +1,5 @@
 # Maximus Messaging Monilith!
-The messaging feature enables smart contracts on pop-net to seamlessly interact with external chains using XCM, ISMP, GMP, and other Substrate-compatible messaging protocols. By providing a flexible and efficient messaging framework, it expands multichain use cases while giving developers full control over request handling and response processing. This system enhances interoperability and significantly improves the developer experience.
+The messaging feature enables smart contracts on pop-net to seamlessly interact with external chains using XCM and GMP, it will also allow more messaging protocols to be added, like GMP. By providing a flexible and efficient messaging framework, it expands multichain use cases while giving developers full control over request handling and response processing. This system enhances interoperability and significantly improves the developer experience.
 Key capabilities include:
 
 - Enabling cross-chain message passing for smart contracts via XCM and ISMP.
@@ -28,6 +28,7 @@ The "API" stands for the api the smart contracts have access to.
 - A contract on pop-net can query a response regardless of message type.
 - A contract is able to remove request data if they have permission.
 - A contract using Ismp is forced to use signed requests.
+- A contract caller will receive any gas that is prepaid and unused.
 
 There are 3 main areas to consider.
 1. Runtime: Responsible for recording message state and sending messages, index versioning (errors, runtime calls) and initiating callbacks.
@@ -42,7 +43,6 @@ There are 3 main areas to consider.
 - Continuously running relayer (e.g. in pop-node that automatically relays messages).
 - Adding other protocols beyond ISMP and XCM.
 - Drink! e2e testing.
-- Refunding unused weight to developers.
 - Weight calculation tool for developers.
 - Callbacks that have the ability to reference code to execute other than what is defined within the contract.
 - The ability to recieve requests from external chains
@@ -56,7 +56,7 @@ todo!();
 ### Weight + Benchmarking
 #### Weight Flow inspired from POC:
 0. Contract is called with "to be charged" weight included.
-1. Weight charged in contract by pallet-contracts metering.
+1. Weight charged in contract by pallet-revive metering.
 2. Weight charged for outgoing dispatchable.
 3. Weight is charged for response hook.
 4. Weight is charged for a standard call to `CallbackExecutor`.
@@ -143,14 +143,10 @@ If the message id is specified by the runtime, the runtime will have to return t
 
 If the message id is specified by the contract, the contract developer has full control over the shape of the id and can emit a reference that can be used to link a request with a response. This must be considered by the contract developer therefore, one can create a library for ink developers (both for the contract and for the app side) that allows contract developers to easily match responses and requests.
 
-If the latter is to be implemented we should at least prevent message_id collisions in runtime storage. This will improve dev ex. 
-Hence i propose we append/prepend the contract address onto the message id. We must also use a cryptographically secure hasher due to the ids being user input.
-
-I propose we let the contract develper define a message id.
+the latter will by implemented, the actual implementation is simpler and allows full flexibility for developers.
 
 TLDR: 
 - Allow developers to specify a message ID.
-- append/prepend the contract address to the message id.
 - Use a cryptographically secure hasher.
 
 ### RequestDeposits
@@ -243,6 +239,9 @@ See "Weight and Benchmarking" for a walkthrough of weight charging.
             // snip
         }
 ```
+
+
+
 ### Pop-api:
 TODO!("Define what the pop-api will look like, i doubt much will change from the current POC implementation.")
 
