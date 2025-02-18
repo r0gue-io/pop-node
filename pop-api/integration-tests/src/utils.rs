@@ -28,7 +28,6 @@ pub(super) fn do_bare_call(function: &str, addr: &AccountId32, params: Vec<u8>) 
 	bare_call(addr.clone(), params, 0).expect("should work")
 }
 
-// TODO - issue #263 - why result.data[1..]
 pub(super) fn decoded<T: Decode>(result: ExecReturnValue) -> Result<T, ExecReturnValue> {
 	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }
