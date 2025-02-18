@@ -6,7 +6,7 @@ use pop_runtime_common::genesis::*;
 use sp_core::crypto::Ss58Codec;
 use sp_genesis_builder::PresetId;
 
-use crate::{BalancesConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT};
+use crate::{AssetsConfig, BalancesConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT};
 
 /// A development chain running on a single node, using the `testnet` runtime.
 pub const TESTNET_DEV: &str = "pop-testnet-dev";
@@ -129,12 +129,24 @@ fn genesis(
 	id: ParaId,
 ) -> Value {
 	json!({
+		"assets": AssetsConfig {
+			// Genesis assets: Vec<(id, owner, is_sufficient, min_balance)>
+			assets: Vec::from([
+				(0, asset_hub_sa_on_pop(), false, EXISTENTIAL_DEPOSIT),	// Relay native asset from Asset Hub
+			]),
+			// Genesis metadata: Vec<(id, name, symbol, decimals)>
+			metadata: Vec::from([
+				(0, "Paseo".into(), "PAS".into(), 10),
+			]),
+			..Default::default()
+		},
 		"balances": BalancesConfig { balances: balances(endowed_accounts) },
-		"parachainInfo": { "parachainId": id },
 		"collatorSelection": {
 			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
 			"candidacyBond": EXISTENTIAL_DEPOSIT * 16,
 		},
+		"parachainInfo": { "parachainId": id },
+		"polkadotXcm": { "safeXcmVersion": Some(SAFE_XCM_VERSION) },
 		"session": {
 			"keys": invulnerables
 				.into_iter()
@@ -142,13 +154,12 @@ fn genesis(
 					(
 						acc.clone(),        // account id
 						acc,               	// validator id
-						SessionKeys { aura },// session keys
+						SessionKeys { aura},// session keys
 					)
 				})
 				.collect::<Vec<_>>(),
 		},
 		"sudo" : { "key" : sudo_key },
-		"polkadotXcm": { "safeXcmVersion": Some(SAFE_XCM_VERSION) },
 	})
 }
 
