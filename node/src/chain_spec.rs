@@ -213,7 +213,7 @@ pub mod mainnet {
 		fn dev_configuration_is_correct() {
 			let chain_spec = development_chain_spec();
 			assert!(chain_spec.boot_nodes().is_empty());
-			assert_eq!(chain_spec.name(), "POP (Development)");
+			assert_eq!(chain_spec.name(), "Pop (Development)");
 			assert_eq!(chain_spec.id(), "pop-dev");
 			assert_eq!(chain_spec.chain_type(), ChainType::Development);
 			assert!(chain_spec.telemetry_endpoints().is_none());
@@ -240,7 +240,7 @@ pub mod mainnet {
 		fn local_configuration_is_correct() {
 			let chain_spec = local_chain_spec();
 			assert!(chain_spec.boot_nodes().is_empty());
-			assert_eq!(chain_spec.name(), "POP (Local)");
+			assert_eq!(chain_spec.name(), "Pop (Local)");
 			assert_eq!(chain_spec.id(), "pop-local");
 			assert_eq!(chain_spec.chain_type(), ChainType::Local);
 			assert!(chain_spec.telemetry_endpoints().is_none());
@@ -267,7 +267,7 @@ pub mod mainnet {
 		fn live_configuration_is_correct() {
 			let chain_spec = live_chain_spec();
 			assert!(chain_spec.boot_nodes().is_empty());
-			assert_eq!(chain_spec.name(), "POP");
+			assert_eq!(chain_spec.name(), "Pop");
 			assert_eq!(chain_spec.id(), "pop");
 			assert_eq!(chain_spec.chain_type(), ChainType::Live);
 			assert!(chain_spec.telemetry_endpoints().is_none());
