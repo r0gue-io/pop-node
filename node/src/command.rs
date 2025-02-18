@@ -37,7 +37,7 @@ fn runtime(id: &str) -> Runtime {
 		Runtime::Devnet
 	} else if [TESTNET_DEV, TESTNET_LOCAL, TESTNET].contains(&id) {
 		Runtime::Testnet
-	} else if id.eq("pop") || id.ends_with("mainnet") {
+	} else if [MAINNET_DEV, MAINNET_LOCAL, MAINNET].contains(&id) {
 		Runtime::Mainnet
 	} else {
 		log::warn!(

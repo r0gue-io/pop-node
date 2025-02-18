@@ -8,7 +8,7 @@ use sp_genesis_builder::PresetId;
 
 use crate::{
 	config::{governance::SudoAddress, monetary::ExistentialDeposit},
-	AssetsConfig, BalancesConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
+	AssetsConfig, BalancesConfig, CouncilConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// A development chain running on a single node, using the `mainnet` runtime.
@@ -82,6 +82,13 @@ fn development_config() -> Value {
 			symbol: "DOT".into(),
 			decimals: 10,
 		}],
+		vec![
+			Keyring::Alice.to_account_id(),
+			Keyring::Bob.to_account_id(),
+			Keyring::Charlie.to_account_id(),
+			Keyring::Dave.to_account_id(),
+			Keyring::Eve.to_account_id(),
+		],
 	)
 }
 
@@ -111,6 +118,13 @@ fn local_config() -> Value {
 			symbol: "DOT".into(),
 			decimals: 10,
 		}],
+		vec![
+			AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z").unwrap(),
+			AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg").unwrap(),
+			AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4").unwrap(),
+			AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz").unwrap(),
+			AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4").unwrap(),
+		],
 	)
 }
 
@@ -132,6 +146,7 @@ fn live_config() -> Value {
 		SudoAddress::get(),
 		PARA_ID,
 		vec![],
+		vec![],
 	)
 }
 
@@ -142,6 +157,7 @@ fn genesis(
 	sudo_key: AccountId,
 	id: ParaId,
 	genesis_assets: Vec<GenesisAsset>,
+	council_members: Vec<AccountId>,
 ) -> Value {
 	// Collect genesis assets.
 	// Genesis assets: Vec<(id, owner, is_sufficient, min_balance)>
@@ -163,6 +179,10 @@ fn genesis(
 		"collatorSelection": {
 			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
 			"candidacyBond": EXISTENTIAL_DEPOSIT * 16,
+		},
+		"council": CouncilConfig {
+			members: council_members,
+			..Default::default()
 		},
 		"parachainInfo": { "parachainId": id },
 		"polkadotXcm": { "safeXcmVersion": Some(SAFE_XCM_VERSION) },
