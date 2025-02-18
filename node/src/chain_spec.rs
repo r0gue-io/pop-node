@@ -199,6 +199,95 @@ pub mod mainnet {
 	/// runtime.
 	pub fn live_chain_spec() -> ChainSpec {
 		const ID: &str = MAINNET;
-		Runtime::build(ID, "POP", ChainType::Live, ID, ID, "paseo")
+		Runtime::build(ID, "POP", ChainType::Live, ID, ID, "polkadot")
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use sc_chain_spec::ChainSpec;
+		use serde_json::json;
+
+		use super::*;
+
+		#[test]
+		fn dev_configuration_is_correct() {
+			let chain_spec = development_chain_spec();
+			assert!(chain_spec.boot_nodes().is_empty());
+			assert_eq!(chain_spec.name(), "POP (Development)");
+			assert_eq!(chain_spec.id(), "pop-dev");
+			assert_eq!(chain_spec.chain_type(), ChainType::Development);
+			assert!(chain_spec.telemetry_endpoints().is_none());
+			assert_eq!(chain_spec.protocol_id().unwrap(), "pop-dev");
+			assert!(chain_spec.fork_id().is_none());
+			assert_eq!(
+				&chain_spec.properties(),
+				json!({
+					"ss58Format": 0, // Paseo uses Polkadot's SS58.
+					"tokenDecimals": 10,
+					"tokenSymbol": "DOT",
+				})
+				.as_object()
+				.unwrap()
+			);
+			assert_eq!(
+				chain_spec.extensions(),
+				&Extensions { relay_chain: "paseo-local".to_string(), para_id: 3395 }
+			);
+			assert!(chain_spec.code_substitutes().is_empty());
+		}
+
+		#[test]
+		fn local_configuration_is_correct() {
+			let chain_spec = local_chain_spec();
+			assert!(chain_spec.boot_nodes().is_empty());
+			assert_eq!(chain_spec.name(), "POP (Local)");
+			assert_eq!(chain_spec.id(), "pop-local");
+			assert_eq!(chain_spec.chain_type(), ChainType::Local);
+			assert!(chain_spec.telemetry_endpoints().is_none());
+			assert_eq!(chain_spec.protocol_id().unwrap(), "pop-local");
+			assert!(chain_spec.fork_id().is_none());
+			assert_eq!(
+				&chain_spec.properties(),
+				json!({
+					"ss58Format": 0, // Paseo uses Polkadot's SS58.
+					"tokenDecimals": 10,
+					"tokenSymbol": "DOT",
+				})
+				.as_object()
+				.unwrap()
+			);
+			assert_eq!(
+				chain_spec.extensions(),
+				&Extensions { relay_chain: "paseo-local".to_string(), para_id: 3395 }
+			);
+			assert!(chain_spec.code_substitutes().is_empty());
+		}
+
+		#[test]
+		fn live_configuration_is_correct() {
+			let chain_spec = live_chain_spec();
+			assert!(chain_spec.boot_nodes().is_empty());
+			assert_eq!(chain_spec.name(), "POP");
+			assert_eq!(chain_spec.id(), "pop");
+			assert_eq!(chain_spec.chain_type(), ChainType::Live);
+			assert!(chain_spec.telemetry_endpoints().is_none());
+			assert_eq!(chain_spec.protocol_id().unwrap(), "pop");
+			assert!(chain_spec.fork_id().is_none());
+			assert_eq!(
+				&chain_spec.properties(),
+				json!({
+					"ss58Format": 0, // Polkadot's SS58.
+					"tokenDecimals": 10,
+					"tokenSymbol": "DOT",
+				})
+				.as_object()
+				.unwrap()
+			);
+			assert_eq!(
+				chain_spec.extensions(),
+				&Extensions { relay_chain: "polkadot".to_string(), para_id: 3395 }
+			);
+			assert!(chain_spec.code_substitutes().is_empty());
+		}
 	}
 }
