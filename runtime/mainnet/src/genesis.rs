@@ -5,9 +5,14 @@ use parachains_common::{AccountId, AuraId, Balance};
 use pop_runtime_common::genesis::*;
 use sp_core::crypto::Ss58Codec;
 use sp_genesis_builder::PresetId;
+use sp_runtime::traits::AccountIdConversion;
 
 use crate::{
-	config::{governance::SudoAddress, monetary::ExistentialDeposit},
+	config::{
+		collation::PotId,
+		governance::SudoAddress,
+		monetary::{ExistentialDeposit, MaintenanceAccount, TreasuryAccount},
+	},
 	AssetsConfig, BalancesConfig, CouncilConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
@@ -63,13 +68,19 @@ pub(crate) fn presets() -> Vec<PresetId> {
 
 /// Configures a development chain running on a single node, using the `mainnet` runtime.
 fn development_config() -> Value {
+	let mut endowed_accounts = dev_accounts();
+	endowed_accounts.push(asset_hub_sa_on_pop());
+	endowed_accounts.push(MaintenanceAccount::get());
+	endowed_accounts.push(PotId::get().into_account_truncating());
+	endowed_accounts.push(TreasuryAccount::get());
+
 	genesis(
 		// Initial collators.
 		Vec::from([
 			// Single collator for development chain
 			(Keyring::Alice.to_account_id(), Keyring::Alice.public().into()),
 		]),
-		dev_accounts(),
+		endowed_accounts,
 		Keyring::Alice.to_account_id(),
 		PARA_ID,
 		// AssetId reserved for DOT from AH.
@@ -95,8 +106,20 @@ fn development_config() -> Value {
 /// Configures a local chain running on multiple nodes for testing purposes, using the `mainnet`
 /// runtime.
 fn local_config() -> Value {
+	let council_members = vec![
+		AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z").unwrap(),
+		AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg").unwrap(),
+		AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4").unwrap(),
+		AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz").unwrap(),
+		AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4").unwrap(),
+	];
 	let mut endowed_accounts = dev_accounts();
+	endowed_accounts.push(asset_hub_sa_on_pop());
+	endowed_accounts.extend(council_members.clone());
+	endowed_accounts.push(MaintenanceAccount::get());
+	endowed_accounts.push(PotId::get().into_account_truncating());
 	endowed_accounts.push(SudoAddress::get());
+	endowed_accounts.push(TreasuryAccount::get());
 
 	genesis(
 		// Initial collators.
@@ -118,13 +141,7 @@ fn local_config() -> Value {
 			symbol: "DOT".into(),
 			decimals: 10,
 		}],
-		vec![
-			AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z").unwrap(),
-			AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg").unwrap(),
-			AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4").unwrap(),
-			AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz").unwrap(),
-			AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4").unwrap(),
-		],
+		council_members,
 	)
 }
 
@@ -204,7 +221,18 @@ fn genesis(
 
 // The initial balances at genesis.
 fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
-	let balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
+	let balances = endowed_accounts
+		.iter()
+		.cloned()
+		.map(|k| {
+			if k == asset_hub_sa_on_pop() {
+				// Onboarded DOT needs to be held on AH sa account on pop.
+				(k, ENDOWMENT.saturating_mul(endowed_accounts.len() as Balance))
+			} else {
+				(k, ENDOWMENT)
+			}
+		})
+		.collect::<Vec<_>>();
 	balances
 }
 
@@ -214,7 +242,7 @@ mod tests {
 	use crate::Runtime;
 
 	#[test]
-	fn ensure_sudo_account() {
+	fn ensure_sudo_multisig_account() {
 		assert_eq!(
 			derive_multisig::<Runtime>(
 				vec![
@@ -231,5 +259,280 @@ mod tests {
 			),
 			SudoAddress::get()
 		)
+	}
+
+	mod development_config {
+		use super::*;
+
+		#[test]
+		fn endows_given_accounts() {
+			let mut endowed_accounts = dev_accounts();
+			endowed_accounts.push(asset_hub_sa_on_pop());
+			endowed_accounts.push(MaintenanceAccount::get());
+			endowed_accounts.push(PotId::get().into_account_truncating());
+			endowed_accounts.push(TreasuryAccount::get());
+
+			let genesis = development_config();
+
+			let balances: Vec<_> = genesis["balances"]["balances"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|e| {
+					let endowment = e.as_array().unwrap();
+					let account = endowment[0].as_str().unwrap().to_string();
+					let balance = endowment[1].as_number().unwrap();
+					(account, balance)
+				})
+				.collect();
+
+			let accounts_in_balances_state: Vec<_> =
+				balances.into_iter().map(|(account, _)| account).collect();
+			assert!(endowed_accounts
+				.iter()
+				.all(|s| accounts_in_balances_state.contains(&s.to_string())));
+		}
+
+		#[test]
+		fn ensure_correct_sudo_key() {
+			let genesis = development_config();
+
+			let sudo_key = genesis["sudo"]["key"].as_str().unwrap();
+			assert_eq!(sudo_key, "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+		}
+
+		#[test]
+		fn ensure_correct_para_id() {
+			let genesis = development_config();
+
+			let para_id = genesis["parachainInfo"]["parachainId"].as_u64().unwrap();
+			assert_eq!(para_id, 3395);
+		}
+
+		#[test]
+		fn ensure_genesis_asset_is_created() {
+			let genesis = development_config();
+
+			let assets: Vec<(u64, String, bool, u64)> = genesis["assets"]["assets"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|a| {
+					let asset = a.as_array().unwrap();
+					let id = asset[0].as_u64().unwrap();
+					let owner = asset[1].as_str().unwrap().to_string();
+					let is_sufficient = asset[2].as_bool().unwrap();
+					let min_balance = asset[3].as_u64().unwrap();
+					(id, owner, is_sufficient, min_balance)
+				})
+				.collect();
+
+			// AssetId is 0.
+			assert_eq!(assets[0].0, 0);
+			// Owner is ah_sa_on_pop
+			assert_eq!(assets[0].1, "5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV");
+			assert_eq!(
+				asset_hub_sa_on_pop(),
+				AccountId::from_ss58check("5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV")
+					.unwrap()
+			);
+			// Asset is not sufficient
+			assert_eq!(assets[0].2, false);
+			// Asset's min balance is ExistentialDeposit.
+			assert_eq!(assets[0].3, ExistentialDeposit::get() as u64);
+		}
+
+		#[test]
+		fn ensure_council_members() {
+			let council_members = vec![
+				Keyring::Alice.to_account_id(),
+				Keyring::Bob.to_account_id(),
+				Keyring::Charlie.to_account_id(),
+				Keyring::Dave.to_account_id(),
+				Keyring::Eve.to_account_id(),
+			];
+
+			let genesis = development_config();
+
+			let council: Vec<_> = genesis["council"]["members"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|e| {
+					let member = e.as_str().unwrap().to_string();
+					member
+				})
+				.collect();
+			assert!(council_members.iter().all(|s| council.contains(&s.to_string())));
+		}
+	}
+
+	mod local_config {
+		use super::*;
+
+		#[test]
+		fn endows_given_accounts() {
+			let council_members = vec![
+				AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z")
+					.unwrap(),
+				AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg")
+					.unwrap(),
+				AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4")
+					.unwrap(),
+				AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz")
+					.unwrap(),
+				AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4")
+					.unwrap(),
+			];
+			let mut endowed_accounts = dev_accounts();
+			endowed_accounts.push(asset_hub_sa_on_pop());
+			endowed_accounts.extend(council_members.clone());
+			endowed_accounts.push(MaintenanceAccount::get());
+			endowed_accounts.push(PotId::get().into_account_truncating());
+			endowed_accounts.push(SudoAddress::get());
+			endowed_accounts.push(TreasuryAccount::get());
+
+			let genesis = local_config();
+
+			let balances: Vec<_> = genesis["balances"]["balances"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|e| {
+					let endowment = e.as_array().unwrap();
+					let account = endowment[0].as_str().unwrap().to_string();
+					let balance = endowment[1].as_number().unwrap();
+					(account, balance)
+				})
+				.collect();
+
+			let accounts_in_balances_state: Vec<_> =
+				balances.into_iter().map(|(account, _)| account).collect();
+			assert!(endowed_accounts
+				.iter()
+				.all(|s| accounts_in_balances_state.contains(&s.to_string())));
+		}
+
+		#[test]
+		fn ensure_correct_sudo_key() {
+			let genesis = local_config();
+
+			let sudo_key = genesis["sudo"]["key"].as_str().unwrap();
+			assert_eq!(AccountId::from_ss58check(sudo_key).unwrap(), SudoAddress::get());
+		}
+
+		#[test]
+		fn ensure_correct_para_id() {
+			let genesis = local_config();
+
+			let para_id = genesis["parachainInfo"]["parachainId"].as_u64().unwrap();
+			assert_eq!(para_id, 3395);
+		}
+
+		#[test]
+		fn ensure_genesis_asset_is_created() {
+			let genesis = local_config();
+
+			let assets: Vec<(u64, String, bool, u64)> = genesis["assets"]["assets"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|a| {
+					let asset = a.as_array().unwrap();
+					let id = asset[0].as_u64().unwrap();
+					let owner = asset[1].as_str().unwrap().to_string();
+					let is_sufficient = asset[2].as_bool().unwrap();
+					let min_balance = asset[3].as_u64().unwrap();
+					(id, owner, is_sufficient, min_balance)
+				})
+				.collect();
+
+			// AssetId is 0.
+			assert_eq!(assets[0].0, 0);
+			// Owner is ah_sa_on_pop
+			assert_eq!(assets[0].1, "5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV");
+			assert_eq!(
+				asset_hub_sa_on_pop(),
+				AccountId::from_ss58check("5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV")
+					.unwrap()
+			);
+			// Asset is not sufficient
+			assert_eq!(assets[0].2, false);
+			// Asset's min balance is ExistentialDeposit.
+			assert_eq!(assets[0].3, ExistentialDeposit::get() as u64);
+		}
+
+		#[test]
+		fn ensure_council_members() {
+			let council_members = vec![
+				AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z")
+					.unwrap(),
+				AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg")
+					.unwrap(),
+				AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4")
+					.unwrap(),
+				AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz")
+					.unwrap(),
+				AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4")
+					.unwrap(),
+			];
+			let genesis = local_config();
+
+			let council: Vec<_> = genesis["council"]["members"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|e| {
+					let member = e.as_str().unwrap().to_string();
+					member
+				})
+				.collect();
+			assert!(council_members.iter().all(|s| council.contains(&s.to_string())));
+		}
+	}
+
+	mod live_config {
+		use super::*;
+
+		#[test]
+		fn endows_given_accounts() {
+			let genesis = live_config();
+
+			let balances = genesis["balances"]["balances"].as_array().unwrap();
+
+			assert!(balances.is_empty());
+		}
+
+		#[test]
+		fn ensure_correct_sudo_key() {
+			let genesis = live_config();
+
+			let sudo_key = genesis["sudo"]["key"].as_str().unwrap();
+			assert_eq!(AccountId::from_ss58check(sudo_key).unwrap(), SudoAddress::get());
+		}
+
+		#[test]
+		fn ensure_correct_para_id() {
+			let genesis = live_config();
+
+			let para_id = genesis["parachainInfo"]["parachainId"].as_u64().unwrap();
+			assert_eq!(para_id, 3395);
+		}
+
+		#[test]
+		fn ensure_genesis_asset_is_not_created() {
+			let genesis = live_config();
+
+			let assets = genesis["assets"]["assets"].as_array().unwrap();
+			assert!(assets.is_empty());
+		}
+
+		#[test]
+		fn ensure_council_members_are_not_set() {
+			let genesis = live_config();
+
+			let council = genesis["council"]["members"].as_array().unwrap();
+			assert!(council.is_empty());
+		}
 	}
 }
