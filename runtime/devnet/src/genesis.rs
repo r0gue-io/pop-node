@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 
 use cumulus_primitives_core::ParaId;
 use ismp_parachain::ParachainData;
