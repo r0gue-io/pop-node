@@ -109,7 +109,7 @@ fn genesis(
 		"assets": AssetsConfig {
 			// Genesis assets: Vec<(id, owner, is_sufficient, min_balance)>
 			assets: Vec::from([
-				(0, asset_hub_sa_on_pop(), true, EXISTENTIAL_DEPOSIT),	// Relay native asset from Asset Hub
+				(0, asset_hub_sa_on_pop(), false, EXISTENTIAL_DEPOSIT),	// Relay native asset from Asset Hub
 			]),
 			// Genesis metadata: Vec<(id, name, symbol, decimals)>
 			metadata: Vec::from([
