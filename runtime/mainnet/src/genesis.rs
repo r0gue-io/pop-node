@@ -7,7 +7,8 @@ use sp_core::crypto::Ss58Codec;
 use sp_genesis_builder::PresetId;
 
 use crate::{
-	config::governance::SudoAddress, BalancesConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
+	config::{governance::SudoAddress, monetary::ExistentialDeposit},
+	AssetsConfig, BalancesConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// A development chain running on a single node, using the `mainnet` runtime.
@@ -28,6 +29,17 @@ const ENDOWMENT: Balance = 10_000_000 * UNIT;
 
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
+
+/// Struct used to declare assets that will be included at genesis.
+struct GenesisAsset {
+	id: u32,
+	owner: AccountId,
+	is_sufficient: bool,
+	min_balance: Balance,
+	name: Vec<u8>,
+	symbol: Vec<u8>,
+	decimals: u8,
+}
 
 /// Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by `id`.
 pub(crate) fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
@@ -60,6 +72,16 @@ fn development_config() -> Value {
 		dev_accounts(),
 		Keyring::Alice.to_account_id(),
 		PARA_ID,
+		// AssetId reserved for DOT from AH.
+		vec![GenesisAsset {
+			id: 0,
+			owner: asset_hub_sa_on_pop(),
+			is_sufficient: false,
+			min_balance: ExistentialDeposit::get(),
+			name: "DOT".into(),
+			symbol: "DOT".into(),
+			decimals: 10,
+		}],
 	)
 }
 
@@ -79,6 +101,16 @@ fn local_config() -> Value {
 		endowed_accounts,
 		SudoAddress::get(),
 		PARA_ID,
+		// AssetId reserved for DOT from AH.
+		vec![GenesisAsset {
+			id: 0,
+			owner: asset_hub_sa_on_pop(),
+			is_sufficient: false,
+			min_balance: ExistentialDeposit::get(),
+			name: "DOT".into(),
+			symbol: "DOT".into(),
+			decimals: 10,
+		}],
 	)
 }
 
@@ -99,6 +131,7 @@ fn live_config() -> Value {
 		vec![],
 		SudoAddress::get(),
 		PARA_ID,
+		vec![],
 	)
 }
 
@@ -108,14 +141,31 @@ fn genesis(
 	endowed_accounts: Vec<AccountId>,
 	sudo_key: AccountId,
 	id: ParaId,
+	genesis_assets: Vec<GenesisAsset>,
 ) -> Value {
+	// Collect genesis assets.
+	// Genesis assets: Vec<(id, owner, is_sufficient, min_balance)>
+	let mut assets: Vec<(u32, AccountId, bool, Balance)> = Vec::new();
+	// Genesis metadata: Vec<(id, name, symbol, decimals)>
+	let mut assets_metadata: Vec<(u32, Vec<u8>, Vec<u8>, u8)> = Vec::new();
+	genesis_assets.iter().for_each(|asset| {
+		assets.push((asset.id, asset.owner.clone(), asset.is_sufficient, asset.min_balance));
+		assets_metadata.push((asset.id, asset.name.clone(), asset.symbol.clone(), asset.decimals));
+	});
+
 	json!({
+		"assets": AssetsConfig {
+			assets,
+			metadata: assets_metadata,
+			..Default::default()
+		},
 		"balances": BalancesConfig { balances: balances(endowed_accounts) },
-		"parachainInfo": { "parachainId": id },
 		"collatorSelection": {
 			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
 			"candidacyBond": EXISTENTIAL_DEPOSIT * 16,
 		},
+		"parachainInfo": { "parachainId": id },
+		"polkadotXcm": { "safeXcmVersion": Some(SAFE_XCM_VERSION) },
 		"session": {
 			"keys": invulnerables
 				.into_iter()
@@ -123,13 +173,12 @@ fn genesis(
 					(
 						acc.clone(),        // account id
 						acc,               	// validator id
-						SessionKeys { aura },// session keys
+						SessionKeys { aura},// session keys
 					)
 				})
 				.collect::<Vec<_>>(),
 		},
 		"sudo" : { "key" : sudo_key },
-		"polkadotXcm": { "safeXcmVersion": Some(SAFE_XCM_VERSION) },
 	})
 }
 
