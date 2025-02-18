@@ -185,21 +185,21 @@ pub mod mainnet {
 	/// Configures a development chain running on a single node, using the mainnet runtime.
 	pub fn development_chain_spec() -> ChainSpec {
 		const ID: &str = MAINNET_DEV;
-		Runtime::build(ID, "POP (Development)", ChainType::Development, ID, ID, "paseo-local")
+		Runtime::build(ID, "Pop (Development)", ChainType::Development, ID, ID, "paseo-local")
 	}
 
 	/// Configures a local chain running on multiple nodes for testing purposes, using the mainnet
 	/// runtime.
 	pub fn local_chain_spec() -> ChainSpec {
 		const ID: &str = MAINNET_LOCAL;
-		Runtime::build(ID, "POP (Local)", ChainType::Local, ID, ID, "paseo-local")
+		Runtime::build(ID, "Pop (Local)", ChainType::Local, ID, ID, "paseo-local")
 	}
 
 	/// Configures a live chain running on multiple nodes publicly, using the mainnet
 	/// runtime.
 	pub fn live_chain_spec() -> ChainSpec {
 		const ID: &str = MAINNET;
-		Runtime::build(ID, "POP", ChainType::Live, ID, ID, "polkadot")
+		Runtime::build(ID, "Pop", ChainType::Live, ID, ID, "polkadot")
 	}
 
 	#[cfg(test)]
