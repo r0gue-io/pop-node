@@ -86,7 +86,7 @@ fn development_config() -> Value {
 		// AssetId reserved for DOT from AH.
 		vec![GenesisAsset {
 			id: 0,
-			owner: asset_hub_sa_on_pop(),
+			owner: Keyring::Alice.to_account_id(),
 			is_sufficient: false,
 			min_balance: ExistentialDeposit::get(),
 			name: "DOT".into(),
@@ -134,7 +134,7 @@ fn local_config() -> Value {
 		// AssetId reserved for DOT from AH.
 		vec![GenesisAsset {
 			id: 0,
-			owner: asset_hub_sa_on_pop(),
+			owner: SudoAddress::get(),
 			is_sufficient: false,
 			min_balance: ExistentialDeposit::get(),
 			name: "DOT".into(),
@@ -299,6 +299,10 @@ mod tests {
 
 			let sudo_key = genesis["sudo"]["key"].as_str().unwrap();
 			assert_eq!(sudo_key, "5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY");
+			assert_eq!(
+				AccountId::from_ss58check(sudo_key).unwrap(),
+				Keyring::Alice.to_account_id()
+			);
 		}
 
 		#[test]
@@ -329,12 +333,10 @@ mod tests {
 
 			// AssetId is 0.
 			assert_eq!(assets[0].0, 0);
-			// Owner is ah_sa_on_pop
-			assert_eq!(assets[0].1, "5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV");
+			// Owner is SudoAccount
 			assert_eq!(
-				asset_hub_sa_on_pop(),
-				AccountId::from_ss58check("5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV")
-					.unwrap()
+				AccountId::from_ss58check(assets[0].1.as_str()).unwrap(),
+				Keyring::Alice.to_account_id()
 			);
 			// Asset is not sufficient
 			assert_eq!(assets[0].2, false);
@@ -449,12 +451,10 @@ mod tests {
 
 			// AssetId is 0.
 			assert_eq!(assets[0].0, 0);
-			// Owner is ah_sa_on_pop
-			assert_eq!(assets[0].1, "5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV");
+			// Owner is SudoAddress
 			assert_eq!(
-				asset_hub_sa_on_pop(),
-				AccountId::from_ss58check("5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV")
-					.unwrap()
+				AccountId::from_ss58check(assets[0].1.as_str()).unwrap(),
+				SudoAddress::get()
 			);
 			// Asset is not sufficient
 			assert_eq!(assets[0].2, false);
