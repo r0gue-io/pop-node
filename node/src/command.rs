@@ -35,7 +35,7 @@ trait RuntimeResolver {
 fn runtime(id: &str) -> Runtime {
 	if [DEVNET_DEV, DEVNET_LOCAL, DEVNET].contains(&id) {
 		Runtime::Devnet
-	} else if id.starts_with("test") || id.ends_with("testnet") {
+	} else if [TESTNET_DEV, TESTNET_LOCAL, TESTNET].contains(&id) {
 		Runtime::Testnet
 	} else if id.eq("pop") || id.ends_with("mainnet") {
 		Runtime::Mainnet
