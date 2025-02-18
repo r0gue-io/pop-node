@@ -11,7 +11,7 @@ use sp_runtime::DispatchError;
 use versioning::*;
 
 use crate::{
-	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
+	config::assets::{ForeignAssetsInstance, TrustBackedAssetsInstance, TrustBackedNftsInstance},
 	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 
@@ -32,10 +32,13 @@ type DecodesAs<Output, Logger = ()> = pallet_api::extension::DecodesAs<
 pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
-	Fungibles(fungibles::Read<Runtime>),
+	Fungibles(fungibles::Read<Runtime, fungibles::Instance1>),
 	/// Non-fungible token queries.
 	#[codec(index = 151)]
 	NonFungibles(nonfungibles::Read<Runtime>),
+	/// Foreign fungible token queries.
+	#[codec(index = 152)]
+	ForeignFungibles(fungibles::Read<Runtime, fungibles::Instance2>),
 }
 
 impl Readable for RuntimeRead {
@@ -48,6 +51,7 @@ impl Readable for RuntimeRead {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
 			RuntimeRead::NonFungibles(key) => nonfungibles::Pallet::weight(key),
+			RuntimeRead::ForeignFungibles(key) => fungibles::Pallet::weight(key),
 		}
 	}
 
@@ -57,6 +61,8 @@ impl Readable for RuntimeRead {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 			RuntimeRead::NonFungibles(key) =>
 				RuntimeResult::NonFungibles(nonfungibles::Pallet::read(key)),
+			RuntimeRead::ForeignFungibles(key) =>
+				RuntimeResult::ForeignFungibles(fungibles::Pallet::read(key)),
 		}
 	}
 }
@@ -66,9 +72,11 @@ impl Readable for RuntimeRead {
 #[cfg_attr(test, derive(PartialEq, Clone))]
 pub enum RuntimeResult {
 	/// Fungible token read results.
-	Fungibles(fungibles::ReadResult<Runtime>),
+	Fungibles(fungibles::ReadResult<Runtime, fungibles::Instance1>),
 	/// Non-fungible token read results.
 	NonFungibles(nonfungibles::ReadResult<Runtime>),
+	/// Foreign fungible token read results.
+	ForeignFungibles(fungibles::ReadResult<Runtime, fungibles::Instance2>),
 }
 
 impl RuntimeResult {
@@ -77,12 +85,19 @@ impl RuntimeResult {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
 			RuntimeResult::NonFungibles(result) => result.encode(),
+			RuntimeResult::ForeignFungibles(result) => result.encode(),
 		}
 	}
 }
 
-impl fungibles::Config for Runtime {
+impl fungibles::Config<fungibles::Instance1> for Runtime {
 	type AssetsInstance = TrustBackedAssetsInstance;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
+}
+
+impl fungibles::Config<fungibles::Instance2> for Runtime {
+	type AssetsInstance = ForeignAssetsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
@@ -183,7 +198,25 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 				)
 			};
 
-		T::BaseCallFilter::contains(c) && (contain_fungibles | contain_nonfungibles)
+		let contain_foreign_fungibles: bool = {
+			use fungibles::Call::*;
+			matches!(
+				c,
+				RuntimeCall::ForeignFungibles(
+					transfer { .. } |
+						transfer_from { .. } |
+						approve { .. } | increase_allowance { .. } |
+						decrease_allowance { .. } |
+						create { .. } | set_metadata { .. } |
+						start_destroy { .. } |
+						clear_metadata { .. } |
+						mint { .. } | burn { .. }
+				)
+			)
+		};
+
+		T::BaseCallFilter::contains(c) &&
+			(contain_fungibles | contain_nonfungibles | contain_foreign_fungibles)
 	}
 }
 
@@ -216,7 +249,20 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 			)
 		};
 
-		contain_fungibles | contain_nonfungibles
+		let contain_foreign_fungibles: bool = {
+			use fungibles::Read::*;
+			matches!(
+				r,
+				RuntimeRead::ForeignFungibles(
+					TotalSupply(..) |
+						BalanceOf { .. } | Allowance { .. } |
+						TokenName(..) | TokenSymbol(..) |
+						TokenDecimals(..) | TokenExists(..)
+				)
+			)
+		};
+
+		contain_fungibles | contain_nonfungibles | contain_foreign_fungibles
 	}
 }
 
