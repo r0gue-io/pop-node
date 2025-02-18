@@ -481,9 +481,9 @@ impl pallet_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	// should be a multiple of session or things will get inconsistent
 	type KickThreshold = Period;
-	type MaxCandidates = ConstU32<100>;
+	type MaxCandidates = ConstU32<0>;
 	type MaxInvulnerables = ConstU32<20>;
-	type MinEligibleCollators = ConstU32<4>;
+	type MinEligibleCollators = ConstU32<3>;
 	type PotId = PotId;
 	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = CollatorSelectionUpdateOrigin;
