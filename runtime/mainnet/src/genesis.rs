@@ -13,7 +13,7 @@ use crate::{
 		governance::SudoAddress,
 		monetary::{ExistentialDeposit, MaintenanceAccount, TreasuryAccount},
 	},
-	AssetsConfig, BalancesConfig, CouncilConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
+	AssetsConfig, BalancesConfig, CouncilConfig, Runtime, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// A development chain running on a single node, using the `mainnet` runtime.
@@ -69,7 +69,6 @@ pub(crate) fn presets() -> Vec<PresetId> {
 /// Configures a development chain running on a single node, using the `mainnet` runtime.
 fn development_config() -> Value {
 	let mut endowed_accounts = dev_accounts();
-	endowed_accounts.push(asset_hub_sa_on_pop());
 	endowed_accounts.push(MaintenanceAccount::get());
 	endowed_accounts.push(PotId::get().into_account_truncating());
 	endowed_accounts.push(TreasuryAccount::get());
@@ -106,16 +105,7 @@ fn development_config() -> Value {
 /// Configures a local chain running on multiple nodes for testing purposes, using the `mainnet`
 /// runtime.
 fn local_config() -> Value {
-	let council_members = vec![
-		AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z").unwrap(),
-		AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg").unwrap(),
-		AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4").unwrap(),
-		AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz").unwrap(),
-		AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4").unwrap(),
-	];
 	let mut endowed_accounts = dev_accounts();
-	endowed_accounts.push(asset_hub_sa_on_pop());
-	endowed_accounts.extend(council_members.clone());
 	endowed_accounts.push(MaintenanceAccount::get());
 	endowed_accounts.push(PotId::get().into_account_truncating());
 	endowed_accounts.push(SudoAddress::get());
@@ -129,7 +119,16 @@ fn local_config() -> Value {
 			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
 		]),
 		endowed_accounts,
-		SudoAddress::get(),
+		// Like the multisig used for live config, but with dev accounts.
+		derive_multisig::<Runtime>(
+			vec![
+				Keyring::Alice.to_account_id(),
+				Keyring::Bob.to_account_id(),
+				Keyring::Charlie.to_account_id(),
+				Keyring::Dave.to_account_id(),
+			],
+			2,
+		),
 		PARA_ID,
 		// AssetId reserved for DOT from AH.
 		vec![GenesisAsset {
@@ -141,7 +140,13 @@ fn local_config() -> Value {
 			symbol: "DOT".into(),
 			decimals: 10,
 		}],
-		council_members,
+		vec![
+			Keyring::Alice.to_account_id(),
+			Keyring::Bob.to_account_id(),
+			Keyring::Charlie.to_account_id(),
+			Keyring::Dave.to_account_id(),
+			Keyring::Eve.to_account_id(),
+		],
 	)
 }
 
@@ -221,25 +226,13 @@ fn genesis(
 
 // The initial balances at genesis.
 fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
-	let balances = endowed_accounts
-		.iter()
-		.cloned()
-		.map(|k| {
-			if k == asset_hub_sa_on_pop() {
-				// Onboarded DOT needs to be held on AH sa account on pop.
-				(k, ENDOWMENT.saturating_mul(endowed_accounts.len() as Balance))
-			} else {
-				(k, ENDOWMENT)
-			}
-		})
-		.collect::<Vec<_>>();
+	let balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
 	balances
 }
 
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use crate::Runtime;
 
 	#[test]
 	fn ensure_sudo_multisig_account() {
@@ -265,9 +258,33 @@ mod tests {
 		use super::*;
 
 		#[test]
+		fn ensure_initial_collators() {
+			let genesis = development_config();
+
+			let invulnerables = genesis["collatorSelection"]["invulnerables"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|a| a.as_str().unwrap().to_string())
+				.collect::<Vec<_>>();
+			assert!(invulnerables.contains(&Keyring::Alice.to_account_id().to_string()));
+
+			let session_keys = genesis["session"]["keys"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|k| {
+					let key = k.as_array().unwrap();
+					let session_key = key[0].as_str().unwrap().to_string();
+					session_key
+				})
+				.collect::<Vec<_>>();
+			assert!(session_keys.contains(&Keyring::Alice.to_account_id().to_string()));
+		}
+
+		#[test]
 		fn endows_given_accounts() {
 			let mut endowed_accounts = dev_accounts();
-			endowed_accounts.push(asset_hub_sa_on_pop());
 			endowed_accounts.push(MaintenanceAccount::get());
 			endowed_accounts.push(PotId::get().into_account_truncating());
 			endowed_accounts.push(TreasuryAccount::get());
@@ -373,22 +390,36 @@ mod tests {
 		use super::*;
 
 		#[test]
+		fn ensure_initial_collators() {
+			let initial_collators =
+				vec![Keyring::Alice.to_account_id(), Keyring::Bob.to_account_id()];
+
+			let genesis = local_config();
+
+			let invulnerables = genesis["collatorSelection"]["invulnerables"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|a| a.as_str().unwrap().to_string())
+				.collect::<Vec<_>>();
+			assert!(initial_collators.iter().all(|c| invulnerables.contains(&c.to_string())));
+
+			let session_keys = genesis["session"]["keys"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|k| {
+					let key = k.as_array().unwrap();
+					let session_key = key[0].as_str().unwrap().to_string();
+					session_key
+				})
+				.collect::<Vec<_>>();
+			assert!(initial_collators.iter().all(|c| session_keys.contains(&c.to_string())));
+		}
+
+		#[test]
 		fn endows_given_accounts() {
-			let council_members = vec![
-				AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z")
-					.unwrap(),
-				AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg")
-					.unwrap(),
-				AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4")
-					.unwrap(),
-				AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz")
-					.unwrap(),
-				AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4")
-					.unwrap(),
-			];
 			let mut endowed_accounts = dev_accounts();
-			endowed_accounts.push(asset_hub_sa_on_pop());
-			endowed_accounts.extend(council_members.clone());
 			endowed_accounts.push(MaintenanceAccount::get());
 			endowed_accounts.push(PotId::get().into_account_truncating());
 			endowed_accounts.push(SudoAddress::get());
@@ -420,7 +451,18 @@ mod tests {
 			let genesis = local_config();
 
 			let sudo_key = genesis["sudo"]["key"].as_str().unwrap();
-			assert_eq!(AccountId::from_ss58check(sudo_key).unwrap(), SudoAddress::get());
+			assert_eq!(
+				AccountId::from_ss58check(sudo_key).unwrap(),
+				derive_multisig::<Runtime>(
+					vec![
+						Keyring::Alice.to_account_id(),
+						Keyring::Bob.to_account_id(),
+						Keyring::Charlie.to_account_id(),
+						Keyring::Dave.to_account_id(),
+					],
+					2
+				)
+			);
 		}
 
 		#[test]
@@ -465,16 +507,11 @@ mod tests {
 		#[test]
 		fn ensure_council_members() {
 			let council_members = vec![
-				AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z")
-					.unwrap(),
-				AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg")
-					.unwrap(),
-				AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4")
-					.unwrap(),
-				AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz")
-					.unwrap(),
-				AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4")
-					.unwrap(),
+				Keyring::Alice.to_account_id(),
+				Keyring::Bob.to_account_id(),
+				Keyring::Charlie.to_account_id(),
+				Keyring::Dave.to_account_id(),
+				Keyring::Eve.to_account_id(),
 			];
 			let genesis = local_config();
 
@@ -493,6 +530,41 @@ mod tests {
 
 	mod live_config {
 		use super::*;
+
+		#[test]
+		fn ensure_initial_collators() {
+			let initial_collators = vec![(
+				AccountId::from_ss58check("15B6eUkXgoLA3dWruCRYWeBGNC8SCwuqiMtMTM1Zh2auSg3w")
+					.unwrap(),
+				AuraId::from_ss58check("15B6eUkXgoLA3dWruCRYWeBGNC8SCwuqiMtMTM1Zh2auSg3w").unwrap(),
+			)];
+
+			let genesis = live_config();
+
+			let invulnerables = genesis["collatorSelection"]["invulnerables"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|a| a.as_str().unwrap().to_string())
+				.collect::<Vec<_>>();
+			assert!(initial_collators.iter().all(|c| invulnerables.contains(&c.0.to_string())));
+
+			let session_keys = genesis["session"]["keys"]
+				.as_array()
+				.unwrap()
+				.iter()
+				.map(|k| {
+					let key = k.as_array().unwrap();
+					let session_key = key[0].as_str().unwrap().to_string();
+					let aura_key =
+						key[2].as_object().unwrap()["aura"].as_str().unwrap().to_string();
+					(session_key, aura_key)
+				})
+				.collect::<Vec<_>>();
+			assert!(initial_collators
+				.iter()
+				.all(|c| session_keys.contains(&(c.0.to_string(), c.1.to_string()))));
+		}
 
 		#[test]
 		fn endows_given_accounts() {
