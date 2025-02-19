@@ -33,6 +33,7 @@ path = "src/lib.rs"
 
 [features]
 default = [ "std" ]
+foreign_fungibles = [  ]
 fungibles = [  ]
 nonfungibles = [  ]
 std = [
