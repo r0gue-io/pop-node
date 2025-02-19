@@ -27,7 +27,10 @@ pub mod traits;
 #[derive(Debug, PartialEq, Eq, Clone)]
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 pub enum TokenId {
+	#[codec(index = 0)]
 	TrustBacked(u32),
+	#[cfg(feature = "foreign_fungibles")]
+	#[codec(index = 1)]
 	Foreign(xcm::Location),
 }
 
