@@ -29,7 +29,7 @@ const PRESETS: [&str; 3] = [MAINNET_DEV, MAINNET_LOCAL, MAINNET];
 /// The parachain identifier to set in genesis config.
 pub const PARA_ID: ParaId = ParaId::new(3395);
 
-/// Initial balance for genesis endowed accounts.
+/// Initial balance for genesis endowed accounts; Used for local testing only.
 const ENDOWMENT: Balance = 10_000_000 * UNIT;
 
 /// The default XCM version to set in genesis config.
@@ -105,10 +105,21 @@ fn development_config() -> Value {
 /// Configures a local chain running on multiple nodes for testing purposes, using the `mainnet`
 /// runtime.
 fn local_config() -> Value {
+	// Like the multisig used for live config, but with dev accounts.
+	let sudo_account = derive_multisig::<Runtime>(
+		vec![
+			Keyring::Alice.to_account_id(),
+			Keyring::Bob.to_account_id(),
+			Keyring::Charlie.to_account_id(),
+			Keyring::Dave.to_account_id(),
+		],
+		2,
+	);
+
 	let mut endowed_accounts = dev_accounts();
 	endowed_accounts.push(MaintenanceAccount::get());
 	endowed_accounts.push(PotId::get().into_account_truncating());
-	endowed_accounts.push(SudoAddress::get());
+	endowed_accounts.push(sudo_account.clone());
 	endowed_accounts.push(TreasuryAccount::get());
 
 	genesis(
@@ -119,16 +130,7 @@ fn local_config() -> Value {
 			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
 		]),
 		endowed_accounts,
-		// Like the multisig used for live config, but with dev accounts.
-		derive_multisig::<Runtime>(
-			vec![
-				Keyring::Alice.to_account_id(),
-				Keyring::Bob.to_account_id(),
-				Keyring::Charlie.to_account_id(),
-				Keyring::Dave.to_account_id(),
-			],
-			2,
-		),
+		sudo_account,
 		PARA_ID,
 		// AssetId reserved for DOT from AH.
 		vec![GenesisAsset {
@@ -224,9 +226,21 @@ fn genesis(
 	})
 }
 
-// The initial balances at genesis.
+// The initial balances at genesis; Used for local testing only.
 fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
-	let balances = endowed_accounts.iter().cloned().map(|k| (k, ENDOWMENT)).collect::<Vec<_>>();
+	let balances = endowed_accounts
+		.iter()
+		.cloned()
+		.map(|k| {
+			// Well known keys get an amount equal to `ENDOWMENT`.
+			// Other keys are funded with ED only.
+			if dev_accounts().contains(&k) {
+				(k, ENDOWMENT)
+			} else {
+				(k, ExistentialDeposit::get())
+			}
+		})
+		.collect::<Vec<_>>();
 	balances
 }
 
@@ -419,10 +433,20 @@ mod tests {
 
 		#[test]
 		fn endows_given_accounts() {
+			let sudo_account = derive_multisig::<Runtime>(
+				vec![
+					Keyring::Alice.to_account_id(),
+					Keyring::Bob.to_account_id(),
+					Keyring::Charlie.to_account_id(),
+					Keyring::Dave.to_account_id(),
+				],
+				2,
+			);
+
 			let mut endowed_accounts = dev_accounts();
 			endowed_accounts.push(MaintenanceAccount::get());
 			endowed_accounts.push(PotId::get().into_account_truncating());
-			endowed_accounts.push(SudoAddress::get());
+			endowed_accounts.push(sudo_account);
 			endowed_accounts.push(TreasuryAccount::get());
 
 			let genesis = local_config();
@@ -448,6 +472,20 @@ mod tests {
 
 		#[test]
 		fn ensure_correct_sudo_key() {
+			assert_eq!(
+				"5H9WyMRtMWqkUggSQun4jiDdbzYbsNQhLDH7KooXaihMC7Tp",
+				derive_multisig::<Runtime>(
+					vec![
+						Keyring::Alice.to_account_id(),
+						Keyring::Bob.to_account_id(),
+						Keyring::Charlie.to_account_id(),
+						Keyring::Dave.to_account_id(),
+					],
+					2
+				)
+				.to_ss58check()
+			);
+
 			let genesis = local_config();
 
 			let sudo_key = genesis["sudo"]["key"].as_str().unwrap();
@@ -567,7 +605,7 @@ mod tests {
 		}
 
 		#[test]
-		fn endows_given_accounts() {
+		fn endowed_accounts_are_empty() {
 			let genesis = live_config();
 
 			let balances = genesis["balances"]["balances"].as_array().unwrap();
