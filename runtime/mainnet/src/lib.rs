@@ -7,6 +7,8 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod apis;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarks;
 pub mod config;
 
 /// The genesis state presets available.
@@ -280,21 +282,6 @@ mod runtime {
 	pub type Nfts = pallet_nfts::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]
 	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
-}
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benches {
-	frame_benchmarking::define_benchmarks!(
-		[frame_system, SystemBench::<Runtime>]
-		[pallet_balances, Balances]
-		[pallet_session, SessionBench::<Runtime>]
-		[pallet_timestamp, Timestamp]
-		[pallet_message_queue, MessageQueue]
-		[pallet_sudo, Sudo]
-		[pallet_collator_selection, CollatorSelection]
-		[cumulus_pallet_parachain_system, ParachainSystem]
-		[cumulus_pallet_xcmp_queue, XcmpQueue]
-	);
 }
 
 // We move some impls outside so we can easily use them with `docify`.
