@@ -1,5 +1,5 @@
 // Assets.
-mod assets;
+pub(crate) mod assets;
 // Collation.
 pub(crate) mod collation;
 /// Governance.
