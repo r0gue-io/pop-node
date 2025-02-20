@@ -35,17 +35,6 @@ const ENDOWMENT: Balance = 10_000_000 * UNIT;
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
-/// Struct used to declare assets that will be included at genesis.
-struct GenesisAsset {
-	id: u32,
-	owner: AccountId,
-	is_sufficient: bool,
-	min_balance: Balance,
-	name: Vec<u8>,
-	symbol: Vec<u8>,
-	decimals: u8,
-}
-
 /// Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by `id`.
 pub(crate) fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
 	let patch = match id.as_str() {
@@ -82,16 +71,6 @@ fn development_config() -> Value {
 		endowed_accounts,
 		Keyring::Alice.to_account_id(),
 		PARA_ID,
-		// AssetId reserved for DOT from AH.
-		vec![GenesisAsset {
-			id: 0,
-			owner: Keyring::Alice.to_account_id(),
-			is_sufficient: false,
-			min_balance: ExistentialDeposit::get(),
-			name: "DOT".into(),
-			symbol: "DOT".into(),
-			decimals: 10,
-		}],
 		vec![
 			Keyring::Alice.to_account_id(),
 			Keyring::Bob.to_account_id(),
@@ -132,16 +111,6 @@ fn local_config() -> Value {
 		endowed_accounts,
 		sudo_account,
 		PARA_ID,
-		// AssetId reserved for DOT from AH.
-		vec![GenesisAsset {
-			id: 0,
-			owner: SudoAddress::get(),
-			is_sufficient: false,
-			min_balance: ExistentialDeposit::get(),
-			name: "DOT".into(),
-			symbol: "DOT".into(),
-			decimals: 10,
-		}],
 		vec![
 			Keyring::Alice.to_account_id(),
 			Keyring::Bob.to_account_id(),
@@ -170,7 +139,6 @@ fn live_config() -> Value {
 		SudoAddress::get(),
 		PARA_ID,
 		vec![],
-		vec![],
 	)
 }
 
@@ -180,23 +148,12 @@ fn genesis(
 	endowed_accounts: Vec<AccountId>,
 	sudo_key: AccountId,
 	id: ParaId,
-	genesis_assets: Vec<GenesisAsset>,
 	council_members: Vec<AccountId>,
 ) -> Value {
-	// Collect genesis assets.
-	// Genesis assets: Vec<(id, owner, is_sufficient, min_balance)>
-	let mut assets: Vec<(u32, AccountId, bool, Balance)> = Vec::new();
-	// Genesis metadata: Vec<(id, name, symbol, decimals)>
-	let mut assets_metadata: Vec<(u32, Vec<u8>, Vec<u8>, u8)> = Vec::new();
-	genesis_assets.iter().for_each(|asset| {
-		assets.push((asset.id, asset.owner.clone(), asset.is_sufficient, asset.min_balance));
-		assets_metadata.push((asset.id, asset.name.clone(), asset.symbol.clone(), asset.decimals));
-	});
-
 	json!({
 		"assets": AssetsConfig {
-			assets,
-			metadata: assets_metadata,
+			assets: vec![],
+			metadata: vec![],
 			..Default::default()
 		},
 		"balances": BalancesConfig { balances: balances(endowed_accounts) },
@@ -345,34 +302,11 @@ mod tests {
 		}
 
 		#[test]
-		fn ensure_genesis_asset_is_created() {
+		fn ensure_genesis_assets_are_empty() {
 			let genesis = development_config();
 
-			let assets: Vec<(u64, String, bool, u64)> = genesis["assets"]["assets"]
-				.as_array()
-				.unwrap()
-				.iter()
-				.map(|a| {
-					let asset = a.as_array().unwrap();
-					let id = asset[0].as_u64().unwrap();
-					let owner = asset[1].as_str().unwrap().to_string();
-					let is_sufficient = asset[2].as_bool().unwrap();
-					let min_balance = asset[3].as_u64().unwrap();
-					(id, owner, is_sufficient, min_balance)
-				})
-				.collect();
-
-			// AssetId is 0.
-			assert_eq!(assets[0].0, 0);
-			// Owner is SudoAccount
-			assert_eq!(
-				AccountId::from_ss58check(assets[0].1.as_str()).unwrap(),
-				Keyring::Alice.to_account_id()
-			);
-			// Asset is not sufficient
-			assert_eq!(assets[0].2, false);
-			// Asset's min balance is ExistentialDeposit.
-			assert_eq!(assets[0].3, ExistentialDeposit::get() as u64);
+			let assets = genesis["assets"]["assets"].as_array().unwrap();
+			assert!(assets.is_empty());
 		}
 
 		#[test]
@@ -512,34 +446,11 @@ mod tests {
 		}
 
 		#[test]
-		fn ensure_genesis_asset_is_created() {
+		fn ensure_genesis_assets_are_empty() {
 			let genesis = local_config();
 
-			let assets: Vec<(u64, String, bool, u64)> = genesis["assets"]["assets"]
-				.as_array()
-				.unwrap()
-				.iter()
-				.map(|a| {
-					let asset = a.as_array().unwrap();
-					let id = asset[0].as_u64().unwrap();
-					let owner = asset[1].as_str().unwrap().to_string();
-					let is_sufficient = asset[2].as_bool().unwrap();
-					let min_balance = asset[3].as_u64().unwrap();
-					(id, owner, is_sufficient, min_balance)
-				})
-				.collect();
-
-			// AssetId is 0.
-			assert_eq!(assets[0].0, 0);
-			// Owner is SudoAddress
-			assert_eq!(
-				AccountId::from_ss58check(assets[0].1.as_str()).unwrap(),
-				SudoAddress::get()
-			);
-			// Asset is not sufficient
-			assert_eq!(assets[0].2, false);
-			// Asset's min balance is ExistentialDeposit.
-			assert_eq!(assets[0].3, ExistentialDeposit::get() as u64);
+			let assets = genesis["assets"]["assets"].as_array().unwrap();
+			assert!(assets.is_empty());
 		}
 
 		#[test]
@@ -630,7 +541,7 @@ mod tests {
 		}
 
 		#[test]
-		fn ensure_genesis_asset_is_not_created() {
+		fn ensure_genesis_assets_are_empty() {
 			let genesis = live_config();
 
 			let assets = genesis["assets"]["assets"].as_array().unwrap();
