@@ -20,6 +20,7 @@ validator = true
 
 [[parachains]]
 id = 4001
+chain = "pop-devnet-dev" # pop devnet runtime with development config.
 default_command = "./target/release/pop-node"
 
 [parachains.genesis_overrides.balances]
