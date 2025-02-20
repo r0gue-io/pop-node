@@ -13,7 +13,7 @@ pub const TESTNET_DEV: &str = "pop-testnet-dev";
 /// Configures a local chain running on multiple nodes for testing purposes, using the `testnet`
 /// runtime.
 pub const TESTNET_LOCAL: &str = "pop-testnet-local";
-/// A live chain running on multiple nodes on private testnet, using the `testnet` runtime.
+/// A live chain running on multiple nodes, using the `testnet` runtime.
 pub const TESTNET: &str = "pop-testnet";
 /// The available genesis config presets;
 const PRESETS: [&str; 3] = [TESTNET_DEV, TESTNET_LOCAL, TESTNET];
@@ -73,9 +73,6 @@ fn development_config() -> Value {
 /// Configures a local chain running on multiple nodes for testing purposes, using the `testnet`
 /// runtime.
 fn local_config() -> Value {
-	let mut endowed_accounts = dev_accounts();
-	endowed_accounts.push(sudo_account_id());
-
 	genesis(
 		// Initial collators.
 		Vec::from([
@@ -83,8 +80,8 @@ fn local_config() -> Value {
 			(Keyring::Alice.to_account_id(), Keyring::Alice.public().into()),
 			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
 		]),
-		endowed_accounts,
-		sudo_account_id(),
+		dev_accounts(),
+		Keyring::Alice.to_account_id(),
 		PARA_ID,
 	)
 }
