@@ -116,8 +116,7 @@ pub mod devnet {
 		Runtime::build(ID, "Pop Devnet (Local)", ChainType::Local, ID, ID, "paseo-local")
 	}
 
-	/// Configures a live chain running on multiple nodes on private devnet, using the devnet
-	/// runtime.
+	/// Configures a live chain running on multiple nodes, using the devnet runtime.
 	pub fn live_chain_spec() -> ChainSpec {
 		const ID: &str = DEVNET;
 		Runtime::build(ID, "Pop Devnet", ChainType::Live, ID, ID, "paseo")

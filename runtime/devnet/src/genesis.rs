@@ -15,7 +15,7 @@ pub const DEVNET_DEV: &str = "pop-devnet-dev";
 /// Configures a local chain running on multiple nodes for testing purposes, using the `devnet`
 /// runtime.
 pub const DEVNET_LOCAL: &str = "pop-devnet-local";
-/// A live chain running on multiple nodes on private devnet, using the `devnet` runtime.
+/// A live chain running on multiple nodes, using the `devnet` runtime.
 pub const DEVNET: &str = "pop-devnet";
 /// The available genesis config presets;
 const PRESETS: [&str; 3] = [DEVNET_DEV, DEVNET_LOCAL, DEVNET];
@@ -109,7 +109,7 @@ fn genesis(
 		"assets": AssetsConfig {
 			// Genesis assets: Vec<(id, owner, is_sufficient, min_balance)>
 			assets: Vec::from([
-				(0, asset_hub_sa_on_pop(), false, EXISTENTIAL_DEPOSIT),	// Relay native asset from Asset Hub
+				(0, sudo_key.clone(), false, EXISTENTIAL_DEPOSIT),	// Relay native asset from Asset Hub
 			]),
 			// Genesis metadata: Vec<(id, name, symbol, decimals)>
 			metadata: Vec::from([
