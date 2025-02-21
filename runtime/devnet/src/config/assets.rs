@@ -1,3 +1,4 @@
+use codec::{Decode, Encode};
 use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
@@ -7,11 +8,12 @@ use frame_support::{
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
-use sp_runtime::traits::Verify;
+use sp_runtime::traits::{StaticLookup, Verify};
 
 use crate::{
-	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	deposit, AccountId, AssetManager, Assets, Balance, Balances, BlockNumber, Nfts, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, Vec, Weight, DAYS,
+	EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -144,6 +146,71 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = AssetsStringLimit;
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
+}
+
+pub struct AssetRegistrar;
+use frame_support::{dispatch::GetDispatchInfo, pallet_prelude::DispatchResult, transactional};
+
+impl pallet_asset_manager::AssetRegistrar<Runtime> for AssetRegistrar {
+	fn next_asset_id() -> AssetIdForTrustBackedAssets {
+		pallet_assets::NextAssetId::<Runtime, TrustBackedAssetsInstance>::get().unwrap()
+	}
+
+	#[transactional]
+	fn create_foreign_asset(
+		asset: AssetIdForTrustBackedAssets,
+		min_balance: Balance,
+		metadata: AssetRegistrarMetadata,
+		is_sufficient: bool,
+	) -> DispatchResult {
+		// Create the asset.
+		Assets::force_create(
+			RuntimeOrigin::root(),
+			asset.into(),
+			<Runtime as frame_system::Config>::Lookup::unlookup(AssetManager::account_id()),
+			is_sufficient,
+			min_balance,
+		)?;
+		// Set metadata for created asset.
+		Assets::force_set_metadata(
+			RuntimeOrigin::root(),
+			asset.into(),
+			metadata.name,
+			metadata.symbol,
+			metadata.decimals,
+			metadata.is_frozen,
+		)
+	}
+
+	#[transactional]
+	fn destroy_foreign_asset(asset: AssetIdForTrustBackedAssets) -> DispatchResult {
+		Assets::start_destroy(RuntimeOrigin::root(), asset.into())
+	}
+
+	fn destroy_asset_dispatch_info_weight(asset: AssetIdForTrustBackedAssets) -> Weight {
+		use pallet_assets::WeightInfo;
+		<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::WeightInfo::start_destroy()
+	}
+}
+
+use frame_support::pallet_prelude::TypeInfo;
+#[derive(Clone, Default, Eq, Debug, PartialEq, Ord, PartialOrd, Encode, Decode, TypeInfo)]
+pub struct AssetRegistrarMetadata {
+	pub name: Vec<u8>,
+	pub symbol: Vec<u8>,
+	pub decimals: u8,
+	pub is_frozen: bool,
+}
+
+impl pallet_asset_manager::Config for Runtime {
+	type AssetId = <Self as pallet_assets::Config<TrustBackedAssetsInstance>>::AssetId;
+	type AssetRegistrar = AssetRegistrar;
+	type AssetRegistrarMetadata = AssetRegistrarMetadata;
+	type Balance = Balance;
+	type ForeignAssetModifierOrigin = EnsureRoot<AccountId>;
+	type ForeignAssetType = xcm::v5::Location;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_asset_manager::weights::SubstrateWeight<Runtime>;
 }
 
 #[cfg(test)]

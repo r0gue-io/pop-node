@@ -13811,6 +13811,7 @@ dependencies = [
  "ismp-parachain-runtime-api",
  "log",
  "pallet-api",
+ "pallet-asset-manager",
  "pallet-assets 41.0.0",
  "pallet-aura 38.0.0",
  "pallet-authorship 39.0.0",

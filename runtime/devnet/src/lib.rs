@@ -648,6 +648,8 @@ mod runtime {
 	pub type NftFractionalization = pallet_nft_fractionalization::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]
 	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
+	#[runtime::pallet_index(53)]
+	pub type AssetManager = pallet_asset_manager::Pallet<Runtime>;
 
 	// Pop API
 	#[runtime::pallet_index(150)]
