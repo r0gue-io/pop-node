@@ -14,18 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
-use super::*;
-use crate as pallet_asset_manager;
-use parity_scale_codec::{Decode, Encode};
-
-use frame_support::{construct_runtime, parameter_types, traits::Everything, weights::Weight};
+use codec::{Decode, Encode};
+use frame_support::{
+	construct_runtime, derive_impl, parameter_types, traits::Everything, weights::Weight,
+};
 use frame_system::EnsureRoot;
 use scale_info::TypeInfo;
 use sp_core::{RuntimeDebug, H256};
-use sp_runtime::traits::Hash as THash;
-use sp_runtime::traits::{BlakeTwo256, IdentityLookup};
-use sp_runtime::{BuildStorage, DispatchError};
+use sp_runtime::{
+	traits::{BlakeTwo256, Hash as THash, IdentityLookup},
+	BuildStorage, DispatchError,
+};
 use xcm::v3::prelude::*;
+
+use super::*;
+use crate as pallet_asset_manager;
 
 type Block = frame_system::mocking::MockBlock<Test>;
 
@@ -44,36 +47,38 @@ construct_runtime!(
 parameter_types! {
 	pub const BlockHashCount: u32 = 250;
 }
+
+#[derive_impl(frame_system::config_preludes::TestDefaultConfig as frame_system::DefaultConfig)]
 impl frame_system::Config for Test {
+	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountId = AccountId;
 	type BaseCallFilter = Everything;
-	type BlockWeights = ();
-	type BlockLength = ();
-	type RuntimeOrigin = RuntimeOrigin;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeTask = RuntimeTask;
-	type Nonce = u64;
 	type Block = Block;
+	type BlockHashCount = BlockHashCount;
+	type BlockLength = ();
+	type BlockWeights = ();
+	type DbWeight = ();
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type BlockHashCount = BlockHashCount;
-	type DbWeight = ();
-	type Version = ();
-	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u64>;
-	type OnNewAccount = ();
-	type OnKilledAccount = ();
-	type SystemWeightInfo = ();
-	type SS58Prefix = ();
-	type OnSetCode = ();
 	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	type SingleBlockMigrations = ();
 	type MultiBlockMigrator = ();
-	type PreInherents = ();
+	type Nonce = u64;
+	type OnKilledAccount = ();
+	type OnNewAccount = ();
+	type OnSetCode = ();
+	type PalletInfo = PalletInfo;
 	type PostInherents = ();
 	type PostTransactions = ();
+	type PreInherents = ();
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeTask = RuntimeTask;
+	type SS58Prefix = ();
+	type SingleBlockMigrations = ();
+	type SystemWeightInfo = ();
+	type Version = ();
 }
 
 parameter_types! {
@@ -81,19 +86,20 @@ parameter_types! {
 }
 
 impl pallet_balances::Config for Test {
-	type Balance = Balance;
-	type DustRemoval = ();
-	type RuntimeEvent = RuntimeEvent;
-	type ExistentialDeposit = ExistentialDeposit;
 	type AccountStore = System;
-	type WeightInfo = ();
+	type Balance = Balance;
+	type DoneSlashHandler = ();
+	type DustRemoval = ();
+	type ExistentialDeposit = ExistentialDeposit;
+	type FreezeIdentifier = ();
+	type MaxFreezes = ();
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type RuntimeHoldReason = ();
-	type FreezeIdentifier = ();
-	type MaxFreezes = ();
+	type RuntimeEvent = RuntimeEvent;
 	type RuntimeFreezeReason = ();
+	type RuntimeHoldReason = ();
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -131,7 +137,7 @@ impl From<MockAssetType> for AssetId {
 				let hash: H256 = id.using_encoded(<Test as frame_system::Config>::Hashing::hash);
 				result.copy_from_slice(&hash.as_fixed_bytes()[0..16]);
 				u128::from_le_bytes(result)
-			}
+			},
 		}
 	}
 }
@@ -154,6 +160,10 @@ impl Into<Option<Location>> for MockAssetType {
 pub struct MockAssetPalletRegistrar;
 
 impl AssetRegistrar<Test> for MockAssetPalletRegistrar {
+	fn next_asset_id() -> AssetId {
+		42u128
+	}
+
 	fn create_foreign_asset(
 		_asset: u128,
 		_min_balance: u64,
@@ -173,13 +183,13 @@ impl AssetRegistrar<Test> for MockAssetPalletRegistrar {
 }
 
 impl Config for Test {
-	type RuntimeEvent = RuntimeEvent;
-	type Balance = u64;
 	type AssetId = u128;
-	type AssetRegistrarMetadata = u32;
-	type ForeignAssetType = MockAssetType;
 	type AssetRegistrar = MockAssetPalletRegistrar;
+	type AssetRegistrarMetadata = u32;
+	type Balance = u64;
 	type ForeignAssetModifierOrigin = EnsureRoot<u64>;
+	type ForeignAssetType = MockAssetType;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -200,11 +210,9 @@ impl ExtBuilder {
 			.build_storage()
 			.expect("Frame system builds valid default genesis config");
 
-		pallet_balances::GenesisConfig::<Test> {
-			balances: self.balances,
-		}
-		.assimilate_storage(&mut t)
-		.expect("Pallet balances storage can be assimilated");
+		pallet_balances::GenesisConfig::<Test> { balances: self.balances }
+			.assimilate_storage(&mut t)
+			.expect("Pallet balances storage can be assimilated");
 		let mut ext = sp_io::TestExternalities::new(t);
 		ext.execute_with(|| System::set_block_number(1));
 		ext
@@ -215,13 +223,7 @@ pub(crate) fn events() -> Vec<super::Event<Test>> {
 	System::events()
 		.into_iter()
 		.map(|r| r.event)
-		.filter_map(|e| {
-			if let RuntimeEvent::AssetManager(inner) = e {
-				Some(inner)
-			} else {
-				None
-			}
-		})
+		.filter_map(|e| if let RuntimeEvent::AssetManager(inner) = e { Some(inner) } else { None })
 		.collect::<Vec<_>>()
 }
 

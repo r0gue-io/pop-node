@@ -15,10 +15,10 @@
 // along with Moonbeam.  If not, see <http://www.gnu.org/licenses/>.
 
 // Tests for AssetManager Pallet
-use crate::*;
+use frame_support::{assert_noop, assert_ok};
 use mock::*;
 
-use frame_support::{assert_noop, assert_ok};
+use crate::*;
 
 #[test]
 fn registering_foreign_works() {
@@ -31,16 +31,10 @@ fn registering_foreign_works() {
 			true
 		));
 
-		assert_eq!(
-			AssetManager::asset_id_type(1).unwrap(),
-			MockAssetType::MockAsset(1)
-		);
-		assert_eq!(
-			AssetManager::asset_type_id(MockAssetType::MockAsset(1)).unwrap(),
-			1
-		);
+		assert_eq!(AssetManager::asset_id_type(42).unwrap(), MockAssetType::MockAsset(1));
+		assert_eq!(AssetManager::asset_type_id(MockAssetType::MockAsset(1)).unwrap(), 42);
 		expect_events(vec![crate::Event::ForeignAssetRegistered {
-			asset_id: 1,
+			asset_id: 42,
 			asset: MockAssetType::MockAsset(1),
 			metadata: 0u32,
 		}])
@@ -58,10 +52,7 @@ fn test_asset_exists_error() {
 			true
 		));
 
-		assert_eq!(
-			AssetManager::asset_id_type(1).unwrap(),
-			MockAssetType::MockAsset(1)
-		);
+		assert_eq!(AssetManager::asset_id_type(42).unwrap(), MockAssetType::MockAsset(1));
 		assert_noop!(
 			AssetManager::register_foreign_asset(
 				RuntimeOrigin::root(),
@@ -114,32 +105,26 @@ fn test_root_can_change_asset_id_type() {
 
 		assert_ok!(AssetManager::change_existing_asset_type(
 			RuntimeOrigin::root(),
-			1,
+			42,
 			MockAssetType::MockAsset(2),
 			1
 		));
 
 		// New associations are established
-		assert_eq!(
-			AssetManager::asset_id_type(1).unwrap(),
-			MockAssetType::MockAsset(2)
-		);
-		assert_eq!(
-			AssetManager::asset_type_id(MockAssetType::MockAsset(2)).unwrap(),
-			1
-		);
+		assert_eq!(AssetManager::asset_id_type(42).unwrap(), MockAssetType::MockAsset(2));
+		assert_eq!(AssetManager::asset_type_id(MockAssetType::MockAsset(2)).unwrap(), 42);
 
 		// Old ones are deleted
 		assert!(AssetManager::asset_type_id(MockAssetType::MockAsset(1)).is_none());
 
 		expect_events(vec![
 			crate::Event::ForeignAssetRegistered {
-				asset_id: 1,
+				asset_id: 42,
 				asset: MockAssetType::MockAsset(1),
 				metadata: 0,
 			},
 			crate::Event::ForeignAssetXcmLocationChanged {
-				asset_id: 1,
+				asset_id: 42,
 				new_asset_type: MockAssetType::MockAsset(2),
 			},
 		])
@@ -172,24 +157,20 @@ fn test_root_can_remove_asset_association() {
 			true
 		));
 
-		assert_ok!(AssetManager::remove_existing_asset_type(
-			RuntimeOrigin::root(),
-			1,
-			1
-		));
+		assert_ok!(AssetManager::remove_existing_asset_type(RuntimeOrigin::root(), 42, 1));
 
 		// Mappings are deleted
 		assert!(AssetManager::asset_type_id(MockAssetType::MockAsset(1)).is_none());
-		assert!(AssetManager::asset_id_type(1).is_none());
+		assert!(AssetManager::asset_id_type(42).is_none());
 
 		expect_events(vec![
 			crate::Event::ForeignAssetRegistered {
-				asset_id: 1,
+				asset_id: 42,
 				asset: MockAssetType::MockAsset(1),
 				metadata: 0,
 			},
 			crate::Event::ForeignAssetRemoved {
-				asset_id: 1,
+				asset_id: 42,
 				asset_type: MockAssetType::MockAsset(1),
 			},
 		])
@@ -207,24 +188,20 @@ fn test_removing_without_asset_units_per_second_does_not_panic() {
 			true
 		));
 
-		assert_ok!(AssetManager::remove_existing_asset_type(
-			RuntimeOrigin::root(),
-			1,
-			0
-		));
+		assert_ok!(AssetManager::remove_existing_asset_type(RuntimeOrigin::root(), 42, 0));
 
 		// Mappings are deleted
 		assert!(AssetManager::asset_type_id(MockAssetType::MockAsset(1)).is_none());
-		assert!(AssetManager::asset_id_type(1).is_none());
+		assert!(AssetManager::asset_id_type(42).is_none());
 
 		expect_events(vec![
 			crate::Event::ForeignAssetRegistered {
-				asset_id: 1,
+				asset_id: 42,
 				asset: MockAssetType::MockAsset(1),
 				metadata: 0,
 			},
 			crate::Event::ForeignAssetRemoved {
-				asset_id: 1,
+				asset_id: 42,
 				asset_type: MockAssetType::MockAsset(1),
 			},
 		])
@@ -242,24 +219,20 @@ fn test_destroy_foreign_asset_also_removes_everything() {
 			true
 		));
 
-		assert_ok!(AssetManager::destroy_foreign_asset(
-			RuntimeOrigin::root(),
-			1,
-			0,
-		));
+		assert_ok!(AssetManager::destroy_foreign_asset(RuntimeOrigin::root(), 42, 0,));
 
 		// Mappings are deleted
 		assert!(AssetManager::asset_type_id(MockAssetType::MockAsset(1)).is_none());
-		assert!(AssetManager::asset_id_type(1).is_none());
+		assert!(AssetManager::asset_id_type(42).is_none());
 
 		expect_events(vec![
 			crate::Event::ForeignAssetRegistered {
-				asset_id: 1,
+				asset_id: 42,
 				asset: MockAssetType::MockAsset(1),
 				metadata: 0,
 			},
 			crate::Event::ForeignAssetDestroyed {
-				asset_id: 1,
+				asset_id: 42,
 				asset_type: MockAssetType::MockAsset(1),
 			},
 		])

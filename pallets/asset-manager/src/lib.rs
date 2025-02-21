@@ -45,16 +45,18 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 pub mod weights;
+mod xcm_primitives;
 
 pub use crate::weights::WeightInfo;
 
 #[pallet]
 pub mod pallet {
-	use super::*;
+	use codec::HasCompact;
 	use frame_support::{pallet_prelude::*, PalletId};
 	use frame_system::pallet_prelude::*;
-	use parity_scale_codec::HasCompact;
 	use sp_runtime::traits::{AccountIdConversion, AtLeast32BitUnsigned};
+
+	use super::*;
 
 	#[pallet::pallet]
 	#[pallet::without_storage_info]
@@ -65,6 +67,7 @@ pub mod pallet {
 
 	// The registrar trait. We need to comply with this
 	pub trait AssetRegistrar<T: Config> {
+		fn next_asset_id() -> T::AssetId;
 		// How to create a foreign asset, meaning an asset whose reserve chain
 		// is not our chain
 		fn create_foreign_asset(
@@ -95,6 +98,7 @@ pub mod pallet {
 		fn get_asset_id(asset_type: T::ForeignAssetType) -> Option<T::AssetId> {
 			AssetTypeId::<T>::get(asset_type)
 		}
+
 		#[cfg(feature = "runtime-benchmarks")]
 		fn set_asset_type_asset_id(asset_type: T::ForeignAssetType, asset_id: T::AssetId) {
 			AssetTypeId::<T>::insert(&asset_type, asset_id);
@@ -114,7 +118,7 @@ pub mod pallet {
 		type AssetRegistrarMetadata: Member + Parameter + Default;
 
 		/// The Foreign Asset Kind.
-		type ForeignAssetType: Parameter + Member + Ord + PartialOrd + Into<Self::AssetId> + Default;
+		type ForeignAssetType: Parameter + Member + Ord + PartialOrd + Default;
 
 		/// The units in which we record balances.
 		type Balance: Member + Parameter + AtLeast32BitUnsigned + Default + Copy + MaxEncodedLen;
@@ -155,22 +159,13 @@ pub mod pallet {
 		#[deprecated(note = "Should not be used")]
 		UnitsPerSecondChanged,
 		/// Changed the xcm type mapping for a given asset id
-		ForeignAssetXcmLocationChanged {
-			asset_id: T::AssetId,
-			new_asset_type: T::ForeignAssetType,
-		},
+		ForeignAssetXcmLocationChanged { asset_id: T::AssetId, new_asset_type: T::ForeignAssetType },
 		/// Removed all information related to an assetId
-		ForeignAssetRemoved {
-			asset_id: T::AssetId,
-			asset_type: T::ForeignAssetType,
-		},
+		ForeignAssetRemoved { asset_id: T::AssetId, asset_type: T::ForeignAssetType },
 		/// Supported asset type for fee payment removed
 		SupportedAssetRemoved { asset_type: T::ForeignAssetType },
 		/// Removed all information related to an assetId and destroyed asset
-		ForeignAssetDestroyed {
-			asset_id: T::AssetId,
-			asset_type: T::ForeignAssetType,
-		},
+		ForeignAssetDestroyed { asset_id: T::AssetId, asset_type: T::ForeignAssetType },
 		/// Removed all information related to an assetId and destroyed asset
 		LocalAssetDestroyed { asset_id: T::AssetId },
 	}
@@ -205,14 +200,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::ForeignAssetModifierOrigin::ensure_origin(origin)?;
 
-			// Compute assetId from asset
-			let asset_id: T::AssetId = asset.clone().into();
-
+			let asset_id = T::AssetRegistrar::next_asset_id();
 			// Ensure such an assetId does not exist
-			ensure!(
-				AssetIdType::<T>::get(&asset_id).is_none(),
-				Error::<T>::AssetAlreadyExists
-			);
+			ensure!(AssetIdType::<T>::get(&asset_id).is_none(), Error::<T>::AssetAlreadyExists);
 			T::AssetRegistrar::create_foreign_asset(
 				asset_id,
 				min_amount,
@@ -225,11 +215,7 @@ pub mod pallet {
 			AssetIdType::<T>::insert(&asset_id, &asset);
 			AssetTypeId::<T>::insert(&asset, &asset_id);
 
-			Self::deposit_event(Event::ForeignAssetRegistered {
-				asset_id,
-				asset,
-				metadata,
-			});
+			Self::deposit_event(Event::ForeignAssetRegistered { asset_id, asset, metadata });
 			Ok(())
 		}
 
@@ -256,10 +242,7 @@ pub mod pallet {
 			// Remove previous asset type info
 			AssetTypeId::<T>::remove(&previous_asset_type);
 
-			Self::deposit_event(Event::ForeignAssetXcmLocationChanged {
-				asset_id,
-				new_asset_type,
-			});
+			Self::deposit_event(Event::ForeignAssetXcmLocationChanged { asset_id, new_asset_type });
 			Ok(())
 		}
 
@@ -281,10 +264,7 @@ pub mod pallet {
 			// Remove from AssetTypeId
 			AssetTypeId::<T>::remove(&asset_type);
 
-			Self::deposit_event(Event::ForeignAssetRemoved {
-				asset_id,
-				asset_type,
-			});
+			Self::deposit_event(Event::ForeignAssetRemoved { asset_id, asset_type });
 			Ok(())
 		}
 
@@ -318,10 +298,7 @@ pub mod pallet {
 			// Remove from AssetTypeId
 			AssetTypeId::<T>::remove(&asset_type);
 
-			Self::deposit_event(Event::ForeignAssetDestroyed {
-				asset_id,
-				asset_type,
-			});
+			Self::deposit_event(Event::ForeignAssetDestroyed { asset_id, asset_type });
 			Ok(())
 		}
 	}
