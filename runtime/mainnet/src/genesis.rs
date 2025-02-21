@@ -29,7 +29,7 @@ const PRESETS: [&str; 3] = [MAINNET_DEV, MAINNET_LOCAL, MAINNET];
 /// The parachain identifier to set in genesis config.
 pub const PARA_ID: ParaId = ParaId::new(3395);
 
-/// Initial balance for genesis endowed accounts; Used for local testing only.
+/// Initial balance for genesis endowed accounts. Used for local testing only.
 const ENDOWMENT: Balance = 10_000_000 * UNIT;
 
 /// The default XCM version to set in genesis config.
