@@ -183,7 +183,7 @@ fn genesis(
 	})
 }
 
-// The initial balances at genesis; Used for local testing only.
+// The initial balances at genesis. Used for local testing only.
 fn balances(endowed_accounts: Vec<AccountId>) -> Vec<(AccountId, Balance)> {
 	let balances = endowed_accounts
 		.iter()
