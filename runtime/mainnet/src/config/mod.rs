@@ -1,7 +1,7 @@
 // Assets.
 mod assets;
 // Collation.
-mod collation;
+pub(crate) mod collation;
 /// Governance.
 pub mod governance;
 /// Monetary matters.
