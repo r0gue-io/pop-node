@@ -134,7 +134,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
-	type CallbackHandle = ();
+	type CallbackHandle = pallet_assets::AutoIncAssetId<Runtime, TrustBackedNftsInstance>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
 	type Extra = ();
@@ -163,15 +163,19 @@ impl pallet_asset_manager::AssetRegistrar<Runtime> for AssetRegistrar {
 		metadata: AssetRegistrarMetadata,
 		is_sufficient: bool,
 	) -> DispatchResult {
-		// Create the asset.
+		// Create the asset. Unlike `create`, no funds are reserved.
 		Assets::force_create(
 			RuntimeOrigin::root(),
 			asset.into(),
+			// Asset manager pallet is the owner of the asset. This means changes to the asset can
+			// only be made through this pallet.
 			<Runtime as frame_system::Config>::Lookup::unlookup(AssetManager::account_id()),
 			is_sufficient,
 			min_balance,
 		)?;
-		// Set metadata for created asset.
+		// Set metadata for created asset. Deposit is left alone, meaning that also no deposit will
+		// be taken unless metadata was already set for this asset which in this case wouldn't be
+		// the case.
 		Assets::force_set_metadata(
 			RuntimeOrigin::root(),
 			asset.into(),
@@ -215,9 +219,81 @@ impl pallet_asset_manager::Config for Runtime {
 
 #[cfg(test)]
 mod tests {
-	use frame_support::traits::StorageInfoTrait;
+	use frame_support::{
+		assert_ok,
+		traits::{fungibles::Inspect, StorageInfoTrait},
+	};
+	use sp_keyring::AccountKeyring as Keyring;
+	use sp_runtime::BuildStorage;
 
 	use super::*;
+	use crate::{config::xcm::AssetHub, ExistentialDeposit, System};
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let initial_balance = 100_000_000 * UNIT;
+		let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
+		pallet_balances::GenesisConfig::<Runtime> {
+			balances: vec![(Keyring::Alice.to_account_id(), initial_balance)],
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+		pallet_assets::GenesisConfig::<Runtime, TrustBackedAssetsInstance> {
+			next_asset_id: Some(1),
+			..Default::default()
+		}
+		.assimilate_storage(&mut t)
+		.unwrap();
+		let mut ext = sp_io::TestExternalities::new(t);
+		ext.execute_with(|| System::set_block_number(1));
+		ext
+	}
+
+	#[test]
+	fn test_foreign_asset_creation() {
+		new_test_ext().execute_with(|| {
+			let metadata = AssetRegistrarMetadata {
+				name: "DOT".encode(),
+				symbol: "DOT".encode(),
+				decimals: 10,
+				is_frozen: false,
+			};
+			// Obtain the next asset id from pallet assets.
+			let asset_id =
+				pallet_assets::NextAssetId::<Runtime, TrustBackedAssetsInstance>::get().unwrap();
+			// Register a foreign asset in the asset manager pallet.
+			assert_ok!(AssetManager::register_foreign_asset(
+				RuntimeOrigin::root(),
+				xcm::v5::Parent.into(),
+				metadata,
+				ExistentialDeposit::get(),
+				true
+			));
+			// Foreign asset has been created with the next asset id queried.
+			assert!(Assets::asset_exists(asset_id));
+			// Next asset id is incremented for the next foreign asset created.
+			let next_asset_id =
+				pallet_assets::NextAssetId::<Runtime, TrustBackedAssetsInstance>::get().unwrap();
+			assert_eq!(next_asset_id, asset_id + 1);
+			let metadata = AssetRegistrarMetadata {
+				name: "AH".encode(),
+				symbol: "AH".encode(),
+				decimals: 12,
+				is_frozen: false,
+			};
+			assert_ok!(AssetManager::register_foreign_asset(
+				RuntimeOrigin::root(),
+				AssetHub::get(),
+				metadata,
+				ExistentialDeposit::get(),
+				true
+			));
+			assert!(Assets::asset_exists(next_asset_id));
+
+			// There is no way to modify the assets metadata, mint or burn tokens or any other
+			// action with owner privileges because the asset manager pallet is the owner and
+			// doesn't have this functionality.
+		});
+	}
 
 	#[test]
 	fn ensure_account_balance_deposit() {

@@ -13851,6 +13851,7 @@ dependencies = [
  "sp-genesis-builder 0.16.0",
  "sp-inherents 35.0.0",
  "sp-io 39.0.0",
+ "sp-keyring 40.0.0",
  "sp-mmr-primitives 35.0.0",
  "sp-offchain 35.0.0",
  "sp-runtime 40.0.0",
