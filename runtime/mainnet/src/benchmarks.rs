@@ -8,7 +8,6 @@ use xcm::prelude::{
 	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, NetworkId, Parachain,
 	Parent, ParentThen, Response,
 };
-use xcm_builder::MintLocation;
 use xcm_executor::traits::ConvertLocation;
 
 use super::*;
@@ -192,7 +191,7 @@ impl pallet_xcm_benchmarks::generic::Config for Runtime {
 	}
 
 	fn transact_origin_and_runtime_call() -> Result<(Location, RuntimeCall), BenchmarkError> {
-		Ok((AssetHub::get(), frame_system::Call::remark_with_event { remark: vec![] }.into()))
+		Ok((Location::parent(), frame_system::Call::remark_with_event { remark: vec![] }.into()))
 	}
 
 	fn subscribe_origin() -> Result<Location, BenchmarkError> {
