@@ -23,21 +23,6 @@ use xcm::{
 	latest::prelude::AssetId, VersionedAsset, VersionedAssetId, VersionedAssets, VersionedLocation,
 	VersionedXcm,
 };
-use xcm_runtime_apis::{
-	dry_run::{CallDryRunEffects, Error as XcmDryRunApiError, XcmDryRunEffects},
-	fees::Error as XcmPaymentApiError,
-	trusted_query::XcmTrustedQueryResult,
-};
-
-// Local module imports
-use super::{
-	config::{monetary::fee::WeightToFee, system::RuntimeBlockWeights, xcm as xcm_config},
-	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, EventRecord, Executive,
-	ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
-	PolkadotXcm, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin,
-	SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
-};
-
 impl_runtime_apis! {
 
 	impl sp_consensus_aura::AuraApi<Block, AuraId> for Runtime {
@@ -285,7 +270,6 @@ impl_runtime_apis! {
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use frame_system_benchmarking::extensions::Pallet as SystemExtensionsBench;
 
-
 			impl frame_system_benchmarking::Config for Runtime {
 				fn setup_set_code_requirements(code: &Vec<u8>) -> Result<(), BenchmarkError> {
 					ParachainSystem::initialize_for_set_code_benchmark(code.len() as u32);
@@ -301,6 +285,7 @@ impl_runtime_apis! {
 			impl cumulus_pallet_session_benchmarking::Config for Runtime {}
 
 			use frame_support::traits::WhitelistedStorageKeys;
+
 			let whitelist = AllPalletsWithSystem::whitelisted_storage_keys();
 
 			let mut batches = Vec::<BenchmarkBatch>::new();
@@ -505,3 +490,18 @@ impl_runtime_apis! {
 		}
 	}
 }
+
+use xcm_runtime_apis::{
+	dry_run::{CallDryRunEffects, Error as XcmDryRunApiError, XcmDryRunEffects},
+	fees::Error as XcmPaymentApiError,
+	trusted_query::XcmTrustedQueryResult,
+};
+
+// Local module imports
+use super::{
+	config::{monetary::fee::WeightToFee, system::RuntimeBlockWeights, xcm as xcm_config},
+	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, EventRecord, Executive,
+	ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
+	PolkadotXcm, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin,
+	SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
+};

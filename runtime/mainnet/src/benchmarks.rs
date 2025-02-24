@@ -1,9 +1,14 @@
 use alloc::{boxed::Box, vec};
 
 use cumulus_primitives_core::ParaId;
+use frame_benchmarking::BenchmarkError;
 use frame_support::parameter_types;
 pub use pallet_xcm::benchmarking::Pallet as PalletXcmBenchmark;
-use xcm::prelude::{Asset, AssetId, Fungible, Location, Parachain, Parent, ParentThen};
+use xcm::prelude::{
+	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, NetworkId, Parachain,
+	Parent, ParentThen, Response,
+};
+use xcm_builder::MintLocation;
 use xcm_executor::traits::ConvertLocation;
 
 use super::*;
@@ -15,6 +20,11 @@ use crate::{
 	},
 	Runtime,
 };
+
+/// Pallet that serves no other purpose than benchmarking raw XCMs.
+pub type XcmBalances = pallet_xcm_benchmarks::fungible::Pallet<Runtime>;
+/// Pallet that serves no other purpose than benchmarking raw XCMs.
+pub type XcmGeneric = pallet_xcm_benchmarks::generic::Pallet<Runtime>;
 
 frame_benchmarking::define_benchmarks!(
 	// Ordered as per runtime
@@ -41,6 +51,8 @@ frame_benchmarking::define_benchmarks!(
 	// XCM
 	[cumulus_pallet_xcmp_queue, XcmpQueue]
 	[pallet_xcm, PalletXcmBenchmark::<Runtime>]
+	[pallet_xcm_benchmarks::fungible, XcmBalances]
+	[pallet_xcm_benchmarks::generic, XcmGeneric]
 	[pallet_message_queue, MessageQueue]
 	// Contracts
 	[pallet_revive, Revive]
@@ -136,5 +148,98 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 
 	fn get_asset() -> Asset {
 		Asset { id: AssetId(Location::parent()), fun: Fungible(ExistentialDeposit::get()) }
+	}
+}
+
+impl pallet_xcm_benchmarks::Config for Runtime {
+	type AccountIdConverter = LocationToAccountId;
+	type DeliveryHelper = polkadot_runtime_common::xcm_sender::ToParachainDeliveryHelper<
+		XcmConfig,
+		ExistentialDepositAsset,
+		PriceForSiblingDelivery,
+		AssetHubParaId,
+		ParachainSystem,
+	>;
+	type XcmConfig = XcmConfig;
+
+	fn valid_destination() -> Result<Location, BenchmarkError> {
+		Ok(AssetHub::get())
+	}
+
+	fn worst_case_holding(_depositable_count: u32) -> xcm::prelude::Assets {
+		// Pop only allows relay's native asset to be used cross chain for now.
+		vec![Asset { id: AssetId(Location::parent()), fun: Fungible(u128::MAX) }].into()
+	}
+}
+
+impl pallet_xcm_benchmarks::generic::Config for Runtime {
+	type RuntimeCall = RuntimeCall;
+	type TransactAsset = Balances;
+
+	fn worst_case_response() -> (u64, Response) {
+		(0u64, Response::Version(Default::default()))
+	}
+
+	fn worst_case_asset_exchange(
+	) -> Result<(xcm::prelude::Assets, xcm::prelude::Assets), BenchmarkError> {
+		// Pop doesn't support asset exchange for now.
+		Err(BenchmarkError::Skip)
+	}
+
+	fn universal_alias() -> Result<(Location, Junction), BenchmarkError> {
+		// Pop's `UniversalAliases` is configured to `Nothing`.
+		Err(BenchmarkError::Skip)
+	}
+
+	fn transact_origin_and_runtime_call() -> Result<(Location, RuntimeCall), BenchmarkError> {
+		Ok((AssetHub::get(), frame_system::Call::remark_with_event { remark: vec![] }.into()))
+	}
+
+	fn subscribe_origin() -> Result<Location, BenchmarkError> {
+		Ok(Location::parent())
+	}
+
+	fn claimable_asset() -> Result<(Location, Location, xcm::prelude::Assets), BenchmarkError> {
+		let origin = AssetHub::get();
+		let assets: xcm::prelude::Assets = (AssetId(Location::parent()), 1_000 * UNIT).into();
+		let ticket = Location { parents: 0, interior: Here };
+		Ok((origin, ticket, assets))
+	}
+
+	fn fee_asset() -> Result<Asset, BenchmarkError> {
+		Ok(Asset { id: AssetId(Location::parent()), fun: Fungible(1_000_000 * UNIT) })
+	}
+
+	fn unlockable_asset() -> Result<(Location, Location, Asset), BenchmarkError> {
+		// Pop doesn't configure `AssetLocker` yet.
+		Err(BenchmarkError::Skip)
+	}
+
+	fn export_message_origin_and_destination(
+	) -> Result<(Location, NetworkId, InteriorLocation), BenchmarkError> {
+		// Pop doesn't configure `MessageExporter` yet.
+		Err(BenchmarkError::Skip)
+	}
+
+	fn alias_origin() -> Result<(Location, Location), BenchmarkError> {
+		// Pop's `Aliasers` is configured to `Nothing`.
+		Err(BenchmarkError::Skip)
+	}
+}
+
+parameter_types! {
+	pub RelayAsset: Asset = Asset::from((RelayLocation::get(), 1 * UNIT));
+	pub TrustedReserve: Option<(Location, Asset)> = Some((AssetHub::get(), RelayAsset::get()));
+	pub TrustedTeleporter: Option<(Location, Asset)> = None;
+	pub LocalCheckAccount: Option<(AccountId, MintLocation)> = Some((PolkadotXcm::check_account(), MintLocation::NonLocal));
+}
+impl pallet_xcm_benchmarks::fungible::Config for Runtime {
+	type CheckedAccount = LocalCheckAccount;
+	type TransactAsset = Balances;
+	type TrustedReserve = TrustedReserve;
+	type TrustedTeleporter = TrustedTeleporter;
+
+	fn get_asset() -> Asset {
+		Asset { id: AssetId(Location::parent()), fun: Fungible(1 * UNIT) }
 	}
 }
