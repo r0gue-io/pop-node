@@ -15,12 +15,17 @@ targets = [ "x86_64-unknown-linux-gnu" ]
 codec = { workspace = true, features = [ "derive" ] }
 docify.workspace = true
 scale-info = { workspace = true, features = [ "derive" ] }
+serde_json = { features = [ "alloc" ], workspace = true }
 
 # Substrate
 frame-support.workspace = true
+pallet-multisig.workspace = true
+sp-keyring.workspace = true
 sp-runtime.workspace = true
 
+# Cumulus
 parachains-common.workspace = true
+polkadot-parachain-primitives.workspace = true
 polkadot-primitives.workspace = true
 
 [features]
@@ -35,7 +40,9 @@ std = [
 	"codec/std",
 	"frame-support/std",
 	"parachains-common/std",
+	"polkadot-parachain-primitives/std",
 	"polkadot-primitives/std",
 	"scale-info/std",
+	"serde_json/std",
 	"sp-runtime/std",
 ]
