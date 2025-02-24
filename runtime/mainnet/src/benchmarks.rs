@@ -4,13 +4,14 @@ use cumulus_primitives_core::ParaId;
 use frame_support::parameter_types;
 pub use pallet_xcm::benchmarking::Pallet as PalletXcmBenchmark;
 use xcm::prelude::{Asset, AssetId, Fungible, Location, Parachain, Parent, ParentThen};
+use xcm_executor::traits::ConvertLocation;
 
 use super::*;
 use crate::{
 	config::{
 		assets::TrustBackedAssetsInstance,
 		monetary::ExistentialDeposit,
-		xcm::{PriceForSiblingDelivery, RelayLocation, XcmConfig},
+		xcm::{AssetHub, LocationToAccountId, PriceForSiblingDelivery, RelayLocation, XcmConfig},
 	},
 	Runtime,
 };
@@ -90,6 +91,10 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 		let balance = ExistentialDeposit::get() * 10_000;
 		let _ =
 			<Balances as frame_support::traits::Currency<_>>::make_free_balance_be(&who, balance);
+		let ah_on_pop: AccountId = LocationToAccountId::convert_location(&AssetHub::get())?;
+		let _ = <Balances as frame_support::traits::Currency<_>>::make_free_balance_be(
+			&ah_on_pop, balance,
+		);
 
 		// We can do reserve transfers of relay native asset to AH.
 		Some((
