@@ -1,3 +1,8 @@
+use crate::{config::assets::TrustBackedAssetsInstance, Runtime};
+
+/// Instance of `pallet_assets` used for benchmarks of trust backed assets.
+pub type TrustBackedAssets = pallet_assets::Pallet<Runtime, TrustBackedAssetsInstance>;
+
 frame_benchmarking::define_benchmarks!(
 	// Ordered as per runtime
 	// System
@@ -35,6 +40,5 @@ frame_benchmarking::define_benchmarks!(
 	[pallet_utility, Utility]
 	// Assets
 	[pallet_nfts, Nfts]
-	// TODO: Name TrustBackedAssets
-	[pallet_assets, Assets]
+	[pallet_assets, TrustBackedAssets]
 );

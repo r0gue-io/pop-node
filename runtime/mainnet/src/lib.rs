@@ -9,6 +9,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 mod apis;
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarks;
+#[cfg(feature = "runtime-benchmarks")]
+use benchmarks::*;
 pub mod config;
 
 /// The genesis state presets available.
