@@ -256,6 +256,9 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+pub type PriceForSiblingDelivery =
+	ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
 	type ControllerOrigin = EnsureRoot<AccountId>;
@@ -268,8 +271,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	// Limit the number of HRMP channels.
 	// note: https://github.com/polkadot-fellows/runtimes/blob/76d1fa680d00c3e447e40199e7b2250862ad4bfa/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L692C2-L693C90
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
-	type PriceForSiblingDelivery =
-		ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+	type PriceForSiblingDelivery = PriceForSiblingDelivery;
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
 	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Runtime>;
