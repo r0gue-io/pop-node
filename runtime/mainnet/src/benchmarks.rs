@@ -163,7 +163,7 @@ impl pallet_xcm_benchmarks::Config for Runtime {
 	type XcmConfig = XcmConfig;
 
 	fn valid_destination() -> Result<Location, BenchmarkError> {
-		Ok(AssetHub::get())
+		Ok(Location::parent())
 	}
 
 	fn worst_case_holding(_depositable_count: u32) -> xcm::prelude::Assets {
@@ -231,10 +231,9 @@ parameter_types! {
 	pub RelayAsset: Asset = Asset::from((RelayLocation::get(), 1 * UNIT));
 	pub TrustedReserve: Option<(Location, Asset)> = Some((AssetHub::get(), RelayAsset::get()));
 	pub TrustedTeleporter: Option<(Location, Asset)> = None;
-	pub LocalCheckAccount: Option<(AccountId, MintLocation)> = Some((PolkadotXcm::check_account(), MintLocation::NonLocal));
 }
 impl pallet_xcm_benchmarks::fungible::Config for Runtime {
-	type CheckedAccount = LocalCheckAccount;
+	type CheckedAccount = ();
 	type TransactAsset = Balances;
 	type TrustedReserve = TrustedReserve;
 	type TrustedTeleporter = TrustedTeleporter;
