@@ -189,7 +189,7 @@ impl pallet_treasury::ArgumentsFactory<(), AccountId> for BenchmarkHelper {
 		Balances::force_set_balance(
 			crate::RuntimeOrigin::root(),
 			account_id.clone().into(),
-			EXISTENTIAL_DEPOSIT,
+			ExistentialDeposit::get(),
 		)
 		.unwrap();
 		account_id
