@@ -13,7 +13,7 @@ use sc_service::config::{BasePath, PrometheusConfig};
 use sp_runtime::traits::HashingFor;
 
 use crate::{
-	chain_spec::{self, devnet::*, Relay},
+	chain_spec::{self, devnet::*, mainnet::*, testnet::*},
 	cli::{Cli, RelayChainCli, Subcommand},
 	service::new_partial,
 };
@@ -35,9 +35,9 @@ trait RuntimeResolver {
 fn runtime(id: &str) -> Runtime {
 	if [DEVNET_DEV, DEVNET_LOCAL, DEVNET].contains(&id) {
 		Runtime::Devnet
-	} else if id.starts_with("test") || id.ends_with("testnet") {
+	} else if [TESTNET_DEV, TESTNET_LOCAL, TESTNET].contains(&id) {
 		Runtime::Testnet
-	} else if id.eq("pop") || id.ends_with("mainnet") {
+	} else if [MAINNET_DEV, MAINNET_LOCAL, MAINNET].contains(&id) {
 		Runtime::Mainnet
 	} else {
 		log::warn!(
@@ -78,10 +78,13 @@ fn load_spec(id: &str) -> std::result::Result<Box<dyn ChainSpec>, String> {
 		"local" | DEVNET_LOCAL => Box::new(chain_spec::devnet::local_chain_spec()),
 		DEVNET => Box::new(chain_spec::devnet::live_chain_spec()),
 		// Testnet.
-		"test" | "testnet" | "pop-paseo" => Box::new(chain_spec::testnet_chain_spec(Relay::Paseo)),
+		TESTNET_DEV => Box::new(chain_spec::testnet::development_chain_spec()),
+		TESTNET_LOCAL => Box::new(chain_spec::testnet::local_chain_spec()),
+		TESTNET => Box::new(chain_spec::testnet::live_chain_spec()),
 		// Mainnet.
-		"pop" | "mainnet" | "pop-polkadot" | "pop-network" =>
-			Box::new(chain_spec::mainnet_chain_spec(Relay::Polkadot)),
+		MAINNET_DEV => Box::new(chain_spec::mainnet::development_chain_spec()),
+		MAINNET_LOCAL => Box::new(chain_spec::mainnet::local_chain_spec()),
+		MAINNET => Box::new(chain_spec::mainnet::live_chain_spec()),
 		// Path.
 		path => Box::new(chain_spec::ChainSpec::from_json_file(path.into())?),
 	})
