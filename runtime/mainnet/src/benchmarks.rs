@@ -3,16 +3,14 @@ use alloc::{boxed::Box, vec};
 use cumulus_primitives_core::ParaId;
 use frame_support::parameter_types;
 pub use pallet_xcm::benchmarking::Pallet as PalletXcmBenchmark;
-use xcm::prelude::{
-	Asset, AssetId, Fungible, GeneralIndex, Location, PalletInstance, Parachain, Parent, ParentThen,
-};
+use xcm::prelude::{Asset, AssetId, Fungible, Location, Parachain, Parent, ParentThen};
 
 use super::*;
 use crate::{
 	config::{
 		assets::TrustBackedAssetsInstance,
 		monetary::ExistentialDeposit,
-		xcm::{AssetHub, PriceForSiblingDelivery, RelayLocation, XcmConfig},
+		xcm::{PriceForSiblingDelivery, RelayLocation, XcmConfig},
 	},
 	Runtime,
 };
@@ -61,7 +59,7 @@ parameter_types! {
 		RelayLocation::get(),
 		ExistentialDeposit::get()
 	).into());
-	pub const RandomParaId: ParaId = ParaId::new(43211234);
+	pub const AssetHubParaId: ParaId = ParaId::new(1000);
 }
 
 impl pallet_xcm::benchmarking::Config for Runtime {
@@ -70,7 +68,7 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 			XcmConfig,
 			ExistentialDepositAsset,
 			PriceForSiblingDelivery,
-			RandomParaId,
+			AssetHubParaId,
 			ParachainSystem,
 		>,
 	);
@@ -85,57 +83,50 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 	}
 
 	fn reserve_transferable_asset_and_dest() -> Option<(Asset, Location)> {
-		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(RandomParaId::get());
+		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(AssetHubParaId::get());
 
-		// We can do reserve transfers of relay native asset to RandomPara.
+		let who = frame_benchmarking::whitelisted_caller();
+		// Give some multiple of the existential deposit
+		let balance = ExistentialDeposit::get() * 10_000;
+		let _ =
+			<Balances as frame_support::traits::Currency<_>>::make_free_balance_be(&who, balance);
+
+		// We can do reserve transfers of relay native asset to AH.
 		Some((
 			Asset { fun: Fungible(ExistentialDeposit::get()), id: AssetId(Location::from(Parent)) },
-			ParentThen(Parachain(RandomParaId::get().into()).into()).into(),
+			ParentThen(Parachain(1000).into()).into(),
 		))
 	}
 
 	fn set_up_complex_asset_transfer(
 	) -> Option<(xcm::prelude::Assets, u32, Location, Box<dyn FnOnce()>)> {
-		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(RandomParaId::get());
-		// Transfer to RandomPara some local asset (local-reserve-transfer) while paying
-		// fees using teleported native token.
-		// (We don't care that dest doesn't accept incoming unknown local asset)
-		let dest = ParentThen(Parachain(RandomParaId::get().into()).into()).into();
+		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(ParaId::from(
+			AssetHubParaId::get(),
+		));
+		// Pop can only reserve transfer DOT.
+		// This test needs to be adapted as the features grow.
+		let dest = ParentThen(Parachain(ParaId::from(1000).into()).into()).into();
 
 		let fee_amount = ExistentialDeposit::get();
 		let fee_asset: Asset = (Location::parent(), fee_amount).into();
 
 		let who = frame_benchmarking::whitelisted_caller();
 		// Give some multiple of the existential deposit
-		let balance = fee_amount + ExistentialDeposit::get() * 1000;
+		let balance = fee_amount + ExistentialDeposit::get() * 10_000;
 		let _ =
 			<Balances as frame_support::traits::Currency<_>>::make_free_balance_be(&who, balance);
 		// verify initial balance
 		assert_eq!(Balances::free_balance(&who), balance);
 
-		// set up local asset
-		let asset_amount = 10u128;
-		let initial_asset_amount = asset_amount * 10;
-		let (asset_id, ..) = pallet_assets::benchmarking::create_default_minted_asset::<
-			Runtime,
-			pallet_assets::Instance1,
-		>(true, initial_asset_amount);
-		let asset_location =
-			Location::new(0, [PalletInstance(52), GeneralIndex(u32::from(asset_id).into())]);
-		let transfer_asset: Asset = (asset_location, asset_amount).into();
+		let assets: xcm::prelude::Assets = vec![fee_asset.clone()].into();
 
-		let assets: xcm::prelude::Assets = vec![fee_asset.clone(), transfer_asset].into();
-		let fee_index = if assets.get(0).unwrap().eq(&fee_asset) { 0 } else { 1 };
-
-		// verify transferred successfully
+		// Verify transferred successfully
 		let verify = Box::new(move || {
 			// verify native balance after transfer, decreased by transferred fee amount
 			// (plus transport fees)
 			assert!(Balances::free_balance(&who) <= balance - fee_amount);
-			// verify asset balance decreased by exactly transferred amount
-			assert_eq!(Assets::balance(asset_id.into(), &who), initial_asset_amount - asset_amount,);
 		});
-		Some((assets, fee_index as u32, dest, verify))
+		Some((assets, 0, dest, verify))
 	}
 
 	fn get_asset() -> Asset {
