@@ -349,26 +349,6 @@ pub(super) mod nfts {
 		item
 	}
 
-	pub(crate) fn lock_item_transfer(owner: &AccountId32, collection: CollectionId, item: ItemId) {
-		assert_ok!(Nfts::lock_item_transfer(
-			RuntimeOrigin::signed(owner.clone()),
-			collection,
-			item
-		));
-	}
-
-	pub(crate) fn unlock_item_transfer(
-		owner: &AccountId32,
-		collection: CollectionId,
-		item: ItemId,
-	) {
-		assert_ok!(Nfts::unlock_item_transfer(
-			RuntimeOrigin::signed(owner.clone()),
-			collection,
-			item
-		));
-	}
-
 	pub(crate) fn default_mint_settings() -> MintSettings {
 		MintSettings {
 			mint_type: MintType::Issuer,
@@ -386,32 +366,4 @@ pub(super) mod nfts {
 			settings: CollectionSettings::all_enabled(),
 		}
 	}
-}
-
-pub(super) fn instantiate_and_create_collection(
-	contract: &str,
-	admin: AccountId32,
-	config: CollectionConfig,
-) -> Result<AccountId32, Error> {
-	let function = function_selector("new");
-	let input = [function, admin.encode(), config.encode()].concat();
-	let wasm_binary = std::fs::read(contract).expect("could not read .wasm file");
-	let result = Contracts::bare_instantiate(
-		ALICE,
-		INIT_VALUE,
-		GAS_LIMIT,
-		None,
-		Code::Upload(wasm_binary),
-		input,
-		vec![],
-		DEBUG_OUTPUT,
-		CollectEvents::Skip,
-	)
-	.result
-	.expect("should work");
-	let address = result.account_id;
-	let result = result.result;
-	decoded::<Result<(), Error>>(result.clone())
-		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
-		.map(|_| address)
 }

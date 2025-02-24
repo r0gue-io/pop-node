@@ -1,6 +1,6 @@
 use super::*;
 
-/// Get the last event from pallet contracts.
+// Get the last event from pallet contracts.
 pub(super) fn last_contract_event() -> Vec<u8> {
 	let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
 	let contract_events = events
@@ -14,10 +14,10 @@ pub(super) fn last_contract_event() -> Vec<u8> {
 	contract_events.last().unwrap().to_vec()
 }
 
-/// Decodes a byte slice into an `AccountId` as defined in `primitives`.
-///
-/// This is used to resolve type mismatches between the `AccountId` in the integration tests and the
-/// contract environment.
+// Decodes a byte slice into an `AccountId` as defined in `primitives`.
+//
+// This is used to resolve type mismatches between the `AccountId` in the integration tests and the
+// contract environment.
 pub(super) fn account_id_from_slice(s: &[u8; 32]) -> pop_api::primitives::AccountId {
 	pop_api::primitives::AccountId::decode(&mut &s[..]).expect("Should be decoded to AccountId")
 }
