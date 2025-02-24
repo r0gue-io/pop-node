@@ -86,7 +86,7 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(AssetHubParaId::get());
 
 		let who = frame_benchmarking::whitelisted_caller();
-		// Give some multiple of the existential deposit
+		// Give some multiple of the existential deposit.
 		let balance = ExistentialDeposit::get() * 10_000;
 		let _ =
 			<Balances as frame_support::traits::Currency<_>>::make_free_balance_be(&who, balance);
@@ -111,19 +111,19 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 		let fee_asset: Asset = (Location::parent(), fee_amount).into();
 
 		let who = frame_benchmarking::whitelisted_caller();
-		// Give some multiple of the existential deposit
+		// Give some multiple of the existential deposit.
 		let balance = fee_amount + ExistentialDeposit::get() * 10_000;
 		let _ =
 			<Balances as frame_support::traits::Currency<_>>::make_free_balance_be(&who, balance);
-		// verify initial balance
+		// Verify initial balance.
 		assert_eq!(Balances::free_balance(&who), balance);
 
 		let assets: xcm::prelude::Assets = vec![fee_asset.clone()].into();
 
-		// Verify transferred successfully
+		// Verify transferred successfully.
 		let verify = Box::new(move || {
-			// verify native balance after transfer, decreased by transferred fee amount
-			// (plus transport fees)
+			// Verify native balance after transfer, decreased by transferred fee amount
+			// (plus transport fees).
 			assert!(Balances::free_balance(&who) <= balance - fee_amount);
 		});
 		Some((assets, 0, dest, verify))
