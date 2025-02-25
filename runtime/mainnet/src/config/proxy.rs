@@ -4,7 +4,7 @@ use pop_runtime_common::proxy::{MaxPending, MaxProxies, ProxyType};
 
 use crate::{
 	config::assets::TrustBackedAssetsCall, deposit, parameter_types, Balance, Balances,
-	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
+	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent, weights,
 };
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
@@ -115,7 +115,7 @@ impl pallet_proxy::Config for Runtime {
 	type ProxyType = ProxyType;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_proxy::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_proxy::WeightInfo<Self>;
 }
 
 #[cfg(test)]
