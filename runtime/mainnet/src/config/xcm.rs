@@ -72,7 +72,7 @@ impl pallet_message_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ServiceWeight = MessageQueueServiceWeight;
 	type Size = u32;
-	type WeightInfo = pallet_message_queue::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_message_queue::WeightInfo<Runtime>;
 }
 
 /// Type for specifying how a `Location` can be converted into an `AccountId`. This is used
@@ -277,7 +277,7 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type PriceForSiblingDelivery = PriceForSiblingDelivery;
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
 	// Enqueue XCMP messages from siblings for later processing.
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
 }

@@ -48,6 +48,9 @@ pub mod pallet_xcm;
 pub mod pallet_collator_selection;
 pub mod paritydb_weights;
 pub mod rocksdb_weights;
+
+pub mod cumulus_pallet_xcmp_queue;
+pub mod pallet_message_queue;
 pub(crate) mod xcm;
 
 pub use block_weights::constants::BlockExecutionWeight;
