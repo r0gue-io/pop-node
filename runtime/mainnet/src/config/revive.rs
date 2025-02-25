@@ -5,7 +5,7 @@ use frame_support::{
 use frame_system::EnsureSigned;
 
 use crate::{
-	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	deposit, weights, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
 	RuntimeHoldReason, Timestamp, TransactionPayment, UNIT,
 };
 
@@ -46,7 +46,7 @@ impl pallet_revive::Config for Runtime {
 	// Disables access to unsafe host fns such as xcm_send.
 	type UnsafeUnstableInterface = ConstBool<false>;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
-	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_revive::WeightInfo<Self>;
 	type WeightPrice = TransactionPayment;
 	type Xcm = PolkadotXcm;
 }
