@@ -3,8 +3,8 @@ use pallet_nfts_sdk as pallet_nfts;
 use pop_runtime_common::proxy::{MaxPending, MaxProxies, ProxyType};
 
 use crate::{
-	config::assets::TrustBackedAssetsCall, deposit, parameter_types, Balance, Balances,
-	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent, weights,
+	config::assets::TrustBackedAssetsCall, deposit, parameter_types, weights, Balance, Balances,
+	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
 };
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
