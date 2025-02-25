@@ -38,7 +38,7 @@ impl pallet_collator_selection::Config for Runtime {
 	// Should be a multiple of session or things will get inconsistent.
 	type KickThreshold = Period;
 	#[cfg(feature = "runtime-benchmarks")]
-	// If configured to `0`, benchmarks overflows.
+	// If configured to `0`, benchmarks underflows.
 	type MaxCandidates = ConstU32<10>;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	type MaxCandidates = ConstU32<0>;
