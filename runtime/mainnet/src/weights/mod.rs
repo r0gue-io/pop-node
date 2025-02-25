@@ -18,11 +18,11 @@
 //! Expose the auto generated weight files.
 
 pub mod block_weights;
-// pub mod cumulus_pallet_parachain_system;
+pub mod cumulus_pallet_parachain_system;
 // pub mod cumulus_pallet_xcmp_queue;
 pub mod extrinsic_weights;
-// pub mod frame_system;
-// pub mod frame_system_extensions;
+pub mod frame_system;
+pub mod frame_system_extensions;
 pub mod pallet_assets;
 pub mod pallet_balances;
 pub mod pallet_collective;
@@ -36,7 +36,7 @@ pub mod pallet_revive;
 // pub mod pallet_scheduler;
 pub mod pallet_session;
 pub mod pallet_sudo;
-// pub mod pallet_timestamp;
+pub mod pallet_timestamp;
 pub mod pallet_transaction_payment;
 pub mod pallet_treasury;
 // pub mod pallet_utility;
