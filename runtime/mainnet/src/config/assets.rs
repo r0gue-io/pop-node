@@ -9,8 +9,8 @@ use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signa
 use sp_runtime::traits::Verify;
 
 use crate::{
-	config::monetary::ExistentialDeposit, deposit, AccountId, Balance, Balances, BlockNumber,
-	Runtime, RuntimeEvent, DAYS,
+	config::monetary::ExistentialDeposit, deposit, weights, AccountId, Balance, Balances,
+	BlockNumber, Runtime, RuntimeEvent, DAYS,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -53,7 +53,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type RemoveItemsLimit = ConstU32<1000>;
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = AssetsStringLimit;
-	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_assets::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -101,7 +101,7 @@ impl pallet_nfts::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = ConstU32<256>;
 	type ValueLimit = ConstU32<256>;
-	type WeightInfo = pallet_nfts::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_nfts::WeightInfo<Runtime>;
 }
 
 #[cfg(test)]
