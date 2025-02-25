@@ -8,7 +8,7 @@ use sp_core::crypto::Ss58Codec;
 use sp_runtime::traits::{AccountIdConversion, IdentityLookup};
 
 use crate::{
-	parameter_types, AccountId, Balance, Balances, BlockNumber, ConstU32, ConstU8,
+	parameter_types, weights, AccountId, Balance, Balances, BlockNumber, ConstU32, ConstU8,
 	ConstantMultiplier, EnsureRoot, PalletId, ResolveTo, Runtime, RuntimeEvent,
 	RuntimeFreezeReason, RuntimeHoldReason, SlowAdjustingFeeUpdate, System, VariantCountOf, DAYS,
 	EXISTENTIAL_DEPOSIT,
@@ -129,7 +129,7 @@ impl pallet_balances::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeFreezeReason = RuntimeFreezeReason;
 	type RuntimeHoldReason = RuntimeHoldReason;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_balances::WeightInfo<Runtime>;
 }
 
 parameter_types! {
@@ -164,7 +164,7 @@ impl pallet_transaction_payment::Config for Runtime {
 	type OnChargeTransaction = OnChargeTransaction;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_transaction_payment::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_transaction_payment::WeightInfo<Runtime>;
 	type WeightToFee = fee::WeightToFee;
 }
 
@@ -216,7 +216,7 @@ impl pallet_treasury::Config for Runtime {
 	/// Never allow origins except via the proposals process.
 	type SpendOrigin = NeverEnsureOrigin<Balance>;
 	type SpendPeriod = SpendPeriod;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_treasury::WeightInfo<Runtime>;
 }
 
 #[cfg(test)]
