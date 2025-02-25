@@ -21,12 +21,11 @@ use sp_runtime::Vec;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
-	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, ParentIsPreset, RelayChainAsNative,
-	SendXcmFeeToAccount, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
-	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
-	XcmFeeManagerFromComponents,
+	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FrameTransactionalProcessor, FungibleAdapter,
+	IsConcrete, ParentIsPreset, RelayChainAsNative, SendXcmFeeToAccount, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32,
+	SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId, UsingComponents,
+	WeightInfoBounds, WithComputedOrigin, WithUniqueTopic, XcmFeeManagerFromComponents,
 };
 use xcm_executor::XcmExecutor;
 
@@ -38,8 +37,9 @@ use crate::{
 		},
 		system::RuntimeBlockWeights,
 	},
-	AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo, ParachainSystem,
-	Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, XcmpQueue,
+	weights, AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo,
+	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+	XcmpQueue,
 };
 
 parameter_types! {
@@ -207,7 +207,8 @@ impl xcm_executor::Config for XcmConfig {
 	type TransactionalProcessor = FrameTransactionalProcessor;
 	type UniversalAliases = Nothing;
 	type UniversalLocation = UniversalLocation;
-	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+	type Weigher =
+		WeightInfoBounds<weights::xcm::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
 	type XcmRecorder = PolkadotXcm;
 	type XcmSender = XcmRouter;
 }
@@ -240,8 +241,9 @@ impl pallet_xcm::Config for Runtime {
 	type SovereignAccountOf = LocationToAccountId;
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
-	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type WeightInfo = pallet_xcm::TestWeightInfo;
+	type Weigher =
+		WeightInfoBounds<weights::xcm::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
+	type WeightInfo = weights::pallet_xcm::WeightInfo<Runtime>;
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	type XcmReserveTransferFilter = FilterByAssets<Equals<RelayLocation>>;
@@ -750,7 +752,13 @@ mod tests {
 		fn weigher_uses_fixed_wieght_bounds() {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::Weigher>(),
-				TypeId::of::<FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>>(),
+				TypeId::of::<
+					WeightInfoBounds<
+						weights::xcm::PopXcmWeight<RuntimeCall>,
+						RuntimeCall,
+						MaxInstructions,
+					>,
+				>(),
 			);
 		}
 
@@ -886,7 +894,13 @@ mod tests {
 		fn weigher_uses_fixed_weight_bounds() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::Weigher>(),
-				TypeId::of::<FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>>(),
+				TypeId::of::<
+					WeightInfoBounds<
+						weights::xcm::PopXcmWeight<RuntimeCall>,
+						RuntimeCall,
+						MaxInstructions,
+					>,
+				>(),
 			);
 		}
 

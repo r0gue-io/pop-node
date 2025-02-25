@@ -229,7 +229,11 @@ impl pallet_xcm_benchmarks::generic::Config for Runtime {
 parameter_types! {
 	pub RelayAsset: Asset = Asset::from((RelayLocation::get(), 1 * UNIT));
 	pub TrustedReserve: Option<(Location, Asset)> = Some((AssetHub::get(), RelayAsset::get()));
-	pub TrustedTeleporter: Option<(Location, Asset)> = None;
+	// We don't set any trusted teleporters in our XCM config, but we need this for the benchmarks.
+	pub TrustedTeleporter: Option<(Location, Asset)> = Some((
+					AssetHub::get(),
+					Asset { fun: Fungible(1 * UNIT), id: AssetId(Location::parent()) },
+				));
 }
 impl pallet_xcm_benchmarks::fungible::Config for Runtime {
 	type CheckedAccount = ();
