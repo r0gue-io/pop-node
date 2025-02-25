@@ -37,6 +37,10 @@ impl pallet_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	// Should be a multiple of session or things will get inconsistent.
 	type KickThreshold = Period;
+	#[cfg(feature = "runtime-benchmarks")]
+	// If configured to `0`, benchmarks overflows.
+	type MaxCandidates = ConstU32<10>;
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	type MaxCandidates = ConstU32<0>;
 	type MaxInvulnerables = ConstU32<20>;
 	type MinEligibleCollators = ConstU32<3>;
@@ -46,7 +50,7 @@ impl pallet_collator_selection::Config for Runtime {
 	type ValidatorId = AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ValidatorRegistration = Session;
-	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Runtime>;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
