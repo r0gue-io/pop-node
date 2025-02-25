@@ -17,7 +17,7 @@ trait WeighAssets {
 	fn weigh_assets(&self, weight: Weight) -> Weight;
 }
 
-const MAX_ASSETS: u64 = 100;
+const MAX_ASSETS: u64 = MaxAssetsIntoHolding::get() as u64;
 
 impl WeighAssets for AssetFilter {
 	fn weigh_assets(&self, weight: Weight) -> Weight {
@@ -29,8 +29,7 @@ impl WeighAssets for AssetFilter {
 					WildFungibility::Fungible => weight,
 					// Magic number 2 has to do with the fact that we could have up to 2 times
 					// MaxAssetsIntoHolding in the worst-case scenario.
-					WildFungibility::NonFungible =>
-						weight.saturating_mul((MaxAssetsIntoHolding::get() * 2) as u64),
+					WildFungibility::NonFungible => weight.saturating_mul((MAX_ASSETS * 2) as u64),
 				},
 				AllCounted(count) => weight.saturating_mul(MAX_ASSETS.min(*count as u64)),
 				AllOfCounted { count, .. } => weight.saturating_mul(MAX_ASSETS.min(*count as u64)),
