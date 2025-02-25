@@ -258,6 +258,7 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
 
+/// Means to price the delivery of an XCM to a sibling chain.
 pub type PriceForSiblingDelivery =
 	ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
 
