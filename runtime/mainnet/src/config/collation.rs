@@ -1,8 +1,8 @@
 use pop_runtime_common::{HOURS, SLOT_DURATION};
 
 use crate::{
-	parameter_types, AccountId, Aura, AuraId, Balances, CollatorSelection, ConstBool, ConstU32,
-	ConstU64, EnsureRoot, PalletId, Runtime, RuntimeEvent, Session, SessionKeys,
+	parameter_types, weights, AccountId, Aura, AuraId, Balances, CollatorSelection, ConstBool,
+	ConstU32, ConstU64, EnsureRoot, PalletId, Runtime, RuntimeEvent, Session, SessionKeys,
 };
 
 impl pallet_authorship::Config for Runtime {
@@ -61,7 +61,7 @@ impl pallet_session::Config for Runtime {
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_session::WeightInfo<Runtime>;
 }
 
 #[cfg(test)]
