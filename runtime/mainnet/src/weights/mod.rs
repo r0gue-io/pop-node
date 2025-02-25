@@ -41,6 +41,7 @@ pub mod pallet_transaction_payment;
 pub mod pallet_treasury;
 pub mod pallet_utility;
 // pub mod pallet_xcm;
+pub mod pallet_collator_selection;
 pub mod paritydb_weights;
 pub mod rocksdb_weights;
 
