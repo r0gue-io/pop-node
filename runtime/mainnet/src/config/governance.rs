@@ -10,7 +10,7 @@ use pop_runtime_common::DAYS;
 use sp_core::crypto::Ss58Codec;
 
 use crate::{
-	config::system::RuntimeBlockWeights, AccountId, Runtime, RuntimeCall, RuntimeEvent,
+	config::system::RuntimeBlockWeights, weights, AccountId, Runtime, RuntimeCall, RuntimeEvent,
 	RuntimeOrigin,
 };
 
@@ -54,7 +54,7 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
 impl pallet_motion::Config for Runtime {
@@ -66,13 +66,13 @@ impl pallet_motion::Config for Runtime {
 	type SuperMajorityOrigin = AtLeastThreeFourthsOfCouncil;
 	// A unanimous council vote is needed.
 	type UnanimousOrigin = UnanimousCouncilVote;
-	type WeightInfo = pallet_motion::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_motion::WeightInfo<Runtime>;
 }
 
 impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_sudo::WeightInfo<Runtime>;
 }
 
 #[cfg(test)]
