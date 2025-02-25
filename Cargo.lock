@@ -6570,6 +6570,7 @@ dependencies = [
  "sp-consensus-beefy 23.0.0",
  "sp-consensus-grandpa 22.0.0",
  "sp-core 35.0.0",
+ "sp-keyring 40.0.0",
  "sp-runtime 40.0.0",
  "staging-xcm 15.0.1",
  "staging-xcm-executor 18.0.0",

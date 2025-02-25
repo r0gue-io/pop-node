@@ -9,7 +9,10 @@ pub(crate) use {asset_hub_paseo_runtime as runtime, paseo_runtime_constants as c
 #[cfg(feature = "westend")]
 pub(crate) use {asset_hub_westend_runtime as runtime, westend_runtime_constants as constants};
 
+use super::*;
+
 pub(crate) mod genesis;
+use genesis::*;
 
 // AssetHub Parachain declaration.
 decl_test_parachains! {

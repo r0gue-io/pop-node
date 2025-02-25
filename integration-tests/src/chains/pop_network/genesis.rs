@@ -10,6 +10,7 @@ const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 pub(crate) fn genesis() -> Storage {
 	let genesis_config = runtime::RuntimeGenesisConfig {
 		system: runtime::SystemConfig::default(),
+		assets: runtime::AssetsConfig { next_asset_id: Some(1), ..Default::default() },
 		balances: runtime::BalancesConfig { ..Default::default() },
 		parachain_info: runtime::ParachainInfoConfig {
 			parachain_id: PARA_ID.into(),

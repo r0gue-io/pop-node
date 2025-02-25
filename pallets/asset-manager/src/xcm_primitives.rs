@@ -24,15 +24,13 @@ use xcm_executor::traits::ConvertLocation;
 /// an intermediate generic type AssetType.
 /// The trait bounds enforce is that the AssetTypeGetter trait is also implemented for
 /// AssetIdInfoGetter
-pub struct AsAssetType<AssetId, AssetType, AssetIdInfoGetter>(
-	PhantomData<(AssetId, AssetType, AssetIdInfoGetter)>,
-);
-impl<AssetId, AssetType, AssetIdInfoGetter> MaybeEquivalence<Location, AssetId>
-	for AsAssetType<AssetId, AssetType, AssetIdInfoGetter>
+pub struct AsAssetType<AssetId, AssetIdInfoGetter>(PhantomData<(AssetId, AssetIdInfoGetter)>);
+impl<AssetId, AssetIdInfoGetter> MaybeEquivalence<Location, AssetId>
+	for AsAssetType<AssetId, AssetIdInfoGetter>
 where
 	AssetId: Clone,
-	AssetType: From<Location> + Into<Option<Location>> + Clone,
-	AssetIdInfoGetter: AssetTypeGetter<AssetId, AssetType>,
+	// AssetType: From<Location> + Into<Option<Location>> + Clone,
+	AssetIdInfoGetter: AssetTypeGetter<AssetId, Location>,
 {
 	fn convert(id: &Location) -> Option<AssetId> {
 		AssetIdInfoGetter::get_asset_id(id.clone().into())
@@ -63,12 +61,12 @@ where
 // 	}
 // }
 
-impl<AssetId, AssetType, AssetIdInfoGetter> ConvertLocation<AssetId>
-	for AsAssetType<AssetId, AssetType, AssetIdInfoGetter>
+impl<AssetId, AssetIdInfoGetter> ConvertLocation<AssetId>
+	for AsAssetType<AssetId, AssetIdInfoGetter>
 where
 	AssetId: Clone,
-	AssetType: From<Location> + Into<Option<Location>> + Clone,
-	AssetIdInfoGetter: AssetTypeGetter<AssetId, AssetType>,
+	// AssetType: From<Location> + Into<Option<Location>> + Clone,
+	AssetIdInfoGetter: AssetTypeGetter<AssetId, Location>,
 {
 	fn convert_location(id: &Location) -> Option<AssetId> {
 		let v5_location = xcm_builder::WithLatestLocationConverter::<Location>::convert(id)?;

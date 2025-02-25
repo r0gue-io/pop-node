@@ -2,8 +2,10 @@ use cumulus_primitives_core::relay_chain::Balance;
 use emulated_integration_tests_common::{
 	accounts, build_genesis_storage, collators::invulnerables, SAFE_XCM_VERSION,
 };
+use frame_support::parameter_types;
 use sp_core::storage::Storage;
 
+use super::*;
 use crate::chains::asset_hub::{
 	constants::currency::EXISTENTIAL_DEPOSIT,
 	runtime::{
@@ -14,10 +16,24 @@ use crate::chains::asset_hub::{
 
 pub(crate) const ED: Balance = EXISTENTIAL_DEPOSIT;
 pub(crate) const PARA_ID: u32 = 1000;
+pub(crate) const USDC: u32 = 1337;
+pub(crate) const USDT: u32 = 1984;
+pub(crate) const USD_MIN_BALANCE: Balance = 70_000;
+
+parameter_types! {
+	pub AssetOwner: AccountId = Keyring::Alice.to_account_id();
+}
 
 pub(crate) fn genesis() -> Storage {
 	let genesis_config = RuntimeGenesisConfig {
 		system: SystemConfig::default(),
+		assets: AssetsConfig {
+			assets: vec![
+				// Stablecoins
+				(USDC, AssetOwner::get(), true, USD_MIN_BALANCE),
+				(USDT, AssetOwner::get(), true, USD_MIN_BALANCE),
+			],
+		},
 		balances: BalancesConfig {
 			balances: accounts::init_balances()
 				.iter()

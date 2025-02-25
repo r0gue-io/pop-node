@@ -45,7 +45,7 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 pub mod weights;
-mod xcm_primitives;
+pub mod xcm_primitives;
 
 pub use crate::weights::WeightInfo;
 

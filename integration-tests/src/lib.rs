@@ -3,10 +3,12 @@
 use asset_test_utils::xcm_helpers;
 use chains::{
 	asset_hub::{
-		genesis::ED as ASSET_HUB_ED, runtime::xcm_config::XcmConfig as AssetHubXcmConfig, AssetHub,
-		AssetHubParaPallet,
+		self,
+		genesis::{ED as ASSET_HUB_ED, USDC},
+		runtime::xcm_config::XcmConfig as AssetHubXcmConfig,
+		AssetHub, AssetHubParaPallet,
 	},
-	pop_network::{PopNetwork, PopNetworkParaPallet},
+	pop_network::{genesis, runtime, PopNetwork, PopNetworkParaPallet},
 	relay::{
 		genesis::ED as RELAY_ED, runtime::xcm_config::XcmConfig as RelayXcmConfig, Relay,
 		RelayRelayPallet as RelayPallet,
@@ -196,6 +198,117 @@ fn fund_pop_from_system_para(
 	let mut test = SystemParaToParaTest::new(test_args);
 	test.set_dispatchable::<AssetHubPara>(system_para_to_para_reserve_transfer_assets);
 	test.assert();
+}
+
+/// Asset Hub.
+pub const ASSET_HUB: Junction = Parachain(1000);
+/// Assets on Asset Hub.
+pub const ASSET_HUB_ASSETS: Junction = PalletInstance(50);
+
+#[cfg(feature = "devnet")]
+#[test]
+fn receive_usdc_on_pop() {
+	use codec::Encode;
+	use pop_runtime_devnet::{config::assets::AssetRegistrarMetadata, RuntimeOrigin};
+	init_tracing();
+
+	// Create a foreign asset for usdc on Pop.
+	// ------
+	let usdc = AssetId([ASSET_HUB_ASSETS, GeneralIndex(USDC.into())].into());
+	let metadata = AssetRegistrarMetadata {
+		name: "USDC".encode(),
+		symbol: "USDC".encode(),
+		decimals: 10,
+		is_frozen: false,
+	};
+	PopNetwork::<MockNet>::execute_with(|| {
+		<PopNetwork<MockNet> as PopNetworkParaPallet>::AssetManager::register_foreign_asset(
+			RuntimeOrigin::root(),
+			usdc.clone(),
+			metadata,
+			1,
+			true,
+		)
+	});
+	// Cheating but for now easy.
+	let usdc_pop_asset_id = 1u32;
+	// ------
+
+	// Provide sender on AH with usdc to transfer.
+	// ------
+	let sender = AssetHubSender::get();
+	let usdc_owner = asset_hub::AssetOwner::get();
+	let usdc_owner_signer = <AssetHub as Chain>::RuntimeOrigin::signed(usdc_owner.clone());
+	let usdc_amount_to_send = asset_hub::USD_MIN_BALANCE * 100_000;
+	AssetHub::mint_asset(
+		usdc_owner_signer.clone(),
+		USDC,
+		sender.clone(),
+		usdc_amount_to_send + asset_hub::USD_MIN_BALANCE,
+	);
+	let usdc_asset = (usdc, usdc_amount_to_send).into();
+	// ------
+
+	// Setup test to transfer usdc to receiver.
+	// ------
+	let fee_amount_to_send = runtime::UNIT / 2;
+	let fee_asset = (Parent, fee_amount_to_send).into();
+	let assets: Assets = vec![usdc_asset, fee_asset].into();
+	let destination = AssetHub::sibling_location_of(PopNetwork::para_id());
+	let receiver = PopNetworkParaReceiver::get();
+	let location_usdc = Location::new(1, [ASSET_HUB, ASSET_HUB_ASSETS, GeneralIndex(USDC)]);
+	// Init Test
+	let test_args = TestContext {
+		sender: sender.clone(),
+		receiver: receiver.clone(),
+		args: TestArgs::new_para(
+			destination,
+			receiver.clone(),
+			usdc_amount_to_send,
+			assets,
+			Some(USDC),
+			1,
+		),
+	};
+	let mut test = Test::<AssetHub, PopNetwork>::new(test_args);
+	// ------
+
+	// Query balances before.
+	// ------
+	let sender_usdc_balance_before = AssetHub::execute_with(|| {
+		<<AssetHub as AssetHubPallet>::Assets as Inspect<_>>::balance(USDC, &sender)
+	});
+	let receiver_usdc_balance_before = Para::execute_with(|| {
+		<<PopNetwork as PopNetworkPallet>::Assets as Inspect<_>>::balance(
+			usdc_pop_asset_id,
+			&receiver,
+		)
+	});
+	// ------
+
+	// Set assertions and dispatchables.
+	// ------
+	test.set_assertion::<AssetHub>(asset_hub_to_para_assets_sender_assertions);
+	test.set_assertion::<Para>(asset_hub_to_para_assets_receiver_assertions);
+	test.set_dispatchable::<AssetHub>(asset_hub_to_para_transfer_assets);
+	test.assert();
+	// ------
+
+	// Query balances after.
+	// ------
+	let sender_usdc_balance_after = AssetHub::execute_with(|| {
+		<<AssetHub as AssetHubPallet>::Assets as Inspect<_>>::balance(USDC, &sender)
+	});
+	let receiver_usdc_balance_after = Para::execute_with(|| {
+		<<PopNetwork as PopNetworkPallet>::Assets as Inspect<_>>::balance(
+			usdc_pop_asset_id,
+			&receiver,
+		)
+	});
+	// ------
+
+	assert_eq!(sender_usdc_balance_after, sender_usdc_balance_before - usdc_amount_to_send);
+	assert_eq!(receiver_usdc_balance_after, receiver_usdc_balance_before + usdc_amount_to_send);
 }
 
 /// Reserve Transfers of native asset from Relay to Parachain should work
