@@ -220,7 +220,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, R
 /// queues.
 pub type XcmRouter = WithUniqueTopic<(
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm, PriceForParentDelivery>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 )>;
@@ -260,6 +260,10 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
+
+/// Means to price the delivery of an XCM to the parent chain.
+pub type PriceForParentDelivery =
+	ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, ParachainSystem>;
 
 /// Means to price the delivery of an XCM to a sibling chain.
 pub type PriceForSiblingDelivery =
@@ -1055,6 +1059,45 @@ mod tests {
 				<<Runtime as cumulus_pallet_xcmp_queue::Config>::MaxPageSize as Get<u32>>::get(),
 				103 * 1024
 			);
+		}
+
+		#[test]
+		fn price_for_parent_delivery() {
+			assert_eq!(
+				TypeId::of::<PriceForParentDelivery>(),
+				TypeId::of::<
+					ExponentialPrice<
+						RelayLocation,
+						BaseDeliveryFee,
+						TransactionByteFee,
+						ParachainSystem,
+					>,
+				>()
+			);
+
+			new_test_ext().execute_with(|| {
+				type ExponentialDeliveryPrice = ExponentialPrice<
+					RelayLocation,
+					BaseDeliveryFee,
+					TransactionByteFee,
+					ParachainSystem,
+				>;
+				let b: u128 = BaseDeliveryFee::get();
+				let m: u128 = TransactionByteFee::get();
+
+				// F * (B + msg_length * M)
+				// A: RelayLocation
+				// B: BaseDeliveryFee
+				// M: TransactionByteFee
+				// F: ParachainSystem
+				//
+				// message_length = 1
+				let result: u128 = ParachainSystem::get_fee_factor(()).saturating_mul_int(b + m);
+				assert_eq!(
+					ExponentialDeliveryPrice::price_for_delivery((), &Xcm(vec![])),
+					(RelayLocation::get(), result).into()
+				);
+			})
 		}
 
 		#[test]

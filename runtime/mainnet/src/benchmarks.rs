@@ -15,7 +15,10 @@ use crate::{
 	config::{
 		assets::TrustBackedAssetsInstance,
 		monetary::ExistentialDeposit,
-		xcm::{AssetHub, LocationToAccountId, PriceForSiblingDelivery, RelayLocation, XcmConfig},
+		xcm::{
+			AssetHub, LocationToAccountId, PriceForParentDelivery, PriceForSiblingDelivery,
+			RelayLocation, XcmConfig,
+		},
 	},
 	Runtime,
 };
@@ -74,16 +77,23 @@ parameter_types! {
 	pub const AssetHubParaId: ParaId = ParaId::new(1000);
 }
 
+type DeliveryHelper = (
+	cumulus_primitives_utility::ToParentDeliveryHelper<
+		XcmConfig,
+		ExistentialDepositAsset,
+		PriceForParentDelivery,
+	>,
+	polkadot_runtime_common::xcm_sender::ToParachainDeliveryHelper<
+		XcmConfig,
+		ExistentialDepositAsset,
+		PriceForSiblingDelivery,
+		AssetHubParaId,
+		ParachainSystem,
+	>,
+);
+
 impl pallet_xcm::benchmarking::Config for Runtime {
-	type DeliveryHelper = (
-		polkadot_runtime_common::xcm_sender::ToParachainDeliveryHelper<
-			XcmConfig,
-			ExistentialDepositAsset,
-			PriceForSiblingDelivery,
-			AssetHubParaId,
-			ParachainSystem,
-		>,
-	);
+	type DeliveryHelper = DeliveryHelper;
 
 	fn reachable_dest() -> Option<Location> {
 		Some(Location::parent())
@@ -152,13 +162,7 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 
 impl pallet_xcm_benchmarks::Config for Runtime {
 	type AccountIdConverter = LocationToAccountId;
-	type DeliveryHelper = polkadot_runtime_common::xcm_sender::ToParachainDeliveryHelper<
-		XcmConfig,
-		ExistentialDepositAsset,
-		PriceForSiblingDelivery,
-		AssetHubParaId,
-		ParachainSystem,
-	>;
+	type DeliveryHelper = DeliveryHelper;
 	type XcmConfig = XcmConfig;
 
 	fn valid_destination() -> Result<Location, BenchmarkError> {
@@ -242,6 +246,6 @@ impl pallet_xcm_benchmarks::fungible::Config for Runtime {
 	type TrustedTeleporter = TrustedTeleporter;
 
 	fn get_asset() -> Asset {
-		Asset { id: AssetId(Location::parent()), fun: Fungible(1 * UNIT) }
+		Asset { id: AssetId(Location::parent()), fun: Fungible(10 * UNIT) }
 	}
 }
