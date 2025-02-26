@@ -158,8 +158,14 @@ mod tests {
 
 		#[test]
 		fn candidates_disabled() {
+			#[cfg(feature = "runtime-benchmarks")]
+			assert_eq!(
+				<<Runtime as pallet_collator_selection::Config>::MaxCandidates as Get<u32>>::get(),
+				10
+			);
 			// Disabled to start until sufficient distribution/value to allow candidates to provide
 			// candidacy bond
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			assert_eq!(
 				<<Runtime as pallet_collator_selection::Config>::MaxCandidates as Get<u32>>::get(),
 				0
