@@ -19,6 +19,8 @@ trait WeighAssets {
 
 const MAX_ASSETS: u64 = MaxAssetsIntoHolding::get() as u64;
 
+// Implemented based on:
+// https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/asset-hubs/asset-hub-polkadot/src/weights/xcm/mod.rs
 impl WeighAssets for AssetFilter {
 	fn weigh_assets(&self, weight: Weight) -> Weight {
 		match self {
