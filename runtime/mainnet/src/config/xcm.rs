@@ -246,8 +246,11 @@ impl pallet_xcm::Config for Runtime {
 	type WeightInfo = weights::pallet_xcm::WeightInfo<Runtime>;
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+	// Benchmark `set_up_complex_asset_transfer` should be revisited as more assets are included.
 	type XcmReserveTransferFilter = FilterByAssets<Equals<RelayLocation>>;
 	type XcmRouter = XcmRouter;
+	// Benchmark `set_up_complex_asset_transfer` needs to be updated when asset teleporting is
+	// introduced.
 	type XcmTeleportFilter = Nothing;
 
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
