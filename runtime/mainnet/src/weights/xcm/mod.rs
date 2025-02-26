@@ -31,6 +31,9 @@ impl WeighAssets for AssetFilter {
 					WildFungibility::Fungible => weight,
 					// Magic number 2 has to do with the fact that we could have up to 2 times
 					// MaxAssetsIntoHolding in the worst-case scenario.
+					// As per: https://github.com/paritytech/polkadot-sdk/blob/4a400dc1866f11707331fb6408df1055d0f42a70/polkadot/xcm/xcm-executor/src/lib.rs#L470-L473
+					// Only applicable to `NonFungible` because `AllOf` here means all the assets of
+					// a collection. Whereas for `Fungible` `AllOf` is only one asset.
 					WildFungibility::NonFungible => weight.saturating_mul((MAX_ASSETS * 2) as u64),
 				},
 				AllCounted(count) => weight.saturating_mul(MAX_ASSETS.min(*count as u64)),
