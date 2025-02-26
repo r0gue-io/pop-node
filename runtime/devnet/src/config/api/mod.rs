@@ -36,6 +36,10 @@ pub enum RuntimeRead {
 	/// Non-fungible token queries.
 	#[codec(index = 151)]
 	NonFungibles(nonfungibles::Read<Runtime>),
+	/// Messaging read queries.
+	#[codec(index = 152)]
+	NonFungibles(messaging::Read<Runtime>),
+	
 }
 
 impl Readable for RuntimeRead {
@@ -48,6 +52,8 @@ impl Readable for RuntimeRead {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
 			RuntimeRead::NonFungibles(key) => nonfungibles::Pallet::weight(key),
+			RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
+
 		}
 	}
 
@@ -57,6 +63,7 @@ impl Readable for RuntimeRead {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
 			RuntimeRead::NonFungibles(key) =>
 				RuntimeResult::NonFungibles(nonfungibles::Pallet::read(key)),
+			RuntimeRead::Messaging(key) => RuntimeResult::Messaging(messaging::Pallet::read(key)),
 		}
 	}
 }
@@ -69,6 +76,7 @@ pub enum RuntimeResult {
 	Fungibles(fungibles::ReadResult<Runtime>),
 	/// Non-fungible token read results.
 	NonFungibles(nonfungibles::ReadResult<Runtime>),
+	Messaging(messaging::ReadResult),
 }
 
 impl RuntimeResult {
@@ -91,6 +99,113 @@ impl nonfungibles::Config for Runtime {
 	type NftsInstance = TrustBackedNftsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+}
+
+impl messaging::Config for Runtime {
+	type ByteFee = TransactionByteFee;
+	type Callback = Callback;
+	type Deposit = Balances;
+	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
+	// much as onchain cost.
+	type IsmpByteFee = ();
+	type IsmpDispatcher = Ismp;
+	type MaxContextLen = ConstU32<64>;
+	type MaxDataLen = ConstU32<1024>;
+	type MaxKeyLen = ConstU32<1000>;
+	type MaxKeys = ConstU32<10>;
+	// TODO: size appropriately
+	type MaxRemovals = ConstU32<1024>;
+	// TODO: ensure within the contract buffer bounds
+	type MaxResponseLen = ConstU32<1024>;
+	type OriginConverter = LocalOriginToLocation;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Xcm = QueryHandler;
+	type XcmResponseOrigin = EnsureResponse;
+}
+
+pub struct EnsureResponse;
+impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureResponse {
+	type Success = Location;
+
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			Origin::Response(location) => Ok(location),
+			r => Err(O::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin() -> Result<O, ()> {
+		todo!()
+	}
+}
+
+pub struct CallbackExecutor;
+impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
+	fn execute(account: AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
+		type AddressMapper = <Runtime as pallet_revive::Config>::AddressMapper;
+
+		// Default
+		#[cfg(not(feature = "std"))]
+		let debug = DebugInfo::Skip;
+		#[cfg(not(feature = "std"))]
+		let collect_events = CollectEvents::Skip;
+		// Testing
+		#[cfg(feature = "std")]
+		let debug = DebugInfo::UnsafeDebug;
+		#[cfg(feature = "std")]
+		let collect_events = CollectEvents::UnsafeCollect;
+
+		let mut output = Revive::bare_call(
+			RuntimeOrigin::signed(account.clone()),
+			AddressMapper::to_address(&account),
+			Default::default(),
+			weight,
+			Default::default(),
+			data,
+			debug,
+			collect_events,
+		);
+		log::debug!(target: "pop-api::extension", "callback weight consumed={:?}, weight required={:?}", output.gas_consumed, output.gas_required);
+		if let Ok(return_value) = &output.result {
+			let pallet_revive::ExecReturnValue { flags, data } = return_value;
+			log::debug!(target: "pop-api::extension", "return data={:?}", data);
+			if return_value.did_revert() {
+				output.result = Err(pallet_revive::Error::<Runtime>::ContractReverted.into());
+			}
+		}
+
+		let post_info = PostDispatchInfo {
+			actual_weight: Some(output.gas_consumed.saturating_add(Self::weight())),
+			pays_fee: Default::default(),
+		};
+
+		output
+			.result
+			.map(|_| post_info)
+			.map_err(|e| DispatchErrorWithPostInfo { post_info, error: e })
+	}
+
+	fn weight() -> Weight {
+		todo!("")
+		use pallet_revive::WeightInfo;
+		<Runtime as pallet_revive::Config>::WeightInfo::call()
+	}
+}
+
+
+// TODO!( default implementation where T: PolkadotXcm::Config
+pub struct QueryHandler;
+impl NotifyQueryHandler<Runtime> for QueryHandler {
+	fn new_notify_query(
+		responder: impl Into<Location>,
+		notify: messaging::Call<Runtime>,
+		timeout: BlockNumber,
+		match_querier: impl Into<Location>,
+	) -> u64 {
+		PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
+	}
 }
 
 #[derive(Default)]
