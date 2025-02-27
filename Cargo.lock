@@ -8771,12 +8771,15 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 name = "pallet-api"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "frame-benchmarking 39.0.0",
  "frame-support 39.0.0",
  "frame-system 39.1.0",
+ "ismp",
  "log",
  "pallet-assets 41.0.0",
  "pallet-balances 40.0.0",
+ "pallet-ismp",
  "pallet-nfts 31.0.0",
  "parity-scale-codec",
  "pop-chain-extension",
@@ -8785,6 +8788,7 @@ dependencies = [
  "sp-io 39.0.0",
  "sp-runtime 40.1.0",
  "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=stable2412)",
+ "staging-xcm 15.0.1",
 ]
 
 [[package]]
@@ -13685,6 +13689,7 @@ dependencies = [
  "pallet-nfts-runtime-api 25.0.0",
  "pallet-preimage 39.0.0",
  "pallet-proxy 39.0.0",
+ "pallet-revive",
  "pallet-scheduler 40.0.0",
  "pallet-session 39.0.0",
  "pallet-sudo 39.0.0",
@@ -13713,6 +13718,7 @@ dependencies = [
  "sp-offchain 35.0.0",
  "sp-runtime 40.1.0",
  "sp-session 37.0.0",
+ "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=stable2412)",
  "sp-transaction-pool 35.0.0",
  "sp-version 38.0.0",
  "staging-parachain-info 0.18.0",

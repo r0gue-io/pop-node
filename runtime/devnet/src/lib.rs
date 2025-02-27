@@ -43,7 +43,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::{fungibles, nonfungibles};
+use pallet_api::{fungibles, nonfungibles, messaging};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -654,6 +654,12 @@ mod runtime {
 	pub type Fungibles = fungibles::Pallet<Runtime>;
 	#[runtime::pallet_index(151)]
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(152)]
+	pub type Messaging = messaging::Pallet<Runtime>;
+
+	// Revive
+	#[runtime::pallet_index(255)]
+	pub type Revive = pallet_revive::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

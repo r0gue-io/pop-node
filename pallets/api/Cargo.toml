@@ -25,6 +25,13 @@ pallet-assets.workspace = true
 pallet-nfts.workspace = true
 sp-runtime.workspace = true
 sp-std.workspace = true
+sp-core.workspace = true
+anyhow.workspace = true
+
+# Cross chain
+ismp.workspace = true
+pallet-ismp.workspace = true
+xcm.workspace = true
 
 [dev-dependencies]
 pallet-balances.workspace = true
@@ -47,9 +54,11 @@ std = [
 	"frame-benchmarking/std",
 	"frame-support/std",
 	"frame-system/std",
+	"ismp/std",
 	"log/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
+	"pallet-ismp/std",
 	"pallet-nfts/std",
 	"pop-chain-extension/std",
 	"scale-info/std",

@@ -132,11 +132,11 @@ impl<T> Handler<T> {
 }
 
 impl<T: Config> IsmpModule for Handler<T> {
-	fn on_accept(&self, _request: PostRequest) -> Result<(), Error> {
+	fn on_accept(&self, _request: PostRequest) -> Result<(), anyhow::Error> {
 		todo!()
 	}
 
-	fn on_response(&self, response: Response) -> Result<(), Error> {
+	fn on_response(&self, response: Response) -> Result<(), anyhow::Error> {
 		// Hash request to determine key for message lookup.
 		match response {
 			Response::Get(GetResponse { get, values }) => {
@@ -161,7 +161,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 		}
 	}
 
-	fn on_timeout(&self, timeout: Timeout) -> Result<(), Error> {
+	fn on_timeout(&self, timeout: Timeout) -> Result<(), anyhow::Error> {
 		match timeout {
 			Timeout::Request(request) => {
 				// hash request to determine key for original request id lookup
@@ -222,14 +222,14 @@ fn process_response<T: Config>(
 	encode: &impl Encode,
 	store: impl Fn() -> Vec<u8>,
 	event: impl Fn(AccountIdOf<T>, MessageId) -> Event<T>,
-) -> Result<(), Error> {
+) -> Result<(), anyhow::Error> {
 	let (origin, id) =
 		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
 
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
 		Messages::<T>::get(&origin, &id)
 	else {
-		return Err(Error::Custom("message not found".into()))
+		return Err(Error::Custom("message not found".into()).into())
 	};
 
 	// Attempt callback with result if specified.
