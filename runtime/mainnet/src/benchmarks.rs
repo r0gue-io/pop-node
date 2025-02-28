@@ -68,6 +68,7 @@ frame_benchmarking::define_benchmarks!(
 );
 
 parameter_types! {
+	/// Delivery helpers will deposit this amount to the local origin used in the benchmarks.
 	pub ExistentialDepositAsset: Option<Asset> = Some((
 		RelayLocation::get(),
 		ExistentialDeposit::get()
