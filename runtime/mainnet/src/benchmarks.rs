@@ -5,8 +5,7 @@ use frame_benchmarking::BenchmarkError;
 use frame_support::parameter_types;
 pub use pallet_xcm::benchmarking::Pallet as PalletXcmBenchmark;
 use xcm::prelude::{
-	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, NetworkId, Parachain,
-	Parent, ParentThen, Response,
+	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, NetworkId, Response,
 };
 use xcm_executor::traits::ConvertLocation;
 
@@ -95,7 +94,7 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 	type DeliveryHelper = DeliveryHelper;
 
 	fn reachable_dest() -> Option<Location> {
-		Some(Location::parent())
+		Some(RelayLocation::get())
 	}
 
 	fn teleportable_asset_and_dest() -> Option<(Asset, Location)> {
@@ -118,8 +117,8 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 
 		// We can do reserve transfers of relay native asset to AH.
 		Some((
-			Asset { fun: Fungible(ExistentialDeposit::get()), id: AssetId(Location::from(Parent)) },
-			ParentThen(Parachain(1000).into()).into(),
+			Asset { fun: Fungible(ExistentialDeposit::get()), id: AssetId(RelayLocation::get()) },
+			AssetHub::get(),
 		))
 	}
 
@@ -130,10 +129,10 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 		));
 		// Pop can only reserve transfer DOT.
 		// This test needs to be adapted as the features grow.
-		let dest = ParentThen(Parachain(ParaId::from(1000).into()).into()).into();
+		let dest = AssetHub::get();
 
 		let fee_amount = ExistentialDeposit::get();
-		let fee_asset: Asset = (Location::parent(), fee_amount).into();
+		let fee_asset: Asset = (RelayLocation::get(), fee_amount).into();
 
 		let who = frame_benchmarking::whitelisted_caller();
 		// Give some multiple of the existential deposit.
@@ -155,7 +154,7 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 	}
 
 	fn get_asset() -> Asset {
-		Asset { id: AssetId(Location::parent()), fun: Fungible(ExistentialDeposit::get()) }
+		Asset { id: AssetId(RelayLocation::get()), fun: Fungible(ExistentialDeposit::get()) }
 	}
 }
 
@@ -165,12 +164,12 @@ impl pallet_xcm_benchmarks::Config for Runtime {
 	type XcmConfig = XcmConfig;
 
 	fn valid_destination() -> Result<Location, BenchmarkError> {
-		Ok(Location::parent())
+		Ok(RelayLocation::get())
 	}
 
 	fn worst_case_holding(_depositable_count: u32) -> xcm::prelude::Assets {
 		// Pop only allows relay's native asset to be used cross chain for now.
-		vec![Asset { id: AssetId(Location::parent()), fun: Fungible(u128::MAX) }].into()
+		vec![Asset { id: AssetId(RelayLocation::get()), fun: Fungible(u128::MAX) }].into()
 	}
 }
 
@@ -194,22 +193,22 @@ impl pallet_xcm_benchmarks::generic::Config for Runtime {
 	}
 
 	fn transact_origin_and_runtime_call() -> Result<(Location, RuntimeCall), BenchmarkError> {
-		Ok((Location::parent(), frame_system::Call::remark_with_event { remark: vec![] }.into()))
+		Ok((RelayLocation::get(), frame_system::Call::remark_with_event { remark: vec![] }.into()))
 	}
 
 	fn subscribe_origin() -> Result<Location, BenchmarkError> {
-		Ok(Location::parent())
+		Ok(RelayLocation::get())
 	}
 
 	fn claimable_asset() -> Result<(Location, Location, xcm::prelude::Assets), BenchmarkError> {
 		let origin = AssetHub::get();
-		let assets: xcm::prelude::Assets = (AssetId(Location::parent()), 1_000 * UNIT).into();
+		let assets: xcm::prelude::Assets = (AssetId(RelayLocation::get()), 1_000 * UNIT).into();
 		let ticket = Location { parents: 0, interior: Here };
 		Ok((origin, ticket, assets))
 	}
 
 	fn fee_asset() -> Result<Asset, BenchmarkError> {
-		Ok(Asset { id: AssetId(Location::parent()), fun: Fungible(1_000_000 * UNIT) })
+		Ok(Asset { id: AssetId(RelayLocation::get()), fun: Fungible(1_000_000 * UNIT) })
 	}
 
 	fn unlockable_asset() -> Result<(Location, Location, Asset), BenchmarkError> {
@@ -235,7 +234,7 @@ parameter_types! {
 	// We don't set any trusted teleporters in our XCM config, but we need this for the benchmarks.
 	pub TrustedTeleporter: Option<(Location, Asset)> = Some((
 					AssetHub::get(),
-					Asset { fun: Fungible(1 * UNIT), id: AssetId(Location::parent()) },
+					Asset { fun: Fungible(1 * UNIT), id: AssetId(RelayLocation::get()) },
 				));
 }
 impl pallet_xcm_benchmarks::fungible::Config for Runtime {
@@ -245,6 +244,6 @@ impl pallet_xcm_benchmarks::fungible::Config for Runtime {
 	type TrustedTeleporter = TrustedTeleporter;
 
 	fn get_asset() -> Asset {
-		Asset { id: AssetId(Location::parent()), fun: Fungible(10 * UNIT) }
+		Asset { id: AssetId(RelayLocation::get()), fun: Fungible(10 * UNIT) }
 	}
 }
