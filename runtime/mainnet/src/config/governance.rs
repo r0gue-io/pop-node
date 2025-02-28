@@ -40,6 +40,7 @@ parameter_types! {
 	pub SudoAddress: AccountId = AccountId::from_ss58check(SUDO_ADDRESS).expect("sudo address is valid SS58");
 }
 
+/// Instance of pallet_collective representing Pop's council.
 pub type CouncilCollective = pallet_collective::Instance1;
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Consideration = ();
