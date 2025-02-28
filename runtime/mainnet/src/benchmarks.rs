@@ -5,10 +5,9 @@ use frame_benchmarking::BenchmarkError;
 use frame_support::parameter_types;
 pub use pallet_xcm::benchmarking::Pallet as PalletXcmBenchmark;
 use xcm::prelude::{
-	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, MaybeErrorCode::Success,
-	NetworkId, Response,
+	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, NetworkId, Response,
 };
-use xcm_executor::traits::{ConvertLocation, QueryHandler};
+use xcm_executor::traits::ConvertLocation;
 
 use crate::{
 	config::{
@@ -232,13 +231,12 @@ impl pallet_xcm_benchmarks::generic::Config for Runtime {
 }
 
 parameter_types! {
-	pub RelayAsset: Asset = Asset::from((RelayLocation::get(), 1 * UNIT));
-	pub TrustedReserve: Option<(Location, Asset)> = Some((AssetHub::get(), RelayAsset::get()));
+	pub TrustedReserve: Option<(Location, Asset)> = Some((AssetHub::get(), Asset::from((RelayLocation::get(), UNIT))));
 	// We don't set any trusted teleporters in our XCM config, but we need this for the benchmarks.
 	pub TrustedTeleporter: Option<(Location, Asset)> = Some((
-					AssetHub::get(),
-					Asset { fun: Fungible(1 * UNIT), id: AssetId(RelayLocation::get()) },
-				));
+		AssetHub::get(),
+		Asset::from((RelayLocation::get(), UNIT)),
+	));
 }
 impl pallet_xcm_benchmarks::fungible::Config for Runtime {
 	type CheckedAccount = ();
