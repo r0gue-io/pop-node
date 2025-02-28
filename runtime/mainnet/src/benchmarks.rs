@@ -22,7 +22,7 @@ use crate::{
 	Runtime, *,
 };
 
-/// Pallet that serves no other purpose than benchmarking raw XCMs.
+/// Pallet that benchmarks XCM's `AssetTransactor` trait via `Fungible`.
 pub type XcmBalances = pallet_xcm_benchmarks::fungible::Pallet<Runtime>;
 /// Pallet that serves no other purpose than benchmarking raw XCMs.
 pub type XcmGeneric = pallet_xcm_benchmarks::generic::Pallet<Runtime>;
