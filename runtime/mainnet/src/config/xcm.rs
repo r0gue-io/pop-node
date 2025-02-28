@@ -247,10 +247,12 @@ impl pallet_xcm::Config for Runtime {
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 	// Benchmark `set_up_complex_asset_transfer` should be revisited as more assets are included.
+	// Benchmark `worst_case_holding` should reflect all possible assets that can be transferred.
 	type XcmReserveTransferFilter = FilterByAssets<Equals<RelayLocation>>;
 	type XcmRouter = XcmRouter;
 	// Benchmark `set_up_complex_asset_transfer` needs to be updated when asset teleporting is
 	// introduced.
+	// Benchmark `worst_case_holding` should also be updates consequently.
 	type XcmTeleportFilter = Nothing;
 
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
