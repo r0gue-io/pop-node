@@ -29,6 +29,7 @@ pub mod frame_system;
 pub mod frame_system_extensions;
 pub mod pallet_assets;
 pub mod pallet_balances;
+pub mod pallet_collator_selection;
 pub mod pallet_collective;
 pub mod pallet_message_queue;
 pub mod pallet_motion;
@@ -45,12 +46,8 @@ pub mod pallet_transaction_payment;
 pub mod pallet_treasury;
 pub mod pallet_utility;
 pub mod pallet_xcm;
-pub mod pallet_collator_selection;
 pub mod paritydb_weights;
 pub mod rocksdb_weights;
-
-pub mod cumulus_pallet_xcmp_queue;
-pub mod pallet_message_queue;
 pub(crate) mod xcm;
 
 pub use block_weights::constants::BlockExecutionWeight;

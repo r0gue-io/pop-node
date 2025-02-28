@@ -11,7 +11,6 @@ use xcm_executor::traits::ConvertLocation;
 
 use crate::{
 	config::{
-		assets::TrustBackedAssetsInstance,
 		monetary::ExistentialDeposit,
 		xcm::{
 			AssetHub, LocationToAccountId, PriceForParentDelivery, PriceForSiblingDelivery,
@@ -22,7 +21,7 @@ use crate::{
 };
 
 /// Pallet that benchmarks XCM's `AssetTransactor` trait via `Fungible`.
-pub type XcmBalances = pallet_xcm_benchmarks::fungible::Pallet<Runtime>;
+pub type XcmFungible = pallet_xcm_benchmarks::fungible::Pallet<Runtime>;
 /// Pallet that serves no other purpose than benchmarking raw XCMs.
 pub type XcmGeneric = pallet_xcm_benchmarks::generic::Pallet<Runtime>;
 
@@ -51,7 +50,7 @@ frame_benchmarking::define_benchmarks!(
 	// XCM
 	[cumulus_pallet_xcmp_queue, XcmpQueue]
 	[pallet_xcm, PalletXcmBenchmark::<Runtime>]
-	[pallet_xcm_benchmarks::fungible, XcmBalances]
+	[pallet_xcm_benchmarks::fungible, XcmFungible]
 	[pallet_xcm_benchmarks::generic, XcmGeneric]
 	[pallet_message_queue, MessageQueue]
 	// Contracts
