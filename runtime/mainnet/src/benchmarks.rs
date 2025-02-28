@@ -5,9 +5,10 @@ use frame_benchmarking::BenchmarkError;
 use frame_support::parameter_types;
 pub use pallet_xcm::benchmarking::Pallet as PalletXcmBenchmark;
 use xcm::prelude::{
-	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, NetworkId, Response,
+	Asset, AssetId, Fungible, Here, InteriorLocation, Junction, Location, MaybeErrorCode::Success,
+	NetworkId, Response,
 };
-use xcm_executor::traits::ConvertLocation;
+use xcm_executor::traits::{ConvertLocation, QueryHandler};
 
 use crate::{
 	config::{
@@ -178,7 +179,9 @@ impl pallet_xcm_benchmarks::generic::Config for Runtime {
 	type TransactAsset = Balances;
 
 	fn worst_case_response() -> (u64, Response) {
-		(0u64, Response::Version(Default::default()))
+		let notify = frame_system::Call::remark { remark: vec![] };
+		PolkadotXcm::new_notify_query(Location::here(), notify, 10, Location::here());
+		(0u64, Response::ExecutionResult(None))
 	}
 
 	fn worst_case_asset_exchange(
