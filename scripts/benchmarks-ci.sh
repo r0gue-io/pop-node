@@ -24,7 +24,9 @@ steps=${4:-50}
 repeat=${5:-20}
 
 # Default output directory is the weights folder of the corresponding runtime.
-benchmarkOutput=../runtime/$runtimeType/src/weights
+benchmarkOutput=./runtime/$runtimeType/src/weights
+# Directory with all benchmarking templates.
+benchmarkTemplates="./scripts/templates"
 
 # Load all pallet names in an array.
 pallets=($(
@@ -45,11 +47,11 @@ fi
 for pallet in ${pallets[@]}
 do
 	output_dir=""
-	extra_args="--template=./templates/runtime-weight-template.hbs"
-	# a little hack for pallet_xcm_benchmarks - we want to force custom implementation for XcmWeightInfo
+	extra_args="--template=$benchmarkTemplates/runtime-weight-template.hbs"
+	# A little hack for pallet_xcm_benchmarks - we want to force custom implementation for XcmWeightInfo.
 	if [[ "$pallet" == "pallet_xcm_benchmarks::generic" ]] || [[ "$pallet" == "pallet_xcm_benchmarks::fungible" ]]; then
 		output_dir="xcm/"
-		extra_args="--template=./templates/xcm-bench-template.hbs"
+		extra_args="--template=$benchmarkTemplates/xcm-bench-template.hbs"
 	fi
 	$artifactsDir/pop-node benchmark pallet \
 		$extra_args \
