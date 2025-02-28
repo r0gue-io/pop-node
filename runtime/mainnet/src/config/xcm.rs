@@ -786,7 +786,11 @@ mod tests {
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::XcmSender>(),
 				TypeId::of::<
 					WithUniqueTopic<(
-						cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+						cumulus_primitives_utility::ParentAsUmp<
+							ParachainSystem,
+							PolkadotXcm,
+							PriceForParentDelivery,
+						>,
 						XcmpQueue,
 					)>,
 				>(),
