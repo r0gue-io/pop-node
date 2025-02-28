@@ -1007,6 +1007,8 @@ mod tests {
 	}
 
 	mod pallet_xcmp_queue {
+		use codec::Encode;
+
 		use super::*;
 
 		#[test]
@@ -1093,6 +1095,8 @@ mod tests {
 				//
 				// message_length = 1
 				let result: u128 = ParachainSystem::get_fee_factor(()).saturating_mul_int(b + m);
+				// Ensure that an empty XCM encodes to a size of 1.
+				assert_eq!(Xcm::<()>(vec![]).encoded_size() as u8, 1);
 				assert_eq!(
 					ExponentialDeliveryPrice::price_for_delivery((), &Xcm(vec![])),
 					(RelayLocation::get(), result).into()
@@ -1125,6 +1129,8 @@ mod tests {
 				//
 				// message_length = 1
 				let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
+				// Ensure that an empty XCM encodes to a size of 1.
+				assert_eq!(Xcm::<()>(vec![]).encoded_size() as u8, 1);
 				assert_eq!(
 					ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
 					(RelayLocation::get(), result).into()
