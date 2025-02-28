@@ -10,7 +10,6 @@ use xcm::prelude::{
 };
 use xcm_executor::traits::ConvertLocation;
 
-use super::*;
 use crate::{
 	config::{
 		assets::TrustBackedAssetsInstance,
@@ -20,7 +19,7 @@ use crate::{
 			RelayLocation, XcmConfig,
 		},
 	},
-	Runtime,
+	Runtime, *,
 };
 
 /// Pallet that serves no other purpose than benchmarking raw XCMs.
