@@ -15,6 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![allow(unused_parens)]
+#![allow(unused_imports)]
+#![allow(missing_docs)]
+
 pub mod constants {
 	use frame_support::{
 		parameter_types,
