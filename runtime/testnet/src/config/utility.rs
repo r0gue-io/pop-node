@@ -1,13 +1,15 @@
 use frame_support::{
-    pallet_prelude::ConstU32,
-    parameter_types,
-    traits::{fungible::HoldConsideration, EqualPrivilegeOnly, LinearStoragePrice},
+	pallet_prelude::ConstU32,
+	parameter_types,
+	traits::{fungible::HoldConsideration, EqualPrivilegeOnly, LinearStoragePrice},
 };
 use frame_system::EnsureRoot;
 use parachains_common::Balance;
 
-use crate::{AccountId, Weight, deposit, Balances, OriginCaller, Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, RuntimeHoldReason, Perbill};
-use crate::config::system::RuntimeBlockWeights;
+use crate::{
+	config::system::RuntimeBlockWeights, deposit, AccountId, Balances, OriginCaller, Perbill,
+	Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, Weight,
+};
 
 parameter_types! {
 	// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
@@ -18,13 +20,13 @@ parameter_types! {
 }
 
 impl pallet_multisig::Config for Runtime {
-    type Currency = Balances;
-    type DepositBase = DepositBase;
-    type DepositFactor = DepositFactor;
-    type MaxSignatories = MaxSignatories;
-    type RuntimeCall = RuntimeCall;
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
+	type Currency = Balances;
+	type DepositBase = DepositBase;
+	type DepositFactor = DepositFactor;
+	type MaxSignatories = MaxSignatories;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -34,16 +36,16 @@ parameter_types! {
 }
 
 impl pallet_preimage::Config for Runtime {
-    type Consideration = HoldConsideration<
-        AccountId,
-        Balances,
-        PreimageHoldReason,
-        LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
-    >;
-    type Currency = Balances;
-    type ManagerOrigin = EnsureRoot<AccountId>;
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
+	type Consideration = HoldConsideration<
+		AccountId,
+		Balances,
+		PreimageHoldReason,
+		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
+	>;
+	type Currency = Balances;
+	type ManagerOrigin = EnsureRoot<AccountId>;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -52,24 +54,24 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Runtime {
-    #[cfg(feature = "runtime-benchmarks")]
-    type MaxScheduledPerBlock = ConstU32<512>;
-    #[cfg(not(feature = "runtime-benchmarks"))]
-    type MaxScheduledPerBlock = ConstU32<50>;
-    type MaximumWeight = MaximumSchedulerWeight;
-    type OriginPrivilegeCmp = EqualPrivilegeOnly;
-    type PalletsOrigin = OriginCaller;
-    type Preimages = Preimage;
-    type RuntimeCall = RuntimeCall;
-    type RuntimeEvent = RuntimeEvent;
-    type RuntimeOrigin = RuntimeOrigin;
-    type ScheduleOrigin = EnsureRoot<AccountId>;
-    type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type MaxScheduledPerBlock = ConstU32<512>;
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type MaxScheduledPerBlock = ConstU32<50>;
+	type MaximumWeight = MaximumSchedulerWeight;
+	type OriginPrivilegeCmp = EqualPrivilegeOnly;
+	type PalletsOrigin = OriginCaller;
+	type Preimages = Preimage;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeOrigin = RuntimeOrigin;
+	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 }
 
 impl pallet_utility::Config for Runtime {
-    type PalletsOrigin = OriginCaller;
-    type RuntimeCall = RuntimeCall;
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
+	type PalletsOrigin = OriginCaller;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
 }
