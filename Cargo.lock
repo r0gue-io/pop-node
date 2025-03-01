@@ -13808,7 +13808,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime-testnet"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "cumulus-pallet-aura-ext 0.18.0",
  "cumulus-pallet-parachain-system 0.18.0",
@@ -13839,20 +13839,24 @@ dependencies = [
  "pallet-authorship 39.0.0",
  "pallet-balances 40.0.0",
  "pallet-collator-selection 20.0.0",
+ "pallet-collective",
  "pallet-contracts",
  "pallet-message-queue 42.0.0",
+ "pallet-motion",
  "pallet-multisig 39.0.0",
  "pallet-nft-fractionalization",
- "pallet-nfts 31.0.0",
+ "pallet-nfts 33.0.0",
  "pallet-nfts-runtime-api 25.0.0",
  "pallet-preimage 39.0.0",
  "pallet-proxy 39.0.0",
+ "pallet-revive",
  "pallet-scheduler 40.0.0",
  "pallet-session 39.0.0",
  "pallet-sudo 39.0.0",
  "pallet-timestamp 38.0.0",
  "pallet-transaction-payment 39.0.0",
  "pallet-transaction-payment-rpc-runtime-api 39.0.0",
+ "pallet-treasury 38.0.0",
  "pallet-utility 39.0.0",
  "pallet-xcm 18.0.0",
  "parachains-common 19.0.0",
