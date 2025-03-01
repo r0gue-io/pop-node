@@ -990,7 +990,11 @@ mod tests {
 				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmRouter>(),
 				TypeId::of::<
 					WithUniqueTopic<(
-						cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+						cumulus_primitives_utility::ParentAsUmp<
+							ParachainSystem,
+							PolkadotXcm,
+							PriceForParentDelivery,
+						>,
 						XcmpQueue,
 					)>,
 				>(),
