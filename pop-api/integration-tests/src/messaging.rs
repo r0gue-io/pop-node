@@ -10,9 +10,6 @@ use pop_api::{
 	},
 	primitives::{BlockNumber, Error},
 };
-#[cfg(feature = "devnet")]
-use pop_runtime_devnet::{config::ismp::Router, Messaging, RuntimeEvent};
-#[cfg(feature = "testnet")]
 use pop_runtime_testnet::{config::ismp::Router, Messaging, RuntimeEvent};
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_runtime::{offchain::OffchainOverlayedChange, testing::H256};
