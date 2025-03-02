@@ -16,5 +16,4 @@ pub mod system;
 // Utility.
 mod utility;
 // Public due to integration tests crate.
-mod utility;
 pub mod xcm;
