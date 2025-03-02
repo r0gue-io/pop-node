@@ -398,7 +398,7 @@ pub fn run() -> Result<()> {
 						#[cfg(not(feature = "ismp"))]
 						{
 							sp_core::crypto::set_default_ss58_version(
-								pop_runtime_testnet::SS58Prefix::get().into(),
+								pop_runtime_testnet::config::system::SS58Prefix::get().into(),
 							);
 							crate::service::start_parachain_node::<pop_runtime_testnet::RuntimeApi>(
 								config,
