@@ -13808,7 +13808,7 @@ dependencies = [
 
 [[package]]
 name = "pop-runtime-testnet"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "cumulus-pallet-aura-ext 0.18.0",
  "cumulus-pallet-parachain-system 0.18.0",
