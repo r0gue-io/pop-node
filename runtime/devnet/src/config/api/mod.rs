@@ -20,7 +20,6 @@ use crate::{
 	AccountId, Revive, RuntimeOrigin, BlockNumber 
 };
 
-
 mod versioning;
 
 type DecodingFailedError = DecodingFailed<Runtime>;
@@ -128,25 +127,10 @@ impl messaging::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Xcm = QueryHandler;
-	type XcmResponseOrigin = EnsureResponse;
+	type XcmResponseOrigin = pallet_xcm::EnsureResponse<()>;
 }
 
-pub struct EnsureResponse;
-impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureResponse {
-	type Success = Location;
 
-	fn try_origin(o: O) -> Result<Self::Success, O> {
-		o.into().and_then(|o| match o {
-			Origin::Response(location) => Ok(location),
-			r => Err(O::from(r)),
-		})
-	}
-
-	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin() -> Result<O, ()> {
-		todo!()
-	}
-}
 
 pub struct CallbackExecutor;
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {

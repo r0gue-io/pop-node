@@ -12,9 +12,16 @@ use sp_runtime::{
 	BuildStorage,
 };
 
+use crate::messaging::{CallbackExecutor, NotifyQueryHandler, Call};
+use xcm::latest::Location;
+use frame_system::{pallet_prelude::BlockNumberFor};
+use frame_support::{pallet_prelude::EnsureOrigin, traits::OriginTrait};
+use pallet_xcm::Origin;
+
 pub(crate) const ALICE: AccountId = 1;
 pub(crate) const BOB: AccountId = 2;
 pub(crate) const CHARLIE: AccountId = 3;
+pub(crate) const RESPONSE: AccountId = 4;
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
@@ -33,7 +40,8 @@ frame_support::construct_runtime!(
 		Balances: pallet_balances,
 		Fungibles: crate::fungibles,
 		Nfts: pallet_nfts::<Instance1>,
-		NonFungibles: crate::nonfungibles
+		NonFungibles: crate::nonfungibles,
+		Messaging: crate::messaging,
 	}
 );
 
@@ -198,6 +206,94 @@ impl crate::nonfungibles::Config for Test {
 	type NftsInstance = NftsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
+}
+
+pub struct MockCallbackExecutor<T>(T);
+impl<T: crate::messaging::Config> CallbackExecutor<T> for MockCallbackExecutor<T> {
+	fn execute(account: <T as frame_system::Config>::AccountId, data: Vec<u8>, weight: sp_runtime::Weight) -> frame_support::dispatch::DispatchResultWithPostInfo {
+		Ok(().into())
+	}
+
+	fn execution_weight() -> sp_runtime::Weight {
+		Default::default()
+	}
+}
+
+parameter_types! {
+	pub const TransactionByteFee: Balance = 10;
+}
+
+pub struct MockNotifyQuery<T>(T);
+impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
+	fn new_notify_query(
+		responder: impl Into<Location>,
+		notify: Call<T>,
+		timeout: BlockNumberFor<T>,
+		match_querier: impl Into<Location>,
+	) -> u64 {
+		0u64
+	}
+}
+
+impl crate::messaging::Config for Test {
+	type ByteFee = TransactionByteFee;
+	type CallbackExecutor = MockCallbackExecutor<Test>;
+	type Deposit = Balances;
+	type IsmpByteFee = ();
+	type IsmpDispatcher = MockIsmpDispatcher;
+	type MaxContextLen = ConstU32<64>;
+	type MaxDataLen = ConstU32<1024>;
+	type MaxKeyLen = ConstU32<1000>;
+	type MaxKeys = ConstU32<10>;
+	type MaxRemovals = ConstU32<1024>;
+	type MaxResponseLen = ConstU32<1024>;
+	type OriginConverter = ();
+	type RuntimeEvent = RuntimeEvent;
+	type RuntimeHoldReason = RuntimeHoldReason;
+	type Xcm = MockNotifyQuery<Test>;
+	type XcmResponseOrigin = EnsureResponse;
+}
+
+#[derive(Default)]
+pub struct MockIsmpDispatcher;
+impl ismp::dispatcher::IsmpDispatcher for MockIsmpDispatcher {
+	type Account = AccountId;
+	type Balance = Balance;
+	
+	fn dispatch_request(
+			&self,
+			request: ismp::dispatcher::DispatchRequest,
+			fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
+		) -> Result<H256, anyhow::Error> {
+
+			Ok(Default::default())
+	}
+	fn dispatch_response(
+			&self,
+			response: ismp::router::PostResponse,
+			fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
+		) -> Result<H256, anyhow::Error> {
+		Ok(Default::default())
+	}
+}
+
+pub struct EnsureResponse;
+impl EnsureOrigin<RuntimeOrigin> for EnsureResponse {
+	type Success = Location;
+
+	fn try_origin(o: RuntimeOrigin) -> Result<Self::Success, RuntimeOrigin> {
+		let signer = o.clone().into_signer();
+		if signer == Some(RESPONSE) {
+			Ok(xcm::latest::Location::here())
+		} else {
+			Err(o)
+		}
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin() -> Result<O, ()> {
+		todo!()
+	}
 }
 
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {

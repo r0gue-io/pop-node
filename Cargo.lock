@@ -8781,6 +8781,7 @@ dependencies = [
  "pallet-balances 40.0.0",
  "pallet-ismp",
  "pallet-nfts 31.0.0",
+ "pallet-xcm 18.0.0",
  "parity-scale-codec",
  "pop-chain-extension",
  "scale-info",
@@ -8789,6 +8790,7 @@ dependencies = [
  "sp-runtime 40.1.0",
  "sp-std 14.0.0 (git+https://github.com/paritytech/polkadot-sdk?branch=stable2412)",
  "staging-xcm 15.0.1",
+ "staging-xcm-builder 18.0.0",
 ]
 
 [[package]]
