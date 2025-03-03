@@ -51,7 +51,7 @@ mod messaging {
                 fee,
                 callback.then_some(
                     // See `api::ismp::OnGetResponse` impl below
-                    Callback::to(0x57ad942b, Weight::from_parts(600_000_000, 150_000)),
+                    Callback::to(0x57ad942b, Weight::from_parts(900_000_000, 150_000)),
                 ),
             )?;
             Ok(())
@@ -76,7 +76,7 @@ mod messaging {
                 fee,
                 callback.then_some(
                     // See `api::ismp::OnPostResponse` impl below
-                    Callback::to(0xcfb0a1d2, Weight::from_parts(600_000_000, 150_000)),
+                    Callback::to(0xcfb0a1d2, Weight::from_parts(800_000_000, 150_000)),
                 ),
             )?;
             Ok(())
@@ -100,7 +100,7 @@ mod messaging {
                 timeout,
                 callback.then_some(
                     // See api::xcm::OnResponse impl below
-                    Callback::to(0x641b0b03, Weight::from_parts(600_000_000, 200_000)),
+                    Callback::to(0x641b0b03, Weight::from_parts(800_000_000, 200_000)),
                 ),
             )
         }
