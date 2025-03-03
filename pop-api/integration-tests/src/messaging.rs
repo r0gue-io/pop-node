@@ -280,7 +280,7 @@ fn xcm_query_works() {
 			id: contract.id.clone().into(),
 		}
 		.into();
-		assert!(pop_runtime_devnet::PolkadotXcm::expecting_response(
+		assert!(pop_runtime_testnet::PolkadotXcm::expecting_response(
 			&origin,
 			query_id,
 			Some(&translate(&querier))
@@ -328,7 +328,7 @@ fn xcm_query_with_callback_works() {
 			id: contract.id.clone().into(),
 		}
 		.into();
-		assert!(pop_runtime_devnet::PolkadotXcm::expecting_response(
+		assert!(pop_runtime_testnet::PolkadotXcm::expecting_response(
 			&origin,
 			query_id,
 			Some(&translate(&querier))
