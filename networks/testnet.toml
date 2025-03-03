@@ -37,12 +37,40 @@ balances = [
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug", "-lxcm=trace"]
+args = [
+    "-lpop-api::extension=debug",
+    "-lruntime::contracts=debug",
+    "-lruntime::revive=trace",
+    "-lruntime::revive::strace=trace",
+    "-lxcm=trace",
+    "--enable-offchain-indexing=true"
+]
 
+# Asset Hub
 [[parachains]]
 id = 1000
-chain = "asset-hub-rococo-local"
+chain = "asset-hub-paseo-local"
+
+[parachains.genesis_overrides.balances]
+balances = [
+    # Pop sovereign account
+    ["5Eg2fnt8cGL5CBhRRhi59abAwb3SPoAdPJpN9qY7bQqpzpf6", 60000000000000000],
+]
 
 [[parachains.collators]]
 name = "asset-hub"
 args = ["-lxcm=trace"]
+rpc_port = 9977
+
+# Channels
+[[hrmp_channels]]
+sender = 1000
+recipient = 4001
+max_capacity = 1000
+max_message_size = 1024
+
+[[hrmp_channels]]
+sender = 4001
+recipient = 1000
+max_capacity = 1000
+max_message_size = 1024
