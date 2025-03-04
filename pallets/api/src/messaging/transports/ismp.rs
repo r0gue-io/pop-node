@@ -238,7 +238,7 @@ fn process_response<T: Config>(
 		// TODO: check response length
 		todo!("update message status on success or fail.");
 		if Pallet::<T>::call(origin.clone(), callback, id, &encode, deposit).is_ok() {
-			Pallet::<T>::deposit_event(event(origin, id));
+				Pallet::<T>::deposit_event(event(origin, id));
 			return Ok(());
 		}
 	}
