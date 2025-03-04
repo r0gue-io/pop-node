@@ -18,6 +18,12 @@ extern crate alloc;
 
 use alloc::{borrow::Cow, vec::Vec};
 
+// ISMP imports
+use ::ismp::{
+	consensus::{ConsensusClientId, StateMachineHeight, StateMachineId},
+	host::StateMachine,
+	router::{Request, Response},
+};
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::system::ConsensusHook;
 use cumulus_primitives_core::AggregateMessageOrigin;
@@ -38,7 +44,7 @@ use frame_system::{
 	CheckGenesis, CheckMortality, CheckNonZeroSender, CheckNonce, CheckSpecVersion, CheckTxVersion,
 	CheckWeight, EnsureRoot,
 };
-use pallet_api::fungibles;
+use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
 use pallet_nfts_sdk as pallet_nfts;
 use pallet_transaction_payment::ChargeTransactionPayment;
@@ -312,6 +318,12 @@ mod runtime {
 	#[runtime::pallet_index(33)]
 	pub type MessageQueue = pallet_message_queue::Pallet<Runtime>;
 
+	// ISMP
+	#[runtime::pallet_index(38)]
+	pub type Ismp = pallet_ismp::Pallet<Runtime>;
+	#[runtime::pallet_index(39)]
+	pub type IsmpParachain = ismp_parachain::Pallet<Runtime>;
+
 	// Contracts
 	#[runtime::pallet_index(40)]
 	pub type Contracts = pallet_contracts::Pallet<Runtime>;
@@ -339,6 +351,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(152)]
+	pub type Messaging = messaging::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

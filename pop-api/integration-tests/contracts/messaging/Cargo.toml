@@ -1,0 +1,23 @@
+[package]
+authors = [ "R0GUE <go@r0gue.io>" ]
+edition = "2021"
+name = "messaging"
+version = "0.1.0"
+
+[workspace]
+
+[dependencies]
+ink = { version = "5.1.0", default-features = false }
+pop-api = { path = "../../../../pop-api", default-features = false, features = [ "messaging" ] }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
+std = [
+	"ink/std",
+	"pop-api/std",
+]

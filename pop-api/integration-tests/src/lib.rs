@@ -17,6 +17,8 @@ use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 use utils::*;
 
 mod fungibles;
+#[cfg(feature = "testnet")]
+mod messaging;
 #[cfg(feature = "devnet")]
 mod nonfungibles;
 mod utils;

@@ -1,15 +1,17 @@
 use alloc::vec::Vec;
 
 use codec::Encode;
+use cumulus_pallet_parachain_system::RelayChainState;
 use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	traits::tokens::{nonfungibles_v2::Inspect, Fortitude::Polite, Preservation::Preserve},
 };
+use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use pallet_revive::{evm::H160, AddressMapper};
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
 use sp_runtime::{
-	traits::Block as BlockT,
+	traits::{Block as BlockT, Get},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -397,6 +399,68 @@ impl_runtime_apis! {
 				address,
 				key
 			)
+		}
+	}
+
+	impl pallet_ismp_runtime_api::IsmpRuntimeApi<Block, <Block as BlockT>::Hash> for Runtime {
+		fn host_state_machine() -> StateMachine {
+			<Runtime as pallet_ismp::Config>::HostStateMachine::get()
+		}
+
+		fn challenge_period(id: StateMachineId) -> Option<u64> {
+			Ismp::challenge_period(id)
+		}
+
+		/// Generate a proof for the provided leaf indices
+		fn generate_proof(
+			keys: ProofKeys
+		) -> Result<(Vec<Leaf>, Proof<<Block as BlockT>::Hash>), sp_mmr_primitives::Error> {
+			Ismp::generate_proof(keys)
+		}
+
+		/// Fetch all ISMP events
+		fn block_events() -> Vec<::ismp::events::Event> {
+			Ismp::block_events()
+		}
+
+		/// Fetch all ISMP events and their extrinsic metadata
+		fn block_events_with_metadata() -> Vec<(::ismp::events::Event, Option<u32>)> {
+			Ismp::block_events_with_metadata()
+		}
+
+		/// Return the scale encoded consensus state
+		fn consensus_state(id: ConsensusClientId) -> Option<Vec<u8>> {
+			Ismp::consensus_states(id)
+		}
+
+		/// Return the timestamp this client was last updated in seconds
+		fn state_machine_update_time(height: StateMachineHeight) -> Option<u64> {
+			Ismp::state_machine_update_time(height)
+		}
+
+		/// Return the latest height of the state machine
+		fn latest_state_machine_height(id: StateMachineId) -> Option<u64> {
+			Ismp::latest_state_machine_height(id)
+		}
+
+		/// Get actual requests
+		fn requests(commitments: Vec<H256>) -> Vec<Request> {
+			Ismp::requests(commitments)
+		}
+
+		/// Get actual requests
+		fn responses(commitments: Vec<H256>) -> Vec<Response> {
+			Ismp::responses(commitments)
+		}
+	}
+
+	impl ismp_parachain_runtime_api::IsmpParachainApi<Block> for Runtime {
+		fn para_ids() -> Vec<u32> {
+			IsmpParachain::para_ids()
+		}
+
+		fn current_relay_chain_state() -> RelayChainState {
+			IsmpParachain::current_relay_chain_state()
 		}
 	}
 
