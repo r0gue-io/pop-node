@@ -22,14 +22,14 @@ type UnanimousCouncilVote = EitherOfDiverse<
 >;
 
 /// SUDO account set at genesis.
-const SUDO_ACCOUNT: &str = "5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD";
+const SUDO_ADDRESS: &str = "5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD";
 
 parameter_types! {
 	pub CouncilMotionDuration: BlockNumber = 7 * DAYS;
 	pub const CouncilMaxProposals: u32 = 100;
 	pub const CouncilMaxMembers: u32 = 100;
 	pub MaxProposalWeight: Weight = sp_runtime::Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
-	pub SudoAddress: AccountId = AccountId::from_ss58check(SUDO_ACCOUNT).expect("sudo address is valid SS58");
+	pub SudoAddress: AccountId = AccountId::from_ss58check(SUDO_ADDRESS).expect("sudo address is valid SS58");
 }
 
 pub type CouncilCollective = pallet_collective::Instance1;
