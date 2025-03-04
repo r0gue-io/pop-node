@@ -7,8 +7,8 @@ pub(crate) mod collation;
 mod contracts;
 /// Governance.
 pub mod governance;
-// Ismp.
 // Public due to pop api integration tests crate.
+/// Ismp.
 pub mod ismp;
 /// Monetary matters.
 pub(crate) mod monetary;
@@ -19,4 +19,5 @@ pub mod system;
 // Utility.
 mod utility;
 // Public due to integration tests crate.
+/// XCM.
 pub mod xcm;
