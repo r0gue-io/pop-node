@@ -61,8 +61,12 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 impl pallet_motion::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	// Simple majority is disabled.
 	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
+	#[cfg(feature = "runtime-benchmarks")]
+	// Provide some way to ensure origin such that benchmarks can run.
+	type SimpleMajorityOrigin = AtLeastThreeFourthsOfCouncil;
 	// At least 3/4 of the council vote is needed.
 	type SuperMajorityOrigin = AtLeastThreeFourthsOfCouncil;
 	// A unanimous council vote is needed.

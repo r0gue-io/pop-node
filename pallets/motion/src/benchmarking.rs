@@ -22,7 +22,7 @@ mod benchmarks {
 	fn simple_majority() -> Result<(), BenchmarkError> {
 		let call: <T as Config>::RuntimeCall = frame_system::Call::remark { remark: vec![] }.into();
 		let origin = <T as Config>::SimpleMajorityOrigin::try_successful_origin()
-			.map_err(|_| BenchmarkError::Weightless)?;
+			.map_err(|_| BenchmarkError::Stop("Origin should be present"))?;
 
 		#[extrinsic_call]
 		_(origin as T::RuntimeOrigin, Box::new(call));
@@ -35,7 +35,7 @@ mod benchmarks {
 	fn super_majority() -> Result<(), BenchmarkError> {
 		let call: <T as Config>::RuntimeCall = frame_system::Call::remark { remark: vec![] }.into();
 		let origin = <T as Config>::SuperMajorityOrigin::try_successful_origin()
-			.map_err(|_| BenchmarkError::Weightless)?;
+			.map_err(|_| BenchmarkError::Stop("Origin should be present"))?;
 
 		#[extrinsic_call]
 		_(origin as T::RuntimeOrigin, Box::new(call));
@@ -48,7 +48,7 @@ mod benchmarks {
 	fn unanimous() -> Result<(), BenchmarkError> {
 		let call: <T as Config>::RuntimeCall = frame_system::Call::remark { remark: vec![] }.into();
 		let origin = <T as Config>::UnanimousOrigin::try_successful_origin()
-			.map_err(|_| BenchmarkError::Weightless)?;
+			.map_err(|_| BenchmarkError::Stop("Origin should be present"))?;
 
 		#[extrinsic_call]
 		_(origin as T::RuntimeOrigin, Box::new(call));
