@@ -1,7 +1,7 @@
 [package]
-name = "pallet-asset-manager"
 authors = { workspace = true }
 edition = "2021"
+name = "pallet-asset-manager"
 version = "0.1.0"
 
 [dependencies]
@@ -9,10 +9,10 @@ log = { workspace = true }
 serde = { workspace = true, optional = true }
 
 # Substrate
+codec = { workspace = true, features = [ "derive" ] }
 frame-support = { workspace = true }
 frame-system = { workspace = true }
-codec = { workspace = true, features = ["derive"] }
-scale-info = { workspace = true, features = ["derive"] }
+scale-info = { workspace = true, features = [ "derive" ] }
 sp-io = { workspace = true }
 sp-runtime = { workspace = true }
 sp-std = { workspace = true }
@@ -26,24 +26,24 @@ xcm-executor = { workspace = true }
 frame-benchmarking = { workspace = true, optional = true }
 
 [dev-dependencies]
-pallet-balances = { workspace = true, features = ["insecure_zero_ed", "std"] }
-sp-core = { workspace = true, features = ["std"] }
+pallet-balances = { workspace = true, features = [ "insecure_zero_ed", "std" ] }
+sp-core = { workspace = true, features = [ "std" ] }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 std = [
-    "frame-support/std",
-    "frame-system/std",
-    "codec/std",
-    "scale-info/std",
-    "serde",
-    "sp-io/std",
-    "sp-runtime/std",
-    "sp-std/std",
-    "xcm/std",
-    "xcm-builder/std",
-    "xcm-executor/std",
+	"codec/std",
+	"frame-support/std",
+	"frame-system/std",
+	"scale-info/std",
+	"serde",
+	"sp-io/std",
+	"sp-runtime/std",
+	"sp-std/std",
+	"xcm-builder/std",
+	"xcm-executor/std",
+	"xcm/std",
 ]
 
-runtime-benchmarks = ["frame-benchmarking"]
-try-runtime = ["frame-support/try-runtime"]
+runtime-benchmarks = [ "frame-benchmarking" ]
+try-runtime = [ "frame-support/try-runtime" ]

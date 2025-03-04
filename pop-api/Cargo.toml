@@ -14,9 +14,9 @@ pop-primitives = { path = "../primitives", default-features = false }
 
 # Substrate.
 sp-io = { version = "38.0.0", default-features = false, features = [
-    "disable_allocator",
-    "disable_oom",
-    "disable_panic_handler",
+	"disable_allocator",
+	"disable_oom",
+	"disable_panic_handler",
 ] }
 
 # ink! dependencies.
@@ -28,16 +28,16 @@ pallet-nfts = { path = "../pallets/nfts" }
 scale = { package = "parity-scale-codec", version = "3" }
 
 [lib]
-crate-type = ["rlib"]
+crate-type = [ "rlib" ]
 name = "pop_api"
 path = "src/lib.rs"
 
 [features]
-default = ["std"]
-fungibles = []
-nonfungibles = []
+default = [ "std" ]
+fungibles = [  ]
+nonfungibles = [  ]
 std = [
-    "ink/std",
-    "pop-primitives/std",
-    "sp-io/std",
+	"ink/std",
+	"pop-primitives/std",
+	"sp-io/std",
 ]

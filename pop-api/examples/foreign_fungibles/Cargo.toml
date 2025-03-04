@@ -1,14 +1,14 @@
 [package]
-authors = ["R0GUE <go@r0gue.io>"]
+authors = [ "R0GUE <go@r0gue.io>" ]
 edition = "2021"
 name = "foreign_fungibles"
 version = "0.1.0"
 
 [dependencies]
-ink = { version = "5.1.0", default-features = false, features = ["ink-debug"] }
+ink = { version = "5.1.0", default-features = false, features = [ "ink-debug" ] }
 #ink = { git = "https://github.com/use-ink/ink", branch = "xcm", default-features = false }
 pop-api = { path = "../../../pop-api", default-features = false, features = [
-    "fungibles",
+	"fungibles",
 ] }
 
 [dev-dependencies]
@@ -19,10 +19,10 @@ serde_json = "1.0.114"
 path = "lib.rs"
 
 [features]
-default = ["std"]
-e2e-tests = []
-ink-as-dependency = []
+default = [ "std" ]
+e2e-tests = [  ]
+ink-as-dependency = [  ]
 std = [
-    "ink/std",
-    "pop-api/std",
+	"ink/std",
+	"pop-api/std",
 ]
