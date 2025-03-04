@@ -124,9 +124,7 @@ impl pallet_xcm::benchmarking::Config for Runtime {
 
 	fn set_up_complex_asset_transfer(
 	) -> Option<(xcm::prelude::Assets, u32, Location, Box<dyn FnOnce()>)> {
-		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(ParaId::from(
-			AssetHubParaId::get(),
-		));
+		ParachainSystem::open_outbound_hrmp_channel_for_benchmarks_or_tests(AssetHubParaId::get());
 		// Pop can only reserve transfer DOT.
 		// This test needs to be adapted as the features grow.
 		let dest = AssetHub::get();
