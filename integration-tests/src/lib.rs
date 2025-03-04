@@ -22,7 +22,10 @@ use emulated_integration_tests_common::{
 		Test, TestArgs, TestContext, TestExt,
 	},
 };
-use frame_support::{pallet_prelude::Weight, sp_runtime::DispatchResult};
+use frame_support::{
+	pallet_prelude::Weight, sp_runtime::DispatchResult, traits::fungibles::Inspect,
+};
+use polkadot_primitives::AccountId;
 use pop_runtime_common::Balance;
 use pop_runtime_devnet::config::xcm::XcmConfig as PopNetworkXcmConfig;
 use xcm::prelude::*;
@@ -183,9 +186,9 @@ fn para_to_system_para_reserve_transfer_assets(t: ParaToSystemParaTest) -> Dispa
 
 // Funds Pop with relay tokens from system para
 fn fund_pop_from_system_para(
-	sender: sp_runtime::AccountId32,
+	sender: AccountId,
 	amount_to_send: Balance,
-	beneficiary: sp_runtime::AccountId32,
+	beneficiary: AccountId,
 	assets: Assets,
 ) {
 	let destination = AssetHubPara::sibling_location_of(PopNetworkPara::para_id());
@@ -200,47 +203,88 @@ fn fund_pop_from_system_para(
 	test.assert();
 }
 
+use pop_runtime_devnet::{config::assets::AssetRegistrarMetadata, RuntimeOrigin};
+
 /// Asset Hub.
 pub const ASSET_HUB: Junction = Parachain(1000);
 /// Assets on Asset Hub.
 pub const ASSET_HUB_ASSETS: Junction = PalletInstance(50);
+pub const USDC_POP_ASSET_ID: u32 = 1;
 
 #[cfg(feature = "devnet")]
 #[test]
 fn receive_usdc_on_pop() {
 	use codec::Encode;
-	use pop_runtime_devnet::{config::assets::AssetRegistrarMetadata, RuntimeOrigin};
+	use pallet_contracts::{Code, CollectEvents, Determinism};
+	const GAS_LIMIT: Weight = Weight::from_parts(100_000_000_000, 3 * 1024 * 1024);
+	const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 	init_tracing();
+
+	// Provide bob DOT.
+	let amount: Balance = ASSET_HUB_ED * 1000;
+	let bob_on_pop = PopNetworkParaReceiver::get();
+	fund_pop_from_system_para(
+		AssetHubParaSender::get(),
+		amount * 20,
+		bob_on_pop.clone(),
+		(Parent, amount * 20).into(),
+	);
+	// Fund Pop Network's SA on AH with DOT.
+	let pop_net_location_as_seen_by_ahr =
+		AssetHubPara::sibling_location_of(PopNetworkPara::para_id());
+	let sov_pop_net_on_ahr = AssetHubPara::sovereign_account_id_of(pop_net_location_as_seen_by_ahr);
+	AssetHubPara::fund_accounts(vec![(sov_pop_net_on_ahr.into(), amount * 2)]);
+	// Amounts used for doing transfers.
+	let transfer_amount = amount / 2;
 
 	// Create a foreign asset for usdc on Pop.
 	// ------
 	let usdc = AssetId([ASSET_HUB_ASSETS, GeneralIndex(USDC.into())].into());
+	let usdc_location = Location::new(1, [ASSET_HUB, ASSET_HUB_ASSETS, GeneralIndex(USDC.into())]);
 	let metadata = AssetRegistrarMetadata {
 		name: "USDC".encode(),
 		symbol: "USDC".encode(),
 		decimals: 10,
 		is_frozen: false,
 	};
+	let mut contract = AccountId::from([0u8; 32]);
 	PopNetwork::<MockNet>::execute_with(|| {
 		<PopNetwork<MockNet> as PopNetworkParaPallet>::AssetManager::register_foreign_asset(
 			RuntimeOrigin::root(),
-			usdc.clone(),
+			usdc_location,
 			metadata,
 			1,
 			true,
-		)
+		);
+
+		let path = "../pop-api/examples/foreign_fungibles/target/ink/foreign_fungibles.wasm";
+		let wasm_binary = std::fs::read(path).expect("could not read .wasm file");
+		let instantiate_result =
+			<PopNetwork<MockNet> as PopNetworkParaPallet>::Contracts::bare_instantiate(
+				bob_on_pop.clone(),
+				amount * 5,
+				GAS_LIMIT,
+				None,
+				Code::Upload(wasm_binary),
+				function_selector("new"),
+				vec![],
+				DEBUG_OUTPUT,
+				CollectEvents::Skip,
+			)
+			.result
+			.expect("Contract instantiation failed");
+		assert!(!instantiate_result.result.did_revert());
+		contract = instantiate_result.account_id;
 	});
-	// Cheating but for now easy.
-	let usdc_pop_asset_id = 1u32;
 	// ------
 
 	// Provide sender on AH with usdc to transfer.
 	// ------
-	let sender = AssetHubSender::get();
+	let sender = AssetHubParaSender::get();
 	let usdc_owner = asset_hub::AssetOwner::get();
-	let usdc_owner_signer = <AssetHub as Chain>::RuntimeOrigin::signed(usdc_owner.clone());
+	let usdc_owner_signer = <AssetHubPara as Chain>::RuntimeOrigin::signed(usdc_owner.clone());
 	let usdc_amount_to_send = asset_hub::USD_MIN_BALANCE * 100_000;
-	AssetHub::mint_asset(
+	AssetHubPara::mint_asset(
 		usdc_owner_signer.clone(),
 		USDC,
 		sender.clone(),
@@ -249,20 +293,18 @@ fn receive_usdc_on_pop() {
 	let usdc_asset = (usdc, usdc_amount_to_send).into();
 	// ------
 
-	// Setup test to transfer usdc to receiver.
-	// ------
+	// Transfer usdc to contract.
 	let fee_amount_to_send = runtime::UNIT / 2;
 	let fee_asset = (Parent, fee_amount_to_send).into();
 	let assets: Assets = vec![usdc_asset, fee_asset].into();
-	let destination = AssetHub::sibling_location_of(PopNetwork::para_id());
-	let receiver = PopNetworkParaReceiver::get();
-	let location_usdc = Location::new(1, [ASSET_HUB, ASSET_HUB_ASSETS, GeneralIndex(USDC)]);
-	// Init Test
+	let destination = AssetHubPara::sibling_location_of(PopNetworkPara::para_id());
+	let receiver = contract.clone();
+	let location_usdc = Location::new(1, [ASSET_HUB, ASSET_HUB_ASSETS, GeneralIndex(USDC.into())]); // Init Test
 	let test_args = TestContext {
 		sender: sender.clone(),
 		receiver: receiver.clone(),
 		args: TestArgs::new_para(
-			destination,
+			destination.clone(),
 			receiver.clone(),
 			usdc_amount_to_send,
 			assets,
@@ -270,45 +312,136 @@ fn receive_usdc_on_pop() {
 			1,
 		),
 	};
-	let mut test = Test::<AssetHub, PopNetwork>::new(test_args);
-	// ------
-
-	// Query balances before.
-	// ------
-	let sender_usdc_balance_before = AssetHub::execute_with(|| {
-		<<AssetHub as AssetHubPallet>::Assets as Inspect<_>>::balance(USDC, &sender)
+	let mut test = Test::<AssetHubPara, PopNetworkPara>::new(test_args);
+	// ---- Assertions
+	let sender_usdc_balance_before = AssetHubPara::execute_with(|| {
+		<<AssetHubPara as AssetHubParaPallet>::Assets as Inspect<_>>::balance(USDC, &sender)
 	});
-	let receiver_usdc_balance_before = Para::execute_with(|| {
-		<<PopNetwork as PopNetworkPallet>::Assets as Inspect<_>>::balance(
-			usdc_pop_asset_id,
+	let receiver_usdc_balance_before = PopNetworkPara::execute_with(|| {
+		<<PopNetworkPara as PopNetworkParaPallet>::Assets as Inspect<_>>::balance(
+			USDC_POP_ASSET_ID,
 			&receiver,
 		)
 	});
-	// ------
-
-	// Set assertions and dispatchables.
-	// ------
-	test.set_assertion::<AssetHub>(asset_hub_to_para_assets_sender_assertions);
-	test.set_assertion::<Para>(asset_hub_to_para_assets_receiver_assertions);
-	test.set_dispatchable::<AssetHub>(asset_hub_to_para_transfer_assets);
+	test.set_assertion::<AssetHubPara>(asset_hub_to_para_assets_sender_assertions);
+	test.set_assertion::<PopNetworkPara>(asset_hub_to_para_assets_receiver_assertions);
+	test.set_dispatchable::<AssetHubPara>(asset_hub_to_para_transfer_assets);
 	test.assert();
-	// ------
-
-	// Query balances after.
-	// ------
-	let sender_usdc_balance_after = AssetHub::execute_with(|| {
-		<<AssetHub as AssetHubPallet>::Assets as Inspect<_>>::balance(USDC, &sender)
+	let sender_usdc_balance_after = AssetHubPara::execute_with(|| {
+		<<AssetHubPara as AssetHubParaPallet>::Assets as Inspect<_>>::balance(USDC, &sender)
 	});
-	let receiver_usdc_balance_after = Para::execute_with(|| {
-		<<PopNetwork as PopNetworkPallet>::Assets as Inspect<_>>::balance(
-			usdc_pop_asset_id,
+	let receiver_usdc_balance_after = PopNetworkPara::execute_with(|| {
+		<<PopNetworkPara as PopNetworkParaPallet>::Assets as Inspect<_>>::balance(
+			USDC_POP_ASSET_ID,
 			&receiver,
 		)
 	});
-	// ------
 
 	assert_eq!(sender_usdc_balance_after, sender_usdc_balance_before - usdc_amount_to_send);
 	assert_eq!(receiver_usdc_balance_after, receiver_usdc_balance_before + usdc_amount_to_send);
+
+	// ------
+
+	let ah_transfer_amount = usdc_amount_to_send / 2;
+	// Step 4: Interact with the contract on Pop Network
+	PopNetworkPara::execute_with(|| {
+		// Call contract to transfer half USDC to another account on Pop.
+		let local_transfer_amount = usdc_amount_to_send / 2;
+		let local_receiver = AccountId::from([2u8; 32]);
+		let function = function_selector("transfer");
+		let params = [local_receiver.encode(), local_transfer_amount.encode()].concat();
+		let input = [function, params].concat();
+		let call_result = <PopNetwork<MockNet> as PopNetworkParaPallet>::Contracts::bare_call(
+			bob_on_pop.clone(),
+			contract.clone(),
+			0,
+			GAS_LIMIT,
+			None,
+			input,
+			DEBUG_OUTPUT,
+			CollectEvents::Skip,
+			Determinism::Enforced,
+		);
+		let result = decoded::<Result<(), ()>>(call_result.result.unwrap()).unwrap();
+		assert!(result.is_ok());
+		// Verify local transfer
+		let local_receiver_balance =
+			<<PopNetwork<MockNet> as PopNetworkParaPallet>::Assets as Inspect<_>>::balance(
+				USDC_POP_ASSET_ID,
+				&local_receiver,
+			);
+		assert_eq!(local_receiver_balance, local_transfer_amount);
+		let contract_usdc_balance_after_local =
+			<<PopNetwork<MockNet> as PopNetworkParaPallet>::Assets as Inspect<_>>::balance(
+				USDC_POP_ASSET_ID,
+				&contract,
+			);
+		assert_eq!(contract_usdc_balance_after_local, usdc_amount_to_send - local_transfer_amount);
+
+		// Call contract to transfer remaining USDC back to AH
+		let ah_receiver = AssetHubParaReceiver::get();
+		let function = function_selector("ah_transfer");
+		let params =
+			[ah_receiver.encode(), ah_transfer_amount.encode(), 2500000000000u128.encode()]
+				.concat();
+		let input = [function, params].concat();
+		let call_result = <PopNetwork<MockNet> as PopNetworkParaPallet>::Contracts::bare_call(
+			bob_on_pop.clone(),
+			contract.clone(),
+			0,
+			GAS_LIMIT,
+			None,
+			input,
+			DEBUG_OUTPUT,
+			CollectEvents::Skip,
+			Determinism::Enforced,
+		);
+		let result = decoded::<Result<(), ()>>(call_result.result.unwrap()).unwrap();
+		assert!(result.is_ok());
+
+		// Check Pop Network events for USDC burn
+		type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+		let events = PopNetworkPara::events();
+		println!("\nPopNetwork events after contract calls: {:?}", events);
+		assert_event_matches!(
+					events,
+					RuntimeEvent::Assets(pallet_assets::Event::Burned { asset_id, owner, balance })
+					if *asset_id == USDC_POP_ASSET_ID && *owner == contract && *balance ==
+		ah_transfer_amount 		);
+	});
+
+	// Step 5: Verify the transfer back to Asset Hub
+	AssetHubPara::execute_with(|| {
+		// Check AH events for USDC mint
+		type RuntimeEventAH = <AssetHubPara as Chain>::RuntimeEvent;
+		let sov_pop_net_on_ahr = AssetHubPara::sovereign_account_id_of(destination);
+		let ah_receiver = AssetHubParaReceiver::get();
+		let events = AssetHubPara::events();
+		println!("\nAssetHub events after contract call: {:?}", events);
+		assert_event_matches!(
+			events,
+			RuntimeEventAH::Assets(pallet_assets::Event::Burned { asset_id, owner, balance })
+			if *asset_id == USDC && *owner == sov_pop_net_on_ahr && *balance == ah_transfer_amount
+		);
+		assert_event_matches!(
+			events,
+			RuntimeEventAH::Assets(pallet_assets::Event::Issued { asset_id, owner, amount })
+			if *asset_id == USDC && *owner == ah_receiver && *amount <= ah_transfer_amount &&
+		*amount > 0 );
+		assert_event_matches!(
+			events,
+			RuntimeEventAH::MessageQueue(pallet_message_queue::Event::Processed { success, .. })
+			if *success == true
+		);
+
+		// Verify receiver’s USDC balance on AH
+		let receiver_usdc_balance =
+			<<AssetHubPara as AssetHubParaPallet>::Assets as Inspect<_>>::balance(
+				USDC,
+				&ah_receiver,
+			);
+		assert!(receiver_usdc_balance == ah_transfer_amount);
+	});
 }
 
 /// Reserve Transfers of native asset from Relay to Parachain should work
@@ -477,7 +610,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 // fn place_coretime_spot_order_from_para_to_relay() {
 // 	init_tracing();
 //
-// 	let beneficiary: sp_runtime::AccountId32 = [1u8; 32].into();
+// 	let beneficiary: AccountId = [1u8; 32].into();
 //
 // 	// Setup: reserve transfer from relay to Pop, so that sovereign account accurate for return
 // transfer 	let amount_to_send: Balance = pop_runtime::UNIT * 1000;
@@ -485,7 +618,7 @@ fn reserve_transfer_native_asset_from_para_to_system_para() {
 //
 // 	let message = {
 // 		let assets: Asset = (Here, 10 * pop_runtime::UNIT).into();
-// 		let beneficiary = AccountId32 { id: beneficiary.clone().into(), network: None }.into();
+// 		let beneficiary = AccountId { id: beneficiary.clone().into(), network: None }.into();
 // 		let spot_order = <RelayRelay as Chain>::RuntimeCall::OnDemandAssignmentProvider(
 // 			assigner_on_demand::Call::<<RelayRelay as Chain>::Runtime>::place_order_keep_alive {
 // 				max_amount: 1 * pop_runtime::UNIT,
@@ -586,4 +719,67 @@ fn init_tracing() {
 			.with_test_writer()
 			.init();
 	});
+}
+
+/// Asserts that an event has been emitted using pattern matching.
+macro_rules! assert_event_matches {
+    ($expression:expr, $pattern:pat $(if $guard:expr)? $(,)?) => {
+		assert!($expression.iter().any(|e| matches!(e, $pattern $(if $guard)?)), "expected event not found in {:#?}", $expression);
+    };
+}
+pub(crate) use assert_event_matches;
+
+fn asset_hub_to_para_transfer_assets(t: Test<AssetHubPara, PopNetworkPara>) -> DispatchResult {
+	<AssetHubPara as AssetHubParaPallet>::PolkadotXcm::limited_reserve_transfer_assets(
+		t.signed_origin,
+		bx!(t.args.dest.into()),
+		bx!(t.args.beneficiary.into()),
+		bx!(t.args.assets.into()),
+		t.args.fee_asset_item,
+		t.args.weight_limit,
+	)
+}
+
+fn asset_hub_to_para_assets_sender_assertions(t: Test<AssetHubPara, PopNetworkPara>) {
+	type RuntimeEvent = <AssetHubPara as Chain>::RuntimeEvent;
+	AssetHubPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+		864_610_000,
+		8_799,
+	)));
+	let sovereign_account = AssetHubPara::sovereign_account_id_of(t.args.dest.clone());
+	assert_event_matches!(
+		AssetHubPara::events(),
+		RuntimeEvent::Assets(pallet_assets::Event::Transferred { asset_id, from, to, amount })
+		if *asset_id == USDC && *from == t.sender.account_id && *to == sovereign_account && *amount == t.args.amount
+	);
+}
+
+fn asset_hub_to_para_assets_receiver_assertions(t: Test<AssetHubPara, PopNetworkPara>) {
+	type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+	let events = PopNetworkPara::events();
+	println!("PopNetwork events: {:?}", events); // Debug output
+	assert_event_matches!(
+		events,
+		RuntimeEvent::Assets(pallet_assets::Event::Issued { asset_id, owner, amount })
+		if *asset_id == USDC_POP_ASSET_ID && *owner == t.receiver.account_id && *amount == t.args.amount
+	);
+	assert_event_matches!(
+		events,
+		RuntimeEvent::MessageQueue(pallet_message_queue::Event::Processed { success, .. })
+		if *success == true
+	);
+}
+
+use codec::Decode;
+use pallet_contracts::{Code, CollectEvents};
+
+fn function_selector(name: &str) -> Vec<u8> {
+	let hash = sp_io::hashing::blake2_256(name.as_bytes());
+	[hash[0..4].to_vec()].concat()
+}
+
+fn decoded<T: Decode>(
+	result: pallet_contracts::ExecReturnValue,
+) -> Result<T, pallet_contracts::ExecReturnValue> {
+	<T>::decode(&mut &result.data[1..]).map_err(|_| result)
 }

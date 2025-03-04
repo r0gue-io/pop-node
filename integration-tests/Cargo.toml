@@ -14,11 +14,13 @@ tracing-subscriber = { workspace = true, features = [
     "std",
     "tracing-log",
 ] }
+log.workspace = true
 
 # Substrate
 frame-support.workspace = true
 pallet-assets.workspace = true
 pallet-balances.workspace = true
+pallet-contracts.workspace = true
 pallet-message-queue.workspace = true
 sp-authority-discovery.workspace = true
 sp-consensus-aura.workspace = true
@@ -28,6 +30,7 @@ sp-consensus-grandpa.workspace = true
 sp-core.workspace = true
 sp-keyring.workspace = true
 sp-runtime.workspace = true
+sp-io.workspace = true
 
 # Polkadot
 pallet-xcm.workspace = true
@@ -71,6 +74,7 @@ runtime-benchmarks = [
     "frame-support/runtime-benchmarks",
     "pallet-assets/runtime-benchmarks",
     "pallet-balances/runtime-benchmarks",
+    "pallet-contracts/runtime-benchmarks",
     "pallet-message-queue/runtime-benchmarks",
     "pallet-xcm/runtime-benchmarks",
     "paseo-runtime?/runtime-benchmarks",
@@ -93,6 +97,7 @@ std = [
     "frame-support/std",
     "pallet-assets/std",
     "pallet-balances/std",
+    "pallet-contracts/std",
     "pallet-message-queue/std",
     "pallet-xcm/std",
     "paseo-runtime-constants?/std",
@@ -108,6 +113,7 @@ std = [
     "sp-consensus-beefy/std",
     "sp-consensus-grandpa/std",
     "sp-core/std",
+    "sp-io/std",
     "sp-runtime/std",
     "tracing-subscriber/std",
     "westend-runtime-constants?/std",
@@ -122,6 +128,7 @@ try-runtime = [
     "frame-support/try-runtime",
     "pallet-assets/try-runtime",
     "pallet-balances/std",
+    "pallet-contracts/try-runtime",
     "pallet-message-queue/try-runtime",
     "paseo-runtime?/try-runtime",
     "pop-runtime-devnet/try-runtime",

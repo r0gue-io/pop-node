@@ -16,10 +16,11 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use crate::{Call, Config, Pallet};
 use frame_benchmarking::{benchmarks, impl_benchmark_test_suite};
 use frame_system::RawOrigin;
 use xcm::v3::prelude::*;
+
+use crate::{Call, Config, Pallet};
 
 benchmarks! {
 	// This where clause allows us to create ForeignAssetTypes
@@ -78,20 +79,15 @@ benchmarks! {
 
 #[cfg(test)]
 mod tests {
-	use crate::mock::Test;
 	use sp_io::TestExternalities;
 	use sp_runtime::BuildStorage;
 
+	use crate::mock::Test;
+
 	pub fn new_test_ext() -> TestExternalities {
-		let t = frame_system::GenesisConfig::<Test>::default()
-			.build_storage()
-			.unwrap();
+		let t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 		TestExternalities::new(t)
 	}
 }
 
-impl_benchmark_test_suite!(
-	Pallet,
-	crate::benchmarks::tests::new_test_ext(),
-	crate::mock::Test
-);
+impl_benchmark_test_suite!(Pallet, crate::benchmarks::tests::new_test_ext(), crate::mock::Test);

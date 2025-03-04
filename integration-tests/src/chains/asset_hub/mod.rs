@@ -12,7 +12,7 @@ pub(crate) use {asset_hub_westend_runtime as runtime, westend_runtime_constants 
 use super::*;
 
 pub(crate) mod genesis;
-use genesis::*;
+pub(crate) use genesis::*;
 
 // AssetHub Parachain declaration.
 decl_test_parachains! {

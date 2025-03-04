@@ -3,14 +3,16 @@ use emulated_integration_tests_common::{
 	accounts, build_genesis_storage, collators::invulnerables, SAFE_XCM_VERSION,
 };
 use frame_support::parameter_types;
+use polkadot_primitives::AccountId;
 use sp_core::storage::Storage;
 
 use super::*;
 use crate::chains::asset_hub::{
 	constants::currency::EXISTENTIAL_DEPOSIT,
 	runtime::{
-		BalancesConfig, CollatorSelectionConfig, ParachainInfoConfig, PolkadotXcmConfig,
-		RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig, WASM_BINARY,
+		AssetsConfig, BalancesConfig, CollatorSelectionConfig, ParachainInfoConfig,
+		PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys, SystemConfig,
+		WASM_BINARY,
 	},
 };
 
@@ -33,6 +35,8 @@ pub(crate) fn genesis() -> Storage {
 				(USDC, AssetOwner::get(), true, USD_MIN_BALANCE),
 				(USDT, AssetOwner::get(), true, USD_MIN_BALANCE),
 			],
+			next_asset_id: Some(USDC),
+			..Default::default()
 		},
 		balances: BalancesConfig {
 			balances: accounts::init_balances()

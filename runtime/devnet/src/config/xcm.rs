@@ -27,6 +27,10 @@ use crate::{
 	XcmpQueue,
 };
 
+pub const ASSET_HUB: Junction = Parachain(1000);
+/// Assets on Asset Hub.
+pub const ASSET_HUB_ASSETS: Junction = PalletInstance(50);
+
 parameter_types! {
 	pub const RelayLocation: Location = Location::parent();
 	pub AssetHub: Location = Location::new(1, [Parachain(1000)]);
@@ -37,6 +41,7 @@ parameter_types! {
 	// and prepend `UniversalLocation` with `GlobalConsensus(RelayNetwork::get())`.
 	pub UniversalLocation: InteriorLocation = Parachain(ParachainInfo::parachain_id().into()).into();
 	pub CheckAccount: AccountId = crate::PolkadotXcm::check_account();
+	pub USDCAssetReserve: Location = Location::new(1, [ASSET_HUB, ASSET_HUB_ASSETS, GeneralIndex(1337)]);
 }
 
 /// Type for specifying how a `Location` can be converted into an `AccountId`. This is used
@@ -172,8 +177,20 @@ impl ContainsPair<Asset, Location> for NativeAssetExceptRelay {
 	}
 }
 
+/// Asset filter that allows specific asset if coming from a certain location.
+pub struct AssetFrom<Asset, Origin>(PhantomData<(Asset, Origin)>);
+impl<Asset: Get<Location>, Origin: Get<Location>> ContainsPair<xcm::prelude::Asset, Location>
+	for AssetFrom<Asset, Origin>
+{
+	fn contains(asset: &xcm::prelude::Asset, origin: &Location) -> bool {
+		log::trace!(target: "xcm::contains", "AssetFrom asset: {:?}, origin: {:?}", asset, origin);
+		*origin == Origin::get() && matches!(asset.id.clone(), AssetId(id) if id == Asset::get())
+	}
+}
+
 /// Combinations of (Asset, Location) pairs which we trust as reserves.
-pub type TrustedReserves = (NativeAssetFrom<AssetHub>, NativeAssetExceptRelay);
+pub type TrustedReserves =
+	(NativeAssetFrom<AssetHub>, NativeAssetExceptRelay, AssetFrom<USDCAssetReserve, AssetHub>);
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
