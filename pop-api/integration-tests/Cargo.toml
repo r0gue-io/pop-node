@@ -10,25 +10,29 @@ contract-build.workspace = true
 [dev-dependencies]
 codec.workspace = true
 env_logger.workspace = true
-log.workspace = true
-
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
+ismp = { workspace = true, default-features = false }
+log.workspace = true
 pallet-api = { workspace = true, default-features = false }
 pallet-assets = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
+pallet-ismp = { workspace = true, default-features = false }
 pallet-nfts = { workspace = true, default-features = false }
-sp-io = { workspace = true, default-features = false }
-sp-runtime = { workspace = true, default-features = false }
-
+pallet-xcm = { workspace = true, default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
+	"messaging",
 	"nonfungibles",
 ] }
 pop-primitives = { workspace = true, default-features = false }
 pop-runtime-devnet.workspace = true
 pop-runtime-testnet.workspace = true
+sp-io = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+xcm.workspace = true
+xcm-executor.workspace = true
 
 [features]
 default = [ "std" ]

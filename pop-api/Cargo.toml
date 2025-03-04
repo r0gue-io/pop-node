@@ -34,6 +34,7 @@ path = "src/lib.rs"
 [features]
 default = [ "std" ]
 fungibles = [  ]
+messaging = [  ]
 nonfungibles = [  ]
 std = [
 	"ink/std",

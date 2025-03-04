@@ -6,7 +6,10 @@ use pop_runtime_common::genesis::*;
 use sp_core::crypto::Ss58Codec;
 use sp_genesis_builder::PresetId;
 
-use crate::{AssetsConfig, BalancesConfig, SessionKeys, EXISTENTIAL_DEPOSIT, UNIT};
+use crate::{
+	config::governance::SudoAddress, AssetsConfig, BalancesConfig, SessionKeys,
+	EXISTENTIAL_DEPOSIT, UNIT,
+};
 
 /// A development chain running on a single node, using the `testnet` runtime.
 pub const TESTNET_DEV: &str = "pop-testnet-dev";
@@ -26,15 +29,6 @@ const ENDOWMENT: Balance = 10_000_000 * UNIT;
 
 /// The default XCM version to set in genesis config.
 const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
-
-/// SUDO account set at genesis.
-const TESTNET_SUDO_ACCOUNT: &str = "5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD";
-
-// Returns the SUDO account's address as an `AccountId`.
-// This function will return an error if the SS58 address is invalid.
-fn sudo_account_id() -> AccountId {
-	AccountId::from_ss58check(TESTNET_SUDO_ACCOUNT).expect("sudo address is valid SS58")
-}
 
 /// Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by `id`.
 pub(crate) fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
@@ -113,7 +107,7 @@ fn live_config() -> Value {
 			(collator_2_account_id, collator_2_aura_id),
 		],
 		vec![],
-		sudo_account_id(),
+		SudoAddress::get(),
 		PARA_ID,
 	)
 }
