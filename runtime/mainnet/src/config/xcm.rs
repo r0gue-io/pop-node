@@ -1096,6 +1096,9 @@ mod tests {
 				>;
 				let b: u128 = BaseDeliveryFee::get();
 				let m: u128 = TransactionByteFee::get();
+				let msg = Xcm { 0: vec![WithdrawAsset(Assets::from((Location::parent(), 1)))] };
+				let msg_length = msg.encoded_size() as u128;
+				assert_eq!(msg_length, 7);
 
 				// F * (B + msg_length * M)
 				// A: RelayLocation
@@ -1103,12 +1106,12 @@ mod tests {
 				// M: TransactionByteFee
 				// F: ParachainSystem
 				//
-				// message_length = 1
-				let result: u128 = ParachainSystem::get_fee_factor(()).saturating_mul_int(b + m);
-				// Ensure that an empty XCM encodes to a size of 1.
-				assert_eq!(Xcm::<()>(vec![]).encoded_size() as u8, 1);
+				// message_length = 7
+				let msg_fee = msg_length.saturating_mul(m);
+				let result: u128 =
+					ParachainSystem::get_fee_factor(()).saturating_mul_int(b + msg_fee);
 				assert_eq!(
-					ExponentialDeliveryPrice::price_for_delivery((), &Xcm(vec![])),
+					ExponentialDeliveryPrice::price_for_delivery((), &msg),
 					(RelayLocation::get(), result).into()
 				);
 			})
