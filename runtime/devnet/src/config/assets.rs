@@ -1,3 +1,4 @@
+use ::xcm::v5::Location;
 use frame_support::{
 	pallet_prelude::Get,
 	parameter_types,
@@ -129,6 +130,31 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type AssetDeposit = AssetDeposit;
 	type AssetId = AssetIdForTrustBackedAssets;
 	type AssetIdParameter = codec::Compact<AssetIdForTrustBackedAssets>;
+	type Balance = Balance;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type CallbackHandle = ();
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type Extra = ();
+	type ForceOrigin = AssetsForceOrigin;
+	type Freezer = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = AssetsStringLimit;
+	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
+}
+
+pub(crate) type ForeignAssetsInstance = pallet_assets::Instance2;
+pub type ForeignAssetsCall = pallet_assets::Call<Runtime, ForeignAssetsInstance>;
+impl pallet_assets::Config<ForeignAssetsInstance> for Runtime {
+	type ApprovalDeposit = ApprovalDeposit;
+	type AssetAccountDeposit = AssetAccountDeposit;
+	type AssetDeposit = AssetDeposit;
+	type AssetId = Location;
+	type AssetIdParameter = Location;
 	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
