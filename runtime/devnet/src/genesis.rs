@@ -91,30 +91,18 @@ fn local_config() -> Value {
 	)
 }
 
-/// Configures a live chain running on multiple nodes on private devnet, using the `devnet` runtime.
+/// Configures a live chain running on one collator, using the `devnet` runtime.
 fn live_config() -> Value {
 	let collator_0_account_id: AccountId =
 		AccountId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
 	let collator_0_aura_id: AuraId =
 		AuraId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
-	let collator_1_account_id: AccountId =
-		AccountId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_1_aura_id: AuraId =
-		AuraId::from_ss58check("5FyVvcSvSXCkBwvBEHkUh1VWGGrwaR3zbYBkU3Rc5DqV75S4").unwrap();
-	let collator_2_account_id: AccountId =
-		AccountId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
-	let collator_2_aura_id: AuraId =
-		AuraId::from_ss58check("5GMqrQuWpyyBBK7LAWXR5psWvKc1QMqtiyasjp23VNKZWgh6").unwrap();
 
 	genesis(
 		// Initial collators.
 		Vec::from([
 			// POP COLLATOR 0
 			(collator_0_account_id, collator_0_aura_id),
-			// POP COLLATOR 1
-			(collator_1_account_id, collator_1_aura_id),
-			// POP COLLATOR 2
-			(collator_2_account_id, collator_2_aura_id),
 		]),
 		vec![],
 		sudo_account_id(),
