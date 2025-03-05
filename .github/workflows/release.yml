@@ -185,6 +185,7 @@ jobs:
       - name: Install packages (Linux)
         if: contains(matrix.platform.target, 'linux')
         run: |
+          sudo apt-get update
           sudo apt-get install -y protobuf-compiler ${{ contains(matrix.platform.target, 'aarch64') && 'crossbuild-essential-arm64' || '' }}
           protoc --version
 
@@ -196,6 +197,14 @@ jobs:
 
       - name: Add target
         run: rustup target add ${{ matrix.platform.target }}
+
+      - name: Set Node Build Opts
+        run: |
+          if [[ "${{ github.event.release.tag_name }}" == "mainnet"* ]]; then
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build" >> $GITHUB_ENV
+          else
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build,ismp" >> $GITHUB_ENV
+          fi
 
       - name: Build node
         run: cargo build --profile=production -p pop-node $NODE_BUILD_OPTS --target ${{ matrix.platform.target }}
@@ -215,7 +224,7 @@ jobs:
           tar -czf ${{ env.package }} pop-node pop-node.sha256
 
       - name: Upload binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: binaries
           path: ${{ env.path }}/${{ env.package }}
