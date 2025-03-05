@@ -153,6 +153,7 @@ substrate-frame-rpc-system = { git = "https://github.com/paritytech/polkadot-sdk
 
 # Polkadot
 pallet-xcm = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
+pallet-xcm-benchmarks = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 polkadot-cli = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412" }
 polkadot-parachain-primitives = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
 polkadot-primitives = { git = "https://github.com/paritytech/polkadot-sdk", branch = "stable2412", default-features = false }
