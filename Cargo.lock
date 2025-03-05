@@ -6568,7 +6568,7 @@ checksum = "7943c866cc5cd64cbc25b2e01621d07fa8eb2a1a23160ee81ce38704e97b8ecf"
 [[package]]
 name = "ismp"
 version = "0.2.2"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "anyhow",
  "derive_more 1.0.0",
@@ -6585,7 +6585,7 @@ dependencies = [
 [[package]]
 name = "ismp-parachain"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "cumulus-pallet-parachain-system 0.18.0",
  "cumulus-primitives-core 0.17.0",
@@ -6610,7 +6610,7 @@ dependencies = [
 [[package]]
 name = "ismp-parachain-inherent"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -6631,7 +6631,7 @@ dependencies = [
 [[package]]
 name = "ismp-parachain-runtime-api"
 version = "1.15.1"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "cumulus-pallet-parachain-system 0.18.0",
  "sp-api 35.0.0",
@@ -9923,7 +9923,7 @@ dependencies = [
 [[package]]
 name = "pallet-ismp"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "anyhow",
  "fortuples",
@@ -9946,7 +9946,7 @@ dependencies = [
 [[package]]
 name = "pallet-ismp-rpc"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "anyhow",
  "frame-system 39.1.0",
@@ -9976,7 +9976,7 @@ dependencies = [
 [[package]]
 name = "pallet-ismp-runtime-api"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "ismp",
  "pallet-ismp",
@@ -16825,7 +16825,7 @@ dependencies = [
 [[package]]
 name = "serde-hex-utils"
 version = "0.1.0"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "anyhow",
  "hex",
@@ -19524,7 +19524,7 @@ dependencies = [
 [[package]]
 name = "substrate-state-machine"
 version = "1.15.3"
-source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#144c98de434ebd6732283b0585c1942c64577873"
+source = "git+https://github.com/r0gue-io/ismp?branch=polkadot-stable2412#99e29f58ab1dfcaa1739641ef594c6061c19ec2d"
 dependencies = [
  "frame-support 39.0.0",
  "hash-db",
