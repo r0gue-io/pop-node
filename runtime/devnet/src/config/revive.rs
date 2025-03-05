@@ -20,7 +20,9 @@ parameter_types! {
 impl pallet_revive::Config for Runtime {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Runtime>;
 	type CallFilter = Nothing;
-	type ChainExtension = (); //todo!("Call with peter, currently we are only implementing the extension for pallet-contracts");
+	type ChainExtension = ();
+	// todo!("Call with peter, currently we are only implementing the extension for
+ // pallet-contracts");
 	type ChainId = ConstU64<4001>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
@@ -28,6 +30,7 @@ impl pallet_revive::Config for Runtime {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
+	type NativeToEthRatio = ConstU32<1_000_000>;
 	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
@@ -39,10 +42,9 @@ impl pallet_revive::Config for Runtime {
 	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type Xcm = pallet_xcm::Pallet<Self>;
-	type NativeToEthRatio = ConstU32<1_000_000>;
 }
 
 // Mock implementation running for messaging.
-// remove extrinsic tests / benchmarking.	
+// remove extrinsic tests / benchmarking.
 // xcm spike
-// ismp spike 
+// ismp spike
