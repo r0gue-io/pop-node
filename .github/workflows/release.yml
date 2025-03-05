@@ -197,6 +197,14 @@ jobs:
       - name: Add target
         run: rustup target add ${{ matrix.platform.target }}
 
+      - name: Set Node Build Opts
+        run: |
+          if [[ "${{ github.event.release.tag_name }}" == "mainnet"* ]]; then
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build" >> $GITHUB_ENV
+          else
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build,ismp" >> $GITHUB_ENV
+          fi
+
       - name: Build node
         run: cargo build --profile=production -p pop-node $NODE_BUILD_OPTS --target ${{ matrix.platform.target }}
 
