@@ -251,9 +251,15 @@ mod tests {
 
 		#[test]
 		fn simple_majority_is_never_origin() {
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_motion::Config>::SimpleMajorityOrigin>(),
 				TypeId::of::<NeverEnsureOrigin<()>>(),
+			);
+			#[cfg(feature = "runtime-benchmarks")]
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_motion::Config>::SimpleMajorityOrigin>(),
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
 			);
 		}
 
