@@ -32,7 +32,7 @@ pub mod transports;
 
 /// Message storage deposit calculations.
 mod deposits;
-use deposits::{calculate_deposit, ProtocolStorageDeposit};
+use deposits::*;
 
 #[cfg(test)]
 mod tests;
@@ -61,13 +61,13 @@ pub mod pallet {
 
 		type OriginConverter: TryConvert<Self::RuntimeOrigin, Location>;
 
-		/// The base byte fee for a request, used to prevent bloating.
+		/// The base byte fee for data stored onchain.
 		#[pallet::constant]
-		type ByteFee: Get<BalanceOf<Self>>;
+		type OnChainByteFee: Get<BalanceOf<Self>>;
 
-		/// The incentive byte fee is used to encourage users to remove requests from storage.
+		/// The base byte fee for data stored offchain.
 		#[pallet::constant]
-		type IsmpByteFee: Get<BalanceOf<Self>>;
+		type OffChainByteFee: Get<BalanceOf<Self>>;
 
 		type CallbackExecutor: CallbackExecutor<Self>;
 
@@ -262,8 +262,11 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit =
-				calculate_deposit::<T, ismp::Get<T>>(ProtocolStorageDeposit::IsmpRequests);
+			let deposit = 
+				calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests) +
+				calculate_message_deposit::<T, T::OnChainByteFee>() + 
+				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>();
+
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -323,8 +326,11 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit =
-				calculate_deposit::<T, ismp::Post<T>>(ProtocolStorageDeposit::IsmpRequests);
+			let deposit = 
+				calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests) +
+				calculate_message_deposit::<T, T::OnChainByteFee>() +
+				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>();
+
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -386,7 +392,10 @@ pub mod pallet {
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = calculate_deposit::<T, ()>(ProtocolStorageDeposit::XcmQueries);
+			let deposit = 
+				calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests) +
+				calculate_message_deposit::<T, T::OnChainByteFee>();
+
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by creating new query via XCM.
