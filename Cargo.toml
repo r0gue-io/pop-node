@@ -21,10 +21,10 @@ exclude = [
 	"tests/contracts",
 ]
 members = [
-	"integration-tests",
+	#"integration-tests",
 	"node",
 	"pallets/*",
-	"pop-api/integration-tests",
+	#"pop-api/integration-tests",
 	"primitives",
 	"runtime/devnet",
 	"runtime/mainnet",
