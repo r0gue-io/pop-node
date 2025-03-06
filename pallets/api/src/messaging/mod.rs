@@ -32,6 +32,10 @@ mod benchmarking;
 /// Messaging transports.
 pub mod transports;
 
+/// Message storage deposit calculations.
+mod deposits;
+use deposits::{ProtocolStorageDeposit, calculate_deposit};
+
 #[cfg(test)]
 mod tests;
 
@@ -62,8 +66,13 @@ pub mod pallet {
 
 		type OriginConverter: TryConvert<Self::RuntimeOrigin, Location>;
 
+		/// The base byte fee for a request, used to prevent bloating.
 		#[pallet::constant]
 		type ByteFee: Get<BalanceOf<Self>>;
+
+		/// The incentive byte fee is used to encourage users to remove requests from storage.
+		#[pallet::constant]
+		type IsmpByteFee: Get<BalanceOf<Self>>;
 
 		type CallbackExecutor: CallbackExecutor<Self>;
 
@@ -71,9 +80,7 @@ pub mod pallet {
 		type Deposit: Mutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
 			+ Inspect<Self::AccountId>;
 
-		#[pallet::constant]
-		type IsmpByteFee: Get<BalanceOf<Self>>;
-
+		
 		/// The ISMP message dispatcher.
 		type IsmpDispatcher: IsmpDispatcher<Account = Self::AccountId, Balance = BalanceOf<Self>>;
 
@@ -261,16 +268,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			// Calculate deposit and place on hold.
-			let deposit = Self::calculate_deposit(
-				message.calculate_deposit() +
-					// IsmpRequests
-					(KeyLenOf::<IsmpRequests<T>>::get() as usize +
-						AccountIdOf::<T>::max_encoded_len() +
-						MessageId::max_encoded_len())
-					.saturated_into::<BalanceOf<T>>() *
-						T::ByteFee::get(),
-			);
+			let deposit = deposits::calculate_deposit::<T, ismp::Get<T>>(ProtocolStorageDeposit::IsmpRequests);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -330,16 +328,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			// Calculate deposit and place on hold.
-			let deposit = Self::calculate_deposit(
-				message.calculate_deposit() +
-					// IsmpRequests
-					(KeyLenOf::<IsmpRequests<T>>::get() as usize +
-						AccountIdOf::<T>::max_encoded_len() +
-						MessageId::max_encoded_len())
-						.saturated_into::<BalanceOf<T>>() *
-						T::ByteFee::get(),
-			);
+			let deposit = deposits::calculate_deposit::<T, ismp::Post<T>>(ProtocolStorageDeposit::IsmpRequests);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -400,16 +389,8 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
-			// Calculate deposit and place on hold.
-			let deposit = Self::calculate_deposit(
-				// XcmQueries
-				(KeyLenOf::<XcmQueries<T>>::get() as usize +
-					AccountIdOf::<T>::max_encoded_len() +
-					MessageId::max_encoded_len() +
-					Option::<Callback<T::AccountId>>::max_encoded_len())
-				.saturated_into::<BalanceOf<T>>() *
-					T::ByteFee::get(),
-			);
+
+			let deposit = deposits::calculate_deposit::<T, ()>(ProtocolStorageDeposit::XcmQueries);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by creating new query via XCM.
@@ -518,16 +499,6 @@ pub mod pallet {
 	}
 }
 impl<T: Config> Pallet<T> {
-	// Calculate the deposit required for a particular message.
-	fn calculate_deposit(deposit: BalanceOf<T>) -> BalanceOf<T> {
-		// Add amount for `Messages` key and value
-		deposit.saturating_add(
-			(KeyLenOf::<Messages<T>>::get().saturated_into::<BalanceOf<T>>() +
-				Message::<T>::max_encoded_len().saturated_into::<BalanceOf<T>>()) *
-				T::ByteFee::get(),
-		)
-	}
-
 	// Attempt to notify via callback.
 	fn call(
 		origin: AccountIdOf<T>,
@@ -648,10 +619,6 @@ impl<T: Config> crate::Read for Pallet<T> {
 			),
 		}
 	}
-}
-
-trait CalculateDeposit<Deposit> {
-	fn calculate_deposit(&self) -> Deposit;
 }
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]

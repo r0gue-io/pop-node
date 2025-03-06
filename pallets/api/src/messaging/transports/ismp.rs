@@ -26,7 +26,7 @@ use sp_runtime::{BoundedVec, SaturatedConversion, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, BalanceOf, CalculateDeposit, MessageId, Vec,
+	AccountIdOf, BalanceOf, MessageId, Vec,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -49,7 +49,7 @@ impl<T: Config> From<Message<T>> for DispatchRequest {
 	}
 }
 
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct Get<T: Config> {
 	// TODO: Option<u32> to support relay?
@@ -79,18 +79,7 @@ impl<T: Config> From<Get<T>> for DispatchRequest {
 	}
 }
 
-impl<T: Config> CalculateDeposit<BalanceOf<T>> for Get<T> {
-	fn calculate_deposit(&self) -> BalanceOf<T> {
-		let len = self.dest.encoded_size() +
-			self.height.encoded_size() +
-			self.timeout.encoded_size() +
-			self.context.len() +
-			self.keys.iter().map(|k| k.len()).sum::<usize>();
-		calculate_deposit::<T>(T::IsmpByteFee::get() * len.saturated_into())
-	}
-}
-
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen)]
 #[scale_info(skip_type_params(T))]
 pub struct Post<T: Config> {
 	// TODO: Option<u32> to support relay?
@@ -114,13 +103,6 @@ impl<T: Config> From<Post<T>> for DispatchPost {
 impl<T: Config> From<Post<T>> for DispatchRequest {
 	fn from(value: Post<T>) -> Self {
 		DispatchRequest::Post(value.into())
-	}
-}
-
-impl<T: Config> CalculateDeposit<BalanceOf<T>> for Post<T> {
-	fn calculate_deposit(&self) -> BalanceOf<T> {
-		let len = self.dest.encoded_size() + self.timeout.encoded_size() + self.data.len();
-		calculate_deposit::<T>(T::IsmpByteFee::get() * len.saturated_into())
 	}
 }
 
@@ -205,17 +187,6 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 	fn on_response(&self, _response: &Response) -> Weight {
 		DbWeightOf::<T>::get().reads_writes(2, 2)
 	}
-}
-
-fn calculate_deposit<T: Config>(mut deposit: BalanceOf<T>) -> BalanceOf<T> {
-	// Add amount for `IsmpRequests` lookup.
-	let key_len: BalanceOf<T> =
-		(T::AccountId::max_encoded_len() + MessageId::max_encoded_len()).saturated_into();
-	deposit.saturating_accrue(
-		T::ByteFee::get() * (H256::max_encoded_len().saturated_into::<BalanceOf<T>>() + key_len),
-	);
-
-	deposit
 }
 
 fn process_response<T: Config>(
