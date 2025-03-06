@@ -22,11 +22,11 @@ use ismp::{
 use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
 use sp_core::{keccak_256, H256};
-use sp_runtime::{BoundedVec, SaturatedConversion, Saturating};
+use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, BalanceOf, MessageId, Vec,
+	AccountIdOf, MessageId, Vec,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -163,7 +163,6 @@ impl<T: Config> IsmpModule for Handler<T> {
 					// 	deposit: *deposit,
 					// 	commitment: *commitment,
 					// });
-					Ok(())
 				})?;
 				Ok(())
 			},
