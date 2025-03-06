@@ -240,10 +240,8 @@ impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
 }
 
 impl crate::messaging::Config for Test {
-	type OnChainByteFee = TransactionByteFee;
 	type CallbackExecutor = MockCallbackExecutor<Test>;
 	type Deposit = Balances;
-	type OffChainByteFee = ();
 	type IsmpDispatcher = MockIsmpDispatcher;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
@@ -251,6 +249,8 @@ impl crate::messaging::Config for Test {
 	type MaxKeys = ConstU32<10>;
 	type MaxRemovals = ConstU32<1024>;
 	type MaxResponseLen = ConstU32<1024>;
+	type OffChainByteFee = ();
+	type OnChainByteFee = TransactionByteFee;
 	type OriginConverter = ();
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;

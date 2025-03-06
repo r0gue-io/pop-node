@@ -112,12 +112,8 @@ impl nonfungibles::Config for Runtime {
 }
 
 impl messaging::Config for Runtime {
-	type OnChainByteFee = TransactionByteFee;
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
-	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
-	// much as onchain cost.
-	type OffChainByteFee = 	();
 	type IsmpDispatcher = Ismp;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
@@ -127,6 +123,10 @@ impl messaging::Config for Runtime {
 	type MaxRemovals = ConstU32<1024>;
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<1024>;
+	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
+	// much as onchain cost.
+	type OffChainByteFee = ();
+	type OnChainByteFee = TransactionByteFee;
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
