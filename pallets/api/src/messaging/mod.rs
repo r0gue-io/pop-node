@@ -32,7 +32,7 @@ pub mod transports;
 
 /// Message storage deposit calculations.
 mod deposits;
-use deposits::{ProtocolStorageDeposit, calculate_deposit};
+use deposits::{calculate_deposit, ProtocolStorageDeposit};
 
 #[cfg(test)]
 mod tests;
@@ -46,9 +46,7 @@ pub type MessageId = [u8; 32];
 pub mod pallet {
 
 	use frame_support::{
-		dispatch::DispatchResult,
-		pallet_prelude::*,
-		traits::tokens::fungible::hold::Mutate,
+		dispatch::DispatchResult, pallet_prelude::*, traits::tokens::fungible::hold::Mutate,
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
@@ -77,7 +75,6 @@ pub mod pallet {
 		type Deposit: Mutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
 			+ Inspect<Self::AccountId>;
 
-		
 		/// The ISMP message dispatcher.
 		type IsmpDispatcher: IsmpDispatcher<Account = Self::AccountId, Balance = BalanceOf<Self>>;
 
@@ -265,7 +262,8 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = calculate_deposit::<T, ismp::Get<T>>(ProtocolStorageDeposit::IsmpRequests);
+			let deposit =
+				calculate_deposit::<T, ismp::Get<T>>(ProtocolStorageDeposit::IsmpRequests);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -325,7 +323,8 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = calculate_deposit::<T, ismp::Post<T>>(ProtocolStorageDeposit::IsmpRequests);
+			let deposit =
+				calculate_deposit::<T, ismp::Post<T>>(ProtocolStorageDeposit::IsmpRequests);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
