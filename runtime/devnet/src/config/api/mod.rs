@@ -3,21 +3,27 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::{traits::Contains, pallet_prelude::*, dispatch::{PostDispatchInfo, DispatchErrorWithPostInfo}};
+use frame_support::{
+	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
+	pallet_prelude::*,
+	traits::Contains,
+};
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
+use pallet_revive::{AddressMapper, CollectEvents, DebugInfo};
+use pallet_xcm::Origin;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use versioning::*;
-
-use pallet_revive::{DebugInfo, CollectEvents, AddressMapper};
 use xcm::latest::Location;
-use pallet_xcm::Origin;
+
 use crate::{
-	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
-	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent, messaging,
-	TransactionByteFee, Balances, Ismp, ConstU32, RuntimeHoldReason, config::xcm::LocalOriginToLocation,
-	AccountId, Revive, RuntimeOrigin, BlockNumber 
+	config::{
+		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
+		xcm::LocalOriginToLocation,
+	},
+	fungibles, messaging, nonfungibles, AccountId, Balances, BlockNumber, ConstU32, Ismp, Revive,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, TransactionByteFee,
 };
 
 mod versioning;
@@ -44,7 +50,6 @@ pub enum RuntimeRead {
 	/// Messaging read queries.
 	#[codec(index = 152)]
 	Messaging(messaging::Read<Runtime>),
-	
 }
 
 impl Readable for RuntimeRead {
@@ -58,7 +63,6 @@ impl Readable for RuntimeRead {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
 			RuntimeRead::NonFungibles(key) => nonfungibles::Pallet::weight(key),
 			RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
-
 		}
 	}
 
@@ -127,10 +131,25 @@ impl messaging::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Xcm = QueryHandler;
-	type XcmResponseOrigin = pallet_xcm::EnsureResponse<()>;
+	type XcmResponseOrigin = EnsureResponse;
 }
 
+pub struct EnsureResponse;
+impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureResponse {
+	type Success = Location;
 
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			Origin::Response(location) => Ok(location),
+			r => Err(O::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn try_successful_origin() -> Result<O, ()> {
+		todo!()
+	}
+}
 
 pub struct CallbackExecutor;
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
@@ -183,7 +202,6 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 		<Runtime as pallet_revive::Config>::WeightInfo::call()
 	}
 }
-
 
 // TODO!( default implementation where T: PolkadotXcm::Config
 pub struct QueryHandler;
