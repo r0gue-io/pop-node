@@ -22,7 +22,7 @@ impl pallet_revive::Config for Runtime {
 	type CallFilter = Nothing;
 	type ChainExtension = ();
 	// todo!("Call with peter, currently we are only implementing the extension for
- // pallet-contracts");
+	// pallet-contracts");
 	type ChainId = ConstU64<4001>;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;

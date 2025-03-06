@@ -26,6 +26,9 @@ use xcm::Response;
 
 use super::Weight;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 /// Messaging transports.
 pub mod transports;
 
@@ -489,8 +492,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// Remove a request/response, returning any deposit previously taken.
-		/// Will ignore any erroneous messages and continue trying to process the remainder.
+		/// Try and remove a collection of messages.
+		/// Will revert if any one of the messages is erroneous.
 		#[frame_support::transactional]
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::zero())]
@@ -684,7 +687,7 @@ impl<T: Config> Message<T> {
 	/// Try and remove self.
 	pub fn try_remove(&self, origin: &AccountIdOf<T>, id: &MessageId) -> Result<(), DispatchError> {
 		match self {
-			/// Ismp messages can only be removed if their status is erroneous.
+			// Ismp messages can only be removed if their status is erroneous.
 			Message::Ismp { status, .. } => match status {
 				MessageStatus::Ok => Err(Error::<T>::RequestPending.into()),
 				MessageStatus::Timeout | MessageStatus::Err(_) => {
@@ -692,12 +695,12 @@ impl<T: Config> Message<T> {
 					Ok(())
 				},
 			},
-			/// Ismp responses can always be removed.
+			// Ismp responses can always be removed.
 			Message::IsmpResponse { .. } => {
 				self.remove(origin, id);
 				Ok(())
 			},
-			/// Xcm queries can only be removed if their status is erroneous.
+			// Xcm queries can only be removed if their status is erroneous.
 			Message::XcmQuery { status, .. } => match status {
 				MessageStatus::Ok => Err(Error::<T>::RequestPending.into()),
 				MessageStatus::Timeout | MessageStatus::Err(_) => {
@@ -705,7 +708,7 @@ impl<T: Config> Message<T> {
 					Ok(())
 				},
 			},
-			/// XCM responses can always be removed.
+			// XCM responses can always be removed.
 			Message::XcmResponse { .. } => {
 				self.remove(origin, id);
 				Ok(())
@@ -715,7 +718,7 @@ impl<T: Config> Message<T> {
 
 	/// Remove a message from storage.
 	/// Does no check on wether a message should be removed.
-	fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
+	pub(crate) fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
 		Messages::<T>::remove(&origin, &id);
 		match self {
 			Message::Ismp { commitment, .. } => {
