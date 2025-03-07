@@ -270,11 +270,8 @@ pub mod pallet {
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
-			let maybe_commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee });
-
-			match maybe_commitment {
-				Ok(commitment) => {
+			let commitment = T::IsmpDispatcher::default()
+				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee }).map_err(|_|Error::<T>::IsmpDispatchFailed)?;
 					// Store commitment for lookup on response, message for querying,
 					// response/timeout handling.
 					IsmpRequests::<T>::insert(&commitment, (&origin, id));
@@ -295,22 +292,6 @@ pub mod pallet {
 						callback,
 					});
 					Ok(())
-				},
-				Err(_) => {
-					// Allow a caller to poll for the status still and retreive the message deposit.
-					Messages::<T>::insert(
-						&origin,
-						id,
-						Message::Ismp {
-							commitment: Default::default(),
-							callback,
-							deposit,
-							status: MessageStatus::Err(Error::<T>::IsmpDispatchFailed.into()),
-						},
-					);
-					Err(Error::<T>::IsmpDispatchFailed.into())
-				},
-			}
 		}
 
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
@@ -334,11 +315,9 @@ pub mod pallet {
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
-			let maybe_commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee });
+			let commitment = T::IsmpDispatcher::default()
+				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee }).map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 
-			match maybe_commitment {
-				Ok(commitment) => {
 					// Store commitment for lookup on response, message for querying,
 					// response/timeout handling.
 					IsmpRequests::<T>::insert(&commitment, (&origin, id));
@@ -359,22 +338,6 @@ pub mod pallet {
 						callback,
 					});
 					Ok(())
-				},
-				Err(_) => {
-					// Allow a caller to poll for the status still and retreive the message deposit.
-					Messages::<T>::insert(
-						&origin,
-						id,
-						Message::Ismp {
-							commitment: Default::default(),
-							callback,
-							deposit,
-							status: MessageStatus::Err(Error::<T>::IsmpDispatchFailed.into()),
-						},
-					);
-					Err(Error::<T>::IsmpDispatchFailed.into())
-				},
-			}
 		}
 
 		#[pallet::call_index(3)]
@@ -479,8 +442,6 @@ pub mod pallet {
 		}
 
 		/// Try and remove a collection of messages.
-		/// Will revert if any one of the messages is erroneous.
-		#[frame_support::transactional]
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::zero())]
 		pub fn remove(
@@ -689,7 +650,7 @@ impl<T: Config> Message<T> {
 	}
 
 	/// Remove a message from storage.
-	/// Does no check on wether a message should be removed.
+	/// Does no check on whether a message should be removed.
 	pub(crate) fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
 		Messages::<T>::remove(&origin, &id);
 		match self {
@@ -724,9 +685,9 @@ impl<T: Config> Message<T> {
 pub enum MessageStatus {
 	/// No errors have been recorded.
 	Ok,
-	/// An error has occurred with this message>
+	/// An error has occurred with this message.
 	Err(DispatchError),
-	/// A timeout has occurred
+	/// A timeout has occurred.
 	Timeout,
 }
 
