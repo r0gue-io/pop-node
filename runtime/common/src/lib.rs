@@ -10,6 +10,8 @@ extern crate alloc;
 
 /// Functions used for defining the genesis state of a chain.
 pub mod genesis;
+/// Benchmarked weight functions.
+pub mod weights;
 
 /// Nonce for an account
 pub type Nonce = u32;

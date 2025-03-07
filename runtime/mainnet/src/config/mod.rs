@@ -16,3 +16,4 @@ mod revive;
 mod utility;
 /// XCM.
 pub mod xcm;
+mod xcm_weights;

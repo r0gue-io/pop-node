@@ -32,7 +32,7 @@ pub struct WeightInfo<T>(PhantomData<T>);
 impl<T: frame_system::Config> WeightInfo<T> {
 	/// Storage: `System::Account` (r:1 w:1)
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	pub(crate) fn withdraw_asset() -> Weight {
+	pub fn withdraw_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `51`
 		//  Estimated: `3593`
@@ -44,7 +44,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	}
 	/// Storage: `System::Account` (r:2 w:2)
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	pub(crate) fn transfer_asset() -> Weight {
+	pub fn transfer_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `102`
 		//  Estimated: `6196`
@@ -66,7 +66,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	/// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
 	/// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	pub(crate) fn transfer_reserve_asset() -> Weight {
+	pub fn transfer_reserve_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `243`
 		//  Estimated: `8799`
@@ -76,7 +76,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 			.saturating_add(T::DbWeight::get().reads(8))
 			.saturating_add(T::DbWeight::get().writes(4))
 	}
-	pub(crate) fn reserve_asset_deposited() -> Weight {
+	pub fn reserve_asset_deposited() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -96,7 +96,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	/// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
 	/// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	pub(crate) fn initiate_reserve_withdraw() -> Weight {
+	pub fn initiate_reserve_withdraw() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `191`
 		//  Estimated: `6196`
@@ -108,7 +108,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	}
 	/// Storage: `Benchmark::Override` (r:0 w:0)
 	/// Proof: `Benchmark::Override` (`max_values`: None, `max_size`: None, mode: `Measured`)
-	pub(crate) fn receive_teleported_asset() -> Weight {
+	pub fn receive_teleported_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `0`
 		//  Estimated: `0`
@@ -118,7 +118,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	}
 	/// Storage: `System::Account` (r:1 w:1)
 	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
-	pub(crate) fn deposit_asset() -> Weight {
+	pub fn deposit_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `51`
 		//  Estimated: `3593`
@@ -140,7 +140,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	/// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
 	/// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	pub(crate) fn deposit_reserve_asset() -> Weight {
+	pub fn deposit_reserve_asset() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `192`
 		//  Estimated: `6196`
@@ -162,7 +162,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	/// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
 	/// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	pub(crate) fn initiate_teleport() -> Weight {
+	pub fn initiate_teleport() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `140`
 		//  Estimated: `3605`
@@ -184,7 +184,7 @@ impl<T: frame_system::Config> WeightInfo<T> {
 	/// Proof: `ParachainSystem::HostConfiguration` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
 	/// Storage: `ParachainSystem::PendingUpwardMessages` (r:1 w:1)
 	/// Proof: `ParachainSystem::PendingUpwardMessages` (`max_values`: Some(1), `max_size`: None, mode: `Measured`)
-	pub(crate) fn initiate_transfer() -> Weight {
+	pub fn initiate_transfer() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `192`
 		//  Estimated: `6196`

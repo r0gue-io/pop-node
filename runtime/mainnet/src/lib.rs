@@ -16,7 +16,6 @@ pub mod config;
 
 /// The genesis state presets available.
 pub mod genesis;
-mod weights;
 
 extern crate alloc;
 
@@ -47,7 +46,7 @@ use pallet_transaction_payment::ChargeTransactionPayment;
 // Polkadot imports
 use polkadot_runtime_common::SlowAdjustingFeeUpdate;
 pub use pop_runtime_common::{
-	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
+	weights, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICRO_UNIT,
 	MILLI_UNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
 	UNINCLUDED_SEGMENT_CAPACITY, UNIT,

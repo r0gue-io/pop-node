@@ -1,17 +1,16 @@
-mod pallet_xcm_benchmarks_fungible;
-mod pallet_xcm_benchmarks_generic;
-
 use alloc::vec::Vec;
 
 use frame_support::BoundedVec;
-use pallet_xcm_benchmarks_fungible::WeightInfo as XcmFungibleWeight;
-use pallet_xcm_benchmarks_generic::WeightInfo as XcmGeneric;
+use weights::xcm::{
+	pallet_xcm_benchmarks_fungible::WeightInfo as XcmFungibleWeight,
+	pallet_xcm_benchmarks_generic::WeightInfo as XcmGeneric,
+};
 use xcm::{
 	latest::{prelude::*, AssetTransferFilter},
 	DoubleEncoded,
 };
 
-use crate::{config::xcm::MaxAssetsIntoHolding, Runtime};
+use crate::{config::xcm::MaxAssetsIntoHolding, weights, Runtime};
 
 trait WeighAssets {
 	fn weigh_assets(&self, weight: Weight) -> Weight;

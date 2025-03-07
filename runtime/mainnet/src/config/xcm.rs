@@ -36,6 +36,7 @@ use crate::{
 			TransactionByteFee, TreasuryAccount,
 		},
 		system::RuntimeBlockWeights,
+		xcm_weights,
 	},
 	weights, AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo,
 	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
@@ -208,7 +209,7 @@ impl xcm_executor::Config for XcmConfig {
 	type UniversalAliases = Nothing;
 	type UniversalLocation = UniversalLocation;
 	type Weigher =
-		WeightInfoBounds<weights::xcm::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
+		WeightInfoBounds<xcm_weights::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
 	type XcmRecorder = PolkadotXcm;
 	type XcmSender = XcmRouter;
 }
@@ -242,7 +243,7 @@ impl pallet_xcm::Config for Runtime {
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
 	type Weigher =
-		WeightInfoBounds<weights::xcm::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
+		WeightInfoBounds<xcm_weights::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
 	type WeightInfo = weights::pallet_xcm::WeightInfo<Runtime>;
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
@@ -764,7 +765,7 @@ mod tests {
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::Weigher>(),
 				TypeId::of::<
 					WeightInfoBounds<
-						weights::xcm::PopXcmWeight<RuntimeCall>,
+						xcm_weights::PopXcmWeight<RuntimeCall>,
 						RuntimeCall,
 						MaxInstructions,
 					>,
@@ -910,7 +911,7 @@ mod tests {
 				TypeId::of::<<Runtime as pallet_xcm::Config>::Weigher>(),
 				TypeId::of::<
 					WeightInfoBounds<
-						weights::xcm::PopXcmWeight<RuntimeCall>,
+						xcm_weights::PopXcmWeight<RuntimeCall>,
 						RuntimeCall,
 						MaxInstructions,
 					>,
