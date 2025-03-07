@@ -14,16 +14,14 @@ pub fn calculate_protocol_deposit<T: Config, ByteFee: Get<BalanceOf<T>>>(
 	p: ProtocolStorageDeposit,
 ) -> BalanceOf<T> {
 	let base: usize = match p {
-		ProtocolStorageDeposit::XcmQueries =>
-			(KeyLenOf::<XcmQueries<T>>::get() as usize)
-				.saturating_add(AccountIdOf::<T>::max_encoded_len())
-				.saturating_add(MessageId::max_encoded_len())
-				.saturating_add(Option::<Callback<T::AccountId>>::max_encoded_len()),
+		ProtocolStorageDeposit::XcmQueries => (KeyLenOf::<XcmQueries<T>>::get() as usize)
+			.saturating_add(AccountIdOf::<T>::max_encoded_len())
+			.saturating_add(MessageId::max_encoded_len())
+			.saturating_add(Option::<Callback<T::AccountId>>::max_encoded_len()),
 
-		ProtocolStorageDeposit::IsmpRequests => 
-			(KeyLenOf::<IsmpRequests<T>>::get() as usize)
-				.saturating_add(AccountIdOf::<T>::max_encoded_len())
-				.saturating_add(MessageId::max_encoded_len()),
+		ProtocolStorageDeposit::IsmpRequests => (KeyLenOf::<IsmpRequests<T>>::get() as usize)
+			.saturating_add(AccountIdOf::<T>::max_encoded_len())
+			.saturating_add(MessageId::max_encoded_len()),
 	};
 	ByteFee::get().saturating_mul(base.saturated_into())
 }
@@ -32,7 +30,8 @@ pub fn calculate_protocol_deposit<T: Config, ByteFee: Get<BalanceOf<T>>>(
 pub fn calculate_message_deposit<T: Config, ByteFee: Get<BalanceOf<T>>>() -> BalanceOf<T> {
 	ByteFee::get().saturating_mul(
 		(KeyLenOf::<Messages<T>>::get() as usize + Message::<T>::max_encoded_len())
-			.saturated_into())
+			.saturated_into(),
+	)
 }
 
 /// Blanket implementation of generating the deposit for a type that implements MaxEncodedLen.
@@ -43,9 +42,10 @@ pub fn calculate_deposit_of<T: Config, ByteFee: Get<BalanceOf<T>>, U: MaxEncoded
 
 #[cfg(test)]
 mod tests {
+	use frame_support::pallet_prelude::Get;
+
 	use super::*;
 	use crate::mock::*;
-	use frame_support::pallet_prelude::Get;
 
 	struct Two;
 	impl Get<u128> for Two {
@@ -58,7 +58,9 @@ mod tests {
 	fn calculate_deposit_of_works() {
 		new_test_ext().execute_with(|| {
 			// 4 + 4 bytes.
-			#[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+			#[derive(
+				Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo,
+			)]
 			struct Data {
 				pub a: u32,
 				pub b: u32,
@@ -68,5 +70,4 @@ mod tests {
 			assert_eq!(calculate_deposit_of::<Test, Two, Data>(), 16);
 		})
 	}
-
 }
