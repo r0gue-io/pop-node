@@ -579,9 +579,4 @@ mod remove {
 			assert_eq!(alice_balance_post_remove, alice_balance_post_hold);
 		});
 	}
-
-	#[test]
-	fn origin_can_only_remove_messages_related_to_itself() {
-		new_test_ext().execute_with(|| {});
-	}
 }
