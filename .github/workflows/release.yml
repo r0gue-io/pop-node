@@ -216,7 +216,7 @@ jobs:
           sha256sum pop-node > pop-node.sha256
           SHA256_SUM=$(cat pop-node.sha256 | awk '{print $1}')
           echo "SHA256_SUM=$SHA256_SUM" >> $GITHUB_ENV
-          tar -czf ${{ env.package }} pop-node pop-node.sha256
+          tar -czf "${{ env.package }}.tar.gz" pop-node pop-node.sha256
 
       - name: Package binary (macOS)
         if: contains(matrix.platform.target, 'apple')
@@ -225,7 +225,7 @@ jobs:
           shasum -a 256 pop-node > pop-node.sha256
           SHA256_SUM=$(cat pop-node.sha256 | awk '{print $1}')
           echo "SHA256_SUM=$SHA256_SUM" >> $GITHUB_ENV
-          tar -czf ${{ env.package }} pop-node pop-node.sha256
+          tar -czf "${{ env.package }}.tar.gz" pop-node pop-node.sha256
 
       - name: Upload binary
         uses: actions/upload-artifact@v4
