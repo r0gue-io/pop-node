@@ -128,3 +128,8 @@ std = [
 	"xcm-builder/std",
 	"xcm-executor/std",
 ]
+try-runtime = [
+	"pallet-motion/try-runtime",
+	"pallet-nfts-sdk/try-runtime",
+	"pallet-revive/try-runtime",
+]
