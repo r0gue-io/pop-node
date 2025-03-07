@@ -47,9 +47,9 @@ sp-runtime.workspace = true
 # Polkadot
 pallet-xcm.workspace = true
 pallet-xcm-benchmarks.workspace = true
+xcm.workspace = true
 xcm-builder.workspace = true
 xcm-executor.workspace = true
-xcm.workspace = true
 
 # Cumulus
 cumulus-pallet-aura-ext.workspace = true
