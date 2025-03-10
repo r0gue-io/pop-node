@@ -176,10 +176,11 @@ impl<T: Config> IsmpModule for Handler<T> {
 					else {
 						return Err(Error::Custom("message not found".into()))
 					};
-					*message = Some(super::super::Message::IsmpTimedOut {
-						deposit: *deposit,
-						commitment: *commitment,
-					});
+					todo!("Update message status to timed out");
+					// *message = Some(super::super::Message::IsmpTimedOut {
+					// 	deposit: *deposit,
+					// 	commitment: *commitment,
+					// });
 					Ok(())
 				})?;
 				Ok(())
@@ -226,7 +227,7 @@ fn process_response<T: Config>(
 	let (origin, id) =
 		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
 
-	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
+	let Some(super::super::Message::Ismp { commitment, callback, deposit, status}) =
 		Messages::<T>::get(&origin, &id)
 	else {
 		return Err(Error::Custom("message not found".into()).into())
@@ -235,6 +236,7 @@ fn process_response<T: Config>(
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
 		// TODO: check response length
+		todo!("update message status on success or fail.");
 		if Pallet::<T>::call(origin.clone(), callback, id, &encode, deposit).is_ok() {
 			Pallet::<T>::deposit_event(event(origin, id));
 			return Ok(());
@@ -247,7 +249,7 @@ fn process_response<T: Config>(
 	Messages::<T>::insert(
 		&origin,
 		&id,
-		super::super::Message::IsmpResponse { commitment, deposit, response },
+		super::super::Message::IsmpResponse { commitment, deposit, response , status: todo!("take status from callback return value.")},
 	);
 	Pallet::<T>::deposit_event(event(origin, id));
 	Ok(())
