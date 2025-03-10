@@ -11,6 +11,9 @@ pub mod fungibles;
 /// APIs for non-fungible tokens.
 #[cfg(feature = "nonfungibles")]
 pub mod nonfungibles;
+/// APIs for messaging.
+#[cfg(feature = "messaging")]
+pub mod messaging;
 
 pub(crate) const V0: u8 = 0;
 
