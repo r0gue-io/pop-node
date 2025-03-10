@@ -86,7 +86,7 @@ _More instructions around using chopsticks for this can be found in [.chopsticks
     cargo build --release -p <runtime-crate>
 ```
 
-2. Fetch the runtime that is on chain at the moment. This can be fetched from the corresponding github release, or a
+2. Fetch the on chain runtime. This can be fetched from the corresponding github release, or a
    node connected to the network via `subwasm`.
 
 ```shell
