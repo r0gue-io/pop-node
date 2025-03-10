@@ -101,6 +101,9 @@ pub mod pallet {
 		type Xcm: NotifyQueryHandler<Self>;
 
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
+
+		/// The maximum number of xcm timout updates that can be processed per block.
+		type MaxXcmQueryExpiriesPerBlock: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -358,8 +361,9 @@ pub mod pallet {
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
-				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<T, T::OnChainByteFee>();
+				ProtocolStorageDeposit::XcmQueries,
+			)
+			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 

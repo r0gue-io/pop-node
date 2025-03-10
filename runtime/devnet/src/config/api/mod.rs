@@ -203,7 +203,6 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 	}
 }
 
-// TODO!( default implementation where T: PolkadotXcm::Config
 pub struct QueryHandler;
 impl pallet_api::messaging::NotifyQueryHandler<Runtime> for QueryHandler {
 	fn new_notify_query(
