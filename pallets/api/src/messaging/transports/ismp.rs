@@ -22,11 +22,11 @@ use ismp::{
 use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
 use sp_core::{keccak_256, H256};
-use sp_runtime::{BoundedVec, SaturatedConversion, Saturating};
+use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, BalanceOf, CalculateDeposit, MessageId, Vec,
+	AccountIdOf, MessageId, Vec,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -49,7 +49,9 @@ impl<T: Config> From<Message<T>> for DispatchRequest {
 	}
 }
 
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[derive(
+	Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct Get<T: Config> {
 	// TODO: Option<u32> to support relay?
@@ -79,18 +81,9 @@ impl<T: Config> From<Get<T>> for DispatchRequest {
 	}
 }
 
-impl<T: Config> CalculateDeposit<BalanceOf<T>> for Get<T> {
-	fn calculate_deposit(&self) -> BalanceOf<T> {
-		let len = self.dest.encoded_size() +
-			self.height.encoded_size() +
-			self.timeout.encoded_size() +
-			self.context.len() +
-			self.keys.iter().map(|k| k.len()).sum::<usize>();
-		calculate_deposit::<T>(T::IsmpByteFee::get() * len.saturated_into())
-	}
-}
-
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[derive(
+	Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct Post<T: Config> {
 	// TODO: Option<u32> to support relay?
@@ -114,13 +107,6 @@ impl<T: Config> From<Post<T>> for DispatchPost {
 impl<T: Config> From<Post<T>> for DispatchRequest {
 	fn from(value: Post<T>) -> Self {
 		DispatchRequest::Post(value.into())
-	}
-}
-
-impl<T: Config> CalculateDeposit<BalanceOf<T>> for Post<T> {
-	fn calculate_deposit(&self) -> BalanceOf<T> {
-		let len = self.dest.encoded_size() + self.timeout.encoded_size() + self.data.len();
-		calculate_deposit::<T>(T::IsmpByteFee::get() * len.saturated_into())
 	}
 }
 
@@ -176,11 +162,11 @@ impl<T: Config> IsmpModule for Handler<T> {
 					else {
 						return Err(Error::Custom("message not found".into()))
 					};
-					*message = Some(super::super::Message::IsmpTimedOut {
-						deposit: *deposit,
-						commitment: *commitment,
-					});
-					Ok(())
+					todo!("Update message status to timed out");
+					// *message = Some(super::super::Message::IsmpTimedOut {
+					// 	deposit: *deposit,
+					// 	commitment: *commitment,
+					// });
 				})?;
 				Ok(())
 			},
@@ -206,17 +192,6 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 	}
 }
 
-fn calculate_deposit<T: Config>(mut deposit: BalanceOf<T>) -> BalanceOf<T> {
-	// Add amount for `IsmpRequests` lookup.
-	let key_len: BalanceOf<T> =
-		(T::AccountId::max_encoded_len() + MessageId::max_encoded_len()).saturated_into();
-	deposit.saturating_accrue(
-		T::ByteFee::get() * (H256::max_encoded_len().saturated_into::<BalanceOf<T>>() + key_len),
-	);
-
-	deposit
-}
-
 fn process_response<T: Config>(
 	commitment: &H256,
 	encode: &impl Encode,
@@ -226,7 +201,7 @@ fn process_response<T: Config>(
 	let (origin, id) =
 		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
 
-	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
+	let Some(super::super::Message::Ismp { commitment, callback, deposit, status }) =
 		Messages::<T>::get(&origin, &id)
 	else {
 		return Err(Error::Custom("message not found".into()).into())
@@ -235,6 +210,7 @@ fn process_response<T: Config>(
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
 		// TODO: check response length
+		todo!("update message status on success or fail.");
 		if Pallet::<T>::call(origin.clone(), callback, id, &encode, deposit).is_ok() {
 			Pallet::<T>::deposit_event(event(origin, id));
 			return Ok(());
@@ -247,7 +223,12 @@ fn process_response<T: Config>(
 	Messages::<T>::insert(
 		&origin,
 		&id,
-		super::super::Message::IsmpResponse { commitment, deposit, response },
+		super::super::Message::IsmpResponse {
+			commitment,
+			deposit,
+			response,
+			status: todo!("take status from callback return value."),
+		},
 	);
 	Pallet::<T>::deposit_event(event(origin, id));
 	Ok(())

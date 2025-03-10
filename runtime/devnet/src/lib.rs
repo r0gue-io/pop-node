@@ -43,7 +43,7 @@ use frame_system::{
 	limits::{BlockLength, BlockWeights},
 	EnsureRoot,
 };
-use pallet_api::{fungibles, nonfungibles, messaging};
+use pallet_api::{fungibles, messaging, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
@@ -677,6 +677,7 @@ mod benches {
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
+		[messaging, Messaging]
 	);
 }
 

@@ -167,7 +167,7 @@ mod extension {
 		// Invalid encoded runtime call.
 		let input = vec![0u8, 99];
 		let mut env = MockEnvironment::new(DispatchExtFuncId::get(), input.clone());
-		let mut extension = Extension::<mock::Config>::default();
+		let mut extension: Extension<mock::Config> = Extension::<mock::Config>::default();
 		assert!(extension.call(&mut env).is_err());
 		// Charges weight.
 		assert_eq!(

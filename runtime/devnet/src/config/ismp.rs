@@ -41,7 +41,7 @@ impl Get<StateMachine> for HostStateMachine {
 		StateMachine::Polkadot(ParachainInfo::get().into())
 	}
 }
-  
+
 #[derive(Default)]
 pub struct Router;
 impl IsmpRouter for Router {
