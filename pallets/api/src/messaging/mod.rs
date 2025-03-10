@@ -360,7 +360,7 @@ pub mod pallet {
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
-				ProtocolStorageDeposit::IsmpRequests,
+				ProtocolStorageDeposit::XcmQueries,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 
