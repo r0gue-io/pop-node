@@ -1,5 +1,3 @@
-//! TODO: pallet docs.
-
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
@@ -15,8 +13,8 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::{traits::Saturating, BoundedVec, DispatchError, SaturatedConversion};
-use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
+use sp_runtime::{traits::Saturating, BoundedVec, DispatchError};
+use sp_std::vec::Vec;
 use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryId},
@@ -50,8 +48,7 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::DispatchResult,
 		pallet_prelude::*,
-		storage::KeyLenOf,
-		traits::tokens::{fungible::hold::Mutate, Precision::Exact},
+		traits::tokens::fungible::hold::Mutate,
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
@@ -268,7 +265,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = deposits::calculate_deposit::<T, ismp::Get<T>>(ProtocolStorageDeposit::IsmpRequests);
+			let deposit = calculate_deposit::<T, ismp::Get<T>>(ProtocolStorageDeposit::IsmpRequests);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -298,7 +295,7 @@ pub mod pallet {
 					});
 					Ok(())
 				},
-				Err(e) => {
+				Err(_) => {
 					// Allow a caller to poll for the status still and retreive the message deposit.
 					Messages::<T>::insert(
 						&origin,
@@ -328,7 +325,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = deposits::calculate_deposit::<T, ismp::Post<T>>(ProtocolStorageDeposit::IsmpRequests);
+			let deposit = calculate_deposit::<T, ismp::Post<T>>(ProtocolStorageDeposit::IsmpRequests);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
@@ -358,7 +355,7 @@ pub mod pallet {
 					});
 					Ok(())
 				},
-				Err(e) => {
+				Err(_) => {
 					// Allow a caller to poll for the status still and retreive the message deposit.
 					Messages::<T>::insert(
 						&origin,
@@ -390,7 +387,7 @@ pub mod pallet {
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = deposits::calculate_deposit::<T, ()>(ProtocolStorageDeposit::XcmQueries);
+			let deposit = calculate_deposit::<T, ()>(ProtocolStorageDeposit::XcmQueries);
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by creating new query via XCM.
@@ -480,7 +477,7 @@ pub mod pallet {
 		#[pallet::weight(Weight::zero())]
 		pub fn remove(
 			origin: OriginFor<T>,
-			mut messages: BoundedVec<MessageId, T::MaxRemovals>,
+			messages: BoundedVec<MessageId, T::MaxRemovals>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 
