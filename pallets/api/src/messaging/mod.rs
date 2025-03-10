@@ -271,27 +271,28 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee }).map_err(|_|Error::<T>::IsmpDispatchFailed)?;
-					// Store commitment for lookup on response, message for querying,
-					// response/timeout handling.
-					IsmpRequests::<T>::insert(&commitment, (&origin, id));
-					Messages::<T>::insert(
-						&origin,
-						id,
-						Message::Ismp {
-							commitment,
-							callback: callback.clone(),
-							deposit,
-							status: MessageStatus::Ok,
-						},
-					);
-					Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
-						origin,
-						id,
-						commitment,
-						callback,
-					});
-					Ok(())
+				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
+				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
+			// Store commitment for lookup on response, message for querying,
+			// response/timeout handling.
+			IsmpRequests::<T>::insert(&commitment, (&origin, id));
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp {
+					commitment,
+					callback: callback.clone(),
+					deposit,
+					status: MessageStatus::Ok,
+				},
+			);
+			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
+				origin,
+				id,
+				commitment,
+				callback,
+			});
+			Ok(())
 		}
 
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
@@ -316,28 +317,29 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee }).map_err(|_| Error::<T>::IsmpDispatchFailed)?;
+				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
+				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 
-					// Store commitment for lookup on response, message for querying,
-					// response/timeout handling.
-					IsmpRequests::<T>::insert(&commitment, (&origin, id));
-					Messages::<T>::insert(
-						&origin,
-						id,
-						Message::Ismp {
-							commitment,
-							callback: callback.clone(),
-							deposit,
-							status: MessageStatus::Ok,
-						},
-					);
-					Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
-						origin,
-						id,
-						commitment,
-						callback,
-					});
-					Ok(())
+			// Store commitment for lookup on response, message for querying,
+			// response/timeout handling.
+			IsmpRequests::<T>::insert(&commitment, (&origin, id));
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp {
+					commitment,
+					callback: callback.clone(),
+					deposit,
+					status: MessageStatus::Ok,
+				},
+			);
+			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
+				origin,
+				id,
+				commitment,
+				callback,
+			});
+			Ok(())
 		}
 
 		#[pallet::call_index(3)]
