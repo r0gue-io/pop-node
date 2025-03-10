@@ -15,12 +15,13 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::{traits::Saturating, BoundedVec, SaturatedConversion};
-use sp_std::vec::Vec;
+use sp_runtime::{traits::Saturating, BoundedVec, SaturatedConversion, DispatchError};
+use sp_std::{vec::Vec, collections::btree_set::BTreeSet};
 use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryId},
 };
+
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
 
@@ -440,31 +441,35 @@ pub mod pallet {
 		}
 
 		// Remove a request/response, returning any deposit previously taken.
+		/// Will ignore any erroneous messages and continue trying to process the remainder.
+		#[frame_support::transactional]
 		#[pallet::call_index(5)]
 		#[pallet::weight(Weight::zero())]
 		pub fn remove(
 			origin: OriginFor<T>,
-			messages: BoundedVec<MessageId, T::MaxRemovals>,
+			mut messages: BoundedVec<MessageId, T::MaxRemovals>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
+
 			for id in &messages {
-				match Messages::<T>::take(&origin, id) {
-					Some(message) => {
-						ensure!(message.is_removable().is_ok(), message.unwrap_err());
-						message.remove(&origin, &id);
-						message.release_deposit(&origin)?;
-					},
-					None => {
-						Err(Error::<T>::MessageNotFound.into())
-					},
-				}?;
+				let Some(message) = Messages::<T>::get(&origin, id) else {
+					return Err(Error::<T>::MessageNotFound.into());
+				};
+		
+				message
+					.try_remove(&origin, id)
+					.and_then(|_| message.release_deposit(&origin))?;
 			}
-			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
+		
+			Self::deposit_event(Event::<T>::Removed { 
+				origin, 
+				messages: messages.into_inner(),
+			});
+		
 			Ok(())
 		}
 	}
 }
-
 impl<T: Config> Pallet<T> {
 	// Calculate the deposit required for a particular message.
 	fn calculate_deposit(deposit: BalanceOf<T>) -> BalanceOf<T> {
@@ -633,8 +638,8 @@ enum Message<T: Config> {
 }
 
 impl<T: Config> Message<T> {
-	/// Define in what state a message can be removed, returning the Ok if removable.
-	pub fn is_removable(&self) -> Result<(), Error<T>> {
+	/// Try and remove self.	
+	pub fn try_remove(&self, origin: &AccountIdOf<T>, id: &MessageId) -> Result<(), DispatchError> {
 		match self {
 			/// Ismp messages can only be removed if their status is erroneous.
 			Message::Ismp { status,  .. }  => {
@@ -643,38 +648,44 @@ impl<T: Config> Message<T> {
 						Err(Error::<T>::RequestPending.into())
 					},
 					MessageStatus::Timeout | MessageStatus::Err(_) => {
+						self.remove(origin, id);
 						Ok(())
 					}
 				}
 			},
 			/// Ismp responses can always be removed.
 			Message::IsmpResponse { .. } => {
+				self.remove(origin, id);
 				Ok(())
 			},
 			/// Xcm queries can only be removed if their status is erroneous.
 			Message::XcmQuery { status, .. } => {
-				MessageStatus::Ok => {
-					Err(Error::<T>::RequestPending.into())
-				},
-				MessageStatus::Timeout | MessageStatus::Err(_) => {
-					Ok(())
+				match status {
+					MessageStatus::Ok => {
+						Err(Error::<T>::RequestPending.into())
+					},
+					MessageStatus::Timeout | MessageStatus::Err(_) => {
+						self.remove(origin, id);
+						Ok(())
+					}
 				}
 			},
 			/// XCM responses can always be removed.
 			Message::XcmResponse { .. } => {
+				self.remove(origin, id);
 				Ok(())
 			},
 		}
 	}
 		/// Remove a message from storage.
 		/// Does no check on wether a message should be removed.
-		pub fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
+		fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
 			Messages::<T>::remove(&origin, &id);
 			match self {
 				Message::Ismp { commitment, .. }  => {
 					IsmpRequests::<T>::remove(commitment);
 				},
-				Message::IsmpResponse { .. } => {
+				Message::IsmpResponse { commitment, .. } => {
 					IsmpRequests::<T>::remove(commitment);
 				},
 				Message::XcmQuery { query_id, .. } => {
@@ -686,7 +697,7 @@ impl<T: Config> Message<T> {
 			}
 		}
 
-		pub fn release_deposit(&self, origin: &T::AccountId) -> Result<(), Error<T>> {
+		pub fn release_deposit(&self, origin: &T::AccountId) -> Result<(), DispatchError> {
 			let deposit = match self {
 				Message::Ismp { deposit, .. }  => {
 					deposit
@@ -700,17 +711,18 @@ impl<T: Config> Message<T> {
 				Message::XcmResponse { deposit, .. } => {
 					deposit
 				},
-			}
-			T::Deposit::release(&HoldReason::Messaging.into(), origin, deposit)?;
+			};
+			T::Deposit::release(&HoldReason::Messaging.into(), origin, *deposit, Exact)?;
+			Ok(())
 		}
-}
+	}
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum MessageStatus {
 	/// No errors have been recorded.
 	Ok,
 	/// An error has occurred with this message>
-	Err(sp_runtime::DispatchError),
+	Err(DispatchError),
 	/// A timeout has occurred
 	Timeout,
 }
@@ -741,3 +753,5 @@ pub trait CallbackExecutor<T: Config> {
 
 	fn execution_weight() -> Weight;
 }
+
+
