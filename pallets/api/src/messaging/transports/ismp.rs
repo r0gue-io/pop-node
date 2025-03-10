@@ -49,7 +49,9 @@ impl<T: Config> From<Message<T>> for DispatchRequest {
 	}
 }
 
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct Get<T: Config> {
 	// TODO: Option<u32> to support relay?
@@ -79,7 +81,9 @@ impl<T: Config> From<Get<T>> for DispatchRequest {
 	}
 }
 
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo, MaxEncodedLen,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct Post<T: Config> {
 	// TODO: Option<u32> to support relay?

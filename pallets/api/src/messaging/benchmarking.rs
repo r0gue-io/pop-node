@@ -2,7 +2,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use frame_benchmarking::{account, v2::*};
-use frame_support::{BoundedVec, dispatch::RawOrigin, traits::Currency};
+use frame_support::{dispatch::RawOrigin, traits::Currency, BoundedVec};
 use sp_runtime::traits::Zero;
 
 use super::*;
@@ -10,11 +10,7 @@ use crate::Read as _;
 const SEED: u32 = 1;
 
 // See if `generic_event` has been emitted.
-fn assert_has_event<T: Config>
-(generic_event: <T as crate::messaging::Config>::RuntimeEvent)
-where
-
-{
+fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::RuntimeEvent) {
 	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
 }
 
@@ -59,10 +55,8 @@ mod messaging_benchmarks {
 		Pallet::<T>::remove(RawOrigin::Signed(owner.clone()), message_ids.clone());
 
 		assert_has_event::<T>(
-			crate::messaging::Event::Removed {
-				origin: owner,
-				messages: message_ids.to_vec(),
-			}.into()
+			crate::messaging::Event::Removed { origin: owner, messages: message_ids.to_vec() }
+				.into(),
 		)
 	}
 
