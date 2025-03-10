@@ -40,3 +40,4 @@ std = [
 	"pop-primitives/std",
 	"sp-io/std",
 ]
+messaging = [	]

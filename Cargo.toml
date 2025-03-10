@@ -19,9 +19,9 @@ exclude = [
 	"extension/contract",
 	"pop-api",
 	"tests/contracts",
+	"integration-tests",
 ]
 members = [
-	"integration-tests",
 	"node",
 	"pallets/*",
 	"pop-api/integration-tests",
