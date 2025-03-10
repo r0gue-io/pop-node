@@ -264,8 +264,9 @@ pub mod pallet {
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<T, T::OnChainByteFee>() +
-				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>();
+			).saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
+			.saturating_add(
+				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
@@ -310,8 +311,8 @@ pub mod pallet {
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<T, T::OnChainByteFee>() +
-				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>();
+			).saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>()).saturating_add(
+				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
@@ -359,7 +360,7 @@ pub mod pallet {
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<T, T::OnChainByteFee>();
+			).saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
