@@ -104,21 +104,14 @@ use frame_support::testing_prelude::bounded_vec;
         #[test]
         fn xcm_response_messages_can_always_be_removed() {
             new_test_ext().execute_with(|| {
-    
+
             });
         }
 
         #[test]
         fn multiple_messages_remove_works() {
             new_test_ext().execute_with(|| {
-    
-            });
-        }
-
-        #[test]
-        fn multiple_messages_remove_ignores_erroneous_removes_and_continues() {
-            new_test_ext().execute_with(|| {
-    
+                
             });
         }
 

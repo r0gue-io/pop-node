@@ -231,6 +231,8 @@ pub mod pallet {
 		RequestPending,
 		/// dispatching a call via ISMP falied
 		IsmpDispatchFailed,
+		/// The message was not found
+		MessageNotFound,
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -446,41 +448,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			for id in &messages {
-				// Ensure request exists and is not pending.
-				let deposit = match Messages::<T>::take(&origin, id) {
-					Some(message) => match message {
-						Message::Ismp { status, deposit, .. }  => {
-							match status {
-								MessageStatus::Ok => {
-									return Err(Error::<T>::RequestPending.into());
-								},
-								MessageStatus::Timeout | MessageStatus::Err(_) => {
-									Messages::<T>::remove(&origin, &id);
-									deposit
-								}
-							}
-						},
-						Message::IsmpResponse { commitment, deposit, .. } => {
-							IsmpRequests::<T>::remove(commitment);
-							Messages::<T>::remove(&origin, &id);
-							deposit
-						},
-						Message::XcmQuery { .. } => {
-							// XCM queries are infallible after origin checks.
-							return Err(Error::<T>::RequestPending.into())
-						},
-						Message::XcmResponse { query_id, deposit, .. } => {
-							XcmQueries::<T>::remove(query_id);
-							Messages::<T>::remove(&origin, &id);
-							deposit
-						},
+				match Messages::<T>::take(&origin, id) {
+					Some(message) => {
+						ensure!(message.is_removable().is_ok(), message.unwrap_err());
+						message.remove(&origin, &id);
+						message.release_deposit(&origin)?;
 					},
 					None => {
-						return Err(Error::<T>::InvalidMessage.into());
+						Err(Error::<T>::MessageNotFound.into())
 					},
-				};
-				// Return deposit.
-					T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
+				}?;
 			}
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
 			Ok(())
@@ -507,8 +484,6 @@ impl<T: Config> Pallet<T> {
 		data: &impl Encode,
 		deposit: BalanceOf<T>,
 	) -> DispatchResult {
-		// TODO: check weight removed from block weight - may need dispatching via executive
-		// instead
 		let result = T::CallbackExecutor::execute(
 			origin.clone(),
 			[callback.selector.to_vec(), (id, data).encode()].concat(),
@@ -655,6 +630,79 @@ enum Message<T: Config> {
 		response: Response,
 		status: MessageStatus,
 	},
+}
+
+impl<T: Config> Message<T> {
+	/// Define in what state a message can be removed, returning the Ok if removable.
+	pub fn is_removable(&self) -> Result<(), Error<T>> {
+		match self {
+			/// Ismp messages can only be removed if their status is erroneous.
+			Message::Ismp { status,  .. }  => {
+				match status {
+					MessageStatus::Ok => {
+						Err(Error::<T>::RequestPending.into())
+					},
+					MessageStatus::Timeout | MessageStatus::Err(_) => {
+						Ok(())
+					}
+				}
+			},
+			/// Ismp responses can always be removed.
+			Message::IsmpResponse { .. } => {
+				Ok(())
+			},
+			/// Xcm queries can only be removed if their status is erroneous.
+			Message::XcmQuery { status, .. } => {
+				MessageStatus::Ok => {
+					Err(Error::<T>::RequestPending.into())
+				},
+				MessageStatus::Timeout | MessageStatus::Err(_) => {
+					Ok(())
+				}
+			},
+			/// XCM responses can always be removed.
+			Message::XcmResponse { .. } => {
+				Ok(())
+			},
+		}
+	}
+		/// Remove a message from storage.
+		/// Does no check on wether a message should be removed.
+		pub fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
+			Messages::<T>::remove(&origin, &id);
+			match self {
+				Message::Ismp { commitment, .. }  => {
+					IsmpRequests::<T>::remove(commitment);
+				},
+				Message::IsmpResponse { .. } => {
+					IsmpRequests::<T>::remove(commitment);
+				},
+				Message::XcmQuery { query_id, .. } => {
+					XcmQueries::<T>::remove(query_id);
+				},
+				Message::XcmResponse { query_id, .. } => {
+					XcmQueries::<T>::remove(query_id);
+				},
+			}
+		}
+
+		pub fn release_deposit(&self, origin: &T::AccountId) -> Result<(), Error<T>> {
+			let deposit = match self {
+				Message::Ismp { deposit, .. }  => {
+					deposit
+				},
+				Message::IsmpResponse { deposit, .. } => {
+					deposit
+				},
+				Message::XcmQuery { deposit, .. } => {
+					deposit
+				},
+				Message::XcmResponse { deposit, .. } => {
+					deposit
+				},
+			}
+			T::Deposit::release(&HoldReason::Messaging.into(), origin, deposit)?;
+		}
 }
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
