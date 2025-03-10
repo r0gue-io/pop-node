@@ -1,12 +1,8 @@
 //! Benchmarking setup for pallet_api::nonfungibles
 
 use frame_benchmarking::{account, v2::*};
-use frame_support::{
-	BoundedVec,
-	traits::Currency,
-};
+use frame_support::{traits::Currency, BoundedVec};
 use sp_runtime::traits::Zero;
-
 
 use super::{
 	AttributeNamespace, CollectionIdOf, Config, Inspect, ItemIdOf, NftsInstanceOf, Pallet, Read,

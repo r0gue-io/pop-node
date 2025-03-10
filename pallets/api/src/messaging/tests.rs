@@ -15,14 +15,19 @@ fn events() -> Vec<Event<Test>> {
 	let result = System::events()
 		.into_iter()
 		.map(|r| r.event)
-		.filter_map(|e| if let crate::mock::RuntimeEvent::Messaging(inner) = e { Some(inner) } else { None })
+		.filter_map(|e| {
+			if let crate::mock::RuntimeEvent::Messaging(inner) = e {
+				Some(inner)
+			} else {
+				None
+			}
+		})
 		.collect::<Vec<_>>();
 
 	System::reset_events();
 
 	result
 }
-
 
 // All the tests for the Message enum impls.
 mod message {
@@ -322,42 +327,36 @@ mod remove {
 	#[test]
 	fn success_event() {
 		new_test_ext().execute_with(|| {
+			let deposit: Balance = 100;
+			let m = Message::IsmpResponse {
+				commitment: Default::default(),
+				deposit,
+				response: Default::default(),
+				status: MessageStatus::Ok,
+			};
+			let m_id = [0u8; 32];
+			let m2_id = [1u8; 32];
 
-		let deposit: Balance = 100;
-		let m = Message::IsmpResponse {
-			commitment: Default::default(),
-			deposit,
-			response: Default::default(),
-			status: MessageStatus::Ok,
-		};
-		let m_id = [0u8; 32];
-		let m2_id = [1u8; 32];
+			Messages::<Test>::insert(&ALICE, m_id, &m);
+			Messages::<Test>::insert(&ALICE, m2_id, &m);
 
-		Messages::<Test>::insert(&ALICE, m_id, &m);
-		Messages::<Test>::insert(&ALICE, m2_id, &m);
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
 
-		<Test as crate::messaging::Config>::Deposit::hold(
-			&HoldReason::Messaging.into(),
-			&ALICE,
-			deposit,
-		)
-		.unwrap();
-		<Test as crate::messaging::Config>::Deposit::hold(
-			&HoldReason::Messaging.into(),
-			&ALICE,
-			deposit,
-		)
-		.unwrap();
+			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(m_id, m2_id)));
 
-		assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(m_id, m2_id)));
-
-		assert!(events().contains(
-			&Event::<Test>::Removed {
-				origin: ALICE,
-				messages: vec![m_id, m2_id]
-			}
-		));
-
+			assert!(events()
+				.contains(&Event::<Test>::Removed { origin: ALICE, messages: vec![m_id, m2_id] }));
 		})
 	}
 
@@ -442,7 +441,7 @@ mod remove {
 
 			<Test as crate::messaging::Config>::Deposit::hold(
 				&HoldReason::Messaging.into(),
-				&ALICE, 
+				&ALICE,
 				deposit,
 			)
 			.unwrap();
