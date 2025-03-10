@@ -3,17 +3,23 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::traits::Contains;
+use frame_support::{traits::Contains, pallet_prelude::*, dispatch::{PostDispatchInfo, DispatchErrorWithPostInfo}};
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use versioning::*;
 
+use pallet_revive::{DebugInfo, CollectEvents, AddressMapper};
+use xcm::latest::Location;
+use pallet_xcm::Origin;
 use crate::{
 	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
-	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent,
+	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent, messaging,
+	TransactionByteFee, Balances, Ismp, ConstU32, RuntimeHoldReason, config::xcm::LocalOriginToLocation,
+	AccountId, Revive, RuntimeOrigin, BlockNumber 
 };
+
 
 mod versioning;
 
@@ -38,7 +44,7 @@ pub enum RuntimeRead {
 	NonFungibles(nonfungibles::Read<Runtime>),
 	/// Messaging read queries.
 	#[codec(index = 152)]
-	NonFungibles(messaging::Read<Runtime>),
+	Messaging(messaging::Read<Runtime>),
 	
 }
 
@@ -85,6 +91,7 @@ impl RuntimeResult {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
 			RuntimeResult::NonFungibles(result) => result.encode(),
+			RuntimeResult::Messaging(result) => result.encode(),
 		}
 	}
 }
@@ -103,7 +110,7 @@ impl nonfungibles::Config for Runtime {
 
 impl messaging::Config for Runtime {
 	type ByteFee = TransactionByteFee;
-	type Callback = Callback;
+	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
 	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
 	// much as onchain cost.
@@ -177,7 +184,7 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 		}
 
 		let post_info = PostDispatchInfo {
-			actual_weight: Some(output.gas_consumed.saturating_add(Self::weight())),
+			actual_weight: Some(output.gas_consumed.saturating_add(Self::execution_weight())),
 			pays_fee: Default::default(),
 		};
 
@@ -187,8 +194,7 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 			.map_err(|e| DispatchErrorWithPostInfo { post_info, error: e })
 	}
 
-	fn weight() -> Weight {
-		todo!("")
+	fn execution_weight() -> Weight {
 		use pallet_revive::WeightInfo;
 		<Runtime as pallet_revive::Config>::WeightInfo::call()
 	}
@@ -197,14 +203,14 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 
 // TODO!( default implementation where T: PolkadotXcm::Config
 pub struct QueryHandler;
-impl NotifyQueryHandler<Runtime> for QueryHandler {
+impl pallet_api::messaging::NotifyQueryHandler<Runtime> for QueryHandler {
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: messaging::Call<Runtime>,
 		timeout: BlockNumber,
 		match_querier: impl Into<Location>,
 	) -> u64 {
-		PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
+		crate::PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
 	}
 }
 

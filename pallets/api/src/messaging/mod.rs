@@ -59,7 +59,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type ByteFee: Get<BalanceOf<Self>>;
 
-		type Callback: CallbackT<Self>;
+		type CallbackExecutor: CallbackExecutor<Self>;	
 
 		/// The deposit mechanism.
 		type Deposit: Mutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
@@ -247,7 +247,7 @@ pub mod pallet {
 		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
 			// Add any additional gas limit specified for callback execution
 			.saturating_add(callback.map(|cb| {
-				T::Callback::weight().saturating_add(cb.weight)
+				T::CallbackExecutor::execution_weight().saturating_add(cb.weight)
 			}).unwrap_or_default())
 		)]
 		pub fn ismp_get(
@@ -295,7 +295,7 @@ pub mod pallet {
 		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
 			// Add any additional gas limit specified for callback execution
 			.saturating_add(callback.map(|cb| {
-				T::Callback::weight().saturating_add(cb.weight)
+				T::CallbackExecutor::execution_weight().saturating_add(cb.weight)
 			}).unwrap_or_default())
 		)]
 		pub fn ismp_post(
@@ -342,7 +342,7 @@ pub mod pallet {
 		#[pallet::weight(Weight::zero() // todo: benchmarking after consolidating storage
 			// Add any additional gas limit specified for callback execution
 			.saturating_add(callback.map(|cb| {
-				T::Callback::weight().saturating_add(cb.weight)
+				T::CallbackExecutor::execution_weight().saturating_add(cb.weight)
 			}).unwrap_or_default())
 			// TODO: add weight of xcm_response dispatchable once benchmarked
 		)]
@@ -496,7 +496,7 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		// TODO: check weight removed from block weight - may need dispatching via executive
 		// instead
-		let result = T::Callback::execute(
+		let result = T::CallbackExecutor::execute(
 			origin.clone(),
 			[callback.selector.to_vec(), (id, data).encode()].concat(),
 			callback.weight,
@@ -648,8 +648,8 @@ pub struct Callback {
 	pub weight: Weight,
 }
 
-pub trait CallbackT<T: Config> {
+pub trait CallbackExecutor<T: Config> {
 	fn execute(account: T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
 
-	fn weight() -> Weight;
+	fn execution_weight() -> Weight;
 }
