@@ -1,22 +1,22 @@
 use codec::{Decode, Encode};
 use frame_support::{
-	derive_impl, parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything},
+	derive_impl,
+	pallet_prelude::EnsureOrigin,
+	parameter_types,
+	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, OriginTrait},
 };
-use frame_system::{EnsureRoot, EnsureSigned};
+use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
+use pallet_xcm::Origin;
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, Verify},
 	BuildStorage,
 };
-
-use crate::messaging::{CallbackExecutor, NotifyQueryHandler, Call};
 use xcm::latest::Location;
-use frame_system::{pallet_prelude::BlockNumberFor};
-use frame_support::{pallet_prelude::EnsureOrigin, traits::OriginTrait};
-use pallet_xcm::Origin;
+
+use crate::messaging::{Call, CallbackExecutor, NotifyQueryHandler};
 
 pub(crate) const ALICE: AccountId = 1;
 pub(crate) const BOB: AccountId = 2;
@@ -210,7 +210,11 @@ impl crate::nonfungibles::Config for Test {
 
 pub struct MockCallbackExecutor<T>(T);
 impl<T: crate::messaging::Config> CallbackExecutor<T> for MockCallbackExecutor<T> {
-	fn execute(account: <T as frame_system::Config>::AccountId, data: Vec<u8>, weight: sp_runtime::Weight) -> frame_support::dispatch::DispatchResultWithPostInfo {
+	fn execute(
+		account: <T as frame_system::Config>::AccountId,
+		data: Vec<u8>,
+		weight: sp_runtime::Weight,
+	) -> frame_support::dispatch::DispatchResultWithPostInfo {
 		Ok(().into())
 	}
 
@@ -259,20 +263,20 @@ pub struct MockIsmpDispatcher;
 impl ismp::dispatcher::IsmpDispatcher for MockIsmpDispatcher {
 	type Account = AccountId;
 	type Balance = Balance;
-	
-	fn dispatch_request(
-			&self,
-			request: ismp::dispatcher::DispatchRequest,
-			fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
-		) -> Result<H256, anyhow::Error> {
 
-			Ok(Default::default())
+	fn dispatch_request(
+		&self,
+		request: ismp::dispatcher::DispatchRequest,
+		fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
+	) -> Result<H256, anyhow::Error> {
+		Ok(Default::default())
 	}
+
 	fn dispatch_response(
-			&self,
-			response: ismp::router::PostResponse,
-			fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
-		) -> Result<H256, anyhow::Error> {
+		&self,
+		response: ismp::router::PostResponse,
+		fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
+	) -> Result<H256, anyhow::Error> {
 		Ok(Default::default())
 	}
 }

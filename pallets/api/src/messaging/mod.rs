@@ -15,13 +15,12 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::{traits::Saturating, BoundedVec, SaturatedConversion, DispatchError};
-use sp_std::{vec::Vec, collections::btree_set::BTreeSet};
+use sp_runtime::{traits::Saturating, BoundedVec, DispatchError, SaturatedConversion};
+use sp_std::{collections::btree_set::BTreeSet, vec::Vec};
 use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryId},
 };
-
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
 
@@ -63,7 +62,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type ByteFee: Get<BalanceOf<Self>>;
 
-		type CallbackExecutor: CallbackExecutor<Self>;	
+		type CallbackExecutor: CallbackExecutor<Self>;
 
 		/// The deposit mechanism.
 		type Deposit: Mutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
@@ -277,10 +276,19 @@ pub mod pallet {
 
 			match maybe_commitment {
 				Ok(commitment) => {
-					// Store commitment for lookup on response, message for querying, response/timeout
-					// handling.
+					// Store commitment for lookup on response, message for querying,
+					// response/timeout handling.
 					IsmpRequests::<T>::insert(&commitment, (&origin, id));
-					Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback: callback.clone(), deposit, status: MessageStatus::Ok});
+					Messages::<T>::insert(
+						&origin,
+						id,
+						Message::Ismp {
+							commitment,
+							callback: callback.clone(),
+							deposit,
+							status: MessageStatus::Ok,
+						},
+					);
 					Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
 						origin,
 						id,
@@ -291,11 +299,19 @@ pub mod pallet {
 				},
 				Err(e) => {
 					// Allow a caller to poll for the status still and retreive the message deposit.
-					Messages::<T>::insert(&origin, id, Message::Ismp { commitment: Default::default(), callback, deposit, status: MessageStatus::Err(Error::<T>::IsmpDispatchFailed.into())});
+					Messages::<T>::insert(
+						&origin,
+						id,
+						Message::Ismp {
+							commitment: Default::default(),
+							callback,
+							deposit,
+							status: MessageStatus::Err(Error::<T>::IsmpDispatchFailed.into()),
+						},
+					);
 					Err(Error::<T>::IsmpDispatchFailed.into())
-				}
+				},
 			}
-			
 		}
 
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
@@ -329,10 +345,19 @@ pub mod pallet {
 
 			match maybe_commitment {
 				Ok(commitment) => {
-					// Store commitment for lookup on response, message for querying, response/timeout
-					// handling.
+					// Store commitment for lookup on response, message for querying,
+					// response/timeout handling.
 					IsmpRequests::<T>::insert(&commitment, (&origin, id));
-					Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback: callback.clone(), deposit, status: MessageStatus::Ok });
+					Messages::<T>::insert(
+						&origin,
+						id,
+						Message::Ismp {
+							commitment,
+							callback: callback.clone(),
+							deposit,
+							status: MessageStatus::Ok,
+						},
+					);
 					Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
 						origin,
 						id,
@@ -340,12 +365,21 @@ pub mod pallet {
 						callback,
 					});
 					Ok(())
-				}, 
+				},
 				Err(e) => {
 					// Allow a caller to poll for the status still and retreive the message deposit.
-					Messages::<T>::insert(&origin, id, Message::Ismp { commitment: Default::default(), callback, deposit, status: MessageStatus::Err(Error::<T>::IsmpDispatchFailed.into())});
+					Messages::<T>::insert(
+						&origin,
+						id,
+						Message::Ismp {
+							commitment: Default::default(),
+							callback,
+							deposit,
+							status: MessageStatus::Err(Error::<T>::IsmpDispatchFailed.into()),
+						},
+					);
 					Err(Error::<T>::IsmpDispatchFailed.into())
-				}
+				},
 			}
 		}
 
@@ -360,7 +394,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			let querier = T::OriginConverter::try_convert(T::RuntimeOrigin::signed(origin.clone()))
-			.map_err(|_| Error::<T>::OriginConversionFailed)?;
+				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 			// Calculate deposit and place on hold.
@@ -376,14 +410,24 @@ pub mod pallet {
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by creating new query via XCM.
-			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response are ignored.
+			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
+			// are ignored.
 			let notify = Call::<T>::xcm_response { query_id: 0, response: Default::default() };
 			let query_id = T::Xcm::new_notify_query(responder, notify, timeout, querier);
 
 			// Store query id for later lookup on response, message for querying status,
 			// response/timeout handling.
 			XcmQueries::<T>::insert(&query_id, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback: callback.clone(), deposit, status: MessageStatus::Ok});
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::XcmQuery {
+					query_id,
+					callback: callback.clone(),
+					deposit,
+					status: MessageStatus::Ok,
+				},
+			);
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
 				origin,
 				id,
@@ -429,7 +473,12 @@ pub mod pallet {
 			Messages::<T>::insert(
 				&origin,
 				&id,
-				Message::XcmResponse { query_id, response: response.clone(), deposit, status: MessageStatus::Ok},
+				Message::XcmResponse {
+					query_id,
+					response: response.clone(),
+					deposit,
+					status: MessageStatus::Ok,
+				},
 			);
 			Self::deposit_event(Event::<T>::XcmResponseReceived {
 				dest: origin,
@@ -455,17 +504,12 @@ pub mod pallet {
 				let Some(message) = Messages::<T>::get(&origin, id) else {
 					return Err(Error::<T>::MessageNotFound.into());
 				};
-		
-				message
-					.try_remove(&origin, id)
-					.and_then(|_| message.release_deposit(&origin))?;
+
+				message.try_remove(&origin, id).and_then(|_| message.release_deposit(&origin))?;
 			}
-		
-			Self::deposit_event(Event::<T>::Removed { 
-				origin, 
-				messages: messages.into_inner(),
-			});
-		
+
+			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
+
 			Ok(())
 		}
 	}
@@ -580,23 +624,22 @@ impl<T: Config> crate::Read for Pallet<T> {
 		match request {
 			Read::PollStatus(request) =>
 				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| match m {
-					Message::Ismp {status, .. } => status,
+					Message::Ismp { status, .. } => status,
 					Message::IsmpResponse { status, .. } => status,
 					Message::XcmQuery { status, .. } => status,
-					Message::XcmResponse { status , ..} => status,
-
+					Message::XcmResponse { status, .. } => status,
 				})),
 			Read::GetResponse(request) =>
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
 					Message::Ismp { .. } => None,
 					Message::IsmpResponse { response, .. } => Some(response.into_inner()),
 					Message::XcmQuery { .. } => None,
-					Message::XcmResponse { response , ..} => Some(response.encode()),
+					Message::XcmResponse { response, .. } => Some(response.encode()),
 				})),
 			Read::QueryId(request) => ReadResult::QueryId(
 				Messages::<T>::get(request.0, request.1).and_then(|m| match m {
 					Message::XcmQuery { query_id, .. } | Message::XcmResponse { query_id, .. } =>
-					Some(query_id),
+						Some(query_id),
 					_ => None,
 				}),
 			),
@@ -627,7 +670,7 @@ enum Message<T: Config> {
 		query_id: QueryId,
 		callback: Option<Callback<T::AccountId>>,
 		deposit: BalanceOf<T>,
-		status: MessageStatus
+		status: MessageStatus,
 	},
 	XcmResponse {
 		query_id: QueryId,
@@ -638,20 +681,16 @@ enum Message<T: Config> {
 }
 
 impl<T: Config> Message<T> {
-	/// Try and remove self.	
+	/// Try and remove self.
 	pub fn try_remove(&self, origin: &AccountIdOf<T>, id: &MessageId) -> Result<(), DispatchError> {
 		match self {
 			/// Ismp messages can only be removed if their status is erroneous.
-			Message::Ismp { status,  .. }  => {
-				match status {
-					MessageStatus::Ok => {
-						Err(Error::<T>::RequestPending.into())
-					},
-					MessageStatus::Timeout | MessageStatus::Err(_) => {
-						self.remove(origin, id);
-						Ok(())
-					}
-				}
+			Message::Ismp { status, .. } => match status {
+				MessageStatus::Ok => Err(Error::<T>::RequestPending.into()),
+				MessageStatus::Timeout | MessageStatus::Err(_) => {
+					self.remove(origin, id);
+					Ok(())
+				},
 			},
 			/// Ismp responses can always be removed.
 			Message::IsmpResponse { .. } => {
@@ -659,16 +698,12 @@ impl<T: Config> Message<T> {
 				Ok(())
 			},
 			/// Xcm queries can only be removed if their status is erroneous.
-			Message::XcmQuery { status, .. } => {
-				match status {
-					MessageStatus::Ok => {
-						Err(Error::<T>::RequestPending.into())
-					},
-					MessageStatus::Timeout | MessageStatus::Err(_) => {
-						self.remove(origin, id);
-						Ok(())
-					}
-				}
+			Message::XcmQuery { status, .. } => match status {
+				MessageStatus::Ok => Err(Error::<T>::RequestPending.into()),
+				MessageStatus::Timeout | MessageStatus::Err(_) => {
+					self.remove(origin, id);
+					Ok(())
+				},
 			},
 			/// XCM responses can always be removed.
 			Message::XcmResponse { .. } => {
@@ -677,45 +712,38 @@ impl<T: Config> Message<T> {
 			},
 		}
 	}
-		/// Remove a message from storage.
-		/// Does no check on wether a message should be removed.
-		fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
-			Messages::<T>::remove(&origin, &id);
-			match self {
-				Message::Ismp { commitment, .. }  => {
-					IsmpRequests::<T>::remove(commitment);
-				},
-				Message::IsmpResponse { commitment, .. } => {
-					IsmpRequests::<T>::remove(commitment);
-				},
-				Message::XcmQuery { query_id, .. } => {
-					XcmQueries::<T>::remove(query_id);
-				},
-				Message::XcmResponse { query_id, .. } => {
-					XcmQueries::<T>::remove(query_id);
-				},
-			}
-		}
 
-		pub fn release_deposit(&self, origin: &T::AccountId) -> Result<(), DispatchError> {
-			let deposit = match self {
-				Message::Ismp { deposit, .. }  => {
-					deposit
-				},
-				Message::IsmpResponse { deposit, .. } => {
-					deposit
-				},
-				Message::XcmQuery { deposit, .. } => {
-					deposit
-				},
-				Message::XcmResponse { deposit, .. } => {
-					deposit
-				},
-			};
-			T::Deposit::release(&HoldReason::Messaging.into(), origin, *deposit, Exact)?;
-			Ok(())
+	/// Remove a message from storage.
+	/// Does no check on wether a message should be removed.
+	fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
+		Messages::<T>::remove(&origin, &id);
+		match self {
+			Message::Ismp { commitment, .. } => {
+				IsmpRequests::<T>::remove(commitment);
+			},
+			Message::IsmpResponse { commitment, .. } => {
+				IsmpRequests::<T>::remove(commitment);
+			},
+			Message::XcmQuery { query_id, .. } => {
+				XcmQueries::<T>::remove(query_id);
+			},
+			Message::XcmResponse { query_id, .. } => {
+				XcmQueries::<T>::remove(query_id);
+			},
 		}
 	}
+
+	pub fn release_deposit(&self, origin: &T::AccountId) -> Result<(), DispatchError> {
+		let deposit = match self {
+			Message::Ismp { deposit, .. } => deposit,
+			Message::IsmpResponse { deposit, .. } => deposit,
+			Message::XcmQuery { deposit, .. } => deposit,
+			Message::XcmResponse { deposit, .. } => deposit,
+		};
+		T::Deposit::release(&HoldReason::Messaging.into(), origin, *deposit, Exact)?;
+		Ok(())
+	}
+}
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum MessageStatus {
@@ -753,5 +781,3 @@ pub trait CallbackExecutor<T: Config> {
 
 	fn execution_weight() -> Weight;
 }
-
-
