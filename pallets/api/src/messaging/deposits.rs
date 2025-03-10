@@ -1,7 +1,7 @@
 use sp_runtime::SaturatedConversion;
+use sp_std::ops::Mul;
 
 use super::*;
-use sp_std::ops::Mul;
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum ProtocolStorageDeposit {
@@ -10,7 +10,9 @@ pub enum ProtocolStorageDeposit {
 }
 
 /// Calculate the deposit required for the space used for a specific protocol.
-pub fn calculate_protocol_deposit<T: Config, ByteFee: Get<BalanceOf<T>>>(p: ProtocolStorageDeposit) -> BalanceOf<T> {
+pub fn calculate_protocol_deposit<T: Config, ByteFee: Get<BalanceOf<T>>>(
+	p: ProtocolStorageDeposit,
+) -> BalanceOf<T> {
 	let base: usize = match p {
 		ProtocolStorageDeposit::XcmQueries =>
 			KeyLenOf::<XcmQueries<T>>::get() as usize +
@@ -33,7 +35,7 @@ pub fn calculate_message_deposit<T: Config, ByteFee: Get<BalanceOf<T>>>() -> Bal
 }
 
 /// Blanket implementation of generating the deposit for a type that implements MaxEncodedLen.
-pub fn calculate_deposit_of<T: Config, ByteFee: Get<BalanceOf<T>>, U: MaxEncodedLen>() -> BalanceOf<T> {
+pub fn calculate_deposit_of<T: Config, ByteFee: Get<BalanceOf<T>>, U: MaxEncodedLen>(
+) -> BalanceOf<T> {
 	ByteFee::get() * U::max_encoded_len().saturated_into()
 }
-

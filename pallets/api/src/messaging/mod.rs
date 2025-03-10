@@ -262,9 +262,9 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = 
-				calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests) +
-				calculate_message_deposit::<T, T::OnChainByteFee>() + 
+			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+				ProtocolStorageDeposit::IsmpRequests,
+			) + calculate_message_deposit::<T, T::OnChainByteFee>() +
 				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>();
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
@@ -326,9 +326,9 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = 
-				calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests) +
-				calculate_message_deposit::<T, T::OnChainByteFee>() +
+			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+				ProtocolStorageDeposit::IsmpRequests,
+			) + calculate_message_deposit::<T, T::OnChainByteFee>() +
 				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>();
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
@@ -392,9 +392,9 @@ pub mod pallet {
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
-			let deposit = 
-				calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests) +
-				calculate_message_deposit::<T, T::OnChainByteFee>();
+			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+				ProtocolStorageDeposit::IsmpRequests,
+			) + calculate_message_deposit::<T, T::OnChainByteFee>();
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
