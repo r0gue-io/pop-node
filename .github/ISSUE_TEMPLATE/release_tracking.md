@@ -80,8 +80,7 @@ _More instructions around using chopsticks for this can be found in [.chopsticks
 
 - [ ] Verify if `transaction_version` needs to be updated:
 
-1. Build the new runtime. No concrete features need to be active, it's not a problem if there `runtime-benchmarks` or
-   `try-runtime` are included.
+1. Build the new runtime. No concrete features need to be active, and it's not a problem if `runtime-benchmarks` or `try-runtime` is enabled.
 
 ```shell
     cargo build --release -p <runtime-crate>
