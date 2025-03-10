@@ -96,7 +96,7 @@ _More instructions around using chopsticks for this can be found in [.chopsticks
 3. Use `subwasm` to create a diff between the runtimes and verify if the `transaction_version` is compatible.
 
 ```shell
-    subwasm diff <old-runtime> <new-runtime>
+    subwasm diff <current-runtime-wasm> <new-runtime-wasm>
 ```
 
 ## Release
