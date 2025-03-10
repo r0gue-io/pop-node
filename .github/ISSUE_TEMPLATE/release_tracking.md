@@ -93,7 +93,7 @@ _More instructions around using chopsticks for this can be found in [.chopsticks
     subwasm get <node-endpoint> -o ./output/path
 ```
 
-3. Use `subwasm` to create a diff between the runtimes and verify if `transaction_version` is compatible between them.
+3. Use `subwasm` to create a diff between the runtimes and verify if the `transaction_version` is compatible.
 
 ```shell
     subwasm diff <old-runtime> <new-runtime>
