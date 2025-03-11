@@ -129,6 +129,7 @@ fn genesis(
 			metadata: Vec::from([
 				(0, "Paseo".into(), "PAS".into(), 10),
 			]),
+			next_asset_id: Some(1),
 			..Default::default()
 		},
 		"balances": BalancesConfig { balances: balances(endowed_accounts) },
