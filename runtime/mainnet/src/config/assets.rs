@@ -42,7 +42,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
-	type CallbackHandle = ();
+	type CallbackHandle = pallet_assets::AutoIncAssetId<Runtime, TrustBackedAssetsInstance>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
 	type Extra = ();
@@ -200,12 +200,12 @@ mod tests {
 		}
 
 		#[test]
-		fn callback_handle_is_default() {
+		fn callback_handle_is_auto_inc_asset_id() {
 			assert_eq!(
 				TypeId::of::<
 					<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::CallbackHandle,
 				>(),
-				TypeId::of::<()>(),
+				TypeId::of::<pallet_assets::AutoIncAssetId<Runtime, TrustBackedAssetsInstance>>(),
 			);
 		}
 
