@@ -6,12 +6,12 @@
 /// 4. PSP-22 Mintable & Burnable
 use ink::prelude::vec::Vec;
 use pop_api::{
-	fungibles::{
-		self as api,
-		events::{Approval, Created, DestroyStarted, MetadataCleared, MetadataSet, Transfer},
-	},
-	primitives::TokenId,
-	StatusCode,
+    fungibles::{
+        self as api,
+        events::{Approval, Created, DestroyStarted, MetadataCleared, MetadataSet, Transfer},
+        TokenId,
+    },
+    StatusCode,
 };
 
 pub type Result<T> = core::result::Result<T, StatusCode>;
@@ -61,16 +61,16 @@ mod fungibles {
 			api::allowance(token, owner, spender)
 		}
 
-		#[ink(message)]
-		pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
-			api::transfer(token, to, value)?;
-			self.env().emit_event(Transfer {
-				from: Some(self.env().account_id()),
-				to: Some(to),
-				value,
-			});
-			Ok(())
-		}
+        #[ink(message)]
+        pub fn transfer(&mut self, token: TokenId, to: AccountId, value: Balance) -> Result<()> {
+            api::transfer(token.clone(), to, value)?;
+            self.env().emit_event(Transfer {
+                from: Some(self.env().account_id()),
+                to: Some(to),
+                value,
+            });
+            Ok(())
+        }
 
 		#[ink(message)]
 		pub fn transfer_from(
@@ -140,51 +140,51 @@ mod fungibles {
 			api::token_decimals(token)
 		}
 
-		/// 3. Asset Management:
-		/// - create
-		/// - start_destroy
-		/// - set_metadata
-		/// - clear_metadata
-		/// - token_exists
+        /// 3. Asset Management:
+        /// - create
+        /// - start_destroy
+        /// - set_metadata
+        /// - clear_metadata
+        /// - token_exists
 
-		#[ink(message)]
-		pub fn create(
-			&mut self,
-			id: TokenId,
-			admin: AccountId,
-			min_balance: Balance,
-		) -> Result<()> {
-			api::create(id, admin, min_balance)?;
-			self.env().emit_event(Created { id, creator: admin, admin });
-			Ok(())
-		}
+        #[ink(message)]
+        pub fn create(
+            &mut self,
+            id: TokenId,
+            admin: AccountId,
+            min_balance: Balance,
+        ) -> Result<()> {
+            api::create(id.clone(), admin, min_balance)?;
+            self.env().emit_event(Created { id, creator: admin, admin });
+            Ok(())
+        }
 
-		#[ink(message)]
-		pub fn start_destroy(&mut self, token: TokenId) -> Result<()> {
-			api::start_destroy(token)?;
-			self.env().emit_event(DestroyStarted { token });
-			Ok(())
-		}
+        #[ink(message)]
+        pub fn start_destroy(&mut self, token: TokenId) -> Result<()> {
+            api::start_destroy(token.clone())?;
+            self.env().emit_event(DestroyStarted { token });
+            Ok(())
+        }
 
-		#[ink(message)]
-		pub fn set_metadata(
-			&mut self,
-			token: TokenId,
-			name: Vec<u8>,
-			symbol: Vec<u8>,
-			decimals: u8,
-		) -> Result<()> {
-			api::set_metadata(token, name.clone(), symbol.clone(), decimals)?;
-			self.env().emit_event(MetadataSet { token, name, symbol, decimals });
-			Ok(())
-		}
+        #[ink(message)]
+        pub fn set_metadata(
+            &mut self,
+            token: TokenId,
+            name: Vec<u8>,
+            symbol: Vec<u8>,
+            decimals: u8,
+        ) -> Result<()> {
+            api::set_metadata(token.clone(), name.clone(), symbol.clone(), decimals)?;
+            self.env().emit_event(MetadataSet { token, name, symbol, decimals });
+            Ok(())
+        }
 
-		#[ink(message)]
-		pub fn clear_metadata(&mut self, token: TokenId) -> Result<()> {
-			api::clear_metadata(token)?;
-			self.env().emit_event(MetadataCleared { token });
-			Ok(())
-		}
+        #[ink(message)]
+        pub fn clear_metadata(&mut self, token: TokenId) -> Result<()> {
+            api::clear_metadata(token.clone())?;
+            self.env().emit_event(MetadataCleared { token });
+            Ok(())
+        }
 
 		#[ink(message)]
 		pub fn token_exists(&self, token: TokenId) -> Result<bool> {
