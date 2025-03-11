@@ -7,7 +7,7 @@ use frame_support::{
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
-use pallet_xcm::Origin;
+use pallet_xcm::{Origin, TestWeightInfo};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
@@ -231,6 +231,7 @@ parameter_types! {
 
 pub struct MockNotifyQuery<T>(T);
 impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
+	type WeightInfo = TestWeightInfo;
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: Call<T>,

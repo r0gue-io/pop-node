@@ -3,7 +3,8 @@
 
 use frame_benchmarking::{account, v2::*};
 use frame_support::{dispatch::RawOrigin, traits::Currency, BoundedVec};
-use sp_runtime::traits::Zero;
+use sp_runtime::traits::{Zero, One};
+use ::xcm::latest::{Location, Junctions};
 
 use super::*;
 use crate::Read as _;
@@ -56,6 +57,30 @@ mod messaging_benchmarks {
 
 		assert_has_event::<T>(
 			crate::messaging::Event::Removed { origin: owner, messages: message_ids.to_vec() }
+				.into(),
+		)
+	}
+
+	#[benchmark]
+	// x: The number of removals required.
+	fn xcm_new_query() {
+		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
+		let message_id: [u8; 32] = [0; 32];
+		let responder = Location { parents: 1, interior: Junctions::Here};
+		let timeout = One::one();
+		let callback = Callback {
+			selector: [0; 4],
+			weight: 100.into(),
+			spare_weight_creditor: owner.clone(),
+		};
+		
+		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
+		
+		#[extrinsic_call]
+		Pallet::<T>::xcm_new_query(RawOrigin::Signed(owner.clone()), message_id.clone(), responder.clone(), timeout, Some(callback.clone()));
+
+		assert_has_event::<T>(
+			crate::messaging::Event::XcmQueryCreated { origin: owner, id: message_id, query_id: 0, callback: Some(callback)}
 				.into(),
 		)
 	}
