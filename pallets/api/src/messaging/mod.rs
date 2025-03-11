@@ -59,7 +59,7 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type OriginConverter:  TryConvert<Self::RuntimeOrigin, Location>;
+		type OriginConverter: TryConvert<Self::RuntimeOrigin, Location>;
 
 		/// The base byte fee for data stored onchain.
 		#[pallet::constant]
@@ -103,7 +103,7 @@ pub mod pallet {
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 
 		// The maximum number of xcm timout updates that can be processed per block.
-		//type MaxXcmQueryExpiriesPerBlock: Get<u32>;
+		// type MaxXcmQueryExpiriesPerBlock: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -358,7 +358,7 @@ pub mod pallet {
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 
 			let origin = ensure_signed(origin)?;
-			
+
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(

@@ -1,3 +1,4 @@
+use ::xcm::latest::{Junction, Junctions, Location};
 use codec::{Decode, Encode};
 use frame_support::{
 	derive_impl,
@@ -11,18 +12,17 @@ use pallet_xcm::{Origin, TestWeightInfo};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, Verify, TryConvert},
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, TryConvert, Verify},
 	BuildStorage,
 };
-use ::xcm::latest::{Location, Junctions, Junction};
 
-use crate::messaging::{Call, CallbackExecutor, NotifyQueryHandler, Messages};
+use crate::messaging::{Call, CallbackExecutor, Messages, NotifyQueryHandler};
 
 pub(crate) const ALICE: AccountId = 1;
 pub(crate) const BOB: AccountId = 2;
 pub(crate) const CHARLIE: AccountId = 3;
 pub(crate) const RESPONSE: AccountId = 4;
-pub(crate) const RESPONSE_LOCATION: Location =  Location { parents: 1, interior: Junctions::Here };
+pub(crate) const RESPONSE_LOCATION: Location = Location { parents: 1, interior: Junctions::Here };
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
@@ -232,6 +232,7 @@ parameter_types! {
 pub struct MockNotifyQuery<T>(T);
 impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
 	type WeightInfo = TestWeightInfo;
+
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: Call<T>,
@@ -289,14 +290,13 @@ pub struct AccountToLocation;
 impl TryConvert<RuntimeOrigin, Location> for AccountToLocation {
 	fn try_convert(origin: RuntimeOrigin) -> Result<Location, RuntimeOrigin> {
 		let signer = origin.into_signer();
-		let l = Junctions::from(
-			Junction::AccountIndex64 {
+		let l = Junctions::from(Junction::AccountIndex64 {
 			network: None,
 			index: signer.expect("No account id, required."),
-		}).into_location();
+		})
+		.into_location();
 		Ok(l)
 	}
-
 }
 
 pub struct EnsureRootWithResponseSuccess;

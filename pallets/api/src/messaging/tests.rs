@@ -8,8 +8,8 @@ use frame_support::{
 	weights::Weight,
 };
 use pallet_nfts::{CollectionSetting, MintWitness, WeightInfo as NftsWeightInfoTrait};
-use sp_core::H256;
 use pallet_xcm::QueryStatus;
+use sp_core::H256;
 
 use crate::{messaging::*, mock::*, Read};
 
@@ -585,23 +585,27 @@ mod remove {
 
 mod xcm_new_query {
 
-use super::*;
+	use super::*;
 
 	#[test]
 	fn success_assert_last_event() {
 		new_test_ext().execute_with(|| {
-		let timeout = 0;
-		let message_id = [0; 32];
-		assert_ok!(Messaging::xcm_new_query(
-			signed(ALICE),
-			message_id, 
-			RESPONSE_LOCATION,
-			Default::default(),
-			None,
-		));
-		assert!(events()
-				.contains(&Event::<Test>::XcmQueryCreated { origin: ALICE, id: message_id, query_id: 0, callback: None}));
-		})	
+			let timeout = 0;
+			let message_id = [0; 32];
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				Default::default(),
+				None,
+			));
+			assert!(events().contains(&Event::<Test>::XcmQueryCreated {
+				origin: ALICE,
+				id: message_id,
+				query_id: 0,
+				callback: None
+			}));
+		})
 	}
 
 	#[test]
@@ -610,66 +614,74 @@ use super::*;
 			let message_id = [0; 32];
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
-				message_id, 
+				message_id,
 				RESPONSE_LOCATION,
 				Default::default(),
 				None,
 			));
 
-			assert_noop!(Messaging::xcm_new_query(
-				signed(ALICE),
-				message_id, 
-				RESPONSE_LOCATION,
-				Default::default(),
-				None,
-			), Error::<Test>::MessageExists);
+			assert_noop!(
+				Messaging::xcm_new_query(
+					signed(ALICE),
+					message_id,
+					RESPONSE_LOCATION,
+					Default::default(),
+					None,
+				),
+				Error::<Test>::MessageExists
+			);
 		})
 	}
 
 	#[test]
 	fn takes_deposit() {
 		new_test_ext().execute_with(|| {
-		let timeout = 0;
-		let expected_deposit = calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
-			ProtocolStorageDeposit::XcmQueries,
-		)
-		.saturating_add(calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>());
+			let timeout = 0;
+			let expected_deposit = calculate_protocol_deposit::<
+				Test,
+				<Test as Config>::OnChainByteFee,
+			>(ProtocolStorageDeposit::XcmQueries)
+			.saturating_add(calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>());
 
-		assert!(expected_deposit > 0, "set an onchain byte fee with T::OnChainByteFee to run this test.");
+			assert!(
+				expected_deposit > 0,
+				"set an onchain byte fee with T::OnChainByteFee to run this test."
+			);
 
-		let alices_balance_pre_hold = Balances::free_balance(&ALICE);
+			let alices_balance_pre_hold = Balances::free_balance(&ALICE);
 
-		let message_id = [0; 32];
+			let message_id = [0; 32];
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
-				message_id, 
+				message_id,
 				RESPONSE_LOCATION,
 				timeout,
 				None,
 			));
 
 			let alices_balance_post_hold = Balances::free_balance(&ALICE);
-			
+
 			assert_eq!(alices_balance_pre_hold - alices_balance_post_hold, expected_deposit);
 		});
 	}
-
 
 	#[test]
 	fn assert_state() {
 		new_test_ext().execute_with(|| {
 			// Looking for an item in Messages and XcmQueries.
 			let message_id = [0; 32];
-			let expected_callback = Callback { selector: [0; 4], weight: 100.into(), spare_weight_creditor: BOB };
+			let expected_callback =
+				Callback { selector: [0; 4], weight: 100.into(), spare_weight_creditor: BOB };
 			let timeout = 0;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
-				message_id, 
+				message_id,
 				RESPONSE_LOCATION,
 				timeout,
 				Some(expected_callback.clone()),
 			));
-			let m = Messages::<Test>::get(ALICE, message_id).expect("should exist after xcm_new_query.");
+			let m = Messages::<Test>::get(ALICE, message_id)
+				.expect("should exist after xcm_new_query.");
 			if let Message::XcmQuery { query_id, callback, deposit, status } = m {
 				assert_eq!(query_id, 0);
 				assert_eq!(callback, Some(expected_callback));
@@ -679,7 +691,6 @@ use super::*;
 			}
 
 			assert_eq!(XcmQueries::<Test>::get(0), Some((ALICE, message_id)));
-	})
-}
-
+		})
+	}
 }
