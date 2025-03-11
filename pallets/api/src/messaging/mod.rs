@@ -59,7 +59,7 @@ pub mod pallet {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
-		type OriginConverter: TryConvert<Self::RuntimeOrigin, Location>;
+		type OriginConverter:  TryConvert<Self::RuntimeOrigin, Location>;
 
 		/// The base byte fee for data stored onchain.
 		#[pallet::constant]
@@ -102,15 +102,15 @@ pub mod pallet {
 
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 
-		/// The maximum number of xcm timout updates that can be processed per block.
-		type MaxXcmQueryExpiriesPerBlock: Get<u32>;
+		// The maximum number of xcm timout updates that can be processed per block.
+		//type MaxXcmQueryExpiriesPerBlock: Get<u32>;
 	}
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	pub(super) type Messages<T: Config> = StorageDoubleMap<
+	pub(crate) type Messages<T: Config> = StorageDoubleMap<
 		_,
 		Blake2_128Concat,
 		T::AccountId,
@@ -354,10 +354,11 @@ pub mod pallet {
 			timeout: BlockNumberOf<T>,
 			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
-			let origin = ensure_signed(origin)?;
-			let querier = T::OriginConverter::try_convert(T::RuntimeOrigin::signed(origin.clone()))
+			let querier_location = T::OriginConverter::try_convert(origin.clone())
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 
+			let origin = ensure_signed(origin)?;
+			
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
@@ -371,7 +372,7 @@ pub mod pallet {
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
 			// are ignored.
 			let notify = Call::<T>::xcm_response { query_id: 0, response: Default::default() };
-			let query_id = T::Xcm::new_notify_query(responder, notify, timeout, querier);
+			let query_id = T::Xcm::new_notify_query(responder, notify, timeout, querier_location);
 
 			// Store query id for later lookup on response, message for querying status,
 			// response/timeout handling.
@@ -415,6 +416,7 @@ pub mod pallet {
 
 			// Attempt callback with response if specified.
 			if let Some(callback) = callback {
+				todo!("ensure that the timeout has not been reached");
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, response);
 				if Self::call(origin.clone(), callback, id, &response, deposit).is_ok() {
 					Self::deposit_event(Event::<T>::XcmResponseReceived {
@@ -595,7 +597,7 @@ impl<T: Config> crate::Read for Pallet<T> {
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-enum Message<T: Config> {
+pub enum Message<T: Config> {
 	Ismp {
 		commitment: H256,
 		callback: Option<Callback<T::AccountId>>,
