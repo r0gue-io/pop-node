@@ -456,10 +456,7 @@ pub mod pallet {
 			let origin = ensure_signed(origin)?;
 
 			for id in &messages {
-				let Some(message) = Messages::<T>::get(&origin, id) else {
-					return Err(Error::<T>::MessageNotFound.into());
-				};
-
+				let message = Messages::<T>::get(&origin, id).ok_or(Error::<T>::MessageNotFound)?;
 				message.try_remove(&origin, id).and_then(|_| message.release_deposit(&origin))?;
 			}
 
