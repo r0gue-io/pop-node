@@ -10,7 +10,7 @@ use pop_runtime_common::DAYS;
 use sp_core::crypto::Ss58Codec;
 
 use crate::{
-	config::system::RuntimeBlockWeights, AccountId, Runtime, RuntimeCall, RuntimeEvent,
+	config::system::RuntimeBlockWeights, weights, AccountId, Runtime, RuntimeCall, RuntimeEvent,
 	RuntimeOrigin,
 };
 
@@ -40,6 +40,7 @@ parameter_types! {
 	pub SudoAddress: AccountId = AccountId::from_ss58check(SUDO_ADDRESS).expect("sudo address is valid SS58");
 }
 
+/// Instance of pallet_collective representing Pop's council.
 pub type CouncilCollective = pallet_collective::Instance1;
 impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type Consideration = ();
@@ -54,25 +55,29 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeOrigin = RuntimeOrigin;
 	type SetMembersOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_collective::WeightInfo<Runtime>;
 }
 
 impl pallet_motion::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	// Simple majority is disabled.
 	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
+	#[cfg(feature = "runtime-benchmarks")]
+	// Provide some way to ensure origin such that benchmarks can run.
+	type SimpleMajorityOrigin = AtLeastThreeFourthsOfCouncil;
 	// At least 3/4 of the council vote is needed.
 	type SuperMajorityOrigin = AtLeastThreeFourthsOfCouncil;
 	// A unanimous council vote is needed.
 	type UnanimousOrigin = UnanimousCouncilVote;
-	type WeightInfo = pallet_motion::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_motion::WeightInfo<Runtime>;
 }
 
 impl pallet_sudo::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_sudo::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_sudo::WeightInfo<Runtime>;
 }
 
 #[cfg(test)]
@@ -246,9 +251,15 @@ mod tests {
 
 		#[test]
 		fn simple_majority_is_never_origin() {
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_motion::Config>::SimpleMajorityOrigin>(),
 				TypeId::of::<NeverEnsureOrigin<()>>(),
+			);
+			#[cfg(feature = "runtime-benchmarks")]
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_motion::Config>::SimpleMajorityOrigin>(),
+				TypeId::of::<AtLeastThreeFourthsOfCouncil>(),
 			);
 		}
 

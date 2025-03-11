@@ -1,8 +1,8 @@
 use pop_runtime_common::{HOURS, SLOT_DURATION};
 
 use crate::{
-	parameter_types, AccountId, Aura, AuraId, Balances, CollatorSelection, ConstBool, ConstU32,
-	ConstU64, EnsureRoot, PalletId, Runtime, RuntimeEvent, Session, SessionKeys,
+	parameter_types, weights, AccountId, Aura, AuraId, Balances, CollatorSelection, ConstBool,
+	ConstU32, ConstU64, EnsureRoot, PalletId, Runtime, RuntimeEvent, Session, SessionKeys,
 };
 
 impl pallet_authorship::Config for Runtime {
@@ -37,6 +37,10 @@ impl pallet_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	// Should be a multiple of session or things will get inconsistent.
 	type KickThreshold = Period;
+	#[cfg(feature = "runtime-benchmarks")]
+	// If configured to `0`, benchmarks underflows.
+	type MaxCandidates = ConstU32<10>;
+	#[cfg(not(feature = "runtime-benchmarks"))]
 	type MaxCandidates = ConstU32<0>;
 	type MaxInvulnerables = ConstU32<20>;
 	type MinEligibleCollators = ConstU32<3>;
@@ -46,7 +50,7 @@ impl pallet_collator_selection::Config for Runtime {
 	type ValidatorId = AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
 	type ValidatorRegistration = Session;
-	type WeightInfo = pallet_collator_selection::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_collator_selection::WeightInfo<Runtime>;
 }
 
 impl cumulus_pallet_aura_ext::Config for Runtime {}
@@ -61,7 +65,7 @@ impl pallet_session::Config for Runtime {
 	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
 	type ValidatorId = AccountId;
 	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_session::WeightInfo<Runtime>;
 }
 
 #[cfg(test)]
@@ -154,8 +158,14 @@ mod tests {
 
 		#[test]
 		fn candidates_disabled() {
+			#[cfg(feature = "runtime-benchmarks")]
+			assert_eq!(
+				<<Runtime as pallet_collator_selection::Config>::MaxCandidates as Get<u32>>::get(),
+				10
+			);
 			// Disabled to start until sufficient distribution/value to allow candidates to provide
 			// candidacy bond
+			#[cfg(not(feature = "runtime-benchmarks"))]
 			assert_eq!(
 				<<Runtime as pallet_collator_selection::Config>::MaxCandidates as Get<u32>>::get(),
 				0

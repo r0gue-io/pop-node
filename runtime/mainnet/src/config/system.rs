@@ -14,7 +14,7 @@ use sp_runtime::traits::AccountIdLookup;
 #[allow(unused_imports)]
 use crate::Executive;
 use crate::{
-	parameter_types,
+	parameter_types, weights,
 	weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight},
 	AccountId, AggregateMessageOrigin, Aura, Balance, BlakeTwo256, Block, BlockLength,
 	BlockWeights, DispatchClass, Hash, MessageQueue, PalletInfo, Runtime, RuntimeCall,
@@ -87,7 +87,7 @@ impl frame_system::Config for Runtime {
 	/// The weight of database operations that the runtime can invoke.
 	type DbWeight = RocksDbWeight;
 	/// Weight information for the extensions of this pallet.
-	type ExtensionsWeightInfo = ();
+	type ExtensionsWeightInfo = weights::frame_system_extensions::WeightInfo<Runtime>;
 	/// The type for hashing blocks and tries.
 	type Hash = Hash;
 	/// The default hashing algorithm used.
@@ -122,7 +122,7 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	type SingleBlockMigrations = ();
 	/// Weight information for the extrinsics of this pallet.
-	type SystemWeightInfo = frame_system::weights::SubstrateWeight<Self>;
+	type SystemWeightInfo = weights::frame_system::WeightInfo<Self>;
 	/// Runtime version.
 	type Version = Version;
 }
@@ -159,7 +159,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type SelectCore = cumulus_pallet_parachain_system::LookaheadCoreSelector<Runtime>;
 	type SelfParaId = parachain_info::Pallet<Runtime>;
-	type WeightInfo = cumulus_pallet_parachain_system::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::cumulus_pallet_parachain_system::WeightInfo<Runtime>;
 	type XcmpMessageHandler = XcmpQueue;
 }
 
@@ -168,7 +168,7 @@ impl pallet_timestamp::Config for Runtime {
 	/// A timestamp: milliseconds since the unix epoch.
 	type Moment = u64;
 	type OnTimestampSet = Aura;
-	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::pallet_timestamp::WeightInfo<Runtime>;
 }
 
 impl parachain_info::Config for Runtime {}
@@ -452,7 +452,6 @@ mod tests {
 		}
 
 		#[test]
-		#[ignore]
 		fn extensions_do_not_use_default_weights() {
 			assert_ne!(
 				TypeId::of::<<Runtime as frame_system::Config>::ExtensionsWeightInfo>(),

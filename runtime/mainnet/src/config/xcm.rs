@@ -21,12 +21,11 @@ use sp_runtime::Vec;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FixedWeightBounds,
-	FrameTransactionalProcessor, FungibleAdapter, IsConcrete, ParentIsPreset, RelayChainAsNative,
-	SendXcmFeeToAccount, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
-	TrailingSetTopicAsId, UsingComponents, WithComputedOrigin, WithUniqueTopic,
-	XcmFeeManagerFromComponents,
+	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FrameTransactionalProcessor, FungibleAdapter,
+	IsConcrete, ParentIsPreset, RelayChainAsNative, SendXcmFeeToAccount, SiblingParachainAsNative,
+	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32,
+	SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId, UsingComponents,
+	WeightInfoBounds, WithComputedOrigin, WithUniqueTopic, XcmFeeManagerFromComponents,
 };
 use xcm_executor::XcmExecutor;
 
@@ -37,9 +36,11 @@ use crate::{
 			TransactionByteFee, TreasuryAccount,
 		},
 		system::RuntimeBlockWeights,
+		xcm_weights,
 	},
-	AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo, ParachainSystem,
-	Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, XcmpQueue,
+	weights, AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo,
+	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+	XcmpQueue,
 };
 
 parameter_types! {
@@ -72,7 +73,7 @@ impl pallet_message_queue::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type ServiceWeight = MessageQueueServiceWeight;
 	type Size = u32;
-	type WeightInfo = pallet_message_queue::weights::SubstrateWeight<Self>;
+	type WeightInfo = weights::pallet_message_queue::WeightInfo<Runtime>;
 }
 
 /// Type for specifying how a `Location` can be converted into an `AccountId`. This is used
@@ -207,7 +208,8 @@ impl xcm_executor::Config for XcmConfig {
 	type TransactionalProcessor = FrameTransactionalProcessor;
 	type UniversalAliases = Nothing;
 	type UniversalLocation = UniversalLocation;
-	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
+	type Weigher =
+		WeightInfoBounds<xcm_weights::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
 	type XcmRecorder = PolkadotXcm;
 	type XcmSender = XcmRouter;
 }
@@ -219,7 +221,7 @@ pub type LocalOriginToLocation = SignedToAccountId32<RuntimeOrigin, AccountId, R
 /// queues.
 pub type XcmRouter = WithUniqueTopic<(
 	// Two routers - use UMP to communicate with the relay chain:
-	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+	cumulus_primitives_utility::ParentAsUmp<ParachainSystem, PolkadotXcm, PriceForParentDelivery>,
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 )>;
@@ -240,12 +242,18 @@ impl pallet_xcm::Config for Runtime {
 	type SovereignAccountOf = LocationToAccountId;
 	type TrustedLockers = ();
 	type UniversalLocation = UniversalLocation;
-	type Weigher = FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>;
-	type WeightInfo = pallet_xcm::TestWeightInfo;
+	type Weigher =
+		WeightInfoBounds<xcm_weights::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
+	type WeightInfo = weights::pallet_xcm::WeightInfo<Runtime>;
 	type XcmExecuteFilter = Everything;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
+	// Benchmark `set_up_complex_asset_transfer` should be revisited as more assets are included.
+	// Benchmark `worst_case_holding` should reflect all possible assets that can be transferred.
 	type XcmReserveTransferFilter = FilterByAssets<Equals<RelayLocation>>;
 	type XcmRouter = XcmRouter;
+	// Benchmark `set_up_complex_asset_transfer` needs to be updated when asset teleporting is
+	// introduced.
+	// Benchmark `worst_case_holding` should also be updates consequently.
 	type XcmTeleportFilter = Nothing;
 
 	const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 100;
@@ -255,6 +263,14 @@ impl cumulus_pallet_xcm::Config for Runtime {
 	type RuntimeEvent = RuntimeEvent;
 	type XcmExecutor = XcmExecutor<XcmConfig>;
 }
+
+/// Means to price the delivery of an XCM to the parent chain.
+pub type PriceForParentDelivery =
+	ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, ParachainSystem>;
+
+/// Means to price the delivery of an XCM to a sibling chain.
+pub type PriceForSiblingDelivery =
+	ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
 
 impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	type ChannelInfo = ParachainSystem;
@@ -268,11 +284,10 @@ impl cumulus_pallet_xcmp_queue::Config for Runtime {
 	// Limit the number of HRMP channels.
 	// note: https://github.com/polkadot-fellows/runtimes/blob/76d1fa680d00c3e447e40199e7b2250862ad4bfa/system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs#L692C2-L693C90
 	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
-	type PriceForSiblingDelivery =
-		ExponentialPrice<RelayLocation, BaseDeliveryFee, TransactionByteFee, XcmpQueue>;
+	type PriceForSiblingDelivery = PriceForSiblingDelivery;
 	type RuntimeEvent = RuntimeEvent;
 	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = cumulus_pallet_xcmp_queue::weights::SubstrateWeight<Runtime>;
+	type WeightInfo = weights::cumulus_pallet_xcmp_queue::WeightInfo<Runtime>;
 	// Enqueue XCMP messages from siblings for later processing.
 	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
 }
@@ -748,7 +763,13 @@ mod tests {
 		fn weigher_uses_fixed_wieght_bounds() {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::Weigher>(),
-				TypeId::of::<FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>>(),
+				TypeId::of::<
+					WeightInfoBounds<
+						xcm_weights::PopXcmWeight<RuntimeCall>,
+						RuntimeCall,
+						MaxInstructions,
+					>,
+				>(),
 			);
 		}
 
@@ -766,7 +787,11 @@ mod tests {
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::XcmSender>(),
 				TypeId::of::<
 					WithUniqueTopic<(
-						cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+						cumulus_primitives_utility::ParentAsUmp<
+							ParachainSystem,
+							PolkadotXcm,
+							PriceForParentDelivery,
+						>,
 						XcmpQueue,
 					)>,
 				>(),
@@ -884,7 +909,13 @@ mod tests {
 		fn weigher_uses_fixed_weight_bounds() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::Weigher>(),
-				TypeId::of::<FixedWeightBounds<UnitWeightCost, RuntimeCall, MaxInstructions>>(),
+				TypeId::of::<
+					WeightInfoBounds<
+						xcm_weights::PopXcmWeight<RuntimeCall>,
+						RuntimeCall,
+						MaxInstructions,
+					>,
+				>(),
 			);
 		}
 
@@ -960,7 +991,11 @@ mod tests {
 				TypeId::of::<<Runtime as pallet_xcm::Config>::XcmRouter>(),
 				TypeId::of::<
 					WithUniqueTopic<(
-						cumulus_primitives_utility::ParentAsUmp<ParachainSystem, (), ()>,
+						cumulus_primitives_utility::ParentAsUmp<
+							ParachainSystem,
+							PolkadotXcm,
+							PriceForParentDelivery,
+						>,
 						XcmpQueue,
 					)>,
 				>(),
@@ -983,6 +1018,8 @@ mod tests {
 	}
 
 	mod pallet_xcmp_queue {
+		use codec::Encode;
+
 		use super::*;
 
 		#[test]
@@ -1038,6 +1075,50 @@ mod tests {
 		}
 
 		#[test]
+		fn price_for_parent_delivery() {
+			assert_eq!(
+				TypeId::of::<PriceForParentDelivery>(),
+				TypeId::of::<
+					ExponentialPrice<
+						RelayLocation,
+						BaseDeliveryFee,
+						TransactionByteFee,
+						ParachainSystem,
+					>,
+				>()
+			);
+
+			new_test_ext().execute_with(|| {
+				type ExponentialDeliveryPrice = ExponentialPrice<
+					RelayLocation,
+					BaseDeliveryFee,
+					TransactionByteFee,
+					ParachainSystem,
+				>;
+				let b: u128 = BaseDeliveryFee::get();
+				let m: u128 = TransactionByteFee::get();
+				let msg = Xcm { 0: vec![WithdrawAsset(Assets::from((Location::parent(), 1)))] };
+				let msg_length = msg.encoded_size() as u128;
+				assert_eq!(msg_length, 7);
+
+				// F * (B + msg_length * M)
+				// A: RelayLocation
+				// B: BaseDeliveryFee
+				// M: TransactionByteFee
+				// F: ParachainSystem
+				//
+				// message_length = 7
+				let msg_fee = msg_length.saturating_mul(m);
+				let result: u128 =
+					ParachainSystem::get_fee_factor(()).saturating_mul_int(b + msg_fee);
+				assert_eq!(
+					ExponentialDeliveryPrice::price_for_delivery((), &msg),
+					(RelayLocation::get(), result).into()
+				);
+			})
+		}
+
+		#[test]
 		fn price_for_sibling_delivery() {
 			assert_eq!(
 				TypeId::of::<<Runtime as cumulus_pallet_xcmp_queue::Config>::PriceForSiblingDelivery>(
@@ -1062,6 +1143,8 @@ mod tests {
 				//
 				// message_length = 1
 				let result: u128 = XcmpQueue::get_fee_factor(id).saturating_mul_int(b + m);
+				// Ensure that an empty XCM encodes to a size of 1.
+				assert_eq!(Xcm::<()>(vec![]).encoded_size() as u8, 1);
 				assert_eq!(
 					ExponentialDeliveryPrice::price_for_delivery(id, &Xcm(vec![])),
 					(RelayLocation::get(), result).into()

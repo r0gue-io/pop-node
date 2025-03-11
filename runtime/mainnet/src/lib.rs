@@ -7,11 +7,15 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod apis;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarks;
+#[cfg(feature = "runtime-benchmarks")]
+use benchmarks::*;
+
 pub mod config;
 
 /// The genesis state presets available.
 pub mod genesis;
-mod weights;
 
 extern crate alloc;
 
@@ -42,7 +46,7 @@ use pallet_transaction_payment::ChargeTransactionPayment;
 // Polkadot imports
 use polkadot_runtime_common::SlowAdjustingFeeUpdate;
 pub use pop_runtime_common::{
-	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
+	weights, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICRO_UNIT,
 	MILLI_UNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
 	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
@@ -280,21 +284,6 @@ mod runtime {
 	pub type Nfts = pallet_nfts::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]
 	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
-}
-
-#[cfg(feature = "runtime-benchmarks")]
-mod benches {
-	frame_benchmarking::define_benchmarks!(
-		[frame_system, SystemBench::<Runtime>]
-		[pallet_balances, Balances]
-		[pallet_session, SessionBench::<Runtime>]
-		[pallet_timestamp, Timestamp]
-		[pallet_message_queue, MessageQueue]
-		[pallet_sudo, Sudo]
-		[pallet_collator_selection, CollatorSelection]
-		[cumulus_pallet_parachain_system, ParachainSystem]
-		[cumulus_pallet_xcmp_queue, XcmpQueue]
-	);
 }
 
 // We move some impls outside so we can easily use them with `docify`.

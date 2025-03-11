@@ -1,5 +1,5 @@
 // Assets.
-mod assets;
+pub(crate) mod assets;
 // Collation.
 pub(crate) mod collation;
 /// Governance.
@@ -16,3 +16,4 @@ mod revive;
 mod utility;
 /// XCM.
 pub mod xcm;
+mod xcm_weights;
