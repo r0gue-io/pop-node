@@ -8,7 +8,6 @@ use frame_support::{
 	weights::Weight,
 };
 use pallet_nfts::{CollectionSetting, MintWitness, WeightInfo as NftsWeightInfoTrait};
-use pallet_xcm::QueryStatus;
 use sp_core::H256;
 
 use crate::{messaging::*, mock::*, Read};
@@ -45,7 +44,7 @@ mod message {
 				commitment,
 				callback: None,
 				deposit: 100,
-				status: MessageStatus::Ok,
+				status: QueryStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
@@ -70,7 +69,7 @@ mod message {
 				commitment,
 				response: bounded_vec!(),
 				deposit: 100,
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
@@ -95,7 +94,7 @@ mod message {
 				query_id,
 				callback: None,
 				deposit: 0,
-				status: MessageStatus::Ok,
+				status: QueryStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
@@ -120,7 +119,7 @@ mod message {
 				query_id,
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
@@ -145,7 +144,7 @@ mod message {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 100,
-				status: MessageStatus::Ok,
+				status: QueryStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			assert_noop!(m.try_remove(&ALICE, &message_id), Error::<Test>::RequestPending);
@@ -164,7 +163,7 @@ mod message {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 0,
-				status: MessageStatus::Timeout,
+				status: QueryStatus::Timeout,
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -180,7 +179,7 @@ mod message {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 0,
-				status: MessageStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
+				status: QueryStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -199,20 +198,20 @@ mod message {
 				commitment: Default::default(),
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 			let m2 = Message::IsmpResponse {
 				commitment: Default::default(),
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 
 			let m3 = Message::IsmpResponse {
 				commitment: Default::default(),
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 
 			Messages::<Test>::insert(&ALICE, m_id, &m);
@@ -237,7 +236,7 @@ mod message {
 				query_id: 0,
 				callback: None,
 				deposit: 0,
-				status: MessageStatus::Ok,
+				status: QueryStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_noop!(m.try_remove(&ALICE, &message_id), Error::<Test>::RequestPending);
@@ -253,7 +252,7 @@ mod message {
 				query_id: 0,
 				callback: None,
 				deposit: 0,
-				status: MessageStatus::Timeout,
+				status: QueryStatus::Timeout,
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -269,7 +268,7 @@ mod message {
 				query_id: 0,
 				callback: None,
 				deposit: 0,
-				status: MessageStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
+				status: QueryStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -288,21 +287,21 @@ mod message {
 				query_id: 0,
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 
 			let m2 = Message::XcmResponse {
 				query_id: 0,
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Timeout,
+				status: ResponseStatus::Received,
 			};
 
 			let m3 = Message::XcmResponse {
 				query_id: 0,
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Err(Error::<Test>::InvalidMessage.into()),
+				status: ResponseStatus::Err(Error::<Test>::InvalidMessage.into()),
 			};
 
 			Messages::<Test>::insert(&ALICE, m_id, &m);
@@ -334,7 +333,7 @@ mod remove {
 				commitment: Default::default(),
 				deposit,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 			let m_id = [0u8; 32];
 			let m2_id = [1u8; 32];
@@ -381,7 +380,7 @@ mod remove {
 				commitment: Default::default(),
 				deposit,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 			let m_id = [0; 32];
 			let m2_id = [1; 32];
@@ -437,7 +436,7 @@ mod remove {
 				commitment: Default::default(),
 				deposit,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 			let m_id = [0; 32];
 
@@ -471,7 +470,7 @@ mod remove {
 				commitment: H256::default(),
 				callback: None,
 				deposit,
-				status: MessageStatus::Ok,
+				status: QueryStatus::Pending,
 			};
 			let m_id = [0; 32];
 
@@ -506,14 +505,14 @@ mod remove {
 				commitment: Default::default(),
 				deposit: 0,
 				response: Default::default(),
-				status: MessageStatus::Ok,
+				status: ResponseStatus::Received,
 			};
 
 			let erroneous_message = Message::Ismp {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 100,
-				status: MessageStatus::Ok,
+				status: QueryStatus::Pending,
 			};
 
 			let good_id_1 = [0; 32];
@@ -685,7 +684,7 @@ mod xcm_new_query {
 			if let Message::XcmQuery { query_id, callback, deposit, status } = m {
 				assert_eq!(query_id, 0);
 				assert_eq!(callback, Some(expected_callback));
-				assert_eq!(status, MessageStatus::Ok);
+				assert_eq!(status, QueryStatus::Pending);
 			} else {
 				panic!("Wrong message type.")
 			}
@@ -693,4 +692,10 @@ mod xcm_new_query {
 			assert_eq!(XcmQueries::<Test>::get(0), Some((ALICE, message_id)));
 		})
 	}
+}
+
+
+mod xcm_response {
+
+
 }

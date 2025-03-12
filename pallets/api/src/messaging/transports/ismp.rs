@@ -210,8 +210,8 @@ fn process_response<T: Config>(
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
 		// TODO: check response length
-		todo!("update message status on success or fail.");
-		if Pallet::<T>::call(origin.clone(), callback, id, &encode, deposit).is_ok() {
+		// TODO: update status if failed
+		if Pallet::<T>::call(&origin, callback, &id, &encode).is_ok() {
 			Pallet::<T>::deposit_event(event(origin, id));
 			return Ok(());
 		}

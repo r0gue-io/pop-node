@@ -240,6 +240,8 @@ pub mod pallet {
 		IsmpDispatchFailed,
 		/// The message was not found
 		MessageNotFound,
+		/// The request has timed out
+		RequestTimedOut,
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -286,7 +288,7 @@ pub mod pallet {
 					commitment,
 					callback: callback.clone(),
 					deposit,
-					status: MessageStatus::Ok,
+					status: QueryStatus::Pending,
 				},
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
@@ -333,7 +335,7 @@ pub mod pallet {
 					commitment,
 					callback: callback.clone(),
 					deposit,
-					status: MessageStatus::Ok,
+					status: QueryStatus::Pending,
 				},
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
@@ -384,7 +386,7 @@ pub mod pallet {
 					query_id,
 					callback: callback.clone(),
 					deposit,
-					status: MessageStatus::Ok,
+					status: QueryStatus::Pending,
 				},
 			);
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
@@ -405,47 +407,69 @@ pub mod pallet {
 			response: Response,
 		) -> DispatchResult {
 			T::XcmResponseOrigin::ensure_origin(origin)?;
-
-			// Lookup message from query id.
 			let (origin, id) = XcmQueries::<T>::get(query_id).ok_or(Error::<T>::InvalidQuery)?;
-			let Some(Message::XcmQuery { query_id, callback, deposit, status }) =
-				Messages::<T>::get(&origin, &id)
-			else {
+			let xcm_query_message =
+				Messages::<T>::get(&origin, &id).ok_or(Error::<T>::MessageNotFound)?;
+			let Message::XcmQuery { query_id, callback, deposit, status } = &xcm_query_message else {
 				return Err(Error::<T>::InvalidMessage.into())
 			};
 
-			// Attempt callback with response if specified.
+			ensure!(*status != QueryStatus::Timeout, Error::<T>::RequestTimedOut);
+
+			// Emit event before possible callback execution.			
+			Self::deposit_event(Event::<T>::XcmResponseReceived {
+				dest: origin.clone(),
+				id,
+				query_id: *query_id,
+				response: response.clone(),
+			});
+
 			if let Some(callback) = callback {
-				todo!("ensure that the timeout has not been reached");
+				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, response);
-				if Self::call(origin.clone(), callback, id, &response, deposit).is_ok() {
-					Self::deposit_event(Event::<T>::XcmResponseReceived {
-						dest: origin,
-						id,
-						query_id,
-						response,
-					});
-					return Ok(());
+				match Self::call(&origin, callback.to_owned(), &id, &response) {
+					Ok(_) => {
+						// A successfull callback can be removed from storage and its deposit
+						// returned. We can ignore the status as we know the response has been
+						// received.
+						xcm_query_message.remove(&origin, &id);
+						T::Deposit::release(
+							&HoldReason::Messaging.into(),
+							&origin,
+							*deposit,
+							Exact,
+						)?;
+					},
+					Err(e) => {
+						// A problematic callback should still have the ability for polling the
+						// response. Update the message to a response with error information.
+						Messages::<T>::insert(
+							&origin,
+							&id,
+							Message::XcmResponse {
+								query_id: *query_id,
+								response,
+								deposit: *deposit,
+								status: ResponseStatus::CallbackExecutionFailed(e),
+							},
+						);
+					},
 				}
+			} else {
+				// We have no callback here so just update the message to Received and store for
+				// polling.
+				Messages::<T>::insert(
+					&origin,
+					&id,
+					Message::XcmResponse {
+						query_id: *query_id,
+						response,
+						deposit: *deposit,
+						status: ResponseStatus::Received,
+					},
+				);
 			}
 
-			// Otherwise store response for manual retrieval and removal.
-			Messages::<T>::insert(
-				&origin,
-				&id,
-				Message::XcmResponse {
-					query_id,
-					response: response.clone(),
-					deposit,
-					status: MessageStatus::Ok,
-				},
-			);
-			Self::deposit_event(Event::<T>::XcmResponseReceived {
-				dest: origin,
-				id,
-				query_id,
-				response,
-			});
 			Ok(())
 		}
 
@@ -463,52 +487,56 @@ pub mod pallet {
 					return Err(Error::<T>::MessageNotFound.into());
 				};
 
-				message.try_remove(&origin, id).and_then(|_| message.release_deposit(&origin))?;
-			}
+				message.try_remove(&origin, id).and_then(|_| {
+					let deposit = match message {
+						Message::Ismp { deposit, .. } => deposit,
+						Message::IsmpResponse { deposit, .. } => deposit,
+						Message::XcmQuery { deposit, .. } => deposit,
+						Message::XcmResponse { deposit, .. } => deposit,
+					};
+					T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 
+					Ok(())
+				})?;
+			}
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
 
 			Ok(())
 		}
 	}
 }
+
 impl<T: Config> Pallet<T> {
 	// Attempt to notify via callback.
 	fn call(
-		origin: AccountIdOf<T>,
+		origin: &AccountIdOf<T>,
 		callback: Callback<T::AccountId>,
-		id: MessageId,
+		id: &MessageId,
 		data: &impl Encode,
-		deposit: BalanceOf<T>,
 	) -> DispatchResult {
 		let result = T::CallbackExecutor::execute(
 			origin.clone(),
 			[callback.selector.to_vec(), (id, data).encode()].concat(),
 			callback.weight,
 		);
+
 		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
 		match result {
 			Ok(_post_info) => {
-				// TODO: do something with post_info: e.g. refund unused weight
-				// Return deposit.
-				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
-				Messages::<T>::remove(&origin, &id);
+				// todo!("return weight")
 				Self::deposit_event(Event::<T>::CallbackExecuted {
 					origin: origin.clone(),
-					id,
+					id: id.clone(),
 					callback,
 				});
-				Self::deposit_event(Event::<T>::Removed {
-					origin: origin.clone(),
-					messages: [id].to_vec(),
-				});
+
 				Ok(())
 			},
 			Err(sp_runtime::DispatchErrorWithPostInfo::<PostDispatchInfo> { post_info, error }) => {
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {
 					origin: origin.clone(),
-					id,
+					id: id.clone(),
 					callback,
 					post_info,
 					error,
@@ -518,13 +546,6 @@ impl<T: Config> Pallet<T> {
 			},
 		}
 	}
-}
-
-#[derive(Clone, Decode, Debug, Encode, MaxEncodedLen, PartialEq, TypeInfo)]
-pub enum Status {
-	Pending,
-	TimedOut,
-	Complete,
 }
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
@@ -572,10 +593,10 @@ impl<T: Config> crate::Read for Pallet<T> {
 		match request {
 			Read::PollStatus(request) =>
 				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| match m {
-					Message::Ismp { status, .. } => status,
-					Message::IsmpResponse { status, .. } => status,
-					Message::XcmQuery { status, .. } => status,
-					Message::XcmResponse { status, .. } => status,
+					Message::Ismp { status, .. } => MessageStatus::QueryStatus(status),
+					Message::IsmpResponse { status, .. } => MessageStatus::ResponseStatus(status),
+					Message::XcmQuery { status, .. } => MessageStatus::QueryStatus(status),
+					Message::XcmResponse { status, .. } => MessageStatus::ResponseStatus(status),
 				})),
 			Read::GetResponse(request) =>
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
@@ -602,36 +623,41 @@ pub enum Message<T: Config> {
 		commitment: H256,
 		callback: Option<Callback<T::AccountId>>,
 		deposit: BalanceOf<T>,
-		status: MessageStatus,
+		status: QueryStatus,
 	},
 	IsmpResponse {
 		commitment: H256,
 		deposit: BalanceOf<T>,
 		response: BoundedVec<u8, T::MaxResponseLen>,
-		status: MessageStatus,
+		status: ResponseStatus,
 	},
 	XcmQuery {
 		query_id: QueryId,
 		callback: Option<Callback<T::AccountId>>,
 		deposit: BalanceOf<T>,
-		status: MessageStatus,
+		status: QueryStatus,
 	},
 	XcmResponse {
 		query_id: QueryId,
 		deposit: BalanceOf<T>,
 		response: Response,
-		status: MessageStatus,
+		status: ResponseStatus,
 	},
 }
 
 impl<T: Config> Message<T> {
 	/// Try and remove self.
-	pub fn try_remove(&self, origin: &AccountIdOf<T>, id: &MessageId) -> Result<(), DispatchError> {
+	/// Intended for users to remove messages they have sent.
+	pub fn try_remove(
+		&self,
+		origin: &AccountIdOf<T>,
+		id: &MessageId,
+	) -> Result<(), DispatchError> {
 		match self {
 			// Ismp messages can only be removed if their status is erroneous.
 			Message::Ismp { status, .. } => match status {
-				MessageStatus::Ok => Err(Error::<T>::RequestPending.into()),
-				MessageStatus::Timeout | MessageStatus::Err(_) => {
+				QueryStatus::Pending => Err(Error::<T>::RequestPending.into()),
+				QueryStatus::Timeout | QueryStatus::Err(_) => {
 					self.remove(origin, id);
 					Ok(())
 				},
@@ -643,8 +669,8 @@ impl<T: Config> Message<T> {
 			},
 			// Xcm queries can only be removed if their status is erroneous.
 			Message::XcmQuery { status, .. } => match status {
-				MessageStatus::Ok => Err(Error::<T>::RequestPending.into()),
-				MessageStatus::Timeout | MessageStatus::Err(_) => {
+				QueryStatus::Pending => Err(Error::<T>::RequestPending.into()),
+				QueryStatus::Timeout | QueryStatus::Err(_) => {
 					self.remove(origin, id);
 					Ok(())
 				},
@@ -676,23 +702,18 @@ impl<T: Config> Message<T> {
 			},
 		}
 	}
-
-	pub fn release_deposit(&self, origin: &T::AccountId) -> Result<(), DispatchError> {
-		let deposit = match self {
-			Message::Ismp { deposit, .. } => deposit,
-			Message::IsmpResponse { deposit, .. } => deposit,
-			Message::XcmQuery { deposit, .. } => deposit,
-			Message::XcmResponse { deposit, .. } => deposit,
-		};
-		T::Deposit::release(&HoldReason::Messaging.into(), origin, *deposit, Exact)?;
-		Ok(())
-	}
 }
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum MessageStatus {
-	/// No errors have been recorded.
-	Ok,
+	QueryStatus(QueryStatus),
+	ResponseStatus(ResponseStatus),
+}
+
+#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+pub enum QueryStatus {
+	/// A query has been sent and is pending a response.
+	Pending,
 	/// An error has occurred with this message.
 	Err(DispatchError),
 	/// A timeout has occurred.
@@ -700,9 +721,13 @@ pub enum MessageStatus {
 }
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
-pub enum CallbackExecutionStatus {
-	Failure(CallbackErrorReason),
-	Success,
+pub enum ResponseStatus {
+	/// A query has been sent and is pending a response.
+	Received,
+	/// The specified callback has errored.
+	CallbackExecutionFailed(DispatchError),
+	/// An error has occurred with this message.
+	Err(DispatchError),
 }
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
