@@ -131,10 +131,14 @@ pub(crate) mod initiate_council_migration {
 
 		#[cfg(feature = "try-runtime")]
 		fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+			let expected_members: Vec<AccountId> = Members::get();
 			let members_in_storage: Vec<AccountId> =
 				pallet_collective::Members::<Runtime, CouncilCollective>::get();
-			let expected_members: Vec<AccountId> = Members::get();
 
+			// Err if there are not 5 members in storage after the migration.
+			if members_in_storage.len() != 5 {
+				return Err(TryRuntimeError::Other("Migration didn't execute successfully."));
+			}
 			// Iterate over expected members and check if they are in storage.
 			for m in expected_members.iter() {
 				if !members_in_storage.contains(m) {
