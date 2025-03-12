@@ -133,7 +133,10 @@ pub type UncheckedExtrinsic =
 ///
 /// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
 #[allow(unused_parens)]
-type Migrations = ();
+type Migrations = (
+	// Unreleased.
+	config::governance::initiate_council_migration::SetCouncilors,
+);
 
 /// Executive: handles dispatch to the various modules.
 pub type Executive = frame_executive::Executive<
