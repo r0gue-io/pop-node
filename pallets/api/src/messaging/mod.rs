@@ -40,13 +40,15 @@ mod tests;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
 type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
+type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
+
 pub type MessageId = [u8; 32];
 
 #[frame_support::pallet]
 pub mod pallet {
 
 	use frame_support::{
-		dispatch::DispatchResult, pallet_prelude::*, traits::tokens::fungible::hold::Mutate,
+		dispatch::DispatchResult, pallet_prelude::*, traits::{tokens::fungible::hold::Mutate, OnInitialize},
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
@@ -102,8 +104,9 @@ pub mod pallet {
 
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 
-		// The maximum number of xcm timout updates that can be processed per block.
-		// type MaxXcmQueryExpiriesPerBlock: Get<u32>;
+		/// The maximum number of xcm timout updates that can be processed per block.
+		#[pallet::constant]
+		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -127,6 +130,11 @@ pub mod pallet {
 	#[pallet::storage]
 	pub(super) type XcmQueries<T: Config> =
 		StorageMap<_, Identity, QueryId, (T::AccountId, MessageId), OptionQuery>;
+
+	#[pallet::storage]
+	pub(super) type XcmQueryTimeouts<T: Config> =
+		StorageMap<_, Identity, BlockNumberOf<T>, BoundedVec<(T::AccountId, MessageId), T::MaxXcmQueryTimeoutsPerBlock>, ValueQuery>;
+	
 
 	/// The events that can be emitted.
 	#[pallet::event]
@@ -242,6 +250,8 @@ pub mod pallet {
 		MessageNotFound,
 		/// The request has timed out
 		RequestTimedOut,
+		/// Timeouts must be in the future.
+		FutureTimeoutMandatory
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -250,6 +260,29 @@ pub mod pallet {
 		/// Held for the duration of a message's lifespan.
 		#[codec(index = 0)]
 		Messaging,
+	}
+
+	#[pallet::hooks]
+	impl <T: Config> Hooks<BlockNumberOf<T>> for Pallet<T>{
+		fn on_initialize(n: BlockNumberOf<T>) -> Weight {
+			// As of polkadot-2412 XCM timeouts are not handled by the implementation of OnResponse in pallet-xcm.
+			// As a result, we must handle timeouts in the pallet.
+			// Iterate through the queries that have expired and update their status.
+			let mut weight: Weight = Zero::zero();
+			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
+				if weight.checked_add(&DbWeightOf::<T>::get().reads_writes(2, 1)).is_some() {
+					Messages::<T>::mutate(origin, message_id, |maybe_message|{
+						if let Some(Message::XcmQuery { status, .. }) = maybe_message.as_mut() {
+							*status = QueryStatus::Timeout;
+						}
+					})
+				} else {
+					// maxed out weight, this shouldnt happen if the limit is reasonable.
+				}
+			}
+
+			weight
+		}
 	}
 
 	#[pallet::call]
@@ -358,8 +391,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let querier_location = T::OriginConverter::try_convert(origin.clone())
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
-
 			let origin = ensure_signed(origin)?;
+			ensure!(frame_system::Pallet::<T>::block_number() < timeout, Error::<T>::FutureTimeoutMandatory);
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 

@@ -227,6 +227,7 @@ impl<T: crate::messaging::Config> CallbackExecutor<T> for MockCallbackExecutor<T
 parameter_types! {
 	pub const OnChainByteFee: Balance = 10;
 	pub const OffChainByteFee: Balance = 5;
+	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 10;
 }
 
 pub struct MockNotifyQuery<T>(T);
@@ -260,6 +261,7 @@ impl crate::messaging::Config for Test {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
+	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 }
 
 #[derive(Default)]

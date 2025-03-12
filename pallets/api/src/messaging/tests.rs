@@ -692,10 +692,26 @@ mod xcm_new_query {
 			assert_eq!(XcmQueries::<Test>::get(0), Some((ALICE, message_id)));
 		})
 	}
+
+	#[test]
+	fn xcm_timeouts_must_be_in_the_future() {
+		new_test_ext().execute_with(|| {
+			
+		})
+	}
+
 }
 
 
 mod xcm_response {
 
 
+}
+
+mod hooks {
+	use super::*;
+
+	fn xcm_queries_expire_on_expiry_block() {
+
+	}
 }
