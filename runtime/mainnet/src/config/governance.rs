@@ -105,6 +105,14 @@ pub(crate) mod initiate_council_migration {
 
 	impl OnRuntimeUpgrade for SetCouncilors {
 		fn on_runtime_upgrade() -> Weight {
+			let members_in_storage: Vec<AccountId> =
+				pallet_collective::Members::<Runtime, CouncilCollective>::get();
+
+			if !members_in_storage.is_empty() {
+				// Members already set. Nothing to do.
+				return <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+			}
+
 			let mut members: Vec<AccountId> = Members::get();
 			members.sort();
 			pallet_collective::Members::<Runtime, CouncilCollective>::put(members.clone());
@@ -151,14 +159,33 @@ pub(crate) mod initiate_council_migration {
 		fn on_runtime_upgrade_weight_is_within_limits() {
 			new_test_ext().execute_with(|| {
 				let resulting_weight = SetCouncilors::on_runtime_upgrade();
-				let calculated_weight =
+				let expected_weight =
 					<Runtime as pallet_collective::Config<CouncilCollective>>::WeightInfo::set_members(
 						0,
 						5,
 						<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposals::get(),
 					);
 				assert!(resulting_weight.all_lt(pop_runtime_common::MAXIMUM_BLOCK_WEIGHT));
-				assert_eq!(resulting_weight, calculated_weight);
+				assert_eq!(resulting_weight, expected_weight);
+			})
+		}
+
+		#[test]
+		fn migration_does_not_write_in_storage_if_members_is_not_empty() {
+			new_test_ext().execute_with(|| {
+				// Populate Members with only one member.
+				let members: Vec<AccountId> = vec![C1::get()];
+				pallet_collective::Members::<Runtime, CouncilCollective>::put(members.clone());
+
+				let resulting_weight = SetCouncilors::on_runtime_upgrade();
+				let expected_weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+				// Resulting weight from on_runtime_upgrade is only 1 read.
+				assert_eq!(resulting_weight, expected_weight);
+
+				// Ensure there is still only 1 member in storage.
+				let members_in_storage: Vec<AccountId> =
+					pallet_collective::Members::<Runtime, CouncilCollective>::get();
+				assert_eq!(members_in_storage.len(), 1);
 			})
 		}
 	}
