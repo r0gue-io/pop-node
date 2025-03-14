@@ -30,297 +30,6 @@ fn events() -> Vec<Event<Test>> {
 	result
 }
 
-// All the tests for the Message enum impls.
-mod message {
-	use super::*;
-
-	// Basic remove tests to ensure storage is cleaned.
-	#[test]
-	fn remove_ismp_message() {
-		new_test_ext().execute_with(|| {
-			let commitment = H256::default();
-			let message_id = [0u8; 32];
-			let m = Message::Ismp {
-				commitment,
-				callback: None,
-				deposit: 100,
-				status: MessageStatus::Pending,
-			};
-			Messages::<Test>::insert(&ALICE, &message_id, &m);
-			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			m.remove(&ALICE, &message_id);
-			assert!(
-				Messages::<Test>::get(&ALICE, &message_id).is_none(),
-				"Message should have been removed but hasnt."
-			);
-			assert!(
-				IsmpRequests::<Test>::get(&commitment).is_none(),
-				"Request should have been removed but hasnt."
-			);
-		})
-	}
-
-	#[test]
-	fn remove_ismp_response() {
-		new_test_ext().execute_with(|| {
-			let commitment = H256::default();
-			let message_id = [0u8; 32];
-			let m = Message::IsmpResponse {
-				commitment,
-				response: bounded_vec!(),
-				deposit: 100,
-				status: ResponseStatus::Received,
-			};
-			Messages::<Test>::insert(&ALICE, &message_id, &m);
-			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			m.remove(&ALICE, &message_id);
-			assert!(
-				Messages::<Test>::get(&ALICE, &message_id).is_none(),
-				"Message should have been removed but hasnt."
-			);
-			assert!(
-				IsmpRequests::<Test>::get(&commitment).is_none(),
-				"Request should have been removed but hasnt."
-			);
-		})
-	}
-
-	#[test]
-	fn remove_xcm_query() {
-		new_test_ext().execute_with(|| {
-			let query_id = 0;
-			let message_id = [0u8; 32];
-			let m = Message::XcmQuery {
-				query_id,
-				callback: None,
-				deposit: 0,
-				status: MessageStatus::Pending,
-			};
-			Messages::<Test>::insert(&ALICE, &message_id, &m);
-			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			m.remove(&ALICE, &message_id);
-			assert!(
-				Messages::<Test>::get(&ALICE, &message_id).is_none(),
-				"Message should have been removed but hasnt"
-			);
-			assert!(
-				XcmQueries::<Test>::get(query_id).is_none(),
-				"Message should have been removed but hasnt."
-			);
-		})
-	}
-
-	#[test]
-	fn remove_xcm_response() {
-		new_test_ext().execute_with(|| {
-			let query_id = 0;
-			let message_id = [0u8; 32];
-			let m = Message::XcmResponse {
-				query_id,
-				deposit: 0,
-				response: Default::default(),
-				status: ResponseStatus::Received,
-			};
-			Messages::<Test>::insert(&ALICE, &message_id, &m);
-			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			m.remove(&ALICE, &message_id);
-			assert!(
-				Messages::<Test>::get(&ALICE, &message_id).is_none(),
-				"Message should have been removed but hasnt"
-			);
-			assert!(
-				XcmQueries::<Test>::get(query_id).is_none(),
-				"Message should have been removed but hasnt."
-			);
-		})
-	}
-
-	// Basic try_remove tests to ensure validation of message status is correct.
-	#[test]
-	fn try_remove_ismp_message_is_noop_when_status_is_ok() {
-		new_test_ext().execute_with(|| {
-			let message_id: MessageId = [0u8; 32];
-			let m = Message::Ismp {
-				commitment: H256::default(),
-				callback: None,
-				deposit: 100,
-				status: MessageStatus::Pending,
-			};
-			Messages::<Test>::insert(&ALICE, &message_id, &m);
-			assert_noop!(m.try_remove(&ALICE, &message_id), Error::<Test>::RequestPending);
-			assert!(
-				Messages::<Test>::get(ALICE, &message_id).is_some(),
-				"Message has been deleted when it should exist."
-			);
-		});
-	}
-
-	#[test]
-	fn try_remove_ismp_message_is_ok_when_status_is_timeout() {
-		new_test_ext().execute_with(|| {
-			let message_id: MessageId = [0u8; 32];
-			let m = Message::Ismp {
-				commitment: H256::default(),
-				callback: None,
-				deposit: 0,
-				status: MessageStatus::Timeout,
-			};
-			Messages::<Test>::insert(&ALICE, message_id, &m);
-			assert_ok!(m.try_remove(&ALICE, &message_id));
-			assert!(Messages::<Test>::get(&ALICE, message_id).is_none());
-		});
-	}
-
-	#[test]
-	fn try_remove_ismp_message_is_ok_when_status_is_err() {
-		new_test_ext().execute_with(|| {
-			let message_id: MessageId = [0u8; 32];
-			let m = Message::Ismp {
-				commitment: H256::default(),
-				callback: None,
-				deposit: 0,
-				status: MessageStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
-			};
-			Messages::<Test>::insert(&ALICE, message_id, &m);
-			assert_ok!(m.try_remove(&ALICE, &message_id));
-			assert!(Messages::<Test>::get(&ALICE, message_id).is_none());
-		});
-	}
-
-	#[test]
-	fn try_remove_ismp_response_is_ok_any_status() {
-		new_test_ext().execute_with(|| {
-			let m_id = [0; 32];
-			let m2_id = [1; 32];
-			let m3_id = [2; 32];
-
-			let m = Message::IsmpResponse {
-				commitment: Default::default(),
-				deposit: 0,
-				response: Default::default(),
-				status: ResponseStatus::Received,
-			};
-			let m2 = Message::IsmpResponse {
-				commitment: Default::default(),
-				deposit: 0,
-				response: Default::default(),
-				status: ResponseStatus::Received,
-			};
-
-			let m3 = Message::IsmpResponse {
-				commitment: Default::default(),
-				deposit: 0,
-				response: Default::default(),
-				status: ResponseStatus::Received,
-			};
-
-			Messages::<Test>::insert(&ALICE, m_id, &m);
-			Messages::<Test>::insert(&ALICE, m2_id, &m2);
-			Messages::<Test>::insert(&ALICE, m3_id, &m3);
-
-			assert_ok!(m.try_remove(&ALICE, &m_id));
-			assert_ok!(m.try_remove(&ALICE, &m2_id));
-			assert_ok!(m.try_remove(&ALICE, &m3_id));
-
-			assert!(Messages::<Test>::get(&ALICE, m_id).is_none());
-			assert!(Messages::<Test>::get(&ALICE, m2_id).is_none());
-			assert!(Messages::<Test>::get(&ALICE, m3_id).is_none());
-		});
-	}
-
-	#[test]
-	fn try_remove_xcm_query_is_noop_when_status_is_ok() {
-		new_test_ext().execute_with(|| {
-			let message_id: MessageId = [0u8; 32];
-			let m = Message::XcmQuery {
-				query_id: 0,
-				callback: None,
-				deposit: 0,
-				status: MessageStatus::Pending,
-			};
-			Messages::<Test>::insert(&ALICE, message_id, &m);
-			assert_noop!(m.try_remove(&ALICE, &message_id), Error::<Test>::RequestPending);
-			assert!(Messages::<Test>::get(&ALICE, message_id).is_some());
-		});
-	}
-
-	#[test]
-	fn try_remove_xcm_query_is_ok_when_status_is_timeout() {
-		new_test_ext().execute_with(|| {
-			let message_id: MessageId = [0u8; 32];
-			let m = Message::XcmQuery {
-				query_id: 0,
-				callback: None,
-				deposit: 0,
-				status: MessageStatus::Timeout,
-			};
-			Messages::<Test>::insert(&ALICE, message_id, &m);
-			assert_ok!(m.try_remove(&ALICE, &message_id));
-			assert!(Messages::<Test>::get(&ALICE, message_id).is_none());
-		});
-	}
-
-	#[test]
-	fn try_remove_xcm_query_is_ok_when_status_is_err() {
-		new_test_ext().execute_with(|| {
-			let message_id: MessageId = [0u8; 32];
-			let m = Message::XcmQuery {
-				query_id: 0,
-				callback: None,
-				deposit: 0,
-				status: MessageStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
-			};
-			Messages::<Test>::insert(&ALICE, message_id, &m);
-			assert_ok!(m.try_remove(&ALICE, &message_id));
-			assert!(Messages::<Test>::get(&ALICE, message_id).is_none());
-		});
-	}
-
-	#[test]
-	fn try_remove_xcm_response_is_ok_any_status() {
-		new_test_ext().execute_with(|| {
-			let m_id = [0; 32];
-			let m2_id = [1; 32];
-			let m3_id = [2; 32];
-
-			let m = Message::XcmResponse {
-				query_id: 0,
-				deposit: 0,
-				response: Default::default(),
-				status: ResponseStatus::Received,
-			};
-
-			let m2 = Message::XcmResponse {
-				query_id: 0,
-				deposit: 0,
-				response: Default::default(),
-				status: ResponseStatus::Received,
-			};
-
-			let m3 = Message::XcmResponse {
-				query_id: 0,
-				deposit: 0,
-				response: Default::default(),
-				status: ResponseStatus::Err(Error::<Test>::InvalidMessage.into()),
-			};
-
-			Messages::<Test>::insert(&ALICE, m_id, &m);
-			Messages::<Test>::insert(&ALICE, m2_id, &m2);
-			Messages::<Test>::insert(&ALICE, m3_id, &m3);
-
-			assert_ok!(m.try_remove(&ALICE, &m_id));
-			assert_ok!(m.try_remove(&ALICE, &m2_id));
-			assert_ok!(m.try_remove(&ALICE, &m3_id));
-
-			assert!(Messages::<Test>::get(&ALICE, m_id).is_none());
-			assert!(Messages::<Test>::get(&ALICE, m2_id).is_none());
-			assert!(Messages::<Test>::get(&ALICE, m3_id).is_none());
-		});
-	}
-
-	// Basic release deposit to ensure quantites are correct.
-}
-
 // Tests for the remove extrinsic.
 mod remove {
 	use super::*;
@@ -333,7 +42,6 @@ mod remove {
 				commitment: Default::default(),
 				deposit,
 				response: Default::default(),
-				status: ResponseStatus::Received,
 			};
 			let m_id = [0u8; 32];
 			let m2_id = [1u8; 32];
@@ -380,7 +88,6 @@ mod remove {
 				commitment: Default::default(),
 				deposit,
 				response: Default::default(),
-				status: ResponseStatus::Received,
 			};
 			let m_id = [0; 32];
 			let m2_id = [1; 32];
@@ -436,7 +143,6 @@ mod remove {
 				commitment: Default::default(),
 				deposit,
 				response: Default::default(),
-				status: ResponseStatus::Received,
 			};
 			let m_id = [0; 32];
 
@@ -470,7 +176,6 @@ mod remove {
 				commitment: H256::default(),
 				callback: None,
 				deposit,
-				status: MessageStatus::Pending,
 			};
 			let m_id = [0; 32];
 
@@ -505,14 +210,12 @@ mod remove {
 				commitment: Default::default(),
 				deposit: 0,
 				response: Default::default(),
-				status: ResponseStatus::Received,
 			};
 
 			let erroneous_message = Message::Ismp {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 100,
-				status: MessageStatus::Pending,
 			};
 
 			let good_id_1 = [0; 32];
@@ -579,6 +282,174 @@ mod remove {
 			assert_eq!(alice_initial_balance, alice_balance_post_hold + deposit * 5);
 			assert_eq!(alice_balance_post_remove, alice_balance_post_hold);
 		});
+
+
+	}
+
+	// Basic remove tests to ensure storage is cleaned.
+	#[test]
+	fn remove_ismp_message() {
+		new_test_ext().execute_with(|| {
+			let commitment = H256::default();
+			let message_id = [0u8; 32];
+			let deposit = 100;
+			let m = Message::Ismp {
+				commitment,
+				callback: None,
+				deposit,
+			};
+			Messages::<Test>::insert(&ALICE, &message_id, &m);
+			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+
+
+			assert_noop!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)), Error::<Test>::RequestPending);
+
+			assert!(
+				Messages::<Test>::get(&ALICE, &message_id).is_some(),
+				"Message should not have been removed but has."
+			);
+			assert!(
+				IsmpRequests::<Test>::get(&commitment).is_some(),
+				"Message should not have been removed but has."
+			);
+		})
+	}
+
+	#[test]
+	fn remove_ismp_response() {
+		new_test_ext().execute_with(|| {
+			let commitment = H256::default();
+			let message_id = [0u8; 32];
+			let deposit = 100;
+
+			let m = Message::IsmpResponse {
+				commitment,
+				response: bounded_vec!(),
+				deposit,
+			};
+			Messages::<Test>::insert(&ALICE, &message_id, &m);
+			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+
+			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
+
+			assert!(
+				Messages::<Test>::get(&ALICE, &message_id).is_none(),
+				"Message should have been removed but hasnt."
+			);
+			assert!(
+				IsmpRequests::<Test>::get(&commitment).is_none(),
+				"Request should have been removed but hasnt."
+			);
+		})
+	}
+
+	#[test]
+	fn remove_ismp_timeout() {
+		new_test_ext().execute_with(|| {
+			let commitment = H256::default();
+			let message_id = [0u8; 32];
+			let deposit = 100;
+
+			let m = Message::IsmpTimeout { commitment, deposit};
+			Messages::<Test>::insert(&ALICE, &message_id, &m);
+			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+
+			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
+
+			assert!(
+				Messages::<Test>::get(&ALICE, &message_id).is_none(),
+				"Message should have been removed but hasnt."
+			);
+			assert!(
+				IsmpRequests::<Test>::get(&commitment).is_none(),
+				"Request should have been removed but hasnt."
+			);
+		})
+	}
+
+	#[test]
+	fn remove_xcm_query() {
+		new_test_ext().execute_with(|| {
+			let query_id = 0;
+			let message_id = [0u8; 32];
+			let deposit = 100;
+
+			let m = Message::XcmQuery {
+				query_id,
+				callback: None,
+				deposit,
+			};
+			Messages::<Test>::insert(&ALICE, &message_id, &m);
+			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+
+			assert_noop!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)), Error::<Test>::RequestPending);
+			assert!(
+				Messages::<Test>::get(&ALICE, &message_id).is_some(),
+				"Message should not have been removed but has"
+			);
+			assert!(
+				XcmQueries::<Test>::get(query_id).is_some(),
+				"Message should not have been removed but has."
+			);
+		})
+	}
+
+	#[test]
+	fn remove_xcm_response() {
+		new_test_ext().execute_with(|| {
+			let query_id = 0;
+			let message_id = [0u8; 32];
+			let deposit = 100;
+			let m = Message::XcmResponse {
+				query_id,
+				deposit,
+				response: Default::default(),
+			};
+			Messages::<Test>::insert(&ALICE, &message_id, &m);
+			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+
+			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
+
+			assert!(
+				Messages::<Test>::get(&ALICE, &message_id).is_none(),
+				"Message should have been removed but hasnt"
+			);
+			assert!(
+				XcmQueries::<Test>::get(query_id).is_none(),
+				"Message should have been removed but hasnt."
+			);
+		})
+	}
+
+	#[test]
+	fn remove_xcm_timeout() {
+		new_test_ext().execute_with(|| {
+			let query_id = 0;
+			let message_id = [0u8; 32];
+			let deposit = 100;
+			let m = Message::XcmTimeout { query_id, deposit };
+
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+			
+			Messages::<Test>::insert(&ALICE, &message_id, &m);
+			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
+
+			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
+
+			assert!(
+				Messages::<Test>::get(&ALICE, &message_id).is_none(),
+				"Message should have been removed but hasnt"
+			);
+			assert!(
+				XcmQueries::<Test>::get(query_id).is_none(),
+				"Message should have been removed but hasnt."
+			);
+		})
 	}
 }
 
@@ -589,13 +460,13 @@ mod xcm_new_query {
 	#[test]
 	fn success_assert_last_event() {
 		new_test_ext().execute_with(|| {
-			let timeout = 0;
+			let timeout = System::block_number() + 1;
 			let message_id = [0; 32];
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
 				RESPONSE_LOCATION,
-				Default::default(),
+				timeout,
 				None,
 			));
 			assert!(events().contains(&Event::<Test>::XcmQueryCreated {
@@ -611,11 +482,13 @@ mod xcm_new_query {
 	fn message_id_already_exists() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0; 32];
+			let timeout = System::block_number() + 1;
+
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
 				RESPONSE_LOCATION,
-				Default::default(),
+				timeout,
 				None,
 			));
 
@@ -624,7 +497,7 @@ mod xcm_new_query {
 					signed(ALICE),
 					message_id,
 					RESPONSE_LOCATION,
-					Default::default(),
+					timeout,
 					None,
 				),
 				Error::<Test>::MessageExists
@@ -635,7 +508,7 @@ mod xcm_new_query {
 	#[test]
 	fn takes_deposit() {
 		new_test_ext().execute_with(|| {
-			let timeout = 0;
+			let timeout = System::block_number() + 1;
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
 				<Test as Config>::OnChainByteFee,
@@ -671,7 +544,7 @@ mod xcm_new_query {
 			let message_id = [0; 32];
 			let expected_callback =
 				Callback { selector: [0; 4], weight: 100.into(), spare_weight_creditor: BOB };
-			let timeout = 0;
+			let timeout = System::block_number() + 1;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
@@ -681,10 +554,9 @@ mod xcm_new_query {
 			));
 			let m = Messages::<Test>::get(ALICE, message_id)
 				.expect("should exist after xcm_new_query.");
-			if let Message::XcmQuery { query_id, callback, deposit, status } = m {
+			if let Message::XcmQuery { query_id, callback, deposit} = m {
 				assert_eq!(query_id, 0);
 				assert_eq!(callback, Some(expected_callback));
-				assert_eq!(status, MessageStatus::Pending);
 			} else {
 				panic!("Wrong message type.")
 			}
