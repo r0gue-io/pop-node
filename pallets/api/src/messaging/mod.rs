@@ -44,6 +44,7 @@ type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
 pub type MessageId = [u8; 32];
 
+
 #[frame_support::pallet]
 pub mod pallet {
 
@@ -272,8 +273,8 @@ pub mod pallet {
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				if weight.checked_add(&DbWeightOf::<T>::get().reads_writes(2, 1)).is_some() {
 					Messages::<T>::mutate(origin, message_id, |maybe_message|{
-						if let Some(Message::XcmQuery { status, .. }) = maybe_message.as_mut() {
-							*status = QueryStatus::Timeout;
+						if let Some(Message::XcmQuery { query_id, deposit, .. }) = maybe_message.as_mut() {
+							*maybe_message = Some(Message::XcmTimeout {query_id: *query_id, deposit: *deposit});
 						}
 					})
 				} else {
@@ -321,7 +322,6 @@ pub mod pallet {
 					commitment,
 					callback: callback.clone(),
 					deposit,
-					status: QueryStatus::Pending,
 				},
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
@@ -368,7 +368,6 @@ pub mod pallet {
 					commitment,
 					callback: callback.clone(),
 					deposit,
-					status: QueryStatus::Pending,
 				},
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
@@ -406,7 +405,7 @@ pub mod pallet {
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
 			// are ignored.
-			let notify = Call::<T>::xcm_response { query_id: 0, response: Default::default() };
+			let notify = Call::<T>::xcm_response { query_id: 0, xcm_response: Default::default() };
 			let query_id = T::Xcm::new_notify_query(responder, notify, timeout, querier_location);
 
 			// Store query id for later lookup on response, message for querying status,
@@ -419,7 +418,6 @@ pub mod pallet {
 					query_id,
 					callback: callback.clone(),
 					deposit,
-					status: QueryStatus::Pending,
 				},
 			);
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
@@ -437,35 +435,34 @@ pub mod pallet {
 		pub fn xcm_response(
 			origin: OriginFor<T>,
 			query_id: QueryId,
-			response: Response,
+			xcm_response: Response,
 		) -> DispatchResult {
 			T::XcmResponseOrigin::ensure_origin(origin)?;
-			let (origin, id) = XcmQueries::<T>::get(query_id).ok_or(Error::<T>::InvalidQuery)?;
+			let (origin, id) = XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
 			let xcm_query_message =
 				Messages::<T>::get(&origin, &id).ok_or(Error::<T>::MessageNotFound)?;
-			let Message::XcmQuery { query_id, callback, deposit, status } = &xcm_query_message else {
-				return Err(Error::<T>::InvalidMessage.into())
+			
+			let (query_id, callback, deposit) = match &xcm_query_message {
+				Message::XcmQuery { query_id, callback, deposit} => (query_id, callback, deposit),
+				Message::XcmTimeout { .. } => return Err(Error::<T>::RequestTimedOut.into()),
+				_ => return Err(Error::<T>::InvalidMessage.into()),
 			};
-
-			ensure!(*status != QueryStatus::Timeout, Error::<T>::RequestTimedOut);
 
 			// Emit event before possible callback execution.			
 			Self::deposit_event(Event::<T>::XcmResponseReceived {
 				dest: origin.clone(),
 				id,
 				query_id: *query_id,
-				response: response.clone(),
+				response: xcm_response.clone(),
 			});
 
 			if let Some(callback) = callback {
 				// Attempt callback with response if specified.
-				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, response);
-				match Self::call(&origin, callback.to_owned(), &id, &response) {
+				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
+				match Self::call(&origin, callback.to_owned(), &id, &xcm_response) {
 					Ok(_) => {
-						// A successfull callback can be removed from storage and its deposit
-						// returned. We can ignore the status as we know the response has been
-						// received.
-						xcm_query_message.remove(&origin, &id);
+						Messages::<T>::remove(&origin, &id);
+						XcmQueries::<T>::remove(query_id);
 						T::Deposit::release(
 							&HoldReason::Messaging.into(),
 							&origin,
@@ -473,34 +470,26 @@ pub mod pallet {
 							Exact,
 						)?;
 					},
-					Err(e) => {
-						// A problematic callback should still have the ability for polling the
-						// response. Update the message to a response with error information.
-						Messages::<T>::insert(
-							&origin,
-							&id,
+					Err(_) => {
+						// This is where the issue lies, clearly we want a XcmResponse but how do we manage the error?
+						Messages::<T>::insert(&origin, &id, 
 							Message::XcmResponse {
-								query_id: *query_id,
-								response,
-								deposit: *deposit,
-								status: ResponseStatus::CallbackExecutionFailed(e),
-							},
-						);
+								query_id: *query_id, 
+								deposit: *deposit, 
+								response: xcm_response,
+							}
+						)
 					},
 				}
 			} else {
-				// We have no callback here so just update the message to Received and store for
-				// polling.
-				Messages::<T>::insert(
-					&origin,
-					&id,
+				// No callback is executed, 
+				Messages::<T>::insert(&origin, &id, 
 					Message::XcmResponse {
-						query_id: *query_id,
-						response,
-						deposit: *deposit,
-						status: ResponseStatus::Received,
-					},
-				);
+						query_id: *query_id, 
+						deposit: *deposit, 
+						response: xcm_response,
+					}
+				)
 			}
 
 			Ok(())
@@ -520,18 +509,34 @@ pub mod pallet {
 					return Err(Error::<T>::MessageNotFound.into());
 				};
 
-				message.try_remove(&origin, id).and_then(|_| {
-					let deposit = match message {
-						Message::Ismp { deposit, .. } => deposit,
-						Message::IsmpResponse { deposit, .. } => deposit,
-						Message::XcmQuery { deposit, .. } => deposit,
-						Message::XcmResponse { deposit, .. } => deposit,
-					};
-					T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
-
-					Ok(())
-				})?;
+				let deposit = match message {
+					Message::Ismp  { .. } => Err(Error::<T>::RequestPending),
+					Message::XcmQuery { .. } => Err(Error::<T>::RequestPending),
+					Message::IsmpResponse { deposit, commitment, .. } => {
+						Messages::<T>::remove(&origin, &id);
+						IsmpRequests::<T>::remove(&commitment);
+						Ok(deposit)
+					},
+					Message::XcmResponse { deposit, query_id, .. } => {
+						Messages::<T>::remove(&origin, &id);
+						XcmQueries::<T>::remove(query_id);
+						Ok(deposit)
+					}
+					Message::IsmpTimeout { deposit, commitment, .. } => {
+						Messages::<T>::remove(&origin, &id);
+						IsmpRequests::<T>::remove(&commitment);
+						Ok(deposit)
+					},
+					Message::XcmTimeout { query_id, deposit, .. } => {
+						Messages::<T>::remove(&origin, &id);
+						XcmQueries::<T>::remove(query_id);
+						Ok(deposit)
+					},
+				}?;
+				
+				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
+
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
 
 			Ok(())
@@ -626,22 +631,25 @@ impl<T: Config> crate::Read for Pallet<T> {
 		match request {
 			Read::PollStatus(request) =>
 				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| match m {
-					Message::Ismp { status, .. } => MessageStatus::QueryStatus(status),
-					Message::IsmpResponse { status, .. } => MessageStatus::ResponseStatus(status),
-					Message::XcmQuery { status, .. } => MessageStatus::QueryStatus(status),
-					Message::XcmResponse { status, .. } => MessageStatus::ResponseStatus(status),
+					Message::Ismp  { .. } => MessageStatus::Pending,
+					Message::XcmQuery { .. } => MessageStatus::Pending,
+					Message::IsmpResponse { .. } => MessageStatus::Complete,
+					Message::XcmResponse { .. } => MessageStatus::Complete,
+					Message::IsmpTimeout { .. } => MessageStatus::Timeout,
+					Message::XcmTimeout { .. } => MessageStatus::Timeout,
 				})),
 			Read::GetResponse(request) =>
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
-					Message::Ismp { .. } => None,
-					Message::IsmpResponse { response, .. } => Some(response.into_inner()),
+					Message::Ismp  { .. } => None,
 					Message::XcmQuery { .. } => None,
+					Message::IsmpResponse { response, .. } => Some(response.to_vec()),
 					Message::XcmResponse { response, .. } => Some(response.encode()),
+					Message::IsmpTimeout { .. } => None,
+					Message::XcmTimeout { .. } => None,
 				})),
 			Read::QueryId(request) => ReadResult::QueryId(
 				Messages::<T>::get(request.0, request.1).and_then(|m| match m {
-					Message::XcmQuery { query_id, .. } | Message::XcmResponse { query_id, .. } =>
-						Some(query_id),
+					Message::XcmQuery { query_id, .. } => Some(query_id),
 					_ => None,
 				}),
 			),
@@ -656,118 +664,39 @@ pub enum Message<T: Config> {
 		commitment: H256,
 		callback: Option<Callback<T::AccountId>>,
 		deposit: BalanceOf<T>,
-		status: QueryStatus,
-	},
-	IsmpResponse {
-		commitment: H256,
-		deposit: BalanceOf<T>,
-		response: BoundedVec<u8, T::MaxResponseLen>,
-		status: ResponseStatus,
 	},
 	XcmQuery {
 		query_id: QueryId,
 		callback: Option<Callback<T::AccountId>>,
 		deposit: BalanceOf<T>,
-		status: QueryStatus,
+	},
+	IsmpResponse {
+		commitment: H256,
+		deposit: BalanceOf<T>,
+		response: BoundedVec<u8, T::MaxResponseLen>,
 	},
 	XcmResponse {
 		query_id: QueryId,
 		deposit: BalanceOf<T>,
 		response: Response,
-		status: ResponseStatus,
 	},
-}
-
-impl<T: Config> Message<T> {
-	/// Try and remove self.
-	/// Intended for users to remove messages they have sent.
-	pub fn try_remove(
-		&self,
-		origin: &AccountIdOf<T>,
-		id: &MessageId,
-	) -> Result<(), DispatchError> {
-		match self {
-			// Ismp messages can only be removed if their status is erroneous.
-			Message::Ismp { status, .. } => match status {
-				QueryStatus::Pending => Err(Error::<T>::RequestPending.into()),
-				QueryStatus::Timeout | QueryStatus::Err(_) => {
-					self.remove(origin, id);
-					Ok(())
-				},
-			},
-			// Ismp responses can always be removed.
-			Message::IsmpResponse { .. } => {
-				self.remove(origin, id);
-				Ok(())
-			},
-			// Xcm queries can only be removed if their status is erroneous.
-			Message::XcmQuery { status, .. } => match status {
-				QueryStatus::Pending => Err(Error::<T>::RequestPending.into()),
-				QueryStatus::Timeout | QueryStatus::Err(_) => {
-					self.remove(origin, id);
-					Ok(())
-				},
-			},
-			// XCM responses can always be removed.
-			Message::XcmResponse { .. } => {
-				self.remove(origin, id);
-				Ok(())
-			},
-		}
-	}
-
-	/// Remove a message from storage.
-	/// Does no check on whether a message should be removed.
-	pub(crate) fn remove(&self, origin: &AccountIdOf<T>, id: &MessageId) {
-		Messages::<T>::remove(&origin, &id);
-		match self {
-			Message::Ismp { commitment, .. } => {
-				IsmpRequests::<T>::remove(commitment);
-			},
-			Message::IsmpResponse { commitment, .. } => {
-				IsmpRequests::<T>::remove(commitment);
-			},
-			Message::XcmQuery { query_id, .. } => {
-				XcmQueries::<T>::remove(query_id);
-			},
-			Message::XcmResponse { query_id, .. } => {
-				XcmQueries::<T>::remove(query_id);
-			},
-		}
+	IsmpTimeout {
+		commitment: H256,
+		deposit: BalanceOf<T>,
+	},
+	XcmTimeout {
+		query_id: QueryId,
+		deposit: BalanceOf<T>,
 	}
 }
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
-pub enum MessageStatus {
-	QueryStatus(QueryStatus),
-	ResponseStatus(ResponseStatus),
-}
-
-#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
-pub enum QueryStatus {
-	/// A query has been sent and is pending a response.
-	Pending,
-	/// An error has occurred with this message.
-	Err(DispatchError),
-	/// A timeout has occurred.
+enum MessageStatus {
+	Pending, 
+	Complete,
 	Timeout,
 }
 
-#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
-pub enum ResponseStatus {
-	/// A query has been sent and is pending a response.
-	Received,
-	/// The specified callback has errored.
-	CallbackExecutionFailed(DispatchError),
-	/// An error has occurred with this message.
-	Err(DispatchError),
-}
-
-#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
-pub enum CallbackErrorReason {
-	NotEnoughGas,
-	BadExecution,
-}
 
 // Message selector and pre-paid weight used as gas limit
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]

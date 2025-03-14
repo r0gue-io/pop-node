@@ -45,7 +45,7 @@ mod messaging_benchmarks {
 				commitment: commitment.clone(),
 				deposit,
 				response: Default::default(),
-				status: QueryStatus::Pending,
+				status: MessageStatus::Pending,
 			};
 
 			Messages::<T>::insert(&owner, &message_id.0, &good_message);

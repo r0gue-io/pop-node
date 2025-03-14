@@ -44,7 +44,7 @@ mod message {
 				commitment,
 				callback: None,
 				deposit: 100,
-				status: QueryStatus::Pending,
+				status: MessageStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
@@ -94,7 +94,7 @@ mod message {
 				query_id,
 				callback: None,
 				deposit: 0,
-				status: QueryStatus::Pending,
+				status: MessageStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
@@ -144,7 +144,7 @@ mod message {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 100,
-				status: QueryStatus::Pending,
+				status: MessageStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			assert_noop!(m.try_remove(&ALICE, &message_id), Error::<Test>::RequestPending);
@@ -163,7 +163,7 @@ mod message {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 0,
-				status: QueryStatus::Timeout,
+				status: MessageStatus::Timeout,
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -179,7 +179,7 @@ mod message {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 0,
-				status: QueryStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
+				status: MessageStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -236,7 +236,7 @@ mod message {
 				query_id: 0,
 				callback: None,
 				deposit: 0,
-				status: QueryStatus::Pending,
+				status: MessageStatus::Pending,
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_noop!(m.try_remove(&ALICE, &message_id), Error::<Test>::RequestPending);
@@ -252,7 +252,7 @@ mod message {
 				query_id: 0,
 				callback: None,
 				deposit: 0,
-				status: QueryStatus::Timeout,
+				status: MessageStatus::Timeout,
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -268,7 +268,7 @@ mod message {
 				query_id: 0,
 				callback: None,
 				deposit: 0,
-				status: QueryStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
+				status: MessageStatus::Err(Error::<Test>::IsmpDispatchFailed.into()),
 			};
 			Messages::<Test>::insert(&ALICE, message_id, &m);
 			assert_ok!(m.try_remove(&ALICE, &message_id));
@@ -470,7 +470,7 @@ mod remove {
 				commitment: H256::default(),
 				callback: None,
 				deposit,
-				status: QueryStatus::Pending,
+				status: MessageStatus::Pending,
 			};
 			let m_id = [0; 32];
 
@@ -512,7 +512,7 @@ mod remove {
 				commitment: H256::default(),
 				callback: None,
 				deposit: 100,
-				status: QueryStatus::Pending,
+				status: MessageStatus::Pending,
 			};
 
 			let good_id_1 = [0; 32];
@@ -684,7 +684,7 @@ mod xcm_new_query {
 			if let Message::XcmQuery { query_id, callback, deposit, status } = m {
 				assert_eq!(query_id, 0);
 				assert_eq!(callback, Some(expected_callback));
-				assert_eq!(status, QueryStatus::Pending);
+				assert_eq!(status, MessageStatus::Pending);
 			} else {
 				panic!("Wrong message type.")
 			}
@@ -696,7 +696,7 @@ mod xcm_new_query {
 	#[test]
 	fn xcm_timeouts_must_be_in_the_future() {
 		new_test_ext().execute_with(|| {
-			
+
 		})
 	}
 
