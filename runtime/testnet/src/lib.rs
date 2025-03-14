@@ -71,6 +71,8 @@ use weights::{BlockExecutionWeight, ExtrinsicBaseWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
 
+use crate::config::assets::TrustBackedAssetsInstance;
+
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -143,6 +145,14 @@ pub type UncheckedExtrinsic =
 /// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
 pub type Migrations = (
 	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
+	// Unreleased.
+	pallet_assets::migration::next_asset_id::SetNextAssetId<
+		// Higher AssetId on testnet live is `7_045`,
+		// rounded up to 10_000.
+		ConstU32<10_000>,
+		Runtime,
+		TrustBackedAssetsInstance,
+	>,
 	// Permanent.
 	pallet_contracts::Migration<Runtime>,
 	pallet_xcm::migration::MigrateToLatestXcmVersion<Runtime>,
@@ -220,7 +230,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_name: Cow::Borrowed("pop"),
 	authoring_version: 1,
 	#[allow(clippy::zero_prefixed_literal)]
-	spec_version: 00_05_00,
+	spec_version: 00_05_02,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
