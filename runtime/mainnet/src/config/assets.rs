@@ -42,7 +42,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
-	type CallbackHandle = ();
+	type CallbackHandle = pallet_assets::AutoIncAssetId<Runtime, TrustBackedAssetsInstance>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
 	type Extra = ();
@@ -116,7 +116,18 @@ mod tests {
 	use crate::{AccountId, Balance};
 
 	mod assets {
+		use frame_support::traits::Incrementable;
+		use pallet_assets::{AssetsCallback, NextAssetId};
+		use sp_keyring::AccountKeyring::Alice;
+
 		use super::*;
+		use crate::System;
+
+		fn new_test_ext() -> sp_io::TestExternalities {
+			let mut ext = sp_io::TestExternalities::new_empty();
+			ext.execute_with(|| System::set_block_number(1));
+			ext
+		}
 
 		#[test]
 		fn ensure_asset_approval_deposit() {
@@ -200,13 +211,24 @@ mod tests {
 		}
 
 		#[test]
-		fn callback_handle_is_default() {
+		fn callback_handle_is_auto_inc_asset_id() {
 			assert_eq!(
 				TypeId::of::<
 					<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::CallbackHandle,
 				>(),
-				TypeId::of::<()>(),
+				TypeId::of::<pallet_assets::AutoIncAssetId<Runtime, TrustBackedAssetsInstance>>(),
 			);
+		}
+
+		#[test]
+		fn callback_increments_asset_id_on_asset_creation() {
+			new_test_ext().execute_with(|| {
+				NextAssetId::<Runtime, TrustBackedAssetsInstance>::put(1);
+				let next_asset_id: u32 = NextAssetId::<Runtime, TrustBackedAssetsInstance>::get().unwrap();
+				assert_eq!(next_asset_id, 1);
+				assert!(<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::CallbackHandle::created(&next_asset_id, &Alice.to_account_id()).is_ok());
+				assert_eq!(NextAssetId::<Runtime, TrustBackedAssetsInstance>::get().unwrap(), next_asset_id.increment().unwrap());
+			})
 		}
 
 		#[test]
