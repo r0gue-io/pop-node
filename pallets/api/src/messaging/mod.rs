@@ -630,14 +630,7 @@ impl<T: Config> crate::Read for Pallet<T> {
 	fn read(request: Self::Read) -> Self::Result {
 		match request {
 			Read::PollStatus(request) =>
-				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| match m {
-					Message::Ismp  { .. } => MessageStatus::Pending,
-					Message::XcmQuery { .. } => MessageStatus::Pending,
-					Message::IsmpResponse { .. } => MessageStatus::Complete,
-					Message::XcmResponse { .. } => MessageStatus::Complete,
-					Message::IsmpTimeout { .. } => MessageStatus::Timeout,
-					Message::XcmTimeout { .. } => MessageStatus::Timeout,
-				})),
+				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| MessageStatus::from(&m))),
 			Read::GetResponse(request) =>
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
 					Message::Ismp  { .. } => None,
@@ -690,13 +683,25 @@ pub enum Message<T: Config> {
 	}
 }
 
+impl<T: Config> From<&Message<T>> for MessageStatus {
+	fn from(value: &Message<T>) -> Self {
+		match value {
+			&Message::Ismp  { .. } => MessageStatus::Pending,
+			&Message::XcmQuery { .. } => MessageStatus::Pending,
+			&Message::IsmpResponse { .. } => MessageStatus::Complete,
+			&Message::XcmResponse { .. } => MessageStatus::Complete,
+			&Message::IsmpTimeout { .. } => MessageStatus::Timeout,
+			&Message::XcmTimeout { .. } => MessageStatus::Timeout,
+		}
+	}
+}
+
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 enum MessageStatus {
 	Pending, 
 	Complete,
 	Timeout,
 }
-
 
 // Message selector and pre-paid weight used as gas limit
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
