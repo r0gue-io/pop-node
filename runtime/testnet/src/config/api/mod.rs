@@ -297,7 +297,7 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 
 		let contain_messaging: bool = {
 			use messaging::Read::*;
-			matches!(r, RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..)))
+			matches!(r, RuntimeRead::Messaging(PollStatus(..) | GetResponse(..) | QueryId(..)))
 		};
 
 		contain_fungibles | contain_messaging
