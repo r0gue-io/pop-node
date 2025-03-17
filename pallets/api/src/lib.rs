@@ -9,7 +9,6 @@ pub mod messaging;
 #[cfg(test)]
 mod mock;
 pub mod nonfungibles;
-pub mod messaging;
 
 /// Trait for performing reads of runtime state.
 pub trait Read {

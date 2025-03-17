@@ -1,8 +1,3 @@
-<<<<<<< HEAD
-//! TODO: pallet docs.
-
-=======
->>>>>>> 3f07f3c386e897283fb385e686345901dc2069fa
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
@@ -42,20 +37,19 @@ use deposits::*;
 #[cfg(test)]
 mod tests;
 
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type BlockNumberOf<T> = BlockNumberFor<T>;
-type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
+pub(crate) type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+pub(crate) type BlockNumberOf<T> = BlockNumberFor<T>;
+pub(crate) type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
 pub type MessageId = [u8; 32];
 
 #[frame_support::pallet]
 pub mod pallet {
 
 	use frame_support::{
-		dispatch::DispatchResult,
 		pallet_prelude::*,
 		storage::KeyLenOf,
 		traits::tokens::{fungible::hold::Mutate, Precision::Exact},
-		dispatch::DispatchResult, pallet_prelude::*, traits::tokens::fungible::hold::Mutate,
+		dispatch::DispatchResult, pallet_prelude::*,
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
