@@ -1,3 +1,5 @@
+extern crate alloc;
+
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
@@ -21,6 +23,7 @@ use transports::{
 };
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
+pub use alloc::borrow::ToOwned;
 
 use super::Weight;
 
@@ -53,6 +56,7 @@ pub mod pallet {
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
+
 
 	use super::*;
 
@@ -105,6 +109,7 @@ pub mod pallet {
 
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 
+		/// SAFETY: Recommended this is small as is used to updated a message status in the hooks.
 		/// The maximum number of xcm timout updates that can be processed per block.
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
@@ -252,7 +257,9 @@ pub mod pallet {
 		/// The request has timed out
 		RequestTimedOut,
 		/// Timeouts must be in the future.
-		FutureTimeoutMandatory
+		FutureTimeoutMandatory,
+		/// Message block limit has been reached for this expiry block. Try a different timeout.
+		MaxMessageTimeoutPerBlockReached,
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -271,15 +278,12 @@ pub mod pallet {
 			// Iterate through the queries that have expired and update their status.
 			let mut weight: Weight = Zero::zero();
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
-				if weight.checked_add(&DbWeightOf::<T>::get().reads_writes(2, 1)).is_some() {
+				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
 					Messages::<T>::mutate(origin, message_id, |maybe_message|{
 						if let Some(Message::XcmQuery { query_id, deposit, .. }) = maybe_message.as_mut() {
 							*maybe_message = Some(Message::XcmTimeout {query_id: *query_id, deposit: *deposit});
 						}
 					})
-				} else {
-					// maxed out weight, this shouldnt happen if the limit is reasonable.
-				}
 			}
 
 			weight
@@ -391,7 +395,12 @@ pub mod pallet {
 			let querier_location = T::OriginConverter::try_convert(origin.clone())
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 			let origin = ensure_signed(origin)?;
-			ensure!(frame_system::Pallet::<T>::block_number() < timeout, Error::<T>::FutureTimeoutMandatory);
+			let current_block = frame_system::Pallet::<T>::block_number();
+			ensure!(current_block < timeout, Error::<T>::FutureTimeoutMandatory);
+
+			XcmQueryTimeouts::<T>::try_mutate(current_block + timeout, |bounded_vec| {
+				bounded_vec.try_push((origin.clone(), id)).map_err(|_|Error::<T>::MaxMessageTimeoutPerBlockReached)
+			})?;
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
 
@@ -401,7 +410,7 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
-
+			
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
 			// are ignored.
@@ -471,7 +480,7 @@ pub mod pallet {
 						)?;
 					},
 					Err(_) => {
-						// This is where the issue lies, clearly we want a XcmResponse but how do we manage the error?
+						// Due to dependance on runtime implementation this is hard to unit test. TODO: Discuss with peter options
 						Messages::<T>::insert(&origin, &id, 
 							Message::XcmResponse {
 								query_id: *query_id, 
@@ -546,7 +555,7 @@ pub mod pallet {
 
 impl<T: Config> Pallet<T> {
 	// Attempt to notify via callback.
-	fn call(
+	pub(crate) fn call(
 		origin: &AccountIdOf<T>,
 		callback: Callback<T::AccountId>,
 		id: &MessageId,
@@ -697,7 +706,7 @@ impl<T: Config> From<&Message<T>> for MessageStatus {
 }
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
-enum MessageStatus {
+pub enum MessageStatus {
 	Pending, 
 	Complete,
 	Timeout,
@@ -714,6 +723,5 @@ pub struct Callback<AccountId> {
 
 pub trait CallbackExecutor<T: Config> {
 	fn execute(account: T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
-
 	fn execution_weight() -> Weight;
 }

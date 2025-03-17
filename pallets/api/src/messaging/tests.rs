@@ -543,7 +543,7 @@ mod xcm_new_query {
 			// Looking for an item in Messages and XcmQueries.
 			let message_id = [0; 32];
 			let expected_callback =
-				Callback { selector: [0; 4], weight: 100.into(), spare_weight_creditor: BOB };
+				Callback { selector: [1; 4], weight: 100.into(), spare_weight_creditor: BOB };
 			let timeout = System::block_number() + 1;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -568,7 +568,15 @@ mod xcm_new_query {
 	#[test]
 	fn xcm_timeouts_must_be_in_the_future() {
 		new_test_ext().execute_with(|| {
-
+			let message_id = [0; 32];
+			let timeout = System::block_number();
+			assert_noop!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				None
+			), Error::<Test>::FutureTimeoutMandatory);
 		})
 	}
 
@@ -576,14 +584,180 @@ mod xcm_new_query {
 
 
 mod xcm_response {
+	use super::*;
 
+	#[test]
+	fn message_not_found() {
+		new_test_ext().execute_with(|| {
+			assert_noop!(Messaging::xcm_response(root(), 0, Default::default()), Error::<Test>::MessageNotFound);
+		})
+	}
 
+	#[test]
+	fn timeout_messages_are_noop() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0; 32];
+			let timeout = System::block_number() + 1;
+			let mut generated_query_id = 0;
+
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				None,
+			));
+
+			// Update the message to XcmTimedOut
+			Messages::<Test>::mutate(&ALICE, &message_id, |message| {
+				let Some(Message::XcmQuery {query_id, deposit, ..}): &mut Option<Message<Test>> = message
+				else {
+					panic!("No message!");
+				};
+				generated_query_id = *query_id;
+				*message = Some(Message::XcmTimeout {query_id: *query_id	, deposit: *deposit});
+			});
+
+			assert_noop!(Messaging::xcm_response(root(), generated_query_id, Default::default()), Error::<Test>::RequestTimedOut);
+		})
+	}
+
+	#[test]
+	fn assert_event_no_callback() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0; 32];
+			let timeout = System::block_number() + 1;
+			let mut generated_query_id = 0;
+			let xcm_response = Response::Null;
+
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				None,
+			));
+
+			assert_ok!(Messaging::xcm_response(root(), generated_query_id, xcm_response));
+			
+			assert!(events()
+				.contains(&Event::<Test>::XcmResponseReceived { 
+					dest: ALICE,
+					id: message_id,
+					query_id: generated_query_id,
+					response: Response::Null }));
+			})
+	}
+
+	#[test]
+	fn assert_message_is_stored_for_polling_no_callback() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0; 32];
+			let timeout = System::block_number() + 1;
+			let mut expected_query_id = 0;
+			let xcm_response = Response::ExecutionResult(None);
+
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				None,
+			));
+ 
+			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
+			let Some(Message::XcmResponse { 
+				query_id,
+				deposit,
+				response,
+			}): Option<Message<Test>> = Messages::get(&ALICE, message_id) else {
+				panic!("wrong message type");
+			};
+
+			assert_eq!(query_id, expected_query_id);
+			assert_eq!(xcm_response, response);
+		})
+	}
+
+	#[test]
+	fn message_is_removed_after_successfull_callback_execution() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0; 32];
+			let timeout = System::block_number() + 1;
+			let mut expected_query_id = 0;
+			let xcm_response = Response::ExecutionResult(None);
+			let callback =
+				Callback { selector: [1; 4], weight: 100.into(), spare_weight_creditor: BOB };
+
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				Some(callback),
+			));
+ 
+			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
+			assert!(Messages::<Test>::get(&ALICE, &message_id).is_none());
+			assert!(XcmQueries::<Test>::get(expected_query_id).is_none());
+		})
+	}
+
+	#[test]
+	fn deposit_returned_after_successfull_callback_execution() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0; 32];
+			let timeout = System::block_number() + 1;
+			let mut expected_query_id = 0;
+			let xcm_response = Response::ExecutionResult(None);
+			let callback =
+				Callback { selector: [1; 4], weight: 100.into(), spare_weight_creditor: BOB };
+			let expected_deposit = calculate_protocol_deposit::<Test, <Test as crate::messaging::Config>::OnChainByteFee>(ProtocolStorageDeposit::XcmQueries) + calculate_message_deposit::<Test, <Test as crate::messaging::Config>::OnChainByteFee>();
+
+			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
+
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				Some(callback),
+			));
+
+			let alice_balance_post_hold = Balances::free_balance(&ALICE);
+ 
+			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
+
+			let alice_balance_post_release = Balances::free_balance(&ALICE);
+
+			assert_eq!(alice_balance_pre_hold - alice_balance_post_hold, expected_deposit);
+			assert_eq!(alice_balance_post_release, alice_balance_pre_hold);
+		})
+	}
 }
 
 mod hooks {
 	use super::*;
 
+	#[test]
 	fn xcm_queries_expire_on_expiry_block() {
+		new_test_ext().execute_with(|| {
+		let message_id = [0; 32];
+		let timeout = System::block_number() + 10;
+		let xcm_response = Response::ExecutionResult(None);
 
-	}
+		assert_ok!(Messaging::xcm_new_query(
+			signed(ALICE),
+			message_id,
+			RESPONSE_LOCATION,
+			timeout,
+			None,
+		));
+
+		run_to(timeout + 1);
+
+		let Some(Message::XcmTimeout {..}): Option<Message<Test>> = Messages::get(&ALICE, message_id) else {	panic!("Message should be timedout!")};
+		})
+
+		}
 }

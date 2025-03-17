@@ -23,7 +23,7 @@ use crate::{
 		xcm::LocalOriginToLocation,
 	},
 	fungibles, messaging, nonfungibles, AccountId, Balances, BlockNumber, ConstU32, Ismp, Revive,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, TransactionByteFee,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, TransactionByteFee, parameter_types
 };
 
 mod versioning;
@@ -111,6 +111,10 @@ impl nonfungibles::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
+}
+
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
@@ -132,6 +136,7 @@ impl messaging::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
+	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 }
 
 pub struct EnsureResponse;
@@ -200,11 +205,13 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 	fn execution_weight() -> Weight {
 		use pallet_revive::WeightInfo;
 		<Runtime as pallet_revive::Config>::WeightInfo::call()
-	}
+	}	
 }
 
 pub struct QueryHandler;
 impl pallet_api::messaging::NotifyQueryHandler<Runtime> for QueryHandler {
+	type WeightInfo = pallet_xcm::Pallet<Runtime>;
+
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: messaging::Call<Runtime>,
@@ -213,6 +220,7 @@ impl pallet_api::messaging::NotifyQueryHandler<Runtime> for QueryHandler {
 	) -> u64 {
 		crate::PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
 	}
+
 }
 
 #[derive(Default)]

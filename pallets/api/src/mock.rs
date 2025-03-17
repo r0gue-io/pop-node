@@ -4,7 +4,7 @@ use frame_support::{
 	derive_impl,
 	pallet_prelude::EnsureOrigin,
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, OriginTrait},
+	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, OriginTrait, Hooks},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
@@ -209,8 +209,8 @@ impl crate::nonfungibles::Config for Test {
 	type WeightInfo = ();
 }
 
-pub struct MockCallbackExecutor<T>(T);
-impl<T: crate::messaging::Config> CallbackExecutor<T> for MockCallbackExecutor<T> {
+pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
+impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
 	fn execute(
 		account: <T as frame_system::Config>::AccountId,
 		data: Vec<u8>,
@@ -232,7 +232,7 @@ parameter_types! {
 
 pub struct MockNotifyQuery<T>(T);
 impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
-	type WeightInfo = TestWeightInfo;
+	type WeightInfo = ();
 
 	fn new_notify_query(
 		responder: impl Into<Location>,
@@ -240,12 +240,19 @@ impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
 		timeout: BlockNumberFor<T>,
 		match_querier: impl Into<Location>,
 	) -> u64 {
-		Messages::<T>::iter().count() as u64
+		get_next_query_id()
 	}
 }
 
+// Just done based on the count of the queries created
+// Problematic if one is removed.
+pub fn get_next_query_id() -> u64 {
+	Messages::<Test>::iter().count() as u64
+}
+
+
 impl crate::messaging::Config for Test {
-	type CallbackExecutor = MockCallbackExecutor<Test>;
+	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
 	type Deposit = Balances;
 	type IsmpDispatcher = MockIsmpDispatcher;
 	type MaxContextLen = ConstU32<64>;
@@ -346,3 +353,16 @@ pub(crate) fn root() -> RuntimeOrigin {
 pub(crate) fn none() -> RuntimeOrigin {
 	RuntimeOrigin::none()
 }
+
+pub fn next_block() {
+	let next_block: u64 = System::block_number() + 1;
+	System::set_block_number(next_block);
+	Messaging::on_initialize(next_block);
+}
+
+pub fn run_to(block_number: u64) {
+	while System::block_number() < block_number {
+		next_block();
+	}
+}
+
