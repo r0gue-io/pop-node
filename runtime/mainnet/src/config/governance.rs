@@ -85,7 +85,6 @@ pub(crate) mod initiate_council_migration {
 	use alloc::{vec, vec::Vec};
 
 	use frame_support::traits::OnRuntimeUpgrade;
-	use pallet_collective::WeightInfo;
 	#[cfg(feature = "try-runtime")]
 	use sp_runtime::TryRuntimeError;
 
@@ -95,8 +94,8 @@ pub(crate) mod initiate_council_migration {
 		C1: AccountId = AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4").expect("address is valid SS58");
 		C2: AccountId = AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z").expect("address is valid SS58");
 		C3: AccountId = AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4").expect("address is valid SS58");
-		C4: AccountId = AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz").expect("address is valid SS58");
-		C5: AccountId = AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg").expect("address is valid SS58");
+		C4: AccountId = AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg").expect("address is valid SS58");
+		C5: AccountId = AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz").expect("address is valid SS58");
 		Members: Vec<AccountId> = vec![C1::get(), C2::get(), C3::get(), C4::get(), C5::get()];
 	}
 
@@ -113,14 +112,9 @@ pub(crate) mod initiate_council_migration {
 				return <Runtime as frame_system::Config>::DbWeight::get().reads(1);
 			}
 
-			let mut members: Vec<AccountId> = Members::get();
-			members.sort();
+			let members: Vec<AccountId> = Members::get();
 			pallet_collective::Members::<Runtime, CouncilCollective>::put(members.clone());
-			<Runtime as pallet_collective::Config<CouncilCollective>>::WeightInfo::set_members(
-				0,
-				members.len() as u32,
-				<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposals::get(),
-			)
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
 		}
 
 		#[cfg(feature = "try-runtime")]
@@ -159,19 +153,14 @@ pub(crate) mod initiate_council_migration {
 			ext.execute_with(|| System::set_block_number(1));
 			ext
 		}
+
 		#[test]
-		fn on_runtime_upgrade_weight_is_within_limits() {
-			new_test_ext().execute_with(|| {
-				let resulting_weight = SetCouncilors::on_runtime_upgrade();
-				let expected_weight =
-					<Runtime as pallet_collective::Config<CouncilCollective>>::WeightInfo::set_members(
-						0,
-						5,
-						<Runtime as pallet_collective::Config<CouncilCollective>>::MaxProposals::get(),
-					);
-				assert!(resulting_weight.all_lt(pop_runtime_common::MAXIMUM_BLOCK_WEIGHT));
-				assert_eq!(resulting_weight, expected_weight);
-			})
+		fn members_are_sorted() {
+			// The provided member list is already sorted.
+			let members = Members::get();
+			let mut sorted_members = members.clone();
+			sorted_members.sort();
+			assert_eq!(members, sorted_members);
 		}
 
 		#[test]
@@ -190,6 +179,20 @@ pub(crate) mod initiate_council_migration {
 				let members_in_storage: Vec<AccountId> =
 					pallet_collective::Members::<Runtime, CouncilCollective>::get();
 				assert_eq!(members_in_storage.len(), 1);
+			})
+		}
+
+		#[test]
+		fn on_runtime_upgrade_weight_is_within_limits() {
+			new_test_ext().execute_with(|| {
+				let mut members = Members::get();
+				members.sort();
+				println!("Sorted Members {:?}", members);
+				let resulting_weight = SetCouncilors::on_runtime_upgrade();
+				let expected_weight =
+					<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1);
+				assert_eq!(resulting_weight, expected_weight);
+				assert!(resulting_weight.all_lt(pop_runtime_common::MAXIMUM_BLOCK_WEIGHT));
 			})
 		}
 	}
