@@ -6,6 +6,13 @@ pub use parachains_common::{AccountId, AuraId, Balance, Block, BlockNumber, Hash
 pub use polkadot_primitives::MAX_POV_SIZE;
 use sp_runtime::Perbill;
 
+extern crate alloc;
+
+/// Functions used for defining the genesis state of a chain.
+pub mod genesis;
+/// Benchmarked weight functions.
+pub mod weights;
+
 /// Nonce for an account
 pub type Nonce = u32;
 
@@ -76,7 +83,6 @@ pub use async_backing_params::*;
 
 /// Proxy commons for Pop runtimes
 pub mod proxy {
-
 	use codec::{Decode, Encode, MaxEncodedLen};
 	use frame_support::parameter_types;
 	use sp_runtime::RuntimeDebug;
@@ -141,6 +147,59 @@ pub mod proxy {
 				(ProxyType::Assets, ProxyType::AssetManager) => true,
 				(ProxyType::NonTransfer, ProxyType::Collator) => true,
 				_ => false,
+			}
+		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	mod proxy {
+		use crate::proxy::{ProxyType, ProxyType::*};
+
+		#[test]
+		fn proxy_type_default_is_any() {
+			assert_eq!(ProxyType::default(), Any);
+		}
+
+		#[test]
+		fn proxy_type_superset_as_defined() {
+			let all_proxies =
+				vec![Any, NonTransfer, CancelProxy, Assets, AssetOwner, AssetManager, Collator];
+			for proxy in all_proxies {
+				// Every proxy is part of itself.
+				assert!(ProxyType::is_superset(&proxy, &proxy));
+
+				// `Any` is superset of every other proxy type.
+				if proxy != Any {
+					assert!(ProxyType::is_superset(&Any, &proxy));
+					assert!(!ProxyType::is_superset(&proxy, &Any));
+				}
+				if proxy != NonTransfer {
+					if proxy == Collator {
+						// `NonTransfer` is superset for `Collator`.
+						assert!(ProxyType::is_superset(&NonTransfer, &proxy));
+						assert!(!ProxyType::is_superset(&proxy, &NonTransfer));
+					} else if proxy != Any {
+						assert!(!ProxyType::is_superset(&proxy, &NonTransfer));
+					}
+				}
+				// `CancelProxy` isn't superset of any other proxy type.
+				if proxy != CancelProxy {
+					assert!(!ProxyType::is_superset(&CancelProxy, &proxy));
+				}
+				// `Asset` proxy type is superset of `AssetOwner` and `AssetManager`.
+				if proxy != Assets {
+					if proxy == AssetOwner {
+						assert!(ProxyType::is_superset(&Assets, &proxy));
+						assert!(!ProxyType::is_superset(&proxy, &Assets));
+					} else if proxy == AssetManager {
+						assert!(ProxyType::is_superset(&Assets, &proxy));
+						assert!(!ProxyType::is_superset(&proxy, &Assets));
+					} else if proxy != Any {
+						assert!(!ProxyType::is_superset(&proxy, &Assets));
+					}
+				}
 			}
 		}
 	}

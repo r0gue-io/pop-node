@@ -42,5 +42,4 @@ impl pallet_revive::Config for Runtime {
 	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type Xcm = pallet_xcm::Pallet<Self>;
-	type NativeToEthRatio = ConstU32<1_000_000>;
 }

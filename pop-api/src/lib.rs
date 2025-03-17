@@ -76,6 +76,7 @@ mod constants {
 	pub(crate) const BALANCES: u8 = 10;
 	pub(crate) const FUNGIBLES: u8 = 150;
 	pub(crate) const NFTS: u8 = 50;
+	pub(crate) const MESSAGING: u8 = 152;
 	pub(crate) const NONFUNGIBLES: u8 = 151;
 }
 

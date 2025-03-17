@@ -1,7 +1,7 @@
 use ::ismp::router::{GetResponse, IsmpRouter, PostResponse, Response, StorageValue};
 use ismp::host::StateMachine;
 use pallet_api::messaging::Event::*;
-use pallet_ismp::mmr::Leaf;
+use pallet_ismp::offchain::Leaf;
 use pop_api::{
 	messaging::{
 		ismp::{Get, Post},
@@ -10,17 +10,17 @@ use pop_api::{
 	},
 	primitives::{BlockNumber, Error},
 };
-use pop_runtime_devnet::RuntimeEvent;
+use pop_runtime_testnet::{config::ismp::Router, Messaging, RuntimeEvent};
 use sp_io::{hashing::keccak_256, TestExternalities};
-use sp_runtime::{app_crypto::sp_core::H160, offchain::OffchainOverlayedChange, testing::H256};
+use sp_runtime::{offchain::OffchainOverlayedChange, testing::H256};
 use xcm_executor::traits::OnResponse;
 
 use super::*;
 
-const CONTRACT: &str = "contracts/messaging/target/ink/messaging.riscv";
+const CONTRACT: &str = "contracts/messaging/target/ink/messaging.wasm";
 const ASSET_HUB: u32 = 1_000;
 const HYPERBRIDGE: u32 = 4_009;
-pub(crate) const ISMP_MODULE_ID: [u8; 3] = *b"pop";
+const ISMP_MODULE_ID: [u8; 3] = *b"pop";
 
 #[test]
 fn ismp_get_request_works() {
@@ -42,6 +42,12 @@ fn ismp_get_request_works() {
 				if origin == &contract.id && *message_id == id
 			)
 		}));
+        assert!(System::events().iter().any(|e| {
+            matches!(&e.event,
+			RuntimeEvent::Messaging(IsmpGetDispatched { origin, id: message_id, ..})
+				if origin == &contract.id && *message_id == id
+			)
+        }));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -89,12 +95,12 @@ fn ismp_get_request_with_callback_works() {
 
         assert_ok!(contract.ismp_get(id, request, 0, true));
         assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-		assert!(System::events().iter().any(|e| {
-			matches!(&e.event,
+        assert!(System::events().iter().any(|e| {
+            matches!(&e.event,
 			RuntimeEvent::Messaging(IsmpGetDispatched { origin, id: message_id, ..})
 				if origin == &contract.id && *message_id == id
 			)
-		}));
+        }));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -146,12 +152,12 @@ fn ismp_post_request_works() {
 
         assert_ok!(contract.ismp_post(id, request, 0, false));
         assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-		assert!(System::events().iter().any(|e| {
-			matches!(&e.event,
+        assert!(System::events().iter().any(|e| {
+            matches!(&e.event,
 			RuntimeEvent::Messaging(IsmpPostDispatched { origin, id: message_id, ..})
 				if origin == &contract.id && *message_id == id
 			)
-		}));
+        }));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -203,12 +209,12 @@ fn ismp_post_request_with_callback_works() {
 
         assert_ok!(contract.ismp_post(id, request, 0, true));
         assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
-		assert!(System::events().iter().any(|e| {
-			matches!(&e.event,
+        assert!(System::events().iter().any(|e| {
+            matches!(&e.event,
 			RuntimeEvent::Messaging(IsmpPostDispatched { origin, id: message_id, ..})
 				if origin == &contract.id && *message_id == id
 			)
-		}));
+        }));
         assert!(System::events().iter().any(|e| {
             matches!(e.event,
 			RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
@@ -280,7 +286,7 @@ fn xcm_query_works() {
 			id: contract.id.clone().into(),
 		}
 		.into();
-		assert!(pop_runtime_devnet::PolkadotXcm::expecting_response(
+		assert!(pop_runtime_testnet::PolkadotXcm::expecting_response(
 			&origin,
 			query_id,
 			Some(&translate(&querier))
@@ -328,7 +334,7 @@ fn xcm_query_with_callback_works() {
 			id: contract.id.clone().into(),
 		}
 		.into();
-		assert!(pop_runtime_devnet::PolkadotXcm::expecting_response(
+		assert!(pop_runtime_testnet::PolkadotXcm::expecting_response(
 			&origin,
 			query_id,
 			Some(&translate(&querier))
@@ -354,7 +360,7 @@ fn xcm_query_with_callback_works() {
 }
 
 // Get the last ismp request.
-pub(crate) fn get_ismp_request(ext: &mut TestExternalities) -> ismp::router::Request {
+fn get_ismp_request(ext: &mut TestExternalities) -> ismp::router::Request {
 	// Get commitment from last ismp request event.
 	let commitment = ext.execute_with(|| {
 		System::read_events_for_pallet::<pallet_ismp::Event<Runtime>>()
@@ -400,7 +406,7 @@ fn translate<S: Encode, T: Decode>(source: &S) -> T {
 
 // A simple, strongly typed wrapper for the contract.
 struct Contract {
-	address: H160,
+	address: AccountId32,
 	id: AccountId32,
 }
 impl Contract {
@@ -408,6 +414,8 @@ impl Contract {
 		let (address, account_id) =
 			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
 		Self { address, id: account_id }
+		let address = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		Self { address: address.clone(), id: address }
 	}
 
 	fn ismp_get(
@@ -476,6 +484,11 @@ impl Contract {
 			.iter()
 			.filter_map(|event| match event {
 				pallet_revive::Event::<Runtime>::ContractEmitted { contract, data, .. }
+		let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
+		let contract_events = events
+			.iter()
+			.filter_map(|event| match event {
+				pallet_contracts::Event::<Runtime>::ContractEmitted { contract, data, .. }
 					if contract == &self.address =>
 					Some(data.as_slice()),
 				_ => None,

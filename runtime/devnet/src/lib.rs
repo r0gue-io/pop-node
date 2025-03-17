@@ -8,6 +8,8 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 // Public due to integration tests crate.
 pub mod config;
+/// The genesis state presets available.
+pub mod genesis;
 mod weights;
 
 extern crate alloc;
@@ -479,9 +481,9 @@ impl pallet_collator_selection::Config for Runtime {
 	type Currency = Balances;
 	// should be a multiple of session or things will get inconsistent
 	type KickThreshold = Period;
-	type MaxCandidates = ConstU32<100>;
+	type MaxCandidates = ConstU32<0>;
 	type MaxInvulnerables = ConstU32<20>;
-	type MinEligibleCollators = ConstU32<4>;
+	type MinEligibleCollators = ConstU32<3>;
 	type PotId = PotId;
 	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = CollatorSelectionUpdateOrigin;
@@ -1037,11 +1039,11 @@ impl_runtime_apis! {
 		}
 
 		fn get_preset(id: &Option<sp_genesis_builder::PresetId>) -> Option<Vec<u8>> {
-			get_preset::<RuntimeGenesisConfig>(id, |_| None)
+			get_preset::<RuntimeGenesisConfig>(id, genesis::get_preset)
 		}
 
 		fn preset_names() -> Vec<sp_genesis_builder::PresetId> {
-			Default::default()
+			genesis::presets()
 		}
 	}
 

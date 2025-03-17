@@ -10,6 +10,7 @@ version = "0.1.0"
 targets = [ "x86_64-unknown-linux-gnu" ]
 
 [dependencies]
+anyhow.workspace = true
 codec.workspace = true
 log.workspace = true
 scale-info.workspace = true
@@ -24,10 +25,9 @@ frame-system.workspace = true
 pallet-assets.workspace = true
 pallet-balances.workspace = true
 pallet-nfts.workspace = true
+sp-core.workspace = true
 sp-runtime.workspace = true
 sp-std.workspace = true
-sp-core.workspace = true
-anyhow.workspace = true
 
 # Cross chain
 ismp.workspace = true
@@ -36,7 +36,6 @@ xcm.workspace = true
 
 [dev-dependencies]
 pallet-balances.workspace = true
-sp-core.workspace = true
 sp-io.workspace = true
 pallet-xcm.workspace = true
 xcm-builder.workspace = true
@@ -59,7 +58,6 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"ismp/std",
-	"log/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-ismp/std",

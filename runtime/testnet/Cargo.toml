@@ -6,7 +6,7 @@ homepage.workspace = true
 license = "Unlicense"
 name = "pop-runtime-testnet"
 repository.workspace = true
-version = "0.4.2"
+version = "0.5.0"
 
 [package.metadata.docs.rs]
 targets = [ "x86_64-unknown-linux-gnu" ]
@@ -15,6 +15,7 @@ targets = [ "x86_64-unknown-linux-gnu" ]
 substrate-wasm-builder.workspace = true
 
 [dependencies]
+anyhow.workspace = true
 codec.workspace = true
 docify.workspace = true
 hex-literal.workspace = true
@@ -24,6 +25,7 @@ smallvec.workspace = true
 
 # Local
 pallet-api.workspace = true
+pallet-motion.workspace = true
 pop-chain-extension.workspace = true
 pop-primitives.workspace = true
 pop-runtime-common.workspace = true
@@ -41,20 +43,23 @@ pallet-assets.workspace = true
 pallet-aura.workspace = true
 pallet-authorship.workspace = true
 pallet-balances.workspace = true
+pallet-collective.workspace = true
 pallet-contracts.workspace = true
 pallet-message-queue.workspace = true
 pallet-multisig.workspace = true
 pallet-nft-fractionalization.workspace = true
-pallet-nfts.workspace = true
 pallet-nfts-runtime-api.workspace = true
+pallet-nfts-sdk.workspace = true
 pallet-preimage.workspace = true
 pallet-proxy.workspace = true
+pallet-revive.workspace = true
 pallet-scheduler.workspace = true
 pallet-session.workspace = true
 pallet-sudo.workspace = true
 pallet-timestamp.workspace = true
 pallet-transaction-payment.workspace = true
 pallet-transaction-payment-rpc-runtime-api.workspace = true
+pallet-treasury.workspace = true
 pallet-utility.workspace = true
 sp-api.workspace = true
 sp-block-builder.workspace = true
@@ -63,6 +68,7 @@ sp-core.workspace = true
 sp-genesis-builder.workspace = true
 sp-inherents.workspace = true
 sp-io.workspace = true
+sp-mmr-primitives.workspace = true
 sp-offchain.workspace = true
 sp-runtime.workspace = true
 sp-session.workspace = true
@@ -91,6 +97,13 @@ pallet-collator-selection.workspace = true
 parachain-info.workspace = true
 parachains-common.workspace = true
 
+# ISMP
+ismp.workspace = true
+ismp-parachain.workspace = true
+ismp-parachain-runtime-api.workspace = true
+pallet-ismp = { workspace = true, features = [ "unsigned" ] }
+pallet-ismp-runtime-api.workspace = true
+
 [dev-dependencies]
 enumflags2.workspace = true
 env_logger.workspace = true
@@ -118,6 +131,9 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-try-runtime/std",
+	"ismp-parachain-runtime-api/std",
+	"ismp-parachain/std",
+	"ismp/std",
 	"log/std",
 	"pallet-api/std",
 	"pallet-assets/std",
@@ -125,20 +141,26 @@ std = [
 	"pallet-authorship/std",
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
+	"pallet-collective/std",
 	"pallet-contracts/std",
+	"pallet-ismp-runtime-api/std",
+	"pallet-ismp/std",
 	"pallet-message-queue/std",
+	"pallet-motion/std",
 	"pallet-multisig/std",
 	"pallet-nft-fractionalization/std",
 	"pallet-nfts-runtime-api/std",
-	"pallet-nfts/std",
+	"pallet-nfts-sdk/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
+	"pallet-revive/std",
 	"pallet-scheduler/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
+	"pallet-treasury/std",
 	"pallet-utility/std",
 	"pallet-xcm/std",
 	"parachain-info/std",
@@ -156,6 +178,7 @@ std = [
 	"sp-genesis-builder/std",
 	"sp-inherents/std",
 	"sp-io/std",
+	"sp-mmr-primitives/std",
 	"sp-offchain/std",
 	"sp-runtime/std",
 	"sp-session/std",
@@ -180,17 +203,22 @@ runtime-benchmarks = [
 	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
 	"pallet-contracts/runtime-benchmarks",
+	"pallet-ismp/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
+	"pallet-motion/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
 	"pallet-nft-fractionalization/runtime-benchmarks",
-	"pallet-nfts/runtime-benchmarks",
+	"pallet-nfts-sdk/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
+	"pallet-revive/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
 	"pallet-sudo/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-transaction-payment/runtime-benchmarks",
+	"pallet-treasury/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"parachains-common/runtime-benchmarks",
@@ -212,28 +240,35 @@ try-runtime = [
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
+	"ismp-parachain/try-runtime",
 	"pallet-api/try-runtime",
 	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
 	"pallet-authorship/try-runtime",
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
+	"pallet-collective/try-runtime",
 	"pallet-contracts/try-runtime",
+	"pallet-ismp/try-runtime",
 	"pallet-message-queue/try-runtime",
+	"pallet-motion/try-runtime",
 	"pallet-multisig/try-runtime",
 	"pallet-nft-fractionalization/try-runtime",
-	"pallet-nfts/try-runtime",
+	"pallet-nfts-sdk/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",
+	"pallet-revive/try-runtime",
 	"pallet-scheduler/try-runtime",
 	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
 	"pallet-timestamp/try-runtime",
 	"pallet-transaction-payment/try-runtime",
+	"pallet-treasury/try-runtime",
 	"pallet-utility/try-runtime",
 	"pallet-xcm/try-runtime",
 	"parachain-info/try-runtime",
 	"polkadot-runtime-common/try-runtime",
+	"pop-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
 ]
 

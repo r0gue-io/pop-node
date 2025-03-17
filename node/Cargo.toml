@@ -8,7 +8,7 @@ license = "Unlicense"
 name = "pop-node"
 publish = false
 repository.workspace = true
-version = "0.2.0-alpha"
+version = "0.3.0"
 
 [dependencies]
 clap.workspace = true
@@ -137,6 +137,7 @@ std = [
 ]
 try-runtime = [
 	"polkadot-cli/try-runtime",
+	"pop-runtime-common/try-runtime",
 	"pop-runtime-devnet/try-runtime",
 	"pop-runtime-mainnet/try-runtime",
 	"pop-runtime-testnet/try-runtime",
