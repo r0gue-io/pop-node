@@ -113,7 +113,7 @@ pub(crate) mod initiate_council_migration {
 			}
 
 			let members: Vec<AccountId> = Members::get();
-			pallet_collective::Members::<Runtime, CouncilCollective>::put(members.clone());
+			pallet_collective::Members::<Runtime, CouncilCollective>::put(members);
 			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
 		}
 
