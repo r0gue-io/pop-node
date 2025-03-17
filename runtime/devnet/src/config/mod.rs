@@ -5,5 +5,6 @@ mod contracts;
 mod ismp;
 mod proxy;
 // Public due to integration tests crate.
+mod revive;
 pub mod xcm;
 mod revive;

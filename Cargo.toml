@@ -19,9 +19,9 @@ exclude = [
 	"extension/contract",
 	"pop-api",
 	"tests/contracts",
+	"integration-tests",
 ]
 members = [
-	"integration-tests",
 	"node",
 	"pallets/*",
 	"pop-api/integration-tests",
@@ -203,3 +203,24 @@ ismp-parachain-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch 
 pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
 pallet-ismp-rpc = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
 pallet-ismp-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+
+# Revive
+# array-bytes = { version = "6.2.2", default-features = false }
+# assert_matches = { version = "1.5.0" }
+# bitflags = { version = "1.3.2" }
+# environmental = { version = "1.1.4", default-features = false }
+# pallet-revive-fixtures = { path = "pallets/revive/fixtures", default-features = false }
+# pallet-revive-mock-network = { default-features = false, path = "pallets/revive/mock-network" }
+# pallet-revive-proc-macro = { path = "pallets/revive/proc-macro", default-features = false }
+# pallet-revive-uapi = { path = "pallets/revive/uapi", default-features = false }
+# parity-wasm = { version = "0.45.0" }
+# paste = { version = "1.0.14", default-features = false }
+# pretty_assertions = { version = "1.3.0" }
+# proc-macro2 = { version = "1.0.64" }
+# quote = { version = "1.0.33" }
+# rlp = { version = "0.5.2", default-features = false }
+# sp-tracing = { version = "16.0.0", default-features = false }
+# syn = { version = "2.0.53" }
+# tempfile = { version = "3.8.1" }
+# toml = { version = "0.8.8" }
+# wat = { version = "1.0.0" }

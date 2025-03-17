@@ -3,21 +3,30 @@ use core::marker::PhantomData;
 
 use codec::Decode;
 use cumulus_primitives_core::Weight;
-use frame_support::{traits::Contains, pallet_prelude::*, dispatch::{PostDispatchInfo, DispatchErrorWithPostInfo}};
+use frame_support::{
+	dispatch::{DispatchErrorWithPostInfo, PostDispatchInfo},
+	pallet_prelude::*,
+	traits::Contains,
+};
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
+use pallet_revive::{AddressMapper, CollectEvents, DebugInfo};
+use pallet_xcm::Origin;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use versioning::*;
+use xcm::latest::Location;
 
 use pallet_revive::{DebugInfo, CollectEvents, AddressMapper};
 use xcm::latest::Location;
 use pallet_xcm::Origin;
 use crate::{
-	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
-	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent, messaging,
-	TransactionByteFee, Balances, Ismp, ConstU32, RuntimeHoldReason, config::xcm::LocalOriginToLocation,
-	AccountId, Revive, RuntimeOrigin, BlockNumber 
+	config::{
+		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
+		xcm::LocalOriginToLocation,
+	},
+	fungibles, messaging, nonfungibles, AccountId, Balances, BlockNumber, ConstU32, Ismp, Revive,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, TransactionByteFee,
 };
 
 
@@ -45,7 +54,6 @@ pub enum RuntimeRead {
 	/// Messaging read queries.
 	#[codec(index = 152)]
 	Messaging(messaging::Read<Runtime>),
-	
 }
 
 impl Readable for RuntimeRead {
@@ -59,7 +67,6 @@ impl Readable for RuntimeRead {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
 			RuntimeRead::NonFungibles(key) => nonfungibles::Pallet::weight(key),
 			RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
-
 		}
 	}
 
@@ -109,12 +116,8 @@ impl nonfungibles::Config for Runtime {
 }
 
 impl messaging::Config for Runtime {
-	type ByteFee = TransactionByteFee;
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
-	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
-	// much as onchain cost.
-	type IsmpByteFee = ();
 	type IsmpDispatcher = Ismp;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
@@ -124,6 +127,10 @@ impl messaging::Config for Runtime {
 	type MaxRemovals = ConstU32<1024>;
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<1024>;
+	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
+	// much as onchain cost.
+	type OffChainByteFee = ();
+	type OnChainByteFee = TransactionByteFee;
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -199,7 +206,6 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 		<Runtime as pallet_revive::Config>::WeightInfo::call()
 	}
 }
-
 
 // TODO!( default implementation where T: PolkadotXcm::Config
 pub struct QueryHandler;
