@@ -4,7 +4,9 @@ use frame_support::{
 	derive_impl,
 	pallet_prelude::EnsureOrigin,
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, OriginTrait, Hooks},
+	traits::{
+		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Hooks, OriginTrait,
+	},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
@@ -250,7 +252,6 @@ pub fn get_next_query_id() -> u64 {
 	Messages::<Test>::iter().count() as u64
 }
 
-
 impl crate::messaging::Config for Test {
 	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
 	type Deposit = Balances;
@@ -261,6 +262,7 @@ impl crate::messaging::Config for Test {
 	type MaxKeys = ConstU32<10>;
 	type MaxRemovals = ConstU32<1024>;
 	type MaxResponseLen = ConstU32<1024>;
+	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 	type OffChainByteFee = OffChainByteFee;
 	type OnChainByteFee = OnChainByteFee;
 	type OriginConverter = AccountToLocation;
@@ -268,7 +270,6 @@ impl crate::messaging::Config for Test {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
-	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 }
 
 #[derive(Default)]
@@ -365,4 +366,3 @@ pub fn run_to(block_number: u64) {
 		next_block();
 	}
 }
-

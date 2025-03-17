@@ -1,7 +1,7 @@
 pub(crate) use xcm::latest::{Location, QueryId, Response};
+use xcm_builder::QueryControllerWeightInfo;
 
 use crate::messaging::{pallet::Call, BlockNumberOf, Config};
-use xcm_builder::QueryControllerWeightInfo;
 
 pub trait NotifyQueryHandler<T: Config> {
 	type WeightInfo: QueryControllerWeightInfo;

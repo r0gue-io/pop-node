@@ -1,5 +1,7 @@
 extern crate alloc;
 
+pub use alloc::borrow::ToOwned;
+
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
@@ -23,7 +25,6 @@ use transports::{
 };
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
-pub use alloc::borrow::ToOwned;
 
 use super::Weight;
 
@@ -47,16 +48,16 @@ type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
 pub type MessageId = [u8; 32];
 
-
 #[frame_support::pallet]
 pub mod pallet {
 
 	use frame_support::{
-		dispatch::DispatchResult, pallet_prelude::*, traits::{tokens::fungible::hold::Mutate, OnInitialize},
+		dispatch::DispatchResult,
+		pallet_prelude::*,
+		traits::{tokens::fungible::hold::Mutate, OnInitialize},
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
-
 
 	use super::*;
 
@@ -138,9 +139,13 @@ pub mod pallet {
 		StorageMap<_, Identity, QueryId, (T::AccountId, MessageId), OptionQuery>;
 
 	#[pallet::storage]
-	pub(super) type XcmQueryTimeouts<T: Config> =
-		StorageMap<_, Identity, BlockNumberOf<T>, BoundedVec<(T::AccountId, MessageId), T::MaxXcmQueryTimeoutsPerBlock>, ValueQuery>;
-	
+	pub(super) type XcmQueryTimeouts<T: Config> = StorageMap<
+		_,
+		Identity,
+		BlockNumberOf<T>,
+		BoundedVec<(T::AccountId, MessageId), T::MaxXcmQueryTimeoutsPerBlock>,
+		ValueQuery,
+	>;
 
 	/// The events that can be emitted.
 	#[pallet::event]
@@ -271,19 +276,22 @@ pub mod pallet {
 	}
 
 	#[pallet::hooks]
-	impl <T: Config> Hooks<BlockNumberOf<T>> for Pallet<T>{
+	impl<T: Config> Hooks<BlockNumberOf<T>> for Pallet<T> {
 		fn on_initialize(n: BlockNumberOf<T>) -> Weight {
-			// As of polkadot-2412 XCM timeouts are not handled by the implementation of OnResponse in pallet-xcm.
-			// As a result, we must handle timeouts in the pallet.
+			// As of polkadot-2412 XCM timeouts are not handled by the implementation of OnResponse
+			// in pallet-xcm. As a result, we must handle timeouts in the pallet.
 			// Iterate through the queries that have expired and update their status.
 			let mut weight: Weight = Zero::zero();
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
-					Messages::<T>::mutate(origin, message_id, |maybe_message|{
-						if let Some(Message::XcmQuery { query_id, deposit, .. }) = maybe_message.as_mut() {
-							*maybe_message = Some(Message::XcmTimeout {query_id: *query_id, deposit: *deposit});
-						}
-					})
+				Messages::<T>::mutate(origin, message_id, |maybe_message| {
+					if let Some(Message::XcmQuery { query_id, deposit, .. }) =
+						maybe_message.as_mut()
+					{
+						*maybe_message =
+							Some(Message::XcmTimeout { query_id: *query_id, deposit: *deposit });
+					}
+				})
 			}
 
 			weight
@@ -322,11 +330,7 @@ pub mod pallet {
 			Messages::<T>::insert(
 				&origin,
 				id,
-				Message::Ismp {
-					commitment,
-					callback: callback.clone(),
-					deposit,
-				},
+				Message::Ismp { commitment, callback: callback.clone(), deposit },
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
 				origin,
@@ -368,11 +372,7 @@ pub mod pallet {
 			Messages::<T>::insert(
 				&origin,
 				id,
-				Message::Ismp {
-					commitment,
-					callback: callback.clone(),
-					deposit,
-				},
+				Message::Ismp { commitment, callback: callback.clone(), deposit },
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
 				origin,
@@ -399,7 +399,9 @@ pub mod pallet {
 			ensure!(current_block < timeout, Error::<T>::FutureTimeoutMandatory);
 
 			XcmQueryTimeouts::<T>::try_mutate(current_block + timeout, |bounded_vec| {
-				bounded_vec.try_push((origin.clone(), id)).map_err(|_|Error::<T>::MaxMessageTimeoutPerBlockReached)
+				bounded_vec
+					.try_push((origin.clone(), id))
+					.map_err(|_| Error::<T>::MaxMessageTimeoutPerBlockReached)
 			})?;
 
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
@@ -410,7 +412,7 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
-			
+
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
 			// are ignored.
@@ -423,11 +425,7 @@ pub mod pallet {
 			Messages::<T>::insert(
 				&origin,
 				id,
-				Message::XcmQuery {
-					query_id,
-					callback: callback.clone(),
-					deposit,
-				},
+				Message::XcmQuery { query_id, callback: callback.clone(), deposit },
 			);
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
 				origin,
@@ -450,14 +448,14 @@ pub mod pallet {
 			let (origin, id) = XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
 			let xcm_query_message =
 				Messages::<T>::get(&origin, &id).ok_or(Error::<T>::MessageNotFound)?;
-			
+
 			let (query_id, callback, deposit) = match &xcm_query_message {
-				Message::XcmQuery { query_id, callback, deposit} => (query_id, callback, deposit),
+				Message::XcmQuery { query_id, callback, deposit } => (query_id, callback, deposit),
 				Message::XcmTimeout { .. } => return Err(Error::<T>::RequestTimedOut.into()),
 				_ => return Err(Error::<T>::InvalidMessage.into()),
 			};
 
-			// Emit event before possible callback execution.			
+			// Emit event before possible callback execution.
 			Self::deposit_event(Event::<T>::XcmResponseReceived {
 				dest: origin.clone(),
 				id,
@@ -480,24 +478,29 @@ pub mod pallet {
 						)?;
 					},
 					Err(_) => {
-						// Due to dependance on runtime implementation this is hard to unit test. TODO: Discuss with peter options
-						Messages::<T>::insert(&origin, &id, 
+						// Due to dependance on runtime implementation this is hard to unit test.
+						// TODO: Discuss with peter options
+						Messages::<T>::insert(
+							&origin,
+							&id,
 							Message::XcmResponse {
-								query_id: *query_id, 
-								deposit: *deposit, 
+								query_id: *query_id,
+								deposit: *deposit,
 								response: xcm_response,
-							}
+							},
 						)
 					},
 				}
 			} else {
-				// No callback is executed, 
-				Messages::<T>::insert(&origin, &id, 
+				// No callback is executed,
+				Messages::<T>::insert(
+					&origin,
+					&id,
 					Message::XcmResponse {
-						query_id: *query_id, 
-						deposit: *deposit, 
+						query_id: *query_id,
+						deposit: *deposit,
 						response: xcm_response,
-					}
+					},
 				)
 			}
 
@@ -519,7 +522,7 @@ pub mod pallet {
 				};
 
 				let deposit = match message {
-					Message::Ismp  { .. } => Err(Error::<T>::RequestPending),
+					Message::Ismp { .. } => Err(Error::<T>::RequestPending),
 					Message::XcmQuery { .. } => Err(Error::<T>::RequestPending),
 					Message::IsmpResponse { deposit, commitment, .. } => {
 						Messages::<T>::remove(&origin, &id);
@@ -530,7 +533,7 @@ pub mod pallet {
 						Messages::<T>::remove(&origin, &id);
 						XcmQueries::<T>::remove(query_id);
 						Ok(deposit)
-					}
+					},
 					Message::IsmpTimeout { deposit, commitment, .. } => {
 						Messages::<T>::remove(&origin, &id);
 						IsmpRequests::<T>::remove(&commitment);
@@ -542,7 +545,7 @@ pub mod pallet {
 						Ok(deposit)
 					},
 				}?;
-				
+
 				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
 
@@ -638,11 +641,12 @@ impl<T: Config> crate::Read for Pallet<T> {
 
 	fn read(request: Self::Read) -> Self::Result {
 		match request {
-			Read::PollStatus(request) =>
-				ReadResult::Poll(Messages::<T>::get(request.0, request.1).map(|m| MessageStatus::from(&m))),
+			Read::PollStatus(request) => ReadResult::Poll(
+				Messages::<T>::get(request.0, request.1).map(|m| MessageStatus::from(&m)),
+			),
 			Read::GetResponse(request) =>
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
-					Message::Ismp  { .. } => None,
+					Message::Ismp { .. } => None,
 					Message::XcmQuery { .. } => None,
 					Message::IsmpResponse { response, .. } => Some(response.to_vec()),
 					Message::XcmResponse { response, .. } => Some(response.encode()),
@@ -689,13 +693,13 @@ pub enum Message<T: Config> {
 	XcmTimeout {
 		query_id: QueryId,
 		deposit: BalanceOf<T>,
-	}
+	},
 }
 
 impl<T: Config> From<&Message<T>> for MessageStatus {
 	fn from(value: &Message<T>) -> Self {
 		match value {
-			&Message::Ismp  { .. } => MessageStatus::Pending,
+			&Message::Ismp { .. } => MessageStatus::Pending,
 			&Message::XcmQuery { .. } => MessageStatus::Pending,
 			&Message::IsmpResponse { .. } => MessageStatus::Complete,
 			&Message::XcmResponse { .. } => MessageStatus::Complete,
@@ -707,7 +711,7 @@ impl<T: Config> From<&Message<T>> for MessageStatus {
 
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum MessageStatus {
-	Pending, 
+	Pending,
 	Complete,
 	Timeout,
 }

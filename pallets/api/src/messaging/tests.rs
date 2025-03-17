@@ -172,11 +172,7 @@ mod remove {
 			let deposit: Balance = 100;
 
 			// Ismp message with status of Ok is considered pending.
-			let m = Message::Ismp {
-				commitment: H256::default(),
-				callback: None,
-				deposit,
-			};
+			let m = Message::Ismp { commitment: H256::default(), callback: None, deposit };
 			let m_id = [0; 32];
 
 			<Test as crate::messaging::Config>::Deposit::hold(
@@ -212,11 +208,8 @@ mod remove {
 				response: Default::default(),
 			};
 
-			let erroneous_message = Message::Ismp {
-				commitment: H256::default(),
-				callback: None,
-				deposit: 100,
-			};
+			let erroneous_message =
+				Message::Ismp { commitment: H256::default(), callback: None, deposit: 100 };
 
 			let good_id_1 = [0; 32];
 			let good_id_2 = [1; 32];
@@ -282,8 +275,6 @@ mod remove {
 			assert_eq!(alice_initial_balance, alice_balance_post_hold + deposit * 5);
 			assert_eq!(alice_balance_post_remove, alice_balance_post_hold);
 		});
-
-
 	}
 
 	// Basic remove tests to ensure storage is cleaned.
@@ -293,17 +284,16 @@ mod remove {
 			let commitment = H256::default();
 			let message_id = [0u8; 32];
 			let deposit = 100;
-			let m = Message::Ismp {
-				commitment,
-				callback: None,
-				deposit,
-			};
+			let m = Message::Ismp { commitment, callback: None, deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+				.unwrap();
 
-
-			assert_noop!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)), Error::<Test>::RequestPending);
+			assert_noop!(
+				Messaging::remove(signed(ALICE), bounded_vec!(message_id)),
+				Error::<Test>::RequestPending
+			);
 
 			assert!(
 				Messages::<Test>::get(&ALICE, &message_id).is_some(),
@@ -323,14 +313,11 @@ mod remove {
 			let message_id = [0u8; 32];
 			let deposit = 100;
 
-			let m = Message::IsmpResponse {
-				commitment,
-				response: bounded_vec!(),
-				deposit,
-			};
+			let m = Message::IsmpResponse { commitment, response: bounded_vec!(), deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -352,10 +339,11 @@ mod remove {
 			let message_id = [0u8; 32];
 			let deposit = 100;
 
-			let m = Message::IsmpTimeout { commitment, deposit};
+			let m = Message::IsmpTimeout { commitment, deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -377,16 +365,16 @@ mod remove {
 			let message_id = [0u8; 32];
 			let deposit = 100;
 
-			let m = Message::XcmQuery {
-				query_id,
-				callback: None,
-				deposit,
-			};
+			let m = Message::XcmQuery { query_id, callback: None, deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+				.unwrap();
 
-			assert_noop!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)), Error::<Test>::RequestPending);
+			assert_noop!(
+				Messaging::remove(signed(ALICE), bounded_vec!(message_id)),
+				Error::<Test>::RequestPending
+			);
 			assert!(
 				Messages::<Test>::get(&ALICE, &message_id).is_some(),
 				"Message should not have been removed but has"
@@ -404,14 +392,11 @@ mod remove {
 			let query_id = 0;
 			let message_id = [0u8; 32];
 			let deposit = 100;
-			let m = Message::XcmResponse {
-				query_id,
-				deposit,
-				response: Default::default(),
-			};
+			let m = Message::XcmResponse { query_id, deposit, response: Default::default() };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -434,8 +419,9 @@ mod remove {
 			let deposit = 100;
 			let m = Message::XcmTimeout { query_id, deposit };
 
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit).unwrap();
-			
+			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+				.unwrap();
+
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
 
@@ -554,7 +540,7 @@ mod xcm_new_query {
 			));
 			let m = Messages::<Test>::get(ALICE, message_id)
 				.expect("should exist after xcm_new_query.");
-			if let Message::XcmQuery { query_id, callback, deposit} = m {
+			if let Message::XcmQuery { query_id, callback, deposit } = m {
 				assert_eq!(query_id, 0);
 				assert_eq!(callback, Some(expected_callback));
 			} else {
@@ -570,18 +556,19 @@ mod xcm_new_query {
 		new_test_ext().execute_with(|| {
 			let message_id = [0; 32];
 			let timeout = System::block_number();
-			assert_noop!(Messaging::xcm_new_query(
-				signed(ALICE),
-				message_id,
-				RESPONSE_LOCATION,
-				timeout,
-				None
-			), Error::<Test>::FutureTimeoutMandatory);
+			assert_noop!(
+				Messaging::xcm_new_query(
+					signed(ALICE),
+					message_id,
+					RESPONSE_LOCATION,
+					timeout,
+					None
+				),
+				Error::<Test>::FutureTimeoutMandatory
+			);
 		})
 	}
-
 }
-
 
 mod xcm_response {
 	use super::*;
@@ -589,7 +576,10 @@ mod xcm_response {
 	#[test]
 	fn message_not_found() {
 		new_test_ext().execute_with(|| {
-			assert_noop!(Messaging::xcm_response(root(), 0, Default::default()), Error::<Test>::MessageNotFound);
+			assert_noop!(
+				Messaging::xcm_response(root(), 0, Default::default()),
+				Error::<Test>::MessageNotFound
+			);
 		})
 	}
 
@@ -610,15 +600,19 @@ mod xcm_response {
 
 			// Update the message to XcmTimedOut
 			Messages::<Test>::mutate(&ALICE, &message_id, |message| {
-				let Some(Message::XcmQuery {query_id, deposit, ..}): &mut Option<Message<Test>> = message
+				let Some(Message::XcmQuery { query_id, deposit, .. }): &mut Option<Message<Test>> =
+					message
 				else {
 					panic!("No message!");
 				};
 				generated_query_id = *query_id;
-				*message = Some(Message::XcmTimeout {query_id: *query_id	, deposit: *deposit});
+				*message = Some(Message::XcmTimeout { query_id: *query_id, deposit: *deposit });
 			});
 
-			assert_noop!(Messaging::xcm_response(root(), generated_query_id, Default::default()), Error::<Test>::RequestTimedOut);
+			assert_noop!(
+				Messaging::xcm_response(root(), generated_query_id, Default::default()),
+				Error::<Test>::RequestTimedOut
+			);
 		})
 	}
 
@@ -639,14 +633,14 @@ mod xcm_response {
 			));
 
 			assert_ok!(Messaging::xcm_response(root(), generated_query_id, xcm_response));
-			
-			assert!(events()
-				.contains(&Event::<Test>::XcmResponseReceived { 
-					dest: ALICE,
-					id: message_id,
-					query_id: generated_query_id,
-					response: Response::Null }));
-			})
+
+			assert!(events().contains(&Event::<Test>::XcmResponseReceived {
+				dest: ALICE,
+				id: message_id,
+				query_id: generated_query_id,
+				response: Response::Null
+			}));
+		})
 	}
 
 	#[test]
@@ -664,13 +658,11 @@ mod xcm_response {
 				timeout,
 				None,
 			));
- 
+
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
-			let Some(Message::XcmResponse { 
-				query_id,
-				deposit,
-				response,
-			}): Option<Message<Test>> = Messages::get(&ALICE, message_id) else {
+			let Some(Message::XcmResponse { query_id, deposit, response }): Option<Message<Test>> =
+				Messages::get(&ALICE, message_id)
+			else {
 				panic!("wrong message type");
 			};
 
@@ -696,7 +688,7 @@ mod xcm_response {
 				timeout,
 				Some(callback),
 			));
- 
+
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
 			assert!(Messages::<Test>::get(&ALICE, &message_id).is_none());
 			assert!(XcmQueries::<Test>::get(expected_query_id).is_none());
@@ -712,7 +704,14 @@ mod xcm_response {
 			let xcm_response = Response::ExecutionResult(None);
 			let callback =
 				Callback { selector: [1; 4], weight: 100.into(), spare_weight_creditor: BOB };
-			let expected_deposit = calculate_protocol_deposit::<Test, <Test as crate::messaging::Config>::OnChainByteFee>(ProtocolStorageDeposit::XcmQueries) + calculate_message_deposit::<Test, <Test as crate::messaging::Config>::OnChainByteFee>();
+			let expected_deposit = calculate_protocol_deposit::<
+				Test,
+				<Test as crate::messaging::Config>::OnChainByteFee,
+			>(ProtocolStorageDeposit::XcmQueries) +
+				calculate_message_deposit::<
+					Test,
+					<Test as crate::messaging::Config>::OnChainByteFee,
+				>();
 
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
 
@@ -725,7 +724,7 @@ mod xcm_response {
 			));
 
 			let alice_balance_post_hold = Balances::free_balance(&ALICE);
- 
+
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
 
 			let alice_balance_post_release = Balances::free_balance(&ALICE);
@@ -742,22 +741,25 @@ mod hooks {
 	#[test]
 	fn xcm_queries_expire_on_expiry_block() {
 		new_test_ext().execute_with(|| {
-		let message_id = [0; 32];
-		let timeout = System::block_number() + 10;
-		let xcm_response = Response::ExecutionResult(None);
+			let message_id = [0; 32];
+			let timeout = System::block_number() + 10;
+			let xcm_response = Response::ExecutionResult(None);
 
-		assert_ok!(Messaging::xcm_new_query(
-			signed(ALICE),
-			message_id,
-			RESPONSE_LOCATION,
-			timeout,
-			None,
-		));
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				None,
+			));
 
-		run_to(timeout + 1);
+			run_to(timeout + 1);
 
-		let Some(Message::XcmTimeout {..}): Option<Message<Test>> = Messages::get(&ALICE, message_id) else {	panic!("Message should be timedout!")};
+			let Some(Message::XcmTimeout { .. }): Option<Message<Test>> =
+				Messages::get(&ALICE, message_id)
+			else {
+				panic!("Message should be timedout!")
+			};
 		})
-
-		}
+	}
 }

@@ -223,11 +223,7 @@ fn process_response<T: Config>(
 	Messages::<T>::insert(
 		&origin,
 		&id,
-		super::super::Message::IsmpResponse {
-			commitment,
-			deposit,
-			response,
-		},
+		super::super::Message::IsmpResponse { commitment, deposit, response },
 	);
 	Pallet::<T>::deposit_event(event(origin, id));
 	Ok(())
