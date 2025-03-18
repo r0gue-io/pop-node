@@ -1,7 +1,4 @@
-<<<<<<< HEAD
 #![cfg(test)]
-=======
->>>>>>> 8ceb523a2c37594b28fe5489a9e8941be96d5c5d
 use codec::Encode;
 use frame_support::{
 	assert_noop, assert_ok,
