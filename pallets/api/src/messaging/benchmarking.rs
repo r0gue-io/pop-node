@@ -100,11 +100,14 @@ mod messaging_benchmarks {
 		let timeout = <BlockNumberOf<T> as One>::one() + frame_system::Pallet::<T>::block_number();
 		let callback = None;
 		let response = Response::ExecutionResult(None);
-		if x == 1 { 
-			let callback =
-				Some(Callback { selector: [0; 4], weight: 100.into(), spare_weight_creditor: owner.clone() });
+		if x == 1 {
+			let callback = Some(Callback {
+				selector: [0; 4],
+				weight: 100.into(),
+				spare_weight_creditor: owner.clone(),
+			});
 		}
-		
+
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
 		Pallet::<T>::xcm_new_query(
@@ -113,7 +116,8 @@ mod messaging_benchmarks {
 			responder.clone(),
 			timeout,
 			callback.clone(),
-		).unwrap();
+		)
+		.unwrap();
 
 		#[extrinsic_call]
 		Pallet::<T>::xcm_response(RawOrigin::Root, 0, response.clone());
@@ -123,7 +127,7 @@ mod messaging_benchmarks {
 				dest: owner.clone(),
 				id: message_id,
 				query_id: 0,
-				response: response,
+				response,
 			}
 			.into(),
 		);
