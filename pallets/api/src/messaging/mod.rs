@@ -23,6 +23,7 @@ use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryId},
 };
+use sp_weights::WeightToFee;
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
 
@@ -113,6 +114,10 @@ pub mod pallet {
 		/// The maximum number of xcm timout updates that can be processed per block.
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
+
+		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
+
+		//type ReturnFeeHandler: OnUnbalanced<_>;
 	}
 
 	#[pallet::pallet]
@@ -566,7 +571,9 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let result = T::CallbackExecutor::execute(
 			origin.clone(),
-			[callback.selector.to_vec(), (id, data).encode()].concat(),
+			match callback.abi {
+				Abi::Scale => [callback.selector.to_vec(), (id, data).encode()].concat()
+			},
 			callback.weight,
 		);
 
@@ -584,13 +591,11 @@ impl<T: Config> Pallet<T> {
 			Ok(post_info) => {
 				// Try and return any unused callback weight.
 				if let Some(weight_used) = post_info.actual_weight {
-					let returnable_value = callback.weight.saturating_sub(weight_used);
-					if returnable_value != Zero::zero() {
-						todo!("return moneys to creditor")
+					let weight_to_refund = callback.weight.saturating_sub(weight_used);
+					if !weight_to_refund.any_eq(Zero::zero()) {
+						let returnable_imbalance = T::WeightToFee::weight_to_fee(&weight_to_refund);
+						todo!("Handle Imbalance. sc-3302");
 					}
-				} else {
-					// Possibly error here, the callback weight is 0 i think revive will just say not enough gas so this should be unreachable
-					unreachable!()
 				}
 
 				Self::deposit_event(Event::<T>::CallbackExecuted {
@@ -739,11 +744,18 @@ pub enum MessageStatus {
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct Callback<AccountId> {
+	pub abi: Abi,
 	pub selector: [u8; 4],
+	// MAYBE THIS SHOULD BE AN IMBALANCE
 	pub weight: Weight,
 	pub spare_weight_creditor: AccountId,
 }
 
+
+#[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+pub enum Abi {
+	Scale,
+}
 pub trait CallbackExecutor<T: Config> {
 	fn execute(account: T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
 	fn execution_weight() -> Weight;
