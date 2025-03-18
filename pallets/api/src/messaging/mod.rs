@@ -5,12 +5,12 @@ pub use alloc::borrow::ToOwned;
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
-	pallet_prelude::MaxEncodedLen,
+	pallet_prelude::{MaxEncodedLen, Zero},
 	storage::KeyLenOf,
 	traits::{
 		fungible::Inspect,
 		tokens::{fungible::hold::Mutate, Precision::Exact},
-		Get, OriginTrait,
+		Get, OriginTrait
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -571,9 +571,28 @@ impl<T: Config> Pallet<T> {
 		);
 
 		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
+		Self::handle_callback_result(origin, id, result, callback)
+	}
+
+	pub(crate) fn handle_callback_result(
+		origin: &AccountIdOf<T>, 
+		id: &MessageId, 
+		result: DispatchResultWithPostInfo, 
+		callback: Callback<AccountIdOf<T>>
+	) -> DispatchResult {
 		match result {
-			Ok(_post_info) => {
-				// todo!("return weight")
+			Ok(post_info) => {
+				// Try and return any unused callback weight.
+				if let Some(weight_used) = post_info.actual_weight {
+					let returnable_value = callback.weight.saturating_sub(weight_used);
+					if returnable_value != Zero::zero() {
+						todo!("return moneys to creditor")
+					}
+				} else {
+					// Possibly error here, the callback weight is 0 i think revive will just say not enough gas so this should be unreachable
+					unreachable!()
+				}
+
 				Self::deposit_event(Event::<T>::CallbackExecuted {
 					origin: origin.clone(),
 					id: id.clone(),
