@@ -17,6 +17,7 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, TryConvert, Verify},
 	BuildStorage,
 };
+use xcm::latest::Location;
 
 use crate::messaging::{Call, CallbackExecutor, Messages, NotifyQueryHandler};
 

@@ -7,30 +7,31 @@
 include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 
 mod apis;
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarks;
+#[cfg(feature = "runtime-benchmarks")]
+use benchmarks::*;
+
 pub mod config;
-mod weights;
+
+/// The genesis state presets available.
+pub mod genesis;
 
 extern crate alloc;
 
 use alloc::{borrow::Cow, vec::Vec};
 
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
-use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
-use cumulus_pallet_parachain_system::RelayNumberMonotonicallyIncreases;
-use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
+use config::{monetary::deposit, system::ConsensusHook};
+use cumulus_primitives_core::AggregateMessageOrigin;
 use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
-	derive_impl,
 	dispatch::DispatchClass,
 	parameter_types,
 	traits::{
-		fungible,
-		fungible::HoldConsideration,
-		tokens::{imbalance::ResolveTo, PayFromAccount, UnityAssetBalanceConversion},
-		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
-		EverythingBut, Imbalance, LinearStoragePrice, NeverEnsureOrigin, OnUnbalanced,
-		TransformOrigin, VariantCountOf,
+		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstBool, ConstU32, ConstU64,
+		ConstU8, EqualPrivilegeOnly, LinearStoragePrice, VariantCountOf,
 	},
 	weights::{ConstantMultiplier, Weight},
 	PalletId,
@@ -40,35 +41,26 @@ use frame_system::{
 	CheckGenesis, CheckMortality, CheckNonZeroSender, CheckNonce, CheckSpecVersion, CheckTxVersion,
 	CheckWeight, EnsureRoot,
 };
-use pallet_balances::Call as BalancesCall;
+use pallet_nfts_sdk as pallet_nfts;
 use pallet_transaction_payment::ChargeTransactionPayment;
-use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
-use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
-use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
 // Polkadot imports
-use polkadot_runtime_common::{BlockHashCount, SlowAdjustingFeeUpdate};
+use polkadot_runtime_common::SlowAdjustingFeeUpdate;
 pub use pop_runtime_common::{
-	AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
+	weights, AuraId, Balance, BlockNumber, Hash, Nonce, Signature, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, DAYS, EXISTENTIAL_DEPOSIT, HOURS, MAXIMUM_BLOCK_WEIGHT, MICRO_UNIT,
 	MILLI_UNIT, MINUTES, NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, SLOT_DURATION,
 	UNINCLUDED_SEGMENT_CAPACITY, UNIT,
 };
-use sp_core::crypto::Ss58Codec;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{
-		AccountIdConversion, BlakeTwo256, Block as BlockT, IdentifyAccount, IdentityLookup, Verify,
-	},
+	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
 };
 pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
-// XCM Imports
-use xcm::latest::prelude::BodyId;
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
@@ -153,96 +145,6 @@ pub type Executive = frame_executive::Executive<
 	Migrations,
 >;
 
-pub const fn deposit(items: u32, bytes: u32) -> Balance {
-	// src: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L70
-	(items as Balance * 20 * UNIT + (bytes as Balance) * 100 * fee::MILLICENTS) / 100
-}
-
-/// Constants related to Polkadot fee payment.
-/// Source: https://github.com/polkadot-fellows/runtimes/blob/main/system-parachains/constants/src/polkadot.rs#L65C47-L65C58
-pub mod fee {
-	use frame_support::{
-		pallet_prelude::Weight,
-		weights::{
-			constants::ExtrinsicBaseWeight, FeePolynomial, WeightToFeeCoefficient,
-			WeightToFeeCoefficients, WeightToFeePolynomial,
-		},
-	};
-	use pop_runtime_common::{Balance, MILLI_UNIT};
-	use smallvec::smallvec;
-	pub use sp_runtime::Perbill;
-
-	pub const CENTS: Balance = MILLI_UNIT * 10; // 100_000_000
-	pub const MILLICENTS: Balance = CENTS / 1_000; // 100_000
-
-	/// Cost of every transaction byte at Polkadot system parachains.
-	///
-	/// It is the Relay Chain (Polkadot) `TransactionByteFee` / 20.
-	pub const TRANSACTION_BYTE_FEE: Balance = MILLICENTS / 2;
-
-	/// Handles converting a weight scalar to a fee value, based on the scale and granularity of the
-	/// node's balance type.
-	///
-	/// This should typically create a mapping between the following ranges:
-	///   - [0, MAXIMUM_BLOCK_WEIGHT]
-	///   - [Balance::min, Balance::max]
-	///
-	/// Yet, it can be used for any other sort of change to weight-fee. Some examples being:
-	///   - Setting it to `0` will essentially disable the weight fee.
-	///   - Setting it to `1` will cause the literal `#[weight = x]` values to be charged.
-	pub struct WeightToFee;
-	impl frame_support::weights::WeightToFee for WeightToFee {
-		type Balance = Balance;
-
-		fn weight_to_fee(weight: &Weight) -> Self::Balance {
-			let time_poly: FeePolynomial<Balance> = RefTimeToFee::polynomial().into();
-			let proof_poly: FeePolynomial<Balance> = ProofSizeToFee::polynomial().into();
-
-			// Take the maximum instead of the sum to charge by the more scarce resource.
-			time_poly.eval(weight.ref_time()).max(proof_poly.eval(weight.proof_size()))
-		}
-	}
-
-	/// Maps the reference time component of `Weight` to a fee.
-	pub struct RefTimeToFee;
-	impl WeightToFeePolynomial for RefTimeToFee {
-		type Balance = Balance;
-
-		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// In Polkadot, extrinsic base weight (smallest non-zero weight) is mapped to 1/10 CENT:
-			// The standard system parachain configuration is 1/20 of that, as in 1/200 CENT.
-			let p = CENTS;
-			let q = 200 * Balance::from(ExtrinsicBaseWeight::get().ref_time());
-
-			smallvec![WeightToFeeCoefficient {
-				degree: 1,
-				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q),
-				coeff_integer: p / q,
-			}]
-		}
-	}
-
-	/// Maps the proof size component of `Weight` to a fee.
-	pub struct ProofSizeToFee;
-	impl WeightToFeePolynomial for ProofSizeToFee {
-		type Balance = Balance;
-
-		fn polynomial() -> WeightToFeeCoefficients<Self::Balance> {
-			// Map 20kb proof to 1 CENT.
-			let p = CENTS;
-			let q = 20_000;
-
-			smallvec![WeightToFeeCoefficient {
-				degree: 1,
-				negative: false,
-				coeff_frac: Perbill::from_rational(p % q, q),
-				coeff_integer: p / q,
-			}]
-		}
-	}
-}
-
 /// Opaque types. These are used by the CLI to instantiate machinery that don't need to know
 /// the specifics of the runtime. They can then be made to be agnostic over specific formats
 /// of data like extrinsics, allowing for them to continue syncing the network through upgrades
@@ -288,423 +190,6 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 #[cfg(feature = "std")]
 pub fn native_version() -> NativeVersion {
 	NativeVersion { runtime_version: VERSION, can_author_with: Default::default() }
-}
-
-parameter_types! {
-	pub const Version: RuntimeVersion = VERSION;
-
-	// This part is copied from Substrate's `bin/node/runtime/src/lib.rs`.
-	//  The `RuntimeBlockLength` and `RuntimeBlockWeights` exist here because the
-	// `DeletionWeightLimit` and `DeletionQueueDepth` depend on those to parameterize
-	// the lazy contract deletion.
-	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
-	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
-		.base_block(BlockExecutionWeight::get())
-		.for_class(DispatchClass::all(), |weights| {
-			weights.base_extrinsic = ExtrinsicBaseWeight::get();
-		})
-		.for_class(DispatchClass::Normal, |weights| {
-			weights.max_total = Some(NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT);
-		})
-		.for_class(DispatchClass::Operational, |weights| {
-			weights.max_total = Some(MAXIMUM_BLOCK_WEIGHT);
-			// Operational transactions have some extra reserved space, so that they
-			// are included even if block reached `MAXIMUM_BLOCK_WEIGHT`.
-			weights.reserved = Some(
-				MAXIMUM_BLOCK_WEIGHT - NORMAL_DISPATCH_RATIO * MAXIMUM_BLOCK_WEIGHT
-			);
-		})
-		.avg_block_initialization(AVERAGE_ON_INITIALIZE_RATIO)
-		.build_or_panic();
-	pub const SS58Prefix: u16 = 0;
-}
-
-/// A type to identify filtered calls.
-pub struct FilteredCalls;
-impl Contains<RuntimeCall> for FilteredCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use BalancesCall::*;
-		matches!(
-			c,
-			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
-			)
-		)
-	}
-}
-
-/// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
-/// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
-/// but overridden as needed.
-#[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig)]
-impl frame_system::Config for Runtime {
-	/// The data to be stored in an account.
-	type AccountData = pallet_balances::AccountData<Balance>;
-	/// The identifier used to distinguish between accounts.
-	type AccountId = AccountId;
-	/// The basic call filter to use in dispatchable. Supports everything as the default.
-	type BaseCallFilter = EverythingBut<FilteredCalls>;
-	/// The block type.
-	type Block = Block;
-	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
-	type BlockHashCount = BlockHashCount;
-	/// The maximum length of a block (in bytes).
-	type BlockLength = RuntimeBlockLength;
-	/// Block & extrinsics weights: base values and limits.
-	type BlockWeights = RuntimeBlockWeights;
-	/// The weight of database operations that the runtime can invoke.
-	type DbWeight = RocksDbWeight;
-	/// The type for hashing blocks and tries.
-	type Hash = Hash;
-	type MaxConsumers = frame_support::traits::ConstU32<16>;
-	/// The index type for storing how many extrinsics an account has signed.
-	type Nonce = Nonce;
-	/// The action to take on a Runtime Upgrade
-	type OnSetCode = cumulus_pallet_parachain_system::ParachainSetCode<Self>;
-	/// This is used as an identifier of the chain. 42 is the generic substrate prefix.
-	type SS58Prefix = SS58Prefix;
-	/// Runtime version.
-	type Version = Version;
-}
-
-impl pallet_timestamp::Config for Runtime {
-	type MinimumPeriod = ConstU64<0>;
-	/// A timestamp: milliseconds since the unix epoch.
-	type Moment = u64;
-	type OnTimestampSet = Aura;
-	type WeightInfo = ();
-}
-
-impl pallet_authorship::Config for Runtime {
-	type EventHandler = (CollatorSelection,);
-	type FindAuthor = pallet_session::FindAccountFromAuthorIndex<Self, Aura>;
-}
-
-parameter_types! {
-	// increase ED 100 times to match system chains: 1_000_000_000
-	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
-}
-
-impl pallet_balances::Config for Runtime {
-	type AccountStore = System;
-	/// The type for recording an account's balance.
-	type Balance = Balance;
-	type DoneSlashHandler = ();
-	type DustRemoval = ();
-	type ExistentialDeposit = ExistentialDeposit;
-	type FreezeIdentifier = RuntimeFreezeReason;
-	type MaxFreezes = VariantCountOf<RuntimeFreezeReason>;
-	type MaxLocks = ConstU32<50>;
-	type MaxReserves = ConstU32<50>;
-	type ReserveIdentifier = [u8; 8];
-	/// The ubiquitous event type.
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeFreezeReason = RuntimeFreezeReason;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type WeightInfo = pallet_balances::weights::SubstrateWeight<Runtime>;
-}
-
-parameter_types! {
-	/// Relay Chain `TransactionByteFee` / 10
-	pub const TransactionByteFee: Balance = fee::TRANSACTION_BYTE_FEE;
-	pub SudoAddress: AccountId = AccountId::from_ss58check("15NMV2JX1NeMwarQiiZvuJ8ixUcvayFDcu1F9Wz1HNpSc8gP").expect("sudo address is valid SS58");
-	pub MaintenanceAccount: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
-}
-
-/// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
-/// by implementing OnUnbalanced.
-pub struct DealWithFees;
-impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
-	fn on_unbalanceds(
-		mut fees_then_tips: impl Iterator<Item = fungible::Credit<AccountId, Balances>>,
-	) {
-		if let Some(mut fees) = fees_then_tips.next() {
-			if let Some(tips) = fees_then_tips.next() {
-				tips.merge_into(&mut fees);
-			}
-
-			let split = fees.ration(50, 50);
-
-			ResolveTo::<TreasuryAccount, Balances>::on_unbalanced(split.0);
-			ResolveTo::<MaintenanceAccount, Balances>::on_unbalanced(split.1);
-		}
-	}
-}
-
-/// The type responsible for payment in pallet_transaction_payment.
-pub type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
-
-impl pallet_transaction_payment::Config for Runtime {
-	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
-	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = OnChargeTransaction;
-	type OperationalFeeMultiplier = ConstU8<5>;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-	type WeightToFee = fee::WeightToFee;
-}
-
-impl pallet_sudo::Config for Runtime {
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub const ReservedXcmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-	pub const ReservedDmpWeight: Weight = MAXIMUM_BLOCK_WEIGHT.saturating_div(4);
-	pub const RelayOrigin: AggregateMessageOrigin = AggregateMessageOrigin::Parent;
-}
-
-#[docify::export]
-type ConsensusHook = cumulus_pallet_aura_ext::FixedVelocityConsensusHook<
-	Runtime,
-	RELAY_CHAIN_SLOT_DURATION_MILLIS,
-	BLOCK_PROCESSING_VELOCITY,
-	UNINCLUDED_SEGMENT_CAPACITY,
->;
-
-impl cumulus_pallet_parachain_system::Config for Runtime {
-	type CheckAssociatedRelayNumber = RelayNumberMonotonicallyIncreases;
-	type ConsensusHook = ConsensusHook;
-	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
-	type OnSystemEvent = ();
-	type OutboundXcmpMessageSource = XcmpQueue;
-	type ReservedDmpWeight = ReservedDmpWeight;
-	type ReservedXcmpWeight = ReservedXcmpWeight;
-	type RuntimeEvent = RuntimeEvent;
-	type SelectCore = cumulus_pallet_parachain_system::DefaultCoreSelector<Runtime>;
-	type SelfParaId = parachain_info::Pallet<Runtime>;
-	type WeightInfo = ();
-	type XcmpMessageHandler = XcmpQueue;
-}
-
-impl parachain_info::Config for Runtime {}
-
-parameter_types! {
-	pub MessageQueueServiceWeight: Weight = Perbill::from_percent(35) * RuntimeBlockWeights::get().max_block;
-	pub MessageQueueIdleServiceWeight: Weight = Perbill::from_percent(20) * RuntimeBlockWeights::get().max_block;
-}
-
-impl pallet_message_queue::Config for Runtime {
-	type HeapSize = ConstU32<{ 64 * 1024 }>;
-	type IdleMaxServiceWeight = MessageQueueIdleServiceWeight;
-	type MaxStale = ConstU32<8>;
-	#[cfg(feature = "runtime-benchmarks")]
-	type MessageProcessor =
-		pallet_message_queue::mock_helpers::NoopMessageProcessor<AggregateMessageOrigin>;
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type MessageProcessor = xcm_builder::ProcessXcmMessage<
-		AggregateMessageOrigin,
-		xcm_executor::XcmExecutor<config::xcm::XcmConfig>,
-		RuntimeCall,
-	>;
-	// The XCMP queue pallet is only ever able to handle the `Sibling(ParaId)` origin:
-	type QueueChangeHandler = NarrowOriginToSibling<XcmpQueue>;
-	type QueuePausedQuery = NarrowOriginToSibling<XcmpQueue>;
-	type RuntimeEvent = RuntimeEvent;
-	type ServiceWeight = MessageQueueServiceWeight;
-	type Size = u32;
-	type WeightInfo = ();
-}
-
-impl cumulus_pallet_aura_ext::Config for Runtime {}
-
-impl cumulus_pallet_xcmp_queue::Config for Runtime {
-	type ChannelInfo = ParachainSystem;
-	type ControllerOrigin = EnsureRoot<AccountId>;
-	type ControllerOriginConverter = XcmOriginToTransactDispatchOrigin;
-	// Limit the number of messages and signals a HRMP channel can have at most
-	type MaxActiveOutboundChannels = ConstU32<128>;
-	type MaxInboundSuspended = ConstU32<1_000>;
-	// Limit the number of HRMP channels
-	type MaxPageSize = ConstU32<{ 103 * 1024 }>;
-	type PriceForSiblingDelivery = NoPriceForMessageDelivery<ParaId>;
-	type RuntimeEvent = RuntimeEvent;
-	type VersionWrapper = PolkadotXcm;
-	type WeightInfo = ();
-	// Enqueue XCMP messages from siblings for later processing.
-	type XcmpQueue = TransformOrigin<MessageQueue, AggregateMessageOrigin, ParaId, ParaIdToSibling>;
-}
-
-parameter_types! {
-	pub const Period: u32 = 6 * HOURS;
-	pub const Offset: u32 = 0;
-}
-
-impl pallet_session::Config for Runtime {
-	type Keys = SessionKeys;
-	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
-	type RuntimeEvent = RuntimeEvent;
-	// Essentially just Aura, but let's be pedantic.
-	type SessionHandler = <SessionKeys as sp_runtime::traits::OpaqueKeys>::KeyTypeIdProviders;
-	type SessionManager = CollatorSelection;
-	type ShouldEndSession = pallet_session::PeriodicSessions<Period, Offset>;
-	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	// we don't have stash and controller, thus we don't need the convert as well.
-	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type WeightInfo = ();
-}
-
-#[docify::export(aura_config)]
-impl pallet_aura::Config for Runtime {
-	type AllowMultipleBlocksPerSlot = ConstBool<true>;
-	type AuthorityId = AuraId;
-	type DisabledValidators = ();
-	type MaxAuthorities = ConstU32<100_000>;
-	type SlotDuration = ConstU64<SLOT_DURATION>;
-}
-
-parameter_types! {
-	pub const PotId: PalletId = PalletId(*b"PotStake");
-	// StakingAdmin pluralistic body.
-	pub const StakingAdminBodyId: BodyId = BodyId::Defense;
-}
-
-/// We allow root and the StakingAdmin to execute privileged collator selection operations.
-pub type CollatorSelectionUpdateOrigin = EitherOfDiverse<
-	EnsureRoot<AccountId>,
-	EnsureXcm<IsVoiceOfBody<RelayLocation, StakingAdminBodyId>>,
->;
-
-impl pallet_collator_selection::Config for Runtime {
-	type Currency = Balances;
-	// should be a multiple of session or things will get inconsistent
-	type KickThreshold = Period;
-	type MaxCandidates = ConstU32<0>;
-	type MaxInvulnerables = ConstU32<20>;
-	type MinEligibleCollators = ConstU32<3>;
-	type PotId = PotId;
-	type RuntimeEvent = RuntimeEvent;
-	type UpdateOrigin = CollatorSelectionUpdateOrigin;
-	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	type ValidatorIdOf = pallet_collator_selection::IdentityCollator;
-	type ValidatorRegistration = Session;
-	type WeightInfo = ();
-}
-
-parameter_types! {
-	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(60) *
-		RuntimeBlockWeights::get().max_block;
-}
-
-impl pallet_scheduler::Config for Runtime {
-	#[cfg(feature = "runtime-benchmarks")]
-	type MaxScheduledPerBlock = ConstU32<512>;
-	#[cfg(not(feature = "runtime-benchmarks"))]
-	type MaxScheduledPerBlock = ConstU32<50>;
-	type MaximumWeight = MaximumSchedulerWeight;
-	type OriginPrivilegeCmp = EqualPrivilegeOnly;
-	type PalletsOrigin = OriginCaller;
-	type Preimages = Preimage;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeOrigin = RuntimeOrigin;
-	type ScheduleOrigin = EnsureRoot<AccountId>;
-	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
-}
-
-parameter_types! {
-	pub const PreimageHoldReason: RuntimeHoldReason = RuntimeHoldReason::Preimage(pallet_preimage::HoldReason::Preimage);
-	pub const PreimageBaseDeposit: Balance = deposit(2, 64);
-	pub const PreimageByteDeposit: Balance = deposit(0, 1);
-}
-
-impl pallet_preimage::Config for Runtime {
-	type Consideration = HoldConsideration<
-		AccountId,
-		Balances,
-		PreimageHoldReason,
-		LinearStoragePrice<PreimageBaseDeposit, PreimageByteDeposit, Balance>,
-	>;
-	type Currency = Balances;
-	type ManagerOrigin = EnsureRoot<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_preimage::weights::SubstrateWeight<Runtime>;
-}
-
-parameter_types! {
-	// One storage item; key size is 32; value is size 4+4+16+32 bytes = 56 bytes.
-	pub const DepositBase: Balance = deposit(1, 88);
-	// Additional storage item size of 32 bytes.
-	pub const DepositFactor: Balance = deposit(0, 32);
-	pub const MaxSignatories: u32 = 100;
-}
-
-impl pallet_multisig::Config for Runtime {
-	type Currency = Balances;
-	type DepositBase = DepositBase;
-	type DepositFactor = DepositFactor;
-	type MaxSignatories = MaxSignatories;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_multisig::weights::SubstrateWeight<Runtime>;
-}
-
-impl pallet_utility::Config for Runtime {
-	type PalletsOrigin = OriginCaller;
-	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
-	type WeightInfo = pallet_utility::weights::SubstrateWeight<Runtime>;
-}
-
-const TREASURY_PALLET_ID: PalletId = PalletId(*b"treasury");
-pub(crate) type TreasuryPaymaster<T> = PayFromAccount<T, TreasuryAccount>;
-
-parameter_types! {
-	pub const SpendPeriod: BlockNumber = 6 * DAYS;
-	pub const TreasuryPalletId: PalletId = TREASURY_PALLET_ID;
-	pub const MaxApprovals: u32 = 100;
-	pub const PayoutPeriod: BlockNumber = 30 * DAYS;
-	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID.into_account_truncating();
-}
-
-#[cfg(feature = "runtime-benchmarks")]
-pub struct BenchmarkHelper;
-#[cfg(feature = "runtime-benchmarks")]
-impl pallet_treasury::ArgumentsFactory<(), AccountId> for BenchmarkHelper {
-	fn create_asset_kind(_seed: u32) -> () {
-		()
-	}
-
-	fn create_beneficiary(seed: [u8; 32]) -> AccountId {
-		let account_id = AccountId::from(seed);
-		Balances::force_set_balance(
-			crate::RuntimeOrigin::root(),
-			account_id.clone().into(),
-			EXISTENTIAL_DEPOSIT,
-		)
-		.unwrap();
-		account_id
-	}
-}
-
-impl pallet_treasury::Config for Runtime {
-	type AssetKind = ();
-	type BalanceConverter = UnityAssetBalanceConversion;
-	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = BenchmarkHelper;
-	type Beneficiary = AccountId;
-	type BeneficiaryLookup = IdentityLookup<Self::Beneficiary>;
-	type BlockNumberProvider = System;
-	type Burn = ();
-	type BurnDestination = ();
-	type Currency = Balances;
-	type MaxApprovals = MaxApprovals;
-	type PalletId = TreasuryPalletId;
-	type Paymaster = TreasuryPaymaster<Self::Currency>;
-	type PayoutPeriod = PayoutPeriod;
-	type RejectOrigin = EnsureRoot<AccountId>;
-	type RuntimeEvent = RuntimeEvent;
-	type SpendFunds = ();
-	/// Never allow origins except via the proposals process.
-	type SpendOrigin = NeverEnsureOrigin<Balance>;
-	type SpendPeriod = SpendPeriod;
-	type WeightInfo = pallet_treasury::weights::SubstrateWeight<Runtime>;
 }
 
 #[frame_support::runtime]
@@ -793,21 +278,12 @@ mod runtime {
 	// Utility
 	#[runtime::pallet_index(43)]
 	pub type Utility = pallet_utility::Pallet<Runtime>;
-}
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benches {
-	frame_benchmarking::define_benchmarks!(
-		[frame_system, SystemBench::<Runtime>]
-		[pallet_balances, Balances]
-		[pallet_session, SessionBench::<Runtime>]
-		[pallet_timestamp, Timestamp]
-		[pallet_message_queue, MessageQueue]
-		[pallet_sudo, Sudo]
-		[pallet_collator_selection, CollatorSelection]
-		[cumulus_pallet_parachain_system, ParachainSystem]
-		[cumulus_pallet_xcmp_queue, XcmpQueue]
-	);
+	// Assets
+	#[runtime::pallet_index(50)]
+	pub type Nfts = pallet_nfts::Pallet<Runtime>;
+	#[runtime::pallet_index(52)]
+	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
 }
 
 // We move some impls outside so we can easily use them with `docify`.
@@ -826,203 +302,13 @@ impl Runtime {
 	}
 }
 
-#[docify::export(register_validate_block)]
-cumulus_pallet_parachain_system::register_validate_block! {
-	Runtime = Runtime,
-	BlockExecutor = cumulus_pallet_aura_ext::BlockExecutor::<Runtime, Executive>,
-}
-
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
 
-	use frame_support::{dispatch::GetDispatchInfo, pallet_prelude::Encode};
-	use pallet_balances::AdjustmentDirection;
-	use pallet_transaction_payment::OnChargeTransaction as OnChargeTransactionT;
-	use sp_keyring::AccountKeyring as Keyring;
-	use sp_runtime::{traits::Dispatchable, MultiSignature};
-	use BalancesCall::*;
-	use RuntimeCall::Balances as BalancesRuntimeCall;
+	use sp_runtime::MultiSignature;
 
 	use super::*;
-	use crate::Balances;
-	#[test]
-	fn filtering_force_adjust_total_issuance_works() {
-		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_adjust_total_issuance {
-			direction: AdjustmentDirection::Increase,
-			delta: 0
-		})));
-	}
-
-	#[test]
-	fn filtering_force_set_balance_works() {
-		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_set_balance {
-			who: MultiAddress::Address32([0u8; 32]),
-			new_free: 0,
-		})));
-	}
-
-	#[test]
-	fn filtering_force_transfer_works() {
-		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_transfer {
-			source: MultiAddress::Address32([0u8; 32]),
-			dest: MultiAddress::Address32([0u8; 32]),
-			value: 0,
-		})));
-	}
-
-	#[test]
-	fn filtering_force_unreserve_works() {
-		assert!(FilteredCalls::contains(&BalancesRuntimeCall(force_unreserve {
-			who: MultiAddress::Address32([0u8; 32]),
-			amount: 0
-		})));
-	}
-
-	#[test]
-	fn filtering_configured() {
-		assert_eq!(
-			TypeId::of::<<Runtime as frame_system::Config>::BaseCallFilter>(),
-			TypeId::of::<EverythingBut<FilteredCalls>>(),
-		);
-	}
-
-	#[test]
-	fn ed_is_correct() {
-		assert_eq!(ExistentialDeposit::get(), EXISTENTIAL_DEPOSIT * 100);
-		assert_eq!(ExistentialDeposit::get(), 1_000_000_000);
-	}
-
-	#[test]
-	fn units_are_correct() {
-		// UNIT should have 10 decimals
-		assert_eq!(UNIT, 10_000_000_000);
-		assert_eq!(MILLI_UNIT, 10_000_000);
-		assert_eq!(MICRO_UNIT, 10_000);
-
-		// fee specific units
-		assert_eq!(fee::CENTS, 100_000_000);
-		assert_eq!(fee::MILLICENTS, 100_000);
-	}
-
-	#[test]
-	fn transaction_byte_fee_is_correct() {
-		assert_eq!(fee::TRANSACTION_BYTE_FEE, 50_000);
-	}
-
-	#[test]
-	fn deposit_works() {
-		const UNITS: Balance = 10_000_000_000;
-		const DOLLARS: Balance = UNITS; // 10_000_000_000
-		const CENTS: Balance = DOLLARS / 100; // 100_000_000
-		const MILLICENTS: Balance = CENTS / 1_000; // 100_000
-
-		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/relay/polkadot/constants/src/lib.rs#L36
-		fn relay_deposit(items: u32, bytes: u32) -> Balance {
-			items as Balance * 20 * DOLLARS + (bytes as Balance) * 100 * MILLICENTS
-		}
-
-		// https://github.com/polkadot-fellows/runtimes/blob/e220854a081f30183999848ce6c11ca62647bcfa/system-parachains/constants/src/polkadot.rs#L70
-		fn system_para_deposit(items: u32, bytes: u32) -> Balance {
-			relay_deposit(items, bytes) / 100
-		}
-
-		assert_eq!(deposit(2, 64), system_para_deposit(2, 64))
-	}
-
-	#[test]
-	fn treasury_account_is_pallet_id_truncated() {
-		assert_eq!(TreasuryAccount::get(), TREASURY_PALLET_ID.into_account_truncating());
-	}
-
-	pub fn new_test_ext() -> sp_io::TestExternalities {
-		let initial_balance = 100_000_000 * UNIT;
-		let mut t = frame_system::GenesisConfig::<Runtime>::default().build_storage().unwrap();
-		pallet_balances::GenesisConfig::<Runtime> {
-			balances: vec![
-				(TreasuryAccount::get(), initial_balance),
-				(MaintenanceAccount::get(), initial_balance),
-				(Keyring::Alice.to_account_id(), initial_balance),
-			],
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
-		let mut ext = sp_io::TestExternalities::new(t);
-		ext.execute_with(|| System::set_block_number(1));
-		ext
-	}
-
-	#[test]
-	fn transaction_payment_charges_fees_via_balances_and_funds_treasury_and_maintenance_equally() {
-		new_test_ext().execute_with(|| {
-			let who: AccountId = Keyring::Alice.to_account_id();
-			let call = RuntimeCall::System(frame_system::Call::remark { remark: vec![] });
-			let fee = UNIT / 10;
-			let tip = UNIT / 2;
-			let fee_plus_tip = fee + tip;
-			let treasury_balance = Balances::free_balance(&TreasuryAccount::get());
-			let maintenance_balance = Balances::free_balance(&MaintenanceAccount::get());
-			let who_balance = Balances::free_balance(&who);
-			let dispatch_info = call.get_dispatch_info();
-
-			// NOTE: OnChargeTransaction functions expect tip to be included within fee
-			let liquidity_info =
-				<OnChargeTransaction as OnChargeTransactionT<Runtime>>::withdraw_fee(
-					&who,
-					&call,
-					&dispatch_info,
-					fee_plus_tip,
-					0,
-				)
-				.unwrap();
-			<OnChargeTransaction as OnChargeTransactionT<Runtime>>::correct_and_deposit_fee(
-				&who,
-				&dispatch_info,
-				&call.dispatch(RuntimeOrigin::signed(who.clone())).unwrap(),
-				fee_plus_tip,
-				0,
-				liquidity_info,
-			)
-			.unwrap();
-
-			let treasury_expected_balance = treasury_balance + (fee_plus_tip / 2);
-			let maintenance_expected_balance = maintenance_balance + (fee_plus_tip / 2);
-			let who_expected_balance = who_balance - fee_plus_tip;
-
-			assert!(treasury_balance != 0);
-			assert!(maintenance_expected_balance != 0);
-
-			assert_eq!(Balances::free_balance(&TreasuryAccount::get()), treasury_expected_balance);
-			assert_eq!(
-				Balances::free_balance(&MaintenanceAccount::get()),
-				maintenance_expected_balance
-			);
-			assert_eq!(Balances::free_balance(&who), who_expected_balance);
-		})
-	}
-
-	#[test]
-	fn test_fees_and_tip_split() {
-		new_test_ext().execute_with(|| {
-			let fee_amount = 10;
-			let fee = <Balances as fungible::Balanced<AccountId>>::issue(fee_amount);
-			let tip_amount = 20;
-			let tip = <Balances as fungible::Balanced<AccountId>>::issue(tip_amount);
-			let treasury_balance = Balances::free_balance(&TreasuryAccount::get());
-			let maintenance_balance = Balances::free_balance(&MaintenanceAccount::get());
-			DealWithFees::on_unbalanceds(vec![fee, tip].into_iter());
-
-			// Each to get 50%, total is 30 so 15 each.
-			assert_eq!(
-				Balances::free_balance(&TreasuryAccount::get()),
-				treasury_balance + ((fee_amount + tip_amount) / 2)
-			);
-			assert_eq!(
-				Balances::free_balance(&MaintenanceAccount::get()),
-				maintenance_balance + ((fee_amount + tip_amount) / 2)
-			);
-		});
-	}
 
 	#[test]
 	fn block_header_configured() {
@@ -1078,137 +364,5 @@ mod tests {
 				CheckMetadataHash<Runtime>
 			)>(),
 		);
-	}
-
-	mod treasury {
-		use super::*;
-
-		#[test]
-		fn asset_kind_is_nothing() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::AssetKind>(),
-				TypeId::of::<()>(),
-			);
-		}
-
-		#[test]
-		fn balance_converter_is_set() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::BalanceConverter>(),
-				TypeId::of::<UnityAssetBalanceConversion>(),
-			);
-		}
-
-		#[cfg(feature = "runtime-benchmarks")]
-		#[test]
-		fn benchmark_helper_is_correct_type() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::BenchmarkHelper>(),
-				TypeId::of::<BenchmarkHelper>(),
-			);
-		}
-
-		#[test]
-		fn beneficiary_is_account_id() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::Beneficiary>(),
-				TypeId::of::<AccountId>(),
-			);
-		}
-
-		#[test]
-		fn beneficiary_lookup_is_identity_lookup() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::BeneficiaryLookup>(),
-				TypeId::of::<IdentityLookup<AccountId>>(),
-			);
-		}
-
-		#[test]
-		fn block_number_provider_is_set() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::BlockNumberProvider>(),
-				TypeId::of::<System>(),
-			);
-		}
-
-		#[test]
-		fn burn_is_nothing() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::Burn>(),
-				TypeId::of::<()>(),
-			);
-		}
-
-		#[test]
-		fn max_approvals_is_set() {
-			assert_eq!(<Runtime as pallet_treasury::Config>::MaxApprovals::get(), 100);
-		}
-
-		#[test]
-		fn pallet_id_is_set() {
-			assert_eq!(
-				<Runtime as pallet_treasury::Config>::PalletId::get().encode(),
-				PalletId(*b"treasury").encode()
-			);
-		}
-
-		#[test]
-		fn paymaster_is_correct_type() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::Paymaster>(),
-				TypeId::of::<TreasuryPaymaster<<Runtime as pallet_treasury::Config>::Currency>>(),
-			);
-		}
-
-		#[test]
-		fn payout_period_is_set() {
-			assert_eq!(<Runtime as pallet_treasury::Config>::PayoutPeriod::get(), 30 * DAYS);
-		}
-
-		#[test]
-		fn reject_origin_is_correct() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::RejectOrigin>(),
-				TypeId::of::<EnsureRoot<AccountId>>(),
-			);
-		}
-		#[test]
-		fn spend_funds_is_correct() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::SpendFunds>(),
-				TypeId::of::<()>(),
-			);
-		}
-
-		#[test]
-		fn spend_origin_is_correct() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::SpendOrigin>(),
-				TypeId::of::<NeverEnsureOrigin<Balance>>(),
-			);
-		}
-
-		#[test]
-		fn spend_period_is_six_days() {
-			assert_eq!(<Runtime as pallet_treasury::Config>::SpendPeriod::get(), 6 * DAYS);
-		}
-
-		#[test]
-		fn type_of_on_charge_transaction_is_correct() {
-			assert_eq!(
-				TypeId::of::<<Runtime as pallet_transaction_payment::Config>::OnChargeTransaction>(
-				),
-				TypeId::of::<OnChargeTransaction>(),
-			);
-		}
-
-		#[test]
-		fn weight_info_is_not_default() {
-			assert_ne!(
-				TypeId::of::<<Runtime as pallet_treasury::Config>::WeightInfo>(),
-				TypeId::of::<()>(),
-			);
-		}
 	}
 }

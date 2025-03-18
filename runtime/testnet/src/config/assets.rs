@@ -5,6 +5,7 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
+use pallet_nfts_sdk as pallet_nfts;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
 use sp_runtime::traits::Verify;
 
@@ -27,13 +28,34 @@ parameter_types! {
 	pub const MetadataDepositPerByte: Balance = deposit(0, 1);
 }
 
+pub(crate) type TrustBackedAssetsInstance = pallet_assets::Instance1;
+pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
+impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
+	type ApprovalDeposit = ApprovalDeposit;
+	type AssetAccountDeposit = AssetAccountDeposit;
+	type AssetDeposit = AssetDeposit;
+	type AssetId = AssetIdForTrustBackedAssets;
+	type AssetIdParameter = codec::Compact<AssetIdForTrustBackedAssets>;
+	type Balance = Balance;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type CallbackHandle = ();
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type Extra = ();
+	type ForceOrigin = AssetsForceOrigin;
+	type Freezer = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = AssetsStringLimit;
+	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
+}
+
 parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
-	// Key = 68 bytes (4+16+32+16), Value = 52 bytes (4+32+16)
-	pub const NftsCollectionBalanceDeposit: Balance = deposit(1, 120);
 	pub const NftsCollectionDeposit: Balance = 10 * UNIT;
-	// Key = 116 bytes (4+16+32+16+32+16), Value = 21 bytes (1+4+16)
-	pub const NftsCollectionApprovalDeposit: Balance = deposit(1, 137);
 	pub const NftsItemDeposit: Balance = UNIT / 100;
 	pub const NftsMetadataDepositBase: Balance = deposit(1, 129);
 	pub const NftsAttributeDepositBase: Balance = deposit(1, 0);
@@ -45,8 +67,6 @@ impl pallet_nfts::Config for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
-	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
-	type CollectionBalanceDeposit = NftsCollectionBalanceDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
 	type CollectionId = CollectionId;
@@ -100,54 +120,4 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type StringLimit = AssetsStringLimit;
 	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
-}
-
-pub(crate) type TrustBackedAssetsInstance = pallet_assets::Instance1;
-pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
-impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
-	type ApprovalDeposit = ApprovalDeposit;
-	type AssetAccountDeposit = AssetAccountDeposit;
-	type AssetDeposit = AssetDeposit;
-	type AssetId = AssetIdForTrustBackedAssets;
-	type AssetIdParameter = codec::Compact<AssetIdForTrustBackedAssets>;
-	type Balance = Balance;
-	#[cfg(feature = "runtime-benchmarks")]
-	type BenchmarkHelper = ();
-	type CallbackHandle = ();
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
-	type Currency = Balances;
-	type Extra = ();
-	type ForceOrigin = AssetsForceOrigin;
-	type Freezer = ();
-	type MetadataDepositBase = MetadataDepositBase;
-	type MetadataDepositPerByte = MetadataDepositPerByte;
-	type RemoveItemsLimit = ConstU32<1000>;
-	type RuntimeEvent = RuntimeEvent;
-	type StringLimit = AssetsStringLimit;
-	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
-}
-
-#[cfg(test)]
-mod tests {
-	use frame_support::traits::StorageInfoTrait;
-
-	use super::*;
-
-	#[test]
-	fn ensure_account_balance_deposit() {
-		let max_size = pallet_nfts::AccountBalance::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
-		assert_eq!(deposit(1, max_size), NftsCollectionBalanceDeposit::get());
-	}
-
-	#[test]
-	fn ensure_collection_approval_deposit() {
-		let max_size = pallet_nfts::CollectionApprovals::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
-		assert_eq!(deposit(1, max_size), NftsCollectionApprovalDeposit::get());
-	}
 }

@@ -52,7 +52,6 @@ pub type MessageId = [u8; 32];
 pub mod pallet {
 
 	use frame_support::{
-		dispatch::DispatchResult,
 		pallet_prelude::*,
 		traits::{tokens::fungible::hold::Mutate, OnInitialize},
 	};
@@ -315,8 +314,9 @@ pub mod pallet {
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<T, T::OnChainByteFee>() +
-				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>();
+			)
+			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
+			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
@@ -356,8 +356,9 @@ pub mod pallet {
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<T, T::OnChainByteFee>() +
-				calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>();
+			)
+			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
+			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
@@ -555,7 +556,6 @@ pub mod pallet {
 		}
 	}
 }
-
 impl<T: Config> Pallet<T> {
 	// Attempt to notify via callback.
 	pub(crate) fn call(
@@ -648,7 +648,7 @@ impl<T: Config> crate::Read for Pallet<T> {
 				ReadResult::Get(Messages::<T>::get(request.0, request.1).and_then(|m| match m {
 					Message::Ismp { .. } => None,
 					Message::XcmQuery { .. } => None,
-					Message::IsmpResponse { response, .. } => Some(response.to_vec()),
+					Message::IsmpResponse { response, .. } => Some(response.into_inner()),
 					Message::XcmResponse { response, .. } => Some(response.encode()),
 					Message::IsmpTimeout { .. } => None,
 					Message::XcmTimeout { .. } => None,

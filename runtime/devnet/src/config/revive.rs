@@ -43,8 +43,3 @@ impl pallet_revive::Config for Runtime {
 	type WeightPrice = pallet_transaction_payment::Pallet<Self>;
 	type Xcm = pallet_xcm::Pallet<Self>;
 }
-
-// Mock implementation running for messaging.
-// remove extrinsic tests / benchmarking.
-// xcm spike
-// ismp spike
