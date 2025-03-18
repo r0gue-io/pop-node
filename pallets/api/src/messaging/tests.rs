@@ -768,6 +768,7 @@ mod hooks {
 mod handle_callback_result {
 	use super::*;
 	use frame_support::dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo};
+use sp_runtime::DispatchErrorWithPostInfo;
 
 	#[test]
 	fn refunds_unused_weight_to_creditor_on_success() {
@@ -786,7 +787,7 @@ mod handle_callback_result {
 			let callback =
 			Callback { selector: [1; 4], weight: Weight::from_parts(1000, 1000), spare_weight_creditor: BOB, abi: Abi::Scale};
 
-			crate::messaging::Pallet::<Test>::handle_callback_result(&origin, &id, result, callback);
+			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(&origin, &id, result, callback));
 
 			let bob_balance_post_refund = Balances::free_balance(&BOB);
 			assert_eq!(bob_balance_post_refund - bob_balance_pre_refund, expected_imbalance, "oops bob hasnt been refunded!");
@@ -796,24 +797,48 @@ mod handle_callback_result {
 	#[test]
 	fn does_not_refunds_unused_weight_to_creditor_on_failure() {
 		new_test_ext().execute_with(|| {
-			// let origin = ALICE;
-			// let id = [1u8; 32];
-			// let result
-
+			todo!("sc-3302");
 		})
 	}
-
 
 	#[test]
 	fn assert_event_success() {
 		new_test_ext().execute_with(|| {
-				
+			let origin = ALICE;
+			let id = [1u8; 32];
+			let actual_weight = Weight::from_parts(100, 100);
+			let result = DispatchResultWithPostInfo::Ok(
+				PostDispatchInfo {
+					actual_weight: Some(actual_weight.clone()),
+					pays_fee: Pays::Yes,
+				}
+			);
+			let callback =
+			Callback { selector: [1; 4], weight: Weight::from_parts(1000, 1000), spare_weight_creditor: BOB, abi: Abi::Scale};
+
+			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(&origin, &id, result, callback.clone()));
+			assert!(events().contains(&Event::<Test>::CallbackExecuted { origin: origin.clone(), id, callback }));
 		})
 	}
 
 	#[test]
 	fn assert_event_failure() {
 		new_test_ext().execute_with(|| {
+			let origin = ALICE;
+			let id = [1u8; 32];
+			let actual_weight = Weight::from_parts(100, 100);
+			let result = DispatchResultWithPostInfo::Err(
+				DispatchErrorWithPostInfo {
+					post_info: Default::default(),
+					error: Error::<Test>::InvalidMessage.into()
+				}
+			);
+
+			let callback =
+			Callback { selector: [1; 4], weight: Weight::from_parts(1000, 1000), spare_weight_creditor: BOB, abi: Abi::Scale};
+
+			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(&origin, &id, result, callback.clone()).is_err());
+			assert!(events().contains(&Event::<Test>::CallbackFailed { origin, id, callback, post_info: Default::default(), error: Error::<Test>::InvalidMessage.into()}));
 				
 		})
 	}

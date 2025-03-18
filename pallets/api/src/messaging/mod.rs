@@ -594,7 +594,8 @@ impl<T: Config> Pallet<T> {
 					let weight_to_refund = callback.weight.saturating_sub(weight_used);
 					if !weight_to_refund.any_eq(Zero::zero()) {
 						let returnable_imbalance = T::WeightToFee::weight_to_fee(&weight_to_refund);
-						todo!("Handle Imbalance. sc-3302");
+						// Where do we refund to? 
+						// TODO: Handle Imbalance: sc-3302.
 					}
 				}
 
