@@ -482,6 +482,7 @@ pub mod pallet {
 					return Ok(())
 				}
 			}
+			
 			// No callback is executed,
 			Messages::<T>::insert(
 				&origin,
@@ -730,7 +731,6 @@ pub enum MessageStatus {
 pub struct Callback<AccountId> {
 	pub abi: Abi,
 	pub selector: [u8; 4],
-	// MAYBE THIS SHOULD BE AN IMBALANCE
 	pub weight: Weight,
 	pub spare_weight_creditor: AccountId,
 }

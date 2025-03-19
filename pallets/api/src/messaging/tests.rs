@@ -826,7 +826,6 @@ use sp_runtime::DispatchErrorWithPostInfo;
 		new_test_ext().execute_with(|| {
 			let origin = ALICE;
 			let id = [1u8; 32];
-			let actual_weight = Weight::from_parts(100, 100);
 			let result = DispatchResultWithPostInfo::Err(
 				DispatchErrorWithPostInfo {
 					post_info: Default::default(),
