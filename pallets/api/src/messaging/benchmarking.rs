@@ -91,7 +91,6 @@ mod messaging_benchmarks {
 		)
 	}
 
-
 	/// x: Wether a successfully executing callback is provided.
 	#[benchmark]
 	fn xcm_response(x: Linear<0, 1>) {

@@ -401,11 +401,14 @@ pub mod pallet {
 			let current_block = frame_system::Pallet::<T>::block_number();
 			ensure!(current_block < timeout, Error::<T>::FutureTimeoutMandatory);
 
-			XcmQueryTimeouts::<T>::try_mutate(current_block.saturating_add(timeout), |bounded_vec| {
-				bounded_vec
-					.try_push((origin.clone(), id))
-					.map_err(|_| Error::<T>::MaxMessageTimeoutPerBlockReached)
-			})?;
+			XcmQueryTimeouts::<T>::try_mutate(
+				current_block.saturating_add(timeout),
+				|bounded_vec| {
+					bounded_vec
+						.try_push((origin.clone(), id))
+						.map_err(|_| Error::<T>::MaxMessageTimeoutPerBlockReached)
+				},
+			)?;
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::XcmQueries,
@@ -468,27 +471,22 @@ pub mod pallet {
 				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
 				if Self::call(&origin, callback.to_owned(), &id, &xcm_response).is_ok() {
-						Messages::<T>::remove(&origin, &id);
-						XcmQueries::<T>::remove(query_id);
-						T::Deposit::release(
-							&HoldReason::Messaging.into(),
-							&origin,
-							*deposit,
-							Exact,
-						)?;
-						return Ok(())
+					Messages::<T>::remove(&origin, &id);
+					XcmQueries::<T>::remove(query_id);
+					T::Deposit::release(&HoldReason::Messaging.into(), &origin, *deposit, Exact)?;
+					return Ok(())
 				}
-			} 
-				// No callback is executed,
-				Messages::<T>::insert(
-					&origin,
-					&id,
-					Message::XcmResponse {
-						query_id: *query_id,
-						deposit: *deposit,
-						response: xcm_response,
-					},
-				);
+			}
+			// No callback is executed,
+			Messages::<T>::insert(
+				&origin,
+				&id,
+				Message::XcmResponse {
+					query_id: *query_id,
+					deposit: *deposit,
+					response: xcm_response,
+				},
+			);
 
 			Ok(())
 		}
