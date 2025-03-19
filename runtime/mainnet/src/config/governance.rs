@@ -80,6 +80,124 @@ impl pallet_sudo::Config for Runtime {
 	type WeightInfo = weights::pallet_sudo::WeightInfo<Runtime>;
 }
 
+/// Contains the impl to set the council members on a runtime upgrade.
+pub(crate) mod initiate_council_migration {
+	use alloc::{vec, vec::Vec};
+
+	use frame_support::traits::OnRuntimeUpgrade;
+	#[cfg(feature = "try-runtime")]
+	use sp_runtime::TryRuntimeError;
+
+	use super::*;
+
+	parameter_types! {
+		C1: AccountId = AccountId::from_ss58check("13BL7T6bTgeEdfEdZqLCKJZPN8ncyFNxxHRKFb2YMATvyfH4").expect("address is valid SS58");
+		C2: AccountId = AccountId::from_ss58check("142zako1kfvrpQ7pJKYR8iGUD58i4wjb78FUsmJ9WcXmkM5z").expect("address is valid SS58");
+		C3: AccountId = AccountId::from_ss58check("14G3CUFnZUBnHZUhahexSZ6AgemaW9zMHBnGccy3df7actf4").expect("address is valid SS58");
+		C4: AccountId = AccountId::from_ss58check("15VPagCVayS6XvT5RogPYop3BJTJzwqR2mCGR1kVn3w58ygg").expect("address is valid SS58");
+		C5: AccountId = AccountId::from_ss58check("15k9niqckMg338cFBoz9vWFGwnCtwPBquKvqJEfHApijZkDz").expect("address is valid SS58");
+		Members: Vec<AccountId> = vec![C1::get(), C2::get(), C3::get(), C4::get(), C5::get()];
+	}
+
+	/// Populates council with certain members.
+	pub struct SetCouncilors;
+
+	impl OnRuntimeUpgrade for SetCouncilors {
+		fn on_runtime_upgrade() -> Weight {
+			let members_in_storage: Vec<AccountId> =
+				pallet_collective::Members::<Runtime, CouncilCollective>::get();
+
+			if !members_in_storage.is_empty() {
+				// Members already set. Nothing to do.
+				return <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+			}
+
+			let members: Vec<AccountId> = Members::get();
+			pallet_collective::Members::<Runtime, CouncilCollective>::put(members);
+			<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1)
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn pre_upgrade() -> Result<Vec<u8>, TryRuntimeError> {
+			// Council doesn't exist previous to the upgrade including this migration.
+			Ok(Vec::<u8>::new())
+		}
+
+		#[cfg(feature = "try-runtime")]
+		fn post_upgrade(_state: Vec<u8>) -> Result<(), TryRuntimeError> {
+			let expected_members: Vec<AccountId> = Members::get();
+			let members_in_storage: Vec<AccountId> =
+				pallet_collective::Members::<Runtime, CouncilCollective>::get();
+
+			// Err if there are not 5 members in storage after the migration.
+			if members_in_storage.len() != 5 {
+				return Err(TryRuntimeError::Other("Migration didn't execute successfully."));
+			}
+			// Iterate over expected members and check if they are in storage.
+			for m in expected_members.iter() {
+				if !members_in_storage.contains(m) {
+					return Err(TryRuntimeError::Other("Migration didn't execute successfully."));
+				}
+			}
+			Ok(())
+		}
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use super::*;
+		use crate::System;
+
+		fn new_test_ext() -> sp_io::TestExternalities {
+			let mut ext = sp_io::TestExternalities::new_empty();
+			ext.execute_with(|| System::set_block_number(1));
+			ext
+		}
+
+		#[test]
+		fn members_are_sorted() {
+			// The provided member list is already sorted.
+			let members = Members::get();
+			let mut sorted_members = members.clone();
+			sorted_members.sort();
+			assert_eq!(members, sorted_members);
+		}
+
+		#[test]
+		fn migration_does_not_write_in_storage_if_members_is_not_empty() {
+			new_test_ext().execute_with(|| {
+				// Populate Members with only one member.
+				let members: Vec<AccountId> = vec![C1::get()];
+				pallet_collective::Members::<Runtime, CouncilCollective>::put(members.clone());
+
+				let resulting_weight = SetCouncilors::on_runtime_upgrade();
+				let expected_weight = <Runtime as frame_system::Config>::DbWeight::get().reads(1);
+				// Resulting weight from on_runtime_upgrade is only 1 read.
+				assert_eq!(resulting_weight, expected_weight);
+
+				// Ensure there is still only 1 member in storage.
+				let members_in_storage: Vec<AccountId> =
+					pallet_collective::Members::<Runtime, CouncilCollective>::get();
+				assert_eq!(members_in_storage.len(), 1);
+			})
+		}
+
+		#[test]
+		fn on_runtime_upgrade_weight_is_within_limits() {
+			new_test_ext().execute_with(|| {
+				let mut members = Members::get();
+				members.sort();
+				println!("Sorted Members {:?}", members);
+				let resulting_weight = SetCouncilors::on_runtime_upgrade();
+				let expected_weight =
+					<Runtime as frame_system::Config>::DbWeight::get().reads_writes(1, 1);
+				assert_eq!(resulting_weight, expected_weight);
+				assert!(resulting_weight.all_lt(pop_runtime_common::MAXIMUM_BLOCK_WEIGHT));
+			})
+		}
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use std::any::TypeId;
