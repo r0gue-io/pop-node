@@ -16,13 +16,14 @@ use sp_runtime::DispatchError;
 use versioning::*;
 use xcm::prelude::Location;
 
-
 use crate::{
 	config::{
 		assets::TrustBackedAssetsInstance, monetary::TransactionByteFee, xcm::LocalOriginToLocation,
 	},
-	fungibles, AccountId, Balances, BlockNumber, Contracts, Ismp, PolkadotXcm, Runtime,
-	RuntimeCall, RuntimeEvent, RuntimeHoldReason, messaging::ReadResult::*,
+	fungibles,
+	messaging::ReadResult::*,
+	parameter_types, AccountId, Balances, BlockNumber, Contracts, Ismp, PolkadotXcm, Runtime,
+	RuntimeCall, RuntimeEvent, RuntimeHoldReason,
 };
 
 mod versioning;
@@ -90,9 +91,12 @@ impl RuntimeResult {
 	}
 }
 
+parameter_types! {
+	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
+
+}
+
 impl messaging::Config for Runtime {
-	type OffChainByteFee = TransactionByteFee;
-	type OnChainByteFee = TransactionByteFee;
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
 	type IsmpDispatcher = Ismp;
@@ -104,9 +108,13 @@ impl messaging::Config for Runtime {
 	type MaxRemovals = ConstU32<1024>;
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<1024>;
+	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
+	type OffChainByteFee = TransactionByteFee;
+	type OnChainByteFee = TransactionByteFee;
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
 }
@@ -178,6 +186,8 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 
 pub struct QueryHandler;
 impl NotifyQueryHandler<Runtime> for QueryHandler {
+	type WeightInfo = pallet_xcm::Pallet<Runtime>;
+
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: messaging::Call<Runtime>,
@@ -269,9 +279,7 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 			matches!(
 				c,
 				RuntimeCall::Messaging(
-						ismp_get { .. } | ismp_post { .. } |
-						xcm_new_query { .. } |
-						remove { .. },
+					ismp_get { .. } | ismp_post { .. } | xcm_new_query { .. } | remove { .. },
 				)
 			)
 		};
