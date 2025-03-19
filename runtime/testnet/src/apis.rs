@@ -15,7 +15,7 @@ use sp_runtime::{
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
-use crate::messaging::ReadResult::*;
+
 // Local module imports
 use super::{
 	config::system::RuntimeBlockWeights, genesis, AccountId, AuraId, Balance, Balances, Block,
@@ -24,6 +24,7 @@ use super::{
 	RuntimeGenesisConfig, RuntimeOrigin, RuntimeVersion, SessionKeys, System, TransactionPayment,
 	UncheckedExtrinsic, Weight, CONTRACTS_DEBUG_OUTPUT, CONTRACTS_EVENTS, VERSION, *,
 };
+use crate::messaging::ReadResult::*;
 
 impl_runtime_apis! {
 
