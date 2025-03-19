@@ -111,7 +111,7 @@ pub mod pallet {
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 
 		/// SAFETY: Recommended this is small as is used to updated a message status in the hooks.
-		/// The maximum number of xcm timout updates that can be processed per block.
+		/// The maximum number of xcm timeout updates that can be processed per block.
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
@@ -401,16 +401,19 @@ pub mod pallet {
 			let querier_location = T::OriginConverter::try_convert(origin.clone())
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 			let origin = ensure_signed(origin)?;
+			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+
 			let current_block = frame_system::Pallet::<T>::block_number();
 			ensure!(current_block < timeout, Error::<T>::FutureTimeoutMandatory);
 
-			XcmQueryTimeouts::<T>::try_mutate(current_block + timeout, |bounded_vec| {
-				bounded_vec
-					.try_push((origin.clone(), id))
-					.map_err(|_| Error::<T>::MaxMessageTimeoutPerBlockReached)
-			})?;
-
-			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+			XcmQueryTimeouts::<T>::try_mutate(
+				current_block.saturating_add(timeout),
+				|bounded_vec| {
+					bounded_vec
+						.try_push((origin.clone(), id))
+						.map_err(|_| Error::<T>::MaxMessageTimeoutPerBlockReached)
+				},
+			)?;
 
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::XcmQueries,
@@ -472,43 +475,23 @@ pub mod pallet {
 			if let Some(callback) = callback {
 				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
-				match Self::call(&origin, callback.to_owned(), &id, &xcm_response) {
-					Ok(_) => {
-						Messages::<T>::remove(&origin, &id);
-						XcmQueries::<T>::remove(query_id);
-						T::Deposit::release(
-							&HoldReason::Messaging.into(),
-							&origin,
-							*deposit,
-							Exact,
-						)?;
-					},
-					Err(_) => {
-						// Due to dependance on runtime implementation this is hard to unit test.
-						// TODO: Discuss with peter options
-						Messages::<T>::insert(
-							&origin,
-							&id,
-							Message::XcmResponse {
-								query_id: *query_id,
-								deposit: *deposit,
-								response: xcm_response,
-							},
-						)
-					},
+				if Self::call(&origin, callback.to_owned(), &id, &xcm_response).is_ok() {
+					Messages::<T>::remove(&origin, &id);
+					XcmQueries::<T>::remove(query_id);
+					T::Deposit::release(&HoldReason::Messaging.into(), &origin, *deposit, Exact)?;
+					return Ok(())
 				}
-			} else {
-				// No callback is executed,
-				Messages::<T>::insert(
-					&origin,
-					&id,
-					Message::XcmResponse {
-						query_id: *query_id,
-						deposit: *deposit,
-						response: xcm_response,
-					},
-				)
 			}
+			// No callback is executed,
+			Messages::<T>::insert(
+				&origin,
+				&id,
+				Message::XcmResponse {
+					query_id: *query_id,
+					deposit: *deposit,
+					response: xcm_response,
+				},
+			);
 
 			Ok(())
 		}

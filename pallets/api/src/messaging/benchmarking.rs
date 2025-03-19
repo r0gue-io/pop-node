@@ -100,7 +100,9 @@ mod messaging_benchmarks {
 		let timeout = <BlockNumberOf<T> as One>::one() + frame_system::Pallet::<T>::block_number();
 		let callback = None;
 		let response = Response::ExecutionResult(None);
+
 		if x == 1 {
+			// The mock will always assume successfull callback.
 			let callback = Some(Callback {
 				selector: [0; 4],
 				weight: 100.into(),
