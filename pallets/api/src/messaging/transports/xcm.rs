@@ -6,7 +6,7 @@ use crate::messaging::{pallet::Call, BlockNumberOf, Config};
 pub trait NotifyQueryHandler<T: Config> {
 	type WeightInfo: QueryControllerWeightInfo;
 	/// Attempt to create a new query ID and register it as a query that is yet to respond, and
-	///  which will call a dispatchable when a response happens.
+	/// which will call a dispatchable when a response happens.
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: Call<T>,
