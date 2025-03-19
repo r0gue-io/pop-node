@@ -62,6 +62,8 @@ pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 
+use crate::config::assets::TrustBackedAssetsInstance;
+
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
 pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
@@ -136,6 +138,11 @@ pub type UncheckedExtrinsic =
 type Migrations = (
 	// Unreleased.
 	config::governance::initiate_council_migration::SetCouncilors,
+	pallet_assets::migration::next_asset_id::SetNextAssetId<
+		ConstU32<1>,
+		Runtime,
+		TrustBackedAssetsInstance,
+	>,
 );
 
 /// Executive: handles dispatch to the various modules.
