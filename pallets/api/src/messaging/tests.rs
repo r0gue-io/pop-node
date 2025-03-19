@@ -528,8 +528,12 @@ mod xcm_new_query {
 		new_test_ext().execute_with(|| {
 			// Looking for an item in Messages and XcmQueries.
 			let message_id = [0; 32];
-			let expected_callback =
-				Callback { selector: [1; 4], weight: 100.into(), spare_weight_creditor: BOB, abi: Abi::Scale};
+			let expected_callback = Callback {
+				selector: [1; 4],
+				weight: 100.into(),
+				spare_weight_creditor: BOB,
+				abi: Abi::Scale,
+			};
 			let timeout = System::block_number() + 1;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -678,8 +682,12 @@ mod xcm_response {
 			let timeout = System::block_number() + 1;
 			let mut expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
-			let callback =
-				Callback { selector: [1; 4], weight: 100.into(), spare_weight_creditor: BOB, abi: Abi::Scale };
+			let callback = Callback {
+				selector: [1; 4],
+				weight: 100.into(),
+				spare_weight_creditor: BOB,
+				abi: Abi::Scale,
+			};
 
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -702,8 +710,12 @@ mod xcm_response {
 			let timeout = System::block_number() + 1;
 			let mut expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
-			let callback =
-				Callback { selector: [1; 4], weight: 100.into(), spare_weight_creditor: BOB, abi: Abi::Scale };
+			let callback = Callback {
+				selector: [1; 4],
+				weight: 100.into(),
+				spare_weight_creditor: BOB,
+				abi: Abi::Scale,
+			};
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
 				<Test as crate::messaging::Config>::OnChainByteFee,
@@ -764,11 +776,11 @@ mod hooks {
 	}
 }
 
-
 mod handle_callback_result {
-	use super::*;
 	use frame_support::dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo};
-use sp_runtime::DispatchErrorWithPostInfo;
+	use sp_runtime::DispatchErrorWithPostInfo;
+
+	use super::*;
 
 	#[test]
 	fn refunds_unused_weight_to_creditor_on_success() {
@@ -776,21 +788,30 @@ use sp_runtime::DispatchErrorWithPostInfo;
 			let origin = ALICE;
 			let id = [1u8; 32];
 			let actual_weight = Weight::from_parts(100, 100);
-			let result = DispatchResultWithPostInfo::Ok(
-				PostDispatchInfo {
-					actual_weight: Some(actual_weight.clone()),
-					pays_fee: Pays::Yes,
-				}
-			);
+			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: Some(actual_weight.clone()),
+				pays_fee: Pays::Yes,
+			});
 			let bob_balance_pre_refund = Balances::free_balance(&BOB);
-			let expected_imbalance = <Test as crate::messaging::Config>::WeightToFee::weight_to_fee(&actual_weight);
-			let callback =
-			Callback { selector: [1; 4], weight: Weight::from_parts(1000, 1000), spare_weight_creditor: BOB, abi: Abi::Scale};
+			let expected_imbalance =
+				<Test as crate::messaging::Config>::WeightToFee::weight_to_fee(&actual_weight);
+			let callback = Callback {
+				selector: [1; 4],
+				weight: Weight::from_parts(1000, 1000),
+				spare_weight_creditor: BOB,
+				abi: Abi::Scale,
+			};
 
-			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(&origin, &id, result, callback));
+			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
+				&origin, &id, result, callback
+			));
 
 			let bob_balance_post_refund = Balances::free_balance(&BOB);
-			assert_eq!(bob_balance_post_refund - bob_balance_pre_refund, expected_imbalance, "oops bob hasnt been refunded!");
+			assert_eq!(
+				bob_balance_post_refund - bob_balance_pre_refund,
+				expected_imbalance,
+				"oops bob hasnt been refunded!"
+			);
 		})
 	}
 
@@ -807,17 +828,28 @@ use sp_runtime::DispatchErrorWithPostInfo;
 			let origin = ALICE;
 			let id = [1u8; 32];
 			let actual_weight = Weight::from_parts(100, 100);
-			let result = DispatchResultWithPostInfo::Ok(
-				PostDispatchInfo {
-					actual_weight: Some(actual_weight.clone()),
-					pays_fee: Pays::Yes,
-				}
-			);
-			let callback =
-			Callback { selector: [1; 4], weight: Weight::from_parts(1000, 1000), spare_weight_creditor: BOB, abi: Abi::Scale};
+			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: Some(actual_weight.clone()),
+				pays_fee: Pays::Yes,
+			});
+			let callback = Callback {
+				selector: [1; 4],
+				weight: Weight::from_parts(1000, 1000),
+				spare_weight_creditor: BOB,
+				abi: Abi::Scale,
+			};
 
-			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(&origin, &id, result, callback.clone()));
-			assert!(events().contains(&Event::<Test>::CallbackExecuted { origin: origin.clone(), id, callback }));
+			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
+				&origin,
+				&id,
+				result,
+				callback.clone()
+			));
+			assert!(events().contains(&Event::<Test>::CallbackExecuted {
+				origin: origin.clone(),
+				id,
+				callback
+			}));
 		})
 	}
 
@@ -826,20 +858,32 @@ use sp_runtime::DispatchErrorWithPostInfo;
 		new_test_ext().execute_with(|| {
 			let origin = ALICE;
 			let id = [1u8; 32];
-			let result = DispatchResultWithPostInfo::Err(
-				DispatchErrorWithPostInfo {
-					post_info: Default::default(),
-					error: Error::<Test>::InvalidMessage.into()
-				}
-			);
+			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
+				post_info: Default::default(),
+				error: Error::<Test>::InvalidMessage.into(),
+			});
 
-			let callback =
-			Callback { selector: [1; 4], weight: Weight::from_parts(1000, 1000), spare_weight_creditor: BOB, abi: Abi::Scale};
+			let callback = Callback {
+				selector: [1; 4],
+				weight: Weight::from_parts(1000, 1000),
+				spare_weight_creditor: BOB,
+				abi: Abi::Scale,
+			};
 
-			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(&origin, &id, result, callback.clone()).is_err());
-			assert!(events().contains(&Event::<Test>::CallbackFailed { origin, id, callback, post_info: Default::default(), error: Error::<Test>::InvalidMessage.into()}));
-				
+			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+				&origin,
+				&id,
+				result,
+				callback.clone()
+			)
+			.is_err());
+			assert!(events().contains(&Event::<Test>::CallbackFailed {
+				origin,
+				id,
+				callback,
+				post_info: Default::default(),
+				error: Error::<Test>::InvalidMessage.into()
+			}));
 		})
 	}
-
 }

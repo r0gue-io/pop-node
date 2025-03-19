@@ -10,7 +10,7 @@ use frame_support::{
 	traits::{
 		fungible::Inspect,
 		tokens::{fungible::hold::Mutate, Precision::Exact},
-		Get, OriginTrait
+		Get, OriginTrait,
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -19,11 +19,11 @@ use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{traits::Saturating, BoundedVec, DispatchError};
 use sp_std::vec::Vec;
+use sp_weights::WeightToFee;
 use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryId},
 };
-use sp_weights::WeightToFee;
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
 
@@ -117,7 +117,7 @@ pub mod pallet {
 
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
 
-		//type ReturnFeeHandler: OnUnbalanced<_>;
+		// type ReturnFeeHandler: OnUnbalanced<_>;
 	}
 
 	#[pallet::pallet]
@@ -482,7 +482,7 @@ pub mod pallet {
 					return Ok(())
 				}
 			}
-			
+
 			// No callback is executed,
 			Messages::<T>::insert(
 				&origin,
@@ -556,7 +556,7 @@ impl<T: Config> Pallet<T> {
 		let result = T::CallbackExecutor::execute(
 			origin.clone(),
 			match callback.abi {
-				Abi::Scale => [callback.selector.to_vec(), (id, data).encode()].concat()
+				Abi::Scale => [callback.selector.to_vec(), (id, data).encode()].concat(),
 			},
 			callback.weight,
 		);
@@ -566,10 +566,10 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub(crate) fn handle_callback_result(
-		origin: &AccountIdOf<T>, 
-		id: &MessageId, 
-		result: DispatchResultWithPostInfo, 
-		callback: Callback<AccountIdOf<T>>
+		origin: &AccountIdOf<T>,
+		id: &MessageId,
+		result: DispatchResultWithPostInfo,
+		callback: Callback<AccountIdOf<T>>,
 	) -> DispatchResult {
 		match result {
 			Ok(post_info) => {
@@ -578,7 +578,7 @@ impl<T: Config> Pallet<T> {
 					let weight_to_refund = callback.weight.saturating_sub(weight_used);
 					if !weight_to_refund.any_eq(Zero::zero()) {
 						let returnable_imbalance = T::WeightToFee::weight_to_fee(&weight_to_refund);
-						// Where do we refund to? 
+						// Where do we refund to?
 						// TODO: Handle Imbalance: sc-3302.
 					}
 				}
@@ -734,7 +734,6 @@ pub struct Callback<AccountId> {
 	pub weight: Weight,
 	pub spare_weight_creditor: AccountId,
 }
-
 
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum Abi {

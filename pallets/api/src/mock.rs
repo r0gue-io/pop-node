@@ -268,20 +268,19 @@ impl crate::messaging::Config for Test {
 	type OriginConverter = AccountToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
-	type WeightToFee = RefTimePlusProofTime;
 }
 
-
-pub struct RefTimePlusProofTime; 
+pub struct RefTimePlusProofTime;
 impl sp_weights::WeightToFee for RefTimePlusProofTime {
 	type Balance = Balance;
+
 	fn weight_to_fee(weight: &sp_weights::Weight) -> Self::Balance {
 		(weight.ref_time() + weight.proof_size()) as u128
 	}
 }
-
 
 #[derive(Default)]
 pub struct MockIsmpDispatcher;
