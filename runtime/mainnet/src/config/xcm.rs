@@ -21,11 +21,12 @@ use sp_runtime::Vec;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
-	AllowTopLevelPaidExecutionFrom, EnsureXcmOrigin, FrameTransactionalProcessor, FungibleAdapter,
-	IsConcrete, ParentIsPreset, RelayChainAsNative, SendXcmFeeToAccount, SiblingParachainAsNative,
-	SiblingParachainConvertsVia, SignedAccountId32AsNative, SignedToAccountId32,
-	SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId, UsingComponents,
-	WeightInfoBounds, WithComputedOrigin, WithUniqueTopic, XcmFeeManagerFromComponents,
+	AllowTopLevelPaidExecutionFrom, DescribeAllTerminal, DescribeFamily, EnsureXcmOrigin,
+	FrameTransactionalProcessor, FungibleAdapter, HashedDescription, IsConcrete, ParentIsPreset,
+	RelayChainAsNative, SendXcmFeeToAccount, SiblingParachainAsNative, SiblingParachainConvertsVia,
+	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
+	TrailingSetTopicAsId, UsingComponents, WeightInfoBounds, WithComputedOrigin, WithUniqueTopic,
+	XcmFeeManagerFromComponents,
 };
 use xcm_executor::XcmExecutor;
 
@@ -86,6 +87,8 @@ pub type LocationToAccountId = (
 	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
+	// Foreign locations alias into accounts according to a hash of their standard description.
+	HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>,
 );
 
 /// Means for transacting assets on this chain.
@@ -298,8 +301,10 @@ mod tests {
 
 	use polkadot_runtime_common::xcm_sender::*;
 	use polkadot_runtime_parachains::FeeTracker;
+	use sp_core::crypto::Ss58Codec;
+	use sp_keyring::AccountKeyring;
 	use sp_runtime::FixedPointNumber;
-	use xcm_executor::traits::{FeeManager, FeeReason};
+	use xcm_executor::traits::{ConvertLocation, FeeManager, FeeReason};
 
 	use super::*;
 	use crate::System;
@@ -318,8 +323,96 @@ mod tests {
 				ParentIsPreset<AccountId>,
 				SiblingParachainConvertsVia<Sibling, AccountId>,
 				AccountId32Aliases<RelayNetwork, AccountId>,
+				HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>,
 			)>()
 		);
+	}
+
+	#[test]
+	fn location_to_account_id_works() {
+		// src: https://github.com/paritytech/polkadot-sdk/blob/master/cumulus/parachains/runtimes/assets/asset-hub-westend/tests/tests.rs
+
+		struct TestCase {
+			description: &'static str,
+			location: Location,
+			expected_account_id_str: &'static str,
+		}
+
+		let test_cases = vec![
+			// DescribeTerminus
+			TestCase {
+				description: "DescribeTerminus Parent",
+				location: Location::new(1, Here),
+				expected_account_id_str: "5Dt6dpkWPwLaH4BBCKJwjiWrFVAGyYk3tLUabvyn4v7KtESG",
+			},
+			TestCase {
+				description: "DescribeTerminus Sibling",
+				location: Location::new(1, [Parachain(1111)]),
+				expected_account_id_str: "5Eg2fnssmmJnF3z1iZ1NouAuzciDaaDQH7qURAy3w15jULDk",
+			},
+			// DescribePalletTerminal
+			TestCase {
+				description: "DescribePalletTerminal Parent",
+				location: Location::new(1, [PalletInstance(50)]),
+				expected_account_id_str: "5CnwemvaAXkWFVwibiCvf2EjqwiqBi29S5cLLydZLEaEw6jZ",
+			},
+			TestCase {
+				description: "DescribePalletTerminal Sibling",
+				location: Location::new(1, [Parachain(1111), PalletInstance(50)]),
+				expected_account_id_str: "5GFBgPjpEQPdaxEnFirUoa51u5erVx84twYxJVuBRAT2UP2g",
+			},
+			// DescribeAccountId32Terminal
+			TestCase {
+				description: "DescribeAccountId32Terminal Parent",
+				location: Location::new(
+					1,
+					[AccountId32 {
+						network: None,
+						id: AccountKeyring::Alice.to_account_id().into(),
+					}],
+				),
+				expected_account_id_str: "5EueAXd4h8u75nSbFdDJbC29cmi4Uo1YJssqEL9idvindxFL",
+			},
+			TestCase {
+				description: "DescribeAccountId32Terminal Sibling",
+				location: Location::new(
+					1,
+					[
+						Parachain(1111),
+						Junction::AccountId32 {
+							network: None,
+							id: AccountKeyring::Alice.to_account_id().into(),
+						},
+					],
+				),
+				expected_account_id_str: "5Dmbuiq48fU4iW58FKYqoGbbfxFHjbAeGLMtjFg6NNCw3ssr",
+			},
+			// DescribeTreasuryVoiceTerminal
+			TestCase {
+				description: "DescribeTreasuryVoiceTerminal Parent",
+				location: Location::new(
+					1,
+					[Plurality { id: BodyId::Treasury, part: BodyPart::Voice }],
+				),
+				expected_account_id_str: "5CUjnE2vgcUCuhxPwFoQ5r7p1DkhujgvMNDHaF2bLqRp4D5F",
+			},
+			TestCase {
+				description: "DescribeTreasuryVoiceTerminal Sibling",
+				location: Location::new(
+					1,
+					[Parachain(1111), Plurality { id: BodyId::Treasury, part: BodyPart::Voice }],
+				),
+				expected_account_id_str: "5G6TDwaVgbWmhqRUKjBhRRnH4ry9L9cjRymUEmiRsLbSE4gB",
+			},
+		];
+
+		for tc in test_cases {
+			let expected = AccountId::from_string(tc.expected_account_id_str)
+				.expect("Invalid AccountId string");
+			let got = LocationToAccountId::convert_location((&tc.location).into()).unwrap();
+
+			assert_eq!(got, expected, "{}", tc.description);
+		}
 	}
 
 	#[test]
@@ -372,7 +465,6 @@ mod tests {
 			>()
 		);
 	}
-
 	mod message_queue {
 		use super::*;
 
