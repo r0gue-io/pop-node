@@ -350,6 +350,11 @@ mod tests {
 				location: Location::new(1, [Parachain(1111)]),
 				expected_account_id_str: "5Eg2fnssmmJnF3z1iZ1NouAuzciDaaDQH7qURAy3w15jULDk",
 			},
+			TestCase {
+				description: "DescribeTermines Sibling 1000",
+				location: Location::new(1, [Parachain(1000)]),
+				expected_account_id_str: "5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV",
+			},
 			// DescribePalletTerminal
 			TestCase {
 				description: "DescribePalletTerminal Parent",
