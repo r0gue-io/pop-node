@@ -11,7 +11,7 @@ use ::ismp::{
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	pallet_prelude::Weight, traits::Get as _, CloneNoBound, DebugNoBound, EqNoBound,
-	PartialEqNoBound,
+	PartialEqNoBound, ensure,
 };
 use ismp::{
 	dispatcher::DispatchPost,
@@ -119,7 +119,7 @@ impl<T> Handler<T> {
 
 impl<T: Config> IsmpModule for Handler<T> {
 	fn on_accept(&self, _request: PostRequest) -> Result<(), anyhow::Error> {
-		todo!()
+		Err(Error::Custom("pop-net is not accepting post requests at this time!".to_string()).into())
 	}
 
 	fn on_response(&self, response: Response) -> Result<(), anyhow::Error> {
@@ -140,7 +140,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 				process_response(
 					&commitment,
 					&response,
-					|| response.clone(), // TODO: resolve unnecessary clone
+					| | response.clone(), 
 					|dest, id| Event::<T>::IsmpPostResponseReceived { dest, id, commitment },
 				)
 			},
@@ -162,25 +162,31 @@ impl<T: Config> IsmpModule for Handler<T> {
 					else {
 						return Err(Error::Custom("message not found".into()))
 					};
-					todo!("Update message status to timed out");
-					// *message = Some(super::super::Message::IsmpTimedOut {
-					// 	deposit: *deposit,
-					// 	commitment: *commitment,
-					// });
+					 *message = Some(super::super::Message::IsmpTimeout {
+					 	deposit: *deposit,
+					 	commitment: *commitment,
+					 });
+
+					 Ok(())
 				})?;
 				Ok(())
 			},
 			Timeout::Response(_response) => {
-				todo!()
+				// We have received a response which has timedout, which should be acted on as to not bloat storage. 
+				// We have an opportunity either to return the deposit not and mark as timed out to await removal.
+
+				todo!("Quick chat with peter.")
+
 			},
 		}
 	}
 }
 
-// TODO: replace with benchmarked weight functions
 impl<T: Config> IsmpModuleWeight for Pallet<T> {
+
+	// Static as not in use.
 	fn on_accept(&self, _request: &PostRequest) -> Weight {
-		todo!()
+		DbWeightOf::<T>::get().reads_writes(2, 1)
 	}
 
 	fn on_timeout(&self, _timeout: &Timeout) -> Weight {
@@ -191,6 +197,7 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 		DbWeightOf::<T>::get().reads_writes(2, 2)
 	}
 }
+
 
 fn process_response<T: Config>(
 	commitment: &H256,
@@ -209,6 +216,7 @@ fn process_response<T: Config>(
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
+		// ensure!(encode.len() <= T::MaxResponseLen::get(), Error::Custom("Response length is too long!"));
 		// TODO: check response length
 		// TODO: update status if failed
 		if Pallet::<T>::call(&origin, callback, &id, &encode).is_ok() {
