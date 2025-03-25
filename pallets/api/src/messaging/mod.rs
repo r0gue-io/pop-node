@@ -114,10 +114,8 @@ pub mod pallet {
 		/// The maximum number of xcm timeout updates that can be processed per block.
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
-
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
 
-		// type ReturnFeeHandler: OnUnbalanced<_>;
 	}
 
 	#[pallet::pallet]
@@ -482,7 +480,6 @@ pub mod pallet {
 					return Ok(())
 				}
 			}
-
 			// No callback is executed,
 			Messages::<T>::insert(
 				&origin,
