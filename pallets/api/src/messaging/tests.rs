@@ -888,8 +888,6 @@ mod handle_callback_result {
 	}
 }
 
-
-
 mod ismp_get {
 	use super::*;
 
@@ -966,12 +964,23 @@ mod ismp_get {
 			};
 			let ismp_fee = 100;
 			let callback = None;
-			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id.clone(), message, ismp_fee, callback));
+			assert_ok!(Messaging::ismp_get(
+				signed(ALICE),
+				message_id.clone(),
+				message,
+				ismp_fee,
+				callback
+			));
 			let events = events();
-			let Some(Event::<Test>::IsmpGetDispatched { origin, id, commitment, callback }) = events.first() else {
+			let Some(Event::<Test>::IsmpGetDispatched { origin, id, commitment, callback }) =
+				events.first()
+			else {
 				panic!("missing event");
 			};
-			assert_eq!(IsmpRequests::<Test>::get(&commitment).unwrap(), (ALICE, message_id.clone()));
+			assert_eq!(
+				IsmpRequests::<Test>::get(&commitment).unwrap(),
+				(ALICE, message_id.clone())
+			);
 			let Some(Message::Ismp { .. }) = Messages::<Test>::get(&ALICE, &message_id) else {
 				panic!("wrong message type");
 			};
