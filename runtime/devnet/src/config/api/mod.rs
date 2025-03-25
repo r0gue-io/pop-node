@@ -136,6 +136,7 @@ impl messaging::Config for Runtime {
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
 }
@@ -523,6 +524,23 @@ mod tests {
 		.iter()
 		{
 			assert!(Filter::<Runtime>::contains(read))
+		}
+	}
+
+	mod callback_executor {
+		use pallet_api::messaging::CallbackExecutor;
+
+		use super::*;
+
+		#[test]
+		fn callback_executor_weight_is_more_than_zero() {
+			let rt_weight =
+				<Runtime as crate::messaging::Config>::CallbackExecutor::execution_weight();
+			let struct_weight = super::super::CallbackExecutor::execution_weight();
+
+			// assert that the right struct is being used.
+			assert_eq!(rt_weight, struct_weight);
+			assert!(!rt_weight.any_eq(Zero::zero()))
 		}
 	}
 }
