@@ -747,7 +747,7 @@ mod xcm_response {
 	}
 }
 
-mod hooks {
+mod xcm_hooks {
 	use super::*;
 
 	#[test]
@@ -888,6 +888,8 @@ mod handle_callback_result {
 	}
 }
 
+
+
 mod ismp_get {
 	use super::*;
 
@@ -948,6 +950,31 @@ mod ismp_get {
 			let alice_balance_post_hold = Balances::free_balance(&ALICE);
 
 			assert_eq!(alice_balance_pre_hold - alice_balance_post_hold, expected_deposit);
+		})
+	}
+
+	#[test]
+	fn assert_state() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0u8; 32];
+			let message = ismp::Get {
+				dest: 2000,
+				height: 10,
+				timeout: 100,
+				context: bounded_vec!(),
+				keys: bounded_vec!(),
+			};
+			let ismp_fee = 100;
+			let callback = None;
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id.clone(), message, ismp_fee, callback));
+			let events = events();
+			let Some(Event::<Test>::IsmpGetDispatched { origin, id, commitment, callback }) = events.first() else {
+				panic!("missing event");
+			};
+			assert_eq!(IsmpRequests::<Test>::get(&commitment).unwrap(), (ALICE, message_id.clone()));
+			let Some(Message::Ismp { .. }) = Messages::<Test>::get(&ALICE, &message_id) else {
+				panic!("wrong message type");
+			};
 		})
 	}
 }
