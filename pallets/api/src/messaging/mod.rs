@@ -118,7 +118,6 @@ pub mod pallet {
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
 	}
 
-
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
 
@@ -321,7 +320,6 @@ pub mod pallet {
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
-			
 			// TODO: is this meant to be our struct or theirs? 
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
@@ -451,7 +449,7 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::zero())] // todo: benchmarking
 		pub fn xcm_response(
- 			origin: OriginFor<T>,
+			origin: OriginFor<T>,
 			query_id: QueryId,
 			xcm_response: Response,
 		) -> DispatchResult {

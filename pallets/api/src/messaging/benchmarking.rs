@@ -1,15 +1,16 @@
 //! Benchmarking setup for pallet_api::nonfungibles
 #![cfg(feature = "runtime-benchmarks")]
 
+use ::ismp::{
+	host::StateMachine,
+	module::IsmpModule,
+	router::{GetRequest, GetResponse, PostRequest, PostResponse, Response as IsmpResponse},
+	Timeout,
+};
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{dispatch::RawOrigin, traits::Currency, BoundedVec};
 use sp_runtime::traits::{One, Zero};
-use ::ismp::{
-	router::{Response as IsmpResponse, PostResponse, GetResponse, GetRequest, PostRequest},
-	module::IsmpModule, Timeout,
-	host::StateMachine,
-};
 
 use super::*;
 use crate::Read as _;
@@ -25,8 +26,7 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 	T: pallet_balances::Config
 )]
 mod messaging_benchmarks {
-	use super::*;
-	use super::utils::*;
+	use super::{utils::*, *};
 
 	/// x: The number of removals required.
 	#[benchmark]
@@ -72,8 +72,12 @@ mod messaging_benchmarks {
 		let message_id: [u8; 32] = [0; 32];
 		let responder = Location { parents: 1, interior: Junctions::Here };
 		let timeout = <BlockNumberOf<T> as One>::one() + frame_system::Pallet::<T>::block_number();
-		let callback =
-			Callback { selector: [0; 4], weight: 100.into(), spare_weight_creditor: owner.clone(), abi: Abi::Scale};
+		let callback = Callback {
+			selector: [0; 4],
+			weight: 100.into(),
+			spare_weight_creditor: owner.clone(),
+			abi: Abi::Scale,
+		};
 
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
@@ -164,11 +168,7 @@ mod messaging_benchmarks {
 			None
 		};
 
-		let message = Message::Ismp {
-			commitment,
-			callback,
-			deposit: One::one(),
-		};
+		let message = Message::Ismp { commitment, callback, deposit: One::one() };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &message);
@@ -177,15 +177,23 @@ mod messaging_benchmarks {
 			// get response
 			let get = ismp_get_response();
 			(
-				IsmpResponse::Get(get.clone()), 
-				crate::messaging::Event::<T>::IsmpGetResponseReceived {dest: origin, id: message_id, commitment},
+				IsmpResponse::Get(get.clone()),
+				crate::messaging::Event::<T>::IsmpGetResponseReceived {
+					dest: origin,
+					id: message_id,
+					commitment,
+				},
 			)
 		} else {
 			// post response
 			let post = ismp_post_response();
 			(
-			IsmpResponse::Post(post.clone()),
-			crate::messaging::Event::<T>::IsmpPostResponseReceived {dest: origin, id: message_id, commitment},
+				IsmpResponse::Post(post.clone()),
+				crate::messaging::Event::<T>::IsmpPostResponseReceived {
+					dest: origin,
+					id: message_id,
+					commitment,
+				},
 			)
 		};
 
@@ -196,32 +204,23 @@ mod messaging_benchmarks {
 			handler.on_response(response.clone()).unwrap();
 		}
 
-		assert_has_event::<T>(
-			event.into(),
-		)
+		assert_has_event::<T>(event.into())
 	}
 
-	// Assuming a Timeout::Request(Request::Get) is handled the same as a Timeout::Request(Request::Post)
-	// x: Is a response timeout (example: 1 = response timeout, 0 = request timeout)
+	// Assuming a Timeout::Request(Request::Get) is handled the same as a
+	// Timeout::Request(Request::Post) x: Is a response timeout (example: 1 = response timeout, 0 =
+	// request timeout)
 	#[benchmark]
 	fn ismp_on_timeout(x: Linear<0, 1>) {
 		let commitment = H256::repeat_byte(2u8);
 		let origin: T::AccountId = account("alice", 0, SEED);
 		let message_id = [1; 32];
-		let message = Message::Ismp {
-			commitment,
-			callback: None,
-			deposit: One::one(),
-		};
+		let message = Message::Ismp { commitment, callback: None, deposit: One::one() };
 
 		let timeout_message = if x == 1 {
-			Timeout::Response(
-				ismp_post_response()
-			)
+			Timeout::Response(ismp_post_response())
 		} else {
-			Timeout::Request(
-				Request::Get(ismp_get_request())
-			)
+			Timeout::Request(Request::Get(ismp_get_request()))
 		};
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
@@ -236,7 +235,6 @@ mod messaging_benchmarks {
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
-
 
 pub mod utils {
 	use super::*;
@@ -267,14 +265,11 @@ pub mod utils {
 	}
 
 	pub fn ismp_get_response() -> GetResponse {
-		GetResponse {
-			get: ismp_get_request(),
-			values: vec![],
-		}
+		GetResponse { get: ismp_get_request(), values: vec![] }
 	}
 
 	pub fn ismp_post_response() -> PostResponse {
-		PostResponse{
+		PostResponse {
 			post: ismp_post_request(),
 			response: Default::default(),
 			timeout_timestamp: 0,
