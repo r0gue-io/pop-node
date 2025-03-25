@@ -115,7 +115,6 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
-
 	}
 
 	#[pallet::pallet]
