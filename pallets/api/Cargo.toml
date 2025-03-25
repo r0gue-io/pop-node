@@ -39,6 +39,8 @@ xcm-builder.workspace = true
 
 [dev-dependencies]
 pallet-balances.workspace = true
+pallet-ismp = { workspace = true, features = [ "unsigned" ] }
+pallet-timestamp.workspace = true
 sp-io.workspace = true
 xcm-builder.workspace = true
 

@@ -127,6 +127,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 		match response {
 			Response::Get(GetResponse { get, values }) => {
 				log::debug!(target: "pop-api::extension", "StorageValue={:?}", values[0]);
+				// TODO: This should be bound to the hasher used in the ismp dispatcher.
 				let commitment = H256::from(keccak_256(&ismp::router::Request::Get(get).encode()));
 				process_response(
 					&commitment,
@@ -152,6 +153,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 			Timeout::Request(request) => {
 				// hash request to determine key for original request id lookup
 				let id = match request {
+					// TODO: This should be bound to the hasher used in the ismp dispatcher.
 					Get(get) => H256::from(keccak_256(&get.encode())),
 					Post(post) => H256::from(keccak_256(&post.encode())),
 				};

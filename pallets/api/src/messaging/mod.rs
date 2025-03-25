@@ -116,9 +116,8 @@ pub mod pallet {
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
-
-		// type ReturnFeeHandler: OnUnbalanced<_>;
 	}
+
 
 	#[pallet::pallet]
 	pub struct Pallet<T>(_);
@@ -311,6 +310,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
+			// TODO: what is this fee? Should the contract define it?
 			fee: BalanceOf<T>,
 			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
@@ -321,6 +321,8 @@ pub mod pallet {
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
+			
+			// TODO: is this meant to be our struct or theirs? 
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
@@ -449,7 +451,7 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		#[pallet::weight(Weight::zero())] // todo: benchmarking
 		pub fn xcm_response(
-			origin: OriginFor<T>,
+ 			origin: OriginFor<T>,
 			query_id: QueryId,
 			xcm_response: Response,
 		) -> DispatchResult {

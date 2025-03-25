@@ -7,7 +7,7 @@ use frame_support::{dispatch::RawOrigin, traits::Currency, BoundedVec};
 use sp_runtime::traits::{One, Zero};
 use ::ismp::{
 	router::{Response as IsmpResponse, PostResponse, GetResponse, GetRequest, PostRequest},
-	module::IsmpModule,
+	module::IsmpModule, Timeout,
 	host::StateMachine,
 };
 
@@ -146,7 +146,7 @@ mod messaging_benchmarks {
 	}
 
 	/// x: Is it a get. (example: 1 = get, 0 = post)
-	/// y: Is there a callback or not.
+	/// y: the response has a callback.
 	#[benchmark]
 	fn ismp_on_response(x: Linear<0, 1>, y: Linear<0, 1>) {
 		let commitment = H256::repeat_byte(2u8);
@@ -178,13 +178,15 @@ mod messaging_benchmarks {
 			let get = ismp_get_response();
 			(
 				IsmpResponse::Get(get.clone()), 
-				crate::messaging::Event::<T>::IsmpGetResponseReceived {dest: origin, id: message_id, commitment}
+				crate::messaging::Event::<T>::IsmpGetResponseReceived {dest: origin, id: message_id, commitment},
 			)
 		} else {
 			// post response
 			let post = ismp_post_response();
-			(IsmpResponse::Post(post.clone()),
-			crate::messaging::Event::<T>::IsmpPostResponseReceived {dest: origin, id: message_id, commitment})
+			(
+			IsmpResponse::Post(post.clone()),
+			crate::messaging::Event::<T>::IsmpPostResponseReceived {dest: origin, id: message_id, commitment},
+			)
 		};
 
 		let handler = crate::messaging::ismp::Handler::<T>::new();
@@ -199,6 +201,39 @@ mod messaging_benchmarks {
 		)
 	}
 
+	// Assuming a Timeout::Request(Request::Get) is handled the same as a Timeout::Request(Request::Post)
+	// x: Is a response timeout (example: 1 = response timeout, 0 = request timeout)
+	#[benchmark]
+	fn ismp_on_timeout(x: Linear<0, 1>) {
+		let commitment = H256::repeat_byte(2u8);
+		let origin: T::AccountId = account("alice", 0, SEED);
+		let message_id = [1; 32];
+		let message = Message::Ismp {
+			commitment,
+			callback: None,
+			deposit: One::one(),
+		};
+
+		let timeout_message = if x == 1 {
+			Timeout::Response(
+				ismp_post_response()
+			)
+		} else {
+			Timeout::Request(
+				Request::Get(ismp_get_request())
+			)
+		};
+
+		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
+		Messages::<T>::insert(&origin, &message_id, &message);
+
+		let handler = crate::messaging::ismp::Handler::<T>::new();
+		#[block]
+		{
+			handler.on_timeout(timeout_message)
+		}
+	}
+
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
 
@@ -206,8 +241,8 @@ mod messaging_benchmarks {
 pub mod utils {
 	use super::*;
 
-	pub fn ismp_get_response() -> GetResponse {
-		let get = GetRequest {
+	pub fn ismp_get_request() -> GetRequest {
+		GetRequest {
 			source: StateMachine::Polkadot(2000),
 			dest: StateMachine::Polkadot(2001),
 			nonce: 100u64,
@@ -216,15 +251,11 @@ pub mod utils {
 			height: 1,
 			context: vec![],
 			timeout_timestamp: 10000,
-		};
-		GetResponse {
-			get,
-			values: vec![],
 		}
 	}
 
-	pub fn ismp_post_response() -> PostResponse {
-		let post = PostRequest {
+	pub fn ismp_post_request() -> PostRequest {
+		PostRequest {
 			source: StateMachine::Polkadot(2000),
 			dest: StateMachine::Polkadot(2001),
 			nonce: 100u64,
@@ -232,10 +263,19 @@ pub mod utils {
 			to: vec![],
 			timeout_timestamp: 10000,
 			body: vec![],
-		};
+		}
+	}
 
+	pub fn ismp_get_response() -> GetResponse {
+		GetResponse {
+			get: ismp_get_request(),
+			values: vec![],
+		}
+	}
+
+	pub fn ismp_post_response() -> PostResponse {
 		PostResponse{
-			post,
+			post: ismp_post_request(),
 			response: Default::default(),
 			timeout_timestamp: 0,
 		}

@@ -7346,6 +7346,7 @@ dependencies = [
  "pallet-balances",
  "pallet-ismp",
  "pallet-nfts 31.0.0",
+ "pallet-timestamp",
  "pallet-xcm",
  "parity-scale-codec",
  "pop-chain-extension",
