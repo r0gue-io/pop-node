@@ -1,27 +1,30 @@
+use ::xcm::latest::{Junction, Junctions, Location};
 use codec::{Decode, Encode};
 use frame_support::{
 	derive_impl,
 	pallet_prelude::EnsureOrigin,
 	parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, OriginTrait},
+	traits::{
+		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Hooks, OriginTrait,
+	},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
-use pallet_xcm::Origin;
+use pallet_xcm::{Origin, TestWeightInfo};
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, Verify},
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, TryConvert, Verify},
 	BuildStorage,
 };
-use xcm::latest::Location;
 
-use crate::messaging::{Call, CallbackExecutor, NotifyQueryHandler};
+use crate::messaging::{Call, CallbackExecutor, Messages, NotifyQueryHandler};
 
 pub(crate) const ALICE: AccountId = 1;
 pub(crate) const BOB: AccountId = 2;
 pub(crate) const CHARLIE: AccountId = 3;
 pub(crate) const RESPONSE: AccountId = 4;
+pub(crate) const RESPONSE_LOCATION: Location = Location { parents: 1, interior: Junctions::Here };
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
@@ -208,8 +211,8 @@ impl crate::nonfungibles::Config for Test {
 	type WeightInfo = ();
 }
 
-pub struct MockCallbackExecutor<T>(T);
-impl<T: crate::messaging::Config> CallbackExecutor<T> for MockCallbackExecutor<T> {
+pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
+impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
 	fn execute(
 		account: <T as frame_system::Config>::AccountId,
 		data: Vec<u8>,
@@ -224,23 +227,33 @@ impl<T: crate::messaging::Config> CallbackExecutor<T> for MockCallbackExecutor<T
 }
 
 parameter_types! {
-	pub const TransactionByteFee: Balance = 10;
+	pub const OnChainByteFee: Balance = 10;
+	pub const OffChainByteFee: Balance = 5;
+	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 10;
 }
 
 pub struct MockNotifyQuery<T>(T);
 impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
+	type WeightInfo = ();
+
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: Call<T>,
 		timeout: BlockNumberFor<T>,
 		match_querier: impl Into<Location>,
 	) -> u64 {
-		0u64
+		get_next_query_id()
 	}
 }
 
+// Just done based on the count of the queries created
+// Problematic if one is removed.
+pub fn get_next_query_id() -> u64 {
+	Messages::<Test>::iter().count() as u64
+}
+
 impl crate::messaging::Config for Test {
-	type CallbackExecutor = MockCallbackExecutor<Test>;
+	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
 	type Deposit = Balances;
 	type IsmpDispatcher = MockIsmpDispatcher;
 	type MaxContextLen = ConstU32<64>;
@@ -249,13 +262,14 @@ impl crate::messaging::Config for Test {
 	type MaxKeys = ConstU32<10>;
 	type MaxRemovals = ConstU32<1024>;
 	type MaxResponseLen = ConstU32<1024>;
-	type OffChainByteFee = ();
-	type OnChainByteFee = TransactionByteFee;
-	type OriginConverter = ();
+	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
+	type OffChainByteFee = OffChainByteFee;
+	type OnChainByteFee = OnChainByteFee;
+	type OriginConverter = AccountToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Xcm = MockNotifyQuery<Test>;
-	type XcmResponseOrigin = EnsureResponse;
+	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
 }
 
 #[derive(Default)]
@@ -281,14 +295,27 @@ impl ismp::dispatcher::IsmpDispatcher for MockIsmpDispatcher {
 	}
 }
 
-pub struct EnsureResponse;
-impl EnsureOrigin<RuntimeOrigin> for EnsureResponse {
+pub struct AccountToLocation;
+
+impl TryConvert<RuntimeOrigin, Location> for AccountToLocation {
+	fn try_convert(origin: RuntimeOrigin) -> Result<Location, RuntimeOrigin> {
+		let signer = origin.into_signer();
+		let l = Junctions::from(Junction::AccountIndex64 {
+			network: None,
+			index: signer.expect("No account id, required."),
+		})
+		.into_location();
+		Ok(l)
+	}
+}
+
+pub struct EnsureRootWithResponseSuccess;
+impl EnsureOrigin<RuntimeOrigin> for EnsureRootWithResponseSuccess {
 	type Success = Location;
 
 	fn try_origin(o: RuntimeOrigin) -> Result<Self::Success, RuntimeOrigin> {
-		let signer = o.clone().into_signer();
-		if signer == Some(RESPONSE) {
-			Ok(xcm::latest::Location::here())
+		if let Ok(_) = EnsureRoot::ensure_origin(o.clone()) {
+			Ok(RESPONSE_LOCATION)
 		} else {
 			Err(o)
 		}
@@ -326,4 +353,16 @@ pub(crate) fn root() -> RuntimeOrigin {
 
 pub(crate) fn none() -> RuntimeOrigin {
 	RuntimeOrigin::none()
+}
+
+pub fn next_block() {
+	let next_block: u64 = System::block_number() + 1;
+	System::set_block_number(next_block);
+	Messaging::on_initialize(next_block);
+}
+
+pub fn run_to(block_number: u64) {
+	while System::block_number() < block_number {
+		next_block();
+	}
 }

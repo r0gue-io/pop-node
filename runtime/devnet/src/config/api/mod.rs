@@ -22,10 +22,10 @@ use crate::{
 		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
 		xcm::LocalOriginToLocation,
 	},
-	fungibles, messaging, nonfungibles, AccountId, Balances, BlockNumber, ConstU32, Ismp, Revive,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, TransactionByteFee,
+	fungibles, messaging, nonfungibles, parameter_types, AccountId, Balances, BlockNumber,
+	ConstU32, Ismp, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
+	TransactionByteFee,
 };
-
 
 mod versioning;
 
@@ -112,6 +112,10 @@ impl nonfungibles::Config for Runtime {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
+}
+
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
@@ -124,6 +128,7 @@ impl messaging::Config for Runtime {
 	type MaxRemovals = ConstU32<1024>;
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<1024>;
+	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
 	// much as onchain cost.
 	type OffChainByteFee = ();
@@ -204,9 +209,10 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 	}
 }
 
-// TODO!( default implementation where T: PolkadotXcm::Config
 pub struct QueryHandler;
 impl pallet_api::messaging::NotifyQueryHandler<Runtime> for QueryHandler {
+	type WeightInfo = pallet_xcm::Pallet<Runtime>;
+
 	fn new_notify_query(
 		responder: impl Into<Location>,
 		notify: messaging::Call<Runtime>,
