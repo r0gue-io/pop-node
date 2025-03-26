@@ -15,17 +15,16 @@ use parachains_common::{
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	xcm_config::ParentRelayOrSiblingParachains,
 };
-use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::xcm_sender::ExponentialPrice;
 use sp_runtime::Vec;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
 	AllowTopLevelPaidExecutionFrom, DescribeAllTerminal, DescribeFamily, EnsureXcmOrigin,
-	FrameTransactionalProcessor, FungibleAdapter, HashedDescription, IsConcrete, ParentIsPreset,
-	RelayChainAsNative, SendXcmFeeToAccount, SiblingParachainAsNative, SiblingParachainConvertsVia,
-	SignedAccountId32AsNative, SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit,
-	TrailingSetTopicAsId, UsingComponents, WeightInfoBounds, WithComputedOrigin, WithUniqueTopic,
+	FrameTransactionalProcessor, FungibleAdapter, HashedDescription, IsConcrete,
+	RelayChainAsNative, SendXcmFeeToAccount, SiblingParachainAsNative, SignedAccountId32AsNative,
+	SignedToAccountId32, SovereignSignedViaLocation, TakeWeightCredit, TrailingSetTopicAsId,
+	UsingComponents, WeightInfoBounds, WithComputedOrigin, WithUniqueTopic,
 	XcmFeeManagerFromComponents,
 };
 use xcm_executor::XcmExecutor;
@@ -81,10 +80,6 @@ impl pallet_message_queue::Config for Runtime {
 /// when determining ownership of accounts for asset transacting and when attempting to use XCM
 /// `Transact` in order to determine the dispatch Origin.
 pub type LocationToAccountId = (
-	// The parent (Relay-chain) origin converts to the parent `AccountId`.
-	ParentIsPreset<AccountId>,
-	// Sibling parachain origins convert to AccountId via the `ParaId::into`.
-	SiblingParachainConvertsVia<Sibling, AccountId>,
 	// Straight up local `AccountId32` origins just alias directly to `AccountId`.
 	AccountId32Aliases<RelayNetwork, AccountId>,
 	// Foreign locations alias into accounts according to a hash of their standard description.
@@ -320,8 +315,6 @@ mod tests {
 		assert_eq!(
 			TypeId::of::<LocationToAccountId>(),
 			TypeId::of::<(
-				ParentIsPreset<AccountId>,
-				SiblingParachainConvertsVia<Sibling, AccountId>,
 				AccountId32Aliases<RelayNetwork, AccountId>,
 				HashedDescription<AccountId, DescribeFamily<DescribeAllTerminal>>,
 			)>()
@@ -343,17 +336,17 @@ mod tests {
 			TestCase {
 				description: "DescribeTerminus Parent",
 				location: Location::new(1, Here),
-				expected_account_id_str: "5Dt6dpkWPwLaH4BBCKJwjiWrFVAGyYk3tLUabvyn4v7KtESG",
+				expected_account_id_str: "5GyWtDJP7qaipWRGr4KJ6VUDxRXf4jDnPW6KPTeCekHfqZkD",
 			},
 			TestCase {
-				description: "DescribeTerminus Sibling",
+				description: "DescribeTerminus Sibling 1111",
 				location: Location::new(1, [Parachain(1111)]),
-				expected_account_id_str: "5Eg2fnssmmJnF3z1iZ1NouAuzciDaaDQH7qURAy3w15jULDk",
+				expected_account_id_str: "5EC5GfEFm9XEBYjXzxb1VseMHsG2VhPeGTGWF9H8tYZnGsSk",
 			},
 			TestCase {
 				description: "DescribeTermines Sibling 1000",
 				location: Location::new(1, [Parachain(1000)]),
-				expected_account_id_str: "5Eg2fntNprdN3FgH4sfEaaZhYtddZQSQUqvYJ1f2mLtinVhV",
+				expected_account_id_str: "5Ezrkh5MpvyjbKvwr7sMahvyQAsMhJsvQ17uPkToVJkXhnEN",
 			},
 			// DescribePalletTerminal
 			TestCase {
