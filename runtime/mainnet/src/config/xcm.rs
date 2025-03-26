@@ -463,6 +463,7 @@ mod tests {
 			>()
 		);
 	}
+
 	mod message_queue {
 		use super::*;
 
