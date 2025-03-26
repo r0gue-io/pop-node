@@ -1,17 +1,26 @@
-use drink::{
-	assert_err, assert_last_contract_event, assert_ok, call,
-	devnet::{
-		account_id_from_slice,
-		error::{
-			v0::{ApiError::*, ArithmeticError::*, Error},
-			Assets,
-			AssetsError::*,
-		},
-		AccountId, Balance, Runtime,
+#[cfg(feature = "devnet")]
+use drink::devnet::{
+	account_id_from_slice,
+	error::{
+		v0::{ApiError::*, ArithmeticError::*, Error},
+		Assets,
+		AssetsError::*,
 	},
-	last_contract_event,
-	session::Session,
-	AssetsAPI, TestExternalities, NO_SALT,
+	AccountId, Balance, Runtime,
+};
+#[cfg(feature = "testnet")]
+use drink::testnet::{
+	account_id_from_slice,
+	error::{
+		v0::{ApiError::*, ArithmeticError::*, Error},
+		Assets,
+		AssetsError::*,
+	},
+	AccountId, Balance, Runtime,
+};
+use drink::{
+	assert_err, assert_ok, call, last_contract_event, session::Session, AssetsAPI,
+	TestExternalities, NO_SALT,
 };
 use pop_api::{
 	primitives::TokenId,
@@ -32,7 +41,7 @@ const TOKEN: TokenId = 1;
 
 // The contract bundle provider.
 //
-// See https://github.com/r0gue-io/pop-drink/blob/main/crates/drink/drink/test-macro/src/lib.rs for more information.
+// See https://github.com/r0gue-io/pop-drink/blob/main/drink/test-macro/src/lib.rs for more information.
 #[drink::contract_bundle_provider]
 enum BundleProvider {}
 
