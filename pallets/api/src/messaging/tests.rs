@@ -945,8 +945,10 @@ mod ismp_get {
 
 			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, ismp_fee, callback));
 
+
 			let alice_balance_post_hold = Balances::free_balance(&ALICE);
 
+			assert!(expected_deposit != (0 + ismp_fee));
 			assert_eq!(alice_balance_pre_hold - alice_balance_post_hold, expected_deposit);
 		})
 	}
@@ -986,4 +988,112 @@ mod ismp_get {
 			};
 		})
 	}
+}
+
+mod ismp_post {
+	use super::*;
+
+	#[test]
+	fn message_exists() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0u8; 32];
+			let message = ismp::Post {
+				dest: 2000,
+				timeout: 100,
+				data: bounded_vec![],
+			};
+			let ismp_fee = 100;
+			let callback = None;
+
+			assert_ok!(Messaging::ismp_post(
+				signed(ALICE),
+				message_id.clone(),
+				message.clone(),
+				ismp_fee,
+				callback
+			));
+			assert_noop!(Messaging::ismp_post(
+				signed(ALICE),
+				message_id.clone(),
+				message,
+				ismp_fee,
+				callback
+			), Error::<Test>::MessageExists);
+		})
+	}
+
+	#[test]
+	fn takes_deposit() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0u8; 32];
+			let message = ismp::Post {
+				dest: 2000,
+				timeout: 100,
+				data: bounded_vec![],
+			};
+			let ismp_fee = 100;
+			let callback = None;
+			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
+
+			assert_ok!(Messaging::ismp_post(
+				signed(ALICE),
+				message_id.clone(),
+				message.clone(),
+				ismp_fee,
+				callback
+			));
+
+			let expected_deposit = calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
+				ProtocolStorageDeposit::IsmpRequests,
+			)
+			 + calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>()
+			 + calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Post<Test>>()
+				+ ismp_fee
+			 ;
+
+			 assert!(expected_deposit != (0 + ismp_fee));
+
+			 let alice_balance_post_hold = Balances::free_balance(&ALICE);
+
+			 assert_eq!(alice_balance_pre_hold - alice_balance_post_hold, expected_deposit);
+		})
+	}
+
+	#[test]
+	fn assert_state() {
+		new_test_ext().execute_with(|| {
+
+		let message_id = [0u8; 32];
+			let message = ismp::Post {
+				dest: 2000,
+				timeout: 100,
+				data: bounded_vec![],
+			};
+			let ismp_fee = 100;
+			let callback = None;
+
+			assert_ok!(Messaging::ismp_post(
+				signed(ALICE),
+				message_id.clone(),
+				message.clone(),
+				ismp_fee,
+				callback
+			));
+
+			let events = events();
+			let Some(Event::<Test>::IsmpPostDispatched { origin, id, commitment, callback }) =
+				events.first()
+			else {
+				panic!("missing event");
+			};
+			assert_eq!(
+				IsmpRequests::<Test>::get(&commitment).unwrap(),
+				(ALICE, message_id.clone())
+			);
+			let Some(Message::Ismp { .. }) = Messages::<Test>::get(&ALICE, &message_id) else {
+				panic!("wrong message type");
+			};
+		})
+	}
+
 }
