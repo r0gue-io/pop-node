@@ -563,6 +563,7 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
 		Self::handle_callback_result(origin, id, result, callback)
+
 	}
 
 	pub(crate) fn handle_callback_result(
@@ -582,6 +583,8 @@ impl<T: Config> Pallet<T> {
 						// TODO: Handle Imbalance: sc-3302.
 					}
 				}
+
+				// release blockspace if over a certain thresh hold?
 
 				Self::deposit_event(Event::<T>::CallbackExecuted {
 					origin: origin.clone(),

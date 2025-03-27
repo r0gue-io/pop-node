@@ -196,23 +196,23 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 	}
 }
 
-fn process_response<T: Config>(
+pub(crate) fn process_response<T: Config>(
 	commitment: &H256,
 	response_data: &impl Encode,
 	event: impl Fn(AccountIdOf<T>, MessageId) -> Event<T>,
 ) -> Result<(), anyhow::Error> {
 	ensure!(
 		response_data.encoded_size() <= T::MaxResponseLen::get() as usize,
-		Error::Custom("Response length exceeds maximum allowed length.".to_string())
+		Error::Custom("Response length exceeds maximum allowed length.".into())
 	);
 
 	let (origin, id) =
-		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
+		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("Request not found.".into()))?;
 
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
 		Messages::<T>::get(&origin, &id)
 	else {
-		return Err(Error::Custom("message not found".into()).into())
+		return Err(Error::Custom("Message not found.".into()).into())
 	};
 
 	// Deposit that the message has been recieved before a potential callback execution.
@@ -225,7 +225,7 @@ fn process_response<T: Config>(
 			Messages::<T>::remove(&origin, &id);
 			IsmpRequests::<T>::remove(&commitment);
 			T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)
-				.map_err(|_| Error::Custom("failed to release deposit.".to_string()))?;
+				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
 
 			return Ok(())
 		}

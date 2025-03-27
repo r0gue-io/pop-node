@@ -1090,8 +1090,50 @@ mod ismp_hooks {
 	use super::*;
 
 	fn handler() -> ismp::Handler<Test> {
-		Handler::<Test>::new()
+		ismp::Handler::<Test>::new()
 	}
 
-	mod on_response {}
+	mod process_response {
+		use super::*;
+		use ::ismp::Error as IsmpError;
+
+		#[test]
+		fn response_exceeds_max_encoded_len_limit() {
+			new_test_ext().execute_with(|| {
+				let byte = 1u8;
+				let exceeds = vec![byte].repeat(<<Test as Config>::MaxResponseLen as Get<u32>>::get() as usize + 1usize);
+				let commitment: H256 = Default::default();
+
+				let err = ismp::process_response(&commitment, &exceeds, |dest, id| Event::<Test>::IsmpGetResponseReceived { dest, id, commitment }).unwrap_err();
+				assert_eq!(err.downcast::<IsmpError>().unwrap(), IsmpError::Custom("Response length exceeds maximum allowed length.".to_string()));
+			})
+		}
+
+		#[test]
+		fn request_not_found() {
+			new_test_ext().execute_with(|| {
+				let response = vec![1u8];
+				let commitment: H256 = Default::default();
+
+				let err = ismp::process_response(&commitment, &response, |dest, id| Event::<Test>::IsmpGetResponseReceived { dest, id, commitment }).unwrap_err();
+				assert_eq!(err.downcast::<IsmpError>().unwrap(), IsmpError::Custom("Request not found".to_string()));
+			})
+		}
+
+		#[test]
+		fn message_must_be_ismp_request() {
+			new_test_ext().execute_with(|| {
+				let response = vec![1u8];
+				let commitment: H256 = Default::default();
+				let message_id = [1u8; 32];
+
+				let message = Message::IsmpResponse { commitment, response: bounded_vec![], deposit: 100 };
+				IsmpRequests::<Test>::insert(commitment, (ALICE, message_id));
+				Messages::<Test>::insert(ALICE, message_id, message);
+
+				let err = ismp::process_response(&commitment, &response, |dest, id| Event::<Test>::IsmpGetResponseReceived { dest, id, commitment }).unwrap_err();
+				assert_eq!(err.downcast::<IsmpError>().unwrap(), IsmpError::Custom("Message not found.".to_string()));
+			})
+		}
+	}
 }
