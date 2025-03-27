@@ -945,7 +945,6 @@ mod ismp_get {
 
 			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, ismp_fee, callback));
 
-
 			let alice_balance_post_hold = Balances::free_balance(&ALICE);
 
 			assert!(expected_deposit != (0 + ismp_fee));
@@ -997,11 +996,7 @@ mod ismp_post {
 	fn message_exists() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = ismp::Post {
-				dest: 2000,
-				timeout: 100,
-				data: bounded_vec![],
-			};
+			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let ismp_fee = 100;
 			let callback = None;
 
@@ -1012,13 +1007,16 @@ mod ismp_post {
 				ismp_fee,
 				callback
 			));
-			assert_noop!(Messaging::ismp_post(
-				signed(ALICE),
-				message_id.clone(),
-				message,
-				ismp_fee,
-				callback
-			), Error::<Test>::MessageExists);
+			assert_noop!(
+				Messaging::ismp_post(
+					signed(ALICE),
+					message_id.clone(),
+					message,
+					ismp_fee,
+					callback
+				),
+				Error::<Test>::MessageExists
+			);
 		})
 	}
 
@@ -1026,11 +1024,7 @@ mod ismp_post {
 	fn takes_deposit() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = ismp::Post {
-				dest: 2000,
-				timeout: 100,
-				data: bounded_vec![],
-			};
+			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let ismp_fee = 100;
 			let callback = None;
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
@@ -1043,32 +1037,27 @@ mod ismp_post {
 				callback
 			));
 
-			let expected_deposit = calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
-				ProtocolStorageDeposit::IsmpRequests,
-			)
-			 + calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>()
-			 + calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Post<Test>>()
-				+ ismp_fee
-			 ;
+			let expected_deposit = calculate_protocol_deposit::<
+				Test,
+				<Test as Config>::OnChainByteFee,
+			>(ProtocolStorageDeposit::IsmpRequests) +
+				calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
+				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Post<Test>>(
+				) + ismp_fee;
 
-			 assert!(expected_deposit != (0 + ismp_fee));
+			assert!(expected_deposit != (0 + ismp_fee));
 
-			 let alice_balance_post_hold = Balances::free_balance(&ALICE);
+			let alice_balance_post_hold = Balances::free_balance(&ALICE);
 
-			 assert_eq!(alice_balance_pre_hold - alice_balance_post_hold, expected_deposit);
+			assert_eq!(alice_balance_pre_hold - alice_balance_post_hold, expected_deposit);
 		})
 	}
 
 	#[test]
 	fn assert_state() {
 		new_test_ext().execute_with(|| {
-
-		let message_id = [0u8; 32];
-			let message = ismp::Post {
-				dest: 2000,
-				timeout: 100,
-				data: bounded_vec![],
-			};
+			let message_id = [0u8; 32];
+			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let ismp_fee = 100;
 			let callback = None;
 
@@ -1095,18 +1084,14 @@ mod ismp_post {
 			};
 		})
 	}
-
 }
-
 
 mod ismp_hooks {
 	use super::*;
-	
+
 	fn handler() -> ismp::Handler<Test> {
 		Handler::<Test>::new()
 	}
 
-	mod on_response {
-
-	}
+	mod on_response {}
 }
