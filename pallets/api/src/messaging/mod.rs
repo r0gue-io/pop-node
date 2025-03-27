@@ -563,7 +563,6 @@ impl<T: Config> Pallet<T> {
 
 		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
 		Self::handle_callback_result(origin, id, result, callback)
-
 	}
 
 	pub(crate) fn handle_callback_result(
