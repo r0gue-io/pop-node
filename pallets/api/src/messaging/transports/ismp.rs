@@ -23,10 +23,12 @@ use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
 use sp_core::{keccak_256, H256};
 use sp_runtime::{BoundedVec, Saturating};
+use frame_support::traits::{tokens::Precision::Exact, fungible::MutateHold};
+
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, MessageId, Vec,
+	AccountIdOf, MessageId, Vec, HoldReason
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -129,11 +131,10 @@ impl<T: Config> IsmpModule for Handler<T> {
 			Response::Get(GetResponse { get, values }) => {
 				log::debug!(target: "pop-api::extension", "StorageValue={:?}", values[0]);
 				// TODO: This should be bound to the hasher used in the ismp dispatcher.
-				let commitment = H256::from(keccak_256(&ismp::router::Request::Get(get).encode()));
+				let commitment = H256::from(keccak_256(&Get(get).encode()));
 				process_response(
 					&commitment,
 					&values,
-					|| values.encode(),
 					|dest, id| Event::<T>::IsmpGetResponseReceived { dest, id, commitment },
 				)
 			},
@@ -142,7 +143,6 @@ impl<T: Config> IsmpModule for Handler<T> {
 				process_response(
 					&commitment,
 					&response,
-					|| response.clone(),
 					|dest, id| Event::<T>::IsmpPostResponseReceived { dest, id, commitment },
 				)
 			},
@@ -202,10 +202,12 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 
 fn process_response<T: Config>(
 	commitment: &H256,
-	encode: &impl Encode,
-	store: impl Fn() -> Vec<u8>,
+	response_data: &impl Encode,
 	event: impl Fn(AccountIdOf<T>, MessageId) -> Event<T>,
 ) -> Result<(), anyhow::Error> {
+	
+	ensure!(response_data.encoded_size() <= T::MaxResponseLen::get() as usize, Error::Custom("Response length exceeds maximum allowed length.".to_string()));
+	
 	let (origin, id) =
 		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
 
@@ -217,23 +219,36 @@ fn process_response<T: Config>(
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
-		// ensure!(encode.len() <= T::MaxResponseLen::get(), Error::Custom("Response length is too
-		// long!")); TODO: check response length
-		// TODO: update status if failed
-		if Pallet::<T>::call(&origin, callback, &id, &encode).is_ok() {
+		if Pallet::<T>::call(&origin, callback, &id, response_data).is_ok() {
+			// Clean storage, return deposit
+			Messages::<T>::remove(&origin, &id);
+			IsmpRequests::<T>::remove(&commitment);
+			T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact).map_err(|_|Error::Custom("failed to release deposit.".to_string()))?;
 			Pallet::<T>::deposit_event(event(origin, id));
+
 			return Ok(());
+		} else {
+			// Where a callback fails we 
+			let encoded_response= response_data.encode().try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
+			Messages::<T>::insert(
+				&origin,
+				&id,
+				super::super::Message::IsmpResponse { commitment, deposit, response: encoded_response},
+			);
+			return Ok(())
 		}
 	}
 
 	// Otherwise store response for manual retrieval and removal.
-	let response: BoundedVec<u8, T::MaxResponseLen> =
-		store().try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
+	let encoded_response: BoundedVec<u8, T::MaxResponseLen> =
+		response_data.encode().try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
 	Messages::<T>::insert(
-		&origin,
-		&id,
-		super::super::Message::IsmpResponse { commitment, deposit, response },
-	);
+			&origin,
+			&id,
+			super::super::Message::IsmpResponse { commitment, deposit, response: encoded_response},
+		);
+	
 	Pallet::<T>::deposit_event(event(origin, id));
 	Ok(())
 }
+

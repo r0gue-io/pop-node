@@ -12,7 +12,7 @@ use sp_core::H256;
 
 use crate::{messaging::*, mock::*, Read};
 
-fn events() -> Vec<Event<Test>> {
+pub fn events() -> Vec<Event<Test>> {
 	let result = System::events()
 		.into_iter()
 		.map(|r| r.event)
@@ -1096,4 +1096,17 @@ mod ismp_post {
 		})
 	}
 
+}
+
+
+mod ismp_hooks {
+	use super::*;
+	
+	fn handler() -> ismp::Handler<Test> {
+		Handler::<Test>::new()
+	}
+
+	mod on_response {
+
+	}
 }
