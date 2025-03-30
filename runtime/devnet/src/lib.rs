@@ -650,10 +650,14 @@ mod runtime {
 	pub type NftFractionalization = pallet_nft_fractionalization::Pallet<Runtime>;
 	#[runtime::pallet_index(52)]
 	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
+	#[runtime::pallet_index(53)]
+	pub type ForeignAssets = pallet_assets::Pallet<Runtime, Instance2>;
 
 	// Pop API
 	#[runtime::pallet_index(150)]
-	pub type Fungibles = fungibles::Pallet<Runtime>;
+	pub type Fungibles = fungibles::Pallet<Runtime, Instance1>;
+	#[runtime::pallet_index(152)]
+	pub type ForeignFungibles = fungibles::Pallet<Runtime, Instance2>;
 	#[runtime::pallet_index(151)]
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
 }
