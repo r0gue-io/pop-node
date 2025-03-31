@@ -212,7 +212,7 @@ pub(crate) fn process_response<T: Config>(
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
 		Messages::<T>::get(&origin, &id)
 	else {
-		return Err(Error::Custom("Message not found.".into()).into())
+		return Err(Error::Custom("Message must be an ismp request.".into()).into())
 	};
 
 	// Deposit that the message has been recieved before a potential callback execution.

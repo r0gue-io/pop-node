@@ -1132,7 +1132,7 @@ mod ismp_hooks {
 				.unwrap_err();
 				assert_eq!(
 					err.downcast::<IsmpError>().unwrap(),
-					IsmpError::Custom("Request not found".to_string())
+					IsmpError::Custom("Request not found.".to_string())
 				);
 			})
 		}
@@ -1155,8 +1155,72 @@ mod ismp_hooks {
 				.unwrap_err();
 				assert_eq!(
 					err.downcast::<IsmpError>().unwrap(),
-					IsmpError::Custom("Message not found.".to_string())
+					IsmpError::Custom("Message must be an ismp request.".to_string())
 				);
+			})
+		}
+
+		#[test]
+		fn no_callback_saves_response() {
+			new_test_ext().execute_with(|| {
+				let response = vec![1u8];
+				let commitment: H256 = Default::default();
+				let message_id = [1u8; 32];
+
+				let message = Message::Ismp { commitment, callback: None, deposit: 100};
+				IsmpRequests::<Test>::insert(commitment, (ALICE, message_id));
+				Messages::<Test>::insert(ALICE, message_id, message);
+
+				let res = ismp::process_response(&commitment, &response, |dest, id| {
+					Event::<Test>::IsmpGetResponseReceived { dest, id, commitment }
+				});
+
+				assert!(res.is_ok(), "process_response failed");
+
+				let Some(Message::IsmpResponse { commitment, deposit, response }) = Messages::<Test>::get(
+					&ALICE, &message_id
+				) else {
+					panic!("wrong message type.")
+				};
+		})
+	}
+
+		#[test]
+		fn success_callback_releases_deposit() {
+			new_test_ext().execute_with(|| {
+				let response = vec![1u8];
+				let commitment: H256 = Default::default();
+				let message_id = [1u8; 32];
+				let callback = Callback {
+					selector: [1; 4],
+					weight: 100.into(),
+					spare_weight_creditor: BOB,
+					abi: Abi::Scale,
+				};
+				let deposit = 100;
+				let message = Message::Ismp { commitment, callback: Some(callback), deposit};
+
+				<Test as crate::messaging::Config>::Deposit::hold(
+					&HoldReason::Messaging.into(),
+					&ALICE,
+					deposit,
+				)
+				.unwrap();
+
+				let alice_post_hold = Balances::free_balance(&ALICE);
+
+				IsmpRequests::<Test>::insert(commitment, (ALICE, message_id));
+				Messages::<Test>::insert(ALICE, message_id, message);
+
+				let res = ismp::process_response(&commitment, &response, |dest, id| {
+					Event::<Test>::IsmpGetResponseReceived { dest, id, commitment }
+				});
+
+				assert!(res.is_ok(), "process_response failed");
+
+
+				let alice_post_process = Balances::free_balance(&ALICE);
+				assert_eq!(alice_post_process - deposit, alice_post_hold);
 			})
 		}
 	}
