@@ -42,6 +42,9 @@ use deposits::*;
 #[cfg(test)]
 mod tests;
 
+#[cfg(test)]
+pub(crate) mod test_utils;
+
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
 type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
@@ -309,13 +312,13 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
-			// TODO: what is this fee? Should the contract define it?
+			// TODO: Peter this is the fee for the ismp relayer, it is taken no matter if a signature is used or not.
+			// Shouldnt be contract defined.
 			fee: BalanceOf<T>,
 			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
-
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
@@ -353,12 +356,12 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Post<T>,
+			// TODO: This is the relayer fee, what should it be?
 			fee: BalanceOf<T>,
 			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
-
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
