@@ -905,18 +905,16 @@ mod ismp_get {
 				context: bounded_vec!(),
 				keys: bounded_vec!(),
 			};
-			let fee = 100;
 			let callback = None;
 
 			assert_ok!(Messaging::ismp_get(
 				signed(ALICE),
 				message_id,
 				message.clone(),
-				fee,
 				callback
 			));
 			assert_noop!(
-				Messaging::ismp_get(signed(ALICE), message_id, message, fee, callback),
+				Messaging::ismp_get(signed(ALICE), message_id, message, callback),
 				Error::<Test>::MessageExists
 			);
 		})
@@ -933,7 +931,7 @@ mod ismp_get {
 				context: bounded_vec!(),
 				keys: bounded_vec!(),
 			};
-			let ismp_fee = 100;
+			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
 			let callback = None;
 
 			let expected_deposit = calculate_protocol_deposit::<
@@ -946,7 +944,7 @@ mod ismp_get {
 
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
 
-			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, ismp_fee, callback));
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, callback));
 
 			let alice_balance_post_hold = Balances::free_balance(&ALICE);
 
@@ -966,13 +964,11 @@ mod ismp_get {
 				context: bounded_vec!(),
 				keys: bounded_vec!(),
 			};
-			let ismp_fee = 100;
 			let callback = None;
 			assert_ok!(Messaging::ismp_get(
 				signed(ALICE),
 				message_id.clone(),
 				message,
-				ismp_fee,
 				callback
 			));
 			let events = events();
@@ -1000,14 +996,12 @@ mod ismp_post {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
-			let ismp_fee = 100;
 			let callback = None;
 
 			assert_ok!(Messaging::ismp_post(
 				signed(ALICE),
 				message_id.clone(),
 				message.clone(),
-				ismp_fee,
 				callback
 			));
 			assert_noop!(
@@ -1015,7 +1009,6 @@ mod ismp_post {
 					signed(ALICE),
 					message_id.clone(),
 					message,
-					ismp_fee,
 					callback
 				),
 				Error::<Test>::MessageExists
@@ -1028,7 +1021,7 @@ mod ismp_post {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
-			let ismp_fee = 100;
+			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
 			let callback = None;
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
 
@@ -1036,7 +1029,6 @@ mod ismp_post {
 				signed(ALICE),
 				message_id.clone(),
 				message.clone(),
-				ismp_fee,
 				callback
 			));
 
@@ -1061,14 +1053,12 @@ mod ismp_post {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
-			let ismp_fee = 100;
 			let callback = None;
 
 			assert_ok!(Messaging::ismp_post(
 				signed(ALICE),
 				message_id.clone(),
 				message.clone(),
-				ismp_fee,
 				callback
 			));
 

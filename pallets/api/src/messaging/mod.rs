@@ -119,6 +119,8 @@ pub mod pallet {
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
+
+		type IsmpRelayerFee: Get<BalanceOf<Self>>;
 	}
 
 	#[pallet::pallet]
@@ -312,9 +314,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
-			// TODO: Peter this is the fee for the ismp relayer, it is taken no matter if a
-			// signature is used or not. Shouldnt be contract defined.
-			fee: BalanceOf<T>,
 			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
@@ -330,7 +329,7 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
+				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() })
 				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
@@ -356,8 +355,6 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Post<T>,
-			// TODO: This is the relayer fee, what should it be?
-			fee: BalanceOf<T>,
 			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
@@ -372,7 +369,7 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
+				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() })
 				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 
 			// Store commitment for lookup on response, message for querying,

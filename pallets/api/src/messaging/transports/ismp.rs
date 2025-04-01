@@ -149,45 +149,15 @@ impl<T: Config> IsmpModule for Handler<T> {
 		match timeout {
 			Timeout::Request(request) => {
 				// hash request to determine key for original request id lookup
-				let id = match request {
-					// TODO: This should be bound to the hasher used in the ismp dispatcher.
+				let commitment = match request {
 					Get(get) => H256::from(keccak_256(&get.encode())),
 					Post(post) => H256::from(keccak_256(&post.encode())),
 				};
-				let key =
-					IsmpRequests::<T>::get(id).ok_or(Error::Custom("request not found".into()))?;
-				Messages::<T>::try_mutate(key.0, key.1, |message| {
-					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
-					else {
-						return Err(Error::Custom("message not found".into()));
-					};
-					*message = Some(super::super::Message::IsmpTimeout {
-						deposit: *deposit,
-						commitment: *commitment,
-					});
-
-					Ok(())
-				})?;
-				Ok(())
+				timeout_commitment::<T>(&commitment)
 			},
 			Timeout::Response(response) => {
 				let commitment = H256::from(keccak_256(&Post(response.post).encode()));
-				let key = IsmpRequests::<T>::get(commitment)
-					.ok_or(Error::Custom("request not found".into()))?;
-				Messages::<T>::try_mutate(key.0, key.1, |message| {
-					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
-					else {
-						return Err(Error::Custom("message not found".into()));
-					};
-					*message = Some(super::super::Message::IsmpTimeout {
-						deposit: *deposit,
-						commitment: *commitment,
-					});
-
-					Ok(())
-				})?;
-
-				Ok(())
+				timeout_commitment::<T>(&commitment)
 			},
 		}
 	}
@@ -253,5 +223,24 @@ pub(crate) fn process_response<T: Config>(
 		&id,
 		super::super::Message::IsmpResponse { commitment, deposit, response: encoded_response },
 	);
+	Ok(())
+}
+
+
+fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), anyhow::Error> {
+	let key = IsmpRequests::<T>::get(commitment)
+		.ok_or(Error::Custom("request not found".into()))?;
+	Messages::<T>::try_mutate(key.0, key.1, |message| {
+	let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
+	else {
+		return Err(Error::Custom("message not found".into()));
+	};
+	*message = Some(super::super::Message::IsmpTimeout {
+		deposit: *deposit,
+		commitment: *commitment,
+	});
+
+	Ok(())
+	})?;
 	Ok(())
 }

@@ -234,6 +234,7 @@ parameter_types! {
 	pub const OnChainByteFee: Balance = 10;
 	pub const OffChainByteFee: Balance = 5;
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 10;
+	pub const IsmpRelayerFee: Balance = 100_000;
 }
 
 pub struct MockNotifyQuery<T>(T);
@@ -275,6 +276,7 @@ impl crate::messaging::Config for Test {
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
+	type IsmpRelayerFee = IsmpRelayerFee;
 }
 
 pub struct RefTimePlusProofTime;
