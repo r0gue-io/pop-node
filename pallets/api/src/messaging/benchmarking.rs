@@ -4,17 +4,19 @@
 use ::ismp::{
 	host::StateMachine,
 	module::IsmpModule,
-	router::{GetRequest, GetResponse, PostRequest, PostResponse, Response as IsmpResponse, Timeout, Request, 	},
+	router::{
+		GetRequest, GetResponse, PostRequest, PostResponse, Request, Response as IsmpResponse,
+		Timeout,
+	},
 };
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{dispatch::RawOrigin, traits::Currency, BoundedVec};
-use sp_runtime::traits::{One, Zero};
-use crate::messaging::test_utils::*;
 use sp_core::bounded_vec;
+use sp_runtime::traits::{One, Zero};
 
 use super::*;
-use crate::Read as _;
+use crate::{messaging::test_utils::*, Read as _};
 const SEED: u32 = 1;
 
 // See if `generic_event` has been emitted.
@@ -27,7 +29,7 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 	T: pallet_balances::Config
 )]
 mod messaging_benchmarks {
-	use super::{*};
+	use super::*;
 
 	/// x: The number of removals required.
 	#[benchmark]
@@ -249,7 +251,6 @@ mod messaging_benchmarks {
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id, get, One::one(), None);
-
 	}
 
 	#[benchmark]
@@ -257,17 +258,17 @@ mod messaging_benchmarks {
 		let commitment = H256::repeat_byte(2u8);
 		let origin: T::AccountId = account("alice", 0, SEED);
 		let message_id = [1; 32];
-		let get = crate::messaging::ismp::Post::<T> {
-			dest: 0,
-			timeout: 0,
-			data: bounded_vec![],
-		};
+		let get = crate::messaging::ismp::Post::<T> { dest: 0, timeout: 0, data: bounded_vec![] };
 
 		#[extrinsic_call]
-		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id, get, One::one(), None);
+		Pallet::<T>::ismp_post(
+			RawOrigin::Signed(origin.clone()),
+			message_id,
+			get,
+			One::one(),
+			None,
+		);
 	}
-
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
-

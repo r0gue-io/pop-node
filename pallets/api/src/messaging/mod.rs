@@ -312,8 +312,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
-			// TODO: Peter this is the fee for the ismp relayer, it is taken no matter if a signature is used or not.
-			// Shouldnt be contract defined.
+			// TODO: Peter this is the fee for the ismp relayer, it is taken no matter if a
+			// signature is used or not. Shouldnt be contract defined.
 			fee: BalanceOf<T>,
 			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
@@ -348,7 +348,7 @@ pub mod pallet {
 			});
 			Ok(())
 		}
-		
+
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::zero())]

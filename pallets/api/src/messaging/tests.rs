@@ -9,9 +9,11 @@ use frame_support::{
 };
 use sp_core::H256;
 
-use crate::{messaging::*, mock::*, Read};
-
-use crate::messaging::test_utils;
+use crate::{
+	messaging::{test_utils, *},
+	mock::*,
+	Read,
+};
 
 pub fn events() -> Vec<Event<Test>> {
 	let result = System::events()
@@ -1096,7 +1098,6 @@ mod ismp_hooks {
 
 	mod on_timeout {
 		use super::*;
-
 	}
 
 	mod process_response {
@@ -1173,7 +1174,7 @@ mod ismp_hooks {
 				let commitment: H256 = Default::default();
 				let message_id = [1u8; 32];
 
-				let message = Message::Ismp { commitment, callback: None, deposit: 100};
+				let message = Message::Ismp { commitment, callback: None, deposit: 100 };
 				IsmpRequests::<Test>::insert(commitment, (ALICE, message_id));
 				Messages::<Test>::insert(ALICE, message_id, message);
 
@@ -1183,13 +1184,13 @@ mod ismp_hooks {
 
 				assert!(res.is_ok(), "process_response failed");
 
-				let Some(Message::IsmpResponse { commitment, deposit, response }) = Messages::<Test>::get(
-					&ALICE, &message_id
-				) else {
+				let Some(Message::IsmpResponse { commitment, deposit, response }) =
+					Messages::<Test>::get(&ALICE, &message_id)
+				else {
 					panic!("wrong message type.")
 				};
-		})
-	}
+			})
+		}
 
 		#[test]
 		fn success_callback_releases_deposit() {
@@ -1204,7 +1205,7 @@ mod ismp_hooks {
 					abi: Abi::Scale,
 				};
 				let deposit = 100;
-				let message = Message::Ismp { commitment, callback: Some(callback), deposit};
+				let message = Message::Ismp { commitment, callback: Some(callback), deposit };
 
 				<Test as crate::messaging::Config>::Deposit::hold(
 					&HoldReason::Messaging.into(),
@@ -1223,7 +1224,6 @@ mod ismp_hooks {
 				});
 
 				assert!(res.is_ok(), "process_response failed");
-
 
 				let alice_post_process = Balances::free_balance(&ALICE);
 				assert_eq!(alice_post_process - deposit, alice_post_hold);
