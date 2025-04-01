@@ -495,11 +495,22 @@ mod xcm_new_query {
 	fn takes_deposit() {
 		new_test_ext().execute_with(|| {
 			let timeout = System::block_number() + 1;
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback {
+				selector: [1; 4],
+				weight,
+				abi: Abi::Scale,
+			};
+
+			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
+
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
 				<Test as Config>::OnChainByteFee,
 			>(ProtocolStorageDeposit::XcmQueries)
-			.saturating_add(calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>());
+			 + calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>()
+				+ callback_deposit
+			 ;
 
 			assert!(
 				expected_deposit > 0,
@@ -514,7 +525,7 @@ mod xcm_new_query {
 				message_id,
 				RESPONSE_LOCATION,
 				timeout,
-				None,
+				Some(callback),
 			));
 
 			let alices_balance_post_hold = Balances::free_balance(&ALICE);
@@ -522,6 +533,7 @@ mod xcm_new_query {
 			assert_eq!(alices_balance_pre_hold - alices_balance_post_hold, expected_deposit);
 		});
 	}
+
 
 	#[test]
 	fn assert_state() {
