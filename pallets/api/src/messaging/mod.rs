@@ -9,7 +9,7 @@ use frame_support::{
 	storage::KeyLenOf,
 	traits::{
 		fungible::Inspect,
-		tokens::{fungible::hold::Mutate, Precision::Exact},
+		tokens::{fungible::hold::Mutate, Precision::Exact, Precision::BestEffort, Restriction, Fortitude},
 		Get, OriginTrait,
 	},
 };
@@ -114,7 +114,11 @@ pub mod pallet {
 		/// The maximum number of xcm timeout updates that can be processed per block.
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
+
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
+
+		/// Where the callback fees go once any refunds have occured after cb execution.
+		type FeeAccount: Get<AccountIdOf<Self>>;
 	}
 
 	#[pallet::pallet]
@@ -161,7 +165,7 @@ pub mod pallet {
 			/// The ISMP request commitment.
 			commitment: H256,
 			/// An optional callback to be used to return the response.
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		},
 		/// A response to a GET has been received via ISMP.
 		IsmpGetResponseReceived {
@@ -181,7 +185,7 @@ pub mod pallet {
 			/// The ISMP request commitment.
 			commitment: H256,
 			/// An optional callback to be used to return the response.
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		},
 		/// A response to a POST has been received via ISMP.
 		IsmpPostResponseReceived {
@@ -201,7 +205,7 @@ pub mod pallet {
 			/// The identifier of the created XCM query.
 			query_id: QueryId,
 			/// An optional callback to be used to return the response.
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		},
 		/// A response to a XCM query has been received.
 		XcmResponseReceived {
@@ -221,7 +225,7 @@ pub mod pallet {
 			/// The identifier specified for the request.
 			id: MessageId,
 			/// The successful callback.
-			callback: Callback<T::AccountId>,
+			callback: Callback,
 		},
 		/// A callback has failed.
 		CallbackFailed {
@@ -230,7 +234,7 @@ pub mod pallet {
 			/// The identifier specified for the request.
 			id: MessageId,
 			/// The callback which failed.
-			callback: Callback<T::AccountId>,
+			callback: Callback,
 			post_info: PostDispatchInfo,
 			/// The error which occurred.
 			error: DispatchError,
@@ -274,6 +278,8 @@ pub mod pallet {
 		/// Held for the duration of a message's lifespan.
 		#[codec(index = 0)]
 		Messaging,
+		#[codec(index = 1)]
+		CallbackGas,
 	}
 
 	#[pallet::hooks]
@@ -309,7 +315,7 @@ pub mod pallet {
 			id: MessageId,
 			message: ismp::Get<T>,
 			fee: BalanceOf<T>,
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
@@ -322,6 +328,10 @@ pub mod pallet {
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
+			if let Some(cb) = callback.as_ref() {
+				T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, T::WeightToFee::weight_to_fee(&cb.weight))?;
+			}
+			
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
 				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
@@ -351,7 +361,7 @@ pub mod pallet {
 			id: MessageId,
 			message: ismp::Post<T>,
 			fee: BalanceOf<T>,
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
@@ -363,6 +373,10 @@ pub mod pallet {
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+
+			if let Some(cb) = callback.as_ref() {
+				T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, T::WeightToFee::weight_to_fee(&cb.weight))?;
+			}
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
@@ -393,7 +407,7 @@ pub mod pallet {
 			id: MessageId,
 			responder: Location,
 			timeout: BlockNumberOf<T>,
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let querier_location = T::OriginConverter::try_convert(origin.clone())
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
@@ -418,6 +432,10 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+
+			if let Some(cb) = callback.as_ref() {
+				T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, T::WeightToFee::weight_to_fee(&cb.weight))?;
+			}
 
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
@@ -545,7 +563,7 @@ impl<T: Config> Pallet<T> {
 	// Attempt to notify via callback.
 	pub(crate) fn call(
 		origin: &AccountIdOf<T>,
-		callback: Callback<T::AccountId>,
+		callback: Callback,
 		id: &MessageId,
 		data: &impl Encode,
 	) -> DispatchResult {
@@ -565,17 +583,21 @@ impl<T: Config> Pallet<T> {
 		origin: &AccountIdOf<T>,
 		id: &MessageId,
 		result: DispatchResultWithPostInfo,
-		callback: Callback<AccountIdOf<T>>,
+		callback: Callback,
 	) -> DispatchResult {
 		match result {
 			Ok(post_info) => {
 				// Try and return any unused callback weight.
 				if let Some(weight_used) = post_info.actual_weight {
 					let weight_to_refund = callback.weight.saturating_sub(weight_used);
-					if !weight_to_refund.any_eq(Zero::zero()) {
-						let returnable_imbalance = T::WeightToFee::weight_to_fee(&weight_to_refund);
-						// Where do we refund to?
-						// TODO: Handle Imbalance: sc-3302.
+					if weight_to_refund.all_gt(Zero::zero()) {
+						let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
+						let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
+						let reward = total_deposit.saturating_sub(returnable_deposit);
+						let reason = HoldReason::CallbackGas.into();
+
+						T::Deposit::release(&reason, &origin, returnable_deposit, Exact)?;
+						T::Deposit::transfer_on_hold(&reason, &origin, &T::FeeAccount::get(), reward, BestEffort, Restriction::OnHold, Fortitude::Polite)?;
 					}
 				}
 
@@ -673,12 +695,12 @@ impl<T: Config> crate::Read for Pallet<T> {
 pub enum Message<T: Config> {
 	Ismp {
 		commitment: H256,
-		callback: Option<Callback<T::AccountId>>,
+		callback: Option<Callback>,
 		deposit: BalanceOf<T>,
 	},
 	XcmQuery {
 		query_id: QueryId,
-		callback: Option<Callback<T::AccountId>>,
+		callback: Option<Callback>,
 		deposit: BalanceOf<T>,
 	},
 	IsmpResponse {
@@ -724,11 +746,10 @@ pub enum MessageStatus {
 // Message selector and pre-paid weight used as gas limit
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub struct Callback<AccountId> {
+pub struct Callback {
 	pub abi: Abi,
 	pub selector: [u8; 4],
 	pub weight: Weight,
-	pub spare_weight_creditor: AccountId,
 }
 
 /// The encoding used for the data going to the contract.
