@@ -159,7 +159,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 				Messages::<T>::try_mutate(key.0, key.1, |message| {
 					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
 					else {
-						return Err(Error::Custom("message not found".into()))
+						return Err(Error::Custom("message not found".into()));
 					};
 					*message = Some(super::super::Message::IsmpTimeout {
 						deposit: *deposit,
@@ -172,12 +172,12 @@ impl<T: Config> IsmpModule for Handler<T> {
 			},
 			Timeout::Response(response) => {
 				let commitment = H256::from(keccak_256(&Post(response.post).encode()));
-				let key =
-					IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
+				let key = IsmpRequests::<T>::get(commitment)
+					.ok_or(Error::Custom("request not found".into()))?;
 				Messages::<T>::try_mutate(key.0, key.1, |message| {
 					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
 					else {
-						return Err(Error::Custom("message not found".into()))
+						return Err(Error::Custom("message not found".into()));
 					};
 					*message = Some(super::super::Message::IsmpTimeout {
 						deposit: *deposit,
@@ -224,7 +224,7 @@ pub(crate) fn process_response<T: Config>(
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
 		Messages::<T>::get(&origin, &id)
 	else {
-		return Err(Error::Custom("Message must be an ismp request.".into()).into())
+		return Err(Error::Custom("Message must be an ismp request.".into()).into());
 	};
 
 	// Deposit that the message has been recieved before a potential callback execution.
@@ -239,7 +239,7 @@ pub(crate) fn process_response<T: Config>(
 			T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)
 				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
 
-			return Ok(())
+			return Ok(());
 		}
 	}
 

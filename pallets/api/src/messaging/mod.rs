@@ -482,7 +482,7 @@ pub mod pallet {
 					Messages::<T>::remove(&origin, &id);
 					XcmQueries::<T>::remove(query_id);
 					T::Deposit::release(&HoldReason::Messaging.into(), &origin, *deposit, Exact)?;
-					return Ok(())
+					return Ok(());
 				}
 			}
 
