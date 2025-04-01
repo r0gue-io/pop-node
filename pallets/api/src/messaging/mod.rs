@@ -5,7 +5,7 @@ pub use alloc::borrow::ToOwned;
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
-	pallet_prelude::MaxEncodedLen,
+	pallet_prelude::{MaxEncodedLen, Zero},
 	storage::KeyLenOf,
 	traits::{
 		fungible::Inspect,
@@ -19,6 +19,7 @@ use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{traits::Saturating, BoundedVec, DispatchError};
 use sp_std::vec::Vec;
+use sp_weights::WeightToFee;
 use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryId},
@@ -113,6 +114,7 @@ pub mod pallet {
 		/// The maximum number of xcm timeout updates that can be processed per block.
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
+		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
 	}
 
 	#[pallet::pallet]
@@ -549,14 +551,34 @@ impl<T: Config> Pallet<T> {
 	) -> DispatchResult {
 		let result = T::CallbackExecutor::execute(
 			origin.clone(),
-			[callback.selector.to_vec(), (id, data).encode()].concat(),
+			match callback.abi {
+				Abi::Scale => [callback.selector.to_vec(), (id, data).encode()].concat(),
+			},
 			callback.weight,
 		);
 
 		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
+		Self::handle_callback_result(origin, id, result, callback)
+	}
+
+	pub(crate) fn handle_callback_result(
+		origin: &AccountIdOf<T>,
+		id: &MessageId,
+		result: DispatchResultWithPostInfo,
+		callback: Callback<AccountIdOf<T>>,
+	) -> DispatchResult {
 		match result {
-			Ok(_post_info) => {
-				// todo!("return weight")
+			Ok(post_info) => {
+				// Try and return any unused callback weight.
+				if let Some(weight_used) = post_info.actual_weight {
+					let weight_to_refund = callback.weight.saturating_sub(weight_used);
+					if !weight_to_refund.any_eq(Zero::zero()) {
+						let returnable_imbalance = T::WeightToFee::weight_to_fee(&weight_to_refund);
+						// Where do we refund to?
+						// TODO: Handle Imbalance: sc-3302.
+					}
+				}
+
 				Self::deposit_event(Event::<T>::CallbackExecuted {
 					origin: origin.clone(),
 					id: id.clone(),
@@ -703,11 +725,17 @@ pub enum MessageStatus {
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct Callback<AccountId> {
+	pub abi: Abi,
 	pub selector: [u8; 4],
 	pub weight: Weight,
 	pub spare_weight_creditor: AccountId,
 }
 
+/// The encoding used for the data going to the contract.
+#[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+pub enum Abi {
+	Scale,
+}
 pub trait CallbackExecutor<T: Config> {
 	fn execute(account: T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
 	fn execution_weight() -> Weight;
