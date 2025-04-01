@@ -160,7 +160,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 				Messages::<T>::try_mutate(key.0, key.1, |message| {
 					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
 					else {
-						return Err(Error::Custom("message not found".into()))
+						return Err(Error::Custom("message not found".into()));
 					};
 					todo!("Update message status to timed out");
 					// *message = Some(super::super::Message::IsmpTimedOut {
@@ -204,7 +204,7 @@ fn process_response<T: Config>(
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
 		Messages::<T>::get(&origin, &id)
 	else {
-		return Err(Error::Custom("message not found".into()).into())
+		return Err(Error::Custom("message not found".into()).into());
 	};
 
 	// Attempt callback with result if specified.
