@@ -593,11 +593,11 @@ impl<T: Config> Pallet<T> {
 					if weight_to_refund.all_gt(Zero::zero()) {
 						let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
 						let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
-						let reward = total_deposit.saturating_sub(returnable_deposit);
+						let execution_reward = total_deposit.saturating_sub(returnable_deposit);
 						let reason = HoldReason::CallbackGas.into();
 
-						T::Deposit::release(&reason, &origin, returnable_deposit, Exact)?;
-						T::Deposit::transfer_on_hold(&reason, &origin, &T::FeeAccount::get(), reward, BestEffort, Restriction::OnHold, Fortitude::Polite)?;
+						T::Deposit::release(&reason, &origin, returnable_deposit, BestEffort)?;
+						T::Deposit::transfer_on_hold(&reason, &origin, &T::FeeAccount::get(), execution_reward, BestEffort, Restriction::Free, Fortitude::Polite)?;
 					}
 				}
 
@@ -610,6 +610,9 @@ impl<T: Config> Pallet<T> {
 				Ok(())
 			},
 			Err(sp_runtime::DispatchErrorWithPostInfo::<PostDispatchInfo> { post_info, error }) => {
+				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
+				T::Deposit::transfer_on_hold(&HoldReason::CallbackGas.into(), &origin, &T::FeeAccount::get(), total_deposit, BestEffort, Restriction::Free, Fortitude::Polite)?;
+
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {
 					origin: origin.clone(),
@@ -618,7 +621,6 @@ impl<T: Config> Pallet<T> {
 					post_info,
 					error,
 				});
-				// TODO: logging
 				Err(error)
 			},
 		}

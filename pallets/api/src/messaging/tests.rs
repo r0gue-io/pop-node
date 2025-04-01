@@ -531,7 +531,7 @@ mod xcm_new_query {
 			let expected_callback = Callback {
 				selector: [1; 4],
 				weight: 100.into(),
-				spare_weight_creditor: BOB,
+				
 				abi: Abi::Scale,
 			};
 			let timeout = System::block_number() + 1;
@@ -685,7 +685,7 @@ mod xcm_response {
 			let callback = Callback {
 				selector: [1; 4],
 				weight: 100.into(),
-				spare_weight_creditor: BOB,
+				
 				abi: Abi::Scale,
 			};
 
@@ -712,8 +712,8 @@ mod xcm_response {
 			let xcm_response = Response::ExecutionResult(None);
 			let callback = Callback {
 				selector: [1; 4],
-				weight: 100.into(),
-				spare_weight_creditor: BOB,
+				weight: 0.into(),
+				
 				abi: Abi::Scale,
 			};
 			let expected_deposit = calculate_protocol_deposit::<
@@ -782,43 +782,51 @@ mod handle_callback_result {
 
 	use super::*;
 
+
 	#[test]
-	fn refunds_unused_weight_to_creditor_on_success() {
+	fn claims_all_weight_to_fee_pot_on_failure() {
 		new_test_ext().execute_with(|| {
 			let origin = ALICE;
 			let id = [1u8; 32];
-			let actual_weight = Weight::from_parts(100, 100);
-			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-				actual_weight: Some(actual_weight.clone()),
-				pays_fee: Pays::Yes,
+			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
+				post_info: Default::default(),
+				error: Error::<Test>::InvalidMessage.into(),
 			});
-			let bob_balance_pre_refund = Balances::free_balance(&BOB);
-			let expected_imbalance =
-				<Test as crate::messaging::Config>::WeightToFee::weight_to_fee(&actual_weight);
+			let actual_weight = Weight::from_parts(100_000_000, 100_000_000);
+
 			let callback = Callback {
 				selector: [1; 4],
-				weight: Weight::from_parts(1000, 1000),
-				spare_weight_creditor: BOB,
+				weight: actual_weight,
 				abi: Abi::Scale,
 			};
 
-			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin, &id, result, callback
-			));
+			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&actual_weight);
 
-			let bob_balance_post_refund = Balances::free_balance(&BOB);
-			assert_eq!(
-				bob_balance_post_refund - bob_balance_pre_refund,
-				expected_imbalance,
-				"oops bob hasnt been refunded!"
-			);
-		})
-	}
+			assert!(deposit != 0);
+			// Artificially take the deposit
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
 
-	#[test]
-	fn does_not_refunds_unused_weight_to_creditor_on_failure() {
-		new_test_ext().execute_with(|| {
-			todo!("sc-3302");
+			let pot_pre_handle = Balances::free_balance(&FEE_ACCOUNT);
+			let alice_balance_pre_handle = Balances::free_balance(&ALICE);
+
+			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+				&origin,
+				&id,
+				result,
+				callback.clone()
+			)
+			.is_err());
+
+			let alice_balance_post_handle = Balances::free_balance(&ALICE);
+			let pot_post_handle = Balances::free_balance(&FEE_ACCOUNT);
+
+			assert_eq!(alice_balance_post_handle, alice_balance_pre_handle);
+			assert_eq!(pot_post_handle, pot_pre_handle + deposit);
 		})
 	}
 
@@ -835,10 +843,19 @@ mod handle_callback_result {
 			let callback = Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(1000, 1000),
-				spare_weight_creditor: BOB,
 				abi: Abi::Scale,
 			};
 
+			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&actual_weight);
+
+			// Artificially take the deposit
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
+			
 			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
 				&origin,
 				&id,
@@ -866,7 +883,6 @@ mod handle_callback_result {
 			let callback = Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(1000, 1000),
-				spare_weight_creditor: BOB,
 				abi: Abi::Scale,
 			};
 
@@ -886,4 +902,65 @@ mod handle_callback_result {
 			}));
 		})
 	}
+
+	#[test]
+	fn assert_payback_when_execution_weight_is_less_than_deposit_held() {
+		new_test_ext().execute_with(|| {
+			let origin = ALICE;
+			let id = [1u8; 32];
+			let actual_weight_executed = Weight::from_parts(50_000_000, 70_000_000);
+			let callback_weight_reserved = Weight::from_parts(100_000_000, 100_000_000);
+
+			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: Some(actual_weight_executed.clone()),
+				pays_fee: Pays::Yes,
+			});
+
+			let callback = Callback {
+				selector: [1; 4],
+				weight: callback_weight_reserved,
+				abi: Abi::Scale,
+			};
+
+			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight_reserved);
+
+			assert!(deposit != 0);
+
+			// Artificially take the deposit
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
+
+			let expected_refund =  deposit - <Test as Config>::WeightToFee::weight_to_fee(&actual_weight_executed); 
+
+
+			assert!(expected_refund != 0);
+
+			let fee_pot_payment = deposit - expected_refund;
+
+			let fee_account_pre_handle = Balances::free_balance(&FEE_ACCOUNT);
+			let alice_balance_pre_handle = Balances::free_balance(&ALICE);
+
+			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+				&origin,
+				&id,
+				result,
+				callback.clone()
+			)
+			.is_ok());
+
+			/// alice should have been refunded by the tune of expected refund.
+			/// the fee pot should have been increased by fee_pot_payment.
+			let fee_account_post_handle = Balances::free_balance(&FEE_ACCOUNT);
+			let alice_balance_post_handle = Balances::free_balance(&ALICE);
+
+			assert_eq!(alice_balance_post_handle - alice_balance_pre_handle, expected_refund);
+			assert_eq!(fee_account_post_handle, fee_account_pre_handle + fee_pot_payment);
+		})
+	}
+
+
 }

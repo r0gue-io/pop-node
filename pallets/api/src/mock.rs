@@ -7,6 +7,8 @@ use frame_support::{
 	traits::{
 		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Hooks, OriginTrait,
 	},
+	dispatch::PostDispatchInfo,
+	pallet_prelude::{Pays, DispatchResultWithPostInfo}, 
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
@@ -25,6 +27,7 @@ pub(crate) const BOB: AccountId = 2;
 pub(crate) const CHARLIE: AccountId = 3;
 pub(crate) const RESPONSE: AccountId = 4;
 pub(crate) const RESPONSE_LOCATION: Location = Location { parents: 1, interior: Junctions::Here };
+pub(crate) const FEE_ACCOUNT: AccountId = 5;
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
@@ -211,6 +214,8 @@ impl crate::nonfungibles::Config for Test {
 	type WeightInfo = ();
 }
 
+/// Will return half of the weight in the post info. 
+/// Mocking a successfull execution, with refund.
 pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
 impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
 	fn execute(
@@ -218,7 +223,10 @@ impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallb
 		data: Vec<u8>,
 		weight: sp_runtime::Weight,
 	) -> frame_support::dispatch::DispatchResultWithPostInfo {
-		Ok(().into())
+		DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+			actual_weight: Some(weight),
+			pays_fee: Pays::Yes,
+		})
 	}
 
 	fn execution_weight() -> sp_runtime::Weight {
@@ -230,6 +238,7 @@ parameter_types! {
 	pub const OnChainByteFee: Balance = 10;
 	pub const OffChainByteFee: Balance = 5;
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 10;
+	pub const FeeAccount: AccountId = FEE_ACCOUNT;
 }
 
 pub struct MockNotifyQuery<T>(T);
@@ -271,6 +280,7 @@ impl crate::messaging::Config for Test {
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
+	type FeeAccount = FeeAccount;
 }
 
 pub struct RefTimePlusProofTime;
@@ -343,7 +353,7 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 		.expect("Frame system builds valid default genesis config");
 
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)],
+		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT), (FEE_ACCOUNT, INIT_AMOUNT)],
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");
