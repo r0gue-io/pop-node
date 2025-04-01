@@ -42,7 +42,7 @@ use deposits::*;
 #[cfg(test)]
 mod tests;
 
-#[cfg(test)]
+#[cfg(any(test, feature = "runtime-benchmarks"))]
 pub(crate) mod test_utils;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -348,7 +348,7 @@ pub mod pallet {
 			});
 			Ok(())
 		}
-
+		
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
 		#[pallet::call_index(2)]
 		#[pallet::weight(Weight::zero())]

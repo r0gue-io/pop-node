@@ -4,14 +4,14 @@
 use ::ismp::{
 	host::StateMachine,
 	module::IsmpModule,
-	router::{GetRequest, GetResponse, PostRequest, PostResponse, Response as IsmpResponse},
-	Timeout,
+	router::{GetRequest, GetResponse, PostRequest, PostResponse, Response as IsmpResponse, Timeout, Request, 	},
 };
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{dispatch::RawOrigin, traits::Currency, BoundedVec};
 use sp_runtime::traits::{One, Zero};
 use crate::messaging::test_utils::*;
+use sp_core::bounded_vec;
 
 use super::*;
 use crate::Read as _;
@@ -27,7 +27,7 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 	T: pallet_balances::Config
 )]
 mod messaging_benchmarks {
-	use super::{utils::*, *};
+	use super::{*};
 
 	/// x: The number of removals required.
 	#[benchmark]
@@ -230,9 +230,43 @@ mod messaging_benchmarks {
 		let handler = crate::messaging::ismp::Handler::<T>::new();
 		#[block]
 		{
-			handler.on_timeout(timeout_message)
+			handler.on_timeout(timeout_message).unwrap();
 		}
 	}
+
+	#[benchmark]
+	fn ismp_get() {
+		let commitment = H256::repeat_byte(2u8);
+		let origin: T::AccountId = account("alice", 0, SEED);
+		let message_id = [1; 32];
+		let get = crate::messaging::ismp::Get::<T> {
+			dest: 0,
+			height: 0,
+			timeout: 0,
+			context: bounded_vec!(),
+			keys: bounded_vec!(),
+		};
+
+		#[extrinsic_call]
+		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id, get, One::one(), None);
+
+	}
+
+	#[benchmark]
+	fn ismp_post() {
+		let commitment = H256::repeat_byte(2u8);
+		let origin: T::AccountId = account("alice", 0, SEED);
+		let message_id = [1; 32];
+		let get = crate::messaging::ismp::Post::<T> {
+			dest: 0,
+			timeout: 0,
+			data: bounded_vec![],
+		};
+
+		#[extrinsic_call]
+		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id, get, One::one(), None);
+	}
+
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
