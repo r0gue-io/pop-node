@@ -170,12 +170,24 @@ impl<T: Config> IsmpModule for Handler<T> {
 				})?;
 				Ok(())
 			},
-			Timeout::Response(_response) => {
-				// We have received a response which has timedout, which should be acted on as to
-				// not bloat storage. We have an opportunity either to return the deposit not
-				// and mark as timed out to await removal.
+			Timeout::Response(response) => {
+				let commitment = H256::from(keccak_256(&Post(response.post).encode()));
+				let key =
+					IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
+				Messages::<T>::try_mutate(key.0, key.1, |message| {
+					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
+					else {
+						return Err(Error::Custom("message not found".into()))
+					};
+					*message = Some(super::super::Message::IsmpTimeout {
+						deposit: *deposit,
+						commitment: *commitment,
+					});
 
-				todo!("Quick chat with peter.")
+					Ok(())
+				})?;
+
+				Ok(())
 			},
 		}
 	}
