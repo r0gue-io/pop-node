@@ -731,6 +731,7 @@ pub struct Callback<AccountId> {
 	pub spare_weight_creditor: AccountId,
 }
 
+/// The encoding used for the data going to the contract.
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum Abi {
 	Scale,
