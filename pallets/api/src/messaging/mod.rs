@@ -9,7 +9,12 @@ use frame_support::{
 	storage::KeyLenOf,
 	traits::{
 		fungible::Inspect,
-		tokens::{fungible::hold::Mutate, Precision::Exact, Precision::BestEffort, Restriction, Fortitude},
+		tokens::{
+			fungible::hold::Mutate,
+			Fortitude,
+			Precision::{BestEffort, Exact},
+			Restriction,
+		},
 		Get, OriginTrait,
 	},
 };
@@ -329,9 +334,13 @@ pub mod pallet {
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, T::WeightToFee::weight_to_fee(&cb.weight))?;
+				T::Deposit::hold(
+					&HoldReason::CallbackGas.into(),
+					&origin,
+					T::WeightToFee::weight_to_fee(&cb.weight),
+				)?;
 			}
-			
+
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
 				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
@@ -375,7 +384,11 @@ pub mod pallet {
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, T::WeightToFee::weight_to_fee(&cb.weight))?;
+				T::Deposit::hold(
+					&HoldReason::CallbackGas.into(),
+					&origin,
+					T::WeightToFee::weight_to_fee(&cb.weight),
+				)?;
 			}
 
 			// Process message by dispatching request via ISMP.
@@ -434,7 +447,11 @@ pub mod pallet {
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, T::WeightToFee::weight_to_fee(&cb.weight))?;
+				T::Deposit::hold(
+					&HoldReason::CallbackGas.into(),
+					&origin,
+					T::WeightToFee::weight_to_fee(&cb.weight),
+				)?;
 			}
 
 			// Process message by creating new query via XCM.
@@ -597,7 +614,15 @@ impl<T: Config> Pallet<T> {
 						let reason = HoldReason::CallbackGas.into();
 
 						T::Deposit::release(&reason, &origin, returnable_deposit, BestEffort)?;
-						T::Deposit::transfer_on_hold(&reason, &origin, &T::FeeAccount::get(), execution_reward, BestEffort, Restriction::Free, Fortitude::Polite)?;
+						T::Deposit::transfer_on_hold(
+							&reason,
+							&origin,
+							&T::FeeAccount::get(),
+							execution_reward,
+							BestEffort,
+							Restriction::Free,
+							Fortitude::Polite,
+						)?;
 					}
 				}
 
@@ -611,7 +636,15 @@ impl<T: Config> Pallet<T> {
 			},
 			Err(sp_runtime::DispatchErrorWithPostInfo::<PostDispatchInfo> { post_info, error }) => {
 				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
-				T::Deposit::transfer_on_hold(&HoldReason::CallbackGas.into(), &origin, &T::FeeAccount::get(), total_deposit, BestEffort, Restriction::Free, Fortitude::Polite)?;
+				T::Deposit::transfer_on_hold(
+					&HoldReason::CallbackGas.into(),
+					&origin,
+					&T::FeeAccount::get(),
+					total_deposit,
+					BestEffort,
+					Restriction::Free,
+					Fortitude::Polite,
+				)?;
 
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {

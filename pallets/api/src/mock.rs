@@ -2,13 +2,12 @@ use ::xcm::latest::{Junction, Junctions, Location};
 use codec::{Decode, Encode};
 use frame_support::{
 	derive_impl,
-	pallet_prelude::EnsureOrigin,
+	dispatch::PostDispatchInfo,
+	pallet_prelude::{DispatchResultWithPostInfo, EnsureOrigin, Pays},
 	parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Hooks, OriginTrait,
 	},
-	dispatch::PostDispatchInfo,
-	pallet_prelude::{Pays, DispatchResultWithPostInfo}, 
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
@@ -214,7 +213,7 @@ impl crate::nonfungibles::Config for Test {
 	type WeightInfo = ();
 }
 
-/// Will return half of the weight in the post info. 
+/// Will return half of the weight in the post info.
 /// Mocking a successfull execution, with refund.
 pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
 impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
@@ -264,6 +263,7 @@ pub fn get_next_query_id() -> u64 {
 impl crate::messaging::Config for Test {
 	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
 	type Deposit = Balances;
+	type FeeAccount = FeeAccount;
 	type IsmpDispatcher = MockIsmpDispatcher;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
@@ -280,7 +280,6 @@ impl crate::messaging::Config for Test {
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
-	type FeeAccount = FeeAccount;
 }
 
 pub struct RefTimePlusProofTime;
@@ -353,7 +352,12 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 		.expect("Frame system builds valid default genesis config");
 
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT), (FEE_ACCOUNT, INIT_AMOUNT)],
+		balances: vec![
+			(ALICE, INIT_AMOUNT),
+			(BOB, INIT_AMOUNT),
+			(CHARLIE, INIT_AMOUNT),
+			(FEE_ACCOUNT, INIT_AMOUNT),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");

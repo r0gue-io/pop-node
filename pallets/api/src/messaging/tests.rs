@@ -528,12 +528,8 @@ mod xcm_new_query {
 		new_test_ext().execute_with(|| {
 			// Looking for an item in Messages and XcmQueries.
 			let message_id = [0; 32];
-			let expected_callback = Callback {
-				selector: [1; 4],
-				weight: 100.into(),
-				
-				abi: Abi::Scale,
-			};
+			let expected_callback =
+				Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
 			let timeout = System::block_number() + 1;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -682,12 +678,7 @@ mod xcm_response {
 			let timeout = System::block_number() + 1;
 			let mut expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
-			let callback = Callback {
-				selector: [1; 4],
-				weight: 100.into(),
-				
-				abi: Abi::Scale,
-			};
+			let callback = Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
 
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -710,12 +701,7 @@ mod xcm_response {
 			let timeout = System::block_number() + 1;
 			let mut expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
-			let callback = Callback {
-				selector: [1; 4],
-				weight: 0.into(),
-				
-				abi: Abi::Scale,
-			};
+			let callback = Callback { selector: [1; 4], weight: 0.into(), abi: Abi::Scale };
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
 				<Test as crate::messaging::Config>::OnChainByteFee,
@@ -782,7 +768,6 @@ mod handle_callback_result {
 
 	use super::*;
 
-
 	#[test]
 	fn claims_all_weight_to_fee_pot_on_failure() {
 		new_test_ext().execute_with(|| {
@@ -794,11 +779,7 @@ mod handle_callback_result {
 			});
 			let actual_weight = Weight::from_parts(100_000_000, 100_000_000);
 
-			let callback = Callback {
-				selector: [1; 4],
-				weight: actual_weight,
-				abi: Abi::Scale,
-			};
+			let callback = Callback { selector: [1; 4], weight: actual_weight, abi: Abi::Scale };
 
 			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&actual_weight);
 
@@ -855,7 +836,7 @@ mod handle_callback_result {
 				deposit,
 			)
 			.unwrap();
-			
+
 			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
 				&origin,
 				&id,
@@ -916,11 +897,8 @@ mod handle_callback_result {
 				pays_fee: Pays::Yes,
 			});
 
-			let callback = Callback {
-				selector: [1; 4],
-				weight: callback_weight_reserved,
-				abi: Abi::Scale,
-			};
+			let callback =
+				Callback { selector: [1; 4], weight: callback_weight_reserved, abi: Abi::Scale };
 
 			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight_reserved);
 
@@ -934,8 +912,8 @@ mod handle_callback_result {
 			)
 			.unwrap();
 
-			let expected_refund =  deposit - <Test as Config>::WeightToFee::weight_to_fee(&actual_weight_executed); 
-
+			let expected_refund =
+				deposit - <Test as Config>::WeightToFee::weight_to_fee(&actual_weight_executed);
 
 			assert!(expected_refund != 0);
 
@@ -961,6 +939,4 @@ mod handle_callback_result {
 			assert_eq!(fee_account_post_handle, fee_account_pre_handle + fee_pot_payment);
 		})
 	}
-
-
 }
