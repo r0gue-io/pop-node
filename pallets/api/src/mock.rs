@@ -261,6 +261,7 @@ impl crate::messaging::Config for Test {
 	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
 	type Deposit = Balances;
 	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
+	type IsmpRelayerFee = IsmpRelayerFee;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
 	type MaxKeyLen = ConstU32<1000>;
@@ -276,7 +277,6 @@ impl crate::messaging::Config for Test {
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
-	type IsmpRelayerFee = IsmpRelayerFee;
 }
 
 pub struct RefTimePlusProofTime;

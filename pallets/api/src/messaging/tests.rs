@@ -907,12 +907,7 @@ mod ismp_get {
 			};
 			let callback = None;
 
-			assert_ok!(Messaging::ismp_get(
-				signed(ALICE),
-				message_id,
-				message.clone(),
-				callback
-			));
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message.clone(), callback));
 			assert_noop!(
 				Messaging::ismp_get(signed(ALICE), message_id, message, callback),
 				Error::<Test>::MessageExists
@@ -965,12 +960,7 @@ mod ismp_get {
 				keys: bounded_vec!(),
 			};
 			let callback = None;
-			assert_ok!(Messaging::ismp_get(
-				signed(ALICE),
-				message_id.clone(),
-				message,
-				callback
-			));
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id.clone(), message, callback));
 			let events = events();
 			let Some(Event::<Test>::IsmpGetDispatched { origin, id, commitment, callback }) =
 				events.first()
@@ -1005,12 +995,7 @@ mod ismp_post {
 				callback
 			));
 			assert_noop!(
-				Messaging::ismp_post(
-					signed(ALICE),
-					message_id.clone(),
-					message,
-					callback
-				),
+				Messaging::ismp_post(signed(ALICE), message_id.clone(), message, callback),
 				Error::<Test>::MessageExists
 			);
 		})

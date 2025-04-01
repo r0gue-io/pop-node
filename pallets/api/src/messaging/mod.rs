@@ -329,7 +329,10 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() })
+				.dispatch_request(
+					message.into(),
+					FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+				)
 				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
@@ -369,7 +372,10 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() })
+				.dispatch_request(
+					message.into(),
+					FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+				)
 				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 
 			// Store commitment for lookup on response, message for querying,
