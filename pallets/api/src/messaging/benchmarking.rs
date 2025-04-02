@@ -5,10 +5,10 @@ use ::ismp::{
 	host::StateMachine,
 	module::IsmpModule,
 	router::{
-		GetRequest, GetResponse, PostRequest, PostResponse, Request, Response as IsmpResponse,
-		Timeout, Request::*
+		GetRequest, GetResponse, PostRequest, PostResponse, Request, Request::*,
+		Response as IsmpResponse, Timeout,
 	},
-	//dispatcher::DispatchRequest::{Post, Get},
+	// dispatcher::DispatchRequest::{Post, Get},
 };
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
@@ -171,20 +171,18 @@ mod messaging_benchmarks {
 			None
 		};
 
-
 		let (response, event, commitment) = if x == 1 {
 			// get response
 			let get = ismp_get_response();
 			let commitment = H256::from(keccak_256(&Get(get.get.clone()).encode()));
 			(
 				IsmpResponse::Get(get.clone()),
-
 				crate::messaging::Event::<T>::IsmpGetResponseReceived {
 					dest: origin.clone(),
 					id: message_id,
 					commitment,
 				},
-				commitment
+				commitment,
 			)
 		} else {
 			// post response
@@ -197,7 +195,7 @@ mod messaging_benchmarks {
 					id: message_id,
 					commitment,
 				},
-				commitment
+				commitment,
 			)
 		};
 
@@ -205,7 +203,6 @@ mod messaging_benchmarks {
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &message);
-
 
 		let handler = crate::messaging::ismp::Handler::<T>::new();
 
@@ -216,7 +213,6 @@ mod messaging_benchmarks {
 
 		assert_has_event::<T>(event.into())
 	}
-
 
 	/// x: is it a Request::Get Request::Post or Response::Post.
 	/// x = 0: post request.
@@ -237,28 +233,20 @@ mod messaging_benchmarks {
 		let (timeout_message, commitment) = if x == 0 {
 			let post_request = ismp_post_request();
 			let commitment = H256::from(keccak_256(&Post(post_request.clone()).encode()));
-			(
-				Timeout::Request(Request::Post(post_request.clone())),
-				commitment
-			)
+			(Timeout::Request(Request::Post(post_request.clone())), commitment)
 		} else if x == 1 {
 			let get_request = ismp_get_request();
 			let commitment = H256::from(keccak_256(&Get(get_request.clone()).encode()));
-			(
-				Timeout::Request(Request::Get(get_request.clone())),
-				commitment,
-			)
+			(Timeout::Request(Request::Get(get_request.clone())), commitment)
 		} else {
 			let post_response = ismp_post_response();
 			let commitment = H256::from(keccak_256(&Post(post_response.post.clone()).encode()));
 
-			(
-				Timeout::Response(post_response),
-				commitment
-			)
+			(Timeout::Response(post_response), commitment)
 		};
 
-		let input_message = Message::Ismp { commitment, callback: Some(callback), deposit: One::one() };
+		let input_message =
+			Message::Ismp { commitment, callback: Some(callback), deposit: One::one() };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &input_message);
@@ -270,15 +258,19 @@ mod messaging_benchmarks {
 		}
 	}
 
-
 	/// x: Maximum context len: bound to u16::MAX T::MaxContextLen
 	/// y: Maximum length of keys (inner) len: bound to u16::MAX T::MaxKeyLen
 	/// z: Maximum amount of keys (outer) len: bound to u16::MAX T::MaxKeys
 	#[benchmark]
-	fn ismp_get(x: Linear<0, {u16::MAX.into()}>, y: Linear<0, {u16::MAX.into()}>, z: Linear<0, {u16::MAX.into()}>) {
+	fn ismp_get(
+		x: Linear<0, { u16::MAX.into() }>,
+		y: Linear<0, { u16::MAX.into() }>,
+		z: Linear<0, { u16::MAX.into() }>,
+	) {
 		let origin: T::AccountId = account("alice", 0, SEED);
 		let message_id = [1; 32];
-		let inner_keys: BoundedVec<u8, T::MaxKeyLen> = vec![1u8].repeat(y as usize).try_into().unwrap();
+		let inner_keys: BoundedVec<u8, T::MaxKeyLen> =
+			vec![1u8].repeat(y as usize).try_into().unwrap();
 		let mut outer_keys = vec![];
 		for k in (0..z) {
 			outer_keys.push(inner_keys.clone())
@@ -300,12 +292,12 @@ mod messaging_benchmarks {
 
 	/// x: Maximun byte len of outgoing data.
 	#[benchmark]
-	fn ismp_post(x: Linear<0, {u16::MAX.into()}>) {
+	fn ismp_post(x: Linear<0, { u16::MAX.into() }>) {
 		let origin: T::AccountId = account("alice", 0, SEED);
 		let message_id = [1; 32];
 		let data = vec![1u8].repeat(x as usize).try_into().unwrap();
 
-		let get = crate::messaging::ismp::Post::<T> { dest: 0, timeout: 0, data};
+		let get = crate::messaging::ismp::Post::<T> { dest: 0, timeout: 0, data };
 		let callback = Callback {
 			selector: [1; 4],
 			weight: 100.into(),
@@ -314,14 +306,9 @@ mod messaging_benchmarks {
 		};
 
 		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, u32::MAX.into());
-		
+
 		#[extrinsic_call]
-		Pallet::<T>::ismp_post(
-			RawOrigin::Signed(origin.clone()),
-			message_id,
-			get,
-			Some(callback),
-		);
+		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id, get, Some(callback));
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

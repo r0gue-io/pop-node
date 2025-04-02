@@ -99,21 +99,21 @@ pub mod pallet {
 		/// The maximum length of outbound (posted) data.
 		#[pallet::constant]
 		type MaxDataLen: Get<u32>;
-		
+
 		/// SAFETY: should be less than or equal to u16.
 		/// The maximum amount of key for an outbound request.
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
-		
+
 		/// SAFETY: should be less than or equal to u16.
 		/// The maximum byte length for a single key of an ismp request.
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
-		
+
 		/// The maximum lenght for a response.
 		#[pallet::constant]
 		type MaxResponseLen: Get<u32>;
-		
+
 		/// The maximum amount of removals in a single call to remove.
 		#[pallet::constant]
 		type MaxRemovals: Get<u32>;
@@ -132,7 +132,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
-		/// The type responsible for converting between weight and balance, commonly transaction payment.
+		/// The type responsible for converting between weight and balance, commonly transaction
+		/// payment.
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
 
 		/// The fee paid to the relayers account for relaying a message.
