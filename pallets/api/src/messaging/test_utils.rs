@@ -14,9 +14,9 @@ pub fn ismp_get_request() -> GetRequest {
 		dest: StateMachine::Polkadot(2001),
 		nonce: 100u64,
 		from: vec![],
-		keys: vec![vec![]],
+		keys: vec![[1u8].repeat(1000)],
 		height: 1,
-		context: vec![],
+		context: [1u8].repeat(1000),
 		timeout_timestamp: 10000,
 	}
 }
@@ -26,10 +26,10 @@ pub fn ismp_post_request() -> PostRequest {
 		source: StateMachine::Polkadot(2000),
 		dest: StateMachine::Polkadot(2001),
 		nonce: 100u64,
-		from: vec![],
-		to: vec![],
+		from: [1u8].repeat(1000),
+		to: [1u8].repeat(1000),
 		timeout_timestamp: 10000,
-		body: vec![],
+		body: [1u8].repeat(1000),
 	}
 }
 

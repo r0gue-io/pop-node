@@ -80,6 +80,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type OffChainByteFee: Get<BalanceOf<Self>>;
 
+		/// The type responsible for executing callbacks.
 		type CallbackExecutor: CallbackExecutor<Self>;
 
 		/// The deposit mechanism.
@@ -93,24 +94,37 @@ pub mod pallet {
 		/// request.
 		#[pallet::constant]
 		type MaxContextLen: Get<u32>;
+
+		/// SAFETY: should be less than or equal to u16.
 		/// The maximum length of outbound (posted) data.
 		#[pallet::constant]
 		type MaxDataLen: Get<u32>;
+		
+		/// SAFETY: should be less than or equal to u16.
+		/// The maximum amount of key for an outbound request.
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
+		
+		/// SAFETY: should be less than or equal to u16.
+		/// The maximum byte length for a single key of an ismp request.
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
-
+		
+		/// The maximum lenght for a response.
 		#[pallet::constant]
 		type MaxResponseLen: Get<u32>;
+		
+		/// The maximum amount of removals in a single call to remove.
 		#[pallet::constant]
 		type MaxRemovals: Get<u32>;
 
 		/// Overarching hold reason.
 		type RuntimeHoldReason: From<HoldReason>;
 
+		/// Wrapper type for creating a query with a notify
 		type Xcm: NotifyQueryHandler<Self>;
 
+		/// The origin of the response for xcm.
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 
 		/// SAFETY: Recommended this is small as is used to updated a message status in the hooks.
@@ -118,8 +132,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
+		/// The type responsible for converting between weight and balance, commonly transaction payment.
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
 
+		/// The fee paid to the relayers account for relaying a message.
 		type IsmpRelayerFee: Get<BalanceOf<Self>>;
 	}
 
