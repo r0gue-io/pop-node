@@ -503,7 +503,6 @@ mod xcm_new_query {
 
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 
-
 			let expected_deposit =
 				calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
 					ProtocolStorageDeposit::XcmQueries,
@@ -993,7 +992,6 @@ mod ismp_get {
 
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 
-
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
 				<Test as Config>::OnChainByteFee,
@@ -1242,11 +1240,7 @@ mod ismp_hooks {
 				let response = vec![1u8];
 				let commitment: H256 = Default::default();
 				let message_id = [1u8; 32];
-				let callback = Callback {
-					selector: [1; 4],
-					weight: 100.into(),
-					abi: Abi::Scale,
-				};
+				let callback = Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
 				let deposit = 100;
 				let message = Message::Ismp { commitment, callback: Some(callback), deposit };
 
