@@ -73,19 +73,24 @@ mod messaging_benchmarks {
 		)
 	}
 
+	/// x: Is there a callback.
 	#[benchmark]
-	fn xcm_new_query() {
+	fn xcm_new_query(x: Linear<0, 1>) {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		let message_id: [u8; 32] = [0; 32];
 		let responder = Location { parents: 1, interior: Junctions::Here };
 		let timeout = <BlockNumberOf<T> as One>::one() + frame_system::Pallet::<T>::block_number();
-		let callback = Callback {
-			selector: [0; 4],
-			weight: 100.into(),
-			spare_weight_creditor: owner.clone(),
-			abi: Abi::Scale,
+		let callback = if x == 1 {
+			Some(Callback {
+				selector: [0; 4],
+				weight: 100.into(),
+				spare_weight_creditor: owner.clone(),
+				abi: Abi::Scale,
+			})
+		} else {
+			None
 		};
-
+		
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
 		#[extrinsic_call]
@@ -94,7 +99,7 @@ mod messaging_benchmarks {
 			message_id.clone(),
 			responder.clone(),
 			timeout,
-			Some(callback.clone()),
+			callback.clone(),
 		);
 
 		assert_has_event::<T>(
@@ -102,13 +107,13 @@ mod messaging_benchmarks {
 				origin: owner,
 				id: message_id,
 				query_id: 0,
-				callback: Some(callback),
+				callback: callback,
 			}
 			.into(),
 		)
 	}
 
-	/// x: Whether a successfully executing callback is provided.
+	/// x: Wether a successfully executing callback is provided.
 	#[benchmark]
 	fn xcm_response(x: Linear<0, 1>) {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);

@@ -505,7 +505,6 @@ pub mod pallet {
 					return Ok(());
 				}
 			}
-
 			// No callback is executed,
 			Messages::<T>::insert(
 				&origin,
@@ -605,8 +604,6 @@ impl<T: Config> Pallet<T> {
 						// TODO: Handle Imbalance: sc-3302.
 					}
 				}
-
-				// release blockspace if over a certain thresh hold?
 
 				Self::deposit_event(Event::<T>::CallbackExecuted {
 					origin: origin.clone(),
@@ -760,6 +757,7 @@ pub struct Callback<AccountId> {
 	pub spare_weight_creditor: AccountId,
 }
 
+/// The encoding used for the data going to the contract.
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum Abi {
 	Scale,
