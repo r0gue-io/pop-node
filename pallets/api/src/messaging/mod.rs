@@ -110,7 +110,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
 
-		/// The maximum lenght for a response.
+		/// The maximum length for a response.
 		#[pallet::constant]
 		type MaxResponseLen: Get<u32>;
 
