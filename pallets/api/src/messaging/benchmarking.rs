@@ -12,11 +12,15 @@ use ::ismp::{
 };
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
-use frame_support::{dispatch::RawOrigin, traits::Currency, BoundedVec, sp_runtime::traits::Hash, sp_runtime::RuntimeDebug,};
-use sp_core::{bounded_vec, keccak_256, H256, Get};
-use sp_runtime::traits::{One, Zero};
+use frame_support::{
+	dispatch::RawOrigin,
+	sp_runtime::{traits::Hash, RuntimeDebug},
+	traits::Currency,
+	BoundedVec,
+};
+use sp_core::{bounded_vec, keccak_256, Get, H256};
 use sp_io::hashing::blake2_256;
-
+use sp_runtime::traits::{One, Zero};
 
 use super::*;
 use crate::{messaging::test_utils::*, Read as _};
@@ -49,17 +53,17 @@ mod messaging_benchmarks {
 				deposit,
 			)
 			.unwrap();
-		
+
 			// Generate unique message_id and commitment using hashing
 			let message_id = H256::from(blake2_256(&(i.to_le_bytes())));
 			let commitment = H256::from(blake2_256(&(i.to_le_bytes())));
-		
+
 			let good_message = Message::IsmpResponse {
 				commitment: commitment.clone(),
 				deposit,
 				response: Default::default(),
 			};
-		
+
 			Messages::<T>::insert(&owner, &message_id.0, &good_message);
 			IsmpRequests::<T>::insert(&commitment, (&owner, &message_id.0));
 			message_ids.try_push(message_id.0).unwrap();
@@ -90,7 +94,7 @@ mod messaging_benchmarks {
 		} else {
 			None
 		};
-		
+
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
 		#[extrinsic_call]
@@ -107,7 +111,7 @@ mod messaging_benchmarks {
 				origin: owner,
 				id: message_id,
 				query_id: 0,
-				callback: callback,
+				callback,
 			}
 			.into(),
 		)
@@ -166,7 +170,7 @@ mod messaging_benchmarks {
 	#[benchmark]
 	fn ismp_on_response(x: Linear<0, 1>, y: Linear<0, 1>) {
 		let origin: T::AccountId = account("alice", 0, SEED);
- 		let message_id = [1; 32];
+		let message_id = [1; 32];
 		let callback = if y == 1 {
 			// The mock will always assume successfull callback.
 			Some(Callback {
@@ -181,7 +185,12 @@ mod messaging_benchmarks {
 
 		let (response, event, commitment) = if x == 1 {
 			// get response
-			let get = ismp_get_response(T::MaxKeyLen::get() as usize, T::MaxKeys::get() as usize, T::MaxContextLen::get() as usize, T::MaxResponseLen::get() as usize);
+			let get = ismp_get_response(
+				T::MaxKeyLen::get() as usize,
+				T::MaxKeys::get() as usize,
+				T::MaxContextLen::get() as usize,
+				T::MaxResponseLen::get() as usize,
+			);
 			let commitment = H256::from(keccak_256(&Get(get.get.clone()).encode()));
 			(
 				IsmpResponse::Get(get.clone()),
@@ -194,7 +203,10 @@ mod messaging_benchmarks {
 			)
 		} else {
 			// post response
-			let post = ismp_post_response(T::MaxDataLen::get() as usize, T::MaxResponseLen::get() as usize);
+			let post = ismp_post_response(
+				T::MaxDataLen::get() as usize,
+				T::MaxResponseLen::get() as usize,
+			);
 			let commitment = H256::from(keccak_256(&Post(post.post.clone()).encode()));
 			(
 				IsmpResponse::Post(post.clone()),
@@ -232,7 +244,7 @@ mod messaging_benchmarks {
 		let commitment = H256::repeat_byte(2u8);
 		let origin: T::AccountId = account("alice", 0, SEED);
 		let message_id = [1; 32];
-		
+
 		let callback = if y == 1 {
 			Some(Callback {
 				selector: [1; 4],
@@ -249,18 +261,24 @@ mod messaging_benchmarks {
 			let commitment = H256::from(keccak_256(&Post(post_request.clone()).encode()));
 			(Timeout::Request(Request::Post(post_request.clone())), commitment)
 		} else if x == 1 {
-			let get_request = ismp_get_request(T::MaxKeyLen::get() as usize, T::MaxKeys::get() as usize, T::MaxContextLen::get() as usize);
+			let get_request = ismp_get_request(
+				T::MaxKeyLen::get() as usize,
+				T::MaxKeys::get() as usize,
+				T::MaxContextLen::get() as usize,
+			);
 			let commitment = H256::from(keccak_256(&Get(get_request.clone()).encode()));
 			(Timeout::Request(Request::Get(get_request.clone())), commitment)
 		} else {
-			let post_response = ismp_post_response(T::MaxDataLen::get() as usize, T::MaxResponseLen::get() as usize);
+			let post_response = ismp_post_response(
+				T::MaxDataLen::get() as usize,
+				T::MaxResponseLen::get() as usize,
+			);
 			let commitment = H256::from(keccak_256(&Post(post_response.post.clone()).encode()));
 
 			(Timeout::Response(post_response), commitment)
 		};
 
-		let input_message =
-			Message::Ismp { commitment, callback, deposit: One::one() };
+		let input_message = Message::Ismp { commitment, callback, deposit: One::one() };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &input_message);
