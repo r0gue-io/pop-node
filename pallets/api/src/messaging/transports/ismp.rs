@@ -10,8 +10,10 @@ use ::ismp::{
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
-	pallet_prelude::Weight, traits::Get as _, CloneNoBound, DebugNoBound, EqNoBound,
-	PartialEqNoBound,
+	ensure,
+	pallet_prelude::Weight,
+	traits::{fungible::MutateHold, tokens::Precision::Exact, Get as _},
+	CloneNoBound, DebugNoBound, EqNoBound, PartialEqNoBound,
 };
 use ismp::{
 	dispatcher::DispatchPost,
@@ -26,7 +28,7 @@ use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, MessageId, Vec,
+	AccountIdOf, HoldReason, MessageId, Vec,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -119,7 +121,8 @@ impl<T> Handler<T> {
 
 impl<T: Config> IsmpModule for Handler<T> {
 	fn on_accept(&self, _request: PostRequest) -> Result<(), anyhow::Error> {
-		todo!()
+		Err(Error::Custom("pop-net is not accepting post requests at this time!".to_string())
+			.into())
 	}
 
 	fn on_response(&self, response: Response) -> Result<(), anyhow::Error> {
@@ -127,22 +130,17 @@ impl<T: Config> IsmpModule for Handler<T> {
 		match response {
 			Response::Get(GetResponse { get, values }) => {
 				log::debug!(target: "pop-api::extension", "StorageValue={:?}", values[0]);
-				let commitment = H256::from(keccak_256(&ismp::router::Request::Get(get).encode()));
-				process_response(
-					&commitment,
-					&values,
-					|| values.encode(),
-					|dest, id| Event::<T>::IsmpGetResponseReceived { dest, id, commitment },
-				)
+				// TODO: This should be bound to the hasher used in the ismp dispatcher.
+				let commitment = H256::from(keccak_256(&Get(get).encode()));
+				process_response(&commitment, &values, |dest, id| {
+					Event::<T>::IsmpGetResponseReceived { dest, id, commitment }
+				})
 			},
 			Response::Post(PostResponse { post, response, .. }) => {
 				let commitment = H256::from(keccak_256(&Post(post).encode()));
-				process_response(
-					&commitment,
-					&response,
-					|| response.clone(), // TODO: resolve unnecessary clone
-					|dest, id| Event::<T>::IsmpPostResponseReceived { dest, id, commitment },
-				)
+				process_response(&commitment, &response, |dest, id| {
+					Event::<T>::IsmpPostResponseReceived { dest, id, commitment }
+				})
 			},
 		}
 	}
@@ -151,36 +149,24 @@ impl<T: Config> IsmpModule for Handler<T> {
 		match timeout {
 			Timeout::Request(request) => {
 				// hash request to determine key for original request id lookup
-				let id = match request {
+				let commitment = match request {
 					Get(get) => H256::from(keccak_256(&get.encode())),
 					Post(post) => H256::from(keccak_256(&post.encode())),
 				};
-				let key =
-					IsmpRequests::<T>::get(id).ok_or(Error::Custom("request not found".into()))?;
-				Messages::<T>::try_mutate(key.0, key.1, |message| {
-					let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message
-					else {
-						return Err(Error::Custom("message not found".into()));
-					};
-					todo!("Update message status to timed out");
-					// *message = Some(super::super::Message::IsmpTimedOut {
-					// 	deposit: *deposit,
-					// 	commitment: *commitment,
-					// });
-				})?;
-				Ok(())
+				timeout_commitment::<T>(&commitment)
 			},
-			Timeout::Response(_response) => {
-				todo!()
+			Timeout::Response(response) => {
+				let commitment = H256::from(keccak_256(&Post(response.post).encode()));
+				timeout_commitment::<T>(&commitment)
 			},
 		}
 	}
 }
 
-// TODO: replace with benchmarked weight functions
 impl<T: Config> IsmpModuleWeight for Pallet<T> {
+	// Static as not in use.
 	fn on_accept(&self, _request: &PostRequest) -> Weight {
-		todo!()
+		DbWeightOf::<T>::get().reads_writes(2, 1)
 	}
 
 	fn on_timeout(&self, _timeout: &Timeout) -> Weight {
@@ -192,39 +178,65 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 	}
 }
 
-fn process_response<T: Config>(
+pub(crate) fn process_response<T: Config>(
 	commitment: &H256,
-	encode: &impl Encode,
-	store: impl Fn() -> Vec<u8>,
+	response_data: &impl Encode,
 	event: impl Fn(AccountIdOf<T>, MessageId) -> Event<T>,
 ) -> Result<(), anyhow::Error> {
+	ensure!(
+		response_data.encoded_size() <= T::MaxResponseLen::get() as usize,
+		Error::Custom("Response length exceeds maximum allowed length.".into())
+	);
+
 	let (origin, id) =
-		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
+		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("Request not found.".into()))?;
 
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
 		Messages::<T>::get(&origin, &id)
 	else {
-		return Err(Error::Custom("message not found".into()).into());
+		return Err(Error::Custom("Message must be an ismp request.".into()).into());
 	};
+
+	// Deposit that the message has been recieved before a potential callback execution.
+	Pallet::<T>::deposit_event(event(origin.clone(), id));
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
-		// TODO: check response length
-		// TODO: update status if failed
-		if Pallet::<T>::call(&origin, callback, &id, &encode).is_ok() {
-			Pallet::<T>::deposit_event(event(origin, id));
+		if Pallet::<T>::call(&origin, callback, &id, response_data).is_ok() {
+			// Clean storage, return deposit
+			Messages::<T>::remove(&origin, &id);
+			IsmpRequests::<T>::remove(&commitment);
+			T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)
+				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
+
 			return Ok(());
 		}
 	}
 
-	// Otherwise store response for manual retrieval and removal.
-	let response: BoundedVec<u8, T::MaxResponseLen> =
-		store().try_into().map_err(|_| Error::Custom("response exceeds max".into()))?;
+	// No callback or callback error: store response for manual retrieval and removal.
+	let encoded_response: BoundedVec<u8, T::MaxResponseLen> = response_data
+		.encode()
+		.try_into()
+		.map_err(|_| Error::Custom("response exceeds max".into()))?;
 	Messages::<T>::insert(
 		&origin,
 		&id,
-		super::super::Message::IsmpResponse { commitment, deposit, response },
+		super::super::Message::IsmpResponse { commitment, deposit, response: encoded_response },
 	);
-	Pallet::<T>::deposit_event(event(origin, id));
+	Ok(())
+}
+
+fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), anyhow::Error> {
+	let key =
+		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
+	Messages::<T>::try_mutate(key.0, key.1, |message| {
+		let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message else {
+			return Err(Error::Custom("message not found".into()));
+		};
+		*message =
+			Some(super::super::Message::IsmpTimeout { deposit: *deposit, commitment: *commitment });
+
+		Ok(())
+	})?;
 	Ok(())
 }

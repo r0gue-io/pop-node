@@ -47,6 +47,9 @@ use deposits::*;
 #[cfg(test)]
 mod tests;
 
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+pub(crate) mod test_utils;
+
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
 type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
@@ -82,6 +85,7 @@ pub mod pallet {
 		#[pallet::constant]
 		type OffChainByteFee: Get<BalanceOf<Self>>;
 
+		/// The type responsible for executing callbacks.
 		type CallbackExecutor: CallbackExecutor<Self>;
 
 		/// The deposit mechanism.
@@ -95,24 +99,37 @@ pub mod pallet {
 		/// request.
 		#[pallet::constant]
 		type MaxContextLen: Get<u32>;
+
+		/// SAFETY: should be less than or equal to u16.
 		/// The maximum length of outbound (posted) data.
 		#[pallet::constant]
 		type MaxDataLen: Get<u32>;
+
+		/// SAFETY: should be less than or equal to u16.
+		/// The maximum amount of key for an outbound request.
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
+
+		/// SAFETY: should be less than or equal to u16.
+		/// The maximum byte length for a single key of an ismp request.
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
 
+		/// The maximum length for a response.
 		#[pallet::constant]
 		type MaxResponseLen: Get<u32>;
+
+		/// The maximum amount of removals in a single call to remove.
 		#[pallet::constant]
 		type MaxRemovals: Get<u32>;
 
 		/// Overarching hold reason.
 		type RuntimeHoldReason: From<HoldReason>;
 
+		/// Wrapper type for creating a query with a notify
 		type Xcm: NotifyQueryHandler<Self>;
 
+		/// The origin of the response for xcm.
 		type XcmResponseOrigin: EnsureOrigin<Self::RuntimeOrigin, Success = Location>;
 
 		/// SAFETY: Recommended this is small as is used to updated a message status in the hooks.
@@ -120,10 +137,15 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
-		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
-
 		/// Where the callback fees go once any refunds have occured after cb execution.
 		type FeeAccount: Get<AccountIdOf<Self>>;
+
+		/// The type responsible for converting between weight and balance, commonly transaction
+		/// payment.
+		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
+
+		/// The fee paid to the relayers account for relaying a message.
+		type IsmpRelayerFee: Get<BalanceOf<Self>>;
 	}
 
 	#[pallet::pallet]
@@ -319,16 +341,15 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
-			fee: BalanceOf<T>,
-			callback: Option<Callback>,
+			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
-
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
+			// TODO: is this meant to be our struct or theirs? 
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
@@ -343,7 +364,10 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
+				.dispatch_request(
+					message.into(),
+					FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+				)
 				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
@@ -369,12 +393,10 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Post<T>,
-			fee: BalanceOf<T>,
-			callback: Option<Callback>,
+			callback: Option<Callback<T::AccountId>>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
-
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
@@ -393,7 +415,10 @@ pub mod pallet {
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(message.into(), FeeMetadata { payer: origin.clone(), fee })
+				.dispatch_request(
+					message.into(),
+					FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+				)
 				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 
 			// Store commitment for lookup on response, message for querying,

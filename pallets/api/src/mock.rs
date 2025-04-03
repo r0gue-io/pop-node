@@ -6,18 +6,20 @@ use frame_support::{
 	pallet_prelude::{DispatchResultWithPostInfo, EnsureOrigin, Pays},
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Hooks, OriginTrait,
+		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Get, Hooks, OriginTrait,
 	},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
+use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use pallet_nfts::PalletFeatures;
 use pallet_xcm::{Origin, TestWeightInfo};
 use scale_info::TypeInfo;
-use sp_core::H256;
+use sp_core::{keccak_256, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, TryConvert, Verify},
 	BuildStorage,
 };
+use sp_std::prelude::*;
 
 use crate::messaging::{Call, CallbackExecutor, Messages, NotifyQueryHandler};
 
@@ -47,6 +49,8 @@ frame_support::construct_runtime!(
 		Nfts: pallet_nfts::<Instance1>,
 		NonFungibles: crate::nonfungibles,
 		Messaging: crate::messaging,
+		Ismp: pallet_ismp,
+		TimeStamps: pallet_timestamp,
 	}
 );
 
@@ -238,6 +242,7 @@ parameter_types! {
 	pub const OffChainByteFee: Balance = 5;
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 10;
 	pub const FeeAccount: AccountId = FEE_ACCOUNT;
+	pub const IsmpRelayerFee: Balance = 100_000;
 }
 
 pub struct MockNotifyQuery<T>(T);
@@ -264,10 +269,10 @@ impl crate::messaging::Config for Test {
 	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
 	type Deposit = Balances;
 	type FeeAccount = FeeAccount;
-	type IsmpDispatcher = MockIsmpDispatcher;
+	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
+	type IsmpRelayerFee = IsmpRelayerFee;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
-	type MaxKeyLen = ConstU32<1000>;
 	type MaxKeys = ConstU32<10>;
 	type MaxRemovals = ConstU32<1024>;
 	type MaxResponseLen = ConstU32<1024>;
@@ -288,29 +293,6 @@ impl sp_weights::WeightToFee for RefTimePlusProofTime {
 
 	fn weight_to_fee(weight: &sp_weights::Weight) -> Self::Balance {
 		(weight.ref_time() + weight.proof_size()) as u128
-	}
-}
-
-#[derive(Default)]
-pub struct MockIsmpDispatcher;
-impl ismp::dispatcher::IsmpDispatcher for MockIsmpDispatcher {
-	type Account = AccountId;
-	type Balance = Balance;
-
-	fn dispatch_request(
-		&self,
-		_request: ismp::dispatcher::DispatchRequest,
-		_fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
-	) -> Result<H256, anyhow::Error> {
-		Ok(Default::default())
-	}
-
-	fn dispatch_response(
-		&self,
-		_response: ismp::router::PostResponse,
-		_fee: ismp::dispatcher::FeeMetadata<Self::Account, Self::Balance>,
-	) -> Result<H256, anyhow::Error> {
-		Ok(Default::default())
 	}
 }
 
@@ -343,6 +325,50 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootWithResponseSuccess {
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<O, ()> {
 		todo!()
+	}
+}
+
+impl pallet_timestamp::Config for Test {
+	type MinimumPeriod = ConstU64<0>;
+	/// A timestamp: milliseconds since the unix epoch.
+	type Moment = u64;
+	type OnTimestampSet = ();
+	type WeightInfo = ();
+}
+
+impl pallet_ismp::Config for Test {
+	type AdminOrigin = EnsureRoot<AccountId>;
+	type Balance = Balance;
+	type ConsensusClients = ();
+	type Coprocessor = Coprocessor;
+	type Currency = Balances;
+	type HostStateMachine = HostStateMachine;
+	type OffchainDB = ();
+	type Router = AlwaysErrorRouter;
+	type RuntimeEvent = RuntimeEvent;
+	type TimestampProvider = TimeStamps;
+	type WeightProvider = ();
+}
+
+#[derive(Default)]
+pub struct AlwaysErrorRouter;
+impl IsmpRouter for AlwaysErrorRouter {
+	fn module_for_id(&self, _bytes: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
+		Err(anyhow::anyhow!("not implemented"))
+	}
+}
+
+pub struct Coprocessor;
+impl Get<Option<StateMachine>> for Coprocessor {
+	fn get() -> Option<StateMachine> {
+		Some(HostStateMachine::get())
+	}
+}
+
+pub struct HostStateMachine;
+impl Get<StateMachine> for HostStateMachine {
+	fn get() -> StateMachine {
+		StateMachine::Polkadot(2000)
 	}
 }
 
