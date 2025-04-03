@@ -503,6 +503,7 @@ mod xcm_new_query {
 
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 
+
 			let expected_deposit =
 				calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
 					ProtocolStorageDeposit::XcmQueries,
@@ -513,6 +514,7 @@ mod xcm_new_query {
 				expected_deposit > 0,
 				"set an onchain byte fee with T::OnChainByteFee to run this test."
 			);
+			assert!(callback_deposit != 0);
 
 			let alices_balance_pre_hold = Balances::free_balance(&ALICE);
 
@@ -985,7 +987,12 @@ mod ismp_get {
 				keys: bounded_vec!(),
 			};
 			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
-			let callback = None;
+
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
+
+			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
+
 
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
@@ -993,11 +1000,11 @@ mod ismp_get {
 			>(ProtocolStorageDeposit::IsmpRequests) +
 				calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
 				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Get<Test>>(
-				) + ismp_fee;
+				) + ismp_fee + callback_deposit;
 
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
 
-			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, callback));
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, Some(callback)));
 
 			let alice_balance_post_hold = Balances::free_balance(&ALICE);
 
@@ -1065,14 +1072,18 @@ mod ismp_post {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
-			let callback = None;
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
+			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
+
+			assert!(callback_deposit != 0);
 
 			assert_ok!(Messaging::ismp_post(
 				signed(ALICE),
 				message_id.clone(),
 				message.clone(),
-				callback
+				Some(callback)
 			));
 
 			let expected_deposit = calculate_protocol_deposit::<
@@ -1081,7 +1092,7 @@ mod ismp_post {
 			>(ProtocolStorageDeposit::IsmpRequests) +
 				calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
 				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Post<Test>>(
-				) + ismp_fee;
+				) + ismp_fee + callback_deposit;
 
 			assert!(expected_deposit != (0 + ismp_fee));
 
@@ -1234,7 +1245,6 @@ mod ismp_hooks {
 				let callback = Callback {
 					selector: [1; 4],
 					weight: 100.into(),
-					spare_weight_creditor: BOB,
 					abi: Abi::Scale,
 				};
 				let deposit = 100;

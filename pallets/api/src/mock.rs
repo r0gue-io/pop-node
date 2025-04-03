@@ -274,6 +274,7 @@ impl crate::messaging::Config for Test {
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
 	type MaxKeys = ConstU32<10>;
+	type MaxKeyLen = ConstU32<32>;
 	type MaxRemovals = ConstU32<1024>;
 	type MaxResponseLen = ConstU32<1024>;
 	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;

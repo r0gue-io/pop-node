@@ -341,7 +341,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
@@ -393,7 +393,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Post<T>,
-			callback: Option<Callback<T::AccountId>>,
+			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
