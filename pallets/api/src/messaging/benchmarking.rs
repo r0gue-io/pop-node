@@ -118,7 +118,7 @@ mod messaging_benchmarks {
 		let response = Response::ExecutionResult(None);
 
 		let callback = if x == 1 {
-			// The mock will always assume successfull callback.
+			// The mock will always assume successful callback.
 			Some(Callback {
 				selector: [0; 4],
 				weight: 100.into(),
