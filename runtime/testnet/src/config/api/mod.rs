@@ -93,13 +93,15 @@ impl RuntimeResult {
 
 parameter_types! {
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
-
+	//TODO: What is reasonable.
+	pub const IsmpRelayerFee: crate::Balance = 100_000;
 }
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
 	type IsmpDispatcher = Ismp;
+	type IsmpRelayerFee = IsmpRelayerFee;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
 	type MaxKeyLen = ConstU32<32>;

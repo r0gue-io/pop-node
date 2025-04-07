@@ -121,7 +121,7 @@ impl<T> Handler<T> {
 
 impl<T: Config> IsmpModule for Handler<T> {
 	fn on_accept(&self, _request: PostRequest) -> Result<(), anyhow::Error> {
-		Err(Error::Custom("pop-net is not accepting post requests at this time!".to_string())
+		Err(Error::Custom("pop-net is not accepting post requests at this time!".into())
 			.into())
 	}
 
