@@ -154,6 +154,7 @@ fn genesis(
 		"assets": AssetsConfig {
 			assets: vec![],
 			metadata: vec![],
+			next_asset_id: Some(1),
 			..Default::default()
 		},
 		"balances": BalancesConfig { balances: balances(endowed_accounts) },
@@ -310,6 +311,14 @@ mod tests {
 		}
 
 		#[test]
+		fn ensure_genesis_next_assets_id_is_1() {
+			let genesis = development_config();
+
+			let next_asset_id = genesis["assets"]["nextAssetId"].as_u64().unwrap();
+			assert_eq!(next_asset_id, 1);
+		}
+
+		#[test]
 		fn ensure_council_members() {
 			let council_members = vec![
 				Keyring::Alice.to_account_id(),
@@ -454,6 +463,14 @@ mod tests {
 		}
 
 		#[test]
+		fn ensure_genesis_next_assets_id_is_1() {
+			let genesis = local_config();
+
+			let next_asset_id = genesis["assets"]["nextAssetId"].as_u64().unwrap();
+			assert_eq!(next_asset_id, 1);
+		}
+
+		#[test]
 		fn ensure_council_members() {
 			let council_members = vec![
 				Keyring::Alice.to_account_id(),
@@ -546,6 +563,14 @@ mod tests {
 
 			let assets = genesis["assets"]["assets"].as_array().unwrap();
 			assert!(assets.is_empty());
+		}
+
+		#[test]
+		fn ensure_genesis_next_assets_id_is_1() {
+			let genesis = live_config();
+
+			let next_asset_id = genesis["assets"]["nextAssetId"].as_u64().unwrap();
+			assert_eq!(next_asset_id, 1);
 		}
 
 		#[test]
