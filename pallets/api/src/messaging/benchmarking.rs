@@ -41,6 +41,7 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 )]
 mod messaging_benchmarks {
 	use super::*;
+	
 
 	/// x: The number of removals required.
 	#[benchmark]
@@ -241,7 +242,7 @@ mod messaging_benchmarks {
 			log::debug!("{:?}", res);
 		}
 
-		//assert_has_event::<T>(event.into())
+		//1assert_has_event::<T>(event.into())
 	}
 
 	/// x: is it a Request::Post, Request::Get or Response::Post.
@@ -303,24 +304,27 @@ mod messaging_benchmarks {
 		}
 	}
 
-	/// x: Maximum context len: bound to u16::MAX T::MaxContextLen
-	/// y: Maximum length of keys (inner) len: bound to u16::MAX T::MaxKeyLen
-	/// z: Maximum amount of keys (outer) len: bound to u16::MAX T::MaxKeys
-	#[benchmark]
+	/// z: Maximum amount of keys (outer) len: bound to T::MaxKeys
+	/// a: Is there a Callback supplied?
+	#[benchmark(pov_mode = Measured {
+        Pallet: Measured,
+        Pallet::Storage: Measured,
+      })]
 	fn ismp_get(
-		x: Linear<0, { T::MaxContextLen::get() }>,
-		y: Linear<0, { T::MaxKeyLen::get() }>,
+		x: Linear<0, { T::MaxKeyLen::get() }>,
+		y: Linear<0, { T::MaxContextLen::get() }>,
 		z: Linear<0, { T::MaxKeys::get() }>,
 		a: Linear<0, 1>,
 	) {
 		pallet_timestamp::Pallet::<T>::set_timestamp(1u32.into());
 		let origin: T::AccountId = account("alice", 0, SEED);
-		let id_data = (x, y, z, a);
+		let id_data = (z, a, "imsp_get");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
 
 		let inner_keys: BoundedVec<u8, T::MaxKeyLen> =
-			vec![1u8].repeat(y as usize).try_into().unwrap();
+			vec![1u8].repeat(x as usize).try_into().unwrap();
+
 		let mut outer_keys = vec![];
 		for k in (0..z) {
 			outer_keys.push(inner_keys.clone())
@@ -341,7 +345,7 @@ mod messaging_benchmarks {
 			dest: 2000,
 			height: 100_000,
 			timeout: 100_000,
-			context: vec![1u8].repeat(x as usize).try_into().unwrap(),
+			context: vec![1u8].repeat(y as usize).try_into().unwrap(),
 			keys: outer_keys.try_into().unwrap(),
 		};
 

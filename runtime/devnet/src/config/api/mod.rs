@@ -124,13 +124,13 @@ impl messaging::Config for Runtime {
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
 	type MaxContextLen = ConstU32<64>;
-	type MaxDataLen = ConstU32<1024>;
-	type MaxKeyLen = ConstU32<1000>;
+	type MaxDataLen = ConstU32<512>;
+	type MaxKeyLen = ConstU32<8>;
 	type MaxKeys = ConstU32<10>;
 	// TODO: size appropriately
-	type MaxRemovals = ConstU32<1024>;
+	type MaxRemovals = ConstU32<100>;
 	// TODO: ensure within the contract buffer bounds
-	type MaxResponseLen = ConstU32<1024>;
+	type MaxResponseLen = ConstU32<512>;
 	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
 	// much as onchain cost.
@@ -142,6 +142,33 @@ impl messaging::Config for Runtime {
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
+	// type WeightInfo = pallet_api::messaging::WeightInfo;
+	type WeightInfo = DummyWeight;
+}
+
+pub struct DummyWeight;
+impl messaging::WeightInfo for DummyWeight {
+	fn remove(x: u32) -> Weight {
+		Default::default()
+	}
+	fn xcm_new_query(x: u32) -> Weight {
+		Default::default()
+	}
+	fn xcm_response(x: u32) -> Weight {
+		Default::default()
+	}
+	fn ismp_on_response(x: u32, y: u32) -> Weight {
+		Default::default()
+	}
+	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
+		Default::default()
+	}
+	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
+		Default::default()
+	}
+	fn ismp_post(x: u32, y: u32) -> Weight {
+		Default::default()
+	}
 }
 
 pub struct EnsureResponse;

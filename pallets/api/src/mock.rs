@@ -277,6 +277,7 @@ impl crate::messaging::Config for Test {
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
+	type WeightInfo = ();
 }
 
 pub struct RefTimePlusProofTime;

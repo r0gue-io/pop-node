@@ -41,6 +41,8 @@ pub mod transports;
 mod deposits;
 use deposits::*;
 
+mod weights;
+
 #[cfg(test)]
 mod tests;
 
@@ -53,6 +55,16 @@ type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
 pub type MessageId = [u8; 32];
+
+pub trait WeightInfo {
+	fn remove(x: u32) -> Weight;
+	fn xcm_new_query(x: u32) -> Weight;
+	fn xcm_response(x: u32) -> Weight;
+	fn ismp_on_response(x: u32, y: u32) -> Weight;
+	fn ismp_on_timeout(x: u32, y: u32) -> Weight;
+	fn ismp_get(x: u32, y: u32, x: u32, a: u32) -> Weight;
+	fn ismp_post(x: u32, y: u32) -> Weight;
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -140,6 +152,8 @@ pub mod pallet {
 
 		/// The fee paid to the relayers account for relaying a message.
 		type IsmpRelayerFee: Get<BalanceOf<Self>>;
+
+		type WeightInfo: super::WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -328,7 +342,18 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
 		#[pallet::call_index(1)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(
+			// {
+				// let keys_len = message.keys.len() as u32;
+				// let has_callback = if callback.is_some() {
+				// 	1
+				// } else {
+				// 	0
+				// };
+				// T::WeightInfo::ismp_get(keys_len, has_callback)
+			// }
+			Weight::default()
+		)]
 		pub fn ismp_get(
 			origin: OriginFor<T>,
 			id: MessageId,
