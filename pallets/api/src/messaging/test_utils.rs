@@ -10,6 +10,7 @@ use ismp::{
 	},
 };
 use sp_runtime::traits::{One, Zero};
+use sp_std::vec;
 
 use crate::messaging::Config;
 

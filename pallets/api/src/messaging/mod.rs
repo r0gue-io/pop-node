@@ -27,6 +27,8 @@ use transports::{
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
 
+use ::ismp::Error as IsmpError;
+
 use super::Weight;
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -345,12 +347,18 @@ pub mod pallet {
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Process message by dispatching request via ISMP.
-			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(
-					message.into(),
-					FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
-				)
-				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
+			let commitment = match T::IsmpDispatcher::default()
+			.dispatch_request(
+				message.into(),
+				FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+			) {
+				Ok(commitment) => Ok::<H256, DispatchError>(commitment),
+				Err(e) => {
+					let err = e.downcast::<IsmpError>().unwrap();
+					log::error!("ISMP Dispatch failed!! {:?}", err);
+					return Err(Error::<T>::IsmpDispatchFailed.into())
+				}
+			}?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
 			IsmpRequests::<T>::insert(&commitment, (&origin, id));

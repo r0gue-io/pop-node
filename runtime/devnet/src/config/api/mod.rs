@@ -15,7 +15,7 @@ use pallet_xcm::Origin;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use versioning::*;
-use xcm::latest::Location;
+use xcm::latest::{Location, Junctions};
 
 use crate::{
 	config::{
@@ -115,7 +115,7 @@ impl nonfungibles::Config for Runtime {
 parameter_types! {
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
 	// TODO: What is reasonable.
-	pub const IsmpRelayerFee: crate::Balance = 100_000;
+	pub const IsmpRelayerFee: crate::Balance = crate::UNIT / 2;
 }
 
 impl messaging::Config for Runtime {
@@ -157,9 +157,10 @@ impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureRespon
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<O, ()> {
-		todo!()
+		Ok(Origin::Response( Location { parents: 1, interior: Junctions::Here }).into())
 	}
 }
+
 
 pub struct CallbackExecutor;
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
