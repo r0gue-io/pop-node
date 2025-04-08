@@ -59,7 +59,7 @@ serde_json = { version = "1.0.127", default-features = false }
 smallvec = "1.11.2"
 subxt = "0.38.0"
 subxt-signer = "0.38.0"
-tokio = { version = "1.36", features = [ "macros", "rt-multi-thread", "time" ] }
+tokio = { version = "1.44", features = [ "macros", "rt-multi-thread", "time" ] }
 tracing-subscriber = { version = "0.3.18", default-features = false }
 
 # Build
