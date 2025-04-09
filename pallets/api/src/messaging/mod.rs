@@ -511,9 +511,9 @@ pub mod pallet {
 			xcm_response: Response,
 		) -> DispatchResult {
 			T::XcmResponseOrigin::ensure_origin(origin)?;
-			let (origin, id) = XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
+			let (initiating_origin, id) = XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
 			let xcm_query_message =
-				Messages::<T>::get(&origin, &id).ok_or(Error::<T>::MessageNotFound)?;
+				Messages::<T>::get(&initiating_origin, &id).ok_or(Error::<T>::MessageNotFound)?;
 
 			let (query_id, callback, deposit) = match &xcm_query_message {
 				Message::XcmQuery { query_id, callback, deposit } => (query_id, callback, deposit),
@@ -523,7 +523,7 @@ pub mod pallet {
 
 			// Emit event before possible callback execution.
 			Self::deposit_event(Event::<T>::XcmResponseReceived {
-				dest: origin.clone(),
+				dest: initiating_origin.clone(),
 				id,
 				query_id: *query_id,
 				response: xcm_response.clone(),
@@ -532,16 +532,16 @@ pub mod pallet {
 			if let Some(callback) = callback {
 				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
-				if Self::call(&origin, callback.to_owned(), &id, &xcm_response).is_ok() {
-					Messages::<T>::remove(&origin, &id);
+				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
+					Messages::<T>::remove(&initiating_origin, &id);
 					XcmQueries::<T>::remove(query_id);
-					T::Deposit::release(&HoldReason::Messaging.into(), &origin, *deposit, Exact)?;
+					T::Deposit::release(&HoldReason::Messaging.into(), &initiating_origin, *deposit, Exact)?;
 					return Ok(());
 				}
 			}
 			// No callback is executed,
 			Messages::<T>::insert(
-				&origin,
+				&initiating_origin,
 				&id,
 				Message::XcmResponse {
 					query_id: *query_id,
@@ -604,13 +604,13 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
 	// Attempt to notify via callback.
 	pub(crate) fn call(
-		origin: &AccountIdOf<T>,
+		initiating_origin: &AccountIdOf<T>,
 		callback: Callback,
 		id: &MessageId,
 		data: &impl Encode,
 	) -> DispatchResult {
 		let result = T::CallbackExecutor::execute(
-			origin.clone(),
+			initiating_origin,
 			match callback.abi {
 				Abi::Scale => [callback.selector.to_vec(), (id, data).encode()].concat(),
 			},
@@ -618,11 +618,11 @@ impl<T: Config> Pallet<T> {
 		);
 
 		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
-		Self::handle_callback_result(origin, id, result, callback)
+		Self::handle_callback_result(initiating_origin, id, result, callback)
 	}
 
 	pub(crate) fn handle_callback_result(
-		origin: &AccountIdOf<T>,
+		initiating_origin: &AccountIdOf<T>,
 		id: &MessageId,
 		result: DispatchResultWithPostInfo,
 		callback: Callback,
@@ -638,10 +638,10 @@ impl<T: Config> Pallet<T> {
 						let execution_reward = total_deposit.saturating_sub(returnable_deposit);
 						let reason = HoldReason::CallbackGas.into();
 
-						T::Deposit::release(&reason, &origin, returnable_deposit, BestEffort)?;
+						T::Deposit::release(&reason, &initiating_origin, returnable_deposit, BestEffort)?;
 						T::Deposit::transfer_on_hold(
 							&reason,
-							&origin,
+							&initiating_origin,
 							&T::FeeAccount::get(),
 							execution_reward,
 							BestEffort,
@@ -652,8 +652,8 @@ impl<T: Config> Pallet<T> {
 				}
 
 				Self::deposit_event(Event::<T>::CallbackExecuted {
-					origin: origin.clone(),
-					id: id.clone(),
+					origin: initiating_origin.clone(),
+					id: *id,
 					callback,
 				});
 
@@ -663,7 +663,7 @@ impl<T: Config> Pallet<T> {
 				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
 				T::Deposit::transfer_on_hold(
 					&HoldReason::CallbackGas.into(),
-					&origin,
+					&initiating_origin,
 					&T::FeeAccount::get(),
 					total_deposit,
 					BestEffort,
@@ -673,7 +673,7 @@ impl<T: Config> Pallet<T> {
 
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {
-					origin: origin.clone(),
+					origin: initiating_origin.clone(),
 					id: id.clone(),
 					callback,
 					post_info,
@@ -818,6 +818,6 @@ pub enum Abi {
 	Scale,
 }
 pub trait CallbackExecutor<T: Config> {
-	fn execute(account: T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
+	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
 	fn execution_weight() -> Weight;
 }

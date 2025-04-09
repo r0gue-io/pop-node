@@ -222,7 +222,7 @@ impl crate::nonfungibles::Config for Test {
 pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
 impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
 	fn execute(
-		account: <T as frame_system::Config>::AccountId,
+		account: &<T as frame_system::Config>::AccountId,
 		data: Vec<u8>,
 		weight: sp_runtime::Weight,
 	) -> frame_support::dispatch::DispatchResultWithPostInfo {
