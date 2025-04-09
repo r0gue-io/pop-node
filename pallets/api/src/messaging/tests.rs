@@ -1059,6 +1059,67 @@ mod ismp_get {
 	}
 
 	#[test]
+	fn takes_response_fee_and_ismp_fee_no_callback() {
+		new_test_ext().execute_with(|| {
+					assert_ne!(<Test as Config>::WeightInfo::ismp_on_response(1, 0), Weight::zero(), "Please set an ismp_on_response weight info to run this test.");
+
+					let message_id = [0u8; 32];
+					let message = ismp::Get {
+						dest: 2000,
+						height: 10,
+						timeout: 100,
+						context: bounded_vec!(),
+						keys: bounded_vec!(),
+					};
+					let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
+		
+					let weight = Weight::from_parts(100_000_000, 100_000_000);
+					let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&<Test as Config>::WeightInfo::ismp_on_response(1, 1));
+		
+					let alice_pre_transfer = Balances::free_balance(&ALICE);
+		
+					assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, None));
+		
+					let alice_post_transfer = Balances::free_balance(&ALICE);
+					let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
+			
+					assert_eq!(alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold, response_fee + ismp_fee);
+		})
+	} 
+
+	#[test]
+	fn takes_response_fee_and_ismp_fee_with_callback() {
+		new_test_ext().execute_with(|| {
+			assert_ne!(<Test as Config>::CallbackExecutor::execution_weight(), Weight::zero(), "Please set a weight for CallbackExecutor::execution_weight to run this test.");
+			assert_ne!(<Test as Config>::WeightInfo::ismp_on_response(1, 1), Weight::zero(), "Please set an ismp_on_response weight info to run this test.");
+
+			let message_id = [0u8; 32];
+			let message = ismp::Get {
+				dest: 2000,
+				height: 10,
+				timeout: 100,
+				context: bounded_vec!(),
+				keys: bounded_vec!(),
+			};
+			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
+
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
+			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&(<Test as Config>::WeightInfo::ismp_on_response(1, 1) + <Test as Config>::CallbackExecutor::execution_weight()));
+
+			let alice_pre_transfer = Balances::free_balance(&ALICE);
+
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, Some(callback)));
+
+			let alice_post_transfer = Balances::free_balance(&ALICE);
+			let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
+	
+			assert_eq!(alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold, response_fee + ismp_fee);
+		})
+	} 
+
+
+	#[test]
 	fn takes_deposit() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
@@ -1075,7 +1136,6 @@ mod ismp_get {
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
 
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
-			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&(<Test as Config>::WeightInfo::ismp_on_response(1, 1) + <Test as Config>::CallbackExecutor::execution_weight()));
 
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
@@ -1083,16 +1143,17 @@ mod ismp_get {
 			>(ProtocolStorageDeposit::IsmpRequests) +
 				calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
 				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Get<Test>>(
-				) + ismp_fee + callback_deposit + response_fee;
+				) + ismp_fee + callback_deposit;
 
-			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
+			let alice_hold_balance_pre_hold = Balances::total_balance_on_hold(&ALICE);
+			assert_eq!(alice_hold_balance_pre_hold, 0);
 
 			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, Some(callback)));
 
-			let alice_balance_post_hold = Balances::free_balance(&ALICE);
-
+			let alice_hold_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
 			assert!(expected_deposit != (0 + ismp_fee));
-			assert_eq!(alice_balance_pre_hold - alice_balance_post_hold, expected_deposit);
+
+			assert_eq!(alice_hold_balance_pre_hold - alice_hold_balance_post_hold, expected_deposit);
 		})
 	}
 
