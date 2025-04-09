@@ -53,7 +53,7 @@ mod messaging_benchmarks {
 
 		for i in 0..x {
 			<T as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&owner,
 				deposit,
 			)

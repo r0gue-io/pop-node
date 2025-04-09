@@ -53,13 +53,13 @@ mod remove {
 			Messages::<Test>::insert(&ALICE, m2_id, &m);
 
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
@@ -101,19 +101,19 @@ mod remove {
 			Messages::<Test>::insert(&ALICE, m3_id, &m);
 
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
@@ -150,7 +150,7 @@ mod remove {
 			let m_id = [0; 32];
 
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
@@ -179,7 +179,7 @@ mod remove {
 			let m_id = [0; 32];
 
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
@@ -228,31 +228,31 @@ mod remove {
 
 			// gonna do 5 messages.
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
+				&MutateReason::Messaging.into(),
 				&ALICE,
 				deposit,
 			)
@@ -290,7 +290,7 @@ mod remove {
 			let m = Message::Ismp { commitment, callback: None, deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Deposit::hold(&MutateReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_noop!(
@@ -319,7 +319,7 @@ mod remove {
 			let m = Message::IsmpResponse { commitment, response: bounded_vec!(), deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Deposit::hold(&MutateReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
@@ -345,7 +345,7 @@ mod remove {
 			let m = Message::IsmpTimeout { commitment, deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			IsmpRequests::<Test>::insert(&commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Deposit::hold(&MutateReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
@@ -371,7 +371,7 @@ mod remove {
 			let m = Message::XcmQuery { query_id, callback: None, deposit };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Deposit::hold(&MutateReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_noop!(
@@ -398,7 +398,7 @@ mod remove {
 			let m = Message::XcmResponse { query_id, deposit, response: Default::default() };
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Deposit::hold(&MutateReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
@@ -422,7 +422,7 @@ mod remove {
 			let deposit = 100;
 			let m = Message::XcmTimeout { query_id, deposit };
 
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Deposit::hold(&MutateReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			Messages::<Test>::insert(&ALICE, &message_id, &m);
@@ -1245,7 +1245,7 @@ mod ismp_hooks {
 				let message = Message::Ismp { commitment, callback: Some(callback), deposit };
 
 				<Test as crate::messaging::Config>::Deposit::hold(
-					&HoldReason::Messaging.into(),
+					&MutateReason::Messaging.into(),
 					&ALICE,
 					deposit,
 				)

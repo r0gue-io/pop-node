@@ -138,7 +138,7 @@ pub mod pallet {
 		type MaxRemovals: Get<u32>;
 
 		/// Overarching hold reason.
-		type RuntimeHoldReason: From<HoldReason>;
+		type RuntimeHoldReason: From<MutateReason>;
 
 		/// Wrapper type for creating a query with a notify
 		type Xcm: NotifyQueryHandler<Self>;
@@ -317,12 +317,14 @@ pub mod pallet {
 
 	/// A reason for the pallet placing a hold on funds.
 	#[pallet::composite_enum]
-	pub enum HoldReason {
+	pub enum MutateReason {
 		/// Held for the duration of a message's lifespan.
 		#[codec(index = 0)]
 		Messaging,
 		#[codec(index = 1)]
 		CallbackGas,
+		#[codec(index = 2)]
+		ResponsePrepayment,
 	}
 
 	#[pallet::hooks]
@@ -372,14 +374,19 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+
+			// Take the storage deposit for this particular message.
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
-			// TODO: is this meant to be our struct or theirs? 
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
-			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Deposit::hold(&MutateReason::Messaging.into(), &origin, deposit)?;
+
+			// Response + Callback Execution.
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(T::WeightInfo::on_response().saturating_add(T::CallbackExecutor::execution_weight()));
+			T::Deposit::transfer(&MutateReason::ResponsePrepayment, &origin, )
 
 			if let Some(cb) = callback.as_ref() {
 				T::Deposit::hold(
@@ -436,7 +443,7 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
-			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Deposit::hold(&MutateReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Deposit::hold(
@@ -502,7 +509,7 @@ pub mod pallet {
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 
-			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Deposit::hold(&MutateReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Deposit::hold(
@@ -631,7 +638,7 @@ pub mod pallet {
 					},
 				}?;
 
-				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
+				T::Deposit::release(&MutateReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
 
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
@@ -641,7 +648,7 @@ pub mod pallet {
 	}
 }
 impl<T: Config> Pallet<T> {
-	// Attempt to notify via callback.
+	/// Attempt to notify via callback.
 	pub(crate) fn call(
 		initiating_origin: &AccountIdOf<T>,
 		callback: Callback,
@@ -660,6 +667,7 @@ impl<T: Config> Pallet<T> {
 		Self::handle_callback_result(initiating_origin, id, result, callback)
 	}
 
+	/// Handle the result of a callback execution.
 	pub(crate) fn handle_callback_result(
 		initiating_origin: &AccountIdOf<T>,
 		id: &MessageId,
@@ -794,6 +802,7 @@ impl<T: Config> crate::Read for Pallet<T> {
 	}
 }
 
+/// The main message type that describes a message and its status.
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub enum Message<T: Config> {
@@ -840,6 +849,7 @@ impl<T: Config> From<&Message<T>> for MessageStatus {
 	}
 }
 
+/// The related message status of a Message.
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum MessageStatus {
 	Pending,
@@ -847,7 +857,7 @@ pub enum MessageStatus {
 	Timeout,
 }
 
-// Message selector and pre-paid weight used as gas limit
+/// Message selector and pre-paid weight used as gas limit.
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct Callback {
@@ -861,8 +871,10 @@ pub struct Callback {
 pub enum Abi {
 	Scale,
 }
+
+/// The type responsible for calling into the contract env.
 pub trait CallbackExecutor<T: Config> {
-	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight)
-		-> DispatchResultWithPostInfo;
+	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
+	/// The weight of calling into a contract env, seperate from the weight specified for callback execution.
 	fn execution_weight() -> Weight;
 }
