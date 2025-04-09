@@ -511,7 +511,8 @@ pub mod pallet {
 			xcm_response: Response,
 		) -> DispatchResult {
 			T::XcmResponseOrigin::ensure_origin(origin)?;
-			let (initiating_origin, id) = XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
+			let (initiating_origin, id) =
+				XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
 			let xcm_query_message =
 				Messages::<T>::get(&initiating_origin, &id).ok_or(Error::<T>::MessageNotFound)?;
 
@@ -535,7 +536,12 @@ pub mod pallet {
 				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
 					Messages::<T>::remove(&initiating_origin, &id);
 					XcmQueries::<T>::remove(query_id);
-					T::Deposit::release(&HoldReason::Messaging.into(), &initiating_origin, *deposit, Exact)?;
+					T::Deposit::release(
+						&HoldReason::Messaging.into(),
+						&initiating_origin,
+						*deposit,
+						Exact,
+					)?;
 					return Ok(());
 				}
 			}
@@ -638,7 +644,12 @@ impl<T: Config> Pallet<T> {
 						let execution_reward = total_deposit.saturating_sub(returnable_deposit);
 						let reason = HoldReason::CallbackGas.into();
 
-						T::Deposit::release(&reason, &initiating_origin, returnable_deposit, BestEffort)?;
+						T::Deposit::release(
+							&reason,
+							&initiating_origin,
+							returnable_deposit,
+							BestEffort,
+						)?;
 						T::Deposit::transfer_on_hold(
 							&reason,
 							&initiating_origin,
@@ -818,6 +829,7 @@ pub enum Abi {
 	Scale,
 }
 pub trait CallbackExecutor<T: Config> {
-	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
+	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight)
+		-> DispatchResultWithPostInfo;
 	fn execution_weight() -> Weight;
 }
