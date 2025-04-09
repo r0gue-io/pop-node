@@ -2,6 +2,7 @@ extern crate alloc;
 
 pub use alloc::borrow::ToOwned;
 
+use ::ismp::Error as IsmpError;
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
@@ -13,8 +14,7 @@ use frame_support::{
 			fungible::hold::Mutate,
 			Fortitude,
 			Precision::{BestEffort, Exact},
-			Restriction,
-			Preservation,
+			Preservation, Restriction,
 		},
 		Get, OriginTrait,
 	},
@@ -32,8 +32,6 @@ use transports::{
 };
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
-
-use ::ismp::Error as IsmpError;
 
 use super::Weight;
 
@@ -76,21 +74,27 @@ impl WeightInfo for () {
 	fn remove(x: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn xcm_new_query(x: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn xcm_response(x: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn ismp_on_response(x: u32, y: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn ismp_post(x: u32, y: u32) -> Weight {
 		Zero::zero()
 	}
@@ -101,7 +105,10 @@ pub mod pallet {
 
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{tokens::fungible::{hold::Mutate as HoldMutate, Mutate}, OnInitialize},
+		traits::{
+			tokens::fungible::{hold::Mutate as HoldMutate, Mutate},
+			OnInitialize,
+		},
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
@@ -129,7 +136,8 @@ pub mod pallet {
 
 		/// The deposit + fee mechanism.
 		type Fungibles: HoldMutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
-			+ Inspect<Self::AccountId> + Mutate<Self::AccountId>;
+			+ Inspect<Self::AccountId>
+			+ Mutate<Self::AccountId>;
 
 		/// The ISMP message dispatcher.
 		type IsmpDispatcher: IsmpDispatcher<Account = Self::AccountId, Balance = BalanceOf<Self>>;
@@ -406,12 +414,16 @@ pub mod pallet {
 
 			// Response + Callback Execution.
 			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(1, if callback.is_some() {1} else {0})
-				.saturating_add(
-					T::CallbackExecutor::execution_weight())
-				);
-			
-			T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
+				&T::WeightInfo::ismp_on_response(1, if callback.is_some() { 1 } else { 0 })
+					.saturating_add(T::CallbackExecutor::execution_weight()),
+			);
+
+			T::Fungibles::transfer(
+				&origin,
+				&T::FeeAccount::get(),
+				response_prepayment_amount,
+				Preservation::Preserve,
+			)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -422,8 +434,7 @@ pub mod pallet {
 			}
 
 			// Process message by dispatching request via ISMP.
-			let commitment = match T::IsmpDispatcher::default()
-			.dispatch_request(
+			let commitment = match T::IsmpDispatcher::default().dispatch_request(
 				message.into(),
 				FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
 			) {
@@ -432,7 +443,7 @@ pub mod pallet {
 					let err = e.downcast::<IsmpError>().unwrap();
 					log::error!("ISMP Dispatch failed!! {:?}", err);
 					return Err(Error::<T>::IsmpDispatchFailed.into())
-				}
+				},
 			}?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
@@ -471,12 +482,16 @@ pub mod pallet {
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(0, if callback.is_some() {1} else {0})
-				.saturating_add(
-					T::CallbackExecutor::execution_weight())
-				);
-			
-			T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
+				&T::WeightInfo::ismp_on_response(0, if callback.is_some() { 1 } else { 0 })
+					.saturating_add(T::CallbackExecutor::execution_weight()),
+			);
+
+			T::Fungibles::transfer(
+				&origin,
+				&T::FeeAccount::get(),
+				response_prepayment_amount,
+				Preservation::Preserve,
+			)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -552,14 +567,23 @@ pub mod pallet {
 
 				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
 					&T::WeightInfo::xcm_response(1)
-					.saturating_add(
-						T::CallbackExecutor::execution_weight())
-					);
-				T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
-
+						.saturating_add(T::CallbackExecutor::execution_weight()),
+				);
+				T::Fungibles::transfer(
+					&origin,
+					&T::FeeAccount::get(),
+					response_prepayment_amount,
+					Preservation::Preserve,
+				)?;
 			} else {
-				let response_prepayment_amount = T::WeightToFee::weight_to_fee(&T::WeightInfo::xcm_response(0));
-				T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
+				let response_prepayment_amount =
+					T::WeightToFee::weight_to_fee(&T::WeightInfo::xcm_response(0));
+				T::Fungibles::transfer(
+					&origin,
+					&T::FeeAccount::get(),
+					response_prepayment_amount,
+					Preservation::Preserve,
+				)?;
 			}
 
 			// Process message by creating new query via XCM.
@@ -917,7 +941,9 @@ pub enum Abi {
 
 /// The type responsible for calling into the contract env.
 pub trait CallbackExecutor<T: Config> {
-	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
-	/// The weight of calling into a contract env, seperate from the weight specified for callback execution.
+	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight)
+		-> DispatchResultWithPostInfo;
+	/// The weight of calling into a contract env, seperate from the weight specified for callback
+	/// execution.
 	fn execution_weight() -> Weight;
 }

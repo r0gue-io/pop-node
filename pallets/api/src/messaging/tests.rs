@@ -5,8 +5,8 @@ use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	sp_runtime::{traits::Zero, DispatchError::BadOrigin},
 	testing_prelude::bounded_vec,
-	weights::Weight,
 	traits::fungible::InspectHold,
+	weights::Weight,
 };
 use sp_core::H256;
 
@@ -496,73 +496,97 @@ mod xcm_new_query {
 
 	#[test]
 	fn takes_response_fee_no_callback() {
-		new_test_ext().execute_with(|| { 
-		assert_ne!(<Test as Config>::WeightInfo::xcm_response(0), Weight::zero(), "Please set a weight for xcm_response to run this test.");
-		let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&(<Test as Config>::WeightInfo::xcm_response(0)));
-		let timeout = System::block_number() + 1;
-		let weight = Weight::default();
-		let callback = None;
-		let message_id = [1u8; 32];
+		new_test_ext().execute_with(|| {
+			assert_ne!(
+				<Test as Config>::WeightInfo::xcm_response(0),
+				Weight::zero(),
+				"Please set a weight for xcm_response to run this test."
+			);
+			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
+				&(<Test as Config>::WeightInfo::xcm_response(0)),
+			);
+			let timeout = System::block_number() + 1;
+			let weight = Weight::default();
+			let callback = None;
+			let message_id = [1u8; 32];
 
-		assert_ne!(response_fee, 0);
-		let alice_pre_transfer = Balances::free_balance(&ALICE);
+			assert_ne!(response_fee, 0);
+			let alice_pre_transfer = Balances::free_balance(&ALICE);
 
-		assert_ok!(Messaging::xcm_new_query(
-			signed(ALICE),
-			message_id,
-			RESPONSE_LOCATION,
-			timeout,
-			callback,
-		));
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				callback,
+			));
 
-		let alice_post_transfer = Balances::free_balance(&ALICE);
-		let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
+			let alice_post_transfer = Balances::free_balance(&ALICE);
+			let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
 
-		assert_eq!(alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold, response_fee);
-	})
-
+			assert_eq!(
+				alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold,
+				response_fee
+			);
+		})
 	}
 
 	#[test]
 	fn takes_response_fee_with_callback() {
-		new_test_ext().execute_with(|| { 
-		assert_ne!(<Test as Config>::WeightInfo::xcm_response(1), Weight::zero(), "Please set a weight for xcm_response to run this test.");
-		assert_ne!(<Test as Config>::CallbackExecutor::execution_weight(), Weight::zero(), "Please set a weight for CallbackExecutor::execution_weight to run this test.");
+		new_test_ext().execute_with(|| {
+			assert_ne!(
+				<Test as Config>::WeightInfo::xcm_response(1),
+				Weight::zero(),
+				"Please set a weight for xcm_response to run this test."
+			);
+			assert_ne!(
+				<Test as Config>::CallbackExecutor::execution_weight(),
+				Weight::zero(),
+				"Please set a weight for CallbackExecutor::execution_weight to run this test."
+			);
 
-		let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&(<Test as Config>::WeightInfo::xcm_response(1) + <Test as Config>::CallbackExecutor::execution_weight()));
-		let timeout = System::block_number() + 1;
-		let weight = Weight::default();
-		let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
-		let message_id = [1u8; 32];
+			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
+				&(<Test as Config>::WeightInfo::xcm_response(1) +
+					<Test as Config>::CallbackExecutor::execution_weight()),
+			);
+			let timeout = System::block_number() + 1;
+			let weight = Weight::default();
+			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
+			let message_id = [1u8; 32];
 
-		assert_ne!(response_fee, 0);
-		let alice_pre_transfer = Balances::free_balance(&ALICE);
+			assert_ne!(response_fee, 0);
+			let alice_pre_transfer = Balances::free_balance(&ALICE);
 
-		assert_ok!(Messaging::xcm_new_query(
-			signed(ALICE),
-			message_id,
-			RESPONSE_LOCATION,
-			timeout,
-			Some(callback),
-		));
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				Some(callback),
+			));
 
-		let alice_post_transfer = Balances::free_balance(&ALICE);
-		let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
+			let alice_post_transfer = Balances::free_balance(&ALICE);
+			let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
 
-		assert_eq!(alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold, response_fee);
-	})
-
+			assert_eq!(
+				alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold,
+				response_fee
+			);
+		})
 	}
 
 	#[test]
 	fn takes_callback_hold() {
-		new_test_ext().execute_with(|| { 
+		new_test_ext().execute_with(|| {
 			let timeout = System::block_number() + 1;
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 			let message_id = [0; 32];
-			let alice_held_balance_pre_query = <Test as Config>::Fungibles::balance_on_hold(&HoldReason::CallbackGas.into(), &ALICE);
+			let alice_held_balance_pre_query = <Test as Config>::Fungibles::balance_on_hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+			);
 
 			assert_eq!(alice_held_balance_pre_query, 0);
 			assert!(callback_deposit != 0);
@@ -575,12 +599,14 @@ mod xcm_new_query {
 				Some(callback),
 			));
 
-			let alice_held_balance_post_query = <Test as Config>::Fungibles::balance_on_hold(&HoldReason::CallbackGas.into(), &ALICE);
+			let alice_held_balance_post_query = <Test as Config>::Fungibles::balance_on_hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+			);
 
 			assert_eq!(alice_held_balance_post_query, callback_deposit);
 		})
 	}
-
 
 	#[test]
 	fn takes_messaging_hold() {
@@ -593,13 +619,14 @@ mod xcm_new_query {
 				calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
 					ProtocolStorageDeposit::XcmQueries,
 				) + calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>();
-			let alices_held_balance_pre_hold = <Test as Config>::Fungibles::balance_on_hold(&HoldReason::Messaging.into(), &ALICE);
+			let alices_held_balance_pre_hold =
+				<Test as Config>::Fungibles::balance_on_hold(&HoldReason::Messaging.into(), &ALICE);
 
 			assert!(
 				expected_deposit > 0,
 				"set an onchain byte fee with T::OnChainByteFee to run this test."
 			);
-			
+
 			assert_eq!(alices_held_balance_pre_hold, 0);
 
 			assert_ok!(Messaging::xcm_new_query(
@@ -610,7 +637,8 @@ mod xcm_new_query {
 				callback,
 			));
 
-			let alices_held_balance_post_hold = <Test as Config>::Fungibles::balance_on_hold(&HoldReason::Messaging.into(), &ALICE);
+			let alices_held_balance_post_hold =
+				<Test as Config>::Fungibles::balance_on_hold(&HoldReason::Messaging.into(), &ALICE);
 
 			assert_eq!(alices_held_balance_post_hold, expected_deposit);
 		});
@@ -1061,37 +1089,54 @@ mod ismp_get {
 	#[test]
 	fn takes_response_fee_and_ismp_fee_no_callback() {
 		new_test_ext().execute_with(|| {
-					assert_ne!(<Test as Config>::WeightInfo::ismp_on_response(1, 0), Weight::zero(), "Please set an ismp_on_response weight info to run this test.");
+			assert_ne!(
+				<Test as Config>::WeightInfo::ismp_on_response(1, 0),
+				Weight::zero(),
+				"Please set an ismp_on_response weight info to run this test."
+			);
 
-					let message_id = [0u8; 32];
-					let message = ismp::Get {
-						dest: 2000,
-						height: 10,
-						timeout: 100,
-						context: bounded_vec!(),
-						keys: bounded_vec!(),
-					};
-					let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
-		
-					let weight = Weight::from_parts(100_000_000, 100_000_000);
-					let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&<Test as Config>::WeightInfo::ismp_on_response(1, 1));
-		
-					let alice_pre_transfer = Balances::free_balance(&ALICE);
-		
-					assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, None));
-		
-					let alice_post_transfer = Balances::free_balance(&ALICE);
-					let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
-			
-					assert_eq!(alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold, response_fee + ismp_fee);
+			let message_id = [0u8; 32];
+			let message = ismp::Get {
+				dest: 2000,
+				height: 10,
+				timeout: 100,
+				context: bounded_vec!(),
+				keys: bounded_vec!(),
+			};
+			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
+
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
+				&<Test as Config>::WeightInfo::ismp_on_response(1, 1),
+			);
+
+			let alice_pre_transfer = Balances::free_balance(&ALICE);
+
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, None));
+
+			let alice_post_transfer = Balances::free_balance(&ALICE);
+			let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
+
+			assert_eq!(
+				alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold,
+				response_fee + ismp_fee
+			);
 		})
-	} 
+	}
 
 	#[test]
 	fn takes_response_fee_and_ismp_fee_with_callback() {
 		new_test_ext().execute_with(|| {
-			assert_ne!(<Test as Config>::CallbackExecutor::execution_weight(), Weight::zero(), "Please set a weight for CallbackExecutor::execution_weight to run this test.");
-			assert_ne!(<Test as Config>::WeightInfo::ismp_on_response(1, 1), Weight::zero(), "Please set an ismp_on_response weight info to run this test.");
+			assert_ne!(
+				<Test as Config>::CallbackExecutor::execution_weight(),
+				Weight::zero(),
+				"Please set a weight for CallbackExecutor::execution_weight to run this test."
+			);
+			assert_ne!(
+				<Test as Config>::WeightInfo::ismp_on_response(1, 1),
+				Weight::zero(),
+				"Please set an ismp_on_response weight info to run this test."
+			);
 
 			let message_id = [0u8; 32];
 			let message = ismp::Get {
@@ -1105,7 +1150,10 @@ mod ismp_get {
 
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
-			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&(<Test as Config>::WeightInfo::ismp_on_response(1, 1) + <Test as Config>::CallbackExecutor::execution_weight()));
+			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
+				&(<Test as Config>::WeightInfo::ismp_on_response(1, 1) +
+					<Test as Config>::CallbackExecutor::execution_weight()),
+			);
 
 			let alice_pre_transfer = Balances::free_balance(&ALICE);
 
@@ -1113,11 +1161,13 @@ mod ismp_get {
 
 			let alice_post_transfer = Balances::free_balance(&ALICE);
 			let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
-	
-			assert_eq!(alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold, response_fee + ismp_fee);
-		})
-	} 
 
+			assert_eq!(
+				alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold,
+				response_fee + ismp_fee
+			);
+		})
+	}
 
 	#[test]
 	fn takes_deposit() {
@@ -1153,7 +1203,10 @@ mod ismp_get {
 			let alice_hold_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
 			assert!(expected_deposit != (0 + ismp_fee));
 
-			assert_eq!(alice_hold_balance_pre_hold - alice_hold_balance_post_hold, expected_deposit);
+			assert_eq!(
+				alice_hold_balance_pre_hold - alice_hold_balance_post_hold,
+				expected_deposit
+			);
 		})
 	}
 
@@ -1219,7 +1272,10 @@ mod ismp_post {
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
-			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(&(<Test as Config>::WeightInfo::ismp_on_response(0, 1) + <Test as Config>::CallbackExecutor::execution_weight()));
+			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
+				&(<Test as Config>::WeightInfo::ismp_on_response(0, 1) +
+					<Test as Config>::CallbackExecutor::execution_weight()),
+			);
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
 
 			assert!(callback_deposit != 0);
@@ -1237,7 +1293,8 @@ mod ismp_post {
 			>(ProtocolStorageDeposit::IsmpRequests) +
 				calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
 				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Post<Test>>(
-				) + ismp_fee + callback_deposit + response_fee;
+				) + ismp_fee + callback_deposit +
+				response_fee;
 
 			assert!(expected_deposit != (0 + ismp_fee));
 

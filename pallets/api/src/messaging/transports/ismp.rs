@@ -121,8 +121,7 @@ impl<T> Handler<T> {
 
 impl<T: Config> IsmpModule for Handler<T> {
 	fn on_accept(&self, _request: PostRequest) -> Result<(), anyhow::Error> {
-		Err(Error::Custom("pop-net is not accepting post requests at this time!".into())
-			.into())
+		Err(Error::Custom("pop-net is not accepting post requests at this time!".into()).into())
 	}
 
 	fn on_response(&self, response: Response) -> Result<(), anyhow::Error> {
@@ -206,8 +205,13 @@ pub(crate) fn process_response<T: Config>(
 			// Clean storage, return deposit
 			Messages::<T>::remove(&initiating_origin, &id);
 			IsmpRequests::<T>::remove(&commitment);
-			T::Fungibles::release(&HoldReason::Messaging.into(), &initiating_origin, deposit, Exact)
-				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
+			T::Fungibles::release(
+				&HoldReason::Messaging.into(),
+				&initiating_origin,
+				deposit,
+				Exact,
+			)
+			.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
 
 			return Ok(());
 		}

@@ -17,10 +17,9 @@ use scale_info::TypeInfo;
 use sp_core::{keccak_256, H256};
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, TryConvert, Verify, Zero},
-	BuildStorage, Weight
+	BuildStorage, Weight,
 };
 use sp_std::prelude::*;
-
 
 use crate::messaging::{Call, CallbackExecutor, Messages, NotifyQueryHandler};
 
@@ -269,8 +268,8 @@ pub fn get_next_query_id() -> u64 {
 
 impl crate::messaging::Config for Test {
 	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
-	type Fungibles = Balances;
 	type FeeAccount = FeeAccount;
+	type Fungibles = Balances;
 	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
 	type IsmpRelayerFee = IsmpRelayerFee;
 	type MaxContextLen = ConstU32<64>;
@@ -285,10 +284,10 @@ impl crate::messaging::Config for Test {
 	type OriginConverter = AccountToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightInfo = DummyPrepaymentWeights;
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
-	type WeightInfo = DummyPrepaymentWeights;
 }
 
 // The weight info is required for prepayment of a response and the callback execution.
@@ -298,21 +297,27 @@ impl crate::messaging::WeightInfo for DummyPrepaymentWeights {
 	fn remove(_x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn xcm_new_query(_x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn xcm_response(_x: u32) -> Weight {
 		Weight::from_parts(100_000_000u64, 100_000_000u64)
 	}
+
 	fn ismp_on_response(_x: u32, _y: u32) -> Weight {
 		Weight::from_parts(150_000_000u64, 150_000_000u64)
 	}
+
 	fn ismp_on_timeout(_x: u32, _y: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn ismp_get(_x: u32, _y: u32, _z: u32, _a: u32) -> Weight {
 		Zero::zero()
 	}
+
 	fn ismp_post(_x: u32, _y: u32) -> Weight {
 		Zero::zero()
 	}

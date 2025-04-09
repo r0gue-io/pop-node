@@ -18,17 +18,17 @@ use frame_support::{
 	traits::{Currency, EnsureOrigin},
 	BoundedVec,
 };
+use pallet_xcm::Origin as XcmOrigin;
 use sp_core::{keccak_256, Get, H256};
 use sp_io::hashing::blake2_256;
 use sp_runtime::traits::{One, Zero};
 use sp_std::vec;
-use pallet_xcm::Origin as XcmOrigin;
+
 use super::*;
 use crate::{messaging::test_utils::*, Read as _};
 
 const SEED: u32 = 1;
 type RuntimeOrigin<T> = <T as frame_system::Config>::RuntimeOrigin;
-
 
 // See if `generic_event` has been emitted.
 fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::RuntimeEvent) {
@@ -41,7 +41,6 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 )]
 mod messaging_benchmarks {
 	use super::*;
-	
 
 	/// x: The number of removals required.
 	#[benchmark]
@@ -242,7 +241,7 @@ mod messaging_benchmarks {
 			log::debug!("{:?}", res);
 		}
 
-		//1assert_has_event::<T>(event.into())
+		// 1assert_has_event::<T>(event.into())
 	}
 
 	/// x: is it a Request::Post, Request::Get or Response::Post.
@@ -349,7 +348,10 @@ mod messaging_benchmarks {
 			keys: outer_keys.try_into().unwrap(),
 		};
 
-		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, pallet_balances::Pallet::<T>::total_issuance());
+		pallet_balances::Pallet::<T>::make_free_balance_be(
+			&origin,
+			pallet_balances::Pallet::<T>::total_issuance(),
+		);
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
@@ -365,7 +367,7 @@ mod messaging_benchmarks {
 		let id_data = (x, y, b"ismp_post");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
-		
+
 		let data = vec![1u8].repeat(x as usize).try_into().unwrap();
 
 		let get = crate::messaging::ismp::Post::<T> { dest: 2000, timeout: 100_000, data };
@@ -381,7 +383,10 @@ mod messaging_benchmarks {
 			None
 		};
 
-		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, pallet_balances::Pallet::<T>::total_issuance());
+		pallet_balances::Pallet::<T>::make_free_balance_be(
+			&origin,
+			pallet_balances::Pallet::<T>::total_issuance(),
+		);
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
