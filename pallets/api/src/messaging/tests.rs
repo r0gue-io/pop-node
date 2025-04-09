@@ -1195,9 +1195,7 @@ mod ismp_get {
 
 			let alice_hold_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
 
-			assert_eq!(
-				alice_hold_balance_post_hold, expected_deposit
-			);
+			assert_eq!(alice_hold_balance_post_hold, expected_deposit);
 		})
 	}
 
@@ -1325,7 +1323,6 @@ mod ismp_post {
 		})
 	}
 
-
 	#[test]
 	fn takes_deposit() {
 		new_test_ext().execute_with(|| {
@@ -1342,9 +1339,8 @@ mod ismp_post {
 				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Post<Test>>(
 				) + callback_deposit;
 
-
 			let alice_hold_balance_pre_hold = Balances::total_balance_on_hold(&ALICE);
-			
+
 			assert_eq!(alice_hold_balance_pre_hold, 0);
 			assert_ne!(callback_deposit, 0);
 			assert_ne!(expected_deposit, 0);
@@ -1355,7 +1351,6 @@ mod ismp_post {
 				message.clone(),
 				Some(callback)
 			));
-			
 
 			let alice_held_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
 

@@ -429,9 +429,8 @@ pub mod pallet {
 					Preservation::Preserve,
 				)?;
 			} else {
-				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-					&T::WeightInfo::ismp_on_response(1, 0)
-				);
+				let response_prepayment_amount =
+					T::WeightToFee::weight_to_fee(&T::WeightInfo::ismp_on_response(1, 0));
 				T::Fungibles::transfer(
 					&origin,
 					&T::FeeAccount::get(),
@@ -505,9 +504,8 @@ pub mod pallet {
 					Preservation::Preserve,
 				)?;
 			} else {
-				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-					&T::WeightInfo::ismp_on_response(0, 0)
-				);
+				let response_prepayment_amount =
+					T::WeightToFee::weight_to_fee(&T::WeightInfo::ismp_on_response(0, 0));
 				T::Fungibles::transfer(
 					&origin,
 					&T::FeeAccount::get(),
