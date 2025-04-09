@@ -188,25 +188,25 @@ pub(crate) fn process_response<T: Config>(
 		Error::Custom("Response length exceeds maximum allowed length.".into())
 	);
 
-	let (origin, id) =
+	let (initiating_origin, id) =
 		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("Request not found.".into()))?;
 
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
-		Messages::<T>::get(&origin, &id)
+		Messages::<T>::get(&initiating_origin, &id)
 	else {
 		return Err(Error::Custom("Message must be an ismp request.".into()).into());
 	};
 
 	// Deposit that the message has been recieved before a potential callback execution.
-	Pallet::<T>::deposit_event(event(origin.clone(), id));
+	Pallet::<T>::deposit_event(event(initiating_origin.clone(), id));
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
-		if Pallet::<T>::call(&origin, callback, &id, response_data).is_ok() {
+		if Pallet::<T>::call(&initiating_origin, callback, &id, response_data).is_ok() {
 			// Clean storage, return deposit
-			Messages::<T>::remove(&origin, &id);
+			Messages::<T>::remove(&initiating_origin, &id);
 			IsmpRequests::<T>::remove(&commitment);
-			T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)
+			T::Deposit::release(&HoldReason::Messaging.into(), &initiating_origin, deposit, Exact)
 				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
 
 			return Ok(());
@@ -219,7 +219,7 @@ pub(crate) fn process_response<T: Config>(
 		.try_into()
 		.map_err(|_| Error::Custom("response exceeds max".into()))?;
 	Messages::<T>::insert(
-		&origin,
+		&initiating_origin,
 		&id,
 		super::super::Message::IsmpResponse { commitment, deposit, response: encoded_response },
 	);
