@@ -28,7 +28,7 @@ use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, MutateReason, MessageId, Vec,
+	AccountIdOf, HoldReason, MessageId, Vec,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -206,7 +206,7 @@ pub(crate) fn process_response<T: Config>(
 			// Clean storage, return deposit
 			Messages::<T>::remove(&initiating_origin, &id);
 			IsmpRequests::<T>::remove(&commitment);
-			T::Deposit::release(&HoldReason::Messaging.into(), &initiating_origin, deposit, Exact)
+			T::Fungibles::release(&HoldReason::Messaging.into(), &initiating_origin, deposit, Exact)
 				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
 
 			return Ok(());

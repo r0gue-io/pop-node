@@ -14,6 +14,7 @@ use frame_support::{
 			Fortitude,
 			Precision::{BestEffort, Exact},
 			Restriction,
+			Preservation,
 		},
 		Get, OriginTrait,
 	},
@@ -56,7 +57,7 @@ pub(crate) mod test_utils;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
-type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
+type BalanceOf<T> = <<T as Config>::Fungibles as Inspect<AccountIdOf<T>>>::Balance;
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
 pub type MessageId = [u8; 32];
@@ -67,8 +68,32 @@ pub trait WeightInfo {
 	fn xcm_response(x: u32) -> Weight;
 	fn ismp_on_response(x: u32, y: u32) -> Weight;
 	fn ismp_on_timeout(x: u32, y: u32) -> Weight;
-	fn ismp_get(x: u32, y: u32, x: u32, a: u32) -> Weight;
+	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight;
 	fn ismp_post(x: u32, y: u32) -> Weight;
+}
+
+impl WeightInfo for () {
+	fn remove(x: u32) -> Weight {
+		Zero::zero()
+	}
+	fn xcm_new_query(x: u32) -> Weight {
+		Zero::zero()
+	}
+	fn xcm_response(x: u32) -> Weight {
+		Zero::zero()
+	}
+	fn ismp_on_response(x: u32, y: u32) -> Weight {
+		Zero::zero()
+	}
+	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
+		Zero::zero()
+	}
+	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
+		Zero::zero()
+	}
+	fn ismp_post(x: u32, y: u32) -> Weight {
+		Zero::zero()
+	}
 }
 
 #[frame_support::pallet]
@@ -76,7 +101,7 @@ pub mod pallet {
 
 	use frame_support::{
 		pallet_prelude::*,
-		traits::{tokens::fungible::hold::Mutate, OnInitialize},
+		traits::{tokens::fungible::{hold::Mutate as HoldMutate, Mutate}, OnInitialize},
 	};
 	use sp_core::H256;
 	use sp_runtime::traits::TryConvert;
@@ -102,9 +127,9 @@ pub mod pallet {
 		/// The type responsible for executing callbacks.
 		type CallbackExecutor: CallbackExecutor<Self>;
 
-		/// The deposit mechanism.
-		type Deposit: Mutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
-			+ Inspect<Self::AccountId>;
+		/// The deposit + fee mechanism.
+		type Fungibles: HoldMutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
+			+ Inspect<Self::AccountId> + Mutate<Self::AccountId>;
 
 		/// The ISMP message dispatcher.
 		type IsmpDispatcher: IsmpDispatcher<Account = Self::AccountId, Balance = BalanceOf<Self>>;
@@ -114,17 +139,14 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxContextLen: Get<u32>;
 
-		/// SAFETY: should be less than or equal to u16.
 		/// The maximum length of outbound (posted) data.
 		#[pallet::constant]
 		type MaxDataLen: Get<u32>;
 
-		/// SAFETY: should be less than or equal to u16.
 		/// The maximum amount of key for an outbound request.
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
 
-		/// SAFETY: should be less than or equal to u16.
 		/// The maximum byte length for a single key of an ismp request.
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
@@ -138,7 +160,7 @@ pub mod pallet {
 		type MaxRemovals: Get<u32>;
 
 		/// Overarching hold reason.
-		type RuntimeHoldReason: From<MutateReason>;
+		type RuntimeHoldReason: From<HoldReason>;
 
 		/// Wrapper type for creating a query with a notify
 		type Xcm: NotifyQueryHandler<Self>;
@@ -317,14 +339,12 @@ pub mod pallet {
 
 	/// A reason for the pallet placing a hold on funds.
 	#[pallet::composite_enum]
-	pub enum MutateReason {
+	pub enum HoldReason {
 		/// Held for the duration of a message's lifespan.
 		#[codec(index = 0)]
 		Messaging,
 		#[codec(index = 1)]
 		CallbackGas,
-		#[codec(index = 2)]
-		ResponsePrepayment,
 	}
 
 	#[pallet::hooks]
@@ -382,14 +402,19 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
-			T::Deposit::hold(&MutateReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			// Response + Callback Execution.
-			let response_prepayment_amount = T::WeightToFee::weight_to_fee(T::WeightInfo::on_response().saturating_add(T::CallbackExecutor::execution_weight()));
-			T::Deposit::transfer(&MutateReason::ResponsePrepayment, &origin, )
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+				&T::WeightInfo::ismp_on_response(1, if callback.is_some() {1} else {0})
+				.saturating_add(
+					T::CallbackExecutor::execution_weight())
+				);
+			
+			T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(
+				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
@@ -443,10 +468,18 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
-			T::Deposit::hold(&MutateReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+				&T::WeightInfo::ismp_on_response(0, if callback.is_some() {1} else {0})
+				.saturating_add(
+					T::CallbackExecutor::execution_weight())
+				);
+			
+			T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(
+				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
@@ -508,15 +541,25 @@ pub mod pallet {
 				ProtocolStorageDeposit::XcmQueries,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
-
-			T::Deposit::hold(&MutateReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(
+				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
+
+				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+					&T::WeightInfo::xcm_response(1)
+					.saturating_add(
+						T::CallbackExecutor::execution_weight())
+					);
+				T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
+
+			} else {
+				let response_prepayment_amount = T::WeightToFee::weight_to_fee(&T::WeightInfo::xcm_response(0));
+				T::Fungibles::transfer( &origin, &T::FeeAccount::get(), response_prepayment_amount, Preservation::Preserve)?;
 			}
 
 			// Process message by creating new query via XCM.
@@ -576,7 +619,7 @@ pub mod pallet {
 				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
 					Messages::<T>::remove(&initiating_origin, &id);
 					XcmQueries::<T>::remove(query_id);
-					T::Deposit::release(
+					T::Fungibles::release(
 						&HoldReason::Messaging.into(),
 						&initiating_origin,
 						*deposit,
@@ -638,7 +681,7 @@ pub mod pallet {
 					},
 				}?;
 
-				T::Deposit::release(&MutateReason::Messaging.into(), &origin, deposit, Exact)?;
+				T::Fungibles::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
 
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
@@ -685,13 +728,13 @@ impl<T: Config> Pallet<T> {
 						let execution_reward = total_deposit.saturating_sub(returnable_deposit);
 						let reason = HoldReason::CallbackGas.into();
 
-						T::Deposit::release(
+						T::Fungibles::release(
 							&reason,
 							&initiating_origin,
 							returnable_deposit,
 							BestEffort,
 						)?;
-						T::Deposit::transfer_on_hold(
+						T::Fungibles::transfer_on_hold(
 							&reason,
 							&initiating_origin,
 							&T::FeeAccount::get(),
@@ -713,7 +756,7 @@ impl<T: Config> Pallet<T> {
 			},
 			Err(sp_runtime::DispatchErrorWithPostInfo::<PostDispatchInfo> { post_info, error }) => {
 				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
-				T::Deposit::transfer_on_hold(
+				T::Fungibles::transfer_on_hold(
 					&HoldReason::CallbackGas.into(),
 					&initiating_origin,
 					&T::FeeAccount::get(),
