@@ -412,24 +412,31 @@ pub mod pallet {
 
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
-			// Response + Callback Execution.
-			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(1, if callback.is_some() { 1 } else { 0 })
-					.saturating_add(T::CallbackExecutor::execution_weight()),
-			);
-
-			T::Fungibles::transfer(
-				&origin,
-				&T::FeeAccount::get(),
-				response_prepayment_amount,
-				Preservation::Preserve,
-			)?;
-
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
+				)?;
+				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+					&T::WeightInfo::ismp_on_response(1, 1)
+						.saturating_add(T::CallbackExecutor::execution_weight()),
+				);
+				T::Fungibles::transfer(
+					&origin,
+					&T::FeeAccount::get(),
+					response_prepayment_amount,
+					Preservation::Preserve,
+				)?;
+			} else {
+				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+					&T::WeightInfo::ismp_on_response(1, 0)
+				);
+				T::Fungibles::transfer(
+					&origin,
+					&T::FeeAccount::get(),
+					response_prepayment_amount,
+					Preservation::Preserve,
 				)?;
 			}
 
@@ -481,23 +488,31 @@ pub mod pallet {
 
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
-			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(0, if callback.is_some() { 1 } else { 0 })
-					.saturating_add(T::CallbackExecutor::execution_weight()),
-			);
-
-			T::Fungibles::transfer(
-				&origin,
-				&T::FeeAccount::get(),
-				response_prepayment_amount,
-				Preservation::Preserve,
-			)?;
-
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
+				)?;
+				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+					&T::WeightInfo::ismp_on_response(0, 1)
+						.saturating_add(T::CallbackExecutor::execution_weight()),
+				);
+				T::Fungibles::transfer(
+					&origin,
+					&T::FeeAccount::get(),
+					response_prepayment_amount,
+					Preservation::Preserve,
+				)?;
+			} else {
+				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+					&T::WeightInfo::ismp_on_response(0, 0)
+				);
+				T::Fungibles::transfer(
+					&origin,
+					&T::FeeAccount::get(),
+					response_prepayment_amount,
+					Preservation::Preserve,
 				)?;
 			}
 
