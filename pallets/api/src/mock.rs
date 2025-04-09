@@ -2,7 +2,8 @@ use ::xcm::latest::{Junction, Junctions, Location};
 use codec::{Decode, Encode};
 use frame_support::{
 	derive_impl,
-	pallet_prelude::EnsureOrigin,
+	dispatch::PostDispatchInfo,
+	pallet_prelude::{DispatchResultWithPostInfo, EnsureOrigin, Pays},
 	parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Get, Hooks, OriginTrait,
@@ -27,6 +28,7 @@ pub(crate) const BOB: AccountId = 2;
 pub(crate) const CHARLIE: AccountId = 3;
 pub(crate) const RESPONSE: AccountId = 4;
 pub(crate) const RESPONSE_LOCATION: Location = Location { parents: 1, interior: Junctions::Here };
+pub(crate) const FEE_ACCOUNT: AccountId = 5;
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
@@ -215,14 +217,19 @@ impl crate::nonfungibles::Config for Test {
 	type WeightInfo = ();
 }
 
+/// Will return half of the weight in the post info.
+/// Mocking a successfull execution, with refund.
 pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
 impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
 	fn execute(
-		account: <T as frame_system::Config>::AccountId,
+		account: &<T as frame_system::Config>::AccountId,
 		data: Vec<u8>,
 		weight: sp_runtime::Weight,
 	) -> frame_support::dispatch::DispatchResultWithPostInfo {
-		Ok(().into())
+		DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+			actual_weight: Some(weight),
+			pays_fee: Pays::Yes,
+		})
 	}
 
 	fn execution_weight() -> sp_runtime::Weight {
@@ -234,6 +241,7 @@ parameter_types! {
 	pub const OnChainByteFee: Balance = 10;
 	pub const OffChainByteFee: Balance = 5;
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 10;
+	pub const FeeAccount: AccountId = FEE_ACCOUNT;
 	pub const IsmpRelayerFee: Balance = 100_000;
 }
 
@@ -260,11 +268,12 @@ pub fn get_next_query_id() -> u64 {
 impl crate::messaging::Config for Test {
 	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
 	type Deposit = Balances;
+	type FeeAccount = FeeAccount;
 	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
 	type IsmpRelayerFee = IsmpRelayerFee;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
-	type MaxKeyLen = ConstU32<1000>;
+	type MaxKeyLen = ConstU32<32>;
 	type MaxKeys = ConstU32<10>;
 	type MaxRemovals = ConstU32<1024>;
 	type MaxResponseLen = ConstU32<1024>;
@@ -370,7 +379,12 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 		.expect("Frame system builds valid default genesis config");
 
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)],
+		balances: vec![
+			(ALICE, INIT_AMOUNT),
+			(BOB, INIT_AMOUNT),
+			(CHARLIE, INIT_AMOUNT),
+			(FEE_ACCOUNT, INIT_AMOUNT),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");
