@@ -8,7 +8,12 @@ use ::ismp::{
 		GetRequest, GetResponse, PostRequest, PostResponse, Request, Request::*,
 		Response as IsmpResponse, Timeout,
 	},
-	// dispatcher::DispatchRequest::{Post, Get},
+	
+};
+use pallet_ismp::{
+	child_trie::{RequestCommitments, ResponseCommitments},
+	dispatcher::{FeeMetadata, RequestMetadata},
+	offchain::LeafIndexAndPos,
 };
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
@@ -37,7 +42,7 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 
 #[benchmarks(
 	where
-	T: pallet_balances::Config + pallet_xcm::Config + pallet_timestamp::Config,
+	T: pallet_balances::Config + pallet_xcm::Config + pallet_timestamp::Config + pallet_ismp::Config,
 )]
 mod messaging_benchmarks {
 	use super::*;
@@ -81,7 +86,7 @@ mod messaging_benchmarks {
 		)
 	}
 
-	/// x: Is there a callback.
+	/// x: Is there a callback?
 	#[benchmark]
 	fn xcm_new_query(x: Linear<0, 1>) {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
@@ -121,7 +126,7 @@ mod messaging_benchmarks {
 		)
 	}
 
-	/// x: Wether a successfully executing callback is provided.
+	/// x: Is there a callback?
 	#[benchmark]
 	fn xcm_response(x: Linear<0, 1>) {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
@@ -172,8 +177,9 @@ mod messaging_benchmarks {
 		);
 	}
 
-	/// x: Is it a get. (example: 1 = get, 0 = post)
-	/// y: the response has a callback.
+	/// x = 1 Get response.
+	/// x = 2 Post Response.
+	/// y: Is there a callback supplied?
 	#[benchmark]
 	fn ismp_on_response(x: Linear<0, 1>, y: Linear<0, 1>) {
 		let origin: T::AccountId = account("alice", 0, SEED);
@@ -238,18 +244,17 @@ mod messaging_benchmarks {
 
 		#[block]
 		{
-			let res = handler.on_response(response.clone());
-			log::debug!("{:?}", res);
+			handler.on_response(response.clone()).unwrap();
 		}
 
-		//1assert_has_event::<T>(event.into())
+		assert_has_event::<T>(event.into())
 	}
 
 	/// x: is it a Request::Post, Request::Get or Response::Post.
 	/// x = 0: Post request.
 	/// x = 1: Get request.
 	/// x = 2: Post response.
-	/// y = 1: There is a callback
+	/// y = 1: Is there a callback supplied?
 	#[benchmark]
 	fn ismp_on_timeout(x: Linear<0, 2>, y: Linear<0, 1>) {
 		let commitment = H256::repeat_byte(2u8);
@@ -291,6 +296,10 @@ mod messaging_benchmarks {
 			(Timeout::Response(post_response), commitment)
 		};
 
+		let event = Event::<T>::IsmpTimedOut {
+			commitment: commitment,
+		};
+
 		let input_message = Message::Ismp { commitment, callback, deposit: One::one() };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
@@ -299,13 +308,16 @@ mod messaging_benchmarks {
 		let handler = crate::messaging::ismp::Handler::<T>::new();
 		#[block]
 		{
-			let res = handler.on_timeout(timeout_message);
-			log::debug!("{:?}", res);
+			handler.on_timeout(timeout_message).unwrap();
 		}
+
+		assert_has_event::<T>(event.into());
 	}
 
-	/// z: Maximum amount of keys (outer) len: bound to T::MaxKeys
-	/// a: Is there a Callback supplied?
+	/// x: Key length: T::MaxKeyLen.
+	/// y: Context length: T::MaxContextLen.
+	/// z: Quantity of keys (outer) len: bound to T::MaxKeys.
+	/// a: Is there a callback supplied?
 	#[benchmark(pov_mode = Measured {
         Pallet: Measured,
         Pallet::Storage: Measured,
@@ -318,7 +330,7 @@ mod messaging_benchmarks {
 	) {
 		pallet_timestamp::Pallet::<T>::set_timestamp(1u32.into());
 		let origin: T::AccountId = account("alice", 0, SEED);
-		let id_data = (z, a, "imsp_get");
+		let id_data = (x, y, z, a, "imsp_get");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
 
@@ -349,14 +361,17 @@ mod messaging_benchmarks {
 			keys: outer_keys.try_into().unwrap(),
 		};
 
-		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, pallet_balances::Pallet::<T>::total_issuance());
+		pallet_balances::Pallet::<T>::make_free_balance_be(
+			&origin,
+			pallet_balances::Pallet::<T>::total_issuance() / 2u32.into(),
+		);
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
 	}
 
 	/// x: Maximun byte len of outgoing data. T::MaxDataLen
-	/// y: is there a callback.
+	/// y: Is there a callback supplied?
 	#[benchmark]
 	fn ismp_post(x: Linear<0, { T::MaxDataLen::get() }>, y: Linear<0, 1>) {
 		pallet_timestamp::Pallet::<T>::set_timestamp(1u32.into());
@@ -381,10 +396,12 @@ mod messaging_benchmarks {
 			None
 		};
 
-		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, pallet_balances::Pallet::<T>::total_issuance());
+		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, pallet_balances::Pallet::<T>::total_issuance() / 2u32.into());
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
+
+		//assert_has_event()
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

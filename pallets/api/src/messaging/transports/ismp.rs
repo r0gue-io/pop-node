@@ -235,8 +235,13 @@ fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), anyhow::Error>
 		};
 		*message =
 			Some(super::super::Message::IsmpTimeout { deposit: *deposit, commitment: *commitment });
-
 		Ok(())
 	})?;
+
+	crate::messaging::Pallet::<T>::deposit_event(
+		Event::<T>::IsmpTimedOut {
+			commitment: *commitment,
+		}
+	);
 	Ok(())
 }

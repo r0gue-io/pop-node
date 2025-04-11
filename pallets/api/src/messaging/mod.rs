@@ -281,6 +281,14 @@ pub mod pallet {
 			/// The messages which were removed.
 			messages: Vec<MessageId>,
 		},
+		/// An ISMP message has timed out.
+		IsmpTimedOut {
+			commitment: H256,
+		},
+		/// An XCM message has timed out.
+		XcmTimedOut {
+			query_ids: Vec<QueryId>,
+		},
 	}
 
 	#[pallet::error]
@@ -322,18 +330,27 @@ pub mod pallet {
 			// in pallet-xcm. As a result, we must handle timeouts in the pallet.
 			// Iterate through the queries that have expired and update their status.
 			let mut weight: Weight = Zero::zero();
+			let mut query_ids = vec![];
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
 				Messages::<T>::mutate(origin, message_id, |maybe_message| {
 					if let Some(Message::XcmQuery { query_id, deposit, .. }) =
 						maybe_message.as_mut()
 					{
+						query_ids.push(*query_id);
 						*maybe_message =
 							Some(Message::XcmTimeout { query_id: *query_id, deposit: *deposit });
 					}
 				})
 			}
 
+			if query_ids.len() > 0 {
+				Self::deposit_event(
+					Event::<T>::XcmTimedOut {
+						query_ids
+					}
+				)
+			}
 			weight
 		}
 	}
