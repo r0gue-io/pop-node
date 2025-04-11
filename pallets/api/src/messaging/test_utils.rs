@@ -50,11 +50,12 @@ pub fn ismp_get_response(
 
 	let mut total_response_len = 0;
 	let mut values = vec![];
-	while total_response_len < response_len.saturating_sub(r_encoded_size) {
+	while total_response_len < response_len.saturating_sub(r_encoded_size * 2) {
 		total_response_len += r_encoded_size;
 		values.push(r.clone());
 	}
 
+    assert!(values.encoded_size() < response_len);
 	GetResponse { get: ismp_get_request(key_len, keys_len, context_len), values }
 }
 
@@ -64,5 +65,5 @@ pub fn ismp_post_response(body_len: usize, response_len: usize) -> PostResponse 
 }
 
 pub fn get_storage_value() -> StorageValue {
-	StorageValue { key: [1u8; 32].to_vec(), value: Some([1u8; 32].to_vec()) }
+	StorageValue { key: [1u8; 1].to_vec(), value: Some([1u8; 1].to_vec()) }
 }

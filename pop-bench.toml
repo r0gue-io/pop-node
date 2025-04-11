@@ -1,6 +1,6 @@
 version = "1"
 pallet = "messaging"
-extrinsic = "ismp_get,ismp_on_response,ismp_on_timeout,ismp_post,remove,xcm_new_query,xcm_response"
+extrinsic = "*"
 exclude_pallets = []
 all = false
 steps = 50
@@ -11,8 +11,6 @@ external_repeat = 1
 json_output = false
 no_median_slopes = false
 no_min_squares = false
-output = "./pallets/api/src/messaging/weights.rs"
-template = "./scripts/runtime-weight-template.hbs"
 output_pov_analysis = "median-slopes"
 no_verify = false
 extra = false

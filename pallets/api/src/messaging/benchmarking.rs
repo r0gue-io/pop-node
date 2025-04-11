@@ -244,9 +244,12 @@ mod messaging_benchmarks {
 
 		#[block]
 		{
-			handler.on_response(response.clone()).unwrap();
+			let res = handler.on_response(response.clone());
+			let err = res.unwrap_err().downcast::<IsmpError>().unwrap();
+			log::error!("{:?}", err);
 		}
 
+		log::error!("{:?}", frame_system::Pallet::<T>::events());
 		assert_has_event::<T>(event.into())
 	}
 
@@ -308,9 +311,11 @@ mod messaging_benchmarks {
 		let handler = crate::messaging::ismp::Handler::<T>::new();
 		#[block]
 		{
-			handler.on_timeout(timeout_message).unwrap();
+			let res = handler.on_timeout(timeout_message);
+			let err = res.unwrap_err().downcast::<IsmpError>().unwrap();
+			log::error!("{:?}", err);
 		}
-
+		log::error!("{:?}", frame_system::Pallet::<T>::events());
 		assert_has_event::<T>(event.into());
 	}
 

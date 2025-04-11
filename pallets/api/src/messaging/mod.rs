@@ -330,7 +330,7 @@ pub mod pallet {
 			// in pallet-xcm. As a result, we must handle timeouts in the pallet.
 			// Iterate through the queries that have expired and update their status.
 			let mut weight: Weight = Zero::zero();
-			let mut query_ids = vec![];
+			let mut query_ids = sp_std::vec![];
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
 				Messages::<T>::mutate(origin, message_id, |maybe_message| {
@@ -344,7 +344,7 @@ pub mod pallet {
 				})
 			}
 
-			if query_ids.len() > 0 {
+			if query_ids.len() > 0usize {
 				Self::deposit_event(
 					Event::<T>::XcmTimedOut {
 						query_ids
