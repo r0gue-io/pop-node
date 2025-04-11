@@ -498,16 +498,22 @@ mod xcm_new_query {
 	fn takes_deposit() {
 		new_test_ext().execute_with(|| {
 			let timeout = System::block_number() + 1;
-			let expected_deposit = calculate_protocol_deposit::<
-				Test,
-				<Test as Config>::OnChainByteFee,
-			>(ProtocolStorageDeposit::XcmQueries)
-			.saturating_add(calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>());
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
+
+			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
+
+			let expected_deposit =
+				calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
+					ProtocolStorageDeposit::XcmQueries,
+				) + calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
+					callback_deposit;
 
 			assert!(
 				expected_deposit > 0,
 				"set an onchain byte fee with T::OnChainByteFee to run this test."
 			);
+			assert!(callback_deposit != 0);
 
 			let alices_balance_pre_hold = Balances::free_balance(&ALICE);
 
@@ -517,7 +523,7 @@ mod xcm_new_query {
 				message_id,
 				RESPONSE_LOCATION,
 				timeout,
-				None,
+				Some(callback),
 			));
 
 			let alices_balance_post_hold = Balances::free_balance(&ALICE);
@@ -531,12 +537,8 @@ mod xcm_new_query {
 		new_test_ext().execute_with(|| {
 			// Looking for an item in Messages and XcmQueries.
 			let message_id = [0; 32];
-			let expected_callback = Callback {
-				selector: [1; 4],
-				weight: 100.into(),
-				spare_weight_creditor: BOB,
-				abi: Abi::Scale,
-			};
+			let expected_callback =
+				Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
 			let timeout = System::block_number() + 1;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -685,12 +687,7 @@ mod xcm_response {
 			let timeout = System::block_number() + 1;
 			let mut expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
-			let callback = Callback {
-				selector: [1; 4],
-				weight: 100.into(),
-				spare_weight_creditor: BOB,
-				abi: Abi::Scale,
-			};
+			let callback = Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
 
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -713,12 +710,7 @@ mod xcm_response {
 			let timeout = System::block_number() + 1;
 			let mut expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
-			let callback = Callback {
-				selector: [1; 4],
-				weight: 100.into(),
-				spare_weight_creditor: BOB,
-				abi: Abi::Scale,
-			};
+			let callback = Callback { selector: [1; 4], weight: 0.into(), abi: Abi::Scale };
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
 				<Test as crate::messaging::Config>::OnChainByteFee,
@@ -786,42 +778,45 @@ mod handle_callback_result {
 	use super::*;
 
 	#[test]
-	fn refunds_unused_weight_to_creditor_on_success() {
+	fn claims_all_weight_to_fee_pot_on_failure() {
 		new_test_ext().execute_with(|| {
 			let origin = ALICE;
 			let id = [1u8; 32];
-			let actual_weight = Weight::from_parts(100, 100);
-			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-				actual_weight: Some(actual_weight.clone()),
-				pays_fee: Pays::Yes,
+			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
+				post_info: Default::default(),
+				error: Error::<Test>::InvalidMessage.into(),
 			});
-			let bob_balance_pre_refund = Balances::free_balance(&BOB);
-			let expected_imbalance =
-				<Test as crate::messaging::Config>::WeightToFee::weight_to_fee(&actual_weight);
-			let callback = Callback {
-				selector: [1; 4],
-				weight: Weight::from_parts(1000, 1000),
-				spare_weight_creditor: BOB,
-				abi: Abi::Scale,
-			};
+			let actual_weight = Weight::from_parts(100_000_000, 100_000_000);
 
-			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin, &id, result, callback
-			));
+			let callback = Callback { selector: [1; 4], weight: actual_weight, abi: Abi::Scale };
 
-			let bob_balance_post_refund = Balances::free_balance(&BOB);
-			assert_eq!(
-				bob_balance_post_refund - bob_balance_pre_refund,
-				expected_imbalance,
-				"oops bob hasnt been refunded!"
-			);
-		})
-	}
+			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&actual_weight);
 
-	#[test]
-	fn does_not_refunds_unused_weight_to_creditor_on_failure() {
-		new_test_ext().execute_with(|| {
-			todo!("sc-3302");
+			assert!(deposit != 0);
+			// Artificially take the deposit
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
+
+			let pot_pre_handle = Balances::free_balance(&FEE_ACCOUNT);
+			let alice_balance_pre_handle = Balances::free_balance(&ALICE);
+
+			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+				&origin,
+				&id,
+				result,
+				callback.clone()
+			)
+			.is_err());
+
+			let alice_balance_post_handle = Balances::free_balance(&ALICE);
+			let pot_post_handle = Balances::free_balance(&FEE_ACCOUNT);
+
+			assert_eq!(alice_balance_post_handle, alice_balance_pre_handle);
+			assert_eq!(pot_post_handle, pot_pre_handle + deposit);
 		})
 	}
 
@@ -838,9 +833,18 @@ mod handle_callback_result {
 			let callback = Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(1000, 1000),
-				spare_weight_creditor: BOB,
 				abi: Abi::Scale,
 			};
+
+			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&actual_weight);
+
+			// Artificially take the deposit
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
 
 			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
 				&origin,
@@ -869,7 +873,6 @@ mod handle_callback_result {
 			let callback = Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(1000, 1000),
-				spare_weight_creditor: BOB,
 				abi: Abi::Scale,
 			};
 
@@ -887,6 +890,62 @@ mod handle_callback_result {
 				post_info: Default::default(),
 				error: Error::<Test>::InvalidMessage.into()
 			}));
+		})
+	}
+
+	#[test]
+	fn assert_payback_when_execution_weight_is_less_than_deposit_held() {
+		new_test_ext().execute_with(|| {
+			let origin = ALICE;
+			let id = [1u8; 32];
+			let actual_weight_executed = Weight::from_parts(50_000_000, 70_000_000);
+			let callback_weight_reserved = Weight::from_parts(100_000_000, 100_000_000);
+
+			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: Some(actual_weight_executed.clone()),
+				pays_fee: Pays::Yes,
+			});
+
+			let callback =
+				Callback { selector: [1; 4], weight: callback_weight_reserved, abi: Abi::Scale };
+
+			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight_reserved);
+
+			assert!(deposit != 0);
+
+			// Artificially take the deposit
+			<Test as crate::messaging::Config>::Deposit::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				deposit,
+			)
+			.unwrap();
+
+			let expected_refund =
+				deposit - <Test as Config>::WeightToFee::weight_to_fee(&actual_weight_executed);
+
+			assert!(expected_refund != 0);
+
+			let fee_pot_payment = deposit - expected_refund;
+
+			let fee_account_pre_handle = Balances::free_balance(&FEE_ACCOUNT);
+			let alice_balance_pre_handle = Balances::free_balance(&ALICE);
+
+			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+				&origin,
+				&id,
+				result,
+				callback.clone()
+			)
+			.is_ok());
+
+			/// alice should have been refunded by the tune of expected refund.
+			/// the fee pot should have been increased by fee_pot_payment.
+			let fee_account_post_handle = Balances::free_balance(&FEE_ACCOUNT);
+			let alice_balance_post_handle = Balances::free_balance(&ALICE);
+
+			assert_eq!(alice_balance_post_handle - alice_balance_pre_handle, expected_refund);
+			assert_eq!(fee_account_post_handle, fee_account_pre_handle + fee_pot_payment);
 		})
 	}
 }
@@ -927,7 +986,11 @@ mod ismp_get {
 				keys: bounded_vec!(),
 			};
 			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
-			let callback = None;
+
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
+
+			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
@@ -935,11 +998,11 @@ mod ismp_get {
 			>(ProtocolStorageDeposit::IsmpRequests) +
 				calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
 				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Get<Test>>(
-				) + ismp_fee;
+				) + ismp_fee + callback_deposit;
 
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
 
-			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, callback));
+			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, Some(callback)));
 
 			let alice_balance_post_hold = Balances::free_balance(&ALICE);
 
@@ -1007,14 +1070,18 @@ mod ismp_post {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
-			let callback = None;
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
+			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 			let alice_balance_pre_hold = Balances::free_balance(&ALICE);
+
+			assert!(callback_deposit != 0);
 
 			assert_ok!(Messaging::ismp_post(
 				signed(ALICE),
 				message_id.clone(),
 				message.clone(),
-				callback
+				Some(callback)
 			));
 
 			let expected_deposit = calculate_protocol_deposit::<
@@ -1023,7 +1090,7 @@ mod ismp_post {
 			>(ProtocolStorageDeposit::IsmpRequests) +
 				calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
 				calculate_deposit_of::<Test, <Test as Config>::OffChainByteFee, ismp::Post<Test>>(
-				) + ismp_fee;
+				) + ismp_fee + callback_deposit;
 
 			assert!(expected_deposit != (0 + ismp_fee));
 
@@ -1173,12 +1240,7 @@ mod ismp_hooks {
 				let response = vec![1u8];
 				let commitment: H256 = Default::default();
 				let message_id = [1u8; 32];
-				let callback = Callback {
-					selector: [1; 4],
-					weight: 100.into(),
-					spare_weight_creditor: BOB,
-					abi: Abi::Scale,
-				};
+				let callback = Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
 				let deposit = 100;
 				let message = Message::Ismp { commitment, callback: Some(callback), deposit };
 
