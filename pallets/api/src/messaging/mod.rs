@@ -757,13 +757,11 @@ impl<T: Config> Pallet<T> {
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {
 					origin: initiating_origin.clone(),
-					id: id.clone(),
+					id: *id,
 					callback,
 					post_info,
 					error,
 				});
-
-				log::error!("Callback has failed.");
 				Ok(())
 			},
 		}
