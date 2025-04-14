@@ -7,7 +7,10 @@ use ::ismp::{
 		DispatchRequest::{self},
 	},
 	host::StateMachine,
+	messaging::{hash_request,  Keccak256},
+
 };
+
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
@@ -18,7 +21,7 @@ use frame_support::{
 use ismp::{
 	dispatcher::DispatchPost,
 	module::IsmpModule,
-	router::{GetResponse, PostRequest, PostResponse, Request::*, Response, Timeout},
+	router::{GetResponse, PostRequest, PostResponse, Request, Response, Timeout},
 	Error,
 };
 use pallet_ismp::weights::IsmpModuleWeight;
@@ -121,23 +124,21 @@ impl<T> Handler<T> {
 
 impl<T: Config> IsmpModule for Handler<T> {
 	fn on_accept(&self, _request: PostRequest) -> Result<(), anyhow::Error> {
-		Err(Error::Custom("pop-net is not accepting post requests at this time!".into())
-			.into())
+		Ok(())
 	}
 
 	fn on_response(&self, response: Response) -> Result<(), anyhow::Error> {
 		// Hash request to determine key for message lookup.
 		match response {
 			Response::Get(GetResponse { get, values }) => {
-				log::debug!(target: "pop-api::extension", "StorageValue={:?}", values[0]);
-				// TODO: This should be bound to the hasher used in the ismp dispatcher.
-				let commitment = H256::from(keccak_256(&Get(get).encode()));
+				log::debug!(target: "pop-api::extension", "StorageValue={:?}", values);
+				let commitment = hash_request::<T::Keccak256>(&Request::Get(get));
 				process_response(&commitment, &values, |dest, id| {
 					Event::<T>::IsmpGetResponseReceived { dest, id, commitment }
 				})
 			},
-			Response::Post(PostResponse { post, response, .. }) => {
-				let commitment = H256::from(keccak_256(&Post(post).encode()));
+			Response::Post(PostResponse { post, response, ..}) => {
+				let commitment = hash_request::<T::Keccak256>(&Request::Post(post));
 				process_response(&commitment, &response, |dest, id| {
 					Event::<T>::IsmpPostResponseReceived { dest, id, commitment }
 				})
@@ -149,14 +150,11 @@ impl<T: Config> IsmpModule for Handler<T> {
 		match timeout {
 			Timeout::Request(request) => {
 				// hash request to determine key for original request id lookup
-				let commitment = match request {
-					Get(get) => H256::from(keccak_256(&get.encode())),
-					Post(post) => H256::from(keccak_256(&post.encode())),
-				};
+				let commitment = hash_request::<T::Keccak256>(&request);
 				timeout_commitment::<T>(&commitment)
 			},
-			Timeout::Response(response) => {
-				let commitment = H256::from(keccak_256(&Post(response.post).encode()));
+			Timeout::Response(PostResponse { post, .. }) => {
+				let commitment= hash_request::<T::Keccak256>(&Request::Post(post));
 				timeout_commitment::<T>(&commitment)
 			},
 		}

@@ -186,6 +186,8 @@ pub mod pallet {
 		type IsmpRelayerFee: Get<BalanceOf<Self>>;
 
 		type WeightInfo: super::WeightInfo;
+
+		type Keccak256: ::ismp::messaging::Keccak256;
 	}
 
 	#[pallet::pallet]
@@ -764,7 +766,9 @@ impl<T: Config> Pallet<T> {
 					post_info,
 					error,
 				});
-				Err(error)
+
+				log::error!("Callback has failed.");
+				Ok(())
 			},
 		}
 	}

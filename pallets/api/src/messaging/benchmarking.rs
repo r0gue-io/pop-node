@@ -8,6 +8,8 @@ use ::ismp::{
 		GetRequest, GetResponse, PostRequest, PostResponse, Request, Request::*,
 		Response as IsmpResponse, Timeout,
 	},
+	messaging::{hash_request}, 
+
 	
 };
 use pallet_ismp::{
@@ -97,7 +99,6 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [0; 4],
 				weight: Weight::from_parts(100, 100),
-				spare_weight_creditor: owner.clone(),
 				abi: Abi::Scale,
 			})
 		} else {
@@ -143,7 +144,6 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [0; 4],
 				weight: Weight::from_parts(100, 100),
-				spare_weight_creditor: owner.clone(),
 				abi: Abi::Scale,
 			})
 		} else {
@@ -183,16 +183,24 @@ mod messaging_benchmarks {
 	#[benchmark]
 	fn ismp_on_response(x: Linear<0, 1>, y: Linear<0, 1>) {
 		let origin: T::AccountId = account("alice", 0, SEED);
+		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, u32::MAX.into());
+
 		let id_data = (x, y, b"ismp_response");
 		let encoded = id_data.encode();
 		let message_id: [u8; 32] = H256::from(blake2_256(&encoded)).into();
 
 		let callback = if y == 1 {
-			// The mock will always assume successfull callback.
+			let weight = Weight::from_parts(100_000, 100_000);
+			let total_deposit = T::WeightToFee::weight_to_fee(&weight);
+			T::Deposit::hold(
+				&HoldReason::CallbackGas.into(),
+				&origin,
+				total_deposit,
+			).unwrap();
+
 			Some(Callback {
 				selector: [0; 4],
-				weight: Weight::from_parts(100, 100),
-				spare_weight_creditor: origin.clone(),
+				weight,
 				abi: Abi::Scale,
 			})
 		} else {
@@ -201,15 +209,17 @@ mod messaging_benchmarks {
 
 		let (response, event, commitment) = if x == 1 {
 			// get response
-			let get = ismp_get_response(
+			let get_response = ismp_get_response(
 				T::MaxKeyLen::get() as usize,
 				T::MaxKeys::get() as usize,
 				T::MaxContextLen::get() as usize,
 				T::MaxResponseLen::get() as usize,
 			);
-			let commitment = H256::from(keccak_256(&Get(get.get.clone()).encode()));
+			let commitment = hash_request::<T::Keccak256>(&Request::Get(get_response.get.clone()));
+			let get = IsmpResponse::Get(get_response);
+			
 			(
-				IsmpResponse::Get(get.clone()),
+				get,
 				crate::messaging::Event::<T>::IsmpGetResponseReceived {
 					dest: origin.clone(),
 					id: message_id,
@@ -219,13 +229,16 @@ mod messaging_benchmarks {
 			)
 		} else {
 			// post response
-			let post = ismp_post_response(
+			let post_response = ismp_post_response(
 				T::MaxDataLen::get() as usize,
 				T::MaxResponseLen::get() as usize,
 			);
-			let commitment = H256::from(keccak_256(&Post(post.post.clone()).encode()));
+
+			let commitment = hash_request::<T::Keccak256>(&Request::Post(post_response.post.clone().clone()));
+			let post = IsmpResponse::Post(post_response);
+
 			(
-				IsmpResponse::Post(post.clone()),
+				post,
 				crate::messaging::Event::<T>::IsmpPostResponseReceived {
 					dest: origin.clone(),
 					id: message_id,
@@ -239,17 +252,16 @@ mod messaging_benchmarks {
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &message);
+		
 
 		let handler = crate::messaging::ismp::Handler::<T>::new();
 
 		#[block]
 		{
-			let res = handler.on_response(response.clone());
-			let err = res.unwrap_err().downcast::<IsmpError>().unwrap();
-			log::error!("{:?}", err);
+
+			handler.on_response(response.clone()).unwrap();
 		}
 
-		log::error!("{:?}", frame_system::Pallet::<T>::events());
 		assert_has_event::<T>(event.into())
 	}
 
@@ -270,7 +282,7 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(100, 100),
-				spare_weight_creditor: origin.clone(),
+				
 				abi: Abi::Scale,
 			})
 		} else {
@@ -278,24 +290,23 @@ mod messaging_benchmarks {
 		};
 
 		let (timeout_message, commitment) = if x == 0 {
-			let post_request = ismp_post_request(T::MaxDataLen::get() as usize);
-			let commitment = H256::from(keccak_256(&Post(post_request.clone()).encode()));
-			(Timeout::Request(Request::Post(post_request.clone())), commitment)
+			let post_request = Request::Post(ismp_post_request(T::MaxDataLen::get() as usize));
+			let commitment = hash_request::<T::Keccak256>(&post_request);
+			(Timeout::Request(post_request), commitment)
 		} else if x == 1 {
-			let get_request = ismp_get_request(
+			let get_request = Request::Get(ismp_get_request(
 				T::MaxKeyLen::get() as usize,
 				T::MaxKeys::get() as usize,
 				T::MaxContextLen::get() as usize,
-			);
-			let commitment = H256::from(keccak_256(&Get(get_request.clone()).encode()));
-			(Timeout::Request(Request::Get(get_request.clone())), commitment)
+			));
+			let commitment = hash_request::<T::Keccak256>(&get_request);
+			(Timeout::Request(get_request), commitment)
 		} else {
 			let post_response = ismp_post_response(
 				T::MaxDataLen::get() as usize,
 				T::MaxResponseLen::get() as usize,
 			);
-			let commitment = H256::from(keccak_256(&Post(post_response.post.clone()).encode()));
-
+			let commitment = hash_request::<T::Keccak256>(&Request::Post(post_response.post.clone()	));
 			(Timeout::Response(post_response), commitment)
 		};
 
@@ -311,11 +322,8 @@ mod messaging_benchmarks {
 		let handler = crate::messaging::ismp::Handler::<T>::new();
 		#[block]
 		{
-			let res = handler.on_timeout(timeout_message);
-			let err = res.unwrap_err().downcast::<IsmpError>().unwrap();
-			log::error!("{:?}", err);
+			handler.on_timeout(timeout_message).unwrap()
 		}
-		log::error!("{:?}", frame_system::Pallet::<T>::events());
 		assert_has_event::<T>(event.into());
 	}
 
@@ -351,7 +359,7 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(100, 100),
-				spare_weight_creditor: origin.clone(),
+				
 				abi: Abi::Scale,
 			})
 		} else {
@@ -394,7 +402,7 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(100, 100),
-				spare_weight_creditor: origin.clone(),
+				
 				abi: Abi::Scale,
 			})
 		} else {

@@ -47,20 +47,19 @@ pub fn ismp_get_response(
 ) -> GetResponse {
 	let r = get_storage_value();
 	let r_encoded_size = r.encoded_size();
-
-	let mut total_response_len = 0;
 	let mut values = vec![];
-	while total_response_len < response_len.saturating_sub(r_encoded_size * 2) {
-		total_response_len += r_encoded_size;
+
+	let iterations = response_len / r_encoded_size;
+	for i in 0..iterations - 1 {
 		values.push(r.clone());
 	}
 
-    assert!(values.encoded_size() < response_len);
+    debug_assert!(values.encoded_size() < response_len);
 	GetResponse { get: ismp_get_request(key_len, keys_len, context_len), values }
 }
 
 pub fn ismp_post_response(body_len: usize, response_len: usize) -> PostResponse {
-	let response = [1u8].repeat(response_len);
+	let response = [1u8].repeat(response_len - 2);
 	PostResponse { post: ismp_post_request(body_len), response, timeout_timestamp: 100_001 }
 }
 

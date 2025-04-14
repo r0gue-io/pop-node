@@ -287,6 +287,18 @@ impl crate::messaging::Config for Test {
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
 	type WeightInfo = ();
+	type Keccak256 = Keccak;
+}
+
+pub struct Keccak;
+
+impl ::ismp::messaging::Keccak256 for Keccak {
+    fn keccak256(bytes: &[u8]) -> sp_core::H256
+    where
+        Self: Sized,
+    {
+        sp_core::keccak_256(bytes).into()
+    }
 }
 
 pub struct RefTimePlusProofTime;

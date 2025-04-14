@@ -27,6 +27,8 @@ use crate::{
 	TransactionByteFee,
 };
 
+use sp_runtime::traits::AccountIdConversion;
+
 mod versioning;
 
 type DecodingFailedError = DecodingFailed<Runtime>;
@@ -115,7 +117,10 @@ impl nonfungibles::Config for Runtime {
 parameter_types! {
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
 	// TODO: What is reasonable.
+
 	pub const IsmpRelayerFee: crate::Balance = crate::UNIT / 2;
+	pub DummyFeeAccount: AccountId = crate::PalletId(*b"dummyacc").into_account_truncating();
+
 }
 
 impl messaging::Config for Runtime {
@@ -144,6 +149,8 @@ impl messaging::Config for Runtime {
 	type XcmResponseOrigin = EnsureResponse;
 	// type WeightInfo = pallet_api::messaging::WeightInfo;
 	type WeightInfo = DummyWeight;
+	type FeeAccount = DummyFeeAccount;
+	type Keccak256 = Ismp;
 }
 
 pub struct DummyWeight;
@@ -191,7 +198,7 @@ impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureRespon
 
 pub struct CallbackExecutor;
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
-	fn execute(account: AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
+	fn execute(account: &AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
 		type AddressMapper = <Runtime as pallet_revive::Config>::AddressMapper;
 
 		// Default
