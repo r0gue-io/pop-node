@@ -63,13 +63,14 @@ pub type MessageId = [u8; 32];
 pub trait WeightInfo {
 	fn remove(x: u32) -> Weight;
 	fn xcm_new_query(x: u32) -> Weight;
-	fn xcm_response(x: u32) -> Weight;
+	fn xcm_response() -> Weight;
 	fn ismp_on_response(x: u32, y: u32) -> Weight;
 	fn ismp_on_timeout(x: u32, y: u32) -> Weight;
-	fn ismp_get(x: u32, y: u32, x: u32, a: u32) -> Weight;
+	fn ismp_get(y: u32, x: u32, a: u32) -> Weight;
 	fn ismp_post(x: u32, y: u32) -> Weight;
 }
 
+#[cfg(test)]
 impl WeightInfo for () {
 	fn remove(x: u32) -> Weight {
 		Default::default()
@@ -79,7 +80,7 @@ impl WeightInfo for () {
 		Default::default()
 	}
 
-	fn xcm_response(x: u32) -> Weight {
+	fn xcm_response() -> Weight {
 		Default::default()
 	}
 
@@ -91,7 +92,7 @@ impl WeightInfo for () {
 		Default::default()
 	}
 
-	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
+	fn ismp_get(y: u32, z: u32, a: u32) -> Weight {
 		Default::default()
 	}
 
@@ -393,16 +394,12 @@ pub mod pallet {
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
 		#[pallet::call_index(1)]
 		#[pallet::weight(
-			// {
-				// let keys_len = message.keys.len() as u32;
-				// let has_callback = if callback.is_some() {
-				// 	1
-				// } else {
-				// 	0
-				// };
-				// T::WeightInfo::ismp_get(keys_len, has_callback)
-			// }
-			Weight::default()
+			{
+				let keys_len: u32 = message.keys.len().try_into().unwrap_or(T::MaxKeys::get());
+				let context_len: u32 = message.context.len().try_into().unwrap_or(T::MaxKeys::get());
+				let has_callback = callback.is_some() as u32;
+				T::WeightInfo::ismp_get(context_len, keys_len, has_callback)
+			}
 		)]
 		pub fn ismp_get(
 			origin: OriginFor<T>,
@@ -460,7 +457,11 @@ pub mod pallet {
 
 		// TODO: does ismp allow querying to ensure that specified para id is supported?
 		#[pallet::call_index(2)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight({
+			let data_len: u32 = message.data.len().try_into().unwrap_or(T::MaxDataLen::get());
+			let has_callback = callback.is_some() as u32;
+			T::WeightInfo::ismp_post(data_len, has_callback)
+		})]
 		pub fn ismp_post(
 			origin: OriginFor<T>,
 			id: MessageId,
@@ -511,7 +512,11 @@ pub mod pallet {
 		}
 
 		#[pallet::call_index(3)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(
+			{
+				T::WeightInfo::xcm_new_query(callback.is_some() as u32)
+			}
+		)]
 		pub fn xcm_new_query(
 			origin: OriginFor<T>,
 			id: MessageId,
@@ -574,9 +579,10 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// NOTE: dispatchable should not fail, otherwise response will be lost.
 		#[pallet::call_index(4)]
-		#[pallet::weight(Weight::zero())] // todo: benchmarking
+		#[pallet::weight({
+			T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight()
+		})] 
 		pub fn xcm_response(
 			origin: OriginFor<T>,
 			query_id: QueryId,
@@ -633,7 +639,7 @@ pub mod pallet {
 
 		/// Try and remove a collection of messages.
 		#[pallet::call_index(5)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(T::WeightInfo::remove(messages.len() as u32))]
 		pub fn remove(
 			origin: OriginFor<T>,
 			messages: BoundedVec<MessageId, T::MaxRemovals>,
@@ -805,8 +811,7 @@ impl<T: Config> crate::Read for Pallet<T> {
 	type Result = ReadResult;
 
 	fn weight(_read: &Self::Read) -> Weight {
-		// TODO: implement benchmarks
-		Weight::zero()
+		T::DbWeight::get().reads(2)
 	}
 
 	fn read(request: Self::Read) -> Self::Result {

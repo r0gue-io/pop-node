@@ -126,7 +126,7 @@ mod messaging_benchmarks {
 
 	/// x: Is there a callback?
 	#[benchmark]
-	fn xcm_response(x: Linear<0, 1>) {
+	fn xcm_response() {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		let id_data = (x, b"xcmresponse");
 		let encoded = id_data.encode();
@@ -136,16 +136,11 @@ mod messaging_benchmarks {
 		let timeout = <BlockNumberOf<T> as One>::one() + frame_system::Pallet::<T>::block_number();
 		let response = Response::ExecutionResult(None);
 
-		let callback = if x == 1 {
-			// The mock will always assume successful callback.
-			Some(Callback {
-				selector: [0; 4],
-				weight: Weight::from_parts(100, 100),
-				abi: Abi::Scale,
-			})
-		} else {
-			None
-		};
+		let callback = Some(Callback {
+			selector: [0; 4],
+			weight: Weight::from_parts(100, 100),
+			abi: Abi::Scale,
+		});
 
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
@@ -323,19 +318,18 @@ mod messaging_benchmarks {
         Pallet::Storage: Measured,
       })]
 	fn ismp_get(
-		x: Linear<0, { T::MaxKeyLen::get() }>,
 		y: Linear<0, { T::MaxContextLen::get() }>,
 		z: Linear<0, { T::MaxKeys::get() }>,
 		a: Linear<0, 1>,
 	) {
 		pallet_timestamp::Pallet::<T>::set_timestamp(1u32.into());
 		let origin: T::AccountId = account("alice", 0, SEED);
-		let id_data = (x, y, z, a, "imsp_get");
+		let id_data = (y, z, a, "imsp_get");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
 
 		let inner_keys: BoundedVec<u8, T::MaxKeyLen> =
-			vec![1u8].repeat(x as usize).try_into().unwrap();
+			vec![1u8].repeat(T::MaxKeyLen::get() as usize).try_into().unwrap();
 
 		let mut outer_keys = vec![];
 		for k in (0..z) {

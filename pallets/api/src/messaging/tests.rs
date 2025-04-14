@@ -744,7 +744,6 @@ mod xcm_response {
 
 mod xcm_hooks {
 	use super::*;
-
 	#[test]
 	fn xcm_queries_expire_on_expiry_block() {
 		new_test_ext().execute_with(|| {
@@ -1138,15 +1137,74 @@ mod ismp_hooks {
 		ismp::Handler::<Test>::new()
 	}
 
-	mod on_timeout {
+	mod on_accept {
+		use ::ismp::module::IsmpModule;
+		use crate::messaging::test_utils::ismp_post_request;
 		use super::*;
+
+		/// The on_accept must return Ok even when not in use.
+		/// If an error is returned the receipt is not removed and a replay attack is possible.
+		#[test]
+		fn is_ok() {
+			new_test_ext().execute_with(|| {
+				let h = handler();
+				assert!(h.on_accept(ismp_post_request(100usize)).is_ok())
+			})
+		}
+	}
+
+	mod on_timeout {
+		use ::ismp::{
+			module::IsmpModule,
+			router::{Timeout, Request, Response}
+		};
+
+use super::*;
+		#[test]
+		fn commitment_generation_is_correct() {
+			new_test_ext().execute_with(|| {
+				let message_id = [0u8; 32];
+				let message = ismp::Get {
+					dest: 2000,
+					height: 10,
+					timeout: 100,
+					context: bounded_vec!(),
+					keys: bounded_vec!(),
+				};
+				let callback = None;
+				assert_ok!(Messaging::ismp_get(signed(ALICE), message_id.clone(), message, callback));
+
+				let request = Timeout::Request(Request::Get())
+
+				let h = handler();
+				h.on_timeout(request);
+
+			})
+		}
+
+		#[test]
+		fn timesout_message() {
+			new_test_ext().execute_with(|| {
+
+			})
+		}
+	}
+
+	mod on_response {
+		use super::*;
+		#[test]
+		fn commitment_generation_is_correct() {
+			new_test_ext().execute_with(|| {
+
+			})
+		}
+
 	}
 
 	mod process_response {
 		use ::ismp::Error as IsmpError;
 
 		use super::*;
-
 		#[test]
 		fn response_exceeds_max_encoded_len_limit() {
 			new_test_ext().execute_with(|| {
