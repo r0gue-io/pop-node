@@ -7,10 +7,8 @@ use ::ismp::{
 		DispatchRequest::{self},
 	},
 	host::StateMachine,
-	messaging::{hash_request,  Keccak256},
-
+	messaging::{hash_request, Keccak256},
 };
-
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	ensure,
@@ -137,7 +135,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 					Event::<T>::IsmpGetResponseReceived { dest, id, commitment }
 				})
 			},
-			Response::Post(PostResponse { post, response, ..}) => {
+			Response::Post(PostResponse { post, response, .. }) => {
 				let commitment = hash_request::<T::Keccak256>(&Request::Post(post));
 				process_response(&commitment, &response, |dest, id| {
 					Event::<T>::IsmpPostResponseReceived { dest, id, commitment }
@@ -154,7 +152,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 				timeout_commitment::<T>(&commitment)
 			},
 			Timeout::Response(PostResponse { post, .. }) => {
-				let commitment= hash_request::<T::Keccak256>(&Request::Post(post));
+				let commitment = hash_request::<T::Keccak256>(&Request::Post(post));
 				timeout_commitment::<T>(&commitment)
 			},
 		}
@@ -236,10 +234,8 @@ fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), anyhow::Error>
 		Ok(())
 	})?;
 
-	crate::messaging::Pallet::<T>::deposit_event(
-		Event::<T>::IsmpTimedOut {
-			commitment: *commitment,
-		}
-	);
+	crate::messaging::Pallet::<T>::deposit_event(Event::<T>::IsmpTimedOut {
+		commitment: *commitment,
+	});
 	Ok(())
 }

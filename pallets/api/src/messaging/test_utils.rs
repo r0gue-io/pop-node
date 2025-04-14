@@ -54,7 +54,7 @@ pub fn ismp_get_response(
 		values.push(r.clone());
 	}
 
-    debug_assert!(values.encoded_size() < response_len);
+	debug_assert!(values.encoded_size() < response_len);
 	GetResponse { get: ismp_get_request(key_len, keys_len, context_len), values }
 }
 

@@ -271,6 +271,7 @@ impl crate::messaging::Config for Test {
 	type FeeAccount = FeeAccount;
 	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
 	type IsmpRelayerFee = IsmpRelayerFee;
+	type Keccak256 = Keccak;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
 	type MaxKeyLen = ConstU32<32>;
@@ -283,22 +284,21 @@ impl crate::messaging::Config for Test {
 	type OriginConverter = AccountToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightInfo = ();
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
-	type WeightInfo = ();
-	type Keccak256 = Keccak;
 }
 
 pub struct Keccak;
 
 impl ::ismp::messaging::Keccak256 for Keccak {
-    fn keccak256(bytes: &[u8]) -> sp_core::H256
-    where
-        Self: Sized,
-    {
-        sp_core::keccak_256(bytes).into()
-    }
+	fn keccak256(bytes: &[u8]) -> sp_core::H256
+	where
+		Self: Sized,
+	{
+		sp_core::keccak_256(bytes).into()
+	}
 }
 
 pub struct RefTimePlusProofTime;

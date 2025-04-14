@@ -2,6 +2,7 @@ extern crate alloc;
 
 pub use alloc::borrow::ToOwned;
 
+use ::ismp::Error as IsmpError;
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
@@ -31,8 +32,6 @@ use transports::{
 };
 pub use xcm::NotifyQueryHandler;
 use xcm::Response;
-
-use ::ismp::Error as IsmpError;
 
 use super::Weight;
 
@@ -75,21 +74,27 @@ impl WeightInfo for () {
 	fn remove(x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn xcm_new_query(x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn xcm_response(x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_on_response(x: u32, y: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_post(x: u32, y: u32) -> Weight {
 		Default::default()
 	}
@@ -316,13 +321,9 @@ pub mod pallet {
 			messages: Vec<MessageId>,
 		},
 		/// An ISMP message has timed out.
-		IsmpTimedOut {
-			commitment: H256,
-		},
+		IsmpTimedOut { commitment: H256 },
 		/// An XCM message has timed out.
-		XcmTimedOut {
-			query_ids: Vec<QueryId>,
-		},
+		XcmTimedOut { query_ids: Vec<QueryId> },
 	}
 
 	#[pallet::error]
@@ -381,11 +382,7 @@ pub mod pallet {
 			}
 
 			if query_ids.len() > 0usize {
-				Self::deposit_event(
-					Event::<T>::XcmTimedOut {
-						query_ids
-					}
-				)
+				Self::deposit_event(Event::<T>::XcmTimedOut { query_ids })
 			}
 			weight
 		}
@@ -433,8 +430,7 @@ pub mod pallet {
 			}
 
 			// Process message by dispatching request via ISMP.
-			let commitment = match T::IsmpDispatcher::default()
-			.dispatch_request(
+			let commitment = match T::IsmpDispatcher::default().dispatch_request(
 				message.into(),
 				FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
 			) {
@@ -442,8 +438,8 @@ pub mod pallet {
 				Err(e) => {
 					let err = e.downcast::<IsmpError>().unwrap();
 					log::error!("ISMP Dispatch failed!! {:?}", err);
-					return Err(Error::<T>::IsmpDispatchFailed.into())
-				}
+					return Err(Error::<T>::IsmpDispatchFailed.into());
+				},
 			}?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.

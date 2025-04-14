@@ -3,19 +3,12 @@
 
 use ::ismp::{
 	host::StateMachine,
+	messaging::hash_request,
 	module::IsmpModule,
 	router::{
 		GetRequest, GetResponse, PostRequest, PostResponse, Request, Request::*,
 		Response as IsmpResponse, Timeout,
 	},
-	messaging::{hash_request}, 
-
-	
-};
-use pallet_ismp::{
-	child_trie::{RequestCommitments, ResponseCommitments},
-	dispatcher::{FeeMetadata, RequestMetadata},
-	offchain::LeafIndexAndPos,
 };
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
@@ -25,17 +18,22 @@ use frame_support::{
 	traits::{Currency, EnsureOrigin},
 	BoundedVec,
 };
+use pallet_ismp::{
+	child_trie::{RequestCommitments, ResponseCommitments},
+	dispatcher::{FeeMetadata, RequestMetadata},
+	offchain::LeafIndexAndPos,
+};
+use pallet_xcm::Origin as XcmOrigin;
 use sp_core::{keccak_256, Get, H256};
 use sp_io::hashing::blake2_256;
 use sp_runtime::traits::{One, Zero};
 use sp_std::vec;
-use pallet_xcm::Origin as XcmOrigin;
+
 use super::*;
 use crate::{messaging::test_utils::*, Read as _};
 
 const SEED: u32 = 1;
 type RuntimeOrigin<T> = <T as frame_system::Config>::RuntimeOrigin;
-
 
 // See if `generic_event` has been emitted.
 fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::RuntimeEvent) {
@@ -48,7 +46,6 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 )]
 mod messaging_benchmarks {
 	use super::*;
-	
 
 	/// x: The number of removals required.
 	#[benchmark]
@@ -192,17 +189,9 @@ mod messaging_benchmarks {
 		let callback = if y == 1 {
 			let weight = Weight::from_parts(100_000, 100_000);
 			let total_deposit = T::WeightToFee::weight_to_fee(&weight);
-			T::Deposit::hold(
-				&HoldReason::CallbackGas.into(),
-				&origin,
-				total_deposit,
-			).unwrap();
+			T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, total_deposit).unwrap();
 
-			Some(Callback {
-				selector: [0; 4],
-				weight,
-				abi: Abi::Scale,
-			})
+			Some(Callback { selector: [0; 4], weight, abi: Abi::Scale })
 		} else {
 			None
 		};
@@ -217,7 +206,7 @@ mod messaging_benchmarks {
 			);
 			let commitment = hash_request::<T::Keccak256>(&Request::Get(get_response.get.clone()));
 			let get = IsmpResponse::Get(get_response);
-			
+
 			(
 				get,
 				crate::messaging::Event::<T>::IsmpGetResponseReceived {
@@ -234,7 +223,8 @@ mod messaging_benchmarks {
 				T::MaxResponseLen::get() as usize,
 			);
 
-			let commitment = hash_request::<T::Keccak256>(&Request::Post(post_response.post.clone().clone()));
+			let commitment =
+				hash_request::<T::Keccak256>(&Request::Post(post_response.post.clone().clone()));
 			let post = IsmpResponse::Post(post_response);
 
 			(
@@ -252,13 +242,11 @@ mod messaging_benchmarks {
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &message);
-		
 
 		let handler = crate::messaging::ismp::Handler::<T>::new();
 
 		#[block]
 		{
-
 			handler.on_response(response.clone()).unwrap();
 		}
 
@@ -282,7 +270,7 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(100, 100),
-				
+
 				abi: Abi::Scale,
 			})
 		} else {
@@ -306,13 +294,12 @@ mod messaging_benchmarks {
 				T::MaxDataLen::get() as usize,
 				T::MaxResponseLen::get() as usize,
 			);
-			let commitment = hash_request::<T::Keccak256>(&Request::Post(post_response.post.clone()	));
+			let commitment =
+				hash_request::<T::Keccak256>(&Request::Post(post_response.post.clone()));
 			(Timeout::Response(post_response), commitment)
 		};
 
-		let event = Event::<T>::IsmpTimedOut {
-			commitment: commitment,
-		};
+		let event = Event::<T>::IsmpTimedOut { commitment };
 
 		let input_message = Message::Ismp { commitment, callback, deposit: One::one() };
 
@@ -359,7 +346,7 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(100, 100),
-				
+
 				abi: Abi::Scale,
 			})
 		} else {
@@ -393,7 +380,7 @@ mod messaging_benchmarks {
 		let id_data = (x, y, b"ismp_post");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
-		
+
 		let data = vec![1u8].repeat(x as usize).try_into().unwrap();
 
 		let get = crate::messaging::ismp::Post::<T> { dest: 2000, timeout: 100_000, data };
@@ -402,19 +389,22 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(100, 100),
-				
+
 				abi: Abi::Scale,
 			})
 		} else {
 			None
 		};
 
-		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, pallet_balances::Pallet::<T>::total_issuance() / 2u32.into());
+		pallet_balances::Pallet::<T>::make_free_balance_be(
+			&origin,
+			pallet_balances::Pallet::<T>::total_issuance() / 2u32.into(),
+		);
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
 
-		//assert_has_event()
+		// assert_has_event()
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

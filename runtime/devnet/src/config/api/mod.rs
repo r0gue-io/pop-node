@@ -13,9 +13,9 @@ use pallet_api::{extension::*, Read};
 use pallet_revive::{AddressMapper, CollectEvents, DebugInfo};
 use pallet_xcm::Origin;
 use sp_core::ConstU8;
-use sp_runtime::DispatchError;
+use sp_runtime::{traits::AccountIdConversion, DispatchError};
 use versioning::*;
-use xcm::latest::{Location, Junctions};
+use xcm::latest::{Junctions, Location};
 
 use crate::{
 	config::{
@@ -26,8 +26,6 @@ use crate::{
 	ConstU32, Ismp, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
 	TransactionByteFee,
 };
-
-use sp_runtime::traits::AccountIdConversion;
 
 mod versioning;
 
@@ -126,8 +124,10 @@ parameter_types! {
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
+	type FeeAccount = DummyFeeAccount;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
+	type Keccak256 = Ismp;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<512>;
 	type MaxKeyLen = ConstU32<8>;
@@ -144,13 +144,11 @@ impl messaging::Config for Runtime {
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	// type WeightInfo = pallet_api::messaging::WeightInfo;
+	type WeightInfo = DummyWeight;
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
-	// type WeightInfo = pallet_api::messaging::WeightInfo;
-	type WeightInfo = DummyWeight;
-	type FeeAccount = DummyFeeAccount;
-	type Keccak256 = Ismp;
 }
 
 pub struct DummyWeight;
@@ -158,21 +156,27 @@ impl messaging::WeightInfo for DummyWeight {
 	fn remove(x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn xcm_new_query(x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn xcm_response(x: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_on_response(x: u32, y: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
 		Default::default()
 	}
+
 	fn ismp_post(x: u32, y: u32) -> Weight {
 		Default::default()
 	}
@@ -191,10 +195,9 @@ impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureRespon
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<O, ()> {
-		Ok(Origin::Response( Location { parents: 1, interior: Junctions::Here }).into())
+		Ok(Origin::Response(Location { parents: 1, interior: Junctions::Here }).into())
 	}
 }
-
 
 pub struct CallbackExecutor;
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
