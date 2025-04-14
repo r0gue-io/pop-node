@@ -29,7 +29,7 @@ use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, HoldReason, MessageId, Vec,
+	AccountIdOf, HoldReason, MessageId, Vec, WeightInfo
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -162,15 +162,25 @@ impl<T: Config> IsmpModule for Handler<T> {
 impl<T: Config> IsmpModuleWeight for Pallet<T> {
 	// Static as not in use.
 	fn on_accept(&self, _request: &PostRequest) -> Weight {
-		DbWeightOf::<T>::get().reads_writes(2, 1)
+		DbWeightOf::<T>::get().reads_writes(1, 1)
 	}
 
-	fn on_timeout(&self, _timeout: &Timeout) -> Weight {
-		DbWeightOf::<T>::get().reads_writes(2, 1)
+	fn on_timeout(&self, timeout: &Timeout) -> Weight {
+		let x = match timeout {
+			Timeout::Request(Request::Post(_)) => 0u32,
+			Timeout::Request(Request::Get(_)) => 1u32,
+			Timeout::Response(_) => 2u32,
+		};
+		T::WeightInfo::ismp_on_timeout(x)
 	}
 
-	fn on_response(&self, _response: &Response) -> Weight {
-		DbWeightOf::<T>::get().reads_writes(2, 2)
+	fn on_response(&self, response: &Response) -> Weight {
+		let x = match response {
+			Response::Get(_) => 0,
+			Response::Post(_) => 1,
+		};
+
+		T::WeightInfo::ismp_on_response(x)
 	}
 }
 

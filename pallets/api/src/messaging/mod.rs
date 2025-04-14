@@ -64,8 +64,8 @@ pub trait WeightInfo {
 	fn remove(x: u32) -> Weight;
 	fn xcm_new_query(x: u32) -> Weight;
 	fn xcm_response() -> Weight;
-	fn ismp_on_response(x: u32, y: u32) -> Weight;
-	fn ismp_on_timeout(x: u32, y: u32) -> Weight;
+	fn ismp_on_response(x: u32) -> Weight;
+	fn ismp_on_timeout(x: u32) -> Weight;
 	fn ismp_get(y: u32, x: u32, a: u32) -> Weight;
 	fn ismp_post(x: u32, y: u32) -> Weight;
 }

@@ -169,11 +169,10 @@ mod messaging_benchmarks {
 		);
 	}
 
-	/// x = 1 Get response.
-	/// x = 2 Post Response.
-	/// y: Is there a callback supplied?
+	/// x = 0 Get response.
+	/// x = 1 Post Response.
 	#[benchmark]
-	fn ismp_on_response(x: Linear<0, 1>, y: Linear<0, 1>) {
+	fn ismp_on_response(x: Linear<0, 1>) {
 		let origin: T::AccountId = account("alice", 0, SEED);
 		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, u32::MAX.into());
 
@@ -181,15 +180,11 @@ mod messaging_benchmarks {
 		let encoded = id_data.encode();
 		let message_id: [u8; 32] = H256::from(blake2_256(&encoded)).into();
 
-		let callback = if y == 1 {
 			let weight = Weight::from_parts(100_000, 100_000);
 			let total_deposit = T::WeightToFee::weight_to_fee(&weight);
 			T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, total_deposit).unwrap();
 
-			Some(Callback { selector: [0; 4], weight, abi: Abi::Scale })
-		} else {
-			None
-		};
+			let callback = Some(Callback { selector: [0; 4], weight, abi: Abi::Scale })
 
 		let (response, event, commitment) = if x == 1 {
 			// get response
@@ -252,25 +247,19 @@ mod messaging_benchmarks {
 	/// x = 0: Post request.
 	/// x = 1: Get request.
 	/// x = 2: Post response.
-	/// y = 1: Is there a callback supplied?
 	#[benchmark]
-	fn ismp_on_timeout(x: Linear<0, 2>, y: Linear<0, 1>) {
+	fn ismp_on_timeout(x: Linear<0, 2>) {
 		let commitment = H256::repeat_byte(2u8);
 		let origin: T::AccountId = account("alice", 0, SEED);
 		let id_data = (x, y, b"ismp_timeout");
 		let encoded = id_data.encode();
 		let message_id: [u8; 32] = H256::from(blake2_256(&encoded)).into();
 
-		let callback = if y == 1 {
-			Some(Callback {
-				selector: [1; 4],
-				weight: Weight::from_parts(100, 100),
-
-				abi: Abi::Scale,
-			})
-		} else {
-			None
-		};
+		let callback = Some(Callback {
+			selector: [1; 4],
+			weight: Weight::from_parts(100, 100),
+			abi: Abi::Scale,
+		});
 
 		let (timeout_message, commitment) = if x == 0 {
 			let post_request = Request::Post(ismp_post_request(T::MaxDataLen::get() as usize));
