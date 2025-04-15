@@ -337,6 +337,7 @@ mod messaging_benchmarks {
 	///   Whether a callback is attached:
 	///   - `0`: No callback
 	///   - `1`: Callback attached
+	#[benchmark]
 	fn ismp_get(
 		y: Linear<0, { T::MaxContextLen::get() }>,
 		z: Linear<0, { T::MaxKeys::get() }>,
@@ -384,8 +385,15 @@ mod messaging_benchmarks {
 		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
 	}
 
-	/// x: Maximun byte len of outgoing data. T::MaxDataLen
-	/// y: Is there a callback supplied?
+	/// Sends a `Post` request using ISMP with a variable-sized data payload.
+	///
+	/// # Parameters
+	/// - `x`: `Linear<0, { T::MaxDataLen::get() }>`  
+	///   Length of the `data` field (in bytes).
+	/// - `y`: `Linear<0, 1>`  
+	///   Whether a callback is attached:
+	///   - `0`: No callback
+	///   - `1`: Callback attached
 	#[benchmark]
 	fn ismp_post(x: Linear<0, { T::MaxDataLen::get() }>, y: Linear<0, 1>) {
 		pallet_timestamp::Pallet::<T>::set_timestamp(1u32.into());
