@@ -581,7 +581,7 @@ pub mod pallet {
 		#[pallet::call_index(4)]
 		#[pallet::weight({
 			T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight()
-		})] 
+		})]
 		pub fn xcm_response(
 			origin: OriginFor<T>,
 			query_id: QueryId,

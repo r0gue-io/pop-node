@@ -214,6 +214,7 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 			pays_fee: Pays::Yes,
 		})
 	}
+
 	fn execution_weight() -> sp_runtime::Weight {
 		Default::default()
 	}

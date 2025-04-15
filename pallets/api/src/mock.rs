@@ -364,7 +364,6 @@ impl pallet_ismp::Config for Test {
 	type WeightProvider = ();
 }
 
-
 #[derive(Default)]
 pub struct AlwaysErrorRouter;
 impl IsmpRouter for AlwaysErrorRouter {

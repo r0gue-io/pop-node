@@ -1132,19 +1132,19 @@ mod ismp_post {
 }
 
 mod ismp_hooks {
-use ::ismp::dispatcher::DispatchRequest;
+	use ::ismp::dispatcher::DispatchRequest;
 
-use super::*;
+	use super::*;
 
 	fn handler() -> ismp::Handler<Test> {
 		ismp::Handler::<Test>::new()
 	}
 
-
 	mod on_accept {
 		use ::ismp::module::IsmpModule;
-		use crate::messaging::test_utils::ismp_post_request;
+
 		use super::*;
+		use crate::messaging::test_utils::ismp_post_request;
 
 		/// The on_accept must return Ok even when not in use.
 		/// If an error is returned the receipt is not removed and a replay attack is possible.
@@ -1160,17 +1160,19 @@ use super::*;
 	mod timeout_commitment {
 		use ::ismp::{
 			module::IsmpModule,
-			router::{GetRequest, Request, Response, Timeout}
+			router::{GetRequest, Request, Response, Timeout},
 		};
 
-use super::*;
+		use super::*;
 		#[test]
 		fn request_not_found() {
 			new_test_ext().execute_with(|| {
 				let err = ismp::timeout_commitment::<Test>(&Default::default()).unwrap_err();
 				assert_eq!(
 					err.downcast::<IsmpError>().unwrap(),
-					IsmpError::Custom("Request commitment not found while processing timeout.".into())
+					IsmpError::Custom(
+						"Request commitment not found while processing timeout.".into()
+					)
 				)
 			})
 		}
@@ -1193,7 +1195,6 @@ use super::*;
 			})
 		}
 
-
 		#[test]
 		fn actually_timesout_assert_event() {
 			new_test_ext().execute_with(|| {
@@ -1207,21 +1208,17 @@ use super::*;
 
 				assert!(res.is_ok(), "{:?}", res.unwrap_err().downcast::<IsmpError>().unwrap());
 
-				if let Some(Message::IsmpTimeout { commitment, deposit: 100 }) = Messages::<Test>::get(&ALICE, &message_id) {
+				if let Some(Message::IsmpTimeout { commitment, deposit: 100 }) =
+					Messages::<Test>::get(&ALICE, &message_id)
+				{
 					let events = events();
-					assert!(
-						events.contains(
-							&Event::<Test>::IsmpTimedOut { commitment }
-						)
-					)
+					assert!(events.contains(&Event::<Test>::IsmpTimedOut { commitment }))
 				} else {
 					panic!("Message not timedout.")
 				}
 			})
 		}
 	}
-
-
 
 	mod process_response {
 		use ::ismp::Error as IsmpError;

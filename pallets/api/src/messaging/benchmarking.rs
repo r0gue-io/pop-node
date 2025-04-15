@@ -180,20 +180,20 @@ mod messaging_benchmarks {
 		let encoded = id_data.encode();
 		let message_id: [u8; 32] = H256::from(blake2_256(&encoded)).into();
 
-			let weight = Weight::from_parts(100_000, 100_000);
-			let cb_gas_deposit = T::WeightToFee::weight_to_fee(&weight);
-			T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, cb_gas_deposit).unwrap();
-			// also hold for message deposit
-			let message_deposit =  calculate_protocol_deposit::<T, T::OnChainByteFee>(
-				ProtocolStorageDeposit::IsmpRequests,
-			)
-			 + calculate_message_deposit::<T, T::OnChainByteFee>()
-			 + calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>();
+		let weight = Weight::from_parts(100_000, 100_000);
+		let cb_gas_deposit = T::WeightToFee::weight_to_fee(&weight);
+		T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, cb_gas_deposit).unwrap();
+		// also hold for message deposit
+		let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+			ProtocolStorageDeposit::IsmpRequests,
+		) + calculate_message_deposit::<T, T::OnChainByteFee>() +
+			calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>();
 
-			// Take some extra so we dont need to complicate the benchmark further.
-			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, message_deposit * 2u32.into()).unwrap();
+		// Take some extra so we dont need to complicate the benchmark further.
+		T::Deposit::hold(&HoldReason::Messaging.into(), &origin, message_deposit * 2u32.into())
+			.unwrap();
 
-			let callback = Some(Callback { selector: [0; 4], weight, abi: Abi::Scale });
+		let callback = Some(Callback { selector: [0; 4], weight, abi: Abi::Scale });
 
 		let (response, event, commitment) = if x == 1 {
 			// get response

@@ -29,7 +29,7 @@ use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, HoldReason, MessageId, Vec, WeightInfo, CallbackExecutor
+	AccountIdOf, CallbackExecutor, HoldReason, MessageId, Vec, WeightInfo,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -233,8 +233,8 @@ pub(crate) fn process_response<T: Config>(
 }
 
 pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), anyhow::Error> {
-	let key =
-		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("Request commitment not found while processing timeout.".into()))?;
+	let key = IsmpRequests::<T>::get(commitment)
+		.ok_or(Error::Custom("Request commitment not found while processing timeout.".into()))?;
 	Messages::<T>::try_mutate(key.0, key.1, |message| {
 		let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message else {
 			return Err(Error::Custom("Invalid message".into()));
