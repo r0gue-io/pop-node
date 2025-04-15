@@ -21,10 +21,7 @@ use crate::{
 	config::{
 		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
 		xcm::LocalOriginToLocation,
-	},
-	fungibles, messaging, nonfungibles, parameter_types, AccountId, Balances, BlockNumber,
-	ConstU32, Ismp, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
-	TransactionByteFee,
+	}, fungibles, messaging, nonfungibles, parameter_types, weights, AccountId, Balances, BlockNumber, ConstU32, Ismp, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, TransactionByteFee
 };
 
 mod versioning;
@@ -144,42 +141,10 @@ impl messaging::Config for Runtime {
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
-	// type WeightInfo = pallet_api::messaging::WeightInfo;
-	type WeightInfo = DummyWeight;
+	type WeightInfo = weights::messaging_weights::WeightInfo<Self>;
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
-}
-
-pub struct DummyWeight;
-impl messaging::WeightInfo for DummyWeight {
-	fn remove(x: u32) -> Weight {
-		Default::default()
-	}
-
-	fn xcm_new_query(x: u32) -> Weight {
-		Default::default()
-	}
-
-	fn xcm_response(x: u32) -> Weight {
-		Default::default()
-	}
-
-	fn ismp_on_response(x: u32, y: u32) -> Weight {
-		Default::default()
-	}
-
-	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
-		Default::default()
-	}
-
-	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
-		Default::default()
-	}
-
-	fn ismp_post(x: u32, y: u32) -> Weight {
-		Default::default()
-	}
 }
 
 pub struct EnsureResponse;

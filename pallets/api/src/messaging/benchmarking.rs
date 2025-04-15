@@ -339,13 +339,13 @@ mod messaging_benchmarks {
 	///   - `1`: Callback attached
 	#[benchmark]
 	fn ismp_get(
-		y: Linear<0, { T::MaxContextLen::get() }>,
-		z: Linear<0, { T::MaxKeys::get() }>,
+		x: Linear<0, { T::MaxContextLen::get() }>,
+		y: Linear<0, { T::MaxKeys::get() }>,
 		a: Linear<0, 1>,
 	) {
 		pallet_timestamp::Pallet::<T>::set_timestamp(1u32.into());
 		let origin: T::AccountId = account("alice", 0, SEED);
-		let id_data = (y, z, a, "imsp_get");
+		let id_data = (x, y, a, "imsp_get");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
 
@@ -353,7 +353,7 @@ mod messaging_benchmarks {
 			vec![1u8].repeat(T::MaxKeyLen::get() as usize).try_into().unwrap();
 
 		let mut outer_keys = vec![];
-		for k in (0..z) {
+		for k in (0..y) {
 			outer_keys.push(inner_keys.clone())
 		}
 
@@ -372,7 +372,7 @@ mod messaging_benchmarks {
 			dest: 2000,
 			height: 100_000,
 			timeout: 100_000,
-			context: vec![1u8].repeat(y as usize).try_into().unwrap(),
+			context: vec![1u8].repeat(x as usize).try_into().unwrap(),
 			keys: outer_keys.try_into().unwrap(),
 		};
 
