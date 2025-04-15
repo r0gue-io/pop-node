@@ -13783,6 +13783,7 @@ dependencies = [
  "env_logger 0.11.6",
  "frame-benchmarking 39.0.0",
  "frame-executive 39.0.0",
+ "frame-metadata 18.0.0",
  "frame-metadata-hash-extension 0.7.0",
  "frame-support 39.0.0",
  "frame-system 39.1.0",
