@@ -413,7 +413,6 @@ pub mod pallet {
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
-			// TODO: is this meant to be our struct or theirs? 
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;

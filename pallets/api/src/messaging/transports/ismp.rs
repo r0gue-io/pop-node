@@ -29,7 +29,7 @@ use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, HoldReason, MessageId, Vec, WeightInfo
+	AccountIdOf, HoldReason, MessageId, Vec, WeightInfo, CallbackExecutor
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -180,7 +180,7 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 			Response::Post(_) => 1,
 		};
 
-		T::WeightInfo::ismp_on_response(x)
+		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())
 	}
 }
 

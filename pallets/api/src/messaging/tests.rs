@@ -809,7 +809,7 @@ mod handle_callback_result {
 				result,
 				callback.clone()
 			)
-			.is_err());
+			.is_ok());
 
 			let alice_balance_post_handle = Balances::free_balance(&ALICE);
 			let pot_post_handle = Balances::free_balance(&FEE_ACCOUNT);
@@ -881,7 +881,8 @@ mod handle_callback_result {
 				result,
 				callback.clone()
 			)
-			.is_err());
+			.is_ok());
+
 			assert!(events().contains(&Event::<Test>::CallbackFailed {
 				origin,
 				id,
@@ -938,8 +939,8 @@ mod handle_callback_result {
 			)
 			.is_ok());
 
-			/// alice should have been refunded by the tune of expected refund.
-			/// the fee pot should have been increased by fee_pot_payment.
+			// alice should have been refunded by the tune of expected refund.
+			// the fee pot should have been increased by fee_pot_payment.
 			let fee_account_post_handle = Balances::free_balance(&FEE_ACCOUNT);
 			let alice_balance_post_handle = Balances::free_balance(&ALICE);
 
@@ -1179,14 +1180,15 @@ use super::*;
 			new_test_ext().execute_with(|| {
 				let commitment: H256 = [8u8; 32].into();
 				let message_id = [7u8; 32];
-				IsmpRequests::<Test>::insert(&commitment, (&ALICE, message_id));
 				let message = Message::XcmQuery { query_id: 0, callback: None, deposit: 100 };
+
+				IsmpRequests::<Test>::insert(&commitment, (&ALICE, message_id));
 				Messages::<Test>::insert(&ALICE, &message_id, &message);
 
-				let err = ismp::timeout_commitment::<Test>(&Default::default()).unwrap_err();
+				let err = ismp::timeout_commitment::<Test>(&commitment).unwrap_err();
 				assert_eq!(
 					err.downcast::<IsmpError>().unwrap(),
-					IsmpError::Custom("Invalid message.".into())
+					IsmpError::Custom("Invalid message".into())
 				)
 			})
 		}
@@ -1201,7 +1203,9 @@ use super::*;
 				let message = Message::Ismp { commitment, callback: None, deposit: 100 };
 				Messages::<Test>::insert(&ALICE, &message_id, &message);
 
-				assert!(ismp::timeout_commitment::<Test>(&Default::default()).is_ok());
+				let res = ismp::timeout_commitment::<Test>(&commitment);
+
+				assert!(res.is_ok(), "{:?}", res.unwrap_err().downcast::<IsmpError>().unwrap());
 
 				if let Some(Message::IsmpTimeout { commitment, deposit: 100 }) = Messages::<Test>::get(&ALICE, &message_id) {
 					let events = events();
