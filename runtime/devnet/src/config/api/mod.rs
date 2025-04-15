@@ -21,7 +21,10 @@ use crate::{
 	config::{
 		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
 		xcm::LocalOriginToLocation,
-	}, fungibles, messaging, nonfungibles, parameter_types, weights, AccountId, Balances, BlockNumber, ConstU32, Ismp, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, TransactionByteFee
+	},
+	fungibles, messaging, nonfungibles, parameter_types, weights, AccountId, Balances, BlockNumber,
+	ConstU32, Ismp, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
+	TransactionByteFee,
 };
 
 mod versioning;

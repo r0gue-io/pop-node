@@ -1,12 +1,9 @@
 use codec::Encode;
 use ismp::{
 	host::StateMachine,
-	router::{
-		GetRequest, GetResponse, PostRequest, PostResponse, StorageValue,
-	},
+	router::{GetRequest, GetResponse, PostRequest, PostResponse, StorageValue},
 };
 use sp_std::vec;
-
 
 pub fn ismp_get_request(key_len: usize, keys_len: usize, context_len: usize) -> GetRequest {
 	GetRequest {

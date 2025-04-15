@@ -23,7 +23,10 @@ use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::{traits::{Saturating, TryConvert}, BoundedVec, DispatchError};
+use sp_runtime::{
+	traits::{Saturating, TryConvert},
+	BoundedVec, DispatchError,
+};
 use sp_std::vec::Vec;
 use sp_weights::WeightToFee;
 use transports::{
@@ -63,7 +66,6 @@ pub type MessageId = [u8; 32];
 
 #[frame_support::pallet]
 pub mod pallet {
-
 
 	use super::*;
 
@@ -347,16 +349,16 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		
 		/// Submit a new ISMP `Get` request.
-    	///
-    	/// This sends a `Get` request through ISMP, optionally with a callback to handle the response.
-    	///
-    	/// # Parameters
-    	/// - `origin`: The account submitting the request.
-    	/// - `id`: A unique identifier for the message.
-    	/// - `message`: The ISMP `Get` message containing query details.
-    	/// - `callback`: Optional callback to execute upon receiving a response.
+		///
+		/// This sends a `Get` request through ISMP, optionally with a callback to handle the
+		/// response.
+		///
+		/// # Parameters
+		/// - `origin`: The account submitting the request.
+		/// - `id`: A unique identifier for the message.
+		/// - `message`: The ISMP `Get` message containing query details.
+		/// - `callback`: Optional callback to execute upon receiving a response.
 		#[pallet::call_index(1)]
 		#[pallet::weight(
 			{
@@ -405,11 +407,7 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
 			IsmpRequests::<T>::insert(commitment, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				Message::Ismp { commitment, callback, deposit },
-			);
+			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
 				origin,
 				id,
@@ -420,14 +418,14 @@ pub mod pallet {
 		}
 
 		/// Submit a new ISMP `Post` request.
-    	///
-    	/// Sends a `Post` message through ISMP with arbitrary data and an optional callback.
-    	///
-    	/// # Parameters
-    	/// - `origin`: The account submitting the request.
-    	/// - `id`: A unique identifier for the message.
-    	/// - `message`: The ISMP `Post` message containing the payload.
-    	/// - `callback`: Optional callback to execute upon receiving a response.
+		///
+		/// Sends a `Post` message through ISMP with arbitrary data and an optional callback.
+		///
+		/// # Parameters
+		/// - `origin`: The account submitting the request.
+		/// - `id`: A unique identifier for the message.
+		/// - `message`: The ISMP `Post` message containing the payload.
+		/// - `callback`: Optional callback to execute upon receiving a response.
 		#[pallet::call_index(2)]
 		#[pallet::weight({
 			let data_len: u32 = message.data.len().try_into().unwrap_or(T::MaxDataLen::get());
@@ -469,11 +467,7 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
 			IsmpRequests::<T>::insert(commitment, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				Message::Ismp { commitment, callback, deposit },
-			);
+			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
 				origin,
 				id,
@@ -484,15 +478,15 @@ pub mod pallet {
 		}
 
 		/// Initiate a new XCM query.
-    	///
-    	/// Starts a query using the XCM interface, specifying a responder and timeout block.
-    	///
-    	/// # Parameters
-    	/// - `origin`: The account initiating the query.
-    	/// - `id`: A unique message ID.
-    	/// - `responder`: Location of the XCM responder.
-    	/// - `timeout`: Block number after which the query should timeout.
-    	/// - `callback`: Optional callback for handling the response.
+		///
+		/// Starts a query using the XCM interface, specifying a responder and timeout block.
+		///
+		/// # Parameters
+		/// - `origin`: The account initiating the query.
+		/// - `id`: A unique message ID.
+		/// - `responder`: Location of the XCM responder.
+		/// - `timeout`: Block number after which the query should timeout.
+		/// - `callback`: Optional callback for handling the response.
 		#[pallet::call_index(3)]
 		#[pallet::weight(
 			{
@@ -547,11 +541,7 @@ pub mod pallet {
 			// Store query id for later lookup on response, message for querying status,
 			// response/timeout handling.
 			XcmQueries::<T>::insert(query_id, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				Message::XcmQuery { query_id, callback, deposit },
-			);
+			Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
 				origin,
 				id,
@@ -562,13 +552,13 @@ pub mod pallet {
 		}
 
 		/// Handle a response to a previous XCM query.
-    	///
-    	/// Executes a stored callback or updates the state with the received response.
-    	///
-    	/// # Parameters
-    	/// - `origin`: The XCM responder origin.
-    	/// - `query_id`: The ID of the XCM query being responded to.
-    	/// - `xcm_response`: The response data.
+		///
+		/// Executes a stored callback or updates the state with the received response.
+		///
+		/// # Parameters
+		/// - `origin`: The XCM responder origin.
+		/// - `query_id`: The ID of the XCM query being responded to.
+		/// - `xcm_response`: The response data.
 		#[pallet::call_index(4)]
 		#[pallet::weight({
 			T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight()
@@ -628,12 +618,12 @@ pub mod pallet {
 		}
 
 		/// Remove a batch of completed or timed-out messages.
-    	///
-    	/// Allows users to clean up storage and reclaim deposits for messages that have concluded.
-    	///
-    	/// # Parameters
-    	/// - `origin`: The account removing the messages.
-    	/// - `messages`: List of message IDs to remove (bounded by `MaxRemovals`).
+		///
+		/// Allows users to clean up storage and reclaim deposits for messages that have concluded.
+		///
+		/// # Parameters
+		/// - `origin`: The account removing the messages.
+		/// - `messages`: List of message IDs to remove (bounded by `MaxRemovals`).
 		#[pallet::call_index(5)]
 		#[pallet::weight(T::WeightInfo::remove(messages.len() as u32))]
 		pub fn remove(
@@ -682,7 +672,6 @@ pub mod pallet {
 	}
 }
 impl<T: Config> Pallet<T> {
-	
 	/// Executes a callback function associated with a message response.
 	///
 	/// This function constructs the payload from the callback ABI and data, then invokes the
@@ -875,11 +864,7 @@ pub enum Message<T: Config> {
 	/// - `commitment`: The cryptographic commitment of the request payload.
 	/// - `callback`: An optional callback to invoke upon receiving a response.
 	/// - `deposit`: The total deposit held to cover message and callback fees.
-	Ismp {
-		commitment: H256,
-		callback: Option<Callback>,
-		deposit: BalanceOf<T>,
-	},
+	Ismp { commitment: H256, callback: Option<Callback>, deposit: BalanceOf<T> },
 
 	/// Represents a pending XCM query request.
 	///
@@ -887,11 +872,7 @@ pub enum Message<T: Config> {
 	/// - `query_id`: Unique identifier for the XCM query.
 	/// - `callback`: An optional callback for handling the response.
 	/// - `deposit`: The deposit held to cover fees for query execution and callback.
-	XcmQuery {
-		query_id: QueryId,
-		callback: Option<Callback>,
-		deposit: BalanceOf<T>,
-	},
+	XcmQuery { query_id: QueryId, callback: Option<Callback>, deposit: BalanceOf<T> },
 
 	/// Represents a received ISMP response.
 	///
@@ -911,33 +892,22 @@ pub enum Message<T: Config> {
 	/// - `query_id`: Identifier that matches a previously sent XCM query.
 	/// - `deposit`: The deposit originally held for this message.
 	/// - `response`: The deserialized response payload.
-	XcmResponse {
-		query_id: QueryId,
-		deposit: BalanceOf<T>,
-		response: Response,
-	},
+	XcmResponse { query_id: QueryId, deposit: BalanceOf<T>, response: Response },
 
 	/// Represents an ISMP request that timed out before a response was received.
 	///
 	/// # Fields
 	/// - `commitment`: The original commitment of the request.
 	/// - `deposit`: The deposit held for the request, which may be reclaimed.
-	IsmpTimeout {
-		commitment: H256,
-		deposit: BalanceOf<T>,
-	},
+	IsmpTimeout { commitment: H256, deposit: BalanceOf<T> },
 
 	/// Represents an XCM query that timed out before a response was received.
 	///
 	/// # Fields
 	/// - `query_id`: The original query ID that timed out.
 	/// - `deposit`: The deposit held for the query, which may be reclaimed.
-	XcmTimeout {
-		query_id: QueryId,
-		deposit: BalanceOf<T>,
-	},
+	XcmTimeout { query_id: QueryId, deposit: BalanceOf<T> },
 }
-
 
 impl<T: Config> From<&Message<T>> for MessageStatus {
 	fn from(value: &Message<T>) -> Self {
@@ -986,13 +956,14 @@ pub trait CallbackExecutor<T: Config> {
 	///
 	/// # Parameters
 	/// - `account`: The account that initiated the original cross-chain request.
-	/// - `data`: Encoded callback data, typically ABI-encoded input including selector and parameters.
+	/// - `data`: Encoded callback data, typically ABI-encoded input including selector and
+	///   parameters.
 	/// - `weight`: The maximum weight allowed for executing this callback.
-	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo;
+	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight)
+		-> DispatchResultWithPostInfo;
 
 	/// Returns the baseline weight required for a single callback execution.
 	///
 	/// This serves as an overhead estimate, useful for pallet-level weight calculations.
 	fn execution_weight() -> Weight;
 }
-

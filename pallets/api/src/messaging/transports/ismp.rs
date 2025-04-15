@@ -29,7 +29,8 @@ use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, CallbackExecutor, HoldReason, MessageId, weights::WeightInfo,
+	weights::WeightInfo,
+	AccountIdOf, CallbackExecutor, HoldReason, MessageId,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -115,9 +116,9 @@ impl<T: Config> From<Post<T>> for DispatchRequest {
 
 pub struct Handler<T>(PhantomData<T>);
 impl<T> Default for Handler<T> {
-    fn default() -> Self {
-        Self::new()
-    }
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
 impl<T> Handler<T> {

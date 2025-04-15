@@ -48,8 +48,8 @@ mod messaging_benchmarks {
 	use super::*;
 
 	/// # Parameters
-	/// - `x`: `Linear<1, { T::MaxRemovals::get() }>`  
-	///   The number of message removals to perform (bounded by `MaxRemovals`).
+	/// - `x`: `Linear<1, { T::MaxRemovals::get() }>`   The number of message removals to perform
+	///   (bounded by `MaxRemovals`).
 	#[benchmark]
 	fn remove(x: Linear<1, { T::MaxRemovals::get() }>) {
 		let deposit: BalanceOf<T> = sp_runtime::traits::One::one();
@@ -90,8 +90,7 @@ mod messaging_benchmarks {
 	/// Submits a new XCM query message with an optional callback.
 	///
 	/// # Parameters
-	/// - `x`: `Linear<0, 1>`  
-	///   Whether a callback is supplied:
+	/// - `x`: `Linear<0, 1>`   Whether a callback is supplied:
 	///   - `0`: No callback
 	///   - `1`: Callback attached
 	#[benchmark]
@@ -182,8 +181,7 @@ mod messaging_benchmarks {
 	/// Handles a response to a previously submitted ISMP request.
 	///
 	/// # Parameters
-	/// - `x`: `Linear<0, 1>`  
-	///   The type of ISMP response:
+	/// - `x`: `Linear<0, 1>`   The type of ISMP response:
 	///   - `0`: `PostResponse`
 	///   - `1`: `GetResponse`
 	#[benchmark]
@@ -270,8 +268,7 @@ mod messaging_benchmarks {
 	/// Handles timeout of a pending ISMP request or response.
 	///
 	/// # Parameters
-	/// - `x`: `Linear<0, 2>`  
-	///   Type of item that timed out:
+	/// - `x`: `Linear<0, 2>`   Type of item that timed out:
 	///   - `0`: `PostRequest`
 	///   - `1`: `GetRequest`
 	///   - `2`: `PostResponse`
@@ -329,12 +326,9 @@ mod messaging_benchmarks {
 	/// Sends a `Get` request using ISMP with varying context and key sizes.
 	///
 	/// # Parameters
-	/// - `y`: `Linear<0, { T::MaxContextLen::get() }>`  
-	///   Length of the context field (in bytes).
-	/// - `z`: `Linear<0, { T::MaxKeys::get() }>`  
-	///   Number of keys in the outer keys array.
-	/// - `a`: `Linear<0, 1>`  
-	///   Whether a callback is attached:
+	/// - `y`: `Linear<0, { T::MaxContextLen::get() }>`   Length of the context field (in bytes).
+	/// - `z`: `Linear<0, { T::MaxKeys::get() }>`   Number of keys in the outer keys array.
+	/// - `a`: `Linear<0, 1>`   Whether a callback is attached:
 	///   - `0`: No callback
 	///   - `1`: Callback attached
 	#[benchmark]
@@ -388,10 +382,8 @@ mod messaging_benchmarks {
 	/// Sends a `Post` request using ISMP with a variable-sized data payload.
 	///
 	/// # Parameters
-	/// - `x`: `Linear<0, { T::MaxDataLen::get() }>`  
-	///   Length of the `data` field (in bytes).
-	/// - `y`: `Linear<0, 1>`  
-	///   Whether a callback is attached:
+	/// - `x`: `Linear<0, { T::MaxDataLen::get() }>`   Length of the `data` field (in bytes).
+	/// - `y`: `Linear<0, 1>`   Whether a callback is attached:
 	///   - `0`: No callback
 	///   - `1`: Callback attached
 	#[benchmark]

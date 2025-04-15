@@ -1,4 +1,3 @@
-
 use crate::*;
 
 pub trait WeightInfo {

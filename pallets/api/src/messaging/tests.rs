@@ -1,15 +1,8 @@
 #![cfg(test)]
-use frame_support::{
-	assert_noop, assert_ok,
-	testing_prelude::bounded_vec,
-	weights::Weight,
-};
+use frame_support::{assert_noop, assert_ok, testing_prelude::bounded_vec, weights::Weight};
 use sp_core::H256;
 
-use crate::{
-	messaging::*,
-	mock::*,
-};
+use crate::{messaging::*, mock::*};
 
 pub fn events() -> Vec<Event<Test>> {
 	let result = System::events()
@@ -800,10 +793,7 @@ mod handle_callback_result {
 			let alice_balance_pre_handle = Balances::free_balance(ALICE);
 
 			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin,
-				&id,
-				result,
-				callback
+				&origin, &id, result, callback
 			)
 			.is_ok());
 
@@ -842,16 +832,9 @@ mod handle_callback_result {
 			.unwrap();
 
 			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin,
-				&id,
-				result,
-				callback
+				&origin, &id, result, callback
 			));
-			assert!(events().contains(&Event::<Test>::CallbackExecuted {
-				origin,
-				id,
-				callback
-			}));
+			assert!(events().contains(&Event::<Test>::CallbackExecuted { origin, id, callback }));
 		})
 	}
 
@@ -872,10 +855,7 @@ mod handle_callback_result {
 			};
 
 			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin,
-				&id,
-				result,
-				callback
+				&origin, &id, result, callback
 			)
 			.is_ok());
 
@@ -928,10 +908,7 @@ mod handle_callback_result {
 			let alice_balance_pre_handle = Balances::free_balance(ALICE);
 
 			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin,
-				&id,
-				result,
-				callback
+				&origin, &id, result, callback
 			)
 			.is_ok());
 
@@ -1026,10 +1003,7 @@ mod ismp_get {
 			else {
 				panic!("missing event");
 			};
-			assert_eq!(
-				IsmpRequests::<Test>::get(commitment).unwrap(),
-				(ALICE, message_id)
-			);
+			assert_eq!(IsmpRequests::<Test>::get(commitment).unwrap(), (ALICE, message_id));
 			let Some(Message::Ismp { .. }) = Messages::<Test>::get(ALICE, message_id) else {
 				panic!("wrong message type");
 			};
@@ -1047,12 +1021,7 @@ mod ismp_post {
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let callback = None;
 
-			assert_ok!(Messaging::ismp_post(
-				signed(ALICE),
-				message_id,
-				message.clone(),
-				callback
-			));
+			assert_ok!(Messaging::ismp_post(signed(ALICE), message_id, message.clone(), callback));
 			assert_noop!(
 				Messaging::ismp_post(signed(ALICE), message_id, message, callback),
 				Error::<Test>::MessageExists
@@ -1103,12 +1072,7 @@ mod ismp_post {
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let callback = None;
 
-			assert_ok!(Messaging::ismp_post(
-				signed(ALICE),
-				message_id,
-				message.clone(),
-				callback
-			));
+			assert_ok!(Messaging::ismp_post(signed(ALICE), message_id, message.clone(), callback));
 
 			let events = events();
 			let Some(Event::<Test>::IsmpPostDispatched { origin, id, commitment, callback }) =
@@ -1116,10 +1080,7 @@ mod ismp_post {
 			else {
 				panic!("missing event");
 			};
-			assert_eq!(
-				IsmpRequests::<Test>::get(commitment).unwrap(),
-				(ALICE, message_id)
-			);
+			assert_eq!(IsmpRequests::<Test>::get(commitment).unwrap(), (ALICE, message_id));
 			let Some(Message::Ismp { .. }) = Messages::<Test>::get(ALICE, message_id) else {
 				panic!("wrong message type");
 			};
@@ -1128,7 +1089,6 @@ mod ismp_post {
 }
 
 mod ismp_hooks {
-	
 
 	use super::*;
 
@@ -1154,7 +1114,6 @@ mod ismp_hooks {
 	}
 
 	mod timeout_commitment {
-		
 
 		use super::*;
 		#[test]
