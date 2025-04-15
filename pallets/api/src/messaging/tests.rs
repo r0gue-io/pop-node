@@ -1260,8 +1260,7 @@ mod ismp_hooks {
 
 				assert!(res.is_ok(), "process_response failed");
 
-				let Some(Message::IsmpResponse { .. }) =
-					Messages::<Test>::get(ALICE, message_id)
+				let Some(Message::IsmpResponse { .. }) = Messages::<Test>::get(ALICE, message_id)
 				else {
 					panic!("wrong message type.")
 				};

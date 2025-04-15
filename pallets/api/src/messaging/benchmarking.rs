@@ -4,10 +4,7 @@
 use ::ismp::{
 	messaging::hash_request,
 	module::IsmpModule,
-	router::{
-		Request,
-		Response as IsmpResponse, Timeout,
-	},
+	router::{Request, Response as IsmpResponse, Timeout},
 };
 use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
