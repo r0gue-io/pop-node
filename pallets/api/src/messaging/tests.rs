@@ -848,7 +848,7 @@ mod handle_callback_result {
 				callback
 			));
 			assert!(events().contains(&Event::<Test>::CallbackExecuted {
-				origin: origin,
+				origin,
 				id,
 				callback
 			}));
