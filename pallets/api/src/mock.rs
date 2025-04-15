@@ -10,11 +10,10 @@ use frame_support::{
 	},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
-use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
+use ismp::{host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use pallet_nfts::PalletFeatures;
-use pallet_xcm::{Origin, TestWeightInfo};
 use scale_info::TypeInfo;
-use sp_core::{keccak_256, H256};
+use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, TryConvert, Verify},
 	BuildStorage,
@@ -329,7 +328,7 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootWithResponseSuccess {
 	type Success = Location;
 
 	fn try_origin(o: RuntimeOrigin) -> Result<Self::Success, RuntimeOrigin> {
-		if let Ok(_) = EnsureRoot::ensure_origin(o.clone()) {
+		if EnsureRoot::ensure_origin(o.clone()).is_ok() {
 			Ok(RESPONSE_LOCATION)
 		} else {
 			Err(o)

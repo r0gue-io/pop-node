@@ -16,7 +16,7 @@ use frame_support::{
 			Precision::{BestEffort, Exact},
 			Restriction,
 		},
-		Get, OriginTrait,
+		Get,
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -338,7 +338,7 @@ pub mod pallet {
 				})
 			}
 
-			if query_ids.len() > 0usize {
+			if !query_ids.is_empty() {
 				Self::deposit_event(Event::<T>::XcmTimedOut { query_ids })
 			}
 			weight
@@ -373,7 +373,7 @@ pub mod pallet {
 			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
-			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
@@ -404,11 +404,11 @@ pub mod pallet {
 			}?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
-			IsmpRequests::<T>::insert(&commitment, (&origin, id));
+			IsmpRequests::<T>::insert(commitment, (&origin, id));
 			Messages::<T>::insert(
 				&origin,
 				id,
-				Message::Ismp { commitment, callback: callback.clone(), deposit },
+				Message::Ismp { commitment, callback, deposit },
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
 				origin,
@@ -441,7 +441,7 @@ pub mod pallet {
 			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
-			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
@@ -468,11 +468,11 @@ pub mod pallet {
 
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
-			IsmpRequests::<T>::insert(&commitment, (&origin, id));
+			IsmpRequests::<T>::insert(commitment, (&origin, id));
 			Messages::<T>::insert(
 				&origin,
 				id,
-				Message::Ismp { commitment, callback: callback.clone(), deposit },
+				Message::Ismp { commitment, callback, deposit },
 			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
 				origin,
@@ -509,7 +509,7 @@ pub mod pallet {
 			let querier_location = T::OriginConverter::try_convert(origin.clone())
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 			let origin = ensure_signed(origin)?;
-			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 
 			let current_block = frame_system::Pallet::<T>::block_number();
 			ensure!(current_block < timeout, Error::<T>::FutureTimeoutMandatory);
@@ -546,11 +546,11 @@ pub mod pallet {
 
 			// Store query id for later lookup on response, message for querying status,
 			// response/timeout handling.
-			XcmQueries::<T>::insert(&query_id, (&origin, id));
+			XcmQueries::<T>::insert(query_id, (&origin, id));
 			Messages::<T>::insert(
 				&origin,
 				id,
-				Message::XcmQuery { query_id, callback: callback.clone(), deposit },
+				Message::XcmQuery { query_id, callback, deposit },
 			);
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
 				origin,
@@ -582,7 +582,7 @@ pub mod pallet {
 			let (initiating_origin, id) =
 				XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
 			let xcm_query_message =
-				Messages::<T>::get(&initiating_origin, &id).ok_or(Error::<T>::MessageNotFound)?;
+				Messages::<T>::get(&initiating_origin, id).ok_or(Error::<T>::MessageNotFound)?;
 
 			let (query_id, callback, deposit) = match &xcm_query_message {
 				Message::XcmQuery { query_id, callback, deposit } => (query_id, callback, deposit),
@@ -602,7 +602,7 @@ pub mod pallet {
 				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
 				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
-					Messages::<T>::remove(&initiating_origin, &id);
+					Messages::<T>::remove(&initiating_origin, id);
 					XcmQueries::<T>::remove(query_id);
 					T::Deposit::release(
 						&HoldReason::Messaging.into(),
@@ -616,7 +616,7 @@ pub mod pallet {
 			// No callback is executed,
 			Messages::<T>::insert(
 				&initiating_origin,
-				&id,
+				id,
 				Message::XcmResponse {
 					query_id: *query_id,
 					deposit: *deposit,
@@ -651,22 +651,22 @@ pub mod pallet {
 					Message::Ismp { .. } => Err(Error::<T>::RequestPending),
 					Message::XcmQuery { .. } => Err(Error::<T>::RequestPending),
 					Message::IsmpResponse { deposit, commitment, .. } => {
-						Messages::<T>::remove(&origin, &id);
-						IsmpRequests::<T>::remove(&commitment);
+						Messages::<T>::remove(&origin, id);
+						IsmpRequests::<T>::remove(commitment);
 						Ok(deposit)
 					},
 					Message::XcmResponse { deposit, query_id, .. } => {
-						Messages::<T>::remove(&origin, &id);
+						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
 						Ok(deposit)
 					},
 					Message::IsmpTimeout { deposit, commitment, .. } => {
-						Messages::<T>::remove(&origin, &id);
-						IsmpRequests::<T>::remove(&commitment);
+						Messages::<T>::remove(&origin, id);
+						IsmpRequests::<T>::remove(commitment);
 						Ok(deposit)
 					},
 					Message::XcmTimeout { query_id, deposit, .. } => {
-						Messages::<T>::remove(&origin, &id);
+						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
 						Ok(deposit)
 					},
@@ -743,13 +743,13 @@ impl<T: Config> Pallet<T> {
 
 						T::Deposit::release(
 							&reason,
-							&initiating_origin,
+							initiating_origin,
 							returnable_deposit,
 							BestEffort,
 						)?;
 						T::Deposit::transfer_on_hold(
 							&reason,
-							&initiating_origin,
+							initiating_origin,
 							&T::FeeAccount::get(),
 							execution_reward,
 							BestEffort,
@@ -771,7 +771,7 @@ impl<T: Config> Pallet<T> {
 				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
 				T::Deposit::transfer_on_hold(
 					&HoldReason::CallbackGas.into(),
-					&initiating_origin,
+					initiating_origin,
 					&T::FeeAccount::get(),
 					total_deposit,
 					BestEffort,
@@ -941,13 +941,13 @@ pub enum Message<T: Config> {
 
 impl<T: Config> From<&Message<T>> for MessageStatus {
 	fn from(value: &Message<T>) -> Self {
-		match value {
-			&Message::Ismp { .. } => MessageStatus::Pending,
-			&Message::XcmQuery { .. } => MessageStatus::Pending,
-			&Message::IsmpResponse { .. } => MessageStatus::Complete,
-			&Message::XcmResponse { .. } => MessageStatus::Complete,
-			&Message::IsmpTimeout { .. } => MessageStatus::Timeout,
-			&Message::XcmTimeout { .. } => MessageStatus::Timeout,
+		match *value {
+			Message::Ismp { .. } => MessageStatus::Pending,
+			Message::XcmQuery { .. } => MessageStatus::Pending,
+			Message::IsmpResponse { .. } => MessageStatus::Complete,
+			Message::XcmResponse { .. } => MessageStatus::Complete,
+			Message::IsmpTimeout { .. } => MessageStatus::Timeout,
+			Message::XcmTimeout { .. } => MessageStatus::Timeout,
 		}
 	}
 }

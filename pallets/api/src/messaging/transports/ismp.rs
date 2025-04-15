@@ -7,7 +7,7 @@ use ::ismp::{
 		DispatchRequest::{self},
 	},
 	host::StateMachine,
-	messaging::{hash_request, Keccak256},
+	messaging::hash_request,
 };
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
@@ -24,12 +24,12 @@ use ismp::{
 };
 use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
-use sp_core::{keccak_256, H256};
+use sp_core::H256;
 use sp_runtime::{BoundedVec, Saturating};
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
-	AccountIdOf, CallbackExecutor, HoldReason, MessageId, Vec, weights::WeightInfo,
+	AccountIdOf, CallbackExecutor, HoldReason, MessageId, weights::WeightInfo,
 };
 
 pub const ID: [u8; 3] = *b"pop";
@@ -114,6 +114,12 @@ impl<T: Config> From<Post<T>> for DispatchRequest {
 }
 
 pub struct Handler<T>(PhantomData<T>);
+impl<T> Default for Handler<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<T> Handler<T> {
 	pub fn new() -> Self {
 		Self(PhantomData)
@@ -198,7 +204,7 @@ pub(crate) fn process_response<T: Config>(
 		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("Request not found.".into()))?;
 
 	let Some(super::super::Message::Ismp { commitment, callback, deposit }) =
-		Messages::<T>::get(&initiating_origin, &id)
+		Messages::<T>::get(&initiating_origin, id)
 	else {
 		return Err(Error::Custom("Message must be an ismp request.".into()).into());
 	};
@@ -210,8 +216,8 @@ pub(crate) fn process_response<T: Config>(
 	if let Some(callback) = callback {
 		if Pallet::<T>::call(&initiating_origin, callback, &id, response_data).is_ok() {
 			// Clean storage, return deposit
-			Messages::<T>::remove(&initiating_origin, &id);
-			IsmpRequests::<T>::remove(&commitment);
+			Messages::<T>::remove(&initiating_origin, id);
+			IsmpRequests::<T>::remove(commitment);
 			T::Deposit::release(&HoldReason::Messaging.into(), &initiating_origin, deposit, Exact)
 				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
 
@@ -226,7 +232,7 @@ pub(crate) fn process_response<T: Config>(
 		.map_err(|_| Error::Custom("response exceeds max".into()))?;
 	Messages::<T>::insert(
 		&initiating_origin,
-		&id,
+		id,
 		super::super::Message::IsmpResponse { commitment, deposit, response: encoded_response },
 	);
 	Ok(())
