@@ -232,12 +232,12 @@ pub(crate) fn process_response<T: Config>(
 	Ok(())
 }
 
-fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), anyhow::Error> {
+pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), anyhow::Error> {
 	let key =
-		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("request not found".into()))?;
+		IsmpRequests::<T>::get(commitment).ok_or(Error::Custom("Request commitment not found while processing timeout.".into()))?;
 	Messages::<T>::try_mutate(key.0, key.1, |message| {
 		let Some(super::super::Message::Ismp { commitment, deposit, .. }) = message else {
-			return Err(Error::Custom("message not found".into()));
+			return Err(Error::Custom("Invalid message".into()));
 		};
 		*message =
 			Some(super::super::Message::IsmpTimeout { deposit: *deposit, commitment: *commitment });

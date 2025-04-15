@@ -1131,11 +1131,14 @@ mod ismp_post {
 }
 
 mod ismp_hooks {
-	use super::*;
+use ::ismp::dispatcher::DispatchRequest;
+
+use super::*;
 
 	fn handler() -> ismp::Handler<Test> {
 		ismp::Handler::<Test>::new()
 	}
+
 
 	mod on_accept {
 		use ::ismp::module::IsmpModule;
@@ -1153,53 +1156,68 @@ mod ismp_hooks {
 		}
 	}
 
-	mod on_timeout {
+	mod timeout_commitment {
 		use ::ismp::{
 			module::IsmpModule,
-			router::{Timeout, Request, Response}
+			router::{GetRequest, Request, Response, Timeout}
 		};
 
 use super::*;
 		#[test]
-		fn commitment_generation_is_correct() {
+		fn request_not_found() {
 			new_test_ext().execute_with(|| {
-				let message_id = [0u8; 32];
-				let message = ismp::Get {
-					dest: 2000,
-					height: 10,
-					timeout: 100,
-					context: bounded_vec!(),
-					keys: bounded_vec!(),
-				};
-				let callback = None;
-				assert_ok!(Messaging::ismp_get(signed(ALICE), message_id.clone(), message, callback));
-
-				let request = Timeout::Request(Request::Get())
-
-				let h = handler();
-				h.on_timeout(request);
-
+				let err = ismp::timeout_commitment::<Test>(&Default::default()).unwrap_err();
+				assert_eq!(
+					err.downcast::<IsmpError>().unwrap(),
+					IsmpError::Custom("Request commitment not found while processing timeout.".into())
+				)
 			})
 		}
 
 		#[test]
-		fn timesout_message() {
+		fn invalid_request() {
 			new_test_ext().execute_with(|| {
+				let commitment: H256 = [8u8; 32].into();
+				let message_id = [7u8; 32];
+				IsmpRequests::<Test>::insert(&commitment, (&ALICE, message_id));
+				let message = Message::XcmQuery { query_id: 0, callback: None, deposit: 100 };
+				Messages::<Test>::insert(&ALICE, &message_id, &message);
 
+				let err = ismp::timeout_commitment::<Test>(&Default::default()).unwrap_err();
+				assert_eq!(
+					err.downcast::<IsmpError>().unwrap(),
+					IsmpError::Custom("Invalid message.".into())
+				)
 			})
 		}
-	}
 
-	mod on_response {
-		use super::*;
+
 		#[test]
-		fn commitment_generation_is_correct() {
+		fn actually_timesout_assert_event() {
 			new_test_ext().execute_with(|| {
+				let commitment: H256 = [8u8; 32].into();
+				let message_id = [7u8; 32];
+				IsmpRequests::<Test>::insert(&commitment, (&ALICE, message_id));
+				let message = Message::Ismp { commitment, callback: None, deposit: 100 };
+				Messages::<Test>::insert(&ALICE, &message_id, &message);
 
+				assert!(ismp::timeout_commitment::<Test>(&Default::default()).is_ok());
+
+				if let Some(Message::IsmpTimeout { commitment, deposit: 100 }) = Messages::<Test>::get(&ALICE, &message_id) {
+					let events = events();
+					assert!(
+						events.contains(
+							&Event::<Test>::IsmpTimedOut { commitment }
+						)
+					)
+				} else {
+					panic!("Message not timedout.")
+				}
 			})
 		}
-
 	}
+
+
 
 	mod process_response {
 		use ::ismp::Error as IsmpError;

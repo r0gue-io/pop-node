@@ -84,11 +84,11 @@ impl WeightInfo for () {
 		Default::default()
 	}
 
-	fn ismp_on_response(x: u32, y: u32) -> Weight {
+	fn ismp_on_response(x: u32) -> Weight {
 		Default::default()
 	}
 
-	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
+	fn ismp_on_timeout(x: u32) -> Weight {
 		Default::default()
 	}
 

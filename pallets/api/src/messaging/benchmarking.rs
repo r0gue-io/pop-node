@@ -128,7 +128,7 @@ mod messaging_benchmarks {
 	#[benchmark]
 	fn xcm_response() {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
-		let id_data = (x, b"xcmresponse");
+		let id_data = b"xcmresponse";
 		let encoded = id_data.encode();
 		let message_id: [u8; 32] = H256::from(blake2_256(&encoded)).into();
 
@@ -176,7 +176,7 @@ mod messaging_benchmarks {
 		let origin: T::AccountId = account("alice", 0, SEED);
 		pallet_balances::Pallet::<T>::make_free_balance_be(&origin, u32::MAX.into());
 
-		let id_data = (x, y, b"ismp_response");
+		let id_data = (x, b"ismp_response");
 		let encoded = id_data.encode();
 		let message_id: [u8; 32] = H256::from(blake2_256(&encoded)).into();
 
@@ -184,7 +184,7 @@ mod messaging_benchmarks {
 			let total_deposit = T::WeightToFee::weight_to_fee(&weight);
 			T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, total_deposit).unwrap();
 
-			let callback = Some(Callback { selector: [0; 4], weight, abi: Abi::Scale })
+			let callback = Some(Callback { selector: [0; 4], weight, abi: Abi::Scale });
 
 		let (response, event, commitment) = if x == 1 {
 			// get response
@@ -251,7 +251,7 @@ mod messaging_benchmarks {
 	fn ismp_on_timeout(x: Linear<0, 2>) {
 		let commitment = H256::repeat_byte(2u8);
 		let origin: T::AccountId = account("alice", 0, SEED);
-		let id_data = (x, y, b"ismp_timeout");
+		let id_data = (x, b"ismp_timeout");
 		let encoded = id_data.encode();
 		let message_id: [u8; 32] = H256::from(blake2_256(&encoded)).into();
 
