@@ -958,25 +958,25 @@ fn metadata_api_implemented() {
 	const V16_UNSTABLE: u32 = u32::MAX;
 
 	fn assert<T: sp_api::runtime_decl_for_metadata::Metadata<Block>>() {
-		let opague_meta: OpaqueMetadata = T::metadata();
-		let prefixed_meta = RuntimeMetadataPrefixed::decode(&mut &opague_meta.deref()[..]).unwrap();
+		let opaque_meta: OpaqueMetadata = T::metadata();
+		let prefixed_meta = RuntimeMetadataPrefixed::decode(&mut &opaque_meta.deref()[..]).unwrap();
 		assert_eq!(prefixed_meta, Runtime::metadata());
 		// Always returns metadata v14:
 		// https://github.com/paritytech/polkadot-sdk/blob/c36d3066c082b769f20c31dfdbae77d8fd027a0d/substrate/frame/support/procedural/src/construct_runtime/expand/metadata.rs#L151
 		let RuntimeMetadata::V14(_) = prefixed_meta.1 else {
-			panic!("Expected metadata variant V14, got a different variant");
+			panic!("Expected metadata V14");
 		};
 
 		assert_eq!(T::metadata_versions(), vec![14, 15, V16_UNSTABLE]);
 
 		let version = 15;
-		let opague_meta = T::metadata_at_version(version).expect("V15 should exist");
-		let prefixed_meta_bytes = opague_meta.deref();
+		let opaque_meta = T::metadata_at_version(version).expect("V15 should exist");
+		let prefixed_meta_bytes = opaque_meta.deref();
 		assert_eq!(prefixed_meta_bytes, Runtime::metadata_at_version(version).unwrap().deref());
 		let prefixed_meta = RuntimeMetadataPrefixed::decode(&mut &prefixed_meta_bytes[..]).unwrap();
 		// Ensure that we have the V15 variant.
 		let RuntimeMetadata::V15(metadata) = prefixed_meta.1 else {
-			panic!("Expected metadata variant V15, got a different variant");
+			panic!("Expected metadata V15");
 		};
 		assert!(!metadata.apis.is_empty());
 		assert!(!metadata.pallets.is_empty());
