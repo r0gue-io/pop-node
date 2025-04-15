@@ -538,7 +538,7 @@ mod xcm_new_query {
 			));
 			let m = Messages::<Test>::get(ALICE, message_id)
 				.expect("should exist after xcm_new_query.");
-			if let Message::XcmQuery { query_id, callback, deposit } = m {
+			if let Message::XcmQuery { query_id, callback, .. } = m {
 				assert_eq!(query_id, 0);
 				assert_eq!(callback, Some(expected_callback));
 			} else {
@@ -658,7 +658,7 @@ mod xcm_response {
 			));
 
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
-			let Some(Message::XcmResponse { query_id, deposit, response }): Option<Message<Test>> =
+			let Some(Message::XcmResponse { query_id, response, .. }): Option<Message<Test>> =
 				Messages::get(ALICE, message_id)
 			else {
 				panic!("wrong message type");
@@ -738,8 +738,6 @@ mod xcm_hooks {
 		new_test_ext().execute_with(|| {
 			let message_id = [0; 32];
 			let timeout = System::block_number() + 10;
-			let xcm_response = Response::ExecutionResult(None);
-
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
@@ -1003,6 +1001,9 @@ mod ismp_get {
 			else {
 				panic!("missing event");
 			};
+			assert!(callback.is_none());
+			assert_eq!(*id, message_id);
+			assert_eq!(origin, &ALICE);
 			assert_eq!(IsmpRequests::<Test>::get(commitment).unwrap(), (ALICE, message_id));
 			let Some(Message::Ismp { .. }) = Messages::<Test>::get(ALICE, message_id) else {
 				panic!("wrong message type");
@@ -1080,6 +1081,10 @@ mod ismp_post {
 			else {
 				panic!("missing event");
 			};
+
+			assert_eq!(origin, &ALICE);
+			assert_eq!(*id, message_id);
+			assert!(callback.is_none());
 			assert_eq!(IsmpRequests::<Test>::get(commitment).unwrap(), (ALICE, message_id));
 			let Some(Message::Ismp { .. }) = Messages::<Test>::get(ALICE, message_id) else {
 				panic!("wrong message type");
@@ -1255,7 +1260,7 @@ mod ismp_hooks {
 
 				assert!(res.is_ok(), "process_response failed");
 
-				let Some(Message::IsmpResponse { commitment, deposit, response }) =
+				let Some(Message::IsmpResponse { .. }) =
 					Messages::<Test>::get(ALICE, message_id)
 				else {
 					panic!("wrong message type.")

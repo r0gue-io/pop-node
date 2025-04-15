@@ -2,11 +2,10 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use ::ismp::{
-	host::StateMachine,
 	messaging::hash_request,
 	module::IsmpModule,
 	router::{
-		GetRequest, GetResponse, PostRequest, PostResponse, Request, Request::*,
+		Request,
 		Response as IsmpResponse, Timeout,
 	},
 };
@@ -14,23 +13,16 @@ use ::xcm::latest::{Junctions, Location};
 use frame_benchmarking::{account, v2::*};
 use frame_support::{
 	dispatch::RawOrigin,
-	sp_runtime::{traits::Hash, RuntimeDebug},
 	traits::{Currency, EnsureOrigin},
 	BoundedVec,
 };
-use pallet_ismp::{
-	child_trie::{RequestCommitments, ResponseCommitments},
-	dispatcher::{FeeMetadata, RequestMetadata},
-	offchain::LeafIndexAndPos,
-};
-use pallet_xcm::Origin as XcmOrigin;
-use sp_core::{keccak_256, Get, H256};
+use sp_core::{Get, H256};
 use sp_io::hashing::blake2_256;
-use sp_runtime::traits::{One, Zero};
+use sp_runtime::traits::One;
 use sp_std::vec;
 
 use super::*;
-use crate::{messaging::test_utils::*, Read as _};
+use crate::messaging::test_utils::*;
 
 const SEED: u32 = 1;
 type RuntimeOrigin<T> = <T as frame_system::Config>::RuntimeOrigin;
@@ -274,7 +266,6 @@ mod messaging_benchmarks {
 	///   - `2`: `PostResponse`
 	#[benchmark]
 	fn ismp_on_timeout(x: Linear<0, 2>) {
-		let commitment = H256::repeat_byte(2u8);
 		let origin: T::AccountId = account("alice", 0, SEED);
 		let id_data = (x, b"ismp_timeout");
 		let encoded = id_data.encode();
@@ -347,7 +338,7 @@ mod messaging_benchmarks {
 			vec![1u8].repeat(T::MaxKeyLen::get() as usize).try_into().unwrap();
 
 		let mut outer_keys = vec![];
-		for k in (0..y) {
+		for _ in 0..y {
 			outer_keys.push(inner_keys.clone())
 		}
 
@@ -355,7 +346,6 @@ mod messaging_benchmarks {
 			Some(Callback {
 				selector: [1; 4],
 				weight: Weight::from_parts(100, 100),
-
 				abi: Abi::Scale,
 			})
 		} else {

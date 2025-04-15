@@ -25,7 +25,6 @@ use crate::messaging::{Call, CallbackExecutor, Messages, NotifyQueryHandler};
 pub(crate) const ALICE: AccountId = 1;
 pub(crate) const BOB: AccountId = 2;
 pub(crate) const CHARLIE: AccountId = 3;
-pub(crate) const RESPONSE: AccountId = 4;
 pub(crate) const RESPONSE_LOCATION: Location = Location { parents: 1, interior: Junctions::Here };
 pub(crate) const FEE_ACCOUNT: AccountId = 5;
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
@@ -221,12 +220,12 @@ impl crate::nonfungibles::Config for Test {
 pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
 impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
 	fn execute(
-		account: &<T as frame_system::Config>::AccountId,
-		data: Vec<u8>,
+		_account: &<T as frame_system::Config>::AccountId,
+		_data: Vec<u8>,
 		weight: sp_runtime::Weight,
 	) -> frame_support::dispatch::DispatchResultWithPostInfo {
 		DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-			actual_weight: Some(weight),
+			actual_weight: Some(weight / 2),
 			pays_fee: Pays::Yes,
 		})
 	}
@@ -249,10 +248,10 @@ impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
 	type WeightInfo = ();
 
 	fn new_notify_query(
-		responder: impl Into<Location>,
-		notify: Call<T>,
-		timeout: BlockNumberFor<T>,
-		match_querier: impl Into<Location>,
+		_responder: impl Into<Location>,
+		_notify: Call<T>,
+		_timeout: BlockNumberFor<T>,
+		_match_querier: impl Into<Location>,
 	) -> u64 {
 		get_next_query_id()
 	}

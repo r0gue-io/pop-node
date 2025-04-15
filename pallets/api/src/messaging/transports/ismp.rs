@@ -25,7 +25,7 @@ use ismp::{
 use pallet_ismp::weights::IsmpModuleWeight;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::{BoundedVec, Saturating};
+use sp_runtime::BoundedVec;
 
 use crate::messaging::{
 	pallet::{Config, Event, IsmpRequests, Messages, Pallet},
