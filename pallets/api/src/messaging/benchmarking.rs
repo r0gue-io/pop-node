@@ -47,7 +47,9 @@ fn assert_has_event<T: Config>(generic_event: <T as crate::messaging::Config>::R
 mod messaging_benchmarks {
 	use super::*;
 
-	/// x: The number of removals required.
+	/// # Parameters
+	/// - `x`: `Linear<1, { T::MaxRemovals::get() }>`  
+	///   The number of message removals to perform (bounded by `MaxRemovals`).
 	#[benchmark]
 	fn remove(x: Linear<1, { T::MaxRemovals::get() }>) {
 		let deposit: BalanceOf<T> = sp_runtime::traits::One::one();
@@ -85,7 +87,13 @@ mod messaging_benchmarks {
 		)
 	}
 
-	/// x: Is there a callback?
+	/// Submits a new XCM query message with an optional callback.
+	///
+	/// # Parameters
+	/// - `x`: `Linear<0, 1>`  
+	///   Whether a callback is supplied:
+	///   - `0`: No callback
+	///   - `1`: Callback attached
 	#[benchmark]
 	fn xcm_new_query(x: Linear<0, 1>) {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
@@ -124,7 +132,9 @@ mod messaging_benchmarks {
 		)
 	}
 
-	/// x: Is there a callback?
+	/// Handles a response from an XCM query and executes a callback if present.
+	///
+	/// No benchmark input parameters. A mock response is created and processed.
 	#[benchmark]
 	fn xcm_response() {
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
@@ -169,8 +179,13 @@ mod messaging_benchmarks {
 		);
 	}
 
-	/// x = 0 Get response.
-	/// x = 1 Post Response.
+	/// Handles a response to a previously submitted ISMP request.
+	///
+	/// # Parameters
+	/// - `x`: `Linear<0, 1>`  
+	///   The type of ISMP response:
+	///   - `0`: `PostResponse`
+	///   - `1`: `GetResponse`
 	#[benchmark]
 	fn ismp_on_response(x: Linear<0, 1>) {
 		let origin: T::AccountId = account("alice", 0, SEED);
@@ -252,10 +267,14 @@ mod messaging_benchmarks {
 		assert_has_event::<T>(event.into())
 	}
 
-	/// x: is it a Request::Post, Request::Get or Response::Post.
-	/// x = 0: Post request.
-	/// x = 1: Get request.
-	/// x = 2: Post response.
+	/// Handles timeout of a pending ISMP request or response.
+	///
+	/// # Parameters
+	/// - `x`: `Linear<0, 2>`  
+	///   Type of item that timed out:
+	///   - `0`: `PostRequest`
+	///   - `1`: `GetRequest`
+	///   - `2`: `PostResponse`
 	#[benchmark]
 	fn ismp_on_timeout(x: Linear<0, 2>) {
 		let commitment = H256::repeat_byte(2u8);
@@ -307,14 +326,17 @@ mod messaging_benchmarks {
 		assert_has_event::<T>(event.into());
 	}
 
-	/// x: Key length: T::MaxKeyLen.
-	/// y: Context length: T::MaxContextLen.
-	/// z: Quantity of keys (outer) len: bound to T::MaxKeys.
-	/// a: Is there a callback supplied?
-	#[benchmark(pov_mode = Measured {
-        Pallet: Measured,
-        Pallet::Storage: Measured,
-      })]
+	/// Sends a `Get` request using ISMP with varying context and key sizes.
+	///
+	/// # Parameters
+	/// - `y`: `Linear<0, { T::MaxContextLen::get() }>`  
+	///   Length of the context field (in bytes).
+	/// - `z`: `Linear<0, { T::MaxKeys::get() }>`  
+	///   Number of keys in the outer keys array.
+	/// - `a`: `Linear<0, 1>`  
+	///   Whether a callback is attached:
+	///   - `0`: No callback
+	///   - `1`: Callback attached
 	fn ismp_get(
 		y: Linear<0, { T::MaxContextLen::get() }>,
 		z: Linear<0, { T::MaxKeys::get() }>,
@@ -395,8 +417,6 @@ mod messaging_benchmarks {
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
-
-		// assert_has_event()
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
