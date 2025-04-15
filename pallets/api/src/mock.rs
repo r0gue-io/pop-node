@@ -337,8 +337,8 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootWithResponseSuccess {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin() -> Result<O, ()> {
-		todo!()
+	fn try_successful_origin() -> Result<RuntimeOrigin, ()> {
+		Ok(RuntimeOrigin::root())
 	}
 }
 
@@ -363,6 +363,7 @@ impl pallet_ismp::Config for Test {
 	type TimestampProvider = TimeStamps;
 	type WeightProvider = ();
 }
+
 
 #[derive(Default)]
 pub struct AlwaysErrorRouter;
