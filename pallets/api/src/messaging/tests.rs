@@ -494,7 +494,6 @@ mod xcm_new_query {
 				&(<Test as Config>::WeightInfo::xcm_response()),
 			);
 			let timeout = System::block_number() + 1;
-			let weight = Weight::default();
 			let callback = None;
 			let message_id = [1u8; 32];
 
@@ -1070,7 +1069,6 @@ mod ismp_get {
 			};
 			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
 
-			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
 				&<Test as Config>::WeightInfo::ismp_on_response(1),
 			);

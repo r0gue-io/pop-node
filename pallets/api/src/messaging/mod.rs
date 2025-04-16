@@ -382,19 +382,22 @@ pub mod pallet {
 			// Take deposits and fees.
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
-			if let Some(cb) = callback.as_ref() {
-				T::Fungibles::hold(
-					&HoldReason::CallbackGas.into(),
-					&origin,
-					T::WeightToFee::weight_to_fee(&cb.weight),
-				)?;
-			}
+			let mut callback_execution_weight = Weight::zero();
 
-			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(1)
-					.saturating_add(T::CallbackExecutor::execution_weight()),
-			);
-			
+if let Some(cb) = callback.as_ref() {
+    T::Fungibles::hold(
+        &HoldReason::CallbackGas.into(),
+        &origin,
+        T::WeightToFee::weight_to_fee(&cb.weight),
+    )?;
+
+    callback_execution_weight = T::CallbackExecutor::execution_weight();
+}
+
+let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+    &T::WeightInfo::ismp_on_response(1).saturating_add(callback_execution_weight),
+);
+
 			T::Fungibles::transfer(
 				&origin,
 				&T::FeeAccount::get(),
@@ -459,6 +462,7 @@ pub mod pallet {
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			let mut callback_execution_weight = Weight::zero();
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -466,11 +470,15 @@ pub mod pallet {
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
-			} 
+			
+				callback_execution_weight = T::CallbackExecutor::execution_weight();
+			}
+			
 			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(0)
-					.saturating_add(T::CallbackExecutor::execution_weight()),
+				&T::WeightInfo::ismp_on_response(1).saturating_add(callback_execution_weight),
 			);
+			
+
 			T::Fungibles::transfer(
 				&origin,
 				&T::FeeAccount::get(),
@@ -547,19 +555,22 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
+			let mut callback_execution_weight = Weight::zero();
+
 			if let Some(cb) = callback.as_ref() {
-				T::Fungibles::hold(
-					&HoldReason::CallbackGas.into(),
-					&origin,
-					T::WeightToFee::weight_to_fee(&cb.weight),
-				)?;
-
+			    T::Fungibles::hold(
+			        &HoldReason::CallbackGas.into(),
+			        &origin,
+			        T::WeightToFee::weight_to_fee(&cb.weight),
+			    )?;
+			
+			    callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
-
+			
 			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::xcm_response()
-					.saturating_add(T::CallbackExecutor::execution_weight()),
+			    &T::WeightInfo::xcm_response().saturating_add(callback_execution_weight),
 			);
+
 			T::Fungibles::transfer(
 				&origin,
 				&T::FeeAccount::get(),
