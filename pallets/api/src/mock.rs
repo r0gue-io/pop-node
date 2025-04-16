@@ -322,7 +322,7 @@ impl crate::messaging::WeightInfo for DummyPrepaymentWeights {
 	}
 }
 
-		pub struct Keccak;
+pub struct Keccak;
 impl ::ismp::messaging::Keccak256 for Keccak {
 	fn keccak256(bytes: &[u8]) -> sp_core::H256
 	where

@@ -1,5 +1,8 @@
 #![cfg(test)]
-use frame_support::{assert_noop, assert_ok, testing_prelude::bounded_vec, weights::Weight, traits::fungible::hold::Inspect};
+use frame_support::{
+	assert_noop, assert_ok, testing_prelude::bounded_vec, traits::fungible::hold::Inspect,
+	weights::Weight,
+};
 use sp_core::H256;
 
 use crate::{messaging::*, mock::*};

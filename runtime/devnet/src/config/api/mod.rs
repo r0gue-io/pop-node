@@ -123,6 +123,7 @@ parameter_types! {
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
+	type FeeAccount = DummyFeeAccount;
 	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
@@ -145,7 +146,6 @@ impl messaging::Config for Runtime {
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
-	type FeeAccount = DummyFeeAccount;
 }
 
 pub struct EnsureResponse;

@@ -10,7 +10,7 @@ use frame_support::{
 	storage::KeyLenOf,
 	traits::{
 		tokens::{
-			fungible::{hold::Mutate as HoldMutate, Mutate, Inspect},
+			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate},
 			Fortitude,
 			Precision::{BestEffort, Exact},
 			Preservation, Restriction,
@@ -384,19 +384,19 @@ pub mod pallet {
 
 			let mut callback_execution_weight = Weight::zero();
 
-if let Some(cb) = callback.as_ref() {
-    T::Fungibles::hold(
-        &HoldReason::CallbackGas.into(),
-        &origin,
-        T::WeightToFee::weight_to_fee(&cb.weight),
-    )?;
+			if let Some(cb) = callback.as_ref() {
+				T::Fungibles::hold(
+					&HoldReason::CallbackGas.into(),
+					&origin,
+					T::WeightToFee::weight_to_fee(&cb.weight),
+				)?;
 
-    callback_execution_weight = T::CallbackExecutor::execution_weight();
-}
+				callback_execution_weight = T::CallbackExecutor::execution_weight();
+			}
 
-let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-    &T::WeightInfo::ismp_on_response(1).saturating_add(callback_execution_weight),
-);
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+				&T::WeightInfo::ismp_on_response(1).saturating_add(callback_execution_weight),
+			);
 
 			T::Fungibles::transfer(
 				&origin,
@@ -470,14 +470,13 @@ let response_prepayment_amount = T::WeightToFee::weight_to_fee(
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
-			
+
 				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
-			
+
 			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
 				&T::WeightInfo::ismp_on_response(1).saturating_add(callback_execution_weight),
 			);
-			
 
 			T::Fungibles::transfer(
 				&origin,
@@ -485,7 +484,6 @@ let response_prepayment_amount = T::WeightToFee::weight_to_fee(
 				response_prepayment_amount,
 				Preservation::Preserve,
 			)?;
-
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
@@ -558,17 +556,17 @@ let response_prepayment_amount = T::WeightToFee::weight_to_fee(
 			let mut callback_execution_weight = Weight::zero();
 
 			if let Some(cb) = callback.as_ref() {
-			    T::Fungibles::hold(
-			        &HoldReason::CallbackGas.into(),
-			        &origin,
-			        T::WeightToFee::weight_to_fee(&cb.weight),
-			    )?;
-			
-			    callback_execution_weight = T::CallbackExecutor::execution_weight();
+				T::Fungibles::hold(
+					&HoldReason::CallbackGas.into(),
+					&origin,
+					T::WeightToFee::weight_to_fee(&cb.weight),
+				)?;
+
+				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
-			
+
 			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-			    &T::WeightInfo::xcm_response().saturating_add(callback_execution_weight),
+				&T::WeightInfo::xcm_response().saturating_add(callback_execution_weight),
 			);
 
 			T::Fungibles::transfer(
@@ -577,7 +575,6 @@ let response_prepayment_amount = T::WeightToFee::weight_to_fee(
 				response_prepayment_amount,
 				Preservation::Preserve,
 			)?;
-
 
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
@@ -1010,7 +1007,7 @@ pub trait CallbackExecutor<T: Config> {
 	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight)
 		-> DispatchResultWithPostInfo;
 
-		/// Returns the baseline weight required for a single callback execution.
+	/// Returns the baseline weight required for a single callback execution.
 	///
 	/// This serves as an overhead estimate, useful for pallet-level weight calculations.
 	fn execution_weight() -> Weight;
