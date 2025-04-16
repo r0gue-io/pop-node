@@ -561,7 +561,6 @@ mod xcm_new_query {
 
 			assert_ne!(response_fee, 0);
 			let alice_pre_transfer = Balances::free_balance(&ALICE);
-			let alices_balance_pre_hold = Balances::free_balance(ALICE);
 
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -619,7 +618,6 @@ mod xcm_new_query {
 		new_test_ext().execute_with(|| {
 			let timeout = System::block_number() + 1;
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
-			let callback = None;
 			let message_id = [0; 32];
 			let expected_deposit =
 				calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
@@ -640,7 +638,7 @@ mod xcm_new_query {
 				message_id,
 				RESPONSE_LOCATION,
 				timeout,
-				callback,
+				None,
 			));
 
 			let alices_held_balance_post_hold =
@@ -829,15 +827,6 @@ mod xcm_response {
 			let expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
 			let callback = Callback { selector: [1; 4], weight: Zero::zero(), abi: Abi::Scale };
-			let expected_deposit = calculate_protocol_deposit::<
-				Test,
-				<Test as crate::messaging::Config>::OnChainByteFee,
-			>(ProtocolStorageDeposit::XcmQueries) +
-				calculate_message_deposit::<
-					Test,
-					<Test as crate::messaging::Config>::OnChainByteFee,
-				>();
-
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
@@ -1264,7 +1253,6 @@ mod ismp_post {
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let ismp_fee = <Test as Config>::IsmpRelayerFee::get();
 
-			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
 				&<Test as Config>::WeightInfo::ismp_on_response(1),
 			);
@@ -1457,7 +1445,7 @@ mod ismp_hooks {
 
 				assert!(res.is_ok(), "{:?}", res.unwrap_err().downcast::<IsmpError>().unwrap());
 
-				if let Some(Message::IsmpTimeout { commitment, message_deposit, callback_deposit: None}) =
+				if let Some(Message::IsmpTimeout { commitment, ..}) =
 					Messages::<Test>::get(ALICE, message_id)
 				{
 					let events = events();
