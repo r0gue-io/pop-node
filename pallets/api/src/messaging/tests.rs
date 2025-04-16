@@ -203,7 +203,7 @@ mod remove {
 			};
 
 			let erroneous_message =
-				Message::Ismp { commitment: H256::default(), callback: None, message_deposit};
+				Message::Ismp { commitment: H256::default(), callback: None, message_deposit };
 
 			let good_id_1 = [0; 32];
 			let good_id_2 = [1; 32];
@@ -281,8 +281,12 @@ mod remove {
 			let m = Message::Ismp { commitment, callback: None, message_deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_noop!(
 				Messaging::remove(signed(ALICE), bounded_vec!(message_id)),
@@ -310,8 +314,12 @@ mod remove {
 			let m = Message::IsmpResponse { commitment, response: bounded_vec!(), message_deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -334,11 +342,23 @@ mod remove {
 			let message_deposit = 100;
 			let callback_deposit = 100_000;
 
-			let m = Message::IsmpTimeout { commitment, message_deposit, callback_deposit: Some(callback_deposit) };
+			let m = Message::IsmpTimeout {
+				commitment,
+				message_deposit,
+				callback_deposit: Some(callback_deposit),
+			};
 
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
-				.unwrap();
-			<Test as Config>::Fungibles::hold(&HoldReason::CallbackGas.into(), &ALICE, callback_deposit)
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				callback_deposit,
+			)
 			.unwrap();
 
 			Messages::<Test>::insert(ALICE, message_id, &m);
@@ -369,8 +389,12 @@ mod remove {
 			let m = Message::XcmQuery { query_id, callback: None, message_deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_noop!(
 				Messaging::remove(signed(ALICE), bounded_vec!(message_id)),
@@ -393,11 +417,16 @@ mod remove {
 			let query_id = 0;
 			let message_id = [0u8; 32];
 			let message_deposit = 100;
-			let m = Message::XcmResponse { query_id, message_deposit, response: Default::default() };
+			let m =
+				Message::XcmResponse { query_id, message_deposit, response: Default::default() };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -420,13 +449,24 @@ mod remove {
 			let message_deposit = 100;
 			let callback_deposit = 100_000;
 
-			let m = Message::XcmTimeout { query_id, message_deposit, callback_deposit: Some(callback_deposit) };
+			let m = Message::XcmTimeout {
+				query_id,
+				message_deposit,
+				callback_deposit: Some(callback_deposit),
+			};
 
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
-				.unwrap();
-			<Test as Config>::Fungibles::hold(&HoldReason::CallbackGas.into(), &ALICE, callback_deposit)
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
 			.unwrap();
-
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				callback_deposit,
+			)
+			.unwrap();
 
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
@@ -725,13 +765,18 @@ mod xcm_response {
 
 			// Update the message to XcmTimedOut
 			Messages::<Test>::mutate(ALICE, message_id, |message| {
-				let Some(Message::XcmQuery { query_id, message_deposit, .. }): &mut Option<Message<Test>> =
-					message
+				let Some(Message::XcmQuery { query_id, message_deposit, .. }): &mut Option<
+					Message<Test>,
+				> = message
 				else {
 					panic!("No message!");
 				};
 				generated_query_id = *query_id;
-				*message = Some(Message::XcmTimeout { query_id: *query_id, message_deposit: *message_deposit, callback_deposit: None });
+				*message = Some(Message::XcmTimeout {
+					query_id: *query_id,
+					message_deposit: *message_deposit,
+					callback_deposit: None,
+				});
 			});
 
 			assert_noop!(
@@ -881,7 +926,9 @@ mod xcm_hooks {
 				panic!("Message should be timedout!")
 			};
 
-			frame_system::Pallet::<Test>::assert_has_event(Event::<Test>::XcmQueriesTimedOut { query_ids: vec![0, 1] }.into());
+			frame_system::Pallet::<Test>::assert_has_event(
+				Event::<Test>::XcmQueriesTimedOut { query_ids: vec![0, 1] }.into(),
+			);
 		})
 	}
 }
@@ -1418,7 +1465,8 @@ mod ismp_hooks {
 			new_test_ext().execute_with(|| {
 				let commitment: H256 = [8u8; 32].into();
 				let message_id = [7u8; 32];
-				let message = Message::XcmQuery { query_id: 0, callback: None, message_deposit: 100 };
+				let message =
+					Message::XcmQuery { query_id: 0, callback: None, message_deposit: 100 };
 
 				IsmpRequests::<Test>::insert(commitment, (&ALICE, message_id));
 				Messages::<Test>::insert(ALICE, message_id, &message);
@@ -1438,14 +1486,14 @@ mod ismp_hooks {
 				let message_id = [7u8; 32];
 				let message_deposit = 100;
 				IsmpRequests::<Test>::insert(commitment, (&ALICE, message_id));
-				let message = Message::Ismp { commitment, callback: None, message_deposit};
+				let message = Message::Ismp { commitment, callback: None, message_deposit };
 				Messages::<Test>::insert(ALICE, message_id, &message);
 
 				let res = ismp::timeout_commitment::<Test>(&commitment);
 
 				assert!(res.is_ok(), "{:?}", res.unwrap_err().downcast::<IsmpError>().unwrap());
 
-				if let Some(Message::IsmpTimeout { commitment, ..}) =
+				if let Some(Message::IsmpTimeout { commitment, .. }) =
 					Messages::<Test>::get(ALICE, message_id)
 				{
 					let events = events();
@@ -1507,8 +1555,11 @@ mod ismp_hooks {
 				let commitment: H256 = Default::default();
 				let message_id = [1u8; 32];
 
-				let message =
-					Message::IsmpResponse { commitment, response: bounded_vec![], message_deposit: 100 };
+				let message = Message::IsmpResponse {
+					commitment,
+					response: bounded_vec![],
+					message_deposit: 100,
+				};
 				IsmpRequests::<Test>::insert(commitment, (ALICE, message_id));
 				Messages::<Test>::insert(ALICE, message_id, message);
 
@@ -1555,7 +1606,8 @@ mod ismp_hooks {
 				let message_id = [1u8; 32];
 				let callback = Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
 				let message_deposit = 100;
-				let message = Message::Ismp { commitment, callback: Some(callback), message_deposit };
+				let message =
+					Message::Ismp { commitment, callback: Some(callback), message_deposit };
 
 				<Test as crate::messaging::Config>::Fungibles::hold(
 					&HoldReason::Messaging.into(),

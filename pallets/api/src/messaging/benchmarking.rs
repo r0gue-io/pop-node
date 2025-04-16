@@ -48,19 +48,9 @@ mod messaging_benchmarks {
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
 		for i in 0..x {
-			T::Fungibles::hold(
-				&HoldReason::Messaging.into(),
-				&owner,
-				message_deposit,
-			)
-			.unwrap();
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &owner, message_deposit).unwrap();
 
-			T::Fungibles::hold(
-				&HoldReason::CallbackGas.into(),
-				&owner,
-				callback_deposit,
-			)
-			.unwrap();
+			T::Fungibles::hold(&HoldReason::CallbackGas.into(), &owner, callback_deposit).unwrap();
 
 			let message_id = H256::from(blake2_256(&(i.to_le_bytes())));
 			let commitment = H256::from(blake2_256(&(i.to_le_bytes())));

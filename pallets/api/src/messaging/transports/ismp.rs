@@ -240,7 +240,11 @@ pub(crate) fn process_response<T: Config>(
 	Messages::<T>::insert(
 		&initiating_origin,
 		id,
-		super::super::Message::IsmpResponse { commitment, message_deposit, response: encoded_response },
+		super::super::Message::IsmpResponse {
+			commitment,
+			message_deposit,
+			response: encoded_response,
+		},
 	);
 	Ok(())
 }
@@ -249,12 +253,16 @@ pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), any
 	let key = IsmpRequests::<T>::get(commitment)
 		.ok_or(Error::Custom("Request commitment not found while processing timeout.".into()))?;
 	Messages::<T>::try_mutate(key.0, key.1, |message| {
-		let Some(super::super::Message::Ismp { commitment, message_deposit, callback }) = message else {
+		let Some(super::super::Message::Ismp { commitment, message_deposit, callback }) = message
+		else {
 			return Err(Error::Custom("Invalid message".into()));
 		};
 		let callback_deposit = callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
-		*message =
-			Some(super::super::Message::IsmpTimeout { message_deposit: *message_deposit, commitment: *commitment, callback_deposit });
+		*message = Some(super::super::Message::IsmpTimeout {
+			message_deposit: *message_deposit,
+			commitment: *commitment,
+			callback_deposit,
+		});
 		Ok(())
 	})?;
 
