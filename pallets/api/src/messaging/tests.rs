@@ -332,12 +332,17 @@ mod remove {
 			let commitment = H256::default();
 			let message_id = [0u8; 32];
 			let message_deposit = 100;
+			let callback_deposit = 100_000;
 
-			let m = Message::IsmpTimeout { commitment, message_deposit, callback_deposit: None };
-			Messages::<Test>::insert(ALICE, message_id, &m);
-			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
+			let m = Message::IsmpTimeout { commitment, message_deposit, callback_deposit: Some(callback_deposit) };
+
 			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
 				.unwrap();
+			<Test as Config>::Fungibles::hold(&HoldReason::CallbackGas.into(), &ALICE, callback_deposit)
+			.unwrap();
+
+			Messages::<Test>::insert(ALICE, message_id, &m);
+			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -349,6 +354,8 @@ mod remove {
 				IsmpRequests::<Test>::get(commitment).is_none(),
 				"Request should have been removed but hasnt."
 			);
+
+			assert_eq!(Balances::total_balance_on_hold(&ALICE), 0);
 		})
 	}
 
@@ -411,10 +418,15 @@ mod remove {
 			let query_id = 0;
 			let message_id = [0u8; 32];
 			let message_deposit = 100;
-			let m = Message::XcmTimeout { query_id, message_deposit, callback_deposit: None };
+			let callback_deposit = 100_000;
+
+			let m = Message::XcmTimeout { query_id, message_deposit, callback_deposit: Some(callback_deposit) };
 
 			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, message_deposit)
 				.unwrap();
+			<Test as Config>::Fungibles::hold(&HoldReason::CallbackGas.into(), &ALICE, callback_deposit)
+			.unwrap();
+
 
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
@@ -429,6 +441,9 @@ mod remove {
 				XcmQueries::<Test>::get(query_id).is_none(),
 				"Message should have been removed but hasnt."
 			);
+
+			// Assert that all holds specified have been released
+			assert_eq!(Balances::total_balance_on_hold(&ALICE), 0);
 		})
 	}
 }
