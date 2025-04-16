@@ -278,8 +278,8 @@ pub mod pallet {
 		},
 		/// An ISMP message has timed out.
 		IsmpTimedOut { commitment: H256 },
-		/// An XCM message has timed out.
-		XcmTimedOut { query_ids: Vec<QueryId> },
+		/// A collection of xcm queries have timed out.
+		XcmQueriesTimedOut { query_ids: Vec<QueryId> },
 	}
 
 	#[pallet::error]
@@ -323,7 +323,7 @@ pub mod pallet {
 			// in pallet-xcm. As a result, we must handle timeouts in the pallet.
 			// Iterate through the queries that have expired and update their status.
 			let mut weight: Weight = Zero::zero();
-			let mut query_ids = sp_std::vec![];
+			let mut query_ids = Vec::new();
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
 				Messages::<T>::mutate(origin, message_id, |maybe_message| {
@@ -338,7 +338,7 @@ pub mod pallet {
 			}
 
 			if !query_ids.is_empty() {
-				Self::deposit_event(Event::<T>::XcmTimedOut { query_ids })
+				Self::deposit_event(Event::<T>::XcmQueriesTimedOut { query_ids })
 			}
 			weight
 		}
@@ -360,7 +360,7 @@ pub mod pallet {
 		#[pallet::weight(
 			{
 				let keys_len: u32 = message.keys.len().try_into().unwrap_or(T::MaxKeys::get());
-				let context_len: u32 = message.context.len().try_into().unwrap_or(T::MaxKeys::get());
+				let context_len: u32 = message.context.len().try_into().unwrap_or(T::MaxContextLen::get());
 				let has_callback = callback.is_some() as u32;
 				T::WeightInfo::ismp_get(context_len, keys_len, has_callback)
 			}
@@ -412,8 +412,9 @@ pub mod pallet {
 			) {
 				Ok(commitment) => Ok::<H256, DispatchError>(commitment),
 				Err(e) => {
-					let err = e.downcast::<IsmpError>().unwrap();
-					log::error!("ISMP Dispatch failed!! {:?}", err);
+					if let Ok(err) = e.downcast::<IsmpError>() {
+						log::error!("ISMP Dispatch failed!! {:?}", err);
+					}
 					return Err(Error::<T>::IsmpDispatchFailed.into());
 				},
 			}?;
@@ -901,7 +902,7 @@ impl<T: Config> crate::Read for Pallet<T> {
 /// associated deposits and optional callback metadata.
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub enum Message<T: Config> {
+pub(crate) enum Message<T: Config> {
 	/// Represents a pending ISMP request.
 	///
 	/// # Fields
