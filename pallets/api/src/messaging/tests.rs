@@ -1,5 +1,5 @@
 #![cfg(test)]
-use frame_support::{assert_noop, assert_ok, testing_prelude::bounded_vec, weights::Weight};
+use frame_support::{assert_noop, assert_ok, testing_prelude::bounded_vec, weights::Weight, traits::fungible::hold::Inspect};
 use sp_core::H256;
 
 use crate::{messaging::*, mock::*};
@@ -278,7 +278,7 @@ mod remove {
 			let m = Message::Ismp { commitment, callback: None, deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_noop!(
@@ -307,7 +307,7 @@ mod remove {
 			let m = Message::IsmpResponse { commitment, response: bounded_vec!(), deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
@@ -333,7 +333,7 @@ mod remove {
 			let m = Message::IsmpTimeout { commitment, deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Deposit::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
+			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
 				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
@@ -486,12 +486,12 @@ mod xcm_new_query {
 	fn takes_response_fee_no_callback() {
 		new_test_ext().execute_with(|| {
 			assert_ne!(
-				<Test as Config>::WeightInfo::xcm_response(0),
+				<Test as Config>::WeightInfo::xcm_response(),
 				Weight::zero(),
 				"Please set a weight for xcm_response to run this test."
 			);
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
-				&(<Test as Config>::WeightInfo::xcm_response(0)),
+				&(<Test as Config>::WeightInfo::xcm_response()),
 			);
 			let timeout = System::block_number() + 1;
 			let weight = Weight::default();
@@ -523,7 +523,7 @@ mod xcm_new_query {
 	fn takes_response_fee_with_callback() {
 		new_test_ext().execute_with(|| {
 			assert_ne!(
-				<Test as Config>::WeightInfo::xcm_response(1),
+				<Test as Config>::WeightInfo::xcm_response(),
 				Weight::zero(),
 				"Please set a weight for xcm_response to run this test."
 			);
@@ -534,7 +534,7 @@ mod xcm_new_query {
 			);
 
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
-				&(<Test as Config>::WeightInfo::xcm_response(1) +
+				&(<Test as Config>::WeightInfo::xcm_response() +
 					<Test as Config>::CallbackExecutor::execution_weight()),
 			);
 			let timeout = System::block_number() + 1;
@@ -554,7 +554,8 @@ mod xcm_new_query {
 				Some(callback),
 			));
 
-			let alices_balance_post_hold = Balances::free_balance(ALICE);
+			let alice_post_transfer = Balances::free_balance(&ALICE);
+			let alice_total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
 
 			assert_eq!(
 				alice_pre_transfer - alice_post_transfer - alice_total_balance_on_hold,
@@ -1054,7 +1055,7 @@ mod ismp_get {
 	fn takes_response_fee_and_ismp_fee_no_callback() {
 		new_test_ext().execute_with(|| {
 			assert_ne!(
-				<Test as Config>::WeightInfo::ismp_on_response(1, 0),
+				<Test as Config>::WeightInfo::ismp_on_response(0),
 				Weight::zero(),
 				"Please set an ismp_on_response weight info to run this test."
 			);
@@ -1071,7 +1072,7 @@ mod ismp_get {
 
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
-				&<Test as Config>::WeightInfo::ismp_on_response(1, 0),
+				&<Test as Config>::WeightInfo::ismp_on_response(1),
 			);
 
 			let alice_pre_transfer = Balances::free_balance(&ALICE);
@@ -1097,7 +1098,7 @@ mod ismp_get {
 				"Please set a weight for CallbackExecutor::execution_weight to run this test."
 			);
 			assert_ne!(
-				<Test as Config>::WeightInfo::ismp_on_response(1, 1),
+				<Test as Config>::WeightInfo::ismp_on_response(0),
 				Weight::zero(),
 				"Please set an ismp_on_response weight info to run this test."
 			);
@@ -1115,7 +1116,7 @@ mod ismp_get {
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
-				&(<Test as Config>::WeightInfo::ismp_on_response(1, 1) +
+				&(<Test as Config>::WeightInfo::ismp_on_response(1) +
 					<Test as Config>::CallbackExecutor::execution_weight()),
 			);
 
@@ -1221,7 +1222,7 @@ mod ismp_post {
 	fn takes_response_fee_and_ismp_fee_no_callback() {
 		new_test_ext().execute_with(|| {
 			assert_ne!(
-				<Test as Config>::WeightInfo::ismp_on_response(0, 0),
+				<Test as Config>::WeightInfo::ismp_on_response(0),
 				Weight::zero(),
 				"Please set an ismp_on_response weight info to run this test."
 			);
@@ -1232,7 +1233,7 @@ mod ismp_post {
 
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
-				&<Test as Config>::WeightInfo::ismp_on_response(1, 1),
+				&<Test as Config>::WeightInfo::ismp_on_response(1),
 			);
 
 			let alice_pre_transfer = Balances::free_balance(&ALICE);
@@ -1258,7 +1259,7 @@ mod ismp_post {
 				"Please set a weight for CallbackExecutor::execution_weight to run this test."
 			);
 			assert_ne!(
-				<Test as Config>::WeightInfo::ismp_on_response(1, 1),
+				<Test as Config>::WeightInfo::ismp_on_response(1),
 				Weight::zero(),
 				"Please set an ismp_on_response weight info to run this test."
 			);
@@ -1270,7 +1271,7 @@ mod ismp_post {
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
 			let response_fee = <Test as Config>::WeightToFee::weight_to_fee(
-				&(<Test as Config>::WeightInfo::ismp_on_response(1, 1) +
+				&(<Test as Config>::WeightInfo::ismp_on_response(1) +
 					<Test as Config>::CallbackExecutor::execution_weight()),
 			);
 

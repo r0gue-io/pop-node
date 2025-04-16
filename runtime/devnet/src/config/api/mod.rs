@@ -145,6 +145,7 @@ impl messaging::Config for Runtime {
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
+	type FeeAccount = DummyFeeAccount;
 }
 
 pub struct EnsureResponse;

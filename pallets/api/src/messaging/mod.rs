@@ -9,9 +9,8 @@ use frame_support::{
 	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
-		fungible::Inspect,
 		tokens::{
-			fungible::hold::Mutate,
+			fungible::{hold::Mutate as HoldMutate, Mutate, Inspect},
 			Fortitude,
 			Precision::{BestEffort, Exact},
 			Preservation, Restriction,
@@ -63,46 +62,6 @@ type BalanceOf<T> = <<T as Config>::Fungibles as Inspect<AccountIdOf<T>>>::Balan
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
 pub type MessageId = [u8; 32];
-
-pub trait WeightInfo {
-	fn remove(x: u32) -> Weight;
-	fn xcm_new_query(x: u32) -> Weight;
-	fn xcm_response(x: u32) -> Weight;
-	fn ismp_on_response(x: u32, y: u32) -> Weight;
-	fn ismp_on_timeout(x: u32, y: u32) -> Weight;
-	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight;
-	fn ismp_post(x: u32, y: u32) -> Weight;
-}
-
-impl WeightInfo for () {
-	fn remove(x: u32) -> Weight {
-		Zero::zero()
-	}
-
-	fn xcm_new_query(x: u32) -> Weight {
-		Zero::zero()
-	}
-
-	fn xcm_response(x: u32) -> Weight {
-		Zero::zero()
-	}
-
-	fn ismp_on_response(x: u32, y: u32) -> Weight {
-		Zero::zero()
-	}
-
-	fn ismp_on_timeout(x: u32, y: u32) -> Weight {
-		Zero::zero()
-	}
-
-	fn ismp_get(x: u32, y: u32, z: u32, a: u32) -> Weight {
-		Zero::zero()
-	}
-
-	fn ismp_post(x: u32, y: u32) -> Weight {
-		Zero::zero()
-	}
-}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -420,6 +379,7 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
+			// Take deposits and fees.
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
@@ -428,26 +388,19 @@ pub mod pallet {
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
-				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-					&T::WeightInfo::ismp_on_response(1, 1)
-						.saturating_add(T::CallbackExecutor::execution_weight()),
-				);
-				T::Fungibles::transfer(
-					&origin,
-					&T::FeeAccount::get(),
-					response_prepayment_amount,
-					Preservation::Preserve,
-				)?;
-			} else {
-				let response_prepayment_amount =
-					T::WeightToFee::weight_to_fee(&T::WeightInfo::ismp_on_response(1, 0));
-				T::Fungibles::transfer(
-					&origin,
-					&T::FeeAccount::get(),
-					response_prepayment_amount,
-					Preservation::Preserve,
-				)?;
 			}
+
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+				&T::WeightInfo::ismp_on_response(1)
+					.saturating_add(T::CallbackExecutor::execution_weight()),
+			);
+			
+			T::Fungibles::transfer(
+				&origin,
+				&T::FeeAccount::get(),
+				response_prepayment_amount,
+				Preservation::Preserve,
+			)?;
 
 			// Process message by dispatching request via ISMP.
 			let commitment = match T::IsmpDispatcher::default().dispatch_request(
@@ -497,6 +450,8 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
+
+			// Take deposits and fees.
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
@@ -511,26 +466,18 @@ pub mod pallet {
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
-				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-					&T::WeightInfo::ismp_on_response(0, 1)
-						.saturating_add(T::CallbackExecutor::execution_weight()),
-				);
-				T::Fungibles::transfer(
-					&origin,
-					&T::FeeAccount::get(),
-					response_prepayment_amount,
-					Preservation::Preserve,
-				)?;
-			} else {
-				let response_prepayment_amount =
-					T::WeightToFee::weight_to_fee(&T::WeightInfo::ismp_on_response(0, 0));
-				T::Fungibles::transfer(
-					&origin,
-					&T::FeeAccount::get(),
-					response_prepayment_amount,
-					Preservation::Preserve,
-				)?;
-			}
+			} 
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+				&T::WeightInfo::ismp_on_response(0)
+					.saturating_add(T::CallbackExecutor::execution_weight()),
+			);
+			T::Fungibles::transfer(
+				&origin,
+				&T::FeeAccount::get(),
+				response_prepayment_amount,
+				Preservation::Preserve,
+			)?;
+
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
@@ -593,6 +540,7 @@ pub mod pallet {
 				},
 			)?;
 
+			// Take deposits and fees.
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::XcmQueries,
 			)
@@ -606,26 +554,19 @@ pub mod pallet {
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
 
-				let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-					&T::WeightInfo::xcm_response(1)
-						.saturating_add(T::CallbackExecutor::execution_weight()),
-				);
-				T::Fungibles::transfer(
-					&origin,
-					&T::FeeAccount::get(),
-					response_prepayment_amount,
-					Preservation::Preserve,
-				)?;
-			} else {
-				let response_prepayment_amount =
-					T::WeightToFee::weight_to_fee(&T::WeightInfo::xcm_response(0));
-				T::Fungibles::transfer(
-					&origin,
-					&T::FeeAccount::get(),
-					response_prepayment_amount,
-					Preservation::Preserve,
-				)?;
 			}
+
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+				&T::WeightInfo::xcm_response()
+					.saturating_add(T::CallbackExecutor::execution_weight()),
+			);
+			T::Fungibles::transfer(
+				&origin,
+				&T::FeeAccount::get(),
+				response_prepayment_amount,
+				Preservation::Preserve,
+			)?;
+
 
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
