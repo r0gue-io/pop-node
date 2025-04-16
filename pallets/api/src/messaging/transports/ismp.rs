@@ -183,8 +183,8 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 
 	fn on_response(&self, response: &Response) -> Weight {
 		let x = match response {
-			Response::Get(_) => 0,
-			Response::Post(_) => 1,
+			Response::Get(_) => 1,
+			Response::Post(_) => 0,
 		};
 
 		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())

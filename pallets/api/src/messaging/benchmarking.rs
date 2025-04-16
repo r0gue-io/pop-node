@@ -327,7 +327,7 @@ mod messaging_benchmarks {
 	) {
 		pallet_timestamp::Pallet::<T>::set_timestamp(1u32.into());
 		let origin: T::AccountId = account("alice", 0, SEED);
-		let id_data = (x, y, a, "imsp_get");
+		let id_data = (x, y, a, "ismp_get");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
 

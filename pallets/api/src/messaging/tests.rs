@@ -746,6 +746,15 @@ mod xcm_hooks {
 				None,
 			));
 
+			let message_id_2 = [1; 32];
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id_2,
+				RESPONSE_LOCATION,
+				timeout,
+				None,
+			));
+
 			run_to(timeout + 1);
 
 			let Some(Message::XcmTimeout { .. }): Option<Message<Test>> =
@@ -753,6 +762,14 @@ mod xcm_hooks {
 			else {
 				panic!("Message should be timedout!")
 			};
+
+			let Some(Message::XcmTimeout { .. }): Option<Message<Test>> =
+				Messages::get(ALICE, message_id_2)
+			else {
+				panic!("Message should be timedout!")
+			};
+
+			frame_system::Pallet::<Test>::assert_has_event(Event::<Test>::XcmQueriesTimedOut { query_ids: vec![0, 1] }.into());
 		})
 	}
 }
