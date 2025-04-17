@@ -13,16 +13,16 @@ use pallet_api::{extension::*, Read};
 use pallet_revive::{AddressMapper, CollectEvents, DebugInfo};
 use pallet_xcm::Origin;
 use sp_core::ConstU8;
-use sp_runtime::DispatchError;
+use sp_runtime::{traits::AccountIdConversion, DispatchError};
 use versioning::*;
-use xcm::latest::Location;
+use xcm::latest::{Junctions, Location};
 
 use crate::{
 	config::{
 		assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
 		xcm::LocalOriginToLocation,
 	},
-	fungibles, messaging, nonfungibles, parameter_types, AccountId, Balances, BlockNumber,
+	fungibles, messaging, nonfungibles, parameter_types, weights, AccountId, Balances, BlockNumber,
 	ConstU32, Ismp, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
 	TransactionByteFee,
 };
@@ -114,20 +114,28 @@ impl nonfungibles::Config for Runtime {
 
 parameter_types! {
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
+	// TODO: What is reasonable.
+
+	pub const IsmpRelayerFee: crate::Balance = crate::UNIT / 2;
+	pub DummyFeeAccount: AccountId = crate::PalletId(*b"dummyacc").into_account_truncating();
+
 }
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
 	type Deposit = Balances;
+	type FeeAccount = DummyFeeAccount;
 	type IsmpDispatcher = Ismp;
+	type IsmpRelayerFee = IsmpRelayerFee;
+	type Keccak256 = Ismp;
 	type MaxContextLen = ConstU32<64>;
-	type MaxDataLen = ConstU32<1024>;
-	type MaxKeyLen = ConstU32<1000>;
+	type MaxDataLen = ConstU32<512>;
+	type MaxKeyLen = ConstU32<8>;
 	type MaxKeys = ConstU32<10>;
 	// TODO: size appropriately
-	type MaxRemovals = ConstU32<1024>;
+	type MaxRemovals = ConstU32<100>;
 	// TODO: ensure within the contract buffer bounds
-	type MaxResponseLen = ConstU32<1024>;
+	type MaxResponseLen = ConstU32<512>;
 	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
 	// much as onchain cost.
@@ -136,6 +144,7 @@ impl messaging::Config for Runtime {
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightInfo = weights::messaging_weights::WeightInfo<Self>;
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
@@ -154,13 +163,36 @@ impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureRespon
 
 	#[cfg(feature = "runtime-benchmarks")]
 	fn try_successful_origin() -> Result<O, ()> {
-		todo!()
+		Ok(Origin::Response(Location { parents: 1, interior: Junctions::Here }).into())
 	}
 }
 
+#[cfg(feature = "runtime-benchmarks")]
 pub struct CallbackExecutor;
+#[cfg(feature = "runtime-benchmarks")]
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
-	fn execute(account: AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
+	/// A successfull callback is the most expensive case.
+	fn execute(
+		_account: &AccountId,
+		_data: Vec<u8>,
+		weight: sp_runtime::Weight,
+	) -> frame_support::dispatch::DispatchResultWithPostInfo {
+		DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+			actual_weight: Some(weight / 2),
+			pays_fee: Pays::Yes,
+		})
+	}
+
+	fn execution_weight() -> sp_runtime::Weight {
+		Default::default()
+	}
+}
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub struct CallbackExecutor;
+#[cfg(not(feature = "runtime-benchmarks"))]
+impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
+	fn execute(account: &AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
 		type AddressMapper = <Runtime as pallet_revive::Config>::AddressMapper;
 
 		// Default

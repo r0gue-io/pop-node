@@ -2,10 +2,11 @@ extern crate alloc;
 
 pub use alloc::borrow::ToOwned;
 
+use ::ismp::Error as IsmpError;
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
-	pallet_prelude::{MaxEncodedLen, Zero},
+	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
 		fungible::Inspect,
@@ -15,14 +16,17 @@ use frame_support::{
 			Precision::{BestEffort, Exact},
 			Restriction,
 		},
-		Get, OriginTrait,
+		Get,
 	},
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
-use sp_runtime::{traits::Saturating, BoundedVec, DispatchError};
+use sp_runtime::{
+	traits::{Saturating, TryConvert},
+	BoundedVec, DispatchError,
+};
 use sp_std::vec::Vec;
 use sp_weights::WeightToFee;
 use transports::{
@@ -44,6 +48,9 @@ pub mod transports;
 mod deposits;
 use deposits::*;
 
+mod weights;
+pub use weights::WeightInfo;
+
 #[cfg(test)]
 mod tests;
 
@@ -59,13 +66,6 @@ pub type MessageId = [u8; 32];
 
 #[frame_support::pallet]
 pub mod pallet {
-
-	use frame_support::{
-		pallet_prelude::*,
-		traits::{tokens::fungible::hold::Mutate, OnInitialize},
-	};
-	use sp_core::H256;
-	use sp_runtime::traits::TryConvert;
 
 	use super::*;
 
@@ -146,6 +146,12 @@ pub mod pallet {
 
 		/// The fee paid to the relayers account for relaying a message.
 		type IsmpRelayerFee: Get<BalanceOf<Self>>;
+
+		/// The implementation of Keccak used for commitment hashes.
+		type Keccak256: ::ismp::messaging::Keccak256;
+
+		/// Pallet weights.
+		type WeightInfo: super::WeightInfo;
 	}
 
 	#[pallet::pallet]
@@ -273,6 +279,10 @@ pub mod pallet {
 			/// The messages which were removed.
 			messages: Vec<MessageId>,
 		},
+		/// An ISMP message has timed out.
+		IsmpTimedOut { commitment: H256 },
+		/// A collection of xcm queries have timed out.
+		XcmQueriesTimedOut { query_ids: Vec<QueryId> },
 	}
 
 	#[pallet::error]
@@ -316,27 +326,48 @@ pub mod pallet {
 			// in pallet-xcm. As a result, we must handle timeouts in the pallet.
 			// Iterate through the queries that have expired and update their status.
 			let mut weight: Weight = Zero::zero();
+			let mut query_ids = Vec::new();
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
 				Messages::<T>::mutate(origin, message_id, |maybe_message| {
 					if let Some(Message::XcmQuery { query_id, deposit, .. }) =
 						maybe_message.as_mut()
 					{
+						query_ids.push(*query_id);
 						*maybe_message =
 							Some(Message::XcmTimeout { query_id: *query_id, deposit: *deposit });
 					}
 				})
 			}
 
+			if !query_ids.is_empty() {
+				Self::deposit_event(Event::<T>::XcmQueriesTimedOut { query_ids })
+			}
 			weight
 		}
 	}
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
-		// TODO: does ismp allow querying to ensure that specified para id is supported?
+		/// Submit a new ISMP `Get` request.
+		///
+		/// This sends a `Get` request through ISMP, optionally with a callback to handle the
+		/// response.
+		///
+		/// # Parameters
+		/// - `origin`: The account submitting the request.
+		/// - `id`: A unique identifier for the message.
+		/// - `message`: The ISMP `Get` message containing query details.
+		/// - `callback`: Optional callback to execute upon receiving a response.
 		#[pallet::call_index(1)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(
+			{
+				let keys_len: u32 = message.keys.len().try_into().unwrap_or(T::MaxKeys::get());
+				let context_len: u32 = message.context.len().try_into().unwrap_or(T::MaxContextLen::get());
+				let has_callback = callback.is_some() as u32;
+				T::WeightInfo::ismp_get(context_len, keys_len, has_callback)
+			}
+		)]
 		pub fn ismp_get(
 			origin: OriginFor<T>,
 			id: MessageId,
@@ -344,12 +375,11 @@ pub mod pallet {
 			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
-			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
-			// TODO: is this meant to be our struct or theirs? 
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
 			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
@@ -363,20 +393,22 @@ pub mod pallet {
 			}
 
 			// Process message by dispatching request via ISMP.
-			let commitment = T::IsmpDispatcher::default()
-				.dispatch_request(
-					message.into(),
-					FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
-				)
-				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
+			let commitment = match T::IsmpDispatcher::default().dispatch_request(
+				message.into(),
+				FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+			) {
+				Ok(commitment) => Ok::<H256, DispatchError>(commitment),
+				Err(e) => {
+					if let Ok(err) = e.downcast::<IsmpError>() {
+						log::error!("ISMP Dispatch failed!! {:?}", err);
+					}
+					return Err(Error::<T>::IsmpDispatchFailed.into());
+				},
+			}?;
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
-			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				Message::Ismp { commitment, callback: callback.clone(), deposit },
-			);
+			IsmpRequests::<T>::insert(commitment, (&origin, id));
+			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
 				origin,
 				id,
@@ -386,9 +418,21 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// TODO: does ismp allow querying to ensure that specified para id is supported?
+		/// Submit a new ISMP `Post` request.
+		///
+		/// Sends a `Post` message through ISMP with arbitrary data and an optional callback.
+		///
+		/// # Parameters
+		/// - `origin`: The account submitting the request.
+		/// - `id`: A unique identifier for the message.
+		/// - `message`: The ISMP `Post` message containing the payload.
+		/// - `callback`: Optional callback to execute upon receiving a response.
 		#[pallet::call_index(2)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight({
+			let data_len: u32 = message.data.len().try_into().unwrap_or(T::MaxDataLen::get());
+			let has_callback = callback.is_some() as u32;
+			T::WeightInfo::ismp_post(data_len, has_callback)
+		})]
 		pub fn ismp_post(
 			origin: OriginFor<T>,
 			id: MessageId,
@@ -396,7 +440,7 @@ pub mod pallet {
 			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
-			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
@@ -423,12 +467,8 @@ pub mod pallet {
 
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
-			IsmpRequests::<T>::insert(&commitment, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				Message::Ismp { commitment, callback: callback.clone(), deposit },
-			);
+			IsmpRequests::<T>::insert(commitment, (&origin, id));
+			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
 				origin,
 				id,
@@ -438,8 +478,22 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Initiate a new XCM query.
+		///
+		/// Starts a query using the XCM interface, specifying a responder and timeout block.
+		///
+		/// # Parameters
+		/// - `origin`: The account initiating the query.
+		/// - `id`: A unique message ID.
+		/// - `responder`: Location of the XCM responder.
+		/// - `timeout`: Block number after which the query should timeout.
+		/// - `callback`: Optional callback for handling the response.
 		#[pallet::call_index(3)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(
+			{
+				T::WeightInfo::xcm_new_query(callback.is_some() as u32)
+			}
+		)]
 		pub fn xcm_new_query(
 			origin: OriginFor<T>,
 			id: MessageId,
@@ -450,7 +504,7 @@ pub mod pallet {
 			let querier_location = T::OriginConverter::try_convert(origin.clone())
 				.map_err(|_| Error::<T>::OriginConversionFailed)?;
 			let origin = ensure_signed(origin)?;
-			ensure!(!Messages::<T>::contains_key(&origin, &id), Error::<T>::MessageExists);
+			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 
 			let current_block = frame_system::Pallet::<T>::block_number();
 			ensure!(current_block < timeout, Error::<T>::FutureTimeoutMandatory);
@@ -487,12 +541,8 @@ pub mod pallet {
 
 			// Store query id for later lookup on response, message for querying status,
 			// response/timeout handling.
-			XcmQueries::<T>::insert(&query_id, (&origin, id));
-			Messages::<T>::insert(
-				&origin,
-				id,
-				Message::XcmQuery { query_id, callback: callback.clone(), deposit },
-			);
+			XcmQueries::<T>::insert(query_id, (&origin, id));
+			Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback, deposit });
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
 				origin,
 				id,
@@ -502,9 +552,18 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// NOTE: dispatchable should not fail, otherwise response will be lost.
+		/// Handle a response to a previous XCM query.
+		///
+		/// Executes a stored callback or updates the state with the received response.
+		///
+		/// # Parameters
+		/// - `origin`: The XCM responder origin.
+		/// - `query_id`: The ID of the XCM query being responded to.
+		/// - `xcm_response`: The response data.
 		#[pallet::call_index(4)]
-		#[pallet::weight(Weight::zero())] // todo: benchmarking
+		#[pallet::weight({
+			T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight()
+		})]
 		pub fn xcm_response(
 			origin: OriginFor<T>,
 			query_id: QueryId,
@@ -514,7 +573,7 @@ pub mod pallet {
 			let (initiating_origin, id) =
 				XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
 			let xcm_query_message =
-				Messages::<T>::get(&initiating_origin, &id).ok_or(Error::<T>::MessageNotFound)?;
+				Messages::<T>::get(&initiating_origin, id).ok_or(Error::<T>::MessageNotFound)?;
 
 			let (query_id, callback, deposit) = match &xcm_query_message {
 				Message::XcmQuery { query_id, callback, deposit } => (query_id, callback, deposit),
@@ -534,7 +593,7 @@ pub mod pallet {
 				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
 				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
-					Messages::<T>::remove(&initiating_origin, &id);
+					Messages::<T>::remove(&initiating_origin, id);
 					XcmQueries::<T>::remove(query_id);
 					T::Deposit::release(
 						&HoldReason::Messaging.into(),
@@ -548,7 +607,7 @@ pub mod pallet {
 			// No callback is executed,
 			Messages::<T>::insert(
 				&initiating_origin,
-				&id,
+				id,
 				Message::XcmResponse {
 					query_id: *query_id,
 					deposit: *deposit,
@@ -559,9 +618,15 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Try and remove a collection of messages.
+		/// Remove a batch of completed or timed-out messages.
+		///
+		/// Allows users to clean up storage and reclaim deposits for messages that have concluded.
+		///
+		/// # Parameters
+		/// - `origin`: The account removing the messages.
+		/// - `messages`: List of message IDs to remove (bounded by `MaxRemovals`).
 		#[pallet::call_index(5)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(T::WeightInfo::remove(messages.len() as u32))]
 		pub fn remove(
 			origin: OriginFor<T>,
 			messages: BoundedVec<MessageId, T::MaxRemovals>,
@@ -577,22 +642,22 @@ pub mod pallet {
 					Message::Ismp { .. } => Err(Error::<T>::RequestPending),
 					Message::XcmQuery { .. } => Err(Error::<T>::RequestPending),
 					Message::IsmpResponse { deposit, commitment, .. } => {
-						Messages::<T>::remove(&origin, &id);
-						IsmpRequests::<T>::remove(&commitment);
+						Messages::<T>::remove(&origin, id);
+						IsmpRequests::<T>::remove(commitment);
 						Ok(deposit)
 					},
 					Message::XcmResponse { deposit, query_id, .. } => {
-						Messages::<T>::remove(&origin, &id);
+						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
 						Ok(deposit)
 					},
 					Message::IsmpTimeout { deposit, commitment, .. } => {
-						Messages::<T>::remove(&origin, &id);
-						IsmpRequests::<T>::remove(&commitment);
+						Messages::<T>::remove(&origin, id);
+						IsmpRequests::<T>::remove(commitment);
 						Ok(deposit)
 					},
 					Message::XcmTimeout { query_id, deposit, .. } => {
-						Messages::<T>::remove(&origin, &id);
+						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
 						Ok(deposit)
 					},
@@ -608,7 +673,16 @@ pub mod pallet {
 	}
 }
 impl<T: Config> Pallet<T> {
-	// Attempt to notify via callback.
+	/// Executes a callback function associated with a message response.
+	///
+	/// This function constructs the payload from the callback ABI and data, then invokes the
+	/// callback using the runtime's `CallbackExecutor`.
+	///
+	/// # Parameters
+	/// - `initiating_origin`: The account that originally dispatched the request.
+	/// - `callback`: The callback definition, including selector, ABI, and weight.
+	/// - `id`: The identifier for the original message.
+	/// - `data`: The payload to be passed to the callback (e.g., response data).
 	pub(crate) fn call(
 		initiating_origin: &AccountIdOf<T>,
 		callback: Callback,
@@ -627,6 +701,19 @@ impl<T: Config> Pallet<T> {
 		Self::handle_callback_result(initiating_origin, id, result, callback)
 	}
 
+	/// Handles the result of a previously executed callback function.
+	///
+	/// This function is responsible for:
+	/// - Refunding unused callback gas weight.
+	/// - Transferring the execution reward to the fee account.
+	/// - Emitting success or failure events.
+	/// - Cleaning up or persisting message state based on result.
+	///
+	/// # Parameters
+	/// - `initiating_origin`: The account that initiated the callback.
+	/// - `id`: The message ID associated with this callback.
+	/// - `result`: The execution result (with post-dispatch info if any).
+	/// - `callback`: The original callback definition.
 	pub(crate) fn handle_callback_result(
 		initiating_origin: &AccountIdOf<T>,
 		id: &MessageId,
@@ -646,13 +733,13 @@ impl<T: Config> Pallet<T> {
 
 						T::Deposit::release(
 							&reason,
-							&initiating_origin,
+							initiating_origin,
 							returnable_deposit,
 							BestEffort,
 						)?;
 						T::Deposit::transfer_on_hold(
 							&reason,
-							&initiating_origin,
+							initiating_origin,
 							&T::FeeAccount::get(),
 							execution_reward,
 							BestEffort,
@@ -674,7 +761,7 @@ impl<T: Config> Pallet<T> {
 				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
 				T::Deposit::transfer_on_hold(
 					&HoldReason::CallbackGas.into(),
-					&initiating_origin,
+					initiating_origin,
 					&T::FeeAccount::get(),
 					total_deposit,
 					BestEffort,
@@ -685,12 +772,12 @@ impl<T: Config> Pallet<T> {
 				// Fallback to storing the message for polling - pre-paid weight is lost.
 				Self::deposit_event(Event::<T>::CallbackFailed {
 					origin: initiating_origin.clone(),
-					id: id.clone(),
+					id: *id,
 					callback,
 					post_info,
 					error,
 				});
-				Err(error)
+				Ok(())
 			},
 		}
 	}
@@ -733,8 +820,7 @@ impl<T: Config> crate::Read for Pallet<T> {
 	type Result = ReadResult;
 
 	fn weight(_read: &Self::Read) -> Weight {
-		// TODO: implement benchmarks
-		Weight::zero()
+		T::DbWeight::get().reads(2)
 	}
 
 	fn read(request: Self::Read) -> Self::Result {
@@ -761,48 +847,78 @@ impl<T: Config> crate::Read for Pallet<T> {
 	}
 }
 
+/// Represents a cross-chain message in the system.
+///
+/// Each variant of this enum captures a different state or type of message lifecycle:
+/// - A request in progress.
+/// - A response received.
+/// - A timeout occurred.
+///
+/// This is used internally to track, manage, and clean up messages, along with any
+/// associated deposits and optional callback metadata.
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub enum Message<T: Config> {
-	Ismp {
-		commitment: H256,
-		callback: Option<Callback>,
-		deposit: BalanceOf<T>,
-	},
-	XcmQuery {
-		query_id: QueryId,
-		callback: Option<Callback>,
-		deposit: BalanceOf<T>,
-	},
+pub(crate) enum Message<T: Config> {
+	/// Represents a pending ISMP request.
+	///
+	/// # Fields
+	/// - `commitment`: The cryptographic commitment of the request payload.
+	/// - `callback`: An optional callback to invoke upon receiving a response.
+	/// - `deposit`: The total deposit held to cover message and callback fees.
+	Ismp { commitment: H256, callback: Option<Callback>, deposit: BalanceOf<T> },
+
+	/// Represents a pending XCM query request.
+	///
+	/// # Fields
+	/// - `query_id`: Unique identifier for the XCM query.
+	/// - `callback`: An optional callback for handling the response.
+	/// - `deposit`: The deposit held to cover fees for query execution and callback.
+	XcmQuery { query_id: QueryId, callback: Option<Callback>, deposit: BalanceOf<T> },
+
+	/// Represents a received ISMP response.
+	///
+	/// # Fields
+	/// - `commitment`: The original commitment for the request.
+	/// - `deposit`: The held deposit for the message, which may be released or burned.
+	/// - `response`: The encoded response payload, size-bounded by `T::MaxResponseLen`.
 	IsmpResponse {
 		commitment: H256,
 		deposit: BalanceOf<T>,
 		response: BoundedVec<u8, T::MaxResponseLen>,
 	},
-	XcmResponse {
-		query_id: QueryId,
-		deposit: BalanceOf<T>,
-		response: Response,
-	},
-	IsmpTimeout {
-		commitment: H256,
-		deposit: BalanceOf<T>,
-	},
-	XcmTimeout {
-		query_id: QueryId,
-		deposit: BalanceOf<T>,
-	},
+
+	/// Represents a received XCM response.
+	///
+	/// # Fields
+	/// - `query_id`: Identifier that matches a previously sent XCM query.
+	/// - `deposit`: The deposit originally held for this message.
+	/// - `response`: The deserialized response payload.
+	XcmResponse { query_id: QueryId, deposit: BalanceOf<T>, response: Response },
+
+	/// Represents an ISMP request that timed out before a response was received.
+	///
+	/// # Fields
+	/// - `commitment`: The original commitment of the request.
+	/// - `deposit`: The deposit held for the request, which may be reclaimed.
+	IsmpTimeout { commitment: H256, deposit: BalanceOf<T> },
+
+	/// Represents an XCM query that timed out before a response was received.
+	///
+	/// # Fields
+	/// - `query_id`: The original query ID that timed out.
+	/// - `deposit`: The deposit held for the query, which may be reclaimed.
+	XcmTimeout { query_id: QueryId, deposit: BalanceOf<T> },
 }
 
 impl<T: Config> From<&Message<T>> for MessageStatus {
 	fn from(value: &Message<T>) -> Self {
-		match value {
-			&Message::Ismp { .. } => MessageStatus::Pending,
-			&Message::XcmQuery { .. } => MessageStatus::Pending,
-			&Message::IsmpResponse { .. } => MessageStatus::Complete,
-			&Message::XcmResponse { .. } => MessageStatus::Complete,
-			&Message::IsmpTimeout { .. } => MessageStatus::Timeout,
-			&Message::XcmTimeout { .. } => MessageStatus::Timeout,
+		match *value {
+			Message::Ismp { .. } => MessageStatus::Pending,
+			Message::XcmQuery { .. } => MessageStatus::Pending,
+			Message::IsmpResponse { .. } => MessageStatus::Complete,
+			Message::XcmResponse { .. } => MessageStatus::Complete,
+			Message::IsmpTimeout { .. } => MessageStatus::Timeout,
+			Message::XcmTimeout { .. } => MessageStatus::Timeout,
 		}
 	}
 }
@@ -828,8 +944,27 @@ pub struct Callback {
 pub enum Abi {
 	Scale,
 }
+
+/// The trait responsible for executing callbacks in response to cross-chain messages.
+///
+/// Implementors of this trait define the mechanism by which callback data is executed
+/// for a given account, along with the expected weight cost of this operation.
+///
+/// This trait enables customizable and extensible behavior for handling asynchronous
+/// responses via optional callback logic — e.g., invoking a runtime call or a smart contract.
 pub trait CallbackExecutor<T: Config> {
+	/// Execute the callback logic for a specific account with the given encoded payload.
+	///
+	/// # Parameters
+	/// - `account`: The account that initiated the original cross-chain request.
+	/// - `data`: Encoded callback data, typically ABI-encoded input including selector and
+	///   parameters.
+	/// - `weight`: The maximum weight allowed for executing this callback.
 	fn execute(account: &T::AccountId, data: Vec<u8>, weight: Weight)
 		-> DispatchResultWithPostInfo;
+
+	/// Returns the baseline weight required for a single callback execution.
+	///
+	/// This serves as an overhead estimate, useful for pallet-level weight calculations.
 	fn execution_weight() -> Weight;
 }

@@ -24,6 +24,7 @@ frame-support.workspace = true
 frame-system.workspace = true
 pallet-assets.workspace = true
 pallet-balances.workspace = true
+pallet-timestamp.workspace = true
 pallet-nfts.workspace = true
 sp-core.workspace = true
 sp-io.workspace = true
@@ -41,7 +42,6 @@ xcm-builder.workspace = true
 [dev-dependencies]
 pallet-balances.workspace = true
 pallet-ismp = { workspace = true, features = [ "unsigned" ] }
-pallet-timestamp.workspace = true
 xcm-builder.workspace = true
 
 [features]
@@ -53,6 +53,7 @@ runtime-benchmarks = [
 	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-nfts/runtime-benchmarks",
+	"pallet-timestamp/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"pop-chain-extension/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",

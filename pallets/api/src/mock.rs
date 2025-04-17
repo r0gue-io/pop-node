@@ -10,11 +10,10 @@ use frame_support::{
 	},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
-use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
+use ismp::{host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use pallet_nfts::PalletFeatures;
-use pallet_xcm::{Origin, TestWeightInfo};
 use scale_info::TypeInfo;
-use sp_core::{keccak_256, H256};
+use sp_core::H256;
 use sp_runtime::{
 	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, TryConvert, Verify},
 	BuildStorage,
@@ -26,7 +25,6 @@ use crate::messaging::{Call, CallbackExecutor, Messages, NotifyQueryHandler};
 pub(crate) const ALICE: AccountId = 1;
 pub(crate) const BOB: AccountId = 2;
 pub(crate) const CHARLIE: AccountId = 3;
-pub(crate) const RESPONSE: AccountId = 4;
 pub(crate) const RESPONSE_LOCATION: Location = Location { parents: 1, interior: Junctions::Here };
 pub(crate) const FEE_ACCOUNT: AccountId = 5;
 pub(crate) const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
@@ -222,12 +220,12 @@ impl crate::nonfungibles::Config for Test {
 pub struct AlwaysSuccessfullCallbackExecutor<T>(T);
 impl<T: crate::messaging::Config> CallbackExecutor<T> for AlwaysSuccessfullCallbackExecutor<T> {
 	fn execute(
-		account: &<T as frame_system::Config>::AccountId,
-		data: Vec<u8>,
+		_account: &<T as frame_system::Config>::AccountId,
+		_data: Vec<u8>,
 		weight: sp_runtime::Weight,
 	) -> frame_support::dispatch::DispatchResultWithPostInfo {
 		DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-			actual_weight: Some(weight),
+			actual_weight: Some(weight / 2),
 			pays_fee: Pays::Yes,
 		})
 	}
@@ -250,10 +248,10 @@ impl<T: crate::messaging::Config> NotifyQueryHandler<T> for MockNotifyQuery<T> {
 	type WeightInfo = ();
 
 	fn new_notify_query(
-		responder: impl Into<Location>,
-		notify: Call<T>,
-		timeout: BlockNumberFor<T>,
-		match_querier: impl Into<Location>,
+		_responder: impl Into<Location>,
+		_notify: Call<T>,
+		_timeout: BlockNumberFor<T>,
+		_match_querier: impl Into<Location>,
 	) -> u64 {
 		get_next_query_id()
 	}
@@ -271,6 +269,7 @@ impl crate::messaging::Config for Test {
 	type FeeAccount = FeeAccount;
 	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
 	type IsmpRelayerFee = IsmpRelayerFee;
+	type Keccak256 = Keccak;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
 	type MaxKeyLen = ConstU32<32>;
@@ -283,9 +282,21 @@ impl crate::messaging::Config for Test {
 	type OriginConverter = AccountToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightInfo = ();
 	type WeightToFee = RefTimePlusProofTime;
 	type Xcm = MockNotifyQuery<Test>;
 	type XcmResponseOrigin = EnsureRootWithResponseSuccess;
+}
+
+pub struct Keccak;
+
+impl ::ismp::messaging::Keccak256 for Keccak {
+	fn keccak256(bytes: &[u8]) -> sp_core::H256
+	where
+		Self: Sized,
+	{
+		sp_core::keccak_256(bytes).into()
+	}
 }
 
 pub struct RefTimePlusProofTime;
@@ -316,7 +327,7 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootWithResponseSuccess {
 	type Success = Location;
 
 	fn try_origin(o: RuntimeOrigin) -> Result<Self::Success, RuntimeOrigin> {
-		if let Ok(_) = EnsureRoot::ensure_origin(o.clone()) {
+		if EnsureRoot::ensure_origin(o.clone()).is_ok() {
 			Ok(RESPONSE_LOCATION)
 		} else {
 			Err(o)
@@ -324,8 +335,8 @@ impl EnsureOrigin<RuntimeOrigin> for EnsureRootWithResponseSuccess {
 	}
 
 	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin() -> Result<O, ()> {
-		todo!()
+	fn try_successful_origin() -> Result<RuntimeOrigin, ()> {
+		Ok(RuntimeOrigin::root())
 	}
 }
 
