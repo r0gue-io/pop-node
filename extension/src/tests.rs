@@ -4,7 +4,7 @@ use std::{path::Path, sync::LazyLock};
 use codec::{Decode, Encode};
 use frame_support::weights::Weight;
 use frame_system::Call;
-use pallet_contracts::{Code, CollectEvents, ContractExecResult, Determinism, StorageDeposit};
+use pallet_revive::{Code, CollectEvents, ContractExecResult, Determinism, StorageDeposit};
 use sp_runtime::{
 	DispatchError::{self, BadOrigin, Module},
 	ModuleError,
@@ -126,7 +126,7 @@ mod read_state {
 			// Instantiate a new contract.
 			let contract = instantiate();
 			let read_result = call(contract, ReadExtFuncId::get(), 99u8, GAS_LIMIT);
-			let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+			let expected: DispatchError = pallet_revive::Error::<Test>::DecodingFailed.into();
 			// Make sure the error is passed through the error converter.
 			let error =
 				<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
@@ -155,7 +155,7 @@ fn invalid_func_id_fails() {
 		// Instantiate a new contract.
 		let contract = instantiate();
 		let result = call(contract, INVALID_FUNC_ID, (), GAS_LIMIT);
-		let expected: DispatchError = pallet_contracts::Error::<Test>::DecodingFailed.into();
+		let expected: DispatchError = pallet_revive::Error::<Test>::DecodingFailed.into();
 		// Make sure the error is passed through the error converter.
 		let error =
 			<() as ErrorConverter>::convert(expected, &mock::MockEnvironment::default()).err();
