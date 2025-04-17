@@ -9,12 +9,11 @@ use frame_support::{
 	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
-		fungible::Inspect,
 		tokens::{
-			fungible::hold::Mutate,
+			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate},
 			Fortitude,
 			Precision::{BestEffort, Exact},
-			Restriction,
+			Preservation, Restriction,
 		},
 		Get,
 	},
@@ -59,7 +58,7 @@ pub(crate) mod test_utils;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type BlockNumberOf<T> = BlockNumberFor<T>;
-type BalanceOf<T> = <<T as Config>::Deposit as Inspect<AccountIdOf<T>>>::Balance;
+type BalanceOf<T> = <<T as Config>::Fungibles as Inspect<AccountIdOf<T>>>::Balance;
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
 pub type MessageId = [u8; 32];
@@ -88,9 +87,10 @@ pub mod pallet {
 		/// The type responsible for executing callbacks.
 		type CallbackExecutor: CallbackExecutor<Self>;
 
-		/// The deposit mechanism.
-		type Deposit: Mutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
-			+ Inspect<Self::AccountId>;
+		/// The deposit + fee mechanism.
+		type Fungibles: HoldMutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
+			+ Inspect<Self::AccountId>
+			+ Mutate<Self::AccountId>;
 
 		/// The ISMP message dispatcher.
 		type IsmpDispatcher: IsmpDispatcher<Account = Self::AccountId, Balance = BalanceOf<Self>>;
@@ -100,17 +100,14 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxContextLen: Get<u32>;
 
-		/// SAFETY: should be less than or equal to u16.
 		/// The maximum length of outbound (posted) data.
 		#[pallet::constant]
 		type MaxDataLen: Get<u32>;
 
-		/// SAFETY: should be less than or equal to u16.
 		/// The maximum amount of key for an outbound request.
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
 
-		/// SAFETY: should be less than or equal to u16.
 		/// The maximum byte length for a single key of an ismp request.
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
@@ -382,10 +379,11 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
-			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			// Take deposits and fees.
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(
+				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
@@ -441,20 +439,25 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
+
+			// Take deposits and fees.
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
-			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			let mut callback_execution_weight = Weight::zero();
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(
+				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
+
+				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
 
 			// Process message by dispatching request via ISMP.
@@ -518,20 +521,35 @@ pub mod pallet {
 				},
 			)?;
 
+			// Take deposits and fees.
 			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::XcmQueries,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
-			T::Deposit::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			let mut callback_execution_weight = Weight::zero();
 
 			if let Some(cb) = callback.as_ref() {
-				T::Deposit::hold(
+				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
+
+				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
+
+			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
+				&T::WeightInfo::xcm_response().saturating_add(callback_execution_weight),
+			);
+
+			T::Fungibles::transfer(
+				&origin,
+				&T::FeeAccount::get(),
+				response_prepayment_amount,
+				Preservation::Preserve,
+			)?;
 
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
@@ -595,7 +613,7 @@ pub mod pallet {
 				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
 					Messages::<T>::remove(&initiating_origin, id);
 					XcmQueries::<T>::remove(query_id);
-					T::Deposit::release(
+					T::Fungibles::release(
 						&HoldReason::Messaging.into(),
 						&initiating_origin,
 						*deposit,
@@ -663,7 +681,7 @@ pub mod pallet {
 					},
 				}?;
 
-				T::Deposit::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
+				T::Fungibles::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
 			}
 
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
@@ -731,13 +749,13 @@ impl<T: Config> Pallet<T> {
 						let execution_reward = total_deposit.saturating_sub(returnable_deposit);
 						let reason = HoldReason::CallbackGas.into();
 
-						T::Deposit::release(
+						T::Fungibles::release(
 							&reason,
 							initiating_origin,
 							returnable_deposit,
 							BestEffort,
 						)?;
-						T::Deposit::transfer_on_hold(
+						T::Fungibles::transfer_on_hold(
 							&reason,
 							initiating_origin,
 							&T::FeeAccount::get(),
@@ -759,7 +777,7 @@ impl<T: Config> Pallet<T> {
 			},
 			Err(sp_runtime::DispatchErrorWithPostInfo::<PostDispatchInfo> { post_info, error }) => {
 				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
-				T::Deposit::transfer_on_hold(
+				T::Fungibles::transfer_on_hold(
 					&HoldReason::CallbackGas.into(),
 					initiating_origin,
 					&T::FeeAccount::get(),
@@ -923,6 +941,7 @@ impl<T: Config> From<&Message<T>> for MessageStatus {
 	}
 }
 
+/// The related message status of a Message.
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 pub enum MessageStatus {
 	Pending,
@@ -930,7 +949,7 @@ pub enum MessageStatus {
 	Timeout,
 }
 
-// Message selector and pre-paid weight used as gas limit
+/// Message selector and pre-paid weight used as gas limit.
 #[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
 pub struct Callback {

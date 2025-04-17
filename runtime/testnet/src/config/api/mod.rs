@@ -99,7 +99,7 @@ parameter_types! {
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
-	type Deposit = Balances;
+	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
 	type MaxContextLen = ConstU32<64>;
@@ -116,6 +116,7 @@ impl messaging::Config for Runtime {
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
+	type WeightInfo = ();
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;

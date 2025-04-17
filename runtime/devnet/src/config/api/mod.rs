@@ -123,8 +123,8 @@ parameter_types! {
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
-	type Deposit = Balances;
 	type FeeAccount = DummyFeeAccount;
+	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
 	type Keccak256 = Ismp;
@@ -137,9 +137,7 @@ impl messaging::Config for Runtime {
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<512>;
 	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
-	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
-	// much as onchain cost.
-	type OffChainByteFee = ();
+	type OffChainByteFee = TransactionByteFee;
 	type OnChainByteFee = TransactionByteFee;
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
