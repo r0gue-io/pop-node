@@ -54,7 +54,7 @@ impl TryFrom<(RuntimeResult, Version)> for VersionedRuntimeResult {
 		match version {
 			// Allows mapping from current `RuntimeResult` to a specific/prior version
 			0 => Ok(VersionedRuntimeResult::V0(result)),
-			_ => Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into()),
+			_ => Err(pallet_revive::Error::<Runtime>::DecodingFailed.into()),
 		}
 	}
 }
@@ -84,7 +84,7 @@ impl TryFrom<(DispatchError, Version)> for VersionedError {
 		match version {
 			// Allows mapping from current `DispatchError` to a specific/prior version of `Error`
 			0 => Ok(VersionedError::V0(V0Error::from(error).0)),
-			_ => Err(pallet_contracts::Error::<Runtime>::DecodingFailed.into()),
+			_ => Err(pallet_revive::Error::<Runtime>::DecodingFailed.into()),
 		}
 	}
 }
@@ -121,7 +121,7 @@ impl From<DispatchError> for V0Error {
 				let ModuleError { index, error, message: _message } = error;
 				// Map `pallet-contracts::Error::DecodingFailed` to `Error::DecodingFailed`
 				if index as usize ==
-					<crate::Contracts as frame_support::traits::PalletInfoAccess>::index() &&
+					<crate::Revive as frame_support::traits::PalletInfoAccess>::index() &&
 					error == DECODING_FAILED_ERROR
 				{
 					Error::DecodingFailed

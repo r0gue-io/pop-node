@@ -14,12 +14,15 @@ pub use functions::{
 	Converter, DefaultConverter, DispatchCall, ErrorConverter, Function, ReadState, Readable,
 };
 pub use matching::{Equals, FunctionId, Matches};
-pub use pallet_contracts::chain_extension::{Result, RetVal, State};
-use pallet_contracts::{
-	chain_extension::{ChainExtension, InitState, RetVal::Converging},
+use pallet_revive::{
+	chain_extension::{ChainExtension, RetVal::Converging, SysConfig},
 	WeightInfo,
 };
-use sp_core::Get;
+pub use pallet_revive::{
+	chain_extension::{Result, RetVal},
+	wasm::Memory,
+};
+use sp_core::{crypto::AccountId32, Get};
 use sp_runtime::{traits::Dispatchable, DispatchError};
 use sp_std::vec::Vec;
 
@@ -35,7 +38,7 @@ mod mock;
 mod tests;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-pub type ContractWeightsOf<T> = <T as pallet_contracts::Config>::WeightInfo;
+pub type ContractWeightsOf<T> = <T as pallet_revive::Config>::WeightInfo;
 type RuntimeCallOf<T> = <T as frame_system::Config>::RuntimeCall;
 
 /// A configurable chain extension.
@@ -43,27 +46,28 @@ type RuntimeCallOf<T> = <T as frame_system::Config>::RuntimeCall;
 pub struct Extension<C: Config>(PhantomData<C>);
 impl<Runtime, Config> ChainExtension<Runtime> for Extension<Config>
 where
-	Runtime: pallet_contracts::Config
+	Runtime: pallet_revive::Config
 		+ frame_system::Config<
 			RuntimeCall: GetDispatchInfo + Dispatchable<PostInfo = PostDispatchInfo>,
 		>,
 	Config: self::Config<Functions: Function<Config = Runtime>> + 'static,
+	Runtime: SysConfig<AccountId = AccountId32>,
 {
 	/// Call the chain extension logic.
 	///
 	/// # Parameters
 	/// - `env`: Access to the remaining arguments and the execution environment.
-	fn call<E: pallet_contracts::chain_extension::Ext<T = Runtime>>(
+	fn call<E: pallet_revive::chain_extension::Ext<T = Runtime>, M: ?Sized + Memory<E::T>>(
 		&mut self,
-		env: pallet_contracts::chain_extension::Environment<E, InitState>,
+		env: pallet_revive::chain_extension::Environment<E, M>,
 	) -> Result<RetVal> {
-		let mut env = environment::Env(env.buf_in_buf_out());
+		let mut env = environment::Env(env);
 		self.call(&mut env)
 	}
 }
 
 impl<
-		Runtime: pallet_contracts::Config,
+		Runtime: pallet_revive::Config,
 		Config: self::Config<Functions: Function<Config = Runtime>>,
 	> Extension<Config>
 {
@@ -137,7 +141,7 @@ mod extension {
 		let mut extension = Extension::<mock::Config>::default();
 		assert!(matches!(
 			extension.call(&mut env),
-			Err(error) if error == pallet_contracts::Error::<Test>::DecodingFailed.into()
+			Err(error) if error == pallet_revive::Error::<Test>::DecodingFailed.into()
 		));
 		// Charges weight.
 		assert_eq!(env.charged(), overhead_weight(input.len() as u32))
@@ -157,7 +161,7 @@ mod extension {
 				env.charged(),
 				overhead_weight(encoded_call.len() as u32) +
 					read_from_buffer_weight(encoded_call.len() as u32) +
-					call.get_dispatch_info().call_weight
+					call.get_dispatch_info().weight
 			);
 		});
 	}

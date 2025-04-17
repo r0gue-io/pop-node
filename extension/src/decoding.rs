@@ -94,9 +94,9 @@ impl<
 
 /// Error to be returned when decoding fails.
 pub struct DecodingFailed<C>(PhantomData<C>);
-impl<T: pallet_contracts::Config> Get<DispatchError> for DecodingFailed<T> {
+impl<T: pallet_revive::Config> Get<DispatchError> for DecodingFailed<T> {
 	fn get() -> DispatchError {
-		pallet_contracts::Error::<T>::DecodingFailed.into()
+		pallet_revive::Error::<T>::DecodingFailed.into()
 	}
 }
 
@@ -155,7 +155,7 @@ mod tests {
 	fn decoding_failed_error_type_works() {
 		assert_eq!(
 			DecodingFailed::<Test>::get(),
-			pallet_contracts::Error::<Test>::DecodingFailed.into()
+			pallet_revive::Error::<Test>::DecodingFailed.into()
 		)
 	}
 
@@ -164,7 +164,7 @@ mod tests {
 		let input = vec![100];
 		let mut env = MockEnvironment::new(0, input.clone());
 		let result = EnumDecodes::decode(&mut env);
-		assert_eq!(result, Err(pallet_contracts::Error::<Test>::DecodingFailed.into()));
+		assert_eq!(result, Err(pallet_revive::Error::<Test>::DecodingFailed.into()));
 	}
 
 	#[test]

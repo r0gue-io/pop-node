@@ -1,14 +1,20 @@
 use core::fmt::Debug;
 
+use codec::Decode;
 use frame_support::pallet_prelude::Weight;
-use pallet_contracts::chain_extension::{BufInBufOutState, ChargedAmount, Result, State};
+use pallet_revive::{
+	chain_extension::{ChargedAmount, Result},
+	wasm::Memory,
+	AccountId32Mapper, AddressMapper,
+};
+use sp_core::crypto::AccountId32;
 use sp_std::vec::Vec;
 
 use crate::AccountIdOf;
 
 /// Provides access to the parameters passed to a chain extension and its execution environment.
 ///
-/// A wrapper trait for `pallet_contracts::chain_extension::Environment`. All comments have been
+/// A wrapper trait for `pallet_revive::chain_extension::Environment`. All comments have been
 /// copied solely for consistent developer experience in line with the wrapped type.
 pub trait Environment {
 	/// The account identifier type for the runtime.
@@ -55,13 +61,18 @@ pub trait Environment {
 	fn ext(&mut self) -> impl Ext<AccountId = Self::AccountId>;
 }
 
-/// A wrapper type for `pallet_contracts::chain_extension::Environment`.
-pub(crate) struct Env<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: State>(
-	pub(crate) pallet_contracts::chain_extension::Environment<'a, 'b, E, S>,
+/// A wrapper type for `pallet_revive::chain_extension::Environment`.
+pub(crate) struct Env<'a, 'b, E: pallet_revive::chain_extension::Ext, S: ?Sized + Memory<E::T>>(
+	pub(crate) pallet_revive::chain_extension::Environment<'a, 'b, E, S>,
 );
 
-impl<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: State> Environment
+impl<'a, 'b, E: pallet_revive::chain_extension::Ext, S: ?Sized + Memory<E::T>> Environment
 	for Env<'a, 'b, E, S>
+where
+	E: pallet_revive::chain_extension::Ext,
+	E::T: frame_system::Config,
+	<E::T as frame_system::Config>::AccountId: From<AccountId32> + Decode,
+	E::T: SysConfig<AccountId = AccountId32>,
 {
 	type AccountId = AccountIdOf<E::T>;
 	type ChargedAmount = ChargedAmount;
@@ -89,8 +100,8 @@ impl<'a, 'b, E: pallet_contracts::chain_extension::Ext, S: State> Environment
 
 /// A state that uses a buffer as input.
 ///
-/// A wrapper trait for `pallet_contracts::chain_extension::BufIn` related function available on
-/// `pallet_contracts::chain_extension::Environment`. All comments have been copied solely for
+/// A wrapper trait for `pallet_revive::chain_extension::BufIn` related function available on
+/// `pallet_revive::chain_extension::Environment`. All comments have been copied solely for
 /// consistent developer experience in line with the wrapped type.
 pub trait BufIn {
 	/// The length of the input as passed in as `input_len`.
@@ -111,7 +122,9 @@ pub trait BufIn {
 	fn read(&self, max_len: u32) -> Result<Vec<u8>>;
 }
 
-impl<'a, 'b, E: pallet_contracts::chain_extension::Ext> BufIn for Env<'a, 'b, E, BufInBufOutState> {
+impl<'a, 'b, E: pallet_revive::chain_extension::Ext, M: ?Sized + Memory<E::T>> BufIn
+	for Env<'a, 'b, E, M>
+{
 	fn in_len(&self) -> u32 {
 		self.0.in_len()
 	}
@@ -123,8 +136,8 @@ impl<'a, 'b, E: pallet_contracts::chain_extension::Ext> BufIn for Env<'a, 'b, E,
 
 /// A state that uses a buffer as output.
 ///
-/// A wrapper trait for `pallet_contracts::chain_extension::BufOut` related function available on
-/// `pallet_contracts::chain_extension::Environment`. All comments have been copied solely for
+/// A wrapper trait for `pallet_revive::chain_extension::BufOut` related function available on
+/// `pallet_revive::chain_extension::Environment`. All comments have been copied solely for
 /// consistent developer experience in line with the wrapped type.
 pub trait BufOut {
 	/// Write the supplied buffer to contract memory.
@@ -142,8 +155,8 @@ pub trait BufOut {
 	) -> Result<()>;
 }
 
-impl<'a, 'b, E: pallet_contracts::chain_extension::Ext> BufOut
-	for Env<'a, 'b, E, BufInBufOutState>
+impl<'a, 'b, E: pallet_revive::chain_extension::Ext, M: ?Sized + Memory<E::T>> BufOut
+	for Env<'a, 'b, E, M>
 {
 	fn write(
 		&mut self,
@@ -161,36 +174,50 @@ impl<'a, 'b, E: pallet_contracts::chain_extension::Ext> BufOut
 /// This interface is specialized to an account of the executing code, so all operations are
 /// implicitly performed on that account.
 ///
-/// A wrapper trait for `pallet_contracts::chain_extension::Ext`. All comments have been copied
+/// A wrapper trait for `pallet_revive::chain_extension::Ext`. All comments have been copied
 /// solely for consistent developer experience in line with the wrapped type.
 pub trait Ext {
 	/// The account identifier type for the runtime.
 	type AccountId;
 
 	/// Returns a reference to the account id of the current contract.
-	fn address(&self) -> &Self::AccountId;
+	fn address(&self) -> Self::AccountId;
 }
 
 impl Ext for () {
 	type AccountId = ();
 
-	fn address(&self) -> &Self::AccountId {
-		&()
+	fn address(&self) -> Self::AccountId {
+		()
 	}
 }
 
-/// A wrapper type for a type implementing `pallet_contracts::chain_extension::Ext`.
-pub(crate) struct ExternalEnvironment<'a, T: pallet_contracts::chain_extension::Ext>(&'a mut T);
+/// A wrapper type for a type implementing `pallet_revive::chain_extension::Ext`.
+pub(crate) struct ExternalEnvironment<'a, T: pallet_revive::chain_extension::Ext>(&'a mut T);
 
-impl<'a, E: pallet_contracts::chain_extension::Ext> Ext for ExternalEnvironment<'a, E> {
+use pallet_revive::chain_extension::SysConfig;
+
+impl<'a, E> Ext for ExternalEnvironment<'a, E>
+where
+	E: pallet_revive::chain_extension::Ext,
+	E::T: frame_system::Config,
+	<E::T as frame_system::Config>::AccountId: From<AccountId32> + Decode,
+	E::T: SysConfig<AccountId = AccountId32>,
+{
 	type AccountId = AccountIdOf<E::T>;
 
-	fn address(&self) -> &Self::AccountId {
-		self.0.address()
+	fn address(&self) -> Self::AccountId {
+		// Get the H160 address
+		let h160_addr = self.0.address();
+		let account_id = AccountId32Mapper::<E::T>::to_account_id(&h160_addr);
+		// TODO: hacky way to get AccountId32 to match the Self::AccountId type
+		// let encoded_addr = AccountId32Mapper::<E::T>::to_account_id(&self.0.address()).encode();
+		// Self::AccountId::decode(&mut &encoded_addr[..]).unwrap()
+		account_id.into()
 	}
 }
 
 #[test]
 fn default_ext_works() {
-	assert_eq!(().address(), &())
+	assert_eq!(().address(), ())
 }

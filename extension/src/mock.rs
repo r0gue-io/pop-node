@@ -8,7 +8,7 @@ use frame_support::{
 	traits::{fungible::Inspect, ConstU32, Everything, Nothing},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
-use pallet_contracts::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
+use pallet_revive::{chain_extension::RetVal, DefaultAddressGenerator, Frame, Schedule};
 use sp_runtime::{BuildStorage, DispatchError, Perbill};
 
 use crate::{
@@ -18,15 +18,14 @@ use crate::{
 };
 
 pub(crate) const ALICE: u64 = 1;
-pub(crate) const DEBUG_OUTPUT: pallet_contracts::DebugInfo =
-	pallet_contracts::DebugInfo::UnsafeDebug;
+pub(crate) const DEBUG_OUTPUT: pallet_revive::DebugInfo = pallet_revive::DebugInfo::UnsafeDebug;
 pub(crate) const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
 pub(crate) const INIT_AMOUNT: <Test as pallet_balances::Config>::Balance = 100_000_000;
 pub(crate) const INVALID_FUNC_ID: u32 = 0;
 
 pub(crate) type AccountId = AccountIdOf<Test>;
 pub(crate) type Balance =
-	<<Test as pallet_contracts::Config>::Currency as Inspect<AccountIdOf<Test>>>::Balance;
+	<<Test as pallet_revive::Config>::Currency as Inspect<AccountIdOf<Test>>>::Balance;
 type DispatchCallWith<Id, Filter, Processor = Identity<Vec<u8>>> = DispatchCall<
 	// Registered with func id 1
 	WithFuncId<Id>,
@@ -61,7 +60,7 @@ frame_support::construct_runtime!(
 		System: frame_system,
 		Balances: pallet_balances,
 		Timestamp: pallet_timestamp,
-		Contracts: pallet_contracts,
+		Revive: pallet_revive,
 	}
 );
 
@@ -81,7 +80,7 @@ impl pallet_balances::Config for Test {
 #[derive_impl(pallet_timestamp::config_preludes::TestDefaultConfig as pallet_timestamp::DefaultConfig)]
 impl pallet_timestamp::Config for Test {}
 
-impl pallet_contracts::Config for Test {
+impl pallet_revive::Config for Test {
 	type AddressGenerator = DefaultAddressGenerator;
 	type ApiVersion = ();
 	type CallFilter = ();
@@ -234,13 +233,13 @@ impl Processor for RemoveFirstByte {
 
 // A function that does nothing.
 pub struct Noop<M, C>(PhantomData<(M, C)>);
-impl<Matcher: Matches, Config: pallet_contracts::Config> Function for Noop<Matcher, Config> {
+impl<Matcher: Matches, Config: pallet_revive::Config> Function for Noop<Matcher, Config> {
 	type Config = Config;
 	type Error = ();
 
 	fn execute(
 		_env: &mut (impl environment::Environment<AccountId = Config::AccountId> + crate::BufIn),
-	) -> pallet_contracts::chain_extension::Result<RetVal> {
+	) -> pallet_revive::chain_extension::Result<RetVal> {
 		Ok(RetVal::Converging(0))
 	}
 }
@@ -298,7 +297,7 @@ impl<E: environment::Ext<AccountId = AccountIdOf<Test>> + Clone> environment::En
 	fn charge_weight(
 		&mut self,
 		amount: Weight,
-	) -> pallet_contracts::chain_extension::Result<Self::ChargedAmount> {
+	) -> pallet_revive::chain_extension::Result<Self::ChargedAmount> {
 		self.charged.push(amount);
 		Ok(amount)
 	}
@@ -325,7 +324,7 @@ impl<E> environment::BufIn for Environment<E> {
 		self.buffer.len() as u32
 	}
 
-	fn read(&self, _max_len: u32) -> pallet_contracts::chain_extension::Result<Vec<u8>> {
+	fn read(&self, _max_len: u32) -> pallet_revive::chain_extension::Result<Vec<u8>> {
 		// TODO: handle max_len
 		Ok(self.buffer.clone())
 	}
@@ -337,7 +336,7 @@ impl<E> environment::BufOut for Environment<E> {
 		buffer: &[u8],
 		_allow_skip: bool,
 		_weight_per_byte: Option<Weight>,
-	) -> pallet_contracts::chain_extension::Result<()> {
+	) -> pallet_revive::chain_extension::Result<()> {
 		self.buffer = buffer.to_vec();
 		Ok(())
 	}
