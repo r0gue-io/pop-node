@@ -22,18 +22,23 @@ use ::ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
+use codec::Encode;
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::{RelayChainState, RelayNumberMonotonicallyIncreases};
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
+use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
+use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
 	derive_impl,
 	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf,
+		fungible::HoldConsideration,
+		tokens,
+		tokens::{nonfungibles_v2::Inspect, Fortitude::Polite, Preservation::Preserve},
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, LinearStoragePrice, TransformOrigin, VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -43,11 +48,14 @@ use frame_support::{
 };
 use frame_system::{
 	limits::{BlockLength, BlockWeights},
-	EnsureRoot,
+	CheckGenesis, CheckMortality, CheckNonZeroSender, CheckNonce, CheckSpecVersion, CheckTxVersion,
+	CheckWeight, EnsureRoot,
 };
 use pallet_api::{fungibles, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
+use pallet_revive::AddressMapper;
+use pallet_transaction_payment::ChargeTransactionPayment;
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
 use polkadot_runtime_common::xcm_sender::NoPriceForMessageDelivery;
@@ -61,7 +69,7 @@ pub use pop_runtime_common::{
 };
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256};
+use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H160, H256};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -99,21 +107,45 @@ pub type BlockId = generic::BlockId<Block>;
 
 /// The extension to the basic transaction logic.
 pub type TxExtension = (
-	frame_system::CheckNonZeroSender<Runtime>,
-	frame_system::CheckSpecVersion<Runtime>,
-	frame_system::CheckTxVersion<Runtime>,
-	frame_system::CheckGenesis<Runtime>,
-	frame_system::CheckMortality<Runtime>,
-	frame_system::CheckNonce<Runtime>,
-	frame_system::CheckWeight<Runtime>,
-	pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-	cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim<Runtime>,
-	frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
+	CheckNonZeroSender<Runtime>,
+	CheckSpecVersion<Runtime>,
+	CheckTxVersion<Runtime>,
+	CheckGenesis<Runtime>,
+	CheckMortality<Runtime>,
+	CheckNonce<Runtime>,
+	CheckWeight<Runtime>,
+	ChargeTransactionPayment<Runtime>,
+	StorageWeightReclaim<Runtime>,
+	CheckMetadataHash<Runtime>,
 );
+
+/// EthExtra converts an unsigned Call::eth_transact into a CheckedExtrinsic.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct EthExtraImpl;
+
+impl pallet_revive::evm::runtime::EthExtra for EthExtraImpl {
+	type Config = Runtime;
+	type Extension = TxExtension;
+
+	fn get_eth_extension(nonce: u32, tip: Balance) -> Self::Extension {
+		(
+			CheckNonZeroSender::<Runtime>::new(),
+			CheckSpecVersion::<Runtime>::new(),
+			CheckTxVersion::<Runtime>::new(),
+			CheckGenesis::<Runtime>::new(),
+			CheckMortality::from(generic::Era::Immortal),
+			CheckNonce::<Runtime>::from(nonce),
+			CheckWeight::<Runtime>::new(),
+			ChargeTransactionPayment::<Runtime>::from(tip),
+			StorageWeightReclaim::<Runtime>::new(),
+			CheckMetadataHash::<Runtime>::new(false),
+		)
+	}
+}
 
 /// Unchecked extrinsic type as expected by this runtime.
 pub type UncheckedExtrinsic =
-	generic::UncheckedExtrinsic<Address, RuntimeCall, Signature, TxExtension>;
+	pallet_revive::evm::runtime::UncheckedExtrinsic<Address, Signature, EthExtraImpl>;
 
 /// All migrations of the runtime, aside from the ones declared in the pallets.
 ///
@@ -204,13 +236,6 @@ type EventRecord = frame_system::EventRecord<
 	<Runtime as frame_system::Config>::RuntimeEvent,
 	<Runtime as frame_system::Config>::Hash,
 >;
-
-// Prints debug output of the `contracts` pallet to stdout if the node is
-// started with `-lruntime::contracts=debug`.
-const CONTRACTS_DEBUG_OUTPUT: pallet_contracts::DebugInfo =
-	pallet_contracts::DebugInfo::UnsafeDebug;
-const CONTRACTS_EVENTS: pallet_contracts::CollectEvents =
-	pallet_contracts::CollectEvents::UnsafeCollect;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -629,9 +654,9 @@ mod runtime {
 	#[runtime::pallet_index(39)]
 	pub type IsmpParachain = ismp_parachain::Pallet<Runtime>;
 
-	// Contracts
+	// Contracts (using pallet-revive)
 	#[runtime::pallet_index(40)]
-	pub type Contracts = pallet_contracts::Pallet<Runtime>;
+	pub type Revive = pallet_revive::Pallet<Runtime>;
 
 	// Proxy
 	#[runtime::pallet_index(41)]
@@ -831,28 +856,68 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_contracts::ContractsApi<Block, AccountId, Balance, BlockNumber, Hash, EventRecord>
-		for Runtime
+	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber, EventRecord> for Runtime
 	{
+		fn balance(address: H160) -> Balance {
+			use frame_support::traits::fungible::Inspect;
+			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
+			Balances::reducible_balance(&account, Preserve, Polite)
+		}
+
+		fn nonce(address: H160) -> Nonce {
+			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
+			System::account_nonce(account)
+		}
+
+		fn eth_transact(
+			from: H160,
+			dest: Option<H160>,
+			value: Balance,
+			input: Vec<u8>,
+			gas_limit: Option<Weight>,
+			storage_deposit_limit: Option<Balance>,
+		) -> pallet_revive::EthContractResult<Balance>
+		{
+			use pallet_revive::AddressMapper;
+			let blockweights: BlockWeights = <Runtime as frame_system::Config>::BlockWeights::get();
+			let origin = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&from);
+
+			let encoded_size = |pallet_call| {
+				let call = RuntimeCall::Revive(pallet_call);
+				let uxt: UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
+				uxt.encoded_size() as u32
+			};
+
+			Revive::bare_eth_transact(
+				origin,
+				dest,
+				value,
+				input,
+				gas_limit.unwrap_or(blockweights.max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
+				encoded_size,
+				pallet_revive::DebugInfo::UnsafeDebug,
+				pallet_revive::CollectEvents::UnsafeCollect,
+			)
+		}
+
 		fn call(
 			origin: AccountId,
-			dest: AccountId,
+			dest: H160,
 			value: Balance,
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
-		) -> pallet_contracts::ContractExecResult<Balance, EventRecord> {
-			let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
-			Contracts::bare_call(
-				origin,
+		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance, EventRecord> {
+			Revive::bare_call(
+				RuntimeOrigin::signed(origin),
 				dest,
 				value,
-				gas_limit,
-				storage_deposit_limit,
+				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
 				input_data,
-				CONTRACTS_DEBUG_OUTPUT,
-				CONTRACTS_EVENTS,
-				pallet_contracts::Determinism::Enforced,
+				pallet_revive::DebugInfo::UnsafeDebug,
+				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
@@ -861,22 +926,21 @@ impl_runtime_apis! {
 			value: Balance,
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
-			code: pallet_contracts::Code<Hash>,
+			code: pallet_revive::Code,
 			data: Vec<u8>,
-			salt: Vec<u8>,
-		) -> pallet_contracts::ContractInstantiateResult<AccountId, Balance, EventRecord>
+			salt: Option<[u8; 32]>,
+		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance, EventRecord>
 		{
-			let gas_limit = gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block);
-			Contracts::bare_instantiate(
-				origin,
+			Revive::bare_instantiate(
+				RuntimeOrigin::signed(origin),
 				value,
-				gas_limit,
-				storage_deposit_limit,
+				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
+				storage_deposit_limit.unwrap_or(u128::MAX),
 				code,
 				data,
 				salt,
-				CONTRACTS_DEBUG_OUTPUT,
-				CONTRACTS_EVENTS,
+				pallet_revive::DebugInfo::UnsafeDebug,
+				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
@@ -884,17 +948,23 @@ impl_runtime_apis! {
 			origin: AccountId,
 			code: Vec<u8>,
 			storage_deposit_limit: Option<Balance>,
-			determinism: pallet_contracts::Determinism,
-		) -> pallet_contracts::CodeUploadResult<Hash, Balance>
+		) -> pallet_revive::CodeUploadResult<Balance>
 		{
-			Contracts::bare_upload_code(origin, code, storage_deposit_limit, determinism)
+			Revive::bare_upload_code(
+				RuntimeOrigin::signed(origin),
+				code,
+				storage_deposit_limit.unwrap_or(u128::MAX),
+			)
 		}
 
 		fn get_storage(
-			address: AccountId,
-			key: Vec<u8>,
-		) -> pallet_contracts::GetStorageResult {
-			Contracts::get_storage(address, key)
+			address: H160,
+			key: [u8; 32],
+		) -> pallet_revive::GetStorageResult {
+			Revive::get_storage(
+				address,
+				key
+			)
 		}
 	}
 
