@@ -382,28 +382,13 @@ pub mod pallet {
 			// Take deposits and fees.
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
-			let mut callback_execution_weight = Weight::zero();
-
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
 					&HoldReason::CallbackGas.into(),
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
-
-				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
-
-			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(1).saturating_add(callback_execution_weight),
-			);
-
-			T::Fungibles::transfer(
-				&origin,
-				&T::FeeAccount::get(),
-				response_prepayment_amount,
-				Preservation::Preserve,
-			)?;
 
 			// Process message by dispatching request via ISMP.
 			let commitment = match T::IsmpDispatcher::default().dispatch_request(
@@ -474,17 +459,6 @@ pub mod pallet {
 
 				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
-
-			let response_prepayment_amount = T::WeightToFee::weight_to_fee(
-				&T::WeightInfo::ismp_on_response(1).saturating_add(callback_execution_weight),
-			);
-
-			T::Fungibles::transfer(
-				&origin,
-				&T::FeeAccount::get(),
-				response_prepayment_amount,
-				Preservation::Preserve,
-			)?;
 
 			// Process message by dispatching request via ISMP.
 			let commitment = T::IsmpDispatcher::default()
