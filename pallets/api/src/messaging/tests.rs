@@ -877,7 +877,9 @@ mod xcm_hooks {
 				panic!("Message should be timedout!")
 			};
 
-			frame_system::Pallet::<Test>::assert_has_event(Event::<Test>::XcmQueriesTimedOut { query_ids: vec![0, 1] }.into());
+			frame_system::Pallet::<Test>::assert_has_event(
+				Event::<Test>::XcmQueriesTimedOut { query_ids: vec![0, 1] }.into(),
+			);
 		})
 	}
 }
