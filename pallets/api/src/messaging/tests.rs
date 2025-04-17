@@ -1184,7 +1184,7 @@ mod ismp_get {
 
 			let alice_hold_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
 
-			assert_eq!(alice_hold_balance_post_hold, expected_deposit);
+			assert_eq!(alice_hold_balance_post_hold, expected_deposit + callback_deposit);
 		})
 	}
 
