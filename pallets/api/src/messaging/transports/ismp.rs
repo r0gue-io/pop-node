@@ -219,8 +219,13 @@ pub(crate) fn process_response<T: Config>(
 			// Clean storage, return deposit
 			Messages::<T>::remove(&initiating_origin, id);
 			IsmpRequests::<T>::remove(commitment);
-			T::Deposit::release(&HoldReason::Messaging.into(), &initiating_origin, deposit, Exact)
-				.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
+			T::Fungibles::release(
+				&HoldReason::Messaging.into(),
+				&initiating_origin,
+				deposit,
+				Exact,
+			)
+			.map_err(|_| Error::Custom("failed to release deposit.".into()))?;
 
 			return Ok(());
 		}
