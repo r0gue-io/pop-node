@@ -1,4 +1,5 @@
 use ismp::{host::StateMachine, router::PostRequest};
+use sp_std::vec;
 
 #[cfg(any(feature = "runtime-benchmarks", test))]
 /// Constructs a dummy `PostRequest` used for testing or benchmarking.
@@ -24,7 +25,7 @@ mod benchmark_helpers {
 		host::StateMachine,
 		router::{GetRequest, GetResponse, PostResponse, StorageValue},
 	};
-	use sp_std::vec::Vec;
+	use sp_std::{vec::Vec, vec};
 
 	use super::ismp_post_request;
 

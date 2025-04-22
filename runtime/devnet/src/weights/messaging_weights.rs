@@ -405,4 +405,21 @@ impl<T: frame_system::Config> pallet_api::messaging::WeightInfo for WeightInfo<T
 			.saturating_add(Weight::from_parts(0, 816).saturating_mul(x.into()))
 			.saturating_add(Weight::from_parts(0, 8448).saturating_mul(y.into()))
 	}
+
+	/// Storage: `System::Account` (r:1 w:1)
+	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `MaxEncodedLen`)
+	/// Storage: `Balances::Holds` (r:1 w:1)
+	/// Proof: `Balances::Holds` (`max_values`: None, `max_size`: Some(211), added: 2686, mode: `MaxEncodedLen`)
+	/// Storage: `Messaging::Messages` (r:1 w:1)
+	/// Proof: `Messaging::Messages` (`max_values`: None, `max_size`: Some(12842), added: 15317, mode: `MaxEncodedLen`)
+	fn top_up_callback_weight() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `366`
+		//  Estimated: `16307`
+		// Minimum execution time: 31_000_000 picoseconds.
+		Weight::from_parts(34_000_000, 0)
+			.saturating_add(Weight::from_parts(0, 16307))
+			.saturating_add(T::DbWeight::get().reads(3))
+			.saturating_add(T::DbWeight::get().writes(3))
+	}
 }
