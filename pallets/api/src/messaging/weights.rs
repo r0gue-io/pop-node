@@ -40,7 +40,7 @@ impl WeightInfo for () {
 	fn ismp_post(_x: u32, _y: u32) -> Weight {
 		Default::default()
 	}
-	
+
 	fn top_up_callback_weight() -> Weight {
 		Default::default()
 	}

@@ -25,7 +25,7 @@ mod benchmark_helpers {
 		host::StateMachine,
 		router::{GetRequest, GetResponse, PostResponse, StorageValue},
 	};
-	use sp_std::{vec::Vec, vec};
+	use sp_std::{vec, vec::Vec};
 
 	use super::ismp_post_request;
 

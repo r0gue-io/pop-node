@@ -406,7 +406,6 @@ mod messaging_benchmarks {
 		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
 	}
 
-
 	/// Tops up callback weight for callback execution of pending messages.
 	#[benchmark]
 	fn top_up_callback_weight() {
