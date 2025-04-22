@@ -697,10 +697,11 @@ pub mod pallet {
 		/// Top up the callback weight for a pending message.
 		///
 		/// This extrinsic allows users to increase the gas (weight) budget allocated for a callback
-		/// associated with an in-flight message. This is useful when the initially allocated weight is
-		/// insufficient to complete the callback.
+		/// associated with an in-flight message. This is useful when the initially allocated weight
+		/// is insufficient to complete the callback.
 		///
-		/// The additional fee for the new weight is held from the user's balance using the `HoldReason::CallbackGas`.
+		/// The additional fee for the new weight is held from the user's balance using the
+		/// `HoldReason::CallbackGas`.
 		///
 		/// Only pending requests can have their weight increased.
 		///
@@ -708,7 +709,8 @@ pub mod pallet {
 		///
 		/// - `origin`: Must be a signed account.
 		/// - `message_id`: The identifier of the message to be topped up.
-		/// - `additional_weight`: The additional weight to be appended to the message's existing callback weight.
+		/// - `additional_weight`: The additional weight to be appended to the message's existing
+		///   callback weight.
 		#[pallet::call_index(6)]
 		#[pallet::weight(Weight::zero())]
 		pub fn top_up_callback_weight(
@@ -728,39 +730,27 @@ pub mod pallet {
 				T::WeightToFee::weight_to_fee(&additional_weight),
 			)?;
 
-			Messages::<T>::try_mutate(&who, message_id, |maybe_message|{
+			Messages::<T>::try_mutate(&who, message_id, |maybe_message| {
 				if let Some(message) = maybe_message {
 					// Mutate to accrue new weight.
-					let total_weight  = match message {
-						Message::Ismp { callback, .. } => {
-							callback.as_mut().map_or_else(
-								|| Err(Error::<T>::NoCallbackFound).into(), 
-								|cb| Ok(cb.increase_callback_weight(additional_weight)), 
-							)
-						},
-						Message::XcmQuery { callback, .. } => {
-							callback.as_mut().map_or_else(
-								|| Err(Error::<T>::NoCallbackFound).into(), 
-								|cb| Ok(cb.increase_callback_weight(additional_weight)), 
-							)
-						},
-						Message::IsmpResponse { .. } => {
-							Err(Error::<T>::MessageCompleted).into()
-						},
-						Message::XcmResponse { .. } => {
-							Err(Error::<T>::MessageCompleted).into()
-						},
-						Message::IsmpTimeout { .. } => {
-							Err(Error::<T>::RequestTimedOut).into()
-						},
-						Message::XcmTimeout { .. } => {
-							Err(Error::<T>::RequestTimedOut).into()
-						},
+					let total_weight = match message {
+						Message::Ismp { callback, .. } => callback.as_mut().map_or_else(
+							|| Err(Error::<T>::NoCallbackFound).into(),
+							|cb| Ok(cb.increase_callback_weight(additional_weight)),
+						),
+						Message::XcmQuery { callback, .. } => callback.as_mut().map_or_else(
+							|| Err(Error::<T>::NoCallbackFound).into(),
+							|cb| Ok(cb.increase_callback_weight(additional_weight)),
+						),
+						Message::IsmpResponse { .. } => Err(Error::<T>::MessageCompleted).into(),
+						Message::XcmResponse { .. } => Err(Error::<T>::MessageCompleted).into(),
+						Message::IsmpTimeout { .. } => Err(Error::<T>::RequestTimedOut).into(),
+						Message::XcmTimeout { .. } => Err(Error::<T>::RequestTimedOut).into(),
 					}?;
 
 					Self::deposit_event(Event::<T>::CallbackGasIncreased {
 						message_id,
-						total_weight
+						total_weight,
 					})
 				} else {
 					return Err(Error::<T>::MessageNotFound).into();
@@ -881,8 +871,6 @@ impl<T: Config> Pallet<T> {
 				Ok(())
 			},
 		}
-
-		
 	}
 }
 
@@ -1045,7 +1033,7 @@ pub struct Callback {
 
 impl Callback {
 	pub(crate) fn increase_callback_weight(&mut self, additional_weight: Weight) -> Weight {
-		let new_callback_weight = self.weight.saturating_add(additional_weight);	
+		let new_callback_weight = self.weight.saturating_add(additional_weight);
 		self.weight = new_callback_weight;
 		new_callback_weight
 	}

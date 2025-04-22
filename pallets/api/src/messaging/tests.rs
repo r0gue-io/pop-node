@@ -1432,110 +1432,111 @@ mod top_up_callback_weight {
 
 	#[test]
 	fn message_not_found() {
-		new_test_ext().execute_with(|| {
-		})
+		new_test_ext().execute_with(|| {})
 	}
 
 	#[test]
 	fn zero_weight_is_err() {
-		new_test_ext().execute_with(|| {
-		})
+		new_test_ext().execute_with(|| {})
 	}
 
 	#[test]
 	fn ismp_response_is_err() {
 		new_test_ext().execute_with(|| {
+			let message_id = [0u8; 32];
+			let message = Message::IsmpResponse {
+				commitment: Default::default(),
+				deposit: 100,
+				response: Default::default(),
+			};
+			let weight = Weight::from_parts(100_000, 100_000);
 
-		let message_id = [0u8;32];
-		let message = Message::IsmpResponse {
-			commitment: Default::default(), 
-			deposit: 100,
-			response: Default::default(),
-		};
-		let weight = Weight::from_parts(100_000, 100_000);
-		
-		Messages::<Test>::insert(ALICE, message_id, message);
-		assert_noop!(Messaging::top_up_callback_weight(signed(ALICE), message_id, weight), Error::<Test>::MessageCompleted);
+			Messages::<Test>::insert(ALICE, message_id, message);
+			assert_noop!(
+				Messaging::top_up_callback_weight(signed(ALICE), message_id, weight),
+				Error::<Test>::MessageCompleted
+			);
 		})
 	}
 
 	#[test]
 	fn xcm_response_is_err() {
 		new_test_ext().execute_with(|| {
-		let message_id = [0u8;32];
-		let message = Message::XcmResponse {
-			query_id: 0, 
-			deposit: 100,
-			response: Response::Null,
-		};
-		let weight = Weight::from_parts(100_000, 100_000);
-		
-		Messages::<Test>::insert(ALICE, message_id, message);
-		assert_noop!(Messaging::top_up_callback_weight(signed(ALICE), message_id, weight), Error::<Test>::MessageCompleted);
+			let message_id = [0u8; 32];
+			let message =
+				Message::XcmResponse { query_id: 0, deposit: 100, response: Response::Null };
+			let weight = Weight::from_parts(100_000, 100_000);
+
+			Messages::<Test>::insert(ALICE, message_id, message);
+			assert_noop!(
+				Messaging::top_up_callback_weight(signed(ALICE), message_id, weight),
+				Error::<Test>::MessageCompleted
+			);
 		})
 	}
 
 	#[test]
 	fn xcm_timeout_is_err() {
 		new_test_ext().execute_with(|| {
-			let message_id = [0u8;32];
-		let message = Message::XcmTimeout {
-			query_id: 0, 
-			deposit: 100,
-		};
-		let weight = Weight::from_parts(100_000, 100_000);
-		
-		Messages::<Test>::insert(ALICE, message_id, message);
-		assert_noop!(Messaging::top_up_callback_weight(signed(ALICE), message_id, weight), Error::<Test>::RequestTimedOut);
+			let message_id = [0u8; 32];
+			let message = Message::XcmTimeout { query_id: 0, deposit: 100 };
+			let weight = Weight::from_parts(100_000, 100_000);
+
+			Messages::<Test>::insert(ALICE, message_id, message);
+			assert_noop!(
+				Messaging::top_up_callback_weight(signed(ALICE), message_id, weight),
+				Error::<Test>::RequestTimedOut
+			);
 		})
 	}
 
 	#[test]
 	fn ismp_timeout_is_err() {
 		new_test_ext().execute_with(|| {
-			let message_id = [0u8;32];
-		let message = Message::IsmpTimeout {
-			commitment: Default::default(), 
-			deposit: 100,
-		};
-		let weight = Weight::from_parts(100_000, 100_000);
-		
-		Messages::<Test>::insert(ALICE, message_id, message);
-		assert_noop!(Messaging::top_up_callback_weight(signed(ALICE), message_id, weight), Error::<Test>::RequestTimedOut);
+			let message_id = [0u8; 32];
+			let message = Message::IsmpTimeout { commitment: Default::default(), deposit: 100 };
+			let weight = Weight::from_parts(100_000, 100_000);
+
+			Messages::<Test>::insert(ALICE, message_id, message);
+			assert_noop!(
+				Messaging::top_up_callback_weight(signed(ALICE), message_id, weight),
+				Error::<Test>::RequestTimedOut
+			);
 		})
 	}
 
 	#[test]
 	fn ismp_pending_works() {
 		new_test_ext().execute_with(|| {
-			let message_id = [0u8;32];
+			let message_id = [0u8; 32];
 			let initial_weight = Weight::from_parts(150_000, 150_000);
 			let initial_fee = <Test as Config>::WeightToFee::weight_to_fee(&initial_weight);
-			let callback = Callback {
-				abi: Abi::Scale,
-				selector: [0u8; 4],
-				weight: initial_weight,
-			};
+			let callback = Callback { abi: Abi::Scale, selector: [0u8; 4], weight: initial_weight };
 			let message = Message::Ismp {
-				commitment: Default::default(), 
+				commitment: Default::default(),
 				deposit: 100,
 				callback: Some(callback),
 			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 			let additional_fee = <Test as Config>::WeightToFee::weight_to_fee(&additional_weight);
-			
+
 			// take initial hold
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
 				initial_fee,
-			).unwrap();
+			)
+			.unwrap();
 
 			Messages::<Test>::insert(ALICE, message_id, message);
 
 			assert_ne!(additional_fee, 0);
 			assert_ne!(initial_fee, 0);
-			assert_ok!(Messaging::top_up_callback_weight(signed(ALICE), message_id, additional_weight));
+			assert_ok!(Messaging::top_up_callback_weight(
+				signed(ALICE),
+				message_id,
+				additional_weight
+			));
 
 			if let Some(Message::Ismp { callback, .. }) = Messages::<Test>::get(ALICE, message_id) {
 				assert_eq!(callback.unwrap().weight, initial_weight + additional_weight);
@@ -1544,31 +1545,26 @@ mod top_up_callback_weight {
 			} else {
 				panic!("Wrong message type or not found.");
 			}
-
 		})
 	}
 
 	#[test]
 	fn ismp_pending_no_callback() {
-		new_test_ext().execute_with(|| {
-		})
+		new_test_ext().execute_with(|| {})
 	}
 
 	#[test]
 	fn xcm_pending_no_callback() {
-		new_test_ext().execute_with(|| {
-		})
+		new_test_ext().execute_with(|| {})
 	}
 
 	#[test]
 	fn xcm_pending_works() {
-		new_test_ext().execute_with(|| {
-		})
+		new_test_ext().execute_with(|| {})
 	}
 
 	#[test]
 	fn assert_event() {
-		new_test_ext().execute_with(|| {
-		})
+		new_test_ext().execute_with(|| {})
 	}
 }
