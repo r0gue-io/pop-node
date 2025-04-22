@@ -412,11 +412,7 @@ mod messaging_benchmarks {
 		let message_id = [0u8; 32];
 		let initial_weight = Weight::from_parts(100_000, 100_000);
 		let additional_weight = Weight::from_parts(150_000, 150_000);
-		let callback = Callback {
-			abi: Abi::Scale,
-			weight: initial_weight,
-			selector: [0u8; 4],
-		};
+		let callback = Callback { abi: Abi::Scale, weight: initial_weight, selector: [0u8; 4] };
 
 		let message: Message<T> = Message::Ismp {
 			commitment: [10u8; 32].into(),
@@ -432,12 +428,19 @@ mod messaging_benchmarks {
 		);
 
 		#[extrinsic_call]
-		Pallet::<T>::top_up_callback_weight(RawOrigin::Signed(origin.clone()), message_id, additional_weight);
-
-		assert_has_event::<T>(Event::<T>::CallbackGasIncreased { 
+		Pallet::<T>::top_up_callback_weight(
+			RawOrigin::Signed(origin.clone()),
 			message_id,
-			total_weight: initial_weight + additional_weight
-		}.into());
+			additional_weight,
+		);
+
+		assert_has_event::<T>(
+			Event::<T>::CallbackGasIncreased {
+				message_id,
+				total_weight: initial_weight + additional_weight,
+			}
+			.into(),
+		);
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);

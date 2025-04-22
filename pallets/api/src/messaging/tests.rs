@@ -1574,19 +1574,15 @@ mod top_up_callback_weight {
 	fn ismp_pending_no_callback() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::Ismp {
-				commitment: Default::default(),
-				deposit: 100,
-				callback: None,
-			};
+			let message =
+				Message::Ismp { commitment: Default::default(), deposit: 100, callback: None };
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
-			assert_noop!(Messaging::top_up_callback_weight(
-				signed(ALICE),
-				message_id,
-				additional_weight
-			), Error::<Test>::NoCallbackFound);
+			assert_noop!(
+				Messaging::top_up_callback_weight(signed(ALICE), message_id, additional_weight),
+				Error::<Test>::NoCallbackFound
+			);
 		})
 	}
 
@@ -1594,20 +1590,14 @@ mod top_up_callback_weight {
 	fn xcm_pending_no_callback() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::XcmQuery {
-				query_id: 0,
-				deposit: 100,
-				callback: None,
-			};
+			let message = Message::XcmQuery { query_id: 0, deposit: 100, callback: None };
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 
-
 			Messages::<Test>::insert(ALICE, message_id, message);
-			assert_noop!(Messaging::top_up_callback_weight(
-				signed(ALICE),
-				message_id,
-				additional_weight
-			), Error::<Test>::NoCallbackFound);
+			assert_noop!(
+				Messaging::top_up_callback_weight(signed(ALICE), message_id, additional_weight),
+				Error::<Test>::NoCallbackFound
+			);
 		})
 	}
 
@@ -1644,7 +1634,9 @@ mod top_up_callback_weight {
 				additional_weight
 			));
 
-			if let Some(Message::XcmQuery { callback, .. }) = Messages::<Test>::get(ALICE, message_id) {
+			if let Some(Message::XcmQuery { callback, .. }) =
+				Messages::<Test>::get(ALICE, message_id)
+			{
 				// Assert that weight has been accrued and deposit taken.
 				assert_eq!(callback.unwrap().weight, initial_weight + additional_weight);
 				let held = Balances::total_balance_on_hold(&ALICE);
