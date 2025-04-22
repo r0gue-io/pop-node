@@ -188,6 +188,7 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 		};
 
 		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())
+		// Also add actual weight consumed by contract env.
 	}
 }
 

@@ -310,6 +310,8 @@ pub mod pallet {
 		MessageCompleted,
 		/// No callback has been found for this query.
 		NoCallbackFound,
+		/// Weight cannot be zero.
+		ZeroWeight,
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -700,6 +702,8 @@ pub mod pallet {
 		///
 		/// The additional fee for the new weight is held from the user's balance using the `HoldReason::CallbackGas`.
 		///
+		/// Only pending requests can have their weight increased.
+		///
 		/// # Parameters
 		///
 		/// - `origin`: Must be a signed account.
@@ -714,6 +718,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
+			if additional_weight.any_eq(<Weight as Zero>::zero()) {
+				return Err(Error::<T>::ZeroWeight.into());
+			}
+
 			T::Fungibles::hold(
 				&HoldReason::CallbackGas.into(),
 				&who,
@@ -725,15 +733,15 @@ pub mod pallet {
 					// Mutate to accrue new weight.
 					let total_weight  = match message {
 						Message::Ismp { callback, .. } => {
-							callback.map_or_else(
+							callback.as_mut().map_or_else(
 								|| Err(Error::<T>::NoCallbackFound).into(), 
-								|mut cb| Ok(cb.increase_callback_weight(additional_weight)), 
+								|cb| Ok(cb.increase_callback_weight(additional_weight)), 
 							)
 						},
 						Message::XcmQuery { callback, .. } => {
-							callback.map_or_else(
+							callback.as_mut().map_or_else(
 								|| Err(Error::<T>::NoCallbackFound).into(), 
-								|mut cb| Ok(cb.increase_callback_weight(additional_weight)), 
+								|cb| Ok(cb.increase_callback_weight(additional_weight)), 
 							)
 						},
 						Message::IsmpResponse { .. } => {
