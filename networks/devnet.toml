@@ -41,7 +41,7 @@ args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug", "--enable-off
 
 [[parachains]]
 id = 1000
-chain = "asset-hub-rococo-local"
+chain = "asset-hub-paseo-local"
 
 [[parachains.collators]]
 name = "asset-hub"
