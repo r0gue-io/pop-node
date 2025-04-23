@@ -696,9 +696,9 @@ pub mod pallet {
 
 		/// Top up the callback weight for a pending message.
 		///
-		/// This extrinsic allows an origin to increase the gas (weight) budget allocated for a callback
-		/// associated with an in-flight message. This is useful when the initially allocated weight
-		/// is insufficient to complete the callback.
+		/// This extrinsic allows an origin to increase the gas (weight) budget allocated for a
+		/// callback associated with an in-flight message. This is useful when the initially
+		/// allocated weight is insufficient to complete the callback.
 		///
 		/// The additional fee for the new weight is held from the origin using the
 		/// `HoldReason::CallbackGas`.
