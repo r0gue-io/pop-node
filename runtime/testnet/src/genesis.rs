@@ -132,7 +132,7 @@ fn genesis(
 			next_asset_id: Some(1),
 			..Default::default()
 		},
-		"balances": BalancesConfig { balances: balances(endowed_accounts) },
+		"balances": BalancesConfig { balances: balances(endowed_accounts), ..Default::default() },
 		"collatorSelection": {
 			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
 			"candidacyBond": EXISTENTIAL_DEPOSIT * 16,
