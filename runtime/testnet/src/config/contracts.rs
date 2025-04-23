@@ -101,6 +101,7 @@ impl pallet_revive::Config for Runtime {
 	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type EthGasEncoder = ();
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	// 1 ETH : 1_000_000 UNIT
 	type NativeToEthRatio = NativeToEthRatio;
