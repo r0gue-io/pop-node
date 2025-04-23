@@ -118,7 +118,7 @@ mod tests {
 	mod assets {
 		use frame_support::traits::Incrementable;
 		use pallet_assets::{AssetsCallback, NextAssetId};
-		use sp_keyring::AccountKeyring::Alice;
+		use sp_keyring::Sr25519Keyring::Alice;
 
 		use super::*;
 		use crate::System;

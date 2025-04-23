@@ -134,7 +134,7 @@ mod tests {
 
 	#[test]
 	fn proxy_type_assets_can_only_transfer_assets() {
-		use sp_keyring::AccountKeyring::Alice;
+		use sp_keyring::Sr25519Keyring::Alice;
 		let alice_address = MultiAddress::Id(Alice.to_account_id());
 
 		// Assert proxy type whitelists any asset related call.
@@ -247,7 +247,7 @@ mod tests {
 
 	// Returns a list with some calls transferring assets.
 	fn asset_transfer_calls() -> Vec<RuntimeCall> {
-		use sp_keyring::AccountKeyring::Alice;
+		use sp_keyring::Sr25519Keyring::Alice;
 		let alice_address = MultiAddress::Id(Alice.to_account_id());
 
 		vec![
