@@ -787,8 +787,7 @@ impl<T: Config> Pallet<T> {
 
 	/// Deposits an event indicating the outcome of a callback execution.
 	///
-	/// This function is intended to be called after attempting to dispatch a callback 
-	/// (such as in response to an XCM `QueryResponse` or other deferred logic).
+	/// This function is intended to be called after attempting to dispatch a callback.
 	/// It emits either a `CallbackExecuted` or `CallbackFailed` event based on the result.
 	///
 	/// # Parameters
@@ -822,12 +821,27 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
+	/// Determines the actual weight consumed by a callback execution, falling back to the maximum if unknown.
+	///
+	/// This function is used to calculate the weight to be accounted for after attempting to dispatch a callback.
+	/// It ensures that even if the callback execution fails or does not report actual weight, the worst-case
+	/// (`max_weight`) is used to avoid under-accounting.
+	///
+	/// # Parameters
+	///
+	/// - `result`: The result of the callback dispatch, including any `PostDispatchInfo` if successful.
+	/// - `max_weight`: The maximum weight budgeted for the callback execution.
+	///
+	/// # Rationale
+	///
+	/// - Protects against underestimating weight in cases where `actual_weight` is missing or the dispatch fails.
+	/// - Ensures conservative accounting to avoid exceeding block or message limits.
 	pub(crate) fn process_callback_weight(
 		result: &DispatchResultWithPostInfo,
 		max_weight: Weight,
 	) -> Weight {
 		match result {
-			// Callback has succeded
+			// callback has succeded.
 			Ok(post_info) => {
 				match post_info.actual_weight {
 					Some(w) => w,
@@ -836,14 +850,26 @@ impl<T: Config> Pallet<T> {
 					None => max_weight,
 				}
 			},
-			// Callback has failed
+			// callback has failed.
 			Err(_) => {
-				// return the maximum weight
+				// return the maximum weight.
 				max_weight
 			},
 		}
 	}
 
+	/// Handles fee management and refund logic for callback execution.
+	///
+	/// This function is intended to balance the fees collected upfront for a callback
+	/// against the actual weight used during execution. If the callback uses less weight
+	/// than originally reserved, the surplus is refunded to the user, and the remainder
+	/// is transferred as an execution reward to the fee collector account.
+	///
+	/// # Parameters
+	///
+	/// - `initiating_origin`: The account that initially paid for the callback execution.
+	/// - `weight_used`: The actual weight consumed by the callback.
+	/// - `max_weight`: The maximum weight that was budgeted and paid for in advance.
 	pub(crate) fn manage_fees(
 		initiating_origin: &AccountIdOf<T>,
 		weight_used: Weight,
