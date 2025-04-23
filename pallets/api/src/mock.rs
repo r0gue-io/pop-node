@@ -320,6 +320,10 @@ impl crate::messaging::WeightInfo for DummyPrepaymentWeights {
 	fn ismp_post(_x: u32, _y: u32) -> Weight {
 		Zero::zero()
 	}
+
+	fn top_up_callback_weight() -> Weight {
+		Zero::zero()
+	}
 }
 
 pub struct Keccak;

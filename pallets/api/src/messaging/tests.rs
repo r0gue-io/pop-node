@@ -603,7 +603,6 @@ mod xcm_new_query {
 	fn takes_messaging_hold() {
 		new_test_ext().execute_with(|| {
 			let timeout = System::block_number() + 1;
-			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = None;
 			let message_id = [0; 32];
 			let expected_deposit =
