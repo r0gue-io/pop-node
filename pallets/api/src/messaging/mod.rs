@@ -716,6 +716,8 @@ impl<T: Config> Pallet<T> {
 	/// This function constructs the payload from the callback ABI and data, then invokes the
 	/// callback using the runtime's `CallbackExecutor`.
 	///
+	/// This will manually adjust weight based on the static_weight_adjustment, the static measure of callback execution and the measured weight of the callback from the contracts/revive env.
+	///
 	/// # Parameters
 	/// - `initiating_origin`: The account that originally dispatched the request.
 	/// - `callback`: The callback definition, including selector, ABI, and weight.
@@ -760,7 +762,8 @@ impl<T: Config> Pallet<T> {
 		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
 		let extra_weight =
 			match Self::try_refund_unused_weight(initiating_origin, id, result, callback) {
-				Ok(weight_used) => weight_used,
+				// Weight used will always be less or equal to callback.weight hence this is safe with the above check.
+				Ok(weight_used) => weight_used + callback.weight + static_weight_adjustment,
 				Err(e) => {
 					Self::deposit_event(Event::WeightRefundErrored { message_id: *id, error: e });
 
@@ -771,13 +774,13 @@ impl<T: Config> Pallet<T> {
 
 		// Manually adjust callback weight.
 		frame_system::Pallet::<T>::register_extra_weight_unchecked(
-			extra_weight,
+			extra_weight
 			DispatchClass::Normal,
 		);
 		Ok(())
 	}
 
-	/// Handles the result of a previously executed callback function.
+	/// Handled the potential refunds for a callback.
 	///
 	/// This function is responsible for:
 	/// - Refunding unused callback gas weight.
