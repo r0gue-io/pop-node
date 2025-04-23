@@ -719,8 +719,9 @@ impl<T: Config> Pallet<T> {
 	/// This function constructs the payload from the callback ABI and data, then invokes the
 	/// callback using the runtime's `CallbackExecutor`.
 	///
-	/// This will manually adjust weight based on the static_weight_adjustment, the static measure
-	/// of callback execution and the measured weight of the callback from the contracts/revive env.
+	/// Other than executing the callback this function will: 
+	/// - Manage the fees based on the weight used.
+	/// - Manually adjust block weight.
 	///
 	/// # Parameters
 	/// - `initiating_origin`: The account that originally dispatched the request.
@@ -729,8 +730,6 @@ impl<T: Config> Pallet<T> {
 	/// - `data`: The payload to be passed to the callback (e.g., response data).
 	/// - `static_weight_adjustment`: any additional weight that must be subtracted from the
 	///   blockspace.
-	/// # Returns
-	/// The function will return the computed weight when the callback result is handled.
 	pub(crate) fn call(
 		initiating_origin: &AccountIdOf<T>,
 		callback: Callback,
@@ -769,7 +768,7 @@ impl<T: Config> Pallet<T> {
 		match Self::manage_fees(&initiating_origin, callback_weight_used, callback.weight) {
 			Ok(_) => (),
 			// Dont revert, we must register the weight used by the callback.
-			Err(e) => Self::deposit_event(Event::WeightRefundErrored { message_id: *id, error: e }),
+			Err(error) => Self::deposit_event(Event::WeightRefundErrored { message_id: *id, error}),
 		}
 
 		// Weight used will always be less or equal to callback.weight hence this is safe with the
@@ -786,6 +785,18 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
+	/// Deposits an event indicating the outcome of a callback execution.
+	///
+	/// This function is intended to be called after attempting to dispatch a callback 
+	/// (such as in response to an XCM `QueryResponse` or other deferred logic).
+	/// It emits either a `CallbackExecuted` or `CallbackFailed` event based on the result.
+	///
+	/// # Parameters
+	///
+	/// - `initiating_origin`: The account that originally initiated the message.
+	/// - `message_id`: The unique identifier associated with the message that triggered the callback.
+	/// - `callback`: The callback object that was attempted to be executed.
+	/// - `result`: The outcome of the callback execution, containing either success or failure.
 	pub(crate) fn deposit_callback_event(
 		initiating_origin: &T::AccountId,
 		message_id: MessageId,
