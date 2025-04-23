@@ -801,6 +801,9 @@ mod xcm_response {
 			));
 
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
+
+			let events = events();
+
 			assert!(Messages::<Test>::get(ALICE, message_id).is_none());
 			assert!(XcmQueries::<Test>::get(expected_query_id).is_none());
 		})
@@ -884,7 +887,16 @@ mod xcm_hooks {
 	}
 }
 
-mod handle_callback_result {
+mod call {
+	use super::*;
+	#[test]
+	fn registers_extra_weight() {
+
+	}
+
+}
+
+mod try_refund_unused_weight {
 	use frame_support::dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo};
 	use sp_runtime::DispatchErrorWithPostInfo;
 
@@ -917,7 +929,7 @@ mod handle_callback_result {
 			let pot_pre_handle = Balances::free_balance(FEE_ACCOUNT);
 			let alice_balance_pre_handle = Balances::free_balance(ALICE);
 
-			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+			assert!(crate::messaging::Pallet::<Test>::try_refund_unused_weight(
 				&origin, &id, result, callback
 			)
 			.is_ok());
@@ -956,7 +968,7 @@ mod handle_callback_result {
 			)
 			.unwrap();
 
-			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
+			assert_ok!(crate::messaging::Pallet::<Test>::try_refund_unused_weight(
 				&origin, &id, result, callback
 			));
 			assert!(events().contains(&Event::<Test>::CallbackExecuted { origin, id, callback }));
@@ -979,7 +991,7 @@ mod handle_callback_result {
 				abi: Abi::Scale,
 			};
 
-			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+			assert!(crate::messaging::Pallet::<Test>::try_refund_unused_weight(
 				&origin, &id, result, callback
 			)
 			.is_ok());
@@ -1032,7 +1044,7 @@ mod handle_callback_result {
 			let fee_account_pre_handle = Balances::free_balance(FEE_ACCOUNT);
 			let alice_balance_pre_handle = Balances::free_balance(ALICE);
 
-			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
+			assert!(crate::messaging::Pallet::<Test>::try_refund_unused_weight(
 				&origin, &id, result, callback
 			)
 			.is_ok());
