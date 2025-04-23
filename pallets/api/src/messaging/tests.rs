@@ -890,10 +890,7 @@ mod xcm_hooks {
 mod call {
 	use super::*;
 	#[test]
-	fn registers_extra_weight() {
-
-	}
-
+	fn registers_extra_weight() {}
 }
 
 mod try_refund_unused_weight {

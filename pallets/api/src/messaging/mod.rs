@@ -5,7 +5,9 @@ pub use alloc::borrow::ToOwned;
 use ::ismp::Error as IsmpError;
 use codec::{Decode, Encode};
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo, DispatchErrorWithPostInfo},
+	dispatch::{
+		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
+	},
 	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
@@ -717,7 +719,8 @@ impl<T: Config> Pallet<T> {
 	/// This function constructs the payload from the callback ABI and data, then invokes the
 	/// callback using the runtime's `CallbackExecutor`.
 	///
-	/// This will manually adjust weight based on the static_weight_adjustment, the static measure of callback execution and the measured weight of the callback from the contracts/revive env.
+	/// This will manually adjust weight based on the static_weight_adjustment, the static measure
+	/// of callback execution and the measured weight of the callback from the contracts/revive env.
 	///
 	/// # Parameters
 	/// - `initiating_origin`: The account that originally dispatched the request.
@@ -769,8 +772,11 @@ impl<T: Config> Pallet<T> {
 			Err(e) => Self::deposit_event(Event::WeightRefundErrored { message_id: *id, error: e }),
 		}
 
-		// Weight used will always be less or equal to callback.weight hence this is safe with the above check.
-		let total_weight_used = callback_weight_used + T::CallbackExecutor::execution_weight() + static_weight_adjustment.unwrap_or(Zero::zero());
+		// Weight used will always be less or equal to callback.weight hence this is safe with the
+		// above check.
+		let total_weight_used = callback_weight_used +
+			T::CallbackExecutor::execution_weight() +
+			static_weight_adjustment.unwrap_or(Zero::zero());
 
 		// Manually adjust callback weight.
 		frame_system::Pallet::<T>::register_extra_weight_unchecked(
@@ -780,7 +786,12 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	pub(crate) fn deposit_callback_event(initiating_origin: &T::AccountId, message_id: MessageId, callback: &Callback, result: &DispatchResultWithPostInfo) {
+	pub(crate) fn deposit_callback_event(
+		initiating_origin: &T::AccountId,
+		message_id: MessageId,
+		callback: &Callback,
+		result: &DispatchResultWithPostInfo,
+	) {
 		match result {
 			Ok(_) => {
 				Self::deposit_event(Event::<T>::CallbackExecuted {
@@ -788,7 +799,7 @@ impl<T: Config> Pallet<T> {
 					id: message_id,
 					callback: callback.clone(),
 				});
-			}, 
+			},
 			Err(error) => {
 				Self::deposit_event(Event::<T>::CallbackFailed {
 					origin: initiating_origin.clone(),
@@ -796,75 +807,71 @@ impl<T: Config> Pallet<T> {
 					callback: callback.clone(),
 					error: error.clone(),
 				});
-			}
+			},
 		}
 	}
 
-	pub(crate) fn process_callback_weight(result: &DispatchResultWithPostInfo, max_weight: Weight) -> Weight {
+	pub(crate) fn process_callback_weight(
+		result: &DispatchResultWithPostInfo,
+		max_weight: Weight,
+	) -> Weight {
 		match result {
 			// Callback has succeded
 			Ok(post_info) => {
 				match post_info.actual_weight {
 					Some(w) => w,
-					// return the worst case if the callback executor does not populate the actual weight.
-					None => max_weight
+					// return the worst case if the callback executor does not populate the actual
+					// weight.
+					None => max_weight,
 				}
-			}, 
+			},
 			// Callback has failed
 			Err(_) => {
 				// return the maximum weight
 				max_weight
-			}
+			},
 		}
 	}
 
 	pub(crate) fn manage_fees(
 		initiating_origin: &AccountIdOf<T>,
 		weight_used: Weight,
-		max_weight: Weight
+		max_weight: Weight,
 	) -> DispatchResult {
 		let weight_to_refund = max_weight.saturating_sub(weight_used);
 		let total_deposit = T::WeightToFee::weight_to_fee(&max_weight);
 		if weight_to_refund.all_gt(Zero::zero()) {
 			// Try return some deposit
-				let returnable_deposit =
-					T::WeightToFee::weight_to_fee(&weight_to_refund);
-				let execution_reward = total_deposit.saturating_sub(returnable_deposit);
-				let reason = HoldReason::CallbackGas.into();
+			let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
+			let execution_reward = total_deposit.saturating_sub(returnable_deposit);
+			let reason = HoldReason::CallbackGas.into();
 
-				T::Fungibles::release(
-					&reason,
-					initiating_origin,
-					returnable_deposit,
-					BestEffort,
-				)?;
-				T::Fungibles::transfer_on_hold(
-					&reason,
-					initiating_origin,
-					&T::FeeAccount::get(),
-					execution_reward,
-					BestEffort,
-					Restriction::Free,
-					Fortitude::Polite,
-				)?;
-			
+			T::Fungibles::release(&reason, initiating_origin, returnable_deposit, BestEffort)?;
+			T::Fungibles::transfer_on_hold(
+				&reason,
+				initiating_origin,
+				&T::FeeAccount::get(),
+				execution_reward,
+				BestEffort,
+				Restriction::Free,
+				Fortitude::Polite,
+			)?;
 		} else {
 			// Take the total deposit.
-				T::Fungibles::transfer_on_hold(
-					&HoldReason::CallbackGas.into(),
-					initiating_origin,
-					&T::FeeAccount::get(),
-					total_deposit,
-					BestEffort,
-					Restriction::Free,
-					Fortitude::Polite,
-				)?;
+			T::Fungibles::transfer_on_hold(
+				&HoldReason::CallbackGas.into(),
+				initiating_origin,
+				&T::FeeAccount::get(),
+				total_deposit,
+				BestEffort,
+				Restriction::Free,
+				Fortitude::Polite,
+			)?;
 		}
 
 		Ok(())
 	}
-	}
-
+}
 
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
