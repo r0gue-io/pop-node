@@ -696,11 +696,11 @@ pub mod pallet {
 
 		/// Top up the callback weight for a pending message.
 		///
-		/// This extrinsic allows users to increase the gas (weight) budget allocated for a callback
+		/// This extrinsic allows an origin to increase the gas (weight) budget allocated for a callback
 		/// associated with an in-flight message. This is useful when the initially allocated weight
 		/// is insufficient to complete the callback.
 		///
-		/// The additional fee for the new weight is held from the user's balance using the
+		/// The additional fee for the new weight is held from the origin using the
 		/// `HoldReason::CallbackGas`.
 		///
 		/// Only pending requests can have their weight increased.
@@ -712,7 +712,7 @@ pub mod pallet {
 		/// - `additional_weight`: The additional weight to be appended to the message's existing
 		///   callback weight.
 		#[pallet::call_index(6)]
-		#[pallet::weight(Weight::zero())]
+		#[pallet::weight(T::WeightInfo::top_up_callback_weight())]
 		pub fn top_up_callback_weight(
 			origin: OriginFor<T>,
 			message_id: MessageId,
