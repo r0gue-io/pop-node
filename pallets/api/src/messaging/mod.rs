@@ -327,12 +327,17 @@ pub mod pallet {
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
 				Messages::<T>::mutate(origin, message_id, |maybe_message| {
-					if let Some(Message::XcmQuery { query_id, deposit, .. }) =
+					if let Some(Message::XcmQuery { query_id, message_deposit, callback }) =
 						maybe_message.as_mut()
 					{
+						let callback_deposit =
+							callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
 						query_ids.push(*query_id);
-						*maybe_message =
-							Some(Message::XcmTimeout { query_id: *query_id, deposit: *deposit });
+						*maybe_message = Some(Message::XcmTimeout {
+							query_id: *query_id,
+							message_deposit: *message_deposit,
+							callback_deposit,
+						});
 					}
 				})
 			}
@@ -373,14 +378,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
-			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+
+			// Take deposits and fees.
+			let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
-			// Take deposits and fees.
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -406,7 +412,11 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
 			IsmpRequests::<T>::insert(commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp { commitment, callback, message_deposit },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
 				origin,
 				id,
@@ -441,13 +451,13 @@ pub mod pallet {
 			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 
 			// Take deposits and fees.
-			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+			let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
 			let mut callback_execution_weight = Weight::zero();
 
 			if let Some(cb) = callback.as_ref() {
@@ -471,7 +481,11 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
 			IsmpRequests::<T>::insert(commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp { commitment, callback, message_deposit },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
 				origin,
 				id,
@@ -522,11 +536,11 @@ pub mod pallet {
 			)?;
 
 			// Take deposits and fees.
-			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+			let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::XcmQueries,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
 
 			let mut callback_execution_weight = Weight::zero();
 
@@ -560,7 +574,11 @@ pub mod pallet {
 			// Store query id for later lookup on response, message for querying status,
 			// response/timeout handling.
 			XcmQueries::<T>::insert(query_id, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback, deposit });
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::XcmQuery { query_id, callback, message_deposit },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
 				origin,
 				id,
@@ -593,8 +611,9 @@ pub mod pallet {
 			let xcm_query_message =
 				Messages::<T>::get(&initiating_origin, id).ok_or(Error::<T>::MessageNotFound)?;
 
-			let (query_id, callback, deposit) = match &xcm_query_message {
-				Message::XcmQuery { query_id, callback, deposit } => (query_id, callback, deposit),
+			let (query_id, callback, message_deposit) = match &xcm_query_message {
+				Message::XcmQuery { query_id, callback, message_deposit } =>
+					(query_id, callback, message_deposit),
 				Message::XcmTimeout { .. } => return Err(Error::<T>::RequestTimedOut.into()),
 				_ => return Err(Error::<T>::InvalidMessage.into()),
 			};
@@ -616,7 +635,7 @@ pub mod pallet {
 					T::Fungibles::release(
 						&HoldReason::Messaging.into(),
 						&initiating_origin,
-						*deposit,
+						*message_deposit,
 						Exact,
 					)?;
 					return Ok(());
@@ -628,7 +647,7 @@ pub mod pallet {
 				id,
 				Message::XcmResponse {
 					query_id: *query_id,
-					deposit: *deposit,
+					message_deposit: *message_deposit,
 					response: xcm_response,
 				},
 			);
@@ -656,32 +675,47 @@ pub mod pallet {
 					return Err(Error::<T>::MessageNotFound.into());
 				};
 
-				let deposit = match message {
+				let (message_deposit, maybe_callback_deposit) = match message {
 					Message::Ismp { .. } => Err(Error::<T>::RequestPending),
 					Message::XcmQuery { .. } => Err(Error::<T>::RequestPending),
-					Message::IsmpResponse { deposit, commitment, .. } => {
+					Message::IsmpResponse { message_deposit, commitment, .. } => {
 						Messages::<T>::remove(&origin, id);
 						IsmpRequests::<T>::remove(commitment);
-						Ok(deposit)
+						Ok((message_deposit, None))
 					},
-					Message::XcmResponse { deposit, query_id, .. } => {
+					Message::XcmResponse { message_deposit, query_id, .. } => {
 						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
-						Ok(deposit)
+						Ok((message_deposit, None))
 					},
-					Message::IsmpTimeout { deposit, commitment, .. } => {
+					Message::IsmpTimeout {
+						message_deposit, commitment, callback_deposit, ..
+					} => {
 						Messages::<T>::remove(&origin, id);
 						IsmpRequests::<T>::remove(commitment);
-						Ok(deposit)
+						Ok((message_deposit, callback_deposit))
 					},
-					Message::XcmTimeout { query_id, deposit, .. } => {
+					Message::XcmTimeout { query_id, message_deposit, callback_deposit, .. } => {
 						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
-						Ok(deposit)
+						Ok((message_deposit, callback_deposit))
 					},
 				}?;
 
-				T::Fungibles::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
+				T::Fungibles::release(
+					&HoldReason::Messaging.into(),
+					&origin,
+					message_deposit,
+					Exact,
+				)?;
+				if let Some(callback_deposit) = maybe_callback_deposit {
+					T::Fungibles::release(
+						&HoldReason::CallbackGas.into(),
+						&origin,
+						callback_deposit,
+						Exact,
+					)?;
+				}
 			}
 
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
@@ -883,7 +917,7 @@ pub(crate) enum Message<T: Config> {
 	/// - `commitment`: The cryptographic commitment of the request payload.
 	/// - `callback`: An optional callback to invoke upon receiving a response.
 	/// - `deposit`: The total deposit held to cover message and callback fees.
-	Ismp { commitment: H256, callback: Option<Callback>, deposit: BalanceOf<T> },
+	Ismp { commitment: H256, callback: Option<Callback>, message_deposit: BalanceOf<T> },
 
 	/// Represents a pending XCM query request.
 	///
@@ -891,7 +925,7 @@ pub(crate) enum Message<T: Config> {
 	/// - `query_id`: Unique identifier for the XCM query.
 	/// - `callback`: An optional callback for handling the response.
 	/// - `deposit`: The deposit held to cover fees for query execution and callback.
-	XcmQuery { query_id: QueryId, callback: Option<Callback>, deposit: BalanceOf<T> },
+	XcmQuery { query_id: QueryId, callback: Option<Callback>, message_deposit: BalanceOf<T> },
 
 	/// Represents a received ISMP response.
 	///
@@ -901,7 +935,7 @@ pub(crate) enum Message<T: Config> {
 	/// - `response`: The encoded response payload, size-bounded by `T::MaxResponseLen`.
 	IsmpResponse {
 		commitment: H256,
-		deposit: BalanceOf<T>,
+		message_deposit: BalanceOf<T>,
 		response: BoundedVec<u8, T::MaxResponseLen>,
 	},
 
@@ -911,21 +945,29 @@ pub(crate) enum Message<T: Config> {
 	/// - `query_id`: Identifier that matches a previously sent XCM query.
 	/// - `deposit`: The deposit originally held for this message.
 	/// - `response`: The deserialized response payload.
-	XcmResponse { query_id: QueryId, deposit: BalanceOf<T>, response: Response },
+	XcmResponse { query_id: QueryId, message_deposit: BalanceOf<T>, response: Response },
 
 	/// Represents an ISMP request that timed out before a response was received.
 	///
 	/// # Fields
 	/// - `commitment`: The original commitment of the request.
 	/// - `deposit`: The deposit held for the request, which may be reclaimed.
-	IsmpTimeout { commitment: H256, deposit: BalanceOf<T> },
+	IsmpTimeout {
+		commitment: H256,
+		message_deposit: BalanceOf<T>,
+		callback_deposit: Option<BalanceOf<T>>,
+	},
 
 	/// Represents an XCM query that timed out before a response was received.
 	///
 	/// # Fields
 	/// - `query_id`: The original query ID that timed out.
 	/// - `deposit`: The deposit held for the query, which may be reclaimed.
-	XcmTimeout { query_id: QueryId, deposit: BalanceOf<T> },
+	XcmTimeout {
+		query_id: QueryId,
+		message_deposit: BalanceOf<T>,
+		callback_deposit: Option<BalanceOf<T>>,
+	},
 }
 
 impl<T: Config> From<&Message<T>> for MessageStatus {
