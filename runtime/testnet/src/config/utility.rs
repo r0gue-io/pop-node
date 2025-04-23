@@ -8,7 +8,7 @@ use parachains_common::Balance;
 
 use crate::{
 	config::system::RuntimeBlockWeights, deposit, AccountId, Balances, OriginCaller, Perbill,
-	Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, Weight,
+	Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, System, Weight,
 };
 
 parameter_types! {
@@ -54,6 +54,7 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Runtime {
+	type BlockNumberProvider = System;
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxScheduledPerBlock = ConstU32<512>;
 	#[cfg(not(feature = "runtime-benchmarks"))]
