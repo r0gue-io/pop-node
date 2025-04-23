@@ -735,17 +735,17 @@ pub mod pallet {
 					// Mutate to accrue new weight.
 					let total_weight = match message {
 						Message::Ismp { callback, .. } => callback.as_mut().map_or_else(
-							|| Err(Error::<T>::NoCallbackFound).into(),
+							|| Err(Error::<T>::NoCallbackFound),
 							|cb| Ok(cb.increase_callback_weight(additional_weight)),
 						),
 						Message::XcmQuery { callback, .. } => callback.as_mut().map_or_else(
-							|| Err(Error::<T>::NoCallbackFound).into(),
+							|| Err(Error::<T>::NoCallbackFound),
 							|cb| Ok(cb.increase_callback_weight(additional_weight)),
 						),
-						Message::IsmpResponse { .. } => Err(Error::<T>::MessageCompleted).into(),
-						Message::XcmResponse { .. } => Err(Error::<T>::MessageCompleted).into(),
-						Message::IsmpTimeout { .. } => Err(Error::<T>::RequestTimedOut).into(),
-						Message::XcmTimeout { .. } => Err(Error::<T>::RequestTimedOut).into(),
+						Message::IsmpResponse { .. } => Err(Error::<T>::MessageCompleted),
+						Message::XcmResponse { .. } => Err(Error::<T>::MessageCompleted),
+						Message::IsmpTimeout { .. } => Err(Error::<T>::RequestTimedOut),
+						Message::XcmTimeout { .. } => Err(Error::<T>::RequestTimedOut),
 					}?;
 
 					Self::deposit_event(Event::<T>::CallbackGasIncreased {
@@ -753,7 +753,7 @@ pub mod pallet {
 						total_weight,
 					})
 				} else {
-					return Err(Error::<T>::MessageNotFound).into();
+					return Err(Error::<T>::MessageNotFound);
 				}
 
 				Ok(())
