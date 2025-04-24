@@ -1,7 +1,7 @@
 #![cfg(test)]
 use frame_support::{
-	assert_noop, assert_ok, testing_prelude::bounded_vec, traits::fungible::hold::Inspect,
-	weights::Weight,
+	assert_noop, assert_ok, dispatch::PostDispatchInfo, testing_prelude::bounded_vec,
+	traits::fungible::hold::Inspect, weights::Weight,
 };
 use sp_core::H256;
 

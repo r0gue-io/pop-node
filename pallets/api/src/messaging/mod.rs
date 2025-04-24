@@ -5,9 +5,7 @@ pub use alloc::borrow::ToOwned;
 use ::ismp::Error as IsmpError;
 use codec::{Decode, Encode};
 use frame_support::{
-	dispatch::{
-		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo,
-	},
+	dispatch::{DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
 	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
@@ -621,7 +619,7 @@ pub mod pallet {
 				// manually adjust the blockweight to weight of the extrinsic.
 				let static_weight_adjustment =
 					T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight();
-				/// Never roll back state if call fails.
+				// Never roll back state if call fails.
 				match Self::call(
 					&initiating_origin,
 					callback.to_owned(),
