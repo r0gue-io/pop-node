@@ -620,29 +620,26 @@ pub mod pallet {
 				let static_weight_adjustment =
 					T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight();
 				// Never roll back state if call fails.
-				match Self::call(
+				// Ensure that the response can be polled.
+				if Self::call(
 					&initiating_origin,
 					callback.to_owned(),
 					&id,
 					&xcm_response,
 					Some(static_weight_adjustment),
-				) {
-					Ok(_) => {
-						Messages::<T>::remove(&initiating_origin, id);
-						XcmQueries::<T>::remove(query_id);
-						T::Fungibles::release(
-							&HoldReason::Messaging.into(),
-							&initiating_origin,
-							*deposit,
-							Exact,
-						)?;
+				)
+				.is_ok()
+				{
+					Messages::<T>::remove(&initiating_origin, id);
+					XcmQueries::<T>::remove(query_id);
+					T::Fungibles::release(
+						&HoldReason::Messaging.into(),
+						&initiating_origin,
+						*deposit,
+						Exact,
+					)?;
 
-						return Ok(())
-					},
-					Err(e) => {
-						// Callback execution has failed, the response extrinsic doenst care for the
-						// reason. Ensure that the response can be polled.
-					},
+					return Ok(())
 				}
 			}
 			// No callback is executed,
