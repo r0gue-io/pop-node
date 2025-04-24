@@ -224,10 +224,8 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 			}
 		}
 
-		let post_info = PostDispatchInfo {
-			actual_weight: Some(output.gas_consumed),
-			pays_fee: Pays::No,
-		};
+		let post_info =
+			PostDispatchInfo { actual_weight: Some(output.gas_consumed), pays_fee: Pays::No };
 
 		output
 			.result

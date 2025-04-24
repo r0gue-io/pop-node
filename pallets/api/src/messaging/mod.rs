@@ -619,7 +619,8 @@ pub mod pallet {
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
 				// Since we are dispatching in the xcm-executor with call.dispatch_call, we must
 				// manually adjust the blockweight to weight of the extrinsic.
-				let static_weight_adjustment = T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight();
+				let static_weight_adjustment =
+					T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight();
 				/// Never roll back state if call fails.
 				match Self::call(
 					&initiating_origin,
@@ -730,30 +731,33 @@ impl<T: Config> Pallet<T> {
 	///   executor and used for fee management and event attribution.
 	/// - `callback`: The callback definition.
 	/// - `id`: The message ID associated with this callback's message.
-	/// - `data`: The encoded payload to send to the callback. 
+	/// - `data`: The encoded payload to send to the callback.
 	/// - `static_weight_adjustment`: An optional additional weight to charge, typically to account
-	///   for outer logic like wrapping or delegation. This is added to the callback's declared weight.
+	///   for outer logic like wrapping or delegation. This is added to the callback's declared
+	///   weight.
 	///
 	/// # Weight Handling
 	///
 	/// - Before executing the callback, this function checks whether the total expected weight
 	///   (`callback.weight + static_weight_adjustment`) can be accommodated in the current block.
-	/// - If the block is saturated, the function returns early with an error and does not mutate state.
+	/// - If the block is saturated, the function returns early with an error and does not mutate
+	///   state.
 	/// - After execution, the actual weight used by the callback is determined using
 	///   [`Self::process_callback_weight`] and registered via
 	///   [`frame_system::Pallet::<T>::register_extra_weight_unchecked`].
-	///
 	pub(crate) fn call(
 		initiating_origin: &AccountIdOf<T>,
 		callback: Callback,
 		id: &MessageId,
 		data: &impl Encode,
-		// This should include T::CallbackExecutor::execution_weight() where applicable unless already charged.
+		// This should include T::CallbackExecutor::execution_weight() where applicable unless
+		// already charged.
 		static_weight_adjustment: Option<Weight>,
 	) -> DispatchResult {
 		// This is the total weight that should be deducted from the blockspace for callback
 		// execution.
-		let max_weight = callback.weight
+		let max_weight = callback
+			.weight
 			.checked_add(&static_weight_adjustment.unwrap_or(Zero::zero()))
 			.ok_or(Error::<T>::BlockspaceAllowanceReached)?;
 
@@ -766,8 +770,9 @@ impl<T: Config> Pallet<T> {
 		);
 
 		// Execute callback.
-		// Its important to note that we must still ensure that the weight used is accounted for in frame_system.
-		// Hence all calls after this must not return an err and state should not be rolled back.
+		// Its important to note that we must still ensure that the weight used is accounted for in
+		// frame_system. Hence all calls after this must not return an err and state should not be
+		// rolled back.
 		let result = T::CallbackExecutor::execute(
 			initiating_origin,
 			match callback.abi {
@@ -782,7 +787,8 @@ impl<T: Config> Pallet<T> {
 
 		// Weight used will always be less or equal to callback.weight hence this is safe with the
 		// above check.
-		let total_weight_used = callback_weight_used + static_weight_adjustment.unwrap_or(Zero::zero());
+		let total_weight_used =
+			callback_weight_used + static_weight_adjustment.unwrap_or(Zero::zero());
 
 		// Manually adjust callback weight.
 		frame_system::Pallet::<T>::register_extra_weight_unchecked(
@@ -793,7 +799,8 @@ impl<T: Config> Pallet<T> {
 		match Self::manage_fees(&initiating_origin, callback_weight_used, callback.weight) {
 			Ok(_) => (),
 			// Dont return early, we must register the weight used by the callback.
-			Err(error) => Self::deposit_event(Event::WeightRefundErrored { message_id: *id, error}),
+			Err(error) =>
+				Self::deposit_event(Event::WeightRefundErrored { message_id: *id, error }),
 		}
 		Ok(())
 	}
@@ -806,7 +813,8 @@ impl<T: Config> Pallet<T> {
 	/// # Parameters
 	///
 	/// - `initiating_origin`: The account that originally initiated the message.
-	/// - `message_id`: The unique identifier associated with the message that triggered the callback.
+	/// - `message_id`: The unique identifier associated with the message that triggered the
+	///   callback.
 	/// - `callback`: The callback object that was attempted to be executed.
 	/// - `result`: The outcome of the callback execution, containing either success or failure.
 	pub(crate) fn deposit_callback_event(
@@ -834,20 +842,23 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// Determines the actual weight consumed by a callback execution, falling back to the maximum if unknown.
+	/// Determines the actual weight consumed by a callback execution, falling back to the maximum
+	/// if unknown.
 	///
-	/// This function is used to calculate the weight to be accounted for after attempting to dispatch a callback.
-	/// It ensures that even if the callback execution fails or does not report actual weight, the worst-case
-	/// (`max_weight`) is used to avoid under-accounting.
+	/// This function is used to calculate the weight to be accounted for after attempting to
+	/// dispatch a callback. It ensures that even if the callback execution fails or does not
+	/// report actual weight, the worst-case (`max_weight`) is used to avoid under-accounting.
 	///
 	/// # Parameters
 	///
-	/// - `result`: The result of the callback dispatch, including any `PostDispatchInfo` if successful.
+	/// - `result`: The result of the callback dispatch, including any `PostDispatchInfo` if
+	///   successful.
 	/// - `max_weight`: The maximum weight budgeted for the callback execution.
 	///
 	/// # Rationale
 	///
-	/// - Protects against underestimating weight in cases where `actual_weight` is missing or the dispatch fails.
+	/// - Protects against underestimating weight in cases where `actual_weight` is missing or the
+	///   dispatch fails.
 	/// - Ensures conservative accounting to avoid exceeding block or message limits.
 	pub(crate) fn process_callback_weight(
 		result: &DispatchResultWithPostInfo,

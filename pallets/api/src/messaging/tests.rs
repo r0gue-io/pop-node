@@ -888,29 +888,34 @@ mod xcm_hooks {
 }
 
 mod call {
-	use super::*;
-	use frame_system::pallet::BlockWeight;
 	use frame_support::traits::fungibles::InspectHold;
+	use frame_system::pallet::BlockWeight;
+
+	use super::*;
 	#[test]
 	fn assert_error_event() {
 		new_test_ext().execute_with(|| {
-		let message_id = [1u8; 32];
-		let callback_weight = Weight::from_parts(100_000, 100_000);
-		let data = [100u8; 5];
-		let callback = Callback {
-			abi: Abi::Scale,
-			selector: [0u8; 4],
-			weight: callback_weight,
-		};
-		let static_weight_adjustment = Weight::from_parts(150_000, 150_000);
-		assert_ok!(Pallet::<Test>::call(&ALICE, callback, &message_id, &data, Some(static_weight_adjustment)));
+			let message_id = [1u8; 32];
+			let callback_weight = Weight::from_parts(100_000, 100_000);
+			let data = [100u8; 5];
+			let callback =
+				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
+			let static_weight_adjustment = Weight::from_parts(150_000, 150_000);
+			assert_ok!(Pallet::<Test>::call(
+				&ALICE,
+				callback,
+				&message_id,
+				&data,
+				Some(static_weight_adjustment)
+			));
 
-		System::assert_last_event(
-			Event::<Test>::WeightRefundErrored {
-				message_id,
-				error: DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
-			}.into()
-		);
+			System::assert_last_event(
+				Event::<Test>::WeightRefundErrored {
+					message_id,
+					error: DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
+				}
+				.into(),
+			);
 		})
 	}
 
@@ -919,32 +924,42 @@ mod call {
 	#[test]
 	fn blockweight_mutation_happens() {
 		new_test_ext().execute_with(|| {
-		let blockweight_pre_call = BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
-		let message_id = [1u8; 32];
-		let callback_weight = Weight::from_parts(10_000_000, 10_000_000);
-		let callback_fee = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight);
-		let data = [100u8; 5];
-		let callback = Callback {
-			abi: Abi::Scale,
-			selector: [0u8; 4],
-			weight: callback_weight,
-		};
-		let static_weight_adjustment = Weight::from_parts(15_000_000, 15_000_000);
-		<Test as Config>::Fungibles::hold(&HoldReason::CallbackGas.into(), &ALICE, callback_fee).unwrap();
-	
-		assert_ok!(Pallet::<Test>::call(&ALICE, callback, &message_id, &data, Some(static_weight_adjustment)));
+			let blockweight_pre_call =
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+			let message_id = [1u8; 32];
+			let callback_weight = Weight::from_parts(10_000_000, 10_000_000);
+			let callback_fee = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight);
+			let data = [100u8; 5];
+			let callback =
+				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
+			let static_weight_adjustment = Weight::from_parts(15_000_000, 15_000_000);
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				callback_fee,
+			)
+			.unwrap();
 
-		let blockweight_post_call = BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
-		assert_ne!(blockweight_post_call, Zero::zero());
+			assert_ok!(Pallet::<Test>::call(
+				&ALICE,
+				callback,
+				&message_id,
+				&data,
+				Some(static_weight_adjustment)
+			));
 
-		// callback weight used in tests is total / 2.
-		assert_eq!(blockweight_post_call - blockweight_pre_call, callback_weight / 2 + static_weight_adjustment);
+			let blockweight_post_call =
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+			assert_ne!(blockweight_post_call, Zero::zero());
+
+			// callback weight used in tests is total / 2.
+			assert_eq!(
+				blockweight_post_call - blockweight_pre_call,
+				callback_weight / 2 + static_weight_adjustment
+			);
 		})
 	}
 }
-
-
-
 
 mod process_callback_weight {
 	use super::*;
@@ -952,50 +967,49 @@ mod process_callback_weight {
 	#[test]
 	fn ok_with_weight_returns_weight() {
 		new_test_ext().execute_with(|| {
-		let weight = Weight::from_parts(100_000, 100_000);
-		let max_weight = Weight::zero();
-		let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-			actual_weight: Some(weight),
-			pays_fee: Pays::Yes,
-		});
+			let weight = Weight::from_parts(100_000, 100_000);
+			let max_weight = Weight::zero();
+			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: Some(weight),
+				pays_fee: Pays::Yes,
+			});
 
-		let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
+			let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
 
-		assert_eq!(processed_weight, weight);
+			assert_eq!(processed_weight, weight);
 		})
 	}
 
 	#[test]
 	fn ok_without_weight_returns_max_weight() {
 		new_test_ext().execute_with(|| {
-		let weight = Weight::from_parts(100_000, 100_000);
-		let max_weight = Weight::from_parts(200_000, 200_000);
-		let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-			actual_weight: None,
-			pays_fee: Pays::Yes,
-		});
+			let weight = Weight::from_parts(100_000, 100_000);
+			let max_weight = Weight::from_parts(200_000, 200_000);
+			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes,
+			});
 
-		let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
+			let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
 
-		assert_eq!(processed_weight, max_weight);
+			assert_eq!(processed_weight, max_weight);
 		})
 	}
 
 	#[test]
 	fn err_returns_max_weight() {
 		new_test_ext().execute_with(|| {
-		let weight = Weight::from_parts(100_000, 100_000);
-		let max_weight = Weight::from_parts(200_000, 200_000);
-		let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
-			post_info: Default::default(),
-			error: Error::<Test>::InvalidMessage.into(),
-		});
-		let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
-		assert_eq!(processed_weight, max_weight);
+			let weight = Weight::from_parts(100_000, 100_000);
+			let max_weight = Weight::from_parts(200_000, 200_000);
+			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
+				post_info: Default::default(),
+				error: Error::<Test>::InvalidMessage.into(),
+			});
+			let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
+			assert_eq!(processed_weight, max_weight);
 		})
 	}
 }
-
 
 mod deposit_callback_event {
 	use super::*;
@@ -1018,12 +1032,7 @@ mod deposit_callback_event {
 			Pallet::<Test>::deposit_callback_event(&origin, message_id, &callback, &result);
 
 			System::assert_last_event(
-				Event::<Test>::CallbackExecuted {
-					origin,
-					id: message_id,
-					callback,
-				}
-				.into()
+				Event::<Test>::CallbackExecuted { origin, id: message_id, callback }.into(),
 			);
 		});
 	}
@@ -1037,7 +1046,7 @@ mod deposit_callback_event {
 				abi: Abi::Scale,
 				selector: [0; 4],
 				weight: Weight::from_parts(100_000, 100_000),
-			}; 
+			};
 
 			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
 				post_info: Default::default(),
@@ -1053,19 +1062,18 @@ mod deposit_callback_event {
 					callback,
 					error: result.unwrap_err(),
 				}
-				.into()
+				.into(),
 			);
 		});
 	}
 }
-
 
 mod manage_fees {
 	use frame_support::dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo};
 	use sp_runtime::DispatchErrorWithPostInfo;
 
 	use super::*;
-	
+
 	#[test]
 	fn assert_payback_when_execution_weight_is_less_than_deposit_held() {
 		new_test_ext().execute_with(|| {
@@ -1074,7 +1082,7 @@ mod manage_fees {
 			let actual_weight_executed = Weight::from_parts(50_000_000, 70_000_000);
 			let callback_weight_reserved = Weight::from_parts(100_000_000, 100_000_000);
 
-				Callback { selector: [1; 4], weight: callback_weight_reserved, abi: Abi::Scale };
+			Callback { selector: [1; 4], weight: callback_weight_reserved, abi: Abi::Scale };
 
 			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight_reserved);
 
@@ -1099,7 +1107,9 @@ mod manage_fees {
 			let alice_balance_pre_handle = Balances::free_balance(ALICE);
 
 			assert!(crate::messaging::Pallet::<Test>::manage_fees(
-				&origin, actual_weight_executed, callback_weight_reserved
+				&origin,
+				actual_weight_executed,
+				callback_weight_reserved
 			)
 			.is_ok());
 
