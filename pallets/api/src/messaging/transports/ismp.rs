@@ -181,13 +181,14 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 		T::WeightInfo::ismp_on_timeout(x)
 	}
 
+	// todo: test
 	fn on_response(&self, response: &Response) -> Weight {
 		let x = match response {
 			Response::Get(_) => 1,
 			Response::Post(_) => 0,
 		};
 
-		T::WeightInfo::ismp_on_response(x)
+		T::WeightInfo::ismp_on_response(x) + T::CallbackExecutor::execution_weight()
 	}
 }
 
@@ -215,7 +216,7 @@ pub(crate) fn process_response<T: Config>(
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
-		// We dont accrue any additional weight as the dispatch is handled normally by pallet-ismp.
+		// We dont accrue any additional weight as the dispatch is handled normally by pallet-ismp. This includes the CallbackExecutor::execution_weight
 		if Pallet::<T>::call(&initiating_origin, callback, &id, response_data, None).is_ok() {
 			// Clean storage, return deposit
 			Messages::<T>::remove(&initiating_origin, id);

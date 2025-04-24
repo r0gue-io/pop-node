@@ -214,6 +214,7 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 			debug,
 			collect_events,
 		);
+
 		log::debug!(target: "pop-api::extension", "callback weight consumed={:?}, weight required={:?}", output.gas_consumed, output.gas_required);
 		if let Ok(return_value) = &output.result {
 			let pallet_revive::ExecReturnValue { flags, data } = return_value;
@@ -224,8 +225,8 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 		}
 
 		let post_info = PostDispatchInfo {
-			actual_weight: Some(output.gas_consumed.saturating_add(Self::execution_weight())),
-			pays_fee: Default::default(),
+			actual_weight: Some(output.gas_consumed),
+			pays_fee: Pays::No,
 		};
 
 		output
