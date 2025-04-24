@@ -283,7 +283,7 @@ pub(super) mod nfts {
 	) -> pallet_nfts::CollectionConfig<u128, BlockNumber, CollectionId> {
 		pallet_nfts::CollectionConfig {
 			settings: pallet_nfts::CollectionSettings::all_enabled(),
-			max_supply: None,
+			max_supply: Some(u32::MAX),
 			mint_settings: pallet_nfts::MintSettings::default(),
 		}
 	}
@@ -312,7 +312,7 @@ pub(super) mod nfts {
 			collection,
 			item,
 			operator.clone().into(),
-			None
+			Some(BlockNumber::MAX)
 		));
 		(collection, item)
 	}
