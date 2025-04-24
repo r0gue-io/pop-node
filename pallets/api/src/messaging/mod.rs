@@ -280,6 +280,8 @@ pub mod pallet {
 		IsmpTimedOut { commitment: H256 },
 		/// A collection of xcm queries have timed out.
 		XcmQueriesTimedOut { query_ids: Vec<QueryId> },
+		/// Callback gas has been topped up.
+		CallbackGasIncreased { message_id: MessageId, total_weight: Weight },
 	}
 
 	#[pallet::error]
@@ -304,6 +306,12 @@ pub mod pallet {
 		FutureTimeoutMandatory,
 		/// Message block limit has been reached for this expiry block. Try a different timeout.
 		MaxMessageTimeoutPerBlockReached,
+		/// This is not possible as the message has completed.
+		MessageCompleted,
+		/// No callback has been found for this query.
+		NoCallbackFound,
+		/// Weight cannot be zero.
+		ZeroWeight,
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -457,8 +465,7 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
-			let mut callback_execution_weight = Weight::zero();
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -466,8 +473,6 @@ pub mod pallet {
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
-
-				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
 
 			// Process message by dispatching request via ISMP.
@@ -719,6 +724,74 @@ pub mod pallet {
 			}
 
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
+
+			Ok(())
+		}
+
+		/// Top up the callback weight for a pending message.
+		///
+		/// This extrinsic allows an origin to increase the gas (weight) budget allocated for a
+		/// callback associated with an in-flight message. This is useful when the initially
+		/// allocated weight is insufficient to complete the callback.
+		///
+		/// The additional fee for the new weight is held from the origin using the
+		/// `HoldReason::CallbackGas`.
+		///
+		/// Only pending requests can have their weight increased.
+		///
+		/// # Parameters
+		///
+		/// - `origin`: Must be a signed account.
+		/// - `message_id`: The identifier of the message to be topped up.
+		/// - `additional_weight`: The additional weight to be appended to the message's existing
+		///   callback weight.
+		#[pallet::call_index(6)]
+		#[pallet::weight(T::WeightInfo::top_up_callback_weight())]
+		pub fn top_up_callback_weight(
+			origin: OriginFor<T>,
+			message_id: MessageId,
+			additional_weight: Weight,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			if additional_weight.any_eq(<Weight as Zero>::zero()) {
+				return Err(Error::<T>::ZeroWeight.into());
+			}
+
+			T::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&who,
+				T::WeightToFee::weight_to_fee(&additional_weight),
+			)?;
+
+			Messages::<T>::try_mutate(&who, message_id, |maybe_message| {
+				if let Some(message) = maybe_message {
+					// Mutate to accrue new weight.
+					let total_weight = match message {
+						Message::Ismp { callback, .. } => callback.as_mut().map_or_else(
+							|| Err(Error::<T>::NoCallbackFound),
+							|cb| Ok(cb.increase_callback_weight(additional_weight)),
+						),
+						Message::XcmQuery { callback, .. } => callback.as_mut().map_or_else(
+							|| Err(Error::<T>::NoCallbackFound),
+							|cb| Ok(cb.increase_callback_weight(additional_weight)),
+						),
+						Message::IsmpResponse { .. } => Err(Error::<T>::MessageCompleted),
+						Message::XcmResponse { .. } => Err(Error::<T>::MessageCompleted),
+						Message::IsmpTimeout { .. } => Err(Error::<T>::RequestTimedOut),
+						Message::XcmTimeout { .. } => Err(Error::<T>::RequestTimedOut),
+					}?;
+
+					Self::deposit_event(Event::<T>::CallbackGasIncreased {
+						message_id,
+						total_weight,
+					})
+				} else {
+					return Err(Error::<T>::MessageNotFound);
+				}
+
+				Ok(())
+			})?;
 
 			Ok(())
 		}
@@ -998,6 +1071,14 @@ pub struct Callback {
 	pub abi: Abi,
 	pub selector: [u8; 4],
 	pub weight: Weight,
+}
+
+impl Callback {
+	pub(crate) fn increase_callback_weight(&mut self, additional_weight: Weight) -> Weight {
+		let new_callback_weight = self.weight.saturating_add(additional_weight);
+		self.weight = new_callback_weight;
+		new_callback_weight
+	}
 }
 
 /// The encoding used for the data going to the contract.

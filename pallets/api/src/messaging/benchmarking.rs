@@ -405,5 +405,43 @@ mod messaging_benchmarks {
 		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
 	}
 
+	/// Tops up callback weight for callback execution of pending messages.
+	#[benchmark]
+	fn top_up_callback_weight() {
+		let origin: T::AccountId = account("alice", 0, SEED);
+		let message_id = [0u8; 32];
+		let initial_weight = Weight::from_parts(100_000, 100_000);
+		let additional_weight = Weight::from_parts(150_000, 150_000);
+		let callback = Callback { abi: Abi::Scale, weight: initial_weight, selector: [0u8; 4] };
+
+		let message: Message<T> = Message::Ismp {
+			commitment: [10u8; 32].into(),
+			deposit: 100_000u32.into(),
+			callback: Some(callback),
+		};
+
+		Messages::<T>::insert(&origin, message_id, &message);
+
+		pallet_balances::Pallet::<T>::make_free_balance_be(
+			&origin,
+			pallet_balances::Pallet::<T>::total_issuance() / 2u32.into(),
+		);
+
+		#[extrinsic_call]
+		Pallet::<T>::top_up_callback_weight(
+			RawOrigin::Signed(origin.clone()),
+			message_id,
+			additional_weight,
+		);
+
+		assert_has_event::<T>(
+			Event::<T>::CallbackGasIncreased {
+				message_id,
+				total_weight: initial_weight + additional_weight,
+			}
+			.into(),
+		);
+	}
+
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
 }
