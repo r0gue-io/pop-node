@@ -352,9 +352,9 @@ pub(super) mod nfts {
 	pub(crate) fn default_mint_settings() -> MintSettings {
 		MintSettings {
 			mint_type: MintType::Issuer,
-			price: None,
-			start_block: None,
-			end_block: None,
+			price: Some(Balance::MAX),
+			start_block: Some(BlockNumber::MIN),
+			end_block: Some(BlockNumber::MAX),
 			default_item_settings: ItemSettings::all_enabled(),
 		}
 	}
