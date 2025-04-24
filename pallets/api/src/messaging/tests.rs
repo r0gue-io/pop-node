@@ -32,10 +32,10 @@ mod remove {
 	#[test]
 	fn success_event() {
 		new_test_ext().execute_with(|| {
-			let deposit: Balance = 100;
+			let message_deposit: Balance = 100;
 			let m = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit,
+				message_deposit,
 				response: Default::default(),
 			};
 			let m_id = [0u8; 32];
@@ -47,13 +47,13 @@ mod remove {
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 
@@ -77,11 +77,11 @@ mod remove {
 	#[test]
 	fn multiple_messages_remove_works() {
 		new_test_ext().execute_with(|| {
-			let deposit: Balance = 100;
+			let message_deposit: Balance = 100;
 			// An ismp response can always be removed.
 			let m = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit,
+				message_deposit,
 				response: Default::default(),
 			};
 			let m_id = [0; 32];
@@ -95,19 +95,19 @@ mod remove {
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 
@@ -132,11 +132,11 @@ mod remove {
 	fn deposit_is_returned_if_try_remove_is_ok() {
 		new_test_ext().execute_with(|| {
 			let alice_initial_balance = Balances::free_balance(ALICE);
-			let deposit: Balance = 100;
+			let message_deposit: Balance = 100;
 			// An ismp response can always be removed.
 			let m = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit,
+				message_deposit,
 				response: Default::default(),
 			};
 			let m_id = [0; 32];
@@ -144,7 +144,7 @@ mod remove {
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			Messages::<Test>::insert(ALICE, m_id, &m);
@@ -156,7 +156,7 @@ mod remove {
 			let alice_balance_post_remove = Balances::free_balance(ALICE);
 
 			assert_eq!(alice_initial_balance, alice_balance_post_remove);
-			assert_eq!(alice_balance_post_remove, alice_balance_post_hold + deposit);
+			assert_eq!(alice_balance_post_remove, alice_balance_post_hold + message_deposit);
 		});
 	}
 
@@ -164,15 +164,15 @@ mod remove {
 	fn deposit_is_not_returned_if_try_remove_is_noop() {
 		new_test_ext().execute_with(|| {
 			let alice_initial_balance = Balances::free_balance(ALICE);
-			let deposit: Balance = 100;
+			let message_deposit: Balance = 100;
 
-			let m = Message::Ismp { commitment: H256::default(), callback: None, deposit };
+			let m = Message::Ismp { commitment: H256::default(), callback: None, message_deposit };
 			let m_id = [0; 32];
 
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			Messages::<Test>::insert(ALICE, m_id, &m);
@@ -186,7 +186,7 @@ mod remove {
 
 			let alice_balance_post_remove = Balances::free_balance(ALICE);
 
-			assert_eq!(alice_initial_balance, alice_balance_post_remove + deposit);
+			assert_eq!(alice_initial_balance, alice_balance_post_remove + message_deposit);
 			assert_eq!(alice_balance_post_remove, alice_balance_post_hold);
 		});
 	}
@@ -194,16 +194,16 @@ mod remove {
 	#[test]
 	fn multiple_messages_rolls_back_if_one_fails() {
 		new_test_ext().execute_with(|| {
-			let deposit: Balance = 100;
+			let message_deposit: Balance = 100;
 			let alice_initial_balance = Balances::free_balance(ALICE);
 			let good_message = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit: 0,
+				message_deposit,
 				response: Default::default(),
 			};
 
 			let erroneous_message =
-				Message::Ismp { commitment: H256::default(), callback: None, deposit: 100 };
+				Message::Ismp { commitment: H256::default(), callback: None, message_deposit };
 
 			let good_id_1 = [0; 32];
 			let good_id_2 = [1; 32];
@@ -221,31 +221,31 @@ mod remove {
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 			<Test as crate::messaging::Config>::Fungibles::hold(
 				&HoldReason::Messaging.into(),
 				&ALICE,
-				deposit,
+				message_deposit,
 			)
 			.unwrap();
 
@@ -266,7 +266,7 @@ mod remove {
 			assert!(Messages::<Test>::get(ALICE, erroneous_id_1).is_some());
 
 			let alice_balance_post_remove = Balances::free_balance(ALICE);
-			assert_eq!(alice_initial_balance, alice_balance_post_hold + deposit * 5);
+			assert_eq!(alice_initial_balance, alice_balance_post_hold + message_deposit * 5);
 			assert_eq!(alice_balance_post_remove, alice_balance_post_hold);
 		});
 	}
@@ -277,12 +277,16 @@ mod remove {
 		new_test_ext().execute_with(|| {
 			let commitment = H256::default();
 			let message_id = [0u8; 32];
-			let deposit = 100;
-			let m = Message::Ismp { commitment, callback: None, deposit };
+			let message_deposit = 100;
+			let m = Message::Ismp { commitment, callback: None, message_deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_noop!(
 				Messaging::remove(signed(ALICE), bounded_vec!(message_id)),
@@ -305,13 +309,17 @@ mod remove {
 		new_test_ext().execute_with(|| {
 			let commitment = H256::default();
 			let message_id = [0u8; 32];
-			let deposit = 100;
+			let message_deposit = 100;
 
-			let m = Message::IsmpResponse { commitment, response: bounded_vec!(), deposit };
+			let m = Message::IsmpResponse { commitment, response: bounded_vec!(), message_deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -331,13 +339,30 @@ mod remove {
 		new_test_ext().execute_with(|| {
 			let commitment = H256::default();
 			let message_id = [0u8; 32];
-			let deposit = 100;
+			let message_deposit = 100;
+			let callback_deposit = 100_000;
 
-			let m = Message::IsmpTimeout { commitment, deposit };
+			let m = Message::IsmpTimeout {
+				commitment,
+				message_deposit,
+				callback_deposit: Some(callback_deposit),
+			};
+
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				callback_deposit,
+			)
+			.unwrap();
+
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			IsmpRequests::<Test>::insert(commitment, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
-				.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -349,6 +374,8 @@ mod remove {
 				IsmpRequests::<Test>::get(commitment).is_none(),
 				"Request should have been removed but hasnt."
 			);
+
+			assert_eq!(Balances::total_balance_on_hold(&ALICE), 0);
 		})
 	}
 
@@ -357,13 +384,17 @@ mod remove {
 		new_test_ext().execute_with(|| {
 			let query_id = 0;
 			let message_id = [0u8; 32];
-			let deposit = 100;
+			let message_deposit = 100;
 
-			let m = Message::XcmQuery { query_id, callback: None, deposit };
+			let m = Message::XcmQuery { query_id, callback: None, message_deposit };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_noop!(
 				Messaging::remove(signed(ALICE), bounded_vec!(message_id)),
@@ -385,12 +416,17 @@ mod remove {
 		new_test_ext().execute_with(|| {
 			let query_id = 0;
 			let message_id = [0u8; 32];
-			let deposit = 100;
-			let m = Message::XcmResponse { query_id, deposit, response: Default::default() };
+			let message_deposit = 100;
+			let m =
+				Message::XcmResponse { query_id, message_deposit, response: Default::default() };
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
-				.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
 
 			assert_ok!(Messaging::remove(signed(ALICE), bounded_vec!(message_id)));
 
@@ -410,11 +446,27 @@ mod remove {
 		new_test_ext().execute_with(|| {
 			let query_id = 0;
 			let message_id = [0u8; 32];
-			let deposit = 100;
-			let m = Message::XcmTimeout { query_id, deposit };
+			let message_deposit = 100;
+			let callback_deposit = 100_000;
 
-			<Test as Config>::Fungibles::hold(&HoldReason::Messaging.into(), &ALICE, deposit)
-				.unwrap();
+			let m = Message::XcmTimeout {
+				query_id,
+				message_deposit,
+				callback_deposit: Some(callback_deposit),
+			};
+
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&ALICE,
+				message_deposit,
+			)
+			.unwrap();
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				callback_deposit,
+			)
+			.unwrap();
 
 			Messages::<Test>::insert(ALICE, message_id, &m);
 			XcmQueries::<Test>::insert(query_id, (&ALICE, &message_id));
@@ -429,6 +481,9 @@ mod remove {
 				XcmQueries::<Test>::get(query_id).is_none(),
 				"Message should have been removed but hasnt."
 			);
+
+			// Assert that all holds specified have been released
+			assert_eq!(Balances::total_balance_on_hold(&ALICE), 0);
 		})
 	}
 }
@@ -546,7 +601,6 @@ mod xcm_new_query {
 
 			assert_ne!(response_fee, 0);
 			let alice_pre_transfer = Balances::free_balance(&ALICE);
-			let alices_balance_pre_hold = Balances::free_balance(ALICE);
 
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -603,7 +657,6 @@ mod xcm_new_query {
 	fn takes_messaging_hold() {
 		new_test_ext().execute_with(|| {
 			let timeout = System::block_number() + 1;
-			let callback = None;
 			let message_id = [0; 32];
 			let expected_deposit =
 				calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
@@ -624,7 +677,7 @@ mod xcm_new_query {
 				message_id,
 				RESPONSE_LOCATION,
 				timeout,
-				callback,
+				None,
 			));
 
 			let alices_held_balance_post_hold =
@@ -711,13 +764,18 @@ mod xcm_response {
 
 			// Update the message to XcmTimedOut
 			Messages::<Test>::mutate(ALICE, message_id, |message| {
-				let Some(Message::XcmQuery { query_id, deposit, .. }): &mut Option<Message<Test>> =
-					message
+				let Some(Message::XcmQuery { query_id, message_deposit, .. }): &mut Option<
+					Message<Test>,
+				> = message
 				else {
 					panic!("No message!");
 				};
 				generated_query_id = *query_id;
-				*message = Some(Message::XcmTimeout { query_id: *query_id, deposit: *deposit });
+				*message = Some(Message::XcmTimeout {
+					query_id: *query_id,
+					message_deposit: *message_deposit,
+					callback_deposit: None,
+				});
 			});
 
 			assert_noop!(
@@ -813,15 +871,6 @@ mod xcm_response {
 			let expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
 			let callback = Callback { selector: [1; 4], weight: Zero::zero(), abi: Abi::Scale };
-			let expected_deposit = calculate_protocol_deposit::<
-				Test,
-				<Test as crate::messaging::Config>::OnChainByteFee,
-			>(ProtocolStorageDeposit::XcmQueries) +
-				calculate_message_deposit::<
-					Test,
-					<Test as crate::messaging::Config>::OnChainByteFee,
-				>();
-
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
@@ -1263,7 +1312,8 @@ mod ismp_hooks {
 			new_test_ext().execute_with(|| {
 				let commitment: H256 = [8u8; 32].into();
 				let message_id = [7u8; 32];
-				let message = Message::XcmQuery { query_id: 0, callback: None, deposit: 100 };
+				let message =
+					Message::XcmQuery { query_id: 0, callback: None, message_deposit: 100 };
 
 				IsmpRequests::<Test>::insert(commitment, (&ALICE, message_id));
 				Messages::<Test>::insert(ALICE, message_id, &message);
@@ -1281,15 +1331,16 @@ mod ismp_hooks {
 			new_test_ext().execute_with(|| {
 				let commitment: H256 = [8u8; 32].into();
 				let message_id = [7u8; 32];
+				let message_deposit = 100;
 				IsmpRequests::<Test>::insert(commitment, (&ALICE, message_id));
-				let message = Message::Ismp { commitment, callback: None, deposit: 100 };
+				let message = Message::Ismp { commitment, callback: None, message_deposit };
 				Messages::<Test>::insert(ALICE, message_id, &message);
 
 				let res = ismp::timeout_commitment::<Test>(&commitment);
 
 				assert!(res.is_ok(), "{:?}", res.unwrap_err().downcast::<IsmpError>().unwrap());
 
-				if let Some(Message::IsmpTimeout { commitment, deposit: 100 }) =
+				if let Some(Message::IsmpTimeout { commitment, .. }) =
 					Messages::<Test>::get(ALICE, message_id)
 				{
 					let events = events();
@@ -1351,8 +1402,11 @@ mod ismp_hooks {
 				let commitment: H256 = Default::default();
 				let message_id = [1u8; 32];
 
-				let message =
-					Message::IsmpResponse { commitment, response: bounded_vec![], deposit: 100 };
+				let message = Message::IsmpResponse {
+					commitment,
+					response: bounded_vec![],
+					message_deposit: 100,
+				};
 				IsmpRequests::<Test>::insert(commitment, (ALICE, message_id));
 				Messages::<Test>::insert(ALICE, message_id, message);
 
@@ -1374,7 +1428,7 @@ mod ismp_hooks {
 				let commitment: H256 = Default::default();
 				let message_id = [1u8; 32];
 
-				let message = Message::Ismp { commitment, callback: None, deposit: 100 };
+				let message = Message::Ismp { commitment, callback: None, message_deposit: 100 };
 				IsmpRequests::<Test>::insert(commitment, (ALICE, message_id));
 				Messages::<Test>::insert(ALICE, message_id, message);
 
@@ -1398,13 +1452,14 @@ mod ismp_hooks {
 				let commitment: H256 = Default::default();
 				let message_id = [1u8; 32];
 				let callback = Callback { selector: [1; 4], weight: 100.into(), abi: Abi::Scale };
-				let deposit = 100;
-				let message = Message::Ismp { commitment, callback: Some(callback), deposit };
+				let message_deposit = 100;
+				let message =
+					Message::Ismp { commitment, callback: Some(callback), message_deposit };
 
 				<Test as crate::messaging::Config>::Fungibles::hold(
 					&HoldReason::Messaging.into(),
 					&ALICE,
-					deposit,
+					message_deposit,
 				)
 				.unwrap();
 
@@ -1420,7 +1475,7 @@ mod ismp_hooks {
 				assert!(res.is_ok(), "process_response failed");
 
 				let alice_post_process = Balances::free_balance(ALICE);
-				assert_eq!(alice_post_process - deposit, alice_post_hold);
+				assert_eq!(alice_post_process - message_deposit, alice_post_hold);
 			})
 		}
 	}

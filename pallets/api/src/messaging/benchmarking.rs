@@ -41,26 +41,25 @@ mod messaging_benchmarks {
 	///   (bounded by `MaxRemovals`).
 	#[benchmark]
 	fn remove(x: Linear<1, { T::MaxRemovals::get() }>) {
-		let deposit: BalanceOf<T> = sp_runtime::traits::One::one();
+		let message_deposit: BalanceOf<T> = 50_000u32.into();
+		let callback_deposit: BalanceOf<T> = 100_000u32.into();
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		let mut message_ids: BoundedVec<MessageId, T::MaxRemovals> = BoundedVec::new();
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
 		for i in 0..x {
-			<T as crate::messaging::Config>::Fungibles::hold(
-				&HoldReason::Messaging.into(),
-				&owner,
-				deposit,
-			)
-			.unwrap();
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &owner, message_deposit).unwrap();
+
+			T::Fungibles::hold(&HoldReason::CallbackGas.into(), &owner, callback_deposit).unwrap();
 
 			let message_id = H256::from(blake2_256(&(i.to_le_bytes())));
 			let commitment = H256::from(blake2_256(&(i.to_le_bytes())));
 
-			let good_message = Message::IsmpResponse {
+			// Timeout messages release callback deposit hence, are most expensive case for now.
+			let good_message = Message::IsmpTimeout {
 				commitment: commitment.clone(),
-				deposit,
-				response: Default::default(),
+				message_deposit,
+				callback_deposit: Some(callback_deposit),
 			};
 
 			Messages::<T>::insert(&owner, &message_id.0, &good_message);
@@ -239,7 +238,7 @@ mod messaging_benchmarks {
 			)
 		};
 
-		let message = Message::Ismp { commitment, callback, deposit: One::one() };
+		let message = Message::Ismp { commitment, callback, message_deposit };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &message);
@@ -298,7 +297,7 @@ mod messaging_benchmarks {
 
 		let event = Event::<T>::IsmpTimedOut { commitment };
 
-		let input_message = Message::Ismp { commitment, callback, deposit: One::one() };
+		let input_message = Message::Ismp { commitment, callback, message_deposit: One::one() };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &input_message);
