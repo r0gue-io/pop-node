@@ -617,8 +617,8 @@ pub mod pallet {
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
 				// Since we are dispatching in the xcm-executor with call.dispatch_call, we must
 				// manually adjust the blockweight to weight of the extrinsic.
-				let static_weight_adjustment =
-					T::WeightInfo::xcm_response().saturating_add(T::CallbackExecutor::execution_weight());
+				let static_weight_adjustment = T::WeightInfo::xcm_response()
+					.saturating_add(T::CallbackExecutor::execution_weight());
 				// Never roll back state if call fails.
 				// Ensure that the response can be polled.
 				if Self::call(
