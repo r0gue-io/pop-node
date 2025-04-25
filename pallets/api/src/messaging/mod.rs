@@ -618,7 +618,7 @@ pub mod pallet {
 				// Since we are dispatching in the xcm-executor with call.dispatch_call, we must
 				// manually adjust the blockweight to weight of the extrinsic.
 				let static_weight_adjustment =
-					T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight();
+					T::WeightInfo::xcm_response().saturating_add(T::CallbackExecutor::execution_weight());
 				// Never roll back state if call fails.
 				// Ensure that the response can be polled.
 				if Self::call(
@@ -783,7 +783,7 @@ impl<T: Config> Pallet<T> {
 		// Weight used will always be less or equal to callback.weight hence this is safe with the
 		// above check.
 		let total_weight_used =
-			callback_weight_used + static_weight_adjustment.unwrap_or(Zero::zero());
+			callback_weight_used.saturating_add(static_weight_adjustment.unwrap_or(Zero::zero()));
 
 		// Manually adjust callback weight.
 		frame_system::Pallet::<T>::register_extra_weight_unchecked(
@@ -898,7 +898,7 @@ impl<T: Config> Pallet<T> {
 		let total_deposit = T::WeightToFee::weight_to_fee(&max_weight);
 		let reason = HoldReason::CallbackGas.into();
 
-		let reward = if weight_to_refund.all_gt(Zero::zero()) {
+		let reward = if weight_to_refund.any_gt(Zero::zero()) {
 			// Try return some deposit
 			let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
 			let execution_reward = total_deposit.saturating_sub(returnable_deposit);
@@ -916,7 +916,7 @@ impl<T: Config> Pallet<T> {
 			reward,
 			Exact,
 			Restriction::Free,
-			Fortitude::Force,
+			Fortitude::Polite,
 		)?;
 
 		Ok(())
