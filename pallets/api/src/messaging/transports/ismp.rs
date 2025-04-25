@@ -188,7 +188,7 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 			Response::Post(_) => 0,
 		};
 
-		T::WeightInfo::ismp_on_response(x) + T::CallbackExecutor::execution_weight()
+		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())
 	}
 }
 
