@@ -1605,8 +1605,11 @@ mod top_up_callback_weight {
 	fn xcm_response_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message =
-				Message::XcmResponse { query_id: 0, message_deposit: 100, response: Response::Null };
+			let message = Message::XcmResponse {
+				query_id: 0,
+				message_deposit: 100,
+				response: Response::Null,
+			};
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1621,7 +1624,11 @@ mod top_up_callback_weight {
 	fn xcm_timeout_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::XcmTimeout { query_id: 0, message_deposit: Default::default(), callback_deposit: Default::default() };	
+			let message = Message::XcmTimeout {
+				query_id: 0,
+				message_deposit: Default::default(),
+				callback_deposit: Default::default(),
+			};
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1636,7 +1643,11 @@ mod top_up_callback_weight {
 	fn ismp_timeout_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::IsmpTimeout { commitment: Default::default(), message_deposit: Default::default(), callback_deposit: Default::default() };
+			let message = Message::IsmpTimeout {
+				commitment: Default::default(),
+				message_deposit: Default::default(),
+				callback_deposit: Default::default(),
+			};
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1695,8 +1706,11 @@ mod top_up_callback_weight {
 	fn ismp_pending_no_callback() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message =
-				Message::Ismp { commitment: Default::default(), message_deposit: 100, callback: None };
+			let message = Message::Ismp {
+				commitment: Default::default(),
+				message_deposit: 100,
+				callback: None,
+			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
