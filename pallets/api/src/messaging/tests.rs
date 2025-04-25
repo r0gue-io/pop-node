@@ -1,7 +1,7 @@
 #![cfg(test)]
 use frame_support::{
-	assert_noop, assert_ok, testing_prelude::bounded_vec, traits::fungible::hold::Inspect,
-	weights::Weight,
+	assert_noop, assert_ok, dispatch::PostDispatchInfo, testing_prelude::bounded_vec,
+	traits::fungible::hold::Inspect, weights::Weight,
 };
 use sp_core::H256;
 
@@ -858,6 +858,7 @@ mod xcm_response {
 			));
 
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
+
 			assert!(Messages::<Test>::get(ALICE, message_id).is_none());
 			assert!(XcmQueries::<Test>::get(expected_query_id).is_none());
 		})
@@ -932,135 +933,199 @@ mod xcm_hooks {
 	}
 }
 
-mod handle_callback_result {
-	use frame_support::dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo};
-	use sp_runtime::DispatchErrorWithPostInfo;
+mod call {
+	use frame_system::pallet::BlockWeight;
 
+	use super::*;
+	#[test]
+	fn assert_error_event() {
+		new_test_ext().execute_with(|| {
+			let message_id = [1u8; 32];
+			let callback_weight = Weight::from_parts(100_000, 100_000);
+			let data = [100u8; 5];
+			let callback =
+				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
+			let static_weight_adjustment = Weight::from_parts(150_000, 150_000);
+			assert_ok!(Pallet::<Test>::call(
+				&ALICE,
+				callback,
+				&message_id,
+				&data,
+				Some(static_weight_adjustment)
+			));
+
+			System::assert_last_event(
+				Event::<Test>::WeightRefundErrored {
+					message_id,
+					error: DispatchError::Token(sp_runtime::TokenError::FundsUnavailable),
+				}
+				.into(),
+			);
+		})
+	}
+
+	// AlwaysSuccessfullCallbackExecutor should return half the weight of the callback.weight
+	// TODO: there may be a better way of handling this case.
+	#[test]
+	fn blockweight_mutation_happens() {
+		new_test_ext().execute_with(|| {
+			let blockweight_pre_call =
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+			let message_id = [1u8; 32];
+			let callback_weight = Weight::from_parts(10_000_000, 10_000_000);
+			let callback_fee = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight);
+			let data = [100u8; 5];
+			let callback =
+				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
+			let static_weight_adjustment = Weight::from_parts(15_000_000, 15_000_000);
+			<Test as Config>::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&ALICE,
+				callback_fee,
+			)
+			.unwrap();
+
+			assert_ok!(Pallet::<Test>::call(
+				&ALICE,
+				callback,
+				&message_id,
+				&data,
+				Some(static_weight_adjustment)
+			));
+
+			let blockweight_post_call =
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+			assert_ne!(blockweight_post_call, Zero::zero());
+
+			// callback weight used in tests is total / 2.
+			assert_eq!(
+				blockweight_post_call - blockweight_pre_call,
+				callback_weight / 2 + static_weight_adjustment
+			);
+		})
+	}
+}
+
+mod process_callback_weight {
 	use super::*;
 
 	#[test]
-	fn claims_all_weight_to_fee_pot_on_failure() {
+	fn ok_with_weight_returns_weight() {
 		new_test_ext().execute_with(|| {
-			let origin = ALICE;
-			let id = [1u8; 32];
-			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
-				post_info: Default::default(),
-				error: Error::<Test>::InvalidMessage.into(),
-			});
-			let actual_weight = Weight::from_parts(100_000_000, 100_000_000);
-
-			let callback = Callback { selector: [1; 4], weight: actual_weight, abi: Abi::Scale };
-
-			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&actual_weight);
-
-			assert!(deposit != 0);
-			// Artificially take the deposit
-			<Test as crate::messaging::Config>::Fungibles::hold(
-				&HoldReason::CallbackGas.into(),
-				&ALICE,
-				deposit,
-			)
-			.unwrap();
-
-			let pot_pre_handle = Balances::free_balance(FEE_ACCOUNT);
-			let alice_balance_pre_handle = Balances::free_balance(ALICE);
-
-			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin, &id, result, callback
-			)
-			.is_ok());
-
-			let alice_balance_post_handle = Balances::free_balance(ALICE);
-			let pot_post_handle = Balances::free_balance(FEE_ACCOUNT);
-
-			assert_eq!(alice_balance_post_handle, alice_balance_pre_handle);
-			assert_eq!(pot_post_handle, pot_pre_handle + deposit);
-		})
-	}
-
-	#[test]
-	fn assert_event_success() {
-		new_test_ext().execute_with(|| {
-			let origin = ALICE;
-			let id = [1u8; 32];
-			let actual_weight = Weight::from_parts(100, 100);
+			let weight = Weight::from_parts(100_000, 100_000);
+			let max_weight = Weight::zero();
 			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-				actual_weight: Some(actual_weight),
+				actual_weight: Some(weight),
 				pays_fee: Pays::Yes,
 			});
-			let callback = Callback {
-				selector: [1; 4],
-				weight: Weight::from_parts(1000, 1000),
-				abi: Abi::Scale,
-			};
 
-			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&actual_weight);
+			let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
 
-			// Artificially take the deposit
-			<Test as crate::messaging::Config>::Fungibles::hold(
-				&HoldReason::CallbackGas.into(),
-				&ALICE,
-				deposit,
-			)
-			.unwrap();
-
-			assert_ok!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin, &id, result, callback
-			));
-			assert!(events().contains(&Event::<Test>::CallbackExecuted { origin, id, callback }));
+			assert_eq!(processed_weight, weight);
 		})
 	}
 
 	#[test]
-	fn assert_event_failure() {
+	fn ok_without_weight_returns_max_weight() {
+		new_test_ext().execute_with(|| {
+			let max_weight = Weight::from_parts(200_000, 200_000);
+			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+				actual_weight: None,
+				pays_fee: Pays::Yes,
+			});
+
+			let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
+
+			assert_eq!(processed_weight, max_weight);
+		})
+	}
+
+	#[test]
+	fn err_returns_max_weight() {
+		new_test_ext().execute_with(|| {
+			let max_weight = Weight::from_parts(200_000, 200_000);
+			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
+				post_info: Default::default(),
+				error: Error::<Test>::InvalidMessage.into(),
+			});
+			let processed_weight = Pallet::<Test>::process_callback_weight(&result, max_weight);
+			assert_eq!(processed_weight, max_weight);
+		})
+	}
+}
+
+mod deposit_callback_event {
+	use super::*;
+	#[test]
+	fn emits_callback_executed_event_on_success() {
 		new_test_ext().execute_with(|| {
 			let origin = ALICE;
-			let id = [1u8; 32];
+			let message_id = [1u8; 32];
+			let callback = Callback {
+				abi: Abi::Scale,
+				selector: [0; 4],
+				weight: Weight::from_parts(100_000, 100_000),
+			};
+
+			let result: DispatchResultWithPostInfo = Ok(PostDispatchInfo {
+				actual_weight: Some(Weight::from_parts(1_000, 0)),
+				pays_fee: Default::default(),
+			});
+
+			Pallet::<Test>::deposit_callback_event(&origin, message_id, &callback, &result);
+
+			System::assert_last_event(
+				Event::<Test>::CallbackExecuted { origin, id: message_id, callback }.into(),
+			);
+		});
+	}
+
+	#[test]
+	fn emits_callback_failed_event_on_error() {
+		new_test_ext().execute_with(|| {
+			let origin = BOB;
+			let message_id = [2u8; 32];
+			let callback = Callback {
+				abi: Abi::Scale,
+				selector: [0; 4],
+				weight: Weight::from_parts(100_000, 100_000),
+			};
+
 			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
 				post_info: Default::default(),
 				error: Error::<Test>::InvalidMessage.into(),
 			});
 
-			let callback = Callback {
-				selector: [1; 4],
-				weight: Weight::from_parts(1000, 1000),
-				abi: Abi::Scale,
-			};
+			Pallet::<Test>::deposit_callback_event(&origin, message_id, &callback, &result);
 
-			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin, &id, result, callback
-			)
-			.is_ok());
-
-			assert!(events().contains(&Event::<Test>::CallbackFailed {
-				origin,
-				id,
-				callback,
-				post_info: Default::default(),
-				error: Error::<Test>::InvalidMessage.into()
-			}));
-		})
+			System::assert_last_event(
+				Event::<Test>::CallbackFailed {
+					origin,
+					id: message_id,
+					callback,
+					error: result.unwrap_err(),
+				}
+				.into(),
+			);
+		});
 	}
+}
+
+mod manage_fees {
+	use super::*;
 
 	#[test]
 	fn assert_payback_when_execution_weight_is_less_than_deposit_held() {
 		new_test_ext().execute_with(|| {
 			let origin = ALICE;
-			let id = [1u8; 32];
 			let actual_weight_executed = Weight::from_parts(50_000_000, 70_000_000);
 			let callback_weight_reserved = Weight::from_parts(100_000_000, 100_000_000);
 
-			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-				actual_weight: Some(actual_weight_executed),
-				pays_fee: Pays::Yes,
-			});
-
-			let callback =
-				Callback { selector: [1; 4], weight: callback_weight_reserved, abi: Abi::Scale };
+			Callback { selector: [1; 4], weight: callback_weight_reserved, abi: Abi::Scale };
 
 			let deposit = <Test as Config>::WeightToFee::weight_to_fee(&callback_weight_reserved);
 
-			assert!(deposit != 0);
+			assert!(deposit != 0, "Please set an appropriate weight to fee implementation.");
 
 			// Artificially take the deposit
 			<Test as crate::messaging::Config>::Fungibles::hold(
@@ -1080,8 +1145,10 @@ mod handle_callback_result {
 			let fee_account_pre_handle = Balances::free_balance(FEE_ACCOUNT);
 			let alice_balance_pre_handle = Balances::free_balance(ALICE);
 
-			assert!(crate::messaging::Pallet::<Test>::handle_callback_result(
-				&origin, &id, result, callback
+			assert!(crate::messaging::Pallet::<Test>::manage_fees(
+				&origin,
+				actual_weight_executed,
+				callback_weight_reserved
 			)
 			.is_ok());
 
@@ -1502,7 +1569,7 @@ mod top_up_callback_weight {
 			let message_id = [0u8; 32];
 			let message = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				response: Default::default(),
 			};
 			let weight = Weight::zero();
@@ -1521,7 +1588,7 @@ mod top_up_callback_weight {
 			let message_id = [0u8; 32];
 			let message = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				response: Default::default(),
 			};
 			let weight = Weight::from_parts(100_000, 100_000);
@@ -1538,8 +1605,11 @@ mod top_up_callback_weight {
 	fn xcm_response_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message =
-				Message::XcmResponse { query_id: 0, deposit: 100, response: Response::Null };
+			let message = Message::XcmResponse {
+				query_id: 0,
+				message_deposit: 100,
+				response: Response::Null,
+			};
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1554,7 +1624,11 @@ mod top_up_callback_weight {
 	fn xcm_timeout_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::XcmTimeout { query_id: 0, deposit: 100 };
+			let message = Message::XcmTimeout {
+				query_id: 0,
+				message_deposit: Default::default(),
+				callback_deposit: Default::default(),
+			};
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1569,7 +1643,11 @@ mod top_up_callback_weight {
 	fn ismp_timeout_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::IsmpTimeout { commitment: Default::default(), deposit: 100 };
+			let message = Message::IsmpTimeout {
+				commitment: Default::default(),
+				message_deposit: Default::default(),
+				callback_deposit: Default::default(),
+			};
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1589,7 +1667,7 @@ mod top_up_callback_weight {
 			let callback = Callback { abi: Abi::Scale, selector: [0u8; 4], weight: initial_weight };
 			let message = Message::Ismp {
 				commitment: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				callback: Some(callback),
 			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
@@ -1628,8 +1706,11 @@ mod top_up_callback_weight {
 	fn ismp_pending_no_callback() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message =
-				Message::Ismp { commitment: Default::default(), deposit: 100, callback: None };
+			let message = Message::Ismp {
+				commitment: Default::default(),
+				message_deposit: 100,
+				callback: None,
+			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1644,7 +1725,7 @@ mod top_up_callback_weight {
 	fn xcm_pending_no_callback() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::XcmQuery { query_id: 0, deposit: 100, callback: None };
+			let message = Message::XcmQuery { query_id: 0, message_deposit: 100, callback: None };
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1664,7 +1745,7 @@ mod top_up_callback_weight {
 			let callback = Callback { abi: Abi::Scale, selector: [0u8; 4], weight: initial_weight };
 			let message = Message::XcmQuery {
 				query_id: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				callback: Some(callback),
 			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
@@ -1709,7 +1790,7 @@ mod top_up_callback_weight {
 			let callback = Callback { abi: Abi::Scale, selector: [0u8; 4], weight: initial_weight };
 			let message = Message::XcmQuery {
 				query_id: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				callback: Some(callback),
 			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);

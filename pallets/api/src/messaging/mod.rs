@@ -5,14 +5,14 @@ pub use alloc::borrow::ToOwned;
 use ::ismp::Error as IsmpError;
 use codec::{Decode, Encode};
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo, PostDispatchInfo},
+	dispatch::{DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
 	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
 		tokens::{
 			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate},
 			Fortitude,
-			Precision::{BestEffort, Exact},
+			Precision::Exact,
 			Preservation, Restriction,
 		},
 		Get,
@@ -265,9 +265,8 @@ pub mod pallet {
 			id: MessageId,
 			/// The callback which failed.
 			callback: Callback,
-			post_info: PostDispatchInfo,
 			/// The error which occurred.
-			error: DispatchError,
+			error: DispatchErrorWithPostInfo,
 		},
 		/// One or more messages have been removed for the origin.
 		Removed {
@@ -280,6 +279,8 @@ pub mod pallet {
 		IsmpTimedOut { commitment: H256 },
 		/// A collection of xcm queries have timed out.
 		XcmQueriesTimedOut { query_ids: Vec<QueryId> },
+		/// An error has occured while attempting to refund weight.
+		WeightRefundErrored { message_id: MessageId, error: DispatchError },
 		/// Callback gas has been topped up.
 		CallbackGasIncreased { message_id: MessageId, total_weight: Weight },
 	}
@@ -306,6 +307,8 @@ pub mod pallet {
 		FutureTimeoutMandatory,
 		/// Message block limit has been reached for this expiry block. Try a different timeout.
 		MaxMessageTimeoutPerBlockReached,
+		/// This callback cannot be processed due to lack of blockspace. Please poll the response.
+		BlockspaceAllowanceReached,
 		/// This is not possible as the message has completed.
 		MessageCompleted,
 		/// No callback has been found for this query.
@@ -465,7 +468,7 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -603,7 +606,8 @@ pub mod pallet {
 		/// - `xcm_response`: The response data.
 		#[pallet::call_index(4)]
 		#[pallet::weight({
-			T::WeightInfo::xcm_response() + T::CallbackExecutor::execution_weight()
+			// This is only used to check against max_weight field in the OnResponse implementation in pallet-xcm.
+			T::WeightInfo::xcm_response()
 		})]
 		pub fn xcm_response(
 			origin: OriginFor<T>,
@@ -634,7 +638,22 @@ pub mod pallet {
 			if let Some(callback) = callback {
 				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
-				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
+				// Since we are dispatching in the xcm-executor with call.dispatch_call, we must
+				// manually adjust the blockweight to weight of the extrinsic.
+				let static_weight_adjustment = T::WeightInfo::xcm_response()
+					.saturating_add(T::CallbackExecutor::execution_weight());
+
+				// Never roll back state if call fails.
+				// Ensure that the response can be polled.
+				if Self::call(
+					&initiating_origin,
+					callback.to_owned(),
+					&id,
+					&xcm_response,
+					Some(static_weight_adjustment),
+				)
+				.is_ok()
+				{
 					Messages::<T>::remove(&initiating_origin, id);
 					XcmQueries::<T>::remove(query_id);
 					T::Fungibles::release(
@@ -643,7 +662,8 @@ pub mod pallet {
 						*message_deposit,
 						Exact,
 					)?;
-					return Ok(());
+
+					return Ok(())
 				}
 			}
 			// No callback is executed,
@@ -657,7 +677,7 @@ pub mod pallet {
 				},
 			);
 
-			Ok(())
+			Ok(().into())
 		}
 
 		/// Remove a batch of completed or timed-out messages.
@@ -796,118 +816,222 @@ pub mod pallet {
 			Ok(())
 		}
 	}
-}
-impl<T: Config> Pallet<T> {
-	/// Executes a callback function associated with a message response.
-	///
-	/// This function constructs the payload from the callback ABI and data, then invokes the
-	/// callback using the runtime's `CallbackExecutor`.
-	///
-	/// # Parameters
-	/// - `initiating_origin`: The account that originally dispatched the request.
-	/// - `callback`: The callback definition, including selector, ABI, and weight.
-	/// - `id`: The identifier for the original message.
-	/// - `data`: The payload to be passed to the callback (e.g., response data).
-	pub(crate) fn call(
-		initiating_origin: &AccountIdOf<T>,
-		callback: Callback,
-		id: &MessageId,
-		data: &impl Encode,
-	) -> DispatchResult {
-		let result = T::CallbackExecutor::execute(
-			initiating_origin,
-			match callback.abi {
-				Abi::Scale => [callback.selector.to_vec(), (id, data).encode()].concat(),
-			},
-			callback.weight,
-		);
 
-		log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
-		Self::handle_callback_result(initiating_origin, id, result, callback)
-	}
+	impl<T: Config> Pallet<T> {
+		/// Executes a registered callback with the given input data and manually charges block
+		/// weight.
+		///
+		/// This function is responsible for handling the full lifecycle of a callback invocation:
+		/// - Calculating the total weight cost of the callback, including a static adjustment.
+		/// - Ensuring that sufficient blockspace is available before execution.
+		/// - Executing the callback via the configured `CallbackExecutor`.
+		/// - Registering the actual weight used with the runtime.
+		/// - Managing any associated weight fee refund logic.
+		///
+		/// # Parameters
+		///
+		/// - `initiating_origin`: The account that triggered the callback. This will be passed to
+		///   the executor and used for fee management and event attribution.
+		/// - `callback`: The callback definition.
+		/// - `id`: The message ID associated with this callback's message.
+		/// - `data`: The encoded payload to send to the callback.
+		/// - `static_weight_adjustment`: An optional additional weight to charge, typically to
+		///   account for outer logic like wrapping or delegation. This is added to the callback's
+		///   declared weight.
+		///
+		/// # Weight Handling
+		///
+		/// - Before executing the callback, this function checks whether the total expected weight
+		///   (`callback.weight + static_weight_adjustment`) can be accommodated in the current
+		///   block.
+		/// - If the block is saturated, the function returns early with an error and does not
+		///   mutate state.
+		/// - After execution, the actual weight used by the callback is determined using
+		///   [`Self::process_callback_weight`] and registered via
+		///   [`frame_system::Pallet::<T>::register_extra_weight_unchecked`].
+		pub(crate) fn call(
+			initiating_origin: &AccountIdOf<T>,
+			callback: Callback,
+			id: &MessageId,
+			data: &impl Encode,
+			// This should include T::CallbackExecutor::execution_weight() where applicable unless
+			// already charged.
+			static_weight_adjustment: Option<Weight>,
+		) -> DispatchResult {
+			// This is the total weight that should be deducted from the blockspace for callback
+			// execution.
+			let max_weight = callback
+				.weight
+				.checked_add(&static_weight_adjustment.unwrap_or(Zero::zero()))
+				.ok_or(Error::<T>::BlockspaceAllowanceReached)?;
 
-	/// Handles the result of a previously executed callback function.
-	///
-	/// This function is responsible for:
-	/// - Refunding unused callback gas weight.
-	/// - Transferring the execution reward to the fee account.
-	/// - Emitting success or failure events.
-	/// - Cleaning up or persisting message state based on result.
-	///
-	/// # Parameters
-	/// - `initiating_origin`: The account that initiated the callback.
-	/// - `id`: The message ID associated with this callback.
-	/// - `result`: The execution result (with post-dispatch info if any).
-	/// - `callback`: The original callback definition.
-	pub(crate) fn handle_callback_result(
-		initiating_origin: &AccountIdOf<T>,
-		id: &MessageId,
-		result: DispatchResultWithPostInfo,
-		callback: Callback,
-	) -> DispatchResult {
-		match result {
-			Ok(post_info) => {
-				// Try and return any unused callback weight.
-				if let Some(weight_used) = post_info.actual_weight {
-					let weight_to_refund = callback.weight.saturating_sub(weight_used);
-					if weight_to_refund.all_gt(Zero::zero()) {
-						let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
-						let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
-						let execution_reward = total_deposit.saturating_sub(returnable_deposit);
-						let reason = HoldReason::CallbackGas.into();
+			// Dont mutate state if blockspace will be saturated.
+			ensure!(
+				frame_system::BlockWeight::<T>::get()
+					.checked_accrue(max_weight, DispatchClass::Normal)
+					.is_ok(),
+				Error::<T>::BlockspaceAllowanceReached
+			);
 
-						T::Fungibles::release(
-							&reason,
-							initiating_origin,
-							returnable_deposit,
-							BestEffort,
-						)?;
-						T::Fungibles::transfer_on_hold(
-							&reason,
-							initiating_origin,
-							&T::FeeAccount::get(),
-							execution_reward,
-							BestEffort,
-							Restriction::Free,
-							Fortitude::Polite,
-						)?;
+			// Execute callback.
+			// Its important to note that we must still ensure that the weight used is accounted for
+			// in frame_system. Hence all calls after this must not return an err and state
+			// should not be rolled back.
+			let result = T::CallbackExecutor::execute(
+				initiating_origin,
+				match callback.abi {
+					Abi::Scale => [callback.selector.to_vec(), (id, data).encode()].concat(),
+				},
+				callback.weight,
+			);
+
+			log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
+			Self::deposit_callback_event(initiating_origin, *id, &callback, &result);
+			let callback_weight_used = Self::process_callback_weight(&result, callback.weight);
+
+			// Weight used will always be less or equal to callback.weight hence this is safe with
+			// the above check.
+			let total_weight_used = callback_weight_used
+				.saturating_add(static_weight_adjustment.unwrap_or(Zero::zero()));
+
+			// Manually adjust callback weight.
+			frame_system::Pallet::<T>::register_extra_weight_unchecked(
+				total_weight_used,
+				DispatchClass::Normal,
+			);
+
+			match Self::manage_fees(&initiating_origin, callback_weight_used, callback.weight) {
+				Ok(_) => (),
+				// Dont return early, we must register the weight used by the callback.
+				Err(error) =>
+					Self::deposit_event(Event::WeightRefundErrored { message_id: *id, error }),
+			}
+			Ok(())
+		}
+
+		/// Deposits an event indicating the outcome of a callback execution.
+		///
+		/// This function is intended to be called after attempting to dispatch a callback.
+		/// It emits either a `CallbackExecuted` or `CallbackFailed` event based on the result.
+		///
+		/// # Parameters
+		///
+		/// - `initiating_origin`: The account that originally initiated the message.
+		/// - `message_id`: The unique identifier associated with the message that triggered the
+		///   callback.
+		/// - `callback`: The callback object that was attempted to be executed.
+		/// - `result`: The outcome of the callback execution, containing either success or failure.
+		pub(crate) fn deposit_callback_event(
+			initiating_origin: &T::AccountId,
+			message_id: MessageId,
+			callback: &Callback,
+			result: &DispatchResultWithPostInfo,
+		) {
+			match result {
+				Ok(_) => {
+					Self::deposit_event(Event::<T>::CallbackExecuted {
+						origin: initiating_origin.clone(),
+						id: message_id,
+						callback: callback.clone(),
+					});
+				},
+				Err(error) => {
+					Self::deposit_event(Event::<T>::CallbackFailed {
+						origin: initiating_origin.clone(),
+						id: message_id,
+						callback: callback.clone(),
+						error: error.clone(),
+					});
+				},
+			}
+		}
+
+		/// Determines the actual weight consumed by a callback execution, falling back to the
+		/// maximum if unknown.
+		///
+		/// This function is used to calculate the weight to be accounted for after attempting to
+		/// dispatch a callback. It ensures that even if the callback execution fails or does not
+		/// report actual weight, the worst-case (`max_weight`) is used to avoid under-accounting.
+		///
+		/// # Parameters
+		///
+		/// - `result`: The result of the callback dispatch, including any `PostDispatchInfo` if
+		///   successful.
+		/// - `max_weight`: The maximum weight budgeted for the callback execution.
+		///
+		/// # Rationale
+		///
+		/// - Protects against underestimating weight in cases where `actual_weight` is missing or
+		///   the dispatch fails.
+		/// - Ensures conservative accounting to avoid exceeding block or message limits.
+		pub(crate) fn process_callback_weight(
+			result: &DispatchResultWithPostInfo,
+			max_weight: Weight,
+		) -> Weight {
+			match result {
+				// callback has succeded.
+				Ok(post_info) => {
+					match post_info.actual_weight {
+						Some(w) => w,
+						// return the worst case if the callback executor does not populate the
+						// actual weight.
+						None => max_weight,
 					}
-				}
+				},
+				// callback has failed.
+				Err(_) => {
+					// return the maximum weight.
+					max_weight
+				},
+			}
+		}
 
-				Self::deposit_event(Event::<T>::CallbackExecuted {
-					origin: initiating_origin.clone(),
-					id: *id,
-					callback,
-				});
+		/// Handles fee management and refund logic for callback execution.
+		///
+		/// This function is intended to balance the fees collected upfront for a callback
+		/// against the actual weight used during execution. If the callback uses less weight
+		/// than originally reserved, the surplus is refunded to the user, and the remainder
+		/// is transferred as an execution reward to the fee collector account.
+		///
+		/// # Parameters
+		///
+		/// - `initiating_origin`: The account that initially paid for the callback execution.
+		/// - `weight_used`: The actual weight consumed by the callback.
+		/// - `max_weight`: The maximum weight that was budgeted and paid for in advance.
+		pub(crate) fn manage_fees(
+			initiating_origin: &AccountIdOf<T>,
+			weight_used: Weight,
+			max_weight: Weight,
+		) -> DispatchResult {
+			let weight_to_refund = max_weight.saturating_sub(weight_used);
+			let total_deposit = T::WeightToFee::weight_to_fee(&max_weight);
+			let reason = HoldReason::CallbackGas.into();
 
-				Ok(())
-			},
-			Err(sp_runtime::DispatchErrorWithPostInfo::<PostDispatchInfo> { post_info, error }) => {
-				let total_deposit = T::WeightToFee::weight_to_fee(&callback.weight);
-				T::Fungibles::transfer_on_hold(
-					&HoldReason::CallbackGas.into(),
-					initiating_origin,
-					&T::FeeAccount::get(),
-					total_deposit,
-					BestEffort,
-					Restriction::Free,
-					Fortitude::Polite,
-				)?;
+			let reward = if weight_to_refund.any_gt(Zero::zero()) {
+				// Try return some deposit
+				let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
+				let execution_reward = total_deposit.saturating_sub(returnable_deposit);
 
-				// Fallback to storing the message for polling - pre-paid weight is lost.
-				Self::deposit_event(Event::<T>::CallbackFailed {
-					origin: initiating_origin.clone(),
-					id: *id,
-					callback,
-					post_info,
-					error,
-				});
-				Ok(())
-			},
+				T::Fungibles::release(&reason, initiating_origin, returnable_deposit, Exact)?;
+				execution_reward
+			} else {
+				total_deposit
+			};
+
+			T::Fungibles::transfer_on_hold(
+				&reason,
+				initiating_origin,
+				&T::FeeAccount::get(),
+				reward,
+				Exact,
+				Restriction::Free,
+				Fortitude::Polite,
+			)?;
+
+			Ok(())
 		}
 	}
 }
-
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 #[repr(u8)]
