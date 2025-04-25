@@ -98,7 +98,6 @@ impl pallet_revive::Config for Runtime {
 	// 30 percent of storage deposit held for using a code hash.
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
-	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type EthGasEncoder = ();
