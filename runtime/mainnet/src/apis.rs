@@ -33,8 +33,8 @@ use xcm_runtime_apis::{
 // Local module imports
 use super::{
 	config::{monetary::fee::WeightToFee, system::RuntimeBlockWeights, xcm as xcm_config},
-	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, EthExtraImpl, EventRecord,
-	Executive, ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
+	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, Executive,
+	ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
 	PolkadotXcm, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin,
 	SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
 };
@@ -395,7 +395,7 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber, EventRecord> for Runtime
+	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber> for Runtime
 	{
 		fn balance(address: H160) -> Balance {
 			use frame_support::traits::fungible::Inspect;
@@ -438,7 +438,7 @@ impl_runtime_apis! {
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
-		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance, EventRecord> {
+		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance> {
 			Revive::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
@@ -446,8 +446,6 @@ impl_runtime_apis! {
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
 				pallet_revive::DepositLimit::Balance(storage_deposit_limit.unwrap_or(u128::MAX)),
 				input_data,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
@@ -459,7 +457,7 @@ impl_runtime_apis! {
 			code: pallet_revive::Code,
 			data: Vec<u8>,
 			salt: Option<[u8; 32]>,
-		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance, EventRecord>
+		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance>
 		{
 			Revive::bare_instantiate(
 				RuntimeOrigin::signed(origin),
@@ -469,8 +467,6 @@ impl_runtime_apis! {
 				code,
 				data,
 				salt,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
