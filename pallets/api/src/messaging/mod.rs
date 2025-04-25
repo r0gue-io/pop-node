@@ -279,8 +279,13 @@ pub mod pallet {
 		IsmpTimedOut { commitment: H256 },
 		/// A collection of xcm queries have timed out.
 		XcmQueriesTimedOut { query_ids: Vec<QueryId> },
+<<<<<<< HEAD
 		/// An error has occured while attempting to refund weight.
 		WeightRefundErrored { message_id: MessageId, error: DispatchError },
+=======
+		/// Callback gas has been topped up.
+		CallbackGasIncreased { message_id: MessageId, total_weight: Weight },
+>>>>>>> c2fb2bf87298301a86a266590c8fc5c0cc8fd25a
 	}
 
 	#[pallet::error]
@@ -305,8 +310,17 @@ pub mod pallet {
 		FutureTimeoutMandatory,
 		/// Message block limit has been reached for this expiry block. Try a different timeout.
 		MaxMessageTimeoutPerBlockReached,
+<<<<<<< HEAD
 		/// This callback cannot be processed due to lack of blockspace. Please poll the response.
 		BlockspaceAllowanceReached,
+=======
+		/// This is not possible as the message has completed.
+		MessageCompleted,
+		/// No callback has been found for this query.
+		NoCallbackFound,
+		/// Weight cannot be zero.
+		ZeroWeight,
+>>>>>>> c2fb2bf87298301a86a266590c8fc5c0cc8fd25a
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -330,12 +344,17 @@ pub mod pallet {
 			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
 				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
 				Messages::<T>::mutate(origin, message_id, |maybe_message| {
-					if let Some(Message::XcmQuery { query_id, deposit, .. }) =
+					if let Some(Message::XcmQuery { query_id, message_deposit, callback }) =
 						maybe_message.as_mut()
 					{
+						let callback_deposit =
+							callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
 						query_ids.push(*query_id);
-						*maybe_message =
-							Some(Message::XcmTimeout { query_id: *query_id, deposit: *deposit });
+						*maybe_message = Some(Message::XcmTimeout {
+							query_id: *query_id,
+							message_deposit: *message_deposit,
+							callback_deposit,
+						});
 					}
 				})
 			}
@@ -376,14 +395,15 @@ pub mod pallet {
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
 			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
-			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+
+			// Take deposits and fees.
+			let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>());
 
-			// Take deposits and fees.
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -409,7 +429,11 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
 			IsmpRequests::<T>::insert(commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp { commitment, callback, message_deposit },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpGetDispatched {
 				origin,
 				id,
@@ -444,14 +468,13 @@ pub mod pallet {
 			ensure!(!Messages::<T>::contains_key(&origin, id), Error::<T>::MessageExists);
 
 			// Take deposits and fees.
-			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+			let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
-			let mut callback_execution_weight = Weight::zero();
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -459,8 +482,6 @@ pub mod pallet {
 					&origin,
 					T::WeightToFee::weight_to_fee(&cb.weight),
 				)?;
-
-				callback_execution_weight = T::CallbackExecutor::execution_weight();
 			}
 
 			// Process message by dispatching request via ISMP.
@@ -474,7 +495,11 @@ pub mod pallet {
 			// Store commitment for lookup on response, message for querying,
 			// response/timeout handling.
 			IsmpRequests::<T>::insert(commitment, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, deposit });
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::Ismp { commitment, callback, message_deposit },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::IsmpPostDispatched {
 				origin,
 				id,
@@ -525,11 +550,11 @@ pub mod pallet {
 			)?;
 
 			// Take deposits and fees.
-			let deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
+			let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 				ProtocolStorageDeposit::XcmQueries,
 			)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
 
 			let mut callback_execution_weight = Weight::zero();
 
@@ -563,7 +588,11 @@ pub mod pallet {
 			// Store query id for later lookup on response, message for querying status,
 			// response/timeout handling.
 			XcmQueries::<T>::insert(query_id, (&origin, id));
-			Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback, deposit });
+			Messages::<T>::insert(
+				&origin,
+				id,
+				Message::XcmQuery { query_id, callback, message_deposit },
+			);
 			Pallet::<T>::deposit_event(Event::<T>::XcmQueryCreated {
 				origin,
 				id,
@@ -597,9 +626,15 @@ pub mod pallet {
 			let xcm_query_message =
 				Messages::<T>::get(&initiating_origin, id).ok_or(Error::<T>::MessageNotFound)?;
 
+<<<<<<< HEAD
 			let (query_id, callback, deposit) = match &xcm_query_message {
 				Message::XcmQuery { query_id, callback, deposit } => (query_id, callback, deposit),
 				// TODO: check what happens on err.
+=======
+			let (query_id, callback, message_deposit) = match &xcm_query_message {
+				Message::XcmQuery { query_id, callback, message_deposit } =>
+					(query_id, callback, message_deposit),
+>>>>>>> c2fb2bf87298301a86a266590c8fc5c0cc8fd25a
 				Message::XcmTimeout { .. } => return Err(Error::<T>::RequestTimedOut.into()),
 				_ => return Err(Error::<T>::InvalidMessage.into()),
 			};
@@ -635,7 +670,7 @@ pub mod pallet {
 					T::Fungibles::release(
 						&HoldReason::Messaging.into(),
 						&initiating_origin,
-						*deposit,
+						*message_deposit,
 						Exact,
 					)?;
 
@@ -648,7 +683,7 @@ pub mod pallet {
 				id,
 				Message::XcmResponse {
 					query_id: *query_id,
-					deposit: *deposit,
+					message_deposit: *message_deposit,
 					response: xcm_response,
 				},
 			);
@@ -676,35 +711,118 @@ pub mod pallet {
 					return Err(Error::<T>::MessageNotFound.into());
 				};
 
-				let deposit = match message {
+				let (message_deposit, maybe_callback_deposit) = match message {
 					Message::Ismp { .. } => Err(Error::<T>::RequestPending),
 					Message::XcmQuery { .. } => Err(Error::<T>::RequestPending),
-					Message::IsmpResponse { deposit, commitment, .. } => {
+					Message::IsmpResponse { message_deposit, commitment, .. } => {
 						Messages::<T>::remove(&origin, id);
 						IsmpRequests::<T>::remove(commitment);
-						Ok(deposit)
+						Ok((message_deposit, None))
 					},
-					Message::XcmResponse { deposit, query_id, .. } => {
+					Message::XcmResponse { message_deposit, query_id, .. } => {
 						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
-						Ok(deposit)
+						Ok((message_deposit, None))
 					},
-					Message::IsmpTimeout { deposit, commitment, .. } => {
+					Message::IsmpTimeout {
+						message_deposit, commitment, callback_deposit, ..
+					} => {
 						Messages::<T>::remove(&origin, id);
 						IsmpRequests::<T>::remove(commitment);
-						Ok(deposit)
+						Ok((message_deposit, callback_deposit))
 					},
-					Message::XcmTimeout { query_id, deposit, .. } => {
+					Message::XcmTimeout { query_id, message_deposit, callback_deposit, .. } => {
 						Messages::<T>::remove(&origin, id);
 						XcmQueries::<T>::remove(query_id);
-						Ok(deposit)
+						Ok((message_deposit, callback_deposit))
 					},
 				}?;
 
-				T::Fungibles::release(&HoldReason::Messaging.into(), &origin, deposit, Exact)?;
+				T::Fungibles::release(
+					&HoldReason::Messaging.into(),
+					&origin,
+					message_deposit,
+					Exact,
+				)?;
+				if let Some(callback_deposit) = maybe_callback_deposit {
+					T::Fungibles::release(
+						&HoldReason::CallbackGas.into(),
+						&origin,
+						callback_deposit,
+						Exact,
+					)?;
+				}
 			}
 
 			Self::deposit_event(Event::<T>::Removed { origin, messages: messages.into_inner() });
+
+			Ok(())
+		}
+
+		/// Top up the callback weight for a pending message.
+		///
+		/// This extrinsic allows an origin to increase the gas (weight) budget allocated for a
+		/// callback associated with an in-flight message. This is useful when the initially
+		/// allocated weight is insufficient to complete the callback.
+		///
+		/// The additional fee for the new weight is held from the origin using the
+		/// `HoldReason::CallbackGas`.
+		///
+		/// Only pending requests can have their weight increased.
+		///
+		/// # Parameters
+		///
+		/// - `origin`: Must be a signed account.
+		/// - `message_id`: The identifier of the message to be topped up.
+		/// - `additional_weight`: The additional weight to be appended to the message's existing
+		///   callback weight.
+		#[pallet::call_index(6)]
+		#[pallet::weight(T::WeightInfo::top_up_callback_weight())]
+		pub fn top_up_callback_weight(
+			origin: OriginFor<T>,
+			message_id: MessageId,
+			additional_weight: Weight,
+		) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			if additional_weight.any_eq(<Weight as Zero>::zero()) {
+				return Err(Error::<T>::ZeroWeight.into());
+			}
+
+			T::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&who,
+				T::WeightToFee::weight_to_fee(&additional_weight),
+			)?;
+
+			Messages::<T>::try_mutate(&who, message_id, |maybe_message| {
+				if let Some(message) = maybe_message {
+					// Mutate to accrue new weight.
+					let total_weight = match message {
+						Message::Ismp { callback, .. } => callback.as_mut().map_or_else(
+							|| Err(Error::<T>::NoCallbackFound),
+							|cb| Ok(cb.increase_callback_weight(additional_weight)),
+						),
+						Message::XcmQuery { callback, .. } => callback.as_mut().map_or_else(
+							|| Err(Error::<T>::NoCallbackFound),
+							|cb| Ok(cb.increase_callback_weight(additional_weight)),
+						),
+						Message::IsmpResponse { .. } => Err(Error::<T>::MessageCompleted),
+						Message::XcmResponse { .. } => Err(Error::<T>::MessageCompleted),
+						Message::IsmpTimeout { .. } => Err(Error::<T>::RequestTimedOut),
+						Message::XcmTimeout { .. } => Err(Error::<T>::RequestTimedOut),
+					}?;
+
+					Self::deposit_event(Event::<T>::CallbackGasIncreased {
+						message_id,
+						total_weight,
+					})
+				} else {
+					return Err(Error::<T>::MessageNotFound);
+				}
+
+				Ok(())
+			})?;
 
 			Ok(())
 		}
@@ -1005,7 +1123,7 @@ pub(crate) enum Message<T: Config> {
 	/// - `commitment`: The cryptographic commitment of the request payload.
 	/// - `callback`: An optional callback to invoke upon receiving a response.
 	/// - `deposit`: The total deposit held to cover message and callback fees.
-	Ismp { commitment: H256, callback: Option<Callback>, deposit: BalanceOf<T> },
+	Ismp { commitment: H256, callback: Option<Callback>, message_deposit: BalanceOf<T> },
 
 	/// Represents a pending XCM query request.
 	///
@@ -1013,7 +1131,7 @@ pub(crate) enum Message<T: Config> {
 	/// - `query_id`: Unique identifier for the XCM query.
 	/// - `callback`: An optional callback for handling the response.
 	/// - `deposit`: The deposit held to cover fees for query execution and callback.
-	XcmQuery { query_id: QueryId, callback: Option<Callback>, deposit: BalanceOf<T> },
+	XcmQuery { query_id: QueryId, callback: Option<Callback>, message_deposit: BalanceOf<T> },
 
 	/// Represents a received ISMP response.
 	///
@@ -1023,7 +1141,7 @@ pub(crate) enum Message<T: Config> {
 	/// - `response`: The encoded response payload, size-bounded by `T::MaxResponseLen`.
 	IsmpResponse {
 		commitment: H256,
-		deposit: BalanceOf<T>,
+		message_deposit: BalanceOf<T>,
 		response: BoundedVec<u8, T::MaxResponseLen>,
 	},
 
@@ -1033,21 +1151,29 @@ pub(crate) enum Message<T: Config> {
 	/// - `query_id`: Identifier that matches a previously sent XCM query.
 	/// - `deposit`: The deposit originally held for this message.
 	/// - `response`: The deserialized response payload.
-	XcmResponse { query_id: QueryId, deposit: BalanceOf<T>, response: Response },
+	XcmResponse { query_id: QueryId, message_deposit: BalanceOf<T>, response: Response },
 
 	/// Represents an ISMP request that timed out before a response was received.
 	///
 	/// # Fields
 	/// - `commitment`: The original commitment of the request.
 	/// - `deposit`: The deposit held for the request, which may be reclaimed.
-	IsmpTimeout { commitment: H256, deposit: BalanceOf<T> },
+	IsmpTimeout {
+		commitment: H256,
+		message_deposit: BalanceOf<T>,
+		callback_deposit: Option<BalanceOf<T>>,
+	},
 
 	/// Represents an XCM query that timed out before a response was received.
 	///
 	/// # Fields
 	/// - `query_id`: The original query ID that timed out.
 	/// - `deposit`: The deposit held for the query, which may be reclaimed.
-	XcmTimeout { query_id: QueryId, deposit: BalanceOf<T> },
+	XcmTimeout {
+		query_id: QueryId,
+		message_deposit: BalanceOf<T>,
+		callback_deposit: Option<BalanceOf<T>>,
+	},
 }
 
 impl<T: Config> From<&Message<T>> for MessageStatus {
@@ -1078,6 +1204,14 @@ pub struct Callback {
 	pub abi: Abi,
 	pub selector: [u8; 4],
 	pub weight: Weight,
+}
+
+impl Callback {
+	pub(crate) fn increase_callback_weight(&mut self, additional_weight: Weight) -> Weight {
+		let new_callback_weight = self.weight.saturating_add(additional_weight);
+		self.weight = new_callback_weight;
+		new_callback_weight
+	}
 }
 
 /// The encoding used for the data going to the contract.

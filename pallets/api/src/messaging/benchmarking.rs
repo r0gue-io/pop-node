@@ -41,26 +41,25 @@ mod messaging_benchmarks {
 	///   (bounded by `MaxRemovals`).
 	#[benchmark]
 	fn remove(x: Linear<1, { T::MaxRemovals::get() }>) {
-		let deposit: BalanceOf<T> = sp_runtime::traits::One::one();
+		let message_deposit: BalanceOf<T> = 50_000u32.into();
+		let callback_deposit: BalanceOf<T> = 100_000u32.into();
 		let owner: AccountIdOf<T> = account("Alice", 0, SEED);
 		let mut message_ids: BoundedVec<MessageId, T::MaxRemovals> = BoundedVec::new();
 		pallet_balances::Pallet::<T>::make_free_balance_be(&owner, u32::MAX.into());
 
 		for i in 0..x {
-			<T as crate::messaging::Config>::Deposit::hold(
-				&HoldReason::Messaging.into(),
-				&owner,
-				deposit,
-			)
-			.unwrap();
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &owner, message_deposit).unwrap();
+
+			T::Fungibles::hold(&HoldReason::CallbackGas.into(), &owner, callback_deposit).unwrap();
 
 			let message_id = H256::from(blake2_256(&(i.to_le_bytes())));
 			let commitment = H256::from(blake2_256(&(i.to_le_bytes())));
 
-			let good_message = Message::IsmpResponse {
+			// Timeout messages release callback deposit hence, are most expensive case for now.
+			let good_message = Message::IsmpTimeout {
 				commitment: commitment.clone(),
-				deposit,
-				response: Default::default(),
+				message_deposit,
+				callback_deposit: Some(callback_deposit),
 			};
 
 			Messages::<T>::insert(&owner, &message_id.0, &good_message);
@@ -184,7 +183,7 @@ mod messaging_benchmarks {
 
 		let weight = Weight::from_parts(100_000, 100_000);
 		let cb_gas_deposit = T::WeightToFee::weight_to_fee(&weight);
-		T::Deposit::hold(&HoldReason::CallbackGas.into(), &origin, cb_gas_deposit).unwrap();
+		T::Fungibles::hold(&HoldReason::CallbackGas.into(), &origin, cb_gas_deposit).unwrap();
 		// also hold for message deposit
 		let message_deposit = calculate_protocol_deposit::<T, T::OnChainByteFee>(
 			ProtocolStorageDeposit::IsmpRequests,
@@ -192,7 +191,7 @@ mod messaging_benchmarks {
 			calculate_deposit_of::<T, T::OffChainByteFee, ismp::Get<T>>();
 
 		// Take some extra so we dont need to complicate the benchmark further.
-		T::Deposit::hold(&HoldReason::Messaging.into(), &origin, message_deposit * 2u32.into())
+		T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit * 2u32.into())
 			.unwrap();
 
 		let callback = Some(Callback { selector: [0; 4], weight, abi: Abi::Scale });
@@ -239,7 +238,7 @@ mod messaging_benchmarks {
 			)
 		};
 
-		let message = Message::Ismp { commitment, callback, deposit: One::one() };
+		let message = Message::Ismp { commitment, callback, message_deposit };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &message);
@@ -298,7 +297,7 @@ mod messaging_benchmarks {
 
 		let event = Event::<T>::IsmpTimedOut { commitment };
 
-		let input_message = Message::Ismp { commitment, callback, deposit: One::one() };
+		let input_message = Message::Ismp { commitment, callback, message_deposit: One::one() };
 
 		IsmpRequests::<T>::insert(&commitment, (&origin, &message_id));
 		Messages::<T>::insert(&origin, &message_id, &input_message);
@@ -404,6 +403,44 @@ mod messaging_benchmarks {
 
 		#[extrinsic_call]
 		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
+	}
+
+	/// Tops up callback weight for callback execution of pending messages.
+	#[benchmark]
+	fn top_up_callback_weight() {
+		let origin: T::AccountId = account("alice", 0, SEED);
+		let message_id = [0u8; 32];
+		let initial_weight = Weight::from_parts(100_000, 100_000);
+		let additional_weight = Weight::from_parts(150_000, 150_000);
+		let callback = Callback { abi: Abi::Scale, weight: initial_weight, selector: [0u8; 4] };
+
+		let message: Message<T> = Message::Ismp {
+			commitment: [10u8; 32].into(),
+			deposit: 100_000u32.into(),
+			callback: Some(callback),
+		};
+
+		Messages::<T>::insert(&origin, message_id, &message);
+
+		pallet_balances::Pallet::<T>::make_free_balance_be(
+			&origin,
+			pallet_balances::Pallet::<T>::total_issuance() / 2u32.into(),
+		);
+
+		#[extrinsic_call]
+		Pallet::<T>::top_up_callback_weight(
+			RawOrigin::Signed(origin.clone()),
+			message_id,
+			additional_weight,
+		);
+
+		assert_has_event::<T>(
+			Event::<T>::CallbackGasIncreased {
+				message_id,
+				total_weight: initial_weight + additional_weight,
+			}
+			.into(),
+		);
 	}
 
 	impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(), crate::mock::Test);
