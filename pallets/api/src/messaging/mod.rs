@@ -12,7 +12,7 @@ use frame_support::{
 		tokens::{
 			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate},
 			Fortitude,
-			Precision::{BestEffort, Exact},
+			Precision::Exact,
 			Preservation, Restriction,
 		},
 		Get,
@@ -279,13 +279,10 @@ pub mod pallet {
 		IsmpTimedOut { commitment: H256 },
 		/// A collection of xcm queries have timed out.
 		XcmQueriesTimedOut { query_ids: Vec<QueryId> },
-<<<<<<< HEAD
 		/// An error has occured while attempting to refund weight.
 		WeightRefundErrored { message_id: MessageId, error: DispatchError },
-=======
 		/// Callback gas has been topped up.
 		CallbackGasIncreased { message_id: MessageId, total_weight: Weight },
->>>>>>> c2fb2bf87298301a86a266590c8fc5c0cc8fd25a
 	}
 
 	#[pallet::error]
@@ -310,17 +307,14 @@ pub mod pallet {
 		FutureTimeoutMandatory,
 		/// Message block limit has been reached for this expiry block. Try a different timeout.
 		MaxMessageTimeoutPerBlockReached,
-<<<<<<< HEAD
 		/// This callback cannot be processed due to lack of blockspace. Please poll the response.
 		BlockspaceAllowanceReached,
-=======
 		/// This is not possible as the message has completed.
 		MessageCompleted,
 		/// No callback has been found for this query.
 		NoCallbackFound,
 		/// Weight cannot be zero.
 		ZeroWeight,
->>>>>>> c2fb2bf87298301a86a266590c8fc5c0cc8fd25a
 	}
 
 	/// A reason for the pallet placing a hold on funds.
@@ -474,7 +468,7 @@ pub mod pallet {
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
 			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>());
 
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, deposit)?;
+			T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
 
 			if let Some(cb) = callback.as_ref() {
 				T::Fungibles::hold(
@@ -626,15 +620,8 @@ pub mod pallet {
 			let xcm_query_message =
 				Messages::<T>::get(&initiating_origin, id).ok_or(Error::<T>::MessageNotFound)?;
 
-<<<<<<< HEAD
-			let (query_id, callback, deposit) = match &xcm_query_message {
-				Message::XcmQuery { query_id, callback, deposit } => (query_id, callback, deposit),
-				// TODO: check what happens on err.
-=======
 			let (query_id, callback, message_deposit) = match &xcm_query_message {
-				Message::XcmQuery { query_id, callback, message_deposit } =>
-					(query_id, callback, message_deposit),
->>>>>>> c2fb2bf87298301a86a266590c8fc5c0cc8fd25a
+				Message::XcmQuery { query_id, callback, message_deposit } => (query_id, callback, message_deposit),
 				Message::XcmTimeout { .. } => return Err(Error::<T>::RequestTimedOut.into()),
 				_ => return Err(Error::<T>::InvalidMessage.into()),
 			};
@@ -654,7 +641,8 @@ pub mod pallet {
 				// manually adjust the blockweight to weight of the extrinsic.
 				let static_weight_adjustment = T::WeightInfo::xcm_response()
 					.saturating_add(T::CallbackExecutor::execution_weight());
-				// Never roll back state if call fails.
+				
+					// Never roll back state if call fails.
 				// Ensure that the response can be polled.
 				if Self::call(
 					&initiating_origin,
@@ -826,8 +814,10 @@ pub mod pallet {
 
 			Ok(())
 		}
+	
 	}
-}
+
+
 impl<T: Config> Pallet<T> {
 	/// Executes a registered callback with the given input data and manually charges block weight.
 	///
@@ -1040,7 +1030,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 }
-
+}
 #[derive(Encode, Decode, Debug, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 #[repr(u8)]

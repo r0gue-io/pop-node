@@ -859,8 +859,6 @@ mod xcm_response {
 
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
 
-			let events = events();
-
 			assert!(Messages::<Test>::get(ALICE, message_id).is_none());
 			assert!(XcmQueries::<Test>::get(expected_query_id).is_none());
 		})
@@ -936,7 +934,6 @@ mod xcm_hooks {
 }
 
 mod call {
-	use frame_support::traits::fungibles::InspectHold;
 	use frame_system::pallet::BlockWeight;
 
 	use super::*;
@@ -1031,7 +1028,6 @@ mod process_callback_weight {
 	#[test]
 	fn ok_without_weight_returns_max_weight() {
 		new_test_ext().execute_with(|| {
-			let weight = Weight::from_parts(100_000, 100_000);
 			let max_weight = Weight::from_parts(200_000, 200_000);
 			let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
 				actual_weight: None,
@@ -1047,7 +1043,6 @@ mod process_callback_weight {
 	#[test]
 	fn err_returns_max_weight() {
 		new_test_ext().execute_with(|| {
-			let weight = Weight::from_parts(100_000, 100_000);
 			let max_weight = Weight::from_parts(200_000, 200_000);
 			let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
 				post_info: Default::default(),
@@ -1117,16 +1112,12 @@ mod deposit_callback_event {
 }
 
 mod manage_fees {
-	use frame_support::dispatch::{DispatchResultWithPostInfo, Pays, PostDispatchInfo};
-	use sp_runtime::DispatchErrorWithPostInfo;
-
 	use super::*;
 
 	#[test]
 	fn assert_payback_when_execution_weight_is_less_than_deposit_held() {
 		new_test_ext().execute_with(|| {
 			let origin = ALICE;
-			let id = [1u8; 32];
 			let actual_weight_executed = Weight::from_parts(50_000_000, 70_000_000);
 			let callback_weight_reserved = Weight::from_parts(100_000_000, 100_000_000);
 
@@ -1578,7 +1569,7 @@ mod top_up_callback_weight {
 			let message_id = [0u8; 32];
 			let message = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				response: Default::default(),
 			};
 			let weight = Weight::zero();
@@ -1597,7 +1588,7 @@ mod top_up_callback_weight {
 			let message_id = [0u8; 32];
 			let message = Message::IsmpResponse {
 				commitment: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				response: Default::default(),
 			};
 			let weight = Weight::from_parts(100_000, 100_000);
@@ -1615,7 +1606,7 @@ mod top_up_callback_weight {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
 			let message =
-				Message::XcmResponse { query_id: 0, deposit: 100, response: Response::Null };
+				Message::XcmResponse { query_id: 0, message_deposit: 100, response: Response::Null };
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1630,7 +1621,7 @@ mod top_up_callback_weight {
 	fn xcm_timeout_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::XcmTimeout { query_id: 0, deposit: 100 };
+			let message = Message::XcmTimeout { query_id: 0, message_deposit: Default::default(), callback_deposit: Default::default() };	
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1645,7 +1636,7 @@ mod top_up_callback_weight {
 	fn ismp_timeout_is_err() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::IsmpTimeout { commitment: Default::default(), deposit: 100 };
+			let message = Message::IsmpTimeout { commitment: Default::default(), message_deposit: Default::default(), callback_deposit: Default::default() };
 			let weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1665,7 +1656,7 @@ mod top_up_callback_weight {
 			let callback = Callback { abi: Abi::Scale, selector: [0u8; 4], weight: initial_weight };
 			let message = Message::Ismp {
 				commitment: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				callback: Some(callback),
 			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
@@ -1705,7 +1696,7 @@ mod top_up_callback_weight {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
 			let message =
-				Message::Ismp { commitment: Default::default(), deposit: 100, callback: None };
+				Message::Ismp { commitment: Default::default(), message_deposit: 100, callback: None };
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1720,7 +1711,7 @@ mod top_up_callback_weight {
 	fn xcm_pending_no_callback() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0u8; 32];
-			let message = Message::XcmQuery { query_id: 0, deposit: 100, callback: None };
+			let message = Message::XcmQuery { query_id: 0, message_deposit: 100, callback: None };
 			let additional_weight = Weight::from_parts(100_000, 100_000);
 
 			Messages::<Test>::insert(ALICE, message_id, message);
@@ -1740,7 +1731,7 @@ mod top_up_callback_weight {
 			let callback = Callback { abi: Abi::Scale, selector: [0u8; 4], weight: initial_weight };
 			let message = Message::XcmQuery {
 				query_id: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				callback: Some(callback),
 			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
@@ -1785,7 +1776,7 @@ mod top_up_callback_weight {
 			let callback = Callback { abi: Abi::Scale, selector: [0u8; 4], weight: initial_weight };
 			let message = Message::XcmQuery {
 				query_id: Default::default(),
-				deposit: 100,
+				message_deposit: 100,
 				callback: Some(callback),
 			};
 			let additional_weight = Weight::from_parts(100_000, 100_000);
