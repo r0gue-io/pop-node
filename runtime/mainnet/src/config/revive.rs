@@ -32,6 +32,7 @@ impl pallet_revive::Config for Runtime {
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type EthGasEncoder = ();
+	type FindAuthor = <Runtime as pallet_authorship::Config>::FindAuthor;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	// 1 ETH : 1_000_000 UNIT
 	type NativeToEthRatio = NativeToEthRatio;
@@ -70,6 +71,7 @@ mod tests {
 	use pallet_revive::Config;
 
 	use super::*;
+	use crate::Aura;
 
 	// 18 decimals
 	const ONE_ETH: u128 = 1_000_000_000_000_000_000;
@@ -122,6 +124,14 @@ mod tests {
 	#[test]
 	fn deposit_per_item_is_correct() {
 		assert_eq!(<<Runtime as Config>::DepositPerItem as Get<Balance>>::get(), deposit(1, 0),);
+	}
+
+	#[test]
+	fn finds_block_author_via_index_from_digests_within_block_header() {
+		assert_eq!(
+			TypeId::of::<<Runtime as Config>::FindAuthor>(),
+			TypeId::of::<pallet_session::FindAccountFromAuthorIndex<Runtime, Aura>>(),
+		);
 	}
 
 	#[test]
