@@ -1,6 +1,7 @@
 //! TODO: pallet docs.
 
-extern crate alloc;
+use alloc::vec::Vec;
+
 use codec::{Decode, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
@@ -17,7 +18,6 @@ pub use pallet::*;
 use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{traits::Saturating, BoundedVec, SaturatedConversion};
-use alloc::vec::Vec;
 use transports::{
 	ismp::{self as ismp, FeeMetadata, IsmpDispatcher},
 	xcm::{self as xcm, Location, QueryId},

@@ -2,7 +2,6 @@
 //! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
 //! space.
 
-extern crate alloc;
 use frame_support::traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect};
 pub use pallet::*;
 use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
@@ -26,6 +25,7 @@ type WeightOf<T> = <T as Config>::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use alloc::vec::Vec;
 	use core::cmp::Ordering::*;
 
 	use frame_support::{
@@ -38,7 +38,6 @@ pub mod pallet {
 		traits::{CheckedSub, StaticLookup, Zero},
 		Saturating,
 	};
-	use alloc::vec::Vec;
 
 	use super::*;
 

@@ -1,4 +1,3 @@
-extern crate alloc;
 use alloc::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData};
 
