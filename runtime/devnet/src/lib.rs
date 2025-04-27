@@ -499,6 +499,7 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Runtime {
+	type BlockNumberProvider = System;
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxScheduledPerBlock = ConstU32<512>;
 	#[cfg(not(feature = "runtime-benchmarks"))]
