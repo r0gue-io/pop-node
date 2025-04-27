@@ -27,7 +27,6 @@ use codec::Encode;
 use config::system::ConsensusHook;
 use cumulus_pallet_parachain_system::RelayChainState;
 use cumulus_primitives_core::AggregateMessageOrigin;
-use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
 	dispatch::{DispatchClass, DispatchInfo},
@@ -112,18 +111,20 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 
 /// The SignedExtension to the basic transaction logic.
-pub type TxExtension = (
-	CheckNonZeroSender<Runtime>,
-	CheckSpecVersion<Runtime>,
-	CheckTxVersion<Runtime>,
-	CheckGenesis<Runtime>,
-	CheckMortality<Runtime>,
-	CheckNonce<Runtime>,
-	CheckWeight<Runtime>,
-	ChargeTransactionPayment<Runtime>,
-	StorageWeightReclaim<Runtime>,
-	CheckMetadataHash<Runtime>,
-);
+pub type TxExtension = cumulus_pallet_weight_reclaim::StorageWeightReclaim<
+	Runtime,
+	(
+		CheckNonZeroSender<Runtime>,
+		CheckSpecVersion<Runtime>,
+		CheckTxVersion<Runtime>,
+		CheckGenesis<Runtime>,
+		CheckMortality<Runtime>,
+		CheckNonce<Runtime>,
+		CheckWeight<Runtime>,
+		ChargeTransactionPayment<Runtime>,
+		CheckMetadataHash<Runtime>,
+	),
+>;
 
 /// EthExtra converts an unsigned Call::eth_transact into a CheckedExtrinsic.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -143,9 +144,9 @@ impl pallet_revive::evm::runtime::EthExtra for EthExtraImpl {
 			CheckNonce::<Runtime>::from(nonce),
 			CheckWeight::<Runtime>::new(),
 			ChargeTransactionPayment::<Runtime>::from(tip),
-			StorageWeightReclaim::<Runtime>::new(),
 			CheckMetadataHash::<Runtime>::new(false),
 		)
+			.into()
 	}
 }
 
@@ -303,6 +304,8 @@ mod runtime {
 	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
 	#[runtime::pallet_index(3)]
 	pub type ParachainInfo = parachain_info::Pallet<Runtime>;
+	#[runtime::pallet_index(4)]
+	pub type WeightReclaim = cumulus_pallet_weight_reclaim::Pallet<Runtime>;
 
 	// Monetary stuff.
 	#[runtime::pallet_index(10)]
@@ -400,6 +403,7 @@ mod benches {
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
+		[cumulus_pallet_weight_reclaim, WeightReclaim]
 	);
 }
 

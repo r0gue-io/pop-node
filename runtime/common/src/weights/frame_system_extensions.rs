@@ -91,4 +91,18 @@ impl<T: frame_system::Config> frame_system::ExtensionsWeightInfo for WeightInfo<
 		// Minimum execution time: 3_409_000 picoseconds.
 		Weight::from_parts(3_811_000, 0)
 	}
+	/// Storage: `System::ExtrinsicWeightReclaimed` (r:1 w:1)
+	/// Proof: `System::ExtrinsicWeightReclaimed` (`max_values`: Some(1), `max_size`: Some(16), added: 511, mode: `MaxEncodedLen`)
+	/// Storage: `System::BlockWeight` (r:1 w:1)
+	/// Proof: `System::BlockWeight` (`max_values`: Some(1), `max_size`: Some(48), added: 543, mode: `MaxEncodedLen`)
+	fn weight_reclaim() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `1533`
+		// Minimum execution time: 4_890_000 picoseconds.
+		Weight::from_parts(5_163_000, 0)
+			.saturating_add(Weight::from_parts(0, 1533))
+			.saturating_add(T::DbWeight::get().reads(2))
+			.saturating_add(T::DbWeight::get().writes(2))
+	}
 }

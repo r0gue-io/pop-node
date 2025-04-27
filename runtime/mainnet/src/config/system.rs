@@ -163,6 +163,10 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type XcmpMessageHandler = XcmpQueue;
 }
 
+impl cumulus_pallet_weight_reclaim::Config for Runtime {
+	type WeightInfo = weights::cumulus_pallet_weight_reclaim::WeightInfo<Runtime>;
+}
+
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ConstU64<0>;
 	/// A timestamp: milliseconds since the unix epoch.
@@ -578,6 +582,18 @@ mod tests {
 					<Runtime as cumulus_pallet_parachain_system::Config>::XcmpMessageHandler,
 				>(),
 				TypeId::of::<XcmpQueue>(),
+			);
+		}
+	}
+
+	mod weight_reclaim {
+		use super::*;
+
+		#[test]
+		fn does_not_use_default_weights() {
+			assert_ne!(
+				TypeId::of::<<Runtime as cumulus_pallet_weight_reclaim::Config>::WeightInfo>(),
+				TypeId::of::<()>(),
 			);
 		}
 	}

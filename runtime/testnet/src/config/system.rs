@@ -153,6 +153,11 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type XcmpMessageHandler = XcmpQueue;
 }
 
+impl cumulus_pallet_weight_reclaim::Config for Runtime {
+	type WeightInfo =
+		pop_runtime_common::weights::cumulus_pallet_weight_reclaim::WeightInfo<Runtime>;
+}
+
 impl pallet_timestamp::Config for Runtime {
 	type MinimumPeriod = ConstU64<0>;
 	/// A timestamp: milliseconds since the unix epoch.
