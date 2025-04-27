@@ -35,8 +35,9 @@ impl WeighAssets for AssetFilter {
 					// a collection. Whereas for `Fungible` `AllOf` is only one asset.
 					WildFungibility::NonFungible => weight.saturating_mul(MAX_ASSETS * 2),
 				},
-				AllCounted(count) => weight.saturating_mul(MAX_ASSETS.min(*count as u64)),
-				AllOfCounted { count, .. } => weight.saturating_mul(MAX_ASSETS.min(*count as u64)),
+				AllCounted(count) => weight.saturating_mul(MAX_ASSETS.min((*count as u64).max(1))),
+				AllOfCounted { count, .. } =>
+					weight.saturating_mul(MAX_ASSETS.min((*count as u64).max(1))),
 			},
 		}
 	}
@@ -277,14 +278,15 @@ impl<Call> XcmWeightInfo<Call> for PopXcmWeight<Call> {
 		_destination: &Location,
 		remote_fees: &Option<AssetTransferFilter>,
 		_preserve_origin: &bool,
-		assets: &Vec<AssetTransferFilter>,
+		assets: &BoundedVec<AssetTransferFilter, MaxAssetTransferFilters>,
 		_remote_xcm: &Xcm<()>,
 	) -> Weight {
+		let base_weight = XcmFungibleWeight::<Runtime>::initiate_transfer();
 		let mut weight = if let Some(remote_fees) = remote_fees {
 			let fees = remote_fees.inner();
-			fees.weigh_assets(XcmFungibleWeight::<Runtime>::initiate_transfer())
+			fees.weigh_assets(base_weight)
 		} else {
-			Weight::zero()
+			base_weight
 		};
 		for asset_filter in assets {
 			let assets = asset_filter.inner();
