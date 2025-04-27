@@ -9954,7 +9954,6 @@ dependencies = [
  "sp-core 36.1.0",
  "sp-io 40.0.0",
  "sp-runtime 41.1.0",
- "sp-std 14.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "staging-xcm 16.1.0",
 ]
 
@@ -15581,7 +15580,6 @@ dependencies = [
  "sp-core 36.1.0",
  "sp-io 40.0.0",
  "sp-runtime 41.1.0",
- "sp-std 14.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
