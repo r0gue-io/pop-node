@@ -24,6 +24,7 @@ pub(crate) fn genesis() -> Storage {
 		system: SystemConfig::default(),
 		balances: BalancesConfig {
 			balances: accounts::init_balances().iter().map(|k| (k.clone(), ENDOWMENT)).collect(),
+			..Default::default()
 		},
 		session: SessionConfig {
 			keys: validators::initial_authorities()
