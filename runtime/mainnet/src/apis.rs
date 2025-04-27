@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 
 use codec::Encode;
 use frame_support::{
+	dispatch::DispatchInfo,
 	genesis_builder_helper::{build_state, get_preset},
 	traits::{
 		nonfungibles_v2::Inspect,
@@ -9,12 +10,12 @@ use frame_support::{
 	},
 	weights::{Weight, WeightToFee as _},
 };
-use pallet_revive::AddressMapper;
+use pallet_revive::{evm::runtime::EthExtra, AddressMapper};
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
 use sp_runtime::{
-	traits::Block as BlockT,
+	traits::{Block as BlockT, TransactionExtension},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -32,8 +33,8 @@ use xcm_runtime_apis::{
 // Local module imports
 use super::{
 	config::{monetary::fee::WeightToFee, system::RuntimeBlockWeights, xcm as xcm_config},
-	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, EventRecord, Executive,
-	ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
+	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, EthExtraImpl, EventRecord,
+	Executive, ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
 	PolkadotXcm, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin,
 	SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
 };
@@ -407,35 +408,26 @@ impl_runtime_apis! {
 			System::account_nonce(account)
 		}
 
-		fn eth_transact(
-			from: H160,
-			dest: Option<H160>,
-			value: Balance,
-			input: Vec<u8>,
-			gas_limit: Option<Weight>,
-			storage_deposit_limit: Option<Balance>,
-		) -> pallet_revive::EthContractResult<Balance>
+		fn eth_transact(tx: pallet_revive::evm::GenericTransaction) -> Result<pallet_revive::EthTransactInfo<Balance>, pallet_revive::EthTransactError>
 		{
-			use pallet_revive::AddressMapper;
 			let blockweights: BlockWeights = <Runtime as frame_system::Config>::BlockWeights::get();
-			let origin = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&from);
 
-			let encoded_size = |pallet_call| {
+			let tx_fee = |pallet_call, mut dispatch_info: DispatchInfo| {
 				let call = RuntimeCall::Revive(pallet_call);
+				dispatch_info.extension_weight = EthExtraImpl::get_eth_extension(0, 0u32.into()).weight(&call);
 				let uxt: UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
-				uxt.encoded_size() as u32
+
+				pallet_transaction_payment::Pallet::<Runtime>::compute_fee(
+					uxt.encoded_size() as u32,
+					&dispatch_info,
+					0u32.into(),
+				)
 			};
 
 			Revive::bare_eth_transact(
-				origin,
-				dest,
-				value,
-				input,
-				gas_limit.unwrap_or(blockweights.max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
-				encoded_size,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
+				tx,
+				blockweights.max_block,
+				tx_fee,
 			)
 		}
 
@@ -452,7 +444,7 @@ impl_runtime_apis! {
 				dest,
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
+				pallet_revive::DepositLimit::Balance(storage_deposit_limit.unwrap_or(u128::MAX)),
 				input_data,
 				pallet_revive::DebugInfo::UnsafeDebug,
 				pallet_revive::CollectEvents::UnsafeCollect,
@@ -473,7 +465,7 @@ impl_runtime_apis! {
 				RuntimeOrigin::signed(origin),
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
+				pallet_revive::DepositLimit::Balance(storage_deposit_limit.unwrap_or(u128::MAX)),
 				code,
 				data,
 				salt,
