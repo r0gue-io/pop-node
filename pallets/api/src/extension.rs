@@ -1,3 +1,4 @@
+use alloc::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData};
 
 use frame_support::traits::Get;
@@ -8,7 +9,6 @@ use pop_chain_extension::{
 	Converter, Decodes, Environment, LogTarget, Matches, Processor, Result, RetVal,
 };
 use sp_runtime::DispatchError;
-use sp_std::vec::Vec;
 
 /// Encoded version of `pallet_contracts::Error::DecodingFailed`, as found within
 /// `DispatchError::ModuleError`.

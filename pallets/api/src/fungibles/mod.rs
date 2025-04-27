@@ -25,6 +25,7 @@ type WeightOf<T> = <T as Config>::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use alloc::vec::Vec;
 	use core::cmp::Ordering::*;
 
 	use frame_support::{
@@ -37,7 +38,6 @@ pub mod pallet {
 		traits::{CheckedSub, StaticLookup, Zero},
 		Saturating,
 	};
-	use sp_std::vec::Vec;
 
 	use super::*;
 

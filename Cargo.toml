@@ -146,7 +146,6 @@ sp-mmr-primitives = { version = "36.1.0", default-features = false }
 sp-offchain = { version = "36.0.0", default-features = false }
 sp-runtime = { version = "41.1.0", default-features = false }
 sp-session = { version = "38.1.0", default-features = false }
-sp-std = { version = "14.0.0", default-features = false }
 sp-timestamp = { version = "36.0.0" }
 sp-transaction-pool = { version = "36.0.0", default-features = false }
 sp-version = { version = "39.0.0", default-features = false }
