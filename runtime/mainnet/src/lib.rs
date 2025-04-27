@@ -71,12 +71,6 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
 
-/// Record of an event happening.
-pub type EventRecord = frame_system::EventRecord<
-	<Runtime as frame_system::Config>::RuntimeEvent,
-	<Runtime as frame_system::Config>::Hash,
->;
-
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 
