@@ -208,6 +208,7 @@ impl xcm_executor::Config for XcmConfig {
 	type UniversalLocation = UniversalLocation;
 	type Weigher =
 		WeightInfoBounds<xcm_weights::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
+	type XcmEventEmitter = PolkadotXcm;
 	type XcmRecorder = PolkadotXcm;
 	type XcmSender = XcmRouter;
 }
@@ -861,6 +862,14 @@ mod tests {
 						MaxInstructions,
 					>,
 				>(),
+			);
+		}
+
+		#[test]
+		fn uses_pallet_xcm_to_emit_events() {
+			assert_eq!(
+				TypeId::of::<<XcmConfig as xcm_executor::Config>::XcmEventEmitter>(),
+				TypeId::of::<PolkadotXcm>(),
 			);
 		}
 
