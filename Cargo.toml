@@ -177,12 +177,12 @@ cumulus-client-service = { version = "0.23.0" }
 cumulus-pallet-aura-ext = { version = "0.20.0", default-features = false }
 cumulus-pallet-parachain-system = { version = "0.20.0", default-features = false }
 cumulus-pallet-session-benchmarking = { version = "21.0.0", default-features = false }
+cumulus-pallet-weight-reclaim = { version = "0.2.0", default-features = false }
 cumulus-pallet-xcm = { version = "0.19.1", default-features = false }
 cumulus-pallet-xcmp-queue = { version = "0.20.0", default-features = false }
 cumulus-primitives-aura = { version = "0.17.0", default-features = false }
 cumulus-primitives-core = { version = "0.18.1", default-features = false }
 cumulus-primitives-parachain-inherent = { version = "0.18.1" }
-cumulus-primitives-storage-weight-reclaim = { version = "11.0.0", default-features = false }
 cumulus-primitives-utility = { version = "0.20.0", default-features = false }
 cumulus-relay-chain-interface = { version = "0.22.0" }
 emulated-integration-tests-common = { version = "20.0.0", default-features = false }
