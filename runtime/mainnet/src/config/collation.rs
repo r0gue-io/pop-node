@@ -56,6 +56,7 @@ impl pallet_collator_selection::Config for Runtime {
 impl cumulus_pallet_aura_ext::Config for Runtime {}
 
 impl pallet_session::Config for Runtime {
+	type DisablingStrategy = ();
 	type Keys = SessionKeys;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
@@ -254,6 +255,14 @@ mod tests {
 
 	mod session {
 		use super::*;
+
+		#[test]
+		fn ensures_no_disabling_strategy() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_session::Config>::DisablingStrategy>(),
+				TypeId::of::<()>(),
+			);
+		}
 
 		#[test]
 		fn keys_provided_by_aura() {
