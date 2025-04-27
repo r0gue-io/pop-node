@@ -29,7 +29,6 @@ impl pallet_revive::Config for Runtime {
 	// 30 percent of storage deposit held for using a code hash.
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
-	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
 	type EthGasEncoder = ();
@@ -113,11 +112,6 @@ mod tests {
 	#[test]
 	fn currency_is_balances() {
 		assert_eq!(TypeId::of::<<Runtime as Config>::Currency>(), TypeId::of::<Balances>(),);
-	}
-
-	#[test]
-	fn debug_is_unset() {
-		assert_eq!(TypeId::of::<<Runtime as Config>::Debug>(), TypeId::of::<()>(),);
 	}
 
 	#[test]
