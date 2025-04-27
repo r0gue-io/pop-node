@@ -24,6 +24,7 @@ pub(crate) fn genesis() -> Storage {
 				.cloned()
 				.map(|k| (k, ED * 4096 * 4096))
 				.collect(),
+			..Default::default()
 		},
 		parachain_info: ParachainInfoConfig { parachain_id: PARA_ID.into(), ..Default::default() },
 		collator_selection: CollatorSelectionConfig {
