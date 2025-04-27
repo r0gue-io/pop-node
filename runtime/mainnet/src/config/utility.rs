@@ -52,6 +52,7 @@ parameter_types! {
 }
 
 impl pallet_scheduler::Config for Runtime {
+	type BlockNumberProvider = System;
 	#[cfg(feature = "runtime-benchmarks")]
 	type MaxScheduledPerBlock = ConstU32<512>;
 	#[cfg(not(feature = "runtime-benchmarks"))]
@@ -214,6 +215,14 @@ mod tests {
 
 	mod scheduler {
 		use super::*;
+
+		#[test]
+		fn ensure_system_is_block_number_provider() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_scheduler::Config>::BlockNumberProvider>(),
+				TypeId::of::<System>(),
+			);
+		}
 
 		#[test]
 		#[cfg(feature = "runtime-benchmarks")]
