@@ -10,7 +10,7 @@ use sp_runtime::traits::Verify;
 
 use crate::{
 	config::monetary::ExistentialDeposit, deposit, weights, AccountId, Balance, Balances,
-	BlockNumber, Runtime, RuntimeEvent, DAYS,
+	BlockNumber, Runtime, RuntimeEvent, System, DAYS,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -78,6 +78,7 @@ parameter_types! {
 impl pallet_nfts::Config for Runtime {
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
+	type BlockNumberProvider = System;
 	type CollectionDeposit = NftsCollectionDeposit;
 	type CollectionId = CollectionId;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
@@ -358,6 +359,14 @@ mod tests {
 				Blake2_128Concat::max_len::<AttributeNamespace<AccountId>>();
 			assert_eq!(key_size, 89);
 			assert_eq!(deposit(1, key_size as u32) / 100, NftsAttributeDepositBase::get());
+		}
+
+		#[test]
+		fn ensure_system_is_block_number_provider() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_nfts::Config>::BlockNumberProvider>(),
+				TypeId::of::<System>(),
+			);
 		}
 
 		#[test]

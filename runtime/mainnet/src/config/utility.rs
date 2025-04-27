@@ -2,7 +2,7 @@ use crate::{
 	config::system::RuntimeBlockWeights, deposit, parameter_types, weights, AccountId, Balance,
 	Balances, ConstU32, EnsureRoot, EqualPrivilegeOnly, HoldConsideration, LinearStoragePrice,
 	OriginCaller, Perbill, Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
-	RuntimeOrigin, Weight,
+	RuntimeOrigin, System, Weight,
 };
 
 parameter_types! {
@@ -15,6 +15,7 @@ parameter_types! {
 }
 
 impl pallet_multisig::Config for Runtime {
+	type BlockNumberProvider = System;
 	type Currency = Balances;
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
@@ -86,6 +87,14 @@ mod tests {
 		use parachains_common::BlockNumber;
 
 		use super::*;
+
+		#[test]
+		fn ensure_system_is_block_number_provider() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_multisig::Config>::BlockNumberProvider>(),
+				TypeId::of::<System>(),
+			);
+		}
 
 		#[test]
 		fn balances_is_used_for_deposits() {
