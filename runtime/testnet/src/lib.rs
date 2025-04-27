@@ -157,6 +157,12 @@ pub type UncheckedExtrinsic =
 ///
 /// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
 pub type Migrations = (
+	// ----- pallet-revive -----
+	// With pop-node uplift to polkadot-sdk 2503 revive needs a migration if it is being depolyed
+	// on a live chain.
+	// src: https://github.com/paritytech/polkadot-sdk/pull/7230
+	// The migration is not included in this runtime version.
+	// -------------------------
 	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
 	// Unreleased.
 	pallet_assets::migration::next_asset_id::SetNextAssetId<
