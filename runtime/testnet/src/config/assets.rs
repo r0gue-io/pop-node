@@ -45,6 +45,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Extra = ();
 	type ForceOrigin = AssetsForceOrigin;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type RemoveItemsLimit = ConstU32<1000>;
