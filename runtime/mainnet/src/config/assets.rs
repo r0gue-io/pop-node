@@ -48,6 +48,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Extra = ();
 	type ForceOrigin = AssetsForceOrigin;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type RemoveItemsLimit = ConstU32<1000>;
@@ -255,6 +256,15 @@ mod tests {
 		fn no_extra_data_is_stored() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::Extra>(
+				),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
+		fn holder_is_default() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::Holder>(
 				),
 				TypeId::of::<()>(),
 			);
