@@ -64,7 +64,7 @@ pub use pop_runtime_common::{
 };
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256, U256};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -686,6 +686,10 @@ impl_runtime_apis! {
 			use frame_support::traits::fungible::Inspect;
 			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
 			Balances::reducible_balance(&account, Preserve, Polite)
+		}
+
+		fn block_gas_limit() -> U256 {
+			Revive::evm_block_gas_limit()
 		}
 
 		fn nonce(address: H160) -> Nonce {

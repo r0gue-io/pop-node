@@ -12,7 +12,7 @@ use frame_support::{
 use pallet_revive::AddressMapper;
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H160, U256};
 use sp_runtime::{
 	traits::Block as BlockT,
 	transaction_validity::{TransactionSource, TransactionValidity},
@@ -399,6 +399,10 @@ impl_runtime_apis! {
 			use frame_support::traits::fungible::Inspect;
 			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
 			Balances::reducible_balance(&account, Preserve, Polite)
+		}
+
+		fn block_gas_limit() -> U256 {
+			Revive::evm_block_gas_limit()
 		}
 
 		fn nonce(address: H160) -> Nonce {
