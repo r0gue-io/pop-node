@@ -297,7 +297,7 @@ mod tests {
 	use polkadot_runtime_common::xcm_sender::*;
 	use polkadot_runtime_parachains::FeeTracker;
 	use sp_core::crypto::Ss58Codec;
-	use sp_keyring::AccountKeyring;
+	use sp_keyring::Sr25519Keyring;
 	use sp_runtime::FixedPointNumber;
 	use xcm_executor::traits::{ConvertLocation, FeeManager, FeeReason};
 
@@ -366,7 +366,7 @@ mod tests {
 					1,
 					[AccountId32 {
 						network: None,
-						id: AccountKeyring::Alice.to_account_id().into(),
+						id: Sr25519Keyring::Alice.to_account_id().into(),
 					}],
 				),
 				expected_account_id_str: "5EueAXd4h8u75nSbFdDJbC29cmi4Uo1YJssqEL9idvindxFL",
@@ -379,7 +379,7 @@ mod tests {
 						Parachain(1111),
 						Junction::AccountId32 {
 							network: None,
-							id: AccountKeyring::Alice.to_account_id().into(),
+							id: Sr25519Keyring::Alice.to_account_id().into(),
 						},
 					],
 				),
