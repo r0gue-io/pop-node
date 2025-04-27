@@ -32,6 +32,7 @@ impl pallet_revive::Config for Runtime {
 	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type EthGasEncoder = ();
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	// 1 ETH : 1_000_000 UNIT
 	type NativeToEthRatio = NativeToEthRatio;
@@ -127,6 +128,11 @@ mod tests {
 	#[test]
 	fn deposit_per_item_is_correct() {
 		assert_eq!(<<Runtime as Config>::DepositPerItem as Get<Balance>>::get(), deposit(1, 0),);
+	}
+
+	#[test]
+	fn ensure_eth_gas_encoder() {
+		assert_eq!(TypeId::of::<<Runtime as Config>::EthGasEncoder>(), TypeId::of::<()>(),);
 	}
 
 	#[test]
