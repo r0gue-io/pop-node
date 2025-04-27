@@ -8,7 +8,7 @@ use parachains_common::Balance;
 
 use crate::{
 	config::system::RuntimeBlockWeights, deposit, AccountId, Balances, OriginCaller, Perbill,
-	Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, Weight,
+	Preimage, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, System, Weight,
 };
 
 parameter_types! {
@@ -20,6 +20,7 @@ parameter_types! {
 }
 
 impl pallet_multisig::Config for Runtime {
+	type BlockNumberProvider = System;
 	type Currency = Balances;
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;

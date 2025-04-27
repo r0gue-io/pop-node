@@ -4,7 +4,7 @@ use pop_runtime_common::proxy::{MaxPending, MaxProxies, ProxyType};
 
 use crate::{
 	config::assets::TrustBackedAssetsCall, deposit, parameter_types, weights, Balance, Balances,
-	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
+	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent, System,
 };
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
@@ -106,6 +106,7 @@ parameter_types! {
 impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+	type BlockNumberProvider = System;
 	type CallHasher = BlakeTwo256;
 	type Currency = Balances;
 	type MaxPending = MaxPending;
@@ -189,6 +190,14 @@ mod tests {
 		assert_eq!(
 			<<Runtime as Config>::AnnouncementDepositFactor as Get<Balance>>::get(),
 			deposit(0, 68),
+		);
+	}
+
+	#[test]
+	fn ensure_system_is_block_number_provider() {
+		assert_eq!(
+			TypeId::of::<<Runtime as Config>::BlockNumberProvider>(),
+			TypeId::of::<System>(),
 		);
 	}
 

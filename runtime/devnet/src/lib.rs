@@ -575,6 +575,7 @@ parameter_types! {
 }
 
 impl pallet_multisig::Config for Runtime {
+	type BlockNumberProvider = System;
 	type Currency = Balances;
 	type DepositBase = DepositBase;
 	type DepositFactor = DepositFactor;
