@@ -213,7 +213,7 @@ where
 	let transaction_pool = params.transaction_pool.clone();
 	let import_queue_service = params.import_queue.service();
 
-	let (network, system_rpc_tx, tx_handler_controller, start_network, sync_service) =
+	let (network, system_rpc_tx, tx_handler_controller, sync_service) =
 		build_network(BuildNetworkParams {
 			parachain_config: &parachain_config,
 			net_config,
@@ -348,8 +348,6 @@ where
 			announce_block,
 		)?;
 	}
-
-	start_network.start_network();
 
 	Ok((task_manager, client))
 }
