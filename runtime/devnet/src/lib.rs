@@ -475,6 +475,7 @@ parameter_types! {
 }
 
 impl pallet_session::Config for Runtime {
+	type DisablingStrategy = ();
 	type Keys = SessionKeys;
 	type NextSessionRotation = pallet_session::PeriodicSessions<Period, Offset>;
 	type RuntimeEvent = RuntimeEvent;
