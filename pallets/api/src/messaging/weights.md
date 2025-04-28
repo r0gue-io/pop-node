@@ -56,7 +56,34 @@ Then i think, and hope, we are safe.
 
 
 
+```mermaid
+flowchart TD
+    %% XCM New Query
+    A(["xcm_new_query"]) --> B{"Callback included?<br/>"}
+    B -- yes --> C["Take deposit for callback weight"]
+    B -- no  --> D["Take response fee"]
+    C --> D
 
+    %% XCM Response
+    E(["xcm_response"]) --> F["xcm-executor"]
+    F --> G["pallet-xcm::OnResponse"]
+    G --> H["call.dispatch xcm_response"]
+    H --> I{"Callback included?"}
+    I -- yes --> J["Execute callback"]
+    J --> M{"Success?"}
+    M -- yes --> K["Refund unused weight"]
+    K --> N["Increase block weight"]
+    I -- no --> L["Save response"]
+    L --> N
+    M -- no --> L
+
+    %% ISMP Request and Response
+    O(["ismp_request"]) --> P{"Callback included?"}
+    P -- yes --> Q["Take deposit for callback weight"]
+    
+    R(["ismp_response"]) --> S["on_response"]
+    S --> I
+```
 
 
 
