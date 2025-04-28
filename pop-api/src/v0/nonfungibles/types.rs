@@ -198,10 +198,10 @@ mod tests {
 	#[test]
 	fn ensure_mint_witness() {
 		assert_eq!(
-			MintWitness { owned_item: Some(ItemId::MAX), mint_price: Some(Balance::MAX) }.encode(),
+			MintWitness { owned_item: Some(u32::MAX), mint_price: Some(u128::MAX) }.encode(),
 			pallet_nfts::MintWitness::<ItemId, Balance> {
-				owned_item: Some(ItemId::MAX),
-				mint_price: Some(Balance::MAX)
+				owned_item: Some(u32::MAX),
+				mint_price: Some(u128::MAX)
 			}
 			.encode()
 		);
@@ -258,12 +258,11 @@ mod tests {
 	#[test]
 	fn ensure_mint_type() {
 		assert_eq!(
-			vec![MintType::Issuer, MintType::Public, MintType::HolderOf(CollectionId::MAX)]
-				.encode(),
+			vec![MintType::Issuer, MintType::Public, MintType::HolderOf(u32::MAX)].encode(),
 			vec![
 				pallet_nfts::MintType::Issuer,
 				pallet_nfts::MintType::Public,
-				pallet_nfts::MintType::HolderOf(CollectionId::MAX)
+				pallet_nfts::MintType::HolderOf(u32::MAX)
 			]
 			.encode()
 		);
@@ -330,9 +329,9 @@ mod tests {
 	fn default_mint_settings() -> MintSettings {
 		MintSettings {
 			mint_type: MintType::Public,
-			price: Some(Balance::MAX),
-			start_block: Some(BlockNumber::MIN),
-			end_block: Some(BlockNumber::MAX),
+			price: Some(u128::MAX),
+			start_block: Some(u32::MIN),
+			end_block: Some(u32::MAX),
 			default_item_settings: ItemSettings::all_enabled(),
 		}
 	}
@@ -341,9 +340,9 @@ mod tests {
 	) -> pallet_nfts::MintSettings<Balance, BlockNumber, CollectionId> {
 		pallet_nfts::MintSettings::<Balance, BlockNumber, CollectionId> {
 			mint_type: pallet_nfts::MintType::Public,
-			price: Some(Balance::MAX),
-			start_block: Some(BlockNumber::MIN),
-			end_block: Some(BlockNumber::MAX),
+			price: Some(u128::MAX),
+			start_block: Some(u32::MIN),
+			end_block: Some(u32::MAX),
 			default_item_settings: pallet_nfts::ItemSettings::all_enabled(),
 		}
 	}

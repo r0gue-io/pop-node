@@ -312,7 +312,7 @@ pub(super) mod nfts {
 			collection,
 			item,
 			operator.clone().into(),
-			Some(BlockNumber::MAX)
+			Some(u32::MAX)
 		));
 		(collection, item)
 	}
@@ -352,9 +352,9 @@ pub(super) mod nfts {
 	pub(crate) fn default_mint_settings() -> MintSettings {
 		MintSettings {
 			mint_type: MintType::Issuer,
-			price: Some(Balance::MAX),
-			start_block: Some(BlockNumber::MIN),
-			end_block: Some(BlockNumber::MAX),
+			price: Some(u128::MAX),
+			start_block: Some(u32::MIN),
+			end_block: Some(u32::MAX),
 			default_item_settings: ItemSettings::all_enabled(),
 		}
 	}
