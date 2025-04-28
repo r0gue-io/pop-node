@@ -10,13 +10,10 @@ use frame_support::{
 	storage::KeyLenOf,
 	traits::{
 		tokens::{
-			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate, Imbalance, DecreaseIssuance, IncreaseIssuance, Balanced, Credit},
+			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate, Balanced, Credit},
 			Fortitude,
 			Precision,
-			Preservation, Restriction,
-			imbalance::ResolveTo
-			
-
+			Preservation, 
 		},
 		Get,
 		OnUnbalanced,
@@ -572,7 +569,7 @@ pub mod pallet {
 				&T::WeightInfo::xcm_response().saturating_add(callback_execution_weight),
 			);
 
-			let drawn = T::Fungibles::withdraw(
+			let credit = T::Fungibles::withdraw(
 				&origin,
 				response_prepayment_amount,
 				Precision::Exact,
@@ -580,7 +577,7 @@ pub mod pallet {
 				Fortitude::Polite,
 			)?;
 
-			T::FeeHandler::on_unbalanced(drawn);
+			T::FeeHandler::on_unbalanced(credit);
 
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
@@ -1029,7 +1026,7 @@ pub mod pallet {
 			T::Fungibles::release(&reason, initiating_origin, total_deposit, Precision::Exact)?;
 
 			// Withdraw assets.
-			let drawn = T::Fungibles::withdraw(
+			let credit = T::Fungibles::withdraw(
 				&initiating_origin, 
 				to_reward,
 				Precision::Exact,
@@ -1038,7 +1035,7 @@ pub mod pallet {
 			)?;
 
 			// Handle assets.
-			T::FeeHandler::on_unbalanced(drawn);
+			T::FeeHandler::on_unbalanced(credit);
 			Ok(())
 		}
 	}
