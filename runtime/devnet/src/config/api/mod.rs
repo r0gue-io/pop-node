@@ -114,16 +114,16 @@ impl nonfungibles::Config for Runtime {
 
 parameter_types! {
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
-	// TODO: What is reasonable.
 
+	// TODO: What is reasonable.
 	pub const IsmpRelayerFee: crate::Balance = crate::UNIT / 2;
 	pub DummyFeeAccount: AccountId = crate::PalletId(*b"dummyacc").into_account_truncating();
-
 }
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
-	type FeeAccount = DummyFeeAccount;
+	// Burn fees.
+	type FeeHandler =  ();
 	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
