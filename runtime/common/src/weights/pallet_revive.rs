@@ -28,9 +28,9 @@
 use frame_support::{traits::Get, weights::Weight};
 use core::marker::PhantomData;
 
-/// Weights for `pallet_revive` using the Substrate node and recommended hardware.
-pub struct SubstrateWeight<T>(PhantomData<T>);
-impl<T: frame_system::Config> pallet_revive::WeightInfo for SubstrateWeight<T> {
+/// Weight functions for `pallet_revive`.
+pub struct WeightInfo<T>(PhantomData<T>);
+impl<T: frame_system::Config> pallet_revive::WeightInfo for WeightInfo<T> {
 	/// Storage: `Revive::DeletionQueueCounter` (r:1 w:0)
 	/// Proof: `Revive::DeletionQueueCounter` (`max_values`: Some(1), `max_size`: Some(8), added: 503, mode: `Measured`)
 	fn on_process_deletion_queue_batch() -> Weight {
