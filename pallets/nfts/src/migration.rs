@@ -28,7 +28,7 @@ pub mod v1 {
 
 	use super::*;
 
-	#[derive(Decode)]
+	#[derive(Decode, DecodeWithMemTracking)]
 	#[allow(missing_docs)]
 	pub struct OldCollectionDetails<AccountId, DepositBalance> {
 		pub owner: AccountId,

@@ -8,7 +8,7 @@ use ::ismp::{
 	},
 	host::StateMachine,
 };
-use codec::{Decode, Encode, MaxEncodedLen};
+use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 use frame_support::{
 	pallet_prelude::Weight, traits::Get as _, CloneNoBound, DebugNoBound, EqNoBound,
 	PartialEqNoBound,
@@ -33,7 +33,16 @@ pub const ID: [u8; 3] = *b"pop";
 
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[derive(
+	Encode,
+	EqNoBound,
+	CloneNoBound,
+	DebugNoBound,
+	Decode,
+	DecodeWithMemTracking,
+	PartialEqNoBound,
+	TypeInfo,
+)]
 #[scale_info(skip_type_params(T))]
 pub enum Message<T: Config> {
 	Get(Get<T>),
@@ -49,7 +58,16 @@ impl<T: Config> From<Message<T>> for DispatchRequest {
 	}
 }
 
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[derive(
+	Encode,
+	EqNoBound,
+	CloneNoBound,
+	DebugNoBound,
+	Decode,
+	DecodeWithMemTracking,
+	PartialEqNoBound,
+	TypeInfo,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct Get<T: Config> {
 	// TODO: Option<u32> to support relay?
@@ -90,7 +108,16 @@ impl<T: Config> CalculateDeposit<BalanceOf<T>> for Get<T> {
 	}
 }
 
-#[derive(Encode, EqNoBound, CloneNoBound, DebugNoBound, Decode, PartialEqNoBound, TypeInfo)]
+#[derive(
+	Encode,
+	EqNoBound,
+	CloneNoBound,
+	DebugNoBound,
+	Decode,
+	DecodeWithMemTracking,
+	PartialEqNoBound,
+	TypeInfo,
+)]
 #[scale_info(skip_type_params(T))]
 pub struct Post<T: Config> {
 	// TODO: Option<u32> to support relay?

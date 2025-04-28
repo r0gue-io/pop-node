@@ -2,7 +2,7 @@
 
 use alloc::vec::Vec;
 
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
 	pallet_prelude::MaxEncodedLen,
@@ -531,14 +531,16 @@ impl<T: Config> Pallet<T> {
 	}
 }
 
-#[derive(Clone, Decode, Debug, Encode, MaxEncodedLen, PartialEq, TypeInfo)]
+#[derive(
+	Clone, Decode, DecodeWithMemTracking, Debug, Encode, MaxEncodedLen, PartialEq, TypeInfo,
+)]
 pub enum Status {
 	Pending,
 	TimedOut,
 	Complete,
 }
 
-#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+#[derive(Encode, Decode, DecodeWithMemTracking, Debug, MaxEncodedLen)]
 #[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 #[repr(u8)]
 #[allow(clippy::unnecessary_cast)]
@@ -608,7 +610,9 @@ trait CalculateDeposit<Deposit> {
 	fn calculate_deposit(&self) -> Deposit;
 }
 
-#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+#[derive(
+	Clone, Debug, Encode, Eq, Decode, DecodeWithMemTracking, MaxEncodedLen, PartialEq, TypeInfo,
+)]
 #[scale_info(skip_type_params(T))]
 enum Message<T: Config> {
 	Ismp {
@@ -638,7 +642,18 @@ enum Message<T: Config> {
 }
 
 // Message selector and pre-paid weight used as gas limit
-#[derive(Copy, Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+#[derive(
+	Copy,
+	Clone,
+	Debug,
+	Encode,
+	Eq,
+	Decode,
+	DecodeWithMemTracking,
+	MaxEncodedLen,
+	PartialEq,
+	TypeInfo,
+)]
 pub struct Callback {
 	pub selector: [u8; 4],
 	pub weight: Weight,
