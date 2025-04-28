@@ -3,9 +3,11 @@
 use enumflags2::{bitflags, BitFlags};
 
 use super::*;
-use crate::{macros::impl_codec_bitflags, primitives::AccountId};
+use crate::{
+	macros::impl_codec_bitflags,
+	primitives::{AccountId, Balance},
+};
 
-type Balance = u32;
 /// The identifier of a collection.
 pub type CollectionId = u32;
 /// The identifier of an item.
@@ -178,18 +180,30 @@ mod tests {
 	#[test]
 	fn ensure_destroy_witness() {
 		assert_eq!(
-			DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }.encode(),
-			pallet_nfts::DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }
-				.encode()
+			DestroyWitness {
+				item_metadatas: u32::MAX,
+				item_configs: u32::MAX,
+				attributes: u32::MAX
+			}
+			.encode(),
+			pallet_nfts::DestroyWitness {
+				item_metadatas: u32::MAX,
+				item_configs: u32::MAX,
+				attributes: u32::MAX
+			}
+			.encode()
 		);
 	}
 
 	#[test]
 	fn ensure_mint_witness() {
 		assert_eq!(
-			MintWitness { owned_item: None, mint_price: None }.encode(),
-			pallet_nfts::MintWitness::<ItemId, Balance> { owned_item: None, mint_price: None }
-				.encode()
+			MintWitness { owned_item: Some(u32::MAX), mint_price: Some(u128::MAX) }.encode(),
+			pallet_nfts::MintWitness::<ItemId, Balance> {
+				owned_item: Some(u32::MAX),
+				mint_price: Some(u128::MAX)
+			}
+			.encode()
 		);
 	}
 
@@ -228,13 +242,13 @@ mod tests {
 		assert_eq!(
 			CollectionConfig {
 				settings: CollectionSettings::all_enabled(),
-				max_supply: None,
+				max_supply: Some(u32::MAX),
 				mint_settings: default_mint_settings(),
 			}
 			.encode(),
 			pallet_nfts::CollectionConfig {
 				settings: pallet_nfts::CollectionSettings::all_enabled(),
-				max_supply: None,
+				max_supply: Some(u32::MAX),
 				mint_settings: default_pallet_mint_settings(),
 			}
 			.encode()
@@ -244,11 +258,11 @@ mod tests {
 	#[test]
 	fn ensure_mint_type() {
 		assert_eq!(
-			vec![MintType::Issuer, MintType::Public, MintType::HolderOf(0),].encode(),
+			vec![MintType::Issuer, MintType::Public, MintType::HolderOf(u32::MAX)].encode(),
 			vec![
 				pallet_nfts::MintType::Issuer,
 				pallet_nfts::MintType::Public,
-				pallet_nfts::MintType::HolderOf(0)
+				pallet_nfts::MintType::HolderOf(u32::MAX)
 			]
 			.encode()
 		);
@@ -281,8 +295,8 @@ mod tests {
 	#[test]
 	fn ensure_cancel_attributes_approval_witness() {
 		assert_eq!(
-			CancelAttributesApprovalWitness { account_attributes: 0 }.encode(),
-			pallet_nfts::CancelAttributesApprovalWitness { account_attributes: 0 }.encode(),
+			CancelAttributesApprovalWitness { account_attributes: u32::MAX }.encode(),
+			pallet_nfts::CancelAttributesApprovalWitness { account_attributes: u32::MAX }.encode(),
 		);
 	}
 
@@ -315,9 +329,9 @@ mod tests {
 	fn default_mint_settings() -> MintSettings {
 		MintSettings {
 			mint_type: MintType::Public,
-			price: None,
-			start_block: None,
-			end_block: None,
+			price: Some(u128::MAX),
+			start_block: Some(u32::MIN),
+			end_block: Some(u32::MAX),
 			default_item_settings: ItemSettings::all_enabled(),
 		}
 	}
@@ -326,9 +340,9 @@ mod tests {
 	) -> pallet_nfts::MintSettings<Balance, BlockNumber, CollectionId> {
 		pallet_nfts::MintSettings::<Balance, BlockNumber, CollectionId> {
 			mint_type: pallet_nfts::MintType::Public,
-			price: None,
-			start_block: None,
-			end_block: None,
+			price: Some(u128::MAX),
+			start_block: Some(u32::MIN),
+			end_block: Some(u32::MAX),
 			default_item_settings: pallet_nfts::ItemSettings::all_enabled(),
 		}
 	}
