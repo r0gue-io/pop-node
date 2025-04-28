@@ -102,13 +102,13 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type Extra = ();
 	type ForceOrigin = EnsureRoot<u64>;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = ConstU128<1>;
 	type MetadataDepositPerByte = ConstU128<1>;
 	type RemoveItemsLimit = ConstU32<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = ConstU32<50>;
 	type WeightInfo = ();
-	type Holder = ();
 }
 
 impl crate::fungibles::Config for Test {
