@@ -51,7 +51,7 @@ impl-trait-for-tuples = "0.2.2"
 jsonrpsee = { version = "0.24.3", features = [ "server" ] }
 log = { version = "0.4.22", default-features = false }
 rand = "0.8.5"
-scale-info = { version = "2.11.1", default-features = false, features = [
+scale-info = { version = "2.11.6", default-features = false, features = [
 	"derive",
 ] }
 serde = "1.0.209"
@@ -198,10 +198,10 @@ paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes", d
 westend-runtime = { version = "22.1.0" }
 westend-runtime-constants = { version = "20.0.0", default-features = false }
 
-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
-ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
-ismp-parachain-inherent = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
-ismp-parachain-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
-pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
-pallet-ismp-rpc = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
-pallet-ismp-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2412", default-features = false }
+ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2503", default-features = false }
+ismp-parachain = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2503", default-features = false }
+ismp-parachain-inherent = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2503", default-features = false }
+ismp-parachain-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2503", default-features = false }
+pallet-ismp = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2503", default-features = false }
+pallet-ismp-rpc = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2503", default-features = false }
+pallet-ismp-runtime-api = { git = "https://github.com/r0gue-io/ismp", branch = "polkadot-stable2503", default-features = false }
