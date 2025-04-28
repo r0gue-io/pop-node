@@ -10,12 +10,16 @@ use frame_support::{
 	storage::KeyLenOf,
 	traits::{
 		tokens::{
-			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate},
+			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate, Imbalance, DecreaseIssuance, IncreaseIssuance, Balanced, Credit},
 			Fortitude,
-			Precision::Exact,
+			Precision,
 			Preservation, Restriction,
+			imbalance::ResolveTo
+			
+
 		},
 		Get,
+		OnUnbalanced,
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -89,8 +93,8 @@ pub mod pallet {
 
 		/// The deposit + fee mechanism.
 		type Fungibles: HoldMutate<Self::AccountId, Reason = Self::RuntimeHoldReason>
-			+ Inspect<Self::AccountId>
-			+ Mutate<Self::AccountId>;
+			+ Mutate<Self::AccountId>
+			+ Balanced<Self::AccountId>;
 
 		/// The ISMP message dispatcher.
 		type IsmpDispatcher: IsmpDispatcher<Account = Self::AccountId, Balance = BalanceOf<Self>>;
@@ -135,7 +139,9 @@ pub mod pallet {
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
 		/// Where the callback fees or response fees are charged to.
-		type FeeHandler: OnUnbalanced<BalanceOf<Self>>;
+		type FeeHandler: OnUnbalanced<
+			Credit<Self::AccountId, Self::Fungibles>
+		>;
 
 		/// The type responsible for converting between weight and balance, commonly transaction
 		/// payment.
@@ -566,12 +572,15 @@ pub mod pallet {
 				&T::WeightInfo::xcm_response().saturating_add(callback_execution_weight),
 			);
 
-			let imbalance = T::Fungibles::shelve(
+			let drawn = T::Fungibles::withdraw(
 				&origin,
 				response_prepayment_amount,
+				Precision::Exact,
+				Preservation::Preserve,
+				Fortitude::Polite,
 			)?;
 
-			T::FeeHandler::on_unbalanced(imbalance);
+			T::FeeHandler::on_unbalanced(drawn);
 
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
@@ -660,7 +669,7 @@ pub mod pallet {
 						&HoldReason::Messaging.into(),
 						&initiating_origin,
 						*message_deposit,
-						Exact,
+						Precision::Exact,
 					)?;
 
 					return Ok(())
@@ -731,14 +740,14 @@ pub mod pallet {
 					&HoldReason::Messaging.into(),
 					&origin,
 					message_deposit,
-					Exact,
+					Precision::Exact,
 				)?;
 				if let Some(callback_deposit) = maybe_callback_deposit {
 					T::Fungibles::release(
 						&HoldReason::CallbackGas.into(),
 						&origin,
 						callback_deposit,
-						Exact,
+						Precision::Exact,
 					)?;
 				}
 			}
@@ -1007,28 +1016,29 @@ pub mod pallet {
 			let total_deposit = T::WeightToFee::weight_to_fee(&max_weight);
 			let reason = HoldReason::CallbackGas.into();
 
-			// TODO: Release the total and then withdraw the imbalance then handle it.
-			let reward = if weight_to_refund.any_gt(Zero::zero()) {
-				// Try return some deposit
+			let to_reward = if weight_to_refund.any_gt(Zero::zero()) {
 				let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
 				let execution_reward = total_deposit.saturating_sub(returnable_deposit);
 
-				T::Fungibles::release(&reason, initiating_origin, returnable_deposit, Exact)?;
 				execution_reward
 			} else {
 				total_deposit
 			};
 
-			T::Fungibles::transfer_on_hold(
-				&reason,
-				initiating_origin,
-				&T::FeeAccount::get(),
-				reward,
-				Exact,
-				Restriction::Free,
+			// Release the deposit.
+			T::Fungibles::release(&reason, initiating_origin, total_deposit, Precision::Exact)?;
+
+			// Withdraw assets.
+			let drawn = T::Fungibles::withdraw(
+				&initiating_origin, 
+				to_reward,
+				Precision::Exact,
+				Preservation::Preserve,
 				Fortitude::Polite,
 			)?;
 
+			// Handle assets.
+			T::FeeHandler::on_unbalanced(drawn);
 			Ok(())
 		}
 	}

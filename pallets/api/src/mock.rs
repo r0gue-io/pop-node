@@ -7,6 +7,7 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Get, Hooks, OriginTrait,
+		tokens::imbalance::ResolveTo
 	},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
@@ -266,7 +267,7 @@ pub fn get_next_query_id() -> u64 {
 
 impl crate::messaging::Config for Test {
 	type CallbackExecutor = AlwaysSuccessfullCallbackExecutor<Test>;
-	type FeeAccount = FeeAccount;
+	type FeeHandler = ResolveTo<FeeAccount, Balances>;
 	type Fungibles = Balances;
 	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
 	type IsmpRelayerFee = IsmpRelayerFee;
