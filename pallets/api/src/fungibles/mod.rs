@@ -409,7 +409,7 @@ pub mod pallet {
 	}
 
 	/// State reads for the fungibles API with required input.
-	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[derive(Encode, Decode, DecodeWithMemTracking, Debug, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]

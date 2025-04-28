@@ -83,7 +83,7 @@ pub use async_backing_params::*;
 
 /// Proxy commons for Pop runtimes
 pub mod proxy {
-	use codec::{Decode, Encode, MaxEncodedLen};
+	use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 	use frame_support::parameter_types;
 	use sp_runtime::RuntimeDebug;
 
@@ -111,6 +111,7 @@ pub mod proxy {
 		PartialOrd,
 		Encode,
 		Decode,
+		DecodeWithMemTracking,
 		RuntimeDebug,
 		MaxEncodedLen,
 		scale_info::TypeInfo,
