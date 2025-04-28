@@ -945,12 +945,7 @@ mod call {
 			let data = [100u8; 5];
 			let callback =
 				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
-			assert_ok!(Pallet::<Test>::call(
-				&ALICE,
-				callback,
-				&message_id,
-				&data,
-			));
+			assert_ok!(Pallet::<Test>::call(&ALICE, callback, &message_id, &data,));
 
 			System::assert_last_event(
 				Event::<Test>::WeightRefundErrored {
@@ -975,30 +970,22 @@ mod call {
 			let data = [100u8; 5];
 			let callback =
 				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
-			
-				<Test as Config>::Fungibles::hold(
+
+			<Test as Config>::Fungibles::hold(
 				&HoldReason::CallbackGas.into(),
 				&ALICE,
 				callback_fee,
 			)
 			.unwrap();
 
-			assert_ok!(Pallet::<Test>::call(
-				&ALICE,
-				callback,
-				&message_id,
-				&data,
-			));
+			assert_ok!(Pallet::<Test>::call(&ALICE, callback, &message_id, &data,));
 
 			let blockweight_post_call =
 				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
 			assert_ne!(blockweight_post_call, Zero::zero());
 
 			// callback weight used in tests is total / 2.
-			assert_eq!(
-				blockweight_post_call - blockweight_pre_call,
-				callback_weight / 2
-			);
+			assert_eq!(blockweight_post_call - blockweight_pre_call, callback_weight / 2);
 		})
 	}
 }

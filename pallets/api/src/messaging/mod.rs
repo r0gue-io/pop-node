@@ -649,14 +649,7 @@ pub mod pallet {
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
 				// Never roll back state if call fails.
 				// Ensure that the response can be polled.
-				if Self::call(
-					&initiating_origin,
-					callback.to_owned(),
-					&id,
-					&xcm_response,
-				)
-				.is_ok()
-				{
+				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
 					Messages::<T>::remove(&initiating_origin, id);
 					XcmQueries::<T>::remove(query_id);
 					T::Fungibles::release(
@@ -841,8 +834,7 @@ pub mod pallet {
 		/// # Weight Handling
 		///
 		/// - Before executing the callback, this function checks whether the total expected weight
-		///   (`callback.weight`) can be accommodated in the current
-		///   block.
+		///   (`callback.weight`) can be accommodated in the current block.
 		/// - If the block is saturated, the function returns early with an error and does not
 		///   mutate state.
 		/// - After execution, the actual weight used by the callback is determined using
@@ -856,8 +848,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			// This is the total weight that should be deducted from the blockspace for callback
 			// execution.
-			let max_weight = callback
-				.weight;
+			let max_weight = callback.weight;
 
 			// Dont mutate state if blockspace will be saturated.
 			ensure!(
