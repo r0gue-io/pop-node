@@ -2,11 +2,15 @@ use core::marker::PhantomData;
 
 use frame_support::{
 	parameter_types,
-	traits::{ConstU32, Contains, ContainsPair, Everything, Get, Nothing},
+	traits::{
+		fungible::HoldConsideration, ConstU32, Contains, ContainsPair, Everything, Get,
+		LinearStoragePrice, Nothing,
+	},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
-use pallet_xcm::XcmPassthrough;
+use pallet_xcm::{AuthorizedAliasers, XcmPassthrough};
+use parachains_common::Balance;
 use polkadot_runtime_common::impls::ToAuthor;
 use xcm::latest::prelude::*;
 use xcm_builder::{
@@ -20,8 +24,9 @@ use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 use crate::{
-	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
-	Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee, XcmpQueue,
+	AccountId, AllPalletsWithSystem, Balances, DepositPerByte, DepositPerItem, ParachainInfo,
+	ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 
 parameter_types! {
@@ -144,7 +149,8 @@ pub type TrustedReserves = (NativeAssetFrom<AssetHub>, NativeAssetExceptRelay);
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
-	type Aliasers = Nothing;
+	// Allow origins explicitly authorized by the alias target location.
+	type Aliasers = AuthorizedAliasers<Runtime>;
 	type AssetClaims = PolkadotXcm;
 	type AssetExchanger = ();
 	type AssetLocker = ();
@@ -191,10 +197,19 @@ pub type XcmRouter = WithUniqueTopic<(
 	XcmpQueue,
 )>;
 
+parameter_types! {
+	pub const AuthorizeAliasHoldReason: RuntimeHoldReason = RuntimeHoldReason::PolkadotXcm(pallet_xcm::HoldReason::AuthorizeAlias);
+}
 impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	// ^ Override for AdvertisedXcmVersion default
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type AuthorizedAliasConsideration = HoldConsideration<
+		AccountId,
+		Balances,
+		AuthorizeAliasHoldReason,
+		LinearStoragePrice<DepositPerItem, DepositPerByte, Balance>,
+	>;
 	type Currency = Balances;
 	type CurrencyMatcher = ();
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;

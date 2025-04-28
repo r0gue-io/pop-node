@@ -10,7 +10,7 @@ use pop_runtime_common::UNIT;
 use super::api::{self, Config};
 use crate::{
 	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp, TransactionPayment,
+	RuntimeHoldReason, Timestamp, TransactionPayment, DepositPerByte, DepositPerItem,
 };
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
@@ -39,8 +39,6 @@ const ETH: u128 = 1_000_000_000_000_000_000;
 
 parameter_types! {
 	pub ChainId: u64 = u32::from(crate::genesis::PARA_ID) as u64;
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
 	// 30 percent of storage deposit held for using a code hash.
