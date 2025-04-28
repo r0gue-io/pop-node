@@ -9,6 +9,7 @@ use pop_runtime_common::UNIT;
 
 use super::api::{self, Config};
 use crate::{
+	config::monetary::{DepositPerByte, DepositPerItem},
 	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
 	RuntimeHoldReason, Timestamp, TransactionPayment,
 };
@@ -38,8 +39,6 @@ impl<T: pallet_contracts::Config> Randomness<T::Hash, BlockNumberFor<T>> for Dum
 const ETH: u128 = 1_000_000_000_000_000_000;
 
 parameter_types! {
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);

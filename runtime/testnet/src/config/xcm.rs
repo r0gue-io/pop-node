@@ -5,16 +5,17 @@ use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
 	parameter_types,
 	traits::{
-		tokens::imbalance::ResolveTo, ConstU32, Contains, ContainsPair, Equals, Everything, Get,
-		Nothing, TransformOrigin,
+		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstU32, Contains,
+		ContainsPair, Equals, Everything, Get, LinearStoragePrice, Nothing, TransformOrigin,
 	},
 	weights::Weight,
 };
 use frame_system::EnsureRoot;
-use pallet_xcm::XcmPassthrough;
+use pallet_xcm::{AuthorizedAliasers, XcmPassthrough};
 use parachains_common::{
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	xcm_config::ParentRelayOrSiblingParachains,
+	Balance,
 };
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::xcm_sender::ExponentialPrice;
@@ -33,12 +34,12 @@ use xcm_executor::XcmExecutor;
 
 use crate::{
 	config::{
-		monetary::{TransactionByteFee, TreasuryAccount},
+		monetary::{DepositPerByte, DepositPerItem, TransactionByteFee, TreasuryAccount},
 		system::RuntimeBlockWeights,
 	},
 	AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo, ParachainSystem,
-	Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin, WeightToFee,
-	XcmpQueue,
+	Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin,
+	WeightToFee, XcmpQueue,
 };
 
 parameter_types! {
@@ -173,7 +174,8 @@ pub type TrustedReserves = NativeAssetFrom<AssetHub>;
 
 pub struct XcmConfig;
 impl xcm_executor::Config for XcmConfig {
-	type Aliasers = Nothing;
+	// Allow origins explicitly authorized by the alias target location.
+	type Aliasers = AuthorizedAliasers<Runtime>;
 	type AssetClaims = PolkadotXcm;
 	type AssetExchanger = ();
 	type AssetLocker = ();
@@ -237,10 +239,20 @@ pub type XcmRouter = WithUniqueTopic<(
 	XcmpQueue,
 )>;
 
+parameter_types! {
+	pub const AuthorizeAliasHoldReason: RuntimeHoldReason = RuntimeHoldReason::PolkadotXcm(pallet_xcm::HoldReason::AuthorizeAlias);
+}
+
 impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	// ^ Override for AdvertisedXcmVersion default.
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type AuthorizedAliasConsideration = HoldConsideration<
+		AccountId,
+		Balances,
+		AuthorizeAliasHoldReason,
+		LinearStoragePrice<DepositPerItem, DepositPerByte, Balance>,
+	>;
 	type Currency = Balances;
 	type CurrencyMatcher = ();
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;

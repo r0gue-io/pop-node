@@ -8,8 +8,8 @@ use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
 
 use super::api::{self, Config};
 use crate::{
-	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
-	Timestamp,
+	deposit, Balance, Balances, DepositPerByte, DepositPerItem, Perbill, Runtime, RuntimeCall,
+	RuntimeEvent, RuntimeHoldReason, Timestamp,
 };
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
@@ -34,8 +34,6 @@ impl<T: pallet_contracts::Config> Randomness<T::Hash, BlockNumberFor<T>> for Dum
 }
 
 parameter_types! {
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
 	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
