@@ -10,12 +10,11 @@ use pop_api::nonfungibles::{
 mod nonfungibles {
 	use super::*;
 
-	/// A basic smart contract showing how a contract can:
-	/// - Create a collection.
-	/// - Mint NFTs into that collection.
-	/// - Transfer, burn, and query NFTs.
+	/// The contract represents a single NFT collection.
 	///
-	/// This example demonstrates common usage of the Nonfungibles API via a contract.
+	/// Upon instantiation, it creates a new
+	/// collection; upon termination, it destroys the collection. It also provides common methods
+	/// to query collection data, and manage items through minting, burning, and transferring.
 	#[ink(storage)]
 	pub struct NonFungibles {
 		/// Collection ID
@@ -73,13 +72,13 @@ mod nonfungibles {
 			self.id
 		}
 
-		/// Returns the amount of items the `owner` has within a `collection`.
+		/// Returns the amount of items the owner.
 		#[ink(message)]
 		pub fn balance_of(&self, owner: AccountId) -> Result<u32, Psp34Error> {
 			api::balance_of(self.id, owner).map_err(Psp34Error::from)
 		}
 
-		/// Returns the owner of an item within a specified collection, if any.
+		/// Returns the owner of an item, if any.
 		#[ink(message)]
 		pub fn owner_of(&self, item: ItemId) -> Result<Option<AccountId>, Psp34Error> {
 			api::owner_of(self.id, item).map_err(Psp34Error::from)
