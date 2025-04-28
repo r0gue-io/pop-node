@@ -123,7 +123,7 @@ parameter_types! {
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
 	// Burn fees.
-	type FeeHandler =  ();
+	type FeeHandler = ();
 	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
