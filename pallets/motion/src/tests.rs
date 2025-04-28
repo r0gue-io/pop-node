@@ -1,4 +1,4 @@
-use codec::{DecodeWithMemTracking, Encode};
+use codec::Encode;
 use frame_support::{assert_ok, dispatch::GetDispatchInfo, weights::Weight};
 use frame_system::{EventRecord, Phase};
 use mock::{RuntimeCall, RuntimeEvent};
@@ -13,14 +13,13 @@ use crate::{mock::*, Event as MotionEvent};
 fn record(event: RuntimeEvent) -> EventRecord<RuntimeEvent, H256> {
 	EventRecord { phase: Phase::Initialization, event, topics: vec![] }
 }
-#[derive(DecodeWithMemTracking)]
+
 struct Proposal {
 	len: u32,
 	weight: Weight,
 	hash: H256,
 }
 
-#[derive(DecodeWithMemTracking)]
 enum MotionType {
 	SimpleMajority,
 	SuperMajority,
