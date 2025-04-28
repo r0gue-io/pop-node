@@ -159,7 +159,7 @@ pub type UncheckedExtrinsic =
 /// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
 pub type Migrations = (
 	// ----- pallet-revive -----
-	// With pop-node uplift to polkadot-sdk 2503 revive needs a migration if it is being depolyed
+	// With pop-node uplift to polkadot-sdk 2503 revive needs a migration if it is being deployed
 	// on a live chain.
 	// src: https://github.com/paritytech/polkadot-sdk/pull/7230
 	// The migration is not included in this runtime version.
