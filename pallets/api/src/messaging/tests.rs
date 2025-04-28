@@ -735,8 +735,9 @@ mod xcm_new_query {
 }
 
 mod xcm_response {
-	use super::*;
 	use frame_system::BlockWeight;
+
+	use super::*;
 
 	#[test]
 	fn message_not_found() {
@@ -897,10 +898,18 @@ mod xcm_response {
 			let expected_query_id = 0;
 			let xcm_response = Response::ExecutionResult(None);
 			let blockweight_pre_call =
-			BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
 
-			assert_ne!(<Test as Config>::CallbackExecutor::execution_weight(), Zero::zero(), "Please set a callback executor execution_weight to run this test.");
-			assert_ne!(<Test as Config>::WeightInfo::xcm_response(), Zero::zero(), "Please set an T::WeightInfo::xcm_response() to run this test.");
+			assert_ne!(
+				<Test as Config>::CallbackExecutor::execution_weight(),
+				Zero::zero(),
+				"Please set a callback executor execution_weight to run this test."
+			);
+			assert_ne!(
+				<Test as Config>::WeightInfo::xcm_response(),
+				Zero::zero(),
+				"Please set an T::WeightInfo::xcm_response() to run this test."
+			);
 
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
@@ -913,10 +922,13 @@ mod xcm_response {
 			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
 
 			let blockweight_post_call =
-			BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
 
-			assert_eq!(blockweight_post_call - blockweight_pre_call, <Test as Config>::WeightInfo::xcm_response() + <Test as Config>::CallbackExecutor::execution_weight())
-			
+			assert_eq!(
+				blockweight_post_call - blockweight_pre_call,
+				<Test as Config>::WeightInfo::xcm_response() +
+					<Test as Config>::CallbackExecutor::execution_weight()
+			)
 		})
 	}
 }
