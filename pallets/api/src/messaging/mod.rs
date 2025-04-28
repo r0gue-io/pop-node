@@ -134,8 +134,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
-		/// Where the callback fees go once any refunds have occured after cb execution.
-		type FeeAccount: Get<AccountIdOf<Self>>;
+		/// Where the callback fees or response fees are charged to.
+		type FeeHandler: OnUnbalanced<BalanceOf<Self>>;
 
 		/// The type responsible for converting between weight and balance, commonly transaction
 		/// payment.
@@ -566,12 +566,12 @@ pub mod pallet {
 				&T::WeightInfo::xcm_response().saturating_add(callback_execution_weight),
 			);
 
-			T::Fungibles::transfer(
+			let imbalance = T::Fungibles::shelve(
 				&origin,
-				&T::FeeAccount::get(),
 				response_prepayment_amount,
-				Preservation::Preserve,
 			)?;
+
+			T::FeeHandler::on_unbalanced(imbalance);
 
 			// Process message by creating new query via XCM.
 			// Xcm only uses/stores pallet, index - i.e. (u8,u8), hence the fields in xcm_response
@@ -1007,6 +1007,7 @@ pub mod pallet {
 			let total_deposit = T::WeightToFee::weight_to_fee(&max_weight);
 			let reason = HoldReason::CallbackGas.into();
 
+			// TODO: Release the total and then withdraw the imbalance then handle it.
 			let reward = if weight_to_refund.any_gt(Zero::zero()) {
 				// Try return some deposit
 				let returnable_deposit = T::WeightToFee::weight_to_fee(&weight_to_refund);
