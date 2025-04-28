@@ -218,9 +218,7 @@ pub(crate) fn process_response<T: Config>(
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
-		// We dont accrue any additional weight as the dispatch is handled normally by pallet-ismp.
-		// This includes the CallbackExecutor::execution_weight
-		if Pallet::<T>::call(&initiating_origin, callback, &id, response_data, None).is_ok() {
+		if Pallet::<T>::call(&initiating_origin, callback, &id, response_data).is_ok() {
 			// Clean storage, return deposit
 			Messages::<T>::remove(&initiating_origin, id);
 			IsmpRequests::<T>::remove(commitment);

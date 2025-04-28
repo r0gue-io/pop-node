@@ -945,13 +945,11 @@ mod call {
 			let data = [100u8; 5];
 			let callback =
 				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
-			let static_weight_adjustment = Weight::from_parts(150_000, 150_000);
 			assert_ok!(Pallet::<Test>::call(
 				&ALICE,
 				callback,
 				&message_id,
 				&data,
-				Some(static_weight_adjustment)
 			));
 
 			System::assert_last_event(
@@ -977,8 +975,8 @@ mod call {
 			let data = [100u8; 5];
 			let callback =
 				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
-			let static_weight_adjustment = Weight::from_parts(15_000_000, 15_000_000);
-			<Test as Config>::Fungibles::hold(
+			
+				<Test as Config>::Fungibles::hold(
 				&HoldReason::CallbackGas.into(),
 				&ALICE,
 				callback_fee,
@@ -990,7 +988,6 @@ mod call {
 				callback,
 				&message_id,
 				&data,
-				Some(static_weight_adjustment)
 			));
 
 			let blockweight_post_call =
@@ -1000,7 +997,7 @@ mod call {
 			// callback weight used in tests is total / 2.
 			assert_eq!(
 				blockweight_post_call - blockweight_pre_call,
-				callback_weight / 2 + static_weight_adjustment
+				callback_weight / 2
 			);
 		})
 	}
