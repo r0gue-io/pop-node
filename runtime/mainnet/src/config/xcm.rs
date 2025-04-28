@@ -4,8 +4,8 @@ use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
 	parameter_types,
 	traits::{
-		tokens::imbalance::ResolveTo, ConstU32, Contains, ContainsPair, Equals, Everything, Get,
-		Nothing, TransformOrigin,
+		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstU32, Contains,
+		ContainsPair, Equals, Everything, Get, LinearStoragePrice, Nothing, TransformOrigin,
 	},
 	weights::Weight,
 };
@@ -14,6 +14,7 @@ use pallet_xcm::XcmPassthrough;
 use parachains_common::{
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	xcm_config::ParentRelayOrSiblingParachains,
+	Balance,
 };
 use polkadot_runtime_common::xcm_sender::ExponentialPrice;
 use sp_runtime::Vec;
@@ -33,14 +34,14 @@ use crate::{
 	config::{
 		monetary::{
 			fee::{WeightToFee, CENTS},
-			TransactionByteFee, TreasuryAccount,
+			DepositPerByte, DepositPerItem, TransactionByteFee, TreasuryAccount,
 		},
 		system::RuntimeBlockWeights,
 		xcm_weights,
 	},
 	weights, AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo,
-	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
-	XcmpQueue,
+	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	RuntimeOrigin, XcmpQueue,
 };
 
 parameter_types! {
@@ -225,9 +226,19 @@ pub type XcmRouter = WithUniqueTopic<(
 	XcmpQueue,
 )>;
 
+parameter_types! {
+	pub const AuthorizeAliasHoldReason: RuntimeHoldReason = RuntimeHoldReason::PolkadotXcm(pallet_xcm::HoldReason::AuthorizeAlias);
+}
+
 impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type AuthorizedAliasConsideration = HoldConsideration<
+		AccountId,
+		Balances,
+		AuthorizeAliasHoldReason,
+		LinearStoragePrice<DepositPerItem, DepositPerByte, Balance>,
+	>;
 	type Currency = Balances;
 	type CurrencyMatcher = ();
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
@@ -915,6 +926,21 @@ mod tests {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::AdvertisedXcmVersion>(),
 				TypeId::of::<pallet_xcm::CurrentXcmVersion>(),
+			);
+		}
+
+		#[test]
+		fn ensure_authorized_alias_hold_consideration() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_xcm::Config>::AuthorizedAliasConsideration>(),
+				TypeId::of::<
+					HoldConsideration<
+						AccountId,
+						Balances,
+						AuthorizeAliasHoldReason,
+						LinearStoragePrice<DepositPerItem, DepositPerByte, Balance>,
+					>,
+				>()
 			);
 		}
 

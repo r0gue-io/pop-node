@@ -1,13 +1,10 @@
-use alloc::vec::Vec;
+use alloc::{vec, vec::Vec};
 
 use codec::Encode;
 use frame_support::{
 	dispatch::DispatchInfo,
 	genesis_builder_helper::{build_state, get_preset},
-	traits::{
-		nonfungibles_v2::Inspect,
-		tokens::{Fortitude::Polite, Preservation::Preserve},
-	},
+	traits::nonfungibles_v2::Inspect,
 	weights::{Weight, WeightToFee as _},
 };
 use pallet_revive::{evm::runtime::EthExtra, AddressMapper};
@@ -33,7 +30,7 @@ use xcm_runtime_apis::{
 // Local module imports
 use super::{
 	config::{monetary::fee::WeightToFee, system::RuntimeBlockWeights, xcm as xcm_config},
-	AccountId, Balance, Balances, Block, BlockNumber, BlockWeights, Executive,
+	AccountId, Balance, Block, BlockNumber, BlockWeights, EthExtraImpl, Executive,
 	ExtrinsicInclusionMode, InherentDataExt, Nfts, Nonce, OriginCaller, ParachainSystem,
 	PolkadotXcm, Revive, Runtime, RuntimeCall, RuntimeEvent, RuntimeGenesisConfig, RuntimeOrigin,
 	SessionKeys, System, TransactionPayment, UncheckedExtrinsic, VERSION,
@@ -421,14 +418,16 @@ impl_runtime_apis! {
 
 	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber> for Runtime
 	{
-		fn balance(address: H160) -> Balance {
-			use frame_support::traits::fungible::Inspect;
-			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
-			Balances::reducible_balance(&account, Preserve, Polite)
+		fn balance(address: H160) -> U256 {
+			Revive::evm_balance(&address)
 		}
 
 		fn block_gas_limit() -> U256 {
 			Revive::evm_block_gas_limit()
+		}
+
+		fn gas_price() -> U256 {
+			Revive::evm_gas_price()
 		}
 
 		fn nonce(address: H160) -> Nonce {

@@ -5,16 +5,15 @@ use frame_support::{
 use frame_system::EnsureSigned;
 
 use crate::{
-	deposit, weights, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp, TransactionPayment, UNIT,
+	config::monetary::{DepositPerByte, DepositPerItem},
+	weights, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	Timestamp, TransactionPayment, UNIT,
 };
 
 // 18 decimals
 const ETH: u128 = 1_000_000_000_000_000_000;
 
 parameter_types! {
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
 	pub const NativeToEthRatio: u32 = (ETH/UNIT) as u32;
 }

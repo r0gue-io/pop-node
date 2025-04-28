@@ -111,6 +111,8 @@ parameter_types! {
 	// Increase ED 100 times to match system chains: 1_000_000_000.
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT * 100;
 	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID.into_account_truncating();
+	pub const DepositPerItem: Balance = deposit(1, 0);
+	pub const DepositPerByte: Balance = deposit(0, 1);
 }
 
 impl pallet_balances::Config for Runtime {
