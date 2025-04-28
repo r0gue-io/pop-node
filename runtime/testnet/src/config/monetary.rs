@@ -18,8 +18,6 @@ const TREASURY_PALLET_ID: PalletId = PalletId(*b"treasury");
 parameter_types! {
 	pub const ExistentialDeposit: Balance = EXISTENTIAL_DEPOSIT;
 	pub TreasuryAccount: AccountId = TREASURY_PALLET_ID.into_account_truncating();
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
 }
 
 impl pallet_balances::Config for Runtime {

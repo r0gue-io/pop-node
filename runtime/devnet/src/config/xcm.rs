@@ -12,6 +12,7 @@ use frame_system::EnsureRoot;
 use pallet_xcm::{AuthorizedAliasers, XcmPassthrough};
 use parachains_common::Balance;
 use polkadot_runtime_common::impls::ToAuthor;
+use pop_runtime_common::DepositPerByte;
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
@@ -24,9 +25,8 @@ use xcm_builder::{
 use xcm_executor::XcmExecutor;
 
 use crate::{
-	AccountId, AllPalletsWithSystem, Balances, DepositPerByte, DepositPerItem, ParachainInfo,
-	ParachainSystem, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
-	RuntimeOrigin, WeightToFee, XcmpQueue,
+	AccountId, AllPalletsWithSystem, Balances, ParachainInfo, ParachainSystem, PolkadotXcm,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, RuntimeOrigin, WeightToFee, XcmpQueue,
 };
 
 parameter_types! {

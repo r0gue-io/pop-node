@@ -19,7 +19,7 @@ use parachains_common::{
 };
 use polkadot_parachain_primitives::primitives::Sibling;
 use polkadot_runtime_common::xcm_sender::ExponentialPrice;
-use pop_runtime_common::UNIT;
+use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowKnownQueryResponses, AllowSubscriptionsFrom,
@@ -34,7 +34,7 @@ use xcm_executor::XcmExecutor;
 
 use crate::{
 	config::{
-		monetary::{DepositPerByte, DepositPerItem, TransactionByteFee, TreasuryAccount},
+		monetary::{TransactionByteFee, TreasuryAccount},
 		system::RuntimeBlockWeights,
 	},
 	AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo, ParachainSystem,

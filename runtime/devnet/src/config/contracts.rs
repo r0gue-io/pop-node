@@ -5,12 +5,12 @@ use frame_support::{
 	traits::{ConstBool, ConstU32, ConstU64, Nothing, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
-use pop_runtime_common::UNIT;
+use pop_runtime_common::{UNIT, DepositPerByte, DepositPerItem};
 
 use super::api::{self, Config};
 use crate::{
-	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp, TransactionPayment, DepositPerByte, DepositPerItem,
+	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	Timestamp, PolkadotXcm, TransactionPayment,
 };
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {

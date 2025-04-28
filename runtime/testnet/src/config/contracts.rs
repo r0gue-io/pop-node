@@ -5,11 +5,10 @@ use frame_support::{
 	traits::{ConstBool, ConstU32, ConstU64, Nothing, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
-use pop_runtime_common::UNIT;
+use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 
 use super::api::{self, Config};
 use crate::{
-	config::monetary::{DepositPerByte, DepositPerItem},
 	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
 	RuntimeHoldReason, Timestamp, TransactionPayment,
 };
