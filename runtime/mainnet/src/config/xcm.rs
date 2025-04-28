@@ -45,6 +45,7 @@ use crate::{
 };
 
 parameter_types! {
+	pub const AuthorizeAliasHoldReason: RuntimeHoldReason = RuntimeHoldReason::PolkadotXcm(pallet_xcm::HoldReason::AuthorizeAlias);
 	pub const RelayLocation: Location = Location::parent();
 	pub AssetHub: Location = Location::new(1, [Parachain(1000)]);
 	pub const RelayNetwork: Option<NetworkId> = Some(Polkadot);
@@ -225,10 +226,6 @@ pub type XcmRouter = WithUniqueTopic<(
 	// ..and XCMP to communicate with the sibling chains.
 	XcmpQueue,
 )>;
-
-parameter_types! {
-	pub const AuthorizeAliasHoldReason: RuntimeHoldReason = RuntimeHoldReason::PolkadotXcm(pallet_xcm::HoldReason::AuthorizeAlias);
-}
 
 impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
