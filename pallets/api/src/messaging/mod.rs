@@ -10,13 +10,10 @@ use frame_support::{
 	storage::KeyLenOf,
 	traits::{
 		tokens::{
-			fungible::{hold::Mutate as HoldMutate, Inspect, Mutate, Balanced, Credit},
-			Fortitude,
-			Precision,
-			Preservation, 
+			fungible::{hold::Mutate as HoldMutate, Balanced, Credit, Inspect, Mutate},
+			Fortitude, Precision, Preservation,
 		},
-		Get,
-		OnUnbalanced,
+		Get, OnUnbalanced,
 	},
 };
 use frame_system::pallet_prelude::*;
@@ -136,9 +133,7 @@ pub mod pallet {
 		type MaxXcmQueryTimeoutsPerBlock: Get<u32>;
 
 		/// Where the callback fees or response fees are charged to.
-		type FeeHandler: OnUnbalanced<
-			Credit<Self::AccountId, Self::Fungibles>
-		>;
+		type FeeHandler: OnUnbalanced<Credit<Self::AccountId, Self::Fungibles>>;
 
 		/// The type responsible for converting between weight and balance, commonly transaction
 		/// payment.
@@ -1027,7 +1022,7 @@ pub mod pallet {
 
 			// Withdraw assets.
 			let credit = T::Fungibles::withdraw(
-				&initiating_origin, 
+				&initiating_origin,
 				to_reward,
 				Precision::Exact,
 				Preservation::Preserve,

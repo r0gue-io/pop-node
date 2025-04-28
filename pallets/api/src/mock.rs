@@ -6,8 +6,8 @@ use frame_support::{
 	pallet_prelude::{DispatchResultWithPostInfo, EnsureOrigin, Pays},
 	parameter_types,
 	traits::{
-		AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything, Get, Hooks, OriginTrait,
-		tokens::imbalance::ResolveTo
+		tokens::imbalance::ResolveTo, AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64,
+		Everything, Get, Hooks, OriginTrait,
 	},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureRoot, EnsureSigned};
