@@ -49,7 +49,7 @@ mod messaging_benchmarks {
 
 		for i in 0..x {
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &owner, message_deposit).unwrap();
- 
+
 			T::Fungibles::hold(&HoldReason::CallbackGas.into(), &owner, callback_deposit).unwrap();
 
 			let message_id = H256::from(blake2_256(&(i.to_le_bytes())));
@@ -363,7 +363,13 @@ mod messaging_benchmarks {
 		);
 
 		#[extrinsic_call]
-		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id.into(), get, ismp_relayer_fee, callback);
+		Pallet::<T>::ismp_get(
+			RawOrigin::Signed(origin.clone()),
+			message_id.into(),
+			get,
+			ismp_relayer_fee,
+			callback,
+		);
 	}
 
 	/// Sends a `Post` request using ISMP with a variable-sized data payload.
@@ -404,7 +410,13 @@ mod messaging_benchmarks {
 		);
 
 		#[extrinsic_call]
-		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, ismp_relayer_fee, callback);
+		Pallet::<T>::ismp_post(
+			RawOrigin::Signed(origin.clone()),
+			message_id.into(),
+			get,
+			ismp_relayer_fee,
+			callback,
+		);
 	}
 
 	/// Tops up callback weight for callback execution of pending messages.

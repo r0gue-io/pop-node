@@ -411,8 +411,7 @@ struct Contract {
 }
 impl Contract {
 	fn new() -> Self {
-		let address =
-			instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let address = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		Self { address: address.clone(), id: address }
 	}
 
