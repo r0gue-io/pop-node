@@ -6,7 +6,7 @@ use pop_api::{
         self as api,
         ismp::{Get, Post},
         xcm::{Location, QueryId, Response},
-        Callback, MessageId, Status,
+        Callback, MessageId, MessageStatus, Abi
     },
     StatusCode,
 };
@@ -51,7 +51,7 @@ mod messaging {
                 fee,
                 callback.then_some(
                     // See `api::ismp::OnGetResponse` impl below
-                    Callback::to(0x57ad942b, Weight::from_parts(900_000_000, 150_000)),
+                    Callback::new(0x57ad942b, Weight::from_parts(900_000_000, 150_000), Abi::Scale),
                 ),
             )?;
             Ok(())
@@ -76,7 +76,7 @@ mod messaging {
                 fee,
                 callback.then_some(
                     // See `api::ismp::OnPostResponse` impl below
-                    Callback::to(0xcfb0a1d2, Weight::from_parts(800_000_000, 150_000)),
+                    Callback::new(0xcfb0a1d2, Weight::from_parts(800_000_000, 150_000), Abi::Scale),
                 ),
             )?;
             Ok(())
@@ -100,21 +100,21 @@ mod messaging {
                 timeout,
                 callback.then_some(
                     // See api::xcm::OnResponse impl below
-                    Callback::to(0x641b0b03, Weight::from_parts(800_000_000, 200_000)),
+                    Callback::new(0x641b0b03, Weight::from_parts(800_000_000, 200_000), Abi::Scale),
                 ),
             )
         }
 
         #[ink(message)]
-        pub fn poll(&self, id: MessageId) -> Result<Option<Status>> {
+        pub fn poll(&self, id: MessageId) -> Result<Option<MessageStatus>> {
             debug_println!("messaging::poll id={id:?}");
-            api::poll((self.env().account_id(), id))
+            api::poll_status((self.env().account_id(), id))
         }
 
         #[ink(message)]
         pub fn get(&self, id: MessageId) -> Result<Option<Vec<u8>>> {
             debug_println!("messaging::get id={id:?}");
-            api::get((self.env().account_id(), id))
+            api::get_response((self.env().account_id(), id))
         }
 
         #[ink(message)]

@@ -6,7 +6,7 @@ use pop_api::{
 	messaging::{
 		ismp::{Get, Post},
 		xcm::{self, Junction, Location, MaybeErrorCode, NetworkId, QueryId},
-		MessageId, Status,
+		MessageId, MessageStatus,
 	},
 	primitives::{BlockNumber, Error},
 };
@@ -35,7 +35,7 @@ fn ismp_get_request_works() {
         let contract = Contract::new();
 
         assert_ok!(contract.ismp_get(id, request, 0, false));
-        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Pending));
 		assert!(System::events().iter().any(|e| {
 			matches!(&e.event,
 			RuntimeEvent::Messaging(IsmpGetDispatched { origin, id: message_id, ..})
@@ -72,7 +72,7 @@ fn ismp_get_request_works() {
 			IsmpGetResponseReceived { dest: contract.id.clone(), id, commitment }.into(),
 		);
 
-		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
+		assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(response.encode()));
 		assert_ok!(contract.remove(id));
 		System::assert_has_event(
@@ -94,7 +94,7 @@ fn ismp_get_request_with_callback_works() {
         let contract = Contract::new();
 
         assert_ok!(contract.ismp_get(id, request, 0, true));
-        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Pending));
         assert!(System::events().iter().any(|e| {
             matches!(&e.event,
 			RuntimeEvent::Messaging(IsmpGetDispatched { origin, id: message_id, ..})
@@ -151,7 +151,7 @@ fn ismp_post_request_works() {
         let contract = Contract::new();
 
         assert_ok!(contract.ismp_post(id, request, 0, false));
-        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Pending));
         assert!(System::events().iter().any(|e| {
             matches!(&e.event,
 			RuntimeEvent::Messaging(IsmpPostDispatched { origin, id: message_id, ..})
@@ -187,7 +187,7 @@ fn ismp_post_request_works() {
 			IsmpPostResponseReceived { dest: contract.id.clone(), id, commitment }.into(),
 		);
 
-		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
+		assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(response));
 		assert_ok!(contract.remove(id));
 		System::assert_has_event(
@@ -208,7 +208,7 @@ fn ismp_post_request_with_callback_works() {
         let contract = Contract::new();
 
         assert_ok!(contract.ismp_post(id, request, 0, true));
-        assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+        assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Pending));
         assert!(System::events().iter().any(|e| {
             matches!(&e.event,
 			RuntimeEvent::Messaging(IsmpPostDispatched { origin, id: message_id, ..})
@@ -271,7 +271,7 @@ fn xcm_query_works() {
 		// Create a new query and check its status
 		let query_id = contract.xcm_new_query(id, responder, timeout, false).unwrap().unwrap();
 		assert_eq!(query_id, 0);
-		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+		assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Pending));
 		assert!(System::events().iter().any(|e| {
 			matches!(&e.event,
 			RuntimeEvent::Messaging(XcmQueryCreated { origin, id: message_id, query_id, ..})
@@ -297,7 +297,7 @@ fn xcm_query_works() {
 			translate(&response)
 		));
 
-		assert_eq!(contract.poll(id).unwrap(), Some(Status::Complete));
+		assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Complete));
 		assert_eq!(contract.get(id).unwrap(), Some(response.encode()));
 		assert_ok!(contract.remove(id));
 		System::assert_has_event(
@@ -319,7 +319,7 @@ fn xcm_query_with_callback_works() {
 		// Create a new query and check its status
 		let query_id = contract.xcm_new_query(id, responder, timeout, true).unwrap().unwrap();
 		assert_eq!(query_id, 0);
-		assert_eq!(contract.poll(id).unwrap(), Some(Status::Pending));
+		assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Pending));
 		assert!(System::events().iter().any(|e| {
 			matches!(&e.event,
 			RuntimeEvent::Messaging(XcmQueryCreated { origin, id: message_id, query_id, ..})
@@ -451,9 +451,9 @@ impl Contract {
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 
-	fn poll(&self, request: MessageId) -> Result<Option<Status>, Error> {
+	fn poll(&self, request: MessageId) -> Result<Option<MessageStatus>, Error> {
 		let result = self.call("poll", request.encode(), 0);
-		Result::<Option<Status>, Error>::decode(&mut &result.data[1..])
+		Result::<Option<MessageStatus>, Error>::decode(&mut &result.data[1..])
 			.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 	}
 
