@@ -147,9 +147,9 @@ pub fn get_attribute(
 
 /// Returns the next collection identifier.
 #[inline]
-pub fn next_collection_id() -> Result<CollectionId> {
+pub fn next_collection_id() -> Result<Option<CollectionId>> {
 	build_read_state(NEXT_COLLECTION_ID)
-		.output::<Result<CollectionId>, true>()
+		.output::<Result<Option<CollectionId>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&())
 }
