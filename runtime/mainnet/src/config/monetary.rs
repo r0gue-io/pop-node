@@ -251,6 +251,7 @@ mod tests {
 				(MaintenanceAccount::get(), initial_balance),
 				(Keyring::Alice.to_account_id(), initial_balance),
 			],
+			..Default::default()
 		}
 		.assimilate_storage(&mut t)
 		.unwrap();
