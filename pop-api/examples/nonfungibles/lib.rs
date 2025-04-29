@@ -6,20 +6,24 @@ use pop_api::nonfungibles::{
 	DestroyWitness, ItemId, ItemSettings, MintSettings, MintType, MintWitness, Psp34Error,
 };
 
+/// By default, Pop API returns errors as `StatusCode` and it is convertible to `Psp34Error`.
+/// When using `Psp34Error`, errors follow the PSP34 standard, making them easier to interpret.
+type Result<T> = core::result::Result<T, Psp34Error>;
+
 #[ink::contract]
 mod nonfungibles {
 	use super::*;
 
-	/// The contract represents a single NFT collection.
+	/// The contract represents (wraps) a single NFT collection.
 	///
 	/// Upon instantiation, it creates a new
 	/// collection; upon termination, it destroys the collection. It also provides common methods
 	/// to query collection data, and manage items through minting, burning, and transferring.
 	#[ink(storage)]
 	pub struct NonFungibles {
-		/// Collection ID
+		/// Collection ID.
 		id: CollectionId,
-		/// Owner of the collection
+		/// Owner of the contract and collection. Set to the contract's instantiator.
 		owner: AccountId,
 	}
 
@@ -31,13 +35,12 @@ mod nonfungibles {
 		/// - `price`: Mint price.
 		///
 		/// # Notes
-		/// - Creating a collection requires a deposit, taken from the contract's balance on
-		///   instantiation.
+		/// - Creating a collection requires a deposit, which is taken from the contract's balance
+		///   on instantiation. The value provided at instantiation (via `payable`) must therefore
+		///   be sufficient to cover the collection deposit.
 		/// - Destroying the collection later would refund the deposit back to the depositor.
 		#[ink(constructor, payable)]
-		pub fn new(max_supply: u32, price: u128) -> Result<Self, Psp34Error> {
-			ink::env::debug_println!("PopApiNonFungiblesExample::new");
-
+		pub fn new(max_supply: u32, price: u128) -> Result<Self> {
 			// Get the next available collection ID.
 			let id = api::next_collection_id().map_err(Psp34Error::from)?.unwrap_or_default();
 
@@ -48,7 +51,7 @@ mod nonfungibles {
 			let mint_settings = MintSettings {
 				start_block: None,
 				end_block: None,
-				mint_type: MintType::Public,
+				mint_type: MintType::Issuer,
 				price: Some(price),
 				default_item_settings: ItemSettings::all_enabled(),
 			};
@@ -67,26 +70,27 @@ mod nonfungibles {
 			Ok(instance)
 		}
 
+		/// Returns the ID of the collection.
 		#[ink(message)]
 		pub fn collection_id(&self) -> CollectionId {
 			self.id
 		}
 
-		/// Returns the amount of items the owner.
+		/// Returns the amount of items owned by an account.
 		#[ink(message)]
-		pub fn balance_of(&self, owner: AccountId) -> Result<u32, Psp34Error> {
+		pub fn balance_of(&self, owner: AccountId) -> Result<u32> {
 			api::balance_of(self.id, owner).map_err(Psp34Error::from)
 		}
 
 		/// Returns the owner of an item, if any.
 		#[ink(message)]
-		pub fn owner_of(&self, item: ItemId) -> Result<Option<AccountId>, Psp34Error> {
+		pub fn owner_of(&self, item: ItemId) -> Result<Option<AccountId>> {
 			api::owner_of(self.id, item).map_err(Psp34Error::from)
 		}
 
-		/// Returns the total supply of a collection.
+		/// Returns the total supply of the collection.
 		#[ink(message)]
-		pub fn total_supply(&self) -> Result<u128, Psp34Error> {
+		pub fn total_supply(&self) -> Result<u128> {
 			api::total_supply(self.id).map_err(Psp34Error::from)
 		}
 
@@ -95,29 +99,23 @@ mod nonfungibles {
 		/// # Arguments
 		/// - `to`: Account into which the item will be minted.
 		/// - `item`: An identifier of the new item.
-		/// - `witness_data`: When the mint type is `HolderOf(collection_id)`, then the owned
-		///   item_id from the current collection needs to be provided within the witness data
-		///   object. If the mint price is set, then it should be additionally confirmed in the
-		///   `witness_data`.
+		/// - `witness_data`: If the mint price is set, then it should be additionally confirmed in
+		///   the `witness_data`.
 		///
-		/// Note: the deposit will be taken from the contract caller and not the `owner` of the
-		/// `item`.
+		/// Note: the deposit will be taken from the contract and not the `owner` of the
+		/// `item`. The value provided (via `payable`) must therefore be sufficient to cover the
+		/// deposit and the mint price.
 		#[ink(message, payable)]
-		pub fn mint(
-			&mut self,
-			to: AccountId,
-			item: ItemId,
-			witness: Option<MintWitness>,
-		) -> Result<(), Psp34Error> {
-			api::mint(to, self.id, item, witness).map_err(Psp34Error::from)
+		pub fn mint(&mut self, to: AccountId, item: ItemId, witness: MintWitness) -> Result<()> {
+			api::mint(to, self.id, item, Some(witness)).map_err(Psp34Error::from)
 		}
 
-		/// Destroy a single item. Item must be owned by the contract.
+		/// Destroy a single item. Item must be owned by the contract and this method can only be
+		/// called by the contract itself.
 		///
 		/// # Arguments
 		/// - `item`: The item to be burned.
-		#[ink(message)]
-		pub fn burn(&mut self, item: ItemId) -> Result<(), Psp34Error> {
+		fn burn(&mut self, item: ItemId) -> Result<()> {
 			api::burn(self.id, item).map_err(Psp34Error::from)
 		}
 
@@ -127,7 +125,7 @@ mod nonfungibles {
 		/// - `item`: The item to be transferred.
 		/// - `dest`: The account to receive ownership of the item.
 		#[ink(message)]
-		pub fn transfer(&mut self, to: AccountId, item: ItemId) -> Result<(), Psp34Error> {
+		pub fn transfer(&mut self, to: AccountId, item: ItemId) -> Result<()> {
 			api::transfer(self.id, to, item).map_err(Psp34Error::from)?;
 			self.env().emit_event(Transfer {
 				from: Some(self.env().account_id()),
@@ -145,14 +143,18 @@ mod nonfungibles {
 		///
 		/// # Notes
 		/// Deposits will be returned to the contract automatically when collection destroyed. On
-		/// contract terminated, all deposits will be returned to the contract caller.
+		/// contract terminated, all deposits will be returned to the contract instantiator.
 		#[ink(message)]
-		pub fn destroy(&mut self, destroy_witness: DestroyWitness) -> Result<(), Psp34Error> {
+		pub fn destroy(&mut self, destroy_witness: DestroyWitness) -> Result<()> {
 			if self.env().caller() != self.owner {
 				return Err(Psp34Error::Custom("Not the contract owner".to_string()))
 			}
+			// Destroying the collection returns all deposits to the contract.
 			api::destroy(self.id, destroy_witness).map_err(Psp34Error::from)?;
-			self.env().terminate_contract(self.env().account_id());
+
+			// Then terminating the contract returns all contract's funds to the contract
+			// instantiator.
+			self.env().terminate_contract(self.owner);
 		}
 	}
 }
