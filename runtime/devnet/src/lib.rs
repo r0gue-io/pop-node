@@ -31,9 +31,12 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf, OnUnbalanced, tokens::imbalance::ResolveTo, fungible, Imbalance
+		fungible,
+		fungible::HoldConsideration,
+		tokens::{imbalance::ResolveTo, nonfungibles_v2::Inspect},
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -61,7 +64,10 @@ pub use pop_runtime_common::{
 };
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256, crypto::Ss58Codec};
+use sp_core::{
+	crypto::{KeyTypeId, Ss58Codec},
+	Get, OpaqueMetadata, H256,
+};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
@@ -74,7 +80,6 @@ pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 #[cfg(feature = "std")]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
-
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
 use xcm::latest::prelude::BodyId;
@@ -344,7 +349,6 @@ parameter_types! {
 	pub const TransactionByteFee: Balance = 10 * MICRO_UNIT;
 	pub MaintenanceAccount: AccountId = AccountId::from_ss58check("1Y3M8pnn3rJcxQn46SbocHcUHYfs4j8W2zHX7XNK99LGSVe").expect("maintenance address is valid SS58");
 }
-
 
 pub struct DealWithFees;
 impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
