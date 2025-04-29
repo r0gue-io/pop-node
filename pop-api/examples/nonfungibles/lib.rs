@@ -1,14 +1,40 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::prelude::string::ToString;
-use pop_api::nonfungibles::{
-	self as api, events::Transfer, CollectionConfig, CollectionId, CollectionSettings,
-	DestroyWitness, ItemId, ItemSettings, MintSettings, MintType, MintWitness, Psp34Error,
+use pop_api::{
+	nonfungibles::{
+		self as api, events::Transfer, CollectionConfig, CollectionId, CollectionSettings,
+		DestroyWitness, ItemId, ItemSettings, MintSettings, MintType, MintWitness, Psp34Error,
+	},
+	primitives::AccountId,
 };
 
 /// By default, Pop API returns errors as `StatusCode` and it is convertible to `Psp34Error`.
 /// When using `Psp34Error`, errors follow the PSP34 standard, making them easier to interpret.
 type Result<T> = core::result::Result<T, Psp34Error>;
+
+/// Event emitted when a collection is created.
+#[ink::event]
+struct Created {
+	/// The collection.
+	#[ink(topic)]
+	id: CollectionId,
+	/// The administrator of the collection.
+	#[ink(topic)]
+	admin: AccountId,
+	/// Maximum number of items in the collection.
+	max_supply: u32,
+	/// Mint price.
+	price: u128,
+}
+
+/// Event emitted when a collection is destroyed.
+#[ink::event]
+struct Destroyed {
+	/// The collection.
+	#[ink(topic)]
+	id: CollectionId,
+}
 
 #[ink::contract]
 mod nonfungibles {
@@ -57,16 +83,14 @@ mod nonfungibles {
 			};
 
 			// Create the collection.
-			api::create(
-				// Contract is the admin of the collection.
-				contract_id,
-				CollectionConfig {
-					settings: CollectionSettings::all_enabled(),
-					max_supply: Some(max_supply),
-					mint_settings,
-				},
-			)
-			.map_err(Psp34Error::from)?;
+			let config = CollectionConfig {
+				settings: CollectionSettings::all_enabled(),
+				max_supply: Some(max_supply),
+				mint_settings,
+			};
+			// Contract is the admin of the collection.
+			api::create(contract_id, config).map_err(Psp34Error::from)?;
+			instance.env().emit_event(Created { id, admin: contract_id, max_supply, price });
 			Ok(instance)
 		}
 
@@ -107,7 +131,9 @@ mod nonfungibles {
 		/// deposit and the mint price.
 		#[ink(message, payable)]
 		pub fn mint(&mut self, to: AccountId, item: ItemId, witness: MintWitness) -> Result<()> {
-			api::mint(to, self.id, item, Some(witness)).map_err(Psp34Error::from)
+			api::mint(to, self.id, item, Some(witness)).map_err(Psp34Error::from)?;
+			self.env().emit_event(Transfer { from: None, to: Some(to), item });
+			Ok(())
 		}
 
 		/// Destroy a single item. Item must be owned by the contract and this method can only be
@@ -116,7 +142,10 @@ mod nonfungibles {
 		/// # Arguments
 		/// - `item`: The item to be burned.
 		fn burn(&mut self, item: ItemId) -> Result<()> {
-			api::burn(self.id, item).map_err(Psp34Error::from)
+			api::burn(self.id, item).map_err(Psp34Error::from)?;
+			self.env()
+				.emit_event(Transfer { from: Some(self.env().account_id()), to: None, item });
+			Ok(())
 		}
 
 		/// Move an item from the contract to another account. Item must be owned by the contract.
@@ -126,6 +155,7 @@ mod nonfungibles {
 		/// - `dest`: The account to receive ownership of the item.
 		#[ink(message)]
 		pub fn transfer(&mut self, to: AccountId, item: ItemId) -> Result<()> {
+			self.ensure_owner()?;
 			api::transfer(self.id, to, item).map_err(Psp34Error::from)?;
 			self.env().emit_event(Transfer {
 				from: Some(self.env().account_id()),
@@ -146,15 +176,21 @@ mod nonfungibles {
 		/// contract terminated, all deposits will be returned to the contract instantiator.
 		#[ink(message)]
 		pub fn destroy(&mut self, destroy_witness: DestroyWitness) -> Result<()> {
-			if self.env().caller() != self.owner {
-				return Err(Psp34Error::Custom("Not the contract owner".to_string()))
-			}
+			self.ensure_owner()?;
 			// Destroying the collection returns all deposits to the contract.
 			api::destroy(self.id, destroy_witness).map_err(Psp34Error::from)?;
+			self.env().emit_event(Destroyed { id: self.id });
 
 			// Then terminating the contract returns all contract's funds to the contract
 			// instantiator.
 			self.env().terminate_contract(self.owner);
+		}
+
+		fn ensure_owner(&self) -> Result<()> {
+			if self.env().caller() != self.owner {
+				return Err(Psp34Error::Custom("Not the contract owner".to_string()))
+			}
+			Ok(())
 		}
 	}
 }
