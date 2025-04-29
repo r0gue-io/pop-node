@@ -6,8 +6,8 @@ use frame_system::EnsureSigned;
 
 use crate::{
 	config::monetary::{DepositPerByte, DepositPerItem},
-	weights, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
-	Timestamp, TransactionPayment, UNIT,
+	deposit, weights, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeHoldReason, Timestamp, TransactionPayment, UNIT,
 };
 
 // 18 decimals
