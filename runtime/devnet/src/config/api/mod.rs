@@ -117,13 +117,12 @@ parameter_types! {
 
 	// TODO: What is reasonable.
 	pub const IsmpRelayerFee: crate::Balance = crate::UNIT / 2;
-	pub DummyFeeAccount: AccountId = crate::PalletId(*b"dummyacc").into_account_truncating();
 }
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
 	// Burn fees.
-	type FeeHandler = ();
+	type FeeHandler = crate::DealWithFees;
 	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
