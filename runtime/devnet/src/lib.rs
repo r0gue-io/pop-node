@@ -629,7 +629,7 @@ mod runtime {
 	#[runtime::pallet_index(3)]
 	pub type ParachainInfo = parachain_info::Pallet<Runtime>;
 	#[runtime::pallet_index(4)]
-	pub type WeightReclaim: cumulus_pallet_weight_reclaim::Pallet<Runtime>;
+	pub type WeightReclaim = cumulus_pallet_weight_reclaim::Pallet<Runtime>;
 
 	// Monetary stuff.
 	#[runtime::pallet_index(10)]
