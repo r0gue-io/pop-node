@@ -260,7 +260,7 @@ fn ismp_post_request_with_callback_works() {
 
 #[test]
 fn xcm_query_works() {
-	let id = [5u8, 32];
+	let id: [u8; 32] = [5u8; 32];
 	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
 	let responder = origin.clone();
 	let timeout = 100;
@@ -411,10 +411,8 @@ struct Contract {
 }
 impl Contract {
 	fn new() -> Self {
-		let (address, account_id) =
-			instantiate(CONTRACT, INIT_VALUE, function_selector("new"), vec![]);
-		Self { address, id: account_id }
-		let address = instantiate(CONTRACT, INIT_VALUE, vec![]);
+		let address =
+			instantiate(CONTRACT, INIT_VALUE, vec![]);
 		Self { address: address.clone(), id: address }
 	}
 
@@ -479,11 +477,6 @@ impl Contract {
 	}
 
 	fn last_event(&self) -> Vec<u8> {
-		let events = System::read_events_for_pallet::<pallet_revive::Event<Runtime>>();
-		let contract_events = events
-			.iter()
-			.filter_map(|event| match event {
-				pallet_revive::Event::<Runtime>::ContractEmitted { contract, data, .. }
 		let events = System::read_events_for_pallet::<pallet_contracts::Event<Runtime>>();
 		let contract_events = events
 			.iter()
@@ -495,8 +488,7 @@ impl Contract {
 			})
 			.collect::<Vec<&[u8]>>();
 		contract_events.last().unwrap().to_vec()
-	})
-}
+	}
 }
 
 #[derive(Decode, Encode)]
