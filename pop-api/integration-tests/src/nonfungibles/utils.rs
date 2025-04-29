@@ -87,9 +87,9 @@ pub(super) fn get_attribute(
 		.map(|value| value.map(|v| v.to_vec()))
 }
 
-pub(super) fn next_collection_id(addr: &AccountId32) -> Result<CollectionId, Error> {
+pub(super) fn next_collection_id(addr: &AccountId32) -> Result<Option<CollectionId>, Error> {
 	let result = do_bare_call("next_collection_id", &addr, vec![]);
-	decoded::<Result<CollectionId, Error>>(result.clone())
+	decoded::<Result<Option<CollectionId>, Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))
 }
 
