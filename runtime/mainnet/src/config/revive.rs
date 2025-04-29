@@ -6,8 +6,8 @@ use frame_system::EnsureSigned;
 
 use crate::{
 	config::monetary::{DepositPerByte, DepositPerItem},
-	deposit, weights, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp, TransactionPayment, UNIT,
+	weights, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	Timestamp, TransactionPayment, UNIT,
 };
 
 // 18 decimals
@@ -70,7 +70,7 @@ mod tests {
 	use pallet_revive::Config;
 
 	use super::*;
-	use crate::Aura;
+	use crate::{deposit, Aura, Balance};
 
 	// 18 decimals
 	const ONE_ETH: u128 = 1_000_000_000_000_000_000;
