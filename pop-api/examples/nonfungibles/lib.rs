@@ -1,6 +1,7 @@
 //! # Nonfungibles Contract Example
 //!
-//! This smart contract demonstrates how to manage NFTs using the [`pop_api::nonfungibles`](https://docs.rs/pop-api/latest/pop_api/nonfungibles/) interface with [ink!](https://use.ink).
+//! This [ink!][ink] contract implements a nonfungible token by leveraging the [Pop API
+//! Nonfungibles][pop-api-nonfungibles].
 //!
 //! ## Features
 //!
@@ -33,6 +34,9 @@
 //! - Deposits are required for creating collections and minting NFTs.
 //! - Only the original deployer (owner) can call `mint`, `burn` and `destroy`.
 //! - Deposits are returned back to the original deployer (owner) when the collection is destroyed.
+//!
+//! [ink]: https://use.ink
+//! [pop-api-nonfungibles]: https://github.com/r0gue-io/pop-node/tree/main/pop-api/src/v0/fungibles
 
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
