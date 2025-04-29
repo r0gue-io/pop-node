@@ -5313,16 +5313,6 @@ dependencies = [
 
 [[package]]
 name = "frame-metadata"
-version = "18.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "daaf440c68eb2c3d88e5760fe8c7af3f9fee9181fab6c2f2c4e7cc48dcc40bb8"
-dependencies = [
- "cfg-if",
- "parity-scale-codec",
-]
-
-[[package]]
-name = "frame-metadata"
 version = "20.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26de808fa6461f2485dc51811aefed108850064994fb4a62b3ac21ffa62ac8df"
@@ -14335,7 +14325,7 @@ dependencies = [
  "env_logger 0.11.8",
  "frame-benchmarking 40.0.0",
  "frame-executive 40.0.0",
- "frame-metadata 18.0.0",
+ "frame-metadata 20.0.0",
  "frame-metadata-hash-extension 0.8.0",
  "frame-support 40.1.0",
  "frame-system 40.1.0",
@@ -14416,7 +14406,7 @@ dependencies = [
  "env_logger 0.11.8",
  "frame-benchmarking 40.0.0",
  "frame-executive 40.0.0",
- "frame-metadata 18.0.0",
+ "frame-metadata 20.0.0",
  "frame-metadata-hash-extension 0.8.0",
  "frame-support 40.1.0",
  "frame-system 40.1.0",

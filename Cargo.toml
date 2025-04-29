@@ -81,7 +81,7 @@ pop-runtime-testnet = { path = "runtime/testnet", default-features = true } # de
 frame-benchmarking = { version = "40.0.0", default-features = false }
 frame-benchmarking-cli = { version = "47.0.0" }
 frame-executive = { version = "40.0.0", default-features = false }
-frame-metadata = { version = "18.0.0", default-features = false }
+frame-metadata = { version = "20.0.0", default-features = false }
 frame-metadata-hash-extension = { version = "0.8.0", default-features = false }
 frame-support = { version = "40.1.0", default-features = false }
 frame-system = { version = "40.1.0", default-features = false }
