@@ -11,20 +11,6 @@
 //! - Query ownership, balances, and total supply.
 //! - Destroy the NFT collection and self-destruct the contract.
 //!
-//! ## Functions
-//!
-//! | Function | Description |
-//! | :--- | :--- |
-//! | `new(max_supply, price)` | Deploys the contract and creates a new NFT collection with a mint price and maximum supply. |
-//! | `collection_id()` | Returns the collection ID managed by this contract. |
-//! | `balance_of(owner)` | Returns the number of NFTs an owner has. |
-//! | `owner_of(item)` | Returns the owner of a specific item. |
-//! | `total_supply()` | Returns the number of minted items. |
-//! | `mint(to, item, witness)` | Mints a new item to an account. |
-//! | `burn(item)` | Burns an NFT owned by the contract. |
-//! | `transfer(to, item)` | Transfers an NFT from the contract to another account. |
-//! | `destroy(destroy_witness)` | Destroys the collection and self-destructs the contract. |
-//!
 //! ## Use Cases
 //!
 //! This contract can serve a variety of purposes where owner-controlled NFT management is
@@ -59,13 +45,14 @@ use pop_api::{
 	primitives::AccountId,
 };
 
-/// By default, Pop API returns errors as `StatusCode` and it is convertible to `Psp34Error`.
-/// When using `Psp34Error`, errors follow the PSP34 standard, making them easier to interpret.
-type Result<T> = core::result::Result<T, Psp34Error>;
+/// By default, Pop API returns errors as [`pop_api::StatusCode`] and it is convertible to
+/// [`Psp34Error`]. When using [`Psp34Error`], errors follow the PSP34 standard, making them easier
+/// to interpret.
+pub type Result<T> = core::result::Result<T, Psp34Error>;
 
 /// Event emitted when a collection is created.
 #[ink::event]
-struct Created {
+pub struct Created {
 	/// The collection.
 	#[ink(topic)]
 	id: CollectionId,
@@ -74,20 +61,18 @@ struct Created {
 	admin: AccountId,
 	/// Maximum number of items in the collection.
 	max_supply: u32,
-	/// Mint price.
-	price: u128,
 }
 
 /// Event emitted when a collection is destroyed.
 #[ink::event]
-struct Destroyed {
+pub struct Destroyed {
 	/// The collection.
 	#[ink(topic)]
 	id: CollectionId,
 }
 
 #[ink::contract]
-mod nonfungibles {
+pub mod nonfungibles {
 	use super::*;
 
 	/// The contract represents (wraps) a single NFT collection.
@@ -106,9 +91,10 @@ mod nonfungibles {
 	impl NonFungibles {
 		/// Creates a new NFT collection.
 		///
+		/// On success a [`Created`] event is emitted.
+		///
 		/// # Arguments
 		/// - `max_supply`: Maximum number of items in the collection.
-		/// - `price`: Mint price.
 		///
 		/// # Notes
 		/// - Creating a collection requires a deposit, which is taken from the contract's balance
@@ -116,20 +102,21 @@ mod nonfungibles {
 		///   be sufficient to cover the collection deposit.
 		/// - Destroying the collection later would refund the deposit back to the depositor.
 		#[ink(constructor, payable)]
-		pub fn new(max_supply: u32, price: u128) -> Result<Self> {
+		pub fn new(max_supply: u32) -> Result<Self> {
 			// Get the next available collection ID.
 			let id = api::next_collection_id().map_err(Psp34Error::from)?.unwrap_or_default();
 
 			let instance = Self { id, owner: Self::env().caller() };
 			let contract_id = instance.env().account_id();
 
-			// Set mint settings: public minting, mint price, all item settings enabled.
+			// Set mint settings.
 			let mint_settings = MintSettings {
 				start_block: None,
 				end_block: None,
 				// Only the collection admin can mint.
 				mint_type: MintType::Issuer,
-				price: Some(price),
+				// Mint price is not set because only the contract can mint.
+				price: None,
 				default_item_settings: ItemSettings::all_enabled(),
 			};
 
@@ -141,7 +128,7 @@ mod nonfungibles {
 			};
 			// Contract is the admin of the collection.
 			api::create(contract_id, config).map_err(Psp34Error::from)?;
-			instance.env().emit_event(Created { id, admin: contract_id, max_supply, price });
+			instance.env().emit_event(Created { id, admin: contract_id, max_supply });
 			Ok(instance)
 		}
 
@@ -171,16 +158,17 @@ mod nonfungibles {
 
 		/// Mint an item.
 		///
+		/// On success a [`Transfer`] event is emitted.
+		///
 		/// # Arguments
 		/// - `to`: Account into which the item will be minted.
 		/// - `item`: An identifier of the new item.
-		/// - `witness_data`: Witness data for the mint operation. Must provide the exact mint price
-		///   set on instantiation.
+		/// - `witness_data`: Witness data for the mint operation.
 		///
 		/// # Note
 		/// The deposit will be taken from the contract and not the `owner` of the
-		/// `item`. The contract must have sufficient balance to cover the deposit and the mint
-		/// price.
+		/// `item`. The contract must have sufficient balance to cover the storage deposit for a new
+		/// item.
 		#[ink(message, payable)]
 		pub fn mint(&mut self, to: AccountId, item: ItemId, witness: MintWitness) -> Result<()> {
 			// Only the contract owner can call this method to mint the item.
@@ -193,9 +181,11 @@ mod nonfungibles {
 		/// Destroy a single item. Item must be owned by the contract and this method can only be
 		/// called by the contract itself.
 		///
+		/// On success a [`Transfer`] event is emitted.
+		///
 		/// # Arguments
 		/// - `item`: The item to be burned.
-		fn burn(&mut self, item: ItemId) -> Result<()> {
+		pub fn burn(&mut self, item: ItemId) -> Result<()> {
 			// Only the contract owner can burn items from the collection.
 			api::burn(self.id, item).map_err(Psp34Error::from)?;
 			self.env()
@@ -204,6 +194,8 @@ mod nonfungibles {
 		}
 
 		/// Move an item from the contract to another account. Item must be owned by the contract.
+		///
+		/// On success a [`Transfer`] event is emitted.
 		///
 		/// # Arguments
 		/// - `item`: The item to be transferred.
@@ -222,6 +214,8 @@ mod nonfungibles {
 
 		/// Terminate a contract and destroy the collection. Collection must be managed by the
 		/// contract.
+		///
+		/// On success a [`Destroyed`] event is emitted.
 		///
 		/// # Arguments
 		/// - `destroy_witness`: The witness data required to destroy the collection.
