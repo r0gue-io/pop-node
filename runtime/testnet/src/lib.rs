@@ -15,7 +15,7 @@ mod weights;
 
 extern crate alloc;
 
-use alloc::{borrow::Cow, vec::Vec};
+use alloc::{borrow::Cow, vec, vec::Vec};
 
 // ISMP imports
 use ::ismp::{
@@ -33,8 +33,8 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		tokens::{nonfungibles_v2::Inspect, Fortitude::Polite, Preservation::Preserve},
-		ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, VariantCountOf,
+		tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -81,7 +81,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight};
 // XCM Imports
-use xcm::latest::prelude::BodyId;
+use xcm::{latest::prelude::BodyId, VersionedAsset, VersionedLocation};
 
 use crate::config::{assets::TrustBackedAssetsInstance, system::RuntimeBlockWeights};
 
@@ -705,14 +705,16 @@ impl_runtime_apis! {
 
 	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber> for Runtime
 	{
-		fn balance(address: H160) -> Balance {
-			use frame_support::traits::fungible::Inspect;
-			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
-			Balances::reducible_balance(&account, Preserve, Polite)
+		fn balance(address: H160) -> U256 {
+			Revive::evm_balance(&address)
 		}
 
 		fn block_gas_limit() -> U256 {
 			Revive::evm_block_gas_limit()
+		}
+
+		fn gas_price() -> U256 {
+			Revive::evm_gas_price()
 		}
 
 		fn nonce(address: H160) -> Nonce {

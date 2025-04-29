@@ -10,7 +10,7 @@ use frame_support::{
 	traits::{
 		fungible::Inspect,
 		tokens::{fungible::hold::Mutate, Precision::Exact},
-		Get, OriginTrait,
+		Get,
 	},
 };
 use frame_system::pallet_prelude::*;

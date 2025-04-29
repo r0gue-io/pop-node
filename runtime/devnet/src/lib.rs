@@ -83,7 +83,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight};
 // XCM Imports
-use xcm::{latest::prelude::BodyId, VersionedLocation, VersionnedAsset};
+use xcm::{latest::prelude::BodyId, VersionedAsset, VersionedLocation};
 
 /// Some way of identifying an account on the chain. We intentionally make it equivalent
 /// to the public key of our transaction signing scheme.
