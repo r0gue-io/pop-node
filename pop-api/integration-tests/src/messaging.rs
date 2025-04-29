@@ -24,7 +24,7 @@ const ISMP_MODULE_ID: [u8; 3] = *b"pop";
 
 #[test]
 fn ismp_get_request_works() {
-	let id = 42;
+	let id = [0u8; 32];
 	let key = "some_key".as_bytes().to_vec();
 	let request = Get::new(ASSET_HUB, 0, 0, "some_context".as_bytes().to_vec(), vec![key.clone()]);
 	let response = vec![StorageValue { key, value: Some("some_value".as_bytes().to_vec()) }];
@@ -83,7 +83,7 @@ fn ismp_get_request_works() {
 
 #[test]
 fn ismp_get_request_with_callback_works() {
-	let id = 42;
+	let id = [1u8; 32];
 	let key = "some_key".as_bytes().to_vec();
 	let request = Get::new(ASSET_HUB, 0, 0, "some_context".as_bytes().to_vec(), vec![key.clone()]);
 	let response = vec![StorageValue { key, value: Some("some_value".as_bytes().to_vec()) }];
@@ -141,7 +141,7 @@ fn ismp_get_request_with_callback_works() {
 
 #[test]
 fn ismp_post_request_works() {
-	let id = 42;
+	let id = [3u8; 32];
 	let request = Post::new(HYPERBRIDGE, 0, "some_data".as_bytes().to_vec());
 	let response = "some_value".as_bytes().to_vec();
 
@@ -198,7 +198,7 @@ fn ismp_post_request_works() {
 
 #[test]
 fn ismp_post_request_with_callback_works() {
-	let id = 42;
+	let id = [4u8; 32];
 	let request = Post::new(HYPERBRIDGE, 0, "some_data".as_bytes().to_vec());
 	let response = "some_value".as_bytes().to_vec();
 
@@ -260,7 +260,7 @@ fn ismp_post_request_with_callback_works() {
 
 #[test]
 fn xcm_query_works() {
-	let id = 42u64;
+	let id = [5u8, 32];
 	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
 	let responder = origin.clone();
 	let timeout = 100;
@@ -308,7 +308,7 @@ fn xcm_query_works() {
 
 #[test]
 fn xcm_query_with_callback_works() {
-	let id = 42u64;
+	let id = [6u8; 32];
 	let origin = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
 	let responder = origin.clone();
 	let timeout = 100;
@@ -495,7 +495,8 @@ impl Contract {
 			})
 			.collect::<Vec<&[u8]>>();
 		contract_events.last().unwrap().to_vec()
-	}
+	})
+}
 }
 
 #[derive(Decode, Encode)]

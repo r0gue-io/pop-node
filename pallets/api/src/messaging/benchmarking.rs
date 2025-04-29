@@ -49,7 +49,7 @@ mod messaging_benchmarks {
 
 		for i in 0..x {
 			T::Fungibles::hold(&HoldReason::Messaging.into(), &owner, message_deposit).unwrap();
-
+ 
 			T::Fungibles::hold(&HoldReason::CallbackGas.into(), &owner, callback_deposit).unwrap();
 
 			let message_id = H256::from(blake2_256(&(i.to_le_bytes())));
@@ -329,6 +329,7 @@ mod messaging_benchmarks {
 		let id_data = (x, y, a, "ismp_get");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
+		let ismp_relayer_fee: BalanceOf<T> = u32::MAX.into();
 
 		let inner_keys: BoundedVec<u8, T::MaxKeyLen> =
 			vec![1u8].repeat(T::MaxKeyLen::get() as usize).try_into().unwrap();
@@ -362,7 +363,7 @@ mod messaging_benchmarks {
 		);
 
 		#[extrinsic_call]
-		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
+		Pallet::<T>::ismp_get(RawOrigin::Signed(origin.clone()), message_id.into(), get, ismp_relayer_fee, callback);
 	}
 
 	/// Sends a `Post` request using ISMP with a variable-sized data payload.
@@ -380,6 +381,7 @@ mod messaging_benchmarks {
 		let id_data = (x, y, b"ismp_post");
 		let encoded = id_data.encode();
 		let message_id = H256::from(blake2_256(&encoded));
+		let ismp_relayer_fee: BalanceOf<T> = u32::MAX.into();
 
 		let data = vec![1u8].repeat(x as usize).try_into().unwrap();
 
@@ -402,7 +404,7 @@ mod messaging_benchmarks {
 		);
 
 		#[extrinsic_call]
-		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, callback);
+		Pallet::<T>::ismp_post(RawOrigin::Signed(origin.clone()), message_id.into(), get, ismp_relayer_fee, callback);
 	}
 
 	/// Tops up callback weight for callback execution of pending messages.
@@ -416,7 +418,7 @@ mod messaging_benchmarks {
 
 		let message: Message<T> = Message::Ismp {
 			commitment: [10u8; 32].into(),
-			deposit: 100_000u32.into(),
+			message_deposit: 100_000u32.into(),
 			callback: Some(callback),
 		};
 

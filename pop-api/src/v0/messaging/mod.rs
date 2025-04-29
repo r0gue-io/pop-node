@@ -24,7 +24,7 @@ pub(super) const POLL: u8 = 0;
 pub(super) const GET: u8 = 1;
 pub(super) const QUERY_ID: u8 = 2;
 
-pub type MessageId = u64;
+pub type MessageId = [u8; 32];
 
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
 	crate::v0::build_dispatch(MESSAGING, dispatchable)

@@ -114,18 +114,13 @@ impl nonfungibles::Config for Runtime {
 
 parameter_types! {
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
-
-	// TODO: What is reasonable.
-	pub const IsmpRelayerFee: crate::Balance = crate::UNIT / 2;
 }
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
-	// Burn fees.
 	type FeeHandler = crate::DealWithFees;
 	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
-	type IsmpRelayerFee = IsmpRelayerFee;
 	type Keccak256 = Ismp;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<512>;
