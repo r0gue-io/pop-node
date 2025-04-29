@@ -616,6 +616,16 @@ pub mod pallet {
 		) -> DispatchResult {
 			T::XcmResponseOrigin::ensure_origin(origin)?;
 
+			let extrinsic_weight = T::WeightInfo::xcm_response()
+				.saturating_add(T::CallbackExecutor::execution_weight());
+			
+			ensure!(
+				frame_system::BlockWeight::<T>::get()
+					.checked_accrue(extrinsic_weight, DispatchClass::Normal)
+					.is_ok(),
+				Error::<T>::BlockspaceAllowanceReached
+			);
+			
 			// Manually adjust weight ahead of fallible execution.
 			// The fees of which should have been paid.
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
