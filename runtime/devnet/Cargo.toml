@@ -79,6 +79,7 @@ polkadot-runtime-common.workspace = true
 xcm.workspace = true
 xcm-builder.workspace = true
 xcm-executor.workspace = true
+xcm-runtime-apis.workspace = true
 
 # Cumulus
 cumulus-pallet-aura-ext.workspace = true
@@ -181,6 +182,7 @@ std = [
 	"substrate-wasm-builder",
 	"xcm-builder/std",
 	"xcm-executor/std",
+	"xcm-runtime-apis/std",
 	"xcm/std",
 ]
 

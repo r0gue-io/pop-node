@@ -13,7 +13,7 @@ enumflags2 = { version = "0.7.9", optional = true }
 pop-primitives = { path = "../primitives", default-features = false }
 
 # Substrate.
-sp-io = { version = "38.0.0", default-features = false, features = [
+sp-io = { version = "40.0.0", default-features = false, features = [
 	"disable_allocator",
 	"disable_oom",
 	"disable_panic_handler",

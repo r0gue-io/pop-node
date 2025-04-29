@@ -11,7 +11,7 @@ use sp_runtime::traits::Verify;
 
 use crate::{
 	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, System, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// We allow root to execute privileged asset operations.

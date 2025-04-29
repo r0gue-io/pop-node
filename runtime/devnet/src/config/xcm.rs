@@ -12,7 +12,7 @@ use frame_system::EnsureRoot;
 use pallet_xcm::{AuthorizedAliasers, XcmPassthrough};
 use parachains_common::Balance;
 use polkadot_runtime_common::impls::ToAuthor;
-use pop_runtime_common::DepositPerByte;
+use pop_runtime_common::{DepositPerByte, DepositPerItem};
 use xcm::latest::prelude::*;
 use xcm_builder::{
 	AccountId32Aliases, AllowExplicitUnpaidExecutionFrom, AllowKnownQueryResponses,
