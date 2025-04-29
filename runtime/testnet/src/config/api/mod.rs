@@ -99,24 +99,27 @@ parameter_types! {
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
+	// Burn fees.
+	type FeeHandler = ();
 	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
 	type IsmpRelayerFee = IsmpRelayerFee;
+	type Keccak256 = Ismp;
 	type MaxContextLen = ConstU32<64>;
-	type MaxDataLen = ConstU32<1024>;
-	type MaxKeyLen = ConstU32<32>;
+	type MaxDataLen = ConstU32<512>;
+	type MaxKeyLen = ConstU32<8>;
 	type MaxKeys = ConstU32<10>;
 	// TODO: size appropriately
-	type MaxRemovals = ConstU32<1024>;
+	type MaxRemovals = ConstU32<100>;
 	// TODO: ensure within the contract buffer bounds
-	type MaxResponseLen = ConstU32<1024>;
+	type MaxResponseLen = ConstU32<512>;
 	type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;
 	type OffChainByteFee = TransactionByteFee;
 	type OnChainByteFee = TransactionByteFee;
 	type OriginConverter = LocalOriginToLocation;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
-	type WeightInfo = ();
+	type WeightInfo = crate::weights::messaging_weights::WeightInfo<Self>;
 	type WeightToFee = <Runtime as pallet_transaction_payment::Config>::WeightToFee;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
@@ -141,7 +144,7 @@ impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureRespon
 
 pub struct CallbackExecutor;
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
-	fn execute(account: AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
+	fn execute(account: &AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
 		// Default
 		#[cfg(not(feature = "std"))]
 		let debug = DebugInfo::Skip;
@@ -155,7 +158,7 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 
 		let mut output = Contracts::bare_call(
 			account.clone(),
-			account,
+			account.clone(),
 			Default::default(),
 			weight,
 			Default::default(),
