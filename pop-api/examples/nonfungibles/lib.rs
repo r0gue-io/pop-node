@@ -1,3 +1,53 @@
+//! # Nonfungibles Contract Example
+//!
+//! This smart contract demonstrates how to manage NFTs using the [`pop_api::nonfungibles`](https://docs.rs/pop-api/latest/pop_api/nonfungibles/) interface with [ink!](https://use.ink).
+//!
+//! ## Features
+//!
+//! - Create an NFT collection.
+//! - Mint NFTs.
+//! - Transfer NFTs owned by the contract.
+//! - Burn NFTs owned by the contract.
+//! - Query ownership, balances, and total supply.
+//! - Destroy the NFT collection and self-destruct the contract.
+//!
+//! ## Functions
+//!
+//! | Function | Description |
+//! | :--- | :--- |
+//! | `new(max_supply, price)` | Deploys the contract and creates a new NFT collection with a mint price and maximum supply. |
+//! | `collection_id()` | Returns the collection ID managed by this contract. |
+//! | `balance_of(owner)` | Returns the number of NFTs an owner has. |
+//! | `owner_of(item)` | Returns the owner of a specific item. |
+//! | `total_supply()` | Returns the number of minted items. |
+//! | `mint(to, item, witness)` | Mints a new item to an account. |
+//! | `burn(item)` | Burns an NFT owned by the contract. |
+//! | `transfer(to, item)` | Transfers an NFT from the contract to another account. |
+//! | `destroy(destroy_witness)` | Destroys the collection and self-destructs the contract. |
+//!
+//! ## Use Cases
+//!
+//! This contract can serve a variety of purposes where owner-controlled NFT management is
+//! essential. Example use cases include:
+//!
+//! - **DAO Membership NFTs**: A DAO can use this contract to issue NFTs that represent membership
+//!   or voting rights. The DAO's admin can mint or burn these NFTs based on proposals or membership
+//!   status changes.
+//! - **Event Tickets & Access Passes**: Projects can use this contract to distribute NFTs as
+//!   tickets for events or as access passes to gated content or features, with the owner
+//!   controlling who receives or revokes them.
+//! - **Achievement Badges**: Platforms and games can mint NFTs as proof-of-achievement or user
+//!   milestones, with full control over when and to whom they are issued.
+//! - **Loyalty or Participation Rewards**: Businesses can issue NFTs as collectibles or recognition
+//!   for customer loyalty or community participation, managed centrally by the contract owner.
+//!
+//! ## Notes
+//!
+//! - The contract must be deployed as **payable** to handle deposits.
+//! - Deposits are required for creating collections and minting NFTs.
+//! - Only the original deployer (owner) can call `mint`, `burn` and `destroy`.
+//! - Deposits are returned back to the original deployer (owner) when the collection is destroyed.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::prelude::string::ToString;
@@ -77,6 +127,7 @@ mod nonfungibles {
 			let mint_settings = MintSettings {
 				start_block: None,
 				end_block: None,
+				// Only the collection admin can mint.
 				mint_type: MintType::Issuer,
 				price: Some(price),
 				default_item_settings: ItemSettings::all_enabled(),
@@ -123,14 +174,17 @@ mod nonfungibles {
 		/// # Arguments
 		/// - `to`: Account into which the item will be minted.
 		/// - `item`: An identifier of the new item.
-		/// - `witness_data`: If the mint price is set, then it should be additionally confirmed in
-		///   the `witness_data`.
+		/// - `witness_data`: Witness data for the mint operation. Must provide the exact mint price
+		///   set on instantiation.
 		///
-		/// Note: the deposit will be taken from the contract and not the `owner` of the
-		/// `item`. The value provided (via `payable`) must therefore be sufficient to cover the
-		/// deposit and the mint price.
+		/// # Note
+		/// The deposit will be taken from the contract and not the `owner` of the
+		/// `item`. The contract must have sufficient balance to cover the deposit and the mint
+		/// price.
 		#[ink(message, payable)]
 		pub fn mint(&mut self, to: AccountId, item: ItemId, witness: MintWitness) -> Result<()> {
+			// Only the contract owner can call this method to mint the item.
+			self.ensure_owner()?;
 			api::mint(to, self.id, item, Some(witness)).map_err(Psp34Error::from)?;
 			self.env().emit_event(Transfer { from: None, to: Some(to), item });
 			Ok(())
@@ -142,6 +196,7 @@ mod nonfungibles {
 		/// # Arguments
 		/// - `item`: The item to be burned.
 		fn burn(&mut self, item: ItemId) -> Result<()> {
+			// Only the contract owner can burn items from the collection.
 			api::burn(self.id, item).map_err(Psp34Error::from)?;
 			self.env()
 				.emit_event(Transfer { from: Some(self.env().account_id()), to: None, item });
@@ -186,6 +241,7 @@ mod nonfungibles {
 			self.env().terminate_contract(self.owner);
 		}
 
+		// Ensure that the caller is the contract owner.
 		fn ensure_owner(&self) -> Result<()> {
 			if self.env().caller() != self.owner {
 				return Err(Psp34Error::Custom("Not the contract owner".to_string()))
