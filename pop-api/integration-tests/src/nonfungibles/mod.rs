@@ -326,7 +326,7 @@ fn next_collection_id_works() {
 		// Create a new collection and increment the collection ID.
 		nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
 		assert_eq!(next_collection_id(&addr), Ok(COLLECTION + 1));
-		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap_or_default()));
+		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap()));
 	});
 }
 
