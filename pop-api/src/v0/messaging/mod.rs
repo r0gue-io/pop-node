@@ -85,6 +85,6 @@ impl Callback {
 #[cfg_attr(feature = "std", derive(Debug))]
 pub enum MessageStatus {
 	Pending,
-	TimedOut,
 	Complete,
+	TimedOut,
 }
