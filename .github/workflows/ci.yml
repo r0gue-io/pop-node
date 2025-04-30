@@ -187,7 +187,9 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --all-features --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
+        run: |
+          rustup component add llvm-tools-preview --toolchain stable-x86_64-unknown-linux-gnu
+          cargo llvm-cov --all-features --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
