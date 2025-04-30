@@ -894,7 +894,8 @@ mod xcm_hooks {
 	fn xcm_queries_expire_on_expiry_block() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0; 32];
-			let timeout = System::block_number() + 10;
+			// timeout in 100 blocks time.
+			let timeout = 100;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
@@ -912,7 +913,22 @@ mod xcm_hooks {
 				None,
 			));
 
-			run_to(timeout + 1);
+			// assert that the block before is not timed out.
+
+			run_to(timeout + System::block_number() - 1);
+			let Some(Message::XcmQuery { .. }): Option<Message<Test>> =
+			Messages::get(ALICE, message_id)
+			else {
+				panic!("Message should be a query!")
+			};
+
+			let Some(Message::XcmQuery { .. }): Option<Message<Test>> =
+				Messages::get(ALICE, message_id_2)
+			else {
+				panic!("Message should be query!")
+			};
+
+			run_to(System::block_number() + 1);
 
 			let Some(Message::XcmTimeout { .. }): Option<Message<Test>> =
 				Messages::get(ALICE, message_id)

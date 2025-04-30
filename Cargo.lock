@@ -10717,6 +10717,7 @@ dependencies = [
  "pallet-ismp",
  "pallet-nfts 31.0.0",
  "pallet-revive",
+ "pallet-timestamp",
  "pallet-xcm",
  "parity-scale-codec",
  "pop-api",
