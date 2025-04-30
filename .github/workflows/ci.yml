@@ -136,7 +136,9 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run API integration tests
-        run: cargo test -p pop-api-integration-tests --release --locked --features "${{ matrix.features }}"
+        run: |
+          rustup component add rust-src --toolchain stable-x86_64-unknown-linux-gnu
+          cargo test -p pop-api-integration-tests --release --locked --features "${{ matrix.features }}"
 
   api-tests:
     runs-on: ubuntu-latest
