@@ -14047,7 +14047,7 @@ dependencies = [
 name = "pop-api"
 version = "0.0.0"
 dependencies = [
- "bitflags 2.8.0",
+ "bitflags 2.9.0",
  "enumflags2",
  "ink",
  "pop-primitives",
