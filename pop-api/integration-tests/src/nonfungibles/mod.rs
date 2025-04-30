@@ -320,19 +320,13 @@ fn get_attribute_works() {
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-		assert_eq!(next_collection_id(&addr), Ok(Some(COLLECTION)));
-		assert_eq!(
-			next_collection_id(&addr),
-			Ok(Some(NextCollectionId::get().unwrap_or_default()))
-		);
+		assert_eq!(next_collection_id(&addr), Ok(COLLECTION));
+		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap_or_default()));
 
 		// Create a new collection and increment the collection ID.
 		nfts::create_collection_and_mint_to(&addr, &addr, &addr, ITEM);
-		assert_eq!(next_collection_id(&addr), Ok(Some(COLLECTION + 1)));
-		assert_eq!(
-			next_collection_id(&addr),
-			Ok(Some(NextCollectionId::get().unwrap_or_default()))
-		);
+		assert_eq!(next_collection_id(&addr), Ok(COLLECTION + 1));
+		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap_or_default()));
 	});
 }
 

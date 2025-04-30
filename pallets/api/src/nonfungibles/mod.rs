@@ -611,7 +611,7 @@ pub mod pallet {
 		/// Returns the attribute value of item for a given key, if any.
 		GetAttribute(Option<Vec<u8>>),
 		/// Returns the next collection identifier, if any.
-		NextCollectionId(Option<CollectionIdOf<T>>),
+		NextCollectionId(CollectionIdOf<T>),
 		/// Returns the metadata of a specified collection item, if any.
 		ItemMetadata(Option<Vec<u8>>),
 	}
@@ -682,7 +682,9 @@ pub mod pallet {
 						.map(|attribute| attribute.0.into()),
 				),
 				NextCollectionId => ReadResult::NextCollectionId(
-					NextCollectionIdOf::<T>::get().or(T::CollectionId::initial_value()),
+					NextCollectionIdOf::<T>::get()
+						.or(T::CollectionId::initial_value())
+						.expect("Runtime should ensure `initial_value` returns `Some()`"),
 				),
 				ItemMetadata { collection, item } => ReadResult::ItemMetadata(
 					NftsOf::<T>::item_metadata(collection, item).map(|metadata| metadata.into()),
