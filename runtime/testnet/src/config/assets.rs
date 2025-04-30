@@ -120,3 +120,12 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type StringLimit = AssetsStringLimit;
 	type WeightInfo = pallet_nft_fractionalization::weights::SubstrateWeight<Self>;
 }
+
+#[cfg(test)]
+use frame_support::traits::Incrementable;
+
+// Ensure that the non fungibles api pallet can unwrap `CollectionId::initial_value()` return value.
+#[test]
+fn ensure_collection_id_initial_value_is_some() {
+	assert!(<Runtime as pallet_nfts::Config>::CollectionId::initial_value().is_some());
+}

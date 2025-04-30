@@ -148,7 +148,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 
 #[cfg(test)]
 mod tests {
-	use frame_support::traits::StorageInfoTrait;
+	use frame_support::traits::{Incrementable, StorageInfoTrait};
 
 	use super::*;
 
@@ -170,5 +170,16 @@ mod tests {
 				.and_then(|info| info.max_size)
 				.unwrap_or_default();
 		assert_eq!(deposit(1, max_size), NftsCollectionApprovalDeposit::get());
+	}
+
+	// Ensure that the non fungibles api pallet can unwrap `CollectionId::initial_value()` return
+	// value.
+	#[test]
+	fn ensure_collection_id_initial_value_is_some() {
+		assert!(
+			<Runtime as pallet_nfts::Config<TrustBackedNftsInstance>>::CollectionId::initial_value(
+			)
+			.is_some()
+		);
 	}
 }
