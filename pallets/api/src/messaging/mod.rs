@@ -616,6 +616,25 @@ pub mod pallet {
 			xcm_response: Response,
 		) -> DispatchResult {
 			T::XcmResponseOrigin::ensure_origin(origin)?;
+
+			let extrinsic_weight = T::WeightInfo::xcm_response()
+				.saturating_add(T::CallbackExecutor::execution_weight());
+
+			ensure!(
+				frame_system::BlockWeight::<T>::get()
+					.checked_accrue(extrinsic_weight, DispatchClass::Normal)
+					.is_ok(),
+				Error::<T>::BlockspaceAllowanceReached
+			);
+
+			// Manually adjust weight ahead of fallible execution.
+			// The fees of which should have been paid.
+			frame_system::Pallet::<T>::register_extra_weight_unchecked(
+				T::WeightInfo::xcm_response()
+					.saturating_add(T::CallbackExecutor::execution_weight()),
+				DispatchClass::Normal,
+			);
+
 			let (initiating_origin, id) =
 				XcmQueries::<T>::get(query_id).ok_or(Error::<T>::MessageNotFound)?;
 			let xcm_query_message =
@@ -639,22 +658,9 @@ pub mod pallet {
 			if let Some(callback) = callback {
 				// Attempt callback with response if specified.
 				log::debug!(target: "pop-api::extension", "xcm callback={:?}, response={:?}", callback, xcm_response);
-				// Since we are dispatching in the xcm-executor with call.dispatch_call, we must
-				// manually adjust the blockweight to weight of the extrinsic.
-				let static_weight_adjustment = T::WeightInfo::xcm_response()
-					.saturating_add(T::CallbackExecutor::execution_weight());
-
 				// Never roll back state if call fails.
 				// Ensure that the response can be polled.
-				if Self::call(
-					&initiating_origin,
-					callback.to_owned(),
-					&id,
-					&xcm_response,
-					Some(static_weight_adjustment),
-				)
-				.is_ok()
-				{
+				if Self::call(&initiating_origin, callback.to_owned(), &id, &xcm_response).is_ok() {
 					Messages::<T>::remove(&initiating_origin, id);
 					XcmQueries::<T>::remove(query_id);
 					T::Fungibles::release(
@@ -677,7 +683,6 @@ pub mod pallet {
 					response: xcm_response,
 				},
 			);
-
 			Ok(().into())
 		}
 
@@ -823,7 +828,7 @@ pub mod pallet {
 		/// weight.
 		///
 		/// This function is responsible for handling the full lifecycle of a callback invocation:
-		/// - Calculating the total weight cost of the callback, including a static adjustment.
+		/// - Calculating the total weight cost of the callback.
 		/// - Ensuring that sufficient blockspace is available before execution.
 		/// - Executing the callback via the configured `CallbackExecutor`.
 		/// - Registering the actual weight used with the runtime.
@@ -836,15 +841,11 @@ pub mod pallet {
 		/// - `callback`: The callback definition.
 		/// - `id`: The message ID associated with this callback's message.
 		/// - `data`: The encoded payload to send to the callback.
-		/// - `static_weight_adjustment`: An optional additional weight to charge, typically to
-		///   account for outer logic like wrapping or delegation. This is added to the callback's
-		///   declared weight.
 		///
 		/// # Weight Handling
 		///
 		/// - Before executing the callback, this function checks whether the total expected weight
-		///   (`callback.weight + static_weight_adjustment`) can be accommodated in the current
-		///   block.
+		///   (`callback.weight`) can be accommodated in the current block.
 		/// - If the block is saturated, the function returns early with an error and does not
 		///   mutate state.
 		/// - After execution, the actual weight used by the callback is determined using
@@ -855,16 +856,10 @@ pub mod pallet {
 			callback: Callback,
 			id: &MessageId,
 			data: &impl Encode,
-			// This should include T::CallbackExecutor::execution_weight() where applicable unless
-			// already charged.
-			static_weight_adjustment: Option<Weight>,
 		) -> DispatchResult {
 			// This is the total weight that should be deducted from the blockspace for callback
 			// execution.
-			let max_weight = callback
-				.weight
-				.checked_add(&static_weight_adjustment.unwrap_or(Zero::zero()))
-				.ok_or(Error::<T>::BlockspaceAllowanceReached)?;
+			let max_weight = callback.weight;
 
 			// Dont mutate state if blockspace will be saturated.
 			ensure!(
@@ -890,14 +885,9 @@ pub mod pallet {
 			Self::deposit_callback_event(initiating_origin, *id, &callback, &result);
 			let callback_weight_used = Self::process_callback_weight(&result, callback.weight);
 
-			// Weight used will always be less or equal to callback.weight hence this is safe with
-			// the above check.
-			let total_weight_used = callback_weight_used
-				.saturating_add(static_weight_adjustment.unwrap_or(Zero::zero()));
-
 			// Manually adjust callback weight.
 			frame_system::Pallet::<T>::register_extra_weight_unchecked(
-				total_weight_used,
+				callback_weight_used,
 				DispatchClass::Normal,
 			);
 

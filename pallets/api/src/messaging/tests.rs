@@ -735,6 +735,8 @@ mod xcm_new_query {
 }
 
 mod xcm_response {
+	use frame_system::BlockWeight;
+
 	use super::*;
 
 	#[test]
@@ -886,6 +888,49 @@ mod xcm_response {
 			assert_eq!(alice_held_balance_post_release, 0);
 		})
 	}
+
+	// Dont include any callback weight so we can test the xcm_response blockweight mutation.
+	#[test]
+	fn assert_blockweight_mutation_no_callback() {
+		new_test_ext().execute_with(|| {
+			let message_id = [0; 32];
+			let timeout = System::block_number() + 1;
+			let expected_query_id = 0;
+			let xcm_response = Response::ExecutionResult(None);
+			let blockweight_pre_call =
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+
+			assert_ne!(
+				<Test as Config>::CallbackExecutor::execution_weight(),
+				Zero::zero(),
+				"Please set a callback executor execution_weight to run this test."
+			);
+			assert_ne!(
+				<Test as Config>::WeightInfo::xcm_response(),
+				Zero::zero(),
+				"Please set an T::WeightInfo::xcm_response() to run this test."
+			);
+
+			assert_ok!(Messaging::xcm_new_query(
+				signed(ALICE),
+				message_id,
+				RESPONSE_LOCATION,
+				timeout,
+				None,
+			));
+
+			assert_ok!(Messaging::xcm_response(root(), expected_query_id, xcm_response.clone()));
+
+			let blockweight_post_call =
+				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
+
+			assert_eq!(
+				blockweight_post_call - blockweight_pre_call,
+				<Test as Config>::WeightInfo::xcm_response() +
+					<Test as Config>::CallbackExecutor::execution_weight()
+			)
+		})
+	}
 }
 
 mod xcm_hooks {
@@ -945,14 +990,7 @@ mod call {
 			let data = [100u8; 5];
 			let callback =
 				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
-			let static_weight_adjustment = Weight::from_parts(150_000, 150_000);
-			assert_ok!(Pallet::<Test>::call(
-				&ALICE,
-				callback,
-				&message_id,
-				&data,
-				Some(static_weight_adjustment)
-			));
+			assert_ok!(Pallet::<Test>::call(&ALICE, callback, &message_id, &data,));
 
 			System::assert_last_event(
 				Event::<Test>::WeightRefundErrored {
@@ -977,7 +1015,7 @@ mod call {
 			let data = [100u8; 5];
 			let callback =
 				Callback { abi: Abi::Scale, selector: [0u8; 4], weight: callback_weight };
-			let static_weight_adjustment = Weight::from_parts(15_000_000, 15_000_000);
+
 			<Test as Config>::Fungibles::hold(
 				&HoldReason::CallbackGas.into(),
 				&ALICE,
@@ -985,23 +1023,14 @@ mod call {
 			)
 			.unwrap();
 
-			assert_ok!(Pallet::<Test>::call(
-				&ALICE,
-				callback,
-				&message_id,
-				&data,
-				Some(static_weight_adjustment)
-			));
+			assert_ok!(Pallet::<Test>::call(&ALICE, callback, &message_id, &data,));
 
 			let blockweight_post_call =
 				BlockWeight::<Test>::get().get(DispatchClass::Normal).to_owned();
 			assert_ne!(blockweight_post_call, Zero::zero());
 
 			// callback weight used in tests is total / 2.
-			assert_eq!(
-				blockweight_post_call - blockweight_pre_call,
-				callback_weight / 2 + static_weight_adjustment
-			);
+			assert_eq!(blockweight_post_call - blockweight_pre_call, callback_weight / 2);
 		})
 	}
 }
