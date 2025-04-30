@@ -612,8 +612,7 @@ fn metadata_api_implemented() {
 		let RuntimeMetadata::V15(metadata) = prefixed_meta.1 else {
 			panic!("Expected metadata V15");
 		};
-		// TODO: This shouldn't be empty and should be resolved with 2503.
-		assert!(metadata.apis.is_empty());
+		assert!(!metadata.apis.is_empty());
 		assert!(!metadata.pallets.is_empty());
 
 		// Ensure metadata v16 is not provided.
