@@ -14,7 +14,7 @@ jobs:
 
       - uses: "./.github/actions/init"
 
-      - name: Print versions
+      - name: Print toolchain and cargo version
         run: |
           echo "######## rustup show ########"
           rustup show
@@ -49,7 +49,7 @@ jobs:
 
       - name: Check Build
         run: |
-          cargo check --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=try-runtime
 
   check-ismp:
     needs: lint
@@ -59,7 +59,7 @@ jobs:
       - uses: "./.github/actions/init"
       - name: Check Build with ISMP
         run: |
-          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,runtime-benchmarks,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,try-runtime
 
   clippy:
     needs: lint
@@ -78,7 +78,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks
+          args: --release --locked --workspace --exclude integration-tests
 
   clippy-ismp:
     needs: lint
@@ -97,7 +97,7 @@ jobs:
         uses: actions-rs/clippy-check@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --release --locked --workspace --exclude integration-tests --features=runtime-benchmarks,ismp
+          args: --release --locked --workspace --exclude integration-tests --features=ismp
 
   test:
     needs: lint
@@ -108,7 +108,7 @@ jobs:
       - uses: "./.github/actions/init"
 
       - name: Run tests
-        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests --features=runtime-benchmarks
+        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests
 
   integration-tests:
     needs: lint
@@ -192,7 +192,7 @@ jobs:
         uses: taiki-e/install-action@cargo-llvm-cov
 
       - name: Generate code coverage
-        run: cargo llvm-cov --all-features --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
+        run: cargo llvm-cov --features=try-runtime,ismp --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
