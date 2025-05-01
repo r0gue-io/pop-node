@@ -37,4 +37,8 @@ balances = [
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]
+args = [
+    "-lruntime::revive=trace",
+    "-lruntime::revive::strace=trace",
+    "-lxcm=trace",
+]
