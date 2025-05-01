@@ -852,12 +852,12 @@ mod get_attribute {
 #[test]
 fn next_collection_id_works() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(NonFungibles::read(NextCollectionId), ReadResult::NextCollectionId(Some(0)));
+		assert_eq!(NonFungibles::read(NextCollectionId), ReadResult::NextCollectionId(0));
 		nfts::create_collection_and_mint(ALICE, ALICE, ITEM);
-		assert_eq!(NonFungibles::read(NextCollectionId), ReadResult::NextCollectionId(Some(1)));
+		assert_eq!(NonFungibles::read(NextCollectionId), ReadResult::NextCollectionId(1));
 		assert_eq!(
 			NonFungibles::read(NextCollectionId).encode(),
-			Some(NextCollectionIdOf::<Test>::get().unwrap_or_default()).encode(),
+			NextCollectionIdOf::<Test>::get().unwrap_or_default().encode(),
 		);
 	});
 }
@@ -1281,12 +1281,7 @@ mod encoding_read_result {
 
 	#[test]
 	fn next_collection_id_works() {
-		let mut next_collection_id = Some(0);
-		assert_eq!(
-			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
-			next_collection_id.encode()
-		);
-		next_collection_id = None;
+		let next_collection_id = 1;
 		assert_eq!(
 			ReadResult::NextCollectionId::<Test>(next_collection_id).encode(),
 			next_collection_id.encode()
