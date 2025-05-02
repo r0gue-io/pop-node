@@ -69,7 +69,7 @@ pub struct Created {
 	#[ink(topic)]
 	admin: AccountId,
 	/// Maximum number of items in the collection.
-	max_supply: u32,
+	max_supply: Option<u32>,
 }
 
 /// Event emitted when a collection is destroyed.
@@ -86,9 +86,9 @@ pub mod nonfungibles {
 
 	/// The contract represents (wraps) a single NFT collection.
 	///
-	/// Upon instantiation, it creates a new
-	/// collection; upon termination, it destroys the collection. It also provides common methods
-	/// to query collection data, and manage items through minting, burning, and transferring.
+	/// Upon instantiation, it creates a new collection; upon termination, it destroys the
+	/// collection. It also provides common methods to query collection data, and manage items
+	/// through minting, burning, and transferring.
 	#[ink(storage)]
 	pub struct NonFungibles {
 		/// Collection ID.
@@ -106,12 +106,14 @@ pub mod nonfungibles {
 		/// - `max_supply`: Maximum number of items in the collection.
 		///
 		/// # Notes
-		/// - Creating a collection requires a deposit, which is taken from the contract's balance
-		///   on instantiation. The value provided at instantiation (via `payable`) must therefore
-		///   be sufficient to cover the collection deposit.
+		/// - Creating a NFT collection requires a deposit, which is taken from the contract's
+		///   balance on instantiation. The value provided at instantiation (via `payable`) must
+		///   therefore be sufficient to cover the collection deposit.
+		/// - Storage deposits are considered a best practice to mitigate against denial-of-service
+		///   attacks and state bloat.
 		/// - Destroying the collection later would refund the deposit back to the depositor.
 		#[ink(constructor, payable)]
-		pub fn new(max_supply: u32) -> Result<Self> {
+		pub fn new(max_supply: Option<u32>) -> Result<Self> {
 			// Get the next available collection ID.
 			let id = api::next_collection_id().map_err(Psp34Error::from)?;
 
@@ -132,7 +134,7 @@ pub mod nonfungibles {
 			// Create the collection.
 			let config = CollectionConfig {
 				settings: CollectionSettings::all_enabled(),
-				max_supply: Some(max_supply),
+				max_supply,
 				mint_settings,
 			};
 			// Contract is the admin of the collection.
@@ -170,25 +172,33 @@ pub mod nonfungibles {
 		/// On success a [`Transfer`] event is emitted.
 		///
 		/// # Arguments
-		/// - `to`: Account into which the item will be minted.
-		/// - `item`: An identifier of the new item.
-		/// - `witness_data`: Witness data for the mint operation.
+		/// - `to`: Account into which the item will be minted. This could be the contract's own
+		///   account identifier, for example.
+		/// - `item`: The identifier of the new item.
+		/// - `witness_data`: Witness data for the mint operation, ensuring that the mint will only
+		///   succeed if the item identifier and mint price remain the same. This protects the
+		///   caller from the price being changed between the time their transaction is broadcast
+		///   and executed.
 		///
 		/// # Note
-		/// The deposit will be taken from the contract and not the `owner` of the
-		/// `item`. The contract must have sufficient balance to cover the storage deposit for a new
-		/// item.
+		/// The deposit will be taken from the contract and not the specified `to` account. The
+		/// contract must have sufficient balance to cover the storage deposit for a new item. The
+		/// `mint` function is therefore made `payable` so that the caller can provide this deposit
+		/// amount with each call.
 		#[ink(message, payable)]
 		pub fn mint(&mut self, to: AccountId, item: ItemId, witness: MintWitness) -> Result<()> {
-			// Only the contract owner can call this method to mint the item.
+			// Only the contract owner can call this method to mint the item, based on the mint
+			// settings defined at collection creation.
 			self.ensure_owner()?;
 			api::mint(to, self.id, item, Some(witness)).map_err(Psp34Error::from)?;
 			self.env().emit_event(Transfer { from: None, to: Some(to), item });
 			Ok(())
 		}
 
-		/// Destroy a single item. Item must be owned by the contract, and this method can only be
-		/// called by the contract itself.
+		/// Destroy a single item.
+		///
+		/// Item must be owned by the contract, and this method can only be called by the contract
+		/// owner.
 		///
 		/// On success a [`Transfer`] event is emitted.
 		///
@@ -196,7 +206,7 @@ pub mod nonfungibles {
 		/// - `item`: The item to be burned.
 		#[ink(message)]
 		pub fn burn(&mut self, item: ItemId) -> Result<()> {
-			// Only the contract owner can burn items from the collection.
+			// Only the contract owner can burn items the contract owns.
 			self.ensure_owner()?;
 			api::burn(self.id, item).map_err(Psp34Error::from)?;
 			self.env()
@@ -204,15 +214,18 @@ pub mod nonfungibles {
 			Ok(())
 		}
 
-		/// Move an item from the contract to another account. Item must be owned by the contract.
+		/// Move an item from the contract to another account.
+		///
+		/// Item must be owned by the contract.
 		///
 		/// On success a [`Transfer`] event is emitted.
 		///
 		/// # Arguments
+		/// - `to`: The account to receive ownership of the item.
 		/// - `item`: The item to be transferred.
-		/// - `dest`: The account to receive ownership of the item.
 		#[ink(message)]
 		pub fn transfer(&mut self, to: AccountId, item: ItemId) -> Result<()> {
+			// Only the contract owner can transfer items the contract owns.
 			self.ensure_owner()?;
 			api::transfer(self.id, to, item).map_err(Psp34Error::from)?;
 			self.env().emit_event(Transfer {
@@ -223,8 +236,9 @@ pub mod nonfungibles {
 			Ok(())
 		}
 
-		/// Terminate a contract and destroy the collection. Collection must be managed by the
-		/// contract.
+		/// Terminate the contract and destroy the collection.
+		///
+		/// Collection must be managed by the contract and not have any items.
 		///
 		/// On success a [`Destroyed`] event is emitted.
 		///
@@ -236,6 +250,7 @@ pub mod nonfungibles {
 		/// All deposits will be returned to the contract instantiator on contract termination.
 		#[ink(message)]
 		pub fn destroy(&mut self, destroy_witness: DestroyWitness) -> Result<()> {
+			// Only the contract owner can destroy the contract/collection.
 			self.ensure_owner()?;
 			// Destroying the collection returns all deposits to the contract.
 			api::destroy(self.id, destroy_witness).map_err(Psp34Error::from)?;
