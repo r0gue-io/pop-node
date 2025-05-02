@@ -29,7 +29,7 @@ const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
 const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
 const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
-const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 100 * 1024 * 1024);
+const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000_000, 100 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
 

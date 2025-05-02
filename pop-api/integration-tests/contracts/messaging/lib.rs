@@ -76,7 +76,7 @@ mod messaging {
                 fee,
                 callback.then_some(
                     // See `api::ismp::OnPostResponse` impl below
-                    Callback::new(0xcfb0a1d2, Weight::from_parts(800_000_000, 150_000), Abi::Scale),
+                    Callback::new(0xcfb0a1d2, Weight::from_parts(800_000_000_000, 150_000_000), Abi::Scale),
                 ),
             )?;
             Ok(())
@@ -100,7 +100,7 @@ mod messaging {
                 timeout,
                 callback.then_some(
                     // See api::xcm::OnResponse impl below
-                    Callback::new(0x641b0b03, Weight::from_parts(800_000_000, 200_000), Abi::Scale),
+                    Callback::new(0x641b0b03, Weight::from_parts(800_000_000_000, 200_000_000), Abi::Scale),
                 ),
             )
         }

@@ -10,6 +10,9 @@ use contract_build::{
 };
 
 fn main() {
+	// Rerun if anything in the contracts changes.
+	println!("cargo:rerun-if-changed=contracts/");
+	println!("cargo:warning=🔨 build.rs is running");
 	let contracts_dir = PathBuf::from("./contracts/");
 	let contract_dirs = match get_subcontract_directories(&contracts_dir) {
 		Ok(dirs) => dirs,
@@ -19,16 +22,19 @@ fn main() {
 		},
 	};
 
-	for contract in contract_dirs {
+	for contract in &contract_dirs {
 		if let Err(e) = build_contract(&contract) {
 			eprintln!("Failed to build contract {}: {}", contract.display(), e);
 			process::exit(1);
 		}
 	}
+
+
+	println!("cargo:warning=🔨 build.rs generated {} new contracts", contract_dirs.len());
 }
 
 // Function to retrieve all subdirectories in a given directory.
-fn get_subcontract_directories(contracts_dir: &Path) -> Result<Vec<PathBuf>, String> {
+fn 	get_subcontract_directories(contracts_dir: &Path) -> Result<Vec<PathBuf>, String> {
 	fs::read_dir(contracts_dir)
 		.map_err(|e| format!("Could not read directory '{}': {}", contracts_dir.display(), e))?
 		.filter_map(|entry| match entry {
@@ -50,7 +56,7 @@ fn build_contract(contract_dir: &Path) -> Result<BuildResult, String> {
 		build_mode: BuildMode::Debug,
 		manifest_path,
 		output_type: OutputType::HumanReadable,
-		verbosity: Verbosity::Default,
+		verbosity: Verbosity::Verbose ,
 		..Default::default()
 	};
 

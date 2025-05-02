@@ -10,6 +10,7 @@ use pop_api::{
 	},
 	primitives::{BlockNumber, Error},
 };
+
 use pop_runtime_testnet::{config::ismp::Router, Messaging, RuntimeEvent};
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_runtime::{offchain::OffchainOverlayedChange, testing::H256};
@@ -29,7 +30,7 @@ fn ismp_get_request_works() {
 	let timeout = 100_000u64;
 	let height = 0u32;
 	let request = Get::new(ASSET_HUB, height, timeout, "some_context".as_bytes().to_vec(), vec![key.clone()]);
-	let response = vec![StorageValue { key, value: Some("some_value".as_bytes().to_vec()) }];
+	let response = vec![StorageValue { key, value: Some(b"some_value".to_vec()) }];
 
 	// Create a get request.
 	let mut ext = new_test_ext();
@@ -143,7 +144,7 @@ fn ismp_post_request_works() {
 	let id = [3u8; 32];
 	let timeout = 100_000u64;
 	let request = Post::new(HYPERBRIDGE, timeout, "some_data".as_bytes().to_vec());
-	let response = "some_value".as_bytes().to_vec();
+	let response = b"some_value".to_vec();
 
 	// Create a post request.
 	let mut ext = new_test_ext();
@@ -180,7 +181,7 @@ fn ismp_post_request_works() {
 			.on_response(Response::Post(PostResponse {
 				post,
 				response: response.clone(),
-				timeout_timestamp: 0,
+				timeout_timestamp: timeout,
 			}))
 			.unwrap();
 		System::assert_has_event(
@@ -188,7 +189,7 @@ fn ismp_post_request_works() {
 		);
 
 		assert_eq!(contract.poll(id).unwrap(), Some(MessageStatus::Complete));
-		assert_eq!(contract.get(id).unwrap(), Some(response));
+		assert_eq!(contract.get(id).unwrap(), Some(response.encode()));
 		assert_ok!(contract.remove(id));
 	});
 }
@@ -235,7 +236,7 @@ fn ismp_post_request_with_callback_works() {
 			.on_response(Response::Post(PostResponse {
 				post,
 				response: response.clone(),
-				timeout_timestamp: 0,
+				timeout_timestamp: timeout,
 			}))
 			.unwrap();
 		System::assert_has_event(
@@ -339,6 +340,8 @@ fn xcm_query_with_callback_works() {
 
 		//assert_eq!(contract.last_event(), Some(XcmCompleted { id, result: response }.encode()));
 		assert_eq!(contract.poll(id).unwrap(), None);
+		let events = System::events();
+		println!("{events:?}");
 		assert!(System::events().iter().any(|e| {
 			matches!(&e.event,
 			RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})

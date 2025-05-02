@@ -39,6 +39,7 @@ xcm-executor.workspace = true
 [features]
 default = [ "std" ]
 devnet = [ "pop-runtime-devnet/default" ]
+
 std = [
 	"codec/std",
 	"frame-support/std",
