@@ -52,12 +52,12 @@ url with that shown in the output of the `pop up network` command.
 ```bash
 pop up contract \
     --url=ws://127.0.0.1:9944 \
-    # The value provided at instantiation (via `payable`) to reserve the deposit for the collection.
+    # The value provided at instantiation (via `payable`).
     --value 100000000000 \
     # Using Alice as the contract owner, you can provide `--use-wallet` to sign with your own wallet.
     --suri //Alice \
-    # Provide the max supply and the mint price
-    --args 1000 100
+    # Provide the constructor args
+    --args ...
 ```
 
 ## Support

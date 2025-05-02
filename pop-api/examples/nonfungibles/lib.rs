@@ -35,9 +35,10 @@
 //!
 //! ## Notes
 //!
-//! - The contract must be deployed as **payable** to handle deposits, which are required for
-//!   creating collections and minting NFTs.
-//! - Only the original deployer (owner) can call `mint`, `burn` and `destroy`.
+//! - IMPORTANT: The contract must be deployed as **payable** to handle deposits, which are required
+//!   for creating collections and minting NFTs. Ensure that sufficient value is therefore specified
+//!   when instantiating the contract to cover the collection deposit - e.g., 10 PAS.
+//! - Only the original deployer (owner) can call `mint`, `burn`, 'transfer' and `destroy`.
 //! - Deposits are returned to the original deployer (owner) when the collection is destroyed.
 //!
 //! [ink]: https://use.ink
