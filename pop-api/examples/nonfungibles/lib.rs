@@ -173,8 +173,7 @@ pub mod nonfungibles {
 		/// On success a [`Transfer`] event is emitted.
 		///
 		/// # Arguments
-		/// - `to`: Account into which the item will be minted. This could be the contract's own
-		///   account identifier, for example.
+   	/// - `to`: Account into which the item will be minted.
 		/// - `item`: The identifier of the new item.
 		/// - `witness_data`: Witness data for the mint operation, ensuring that the mint will only
 		///   succeed if the item identifier and mint price remain the same. This protects the
