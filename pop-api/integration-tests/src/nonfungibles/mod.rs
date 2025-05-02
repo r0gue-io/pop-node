@@ -27,6 +27,7 @@ type Collection = pallet_nfts::Collection<Runtime, NftsInstance>;
 type ItemAttributesApprovals = pallet_nfts::ItemAttributesApprovalsOf<Runtime, NftsInstance>;
 type Metadata = BoundedVec<u8, <Runtime as pallet_nfts::Config<NftsInstance>>::StringLimit>;
 type NextCollectionId = pallet_nfts::NextCollectionId<Runtime, NftsInstance>;
+type NonFungibles = pallet_api::nonfungibles::Pallet<Runtime>;
 
 const COLLECTION: CollectionId = 0;
 const CONTRACT: &str = "contracts/nonfungibles/target/ink/nonfungibles.wasm";
@@ -318,10 +319,26 @@ fn get_attribute_works() {
 
 #[test]
 fn next_collection_id_works() {
+	use pallet_api::{nonfungibles::*, Read as _};
 	new_test_ext().execute_with(|| {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
-		assert_eq!(next_collection_id(&addr), Ok(COLLECTION + 1));
-		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap_or_default() + 1))
+		assert_eq!(next_collection_id(&addr), Ok(CollectionId::default()));
+		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap_or_default()));
+		assert_eq!(NextCollectionId::get(), None);
+		assert_eq!(
+			NonFungibles::read(Read::NextCollectionId),
+			ReadResult::NextCollectionId(Some(0))
+		);
+
+		nfts::create_collection(&addr, &addr);
+
+		assert_eq!(next_collection_id(&addr), Ok(CollectionId::default() + 1));
+		assert_eq!(next_collection_id(&addr), Ok(NextCollectionId::get().unwrap_or_default()));
+		assert_eq!(NextCollectionId::get(), Some(1));
+		assert_eq!(
+			NonFungibles::read(Read::NextCollectionId),
+			ReadResult::NextCollectionId(Some(1))
+		);
 	});
 }
 
