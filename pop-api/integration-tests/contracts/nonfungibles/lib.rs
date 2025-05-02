@@ -134,7 +134,7 @@ mod nonfungibles {
 		/// - clear_collection_approvals
 
 		#[ink(message)]
-		pub fn next_collection_id(&self) -> Result<Option<CollectionId>> {
+		pub fn next_collection_id(&self) -> Result<CollectionId> {
 			api::next_collection_id()
 		}
 
