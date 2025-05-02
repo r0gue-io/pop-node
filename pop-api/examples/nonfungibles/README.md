@@ -3,14 +3,6 @@
 This smart contract demonstrates how to manage NFTs using the [
 `pop_api::nonfungibles`](../../src/v0/nonfungibles) interface with [ink!](https://use.ink).
 
-## Documentation
-
-To view the documentation, run the following command in the root directory of the contract:
-
-```bash
-cargo doc --open
-```
-
 ### Upload and instantiate a contract
 
 See [examples](../README.md#development) for instructions on getting started and then upload your contract with the
