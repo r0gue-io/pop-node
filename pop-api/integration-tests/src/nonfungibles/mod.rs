@@ -673,16 +673,16 @@ fn mint_works() {
 
 		// Collection does not exist, throws module error `NoConfig`.
 		assert_eq!(
-			mint(&addr, COLLECTION, ALICE, ITEM, None),
+			mint(&addr, ALICE, COLLECTION, ITEM, None),
 			Err(Module { index: 50, error: [31, 0] })
 		);
 		// Successfully mint.
 		let collection = nfts::create_collection(&addr, &addr);
-		assert_ok!(mint(&addr, collection, ALICE, ITEM, None));
+		assert_ok!(mint(&addr, ALICE, collection, ITEM, None));
 		assert_eq!(nfts::balance_of(collection, ALICE), 1);
 		// Minting an existing item ID.
 		assert_eq!(
-			mint(&addr, collection, ALICE, ITEM, None),
+			mint(&addr, ALICE, collection, ITEM, None),
 			Err(Module { index: 50, error: [2, 0] })
 		);
 	});
