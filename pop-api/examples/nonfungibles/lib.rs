@@ -1,7 +1,7 @@
-//! # Nonfungibles Contract Example
+//! # Non-Fungibles Contract Example
 //!
-//! This [ink!][ink] contract implements a nonfungible token by leveraging the [Pop API
-//! Nonfungibles][pop-api-nonfungibles].
+//! This [ink!][ink] contract implements a nonfungible token by leveraging the [Pop Non-Fungibles
+//! API][pop-api-nonfungibles].
 //!
 //! ## Features
 //!
@@ -18,8 +18,8 @@
 //! essential. Example use cases include:
 //!
 //! - **DAO Membership NFTs**: A DAO can use this contract to issue NFTs that represent membership
-//!   or voting rights. The DAO's admin can mint or burn these NFTs based on proposals or membership
-//!   status changes.
+//!   or voting rights. The DAO's admin (or DAO contract itself) can mint or burn these NFTs based
+//!   on proposals or membership status changes.
 //! - **Event Tickets & Access Passes**: Projects can use this contract to distribute NFTs as
 //!   tickets for events or as access passes to gated content or features, with the owner
 //!   controlling who receives or revokes them.
@@ -30,10 +30,10 @@
 //!
 //! ## Notes
 //!
-//! - The contract must be deployed as **payable** to handle deposits.
-//! - Deposits are required for creating collections and minting NFTs.
+//! - The contract must be deployed as **payable** to handle deposits, which are required for
+//!   creating collections and minting NFTs.
 //! - Only the original deployer (owner) can call `mint`, `burn` and `destroy`.
-//! - Deposits are returned back to the original deployer (owner) when the collection is destroyed.
+//! - Deposits are returned to the original deployer (owner) when the collection is destroyed.
 //!
 //! [ink]: https://use.ink
 //! [pop-api-nonfungibles]: https://github.com/r0gue-io/pop-node/tree/main/pop-api/src/v0/fungibles
@@ -49,7 +49,7 @@ use pop_api::{
 	primitives::AccountId,
 };
 
-/// By default, Pop API returns errors as [`pop_api::StatusCode`] and it is convertible to
+/// By default, Pop API returns errors as [`pop_api::StatusCode`], which are convertible to
 /// [`Psp34Error`]. When using [`Psp34Error`], errors follow the PSP34 standard, making them easier
 /// to interpret.
 pub type Result<T> = core::result::Result<T, Psp34Error>;
@@ -142,7 +142,7 @@ pub mod nonfungibles {
 			self.id
 		}
 
-		/// Returns the amount of items owned by an account.
+		/// Returns the number of items owned by an account.
 		#[ink(message)]
 		pub fn balance_of(&self, owner: AccountId) -> Result<u32> {
 			api::balance_of(self.id, owner).map_err(Psp34Error::from)
@@ -182,7 +182,7 @@ pub mod nonfungibles {
 			Ok(())
 		}
 
-		/// Destroy a single item. Item must be owned by the contract and this method can only be
+		/// Destroy a single item. Item must be owned by the contract, and this method can only be
 		/// called by the contract itself.
 		///
 		/// On success a [`Transfer`] event is emitted.
@@ -225,8 +225,8 @@ pub mod nonfungibles {
 		/// - `destroy_witness`: The witness data required to destroy the collection.
 		///
 		/// # Notes
-		/// Deposits will be returned to the contract automatically when collection destroyed. On
-		/// contract terminated, all deposits will be returned to the contract instantiator.
+		/// Deposits will be returned to the contract automatically when a collection is destroyed.
+		/// All deposits will be returned to the contract instantiator on contract termination.
 		#[ink(message)]
 		pub fn destroy(&mut self, destroy_witness: DestroyWitness) -> Result<()> {
 			self.ensure_owner()?;
