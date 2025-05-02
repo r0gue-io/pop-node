@@ -12,6 +12,7 @@ endorsed for production use. Do **not** rely on them to keep anything of value s
 ### Prerequisite
 
 [Pop CLI](https://github.com/r0gue-io/pop-cli) installed.
+
 ### Launching a local Pop Network
 
 The example contracts only work with Pop Network runtimes due to their usage of Pop's smart contract API. To run
