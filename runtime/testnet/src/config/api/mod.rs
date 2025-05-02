@@ -138,7 +138,30 @@ impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureRespon
 	}
 }
 
+#[cfg(feature = "runtime-benchmarks")]
 pub struct CallbackExecutor;
+#[cfg(feature = "runtime-benchmarks")]
+impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
+	/// A successfull callback is the most expensive case.
+	fn execute(
+		_account: &AccountId,
+		_data: Vec<u8>,
+		weight: sp_runtime::Weight,
+	) -> frame_support::dispatch::DispatchResultWithPostInfo {
+		DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+			actual_weight: Some(weight / 2),
+			pays_fee: Pays::Yes,
+		})
+	}
+
+	fn execution_weight() -> sp_runtime::Weight {
+		Default::default()
+	}
+}
+
+#[cfg(not(feature = "runtime-benchmarks"))]
+pub struct CallbackExecutor;
+#[cfg(not(feature = "runtime-benchmarks"))]
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 	fn execute(account: &AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
 		// Default

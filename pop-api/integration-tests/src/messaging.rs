@@ -11,7 +11,6 @@ use pop_api::{
 	primitives::{BlockNumber, Error},
 };
 
-use pop_runtime_testnet::{config::ismp::Router, Messaging, RuntimeEvent};
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_runtime::{offchain::OffchainOverlayedChange, testing::H256};
 use xcm_executor::traits::OnResponse;
@@ -242,15 +241,16 @@ fn ismp_post_request_with_callback_works() {
 		System::assert_has_event(
 			IsmpPostResponseReceived { dest: contract.id.clone(), id, commitment }.into(),
 		);
-
-		assert_eq!(contract.last_event(), Some(IsmpPostCompleted { id, response }.encode()));
-		assert_eq!(contract.poll(id).unwrap(), None);
+		let events = System::events();
 		assert!(System::events().iter().any(|e| {
 			matches!(&e.event,
 			RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
 				if origin == &contract.id && *message_id == id
 			)
 		}));
+		assert_eq!(contract.last_event(), Some(IsmpPostCompleted { id, response }.encode()));
+		assert_eq!(contract.poll(id).unwrap(), None);
+		
 	});
 }
 
@@ -340,8 +340,6 @@ fn xcm_query_with_callback_works() {
 
 		assert_eq!(contract.last_event(), Some(XcmCompleted { id, result: response }.encode()));
 		assert_eq!(contract.poll(id).unwrap(), None);
-		let events = System::events();
-		println!("{events:?}");
 		assert!(System::events().iter().any(|e| {
 			matches!(&e.event,
 			RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})

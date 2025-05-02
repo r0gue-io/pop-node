@@ -10,14 +10,14 @@ use frame_support::{
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 #[cfg(feature = "devnet")]
-use pop_runtime_devnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT, config::ismp::Router, Messaging, RuntimeEvent};
 #[cfg(feature = "testnet")]
-use pop_runtime_testnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_testnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT, config::ismp::Router, Messaging, RuntimeEvent};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 use utils::*;
 
 mod fungibles;
-#[cfg(feature = "testnet")]
+#[cfg(any(feature = "testnet", feature = "devnet"))]
 mod messaging;
 #[cfg(feature = "devnet")]
 mod nonfungibles;
@@ -49,7 +49,8 @@ fn new_test_ext() -> sp_io::TestExternalities {
 
 	let mut ext = sp_io::TestExternalities::new(t);
 	ext.execute_with(|| {
-		#[cfg(feature = "testnet")]
+		// Required for calls to ismp dispatcher to function normally re timestamps.
+		#[cfg(any(feature = "testnet", feature = "devnet"))]
 		pallet_timestamp::Pallet::<Runtime>::set_timestamp(1u64);
 		System::set_block_number(1)
 		}

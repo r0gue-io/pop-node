@@ -1,5 +1,5 @@
 mod api;
-// Public due to pop api integration tests crate.
+// Public due to pop-api-integration-tests crate.
 pub mod assets;
 // Collation.
 pub(crate) mod collation;
@@ -7,8 +7,7 @@ pub(crate) mod collation;
 mod contracts;
 /// Governance.
 pub mod governance;
-// Public due to pop api integration tests crate.
-/// Ismp.
+// Public due to pop-api-integration-tests crate.
 pub mod ismp;
 /// Monetary matters.
 pub(crate) mod monetary;
