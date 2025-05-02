@@ -189,8 +189,10 @@ pub mod nonfungibles {
 		///
 		/// # Arguments
 		/// - `item`: The item to be burned.
+		#[ink(message)]
 		pub fn burn(&mut self, item: ItemId) -> Result<()> {
 			// Only the contract owner can burn items from the collection.
+			self.ensure_owner()?;
 			api::burn(self.id, item).map_err(Psp34Error::from)?;
 			self.env()
 				.emit_event(Transfer { from: Some(self.env().account_id()), to: None, item });
