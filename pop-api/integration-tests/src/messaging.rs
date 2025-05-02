@@ -338,7 +338,7 @@ fn xcm_query_with_callback_works() {
 			translate(&response)
 		));
 
-		//assert_eq!(contract.last_event(), Some(XcmCompleted { id, result: response }.encode()));
+		assert_eq!(contract.last_event(), Some(XcmCompleted { id, result: response }.encode()));
 		assert_eq!(contract.poll(id).unwrap(), None);
 		let events = System::events();
 		println!("{events:?}");

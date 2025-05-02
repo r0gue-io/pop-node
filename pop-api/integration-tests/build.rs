@@ -15,9 +15,6 @@ fn main() {
 
     let contracts_dir = PathBuf::from("contracts");
 
-    // Ensure Cargo rebuilds if any file in contracts/ changes
-    track_contract_sources(&contracts_dir);
-
     let contract_dirs = match get_subcontract_directories(&contracts_dir) {
         Ok(dirs) => dirs,
         Err(e) => {
@@ -36,19 +33,6 @@ fn main() {
     println!("cargo:warning=✅ build.rs built {} contracts", contract_dirs.len());
 }
 
-// Emit a cargo:rerun-if-changed for every file in the directory tree
-fn track_contract_sources(dir: &Path) {
-    if let Ok(entries) = fs::read_dir(dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.is_dir() {
-                track_contract_sources(&path);
-            } else {
-                println!("cargo:rerun-if-changed={}", path.display());
-            }
-        }
-    }
-}
 
 // Get subdirectories in the contracts/ folder
 fn get_subcontract_directories(contracts_dir: &Path) -> Result<Vec<PathBuf>, String> {
@@ -71,7 +55,7 @@ fn build_contract(contract_dir: &Path) -> Result<BuildResult, String> {
     })?;
 
     let args = ExecuteArgs {
-        build_artifact: BuildArtifacts::All,
+        build_artifact: BuildArtifacts::CodeOnly,
         build_mode: BuildMode::Debug,
         manifest_path,
         output_type: OutputType::HumanReadable,
