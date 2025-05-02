@@ -1060,7 +1060,7 @@ impl ReadResult {
 		use ReadResult::*;
 		match self {
 			Poll(status) => status.encode(),
-			Get(response) => response.encode(), 	
+			Get(response) => response.encode(),
 			QueryId(query_id) => query_id.encode(),
 		}
 	}

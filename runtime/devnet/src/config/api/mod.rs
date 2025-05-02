@@ -197,7 +197,8 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 		let collect_events = CollectEvents::UnsafeCollect;
 
 		// Using pallet_contracts for now due to a UnsupportedPrecompileAddress.
-		// Since both messaging and revive are experimental, lets get messaging running with contracts only for now.
+		// Since both messaging and revive are experimental, lets get messaging running with
+		// contracts only for now.
 		let mut output = crate::Contracts::bare_call(
 			account.clone(),
 			account.clone(),
@@ -336,21 +337,18 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 				)
 			};
 
-		let contain_messaging: bool = 
-		{
+		let contain_messaging: bool = {
 			use messaging::Call::*;
 			matches!(
-				c, 
+				c,
 				RuntimeCall::Messaging(
-					xcm_new_query { .. } | 
-					ismp_get { .. } |
-					ismp_post { .. } |
-					remove { .. },
+					xcm_new_query { .. } | ismp_get { .. } | ismp_post { .. } | remove { .. },
 				)
 			)
 		};
 
-		T::BaseCallFilter::contains(c) && (contain_fungibles | contain_nonfungibles | contain_messaging)
+		T::BaseCallFilter::contains(c) &&
+			(contain_fungibles | contain_nonfungibles | contain_messaging)
 	}
 }
 

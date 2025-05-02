@@ -917,7 +917,7 @@ mod xcm_hooks {
 
 			run_to(timeout + System::block_number() - 1);
 			let Some(Message::XcmQuery { .. }): Option<Message<Test>> =
-			Messages::get(ALICE, message_id)
+				Messages::get(ALICE, message_id)
 			else {
 				panic!("Message should be a query!")
 			};

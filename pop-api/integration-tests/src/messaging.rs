@@ -10,7 +10,6 @@ use pop_api::{
 	},
 	primitives::{BlockNumber, Error},
 };
-
 use sp_io::{hashing::keccak_256, TestExternalities};
 use sp_runtime::{offchain::OffchainOverlayedChange, testing::H256};
 use xcm_executor::traits::OnResponse;
@@ -28,7 +27,8 @@ fn ismp_get_request_works() {
 	let key = "some_key".as_bytes().to_vec();
 	let timeout = 100_000u64;
 	let height = 0u32;
-	let request = Get::new(ASSET_HUB, height, timeout, "some_context".as_bytes().to_vec(), vec![key.clone()]);
+	let request =
+		Get::new(ASSET_HUB, height, timeout, "some_context".as_bytes().to_vec(), vec![key.clone()]);
 	let response = vec![StorageValue { key, value: Some(b"some_value".to_vec()) }];
 
 	// Create a get request.
@@ -86,7 +86,8 @@ fn ismp_get_request_with_callback_works() {
 	let key = "some_key".as_bytes().to_vec();
 	let timeout = 100_000u64;
 	let height = 0u32;
-	let request = Get::new(ASSET_HUB, height, timeout, "some_context".as_bytes().to_vec(), vec![key.clone()]);
+	let request =
+		Get::new(ASSET_HUB, height, timeout, "some_context".as_bytes().to_vec(), vec![key.clone()]);
 	let response = vec![StorageValue { key, value: Some("some_value".as_bytes().to_vec()) }];
 
 	// Create a get request with callback.
@@ -134,7 +135,6 @@ fn ismp_get_request_with_callback_works() {
 				if origin == &contract.id && *message_id == id
 			)
 		}));
-		
 	});
 }
 
@@ -250,7 +250,6 @@ fn ismp_post_request_with_callback_works() {
 		}));
 		assert_eq!(contract.last_event(), Some(IsmpPostCompleted { id, response }.encode()));
 		assert_eq!(contract.poll(id).unwrap(), None);
-		
 	});
 }
 
@@ -462,7 +461,7 @@ impl Contract {
 	fn call(&self, function: &str, params: Vec<u8>, value: u128) -> ExecReturnValue {
 		let function = function_selector(function);
 		let params = [function, params].concat();
- 		bare_call(self.address.clone(), params, value).expect("should work")
+		bare_call(self.address.clone(), params, value).expect("should work")
 	}
 
 	fn last_event(&self) -> Option<Vec<u8>> {
@@ -476,7 +475,7 @@ impl Contract {
 				_ => None,
 			})
 			.collect::<Vec<&[u8]>>();
-		contract_events.last().map(|e|e.to_vec())
+		contract_events.last().map(|e| e.to_vec())
 	}
 }
 

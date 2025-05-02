@@ -10,9 +10,15 @@ use frame_support::{
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 #[cfg(feature = "devnet")]
-use pop_runtime_devnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT, config::ismp::Router, Messaging, RuntimeEvent};
+use pop_runtime_devnet::{
+	config::ismp::Router, Assets, Contracts, Messaging, Nfts, Runtime, RuntimeEvent, RuntimeOrigin,
+	System, UNIT,
+};
 #[cfg(feature = "testnet")]
-use pop_runtime_testnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT, config::ismp::Router, Messaging, RuntimeEvent};
+use pop_runtime_testnet::{
+	config::ismp::Router, Assets, Contracts, Messaging, Nfts, Runtime, RuntimeEvent, RuntimeOrigin,
+	System, UNIT,
+};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 use utils::*;
 
@@ -53,8 +59,7 @@ fn new_test_ext() -> sp_io::TestExternalities {
 		#[cfg(any(feature = "testnet", feature = "devnet"))]
 		pallet_timestamp::Pallet::<Runtime>::set_timestamp(1u64);
 		System::set_block_number(1)
-		}
-	);
+	});
 	ext
 }
 
