@@ -2,6 +2,11 @@
 
 The example contracts demonstrate how to use the `pop_api` interface with [ink!](https://use.ink).
 
+## Warning
+
+The available contracts are *examples* demonstrating usage of Pop's smart contract API. They are neither audited nor
+endorsed for production use. Do **not** rely on them to keep anything of value secure.
+
 ## Development
 
 ### Prerequisite

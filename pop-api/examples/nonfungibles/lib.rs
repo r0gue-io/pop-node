@@ -3,6 +3,11 @@
 //! This [ink!][ink] contract implements a nonfungible token by leveraging the [Pop Non-Fungibles
 //! API][pop-api-nonfungibles].
 //!
+//! ## Warning
+//!
+//! This contract is an *example* demonstrating usage of Pop's smart contract API. It is neither
+//! audited nor endorsed for production use. Do **not** rely on it to keep anything of value secure.
+//!
 //! ## Features
 //!
 //! - Create an NFT collection.
