@@ -244,12 +244,12 @@ pub(super) fn clear_collection_approvals(
 
 pub(super) fn mint(
 	addr: &AccountId32,
-	collection: CollectionId,
 	to: AccountId32,
+	collection: CollectionId,
 	item: ItemId,
 	witness: Option<MintWitness>,
 ) -> Result<(), Error> {
-	let params = [collection.encode(), to.encode(), item.encode(), witness.encode()].concat();
+	let params = [to.encode(), collection.encode(), item.encode(), witness.encode()].concat();
 	let result = do_bare_call("mint", &addr, params);
 	decoded::<Result<(), Error>>(result.clone())
 		.unwrap_or_else(|_| panic!("Contract reverted: {:?}", result))

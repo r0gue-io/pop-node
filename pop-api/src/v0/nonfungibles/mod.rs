@@ -385,10 +385,10 @@ pub fn mint(
 	witness: Option<MintWitness>,
 ) -> Result<()> {
 	build_dispatch(MINT)
-		.input::<(AccountId, CollectionId, ItemId, Option<MintWitness>)>()
+		.input::<(CollectionId, AccountId, ItemId, Option<MintWitness>)>()
 		.output::<Result<()>, true>()
 		.handle_error_code::<StatusCode>()
-		.call(&(to, collection, item, witness))
+		.call(&(collection, to, item, witness))
 }
 
 /// Destroys the specified item. Clearing the corresponding approvals.
