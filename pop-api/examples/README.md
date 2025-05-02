@@ -11,17 +11,7 @@ endorsed for production use. Do **not** rely on them to keep anything of value s
 
 ### Prerequisite
 
-Below guides use a tool called [pop-cli](https://github.com/r0gue-io/pop-cli). You can install Pop CLI
-from [crates.io](https://crates.io):
-
-```bash
-cargo install --force --locked pop-cli
-```
-
-> ℹ️ Pop CLI requires Rust 1.81 or later.
-
-[Learn more about Pop CLI here](https://github.com/r0gue-io/pop-cli).
-
+[Pop CLI](https://github.com/r0gue-io/pop-cli) installed.
 ### Launching a local Pop Network
 
 The example contracts only work with Pop Network runtimes due to their usage of Pop's smart contract API. To run
