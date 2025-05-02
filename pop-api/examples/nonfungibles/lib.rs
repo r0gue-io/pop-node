@@ -50,7 +50,7 @@ use ink::prelude::string::ToString;
 use pop_api::{
 	nonfungibles::{
 		self as api, events::Transfer, CollectionConfig, CollectionId, CollectionSettings,
-		DestroyWitness, ItemId, ItemSettings, MintSettings, MintType, MintWitness, Psp34Error,
+		DestroyWitness, ItemId, ItemSettings, MintSettings, MintType, Psp34Error,
 	},
 	primitives::AccountId,
 };
@@ -94,6 +94,8 @@ pub mod nonfungibles {
 	pub struct NonFungibles {
 		/// Collection ID.
 		id: CollectionId,
+		/// Next item ID.
+		next_item: ItemId,
 		/// Owner of the contract and collection. Set to the contract's instantiator.
 		owner: AccountId,
 	}
@@ -118,7 +120,7 @@ pub mod nonfungibles {
 			// Get the next available collection ID.
 			let id = api::next_collection_id().map_err(Psp34Error::from)?;
 
-			let instance = Self { id, owner: Self::env().caller() };
+			let instance = Self { id, next_item: 0, owner: Self::env().caller() };
 			let contract_id = instance.env().account_id();
 
 			// Set mint settings.
@@ -150,6 +152,12 @@ pub mod nonfungibles {
 			self.id
 		}
 
+		/// Returns the next item ID of the collection.
+		#[ink(message)]
+		pub fn next_item_id(&self) -> ItemId {
+			self.next_item
+		}
+
 		/// Returns the number of items owned by an account.
 		#[ink(message)]
 		pub fn balance_of(&self, owner: AccountId) -> Result<u32> {
@@ -173,12 +181,7 @@ pub mod nonfungibles {
 		/// On success a [`Transfer`] event is emitted.
 		///
 		/// # Arguments
-   	/// - `to`: Account into which the item will be minted.
-		/// - `item`: The identifier of the new item.
-		/// - `witness_data`: Witness data for the mint operation, ensuring that the mint will only
-		///   succeed if the item identifier and mint price remain the same. This protects the
-		///   caller from the price being changed between the time their transaction is broadcast
-		///   and executed.
+		/// - `to`: Account into which the item will be minted.
 		///
 		/// # Note
 		/// The deposit will be taken from the contract and not the specified `to` account. The
@@ -186,12 +189,14 @@ pub mod nonfungibles {
 		/// `mint` function is therefore made `payable` so that the caller can provide this deposit
 		/// amount with each call.
 		#[ink(message, payable)]
-		pub fn mint(&mut self, to: AccountId, item: ItemId, witness: MintWitness) -> Result<()> {
+		pub fn mint(&mut self, to: AccountId) -> Result<()> {
 			// Only the contract owner can call this method to mint the item, based on the mint
 			// settings defined at collection creation.
 			self.ensure_owner()?;
-			api::mint(to, self.id, item, Some(witness)).map_err(Psp34Error::from)?;
+			let item = self.next_item;
+			api::mint(to, self.id, item, None).map_err(Psp34Error::from)?;
 			self.env().emit_event(Transfer { from: None, to: Some(to), item });
+			self.next_item = self.next_item.saturating_add(1);
 			Ok(())
 		}
 
