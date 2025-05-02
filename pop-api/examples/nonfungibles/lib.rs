@@ -108,7 +108,7 @@ pub mod nonfungibles {
 		#[ink(constructor, payable)]
 		pub fn new(max_supply: u32) -> Result<Self> {
 			// Get the next available collection ID.
-			let id = api::next_collection_id().map_err(Psp34Error::from)?.unwrap_or_default();
+			let id = api::next_collection_id().map_err(Psp34Error::from)?;
 
 			let instance = Self { id, owner: Self::env().caller() };
 			let contract_id = instance.env().account_id();
