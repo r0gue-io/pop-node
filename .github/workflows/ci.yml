@@ -149,6 +149,28 @@ jobs:
         working-directory: pop-api
         run: cargo test --release --locked --all-features
 
+  api-examples:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Install `cargo-contract`
+        run: cargo install --force --locked cargo-contract
+
+      - name: Check example contracts
+        working-directory: pop-api/examples
+        shell: bash
+        run: |
+          set -e
+          for example in */ ; do
+            if [ -d "$example" ]; then
+              echo "Checking contract in $example"
+              (cd "$example" && cargo contract check)
+            fi
+          done
+
   coverage:
     needs: lint
     runs-on: ubuntu-latest
