@@ -31,6 +31,12 @@ The example contracts only work with Pop Network runtimes due to their usage of 
 pop up network -f ./networks/devnet.toml
 ```
 
+The output should provide a command for following the logs emitted from `pop-node`, which can be useful for debugging:
+
+```
+ logs: tail -f /var/folders/mr/gvb9gkhx58x2mxbpc6dw77ph0000gn/T/zombie-d9983e5b-fc70-478d-b943-d920a659d308/pop/pop.log
+```
+
 > 📚 See the full guide to launching a chain
 > locally [here](https://learn.onpop.io/appchains/guides/launch-a-chain/running-your-parachain).
 
