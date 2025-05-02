@@ -24,7 +24,7 @@ pub mod events;
 pub mod traits;
 pub mod types;
 
-/// Returns the amount of items the owner has within a collection.
+/// Returns the number of items the owner has within a collection.
 ///
 /// # Parameters
 /// - `collection` - The collection.
@@ -60,7 +60,7 @@ pub fn owner_of(collection: CollectionId, item: ItemId) -> Result<Option<Account
 /// - `collection` - The collection.
 /// - `owner` - The account that owns the item(s).
 /// - `operator` - the account that is allowed to withdraw the item(s).
-/// - `item` - The item. If `None`, it is regarding all owner's items in collection.
+/// - `item` - The item. If `None`, it is all owner's items in the collection.
 #[inline]
 pub fn allowance(
 	collection: CollectionId,
@@ -204,7 +204,7 @@ pub fn destroy(collection: CollectionId, witness: DestroyWitness) -> Result<()> 
 /// - `CollectionOwner` namespace could be modified by the `collection` Admin only;
 /// - `ItemOwner` namespace could be modified by the `item` owner only. `item` should be set in that
 ///   case;
-/// - `Account(AccountId)` namespace could be modified only when the provided account was given a
+/// - `Account(AccountId)` namespace could be modified only when the provided account was given
 ///   permission to do so;
 ///
 /// # Parameters
@@ -303,7 +303,7 @@ pub fn set_max_supply(collection: CollectionId, max_supply: u32) -> Result<()> {
 /// Caller must be the owner of the item.
 ///
 /// # Parameters
-/// - `collection` - The colleciton.
+/// - `collection` - The collection.
 /// - `item` - The item.
 /// - `delegate` - The account to delegate permission to change attributes of the item.
 #[inline]
@@ -319,7 +319,7 @@ pub fn approve_item_attributes(
 		.call(&(collection, item, delegate))
 }
 
-/// Cancel the previously provided approval to change item's attributes.
+/// Cancel the previously provided approval to change the item's attributes.
 /// All the previously set attributes by the `delegate` will be removed.
 ///
 /// # Parameters
@@ -327,7 +327,6 @@ pub fn approve_item_attributes(
 /// - `item` - The item that holds attributes.
 /// - `delegate` - The previously approved account to remove.
 /// - `witness` - A witness data to cancel attributes approval operation.
-/// The account to delegate permission to change attributes of the item.
 #[inline]
 pub fn cancel_item_attributes_approval(
 	collection: CollectionId,
@@ -360,7 +359,7 @@ pub fn clear_all_transfer_approvals(collection: CollectionId, item: ItemId) -> R
 ///
 /// # Parameters
 /// - `collection` - The collection.
-/// - `limit` - The amount of collection approvals that will be cleared.
+/// - `limit` - The number of collection approvals that will be cleared.
 #[inline]
 pub fn clear_collection_approvals(collection: CollectionId, limit: u32) -> Result<()> {
 	build_dispatch(CLEAR_COLLECTION_APPROVALS)
@@ -394,7 +393,7 @@ pub fn mint(
 /// Destroys the specified item. Clearing the corresponding approvals.
 ///
 /// # Parameters
-/// - `collection` - The colleciton.
+/// - `collection` - The collection.
 /// - `item` - The item.
 #[inline]
 pub fn burn(collection: CollectionId, item: ItemId) -> Result<()> {

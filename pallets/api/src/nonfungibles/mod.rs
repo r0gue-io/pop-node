@@ -90,7 +90,7 @@ pub mod pallet {
 			/// The item transferred (or minted/burned).
 			item: ItemIdOf<T>,
 		},
-		/// Event emitted when a token approve occurs.
+		/// Event emitted when a token approval occurs.
 		// Differing style: event name abides by the PSP34 standard.
 		Approval {
 			/// The owner providing the allowance.
@@ -101,7 +101,7 @@ pub mod pallet {
 			collection: CollectionIdOf<T>,
 			/// The item which is (dis)approved. `None` for all owner's items.
 			item: Option<ItemIdOf<T>>,
-			/// Whether allowance is set or removed.
+			/// Whether an allowance is set or removed.
 			approved: bool,
 		},
 		/// Event emitted when an attribute is set for a token.
@@ -244,7 +244,7 @@ pub mod pallet {
 		/// - `CollectionOwner` namespace could be modified by the `collection` Admin only;
 		/// - `ItemOwner` namespace could be modified by the `item` owner only. `item` should be set
 		///   in that case;
-		/// - `Account(AccountId)` namespace could be modified only when the `origin` was given a
+		/// - `Account(AccountId)` namespace could be modified only when the `origin` was given
 		///   permission to do so;
 		///
 		/// The funds of `origin` are reserved according to the formula:
@@ -253,7 +253,7 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection.
-		/// - `item` - The optional item whose attribute to set. If `None`, the `collection`'s
+		/// - `item` - The optional item whose attribute is to be set. If `None`, the `collection`'s
 		///   attribute is set.
 		/// - `namespace` - The attribute's namespace.
 		/// - `key` - The key of the attribute.
@@ -284,7 +284,7 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection.
-		/// - `item` - The optional item whose metadata to clear. If `None`, metadata of the
+		/// - `item` - The optional item whose metadata is to be cleared. If `None`, metadata of the
 		///   `collection` will be cleared.
 		/// - `namespace` - The attribute's namespace.
 		/// - `key` - The key of the attribute.
@@ -377,7 +377,7 @@ pub mod pallet {
 			)
 		}
 
-		/// Cancel the previously provided approval to change item's attributes.
+		/// Cancel the previously provided approval to change an item's attributes.
 		/// All the previously set attributes by the `delegate` will be removed.
 		///
 		/// # Parameters
@@ -422,7 +422,7 @@ pub mod pallet {
 		///
 		/// # Parameters
 		/// - `collection` - The collection.
-		/// - `limit` - The amount of collection approvals that will be cleared.
+		/// - `limit` - The number of collection approvals that will be cleared.
 		#[pallet::call_index(19)]
 		#[pallet::weight(NftsWeightInfoOf::<T>::clear_collection_approvals(*limit))]
 		pub fn clear_collection_approvals(
@@ -530,13 +530,13 @@ pub mod pallet {
 		}
 	}
 
-	/// State reads for the non-fungibles API with required input.
+	/// State reads for the non-fungibles API with required inputs.
 	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]
 	pub enum Read<T: Config> {
-		/// Returns the amount of items the owner has within a `collection`.
+		/// Returns the number of items the owner has within a `collection`.
 		#[codec(index = 0)]
 		BalanceOf {
 			/// The collection.
@@ -574,7 +574,7 @@ pub mod pallet {
 		GetAttribute {
 			/// The collection.
 			collection: CollectionIdOf<T>,
-			/// The item. If `None` the attributes for the collection are queried.
+			/// The item. If `None`, the attributes for the collection are queried.
 			item: Option<ItemIdOf<T>>,
 			/// The attribute's namespace.
 			namespace: AttributeNamespaceOf<T>,
@@ -598,17 +598,17 @@ pub mod pallet {
 	#[derive(Debug)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	pub enum ReadResult<T: Config> {
-		/// Returns the amount of items the owner has within a collection.
+		/// Returns the number of items the owner has within a collection.
 		BalanceOf(u32),
 		/// Returns the owner of an item within a specified collection, if any.
 		OwnerOf(Option<AccountIdOf<T>>),
-		/// Returns whether the operator is approved by the owner to withdraw item. If item is not
-		/// provided, it returns whether the operator is approved to withdraw all owner's items for
-		/// the given collection.
+		/// Returns whether the operator is approved by the owner to withdraw an item. If an item
+		/// is not provided, it returns whether the operator is approved to withdraw all owner's
+		/// items for the given collection.
 		Allowance(bool),
 		/// Returns the total supply of a collection.
 		TotalSupply(u128),
-		/// Returns the attribute value of item for a given key, if any.
+		/// Returns the attribute value of an item for a given key, if any.
 		GetAttribute(Option<Vec<u8>>),
 		/// Returns the next collection identifier, if any.
 		NextCollectionId(Option<CollectionIdOf<T>>),
