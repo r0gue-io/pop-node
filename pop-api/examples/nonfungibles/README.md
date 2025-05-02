@@ -18,7 +18,7 @@ cargo install --force --locked pop-cli
 
 ### Launching a local Pop Network
 
-The contract only works with Pop Network runtimes, to run `pop-node` on local, you can use the following command:
+The contract only works with Pop Network runtimes, to run `pop-node` locally, you can use the following command:
 
 > 📚 See the full guide to launching a chain locally [here](https://learn.onpop.io/appchains/guides/launch-a-chain/running-your-parachain).
 
