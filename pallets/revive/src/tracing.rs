@@ -15,9 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{primitives::ExecReturnValue, DispatchError, Weight};
 use environmental::environmental;
 use sp_core::{H160, H256, U256};
+
+use crate::{primitives::ExecReturnValue, DispatchError, Weight};
 
 environmental!(tracer: dyn Tracer + 'static);
 

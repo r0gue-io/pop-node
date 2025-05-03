@@ -15,17 +15,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use alloc::{vec, vec::Vec};
+use core::{cmp::max, marker::PhantomData, num::NonZero};
+
+use num_bigint::BigUint;
+use num_integer::Integer;
+use num_traits::{One, Zero};
+use sp_runtime::DispatchError;
+
 use crate::{
 	precompiles::{BuiltinAddressMatcher, Error, Ext, PrimitivePrecompile},
 	wasm::RuntimeCosts,
 	Config,
 };
-use alloc::{vec, vec::Vec};
-use core::{cmp::max, marker::PhantomData, num::NonZero};
-use num_bigint::BigUint;
-use num_integer::Integer;
-use num_traits::{One, Zero};
-use sp_runtime::DispatchError;
 
 /// See EIP-2565
 const MIN_GAS_COST: u64 = 200;
@@ -49,8 +51,9 @@ pub struct Modexp<T>(PhantomData<T>);
 
 impl<T: Config> PrimitivePrecompile for Modexp<T> {
 	type T = T;
-	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(5).unwrap());
+
 	const HAS_CONTRACT_INFO: bool = false;
+	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(5).unwrap());
 
 	fn call(
 		_address: &[u8; 20],
@@ -229,12 +232,13 @@ fn read_input(source: &[u8], target: &mut [u8], source_offset: &mut usize) {
 
 #[cfg(test)]
 mod tests {
+	use alloy_core::hex;
+
 	use super::*;
 	use crate::{
 		precompiles::tests::{run_primitive, run_test_vectors},
 		tests::Test,
 	};
-	use alloy_core::hex;
 
 	#[test]
 	fn process_consensus_tests() {

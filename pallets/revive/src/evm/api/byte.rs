@@ -16,19 +16,22 @@
 // limitations under the License.
 //! Define Byte wrapper types for encoding and decoding hex strings
 
-use super::hex_serde::HexCodec;
 use alloc::{vec, vec::Vec};
-use alloy_core::hex;
-use codec::{Decode, Encode};
 use core::{
 	fmt::{Debug, Display, Formatter, Result as FmtResult},
 	str::FromStr,
 };
+
+use alloy_core::hex;
+use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 use serde::{Deserialize, Serialize};
 
+use super::hex_serde::HexCodec;
+
 impl FromStr for Bytes {
 	type Err = hex::FromHexError;
+
 	fn from_str(s: &str) -> Result<Self, Self::Err> {
 		let data = hex::decode(s.trim_start_matches("0x"))?;
 		Ok(Bytes(data))

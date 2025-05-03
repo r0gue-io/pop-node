@@ -19,17 +19,10 @@
 
 pub mod meter;
 
-use crate::{
-	address::AddressMapper,
-	exec::{AccountIdOf, Key},
-	storage::meter::Diff,
-	weights::WeightInfo,
-	BalanceOf, Config, ContractInfoOf, DeletionQueue, DeletionQueueCounter, Error, TrieId,
-	SENTINEL,
-};
 use alloc::vec::Vec;
-use codec::{Decode, Encode, MaxEncodedLen};
 use core::marker::PhantomData;
+
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	storage::child::{self, ChildInfo},
 	weights::{Weight, WeightMeter},
@@ -41,6 +34,15 @@ use sp_io::KillStorageResult;
 use sp_runtime::{
 	traits::{Hash, Saturating, Zero},
 	DispatchError, RuntimeDebug,
+};
+
+use crate::{
+	address::AddressMapper,
+	exec::{AccountIdOf, Key},
+	storage::meter::Diff,
+	weights::WeightInfo,
+	BalanceOf, Config, ContractInfoOf, DeletionQueue, DeletionQueueCounter, Error, TrieId,
+	SENTINEL,
 };
 
 /// Information for managing an account and its sub trie abstraction.
@@ -442,6 +444,7 @@ impl<T: Config> DeletionQueueManager<T> {
 	pub fn from_test_values(insert_counter: u32, delete_counter: u32) -> Self {
 		Self { insert_counter, delete_counter, _phantom: Default::default() }
 	}
+
 	pub fn as_test_tuple(&self) -> (u32, u32) {
 		(self.insert_counter, self.delete_counter)
 	}

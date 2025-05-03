@@ -16,9 +16,10 @@
 // limitations under the License.
 //! Ethereum signature utilities
 
-use super::*;
 use sp_core::{H160, U256};
 use sp_io::{crypto::secp256k1_ecdsa_recover, hashing::keccak_256};
+
+use super::*;
 
 impl TransactionLegacySigned {
 	/// Get the recovery ID from the signed transaction.

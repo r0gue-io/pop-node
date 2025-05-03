@@ -25,6 +25,15 @@
 // benchmarks.
 #![cfg_attr(test, allow(dead_code))]
 
+use alloc::{vec, vec::Vec};
+
+use frame_support::{storage::child, traits::fungible::Mutate};
+use frame_system::RawOrigin;
+use pallet_revive_fixtures::bench as bench_fixtures;
+use sp_core::{Get, H160, H256, U256};
+use sp_io::hashing::keccak_256;
+use sp_runtime::traits::{Bounded, Hash};
+
 use crate::{
 	address::AddressMapper,
 	exec::{ExportedFunction, Key, PrecompileExt, Stack},
@@ -35,13 +44,6 @@ use crate::{
 	BalanceOf, Code, CodeInfoOf, Config, ContractInfo, ContractInfoOf, DepositLimit, Error,
 	GasMeter, MomentOf, Origin, Pallet as Contracts, PristineCode, WasmBlob, Weight,
 };
-use alloc::{vec, vec::Vec};
-use frame_support::{storage::child, traits::fungible::Mutate};
-use frame_system::RawOrigin;
-use pallet_revive_fixtures::bench as bench_fixtures;
-use sp_core::{Get, H160, H256, U256};
-use sp_io::hashing::keccak_256;
-use sp_runtime::traits::{Bounded, Hash};
 
 type StackExt<'a, T> = Stack<'a, T, WasmBlob<T>>;
 

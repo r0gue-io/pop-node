@@ -28,13 +28,13 @@ mod sha256;
 mod benchmarking;
 
 #[cfg(feature = "runtime-benchmarks")]
+pub use benchmarking::{IBenchmarking, NoInfo, WithInfo};
+
+#[cfg(feature = "runtime-benchmarks")]
 use crate::{
 	precompiles::{ExtWithInfo, Instance, Precompiles},
 	Config,
 };
-
-#[cfg(feature = "runtime-benchmarks")]
-pub use benchmarking::{IBenchmarking, NoInfo, WithInfo};
 
 #[cfg(not(feature = "runtime-benchmarks"))]
 pub type Builtin<T> = Production<T>;

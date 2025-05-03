@@ -18,24 +18,6 @@
 mod pallet_dummy;
 mod precompiles;
 
-use self::test_utils::{ensure_stored, expected_deposit};
-use crate::{
-	self as pallet_revive,
-	address::{create1, create2, AddressMapper},
-	evm::{runtime::GAS_PRICE, CallTrace, CallTracer, CallType, GenericTransaction},
-	exec::Key,
-	limits,
-	storage::DeletionQueueManager,
-	test_utils::*,
-	tests::test_utils::{get_contract, get_contract_checked},
-	tracing::trace,
-	weights::WeightInfo,
-	AccountId32Mapper, BalanceOf, Code, CodeInfoOf, Config, ContractInfo, ContractInfoOf,
-	DeletionQueueCounter, DepositLimit, Error, EthTransactError, HoldReason, Origin, Pallet,
-	PristineCode, H160,
-};
-
-use crate::test_utils::builder::Contract;
 use assert_matches::assert_matches;
 use codec::{Decode, Encode};
 use frame_support::{
@@ -63,6 +45,23 @@ use sp_runtime::{
 	testing::H256,
 	traits::{BlakeTwo256, Convert, IdentityLookup, One},
 	AccountId32, BuildStorage, DispatchError, Perbill, TokenError,
+};
+
+use self::test_utils::{ensure_stored, expected_deposit};
+use crate::{
+	self as pallet_revive,
+	address::{create1, create2, AddressMapper},
+	evm::{runtime::GAS_PRICE, CallTrace, CallTracer, CallType, GenericTransaction},
+	exec::Key,
+	limits,
+	storage::DeletionQueueManager,
+	test_utils::{builder::Contract, *},
+	tests::test_utils::{get_contract, get_contract_checked},
+	tracing::trace,
+	weights::WeightInfo,
+	AccountId32Mapper, BalanceOf, Code, CodeInfoOf, Config, ContractInfo, ContractInfoOf,
+	DeletionQueueCounter, DepositLimit, Error, EthTransactError, HoldReason, Origin, Pallet,
+	PristineCode, H160,
 };
 
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -95,14 +94,15 @@ macro_rules! assert_refcount {
 }
 
 pub mod test_utils {
+	use codec::{Encode, MaxEncodedLen};
+	use frame_support::traits::fungible::{InspectHold, Mutate};
+	use sp_core::H160;
+
 	use super::{CodeHashLockupDepositPercent, Contracts, DepositPerByte, DepositPerItem, Test};
 	use crate::{
 		address::AddressMapper, exec::AccountIdOf, BalanceOf, CodeInfo, CodeInfoOf, Config,
 		ContractInfo, ContractInfoOf, PristineCode,
 	};
-	use codec::{Encode, MaxEncodedLen};
-	use frame_support::traits::fungible::{InspectHold, Mutate};
-	use sp_core::H160;
 
 	pub fn place_contract(address: &AccountIdOf<Test>, code_hash: sp_core::H256) {
 		set_balance(address, Contracts::min_balance() * 10);
@@ -178,13 +178,14 @@ pub mod test_utils {
 }
 
 mod builder {
+	use sp_core::{H160, H256};
+
 	use super::Test;
 	use crate::{
 		test_utils::{builder::*, ALICE},
 		tests::RuntimeOrigin,
 		Code,
 	};
-	use sp_core::{H160, H256};
 
 	pub fn bare_instantiate(code: Code) -> BareInstantiateBuilder<Test> {
 		BareInstantiateBuilder::<Test>::bare_instantiate(RuntimeOrigin::signed(ALICE), code)
@@ -226,44 +227,44 @@ parameter_types! {
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
+	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountId = AccountId32;
 	type Block = Block;
 	type BlockWeights = BlockWeights;
-	type AccountId = AccountId32;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type AccountData = pallet_balances::AccountData<u64>;
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
 impl pallet_balances::Config for Test {
+	type AccountStore = System;
 	type ExistentialDeposit = ExistentialDeposit;
 	type ReserveIdentifier = [u8; 8];
-	type AccountStore = System;
 }
 
 #[derive_impl(pallet_timestamp::config_preludes::TestDefaultConfig)]
 impl pallet_timestamp::Config for Test {}
 
 impl pallet_utility::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
 	type PalletsOrigin = OriginCaller;
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
 impl pallet_proxy::Config for Test {
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeCall = RuntimeCall;
-	type Currency = Balances;
-	type ProxyType = ();
-	type ProxyDepositBase = ConstU64<1>;
-	type ProxyDepositFactor = ConstU64<1>;
-	type MaxProxies = ConstU32<32>;
-	type WeightInfo = ();
-	type MaxPending = ConstU32<32>;
-	type CallHasher = BlakeTwo256;
 	type AnnouncementDepositBase = ConstU64<1>;
 	type AnnouncementDepositFactor = ConstU64<1>;
 	type BlockNumberProvider = frame_system::Pallet<Test>;
+	type CallHasher = BlakeTwo256;
+	type Currency = Balances;
+	type MaxPending = ConstU32<32>;
+	type MaxProxies = ConstU32<32>;
+	type ProxyDepositBase = ConstU64<1>;
+	type ProxyDepositFactor = ConstU64<1>;
+	type ProxyType = ();
+	type RuntimeCall = RuntimeCall;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
 }
 
 parameter_types! {
@@ -272,10 +273,10 @@ parameter_types! {
 
 #[derive_impl(pallet_transaction_payment::config_preludes::TestDefaultConfig)]
 impl pallet_transaction_payment::Config for Test {
+	type FeeMultiplierUpdate = ConstFeeMultiplier<FeeMultiplier>;
+	type LengthToFee = FixedFee<100, <Self as pallet_balances::Config>::Balance>;
 	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
 	type WeightToFee = IdentityFee<<Self as pallet_balances::Config>::Balance>;
-	type LengthToFee = FixedFee<100, <Self as pallet_balances::Config>::Balance>;
-	type FeeMultiplierUpdate = ConstFeeMultiplier<FeeMultiplier>;
 }
 
 impl pallet_dummy::Config for Test {}
@@ -365,19 +366,19 @@ impl FindAuthor<<Test as frame_system::Config>::AccountId> for Test {
 
 #[derive_impl(crate::config_preludes::TestDefaultConfig)]
 impl Config for Test {
-	type Time = Timestamp;
 	type AddressMapper = AccountId32Mapper<Self>;
-	type Currency = Balances;
 	type CallFilter = TestFilter;
+	type ChainId = ChainId;
+	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
+	type Currency = Balances;
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type FindAuthor = Test;
+	type InstantiateOrigin = EnsureAccount<Self, InstantiateAccount>;
+	type Precompiles = (precompiles::WithInfo<Self>, precompiles::NoInfo<Self>);
+	type Time = Timestamp;
 	type UnsafeUnstableInterface = UnstableInterface;
 	type UploadOrigin = EnsureAccount<Self, UploadAccount>;
-	type InstantiateOrigin = EnsureAccount<Self, InstantiateAccount>;
-	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
-	type ChainId = ChainId;
-	type FindAuthor = Test;
-	type Precompiles = (precompiles::WithInfo<Self>, precompiles::NoInfo<Self>);
 }
 
 impl TryFrom<RuntimeCall> for crate::Call<Test> {
@@ -412,13 +413,16 @@ impl ExtBuilder {
 		self.existential_deposit = existential_deposit;
 		self
 	}
+
 	pub fn with_code_hashes(mut self, code_hashes: Vec<sp_core::H256>) -> Self {
 		self.code_hashes = code_hashes;
 		self
 	}
+
 	pub fn set_associated_consts(&self) {
 		EXISTENTIAL_DEPOSIT.with(|v| *v.borrow_mut() = self.existential_deposit);
 	}
+
 	pub fn build(self) -> sp_io::TestExternalities {
 		sp_tracing::try_init_simple();
 		self.set_associated_consts();
@@ -641,9 +645,10 @@ fn run_out_of_fuel_engine() {
 // Fail out of fuel (ref_time weight) in the host.
 #[test]
 fn run_out_of_fuel_host() {
-	use crate::precompiles::Precompile;
 	use alloy_core::sol_types::SolInterface;
 	use precompiles::{INoInfo, NoInfo};
+
+	use crate::precompiles::Precompile;
 
 	let precompile_addr = H160(NoInfo::<Test>::MATCHER.base_address());
 	let input = INoInfo::INoInfoCalls::consumeMaxGas(INoInfo::consumeMaxGasCall {}).abi_encode();
@@ -4030,7 +4035,8 @@ fn skip_transfer_works() {
 				|_, _| 0u64,
 			),
 			EthTransactError::Message(format!(
-				"insufficient funds for gas * price + value: address {BOB_ADDR:?} have 0 (supplied gas 1)"
+				"insufficient funds for gas * price + value: address {BOB_ADDR:?} have 0 \
+				 (supplied gas 1)"
 			))
 		);
 
@@ -4064,7 +4070,8 @@ fn skip_transfer_works() {
 				|_, _| 0u64,
 			),
 			EthTransactError::Message(format!(
-				"insufficient funds for gas * price + value: address {BOB_ADDR:?} have 0 (supplied gas 1)"
+				"insufficient funds for gas * price + value: address {BOB_ADDR:?} have 0 \
+				 (supplied gas 1)"
 			))
 		);
 
@@ -4181,8 +4188,9 @@ fn tracing_works_for_transfers() {
 
 #[test]
 fn tracing_works() {
-	use crate::evm::*;
 	use CallType::*;
+
+	use crate::evm::*;
 	let (code, _code_hash) = compile_module("tracing").unwrap();
 	let (wasm_callee, _) = compile_module("tracing_callee").unwrap();
 	ExtBuilder::default().existential_deposit(200).build().execute_with(|| {
@@ -4440,9 +4448,10 @@ fn pure_precompile_works() {
 
 #[test]
 fn precompiles_work() {
-	use crate::precompiles::Precompile;
 	use alloy_core::sol_types::{Panic, PanicKind, Revert, SolError, SolInterface, SolValue};
 	use precompiles::{INoInfo, NoInfo};
+
+	use crate::precompiles::Precompile;
 
 	let precompile_addr = H160(NoInfo::<Test>::MATCHER.base_address());
 
@@ -4510,9 +4519,10 @@ fn precompiles_work() {
 
 #[test]
 fn precompiles_with_info_creates_contract() {
-	use crate::precompiles::Precompile;
 	use alloy_core::sol_types::SolInterface;
 	use precompiles::{IWithInfo, WithInfo};
+
+	use crate::precompiles::Precompile;
 
 	let precompile_addr = H160(WithInfo::<Test>::MATCHER.base_address());
 

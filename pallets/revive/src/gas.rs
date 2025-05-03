@@ -15,8 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{exec::ExecError, weights::WeightInfo, Config, Error};
 use core::marker::PhantomData;
+#[cfg(test)]
+use std::{any::Any, fmt::Debug};
+
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, DispatchResultWithPostInfo, PostDispatchInfo},
 	weights::Weight,
@@ -24,8 +26,7 @@ use frame_support::{
 };
 use sp_runtime::DispatchError;
 
-#[cfg(test)]
-use std::{any::Any, fmt::Debug};
+use crate::{exec::ExecError, weights::WeightInfo, Config, Error};
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct ChargedAmount(Weight);

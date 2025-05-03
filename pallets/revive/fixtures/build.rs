@@ -16,14 +16,15 @@
 // limitations under the License.
 
 //! Compile text fixtures to PolkaVM binaries.
-use anyhow::{bail, Context, Result};
-use cargo_metadata::MetadataCommand;
 use std::{
 	env, fs,
 	io::Write,
 	path::{Path, PathBuf},
 	process::Command,
 };
+
+use anyhow::{bail, Context, Result};
+use cargo_metadata::MetadataCommand;
 
 const OVERRIDE_RUSTUP_TOOLCHAIN_ENV_VAR: &str = "PALLET_REVIVE_FIXTURES_RUSTUP_TOOLCHAIN";
 const OVERRIDE_STRIP_ENV_VAR: &str = "PALLET_REVIVE_FIXTURES_STRIP";

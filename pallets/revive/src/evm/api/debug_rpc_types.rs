@@ -15,8 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::evm::{Bytes, CallTracer};
 use alloc::{fmt, string::String, vec::Vec};
+
 use codec::{Decode, Encode};
 use scale_info::TypeInfo;
 use serde::{
@@ -24,6 +24,8 @@ use serde::{
 	Deserialize, Deserializer, Serialize,
 };
 use sp_core::{H160, H256, U256};
+
+use crate::evm::{Bytes, CallTracer};
 
 /// Tracer configuration used to trace calls.
 #[derive(TypeInfo, Debug, Clone, Encode, Decode, Serialize, PartialEq)]

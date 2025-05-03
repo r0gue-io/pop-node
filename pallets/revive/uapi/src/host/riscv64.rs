@@ -14,11 +14,12 @@
 
 #![allow(unused_variables)]
 
+use pallet_revive_proc_macro::unstable_hostfn;
+
 use crate::{
 	host::{CallFlags, HostFn, HostFnImpl, Result, StorageFlags},
 	pack_hi_lo, ReturnFlags,
 };
-use pallet_revive_proc_macro::unstable_hostfn;
 
 mod sys {
 	use crate::ReturnCode;

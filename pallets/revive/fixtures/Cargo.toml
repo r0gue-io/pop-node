@@ -1,13 +1,13 @@
 [package]
-name = "pallet-revive-fixtures"
-version = "0.1.0"
 authors.workspace = true
-edition.workspace = true
-license.workspace = true
 description = "Fixtures for testing and benchmarking"
+edition.workspace = true
 homepage.workspace = true
+license.workspace = true
+name = "pallet-revive-fixtures"
 repository.workspace = true
 rust-version = "1.84"
+version = "0.1.0"
 
 [package.metadata.polkadot-sdk]
 exclude-from-umbrella = true
@@ -28,6 +28,6 @@ polkavm-linker = { version = "0.21.0" }
 toml = { version = "0.8.12" }
 
 [features]
-default = ["std"]
+default = [ "std" ]
 # only when std is enabled all fixtures are available
-std = ["anyhow", "sp-core", "sp-io"]
+std = [ "anyhow", "sp-core", "sp-io" ]

@@ -17,16 +17,18 @@
 
 //! This module contains routines for accessing and altering a contract transient storage.
 
+use alloc::{collections::BTreeMap, vec::Vec};
+use core::{marker::PhantomData, mem};
+
+use codec::Encode;
+use frame_support::DefaultNoBound;
+use sp_runtime::{DispatchError, DispatchResult, Saturating};
+
 use crate::{
 	exec::{AccountIdOf, Key},
 	storage::WriteOutcome,
 	Config, Error,
 };
-use alloc::{collections::BTreeMap, vec::Vec};
-use codec::Encode;
-use core::{marker::PhantomData, mem};
-use frame_support::DefaultNoBound;
-use sp_runtime::{DispatchError, DispatchResult, Saturating};
 
 /// Meter entry tracks transaction allocations.
 #[derive(Default, Debug)]
@@ -65,6 +67,7 @@ pub struct StorageMeter<T: Config> {
 
 impl<T: Config> StorageMeter<T> {
 	const STORAGE_FRACTION_DENOMINATOR: u32 = 16;
+
 	/// Create a new storage allocation meter.
 	fn new(memory_limit: u32) -> Self {
 		Self { root_meter: MeterEntry::new(memory_limit), ..Default::default() }
@@ -295,13 +298,11 @@ impl<T: Config> TransientStorage<T> {
 	///
 	/// Will panic if there is no open transaction.
 	pub fn rollback_transaction(&mut self) {
-		let checkpoint = self
-			.checkpoints
-			.pop()
-			.expect(
-				"A call to rollback_transaction must be preceded by a corresponding call to start_transaction;
-				the code within this crate makes sure that this is always the case; qed"
-			);
+		let checkpoint = self.checkpoints.pop().expect(
+			"A call to rollback_transaction must be preceded by a corresponding call to \
+			 start_transaction;
+				the code within this crate makes sure that this is always the case; qed",
+		);
 		self.meter.revert();
 		self.journal.rollback(&mut self.storage, checkpoint);
 	}
@@ -314,12 +315,11 @@ impl<T: Config> TransientStorage<T> {
 	///
 	/// Will panic if there is no open transaction.
 	pub fn commit_transaction(&mut self) {
-		self.checkpoints
-			.pop()
-			.expect(
-				"A call to commit_transaction must be preceded by a corresponding call to start_transaction;
-				the code within this crate makes sure that this is always the case; qed"
-			);
+		self.checkpoints.pop().expect(
+			"A call to commit_transaction must be preceded by a corresponding call to \
+			 start_transaction;
+				the code within this crate makes sure that this is always the case; qed",
+		);
 		self.meter.commit();
 	}
 
@@ -339,9 +339,10 @@ impl<T: Config> TransientStorage<T> {
 
 #[cfg(test)]
 mod tests {
+	use core::u32::MAX;
+
 	use super::*;
 	use crate::{test_utils::*, tests::Test, Error};
-	use core::u32::MAX;
 
 	// Calculate the allocation size for the given entry.
 	fn allocation_size(account: &AccountIdOf<Test>, key: &Key, value: Option<Vec<u8>>) -> u32 {

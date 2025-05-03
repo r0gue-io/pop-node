@@ -15,13 +15,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use alloc::vec::Vec;
+use core::{marker::PhantomData, num::NonZero};
+
+use alloy_core::sol;
+
 use crate::{
 	precompiles::{BuiltinAddressMatcher, BuiltinPrecompile, Error, Ext, ExtWithInfo},
 	Config,
 };
-use alloc::vec::Vec;
-use alloy_core::sol;
-use core::{marker::PhantomData, num::NonZero};
 
 sol! {
 	interface IBenchmarking {
@@ -32,11 +34,12 @@ sol! {
 pub struct WithInfo<T>(PhantomData<T>);
 
 impl<T: Config> BuiltinPrecompile for WithInfo<T> {
-	type T = T;
 	type Interface = IBenchmarking::IBenchmarkingCalls;
+	type T = T;
+
+	const HAS_CONTRACT_INFO: bool = true;
 	const MATCHER: BuiltinAddressMatcher =
 		BuiltinAddressMatcher::Fixed(NonZero::new(0xFF_FF).unwrap());
-	const HAS_CONTRACT_INFO: bool = true;
 
 	fn call_with_info(
 		_address: &[u8; 20],
@@ -50,11 +53,12 @@ impl<T: Config> BuiltinPrecompile for WithInfo<T> {
 pub struct NoInfo<T>(PhantomData<T>);
 
 impl<T: Config> BuiltinPrecompile for NoInfo<T> {
-	type T = T;
 	type Interface = IBenchmarking::IBenchmarkingCalls;
+	type T = T;
+
+	const HAS_CONTRACT_INFO: bool = false;
 	const MATCHER: BuiltinAddressMatcher =
 		BuiltinAddressMatcher::Fixed(NonZero::new(0xEF_FF).unwrap());
-	const HAS_CONTRACT_INFO: bool = false;
 
 	fn call(
 		_address: &[u8; 20],

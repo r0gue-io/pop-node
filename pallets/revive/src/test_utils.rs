@@ -20,12 +20,12 @@
 
 pub mod builder;
 
-pub use sp_runtime::AccountId32;
-
-use crate::{BalanceOf, Config};
 use frame_support::weights::Weight;
 use hex_literal::hex;
 use sp_core::H160;
+pub use sp_runtime::AccountId32;
+
+use crate::{BalanceOf, Config};
 
 const fn ee_suffix(mut account: [u8; 32]) -> AccountId32 {
 	let mut i = 20;

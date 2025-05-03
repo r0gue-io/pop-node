@@ -15,6 +15,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::{cell::RefCell, collections::hash_map::HashMap, rc::Rc};
+
+use assert_matches::assert_matches;
+use frame_support::{assert_err, assert_ok, parameter_types};
+use frame_system::{AccountInfo, EventRecord, Phase};
+use pallet_revive_uapi::ReturnFlags;
+use pretty_assertions::assert_eq;
+use sp_io::hashing::keccak_256;
+use sp_runtime::{traits::Hash, DispatchError};
+
 /// These tests exercise the executive layer.
 ///
 /// In these tests the VM/loader are mocked. Instead of dealing with wasm bytecode they use
@@ -32,14 +42,6 @@ use crate::{
 	},
 	AddressMapper, Error,
 };
-use assert_matches::assert_matches;
-use frame_support::{assert_err, assert_ok, parameter_types};
-use frame_system::{AccountInfo, EventRecord, Phase};
-use pallet_revive_uapi::ReturnFlags;
-use pretty_assertions::assert_eq;
-use sp_io::hashing::keccak_256;
-use sp_runtime::{traits::Hash, DispatchError};
-use std::{cell::RefCell, collections::hash_map::HashMap, rc::Rc};
 
 type System = frame_system::Pallet<Test>;
 

@@ -17,13 +17,15 @@
 
 //! Functions that deal contract addresses.
 
-use crate::{ensure, Config, Error, HoldReason, OriginalAccount};
 use alloc::vec::Vec;
 use core::marker::PhantomData;
+
 use frame_support::traits::{fungible::MutateHold, tokens::Precision};
 use sp_core::{Get, H160};
 use sp_io::hashing::keccak_256;
 use sp_runtime::{AccountId32, DispatchResult, Saturating};
+
+use crate::{ensure, Config, Error, HoldReason, OriginalAccount};
 
 /// Map between the native chain account id `T` and an Ethereum [`H160`].
 ///
@@ -220,18 +222,19 @@ pub fn create2(deployer: &H160, code: &[u8], input_data: &[u8], salt: &[u8; 32])
 
 #[cfg(test)]
 mod test {
-	use super::*;
-	use crate::{
-		test_utils::*,
-		tests::{ExtBuilder, Test},
-		AddressMapper, Error,
-	};
 	use frame_support::{
 		assert_err,
 		traits::fungible::{InspectHold, Mutate},
 	};
 	use pretty_assertions::assert_eq;
 	use sp_core::{hex2array, H160};
+
+	use super::*;
+	use crate::{
+		test_utils::*,
+		tests::{ExtBuilder, Test},
+		AddressMapper, Error,
+	};
 
 	#[test]
 	fn create1_works() {
