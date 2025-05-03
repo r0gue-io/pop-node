@@ -17,8 +17,8 @@
 
 //! A crate that hosts a common definitions that are relevant for the pallet-revive.
 
-use crate::{H160, U256};
 use alloc::{string::String, vec::Vec};
+
 use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::weights::Weight;
 use pallet_revive_uapi::ReturnFlags;
@@ -27,6 +27,8 @@ use sp_runtime::{
 	traits::{Saturating, Zero},
 	DispatchError, RuntimeDebug,
 };
+
+use crate::{H160, U256};
 
 #[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub enum DepositLimit<Balance> {

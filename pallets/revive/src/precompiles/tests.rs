@@ -17,6 +17,11 @@
 
 #![cfg(test)]
 
+use core::num::NonZero;
+
+use alloy_core::hex as alloy_hex;
+use sp_core::hex2array as hex;
+
 use super::*;
 use crate::{
 	call_builder::CallSetup,
@@ -24,9 +29,6 @@ use crate::{
 	tests::{ExtBuilder, Test},
 	wasm::WasmBlob,
 };
-use alloy_core::hex as alloy_hex;
-use core::num::NonZero;
-use sp_core::hex2array as hex;
 
 type Env<'a> = Stack<'a, Test, WasmBlob<Test>>;
 
@@ -118,9 +120,10 @@ fn matching_works() {
 
 	impl PrimitivePrecompile for Matcher1 {
 		type T = Test;
+
+		const HAS_CONTRACT_INFO: bool = true;
 		const MATCHER: BuiltinAddressMatcher =
 			BuiltinAddressMatcher::Fixed(NonZero::new(0x42).unwrap());
-		const HAS_CONTRACT_INFO: bool = true;
 
 		fn call(
 			address: &[u8; 20],
@@ -133,9 +136,10 @@ fn matching_works() {
 
 	impl PrimitivePrecompile for Matcher2 {
 		type T = Test;
+
+		const HAS_CONTRACT_INFO: bool = false;
 		const MATCHER: BuiltinAddressMatcher =
 			BuiltinAddressMatcher::Prefix(NonZero::new(0x88).unwrap());
-		const HAS_CONTRACT_INFO: bool = false;
 
 		fn call(
 			address: &[u8; 20],

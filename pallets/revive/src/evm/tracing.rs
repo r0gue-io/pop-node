@@ -14,14 +14,16 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+use alloc::{format, string::ToString, vec::Vec};
+
+use sp_core::{H160, H256, U256};
+
 use crate::{
 	evm::{decode_revert_reason, CallLog, CallTrace, CallType},
 	primitives::ExecReturnValue,
 	tracing::Tracer,
 	DispatchError, Weight,
 };
-use alloc::{format, string::ToString, vec::Vec};
-use sp_core::{H160, H256, U256};
 
 /// A Tracer that reports logs and nested call traces transactions.
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -113,6 +115,7 @@ impl<Gas: Default, GasMapper: Fn(Weight) -> Gas> Tracer for CallTracer<Gas, GasM
 			self.traces[*parent_index].calls.push(child_trace);
 		}
 	}
+
 	fn exit_child_span_with_error(&mut self, error: DispatchError, gas_used: Weight) {
 		// Set the output of the current trace
 		let current_index = self.current_stack.pop().unwrap();

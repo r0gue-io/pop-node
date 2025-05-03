@@ -16,6 +16,7 @@
 // limitations under the License.
 
 use alloc::{format, string::String, vec::Vec};
+
 use alloy_core::hex;
 use serde::{Deserialize, Deserializer, Serializer};
 
@@ -45,9 +46,11 @@ impl_hex_codec!(u8, u32);
 
 impl<const T: usize> HexCodec for [u8; T] {
 	type Error = hex::FromHexError;
+
 	fn to_hex(&self) -> String {
 		format!("0x{}", hex::encode(self))
 	}
+
 	fn from_hex(s: String) -> Result<Self, Self::Error> {
 		let data = hex::decode(s.trim_start_matches("0x"))?;
 		data.try_into().map_err(|_| hex::FromHexError::InvalidStringLength)
@@ -56,9 +59,11 @@ impl<const T: usize> HexCodec for [u8; T] {
 
 impl HexCodec for Vec<u8> {
 	type Error = hex::FromHexError;
+
 	fn to_hex(&self) -> String {
 		format!("0x{}", hex::encode(self))
 	}
+
 	fn from_hex(s: String) -> Result<Self, Self::Error> {
 		hex::decode(s.trim_start_matches("0x"))
 	}

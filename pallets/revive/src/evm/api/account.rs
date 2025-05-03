@@ -15,11 +15,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //! Utilities for working with Ethereum accounts.
+use sp_runtime::AccountId32;
+
 use crate::{
 	evm::{TransactionSigned, TransactionUnsigned},
 	H160,
 };
-use sp_runtime::AccountId32;
 
 /// A simple account that can sign transactions
 pub struct Account(subxt_signer::eth::Keypair);

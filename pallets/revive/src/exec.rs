@@ -15,21 +15,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use crate::{
-	address::{self, AddressMapper},
-	gas::GasMeter,
-	limits,
-	precompiles::{All as AllPrecompiles, Instance as PrecompileInstance, Precompiles},
-	primitives::{ExecReturnValue, StorageDeposit},
-	runtime_decl_for_revive_api::{Decode, Encode, RuntimeDebugNoBound, TypeInfo},
-	storage::{self, meter::Diff, WriteOutcome},
-	tracing::if_tracing,
-	transient_storage::TransientStorage,
-	BalanceOf, CodeInfo, CodeInfoOf, Config, ContractInfo, ContractInfoOf, ConversionPrecision,
-	Error, Event, ImmutableData, ImmutableDataOf, Pallet as Contracts,
-};
 use alloc::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData, mem};
+
 use frame_support::{
 	crypto::ecdsa::ECDSAExt,
 	dispatch::{DispatchResult, DispatchResultWithPostInfo},
@@ -57,6 +45,20 @@ use sp_runtime::{
 	DispatchError, SaturatedConversion,
 };
 
+use crate::{
+	address::{self, AddressMapper},
+	gas::GasMeter,
+	limits,
+	precompiles::{All as AllPrecompiles, Instance as PrecompileInstance, Precompiles},
+	primitives::{ExecReturnValue, StorageDeposit},
+	runtime_decl_for_revive_api::{Decode, Encode, RuntimeDebugNoBound, TypeInfo},
+	storage::{self, meter::Diff, WriteOutcome},
+	tracing::if_tracing,
+	transient_storage::TransientStorage,
+	BalanceOf, CodeInfo, CodeInfoOf, Config, ContractInfo, ContractInfoOf, ConversionPrecision,
+	Error, Event, ImmutableData, ImmutableDataOf, Pallet as Contracts,
+};
+
 #[cfg(test)]
 mod tests;
 
@@ -67,7 +69,9 @@ pub type ExecResult = Result<ExecReturnValue, ExecError>;
 /// Type for variable sized storage key. Used for transparent hashing.
 type VarSizedKey = BoundedVec<u8, ConstU32<{ limits::STORAGE_KEY_BYTES }>>;
 
-const FRAME_ALWAYS_EXISTS_ON_INSTANTIATE: &str = "The return value is only `None` if no contract exists at the specified address. This cannot happen on instantiate or delegate; qed";
+const FRAME_ALWAYS_EXISTS_ON_INSTANTIATE: &str = "The return value is only `None` if no contract \
+                                                  exists at the specified address. This cannot \
+                                                  happen on instantiate or delegate; qed";
 
 /// Code hash of existing account without code (keccak256 hash of empty data).
 pub const EMPTY_CODE_HASH: H256 =
@@ -155,6 +159,7 @@ impl<T: Config> Origin<T> {
 	pub fn from_account_id(account_id: T::AccountId) -> Self {
 		Origin::Signed(account_id)
 	}
+
 	/// Creates a new Origin from a `RuntimeOrigin`.
 	pub fn from_runtime_origin(o: OriginFor<T>) -> Result<Self, DispatchError> {
 		match o.into() {
@@ -163,6 +168,7 @@ impl<T: Config> Origin<T> {
 			_ => Err(BadOrigin.into()),
 		}
 	}
+
 	/// Returns the AccountId of a Signed Origin or an error if the origin is Root.
 	pub fn account_id(&self) -> Result<&T::AccountId, DispatchError> {
 		match self {
@@ -660,11 +666,10 @@ macro_rules! get_cached_or_panic_after_load {
 			contract
 		} else {
 			panic!(
-				"It is impossible to remove a contract that is on the call stack;\
-				See implementations of terminate;\
-				Therefore fetching a contract will never fail while using an account id
-				that is currently active on the call stack;\
-				qed"
+				"It is impossible to remove a contract that is on the call stack;See \
+				 implementations of terminate;Therefore fetching a contract will never fail while \
+				 using an account id
+				that is currently active on the call stack;qed"
 			);
 		}
 	}};

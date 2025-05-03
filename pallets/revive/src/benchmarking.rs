@@ -19,16 +19,8 @@
 
 #![cfg(feature = "runtime-benchmarks")]
 
-use crate::{
-	call_builder::{caller_funding, default_deposit_limit, CallSetup, Contract, WasmModule},
-	evm::runtime::GAS_PRICE,
-	exec::{Key, MomentOf, PrecompileExt},
-	limits,
-	precompiles::{self, run::builtin as run_builtin_precompile},
-	storage::WriteOutcome,
-	ConversionPrecision, Pallet as Contracts, *,
-};
 use alloc::{vec, vec::Vec};
+
 use codec::{Encode, MaxEncodedLen};
 use frame_benchmarking::v2::*;
 use frame_support::{
@@ -46,6 +38,16 @@ use sp_consensus_babe::{
 };
 use sp_consensus_slots::Slot;
 use sp_runtime::generic::{Digest, DigestItem};
+
+use crate::{
+	call_builder::{caller_funding, default_deposit_limit, CallSetup, Contract, WasmModule},
+	evm::runtime::GAS_PRICE,
+	exec::{Key, MomentOf, PrecompileExt},
+	limits,
+	precompiles::{self, run::builtin as run_builtin_precompile},
+	storage::WriteOutcome,
+	ConversionPrecision, Pallet as Contracts, *,
+};
 
 /// How many runs we do per API benchmark.
 ///

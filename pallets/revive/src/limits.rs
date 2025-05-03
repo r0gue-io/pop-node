@@ -71,10 +71,12 @@ pub const IMMUTABLE_BYTES: u32 = 4 * 1024;
 /// as it is only enforced at code upload time. Code already uploaded
 /// will not be affected by those limits.
 pub mod code {
+	use alloc::vec::Vec;
+
+	use sp_runtime::DispatchError;
+
 	use super::PAGE_SIZE;
 	use crate::{CodeVec, Config, Error, LOG_TARGET};
-	use alloc::vec::Vec;
-	use sp_runtime::DispatchError;
 
 	/// The maximum length of a code blob in bytes.
 	///
@@ -175,7 +177,7 @@ pub mod code {
 					log::debug!(target: LOG_TARGET, "invalid instruction at offset {}", inst.offset);
 					return Err(<Error<T>>::InvalidInstruction.into())
 				},
-				Instruction::sbrk(_, _) => {
+				Instruction::sbrk(..) => {
 					log::debug!(target: LOG_TARGET, "sbrk instruction is not allowed. offset {}", inst.offset);
 					return Err(<Error<T>>::InvalidInstruction.into())
 				},

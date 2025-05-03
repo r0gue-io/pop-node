@@ -11,8 +11,9 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-use crate::{CallFlags, Result, ReturnFlags, StorageFlags};
 use pallet_revive_proc_macro::unstable_hostfn;
+
+use crate::{CallFlags, Result, ReturnFlags, StorageFlags};
 
 #[cfg(target_arch = "riscv64")]
 mod riscv64;
@@ -577,7 +578,7 @@ pub trait HostFn: private::Sealed {
 	///   the expected amount of bytes returned by the hash function.
 	///
 	/// # Parameters
-	///											*/
+	/// 											*/
 	/// - `input`: The input data buffer.
 	/// - `output`: The output buffer to write the hash result to.
 	#[unstable_hostfn]

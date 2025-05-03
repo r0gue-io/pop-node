@@ -15,15 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //! Runtime types for integrating `pallet-revive` with the EVM.
-use crate::{
-	evm::{
-		api::{GenericTransaction, TransactionSigned},
-		GasEncoder,
-	},
-	AccountIdOf, AddressMapper, BalanceOf, Config, ConversionPrecision, MomentOf, Pallet,
-	LOG_TARGET,
-};
 use alloc::vec::Vec;
+
 use codec::{Decode, DecodeWithMemTracking, Encode};
 use frame_support::{
 	dispatch::{DispatchInfo, GetDispatchInfo},
@@ -40,6 +33,15 @@ use sp_runtime::{
 	},
 	transaction_validity::{InvalidTransaction, TransactionValidityError},
 	OpaqueExtrinsic, RuntimeDebug,
+};
+
+use crate::{
+	evm::{
+		api::{GenericTransaction, TransactionSigned},
+		GasEncoder,
+	},
+	AccountIdOf, AddressMapper, BalanceOf, Config, ConversionPrecision, MomentOf, Pallet,
+	LOG_TARGET,
 };
 
 type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
@@ -72,6 +74,7 @@ where
 {
 	type Identity =
 		generic::UncheckedExtrinsic<Address, CallOf<E::Config>, Signature, E::Extension>;
+
 	fn type_info() -> scale_info::Type {
 		generic::UncheckedExtrinsic::<Address, CallOf<E::Config>, Signature, E::Extension>::type_info()
 	}
@@ -99,13 +102,14 @@ impl<Address: TypeInfo, Signature: TypeInfo, E: EthExtra> ExtrinsicLike
 impl<Address, Signature, E: EthExtra> ExtrinsicMetadata
 	for UncheckedExtrinsic<Address, Signature, E>
 {
+	type TransactionExtensions = E::Extension;
+
 	const VERSIONS: &'static [u8] = generic::UncheckedExtrinsic::<
 		Address,
 		CallOf<E::Config>,
 		Signature,
 		E::Extension,
 	>::VERSIONS;
-	type TransactionExtensions = E::Extension;
 }
 
 impl<Address: TypeInfo, Signature: TypeInfo, E: EthExtra> ExtrinsicCall
@@ -207,8 +211,8 @@ where
 	E::Extension: TypeInfo,
 {
 	type Address = Address;
-	type Signature = Signature;
 	type Extension = E::Extension;
+	type Signature = Signature;
 
 	fn new_signed_transaction(
 		call: Self::Call,
@@ -243,7 +247,7 @@ where
 	fn from(extrinsic: UncheckedExtrinsic<Address, Signature, E>) -> Self {
 		Self::from_bytes(extrinsic.encode().as_slice()).expect(
 			"both OpaqueExtrinsic and UncheckedExtrinsic have encoding that is compatible with \
-				raw Vec<u8> encoding; qed",
+			 raw Vec<u8> encoding; qed",
 		)
 	}
 }
@@ -407,18 +411,19 @@ pub trait EthExtra {
 
 #[cfg(test)]
 mod test {
+	use frame_support::{error::LookupError, traits::fungible::Mutate};
+	use pallet_revive_fixtures::compile_module;
+	use sp_runtime::{
+		traits::{Checkable, DispatchTransaction},
+		MultiAddress, MultiSignature,
+	};
+
 	use super::*;
 	use crate::{
 		evm::*,
 		test_utils::*,
 		tests::{ExtBuilder, RuntimeCall, RuntimeOrigin, Test},
 		Weight,
-	};
-	use frame_support::{error::LookupError, traits::fungible::Mutate};
-	use pallet_revive_fixtures::compile_module;
-	use sp_runtime::{
-		traits::{Checkable, DispatchTransaction},
-		MultiAddress, MultiSignature,
 	};
 	type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 
@@ -442,6 +447,7 @@ mod test {
 	impl traits::Lookup for TestContext {
 		type Source = MultiAddress<AccountId32, u32>;
 		type Target = AccountIdOf<Test>;
+
 		fn lookup(&self, s: Self::Source) -> Result<Self::Target, LookupError> {
 			match s {
 				MultiAddress::Id(id) => Ok(id),

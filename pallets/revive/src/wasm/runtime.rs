@@ -17,6 +17,20 @@
 
 //! Environment definition of the wasm smart-contract runtime.
 
+use alloc::{boxed::Box, vec, vec::Vec};
+use core::{fmt, marker::PhantomData, mem};
+
+use codec::{Decode, DecodeLimit, Encode};
+use frame_support::{
+	dispatch::DispatchInfo, ensure, pallet_prelude::DispatchResultWithPostInfo, parameter_types,
+	traits::Get, weights::Weight,
+};
+use pallet_revive_proc_macro::define_env;
+use pallet_revive_uapi::{CallFlags, ReturnErrorCode, ReturnFlags, StorageFlags};
+use sp_core::{H160, H256, U256};
+use sp_io::hashing::{blake2_128, blake2_256, keccak_256};
+use sp_runtime::{DispatchError, RuntimeDebug};
+
 use crate::{
 	address::AddressMapper,
 	evm::runtime::GAS_PRICE,
@@ -28,18 +42,6 @@ use crate::{
 	weights::WeightInfo,
 	Config, Error, LOG_TARGET, SENTINEL,
 };
-use alloc::{boxed::Box, vec, vec::Vec};
-use codec::{Decode, DecodeLimit, Encode};
-use core::{fmt, marker::PhantomData, mem};
-use frame_support::{
-	dispatch::DispatchInfo, ensure, pallet_prelude::DispatchResultWithPostInfo, parameter_types,
-	traits::Get, weights::Weight,
-};
-use pallet_revive_proc_macro::define_env;
-use pallet_revive_uapi::{CallFlags, ReturnErrorCode, ReturnFlags, StorageFlags};
-use sp_core::{H160, H256, U256};
-use sp_io::hashing::{blake2_128, blake2_256, keccak_256};
-use sp_runtime::{DispatchError, RuntimeDebug};
 
 type CallOf<T> = <T as frame_system::Config>::RuntimeCall;
 
@@ -846,8 +848,9 @@ impl<'a, E: Ext, M: ?Sized + Memory<E::T>> Runtime<'a, E, M> {
 	/// This is used when converting the error returned from a subcall in order to decide
 	/// whether to trap the caller or allow handling of the error.
 	fn exec_error_into_return_code(from: ExecError) -> Result<ReturnErrorCode, DispatchError> {
-		use crate::exec::ErrorOrigin::Callee;
 		use ReturnErrorCode::*;
+
+		use crate::exec::ErrorOrigin::Callee;
 
 		let transfer_failed = Error::<E::T>::TransferFailed.into();
 		let out_of_gas = Error::<E::T>::OutOfGas.into();
