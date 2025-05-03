@@ -7,7 +7,7 @@ inherits = "release"
 lto = true
 
 [workspace.package]
-authors = [ "R0GUE <go@r0gue.io>" ]
+authors = ["R0GUE <go@r0gue.io>"]
 description = "Pop Network makes it easy for smart contract developers to use the Power of Polkadot."
 edition = "2021"
 homepage = "https://r0gue.io"
@@ -16,19 +16,19 @@ repository = "https://github.com/r0gue-io/pop-node/"
 
 [workspace]
 exclude = [
-	"extension/contract",
-	"pop-api",
-	"tests/contracts",
+    "extension/contract",
+    "pop-api",
+    "tests/contracts",
 ]
 members = [
-	"integration-tests",
-	"node",
-	"pallets/*",
-	"pop-api/integration-tests",
-	"primitives",
-	"runtime/devnet",
-	"runtime/mainnet",
-	"runtime/testnet",
+    "integration-tests",
+    "node",
+    "pallets/*",
+    "pop-api/integration-tests",
+    "primitives",
+    "runtime/devnet",
+    "runtime/mainnet",
+    "runtime/testnet",
 ]
 
 resolver = "2"
@@ -37,7 +37,7 @@ resolver = "2"
 anyhow = { version = "1.0.81", default-features = false }
 clap = { version = "4.5.13", features = [ "derive" ] }
 codec = { package = "parity-scale-codec", version = "3.7.4", default-features = false, features = [
-	"derive",
+    "derive",
 ] }
 color-print = "0.3.4"
 contract-build = "5.0.2"
@@ -48,11 +48,11 @@ futures = "0.3.31"
 hex = "0.4.3"
 hex-literal = "0.4.1"
 impl-trait-for-tuples = "0.2.2"
-jsonrpsee = { version = "0.24.3", features = [ "server" ] }
+jsonrpsee = { version = "0.24.3", features = ["server"] }
 log = { version = "0.4.22", default-features = false }
 rand = "0.8.5"
 scale-info = { version = "2.11.6", default-features = false, features = [
-	"derive",
+    "derive",
 ] }
 serde = "1.0.214"
 serde_json = { version = "1.0.132", default-features = false }
@@ -70,6 +70,7 @@ substrate-wasm-builder = { version = "26.0.1" }
 pallet-api = { path = "pallets/api", default-features = false }
 pallet-motion = { path = "pallets/motion", default-features = false }
 pallet-nfts = { path = "pallets/nfts", default-features = false }
+pallet-revive = { path = "pallets/revive", default-features = false }
 pop-chain-extension = { path = "./extension", default-features = false }
 pop-primitives = { path = "./primitives", default-features = false }
 pop-runtime-common = { path = "runtime/common", default-features = false }
@@ -104,7 +105,7 @@ pallet-nfts-runtime-api = { git = "https://github.com/paritytech/polkadot-sdk", 
 pallet-nfts-sdk = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", package = "pallet-nfts", default-features = false }
 pallet-preimage = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", default-features = false }
 pallet-proxy = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", default-features = false }
-pallet-revive = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", default-features = false }
+#pallet-revive = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", default-features = false }
 pallet-scheduler = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", default-features = false }
 pallet-session = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", default-features = false }
 pallet-sudo = { git = "https://github.com/paritytech/polkadot-sdk", tag = "polkadot-stable2503-4", default-features = false }
