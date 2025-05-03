@@ -15,20 +15,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use alloc::vec::Vec;
+use core::{marker::PhantomData, num::NonZero};
+
 use crate::{
 	precompiles::{BuiltinAddressMatcher, Error, Ext, PrimitivePrecompile},
 	wasm::RuntimeCosts,
 	Config,
 };
-use alloc::vec::Vec;
-use core::{marker::PhantomData, num::NonZero};
 
 pub struct Identity<T>(PhantomData<T>);
 
 impl<T: Config> PrimitivePrecompile for Identity<T> {
 	type T = T;
-	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(4).unwrap());
+
 	const HAS_CONTRACT_INFO: bool = false;
+	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(4).unwrap());
 
 	fn call(
 		_address: &[u8; 20],

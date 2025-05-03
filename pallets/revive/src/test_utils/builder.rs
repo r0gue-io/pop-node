@@ -15,15 +15,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use alloc::{vec, vec::Vec};
+
+use frame_support::pallet_prelude::DispatchResultWithPostInfo;
+use paste::paste;
+use sp_core::H160;
+
 use super::{deposit_limit, GAS_LIMIT};
 use crate::{
 	address::AddressMapper, AccountIdOf, BalanceOf, Code, Config, ContractResult, DepositLimit,
 	ExecReturnValue, InstantiateReturnValue, OriginFor, Pallet, Weight,
 };
-use alloc::{vec, vec::Vec};
-use frame_support::pallet_prelude::DispatchResultWithPostInfo;
-use paste::paste;
-use sp_core::H160;
 
 /// Helper macro to generate a builder for contract API calls.
 macro_rules! builder {

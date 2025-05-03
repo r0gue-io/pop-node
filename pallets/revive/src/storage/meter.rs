@@ -17,12 +17,9 @@
 
 //! This module contains functions to meter the storage deposit.
 
-use crate::{
-	storage::ContractInfo, AccountIdOf, BalanceOf, Config, Error, HoldReason, Inspect, Origin,
-	StorageDeposit as Deposit, System, LOG_TARGET,
-};
 use alloc::vec::Vec;
 use core::{fmt::Debug, marker::PhantomData};
+
 use frame_support::{
 	traits::{
 		fungible::{Mutate, MutateHold},
@@ -34,6 +31,11 @@ use frame_support::{
 use sp_runtime::{
 	traits::{Saturating, Zero},
 	DispatchError, FixedPointNumber, FixedU128,
+};
+
+use crate::{
+	storage::ContractInfo, AccountIdOf, BalanceOf, Config, Error, HoldReason, Inspect, Origin,
+	StorageDeposit as Deposit, System, LOG_TARGET,
 };
 
 /// Deposit that uses the native fungible's balance type.
@@ -539,10 +541,11 @@ mod private {
 
 #[cfg(test)]
 mod tests {
-	use super::*;
-	use crate::{exec::AccountIdOf, test_utils::*, tests::Test};
 	use frame_support::parameter_types;
 	use pretty_assertions::assert_eq;
+
+	use super::*;
+	use crate::{exec::AccountIdOf, test_utils::*, tests::Test};
 
 	type TestMeter = RawMeter<Test, TestExt, Root>;
 

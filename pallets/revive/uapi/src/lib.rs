@@ -144,6 +144,7 @@ impl ReturnCode {
 	pub fn into_u32(self) -> u32 {
 		self.0
 	}
+
 	/// Returns the underlying `u32` converted into `bool`.
 	pub fn into_bool(self) -> bool {
 		self.0.ne(&0)

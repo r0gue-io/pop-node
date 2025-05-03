@@ -17,13 +17,15 @@
 //! Generated JSON-RPC types.
 #![allow(missing_docs)]
 
-use super::{byte::*, TypeEip1559, TypeEip2930, TypeEip4844, TypeLegacy};
 use alloc::vec::Vec;
+
 use codec::{Decode, Encode};
 use derive_more::{From, TryInto};
 pub use ethereum_types::*;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Deserializer, Serialize};
+
+use super::{byte::*, TypeEip1559, TypeEip2930, TypeEip4844, TypeLegacy};
 
 /// Input of a `GenericTransaction`
 #[derive(
@@ -67,10 +69,13 @@ impl InputOrData {
 fn deserialize_input_or_data<'d, D: Deserializer<'d>>(d: D) -> Result<InputOrData, D::Error> {
 	let value = InputOrData::deserialize(d)?;
 	match &value {
-        InputOrData { input: Some(input), data: Some(data) } if input != data =>
-            Err(serde::de::Error::custom("Both \"data\" and \"input\" are set and not equal. Please use \"input\" to pass transaction call data")),
-        _ => Ok(value),
-    }
+		InputOrData { input: Some(input), data: Some(data) } if input != data =>
+			Err(serde::de::Error::custom(
+				"Both \"data\" and \"input\" are set and not equal. Please use \"input\" to pass \
+				 transaction call data",
+			)),
+		_ => Ok(value),
+	}
 }
 
 /// Block object

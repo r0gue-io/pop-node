@@ -17,16 +17,18 @@
 
 //! Precompiles added to the test runtime.
 
-use crate::{
-	precompiles::{AddressMatcher, Error, Ext, ExtWithInfo, Precompile, Token},
-	Config, DispatchError, Weight,
-};
 use alloc::vec::Vec;
+use core::{marker::PhantomData, num::NonZero};
+
 use alloy_core::{
 	sol,
 	sol_types::{PanicKind, SolValue},
 };
-use core::{marker::PhantomData, num::NonZero};
+
+use crate::{
+	precompiles::{AddressMatcher, Error, Ext, ExtWithInfo, Precompile, Token},
+	Config, DispatchError, Weight,
+};
 
 sol! {
 	interface IWithInfo {
@@ -45,10 +47,11 @@ sol! {
 pub struct WithInfo<T>(PhantomData<T>);
 
 impl<T: Config> Precompile for WithInfo<T> {
-	type T = T;
 	type Interface = IWithInfo::IWithInfoCalls;
-	const MATCHER: AddressMatcher = AddressMatcher::Fixed(NonZero::new(0xFF_FF).unwrap());
+	type T = T;
+
 	const HAS_CONTRACT_INFO: bool = true;
+	const MATCHER: AddressMatcher = AddressMatcher::Fixed(NonZero::new(0xFF_FF).unwrap());
 
 	fn call_with_info(
 		_address: &[u8; 20],
@@ -62,10 +65,11 @@ impl<T: Config> Precompile for WithInfo<T> {
 pub struct NoInfo<T>(PhantomData<T>);
 
 impl<T: Config> Precompile for NoInfo<T> {
-	type T = T;
 	type Interface = INoInfo::INoInfoCalls;
-	const MATCHER: AddressMatcher = AddressMatcher::Fixed(NonZero::new(0xEF_FF).unwrap());
+	type T = T;
+
 	const HAS_CONTRACT_INFO: bool = false;
+	const MATCHER: AddressMatcher = AddressMatcher::Fixed(NonZero::new(0xEF_FF).unwrap());
 
 	fn call(
 		_address: &[u8; 20],

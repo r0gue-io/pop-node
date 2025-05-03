@@ -576,8 +576,8 @@ fn expand_func_doc(def: &EnvDef) -> TokenStream2 {
 				let info = "\n# Stable API\nThis API is stable and will never change.";
 				quote! { #[doc = #info] }
 			} else {
-				let info =
-				"\n# Unstable API\nThis API is not standardized and only available for testing.";
+				let info = "\n# Unstable API\nThis API is not standardized and only available for \
+				            testing.";
 				quote! { #[doc = #info] }
 			};
 			quote! {

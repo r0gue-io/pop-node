@@ -15,9 +15,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //! Utility impl for the RPC types.
-use super::*;
 use alloc::vec::Vec;
+
 use sp_core::{H160, U256};
+
+use super::*;
 
 impl From<BlockNumberOrTag> for BlockNumberOrTagOrHash {
 	fn from(b: BlockNumberOrTag) -> Self {
@@ -135,11 +137,10 @@ fn can_deserialize_input_or_data_field_from_generic_transaction() {
 
 	let err = serde_json::from_str::<GenericTransaction>(r#"{"data": "0x02", "input": "0x01"}"#)
 		.unwrap_err();
-	assert!(
-		err.to_string().starts_with(
-		"Both \"data\" and \"input\" are set and not equal. Please use \"input\" to pass transaction call data"
-		)
-	);
+	assert!(err.to_string().starts_with(
+		"Both \"data\" and \"input\" are set and not equal. Please use \"input\" to pass \
+		 transaction call data"
+	));
 }
 
 #[test]

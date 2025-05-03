@@ -29,25 +29,25 @@ mod builtin;
 
 mod tests;
 
-pub use crate::{
-	exec::{ExecError, PrecompileExt as Ext, PrecompileWithInfoExt as ExtWithInfo},
-	gas::{GasMeter, Token},
-	storage::meter::Diff,
-};
+use alloc::vec::Vec;
+use core::num::NonZero;
+
+use alloy::sol_types::{Panic, PanicKind, Revert, SolError, SolInterface};
 pub use alloy_core as alloy;
+#[cfg(feature = "runtime-benchmarks")]
+pub(crate) use builtin::{IBenchmarking, NoInfo as BenchmarkNoInfo, WithInfo as BenchmarkWithInfo};
+use pallet_revive_uapi::ReturnFlags;
+use sp_runtime::DispatchError;
 
 use crate::{
 	exec::ExecResult, precompiles::builtin::Builtin, primitives::ExecReturnValue, Config,
 	Error as CrateError,
 };
-use alloc::vec::Vec;
-use alloy::sol_types::{Panic, PanicKind, Revert, SolError, SolInterface};
-use core::num::NonZero;
-use pallet_revive_uapi::ReturnFlags;
-use sp_runtime::DispatchError;
-
-#[cfg(feature = "runtime-benchmarks")]
-pub(crate) use builtin::{IBenchmarking, NoInfo as BenchmarkNoInfo, WithInfo as BenchmarkWithInfo};
+pub use crate::{
+	exec::{ExecError, PrecompileExt as Ext, PrecompileWithInfoExt as ExtWithInfo},
+	gas::{GasMeter, Token},
+	storage::meter::Diff,
+};
 
 const UNIMPLEMENTED: &str = "A precompile must either implement `call` or `call_with_info`";
 
@@ -321,10 +321,11 @@ pub(crate) trait Precompiles<T: Config> {
 }
 
 impl<P: Precompile> BuiltinPrecompile for P {
-	type T = <Self as Precompile>::T;
 	type Interface = <Self as Precompile>::Interface;
-	const MATCHER: BuiltinAddressMatcher = P::MATCHER.into_builtin();
+	type T = <Self as Precompile>::T;
+
 	const HAS_CONTRACT_INFO: bool = P::HAS_CONTRACT_INFO;
+	const MATCHER: BuiltinAddressMatcher = P::MATCHER.into_builtin();
 
 	fn call(
 		address: &[u8; 20],
@@ -345,8 +346,9 @@ impl<P: Precompile> BuiltinPrecompile for P {
 
 impl<P: BuiltinPrecompile> PrimitivePrecompile for P {
 	type T = <Self as BuiltinPrecompile>::T;
-	const MATCHER: BuiltinAddressMatcher = P::MATCHER;
+
 	const HAS_CONTRACT_INFO: bool = P::HAS_CONTRACT_INFO;
+	const MATCHER: BuiltinAddressMatcher = P::MATCHER;
 
 	fn call(
 		address: &[u8; 20],
@@ -539,13 +541,13 @@ impl BuiltinAddressMatcher {
 /// or tests.
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 pub mod run {
+	pub use sp_core::{H256, U256};
+
+	use super::*;
 	pub use crate::{
 		call_builder::{CallSetup, Contract, WasmModule},
 		BalanceOf, MomentOf,
 	};
-	pub use sp_core::{H256, U256};
-
-	use super::*;
 
 	/// Convenience function to run pre-compiles for testing or benchmarking purposes.
 	///

@@ -15,12 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //! Ethereum Typed Transaction types
-use super::Byte;
 use codec::{Decode, Encode};
 use paste::paste;
 use rlp::Decodable;
 use scale_info::TypeInfo;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use super::Byte;
 
 /// A macro to generate Transaction type identifiers
 /// See <https://ethereum.org/en/developers/docs/transactions/#typed-transaction-envelope>
@@ -85,6 +86,7 @@ macro_rules! transaction_type {
 
 		impl TypeInfo for $name {
 			type Identity = u8;
+
 			fn type_info() -> scale_info::Type {
 				<u8 as TypeInfo>::type_info()
 			}

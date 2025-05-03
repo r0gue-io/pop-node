@@ -15,23 +15,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use alloc::vec::Vec;
+use core::{marker::PhantomData, num::NonZero};
+
+use bn::{pairing_batch, AffineG1, AffineG2, Fq, Fq2, Group, Gt, G1, G2};
+use sp_core::U256;
+use sp_runtime::DispatchError;
+
 use crate::{
 	precompiles::{BuiltinAddressMatcher, Error, Ext, PrimitivePrecompile},
 	wasm::RuntimeCosts,
 	Config,
 };
-use alloc::vec::Vec;
-use bn::{pairing_batch, AffineG1, AffineG2, Fq, Fq2, Group, Gt, G1, G2};
-use core::{marker::PhantomData, num::NonZero};
-use sp_core::U256;
-use sp_runtime::DispatchError;
 
 pub struct Bn128Add<T>(PhantomData<T>);
 
 impl<T: Config> PrimitivePrecompile for Bn128Add<T> {
 	type T = T;
-	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(6).unwrap());
+
 	const HAS_CONTRACT_INFO: bool = false;
+	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(6).unwrap());
 
 	fn call(
 		_address: &[u8; 20],
@@ -58,8 +61,9 @@ pub struct Bn128Mul<T>(PhantomData<T>);
 
 impl<T: Config> PrimitivePrecompile for Bn128Mul<T> {
 	type T = T;
-	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(7).unwrap());
+
 	const HAS_CONTRACT_INFO: bool = false;
+	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(7).unwrap());
 
 	fn call(
 		_address: &[u8; 20],
@@ -86,8 +90,9 @@ pub struct Bn128Pairing<T>(PhantomData<T>);
 
 impl<T: Config> PrimitivePrecompile for Bn128Pairing<T> {
 	type T = T;
-	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(8).unwrap());
+
 	const HAS_CONTRACT_INFO: bool = false;
+	const MATCHER: BuiltinAddressMatcher = BuiltinAddressMatcher::Fixed(NonZero::new(8).unwrap());
 
 	fn call(
 		_address: &[u8; 20],

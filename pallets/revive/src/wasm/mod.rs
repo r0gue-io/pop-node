@@ -20,14 +20,22 @@
 
 mod runtime;
 
+use alloc::vec::Vec;
+
+use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::{
+	dispatch::DispatchResult,
+	ensure,
+	traits::{fungible::MutateHold, tokens::Precision::BestEffort},
+};
+use sp_core::{Get, H256, U256};
+use sp_runtime::DispatchError;
+
 #[cfg(doc)]
 pub use crate::wasm::runtime::SyscallDoc;
-
 #[cfg(feature = "runtime-benchmarks")]
 pub use crate::wasm::runtime::{ReturnData, TrapReason};
-
 pub use crate::wasm::runtime::{Runtime, RuntimeCosts};
-
 use crate::{
 	exec::{ExecResult, Executable, ExportedFunction, Ext},
 	gas::{GasMeter, Token},
@@ -37,15 +45,6 @@ use crate::{
 	AccountIdOf, BadOrigin, BalanceOf, CodeInfoOf, CodeVec, Config, Error, ExecError, HoldReason,
 	PristineCode, Weight, LOG_TARGET,
 };
-use alloc::vec::Vec;
-use codec::{Decode, Encode, MaxEncodedLen};
-use frame_support::{
-	dispatch::DispatchResult,
-	ensure,
-	traits::{fungible::MutateHold, tokens::Precision::BestEffort},
-};
-use sp_core::{Get, H256, U256};
-use sp_runtime::DispatchError;
 
 /// Validated Wasm module ready for execution.
 /// This data structure is immutable once created and stored.

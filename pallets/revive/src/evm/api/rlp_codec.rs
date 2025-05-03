@@ -17,9 +17,11 @@
 //! RLP encoding and decoding for Ethereum transactions.
 //! See <https://eth.wiki/fundamentals/rlp> for more information about RLP encoding.
 
-use super::*;
 use alloc::vec::Vec;
+
 use rlp::{Decodable, Encodable};
+
+use super::*;
 
 impl TransactionUnsigned {
 	/// Return the bytes to be signed by the private key.
@@ -273,7 +275,7 @@ impl Decodable for Transaction1559Signed {
 	}
 }
 
-//See https://eips.ethereum.org/EIPS/eip-2930
+// See https://eips.ethereum.org/EIPS/eip-2930
 impl Encodable for Transaction2930Unsigned {
 	fn rlp_append(&self, s: &mut rlp::RlpStream) {
 		s.begin_list(8);
@@ -291,7 +293,7 @@ impl Encodable for Transaction2930Unsigned {
 	}
 }
 
-//See https://eips.ethereum.org/EIPS/eip-2930
+// See https://eips.ethereum.org/EIPS/eip-2930
 impl Encodable for Transaction2930Signed {
 	fn rlp_append(&self, s: &mut rlp::RlpStream) {
 		let tx = &self.transaction_2930_unsigned;
@@ -344,7 +346,7 @@ impl Decodable for Transaction2930Signed {
 	}
 }
 
-//See https://eips.ethereum.org/EIPS/eip-4844
+// See https://eips.ethereum.org/EIPS/eip-4844
 impl Encodable for Transaction4844Unsigned {
 	fn rlp_append(&self, s: &mut rlp::RlpStream) {
 		s.begin_list(11);
@@ -362,7 +364,7 @@ impl Encodable for Transaction4844Unsigned {
 	}
 }
 
-//See https://eips.ethereum.org/EIPS/eip-4844
+// See https://eips.ethereum.org/EIPS/eip-4844
 impl Encodable for Transaction4844Signed {
 	fn rlp_append(&self, s: &mut rlp::RlpStream) {
 		let tx = &self.transaction_4844_unsigned;
