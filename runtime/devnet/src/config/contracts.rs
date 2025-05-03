@@ -38,6 +38,7 @@ impl<T: pallet_contracts::Config> Randomness<T::Hash, BlockNumberFor<T>> for Dum
 const ETH: u128 = 1_000_000_000_000_000_000;
 
 parameter_types! {
+	pub ChainId: u64 = u32::from(crate::genesis::PARA_ID) as u64;
 	pub const DepositPerItem: Balance = deposit(1, 0);
 	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
@@ -93,8 +94,7 @@ impl pallet_revive::Config for Runtime {
 	// No runtime dispatchables are callable from contracts.
 	type CallFilter = Nothing;
 	type ChainExtension = ();
-	// EVM chain id. 3,395 is a unique ID still.
-	type ChainId = ConstU64<3_395>;
+	type ChainId = ChainId;
 	// 30 percent of storage deposit held for using a code hash.
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
