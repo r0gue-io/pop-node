@@ -43,7 +43,8 @@ parameter_types! {
 	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
-	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(0);
+	// 30 percent of storage deposit held for using a code hash.
+	pub const CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
 	pub const NativeToEthRatio: u32 = (ETH/UNIT) as u32;
 }
 
@@ -95,7 +96,6 @@ impl pallet_revive::Config for Runtime {
 	type CallFilter = Nothing;
 	type ChainExtension = ();
 	type ChainId = ChainId;
-	// 30 percent of storage deposit held for using a code hash.
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
 	type Debug = ();
