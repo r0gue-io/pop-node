@@ -14,7 +14,7 @@ mod weights;
 
 extern crate alloc;
 
-use alloc::{borrow::Cow, vec::Vec};
+use alloc::{borrow::Cow, vec, vec::Vec};
 
 // ISMP imports
 use ::ismp::{
@@ -25,19 +25,18 @@ use ::ismp::{
 use codec::Encode;
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::{RelayChainState, RelayNumberMonotonicallyIncreases};
+use cumulus_pallet_weight_reclaim::StorageWeightReclaim;
 use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
-use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
 	derive_impl,
-	dispatch::DispatchClass,
+	dispatch::{DispatchClass, DispatchInfo},
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration,
-		tokens::{nonfungibles_v2::Inspect, Fortitude::Polite, Preservation::Preserve},
-		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
-		EverythingBut, LinearStoragePrice, TransformOrigin, VariantCountOf,
+		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
+		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
+		LinearStoragePrice, TransformOrigin, VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -53,7 +52,10 @@ use frame_system::{
 use pallet_api::{fungibles, nonfungibles};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
-use pallet_revive::{evm::H160, AddressMapper};
+use pallet_revive::{
+	evm::{runtime::EthExtra, H160},
+	AddressMapper,
+};
 use pallet_transaction_payment::ChargeTransactionPayment;
 use pallet_xcm::{EnsureXcm, IsVoiceOfBody};
 use parachains_common::message_queue::{NarrowOriginToSibling, ParaIdToSibling};
@@ -68,12 +70,12 @@ pub use pop_runtime_common::{
 };
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256};
+use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256, U256};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
+	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, TransactionExtension, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -105,18 +107,18 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 
 /// The extension to the basic transaction logic.
-pub type TxExtension = cumulus_pallet_weight_reclaim::StorageWeightReclaim<
+pub type TxExtension = StorageWeightReclaim<
 	Runtime,
 	(
-		frame_system::CheckNonZeroSender<Runtime>,
-		frame_system::CheckSpecVersion<Runtime>,
-		frame_system::CheckTxVersion<Runtime>,
-		frame_system::CheckGenesis<Runtime>,
-		frame_system::CheckMortality<Runtime>,
-		frame_system::CheckNonce<Runtime>,
-		frame_system::CheckWeight<Runtime>,
-		pallet_transaction_payment::ChargeTransactionPayment<Runtime>,
-		frame_metadata_hash_extension::CheckMetadataHash<Runtime>,
+		CheckNonZeroSender<Runtime>,
+		CheckSpecVersion<Runtime>,
+		CheckTxVersion<Runtime>,
+		CheckGenesis<Runtime>,
+		CheckMortality<Runtime>,
+		CheckNonce<Runtime>,
+		CheckWeight<Runtime>,
+		ChargeTransactionPayment<Runtime>,
+		CheckMetadataHash<Runtime>,
 	),
 >;
 
@@ -124,7 +126,7 @@ pub type TxExtension = cumulus_pallet_weight_reclaim::StorageWeightReclaim<
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct EthExtraImpl;
 
-impl pallet_revive::evm::runtime::EthExtra for EthExtraImpl {
+impl EthExtra for EthExtraImpl {
 	type Config = Runtime;
 	type Extension = TxExtension;
 
@@ -138,9 +140,9 @@ impl pallet_revive::evm::runtime::EthExtra for EthExtraImpl {
 			CheckNonce::<Runtime>::from(nonce),
 			CheckWeight::<Runtime>::new(),
 			ChargeTransactionPayment::<Runtime>::from(tip),
-			StorageWeightReclaim::<Runtime>::new(),
 			CheckMetadataHash::<Runtime>::new(false),
-		).into()
+		)
+			.into()
 	}
 }
 
@@ -336,7 +338,7 @@ impl frame_system::Config for Runtime {
 
 impl cumulus_pallet_weight_reclaim::Config for Runtime {
 	type WeightInfo =
-	pop_runtime_common::weights::cumulus_pallet_weight_reclaim::WeightInfo<Runtime>;
+		pop_runtime_common::weights::cumulus_pallet_weight_reclaim::WeightInfo<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {
@@ -1015,12 +1017,18 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber, EventRecord> for Runtime
+	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber> for Runtime
 	{
-		fn balance(address: H160) -> Balance {
-			use frame_support::traits::fungible::Inspect;
-			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
-			Balances::reducible_balance(&account, Preserve, Polite)
+		fn balance(address: H160) -> U256 {
+			Revive::evm_balance(&address)
+		}
+
+		fn block_gas_limit() -> U256 {
+			Revive::evm_block_gas_limit()
+		}
+
+		fn gas_price() -> U256 {
+			Revive::evm_gas_price()
 		}
 
 		fn nonce(address: H160) -> Nonce {
@@ -1028,35 +1036,26 @@ impl_runtime_apis! {
 			System::account_nonce(account)
 		}
 
-		fn eth_transact(
-			from: H160,
-			dest: Option<H160>,
-			value: Balance,
-			input: Vec<u8>,
-			gas_limit: Option<Weight>,
-			storage_deposit_limit: Option<Balance>,
-		) -> pallet_revive::EthContractResult<Balance>
+		fn eth_transact(tx: pallet_revive::evm::GenericTransaction) -> Result<pallet_revive::EthTransactInfo<Balance>, pallet_revive::EthTransactError>
 		{
-			use pallet_revive::AddressMapper;
 			let blockweights: BlockWeights = <Runtime as frame_system::Config>::BlockWeights::get();
-			let origin = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&from);
 
-			let encoded_size = |pallet_call| {
+			let tx_fee = |pallet_call, mut dispatch_info: DispatchInfo| {
 				let call = RuntimeCall::Revive(pallet_call);
-				let uxt: UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
-				uxt.encoded_size() as u32
+				dispatch_info.extension_weight = EthExtraImpl::get_eth_extension(0, 0u32.into()).weight(&call);
+				let uxt: UncheckedExtrinsic = generic::UncheckedExtrinsic::new_bare(call).into();
+
+				pallet_transaction_payment::Pallet::<Runtime>::compute_fee(
+					uxt.encoded_size() as u32,
+					&dispatch_info,
+					0u32.into(),
+				)
 			};
 
 			Revive::bare_eth_transact(
-				origin,
-				dest,
-				value,
-				input,
-				gas_limit.unwrap_or(blockweights.max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
-				encoded_size,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
+				tx,
+				blockweights.max_block,
+				tx_fee,
 			)
 		}
 
@@ -1067,16 +1066,14 @@ impl_runtime_apis! {
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
-		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance, EventRecord> {
+		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance> {
 			Revive::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
+				pallet_revive::DepositLimit::Balance(storage_deposit_limit.unwrap_or(u128::MAX)),
 				input_data,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
@@ -1088,18 +1085,16 @@ impl_runtime_apis! {
 			code: pallet_revive::Code,
 			data: Vec<u8>,
 			salt: Option<[u8; 32]>,
-		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance, EventRecord>
+		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance>
 		{
 			Revive::bare_instantiate(
 				RuntimeOrigin::signed(origin),
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
+				pallet_revive::DepositLimit::Balance(storage_deposit_limit.unwrap_or(u128::MAX)),
 				code,
 				data,
 				salt,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
@@ -1124,6 +1119,67 @@ impl_runtime_apis! {
 				address,
 				key
 			)
+		}
+
+		fn trace_block(
+			block: Block,
+			config: pallet_revive::evm::TracerConfig
+		) -> Vec<(u32, pallet_revive::evm::CallTrace)> {
+			use pallet_revive::tracing::trace;
+			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			let mut traces = vec![];
+			let (header, extrinsics) = block.deconstruct();
+
+			Executive::initialize_block(&header);
+			for (index, ext) in extrinsics.into_iter().enumerate() {
+				trace(&mut tracer, || {
+					let _ = Executive::apply_extrinsic(ext);
+				});
+
+				if let Some(tx_trace) = tracer.collect_traces().pop() {
+					traces.push((index as u32, tx_trace));
+				}
+			}
+
+			traces
+		}
+
+		fn trace_tx(
+			block: Block,
+			tx_index: u32,
+			config: pallet_revive::evm::TracerConfig
+		) -> Option<pallet_revive::evm::CallTrace> {
+			use pallet_revive::tracing::trace;
+			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			let (header, extrinsics) = block.deconstruct();
+
+			Executive::initialize_block(&header);
+			for (index, ext) in extrinsics.into_iter().enumerate() {
+				if index as u32 == tx_index {
+					trace(&mut tracer, || {
+						let _ = Executive::apply_extrinsic(ext);
+					});
+					break;
+				} else {
+					let _ = Executive::apply_extrinsic(ext);
+				}
+			}
+
+			tracer.collect_traces().pop()
+		}
+
+		fn trace_call(
+			tx: pallet_revive::evm::GenericTransaction,
+			config: pallet_revive::evm::TracerConfig)
+			-> Result<pallet_revive::evm::CallTrace, pallet_revive::EthTransactError>
+		{
+			use pallet_revive::tracing::trace;
+			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			trace(&mut tracer, || {
+				Self::eth_transact(tx)
+			})?;
+
+			Ok(tracer.collect_traces().pop().expect("eth_transact succeeded, trace must exist, qed"))
 		}
 	}
 

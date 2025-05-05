@@ -14256,6 +14256,7 @@ dependencies = [
  "pallet-nfts-runtime-api 26.0.0",
  "pallet-preimage 40.0.0",
  "pallet-proxy 40.1.0",
+ "pallet-revive",
  "pallet-scheduler 41.0.0",
  "pallet-session 40.0.0",
  "pallet-sudo 40.0.0",

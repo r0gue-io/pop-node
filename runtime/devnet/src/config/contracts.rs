@@ -2,15 +2,15 @@ use core::marker::PhantomData;
 
 use frame_support::{
 	parameter_types,
-	traits::{ConstBool, ConstU32, ConstU64, Nothing, Randomness},
+	traits::{ConstBool, ConstU32, Nothing, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
-use pop_runtime_common::{UNIT, DepositPerByte, DepositPerItem};
+use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 
 use super::api::{self, Config};
 use crate::{
-	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
-	Timestamp, PolkadotXcm, TransactionPayment,
+	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeHoldReason, Timestamp, TransactionPayment,
 };
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
@@ -96,9 +96,10 @@ impl pallet_revive::Config for Runtime {
 	type ChainId = ChainId;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
-	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type EthGasEncoder = ();
+	type FindAuthor = <Runtime as pallet_authorship::Config>::FindAuthor;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	// 1 ETH : 1_000_000 UNIT
 	type NativeToEthRatio = NativeToEthRatio;
