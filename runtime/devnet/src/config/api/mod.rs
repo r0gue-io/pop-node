@@ -88,7 +88,6 @@ impl fungibles::Config for Runtime {
 }
 
 impl nonfungibles::Config for Runtime {
-	type BlockNumberProvider = frame_system::Pallet<Runtime>;
 	type NftsInstance = TrustBackedNftsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();

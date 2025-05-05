@@ -56,7 +56,7 @@ pub mod pallet {
 		traits::Incrementable,
 	};
 	use frame_system::{ensure_signed, pallet_prelude::OriginFor};
-	use sp_runtime::{traits::BlockNumberProvider, BoundedVec};
+	use sp_runtime::BoundedVec;
 
 	use super::*;
 
@@ -69,8 +69,6 @@ pub mod pallet {
 		type NftsInstance;
 		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
-		/// Provider for the block number. Normally this is the `frame_system` pallet.
-		type BlockNumberProvider: BlockNumberProvider;
 	}
 
 	#[pallet::pallet]
