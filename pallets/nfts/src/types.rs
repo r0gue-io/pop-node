@@ -19,7 +19,7 @@
 
 use alloc::{vec, vec::Vec};
 
-use codec::EncodeLike;
+use codec::{DecodeWithMemTracking, EncodeLike};
 use enumflags2::{bitflags, BitFlags};
 use frame_support::{
 	pallet_prelude::{BoundedVec, MaxEncodedLen},
@@ -113,7 +113,18 @@ pub struct CollectionDetails<AccountId, DepositBalance> {
 }
 
 /// Witness data for the destroy transactions.
-#[derive(Copy, Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Copy,
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub struct DestroyWitness {
 	/// The total number of items in this collection that have outstanding item metadata.
 	#[codec(compact)]
@@ -137,7 +148,9 @@ impl<AccountId, DepositBalance> CollectionDetails<AccountId, DepositBalance> {
 }
 
 /// Witness data for items mint transactions.
-#[derive(Clone, Encode, Decode, Default, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(
+	Clone, Encode, Decode, DecodeWithMemTracking, Default, Eq, PartialEq, RuntimeDebug, TypeInfo,
+)]
 pub struct MintWitness<ItemId, Balance> {
 	/// Provide the id of the item in a required collection.
 	pub owned_item: Option<ItemId>,
@@ -196,7 +209,17 @@ pub struct ItemMetadata<Deposit, StringLimit: Get<u32>> {
 }
 
 /// Information about the tip.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub struct ItemTip<CollectionId, ItemId, AccountId, Amount> {
 	/// The collection of the item.
 	pub collection: CollectionId,
@@ -240,7 +263,17 @@ pub struct ItemMetadataDeposit<DepositBalance, AccountId> {
 }
 
 /// Specifies whether the tokens will be sent or received.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub enum PriceDirection {
 	/// Tokens will be sent.
 	Send,
@@ -249,7 +282,17 @@ pub enum PriceDirection {
 }
 
 /// Holds the details about the price.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub struct PriceWithDirection<Amount> {
 	/// An amount.
 	pub amount: Amount,
@@ -297,11 +340,25 @@ impl CollectionSettings {
 }
 
 impl_codec_bitflags!(CollectionSettings, u64, CollectionSetting);
+// We can implement `DecodeWithMemTracking` for `CollectionSettings`
+// since `u64` also implements `DecodeWithMemTracking`.
+impl DecodeWithMemTracking for CollectionSettings {}
 
 /// Mint type. Can the NFT be create by anyone, or only the creator of the collection,
 /// or only by wallets that already hold an NFT from a certain collection?
 /// The ownership of a privately minted NFT is still publicly visible.
-#[derive(Clone, Copy, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Clone,
+	Copy,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub enum MintType<CollectionId> {
 	/// Only an `Issuer` could mint items.
 	Issuer,
@@ -312,7 +369,18 @@ pub enum MintType<CollectionId> {
 }
 
 /// Holds the information about minting.
-#[derive(Clone, Copy, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Clone,
+	Copy,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub struct MintSettings<Price, BlockNumber, CollectionId> {
 	/// Whether anyone can mint or if minters are restricted to some subset.
 	pub mint_type: MintType<CollectionId>,
@@ -340,7 +408,15 @@ impl<Price, BlockNumber, CollectionId> Default for MintSettings<Price, BlockNumb
 
 /// Attribute namespaces for non-fungible tokens.
 #[derive(
-	Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, scale_info::TypeInfo, MaxEncodedLen,
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	scale_info::TypeInfo,
+	MaxEncodedLen,
 )]
 pub enum AttributeNamespace<AccountId> {
 	/// An attribute was set by the pallet.
@@ -354,14 +430,24 @@ pub enum AttributeNamespace<AccountId> {
 }
 
 /// A witness data to cancel attributes approval operation.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Encode, Decode, DecodeWithMemTracking, Eq, PartialEq, RuntimeDebug, TypeInfo)]
 pub struct CancelAttributesApprovalWitness {
 	/// An amount of attributes previously created by account.
 	pub account_attributes: u32,
 }
 
 /// A list of possible pallet-level attributes.
-#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+#[derive(
+	Clone,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Eq,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
+	MaxEncodedLen,
+)]
 pub enum PalletAttributes<CollectionId> {
 	/// Marks an item as being used in order to claim another item.
 	UsedToClaim(CollectionId),
@@ -371,7 +457,16 @@ pub enum PalletAttributes<CollectionId> {
 
 /// Collection's configuration.
 #[derive(
-	Clone, Copy, Decode, Default, Encode, MaxEncodedLen, PartialEq, RuntimeDebug, TypeInfo,
+	Clone,
+	Copy,
+	Decode,
+	DecodeWithMemTracking,
+	Default,
+	Encode,
+	MaxEncodedLen,
+	PartialEq,
+	RuntimeDebug,
+	TypeInfo,
 )]
 pub struct CollectionConfig<Price, BlockNumber, CollectionId> {
 	/// Collection's settings.
@@ -436,10 +531,22 @@ impl ItemSettings {
 }
 
 impl_codec_bitflags!(ItemSettings, u64, ItemSetting);
+// We can implement `DecodeWithMemTracking` for `ItemSettings`
+// since `u64` also implements `DecodeWithMemTracking`.
+impl DecodeWithMemTracking for ItemSettings {}
 
 /// Item's configuration.
 #[derive(
-	Encode, Decode, Default, PartialEq, RuntimeDebug, Clone, Copy, MaxEncodedLen, TypeInfo,
+	Encode,
+	Decode,
+	DecodeWithMemTracking,
+	Default,
+	PartialEq,
+	RuntimeDebug,
+	Clone,
+	Copy,
+	MaxEncodedLen,
+	TypeInfo,
 )]
 pub struct ItemConfig {
 	/// Item's settings.
@@ -539,7 +646,7 @@ impl CollectionRoles {
 }
 impl_codec_bitflags!(CollectionRoles, u8, CollectionRole);
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub struct PreSignedMint<CollectionId, ItemId, AccountId, Deadline, Balance> {
 	/// A collection of the item to be minted.
 	pub collection: CollectionId,
@@ -557,7 +664,7 @@ pub struct PreSignedMint<CollectionId, ItemId, AccountId, Deadline, Balance> {
 	pub mint_price: Option<Balance>,
 }
 
-#[derive(Clone, Eq, PartialEq, Encode, Decode, RuntimeDebug, TypeInfo)]
+#[derive(Clone, Eq, PartialEq, Encode, Decode, DecodeWithMemTracking, RuntimeDebug, TypeInfo)]
 pub struct PreSignedAttributes<CollectionId, ItemId, AccountId, Deadline> {
 	/// Collection's ID.
 	pub collection: CollectionId,
