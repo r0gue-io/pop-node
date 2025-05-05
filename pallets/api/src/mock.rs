@@ -167,6 +167,7 @@ type NftsInstance = pallet_nfts::Instance1;
 impl pallet_nfts::Config<NftsInstance> for Test {
 	type ApprovalsLimit = ConstU32<10>;
 	type AttributeDepositBase = ConstU128<1>;
+	type BlockNumberProvider = frame_system::Pallet<Test>;
 	type CollectionApprovalDeposit = ConstU128<1>;
 	type CollectionBalanceDeposit = ConstU128<1>;
 	type CollectionDeposit = ConstU128<2>;
