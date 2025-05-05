@@ -197,6 +197,7 @@ impl pallet_nfts::Config<NftsInstance> for Test {
 }
 
 impl crate::nonfungibles::Config for Test {
+	type BlockNumberProvider = frame_system::Pallet<Test>;
 	type NftsInstance = NftsInstance;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();

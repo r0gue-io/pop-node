@@ -8,7 +8,6 @@ use frame_support::{
 	dispatch::WithPostDispatchInfo,
 	traits::{nonfungibles_v2::Inspect, Currency},
 };
-use frame_system::pallet_prelude::BlockNumberFor;
 pub use pallet::*;
 use pallet_nfts::WeightInfo as NftsWeightInfoTrait;
 pub use pallet_nfts::{
@@ -26,6 +25,7 @@ mod tests;
 /// Weights for non-fungibles dispatchables.
 pub mod weights;
 
+type BlockNumberFor<T> = pallet_nfts::BlockNumberFor<T, NftsInstanceOf<T>>;
 type AccountBalanceOf<T> = pallet_nfts::AccountBalance<T, NftsInstanceOf<T>>;
 type AccountIdLookupOf<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
@@ -55,8 +55,8 @@ pub mod pallet {
 		pallet_prelude::*,
 		traits::Incrementable,
 	};
-	use frame_system::pallet_prelude::*;
-	use sp_runtime::BoundedVec;
+	use frame_system::{ensure_signed, pallet_prelude::OriginFor};
+	use sp_runtime::{traits::BlockNumberProvider, BoundedVec};
 
 	use super::*;
 
@@ -69,6 +69,8 @@ pub mod pallet {
 		type NftsInstance;
 		/// Weight information for dispatchables in this pallet.
 		type WeightInfo: WeightInfo;
+		/// Provider for the block number. Normally this is the `frame_system` pallet.
+		type BlockNumberProvider: BlockNumberProvider;
 	}
 
 	#[pallet::pallet]
