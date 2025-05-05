@@ -64,7 +64,7 @@ tracing-subscriber = { version = "0.3.18", default-features = false }
 
 # Build
 substrate-build-script-utils = { version = "11.0.0" }
-substrate-wasm-builder = { version = "26.0.0" }
+substrate-wasm-builder = { version = "26.0.1" }
 
 # Local
 pallet-api = { path = "pallets/api", default-features = false }
@@ -119,7 +119,7 @@ sc-cli = { version = "0.51.0" }
 sc-client-api = { version = "39.0.0" }
 sc-consensus = { version = "0.48.0" }
 sc-executor = { version = "0.42.0" }
-sc-network = { version = "0.49.0" }
+sc-network = { version = "0.49.1" }
 sc-network-sync = { version = "0.48.0" }
 sc-offchain = { version = "44.0.0" }
 sc-rpc = { version = "44.0.0" }
@@ -140,7 +140,7 @@ sp-consensus-grandpa = { version = "23.1.0", default-features = false }
 sp-core = { version = "36.1.0", default-features = false }
 sp-genesis-builder = { version = "0.17.0", default-features = false }
 sp-inherents = { version = "36.0.0", default-features = false }
-sp-io = { version = "40.0.0", default-features = false }
+sp-io = { version = "40.0.1", default-features = false }
 sp-keyring = { version = "41.0.0", default-features = false }
 sp-keystore = { version = "0.42.0" }
 sp-mmr-primitives = { version = "36.1.0", default-features = false }
@@ -163,7 +163,7 @@ polkadot-runtime-parachains = { version = "19.1.0", default-features = false }
 rococo-runtime = { version = "22.1.0", default-features = false }
 rococo-runtime-constants = { version = "20.0.0", default-features = false }
 xcm = { version = "16.1.0", package = "staging-xcm", default-features = false }
-xcm-builder = { version = "20.0.0", package = "staging-xcm-builder", default-features = false }
+xcm-builder = { version = "20.1.0", package = "staging-xcm-builder", default-features = false }
 xcm-executor = { version = "19.1.0", package = "staging-xcm-executor", default-features = false }
 xcm-runtime-apis = { version = "0.7.0", default-features = false }
 
@@ -186,14 +186,14 @@ cumulus-primitives-core = { version = "0.18.1", default-features = false }
 cumulus-primitives-parachain-inherent = { version = "0.18.1" }
 cumulus-primitives-utility = { version = "0.20.0", default-features = false }
 cumulus-relay-chain-interface = { version = "0.22.0" }
-emulated-integration-tests-common = { version = "20.0.0", default-features = false }
+emulated-integration-tests-common = { version = "20.0.1", default-features = false }
 pallet-collator-selection = { version = "21.0.0", default-features = false }
 parachain-info = { version = "0.20.0", package = "staging-parachain-info", default-features = false }
 parachains-common = { version = "21.0.0", default-features = false }
 
 # Runtimes
 asset-hub-paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.4.2" }
-asset-hub-westend-runtime = { version = "0.29.1" }
+asset-hub-westend-runtime = { version = "0.29.2" }
 paseo-runtime = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.4.2" }
 paseo-runtime-constants = { git = "https://github.com/paseo-network/runtimes", default-features = false, tag = "v1.4.2" }
 westend-runtime = { version = "22.1.0" }
