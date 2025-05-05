@@ -108,6 +108,14 @@ fn para_receiver_assertions<Test>(_: Test) {
 
 fn para_to_system_para_sender_assertions(t: ParaToSystemParaTest) {
 	type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+	// Following assert configured with different weights based on the active feature
+	// to compensate for the different xcm weight configs between runtime.
+	#[cfg(feature = "mainnet")]
+	PopNetworkPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+		158_290_000,
+		3_593,
+	)));
+	#[cfg(any(feature = "devnet", feature = "testnet"))]
 	PopNetworkPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
 		2_000_000_000,
 		131_072,
