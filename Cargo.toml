@@ -34,17 +34,17 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-anyhow = { version = "1.0", default-features = false }
-clap = { version = "4.5.10", features = [ "derive" ] }
+anyhow = { version = "1.0.81", default-features = false }
+clap = { version = "4.5.13", features = [ "derive" ] }
 codec = { package = "parity-scale-codec", version = "3.7.4", default-features = false, features = [
 	"derive",
 ] }
 color-print = "0.3.4"
 contract-build = "5.0.2"
-docify = "0.2.8"
-enumflags2 = "0.7.9"
+docify = "0.2.9"
+enumflags2 = "0.7.11"
 env_logger = "0.11.5"
-futures = "0.3.30"
+futures = "0.3.31"
 hex = "0.4.3"
 hex-literal = "0.4.1"
 impl-trait-for-tuples = "0.2.2"
@@ -54,12 +54,12 @@ rand = "0.8.5"
 scale-info = { version = "2.11.6", default-features = false, features = [
 	"derive",
 ] }
-serde = "1.0.209"
-serde_json = { version = "1.0.127", default-features = false }
+serde = "1.0.214"
+serde_json = { version = "1.0.132", default-features = false }
 smallvec = "1.11.2"
-subxt = "0.38.0"
+subxt = "0.38.1"
 subxt-signer = "0.38.0"
-tokio = { version = "1.36", features = [ "macros", "rt-multi-thread", "time" ] }
+tokio = { version = "1.40.0", features = [ "macros", "rt-multi-thread", "time" ] }
 tracing-subscriber = { version = "0.3.18", default-features = false }
 
 # Build
