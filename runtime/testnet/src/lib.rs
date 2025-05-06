@@ -24,6 +24,7 @@ use ::ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
+use sp_runtime::{traits::ValidateUnsigned};
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::system::ConsensusHook;
 use cumulus_primitives_core::AggregateMessageOrigin;
@@ -330,6 +331,7 @@ mod runtime {
 
 	// ISMP
 	#[runtime::pallet_index(38)]
+	#[runtime::disable_unsigned]
 	pub type Ismp = pallet_ismp::Pallet<Runtime>;
 	#[runtime::pallet_index(39)]
 	pub type IsmpParachain = ismp_parachain::Pallet<Runtime>;

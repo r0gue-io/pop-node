@@ -100,7 +100,7 @@ ismp.workspace = true
 ismp-parachain.workspace = true
 ismp-parachain-runtime-api.workspace = true
 # TODO: use signed
-pallet-ismp = { workspace = true, features = [ "unsigned" ] }
+pallet-ismp.workspace = true
 pallet-ismp-runtime-api.workspace = true
 
 [dev-dependencies]
