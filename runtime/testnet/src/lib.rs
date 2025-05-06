@@ -158,12 +158,7 @@ pub type UncheckedExtrinsic =
 ///
 /// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
 pub type Migrations = (
-	// ----- pallet-revive -----
-	// With pop-node uplift to polkadot-sdk 2503 revive needs a migration if it is being deployed
-	// on a live chain.
-	// src: https://github.com/paritytech/polkadot-sdk/pull/7230
-	// The migration is not included in this runtime version.
-	// -------------------------
+	// Note the multi-block migrations configured in pallet_migrations are not present here.
 	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
 	// Unreleased.
 	pallet_assets::migration::next_asset_id::SetNextAssetId<
@@ -306,6 +301,8 @@ mod runtime {
 	pub type ParachainInfo = parachain_info::Pallet<Runtime>;
 	#[runtime::pallet_index(4)]
 	pub type WeightReclaim = cumulus_pallet_weight_reclaim::Pallet<Runtime>;
+	#[runtime::pallet_index(5)]
+	pub type MultiBlockMigrations = pallet_migrations::Pallet<Runtime>;
 
 	// Monetary stuff.
 	#[runtime::pallet_index(10)]
@@ -399,6 +396,7 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_message_queue, MessageQueue]
+		[pallet_migrations, MultiBlockMigrations]
 		[pallet_sudo, Sudo]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_parachain_system, ParachainSystem]

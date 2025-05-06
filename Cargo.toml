@@ -95,6 +95,7 @@ pallet-balances = { version = "41.1.0", default-features = false }
 pallet-collective = { version = "40.1.0", default-features = false }
 pallet-contracts = { version = "40.1.0", default-features = false }
 pallet-message-queue = { version = "43.1.0", default-features = false }
+pallet-migrations = { version = "10.1.0", default-features = false }
 pallet-multisig = { version = "40.1.0", default-features = false }
 pallet-nft-fractionalization = { version = "23.0.0", default-features = false }
 pallet-nfts-runtime-api = { version = "26.0.0", default-features = false }
