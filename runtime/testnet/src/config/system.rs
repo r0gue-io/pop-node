@@ -12,13 +12,15 @@ use sp_runtime::{
 	Perbill,
 };
 
+#[cfg(not(feature = "runtime-benchmarks"))]
+use crate::Revive;
 use crate::{
 	weights::RocksDbWeight, AccountId, AggregateMessageOrigin, Aura, BalancesCall, Block,
 	BlockExecutionWeight, BlockLength, BlockWeights, DispatchClass, ExtrinsicBaseWeight,
-	MessageQueue, MultiBlockMigrations, Nonce, PalletInfo, Revive, Runtime, RuntimeCall,
-	RuntimeEvent, RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue,
-	AVERAGE_ON_INITIALIZE_RATIO, BLOCK_PROCESSING_VELOCITY, MAXIMUM_BLOCK_WEIGHT,
-	NORMAL_DISPATCH_RATIO, RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY, VERSION,
+	MessageQueue, MultiBlockMigrations, Nonce, PalletInfo, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue, AVERAGE_ON_INITIALIZE_RATIO,
+	BLOCK_PROCESSING_VELOCITY, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
+	RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY, VERSION,
 };
 
 parameter_types! {
