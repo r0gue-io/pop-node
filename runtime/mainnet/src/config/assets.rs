@@ -262,7 +262,7 @@ mod tests {
 		}
 
 		#[test]
-		fn holder_is_default() {
+		fn holder_is_disabled() {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::Holder>(
 				),

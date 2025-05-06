@@ -129,12 +129,16 @@ mod tests {
 	fn finds_block_author_via_index_from_digests_within_block_header() {
 		assert_eq!(
 			TypeId::of::<<Runtime as Config>::FindAuthor>(),
+			TypeId::of::<<Runtime as pallet_authorship::Config>::FindAuthor>(),
+		);
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_authorship::Config>::FindAuthor>(),
 			TypeId::of::<pallet_session::FindAccountFromAuthorIndex<Runtime, Aura>>(),
 		);
 	}
 
 	#[test]
-	fn ensure_eth_gas_encoder() {
+	fn ensure_default_eth_gas_encoder_used() {
 		assert_eq!(TypeId::of::<<Runtime as Config>::EthGasEncoder>(), TypeId::of::<()>(),);
 	}
 
