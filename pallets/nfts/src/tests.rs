@@ -31,7 +31,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 pub(crate) use pallet_balances::Error as BalancesError;
 use sp_core::{bounded::BoundedVec, Pair};
 use sp_runtime::{
-	traits::{Dispatchable, IdentifyAccount},
+	traits::{Dispatchable, IdentifyAccount, Zero},
 	DispatchError::BadOrigin,
 	MultiSignature, MultiSigner,
 };
