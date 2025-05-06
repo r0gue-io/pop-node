@@ -138,6 +138,12 @@ type Migrations = (
 		Runtime,
 		TrustBackedAssetsInstance,
 	>,
+	pallet_session::migrations::v1::MigrateV0ToV1<
+		Runtime,
+		pallet_session::migrations::v1::InitOffenceSeverity<Runtime>,
+	>,
+	// Permanent.
+	cumulus_pallet_aura_ext::migration::MigrateV0ToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
