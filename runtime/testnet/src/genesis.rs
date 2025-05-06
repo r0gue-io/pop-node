@@ -1,14 +1,16 @@
 use alloc::{vec, vec::Vec};
 
 use cumulus_primitives_core::ParaId;
+use frame_support::build_struct_json_patch;
 use parachains_common::{AccountId, AuraId, Balance};
 use pop_runtime_common::genesis::*;
 use sp_core::crypto::Ss58Codec;
 use sp_genesis_builder::PresetId;
 
 use crate::{
-	config::governance::SudoAddress, AssetsConfig, BalancesConfig, SessionKeys,
-	EXISTENTIAL_DEPOSIT, UNIT,
+	config::governance::SudoAddress, AssetsConfig, BalancesConfig, CollatorSelectionConfig,
+	ParachainInfoConfig, PolkadotXcmConfig, RuntimeGenesisConfig, SessionConfig, SessionKeys,
+	SudoConfig, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// A development chain running on a single node, using the `testnet` runtime.
@@ -119,39 +121,37 @@ fn genesis(
 	sudo_key: AccountId,
 	id: ParaId,
 ) -> Value {
-	json!({
-		"assets": AssetsConfig {
+	build_struct_json_patch!(RuntimeGenesisConfig {
+		assets: AssetsConfig {
 			// Genesis assets: Vec<(id, owner, is_sufficient, min_balance)>
 			assets: Vec::from([
-				(0, sudo_key.clone(), false, EXISTENTIAL_DEPOSIT),	// Relay native asset from Asset Hub
+				(0, sudo_key.clone(), false, EXISTENTIAL_DEPOSIT), /* Relay native asset from
+				                                                    * Asset Hub */
 			]),
 			// Genesis metadata: Vec<(id, name, symbol, decimals)>
-			metadata: Vec::from([
-				(0, "Paseo".into(), "PAS".into(), 10),
-			]),
-			next_asset_id: Some(1),
-			..Default::default()
+			metadata: Vec::from([(0, "Paseo".into(), "PAS".into(), 10),]),
+			next_asset_id: Some(1)
 		},
-		"balances": BalancesConfig { balances: balances(endowed_accounts), ..Default::default() },
-		"collatorSelection": {
-			"invulnerables": invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
-			"candidacyBond": EXISTENTIAL_DEPOSIT * 16,
+		balances: BalancesConfig { balances: balances(endowed_accounts) },
+		collator_selection: CollatorSelectionConfig {
+			invulnerables: invulnerables.iter().cloned().map(|(acc, _)| acc).collect::<Vec<_>>(),
+			candidacy_bond: EXISTENTIAL_DEPOSIT * 16,
 		},
-		"parachainInfo": { "parachainId": id },
-		"polkadotXcm": { "safeXcmVersion": Some(SAFE_XCM_VERSION) },
-		"session": {
-			"keys": invulnerables
+		parachain_info: ParachainInfoConfig { parachain_id: id },
+		polkadot_xcm: PolkadotXcmConfig { safe_xcm_version: Some(SAFE_XCM_VERSION) },
+		session: SessionConfig {
+			keys: invulnerables
 				.into_iter()
 				.map(|(acc, aura)| {
 					(
-						acc.clone(),        // account id
-						acc,               	// validator id
-						SessionKeys { aura},// session keys
+						acc.clone(),          // account id
+						acc,                  // validator id
+						SessionKeys { aura }, // session keys
 					)
 				})
 				.collect::<Vec<_>>(),
 		},
-		"sudo" : { "key" : sudo_key },
+		sudo: SudoConfig { key: Some(sudo_key) },
 	})
 }
 
