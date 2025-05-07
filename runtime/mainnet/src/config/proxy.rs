@@ -4,7 +4,7 @@ use pop_runtime_common::proxy::{MaxPending, MaxProxies, ProxyType};
 
 use crate::{
 	config::assets::TrustBackedAssetsCall, deposit, parameter_types, weights, Balance, Balances,
-	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent,
+	BlakeTwo256, Runtime, RuntimeCall, RuntimeEvent, System,
 };
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
@@ -106,6 +106,7 @@ parameter_types! {
 impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+	type BlockNumberProvider = System;
 	type CallHasher = BlakeTwo256;
 	type Currency = Balances;
 	type MaxPending = MaxPending;
@@ -134,7 +135,7 @@ mod tests {
 
 	#[test]
 	fn proxy_type_assets_can_only_transfer_assets() {
-		use sp_keyring::AccountKeyring::Alice;
+		use sp_keyring::Sr25519Keyring::Alice;
 		let alice_address = MultiAddress::Id(Alice.to_account_id());
 
 		// Assert proxy type whitelists any asset related call.
@@ -193,6 +194,14 @@ mod tests {
 	}
 
 	#[test]
+	fn ensure_system_is_block_number_provider() {
+		assert_eq!(
+			TypeId::of::<<Runtime as Config>::BlockNumberProvider>(),
+			TypeId::of::<System>(),
+		);
+	}
+
+	#[test]
 	fn proxy_uses_blaketwo256_as_hasher() {
 		assert_eq!(TypeId::of::<<Runtime as Config>::CallHasher>(), TypeId::of::<BlakeTwo256>(),);
 	}
@@ -247,7 +256,7 @@ mod tests {
 
 	// Returns a list with some calls transferring assets.
 	fn asset_transfer_calls() -> Vec<RuntimeCall> {
-		use sp_keyring::AccountKeyring::Alice;
+		use sp_keyring::Sr25519Keyring::Alice;
 		let alice_address = MultiAddress::Id(Alice.to_account_id());
 
 		vec![

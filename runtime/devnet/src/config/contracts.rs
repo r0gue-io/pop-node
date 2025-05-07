@@ -2,10 +2,10 @@ use core::marker::PhantomData;
 
 use frame_support::{
 	parameter_types,
-	traits::{ConstBool, ConstU32, ConstU64, Nothing, Randomness},
+	traits::{ConstBool, ConstU32, Nothing, Randomness},
 };
 use frame_system::{pallet_prelude::BlockNumberFor, EnsureSigned};
-use pop_runtime_common::UNIT;
+use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 
 use super::api::{self, Config};
 use crate::{
@@ -39,8 +39,6 @@ const ETH: u128 = 1_000_000_000_000_000_000;
 
 parameter_types! {
 	pub ChainId: u64 = u32::from(crate::genesis::PARA_ID) as u64;
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub Schedule: pallet_contracts::Schedule<Runtime> = schedule::<Runtime>();
 	pub const DefaultDepositLimit: Balance = deposit(1024, 1024 * 1024);
 	// 30 percent of storage deposit held for using a code hash.
@@ -98,9 +96,10 @@ impl pallet_revive::Config for Runtime {
 	type ChainId = ChainId;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
-	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type EthGasEncoder = ();
+	type FindAuthor = <Runtime as pallet_authorship::Config>::FindAuthor;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	// 1 ETH : 1_000_000 UNIT
 	type NativeToEthRatio = NativeToEthRatio;

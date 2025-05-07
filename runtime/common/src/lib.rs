@@ -1,5 +1,8 @@
 #![cfg_attr(not(feature = "std"), no_std)]
-use frame_support::weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight};
+use frame_support::{
+	parameter_types,
+	weights::{constants::WEIGHT_REF_TIME_PER_SECOND, Weight},
+};
 // Cumulus types re-export
 // These types are shared between the devnet and testnet runtimes
 pub use parachains_common::{AccountId, AuraId, Balance, Block, BlockNumber, Hash, Signature};
@@ -64,6 +67,10 @@ pub const MICRO_UNIT: Balance = UNIT / 1_000_000; // 10_000
 pub const fn deposit(items: u32, bytes: u32) -> Balance {
 	(items as Balance * UNIT + (bytes as Balance) * (5 * MILLI_UNIT / 100)) / 10
 }
+parameter_types! {
+	pub const DepositPerItem: Balance = deposit(1, 0);
+	pub const DepositPerByte: Balance = deposit(0, 1);
+}
 /// The existential deposit. Set to 1/1_000 of the Connected Relay Chain.
 pub const EXISTENTIAL_DEPOSIT: Balance = MILLI_UNIT;
 
@@ -83,11 +90,10 @@ pub use async_backing_params::*;
 
 /// Proxy commons for Pop runtimes
 pub mod proxy {
-	use codec::{Decode, Encode, MaxEncodedLen};
-	use frame_support::parameter_types;
+	use codec::{Decode, DecodeWithMemTracking, Encode, MaxEncodedLen};
 	use sp_runtime::RuntimeDebug;
 
-	use super::{deposit, Balance};
+	use super::{deposit, parameter_types, Balance};
 
 	parameter_types! {
 		// One storage item; key size 32, value size 8; .
@@ -111,6 +117,7 @@ pub mod proxy {
 		PartialOrd,
 		Encode,
 		Decode,
+		DecodeWithMemTracking,
 		RuntimeDebug,
 		MaxEncodedLen,
 		scale_info::TypeInfo,

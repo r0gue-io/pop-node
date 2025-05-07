@@ -11,7 +11,7 @@ use sp_runtime::traits::Verify;
 
 use crate::{
 	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
-	RuntimeHoldReason, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
+	RuntimeHoldReason, System, DAYS, EXISTENTIAL_DEPOSIT, UNIT,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -45,6 +45,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Extra = ();
 	type ForceOrigin = AssetsForceOrigin;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type RemoveItemsLimit = ConstU32<1000>;
@@ -66,6 +67,7 @@ impl pallet_nfts::Config for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
+	type BlockNumberProvider = System;
 	type CollectionDeposit = NftsCollectionDeposit;
 	// TODO: source from primitives
 	type CollectionId = CollectionId;

@@ -24,7 +24,6 @@ use alloc::{borrow::Cow, vec::Vec};
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::{monetary::deposit, system::ConsensusHook};
 use cumulus_primitives_core::AggregateMessageOrigin;
-use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
 	dispatch::DispatchClass,
@@ -71,12 +70,6 @@ pub type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::Account
 /// The address format for describing accounts.
 pub type Address = MultiAddress<AccountId, ()>;
 
-/// Record of an event happening.
-pub type EventRecord = frame_system::EventRecord<
-	<Runtime as frame_system::Config>::RuntimeEvent,
-	<Runtime as frame_system::Config>::Hash,
->;
-
 /// Block header type as expected by this runtime.
 pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
 
@@ -90,18 +83,20 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 
 /// The SignedExtension to the basic transaction logic.
-pub type TxExtension = (
-	CheckNonZeroSender<Runtime>,
-	CheckSpecVersion<Runtime>,
-	CheckTxVersion<Runtime>,
-	CheckGenesis<Runtime>,
-	CheckMortality<Runtime>,
-	CheckNonce<Runtime>,
-	CheckWeight<Runtime>,
-	ChargeTransactionPayment<Runtime>,
-	StorageWeightReclaim<Runtime>,
-	CheckMetadataHash<Runtime>,
-);
+pub type TxExtension = cumulus_pallet_weight_reclaim::StorageWeightReclaim<
+	Runtime,
+	(
+		CheckNonZeroSender<Runtime>,
+		CheckSpecVersion<Runtime>,
+		CheckTxVersion<Runtime>,
+		CheckGenesis<Runtime>,
+		CheckMortality<Runtime>,
+		CheckNonce<Runtime>,
+		CheckWeight<Runtime>,
+		ChargeTransactionPayment<Runtime>,
+		CheckMetadataHash<Runtime>,
+	),
+>;
 
 /// EthExtra converts an unsigned Call::eth_transact into a CheckedExtrinsic.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -121,9 +116,9 @@ impl pallet_revive::evm::runtime::EthExtra for EthExtraImpl {
 			CheckNonce::<Runtime>::from(nonce),
 			CheckWeight::<Runtime>::new(),
 			ChargeTransactionPayment::<Runtime>::from(tip),
-			StorageWeightReclaim::<Runtime>::new(),
 			CheckMetadataHash::<Runtime>::new(false),
 		)
+			.into()
 	}
 }
 
@@ -143,6 +138,12 @@ type Migrations = (
 		Runtime,
 		TrustBackedAssetsInstance,
 	>,
+	pallet_session::migrations::v1::MigrateV0ToV1<
+		Runtime,
+		pallet_session::migrations::v1::InitOffenceSeverity<Runtime>,
+	>,
+	// Permanent.
+	cumulus_pallet_aura_ext::migration::MigrateV0ToV1<Runtime>,
 );
 
 /// Executive: handles dispatch to the various modules.
@@ -215,7 +216,8 @@ mod runtime {
 		RuntimeHoldReason,
 		RuntimeSlashReason,
 		RuntimeLockId,
-		RuntimeTask
+		RuntimeTask,
+		RuntimeViewFunction
 	)]
 	pub struct Runtime;
 
@@ -228,6 +230,8 @@ mod runtime {
 	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
 	#[runtime::pallet_index(3)]
 	pub type ParachainInfo = parachain_info::Pallet<Runtime>;
+	#[runtime::pallet_index(4)]
+	pub type WeightReclaim = cumulus_pallet_weight_reclaim::Pallet<Runtime>;
 
 	// Monetary stuff.
 	#[runtime::pallet_index(10)]
@@ -347,32 +351,35 @@ mod tests {
 	fn transaction_extension_checks() {
 		assert_eq!(
 			TypeId::of::<TxExtension>(),
-			TypeId::of::<(
-				// Ensures sender is not the zero address.
-				CheckNonZeroSender<Runtime>,
-				// Ensures the runtime version included within in the transaction is the same as at
-				// present.
-				CheckSpecVersion<Runtime>,
-				// Ensures the transaction version included in the transaction is the same as at
-				// present.
-				CheckTxVersion<Runtime>,
-				// Genesis hash check to provide replay protection between different networks.
-				CheckGenesis<Runtime>,
-				// Checks transaction mortality.
-				CheckMortality<Runtime>,
-				// Nonce check and increment to give replay protection for transactions.
-				CheckNonce<Runtime>,
-				// Block resource (weight) limit check.
-				CheckWeight<Runtime>,
-				// Require the transactor pay for the transaction, optionally including a tip to
-				// gain additional priority in the queue.
-				ChargeTransactionPayment<Runtime>,
-				// Checks the size of the node-side storage proof before and after executing a
-				// given extrinsic.
-				StorageWeightReclaim<Runtime>,
-				// Extension for optionally verifying the metadata hash.
-				CheckMetadataHash<Runtime>
-			)>(),
+			TypeId::of::<
+				cumulus_pallet_weight_reclaim::StorageWeightReclaim<
+					Runtime,
+					(
+						// Ensures sender is not the zero address.
+						CheckNonZeroSender<Runtime>,
+						// Ensures the runtime version included within in the transaction is the
+						// same as at present.
+						CheckSpecVersion<Runtime>,
+						// Ensures the transaction version included in the transaction is the same
+						// as at present.
+						CheckTxVersion<Runtime>,
+						// Genesis hash check to provide replay protection between different
+						// networks.
+						CheckGenesis<Runtime>,
+						// Checks transaction mortality.
+						CheckMortality<Runtime>,
+						// Nonce check and increment to give replay protection for transactions.
+						CheckNonce<Runtime>,
+						// Block resource (weight) limit check.
+						CheckWeight<Runtime>,
+						// Require the transactor pay for the transaction, optionally including a
+						// tip to gain additional priority in the queue.
+						ChargeTransactionPayment<Runtime>,
+						// Extension for optionally verifying the metadata hash.
+						CheckMetadataHash<Runtime>
+					),
+				>,
+			>(),
 		);
 	}
 }

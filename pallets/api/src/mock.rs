@@ -1,4 +1,4 @@
-use codec::{Decode, Encode};
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use frame_support::{
 	derive_impl, parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything},
@@ -102,6 +102,7 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	type Extra = ();
 	type ForceOrigin = EnsureRoot<u64>;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = ConstU128<1>;
 	type MetadataDepositPerByte = ConstU128<1>;
 	type RemoveItemsLimit = ConstU32<5>;
@@ -120,7 +121,7 @@ parameter_types! {
 	pub storage Features: PalletFeatures = PalletFeatures::all_enabled();
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, TypeInfo)]
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
 pub struct Noop;
 
 impl IdentifyAccount for Noop {
@@ -207,6 +208,7 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)],
+		..Default::default()
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");

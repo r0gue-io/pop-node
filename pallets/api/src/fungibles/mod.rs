@@ -25,6 +25,7 @@ type WeightOf<T> = <T as Config>::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
+	use alloc::vec::Vec;
 	use core::cmp::Ordering::*;
 
 	use frame_support::{
@@ -37,7 +38,6 @@ pub mod pallet {
 		traits::{CheckedSub, StaticLookup, Zero},
 		Saturating,
 	};
-	use sp_std::vec::Vec;
 
 	use super::*;
 
@@ -409,7 +409,7 @@ pub mod pallet {
 	}
 
 	/// State reads for the fungibles API with required input.
-	#[derive(Encode, Decode, Debug, MaxEncodedLen)]
+	#[derive(Encode, Decode, DecodeWithMemTracking, Debug, MaxEncodedLen)]
 	#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
 	#[repr(u8)]
 	#[allow(clippy::unnecessary_cast)]

@@ -1,8 +1,8 @@
+use alloc::vec::Vec;
 use core::fmt::Debug;
 
 use frame_support::pallet_prelude::Weight;
 use pallet_contracts::chain_extension::{BufInBufOutState, ChargedAmount, Result, State};
-use sp_std::vec::Vec;
 
 use crate::AccountIdOf;
 

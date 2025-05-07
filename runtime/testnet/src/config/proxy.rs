@@ -7,7 +7,7 @@ use pop_runtime_common::proxy::{
 use sp_runtime::traits::BlakeTwo256;
 
 use super::assets::TrustBackedAssetsCall;
-use crate::{Balances, Runtime, RuntimeCall, RuntimeEvent};
+use crate::{Balances, Runtime, RuntimeCall, RuntimeEvent, System};
 
 impl InstanceFilter<RuntimeCall> for ProxyType {
 	fn filter(&self, c: &RuntimeCall) -> bool {
@@ -98,6 +98,7 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 impl pallet_proxy::Config for Runtime {
 	type AnnouncementDepositBase = AnnouncementDepositBase;
 	type AnnouncementDepositFactor = AnnouncementDepositFactor;
+	type BlockNumberProvider = System;
 	type CallHasher = BlakeTwo256;
 	type Currency = Balances;
 	type MaxPending = MaxPending;

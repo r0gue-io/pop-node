@@ -65,6 +65,14 @@ impl<T: frame_system::Config> pallet_utility::WeightInfo for WeightInfo<T> {
 		// Minimum execution time: 6_633_000 picoseconds.
 		Weight::from_parts(8_402_000, 0)
 	}
+	fn dispatch_as_fallible() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 6_848_000 picoseconds.
+		Weight::from_parts(7_202_000, 0)
+			.saturating_add(Weight::from_parts(0, 0))
+	}
 	/// The range of component `c` is `[0, 1000]`.
 	fn force_batch(c: u32, ) -> Weight {
 		// Proof Size summary in bytes:
@@ -74,5 +82,13 @@ impl<T: frame_system::Config> pallet_utility::WeightInfo for WeightInfo<T> {
 		Weight::from_parts(433_933, 0)
 			// Standard Error: 60_315
 			.saturating_add(Weight::from_parts(3_128_533, 0).saturating_mul(c.into()))
+	}
+	fn if_else() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0`
+		//  Estimated: `0`
+		// Minimum execution time: 6_000_000 picoseconds.
+		Weight::from_parts(7_000_000, 0)
+			.saturating_add(Weight::from_parts(0, 0))
 	}
 }

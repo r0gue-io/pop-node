@@ -15,7 +15,7 @@ mod weights;
 
 extern crate alloc;
 
-use alloc::{borrow::Cow, vec::Vec};
+use alloc::{borrow::Cow, vec, vec::Vec};
 
 // ISMP imports
 use ::ismp::{
@@ -27,15 +27,14 @@ use codec::Encode;
 use config::system::ConsensusHook;
 use cumulus_pallet_parachain_system::RelayChainState;
 use cumulus_primitives_core::AggregateMessageOrigin;
-use cumulus_primitives_storage_weight_reclaim::StorageWeightReclaim;
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
-	dispatch::DispatchClass,
+	dispatch::{DispatchClass, DispatchInfo},
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		tokens::{nonfungibles_v2::Inspect, Fortitude::Polite, Preservation::Preserve},
-		ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse, VariantCountOf,
+		tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32, ConstU64, ConstU8, EitherOfDiverse,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -52,7 +51,10 @@ use pallet_api::{fungibles, messaging};
 use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use pallet_nfts_sdk as pallet_nfts;
-use pallet_revive::{evm::H160, AddressMapper};
+use pallet_revive::{
+	evm::{runtime::EthExtra, H160},
+	AddressMapper,
+};
 use pallet_transaction_payment::ChargeTransactionPayment;
 // Polkadot imports
 use polkadot_runtime_common::SlowAdjustingFeeUpdate;
@@ -64,12 +66,12 @@ pub use pop_runtime_common::{
 };
 use smallvec::smallvec;
 use sp_api::impl_runtime_apis;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, H256, U256};
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, Get, IdentifyAccount, Verify},
+	traits::{BlakeTwo256, Block as BlockT, Get, IdentifyAccount, TransactionExtension, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -79,7 +81,7 @@ use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
 use weights::{BlockExecutionWeight, ExtrinsicBaseWeight};
 // XCM Imports
-use xcm::latest::prelude::BodyId;
+use xcm::{latest::prelude::BodyId, VersionedAsset, VersionedLocation};
 
 use crate::config::{assets::TrustBackedAssetsInstance, system::RuntimeBlockWeights};
 
@@ -109,18 +111,20 @@ pub type SignedBlock = generic::SignedBlock<Block>;
 pub type BlockId = generic::BlockId<Block>;
 
 /// The SignedExtension to the basic transaction logic.
-pub type TxExtension = (
-	CheckNonZeroSender<Runtime>,
-	CheckSpecVersion<Runtime>,
-	CheckTxVersion<Runtime>,
-	CheckGenesis<Runtime>,
-	CheckMortality<Runtime>,
-	CheckNonce<Runtime>,
-	CheckWeight<Runtime>,
-	ChargeTransactionPayment<Runtime>,
-	StorageWeightReclaim<Runtime>,
-	CheckMetadataHash<Runtime>,
-);
+pub type TxExtension = cumulus_pallet_weight_reclaim::StorageWeightReclaim<
+	Runtime,
+	(
+		CheckNonZeroSender<Runtime>,
+		CheckSpecVersion<Runtime>,
+		CheckTxVersion<Runtime>,
+		CheckGenesis<Runtime>,
+		CheckMortality<Runtime>,
+		CheckNonce<Runtime>,
+		CheckWeight<Runtime>,
+		ChargeTransactionPayment<Runtime>,
+		CheckMetadataHash<Runtime>,
+	),
+>;
 
 /// EthExtra converts an unsigned Call::eth_transact into a CheckedExtrinsic.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -140,9 +144,9 @@ impl pallet_revive::evm::runtime::EthExtra for EthExtraImpl {
 			CheckNonce::<Runtime>::from(nonce),
 			CheckWeight::<Runtime>::new(),
 			ChargeTransactionPayment::<Runtime>::from(tip),
-			StorageWeightReclaim::<Runtime>::new(),
 			CheckMetadataHash::<Runtime>::new(false),
 		)
+			.into()
 	}
 }
 
@@ -154,6 +158,7 @@ pub type UncheckedExtrinsic =
 ///
 /// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
 pub type Migrations = (
+	// Note the multi-block migrations configured in pallet_migrations are not present here.
 	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
 	// Unreleased.
 	pallet_assets::migration::next_asset_id::SetNextAssetId<
@@ -163,7 +168,12 @@ pub type Migrations = (
 		Runtime,
 		TrustBackedAssetsInstance,
 	>,
+	pallet_session::migrations::v1::MigrateV0ToV1<
+		Runtime,
+		pallet_session::migrations::v1::InitOffenceSeverity<Runtime>,
+	>,
 	// Permanent.
+	cumulus_pallet_aura_ext::migration::MigrateV0ToV1<Runtime>,
 	pallet_contracts::Migration<Runtime>,
 	pallet_xcm::migration::MigrateToLatestXcmVersion<Runtime>,
 );
@@ -280,7 +290,8 @@ mod runtime {
 		RuntimeHoldReason,
 		RuntimeSlashReason,
 		RuntimeLockId,
-		RuntimeTask
+		RuntimeTask,
+		RuntimeViewFunction
 	)]
 	pub struct Runtime;
 
@@ -293,6 +304,10 @@ mod runtime {
 	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
 	#[runtime::pallet_index(3)]
 	pub type ParachainInfo = parachain_info::Pallet<Runtime>;
+	#[runtime::pallet_index(4)]
+	pub type WeightReclaim = cumulus_pallet_weight_reclaim::Pallet<Runtime>;
+	#[runtime::pallet_index(5)]
+	pub type MultiBlockMigrations = pallet_migrations::Pallet<Runtime>;
 
 	// Monetary stuff.
 	#[runtime::pallet_index(10)]
@@ -386,10 +401,12 @@ mod benches {
 		[pallet_session, SessionBench::<Runtime>]
 		[pallet_timestamp, Timestamp]
 		[pallet_message_queue, MessageQueue]
+		[pallet_migrations, MultiBlockMigrations]
 		[pallet_sudo, Sudo]
 		[pallet_collator_selection, CollatorSelection]
 		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
+		[cumulus_pallet_weight_reclaim, WeightReclaim]
 	);
 }
 
@@ -452,6 +469,15 @@ impl_runtime_apis! {
 
 		fn metadata_versions() -> Vec<u32> {
 			Runtime::metadata_versions()
+		}
+	}
+
+	impl frame_support::view_functions::runtime_api::RuntimeViewFunction<Block> for Runtime {
+		fn execute_view_function(
+			id: frame_support::view_functions::ViewFunctionId,
+			input: Vec<u8>
+		) -> Result<Vec<u8>, frame_support::view_functions::ViewFunctionDispatchError> {
+			Runtime::execute_view_function(id, input)
 		}
 	}
 
@@ -680,12 +706,18 @@ impl_runtime_apis! {
 		}
 	}
 
-	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber, EventRecord> for Runtime
+	impl pallet_revive::ReviveApi<Block, AccountId, Balance, Nonce, BlockNumber> for Runtime
 	{
-		fn balance(address: H160) -> Balance {
-			use frame_support::traits::fungible::Inspect;
-			let account = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&address);
-			Balances::reducible_balance(&account, Preserve, Polite)
+		fn balance(address: H160) -> U256 {
+			Revive::evm_balance(&address)
+		}
+
+		fn block_gas_limit() -> U256 {
+			Revive::evm_block_gas_limit()
+		}
+
+		fn gas_price() -> U256 {
+			Revive::evm_gas_price()
 		}
 
 		fn nonce(address: H160) -> Nonce {
@@ -693,35 +725,26 @@ impl_runtime_apis! {
 			System::account_nonce(account)
 		}
 
-		fn eth_transact(
-			from: H160,
-			dest: Option<H160>,
-			value: Balance,
-			input: Vec<u8>,
-			gas_limit: Option<Weight>,
-			storage_deposit_limit: Option<Balance>,
-		) -> pallet_revive::EthContractResult<Balance>
+		fn eth_transact(tx: pallet_revive::evm::GenericTransaction) -> Result<pallet_revive::EthTransactInfo<Balance>, pallet_revive::EthTransactError>
 		{
-			use pallet_revive::AddressMapper;
 			let blockweights: BlockWeights = <Runtime as frame_system::Config>::BlockWeights::get();
-			let origin = <Runtime as pallet_revive::Config>::AddressMapper::to_account_id(&from);
 
-			let encoded_size = |pallet_call| {
+			let tx_fee = |pallet_call, mut dispatch_info: DispatchInfo| {
 				let call = RuntimeCall::Revive(pallet_call);
+				dispatch_info.extension_weight = EthExtraImpl::get_eth_extension(0, 0u32.into()).weight(&call);
 				let uxt: UncheckedExtrinsic = sp_runtime::generic::UncheckedExtrinsic::new_bare(call).into();
-				uxt.encoded_size() as u32
+
+				pallet_transaction_payment::Pallet::<Runtime>::compute_fee(
+					uxt.encoded_size() as u32,
+					&dispatch_info,
+					0u32.into(),
+				)
 			};
 
 			Revive::bare_eth_transact(
-				origin,
-				dest,
-				value,
-				input,
-				gas_limit.unwrap_or(blockweights.max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
-				encoded_size,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
+				tx,
+				blockweights.max_block,
+				tx_fee,
 			)
 		}
 
@@ -732,16 +755,14 @@ impl_runtime_apis! {
 			gas_limit: Option<Weight>,
 			storage_deposit_limit: Option<Balance>,
 			input_data: Vec<u8>,
-		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance, EventRecord> {
+		) -> pallet_revive::ContractResult<pallet_revive::ExecReturnValue, Balance> {
 			Revive::bare_call(
 				RuntimeOrigin::signed(origin),
 				dest,
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
+				pallet_revive::DepositLimit::Balance(storage_deposit_limit.unwrap_or(u128::MAX)),
 				input_data,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
@@ -753,18 +774,16 @@ impl_runtime_apis! {
 			code: pallet_revive::Code,
 			data: Vec<u8>,
 			salt: Option<[u8; 32]>,
-		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance, EventRecord>
+		) -> pallet_revive::ContractResult<pallet_revive::InstantiateReturnValue, Balance>
 		{
 			Revive::bare_instantiate(
 				RuntimeOrigin::signed(origin),
 				value,
 				gas_limit.unwrap_or(RuntimeBlockWeights::get().max_block),
-				storage_deposit_limit.unwrap_or(u128::MAX),
+				pallet_revive::DepositLimit::Balance(storage_deposit_limit.unwrap_or(u128::MAX)),
 				code,
 				data,
 				salt,
-				pallet_revive::DebugInfo::UnsafeDebug,
-				pallet_revive::CollectEvents::UnsafeCollect,
 			)
 		}
 
@@ -789,6 +808,71 @@ impl_runtime_apis! {
 				address,
 				key
 			)
+		}
+
+		fn trace_block(
+			block: Block,
+			config: pallet_revive::evm::TracerConfig
+		) -> Vec<(u32, pallet_revive::evm::CallTrace)> {
+			use pallet_revive::tracing::trace;
+			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			let mut traces = vec![];
+			let (header, extrinsics) = block.deconstruct();
+
+			Executive::initialize_block(&header);
+			for (index, ext) in extrinsics.into_iter().enumerate() {
+				trace(&mut tracer, || {
+					let _ = Executive::apply_extrinsic(ext);
+				});
+
+				if let Some(tx_trace) = tracer.collect_traces().pop() {
+					traces.push((index as u32, tx_trace));
+				}
+			}
+
+			traces
+		}
+
+		fn trace_tx(
+			block: Block,
+			tx_index: u32,
+			config: pallet_revive::evm::TracerConfig
+		) -> Option<pallet_revive::evm::CallTrace> {
+			use pallet_revive::tracing::trace;
+			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			let (header, extrinsics) = block.deconstruct();
+
+			Executive::initialize_block(&header);
+			for (index, ext) in extrinsics.into_iter().enumerate() {
+				if index as u32 == tx_index {
+					trace(&mut tracer, || {
+						let _ = Executive::apply_extrinsic(ext);
+					});
+					break;
+				} else {
+					let _ = Executive::apply_extrinsic(ext);
+				}
+			}
+
+			tracer.collect_traces().pop()
+		}
+
+		fn trace_call(
+			tx: pallet_revive::evm::GenericTransaction,
+			config: pallet_revive::evm::TracerConfig)
+			-> Result<pallet_revive::evm::CallTrace, pallet_revive::EthTransactError>
+		{
+			use pallet_revive::tracing::trace;
+			let mut tracer = config.build(Revive::evm_gas_from_weight);
+			let result = trace(&mut tracer, || Self::eth_transact(tx));
+
+			if let Some(trace) = tracer.collect_traces().pop() {
+				Ok(trace)
+			} else if let Err(err) = result {
+				Err(err)
+			} else {
+				Ok(Default::default())
+			}
 		}
 	}
 
@@ -854,6 +938,30 @@ impl_runtime_apis! {
 		}
 	}
 
+	impl xcm_runtime_apis::trusted_query::TrustedQueryApi<Block> for Runtime {
+		fn is_trusted_reserve(asset: VersionedAsset, location: VersionedLocation) -> xcm_runtime_apis::trusted_query::XcmTrustedQueryResult {
+			PolkadotXcm::is_trusted_reserve(asset, location)
+		}
+		fn is_trusted_teleporter(asset: VersionedAsset, location: VersionedLocation) -> xcm_runtime_apis::trusted_query::XcmTrustedQueryResult {
+			PolkadotXcm::is_trusted_teleporter(asset, location)
+		}
+	}
+
+	impl xcm_runtime_apis::authorized_aliases::AuthorizedAliasersApi<Block> for Runtime {
+		fn authorized_aliasers(target: VersionedLocation) -> Result<
+			Vec<xcm_runtime_apis::authorized_aliases::OriginAliaser>,
+			xcm_runtime_apis::authorized_aliases::Error
+		> {
+			PolkadotXcm::authorized_aliasers(target)
+		}
+		fn is_authorized_alias(origin: VersionedLocation, target: VersionedLocation) -> Result<
+			bool,
+			xcm_runtime_apis::authorized_aliases::Error
+		> {
+			PolkadotXcm::is_authorized_alias(origin, target)
+		}
+	}
+
 	#[cfg(feature = "try-runtime")]
 	impl frame_try_runtime::TryRuntime<Block> for Runtime {
 		fn on_runtime_upgrade(checks: frame_try_runtime::UpgradeCheckSelect) -> (Weight, Weight) {
@@ -879,7 +987,7 @@ impl_runtime_apis! {
 			Vec<frame_benchmarking::BenchmarkList>,
 			Vec<frame_support::traits::StorageInfo>,
 		) {
-			use frame_benchmarking::{Benchmarking, BenchmarkList};
+			use frame_benchmarking::BenchmarkList;
 			use frame_support::traits::StorageInfoTrait;
 			use frame_system_benchmarking::Pallet as SystemBench;
 			use cumulus_pallet_session_benchmarking::Pallet as SessionBench;
@@ -891,10 +999,11 @@ impl_runtime_apis! {
 			(list, storage_info)
 		}
 
+		#[allow(non_local_definitions)]
 		fn dispatch_benchmark(
 			config: frame_benchmarking::BenchmarkConfig
 		) -> Result<Vec<frame_benchmarking::BenchmarkBatch>, alloc::string::String> {
-			use frame_benchmarking::{BenchmarkError, Benchmarking, BenchmarkBatch};
+			use frame_benchmarking::{BenchmarkError, BenchmarkBatch};
 
 			use frame_system_benchmarking::Pallet as SystemBench;
 			impl frame_system_benchmarking::Config for Runtime {

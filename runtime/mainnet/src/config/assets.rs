@@ -10,7 +10,7 @@ use sp_runtime::traits::Verify;
 
 use crate::{
 	config::monetary::ExistentialDeposit, deposit, weights, AccountId, Balance, Balances,
-	BlockNumber, Runtime, RuntimeEvent, DAYS,
+	BlockNumber, Runtime, RuntimeEvent, System, DAYS,
 };
 
 /// We allow root to execute privileged asset operations.
@@ -48,6 +48,7 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Extra = ();
 	type ForceOrigin = AssetsForceOrigin;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type RemoveItemsLimit = ConstU32<1000>;
@@ -78,6 +79,7 @@ parameter_types! {
 impl pallet_nfts::Config for Runtime {
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
+	type BlockNumberProvider = System;
 	type CollectionDeposit = NftsCollectionDeposit;
 	type CollectionId = CollectionId;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
@@ -118,7 +120,7 @@ mod tests {
 	mod assets {
 		use frame_support::traits::Incrementable;
 		use pallet_assets::{AssetsCallback, NextAssetId};
-		use sp_keyring::AccountKeyring::Alice;
+		use sp_keyring::Sr25519Keyring::Alice;
 
 		use super::*;
 		use crate::System;
@@ -260,6 +262,15 @@ mod tests {
 		}
 
 		#[test]
+		fn holder_is_disabled() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_assets::Config<TrustBackedAssetsInstance>>::Holder>(
+				),
+				TypeId::of::<()>(),
+			);
+		}
+
+		#[test]
 		fn force_origin_ensures_root() {
 			assert_eq!(TypeId::of::<AssetsForceOrigin>(), TypeId::of::<EnsureRoot<AccountId>>(),);
 			assert_eq!(
@@ -358,6 +369,14 @@ mod tests {
 				Blake2_128Concat::max_len::<AttributeNamespace<AccountId>>();
 			assert_eq!(key_size, 89);
 			assert_eq!(deposit(1, key_size as u32) / 100, NftsAttributeDepositBase::get());
+		}
+
+		#[test]
+		fn ensure_system_is_block_number_provider() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_nfts::Config>::BlockNumberProvider>(),
+				TypeId::of::<System>(),
+			);
 		}
 
 		#[test]

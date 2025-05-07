@@ -4,8 +4,8 @@ use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_support::{
 	parameter_types,
 	traits::{
-		tokens::imbalance::ResolveTo, ConstU32, Contains, ContainsPair, Equals, Everything, Get,
-		Nothing, TransformOrigin,
+		fungible::HoldConsideration, tokens::imbalance::ResolveTo, ConstU32, Contains,
+		ContainsPair, Equals, Everything, Get, LinearStoragePrice, Nothing, TransformOrigin,
 	},
 	weights::Weight,
 };
@@ -14,6 +14,7 @@ use pallet_xcm::XcmPassthrough;
 use parachains_common::{
 	message_queue::{NarrowOriginToSibling, ParaIdToSibling},
 	xcm_config::ParentRelayOrSiblingParachains,
+	Balance,
 };
 use polkadot_runtime_common::xcm_sender::ExponentialPrice;
 use sp_runtime::Vec;
@@ -33,17 +34,18 @@ use crate::{
 	config::{
 		monetary::{
 			fee::{WeightToFee, CENTS},
-			TransactionByteFee, TreasuryAccount,
+			DepositPerByte, DepositPerItem, TransactionByteFee, TreasuryAccount,
 		},
 		system::RuntimeBlockWeights,
 		xcm_weights,
 	},
 	weights, AccountId, AllPalletsWithSystem, Balances, MessageQueue, ParachainInfo,
-	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
-	XcmpQueue,
+	ParachainSystem, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	RuntimeOrigin, XcmpQueue,
 };
 
 parameter_types! {
+	pub const AuthorizeAliasHoldReason: RuntimeHoldReason = RuntimeHoldReason::PolkadotXcm(pallet_xcm::HoldReason::AuthorizeAlias);
 	pub const RelayLocation: Location = Location::parent();
 	pub AssetHub: Location = Location::new(1, [Parachain(1000)]);
 	pub const RelayNetwork: Option<NetworkId> = Some(Polkadot);
@@ -208,6 +210,7 @@ impl xcm_executor::Config for XcmConfig {
 	type UniversalLocation = UniversalLocation;
 	type Weigher =
 		WeightInfoBounds<xcm_weights::PopXcmWeight<RuntimeCall>, RuntimeCall, MaxInstructions>;
+	type XcmEventEmitter = PolkadotXcm;
 	type XcmRecorder = PolkadotXcm;
 	type XcmSender = XcmRouter;
 }
@@ -227,6 +230,12 @@ pub type XcmRouter = WithUniqueTopic<(
 impl pallet_xcm::Config for Runtime {
 	type AdminOrigin = EnsureRoot<AccountId>;
 	type AdvertisedXcmVersion = pallet_xcm::CurrentXcmVersion;
+	type AuthorizedAliasConsideration = HoldConsideration<
+		AccountId,
+		Balances,
+		AuthorizeAliasHoldReason,
+		LinearStoragePrice<DepositPerItem, DepositPerByte, Balance>,
+	>;
 	type Currency = Balances;
 	type CurrencyMatcher = ();
 	type ExecuteXcmOrigin = EnsureXcmOrigin<RuntimeOrigin, LocalOriginToLocation>;
@@ -297,7 +306,7 @@ mod tests {
 	use polkadot_runtime_common::xcm_sender::*;
 	use polkadot_runtime_parachains::FeeTracker;
 	use sp_core::crypto::Ss58Codec;
-	use sp_keyring::AccountKeyring;
+	use sp_keyring::Sr25519Keyring;
 	use sp_runtime::FixedPointNumber;
 	use xcm_executor::traits::{ConvertLocation, FeeManager, FeeReason};
 
@@ -366,7 +375,7 @@ mod tests {
 					1,
 					[AccountId32 {
 						network: None,
-						id: AccountKeyring::Alice.to_account_id().into(),
+						id: Sr25519Keyring::Alice.to_account_id().into(),
 					}],
 				),
 				expected_account_id_str: "5EueAXd4h8u75nSbFdDJbC29cmi4Uo1YJssqEL9idvindxFL",
@@ -379,7 +388,7 @@ mod tests {
 						Parachain(1111),
 						Junction::AccountId32 {
 							network: None,
-							id: AccountKeyring::Alice.to_account_id().into(),
+							id: Sr25519Keyring::Alice.to_account_id().into(),
 						},
 					],
 				),
@@ -865,6 +874,14 @@ mod tests {
 		}
 
 		#[test]
+		fn uses_pallet_xcm_to_emit_events() {
+			assert_eq!(
+				TypeId::of::<<XcmConfig as xcm_executor::Config>::XcmEventEmitter>(),
+				TypeId::of::<PolkadotXcm>(),
+			);
+		}
+
+		#[test]
 		fn uses_xcm_as_recorder_for_dry_runs() {
 			assert_eq!(
 				TypeId::of::<<XcmConfig as xcm_executor::Config>::XcmRecorder>(),
@@ -906,6 +923,21 @@ mod tests {
 			assert_eq!(
 				TypeId::of::<<Runtime as pallet_xcm::Config>::AdvertisedXcmVersion>(),
 				TypeId::of::<pallet_xcm::CurrentXcmVersion>(),
+			);
+		}
+
+		#[test]
+		fn ensure_authorized_alias_hold_consideration() {
+			assert_eq!(
+				TypeId::of::<<Runtime as pallet_xcm::Config>::AuthorizedAliasConsideration>(),
+				TypeId::of::<
+					HoldConsideration<
+						AccountId,
+						Balances,
+						AuthorizeAliasHoldReason,
+						LinearStoragePrice<DepositPerItem, DepositPerByte, Balance>,
+					>,
+				>()
 			);
 		}
 

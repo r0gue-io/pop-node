@@ -29,6 +29,7 @@ pallet-authorship.workspace = true
 pallet-balances.workspace = true
 pallet-collective.workspace = true
 pallet-message-queue.workspace = true
+pallet-migrations.workspace = true
 pallet-multisig.workspace = true
 pallet-nfts-sdk.workspace = true
 pallet-preimage.workspace = true
@@ -54,6 +55,7 @@ xcm-executor.workspace = true
 # Cumulus
 cumulus-pallet-aura-ext.workspace = true
 cumulus-pallet-parachain-system.workspace = true
+cumulus-pallet-weight-reclaim.workspace = true
 cumulus-pallet-xcmp-queue.workspace = true
 pallet-collator-selection.workspace = true
 parachains-common.workspace = true
@@ -63,6 +65,7 @@ polkadot-primitives.workspace = true
 [features]
 default = [ "std" ]
 runtime-benchmarks = [
+	"cumulus-pallet-weight-reclaim/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
@@ -71,6 +74,7 @@ runtime-benchmarks = [
 	"pallet-collator-selection/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
+	"pallet-migrations/runtime-benchmarks",
 	"pallet-motion/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
 	"pallet-nfts-sdk/runtime-benchmarks",
@@ -94,6 +98,7 @@ runtime-benchmarks = [
 std = [
 	"codec/std",
 	"cumulus-pallet-aura-ext/std",
+	"cumulus-pallet-weight-reclaim/std",
 	"cumulus-pallet-xcmp-queue/std",
 	"frame-support/std",
 	"frame-system/std",
@@ -104,6 +109,7 @@ std = [
 	"pallet-collator-selection/std",
 	"pallet-collective/std",
 	"pallet-message-queue/std",
+	"pallet-migrations/std",
 	"pallet-motion/std",
 	"pallet-multisig/std",
 	"pallet-nfts-sdk/std",
@@ -129,6 +135,7 @@ std = [
 	"xcm-executor/std",
 ]
 try-runtime = [
+	"pallet-migrations/try-runtime",
 	"pallet-motion/try-runtime",
 	"pallet-nfts-sdk/try-runtime",
 	"pallet-revive/try-runtime",

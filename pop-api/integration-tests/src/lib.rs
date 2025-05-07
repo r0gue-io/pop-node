@@ -43,6 +43,7 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	pallet_balances::GenesisConfig::<Runtime> {
 		// FERDIE has no initial balance.
 		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT)],
+		..Default::default()
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");

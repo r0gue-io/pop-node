@@ -5,16 +5,15 @@ use frame_support::{
 use frame_system::EnsureSigned;
 
 use crate::{
-	deposit, weights, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp, TransactionPayment, UNIT,
+	config::monetary::{DepositPerByte, DepositPerItem},
+	weights, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	Timestamp, TransactionPayment, UNIT,
 };
 
 // 18 decimals
 const ETH: u128 = 1_000_000_000_000_000_000;
 
 parameter_types! {
-	pub const DepositPerItem: Balance = deposit(1, 0);
-	pub const DepositPerByte: Balance = deposit(0, 1);
 	pub CodeHashLockupDepositPercent: Perbill = Perbill::from_percent(30);
 	pub const NativeToEthRatio: u32 = (ETH/UNIT) as u32;
 }
@@ -29,9 +28,10 @@ impl pallet_revive::Config for Runtime {
 	// 30 percent of storage deposit held for using a code hash.
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
-	type Debug = ();
 	type DepositPerByte = DepositPerByte;
 	type DepositPerItem = DepositPerItem;
+	type EthGasEncoder = ();
+	type FindAuthor = <Runtime as pallet_authorship::Config>::FindAuthor;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	// 1 ETH : 1_000_000 UNIT
 	type NativeToEthRatio = NativeToEthRatio;
@@ -70,6 +70,7 @@ mod tests {
 	use pallet_revive::Config;
 
 	use super::*;
+	use crate::{deposit, Aura, Balance};
 
 	// 18 decimals
 	const ONE_ETH: u128 = 1_000_000_000_000_000_000;
@@ -115,11 +116,6 @@ mod tests {
 	}
 
 	#[test]
-	fn debug_is_unset() {
-		assert_eq!(TypeId::of::<<Runtime as Config>::Debug>(), TypeId::of::<()>(),);
-	}
-
-	#[test]
 	fn deposit_per_byte_is_correct() {
 		assert_eq!(<<Runtime as Config>::DepositPerByte as Get<Balance>>::get(), deposit(0, 1),);
 	}
@@ -127,6 +123,23 @@ mod tests {
 	#[test]
 	fn deposit_per_item_is_correct() {
 		assert_eq!(<<Runtime as Config>::DepositPerItem as Get<Balance>>::get(), deposit(1, 0),);
+	}
+
+	#[test]
+	fn finds_block_author_via_index_from_digests_within_block_header() {
+		assert_eq!(
+			TypeId::of::<<Runtime as Config>::FindAuthor>(),
+			TypeId::of::<<Runtime as pallet_authorship::Config>::FindAuthor>(),
+		);
+		assert_eq!(
+			TypeId::of::<<Runtime as pallet_authorship::Config>::FindAuthor>(),
+			TypeId::of::<pallet_session::FindAccountFromAuthorIndex<Runtime, Aura>>(),
+		);
+	}
+
+	#[test]
+	fn ensure_default_eth_gas_encoder_used() {
+		assert_eq!(TypeId::of::<<Runtime as Config>::EthGasEncoder>(), TypeId::of::<()>(),);
 	}
 
 	#[test]

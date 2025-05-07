@@ -88,6 +88,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext: sp_io::TestExternalities = RuntimeGenesisConfig {
 		balances: pallet_balances::GenesisConfig::<Test> {
 			balances: vec![(1, 10), (2, 20), (3, 30), (4, 40), (5, 50)],
+			..Default::default()
 		},
 		council: pallet_collective::GenesisConfig {
 			members: vec![1, 2, 3, 4],

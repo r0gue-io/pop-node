@@ -7,13 +7,18 @@ use frame_support::{
 };
 use parachains_common::{Balance, Hash};
 use polkadot_runtime_common::BlockHashCount;
-use sp_runtime::traits::{AccountIdLookup, BlakeTwo256};
+use sp_runtime::{
+	traits::{AccountIdLookup, BlakeTwo256},
+	Perbill,
+};
 
+#[cfg(not(feature = "runtime-benchmarks"))]
+use crate::Revive;
 use crate::{
 	weights::RocksDbWeight, AccountId, AggregateMessageOrigin, Aura, BalancesCall, Block,
 	BlockExecutionWeight, BlockLength, BlockWeights, DispatchClass, ExtrinsicBaseWeight,
-	MessageQueue, Nonce, PalletInfo, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
-	RuntimeTask, RuntimeVersion, Weight, XcmpQueue, AVERAGE_ON_INITIALIZE_RATIO,
+	MessageQueue, MultiBlockMigrations, Nonce, PalletInfo, Runtime, RuntimeCall, RuntimeEvent,
+	RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
 	RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY, VERSION,
 };
@@ -92,7 +97,7 @@ impl frame_system::Config for Runtime {
 	/// The lookup mechanism to get account ID from whatever is passed in dispatchers.
 	type Lookup = AccountIdLookup<Self::AccountId, ()>;
 	type MaxConsumers = ConstU32<16>;
-	type MultiBlockMigrator = ();
+	type MultiBlockMigrator = MultiBlockMigrations;
 	/// The index type for storing how many extrinsics an account has signed.
 	type Nonce = Nonce;
 	/// What to do if an account is fully reaped from the system.
@@ -151,6 +156,30 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type SelfParaId = parachain_info::Pallet<Runtime>;
 	type WeightInfo = ();
 	type XcmpMessageHandler = XcmpQueue;
+}
+
+impl cumulus_pallet_weight_reclaim::Config for Runtime {
+	type WeightInfo =
+		pop_runtime_common::weights::cumulus_pallet_weight_reclaim::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub MbmServiceWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
+}
+
+impl pallet_migrations::Config for Runtime {
+	type CursorMaxLen = ConstU32<65_536>;
+	type FailedMigrationHandler = frame_support::migrations::FreezeChainOnFailedMigration;
+	type IdentifierMaxLen = ConstU32<256>;
+	type MaxServiceWeight = MbmServiceWeight;
+	type MigrationStatusHandler = ();
+	#[cfg(not(feature = "runtime-benchmarks"))]
+	type Migrations = pallet_migrations::migrations::ResetPallet<Runtime, Revive>;
+	// Benchmarks need mocked migrations to guarantee that they succeed.
+	#[cfg(feature = "runtime-benchmarks")]
+	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = pop_runtime_common::weights::pallet_migrations::WeightInfo<Runtime>;
 }
 
 impl pallet_timestamp::Config for Runtime {

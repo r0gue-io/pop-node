@@ -1,5 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+extern crate alloc;
+use alloc::vec::Vec;
 use core::marker::PhantomData;
 
 pub use decoding::{Decode, Decodes, DecodingFailed, Identity, Processor};
@@ -21,7 +23,6 @@ use pallet_contracts::{
 };
 use sp_core::Get;
 use sp_runtime::{traits::Dispatchable, DispatchError};
-use sp_std::vec::Vec;
 
 mod decoding;
 mod environment;
