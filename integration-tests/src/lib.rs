@@ -73,8 +73,8 @@ fn relay_to_para_sender_assertions(t: RelayToParaTest) {
 fn system_para_to_para_sender_assertions(t: SystemParaToParaTest) {
 	type RuntimeEvent = <AssetHubPara as Chain>::RuntimeEvent;
 	AssetHubPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
-		864_610_000,
-		8_799,
+		578_673_000,
+		6_208,
 	)));
 	assert_expected_events!(
 		AssetHubPara,
@@ -108,9 +108,17 @@ fn para_receiver_assertions<Test>(_: Test) {
 
 fn para_to_system_para_sender_assertions(t: ParaToSystemParaTest) {
 	type RuntimeEvent = <PopNetworkPara as Chain>::RuntimeEvent;
+	// Following assert configured with different weights based on the active feature
+	// to compensate for the different xcm weight configs between runtime.
+	#[cfg(feature = "mainnet")]
 	PopNetworkPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
-		864_610_000,
-		8_799,
+		158_290_000,
+		3_593,
+	)));
+	#[cfg(any(feature = "devnet", feature = "testnet"))]
+	PopNetworkPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
+		2_000_000_000,
+		131_072,
 	)));
 	assert_expected_events!(
 		PopNetworkPara,
