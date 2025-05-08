@@ -2,7 +2,12 @@
 //! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
 //! space.
 
-use frame_support::traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect};
+use codec::{Decode, Encode, MaxEncodedLen};
+use frame_support::{
+	__private::RuntimeDebug,
+	pallet_prelude::TypeInfo,
+	traits::fungibles::{metadata::Inspect as MetadataInspect, Inspect},
+};
 pub use pallet::*;
 use pallet_assets::WeightInfo as AssetsWeightInfoTrait;
 use weights::WeightInfo;
@@ -13,15 +18,48 @@ mod benchmarking;
 mod tests;
 pub mod weights;
 
-type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type TokenIdOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::AssetId;
-type TokenIdParameterOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::AssetIdParameter;
-type AssetsOf<T> = pallet_assets::Pallet<T, AssetsInstanceOf<T>>;
-type AssetsErrorOf<T> = pallet_assets::Error<T, AssetsInstanceOf<T>>;
-type AssetsInstanceOf<T> = <T as Config>::AssetsInstance;
-type AssetsWeightInfoOf<T> = <T as pallet_assets::Config<AssetsInstanceOf<T>>>::WeightInfo;
-type BalanceOf<T> = <AssetsOf<T> as Inspect<<T as frame_system::Config>::AccountId>>::Balance;
+type TrustBackedTokenIdParameterOf<T> =
+	<T as pallet_assets::Config<TrustBackedAssetsInstanceOf<T>>>::AssetIdParameter;
+type ForeignTokenIdParameterOf<T> =
+	<T as pallet_assets::Config<ForeignAssetsInstanceOf<T>>>::AssetIdParameter;
+
+type TrustBackedAssetsOf<T> = pallet_assets::Pallet<T, TrustBackedAssetsInstanceOf<T>>;
+type ForeignAssetsOf<T> = pallet_assets::Pallet<T, ForeignAssetsInstanceOf<T>>;
+
+type TrustBackedAssetsErrorOf<T> = pallet_assets::Error<T, TrustBackedAssetsInstanceOf<T>>;
+type ForeignAssetsErrorOf<T> = pallet_assets::Error<T, ForeignAssetsInstanceOf<T>>;
+
+type TrustBackedAssetsInstanceOf<T> = <T as Config>::TrustBackedAssetsInstance;
+type ForeignAssetsInstanceOf<T> = <T as Config>::ForeignAssetsInstance;
+
+type TrustBackedAssetsWeightInfoOf<T> =
+	<T as pallet_assets::Config<TrustBackedAssetsInstanceOf<T>>>::WeightInfo;
+type ForeignAssetsWeightInfoOf<T> =
+	<T as pallet_assets::Config<ForeignAssetsInstanceOf<T>>>::WeightInfo;
 type WeightOf<T> = <T as Config>::WeightInfo;
+
+// Our unified asset identifier type. The variant determines which asset instance to call.
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
+pub enum MultiAssetId<TrustId, ForeignId> {
+	TrustBacked(TrustId),
+	Foreign(ForeignId),
+}
+
+/// Renamed to TokenIdOf for minimal changes.
+/// It wraps the asset ID from:
+/// - the trust‑backed instance (using `TrustBackedAssetsInstanceOf<T>`), and
+/// - the foreign instance (using `ForeignAssetsInstanceOf<T>`).
+type TokenIdOf<T> = MultiAssetId<
+	<pallet_assets::Pallet<T, TrustBackedAssetsInstanceOf<T>> as Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::AssetId,
+	<pallet_assets::Pallet<T, ForeignAssetsInstanceOf<T>> as Inspect<
+		<T as frame_system::Config>::AccountId,
+	>>::AssetId,
+>;
+
+type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
+type BalanceOf<T> = <T as Config>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -42,13 +80,44 @@ pub mod pallet {
 	use super::*;
 
 	/// Configure the pallet by specifying the parameters and types on which it depends.
+	///
+	/// It now requires two asset instances:
+	/// - `TrustBackedAssetsInstance`: used for trust‑backed assets (formerly the sole instance),
+	/// - `ForeignAssetsInstance`: used for foreign assets.
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_assets::Config<Self::AssetsInstance> {
+	pub trait Config:
+		frame_system::Config
+		+ pallet_assets::Config<Self::TrustBackedAssetsInstance>
+		+ pallet_assets::Config<Self::ForeignAssetsInstance>
+	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
-		/// The instance of pallet-assets.
-		type AssetsInstance;
-		/// Weight information for dispatchables in this pallet.
+		/// The asset instance for trust‑backed assets (renamed from the old AssetsInstance).
+		type TrustBackedAssetsInstance;
+		/// The asset instance for foreign assets.
+		type ForeignAssetsInstance;
+		type Balance: Parameter
+			+ MaybeSerializeDeserialize
+			+ Default
+			+ Copy
+			+ Into<
+				<pallet_assets::Pallet<Self, Self::TrustBackedAssetsInstance> as Inspect<
+					<Self as frame_system::Config>::AccountId,
+				>>::Balance,
+			> + From<
+				<pallet_assets::Pallet<Self, Self::TrustBackedAssetsInstance> as Inspect<
+					<Self as frame_system::Config>::AccountId,
+				>>::Balance,
+			> + Into<
+				<pallet_assets::Pallet<Self, Self::ForeignAssetsInstance> as Inspect<
+					<Self as frame_system::Config>::AccountId,
+				>>::Balance,
+			> + From<
+				<pallet_assets::Pallet<Self, Self::ForeignAssetsInstance> as Inspect<
+					<Self as frame_system::Config>::AccountId,
+				>>::Balance,
+			>;
+		/// Weight information for dispatchable functions in this pallet.
 		type WeightInfo: WeightInfo;
 	}
 
@@ -94,6 +163,14 @@ pub mod pallet {
 		},
 	}
 
+	// A helper function to compute the weight parameter based on the token variant.
+	fn weight_param<T: Config>(token: &TokenIdOf<T>) -> u32 {
+		match token {
+			MultiAssetId::TrustBacked(_) => 0,
+			MultiAssetId::Foreign(_) => 1,
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Transfers `value` amount of tokens from the caller's account to account `to`.
@@ -103,7 +180,13 @@ pub mod pallet {
 		/// - `to` - The recipient account.
 		/// - `value` - The number of tokens to transfer.
 		#[pallet::call_index(3)]
-		#[pallet::weight(AssetsWeightInfoOf::<T>::transfer_keep_alive())]
+		#[pallet::weight(
+            if weight_param::<T> (& token) == 0 {
+            TrustBackedAssetsWeightInfoOf::<T>::transfer_keep_alive()
+            } else {
+            ForeignAssetsWeightInfoOf::<T>::transfer_keep_alive()
+            }
+        )]
 		pub fn transfer(
 			origin: OriginFor<T>,
 			token: TokenIdOf<T>,
@@ -111,12 +194,24 @@ pub mod pallet {
 			value: BalanceOf<T>,
 		) -> DispatchResult {
 			let from = ensure_signed(origin.clone())?;
-			AssetsOf::<T>::transfer_keep_alive(
-				origin,
-				token.clone().into(),
-				T::Lookup::unlookup(to.clone()),
-				value,
-			)?;
+			match token.clone() {
+				MultiAssetId::TrustBacked(id) => {
+					TrustBackedAssetsOf::<T>::transfer_keep_alive(
+						origin,
+						id.into(),
+						T::Lookup::unlookup(to.clone()),
+						value.into(),
+					)?;
+				},
+				MultiAssetId::Foreign(id) => {
+					ForeignAssetsOf::<T>::transfer_keep_alive(
+						origin,
+						id.into(),
+						T::Lookup::unlookup(to.clone()),
+						value.into(),
+					)?;
+				},
+			}
 			Self::deposit_event(Event::Transfer { token, from: Some(from), to: Some(to), value });
 			Ok(())
 		}
@@ -499,7 +594,7 @@ pub mod pallet {
 		fn weight(request: &Self::Read) -> Weight {
 			use Read::*;
 			match request {
-				TotalSupply(_) => <T as Config>::WeightInfo::total_supply(),
+				TotalSupply(id) => <T as Config>::WeightInfo::total_supply(weight_param(id)),
 				BalanceOf { .. } => <T as Config>::WeightInfo::balance_of(),
 				Allowance { .. } => <T as Config>::WeightInfo::allowance(),
 				TokenName(_) => <T as Config>::WeightInfo::token_name(),
@@ -516,23 +611,110 @@ pub mod pallet {
 		fn read(request: Self::Read) -> Self::Result {
 			use Read::*;
 			match request {
-				TotalSupply(token) => ReadResult::TotalSupply(AssetsOf::<T>::total_supply(token)),
-				BalanceOf { token, owner } =>
-					ReadResult::BalanceOf(AssetsOf::<T>::balance(token, owner)),
-				Allowance { token, owner, spender } =>
-					ReadResult::Allowance(AssetsOf::<T>::allowance(token, &owner, &spender)),
-				TokenName(token) => ReadResult::TokenName(
-					Some(<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::name(token))
+				TotalSupply(token) => {
+					let total = match token {
+						MultiAssetId::TrustBacked(id) =>
+							TrustBackedAssetsOf::<T>::total_supply(id).into(),
+						MultiAssetId::Foreign(id) => ForeignAssetsOf::<T>::total_supply(id).into(),
+					};
+					ReadResult::TotalSupply(total)
+				},
+				BalanceOf { token, owner } => {
+					let bal = match token {
+						MultiAssetId::TrustBacked(id) => pallet_assets::Pallet::<
+							T,
+							TrustBackedAssetsInstanceOf<T>,
+						>::balance(id, &owner)
+						.into(),
+						MultiAssetId::Foreign(id) => pallet_assets::Pallet::<
+							T,
+							ForeignAssetsInstanceOf<T>,
+						>::balance(id, &owner)
+						.into(),
+					};
+					ReadResult::BalanceOf(bal)
+				},
+				Allowance { token, owner, spender } => {
+					let allow = match token {
+						MultiAssetId::TrustBacked(id) => pallet_assets::Pallet::<
+							T,
+							TrustBackedAssetsInstanceOf<T>,
+						>::allowance(id, &owner, &spender)
+						.into(),
+						MultiAssetId::Foreign(id) => pallet_assets::Pallet::<
+							T,
+							ForeignAssetsInstanceOf<T>,
+						>::allowance(id, &owner, &spender)
+						.into(),
+					};
+					ReadResult::Allowance(allow)
+				},
+				TokenName(token) => {
+					let name = match token {
+						MultiAssetId::TrustBacked(id) => Some(<pallet_assets::Pallet<
+							T,
+							TrustBackedAssetsInstanceOf<T>,
+						> as MetadataInspect<AccountIdOf<T>>>::name(
+							id
+						))
 						.filter(|v| !v.is_empty()),
-				),
-				TokenSymbol(token) => ReadResult::TokenSymbol(
-					Some(<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::symbol(token))
+						MultiAssetId::Foreign(id) => Some(<pallet_assets::Pallet<
+							T,
+							ForeignAssetsInstanceOf<T>,
+						> as MetadataInspect<AccountIdOf<T>>>::name(
+							id
+						))
 						.filter(|v| !v.is_empty()),
-				),
-				TokenDecimals(token) => ReadResult::TokenDecimals(
-					<AssetsOf<T> as MetadataInspect<AccountIdOf<T>>>::decimals(token),
-				),
-				TokenExists(token) => ReadResult::TokenExists(AssetsOf::<T>::asset_exists(token)),
+					};
+					ReadResult::TokenName(name)
+				},
+				TokenSymbol(token) => {
+					let symbol = match token {
+						MultiAssetId::TrustBacked(id) => Some(<pallet_assets::Pallet<
+							T,
+							TrustBackedAssetsInstanceOf<T>,
+						> as MetadataInspect<AccountIdOf<T>>>::symbol(
+							id
+						))
+						.filter(|v| !v.is_empty()),
+						MultiAssetId::Foreign(id) => Some(<pallet_assets::Pallet<
+							T,
+							ForeignAssetsInstanceOf<T>,
+						> as MetadataInspect<AccountIdOf<T>>>::symbol(
+							id
+						))
+						.filter(|v| !v.is_empty()),
+					};
+					ReadResult::TokenSymbol(symbol)
+				},
+				TokenDecimals(token) => {
+					let decimals = match token {
+						MultiAssetId::TrustBacked(id) => <pallet_assets::Pallet<
+							T,
+							TrustBackedAssetsInstanceOf<T>,
+						> as MetadataInspect<AccountIdOf<T>>>::decimals(
+							id
+						),
+						MultiAssetId::Foreign(id) => <pallet_assets::Pallet<
+							T,
+							ForeignAssetsInstanceOf<T>,
+						> as MetadataInspect<AccountIdOf<T>>>::decimals(
+							id
+						),
+					};
+					ReadResult::TokenDecimals(decimals)
+				},
+				TokenExists(token) => {
+					let exists = match token {
+						MultiAssetId::TrustBacked(id) => pallet_assets::Pallet::<
+							T,
+							TrustBackedAssetsInstanceOf<T>,
+						>::asset_exists(id),
+						MultiAssetId::Foreign(id) =>
+							pallet_assets::Pallet::<T, ForeignAssetsInstanceOf<T>>::asset_exists(id),
+					};
+					ReadResult::TokenExists(exists)
+				},
 			}
 		}
 	}

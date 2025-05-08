@@ -8,6 +8,7 @@ use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_nfts::PalletFeatures;
 use parachains_common::{AssetIdForTrustBackedAssets, CollectionId, ItemId, Signature};
 use sp_runtime::traits::Verify;
+use xcm::v5::Location;
 
 use crate::{
 	deposit, AccountId, Assets, Balance, Balances, BlockNumber, Nfts, Runtime, RuntimeEvent,
@@ -124,6 +125,7 @@ impl pallet_nft_fractionalization::Config for Runtime {
 
 pub(crate) type TrustBackedAssetsInstance = pallet_assets::Instance1;
 pub type TrustBackedAssetsCall = pallet_assets::Call<Runtime, TrustBackedAssetsInstance>;
+
 impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type ApprovalDeposit = ApprovalDeposit;
 	type AssetAccountDeposit = AssetAccountDeposit;
@@ -140,6 +142,32 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type ForceOrigin = AssetsForceOrigin;
 	type Freezer = ();
 	type Holder = ();
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type RemoveItemsLimit = ConstU32<1000>;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = AssetsStringLimit;
+	type WeightInfo = pallet_assets::weights::SubstrateWeight<Self>;
+}
+
+pub(crate) type ForeignAssetsInstance = pallet_assets::Instance2;
+pub type ForeignAssetsCall = pallet_assets::Call<Runtime, ForeignAssetsInstance>;
+
+impl pallet_assets::Config<ForeignAssetsInstance> for Runtime {
+	type ApprovalDeposit = ApprovalDeposit;
+	type AssetAccountDeposit = AssetAccountDeposit;
+	type AssetDeposit = AssetDeposit;
+	type AssetId = Location;
+	type AssetIdParameter = Location;
+	type Balance = Balance;
+	#[cfg(feature = "runtime-benchmarks")]
+	type BenchmarkHelper = ();
+	type CallbackHandle = ();
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
+	type Currency = Balances;
+	type Extra = ();
+	type ForceOrigin = AssetsForceOrigin;
+	type Freezer = ();
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type RemoveItemsLimit = ConstU32<1000>;
