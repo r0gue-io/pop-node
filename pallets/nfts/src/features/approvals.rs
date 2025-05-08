@@ -20,7 +20,6 @@
 //! to have the functionality defined in this module.
 
 use frame_support::pallet_prelude::*;
-use frame_system::pallet_prelude::BlockNumberFor;
 
 use crate::*;
 
@@ -48,7 +47,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		item: T::ItemId,
 		delegate: T::AccountId,
-		maybe_deadline: Option<BlockNumberFor<T>>,
+		maybe_deadline: Option<BlockNumberFor<T, I>>,
 	) -> DispatchResult {
 		ensure!(
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
@@ -66,8 +65,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			ensure!(check_origin == details.owner, Error::<T, I>::NoPermission);
 		}
 
-		let deadline =
-			maybe_deadline.map(|d| d.saturating_add(frame_system::Pallet::<T>::block_number()));
+		let now = T::BlockNumberProvider::current_block_number();
+		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
 		details
 			.approvals
@@ -110,7 +109,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		let maybe_deadline = details.approvals.get(&delegate).ok_or(Error::<T, I>::NotDelegate)?;
 
 		let is_past_deadline = if let Some(deadline) = maybe_deadline {
-			let now = frame_system::Pallet::<T>::block_number();
+			let now = T::BlockNumberProvider::current_block_number();
 			now > *deadline
 		} else {
 			false
@@ -212,7 +211,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		collection: T::CollectionId,
 		delegate: T::AccountId,
 		deposit: DepositBalanceOf<T, I>,
-		maybe_deadline: Option<BlockNumberFor<T>>,
+		maybe_deadline: Option<BlockNumberFor<T, I>>,
 	) -> DispatchResult {
 		ensure!(
 			Self::is_pallet_feature_enabled(PalletFeature::Approvals),
@@ -230,8 +229,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			collection_config.is_setting_enabled(CollectionSetting::TransferableItems),
 			Error::<T, I>::ItemsNonTransferable
 		);
-		let deadline =
-			maybe_deadline.map(|d| d.saturating_add(frame_system::Pallet::<T>::block_number()));
+		let now = T::BlockNumberProvider::current_block_number();
+		let deadline = maybe_deadline.map(|d| d.saturating_add(now));
 
 		CollectionApprovals::<T, I>::try_mutate_exists(
 			(&collection, &owner, &delegate),
@@ -330,7 +329,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			CollectionApprovals::<T, I>::get((&collection, &owner, &delegate))
 				.ok_or(Error::<T, I>::NoPermission)?;
 		if let Some(deadline) = maybe_deadline {
-			let block_number = frame_system::Pallet::<T>::block_number();
+			let block_number = T::BlockNumberProvider::current_block_number();
 			ensure!(block_number <= deadline, Error::<T, I>::ApprovalExpired);
 		}
 		Ok(())
@@ -365,7 +364,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			let maybe_deadline =
 				details.approvals.get(delegate).ok_or(Error::<T, I>::NoPermission)?;
 			if let Some(deadline) = maybe_deadline {
-				let block_number = frame_system::Pallet::<T>::block_number();
+				let block_number = T::BlockNumberProvider::current_block_number();
 				ensure!(block_number <= *deadline, Error::<T, I>::ApprovalExpired);
 			}
 			return Ok(());

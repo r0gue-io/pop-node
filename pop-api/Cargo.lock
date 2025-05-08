@@ -2272,7 +2272,7 @@ dependencies = [
 
 [[package]]
 name = "pallet-nfts"
-version = "31.0.0"
+version = "34.1.0"
 dependencies = [
  "enumflags2",
  "frame-benchmarking",

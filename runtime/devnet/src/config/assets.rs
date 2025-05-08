@@ -64,6 +64,7 @@ impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
+	type BlockNumberProvider = frame_system::Pallet<Runtime>;
 	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionBalanceDeposit = NftsCollectionBalanceDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
