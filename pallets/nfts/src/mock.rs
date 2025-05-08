@@ -65,6 +65,7 @@ parameter_types! {
 impl Config for Test {
 	type ApprovalsLimit = ConstU32<10>;
 	type AttributeDepositBase = ConstU64<1>;
+	type BlockNumberProvider = frame_system::Pallet<Test>;
 	type CollectionApprovalDeposit = ConstU64<1>;
 	type CollectionBalanceDeposit = ConstU64<1>;
 	type CollectionDeposit = ConstU64<2>;

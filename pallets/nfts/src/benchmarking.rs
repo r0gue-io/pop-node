@@ -26,8 +26,8 @@ use frame_support::{
 	traits::{EnsureOrigin, Get, UnfilteredDispatchable},
 	BoundedVec,
 };
-use frame_system::{pallet_prelude::BlockNumberFor, RawOrigin as SystemOrigin};
-use sp_runtime::traits::{Bounded, One};
+use frame_system::RawOrigin as SystemOrigin;
+use sp_runtime::traits::{Bounded, One, Zero};
 
 use super::*;
 use crate::Pallet as Nfts;
@@ -579,7 +579,7 @@ benchmarks_instance_pallet! {
 		let (item, ..) = mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-		let deadline = BlockNumberFor::<T>::max_value();
+		let deadline = BlockNumberFor::<T, I>::max_value();
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item, delegate_lookup, Some(deadline))
 	verify {
 		assert_last_event::<T, I>(Event::TransferApproved { collection, item: Some(item), owner: caller, delegate, deadline: Some(deadline) }.into());
@@ -591,7 +591,7 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
-		let deadline = BlockNumberFor::<T>::max_value();
+		let deadline = BlockNumberFor::<T, I>::max_value();
 		Nfts::<T, I>::approve_transfer(origin, collection, item, delegate_lookup.clone(), Some(deadline))?;
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item, delegate_lookup)
 	verify {
@@ -604,7 +604,7 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
-		let deadline = BlockNumberFor::<T>::max_value();
+		let deadline = BlockNumberFor::<T, I>::max_value();
 		Nfts::<T, I>::approve_transfer(origin, collection, item, delegate_lookup.clone(), Some(deadline))?;
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item)
 	verify {
@@ -714,10 +714,10 @@ benchmarks_instance_pallet! {
 		let price_direction = PriceDirection::Receive;
 		let price_with_direction = PriceWithDirection { amount: price, direction: price_direction };
 		let duration = T::MaxDeadlineDuration::get();
-		frame_system::Pallet::<T>::set_block_number(One::one());
+		T::BlockNumberProvider::set_block_number(One::one());
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item1, collection, Some(item2), Some(price_with_direction.clone()), duration)
 	verify {
-		let current_block = frame_system::Pallet::<T>::block_number();
+		let current_block = T::BlockNumberProvider::current_block_number();
 		assert_last_event::<T, I>(Event::SwapCreated {
 			offered_collection: collection,
 			offered_item: item1,
@@ -737,7 +737,7 @@ benchmarks_instance_pallet! {
 		let duration = T::MaxDeadlineDuration::get();
 		let price_direction = PriceDirection::Receive;
 		let price_with_direction = PriceWithDirection { amount: price, direction: price_direction };
-		frame_system::Pallet::<T>::set_block_number(One::one());
+		T::BlockNumberProvider::set_block_number(One::one());
 		Nfts::<T, I>::create_swap(origin, collection, item1, collection, Some(item2), Some(price_with_direction.clone()), duration)?;
 	}: _(SystemOrigin::Signed(caller.clone()), collection, item1)
 	verify {
@@ -763,7 +763,7 @@ benchmarks_instance_pallet! {
 		let target_lookup = T::Lookup::unlookup(target.clone());
 		T::Currency::make_free_balance_be(&target, T::Currency::minimum_balance() + T::CollectionBalanceDeposit::get());
 		let origin = SystemOrigin::Signed(caller.clone());
-		frame_system::Pallet::<T>::set_block_number(One::one());
+		T::BlockNumberProvider::set_block_number(One::one());
 		Nfts::<T, I>::transfer(origin.clone().into(), collection, item2, target_lookup)?;
 		Nfts::<T, I>::create_swap(
 			origin.clone().into(),
@@ -776,7 +776,7 @@ benchmarks_instance_pallet! {
 		)?;
 	}: _(SystemOrigin::Signed(target.clone()), collection, item2, collection, item1, Some(price_with_direction.clone()))
 	verify {
-		let current_block = frame_system::Pallet::<T>::block_number();
+		let currnet_block = T::BlockNumberProvider::current_block_number();
 		assert_last_event::<T, I>(Event::SwapClaimed {
 			sent_collection: collection,
 			sent_item: item2,
@@ -824,7 +824,7 @@ benchmarks_instance_pallet! {
 
 		let target: T::AccountId = account("target", 0, SEED);
 		T::Currency::make_free_balance_be(&target, DepositBalanceOf::<T, I>::max_value());
-		frame_system::Pallet::<T>::set_block_number(One::one());
+		T::BlockNumberProvider::set_block_number(One::one());
 	}: _(SystemOrigin::Signed(target.clone()), Box::new(mint_data), signature, caller)
 	verify {
 		let metadata: BoundedVec<_, _> = metadata.try_into().unwrap();
@@ -867,7 +867,7 @@ benchmarks_instance_pallet! {
 		let message = Encode::encode(&pre_signed_data);
 		let signature = T::Helper::sign(&signer_public, &message);
 
-		frame_system::Pallet::<T>::set_block_number(One::one());
+		T::BlockNumberProvider::set_block_number(One::one());
 	}: _(SystemOrigin::Signed(item_owner.clone()), pre_signed_data, signature, signer.clone())
 	verify {
 		assert_last_event::<T, I>(
@@ -885,7 +885,7 @@ benchmarks_instance_pallet! {
 		mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-		let deadline = BlockNumberFor::<T>::max_value();
+		let deadline = BlockNumberFor::<T, I>::max_value();
 	}: _(SystemOrigin::Signed(caller.clone()), collection, delegate_lookup, Some(deadline))
 	verify {
 		assert_last_event::<T, I>(Event::TransferApproved { collection, item: None, owner: caller, delegate, deadline: Some(deadline) }.into());
@@ -896,7 +896,7 @@ benchmarks_instance_pallet! {
 		mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-		let deadline = BlockNumberFor::<T>::max_value();
+		let deadline = BlockNumberFor::<T, I>::max_value();
 	}: _(SystemOrigin::Root, caller_lookup, collection, delegate_lookup, Some(deadline))
 	verify {
 		assert_last_event::<T, I>(Event::TransferApproved { collection, item: None, owner: caller, delegate, deadline: Some(deadline) }.into());
@@ -908,7 +908,7 @@ benchmarks_instance_pallet! {
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
 		let origin = SystemOrigin::Signed(caller.clone()).into();
-		let deadline = BlockNumberFor::<T>::max_value();
+		let deadline = BlockNumberFor::<T, I>::max_value();
 		Nfts::<T, I>::approve_collection_transfer(origin, collection, delegate_lookup.clone(), Some(deadline))?;
 	}: _(SystemOrigin::Signed(caller.clone()), collection, delegate_lookup)
 	verify {
@@ -920,7 +920,7 @@ benchmarks_instance_pallet! {
 		mint_item::<T, I>(0);
 		let delegate: T::AccountId = account("delegate", 0, SEED);
 		let delegate_lookup = T::Lookup::unlookup(delegate.clone());
-		let deadline = BlockNumberFor::<T>::max_value();
+		let deadline = BlockNumberFor::<T, I>::max_value();
 		Nfts::<T, I>::approve_collection_transfer(SystemOrigin::Signed(caller.clone()).into(), collection, delegate_lookup.clone(), Some(deadline))?;
 	}: _(SystemOrigin::Root, caller_lookup, collection, delegate_lookup)
 	verify {
@@ -937,7 +937,7 @@ benchmarks_instance_pallet! {
 				SystemOrigin::Signed(caller.clone()).into(),
 				collection,
 				T::Lookup::unlookup(delegate),
-				Some(BlockNumberFor::<T>::max_value()),
+				Some(BlockNumberFor::<T, I>::max_value()),
 			)?;
 		}
 	}: _(SystemOrigin::Signed(caller.clone()), collection, n)
@@ -956,7 +956,7 @@ benchmarks_instance_pallet! {
 				SystemOrigin::Signed(caller.clone()).into(),
 				collection,
 				T::Lookup::unlookup(delegate),
-				Some(BlockNumberFor::<T>::max_value()),
+				Some(BlockNumberFor::<T, I>::max_value()),
 			)?;
 		}
 	}: _(SystemOrigin::Root, caller_lookup, collection, n)
