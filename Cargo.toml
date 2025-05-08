@@ -54,7 +54,7 @@ rand = "0.8.5"
 scale-info = { version = "2.11.6", default-features = false, features = [
 	"derive",
 ] }
-serde = "1.0.214"
+serde = { version = "1.0.214", default-features = false }
 serde_json = { version = "1.0.132", default-features = false }
 smallvec = "1.11.2"
 subxt = "0.41.0"
