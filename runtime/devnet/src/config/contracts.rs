@@ -92,7 +92,6 @@ impl pallet_revive::Config for Runtime {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Self>;
 	// No runtime dispatchables are callable from contracts.
 	type CallFilter = Nothing;
-	type ChainExtension = ();
 	type ChainId = ChainId;
 	type CodeHashLockupDepositPercent = CodeHashLockupDepositPercent;
 	type Currency = Balances;
@@ -105,6 +104,7 @@ impl pallet_revive::Config for Runtime {
 	type NativeToEthRatio = NativeToEthRatio;
 	// 512 MB. Used in an integrity test that verifies the runtime has enough memory.
 	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
+	type Precompiles = ();
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
