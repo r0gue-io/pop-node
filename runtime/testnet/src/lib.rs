@@ -388,8 +388,8 @@ mod runtime {
 	// Pop API
 	#[runtime::pallet_index(150)]
 	pub type Fungibles = fungibles::Pallet<Runtime>;
-	#[runtime::pallet_index(152)]
-	pub type Messaging = messaging::Pallet<Runtime>;
+	// #[runtime::pallet_index(152)]
+	// pub type Messaging = messaging::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

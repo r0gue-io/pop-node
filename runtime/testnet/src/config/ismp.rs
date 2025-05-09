@@ -48,9 +48,9 @@ pub struct Router;
 impl IsmpRouter for Router {
 	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
 		use pallet_api::messaging::transports::ismp::*;
-		if id == ID {
-			return Ok(Box::new(Handler::<Runtime>::new()));
-		}
+		// if id == ID {
+		// 	return Ok(Box::new(Handler::<Runtime>::new()));
+		// }
 		Err(Error::ModuleNotFound(id))?
 	}
 }

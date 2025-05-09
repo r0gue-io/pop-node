@@ -42,9 +42,9 @@ pub enum RuntimeRead {
 	/// Fungible token queries.
 	#[codec(index = 150)]
 	Fungibles(fungibles::Read<Runtime>),
-	/// Messaging state queries.
-	#[codec(index = 152)]
-	Messaging(messaging::Read<Runtime>),
+	// /// Messaging state queries.
+	// #[codec(index = 152)]
+	// Messaging(messaging::Read<Runtime>),
 }
 
 impl Readable for RuntimeRead {
@@ -56,7 +56,7 @@ impl Readable for RuntimeRead {
 	fn weight(&self) -> Weight {
 		match self {
 			RuntimeRead::Fungibles(key) => fungibles::Pallet::weight(key),
-			RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
+			//RuntimeRead::Messaging(key) => messaging::Pallet::weight(key),
 		}
 	}
 
@@ -64,7 +64,7 @@ impl Readable for RuntimeRead {
 	fn read(self) -> Self::Result {
 		match self {
 			RuntimeRead::Fungibles(key) => RuntimeResult::Fungibles(fungibles::Pallet::read(key)),
-			RuntimeRead::Messaging(key) => RuntimeResult::Messaging(messaging::Pallet::read(key)),
+			//RuntimeRead::Messaging(key) => RuntimeResult::Messaging(messaging::Pallet::read(key)),
 		}
 	}
 }
@@ -75,8 +75,8 @@ impl Readable for RuntimeRead {
 pub enum RuntimeResult {
 	/// Fungible token read results.
 	Fungibles(fungibles::ReadResult<Runtime>),
-	/// Messaging state read results.
-	Messaging(messaging::ReadResult),
+	// /// Messaging state read results.
+	// Messaging(messaging::ReadResult),
 }
 
 impl RuntimeResult {
@@ -84,110 +84,110 @@ impl RuntimeResult {
 	fn encode(&self) -> Vec<u8> {
 		match self {
 			RuntimeResult::Fungibles(result) => result.encode(),
-			RuntimeResult::Messaging(result) => result.encode(),
+			//RuntimeResult::Messaging(result) => result.encode(),
 		}
 	}
 }
 
-impl messaging::Config for Runtime {
-	type ByteFee = TransactionByteFee;
-	type Callback = Callback;
-	type Deposit = Balances;
-	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
-	// much as onchain cost.
-	type IsmpByteFee = ();
-	type IsmpDispatcher = Ismp;
-	type MaxContextLen = ConstU32<64>;
-	type MaxDataLen = ConstU32<1024>;
-	type MaxKeyLen = ConstU32<32>;
-	type MaxKeys = ConstU32<10>;
-	// TODO: size appropriately
-	type MaxRemovals = ConstU32<1024>;
-	// TODO: ensure within the contract buffer bounds
-	type MaxResponseLen = ConstU32<1024>;
-	type OriginConverter = LocalOriginToLocation;
-	type RuntimeEvent = RuntimeEvent;
-	type RuntimeHoldReason = RuntimeHoldReason;
-	type Xcm = QueryHandler;
-	type XcmResponseOrigin = EnsureResponse;
-}
+// impl messaging::Config for Runtime {
+// 	type ByteFee = TransactionByteFee;
+// 	type Callback = Callback;
+// 	type Deposit = Balances;
+// 	// TODO: ISMP state written to offchain indexing, require some protection but perhaps not as
+// 	// much as onchain cost.
+// 	type IsmpByteFee = ();
+// 	type IsmpDispatcher = Ismp;
+// 	type MaxContextLen = ConstU32<64>;
+// 	type MaxDataLen = ConstU32<1024>;
+// 	type MaxKeyLen = ConstU32<32>;
+// 	type MaxKeys = ConstU32<10>;
+// 	// TODO: size appropriately
+// 	type MaxRemovals = ConstU32<1024>;
+// 	// TODO: ensure within the contract buffer bounds
+// 	type MaxResponseLen = ConstU32<1024>;
+// 	type OriginConverter = LocalOriginToLocation;
+// 	type RuntimeEvent = RuntimeEvent;
+// 	type RuntimeHoldReason = RuntimeHoldReason;
+// 	type Xcm = QueryHandler;
+// 	type XcmResponseOrigin = EnsureResponse;
+// }
 
-pub struct EnsureResponse;
-impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureResponse {
-	type Success = Location;
+// pub struct EnsureResponse;
+// impl<O: Into<Result<Origin, O>> + From<Origin>> EnsureOrigin<O> for EnsureResponse {
+// 	type Success = Location;
+//
+// 	fn try_origin(o: O) -> Result<Self::Success, O> {
+// 		o.into().and_then(|o| match o {
+// 			Origin::Response(location) => Ok(location),
+// 			r => Err(O::from(r)),
+// 		})
+// 	}
+//
+// 	#[cfg(feature = "runtime-benchmarks")]
+// 	fn try_successful_origin() -> Result<O, ()> {
+// 		todo!()
+// 	}
+// }
 
-	fn try_origin(o: O) -> Result<Self::Success, O> {
-		o.into().and_then(|o| match o {
-			Origin::Response(location) => Ok(location),
-			r => Err(O::from(r)),
-		})
-	}
+// pub struct Callback;
+// impl messaging::CallbackT<Runtime> for Callback {
+// 	fn execute(account: AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
+// 		// Default
+// 		#[cfg(not(feature = "std"))]
+// 		let debug = DebugInfo::Skip;
+// 		#[cfg(not(feature = "std"))]
+// 		let collect_events = CollectEvents::Skip;
+// 		// Testing
+// 		#[cfg(feature = "std")]
+// 		let debug = DebugInfo::UnsafeDebug;
+// 		#[cfg(feature = "std")]
+// 		let collect_events = CollectEvents::UnsafeCollect;
+//
+// 		let mut output = Contracts::bare_call(
+// 			account.clone(),
+// 			account,
+// 			Default::default(),
+// 			weight,
+// 			Default::default(),
+// 			data,
+// 			debug,
+// 			collect_events,
+// 			Determinism::Enforced,
+// 		);
+// 		if let Ok(return_value) = &output.result {
+// 			if return_value.did_revert() {
+// 				output.result = Err(pallet_revive::Error::<Runtime>::ContractReverted.into());
+// 			}
+// 		}
+//
+// 		let post_info = PostDispatchInfo {
+// 			actual_weight: Some(output.gas_consumed.saturating_add(Self::weight())),
+// 			pays_fee: Default::default(),
+// 		};
+//
+// 		output
+// 			.result
+// 			.map(|_| post_info)
+// 			.map_err(|e| DispatchErrorWithPostInfo { post_info, error: e })
+// 	}
+//
+// 	fn weight() -> Weight {
+// 		use pallet_revive::WeightInfo;
+// 		<Runtime as pallet_revive::Config>::WeightInfo::call()
+// 	}
+// }
 
-	#[cfg(feature = "runtime-benchmarks")]
-	fn try_successful_origin() -> Result<O, ()> {
-		todo!()
-	}
-}
-
-pub struct Callback;
-impl messaging::CallbackT<Runtime> for Callback {
-	fn execute(account: AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
-		// Default
-		#[cfg(not(feature = "std"))]
-		let debug = DebugInfo::Skip;
-		#[cfg(not(feature = "std"))]
-		let collect_events = CollectEvents::Skip;
-		// Testing
-		#[cfg(feature = "std")]
-		let debug = DebugInfo::UnsafeDebug;
-		#[cfg(feature = "std")]
-		let collect_events = CollectEvents::UnsafeCollect;
-
-		let mut output = Contracts::bare_call(
-			account.clone(),
-			account,
-			Default::default(),
-			weight,
-			Default::default(),
-			data,
-			debug,
-			collect_events,
-			Determinism::Enforced,
-		);
-		if let Ok(return_value) = &output.result {
-			if return_value.did_revert() {
-				output.result = Err(pallet_revive::Error::<Runtime>::ContractReverted.into());
-			}
-		}
-
-		let post_info = PostDispatchInfo {
-			actual_weight: Some(output.gas_consumed.saturating_add(Self::weight())),
-			pays_fee: Default::default(),
-		};
-
-		output
-			.result
-			.map(|_| post_info)
-			.map_err(|e| DispatchErrorWithPostInfo { post_info, error: e })
-	}
-
-	fn weight() -> Weight {
-		use pallet_revive::WeightInfo;
-		<Runtime as pallet_revive::Config>::WeightInfo::call()
-	}
-}
-
-pub struct QueryHandler;
-impl NotifyQueryHandler<Runtime> for QueryHandler {
-	fn new_notify_query(
-		responder: impl Into<Location>,
-		notify: messaging::Call<Runtime>,
-		timeout: BlockNumber,
-		match_querier: impl Into<Location>,
-	) -> u64 {
-		PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
-	}
-}
+// pub struct QueryHandler;
+// impl NotifyQueryHandler<Runtime> for QueryHandler {
+// 	fn new_notify_query(
+// 		responder: impl Into<Location>,
+// 		notify: messaging::Call<Runtime>,
+// 		timeout: BlockNumber,
+// 		match_querier: impl Into<Location>,
+// 	) -> u64 {
+// 		PolkadotXcm::new_notify_query(responder, notify, timeout, match_querier)
+// 	}
+// }
 
 impl fungibles::Config for Runtime {
 	type AssetsInstance = TrustBackedAssetsInstance;
@@ -265,20 +265,20 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 			)
 		};
 
-		let contain_messaging: bool = {
-			use messaging::Call::*;
-			matches!(
-				c,
-				RuntimeCall::Messaging(
-					send { .. } |
-						ismp_get { .. } | ismp_post { .. } |
-						xcm_new_query { .. } |
-						remove { .. },
-				)
-			)
-		};
+		// let contain_messaging: bool = {
+		// 	use messaging::Call::*;
+		// 	matches!(
+		// 		c,
+		// 		RuntimeCall::Messaging(
+		// 			send { .. } |
+		// 				ismp_get { .. } | ismp_post { .. } |
+		// 				xcm_new_query { .. } |
+		// 				remove { .. },
+		// 		)
+		// 	)
+		// };
 
-		T::BaseCallFilter::contains(c) && contain_fungibles | contain_messaging
+		T::BaseCallFilter::contains(c) && contain_fungibles //| contain_messaging
 	}
 }
 
@@ -297,12 +297,12 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 			)
 		};
 
-		let contain_messaging: bool = {
-			use messaging::Read::*;
-			matches!(r, RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..)))
-		};
+		// let contain_messaging: bool = {
+		// 	use messaging::Read::*;
+		// 	matches!(r, RuntimeRead::Messaging(Poll(..) | Get(..) | QueryId(..)))
+		// };
 
-		contain_fungibles | contain_messaging
+		contain_fungibles //| contain_messaging
 	}
 }
 
