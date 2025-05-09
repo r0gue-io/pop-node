@@ -111,8 +111,8 @@ impl pallet_revive::Config for Runtime {
 	// 128 MB. Used in an integrity that verifies the runtime has enough memory.
 	type RuntimeMemory = ConstU32<{ 128 * 1024 * 1024 }>;
 	type Time = Timestamp;
-	// Disables access to unsafe host fns such as xcm_send.
-	type UnsafeUnstableInterface = ConstBool<false>;
+	// Enables access to unsafe host fns such as xcm_send.
+	type UnsafeUnstableInterface = ConstBool<true>;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
 	type WeightPrice = TransactionPayment;
