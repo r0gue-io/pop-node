@@ -55,6 +55,9 @@ use pop_api::{
 	primitives::AccountId,
 };
 
+#[cfg(test)]
+mod tests;
+
 /// By default, Pop API returns errors as [`pop_api::StatusCode`], which are convertible to
 /// [`Psp34Error`]. When using [`Psp34Error`], errors follow the PSP34 standard, making them easier
 /// to interpret.
@@ -62,6 +65,7 @@ pub type Result<T> = core::result::Result<T, Psp34Error>;
 
 /// Event emitted when a collection is created.
 #[ink::event]
+#[derive(Debug)]
 pub struct Created {
 	/// The collection.
 	#[ink(topic)]
@@ -75,6 +79,7 @@ pub struct Created {
 
 /// Event emitted when a collection is destroyed.
 #[ink::event]
+#[derive(Debug)]
 pub struct Destroyed {
 	/// The collection.
 	#[ink(topic)]
