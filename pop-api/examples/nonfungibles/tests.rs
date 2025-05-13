@@ -1,12 +1,12 @@
 use drink::{
 	assert_err, assert_last_contract_event, assert_ok, call,
 	devnet::{account_id_from_slice, AccountId, Balance, Runtime},
-	last_contract_event,
 	sandbox_api::nfts_api::NftsAPI,
 	session::Session,
 	TestExternalities, NO_SALT,
 };
 use pop_api::v0::nonfungibles::{events::Transfer, CollectionId, ItemId};
+use scale::Encode;
 
 use super::*;
 
@@ -91,7 +91,7 @@ fn next_item_id_works(mut session: Session) {
 	deploy_with_default(&mut session).unwrap();
 	assert_eq!(next_item_id(&mut session), 0);
 
-	// Mint a new collection item increments the `next_item_id`.
+	// Mint a new item increments the `next_item_id`.
 	assert_ok!(mint(&mut session, ALICE));
 	assert_eq!(next_item_id(&mut session), 1);
 }
@@ -101,10 +101,10 @@ fn balance_of_works(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
-	// No collection items.
+	// No items.
 	assert_eq!(balance_of(&mut session, ALICE), 0);
 	assert_eq!(balance_of(&mut session, ALICE), session.sandbox().balance_of(&COLLECTION, &ALICE));
-	// Mint a new collection item.
+	// Mint a new item.
 	assert_ok!(session.sandbox().mint(
 		Some(contract.clone()),
 		COLLECTION,
@@ -124,7 +124,7 @@ fn owner_of_works(mut session: Session) {
 	// No item owner.
 	assert_eq!(owner_of(&mut session, ITEM), None);
 	assert_eq!(owner_of(&mut session, ITEM), session.sandbox().owner(&COLLECTION, &ITEM));
-	// Mint a new collection item.
+	// Mint a new item.
 	assert_ok!(session.sandbox().mint(
 		Some(contract.clone()),
 		COLLECTION,
@@ -143,7 +143,8 @@ fn total_supply_works(mut session: Session) {
 	let contract = deploy_with_default(&mut session).unwrap();
 	// No item in circulation.
 	assert_eq!(total_supply(&mut session), 0);
-	// Collection items are in circulation.
+	assert_eq!(total_supply(&mut session), session.sandbox().total_supply(COLLECTION));
+	// Items are in circulation.
 	assert_ok!(session.sandbox().mint(
 		Some(contract.clone()),
 		COLLECTION,
@@ -152,7 +153,63 @@ fn total_supply_works(mut session: Session) {
 		None
 	));
 	assert_eq!(total_supply(&mut session), 1);
+	assert_eq!(total_supply(&mut session), session.sandbox().total_supply(COLLECTION));
 }
+
+#[drink::test(sandbox = Pop)]
+fn mint_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	deploy_with_default(&mut session).unwrap();
+	// Successfully mint a new item.
+	assert_ok!(mint(&mut session, ALICE));
+	assert_eq!(session.sandbox().total_supply(COLLECTION), 1);
+	assert_eq!(session.sandbox().balance_of(&COLLECTION, &ALICE), 1);
+	// Successfully emit event.
+	assert_last_contract_event!(
+		&session,
+		Transfer { from: None, to: Some(account_id_from_slice(&ALICE)), item: ITEM }
+	);
+}
+
+#[drink::test(sandbox = Pop)]
+fn burn_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		contract.into(),
+		None
+	));
+	// Successfully burn an item.
+	assert_ok!(burn(&mut session, ITEM));
+	assert_eq!(session.sandbox().total_supply(COLLECTION), 0);
+	assert_eq!(session.sandbox().balance_of(&COLLECTION, &ALICE), 0);
+}
+
+#[drink::test(sandbox = Pop)]
+fn burn_fails_with_unauthorized(mut session: Session) {}
+
+#[drink::test(sandbox = Pop)]
+fn burn_fails_with_not_approved(mut session: Session) {}
+
+#[drink::test(sandbox = Pop)]
+fn transfer_works(mut session: Session) {}
+
+#[drink::test(sandbox = Pop)]
+fn transfer_fails_with_unauthrorized(mut session: Session) {}
+
+#[drink::test(sandbox = Pop)]
+fn transfer_fails_with_not_approved(mut session: Session) {}
+
+#[drink::test(sandbox = Pop)]
+fn destroy_witness(mut session: Session) {}
+
+#[drink::test(sandbox = Pop)]
+fn destroy_fails_with_unauthorized(mut session: Session) {}
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.
 fn deploy(session: &mut Session<Pop>, method: &str, input: Vec<String>) -> Result<AccountId> {
@@ -192,4 +249,22 @@ fn total_supply(session: &mut Session<Pop>) -> u128 {
 
 fn mint(session: &mut Session<Pop>, to: AccountId) -> Result<()> {
 	call::<Pop, (), Psp34Error>(session, "mint", vec![to.to_string()], None)
+}
+
+fn burn(session: &mut Session<Pop>, item: ItemId) -> Result<()> {
+	call::<Pop, (), Psp34Error>(session, "burn", vec![item.to_string()], None)
+}
+
+fn transfer(session: &mut Session<Pop>, to: AccountId, item: ItemId) -> Result<()> {
+	call::<Pop, (), Psp34Error>(session, "transfer", vec![to.to_string(), item.to_string()], None)
+}
+
+fn destroy(session: &mut Session<Pop>, destroy_wintess: DestroyWitness) -> Result<()> {
+	let encoded_destroy_witness = destroy_wintess.encode();
+	call::<Pop, (), Psp34Error>(
+		session,
+		"destroy",
+		vec![serde_json::to_string::<Vec<u8>>(&encoded_destroy_witness).unwrap()],
+		None,
+	)
 }
