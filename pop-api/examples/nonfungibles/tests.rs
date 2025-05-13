@@ -1,23 +1,25 @@
 use drink::{
 	assert_err, assert_last_contract_event, assert_ok, call,
-	devnet::{account_id_from_slice, AccountId, Balance, Runtime},
+	devnet::{
+		account_id_from_slice,
+		error::{v0::Error, Nfts, NftsError::*},
+		AccountId, Balance, Runtime,
+	},
 	sandbox_api::nfts_api::NftsAPI,
 	session::Session,
-	TestExternalities, NO_SALT,
+	TestExternalities, Weight, NO_SALT,
 };
 use pop_api::v0::nonfungibles::{events::Transfer, CollectionId, ItemId};
-use scale::Encode;
 
 use super::*;
 
 const UNIT: Balance = 10_000_000_000;
-const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
-const INIT_VALUE: Balance = 100 * UNIT;
 const ALICE: AccountId = AccountId::new([1u8; 32]);
 const BOB: AccountId = AccountId::new([2_u8; 32]);
-const CHARLIE: AccountId = AccountId::new([3_u8; 32]);
 const COLLECTION: CollectionId = 0;
 const ITEM: ItemId = 0;
+const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
+const INIT_VALUE: Balance = 100 * UNIT;
 
 // The contract bundle provider.
 //
@@ -33,8 +35,7 @@ pub struct Pop {
 impl Default for Pop {
 	fn default() -> Self {
 		// Initialising genesis state, providing accounts with an initial balance.
-		let balances: Vec<(AccountId, u128)> =
-			vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)];
+		let balances: Vec<(AccountId, u128)> = vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT)];
 		let ext = BlockBuilder::<Runtime>::new_ext(balances);
 		Self { ext }
 	}
@@ -73,7 +74,6 @@ fn collection_id_works(mut session: Session) {
 	// Deploy a second contract increments the collection ID.
 	drink::deploy::<Pop, Psp34Error>(
 		&mut session,
-		// The local contract (i.e. `nonfungibles`).
 		BundleProvider::local().unwrap(),
 		"new",
 		vec!["None".to_string()],
@@ -173,7 +173,53 @@ fn mint_works(mut session: Session) {
 }
 
 #[drink::test(sandbox = Pop)]
+fn mint_fails_with_unauthorization(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	deploy_with_default(&mut session).unwrap();
+	// Failed with `Not the contract owner`.
+	session.set_actor(BOB);
+	assert_eq!(
+		mint(&mut session, ALICE),
+		Err(Psp34Error::Custom("Not the contract owner".to_string()))
+	);
+}
+
+#[drink::test(sandbox = Pop)]
+fn mint_fails_with_max_suplly_reached(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract with a max total supply is one.
+	assert_ok!(deploy(&mut session, "new", vec!["Some(1)".to_string()]));
+	// Failed with `MaxSupplyReached`.
+	assert_ok!(mint(&mut session, ALICE));
+	assert_err!(mint(&mut session, ALICE), Error::Module(Nfts(MaxSupplyReached)));
+}
+
+#[drink::test(sandbox = Pop)]
 fn burn_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		contract.clone().into(),
+		None
+	));
+	// Successfully burn an item.
+	assert_ok!(burn(&mut session, ITEM));
+	assert_eq!(session.sandbox().total_supply(COLLECTION), 0);
+	assert_eq!(session.sandbox().balance_of(&COLLECTION, &ALICE), 0);
+	// Successfully emit event.
+	assert_last_contract_event!(
+		&session,
+		Transfer { from: Some(account_id_from_slice(&contract)), to: None, item: ITEM }
+	);
+}
+
+#[drink::test(sandbox = Pop)]
+fn burn_fails_with_unauthorization(mut session: Session) {
 	let _ = env_logger::try_init();
 	// Deploy a new contract.
 	let contract = deploy_with_default(&mut session).unwrap();
@@ -184,32 +230,167 @@ fn burn_works(mut session: Session) {
 		contract.into(),
 		None
 	));
-	// Successfully burn an item.
-	assert_ok!(burn(&mut session, ITEM));
-	assert_eq!(session.sandbox().total_supply(COLLECTION), 0);
-	assert_eq!(session.sandbox().balance_of(&COLLECTION, &ALICE), 0);
+	// Failed with `Not the contract owner`.
+	session.set_actor(BOB);
+	assert_eq!(
+		burn(&mut session, ITEM),
+		Err(Psp34Error::Custom("Not the contract owner".to_string()))
+	);
 }
 
 #[drink::test(sandbox = Pop)]
-fn burn_fails_with_unauthorized(mut session: Session) {}
+fn burn_fails_with_not_approved(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		ALICE.into(),
+		None
+	));
+	// Failed with `NotApproved`.
+	assert_eq!(burn(&mut session, ITEM), Err(Psp34Error::NotApproved));
+}
 
 #[drink::test(sandbox = Pop)]
-fn burn_fails_with_not_approved(mut session: Session) {}
+fn burn_fails_with_invalid_item(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		ALICE.into(),
+		None
+	));
+	// Failed with `TokenNotExists`.
+	assert_eq!(burn(&mut session, ITEM + 1), Err(Psp34Error::TokenNotExists));
+}
 
 #[drink::test(sandbox = Pop)]
-fn transfer_works(mut session: Session) {}
+fn transfer_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		contract.clone().into(),
+		None
+	));
+	// Successfully transfer an item.
+	assert_ok!(transfer(&mut session, ALICE, ITEM));
+	assert_eq!(session.sandbox().owner(&COLLECTION, &ITEM), Some(ALICE));
+	assert_eq!(session.sandbox().balance_of(&COLLECTION, &ALICE), 1);
+	assert_last_contract_event!(
+		&session,
+		Transfer {
+			from: Some(account_id_from_slice(&contract)),
+			to: Some(account_id_from_slice(&ALICE)),
+			item: ITEM
+		}
+	);
+}
 
 #[drink::test(sandbox = Pop)]
-fn transfer_fails_with_unauthrorized(mut session: Session) {}
+fn transfer_fails_with_unauthorization(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		contract.into(),
+		None
+	));
+	// Failed with `Not the contract owner`.
+	session.set_actor(BOB);
+	assert_eq!(
+		transfer(&mut session, ALICE, ITEM),
+		Err(Psp34Error::Custom("Not the contract owner".to_string()))
+	);
+}
 
 #[drink::test(sandbox = Pop)]
-fn transfer_fails_with_not_approved(mut session: Session) {}
+fn transfer_fails_with_not_approved(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		ALICE.into(),
+		None
+	));
+	// Failed with `NotApproved`.
+	assert_eq!(transfer(&mut session, ALICE, ITEM), Err(Psp34Error::NotApproved));
+}
 
 #[drink::test(sandbox = Pop)]
-fn destroy_witness(mut session: Session) {}
+fn transfer_fails_with_invalid_item(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	let contract = deploy_with_default(&mut session).unwrap();
+	assert_ok!(session.sandbox().mint(
+		Some(contract.clone()),
+		COLLECTION,
+		ITEM,
+		ALICE.into(),
+		None
+	));
+	// Failed with `TokenNotExists`.
+	assert_eq!(transfer(&mut session, ALICE, ITEM + 1), Err(Psp34Error::TokenNotExists));
+}
 
 #[drink::test(sandbox = Pop)]
-fn destroy_fails_with_unauthorized(mut session: Session) {}
+fn destroy_works(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	assert_ok!(deploy_with_default(&mut session));
+	// Successfully destroy a collection.
+	session.set_gas_limit(Weight::MAX);
+	assert_ok!(destroy(
+		&mut session,
+		DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }
+	));
+	assert_eq!(session.sandbox().collection(&COLLECTION), None);
+	// Successfully emit event.
+	assert_last_contract_event!(&session, Destroyed { id: COLLECTION });
+}
+
+#[drink::test(sandbox = Pop)]
+fn destroy_fails_with_unauthorization(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	assert_ok!(deploy_with_default(&mut session));
+	// Failed with `Not the contract owner`.
+	session.set_gas_limit(Weight::MAX);
+	session.set_actor(BOB);
+	assert_eq!(
+		destroy(&mut session, DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }),
+		Err(Psp34Error::Custom("Not the contract owner".to_string()))
+	);
+}
+
+#[drink::test(sandbox = Pop)]
+fn destroy_fails_with_bad_witness(mut session: Session) {
+	let _ = env_logger::try_init();
+	// Deploy a new contract.
+	assert_ok!(deploy_with_default(&mut session));
+	// Successfully destroy a collection.
+	session.set_gas_limit(Weight::MAX);
+	// Failed with `BadWitness`.
+	assert_err!(
+		destroy(&mut session, DestroyWitness { item_metadatas: 1, item_configs: 1, attributes: 1 }),
+		Error::Module(Nfts(BadWitness))
+	);
+}
 
 // Deploy the contract with `NO_SALT and `INIT_VALUE`.
 fn deploy(session: &mut Session<Pop>, method: &str, input: Vec<String>) -> Result<AccountId> {
@@ -259,12 +440,7 @@ fn transfer(session: &mut Session<Pop>, to: AccountId, item: ItemId) -> Result<(
 	call::<Pop, (), Psp34Error>(session, "transfer", vec![to.to_string(), item.to_string()], None)
 }
 
-fn destroy(session: &mut Session<Pop>, destroy_wintess: DestroyWitness) -> Result<()> {
-	let encoded_destroy_witness = destroy_wintess.encode();
-	call::<Pop, (), Psp34Error>(
-		session,
-		"destroy",
-		vec![serde_json::to_string::<Vec<u8>>(&encoded_destroy_witness).unwrap()],
-		None,
-	)
+fn destroy(session: &mut Session<Pop>, witness: DestroyWitness) -> Result<()> {
+	let witness_string = format!("{:?}", witness);
+	call::<Pop, (), Psp34Error>(session, "destroy", vec![witness_string], None)
 }
