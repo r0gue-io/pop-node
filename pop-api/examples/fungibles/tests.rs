@@ -556,7 +556,7 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	session.set_actor(ALICE);
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
-	// `pallet-assets` returns `AssetNotLive` error.
+	// `pallet-assets` returns `UnknownAsset` error.
 	assert_err!(mint(&mut session, ALICE, AMOUNT), Error::Raw(Token(UnknownAsset)));
 }
 
