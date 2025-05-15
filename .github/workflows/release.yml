@@ -80,6 +80,7 @@ jobs:
           chain: ${{ env.RUNTIME }}
           package: "pop-runtime-${{ env.RUNTIME }}"
           runtime_dir: "runtime/${{ env.RUNTIME }}"
+          profile: "production"
 
       - name: Store srtool digest to disk
         run: |
