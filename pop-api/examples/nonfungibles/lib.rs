@@ -55,6 +55,9 @@ use pop_api::{
 	primitives::AccountId,
 };
 
+#[cfg(test)]
+mod tests;
+
 /// By default, Pop API returns errors as [`pop_api::StatusCode`], which are convertible to
 /// [`Psp34Error`]. When using [`Psp34Error`], errors follow the PSP34 standard, making them easier
 /// to interpret.
@@ -62,6 +65,7 @@ pub type Result<T> = core::result::Result<T, Psp34Error>;
 
 /// Event emitted when a collection is created.
 #[ink::event]
+#[derive(Debug)]
 pub struct Created {
 	/// The collection.
 	#[ink(topic)]
@@ -75,6 +79,7 @@ pub struct Created {
 
 /// Event emitted when a collection is destroyed.
 #[ink::event]
+#[derive(Debug)]
 pub struct Destroyed {
 	/// The collection.
 	#[ink(topic)]
@@ -160,20 +165,20 @@ pub mod nonfungibles {
 
 		/// Returns the number of items owned by an account.
 		#[ink(message)]
-		pub fn balance_of(&self, owner: AccountId) -> Result<u32> {
-			api::balance_of(self.id, owner).map_err(Psp34Error::from)
+		pub fn balance_of(&self, owner: AccountId) -> u32 {
+			api::balance_of(self.id, owner).unwrap_or_default()
 		}
 
 		/// Returns the owner of an item, if any.
 		#[ink(message)]
-		pub fn owner_of(&self, item: ItemId) -> Result<Option<AccountId>> {
-			api::owner_of(self.id, item).map_err(Psp34Error::from)
+		pub fn owner_of(&self, item: ItemId) -> Option<AccountId> {
+			api::owner_of(self.id, item).unwrap_or_default()
 		}
 
 		/// Returns the total supply of the collection.
 		#[ink(message)]
-		pub fn total_supply(&self) -> Result<u128> {
-			api::total_supply(self.id).map_err(Psp34Error::from)
+		pub fn total_supply(&self) -> u128 {
+			api::total_supply(self.id).unwrap_or_default()
 		}
 
 		/// Mint an item.
@@ -241,7 +246,7 @@ pub mod nonfungibles {
 			Ok(())
 		}
 
-		/// Terminate the contract and destroy the collection.
+		/// Destroy the collection.
 		///
 		/// Collection must be managed by the contract and not have any items.
 		///
@@ -260,7 +265,17 @@ pub mod nonfungibles {
 			// Destroying the collection returns all deposits to the contract.
 			api::destroy(self.id, destroy_witness).map_err(Psp34Error::from)?;
 			self.env().emit_event(Destroyed { id: self.id });
+			Ok(())
+		}
 
+		/// Terminate the contract and destroy the collection.
+		///
+		/// This method is similar to `destroy` but terminates the contract after the collection
+		/// destruction.
+		#[ink(message)]
+		pub fn destroy_and_terminate(&mut self, destroy_witness: DestroyWitness) -> Result<()> {
+			// Destroying the collection returns all deposits to the contract.
+			self.destroy(destroy_witness)?;
 			// Then terminating the contract returns all contract's funds to the contract
 			// instantiator.
 			self.env().terminate_contract(self.owner);
