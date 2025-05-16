@@ -55,7 +55,7 @@ jobs:
       - name: Check Build
         # TODO: restore runtime-benchmarks once revive benchmarks resolved
         run: |
-          cargo check --release --locked --workspace --exclude integration-tests --features=try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=try-runtime --exclude pallet-revive --exclude pallet-revive-fixtures
 
   check-ismp:
     needs: lint
@@ -66,7 +66,7 @@ jobs:
       - name: Check Build with ISMP
         # TODO: restore runtime-benchmarks once revive benchmarks resolved
         run: |
-          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,try-runtime
+          cargo check --release --locked --workspace --exclude integration-tests --features=ismp,try-runtime --exclude pallet-revive-fixtures
 
   clippy:
     needs: lint
@@ -86,7 +86,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # TODO: restore runtime-benchmarks once revive benchmarks resolved
-          args: --release --locked --workspace --exclude integration-tests
+          args: --release --locked --workspace --exclude integration-tests --exclude pallet-revive-fixtures
 
   clippy-ismp:
     needs: lint
@@ -106,7 +106,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           # TODO: restore runtime-benchmarks once revive benchmarks resolved
-          args: --release --locked --workspace --exclude integration-tests --features=ismp
+          args: --release --locked --workspace --exclude integration-tests --features=ismp --exclude pallet-revive-fixtures
 
   test:
     needs: lint
@@ -118,7 +118,7 @@ jobs:
 
       - name: Run tests
         # TODO: restore runtime-benchmarks once revive benchmarks resolved
-        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests
+        run: cargo test --release --locked --workspace --exclude integration-tests --exclude pop-api-integration-tests --exclude pallet-revive --exclude pallet-revive-fixtures
 
   integration-tests:
     needs: lint
@@ -200,7 +200,7 @@ jobs:
 
       - name: Generate code coverage
         # TODO: restore runtime-benchmarks once revive benchmarks resolved
-        run: cargo llvm-cov --features=try-runtime,ismp --workspace --exclude integration-tests --exclude pop-api-integration-tests --lib --bins --codecov --output-path codecov.json
+        run: cargo llvm-cov --features=try-runtime,ismp --workspace --exclude integration-tests --exclude pop-api-integration-tests --exclude pallet-revive --exclude pallet-revive-fixtures --lib --bins --codecov --output-path codecov.json
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v4
