@@ -80,6 +80,7 @@ jobs:
           chain: ${{ env.RUNTIME }}
           package: "pop-runtime-${{ env.RUNTIME }}"
           runtime_dir: "runtime/${{ env.RUNTIME }}"
+          # We use production profile primarily as a way to reduce the resulting wasm size.
           profile: "production"
 
       - name: Store srtool digest to disk
