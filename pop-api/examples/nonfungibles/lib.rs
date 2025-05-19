@@ -246,7 +246,7 @@ pub mod nonfungibles {
 			Ok(())
 		}
 
-		/// Destroy the collection.
+		/// Terminate the contract and destroy the collection.
 		///
 		/// Collection must be managed by the contract and not have any items.
 		///
@@ -265,6 +265,7 @@ pub mod nonfungibles {
 			// Destroying the collection returns all deposits to the contract.
 			api::destroy(self.id, destroy_witness).map_err(Psp34Error::from)?;
 			self.env().emit_event(Destroyed { id: self.id });
+
 			// Then terminating the contract returns all contract's funds to the contract
 			// instantiator.
 			self.env().terminate_contract(self.owner);
