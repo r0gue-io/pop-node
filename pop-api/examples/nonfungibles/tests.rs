@@ -64,15 +64,7 @@ fn collection_id_works(mut session: Session) {
 	assert_eq!(contract.collection_id(&mut session), 0);
 
 	// Deploys a second contract increments the collection ID.
-	drink::deploy::<Pop, Psp34Error>(
-		&mut session,
-		BundleProvider::local().unwrap(),
-		"new",
-		vec!["None".to_string()],
-		vec![1, 2, 3, 4],
-		Some(INIT_VALUE),
-	)
-	.unwrap();
+	deploy(&mut session, "new", vec!["None".to_string()], vec![1, 2, 3, 4]).unwrap();
 	assert_eq!(contract.collection_id(&mut session), 1);
 }
 
@@ -359,10 +351,11 @@ fn destroy_works(mut session: Session) {
 	let contract = Contract::default(&mut session).unwrap();
 	// Successfully destroys a collection.
 	session.set_gas_limit(Weight::MAX);
-	assert_ok!(contract.destroy(
-		&mut session,
-		DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 }
-	));
+	let witness_string =
+		format!("{:?}", DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 });
+
+	// Error returned "Not enough data to fill buffer" due to contract termination.
+	assert!(session.call::<String, ()>("destroy", &[witness_string], None).is_err());
 	assert_eq!(session.sandbox().collection(&COLLECTION), None);
 	// Successfully emits an event.
 	assert_last_contract_event!(&session, Destroyed { id: COLLECTION });
@@ -403,21 +396,26 @@ fn destroy_fails_with_bad_witness(mut session: Session) {
 
 // A set of helper methods to test the contract deployment and calls.
 
-// The contract bundle provider.
-//
-// See https://github.com/r0gue-io/pop-drink/blob/main/crates/drink/drink/test-macro/src/lib.rs for more information.
-#[drink::contract_bundle_provider]
-enum BundleProvider {}
-
 // Deploys the contract with `NO_SALT and `INIT_VALUE`.
-fn deploy(session: &mut Session<Pop>, method: &str, input: Vec<String>) -> Result<AccountId> {
+fn deploy(
+	session: &mut Session<Pop>,
+	method: &str,
+	input: Vec<String>,
+	salt: Vec<u8>,
+) -> Result<AccountId> {
+	// The contract bundle provider.
+	//
+	// See https://github.com/r0gue-io/pop-drink/blob/main/crates/drink/drink/test-macro/src/lib.rs for more information.
+	#[drink::contract_bundle_provider]
+	enum BundleProvider {}
+
 	drink::deploy::<Pop, Psp34Error>(
 		session,
 		// The local contract (i.e. `nonfungibles`).
 		BundleProvider::local().unwrap(),
 		method,
 		input,
-		NO_SALT,
+		salt,
 		Some(INIT_VALUE),
 	)
 }
@@ -429,7 +427,7 @@ struct Contract {
 impl Contract {
 	// Deploy a new contract.
 	fn new(session: &mut Session<Pop>, max_supply: Option<u32>) -> Result<Self> {
-		let contract = deploy(session, "new", vec![format!("{:?}", max_supply)])?;
+		let contract = deploy(session, "new", vec![format!("{:?}", max_supply)], NO_SALT)?;
 		Ok(Self { address: contract })
 	}
 
