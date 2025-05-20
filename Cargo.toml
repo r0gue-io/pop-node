@@ -64,7 +64,7 @@ tracing-subscriber = { version = "0.3.18", default-features = false }
 
 # Build
 substrate-build-script-utils = { version = "11.0.0" }
-substrate-wasm-builder = { version = "26.0.0" }
+substrate-wasm-builder = { version = "26.0.1" }
 
 # Local
 pallet-api = { path = "pallets/api", default-features = false }
