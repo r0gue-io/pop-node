@@ -11,6 +11,7 @@ use super::*;
 
 /// Event emitted when a token transfer occurs.
 #[ink::event]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Transfer {
 	/// The source of the transfer. `None` when minting.
 	#[ink(topic)]
@@ -24,6 +25,7 @@ pub struct Transfer {
 
 /// Event emitted when a token approve occurs.
 #[ink::event]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct Approval {
 	/// The owner providing the allowance.
 	#[ink(topic)]
@@ -39,6 +41,7 @@ pub struct Approval {
 
 /// Event emitted when an attribute is set for a token.
 #[ink::event]
+#[cfg_attr(feature = "std", derive(Debug))]
 pub struct AttributeSet {
 	/// The item which attribute is set.
 	#[ink(topic)]

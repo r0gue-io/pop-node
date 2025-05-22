@@ -19,6 +19,16 @@ pop up contract \
     --args 1000
 ```
 
+## Test with Pop Drink
+
+Since this contract interacts directly with Pop’s runtime through the Pop API, it requires [Pop Drink](https://github.com/r0gue-io/pop-drink) for testing. See how the contract is tested in [tests](./tests.rs).
+
+To run the tests, run the following command:
+
+```bash
+cargo test --release
+```
+
 ## Support
 
 Be part of our passionate community of Web3 builders. [Join our Telegram](https://t.me/onpopio)!
