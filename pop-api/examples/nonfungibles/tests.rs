@@ -7,7 +7,7 @@ use drink::{
 	},
 	sandbox_api::nfts_api::NftsAPI,
 	session::Session,
-	TestExternalities, Weight, NO_SALT,
+	SessionError, TestExternalities, Weight, NO_SALT,
 };
 use pop_api::v0::nonfungibles::{events::Transfer, CollectionId, ItemId};
 
@@ -340,8 +340,11 @@ fn destroy_works(mut session: Session) {
 	let witness_string =
 		format!("{:?}", DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 });
 
-	// Error returned "Not enough data to fill buffer" due to contract termination.
-	assert!(session.call::<String, ()>("destroy", &[witness_string], None).is_err());
+	// Returned value of the call is empty due to contract termination.
+	assert_eq!(
+		session.call::<String, ()>("destroy", &[witness_string], None),
+		Err(SessionError::EmptyReturnedValue)
+	);
 	assert_eq!(session.sandbox().collection(&COLLECTION), None);
 	// Successfully emits an event.
 	assert_last_contract_event!(&session, Destroyed { id: COLLECTION });
