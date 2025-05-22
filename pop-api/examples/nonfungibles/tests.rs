@@ -1,5 +1,5 @@
 use drink::{
-	assert_err, assert_last_contract_event, assert_ok, call,
+	assert_err, assert_last_contract_event, assert_ok, call_with_address,
 	devnet::{
 		account_id_from_slice,
 		error::{v0::Error, Nfts, NftsError::*},
@@ -10,6 +10,9 @@ use drink::{
 	TestExternalities, Weight, NO_SALT,
 };
 use pop_api::v0::nonfungibles::{events::Transfer, CollectionId, ItemId};
+
+#[cfg(debug_assertions)]
+compile_error!("Tests must be run using the release profile (--release)");
 
 use super::*;
 
@@ -44,7 +47,7 @@ fn new_constructor_works(mut session: Session) {
 	// Deploys a new contract.
 	let contract = Contract::new(&mut session, None, NO_SALT).unwrap();
 	// Collection exists after the deployment.
-	assert_eq!(session.sandbox().collection_owner(&COLLECTION), Some(contract.address.clone()));
+	assert_eq!(session.sandbox().collection_owner(&COLLECTION).as_ref(), Some(&contract.address));
 	// Successfully emits an event.
 	assert_last_contract_event!(
 		&session,
@@ -331,7 +334,7 @@ fn transfer_fails_with_invalid_item(mut session: Session) {
 #[drink::test(sandbox = Pop)]
 fn destroy_works(mut session: Session) {
 	// Deploys a new contract.
-	let contract = Contract::new(&mut session, None, NO_SALT).unwrap();
+	assert_ok!(Contract::new(&mut session, None, NO_SALT));
 	// Successfully destroys a collection.
 	session.set_gas_limit(Weight::MAX);
 	let witness_string =
@@ -377,6 +380,7 @@ fn destroy_fails_with_bad_witness(mut session: Session) {
 
 // A set of helper methods to test the contract deployment and calls.
 
+#[derive(Debug)]
 struct Contract {
 	pub address: AccountId,
 }
@@ -403,20 +407,42 @@ impl Contract {
 	}
 
 	fn collection_id(&self, session: &mut Session<Pop>) -> CollectionId {
-		call::<Pop, CollectionId, Psp34Error>(session, "collection_id", vec![], None).unwrap()
+		call_with_address::<Pop, CollectionId, Psp34Error>(
+			session,
+			self.address.clone(),
+			"collection_id",
+			vec![],
+			None,
+		)
+		.unwrap()
 	}
 
 	fn next_item_id(&self, session: &mut Session<Pop>) -> ItemId {
-		call::<Pop, ItemId, Psp34Error>(session, "next_item_id", vec![], None).unwrap()
+		call_with_address::<Pop, ItemId, Psp34Error>(
+			session,
+			self.address.clone(),
+			"next_item_id",
+			vec![],
+			None,
+		)
+		.unwrap()
 	}
 
 	fn balance_of(&self, session: &mut Session<Pop>, owner: AccountId) -> u32 {
-		call::<Pop, u32, Psp34Error>(session, "balance_of", vec![owner.to_string()], None).unwrap()
+		call_with_address::<Pop, u32, Psp34Error>(
+			session,
+			self.address.clone(),
+			"balance_of",
+			vec![owner.to_string()],
+			None,
+		)
+		.unwrap()
 	}
 
 	fn owner_of(&self, session: &mut Session<Pop>, item: ItemId) -> Option<AccountId> {
-		call::<Pop, Option<AccountId>, Psp34Error>(
+		call_with_address::<Pop, Option<AccountId>, Psp34Error>(
 			session,
+			self.address.clone(),
 			"owner_of",
 			vec![item.to_string()],
 			None,
@@ -425,20 +451,40 @@ impl Contract {
 	}
 
 	fn total_supply(&self, session: &mut Session<Pop>) -> u128 {
-		call::<Pop, u128, Psp34Error>(session, "total_supply", vec![], None).unwrap()
+		call_with_address::<Pop, u128, Psp34Error>(
+			session,
+			self.address.clone(),
+			"total_supply",
+			vec![],
+			None,
+		)
+		.unwrap()
 	}
 
 	fn mint(&self, session: &mut Session<Pop>, to: AccountId) -> Result<()> {
-		call::<Pop, (), Psp34Error>(session, "mint", vec![to.to_string()], None)
+		call_with_address::<Pop, (), Psp34Error>(
+			session,
+			self.address.clone(),
+			"mint",
+			vec![to.to_string()],
+			None,
+		)
 	}
 
 	fn burn(&self, session: &mut Session<Pop>, item: ItemId) -> Result<()> {
-		call::<Pop, (), Psp34Error>(session, "burn", vec![item.to_string()], None)
+		call_with_address::<Pop, (), Psp34Error>(
+			session,
+			self.address.clone(),
+			"burn",
+			vec![item.to_string()],
+			None,
+		)
 	}
 
 	fn transfer(&self, session: &mut Session<Pop>, to: AccountId, item: ItemId) -> Result<()> {
-		call::<Pop, (), Psp34Error>(
+		call_with_address::<Pop, (), Psp34Error>(
 			session,
+			self.address.clone(),
 			"transfer",
 			vec![to.to_string(), item.to_string()],
 			None,
@@ -447,6 +493,12 @@ impl Contract {
 
 	fn destroy(&self, session: &mut Session<Pop>, witness: DestroyWitness) -> Result<()> {
 		let witness_string = format!("{:?}", witness);
-		call::<Pop, (), Psp34Error>(session, "destroy", vec![witness_string], None)
+		call_with_address::<Pop, (), Psp34Error>(
+			session,
+			self.address.clone(),
+			"destroy",
+			vec![witness_string],
+			None,
+		)
 	}
 }
