@@ -61,7 +61,7 @@ use smallvec::smallvec;
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
+	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, ValidateUnsigned, Verify},
 };
 pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 #[cfg(feature = "std")]
@@ -330,6 +330,7 @@ mod runtime {
 
 	// ISMP
 	#[runtime::pallet_index(38)]
+	#[runtime::disable_unsigned]
 	pub type Ismp = pallet_ismp::Pallet<Runtime>;
 	#[runtime::pallet_index(39)]
 	pub type IsmpParachain = ismp_parachain::Pallet<Runtime>;

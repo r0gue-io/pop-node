@@ -10,14 +10,20 @@ use frame_support::{
 };
 use pallet_contracts::{Code, CollectEvents, Determinism, ExecReturnValue};
 #[cfg(feature = "devnet")]
-use pop_runtime_devnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_devnet::{
+	config::ismp::Router, Assets, Contracts, Messaging, Nfts, Runtime, RuntimeEvent, RuntimeOrigin,
+	System, UNIT,
+};
 #[cfg(feature = "testnet")]
-use pop_runtime_testnet::{Assets, Contracts, Nfts, Runtime, RuntimeOrigin, System, UNIT};
+use pop_runtime_testnet::{
+	config::ismp::Router, Assets, Contracts, Messaging, Nfts, Runtime, RuntimeEvent, RuntimeOrigin,
+	System, UNIT,
+};
 use sp_runtime::{AccountId32, BuildStorage, DispatchError};
 use utils::*;
 
 mod fungibles;
-#[cfg(feature = "testnet")]
+#[cfg(any(feature = "testnet", feature = "devnet"))]
 mod messaging;
 #[cfg(feature = "devnet")]
 mod nonfungibles;
@@ -29,7 +35,7 @@ const ALICE: AccountId32 = AccountId32::new([1_u8; 32]);
 const BOB: AccountId32 = AccountId32::new([2_u8; 32]);
 const DEBUG_OUTPUT: pallet_contracts::DebugInfo = pallet_contracts::DebugInfo::UnsafeDebug;
 const FERDIE: AccountId32 = AccountId32::new([3_u8; 32]);
-const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
+const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000_000, 100 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
 
@@ -48,7 +54,12 @@ fn new_test_ext() -> sp_io::TestExternalities {
 	.expect("Pallet balances storage can be assimilated");
 
 	let mut ext = sp_io::TestExternalities::new(t);
-	ext.execute_with(|| System::set_block_number(1));
+	ext.execute_with(|| {
+		// Required for calls to ismp dispatcher to function normally re timestamps.
+		#[cfg(any(feature = "testnet", feature = "devnet"))]
+		pallet_timestamp::Pallet::<Runtime>::set_timestamp(1u64);
+		System::set_block_number(1)
+	});
 	ext
 }
 

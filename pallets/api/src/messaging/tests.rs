@@ -939,7 +939,8 @@ mod xcm_hooks {
 	fn xcm_queries_expire_on_expiry_block() {
 		new_test_ext().execute_with(|| {
 			let message_id = [0; 32];
-			let timeout = System::block_number() + 10;
+			// timeout in 100 blocks time.
+			let timeout = 100;
 			assert_ok!(Messaging::xcm_new_query(
 				signed(ALICE),
 				message_id,
@@ -957,7 +958,22 @@ mod xcm_hooks {
 				None,
 			));
 
-			run_to(timeout + 1);
+			// assert that the block before is not timed out.
+
+			run_to(timeout + System::block_number() - 1);
+			let Some(Message::XcmQuery { .. }): Option<Message<Test>> =
+				Messages::get(ALICE, message_id)
+			else {
+				panic!("Message should be a query!")
+			};
+
+			let Some(Message::XcmQuery { .. }): Option<Message<Test>> =
+				Messages::get(ALICE, message_id_2)
+			else {
+				panic!("Message should be query!")
+			};
+
+			run_to(System::block_number() + 1);
 
 			let Some(Message::XcmTimeout { .. }): Option<Message<Test>> =
 				Messages::get(ALICE, message_id)
@@ -1207,10 +1223,17 @@ mod ismp_get {
 				keys: bounded_vec!(),
 			};
 			let callback = None;
+			let ismp_relayer_fee: Balance = u32::MAX.into();
 
-			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message.clone(), callback));
+			assert_ok!(Messaging::ismp_get(
+				signed(ALICE),
+				message_id,
+				message.clone(),
+				ismp_relayer_fee,
+				callback
+			));
 			assert_noop!(
-				Messaging::ismp_get(signed(ALICE), message_id, message, callback),
+				Messaging::ismp_get(signed(ALICE), message_id, message, ismp_relayer_fee, callback),
 				Error::<Test>::MessageExists
 			);
 		})
@@ -1231,6 +1254,7 @@ mod ismp_get {
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
 
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
+			let ismp_relayer_fee: Balance = u32::MAX.into();
 
 			let expected_deposit = calculate_protocol_deposit::<
 				Test,
@@ -1244,7 +1268,13 @@ mod ismp_get {
 			assert_eq!(alice_hold_balance_pre_hold, 0);
 			assert!(expected_deposit != 0);
 
-			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, Some(callback)));
+			assert_ok!(Messaging::ismp_get(
+				signed(ALICE),
+				message_id,
+				message,
+				ismp_relayer_fee,
+				Some(callback)
+			));
 
 			let alice_hold_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
 
@@ -1264,7 +1294,15 @@ mod ismp_get {
 				keys: bounded_vec!(),
 			};
 			let callback = None;
-			assert_ok!(Messaging::ismp_get(signed(ALICE), message_id, message, callback));
+			let ismp_relayer_fee: Balance = u32::MAX.into();
+
+			assert_ok!(Messaging::ismp_get(
+				signed(ALICE),
+				message_id,
+				message,
+				ismp_relayer_fee,
+				callback
+			));
 			let events = events();
 			let Some(Event::<Test>::IsmpGetDispatched { origin, id, commitment, callback }) =
 				events.first()
@@ -1291,10 +1329,23 @@ mod ismp_post {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let callback = None;
+			let ismp_relayer_fee: Balance = u32::MAX.into();
 
-			assert_ok!(Messaging::ismp_post(signed(ALICE), message_id, message.clone(), callback));
+			assert_ok!(Messaging::ismp_post(
+				signed(ALICE),
+				message_id,
+				message.clone(),
+				ismp_relayer_fee,
+				callback
+			));
 			assert_noop!(
-				Messaging::ismp_post(signed(ALICE), message_id, message, callback),
+				Messaging::ismp_post(
+					signed(ALICE),
+					message_id,
+					message,
+					ismp_relayer_fee,
+					callback
+				),
 				Error::<Test>::MessageExists
 			);
 		})
@@ -1306,6 +1357,7 @@ mod ismp_post {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let ismp_relayer_fee: Balance = u32::MAX.into();
 			let callback = Callback { selector: [1; 4], weight, abi: Abi::Scale };
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 			let expected_deposit = calculate_protocol_deposit::<
@@ -1326,6 +1378,7 @@ mod ismp_post {
 				signed(ALICE),
 				message_id,
 				message.clone(),
+				ismp_relayer_fee,
 				Some(callback)
 			));
 
@@ -1341,8 +1394,15 @@ mod ismp_post {
 			let message_id = [0u8; 32];
 			let message = ismp::Post { dest: 2000, timeout: 100, data: bounded_vec![] };
 			let callback = None;
+			let ismp_relayer_fee: Balance = u32::MAX.into();
 
-			assert_ok!(Messaging::ismp_post(signed(ALICE), message_id, message.clone(), callback));
+			assert_ok!(Messaging::ismp_post(
+				signed(ALICE),
+				message_id,
+				message.clone(),
+				ismp_relayer_fee,
+				callback
+			));
 
 			let events = events();
 			let Some(Event::<Test>::IsmpPostDispatched { origin, id, commitment, callback }) =

@@ -264,7 +264,6 @@ impl<T: frame_system::Config> pallet_api::messaging::WeightInfo for WeightInfo<T
 		//  Estimated: `252485529539233056 + a * (221360928884514619392 ±340_282_366_920_938_463_463_374_607_431_768_211_455) + x * (18446744073709551616 ±1_656_260_326_287_731) + y * (885443715538058477568 ±13_250_082_610_301_856)`
 		// Minimum execution time: 70_000_000 picoseconds.
 		Weight::from_parts(77_313_015, 0)
-			.saturating_add(Weight::from_parts(0, 252485529539233056))
 			// Standard Error: 10_108
 			.saturating_add(Weight::from_parts(168_303, 0).saturating_mul(y.into()))
 			// Standard Error: 68_132

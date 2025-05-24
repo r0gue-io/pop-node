@@ -242,7 +242,6 @@ parameter_types! {
 	pub const OffChainByteFee: Balance = 5;
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 10;
 	pub const FeeAccount: AccountId = FEE_ACCOUNT;
-	pub const IsmpRelayerFee: Balance = 100_000;
 }
 
 pub struct MockNotifyQuery<T>(T);
@@ -270,7 +269,6 @@ impl crate::messaging::Config for Test {
 	type FeeHandler = ResolveTo<FeeAccount, Balances>;
 	type Fungibles = Balances;
 	type IsmpDispatcher = pallet_ismp::Pallet<Test>;
-	type IsmpRelayerFee = IsmpRelayerFee;
 	type Keccak256 = Keccak;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<1024>;
