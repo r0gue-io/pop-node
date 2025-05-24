@@ -24,7 +24,6 @@ use ::ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
-use sp_runtime::{traits::ValidateUnsigned};
 pub use apis::{RuntimeApi, RUNTIME_API_VERSIONS};
 use config::system::ConsensusHook;
 use cumulus_primitives_core::AggregateMessageOrigin;
@@ -62,7 +61,7 @@ use smallvec::smallvec;
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
+	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, ValidateUnsigned, Verify},
 };
 pub use sp_runtime::{ExtrinsicInclusionMode, MultiAddress, Perbill, Permill};
 #[cfg(feature = "std")]
