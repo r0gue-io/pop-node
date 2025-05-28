@@ -27,4 +27,4 @@ polkavm-derive = { version = "0.21.0" }
 [features]
 default = [ "scale" ]
 scale = [ "dep:codec", "scale-info" ]
-unstable-hostfn = [ "default" ]
+unstable-hostfn = [  ]
