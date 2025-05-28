@@ -68,6 +68,7 @@ substrate-wasm-builder = { version = "27.0.0" }
 
 # Local
 pallet-api = { path = "pallets/api", default-features = false }
+pallet-api-vnext = { path = "pallets/api-vnext", default-features = false }
 pallet-motion = { path = "pallets/motion", default-features = false }
 pallet-nfts = { path = "pallets/nfts", default-features = false }
 pop-chain-extension = { path = "./extension", default-features = false }
