@@ -539,7 +539,7 @@ impl BuiltinAddressMatcher {
 /// Use the types exported from this module in order to test or benchmark
 /// your pre-compile. Module only exists when compiles for benchmarking
 /// or tests.
-#[cfg(any(test, feature = "runtime-benchmarks"))]
+#[cfg(any(test, feature = "runtime-benchmarks", feature = "std"))]
 pub mod run {
 	pub use sp_core::{H256, U256};
 

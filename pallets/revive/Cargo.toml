@@ -112,7 +112,7 @@ std = [
 	"num-integer/std",
 	"num-traits/std",
 	"pallet-proxy/std",
-	"pallet-revive-fixtures?/std",
+	"pallet-revive-fixtures/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment/std",
 	"pallet-utility/std",
