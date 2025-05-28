@@ -25,6 +25,7 @@ smallvec.workspace = true
 
 # Local
 pallet-api.workspace = true
+pallet-api-vnext = { workspace = true, features = [ "fungibles" ] }
 pallet-nfts.workspace = true
 pop-chain-extension.workspace = true
 pop-primitives.workspace = true
@@ -106,6 +107,7 @@ pallet-ismp-runtime-api.workspace = true
 enumflags2.workspace = true
 env_logger.workspace = true
 hex.workspace = true
+sp-keyring.workspace = true
 
 [features]
 default = [ "std" ]
@@ -133,6 +135,7 @@ std = [
 	"ismp-parachain/std",
 	"ismp/std",
 	"log/std",
+	"pallet-api-vnext/std",
 	"pallet-api/std",
 	"pallet-assets/std",
 	"pallet-aura/std",
