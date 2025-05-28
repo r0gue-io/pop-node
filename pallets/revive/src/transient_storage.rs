@@ -324,7 +324,7 @@ impl<T: Config> TransientStorage<T> {
 	}
 
 	/// The storage allocation meter used for transaction metering.
-	#[cfg(any(test, feature = "runtime-benchmarks"))]
+	#[cfg(any(test, feature = "runtime-benchmarks", feature = "std"))]
 	pub fn meter(&mut self) -> &mut StorageMeter<T> {
 		return &mut self.meter
 	}

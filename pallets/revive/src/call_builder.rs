@@ -18,7 +18,7 @@
 //! Types to build an environment that can be used to test and benchmark host function /
 //! pre-compiles.
 
-#![cfg(any(feature = "runtime-benchmarks", test))]
+#![cfg(any(feature = "runtime-benchmarks", test, feature = "std"))]
 // A lot of this code is only used in benchmarking but we also want to use the code for testing
 // pre-compiles eventually. For that we will probably export some of those types from the crate.
 // Until then we simply ignore the warnings that arise when compiling tests without runtime
