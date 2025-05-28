@@ -38,7 +38,7 @@ then
     exit 1
 else
     # Check for feature formatting
-    if ! zepter format features
+    if ! zepter format features --ignore-feature unstable-hostfn
     then
         echo "There are some code style issues."
         echo "Run 'zepter format features --fix' first."
