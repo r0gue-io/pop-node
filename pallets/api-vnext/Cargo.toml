@@ -8,6 +8,9 @@ name = "pallet-api-vnext"
 repository.workspace = true
 version = "0.1.0"
 
+[lib]
+doctest = false
+
 [dependencies]
 codec.workspace = true
 frame-support.workspace = true
