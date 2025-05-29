@@ -17,7 +17,9 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				c,
 				RuntimeCall::Balances { .. } |
 					RuntimeCall::Assets { .. } |
-					RuntimeCall::Nfts { .. }
+					RuntimeCall::Nfts { .. } |
+					RuntimeCall::Revive { .. } |
+					RuntimeCall::Contracts { .. }
 			),
 			ProxyType::CancelProxy => matches!(
 				c,
