@@ -22,7 +22,9 @@ impl InstanceFilter<RuntimeCall> for ProxyType {
 				c,
 				RuntimeCall::Proxy(pallet_proxy::Call::reject_announcement { .. }) |
 					RuntimeCall::Utility { .. } |
-					RuntimeCall::Multisig { .. }
+					RuntimeCall::Multisig { .. } |
+					RuntimeCall::Revive { .. } |
+					RuntimeCall::Contracts { .. }
 			),
 			ProxyType::Assets => {
 				matches!(
