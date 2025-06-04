@@ -1,7 +1,7 @@
 use alloc::string::String;
 
 use frame_support::{
-	sp_runtime::{traits::AtLeast32Bit},
+	sp_runtime::traits::AtLeast32Bit,
 	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _},
 };
 use pallet_revive::precompiles::alloy::primitives::ruint::UintTryFrom;

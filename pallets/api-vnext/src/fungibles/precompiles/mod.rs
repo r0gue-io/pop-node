@@ -94,7 +94,8 @@ where
 				) // TODO: adjust weight
 				.map_err(|e| e.error)?;
 
-				deposit_event(env, address, Approval { id: *id, owner, spender: *spender, value: *value });
+				let spender = *spender;
+				deposit_event(env, address, Approval { id: *id, owner, spender, value: *value });
 				Ok(approveCall::abi_encode_returns(&()))
 			},
 			transferFrom(transferFromCall { id, from, to, value }) => {
@@ -108,7 +109,8 @@ where
 					value.saturating_to(),
 				)?;
 
-				deposit_event(env, address, Transfer { id: *id, from: *from, to: *to, value: *value });
+				let value = *value;
+				deposit_event(env, address, Transfer { id: *id, from: *from, to: *to, value });
 				Ok(transferFromCall::abi_encode_returns(&()))
 			},
 			burn(burnCall { id, account, value }) => {
