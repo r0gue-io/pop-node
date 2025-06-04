@@ -1,7 +1,7 @@
 use alloc::string::String;
 
 use frame_support::{
-	sp_runtime::{traits::AtLeast32Bit, TokenError},
+	sp_runtime::{traits::AtLeast32Bit},
 	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _},
 };
 use pallet_revive::precompiles::alloy::primitives::ruint::UintTryFrom;
@@ -36,12 +36,7 @@ where
 	) -> Result<Vec<u8>, Error> {
 		use IERC20::{IERC20Calls::*, *};
 
-		let id: AssetIdOf<T, I> = u32::from_be_bytes(
-			address[..4]
-				.try_into()
-				.map_err(|_| DispatchError::Token(TokenError::UnknownAsset))?,
-		)
-		.into();
+		let id = InlineAssetIdExtractor::asset_id_from_address(address)?.into();
 
 		match input {
 			// IERC20
