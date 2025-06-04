@@ -50,7 +50,7 @@ where
 				)?
 				.into();
 
-				deposit_event(env, address, Created { id, creator, admin: admin.clone() });
+				deposit_event(env, address, Created { id, creator, admin: *admin });
 				Ok(createCall::abi_encode_returns(&(id,)))
 			},
 			mint(mintCall { id, account, value }) => {
@@ -64,8 +64,8 @@ where
 				)?;
 
 				let from = Address::default();
-				let to = account.clone();
-				deposit_event(env, address, Transfer { id: *id, from, to, value: value.clone() });
+				let to = *account;
+				deposit_event(env, address, Transfer { id: *id, from, to, value: *value });
 				Ok(mintCall::abi_encode_returns(&()))
 			},
 			transfer(transferCall { id, to, value }) => {
@@ -79,8 +79,7 @@ where
 					value.saturating_to(),
 				)?;
 
-				let to = to.clone();
-				deposit_event(env, address, Transfer { id: *id, from, to, value: value.clone() });
+				deposit_event(env, address, Transfer { id: *id, from, to: *to, value: *value });
 				Ok(transferCall::abi_encode_returns(&()))
 			},
 			approve(approveCall { id, spender, value }) => {
@@ -95,9 +94,7 @@ where
 				) // TODO: adjust weight
 				.map_err(|e| e.error)?;
 
-				let spender = spender.clone();
-				let value = value.clone();
-				deposit_event(env, address, Approval { id: *id, owner, spender, value });
+				deposit_event(env, address, Approval { id: *id, owner, spender: *spender, value: *value });
 				Ok(approveCall::abi_encode_returns(&()))
 			},
 			transferFrom(transferFromCall { id, from, to, value }) => {
@@ -111,9 +108,7 @@ where
 					value.saturating_to(),
 				)?;
 
-				let from = from.clone();
-				let value = value.clone();
-				deposit_event(env, address, Transfer { id: *id, from, to: to.clone(), value });
+				deposit_event(env, address, Transfer { id: *id, from: *from, to: *to, value: *value });
 				Ok(transferFromCall::abi_encode_returns(&()))
 			},
 			burn(burnCall { id, account, value }) => {
@@ -127,9 +122,9 @@ where
 				) // TODO: adjust weight
 				.map_err(|e| e.error)?;
 
-				let from = account.clone();
+				let from = account;
 				let to = Address::default();
-				deposit_event(env, address, Transfer { id: *id, from, to, value: value.clone() });
+				deposit_event(env, address, Transfer { id: *id, from: *from, to, value: *value });
 				Ok(burnCall::abi_encode_returns(&()))
 			},
 			startDestroy(startDestroyCall { id }) => {

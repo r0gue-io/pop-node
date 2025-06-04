@@ -154,7 +154,7 @@ impl AssetIdExtractor for InlineAssetIdExtractor {
 	fn asset_id_from_address(addr: &[u8; 20]) -> Result<Self::AssetId, Error> {
 		let bytes: [u8; 4] = addr[0..4].try_into().expect("slice is 4 bytes; qed");
 		let index = u32::from_be_bytes(bytes);
-		return Ok(index.into());
+		Ok(index)
 	}
 }
 /// Mean of extracting the asset id from the precompile address.
