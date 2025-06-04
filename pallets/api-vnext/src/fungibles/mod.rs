@@ -145,3 +145,21 @@ fn transfer_from<T: Config<I>, I>(
 		value,
 	)
 }
+
+// TODO: replace with type in pallet_assets once available in next release
+pub struct InlineAssetIdExtractor;
+impl AssetIdExtractor for InlineAssetIdExtractor {
+	type AssetId = u32;
+
+	fn asset_id_from_address(addr: &[u8; 20]) -> Result<Self::AssetId, Error> {
+		let bytes: [u8; 4] = addr[0..4].try_into().expect("slice is 4 bytes; qed");
+		let index = u32::from_be_bytes(bytes);
+		return Ok(index.into());
+	}
+}
+/// Mean of extracting the asset id from the precompile address.
+pub trait AssetIdExtractor {
+	type AssetId;
+	/// Extracts the asset id from the address.
+	fn asset_id_from_address(address: &[u8; 20]) -> Result<Self::AssetId, Error>;
+}
