@@ -62,8 +62,7 @@ where
 					value.saturating_to(),
 				)?;
 
-				let value = value.clone();
-				deposit_event::<T>(env, address, Transfer { from, to: to.clone(), value });
+				deposit_event::<T>(env, address, Transfer { from, to: *to, value: *value });
 				Ok(transferCall::abi_encode_returns(&(true,)))
 			},
 			allowance(allowanceCall { owner, spender }) => {
@@ -86,7 +85,7 @@ where
 				) // TODO: adjust weight
 				.map_err(|e| e.error)?;
 
-				let event = Approval { owner, spender: spender.clone(), value: value.clone() };
+				let event = Approval { owner, spender: *spender, value: *value };
 				deposit_event(env, address, event);
 				Ok(approveCall::abi_encode_returns(&(true,)))
 			},
@@ -95,15 +94,13 @@ where
 
 				transfer_from::<T, I>(
 					to_runtime_origin(env.caller()),
-					id.into(),
+					id,
 					env.to_account_id(&(*from.0).into()),
 					env.to_account_id(&(*to.0).into()),
 					value.saturating_to(),
 				)?;
 
-				let from = from.clone();
-				let value = value.clone();
-				deposit_event(env, address, Transfer { from, to: to.clone(), value });
+				deposit_event(env, address, Transfer { from: *from, to: *to, value: *value });
 				Ok(transferFromCall::abi_encode_returns(&(true,)))
 			},
 			// IERC20Metadata
