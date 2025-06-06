@@ -4,7 +4,7 @@
 # MacOS
 **/.DS_Store
 
-# Node 
+# Node
 **/node_modules
 
 # Code Editors / IDEs
@@ -13,3 +13,6 @@
 
 # Binaries
 **/bin/
+
+# Environment
+.direnv
