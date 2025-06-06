@@ -143,13 +143,18 @@ fn contracts_prevents_runtime_calls() {
 
 #[cfg(test)]
 mod tests {
+	use codec::Encode;
 	use frame_support::{assert_ok, traits::fungible::Mutate};
-	use pallet_api_vnext::{
-		fungibles::precompiles::{IFungibles::*, IERC20},
-		U256,
+	use frame_system::pallet_prelude::OriginFor;
+	use pallet_api_vnext::fungibles::precompiles::{IFungibles::*, IERC20};
+	use pallet_revive::{
+		precompiles::alloy::{
+			primitives,
+			sol_types::{SolCall, SolType, SolValue},
+		},
+		AddressMapper, Code, DepositLimit,
 	};
-	use pallet_revive::{precompiles::alloy::sol_types::SolCall, AddressMapper};
-	use sp_core::{bytes::to_hex, H160};
+	use sp_core::{bytes::to_hex, H160, U256};
 	use sp_keyring::Sr25519Keyring::{Alice, Bob};
 	use sp_runtime::Weight;
 
@@ -164,7 +169,7 @@ mod tests {
 		let mut ext = sp_io::TestExternalities::new_empty();
 		ext.execute_with(|| {
 			System::set_block_number(1);
-			Balances::set_balance(&Alice.to_account_id(), 100 * UNIT);
+			Balances::set_balance(&Alice.to_account_id(), 1_000 * UNIT);
 			Balances::set_balance(&Bob.to_account_id(), 1 * UNIT);
 			NextAssetId::put(1);
 		});
@@ -175,7 +180,7 @@ mod tests {
 	fn fungibles_precompiles_work() {
 		let caller = Alice.to_account_id();
 		let origin = RuntimeOrigin::signed(caller.clone());
-		let origin_addr: H160 = AccountId32Mapper::to_address(&Alice.to_account_id());
+		let origin_addr = AccountId32Mapper::to_address(&caller);
 		let id = 1;
 		let fungibles_addr: H160 = Fungibles::<100, TrustBackedAssetsInstance>::address().into();
 		let erc20_addr: H160 = Erc20::<101, TrustBackedAssetsInstance>::address(id).into();
@@ -187,7 +192,8 @@ mod tests {
 			// Create a token via fungibles precompile
 			println!("IFungibles precompile: {}", to_hex(&fungibles_addr.0, false));
 			let call =
-				createCall { admin: origin_addr.0.into(), minBalance: U256::from(1) }.abi_encode();
+				createCall { admin: origin_addr.0.into(), minBalance: primitives::U256::from(1) }
+					.abi_encode();
 			println!("IFungibles.create: {}", to_hex(&call, false));
 			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, Weight::zero(), 0, call));
 			let asset_details = Asset::get(id).unwrap();
@@ -195,9 +201,12 @@ mod tests {
 			assert_eq!(asset_details.admin, caller);
 
 			// Mint via fungibles precompile
-			let call =
-				mintCall { id, account: origin_addr.0.into(), value: U256::from(total_supply) }
-					.abi_encode();
+			let call = mintCall {
+				id,
+				account: origin_addr.0.into(),
+				value: primitives::U256::from(total_supply),
+			}
+			.abi_encode();
 			println!("IFungibles.mint: {}", to_hex(&call, false));
 			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, Weight::zero(), 0, call));
 
@@ -205,12 +214,100 @@ mod tests {
 			println!("IERC20 precompile: {}", to_hex(&erc20_addr.0, false));
 			let call = IERC20::transferCall {
 				to: AccountId32Mapper::to_address(&Bob.to_account_id()).0.into(),
-				value: U256::from(total_supply / 2),
+				value: primitives::U256::from(total_supply / 2),
 			}
 			.abi_encode();
 			println!("IERC20.transfer: {}", to_hex(&call, false));
 			assert_ok!(Revive::call(origin.clone(), erc20_addr, 0, Weight::zero(), 0, call));
 			assert_eq!(Assets::balance(id, &Bob.to_account_id()), total_supply / 2);
 		})
+	}
+
+	// Currently ignored due to explicit dependency on built contract
+	#[ignore]
+	#[test]
+	fn fungibles_precompiles_via_contract_works() {
+		let contract = include_bytes!(
+			"../../../../pop-api-vnext/examples/fungibles-vnext/target/ink/fungibles.polkavm"
+		);
+		let caller = Alice.to_account_id();
+		let origin = RuntimeOrigin::signed(caller.clone());
+		let origin_addr = primitives::Address::new(AccountId32Mapper::to_address(&caller).0);
+		let minimum_value = U256::from(1);
+		let endowment = primitives::U256::from(10_000);
+		new_test_ext().execute_with(|| {
+			assert_ok!(Revive::map_account(origin.clone()));
+
+			// Instantiate contract with some value, required to create underlying asset
+			let result = Revive::bare_instantiate(
+				origin.clone(),
+				10 * UNIT,
+				Weight::MAX,
+				DepositLimit::Unchecked,
+				Code::Upload(contract.to_vec()),
+				// Constructors are not yet using Solidity encoding
+				[blake_selector("new"), minimum_value.encode()].concat(),
+				None,
+			)
+			.result
+			.unwrap();
+			assert!(!result.result.did_revert());
+
+			// Interact with contract as Erc20
+			call::<()>(
+				origin.clone(),
+				result.addr,
+				[keccak_selector("mint(address,uint256)"), (origin_addr, endowment).abi_encode()]
+					.concat(),
+			);
+
+			let total_supply = call::<primitives::U256>(
+				origin.clone(),
+				result.addr,
+				keccak_selector("totalSupply()"),
+			);
+			assert_eq!(total_supply, endowment);
+
+			let balance_of = call::<primitives::U256>(
+				origin.clone(),
+				result.addr,
+				[keccak_selector("balanceOf(address)"), (origin_addr,).abi_encode()].concat(),
+			);
+			assert_eq!(balance_of, endowment);
+		});
+
+		fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
+			origin: OriginFor<Runtime>,
+			contract: H160,
+			data: Vec<u8>,
+		) -> T {
+			let result =
+				Revive::bare_call(origin, contract, 0, Weight::MAX, DepositLimit::Unchecked, data)
+					.result
+					.unwrap();
+			assert!(!result.did_revert());
+			T::abi_decode(&result.data, true).unwrap()
+		}
+	}
+
+	fn blake_selector(name: &str) -> Vec<u8> {
+		let hash = sp_io::hashing::blake2_256(name.as_bytes());
+		[hash[0..4].to_vec()].concat()
+	}
+
+	fn keccak_selector(name: &str) -> Vec<u8> {
+		let hash = sp_io::hashing::keccak_256(name.as_bytes());
+		[hash[0..4].to_vec()].concat()
+	}
+
+	#[test]
+	fn selectors_work() {
+		// Constructors currently still use blake encoding
+		assert_eq!(hex::encode(blake_selector("new")), "9bae9d5e");
+
+		// Erc20 selectors
+		assert_eq!(hex::encode(keccak_selector("exists()")), "267c4ae4");
+		assert_eq!(hex::encode(keccak_selector("totalSupply()")), "18160ddd");
+		assert_eq!(hex::encode(keccak_selector("balanceOf(address)")), "70a08231");
 	}
 }

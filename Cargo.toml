@@ -18,6 +18,7 @@ repository = "https://github.com/r0gue-io/pop-node/"
 exclude = [
 	"extension/contract",
 	"pop-api",
+	"pop-api-vnext",
 	"tests/contracts",
 ]
 members = [
