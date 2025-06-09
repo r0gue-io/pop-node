@@ -76,7 +76,7 @@ pub enum Abi {
 
 impl Callback {
 	pub fn new(selector: u32, weight: Weight, abi: Abi) -> Self {
-		Self { selector: selector.to_be_bytes(), weight, abi}
+		Self { selector: selector.to_be_bytes(), weight, abi }
 	}
 }
 
