@@ -19,9 +19,9 @@ pallet-assets = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
 pallet-ismp = { workspace = true, default-features = false }
-pallet-revive = { workspace = true, default-features = false }
-pallet-timestamp ={ workspace = true, default-features = false}
 pallet-nfts = { workspace = true, default-features = false }
+pallet-revive = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
 pallet-xcm = { workspace = true, default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
