@@ -8,6 +8,8 @@ use core::{convert::Into, marker::PhantomData, num::NonZero};
 use frame_support::{dispatch::RawOrigin, sp_runtime::traits::StaticLookup};
 #[cfg(feature = "fungibles")]
 pub use fungibles::precompiles::{Erc20, Fungibles};
+#[cfg(feature = "nonfungibles")]
+pub use nonfungibles::precompiles::erc721::Erc721;
 pub use pallet_revive::precompiles::alloy::primitives::U256;
 use pallet_revive::{
 	evm::{H160, H256},
@@ -31,10 +33,13 @@ use {
 pub mod fungibles;
 #[cfg(test)]
 mod mock;
+#[cfg(feature = "nonfungibles")]
+pub mod nonfungibles;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AddressMapper<T> = <T as Config>::AddressMapper;
 type Assets<T, I> = pallet_assets::Pallet<T, I>;
+type Nfts<T, I> = pallet_nfts::Pallet<T, I>;
 
 // A bare call to a contract.
 #[cfg(test)]
