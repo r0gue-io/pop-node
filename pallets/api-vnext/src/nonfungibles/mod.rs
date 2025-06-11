@@ -6,8 +6,8 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::OriginFor;
 use pallet_nfts::{
-	AttributeNamespace, CancelAttributesApprovalWitness, CollectionConfigFor, Config,
-	DepositBalanceOf, DestroyWitness, MintWitness,
+	AccountBalance, Attribute, AttributeNamespace, CancelAttributesApprovalWitness,
+	CollectionConfigFor, Config, DepositBalanceOf, DestroyWitness, MintWitness,
 };
 
 use super::*;
@@ -194,25 +194,62 @@ fn burn<T: Config<I>, I>(
 	Nfts::<T, I>::burn(origin, collection, item)
 }
 
-// TODO: replace with type in pallet_assets once available in next release
-pub struct InlineCollectionItemExtractor;
-impl CollectionItemExtractor for InlineCollectionItemExtractor {
-	type CollectionId = u32;
-	type ItemId = u32;
+fn balance_of<T: Config<I>, I>(collection: CollectionIdOf<T, I>, owner: AccountIdOf<T>) -> u32 {
+	AccountBalance::<T, I>::get(collection, owner)
+		.map(|(balance, _)| balance)
+		.unwrap_or_default()
+}
 
-	fn from_address(addr: &[u8; 20]) -> Result<(Self::CollectionId, Self::ItemId), Error> {
+fn owner_of<T: Config<I>, I>(
+	collection: CollectionIdOf<T, I>,
+	item: ItemIdOf<T, I>,
+) -> Option<AccountIdOf<T>> {
+	Nfts::<T, I>::owner(collection, item)
+}
+
+fn allowance<T: Config<I>, I>(
+	collection: CollectionIdOf<T, I>,
+	owner: AccountIdOf<T>,
+	operator: AccountIdOf<T>,
+	item: Option<ItemIdOf<T, I>>,
+) -> bool {
+	Nfts::<T, I>::check_approval_permission(&collection, &item, &owner, &operator).is_ok()
+}
+
+fn total_supply<T: Config<I>, I>(collection: CollectionIdOf<T, I>) -> u32 {
+	Nfts::<T, I>::collection_items(collection).unwrap_or_default() as u32
+}
+
+fn get_attributes<T: Config<I>, I>(
+	collection: CollectionIdOf<T, I>,
+	item: Option<ItemIdOf<T, I>>,
+	namespace: AttributeNamespace<AccountIdOf<T>>,
+	key: BoundedVec<u8, T::KeyLimit>,
+) -> Option<Vec<u8>> {
+	Attribute::<T, I>::get((collection, item, namespace, key)).map(|attribute| attribute.0.into())
+}
+
+fn item_metadata<T: Config<I>, I>(
+	collection: CollectionIdOf<T, I>,
+	item: ItemIdOf<T, I>,
+) -> Option<Vec<u8>> {
+	Nfts::<T, I>::item_metadata(collection, item).map(|metadata| metadata.into())
+}
+
+// TODO: replace with type in pallet_nfts once available in future release
+pub struct InlineCollectionIdExtractor;
+impl CollectionIdExtractor for InlineCollectionIdExtractor {
+	type CollectionId = u32;
+
+	fn collection_id_from_address(addr: &[u8; 20]) -> Result<Self::CollectionId, Error> {
 		let bytes: [u8; 4] = addr[0..4].try_into().expect("slice is 4 bytes; qed");
 		let collection_index = u32::from_be_bytes(bytes);
-
-		let bytes: [u8; 4] = addr[4..8].try_into().expect("slice is 4 bytes; qed");
-		let item_index = u32::from_be_bytes(bytes);
-		Ok((collection_index, item_index))
+		Ok(collection_index)
 	}
 }
 /// Mean of extracting the asset id from the precompile address.
-pub trait CollectionItemExtractor {
+pub trait CollectionIdExtractor {
 	type CollectionId;
-	type ItemId;
 
-	fn from_address(address: &[u8; 20]) -> Result<(Self::CollectionId, Self::ItemId), Error>;
+	fn collection_id_from_address(address: &[u8; 20]) -> Result<Self::CollectionId, Error>;
 }

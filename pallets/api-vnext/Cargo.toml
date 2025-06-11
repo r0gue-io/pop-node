@@ -26,7 +26,7 @@ pallet-timestamp.workspace = true
 sp-io.workspace = true
 
 [features]
-default = [ "fungibles", "std", "nonfungibles" ]
+default = [ "fungibles", "nonfungibles", "std" ]
 fungibles = [ "pallet-assets" ]
 nonfungibles = [ "pallet-nfts" ]
 runtime-benchmarks = [
@@ -40,8 +40,8 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"pallet-assets?/std",
-	"pallet-nfts?/std",
 	"pallet-balances/std",
+	"pallet-nfts?/std",
 	"pallet-revive/std",
 	"pallet-timestamp/std",
 	"sp-io/std",
