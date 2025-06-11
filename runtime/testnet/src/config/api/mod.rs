@@ -150,7 +150,7 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 	) -> frame_support::dispatch::DispatchResultWithPostInfo {
 		DispatchResultWithPostInfo::Ok(PostDispatchInfo {
 			actual_weight: Some(weight / 2),
-			pays_fee: Pays::Yes,
+			pays_fee: frame_support::dispatch::Pays::Yes,
 		})
 	}
 
