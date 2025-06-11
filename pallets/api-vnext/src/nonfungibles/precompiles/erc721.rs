@@ -38,9 +38,8 @@ impl<
 		let collection_id = InlineCollectionIdExtractor::collection_id_from_address(address)?;
 
 		let mut transfer_from =
-			|transferFromCall { from, to, tokenId }: transferFromCall| -> Result<Vec<u8>, Error> {
+			|transferFromCall { from, to, tokenId }: transferFromCall| -> Result<(), Error> {
 				let item_id: ItemIdOf<T, I> = tokenId.saturating_to::<u32>().into();
-
 				super::transfer::<T, I>(
 					to_runtime_origin(env.caller()),
 					collection_id.into(),
@@ -48,7 +47,7 @@ impl<
 					item_id,
 				)?;
 				deposit_event::<T>(env, address, Transfer { from, to, tokenId });
-				Ok(transferFromCall::abi_encode_returns(&()))
+				Ok(())
 			};
 
 		let get_attribute = |key: &str| -> Result<Vec<u8>, Error> {
@@ -84,13 +83,19 @@ impl<
 				Ok(ownerOfCall::abi_encode_returns(&(address,)))
 			},
 			// TODO: checkOnERC721Received, reference: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol#L135C21-L135C42
-			safeTransferFrom_0(safeTransferFrom_0Call { from, to, tokenId, data: _ }) =>
-				transfer_from(transferFromCall { from: *from, to: *to, tokenId: *tokenId }),
+			safeTransferFrom_0(safeTransferFrom_0Call { from, to, tokenId, data: _ }) => {
+				transfer_from(transferFromCall { from: *from, to: *to, tokenId: *tokenId })?;
+				Ok(safeTransferFrom_0Call::abi_encode_returns(&()))
+			},
 			// TODO: checkOnERC721Received, reference: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/token/ERC721/ERC721.sol#L135C21-L135C42
-			safeTransferFrom_1(safeTransferFrom_1Call { from, to, tokenId }) =>
-				transfer_from(transferFromCall { from: *from, to: *to, tokenId: *tokenId }),
-			transferFrom(transferFromCall { from, to, tokenId }) =>
-				transfer_from(transferFromCall { from: *from, to: *to, tokenId: *tokenId }),
+			safeTransferFrom_1(safeTransferFrom_1Call { from, to, tokenId }) => {
+				transfer_from(transferFromCall { from: *from, to: *to, tokenId: *tokenId })?;
+				Ok(safeTransferFrom_1Call::abi_encode_returns(&()))
+			},
+			transferFrom(transferFromCall { from, to, tokenId }) => {
+				transfer_from(transferFromCall { from: *from, to: *to, tokenId: *tokenId })?;
+				Ok(transferFromCall::abi_encode_returns(&()))
+			},
 			approve(approveCall { to, tokenId }) => {
 				// TODO: charge based on benchmarked weight
 				let collection_id: CollectionIdOf<T, I> = collection_id.into();
@@ -230,9 +235,13 @@ mod tests {
 	use frame_support::assert_ok;
 	use pallet_nfts::{CollectionConfig, CollectionSettings, Instance1, MintSettings};
 	use pallet_revive::{
-		precompiles::{alloy::sol_types::SolType, ExtWithInfo},
-		test_utils::{ALICE, ALICE_ADDR},
+		precompiles::{
+			alloy::{primitives::Bytes, sol_types::SolType},
+			ExtWithInfo,
+		},
+		test_utils::{ALICE, ALICE_ADDR, BOB, BOB_ADDR},
 	};
+	use IERC721Calls::*;
 
 	use super::*;
 	use crate::mock::{ExtBuilder, RuntimeOrigin, Test};
@@ -251,11 +260,136 @@ mod tests {
 				call_precompile::<U256>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&IERC721Calls::balanceOf(IERC721::balanceOfCall { owner: ALICE_ADDR.0.into() })
+					&balanceOf(balanceOfCall { owner: ALICE_ADDR.0.into() })
 				)
 				.unwrap(),
 				U256::from(1)
 			);
+			assert_eq!(super::balance_of::<Test, Instance1>(collection_id, ALICE), 1);
+		});
+	}
+
+	#[test]
+	fn owner_of_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			let address: Address = ALICE_ADDR.0.into();
+			assert_eq!(
+				call_precompile::<Address>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&ownerOf(ownerOfCall { tokenId: U256::from(item_id) })
+				)
+				.unwrap(),
+				address
+			);
+			assert_eq!(super::owner_of::<Test, Instance1>(collection_id, item_id), Some(ALICE));
+		});
+	}
+
+	#[test]
+	fn safe_transfer_from_0_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				Some(item_id),
+				true,
+				None,
+			));
+			call_setup.set_origin(Origin::Signed(BOB));
+			assert_ok!(call_precompile::<()>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&safeTransferFrom_0(safeTransferFrom_0Call {
+					from: ALICE_ADDR.0.into(),
+					to: BOB_ADDR.0.into(),
+					tokenId: U256::from(item_id),
+					data: Bytes::default()
+				})
+			));
+			assert_eq!(super::balance_of::<Test, Instance1>(collection_id, BOB), 1);
+		});
+	}
+
+	#[test]
+	fn safe_transfer_from_1_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				Some(item_id),
+				true,
+				None,
+			));
+			call_setup.set_origin(Origin::Signed(BOB));
+			assert_ok!(call_precompile::<()>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&safeTransferFrom_1(safeTransferFrom_1Call {
+					from: ALICE_ADDR.0.into(),
+					to: BOB_ADDR.0.into(),
+					tokenId: U256::from(item_id),
+				})
+			));
+			assert_eq!(super::balance_of::<Test, Instance1>(collection_id, BOB), 1);
+		});
+	}
+
+	#[test]
+	fn transfer_from_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				Some(item_id),
+				true,
+				None,
+			));
+			call_setup.set_origin(Origin::Signed(BOB));
+			assert_ok!(call_precompile::<()>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&transferFrom(transferFromCall {
+					from: ALICE_ADDR.0.into(),
+					to: BOB_ADDR.0.into(),
+					tokenId: U256::from(item_id)
+				})
+			));
+			assert_eq!(super::balance_of::<Test, Instance1>(collection_id, BOB), 1);
+		});
+	}
+
+	#[test]
+	fn approve_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			call_setup.set_origin(Origin::Signed(ALICE));
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(call_precompile::<()>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&IERC721Calls::approve(approveCall {
+					to: BOB_ADDR.0.into(),
+					tokenId: U256::from(item_id)
+				})
+			));
+			assert!(super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, Some(item_id)));
 		});
 	}
 
