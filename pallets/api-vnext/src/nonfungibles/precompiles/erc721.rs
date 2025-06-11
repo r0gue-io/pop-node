@@ -192,7 +192,6 @@ impl<
 				);
 				Ok(isApprovedForAllCall::abi_encode_returns(&(approved,)))
 			},
-			// IERC721Mintable
 			// IERC721Burnable
 			burn(burnCall { tokenId }) => {
 				let item_id: ItemIdOf<T, I> = tokenId.saturating_to::<u32>().into();
@@ -221,7 +220,73 @@ impl<
 }
 
 impl<const PREFIX: u16, T: Config<I>, I: 'static> Erc721<PREFIX, T, I> {
-	pub fn address(id: u32) -> [u8; 20] {
-		prefixed_address(PREFIX, id)
+	pub fn address(collection_id: u32) -> [u8; 20] {
+		prefixed_address(PREFIX, collection_id)
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use frame_support::assert_ok;
+	use pallet_nfts::{CollectionConfig, CollectionSettings, Instance1, MintSettings};
+	use pallet_revive::{
+		precompiles::{alloy::sol_types::SolType, ExtWithInfo},
+		test_utils::{ALICE, ALICE_ADDR},
+	};
+
+	use super::*;
+	use crate::mock::{ExtBuilder, RuntimeOrigin, Test};
+
+	const ERC721: u16 = 100;
+
+	type Erc721 = super::Erc721<ERC721, Test, Instance1>;
+
+	#[test]
+	fn balance_of_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_eq!(
+				call_precompile::<U256>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&IERC721Calls::balanceOf(IERC721::balanceOfCall { owner: ALICE_ADDR.0.into() })
+				)
+				.unwrap(),
+				U256::from(1)
+			);
+		});
+	}
+
+	fn create_collection_and_mint(owner: AccountIdOf<Test>, collection_id: u32, item_id: u32) {
+		assert_ok!(super::create::<Test, Instance1>(
+			RuntimeOrigin::signed(owner.clone()),
+			owner.clone(),
+			default_collection_config(),
+		));
+		assert_ok!(super::mint::<Test, Instance1>(
+			RuntimeOrigin::signed(owner.clone()),
+			collection_id,
+			owner,
+			item_id,
+			None,
+		));
+	}
+
+	fn default_collection_config() -> CollectionConfigFor<Test, Instance1> {
+		CollectionConfig {
+			settings: CollectionSettings::all_enabled(),
+			max_supply: None,
+			mint_settings: MintSettings::default(),
+		}
+	}
+
+	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
+		ext: &mut impl ExtWithInfo<T = mock::Test>,
+		id: u32,
+		input: &IERC721Calls,
+	) -> Result<Output, Error> {
+		super::call_precompile::<Erc721, Output>(ext, &prefixed_address(ERC721, id), input)
 	}
 }

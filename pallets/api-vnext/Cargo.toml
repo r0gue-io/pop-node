@@ -18,6 +18,7 @@ frame-system.workspace = true
 pallet-assets = { workspace = true, default-features = false, optional = true }
 pallet-nfts = { workspace = true, default-features = false, optional = true }
 pallet-revive = { workspace = true, default-features = false }
+
 scale-info.workspace = true
 
 [dev-dependencies]

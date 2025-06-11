@@ -217,7 +217,7 @@ fn allowance<T: Config<I>, I>(
 }
 
 fn total_supply<T: Config<I>, I>(collection: CollectionIdOf<T, I>) -> u32 {
-	Nfts::<T, I>::collection_items(collection).unwrap_or_default() as u32
+	Nfts::<T, I>::collection_items(collection).unwrap_or_default()
 }
 
 fn get_attributes<T: Config<I>, I>(
