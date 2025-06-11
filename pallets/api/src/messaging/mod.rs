@@ -139,9 +139,6 @@ pub mod pallet {
 		/// payment.
 		type WeightToFee: WeightToFee<Balance = BalanceOf<Self>>;
 
-		/// The fee paid to the relayers account for relaying a message.
-		type IsmpRelayerFee: Get<BalanceOf<Self>>;
-
 		/// The implementation of Keccak used for commitment hashes.
 		type Keccak256: ::ismp::messaging::Keccak256;
 
@@ -383,6 +380,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Get<T>,
+			ismp_relayer_fee: BalanceOf<T>,
 			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
@@ -408,7 +406,7 @@ pub mod pallet {
 			// Process message by dispatching request via ISMP.
 			let commitment = match T::IsmpDispatcher::default().dispatch_request(
 				message.into(),
-				FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+				FeeMetadata { payer: origin.clone(), fee: ismp_relayer_fee },
 			) {
 				Ok(commitment) => Ok::<H256, DispatchError>(commitment),
 				Err(e) => {
@@ -454,6 +452,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			id: MessageId,
 			message: ismp::Post<T>,
+			ismp_relayer_fee: BalanceOf<T>,
 			callback: Option<Callback>,
 		) -> DispatchResult {
 			let origin = ensure_signed(origin)?;
@@ -480,7 +479,7 @@ pub mod pallet {
 			let commitment = T::IsmpDispatcher::default()
 				.dispatch_request(
 					message.into(),
-					FeeMetadata { payer: origin.clone(), fee: T::IsmpRelayerFee::get() },
+					FeeMetadata { payer: origin.clone(), fee: ismp_relayer_fee },
 				)
 				.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 

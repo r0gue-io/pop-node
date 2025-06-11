@@ -24,7 +24,7 @@ pub(super) const POLL: u8 = 0;
 pub(super) const GET: u8 = 1;
 pub(super) const QUERY_ID: u8 = 2;
 
-pub type MessageId = u64;
+pub type MessageId = [u8; 32];
 
 fn build_dispatch(dispatchable: u8) -> ChainExtensionMethodApi {
 	crate::v0::build_dispatch(MESSAGING, dispatchable)
@@ -35,16 +35,16 @@ fn build_read_state(state_query: u8) -> ChainExtensionMethodApi {
 }
 
 #[inline]
-pub fn poll(id: (AccountId, MessageId)) -> Result<Option<Status>> {
+pub fn poll_status(id: (AccountId, MessageId)) -> Result<Option<MessageStatus>> {
 	build_read_state(POLL)
 		.input::<(AccountId, MessageId)>()
-		.output::<Result<Option<Status>>, true>()
+		.output::<Result<Option<MessageStatus>>, true>()
 		.handle_error_code::<StatusCode>()
 		.call(&id)
 }
 
 #[inline]
-pub fn get(id: (AccountId, MessageId)) -> Result<Option<Vec<u8>>> {
+pub fn get_response(id: (AccountId, MessageId)) -> Result<Option<Vec<u8>>> {
 	build_read_state(GET)
 		.input::<(AccountId, MessageId)>()
 		.output::<Result<Option<Vec<u8>>>, true>()
@@ -63,21 +63,28 @@ pub fn remove(requests: Vec<MessageId>) -> Result<()> {
 
 #[ink::scale_derive(Decode, Encode, TypeInfo)]
 pub struct Callback {
+	abi: Abi,
 	selector: [u8; 4],
 	weight: Weight,
 }
 
+/// The encoding used for the data going to the contract.
+#[ink::scale_derive(Decode, Encode, TypeInfo)]
+pub enum Abi {
+	Scale,
+}
+
 impl Callback {
-	pub fn to(selector: u32, weight: Weight) -> Self {
-		Self { selector: selector.to_be_bytes(), weight }
+	pub fn new(selector: u32, weight: Weight, abi: Abi) -> Self {
+		Self { selector: selector.to_be_bytes(), weight, abi }
 	}
 }
 
 #[derive(PartialEq)]
 #[ink::scale_derive(Decode, Encode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
-pub enum Status {
+pub enum MessageStatus {
 	Pending,
-	TimedOut,
 	Complete,
+	TimedOut,
 }

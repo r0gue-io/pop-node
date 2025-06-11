@@ -10,7 +10,7 @@ use frame_support::{
 };
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
-use pallet_revive::{AddressMapper, CollectEvents, DebugInfo};
+use pallet_contracts::{CollectEvents, DebugInfo};
 use pallet_xcm::Origin;
 use sp_core::ConstU8;
 use sp_runtime::{traits::AccountIdConversion, DispatchError};
@@ -114,18 +114,13 @@ impl nonfungibles::Config for Runtime {
 
 parameter_types! {
 	pub const MaxXcmQueryTimeoutsPerBlock: u32 = 100;
-
-	// TODO: What is reasonable.
-	pub const IsmpRelayerFee: crate::Balance = crate::UNIT / 2;
 }
 
 impl messaging::Config for Runtime {
 	type CallbackExecutor = CallbackExecutor;
-	// Burn fees.
 	type FeeHandler = crate::DealWithFees;
 	type Fungibles = Balances;
 	type IsmpDispatcher = Ismp;
-	type IsmpRelayerFee = IsmpRelayerFee;
 	type Keccak256 = Ismp;
 	type MaxContextLen = ConstU32<64>;
 	type MaxDataLen = ConstU32<512>;
@@ -190,8 +185,6 @@ pub struct CallbackExecutor;
 #[cfg(not(feature = "runtime-benchmarks"))]
 impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 	fn execute(account: &AccountId, data: Vec<u8>, weight: Weight) -> DispatchResultWithPostInfo {
-		type AddressMapper = <Runtime as pallet_revive::Config>::AddressMapper;
-
 		// Default
 		#[cfg(not(feature = "std"))]
 		let debug = DebugInfo::Skip;
@@ -203,28 +196,30 @@ impl messaging::CallbackExecutor<Runtime> for CallbackExecutor {
 		#[cfg(feature = "std")]
 		let collect_events = CollectEvents::UnsafeCollect;
 
-		let mut output = Revive::bare_call(
-			RuntimeOrigin::signed(account.clone()),
-			AddressMapper::to_address(&account),
+		// Using pallet_contracts for now due to a UnsupportedPrecompileAddress.
+		// Since both messaging and revive are experimental, lets get messaging running with
+		// contracts only for now.
+		let mut output = crate::Contracts::bare_call(
+			account.clone(),
+			account.clone(),
 			Default::default(),
 			weight,
 			Default::default(),
 			data,
 			debug,
 			collect_events,
+			pallet_contracts::Determinism::Enforced,
 		);
-
-		log::debug!(target: "pop-api::extension", "callback weight consumed={:?}, weight required={:?}", output.gas_consumed, output.gas_required);
 		if let Ok(return_value) = &output.result {
-			let pallet_revive::ExecReturnValue { flags, data } = return_value;
-			log::debug!(target: "pop-api::extension", "return data={:?}", data);
 			if return_value.did_revert() {
 				output.result = Err(pallet_revive::Error::<Runtime>::ContractReverted.into());
 			}
 		}
 
-		let post_info =
-			PostDispatchInfo { actual_weight: Some(output.gas_consumed), pays_fee: Pays::No };
+		let post_info = PostDispatchInfo {
+			actual_weight: Some(output.gas_consumed.saturating_add(Self::execution_weight())),
+			pays_fee: Default::default(),
+		};
 
 		output
 			.result
@@ -342,7 +337,18 @@ impl<T: frame_system::Config<RuntimeCall = RuntimeCall>> Contains<RuntimeCall> f
 				)
 			};
 
-		T::BaseCallFilter::contains(c) && (contain_fungibles | contain_nonfungibles)
+		let contain_messaging: bool = {
+			use messaging::Call::*;
+			matches!(
+				c,
+				RuntimeCall::Messaging(
+					xcm_new_query { .. } | ismp_get { .. } | ismp_post { .. } | remove { .. },
+				)
+			)
+		};
+
+		T::BaseCallFilter::contains(c) &&
+			(contain_fungibles | contain_nonfungibles | contain_messaging)
 	}
 }
 
@@ -375,7 +381,12 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 			)
 		};
 
-		contain_fungibles | contain_nonfungibles
+		let contain_messaging: bool = {
+			use messaging::Read::*;
+			matches!(r, RuntimeRead::Messaging(PollStatus(..) | GetResponse(..) | QueryId(..)))
+		};
+
+		contain_fungibles | contain_nonfungibles | contain_messaging
 	}
 }
 

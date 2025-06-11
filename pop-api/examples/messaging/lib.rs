@@ -49,7 +49,7 @@ mod messaging {
                 self.id,
                 Get::new(self.para, height, 0, Vec::default(), Vec::from([key.clone()])),
                 0,
-                Some(Callback::to(0x57ad942b, Weight::from_parts(800_000_000, 500_000))),
+                Some(Callback::new(0x57ad942b, Weight::from_parts(800_000_000, 500_000))),
             )?;
             self.env().emit_event(IsmpRequested { id: self.id, key, height });
             Ok(())
@@ -95,7 +95,7 @@ mod messaging {
                 self.id,
                 dest.clone(),
                 self.env().block_number().saturating_add(100),
-                Some(Callback::to(0x641b0b03, Weight::from_parts(800_000_000, 500_000))),
+                Some(Callback::new(0x641b0b03, Weight::from_parts(800_000_000, 500_000), Abi::Scale)),
             )?
                 .unwrap(); // TODO: handle error
 

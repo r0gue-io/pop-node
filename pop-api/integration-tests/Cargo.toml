@@ -20,6 +20,8 @@ pallet-balances = { workspace = true, default-features = false }
 pallet-contracts = { workspace = true, default-features = false }
 pallet-ismp = { workspace = true, default-features = false }
 pallet-nfts = { workspace = true, default-features = false }
+pallet-revive = { workspace = true, default-features = false }
+pallet-timestamp = { workspace = true, default-features = false }
 pallet-xcm = { workspace = true, default-features = false }
 pop-api = { path = "../../pop-api", default-features = false, features = [
 	"fungibles",
@@ -37,6 +39,7 @@ xcm-executor.workspace = true
 [features]
 default = [ "std" ]
 devnet = [ "pop-runtime-devnet/default" ]
+
 std = [
 	"codec/std",
 	"frame-support/std",
@@ -46,6 +49,7 @@ std = [
 	"pallet-balances/std",
 	"pallet-contracts/std",
 	"pallet-nfts/std",
+	"pallet-timestamp/std",
 	"pop-api/std",
 	"pop-primitives/std",
 	"pop-runtime-devnet/std",

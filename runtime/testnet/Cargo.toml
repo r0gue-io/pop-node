@@ -101,7 +101,7 @@ parachains-common.workspace = true
 ismp.workspace = true
 ismp-parachain.workspace = true
 ismp-parachain-runtime-api.workspace = true
-pallet-ismp = { workspace = true, features = [ "unsigned" ] }
+pallet-ismp = { workspace = true }
 pallet-ismp-runtime-api.workspace = true
 
 [dev-dependencies]
