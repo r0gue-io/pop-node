@@ -1,13 +1,13 @@
 use frame_support::{
 	dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
-	traits::nonfungibles_v2::Inspect,
+	traits::{nonfungibles_v2::Inspect, Incrementable},
 	weights::Weight,
 	BoundedVec,
 };
 use frame_system::pallet_prelude::OriginFor;
 use pallet_nfts::{
 	AccountBalance, Attribute, AttributeNamespace, CancelAttributesApprovalWitness,
-	CollectionConfigFor, Config, DepositBalanceOf, DestroyWitness, MintWitness,
+	CollectionConfigFor, Config, DepositBalanceOf, DestroyWitness, MintWitness, NextCollectionId,
 };
 
 use super::*;
@@ -234,6 +234,10 @@ fn item_metadata<T: Config<I>, I>(
 	item: ItemIdOf<T, I>,
 ) -> Option<Vec<u8>> {
 	Nfts::<T, I>::item_metadata(collection, item).map(|metadata| metadata.into())
+}
+
+fn next_collection_id<T: Config<I>, I>() -> Option<CollectionIdOf<T, I>> {
+	NextCollectionId::<T, I>::get().or(T::CollectionId::initial_value())
 }
 
 // TODO: replace with type in pallet_nfts once available in future release

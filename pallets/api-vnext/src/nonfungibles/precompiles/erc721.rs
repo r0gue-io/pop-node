@@ -250,7 +250,6 @@ mod tests {
 		},
 		test_utils::{ALICE, ALICE_ADDR, BOB, BOB_ADDR},
 	};
-	use IERC721Calls::*;
 
 	use super::*;
 	use crate::mock::{ExtBuilder, RuntimeOrigin, Test};
@@ -269,7 +268,7 @@ mod tests {
 				call_precompile::<U256>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&balanceOf(balanceOfCall { owner: ALICE_ADDR.0.into() })
+					&IERC721Calls::balanceOf(IERC721::balanceOfCall { owner: ALICE_ADDR.0.into() })
 				)
 				.unwrap(),
 				U256::from(1)
@@ -289,7 +288,7 @@ mod tests {
 				call_precompile::<Address>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&ownerOf(ownerOfCall { tokenId: U256::from(item_id) })
+					&IERC721Calls::ownerOf(IERC721::ownerOfCall { tokenId: U256::from(item_id) })
 				)
 				.unwrap(),
 				address
@@ -316,7 +315,7 @@ mod tests {
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&safeTransferFrom_0(safeTransferFrom_0Call {
+				&IERC721Calls::safeTransferFrom_0(IERC721::safeTransferFrom_0Call {
 					from: ALICE_ADDR.0.into(),
 					to: BOB_ADDR.0.into(),
 					tokenId: U256::from(item_id),
@@ -345,7 +344,7 @@ mod tests {
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&safeTransferFrom_1(safeTransferFrom_1Call {
+				&IERC721Calls::safeTransferFrom_1(IERC721::safeTransferFrom_1Call {
 					from: ALICE_ADDR.0.into(),
 					to: BOB_ADDR.0.into(),
 					tokenId: U256::from(item_id),
@@ -373,7 +372,7 @@ mod tests {
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&transferFrom(transferFromCall {
+				&IERC721Calls::transferFrom(IERC721::transferFromCall {
 					from: ALICE_ADDR.0.into(),
 					to: BOB_ADDR.0.into(),
 					tokenId: U256::from(item_id)
@@ -382,7 +381,7 @@ mod tests {
 			assert_eq!(super::balance_of::<Test, Instance1>(collection_id, BOB), 1);
 			assert_last_event(
 				prefixed_address(ERC721, collection_id),
-				Transfer {
+				IERC721::Transfer {
 					from: ALICE_ADDR.0.into(),
 					to: BOB_ADDR.0.into(),
 					tokenId: U256::saturating_from(item_id),
@@ -402,7 +401,7 @@ mod tests {
 				call_precompile::<()>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&IERC721Calls::approve(approveCall {
+					&IERC721Calls::approve(IERC721::approveCall {
 						to: BOB_ADDR.0.into(),
 						tokenId: U256::from(1)
 					})
@@ -431,7 +430,7 @@ mod tests {
 				call_precompile::<()>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&IERC721Calls::approve(approveCall {
+					&IERC721Calls::approve(IERC721::approveCall {
 						to: BOB_ADDR.0.into(),
 						tokenId: U256::from(item_id)
 					})
@@ -451,7 +450,7 @@ mod tests {
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&IERC721Calls::approve(approveCall {
+				&IERC721Calls::approve(IERC721::approveCall {
 					to: BOB_ADDR.0.into(),
 					tokenId: U256::from(item_id)
 				})
@@ -459,7 +458,7 @@ mod tests {
 			assert!(super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, Some(item_id)));
 			assert_last_event(
 				prefixed_address(ERC721, collection_id),
-				Approval {
+				IERC721::Approval {
 					owner: ALICE_ADDR.0.into(),
 					approved: BOB_ADDR.0.into(),
 					tokenId: U256::saturating_from(item_id),
@@ -486,7 +485,7 @@ mod tests {
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&IERC721Calls::approve(approveCall {
+				&IERC721Calls::approve(IERC721::approveCall {
 					to: Address(FixedBytes::default()),
 					tokenId: U256::from(item_id)
 				})
@@ -504,7 +503,7 @@ mod tests {
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&setApprovalForAll(setApprovalForAllCall {
+				&IERC721Calls::setApprovalForAll(IERC721::setApprovalForAllCall {
 					operator: BOB_ADDR.0.into(),
 					approved: true
 				})
@@ -512,7 +511,7 @@ mod tests {
 			assert!(super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, None));
 			assert_last_event(
 				prefixed_address(ERC721, collection_id),
-				ApprovalForAll {
+				IERC721::ApprovalForAll {
 					owner: ALICE_ADDR.0.into(),
 					operator: BOB_ADDR.0.into(),
 					approved: true,
@@ -538,7 +537,7 @@ mod tests {
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&setApprovalForAll(setApprovalForAllCall {
+				&IERC721Calls::setApprovalForAll(IERC721::setApprovalForAllCall {
 					operator: BOB_ADDR.0.into(),
 					approved: false
 				})
@@ -546,7 +545,7 @@ mod tests {
 			assert!(!super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, None));
 			assert_last_event(
 				prefixed_address(ERC721, collection_id),
-				ApprovalForAll {
+				IERC721::ApprovalForAll {
 					owner: ALICE_ADDR.0.into(),
 					operator: BOB_ADDR.0.into(),
 					approved: false,
@@ -576,7 +575,9 @@ mod tests {
 				call_precompile::<Address>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&getApproved(getApprovedCall { tokenId: U256::saturating_from(item_id) })
+					&IERC721Calls::getApproved(IERC721::getApprovedCall {
+						tokenId: U256::saturating_from(item_id)
+					})
 				)
 				.unwrap(),
 				address
@@ -596,7 +597,9 @@ mod tests {
 				call_precompile::<Address>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&getApproved(getApprovedCall { tokenId: U256::saturating_from(item_id) })
+					&IERC721Calls::getApproved(IERC721::getApprovedCall {
+						tokenId: U256::saturating_from(item_id)
+					})
 				),
 				Err(Error::Revert(e)) if e == Revert { reason: "ERC721: Not approved".to_string() }
 			));
@@ -620,7 +623,7 @@ mod tests {
 			assert_ok!(call_precompile::<bool>(
 				&mut call_setup.ext().0,
 				collection_id,
-				&isApprovedForAll(isApprovedForAllCall {
+				&IERC721Calls::isApprovedForAll(IERC721::isApprovedForAllCall {
 					owner: ALICE_ADDR.0.into(),
 					operator: BOB_ADDR.0.into()
 				})
@@ -638,7 +641,7 @@ mod tests {
 				call_precompile::<String>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&name(nameCall {})
+					&IERC721Calls::name(IERC721::nameCall {})
 				)
 				.unwrap(),
 				"ERC721 Example Colection".to_string()
@@ -656,7 +659,7 @@ mod tests {
 				call_precompile::<String>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&symbol(symbolCall {})
+					&IERC721Calls::symbol(IERC721::symbolCall {})
 				)
 				.unwrap(),
 				"POP".to_string()
@@ -675,7 +678,9 @@ mod tests {
 				call_precompile::<String>(
 					&mut call_setup.ext().0,
 					collection_id,
-					&tokenURI(tokenURICall { tokenId: U256::saturating_from(item_id) })
+					&IERC721Calls::tokenURI(IERC721::tokenURICall {
+						tokenId: U256::saturating_from(item_id)
+					})
 				)
 				.unwrap(),
 				"https://example.com/image.png".to_string()
