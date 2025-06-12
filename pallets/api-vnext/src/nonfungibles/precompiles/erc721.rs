@@ -50,20 +50,23 @@ impl<
 				Ok(())
 			};
 
-		let get_attribute = |key: &str| -> Result<Vec<u8>, Error> {
-			let collection_id: CollectionIdOf<T, I> = collection_id.into();
-			let attribute = match Nfts::<T, I>::collection_attribute(&collection_id, key.as_bytes())
-			{
-				Some(value) => value,
-				None =>
-					return Err(Error::Revert(Revert {
-						reason: "ERC721: No attributefound".to_string(),
-					})),
+		let get_attribute =
+			|key: &str, item_id: Option<ItemIdOf<T, I>>| -> Result<Vec<u8>, Error> {
+				let collection_id: CollectionIdOf<T, I> = collection_id.into();
+				let attribute = match super::get_attributes::<T, I>(
+					collection_id,
+					item_id,
+					AttributeNamespace::CollectionOwner,
+					BoundedVec::truncate_from(key.as_bytes().to_vec()),
+				) {
+					Some(value) => value,
+					None =>
+						return Err(Error::Revert(Revert {
+							reason: "ERC721: No attribute found".to_string(),
+						})),
+				};
+				Ok(attribute)
 			};
-			// TODO: improve
-			let result = String::from_utf8_lossy(attribute.as_slice());
-			Ok(nameCall::abi_encode_returns(&(result,)))
-		};
 
 		match input {
 			// IERC721
@@ -110,13 +113,6 @@ impl<
 						})),
 				};
 
-				// Only a single account can be approved at a time, so approving the zero address
-				// clears previous approvals.
-				if !item_details.approvals.is_empty() {
-					return Err(Error::Revert(Revert {
-						reason: "ERC721: token already approved".to_string(),
-					}));
-				}
 				if *to == Address(FixedBytes::default()) {
 					super::clear_all_transfer_approvals::<T, I>(
 						to_runtime_origin(env.caller()),
@@ -124,6 +120,13 @@ impl<
 						item_id,
 					)?;
 				} else {
+					// Only a single account can be approved at a time, so approving the zero
+					// address clears previous approvals.
+					if !item_details.approvals.is_empty() {
+						return Err(Error::Revert(Revert {
+							reason: "ERC721: Item already approved".to_string(),
+						}));
+					}
 					super::approve::<T, I>(
 						to_runtime_origin(env.caller()),
 						collection_id.into(),
@@ -182,9 +185,8 @@ impl<
 						let address: Address = <AddressMapper<T>>::to_address(&approved).0.into();
 						Ok(getApprovedCall::abi_encode_returns(&(address,)))
 					},
-					None => Err(Error::Revert(Revert {
-						reason: "ERC721: No approval found".to_string(),
-					})),
+					None =>
+						Err(Error::Revert(Revert { reason: "ERC721: Not approved".to_string() })),
 				}
 			},
 			isApprovedForAll(isApprovedForAllCall { owner, operator }) => {
@@ -217,9 +219,16 @@ impl<
 			},
 			// IERC721Metadata
 			// Reference: https://wiki.polkadot.network/learn/learn-nft-pallets/
-			name(_) => get_attribute("name"),
-			symbol(_) => get_attribute("symbol"),
-			tokenURI(_) => get_attribute("image"),
+			name(_) => get_attribute("name", None)
+				.map(|attr| nameCall::abi_encode_returns(&(String::from_utf8_lossy(&attr),))),
+			symbol(_) => get_attribute("symbol", None)
+				.map(|attr| nameCall::abi_encode_returns(&(String::from_utf8_lossy(&attr),))),
+			tokenURI(tokenURICall { tokenId }) => {
+				let item_id: ItemIdOf<T, I> = tokenId.saturating_to::<u32>().into();
+				get_attribute("image", Some(item_id)).map(|attr| {
+					tokenURICall::abi_encode_returns(&(String::from_utf8_lossy(&attr),))
+				})
+			},
 		}
 	}
 }
@@ -371,6 +380,64 @@ mod tests {
 				})
 			));
 			assert_eq!(super::balance_of::<Test, Instance1>(collection_id, BOB), 1);
+			assert_last_event(
+				prefixed_address(ERC721, collection_id),
+				Transfer {
+					from: ALICE_ADDR.0.into(),
+					to: BOB_ADDR.0.into(),
+					tokenId: U256::saturating_from(item_id),
+				},
+			);
+		});
+	}
+
+	#[test]
+	fn approve_fails_with_unknown_item() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			// No item found.
+			assert!(matches!(
+				call_precompile::<()>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&IERC721Calls::approve(approveCall {
+						to: BOB_ADDR.0.into(),
+						tokenId: U256::from(1)
+					})
+				),
+				Err(Error::Revert(e)) if e == Revert { reason: "ERC721: Item not found".to_string() }
+			));
+		});
+	}
+
+	#[test]
+	fn approve_fails_with_existing_approval() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				Some(item_id),
+				true,
+				None,
+			));
+			// Item already approved.
+			assert!(matches!(
+				call_precompile::<()>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&IERC721Calls::approve(approveCall {
+						to: BOB_ADDR.0.into(),
+						tokenId: U256::from(item_id)
+					})
+				),
+				Err(Error::Revert(e)) if e == Revert { reason: "ERC721: Item already approved".to_string() }
+			));
 		});
 	}
 
@@ -379,8 +446,8 @@ mod tests {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
 		ExtBuilder::new().build_with_env(|mut call_setup| {
-			call_setup.set_origin(Origin::Signed(ALICE));
 			create_collection_and_mint(ALICE, collection_id, item_id);
+			// Successfully approved.
 			assert_ok!(call_precompile::<()>(
 				&mut call_setup.ext().0,
 				collection_id,
@@ -390,15 +457,234 @@ mod tests {
 				})
 			));
 			assert!(super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, Some(item_id)));
+			assert_last_event(
+				prefixed_address(ERC721, collection_id),
+				Approval {
+					owner: ALICE_ADDR.0.into(),
+					approved: BOB_ADDR.0.into(),
+					tokenId: U256::saturating_from(item_id),
+				},
+			);
+		});
+	}
+
+	#[test]
+	fn approve_zero_address_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				Some(item_id),
+				true,
+				None,
+			));
+			// Clear all existing approvals if zero address is approved.
+			assert_ok!(call_precompile::<()>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&IERC721Calls::approve(approveCall {
+					to: Address(FixedBytes::default()),
+					tokenId: U256::from(item_id)
+				})
+			));
+			assert!(!super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, Some(item_id)));
+		});
+	}
+
+	#[test]
+	fn set_approval_for_all_works() {
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, 0);
+			// Successfully approved.
+			assert_ok!(call_precompile::<()>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&setApprovalForAll(setApprovalForAllCall {
+					operator: BOB_ADDR.0.into(),
+					approved: true
+				})
+			));
+			assert!(super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, None));
+			assert_last_event(
+				prefixed_address(ERC721, collection_id),
+				ApprovalForAll {
+					owner: ALICE_ADDR.0.into(),
+					operator: BOB_ADDR.0.into(),
+					approved: true,
+				},
+			);
+		});
+	}
+
+	#[test]
+	fn remove_approval_for_all_works() {
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, 0);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				None,
+				true,
+				None,
+			));
+			// Successfully removes approval.
+			assert_ok!(call_precompile::<()>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&setApprovalForAll(setApprovalForAllCall {
+					operator: BOB_ADDR.0.into(),
+					approved: false
+				})
+			));
+			assert!(!super::allowance::<Test, Instance1>(collection_id, ALICE, BOB, None));
+			assert_last_event(
+				prefixed_address(ERC721, collection_id),
+				ApprovalForAll {
+					owner: ALICE_ADDR.0.into(),
+					operator: BOB_ADDR.0.into(),
+					approved: false,
+				},
+			);
+		});
+	}
+
+	#[test]
+	fn get_approved_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				Some(item_id),
+				true,
+				None,
+			));
+			let address: Address = BOB_ADDR.0.into();
+			// Approved.
+			call_setup.set_origin(Origin::Signed(BOB));
+			assert_eq!(
+				call_precompile::<Address>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&getApproved(getApprovedCall { tokenId: U256::saturating_from(item_id) })
+				)
+				.unwrap(),
+				address
+			);
+		});
+	}
+
+	#[test]
+	fn get_approved_fails_with_no_approval() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			// Not approved.
+			call_setup.set_origin(Origin::Signed(BOB));
+			assert!(matches!(
+				call_precompile::<Address>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&getApproved(getApprovedCall { tokenId: U256::saturating_from(item_id) })
+				),
+				Err(Error::Revert(e)) if e == Revert { reason: "ERC721: Not approved".to_string() }
+			));
+		});
+	}
+
+	#[test]
+	fn is_approved_for_all_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			assert_ok!(super::approve::<Test, Instance1>(
+				RuntimeOrigin::signed(ALICE),
+				collection_id,
+				BOB,
+				None,
+				true,
+				None,
+			));
+			assert_ok!(call_precompile::<bool>(
+				&mut call_setup.ext().0,
+				collection_id,
+				&isApprovedForAll(isApprovedForAllCall {
+					owner: ALICE_ADDR.0.into(),
+					operator: BOB_ADDR.0.into()
+				})
+			));
+		});
+	}
+
+	#[test]
+	fn name_works() {
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection(ALICE);
+			set_attribute(collection_id, None, "name", "ERC721 Example Colection");
+			assert_eq!(
+				call_precompile::<String>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&name(nameCall {})
+				)
+				.unwrap(),
+				"ERC721 Example Colection".to_string()
+			);
+		});
+	}
+
+	#[test]
+	fn symbol_works() {
+		let collection_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection(ALICE);
+			set_attribute(collection_id, None, "symbol", "POP");
+			assert_eq!(
+				call_precompile::<String>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&symbol(symbolCall {})
+				)
+				.unwrap(),
+				"POP".to_string()
+			);
+		});
+	}
+
+	#[test]
+	fn image_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		ExtBuilder::new().build_with_env(|mut call_setup| {
+			create_collection_and_mint(ALICE, collection_id, item_id);
+			set_attribute(collection_id, Some(item_id), "image", "https://example.com/image.png");
+			assert_eq!(
+				call_precompile::<String>(
+					&mut call_setup.ext().0,
+					collection_id,
+					&tokenURI(tokenURICall { tokenId: U256::saturating_from(item_id) })
+				)
+				.unwrap(),
+				"https://example.com/image.png".to_string()
+			);
 		});
 	}
 
 	fn create_collection_and_mint(owner: AccountIdOf<Test>, collection_id: u32, item_id: u32) {
-		assert_ok!(super::create::<Test, Instance1>(
-			RuntimeOrigin::signed(owner.clone()),
-			owner.clone(),
-			default_collection_config(),
-		));
+		create_collection(owner.clone());
 		assert_ok!(super::mint::<Test, Instance1>(
 			RuntimeOrigin::signed(owner.clone()),
 			collection_id,
@@ -408,12 +694,31 @@ mod tests {
 		));
 	}
 
+	fn create_collection(owner: AccountIdOf<Test>) {
+		assert_ok!(super::create::<Test, Instance1>(
+			RuntimeOrigin::signed(owner.clone()),
+			owner,
+			default_collection_config(),
+		));
+	}
+
 	fn default_collection_config() -> CollectionConfigFor<Test, Instance1> {
 		CollectionConfig {
 			settings: CollectionSettings::all_enabled(),
 			max_supply: None,
 			mint_settings: MintSettings::default(),
 		}
+	}
+
+	fn set_attribute(collection_id: u32, item_id: Option<u32>, key: &str, value: &str) {
+		assert_ok!(super::set_attribute::<Test, Instance1>(
+			RuntimeOrigin::signed(ALICE),
+			collection_id,
+			item_id,
+			AttributeNamespace::CollectionOwner,
+			BoundedVec::truncate_from(key.as_bytes().to_vec()),
+			BoundedVec::truncate_from(value.as_bytes().to_vec()),
+		));
 	}
 
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
