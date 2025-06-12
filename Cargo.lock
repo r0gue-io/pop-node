@@ -9042,6 +9042,7 @@ dependencies = [
  "frame-system 40.1.0",
  "pallet-assets 42.0.0",
  "pallet-balances 41.1.0",
+ "pallet-nfts 34.1.0",
  "pallet-revive 0.1.0",
  "pallet-timestamp 39.0.0",
  "parity-scale-codec",
