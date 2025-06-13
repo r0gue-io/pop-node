@@ -252,7 +252,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_name: Cow::Borrowed("pop"),
 	authoring_version: 1,
 	#[allow(clippy::zero_prefixed_literal)]
-	spec_version: 00_05_03,
+	spec_version: 00_05_04,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
