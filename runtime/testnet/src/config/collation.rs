@@ -40,7 +40,7 @@ impl pallet_collator_selection::Config for Runtime {
 	type KickThreshold = Period;
 	type MaxCandidates = ConstU32<100>;
 	type MaxInvulnerables = ConstU32<20>;
-	type MinEligibleCollators = ConstU32<2>;
+	type MinEligibleCollators = ConstU32<1>;
 	type PotId = PotId;
 	type RuntimeEvent = RuntimeEvent;
 	type UpdateOrigin = CollatorSelectionUpdateOrigin;
