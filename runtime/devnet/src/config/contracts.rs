@@ -223,20 +223,20 @@ mod tests {
 		})
 	}
 
-	// Currently ignored due to explicit dependency on built contract
-	#[ignore]
 	#[test]
 	fn fungibles_precompiles_via_contract_works() {
 		let contract = include_bytes!(
-			"../../../../pop-api-vnext/examples/fungibles-vnext/target/ink/fungibles.polkavm"
+			"../../../../pop-api-vnext/examples/fungibles/target/ink/fungibles.polkavm"
 		);
 		let caller = Alice.to_account_id();
 		let origin = RuntimeOrigin::signed(caller.clone());
-		let origin_addr = primitives::Address::new(AccountId32Mapper::to_address(&caller).0);
+		let recipient = Bob.to_account_id();
+		let recipient_addr = primitives::Address::new(AccountId32Mapper::to_address(&recipient).0);
 		let minimum_value = U256::from(1);
 		let endowment = primitives::U256::from(10_000);
 		new_test_ext().execute_with(|| {
 			assert_ok!(Revive::map_account(origin.clone()));
+			assert_ok!(Revive::map_account(RuntimeOrigin::signed(recipient)));
 
 			// Instantiate contract with some value, required to create underlying asset
 			let result = Revive::bare_instantiate(
@@ -246,21 +246,23 @@ mod tests {
 				DepositLimit::Unchecked,
 				Code::Upload(contract.to_vec()),
 				// Constructors are not yet using Solidity encoding
-				[blake_selector("new"), minimum_value.encode()].concat(),
+				[blake_selector("new"), ("Name", "SYMBOL", minimum_value, 10u8).encode()].concat(),
 				None,
 			)
 			.result
 			.unwrap();
 			assert!(!result.result.did_revert());
+			let contract = primitives::Address::new(result.addr.0);
 
-			// Interact with contract as Erc20
+			// Mint some tokens to the contract
 			call::<()>(
 				origin.clone(),
 				result.addr,
-				[keccak_selector("mint(address,uint256)"), (origin_addr, endowment).abi_encode()]
+				[keccak_selector("mint(address,uint256)"), (contract, endowment).abi_encode()]
 					.concat(),
 			);
 
+			// Interact with contract as Erc20
 			let total_supply = call::<primitives::U256>(
 				origin.clone(),
 				result.addr,
@@ -271,9 +273,27 @@ mod tests {
 			let balance_of = call::<primitives::U256>(
 				origin.clone(),
 				result.addr,
-				[keccak_selector("balanceOf(address)"), (origin_addr,).abi_encode()].concat(),
+				[keccak_selector("balanceOf(address)"), (contract,).abi_encode()].concat(),
 			);
 			assert_eq!(balance_of, endowment);
+
+			// Transfer tokens from contract to recipient
+			let value = endowment / primitives::U256::from(2);
+			assert!(call::<bool>(
+				origin.clone(),
+				result.addr,
+				[
+					keccak_selector("transfer(address,uint256)"),
+					(recipient_addr, value).abi_encode(),
+				]
+				.concat(),
+			));
+			let balance_of = call::<primitives::U256>(
+				origin.clone(),
+				result.addr,
+				[keccak_selector("balanceOf(address)"), (recipient_addr,).abi_encode()].concat(),
+			);
+			assert_eq!(balance_of, value);
 		});
 
 		fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
