@@ -93,13 +93,6 @@ pub fn total_supply(id: TokenId) -> U256 {
 	let address = prefixed_address(PRECOMPILE, id);
 	let precompile: contract_ref!(Erc20, Pop) = address.into();
 	precompile.totalSupply()
-
-	// let selector = 0x18160ddd_u32.to_be_bytes().into();
-	// build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector))
-	// 	.returns::<U256>()
-	// 	.invoke()
 }
 
 /// Returns the value of tokens owned by `account`.
@@ -108,13 +101,6 @@ pub fn balance_of(id: TokenId, account: Address) -> U256 {
 	let address = prefixed_address(PRECOMPILE, id);
 	let precompile: contract_ref!(Erc20, Pop) = address.into();
 	precompile.balanceOf(account)
-
-	// let selector = 0x70a08231_u32.to_be_bytes().into();
-	// build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(account))
-	// 	.returns::<U256>()
-	// 	.invoke()
 }
 
 /// Returns the value of tokens owned by `account`.
@@ -126,14 +112,6 @@ pub fn transfer(id: TokenId, to: Address, value: U256) -> Result<bool, Error> {
 	let address = prefixed_address(PRECOMPILE, id);
 	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
 	Ok(precompile.transfer(to, value))
-
-	// let selector = 0xa9059cbb_u32.to_be_bytes().into();
-	// let result = build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(to).push_arg(value))
-	// 	.returns::<bool>()
-	// 	.invoke();
-	// Ok(result)
 }
 
 /// Returns the remaining number of tokens that `spender` will be allowed to spend
@@ -145,13 +123,6 @@ pub fn allowance(id: TokenId, owner: Address, spender: Address) -> U256 {
 	let address = prefixed_address(PRECOMPILE, id);
 	let precompile: contract_ref!(Erc20, Pop) = address.into();
 	precompile.allowance(owner, spender)
-
-	// let selector = 0xdd62ed3e_u32.to_be_bytes().into();
-	// build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(owner).push_arg(spender))
-	// 	.returns::<U256>()
-	// 	.invoke()
 }
 
 /// Sets a `value` amount of tokens as the allowance of `spender` over the caller's
@@ -168,13 +139,6 @@ pub fn approve(id: TokenId, spender: Address, value: U256) -> Result<bool, Error
 	let address = prefixed_address(PRECOMPILE, id);
 	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
 	Ok(precompile.approve(spender, value))
-
-	// let selector = 0x095ea7b3_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(spender).push_arg(value))
-	// 	.returns::<bool>()
-	// 	.invoke())
 }
 
 /// Moves a `value` amount of tokens from `from` to `to` using the allowance mechanism.
@@ -192,13 +156,6 @@ pub fn transfer_from(id: TokenId, from: Address, to: Address, value: U256) -> Re
 	let address = prefixed_address(PRECOMPILE, id);
 	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
 	Ok(precompile.transferFrom(from, to, value))
-
-	// let selector = 0x23b872dd_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(from).push_arg(to).push_arg(value))
-	// 	.returns::<bool>()
-	// 	.invoke())
 }
 
 /// Extensions to the ERC-20 standard.
@@ -227,13 +184,6 @@ pub mod extensions {
 		let address = prefixed_address(PRECOMPILE, id);
 		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
 		precompile.name()
-
-		// let selector = 0x06fdde03_u32.to_be_bytes().into();
-		// build_call_solidity::<Pop>()
-		// 	.call(address)
-		// 	.exec_input(ExecutionInput::new(selector))
-		// 	.returns::<String>()
-		// 	.invoke()
 	}
 
 	/// Returns the symbol of the token.
@@ -242,13 +192,6 @@ pub mod extensions {
 		let address = prefixed_address(PRECOMPILE, id);
 		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
 		precompile.symbol()
-
-		// let selector = 0x95d89b41_u32.to_be_bytes().into();
-		// build_call_solidity::<Pop>()
-		// 	.call(address)
-		// 	.exec_input(ExecutionInput::new(selector))
-		// 	.returns::<String>()
-		// 	.invoke()
 	}
 
 	/// Returns the decimals places of the token.
@@ -257,13 +200,6 @@ pub mod extensions {
 		let address = prefixed_address(PRECOMPILE, id);
 		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
 		precompile.decimals()
-
-		// let selector = 0x313ce567_u32.to_be_bytes().into();
-		// build_call_solidity::<Pop>()
-		// 	.call(address)
-		// 	.exec_input(ExecutionInput::new(selector))
-		// 	.returns::<u8>()
-		// 	.invoke()
 	}
 }
 

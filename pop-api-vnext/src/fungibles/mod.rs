@@ -87,14 +87,6 @@ pub fn create(admin: Address, min_balance: U256) -> Result<TokenId, Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	Ok(precompile.create(admin, min_balance))
-
-	// // WORKAROUND:
-	// let selector = 0x0ecaea73_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(admin).push_arg(min_balance))
-	// 	.returns::<TokenId>()
-	// 	.invoke())
 }
 
 /// Set the metadata for a token.
@@ -103,20 +95,6 @@ pub fn set_metadata(id: TokenId, name: String, symbol: String, decimals: u8) {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	precompile.setMetadata(id, name, symbol, decimals)
-
-	// // WORKAROUND:
-	// let selector = 0xdc331b70_u32.to_be_bytes().into();
-	// build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(
-	// 		ExecutionInput::new(selector)
-	// 			.push_arg(id)
-	// 			.push_arg(name)
-	// 			.push_arg(symbol)
-	// 			.push_arg(decimals),
-	// 	)
-	// 	.returns::<()>()
-	// 	.invoke()
 }
 
 /// Clear the metadata for a token.
@@ -125,14 +103,6 @@ pub fn clear_metadata(id: TokenId) {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	precompile.clearMetadata(id)
-
-	// // WORKAROUND:
-	// let selector = 0xc4e4005a_u32.to_be_bytes().into();
-	// build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(id))
-	// 	.returns::<()>()
-	// 	.invoke()
 }
 
 /// Creates `value` amount of tokens and assigns them to `account`, increasing the total
@@ -145,14 +115,6 @@ pub fn mint(id: TokenId, account: Address, value: U256) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	Ok(precompile.mint(id, account, value))
-
-	// // WORKAROUND:
-	// let selector = 0x79d9b87b_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(id).push_arg(account).push_arg(value))
-	// 	.returns()
-	// 	.invoke())
 }
 
 /// Transfers `value` amount of tokens from the caller's account to account `to`.
@@ -164,14 +126,6 @@ pub fn transfer(id: TokenId, to: Address, value: U256) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	Ok(precompile.transfer(id, to, value))
-
-	// // WORKAROUND:
-	// let selector = 0xd09ae45_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(id).push_arg(to).push_arg(value))
-	// 	.returns::<()>()
-	// 	.invoke())
 }
 
 /// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
@@ -183,14 +137,6 @@ pub fn approve(id: TokenId, spender: Address, value: U256) -> Result<(), Error> 
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	Ok(precompile.approve(id, spender, value))
-
-	// // WORKAROUND:
-	// let selector = 0xf674e563_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(id).push_arg(spender).push_arg(value))
-	// 	.returns::<()>()
-	// 	.invoke())
 }
 
 /// Transfers `value` amount tokens on behalf of `from` to account `to`.
@@ -204,20 +150,6 @@ pub fn transfer_from(id: TokenId, from: Address, to: Address, value: U256) -> Re
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	Ok(precompile.transferFrom(id, from, to, value))
-
-	// // WORKAROUND:
-	// let selector = 0x0f0bc28d_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(
-	// 		ExecutionInput::new(selector)
-	// 			.push_arg(id)
-	// 			.push_arg(from)
-	// 			.push_arg(to)
-	// 			.push_arg(value),
-	// 	)
-	// 	.returns::<()>()
-	// 	.invoke())
 }
 
 /// Destroys `value` amount of tokens from `account`, reducing the total supply.
@@ -229,14 +161,6 @@ pub fn burn(id: TokenId, account: Address, value: U256) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	Ok(precompile.burn(id, account, value))
-
-	// // WORKAROUND:
-	// let selector = 0xc3ec6016_u32.to_be_bytes().into();
-	// Ok(build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(id).push_arg(account).push_arg(value))
-	// 	.returns()
-	// 	.invoke())
 }
 
 /// Start the process of destroying a token.
@@ -245,14 +169,6 @@ pub fn start_destroy(id: TokenId) {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	precompile.startDestroy(id)
-
-	// // WORKAROUND:
-	// let selector = 0x224f84a5_u32.to_be_bytes().into();
-	// build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(id))
-	// 	.returns::<()>()
-	// 	.invoke()
 }
 
 /// Whether a specified token exists.
@@ -261,14 +177,6 @@ pub fn exists(id: TokenId) -> bool {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
 	precompile.exists(id)
-
-	// // WORKAROUND:
-	// let selector = 0x13c369ed_u32.to_be_bytes().into();
-	// build_call_solidity::<Pop>()
-	// 	.call(address)
-	// 	.exec_input(ExecutionInput::new(selector).push_arg(id))
-	// 	.returns::<bool>()
-	// 	.invoke()
 }
 
 /// Returns the total token supply.
@@ -445,20 +353,6 @@ mod errors {
 			()
 		}
 	}
-	// impl<'a> SolDecode<'a> for NoPermission {
-	// 	type SolType = ();
-
-	// 	fn decode(data: &[u8]) -> Result<Self, alloy_sol_types::Error>
-	// 	where
-	// 		Self: Sized,
-	// 	{
-	// 	}
-
-	// 	fn from_sol_type(value: Self::SolType) -> Self {
-	// 		todo!()
-	// 	}
-	// }
-
 	impl From<NoPermission> for Error {
 		fn from(value: NoPermission) -> Self {
 			Self::NoPermission(value)
