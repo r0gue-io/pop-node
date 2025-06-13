@@ -174,7 +174,7 @@ impl pallet_migrations::Config for Runtime {
 	type MaxServiceWeight = MbmServiceWeight;
 	type MigrationStatusHandler = ();
 	#[cfg(not(feature = "runtime-benchmarks"))]
-	type Migrations = pallet_migrations::migrations::ResetPallet<Runtime, Revive>;
+	type Migrations = ();
 	// Benchmarks need mocked migrations to guarantee that they succeed.
 	#[cfg(feature = "runtime-benchmarks")]
 	type Migrations = pallet_migrations::mock_helpers::MockedMigrations;

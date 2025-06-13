@@ -159,19 +159,6 @@ pub type UncheckedExtrinsic =
 /// This can be a tuple of types, each implementing `OnRuntimeUpgrade`.
 pub type Migrations = (
 	// Note the multi-block migrations configured in pallet_migrations are not present here.
-	cumulus_pallet_xcmp_queue::migration::v5::MigrateV4ToV5<Runtime>,
-	// Unreleased.
-	pallet_assets::migration::next_asset_id::SetNextAssetId<
-		// Higher AssetId on testnet live is `7_045`,
-		// rounded up to 10_000.
-		ConstU32<10_000>,
-		Runtime,
-		TrustBackedAssetsInstance,
-	>,
-	pallet_session::migrations::v1::MigrateV0ToV1<
-		Runtime,
-		pallet_session::migrations::v1::InitOffenceSeverity<Runtime>,
-	>,
 	// Permanent.
 	cumulus_pallet_aura_ext::migration::MigrateV0ToV1<Runtime>,
 	pallet_contracts::Migration<Runtime>,
@@ -252,7 +239,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	impl_name: Cow::Borrowed("pop"),
 	authoring_version: 1,
 	#[allow(clippy::zero_prefixed_literal)]
-	spec_version: 00_05_03,
+	spec_version: 00_05_04,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
