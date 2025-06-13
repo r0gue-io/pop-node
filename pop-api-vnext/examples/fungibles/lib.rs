@@ -4,12 +4,19 @@
 
 #[ink::contract]
 pub mod fungibles {
-	use ink::U256;
-	use pop_api::fungibles::{self as api, erc20, erc20::Transfer, TokenId as Id};
+	use ink::{prelude::string::String, U256};
+	use pop_api::{
+		fungibles::{
+			self as api,
+			erc20::{extensions::Erc20Metadata, Erc20},
+			Approval, InvalidRecipient, NoPermission, TokenId, Transfer,
+		},
+		revert,
+	};
 
 	#[ink(storage)]
 	pub struct Fungible {
-		id: Id,
+		id: TokenId,
 		owner: Address,
 	}
 
@@ -18,14 +25,23 @@ pub mod fungibles {
 		/// in contract's storage.
 		///
 		/// # Parameters
+		/// * - `name` - The name of the token.
+		/// * - `symbol` - The symbol of the token.
 		/// * - `min_balance` - The minimum balance required for accounts holding this token.
+		/// * - `decimals` - The number of decimals.
+		///
+		/// NOTE: The minimum balance must be non-zero.
 		// The `min_balance` ensures accounts hold a minimum amount of tokens, preventing tiny,
 		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
 		#[allow(clippy::new_without_default)]
-		pub fn new(min_balance: U256) -> Self {
+		pub fn new(name: String, symbol: String, min_balance: U256, decimals: u8) -> Self {
 			let mut instance = Self { id: 0, owner: Self::env().caller() };
-			instance.id = api::create(instance.env().address(), min_balance);
+			match api::create(instance.env().address(), min_balance) {
+				Ok(id) => instance.id = id,
+				Err(error) => revert(&error),
+			}
+			api::set_metadata(instance.id, name, symbol, decimals);
 			instance
 		}
 
@@ -37,47 +53,63 @@ pub mod fungibles {
 		/// - `value` - The number of tokens to mint.
 		#[ink(message)]
 		pub fn mint(&mut self, account: Address, value: U256) {
-			if let Err(e) = self.ensure_owner() {
+			if let Err(error) = self.ensure_owner() {
 				// Workaround until ink supports Error to Solidity custom error conversion; https://github.com/use-ink/ink/issues/2404
-				revert(e)
+				revert(&error)
 			}
-			// No-op if `value` is zero.
-			if value == U256::zero() {
-				return;
+
+			if let Err(error) = api::mint(self.id, account, value) {
+				revert(&error)
 			}
-			api::mint(self.id, account, value);
 			self.env().emit_event(Transfer { from: Address::zero(), to: account, value });
+		}
+
+		/// Destroys `value` amount of tokens from `account`, reducing the total supply.
+		///
+		/// # Parameters
+		/// - `account` - The address from which the tokens will be destroyed.
+		/// - `value` - The number of tokens to destroy.
+		#[ink(message)]
+		pub fn burn(&mut self, account: Address, value: U256) {
+			if let Err(e) = self.ensure_owner() {
+				revert(&e)
+			}
+
+			if let Err(error) = api::burn(self.id, account, value) {
+				revert(&error)
+			}
+			self.env().emit_event(Transfer { from: account, to: Address::zero(), value });
 		}
 
 		/// Transfer the ownership of the contract to another account.
 		///
 		/// # Parameters
 		/// - `owner` - New owner account.
+		///
+		/// NOTE: the specified owner account is not checked, allowing the zero address to be
+		/// specified if desired..
 		#[ink(message)]
 		pub fn transfer_ownership(&mut self, owner: Address) {
 			if let Err(e) = self.ensure_owner() {
-				// Workaround until ink supports Error to Solidity custom error conversion; https://github.com/use-ink/ink/issues/2404
-				revert(e)
+				revert(&e)
 			}
 			self.owner = owner;
 		}
 
 		/// Check if the caller is the owner of the contract.
-		fn ensure_owner(&self) -> Result<(), Error> {
+		fn ensure_owner(&self) -> Result<(), NoPermission> {
 			if self.owner != self.env().caller() {
-				return Err(Error::NoPermission);
+				return Err(NoPermission);
 			}
 			Ok(())
 		}
 	}
 
-	// TODO: implement via Erc20 trait once Solidity support available
-	impl Fungible {
+	impl Erc20 for Fungible {
 		/// Returns the total token supply.
 		#[ink(message)]
-		#[allow(non_snake_case)] // Required to ensure message name results in correct sol selector
-		pub fn totalSupply(&self) -> U256 {
-			erc20::total_supply(self.id)
+		fn totalSupply(&self) -> U256 {
+			api::total_supply(self.id)
 		}
 
 		/// Returns the account balance for the specified `owner`.
@@ -85,63 +117,116 @@ pub mod fungibles {
 		/// # Parameters
 		/// - `owner` - The address whose balance is being queried.
 		#[ink(message)]
-		#[allow(non_snake_case)]
-		pub fn balanceOf(&self, owner: Address) -> U256 {
-			erc20::balance_of(self.id, owner)
+		fn balanceOf(&self, owner: Address) -> U256 {
+			api::balance_of(self.id, owner)
 		}
 
 		/// Returns the allowance for a `spender` approved by an `owner`.
 		///
 		/// # Parameters
-		/// - `owner` - The account that owns the tokens.
-		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `owner` - The address that owns the tokens.
+		/// - `spender` - The address that is allowed to spend the tokens.
 		#[ink(message)]
-		pub fn allowance(&self, owner: Address, spender: Address) -> U256 {
-			erc20::allowance(self.id, owner, spender)
+		fn allowance(&self, owner: Address, spender: Address) -> U256 {
+			api::allowance(self.id, owner, spender)
 		}
 
-		/// Transfers `value` amount of tokens from the contract to account `to` with
+		/// Transfers `value` amount of tokens from the contract to address `to` with
 		/// additional `data` in unspecified format.
 		///
 		/// # Parameters
-		/// - `to` - The recipient account.
+		/// - `to` - The recipient address.
 		/// - `value` - The number of tokens to transfer.
 		#[ink(message)]
-		pub fn transfer(&mut self, to: Address, value: U256) -> bool {
-			if let Err(e) = self.ensure_owner() {
-				// Workaround until ink supports Error to Solidity custom error conversion
-				revert(e)
+		fn transfer(&mut self, to: Address, value: U256) -> bool {
+			if let Err(error) = self.ensure_owner() {
+				revert(&error)
 			}
 			let contract = self.env().address();
 
-			// No-op if the contract and `to` is the same address or `value` is zero.
-			if contract == to || value == U256::zero() {
-				return true;
+			// Validate recipient.
+			if to == contract {
+				revert(&InvalidRecipient(to))
 			}
-			if !erc20::transfer(self.id, to, value) {
-				revert(Error::TransferFailed)
+
+			if let Err(error) = api::transfer(self.id, to, value) {
+				revert(&error)
 			}
 			self.env().emit_event(Transfer { from: contract, to, value });
 			true
 		}
+
+		/// Transfers `value` tokens on behalf of `from` to the account `to`. Contract must be
+		/// pre-approved by `from`.
+		///
+		/// # Parameters
+		/// - `from` - The address from which the token balance will be withdrawn.
+		/// - `to` - The recipient address.
+		/// - `value` - The number of tokens to transfer.
+		#[ink(message)]
+		fn transferFrom(&mut self, from: Address, to: Address, value: U256) -> bool {
+			if let Err(e) = self.ensure_owner() {
+				revert(&e)
+			}
+			let contract = self.env().address();
+
+			// A successful transfer reduces the allowance from `from` to the contract and triggers
+			// an `Approval` event with the updated allowance amount.
+			if let Err(error) = api::transfer_from(self.id, from, to, value) {
+				revert(&error)
+			}
+			self.env().emit_event(Transfer { from: contract, to, value });
+			self.env().emit_event(Approval {
+				owner: from,
+				spender: contract,
+				value: self.allowance(from, contract),
+			});
+			true
+		}
+
+		/// Approves `spender` to spend `value` amount of tokens on behalf of the contract.
+		///
+		/// Successive calls of this method overwrite previous values.
+		///
+		/// # Parameters
+		/// - `spender` - The address that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to approve.
+		#[ink(message)]
+		fn approve(&mut self, spender: Address, value: U256) -> bool {
+			if let Err(e) = self.ensure_owner() {
+				revert(&e)
+			}
+			let contract = self.env().address();
+
+			// Validate recipient.
+			if spender == contract {
+				revert(&InvalidRecipient(spender))
+			}
+			if let Err(error) = api::approve(self.id, spender, value) {
+				revert(&error)
+			}
+			self.env().emit_event(Approval { owner: contract, spender, value });
+			true
+		}
 	}
 
-	pub enum Error {
-		/// The signing account has no permission to do the operation.
-		NoPermission,
-		/// The transfer failed.
-		TransferFailed,
-	}
+	impl Erc20Metadata for Fungible {
+		/// Returns the token name.
+		#[ink(message)]
+		fn name(&self) -> String {
+			api::name(self.id)
+		}
 
-	fn revert(error: Error) -> ! {
-		use ink::env::{return_value_solidity as return_value, ReturnFlags};
-		use Error::*;
+		/// Returns the token symbol.
+		#[ink(message)]
+		fn symbol(&self) -> String {
+			api::symbol(self.id)
+		}
 
-		const REVERT: ReturnFlags = ReturnFlags::REVERT;
-
-		match error {
-			NoPermission => return_value(REVERT, &(0x9d7b369d_u32.to_be_bytes())),
-			TransferFailed => return_value(REVERT, &(0x90b8ec18_u32.to_be_bytes())),
+		/// Returns the token decimals.
+		#[ink(message)]
+		fn decimals(&self) -> u8 {
+			api::decimals(self.id)
 		}
 	}
 }
