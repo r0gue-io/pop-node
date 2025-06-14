@@ -184,9 +184,9 @@ mod tests {
 		let caller = Alice.to_account_id();
 		let origin = RuntimeOrigin::signed(caller.clone());
 		let origin_addr = AccountId32Mapper::to_address(&caller);
-		let id = 1;
+		let token = 1;
 		let fungibles_addr: H160 = Fungibles::<100, TrustBackedAssetsInstance>::address().into();
-		let erc20_addr: H160 = Erc20::<101, TrustBackedAssetsInstance>::address(id).into();
+		let erc20_addr: H160 = Erc20::<101, TrustBackedAssetsInstance>::address(token).into();
 		let total_supply: Balance = 10_000;
 		new_test_ext().execute_with(|| {
 			assert_ok!(Revive::map_account(origin.clone()));
@@ -199,13 +199,13 @@ mod tests {
 					.abi_encode();
 			println!("IFungibles.create: {}", to_hex(&call, false));
 			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, Weight::zero(), 0, call));
-			let asset_details = Asset::get(id).unwrap();
+			let asset_details = Asset::get(token).unwrap();
 			assert_eq!(asset_details.owner, caller);
 			assert_eq!(asset_details.admin, caller);
 
 			// Mint via fungibles precompile
 			let call = mintCall {
-				id,
+				token,
 				account: origin_addr.0.into(),
 				value: primitives::U256::from(total_supply),
 			}
@@ -222,7 +222,7 @@ mod tests {
 			.abi_encode();
 			println!("IERC20.transfer: {}", to_hex(&call, false));
 			assert_ok!(Revive::call(origin.clone(), erc20_addr, 0, Weight::zero(), 0, call));
-			assert_eq!(Assets::balance(id, &Bob.to_account_id()), total_supply / 2);
+			assert_eq!(Assets::balance(token, &Bob.to_account_id()), total_supply / 2);
 		})
 	}
 

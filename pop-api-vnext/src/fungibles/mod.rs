@@ -26,50 +26,232 @@ pub type TokenId = u32;
 /// the smart contract space.
 #[ink::trait_definition]
 pub trait Fungibles {
+	/// Transfers `value` amount of tokens from the caller's account to account `to`.
+	///
+	/// # Parameters
+	/// - `token` - The token to transfer.
+	/// - `to` - The recipient account.
+	/// - `value` - The number of tokens to transfer.
+	#[ink(message)]
+	fn transfer(&self, token: TokenId, to: Address, value: U256);
+
+	/// Transfers `value` amount tokens on behalf of `from` to account `to`.
+	///
+	/// # Parameters
+	/// - `token` - The token to transfer.
+	/// - `from` - The account from which the token balance will be withdrawn.
+	/// - `to` - The recipient account.
+	/// - `value` - The number of tokens to transfer.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn transferFrom(&self, token: TokenId, from: Address, to: Address, value: U256);
+
+	/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
+	///
+	/// # Parameters
+	/// - `token` - The token to approve.
+	/// - `spender` - The account that is allowed to spend the tokens.
+	/// - `value` - The number of tokens to approve.
+	#[ink(message)]
+	fn approve(&self, token: TokenId, spender: Address, value: U256);
+
+	/// Increases the allowance of `spender` by `value` amount of tokens.
+	///
+	/// # Parameters
+	/// - `token` - The token to have an allowance increased.
+	/// - `spender` - The account that is allowed to spend the tokens.
+	/// - `value` - The number of tokens to increase the allowance by.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn increaseAllowance(&self, token: TokenId, spender: Address, value: U256) -> U256;
+
+	/// Decreases the allowance of `spender` by `value` amount of tokens.
+	///
+	/// # Parameters
+	/// - `token` - The token to have an allowance decreased.
+	/// - `spender` - The account that is allowed to spend the tokens.
+	/// - `value` - The number of tokens to decrease the allowance by.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn decreaseAllowance(&self, token: TokenId, spender: Address, value: U256) -> U256;
+
 	/// Create a new token with an automatically generated identifier.
+	///
+	/// # Parameters
+	/// - `admin` - The account that will administer the token.
+	/// - `min_balance` - The minimum balance required for accounts holding this token.
+	///
+	/// NOTE: The minimum balance must be non-zero.
 	#[ink(message)]
 	fn create(&self, admin: Address, min_balance: U256) -> TokenId;
 
-	/// Set the metadata for a token.
+	/// Start the process of destroying a token.
+	///
+	/// # Parameters
+	/// - `token` - The token to be destroyed.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn setMetadata(&self, id: TokenId, name: String, symbol: String, decimals: u8);
+	fn startDestroy(&self, token: TokenId);
+
+	/// Set the metadata for a token.
+	///
+	/// # Parameters
+	/// - `token`: The token to update.
+	/// - `name`: The user friendly name of this token.
+	/// - `symbol`: The exchange symbol for this token.
+	/// - `decimals`: The number of decimals this token uses to represent one unit.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn setMetadata(&self, token: TokenId, name: String, symbol: String, decimals: u8);
 
 	/// Clear the metadata for a token.
+	///
+	/// # Parameters
+	/// - `token` - The token to update.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn clearMetadata(&self, id: TokenId);
+	fn clearMetadata(&self, token: TokenId);
 
 	/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
 	/// supply.
+	///
+	/// # Parameters
+	/// - `token` - The token to mint.
+	/// - `account` - The account to be credited with the created tokens.
+	/// - `value` - The number of tokens to mint.
 	#[ink(message)]
-	fn mint(&self, id: TokenId, account: Address, value: U256);
-
-	/// Transfers `value` amount of tokens from the caller's account to account `to`.
-	#[ink(message)]
-	fn transfer(&self, id: TokenId, to: Address, value: U256);
-
-	/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
-	#[ink(message)]
-	fn approve(&self, id: TokenId, spender: Address, value: U256);
-
-	/// Transfers `value` amount tokens on behalf of `from` to account `to`.
-	#[ink(message)]
-	#[allow(non_snake_case)]
-	fn transferFrom(&self, id: TokenId, from: Address, to: Address, value: U256);
+	fn mint(&self, token: TokenId, account: Address, value: U256);
 
 	/// Destroys `value` amount of tokens from `account`, reducing the total supply.
+	///
+	/// # Parameters
+	/// - `token` - The token to burn.
+	/// - `account` - The account from which the tokens will be destroyed.
+	/// - `value` - The number of tokens to destroy.
 	#[ink(message)]
-	fn burn(&self, id: TokenId, address: Address, value: U256);
+	fn burn(&self, token: TokenId, address: Address, value: U256);
 
-	/// Start the process of destroying a token.
+	/// Total token supply for a specified token.
+	///
+	/// # Parameters
+	/// - `token` - The token.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn startDestroy(&self, id: TokenId);
+	fn totalSupply(&self, token: TokenId) -> U256;
 
-	///  Whether a specified token exists.
+	/// Account balance for a specified `token` and `owner`.
+	///
+	/// # Parameters
+	/// - `token` - The token.
+	/// - `owner` - The owner of the token.
 	#[ink(message)]
-	fn exists(&self, id: TokenId) -> bool;
+	#[allow(non_snake_case)]
+	fn balanceOf(&self, token: TokenId, owner: Address) -> U256;
+
+	/// Allowance for a `spender` approved by an `owner`, for a specified `token`.
+	///
+	/// # Parameters
+	/// - `token` - The token.
+	/// - `owner` - The owner of the token.
+	/// - `spender` - The spender with an allowance.
+	#[ink(message)]
+	fn allowance(&self, token: TokenId, owner: Address, spender: Address) -> U256;
+
+	/// Name of the specified token.
+	///
+	/// # Parameters
+	/// - `token` - The token.
+	#[ink(message)]
+	fn name(&self, token: TokenId) -> String;
+
+	/// Symbol for the specified token.
+	///
+	/// # Parameters
+	/// - `token` - The token.
+	#[ink(message)]
+	fn symbol(&self, token: TokenId) -> String;
+
+	/// Decimals for the specified token.
+	///
+	/// # Parameters
+	/// - `token` - The token.
+	#[ink(message)]
+	fn decimals(&self, token: TokenId) -> u8;
+
+	/// Whether the specified token exists.
+	///
+	/// # Parameters
+	/// - `token` - The token.
+	#[ink(message)]
+	fn exists(&self, token: TokenId) -> bool;
+}
+
+/// Allowance for a `spender` approved by an `owner`, for a specified `token`.
+///
+/// # Parameters
+/// - `token` - The token.
+/// - `owner` - The owner of the token.
+/// - `spender` - The spender with an allowance.
+#[inline]
+pub fn allowance(token: TokenId, owner: Address, spender: Address) -> U256 {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.allowance(token, owner, spender)
+}
+
+/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
+///
+/// # Parameters
+/// - `token` - The token to approve.
+/// - `spender` - The account that is allowed to spend the tokens.
+/// - `value` - The number of tokens to approve.
+#[inline]
+pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<(), Error> {
+	ensure!(spender != Address::zero(), ZeroRecipientAddress);
+	ensure!(value != U256::zero(), ZeroValue);
+
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	Ok(precompile.approve(token, spender, value))
+}
+
+/// Account balance for a specified `token` and `owner`.
+///
+/// # Parameters
+/// - `token` - The token.
+/// - `owner` - The owner of the token.
+#[inline]
+pub fn balance_of(token: TokenId, account: Address) -> U256 {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.balanceOf(token, account)
+}
+
+/// Destroys `value` amount of tokens from `account`, reducing the total supply.
+///
+/// # Parameters
+/// - `token` - The token to burn.
+/// - `account` - The account from which the tokens will be destroyed.
+/// - `value` - The number of tokens to destroy.
+#[inline]
+pub fn burn(token: TokenId, account: Address, value: U256) -> Result<(), Error> {
+	ensure!(account != Address::zero(), ZeroSenderAddress);
+	ensure!(value != U256::zero(), ZeroValue);
+
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	Ok(precompile.burn(token, account, value))
+}
+
+/// Clear the metadata for a token.
+///
+/// # Parameters
+/// - `token` - The token to update.
+#[inline]
+pub fn clear_metadata(token: TokenId) {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.clearMetadata(token)
 }
 
 /// Create a new token with an automatically generated identifier.
@@ -89,59 +271,158 @@ pub fn create(admin: Address, min_balance: U256) -> Result<TokenId, Error> {
 	Ok(precompile.create(admin, min_balance))
 }
 
-/// Set the metadata for a token.
+/// Decimals for the specified token.
+///
+/// # Parameters
+/// - `token` - The token.
 #[inline]
-pub fn set_metadata(id: TokenId, name: String, symbol: String, decimals: u8) {
+pub fn decimals(token: TokenId) -> u8 {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	precompile.setMetadata(id, name, symbol, decimals)
+	precompile.decimals(token)
 }
 
-/// Clear the metadata for a token.
-#[inline]
-pub fn clear_metadata(id: TokenId) {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	precompile.clearMetadata(id)
-}
-
-/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
-/// supply.
-#[inline]
-pub fn mint(id: TokenId, account: Address, value: U256) -> Result<(), Error> {
-	ensure!(account != Address::zero(), ZeroRecipientAddress);
-	ensure!(value != U256::zero(), ZeroValue);
-
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	Ok(precompile.mint(id, account, value))
-}
-
-/// Transfers `value` amount of tokens from the caller's account to account `to`.
-#[inline]
-pub fn transfer(id: TokenId, to: Address, value: U256) -> Result<(), Error> {
-	ensure!(to != Address::zero(), ZeroRecipientAddress);
-	ensure!(value != U256::zero(), ZeroValue);
-
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	Ok(precompile.transfer(id, to, value))
-}
-
-/// Approves `spender` to spend `value` amount of tokens on behalf of the caller.
-#[inline]
-pub fn approve(id: TokenId, spender: Address, value: U256) -> Result<(), Error> {
+/// Decreases the allowance of `spender` by `value` amount of tokens.
+///
+/// # Parameters
+/// - `token` - The token to have an allowance decreased.
+/// - `spender` - The account that is allowed to spend the tokens.
+/// - `value` - The number of tokens to decrease the allowance by.
+pub fn decrease_allowance(token: TokenId, spender: Address, value: U256) -> Result<U256, Error> {
 	ensure!(spender != Address::zero(), ZeroRecipientAddress);
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	Ok(precompile.approve(id, spender, value))
+	Ok(precompile.increaseAllowance(token, spender, value))
+}
+
+/// Whether the specified token exists.
+///
+/// # Parameters
+/// - `token` - The token.
+#[inline]
+pub fn exists(token: TokenId) -> bool {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.exists(token)
+}
+
+/// Increases the allowance of `spender` by `value` amount of tokens.
+///
+/// # Parameters
+/// - `token` - The token to have an allowance increased.
+/// - `spender` - The account that is allowed to spend the tokens.
+/// - `value` - The number of tokens to increase the allowance by.
+pub fn increase_allowance(token: TokenId, spender: Address, value: U256) -> Result<U256, Error> {
+	ensure!(spender != Address::zero(), ZeroRecipientAddress);
+	ensure!(value != U256::zero(), ZeroValue);
+
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	Ok(precompile.increaseAllowance(token, spender, value))
+}
+
+/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
+/// supply.
+///
+/// # Parameters
+/// - `token` - The token to mint.
+/// - `account` - The account to be credited with the created tokens.
+/// - `value` - The number of tokens to mint.
+#[inline]
+pub fn mint(token: TokenId, account: Address, value: U256) -> Result<(), Error> {
+	ensure!(account != Address::zero(), ZeroRecipientAddress);
+	ensure!(value != U256::zero(), ZeroValue);
+
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	Ok(precompile.mint(token, account, value))
+}
+
+/// Name of the specified token.
+///
+/// # Parameters
+/// - `token` - The token.
+#[inline]
+pub fn name(token: TokenId) -> String {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.name(token)
+}
+
+/// Set the metadata for a token.
+///
+/// # Parameters
+/// - `token`: The token to update.
+/// - `name`: The user friendly name of this token.
+/// - `symbol`: The exchange symbol for this token.
+/// - `decimals`: The number of decimals this token uses to represent one unit.
+#[inline]
+pub fn set_metadata(token: TokenId, name: String, symbol: String, decimals: u8) {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.setMetadata(token, name, symbol, decimals)
+}
+
+/// Start the process of destroying a token.
+///
+/// # Parameters
+/// - `token` - The token to be destroyed.
+#[inline]
+pub fn start_destroy(token: TokenId) {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.startDestroy(token)
+}
+
+/// Symbol for the specified token.
+///
+/// # Parameters
+/// - `token` - The token.
+#[inline]
+pub fn symbol(token: TokenId) -> String {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.symbol(token)
+}
+
+/// Total token supply for a specified token.
+///
+/// # Parameters
+/// - `token` - The token.
+#[inline]
+pub fn total_supply(token: TokenId) -> U256 {
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	precompile.totalSupply(token)
+}
+
+/// Transfers `value` amount of tokens from the caller's account to account `to`.
+///
+/// # Parameters
+/// - `token` - The token to transfer.
+/// - `to` - The recipient account.
+/// - `value` - The number of tokens to transfer.
+#[inline]
+pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<(), Error> {
+	ensure!(to != Address::zero(), ZeroRecipientAddress);
+	ensure!(value != U256::zero(), ZeroValue);
+
+	let address = fixed_address(PRECOMPILE);
+	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	Ok(precompile.transfer(token, to, value))
 }
 
 /// Transfers `value` amount tokens on behalf of `from` to account `to`.
+///
+/// # Parameters
+/// - `token` - The token to transfer.
+/// - `from` - The account from which the token balance will be withdrawn.
+/// - `to` - The recipient account.
+/// - `value` - The number of tokens to transfer.
 #[inline]
-pub fn transfer_from(id: TokenId, from: Address, to: Address, value: U256) -> Result<(), Error> {
+pub fn transfer_from(token: TokenId, from: Address, to: Address, value: U256) -> Result<(), Error> {
 	ensure!(from != Address::zero(), ZeroSenderAddress);
 	ensure!(to != Address::zero(), ZeroRecipientAddress);
 	ensure!(to != from, InvalidRecipient(to));
@@ -149,73 +430,7 @@ pub fn transfer_from(id: TokenId, from: Address, to: Address, value: U256) -> Re
 
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	Ok(precompile.transferFrom(id, from, to, value))
-}
-
-/// Destroys `value` amount of tokens from `account`, reducing the total supply.
-#[inline]
-pub fn burn(id: TokenId, account: Address, value: U256) -> Result<(), Error> {
-	ensure!(account != Address::zero(), ZeroSenderAddress);
-	ensure!(value != U256::zero(), ZeroValue);
-
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	Ok(precompile.burn(id, account, value))
-}
-
-/// Start the process of destroying a token.
-#[inline]
-pub fn start_destroy(id: TokenId) {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	precompile.startDestroy(id)
-}
-
-/// Whether a specified token exists.
-#[inline]
-pub fn exists(id: TokenId) -> bool {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
-	precompile.exists(id)
-}
-
-/// Returns the total token supply.
-#[inline]
-pub fn total_supply(id: TokenId) -> U256 {
-	erc20::total_supply(id)
-}
-
-/// Returns the value of tokens owned by `account`.
-#[inline]
-pub fn balance_of(id: TokenId, account: Address) -> U256 {
-	erc20::balance_of(id, account)
-}
-
-/// Returns the remaining number of tokens that `spender` will be allowed to spend
-/// on behalf of `owner` through [`transfer_from`]. This is zero by default.
-///
-/// This value changes when `approve` or [`transfer_from`] are called.
-#[inline]
-pub fn allowance(id: TokenId, owner: Address, spender: Address) -> U256 {
-	erc20::allowance(id, owner, spender)
-}
-
-/// Returns the name of the token.
-#[inline]
-pub fn name(id: TokenId) -> String {
-	erc20::extensions::name(id)
-}
-
-/// Returns the symbol of the token.
-#[inline]
-pub fn symbol(id: TokenId) -> String {
-	erc20::extensions::symbol(id)
-}
-
-/// Returns the decimals places of the token.
-#[inline]
-pub fn decimals(id: TokenId) -> u8 {
-	erc20::extensions::decimals(id)
+	Ok(precompile.transferFrom(token, from, to, value))
 }
 
 // NOTE: subject to change based on ink!'s support for solidity custom errors.
