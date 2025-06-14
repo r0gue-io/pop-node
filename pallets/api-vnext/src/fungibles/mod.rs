@@ -1,8 +1,10 @@
 use core::cmp::Ordering::{Equal, Greater, Less};
 
 use frame_support::{
-	dispatch::{DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo},
-	pallet_prelude::{DispatchError, Zero},
+	dispatch::{
+		DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo, WithPostDispatchInfo,
+	},
+	pallet_prelude::{CheckedSub, DispatchError, Zero},
 	sp_runtime::Saturating,
 	traits::fungibles::{approvals::Inspect as _, Inspect as _},
 	weights::Weight,
@@ -94,8 +96,82 @@ fn create<T: Config<I, AssetId: Default>, I>(
 	Ok(id)
 }
 
+fn decrease_allowance<T: Config<I>, I>(
+	origin: OriginFor<T>,
+	asset: AssetIdOf<T, I>,
+	spender: AccountIdOf<T>,
+	value: BalanceOf<T, I>,
+) -> Result<(BalanceOf<T, I>, Option<Weight>), DispatchErrorWithPostInfo> {
+	let owner = ensure_signed(origin.clone()).map_err(|e| {
+		e.with_weight(
+			// TODO: WeightOf::<T>::approve(0, 0)
+			Weight::zero(),
+		)
+	})?;
+	if value.is_zero() {
+		return Ok((
+			value,
+			Some(
+				// TODO: WeightOf::<T>::approve(0, 0)
+				Weight::zero(),
+			),
+		));
+	}
+	let current_allowance = <Assets<T, I>>::allowance(asset.clone(), &owner, &spender);
+	let spender_source = T::Lookup::unlookup(spender.clone());
+	let asset_param: <T as Config<I>>::AssetIdParameter = asset.clone().into();
+
+	// Cancel the approval and approve `new_allowance` if difference is more than zero.
+	let new_allowance = current_allowance
+		.checked_sub(&value)
+		.ok_or(pallet_assets::Error::<T, I>::Unapproved)?;
+	<Assets<T, I>>::cancel_approval(origin.clone(), asset_param.clone(), spender_source.clone())
+		.map_err(|e| {
+			e.with_weight(
+				// TODO: WeightOf::<T>::approve(0, 1)
+				Weight::zero(),
+			)
+		})?;
+	let weight = if new_allowance.is_zero() {
+		// TODO: WeightOf::<T>::approve(0, 1)
+		Weight::zero()
+	} else {
+		<Assets<T, I>>::approve_transfer(origin, asset_param, spender_source, new_allowance)?;
+		// TODO: WeightOf::<T>::approve(1, 1)
+		Weight::zero()
+	};
+	Ok((new_allowance, Some(weight).into()))
+}
+
 fn exists<T: Config<I>, I>(asset: AssetIdOf<T, I>) -> bool {
 	<Assets<T, I>>::asset_exists(asset)
+}
+
+fn increase_allowance<T: Config<I>, I>(
+	origin: OriginFor<T>,
+	asset: AssetIdOf<T, I>,
+	spender: AccountIdOf<T>,
+	value: BalanceOf<T, I>,
+) -> Result<BalanceOf<T, I>, DispatchErrorWithPostInfo> {
+	let owner = ensure_signed(origin.clone()).map_err(|e| {
+		e.with_weight(
+			// TODO: WeightOf::<T>::approve(0, 0)
+			Weight::zero(),
+		)
+	})?;
+	<Assets<T, I>>::approve_transfer(
+		origin,
+		asset.clone().into(),
+		T::Lookup::unlookup(spender.clone()),
+		value,
+	)
+	.map_err(|e| {
+		e.with_weight(
+			// TODO: AssetsWeightInfoOf::<T>::approve_transfer()
+			Weight::zero(),
+		)
+	})?;
+	Ok(<Assets<T, I>>::allowance(asset, &owner, &spender))
 }
 
 fn mint<T: Config<I>, I>(
