@@ -1,18 +1,20 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
+use ink::{prelude::string::String, U256};
+use pop_api::{
+	fungibles::{
+		self as api,
+		erc20::{extensions::Erc20Metadata, Erc20},
+		Approval, InvalidRecipient, NoPermission, TokenId, Transfer,
+	},
+	revert,
+};
+
 // NOTE: requires `cargo-contract` built from `master`
 
 #[ink::contract]
 pub mod fungibles {
-	use ink::{prelude::string::String, U256};
-	use pop_api::{
-		fungibles::{
-			self as api,
-			erc20::{extensions::Erc20Metadata, Erc20},
-			Approval, InvalidRecipient, NoPermission, TokenId, Transfer,
-		},
-		revert,
-	};
+	use super::*;
 
 	#[ink(storage)]
 	pub struct Fungible {
@@ -62,6 +64,52 @@ pub mod fungibles {
 				revert(&error)
 			}
 			self.env().emit_event(Transfer { from: Address::zero(), to: account, value });
+		}
+
+		/// Increases the allowance of `spender` by `value` amount of tokens.
+		///
+		/// # Parameters
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to increase the allowance by.
+		#[ink(message)]
+		pub fn increase_allowance(&mut self, spender: Address, value: U256) {
+			if let Err(e) = self.ensure_owner() {
+				revert(&e)
+			}
+			let contract = self.env().address();
+
+			// Validate recipient.
+			if spender == contract {
+				revert(&InvalidRecipient(spender))
+			}
+			if let Err(error) = api::increase_allowance(self.id, spender, value) {
+				revert(&error)
+			}
+			let allowance = self.allowance(contract, spender);
+			self.env().emit_event(Approval { owner: contract, spender, value: allowance });
+		}
+
+		/// Decreases the allowance of `spender` by `value` amount of tokens.
+		///
+		/// # Parameters
+		/// - `spender` - The account that is allowed to spend the tokens.
+		/// - `value` - The number of tokens to decrease the allowance by.
+		#[ink(message)]
+		pub fn decrease_allowance(&mut self, spender: Address, value: U256) {
+			if let Err(e) = self.ensure_owner() {
+				revert(&e)
+			}
+			let contract = self.env().address();
+
+			// Validate recipient.
+			if spender == contract {
+				revert(&InvalidRecipient(spender))
+			}
+			if let Err(error) = api::decrease_allowance(self.id, spender, value) {
+				revert(&error)
+			}
+			let value = self.allowance(contract, spender);
+			self.env().emit_event(Approval { owner: contract, spender, value });
 		}
 
 		/// Destroys `value` amount of tokens from `account`, reducing the total supply.

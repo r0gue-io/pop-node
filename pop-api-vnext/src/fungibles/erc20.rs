@@ -13,7 +13,7 @@ const PRECOMPILE: u16 = 101;
 pub trait Erc20 {
 	/// Returns the value of tokens in existence.
 	#[ink(message)]
-	#[allow(non_snake_case)] // Required to ensure message name results in correct sol selector
+	#[allow(non_snake_case)]
 	fn totalSupply(&self) -> U256;
 
 	/// Returns the value of tokens owned by `account`.
@@ -89,27 +89,27 @@ pub struct Transfer {
 
 /// Returns the value of tokens in existence.
 #[inline]
-pub fn total_supply(id: TokenId) -> U256 {
-	let address = prefixed_address(PRECOMPILE, id);
+pub fn total_supply(token: TokenId) -> U256 {
+	let address = prefixed_address(PRECOMPILE, token);
 	let precompile: contract_ref!(Erc20, Pop) = address.into();
 	precompile.totalSupply()
 }
 
 /// Returns the value of tokens owned by `account`.
 #[inline]
-pub fn balance_of(id: TokenId, account: Address) -> U256 {
-	let address = prefixed_address(PRECOMPILE, id);
+pub fn balance_of(token: TokenId, account: Address) -> U256 {
+	let address = prefixed_address(PRECOMPILE, token);
 	let precompile: contract_ref!(Erc20, Pop) = address.into();
 	precompile.balanceOf(account)
 }
 
 /// Returns the value of tokens owned by `account`.
 #[inline]
-pub fn transfer(id: TokenId, to: Address, value: U256) -> Result<bool, Error> {
+pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<bool, Error> {
 	ensure!(to != Address::zero(), ERC20InvalidSender(to));
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
-	let address = prefixed_address(PRECOMPILE, id);
+	let address = prefixed_address(PRECOMPILE, token);
 	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
 	Ok(precompile.transfer(to, value))
 }
@@ -119,8 +119,8 @@ pub fn transfer(id: TokenId, to: Address, value: U256) -> Result<bool, Error> {
 ///
 /// This value changes when `approve` or [`transfer_from`] are called.
 #[inline]
-pub fn allowance(id: TokenId, owner: Address, spender: Address) -> U256 {
-	let address = prefixed_address(PRECOMPILE, id);
+pub fn allowance(token: TokenId, owner: Address, spender: Address) -> U256 {
+	let address = prefixed_address(PRECOMPILE, token);
 	let precompile: contract_ref!(Erc20, Pop) = address.into();
 	precompile.allowance(owner, spender)
 }
@@ -132,11 +132,11 @@ pub fn allowance(id: TokenId, owner: Address, spender: Address) -> U256 {
 ///
 /// Emits an [`Approval`] event.
 #[inline]
-pub fn approve(id: TokenId, spender: Address, value: U256) -> Result<bool, Error> {
+pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<bool, Error> {
 	ensure!(spender != Address::zero(), ERC20InvalidApprover(spender));
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
-	let address = prefixed_address(PRECOMPILE, id);
+	let address = prefixed_address(PRECOMPILE, token);
 	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
 	Ok(precompile.approve(spender, value))
 }
@@ -148,12 +148,17 @@ pub fn approve(id: TokenId, spender: Address, value: U256) -> Result<bool, Error
 ///
 /// Emits a [`Transfer`] event.
 #[inline]
-pub fn transfer_from(id: TokenId, from: Address, to: Address, value: U256) -> Result<bool, Error> {
+pub fn transfer_from(
+	token: TokenId,
+	from: Address,
+	to: Address,
+	value: U256,
+) -> Result<bool, Error> {
 	ensure!(from != Address::zero(), ERC20InvalidSender(from));
 	ensure!(to != Address::zero() && to != from, ERC20InvalidReceiver(to));
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
-	let address = prefixed_address(PRECOMPILE, id);
+	let address = prefixed_address(PRECOMPILE, token);
 	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
 	Ok(precompile.transferFrom(from, to, value))
 }
@@ -180,24 +185,24 @@ pub mod extensions {
 
 	/// Returns the name of the token.
 	#[inline]
-	pub fn name(id: TokenId) -> String {
-		let address = prefixed_address(PRECOMPILE, id);
+	pub fn name(token: TokenId) -> String {
+		let address = prefixed_address(PRECOMPILE, token);
 		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
 		precompile.name()
 	}
 
 	/// Returns the symbol of the token.
 	#[inline]
-	pub fn symbol(id: TokenId) -> String {
-		let address = prefixed_address(PRECOMPILE, id);
+	pub fn symbol(token: TokenId) -> String {
+		let address = prefixed_address(PRECOMPILE, token);
 		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
 		precompile.symbol()
 	}
 
 	/// Returns the decimals places of the token.
 	#[inline]
-	pub fn decimals(id: TokenId) -> u8 {
-		let address = prefixed_address(PRECOMPILE, id);
+	pub fn decimals(token: TokenId) -> u8 {
+		let address = prefixed_address(PRECOMPILE, token);
 		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
 		precompile.decimals()
 	}
