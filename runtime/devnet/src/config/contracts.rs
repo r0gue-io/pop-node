@@ -9,9 +9,12 @@ use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 
 use super::api::{self, Config};
 use crate::{
-	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp, TransactionPayment,
+	config::assets::TrustBackedAssetsInstance, deposit, Balance, Balances, Perbill, PolkadotXcm,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, Timestamp, TransactionPayment,
 };
+
+type Erc20<const PREFIX: u16, I> = pallet_api_vnext::Erc20<PREFIX, Runtime, I>;
+type Fungibles<const FIXED: u16, I> = pallet_api_vnext::Fungibles<FIXED, Runtime, I>;
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 	pallet_contracts::Schedule {
@@ -104,7 +107,8 @@ impl pallet_revive::Config for Runtime {
 	type NativeToEthRatio = NativeToEthRatio;
 	// 512 MB. Used in an integrity test that verifies the runtime has enough memory.
 	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
-	type Precompiles = ();
+	type Precompiles =
+		(Fungibles<100, TrustBackedAssetsInstance>, Erc20<101, TrustBackedAssetsInstance>);
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -138,4 +142,195 @@ fn contracts_prevents_runtime_calls() {
 		TypeId::of::<<Runtime as pallet_contracts::Config>::CallFilter>(),
 		TypeId::of::<Nothing>()
 	);
+}
+
+#[cfg(test)]
+mod tests {
+	use codec::Encode;
+	use frame_support::{assert_ok, traits::fungible::Mutate};
+	use frame_system::pallet_prelude::OriginFor;
+	use pallet_api_vnext::fungibles::precompiles::{IFungibles::*, IERC20};
+	use pallet_revive::{
+		precompiles::alloy::{
+			primitives,
+			sol_types::{SolCall, SolType, SolValue},
+		},
+		AddressMapper, Code, DepositLimit,
+	};
+	use sp_core::{bytes::to_hex, H160, U256};
+	use sp_keyring::Sr25519Keyring::{Alice, Bob};
+	use sp_runtime::Weight;
+
+	use super::*;
+	use crate::{Assets, Revive, RuntimeOrigin, System};
+
+	type AccountId32Mapper = pallet_revive::AccountId32Mapper<Runtime>;
+	type Asset = pallet_assets::Asset<Runtime, TrustBackedAssetsInstance>;
+	type NextAssetId = pallet_assets::NextAssetId<Runtime, TrustBackedAssetsInstance>;
+
+	fn new_test_ext() -> sp_io::TestExternalities {
+		let mut ext = sp_io::TestExternalities::new_empty();
+		ext.execute_with(|| {
+			System::set_block_number(1);
+			Balances::set_balance(&Alice.to_account_id(), 1_000 * UNIT);
+			Balances::set_balance(&Bob.to_account_id(), 1 * UNIT);
+			NextAssetId::put(1);
+		});
+		ext
+	}
+
+	#[test]
+	fn fungibles_precompiles_work() {
+		let caller = Alice.to_account_id();
+		let origin = RuntimeOrigin::signed(caller.clone());
+		let origin_addr = AccountId32Mapper::to_address(&caller);
+		let token = 1;
+		let fungibles_addr: H160 = Fungibles::<100, TrustBackedAssetsInstance>::address().into();
+		let erc20_addr: H160 = Erc20::<101, TrustBackedAssetsInstance>::address(token).into();
+		let total_supply: Balance = 10_000;
+		new_test_ext().execute_with(|| {
+			assert_ok!(Revive::map_account(origin.clone()));
+			assert_ok!(Revive::map_account(RuntimeOrigin::signed(Bob.to_account_id())));
+
+			// Create a token via fungibles precompile
+			println!("IFungibles precompile: {}", to_hex(&fungibles_addr.0, false));
+			let call =
+				createCall { admin: origin_addr.0.into(), minBalance: primitives::U256::from(1) }
+					.abi_encode();
+			println!("IFungibles.create: {}", to_hex(&call, false));
+			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, Weight::zero(), 0, call));
+			let asset_details = Asset::get(token).unwrap();
+			assert_eq!(asset_details.owner, caller);
+			assert_eq!(asset_details.admin, caller);
+
+			// Mint via fungibles precompile
+			let call = mintCall {
+				token,
+				account: origin_addr.0.into(),
+				value: primitives::U256::from(total_supply),
+			}
+			.abi_encode();
+			println!("IFungibles.mint: {}", to_hex(&call, false));
+			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, Weight::zero(), 0, call));
+
+			// Transfer via erc20 precompile
+			println!("IERC20 precompile: {}", to_hex(&erc20_addr.0, false));
+			let call = IERC20::transferCall {
+				to: AccountId32Mapper::to_address(&Bob.to_account_id()).0.into(),
+				value: primitives::U256::from(total_supply / 2),
+			}
+			.abi_encode();
+			println!("IERC20.transfer: {}", to_hex(&call, false));
+			assert_ok!(Revive::call(origin.clone(), erc20_addr, 0, Weight::zero(), 0, call));
+			assert_eq!(Assets::balance(token, &Bob.to_account_id()), total_supply / 2);
+		})
+	}
+
+	#[test]
+	fn fungibles_precompiles_via_contract_works() {
+		let contract = include_bytes!(
+			"../../../../pop-api-vnext/examples/fungibles/target/ink/fungibles.polkavm"
+		);
+		let caller = Alice.to_account_id();
+		let origin = RuntimeOrigin::signed(caller.clone());
+		let recipient = Bob.to_account_id();
+		let recipient_addr = primitives::Address::new(AccountId32Mapper::to_address(&recipient).0);
+		let minimum_value = U256::from(1);
+		let endowment = primitives::U256::from(10_000);
+		new_test_ext().execute_with(|| {
+			assert_ok!(Revive::map_account(origin.clone()));
+			assert_ok!(Revive::map_account(RuntimeOrigin::signed(recipient)));
+
+			// Instantiate contract with some value, required to create underlying asset
+			let result = Revive::bare_instantiate(
+				origin.clone(),
+				10 * UNIT,
+				Weight::MAX,
+				DepositLimit::Unchecked,
+				Code::Upload(contract.to_vec()),
+				// Constructors are not yet using Solidity encoding
+				[blake_selector("new"), ("Name", "SYMBOL", minimum_value, 10u8).encode()].concat(),
+				None,
+			)
+			.result
+			.unwrap();
+			assert!(!result.result.did_revert());
+			let contract = primitives::Address::new(result.addr.0);
+
+			// Mint some tokens to the contract
+			call::<()>(
+				origin.clone(),
+				result.addr,
+				[keccak_selector("mint(address,uint256)"), (contract, endowment).abi_encode()]
+					.concat(),
+			);
+
+			// Interact with contract as Erc20
+			let total_supply = call::<primitives::U256>(
+				origin.clone(),
+				result.addr,
+				keccak_selector("totalSupply()"),
+			);
+			assert_eq!(total_supply, endowment);
+
+			let balance_of = call::<primitives::U256>(
+				origin.clone(),
+				result.addr,
+				[keccak_selector("balanceOf(address)"), (contract,).abi_encode()].concat(),
+			);
+			assert_eq!(balance_of, endowment);
+
+			// Transfer tokens from contract to recipient
+			let value = endowment / primitives::U256::from(2);
+			assert!(call::<bool>(
+				origin.clone(),
+				result.addr,
+				[
+					keccak_selector("transfer(address,uint256)"),
+					(recipient_addr, value).abi_encode(),
+				]
+				.concat(),
+			));
+			let balance_of = call::<primitives::U256>(
+				origin.clone(),
+				result.addr,
+				[keccak_selector("balanceOf(address)"), (recipient_addr,).abi_encode()].concat(),
+			);
+			assert_eq!(balance_of, value);
+		});
+
+		fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
+			origin: OriginFor<Runtime>,
+			contract: H160,
+			data: Vec<u8>,
+		) -> T {
+			let result =
+				Revive::bare_call(origin, contract, 0, Weight::MAX, DepositLimit::Unchecked, data)
+					.result
+					.unwrap();
+			assert!(!result.did_revert());
+			T::abi_decode(&result.data, true).unwrap()
+		}
+	}
+
+	fn blake_selector(name: &str) -> Vec<u8> {
+		let hash = sp_io::hashing::blake2_256(name.as_bytes());
+		[hash[0..4].to_vec()].concat()
+	}
+
+	fn keccak_selector(name: &str) -> Vec<u8> {
+		let hash = sp_io::hashing::keccak_256(name.as_bytes());
+		[hash[0..4].to_vec()].concat()
+	}
+
+	#[test]
+	fn selectors_work() {
+		// Constructors currently still use blake encoding
+		assert_eq!(hex::encode(blake_selector("new")), "9bae9d5e");
+
+		// Erc20 selectors
+		assert_eq!(hex::encode(keccak_selector("exists()")), "267c4ae4");
+		assert_eq!(hex::encode(keccak_selector("totalSupply()")), "18160ddd");
+		assert_eq!(hex::encode(keccak_selector("balanceOf(address)")), "70a08231");
+	}
 }

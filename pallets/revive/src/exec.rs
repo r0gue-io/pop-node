@@ -419,7 +419,7 @@ pub trait PrecompileExt: sealing::Sealed {
 	/// Get a mutable reference to the transient storage.
 	/// Useful in benchmarks when it is sometimes necessary to modify and inspect the transient
 	/// storage directly.
-	#[cfg(any(feature = "runtime-benchmarks", test))]
+	#[cfg(any(feature = "runtime-benchmarks", test, feature = "std"))]
 	fn transient_storage(&mut self) -> &mut TransientStorage<Self::T>;
 
 	/// Check if running in read-only context.
@@ -587,7 +587,7 @@ impl<T: Config, E: Executable<T>, Env> ExecutableOrPrecompile<T, E, Env> {
 		}
 	}
 
-	#[cfg(any(feature = "runtime-benchmarks", test))]
+	#[cfg(any(feature = "runtime-benchmarks", test, feature = "std"))]
 	fn into_executable(self) -> Option<E> {
 		if let Self::Executable(executable) = self {
 			Some(executable)
@@ -833,7 +833,7 @@ where
 			.map(|_| (address, stack.first_frame.last_frame_output))
 	}
 
-	#[cfg(any(feature = "runtime-benchmarks", test))]
+	#[cfg(any(feature = "runtime-benchmarks", test, feature = "std"))]
 	pub fn bench_new_call(
 		dest: H160,
 		origin: Origin<T>,
@@ -1943,7 +1943,7 @@ where
 		self.top_frame_mut().contract_info()
 	}
 
-	#[cfg(any(feature = "runtime-benchmarks", test))]
+	#[cfg(any(feature = "runtime-benchmarks", test, feature = "std"))]
 	fn transient_storage(&mut self) -> &mut TransientStorage<Self::T> {
 		&mut self.transient_storage
 	}
