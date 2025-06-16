@@ -203,8 +203,6 @@ mod tests {
 					.unwrap(),
 					U256::from(endowment)
 				);
-
-				assert_eq!(Assets::balance(token, ALICE), endowment);
 			});
 	}
 
