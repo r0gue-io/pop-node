@@ -132,6 +132,7 @@ where
 }
 
 impl<const PREFIX: u16, T: Config<I>, I: 'static> Erc20<PREFIX, T, I> {
+	/// The address of the precompile.
 	pub fn address(id: u32) -> [u8; 20] {
 		prefixed_address(PREFIX, id)
 	}
