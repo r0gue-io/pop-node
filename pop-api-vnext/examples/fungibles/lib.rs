@@ -51,7 +51,7 @@ pub mod fungibles {
 		/// supply.
 		///
 		/// # Parameters
-		/// - `account` - The address to be credited with the created tokens.
+		/// - `account` - The account to be credited with the created tokens.
 		/// - `value` - The number of tokens to mint.
 		#[ink(message)]
 		pub fn mint(&mut self, account: Address, value: U256) {
@@ -115,7 +115,7 @@ pub mod fungibles {
 		/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 		///
 		/// # Parameters
-		/// - `account` - The address from which the tokens will be destroyed.
+		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[ink(message)]
 		pub fn burn(&mut self, account: Address, value: U256) {
@@ -172,18 +172,18 @@ pub mod fungibles {
 		/// Returns the allowance for a `spender` approved by an `owner`.
 		///
 		/// # Parameters
-		/// - `owner` - The address that owns the tokens.
-		/// - `spender` - The address that is allowed to spend the tokens.
+		/// - `owner` - The account that owns the tokens.
+		/// - `spender` - The account that is allowed to spend the tokens.
 		#[ink(message)]
 		fn allowance(&self, owner: Address, spender: Address) -> U256 {
 			api::allowance(self.id, owner, spender)
 		}
 
-		/// Transfers `value` amount of tokens from the contract to address `to` with
+		/// Transfers `value` amount of tokens from the contract to account `to` with
 		/// additional `data` in unspecified format.
 		///
 		/// # Parameters
-		/// - `to` - The recipient address.
+		/// - `to` - The recipient account.
 		/// - `value` - The number of tokens to transfer.
 		#[ink(message)]
 		fn transfer(&mut self, to: Address, value: U256) -> bool {
@@ -208,8 +208,8 @@ pub mod fungibles {
 		/// pre-approved by `from`.
 		///
 		/// # Parameters
-		/// - `from` - The address from which the token balance will be withdrawn.
-		/// - `to` - The recipient address.
+		/// - `from` - The account from which the token balance will be withdrawn.
+		/// - `to` - The recipient account.
 		/// - `value` - The number of tokens to transfer.
 		#[ink(message)]
 		fn transferFrom(&mut self, from: Address, to: Address, value: U256) -> bool {
@@ -237,7 +237,7 @@ pub mod fungibles {
 		/// Successive calls of this method overwrite previous values.
 		///
 		/// # Parameters
-		/// - `spender` - The address that is allowed to spend the tokens.
+		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to approve.
 		#[ink(message)]
 		fn approve(&mut self, spender: Address, value: U256) -> bool {
