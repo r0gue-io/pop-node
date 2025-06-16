@@ -56,7 +56,7 @@ pub mod fungibles {
 		#[ink(message)]
 		pub fn mint(&mut self, account: Address, value: U256) {
 			if let Err(error) = self.ensure_owner() {
-				// Workaround until ink supports Error to Solidity custom error conversion; https://github.com/use-ink/ink/issues/2404
+				// TODO: Workaround until ink supports Error to Solidity custom error conversion; https://github.com/use-ink/ink/issues/2404
 				revert(&error)
 			}
 
