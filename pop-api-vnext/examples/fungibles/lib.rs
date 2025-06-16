@@ -27,10 +27,10 @@ pub mod fungibles {
 		/// in contract's storage.
 		///
 		/// # Parameters
-		/// * - `name` - The name of the token.
-		/// * - `symbol` - The symbol of the token.
-		/// * - `min_balance` - The minimum balance required for accounts holding this token.
-		/// * - `decimals` - The number of decimals.
+		/// - `name` - The name of the token.
+		/// - `symbol` - The symbol of the token.
+		/// - `min_balance` - The minimum balance required for accounts holding this token.
+		/// - `decimals` - The number of decimals.
 		///
 		/// NOTE: The minimum balance must be non-zero.
 		// The `min_balance` ensures accounts hold a minimum amount of tokens, preventing tiny,
