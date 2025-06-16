@@ -259,6 +259,7 @@ where
 }
 
 impl<const FIXED: u16, T: Config<I>, I: 'static> Fungibles<FIXED, T, I> {
+	/// The address of the precompile.
 	pub const fn address() -> [u8; 20] {
 		fixed_address(FIXED)
 	}
