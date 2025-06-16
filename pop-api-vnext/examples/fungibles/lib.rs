@@ -163,7 +163,7 @@ pub mod fungibles {
 		/// Returns the account balance for the specified `owner`.
 		///
 		/// # Parameters
-		/// - `owner` - The address whose balance is being queried.
+		/// - `owner` - The account whose balance is being queried.
 		#[ink(message)]
 		fn balanceOf(&self, owner: Address) -> U256 {
 			api::balance_of(self.id, owner)
