@@ -1,7 +1,7 @@
 pub use errors::*;
 
 use super::{
-	contract_ref, prefixed_address, Address, Pop, SolAddress, SolEncode, SolError, SolType,
+	contract_ref, prefixed_address, Address, Pop, Sol, SolAddress, SolEncode, SolError, SolType,
 	SolTypeEncode, String, TokenId, Uint, Vec, U256,
 };
 use crate::ensure;
@@ -91,7 +91,7 @@ pub struct Transfer {
 #[inline]
 pub fn total_supply(token: TokenId) -> U256 {
 	let address = prefixed_address(PRECOMPILE, token);
-	let precompile: contract_ref!(Erc20, Pop) = address.into();
+	let precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
 	precompile.totalSupply()
 }
 
@@ -99,7 +99,7 @@ pub fn total_supply(token: TokenId) -> U256 {
 #[inline]
 pub fn balance_of(token: TokenId, account: Address) -> U256 {
 	let address = prefixed_address(PRECOMPILE, token);
-	let precompile: contract_ref!(Erc20, Pop) = address.into();
+	let precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
 	precompile.balanceOf(account)
 }
 
@@ -110,7 +110,7 @@ pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<bool, Error>
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
 	let address = prefixed_address(PRECOMPILE, token);
-	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
+	let mut precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
 	Ok(precompile.transfer(to, value))
 }
 
@@ -121,7 +121,7 @@ pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<bool, Error>
 #[inline]
 pub fn allowance(token: TokenId, owner: Address, spender: Address) -> U256 {
 	let address = prefixed_address(PRECOMPILE, token);
-	let precompile: contract_ref!(Erc20, Pop) = address.into();
+	let precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
 	precompile.allowance(owner, spender)
 }
 
@@ -137,7 +137,7 @@ pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<bool, Er
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
 	let address = prefixed_address(PRECOMPILE, token);
-	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
+	let mut precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
 	Ok(precompile.approve(spender, value))
 }
 
@@ -159,7 +159,7 @@ pub fn transfer_from(
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
 	let address = prefixed_address(PRECOMPILE, token);
-	let mut precompile: contract_ref!(Erc20, Pop) = address.into();
+	let mut precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
 	Ok(precompile.transferFrom(from, to, value))
 }
 
@@ -187,7 +187,7 @@ pub mod extensions {
 	#[inline]
 	pub fn name(token: TokenId) -> String {
 		let address = prefixed_address(PRECOMPILE, token);
-		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
+		let precompile: contract_ref!(Erc20Metadata, Pop, Sol) = address.into();
 		precompile.name()
 	}
 
@@ -195,7 +195,7 @@ pub mod extensions {
 	#[inline]
 	pub fn symbol(token: TokenId) -> String {
 		let address = prefixed_address(PRECOMPILE, token);
-		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
+		let precompile: contract_ref!(Erc20Metadata, Pop, Sol) = address.into();
 		precompile.symbol()
 	}
 
@@ -203,7 +203,7 @@ pub mod extensions {
 	#[inline]
 	pub fn decimals(token: TokenId) -> u8 {
 		let address = prefixed_address(PRECOMPILE, token);
-		let precompile: contract_ref!(Erc20Metadata, Pop) = address.into();
+		let precompile: contract_ref!(Erc20Metadata, Pop, Sol) = address.into();
 		precompile.decimals()
 	}
 }

@@ -5,9 +5,6 @@ license = "GPL-3.0-only"
 name = "pop-api"
 version = "0.1.0"
 
-[package.metadata.ink-lang]
-abi = "sol"
-
 [dependencies]
 alloy-sol-types = { version = "1.0.0", default-features = false }                                                                         # Required until ink implements sol error support
 ink = { git = "https://github.com/use-ink/ink", branch = "semakula/sol-abi", default-features = false, features = [ "unstable-hostfn" ] }

@@ -5,6 +5,7 @@ use alloy_sol_types::{
 pub use erc20::{Approval, Transfer};
 pub use errors::*;
 use ink::{
+	abi::Sol,
 	contract_ref,
 	prelude::{string::String, vec::Vec},
 	primitives::sol::SolTypeEncode,
@@ -195,7 +196,7 @@ pub trait Fungibles {
 #[inline]
 pub fn allowance(token: TokenId, owner: Address, spender: Address) -> U256 {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.allowance(token, owner, spender)
 }
 
@@ -211,7 +212,7 @@ pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<(), Erro
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.approve(token, spender, value))
 }
 
@@ -223,7 +224,7 @@ pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<(), Erro
 #[inline]
 pub fn balance_of(token: TokenId, account: Address) -> U256 {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.balanceOf(token, account)
 }
 
@@ -239,7 +240,7 @@ pub fn burn(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.burn(token, account, value))
 }
 
@@ -250,7 +251,7 @@ pub fn burn(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 #[inline]
 pub fn clear_metadata(token: TokenId) {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.clearMetadata(token)
 }
 
@@ -267,7 +268,7 @@ pub fn create(admin: Address, min_balance: U256) -> Result<TokenId, Error> {
 	ensure!(min_balance != U256::zero(), MinBalanceZero);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.create(admin, min_balance))
 }
 
@@ -278,7 +279,7 @@ pub fn create(admin: Address, min_balance: U256) -> Result<TokenId, Error> {
 #[inline]
 pub fn decimals(token: TokenId) -> u8 {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.decimals(token)
 }
 
@@ -293,7 +294,7 @@ pub fn decrease_allowance(token: TokenId, spender: Address, value: U256) -> Resu
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.increaseAllowance(token, spender, value))
 }
 
@@ -304,7 +305,7 @@ pub fn decrease_allowance(token: TokenId, spender: Address, value: U256) -> Resu
 #[inline]
 pub fn exists(token: TokenId) -> bool {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.exists(token)
 }
 
@@ -319,7 +320,7 @@ pub fn increase_allowance(token: TokenId, spender: Address, value: U256) -> Resu
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.increaseAllowance(token, spender, value))
 }
 
@@ -336,7 +337,7 @@ pub fn mint(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.mint(token, account, value))
 }
 
@@ -347,7 +348,7 @@ pub fn mint(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 #[inline]
 pub fn name(token: TokenId) -> String {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.name(token)
 }
 
@@ -361,7 +362,7 @@ pub fn name(token: TokenId) -> String {
 #[inline]
 pub fn set_metadata(token: TokenId, name: String, symbol: String, decimals: u8) {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.setMetadata(token, name, symbol, decimals)
 }
 
@@ -372,7 +373,7 @@ pub fn set_metadata(token: TokenId, name: String, symbol: String, decimals: u8) 
 #[inline]
 pub fn start_destroy(token: TokenId) {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.startDestroy(token)
 }
 
@@ -383,7 +384,7 @@ pub fn start_destroy(token: TokenId) {
 #[inline]
 pub fn symbol(token: TokenId) -> String {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.symbol(token)
 }
 
@@ -394,7 +395,7 @@ pub fn symbol(token: TokenId) -> String {
 #[inline]
 pub fn total_supply(token: TokenId) -> U256 {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.totalSupply(token)
 }
 
@@ -410,7 +411,7 @@ pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<(), Error> {
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.transfer(token, to, value))
 }
 
@@ -429,7 +430,7 @@ pub fn transfer_from(token: TokenId, from: Address, to: Address, value: U256) ->
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop) = address.into();
+	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	Ok(precompile.transferFrom(token, from, to, value))
 }
 
