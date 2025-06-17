@@ -113,7 +113,6 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 
 impl crate::fungibles::Config for Test {
 	type AssetsInstance = AssetsInstance;
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
@@ -190,7 +189,6 @@ impl pallet_nfts::Config<NftsInstance> for Test {
 	type MetadataDepositBase = ConstU128<1>;
 	type OffchainPublic = Noop;
 	type OffchainSignature = Noop;
-	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = ConstU32<50>;
 	type ValueLimit = ConstU32<50>;
 	type WeightInfo = ();
@@ -198,7 +196,6 @@ impl pallet_nfts::Config<NftsInstance> for Test {
 
 impl crate::nonfungibles::Config for Test {
 	type NftsInstance = NftsInstance;
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 
