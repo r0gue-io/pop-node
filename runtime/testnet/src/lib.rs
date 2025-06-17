@@ -1063,7 +1063,6 @@ fn metadata_api_implemented() {
 
 	use codec::Decode;
 	use frame_metadata::{RuntimeMetadata, RuntimeMetadataPrefixed};
-	const V16_UNSTABLE: u32 = u32::MAX;
 
 	fn assert<T: sp_api::runtime_decl_for_metadata::Metadata<Block>>() {
 		let opaque_meta: OpaqueMetadata = T::metadata();
@@ -1075,7 +1074,7 @@ fn metadata_api_implemented() {
 			panic!("Expected metadata V14");
 		};
 
-		assert_eq!(T::metadata_versions(), vec![14, 15, V16_UNSTABLE]);
+		assert_eq!(T::metadata_versions(), vec![14, 15, 16]);
 
 		let version = 15;
 		let opaque_meta = T::metadata_at_version(version).expect("V15 should exist");
@@ -1089,8 +1088,17 @@ fn metadata_api_implemented() {
 		assert!(!metadata.apis.is_empty());
 		assert!(!metadata.pallets.is_empty());
 
-		// Ensure metadata v16 is not provided.
-		assert!(T::metadata_at_version(16).is_none());
+		let version = 16;
+		let opaque_meta = T::metadata_at_version(version).expect("V16 should exist");
+		let prefixed_meta_bytes = opaque_meta.deref();
+		assert_eq!(prefixed_meta_bytes, Runtime::metadata_at_version(version).unwrap().deref());
+		let prefixed_meta = RuntimeMetadataPrefixed::decode(&mut &prefixed_meta_bytes[..]).unwrap();
+		// Ensure that we have the V16 variant.
+		let RuntimeMetadata::V16(metadata) = prefixed_meta.1 else {
+			panic!("Expected metadata V16");
+		};
+		assert!(!metadata.apis.is_empty());
+		assert!(!metadata.pallets.is_empty());
 	}
 	sp_io::TestExternalities::new_empty().execute_with(|| assert::<Runtime>());
 }
