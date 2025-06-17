@@ -1,3 +1,7 @@
+//! The fungibles API offers a streamlined interface for interacting with fungible tokens. The
+//! goal is to provide a simplified, consistent API that adheres to standards in the smart contract
+//! space.
+
 use core::cmp::Ordering::{Equal, Greater, Less};
 
 use frame_support::{
@@ -15,6 +19,7 @@ use AddressMatcher::Fixed;
 
 use super::*;
 
+/// The fungibles precompiles offer a streamlined interface for interacting with fungible tokens.
 pub mod precompiles;
 
 type AssetIdOf<T, I> = <T as Config<I>>::AssetId;
