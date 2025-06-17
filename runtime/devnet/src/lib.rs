@@ -22,7 +22,6 @@ use ::ismp::{
 	host::StateMachine,
 	router::{Request, Response},
 };
-use codec::Encode;
 use config::xcm::{RelayLocation, XcmOriginToTransactDispatchOrigin};
 use cumulus_pallet_parachain_system::{RelayChainState, RelayNumberMonotonicallyIncreases};
 use cumulus_pallet_weight_reclaim::StorageWeightReclaim;
@@ -30,7 +29,7 @@ use cumulus_primitives_core::{AggregateMessageOrigin, ParaId};
 use frame_metadata_hash_extension::CheckMetadataHash;
 use frame_support::{
 	derive_impl,
-	dispatch::{DispatchClass, DispatchInfo},
+	dispatch::DispatchClass,
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
@@ -75,7 +74,7 @@ use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256, U256};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, TransactionExtension, Verify},
+	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
