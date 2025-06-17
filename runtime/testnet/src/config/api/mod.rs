@@ -21,7 +21,7 @@ use crate::{
 		assets::TrustBackedAssetsInstance, monetary::TransactionByteFee, xcm::LocalOriginToLocation,
 	},
 	fungibles, AccountId, Balances, BlockNumber, Contracts, Ismp, PolkadotXcm, Runtime,
-	RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	RuntimeCall, RuntimeHoldReason,
 };
 
 mod versioning;
@@ -106,7 +106,6 @@ impl messaging::Config for Runtime {
 	// TODO: ensure within the contract buffer bounds
 	type MaxResponseLen = ConstU32<1024>;
 	type OriginConverter = LocalOriginToLocation;
-	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
 	type Xcm = QueryHandler;
 	type XcmResponseOrigin = EnsureResponse;
@@ -191,7 +190,6 @@ impl NotifyQueryHandler<Runtime> for QueryHandler {
 
 impl fungibles::Config for Runtime {
 	type AssetsInstance = TrustBackedAssetsInstance;
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
 
