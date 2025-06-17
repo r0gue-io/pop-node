@@ -713,7 +713,7 @@ mod read_weights {
 
 		assert_eq!(total_supply, WeightInfo::total_supply());
 		assert_eq!(balance_of, WeightInfo::balance_of());
-		assert_eq!(allowance, WeightInfo::allowance());
+		assert_eq!(allowance, <WeightInfo as WeightInfoTrait>::allowance());
 		assert_eq!(token_name, WeightInfo::token_name());
 		assert_eq!(token_symbol, WeightInfo::token_symbol());
 		assert_eq!(token_decimals, WeightInfo::token_decimals());
