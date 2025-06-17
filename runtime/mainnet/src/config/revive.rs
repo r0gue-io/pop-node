@@ -81,13 +81,8 @@ mod tests {
 	}
 
 	#[test]
-	fn call_filter_is_nothing() {
-		assert_eq!(TypeId::of::<<Runtime as Config>::CallFilter>(), TypeId::of::<Nothing>(),);
-	}
-
-	#[test]
-	fn chain_extension_is_unset() {
-		assert_eq!(TypeId::of::<<Runtime as Config>::ChainExtension>(), TypeId::of::<()>(),);
+	fn precompiles_is_unset() {
+		assert_eq!(TypeId::of::<<Runtime as Config>::Precompiles>(), TypeId::of::<()>(),);
 	}
 
 	#[test]
@@ -199,14 +194,6 @@ mod tests {
 		assert_eq!(
 			TypeId::of::<<Runtime as Config>::WeightPrice>(),
 			TypeId::of::<pallet_transaction_payment::Pallet<Runtime>>(),
-		);
-	}
-
-	#[test]
-	fn xcm_is_pallet_xcm() {
-		assert_eq!(
-			TypeId::of::<<Runtime as Config>::Xcm>(),
-			TypeId::of::<pallet_xcm::Pallet<Runtime>>(),
 		);
 	}
 }
