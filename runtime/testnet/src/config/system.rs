@@ -12,8 +12,6 @@ use sp_runtime::{
 	Perbill,
 };
 
-#[cfg(not(feature = "runtime-benchmarks"))]
-use crate::Revive;
 use crate::{
 	weights::RocksDbWeight, AccountId, AggregateMessageOrigin, Aura, BalancesCall, Block,
 	BlockExecutionWeight, BlockLength, BlockWeights, DispatchClass, ExtrinsicBaseWeight,
@@ -149,6 +147,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type DmpQueue = frame_support::traits::EnqueueWithOrigin<MessageQueue, RelayOrigin>;
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
+	type RelayParentOffset = ConstU32<0>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;
