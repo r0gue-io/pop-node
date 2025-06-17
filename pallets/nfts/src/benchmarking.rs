@@ -187,7 +187,7 @@ fn add_collection_attribute<T: Config<I>, I: 'static>(
 	(key, caller, caller_lookup)
 }
 
-fn assert_last_event<T: Config<I>, I: 'static>(generic_event: <T as Config<I>>::RuntimeEvent) {
+fn assert_last_event<T: Config<I>, I: 'static>(generic_event: T::RuntimeEvent) {
 	let events = frame_system::Pallet::<T>::events();
 	let system_event: <T as frame_system::Config>::RuntimeEvent = generic_event.into();
 	// compare to the last event record

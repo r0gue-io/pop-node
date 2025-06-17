@@ -7,7 +7,7 @@ use super::*;
 #[allow(unused)]
 use crate::Pallet as Motion;
 
-fn assert_last_event<T: Config>(generic_event: <T as Config>::RuntimeEvent) {
+fn assert_last_event<T: Config>(generic_event: T::RuntimeEvent) {
 	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 

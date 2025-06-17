@@ -138,10 +138,6 @@ pub mod pallet {
 	#[pallet::config]
 	/// The module configuration trait.
 	pub trait Config<I: 'static = ()>: frame_system::Config {
-		/// The overarching event type.
-		type RuntimeEvent: From<Event<Self, I>>
-			+ IsType<<Self as frame_system::Config>::RuntimeEvent>;
-
 		/// Identifier for the collection of item.
 		///
 		/// SAFETY: The functions in the `Incrementable` trait are fallible. If the functions
