@@ -3,7 +3,7 @@ use frame_support::traits::{ConstU32, ConstU64, Contains, EnqueueWithOrigin, Eve
 use pallet_balances::Call as BalancesCall;
 use polkadot_runtime_common::BlockHashCount;
 use pop_runtime_common::{
-	Nonce, AVERAGE_ON_INITIALIZE_RATIO, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
+	Nonce, AVERAGE_ON_INITIALIZE_RATIO, MAXIMUM_BLOCK_WEIGHT, MAX_POV_SIZE, NORMAL_DISPATCH_RATIO,
 };
 use sp_runtime::traits::AccountIdLookup;
 
@@ -30,7 +30,7 @@ parameter_types! {
 	/// Defines the length limit in bytes for a block.
 	// BlockLength is created with max for Operational & Mandatory and normal * max for Normal `DispatchClass`.
 	pub RuntimeBlockLength: BlockLength =
-		BlockLength::max_with_normal_ratio(5 * 1024 * 1024, NORMAL_DISPATCH_RATIO);
+		BlockLength::max_with_normal_ratio(MAX_POV_SIZE, NORMAL_DISPATCH_RATIO);
 
 	/// Defines the block weight in terms of the different `DispatchClass` limits.
 	pub RuntimeBlockWeights: BlockWeights = BlockWeights::builder()
@@ -154,6 +154,7 @@ impl cumulus_pallet_parachain_system::Config for Runtime {
 	type DmpQueue = EnqueueWithOrigin<MessageQueue, RelayOrigin>;
 	type OnSystemEvent = ();
 	type OutboundXcmpMessageSource = XcmpQueue;
+	type RelayParentOffset = ConstU32<0>;
 	type ReservedDmpWeight = ReservedDmpWeight;
 	type ReservedXcmpWeight = ReservedXcmpWeight;
 	type RuntimeEvent = RuntimeEvent;

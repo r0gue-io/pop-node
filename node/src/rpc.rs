@@ -28,6 +28,7 @@ pub struct FullDeps<C, P, B> {
 	/// Transaction pool instance.
 	pub pool: Arc<P>,
 	/// Backend used by the node.
+	#[allow(dead_code)]
 	pub backend: Arc<B>,
 }
 

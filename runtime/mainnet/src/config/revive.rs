@@ -1,13 +1,13 @@
 use frame_support::{
 	parameter_types,
-	traits::{ConstBool, ConstU32, ConstU64, Nothing},
+	traits::{ConstBool, ConstU32, ConstU64},
 };
 use frame_system::EnsureSigned;
 
 use crate::{
 	config::monetary::{DepositPerByte, DepositPerItem},
-	weights, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
-	Timestamp, TransactionPayment, UNIT,
+	weights, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, Timestamp,
+	TransactionPayment, UNIT,
 };
 
 // 18 decimals
@@ -20,9 +20,6 @@ parameter_types! {
 
 impl pallet_revive::Config for Runtime {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Self>;
-	// No runtime dispatchables are callable from contracts.
-	type CallFilter = Nothing;
-	type ChainExtension = ();
 	// EVM chain id. 3,395 is a unique ID still.
 	type ChainId = ConstU64<3_395>;
 	// 30 percent of storage deposit held for using a code hash.
@@ -37,6 +34,7 @@ impl pallet_revive::Config for Runtime {
 	type NativeToEthRatio = NativeToEthRatio;
 	// 512 MB. Used in an integrity test that verifies the runtime has enough memory.
 	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
+	type Precompiles = ();
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -48,7 +46,6 @@ impl pallet_revive::Config for Runtime {
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = weights::pallet_revive::WeightInfo<Self>;
 	type WeightPrice = TransactionPayment;
-	type Xcm = PolkadotXcm;
 }
 
 impl TryFrom<RuntimeCall> for pallet_revive::Call<Runtime> {
@@ -84,13 +81,8 @@ mod tests {
 	}
 
 	#[test]
-	fn call_filter_is_nothing() {
-		assert_eq!(TypeId::of::<<Runtime as Config>::CallFilter>(), TypeId::of::<Nothing>(),);
-	}
-
-	#[test]
-	fn chain_extension_is_unset() {
-		assert_eq!(TypeId::of::<<Runtime as Config>::ChainExtension>(), TypeId::of::<()>(),);
+	fn precompiles_is_unset() {
+		assert_eq!(TypeId::of::<<Runtime as Config>::Precompiles>(), TypeId::of::<()>(),);
 	}
 
 	#[test]
@@ -202,14 +194,6 @@ mod tests {
 		assert_eq!(
 			TypeId::of::<<Runtime as Config>::WeightPrice>(),
 			TypeId::of::<pallet_transaction_payment::Pallet<Runtime>>(),
-		);
-	}
-
-	#[test]
-	fn xcm_is_pallet_xcm() {
-		assert_eq!(
-			TypeId::of::<<Runtime as Config>::Xcm>(),
-			TypeId::of::<pallet_xcm::Pallet<Runtime>>(),
 		);
 	}
 }

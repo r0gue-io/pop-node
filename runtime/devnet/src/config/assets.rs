@@ -90,7 +90,6 @@ impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	type MetadataDepositBase = NftsMetadataDepositBase;
 	type OffchainPublic = <Signature as Verify>::Signer;
 	type OffchainSignature = Signature;
-	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = ConstU32<256>;
 	type ValueLimit = ConstU32<256>;
 	type WeightInfo = pallet_nfts::weights::SubstrateWeight<Self>;

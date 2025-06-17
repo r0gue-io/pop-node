@@ -12,7 +12,7 @@ use versioning::*;
 
 use crate::{
 	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
-	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent,
+	fungibles, nonfungibles, Runtime, RuntimeCall,
 };
 
 mod versioning;
@@ -83,13 +83,11 @@ impl RuntimeResult {
 
 impl fungibles::Config for Runtime {
 	type AssetsInstance = TrustBackedAssetsInstance;
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
 
 impl nonfungibles::Config for Runtime {
 	type NftsInstance = TrustBackedNftsInstance;
-	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
 }
 

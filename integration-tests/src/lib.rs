@@ -73,7 +73,7 @@ fn relay_to_para_sender_assertions(t: RelayToParaTest) {
 fn system_para_to_para_sender_assertions(t: SystemParaToParaTest) {
 	type RuntimeEvent = <AssetHubPara as Chain>::RuntimeEvent;
 	AssetHubPara::assert_xcm_pallet_attempted_complete(Some(Weight::from_parts(
-		578_673_000,
+		243_713_000,
 		6_208,
 	)));
 	assert_expected_events!(

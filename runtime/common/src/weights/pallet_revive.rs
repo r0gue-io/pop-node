@@ -994,4 +994,25 @@ impl<T: frame_system::Config> pallet_revive::WeightInfo for WeightInfo<T> {
 			// Standard Error: 10
 			.saturating_add(Weight::from_parts(77_239, 0).saturating_mul(r.into()))
 	}
+	// NOTE: copied from polkadot-sdk until benchmarks can be re-run
+	/// Storage: `Revive::ContractInfoOf` (r:1 w:1)
+	/// Proof: `Revive::ContractInfoOf` (`max_values`: None, `max_size`: Some(242), added: 2717, mode: `Measured`)
+	/// Storage: `System::Account` (r:1 w:0)
+	/// Proof: `System::Account` (`max_values`: None, `max_size`: Some(128), added: 2603, mode: `Measured`)
+	/// The range of component `d` is `[0, 1]`.
+	/// The range of component `i` is `[0, 262144]`.
+	fn seal_call_precompile(d: u32, i: u32, ) -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `0 + d * (453 ±0)`
+		//  Estimated: `1959 + d * (1959 ±0)`
+		// Minimum execution time: 19_412_000 picoseconds.
+		Weight::from_parts(3_906_222, 1959)
+			// Standard Error: 378_943
+			.saturating_add(Weight::from_parts(16_405_804, 0).saturating_mul(d.into()))
+			// Standard Error: 2
+			.saturating_add(Weight::from_parts(1_205, 0).saturating_mul(i.into()))
+			.saturating_add(T::DbWeight::get().reads((2_u64).saturating_mul(d.into())))
+			.saturating_add(T::DbWeight::get().writes((1_u64).saturating_mul(d.into())))
+			.saturating_add(Weight::from_parts(0, 1959).saturating_mul(d.into()))
+	}
 }

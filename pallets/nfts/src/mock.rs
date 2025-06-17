@@ -91,7 +91,6 @@ impl Config for Test {
 	/// Off-chain = signature On-chain - therefore no conversion needed.
 	/// It needs to be From<MultiSignature> for benchmarking.
 	type OffchainSignature = Signature;
-	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = ConstU32<50>;
 	type ValueLimit = ConstU32<50>;
 	type WeightInfo = ();
