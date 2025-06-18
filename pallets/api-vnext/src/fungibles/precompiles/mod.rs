@@ -281,7 +281,6 @@ mod tests {
 		*,
 	};
 
-	const FUNGIBLES: u16 = 100;
 	const ADDRESS: [u8; 20] = fixed_address(FUNGIBLES);
 
 	type AccountId = <Test as frame_system::Config>::AccountId;
