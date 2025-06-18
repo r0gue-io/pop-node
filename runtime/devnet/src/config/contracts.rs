@@ -243,7 +243,7 @@ mod tests {
 				origin.clone(),
 				10 * UNIT,
 				Weight::MAX,
-				DepositLimit::Unchecked,
+				DepositLimit::Balance(u128::MAX),
 				Code::Upload(contract.to_vec()),
 				// Constructors are not yet using Solidity encoding
 				[blake_selector("new"), ("Name", "SYMBOL", minimum_value, 10u8).encode()].concat(),
@@ -301,12 +301,18 @@ mod tests {
 			contract: H160,
 			data: Vec<u8>,
 		) -> T {
-			let result =
-				Revive::bare_call(origin, contract, 0, Weight::MAX, DepositLimit::Unchecked, data)
-					.result
-					.unwrap();
+			let result = Revive::bare_call(
+				origin,
+				contract,
+				0,
+				Weight::MAX,
+				DepositLimit::Balance(u128::MAX),
+				data,
+			)
+			.result
+			.unwrap();
 			assert!(!result.did_revert());
-			T::abi_decode(&result.data, true).unwrap()
+			T::abi_decode(&result.data).unwrap()
 		}
 	}
 
