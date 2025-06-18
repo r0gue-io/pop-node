@@ -4,14 +4,14 @@ use frame_support::{
 	sp_runtime::traits::AtLeast32Bit,
 	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _},
 };
+use pallet_assets::precompiles::{AssetIdExtractor, InlineAssetIdExtractor};
 use pallet_revive::AddressMapper as _;
 use AddressMatcher::Prefix;
 use IERC20::*;
 
 use super::{
-	deposit_event, prefixed_address, sol, to_runtime_origin, AddressMapper, AddressMatcher,
-	AssetIdExtractor, Assets, Config, Error, Ext, InlineAssetIdExtractor, NonZero, PhantomData,
-	Precompile, SolCall, UintTryFrom, UintTryTo, U256,
+	deposit_event, prefixed_address, sol, to_runtime_origin, AddressMapper, AddressMatcher, Assets,
+	Config, Error, Ext, NonZero, PhantomData, Precompile, SolCall, UintTryFrom, UintTryTo, U256,
 };
 
 sol!("src/fungibles/precompiles/interfaces/IERC20.sol");
