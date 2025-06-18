@@ -1,3 +1,6 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.30;
+
 /**
  * @title The fungibles precompile offers a streamlined interface for interacting with fungible
  * tokens. The goal is to provide a simplified, consistent API that adheres to standards in the
