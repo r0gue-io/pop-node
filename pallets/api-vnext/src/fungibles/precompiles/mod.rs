@@ -60,7 +60,7 @@ where
 					address,
 					Transfer { token: *token, from, to: *to, value: *value },
 				);
-				Ok(transferCall::abi_encode_returns(&()))
+				Ok(transferCall::abi_encode_returns(&transferReturn{}))
 			},
 			IFungiblesCalls::transferFrom(transferFromCall { token, from, to, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -79,7 +79,7 @@ where
 					address,
 					Transfer { token: *token, from: *from, to: *to, value },
 				);
-				Ok(transferFromCall::abi_encode_returns(&()))
+				Ok(transferFromCall::abi_encode_returns(&transferFromReturn{}))
 			},
 			IFungiblesCalls::approve(approveCall { token, spender, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -99,7 +99,7 @@ where
 					address,
 					Approval { token: *token, owner, spender, value: *value },
 				);
-				Ok(approveCall::abi_encode_returns(&()))
+				Ok(approveCall::abi_encode_returns(&approveReturn{}))
 			},
 			IFungiblesCalls::increaseAllowance(increaseAllowanceCall { token, spender, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -117,7 +117,7 @@ where
 
 				let spender = *spender;
 				deposit_event(env, address, Approval { token: *token, owner, spender, value });
-				Ok(increaseAllowanceCall::abi_encode_returns(&(value,)))
+				Ok(increaseAllowanceCall::abi_encode_returns(&value))
 			},
 			IFungiblesCalls::decreaseAllowance(decreaseAllowanceCall { token, spender, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -134,7 +134,7 @@ where
 
 				let spender = *spender;
 				deposit_event(env, address, Approval { token: *token, owner, spender, value });
-				Ok(decreaseAllowanceCall::abi_encode_returns(&(value,)))
+				Ok(decreaseAllowanceCall::abi_encode_returns(&value))
 			},
 			IFungiblesCalls::create(createCall { admin, minBalance }) => {
 				// TODO: charge based on benchmarked weight
@@ -148,12 +148,12 @@ where
 				.into();
 
 				deposit_event(env, address, Created { id, creator, admin: *admin });
-				Ok(createCall::abi_encode_returns(&(id,)))
+				Ok(createCall::abi_encode_returns(&id))
 			},
 			IFungiblesCalls::startDestroy(startDestroyCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				start_destroy::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
-				Ok(startDestroyCall::abi_encode_returns(&()))
+				Ok(startDestroyCall::abi_encode_returns(&startDestroyReturn{}))
 			},
 			IFungiblesCalls::setMetadata(setMetadataCall { token, name, symbol, decimals }) => {
 				// TODO: charge based on benchmarked weight
@@ -164,12 +164,12 @@ where
 					symbol.as_bytes().to_vec(),
 					*decimals,
 				)?;
-				Ok(setMetadataCall::abi_encode_returns(&()))
+				Ok(setMetadataCall::abi_encode_returns(&setMetadataReturn{}))
 			},
 			IFungiblesCalls::clearMetadata(clearMetadataCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				clear_metadata::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
-				Ok(clearMetadataCall::abi_encode_returns(&()))
+				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn{}))
 			},
 			IFungiblesCalls::mint(mintCall { token, account, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -184,7 +184,7 @@ where
 				let from = Address::default();
 				let to = *account;
 				deposit_event(env, address, Transfer { token: *token, from, to, value: *value });
-				Ok(mintCall::abi_encode_returns(&()))
+				Ok(mintCall::abi_encode_returns(&mintReturn{}))
 			},
 			IFungiblesCalls::burn(burnCall { token, account, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -204,20 +204,20 @@ where
 					address,
 					Transfer { token: *token, from: *from, to, value: *value },
 				);
-				Ok(burnCall::abi_encode_returns(&()))
+				Ok(burnCall::abi_encode_returns(&burnReturn{}))
 			},
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				let total_supply =
 					U256::saturating_from(<Assets<T, I>>::total_supply((*token).into()));
-				Ok(totalSupplyCall::abi_encode_returns(&(total_supply,)))
+				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
 			IFungiblesCalls::balanceOf(balanceOfCall { token, owner }) => {
 				// TODO: charge based on benchmarked weight
 				let account = env.to_account_id(&(*owner.0).into());
 				let balance =
 					U256::saturating_from(<Assets<T, I>>::balance((*token).into(), account));
-				Ok(balanceOfCall::abi_encode_returns(&(balance,)))
+				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
 			IFungiblesCalls::allowance(allowanceCall { token, owner, spender }) => {
 				// TODO: charge based on benchmarked weight
@@ -228,31 +228,29 @@ where
 					&owner,
 					&spender,
 				));
-				Ok(allowanceCall::abi_encode_returns(&(remaining,)))
+				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
 			IFungiblesCalls::name(nameCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				let result = <Assets<T, I>>::name((*token).into());
-				// TODO: improve
-				let result = String::from_utf8_lossy(result.as_slice());
-				Ok(nameCall::abi_encode_returns(&(result,)))
+				let result = String::from_utf8_lossy(result.as_slice()).into();
+				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::symbol(symbolCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				let result = <Assets<T, I>>::symbol((*token).into());
-				// TODO: improve
-				let result = String::from_utf8_lossy(result.as_slice());
-				Ok(nameCall::abi_encode_returns(&(result,)))
+				let result = String::from_utf8_lossy(result.as_slice()).into();
+				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::decimals(decimalsCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				let result = <Assets<T, I>>::decimals((*token).into());
-				Ok(decimalsCall::abi_encode_returns(&(result,)))
+				Ok(decimalsCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::exists(existsCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				let result = self::exists::<T, I>((*token).into());
-				Ok(existsCall::abi_encode_returns(&(result,)))
+				Ok(existsCall::abi_encode_returns(&result))
 			},
 		}
 	}
