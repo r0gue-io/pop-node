@@ -47,13 +47,13 @@ where
 			totalSupply(_) => {
 				// TODO: charge based on benchmarked weight
 				let total_supply = U256::saturating_from(<Assets<T, I>>::total_supply(token));
-				Ok(totalSupplyCall::abi_encode_returns(&(total_supply,)))
+				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
 			balanceOf(balanceOfCall { account }) => {
 				// TODO: charge based on benchmarked weight
 				let account = env.to_account_id(&(*account.0).into());
 				let balance = U256::saturating_from(<Assets<T, I>>::balance(token, account));
-				Ok(balanceOfCall::abi_encode_returns(&(balance,)))
+				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
 			transfer(transferCall { to, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -67,7 +67,7 @@ where
 				)?;
 
 				deposit_event::<T>(env, address, Transfer { from, to: *to, value: *value });
-				Ok(transferCall::abi_encode_returns(&(true,)))
+				Ok(transferCall::abi_encode_returns(&true))
 			},
 			allowance(allowanceCall { owner, spender }) => {
 				// TODO: charge based on benchmarked weight
@@ -75,7 +75,7 @@ where
 				let spender = env.to_account_id(&(*spender.0).into());
 				let remaining =
 					U256::saturating_from(<Assets<T, I>>::allowance(token, &owner, &spender));
-				Ok(allowanceCall::abi_encode_returns(&(remaining,)))
+				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
 			approve(approveCall { spender, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -91,7 +91,7 @@ where
 
 				let event = Approval { owner, spender: *spender, value: *value };
 				deposit_event(env, address, event);
-				Ok(approveCall::abi_encode_returns(&(true,)))
+				Ok(approveCall::abi_encode_returns(&true))
 			},
 			transferFrom(transferFromCall { from, to, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -105,27 +105,25 @@ where
 				)?;
 
 				deposit_event(env, address, Transfer { from: *from, to: *to, value: *value });
-				Ok(transferFromCall::abi_encode_returns(&(true,)))
+				Ok(transferFromCall::abi_encode_returns(&true))
 			},
 			// IERC20Metadata
 			name(_) => {
 				// TODO: charge based on benchmarked weight
 				let result = <Assets<T, I>>::name(token);
-				// TODO: improve
-				let result = String::from_utf8_lossy(result.as_slice());
-				Ok(nameCall::abi_encode_returns(&(result,)))
+				let result = String::from_utf8_lossy(result.as_slice()).into();
+				Ok(nameCall::abi_encode_returns(&result))
 			},
 			symbol(_) => {
 				// TODO: charge based on benchmarked weight
 				let result = <Assets<T, I>>::symbol(token);
-				// TODO: improve
-				let result = String::from_utf8_lossy(result.as_slice());
-				Ok(symbolCall::abi_encode_returns(&(result,)))
+				let result = String::from_utf8_lossy(result.as_slice()).into();
+				Ok(symbolCall::abi_encode_returns(&result))
 			},
 			decimals(_) => {
 				// TODO: charge based on benchmarked weight
 				let result = <Assets<T, I>>::decimals(token);
-				Ok(decimalsCall::abi_encode_returns(&(result,)))
+				Ok(decimalsCall::abi_encode_returns(&result))
 			},
 		}
 	}
