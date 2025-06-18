@@ -130,7 +130,7 @@ pub trait Fungibles {
 	/// - `account` - The account from which the tokens will be destroyed.
 	/// - `value` - The number of tokens to destroy.
 	#[ink(message)]
-	fn burn(&self, token: TokenId, address: Address, value: U256);
+	fn burn(&self, token: TokenId, account: Address, value: U256);
 
 	/// Total token supply for a specified token.
 	///
@@ -222,10 +222,10 @@ pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<(), Erro
 /// - `token` - The token.
 /// - `owner` - The owner of the token.
 #[inline]
-pub fn balance_of(token: TokenId, account: Address) -> U256 {
+pub fn balance_of(token: TokenId, owner: Address) -> U256 {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
-	precompile.balanceOf(token, account)
+	precompile.balanceOf(token, owner)
 }
 
 /// Destroys `value` amount of tokens from `account`, reducing the total supply.
