@@ -6,7 +6,6 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_assets::AutoIncAssetId;
-use pallet_revive::precompiles::run::CallSetup;
 pub(crate) use pallet_revive::test_utils::ALICE;
 
 pub(crate) type Balance = u128;
@@ -63,9 +62,11 @@ impl pallet_balances::Config for Test {
 impl pallet_revive::Config for Test {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Self>;
 	type Currency = Balances;
+	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	type Precompiles =
 		(Fungibles<100, pallet_assets::Instance1>, Erc20<101, pallet_assets::Instance1>);
 	type Time = Timestamp;
+	type UploadOrigin = EnsureSigned<Self::AccountId>;
 }
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
@@ -131,9 +132,13 @@ impl ExtBuilder {
 		ext
 	}
 
-	pub(crate) fn build_with_env<R>(self, execute: impl FnOnce(CallSetup<Test>) -> R) -> R {
+	#[cfg(feature = "runtime-benchmarks")]
+	pub(crate) fn build_with_env<R>(
+		self,
+		execute: impl FnOnce(pallet_revive::precompiles::run::CallSetup<Test>) -> R,
+	) -> R {
 		self.build().execute_with(|| {
-			let call_setup = CallSetup::<Test>::default();
+			let call_setup = pallet_revive::precompiles::run::CallSetup::<Test>::default();
 			// let (ext, _) = call_setup.ext();
 			execute(call_setup)
 		})
