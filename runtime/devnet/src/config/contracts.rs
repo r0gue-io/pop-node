@@ -317,13 +317,11 @@ mod tests {
 	}
 
 	fn blake_selector(name: &str) -> Vec<u8> {
-		let hash = sp_io::hashing::blake2_256(name.as_bytes());
-		[hash[0..4].to_vec()].concat()
+		sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
 	}
 
 	fn keccak_selector(name: &str) -> Vec<u8> {
-		let hash = sp_io::hashing::keccak_256(name.as_bytes());
-		[hash[0..4].to_vec()].concat()
+		sp_io::hashing::keccak_256(name.as_bytes())[0..4].to_vec()
 	}
 
 	#[test]
