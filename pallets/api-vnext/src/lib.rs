@@ -24,7 +24,10 @@ use {
 		sp_runtime::traits::Bounded,
 	},
 	frame_system::pallet_prelude::OriginFor,
-	pallet_revive::{precompiles::alloy::sol_types::SolValue, BalanceOf, DepositLimit, MomentOf},
+	pallet_revive::{
+		precompiles::alloy::sol_types::{SolType, SolValue},
+		BalanceOf, DepositLimit, MomentOf,
+	},
 };
 
 #[cfg(feature = "fungibles")]
@@ -83,12 +86,7 @@ fn call_precompile<
 }
 
 #[cfg(test)]
-fn decode<
-	T: SolValue
-		+ From<<T::SolType as pallet_revive::precompiles::alloy::sol_types::SolType>::RustType>,
->(
-	data: &[u8],
-) -> T {
+fn decode<T: SolValue + From<<T::SolType as SolType>::RustType>>(data: &[u8]) -> T {
 	T::abi_decode(data).expect("unable to decode")
 }
 
