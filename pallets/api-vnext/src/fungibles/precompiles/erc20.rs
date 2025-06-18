@@ -138,45 +138,42 @@ impl<const PREFIX: u16, T: Config<I>, I: 'static> Erc20<PREFIX, T, I> {
 
 #[cfg(test)]
 mod tests {
-	use frame_support::{assert_ok, sp_runtime::app_crypto::sp_core::bytes::to_hex};
+	use frame_support::{
+		assert_ok,
+		sp_runtime::{app_crypto::sp_core::bytes::to_hex, DispatchError},
+	};
 	use pallet_assets::Instance1;
 	use pallet_revive::{
-		precompiles::{
-			alloy::sol_types::{SolType, SolValue},
-			ExtWithInfo,
-		},
-		test_utils::{ALICE, ALICE_ADDR, BOB, BOB_ADDR},
-		Origin,
+		precompiles::alloy::sol_types::{SolInterface, SolType, SolValue},
+		test_utils::{ALICE, BOB, CHARLIE},
 	};
 	use IERC20Calls::*;
 	use IERC20::{Approval, Transfer};
 
 	use super::*;
 	use crate::{
-		assert_last_event,
+		assert_last_event, bare_call,
 		fungibles::approve,
 		mock::{Assets, ExtBuilder, RuntimeOrigin, Test},
+		to_address, DepositLimit, Weight,
 	};
 
 	const ERC20: u16 = 101;
 
-	type Erc20 = super::Erc20<ERC20, Test, Instance1>;
+	type AccountId = <Test as frame_system::Config>::AccountId;
 
 	#[test]
 	fn total_supply_works() {
-		let token = u32::MAX;
+		let token = 1;
 		let total_supply = 10_000_000;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_balances(vec![(token, ALICE, total_supply)])
-			.build_with_env(|mut call_setup| {
+			.build()
+			.execute_with(|| {
 				assert_eq!(
-					call_precompile::<U256>(
-						&mut call_setup.ext().0,
-						token,
-						&totalSupply(totalSupplyCall {})
-					)
-					.unwrap(),
+					call_precompile::<U256>(&ALICE, token, &totalSupply(totalSupplyCall {}))
+						.unwrap(),
 					U256::from(total_supply)
 				);
 			});
@@ -184,19 +181,19 @@ mod tests {
 
 	#[test]
 	fn balance_of_works() {
-		let token = u32::MAX;
+		let token = 1;
+		let account = ALICE;
 		let endowment = 10_000_000;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
-			.with_asset_balances(vec![(token, ALICE, endowment)])
-			.build_with_env(|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
-
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.with_asset_balances(vec![(token, account.clone(), endowment)])
+			.build()
+			.execute_with(|| {
 				assert_eq!(
 					call_precompile::<U256>(
-						&mut call_setup.ext().0,
+						&BOB,
 						token,
-						&balanceOf(balanceOfCall { account: ALICE_ADDR.0.into() })
+						&balanceOf(balanceOfCall { account: to_address(&account).0.into() })
 					)
 					.unwrap(),
 					U256::from(endowment)
@@ -206,31 +203,33 @@ mod tests {
 
 	#[test]
 	fn transfer_works() {
-		let token = u32::MAX;
+		let token = 1;
+		let origin = ALICE;
 		let endowment = 10_000_000;
+		let to = BOB;
 		ExtBuilder::new()
-			.with_assets(vec![(token, BOB, true, 1)])
-			.with_asset_balances(vec![(token, BOB, endowment)])
-			.build_with_env(|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(BOB));
-				assert_eq!(Assets::balance(token, BOB), endowment);
-				assert_eq!(Assets::balance(token, ALICE), 0);
+			.with_assets(vec![(token, CHARLIE, true, 1)])
+			.with_asset_balances(vec![(token, origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::balance(token, &origin), endowment);
+				assert_eq!(Assets::balance(token, &to), 0);
 
 				let value = endowment / 2;
 				assert!(call_precompile::<bool>(
-					&mut call_setup.ext().0,
+					&origin,
 					token,
 					&IERC20Calls::transfer(IERC20::transferCall {
-						to: ALICE_ADDR.0.into(),
+						to: to_address(&to).0.into(),
 						value: U256::from(value)
 					})
 				)
 				.unwrap());
 
-				assert_eq!(Assets::balance(token, BOB), endowment - value);
-				assert_eq!(Assets::balance(token, ALICE), value);
-				let from = BOB_ADDR.0.into();
-				let to = ALICE_ADDR.0.into();
+				assert_eq!(Assets::balance(token, &origin), endowment - value);
+				assert_eq!(Assets::balance(token, &to), value);
+				let from = to_address(&origin).0.into();
+				let to = to_address(&to).0.into();
 				let event = Transfer { from, to, value: U256::from(value) };
 				assert_last_event(prefixed_address(ERC20, token), event);
 			});
@@ -238,12 +237,16 @@ mod tests {
 
 	#[test]
 	fn allowance_works() {
-		let token = u32::MAX;
+		let token = 1;
+		let owner = ALICE;
+		let spender = BOB;
 		let value = 10_000_000;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.build()
+			.execute_with(|| {
 				assert_ok!(approve::<Test, Instance1>(
-					RuntimeOrigin::signed(ALICE),
+					RuntimeOrigin::signed(owner.clone()),
 					token,
 					BOB,
 					value
@@ -251,83 +254,86 @@ mod tests {
 
 				assert_eq!(
 					call_precompile::<U256>(
-						&mut call_setup.ext().0,
+						&BOB,
 						token,
 						&allowance(allowanceCall {
-							owner: ALICE_ADDR.0.into(),
-							spender: BOB_ADDR.0.into(),
+							owner: to_address(&owner).0.into(),
+							spender: to_address(&spender).0.into(),
 						})
 					)
 					.unwrap(),
 					U256::from(value)
 				);
-			},
-		);
+			});
 	}
 
 	#[test]
 	fn approve_works() {
-		let token = u32::MAX;
+		let token = 1;
+		let origin = ALICE;
+		let spender = BOB;
 		let value = 10_000_000;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
-
-				assert_eq!(Assets::allowance(token, &ALICE, &BOB), 0);
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::allowance(token, &origin, &spender), 0);
 
 				assert!(call_precompile::<bool>(
-					&mut call_setup.ext().0,
+					&origin,
 					token,
 					&IERC20Calls::approve(IERC20::approveCall {
-						spender: BOB_ADDR.0.into(),
+						spender: to_address(&spender).0.into(),
 						value: U256::from(value)
 					})
 				)
 				.unwrap());
 
-				assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
-				let owner = ALICE_ADDR.0.into();
-				let spender = BOB_ADDR.0.into();
+				assert_eq!(Assets::allowance(token, &origin, &spender), value);
+				let owner = to_address(&origin).0.into();
+				let spender = to_address(&spender).0.into();
 				let event = Approval { owner, spender, value: U256::from(value) };
 				assert_last_event(prefixed_address(ERC20, token), event);
-			},
-		);
+			});
 	}
 
 	#[test]
 	fn transfer_from_works() {
-		let token = u32::MAX;
+		let token = 1;
+		let origin = BOB;
+		let from = ALICE;
 		let endowment = 10_000_000;
+		let to = CHARLIE;
 		let value = endowment / 2;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, true, 1)])
-			.with_asset_balances(vec![(token, ALICE, endowment)])
-			.build_with_env(|mut call_setup| {
-				assert_eq!(Assets::balance(token, ALICE), endowment);
-				assert_eq!(Assets::balance(token, BOB), 0);
+			.with_assets(vec![(token, CHARLIE, true, 1)])
+			.with_asset_balances(vec![(token, from.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::balance(token, &from), endowment);
+				assert_eq!(Assets::balance(token, &to), 0);
 				assert_ok!(approve::<Test, Instance1>(
-					RuntimeOrigin::signed(ALICE),
+					RuntimeOrigin::signed(from.clone()),
 					token,
-					BOB,
+					origin.clone(),
 					value
 				));
-				call_setup.set_origin(Origin::Signed(BOB));
 
 				assert!(call_precompile::<bool>(
-					&mut call_setup.ext().0,
+					&origin,
 					token,
 					&transferFrom(IERC20::transferFromCall {
-						from: ALICE_ADDR.0.into(),
-						to: BOB_ADDR.0.into(),
+						from: to_address(&from).0.into(),
+						to: to_address(&to).0.into(),
 						value: U256::from(value),
 					})
 				)
 				.unwrap());
 
-				assert_eq!(Assets::balance(token, ALICE), endowment - value);
-				assert_eq!(Assets::balance(token, BOB), value);
-				let from = ALICE_ADDR.0.into();
-				let to = BOB_ADDR.0.into();
+				assert_eq!(Assets::balance(token, &from), endowment - value);
+				assert_eq!(Assets::balance(token, &to), value);
+				let from = to_address(&from).0.into();
+				let to = to_address(&to).0.into();
 				let event = Transfer { from, to, value: U256::from(value) };
 				assert_last_event(prefixed_address(ERC20, token), event);
 			});
@@ -335,16 +341,15 @@ mod tests {
 
 	#[test]
 	fn name_works() {
-		let token = u32::MAX;
+		let token = 1;
 		let _name = "name";
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_metadata(vec![(token, _name.as_bytes().to_vec(), b"symbol".to_vec(), 10)])
-			.build_with_env(|mut call_setup| {
+			.build()
+			.execute_with(|| {
 				assert_eq!(
-					call_precompile::<String>(&mut call_setup.ext().0, token, &name(nameCall {}))
-						.unwrap()
-						.as_str(),
+					call_precompile::<String>(&ALICE, token, &name(nameCall {})).unwrap().as_str(),
 					_name
 				);
 			});
@@ -352,20 +357,17 @@ mod tests {
 
 	#[test]
 	fn symbol_works() {
-		let token = u32::MAX;
+		let token = 1;
 		let _symbol = "symbol";
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_metadata(vec![(token, b"name".to_vec(), _symbol.as_bytes().to_vec(), 10)])
-			.build_with_env(|mut call_setup| {
+			.build()
+			.execute_with(|| {
 				assert_eq!(
-					call_precompile::<String>(
-						&mut call_setup.ext().0,
-						token,
-						&symbol(symbolCall {})
-					)
-					.unwrap()
-					.as_str(),
+					call_precompile::<String>(&ALICE, token, &symbol(symbolCall {}))
+						.unwrap()
+						.as_str(),
 					_symbol
 				);
 			});
@@ -373,15 +375,15 @@ mod tests {
 
 	#[test]
 	fn decimals_works() {
-		let token = u32::MAX;
+		let token = 1;
 		let _decimals = u8::MAX;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_metadata(vec![(token, b"name".to_vec(), b"symbol".to_vec(), _decimals)])
-			.build_with_env(|mut call_setup| {
-				let mut ext = call_setup.ext().0;
+			.build()
+			.execute_with(|| {
 				assert_eq!(
-					call_precompile::<u16>(&mut ext, token, &decimals(decimalsCall {})).unwrap()
+					call_precompile::<u16>(&ALICE, token, &decimals(decimalsCall {})).unwrap()
 						as u8,
 					_decimals
 				);
@@ -396,10 +398,18 @@ mod tests {
 	}
 
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
-		ext: &mut impl ExtWithInfo<T = Test>,
+		origin: &AccountId,
 		token: u32,
 		input: &IERC20Calls,
-	) -> Result<Output, Error> {
-		crate::call_precompile::<Erc20, Output>(ext, &prefixed_address(ERC20, token), input)
+	) -> Result<Output, DispatchError> {
+		let address = prefixed_address(ERC20, token);
+		bare_call::<Test, Output>(
+			RuntimeOrigin::signed(origin.clone()),
+			address.into(),
+			0,
+			Weight::MAX,
+			DepositLimit::Balance(u128::MAX),
+			input.abi_encode(),
+		)
 	}
 }
