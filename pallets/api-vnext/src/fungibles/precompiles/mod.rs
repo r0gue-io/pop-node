@@ -60,7 +60,7 @@ where
 					address,
 					Transfer { token: *token, from, to: *to, value: *value },
 				);
-				Ok(transferCall::abi_encode_returns(&transferReturn{}))
+				Ok(transferCall::abi_encode_returns(&transferReturn {}))
 			},
 			IFungiblesCalls::transferFrom(transferFromCall { token, from, to, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -79,7 +79,7 @@ where
 					address,
 					Transfer { token: *token, from: *from, to: *to, value },
 				);
-				Ok(transferFromCall::abi_encode_returns(&transferFromReturn{}))
+				Ok(transferFromCall::abi_encode_returns(&transferFromReturn {}))
 			},
 			IFungiblesCalls::approve(approveCall { token, spender, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -99,7 +99,7 @@ where
 					address,
 					Approval { token: *token, owner, spender, value: *value },
 				);
-				Ok(approveCall::abi_encode_returns(&approveReturn{}))
+				Ok(approveCall::abi_encode_returns(&approveReturn {}))
 			},
 			IFungiblesCalls::increaseAllowance(increaseAllowanceCall { token, spender, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -153,7 +153,7 @@ where
 			IFungiblesCalls::startDestroy(startDestroyCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				start_destroy::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
-				Ok(startDestroyCall::abi_encode_returns(&startDestroyReturn{}))
+				Ok(startDestroyCall::abi_encode_returns(&startDestroyReturn {}))
 			},
 			IFungiblesCalls::setMetadata(setMetadataCall { token, name, symbol, decimals }) => {
 				// TODO: charge based on benchmarked weight
@@ -164,12 +164,12 @@ where
 					symbol.as_bytes().to_vec(),
 					*decimals,
 				)?;
-				Ok(setMetadataCall::abi_encode_returns(&setMetadataReturn{}))
+				Ok(setMetadataCall::abi_encode_returns(&setMetadataReturn {}))
 			},
 			IFungiblesCalls::clearMetadata(clearMetadataCall { token }) => {
 				// TODO: charge based on benchmarked weight
 				clear_metadata::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
-				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn{}))
+				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn {}))
 			},
 			IFungiblesCalls::mint(mintCall { token, account, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -184,7 +184,7 @@ where
 				let from = Address::default();
 				let to = *account;
 				deposit_event(env, address, Transfer { token: *token, from, to, value: *value });
-				Ok(mintCall::abi_encode_returns(&mintReturn{}))
+				Ok(mintCall::abi_encode_returns(&mintReturn {}))
 			},
 			IFungiblesCalls::burn(burnCall { token, account, value }) => {
 				// TODO: charge based on benchmarked weight
@@ -204,7 +204,7 @@ where
 					address,
 					Transfer { token: *token, from: *from, to, value: *value },
 				);
-				Ok(burnCall::abi_encode_returns(&burnReturn{}))
+				Ok(burnCall::abi_encode_returns(&burnReturn {}))
 			},
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {
 				// TODO: charge based on benchmarked weight
@@ -272,12 +272,8 @@ mod tests {
 	use mock::{Assets, ExtBuilder, *};
 	use pallet_assets::{AssetDetails, AssetMetadata, AssetStatus, Instance1};
 	use pallet_revive::{
-		precompiles::{
-			alloy::sol_types::{SolInterface, SolType},
-			ExtWithInfo,
-		},
-		test_utils::{ALICE_ADDR, BOB, BOB_ADDR},
-		DepositLimit::*,
+		precompiles::alloy::sol_types::{SolInterface, SolType},
+		test_utils::{ALICE, BOB, CHARLIE},
 	};
 
 	use super::{
@@ -288,37 +284,39 @@ mod tests {
 	const FUNGIBLES: u16 = 100;
 	const ADDRESS: [u8; 20] = fixed_address(FUNGIBLES);
 
+	type AccountId = <Test as frame_system::Config>::AccountId;
 	type Asset = pallet_assets::Asset<Test, Instance1>;
-	type Fungibles = super::Fungibles<FUNGIBLES, Test, Instance1>;
 	type Metadata = pallet_assets::Metadata<Test, Instance1>;
 
 	#[test]
 	fn transfer_works() {
 		let token = 1;
+		let origin = ALICE;
 		let endowment = 10_000_000;
+		let to = BOB;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, true, 1)])
-			.with_asset_balances(vec![(token, ALICE, endowment)])
-			.build_with_env(|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
-				assert_eq!(Assets::balance(token, ALICE), endowment);
-				assert_eq!(Assets::balance(token, BOB), 0);
+			.with_assets(vec![(token, CHARLIE, true, 1)])
+			.with_asset_balances(vec![(token, origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::balance(token, &origin), endowment);
+				assert_eq!(Assets::balance(token, &to), 0);
 
 				let value = endowment / 2;
 				assert_ok!(call_precompile::<()>(
-					&mut call_setup.ext().0,
+					&origin,
 					&IFungiblesCalls::transfer(transferCall {
 						token,
-						to: BOB_ADDR.0.into(),
+						to: to_address(&to).0.into(),
 						value: U256::from(value)
 					})
 				));
 
-				assert_eq!(Assets::balance(token, ALICE), endowment - value);
-				assert_eq!(Assets::balance(token, BOB), value);
+				assert_eq!(Assets::balance(token, &origin), endowment - value);
+				assert_eq!(Assets::balance(token, &to), value);
 
-				let from = ALICE_ADDR.0.into();
-				let to = BOB_ADDR.0.into();
+				let from = to_address(&origin).0.into();
+				let to = to_address(&to).0.into();
 				let event = Transfer { token, from, to, value: U256::from(value) };
 				assert_last_event(ADDRESS, event);
 			});
@@ -327,36 +325,39 @@ mod tests {
 	#[test]
 	fn transfer_from_works() {
 		let token = 1;
+		let origin = BOB;
+		let from = ALICE;
 		let endowment = 10_000_000;
+		let to = CHARLIE;
 		let value = endowment / 2;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, true, 1)])
-			.with_asset_balances(vec![(token, ALICE, endowment)])
-			.build_with_env(|mut call_setup| {
-				assert_eq!(Assets::balance(token, ALICE), endowment);
-				assert_eq!(Assets::balance(token, BOB), 0);
+			.with_assets(vec![(token, CHARLIE, true, 1)])
+			.with_asset_balances(vec![(token, from.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::balance(token, &from), endowment);
+				assert_eq!(Assets::balance(token, &to), 0);
 				assert_ok!(approve::<Test, Instance1>(
-					RuntimeOrigin::signed(ALICE),
+					RuntimeOrigin::signed(from.clone()),
 					token,
-					BOB,
+					origin.clone(),
 					value
 				));
-				call_setup.set_origin(Origin::Signed(BOB));
 
 				assert_ok!(call_precompile::<()>(
-					&mut call_setup.ext().0,
+					&origin,
 					&IFungiblesCalls::transferFrom(transferFromCall {
 						token,
-						from: ALICE_ADDR.0.into(),
-						to: BOB_ADDR.0.into(),
+						from: to_address(&from).0.into(),
+						to: to_address(&to).0.into(),
 						value: U256::from(value),
 					})
 				));
 
-				assert_eq!(Assets::balance(token, ALICE), endowment - value);
-				assert_eq!(Assets::balance(token, BOB), value);
-				let from = ALICE_ADDR.0.into();
-				let to = BOB_ADDR.0.into();
+				assert_eq!(Assets::balance(token, &from), endowment - value);
+				assert_eq!(Assets::balance(token, &to), value);
+				let from = to_address(&from).0.into();
+				let to = to_address(&to).0.into();
 				let event = Transfer { token, from, to, value: U256::from(value) };
 				assert_last_event(ADDRESS, event);
 			});
@@ -365,28 +366,30 @@ mod tests {
 	#[test]
 	fn approve_works() {
 		let token = 1;
+		let origin = ALICE;
+		let spender = BOB;
 		let value = 10_000_000;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
-				assert_eq!(Assets::allowance(token, &ALICE, &BOB), 0);
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::allowance(token, &origin, &spender), 0);
 
 				assert_ok!(call_precompile::<()>(
-					&mut call_setup.ext().0,
+					&origin,
 					&IFungiblesCalls::approve(approveCall {
 						token,
-						spender: BOB_ADDR.0.into(),
+						spender: to_address(&spender).0.into(),
 						value: U256::from(value),
 					})
 				));
 
-				assert_eq!(Assets::allowance(token, &ALICE, &BOB), value);
-				let owner = ALICE_ADDR.0.into();
-				let spender = BOB_ADDR.0.into();
+				assert_eq!(Assets::allowance(token, &origin, &spender), value);
+				let owner = to_address(&origin).0.into();
+				let spender = to_address(&spender).0.into();
 				let event = Approval { token, owner, spender, value: U256::from(value) };
 				assert_last_event(ADDRESS, event);
-			},
-		);
+			});
 	}
 
 	#[test]
@@ -395,9 +398,10 @@ mod tests {
 		let origin = ALICE;
 		let spender = BOB;
 		let value = 10_000_000;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(origin.clone()));
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.build()
+			.execute_with(|| {
 				assert_ok!(Assets::approve_transfer(
 					RuntimeOrigin::signed(origin.clone()),
 					token.into(),
@@ -408,10 +412,10 @@ mod tests {
 
 				// Double the allowance.
 				let allowance = call_precompile::<U256>(
-					&mut call_setup.ext().0,
+					&origin,
 					&IFungiblesCalls::increaseAllowance(increaseAllowanceCall {
 						token,
-						spender: BOB_ADDR.0.into(),
+						spender: to_address(&spender).0.into(),
 						value: U256::from(value),
 					}),
 				)
@@ -419,12 +423,11 @@ mod tests {
 
 				assert_eq!(allowance, U256::from(value * 2));
 				assert_eq!(Assets::allowance(token, &origin, &spender), value * 2);
-				let owner = ALICE_ADDR.0.into();
-				let spender = BOB_ADDR.0.into();
+				let owner = to_address(&origin).0.into();
+				let spender = to_address(&spender).0.into();
 				let event = Approval { token, owner, spender, value: U256::from(allowance) };
 				assert_last_event(ADDRESS, event);
-			},
-		);
+			});
 	}
 
 	#[test]
@@ -433,9 +436,10 @@ mod tests {
 		let origin = ALICE;
 		let spender = BOB;
 		let value = 10_000_000;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(origin.clone()));
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.build()
+			.execute_with(|| {
 				assert_ok!(Assets::approve_transfer(
 					RuntimeOrigin::signed(origin.clone()),
 					token.into(),
@@ -446,10 +450,10 @@ mod tests {
 
 				// Halve the allowance.
 				let allowance = call_precompile::<U256>(
-					&mut call_setup.ext().0,
+					&origin,
 					&IFungiblesCalls::decreaseAllowance(decreaseAllowanceCall {
 						token,
-						spender: BOB_ADDR.0.into(),
+						spender: to_address(&spender).0.into(),
 						value: U256::from(value / 2),
 					}),
 				)
@@ -457,41 +461,42 @@ mod tests {
 
 				assert_eq!(allowance, U256::from(value / 2));
 				assert_eq!(Assets::allowance(token, &origin, &spender), value / 2);
-				let owner = ALICE_ADDR.0.into();
-				let spender = BOB_ADDR.0.into();
+				let owner = to_address(&origin).0.into();
+				let spender = to_address(&spender).0.into();
 				let event = Approval { token, owner, spender, value: U256::from(allowance) };
 				assert_last_event(ADDRESS, event);
-			},
-		);
+			});
 	}
 
 	#[test]
 	fn create_works() {
-		let id = 0u32;
+		let token = 0;
+		let origin = ALICE;
+		let admin = BOB;
 		let min_balance = 1;
-		ExtBuilder::new().build_with_env(|mut call_setup| {
-			call_setup.set_origin(Origin::Signed(ALICE));
-			assert!(!Assets::asset_exists(id));
+		ExtBuilder::new().build().execute_with(|| {
+			assert!(!Assets::asset_exists(token));
 
-			let mut ext = call_setup.ext().0;
-			let result: u32 = call_precompile(
-				&mut ext,
-				&IFungiblesCalls::create(createCall {
-					admin: BOB_ADDR.0.into(),
-					minBalance: U256::from(min_balance),
-				}),
-			)
-			.unwrap();
-
-			assert_eq!(result, id);
-			assert!(Assets::asset_exists(id));
 			assert_eq!(
-				Asset::get(id).unwrap(),
+				call_precompile::<u32>(
+					&origin,
+					&IFungiblesCalls::create(createCall {
+						admin: to_address(&admin).0.into(),
+						minBalance: U256::from(min_balance),
+					}),
+				)
+				.unwrap(),
+				token
+			);
+
+			assert!(Assets::asset_exists(token));
+			assert_eq!(
+				Asset::get(token).unwrap(),
 				AssetDetails {
-					owner: ALICE,
-					issuer: BOB,
-					admin: BOB,
-					freezer: BOB,
+					owner: origin.clone(),
+					issuer: admin.clone(),
+					admin: admin.clone(),
+					freezer: admin.clone(),
 					supply: 0,
 					deposit: min_balance,
 					min_balance,
@@ -503,35 +508,9 @@ mod tests {
 				}
 			);
 
-			let event = Created { id, creator: ALICE_ADDR.0.into(), admin: BOB_ADDR.0.into() };
-			assert_last_event(ADDRESS, event);
-		});
-	}
-
-	#[test]
-	fn create_via_bare_call_works() {
-		let id = 0u32;
-		let origin = RuntimeOrigin::signed(ALICE);
-		ExtBuilder::new().build().execute_with(|| {
-			assert!(!Assets::asset_exists(id));
-
-			let result = bare_call::<Test, u32>(
-				origin,
-				ADDRESS.into(),
-				0,
-				Weight::MAX,
-				DepositLimit::Balance(u128::MAX),
-				IFungiblesCalls::create(createCall {
-					admin: BOB_ADDR.0.into(),
-					minBalance: U256::from(1),
-				})
-				.abi_encode(),
-			)
-			.unwrap();
-
-			assert_eq!(result, id);
-			assert!(Assets::asset_exists(id));
-			let event = Created { id, creator: ALICE_ADDR.0.into(), admin: BOB_ADDR.0.into() };
+			let creator = to_address(&origin).0.into();
+			let admin = to_address(&admin).0.into();
+			let event = Created { id: token, creator, admin };
 			assert_last_event(ADDRESS, event);
 		});
 	}
@@ -539,35 +518,37 @@ mod tests {
 	#[test]
 	fn start_destroy_works() {
 		let token = 1;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
+		let origin = ALICE;
+		ExtBuilder::new()
+			.with_assets(vec![(token, origin.clone(), false, 1)])
+			.build()
+			.execute_with(|| {
 				assert_eq!(Asset::get(token).unwrap().status, AssetStatus::Live);
 
-				let mut ext = call_setup.ext().0;
 				assert_ok!(call_precompile::<()>(
-					&mut ext,
+					&origin,
 					&startDestroy(startDestroyCall { token })
 				));
 
 				assert_eq!(Asset::get(token).unwrap().status, AssetStatus::Destroying);
-			},
-		);
+			});
 	}
 
 	#[test]
 	fn set_metadata_works() {
 		let token = 1;
+		let origin = ALICE;
 		let name = "name".to_string();
 		let symbol = "symbol".to_string();
 		let decimals = u8::MAX;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
+		ExtBuilder::new()
+			.with_assets(vec![(token, origin.clone(), false, 1)])
+			.build()
+			.execute_with(|| {
 				assert_eq!(Metadata::get(token), AssetMetadata::default());
 
 				assert_ok!(call_precompile::<()>(
-					&mut call_setup.ext().0,
+					&origin,
 					&setMetadata(setMetadataCall {
 						token,
 						name: name.clone(),
@@ -586,21 +567,21 @@ mod tests {
 						is_frozen: false,
 					}
 				);
-			},
-		);
+			});
 	}
 
 	#[test]
 	fn clear_metadata_works() {
 		let token = 1;
+		let origin = ALICE;
 		let name = b"name".to_vec();
 		let symbol = b"symbol".to_vec();
 		let decimals = u8::MAX;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, origin.clone(), false, 1)])
 			.with_asset_metadata(vec![(token, name.clone(), symbol.clone(), decimals)])
-			.build_with_env(|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
+			.build()
+			.execute_with(|| {
 				assert_eq!(
 					Metadata::get(token),
 					AssetMetadata {
@@ -613,7 +594,7 @@ mod tests {
 				);
 
 				assert_ok!(call_precompile::<()>(
-					&mut call_setup.ext().0,
+					&origin,
 					&clearMetadata(clearMetadataCall { token })
 				));
 
@@ -624,52 +605,54 @@ mod tests {
 	#[test]
 	fn mint_works() {
 		let token = 1;
+		let origin = ALICE;
 		let value = 10_000_000;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
-				assert_eq!(Assets::balance(token, ALICE), 0);
+		ExtBuilder::new()
+			.with_assets(vec![(token, origin.clone(), false, 1)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::balance(token, &origin), 0);
 
 				assert_ok!(call_precompile::<()>(
-					&mut call_setup.ext().0,
+					&origin,
 					&IFungiblesCalls::mint(mintCall {
 						token,
-						account: ALICE_ADDR.0.into(),
+						account: to_address(&origin).0.into(),
 						value: U256::from(value)
 					})
 				));
 
-				assert_eq!(Assets::balance(token, ALICE), value);
+				assert_eq!(Assets::balance(token, &origin), value);
 				let from = Address::default();
-				let to = ALICE_ADDR.0.into();
+				let to = to_address(&origin).0.into();
 				let event = Transfer { token, from, to, value: U256::from(value) };
 				assert_last_event(ADDRESS, event);
-			},
-		);
+			});
 	}
 
 	#[test]
 	fn burn_works() {
 		let token = 1;
+		let origin = ALICE;
 		let endowment = 10_000_000;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
-			.with_asset_balances(vec![(token, ALICE, endowment)])
-			.build_with_env(|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
-				assert_eq!(Assets::balance(token, ALICE), endowment);
+			.with_assets(vec![(token, origin.clone(), false, 1)])
+			.with_asset_balances(vec![(token, origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				assert_eq!(Assets::balance(token, &origin), endowment);
 
 				assert_ok!(call_precompile::<()>(
-					&mut call_setup.ext().0,
+					&origin,
 					&IFungiblesCalls::burn(burnCall {
 						token,
-						account: ALICE_ADDR.0.into(),
+						account: to_address(&origin).0.into(),
 						value: U256::from(endowment),
 					}),
 				));
 
-				assert_eq!(Assets::balance(token, ALICE), 0);
-				let from = ALICE_ADDR.0.into();
+				assert_eq!(Assets::balance(token, &origin), 0);
+				let from = to_address(&origin).0.into();
 				let to = Address::default();
 				let event = Transfer { token, from, to, value: U256::from(endowment) };
 				assert_last_event(ADDRESS, event);
@@ -678,15 +661,16 @@ mod tests {
 
 	#[test]
 	fn total_supply_works() {
-		let token = u32::MAX;
+		let token = 1;
 		let total_supply = 10_000_000;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_balances(vec![(token, ALICE, total_supply)])
-			.build_with_env(|mut call_setup| {
+			.build()
+			.execute_with(|| {
 				assert_eq!(
 					call_precompile::<U256>(
-						&mut call_setup.ext().0,
+						&BOB,
 						&IFungiblesCalls::totalSupply(totalSupplyCall { token })
 					)
 					.unwrap(),
@@ -697,57 +681,60 @@ mod tests {
 
 	#[test]
 	fn balance_of_works() {
-		let token = u32::MAX;
+		let token = 1;
+		let owner = ALICE;
 		let endowment = 10_000_000;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
-			.with_asset_balances(vec![(token, ALICE, endowment)])
-			.build_with_env(|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
-
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.with_asset_balances(vec![(token, owner.clone(), endowment)])
+			.build()
+			.execute_with(|| {
 				assert_eq!(
 					call_precompile::<U256>(
-						&mut call_setup.ext().0,
+						&BOB,
 						&IFungiblesCalls::balanceOf(balanceOfCall {
 							token,
-							owner: ALICE_ADDR.0.into()
+							owner: to_address(&owner).0.into()
 						})
 					)
 					.unwrap(),
 					U256::from(endowment)
 				);
 
-				assert_eq!(Assets::balance(token, ALICE), endowment);
+				assert_eq!(Assets::balance(token, owner), endowment);
 			});
 	}
 
 	#[test]
 	fn allowance_works() {
-		let token = u32::MAX;
+		let token = 1;
+		let owner = ALICE;
+		let spender = BOB;
 		let value = 10_000_000;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.build()
+			.execute_with(|| {
 				assert_ok!(approve::<Test, Instance1>(
-					RuntimeOrigin::signed(ALICE),
+					RuntimeOrigin::signed(owner.clone()),
 					token,
-					BOB,
+					spender.clone(),
 					value
 				));
 
 				assert_eq!(
 					call_precompile::<U256>(
-						&mut call_setup.ext().0,
+						&BOB,
 						&IFungiblesCalls::allowance(allowanceCall {
 							token,
-							owner: ALICE_ADDR.0.into(),
-							spender: BOB_ADDR.0.into(),
+							owner: to_address(&owner).0.into(),
+							spender: to_address(&spender).0.into(),
 						})
 					)
 					.unwrap(),
 					U256::from(value)
 				);
-			},
-		);
+			});
 	}
 
 	#[test]
@@ -755,12 +742,12 @@ mod tests {
 		let token = 1;
 		let name = "name".to_string();
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_metadata(vec![(token, name.as_bytes().into(), b"symbol".to_vec(), u8::MAX)])
-			.build_with_env(|mut call_setup| {
-				let mut ext = call_setup.ext().0;
+			.build()
+			.execute_with(|| {
 				assert_eq!(
-					call_precompile::<String>(&mut ext, &IFungiblesCalls::name(nameCall { token }))
+					call_precompile::<String>(&ALICE, &IFungiblesCalls::name(nameCall { token }))
 						.unwrap(),
 					name
 				);
@@ -772,13 +759,13 @@ mod tests {
 		let token = 1;
 		let symbol = "symbol".to_string();
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_metadata(vec![(token, b"name".to_vec(), symbol.as_bytes().into(), u8::MAX)])
-			.build_with_env(|mut call_setup| {
-				let mut ext = call_setup.ext().0;
+			.build()
+			.execute_with(|| {
 				assert_eq!(
 					call_precompile::<String>(
-						&mut ext,
+						&ALICE,
 						&IFungiblesCalls::symbol(symbolCall { token })
 					)
 					.unwrap(),
@@ -792,13 +779,13 @@ mod tests {
 		let token = 1;
 		let decimals = u8::MAX;
 		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
+			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.with_asset_metadata(vec![(token, b"name".to_vec(), b"symbol".to_vec(), decimals)])
-			.build_with_env(|mut call_setup| {
-				let mut ext = call_setup.ext().0;
+			.build()
+			.execute_with(|| {
 				assert_eq!(
 					call_precompile::<u16>(
-						&mut ext,
+						&ALICE,
 						&IFungiblesCalls::decimals(decimalsCall { token })
 					)
 					.unwrap() as u8,
@@ -810,14 +797,14 @@ mod tests {
 	#[test]
 	fn exists_works() {
 		let token = 1;
-		ExtBuilder::new().with_assets(vec![(token, ALICE, false, 1)]).build_with_env(
-			|mut call_setup| {
-				call_setup.set_origin(Origin::Signed(ALICE));
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, false, 1)])
+			.build()
+			.execute_with(|| {
 				assert!(Assets::asset_exists(token));
 
-				let mut ext = call_setup.ext().0;
 				assert!(call_precompile::<bool>(
-					&mut ext,
+					&ALICE,
 					&IFungiblesCalls::exists(existsCall { token })
 				)
 				.unwrap());
@@ -825,54 +812,24 @@ mod tests {
 				let token = token + 1;
 				assert!(!Assets::asset_exists(token));
 				assert!(!call_precompile::<bool>(
-					&mut ext,
+					&ALICE,
 					&IFungiblesCalls::exists(existsCall { token })
 				)
 				.unwrap());
-			},
-		);
-	}
-
-	#[test]
-	fn exists_via_bare_call_works() {
-		let token = 1;
-		let origin = RuntimeOrigin::signed(ALICE);
-		ExtBuilder::new()
-			.with_assets(vec![(token, ALICE, false, 1)])
-			.build()
-			.execute_with(|| {
-				assert!(Assets::asset_exists(token));
-
-				let asset_exists = bare_call::<Test, bool>(
-					origin.clone(),
-					ADDRESS.into(),
-					0,
-					Weight::MAX,
-					Unchecked,
-					IFungiblesCalls::exists(existsCall { token }).abi_encode(),
-				)
-				.unwrap();
-				assert!(asset_exists);
-
-				let token = token + 1;
-				assert!(!Assets::asset_exists(token));
-				let exists = bare_call::<Test, bool>(
-					origin,
-					ADDRESS.into(),
-					0,
-					Weight::MAX,
-					Unchecked,
-					IFungiblesCalls::exists(existsCall { token }).abi_encode(),
-				)
-				.unwrap();
-				assert!(!exists);
 			});
 	}
 
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
-		ext: &mut impl ExtWithInfo<T = Test>,
+		origin: &AccountId,
 		input: &IFungiblesCalls,
-	) -> Result<Output, Error> {
-		super::call_precompile::<Fungibles, Output>(ext, &ADDRESS, input)
+	) -> Result<Output, DispatchError> {
+		bare_call::<Test, Output>(
+			RuntimeOrigin::signed(origin.clone()),
+			ADDRESS.into(),
+			0,
+			Weight::MAX,
+			DepositLimit::Balance(u128::MAX),
+			input.abi_encode(),
+		)
 	}
 }
