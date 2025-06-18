@@ -69,7 +69,7 @@ where
 }
 
 // A direct call to a precompile.
-#[cfg(test)]
+#[cfg(all(test, feature = "runtime-benchmarks"))]
 fn call_precompile<
 	P: Precompile<T = mock::Test>,
 	O: SolValue
@@ -89,7 +89,7 @@ fn decode<
 >(
 	data: &[u8],
 ) -> T {
-	T::abi_decode(data, true).expect("unable to decode")
+	T::abi_decode(data).expect("unable to decode")
 }
 
 fn deposit_event<T: Config>(
@@ -129,6 +129,11 @@ fn prefixed_address(n: u16, prefix: u32) -> [u8; 20] {
 	let mut address = AddressMatcher::Prefix(NonZero::new(n).unwrap()).base_address();
 	address[..4].copy_from_slice(&prefix.to_be_bytes());
 	address
+}
+
+#[cfg(test)]
+fn to_address(account: &<mock::Test as frame_system::Config>::AccountId) -> H160 {
+	pallet_revive::AccountId32Mapper::<mock::Test>::to_address(account)
 }
 
 // TODO: verify
