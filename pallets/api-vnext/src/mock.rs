@@ -13,6 +13,9 @@ type Block = frame_system::mocking::MockBlock<Test>;
 type Erc20<const PREFIX: u16, I> = crate::Erc20<PREFIX, Test, I>;
 type Fungibles<const FIXED: u16, I> = crate::Fungibles<FIXED, Test, I>;
 
+pub(crate) const ERC20: u16 = 2;
+pub(crate) const FUNGIBLES: u16 = 1;
+
 #[frame_support::runtime]
 mod runtime {
 	#[runtime::runtime]
@@ -64,7 +67,7 @@ impl pallet_revive::Config for Test {
 	type Currency = Balances;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
 	type Precompiles =
-		(Fungibles<100, pallet_assets::Instance1>, Erc20<101, pallet_assets::Instance1>);
+		(Fungibles<FUNGIBLES, pallet_assets::Instance1>, Erc20<ERC20, pallet_assets::Instance1>);
 	type Time = Timestamp;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 }

@@ -154,11 +154,9 @@ mod tests {
 	use crate::{
 		assert_last_event, bare_call,
 		fungibles::approve,
-		mock::{Assets, ExtBuilder, RuntimeOrigin, Test},
+		mock::{Assets, ExtBuilder, RuntimeOrigin, Test, ERC20},
 		to_address, DepositLimit, Weight,
 	};
-
-	const ERC20: u16 = 101;
 
 	type AccountId = <Test as frame_system::Config>::AccountId;
 
