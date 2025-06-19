@@ -18,6 +18,7 @@ use super::*;
 /// APIs for fungible tokens conforming to the ERC20 standard.
 pub mod erc20;
 pub mod errors;
+pub mod events;
 
 const PRECOMPILE: u16 = 100;
 
