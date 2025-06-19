@@ -85,7 +85,8 @@ pub mod fungibles {
 
 		#[ink(message)]
 		fn setMetadata(&self, token: TokenId, name: String, symbol: String, decimals: u8) {
-			api::set_metadata(token, name, symbol, decimals);
+			api::set_metadata(token, name.clone(), symbol.clone(), decimals);
+			self.env().emit_event(MetadataSet { token, name, symbol, decimals });
 		}
 
 		#[ink(message)]

@@ -435,36 +435,74 @@ fn instantiate_and_create_fungible_works() {
 
 #[test]
 fn start_destroy_works() {
-	let token = 0;
 	let owner = ALICE;
-	ExtBuilder::new()
-		.with_assets(vec![(token, CHARLIE, false, 1)])
-		.build()
-		.execute_with(|| {
-			let mut contract = Contract::new(&owner, INIT_VALUE);
+	ExtBuilder::new().build().execute_with(|| {
+		let mut contract = Contract::new(&owner, INIT_VALUE);
 
-			// Token does not exist.
-			// assert_eq!(
-			// 	contract.start_destroy(&creator, TokenId::MAX),
-			// 	Err(Module { index: 52, error: [3, 0] }),
-			// );
-			// No Permission.
-			// assert_eq!(
-			// 	contract.start_destroy(&creator, token),
-			// 	Err(Module { index: 52, error: [2, 0] }),
-			// );
-			let token = contract.create(to_address(&owner), 1.into());
-			contract.start_destroy(token);
-			// Successfully emit event.
-			let expected = DestroyStarted { token }.encode();
-			assert_eq!(contract.last_event(), expected);
-		});
+		// Token does not exist.
+		// assert_eq!(
+		// 	contract.start_destroy(&creator, TokenId::MAX),
+		// 	Err(Module { index: 52, error: [3, 0] }),
+		// );
+		// No Permission.
+		// assert_eq!(
+		// 	contract.start_destroy(&creator, token),
+		// 	Err(Module { index: 52, error: [2, 0] }),
+		// );
+		let token = contract.create(to_address(&owner), 1.into());
+		contract.start_destroy(token);
+		// Successfully emit event.
+		let expected = DestroyStarted { token }.encode();
+		assert_eq!(contract.last_event(), expected);
+	});
 }
 
 #[test]
-#[ignore]
 fn set_metadata_works() {
-	todo!()
+	let owner = ALICE;
+	let name = "name".to_string();
+	let symbol = "symbol".to_string();
+	let decimals: u8 = 69;
+	ExtBuilder::new().build().execute_with(|| {
+		let mut contract = Contract::new(&owner, INIT_VALUE);
+
+		// Token does not exist.
+		// assert_eq!(
+		// 	set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0u8),
+		// 	Err(Module { index: 52, error: [3, 0] }),
+		// );
+		// No Permission.
+		// assert_eq!(
+		// 	set_metadata(&addr, token, vec![0], vec![0], 0u8),
+		// 	Err(Module { index: 52, error: [2, 0] }),
+		// );
+		let token = contract.create(to_address(&owner), 1.into());
+		// Token is not live, i.e. frozen or being destroyed.
+		freeze(&owner, token);
+		// assert_eq!(
+		// 	set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0u8),
+		// 	Err(Module { index: 52, error: [16, 0] }),
+		// );
+		thaw(&owner, token);
+		// TODO: calling the below with a vector of length `100_000` errors in pallet contracts
+		//  `OutputBufferTooSmall. Added to security analysis issue #131 to revisit.
+		// Set bad metadata - too large values.
+		// assert_eq!(
+		// 	set_metadata(&addr, TOKEN_ID, vec![0; 1000], vec![0; 1000], 0u8),
+		// 	Err(Module { index: 52, error: [9, 0] }),
+		// );
+		// Set metadata successfully.
+		contract.set_metadata(token, name.clone(), symbol.clone(), decimals);
+		// Successfully emit event.
+		let expected = MetadataSet { token, name, symbol, decimals }.encode();
+		assert_eq!(contract.last_event(), expected);
+		// Token is not live, i.e. frozen or being destroyed.
+		start_destroy(&contract.account_id(), token);
+		// assert_eq!(
+		// 	set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0),
+		// 	Err(Module { index: 52, error: [16, 0] }),
+		// );
+	});
 }
 
 #[test]
