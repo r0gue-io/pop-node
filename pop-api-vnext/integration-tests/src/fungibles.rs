@@ -113,7 +113,7 @@ fn transfer_works() {
 			// assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0]
 			// }));
 			// Mint `amount` to contract address.
-			mint(&owner, token, &to_account_id(&contract.address), amount);
+			mint(&owner, token, &contract.account_id(), amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
 			// assert_eq!(
@@ -179,7 +179,7 @@ fn transfer_from_works() {
 			// 	Err(Module { index: 52, error: [10, 0] })
 			// );
 			// Approve the contract to transfer on behalf of owner.
-			approve(&owner, token, &to_account_id(&contract.address), amount + 1 * UNIT);
+			approve(&owner, token, &contract.account_id(), amount + 1 * UNIT);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
 			// assert_eq!(
@@ -230,7 +230,7 @@ fn approve_works() {
 			// assert_eq!(contract.approve(&addr, token, &BOB, amount), Err(ConsumerRemaining));
 			let mut contract = Contract::new(INIT_VALUE);
 			// Mint `amount` to contract address.
-			mint(&owner, token, &to_account_id(&contract.address), amount);
+			mint(&owner, token, &contract.account_id(), amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
 			// assert_eq!(
@@ -239,33 +239,17 @@ fn approve_works() {
 			// );
 			thaw(&owner, token);
 			// Successful approvals.
-			assert_eq!(0, Assets::allowance(token, &to_account_id(&contract.address), &delegate));
-			contract.approve(
-				&to_account_id(&contract.address),
-				token,
-				to_address(&delegate),
-				amount.into(),
-			);
-			assert_eq!(
-				Assets::allowance(token, &to_account_id(&contract.address), &delegate),
-				amount
-			);
+			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &delegate));
+			contract.approve(&contract.account_id(), token, to_address(&delegate), amount.into());
+			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount);
 			// Successfully emit event.
 			let spender = to_address(&delegate);
 			let expected =
 				Approval { owner: contract.address, spender, value: amount.into() }.encode();
 			assert_eq!(contract.last_event(), expected);
 			// Non-additive, sets new value.
-			contract.approve(
-				&to_account_id(&contract.address),
-				token,
-				spender,
-				(amount / 2).into(),
-			);
-			assert_eq!(
-				Assets::allowance(token, &to_account_id(&contract.address), &delegate),
-				amount / 2
-			);
+			contract.approve(&contract.account_id(), token, spender, (amount / 2).into());
+			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount / 2);
 			// Successfully emit event.
 			let expected =
 				Approval { owner: contract.address, spender, value: (amount / 2).into() }.encode();
@@ -613,6 +597,10 @@ impl Contract {
 			0,
 		)
 		.unwrap()
+	}
+
+	fn account_id(&self) -> AccountId {
+		to_account_id(&self.address)
 	}
 
 	fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
