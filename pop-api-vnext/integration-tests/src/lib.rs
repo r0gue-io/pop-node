@@ -26,6 +26,24 @@ const STORAGE_DEPOSIT_LIMIT: DepositLimit<Balance> = DepositLimit::Balance(Balan
 
 type AssetId = u32;
 
+// Get the last event from `pallet-revive`.
+fn last_contract_event(address: &H160) -> Vec<u8> {
+	let events = System::read_events_for_pallet::<pallet_revive::Event<Runtime>>();
+	let contract_events = events
+		.iter()
+		.filter_map(|event| match event {
+			pallet_revive::Event::<Runtime>::ContractEmitted { contract, data, .. }
+				if contract == address =>
+				Some(data.as_slice()),
+			_ => None,
+		})
+		.collect::<Vec<&[u8]>>();
+	contract_events
+		.last()
+		.expect("expected an event for the specified contract")
+		.to_vec()
+}
+
 fn bare_call(
 	origin: RuntimeOrigin,
 	dest: H160,
@@ -74,6 +92,10 @@ fn keccak_selector(input: &str) -> [u8; 4] {
 		.expect("hash length > 4")
 }
 
+fn to_account_id(address: &H160) -> AccountId {
+	AccountId32Mapper::<Runtime>::to_account_id(address)
+}
+
 fn to_address(account: &AccountId) -> H160 {
 	AccountId32Mapper::<Runtime>::to_address(account)
 }
@@ -118,7 +140,7 @@ impl ExtBuilder {
 			.expect("Frame system builds valid default genesis config");
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			// FERDIE has no initial balance.
+			// CHARLIE has no initial balance.
 			balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT)],
 			..Default::default()
 		}
