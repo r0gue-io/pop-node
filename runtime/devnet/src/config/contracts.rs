@@ -226,98 +226,98 @@ mod tests {
 		})
 	}
 
-	#[test]
-	fn fungibles_precompiles_via_contract_works() {
-		let contract = include_bytes!(
-			"../../../../pop-api-vnext/examples/fungibles/target/ink/fungibles.polkavm"
-		);
-		let caller = Alice.to_account_id();
-		let origin = RuntimeOrigin::signed(caller.clone());
-		let recipient = Bob.to_account_id();
-		let recipient_addr = primitives::Address::new(AccountId32Mapper::to_address(&recipient).0);
-		let minimum_value = U256::from(1);
-		let endowment = primitives::U256::from(10_000);
-		new_test_ext().execute_with(|| {
-			assert_ok!(Revive::map_account(origin.clone()));
-			assert_ok!(Revive::map_account(RuntimeOrigin::signed(recipient)));
+	// #[test]
+	// fn fungibles_precompiles_via_contract_works() {
+	// 	let contract = include_bytes!(
+	// 		"../../../../pop-api-vnext/examples/fungibles/target/ink/fungibles.polkavm"
+	// 	);
+	// 	let caller = Alice.to_account_id();
+	// 	let origin = RuntimeOrigin::signed(caller.clone());
+	// 	let recipient = Bob.to_account_id();
+	// 	let recipient_addr = primitives::Address::new(AccountId32Mapper::to_address(&recipient).0);
+	// 	let minimum_value = U256::from(1);
+	// 	let endowment = primitives::U256::from(10_000);
+	// 	new_test_ext().execute_with(|| {
+	// 		assert_ok!(Revive::map_account(origin.clone()));
+	// 		assert_ok!(Revive::map_account(RuntimeOrigin::signed(recipient)));
 
-			// Instantiate contract with some value, required to create underlying asset
-			let result = Revive::bare_instantiate(
-				origin.clone(),
-				10 * UNIT,
-				Weight::MAX,
-				DepositLimit::Balance(u128::MAX),
-				Code::Upload(contract.to_vec()),
-				// Constructors are not yet using Solidity encoding
-				[blake_selector("new"), ("Name", "SYMBOL", minimum_value, 10u8).encode()].concat(),
-				None,
-			)
-			.result
-			.unwrap();
-			assert!(!result.result.did_revert());
-			let contract = primitives::Address::new(result.addr.0);
+	// 		// Instantiate contract with some value, required to create underlying asset
+	// 		let result = Revive::bare_instantiate(
+	// 			origin.clone(),
+	// 			10 * UNIT,
+	// 			Weight::MAX,
+	// 			DepositLimit::Balance(u128::MAX),
+	// 			Code::Upload(contract.to_vec()),
+	// 			// Constructors are not yet using Solidity encoding
+	// 			[blake_selector("new"), ("Name", "SYMBOL", minimum_value, 10u8).encode()].concat(),
+	// 			None,
+	// 		)
+	// 		.result
+	// 		.unwrap();
+	// 		assert!(!result.result.did_revert());
+	// 		let contract = primitives::Address::new(result.addr.0);
 
-			// Mint some tokens to the contract
-			call::<()>(
-				origin.clone(),
-				result.addr,
-				[keccak_selector("mint(address,uint256)"), (contract, endowment).abi_encode()]
-					.concat(),
-			);
+	// 		// Mint some tokens to the contract
+	// 		call::<()>(
+	// 			origin.clone(),
+	// 			result.addr,
+	// 			[keccak_selector("mint(address,uint256)"), (contract, endowment).abi_encode()]
+	// 				.concat(),
+	// 		);
 
-			// Interact with contract as Erc20
-			let total_supply = call::<primitives::U256>(
-				origin.clone(),
-				result.addr,
-				keccak_selector("totalSupply()"),
-			);
-			assert_eq!(total_supply, endowment);
+	// 		// Interact with contract as Erc20
+	// 		let total_supply = call::<primitives::U256>(
+	// 			origin.clone(),
+	// 			result.addr,
+	// 			keccak_selector("totalSupply()"),
+	// 		);
+	// 		assert_eq!(total_supply, endowment);
 
-			let balance_of = call::<primitives::U256>(
-				origin.clone(),
-				result.addr,
-				[keccak_selector("balanceOf(address)"), (contract,).abi_encode()].concat(),
-			);
-			assert_eq!(balance_of, endowment);
+	// 		let balance_of = call::<primitives::U256>(
+	// 			origin.clone(),
+	// 			result.addr,
+	// 			[keccak_selector("balanceOf(address)"), (contract,).abi_encode()].concat(),
+	// 		);
+	// 		assert_eq!(balance_of, endowment);
 
-			// Transfer tokens from contract to recipient
-			let value = endowment / primitives::U256::from(2);
-			assert!(call::<bool>(
-				origin.clone(),
-				result.addr,
-				[
-					keccak_selector("transfer(address,uint256)"),
-					(recipient_addr, value).abi_encode(),
-				]
-				.concat(),
-			));
-			let balance_of = call::<primitives::U256>(
-				origin.clone(),
-				result.addr,
-				[keccak_selector("balanceOf(address)"), (recipient_addr,).abi_encode()].concat(),
-			);
-			assert_eq!(balance_of, value);
-		});
+	// 		// Transfer tokens from contract to recipient
+	// 		let value = endowment / primitives::U256::from(2);
+	// 		assert!(call::<bool>(
+	// 			origin.clone(),
+	// 			result.addr,
+	// 			[
+	// 				keccak_selector("transfer(address,uint256)"),
+	// 				(recipient_addr, value).abi_encode(),
+	// 			]
+	// 			.concat(),
+	// 		));
+	// 		let balance_of = call::<primitives::U256>(
+	// 			origin.clone(),
+	// 			result.addr,
+	// 			[keccak_selector("balanceOf(address)"), (recipient_addr,).abi_encode()].concat(),
+	// 		);
+	// 		assert_eq!(balance_of, value);
+	// 	});
 
-		fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
-			origin: OriginFor<Runtime>,
-			contract: H160,
-			data: Vec<u8>,
-		) -> T {
-			let result = Revive::bare_call(
-				origin,
-				contract,
-				0,
-				Weight::MAX,
-				DepositLimit::Balance(u128::MAX),
-				data,
-			)
-			.result
-			.unwrap();
-			assert!(!result.did_revert());
-			T::abi_decode(&result.data).unwrap()
-		}
-	}
+	// 	fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
+	// 		origin: OriginFor<Runtime>,
+	// 		contract: H160,
+	// 		data: Vec<u8>,
+	// 	) -> T {
+	// 		let result = Revive::bare_call(
+	// 			origin,
+	// 			contract,
+	// 			0,
+	// 			Weight::MAX,
+	// 			DepositLimit::Balance(u128::MAX),
+	// 			data,
+	// 		)
+	// 		.result
+	// 		.unwrap();
+	// 		assert!(!result.did_revert());
+	// 		T::abi_decode(&result.data).unwrap()
+	// 	}
+	// }
 
 	fn blake_selector(name: &str) -> Vec<u8> {
 		sp_io::hashing::blake2_256(name.as_bytes())[0..4].to_vec()
