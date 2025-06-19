@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{prelude::string::String, U256};
-use pop_api::fungibles::{self as api, Approval, Fungibles, TokenId, Transfer};
+use pop_api::fungibles::{self as api, events::*, Fungibles, TokenId};
 
 #[ink::contract]
 pub mod fungibles {
@@ -65,7 +65,14 @@ pub mod fungibles {
 		#[ink(message)]
 		fn create(&self, admin: Address, min_balance: U256) -> TokenId {
 			match api::create(admin, min_balance) {
-				Ok(token) => token,
+				Ok(token) => {
+					self.env().emit_event(Created {
+						id: token,
+						creator: self.env().address(),
+						admin,
+					});
+					token
+				},
 				Err(error) => revert(&error),
 			}
 		}
