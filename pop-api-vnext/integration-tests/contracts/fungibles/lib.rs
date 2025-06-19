@@ -80,6 +80,7 @@ pub mod fungibles {
 		#[ink(message)]
 		fn startDestroy(&self, token: TokenId) {
 			api::start_destroy(token);
+			self.env().emit_event(DestroyStarted { token });
 		}
 
 		#[ink(message)]

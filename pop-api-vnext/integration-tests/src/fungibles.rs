@@ -410,7 +410,6 @@ fn metadata_works() {
 
 #[test]
 fn create_works() {
-	let token = 1;
 	let creator = ALICE;
 	let admin = BOB;
 	ExtBuilder::new().build().execute_with(|| {
@@ -453,9 +452,31 @@ fn instantiate_and_create_fungible_works() {
 }
 
 #[test]
-#[ignore]
 fn start_destroy_works() {
-	todo!()
+	let token = 0;
+	let owner = ALICE;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new(INIT_VALUE);
+
+			// Token does not exist.
+			// assert_eq!(
+			// 	contract.start_destroy(&owner, TokenId::MAX),
+			// 	Err(Module { index: 52, error: [3, 0] }),
+			// );
+			// No Permission.
+			// assert_eq!(
+			// 	contract.start_destroy(&owner, token),
+			// 	Err(Module { index: 52, error: [2, 0] }),
+			// );
+			let token = contract.create(&owner, to_address(&owner), 1.into());
+			contract.start_destroy(&owner, token);
+			// Successfully emit event.
+			let expected = DestroyStarted { token }.encode();
+			assert_eq!(contract.last_event(), expected);
+		});
 }
 
 #[test]
