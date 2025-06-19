@@ -999,7 +999,7 @@ dependencies = [
  "frame-system-benchmarking 38.0.0",
  "frame-system-rpc-runtime-api 34.0.0",
  "frame-try-runtime 0.44.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "pallet-asset-conversion 20.0.0",
  "pallet-asset-conversion-tx-payment 20.0.0",
@@ -1087,7 +1087,7 @@ dependencies = [
  "frame-system-benchmarking 28.0.0",
  "frame-system-rpc-runtime-api 26.0.0",
  "frame-try-runtime 0.34.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "pallet-asset-conversion 10.0.0",
  "pallet-asset-conversion-ops",
@@ -2804,6 +2804,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "126f97965c8ad46d6d9163268ff28432e8f6a1196a55578867832e3049df63dd"
 dependencies = [
  "const_format_proc_macros",
+ "konst",
 ]
 
 [[package]]
@@ -2888,7 +2889,7 @@ dependencies = [
  "heck 0.5.0",
  "hex",
  "impl-serde 0.5.0",
- "ink_metadata 6.0.0-alpha",
+ "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=master)",
  "itertools 0.13.0",
  "parity-scale-codec",
  "polkavm-linker 0.22.0",
@@ -4751,7 +4752,7 @@ dependencies = [
  "cumulus-pallet-xcmp-queue 0.7.1",
  "cumulus-primitives-core 0.7.0",
  "frame-support 28.0.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "pallet-asset-conversion 10.0.0",
  "pallet-assets 29.1.0",
  "pallet-balances 28.0.0",
@@ -6555,6 +6556,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
 
 [[package]]
+name = "hex-literal"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcaaec4551594c969335c98c903c1397853d4198408ea609190f420500f6be71"
+
+[[package]]
 name = "hickory-proto"
 version = "0.24.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7213,12 +7220,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "15d7438a13d38fa8f4eebea8d1e7c2931058eafd0336c79f4141d4ed0162a412"
 dependencies = [
  "derive_more 1.0.0",
- "ink_env",
- "ink_macro",
+ "ink_env 5.1.1",
+ "ink_macro 5.1.1",
  "ink_metadata 5.1.1",
  "ink_prelude 5.1.1",
  "ink_primitives 5.1.1",
- "ink_storage",
+ "ink_storage 5.1.1",
  "pallet-contracts-uapi 9.0.0",
  "parity-scale-codec",
  "scale-info",
@@ -7226,10 +7233,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "ink"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "const_format",
+ "deranged",
+ "derive_more 2.0.1",
+ "ink_env 6.0.0-alpha",
+ "ink_macro 6.0.0-alpha",
+ "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_storage 6.0.0-alpha",
+ "keccak-const",
+ "linkme",
+ "pallet-revive-uapi 0.4.0",
+ "parity-scale-codec",
+ "polkavm-derive 0.22.0",
+ "scale-info",
+ "sp-io 40.0.1",
+ "sp-runtime-interface 29.0.1",
+ "staging-xcm 16.2.0",
+]
+
+[[package]]
 name = "ink_allocator"
 version = "5.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2ec348ce75d284bc2e698187dc01da416a52dfa2d685e2a57d04e9e580447df0"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
+name = "ink_allocator"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
 dependencies = [
  "cfg-if",
 ]
@@ -7245,10 +7285,32 @@ dependencies = [
  "either",
  "heck 0.5.0",
  "impl-serde 0.4.0",
- "ink_ir",
+ "ink_ir 5.1.1",
  "ink_primitives 5.1.1",
  "itertools 0.12.1",
  "parity-scale-codec",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "ink_codegen"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "blake2 0.10.6",
+ "derive_more 2.0.1",
+ "either",
+ "heck 0.5.0",
+ "impl-serde 0.5.0",
+ "ink_ir 6.0.0-alpha",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "itertools 0.14.0",
+ "parity-scale-codec",
+ "polkavm-derive 0.22.0",
  "proc-macro2",
  "quote",
  "serde",
@@ -7273,6 +7335,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ink_engine"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "blake2 0.10.6",
+ "derive_more 2.0.1",
+ "hex-literal 1.0.0",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "pallet-revive 0.5.0",
+ "pallet-revive-uapi 0.4.0",
+ "parity-scale-codec",
+ "secp256k1 0.30.0",
+ "sha2 0.10.9",
+ "sha3",
+]
+
+[[package]]
 name = "ink_env"
 version = "5.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7282,11 +7361,11 @@ dependencies = [
  "cfg-if",
  "const_env",
  "derive_more 1.0.0",
- "ink_allocator",
- "ink_engine",
+ "ink_allocator 5.1.1",
+ "ink_engine 5.1.1",
  "ink_prelude 5.1.1",
  "ink_primitives 5.1.1",
- "ink_storage_traits",
+ "ink_storage_traits 5.1.1",
  "num-traits",
  "pallet-contracts-uapi 9.0.0",
  "parity-scale-codec",
@@ -7300,6 +7379,39 @@ dependencies = [
  "sha2 0.10.9",
  "sha3",
  "staging-xcm 11.0.0",
+ "static_assertions",
+]
+
+[[package]]
+name = "ink_env"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "blake2 0.10.6",
+ "cfg-if",
+ "const_env",
+ "derive_more 2.0.1",
+ "hex-literal 1.0.0",
+ "ink_allocator 6.0.0-alpha",
+ "ink_engine 6.0.0-alpha",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_storage_traits 6.0.0-alpha",
+ "num-traits",
+ "pallet-revive 0.5.0",
+ "pallet-revive-uapi 0.4.0",
+ "parity-scale-codec",
+ "polkavm-derive 0.22.0",
+ "scale-decode 0.16.0",
+ "scale-encode 0.10.0",
+ "scale-info",
+ "schnorrkel 0.11.4",
+ "secp256k1 0.30.0",
+ "sha2 0.10.9",
+ "sha3",
+ "sp-io 40.0.1",
+ "sp-runtime-interface 29.0.1",
+ "staging-xcm 16.2.0",
  "static_assertions",
 ]
 
@@ -7320,14 +7432,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "ink_ir"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "blake2 0.10.6",
+ "either",
+ "impl-serde 0.5.0",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "itertools 0.14.0",
+ "proc-macro2",
+ "quote",
+ "sha3",
+ "syn 2.0.101",
+]
+
+[[package]]
 name = "ink_macro"
 version = "5.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ce9465553d3066a8e28bd94a94880289084c4ff12f1852312553e902fa1ffdd"
 dependencies = [
- "ink_codegen",
- "ink_ir",
+ "ink_codegen 5.1.1",
+ "ink_ir 5.1.1",
  "ink_primitives 5.1.1",
+ "parity-scale-codec",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+ "synstructure 0.13.2",
+]
+
+[[package]]
+name = "ink_macro"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "ink_codegen 6.0.0-alpha",
+ "ink_ir 6.0.0-alpha",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
  "parity-scale-codec",
  "proc-macro2",
  "quote",
@@ -7359,8 +7502,23 @@ source = "git+https://github.com/use-ink/ink?branch=master#641f05706e4f7ff1fb7c6
 dependencies = [
  "derive_more 2.0.1",
  "impl-serde 0.5.0",
- "ink_prelude 6.0.0-alpha",
- "ink_primitives 6.0.0-alpha",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=master)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=master)",
+ "parity-scale-codec",
+ "scale-info",
+ "schemars",
+ "serde",
+]
+
+[[package]]
+name = "ink_metadata"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "derive_more 2.0.1",
+ "impl-serde 0.5.0",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
  "parity-scale-codec",
  "scale-info",
  "schemars",
@@ -7380,6 +7538,14 @@ dependencies = [
 name = "ink_prelude"
 version = "6.0.0-alpha"
 source = "git+https://github.com/use-ink/ink?branch=master#641f05706e4f7ff1fb7c60e261ed0f4bc833f2f0"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
+name = "ink_prelude"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
 dependencies = [
  "cfg-if",
 ]
@@ -7408,7 +7574,34 @@ dependencies = [
  "cfg-if",
  "derive_more 2.0.1",
  "impl-trait-for-tuples",
- "ink_prelude 6.0.0-alpha",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=master)",
+ "itertools 0.14.0",
+ "num-traits",
+ "pallet-revive 0.5.0",
+ "pallet-revive-uapi 0.4.0",
+ "parity-scale-codec",
+ "paste",
+ "primitive-types 0.13.1",
+ "scale-decode 0.16.0",
+ "scale-encode 0.10.0",
+ "scale-info",
+ "serde",
+ "sp-core 36.1.0",
+ "sp-io 40.0.1",
+ "sp-runtime-interface 29.0.1",
+ "xxhash-rust",
+]
+
+[[package]]
+name = "ink_primitives"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "alloy-sol-types 1.2.0",
+ "cfg-if",
+ "derive_more 2.0.1",
+ "impl-trait-for-tuples",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
  "itertools 0.14.0",
  "num-traits",
  "pallet-revive 0.5.0",
@@ -7435,12 +7628,30 @@ dependencies = [
  "array-init",
  "cfg-if",
  "derive_more 1.0.0",
- "ink_env",
+ "ink_env 5.1.1",
  "ink_metadata 5.1.1",
  "ink_prelude 5.1.1",
  "ink_primitives 5.1.1",
- "ink_storage_traits",
+ "ink_storage_traits 5.1.1",
  "pallet-contracts-uapi 9.0.0",
+ "parity-scale-codec",
+ "scale-info",
+]
+
+[[package]]
+name = "ink_storage"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "array-init",
+ "cfg-if",
+ "derive_more 2.0.1",
+ "ink_env 6.0.0-alpha",
+ "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_storage_traits 6.0.0-alpha",
+ "pallet-revive-uapi 0.4.0",
  "parity-scale-codec",
  "scale-info",
 ]
@@ -7456,6 +7667,20 @@ dependencies = [
  "ink_primitives 5.1.1",
  "parity-scale-codec",
  "scale-info",
+]
+
+[[package]]
+name = "ink_storage_traits"
+version = "6.0.0-alpha"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#c46014d79dab808438f9a61b84b8341c97a6dd26"
+dependencies = [
+ "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi)",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-io 40.0.1",
+ "sp-runtime-interface 29.0.1",
 ]
 
 [[package]]
@@ -7609,7 +7834,7 @@ dependencies = [
  "cumulus-primitives-core 0.7.0",
  "frame-support 28.0.0",
  "frame-system 28.0.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "log",
  "pallet-ismp",
@@ -7936,6 +8161,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "keccak-const"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57d8d8ce877200136358e0bbff3a77965875db3af755a11e1fa6b1b3e2df13ea"
+
+[[package]]
 name = "keccak-hash"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7950,6 +8181,21 @@ name = "keystream"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c33070833c9ee02266356de0c43f723152bd38bd96ddf52c82b3af10c9138b28"
+
+[[package]]
+name = "konst"
+version = "0.2.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "330f0e13e6483b8c34885f7e6c9f19b1a7bd449c673fbb948a51c99d66ef74f4"
+dependencies = [
+ "konst_macro_rules",
+]
+
+[[package]]
+name = "konst_macro_rules"
+version = "0.2.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4933f3f57a8e9d9da04db23fb153356ecaf00cbd14aee46279c33dc80925c37"
 
 [[package]]
 name = "kusama-runtime-constants"
@@ -10835,7 +11081,7 @@ dependencies = [
  "frame-system 28.0.0",
  "hash-db",
  "hex",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "jsonrpsee",
  "pallet-ismp",
@@ -11483,7 +11729,7 @@ dependencies = [
  "frame-benchmarking 28.0.0",
  "frame-support 28.0.0",
  "frame-system 28.0.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "humantime-serde",
  "impl-trait-for-tuples",
  "log",
@@ -11532,7 +11778,7 @@ dependencies = [
  "frame-benchmarking 40.2.0",
  "frame-support 40.1.0",
  "frame-system 40.1.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "impl-trait-for-tuples",
  "log",
  "num-bigint",
@@ -12705,7 +12951,7 @@ dependencies = [
  "frame-system-benchmarking 38.0.0",
  "frame-system-rpc-runtime-api 34.0.0",
  "frame-try-runtime 0.44.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "pallet-asset-rate 17.0.0",
  "pallet-authority-discovery 38.0.0",
@@ -13785,7 +14031,7 @@ source = "git+https://github.com/paritytech/polkadot-sdk?rev=a251f77#a251f77f35c
 dependencies = [
  "bitvec",
  "bounded-collections",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "polkadot-core-primitives 7.0.0",
@@ -13814,7 +14060,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b57bc055fa389372ec5fc0001b99aeffd50f3fd379280ce572d935189bb58dd8"
 dependencies = [
  "bitvec",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "polkadot-core-primitives 15.0.0",
@@ -13841,7 +14087,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6bb20b75d33212150242d39890d7ededab55f1084160c337f15d0eb8ca8c3ad4"
 dependencies = [
  "bitvec",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "polkadot-core-primitives 15.0.0",
@@ -14457,6 +14703,15 @@ dependencies = [
 
 [[package]]
 name = "polkavm-derive"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e819eaea986d6a3de2a08840f0cc188db3c318b30f9bb1deb416d8c4beb2ed14"
+dependencies = [
+ "polkavm-derive-impl-macro 0.22.0",
+]
+
+[[package]]
+name = "polkavm-derive"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "176144f8661117ea95fa7cf868c9a62d6b143e8a2ebcb7582464c3faade8669a"
@@ -14502,6 +14757,18 @@ dependencies = [
 
 [[package]]
 name = "polkavm-derive-impl"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "414507a0a7c9451cc81336ef1f5ccbab8fa4aeda402668735aa28331867bd3ef"
+dependencies = [
+ "polkavm-common 0.22.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "polkavm-derive-impl"
 version = "0.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c5a21844afdfcc10c92b9ef288ccb926211af27478d1730fcd55e4aec710179d"
@@ -14539,6 +14806,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "36837f6b7edfd6f4498f8d25d81da16cf03bd6992c3e56f3d477dfc90f4fefca"
 dependencies = [
  "polkavm-derive-impl 0.21.0",
+ "syn 2.0.101",
+]
+
+[[package]]
+name = "polkavm-derive-impl-macro"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad6a5df4cc6466a219386b04d8bd267ba772f9458a8e9aa7539757ca5b11e2aa"
+dependencies = [
+ "polkavm-derive-impl 0.22.0",
  "syn 2.0.101",
 ]
 
@@ -14709,9 +14986,18 @@ version = "0.0.0"
 dependencies = [
  "bitflags 2.9.1",
  "enumflags2",
- "ink",
+ "ink 5.1.1",
  "pop-primitives",
  "sp-io 40.0.1",
+]
+
+[[package]]
+name = "pop-api"
+version = "0.1.0"
+dependencies = [
+ "alloy-sol-types 1.2.0",
+ "ink 6.0.0-alpha",
+ "pop-primitives",
 ]
 
 [[package]]
@@ -14732,7 +15018,7 @@ dependencies = [
  "pallet-nfts 34.1.0",
  "pallet-xcm 7.0.0",
  "parity-scale-codec",
- "pop-api",
+ "pop-api 0.0.0",
  "pop-primitives",
  "pop-runtime-devnet",
  "pop-runtime-testnet",
@@ -14755,7 +15041,7 @@ dependencies = [
  "pallet-balances 28.0.0",
  "pallet-revive 0.1.0",
  "parity-scale-codec",
- "pop-api",
+ "pop-api 0.1.0",
  "pop-primitives",
  "pop-runtime-devnet",
  "pop-runtime-testnet",
@@ -14940,7 +15226,7 @@ dependencies = [
  "frame-system-rpc-runtime-api 26.0.0",
  "frame-try-runtime 0.34.0",
  "hex",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "ismp-parachain",
  "ismp-parachain-runtime-api",
@@ -15109,7 +15395,7 @@ dependencies = [
  "frame-system-rpc-runtime-api 26.0.0",
  "frame-try-runtime 0.34.0",
  "hex",
- "hex-literal",
+ "hex-literal 0.4.1",
  "ismp",
  "ismp-parachain",
  "ismp-parachain-runtime-api",
@@ -16025,7 +16311,7 @@ dependencies = [
  "frame-system-benchmarking 28.0.0",
  "frame-system-rpc-runtime-api 26.0.0",
  "frame-try-runtime 0.34.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "pallet-asset-rate 7.0.0",
  "pallet-authority-discovery 28.0.0",
@@ -18965,7 +19251,7 @@ dependencies = [
  "bp-relayers",
  "frame-support 28.0.0",
  "frame-system 28.0.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "polkadot-parachain-primitives 6.0.0",
@@ -18990,7 +19276,7 @@ dependencies = [
  "ethabi-decode 1.0.0",
  "frame-support 38.2.0",
  "frame-system 38.0.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "parity-scale-codec",
  "polkadot-parachain-primitives 14.0.0",
  "scale-info",
@@ -19013,7 +19299,7 @@ dependencies = [
  "ethabi-decode 2.0.0",
  "ethbloom 0.14.1",
  "ethereum-types 0.15.1",
- "hex-literal",
+ "hex-literal 0.4.1",
  "parity-bytes",
  "parity-scale-codec",
  "rlp 0.6.1",
@@ -19034,7 +19320,7 @@ dependencies = [
  "ethabi-decode 1.0.0",
  "ethbloom 0.13.0",
  "ethereum-types 0.14.1",
- "hex-literal",
+ "hex-literal 0.4.1",
  "parity-bytes",
  "parity-scale-codec",
  "rlp 0.5.2",
@@ -19070,7 +19356,7 @@ dependencies = [
  "ethabi-decode 2.0.0",
  "frame-support 28.0.0",
  "frame-system 28.0.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "polkadot-parachain-primitives 6.0.0",
@@ -19116,7 +19402,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aefe74eafeac92e1d9e46b7bb76ec297f6182b4a023f7e7eb7eb8be193f93bef"
 dependencies = [
  "frame-support 38.2.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "parity-scale-codec",
  "scale-info",
@@ -21141,7 +21427,7 @@ dependencies = [
  "derive-where",
  "environmental",
  "frame-support 28.0.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
@@ -21202,7 +21488,7 @@ dependencies = [
  "derive-where",
  "environmental",
  "frame-support 40.1.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "impl-trait-for-tuples",
  "log",
  "parity-scale-codec",
@@ -23491,7 +23777,7 @@ dependencies = [
  "frame-system-benchmarking 28.0.0",
  "frame-system-rpc-runtime-api 26.0.0",
  "frame-try-runtime 0.34.0",
- "hex-literal",
+ "hex-literal 0.4.1",
  "log",
  "pallet-asset-rate 7.0.0",
  "pallet-authority-discovery 28.0.0",
