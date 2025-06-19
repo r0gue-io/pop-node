@@ -1,6 +1,8 @@
-use frame_support::traits::fungibles::{
-	approvals::Inspect as _, metadata::Inspect as _, Inspect as _,
+use frame_support::{
+	pallet_prelude::Encode,
+	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _, Inspect as _},
 };
+use pop_api::fungibles::Transfer;
 use pop_primitives::TokenId;
 
 use super::*;
@@ -68,7 +70,7 @@ fn allowance_works() {
 		.with_assets(vec![(token, ALICE, false, 1)])
 		.build()
 		.execute_with(|| {
-			let mut contract = Contract::new();
+			let contract = Contract::new();
 
 			// Tokens in circulation.
 			approve(&owner, token, &spender, allowance);
@@ -95,9 +97,61 @@ fn allowance_works() {
 }
 
 #[test]
-#[ignore]
 fn transfer_works() {
-	todo!()
+	let token = 1;
+	let owner = ALICE;
+	let amount: Balance = 100 * UNIT;
+	let to = BOB;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new();
+
+			// Token does not exist.
+			// assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0]
+			// }));
+			// Mint `amount` to contract address.
+			mint(&owner, token, &to_account_id(&contract.address), amount);
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&owner, token);
+			// assert_eq!(
+			// 	transfer(&addr, token, BOB, amount),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+			thaw(&owner, token);
+			// Not enough balance.
+			// assert_eq!(
+			// 	transfer(&addr, token, BOB, amount + 1 * UNIT),
+			// 	Err(Module { index: 52, error: [0, 0] })
+			// );
+			// Not enough balance due to ED.
+			// assert_eq!(
+			// 	transfer(&addr, token, BOB, amount),
+			// 	Err(Module { index: 52, error: [0, 0] })
+			// );
+			// Successful transfer.
+			let balance_before_transfer = Assets::balance(token, &BOB);
+			contract.transfer(&owner, token, to_address(&to), (amount / 2).into());
+			let balance_after_transfer = Assets::balance(token, &BOB);
+			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+			// Successfully emit event.
+			let from = contract.address;
+			let to = to_address(&to);
+			let expected = Transfer { from, to, value: (amount / 2).into() }.encode();
+			assert_eq!(contract.last_event(), expected);
+			// Transfer token to account that does not exist.
+			// assert_eq!(
+			// 	contract.transfer(&owner, token, to_address(&CHARLIE), (amount / 4).into()),
+			// 	Err(Token(CannotCreate))
+			// );
+			// Token is not live, i.e. frozen or being destroyed.
+			start_destroy(&ALICE, token);
+			// assert_eq!(
+			// 	contract.transfer(&addr, token, BOB, amount / 4),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+		});
 }
 
 #[test]
@@ -467,6 +521,10 @@ impl Contract {
 			false => Ok(decode::<T>(&result.data)),
 		}
 	}
+
+	fn last_event(&self) -> Vec<u8> {
+		last_contract_event(&self.address)
+	}
 }
 
 fn approve(origin: &AccountId, id: TokenId, delegate: &AccountId, amount: Balance) {
@@ -476,4 +534,25 @@ fn approve(origin: &AccountId, id: TokenId, delegate: &AccountId, amount: Balanc
 		delegate.clone().into(),
 		amount,
 	));
+}
+
+fn freeze(origin: &AccountId, id: TokenId) {
+	assert_ok!(Assets::freeze_asset(RuntimeOrigin::signed(origin.clone()), id.into()));
+}
+
+fn mint(origin: &AccountId, id: TokenId, beneficiary: &AccountId, amount: Balance) {
+	assert_ok!(Assets::mint(
+		RuntimeOrigin::signed(origin.clone()),
+		id.into(),
+		beneficiary.clone().into(),
+		amount,
+	));
+}
+
+fn start_destroy(origin: &AccountId, id: TokenId) {
+	assert_ok!(Assets::start_destroy(RuntimeOrigin::signed(origin.clone()), id.into()));
+}
+
+fn thaw(origin: &AccountId, id: TokenId) {
+	assert_ok!(Assets::thaw_asset(RuntimeOrigin::signed(origin.clone()), id.into()));
 }

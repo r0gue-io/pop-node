@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{prelude::string::String, U256};
-use pop_api::fungibles::{self as api, Fungibles, TokenId};
+use pop_api::fungibles::{self as api, Approval, Fungibles, TokenId, Transfer};
 
 #[ink::contract]
 pub mod fungibles {
@@ -27,6 +27,7 @@ pub mod fungibles {
 			if let Err(error) = api::transfer(token, to, value) {
 				revert(&error)
 			}
+			self.env().emit_event(Transfer { from: self.env().address(), to, value });
 		}
 
 		#[ink(message)]
@@ -34,6 +35,7 @@ pub mod fungibles {
 			if let Err(error) = api::transfer_from(token, from, to, value) {
 				revert(&error)
 			}
+			self.env().emit_event(Transfer { from, to, value });
 		}
 
 		#[ink(message)]
@@ -41,6 +43,7 @@ pub mod fungibles {
 			if let Err(error) = api::approve(token, spender, value) {
 				revert(&error)
 			}
+			self.env().emit_event(Approval { owner: self.env().address(), spender, value });
 		}
 
 		#[ink(message)]
