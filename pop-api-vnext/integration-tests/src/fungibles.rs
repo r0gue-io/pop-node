@@ -2,8 +2,9 @@ use frame_support::{
 	pallet_prelude::Encode,
 	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _, Inspect as _},
 };
-use pop_api::fungibles::Transfer;
+use pop_api::fungibles::{Approval, Transfer};
 use pop_primitives::TokenId;
+use sp_io::hashing::twox_256;
 
 use super::*;
 
@@ -18,7 +19,7 @@ fn total_supply_works() {
 		.with_asset_balances(vec![(token, BOB, endowment)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new();
+			let contract = Contract::new(0);
 
 			// Tokens in circulation.
 			assert_eq!(contract.total_supply(token), Assets::total_supply(token).into());
@@ -41,7 +42,7 @@ fn balance_of_works() {
 		.with_asset_balances(vec![(token, owner.clone(), endowment)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new();
+			let contract = Contract::new(0);
 
 			// Tokens in circulation.
 			assert_eq!(
@@ -70,7 +71,7 @@ fn allowance_works() {
 		.with_assets(vec![(token, ALICE, false, 1)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new();
+			let contract = Contract::new(0);
 
 			// Tokens in circulation.
 			approve(&owner, token, &spender, allowance);
@@ -106,7 +107,7 @@ fn transfer_works() {
 		.with_assets(vec![(token, owner.clone(), false, 1)])
 		.build()
 		.execute_with(|| {
-			let mut contract = Contract::new();
+			let mut contract = Contract::new(0);
 
 			// Token does not exist.
 			// assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0]
@@ -165,7 +166,7 @@ fn transfer_from_works() {
 		.with_asset_balances(vec![(token, owner.clone(), amount)])
 		.build()
 		.execute_with(|| {
-			let mut contract = Contract::new();
+			let mut contract = Contract::new(0);
 
 			// Token does not exist.
 			// assert_eq!(
@@ -211,9 +212,71 @@ fn transfer_from_works() {
 }
 
 #[test]
-#[ignore]
 fn approve_works() {
-	todo!()
+	let token = 1;
+	let owner = ALICE;
+	let amount: Balance = 100 * UNIT;
+	let delegate = BOB;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.with_asset_balances(vec![(token, owner.clone(), amount)])
+		.build()
+		.execute_with(|| {
+			let contract = Contract::new(0);
+
+			// Token does not exist.
+			// assert_eq!(contract.approve(&addr, TokenId::MAX, &BOB, amount), Err(Module { index:
+			// 52, error: [3, 0] }));
+			// assert_eq!(contract.approve(&addr, token, &BOB, amount), Err(ConsumerRemaining));
+			let mut contract = Contract::new(INIT_VALUE);
+			// Mint `amount` to contract address.
+			mint(&owner, token, &to_account_id(&contract.address), amount);
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&owner, token);
+			// assert_eq!(
+			// 	contract.approve(&addr, token, &BOB, amount),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+			thaw(&owner, token);
+			// Successful approvals.
+			assert_eq!(0, Assets::allowance(token, &to_account_id(&contract.address), &delegate));
+			contract.approve(
+				&to_account_id(&contract.address),
+				token,
+				to_address(&delegate),
+				amount.into(),
+			);
+			assert_eq!(
+				Assets::allowance(token, &to_account_id(&contract.address), &delegate),
+				amount
+			);
+			// Successfully emit event.
+			let spender = to_address(&delegate);
+			let expected =
+				Approval { owner: contract.address, spender, value: amount.into() }.encode();
+			assert_eq!(contract.last_event(), expected);
+			// Non-additive, sets new value.
+			contract.approve(
+				&to_account_id(&contract.address),
+				token,
+				spender,
+				(amount / 2).into(),
+			);
+			assert_eq!(
+				Assets::allowance(token, &to_account_id(&contract.address), &delegate),
+				amount / 2
+			);
+			// Successfully emit event.
+			let expected =
+				Approval { owner: contract.address, spender, value: (amount / 2).into() }.encode();
+			assert_eq!(contract.last_event(), expected);
+			// Token is not live, i.e. frozen or being destroyed.
+			start_destroy(&owner, token);
+			// assert_eq!(
+			// 	approve(&addr, token, &BOB, amount),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+		});
 }
 
 #[test]
@@ -244,7 +307,7 @@ fn metadata_works() {
 		)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new();
+			let contract = Contract::new(0);
 
 			// Existing token.
 			assert_eq!(contract.name(token).as_bytes(), Assets::name(token).as_slice());
@@ -300,7 +363,7 @@ fn exists_works() {
 		.with_assets(vec![(token, ALICE, false, 1)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new();
+			let contract = Contract::new(0);
 
 			// Tokens in circulation.
 			assert_eq!(contract.exists(token), Assets::asset_exists(token));
@@ -330,9 +393,10 @@ struct Contract {
 
 impl Contract {
 	// Create a new instance of the contract through on-chain instantiation.
-	fn new() -> Self {
-		let address = instantiate(CONTRACT, 0, None);
-		Self { address: address.clone() }
+	fn new(value: Balance) -> Self {
+		let salt = twox_256(&value.to_le_bytes());
+		let address = instantiate(CONTRACT, value, Some(salt));
+		Self { address }
 	}
 
 	fn allowance(&self, token: TokenId, owner: H160, spender: H160) -> U256 {
