@@ -1,0 +1,479 @@
+use frame_support::traits::fungibles::{
+	approvals::Inspect as _, metadata::Inspect as _, Inspect as _,
+};
+use pop_primitives::TokenId;
+
+use super::*;
+
+const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.polkavm";
+
+#[test]
+fn total_supply_works() {
+	let token = 1;
+	let endowment = 100;
+	ExtBuilder::new()
+		.with_assets(vec![(token, ALICE, false, 1)])
+		.with_asset_balances(vec![(token, BOB, endowment)])
+		.build()
+		.execute_with(|| {
+			let contract = Contract::new();
+
+			// Tokens in circulation.
+			assert_eq!(contract.total_supply(token), Assets::total_supply(token).into());
+			assert_eq!(contract.total_supply(token), endowment.into());
+
+			// No tokens in circulation.
+			let token = TokenId::MAX;
+			assert_eq!(contract.total_supply(token), Assets::total_supply(token).into());
+			assert_eq!(contract.total_supply(token), 0.into());
+		});
+}
+
+#[test]
+fn balance_of_works() {
+	let token = 1;
+	let owner = BOB;
+	let endowment = 100;
+	ExtBuilder::new()
+		.with_assets(vec![(token, ALICE, false, 1)])
+		.with_asset_balances(vec![(token, owner.clone(), endowment)])
+		.build()
+		.execute_with(|| {
+			let contract = Contract::new();
+
+			// Tokens in circulation.
+			assert_eq!(
+				contract.balance_of(token, to_address(&owner)),
+				Assets::balance(token, &owner).into()
+			);
+			assert_eq!(contract.balance_of(token, to_address(&owner)), endowment.into());
+
+			// No tokens in circulation.
+			let token = TokenId::MAX;
+			assert_eq!(
+				contract.balance_of(token, to_address(&owner)),
+				Assets::balance(token, &owner).into()
+			);
+			assert_eq!(contract.balance_of(token, to_address(&owner)), 0.into());
+		});
+}
+
+#[test]
+fn allowance_works() {
+	let token = 1;
+	let owner = BOB;
+	let spender = ALICE;
+	let allowance = 50;
+	ExtBuilder::new()
+		.with_assets(vec![(token, ALICE, false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new();
+
+			// Tokens in circulation.
+			approve(&owner, token, &spender, allowance);
+			assert_eq!(
+				contract.allowance(token, to_address(&owner), to_address(&spender)),
+				Assets::allowance(token, &owner, &spender).into()
+			);
+			assert_eq!(
+				contract.allowance(token, to_address(&owner), to_address(&spender)),
+				allowance.into()
+			);
+
+			// No tokens in circulation.
+			let token = TokenId::MAX;
+			assert_eq!(
+				contract.allowance(token, to_address(&owner), to_address(&spender)),
+				Assets::allowance(token, &owner, &spender).into()
+			);
+			assert_eq!(
+				contract.allowance(token, to_address(&owner), to_address(&spender)),
+				0.into()
+			);
+		});
+}
+
+#[test]
+#[ignore]
+fn transfer_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn transfer_from_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn approve_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn increase_allowance_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn decrease_allowance_works() {
+	todo!()
+}
+
+#[test]
+fn metadata_works() {
+	let token = 1;
+	let name = "name".to_string();
+	let symbol = "symbol".to_string();
+	let decimals: u8 = 69;
+	ExtBuilder::new()
+		.with_assets(vec![(token, ALICE, false, 1)])
+		.with_asset_metadata(vec![(
+			token,
+			name.as_bytes().to_vec(),
+			symbol.as_bytes().to_vec(),
+			decimals,
+		)])
+		.build()
+		.execute_with(|| {
+			let contract = Contract::new();
+
+			// Existing token.
+			assert_eq!(contract.name(token).as_bytes(), Assets::name(token).as_slice());
+			assert_eq!(contract.name(token), name);
+			assert_eq!(contract.symbol(token).as_bytes(), Assets::symbol(token).as_slice());
+			assert_eq!(contract.symbol(token), symbol);
+			assert_eq!(contract.decimals(token), Assets::decimals(token));
+			assert_eq!(contract.decimals(token), decimals);
+
+			// Token does not exist.
+			let token = TokenId::MAX;
+			assert_eq!(contract.name(token), String::default());
+			assert_eq!(contract.symbol(token), String::default());
+			assert_eq!(contract.decimals(token), 0);
+		});
+}
+
+#[test]
+#[ignore]
+fn create_works() {
+	todo!()
+}
+
+// Testing a contract that creates a token in the constructor.
+#[test]
+#[ignore]
+fn instantiate_and_create_fungible_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn start_destroy_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn set_metadata_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn clear_metadata_works() {
+	todo!()
+}
+
+#[test]
+fn exists_works() {
+	let token = 1;
+	ExtBuilder::new()
+		.with_assets(vec![(token, ALICE, false, 1)])
+		.build()
+		.execute_with(|| {
+			let contract = Contract::new();
+
+			// Tokens in circulation.
+			assert_eq!(contract.exists(token), Assets::asset_exists(token));
+
+			// No tokens in circulation.
+			let token = TokenId::MAX;
+			assert_eq!(contract.exists(token), Assets::asset_exists(token));
+		});
+}
+
+#[test]
+#[ignore]
+fn mint_works() {
+	todo!()
+}
+
+#[test]
+#[ignore]
+fn burn_works() {
+	todo!()
+}
+
+// A simple, strongly typed wrapper for the contract.
+struct Contract {
+	address: H160,
+}
+
+impl Contract {
+	// Create a new instance of the contract through on-chain instantiation.
+	fn new() -> Self {
+		let address = instantiate(CONTRACT, 0, None);
+		Self { address: address.clone() }
+	}
+
+	fn allowance(&self, token: TokenId, owner: H160, spender: H160) -> U256 {
+		let owner = alloy::Address::from(owner.0);
+		let spender = alloy::Address::from(spender.0);
+		U256::from_little_endian(
+			self.call::<alloy::U256>(
+				ALICE,
+				keccak_selector("allowance(uint32,address,address)"),
+				(token, owner, spender).abi_encode(),
+				0,
+			)
+			.unwrap()
+			.as_le_slice(),
+		)
+	}
+
+	fn approve(&mut self, origin: &AccountId, token: TokenId, spender: H160, value: U256) {
+		let spender = alloy::Address::from(spender.0);
+		let value = alloy::U256::from_be_bytes(value.to_big_endian());
+		self.call(
+			origin.clone(),
+			keccak_selector("approve(uint32,address,uint256)"),
+			(token, spender, value).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn balance_of(&self, token: TokenId, owner: H160) -> U256 {
+		let owner = alloy::Address::from(owner.0);
+		U256::from_little_endian(
+			self.call::<alloy::U256>(
+				ALICE,
+				keccak_selector("balanceOf(uint32,address)"),
+				(token, owner).abi_encode(),
+				0,
+			)
+			.unwrap()
+			.as_le_slice(),
+		)
+	}
+
+	fn burn(&mut self, origin: &AccountId, token: TokenId, account: H160, value: U256) {
+		let account = alloy::Address::from(account.0);
+		let value = alloy::U256::from_be_bytes(value.to_big_endian());
+		self.call(
+			origin.clone(),
+			keccak_selector("burn(uint32,address,uint256)"),
+			(token, account, value).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn clear_metadata(&mut self, origin: &AccountId, token: TokenId) {
+		self.call(
+			origin.clone(),
+			keccak_selector("clearMetadata(uint32)"),
+			(token,).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn create(&mut self, origin: &AccountId, admin: H160, min_balance: U256) -> TokenId {
+		let admin = alloy::Address::from(admin.0);
+		let min_balance = alloy::U256::from_be_bytes(min_balance.to_big_endian());
+		self.call(
+			origin.clone(),
+			keccak_selector("create(address,uint256)"),
+			(admin, min_balance).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn decimals(&self, token: TokenId) -> u8 {
+		self.call::<u16>(ALICE, keccak_selector("decimals(uint32)"), (token,).abi_encode(), 0)
+			.unwrap() as u8
+	}
+
+	fn decrease_allowance(
+		&mut self,
+		origin: &AccountId,
+		token: TokenId,
+		spender: H160,
+		value: U256,
+	) -> U256 {
+		let spender = alloy::Address::from(spender.0);
+		let value = alloy::U256::from_be_bytes(value.to_big_endian());
+		U256::from_little_endian(
+			self.call::<alloy::U256>(
+				origin.clone(),
+				keccak_selector("decreaseAllowance(uint32,address,uint256)"),
+				(token, spender, value).abi_encode(),
+				0,
+			)
+			.unwrap()
+			.as_le_slice(),
+		)
+	}
+
+	fn exists(&self, token: TokenId) -> bool {
+		self.call(ALICE, keccak_selector("exists(uint32)"), (token,).abi_encode(), 0)
+			.unwrap()
+	}
+
+	fn increase_allowance(
+		&mut self,
+		origin: &AccountId,
+		token: TokenId,
+		spender: H160,
+		value: U256,
+	) -> U256 {
+		let spender = alloy::Address::from(spender.0);
+		let value = alloy::U256::from_be_bytes(value.to_big_endian());
+		U256::from_little_endian(
+			self.call::<alloy::U256>(
+				origin.clone(),
+				keccak_selector("increaseAllowance(uint32,address,uint256)"),
+				(token, spender, value).abi_encode(),
+				0,
+			)
+			.unwrap()
+			.as_le_slice(),
+		)
+	}
+
+	fn mint(&mut self, origin: &AccountId, token: TokenId, account: H160, value: U256) {
+		let account = alloy::Address::from(account.0);
+		let value = alloy::U256::from_be_bytes(value.to_big_endian());
+		self.call(
+			origin.clone(),
+			keccak_selector("mint(uint32,address,uint256)"),
+			(token, account, value).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn name(&self, token: TokenId) -> String {
+		self.call(ALICE, keccak_selector("name(uint32)"), (token,).abi_encode(), 0)
+			.unwrap()
+	}
+
+	fn set_metadata(
+		&mut self,
+		origin: &AccountId,
+		token: TokenId,
+		name: String,
+		symbol: String,
+		decimals: u8,
+	) {
+		self.call(
+			origin.clone(),
+			keccak_selector("setMetadata(uint32,string,string,uint8)"),
+			(token, name, symbol, decimals as u16).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn start_destroy(&mut self, origin: &AccountId, token: TokenId) {
+		self.call(origin.clone(), keccak_selector("startDestroy(uint32)"), (token,).abi_encode(), 0)
+			.unwrap()
+	}
+
+	fn symbol(&self, token: TokenId) -> String {
+		self.call(ALICE, keccak_selector("symbol(uint32)"), (token,).abi_encode(), 0)
+			.unwrap()
+	}
+
+	fn total_supply(&self, token: TokenId) -> U256 {
+		U256::from_little_endian(
+			self.call::<alloy::U256>(
+				ALICE,
+				keccak_selector("totalSupply(uint32)"),
+				(token,).abi_encode(),
+				0,
+			)
+			.unwrap()
+			.as_le_slice(),
+		)
+	}
+
+	fn transfer(&mut self, origin: &AccountId, token: TokenId, to: H160, value: U256) {
+		let to = alloy::Address::from(to.0);
+		let value = alloy::U256::from_be_bytes(value.to_big_endian());
+		self.call(
+			origin.clone(),
+			keccak_selector("transfer(uint32,address,uint256)"),
+			(token, to, value).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn transfer_from(
+		&mut self,
+		origin: &AccountId,
+		token: TokenId,
+		from: H160,
+		to: H160,
+		value: U256,
+	) {
+		let from = alloy::Address::from(from.0);
+		let to = alloy::Address::from(to.0);
+		let value = alloy::U256::from_be_bytes(value.to_big_endian());
+		self.call(
+			origin.clone(),
+			keccak_selector("transferFrom(uint32,address,address,uint256)"),
+			(token, from, to, value).abi_encode(),
+			0,
+		)
+		.unwrap()
+	}
+
+	fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
+		&self,
+		origin: AccountId,
+		selector: [u8; 4],
+		params: Vec<u8>,
+		value: Balance,
+	) -> Result<T, ()> {
+		let origin = RuntimeOrigin::signed(origin);
+		let dest = self.address.clone();
+		let data = [selector.as_slice(), params.as_slice()].concat();
+		let result = bare_call(origin, dest, value, GAS_LIMIT, STORAGE_DEPOSIT_LIMIT, data)
+			.expect("should work");
+		match result.did_revert() {
+			true => {
+				println!("{:?}", result.data);
+				todo!("error conversion")
+			},
+			false => Ok(decode::<T>(&result.data)),
+		}
+	}
+}
+
+fn approve(origin: &AccountId, id: TokenId, delegate: &AccountId, amount: Balance) {
+	assert_ok!(Assets::approve_transfer(
+		RuntimeOrigin::signed(origin.clone()),
+		id.into(),
+		delegate.clone().into(),
+		amount,
+	));
+}
