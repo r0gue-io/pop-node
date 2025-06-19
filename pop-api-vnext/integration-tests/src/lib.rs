@@ -22,6 +22,7 @@ mod fungibles;
 
 const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
+const INIT_VALUE: Balance = 100 * UNIT;
 const STORAGE_DEPOSIT_LIMIT: DepositLimit<Balance> = DepositLimit::Balance(Balance::MAX);
 
 type AssetId = u32;
@@ -68,7 +69,7 @@ fn decode<T: SolValue + From<<T::SolType as SolType>::RustType>>(data: &[u8]) ->
 }
 
 // Deploy, instantiate and return contract address.
-fn instantiate(contract: impl AsRef<Path>, value: u128, salt: Option<[u8; 32]>) -> H160 {
+fn instantiate(contract: impl AsRef<Path>, value: Balance, salt: Option<[u8; 32]>) -> H160 {
 	let binary = std::fs::read(contract).expect("could not read .wasm file");
 
 	let result = Revive::bare_instantiate(
