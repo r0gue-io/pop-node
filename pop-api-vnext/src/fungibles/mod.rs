@@ -295,7 +295,7 @@ pub fn decrease_allowance(token: TokenId, spender: Address, value: U256) -> Resu
 
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
-	Ok(precompile.increaseAllowance(token, spender, value))
+	Ok(precompile.decreaseAllowance(token, spender, value))
 }
 
 /// Whether the specified token exists.

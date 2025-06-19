@@ -264,15 +264,112 @@ fn approve_works() {
 }
 
 #[test]
-#[ignore]
 fn increase_allowance_works() {
-	todo!()
+	let token = 1;
+	let owner = ALICE;
+	let amount: Balance = 100 * UNIT;
+	let delegate = BOB;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			// Instantiate a contract without balance - test `ConsumerRemaining.
+			let contract = Contract::new(0);
+			// Token does not exist.
+			// assert_eq!(
+			// 	increase_allowance(&addr, 0, &BOB, amount),
+			// 	Err(Module { index: 52, error: [3, 0] })
+			// );
+			mint(&owner, token, &contract.account_id(), amount);
+			// assert_eq!(contract.increase_allowance(&owner, token, &delegate, amount),
+			// Err(ConsumerRemaining));
+
+			// Instantiate a contract with balance.
+			let mut contract = Contract::new(INIT_VALUE);
+			// Create token with Alice as owner and mint `amount` to contract address.
+			mint(&owner, token, &contract.account_id(), amount);
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&owner, token);
+			// assert_eq!(
+			// 	contract.increase_allowance(&addr, token, &BOB, amount),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+			thaw(&owner, token);
+			// Successful approvals:
+			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &delegate));
+			assert_eq!(
+				contract.increase_allowance(
+					&contract.account_id(),
+					token,
+					to_address(&delegate),
+					amount.into()
+				),
+				amount.into()
+			);
+			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount);
+			// Additive.
+			assert_eq!(
+				contract.increase_allowance(
+					&contract.account_id(),
+					token,
+					to_address(&delegate),
+					amount.into()
+				),
+				(amount * 2).into()
+			);
+			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount * 2);
+			// Token is not live, i.e. frozen or being destroyed.
+			start_destroy(&owner, token);
+			// assert_eq!(
+			// 	contract.increase_allowance(&addr, token, &BOB, amount),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+		});
 }
 
 #[test]
-#[ignore]
 fn decrease_allowance_works() {
-	todo!()
+	let token = 1;
+	let owner = ALICE;
+	let amount: Balance = 100 * UNIT;
+	let delegate = BOB;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new(INIT_VALUE);
+
+			// Mint `amount` to contract address, then approve delegate to spend `amount`.
+			mint(&owner, token, &contract.account_id(), amount);
+			approve(&contract.account_id(), token, &delegate, amount);
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&owner, token);
+			// assert_eq!(
+			// 	decrease_allowance(&addr, token, &BOB, amount),
+			// 	Err(Module { index: 52, error: [16, 0] }),
+			// );
+			thaw(&owner, token);
+			// "Unapproved" error is returned if the current allowance is less than `value`.
+			// assert_eq!(
+			// 	decrease_allowance(&addr, token, &BOB, amount * 2),
+			// 	Err(Module { index: 52, error: [10, 0] }),
+			// );
+			// Successfully decrease allowance.
+			let amount = amount / 2 - 1 * UNIT;
+			let allowance_before = Assets::allowance(token, &contract.account_id(), &delegate);
+			assert_eq!(
+				contract.decrease_allowance(&owner, token, to_address(&delegate), amount.into()),
+				(allowance_before - amount).into()
+			);
+			let allowance_after = Assets::allowance(token, &contract.account_id(), &delegate);
+			assert_eq!(allowance_before - allowance_after, amount);
+			// Token is not live, i.e. frozen or being destroyed.
+			start_destroy(&owner, token);
+			// assert_eq!(
+			// 	contract.decrease_allowance(&addr, token, &delegate, 1 * UNIT),
+			// 	Err(Module { index: 52, error: [16, 0] }),
+			// );
+		});
 }
 
 #[test]
