@@ -21,7 +21,7 @@ fn total_supply_works() {
 		.with_asset_balances(vec![(token, BOB, endowment)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new(0);
+			let contract = Contract::new(&BOB, 0);
 
 			// Tokens in circulation.
 			assert_eq!(contract.total_supply(token), Assets::total_supply(token).into());
@@ -37,14 +37,14 @@ fn total_supply_works() {
 #[test]
 fn balance_of_works() {
 	let token = 1;
-	let owner = BOB;
+	let owner = ALICE;
 	let endowment = 100;
 	ExtBuilder::new()
-		.with_assets(vec![(token, ALICE, false, 1)])
+		.with_assets(vec![(token, BOB, false, 1)])
 		.with_asset_balances(vec![(token, owner.clone(), endowment)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new(0);
+			let contract = Contract::new(&CHARLIE, 0);
 
 			// Tokens in circulation.
 			assert_eq!(
@@ -66,14 +66,14 @@ fn balance_of_works() {
 #[test]
 fn allowance_works() {
 	let token = 1;
-	let owner = BOB;
-	let spender = ALICE;
+	let owner = ALICE;
+	let spender = BOB;
 	let allowance = 50;
 	ExtBuilder::new()
-		.with_assets(vec![(token, ALICE, false, 1)])
+		.with_assets(vec![(token, CHARLIE, false, 1)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new(0);
+			let contract = Contract::new(&CHARLIE, 0);
 
 			// Tokens in circulation.
 			approve(&owner, token, &spender, allowance);
@@ -109,7 +109,7 @@ fn transfer_works() {
 		.with_assets(vec![(token, owner.clone(), false, 1)])
 		.build()
 		.execute_with(|| {
-			let mut contract = Contract::new(0);
+			let mut contract = Contract::new(&owner, 0);
 
 			// Token does not exist.
 			// assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0]
@@ -134,9 +134,9 @@ fn transfer_works() {
 			// 	Err(Module { index: 52, error: [0, 0] })
 			// );
 			// Successful transfer.
-			let balance_before_transfer = Assets::balance(token, &BOB);
-			contract.transfer(&owner, token, to_address(&to), (amount / 2).into());
-			let balance_after_transfer = Assets::balance(token, &BOB);
+			let balance_before_transfer = Assets::balance(token, &to);
+			contract.transfer(token, to_address(&to), (amount / 2).into());
+			let balance_after_transfer = Assets::balance(token, &to);
 			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 			// Successfully emit event.
 			let from = contract.address;
@@ -145,13 +145,13 @@ fn transfer_works() {
 			assert_eq!(contract.last_event(), expected);
 			// Transfer token to account that does not exist.
 			// assert_eq!(
-			// 	contract.transfer(&owner, token, to_address(&CHARLIE), (amount / 4).into()),
+			// 	contract.transfer(token, to_address(&CHARLIE), (amount / 4).into()),
 			// 	Err(Token(CannotCreate))
 			// );
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
 			// assert_eq!(
-			// 	contract.transfer(&addr, token, BOB, amount / 4),
+			// 	contract.transfer(token, BOB, amount / 4),
 			// 	Err(Module { index: 52, error: [16, 0] })
 			// );
 		});
@@ -168,7 +168,7 @@ fn transfer_from_works() {
 		.with_asset_balances(vec![(token, owner.clone(), amount)])
 		.build()
 		.execute_with(|| {
-			let mut contract = Contract::new(0);
+			let mut contract = Contract::new(&owner, 0);
 
 			// Token does not exist.
 			// assert_eq!(
@@ -195,15 +195,9 @@ fn transfer_from_works() {
 			// 	Err(Module { index: 52, error: [0, 0] }),
 			// );
 			// Successful transfer.
-			let balance_before_transfer = Assets::balance(token, &BOB);
-			contract.transfer_from(
-				&owner,
-				token,
-				to_address(&owner),
-				to_address(&to),
-				(amount / 2).into(),
-			);
-			let balance_after_transfer = Assets::balance(token, &BOB);
+			let balance_before_transfer = Assets::balance(token, &to);
+			contract.transfer_from(token, to_address(&owner), to_address(&to), (amount / 2).into());
+			let balance_after_transfer = Assets::balance(token, &to);
 			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 			// Successfully emit event.
 			let from = to_address(&owner);
@@ -217,20 +211,20 @@ fn transfer_from_works() {
 fn approve_works() {
 	let token = 1;
 	let owner = ALICE;
+	let spender = BOB;
 	let amount: Balance = 100 * UNIT;
-	let delegate = BOB;
 	ExtBuilder::new()
 		.with_assets(vec![(token, owner.clone(), false, 1)])
-		.with_asset_balances(vec![(token, owner.clone(), amount)])
+		//.with_asset_balances(vec![(token, owner.clone(), amount)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new(0);
+			let contract = Contract::new(&owner, 0);
 
 			// Token does not exist.
 			// assert_eq!(contract.approve(&addr, TokenId::MAX, &BOB, amount), Err(Module { index:
 			// 52, error: [3, 0] }));
 			// assert_eq!(contract.approve(&addr, token, &BOB, amount), Err(ConsumerRemaining));
-			let mut contract = Contract::new(INIT_VALUE);
+			let mut contract = Contract::new(&owner, INIT_VALUE);
 			// Mint `amount` to contract address.
 			mint(&owner, token, &contract.account_id(), amount);
 			// Token is not live, i.e. frozen or being destroyed.
@@ -241,17 +235,20 @@ fn approve_works() {
 			// );
 			thaw(&owner, token);
 			// Successful approvals.
-			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &delegate));
-			contract.approve(&contract.account_id(), token, to_address(&delegate), amount.into());
-			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount);
+			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &spender));
+			contract.approve(token, to_address(&spender), amount.into());
+			assert_eq!(Assets::allowance(token, &contract.account_id(), &spender), amount);
 			// Successfully emit event.
-			let spender = to_address(&delegate);
+			let spender = to_address(&spender);
 			let expected =
 				Approval { owner: contract.address, spender, value: amount.into() }.encode();
 			assert_eq!(contract.last_event(), expected);
 			// Non-additive, sets new value.
-			contract.approve(&contract.account_id(), token, spender, (amount / 2).into());
-			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount / 2);
+			contract.approve( token, spender, (amount / 2).into());
+			assert_eq!(
+				Assets::allowance(token, &contract.account_id(), &to_account_id(&spender)),
+				amount / 2
+			);
 			// Successfully emit event.
 			let expected =
 				Approval { owner: contract.address, spender, value: (amount / 2).into() }.encode();
@@ -269,14 +266,14 @@ fn approve_works() {
 fn increase_allowance_works() {
 	let token = 1;
 	let owner = ALICE;
+	let spender = BOB;
 	let amount: Balance = 100 * UNIT;
-	let delegate = BOB;
 	ExtBuilder::new()
 		.with_assets(vec![(token, owner.clone(), false, 1)])
 		.build()
 		.execute_with(|| {
 			// Instantiate a contract without balance - test `ConsumerRemaining.
-			let contract = Contract::new(0);
+			let contract = Contract::new(&owner, 0);
 			// Token does not exist.
 			// assert_eq!(
 			// 	increase_allowance(&addr, 0, &BOB, amount),
@@ -287,7 +284,7 @@ fn increase_allowance_works() {
 			// Err(ConsumerRemaining));
 
 			// Instantiate a contract with balance.
-			let mut contract = Contract::new(INIT_VALUE);
+			let mut contract = Contract::new(&owner, INIT_VALUE);
 			// Create token with Alice as owner and mint `amount` to contract address.
 			mint(&owner, token, &contract.account_id(), amount);
 			// Token is not live, i.e. frozen or being destroyed.
@@ -298,28 +295,18 @@ fn increase_allowance_works() {
 			// );
 			thaw(&owner, token);
 			// Successful approvals:
-			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &delegate));
+			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &spender));
 			assert_eq!(
-				contract.increase_allowance(
-					&contract.account_id(),
-					token,
-					to_address(&delegate),
-					amount.into()
-				),
+				contract.increase_allowance(token, to_address(&spender), amount.into()),
 				amount.into()
 			);
-			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount);
+			assert_eq!(Assets::allowance(token, &contract.account_id(), &spender), amount);
 			// Additive.
 			assert_eq!(
-				contract.increase_allowance(
-					&contract.account_id(),
-					token,
-					to_address(&delegate),
-					amount.into()
-				),
+				contract.increase_allowance(token, to_address(&spender), amount.into()),
 				(amount * 2).into()
 			);
-			assert_eq!(Assets::allowance(token, &contract.account_id(), &delegate), amount * 2);
+			assert_eq!(Assets::allowance(token, &contract.account_id(), &spender), amount * 2);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
 			// assert_eq!(
@@ -333,17 +320,17 @@ fn increase_allowance_works() {
 fn decrease_allowance_works() {
 	let token = 1;
 	let owner = ALICE;
+	let spender = BOB;
 	let amount: Balance = 100 * UNIT;
-	let delegate = BOB;
 	ExtBuilder::new()
 		.with_assets(vec![(token, owner.clone(), false, 1)])
 		.build()
 		.execute_with(|| {
-			let mut contract = Contract::new(INIT_VALUE);
+			let mut contract = Contract::new(&owner, INIT_VALUE);
 
 			// Mint `amount` to contract address, then approve delegate to spend `amount`.
 			mint(&owner, token, &contract.account_id(), amount);
-			approve(&contract.account_id(), token, &delegate, amount);
+			approve(&contract.account_id(), token, &spender, amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
 			// assert_eq!(
@@ -358,12 +345,12 @@ fn decrease_allowance_works() {
 			// );
 			// Successfully decrease allowance.
 			let amount = amount / 2 - 1 * UNIT;
-			let allowance_before = Assets::allowance(token, &contract.account_id(), &delegate);
+			let allowance_before = Assets::allowance(token, &contract.account_id(), &spender);
 			assert_eq!(
-				contract.decrease_allowance(&owner, token, to_address(&delegate), amount.into()),
+				contract.decrease_allowance(token, to_address(&spender), amount.into()),
 				(allowance_before - amount).into()
 			);
-			let allowance_after = Assets::allowance(token, &contract.account_id(), &delegate);
+			let allowance_after = Assets::allowance(token, &contract.account_id(), &spender);
 			assert_eq!(allowance_before - allowance_after, amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
@@ -377,20 +364,16 @@ fn decrease_allowance_works() {
 #[test]
 fn metadata_works() {
 	let token = 1;
+	let owner = ALICE;
 	let name = "name".to_string();
 	let symbol = "symbol".to_string();
 	let decimals: u8 = 69;
 	ExtBuilder::new()
-		.with_assets(vec![(token, ALICE, false, 1)])
-		.with_asset_metadata(vec![(
-			token,
-			name.as_bytes().to_vec(),
-			symbol.as_bytes().to_vec(),
-			decimals,
-		)])
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.with_asset_metadata(vec![(token, name.clone().into(), symbol.clone().into(), decimals)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new(0);
+			let contract = Contract::new(&owner, 0);
 
 			// Existing token.
 			assert_eq!(contract.name(token).as_bytes(), Assets::name(token).as_slice());
@@ -410,30 +393,29 @@ fn metadata_works() {
 
 #[test]
 fn create_works() {
-	let creator = ALICE;
-	let admin = BOB;
+	let owner = ALICE;
 	ExtBuilder::new().build().execute_with(|| {
 		// Instantiate a contract without balance for fees.
-		let contract = Contract::new(0);
+		let contract = Contract::new(&owner, 0);
 		// No balance to pay for fees.
 		// assert_eq!(contract.create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2,
 		// 0] }),);
 
 		// Instantiate a contract with insufficient balance for deposit.
-		let contract = Contract::new(100);
+		let contract = Contract::new(&owner, 100);
 		// No balance to pay the deposit.
 		// assert_eq!(contract.create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2,
 		// 0] }),);
 
 		// Instantiate a contract with enough balance.
-		let mut contract = Contract::new(INIT_VALUE);
+		let mut contract = Contract::new(&owner, INIT_VALUE);
 		// }),); The minimal balance for a token must be non zero.
 		// assert_eq!(contract.create(&addr, &admin, 0), Err(Module { index: 52, error: [7, 0] }),);
 		// Create token successfully.
-		let token = contract.create(&creator, to_address(&admin), 1.into());
+		let admin = to_address(&owner);
+		let token = contract.create(admin, 1.into());
 		assert_eq!(Assets::owner(token), Some(contract.account_id()));
 		// Successfully emit event.
-		let admin = to_address(&admin);
 		let expected = Created { id: token, creator: contract.address, admin }.encode();
 		assert_eq!(contract.last_event(), expected);
 		// Token ID is already taken.
@@ -456,23 +438,23 @@ fn start_destroy_works() {
 	let token = 0;
 	let owner = ALICE;
 	ExtBuilder::new()
-		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.with_assets(vec![(token, CHARLIE, false, 1)])
 		.build()
 		.execute_with(|| {
-			let mut contract = Contract::new(INIT_VALUE);
+			let mut contract = Contract::new(&owner, INIT_VALUE);
 
 			// Token does not exist.
 			// assert_eq!(
-			// 	contract.start_destroy(&owner, TokenId::MAX),
+			// 	contract.start_destroy(&creator, TokenId::MAX),
 			// 	Err(Module { index: 52, error: [3, 0] }),
 			// );
 			// No Permission.
 			// assert_eq!(
-			// 	contract.start_destroy(&owner, token),
+			// 	contract.start_destroy(&creator, token),
 			// 	Err(Module { index: 52, error: [2, 0] }),
 			// );
-			let token = contract.create(&owner, to_address(&owner), 1.into());
-			contract.start_destroy(&owner, token);
+			let token = contract.create(to_address(&owner), 1.into());
+			contract.start_destroy(token);
 			// Successfully emit event.
 			let expected = DestroyStarted { token }.encode();
 			assert_eq!(contract.last_event(), expected);
@@ -494,11 +476,12 @@ fn clear_metadata_works() {
 #[test]
 fn exists_works() {
 	let token = 1;
+	let owner = ALICE;
 	ExtBuilder::new()
-		.with_assets(vec![(token, ALICE, false, 1)])
+		.with_assets(vec![(token, owner.clone(), false, 1)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new(0);
+			let contract = Contract::new(&owner, 0);
 
 			// Tokens in circulation.
 			assert_eq!(contract.exists(token), Assets::asset_exists(token));
@@ -524,14 +507,16 @@ fn burn_works() {
 // A simple, strongly typed wrapper for the contract.
 struct Contract {
 	address: H160,
+	creator: AccountId,
 }
 
 impl Contract {
 	// Create a new instance of the contract through on-chain instantiation.
-	fn new(value: Balance) -> Self {
+	fn new(origin: &AccountId, value: Balance) -> Self {
 		let salt = twox_256(&value.to_le_bytes());
-		let address = instantiate(CONTRACT, value, Some(salt));
-		Self { address }
+		let address =
+			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, Some(salt));
+		Self { address, creator: origin.clone() }
 	}
 
 	fn allowance(&self, token: TokenId, owner: H160, spender: H160) -> U256 {
@@ -539,7 +524,7 @@ impl Contract {
 		let spender = alloy::Address::from(spender.0);
 		U256::from_little_endian(
 			self.call::<alloy::U256>(
-				ALICE,
+				&self.creator,
 				keccak_selector("allowance(uint32,address,address)"),
 				(token, owner, spender).abi_encode(),
 				0,
@@ -549,11 +534,11 @@ impl Contract {
 		)
 	}
 
-	fn approve(&mut self, origin: &AccountId, token: TokenId, spender: H160, value: U256) {
+	fn approve(&mut self, token: TokenId, spender: H160, value: U256) {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		self.call(
-			origin.clone(),
+			&self.creator,
 			keccak_selector("approve(uint32,address,uint256)"),
 			(token, spender, value).abi_encode(),
 			0,
@@ -565,7 +550,7 @@ impl Contract {
 		let owner = alloy::Address::from(owner.0);
 		U256::from_little_endian(
 			self.call::<alloy::U256>(
-				ALICE,
+				&self.creator,
 				keccak_selector("balanceOf(uint32,address)"),
 				(token, owner).abi_encode(),
 				0,
@@ -575,11 +560,11 @@ impl Contract {
 		)
 	}
 
-	fn burn(&mut self, origin: &AccountId, token: TokenId, account: H160, value: U256) {
+	fn burn(&mut self, token: TokenId, account: H160, value: U256) {
 		let account = alloy::Address::from(account.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		self.call(
-			origin.clone(),
+			&self.creator,
 			keccak_selector("burn(uint32,address,uint256)"),
 			(token, account, value).abi_encode(),
 			0,
@@ -587,21 +572,16 @@ impl Contract {
 		.unwrap()
 	}
 
-	fn clear_metadata(&mut self, origin: &AccountId, token: TokenId) {
-		self.call(
-			origin.clone(),
-			keccak_selector("clearMetadata(uint32)"),
-			(token,).abi_encode(),
-			0,
-		)
-		.unwrap()
+	fn clear_metadata(&mut self, token: TokenId) {
+		self.call(&self.creator, keccak_selector("clearMetadata(uint32)"), (token,).abi_encode(), 0)
+			.unwrap()
 	}
 
-	fn create(&mut self, origin: &AccountId, admin: H160, min_balance: U256) -> TokenId {
+	fn create(&mut self, admin: H160, min_balance: U256) -> TokenId {
 		let admin = alloy::Address::from(admin.0);
 		let min_balance = alloy::U256::from_be_bytes(min_balance.to_big_endian());
 		self.call(
-			origin.clone(),
+			&self.creator,
 			keccak_selector("create(address,uint256)"),
 			(admin, min_balance).abi_encode(),
 			0,
@@ -610,22 +590,21 @@ impl Contract {
 	}
 
 	fn decimals(&self, token: TokenId) -> u8 {
-		self.call::<u16>(ALICE, keccak_selector("decimals(uint32)"), (token,).abi_encode(), 0)
-			.unwrap() as u8
+		self.call::<u16>(
+			&self.creator,
+			keccak_selector("decimals(uint32)"),
+			(token,).abi_encode(),
+			0,
+		)
+		.unwrap() as u8
 	}
 
-	fn decrease_allowance(
-		&mut self,
-		origin: &AccountId,
-		token: TokenId,
-		spender: H160,
-		value: U256,
-	) -> U256 {
+	fn decrease_allowance(&mut self, token: TokenId, spender: H160, value: U256) -> U256 {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		U256::from_little_endian(
 			self.call::<alloy::U256>(
-				origin.clone(),
+				&self.creator,
 				keccak_selector("decreaseAllowance(uint32,address,uint256)"),
 				(token, spender, value).abi_encode(),
 				0,
@@ -636,22 +615,16 @@ impl Contract {
 	}
 
 	fn exists(&self, token: TokenId) -> bool {
-		self.call(ALICE, keccak_selector("exists(uint32)"), (token,).abi_encode(), 0)
+		self.call(&self.creator, keccak_selector("exists(uint32)"), (token,).abi_encode(), 0)
 			.unwrap()
 	}
 
-	fn increase_allowance(
-		&mut self,
-		origin: &AccountId,
-		token: TokenId,
-		spender: H160,
-		value: U256,
-	) -> U256 {
+	fn increase_allowance(&mut self, token: TokenId, spender: H160, value: U256) -> U256 {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		U256::from_little_endian(
 			self.call::<alloy::U256>(
-				origin.clone(),
+				&self.creator,
 				keccak_selector("increaseAllowance(uint32,address,uint256)"),
 				(token, spender, value).abi_encode(),
 				0,
@@ -661,11 +634,11 @@ impl Contract {
 		)
 	}
 
-	fn mint(&mut self, origin: &AccountId, token: TokenId, account: H160, value: U256) {
+	fn mint(&mut self, token: TokenId, account: H160, value: U256) {
 		let account = alloy::Address::from(account.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		self.call(
-			origin.clone(),
+			&self.creator,
 			keccak_selector("mint(uint32,address,uint256)"),
 			(token, account, value).abi_encode(),
 			0,
@@ -674,20 +647,13 @@ impl Contract {
 	}
 
 	fn name(&self, token: TokenId) -> String {
-		self.call(ALICE, keccak_selector("name(uint32)"), (token,).abi_encode(), 0)
+		self.call(&self.creator, keccak_selector("name(uint32)"), (token,).abi_encode(), 0)
 			.unwrap()
 	}
 
-	fn set_metadata(
-		&mut self,
-		origin: &AccountId,
-		token: TokenId,
-		name: String,
-		symbol: String,
-		decimals: u8,
-	) {
+	fn set_metadata(&mut self, token: TokenId, name: String, symbol: String, decimals: u8) {
 		self.call(
-			origin.clone(),
+			&self.creator,
 			keccak_selector("setMetadata(uint32,string,string,uint8)"),
 			(token, name, symbol, decimals as u16).abi_encode(),
 			0,
@@ -695,20 +661,20 @@ impl Contract {
 		.unwrap()
 	}
 
-	fn start_destroy(&mut self, origin: &AccountId, token: TokenId) {
-		self.call(origin.clone(), keccak_selector("startDestroy(uint32)"), (token,).abi_encode(), 0)
+	fn start_destroy(&mut self, token: TokenId) {
+		self.call(&self.creator, keccak_selector("startDestroy(uint32)"), (token,).abi_encode(), 0)
 			.unwrap()
 	}
 
 	fn symbol(&self, token: TokenId) -> String {
-		self.call(ALICE, keccak_selector("symbol(uint32)"), (token,).abi_encode(), 0)
+		self.call(&self.creator, keccak_selector("symbol(uint32)"), (token,).abi_encode(), 0)
 			.unwrap()
 	}
 
 	fn total_supply(&self, token: TokenId) -> U256 {
 		U256::from_little_endian(
 			self.call::<alloy::U256>(
-				ALICE,
+				&self.creator,
 				keccak_selector("totalSupply(uint32)"),
 				(token,).abi_encode(),
 				0,
@@ -718,11 +684,11 @@ impl Contract {
 		)
 	}
 
-	fn transfer(&mut self, origin: &AccountId, token: TokenId, to: H160, value: U256) {
+	fn transfer(&mut self, token: TokenId, to: H160, value: U256) {
 		let to = alloy::Address::from(to.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		self.call(
-			origin.clone(),
+			&self.creator,
 			keccak_selector("transfer(uint32,address,uint256)"),
 			(token, to, value).abi_encode(),
 			0,
@@ -730,19 +696,12 @@ impl Contract {
 		.unwrap()
 	}
 
-	fn transfer_from(
-		&mut self,
-		origin: &AccountId,
-		token: TokenId,
-		from: H160,
-		to: H160,
-		value: U256,
-	) {
+	fn transfer_from(&mut self, token: TokenId, from: H160, to: H160, value: U256) {
 		let from = alloy::Address::from(from.0);
 		let to = alloy::Address::from(to.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		self.call(
-			origin.clone(),
+			&self.creator,
 			keccak_selector("transferFrom(uint32,address,address,uint256)"),
 			(token, from, to, value).abi_encode(),
 			0,
@@ -756,12 +715,12 @@ impl Contract {
 
 	fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
 		&self,
-		origin: AccountId,
+		origin: &AccountId,
 		selector: [u8; 4],
 		params: Vec<u8>,
 		value: Balance,
 	) -> Result<T, ()> {
-		let origin = RuntimeOrigin::signed(origin);
+		let origin = RuntimeOrigin::signed(origin.clone());
 		let dest = self.address.clone();
 		let data = [selector.as_slice(), params.as_slice()].concat();
 		let result = bare_call(origin, dest, value, GAS_LIMIT, STORAGE_DEPOSIT_LIMIT, data)

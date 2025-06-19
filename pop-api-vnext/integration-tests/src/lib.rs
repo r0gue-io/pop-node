@@ -9,7 +9,7 @@ use pallet_revive::{
 		primitives as alloy,
 		sol_types::{SolType, SolValue},
 	},
-	test_utils::{ALICE, BOB},
+	test_utils::{ALICE, BOB, CHARLIE},
 	AccountId32Mapper, AddressMapper, Code, DepositLimit, ExecReturnValue, H160, U256,
 };
 #[cfg(feature = "devnet")]
@@ -69,11 +69,16 @@ fn decode<T: SolValue + From<<T::SolType as SolType>::RustType>>(data: &[u8]) ->
 }
 
 // Deploy, instantiate and return contract address.
-fn instantiate(contract: impl AsRef<Path>, value: Balance, salt: Option<[u8; 32]>) -> H160 {
+fn instantiate(
+	origin: RuntimeOrigin,
+	contract: impl AsRef<Path>,
+	value: Balance,
+	salt: Option<[u8; 32]>,
+) -> H160 {
 	let binary = std::fs::read(contract).expect("could not read .wasm file");
 
 	let result = Revive::bare_instantiate(
-		RuntimeOrigin::signed(ALICE),
+		origin,
 		value,
 		GAS_LIMIT,
 		DepositLimit::Balance(Balance::MAX),
@@ -141,8 +146,8 @@ impl ExtBuilder {
 			.expect("Frame system builds valid default genesis config");
 
 		pallet_balances::GenesisConfig::<Runtime> {
-			// CHARLIE has no initial balance.
-			balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT)],
+			// DJANGO has no initial balance.
+			balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)],
 			..Default::default()
 		}
 		.assimilate_storage(&mut t)
