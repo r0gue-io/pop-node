@@ -146,7 +146,7 @@ fn transfer_works() {
 			// 	Err(Token(CannotCreate))
 			// );
 			// Token is not live, i.e. frozen or being destroyed.
-			start_destroy(&ALICE, token);
+			start_destroy(&owner, token);
 			// assert_eq!(
 			// 	contract.transfer(&addr, token, BOB, amount / 4),
 			// 	Err(Module { index: 52, error: [16, 0] })
@@ -155,9 +155,59 @@ fn transfer_works() {
 }
 
 #[test]
-#[ignore]
 fn transfer_from_works() {
-	todo!()
+	let token = 1;
+	let owner = ALICE;
+	let amount: Balance = 100 * UNIT;
+	let to = BOB;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.with_asset_balances(vec![(token, owner.clone(), amount)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new();
+
+			// Token does not exist.
+			// assert_eq!(
+			// 	transfer_from(&addr, 1, ALICE, BOB, amount / 2),
+			// 	Err(Module { index: 52, error: [3, 0] }),
+			// );
+			// Unapproved transfer.
+			// assert_eq!(
+			// 	transfer_from(&addr, token, ALICE, BOB, amount / 2),
+			// 	Err(Module { index: 52, error: [10, 0] })
+			// );
+			// Approve the contract to transfer on behalf of owner.
+			approve(&owner, token, &to_account_id(&contract.address), amount + 1 * UNIT);
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&owner, token);
+			// assert_eq!(
+			// 	transfer_from(&addr, token, ALICE, BOB, amount),
+			// 	Err(Module { index: 52, error: [16, 0] }),
+			// );
+			thaw(&owner, token);
+			// Not enough balance.
+			// assert_eq!(
+			// 	transfer_from(&addr, token, ALICE, BOB, amount + 1 * UNIT),
+			// 	Err(Module { index: 52, error: [0, 0] }),
+			// );
+			// Successful transfer.
+			let balance_before_transfer = Assets::balance(token, &BOB);
+			contract.transfer_from(
+				&owner,
+				token,
+				to_address(&owner),
+				to_address(&to),
+				(amount / 2).into(),
+			);
+			let balance_after_transfer = Assets::balance(token, &BOB);
+			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+			// Successfully emit event.
+			let from = to_address(&owner);
+			let to = to_address(&to);
+			let expected = Transfer { from, to, value: (amount / 2).into() }.encode();
+			assert_eq!(contract.last_event(), expected);
+		});
 }
 
 #[test]
