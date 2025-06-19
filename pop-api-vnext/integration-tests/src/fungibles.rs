@@ -1,8 +1,10 @@
 use frame_support::{
 	pallet_prelude::Encode,
-	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _, Inspect as _},
+	traits::fungibles::{
+		approvals::Inspect as _, metadata::Inspect as _, roles::Inspect as _, Inspect as _,
+	},
 };
-use pop_api::fungibles::{Approval, Transfer};
+use pop_api::fungibles::events::*;
 use pop_primitives::TokenId;
 use sp_io::hashing::twox_256;
 
@@ -407,9 +409,40 @@ fn metadata_works() {
 }
 
 #[test]
-#[ignore]
 fn create_works() {
-	todo!()
+	let token = 1;
+	let creator = ALICE;
+	let admin = BOB;
+	ExtBuilder::new().build().execute_with(|| {
+		// Instantiate a contract without balance for fees.
+		let contract = Contract::new(0);
+		// No balance to pay for fees.
+		// assert_eq!(contract.create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2,
+		// 0] }),);
+
+		// Instantiate a contract with insufficient balance for deposit.
+		let contract = Contract::new(100);
+		// No balance to pay the deposit.
+		// assert_eq!(contract.create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2,
+		// 0] }),);
+
+		// Instantiate a contract with enough balance.
+		let mut contract = Contract::new(INIT_VALUE);
+		// }),); The minimal balance for a token must be non zero.
+		// assert_eq!(contract.create(&addr, &admin, 0), Err(Module { index: 52, error: [7, 0] }),);
+		// Create token successfully.
+		let token = contract.create(&creator, to_address(&admin), 1.into());
+		assert_eq!(Assets::owner(token), Some(contract.account_id()));
+		// Successfully emit event.
+		let admin = to_address(&admin);
+		let expected = Created { id: token, creator: contract.address, admin }.encode();
+		assert_eq!(contract.last_event(), expected);
+		// Token ID is already taken.
+		// assert_eq!(
+		// 	contract.create(&addr, TOKEN_ID, &BOB, 1),
+		// 	Err(Module { index: 52, error: [5, 0] }),
+		// );
+	});
 }
 
 // Testing a contract that creates a token in the constructor.
