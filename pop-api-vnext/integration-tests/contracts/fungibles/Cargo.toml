@@ -1,0 +1,29 @@
+[package]
+authors = [ "R0GUE <go@r0gue.io>" ]
+edition = "2021"
+name = "fungibles"
+version = "0.1.0"
+
+[package.metadata.ink-lang]
+abi = "sol"
+
+[workspace]
+
+[dependencies]
+ink = { git = "https://github.com/use-ink/ink", branch = "semakula/sol-abi", default-features = false, features = [ "unstable-hostfn" ] }
+pop-api = { path = "../../../../pop-api-vnext", default-features = false, features = [ "fungibles" ] }
+
+[dev-dependencies]
+scale-info = { version = "2" }
+
+[lib]
+path = "lib.rs"
+
+[features]
+default = [ "std" ]
+ink-as-dependency = [  ]
+std = [ "ink/std", "pop-api/std" ]
+
+[lints.rust.unexpected_cfgs]
+check-cfg = [ 'cfg(ink_abi, values("ink", "sol", "all"))' ]
+level = "warn"
