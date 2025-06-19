@@ -4,6 +4,9 @@ edition = "2021"
 name = "pop-api-vnext-integration-tests"
 version = "0.1.0"
 
+[package.metadata.ink-lang]
+abi = "sol"
+
 [build-dependencies]
 contract-build = { git = "https://github.com/use-ink/cargo-contract" }
 
@@ -16,11 +19,7 @@ log.workspace = true
 pallet-assets = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-revive = { workspace = true, default-features = false }
-pop-api = { path = "../../pop-api", default-features = false, features = [
-	"fungibles",
-	"messaging",
-	"nonfungibles",
-] }
+pop-api = { path = "../../pop-api-vnext", default-features = false, features = [ "fungibles" ] }
 pop-primitives = { workspace = true, default-features = false }
 pop-runtime-devnet.workspace = true
 pop-runtime-testnet.workspace = true
