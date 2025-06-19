@@ -2,9 +2,9 @@ name: ci
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    types: [ opened, synchronize, reopened, ready_for_review ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   # Cancel any in-progress jobs for the same pull request
@@ -149,6 +149,17 @@ jobs:
 
       - name: Run API integration tests
         run: cargo test -p pop-api-integration-tests --release --locked --features "${{ matrix.features }}"
+
+  api-vnext-integration-tests:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: "./.github/actions/init"
+
+      - name: Run API integration tests
+        run: cargo test -p pop-api-vnext-integration-tests --release --locked
 
   api-tests:
     runs-on: ubuntu-latest
