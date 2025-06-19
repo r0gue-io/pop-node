@@ -153,6 +153,8 @@ jobs:
   api-vnext-integration-tests:
     needs: lint
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: '--cfg ink_abi="sol"'
     steps:
       - uses: actions/checkout@v4
 
