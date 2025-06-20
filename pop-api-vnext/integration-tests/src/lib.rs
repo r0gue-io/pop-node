@@ -75,7 +75,7 @@ fn instantiate(
 	value: Balance,
 	salt: Option<[u8; 32]>,
 ) -> H160 {
-	let binary = std::fs::read(contract).expect("could not read .wasm file");
+	let binary = std::fs::read(contract).expect("could not read .polkavm file");
 
 	let result = Revive::bare_instantiate(
 		origin,
