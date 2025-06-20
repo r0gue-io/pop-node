@@ -92,6 +92,7 @@ pub mod fungibles {
 		#[ink(message)]
 		fn clearMetadata(&self, token: TokenId) {
 			api::clear_metadata(token);
+			self.env().emit_event(MetadataCleared { token });
 		}
 
 		#[ink(message)]

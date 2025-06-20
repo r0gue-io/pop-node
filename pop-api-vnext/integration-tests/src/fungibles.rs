@@ -493,6 +493,10 @@ fn set_metadata_works() {
 		// );
 		// Set metadata successfully.
 		contract.set_metadata(token, name.clone(), symbol.clone(), decimals);
+		assert_eq!(
+			(&contract.name(token), &contract.symbol(token), &contract.decimals(token)),
+			(&name, &symbol, &decimals)
+		);
 		// Successfully emit event.
 		let expected = MetadataSet { token, name, symbol, decimals }.encode();
 		assert_eq!(contract.last_event(), expected);
@@ -506,9 +510,50 @@ fn set_metadata_works() {
 }
 
 #[test]
-#[ignore]
 fn clear_metadata_works() {
-	todo!()
+	let token = 0;
+	let owner = ALICE;
+	let name = "name".to_string();
+	let symbol = "symbol".to_string();
+	let decimals: u8 = 69;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new(&owner, INIT_VALUE);
+
+			// Token does not exist.
+			// assert_eq!(contract.clear_metadata(TokenId::MAX), Err(Module { index: 52, error: [3,
+			// 0] }),);
+			// No Permission.
+			// assert_eq!(contract.clear_metadata(token), Err(Module { index: 52, error: [2, 0]
+			// }),);
+			let token = contract.create(to_address(&owner), 1.into());
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&owner, token);
+			// assert_eq!(
+			// 	contract.clear_metadata(&addr, token),
+			// 	Err(Module { index: 52, error: [16, 0] }),
+			// );
+			thaw(&owner, token);
+			// No metadata set.
+			// assert_eq!(
+			// 	contract.clear_metadata(&addr, token),
+			// 	Err(Module { index: 52, error: [3, 0] }),
+			// );
+			contract.set_metadata(token, name, symbol, decimals);
+			// Clear metadata successfully.
+			contract.clear_metadata(token);
+			// Successfully emit event.
+			let expected = MetadataCleared { token }.encode();
+			assert_eq!(contract.last_event(), expected);
+			// Token is not live, i.e. frozen or being destroyed.
+			start_destroy(&contract.account_id(), token);
+			// assert_eq!(
+			// 	contract.set_metadata(&addr, TOKEN_ID, vec![0], vec![0], decimals),
+			// 	Err(Module { index: 52, error: [16, 0] }),
+			// );
+		});
 }
 
 #[test]
@@ -611,8 +656,13 @@ impl Contract {
 	}
 
 	fn clear_metadata(&mut self, token: TokenId) {
-		self.call(&self.creator, keccak_selector("clearMetadata(uint32)"), (token,).abi_encode(), 0)
-			.unwrap()
+		self.call(
+			&self.account_id(), // clear_metadata restricted to asset owner
+			keccak_selector("clearMetadata(uint32)"),
+			(token,).abi_encode(),
+			0,
+		)
+		.unwrap()
 	}
 
 	fn create(&mut self, admin: H160, min_balance: U256) -> TokenId {
@@ -691,7 +741,7 @@ impl Contract {
 
 	fn set_metadata(&mut self, token: TokenId, name: String, symbol: String, decimals: u8) {
 		self.call(
-			&self.creator,
+			&self.account_id(), // set_metadata restricted to asset owner
 			keccak_selector("setMetadata(uint32,string,string,uint8)"),
 			(token, name, symbol, decimals as u16).abi_encode(),
 			0,
