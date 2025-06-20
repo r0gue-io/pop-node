@@ -433,9 +433,21 @@ fn create_works() {
 
 // Testing a contract that creates a token in the constructor.
 #[test]
-#[ignore]
 fn instantiate_and_create_fungible_works() {
-	todo!()
+	let token = 1;
+	let owner = ALICE;
+	ExtBuilder::new().build().execute_with(|| {
+		assert!(!Assets::asset_exists(token));
+
+		// Successfully create a token when instantiating the contract.
+		let mut contract = Contract::new_with_create(&owner, INIT_VALUE, 1.into());
+		assert_eq!(Assets::owner(token), Some(contract.account_id()));
+		assert!(Assets::asset_exists(token));
+		// Successfully emit event.
+		let creator = to_address(&owner);
+		let expected = Created { id: token, creator, admin: contract.address }.encode();
+		assert_eq!(contract.last_event(), expected);
+	});
 }
 
 #[test]
@@ -690,9 +702,20 @@ struct Contract {
 impl Contract {
 	// Create a new instance of the contract through on-chain instantiation.
 	fn new(origin: &AccountId, value: Balance) -> Self {
+		let data = blake_selector("new").to_vec();
+		let salt = twox_256(&value.to_le_bytes());
+
+		let address =
+			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, data, Some(salt));
+		Self { address, creator: origin.clone() }
+	}
+
+	// Create a new instance of the contract through on-chain instantiation.
+	fn new_with_create(origin: &AccountId, value: Balance, min_balance: U256) -> Self {
+		let data = [blake_selector("create").to_vec(), min_balance.encode()].concat();
 		let salt = twox_256(&value.to_le_bytes());
 		let address =
-			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, Some(salt));
+			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, data, Some(salt));
 		Self { address, creator: origin.clone() }
 	}
 

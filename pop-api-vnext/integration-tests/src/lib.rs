@@ -73,6 +73,7 @@ fn instantiate(
 	origin: RuntimeOrigin,
 	contract: impl AsRef<Path>,
 	value: Balance,
+	data: Vec<u8>,
 	salt: Option<[u8; 32]>,
 ) -> H160 {
 	let binary = std::fs::read(contract).expect("could not read .polkavm file");
@@ -83,7 +84,7 @@ fn instantiate(
 		GAS_LIMIT,
 		DepositLimit::Balance(Balance::MAX),
 		Code::Upload(binary),
-		blake_selector("new").to_vec(),
+		data,
 		salt,
 	)
 	.result

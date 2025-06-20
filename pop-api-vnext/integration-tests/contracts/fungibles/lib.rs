@@ -19,6 +19,24 @@ pub mod fungibles {
 		pub fn new() -> Self {
 			Self {}
 		}
+
+		#[ink(constructor, payable)]
+		pub fn create(min_balance: U256) -> Self {
+			let contract = Self {};
+			// Account of the contract which will be set to the owner of the fungible token.
+			let owner = contract.env().address();
+			match api::create(owner, min_balance) {
+				Ok(id) => {
+					contract.env().emit_event(Created {
+						id,
+						creator: contract.env().caller(),
+						admin: owner,
+					});
+					contract
+				},
+				Err(error) => revert(&error),
+			}
+		}
 	}
 
 	impl Fungibles for Fungible {
