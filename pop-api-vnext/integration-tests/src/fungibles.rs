@@ -630,9 +630,55 @@ fn mint_works() {
 }
 
 #[test]
-#[ignore]
 fn burn_works() {
-	todo!()
+	let token = 0;
+	let owner = ALICE;
+	let account = BOB;
+	let amount: Balance = 100 * UNIT;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.with_asset_balances(vec![(token, account.clone(), amount)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new(&owner, INIT_VALUE);
+
+			// Token does not exist.
+			// assert_eq!(
+			// 	contract.burn(&addr, TokenId::MAX, &account, 0.into()),
+			// 	Err(Module { index: 52, error: [3, 0] })
+			// );
+			// Account has no tokens.
+			// assert_eq!(
+			// 	contract.burn(token, to_address(&account), amount.into()),
+			// 	Err(Module { index: 52, error: [0, 0] })
+			// );
+			// Burning can only be done by the manager.
+			// assert_eq!(
+			// 	contract.burn(token, to_address(&account), 1.into()),
+			// 	Err(Module { index: 52, error: [2, 0] })
+			// );
+			// Contract must be admin in order to be able to burn.
+			let token = contract.create(contract.address, 1.into());
+			contract.mint(token, to_address(&account), (amount * 2).into());
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&contract.account_id(), token);
+			// assert_eq!(
+			// 	contract.burn(token, to_address(&account), amount.into()),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+			thaw(&contract.account_id(), token);
+			// Successful mint.
+			let balance_before_burn = Assets::balance(token, &account);
+			contract.burn(token, to_address(&account), amount.into());
+			let balance_after_burn = Assets::balance(token, &account);
+			assert_eq!(balance_after_burn, balance_before_burn - amount);
+			// Token is not live, i.e. frozen or being destroyed.
+			start_destroy(&contract.account_id(), token);
+			// assert_eq!(
+			// 	contract.burn(token, to_address(&account), amount),
+			// 	Err(Module { index: 52, error: [17, 0] })
+			// );
+		});
 }
 
 // A simple, strongly typed wrapper for the contract.
