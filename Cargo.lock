@@ -15037,6 +15037,7 @@ dependencies = [
  "frame-support 28.0.0",
  "frame-system 28.0.0",
  "log",
+ "pallet-api-vnext",
  "pallet-assets 29.1.0",
  "pallet-balances 28.0.0",
  "pallet-revive 0.1.0",
