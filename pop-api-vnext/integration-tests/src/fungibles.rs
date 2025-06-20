@@ -581,9 +581,52 @@ fn exists_works() {
 }
 
 #[test]
-#[ignore]
 fn mint_works() {
-	todo!()
+	let token = 0;
+	let owner = ALICE;
+	let account = BOB;
+	let amount: Balance = 100 * UNIT;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new(&owner, INIT_VALUE);
+
+			// Token does not exist.
+			// assert_eq!(mint(&addr, TokenId::MAX, &BOB, amount), Err(Token(UnknownAsset)));
+			// Minting can only be done by the owner.
+			// assert_eq!(
+			// 	contract.mint(token, &to_address(&account), 1.into()),
+			// 	Err(Module { index: 52, error: [2, 0] })
+			// );
+			// Contract must be admin in order to be able to mint.
+			let token = contract.create(contract.address, 2.into());
+			// Minimum balance of a token can not be zero.
+			// assert_eq!(contract.mint(token, &account, 1.into()), Err(Token(BelowMinimum)));
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&contract.account_id(), token);
+			// assert_eq!(
+			// 	contract.mint(token, to_address(&account), amount),
+			// 	Err(Module { index: 52, error: [16, 0] })
+			// );
+			thaw(&contract.account_id(), token);
+			// Successful mint.
+			let balance_before_mint = Assets::balance(token, &account);
+			contract.mint(token, to_address(&account), amount.into());
+			let balance_after_mint = Assets::balance(token, &account);
+			assert_eq!(balance_after_mint, balance_before_mint + amount);
+			// Account can not hold more tokens than Balance::MAX.
+			// assert_eq!(
+			// 	contract.mint(token, to_address(&account), Balance::MAX.into()),
+			// 	Err(Arithmetic(Overflow))
+			// );
+			// Token is being destroyed.
+			start_destroy(&contract.account_id(), token);
+			// assert_eq!(
+			// 	contract.mint(token, to_address(&account), amount.into()),
+			// 	Err(Token(UnknownAsset))
+			// );
+		});
 }
 
 #[test]
@@ -636,12 +679,7 @@ impl Contract {
 
 	fn clear_metadata(&mut self, token: TokenId) {
 		let call = clearMetadataCall { token };
-		self.call(
-			&self.account_id(), // clear_metadata restricted to asset owner
-			call,
-			0,
-		)
-		.unwrap();
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn create(&mut self, admin: H160, min_balance: U256) -> TokenId {
@@ -689,12 +727,7 @@ impl Contract {
 
 	fn set_metadata(&mut self, token: TokenId, name: String, symbol: String, decimals: u8) {
 		let call = setMetadataCall { token, name, symbol, decimals };
-		self.call(
-			&self.account_id(), // set_metadata restricted to asset owner
-			call,
-			0,
-		)
-		.unwrap();
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn start_destroy(&mut self, token: TokenId) {
@@ -743,7 +776,7 @@ impl Contract {
 		let result = bare_call(origin, dest, value, GAS_LIMIT, STORAGE_DEPOSIT_LIMIT, data)
 			.expect("should work");
 		match result.did_revert() {
-			true => todo!("error conversion: {:?}", result.data),
+			true => todo!("error conversion: {:?}", String::from_utf8_lossy(&result.data)),
 			false => Ok(T::abi_decode_returns(&result.data).expect("unable to decode")),
 		}
 	}
