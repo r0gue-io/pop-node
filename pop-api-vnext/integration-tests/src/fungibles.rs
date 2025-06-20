@@ -4,6 +4,11 @@ use frame_support::{
 		approvals::Inspect as _, metadata::Inspect as _, roles::Inspect as _, Inspect as _,
 	},
 };
+use pallet_api_vnext::fungibles::precompiles::IFungibles::{
+	allowanceCall, approveCall, balanceOfCall, burnCall, clearMetadataCall, createCall,
+	decimalsCall, decreaseAllowanceCall, existsCall, increaseAllowanceCall, mintCall, nameCall,
+	setMetadataCall, startDestroyCall, symbolCall, totalSupplyCall, transferCall, transferFromCall,
+};
 use pop_api::fungibles::events::*;
 use pop_primitives::TokenId;
 use sp_io::hashing::twox_256;
@@ -605,220 +610,141 @@ impl Contract {
 	fn allowance(&self, token: TokenId, owner: H160, spender: H160) -> U256 {
 		let owner = alloy::Address::from(owner.0);
 		let spender = alloy::Address::from(spender.0);
-		U256::from_little_endian(
-			self.call::<alloy::U256>(
-				&self.creator,
-				keccak_selector("allowance(uint32,address,address)"),
-				(token, owner, spender).abi_encode(),
-				0,
-			)
-			.unwrap()
-			.as_le_slice(),
-		)
+		let call = allowanceCall { token, owner, spender };
+		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
 	}
 
 	fn approve(&mut self, token: TokenId, spender: H160, value: U256) {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
-		self.call(
-			&self.creator,
-			keccak_selector("approve(uint32,address,uint256)"),
-			(token, spender, value).abi_encode(),
-			0,
-		)
-		.unwrap()
+		let call = approveCall { token, spender, value };
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn balance_of(&self, token: TokenId, owner: H160) -> U256 {
 		let owner = alloy::Address::from(owner.0);
-		U256::from_little_endian(
-			self.call::<alloy::U256>(
-				&self.creator,
-				keccak_selector("balanceOf(uint32,address)"),
-				(token, owner).abi_encode(),
-				0,
-			)
-			.unwrap()
-			.as_le_slice(),
-		)
+		let call = balanceOfCall { token, owner };
+		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
 	}
 
 	fn burn(&mut self, token: TokenId, account: H160, value: U256) {
 		let account = alloy::Address::from(account.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
-		self.call(
-			&self.creator,
-			keccak_selector("burn(uint32,address,uint256)"),
-			(token, account, value).abi_encode(),
-			0,
-		)
-		.unwrap()
+		let call = burnCall { token, account, value };
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn clear_metadata(&mut self, token: TokenId) {
+		let call = clearMetadataCall { token };
 		self.call(
 			&self.account_id(), // clear_metadata restricted to asset owner
-			keccak_selector("clearMetadata(uint32)"),
-			(token,).abi_encode(),
+			call,
 			0,
 		)
-		.unwrap()
+		.unwrap();
 	}
 
 	fn create(&mut self, admin: H160, min_balance: U256) -> TokenId {
 		let admin = alloy::Address::from(admin.0);
 		let min_balance = alloy::U256::from_be_bytes(min_balance.to_big_endian());
-		self.call(
-			&self.creator,
-			keccak_selector("create(address,uint256)"),
-			(admin, min_balance).abi_encode(),
-			0,
-		)
-		.unwrap()
+		let call = createCall { admin, minBalance: min_balance };
+		self.call(&self.creator, call, 0).unwrap()
 	}
 
 	fn decimals(&self, token: TokenId) -> u8 {
-		self.call::<u16>(
-			&self.creator,
-			keccak_selector("decimals(uint32)"),
-			(token,).abi_encode(),
-			0,
-		)
-		.unwrap() as u8
+		let call = decimalsCall { token };
+		self.call(&self.creator, call, 0).unwrap()
 	}
 
 	fn decrease_allowance(&mut self, token: TokenId, spender: H160, value: U256) -> U256 {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
-		U256::from_little_endian(
-			self.call::<alloy::U256>(
-				&self.creator,
-				keccak_selector("decreaseAllowance(uint32,address,uint256)"),
-				(token, spender, value).abi_encode(),
-				0,
-			)
-			.unwrap()
-			.as_le_slice(),
-		)
+		let call = decreaseAllowanceCall { token, spender, value };
+		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
 	}
 
 	fn exists(&self, token: TokenId) -> bool {
-		self.call(&self.creator, keccak_selector("exists(uint32)"), (token,).abi_encode(), 0)
-			.unwrap()
+		let call = existsCall { token };
+		self.call(&self.creator, call, 0).unwrap()
 	}
 
 	fn increase_allowance(&mut self, token: TokenId, spender: H160, value: U256) -> U256 {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
-		U256::from_little_endian(
-			self.call::<alloy::U256>(
-				&self.creator,
-				keccak_selector("increaseAllowance(uint32,address,uint256)"),
-				(token, spender, value).abi_encode(),
-				0,
-			)
-			.unwrap()
-			.as_le_slice(),
-		)
+		let call = increaseAllowanceCall { token, spender, value };
+		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
 	}
 
 	fn mint(&mut self, token: TokenId, account: H160, value: U256) {
 		let account = alloy::Address::from(account.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
-		self.call(
-			&self.creator,
-			keccak_selector("mint(uint32,address,uint256)"),
-			(token, account, value).abi_encode(),
-			0,
-		)
-		.unwrap()
+		let call = mintCall { token, account, value };
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn name(&self, token: TokenId) -> String {
-		self.call(&self.creator, keccak_selector("name(uint32)"), (token,).abi_encode(), 0)
-			.unwrap()
+		let call = nameCall { token };
+		self.call(&self.creator, call, 0).unwrap()
 	}
 
 	fn set_metadata(&mut self, token: TokenId, name: String, symbol: String, decimals: u8) {
+		let call = setMetadataCall { token, name, symbol, decimals };
 		self.call(
 			&self.account_id(), // set_metadata restricted to asset owner
-			keccak_selector("setMetadata(uint32,string,string,uint8)"),
-			(token, name, symbol, decimals as u16).abi_encode(),
+			call,
 			0,
 		)
-		.unwrap()
+		.unwrap();
 	}
 
 	fn start_destroy(&mut self, token: TokenId) {
-		self.call(&self.creator, keccak_selector("startDestroy(uint32)"), (token,).abi_encode(), 0)
-			.unwrap()
+		let call = startDestroyCall { token };
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn symbol(&self, token: TokenId) -> String {
-		self.call(&self.creator, keccak_selector("symbol(uint32)"), (token,).abi_encode(), 0)
-			.unwrap()
+		let call = symbolCall { token };
+		self.call(&self.creator, call, 0).unwrap()
 	}
 
 	fn total_supply(&self, token: TokenId) -> U256 {
-		U256::from_little_endian(
-			self.call::<alloy::U256>(
-				&self.creator,
-				keccak_selector("totalSupply(uint32)"),
-				(token,).abi_encode(),
-				0,
-			)
-			.unwrap()
-			.as_le_slice(),
-		)
+		let call = totalSupplyCall { token };
+		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
 	}
 
 	fn transfer(&mut self, token: TokenId, to: H160, value: U256) {
 		let to = alloy::Address::from(to.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
-		self.call(
-			&self.creator,
-			keccak_selector("transfer(uint32,address,uint256)"),
-			(token, to, value).abi_encode(),
-			0,
-		)
-		.unwrap()
+		let call = transferCall { token, to, value };
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn transfer_from(&mut self, token: TokenId, from: H160, to: H160, value: U256) {
 		let from = alloy::Address::from(from.0);
 		let to = alloy::Address::from(to.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
-		self.call(
-			&self.creator,
-			keccak_selector("transferFrom(uint32,address,address,uint256)"),
-			(token, from, to, value).abi_encode(),
-			0,
-		)
-		.unwrap()
+		let call = transferFromCall { token, from, to, value };
+		self.call(&self.creator, call, 0).unwrap();
 	}
 
 	fn account_id(&self) -> AccountId {
 		to_account_id(&self.address)
 	}
 
-	fn call<T: SolValue + From<<T::SolType as SolType>::RustType>>(
+	fn call<T: SolCall>(
 		&self,
 		origin: &AccountId,
-		selector: [u8; 4],
-		params: Vec<u8>,
+		call: T,
 		value: Balance,
-	) -> Result<T, ()> {
+	) -> Result<T::Return, ()> {
 		let origin = RuntimeOrigin::signed(origin.clone());
 		let dest = self.address.clone();
-		let data = [selector.as_slice(), params.as_slice()].concat();
+		let data = call.abi_encode();
 		let result = bare_call(origin, dest, value, GAS_LIMIT, STORAGE_DEPOSIT_LIMIT, data)
 			.expect("should work");
 		match result.did_revert() {
-			true => {
-				println!("{:?}", result.data);
-				todo!("error conversion")
-			},
-			false => Ok(decode::<T>(&result.data)),
+			true => todo!("error conversion: {:?}", result.data),
+			false => Ok(T::abi_decode_returns(&result.data).expect("unable to decode")),
 		}
 	}
 
