@@ -16,6 +16,7 @@ env_logger.workspace = true
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
 log.workspace = true
+pallet-api-vnext = { workspace = true, default-features = false, features = [ "fungibles" ] }
 pallet-assets = { workspace = true, default-features = false }
 pallet-balances = { workspace = true, default-features = false }
 pallet-revive = { workspace = true, default-features = false }
@@ -33,6 +34,7 @@ std = [
 	"codec/std",
 	"frame-support/std",
 	"frame-system/std",
+	"pallet-api-vnext/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-revive/std",

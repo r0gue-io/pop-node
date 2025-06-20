@@ -7,7 +7,7 @@ use pallet_assets::{Instance1, NextAssetId};
 use pallet_revive::{
 	precompiles::alloy::{
 		primitives as alloy,
-		sol_types::{SolType, SolValue},
+		sol_types::{SolCall, SolType, SolValue},
 	},
 	test_utils::{ALICE, BOB, CHARLIE},
 	AccountId32Mapper, AddressMapper, Code, DepositLimit, ExecReturnValue, H160, U256,
