@@ -190,7 +190,7 @@ where
 				Ok(createCall::abi_encode_returns(&id))
 			},
 			IFungiblesCalls::startDestroy(startDestroyCall { token }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::start_destroy())?;
 				start_destroy::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
 				Ok(startDestroyCall::abi_encode_returns(&startDestroyReturn {}))
 			},
