@@ -15,7 +15,7 @@ use pallet_revive::{
 		alloy::{sol, sol_types::SolEvent},
 		AddressMatcher, Error, Ext, Precompile,
 	},
-	AddressMapper as _, Config, Origin,
+	AddressMapper as _, Origin,
 };
 #[cfg(test)]
 use {
@@ -36,13 +36,13 @@ pub mod fungibles;
 mod mock;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type AddressMapper<T> = <T as Config>::AddressMapper;
+type AddressMapper<T> = <T as pallet_revive::Config>::AddressMapper;
 type Assets<T, I> = pallet_assets::Pallet<T, I>;
 
 // A bare call to a contract.
 #[cfg(test)]
 fn bare_call<
-	T: Config,
+	T: pallet_revive::Config,
 	O: SolValue
 		+ From<<O::SolType as pallet_revive::precompiles::alloy::sol_types::SolType>::RustType>,
 >(
@@ -90,7 +90,7 @@ fn decode<T: SolValue + From<<T::SolType as SolType>::RustType>>(data: &[u8]) ->
 	T::abi_decode(data).expect("unable to decode")
 }
 
-fn deposit_event<T: Config>(
+fn deposit_event<T: pallet_revive::Config>(
 	_env: &mut impl Ext<T = T>,
 	address: impl Into<H160>,
 	event: impl SolEvent,
@@ -104,7 +104,9 @@ fn deposit_event<T: Config>(
 	// dummy contract when using `CallSetup` within tests
 	let revive_event =
 		pallet_revive::Event::ContractEmitted { contract: address.into(), data, topics };
-	<frame_system::Pallet<T>>::deposit_event(<T as Config>::RuntimeEvent::from(revive_event))
+	<frame_system::Pallet<T>>::deposit_event(<T as pallet_revive::Config>::RuntimeEvent::from(
+		revive_event,
+	))
 }
 
 #[cfg(test)]
@@ -141,7 +143,7 @@ fn topics(event: &impl SolEvent) -> Vec<H256> {
 
 /// Creates a new `RuntimeOrigin` from an ['Origin'].
 // TODO: upstream?
-pub fn to_runtime_origin<T: Config>(o: Origin<T>) -> T::RuntimeOrigin {
+pub fn to_runtime_origin<T: pallet_revive::Config>(o: Origin<T>) -> T::RuntimeOrigin {
 	match o {
 		Origin::Root => RawOrigin::Root.into(),
 		Origin::Signed(account) => RawOrigin::Signed(account).into(),

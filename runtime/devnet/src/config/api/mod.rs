@@ -218,6 +218,10 @@ impl<T: frame_system::Config> Contains<RuntimeRead> for Filter<T> {
 	}
 }
 
+impl pallet_api_vnext::fungibles::Config<TrustBackedAssetsInstance> for Runtime {
+	type WeightInfo = ();
+}
+
 #[cfg(test)]
 mod tests {
 	use codec::Encode;
