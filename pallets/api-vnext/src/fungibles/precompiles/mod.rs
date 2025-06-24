@@ -157,7 +157,7 @@ where
 							env.gas_meter_mut()
 								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 						}
-						value
+						U256::saturating_from(value)
 					},
 					Err(e) => {
 						// Adjust weight
@@ -170,8 +170,6 @@ where
 						return Err(e.error.into())
 					},
 				};
-
-				let value = U256::saturating_from(value);
 
 				let spender = *spender;
 				deposit_event(env, address, Approval { token: *token, owner, spender, value });
