@@ -19,6 +19,7 @@ use frame_support::{
 		Get, Time,
 	},
 };
+use pallet_assets::{Asset, AssetStatus};
 use pallet_revive::{
 	precompiles::{
 		alloy::primitives as alloy,
@@ -135,6 +136,27 @@ mod benchmarks {
 			);
 		}
 		Ok(())
+	}
+
+	#[benchmark]
+	fn start_destroy() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let token = create::<T, I>(owner.clone());
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(owner.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::startDestroy(IFungibles::startDestroyCall {
+			token: token.clone().into(),
+		});
+
+		assert_eq!(<Asset<T, I>>::get(token.clone()).unwrap().status, AssetStatus::Live);
+
+		#[block]
+		{
+			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+		}
+
+		assert_eq!(<Asset<T, I>>::get(token.clone()).unwrap().status, AssetStatus::Destroying);
 	}
 
 	#[benchmark]
