@@ -17,10 +17,13 @@ use super::{
 sol!("src/fungibles/precompiles/interfaces/IERC20.sol");
 
 /// Precompile providing an interface of the ERC-20 standard as defined in the ERC.
-pub struct Erc20<const PREFIX: u16, T, I>(PhantomData<(T, I)>);
+pub struct Erc20<const PREFIX: u16, T, I = ()>(PhantomData<(T, I)>);
 impl<
 		const PREFIX: u16,
-		T: frame_system::Config + Config<I, AssetId: AtLeast32Bit> + pallet_revive::Config,
+		T: frame_system::Config
+			+ pallet_assets::Config<I, AssetId: AtLeast32Bit>
+			+ pallet_revive::Config
+			+ Config<I>,
 		I: 'static,
 	> Precompile for Erc20<PREFIX, T, I>
 where
@@ -129,7 +132,7 @@ where
 	}
 }
 
-impl<const PREFIX: u16, T: Config<I>, I: 'static> Erc20<PREFIX, T, I> {
+impl<const PREFIX: u16, T: pallet_assets::Config<I>, I: 'static> Erc20<PREFIX, T, I> {
 	/// The address of the precompile.
 	pub fn address(id: u32) -> [u8; 20] {
 		prefixed_address(PREFIX, id)
@@ -142,7 +145,6 @@ mod tests {
 		assert_ok,
 		sp_runtime::{app_crypto::sp_core::bytes::to_hex, DispatchError},
 	};
-	use pallet_assets::Instance1;
 	use pallet_revive::{
 		precompiles::alloy::sol_types::{SolInterface, SolType, SolValue},
 		test_utils::{ALICE, BOB, CHARLIE},
@@ -243,7 +245,7 @@ mod tests {
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {
-				assert_ok!(approve::<Test, Instance1>(
+				assert_ok!(approve::<Test, ()>(
 					RuntimeOrigin::signed(owner.clone()),
 					token,
 					BOB,
@@ -310,7 +312,7 @@ mod tests {
 			.execute_with(|| {
 				assert_eq!(Assets::balance(token, &from), endowment);
 				assert_eq!(Assets::balance(token, &to), 0);
-				assert_ok!(approve::<Test, Instance1>(
+				assert_ok!(approve::<Test, ()>(
 					RuntimeOrigin::signed(from.clone()),
 					token,
 					origin.clone(),

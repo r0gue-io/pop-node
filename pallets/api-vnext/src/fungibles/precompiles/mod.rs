@@ -2,14 +2,16 @@ use alloc::string::String;
 
 pub use erc20::{Erc20, IERC20};
 use frame_support::traits::fungibles::metadata::Inspect as _;
-use pallet_revive::precompiles::alloy::{
+pub(super) use pallet_revive::precompiles::alloy::{
 	primitives::{
 		ruint::{UintTryFrom, UintTryTo},
 		Address,
 	},
 	sol_types::SolCall,
 };
-use IFungibles::*;
+use pallet_revive::precompiles::RuntimeCosts;
+use weights::WeightInfo;
+pub(super) use IFungibles::*;
 
 use super::*;
 
@@ -20,16 +22,18 @@ sol!("src/fungibles/precompiles/interfaces/IFungibles.sol");
 /// The fungibles precompile offers a streamlined interface for interacting with fungible tokens.
 /// The goal is to provide a simplified, consistent API that adheres to standards in the smart
 /// contract space.
-pub struct Fungibles<const FIXED: u16, T, I>(PhantomData<(T, I)>);
+pub struct Fungibles<const FIXED: u16, T, I = ()>(PhantomData<(T, I)>);
 impl<
 		const FIXED: u16,
 		T: frame_system::Config
-			+ Config<I, AssetId: Default + From<u32> + Into<u32>>
-			+ pallet_revive::Config,
+			+ pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32>>
+			+ pallet_revive::Config
+			+ Config<I>,
 		I: 'static,
 	> Precompile for Fungibles<FIXED, T, I>
 where
-	U256: UintTryFrom<T::Balance> + UintTryTo<<T as Config<I>>::Balance>,
+	U256: UintTryFrom<<T as pallet_assets::Config<I>>::Balance>
+		+ UintTryTo<<T as pallet_assets::Config<I>>::Balance>,
 {
 	type Interface = IFungiblesCalls;
 	type T = T;
@@ -82,16 +86,23 @@ where
 				Ok(transferFromCall::abi_encode_returns(&transferFromReturn {}))
 			},
 			IFungiblesCalls::approve(approveCall { token, spender, value }) => {
-				// TODO: charge based on benchmarked weight
+				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				self::approve::<T, I>(
+				let result = self::approve::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*spender.0).into()),
 					value.saturating_to(),
-				) // TODO: adjust weight
+				)
 				.map_err(|e| e.error)?;
+
+				// Adjust weight
+				if let Some(actual_weight) = result.actual_weight {
+					// TODO: replace with `env.adjust_gas(charged, result.weight);` once #8693 lands
+					env.gas_meter_mut()
+						.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+				}
 
 				let spender = *spender;
 				deposit_event(
@@ -207,48 +218,45 @@ where
 				Ok(burnCall::abi_encode_returns(&burnReturn {}))
 			},
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
 				let total_supply =
 					U256::saturating_from(<Assets<T, I>>::total_supply((*token).into()));
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
 			IFungiblesCalls::balanceOf(balanceOfCall { token, owner }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
 				let account = env.to_account_id(&(*owner.0).into());
 				let balance =
 					U256::saturating_from(<Assets<T, I>>::balance((*token).into(), account));
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
 			IFungiblesCalls::allowance(allowanceCall { token, owner, spender }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::allowance())?;
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
-				let remaining = U256::saturating_from(<Assets<T, I>>::allowance(
-					(*token).into(),
-					&owner,
-					&spender,
-				));
+				let allowance = <Assets<T, I>>::allowance((*token).into(), &owner, &spender);
+				let remaining = U256::saturating_from(allowance);
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
 			IFungiblesCalls::name(nameCall { token }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::token_name())?;
 				let result = <Assets<T, I>>::name((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::symbol(symbolCall { token }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::symbol())?;
 				let result = <Assets<T, I>>::symbol((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::decimals(decimalsCall { token }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::decimals())?;
 				let result = <Assets<T, I>>::decimals((*token).into());
 				Ok(decimalsCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::exists(existsCall { token }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::exists())?;
 				let result = self::exists::<T, I>((*token).into());
 				Ok(existsCall::abi_encode_returns(&result))
 			},
@@ -256,7 +264,7 @@ where
 	}
 }
 
-impl<const FIXED: u16, T: Config<I>, I: 'static> Fungibles<FIXED, T, I> {
+impl<const FIXED: u16, T: pallet_assets::Config<I>, I: 'static> Fungibles<FIXED, T, I> {
 	/// The address of the precompile.
 	pub const fn address() -> [u8; 20] {
 		fixed_address(FIXED)
@@ -270,7 +278,7 @@ mod tests {
 		weights::Weight, BoundedVec,
 	};
 	use mock::{Assets, ExtBuilder, *};
-	use pallet_assets::{AssetDetails, AssetMetadata, AssetStatus, Instance1};
+	use pallet_assets::{AssetDetails, AssetMetadata, AssetStatus};
 	use pallet_revive::{
 		precompiles::alloy::sol_types::{SolInterface, SolType},
 		test_utils::{ALICE, BOB, CHARLIE},
@@ -284,8 +292,8 @@ mod tests {
 	const ADDRESS: [u8; 20] = fixed_address(FUNGIBLES);
 
 	type AccountId = <Test as frame_system::Config>::AccountId;
-	type Asset = pallet_assets::Asset<Test, Instance1>;
-	type Metadata = pallet_assets::Metadata<Test, Instance1>;
+	type Asset = pallet_assets::Asset<Test>;
+	type Metadata = pallet_assets::Metadata<Test>;
 
 	#[test]
 	fn transfer_works() {
@@ -336,7 +344,7 @@ mod tests {
 			.execute_with(|| {
 				assert_eq!(Assets::balance(token, &from), endowment);
 				assert_eq!(Assets::balance(token, &to), 0);
-				assert_ok!(approve::<Test, Instance1>(
+				assert_ok!(approve::<Test, ()>(
 					RuntimeOrigin::signed(from.clone()),
 					token,
 					origin.clone(),
@@ -714,7 +722,7 @@ mod tests {
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {
-				assert_ok!(approve::<Test, Instance1>(
+				assert_ok!(approve::<Test, ()>(
 					RuntimeOrigin::signed(owner.clone()),
 					token,
 					spender.clone(),

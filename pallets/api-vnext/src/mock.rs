@@ -8,10 +8,10 @@ use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_assets::AutoIncAssetId;
 pub(crate) use pallet_revive::test_utils::ALICE;
 
+use super::fungibles;
+
 pub(crate) type Balance = u128;
 type Block = frame_system::mocking::MockBlock<Test>;
-type Erc20<const PREFIX: u16, I> = crate::Erc20<PREFIX, Test, I>;
-type Fungibles<const FIXED: u16, I> = crate::Fungibles<FIXED, Test, I>;
 
 pub(crate) const ERC20: u16 = 2;
 pub(crate) const FUNGIBLES: u16 = 1;
@@ -34,7 +34,7 @@ mod runtime {
 	pub struct Test;
 
 	#[runtime::pallet_index(0)]
-	pub type Assets = pallet_assets::Pallet<Runtime, Instance1>;
+	pub type Assets = pallet_assets::Pallet<Runtime>;
 	#[runtime::pallet_index(1)]
 	pub type Balances = pallet_balances::Pallet<Runtime>;
 	#[runtime::pallet_index(2)]
@@ -43,13 +43,15 @@ mod runtime {
 	pub type System = frame_system::Pallet<Runtime>;
 	#[runtime::pallet_index(4)]
 	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
+	#[runtime::pallet_index(5)]
+	pub type Fungibles = fungibles::Pallet<Runtime>;
 }
 
 #[derive_impl(pallet_assets::config_preludes::TestDefaultConfig)]
-impl pallet_assets::Config<pallet_assets::Instance1> for Test {
+impl pallet_assets::Config for Test {
 	type AssetIdParameter = Compact<u32>;
 	type Balance = Balance;
-	type CallbackHandle = AutoIncAssetId<Test, pallet_assets::Instance1>;
+	type CallbackHandle = AutoIncAssetId<Test>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Currency = Balances;
 	type ForceOrigin = EnsureRoot<AccountId32>;
@@ -66,8 +68,7 @@ impl pallet_revive::Config for Test {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Self>;
 	type Currency = Balances;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
-	type Precompiles =
-		(Fungibles<FUNGIBLES, pallet_assets::Instance1>, Erc20<ERC20, pallet_assets::Instance1>);
+	type Precompiles = (fungibles::Fungibles<FUNGIBLES, Test>, fungibles::Erc20<ERC20, Test>);
 	type Time = Timestamp;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 }
@@ -82,6 +83,10 @@ impl frame_system::Config for Test {
 
 #[derive_impl(pallet_timestamp::config_preludes::TestDefaultConfig)]
 impl pallet_timestamp::Config for Test {}
+
+impl fungibles::Config for Test {
+	type WeightInfo = ();
+}
 
 pub(crate) struct ExtBuilder {
 	assets: Option<Vec<(u32, AccountId32, bool, u128)>>,
@@ -121,7 +126,7 @@ impl ExtBuilder {
 		.assimilate_storage(&mut t)
 		.unwrap();
 
-		pallet_assets::GenesisConfig::<Test, pallet_assets::Instance1> {
+		pallet_assets::GenesisConfig::<Test> {
 			assets: self.assets.take().unwrap_or_default(),
 			metadata: self.asset_metadata.take().unwrap_or_default(),
 			accounts: self.asset_accounts.take().unwrap_or_default(),
