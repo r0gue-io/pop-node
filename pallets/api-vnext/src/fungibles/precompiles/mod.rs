@@ -195,7 +195,7 @@ where
 				Ok(startDestroyCall::abi_encode_returns(&startDestroyReturn {}))
 			},
 			IFungiblesCalls::setMetadata(setMetadataCall { token, name, symbol, decimals }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::set_metadata())?;
 				set_metadata::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
@@ -267,19 +267,19 @@ where
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
 			IFungiblesCalls::name(nameCall { token }) => {
-				env.charge(<T as Config<I>>::WeightInfo::token_name())?;
+				env.charge(<T as Config<I>>::WeightInfo::metadata_name())?;
 				let result = <Assets<T, I>>::name((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::symbol(symbolCall { token }) => {
-				env.charge(<T as Config<I>>::WeightInfo::symbol())?;
+				env.charge(<T as Config<I>>::WeightInfo::metadata_symbol())?;
 				let result = <Assets<T, I>>::symbol((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::decimals(decimalsCall { token }) => {
-				env.charge(<T as Config<I>>::WeightInfo::decimals())?;
+				env.charge(<T as Config<I>>::WeightInfo::metadata_decimals())?;
 				let result = <Assets<T, I>>::decimals((*token).into());
 				Ok(decimalsCall::abi_encode_returns(&result))
 			},

@@ -32,13 +32,14 @@ use core::marker::PhantomData;
 /// Weight functions needed for `pallet_api_vnext::fungibles`.
 pub trait WeightInfo {
 	fn approve(a: u32, c: u32, ) -> Weight;
+	fn set_metadata() -> Weight;
 	fn clear_metadata() -> Weight;
 	fn total_supply() -> Weight;
 	fn balance_of() -> Weight;
 	fn allowance() -> Weight;
-	fn token_name() -> Weight;
-	fn symbol() -> Weight;
-	fn decimals() -> Weight;
+	fn metadata_name() -> Weight;
+	fn metadata_symbol() -> Weight;
+	fn metadata_decimals() -> Weight;
 	fn exists() -> Weight;
 }
 
@@ -58,13 +59,26 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `699 + c * (140 ±0)`
 		//  Estimated: `3675`
 		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(7_259_183, 3675)
-			// Standard Error: 88_425
-			.saturating_add(Weight::from_parts(21_497_959, 0).saturating_mul(a.into()))
-			// Standard Error: 88_425
-			.saturating_add(Weight::from_parts(35_842_857, 0).saturating_mul(c.into()))
+		Weight::from_parts(8_414_285, 3675)
+			// Standard Error: 151_952
+			.saturating_add(Weight::from_parts(19_830_612, 0).saturating_mul(a.into()))
+			// Standard Error: 151_952
+			.saturating_add(Weight::from_parts(35_355_102, 0).saturating_mul(c.into()))
 			.saturating_add(T::DbWeight::get().reads(3_u64))
 			.saturating_add(T::DbWeight::get().writes(2_u64))
+	}
+	/// Storage: `Assets::Asset` (r:1 w:0)
+	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
+	/// Storage: `Assets::Metadata` (r:1 w:1)
+	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
+	fn set_metadata() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `505`
+		//  Estimated: `3675`
+		// Minimum execution time: 15_000_000 picoseconds.
+		Weight::from_parts(15_000_000, 3675)
+			.saturating_add(T::DbWeight::get().reads(2_u64))
+			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
 	/// Storage: `Assets::Asset` (r:1 w:0)
 	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
@@ -74,8 +88,8 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		// Proof Size summary in bytes:
 		//  Measured:  `645`
 		//  Estimated: `3675`
-		// Minimum execution time: 28_000_000 picoseconds.
-		Weight::from_parts(30_000_000, 3675)
+		// Minimum execution time: 29_000_000 picoseconds.
+		Weight::from_parts(29_000_000, 3675)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 			.saturating_add(T::DbWeight::get().writes(1_u64))
 	}
@@ -86,7 +100,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `300`
 		//  Estimated: `3675`
 		// Minimum execution time: 5_000_000 picoseconds.
-		Weight::from_parts(6_000_000, 3675)
+		Weight::from_parts(5_000_000, 3675)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Revive::OriginalAccount` (r:1 w:0)
@@ -98,7 +112,7 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 		//  Measured:  `346`
 		//  Estimated: `3599`
 		// Minimum execution time: 8_000_000 picoseconds.
-		Weight::from_parts(8_000_000, 3599)
+		Weight::from_parts(9_000_000, 3599)
 			.saturating_add(T::DbWeight::get().reads(2_u64))
 	}
 	/// Storage: `Revive::OriginalAccount` (r:2 w:0)
@@ -115,17 +129,17 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
-	fn token_name() -> Weight {
+	fn metadata_name() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `267`
 		//  Estimated: `3605`
-		// Minimum execution time: 7_000_000 picoseconds.
-		Weight::from_parts(8_000_000, 3605)
+		// Minimum execution time: 6_000_000 picoseconds.
+		Weight::from_parts(7_000_000, 3605)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
-	fn symbol() -> Weight {
+	fn metadata_symbol() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `267`
 		//  Estimated: `3605`
@@ -135,12 +149,12 @@ impl<T: frame_system::Config> WeightInfo for SubstrateWeight<T> {
 	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
-	fn decimals() -> Weight {
+	fn metadata_decimals() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `136`
 		//  Estimated: `3605`
 		// Minimum execution time: 5_000_000 picoseconds.
-		Weight::from_parts(5_000_000, 3605)
+		Weight::from_parts(6_000_000, 3605)
 			.saturating_add(T::DbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Asset` (r:1 w:0)
@@ -170,13 +184,26 @@ impl WeightInfo for () {
 		//  Measured:  `699 + c * (140 ±0)`
 		//  Estimated: `3675`
 		// Minimum execution time: 27_000_000 picoseconds.
-		Weight::from_parts(7_259_183, 3675)
-			// Standard Error: 88_425
-			.saturating_add(Weight::from_parts(21_497_959, 0).saturating_mul(a.into()))
-			// Standard Error: 88_425
-			.saturating_add(Weight::from_parts(35_842_857, 0).saturating_mul(c.into()))
+		Weight::from_parts(8_414_285, 3675)
+			// Standard Error: 151_952
+			.saturating_add(Weight::from_parts(19_830_612, 0).saturating_mul(a.into()))
+			// Standard Error: 151_952
+			.saturating_add(Weight::from_parts(35_355_102, 0).saturating_mul(c.into()))
 			.saturating_add(RocksDbWeight::get().reads(3_u64))
 			.saturating_add(RocksDbWeight::get().writes(2_u64))
+	}
+	/// Storage: `Assets::Asset` (r:1 w:0)
+	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
+	/// Storage: `Assets::Metadata` (r:1 w:1)
+	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
+	fn set_metadata() -> Weight {
+		// Proof Size summary in bytes:
+		//  Measured:  `505`
+		//  Estimated: `3675`
+		// Minimum execution time: 15_000_000 picoseconds.
+		Weight::from_parts(15_000_000, 3675)
+			.saturating_add(RocksDbWeight::get().reads(2_u64))
+			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
 	/// Storage: `Assets::Asset` (r:1 w:0)
 	/// Proof: `Assets::Asset` (`max_values`: None, `max_size`: Some(210), added: 2685, mode: `MaxEncodedLen`)
@@ -186,8 +213,8 @@ impl WeightInfo for () {
 		// Proof Size summary in bytes:
 		//  Measured:  `645`
 		//  Estimated: `3675`
-		// Minimum execution time: 28_000_000 picoseconds.
-		Weight::from_parts(30_000_000, 3675)
+		// Minimum execution time: 29_000_000 picoseconds.
+		Weight::from_parts(29_000_000, 3675)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 			.saturating_add(RocksDbWeight::get().writes(1_u64))
 	}
@@ -198,7 +225,7 @@ impl WeightInfo for () {
 		//  Measured:  `300`
 		//  Estimated: `3675`
 		// Minimum execution time: 5_000_000 picoseconds.
-		Weight::from_parts(6_000_000, 3675)
+		Weight::from_parts(5_000_000, 3675)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Revive::OriginalAccount` (r:1 w:0)
@@ -210,7 +237,7 @@ impl WeightInfo for () {
 		//  Measured:  `346`
 		//  Estimated: `3599`
 		// Minimum execution time: 8_000_000 picoseconds.
-		Weight::from_parts(8_000_000, 3599)
+		Weight::from_parts(9_000_000, 3599)
 			.saturating_add(RocksDbWeight::get().reads(2_u64))
 	}
 	/// Storage: `Revive::OriginalAccount` (r:2 w:0)
@@ -227,17 +254,17 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
-	fn token_name() -> Weight {
+	fn metadata_name() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `267`
 		//  Estimated: `3605`
-		// Minimum execution time: 7_000_000 picoseconds.
-		Weight::from_parts(8_000_000, 3605)
+		// Minimum execution time: 6_000_000 picoseconds.
+		Weight::from_parts(7_000_000, 3605)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
-	fn symbol() -> Weight {
+	fn metadata_symbol() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `267`
 		//  Estimated: `3605`
@@ -247,12 +274,12 @@ impl WeightInfo for () {
 	}
 	/// Storage: `Assets::Metadata` (r:1 w:0)
 	/// Proof: `Assets::Metadata` (`max_values`: None, `max_size`: Some(140), added: 2615, mode: `MaxEncodedLen`)
-	fn decimals() -> Weight {
+	fn metadata_decimals() -> Weight {
 		// Proof Size summary in bytes:
 		//  Measured:  `136`
 		//  Estimated: `3605`
 		// Minimum execution time: 5_000_000 picoseconds.
-		Weight::from_parts(5_000_000, 3605)
+		Weight::from_parts(6_000_000, 3605)
 			.saturating_add(RocksDbWeight::get().reads(1_u64))
 	}
 	/// Storage: `Assets::Asset` (r:1 w:0)
