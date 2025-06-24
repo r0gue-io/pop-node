@@ -113,7 +113,7 @@ where
 				Ok(approveCall::abi_encode_returns(&approveReturn {}))
 			},
 			IFungiblesCalls::increaseAllowance(increaseAllowanceCall { token, spender, value }) => {
-				// TODO: charge based on benchmarked weight
+				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 0))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
 				let value = U256::saturating_from(
@@ -122,8 +122,17 @@ where
 						(*token).into(),
 						env.to_account_id(&(*spender.0).into()),
 						value.saturating_to(),
-					) // TODO: adjust weight
-					.map_err(|e| e.error)?,
+					)
+					.map_err(|e| {
+						// Adjust weight
+						if let Some(actual_weight) = e.post_info.actual_weight {
+							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+							// #8693 lands
+							env.gas_meter_mut()
+								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+						}
+						e.error
+					})?,
 				);
 
 				let spender = *spender;
@@ -131,16 +140,37 @@ where
 				Ok(increaseAllowanceCall::abi_encode_returns(&value))
 			},
 			IFungiblesCalls::decreaseAllowance(decreaseAllowanceCall { token, spender, value }) => {
-				// TODO: charge based on benchmarked weight
+				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				let (value, weight) = self::decrease_allowance::<T, I>(
+				let value = match self::decrease_allowance::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*spender.0).into()),
 					value.saturating_to(),
-				) // TODO: adjust weight
-				.map_err(|e| e.error)?;
+				) {
+					Ok((value, weight)) => {
+						// Adjust weight
+						if let Some(actual_weight) = weight {
+							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+							// #8693 lands
+							env.gas_meter_mut()
+								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+						}
+						value
+					},
+					Err(e) => {
+						// Adjust weight
+						if let Some(actual_weight) = e.post_info.actual_weight {
+							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+							// #8693 lands
+							env.gas_meter_mut()
+								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+						}
+						return Err(e.error.into())
+					},
+				};
+
 				let value = U256::saturating_from(value);
 
 				let spender = *spender;
