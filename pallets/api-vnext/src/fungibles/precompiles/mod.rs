@@ -206,7 +206,7 @@ where
 				Ok(setMetadataCall::abi_encode_returns(&setMetadataReturn {}))
 			},
 			IFungiblesCalls::clearMetadata(clearMetadataCall { token }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::clear_metadata())?;
 				clear_metadata::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
 				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn {}))
 			},
