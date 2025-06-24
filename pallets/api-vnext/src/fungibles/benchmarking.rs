@@ -2,7 +2,7 @@
 
 use alloc::vec;
 
-use frame_benchmarking::v2::{whitelisted_caller as allowlisted_caller, *};
+use frame_benchmarking::v2::*;
 use frame_support::{
 	assert_ok,
 	pallet_prelude::IsType,
@@ -20,7 +20,7 @@ use pallet_revive::{
 		alloy::primitives as alloy,
 		run::{precompile, CallSetup, WasmModule, H256, U256},
 	},
-	test_utils::{ALICE_ADDR, BOB_ADDR},
+	test_utils::{ALICE_ADDR, BOB_ADDR, CHARLIE_ADDR},
 	AddressMapper as _, Origin,
 };
 
@@ -66,8 +66,8 @@ mod benchmarks {
 		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
 		let spender = <AddressMapper<T>>::to_account_id(&BOB_ADDR);
 		let current_allowance = <AssetsBalance<T, I>>::from(u32::MAX / 2);
+		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&CHARLIE_ADDR));
 		// Set the `current_allowance`.
-		let token = create::<T, I>();
 		<Balances<T>>::set_balance(&owner, u32::MAX.into());
 		assert_ok!(<Assets<T, I> as approvals::Mutate<T::AccountId>>::approve(
 			token.clone(),
@@ -134,6 +134,21 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	fn clear_metadata() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let token = create::<T, I>(owner.clone());
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(owner.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::clearMetadata(clearMetadataCall { token: token.into() });
+
+		#[block]
+		{
+			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+		}
+	}
+
+	#[benchmark]
 	fn total_supply() {
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
@@ -147,9 +162,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn balance_of() {
+		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let token = create::<T, I>();
 		let input = IFungiblesCalls::balanceOf(balanceOfCall {
 			token: token.into(),
 			owner: ALICE_ADDR.0.into(),
@@ -163,9 +178,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn allowance() {
+		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let token = create::<T, I>();
 		let input = IFungiblesCalls::allowance(allowanceCall {
 			token: token.into(),
 			owner: ALICE_ADDR.0.into(),
@@ -180,9 +195,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn token_name() {
+		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let token = create::<T, I>();
 		let input = IFungiblesCalls::name(nameCall { token: token.into() });
 
 		#[block]
@@ -193,9 +208,9 @@ mod benchmarks {
 
 	#[benchmark]
 	fn symbol() {
+		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let token = create::<T, I>();
 		let input = IFungiblesCalls::symbol(symbolCall { token: token.into() });
 
 		#[block]
@@ -239,13 +254,13 @@ fn assert_has_event<T: pallet_assets::Config<I>, I>(
 }
 
 fn create<T: Config<I> + pallet_assets::Config<I, AssetId: Default> + pallet_revive::Config, I>(
+	owner: T::AccountId,
 ) -> TokenId<T, I> {
 	let token = NextAssetId::<T, I>::get().unwrap_or_default();
-	let admin: T::AccountId = allowlisted_caller();
-	<Balances<T>>::set_balance(&admin, u32::MAX.into());
+	<Balances<T>>::set_balance(&owner, u32::MAX.into());
 	assert_ok!(<Assets<T, I> as Create<T::AccountId>>::create(
 		token.clone(),
-		admin.clone(),
+		owner.clone(),
 		true,
 		1u32.into()
 	));
@@ -253,7 +268,7 @@ fn create<T: Config<I> + pallet_assets::Config<I, AssetId: Default> + pallet_rev
 	let max = AssetsStringLimit::<T, I>::get() as usize;
 	assert_ok!(<Assets<T, I> as metadata::Mutate<T::AccountId>>::set(
 		token.clone(),
-		&admin,
+		&owner,
 		vec![255u8; max],
 		vec![255u8; max],
 		u8::MAX
