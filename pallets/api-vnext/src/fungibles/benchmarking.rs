@@ -1,6 +1,9 @@
 //! Benchmarking setup for pallet_api::fungibles::precompiles
 
-use alloc::vec;
+use alloc::{
+	string::{String, ToString},
+	vec,
+};
 
 use frame_benchmarking::v2::*;
 use frame_support::{
@@ -10,7 +13,8 @@ use frame_support::{
 		fungible::{Inspect, Mutate as _},
 		fungibles::{
 			approvals::{self, Inspect as _},
-			metadata, Create,
+			metadata::{self, Inspect as _},
+			Create,
 		},
 		Get, Time,
 	},
@@ -25,7 +29,7 @@ use pallet_revive::{
 };
 
 use super::{
-	precompiles::{IFungibles::*, IFungiblesCalls, UintTryFrom, UintTryTo},
+	precompiles::{IFungibles, IFungiblesCalls, UintTryFrom, UintTryTo},
 	Config, NextAssetId, Pallet,
 };
 use crate::fixed_address;
@@ -90,7 +94,7 @@ mod benchmarks {
 		let mut call_setup = set_up_call();
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::approve(approveCall {
+		let input = IFungiblesCalls::approve(IFungibles::approveCall {
 			token: token.clone().into(),
 			spender: <AddressMapper<T>>::to_address(&spender).0.into(),
 			value: alloy::U256::from(approval_value),
@@ -134,25 +138,60 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	fn set_metadata() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let token = create::<T, I>(owner.clone());
+		let max = AssetsStringLimit::<T, I>::get() as usize;
+		let name = vec![42u8; max];
+		let symbol = vec![42u8; max];
+		let decimals = u8::MAX - 1;
+
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(owner.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::setMetadata(IFungibles::setMetadataCall {
+			token: token.clone().into(),
+			name: String::from_utf8_lossy(&name).to_string(),
+			symbol: String::from_utf8_lossy(&symbol).to_string(),
+			decimals,
+		});
+
+		#[block]
+		{
+			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+		}
+
+		assert_eq!(<Assets<T, I>>::name(token.clone()), name);
+		assert_eq!(<Assets<T, I>>::symbol(token.clone()), symbol);
+		assert_eq!(<Assets<T, I>>::decimals(token), decimals);
+	}
+
+	#[benchmark]
 	fn clear_metadata() {
 		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
 		let token = create::<T, I>(owner.clone());
 		let mut call_setup = set_up_call();
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::clearMetadata(clearMetadataCall { token: token.into() });
+		let input = IFungiblesCalls::clearMetadata(IFungibles::clearMetadataCall {
+			token: token.clone().into(),
+		});
 
 		#[block]
 		{
 			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
 		}
+
+		assert!(<Assets<T, I>>::name(token.clone()).is_empty());
+		assert!(<Assets<T, I>>::symbol(token.clone()).is_empty());
+		assert_eq!(<Assets<T, I>>::decimals(token), 0);
 	}
 
 	#[benchmark]
 	fn total_supply() {
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::totalSupply(totalSupplyCall { token: 0 });
+		let input = IFungiblesCalls::totalSupply(IFungibles::totalSupplyCall { token: 0 });
 
 		#[block]
 		{
@@ -165,7 +204,7 @@ mod benchmarks {
 		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::balanceOf(balanceOfCall {
+		let input = IFungiblesCalls::balanceOf(IFungibles::balanceOfCall {
 			token: token.into(),
 			owner: ALICE_ADDR.0.into(),
 		});
@@ -181,7 +220,7 @@ mod benchmarks {
 		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::allowance(allowanceCall {
+		let input = IFungiblesCalls::allowance(IFungibles::allowanceCall {
 			token: token.into(),
 			owner: ALICE_ADDR.0.into(),
 			spender: BOB_ADDR.0.into(),
@@ -194,11 +233,11 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn token_name() {
+	fn metadata_name() {
 		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::name(nameCall { token: token.into() });
+		let input = IFungiblesCalls::name(IFungibles::nameCall { token: token.into() });
 
 		#[block]
 		{
@@ -207,11 +246,11 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn symbol() {
+	fn metadata_symbol() {
 		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::symbol(symbolCall { token: token.into() });
+		let input = IFungiblesCalls::symbol(IFungibles::symbolCall { token: token.into() });
 
 		#[block]
 		{
@@ -220,10 +259,10 @@ mod benchmarks {
 	}
 
 	#[benchmark]
-	fn decimals() {
+	fn metadata_decimals() {
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::decimals(decimalsCall { token: 0 });
+		let input = IFungiblesCalls::decimals(IFungibles::decimalsCall { token: 0 });
 
 		#[block]
 		{
@@ -235,7 +274,7 @@ mod benchmarks {
 	fn exists() {
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::exists(existsCall { token: 0 });
+		let input = IFungiblesCalls::exists(IFungibles::existsCall { token: 0 });
 
 		#[block]
 		{
