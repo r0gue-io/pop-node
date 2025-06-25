@@ -152,13 +152,12 @@ mod benchmarks {
 			minBalance: alloy::U256::from(min_balance),
 		});
 
-		let mut token = 0;
 		#[block]
 		{
-			token = call_precompile::<Fungibles<T, I>, _, _>(&mut ext, &ADDRESS, &input).unwrap();
+			let token =
+				call_precompile::<Fungibles<T, I>, _, u32>(&mut ext, &ADDRESS, &input).unwrap();
+			assert!(<Assets<T, I>>::asset_exists(token.into()));
 		}
-
-		assert!(<Assets<T, I>>::asset_exists(token.into()));
 	}
 
 	#[benchmark]
