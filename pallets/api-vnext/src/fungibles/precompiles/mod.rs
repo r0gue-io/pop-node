@@ -67,7 +67,7 @@ where
 				Ok(transferCall::abi_encode_returns(&transferReturn {}))
 			},
 			IFungiblesCalls::transferFrom(transferFromCall { token, from, to, value }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::transfer_from())?;
 
 				transfer_from::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -77,12 +77,8 @@ where
 					value.saturating_to(),
 				)?;
 
-				let value = *value;
-				deposit_event(
-					env,
-					address,
-					Transfer { token: *token, from: *from, to: *to, value },
-				);
+				let event = Transfer { token: *token, from: *from, to: *to, value: *value };
+				deposit_event(env, address, event);
 				Ok(transferFromCall::abi_encode_returns(&transferFromReturn {}))
 			},
 			IFungiblesCalls::approve(approveCall { token, spender, value }) => {
