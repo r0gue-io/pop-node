@@ -226,7 +226,7 @@ where
 				Ok(mintCall::abi_encode_returns(&mintReturn {}))
 			},
 			IFungiblesCalls::burn(burnCall { token, account, value }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::burn())?;
 
 				self::burn::<T, I>(
 					to_runtime_origin(env.caller()),

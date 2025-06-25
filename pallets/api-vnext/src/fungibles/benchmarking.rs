@@ -10,11 +10,11 @@ use frame_support::{
 	assert_ok,
 	pallet_prelude::IsType,
 	traits::{
-		fungible::{Inspect, Mutate as _},
+		fungible::{Inspect, Mutate},
 		fungibles::{
 			approvals::{self, Inspect as _},
 			metadata::{self, Inspect as _},
-			Create, Inspect as _,
+			Create, Inspect as _, Mutate as _,
 		},
 		Get, Time,
 	},
@@ -253,6 +253,32 @@ mod benchmarks {
 		}
 
 		assert_eq!(<Assets<T, I>>::balance(token, account), value);
+	}
+
+	#[benchmark]
+	fn burn() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let token = super::create::<T, I>(owner.clone());
+		let account = <AddressMapper<T>>::to_account_id(&BOB_ADDR);
+		let value: AssetsBalance<T, I> = u32::MAX.into();
+
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(owner.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::burn(IFungibles::burnCall {
+			token: token.clone().into(),
+			account: <AddressMapper<T>>::to_address(&account).0.into(),
+			value: alloy::U256::from(value),
+		});
+
+		<Assets<T, I>>::set_balance(token.clone(), &account, value);
+
+		#[block]
+		{
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
+		}
+
+		assert_eq!(<Assets<T, I>>::balance(token, account), 0u8.into());
 	}
 
 	#[benchmark]
