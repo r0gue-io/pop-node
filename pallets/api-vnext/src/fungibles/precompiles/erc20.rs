@@ -5,13 +5,14 @@ use frame_support::{
 	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _},
 };
 use pallet_assets::precompiles::{AssetIdExtractor, InlineAssetIdExtractor};
-use pallet_revive::AddressMapper as _;
+use pallet_revive::{precompiles::RuntimeCosts, AddressMapper as _};
 use AddressMatcher::Prefix;
 use IERC20::*;
 
 use super::{
-	deposit_event, prefixed_address, sol, to_runtime_origin, AddressMapper, AddressMatcher, Assets,
-	Config, Error, Ext, NonZero, PhantomData, Precompile, SolCall, UintTryFrom, UintTryTo, U256,
+	deposit_event, prefixed_address, sol, to_runtime_origin, weights::WeightInfo, AddressMapper,
+	AddressMatcher, Assets, Config, Error, Ext, NonZero, PhantomData, Precompile, SolCall,
+	UintTryFrom, UintTryTo, U256,
 };
 
 sol!("src/fungibles/precompiles/interfaces/IERC20.sol");
@@ -48,18 +49,22 @@ where
 		match input {
 			// IERC20
 			totalSupply(_) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
+
 				let total_supply = U256::saturating_from(<Assets<T, I>>::total_supply(token));
+
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
 			balanceOf(balanceOfCall { account }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
+
 				let account = env.to_account_id(&(*account.0).into());
 				let balance = U256::saturating_from(<Assets<T, I>>::balance(token, account));
+
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
 			transfer(transferCall { to, value }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
 				let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
 				super::transfer::<T, I>(
@@ -73,18 +78,20 @@ where
 				Ok(transferCall::abi_encode_returns(&true))
 			},
 			allowance(allowanceCall { owner, spender }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::allowance())?;
+
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
 				let remaining =
 					U256::saturating_from(<Assets<T, I>>::allowance(token, &owner, &spender));
+
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
 			approve(approveCall { spender, value }) => {
-				// TODO: charge based on benchmarked weight
+				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				super::approve::<T, I>(
+				let result = super::approve::<T, I>(
 					to_runtime_origin(env.caller()),
 					token,
 					env.to_account_id(&(*spender.0).into()),
@@ -92,12 +99,19 @@ where
 				) // TODO: adjust weight
 				.map_err(|e| e.error)?;
 
+				// Adjust weight
+				if let Some(actual_weight) = result.actual_weight {
+					// TODO: replace with `env.adjust_gas(charged, result.weight);` once #8693 lands
+					env.gas_meter_mut()
+						.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+				}
+
 				let event = Approval { owner, spender: *spender, value: *value };
 				deposit_event(env, address, event);
 				Ok(approveCall::abi_encode_returns(&true))
 			},
 			transferFrom(transferFromCall { from, to, value }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::transfer_from())?;
 
 				super::transfer_from::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -112,20 +126,26 @@ where
 			},
 			// IERC20Metadata
 			name(_) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::metadata_name())?;
+
 				let result = <Assets<T, I>>::name(token);
 				let result = String::from_utf8_lossy(result.as_slice()).into();
+
 				Ok(nameCall::abi_encode_returns(&result))
 			},
 			symbol(_) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::metadata_symbol())?;
+
 				let result = <Assets<T, I>>::symbol(token);
 				let result = String::from_utf8_lossy(result.as_slice()).into();
+
 				Ok(symbolCall::abi_encode_returns(&result))
 			},
 			decimals(_) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::metadata_decimals())?;
+
 				let result = <Assets<T, I>>::decimals(token);
+
 				Ok(decimalsCall::abi_encode_returns(&result))
 			},
 		}
