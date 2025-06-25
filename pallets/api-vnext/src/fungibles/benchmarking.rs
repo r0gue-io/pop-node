@@ -232,6 +232,30 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	fn mint() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let token = super::create::<T, I>(owner.clone());
+		let account = <AddressMapper<T>>::to_account_id(&BOB_ADDR);
+		let value: AssetsBalance<T, I> = u32::MAX.into();
+
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(owner.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::mint(IFungibles::mintCall {
+			token: token.clone().into(),
+			account: <AddressMapper<T>>::to_address(&account).0.into(),
+			value: alloy::U256::from(value),
+		});
+
+		#[block]
+		{
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
+		}
+
+		assert_eq!(<Assets<T, I>>::balance(token, account), value);
+	}
+
+	#[benchmark]
 	fn total_supply() {
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
