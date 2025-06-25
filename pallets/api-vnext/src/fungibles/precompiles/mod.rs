@@ -59,11 +59,8 @@ where
 					value.saturating_to(),
 				)?;
 
-				deposit_event(
-					env,
-					address,
-					Transfer { token: *token, from, to: *to, value: *value },
-				);
+				let event = Transfer { token: *token, from, to: *to, value: *value };
+				deposit_event(env, address, event);
 				Ok(transferCall::abi_encode_returns(&transferReturn {}))
 			},
 			IFungiblesCalls::transferFrom(transferFromCall { token, from, to, value }) => {
@@ -100,12 +97,8 @@ where
 						.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 				}
 
-				let spender = *spender;
-				deposit_event(
-					env,
-					address,
-					Approval { token: *token, owner, spender, value: *value },
-				);
+				let event = Approval { token: *token, owner, spender: *spender, value: *value };
+				deposit_event(env, address, event);
 				Ok(approveCall::abi_encode_returns(&approveReturn {}))
 			},
 			IFungiblesCalls::increaseAllowance(increaseAllowanceCall { token, spender, value }) => {
@@ -187,11 +180,14 @@ where
 			},
 			IFungiblesCalls::startDestroy(startDestroyCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::start_destroy())?;
+
 				start_destroy::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
+
 				Ok(startDestroyCall::abi_encode_returns(&startDestroyReturn {}))
 			},
 			IFungiblesCalls::setMetadata(setMetadataCall { token, name, symbol, decimals }) => {
 				env.charge(<T as Config<I>>::WeightInfo::set_metadata())?;
+
 				set_metadata::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
@@ -199,10 +195,12 @@ where
 					symbol.as_bytes().to_vec(),
 					*decimals,
 				)?;
+
 				Ok(setMetadataCall::abi_encode_returns(&setMetadataReturn {}))
 			},
 			IFungiblesCalls::clearMetadata(clearMetadataCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::clear_metadata())?;
+
 				clear_metadata::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
 				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn {}))
 			},
@@ -241,56 +239,66 @@ where
 					e.error
 				})?;
 
-				let from = account;
 				let to = Address::default();
-				deposit_event(
-					env,
-					address,
-					Transfer { token: *token, from: *from, to, value: *value },
-				);
+				let event = Transfer { token: *token, from: *account, to, value: *value };
+				deposit_event(env, address, event);
 				Ok(burnCall::abi_encode_returns(&burnReturn {}))
 			},
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
+
 				let total_supply =
 					U256::saturating_from(<Assets<T, I>>::total_supply((*token).into()));
+
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
 			IFungiblesCalls::balanceOf(balanceOfCall { token, owner }) => {
 				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
+
 				let account = env.to_account_id(&(*owner.0).into());
 				let balance =
 					U256::saturating_from(<Assets<T, I>>::balance((*token).into(), account));
+
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
 			IFungiblesCalls::allowance(allowanceCall { token, owner, spender }) => {
 				env.charge(<T as Config<I>>::WeightInfo::allowance())?;
+
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
 				let allowance = <Assets<T, I>>::allowance((*token).into(), &owner, &spender);
 				let remaining = U256::saturating_from(allowance);
+
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
 			IFungiblesCalls::name(nameCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_name())?;
+
 				let result = <Assets<T, I>>::name((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
+
 				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::symbol(symbolCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_symbol())?;
+
 				let result = <Assets<T, I>>::symbol((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
+
 				Ok(nameCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::decimals(decimalsCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_decimals())?;
+
 				let result = <Assets<T, I>>::decimals((*token).into());
+
 				Ok(decimalsCall::abi_encode_returns(&result))
 			},
 			IFungiblesCalls::exists(existsCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::exists())?;
+
 				let result = self::exists::<T, I>((*token).into());
+
 				Ok(existsCall::abi_encode_returns(&result))
 			},
 		}
