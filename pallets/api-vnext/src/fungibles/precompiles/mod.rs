@@ -49,7 +49,7 @@ where
 	) -> Result<Vec<u8>, Error> {
 		match input {
 			IFungiblesCalls::transfer(transferCall { token, to, value }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
 				let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
 				self::transfer::<T, I>(
