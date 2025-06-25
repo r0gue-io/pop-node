@@ -57,7 +57,7 @@ type TokenId<T, I> = <T as pallet_assets::Config<I>>::AssetId;
             Time: Time<Moment: Into<U256>>
         >,
         // Fungibles
-        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32>>,
+        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32> + Copy>,
         alloy::U256: UintTryFrom<AssetsBalance<T, I>> + UintTryTo<AssetsBalance<T, I>>
 )]
 mod benchmarks {
@@ -74,21 +74,21 @@ mod benchmarks {
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::transfer(IFungibles::transferCall {
-			token: token.clone().into(),
+			token: token.into(),
 			to: <AddressMapper<T>>::to_address(&to).0.into(),
 			value: alloy::U256::from(value),
 		});
 
-		<Assets<T, I>>::set_balance(token.clone(), &owner, value);
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), value);
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &to), 0u8.into());
+		<Assets<T, I>>::set_balance(token, &owner, value);
+		assert_eq!(<Assets<T, I>>::balance(token, &owner), value);
+		assert_eq!(<Assets<T, I>>::balance(token, &to), 0u8.into());
 
 		#[block]
 		{
 			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token, &owner), 0u8.into());
 		assert_eq!(<Assets<T, I>>::balance(token, &to), value);
 	}
 
@@ -104,27 +104,27 @@ mod benchmarks {
 		call_setup.set_origin(Origin::Signed(spender.clone()));
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::transferFrom(IFungibles::transferFromCall {
-			token: token.clone().into(),
+			token: token.into(),
 			from: <AddressMapper<T>>::to_address(&owner).0.into(),
 			to: <AddressMapper<T>>::to_address(&to).0.into(),
 			value: alloy::U256::from(value),
 		});
 
-		<Assets<T, I>>::set_balance(token.clone(), &owner, value);
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), value);
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &spender), 0u8.into());
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &to), 0u8.into());
-		assert_ok!(<Assets<T, I>>::approve(token.clone(), &owner, &spender, value));
-		assert_eq!(<Assets<T, I>>::allowance(token.clone(), &owner, &spender), value);
+		<Assets<T, I>>::set_balance(token, &owner, value);
+		assert_eq!(<Assets<T, I>>::balance(token, &owner), value);
+		assert_eq!(<Assets<T, I>>::balance(token, &spender), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token, &to), 0u8.into());
+		assert_ok!(<Assets<T, I>>::approve(token, &owner, &spender, value));
+		assert_eq!(<Assets<T, I>>::allowance(token, &owner, &spender), value);
 
 		#[block]
 		{
 			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), 0u8.into());
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &spender), 0u8.into());
-		assert_eq!(<Assets<T, I>>::balance(token.clone(), &to), value);
+		assert_eq!(<Assets<T, I>>::balance(token, &owner), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token, &spender), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token, &to), value);
 		assert_eq!(<Assets<T, I>>::allowance(token, &owner, &spender), 0u8.into());
 	}
 
@@ -140,7 +140,7 @@ mod benchmarks {
 		// Set the `current_allowance`.
 		<Balances<T>>::set_balance(&owner, u32::MAX.into());
 		assert_ok!(<Assets<T, I> as approvals::Mutate<T::AccountId>>::approve(
-			token.clone(),
+			token,
 			&owner,
 			&spender,
 			current_allowance,
@@ -161,7 +161,7 @@ mod benchmarks {
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::approve(IFungibles::approveCall {
-			token: token.clone().into(),
+			token: token.into(),
 			spender: <AddressMapper<T>>::to_address(&spender).0.into(),
 			value: alloy::U256::from(approval_value),
 		});
@@ -171,11 +171,11 @@ mod benchmarks {
 			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
-		assert_eq!(<Assets<T, I>>::allowance(token.clone(), &owner, &spender), approval_value);
+		assert_eq!(<Assets<T, I>>::allowance(token, &owner, &spender), approval_value);
 		if c == 1 {
 			assert_has_event::<T, I>(
 				pallet_assets::Event::ApprovalCancelled {
-					asset_id: token.clone(),
+					asset_id: token,
 					owner: owner.clone(),
 					delegate: spender.clone(),
 				}
@@ -232,18 +232,17 @@ mod benchmarks {
 		let mut call_setup = set_up_call();
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::startDestroy(IFungibles::startDestroyCall {
-			token: token.clone().into(),
-		});
+		let input =
+			IFungiblesCalls::startDestroy(IFungibles::startDestroyCall { token: token.into() });
 
-		assert_eq!(<Asset<T, I>>::get(token.clone()).unwrap().status, AssetStatus::Live);
+		assert_eq!(<Asset<T, I>>::get(token).unwrap().status, AssetStatus::Live);
 
 		#[block]
 		{
 			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
-		assert_eq!(<Asset<T, I>>::get(token.clone()).unwrap().status, AssetStatus::Destroying);
+		assert_eq!(<Asset<T, I>>::get(token).unwrap().status, AssetStatus::Destroying);
 	}
 
 	#[benchmark]
@@ -259,7 +258,7 @@ mod benchmarks {
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::setMetadata(IFungibles::setMetadataCall {
-			token: token.clone().into(),
+			token: token.into(),
 			name: String::from_utf8_lossy(&name).to_string(),
 			symbol: String::from_utf8_lossy(&symbol).to_string(),
 			decimals,
@@ -270,8 +269,8 @@ mod benchmarks {
 			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
-		assert_eq!(<Assets<T, I>>::name(token.clone()), name);
-		assert_eq!(<Assets<T, I>>::symbol(token.clone()), symbol);
+		assert_eq!(<Assets<T, I>>::name(token), name);
+		assert_eq!(<Assets<T, I>>::symbol(token), symbol);
 		assert_eq!(<Assets<T, I>>::decimals(token), decimals);
 	}
 
@@ -282,17 +281,16 @@ mod benchmarks {
 		let mut call_setup = set_up_call();
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
-		let input = IFungiblesCalls::clearMetadata(IFungibles::clearMetadataCall {
-			token: token.clone().into(),
-		});
+		let input =
+			IFungiblesCalls::clearMetadata(IFungibles::clearMetadataCall { token: token.into() });
 
 		#[block]
 		{
 			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
-		assert!(<Assets<T, I>>::name(token.clone()).is_empty());
-		assert!(<Assets<T, I>>::symbol(token.clone()).is_empty());
+		assert!(<Assets<T, I>>::name(token).is_empty());
+		assert!(<Assets<T, I>>::symbol(token).is_empty());
 		assert_eq!(<Assets<T, I>>::decimals(token), 0);
 	}
 
@@ -307,7 +305,7 @@ mod benchmarks {
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::mint(IFungibles::mintCall {
-			token: token.clone().into(),
+			token: token.into(),
 			account: <AddressMapper<T>>::to_address(&account).0.into(),
 			value: alloy::U256::from(value),
 		});
@@ -331,12 +329,12 @@ mod benchmarks {
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::burn(IFungibles::burnCall {
-			token: token.clone().into(),
+			token: token.into(),
 			account: <AddressMapper<T>>::to_address(&account).0.into(),
 			value: alloy::U256::from(value),
 		});
 
-		<Assets<T, I>>::set_balance(token.clone(), &account, value);
+		<Assets<T, I>>::set_balance(token, &account, value);
 
 		#[block]
 		{
@@ -457,13 +455,16 @@ fn assert_has_event<T: pallet_assets::Config<I>, I>(
 	frame_system::Pallet::<T>::assert_has_event(event.into());
 }
 
-fn create<T: Config<I> + pallet_assets::Config<I, AssetId: Default> + pallet_revive::Config, I>(
+fn create<
+	T: Config<I> + pallet_assets::Config<I, AssetId: Copy + Default> + pallet_revive::Config,
+	I,
+>(
 	owner: T::AccountId,
 ) -> TokenId<T, I> {
 	let token = NextAssetId::<T, I>::get().unwrap_or_default();
 	<Balances<T>>::set_balance(&owner, u32::MAX.into());
 	assert_ok!(<Assets<T, I> as Create<T::AccountId>>::create(
-		token.clone(),
+		token,
 		owner.clone(),
 		true,
 		1u32.into()
@@ -471,7 +472,7 @@ fn create<T: Config<I> + pallet_assets::Config<I, AssetId: Default> + pallet_rev
 
 	let max = AssetsStringLimit::<T, I>::get() as usize;
 	assert_ok!(<Assets<T, I> as metadata::Mutate<T::AccountId>>::set(
-		token.clone(),
+		token,
 		&owner,
 		vec![255u8; max],
 		vec![255u8; max],
