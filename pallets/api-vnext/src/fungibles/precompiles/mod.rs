@@ -222,15 +222,24 @@ where
 				Ok(mintCall::abi_encode_returns(&mintReturn {}))
 			},
 			IFungiblesCalls::burn(burnCall { token, account, value }) => {
-				env.charge(<T as Config<I>>::WeightInfo::burn())?;
+				let charged = env.charge(<T as Config<I>>::WeightInfo::burn())?;
 
 				self::burn::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*account.0).into()),
 					value.saturating_to(),
-				) // TODO: adjust weight
-				.map_err(|e| e.error)?;
+				)
+				.map_err(|e| {
+					// Adjust weight
+					if let Some(actual_weight) = e.post_info.actual_weight {
+						// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+						// #8693 lands
+						env.gas_meter_mut()
+							.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+					}
+					e.error
+				})?;
 
 				let from = account;
 				let to = Address::default();
