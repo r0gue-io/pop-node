@@ -319,7 +319,9 @@ pub fn run() -> Result<()> {
 					construct_benchmark_partials!(config, |partials| {
 						let db = partials.backend.expose_db();
 						let storage = partials.backend.expose_storage();
-						cmd.run(config, partials.client.clone(), db, storage)
+						let shared_cache = partials.backend.expose_shared_trie_cache();
+
+						cmd.run(config, partials.client.clone(), db, storage, shared_cache)
 					})
 				}),
 				BenchmarkCmd::Machine(cmd) =>

@@ -1,8 +1,6 @@
-use frame_support::{
-	parameter_types,
-	traits::{EitherOfDiverse, NeverEnsureOrigin},
-	weights::Weight,
-};
+#[cfg(not(feature = "runtime-benchmarks"))]
+use frame_support::traits::NeverEnsureOrigin;
+use frame_support::{parameter_types, traits::EitherOfDiverse, weights::Weight};
 use frame_system::EnsureRoot;
 use pallet_collective::EnsureProportionAtLeast;
 use parachains_common::BlockNumber;
@@ -60,7 +58,6 @@ impl pallet_collective::Config<CouncilCollective> for Runtime {
 
 impl pallet_motion::Config for Runtime {
 	type RuntimeCall = RuntimeCall;
-	type RuntimeEvent = RuntimeEvent;
 	#[cfg(not(feature = "runtime-benchmarks"))]
 	// Simple majority is disabled.
 	type SimpleMajorityOrigin = NeverEnsureOrigin<()>;
