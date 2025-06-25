@@ -211,7 +211,7 @@ where
 				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn {}))
 			},
 			IFungiblesCalls::mint(mintCall { token, account, value }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::mint())?;
 
 				self::mint::<T, I>(
 					to_runtime_origin(env.caller()),
