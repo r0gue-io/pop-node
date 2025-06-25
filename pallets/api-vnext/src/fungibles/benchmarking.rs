@@ -23,7 +23,7 @@ use pallet_assets::{Asset, AssetStatus};
 use pallet_revive::{
 	precompiles::{
 		alloy::primitives as alloy,
-		run::{precompile, CallSetup, WasmModule, H256, U256},
+		run::{CallSetup, WasmModule, H256, U256},
 	},
 	test_utils::{ALICE_ADDR, BOB_ADDR, CHARLIE_ADDR},
 	AddressMapper as _, Origin,
@@ -103,7 +103,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
 		assert_eq!(<Assets<T, I>>::allowance(token.clone(), &owner, &spender), approval_value);
@@ -175,7 +175,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
 		assert_eq!(<Asset<T, I>>::get(token.clone()).unwrap().status, AssetStatus::Destroying);
@@ -202,7 +202,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
 		assert_eq!(<Assets<T, I>>::name(token.clone()), name);
@@ -223,7 +223,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
 		assert!(<Assets<T, I>>::name(token.clone()).is_empty());
@@ -239,7 +239,9 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, alloy::U256>(
+				&mut ext, &ADDRESS, &input
+			));
 		}
 	}
 
@@ -255,7 +257,9 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, alloy::U256>(
+				&mut ext, &ADDRESS, &input
+			));
 		}
 	}
 
@@ -272,7 +276,9 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, alloy::U256>(
+				&mut ext, &ADDRESS, &input
+			));
 		}
 	}
 
@@ -285,7 +291,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, String>(&mut ext, &ADDRESS, &input));
 		}
 	}
 
@@ -298,7 +304,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, String>(&mut ext, &ADDRESS, &input));
 		}
 	}
 
@@ -310,7 +316,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, u16>(&mut ext, &ADDRESS, &input));
 		}
 	}
 
@@ -322,7 +328,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			assert_ok!(precompile::<Fungibles<T, I>, _>(&mut ext, &ADDRESS, &input));
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, bool>(&mut ext, &ADDRESS, &input));
 		}
 	}
 
