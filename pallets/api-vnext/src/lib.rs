@@ -8,14 +8,14 @@ use core::{convert::Into, marker::PhantomData, num::NonZero};
 use frame_support::{dispatch::RawOrigin, sp_runtime::traits::StaticLookup};
 #[cfg(feature = "fungibles")]
 pub use fungibles::precompiles::{Erc20, Fungibles};
-pub use pallet_revive::precompiles::alloy::primitives::U256;
+#[cfg(any(test, feature = "runtime-benchmarks"))]
+use pallet_revive::precompiles::alloy::sol_types::{SolType, SolValue};
 use pallet_revive::{
-	evm::{H160, H256},
 	precompiles::{
 		alloy::{sol, sol_types::SolEvent},
 		AddressMatcher, Error, Ext, Precompile,
 	},
-	AddressMapper as _, Origin,
+	AddressMapper as _, Origin, H160, H256, U256,
 };
 #[cfg(test)]
 use {
@@ -24,10 +24,7 @@ use {
 		sp_runtime::traits::Bounded,
 	},
 	frame_system::pallet_prelude::OriginFor,
-	pallet_revive::{
-		precompiles::alloy::sol_types::{SolType, SolValue},
-		BalanceOf, DepositLimit, MomentOf,
-	},
+	pallet_revive::{BalanceOf, DepositLimit, MomentOf},
 };
 
 #[cfg(feature = "fungibles")]
@@ -72,20 +69,30 @@ where
 }
 
 // A direct call to a precompile.
-#[cfg(all(test, feature = "runtime-benchmarks"))]
+#[cfg(feature = "runtime-benchmarks")]
 fn call_precompile<
-	P: Precompile<T = mock::Test>,
+	P: Precompile<T = E::T>,
+	E: pallet_revive::precompiles::ExtWithInfo<
+		T: pallet_revive::Config<
+			Currency: frame_support::traits::fungible::Inspect<
+				<E::T as frame_system::Config>::AccountId,
+				Balance: Into<U256> + TryFrom<U256>,
+			>,
+			Hash: frame_support::traits::IsType<H256>,
+			Time: frame_support::traits::Time<Moment: Into<U256>>,
+		>,
+	>,
 	O: SolValue
 		+ From<<O::SolType as pallet_revive::precompiles::alloy::sol_types::SolType>::RustType>,
 >(
-	ext: &mut impl pallet_revive::precompiles::ExtWithInfo<T = mock::Test>,
+	ext: &mut E,
 	address: &[u8; 20],
 	input: &P::Interface,
 ) -> Result<O, Error> {
 	pallet_revive::precompiles::run::precompile::<P, _>(ext, address, input).map(|o| decode(&o))
 }
 
-#[cfg(test)]
+#[cfg(any(test, feature = "runtime-benchmarks"))]
 fn decode<T: SolValue + From<<T::SolType as SolType>::RustType>>(data: &[u8]) -> T {
 	T::abi_decode(data).expect("unable to decode")
 }

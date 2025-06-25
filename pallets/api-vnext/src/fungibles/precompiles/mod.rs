@@ -5,7 +5,7 @@ use frame_support::traits::fungibles::metadata::Inspect as _;
 pub(super) use pallet_revive::precompiles::alloy::{
 	primitives::{
 		ruint::{UintTryFrom, UintTryTo},
-		Address,
+		Address, U256,
 	},
 	sol_types::SolCall,
 };
@@ -176,7 +176,7 @@ where
 				Ok(decreaseAllowanceCall::abi_encode_returns(&value))
 			},
 			IFungiblesCalls::create(createCall { admin, minBalance }) => {
-				// TODO: charge based on benchmarked weight
+				env.charge(<T as Config<I>>::WeightInfo::create())?;
 				let creator = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
 				let id = self::create::<T, I>(

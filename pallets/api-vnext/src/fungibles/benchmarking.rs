@@ -14,7 +14,7 @@ use frame_support::{
 		fungibles::{
 			approvals::{self, Inspect as _},
 			metadata::{self, Inspect as _},
-			Create,
+			Create, Inspect as _,
 		},
 		Get, Time,
 	},
@@ -33,9 +33,9 @@ use super::{
 	precompiles::{IFungibles, IFungiblesCalls, UintTryFrom, UintTryTo},
 	Config, NextAssetId, Pallet,
 };
-use crate::fixed_address;
 #[cfg(test)]
 use crate::mock::{ExtBuilder, Test};
+use crate::{call_precompile, fixed_address};
 
 const FUNGIBLES: u16 = 100;
 const ADDRESS: [u8; 20] = fixed_address(FUNGIBLES);
@@ -71,7 +71,7 @@ mod benchmarks {
 		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
 		let spender = <AddressMapper<T>>::to_account_id(&BOB_ADDR);
 		let current_allowance = <AssetsBalance<T, I>>::from(u32::MAX / 2);
-		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&CHARLIE_ADDR));
+		let token = super::create::<T, I>(<AddressMapper<T>>::to_account_id(&CHARLIE_ADDR));
 		// Set the `current_allowance`.
 		<Balances<T>>::set_balance(&owner, u32::MAX.into());
 		assert_ok!(<Assets<T, I> as approvals::Mutate<T::AccountId>>::approve(
@@ -139,9 +139,32 @@ mod benchmarks {
 	}
 
 	#[benchmark]
+	fn create() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let admin = BOB_ADDR;
+		let min_balance: AssetsBalance<T, I> = 1u8.into();
+
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(owner.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::create(IFungibles::createCall {
+			admin: admin.0.into(),
+			minBalance: alloy::U256::from(min_balance),
+		});
+
+		let mut token = 0;
+		#[block]
+		{
+			token = call_precompile::<Fungibles<T, I>, _, _>(&mut ext, &ADDRESS, &input).unwrap();
+		}
+
+		assert!(<Assets<T, I>>::asset_exists(token.into()));
+	}
+
+	#[benchmark]
 	fn start_destroy() {
 		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
-		let token = create::<T, I>(owner.clone());
+		let token = super::create::<T, I>(owner.clone());
 		let mut call_setup = set_up_call();
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
@@ -162,7 +185,7 @@ mod benchmarks {
 	#[benchmark]
 	fn set_metadata() {
 		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
-		let token = create::<T, I>(owner.clone());
+		let token = super::create::<T, I>(owner.clone());
 		let max = AssetsStringLimit::<T, I>::get() as usize;
 		let name = vec![42u8; max];
 		let symbol = vec![42u8; max];
@@ -191,7 +214,7 @@ mod benchmarks {
 	#[benchmark]
 	fn clear_metadata() {
 		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
-		let token = create::<T, I>(owner.clone());
+		let token = super::create::<T, I>(owner.clone());
 		let mut call_setup = set_up_call();
 		call_setup.set_origin(Origin::Signed(owner.clone()));
 		let mut ext = call_setup.ext().0;
@@ -223,7 +246,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn balance_of() {
-		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
+		let token = super::create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::balanceOf(IFungibles::balanceOfCall {
@@ -239,7 +262,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn allowance() {
-		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
+		let token = super::create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::allowance(IFungibles::allowanceCall {
@@ -256,7 +279,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn metadata_name() {
-		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
+		let token = super::create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::name(IFungibles::nameCall { token: token.into() });
@@ -269,7 +292,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn metadata_symbol() {
-		let token = create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
+		let token = super::create::<T, I>(<AddressMapper<T>>::to_account_id(&ALICE_ADDR));
 		let mut call_setup = set_up_call();
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::symbol(IFungibles::symbolCall { token: token.into() });
