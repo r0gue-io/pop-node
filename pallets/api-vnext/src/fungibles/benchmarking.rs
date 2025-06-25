@@ -12,7 +12,7 @@ use frame_support::{
 	traits::{
 		fungible::{Inspect, Mutate},
 		fungibles::{
-			approvals::{self, Inspect as _},
+			approvals::{self, Inspect as _, Mutate as _},
 			metadata::{self, Inspect as _},
 			Create, Inspect as _, Mutate as _,
 		},
@@ -90,6 +90,42 @@ mod benchmarks {
 
 		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), 0u8.into());
 		assert_eq!(<Assets<T, I>>::balance(token, &to), value);
+	}
+
+	#[benchmark]
+	fn transfer_from() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let token = super::create::<T, I>(owner.clone());
+		let spender = <AddressMapper<T>>::to_account_id(&BOB_ADDR);
+		let to = <AddressMapper<T>>::to_account_id(&CHARLIE_ADDR);
+		let value: AssetsBalance<T, I> = u32::MAX.into();
+
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(spender.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::transferFrom(IFungibles::transferFromCall {
+			token: token.clone().into(),
+			from: <AddressMapper<T>>::to_address(&owner).0.into(),
+			to: <AddressMapper<T>>::to_address(&to).0.into(),
+			value: alloy::U256::from(value),
+		});
+
+		<Assets<T, I>>::set_balance(token.clone(), &owner, value);
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), value);
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &spender), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &to), 0u8.into());
+		assert_ok!(<Assets<T, I>>::approve(token.clone(), &owner, &spender, value));
+		assert_eq!(<Assets<T, I>>::allowance(token.clone(), &owner, &spender), value);
+
+		#[block]
+		{
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
+		}
+
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &spender), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &to), value);
+		assert_eq!(<Assets<T, I>>::allowance(token, &owner, &spender), 0u8.into());
 	}
 
 	// Parameter:
