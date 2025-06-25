@@ -63,6 +63,35 @@ type TokenId<T, I> = <T as pallet_assets::Config<I>>::AssetId;
 mod benchmarks {
 	use super::*;
 
+	#[benchmark]
+	fn transfer() {
+		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let token = super::create::<T, I>(owner.clone());
+		let to = <AddressMapper<T>>::to_account_id(&BOB_ADDR);
+		let value: AssetsBalance<T, I> = u32::MAX.into();
+
+		let mut call_setup = set_up_call();
+		call_setup.set_origin(Origin::Signed(owner.clone()));
+		let mut ext = call_setup.ext().0;
+		let input = IFungiblesCalls::transfer(IFungibles::transferCall {
+			token: token.clone().into(),
+			to: <AddressMapper<T>>::to_address(&to).0.into(),
+			value: alloy::U256::from(value),
+		});
+
+		<Assets<T, I>>::set_balance(token.clone(), &owner, value);
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), value);
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &to), 0u8.into());
+
+		#[block]
+		{
+			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
+		}
+
+		assert_eq!(<Assets<T, I>>::balance(token.clone(), &owner), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token, &to), value);
+	}
+
 	// Parameter:
 	// - 'a': whether `approve_transfer` is required.
 	// - 'c': whether `cancel_approval` is required.
