@@ -29,4 +29,6 @@ runs:
       with:
         cache-on-failure: true
         cache-all-crates: true
+        cache-directors: |
+          target/pallet-revive-fixtures
         key: ${{ inputs.cache-key }}
