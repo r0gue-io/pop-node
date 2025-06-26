@@ -1,7 +1,6 @@
 use alloc::string::String;
 
 pub use erc20::{Erc20, IERC20};
-use frame_support::traits::fungibles::metadata::Inspect as _;
 pub(super) use pallet_revive::precompiles::alloy::{
 	primitives::{
 		ruint::{UintTryFrom, UintTryTo},
@@ -273,7 +272,7 @@ where
 			IFungiblesCalls::name(nameCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_name())?;
 
-				let result = <Assets<T, I>>::name((*token).into());
+				let result = name::<T, I>((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 
 				Ok(nameCall::abi_encode_returns(&result))
@@ -281,7 +280,7 @@ where
 			IFungiblesCalls::symbol(symbolCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_symbol())?;
 
-				let result = <Assets<T, I>>::symbol((*token).into());
+				let result = symbol::<T, I>((*token).into());
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 
 				Ok(nameCall::abi_encode_returns(&result))
@@ -289,7 +288,7 @@ where
 			IFungiblesCalls::decimals(decimalsCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_decimals())?;
 
-				let result = <Assets<T, I>>::decimals((*token).into());
+				let result = decimals::<T, I>((*token).into());
 
 				Ok(decimalsCall::abi_encode_returns(&result))
 			},

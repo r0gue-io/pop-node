@@ -505,6 +505,29 @@ fn allowance_works() {
 }
 
 #[test]
+fn metadata_works() {
+	let token = 1;
+	let creator = ALICE;
+	let name = b"name".to_vec();
+	let symbol = b"symbol".to_vec();
+	let decimals = 42;
+	ExtBuilder::new()
+		.with_balances(vec![(creator.clone(), UNIT)])
+		.with_assets(vec![(token, creator.clone(), false, 1)])
+		.with_asset_metadata(vec![(token, name.clone(), symbol.clone(), decimals)])
+		.build()
+		.execute_with(|| {
+			assert!(super::name::<Test, ()>(TokenId::MAX).is_empty());
+			assert!(super::symbol::<Test, ()>(TokenId::MAX).is_empty());
+			assert_eq!(super::decimals::<Test, ()>(TokenId::MAX), 0);
+
+			assert_eq!(super::name::<Test, ()>(token), name);
+			assert_eq!(super::symbol::<Test, ()>(token), symbol);
+			assert_eq!(super::decimals::<Test, ()>(token), decimals);
+		});
+}
+
+#[test]
 fn exists_works() {
 	let token = 1;
 	let owner = ALICE;
