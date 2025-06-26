@@ -172,3 +172,14 @@ impl ExtBuilder {
 		ext
 	}
 }
+
+#[test]
+fn selectors_work() {
+	// Constructors currently still use blake encoding
+	assert_eq!(hex::encode(blake_selector("new")), "9bae9d5e");
+
+	// Erc20 selectors
+	assert_eq!(hex::encode(keccak_selector("exists()")), "267c4ae4");
+	assert_eq!(hex::encode(keccak_selector("totalSupply()")), "18160ddd");
+	assert_eq!(hex::encode(keccak_selector("balanceOf(address)")), "70a08231");
+}
