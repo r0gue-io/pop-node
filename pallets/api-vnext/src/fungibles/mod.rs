@@ -10,7 +10,7 @@ use frame_support::{
 	},
 	pallet_prelude::{CheckedSub, DispatchError, Zero},
 	sp_runtime::Saturating,
-	traits::fungibles::{approvals::Inspect as _, Inspect as _},
+	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _, Inspect as _},
 	weights::Weight,
 };
 use frame_system::{ensure_signed, pallet_prelude::OriginFor};
@@ -141,6 +141,10 @@ fn create<T: pallet_assets::Config<I, AssetId: Default>, I>(
 	Ok(id)
 }
 
+fn decimals<T: pallet_assets::Config<I>, I>(asset: AssetIdOf<T, I>) -> u8 {
+	<Assets<T, I>>::decimals(asset)
+}
+
 fn decrease_allowance<T: Config<I> + pallet_assets::Config<I>, I>(
 	origin: OriginFor<T>,
 	asset: AssetIdOf<T, I>,
@@ -206,6 +210,10 @@ fn mint<T: pallet_assets::Config<I>, I>(
 	<Assets<T, I>>::mint(origin, asset.into(), T::Lookup::unlookup(account), value)
 }
 
+fn name<T: pallet_assets::Config<I>, I>(asset: AssetIdOf<T, I>) -> Vec<u8> {
+	<Assets<T, I>>::name(asset)
+}
+
 fn set_metadata<T: pallet_assets::Config<I>, I>(
 	origin: OriginFor<T>,
 	asset: AssetIdOf<T, I>,
@@ -221,6 +229,10 @@ fn start_destroy<T: pallet_assets::Config<I>, I>(
 	asset: AssetIdOf<T, I>,
 ) -> DispatchResult {
 	<Assets<T, I>>::start_destroy(origin, asset.into())
+}
+
+fn symbol<T: pallet_assets::Config<I>, I>(asset: AssetIdOf<T, I>) -> Vec<u8> {
+	<Assets<T, I>>::symbol(asset)
 }
 
 fn total_supply<T: pallet_assets::Config<I>, I>(asset: AssetIdOf<T, I>) -> T::Balance {

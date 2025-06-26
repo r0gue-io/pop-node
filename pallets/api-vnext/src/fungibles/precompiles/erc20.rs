@@ -1,9 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
-use frame_support::{
-	sp_runtime::traits::AtLeast32Bit,
-	traits::fungibles::{approvals::Inspect as _, metadata::Inspect as _},
-};
+use frame_support::sp_runtime::traits::AtLeast32Bit;
 use pallet_assets::precompiles::{AssetIdExtractor, InlineAssetIdExtractor};
 use pallet_revive::{precompiles::RuntimeCosts, AddressMapper as _};
 use AddressMatcher::Prefix;
@@ -11,8 +8,8 @@ use IERC20::*;
 
 use super::{
 	deposit_event, prefixed_address, sol, to_runtime_origin, weights::WeightInfo, AddressMapper,
-	AddressMatcher, Assets, Config, Error, Ext, NonZero, PhantomData, Precompile, SolCall,
-	UintTryFrom, UintTryTo, U256,
+	AddressMatcher, Config, Error, Ext, NonZero, PhantomData, Precompile, SolCall, UintTryFrom,
+	UintTryTo, U256,
 };
 
 sol!("src/fungibles/precompiles/interfaces/IERC20.sol");
@@ -128,7 +125,7 @@ where
 			name(_) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_name())?;
 
-				let result = <Assets<T, I>>::name(token);
+				let result = super::name::<T, I>(token);
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 
 				Ok(nameCall::abi_encode_returns(&result))
@@ -136,7 +133,7 @@ where
 			symbol(_) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_symbol())?;
 
-				let result = <Assets<T, I>>::symbol(token);
+				let result = super::symbol::<T, I>(token);
 				let result = String::from_utf8_lossy(result.as_slice()).into();
 
 				Ok(symbolCall::abi_encode_returns(&result))
@@ -144,7 +141,7 @@ where
 			decimals(_) => {
 				env.charge(<T as Config<I>>::WeightInfo::metadata_decimals())?;
 
-				let result = <Assets<T, I>>::decimals(token);
+				let result = super::decimals::<T, I>(token);
 
 				Ok(decimalsCall::abi_encode_returns(&result))
 			},
@@ -164,6 +161,7 @@ mod tests {
 	use frame_support::{
 		assert_ok,
 		sp_runtime::{app_crypto::sp_core::bytes::to_hex, DispatchError},
+		traits::fungibles::approvals::Inspect,
 	};
 	use pallet_revive::{
 		precompiles::alloy::sol_types::{SolInterface, SolType, SolValue},
