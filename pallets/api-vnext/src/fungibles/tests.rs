@@ -457,3 +457,16 @@ fn burn_works() {
 			assert_eq!(balance_after_burn, balance_before_burn - value);
 		});
 }
+
+#[test]
+fn exists_works() {
+	let token = 1;
+	let owner = ALICE;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(exists::<Test, ()>(TokenId::MAX), false);
+			assert_eq!(exists::<Test, ()>(token), true);
+		});
+}
