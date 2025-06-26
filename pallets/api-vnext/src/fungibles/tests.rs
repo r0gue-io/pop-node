@@ -488,6 +488,23 @@ fn balance_of_works() {
 }
 
 #[test]
+fn allowance_works() {
+	let token = 1;
+	let value: Balance = 100 * UNIT;
+	let owner = ALICE;
+	let spender = BOB;
+	ExtBuilder::new()
+		.with_balances(vec![(owner.clone(), UNIT), (spender.clone(), ED::get())])
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(allowance::<Test, ()>(token, &owner, &spender), 0);
+			assert_ok!(Assets::approve(token, &owner, &spender, value));
+			assert_eq!(allowance::<Test, ()>(token, &owner, &spender), value);
+		});
+}
+
+#[test]
 fn exists_works() {
 	let token = 1;
 	let owner = ALICE;
