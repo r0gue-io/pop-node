@@ -2,19 +2,24 @@ use codec::Compact;
 use frame_support::{
 	derive_impl,
 	sp_runtime::{traits::AccountIdLookup, AccountId32, BuildStorage},
-	traits::AsEnsureOriginWithArg,
+	traits::{AsEnsureOriginWithArg, Get},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_assets::AutoIncAssetId;
-pub(crate) use pallet_revive::test_utils::ALICE;
+pub(crate) use pallet_revive::test_utils::{ALICE, BOB, CHARLIE};
 
 use super::fungibles;
 
+pub(crate) type AccountId = AccountId32;
 pub(crate) type Balance = u128;
 type Block = frame_system::mocking::MockBlock<Test>;
+pub(crate) type ExistentialDeposit = <Test as pallet_balances::Config>::ExistentialDeposit;
+// For terminology in tests.
+pub(crate) type TokenId = u32;
 
 pub(crate) const ERC20: u16 = 2;
 pub(crate) const FUNGIBLES: u16 = 1;
+pub(crate) const UNIT: Balance = 10_000_000_000;
 
 #[frame_support::runtime]
 mod runtime {
@@ -49,12 +54,12 @@ mod runtime {
 
 #[derive_impl(pallet_assets::config_preludes::TestDefaultConfig)]
 impl pallet_assets::Config for Test {
-	type AssetIdParameter = Compact<u32>;
+	type AssetIdParameter = Compact<TokenId>;
 	type Balance = Balance;
 	type CallbackHandle = AutoIncAssetId<Test>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Currency = Balances;
-	type ForceOrigin = EnsureRoot<AccountId32>;
+	type ForceOrigin = EnsureRoot<AccountId>;
 }
 
 #[derive_impl(pallet_balances::config_preludes::TestDefaultConfig)]
@@ -76,7 +81,7 @@ impl pallet_revive::Config for Test {
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {
 	type AccountData = pallet_balances::AccountData<Balance>;
-	type AccountId = AccountId32;
+	type AccountId = AccountId;
 	type Block = Block;
 	type Lookup = AccountIdLookup<Self::AccountId, ()>;
 }
@@ -89,42 +94,53 @@ impl fungibles::Config for Test {
 }
 
 pub(crate) struct ExtBuilder {
-	assets: Option<Vec<(u32, AccountId32, bool, u128)>>,
-	asset_accounts: Option<Vec<(u32, AccountId32, u128)>>,
-	asset_metadata: Option<Vec<(u32, Vec<u8>, Vec<u8>, u8)>>,
+	assets: Option<Vec<(TokenId, AccountId, bool, Balance)>>,
+	asset_accounts: Option<Vec<(TokenId, AccountId, Balance)>>,
+	asset_metadata: Option<Vec<(TokenId, Vec<u8>, Vec<u8>, u8)>>,
+	balances: Vec<(AccountId, Balance)>,
 }
 impl ExtBuilder {
 	pub(crate) fn new() -> Self {
-		Self { assets: None, asset_accounts: None, asset_metadata: None }
+		Self {
+			assets: None,
+			asset_accounts: None,
+			asset_metadata: None,
+			balances: vec![(ALICE, ExistentialDeposit::get())],
+		}
 	}
 
-	pub(crate) fn with_assets(mut self, assets: Vec<(u32, AccountId32, bool, u128)>) -> Self {
+	pub(crate) fn with_assets(mut self, assets: Vec<(TokenId, AccountId, bool, Balance)>) -> Self {
 		self.assets = Some(assets);
 		self
 	}
 
-	pub(crate) fn with_asset_balances(mut self, accounts: Vec<(u32, AccountId32, u128)>) -> Self {
+	pub(crate) fn with_asset_balances(
+		mut self,
+		accounts: Vec<(TokenId, AccountId, Balance)>,
+	) -> Self {
 		self.asset_accounts = Some(accounts);
 		self
 	}
 
 	pub(crate) fn with_asset_metadata(
 		mut self,
-		metadata: Vec<(u32, Vec<u8>, Vec<u8>, u8)>,
+		metadata: Vec<(TokenId, Vec<u8>, Vec<u8>, u8)>,
 	) -> Self {
 		self.asset_metadata = Some(metadata);
+		self
+	}
+
+	pub(crate) fn with_balances(mut self, balances: Vec<(AccountId, Balance)>) -> Self {
+		self.balances = balances;
 		self
 	}
 
 	pub(crate) fn build(mut self) -> sp_io::TestExternalities {
 		let mut t = frame_system::GenesisConfig::<Test>::default().build_storage().unwrap();
 
-		pallet_balances::GenesisConfig::<Test> {
-			balances: vec![(ALICE, 10_000_000_000)],
-			..Default::default()
-		}
-		.assimilate_storage(&mut t)
-		.unwrap();
+		pallet_balances::GenesisConfig::<Test> { balances: self.balances, ..Default::default() }
+			.assimilate_storage(&mut t)
+			.unwrap();
 
 		pallet_assets::GenesisConfig::<Test> {
 			assets: self.assets.take().unwrap_or_default(),
@@ -151,4 +167,16 @@ impl ExtBuilder {
 			execute(call_setup)
 		})
 	}
+}
+
+pub(crate) fn signed(account: AccountId) -> RuntimeOrigin {
+	RuntimeOrigin::signed(account)
+}
+
+pub(crate) fn root() -> RuntimeOrigin {
+	RuntimeOrigin::root()
+}
+
+pub(crate) fn none() -> RuntimeOrigin {
+	RuntimeOrigin::none()
 }
