@@ -25,7 +25,7 @@ const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
 const INIT_VALUE: Balance = 100 * UNIT;
 const STORAGE_DEPOSIT_LIMIT: DepositLimit<Balance> = DepositLimit::Balance(Balance::MAX);
 
-type AssetId = u32;
+type TokenId = u32;
 
 // Get the last event from `pallet-revive`.
 fn last_contract_event(address: &H160) -> Vec<u8> {
@@ -108,9 +108,9 @@ fn to_address(account: &AccountId) -> H160 {
 }
 
 pub(crate) struct ExtBuilder {
-	assets: Option<Vec<(AssetId, AccountId, bool, Balance)>>,
-	asset_accounts: Option<Vec<(AssetId, AccountId, Balance)>>,
-	asset_metadata: Option<Vec<(AssetId, Vec<u8>, Vec<u8>, u8)>>,
+	assets: Option<Vec<(TokenId, AccountId, bool, Balance)>>,
+	asset_accounts: Option<Vec<(TokenId, AccountId, Balance)>>,
+	asset_metadata: Option<Vec<(TokenId, Vec<u8>, Vec<u8>, u8)>>,
 }
 
 impl ExtBuilder {
@@ -118,14 +118,14 @@ impl ExtBuilder {
 		Self { assets: None, asset_accounts: None, asset_metadata: None }
 	}
 
-	pub(crate) fn with_assets(mut self, assets: Vec<(AssetId, AccountId, bool, Balance)>) -> Self {
+	pub(crate) fn with_assets(mut self, assets: Vec<(TokenId, AccountId, bool, Balance)>) -> Self {
 		self.assets = Some(assets);
 		self
 	}
 
 	pub(crate) fn with_asset_balances(
 		mut self,
-		accounts: Vec<(AssetId, AccountId, Balance)>,
+		accounts: Vec<(TokenId, AccountId, Balance)>,
 	) -> Self {
 		self.asset_accounts = Some(accounts);
 		self
@@ -133,7 +133,7 @@ impl ExtBuilder {
 
 	pub(crate) fn with_asset_metadata(
 		mut self,
-		metadata: Vec<(AssetId, Vec<u8>, Vec<u8>, u8)>,
+		metadata: Vec<(TokenId, Vec<u8>, Vec<u8>, u8)>,
 	) -> Self {
 		self.asset_metadata = Some(metadata);
 		self

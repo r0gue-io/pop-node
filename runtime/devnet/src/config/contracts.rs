@@ -13,8 +13,10 @@ use crate::{
 	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, Timestamp, TransactionPayment,
 };
 
-type Erc20<const PREFIX: u16, I> = pallet_api_vnext::Erc20<PREFIX, Runtime, I>;
-type Fungibles<const FIXED: u16, I> = pallet_api_vnext::Fungibles<FIXED, Runtime, I>;
+type Erc20<const PREFIX: u16, I> =
+	pallet_api_vnext::fungibles::precompiles::erc20::v0::Erc20<PREFIX, Runtime, I>;
+type Fungibles<const FIXED: u16, I> =
+	pallet_api_vnext::fungibles::precompiles::v0::Fungibles<FIXED, Runtime, I>;
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 	pallet_contracts::Schedule {
@@ -107,8 +109,12 @@ impl pallet_revive::Config for Runtime {
 	type NativeToEthRatio = NativeToEthRatio;
 	// 512 MB. Used in an integrity test that verifies the runtime has enough memory.
 	type PVFMemory = ConstU32<{ 512 * 1024 * 1024 }>;
-	type Precompiles =
-		(Fungibles<100, TrustBackedAssetsInstance>, Erc20<101, TrustBackedAssetsInstance>);
+	type Precompiles = (
+		// 1: `Fungibles` precompile v0 using `TrustBackedAssetsInstance` instances
+		Fungibles<1, TrustBackedAssetsInstance>,
+		// 2: `Erc20` precompile v0 using `TrustBackedAssetsInstance` instances
+		Erc20<2, TrustBackedAssetsInstance>,
+	);
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
 	type RuntimeHoldReason = RuntimeHoldReason;
@@ -147,7 +153,7 @@ fn contracts_prevents_runtime_calls() {
 #[cfg(test)]
 mod tests {
 	use frame_support::{assert_ok, traits::fungible::Mutate};
-	use pallet_api_vnext::fungibles::precompiles::{IFungibles::*, IERC20};
+	use pallet_api_vnext::fungibles::precompiles::{erc20::v0::IERC20, v0::IFungibles::*};
 	use pallet_revive::{
 		precompiles::alloy::{primitives, sol_types::SolCall},
 		AddressMapper,
@@ -180,8 +186,8 @@ mod tests {
 		let origin = RuntimeOrigin::signed(caller.clone());
 		let origin_addr = AccountId32Mapper::to_address(&caller);
 		let token = 1;
-		let fungibles_addr: H160 = Fungibles::<100, TrustBackedAssetsInstance>::address().into();
-		let erc20_addr: H160 = Erc20::<101, TrustBackedAssetsInstance>::address(token).into();
+		let fungibles_addr: H160 = Fungibles::<1, TrustBackedAssetsInstance>::address().into();
+		let erc20_addr: H160 = Erc20::<2, TrustBackedAssetsInstance>::address(token).into();
 		let total_supply: Balance = 10_000;
 		let gas_limit = Weight::from_parts(600_000_000, 10_000);
 		new_test_ext().execute_with(|| {

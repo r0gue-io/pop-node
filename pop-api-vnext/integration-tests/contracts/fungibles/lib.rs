@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{prelude::string::String, U256};
-use pop_api::fungibles::{self as api, events::*, Fungibles, TokenId};
+use pop_api::fungibles::{self as api, *};
 
 #[ink::contract]
 pub mod fungibles {

@@ -1,0 +1,236 @@
+use super::*;
+
+// NOTE: subject to change based on ink!'s support for solidity custom errors.
+pub enum Error {
+	/// Indicates a failure with the `spender`’s `allowance`.
+	InsufficientAllowance(ERC20InsufficientAllowance),
+	/// Indicates an error related to the current `balance` of a `sender`.
+	InsufficientBalance(ERC20InsufficientBalance),
+	/// Indicates an error related to a specified `value`.
+	InsufficientValue(ERC20InsufficientValue),
+	/// Indicates a failure with the `approver` of a token to be approved.
+	InvalidApprover(ERC20InvalidApprover),
+	/// Indicates a failure with the token `receiver`.
+	InvalidReceiver(ERC20InvalidReceiver),
+	/// Indicates a failure with the token `sender`.
+	InvalidSender(ERC20InvalidSender),
+}
+
+impl<'a> SolEncode<'a> for Error {
+	type SolType = ();
+
+	fn encode(&'a self) -> Vec<u8> {
+		use Error::*;
+		match self {
+			InsufficientAllowance(e) => e.abi_encode(),
+			InsufficientBalance(e) => e.abi_encode(),
+			InsufficientValue(e) => e.abi_encode(),
+			InvalidApprover(e) => e.abi_encode(),
+			InvalidReceiver(e) => e.abi_encode(),
+			InvalidSender(e) => e.abi_encode(),
+		}
+	}
+
+	fn to_sol_type(&'a self) -> Self::SolType {
+		()
+	}
+}
+
+/// Indicates a failure with the `spender`’s `allowance`.
+pub struct ERC20InsufficientAllowance(pub Address, pub U256, pub U256);
+impl SolError for ERC20InsufficientAllowance {
+	type Parameters<'a> = (SolAddress, Uint<256>, Uint<256>);
+	type Token<'a> = <Self::Parameters<'a> as SolType>::Token<'a>;
+
+	const SELECTOR: [u8; 4] = [251, 143, 65, 178];
+	const SIGNATURE: &'static str = "ERC20InsufficientAllowance(address,uint256,uint256)";
+
+	#[inline]
+	fn new<'a>(tuple: <Self::Parameters<'a> as SolType>::RustType) -> Self {
+		Self(
+			Address::from(*tuple.0 .0),
+			U256::from_little_endian(tuple.1.as_le_slice()),
+			U256::from_little_endian(tuple.2.as_le_slice()),
+		)
+	}
+
+	#[inline]
+	fn tokenize(&self) -> Self::Token<'_> {
+		(
+			self.0.to_sol_type().tokenize(),
+			self.1.to_sol_type().tokenize(),
+			self.2.to_sol_type().tokenize(),
+		)
+	}
+}
+
+/// Indicates an error related to the current `balance` of a `sender`.
+pub struct ERC20InsufficientBalance(pub Address, pub U256, pub U256);
+impl SolError for ERC20InsufficientBalance {
+	type Parameters<'a> = (SolAddress, Uint<256>, Uint<256>);
+	type Token<'a> = <Self::Parameters<'a> as SolType>::Token<'a>;
+
+	const SELECTOR: [u8; 4] = [228, 80, 211, 140];
+	const SIGNATURE: &'static str = "ERC20InsufficientBalance(address,uint256,uint256)";
+
+	#[inline]
+	fn new<'a>(tuple: <Self::Parameters<'a> as SolType>::RustType) -> Self {
+		Self(
+			Address::from(*tuple.0 .0),
+			U256::from_little_endian(tuple.1.as_le_slice()),
+			U256::from_little_endian(tuple.2.as_le_slice()),
+		)
+	}
+
+	#[inline]
+	fn tokenize(&self) -> Self::Token<'_> {
+		(
+			self.0.to_sol_type().tokenize(),
+			self.1.to_sol_type().tokenize(),
+			self.2.to_sol_type().tokenize(),
+		)
+	}
+}
+
+/// Indicates an error related to a specified `value`.
+pub struct ERC20InsufficientValue;
+impl SolError for ERC20InsufficientValue {
+	type Parameters<'a> = ();
+	type Token<'a> = <Self::Parameters<'a> as SolType>::Token<'a>;
+
+	const SELECTOR: [u8; 4] = [191, 254, 152, 173];
+	const SIGNATURE: &'static str = "ERC20InsufficientValue()";
+
+	#[inline]
+	fn new<'a>(_tuple: <Self::Parameters<'a> as SolType>::RustType) -> Self {
+		Self
+	}
+
+	#[inline]
+	fn tokenize(&self) -> Self::Token<'_> {
+		()
+	}
+}
+impl From<ERC20InsufficientValue> for Error {
+	fn from(value: ERC20InsufficientValue) -> Self {
+		Self::InsufficientValue(value)
+	}
+}
+
+/// Indicates a failure with the `approver` of a token to be approved.
+pub struct ERC20InvalidApprover(pub Address);
+impl SolError for ERC20InvalidApprover {
+	type Parameters<'a> = (SolAddress,);
+	type Token<'a> = <Self::Parameters<'a> as SolType>::Token<'a>;
+
+	const SELECTOR: [u8; 4] = [230, 2, 223, 5];
+	const SIGNATURE: &'static str = "ERC20InvalidApprover(address)";
+
+	#[inline]
+	fn new<'a>(tuple: <Self::Parameters<'a> as SolType>::RustType) -> Self {
+		Self((*tuple.0 .0).into())
+	}
+
+	#[inline]
+	fn tokenize(&self) -> Self::Token<'_> {
+		(self.0.to_sol_type().tokenize(),)
+	}
+}
+impl From<ERC20InvalidApprover> for Error {
+	fn from(value: ERC20InvalidApprover) -> Self {
+		Self::InvalidApprover(value)
+	}
+}
+
+/// Indicates a failure with the token `sender`.
+pub struct ERC20InvalidSender(pub Address);
+impl SolError for ERC20InvalidSender {
+	type Parameters<'a> = (SolAddress,);
+	type Token<'a> = <Self::Parameters<'a> as SolType>::Token<'a>;
+
+	const SELECTOR: [u8; 4] = [150, 198, 253, 30];
+	const SIGNATURE: &'static str = "ERC20InvalidSender(address)";
+
+	#[inline]
+	fn new<'a>(tuple: <Self::Parameters<'a> as SolType>::RustType) -> Self {
+		Self((*tuple.0 .0).into())
+	}
+
+	#[inline]
+	fn tokenize(&self) -> Self::Token<'_> {
+		(self.0.to_sol_type().tokenize(),)
+	}
+}
+impl From<ERC20InvalidSender> for Error {
+	fn from(value: ERC20InvalidSender) -> Self {
+		Self::InvalidSender(value)
+	}
+}
+
+/// Indicates a failure with the token `receiver`.
+pub struct ERC20InvalidReceiver(pub Address);
+impl SolError for ERC20InvalidReceiver {
+	type Parameters<'a> = (SolAddress,);
+	type Token<'a> = <Self::Parameters<'a> as SolType>::Token<'a>;
+
+	const SELECTOR: [u8; 4] = [236u8, 68u8, 47u8, 5u8];
+	const SIGNATURE: &'static str = "ERC20InvalidReceiver(address)";
+
+	#[inline]
+	fn new<'a>(tuple: <Self::Parameters<'a> as SolType>::RustType) -> Self {
+		Self((*tuple.0 .0).into())
+	}
+
+	#[inline]
+	fn tokenize(&self) -> Self::Token<'_> {
+		(self.0.to_sol_type().tokenize(),)
+	}
+}
+
+impl<'a> SolEncode<'a> for ERC20InvalidReceiver {
+	type SolType = (&'a Address,);
+
+	#[inline]
+	fn encode(&'a self) -> Vec<u8> {
+		self.abi_encode()
+	}
+
+	#[inline]
+	fn to_sol_type(&'a self) -> Self::SolType {
+		(&self.0,)
+	}
+}
+impl From<ERC20InvalidReceiver> for Error {
+	fn from(value: ERC20InvalidReceiver) -> Self {
+		Self::InvalidReceiver(value)
+	}
+}
+
+#[test]
+fn error_encoding_works() {
+	for (result, expected) in [
+		    (
+				ERC20InsufficientAllowance([255u8; 20].into(), U256::MAX, U256::MAX).abi_encode(),
+				"fb8f41b2000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+			),
+			(
+			    ERC20InsufficientBalance([255u8; 20].into(), U256::MAX, U256::MAX).abi_encode(),
+				"e450d38c000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+			),
+			(ERC20InsufficientValue.abi_encode(),"bffe98ad"),
+			(
+			    ERC20InvalidApprover([255u8; 20].into()).abi_encode(),
+				"e602df05000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
+			),
+			(
+			    ERC20InvalidReceiver([255u8; 20].into()).abi_encode(),
+				"ec442f05000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
+			),
+			(
+			    ERC20InvalidSender([255u8; 20].into()).abi_encode(),
+				"96c6fd1e000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
+			),
+		] {
+		    assert_eq!(hex::encode(result), expected)
+		}
+}

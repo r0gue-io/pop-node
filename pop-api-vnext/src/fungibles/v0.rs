@@ -1,30 +1,17 @@
-use alloy_sol_types::{
-	sol_data::{Address as SolAddress, Uint},
-	SolError, SolType,
-};
-pub use erc20::{Approval, Transfer};
 pub use errors::*;
-use ink::{
-	abi::Sol,
-	contract_ref,
-	prelude::{string::String, vec::Vec},
-	primitives::sol::SolTypeEncode,
-	U256,
+pub use events::*;
+
+use super::{
+	contract_ref, ensure, erc20::v0 as erc20, fixed_address, Address, Pop, Sol, SolAddress,
+	SolEncode, SolError, SolType, SolTypeEncode, String, TokenId, Vec, U256,
 };
 
-pub use super::revert;
-use super::*;
+mod errors;
+mod events;
 
-/// APIs for fungible tokens conforming to the ERC20 standard.
-pub mod erc20;
-pub mod errors;
-pub mod events;
+const PRECOMPILE: u16 = 1;
 
-const PRECOMPILE: u16 = 100;
-
-pub type TokenId = u32;
-
-/// The fungibles precompile offers a streamlined interface for interacting with fungible
+/// The fungibles API offers a streamlined interface for interacting with fungible
 /// tokens. The goal is to provide a simplified, consistent API that adheres to standards in
 /// the smart contract space.
 #[ink::trait_definition]

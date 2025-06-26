@@ -30,7 +30,10 @@ use pallet_revive::{
 };
 
 use super::{
-	precompiles::{IFungibles, IFungiblesCalls, UintTryFrom, UintTryTo},
+	precompiles::{
+		v0::{IFungibles, IFungiblesCalls},
+		UintTryFrom, UintTryTo,
+	},
 	Config, NextAssetId, Pallet,
 };
 #[cfg(test)]
@@ -45,7 +48,7 @@ type Assets<T, I> = pallet_assets::Pallet<T, I>;
 type AssetsBalance<T, I> = <T as pallet_assets::Config<I>>::Balance;
 type AssetsStringLimit<T, I> = <T as pallet_assets::Config<I>>::StringLimit;
 type Balances<T> = <T as pallet_revive::Config>::Currency;
-type Fungibles<T, I> = super::Fungibles<FUNGIBLES, T, I>;
+type Fungibles<T, I> = super::precompiles::v0::Fungibles<FUNGIBLES, T, I>;
 type TokenId<T, I> = <T as pallet_assets::Config<I>>::AssetId;
 
 #[instance_benchmarks(

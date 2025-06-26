@@ -1,26 +1,12 @@
-use alloc::string::String;
-
-pub use erc20::{Erc20, IERC20};
-pub(super) use pallet_revive::precompiles::alloy::{
-	primitives::{
-		ruint::{UintTryFrom, UintTryTo},
-		Address, U256,
-	},
-	sol_types::SolCall,
-};
-use pallet_revive::precompiles::RuntimeCosts;
-use weights::WeightInfo;
-pub(super) use IFungibles::*;
+pub(crate) use IFungibles::*;
 
 use super::*;
 
-mod erc20;
+sol!("src/fungibles/precompiles/interfaces/v0/IFungibles.sol");
 
-sol!("src/fungibles/precompiles/interfaces/IFungibles.sol");
-
-/// The fungibles precompile offers a streamlined interface for interacting with fungible tokens.
-/// The goal is to provide a simplified, consistent API that adheres to standards in the smart
-/// contract space.
+/// The fungibles precompile offers a streamlined interface for interacting with fungible
+/// tokens. The goal is to provide a simplified, consistent API that adheres to standards in
+/// the smart contract space.
 pub struct Fungibles<const FIXED: u16, T, I = ()>(PhantomData<(T, I)>);
 impl<
 		const FIXED: u16,
@@ -91,7 +77,8 @@ where
 
 				// Adjust weight
 				if let Some(actual_weight) = result.actual_weight {
-					// TODO: replace with `env.adjust_gas(charged, result.weight);` once #8693 lands
+					// TODO: replace with `env.adjust_gas(charged, result.weight);` once #8693
+					// lands
 					env.gas_meter_mut()
 						.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 				}

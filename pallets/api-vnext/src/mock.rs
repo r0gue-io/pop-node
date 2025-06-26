@@ -73,7 +73,10 @@ impl pallet_revive::Config for Test {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Self>;
 	type Currency = Balances;
 	type InstantiateOrigin = EnsureSigned<Self::AccountId>;
-	type Precompiles = (fungibles::Fungibles<FUNGIBLES, Test>, fungibles::Erc20<ERC20, Test>);
+	type Precompiles = (
+		fungibles::precompiles::v0::Fungibles<FUNGIBLES, Test>,
+		fungibles::precompiles::erc20::v0::Erc20<ERC20, Test>,
+	);
 	type Time = Timestamp;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 }
