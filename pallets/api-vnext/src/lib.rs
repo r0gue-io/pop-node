@@ -6,8 +6,6 @@ use alloc::vec::Vec;
 use core::{convert::Into, marker::PhantomData, num::NonZero};
 
 use frame_support::{dispatch::RawOrigin, sp_runtime::traits::StaticLookup};
-#[cfg(feature = "fungibles")]
-pub use fungibles::precompiles::{Erc20, Fungibles};
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 use pallet_revive::precompiles::alloy::sol_types::{SolType, SolValue};
 use pallet_revive::{

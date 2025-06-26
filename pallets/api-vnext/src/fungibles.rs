@@ -16,7 +16,6 @@ use frame_support::{
 use frame_system::{ensure_signed, pallet_prelude::OriginFor};
 pub use pallet::*;
 use pallet_assets::NextAssetId;
-pub use precompiles::{Erc20, Fungibles};
 use weights::WeightInfo;
 use AddressMatcher::Fixed;
 

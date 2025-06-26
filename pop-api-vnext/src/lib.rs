@@ -1,12 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{Address, SolEncode};
+use ink::Address;
+pub use sol::revert;
 
 type Pop = ink::env::DefaultEnvironment;
 
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
+mod sol;
 
 #[macro_export]
 macro_rules! ensure {
@@ -38,15 +40,6 @@ fn prefixed_address(n: u16, prefix: u32) -> Address {
 	let mut address = fixed_address(n);
 	address.0[..4].copy_from_slice(&prefix.to_be_bytes());
 	address
-}
-
-/// Reverts the current contract execution, rolling back any changes and returning the specified
-/// `error`.
-// Helper until Solidity support added for Rust errors for automatic reversion based on returning an
-// error.
-pub fn revert(error: &impl for<'a> SolEncode<'a>) -> ! {
-	use ink::env::{return_value_solidity, ReturnFlags};
-	return_value_solidity(ReturnFlags::REVERT, error)
 }
 
 #[test]

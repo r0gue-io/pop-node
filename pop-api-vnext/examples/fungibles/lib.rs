@@ -5,7 +5,7 @@ use pop_api::{
 	fungibles::{
 		self as api,
 		erc20::{extensions::Erc20Metadata, Erc20},
-		Approval, InvalidRecipient, NoPermission, TokenId, Transfer,
+		*,
 	},
 	revert,
 };

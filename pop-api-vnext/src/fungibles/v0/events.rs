@@ -8,7 +8,7 @@
 //!
 //! For more details, refer to [ink! events](https://use.ink/basics/events).
 
-pub use erc20::{Approval, Transfer};
+pub use super::erc20::{Approval, Transfer};
 
 use super::*;
 
