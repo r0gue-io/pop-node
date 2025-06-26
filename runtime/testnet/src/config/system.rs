@@ -3,7 +3,7 @@ use frame_support::{
 	derive_impl,
 	pallet_prelude::ConstU32,
 	parameter_types,
-	traits::{ConstU64, Contains, EverythingBut},
+	traits::{ConstU64, Everything},
 };
 use parachains_common::{Balance, Hash};
 use polkadot_runtime_common::BlockHashCount;
@@ -15,10 +15,10 @@ use sp_runtime::{
 #[cfg(not(feature = "runtime-benchmarks"))]
 use crate::Revive;
 use crate::{
-	weights::RocksDbWeight, AccountId, AggregateMessageOrigin, Aura, BalancesCall, Block,
-	BlockExecutionWeight, BlockLength, BlockWeights, DispatchClass, ExtrinsicBaseWeight,
-	MessageQueue, MultiBlockMigrations, Nonce, PalletInfo, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeOrigin, RuntimeTask, RuntimeVersion, Weight, XcmpQueue, AVERAGE_ON_INITIALIZE_RATIO,
+	weights::RocksDbWeight, AccountId, AggregateMessageOrigin, Aura, Block, BlockExecutionWeight,
+	BlockLength, BlockWeights, DispatchClass, ExtrinsicBaseWeight, MessageQueue,
+	MultiBlockMigrations, Nonce, PalletInfo, Runtime, RuntimeCall, RuntimeEvent, RuntimeOrigin,
+	RuntimeTask, RuntimeVersion, Weight, XcmpQueue, AVERAGE_ON_INITIALIZE_RATIO,
 	BLOCK_PROCESSING_VELOCITY, MAXIMUM_BLOCK_WEIGHT, NORMAL_DISPATCH_RATIO,
 	RELAY_CHAIN_SLOT_DURATION_MILLIS, UNINCLUDED_SEGMENT_CAPACITY, VERSION,
 };
@@ -53,23 +53,6 @@ parameter_types! {
 	pub const SS58Prefix: u16 = 0;
 }
 
-/// A type to identify filtered calls.
-pub struct FilteredCalls;
-impl Contains<RuntimeCall> for FilteredCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use BalancesCall::*;
-		matches!(
-			c,
-			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
-			)
-		)
-	}
-}
-
 #[derive_impl(frame_system::config_preludes::ParaChainDefaultConfig)]
 impl frame_system::Config for Runtime {
 	/// The data to be stored in an account.
@@ -77,7 +60,7 @@ impl frame_system::Config for Runtime {
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
 	/// The basic call filter to use in dispatchable. Supports everything as the default.
-	type BaseCallFilter = EverythingBut<FilteredCalls>;
+	type BaseCallFilter = Everything;
 	/// The block type.
 	type Block = Block;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).

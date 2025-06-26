@@ -35,8 +35,8 @@ use frame_support::{
 	parameter_types,
 	traits::{
 		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf,
+		ConstU64, ConstU8, EitherOfDiverse, EqualPrivilegeOnly, Everything, LinearStoragePrice,
+		TransformOrigin, VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -50,7 +50,6 @@ use frame_system::{
 	CheckWeight, EnsureRoot,
 };
 use pallet_api::{fungibles, nonfungibles};
-use pallet_balances::Call as BalancesCall;
 use pallet_ismp::offchain::{Leaf, Proof, ProofKeys};
 use pallet_revive::{
 	evm::{runtime::EthExtra, H160},
@@ -285,23 +284,6 @@ parameter_types! {
 	pub const SS58Prefix: u16 = 42;
 }
 
-/// A type to identify filtered calls.
-pub struct FilteredCalls;
-impl Contains<RuntimeCall> for FilteredCalls {
-	fn contains(c: &RuntimeCall) -> bool {
-		use BalancesCall::*;
-		matches!(
-			c,
-			RuntimeCall::Balances(
-				force_adjust_total_issuance { .. } |
-					force_set_balance { .. } |
-					force_transfer { .. } |
-					force_unreserve { .. }
-			)
-		)
-	}
-}
-
 /// The default types are being injected by [`derive_impl`](`frame_support::derive_impl`) from
 /// [`ParaChainDefaultConfig`](`struct@frame_system::config_preludes::ParaChainDefaultConfig`),
 /// but overridden as needed.
@@ -312,7 +294,7 @@ impl frame_system::Config for Runtime {
 	/// The identifier used to distinguish between accounts.
 	type AccountId = AccountId;
 	/// The basic call filter to use in dispatchable. Supports everything as the default.
-	type BaseCallFilter = EverythingBut<FilteredCalls>;
+	type BaseCallFilter = Everything;
 	/// The block type.
 	type Block = Block;
 	/// Maximum number of block number to block hash mappings to keep (oldest pruned first).
