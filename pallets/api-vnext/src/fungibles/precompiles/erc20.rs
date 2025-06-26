@@ -59,7 +59,7 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
 
 				let account = env.to_account_id(&(*account.0).into());
-				let balance = U256::saturating_from(<Assets<T, I>>::balance(token, account));
+				let balance = U256::saturating_from(super::balance::<T, I>(token, &account));
 
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
