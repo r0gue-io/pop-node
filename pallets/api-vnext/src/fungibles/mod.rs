@@ -26,6 +26,8 @@ use super::*;
 mod benchmarking;
 /// The fungibles precompiles offer a streamlined interface for interacting with fungible tokens.
 pub mod precompiles;
+#[cfg(test)]
+mod tests;
 pub mod weights;
 
 type AssetIdOf<T, I> = <T as pallet_assets::Config<I>>::AssetId;
