@@ -188,6 +188,7 @@ mod tests {
 		let fungibles_addr: H160 = Fungibles::<100, TrustBackedAssetsInstance>::address().into();
 		let erc20_addr: H160 = Erc20::<101, TrustBackedAssetsInstance>::address(token).into();
 		let total_supply: Balance = 10_000;
+		let gas_limit = Weight::from_parts(600_000_000, 10_000);
 		new_test_ext().execute_with(|| {
 			assert_ok!(Revive::map_account(origin.clone()));
 			assert_ok!(Revive::map_account(RuntimeOrigin::signed(Bob.to_account_id())));
@@ -198,7 +199,7 @@ mod tests {
 				createCall { admin: origin_addr.0.into(), minBalance: primitives::U256::from(1) }
 					.abi_encode();
 			println!("IFungibles.create: {}", to_hex(&call, false));
-			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, Weight::zero(), 0, call));
+			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, gas_limit, 0, call));
 			let asset_details = Asset::get(token).unwrap();
 			assert_eq!(asset_details.owner, caller);
 			assert_eq!(asset_details.admin, caller);
@@ -211,7 +212,7 @@ mod tests {
 			}
 			.abi_encode();
 			println!("IFungibles.mint: {}", to_hex(&call, false));
-			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, Weight::zero(), 0, call));
+			assert_ok!(Revive::call(origin.clone(), fungibles_addr, 0, gas_limit, 0, call));
 
 			// Transfer via erc20 precompile
 			println!("IERC20 precompile: {}", to_hex(&erc20_addr.0, false));
@@ -221,7 +222,7 @@ mod tests {
 			}
 			.abi_encode();
 			println!("IERC20.transfer: {}", to_hex(&call, false));
-			assert_ok!(Revive::call(origin.clone(), erc20_addr, 0, Weight::zero(), 0, call));
+			assert_ok!(Revive::call(origin.clone(), erc20_addr, 0, gas_limit, 0, call));
 			assert_eq!(Assets::balance(token, &Bob.to_account_id()), total_supply / 2);
 		})
 	}
