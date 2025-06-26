@@ -69,7 +69,7 @@ fn transfer_from_works() {
 				AssetsError::Unknown
 			);
 			// Approve `spender` to transfer up to `value`.
-			approve(token, &from, &spender, value);
+			assert_ok!(Assets::approve(token, &from, &spender, value));
 			// Successfully call transfer from.
 			let from_balance_before_transfer = Assets::balance(token, &from);
 			let to_balance_before_transfer = Assets::balance(token, &to);
@@ -131,7 +131,7 @@ mod approve {
 					),
 					AssetsError::Unknown.with_weight(WeightInfo::approve(1, 0))
 				);
-				super::approve(token, &owner, &spender, value);
+				assert_ok!(Assets::approve(token, &owner, &spender, value));
 				// Check error works for `Assets::cancel_approval()` in `Less` match arm.
 				assert_ok!(Assets::freeze_asset(signed(owner.clone()), token.into()));
 				assert_noop!(
@@ -182,8 +182,4 @@ mod approve {
 				assert_eq!(Assets::allowance(token, &owner, &spender), 0);
 			});
 	}
-}
-
-fn approve(token: TokenId, owner: &AccountId, spender: &AccountId, amount: Balance) {
-	assert_ok!(Assets::approve(token, owner, spender, amount));
 }
