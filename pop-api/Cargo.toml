@@ -33,6 +33,7 @@ path = "src/lib.rs"
 
 [features]
 default = [ "std" ]
+foreign_fungibles = [  ]
 fungibles = [  ]
 messaging = [  ]
 nonfungibles = [ "dep:bitflags", "dep:enumflags2" ]

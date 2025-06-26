@@ -6,12 +6,13 @@ use cumulus_primitives_core::Weight;
 use frame_support::traits::Contains;
 pub(crate) use pallet_api::Extension;
 use pallet_api::{extension::*, Read};
+use parachains_common::Balance;
 use sp_core::ConstU8;
 use sp_runtime::DispatchError;
 use versioning::*;
 
 use crate::{
-	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
+	config::assets::{ForeignAssetsInstance, TrustBackedAssetsInstance, TrustBackedNftsInstance},
 	fungibles, nonfungibles, Runtime, RuntimeCall, RuntimeEvent,
 };
 
@@ -82,8 +83,10 @@ impl RuntimeResult {
 }
 
 impl fungibles::Config for Runtime {
-	type AssetsInstance = TrustBackedAssetsInstance;
+	type Balance = Balance;
+	type ForeignAssetsInstance = ForeignAssetsInstance;
 	type RuntimeEvent = RuntimeEvent;
+	type TrustBackedAssetsInstance = TrustBackedAssetsInstance;
 	type WeightInfo = fungibles::weights::SubstrateWeight<Runtime>;
 }
 
