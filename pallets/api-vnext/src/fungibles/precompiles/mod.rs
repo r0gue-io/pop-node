@@ -247,8 +247,7 @@ where
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
 
-				let total_supply =
-					U256::saturating_from(<Assets<T, I>>::total_supply((*token).into()));
+				let total_supply = U256::saturating_from(total_supply::<T, I>((*token).into()));
 
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},

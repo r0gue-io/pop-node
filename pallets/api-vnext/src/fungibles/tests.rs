@@ -459,6 +459,20 @@ fn burn_works() {
 }
 
 #[test]
+fn total_supply_works() {
+	let token = 1;
+	let total_supply = 100 * UNIT;
+	ExtBuilder::new()
+		.with_assets(vec![(token, ALICE, false, 1)])
+		.with_asset_balances(vec![(token, ALICE, total_supply)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(super::total_supply::<Test, ()>(TokenId::MAX), 0);
+			assert_eq!(super::total_supply::<Test, ()>(token), total_supply);
+		});
+}
+
+#[test]
 fn exists_works() {
 	let token = 1;
 	let owner = ALICE;
