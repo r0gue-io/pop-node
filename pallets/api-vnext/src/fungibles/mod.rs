@@ -94,6 +94,13 @@ fn approve<T: Config<I> + pallet_assets::Config<I>, I>(
 	Ok(Some(weight).into())
 }
 
+fn balance<T: pallet_assets::Config<I>, I>(
+	asset: AssetIdOf<T, I>,
+	account: &T::AccountId,
+) -> T::Balance {
+	<Assets<T, I>>::balance(asset, account)
+}
+
 fn burn<T: Config<I> + pallet_assets::Config<I>, I>(
 	origin: OriginFor<T>,
 	asset: AssetIdOf<T, I>,

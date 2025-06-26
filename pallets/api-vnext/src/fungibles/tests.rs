@@ -473,6 +473,21 @@ fn total_supply_works() {
 }
 
 #[test]
+fn balance_of_works() {
+	let token = 1;
+	let owner = ALICE;
+	let value = 100 * UNIT;
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.with_asset_balances(vec![(token, owner.clone(), value)])
+		.build()
+		.execute_with(|| {
+			assert_eq!(balance::<Test, ()>(TokenId::MAX, &owner), 0);
+			assert_eq!(balance::<Test, ()>(token, &owner), value);
+		});
+}
+
+#[test]
 fn exists_works() {
 	let token = 1;
 	let owner = ALICE;
