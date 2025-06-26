@@ -2354,7 +2354,7 @@ dependencies = [
 [[package]]
 name = "ink"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "const_format",
  "deranged",
@@ -2379,7 +2379,7 @@ dependencies = [
 [[package]]
 name = "ink_allocator"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "cfg-if",
 ]
@@ -2387,7 +2387,7 @@ dependencies = [
 [[package]]
 name = "ink_codegen"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "blake2",
  "derive_more 2.0.1",
@@ -2409,7 +2409,7 @@ dependencies = [
 [[package]]
 name = "ink_engine"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "blake2",
  "derive_more 2.0.1",
@@ -2426,7 +2426,7 @@ dependencies = [
 [[package]]
 name = "ink_env"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "blake2",
  "cfg-if",
@@ -2459,7 +2459,7 @@ dependencies = [
 [[package]]
 name = "ink_ir"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "blake2",
  "either",
@@ -2475,7 +2475,7 @@ dependencies = [
 [[package]]
 name = "ink_macro"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "ink_codegen",
  "ink_ir",
@@ -2490,7 +2490,7 @@ dependencies = [
 [[package]]
 name = "ink_metadata"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "derive_more 2.0.1",
  "impl-serde",
@@ -2505,7 +2505,7 @@ dependencies = [
 [[package]]
 name = "ink_prelude"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "cfg-if",
 ]
@@ -2513,7 +2513,7 @@ dependencies = [
 [[package]]
 name = "ink_primitives"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "alloy-sol-types 1.2.1",
  "cfg-if",
@@ -2540,7 +2540,7 @@ dependencies = [
 [[package]]
 name = "ink_storage"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "array-init",
  "cfg-if",
@@ -2558,7 +2558,7 @@ dependencies = [
 [[package]]
 name = "ink_storage_traits"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-abi#3ac568305e0f0e872cc772933a487ecf640d7950"
+source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
 dependencies = [
  "ink_metadata",
  "ink_prelude",
