@@ -11,16 +11,6 @@ mod utils;
 const TOKEN_ID: TokenId = 1;
 const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.wasm";
 
-/// 1. PSP-22 Interface:
-/// - total_supply
-/// - balance_of
-/// - allowance
-/// - transfer
-/// - transfer_from
-/// - approve
-/// - increase_allowance
-/// - decrease_allowance
-
 #[test]
 fn total_supply_works() {
 	new_test_ext().execute_with(|| {
@@ -75,95 +65,195 @@ fn allowance_works() {
 	});
 }
 
-#[test]
-fn transfer_works() {
-	new_test_ext().execute_with(|| {
+mod transfer {
+	fn init() -> (AccountId, Balance) {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
+		(addr, amount)
+	}
 
-		// Token does not exist.
-		assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0] }));
-		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
-		// Token is not live, i.e. frozen or being destroyed.
-		assets::freeze(&ALICE, token);
-		assert_eq!(transfer(&addr, token, BOB, amount), Err(Module { index: 52, error: [16, 0] }));
-		assets::thaw(&ALICE, token);
-		// Not enough balance.
-		assert_eq!(
-			transfer(&addr, token, BOB, amount + 1 * UNIT),
-			Err(Module { index: 52, error: [0, 0] })
-		);
-		// Not enough balance due to ED.
-		assert_eq!(transfer(&addr, token, BOB, amount), Err(Module { index: 52, error: [0, 0] }));
-		// Successful transfer.
-		let balance_before_transfer = Assets::balance(token, &BOB);
-		assert_ok!(transfer(&addr, token, BOB, amount / 2));
-		let balance_after_transfer = Assets::balance(token, &BOB);
-		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
-		// Successfully emit event.
-		let from = account_id_from_slice(addr.as_ref());
-		let to = account_id_from_slice(BOB.as_ref());
-		let expected = Transfer { from: Some(from), to: Some(to), value: amount / 2 }.encode();
-		assert_eq!(last_contract_event(), expected.as_slice());
-		// Transfer token to account that does not exist.
-		assert_eq!(transfer(&addr, token, FERDIE, amount / 4), Err(Token(CannotCreate)));
-		// Token is not live, i.e. frozen or being destroyed.
-		assets::start_destroy(&ALICE, token);
-		assert_eq!(
-			transfer(&addr, token, BOB, amount / 4),
-			Err(Module { index: 52, error: [16, 0] })
-		);
-	});
+	#[test]
+	fn transfer_fails_with_unknown_token() {
+		new_test_ext().execute_with(|| {
+			let (addr, _) = init();
+			assert_eq!(
+				transfer(&addr, 1, BOB, 100 * UNIT),
+				Err(Module { index: 52, error: [3, 0] })
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_fails_with_token_not_live() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
+			// Token is not live, i.e. frozen or being destroyed.
+			assets::freeze(&ALICE, token);
+			assert_eq!(
+				transfer(&addr, token, BOB, amount),
+				Err(Module { index: 52, error: [16, 0] })
+			);
+			assets::thaw(&ALICE, token);
+			// Token is not live, i.e. frozen or being destroyed.
+			assets::start_destroy(&ALICE, token);
+			assert_eq!(
+				transfer(&addr, token, BOB, amount / 4),
+				Err(Module { index: 52, error: [16, 0] })
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_fails_with_not_enough_balance() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
+			// Not enough balance.
+			assert_eq!(
+				transfer(&addr, token, BOB, amount + 1 * UNIT),
+				Err(Module { index: 52, error: [0, 0] })
+			);
+			// Not enough balance due to ED.
+			assert_eq!(
+				transfer(&addr, token, BOB, amount),
+				Err(Module { index: 52, error: [0, 0] })
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_fails_with_unknown_account() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
+			// Transfer token to account that does not exist.
+			assert_eq!(transfer(&addr, token, FERDIE, amount / 4), Err(Token(CannotCreate)));
+		});
+	}
+
+	#[test]
+	fn transfer_works() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &addr, amount);
+			// Successful transfer.
+			let balance_before_transfer = Assets::balance(token, &BOB);
+			assert_ok!(transfer(&addr, token, BOB, amount / 2));
+			let balance_after_transfer = Assets::balance(token, &BOB);
+			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+			// Successfully emit event.
+			let from = account_id_from_slice(addr.as_ref());
+			let to = account_id_from_slice(BOB.as_ref());
+			let expected = Transfer { from: Some(from), to: Some(to), value: amount / 2 }.encode();
+			assert_eq!(last_contract_event(), expected.as_slice());
+		});
+	}
 }
 
-#[test]
-fn transfer_from_works() {
-	new_test_ext().execute_with(|| {
+mod transfer_from {
+	fn init() -> (AccountId, Balance) {
 		let addr = instantiate(CONTRACT, INIT_VALUE, vec![]);
 		let amount: Balance = 100 * UNIT;
+		(addr, amount)
+	}
 
-		// Token does not exist.
-		assert_eq!(
-			transfer_from(&addr, 1, ALICE, BOB, amount / 2),
-			Err(Module { index: 52, error: [3, 0] }),
-		);
-		// Create token with Alice as owner and mint `amount` to contract address.
-		let token = assets::create_and_mint_to(&ALICE, 1, &ALICE, amount);
-		// Unapproved transfer.
-		assert_eq!(
-			transfer_from(&addr, token, ALICE, BOB, amount / 2),
-			Err(Module { index: 52, error: [10, 0] })
-		);
-		assert_ok!(Assets::approve_transfer(
-			RuntimeOrigin::signed(ALICE.into()),
-			token.into(),
-			addr.clone().into(),
-			amount + 1 * UNIT,
-		));
-		// Token is not live, i.e. frozen or being destroyed.
-		assets::freeze(&ALICE, token);
-		assert_eq!(
-			transfer_from(&addr, token, ALICE, BOB, amount),
-			Err(Module { index: 52, error: [16, 0] }),
-		);
-		assets::thaw(&ALICE, token);
-		// Not enough balance.
-		assert_eq!(
-			transfer_from(&addr, token, ALICE, BOB, amount + 1 * UNIT),
-			Err(Module { index: 52, error: [0, 0] }),
-		);
-		// Successful transfer.
-		let balance_before_transfer = Assets::balance(token, &BOB);
-		assert_ok!(transfer_from(&addr, token, ALICE, BOB, amount / 2));
-		let balance_after_transfer = Assets::balance(token, &BOB);
-		assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
-		// Successfully emit event.
-		let from = account_id_from_slice(ALICE.as_ref());
-		let to = account_id_from_slice(BOB.as_ref());
-		let expected = Transfer { from: Some(from), to: Some(to), value: amount / 2 }.encode();
-		assert_eq!(last_contract_event(), expected.as_slice());
-	});
+	#[test]
+	fn transfer_from_fails_with_unknown_token() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Token does not exist.
+			assert_eq!(
+				transfer_from(&addr, 1, ALICE, BOB, amount / 2),
+				Err(Module { index: 52, error: [3, 0] }),
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_from_fails_with_unapproved() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &ALICE, amount);
+			// Unapproved transfer.
+			assert_eq!(
+				transfer_from(&addr, token, ALICE, BOB, amount / 2),
+				Err(Module { index: 52, error: [10, 0] })
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_from_fails_with_token_not_live() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &ALICE, amount);
+			assert_ok!(Assets::approve_transfer(
+				RuntimeOrigin::signed(ALICE.into()),
+				token.into(),
+				addr.clone().into(),
+				amount + 1 * UNIT,
+			));
+			// Token is not live, i.e. frozen or being destroyed.
+			assets::freeze(&ALICE, token);
+			assert_eq!(
+				transfer_from(&addr, token, ALICE, BOB, amount),
+				Err(Module { index: 52, error: [16, 0] }),
+			);
+			assets::thaw(&ALICE, token);
+		});
+	}
+
+	#[test]
+	fn transfer_from_fails_with_not_enough_balance() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &ALICE, amount);
+			assert_ok!(Assets::approve_transfer(
+				RuntimeOrigin::signed(ALICE.into()),
+				token.into(),
+				addr.clone().into(),
+				amount + 1 * UNIT,
+			));
+			// Not enough balance.
+			assert_eq!(
+				transfer_from(&addr, token, ALICE, BOB, amount + 1 * UNIT),
+				Err(Module { index: 52, error: [0, 0] }),
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_from_works() {
+		new_test_ext().execute_with(|| {
+			let (addr, amount) = init();
+			// Create token with Alice as owner and mint `amount` to contract address.
+			let token = assets::create_and_mint_to(&ALICE, 1, &ALICE, amount);
+			assert_ok!(Assets::approve_transfer(
+				RuntimeOrigin::signed(ALICE.into()),
+				token.into(),
+				addr.clone().into(),
+				amount + 1 * UNIT,
+			));
+			// Successful transfer.
+			let balance_before_transfer = Assets::balance(token, &BOB);
+			assert_ok!(transfer_from(&addr, token, ALICE, BOB, amount / 2));
+			let balance_after_transfer = Assets::balance(token, &BOB);
+			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
+			// Successfully emit event.
+			let from = account_id_from_slice(ALICE.as_ref());
+			let to = account_id_from_slice(BOB.as_ref());
+			let expected = Transfer { from: Some(from), to: Some(to), value: amount / 2 }.encode();
+			assert_eq!(last_contract_event(), expected.as_slice());
+		});
+	}
 }
 
 #[test]
@@ -281,11 +371,6 @@ fn decrease_allowance_works() {
 	});
 }
 
-/// 2. PSP-22 Metadata Interface:
-/// - token_name
-/// - token_symbol
-/// - token_decimals
-
 #[test]
 fn token_metadata_works() {
 	new_test_ext().execute_with(|| {
@@ -308,12 +393,6 @@ fn token_metadata_works() {
 		assert_eq!(token_decimals(&addr, TOKEN_ID), Ok(decimals));
 	});
 }
-/// 3. Management:
-/// - create
-/// - start_destroy
-/// - set_metadata
-/// - clear_metadata
-/// - token_exists
 
 #[test]
 fn create_works() {
