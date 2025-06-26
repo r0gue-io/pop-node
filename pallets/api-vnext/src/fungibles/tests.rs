@@ -3,11 +3,13 @@ use frame_support::{
 	sp_runtime::DispatchError::BadOrigin,
 	traits::{fungibles::approvals::Mutate, Get},
 };
+use pallet_assets::WeightInfo as _;
 
-use super::*;
+use super::{weights::WeightInfo as _, *};
 use crate::mock::{Assets, *};
 
 type AssetsError = pallet_assets::Error<Test>;
+type AssetsWeightInfo = <Test as pallet_assets::Config>::WeightInfo;
 type ED = ExistentialDeposit;
 type WeightInfo = <Test as Config>::WeightInfo;
 
@@ -90,7 +92,7 @@ fn transfer_from_works() {
 
 mod approve {
 	use super::*;
-	use crate::fungibles::{approve, weights::WeightInfo as _};
+	use crate::fungibles::approve;
 
 	#[test]
 	fn ensure_signed_works() {
@@ -182,4 +184,113 @@ mod approve {
 				assert_eq!(Assets::allowance(token, &owner, &spender), 0);
 			});
 	}
+}
+
+#[test]
+fn increase_allowance_works() {
+	let token = 1;
+	let value: Balance = 100 * UNIT;
+	let owner = ALICE;
+	let spender = BOB;
+	ExtBuilder::new()
+		.with_balances(vec![(owner.clone(), UNIT), (spender.clone(), ED::get())])
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			for origin in vec![root(), none()] {
+				assert_noop!(
+					increase_allowance::<Test, ()>(origin, token, spender.clone(), value),
+					BadOrigin.with_weight(WeightInfo::approve(0, 0))
+				);
+			}
+			// Check error works for `Assets::approve_transfer()`.
+			assert_noop!(
+				increase_allowance::<Test, ()>(
+					signed(owner.clone()),
+					TokenId::MAX,
+					spender.clone(),
+					value
+				),
+				AssetsError::Unknown.with_weight(AssetsWeightInfo::approve_transfer())
+			);
+			assert_eq!(0, Assets::allowance(token, &owner, &spender));
+			assert_ok!(increase_allowance::<Test, ()>(
+				signed(owner.clone()),
+				token,
+				spender.clone(),
+				value
+			));
+			assert_eq!(Assets::allowance(token, &owner, &spender), value);
+			// Additive.
+			assert_ok!(increase_allowance::<Test, ()>(
+				signed(owner.clone()),
+				token,
+				spender.clone(),
+				value
+			));
+			assert_eq!(Assets::allowance(token, &owner, &spender), value * 2);
+		});
+}
+
+#[test]
+fn decrease_allowance_works() {
+	let token = 1;
+	let value: Balance = 100 * UNIT;
+	let owner = ALICE;
+	let spender = BOB;
+	ExtBuilder::new()
+		.with_balances(vec![(owner.clone(), UNIT), (spender.clone(), ED::get())])
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			for origin in vec![root(), none()] {
+				assert_noop!(
+					decrease_allowance::<Test, ()>(origin, token, spender.clone(), 0),
+					BadOrigin.with_weight(WeightInfo::approve(0, 0))
+				);
+			}
+			assert_ok!(Assets::approve(token, &owner, &spender, value));
+			assert_eq!(Assets::allowance(token, &owner, &spender), value);
+			// Check error works for `Assets::cancel_approval()`. No error test for
+			// `approve_transfer` because it is not possible.
+			assert_ok!(Assets::freeze_asset(signed(owner.clone()), token.into()));
+			assert_noop!(
+				decrease_allowance::<Test, ()>(
+					signed(owner.clone()),
+					token,
+					spender.clone(),
+					value / 2
+				),
+				AssetsError::AssetNotLive.with_weight(WeightInfo::approve(0, 1))
+			);
+			assert_ok!(Assets::thaw_asset(signed(owner.clone()), token.into()));
+			// Owner balance is not changed if decreased by zero.
+			assert_eq!(
+				decrease_allowance::<Test, ()>(signed(owner.clone()), token, spender.clone(), 0),
+				Ok((0, Some(WeightInfo::approve(0, 0)).into()))
+			);
+			assert_eq!(Assets::allowance(token, &owner, &spender), value);
+			// "Unapproved" error is returned if the current allowance is less than amount to
+			// decrease with.
+			assert_noop!(
+				decrease_allowance::<Test, ()>(
+					signed(owner.clone()),
+					token,
+					spender.clone(),
+					value * 2
+				),
+				AssetsError::Unapproved
+			);
+			// Decrease allowance successfully.
+			assert_eq!(
+				decrease_allowance::<Test, ()>(
+					signed(owner.clone()),
+					token,
+					spender.clone(),
+					value / 2
+				),
+				Ok((value / 2, Some(WeightInfo::approve(1, 1)).into()))
+			);
+			assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
+		});
 }
