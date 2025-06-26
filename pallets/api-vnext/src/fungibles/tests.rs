@@ -1,7 +1,10 @@
 use frame_support::{
 	assert_noop, assert_ok,
 	sp_runtime::{DispatchError::BadOrigin, TokenError},
-	traits::{fungibles::approvals::Mutate, Get},
+	traits::{
+		fungibles::{approvals::Mutate, metadata::Inspect},
+		Get,
+	},
 };
 use pallet_assets::WeightInfo as _;
 
@@ -333,5 +336,41 @@ fn start_destroy_works() {
 				Assets::mint(signed(creator.clone()), token.into(), creator.into(), 10 * UNIT),
 				TokenError::UnknownAsset
 			);
+		});
+}
+
+#[test]
+fn set_metadata_works() {
+	let token = 1;
+	let creator = ALICE;
+	let name = vec![42];
+	let symbol = vec![42];
+	let decimals = 42;
+	ExtBuilder::new()
+		.with_balances(vec![(creator.clone(), UNIT)])
+		.with_assets(vec![(token, creator.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			// Check error works for `Assets::set_metadata()`.
+			assert_noop!(
+				set_metadata::<Test, ()>(
+					signed(creator.clone()),
+					TokenId::MAX,
+					name.clone(),
+					symbol.clone(),
+					decimals
+				),
+				AssetsError::Unknown
+			);
+			assert_ok!(set_metadata::<Test, ()>(
+				signed(creator),
+				token,
+				name.clone(),
+				symbol.clone(),
+				decimals
+			));
+			assert_eq!(Assets::name(token), name);
+			assert_eq!(Assets::symbol(token), symbol);
+			assert_eq!(Assets::decimals(token), decimals);
 		});
 }
