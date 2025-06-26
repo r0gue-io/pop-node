@@ -343,8 +343,8 @@ fn start_destroy_works() {
 fn set_metadata_works() {
 	let token = 1;
 	let creator = ALICE;
-	let name = vec![42];
-	let symbol = vec![42];
+	let name = b"name".to_vec();
+	let symbol = b"symbol".to_vec();
 	let decimals = 42;
 	ExtBuilder::new()
 		.with_balances(vec![(creator.clone(), UNIT)])
@@ -372,5 +372,26 @@ fn set_metadata_works() {
 			assert_eq!(Assets::name(token), name);
 			assert_eq!(Assets::symbol(token), symbol);
 			assert_eq!(Assets::decimals(token), decimals);
+		});
+}
+
+#[test]
+fn clear_metadata_works() {
+	let token = 1;
+	let creator = ALICE;
+	ExtBuilder::new()
+		.with_assets(vec![(token, creator.clone(), false, 1)])
+		.with_asset_metadata(vec![(token, b"name".to_vec(), b"symbol".to_vec(), 42)])
+		.build()
+		.execute_with(|| {
+			// Check error works for `Assets::clear_metadata()`.
+			assert_noop!(
+				clear_metadata::<Test, ()>(signed(creator.clone()), TokenId::MAX),
+				AssetsError::Unknown
+			);
+			assert_ok!(clear_metadata::<Test, ()>(signed(creator), token));
+			assert!(Assets::name(token).is_empty());
+			assert!(Assets::symbol(token).is_empty());
+			assert!(Assets::decimals(token).is_zero());
 		});
 }
