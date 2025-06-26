@@ -377,6 +377,7 @@ mod tests {
 		let to = CHARLIE;
 		let value = endowment / 2;
 		ExtBuilder::new()
+			.with_balances(vec![(from.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, true, 1)])
 			.with_asset_balances(vec![(token, from.clone(), endowment)])
 			.build()
@@ -416,6 +417,7 @@ mod tests {
 		let spender = BOB;
 		let value = 10_000_000;
 		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {
@@ -445,6 +447,7 @@ mod tests {
 		let spender = BOB;
 		let value = 10_000_000;
 		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {
@@ -483,6 +486,7 @@ mod tests {
 		let spender = BOB;
 		let value = 10_000_000;
 		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {
@@ -520,45 +524,48 @@ mod tests {
 		let origin = ALICE;
 		let admin = BOB;
 		let min_balance = 1;
-		ExtBuilder::new().build().execute_with(|| {
-			assert!(!Assets::asset_exists(token));
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), UNIT)])
+			.build()
+			.execute_with(|| {
+				assert!(!Assets::asset_exists(token));
 
-			assert_eq!(
-				call_precompile::<u32>(
-					&origin,
-					&IFungiblesCalls::create(createCall {
-						admin: to_address(&admin).0.into(),
-						minBalance: U256::from(min_balance),
-					}),
-				)
-				.unwrap(),
-				token
-			);
+				assert_eq!(
+					call_precompile::<u32>(
+						&origin,
+						&IFungiblesCalls::create(createCall {
+							admin: to_address(&admin).0.into(),
+							minBalance: U256::from(min_balance),
+						}),
+					)
+					.unwrap(),
+					token
+				);
 
-			assert!(Assets::asset_exists(token));
-			assert_eq!(
-				Asset::get(token).unwrap(),
-				AssetDetails {
-					owner: origin.clone(),
-					issuer: admin.clone(),
-					admin: admin.clone(),
-					freezer: admin.clone(),
-					supply: 0,
-					deposit: min_balance,
-					min_balance,
-					is_sufficient: false,
-					accounts: 0,
-					sufficients: 0,
-					approvals: 0,
-					status: AssetStatus::Live,
-				}
-			);
+				assert!(Assets::asset_exists(token));
+				assert_eq!(
+					Asset::get(token).unwrap(),
+					AssetDetails {
+						owner: origin.clone(),
+						issuer: admin.clone(),
+						admin: admin.clone(),
+						freezer: admin.clone(),
+						supply: 0,
+						deposit: min_balance,
+						min_balance,
+						is_sufficient: false,
+						accounts: 0,
+						sufficients: 0,
+						approvals: 0,
+						status: AssetStatus::Live,
+					}
+				);
 
-			let creator = to_address(&origin).0.into();
-			let admin = to_address(&admin).0.into();
-			let event = Created { id: token, creator, admin };
-			assert_last_event(ADDRESS, event);
-		});
+				let creator = to_address(&origin).0.into();
+				let admin = to_address(&admin).0.into();
+				let event = Created { id: token, creator, admin };
+				assert_last_event(ADDRESS, event);
+			});
 	}
 
 	#[test]
@@ -588,6 +595,7 @@ mod tests {
 		let symbol = "symbol".to_string();
 		let decimals = u8::MAX;
 		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), UNIT)])
 			.with_assets(vec![(token, origin.clone(), false, 1)])
 			.build()
 			.execute_with(|| {
@@ -758,6 +766,7 @@ mod tests {
 		let spender = BOB;
 		let value = 10_000_000;
 		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {

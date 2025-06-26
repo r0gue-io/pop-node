@@ -174,7 +174,7 @@ mod tests {
 	use crate::{
 		assert_last_event, bare_call,
 		fungibles::approve,
-		mock::{Assets, ExtBuilder, RuntimeOrigin, Test, ERC20},
+		mock::{Assets, ExtBuilder, RuntimeOrigin, Test, ERC20, UNIT},
 		to_address, DepositLimit, Weight,
 	};
 
@@ -260,6 +260,7 @@ mod tests {
 		let spender = BOB;
 		let value = 10_000_000;
 		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {
@@ -292,6 +293,7 @@ mod tests {
 		let spender = BOB;
 		let value = 10_000_000;
 		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, false, 1)])
 			.build()
 			.execute_with(|| {
@@ -324,6 +326,7 @@ mod tests {
 		let to = CHARLIE;
 		let value = endowment / 2;
 		ExtBuilder::new()
+			.with_balances(vec![(from.clone(), UNIT)])
 			.with_assets(vec![(token, CHARLIE, true, 1)])
 			.with_asset_balances(vec![(token, from.clone(), endowment)])
 			.build()
