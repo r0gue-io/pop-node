@@ -395,3 +395,26 @@ fn clear_metadata_works() {
 			assert!(Assets::decimals(token).is_zero());
 		});
 }
+
+#[test]
+fn mint_works() {
+	let token = 1;
+	let value: Balance = 100 * UNIT;
+	let from = ALICE;
+	let to = BOB;
+	ExtBuilder::new()
+		.with_balances(vec![(from.clone(), ED::get()), (to.clone(), ED::get())])
+		.with_assets(vec![(token, from.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			// Check error works for `Assets::mint()`.
+			assert_noop!(
+				mint::<Test, ()>(signed(from.clone()), TokenId::MAX, to.clone(), value),
+				TokenError::UnknownAsset
+			);
+			let balance_before_mint = Assets::balance(token, &to);
+			assert_ok!(mint::<Test, ()>(signed(from), token, to.clone(), value));
+			let balance_after_mint = Assets::balance(token, &to);
+			assert_eq!(balance_after_mint, balance_before_mint + value);
+		});
+}
