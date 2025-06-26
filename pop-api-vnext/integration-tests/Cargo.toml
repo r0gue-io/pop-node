@@ -15,6 +15,7 @@ codec.workspace = true
 env_logger.workspace = true
 frame-support = { workspace = true, default-features = false }
 frame-system = { workspace = true, default-features = false }
+hex.workspace = true
 log.workspace = true
 pallet-api-vnext = { workspace = true, default-features = false, features = [ "fungibles" ] }
 pallet-assets = { workspace = true, default-features = false }
