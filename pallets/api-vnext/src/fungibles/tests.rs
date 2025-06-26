@@ -294,3 +294,22 @@ fn decrease_allowance_works() {
 			assert_eq!(Assets::allowance(token, &owner, &spender), value / 2);
 		});
 }
+
+#[test]
+fn create_works() {
+	let creator = ALICE;
+	let admin = BOB;
+	let min_balance = 100;
+	ExtBuilder::new()
+		.with_balances(vec![(creator.clone(), UNIT)])
+		.build()
+		.execute_with(|| {
+			for origin in vec![root(), none()] {
+				assert_noop!(create::<Test, ()>(origin, admin.clone(), min_balance), BadOrigin);
+			}
+			let id = NextAssetId::<Test>::get().unwrap_or_default();
+			assert!(!Assets::asset_exists(id));
+			assert_ok!(create::<Test, ()>(signed(creator), admin, min_balance));
+			assert!(Assets::asset_exists(id));
+		});
+}
