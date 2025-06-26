@@ -9,7 +9,6 @@
 //! For more details, refer to [ink! events](https://use.ink/basics/events).
 
 pub use super::erc20::{Approval, Transfer};
-
 use super::*;
 
 /// Event emitted when a token is created.
