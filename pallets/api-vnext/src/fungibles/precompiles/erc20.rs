@@ -83,7 +83,7 @@ where
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
 				let remaining =
-					U256::saturating_from(<Assets<T, I>>::allowance(token, &owner, &spender));
+					U256::saturating_from(super::allowance::<T, I>(token, &owner, &spender));
 
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},

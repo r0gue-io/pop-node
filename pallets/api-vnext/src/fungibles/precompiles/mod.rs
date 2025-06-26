@@ -52,7 +52,7 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
 				let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				self::transfer::<T, I>(
+				transfer::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*to.0).into()),
@@ -82,7 +82,7 @@ where
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				let result = self::approve::<T, I>(
+				let result = approve::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*spender.0).into()),
@@ -106,7 +106,7 @@ where
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
 				let value = U256::saturating_from(
-					self::increase_allowance::<T, I>(
+					increase_allowance::<T, I>(
 						to_runtime_origin(env.caller()),
 						(*token).into(),
 						env.to_account_id(&(*spender.0).into()),
@@ -132,7 +132,7 @@ where
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				let value = match self::decrease_allowance::<T, I>(
+				let value = match decrease_allowance::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*spender.0).into()),
@@ -168,7 +168,7 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::create())?;
 				let creator = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				let id = self::create::<T, I>(
+				let id = create::<T, I>(
 					to_runtime_origin(env.caller()),
 					env.to_account_id(&(*admin.0).into()),
 					minBalance.saturating_to(),
@@ -202,12 +202,13 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::clear_metadata())?;
 
 				clear_metadata::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
+
 				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn {}))
 			},
 			IFungiblesCalls::mint(mintCall { token, account, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::mint())?;
 
-				self::mint::<T, I>(
+				mint::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*account.0).into()),
@@ -222,7 +223,7 @@ where
 			IFungiblesCalls::burn(burnCall { token, account, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::burn())?;
 
-				self::burn::<T, I>(
+				burn::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*account.0).into()),
@@ -264,7 +265,7 @@ where
 
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
-				let allowance = <Assets<T, I>>::allowance((*token).into(), &owner, &spender);
+				let allowance = allowance::<T, I>((*token).into(), &owner, &spender);
 				let remaining = U256::saturating_from(allowance);
 
 				Ok(allowanceCall::abi_encode_returns(&remaining))
@@ -295,7 +296,7 @@ where
 			IFungiblesCalls::exists(existsCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::exists())?;
 
-				let result = self::exists::<T, I>((*token).into());
+				let result = exists::<T, I>((*token).into());
 
 				Ok(existsCall::abi_encode_returns(&result))
 			},

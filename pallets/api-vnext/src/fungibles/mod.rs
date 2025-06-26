@@ -94,6 +94,14 @@ fn approve<T: Config<I> + pallet_assets::Config<I>, I>(
 	Ok(Some(weight).into())
 }
 
+fn allowance<T: pallet_assets::Config<I>, I>(
+	asset: AssetIdOf<T, I>,
+	owner: &T::AccountId,
+	spender: &T::AccountId,
+) -> T::Balance {
+	<Assets<T, I>>::allowance(asset, owner, spender)
+}
+
 fn balance<T: pallet_assets::Config<I>, I>(
 	asset: AssetIdOf<T, I>,
 	account: &T::AccountId,
