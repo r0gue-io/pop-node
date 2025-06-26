@@ -399,7 +399,7 @@ fn clear_metadata_works() {
 #[test]
 fn mint_works() {
 	let token = 1;
-	let value: Balance = 100 * UNIT;
+	let value = 100 * UNIT;
 	let from = ALICE;
 	let to = BOB;
 	ExtBuilder::new()
@@ -416,5 +416,44 @@ fn mint_works() {
 			assert_ok!(mint::<Test, ()>(signed(from), token, to.clone(), value));
 			let balance_after_mint = Assets::balance(token, &to);
 			assert_eq!(balance_after_mint, balance_before_mint + value);
+		});
+}
+
+#[test]
+fn burn_works() {
+	let token = 1;
+	let value = 100 * UNIT;
+	let owner = ALICE;
+	let from = BOB;
+	let total_supply = value * 2;
+	ExtBuilder::new()
+		.with_balances(vec![(from.clone(), ED::get())])
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.with_asset_balances(vec![(token, from.clone(), total_supply)])
+		.build()
+		.execute_with(|| {
+			// "BalanceLow" error is returned if token is not created.
+			assert_noop!(
+				burn::<Test, ()>(signed(owner.clone()), TokenId::MAX, from.clone(), value),
+				AssetsError::BalanceLow.with_weight(WeightInfo::balance_of())
+			);
+			assert_eq!(Assets::total_supply(token), total_supply);
+			// Check error works for `Assets::burn()`.
+			assert_ok!(Assets::freeze_asset(signed(owner.clone()), token.into()));
+			assert_noop!(
+				burn::<Test, ()>(signed(owner.clone()), token, from.clone(), value),
+				AssetsError::AssetNotLive
+			);
+			assert_ok!(Assets::thaw_asset(signed(owner.clone()), token.into()));
+			// "BalanceLow" error is returned if the balance is less than amount to burn.
+			assert_noop!(
+				burn::<Test, ()>(signed(owner.clone()), token, from.clone(), total_supply * 2),
+				AssetsError::BalanceLow.with_weight(WeightInfo::balance_of())
+			);
+			let balance_before_burn = Assets::balance(token, &from);
+			assert_ok!(burn::<Test, ()>(signed(owner), token, from.clone(), value));
+			assert_eq!(Assets::total_supply(token), total_supply - value);
+			let balance_after_burn = Assets::balance(token, &from);
+			assert_eq!(balance_after_burn, balance_before_burn - value);
 		});
 }
