@@ -9,8 +9,8 @@ use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 
 use super::api::{self, Config};
 use crate::{
-    config::assets::TrustBackedAssetsInstance, deposit, Balance, Balances, Perbill, PolkadotXcm,
-    Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, Timestamp, TransactionPayment,
+	config::assets::TrustBackedAssetsInstance, deposit, Balance, Balances, Perbill, PolkadotXcm,
+	Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason, Timestamp, TransactionPayment,
 };
 
 type Erc20<const PREFIX: u16, I> = pallet_api_vnext::Erc20<PREFIX, Runtime, I>;
