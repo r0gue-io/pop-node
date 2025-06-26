@@ -1,6 +1,6 @@
 use frame_support::{
 	assert_noop, assert_ok,
-	sp_runtime::DispatchError::BadOrigin,
+	sp_runtime::{DispatchError::BadOrigin, TokenError},
 	traits::{fungibles::approvals::Mutate, Get},
 };
 use pallet_assets::WeightInfo as _;
@@ -311,5 +311,27 @@ fn create_works() {
 			assert!(!Assets::asset_exists(id));
 			assert_ok!(create::<Test, ()>(signed(creator), admin, min_balance));
 			assert!(Assets::asset_exists(id));
+		});
+}
+
+#[test]
+fn start_destroy_works() {
+	let token = 1;
+	let creator = ALICE;
+	ExtBuilder::new()
+		.with_assets(vec![(token, creator.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			// Check error works for `Assets::start_destroy()`.
+			assert_noop!(
+				start_destroy::<Test, ()>(signed(creator.clone()), TokenId::MAX),
+				AssetsError::Unknown
+			);
+			assert_ok!(start_destroy::<Test, ()>(signed(creator.clone()), token));
+			// Check that the token is not live after starting the destroy process.
+			assert_noop!(
+				Assets::mint(signed(creator.clone()), token.into(), creator.into(), 10 * UNIT),
+				TokenError::UnknownAsset
+			);
 		});
 }
