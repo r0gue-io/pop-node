@@ -106,7 +106,6 @@ pallet-ismp-runtime-api.workspace = true
 [dev-dependencies]
 enumflags2.workspace = true
 env_logger.workspace = true
-hex.workspace = true
 sp-keyring.workspace = true
 
 [features]
