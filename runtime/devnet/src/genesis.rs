@@ -3,8 +3,10 @@ use alloc::{vec, vec::Vec};
 use cumulus_primitives_core::ParaId;
 use frame_support::build_struct_json_patch;
 use ismp_parachain::ParachainData;
+use pallet_sudo::Call::sudo;
 use parachains_common::{AccountId, AuraId, Balance};
 use pop_runtime_common::genesis::*;
+use sp_core::crypto::Ss58Codec;
 use sp_genesis_builder::PresetId;
 
 use crate::{
@@ -30,6 +32,15 @@ const SAFE_XCM_VERSION: u32 = xcm::prelude::XCM_VERSION;
 
 /// Initial balance for genesis endowed accounts.
 const ENDOWMENT: Balance = 10_000_000 * UNIT;
+
+/// SUDO account set at genesis.
+const SUDO_ADDRESS: &str = "5FPL3ZLqUk6MyBoZrQZ1Co29WAteX6T6N68TZ6jitHvhpyuD";
+
+// Returns the SUDO account's address as an `AccountId`.
+// This function will return an error if the SS58 address is invalid.
+fn sudo_account_id() -> AccountId {
+	AccountId::from_ss58check(SUDO_ADDRESS).expect("sudo address is valid SS58")
+}
 
 /// Returns a JSON blob representation of the built-in `RuntimeGenesisConfig` identified by `id`.
 pub(crate) fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
@@ -83,18 +94,21 @@ fn local_config() -> Value {
 	)
 }
 
-/// Configures a live chain running on multiple nodes on private devnet, using the `devnet` runtime.
+/// Configures a live chain running on one collator, using the `devnet` runtime.
 fn live_config() -> Value {
+	let collator_0_account_id: AccountId =
+		AccountId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
+	let collator_0_aura_id: AuraId =
+		AuraId::from_ss58check("5Gn9dVgCNUYtC5JVMBheQQv2x6Lpg5sAMcQVRupG1s3tP2gR").unwrap();
+
 	genesis(
 		// Initial collators.
 		Vec::from([
-			// Multiple collators for live development chain.
-			(Keyring::Alice.to_account_id(), Keyring::Alice.public().into()),
-			(Keyring::Bob.to_account_id(), Keyring::Bob.public().into()),
-			(Keyring::Charlie.to_account_id(), Keyring::Charlie.public().into()),
+			// POP COLLATOR 0
+			(collator_0_account_id, collator_0_aura_id),
 		]),
 		vec![],
-		Keyring::Alice.to_account_id(),
+		sudo_account_id(),
 		PARA_ID,
 		Vec::from([ParachainData { id: 1000, slot_duration: 6000 }]),
 	)
