@@ -51,7 +51,7 @@ where
 			totalSupply(_) => {
 				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
 
-				let total_supply = U256::saturating_from(<Assets<T, I>>::total_supply(token));
+				let total_supply = U256::saturating_from(super::total_supply::<T, I>(token));
 
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},

@@ -208,6 +208,10 @@ fn start_destroy<T: pallet_assets::Config<I>, I>(
 	<Assets<T, I>>::start_destroy(origin, asset.into())
 }
 
+fn total_supply<T: pallet_assets::Config<I>, I>(asset: AssetIdOf<T, I>) -> T::Balance {
+	<Assets<T, I>>::total_supply(asset)
+}
+
 fn transfer<T: pallet_assets::Config<I>, I>(
 	origin: OriginFor<T>,
 	asset: AssetIdOf<T, I>,
