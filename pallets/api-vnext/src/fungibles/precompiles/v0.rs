@@ -28,7 +28,7 @@ where
 		Fixed(NonZero::new(FIXED).expect("expected non-zero precompile address"));
 
 	fn call(
-		address: &[u8; 20],
+		_address: &[u8; 20],
 		input: &Self::Interface,
 		env: &mut impl Ext<T = Self::T>,
 	) -> Result<Vec<u8>, Error> {
@@ -44,8 +44,7 @@ where
 					value.saturating_to(),
 				)?;
 
-				let event = Transfer { token: *token, from, to: *to, value: *value };
-				deposit_event(env, address, event);
+				deposit_event(env, Transfer { token: *token, from, to: *to, value: *value })?;
 				Ok(transferCall::abi_encode_returns(&transferReturn {}))
 			},
 			IFungiblesCalls::transferFrom(transferFromCall { token, from, to, value }) => {
@@ -60,7 +59,7 @@ where
 				)?;
 
 				let event = Transfer { token: *token, from: *from, to: *to, value: *value };
-				deposit_event(env, address, event);
+				deposit_event(env, event)?;
 				Ok(transferFromCall::abi_encode_returns(&transferFromReturn {}))
 			},
 			IFungiblesCalls::approve(approveCall { token, spender, value }) => {
@@ -95,7 +94,7 @@ where
 				};
 
 				let event = Approval { token: *token, owner, spender: *spender, value: *value };
-				deposit_event(env, address, event);
+				deposit_event(env, event)?;
 				Ok(approveCall::abi_encode_returns(&approveReturn {}))
 			},
 			IFungiblesCalls::increaseAllowance(increaseAllowanceCall { token, spender, value }) => {
@@ -122,7 +121,7 @@ where
 				);
 
 				let spender = *spender;
-				deposit_event(env, address, Approval { token: *token, owner, spender, value });
+				deposit_event(env, Approval { token: *token, owner, spender, value })?;
 				Ok(increaseAllowanceCall::abi_encode_returns(&value))
 			},
 			IFungiblesCalls::decreaseAllowance(decreaseAllowanceCall { token, spender, value }) => {
@@ -158,7 +157,7 @@ where
 				};
 
 				let spender = *spender;
-				deposit_event(env, address, Approval { token: *token, owner, spender, value });
+				deposit_event(env, Approval { token: *token, owner, spender, value })?;
 				Ok(decreaseAllowanceCall::abi_encode_returns(&value))
 			},
 			IFungiblesCalls::create(createCall { admin, minBalance }) => {
@@ -172,7 +171,7 @@ where
 				)?
 				.into();
 
-				deposit_event(env, address, Created { id, creator, admin: *admin });
+				deposit_event(env, Created { id, creator, admin: *admin })?;
 				Ok(createCall::abi_encode_returns(&id))
 			},
 			IFungiblesCalls::startDestroy(startDestroyCall { token }) => {
@@ -214,7 +213,7 @@ where
 
 				let from = Address::default();
 				let to = *account;
-				deposit_event(env, address, Transfer { token: *token, from, to, value: *value });
+				deposit_event(env, Transfer { token: *token, from, to, value: *value })?;
 				Ok(mintCall::abi_encode_returns(&mintReturn {}))
 			},
 			IFungiblesCalls::burn(burnCall { token, account, value }) => {
@@ -239,7 +238,7 @@ where
 
 				let to = Address::default();
 				let event = Transfer { token: *token, from: *account, to, value: *value };
-				deposit_event(env, address, event);
+				deposit_event(env, event)?;
 				Ok(burnCall::abi_encode_returns(&burnReturn {}))
 			},
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {

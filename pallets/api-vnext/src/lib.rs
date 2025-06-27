@@ -10,7 +10,7 @@ use frame_support::{dispatch::RawOrigin, sp_runtime::traits::StaticLookup};
 use pallet_revive::precompiles::alloy::sol_types::{SolType, SolValue};
 use pallet_revive::{
 	precompiles::{
-		alloy::{sol, sol_types::SolEvent},
+		alloy::{primitives::IntoLogData, sol, sol_types::SolEvent},
 		AddressMatcher, Error, Ext, Precompile,
 	},
 	AddressMapper as _, Origin, H160, H256, U256,
@@ -96,22 +96,19 @@ fn decode<T: SolValue + From<<T::SolType as SolType>::RustType>>(data: &[u8]) ->
 }
 
 fn deposit_event<T: pallet_revive::Config>(
-	_env: &mut impl Ext<T = T>,
-	address: impl Into<H160>,
-	event: impl SolEvent,
-) {
-	// TODO: ensure that env.deposit_event impl is correct
-	let topics = topics(&event);
-	let data = event.encode_data();
-	// env.deposit_event(topics, data);
-	// TODO: charge gas
-	// Workaround to emit events explicitly as precompile, as env.deposit uses derived address of
-	// dummy contract when using `CallSetup` within tests
-	let revive_event =
-		pallet_revive::Event::ContractEmitted { contract: address.into(), data, topics };
-	<frame_system::Pallet<T>>::deposit_event(<T as pallet_revive::Config>::RuntimeEvent::from(
-		revive_event,
-	))
+	env: &mut impl Ext<T = T>,
+	event: impl SolEvent + IntoLogData,
+) -> Result<(), Error> {
+	// Source: https://github.com/paritytech/polkadot-sdk/blob/e1026d7ee22a593cf566a99484eee02a03ecc236/substrate/frame/assets/src/precompiles.rs#L152
+	let (topics, data) = event.into_log_data().split();
+	let topics = topics.into_iter().map(|v| H256(v.0)).collect::<Vec<_>>();
+	env.gas_meter_mut()
+		.charge(pallet_revive::precompiles::RuntimeCosts::DepositEvent {
+			num_topic: topics.len() as u32,
+			len: topics.len() as u32,
+		})?;
+	env.deposit_event(topics, data.to_vec());
+	Ok(())
 }
 
 #[cfg(test)]
@@ -141,7 +138,7 @@ fn to_address(account: &<mock::Test as frame_system::Config>::AccountId) -> H160
 	pallet_revive::AccountId32Mapper::<mock::Test>::to_address(account)
 }
 
-// TODO: verify
+#[cfg(test)]
 fn topics(event: &impl SolEvent) -> Vec<H256> {
 	event.encode_topics().into_iter().map(|t| (*t.0).into()).collect()
 }
