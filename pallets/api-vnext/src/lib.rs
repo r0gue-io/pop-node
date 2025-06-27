@@ -144,7 +144,6 @@ fn topics(event: &impl SolEvent) -> Vec<H256> {
 }
 
 /// Creates a new `RuntimeOrigin` from an ['Origin'].
-// TODO: upstream?
 pub fn to_runtime_origin<T: pallet_revive::Config>(o: Origin<T>) -> T::RuntimeOrigin {
 	match o {
 		Origin::Root => RawOrigin::Root.into(),
