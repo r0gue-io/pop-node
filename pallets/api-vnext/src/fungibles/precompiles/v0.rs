@@ -67,21 +67,32 @@ where
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				let result = approve::<T, I>(
+				match approve::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*spender.0).into()),
 					value.saturating_to(),
-				)
-				.map_err(|e| e.error)?;
-
-				// Adjust weight
-				if let Some(actual_weight) = result.actual_weight {
-					// TODO: replace with `env.adjust_gas(charged, result.weight);` once #8693
-					// lands
-					env.gas_meter_mut()
-						.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-				}
+				) {
+					Ok(result) => {
+						// Adjust weight
+						if let Some(actual_weight) = result.actual_weight {
+							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+							// #8693 lands
+							env.gas_meter_mut()
+								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+						}
+					},
+					Err(e) => {
+						// Adjust weight
+						if let Some(actual_weight) = e.post_info.actual_weight {
+							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+							// #8693 lands
+							env.gas_meter_mut()
+								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+						}
+						return Err(e.error.into())
+					},
+				};
 
 				let event = Approval { token: *token, owner, spender: *spender, value: *value };
 				deposit_event(env, address, event);
