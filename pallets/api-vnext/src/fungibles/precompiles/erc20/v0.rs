@@ -65,7 +65,7 @@ where
 					value.saturating_to(),
 				)?;
 
-				deposit_event::<T>(env, address, Transfer { from, to: *to, value: *value });
+				deposit_event(env, Transfer { from, to: *to, value: *value })?;
 				Ok(transferCall::abi_encode_returns(&true))
 			},
 			IERC20Calls::allowance(allowanceCall { owner, spender }) => {
@@ -108,8 +108,7 @@ where
 					},
 				};
 
-				let event = Approval { owner, spender: *spender, value: *value };
-				deposit_event(env, address, event);
+				deposit_event(env, Approval { owner, spender: *spender, value: *value })?;
 				Ok(approveCall::abi_encode_returns(&true))
 			},
 			IERC20Calls::transferFrom(transferFromCall { from, to, value }) => {
@@ -123,7 +122,7 @@ where
 					value.saturating_to(),
 				)?;
 
-				deposit_event(env, address, Transfer { from: *from, to: *to, value: *value });
+				deposit_event(env, Transfer { from: *from, to: *to, value: *value })?;
 				Ok(transferFromCall::abi_encode_returns(&true))
 			},
 			// IERC20Metadata
