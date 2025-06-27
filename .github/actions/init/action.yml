@@ -34,5 +34,5 @@ runs:
     - name: Remove cached pallet-revive fixtures
       shell: bash
       run: |
-        ls target/pallet-revive-fixtures
+        [ -d target/pallet-revive-fixtures ] && ls target/pallet-revive-fixtures
         rm -rf target/pallet-revive-fixtures
