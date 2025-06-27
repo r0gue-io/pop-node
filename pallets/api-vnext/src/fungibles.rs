@@ -171,7 +171,7 @@ fn decrease_allowance<T: Config<I> + pallet_assets::Config<I>, I>(
 		<Assets<T, I>>::approve_transfer(origin, asset_param, spender_source, new_allowance)?;
 		<WeightOf<T, I>>::approve(1, 1)
 	};
-	Ok((new_allowance, Some(weight).into()))
+	Ok((new_allowance, Some(weight)))
 }
 
 fn exists<T: pallet_assets::Config<I>, I>(asset: AssetIdOf<T, I>) -> bool {
