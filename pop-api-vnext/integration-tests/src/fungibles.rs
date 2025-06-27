@@ -4,12 +4,12 @@ use frame_support::{
 		approvals::Inspect as _, metadata::Inspect as _, roles::Inspect as _, Inspect as _,
 	},
 };
-use pallet_api_vnext::fungibles::precompiles::IFungibles::{
+use pallet_api_vnext::fungibles::precompiles::v0::IFungibles::{
 	allowanceCall, approveCall, balanceOfCall, burnCall, clearMetadataCall, createCall,
 	decimalsCall, decreaseAllowanceCall, existsCall, increaseAllowanceCall, mintCall, nameCall,
 	setMetadataCall, startDestroyCall, symbolCall, totalSupplyCall, transferCall, transferFromCall,
 };
-use pop_api::fungibles::events::*;
+use pop_api::fungibles::*;
 use pop_primitives::TokenId;
 use sp_io::hashing::twox_256;
 
