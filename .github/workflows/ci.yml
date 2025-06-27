@@ -51,6 +51,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: "./.github/actions/init"
+        with:
+          # TODO: remove once pallet-revive-fixtures build cache issue resolved
+          cache-all-crates: false
 
       - name: Check Build
         run: |
@@ -62,6 +65,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: "./.github/actions/init"
+        with:
+          # TODO: remove once pallet-revive-fixtures build cache issue resolved
+          cache-all-crates: false
       - name: Check Build with ISMP
         run: |
           cargo check --release --locked --workspace --exclude integration-tests --features=ismp,runtime-benchmarks,try-runtime
@@ -202,6 +208,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: "./.github/actions/init"
+        with:
+          # TODO: remove once pallet-revive-fixtures build cache issue resolved
+          cache-all-crates: false
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
