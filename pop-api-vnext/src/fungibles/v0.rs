@@ -9,6 +9,7 @@ use super::{
 mod errors;
 mod events;
 
+// Precompile index within the runtime
 const PRECOMPILE: u16 = 1;
 
 /// The fungibles API offers a streamlined interface for interacting with fungible
