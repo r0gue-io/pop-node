@@ -33,7 +33,7 @@ runs:
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
     - name: Rust Cache
-      uses: Swatinem/rust-cache@v2.8
+      uses: Swatinem/rust-cache@v2.8.0
       with:
         cache-all-crates: ${{ inputs.cache-all-crates }}
         cache-directories: ${{ inputs.cache-directories }}
