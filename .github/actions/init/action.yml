@@ -29,6 +29,10 @@ runs:
       with:
         cache-on-failure: true
         cache-all-crates: true
-        cache-directors: |
-          target/pallet-revive-fixtures
         key: ${{ inputs.cache-key }}
+
+    - name: Remove cached pallet-revive fixtures
+      shell: bash
+      run: |
+        ls target/pallet-revive-fixtures
+        rm -rf target/pallet-revive-fixtures
