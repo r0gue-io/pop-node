@@ -706,6 +706,8 @@ mod runtime {
 	pub type Fungibles = fungibles::Pallet<Runtime>;
 	#[runtime::pallet_index(151)]
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
+	#[runtime::pallet_index(152)]
+	pub type FungiblesvNext = pallet_api_vnext::fungibles::Pallet<Runtime, Instance1>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]
@@ -724,6 +726,7 @@ mod benches {
 		[cumulus_pallet_parachain_system, ParachainSystem]
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[cumulus_pallet_weight_reclaim, WeightReclaim]
+		[pallet_api_vnext::fungibles, FungiblesvNext]
 	);
 }
 
