@@ -14,7 +14,7 @@ pub mod fungibles {
 	pub struct Fungible;
 
 	impl Fungible {
-		#[ink(constructor, payable)]
+		#[ink(constructor, default, payable)]
 		#[allow(clippy::new_without_default)]
 		pub fn new() -> Self {
 			Self {}

@@ -160,7 +160,7 @@ jobs:
     needs: lint
     runs-on: ubuntu-latest
     env:
-      RUSTFLAGS: '--cfg ink_abi="sol"'
+      RUSTFLAGS: '--cfg ink_abi="all"'
     steps:
       - uses: actions/checkout@v4
 

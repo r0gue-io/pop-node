@@ -7235,16 +7235,16 @@ dependencies = [
 [[package]]
 name = "ink"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "const_format",
  "deranged",
  "derive_more 2.0.1",
  "ink_env 6.0.0-alpha",
  "ink_macro 6.0.0-alpha",
- "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "ink_storage 6.0.0-alpha",
  "keccak-const",
  "linkme",
@@ -7269,7 +7269,7 @@ dependencies = [
 [[package]]
 name = "ink_allocator"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "cfg-if",
 ]
@@ -7299,7 +7299,7 @@ dependencies = [
 [[package]]
 name = "ink_codegen"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2 0.10.6",
  "derive_more 2.0.1",
@@ -7307,7 +7307,7 @@ dependencies = [
  "heck 0.5.0",
  "impl-serde 0.5.0",
  "ink_ir 6.0.0-alpha",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "itertools 0.14.0",
  "parity-scale-codec",
  "polkavm-derive 0.22.0",
@@ -7337,12 +7337,12 @@ dependencies = [
 [[package]]
 name = "ink_engine"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2 0.10.6",
  "derive_more 2.0.1",
  "hex-literal 1.0.0",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "pallet-revive 0.5.0",
  "pallet-revive-uapi 0.4.0",
  "parity-scale-codec",
@@ -7385,7 +7385,7 @@ dependencies = [
 [[package]]
 name = "ink_env"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2 0.10.6",
  "cfg-if",
@@ -7394,8 +7394,8 @@ dependencies = [
  "hex-literal 1.0.0",
  "ink_allocator 6.0.0-alpha",
  "ink_engine 6.0.0-alpha",
- "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "ink_storage_traits 6.0.0-alpha",
  "num-traits",
  "pallet-revive 0.5.0",
@@ -7434,12 +7434,12 @@ dependencies = [
 [[package]]
 name = "ink_ir"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2 0.10.6",
  "either",
  "impl-serde 0.5.0",
- "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "itertools 0.14.0",
  "proc-macro2",
  "quote",
@@ -7466,11 +7466,11 @@ dependencies = [
 [[package]]
 name = "ink_macro"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "ink_codegen 6.0.0-alpha",
  "ink_ir 6.0.0-alpha",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "parity-scale-codec",
  "proc-macro2",
  "quote",
@@ -7513,12 +7513,12 @@ dependencies = [
 [[package]]
 name = "ink_metadata"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "derive_more 2.0.1",
  "impl-serde 0.5.0",
- "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "parity-scale-codec",
  "scale-info",
  "schemars",
@@ -7545,7 +7545,7 @@ dependencies = [
 [[package]]
 name = "ink_prelude"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "cfg-if",
 ]
@@ -7595,13 +7595,13 @@ dependencies = [
 [[package]]
 name = "ink_primitives"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "alloy-sol-types 1.2.0",
  "cfg-if",
  "derive_more 2.0.1",
  "impl-trait-for-tuples",
- "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "itertools 0.14.0",
  "num-traits",
  "pallet-revive 0.5.0",
@@ -7641,15 +7641,15 @@ dependencies = [
 [[package]]
 name = "ink_storage"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "array-init",
  "cfg-if",
  "derive_more 2.0.1",
  "ink_env 6.0.0-alpha",
- "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "ink_storage_traits 6.0.0-alpha",
  "pallet-revive-uapi 0.4.0",
  "parity-scale-codec",
@@ -7672,11 +7672,11 @@ dependencies = [
 [[package]]
 name = "ink_storage_traits"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
- "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink)",
- "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink)",
+ "ink_metadata 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_prelude 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
+ "ink_primitives 6.0.0-alpha (git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor)",
  "parity-scale-codec",
  "scale-info",
  "sp-io 40.0.1",
