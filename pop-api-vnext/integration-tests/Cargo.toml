@@ -5,7 +5,7 @@ name = "pop-api-vnext-integration-tests"
 version = "0.1.0"
 
 [package.metadata.ink-lang]
-abi = "sol"
+abi = "all"
 
 [build-dependencies]
 contract-build = { git = "https://github.com/use-ink/cargo-contract" }

@@ -702,7 +702,7 @@ struct Contract {
 impl Contract {
 	// Create a new instance of the contract through on-chain instantiation.
 	fn new(origin: &AccountId, value: Balance) -> Self {
-		let data = blake_selector("new").to_vec();
+		let data = vec![]; // Default solidity constructor
 		let salt = twox_256(&value.to_le_bytes());
 
 		let address =
@@ -712,7 +712,7 @@ impl Contract {
 
 	// Create a new instance of the contract through on-chain instantiation.
 	fn new_with_create(origin: &AccountId, value: Balance, min_balance: U256) -> Self {
-		let data = [blake_selector("create").to_vec(), min_balance.encode()].concat();
+		let data = [blake_selector("create").to_vec(), min_balance.encode()].concat(); // Additional constructor via ink abi
 		let salt = twox_256(&value.to_le_bytes());
 		let address =
 			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, data, Some(salt));

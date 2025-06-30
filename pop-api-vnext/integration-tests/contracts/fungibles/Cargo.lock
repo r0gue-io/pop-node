@@ -2342,9 +2342,9 @@ dependencies = [
 
 [[package]]
 name = "indexmap"
-version = "2.9.0"
+version = "2.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cea70ddb795996207ad57735b50c5982d8844f38ba9ee5f1aedcfb708a2aa11e"
+checksum = "fe4cd85333e22411419a0bcae1297d25e58c9443848b11dc6a86fefe8c78a661"
 dependencies = [
  "equivalent",
  "hashbrown 0.15.4",
@@ -2354,7 +2354,7 @@ dependencies = [
 [[package]]
 name = "ink"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "const_format",
  "deranged",
@@ -2379,7 +2379,7 @@ dependencies = [
 [[package]]
 name = "ink_allocator"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "cfg-if",
 ]
@@ -2387,7 +2387,7 @@ dependencies = [
 [[package]]
 name = "ink_codegen"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2",
  "derive_more 2.0.1",
@@ -2409,7 +2409,7 @@ dependencies = [
 [[package]]
 name = "ink_engine"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2",
  "derive_more 2.0.1",
@@ -2426,7 +2426,7 @@ dependencies = [
 [[package]]
 name = "ink_env"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2",
  "cfg-if",
@@ -2459,7 +2459,7 @@ dependencies = [
 [[package]]
 name = "ink_ir"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "blake2",
  "either",
@@ -2475,7 +2475,7 @@ dependencies = [
 [[package]]
 name = "ink_macro"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "ink_codegen",
  "ink_ir",
@@ -2490,7 +2490,7 @@ dependencies = [
 [[package]]
 name = "ink_metadata"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "derive_more 2.0.1",
  "impl-serde",
@@ -2505,7 +2505,7 @@ dependencies = [
 [[package]]
 name = "ink_prelude"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "cfg-if",
 ]
@@ -2513,7 +2513,7 @@ dependencies = [
 [[package]]
 name = "ink_primitives"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "alloy-sol-types 1.2.1",
  "cfg-if",
@@ -2540,7 +2540,7 @@ dependencies = [
 [[package]]
 name = "ink_storage"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "array-init",
  "cfg-if",
@@ -2558,7 +2558,7 @@ dependencies = [
 [[package]]
 name = "ink_storage_traits"
 version = "6.0.0-alpha"
-source = "git+https://github.com/use-ink/ink#717b4985e8dec31b4eceb2d47ebe643e3b4c02e8"
+source = "git+https://github.com/use-ink/ink?branch=semakula%2Fsol-ctor#cf61cb8296ca6a6f33c05311a2387d8f3074f4b1"
 dependencies = [
  "ink_metadata",
  "ink_prelude",
@@ -3144,9 +3144,9 @@ dependencies = [
 
 [[package]]
 name = "pallet-revive-fixtures"
-version = "0.3.0"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc1df19ca809f036d6ddf1632039e9db312f92dbe8f9390e6722ad808cd95377"
+checksum = "279282bb5f8e1da5a22f0e74aabbe31d62e158b7700e102fd9447a971f90d383"
 dependencies = [
  "anyhow",
  "cargo_metadata",
