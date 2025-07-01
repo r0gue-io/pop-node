@@ -74,7 +74,11 @@ pub fn balance_of(token: TokenId, account: Address) -> U256 {
 	precompile.balanceOf(account)
 }
 
-/// Returns the value of tokens owned by `account`.
+/// Moves a `value` amount of tokens from the caller's account to `to`.
+///
+/// Returns a boolean value indicating whether the operation succeeded.
+///
+/// Emits a [`Transfer`] event.
 #[inline]
 pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<bool, Error> {
 	ensure!(to != Address::zero(), ERC20InvalidSender(to));
