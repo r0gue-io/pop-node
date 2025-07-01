@@ -1,0 +1,33 @@
+[package]
+description = "Enabling smart(er) contracts with the power of Polkadot"
+edition = "2021"
+license = "GPL-3.0-only"
+name = "pop-api"
+version = "0.1.0"
+
+[dependencies]
+alloy-sol-types = { version = "1.0.0", default-features = false }                                                                          # Required until ink implements sol error support
+ink = { git = "https://github.com/use-ink/ink", branch = "semakula/sol-ctor", default-features = false, features = [ "unstable-hostfn" ] }
+pop-primitives = { path = "../primitives", default-features = false }
+
+[dev-dependencies]
+hex = { version = "0.4.3" }
+
+[lib]
+crate-type = [ "rlib" ]
+name = "pop_api"
+path = "src/lib.rs"
+
+[features]
+default = [ "std" ]
+fungibles = [  ]
+messaging = [  ]
+nonfungibles = [  ]
+std = [
+	"ink/std",
+	"pop-primitives/std",
+]
+
+[lints.rust.unexpected_cfgs]
+check-cfg = [ 'cfg(ink_abi, values("ink", "sol", "all"))' ]
+level = "warn"
