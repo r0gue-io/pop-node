@@ -29,10 +29,13 @@ use {
 pub mod fungibles;
 #[cfg(test)]
 mod mock;
+#[cfg(feature = "nonfungibles")]
+pub mod nonfungibles;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
 type AddressMapper<T> = <T as pallet_revive::Config>::AddressMapper;
 type Assets<T, I> = pallet_assets::Pallet<T, I>;
+type Nfts<T, I> = pallet_nfts::Pallet<T, I>;
 
 // A bare call to a contract.
 #[cfg(test)]
