@@ -17,6 +17,7 @@ frame-benchmarking.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 pallet-assets = { workspace = true, default-features = false, optional = true }
+pallet-nfts = { workspace = true, default-features = false, optional = true }
 pallet-revive = { workspace = true, default-features = false }
 scale-info.workspace = true
 
@@ -26,13 +27,15 @@ pallet-timestamp.workspace = true
 sp-io.workspace = true
 
 [features]
-default = [ "fungibles", "std" ]
+default = [ "fungibles", "nonfungibles", "std" ]
 fungibles = [ "pallet-assets" ]
+nonfungibles = [ "pallet-nfts" ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 	"pallet-assets/runtime-benchmarks",
+	"pallet-nfts/runtime-benchmarks",
 	"pallet-revive/runtime-benchmarks",
 ]
 std = [
@@ -42,6 +45,7 @@ std = [
 	"frame-system/std",
 	"pallet-assets?/std",
 	"pallet-balances/std",
+	"pallet-nfts?/std",
 	"pallet-revive/std",
 	"pallet-timestamp/std",
 	"scale-info/std",
