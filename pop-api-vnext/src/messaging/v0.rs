@@ -69,21 +69,27 @@ impl Callback {
 }
 
 impl SolDecode for Callback {
-	type SolType = (u8, [u8; 4], (u64, u64));
+	type SolType = ([u8; 20], u8, [u8; 4], (u64, u64));
 
 	fn from_sol_type(value: Self::SolType) -> Self {
 		Self {
-			encoding: Encoding::from_sol_type(value.0),
-			selector: value.1,
-			weight: Weight::from_sol_type(value.2),
+			destination: value.0.into(),
+			encoding: Encoding::from_sol_type(value.1),
+			selector: value.2,
+			weight: Weight::from_sol_type(value.3),
 		}
 	}
 }
 impl<'a> SolEncode<'a> for Callback {
-	type SolType = (u8, &'a [u8; 4], (u64, u64));
+	type SolType = (&'a [u8; 20], u8, &'a [u8; 4], (u64, u64));
 
 	fn to_sol_type(&'a self) -> Self::SolType {
-		(self.encoding as u8, &self.selector, (self.weight.ref_time(), self.weight.proof_size()))
+		(
+			&self.destination.0,
+			self.encoding as u8,
+			&self.selector,
+			(self.weight.ref_time(), self.weight.proof_size()),
+		)
 	}
 }
 
