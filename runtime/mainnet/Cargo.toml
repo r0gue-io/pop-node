@@ -22,6 +22,7 @@ scale-info.workspace = true
 smallvec.workspace = true
 
 # Local
+pallet-motion.workspace = true
 pop-runtime-common = { workspace = true, default-features = false }
 
 # Substrate
@@ -33,19 +34,25 @@ frame-system.workspace = true
 frame-system-benchmarking.workspace = true
 frame-system-rpc-runtime-api.workspace = true
 frame-try-runtime.workspace = true
+pallet-assets.workspace = true
 pallet-aura.workspace = true
 pallet-authorship.workspace = true
 pallet-balances.workspace = true
+pallet-collective.workspace = true
 pallet-message-queue.workspace = true
 pallet-multisig.workspace = true
+pallet-nfts-runtime-api.workspace = true
+pallet-nfts-sdk.workspace = true
 pallet-preimage.workspace = true
 pallet-proxy.workspace = true
+pallet-revive.workspace = true
 pallet-scheduler.workspace = true
 pallet-session.workspace = true
 pallet-sudo.workspace = true
 pallet-timestamp.workspace = true
 pallet-transaction-payment.workspace = true
 pallet-transaction-payment-rpc-runtime-api.workspace = true
+pallet-treasury.workspace = true
 pallet-utility.workspace = true
 sp-api.workspace = true
 sp-block-builder.workspace = true
@@ -62,21 +69,23 @@ sp-version.workspace = true
 
 # Polkadot
 pallet-xcm.workspace = true
+pallet-xcm-benchmarks.workspace = true
 polkadot-parachain-primitives.workspace = true
 polkadot-runtime-common.workspace = true
 xcm.workspace = true
 xcm-builder.workspace = true
 xcm-executor.workspace = true
+xcm-runtime-apis.workspace = true
 
 # Cumulus
 cumulus-pallet-aura-ext.workspace = true
 cumulus-pallet-parachain-system.workspace = true
 cumulus-pallet-session-benchmarking.workspace = true
+cumulus-pallet-weight-reclaim.workspace = true
 cumulus-pallet-xcm.workspace = true
 cumulus-pallet-xcmp-queue.workspace = true
 cumulus-primitives-aura.workspace = true
 cumulus-primitives-core.workspace = true
-cumulus-primitives-storage-weight-reclaim.workspace = true
 cumulus-primitives-utility.workspace = true
 pallet-collator-selection.workspace = true
 parachain-info.workspace = true
@@ -85,7 +94,10 @@ parachains-common.workspace = true
 [dev-dependencies]
 enumflags2 = "0.7.9"
 env_logger = "0.11.2"
+frame-metadata.workspace = true
 hex = "0.4.3"
+polkadot-runtime-parachains.workspace = true
+sp-keyring.workspace = true
 
 [features]
 default = [ "std" ]
@@ -94,11 +106,11 @@ std = [
 	"cumulus-pallet-aura-ext/std",
 	"cumulus-pallet-parachain-system/std",
 	"cumulus-pallet-session-benchmarking/std",
+	"cumulus-pallet-weight-reclaim/std",
 	"cumulus-pallet-xcm/std",
 	"cumulus-pallet-xcmp-queue/std",
 	"cumulus-primitives-aura/std",
 	"cumulus-primitives-core/std",
-	"cumulus-primitives-storage-weight-reclaim/std",
 	"cumulus-primitives-utility/std",
 	"enumflags2/std",
 	"frame-benchmarking/std",
@@ -109,21 +121,29 @@ std = [
 	"frame-system-rpc-runtime-api/std",
 	"frame-system/std",
 	"frame-try-runtime/std",
+	"pallet-assets/std",
 	"pallet-aura/std",
 	"pallet-authorship/std",
 	"pallet-balances/std",
 	"pallet-collator-selection/std",
+	"pallet-collective/std",
 	"pallet-message-queue/std",
+	"pallet-motion/std",
 	"pallet-multisig/std",
+	"pallet-nfts-runtime-api/std",
+	"pallet-nfts-sdk/std",
 	"pallet-preimage/std",
 	"pallet-proxy/std",
+	"pallet-revive/std",
 	"pallet-scheduler/std",
 	"pallet-session/std",
 	"pallet-sudo/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
+	"pallet-treasury/std",
 	"pallet-utility/std",
+	"pallet-xcm-benchmarks/std",
 	"pallet-xcm/std",
 	"parachain-info/std",
 	"parachains-common/std",
@@ -145,12 +165,14 @@ std = [
 	"sp-version/std",
 	"xcm-builder/std",
 	"xcm-executor/std",
+	"xcm-runtime-apis/std",
 	"xcm/std",
 ]
 
 runtime-benchmarks = [
 	"cumulus-pallet-parachain-system/runtime-benchmarks",
 	"cumulus-pallet-session-benchmarking/runtime-benchmarks",
+	"cumulus-pallet-weight-reclaim/runtime-benchmarks",
 	"cumulus-pallet-xcmp-queue/runtime-benchmarks",
 	"cumulus-primitives-core/runtime-benchmarks",
 	"cumulus-primitives-utility/runtime-benchmarks",
@@ -158,17 +180,24 @@ runtime-benchmarks = [
 	"frame-support/runtime-benchmarks",
 	"frame-system-benchmarking/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"pallet-assets/runtime-benchmarks",
 	"pallet-balances/runtime-benchmarks",
 	"pallet-collator-selection/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks",
 	"pallet-message-queue/runtime-benchmarks",
+	"pallet-motion/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
+	"pallet-nfts-sdk/runtime-benchmarks",
 	"pallet-preimage/runtime-benchmarks",
 	"pallet-proxy/runtime-benchmarks",
+	"pallet-revive/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
 	"pallet-sudo/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-transaction-payment/runtime-benchmarks",
+	"pallet-treasury/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
+	"pallet-xcm-benchmarks/runtime-benchmarks",
 	"pallet-xcm/runtime-benchmarks",
 	"parachains-common/runtime-benchmarks",
 	"polkadot-parachain-primitives/runtime-benchmarks",
@@ -177,34 +206,43 @@ runtime-benchmarks = [
 	"sp-runtime/runtime-benchmarks",
 	"xcm-builder/runtime-benchmarks",
 	"xcm-executor/runtime-benchmarks",
+	"xcm-runtime-apis/runtime-benchmarks",
 ]
 
 try-runtime = [
 	"cumulus-pallet-aura-ext/try-runtime",
 	"cumulus-pallet-parachain-system/try-runtime",
+	"cumulus-pallet-weight-reclaim/try-runtime",
 	"cumulus-pallet-xcm/try-runtime",
 	"cumulus-pallet-xcmp-queue/try-runtime",
 	"frame-executive/try-runtime",
 	"frame-support/try-runtime",
 	"frame-system/try-runtime",
 	"frame-try-runtime/try-runtime",
+	"pallet-assets/try-runtime",
 	"pallet-aura/try-runtime",
 	"pallet-authorship/try-runtime",
 	"pallet-balances/try-runtime",
 	"pallet-collator-selection/try-runtime",
+	"pallet-collective/try-runtime",
 	"pallet-message-queue/try-runtime",
+	"pallet-motion/try-runtime",
 	"pallet-multisig/try-runtime",
+	"pallet-nfts-sdk/try-runtime",
 	"pallet-preimage/try-runtime",
 	"pallet-proxy/try-runtime",
+	"pallet-revive/try-runtime",
 	"pallet-scheduler/try-runtime",
 	"pallet-session/try-runtime",
 	"pallet-sudo/try-runtime",
 	"pallet-timestamp/try-runtime",
 	"pallet-transaction-payment/try-runtime",
+	"pallet-treasury/try-runtime",
 	"pallet-utility/try-runtime",
 	"pallet-xcm/try-runtime",
 	"parachain-info/try-runtime",
 	"polkadot-runtime-common/try-runtime",
+	"pop-runtime-common/try-runtime",
 	"sp-runtime/try-runtime",
 ]
 

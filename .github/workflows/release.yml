@@ -5,7 +5,7 @@ env:
 
 on:
   release:
-    types: [ published ]
+    types: [published]
   workflow_dispatch:
     inputs:
       ref:
@@ -16,7 +16,7 @@ on:
         description: Build node
         default: true
       runtime:
-        description: 'Runtime to build (none, devnet, testnet, mainnet)'
+        description: "Runtime to build (none, devnet, testnet, mainnet)"
         default: none
         type: choice
         options:
@@ -53,12 +53,12 @@ jobs:
           else
             echo "RUNTIME=devnet" >> $GITHUB_ENV  # Default to devnet if no tag matches
           fi
-          
+
           # if devnet, build the node with ismp feature
-          if [ "$RUNTIME" == "devnet" ]; then
-            echo "NODE_BUILD_OPTS=--features on-chain-release-build,ismp" >> $GITHUB_ENV
-          else
+          if [ "$RUNTIME" == "mainnet" ]; then
             echo "NODE_BUILD_OPTS=--features on-chain-release-build" >> $GITHUB_ENV
+          else
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build,ismp" >> $GITHUB_ENV
           fi
 
       - name: Cache runtime target dir
@@ -72,14 +72,16 @@ jobs:
 
       - name: Build ${{ env.RUNTIME }} runtime
         id: srtool_build
-        uses: chevdor/srtool-actions@v0.9.2
+        uses: chevdor/srtool-actions@v0.8.0
         env:
           # runtimes do not have ismp feature
-          BUILD_OPTS: '--features on-chain-release-build'
+          BUILD_OPTS: "--features on-chain-release-build"
         with:
           chain: ${{ env.RUNTIME }}
           package: "pop-runtime-${{ env.RUNTIME }}"
           runtime_dir: "runtime/${{ env.RUNTIME }}"
+          # We use production profile primarily as a way to reduce the resulting wasm size.
+          profile: "production"
 
       - name: Store srtool digest to disk
         run: |
@@ -174,7 +176,7 @@ jobs:
     env:
       RUSTFLAGS: "${{ matrix.platform.cpu != '' && format('-C target-cpu={0}', matrix.platform.cpu) || '' }} ${{ matrix.platform.target == 'aarch64-unknown-linux-gnu' && '-C linker=aarch64-linux-gnu-gcc' || '' }}"
       path: "target/${{ matrix.platform.target }}/production"
-      package: "pop-node-${{ matrix.platform.target }}${{ matrix.platform.cpu != '' && format('-{0}', matrix.platform.cpu) || '' }}.tar.gz"
+      package: "pop-node-${{ matrix.platform.target }}${{ matrix.platform.cpu != '' && format('-{0}', matrix.platform.cpu) || '' }}"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -185,6 +187,7 @@ jobs:
       - name: Install packages (Linux)
         if: contains(matrix.platform.target, 'linux')
         run: |
+          sudo apt-get update
           sudo apt-get install -y protobuf-compiler ${{ contains(matrix.platform.target, 'aarch64') && 'crossbuild-essential-arm64' || '' }}
           protoc --version
 
@@ -197,6 +200,14 @@ jobs:
       - name: Add target
         run: rustup target add ${{ matrix.platform.target }}
 
+      - name: Set Node Build Opts
+        run: |
+          if [[ "${{ github.event.release.tag_name }}" == "mainnet"* || "${{ github.event.inputs.runtime }}" == "mainnet"* ]]; then
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build" >> $GITHUB_ENV
+          else
+            echo "NODE_BUILD_OPTS=--features on-chain-release-build,ismp" >> $GITHUB_ENV
+          fi
+
       - name: Build node
         run: cargo build --profile=production -p pop-node $NODE_BUILD_OPTS --target ${{ matrix.platform.target }}
 
@@ -205,19 +216,23 @@ jobs:
         run: |
           cd ${{ env.path }}
           sha256sum pop-node > pop-node.sha256
-          tar -czf ${{ env.package }} pop-node pop-node.sha256
+          SHA256_SUM=$(cat pop-node.sha256 | awk '{print $1}')
+          echo "SHA256_SUM=$SHA256_SUM" >> $GITHUB_ENV
+          tar -czf "${{ env.package }}.tar.gz" pop-node pop-node.sha256
 
       - name: Package binary (macOS)
         if: contains(matrix.platform.target, 'apple')
         run: |
           cd ${{ env.path }}
           shasum -a 256 pop-node > pop-node.sha256
-          tar -czf ${{ env.package }} pop-node pop-node.sha256
+          SHA256_SUM=$(cat pop-node.sha256 | awk '{print $1}')
+          echo "SHA256_SUM=$SHA256_SUM" >> $GITHUB_ENV
+          tar -czf "${{ env.package }}.tar.gz" pop-node pop-node.sha256
 
       - name: Upload binary
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: binaries
+          name: ${{ env.package }}-${{ env.SHA256_SUM }}.tar.gz
           path: ${{ env.path }}/${{ env.package }}
 
       - name: Add binary to release

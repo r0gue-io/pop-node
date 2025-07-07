@@ -3,7 +3,7 @@ use drink::{
 	devnet::{
 		account_id_from_slice,
 		error::{
-			v0::{ApiError::*, ArithmeticError::*, Error},
+			v0::{ApiError::*, ArithmeticError::*, Error, TokenError::UnknownAsset},
 			Assets,
 			AssetsError::*,
 		},
@@ -556,8 +556,8 @@ fn mint_fails_with_token_not_live(mut session: Session) {
 	session.set_actor(ALICE);
 	// Token is not live, i.e. frozen or being destroyed.
 	assert_ok!(session.sandbox().start_destroy(&TOKEN));
-	// `pallet-assets` returns `AssetNotLive` error.
-	assert_err!(mint(&mut session, ALICE, AMOUNT), Error::Module(Assets(AssetNotLive)));
+	// `pallet-assets` returns `UnknownAsset` error.
+	assert_err!(mint(&mut session, ALICE, AMOUNT), Error::Raw(Token(UnknownAsset)));
 }
 
 #[drink::test(sandbox = Pop)]

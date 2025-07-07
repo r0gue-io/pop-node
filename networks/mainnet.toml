@@ -20,7 +20,7 @@ validator = true
 
 [[parachains]]
 id = 4001
-chain = "mainnet"
+chain = "pop-dev" # mainnet runtime with development config.
 default_command = "./target/release/pop-node"
 
 [parachains.genesis_overrides.balances]
@@ -37,4 +37,8 @@ balances = [
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug"]
+args = [
+    "-lruntime::revive=trace",
+    "-lruntime::revive::strace=trace",
+    "-lxcm=trace",
+]

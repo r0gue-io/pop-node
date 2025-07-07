@@ -6,11 +6,11 @@ use emulated_integration_tests_common::{
 };
 use frame_support::traits::OnInitialize;
 #[cfg(feature = "devnet")]
-use pop_runtime_devnet as runtime;
+pub(crate) use pop_runtime_devnet as runtime;
 #[cfg(feature = "mainnet")]
-use pop_runtime_mainnet as runtime;
+pub(crate) use pop_runtime_mainnet as runtime;
 #[cfg(feature = "testnet")]
-use pop_runtime_testnet as runtime;
+pub(crate) use pop_runtime_testnet as runtime;
 
 // PopNetwork Parachain declaration
 decl_test_parachains! {

@@ -123,6 +123,7 @@ try-runtime = [
 	"pallet-balances/std",
 	"pallet-message-queue/try-runtime",
 	"paseo-runtime?/try-runtime",
+	"pop-runtime-common/try-runtime",
 	"pop-runtime-devnet/try-runtime",
 	"pop-runtime-mainnet/try-runtime",
 	"pop-runtime-testnet/try-runtime",

@@ -1,5 +1,6 @@
+use alloc::vec::Vec;
+
 use sp_runtime::DispatchError;
-use sp_std::vec::Vec;
 
 use super::*;
 

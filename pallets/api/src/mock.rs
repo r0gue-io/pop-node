@@ -1,11 +1,14 @@
+use codec::{Decode, DecodeWithMemTracking, Encode};
 use frame_support::{
 	derive_impl, parameter_types,
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, Everything},
+	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Everything},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
+use pallet_nfts::PalletFeatures;
+use scale_info::TypeInfo;
 use sp_core::H256;
 use sp_runtime::{
-	traits::{BlakeTwo256, IdentityLookup},
+	traits::{BlakeTwo256, IdentifyAccount, IdentityLookup, Lazy, Verify},
 	BuildStorage,
 };
 
@@ -29,6 +32,8 @@ frame_support::construct_runtime!(
 		Assets: pallet_assets::<Instance1>,
 		Balances: pallet_balances,
 		Fungibles: crate::fungibles,
+		Nfts: pallet_nfts::<Instance1>,
+		NonFungibles: crate::nonfungibles
 	}
 );
 
@@ -92,11 +97,12 @@ impl pallet_assets::Config<AssetsInstance> for Test {
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
 	type CallbackHandle = ();
-	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<Self::AccountId>>;
 	type Currency = Balances;
 	type Extra = ();
 	type ForceOrigin = EnsureRoot<u64>;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = ConstU128<1>;
 	type MetadataDepositPerByte = ConstU128<1>;
 	type RemoveItemsLimit = ConstU32<5>;
@@ -111,6 +117,91 @@ impl crate::fungibles::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub storage Features: PalletFeatures = PalletFeatures::all_enabled();
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Encode, Decode, DecodeWithMemTracking, TypeInfo)]
+pub struct Noop;
+
+impl IdentifyAccount for Noop {
+	type AccountId = AccountId;
+
+	fn into_account(self) -> Self::AccountId {
+		0
+	}
+}
+
+impl Verify for Noop {
+	type Signer = Noop;
+
+	fn verify<L: Lazy<[u8]>>(
+		&self,
+		_msg: L,
+		_signer: &<Self::Signer as IdentifyAccount>::AccountId,
+	) -> bool {
+		false
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl pallet_nfts::pallet::BenchmarkHelper<u32, u32, Noop, u64, Noop> for () {
+	fn collection(i: u16) -> u32 {
+		i.into()
+	}
+
+	fn item(i: u16) -> u32 {
+		i.into()
+	}
+
+	fn signer() -> (Noop, u64) {
+		unimplemented!()
+	}
+
+	fn sign(_signer: &Noop, _message: &[u8]) -> Noop {
+		unimplemented!()
+	}
+}
+
+type NftsInstance = pallet_nfts::Instance1;
+impl pallet_nfts::Config<NftsInstance> for Test {
+	type ApprovalsLimit = ConstU32<10>;
+	type AttributeDepositBase = ConstU128<1>;
+	type BlockNumberProvider = frame_system::Pallet<Test>;
+	type CollectionApprovalDeposit = ConstU128<1>;
+	type CollectionBalanceDeposit = ConstU128<1>;
+	type CollectionDeposit = ConstU128<2>;
+	type CollectionId = u32;
+	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<u64>>;
+	type Currency = Balances;
+	type DepositPerByte = ConstU128<1>;
+	type Features = Features;
+	type ForceOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
+	type ItemAttributesApprovalsLimit = ConstU32<2>;
+	type ItemDeposit = ConstU128<1>;
+	type ItemId = u32;
+	type KeyLimit = ConstU32<50>;
+	type Locker = ();
+	type MaxAttributesPerCall = ConstU32<2>;
+	type MaxDeadlineDuration = ConstU64<10000>;
+	type MaxTips = ConstU32<10>;
+	type MetadataDepositBase = ConstU128<1>;
+	type OffchainPublic = Noop;
+	type OffchainSignature = Noop;
+	type RuntimeEvent = RuntimeEvent;
+	type StringLimit = ConstU32<50>;
+	type ValueLimit = ConstU32<50>;
+	type WeightInfo = ();
+}
+
+impl crate::nonfungibles::Config for Test {
+	type NftsInstance = NftsInstance;
+	type RuntimeEvent = RuntimeEvent;
+	type WeightInfo = ();
+}
+
 pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::<Test>::default()
 		.build_storage()
@@ -118,6 +209,7 @@ pub(crate) fn new_test_ext() -> sp_io::TestExternalities {
 
 	pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(ALICE, INIT_AMOUNT), (BOB, INIT_AMOUNT), (CHARLIE, INIT_AMOUNT)],
+		..Default::default()
 	}
 	.assimilate_storage(&mut t)
 	.expect("Pallet balances storage can be assimilated");

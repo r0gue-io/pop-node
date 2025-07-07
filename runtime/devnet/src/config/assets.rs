@@ -1,4 +1,5 @@
 use frame_support::{
+	pallet_prelude::Get,
 	parameter_types,
 	traits::{AsEnsureOriginWithArg, ConstU32},
 	BoundedVec, PalletId,
@@ -41,10 +42,29 @@ parameter_types! {
 	pub const NftsMaxDeadlineDuration: BlockNumber = 12 * 30 * DAYS;
 }
 
-impl pallet_nfts::Config for Runtime {
+#[derive(Debug)]
+#[cfg_attr(feature = "std", derive(PartialEq, Clone))]
+/// The maximum length of an attribute key.
+pub struct KeyLimit<const N: u32>;
+
+impl<const N: u32> Get<u32> for KeyLimit<N> {
+	fn get() -> u32 {
+		N
+	}
+}
+
+// Trust backed NFTs as an instance of the `pallet-nfts` module. The name "TrustBacked" reflects the
+// assumption that non-fungible tokens are registered by an account and are trusted to have some
+// claimed backing.
+pub(crate) type TrustBackedNftsInstance = pallet_nfts::Instance1;
+/// Call type for trust backed NFTs. The type represents the calls that can be made to the
+/// `pallet-nfts` module with the `TrustBackedNftsInstance` configuration.
+pub type TrustBackedNftsCall = pallet_nfts::Call<Runtime, TrustBackedNftsInstance>;
+impl pallet_nfts::Config<TrustBackedNftsInstance> for Runtime {
 	// TODO: source from primitives
 	type ApprovalsLimit = ConstU32<20>;
 	type AttributeDepositBase = NftsAttributeDepositBase;
+	type BlockNumberProvider = frame_system::Pallet<Runtime>;
 	type CollectionApprovalDeposit = NftsCollectionApprovalDeposit;
 	type CollectionBalanceDeposit = NftsCollectionBalanceDeposit;
 	type CollectionDeposit = NftsCollectionDeposit;
@@ -62,7 +82,7 @@ impl pallet_nfts::Config for Runtime {
 	// TODO: source from primitives
 	type ItemId = ItemId;
 	// TODO: source from primitives
-	type KeyLimit = ConstU32<64>;
+	type KeyLimit = KeyLimit<64>;
 	type Locker = ();
 	type MaxAttributesPerCall = ConstU32<10>;
 	type MaxDeadlineDuration = NftsMaxDeadlineDuration;
@@ -92,8 +112,8 @@ impl pallet_nft_fractionalization::Config for Runtime {
 	type Deposit = AssetDeposit;
 	type NewAssetName = NewAssetName;
 	type NewAssetSymbol = NewAssetSymbol;
-	type NftCollectionId = <Self as pallet_nfts::Config>::CollectionId;
-	type NftId = <Self as pallet_nfts::Config>::ItemId;
+	type NftCollectionId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::CollectionId;
+	type NftId = <Self as pallet_nfts::Config<TrustBackedNftsInstance>>::ItemId;
 	type Nfts = Nfts;
 	type PalletId = NftFractionalizationPalletId;
 	type RuntimeEvent = RuntimeEvent;
@@ -113,12 +133,13 @@ impl pallet_assets::Config<TrustBackedAssetsInstance> for Runtime {
 	type Balance = Balance;
 	#[cfg(feature = "runtime-benchmarks")]
 	type BenchmarkHelper = ();
-	type CallbackHandle = ();
+	type CallbackHandle = pallet_assets::AutoIncAssetId<Runtime, TrustBackedAssetsInstance>;
 	type CreateOrigin = AsEnsureOriginWithArg<EnsureSigned<AccountId>>;
 	type Currency = Balances;
 	type Extra = ();
 	type ForceOrigin = AssetsForceOrigin;
 	type Freezer = ();
+	type Holder = ();
 	type MetadataDepositBase = MetadataDepositBase;
 	type MetadataDepositPerByte = MetadataDepositPerByte;
 	type RemoveItemsLimit = ConstU32<1000>;
@@ -135,19 +156,21 @@ mod tests {
 
 	#[test]
 	fn ensure_account_balance_deposit() {
-		let max_size = pallet_nfts::AccountBalance::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
+		let max_size =
+			pallet_nfts::AccountBalance::<Runtime, TrustBackedNftsInstance>::storage_info()
+				.first()
+				.and_then(|info| info.max_size)
+				.unwrap_or_default();
 		assert_eq!(deposit(1, max_size), NftsCollectionBalanceDeposit::get());
 	}
 
 	#[test]
 	fn ensure_collection_approval_deposit() {
-		let max_size = pallet_nfts::CollectionApprovals::<Runtime>::storage_info()
-			.first()
-			.and_then(|info| info.max_size)
-			.unwrap_or_default();
+		let max_size =
+			pallet_nfts::CollectionApprovals::<Runtime, TrustBackedNftsInstance>::storage_info()
+				.first()
+				.and_then(|info| info.max_size)
+				.unwrap_or_default();
 		assert_eq!(deposit(1, max_size), NftsCollectionApprovalDeposit::get());
 	}
 }

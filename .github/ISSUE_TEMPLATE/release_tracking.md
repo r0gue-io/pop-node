@@ -19,6 +19,8 @@ assignees: ''
 - [ ] All changes have passed peer-review. < link PR >
 - [ ] Update runtime crate version. Note that `pop-runtime-devnet` is usually not updated.
 - [ ] Runtime spec version is updated.
+- [ ] If needed, the `transaction_version` has been updated. This can be checked with
+  `subwasm`(https://github.com/chevdor/subwasm).
 - [ ] If needed, new benchmarks have been run. A diff between the new weights and the current ones has been reviewed.
     - [`substrate-weight-compare`](https://github.com/ggwpez/substrate-weight-compare) can be used for this purpose.
 - [ ] Execution of [`try-runtime`](https://github.com/paritytech/try-runtime-cli) doesn't point out any missing migrations or other items requiring action.
@@ -76,6 +78,26 @@ _More instructions around using chopsticks for this can be found in [.chopsticks
     {"jsonrpc":"2.0","id":2,"method":"dev_newBlock","params":[{"count":20}]}
 ```
 
+- [ ] Verify if `transaction_version` needs to be updated:
+
+1. Build the new runtime. No concrete features need to be active, and it's not a problem if `runtime-benchmarks` or `try-runtime` is enabled.
+
+```shell
+    cargo build --release -p <runtime-crate>
+```
+
+2. Fetch the on chain runtime. This can be fetched from the corresponding github release, or a
+   node connected to the network via `subwasm`.
+
+```shell
+    subwasm get <node-endpoint> -o ./output/path
+```
+
+3. Use `subwasm` to create a diff between the runtimes and verify if the `transaction_version` is compatible.
+
+```shell
+    subwasm diff <current-runtime-wasm> <new-runtime-wasm>
+```
 
 ## Release
 

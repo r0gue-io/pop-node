@@ -20,6 +20,7 @@ validator = true
 
 [[parachains]]
 id = 4001
+chain = "pop-devnet-dev" # pop devnet runtime with development config.
 default_command = "./target/release/pop-node"
 
 [parachains.genesis_overrides.balances]
@@ -36,11 +37,16 @@ balances = [
 [[parachains.collators]]
 name = "pop"
 rpc_port = 9944
-args = ["-lruntime::contracts=debug", "-lpopapi::extension=debug", "--enable-offchain-indexing=true"]
+args = [
+    "-lpop-api::extension=debug",
+    "-lruntime::contracts=trace",
+    "-lxcm=trace",
+    "--enable-offchain-indexing=true"
+]
 
 [[parachains]]
 id = 1000
-chain = "asset-hub-rococo-local"
+chain = "asset-hub-paseo-local"
 
 [[parachains.collators]]
 name = "asset-hub"
