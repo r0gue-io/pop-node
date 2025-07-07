@@ -27,6 +27,8 @@ use {
 
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
+#[cfg(feature = "messaging")]
+pub mod messaging;
 #[cfg(test)]
 mod mock;
 
