@@ -33,9 +33,12 @@ use frame_support::{
 	genesis_builder_helper::{build_state, get_preset},
 	parameter_types,
 	traits::{
-		fungible::HoldConsideration, tokens::nonfungibles_v2::Inspect, ConstBool, ConstU32,
-		ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly, EverythingBut,
-		LinearStoragePrice, TransformOrigin, VariantCountOf,
+		fungible,
+		fungible::HoldConsideration,
+		tokens::{imbalance::ResolveTo, nonfungibles_v2::Inspect},
+		ConstBool, ConstU32, ConstU64, ConstU8, Contains, EitherOfDiverse, EqualPrivilegeOnly,
+		EverythingBut, Imbalance, LinearStoragePrice, OnUnbalanced, TransformOrigin,
+		VariantCountOf,
 	},
 	weights::{
 		ConstantMultiplier, Weight, WeightToFeeCoefficient, WeightToFeeCoefficients,
@@ -74,7 +77,7 @@ use sp_core::{crypto::KeyTypeId, Get, OpaqueMetadata, H256, U256};
 pub use sp_runtime::BuildStorage;
 use sp_runtime::{
 	generic, impl_opaque_keys,
-	traits::{BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
+	traits::{AccountIdConversion, BlakeTwo256, Block as BlockT, IdentifyAccount, Verify},
 	transaction_validity::{TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult,
 };
@@ -382,12 +385,29 @@ impl pallet_balances::Config for Runtime {
 parameter_types! {
 	/// Relay Chain `TransactionByteFee` / 10
 	pub const TransactionByteFee: Balance = 10 * MICRO_UNIT;
+	pub Treasury: AccountId = PalletId(*b"py/trsry").into_account_truncating();
+}
+
+/// DealWithFees is used to handle fees and tips in the OnChargeTransaction trait,
+/// by implementing OnUnbalanced.
+pub struct DealWithFees;
+impl OnUnbalanced<fungible::Credit<AccountId, Balances>> for DealWithFees {
+	fn on_unbalanceds(
+		mut fees_then_tips: impl Iterator<Item = fungible::Credit<AccountId, Balances>>,
+	) {
+		if let Some(mut fees) = fees_then_tips.next() {
+			if let Some(tips) = fees_then_tips.next() {
+				tips.merge_into(&mut fees);
+			}
+			ResolveTo::<Treasury, Balances>::on_unbalanced(fees);
+		}
+	}
 }
 
 impl pallet_transaction_payment::Config for Runtime {
 	type FeeMultiplierUpdate = SlowAdjustingFeeUpdate<Self>;
 	type LengthToFee = ConstantMultiplier<Balance, TransactionByteFee>;
-	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, ()>;
+	type OnChargeTransaction = pallet_transaction_payment::FungibleAdapter<Balances, DealWithFees>;
 	type OperationalFeeMultiplier = ConstU8<5>;
 	type RuntimeEvent = RuntimeEvent;
 	type WeightInfo = ();
@@ -708,6 +728,8 @@ mod runtime {
 	pub type NonFungibles = nonfungibles::Pallet<Runtime>;
 	#[runtime::pallet_index(152)]
 	pub type FungiblesvNext = pallet_api_vnext::fungibles::Pallet<Runtime, Instance1>;
+	#[runtime::pallet_index(153)]
+	pub type Messaging = pallet_api_vnext::messaging::Pallet<Runtime>;
 }
 
 #[cfg(feature = "runtime-benchmarks")]

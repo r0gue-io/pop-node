@@ -25,7 +25,7 @@ smallvec.workspace = true
 
 # Local
 pallet-api.workspace = true
-pallet-api-vnext = { workspace = true, features = [ "fungibles" ] }
+pallet-api-vnext = { workspace = true, features = [ "fungibles", "messaging" ] }
 pallet-nfts.workspace = true
 pop-chain-extension.workspace = true
 pop-primitives.workspace = true
