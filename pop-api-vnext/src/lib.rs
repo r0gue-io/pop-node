@@ -1,8 +1,18 @@
+//! The `pop-api` crate provides an API for smart contracts to interact with the Pop Network
+//! runtime.
+//!
+//! This crate abstracts away complexities to deliver a streamlined developer experience while
+//! supporting multiple API versions to ensure backward compatibility. It is designed with a focus
+//! on stability, future-proofing, and storage efficiency, allowing developers to easily integrate
+//! powerful runtime features into their contracts without unnecessary overhead.
+
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::Address;
 pub use sol::{revert, SolErrorDecode};
 
+/// An index to a block.
+pub type BlockNumber = u32;
 type Pop = ink::env::DefaultEnvironment;
 
 /// The various general errors which may occur.
@@ -10,6 +20,9 @@ pub mod errors;
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
+/// APIs for cross-chain messaging.
+#[cfg(feature = "messaging")]
+pub mod messaging;
 mod sol;
 
 #[macro_export]
