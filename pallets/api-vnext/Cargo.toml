@@ -39,7 +39,7 @@ sp-io.workspace = true
 default = [ "fungibles", "messaging", "std" ]
 fungibles = [ "dep:pallet-assets", "dep:pallet-balances" ]
 # Empty feature to satisfy clashes with ismp dependency during workspace builds using the "ismp" feature
-ismp = [  ]
+ismp = [ "dep:ismp" ]
 messaging = [
     "dep:anyhow",
     "dep:ismp",
