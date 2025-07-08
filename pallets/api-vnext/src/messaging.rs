@@ -327,9 +327,8 @@ pub mod pallet {
 				Messages::<T>::get(&initiating_origin, id).ok_or(Error::<T>::MessageNotFound)?;
 
 			let (query_id, callback, message_deposit) = match &xcm_query_message {
-				Message::XcmQuery { query_id, callback, message_deposit } => {
-					(query_id, callback, message_deposit)
-				},
+				Message::XcmQuery { query_id, callback, message_deposit } =>
+					(query_id, callback, message_deposit),
 				Message::XcmTimeout { .. } => return Err(Error::<T>::RequestTimedOut.into()),
 				_ => return Err(Error::<T>::InvalidMessage.into()),
 			};
@@ -447,9 +446,8 @@ pub(crate) fn call<T: Config>(
 	match manage_fees::<T>(&initiating_origin, callback_weight_used, callback.weight) {
 		Ok(_) => (),
 		// Dont return early, we must register the weight used by the callback.
-		Err(error) => {
-			<Pallet<T>>::deposit_event(Event::WeightRefundErrored { message_id: *id, error })
-		},
+		Err(error) =>
+			<Pallet<T>>::deposit_event(Event::WeightRefundErrored { message_id: *id, error }),
 	}
 	Ok(())
 }
