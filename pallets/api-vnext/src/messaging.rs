@@ -34,6 +34,7 @@ mod weights;
 
 type BalanceOf<T> = <<T as Config>::Fungibles as Inspect<AccountIdOf<T>>>::Balance;
 type BlockNumberOf<T> = BlockNumberFor<T>;
+type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 // TODO: consider u32 (e.g. a message per contract/block)
 pub type MessageId = u64; // TODO: determine why this was changed to [u8; 32] - U256?;
 
@@ -148,8 +149,34 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberOf<T>> for Pallet<T> {
-		fn on_initialize(_n: BlockNumberOf<T>) -> Weight {
-			todo!()
+		fn on_initialize(n: BlockNumberOf<T>) -> Weight {
+			// As of polkadot-2412 XCM timeouts are not handled by the implementation of OnResponse
+			// in pallet-xcm. As a result, we must handle timeouts in the pallet.
+			// Iterate through the queries that have expired and update their status.
+			let mut weight: Weight = Zero::zero();
+			let mut query_ids = Vec::new();
+			for (origin, message_id) in XcmQueryTimeouts::<T>::get(n) {
+				weight = weight.saturating_add(DbWeightOf::<T>::get().reads_writes(2, 1));
+				Messages::<T>::mutate(origin, message_id, |maybe_message| {
+					if let Some(Message::XcmQuery { query_id, message_deposit, callback }) =
+						maybe_message.as_mut()
+					{
+						let callback_deposit =
+							callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
+						query_ids.push(*query_id);
+						*maybe_message = Some(Message::XcmTimeout {
+							query_id: *query_id,
+							message_deposit: *message_deposit,
+							callback_deposit,
+						});
+					}
+				})
+			}
+
+			if !query_ids.is_empty() {
+				Self::deposit_event(Event::<T>::XcmQueriesTimedOut { query_ids })
+			}
+			weight
 		}
 	}
 
@@ -239,6 +266,8 @@ pub mod pallet {
 		IsmpTimedOut { commitment: H256 },
 		/// An error has occured while attempting to refund weight.
 		WeightRefundErrored { message_id: MessageId, error: DispatchError },
+		/// A collection of xcm queries have timed out.
+		XcmQueriesTimedOut { query_ids: Vec<QueryId> },
 		/// A response to a XCM query has been received.
 		XcmResponseReceived {
 			/// The destination of the response.
@@ -298,8 +327,9 @@ pub mod pallet {
 				Messages::<T>::get(&initiating_origin, id).ok_or(Error::<T>::MessageNotFound)?;
 
 			let (query_id, callback, message_deposit) = match &xcm_query_message {
-				Message::XcmQuery { query_id, callback, message_deposit } =>
-					(query_id, callback, message_deposit),
+				Message::XcmQuery { query_id, callback, message_deposit } => {
+					(query_id, callback, message_deposit)
+				},
 				Message::XcmTimeout { .. } => return Err(Error::<T>::RequestTimedOut.into()),
 				_ => return Err(Error::<T>::InvalidMessage.into()),
 			};
@@ -327,7 +357,7 @@ pub mod pallet {
 						Precision::Exact,
 					)?;
 
-					return Ok(())
+					return Ok(());
 				}
 			}
 			// No callback is executed,
@@ -417,8 +447,9 @@ pub(crate) fn call<T: Config>(
 	match manage_fees::<T>(&initiating_origin, callback_weight_used, callback.weight) {
 		Ok(_) => (),
 		// Dont return early, we must register the weight used by the callback.
-		Err(error) =>
-			<Pallet<T>>::deposit_event(Event::WeightRefundErrored { message_id: *id, error }),
+		Err(error) => {
+			<Pallet<T>>::deposit_event(Event::WeightRefundErrored { message_id: *id, error })
+		},
 	}
 	Ok(())
 }
