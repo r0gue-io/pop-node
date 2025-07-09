@@ -8,12 +8,14 @@ use core::{convert::Into, marker::PhantomData, num::NonZero};
 use frame_support::{dispatch::RawOrigin, sp_runtime::traits::StaticLookup};
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 use pallet_revive::precompiles::alloy::sol_types::{SolType, SolValue};
+#[cfg(test)]
+use pallet_revive::H160;
 use pallet_revive::{
 	precompiles::{
 		alloy::{primitives::IntoLogData, sol, sol_types::SolEvent},
 		AddressMatcher, Error, Ext, Precompile,
 	},
-	AddressMapper as _, Origin, H160, H256, U256,
+	AddressMapper as _, Origin, H256, U256,
 };
 #[cfg(test)]
 use {

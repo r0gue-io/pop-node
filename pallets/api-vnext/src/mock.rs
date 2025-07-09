@@ -5,7 +5,7 @@ use frame_support::{
 		traits::{AccountIdLookup, IdentifyAccount, Lazy, Verify},
 		AccountId32, BuildStorage,
 	},
-	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64},
+	traits::{AsEnsureOriginWithArg, ConstU128, ConstU32, ConstU64, Get},
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_assets::AutoIncAssetId;
@@ -24,6 +24,7 @@ pub(crate) type TokenId = u32;
 
 pub(crate) const ERC20: u16 = 2;
 pub(crate) const FUNGIBLES: u16 = 1;
+pub(crate) const ERC721: u16 = 3;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
 #[frame_support::runtime]
@@ -102,7 +103,7 @@ parameter_types! {
 	pub NftsPalletFeatures: PalletFeatures = PalletFeatures::all_enabled();
 }
 
-impl pallet_nfts::Config<pallet_nfts::Instance1> for Test {
+impl pallet_nfts::Config for Test {
 	type ApprovalsLimit = ConstU32<10>;
 	type AttributeDepositBase = ConstU128<1>;
 	type BlockNumberProvider = frame_system::Pallet<Test>;
@@ -126,7 +127,6 @@ impl pallet_nfts::Config<pallet_nfts::Instance1> for Test {
 	type MetadataDepositBase = ConstU128<1>;
 	type OffchainPublic = Noop;
 	type OffchainSignature = Noop;
-	type RuntimeEvent = RuntimeEvent;
 	type StringLimit = ConstU32<50>;
 	type ValueLimit = ConstU32<50>;
 	type WeightInfo = ();

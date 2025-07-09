@@ -236,6 +236,36 @@ fn item_metadata<T: Config<I>, I>(
 	Nfts::<T, I>::item_metadata(collection, item).map(|metadata| metadata.into())
 }
 
+fn set_collection_metadata<T: Config<I>, I>(
+	origin: OriginFor<T>,
+	collection: CollectionIdOf<T, I>,
+	data: BoundedVec<u8, T::StringLimit>,
+) -> DispatchResult {
+	Nfts::<T, I>::set_collection_metadata(origin, collection, data)
+}
+
+fn clear_collection_metadata<T: Config<I>, I>(
+	origin: OriginFor<T>,
+	collection: CollectionIdOf<T, I>,
+) -> DispatchResult {
+	Nfts::<T, I>::clear_collection_metadata(origin, collection)
+}
+
+fn set_accept_ownership<T: Config<I>, I>(
+	origin: OriginFor<T>,
+	collection: Option<CollectionIdOf<T, I>>,
+) -> DispatchResult {
+	Nfts::<T, I>::set_accept_ownership(origin, collection)
+}
+
+fn set_collection_max_supply<T: Config<I>, I>(
+	origin: OriginFor<T>,
+	collection: CollectionIdOf<T, I>,
+	max_supply: u32,
+) -> DispatchResult {
+	Nfts::<T, I>::set_collection_max_supply(origin, collection, max_supply)
+}
+
 fn next_collection_id<T: Config<I>, I>() -> Option<CollectionIdOf<T, I>> {
 	NextCollectionId::<T, I>::get().or(T::CollectionId::initial_value())
 }
