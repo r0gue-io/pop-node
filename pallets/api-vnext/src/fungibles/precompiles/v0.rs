@@ -11,14 +11,16 @@ pub struct Fungibles<const FIXED: u16, T, I = ()>(PhantomData<(T, I)>);
 impl<
 		const FIXED: u16,
 		T: frame_system::Config
-			+ pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32>>
-			+ pallet_revive::Config
+			+ pallet_assets::Config<
+				I,
+				AssetId: Default + From<u32> + Into<u32>,
+				Balance: TryConvert<U256, Error = Error>,
+			> + pallet_revive::Config
 			+ Config<I>,
 		I: 'static,
 	> Precompile for Fungibles<FIXED, T, I>
 where
-	U256: UintTryFrom<<T as pallet_assets::Config<I>>::Balance>
-		+ UintTryTo<<T as pallet_assets::Config<I>>::Balance>,
+	U256: TryConvert<<T as pallet_assets::Config<I>>::Balance, Error = Error>,
 {
 	type Interface = IFungiblesCalls;
 	type T = T;
@@ -41,7 +43,7 @@ where
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*to.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				)?;
 
 				deposit_event(env, Transfer { token: *token, from, to: *to, value: *value })?;
@@ -55,7 +57,7 @@ where
 					(*token).into(),
 					env.to_account_id(&(*from.0).into()),
 					env.to_account_id(&(*to.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				)?;
 
 				let event = Transfer { token: *token, from: *from, to: *to, value: *value };
@@ -70,7 +72,7 @@ where
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*spender.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				) {
 					Ok(result) => {
 						// Adjust weight
@@ -101,24 +103,23 @@ where
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 0))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				let value = U256::saturating_from(
-					increase_allowance::<T, I>(
-						to_runtime_origin(env.caller()),
-						(*token).into(),
-						env.to_account_id(&(*spender.0).into()),
-						value.saturating_to(),
-					)
-					.map_err(|e| {
-						// Adjust weight
-						if let Some(actual_weight) = e.post_info.actual_weight {
-							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-							// #8693 lands
-							env.gas_meter_mut()
-								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-						}
-						e.error
-					})?,
-				);
+				let value = increase_allowance::<T, I>(
+					to_runtime_origin(env.caller()),
+					(*token).into(),
+					env.to_account_id(&(*spender.0).into()),
+					(*value).try_convert()?,
+				)
+				.map_err(|e| {
+					// Adjust weight
+					if let Some(actual_weight) = e.post_info.actual_weight {
+						// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+						// #8693 lands
+						env.gas_meter_mut()
+							.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+					}
+					e.error
+				})?
+				.try_convert()?;
 
 				let spender = *spender;
 				deposit_event(env, Approval { token: *token, owner, spender, value })?;
@@ -132,7 +133,7 @@ where
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*spender.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				) {
 					Ok((value, weight)) => {
 						// Adjust weight
@@ -142,7 +143,7 @@ where
 							env.gas_meter_mut()
 								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 						}
-						U256::saturating_from(value)
+						value.try_convert()?
 					},
 					Err(e) => {
 						// Adjust weight
@@ -167,7 +168,7 @@ where
 				let id = create::<T, I>(
 					to_runtime_origin(env.caller()),
 					env.to_account_id(&(*admin.0).into()),
-					minBalance.saturating_to(),
+					(*minBalance).try_convert()?,
 				)?
 				.into();
 
@@ -208,7 +209,7 @@ where
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*account.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				)?;
 
 				let from = Address::default();
@@ -223,7 +224,7 @@ where
 					to_runtime_origin(env.caller()),
 					(*token).into(),
 					env.to_account_id(&(*account.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				)
 				.map_err(|e| {
 					// Adjust weight
@@ -244,7 +245,7 @@ where
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
 
-				let total_supply = U256::saturating_from(total_supply::<T, I>((*token).into()));
+				let total_supply = total_supply::<T, I>((*token).into()).try_convert()?;
 
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
@@ -252,7 +253,7 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
 
 				let account = env.to_account_id(&(*owner.0).into());
-				let balance = U256::saturating_from(balance::<T, I>((*token).into(), &account));
+				let balance = balance::<T, I>((*token).into(), &account).try_convert()?;
 
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
@@ -262,7 +263,7 @@ where
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
 				let allowance = allowance::<T, I>((*token).into(), &owner, &spender);
-				let remaining = U256::saturating_from(allowance);
+				let remaining = allowance.try_convert()?;
 
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
