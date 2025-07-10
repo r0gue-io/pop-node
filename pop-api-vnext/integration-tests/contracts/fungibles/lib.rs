@@ -6,8 +6,6 @@ use pop_api::fungibles::{self as api, *};
 #[ink::contract]
 pub mod fungibles {
 
-	use pop_api::revert;
-
 	use super::*;
 
 	#[ink(storage)]
@@ -21,78 +19,74 @@ pub mod fungibles {
 		}
 
 		#[ink(constructor, payable)]
-		pub fn create(min_balance: U256) -> Self {
+		pub fn create(min_balance: U256) -> Result<Self, Error> {
 			let contract = Self {};
 			// Account of the contract which will be set to the owner of the fungible token.
 			let owner = contract.env().address();
-			match api::create(owner, min_balance) {
-				Ok(id) => {
-					contract.env().emit_event(Created {
-						id,
-						creator: contract.env().caller(),
-						admin: owner,
-					});
-					contract
-				},
-				Err(error) => revert(&error),
-			}
+			let id = api::create(owner, min_balance)?;
+			contract.env().emit_event(Created {
+				id,
+				creator: contract.env().caller(),
+				admin: owner,
+			});
+			Ok(contract)
 		}
 	}
 
 	impl Fungibles for Fungible {
 		#[ink(message)]
-		fn transfer(&self, token: TokenId, to: Address, value: U256) {
-			if let Err(error) = api::transfer(token, to, value) {
-				revert(&error)
-			}
+		fn transfer(&self, token: TokenId, to: Address, value: U256) -> Result<(), Error> {
+			api::transfer(token, to, value)?;
 			self.env().emit_event(Transfer { from: self.env().address(), to, value });
+			Ok(())
 		}
 
 		#[ink(message)]
-		fn transferFrom(&self, token: TokenId, from: Address, to: Address, value: U256) {
-			if let Err(error) = api::transfer_from(token, from, to, value) {
-				revert(&error)
-			}
+		fn transferFrom(
+			&self,
+			token: TokenId,
+			from: Address,
+			to: Address,
+			value: U256,
+		) -> Result<(), Error> {
+			api::transfer_from(token, from, to, value)?;
 			self.env().emit_event(Transfer { from, to, value });
+			Ok(())
 		}
 
 		#[ink(message)]
-		fn approve(&self, token: TokenId, spender: Address, value: U256) {
-			if let Err(error) = api::approve(token, spender, value) {
-				revert(&error)
-			}
+		fn approve(&self, token: TokenId, spender: Address, value: U256) -> Result<(), Error> {
+			api::approve(token, spender, value)?;
 			self.env().emit_event(Approval { owner: self.env().address(), spender, value });
+			Ok(())
 		}
 
 		#[ink(message)]
-		fn increaseAllowance(&self, token: TokenId, spender: Address, value: U256) -> U256 {
-			match api::increase_allowance(token, spender, value) {
-				Ok(allowance) => allowance,
-				Err(error) => revert(&error),
-			}
+		fn increaseAllowance(
+			&self,
+			token: TokenId,
+			spender: Address,
+			value: U256,
+		) -> Result<U256, Error> {
+			api::increase_allowance(token, spender, value)
 		}
 
 		#[ink(message)]
-		fn decreaseAllowance(&self, token: TokenId, spender: Address, value: U256) -> U256 {
-			match api::decrease_allowance(token, spender, value) {
-				Ok(allowance) => allowance,
-				Err(error) => revert(&error),
-			}
+		fn decreaseAllowance(
+			&self,
+			token: TokenId,
+			spender: Address,
+			value: U256,
+		) -> Result<U256, Error> {
+			api::decrease_allowance(token, spender, value)
 		}
 
 		#[ink(message)]
-		fn create(&self, admin: Address, min_balance: U256) -> TokenId {
-			match api::create(admin, min_balance) {
-				Ok(token) => {
-					self.env().emit_event(Created {
-						id: token,
-						creator: self.env().address(),
-						admin,
-					});
-					token
-				},
-				Err(error) => revert(&error),
-			}
+		fn create(&self, admin: Address, min_balance: U256) -> Result<TokenId, Error> {
+			let token = api::create(admin, min_balance)?;
+			self.env()
+				.emit_event(Created { id: token, creator: self.env().address(), admin });
+			Ok(token)
 		}
 
 		#[ink(message)]
@@ -114,17 +108,13 @@ pub mod fungibles {
 		}
 
 		#[ink(message)]
-		fn mint(&self, token: TokenId, account: Address, value: U256) {
-			if let Err(error) = api::mint(token, account, value) {
-				revert(&error)
-			}
+		fn mint(&self, token: TokenId, account: Address, value: U256) -> Result<(), Error> {
+			api::mint(token, account, value)
 		}
 
 		#[ink(message)]
-		fn burn(&self, token: TokenId, account: Address, value: U256) {
-			if let Err(error) = api::burn(token, account, value) {
-				revert(&error)
-			}
+		fn burn(&self, token: TokenId, account: Address, value: U256) -> Result<(), Error> {
+			api::burn(token, account, value)
 		}
 
 		#[ink(message)]

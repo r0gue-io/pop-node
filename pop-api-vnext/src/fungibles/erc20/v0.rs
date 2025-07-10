@@ -1,4 +1,4 @@
-pub use errors::*;
+pub use errors::{Error, Error::*};
 pub use events::*;
 
 use super::*;
@@ -29,7 +29,7 @@ pub trait Erc20 {
 	///
 	/// Emits a [`Transfer`] event.
 	#[ink(message)]
-	fn transfer(&mut self, to: Address, value: U256) -> bool;
+	fn transfer(&mut self, to: Address, value: U256) -> Result<bool, Error>;
 
 	/// Returns the remaining number of tokens that `spender` will be allowed to spend
 	/// on behalf of `owner` through [`transfer_from`]. This is zero by default.
@@ -45,7 +45,7 @@ pub trait Erc20 {
 	///
 	/// Emits an [`Approval`] event.
 	#[ink(message)]
-	fn approve(&mut self, spender: Address, value: U256) -> bool;
+	fn approve(&mut self, spender: Address, value: U256) -> Result<bool, Error>;
 
 	/// Moves a `value` amount of tokens from `from` to `to` using the allowance mechanism.
 	/// `value` is then deducted from the caller's allowance.
@@ -55,7 +55,7 @@ pub trait Erc20 {
 	/// Emits a [`Transfer`] event.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn transferFrom(&mut self, from: Address, to: Address, value: U256) -> bool;
+	fn transferFrom(&mut self, from: Address, to: Address, value: U256) -> Result<bool, Error>;
 }
 
 /// Returns the value of tokens in existence.
@@ -86,7 +86,7 @@ pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<bool, Error>
 
 	let address = prefixed_address(PRECOMPILE, token);
 	let mut precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
-	Ok(precompile.transfer(to, value))
+	precompile.transfer(to, value)
 }
 
 /// Returns the remaining number of tokens that `spender` will be allowed to spend
@@ -113,7 +113,7 @@ pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<bool, Er
 
 	let address = prefixed_address(PRECOMPILE, token);
 	let mut precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
-	Ok(precompile.approve(spender, value))
+	precompile.approve(spender, value)
 }
 
 /// Moves a `value` amount of tokens from `from` to `to` using the allowance mechanism.
@@ -135,7 +135,7 @@ pub fn transfer_from(
 
 	let address = prefixed_address(PRECOMPILE, token);
 	let mut precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
-	Ok(precompile.transferFrom(from, to, value))
+	precompile.transferFrom(from, to, value)
 }
 
 /// Extensions to the ERC-20 standard.
