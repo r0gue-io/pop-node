@@ -48,7 +48,7 @@ mod messaging {
 		}
 
 		#[ink(message)]
-		pub fn get(&mut self, key: Vec<u8>, height: u32) {
+		pub fn get(&mut self, key: Vec<u8>, height: u64) {
 			// self.id = self.id.saturating_add(1);
 			let id = ismp::get(
 				Get::new(self.para, height, 0, Vec::default(), Vec::from([key.clone()])),
@@ -195,7 +195,7 @@ mod messaging {
 		#[ink(topic)]
 		pub id: MessageId,
 		pub key: Vec<u8>,
-		pub height: BlockNumber,
+		pub height: u64,
 	}
 
 	#[ink::event]

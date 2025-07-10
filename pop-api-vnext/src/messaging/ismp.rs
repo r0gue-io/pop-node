@@ -1,8 +1,8 @@
 pub use v0::*;
 
 use super::{
-	contract_ref, fixed_address, BlockNumber, Bytes, MessageId, MessageStatus, Pop, Sol, SolDecode,
-	SolEncode, Vec, U256,
+	contract_ref, fixed_address, Bytes, MessageId, MessageStatus, Pop, Sol, SolDecode, SolEncode,
+	Vec, U256,
 };
 
 /// The first version of the ISMP API.

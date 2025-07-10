@@ -90,7 +90,7 @@ interface IISMP {
         /// @custom:property The destination state machine of this request.
         uint32 destination;
         /// @custom:property Height at which to read the state machine.
-        uint32 height;
+        uint64 height;
         /// @custom:property Relative from the current timestamp at which this request expires in seconds.
         uint64 timeout;
         /// @custom:property Some application-specific metadata relating to this request.

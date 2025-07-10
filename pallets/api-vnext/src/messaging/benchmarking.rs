@@ -144,7 +144,7 @@ mod benchmarks {
 		let origin: T::AccountId = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
 		let request = ismp::Get {
 			destination: u32::MAX,
-			height: u32::MAX,
+			height: u64::MAX,
 			timeout: u64::MAX,
 			context: vec![255; x as usize].into(),
 			keys: vec![vec![255u8; T::MaxKeyLen::get() as usize].into(); y as usize].into(),
