@@ -2,6 +2,7 @@
 
 use ink::{prelude::string::String, U256};
 use pop_api::{
+	ensure,
 	fungibles::{
 		self as api,
 		erc20::{extensions::Erc20Metadata, Erc20},
@@ -37,14 +38,16 @@ pub mod fungibles {
 		// inactive balances from bloating the blockchain state and slowing down the network.
 		#[ink(constructor, payable)]
 		#[allow(clippy::new_without_default)]
-		pub fn new(name: String, symbol: String, min_balance: U256, decimals: u8) -> Self {
+		pub fn new(
+			name: String,
+			symbol: String,
+			min_balance: U256,
+			decimals: u8,
+		) -> Result<Self, Error> {
 			let mut instance = Self { id: 0, owner: Self::env().caller() };
-			match api::create(instance.env().address(), min_balance) {
-				Ok(id) => instance.id = id,
-				Err(error) => revert(&error),
-			}
+			instance.id = api::create(instance.env().address(), min_balance)?;
 			api::set_metadata(instance.id, name, symbol, decimals);
-			instance
+			Ok(instance)
 		}
 
 		/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
@@ -54,16 +57,11 @@ pub mod fungibles {
 		/// - `account` - The account to be credited with the created tokens.
 		/// - `value` - The number of tokens to mint.
 		#[ink(message)]
-		pub fn mint(&mut self, account: Address, value: U256) {
-			if let Err(error) = self.ensure_owner() {
-				// TODO: Workaround until ink supports Error to Solidity custom error conversion; https://github.com/use-ink/ink/issues/2404
-				revert(&error)
-			}
-
-			if let Err(error) = api::mint(self.id, account, value) {
-				revert(&error)
-			}
+		pub fn mint(&mut self, account: Address, value: U256) -> Result<(), Error> {
+			self.ensure_owner()?;
+			api::mint(self.id, account, value)?;
 			self.env().emit_event(Transfer { from: Address::zero(), to: account, value });
+			Ok(())
 		}
 
 		/// Increases the allowance of `spender` by `value` amount of tokens.
@@ -72,21 +70,16 @@ pub mod fungibles {
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to increase the allowance by.
 		#[ink(message)]
-		pub fn increase_allowance(&mut self, spender: Address, value: U256) {
-			if let Err(e) = self.ensure_owner() {
-				revert(&e)
-			}
+		pub fn increase_allowance(&mut self, spender: Address, value: U256) -> Result<(), Error> {
+			self.ensure_owner()?;
 			let contract = self.env().address();
 
 			// Validate recipient.
-			if spender == contract {
-				revert(&InvalidRecipient(spender))
-			}
-			if let Err(error) = api::increase_allowance(self.id, spender, value) {
-				revert(&error)
-			}
+			ensure!(spender != contract, InvalidRecipient(spender));
+			api::increase_allowance(self.id, spender, value)?;
 			let allowance = self.allowance(contract, spender);
 			self.env().emit_event(Approval { owner: contract, spender, value: allowance });
+			Ok(())
 		}
 
 		/// Decreases the allowance of `spender` by `value` amount of tokens.
@@ -95,21 +88,16 @@ pub mod fungibles {
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to decrease the allowance by.
 		#[ink(message)]
-		pub fn decrease_allowance(&mut self, spender: Address, value: U256) {
-			if let Err(e) = self.ensure_owner() {
-				revert(&e)
-			}
+		pub fn decrease_allowance(&mut self, spender: Address, value: U256) -> Result<(), Error> {
+			self.ensure_owner()?;
 			let contract = self.env().address();
 
 			// Validate recipient.
-			if spender == contract {
-				revert(&InvalidRecipient(spender))
-			}
-			if let Err(error) = api::decrease_allowance(self.id, spender, value) {
-				revert(&error)
-			}
+			ensure!(spender != contract, InvalidRecipient(spender));
+			api::decrease_allowance(self.id, spender, value)?;
 			let value = self.allowance(contract, spender);
 			self.env().emit_event(Approval { owner: contract, spender, value });
+			Ok(())
 		}
 
 		/// Destroys `value` amount of tokens from `account`, reducing the total supply.
@@ -118,15 +106,11 @@ pub mod fungibles {
 		/// - `account` - The account from which the tokens will be destroyed.
 		/// - `value` - The number of tokens to destroy.
 		#[ink(message)]
-		pub fn burn(&mut self, account: Address, value: U256) {
-			if let Err(e) = self.ensure_owner() {
-				revert(&e)
-			}
-
-			if let Err(error) = api::burn(self.id, account, value) {
-				revert(&error)
-			}
+		pub fn burn(&mut self, account: Address, value: U256) -> Result<(), Error> {
+			self.ensure_owner()?;
+			api::burn(self.id, account, value)?;
 			self.env().emit_event(Transfer { from: account, to: Address::zero(), value });
+			Ok(())
 		}
 
 		/// Transfer the ownership of the contract to another account.
@@ -137,18 +121,15 @@ pub mod fungibles {
 		/// NOTE: the specified owner account is not checked, allowing the zero address to be
 		/// specified if desired..
 		#[ink(message)]
-		pub fn transfer_ownership(&mut self, owner: Address) {
-			if let Err(e) = self.ensure_owner() {
-				revert(&e)
-			}
+		pub fn transfer_ownership(&mut self, owner: Address) -> Result<(), Error> {
+			self.ensure_owner()?;
 			self.owner = owner;
+			Ok(())
 		}
 
 		/// Check if the caller is the owner of the contract.
-		fn ensure_owner(&self) -> Result<(), NoPermission> {
-			if self.owner != self.env().caller() {
-				return Err(NoPermission);
-			}
+		fn ensure_owner(&self) -> Result<(), Error> {
+			ensure!(self.env().caller() == self.owner, NoPermission);
 			Ok(())
 		}
 	}
@@ -157,7 +138,7 @@ pub mod fungibles {
 		/// Returns the total token supply.
 		#[ink(message)]
 		fn totalSupply(&self) -> U256 {
-			api::total_supply(self.id)
+			erc20::total_supply(self.id)
 		}
 
 		/// Returns the account balance for the specified `owner`.
@@ -166,7 +147,7 @@ pub mod fungibles {
 		/// - `owner` - The account whose balance is being queried.
 		#[ink(message)]
 		fn balanceOf(&self, owner: Address) -> U256 {
-			api::balance_of(self.id, owner)
+			erc20::balance_of(self.id, owner)
 		}
 
 		/// Returns the allowance for a `spender` approved by an `owner`.
@@ -176,7 +157,7 @@ pub mod fungibles {
 		/// - `spender` - The account that is allowed to spend the tokens.
 		#[ink(message)]
 		fn allowance(&self, owner: Address, spender: Address) -> U256 {
-			api::allowance(self.id, owner, spender)
+			erc20::allowance(self.id, owner, spender)
 		}
 
 		/// Transfers `value` amount of tokens from the contract to account `to` with
@@ -186,7 +167,7 @@ pub mod fungibles {
 		/// - `to` - The recipient account.
 		/// - `value` - The number of tokens to transfer.
 		#[ink(message)]
-		fn transfer(&mut self, to: Address, value: U256) -> bool {
+		fn transfer(&mut self, to: Address, value: U256) -> Result<bool, erc20::Error> {
 			if let Err(error) = self.ensure_owner() {
 				revert(&error)
 			}
@@ -197,11 +178,9 @@ pub mod fungibles {
 				revert(&InvalidRecipient(to))
 			}
 
-			if let Err(error) = api::transfer(self.id, to, value) {
-				revert(&error)
-			}
+			erc20::transfer(self.id, to, value)?;
 			self.env().emit_event(Transfer { from: contract, to, value });
-			true
+			Ok(true)
 		}
 
 		/// Transfers `value` tokens on behalf of `from` to the account `to`. Contract must be
@@ -212,24 +191,27 @@ pub mod fungibles {
 		/// - `to` - The recipient account.
 		/// - `value` - The number of tokens to transfer.
 		#[ink(message)]
-		fn transferFrom(&mut self, from: Address, to: Address, value: U256) -> bool {
-			if let Err(e) = self.ensure_owner() {
-				revert(&e)
+		fn transferFrom(
+			&mut self,
+			from: Address,
+			to: Address,
+			value: U256,
+		) -> Result<bool, erc20::Error> {
+			if let Err(error) = self.ensure_owner() {
+				revert(&error)
 			}
 			let contract = self.env().address();
 
 			// A successful transfer reduces the allowance from `from` to the contract and triggers
 			// an `Approval` event with the updated allowance amount.
-			if let Err(error) = api::transfer_from(self.id, from, to, value) {
-				revert(&error)
-			}
+			erc20::transfer_from(self.id, from, to, value)?;
 			self.env().emit_event(Transfer { from: contract, to, value });
 			self.env().emit_event(Approval {
 				owner: from,
 				spender: contract,
 				value: self.allowance(from, contract),
 			});
-			true
+			Ok(true)
 		}
 
 		/// Approves `spender` to spend `value` amount of tokens on behalf of the contract.
@@ -240,21 +222,19 @@ pub mod fungibles {
 		/// - `spender` - The account that is allowed to spend the tokens.
 		/// - `value` - The number of tokens to approve.
 		#[ink(message)]
-		fn approve(&mut self, spender: Address, value: U256) -> bool {
-			if let Err(e) = self.ensure_owner() {
-				revert(&e)
+		fn approve(&mut self, spender: Address, value: U256) -> Result<bool, erc20::Error> {
+			if let Err(error) = self.ensure_owner() {
+				revert(&error)
 			}
 			let contract = self.env().address();
 
 			// Validate recipient.
 			if spender == contract {
-				revert(&InvalidRecipient(spender))
+				revert(&InvalidRecipient(spender));
 			}
-			if let Err(error) = api::approve(self.id, spender, value) {
-				revert(&error)
-			}
+			erc20::approve(self.id, spender, value)?;
 			self.env().emit_event(Approval { owner: contract, spender, value });
-			true
+			Ok(true)
 		}
 	}
 
@@ -262,19 +242,19 @@ pub mod fungibles {
 		/// Returns the token name.
 		#[ink(message)]
 		fn name(&self) -> String {
-			api::name(self.id)
+			erc20::extensions::name(self.id)
 		}
 
 		/// Returns the token symbol.
 		#[ink(message)]
 		fn symbol(&self) -> String {
-			api::symbol(self.id)
+			erc20::extensions::symbol(self.id)
 		}
 
 		/// Returns the token decimals.
 		#[ink(message)]
 		fn decimals(&self) -> u8 {
-			api::decimals(self.id)
+			erc20::extensions::decimals(self.id)
 		}
 	}
 }

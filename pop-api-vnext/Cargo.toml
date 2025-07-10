@@ -6,12 +6,12 @@ name = "pop-api"
 version = "0.1.0"
 
 [dependencies]
-alloy-sol-types = { version = "1.0.0", default-features = false }                                                                          # Required until ink implements sol error support
-ink = { git = "https://github.com/use-ink/ink", branch = "semakula/sol-ctor", default-features = false, features = [ "unstable-hostfn" ] }
+ink = { git = "https://github.com/use-ink/ink", default-features = false, features = [ "unstable-hostfn" ] }
 pop-primitives = { path = "../primitives", default-features = false }
 
 [dev-dependencies]
 hex = { version = "0.4.3" }
+scale-info = { version = "2" }
 
 [lib]
 crate-type = [ "rlib" ]
