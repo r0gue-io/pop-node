@@ -23,6 +23,11 @@ use pallet_revive::{
 	},
 	AddressMapper as _, Origin, H256, U256,
 };
+#[cfg(feature = "runtime-benchmarks")]
+use {
+	frame_support::{pallet_prelude::IsType, traits::fungible::Inspect},
+	pallet_revive::precompiles::run::{CallSetup, WasmModule},
+};
 #[cfg(test)]
 use {
 	frame_support::{pallet_prelude::Weight, sp_runtime::traits::Bounded},
@@ -136,6 +141,20 @@ fn prefixed_address(n: u16, prefix: u32) -> [u8; 20] {
 	let mut address = AddressMatcher::Prefix(NonZero::new(n).unwrap()).base_address();
 	address[..4].copy_from_slice(&prefix.to_be_bytes());
 	address
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+fn set_up_call<
+	T: pallet_revive::Config<
+		Currency: Inspect<
+			<T as frame_system::Config>::AccountId,
+			Balance: Into<U256> + TryFrom<U256>,
+		>,
+		Hash: IsType<H256>,
+		Time: frame_support::traits::Time<Moment: Into<U256>>,
+	>,
+>() -> CallSetup<T> {
+	CallSetup::<T>::new(WasmModule::dummy())
 }
 
 #[cfg(test)]

@@ -23,18 +23,16 @@ use pallet_assets::{Asset, AssetStatus};
 use pallet_revive::{
 	precompiles::{
 		alloy::primitives as alloy,
-		run::{CallSetup, WasmModule, H256, U256},
+		run::{H256, U256},
+		Error,
 	},
 	test_utils::{ALICE_ADDR, BOB_ADDR, CHARLIE_ADDR},
 	AddressMapper as _, Origin,
 };
 
 use super::{
-	precompiles::{
-		v0::{IFungibles, IFungiblesCalls},
-		UintTryFrom, UintTryTo,
-	},
-	Config, NextAssetId, Pallet,
+	precompiles::v0::{IFungibles, IFungiblesCalls},
+	set_up_call, Config, NextAssetId, Pallet, TryConvert,
 };
 #[cfg(test)]
 use crate::mock::{ExtBuilder, Test};
@@ -60,8 +58,8 @@ type TokenId<T, I> = <T as pallet_assets::Config<I>>::AssetId;
             Time: Time<Moment: Into<U256>>
         >,
         // Fungibles
-        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32> + Copy>,
-        alloy::U256: UintTryFrom<AssetsBalance<T, I>> + UintTryTo<AssetsBalance<T, I>>
+        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32> + Copy, Balance: TryConvert<alloy::U256, Error = Error>>,
+        alloy::U256: TryConvert<AssetsBalance<T, I>, Error = Error>
 )]
 mod benchmarks {
 	use super::*;
@@ -79,7 +77,7 @@ mod benchmarks {
 		let input = IFungiblesCalls::transfer(IFungibles::transferCall {
 			token: token.into(),
 			to: <AddressMapper<T>>::to_address(&to).0.into(),
-			value: alloy::U256::from(value),
+			value: value.try_convert().unwrap(),
 		});
 
 		<Assets<T, I>>::set_balance(token, &owner, value);
@@ -110,7 +108,7 @@ mod benchmarks {
 			token: token.into(),
 			from: <AddressMapper<T>>::to_address(&owner).0.into(),
 			to: <AddressMapper<T>>::to_address(&to).0.into(),
-			value: alloy::U256::from(value),
+			value: value.try_convert().unwrap(),
 		});
 
 		<Assets<T, I>>::set_balance(token, &owner, value);
@@ -166,7 +164,7 @@ mod benchmarks {
 		let input = IFungiblesCalls::approve(IFungibles::approveCall {
 			token: token.into(),
 			spender: <AddressMapper<T>>::to_address(&spender).0.into(),
-			value: alloy::U256::from(approval_value),
+			value: approval_value.try_convert().unwrap(),
 		});
 
 		#[block]
@@ -217,7 +215,7 @@ mod benchmarks {
 		let mut ext = call_setup.ext().0;
 		let input = IFungiblesCalls::create(IFungibles::createCall {
 			admin: admin.0.into(),
-			minBalance: alloy::U256::from(min_balance),
+			minBalance: min_balance.try_convert().unwrap(),
 		});
 
 		#[block]
@@ -310,7 +308,7 @@ mod benchmarks {
 		let input = IFungiblesCalls::mint(IFungibles::mintCall {
 			token: token.into(),
 			account: <AddressMapper<T>>::to_address(&account).0.into(),
-			value: alloy::U256::from(value),
+			value: value.try_convert().unwrap(),
 		});
 
 		#[block]
@@ -334,7 +332,7 @@ mod benchmarks {
 		let input = IFungiblesCalls::burn(IFungibles::burnCall {
 			token: token.into(),
 			account: <AddressMapper<T>>::to_address(&account).0.into(),
-			value: alloy::U256::from(value),
+			value: value.try_convert().unwrap(),
 		});
 
 		<Assets<T, I>>::set_balance(token, &account, value);
@@ -483,17 +481,4 @@ fn create<
 	));
 
 	token
-}
-
-fn set_up_call<
-	T: pallet_revive::Config<
-		Currency: Inspect<
-			<T as frame_system::Config>::AccountId,
-			Balance: Into<U256> + TryFrom<U256>,
-		>,
-		Hash: IsType<H256>,
-		Time: Time<Moment: Into<U256>>,
-	>,
->() -> CallSetup<T> {
-	CallSetup::<T>::new(WasmModule::dummy())
 }
