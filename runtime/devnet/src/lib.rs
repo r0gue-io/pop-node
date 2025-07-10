@@ -749,6 +749,7 @@ mod benches {
 		[cumulus_pallet_xcmp_queue, XcmpQueue]
 		[cumulus_pallet_weight_reclaim, WeightReclaim]
 		[pallet_api_vnext::fungibles, FungiblesvNext]
+		[pallet_api_vnext::messaging, Messaging]
 	);
 }
 

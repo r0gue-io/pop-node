@@ -1,10 +1,7 @@
 use alloc::vec;
 
 pub(super) use pallet_revive::precompiles::{
-	alloy::{
-		primitives::{ruint::UintTryTo, U256},
-		sol_types::SolCall,
-	},
+	alloy::{primitives::U256, sol_types::SolCall},
 	AddressMatcher::Fixed,
 	RuntimeCosts,
 };

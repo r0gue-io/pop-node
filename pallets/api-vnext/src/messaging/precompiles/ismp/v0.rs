@@ -19,7 +19,7 @@ pub struct Ismp<const FIXED: u16, T>(PhantomData<T>);
 impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config> Precompile
 	for Ismp<FIXED, T>
 where
-	U256: UintTryTo<BalanceOf<T>>,
+	BalanceOf<T>: TryFrom<U256>,
 {
 	type Interface = IISMPCalls;
 	type T = T;
@@ -51,8 +51,11 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_get::<T>(request)?;
+				let fee = (*fee)
+					.try_into()
+					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
-				let (id, commitment) = get::<T>(origin, message, fee.saturating_to(), None)?;
+				let (id, commitment) = get::<T>(origin, message, fee, None)?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let event = GetDispatched_0 { origin, id, commitment: commitment.0.into() };
@@ -76,19 +79,17 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_get::<T>(request)?;
+				let fee = (*fee)
+					.try_into()
+					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
-				let (id, commitment) = get::<T>(
-					env.caller().account_id()?,
-					message,
-					fee.saturating_to(),
-					Some(callback.into()),
-				)?;
+				let (id, commitment) = get::<T>(origin, message, fee, Some(callback.into()))?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let commitment = commitment.0.into();
 				let event = GetDispatched_1 { origin, id, commitment, callback: callback.clone() };
 				deposit_event(env, event)?;
-				Ok(get_0Call::abi_encode_returns(&id))
+				Ok(get_1Call::abi_encode_returns(&id))
 			},
 			IISMPCalls::getResponse(getResponseCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::get_response())?;
@@ -116,8 +117,11 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_post::<T>(request)?;
+				let fee = (*fee)
+					.try_into()
+					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
-				let (id, commitment) = post::<T>(origin, message, fee.saturating_to(), None)?;
+				let (id, commitment) = post::<T>(origin, message, fee, None)?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let event = PostDispatched_0 { origin, id, commitment: commitment.0.into() };
@@ -136,13 +140,12 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_post::<T>(request)?;
+				let fee = (*fee)
+					.try_into()
+					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
-				let (id, commitment) = post::<T>(
-					env.caller().account_id()?,
-					message,
-					fee.saturating_to(),
-					Some(callback.into()),
-				)?;
+				let (id, commitment) =
+					post::<T>(env.caller().account_id()?, message, fee, Some(callback.into()))?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let commitment = commitment.0.into();
@@ -179,6 +182,13 @@ where
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
 			},
 		}
+	}
+}
+
+impl<const FIXED: u16, T> Ismp<FIXED, T> {
+	/// The address of the precompile.
+	pub const fn address() -> [u8; 20] {
+		fixed_address(FIXED)
 	}
 }
 

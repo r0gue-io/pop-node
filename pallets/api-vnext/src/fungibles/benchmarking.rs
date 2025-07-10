@@ -23,7 +23,7 @@ use pallet_assets::{Asset, AssetStatus};
 use pallet_revive::{
 	precompiles::{
 		alloy::primitives as alloy,
-		run::{CallSetup, WasmModule, H256, U256},
+		run::{H256, U256},
 	},
 	test_utils::{ALICE_ADDR, BOB_ADDR, CHARLIE_ADDR},
 	AddressMapper as _, Origin,
@@ -34,7 +34,7 @@ use super::{
 		v0::{IFungibles, IFungiblesCalls},
 		UintTryFrom, UintTryTo,
 	},
-	Config, NextAssetId, Pallet,
+	set_up_call, Config, NextAssetId, Pallet,
 };
 #[cfg(test)]
 use crate::mock::{ExtBuilder, Test};
@@ -483,17 +483,4 @@ fn create<
 	));
 
 	token
-}
-
-fn set_up_call<
-	T: pallet_revive::Config<
-		Currency: Inspect<
-			<T as frame_system::Config>::AccountId,
-			Balance: Into<U256> + TryFrom<U256>,
-		>,
-		Hash: IsType<H256>,
-		Time: Time<Moment: Into<U256>>,
-	>,
->() -> CallSetup<T> {
-	CallSetup::<T>::new(WasmModule::dummy())
 }

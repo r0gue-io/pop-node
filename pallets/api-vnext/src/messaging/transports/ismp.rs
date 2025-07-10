@@ -15,7 +15,10 @@ use frame_support::{
 };
 use pallet_ismp::weights::IsmpModuleWeight;
 
-use super::*;
+use super::{
+	super::{Message, Pallet},
+	*,
+};
 
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 
@@ -143,7 +146,7 @@ pub(crate) fn process_response<T: Config>(
 	let (initiating_origin, id) = IsmpRequests::<T>::get(commitment)
 		.ok_or(::ismp::Error::Custom("Request not found.".into()))?;
 
-	let Some(super::super::Message::Ismp { commitment, callback, message_deposit }) =
+	let Some(Message::Ismp { commitment, callback, message_deposit }) =
 		Messages::<T>::get(&initiating_origin, id)
 	else {
 		return Err(::ismp::Error::Custom("Message must be an ismp request.".into()).into());
@@ -178,11 +181,7 @@ pub(crate) fn process_response<T: Config>(
 	Messages::<T>::insert(
 		&initiating_origin,
 		id,
-		super::super::Message::IsmpResponse {
-			commitment,
-			message_deposit,
-			response: encoded_response,
-		},
+		Message::IsmpResponse { commitment, message_deposit, response: encoded_response },
 	);
 	Ok(())
 }
@@ -192,12 +191,11 @@ pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), any
 		"Request commitment not found while processing timeout.".into(),
 	))?;
 	Messages::<T>::try_mutate(key.0, key.1, |message| {
-		let Some(super::super::Message::Ismp { commitment, message_deposit, callback }) = message
-		else {
+		let Some(Message::Ismp { commitment, message_deposit, callback }) = message else {
 			return Err(::ismp::Error::Custom("Invalid message".into()));
 		};
 		let callback_deposit = callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
-		*message = Some(super::super::Message::IsmpTimeout {
+		*message = Some(Message::IsmpTimeout {
 			message_deposit: *message_deposit,
 			commitment: *commitment,
 			callback_deposit,
@@ -205,9 +203,7 @@ pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), any
 		Ok(())
 	})?;
 
-	crate::messaging::Pallet::<T>::deposit_event(Event::<T>::IsmpTimedOut {
-		commitment: *commitment,
-	});
+	Pallet::<T>::deposit_event(Event::<T>::IsmpTimedOut { commitment: *commitment });
 	Ok(())
 }
 
@@ -233,7 +229,7 @@ impl<T: Config> IsmpModule for Handler<T> {
 		// Hash request to determine key for message lookup.
 		match response {
 			Response::Get(GetResponse { get, values }) => {
-				log::debug!(target: "pop-api::extension", "StorageValue={:?}", values);
+				log::debug!(target: "pop-api::messaging::ismp", "StorageValue={:?}", values);
 				let commitment = hash_request::<T::Keccak256>(&Request::Get(get));
 				process_response(&commitment, &values, |dest, id| {
 					Event::<T>::IsmpGetResponseReceived { dest, id, commitment }
@@ -271,8 +267,8 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 
 	fn on_timeout(&self, timeout: &Timeout) -> Weight {
 		let x = match timeout {
-			Timeout::Request(Request::Post(_)) => 0u32,
-			Timeout::Request(Request::Get(_)) => 1u32,
+			Timeout::Request(Request::Get(_)) => 0u32,
+			Timeout::Request(Request::Post(_)) => 1u32,
 			Timeout::Response(_) => 2u32,
 		};
 		T::WeightInfo::ismp_on_timeout(x)
@@ -281,11 +277,11 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 	// todo: test
 	fn on_response(&self, response: &Response) -> Weight {
 		let x = match response {
-			Response::Get(_) => 1,
-			Response::Post(_) => 0,
+			Response::Get(_) => 0,
+			Response::Post(_) => 1,
 		};
 
-		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())
 		// Also add actual weight consumed by contract env.
+		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())
 	}
 }
