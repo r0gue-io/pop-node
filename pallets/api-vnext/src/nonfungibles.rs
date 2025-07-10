@@ -13,6 +13,8 @@ use pallet_nfts::{
 use super::*;
 
 pub mod precompiles;
+#[cfg(test)]
+mod tests;
 
 type BlockNumberFor<T, I = ()> = pallet_nfts::BlockNumberFor<T, I>;
 type CollectionIdOf<T, I = ()> =
@@ -125,14 +127,6 @@ fn clear_metadata<T: Config<I>, I>(
 	item: ItemIdOf<T, I>,
 ) -> DispatchResult {
 	Nfts::<T, I>::clear_metadata(origin, collection, item)
-}
-
-fn set_max_supply<T: Config<I>, I>(
-	origin: OriginFor<T>,
-	collection: CollectionIdOf<T, I>,
-	max_supply: u32,
-) -> DispatchResult {
-	Nfts::<T, I>::set_collection_max_supply(origin, collection, max_supply)
 }
 
 fn approve_item_attributes<T: Config<I>, I>(

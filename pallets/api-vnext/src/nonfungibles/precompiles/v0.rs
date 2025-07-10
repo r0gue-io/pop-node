@@ -7,7 +7,7 @@ sol!("src/nonfungibles/precompiles/interfaces/v0/INonfungibles.sol");
 /// The nonfungibles precompile offers a streamlined interface for interacting with nonfungible
 /// tokens. The goal is to provide a simplified, consistent API that adheres to standards in the
 /// smart contract space.
-pub struct Nonfungibles<const FIXED: u16, T, I>(PhantomData<(T, I)>);
+pub struct Nonfungibles<const FIXED: u16, T, I = ()>(PhantomData<(T, I)>);
 impl<
 		const FIXED: u16,
 		T: frame_system::Config
@@ -24,13 +24,17 @@ impl<
 		Fixed(NonZero::new(FIXED).expect("expected non-zero precompile address"));
 
 	fn call(
-		address: &[u8; 20],
+		_address: &[u8; 20],
 		input: &Self::Interface,
 		env: &mut impl Ext<T = Self::T>,
 	) -> Result<Vec<u8>, Error> {
-		use INonfungibles::{INonfungiblesCalls::*, *};
 		match input {
-			approve_0(approve_0Call { collection, operator, approved, deadline }) => {
+			INonfungiblesCalls::approve_0(approve_0Call {
+				collection,
+				operator,
+				approved,
+				deadline,
+			}) => {
 				// TODO: Implement real weight
 				let charged = env.charge(Weight::default())?;
 
@@ -58,17 +62,24 @@ impl<
 					e.error
 				})?;
 
-				let event = CollectionApproval {
-					operator: *operator,
-					approved: *approved,
-					collection: *collection,
-					owner,
-				};
-				deposit_event(env, event);
-
+				deposit_event(
+					env,
+					CollectionApproval {
+						operator: *operator,
+						approved: *approved,
+						collection: *collection,
+						owner,
+					},
+				)?;
 				Ok(approve_0Call::abi_encode_returns(&approve_0Return {}))
 			},
-			approve_1(approve_1Call { collection, item, operator, approved, deadline }) => {
+			INonfungiblesCalls::approve_1(approve_1Call {
+				collection,
+				item,
+				operator,
+				approved,
+				deadline,
+			}) => {
 				// TODO: Implement real weight
 				let charged = env.charge(Weight::default())?;
 
@@ -97,12 +108,13 @@ impl<
 					e.error
 				})?;
 
-				let event =
-					ItemApproval { operator: *operator, approved: *approved, item: *item, owner };
-				deposit_event(env, event);
+				deposit_event(
+					env,
+					ItemApproval { operator: *operator, approved: *approved, item: *item, owner },
+				)?;
 				Ok(approve_1Call::abi_encode_returns(&approve_1Return {}))
 			},
-			transfer(transferCall { collection, to, item }) => {
+			INonfungiblesCalls::transfer(transferCall { collection, to, item }) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -115,10 +127,10 @@ impl<
 					(*item).into(),
 				)?;
 
-				deposit_event(env, Transfer { from: owner, to: *to, item: *item });
+				deposit_event(env, Transfer { from: owner, to: *to, item: *item })?;
 				Ok(transferCall::abi_encode_returns(&transferReturn {}))
 			},
-			create(createCall { admin, config }) => {
+			INonfungiblesCalls::create(createCall { admin, config }) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -132,7 +144,7 @@ impl<
 
 				Ok(createCall::abi_encode_returns(&collection_id))
 			},
-			destroy(destroyCall { collection, witness }) => {
+			INonfungiblesCalls::destroy(destroyCall { collection, witness }) => {
 				// TODO: Implement real weight
 				let charged = env.charge(Weight::default())?;
 
@@ -154,7 +166,12 @@ impl<
 
 				Ok(destroyCall::abi_encode_returns(&destroyReturn {}))
 			},
-			setAttribute_0(setAttribute_0Call { collection, namespace, key, value }) => {
+			INonfungiblesCalls::setAttribute_0(setAttribute_0Call {
+				collection,
+				namespace,
+				key,
+				value,
+			}) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -167,15 +184,23 @@ impl<
 					BoundedVec::truncate_from(value.to_vec()),
 				)?;
 
-				let event = CollectionAttributeSet {
-					key: key.clone(),
-					data: value.clone(),
-					collection: *collection,
-				};
-				deposit_event(env, event);
+				deposit_event(
+					env,
+					CollectionAttributeSet {
+						key: key.clone(),
+						data: value.clone(),
+						collection: *collection,
+					},
+				)?;
 				Ok(setAttribute_0Call::abi_encode_returns(&setAttribute_0Return {}))
 			},
-			setAttribute_1(setAttribute_1Call { collection, item, namespace, key, value }) => {
+			INonfungiblesCalls::setAttribute_1(setAttribute_1Call {
+				collection,
+				item,
+				namespace,
+				key,
+				value,
+			}) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -188,11 +213,36 @@ impl<
 					BoundedVec::truncate_from(value.to_vec()),
 				)?;
 
-				let event = ItemAttributeSet { key: key.clone(), data: value.clone(), item: *item };
-				deposit_event(env, event);
+				deposit_event(
+					env,
+					ItemAttributeSet { key: key.clone(), data: value.clone(), item: *item },
+				)?;
 				Ok(setAttribute_1Call::abi_encode_returns(&setAttribute_1Return {}))
 			},
-			clearAttribute_1(clearAttribute_1Call { collection, item, namespace, key }) => {
+			INonfungiblesCalls::clearAttribute_0(clearAttribute_0Call {
+				collection,
+				namespace,
+				key,
+			}) => {
+				// TODO: Implement real weight
+				env.charge(Weight::default())?;
+
+				super::clear_attribute::<T, I>(
+					to_runtime_origin(env.caller()),
+					(*collection).into(),
+					None,
+					decode_bytes::<AttributeNamespace<AccountIdOf<T>>>(namespace)?,
+					BoundedVec::truncate_from(key.to_vec()),
+				)?;
+
+				Ok(clearAttribute_0Call::abi_encode_returns(&clearAttribute_0Return {}))
+			},
+			INonfungiblesCalls::clearAttribute_1(clearAttribute_1Call {
+				collection,
+				item,
+				namespace,
+				key,
+			}) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -206,7 +256,7 @@ impl<
 
 				Ok(clearAttribute_1Call::abi_encode_returns(&clearAttribute_1Return {}))
 			},
-			setMetadata_0(setMetadata_0Call { collection, item, data }) => {
+			INonfungiblesCalls::setMetadata_0(setMetadata_0Call { collection, item, data }) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -219,7 +269,7 @@ impl<
 
 				Ok(setMetadata_0Call::abi_encode_returns(&setMetadata_0Return {}))
 			},
-			setMetadata_1(setMetadata_1Call { collection, data }) => {
+			INonfungiblesCalls::setMetadata_1(setMetadata_1Call { collection, data }) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -231,7 +281,7 @@ impl<
 
 				Ok(setMetadata_1Call::abi_encode_returns(&setMetadata_1Return {}))
 			},
-			clearMetadata_0(clearMetadata_0Call { collection }) => {
+			INonfungiblesCalls::clearMetadata_0(clearMetadata_0Call { collection }) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -242,7 +292,7 @@ impl<
 
 				Ok(clearMetadata_0Call::abi_encode_returns(&clearMetadata_0Return {}))
 			},
-			clearMetadata_1(clearMetadata_1Call { collection, item }) => {
+			INonfungiblesCalls::clearMetadata_1(clearMetadata_1Call { collection, item }) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -254,7 +304,7 @@ impl<
 
 				Ok(clearMetadata_1Call::abi_encode_returns(&clearMetadata_1Return {}))
 			},
-			setMaxSupply(setMaxSupplyCall { collection, maxSupply }) => {
+			INonfungiblesCalls::setMaxSupply(setMaxSupplyCall { collection, maxSupply }) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -266,7 +316,11 @@ impl<
 
 				Ok(setMaxSupplyCall::abi_encode_returns(&setMaxSupplyReturn {}))
 			},
-			approveItemAttributes(approveItemAttributesCall { collection, item, delegate }) => {
+			INonfungiblesCalls::approveItemAttributes(approveItemAttributesCall {
+				collection,
+				item,
+				delegate,
+			}) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -276,14 +330,12 @@ impl<
 					(*item).into(),
 					env.to_account_id(&(*delegate.0).into()),
 				)?;
+
 				Ok(approveItemAttributesCall::abi_encode_returns(&approveItemAttributesReturn {}))
 			},
-			cancelItemAttributesApproval(cancelItemAttributesApprovalCall {
-				collection,
-				item,
-				delegate,
-				witness,
-			}) => {
+			INonfungiblesCalls::cancelItemAttributesApproval(
+				cancelItemAttributesApprovalCall { collection, item, delegate, witness },
+			) => {
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
@@ -294,11 +346,27 @@ impl<
 					env.to_account_id(&(*delegate.0).into()),
 					decode_bytes(witness)?,
 				)?;
+
 				Ok(cancelItemAttributesApprovalCall::abi_encode_returns(
 					&cancelItemAttributesApprovalReturn {},
 				))
 			},
-			clearCollectionApprovals(clearCollectionApprovalsCall { collection, limit }) => {
+			INonfungiblesCalls::clearAllApprovals(clearAllApprovalsCall { collection, item }) => {
+				// TODO: Implement real weight
+				env.charge(Weight::default())?;
+
+				super::clear_all_transfer_approvals::<T, I>(
+					to_runtime_origin(env.caller()),
+					(*collection).into(),
+					(*item).into(),
+				)?;
+
+				Ok(clearAllApprovalsCall::abi_encode_returns(&clearAllApprovalsReturn {}))
+			},
+			INonfungiblesCalls::clearCollectionApprovals(clearCollectionApprovalsCall {
+				collection,
+				limit,
+			}) => {
 				// TODO: Implement real weight
 				let charged = env.charge(Weight::default())?;
 
@@ -331,42 +399,44 @@ impl<
 					&clearCollectionApprovalsReturn {},
 				))
 			},
-			mint(mintCall { collection, to, item, witness }) => {
+			INonfungiblesCalls::mint(mintCall { collection, to, item, witness }) => {
+				env.charge(Weight::default())?;
+
 				super::mint::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*collection).into(),
 					env.to_account_id(&(*to.0).into()),
 					(*item).into(),
-					None,
+					Some(decode_bytes::<MintWitness<ItemIdOf<T, I>, DepositBalanceOf<T, I>>>(
+						&witness,
+					)?),
 				)?;
+
 				Ok(mintCall::abi_encode_returns(&mintReturn {}))
 			},
-			burn(burnCall { collection, item }) => {
+			INonfungiblesCalls::burn(burnCall { collection, item }) => {
+				env.charge(Weight::default())?;
+
 				super::burn::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*collection).into(),
 					(*item).into(),
 				)?;
+
 				Ok(burnCall::abi_encode_returns(&burnReturn {}))
 			},
-			balanceOf(balanceOfCall { collection, owner }) => {
-				// // Charge the weight for this call.
-				// T::ReviveCallRuntimeCost::charge_weight(
-				// 	RuntimeCosts::BalanceOf,
-				// 	env.remaining_gas()?,
-				// )?;
+			INonfungiblesCalls::balanceOf(balanceOfCall { collection, owner }) => {
+				env.charge(Weight::default())?;
+
 				let balance = super::balance_of::<T, I>(
 					(*collection).into(),
 					env.to_account_id(&(*owner.0).into()),
 				);
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
-			ownerOf(ownerOfCall { collection, item }) => {
-				// Charge the weight for this call.
-				// T::ReviveCallRuntimeCost::charge_weight(
-				// 	RuntimeCosts::OwnerOf,
-				// 	env.remaining_gas()?,
-				// )?;
+			INonfungiblesCalls::ownerOf(ownerOfCall { collection, item }) => {
+				env.charge(Weight::default())?;
+
 				let owner = match super::owner_of::<T, I>((*collection).into(), (*item).into()) {
 					Some(owner) => owner,
 					None =>
@@ -377,12 +447,9 @@ impl<
 				let owner = <AddressMapper<T>>::to_address(&owner).0.into();
 				Ok(ownerOfCall::abi_encode_returns(&owner))
 			},
-			allowance_0(allowance_0Call { collection, owner, operator }) => {
-				// Charge the weight for this call.
-				// T::ReviveCallRuntimeCost::charge_weight(
-				// 	RuntimeCosts::Allowance,
-				// 	env.remaining_gas()?,
-				// )?;
+			INonfungiblesCalls::allowance_0(allowance_0Call { collection, owner, operator }) => {
+				env.charge(Weight::default())?;
+
 				let is_approved = crate::nonfungibles::allowance::<T, I>(
 					(*collection).into(),
 					env.to_account_id(&(*owner.0).into()),
@@ -391,12 +458,14 @@ impl<
 				);
 				Ok(allowance_0Call::abi_encode_returns(&is_approved))
 			},
-			allowance_1(allowance_1Call { collection, owner, operator, item }) => {
-				// Charge the weight for this call.
-				// T::ReviveCallRuntimeCost::charge_weight(
-				// 	RuntimeCosts::Allowance,
-				// 	env.remaining_gas()?,
-				// )?;
+			INonfungiblesCalls::allowance_1(allowance_1Call {
+				collection,
+				owner,
+				operator,
+				item,
+			}) => {
+				env.charge(Weight::default())?;
+
 				let is_approved = crate::nonfungibles::allowance::<T, I>(
 					(*collection).into(),
 					env.to_account_id(&(*owner.0).into()),
@@ -405,21 +474,15 @@ impl<
 				);
 				Ok(allowance_1Call::abi_encode_returns(&is_approved))
 			},
-			totalSupply(totalSupplyCall { collection }) => {
-				// Charge the weight for this call.
-				// T::ReviveCallRuntimeCost::charge_weight(
-				// 	RuntimeCosts::TotalSupply,
-				// 	env.remaining_gas()?,
-				// )?;
+			INonfungiblesCalls::totalSupply(totalSupplyCall { collection }) => {
+				env.charge(Weight::default())?;
+
 				let total = super::total_supply::<T, I>((*collection).into());
 				Ok(totalSupplyCall::abi_encode_returns(&total))
 			},
-			itemMetadata(itemMetadataCall { collection, item }) => {
-				// Charge the weight for this call.
-				// T::ReviveCallRuntimeCost::charge_weight(
-				// 	RuntimeCosts::ItemMetadata,
-				// 	env.remaining_gas()?,
-				// )?;
+			INonfungiblesCalls::itemMetadata(itemMetadataCall { collection, item }) => {
+				env.charge(Weight::default())?;
+
 				let collection_id: CollectionIdOf<T, I> = (*collection).into();
 				let item_id: ItemIdOf<T, I> = (*item).into();
 				let metadata = match super::item_metadata::<T, I>(collection_id, item_id) {
@@ -432,7 +495,13 @@ impl<
 				let item_metadata = String::from_utf8_lossy(&metadata).into();
 				Ok(itemMetadataCall::abi_encode_returns(&item_metadata))
 			},
-			getAttributes_0(getAttributes_0Call { collection, namespace, key }) => {
+			INonfungiblesCalls::getAttributes_0(getAttributes_0Call {
+				collection,
+				namespace,
+				key,
+			}) => {
+				env.charge(Weight::default())?;
+
 				let attribute = match super::get_attributes::<T, I>(
 					(*collection).into(),
 					None,
@@ -448,7 +517,14 @@ impl<
 				let result = String::from_utf8_lossy(&attribute).into();
 				Ok(getAttributes_0Call::abi_encode_returns(&result))
 			},
-			getAttributes_1(getAttributes_1Call { collection, item, namespace, key }) => {
+			INonfungiblesCalls::getAttributes_1(getAttributes_1Call {
+				collection,
+				item,
+				namespace,
+				key,
+			}) => {
+				env.charge(Weight::default())?;
+
 				let attribute = match super::get_attributes::<T, I>(
 					(*collection).into(),
 					Some((*item).into()),
@@ -464,24 +540,12 @@ impl<
 				let result = String::from_utf8_lossy(&attribute).into();
 				Ok(getAttributes_1Call::abi_encode_returns(&result))
 			},
-			itemMetadata(itemMetadataCall { collection, item }) => {
-				let metadata =
-					match super::item_metadata::<T, I>((*collection).into(), (*item).into()) {
-						Some(value) => value,
-						None =>
-							return Err(Error::Revert(Revert {
-								reason: "Nonfungibles: No metadata found".to_string(),
-							})),
-					};
-				let result = String::from_utf8_lossy(&metadata).into();
-				Ok(getAttributes_1Call::abi_encode_returns(&result))
-			},
-			_ => unimplemented!(),
 		}
 	}
 }
 
-impl<const FIXED: u16, T: Config<I>, I: 'static> Nonfungibles<FIXED, T, I> {
+impl<const FIXED: u16, T: pallet_nfts::Config<I>, I: 'static> Nonfungibles<FIXED, T, I> {
+	/// The address of the precompile.
 	pub const fn address() -> [u8; 20] {
 		fixed_address(FIXED)
 	}

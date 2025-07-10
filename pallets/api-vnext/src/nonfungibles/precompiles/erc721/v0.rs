@@ -17,7 +17,7 @@ use super::{super::super::*, U256};
 sol!("src/nonfungibles/precompiles/interfaces/v0/IERC721.sol");
 
 /// Precompile providing an interface of the ERC-721 standard as defined in the ERC.
-pub struct Erc721<const PREFIX: u16, T, I>(PhantomData<(T, I)>);
+pub struct Erc721<const PREFIX: u16, T, I = ()>(PhantomData<(T, I)>);
 impl<
 		const PREFIX: u16,
 		T: frame_system::Config
@@ -51,7 +51,8 @@ impl<
 					env.to_account_id(&(*to.0).into()),
 					item_id,
 				)?;
-				deposit_event::<T>(env, Transfer { from, to, tokenId });
+
+				deposit_event::<T>(env, Transfer { from, to, tokenId })?;
 				Ok(())
 			};
 
@@ -142,7 +143,7 @@ impl<
 					)
 					.map_err(|e| e.error)?;
 
-					deposit_event(env, Approval { owner, approved: *to, tokenId: *tokenId });
+					deposit_event(env, Approval { owner, approved: *to, tokenId: *tokenId })?;
 				}
 				Ok(approveCall::abi_encode_returns(&approveReturn {}))
 			},
@@ -164,7 +165,7 @@ impl<
 				deposit_event(
 					env,
 					ApprovalForAll { owner, operator: *operator, approved: *approved },
-				);
+				)?;
 				Ok(setApprovalForAllCall::abi_encode_returns(&setApprovalForAllReturn {}))
 			},
 			getApproved(getApprovedCall { tokenId }) => {
@@ -247,7 +248,7 @@ impl<const PREFIX: u16, T: Config<I>, I: 'static> Erc721<PREFIX, T, I> {
 #[cfg(test)]
 mod tests {
 	use frame_support::assert_ok;
-	use pallet_nfts::{CollectionConfig, CollectionSettings, Instance1, MintSettings};
+	use pallet_nfts::{CollectionConfig, CollectionSettings, MintSettings};
 	use pallet_revive::{
 		precompiles::alloy::{
 			primitives::Bytes,
@@ -262,432 +263,491 @@ mod tests {
 		nonfungibles::balance_of,
 	};
 
-	type Erc721 = super::Erc721<ERC721, Test, Instance1>;
 	type AccountId = <Test as frame_system::Config>::AccountId;
 
 	#[test]
 	fn balance_of_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_eq!(
-				call_precompile::<U256>(
-					&ALICE,
-					collection_id,
-					&IERC721Calls::balanceOf(IERC721::balanceOfCall { owner: ALICE_ADDR.0.into() })
-				)
-				.unwrap(),
-				U256::from(1)
-			);
-			assert_eq!(balance_of::<Test, ()>(collection_id, ALICE), 1);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_eq!(
+					call_precompile::<U256>(
+						&ALICE,
+						collection_id,
+						&IERC721Calls::balanceOf(IERC721::balanceOfCall {
+							owner: ALICE_ADDR.0.into()
+						})
+					)
+					.unwrap(),
+					U256::from(1)
+				);
+				assert_eq!(balance_of::<Test, ()>(collection_id, ALICE), 1);
+			});
 	}
 
 	#[test]
 	fn owner_of_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			let address: Address = ALICE_ADDR.0.into();
-			assert_eq!(
-				call_precompile::<Address>(
-					&ALICE,
-					collection_id,
-					&IERC721Calls::ownerOf(IERC721::ownerOfCall { tokenId: U256::from(item_id) })
-				)
-				.unwrap(),
-				address
-			);
-			assert_eq!(owner_of::<Test, ()>(collection_id, item_id), Some(ALICE));
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				let address: Address = ALICE_ADDR.0.into();
+				assert_eq!(
+					call_precompile::<Address>(
+						&ALICE,
+						collection_id,
+						&IERC721Calls::ownerOf(IERC721::ownerOfCall {
+							tokenId: U256::from(item_id)
+						})
+					)
+					.unwrap(),
+					address
+				);
+				assert_eq!(owner_of::<Test, ()>(collection_id, item_id), Some(ALICE));
+			});
 	}
 
 	#[test]
 	fn safe_transfer_from_0_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_ok!(approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				Some(item_id),
-				true,
-				None,
-			));
-			assert_ok!(call_precompile::<()>(
-				&BOB,
-				collection_id,
-				&IERC721Calls::safeTransferFrom_0(IERC721::safeTransferFrom_0Call {
-					from: ALICE_ADDR.0.into(),
-					to: BOB_ADDR.0.into(),
-					tokenId: U256::from(item_id),
-					data: Bytes::default()
-				})
-			));
-			assert_eq!(balance_of::<Test, ()>(collection_id, BOB), 1);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_ok!(approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
+					collection_id,
+					BOB,
+					Some(item_id),
+					true,
+					None,
+				));
+				assert_ok!(call_precompile::<()>(
+					&BOB,
+					collection_id,
+					&IERC721Calls::safeTransferFrom_0(IERC721::safeTransferFrom_0Call {
+						from: ALICE_ADDR.0.into(),
+						to: BOB_ADDR.0.into(),
+						tokenId: U256::from(item_id),
+						data: Bytes::default()
+					})
+				));
+				assert_eq!(balance_of::<Test, ()>(collection_id, BOB), 1);
+			});
 	}
 
 	#[test]
 	fn safe_transfer_from_1_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_ok!(approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				Some(item_id),
-				true,
-				None,
-			));
-			assert_ok!(call_precompile::<()>(
-				&BOB,
-				collection_id,
-				&IERC721Calls::safeTransferFrom_1(IERC721::safeTransferFrom_1Call {
-					from: ALICE_ADDR.0.into(),
-					to: BOB_ADDR.0.into(),
-					tokenId: U256::from(item_id),
-				})
-			));
-			assert_eq!(balance_of::<Test, ()>(collection_id, BOB), 1);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_ok!(approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
+					collection_id,
+					BOB,
+					Some(item_id),
+					true,
+					None,
+				));
+				assert_ok!(call_precompile::<()>(
+					&BOB,
+					collection_id,
+					&IERC721Calls::safeTransferFrom_1(IERC721::safeTransferFrom_1Call {
+						from: ALICE_ADDR.0.into(),
+						to: BOB_ADDR.0.into(),
+						tokenId: U256::from(item_id),
+					})
+				));
+				assert_eq!(balance_of::<Test, ()>(collection_id, BOB), 1);
+			});
 	}
 
 	#[test]
 	fn transfer_from_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_ok!(approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				Some(item_id),
-				true,
-				None,
-			));
-			assert_ok!(call_precompile::<()>(
-				&BOB,
-				collection_id,
-				&IERC721Calls::transferFrom(IERC721::transferFromCall {
-					from: ALICE_ADDR.0.into(),
-					to: BOB_ADDR.0.into(),
-					tokenId: U256::from(item_id)
-				})
-			));
-			assert_eq!(balance_of::<Test, ()>(collection_id, BOB), 1);
-			assert_last_event(
-				prefixed_address(ERC721, collection_id),
-				IERC721::Transfer {
-					from: ALICE_ADDR.0.into(),
-					to: BOB_ADDR.0.into(),
-					tokenId: U256::saturating_from(item_id),
-				},
-			);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_ok!(approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
+					collection_id,
+					BOB,
+					Some(item_id),
+					true,
+					None,
+				));
+				assert_ok!(call_precompile::<()>(
+					&BOB,
+					collection_id,
+					&IERC721Calls::transferFrom(IERC721::transferFromCall {
+						from: ALICE_ADDR.0.into(),
+						to: BOB_ADDR.0.into(),
+						tokenId: U256::from(item_id)
+					})
+				));
+				assert_eq!(balance_of::<Test, ()>(collection_id, BOB), 1);
+				assert_last_event(
+					prefixed_address(ERC721, collection_id),
+					IERC721::Transfer {
+						from: ALICE_ADDR.0.into(),
+						to: BOB_ADDR.0.into(),
+						tokenId: U256::saturating_from(item_id),
+					},
+				);
+			});
 	}
 
 	#[test]
 	fn approve_fails_with_unknown_item() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			// No item found.
-			assert!(matches!(
-				call_precompile::<()>(
-					&ALICE,
-					collection_id,
-					&IERC721Calls::approve(IERC721::approveCall {
-						to: BOB_ADDR.0.into(),
-						tokenId: U256::from(1)
-					})
-				),
-				Err(DispatchError::Other("ERC721: Item already approved"))
-			));
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				// No item found.
+				assert!(matches!(
+					call_precompile::<()>(
+						&ALICE,
+						collection_id,
+						&IERC721Calls::approve(IERC721::approveCall {
+							to: BOB_ADDR.0.into(),
+							tokenId: U256::from(1)
+						})
+					),
+					Err(DispatchError::Other("ERC721: Item already approved"))
+				));
+			});
 	}
 
 	#[test]
 	fn approve_fails_with_existing_approval() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_ok!(approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				Some(item_id),
-				true,
-				None,
-			));
-			// Item already approved.
-			assert!(matches!(
-				call_precompile::<()>(
-					&ALICE,
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_ok!(approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
 					collection_id,
-					&IERC721Calls::approve(IERC721::approveCall {
-						to: BOB_ADDR.0.into(),
-						tokenId: U256::from(item_id)
-					})
-				),
-				Err(DispatchError::Other("ERC721: Item already approved"))
-			));
-		});
+					BOB,
+					Some(item_id),
+					true,
+					None,
+				));
+				// Item already approved.
+				assert!(matches!(
+					call_precompile::<()>(
+						&ALICE,
+						collection_id,
+						&IERC721Calls::approve(IERC721::approveCall {
+							to: BOB_ADDR.0.into(),
+							tokenId: U256::from(item_id)
+						})
+					),
+					Err(DispatchError::Other("ERC721: Item already approved"))
+				));
+			});
 	}
 
 	#[test]
 	fn approve_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			// Successfully approved.
-			assert_ok!(call_precompile::<()>(
-				&ALICE,
-				collection_id,
-				&IERC721Calls::approve(IERC721::approveCall {
-					to: BOB_ADDR.0.into(),
-					tokenId: U256::from(item_id)
-				})
-			));
-			assert!(allowance::<Test, ()>(collection_id, ALICE, BOB, Some(item_id)));
-			assert_last_event(
-				prefixed_address(ERC721, collection_id),
-				IERC721::Approval {
-					owner: ALICE_ADDR.0.into(),
-					approved: BOB_ADDR.0.into(),
-					tokenId: U256::saturating_from(item_id),
-				},
-			);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				// Successfully approved.
+				assert_ok!(call_precompile::<()>(
+					&ALICE,
+					collection_id,
+					&IERC721Calls::approve(IERC721::approveCall {
+						to: BOB_ADDR.0.into(),
+						tokenId: U256::from(item_id)
+					})
+				));
+				assert!(allowance::<Test, ()>(collection_id, ALICE, BOB, Some(item_id)));
+				assert_last_event(
+					prefixed_address(ERC721, collection_id),
+					IERC721::Approval {
+						owner: ALICE_ADDR.0.into(),
+						approved: BOB_ADDR.0.into(),
+						tokenId: U256::saturating_from(item_id),
+					},
+				);
+			});
 	}
 
 	#[test]
 	fn approve_zero_address_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_ok!(crate::nonfungibles::approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				Some(item_id),
-				true,
-				None,
-			));
-			// Clear all existing approvals if zero address is approved.
-			assert_ok!(call_precompile::<()>(
-				&ALICE,
-				collection_id,
-				&IERC721Calls::approve(IERC721::approveCall {
-					to: Address(FixedBytes::default()),
-					tokenId: U256::from(item_id)
-				})
-			));
-			assert!(!super::allowance::<Test, ()>(collection_id, ALICE, BOB, Some(item_id)));
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_ok!(crate::nonfungibles::approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
+					collection_id,
+					BOB,
+					Some(item_id),
+					true,
+					None,
+				));
+				// Clear all existing approvals if zero address is approved.
+				assert_ok!(call_precompile::<()>(
+					&ALICE,
+					collection_id,
+					&IERC721Calls::approve(IERC721::approveCall {
+						to: Address(FixedBytes::default()),
+						tokenId: U256::from(item_id)
+					})
+				));
+				assert!(!super::allowance::<Test, ()>(collection_id, ALICE, BOB, Some(item_id)));
+			});
 	}
 
 	#[test]
 	fn set_approval_for_all_works() {
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, 0);
-			// Successfully approved.
-			assert_ok!(call_precompile::<()>(
-				&ALICE,
-				collection_id,
-				&IERC721Calls::setApprovalForAll(IERC721::setApprovalForAllCall {
-					operator: BOB_ADDR.0.into(),
-					approved: true
-				})
-			));
-			assert!(allowance::<Test, ()>(collection_id, ALICE, BOB, None));
-			assert_last_event(
-				prefixed_address(ERC721, collection_id),
-				IERC721::ApprovalForAll {
-					owner: ALICE_ADDR.0.into(),
-					operator: BOB_ADDR.0.into(),
-					approved: true,
-				},
-			);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, 0);
+				// Successfully approved.
+				assert_ok!(call_precompile::<()>(
+					&ALICE,
+					collection_id,
+					&IERC721Calls::setApprovalForAll(IERC721::setApprovalForAllCall {
+						operator: BOB_ADDR.0.into(),
+						approved: true
+					})
+				));
+				assert!(allowance::<Test, ()>(collection_id, ALICE, BOB, None));
+				assert_last_event(
+					prefixed_address(ERC721, collection_id),
+					IERC721::ApprovalForAll {
+						owner: ALICE_ADDR.0.into(),
+						operator: BOB_ADDR.0.into(),
+						approved: true,
+					},
+				);
+			});
 	}
 
 	#[test]
 	fn remove_approval_for_all_works() {
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, 0);
-			assert_ok!(crate::nonfungibles::approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				None,
-				true,
-				None,
-			));
-			// Successfully removes approval.
-			assert_ok!(call_precompile::<()>(
-				&ALICE,
-				collection_id,
-				&IERC721Calls::setApprovalForAll(IERC721::setApprovalForAllCall {
-					operator: BOB_ADDR.0.into(),
-					approved: false
-				})
-			));
-			assert!(!allowance::<Test, ()>(collection_id, ALICE, BOB, None));
-			assert_last_event(
-				prefixed_address(ERC721, collection_id),
-				IERC721::ApprovalForAll {
-					owner: ALICE_ADDR.0.into(),
-					operator: BOB_ADDR.0.into(),
-					approved: false,
-				},
-			);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, 0);
+				assert_ok!(crate::nonfungibles::approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
+					collection_id,
+					BOB,
+					None,
+					true,
+					None,
+				));
+				// Successfully removes approval.
+				assert_ok!(call_precompile::<()>(
+					&ALICE,
+					collection_id,
+					&IERC721Calls::setApprovalForAll(IERC721::setApprovalForAllCall {
+						operator: BOB_ADDR.0.into(),
+						approved: false
+					})
+				));
+				assert!(!allowance::<Test, ()>(collection_id, ALICE, BOB, None));
+				assert_last_event(
+					prefixed_address(ERC721, collection_id),
+					IERC721::ApprovalForAll {
+						owner: ALICE_ADDR.0.into(),
+						operator: BOB_ADDR.0.into(),
+						approved: false,
+					},
+				);
+			});
 	}
 
 	#[test]
 	fn get_approved_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_ok!(crate::nonfungibles::approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				Some(item_id),
-				true,
-				None,
-			));
-			let address: Address = BOB_ADDR.0.into();
-			// Approved.
-			assert_eq!(
-				call_precompile::<Address>(
-					&BOB,
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_ok!(crate::nonfungibles::approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
 					collection_id,
-					&IERC721Calls::getApproved(IERC721::getApprovedCall {
-						tokenId: U256::saturating_from(item_id)
-					})
-				)
-				.unwrap(),
-				address
-			);
-		});
+					BOB,
+					Some(item_id),
+					true,
+					None,
+				));
+				let address: Address = BOB_ADDR.0.into();
+				// Approved.
+				assert_eq!(
+					call_precompile::<Address>(
+						&BOB,
+						collection_id,
+						&IERC721Calls::getApproved(IERC721::getApprovedCall {
+							tokenId: U256::saturating_from(item_id)
+						})
+					)
+					.unwrap(),
+					address
+				);
+			});
 	}
 
 	#[test]
 	fn get_approved_fails_with_no_approval() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			// Not approved.
-			assert!(matches!(
-				call_precompile::<Address>(
-					&BOB,
-					collection_id,
-					&IERC721Calls::getApproved(IERC721::getApprovedCall {
-						tokenId: U256::saturating_from(item_id)
-					})
-				),
-				Err(DispatchError::Other("ERC721: Not approved"))
-			));
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				// Not approved.
+				assert!(matches!(
+					call_precompile::<Address>(
+						&BOB,
+						collection_id,
+						&IERC721Calls::getApproved(IERC721::getApprovedCall {
+							tokenId: U256::saturating_from(item_id)
+						})
+					),
+					Err(DispatchError::Other("ERC721: Not approved"))
+				));
+			});
 	}
 
 	#[test]
 	fn is_approved_for_all_works() {
 		let item_id: u32 = 0;
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			assert_ok!(crate::nonfungibles::approve::<Test, ()>(
-				RuntimeOrigin::signed(ALICE),
-				collection_id,
-				BOB,
-				None,
-				true,
-				None,
-			));
-			assert_ok!(call_precompile::<bool>(
-				&ALICE,
-				collection_id,
-				&IERC721Calls::isApprovedForAll(IERC721::isApprovedForAllCall {
-					owner: ALICE_ADDR.0.into(),
-					operator: BOB_ADDR.0.into()
-				})
-			));
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				assert_ok!(crate::nonfungibles::approve::<Test, ()>(
+					RuntimeOrigin::signed(ALICE),
+					collection_id,
+					BOB,
+					None,
+					true,
+					None,
+				));
+				assert_ok!(call_precompile::<bool>(
+					&ALICE,
+					collection_id,
+					&IERC721Calls::isApprovedForAll(IERC721::isApprovedForAllCall {
+						owner: ALICE_ADDR.0.into(),
+						operator: BOB_ADDR.0.into()
+					})
+				));
+			});
 	}
 
 	#[test]
 	fn name_works() {
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection(ALICE);
-			set_attribute(collection_id, None, "name", "ERC721 Example Colection");
-			assert_eq!(
-				call_precompile::<String>(
-					&ALICE,
-					collection_id,
-					&IERC721Calls::name(IERC721::nameCall {})
-				)
-				.unwrap(),
-				"ERC721 Example Colection".to_string()
-			);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(ALICE);
+				set_attribute(collection_id, None, "name", "ERC721 Example Colection");
+				assert_eq!(
+					call_precompile::<String>(
+						&ALICE,
+						collection_id,
+						&IERC721Calls::name(IERC721::nameCall {})
+					)
+					.unwrap(),
+					"ERC721 Example Colection".to_string()
+				);
+			});
 	}
 
 	#[test]
 	fn symbol_works() {
 		let collection_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection(ALICE);
-			set_attribute(collection_id, None, "symbol", "POP");
-			assert_eq!(
-				call_precompile::<String>(
-					&ALICE,
-					collection_id,
-					&IERC721Calls::symbol(IERC721::symbolCall {})
-				)
-				.unwrap(),
-				"POP".to_string()
-			);
-		});
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(ALICE);
+				set_attribute(collection_id, None, "symbol", "POP");
+				assert_eq!(
+					call_precompile::<String>(
+						&ALICE,
+						collection_id,
+						&IERC721Calls::symbol(IERC721::symbolCall {})
+					)
+					.unwrap(),
+					"POP".to_string()
+				);
+			});
 	}
 
 	#[test]
 	fn image_works() {
 		let collection_id: u32 = 0;
 		let item_id: u32 = 0;
-		ExtBuilder::new().build().execute_with(|| {
-			create_collection_and_mint(ALICE, collection_id, item_id);
-			set_attribute(collection_id, Some(item_id), "image", "https://example.com/image.png");
-			assert_eq!(
-				call_precompile::<String>(
-					&ALICE,
+		ExtBuilder::new()
+			.with_balances(vec![(ALICE, 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(ALICE, collection_id, item_id);
+				set_attribute(
 					collection_id,
-					&IERC721Calls::tokenURI(IERC721::tokenURICall {
-						tokenId: U256::saturating_from(item_id)
-					})
-				)
-				.unwrap(),
-				"https://example.com/image.png".to_string()
-			);
-		});
+					Some(item_id),
+					"image",
+					"https://example.com/image.png",
+				);
+				assert_eq!(
+					call_precompile::<String>(
+						&ALICE,
+						collection_id,
+						&IERC721Calls::tokenURI(IERC721::tokenURICall {
+							tokenId: U256::saturating_from(item_id)
+						})
+					)
+					.unwrap(),
+					"https://example.com/image.png".to_string()
+				);
+			});
 	}
 
 	fn create_collection_and_mint(owner: AccountIdOf<Test>, collection_id: u32, item_id: u32) {

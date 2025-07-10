@@ -14,6 +14,7 @@ pub(crate) use pallet_revive::test_utils::{ALICE, BOB, CHARLIE};
 use scale_info::TypeInfo;
 
 use super::fungibles;
+use crate::nonfungibles;
 
 pub(crate) type AccountId = AccountId32;
 pub(crate) type Balance = u128;
@@ -24,6 +25,7 @@ pub(crate) type TokenId = u32;
 
 pub(crate) const ERC20: u16 = 2;
 pub(crate) const FUNGIBLES: u16 = 1;
+pub(crate) const NONFUNGIBLES: u16 = 4;
 pub(crate) const ERC721: u16 = 3;
 pub(crate) const UNIT: Balance = 10_000_000_000;
 
@@ -140,6 +142,8 @@ impl pallet_revive::Config for Test {
 	type Precompiles = (
 		fungibles::precompiles::v0::Fungibles<FUNGIBLES, Test>,
 		fungibles::precompiles::erc20::v0::Erc20<ERC20, Test>,
+		nonfungibles::precompiles::v0::Nonfungibles<NONFUNGIBLES, Test>,
+		nonfungibles::precompiles::erc721::v0::Erc721<ERC721, Test>,
 	);
 	type Time = Timestamp;
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
