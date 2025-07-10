@@ -15,13 +15,16 @@ pub struct Erc20<const PREFIX: u16, T, I = ()>(PhantomData<(T, I)>);
 impl<
 		const PREFIX: u16,
 		T: frame_system::Config
-			+ pallet_assets::Config<I, AssetId: AtLeast32Bit>
-			+ pallet_revive::Config
+			+ pallet_assets::Config<
+				I,
+				AssetId: AtLeast32Bit,
+				Balance: TryConvert<U256, Error = Error>,
+			> + pallet_revive::Config
 			+ Config<I>,
 		I: 'static,
 	> Precompile for Erc20<PREFIX, T, I>
 where
-	U256: UintTryFrom<T::Balance> + UintTryTo<T::Balance>,
+	U256: TryConvert<<T as pallet_assets::Config<I>>::Balance, Error = Error>,
 {
 	type Interface = IERC20Calls;
 	type T = T;
@@ -42,7 +45,7 @@ where
 			IERC20Calls::totalSupply(_) => {
 				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
 
-				let total_supply = U256::saturating_from(total_supply::<T, I>(token));
+				let total_supply = total_supply::<T, I>(token).try_convert()?;
 
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
@@ -50,7 +53,7 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
 
 				let account = env.to_account_id(&(*account.0).into());
-				let balance = U256::saturating_from(balance::<T, I>(token, &account));
+				let balance = balance::<T, I>(token, &account).try_convert()?;
 
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
@@ -62,7 +65,7 @@ where
 					to_runtime_origin(env.caller()),
 					token,
 					env.to_account_id(&(*to.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				)?;
 
 				deposit_event(env, Transfer { from, to: *to, value: *value })?;
@@ -73,7 +76,7 @@ where
 
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
-				let remaining = U256::saturating_from(allowance::<T, I>(token, &owner, &spender));
+				let remaining = allowance::<T, I>(token, &owner, &spender).try_convert()?;
 
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
@@ -85,7 +88,7 @@ where
 					to_runtime_origin(env.caller()),
 					token,
 					env.to_account_id(&(*spender.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				) {
 					Ok(result) => {
 						// Adjust weight
@@ -119,7 +122,7 @@ where
 					token,
 					env.to_account_id(&(*from.0).into()),
 					env.to_account_id(&(*to.0).into()),
-					value.saturating_to(),
+					(*value).try_convert()?,
 				)?;
 
 				deposit_event(env, Transfer { from: *from, to: *to, value: *value })?;

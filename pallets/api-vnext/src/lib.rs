@@ -5,24 +5,29 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::{convert::Into, marker::PhantomData, num::NonZero};
 
-use frame_support::{dispatch::RawOrigin, sp_runtime::traits::StaticLookup};
+use frame_support::{
+	dispatch::RawOrigin,
+	pallet_prelude::DispatchError,
+	sp_runtime::{traits::StaticLookup, ArithmeticError},
+};
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 use pallet_revive::precompiles::alloy::sol_types::{SolType, SolValue};
 use pallet_revive::{
 	precompiles::{
-		alloy::{primitives::IntoLogData, sol, sol_types::SolEvent},
+		alloy::{
+			primitives::{self as alloy, IntoLogData},
+			sol,
+			sol_types::SolEvent,
+		},
 		AddressMatcher, Error, Ext, Precompile,
 	},
-	AddressMapper as _, Origin, H160, H256, U256,
+	AddressMapper as _, Origin, H256, U256,
 };
 #[cfg(test)]
 use {
-	frame_support::{
-		pallet_prelude::{DispatchError, Weight},
-		sp_runtime::traits::Bounded,
-	},
+	frame_support::{pallet_prelude::Weight, sp_runtime::traits::Bounded},
 	frame_system::pallet_prelude::OriginFor,
-	pallet_revive::{BalanceOf, DepositLimit, MomentOf},
+	pallet_revive::{BalanceOf, DepositLimit, MomentOf, H160},
 };
 
 #[cfg(feature = "fungibles")]
@@ -148,5 +153,32 @@ pub fn to_runtime_origin<T: pallet_revive::Config>(o: Origin<T>) -> T::RuntimeOr
 	match o {
 		Origin::Root => RawOrigin::Root.into(),
 		Origin::Signed(account) => RawOrigin::Signed(account).into(),
+	}
+}
+
+/// Extension trait for ergonomic conversion between types.
+pub trait TryConvert<T> {
+	/// The type returned in the event of a conversion error.
+	type Error;
+
+	/// Attempt to convert to target type.
+	fn try_convert(self) -> Result<T, Self::Error>;
+}
+
+impl TryConvert<alloy::U256> for u128 {
+	type Error = Error;
+
+	fn try_convert(self) -> Result<alloy::U256, Self::Error> {
+		self.try_into()
+			.map_err(|_| DispatchError::from(ArithmeticError::Overflow).into())
+	}
+}
+
+impl<T: TryFrom<alloy::U256>> TryConvert<T> for alloy::U256 {
+	type Error = Error;
+
+	fn try_convert(self) -> Result<T, Self::Error> {
+		self.try_into()
+			.map_err(|_| DispatchError::from(ArithmeticError::Overflow).into())
 	}
 }

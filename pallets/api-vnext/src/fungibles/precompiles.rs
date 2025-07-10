@@ -1,13 +1,10 @@
 use alloc::string::String;
 
 pub(super) use pallet_revive::precompiles::alloy::{
-	primitives::{
-		ruint::{UintTryFrom, UintTryTo},
-		Address, U256,
-	},
+	primitives::{Address, U256},
 	sol_types::SolCall,
 };
-use pallet_revive::precompiles::RuntimeCosts;
+use pallet_revive::precompiles::{Error, RuntimeCosts};
 use weights::WeightInfo;
 
 use super::*;
