@@ -6,22 +6,22 @@
 // TODO: consider size of id -> uint256 (word)
 interface INonfungibles {
     /**
-     * @dev Approves `operator` to transfer the given `item` on behalf of the caller until `deadline`.
+     * @dev Approves `operator` to transfer all items in `collection` on behalf of the caller until `deadline`.
      */
-    function approveTransfer(
+    function approve(
         uint32 collection,
         address operator,
-        uint32 item,
         bool approved,
         uint32 deadline
     ) external;
 
     /**
-     * @dev Approves `operator` to transfer all items in `collection` on behalf of the caller until `deadline`.
+     * @dev Approves `operator` to transfer the given `item` on behalf of the caller until `deadline`.
      */
-    function approveCollection(
+    function approve(
         uint32 collection,
         address operator,
+        uint32 item,
         bool approved,
         uint32 deadline
     ) external;
@@ -52,9 +52,19 @@ interface INonfungibles {
     ) external;
 
     /**
-     * @dev Sets an attribute on `item` or entire `collection` under the given `namespace` and `key`.
+     * @dev Sets an attribute on entire `collection` under the given `namespace` and `key`.
      */
-    function setItemAttribute(
+    function setAttribute(
+        uint32 collection,
+        bytes calldata namespace,
+        bytes calldata key,
+        bytes calldata value
+    ) external;
+
+    /**
+     * @dev Sets an attribute on `item` in a `collection` under the given `namespace` and `key`.
+     */
+    function setAttribute(
         uint32 collection,
         uint32 item,
         bytes calldata namespace,
@@ -63,17 +73,16 @@ interface INonfungibles {
     ) external;
 
     /**
-     * @dev Sets an attribute on entire `collection` under the given `namespace` and `key`.
+     * @dev Clears an attribute from an entire `collection` under the given `namespace` and `key`.
      */
-    function setCollectionAttribute(
+    function clearAttribute(
         uint32 collection,
         bytes calldata namespace,
-        bytes calldata key,
-        bytes calldata value
+        bytes calldata key
     ) external;
 
     /**
-     * @dev Clears an attribute from `item` or entire `collection` under the given `namespace` and `key`.
+     * @dev Clears an attribute from `item` in a `collection` under the given `namespace` and `key`.
      */
     function clearAttribute(
         uint32 collection,
@@ -89,6 +98,21 @@ interface INonfungibles {
         uint32 collection,
         uint32 item,
         bytes calldata data
+    ) external;
+
+    /**
+     * @dev Sets metadata for the specified `collection`.
+     */
+    function setMetadata(
+        uint32 collection,
+        bytes calldata data
+    ) external;
+
+    /**
+     * @dev Clears metadata for the specified `collection`.
+     */
+    function clearMetadata(
+        uint32 collection
     ) external;
 
     /**
@@ -129,9 +153,9 @@ interface INonfungibles {
     /**
      * @dev Clears all transfer approvals from the specified `item` in `collection`.
      */
-    function clearAllTransferApprovals(
+    function clearAllApprovals(
         uint32 collection,
-       uint32 item
+        uint32 item
     ) external;
 
     /**
@@ -177,6 +201,15 @@ interface INonfungibles {
     ) external view returns (address);
 
     /**
+     * @dev Returns whether `operator` is approved to transfer all items on behalf of `owner`.
+     */
+    function allowance(
+        uint32 collection,
+        address owner,
+        address operator
+    ) external view returns (bool);
+
+    /**
      * @dev Returns if `operator` is approved to transfer the `item` on behalf of `owner`.
      */
     function allowance(
@@ -187,15 +220,6 @@ interface INonfungibles {
     ) external view returns (bool);
 
     /**
-     * @dev Returns whether `operator` is approved to transfer all items on behalf of `owner`.
-     */
-    function collectionAllowance(
-        uint32 collection,
-        address owner,
-        address operator
-    ) external view returns (bool);
-
-    /**
      * @dev Returns the total number of items minted in `collection`.
      */
     function totalSupply(
@@ -203,20 +227,20 @@ interface INonfungibles {
     ) external view returns (uint32);
 
     /**
-     * @dev Returns the attribute value of `key` under `namespace` for given `item` in `collection`.
+     * @dev Returns the attribute value of `key` under `namespace` for `collection`.
      */
-    function getItemAttributes(
+    function getAttributes(
         uint32 collection,
-        uint32 item,
         bytes calldata namespace,
         bytes calldata key
     ) external view returns (string memory);
 
     /**
-     * @dev Returns the attribute value of `key` under `namespace` for `collection`.
+     * @dev Returns the attribute value of `key` under `namespace` for given `item` in `collection`.
      */
-    function getCollectionAttributes(
+    function getAttributes(
         uint32 collection,
+        uint32 item,
         bytes calldata namespace,
         bytes calldata key
     ) external view returns (string memory);

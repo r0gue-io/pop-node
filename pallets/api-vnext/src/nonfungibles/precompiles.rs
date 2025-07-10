@@ -1,7 +1,11 @@
 use alloc::string::String;
 
 pub(super) use pallet_revive::precompiles::alloy::primitives::U256;
-use pallet_revive::precompiles::RuntimeCosts;
+use pallet_revive::precompiles::{
+	alloy::sol_types::{Revert, SolCall},
+	AddressMatcher::Fixed,
+	RuntimeCosts,
+};
 
 // use weights::WeightInfo;
 use super::*;

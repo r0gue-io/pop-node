@@ -5,6 +5,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::{convert::Into, marker::PhantomData, num::NonZero};
 
+use codec::Decode;
 use frame_support::{dispatch::RawOrigin, sp_runtime::traits::StaticLookup};
 #[cfg(any(test, feature = "runtime-benchmarks"))]
 use pallet_revive::precompiles::alloy::sol_types::{SolType, SolValue};
@@ -12,7 +13,11 @@ use pallet_revive::precompiles::alloy::sol_types::{SolType, SolValue};
 use pallet_revive::H160;
 use pallet_revive::{
 	precompiles::{
-		alloy::{primitives::IntoLogData, sol, sol_types::SolEvent},
+		alloy::{
+			primitives::{Bytes, IntoLogData},
+			sol,
+			sol_types::{Revert, SolEvent},
+		},
 		AddressMatcher, Error, Ext, Precompile,
 	},
 	AddressMapper as _, Origin, H256, U256,
@@ -153,5 +158,13 @@ pub fn to_runtime_origin<T: pallet_revive::Config>(o: Origin<T>) -> T::RuntimeOr
 	match o {
 		Origin::Root => RawOrigin::Root.into(),
 		Origin::Signed(account) => RawOrigin::Signed(account).into(),
+	}
+}
+
+/// Decodes a `Bytes` into a type that implements `Decode`.
+pub fn decode_bytes<P: Decode>(b: &Bytes) -> Result<P, Error> {
+	match P::decode(&mut &b[..]) {
+		Ok(b) => Ok(b),
+		Err(_) => return Err(Error::Revert(Revert { reason: "Failed to decode".to_string() })),
 	}
 }

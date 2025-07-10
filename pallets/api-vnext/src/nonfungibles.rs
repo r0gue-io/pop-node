@@ -251,13 +251,6 @@ fn clear_collection_metadata<T: Config<I>, I>(
 	Nfts::<T, I>::clear_collection_metadata(origin, collection)
 }
 
-fn set_accept_ownership<T: Config<I>, I>(
-	origin: OriginFor<T>,
-	collection: Option<CollectionIdOf<T, I>>,
-) -> DispatchResult {
-	Nfts::<T, I>::set_accept_ownership(origin, collection)
-}
-
 fn set_collection_max_supply<T: Config<I>, I>(
 	origin: OriginFor<T>,
 	collection: CollectionIdOf<T, I>,
