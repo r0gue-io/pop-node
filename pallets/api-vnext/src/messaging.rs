@@ -25,6 +25,8 @@ use weights::WeightInfo;
 
 use super::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 mod deposits;
 /// The messaging precompiles offer a streamlined interface for cross-chain messaging.
 pub mod precompiles;

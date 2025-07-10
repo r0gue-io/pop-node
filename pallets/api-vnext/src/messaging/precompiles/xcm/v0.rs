@@ -12,7 +12,8 @@ sol!(
 	"src/messaging/precompiles/interfaces/v0/IXCM.sol"
 );
 
-type BlockNumberOf<T> = <<<T as frame_system::Config>::Block as Block>::Header as Header>::Number;
+pub(crate) type BlockNumberOf<T> =
+	<<<T as frame_system::Config>::Block as Block>::Header as Header>::Number;
 
 /// The XCM precompile offers a streamlined interface for messaging using Polkadot's Cross-Consensus
 /// Messaging (XCM).
@@ -171,6 +172,13 @@ where
 				Ok(sendCall::abi_encode_returns(&result.encode().into()))
 			},
 		}
+	}
+}
+
+impl<const FIXED: u16, T> Xcm<FIXED, T> {
+	/// The address of the precompile.
+	pub const fn address() -> [u8; 20] {
+		fixed_address(FIXED)
 	}
 }
 

@@ -1,11 +1,11 @@
 pub(crate) use IMessaging::*;
+pub(crate) use IMessagingCalls;
 
 use super::*;
 use crate::messaging::{
 	self,
 	precompiles::v0::IMessaging::{
 		getResponseCall, pollStatusCall, remove_0Call, remove_0Return, remove_1Call,
-		IMessagingCalls,
 	},
 	Config,
 };
@@ -75,6 +75,13 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
 			},
 		}
+	}
+}
+
+impl<const FIXED: u16, T> Messaging<FIXED, T> {
+	/// The address of the precompile.
+	pub const fn address() -> [u8; 20] {
+		fixed_address(FIXED)
 	}
 }
 

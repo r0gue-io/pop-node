@@ -2,7 +2,7 @@ use alloc::{boxed::Box, vec::Vec};
 
 use frame_support::traits::Get;
 use frame_system::EnsureRoot;
-use ismp::{host::StateMachine, module::IsmpModule, router::IsmpRouter};
+use ismp::{error::Error, host::StateMachine, module::IsmpModule, router::IsmpRouter};
 use ismp_parachain::ParachainConsensusClient;
 
 use crate::{
@@ -47,6 +47,10 @@ impl Get<StateMachine> for HostStateMachine {
 pub struct Router;
 impl IsmpRouter for Router {
 	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
-		Err(anyhow::anyhow!("Module not found: {:?}", id))
+		use pallet_api_vnext::messaging::transports::ismp::*;
+		if id == ID {
+			return Ok(Box::new(Handler::<Runtime>::new()));
+		}
+		Err(Error::ModuleNotFound(id).into())
 	}
 }
