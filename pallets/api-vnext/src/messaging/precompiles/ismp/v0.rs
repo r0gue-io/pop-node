@@ -291,7 +291,7 @@ mod tests {
 		let message = 1;
 		let request = IISMP::Get {
 			destination: 1_000,
-			height: u32::MAX,
+			height: u64::MAX,
 			timeout: u64::MAX,
 			context: vec![255u8; 64].into(),
 			keys: vec![vec![255u8; 32].into()].into(),
@@ -325,7 +325,7 @@ mod tests {
 		let message = 1;
 		let request = IISMP::Get {
 			destination: 1_000,
-			height: u32::MAX,
+			height: u64::MAX,
 			timeout: u64::MAX,
 			context: vec![255u8; 64].into(),
 			keys: vec![vec![255u8; 32].into()].into(),
@@ -557,7 +557,7 @@ mod tests {
 				nonce: pallet_ismp::Nonce::<Test>::get(),
 				from: ID.to_vec(),
 				keys: request.keys.iter().map(|key| key.to_vec()).collect(),
-				height: request.height as u64,
+				height: request.height,
 				context: request.context.to_vec(),
 				timeout_timestamp: Timestamp::now().as_secs() + request.timeout,
 			})

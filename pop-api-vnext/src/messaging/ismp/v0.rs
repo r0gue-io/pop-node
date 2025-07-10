@@ -190,7 +190,7 @@ pub struct Get {
 	/// The destination state machine of this request.
 	pub destination: u32,
 	/// Height at which to read the state machine.
-	pub height: BlockNumber,
+	pub height: u64,
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Some application-specific metadata relating to this request.
@@ -203,7 +203,7 @@ impl Get {
 	// TODO: docs
 	pub fn new(
 		destination: u32,
-		height: BlockNumber,
+		height: u64,
 		timeout: u64,
 		context: Vec<u8>,
 		keys: Vec<Vec<u8>>,
@@ -213,7 +213,7 @@ impl Get {
 }
 
 impl SolDecode for Get {
-	type SolType = (u32, BlockNumber, u64, Vec<u8>, Vec<Vec<u8>>);
+	type SolType = (u32, u64, u64, Vec<u8>, Vec<Vec<u8>>);
 
 	fn from_sol_type(value: Self::SolType) -> Self {
 		Self {
@@ -226,7 +226,7 @@ impl SolDecode for Get {
 	}
 }
 impl<'a> SolEncode<'a> for Get {
-	type SolType = (&'a u32, &'a BlockNumber, &'a u64, &'a Vec<u8>, &'a Vec<Vec<u8>>);
+	type SolType = (&'a u32, &'a u64, &'a u64, &'a Vec<u8>, &'a Vec<Vec<u8>>);
 
 	fn to_sol_type(&'a self) -> Self::SolType {
 		(&self.destination, &self.height, &self.timeout, &self.context, &self.keys)
