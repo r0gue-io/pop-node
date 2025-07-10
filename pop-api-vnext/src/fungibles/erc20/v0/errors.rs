@@ -1,3 +1,5 @@
+use ink::sol::SolErrorEncode;
+
 use super::*;
 
 #[derive(ink::SolErrorDecode, ink::SolErrorEncode)]
