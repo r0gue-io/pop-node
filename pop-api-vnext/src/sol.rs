@@ -2,7 +2,7 @@ pub use alloy_sol_types::{
 	sol_data::{Address as SolAddress, Uint},
 	SolError, SolType,
 };
-pub use ink::{abi::Sol, primitives::sol::SolTypeEncode, SolEncode};
+pub use ink::{abi::Sol, primitives::sol::SolTypeEncode, SolDecode, SolEncode};
 
 /// Reverts the current contract execution, rolling back any changes and returning the specified
 /// `error`.
