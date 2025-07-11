@@ -196,4 +196,17 @@ interface IFungibles {
      * @param admin The administrator of the token.
      */
     event Created(uint32 id, address creator, address admin);
+
+    /// @dev The token recipient is invalid.
+    error InvalidRecipient(address);
+    /// @dev The minimum balance should be non-zero.
+    error MinBalanceZero();
+    /// @dev The `admin` address cannot be the zero address.
+    error ZeroAdminAddress();
+    /// @dev The recipient cannot be the zero address.
+    error ZeroRecipientAddress();
+    /// @dev The sender cannot be the zero address.
+    error ZeroSenderAddress();
+    /// @dev The specified `value` cannot be zero.
+    error ZeroValue();
 }

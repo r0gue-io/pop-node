@@ -2,7 +2,10 @@ pub(crate) use IFungibles::*;
 
 use super::*;
 
-sol!("src/fungibles/precompiles/interfaces/v0/IFungibles.sol");
+sol!(
+	#![sol(extra_derives(Debug, PartialEq))]
+	"src/fungibles/precompiles/interfaces/v0/IFungibles.sol"
+);
 
 /// The fungibles precompile offers a streamlined interface for interacting with fungible
 /// tokens. The goal is to provide a simplified, consistent API that adheres to standards in
@@ -38,6 +41,8 @@ where
 			IFungiblesCalls::transfer(transferCall { token, to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
 				let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				ensure!(!to.is_zero(), ZeroRecipientAddress);
+				ensure!(!value.is_zero(), ZeroValue);
 
 				transfer::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -51,6 +56,10 @@ where
 			},
 			IFungiblesCalls::transferFrom(transferFromCall { token, from, to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer_from())?;
+				ensure!(!from.is_zero(), ZeroSenderAddress);
+				ensure!(!to.is_zero(), ZeroRecipientAddress);
+				ensure!(to != from, InvalidRecipient(*to));
+				ensure!(!value.is_zero(), ZeroValue);
 
 				transfer_from::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -67,6 +76,8 @@ where
 			IFungiblesCalls::approve(approveCall { token, spender, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				ensure!(!spender.is_zero(), ZeroRecipientAddress);
+				ensure!(!value.is_zero(), ZeroValue);
 
 				match approve::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -102,6 +113,8 @@ where
 			IFungiblesCalls::increaseAllowance(increaseAllowanceCall { token, spender, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 0))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				ensure!(!spender.is_zero(), ZeroRecipientAddress);
+				ensure!(!value.is_zero(), ZeroValue);
 
 				let value = increase_allowance::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -128,6 +141,8 @@ where
 			IFungiblesCalls::decreaseAllowance(decreaseAllowanceCall { token, spender, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				ensure!(!spender.is_zero(), ZeroRecipientAddress);
+				ensure!(!value.is_zero(), ZeroValue);
 
 				let value = match decrease_allowance::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -164,6 +179,8 @@ where
 			IFungiblesCalls::create(createCall { admin, minBalance }) => {
 				env.charge(<T as Config<I>>::WeightInfo::create())?;
 				let creator = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				ensure!(!admin.is_zero(), ZeroAdminAddress);
+				ensure!(!minBalance.is_zero(), MinBalanceZero);
 
 				let id = create::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -204,6 +221,8 @@ where
 			},
 			IFungiblesCalls::mint(mintCall { token, account, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::mint())?;
+				ensure!(!account.is_zero(), ZeroRecipientAddress);
+				ensure!(!value.is_zero(), ZeroValue);
 
 				mint::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -219,6 +238,8 @@ where
 			},
 			IFungiblesCalls::burn(burnCall { token, account, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::burn())?;
+				ensure!(!account.is_zero(), ZeroSenderAddress);
+				ensure!(!value.is_zero(), ZeroValue);
 
 				burn::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -333,6 +354,29 @@ mod tests {
 	type Metadata = pallet_assets::Metadata<Test>;
 
 	#[test]
+	fn transfer_reverts_with_zero_recipient_address() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferCall { token, to: Address::default(), value: U256::ZERO };
+			let transfer = IFungiblesCalls::transfer(call);
+			assert_revert!(call_precompile::<()>(&origin, &transfer), ZeroRecipientAddress);
+		});
+	}
+
+	#[test]
+	fn transfer_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let to = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferCall { token, to, value: U256::ZERO };
+			let transfer = IFungiblesCalls::transfer(call);
+			assert_revert!(call_precompile::<()>(&origin, &transfer), ZeroValue);
+		});
+	}
+
+	#[test]
 	fn transfer_works() {
 		let token = 1;
 		let origin = ALICE;
@@ -364,6 +408,59 @@ mod tests {
 				let event = Transfer { token, from, to, value: U256::from(value) };
 				assert_last_event(ADDRESS, event);
 			});
+	}
+
+	#[test]
+	fn transfer_from_reverts_with_zero_sender_address() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferFromCall {
+				token,
+				from: Address::default(),
+				to: Address::default(),
+				value: U256::ZERO,
+			};
+			let transfer_from = IFungiblesCalls::transferFrom(call);
+			assert_revert!(call_precompile::<()>(&origin, &transfer_from), ZeroSenderAddress);
+		});
+	}
+
+	#[test]
+	fn transfer_from_reverts_with_zero_recipient_address() {
+		let token = 1;
+		let origin = ALICE;
+		let from = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferFromCall { token, from, to: Address::default(), value: U256::ZERO };
+			let transfer_from = IFungiblesCalls::transferFrom(call);
+			assert_revert!(call_precompile::<()>(&origin, &transfer_from), ZeroRecipientAddress);
+		});
+	}
+
+	#[test]
+	fn transfer_from_reverts_with_invalid_recipient() {
+		let token = 1;
+		let origin = ALICE;
+		let from = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferFromCall { token, from, to: from, value: U256::ZERO };
+			let transfer_from = IFungiblesCalls::transferFrom(call);
+			assert_revert!(call_precompile::<()>(&origin, &transfer_from), InvalidRecipient(from));
+		});
+	}
+
+	#[test]
+	fn transfer_from_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let from = [255; 20].into();
+		let to = [1; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferFromCall { token, from, to, value: U256::ZERO };
+			let transfer_from = IFungiblesCalls::transferFrom(call);
+			assert_revert!(call_precompile::<()>(&origin, &transfer_from), ZeroValue);
+		});
 	}
 
 	#[test]
@@ -409,6 +506,29 @@ mod tests {
 	}
 
 	#[test]
+	fn approve_reverts_with_zero_recipient_address() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = approveCall { token, spender: Address::default(), value: U256::ZERO };
+			let approve = IFungiblesCalls::approve(call);
+			assert_revert!(call_precompile::<()>(&origin, &approve), ZeroRecipientAddress);
+		});
+	}
+
+	#[test]
+	fn approve_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let spender = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = approveCall { token, spender, value: U256::ZERO };
+			let approve = IFungiblesCalls::approve(call);
+			assert_revert!(call_precompile::<()>(&origin, &approve), ZeroValue);
+		});
+	}
+
+	#[test]
 	fn approve_works() {
 		let token = 1;
 		let origin = ALICE;
@@ -436,6 +556,33 @@ mod tests {
 				let event = Approval { token, owner, spender, value: U256::from(value) };
 				assert_last_event(ADDRESS, event);
 			});
+	}
+
+	#[test]
+	fn increase_allowance_reverts_with_zero_recipient_address() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call =
+				increaseAllowanceCall { token, spender: Address::default(), value: U256::ZERO };
+			let increase_allowance = IFungiblesCalls::increaseAllowance(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, &increase_allowance),
+				ZeroRecipientAddress
+			);
+		});
+	}
+
+	#[test]
+	fn increase_allowance_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let spender = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = increaseAllowanceCall { token, spender, value: U256::ZERO };
+			let increase_allowance = IFungiblesCalls::increaseAllowance(call);
+			assert_revert!(call_precompile::<()>(&origin, &increase_allowance), ZeroValue);
+		});
 	}
 
 	#[test]
@@ -478,6 +625,33 @@ mod tests {
 	}
 
 	#[test]
+	fn decrease_allowance_reverts_with_zero_recipient_address() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call =
+				decreaseAllowanceCall { token, spender: Address::default(), value: U256::ZERO };
+			let decrease_allowance = IFungiblesCalls::decreaseAllowance(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, &decrease_allowance),
+				ZeroRecipientAddress
+			);
+		});
+	}
+
+	#[test]
+	fn decrease_allowance_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let spender = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = decreaseAllowanceCall { token, spender, value: U256::ZERO };
+			let decrease_allowance = IFungiblesCalls::decreaseAllowance(call);
+			assert_revert!(call_precompile::<()>(&origin, &decrease_allowance), ZeroValue);
+		});
+	}
+
+	#[test]
 	fn decrease_allowance_works() {
 		let token = 1;
 		let origin = ALICE;
@@ -514,6 +688,27 @@ mod tests {
 				let event = Approval { token, owner, spender, value: U256::from(allowance) };
 				assert_last_event(ADDRESS, event);
 			});
+	}
+
+	#[test]
+	fn create_reverts_with_zero_admin_address() {
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = createCall { admin: Address::default(), minBalance: U256::ZERO };
+			let create = IFungiblesCalls::create(call);
+			assert_revert!(call_precompile::<()>(&origin, &create), ZeroAdminAddress);
+		});
+	}
+
+	#[test]
+	fn create_reverts_with_zero_min_balance() {
+		let origin = ALICE;
+		let admin = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = createCall { admin, minBalance: U256::ZERO };
+			let create = IFungiblesCalls::create(call);
+			assert_revert!(call_precompile::<()>(&origin, &create), MinBalanceZero);
+		});
 	}
 
 	#[test]
@@ -655,6 +850,29 @@ mod tests {
 	}
 
 	#[test]
+	fn mint_reverts_with_zero_sender_address() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = mintCall { token, account: Address::default(), value: U256::ZERO };
+			let mint = IFungiblesCalls::mint(call);
+			assert_revert!(call_precompile::<()>(&origin, &mint), ZeroRecipientAddress);
+		});
+	}
+
+	#[test]
+	fn mint_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let account = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = mintCall { token, account, value: U256::ZERO };
+			let mint = IFungiblesCalls::mint(call);
+			assert_revert!(call_precompile::<()>(&origin, &mint), ZeroValue);
+		});
+	}
+
+	#[test]
 	fn mint_works() {
 		let token = 1;
 		let origin = ALICE;
@@ -680,6 +898,29 @@ mod tests {
 				let event = Transfer { token, from, to, value: U256::from(value) };
 				assert_last_event(ADDRESS, event);
 			});
+	}
+
+	#[test]
+	fn burn_reverts_with_zero_sender_address() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = burnCall { token, account: Address::default(), value: U256::ZERO };
+			let burn = IFungiblesCalls::burn(call);
+			assert_revert!(call_precompile::<()>(&origin, &burn), ZeroSenderAddress);
+		});
+	}
+
+	#[test]
+	fn burn_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let account = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = burnCall { token, account, value: U256::ZERO };
+			let burn = IFungiblesCalls::burn(call);
+			assert_revert!(call_precompile::<()>(&origin, &burn), ZeroValue);
+		});
 	}
 
 	#[test]
@@ -875,7 +1116,7 @@ mod tests {
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
 		origin: &AccountId,
 		input: &IFungiblesCalls,
-	) -> Result<Output, DispatchError> {
+	) -> Result<Output, Error> {
 		bare_call::<Test, Output>(
 			RuntimeOrigin::signed(origin.clone()),
 			ADDRESS.into(),

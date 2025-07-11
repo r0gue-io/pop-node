@@ -12,6 +12,7 @@ version = "0.1.0"
 doctest = false
 
 [dependencies]
+base64.workspace = true
 codec.workspace = true
 frame-benchmarking.workspace = true
 frame-support.workspace = true

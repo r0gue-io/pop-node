@@ -8,7 +8,10 @@ use IERC20::*;
 
 use super::{super::super::*, U256, *};
 
-sol!("src/fungibles/precompiles/interfaces/v0/IERC20.sol");
+sol!(
+	#![sol(extra_derives(Debug, PartialEq))]
+	"src/fungibles/precompiles/interfaces/v0/IERC20.sol"
+);
 
 /// Precompile providing an interface of the ERC-20 standard as defined in the ERC.
 pub struct Erc20<const PREFIX: u16, T, I = ()>(PhantomData<(T, I)>);
@@ -60,6 +63,8 @@ where
 			IERC20Calls::transfer(transferCall { to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
 				let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
+				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
 				transfer::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -83,6 +88,8 @@ where
 			IERC20Calls::approve(approveCall { spender, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				ensure!(!spender.is_zero(), ERC20InvalidSpender { spender: *spender });
+				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
 				match approve::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -116,6 +123,9 @@ where
 			},
 			IERC20Calls::transferFrom(transferFromCall { from, to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer_from())?;
+				ensure!(!from.is_zero(), ERC20InvalidSender { sender: *from });
+				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
+				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
 				transfer_from::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -166,15 +176,16 @@ impl<const PREFIX: u16, T: pallet_assets::Config<I>, I: 'static> Erc20<PREFIX, T
 #[cfg(test)]
 mod tests {
 	use frame_support::{
-		assert_ok,
-		sp_runtime::{app_crypto::sp_core::bytes::to_hex, DispatchError},
+		assert_ok, sp_runtime::app_crypto::sp_core::bytes::to_hex,
 		traits::fungibles::approvals::Inspect,
 	};
 	use pallet_revive::{
-		precompiles::alloy::sol_types::{SolInterface, SolType, SolValue},
+		precompiles::alloy::{
+			primitives::Address,
+			sol_types::{SolInterface, SolType, SolValue},
+		},
 		test_utils::{ALICE, BOB, CHARLIE},
 	};
-	use IERC20Calls::*;
 	use IERC20::{Approval, Transfer};
 
 	use super::*;
@@ -196,9 +207,9 @@ mod tests {
 			.with_asset_balances(vec![(token, ALICE, total_supply)])
 			.build()
 			.execute_with(|| {
+				let call = IERC20Calls::totalSupply(totalSupplyCall {});
 				assert_eq!(
-					call_precompile::<U256>(&ALICE, token, &totalSupply(totalSupplyCall {}))
-						.unwrap(),
+					call_precompile::<U256>(&ALICE, token, &call).unwrap(),
 					U256::from(total_supply)
 				);
 			});
@@ -218,12 +229,43 @@ mod tests {
 					call_precompile::<U256>(
 						&BOB,
 						token,
-						&balanceOf(balanceOfCall { account: to_address(&account).0.into() })
+						&IERC20Calls::balanceOf(balanceOfCall {
+							account: to_address(&account).0.into()
+						})
 					)
 					.unwrap(),
 					U256::from(endowment)
 				);
 			});
+	}
+
+	#[test]
+	fn transfer_reverts_with_invalid_receiver() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferCall { to: Address::default(), value: U256::ZERO };
+			let transfer = IERC20Calls::transfer(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, token, &transfer),
+				ERC20InvalidReceiver { receiver: Address::default() }
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let to = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferCall { to, value: U256::ZERO };
+			let transfer = IERC20Calls::transfer(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, token, &transfer),
+				ERC20InsufficientValue
+			);
+		});
 	}
 
 	#[test]
@@ -294,6 +336,32 @@ mod tests {
 	}
 
 	#[test]
+	fn approve_reverts_with_invalid_spender() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = approveCall { spender: Address::default(), value: U256::ZERO };
+			let approve = IERC20Calls::approve(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, token, &approve),
+				ERC20InvalidSpender { spender: Address::default() }
+			);
+		});
+	}
+
+	#[test]
+	fn approve_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let spender = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = approveCall { spender, value: U256::ZERO };
+			let approve = IERC20Calls::approve(call);
+			assert_revert!(call_precompile::<()>(&origin, token, &approve), ERC20InsufficientValue);
+		});
+	}
+
+	#[test]
 	fn approve_works() {
 		let token = 1;
 		let origin = ALICE;
@@ -325,6 +393,55 @@ mod tests {
 	}
 
 	#[test]
+	fn transfer_from_reverts_with_invalid_sender() {
+		let token = 1;
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferFromCall {
+				from: Address::default(),
+				to: Address::default(),
+				value: U256::ZERO,
+			};
+			let transfer_from = IERC20Calls::transferFrom(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, token, &transfer_from),
+				ERC20InvalidSender { sender: Address::default() }
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_from_reverts_with_invalid_receiver() {
+		let token = 1;
+		let origin = ALICE;
+		let from = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferFromCall { from, to: Address::default(), value: U256::ZERO };
+			let transfer_from = IERC20Calls::transferFrom(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, token, &transfer_from),
+				ERC20InvalidReceiver { receiver: Address::default() }
+			);
+		});
+	}
+
+	#[test]
+	fn transfer_from_reverts_with_zero_value() {
+		let token = 1;
+		let origin = ALICE;
+		let from = [255; 20].into();
+		let to = [1; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = transferFromCall { from, to, value: U256::ZERO };
+			let transfer_from = IERC20Calls::transferFrom(call);
+			assert_revert!(
+				call_precompile::<()>(&origin, token, &transfer_from),
+				ERC20InsufficientValue
+			);
+		});
+	}
+
+	#[test]
 	fn transfer_from_works() {
 		let token = 1;
 		let origin = BOB;
@@ -350,7 +467,7 @@ mod tests {
 				assert!(call_precompile::<bool>(
 					&origin,
 					token,
-					&transferFrom(IERC20::transferFromCall {
+					&IERC20Calls::transferFrom(IERC20::transferFromCall {
 						from: to_address(&from).0.into(),
 						to: to_address(&to).0.into(),
 						value: U256::from(value),
@@ -431,7 +548,7 @@ mod tests {
 		origin: &AccountId,
 		token: u32,
 		input: &IERC20Calls,
-	) -> Result<Output, DispatchError> {
+	) -> Result<Output, Error> {
 		let address = prefixed_address(ERC20, token);
 		bare_call::<Test, Output>(
 			RuntimeOrigin::signed(origin.clone()),

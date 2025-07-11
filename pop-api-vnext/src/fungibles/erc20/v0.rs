@@ -81,7 +81,7 @@ pub fn balance_of(token: TokenId, account: Address) -> U256 {
 /// Emits a [`Transfer`] event.
 #[inline]
 pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<bool, Error> {
-	ensure!(to != Address::zero(), ERC20InvalidSender(to));
+	ensure!(to != Address::zero(), ERC20InvalidReceiver(to));
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
 	let address = prefixed_address(PRECOMPILE, token);
@@ -108,7 +108,7 @@ pub fn allowance(token: TokenId, owner: Address, spender: Address) -> U256 {
 /// Emits an [`Approval`] event.
 #[inline]
 pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<bool, Error> {
-	ensure!(spender != Address::zero(), ERC20InvalidApprover(spender));
+	ensure!(spender != Address::zero(), ERC20InvalidSpender(spender));
 	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
 	let address = prefixed_address(PRECOMPILE, token);
