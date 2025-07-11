@@ -308,7 +308,7 @@ impl<
 				// TODO: Implement real weight
 				env.charge(Weight::default())?;
 
-				super::set_collection_max_supply::<T, I>(
+				super::set_max_supply::<T, I>(
 					to_runtime_origin(env.caller()),
 					(*collection).into(),
 					(*maxSupply).into(),
@@ -495,14 +495,14 @@ impl<
 				let item_metadata = String::from_utf8_lossy(&metadata).into();
 				Ok(itemMetadataCall::abi_encode_returns(&item_metadata))
 			},
-			INonfungiblesCalls::getAttributes_0(getAttributes_0Call {
+			INonfungiblesCalls::getAttribute_0(getAttribute_0Call {
 				collection,
 				namespace,
 				key,
 			}) => {
 				env.charge(Weight::default())?;
 
-				let attribute = match super::get_attributes::<T, I>(
+				let attribute = match super::get_attribute::<T, I>(
 					(*collection).into(),
 					None,
 					decode_bytes::<AttributeNamespace<AccountIdOf<T>>>(namespace)?,
@@ -515,9 +515,9 @@ impl<
 						})),
 				};
 				let result = String::from_utf8_lossy(&attribute).into();
-				Ok(getAttributes_0Call::abi_encode_returns(&result))
+				Ok(getAttribute_0Call::abi_encode_returns(&result))
 			},
-			INonfungiblesCalls::getAttributes_1(getAttributes_1Call {
+			INonfungiblesCalls::getAttribute_1(getAttribute_1Call {
 				collection,
 				item,
 				namespace,
@@ -525,7 +525,7 @@ impl<
 			}) => {
 				env.charge(Weight::default())?;
 
-				let attribute = match super::get_attributes::<T, I>(
+				let attribute = match super::get_attribute::<T, I>(
 					(*collection).into(),
 					Some((*item).into()),
 					decode_bytes::<AttributeNamespace<AccountIdOf<T>>>(namespace)?,
@@ -538,7 +538,7 @@ impl<
 						})),
 				};
 				let result = String::from_utf8_lossy(&attribute).into();
-				Ok(getAttributes_1Call::abi_encode_returns(&result))
+				Ok(getAttribute_1Call::abi_encode_returns(&result))
 			},
 		}
 	}

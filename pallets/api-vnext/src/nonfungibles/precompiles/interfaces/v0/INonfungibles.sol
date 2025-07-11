@@ -229,7 +229,7 @@ interface INonfungibles {
     /**
      * @dev Returns the attribute value of `key` under `namespace` for `collection`.
      */
-    function getAttributes(
+    function getAttribute(
         uint32 collection,
         bytes calldata namespace,
         bytes calldata key
@@ -238,7 +238,7 @@ interface INonfungibles {
     /**
      * @dev Returns the attribute value of `key` under `namespace` for given `item` in `collection`.
      */
-    function getAttributes(
+    function getAttribute(
         uint32 collection,
         uint32 item,
         bytes calldata namespace,

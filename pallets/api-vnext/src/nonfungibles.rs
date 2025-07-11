@@ -214,7 +214,7 @@ fn total_supply<T: Config<I>, I>(collection: CollectionIdOf<T, I>) -> u32 {
 	Nfts::<T, I>::collection_items(collection).unwrap_or_default()
 }
 
-fn get_attributes<T: Config<I>, I>(
+fn get_attribute<T: Config<I>, I>(
 	collection: CollectionIdOf<T, I>,
 	item: Option<ItemIdOf<T, I>>,
 	namespace: AttributeNamespace<AccountIdOf<T>>,
@@ -245,7 +245,7 @@ fn clear_collection_metadata<T: Config<I>, I>(
 	Nfts::<T, I>::clear_collection_metadata(origin, collection)
 }
 
-fn set_collection_max_supply<T: Config<I>, I>(
+fn set_max_supply<T: Config<I>, I>(
 	origin: OriginFor<T>,
 	collection: CollectionIdOf<T, I>,
 	max_supply: u32,
