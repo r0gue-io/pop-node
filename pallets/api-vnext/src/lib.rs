@@ -21,7 +21,7 @@ use pallet_revive::{
 		},
 		AddressMatcher, Error, Ext, Precompile,
 	},
-	AddressMapper as _, Origin, H256, U256,
+	AddressMapper as _, Origin, H256,
 };
 #[cfg(feature = "runtime-benchmarks")]
 use {
@@ -32,9 +32,14 @@ use {
 use {
 	frame_support::{pallet_prelude::Weight, sp_runtime::traits::Bounded},
 	frame_system::pallet_prelude::OriginFor,
-	pallet_revive::{BalanceOf, DepositLimit, MomentOf, H160},
+	pallet_revive::{
+		precompiles::alloy::sol_types::{Revert, SolError},
+		BalanceOf, DepositLimit, MomentOf, H160,
+	},
 };
 
+#[macro_use]
+mod errors;
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
 #[cfg(test)]
@@ -57,7 +62,7 @@ fn bare_call<
 	gas_limit: Weight,
 	storage_deposit_limit: DepositLimit<BalanceOf<T>>,
 	data: Vec<u8>,
-) -> Result<O, DispatchError>
+) -> Result<O, pallet_revive::precompiles::Error>
 where
 	BalanceOf<T>: Into<pallet_revive::evm::U256> + TryFrom<pallet_revive::evm::U256> + Bounded,
 	MomentOf<T>: Into<pallet_revive::evm::U256>,
@@ -71,9 +76,15 @@ where
 		storage_deposit_limit,
 		data,
 	)
-	.result?;
-	assert!(!result.did_revert());
-	Ok(decode::<O>(&result.data))
+	.result
+	.map_err(|e| Error::Error(e.into()))?;
+	match result.did_revert() {
+		true => {
+			let revert = Revert::abi_decode(&result.data).expect("revert data is invalid");
+			Err(Error::Revert(revert))
+		},
+		false => Ok(decode::<O>(&result.data)),
+	}
 }
 
 // A direct call to a precompile.

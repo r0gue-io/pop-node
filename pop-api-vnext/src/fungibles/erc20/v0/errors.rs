@@ -17,6 +17,8 @@ pub enum Error {
 	ERC20InvalidReceiver(Address),
 	/// Indicates a failure with the token `sender`.
 	ERC20InvalidSender(Address),
+	/// Indicates a failure with the `spender` to be approved.
+	ERC20InvalidSpender(Address),
 }
 
 impl<'a> ink::SolEncode<'a> for Error {
