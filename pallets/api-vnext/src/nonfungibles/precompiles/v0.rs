@@ -551,258 +551,234 @@ impl<const FIXED: u16, T: pallet_nfts::Config<I>, I: 'static> Nonfungibles<FIXED
 	}
 }
 
-// #[cfg(test)]
-// mod tests {
-// 	use frame_support::{assert_ok, traits::ConstU32};
-// 	use mock::{ExtBuilder, RuntimeEvent as Event, Test, TestCall};
-// 	use pallet_nfts::{Instance1, Pallet as Nfts};
-// 	use pallet_revive::precompiles::{ExtWithInfo, ExtWithInfoExt, Output};
+#[cfg(test)]
+mod tests {
+	use frame_support::{assert_ok, sp_runtime::DispatchError, BoundedVec};
+	use pallet_nfts::{
+		AttributeNamespace, CollectionConfig, CollectionConfigFor, CollectionSettings, MintSettings,
+	};
+	use pallet_revive::{
+		precompiles::alloy::sol_types::{SolInterface, SolType, SolValue},
+		test_utils::{ALICE, BOB},
+		DepositLimit, Weight,
+	};
 
-// 	use super::*;
-// 	use crate::tests::{accounts, mock};
-// 	type TheFungibles = Nonfungibles<1, Test, Instance1>;
+	use super::*;
+	use crate::{
+		bare_call, fixed_address,
+		mock::{AccountId, ExtBuilder, RuntimeOrigin, Test, NONFUNGIBLES},
+		nonfungibles::mint,
+		prefixed_address, AccountIdOf,
+	};
 
-// 	#[test]
-// 	fn approve_transfer_works() {
-// 		ExtBuilder::default().build().execute_with(|| {
-// 			let collection = create_collection(accounts::alice());
-// 			let item_id = 0u32;
+	const ADDRESS: [u8; 20] = fixed_address(NONFUNGIBLES);
 
-// 			// Mint an NFT to Alice
-// 			assert_ok!(mint_nft(collection, item_id, accounts::alice()));
+	#[test]
+	fn approve_0_works() {
+		let collection_id: u32 = 0;
+		let item_id = 0;
+		let owner = ALICE;
+		let operator = BOB;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+				// Successfully approved.
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					collection_id,
+					&INonfungiblesCalls::approve_0(INonfungibles::approve_0Call {
+						collection: collection_id.into(),
+						operator: to_address(&operator).0.into(),
+						approved: true,
+						deadline: 0
+					})
+				));
+				assert!(allowance::<Test, ()>(
+					collection_id,
+					owner.clone(),
+					operator.clone(),
+					None
+				));
+				let event = INonfungibles::CollectionApproval {
+					collection: collection_id.into(),
+					owner: to_address(&owner).0.into(),
+					operator: to_address(&operator).0.into(),
+					approved: true,
+				};
+				assert_last_event(ADDRESS, event);
+			});
+	}
 
-// 			// Approve Bob to transfer Alice's NFT
-// 			let mut ext = ExtBuilder::build_ext();
-// 			ext.setup(|_| {});
-// 			ext.set_caller(accounts::alice());
+	#[test]
+	fn approve_1_works() {
+		let item_id: u32 = 0;
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let operator = BOB;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+				// Successfully approved.
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					collection_id,
+					&INonfungiblesCalls::approve_1(INonfungibles::approve_1Call {
+						collection: collection_id.into(),
+						item: item_id.into(),
+						operator: to_address(&operator).0.into(),
+						approved: true,
+						deadline: 0
+					})
+				));
+				assert!(allowance::<Test, ()>(
+					collection_id,
+					owner.clone(),
+					operator.clone(),
+					Some(item_id)
+				));
+				let event = INonfungibles::ItemApproval {
+					item: item_id.into(),
+					owner: to_address(&owner).0.into(),
+					operator: to_address(&operator).0.into(),
+					approved: true,
+				};
+				assert_last_event(ADDRESS, event);
+			});
+	}
 
-// 			let call = INonfungiblesCalls::approveTransfer(approveTransferCall {
-// 				collection,
-// 				operator: Address::from(accounts::bob()),
-// 				item: item_id,
-// 				approved: true,
-// 				deadline: 0,
-// 			});
+	#[test]
+	fn transfer_works() {}
 
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call);
-// 			assert_ok!(result);
+	#[test]
+	fn create_works() {}
 
-// 			// Verify Bob is approved to transfer Alice's NFT
-// 			let approved = super::allowance::<Test, Instance1>(
-// 				collection,
-// 				accounts::alice(),
-// 				accounts::bob(),
-// 				Some(item_id),
-// 			);
-// 			assert!(approved);
-// 		});
-// 	}
+	#[test]
+	fn destroy_works() {}
 
-// 	#[test]
-// 	fn transfer_works() {
-// 		ExtBuilder::default().build().execute_with(|| {
-// 			let collection = create_collection(accounts::alice());
-// 			let item_id = 0u32;
+	#[test]
+	fn set_attribute_0_works() {}
 
-// 			// Mint an NFT to Alice
-// 			assert_ok!(mint_nft(collection, item_id, accounts::alice()));
+	#[test]
+	fn set_attribute_1_works() {}
 
-// 			// Transfer from Alice to Bob
-// 			let mut ext = ExtBuilder::build_ext();
-// 			ext.setup(|_| {});
-// 			ext.set_caller(accounts::alice());
+	#[test]
+	fn clear_attribute_0_works() {}
 
-// 			let call = INonfungiblesCalls::transfer(transferCall {
-// 				collection,
-// 				to: Address::from(accounts::bob()),
-// 				item: item_id,
-// 			});
+	#[test]
+	fn clear_attribute_1_works() {}
 
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call);
-// 			assert_ok!(result);
+	#[test]
+	fn set_metadata_0_works() {}
 
-// 			// Verify Bob is now the owner
-// 			let owner = super::owner_of::<Test, Instance1>(collection, item_id);
-// 			assert_eq!(owner, Some(accounts::bob()));
-// 		});
-// 	}
+	#[test]
+	fn set_metadata_1_works() {}
 
-// 	#[test]
-// 	fn create_and_mint_works() {
-// 		ExtBuilder::default().build().execute_with(|| {
-// 			// Create a collection
-// 			let mut ext = ExtBuilder::build_ext();
-// 			ext.setup(|_| {});
-// 			ext.set_caller(accounts::alice());
+	#[test]
+	fn clear_metadata_0_works() {}
 
-// 			let config =
-// 				super::decode_bytes::<CollectionConfigFor<Test, Instance1>>(&abi::encode(&[
-// 					alloy::sol_types::SolValue::Bytes(Vec::new()),
-// 				]))
-// 				.unwrap();
+	#[test]
+	fn clear_metadata_1_works() {}
 
-// 			let call = INonfungiblesCalls::create(createCall {
-// 				admin: Address::from(accounts::alice()),
-// 				config: abi::encode(&[alloy::sol_types::SolValue::Bytes(Vec::new())]),
-// 			});
+	#[test]
+	fn set_max_supply_works() {}
 
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call);
-// 			assert_ok!(result);
+	#[test]
+	fn approve_item_attributes_works() {}
 
-// 			// Extract collection ID from the result
-// 			let collection_id = 0u32; // First collection created
+	#[test]
+	fn cancel_item_attributes_works() {}
 
-// 			// Mint an NFT
-// 			let item_id = 0u32;
-// 			let call = INonfungiblesCalls::mint(mintCall {
-// 				collection: collection_id,
-// 				item: item_id,
-// 				owner: Address::from(accounts::bob()),
-// 			});
+	#[test]
+	fn clear_all_approvals_works() {}
 
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call);
-// 			assert_ok!(result);
+	#[test]
+	fn clear_collection_approvals_works() {}
 
-// 			// Verify Bob is now the owner
-// 			let owner = super::owner_of::<Test, Instance1>(collection_id, item_id);
-// 			assert_eq!(owner, Some(accounts::bob()));
-// 		});
-// 	}
+	#[test]
+	fn mint_works() {}
 
-// 	#[test]
-// 	fn set_and_get_attributes_works() {
-// 		ExtBuilder::default().build().execute_with(|| {
-// 			let collection = create_collection(accounts::alice());
-// 			let item_id = 0u32;
+	#[test]
+	fn burn_works() {}
 
-// 			// Mint an NFT to Alice
-// 			assert_ok!(mint_nft(collection, item_id, accounts::alice()));
+	#[test]
+	fn balance_of_works() {}
 
-// 			// Set item attribute
-// 			let mut ext = ExtBuilder::build_ext();
-// 			ext.setup(|_| {});
-// 			ext.set_caller(accounts::alice());
+	#[test]
+	fn owner_of_works() {}
 
-// 			let key = "key".as_bytes().to_vec();
-// 			let value = "value".as_bytes().to_vec();
+	#[test]
+	fn allowance_0_works() {}
 
-// 			let namespace = AttributeNamespace::Pallet;
-// 			let encoded_namespace = abi::encode(&[alloy::sol_types::SolValue::Uint(0u32.into())]);
+	#[test]
+	fn allowance_1_works() {}
 
-// 			let call = INonfungiblesCalls::setItemAttribute(setItemAttributeCall {
-// 				collection,
-// 				item: item_id,
-// 				namespace: encoded_namespace.clone(),
-// 				key: key.clone(),
-// 				value: value.clone(),
-// 			});
+	#[test]
+	fn total_supply_works() {}
 
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call);
-// 			assert_ok!(result);
+	#[test]
+	fn item_metadata_works() {}
 
-// 			// Get item attribute
-// 			let call = INonfungiblesCalls::getItemAttributes(getItemAttributesCall {
-// 				collection,
-// 				item: item_id,
-// 				namespace: encoded_namespace,
-// 				key,
-// 			});
+	#[test]
+	fn get_attribute_0_works() {}
 
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call).unwrap();
+	#[test]
+	fn get_attribute_1_works() {}
 
-// 			// Verify attribute value
-// 			let decoded = getItemAttributesCall::abi_decode_returns(&result).unwrap();
-// 			assert_eq!(decoded.0, "value");
-// 		});
-// 	}
+	fn create_collection_and_mint(owner: AccountIdOf<Test>, collection_id: u32, item_id: u32) {
+		create_collection(owner.clone());
+		assert_ok!(mint::<Test, ()>(
+			RuntimeOrigin::signed(owner.clone()),
+			collection_id,
+			owner,
+			item_id,
+			None,
+		));
+	}
 
-// 	#[test]
-// 	fn burn_works() {
-// 		ExtBuilder::default().build().execute_with(|| {
-// 			let collection = create_collection(accounts::alice());
-// 			let item_id = 0u32;
+	fn create_collection(owner: AccountIdOf<Test>) {
+		assert_ok!(super::create::<Test, ()>(
+			RuntimeOrigin::signed(owner.clone()),
+			owner,
+			default_collection_config(),
+		));
+	}
 
-// 			// Mint an NFT to Alice
-// 			assert_ok!(mint_nft(collection, item_id, accounts::alice()));
+	fn default_collection_config() -> CollectionConfigFor<Test> {
+		CollectionConfig {
+			settings: CollectionSettings::all_enabled(),
+			max_supply: None,
+			mint_settings: MintSettings::default(),
+		}
+	}
 
-// 			// Burn the NFT
-// 			let mut ext = ExtBuilder::build_ext();
-// 			ext.setup(|_| {});
-// 			ext.set_caller(accounts::alice());
+	fn set_attribute(collection_id: u32, item_id: Option<u32>, key: &str, value: &str) {
+		assert_ok!(crate::nonfungibles::set_attribute::<Test, ()>(
+			RuntimeOrigin::signed(ALICE),
+			collection_id,
+			item_id,
+			AttributeNamespace::CollectionOwner,
+			BoundedVec::truncate_from(key.as_bytes().to_vec()),
+			BoundedVec::truncate_from(value.as_bytes().to_vec()),
+		));
+	}
 
-// 			let call = INonfungiblesCalls::burn(burnCall { collection, item: item_id });
-
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call);
-// 			assert_ok!(result);
-
-// 			// Verify NFT no longer exists
-// 			let owner = super::owner_of::<Test, Instance1>(collection, item_id);
-// 			assert_eq!(owner, None);
-// 		});
-// 	}
-
-// 	#[test]
-// 	fn metadata_works() {
-// 		ExtBuilder::default().build().execute_with(|| {
-// 			let collection = create_collection(accounts::alice());
-// 			let item_id = 0u32;
-
-// 			// Mint an NFT to Alice
-// 			assert_ok!(mint_nft(collection, item_id, accounts::alice()));
-
-// 			// Set metadata
-// 			let mut ext = ExtBuilder::build_ext();
-// 			ext.setup(|_| {});
-// 			ext.set_caller(accounts::alice());
-
-// 			let metadata = "metadata".as_bytes().to_vec();
-
-// 			let call = INonfungiblesCalls::setMetadata(setMetadataCall {
-// 				collection,
-// 				item: Some(item_id),
-// 				data: metadata.clone(),
-// 			});
-
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call);
-// 			assert_ok!(result);
-
-// 			// Get metadata
-// 			let call =
-// 				INonfungiblesCalls::itemMetadata(itemMetadataCall { collection, item: item_id });
-
-// 			let result = call_precompile(&mut ext, TheFungibles::address(), &call).unwrap();
-
-// 			// Verify metadata
-// 			let decoded = itemMetadataCall::abi_decode_returns(&result).unwrap();
-// 			assert_eq!(decoded.0, "metadata");
-// 		});
-// 	}
-
-// 	// Helper functions
-// 	fn create_collection(owner: AccountIdOf<Test>) -> u32 {
-// 		let collection_id = super::next_collection_id::<Test, Instance1>().unwrap_or_default();
-// 		let config = default_collection_config();
-// 		assert_ok!(Nfts::<Test, Instance1>::create(Origin::signed(owner), owner, config,));
-// 		collection_id
-// 	}
-
-// 	fn mint_nft(collection_id: u32, item_id: u32, owner: AccountIdOf<Test>) -> DispatchResult {
-// 		Nfts::<Test, Instance1>::mint(Origin::signed(owner), collection_id, item_id, owner, None)
-// 	}
-
-// 	fn default_collection_config() -> CollectionConfigFor<Test, Instance1> {
-// 		CollectionConfigFor::<Test, Instance1> {
-// 			settings: Default::default(),
-// 			max_supply: None,
-// 			mint_settings: Default::default(),
-// 		}
-// 	}
-
-// 	fn call_precompile(
-// 		ext: &mut impl ExtWithInfo<T = Test>,
-// 		address: [u8; 20],
-// 		input: &INonfungiblesCalls,
-// 	) -> Result<Output, Error> {
-// 		ext.call_precompile(address, 0.into(), input, false)
-// 	}
-// }
+	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
+		origin: &AccountId,
+		token: u32,
+		input: &INonfungiblesCalls,
+	) -> Result<Output, DispatchError> {
+		let address = prefixed_address(NONFUNGIBLES, token);
+		bare_call::<Test, Output>(
+			RuntimeOrigin::signed(origin.clone()),
+			address.into(),
+			0,
+			Weight::MAX,
+			DepositLimit::Balance(u128::MAX),
+			input.abi_encode(),
+		)
+	}
+}
