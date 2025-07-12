@@ -1,4 +1,5 @@
 use frame_support::{
+	assert_noop,
 	pallet_prelude::Encode,
 	traits::fungibles::{
 		approvals::Inspect as _, metadata::Inspect as _, roles::Inspect as _, Inspect as _,
@@ -9,7 +10,10 @@ use pallet_api_vnext::fungibles::precompiles::v0::IFungibles::{
 	decimalsCall, decreaseAllowanceCall, existsCall, increaseAllowanceCall, mintCall, nameCall,
 	setMetadataCall, startDestroyCall, symbolCall, totalSupplyCall, transferCall, transferFromCall,
 };
-use pop_api::fungibles::*;
+use pop_api::{
+	fungibles::{Error::*, *},
+	SolErrorDecode,
+};
 use pop_primitives::TokenId;
 use sp_io::hashing::twox_256;
 
@@ -138,9 +142,11 @@ fn transfer_works() {
 			// 	transfer(&addr, token, BOB, amount),
 			// 	Err(Module { index: 52, error: [0, 0] })
 			// );
+			assert_noop!(contract.transfer(token, H160::zero(), 0.into()), ZeroRecipientAddress);
+			assert_noop!(contract.transfer(token, to_address(&to), 0.into()), ZeroValue);
 			// Successful transfer.
 			let balance_before_transfer = Assets::balance(token, &to);
-			contract.transfer(token, to_address(&to), (amount / 2).into());
+			assert_ok!(contract.transfer(token, to_address(&to), (amount / 2).into()));
 			let balance_after_transfer = Assets::balance(token, &to);
 			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 			// Successfully emit event.
@@ -199,13 +205,31 @@ fn transfer_from_works() {
 			// 	transfer_from(&addr, token, ALICE, BOB, amount + 1 * UNIT),
 			// 	Err(Module { index: 52, error: [0, 0] }),
 			// );
+			assert_noop!(
+				contract.transfer_from(token, H160::zero(), H160::zero(), 0.into()),
+				ZeroSenderAddress
+			);
+			let from = to_address(&owner);
+			assert_noop!(
+				contract.transfer_from(token, from, H160::zero(), 0.into()),
+				ZeroRecipientAddress
+			);
+			assert_noop!(
+				contract.transfer_from(token, from, from, 0.into()),
+				InvalidRecipient(from)
+			);
+			assert_noop!(contract.transfer_from(token, from, to_address(&to), 0.into()), ZeroValue);
 			// Successful transfer.
 			let balance_before_transfer = Assets::balance(token, &to);
-			contract.transfer_from(token, to_address(&owner), to_address(&to), (amount / 2).into());
+			assert_ok!(contract.transfer_from(
+				token,
+				to_address(&owner),
+				to_address(&to),
+				(amount / 2).into()
+			));
 			let balance_after_transfer = Assets::balance(token, &to);
 			assert_eq!(balance_after_transfer, balance_before_transfer + amount / 2);
 			// Successfully emit event.
-			let from = to_address(&owner);
 			let to = to_address(&to);
 			let expected = Transfer { from, to, value: (amount / 2).into() }.encode();
 			assert_eq!(contract.last_event(), expected);
@@ -239,9 +263,11 @@ fn approve_works() {
 			// 	Err(Module { index: 52, error: [16, 0] })
 			// );
 			thaw(&owner, token);
+			assert_noop!(contract.approve(token, H160::zero(), 0.into()), ZeroRecipientAddress);
+			assert_noop!(contract.approve(token, to_address(&spender), 0.into()), ZeroValue);
 			// Successful approvals.
 			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &spender));
-			contract.approve(token, to_address(&spender), amount.into());
+			assert_ok!(contract.approve(token, to_address(&spender), amount.into()));
 			assert_eq!(Assets::allowance(token, &contract.account_id(), &spender), amount);
 			// Successfully emit event.
 			let spender = to_address(&spender);
@@ -249,7 +275,7 @@ fn approve_works() {
 				Approval { owner: contract.address, spender, value: amount.into() }.encode();
 			assert_eq!(contract.last_event(), expected);
 			// Non-additive, sets new value.
-			contract.approve( token, spender, (amount / 2).into());
+			assert_ok!(contract.approve( token, spender, (amount / 2).into()));
 			assert_eq!(
 				Assets::allowance(token, &contract.account_id(), &to_account_id(&spender)),
 				amount / 2
@@ -299,17 +325,25 @@ fn increase_allowance_works() {
 			// 	Err(Module { index: 52, error: [16, 0] })
 			// );
 			thaw(&owner, token);
+			assert_noop!(
+				contract.increase_allowance(token, H160::zero(), 0.into()),
+				ZeroRecipientAddress
+			);
+			assert_noop!(
+				contract.increase_allowance(token, to_address(&spender), 0.into()),
+				ZeroValue
+			);
 			// Successful approvals:
 			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &spender));
 			assert_eq!(
 				contract.increase_allowance(token, to_address(&spender), amount.into()),
-				amount.into()
+				Ok(amount.into())
 			);
 			assert_eq!(Assets::allowance(token, &contract.account_id(), &spender), amount);
 			// Additive.
 			assert_eq!(
 				contract.increase_allowance(token, to_address(&spender), amount.into()),
-				(amount * 2).into()
+				Ok((amount * 2).into())
 			);
 			assert_eq!(Assets::allowance(token, &contract.account_id(), &spender), amount * 2);
 			// Token is not live, i.e. frozen or being destroyed.
@@ -348,12 +382,20 @@ fn decrease_allowance_works() {
 			// 	decrease_allowance(&addr, token, &BOB, amount * 2),
 			// 	Err(Module { index: 52, error: [10, 0] }),
 			// );
+			assert_noop!(
+				contract.decrease_allowance(token, H160::zero(), 0.into()),
+				ZeroRecipientAddress
+			);
+			assert_noop!(
+				contract.decrease_allowance(token, to_address(&spender), 0.into()),
+				ZeroValue
+			);
 			// Successfully decrease allowance.
 			let amount = amount / 2 - 1 * UNIT;
 			let allowance_before = Assets::allowance(token, &contract.account_id(), &spender);
 			assert_eq!(
 				contract.decrease_allowance(token, to_address(&spender), amount.into()),
-				(allowance_before - amount).into()
+				Ok((allowance_before - amount).into())
 			);
 			let allowance_after = Assets::allowance(token, &contract.account_id(), &spender);
 			assert_eq!(allowance_before - allowance_after, amount);
@@ -414,11 +456,12 @@ fn create_works() {
 
 		// Instantiate a contract with enough balance.
 		let mut contract = Contract::new(&owner, INIT_VALUE);
-		// }),); The minimal balance for a token must be non zero.
-		// assert_eq!(contract.create(&addr, &admin, 0), Err(Module { index: 52, error: [7, 0] }),);
-		// Create token successfully.
+		assert_noop!(contract.create(H160::zero(), 0.into()), ZeroAdminAddress);
 		let admin = to_address(&owner);
-		let token = contract.create(admin, 1.into());
+		// The minimal balance for a token must be non zero.
+		assert_noop!(contract.create(admin, 0.into()), MinBalanceZero);
+		// Create token successfully.
+		let token = contract.create(admin, 1.into()).unwrap();
 		assert_eq!(Assets::owner(token), Some(contract.account_id()));
 		// Successfully emit event.
 		let expected = Created { id: token, creator: contract.address, admin }.encode();
@@ -466,7 +509,7 @@ fn start_destroy_works() {
 		// 	contract.start_destroy(&creator, token),
 		// 	Err(Module { index: 52, error: [2, 0] }),
 		// );
-		let token = contract.create(to_address(&owner), 1.into());
+		let token = contract.create(to_address(&owner), 1.into()).unwrap();
 		contract.start_destroy(token);
 		// Successfully emit event.
 		let expected = DestroyStarted { token }.encode();
@@ -493,7 +536,7 @@ fn set_metadata_works() {
 		// 	set_metadata(&addr, token, vec![0], vec![0], 0u8),
 		// 	Err(Module { index: 52, error: [2, 0] }),
 		// );
-		let token = contract.create(to_address(&owner), 1.into());
+		let token = contract.create(to_address(&owner), 1.into()).unwrap();
 		// Token is not live, i.e. frozen or being destroyed.
 		freeze(&owner, token);
 		// assert_eq!(
@@ -545,7 +588,7 @@ fn clear_metadata_works() {
 			// No Permission.
 			// assert_eq!(contract.clear_metadata(token), Err(Module { index: 52, error: [2, 0]
 			// }),);
-			let token = contract.create(to_address(&owner), 1.into());
+			let token = contract.create(to_address(&owner), 1.into()).unwrap();
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
 			// assert_eq!(
@@ -612,7 +655,7 @@ fn mint_works() {
 			// 	Err(Module { index: 52, error: [2, 0] })
 			// );
 			// Contract must be admin in order to be able to mint.
-			let token = contract.create(contract.address, 2.into());
+			let token = contract.create(contract.address, 2.into()).unwrap();
 			// Minimum balance of a token can not be zero.
 			// assert_eq!(contract.mint(token, &account, 1.into()), Err(Token(BelowMinimum)));
 			// Token is not live, i.e. frozen or being destroyed.
@@ -622,9 +665,11 @@ fn mint_works() {
 			// 	Err(Module { index: 52, error: [16, 0] })
 			// );
 			thaw(&contract.account_id(), token);
+			assert_noop!(contract.mint(token, H160::zero(), 0.into()), ZeroRecipientAddress);
+			assert_noop!(contract.mint(token, to_address(&account), 0.into()), ZeroValue);
 			// Successful mint.
 			let balance_before_mint = Assets::balance(token, &account);
-			contract.mint(token, to_address(&account), amount.into());
+			assert_ok!(contract.mint(token, to_address(&account), amount.into()));
 			let balance_after_mint = Assets::balance(token, &account);
 			assert_eq!(balance_after_mint, balance_before_mint + amount);
 			// Account can not hold more tokens than Balance::MAX.
@@ -670,8 +715,8 @@ fn burn_works() {
 			// 	Err(Module { index: 52, error: [2, 0] })
 			// );
 			// Contract must be admin in order to be able to burn.
-			let token = contract.create(contract.address, 1.into());
-			contract.mint(token, to_address(&account), (amount * 2).into());
+			let token = contract.create(contract.address, 1.into()).unwrap();
+			assert_ok!(contract.mint(token, to_address(&account), (amount * 2).into()));
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&contract.account_id(), token);
 			// assert_eq!(
@@ -679,9 +724,11 @@ fn burn_works() {
 			// 	Err(Module { index: 52, error: [16, 0] })
 			// );
 			thaw(&contract.account_id(), token);
+			assert_noop!(contract.burn(token, H160::zero(), 0.into()), ZeroSenderAddress);
+			assert_noop!(contract.burn(token, to_address(&account), 0.into()), ZeroValue);
 			// Successful mint.
 			let balance_before_burn = Assets::balance(token, &account);
-			contract.burn(token, to_address(&account), amount.into());
+			assert_ok!(contract.burn(token, to_address(&account), amount.into()));
 			let balance_after_burn = Assets::balance(token, &account);
 			assert_eq!(balance_after_burn, balance_before_burn - amount);
 			// Token is not live, i.e. frozen or being destroyed.
@@ -723,130 +770,158 @@ impl Contract {
 		let owner = alloy::Address::from(owner.0);
 		let spender = alloy::Address::from(spender.0);
 		let call = allowanceCall { token, owner, spender };
-		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
+		U256::from_little_endian(
+			self.call::<_, Error>(&self.creator, call, 0).unwrap().as_le_slice(),
+		)
 	}
 
-	fn approve(&mut self, token: TokenId, spender: H160, value: U256) {
+	fn approve(&mut self, token: TokenId, spender: H160, value: U256) -> Result<(), Error> {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		let call = approveCall { token, spender, value };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
 	fn balance_of(&self, token: TokenId, owner: H160) -> U256 {
 		let owner = alloy::Address::from(owner.0);
 		let call = balanceOfCall { token, owner };
-		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
+		U256::from_little_endian(
+			self.call::<_, Error>(&self.creator, call, 0).unwrap().as_le_slice(),
+		)
 	}
 
-	fn burn(&mut self, token: TokenId, account: H160, value: U256) {
+	fn burn(&mut self, token: TokenId, account: H160, value: U256) -> Result<(), Error> {
 		let account = alloy::Address::from(account.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		let call = burnCall { token, account, value };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
 	fn clear_metadata(&mut self, token: TokenId) {
 		let call = clearMetadataCall { token };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call::<_, Error>(&self.creator, call, 0).unwrap();
 	}
 
-	fn create(&mut self, admin: H160, min_balance: U256) -> TokenId {
+	fn create(&mut self, admin: H160, min_balance: U256) -> Result<TokenId, Error> {
 		let admin = alloy::Address::from(admin.0);
 		let min_balance = alloy::U256::from_be_bytes(min_balance.to_big_endian());
 		let call = createCall { admin, minBalance: min_balance };
-		self.call(&self.creator, call, 0).unwrap()
+		self.call(&self.creator, call, 0)
 	}
 
 	fn decimals(&self, token: TokenId) -> u8 {
 		let call = decimalsCall { token };
-		self.call(&self.creator, call, 0).unwrap()
+		self.call::<_, Error>(&self.creator, call, 0).unwrap()
 	}
 
-	fn decrease_allowance(&mut self, token: TokenId, spender: H160, value: U256) -> U256 {
+	fn decrease_allowance(
+		&mut self,
+		token: TokenId,
+		spender: H160,
+		value: U256,
+	) -> Result<U256, Error> {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		let call = decreaseAllowanceCall { token, spender, value };
-		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
+		Ok(U256::from_little_endian(self.call(&self.creator, call, 0)?.as_le_slice()))
 	}
 
 	fn exists(&self, token: TokenId) -> bool {
 		let call = existsCall { token };
-		self.call(&self.creator, call, 0).unwrap()
+		self.call::<_, Error>(&self.creator, call, 0).unwrap()
 	}
 
-	fn increase_allowance(&mut self, token: TokenId, spender: H160, value: U256) -> U256 {
+	fn increase_allowance(
+		&mut self,
+		token: TokenId,
+		spender: H160,
+		value: U256,
+	) -> Result<U256, Error> {
 		let spender = alloy::Address::from(spender.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		let call = increaseAllowanceCall { token, spender, value };
-		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
+		Ok(U256::from_little_endian(self.call(&self.creator, call, 0)?.as_le_slice()))
 	}
 
-	fn mint(&mut self, token: TokenId, account: H160, value: U256) {
+	fn mint(&mut self, token: TokenId, account: H160, value: U256) -> Result<(), Error> {
 		let account = alloy::Address::from(account.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		let call = mintCall { token, account, value };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
 	fn name(&self, token: TokenId) -> String {
 		let call = nameCall { token };
-		self.call(&self.creator, call, 0).unwrap()
+		self.call::<_, Error>(&self.creator, call, 0).unwrap()
 	}
 
 	fn set_metadata(&mut self, token: TokenId, name: String, symbol: String, decimals: u8) {
 		let call = setMetadataCall { token, name, symbol, decimals };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call::<_, Error>(&self.creator, call, 0).unwrap();
 	}
 
 	fn start_destroy(&mut self, token: TokenId) {
 		let call = startDestroyCall { token };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call::<_, Error>(&self.creator, call, 0).unwrap();
 	}
 
 	fn symbol(&self, token: TokenId) -> String {
 		let call = symbolCall { token };
-		self.call(&self.creator, call, 0).unwrap()
+		self.call::<_, Error>(&self.creator, call, 0).unwrap()
 	}
 
 	fn total_supply(&self, token: TokenId) -> U256 {
 		let call = totalSupplyCall { token };
-		U256::from_little_endian(self.call(&self.creator, call, 0).unwrap().as_le_slice())
+		U256::from_little_endian(
+			self.call::<_, Error>(&self.creator, call, 0).unwrap().as_le_slice(),
+		)
 	}
 
-	fn transfer(&mut self, token: TokenId, to: H160, value: U256) {
+	fn transfer(&mut self, token: TokenId, to: H160, value: U256) -> Result<(), Error> {
 		let to = alloy::Address::from(to.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		let call = transferCall { token, to, value };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
-	fn transfer_from(&mut self, token: TokenId, from: H160, to: H160, value: U256) {
+	fn transfer_from(
+		&mut self,
+		token: TokenId,
+		from: H160,
+		to: H160,
+		value: U256,
+	) -> Result<(), Error> {
 		let from = alloy::Address::from(from.0);
 		let to = alloy::Address::from(to.0);
 		let value = alloy::U256::from_be_bytes(value.to_big_endian());
 		let call = transferFromCall { token, from, to, value };
-		self.call(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
 	fn account_id(&self) -> AccountId {
 		to_account_id(&self.address)
 	}
 
-	fn call<T: SolCall>(
+	fn call<T: SolCall, E: SolErrorDecode>(
 		&self,
 		origin: &AccountId,
 		call: T,
 		value: Balance,
-	) -> Result<T::Return, ()> {
+	) -> Result<T::Return, E> {
 		let origin = RuntimeOrigin::signed(origin.clone());
 		let dest = self.address.clone();
 		let data = call.abi_encode();
 		let result = bare_call(origin, dest, value, GAS_LIMIT, STORAGE_DEPOSIT_LIMIT, data)
 			.expect("should work");
 		match result.did_revert() {
-			true => todo!("error conversion: {:?}", String::from_utf8_lossy(&result.data)),
-			false => Ok(T::abi_decode_returns(&result.data).expect("unable to decode")),
+			true => Err(E::decode(&result.data).expect("unable to decode error value")),
+			false =>
+				Ok(T::abi_decode_returns(&result.data).expect("unable to decode success value")),
 		}
 	}
 

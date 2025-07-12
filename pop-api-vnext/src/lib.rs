@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::Address;
-pub use sol::revert;
+pub use sol::{revert, SolErrorDecode};
 
 type Pop = ink::env::DefaultEnvironment;
 
