@@ -1,4 +1,4 @@
-pub use ink::{abi::Sol, SolEncode};
+pub use ink::{abi::Sol, primitives::sol::SolErrorDecode, SolEncode};
 
 /// Reverts the current contract execution, rolling back any changes and returning the specified
 /// `error`.

@@ -2,6 +2,7 @@ use ink::sol::SolErrorEncode;
 
 use super::*;
 
+#[cfg_attr(feature = "std", derive(Debug, PartialEq))]
 #[derive(ink::SolErrorDecode, ink::SolErrorEncode)]
 #[ink::scale_derive(Decode, Encode, TypeInfo)]
 pub enum Error {
