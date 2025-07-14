@@ -1,6 +1,7 @@
 use deposits::*;
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
+	ensure,
 	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
@@ -15,7 +16,10 @@ use frame_support::{
 };
 use frame_system::pallet_prelude::*;
 pub use pallet::{Error, *};
-use pallet_revive::sp_runtime::traits::{SaturatedConversion, Saturating, TryConvert};
+use pallet_revive::{
+	sp_runtime::traits::{SaturatedConversion, Saturating, TryConvert},
+	H160,
+};
 use sp_runtime::ArithmeticError;
 use transports::{
 	ismp::IsmpDispatcher,

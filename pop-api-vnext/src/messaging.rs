@@ -7,7 +7,7 @@ use ink::{
 	scale::{Compact, Encode},
 	U256,
 };
-use sol::*;
+use sol::{Sol, SolDecode, SolEncode};
 pub use v0::*;
 
 use super::*;

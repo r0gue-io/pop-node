@@ -2,7 +2,7 @@ use ::ismp::{
 	dispatcher::{DispatchGet, DispatchPost},
 	host::StateMachine,
 };
-use frame_support::traits::Get as _;
+use frame_support::{ensure, traits::Get as _};
 pub(crate) use IISMP::{Get, *};
 
 use super::*;
