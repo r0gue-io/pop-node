@@ -41,14 +41,14 @@ fungibles = [ "dep:pallet-assets", "dep:pallet-balances" ]
 # Empty feature to satisfy clashes with ismp dependency during workspace builds using the "ismp" feature
 ismp = [ "dep:ismp" ]
 messaging = [
-    "dep:anyhow",
-    "dep:ismp",
-    "dep:log",
-    "dep:pallet-ismp",
-    "dep:pallet-xcm",
-    "dep:sp-runtime",
-    "dep:xcm",
-    "dep:xcm-builder",
+	"dep:anyhow",
+	"dep:ismp",
+	"dep:log",
+	"dep:pallet-ismp",
+	"dep:pallet-xcm",
+	"dep:sp-runtime",
+	"dep:xcm",
+	"dep:xcm-builder",
 ]
 runtime-benchmarks = [
 	"dep:pallet-timestamp",
