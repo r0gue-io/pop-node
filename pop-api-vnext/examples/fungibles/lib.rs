@@ -46,7 +46,7 @@ pub mod fungibles {
 		) -> Result<Self, Error> {
 			let mut instance = Self { id: 0, owner: Self::env().caller() };
 			instance.id = api::create(instance.env().address(), min_balance)?;
-			api::set_metadata(instance.id, name, symbol, decimals);
+			api::set_metadata(instance.id, name, symbol, decimals)?;
 			Ok(instance)
 		}
 
