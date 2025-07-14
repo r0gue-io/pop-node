@@ -64,11 +64,11 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
 				let origin = env.caller();
 				let account = origin.account_id()?;
-				let from = <AddressMapper<T>>::to_address(&account).0.into();
+				let from = <AddressMapper<T>>::to_address(account).0.into();
 				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
-				let balance = balance::<T, I>(token.clone(), &account).try_convert()?;
+				let balance = balance::<T, I>(token.clone(), account).try_convert()?;
 
 				transfer::<T, I>(
 					to_runtime_origin(origin),
@@ -135,8 +135,8 @@ where
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
 				let owner = env.to_account_id(&(*from.0).into());
-				let spender = <AddressMapper<T>>::to_address(&account).0.into();
-				let allowance = allowance::<T, I>(token.clone(), &owner, &account).try_convert()?;
+				let spender = <AddressMapper<T>>::to_address(account).0.into();
+				let allowance = allowance::<T, I>(token.clone(), &owner, account).try_convert()?;
 
 				transfer_from::<T, I>(
 					to_runtime_origin(origin),

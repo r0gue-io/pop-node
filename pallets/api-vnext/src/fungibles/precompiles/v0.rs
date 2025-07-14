@@ -345,10 +345,7 @@ impl<const FIXED: u16, T: pallet_assets::Config<I> + pallet_balances::Config, I:
 	fn map_err(e: DispatchError) -> Error {
 		use DispatchError::*;
 		match e {
-			Arithmetic(error) => match error {
-				ArithmeticError::Overflow => IFungibles::Overflow.into(),
-				_ => e.into(),
-			},
+			Arithmetic(ArithmeticError::Overflow) => IFungibles::Overflow.into(),
 			ConsumerRemaining => IFungibles::InsufficientBalance.into(),
 			Module(ModuleError { index, error, .. }) => {
 				let index = Some(index as usize);
@@ -356,10 +353,7 @@ impl<const FIXED: u16, T: pallet_assets::Config<I> + pallet_balances::Config, I:
 					use pallet_balances::{Error, Error::*};
 
 					match Error::<T>::decode(&mut error.as_slice()) {
-						Ok(error) => match error {
-							InsufficientBalance => IFungibles::InsufficientBalance.into(),
-							_ => e.into(),
-						},
+						Ok(InsufficientBalance) => IFungibles::InsufficientBalance.into(),
 						_ => e.into(),
 					}
 				} else if index == T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() {
