@@ -58,7 +58,7 @@ type TokenId<T, I> = <T as pallet_assets::Config<I>>::AssetId;
             Time: Time<Moment: Into<U256>>
         >,
         // Fungibles
-        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32> + Copy, Balance: TryConvert<alloy::U256, Error = Error>>,
+        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32> + Copy, Balance: TryConvert<alloy::U256, Error = Error>> + pallet_balances::Config,
         alloy::U256: TryConvert<AssetsBalance<T, I>, Error = Error>
 )]
 mod benchmarks {

@@ -26,6 +26,7 @@ use pallet_revive::{
 #[cfg(feature = "runtime-benchmarks")]
 use {
 	frame_support::{pallet_prelude::IsType, traits::fungible::Inspect},
+	pallet_revive::evm::U256,
 	pallet_revive::precompiles::run::{CallSetup, WasmModule},
 };
 #[cfg(test)]
