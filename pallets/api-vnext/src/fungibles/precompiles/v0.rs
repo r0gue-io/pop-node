@@ -80,7 +80,6 @@ where
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
 				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 				ensure!(!spender.is_zero(), ZeroRecipientAddress);
-				ensure!(!value.is_zero(), ZeroValue);
 
 				match approve::<T, I>(
 					to_runtime_origin(env.caller()),
@@ -606,18 +605,6 @@ mod tests {
 	}
 
 	#[test]
-	fn approve_reverts_with_zero_value() {
-		let token = 1;
-		let origin = ALICE;
-		let spender = [255; 20].into();
-		ExtBuilder::new().build().execute_with(|| {
-			let call = approveCall { token, spender, value: U256::ZERO };
-			let approve = IFungiblesCalls::approve(call);
-			assert_revert!(call_precompile::<()>(&origin, &approve), ZeroValue);
-		});
-	}
-
-	#[test]
 	fn approve_reverts_with_insufficient_balance() {
 		let token = 1;
 		let origin = ALICE;
@@ -662,9 +649,24 @@ mod tests {
 
 				assert_eq!(Assets::allowance(token, &origin, &spender), value);
 				let owner = to_address(&origin).0.into();
-				let spender = to_address(&spender).0.into();
-				let event = Approval { token, owner, spender, value: U256::from(value) };
+				let event = Approval {
+					token,
+					owner,
+					spender: to_address(&spender).0.into(),
+					value: U256::from(value),
+				};
 				assert_last_event(ADDRESS, event);
+
+				// Remove approval
+				assert_ok!(call_precompile::<()>(
+					&origin,
+					&IFungiblesCalls::approve(approveCall {
+						token,
+						spender: to_address(&spender).0.into(),
+						value: U256::ZERO
+					})
+				));
+				assert_eq!(Assets::allowance(token, &origin, &spender), 0);
 			});
 	}
 

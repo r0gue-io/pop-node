@@ -221,7 +221,6 @@ pub fn allowance(token: TokenId, owner: Address, spender: Address) -> U256 {
 #[inline]
 pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<(), Error> {
 	ensure!(spender != Address::zero(), ZeroRecipientAddress);
-	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();

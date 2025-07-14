@@ -260,7 +260,6 @@ fn approve_works() {
 			assert_noop!(contract.approve(token, to_address(&spender), amount.into()), NotLive);
 			thaw(&owner, token);
 			assert_noop!(contract.approve(token, H160::zero(), 0.into()), ZeroRecipientAddress);
-			assert_noop!(contract.approve(token, to_address(&spender), 0.into()), ZeroValue);
 			// Successful approvals.
 			assert_eq!(0, Assets::allowance(token, &contract.account_id(), &spender));
 			assert_ok!(contract.approve(token, to_address(&spender), amount.into()));

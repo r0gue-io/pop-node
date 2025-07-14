@@ -109,7 +109,6 @@ pub fn allowance(token: TokenId, owner: Address, spender: Address) -> U256 {
 #[inline]
 pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<bool, Error> {
 	ensure!(spender != Address::zero(), ERC20InvalidSpender(spender));
-	ensure!(value != U256::zero(), ERC20InsufficientValue);
 
 	let address = prefixed_address(PRECOMPILE, token);
 	let mut precompile: contract_ref!(Erc20, Pop, Sol) = address.into();
