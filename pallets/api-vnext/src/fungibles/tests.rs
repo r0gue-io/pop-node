@@ -25,7 +25,7 @@ fn transfer_works() {
 	ExtBuilder::new()
 		.with_balances(vec![(from.clone(), ED::get()), (to.clone(), ED::get())])
 		.with_assets(vec![(token, from.clone(), false, 1)])
-		.with_asset_balances(vec![(token, from.clone(), value)])
+		.with_asset_balances(vec![(token, from.clone(), value + 1)])
 		.build()
 		.execute_with(|| {
 			for origin in vec![root(), none()] {
