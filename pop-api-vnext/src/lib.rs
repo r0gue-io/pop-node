@@ -50,6 +50,7 @@ fn fixed_address(n: u16) -> Address {
 }
 
 /// Calculates the address of a precompile at index `n` and with some additional prefix.
+#[cfg(feature = "fungibles")]
 #[inline]
 fn prefixed_address(n: u16, prefix: u32) -> Address {
 	let mut address = fixed_address(n);

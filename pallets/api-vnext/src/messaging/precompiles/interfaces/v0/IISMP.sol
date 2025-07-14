@@ -142,6 +142,15 @@ interface IISMP {
      * @param callback The callback to be used to return the response.
      */
     event PostDispatched(address origin, uint64 id, bytes32 commitment, Callback callback);
+
+    /// @dev The context exceeds the maximum allowed size.
+    error MaxContextExceeded();
+    /// @dev The data exceeds the maximum allowed size.
+    error MaxDataExceeded();
+    /// @dev A key exceeds the maximum allowed size.
+    error MaxKeyExceeded();
+    /// @dev The number of keys exceeds the maximum allowed size.
+    error MaxKeysExceeded();
 }
 
 /// @notice A message callback.
@@ -188,3 +197,10 @@ struct Weight {
     /// @custom:property The weight of storage space used by proof of validity.
     uint64 proofSize;
 }
+
+/// @dev The message was not found.
+error MessageNotFound();
+/// @dev The request is pending.
+error RequestPending();
+/// @dev The number of messages exceeds the limit.
+error TooManyMessages();

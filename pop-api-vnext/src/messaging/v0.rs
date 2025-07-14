@@ -1,4 +1,8 @@
+pub use errors::{Error, Error::*};
+
 use super::*;
+
+mod errors;
 
 // Precompile index within the runtime
 const PRECOMPILE: u16 = 3;
@@ -14,6 +18,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `message` - The message identifier.
 	#[ink(message)]
+	#[allow(non_snake_case)]
 	fn getResponse(&self, message: MessageId) -> Bytes;
 
 	/// Polls the status of a message.
@@ -21,6 +26,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `message` - The message identifier to poll.
 	#[ink(message)]
+	#[allow(non_snake_case)]
 	fn pollStatus(&self, message: MessageId) -> MessageStatus;
 
 	/// Remove a completed or timed-out message.
@@ -30,7 +36,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `message` - The identifier of the message to remove.
 	#[ink(message)]
-	fn remove(&self, message: MessageId);
+	fn remove(&self, message: MessageId) -> Result<(), Error>;
 
 	/// Remove a batch of completed or timed-out messages.
 	///
@@ -39,7 +45,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 	#[ink(message, selector = 0xcdd80f3b)]
-	fn remove_many(&self, messages: Vec<MessageId>);
+	fn remove_many(&self, messages: Vec<MessageId>) -> Result<(), Error>;
 }
 
 /// A message callback.
@@ -200,7 +206,7 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 /// # Parameters
 /// - `message` - The identifier of the message to remove.
 #[inline]
-pub fn remove(message: MessageId) {
+pub fn remove(message: MessageId) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Messaging, Pop, Sol) = address.into();
 	precompile.remove(message)
@@ -213,7 +219,7 @@ pub fn remove(message: MessageId) {
 /// # Parameters
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
-pub fn remove_many(messages: Vec<MessageId>) {
+pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Messaging, Pop, Sol) = address.into();
 	precompile.remove_many(messages)

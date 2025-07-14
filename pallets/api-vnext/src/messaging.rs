@@ -1,7 +1,6 @@
 use deposits::*;
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
-	ensure,
 	pallet_prelude::*,
 	storage::KeyLenOf,
 	traits::{
@@ -46,6 +45,8 @@ pub type MessageId = u64; // TODO: determine why this was changed to [u8; 32] - 
 
 #[frame_support::pallet]
 pub mod pallet {
+	use frame_support::ensure;
+
 	use super::*;
 
 	#[pallet::pallet]
@@ -75,7 +76,7 @@ pub mod pallet {
 		/// The maximum byte length for a single key of an ismp request.
 		#[pallet::constant]
 		type MaxKeyLen: Get<u32>;
-		/// The maximum amount of key for an outbound request.
+		/// The maximum number of keys for an outbound request.
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
 		/// The maximum number of messages which can be removed at a time.
@@ -121,11 +122,11 @@ pub mod pallet {
 		MessageExists,
 		/// The request is pending.
 		RequestPending,
-		/// dispatching a call via ISMP falied
+		/// Dispatching a call via ISMP failed.
 		IsmpDispatchFailed,
-		/// The message was not found
+		/// The message was not found.
 		MessageNotFound,
-		/// The request has timed out
+		/// The request has timed out.
 		RequestTimedOut,
 		/// Timeouts must be in the future.
 		FutureTimeoutMandatory,
@@ -417,7 +418,7 @@ pub(crate) fn call<T: Config>(
 	let max_weight = callback.weight;
 
 	// Dont mutate state if blockspace will be saturated.
-	ensure!(
+	frame_support::ensure!(
 		frame_system::BlockWeight::<T>::get()
 			.checked_accrue(max_weight, DispatchClass::Normal)
 			.is_ok(),

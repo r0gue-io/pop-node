@@ -1,6 +1,9 @@
+pub use errors::{Error, Error::*};
 pub use ink::xcm::prelude::{VersionedLocation, VersionedResponse, VersionedXcm};
 
 use super::{super::v0::Callback, *};
+
+mod errors;
 
 pub type QueryId = u64;
 
@@ -30,6 +33,7 @@ pub trait Xcm {
 	/// # Parameters
 	/// - `message` - The message identifier.
 	#[ink(message)]
+	#[allow(non_snake_case)]
 	fn getResponse(&self, message: MessageId) -> Bytes;
 
 	/// Initiate a new XCM query.
@@ -43,7 +47,7 @@ pub trait Xcm {
 	/// # Returns
 	/// A unique query identifier.
 	#[ink(message, selector = 0x5a8db3bd)]
-	fn new_query(&self, responder: Bytes, timeout: BlockNumber) -> QueryId;
+	fn new_query(&self, responder: Bytes, timeout: BlockNumber) -> (MessageId, QueryId);
 
 	/// Initiate a new XCM query.
 	///
@@ -62,13 +66,14 @@ pub trait Xcm {
 		responder: Bytes,
 		timeout: BlockNumber,
 		callback: Callback,
-	) -> QueryId;
+	) -> (MessageId, QueryId);
 
 	/// Polls the status of a message.
 	///
 	/// # Parameters
 	/// - `message` - The message identifier to poll.
 	#[ink(message)]
+	#[allow(non_snake_case)]
 	fn pollStatus(&self, message: MessageId) -> MessageStatus;
 
 	/// Remove a completed or timed-out message.
@@ -146,7 +151,7 @@ pub fn new_query(
 	responder: VersionedLocation,
 	timeout: BlockNumber,
 	callback: Option<Callback>,
-) -> QueryId {
+) -> (MessageId, QueryId) {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
 	match callback {

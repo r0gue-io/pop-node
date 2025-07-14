@@ -1,4 +1,8 @@
+pub use errors::{Error, Error::*};
+
 use super::{super::v0::Callback, *};
+
+mod errors;
 
 // Precompile index within the runtime
 const PRECOMPILE: u16 = 4;
@@ -16,7 +20,7 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn get(&self, request: Get, fee: U256) -> MessageId;
+	fn get(&self, request: Get, fee: U256) -> Result<MessageId, Error>;
 
 	/// Submit a new ISMP `Get` request.
 	///
@@ -28,7 +32,12 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message, selector = 0x39f75435)]
-	fn get_with_callback(&self, request: Get, fee: U256, callback: Callback) -> MessageId;
+	fn get_with_callback(
+		&self,
+		request: Get,
+		fee: U256,
+		callback: Callback,
+	) -> Result<MessageId, Error>;
 
 	/// Returns the response to a message.
 	///
@@ -45,6 +54,7 @@ pub trait Ismp {
 	/// # Parameters
 	/// - `message` - The message identifier to poll.
 	#[ink(message)]
+	#[allow(non_snake_case)]
 	fn pollStatus(&self, message: MessageId) -> MessageStatus;
 
 	/// Submit a new ISMP `Post` request.
@@ -58,7 +68,7 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn post(&self, request: Post, fee: U256) -> MessageId;
+	fn post(&self, request: Post, fee: U256) -> Result<MessageId, Error>;
 
 	/// Submit a new ISMP `Post` request.
 	///
@@ -72,7 +82,12 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message, selector = 0xeb0f21f1)]
-	fn post_with_callback(&self, request: Post, fee: U256, callback: Callback) -> MessageId;
+	fn post_with_callback(
+		&self,
+		request: Post,
+		fee: U256,
+		callback: Callback,
+	) -> Result<MessageId, Error>;
 
 	/// Remove a completed or timed-out message.
 	///
@@ -81,7 +96,7 @@ pub trait Ismp {
 	/// # Parameters
 	/// - `message` - The identifier of the message to remove.
 	#[ink(message)]
-	fn remove(&self, message: MessageId);
+	fn remove(&self, message: MessageId) -> Result<(), Error>;
 
 	/// Remove a batch of completed or timed-out messages.
 	///
@@ -90,7 +105,7 @@ pub trait Ismp {
 	/// # Parameters
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 	#[ink(message, selector = 0xcdd80f3b)]
-	fn remove_many(&self, messages: Vec<MessageId>);
+	fn remove_many(&self, messages: Vec<MessageId>) -> Result<(), Error>;
 }
 
 /// Submit a new ISMP `Get` request.
@@ -103,7 +118,7 @@ pub trait Ismp {
 /// # Returns
 /// A unique message identifier.
 #[inline]
-pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> MessageId {
+pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
 	match callback {
@@ -149,7 +164,7 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 /// # Returns
 /// A unique message identifier.
 #[inline]
-pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> MessageId {
+pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
 	match callback {
@@ -165,7 +180,7 @@ pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> MessageId {
 /// # Parameters
 /// - `message` - The identifier of the message to remove.
 #[inline]
-pub fn remove(message: MessageId) {
+pub fn remove(message: MessageId) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
 	precompile.remove(message)
@@ -178,7 +193,7 @@ pub fn remove(message: MessageId) {
 /// # Parameters
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
-pub fn remove_many(messages: Vec<MessageId>) {
+pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
 	precompile.remove_many(messages)

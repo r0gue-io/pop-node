@@ -51,7 +51,7 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 
-				remove::<T>(origin, &[*message])?;
+				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
 				let account = AddressMapper::<T>::to_address(origin).0.into();
@@ -67,7 +67,7 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 
-				remove::<T>(origin, messages)?;
+				remove::<T>(origin, messages).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
 				let account = AddressMapper::<T>::to_address(origin).0.into();
@@ -78,11 +78,42 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 	}
 }
 
-impl<const FIXED: u16, T> Messaging<FIXED, T> {
+impl<const FIXED: u16, T: frame_system::Config> Messaging<FIXED, T> {
 	/// The address of the precompile.
 	pub const fn address() -> [u8; 20] {
 		fixed_address(FIXED)
 	}
+
+	// Maps select, domain-specific dispatch errors to messaging errors. Anything not mapped results
+	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
+	fn map_err(e: DispatchError) -> Error {
+		use DispatchError::*;
+		match e {
+			Module(ModuleError { index, error, .. }) => {
+				let index = Some(index as usize);
+				if index == T::PalletInfo::index::<Pallet<T>>() {
+					use messaging::Error::{self, *};
+
+					match Error::<T>::decode(&mut error.as_slice()) {
+						Ok(MessageNotFound) => IMessaging::MessageNotFound.into(),
+						Ok(RequestPending) => IMessaging::RequestPending.into(),
+						Ok(TooManyMessages) => IMessaging::TooManyMessages.into(),
+						_ => e.into(),
+					}
+				} else {
+					e.into()
+				}
+			},
+			_ => e.into(),
+		}
+	}
+}
+
+// Encoding of custom errors via `Error(String)`.
+impl_from_sol_error! {
+	IMessaging::MessageNotFound,
+	IMessaging::RequestPending,
+	IMessaging::TooManyMessages,
 }
 
 impl From<messaging::MessageStatus> for IMessaging::MessageStatus {
@@ -100,10 +131,13 @@ impl From<messaging::MessageStatus> for IMessaging::MessageStatus {
 #[cfg(test)]
 mod tests {
 	use ::xcm::latest::Response;
-	use frame_support::{assert_noop, assert_ok, weights::Weight, BoundedVec};
+	use frame_support::{assert_ok, weights::Weight, BoundedVec};
 	use mock::{ExtBuilder, *};
 	use pallet_revive::{
-		precompiles::alloy::sol_types::{SolInterface, SolType},
+		precompiles::{
+			alloy::sol_types::{SolInterface, SolType},
+			Error,
+		},
 		test_utils::ALICE,
 	};
 
@@ -112,8 +146,6 @@ mod tests {
 		IMessagingCalls::*,
 		*,
 	};
-
-	type Error = crate::messaging::Error<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(MESSAGING);
 
@@ -171,7 +203,7 @@ mod tests {
 	}
 
 	#[test]
-	fn remove_fails_when_message_pending() {
+	fn remove_reverts_when_message_pending() {
 		let origin = ALICE;
 		let message = 1;
 		ExtBuilder::new()
@@ -182,9 +214,9 @@ mod tests {
 			)])
 			.build()
 			.execute_with(|| {
-				assert_noop!(
+				assert_revert!(
 					call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
-					Error::RequestPending
+					RequestPending
 				);
 			});
 	}
@@ -231,7 +263,7 @@ mod tests {
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
 		origin: &AccountId,
 		input: &IMessagingCalls,
-	) -> Result<Output, DispatchError> {
+	) -> Result<Output, Error> {
 		bare_call::<Test, Output>(
 			RuntimeOrigin::signed(origin.clone()),
 			ADDRESS.into(),

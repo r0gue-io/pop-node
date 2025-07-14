@@ -37,11 +37,12 @@ interface IXCM {
      * @param responder A SCALE-encoded versioned location of the XCM responder.
      * @param timeout Block number after which the query should timeout. A future block number is required.
      * @return id A unique message identifier.
+     * @return queryId The XCM query identifier.
      */
     function newQuery(
         bytes calldata responder,
         uint32 timeout
-    ) external returns (uint64 id);
+    ) external returns (uint64 id, uint64 queryId);
 
     /**
      * @notice Initiate a new XCM query.
@@ -50,12 +51,13 @@ interface IXCM {
      * @param timeout Block number after which the query should timeout. A future block number is required.
      * @param callback The callback to execute upon receiving a response.
      * @return id A unique message identifier.
+     * @return queryId The XCM query identifier.
      */
     function newQuery(
         bytes calldata responder,
         uint32 timeout,
         Callback calldata callback
-    ) external returns (uint64 id);
+    ) external returns (uint64 id, uint64 queryId);
 
     /**
      * @notice Polls the status of a message.
@@ -105,6 +107,15 @@ interface IXCM {
      * @param callback The callback to be used to return the response.
      */
     event QueryCreated(address account, uint64 id, uint64 queryId, Callback callback);
+
+    /// @dev The input failed to decode.
+    error DecodingFailed();
+    /// @dev Timeouts must be in the future.
+    error FutureTimeoutMandatory();
+    /// @dev Message block limit has been reached for this expiry block. Try a different timeout.
+    error MaxMessageTimeoutPerBlockReached();
+    /// @dev Failed to convert origin.
+    error OriginConversionFailed();
 }
 
 /// @notice A message callback.
@@ -151,3 +162,10 @@ struct Weight {
     /// @custom:property The weight of storage space used by proof of validity.
     uint64 proofSize;
 }
+
+/// @dev The message was not found.
+error MessageNotFound();
+/// @dev The request is pending.
+error RequestPending();
+/// @dev The number of messages exceeds the limit.
+error TooManyMessages();

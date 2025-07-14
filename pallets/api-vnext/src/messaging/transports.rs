@@ -1,3 +1,5 @@
+use frame_support::ensure;
+
 use super::*;
 
 /// Messaging using the Interoperable State Machine Protocol (ISMP).

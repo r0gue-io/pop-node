@@ -52,4 +52,11 @@ interface IMessaging {
      * @param messages The messages which were removed.
      */
     event Removed(address account, uint64[] messages);
+
+    /// @dev The message was not found.
+    error MessageNotFound();
+    /// @dev The request is pending.
+    error RequestPending();
+    /// @dev The number of messages exceeds the limit.
+    error TooManyMessages();
 }

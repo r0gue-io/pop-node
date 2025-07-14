@@ -55,7 +55,8 @@ where
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
-				let (id, commitment) = get::<T>(origin, message, fee, None)?;
+				let (id, commitment) =
+					get::<T>(origin, message, fee, None).map_err(Self::map_err)?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let event = GetDispatched_0 { origin, id, commitment: commitment.0.into() };
@@ -83,7 +84,8 @@ where
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
-				let (id, commitment) = get::<T>(origin, message, fee, Some(callback.into()))?;
+				let (id, commitment) =
+					get::<T>(origin, message, fee, Some(callback.into())).map_err(Self::map_err)?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let commitment = commitment.0.into();
@@ -121,7 +123,8 @@ where
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
-				let (id, commitment) = post::<T>(origin, message, fee, None)?;
+				let (id, commitment) =
+					post::<T>(origin, message, fee, None).map_err(Self::map_err)?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let event = PostDispatched_0 { origin, id, commitment: commitment.0.into() };
@@ -145,7 +148,8 @@ where
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 
 				let (id, commitment) =
-					post::<T>(env.caller().account_id()?, message, fee, Some(callback.into()))?;
+					post::<T>(env.caller().account_id()?, message, fee, Some(callback.into()))
+						.map_err(Self::map_err)?;
 
 				let origin = AddressMapper::<T>::to_address(origin).0.into();
 				let commitment = commitment.0.into();
@@ -158,7 +162,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 
-				remove::<T>(origin, &[*message])?;
+				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
 				let account = AddressMapper::<T>::to_address(origin).0.into();
@@ -174,7 +178,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 
-				remove::<T>(origin, messages)?;
+				remove::<T>(origin, messages).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
 				let account = AddressMapper::<T>::to_address(origin).0.into();
@@ -185,20 +189,54 @@ where
 	}
 }
 
-impl<const FIXED: u16, T> Ismp<FIXED, T> {
+impl<const FIXED: u16, T: frame_system::Config> Ismp<FIXED, T> {
 	/// The address of the precompile.
 	pub const fn address() -> [u8; 20] {
 		fixed_address(FIXED)
 	}
+
+	// Maps select, domain-specific dispatch errors to messaging errors. Anything not mapped results
+	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
+	fn map_err(e: DispatchError) -> Error {
+		use DispatchError::*;
+		match e {
+			Module(ModuleError { index, error, .. }) => {
+				let index = Some(index as usize);
+				if index == T::PalletInfo::index::<Pallet<T>>() {
+					use messaging::Error::{self, *};
+
+					match Error::<T>::decode(&mut error.as_slice()) {
+						Ok(MessageNotFound) => self::MessageNotFound.into(),
+						Ok(RequestPending) => self::RequestPending.into(),
+						Ok(TooManyMessages) => self::TooManyMessages.into(),
+						_ => e.into(),
+					}
+				} else {
+					e.into()
+				}
+			},
+			_ => e.into(),
+		}
+	}
 }
 
-fn try_get<T: Config>(value: &Get) -> Result<DispatchGet, DispatchError> {
-	// TODO: additional error variants vs revive::DecodingFailed
-	ensure!(value.context.len() as u32 <= T::MaxContextLen::get(), Error::<T>::TooManyMessages);
-	ensure!(value.keys.len() as u32 <= T::MaxKeys::get(), Error::<T>::TooManyMessages);
+// Encoding of custom errors via `Error(String)`.
+impl_from_sol_error! {
+	IISMP::MaxContextExceeded,
+	IISMP::MaxDataExceeded,
+	IISMP::MaxKeyExceeded,
+	IISMP::MaxKeysExceeded,
+	MessageNotFound,
+	RequestPending,
+	TooManyMessages,
+}
+
+fn try_get<T: Config>(value: &Get) -> Result<DispatchGet, Error> {
+	ensure!(value.context.len() as u32 <= T::MaxContextLen::get(), IISMP::MaxContextExceeded);
+	ensure!(value.keys.len() as u32 <= T::MaxKeys::get(), IISMP::MaxKeysExceeded);
 	ensure!(
 		value.keys.iter().all(|k| k.len() as u32 <= T::MaxKeyLen::get()),
-		Error::<T>::TooManyMessages
+		IISMP::MaxKeyExceeded
 	);
 	Ok(DispatchGet {
 		dest: StateMachine::Polkadot(value.destination),
@@ -210,9 +248,8 @@ fn try_get<T: Config>(value: &Get) -> Result<DispatchGet, DispatchError> {
 	})
 }
 
-fn try_post<T: Config>(value: &Post) -> Result<DispatchPost, DispatchError> {
-	// TODO: additional error variants vs revive::DecodingFailed
-	ensure!(value.data.len() as u32 <= T::MaxDataLen::get(), Error::<T>::TooManyMessages);
+fn try_post<T: Config>(value: &Post) -> Result<DispatchPost, Error> {
+	ensure!(value.data.len() as u32 <= T::MaxDataLen::get(), IISMP::MaxDataExceeded);
 	Ok(DispatchPost {
 		dest: StateMachine::Polkadot(value.destination),
 		from: ID.into(),
@@ -268,7 +305,10 @@ mod tests {
 	use frame_support::{assert_ok, traits::UnixTime, weights::Weight};
 	use mock::{ExtBuilder, *};
 	use pallet_revive::{
-		precompiles::alloy::sol_types::{SolInterface, SolType},
+		precompiles::{
+			alloy::sol_types::{SolInterface, SolType},
+			Error,
+		},
 		test_utils::ALICE,
 	};
 	use sp_io::hashing::keccak_256;
@@ -538,7 +578,7 @@ mod tests {
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
 		origin: &AccountId,
 		input: &IISMPCalls,
-	) -> Result<Output, DispatchError> {
+	) -> Result<Output, Error> {
 		bare_call::<Test, Output>(
 			RuntimeOrigin::signed(origin.clone()),
 			ADDRESS.into(),

@@ -37,7 +37,7 @@ where
 		_address: &[u8; 20],
 		input: &Self::Interface,
 		env: &mut impl Ext<T = Self::T>,
-	) -> Result<Vec<u8>, pallet_revive::precompiles::Error> {
+	) -> Result<Vec<u8>, Error> {
 		match input {
 			IXCMCalls::blockNumber(blockNumberCall {}) => {
 				env.charge(<T as Config>::WeightInfo::block_number())?;
@@ -54,7 +54,7 @@ where
 					MAX_XCM_DECODE_DEPTH,
 					&mut &message[..],
 				)
-				.map_err(|_| pallet_revive::Error::<T>::DecodingFailed)?
+				.map_err(|_| Error::from(IXCM::DecodingFailed))?
 				.into();
 
 				let result = <pallet_xcm::Pallet<T>>::execute(
@@ -89,29 +89,30 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let location = Location::decode(&mut &responder[..])
-					.map_err(|_| pallet_revive::Error::<T>::DecodingFailed)?;
+					.map_err(|_| Error::from(IXCM::DecodingFailed))?;
 
 				let (id, query_id) = new_query::<T>(origin, location, (*timeout).into(), None)?;
 
 				let account = AddressMapper::<T>::to_address(origin).0.into();
 				deposit_event(env, QueryCreated_0 { account, id, queryId: query_id })?;
-				Ok(newQuery_0Call::abi_encode_returns(&id))
+				Ok(newQuery_0Call::abi_encode_returns(&newQuery_0Return { id, queryId: query_id }))
 			},
 			IXCMCalls::newQuery_1(newQuery_1Call { responder, timeout, callback }) => {
 				env.charge(<T as Config>::WeightInfo::xcm_new_query(1))?;
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let location = Location::decode(&mut &responder[..])
-					.map_err(|_| pallet_revive::Error::<T>::DecodingFailed)?;
+					.map_err(|_| Error::from(IXCM::DecodingFailed))?;
 
 				let (id, query_id) =
-					new_query::<T>(origin, location, (*timeout).into(), Some(callback.into()))?;
+					new_query::<T>(origin, location, (*timeout).into(), Some(callback.into()))
+						.map_err(Self::map_err)?;
 
 				let account = AddressMapper::<T>::to_address(origin).0.into();
 				let event =
 					QueryCreated_1 { account, id, callback: callback.clone(), queryId: query_id };
 				deposit_event(env, event)?;
-				Ok(newQuery_0Call::abi_encode_returns(&id))
+				Ok(newQuery_1Call::abi_encode_returns(&newQuery_1Return { id, queryId: query_id }))
 			},
 			IXCMCalls::pollStatus(pollStatusCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::poll_status())?;
@@ -125,7 +126,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 
-				remove::<T>(origin, &[*message])?;
+				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
 				let account = AddressMapper::<T>::to_address(origin).0.into();
@@ -141,7 +142,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 
-				remove::<T>(origin, messages)?;
+				remove::<T>(origin, messages).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
 				let account = AddressMapper::<T>::to_address(origin).0.into();
@@ -152,13 +153,13 @@ where
 				// Based on https://github.com/paritytech/polkadot-sdk/blob/master/polkadot/xcm/pallet-xcm/src/precompiles.rs
 				env.charge(<T as pallet_xcm::Config>::WeightInfo::send())?;
 				let destination = VersionedLocation::decode_all(&mut &destination[..])
-					.map_err(|_| pallet_revive::Error::<T>::DecodingFailed)?
+					.map_err(|_| Error::from(IXCM::DecodingFailed))?
 					.into();
 				let message = VersionedXcm::decode_all_with_depth_limit(
 					MAX_XCM_DECODE_DEPTH,
 					&mut &message[..],
 				)
-				.map_err(|_| pallet_revive::Error::<T>::DecodingFailed)?
+				.map_err(|_| Error::from(IXCM::DecodingFailed))?
 				.into();
 
 				let result = <pallet_xcm::Pallet<T>>::send(
@@ -175,11 +176,50 @@ where
 	}
 }
 
-impl<const FIXED: u16, T> Xcm<FIXED, T> {
+impl<const FIXED: u16, T: frame_system::Config> Xcm<FIXED, T> {
 	/// The address of the precompile.
 	pub const fn address() -> [u8; 20] {
 		fixed_address(FIXED)
 	}
+
+	// Maps select, domain-specific dispatch errors to messaging errors. Anything not mapped results
+	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
+	fn map_err(e: DispatchError) -> Error {
+		use DispatchError::*;
+		match e {
+			Module(ModuleError { index, error, .. }) => {
+				let index = Some(index as usize);
+				if index == T::PalletInfo::index::<Pallet<T>>() {
+					use messaging::Error::{self, *};
+
+					match Error::<T>::decode(&mut error.as_slice()) {
+						Ok(FutureTimeoutMandatory) => IXCM::FutureTimeoutMandatory.into(),
+						Ok(MaxMessageTimeoutPerBlockReached) =>
+							IXCM::MaxMessageTimeoutPerBlockReached.into(),
+						Ok(MessageNotFound) => self::MessageNotFound.into(),
+						Ok(OriginConversionFailed) => IXCM::OriginConversionFailed.into(),
+						Ok(RequestPending) => self::RequestPending.into(),
+						Ok(TooManyMessages) => self::TooManyMessages.into(),
+						_ => e.into(),
+					}
+				} else {
+					e.into()
+				}
+			},
+			_ => e.into(),
+		}
+	}
+}
+
+// Encoding of custom errors via `Error(String)`.
+impl_from_sol_error! {
+	IXCM::DecodingFailed,
+	IXCM::FutureTimeoutMandatory,
+	IXCM::MaxMessageTimeoutPerBlockReached,
+	IXCM::OriginConversionFailed,
+	MessageNotFound,
+	RequestPending,
+	TooManyMessages,
 }
 
 impl From<&Callback> for super::Callback {
@@ -237,7 +277,10 @@ mod tests {
 	use frame_support::{assert_ok, dispatch::PostDispatchInfo, weights::Weight};
 	use mock::{messaging::RESPONSE_LOCATION, ExtBuilder, *};
 	use pallet_revive::{
-		precompiles::alloy::sol_types::{SolInterface, SolType},
+		precompiles::{
+			alloy::sol_types::{SolInterface, SolType},
+			Error,
+		},
 		test_utils::ALICE,
 	};
 	use pallet_xcm::ExecutionError;
@@ -475,7 +518,7 @@ mod tests {
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
 		origin: &AccountId,
 		input: &IXCMCalls,
-	) -> Result<Output, DispatchError> {
+	) -> Result<Output, Error> {
 		bare_call::<Test, Output>(
 			RuntimeOrigin::signed(origin.clone()),
 			ADDRESS.into(),

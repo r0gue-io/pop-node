@@ -1,9 +1,13 @@
 use alloc::vec;
 
+use frame_support::{
+	sp_runtime::{ArithmeticError, DispatchError, ModuleError},
+	traits::PalletInfo,
+};
 pub(super) use pallet_revive::precompiles::{
 	alloy::{primitives::U256, sol_types::SolCall},
 	AddressMatcher::Fixed,
-	RuntimeCosts,
+	Error, RuntimeCosts,
 };
 
 use super::*;

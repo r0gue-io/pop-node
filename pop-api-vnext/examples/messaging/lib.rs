@@ -18,7 +18,7 @@ use pop_api::{
 		self as api, hashed_account, ismp,
 		ismp::{Get, StorageValue},
 		xcm::VersionedLocation,
-		Bytes, Callback, Encoding, MessageId,
+		Bytes, Callback, Encoding, Error, MessageId,
 		MessageStatus::Complete,
 		Weight,
 	},
@@ -38,18 +38,16 @@ mod messaging {
 	#[derive(Default)]
 	pub struct Messaging {
 		para: u32,
-		id: MessageId,
 	}
 
 	impl Messaging {
 		#[ink(constructor, payable)]
 		pub fn new(para: u32) -> Self {
-			Self { para, id: 0 }
+			Self { para }
 		}
 
 		#[ink(message)]
-		pub fn get(&mut self, key: Vec<u8>, height: u64) {
-			// self.id = self.id.saturating_add(1);
+		pub fn get(&mut self, key: Vec<u8>, height: u64) -> Result<(), ismp::Error> {
 			let id = ismp::get(
 				Get::new(self.para, height, 0, Vec::default(), Vec::from([key.clone()])),
 				U256::zero(),
@@ -59,8 +57,9 @@ mod messaging {
 					0x57ad942b,
 					Weight::from_parts(800_000_000, 500_000),
 				)),
-			);
-			self.env().emit_event(IsmpRequested { id: self.id, key, height });
+			)?;
+			self.env().emit_event(IsmpRequested { id, key, height });
+			Ok(())
 		}
 
 		#[ink(message, payable)]
@@ -101,8 +100,7 @@ mod messaging {
 			let call = DoubleEncoded::<()>::decode_all(&mut &call[..]).unwrap();
 
 			// Register a new query for receiving a response, used to report transact status.
-			self.id = self.id.saturating_add(1);
-			let query_id = api::xcm::new_query(
+			let (id, query_id) = api::xcm::new_query(
 				VersionedLocation::V5(dest.clone()),
 				self.env().block_number().saturating_add(100),
 				Some(Callback::new(
@@ -131,16 +129,17 @@ mod messaging {
 			Blake2x256::hash(&message.encode(), &mut hash);
 			let result = api::xcm::send(dest.into_versioned(), VersionedXcm::V5(message));
 
-			self.env().emit_event(XcmRequested { id: self.id, query_id, hash });
+			self.env().emit_event(XcmRequested { id, query_id, hash });
 		}
 
 		#[ink(message)]
-		pub fn complete(&mut self, id: MessageId) {
+		pub fn complete(&mut self, id: MessageId) -> Result<(), Error> {
 			if api::poll_status(id) == Complete {
 				let result = api::get_response(id);
-				api::remove(id);
+				api::remove(id)?;
 				self.env().emit_event(Completed { id, result });
 			}
+			Ok(())
 		}
 
 		fn _transact(
