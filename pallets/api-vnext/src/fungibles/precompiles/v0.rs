@@ -461,7 +461,6 @@ mod tests {
 				let call = transferCall { token, to, value: U256::from(1) };
 				let transfer = IFungiblesCalls::transfer(call);
 				let Error::Revert(revert) = Error::from(Unknown) else { panic!() };
-				println!("{:?}", revert.abi_encode());
 				assert_revert!(call_precompile::<()>(&origin, &transfer), Unknown);
 			});
 	}
