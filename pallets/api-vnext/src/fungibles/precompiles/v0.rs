@@ -1,8 +1,3 @@
-use codec::Decode;
-use frame_support::{
-	sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError},
-	traits::PalletInfo,
-};
 pub(crate) use IFungibles::*;
 
 use super::*;

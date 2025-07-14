@@ -1,11 +1,7 @@
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
-use ink::{
-	sol::{SolErrorDecode, SolErrorEncode},
-	sol_error_selector,
-};
+use ink::{sol::SolErrorDecode, sol_error_selector};
 
 use super::*;
-use crate::sol::PrecompileError;
+use crate::{impl_sol_encoding_for_precompile, sol::PrecompileError};
 
 #[cfg_attr(feature = "std", derive(Debug, PartialEq))]
 #[derive(ink::SolErrorEncode)]
@@ -43,22 +39,9 @@ pub enum Error {
 	ZeroValue,
 }
 
-impl SolErrorDecode for Error {
-	fn decode(data: &[u8]) -> Result<Self, ink::sol::Error> {
-		use crate::sol::{Error, ERROR};
+impl_sol_encoding_for_precompile!(Error);
 
-		if data.len() < 4 || data[..4] != ERROR {
-			return <Self as PrecompileError>::decode(data);
-		}
-
-		// Decode as `Error(string)`, then via `base64::decode` and finally decode into `Error`
-		let error = Error::decode(data)?;
-		let data = BASE64.decode(error.0).map_err(|_| ink::sol::Error)?;
-		return <Self as PrecompileError>::decode(data.as_slice());
-	}
-}
-
-impl crate::sol::PrecompileError for Error {
+impl PrecompileError for Error {
 	fn decode(data: &[u8]) -> Result<Self, ink::sol::Error> {
 		if data.len() < 4 {
 			return Err(ink::sol::Error);
@@ -91,18 +74,6 @@ impl crate::sol::PrecompileError for Error {
 	}
 }
 
-impl<'a> ink::SolEncode<'a> for Error {
-	type SolType = ();
-
-	fn encode(&'a self) -> Vec<u8> {
-		SolErrorEncode::encode(self)
-	}
-
-	fn to_sol_type(&'a self) -> Self::SolType {
-		()
-	}
-}
-
 const BAD_METADATA: [u8; 4] = sol_error_selector!("BadMetadata", ());
 const BELOW_MINIMUM: [u8; 4] = sol_error_selector!("BelowMinimum", ());
 const CANNOT_CREATE: [u8; 4] = sol_error_selector!("CannotCreate", ());
@@ -121,6 +92,8 @@ const ZERO_VALUE: [u8; 4] = sol_error_selector!("ZeroValue", ());
 
 #[test]
 fn error_encoding_works() {
+	use ink::SolEncode;
+
 	for (result, expected) in [
 		(
 			InvalidRecipient([255u8; 20].into()).encode(),
@@ -139,6 +112,8 @@ fn error_encoding_works() {
 
 #[test]
 fn selectors_work() {
+	use ink::SolEncode;
+
 	for (encoded, expected) in [
 		(Error::BadMetadata.encode(), BAD_METADATA),
 		(Error::BelowMinimum.encode(), BELOW_MINIMUM),

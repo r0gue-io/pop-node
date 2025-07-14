@@ -62,16 +62,21 @@ where
 			},
 			IERC20Calls::transfer(transferCall { to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
-				let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+				let origin = env.caller();
+				let account = origin.account_id()?;
+				let from = <AddressMapper<T>>::to_address(&account).0.into();
 				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
+				let balance = balance::<T, I>(token.clone(), &account).try_convert()?;
+
 				transfer::<T, I>(
-					to_runtime_origin(env.caller()),
+					to_runtime_origin(origin),
 					token,
 					env.to_account_id(&(*to.0).into()),
 					(*value).try_convert()?,
-				)?;
+				)
+				.map_err(|e| Self::map_transfer_err(e, &from, value, &balance))?;
 
 				deposit_event(env, Transfer { from, to: *to, value: *value })?;
 				Ok(transferCall::abi_encode_returns(&true))
@@ -123,17 +128,24 @@ where
 			},
 			IERC20Calls::transferFrom(transferFromCall { from, to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer_from())?;
+				let origin = env.caller();
+				let account = origin.account_id()?;
 				ensure!(!from.is_zero(), ERC20InvalidSender { sender: *from });
 				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
+				let owner = env.to_account_id(&(*from.0).into());
+				let spender = <AddressMapper<T>>::to_address(&account).0.into();
+				let allowance = allowance::<T, I>(token.clone(), &owner, &account).try_convert()?;
+
 				transfer_from::<T, I>(
-					to_runtime_origin(env.caller()),
+					to_runtime_origin(origin),
 					token,
-					env.to_account_id(&(*from.0).into()),
+					owner,
 					env.to_account_id(&(*to.0).into()),
 					(*value).try_convert()?,
-				)?;
+				)
+				.map_err(|e| Self::map_transfer_from_err(e, &spender, value, &allowance))?;
 
 				deposit_event(env, Transfer { from: *from, to: *to, value: *value })?;
 				Ok(transferFromCall::abi_encode_returns(&true))
@@ -171,6 +183,69 @@ impl<const PREFIX: u16, T: pallet_assets::Config<I>, I: 'static> Erc20<PREFIX, T
 	pub fn address(id: u32) -> [u8; 20] {
 		prefixed_address(PREFIX, id)
 	}
+
+	// Maps select, domain-specific dispatch errors to ERC20 errors. Anything not mapped results
+	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
+	fn map_transfer_err(e: DispatchError, from: &Address, value: &U256, balance: &U256) -> Error {
+		match e {
+			DispatchError::Module(ModuleError { index, error, .. })
+				if Some(index as usize) ==
+					T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() =>
+			{
+				use pallet_assets::{Error, Error::*};
+				Error::<T, I>::decode(&mut error.as_slice()).ok().and_then(|error| match error {
+					BalanceLow => Some(
+						IERC20::ERC20InsufficientBalance {
+							sender: *from,
+							balance: *balance,
+							needed: *value,
+						}
+						.into(),
+					),
+					_ => None,
+				})
+			},
+			_ => None,
+		}
+		.unwrap_or_else(|| e.into())
+	}
+
+	// Maps select, domain-specific dispatch errors to ERC20 errors. Anything not mapped results
+	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
+	fn map_transfer_from_err(
+		e: DispatchError,
+		spender: &Address,
+		value: &U256,
+		allowance: &U256,
+	) -> Error {
+		match e {
+			DispatchError::Module(ModuleError { index, error, .. })
+				if Some(index as usize) ==
+					T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() =>
+			{
+				use pallet_assets::{Error, Error::*};
+				Error::<T, I>::decode(&mut error.as_slice()).ok().and_then(|error| match error {
+					Unapproved => Some(
+						IERC20::ERC20InsufficientAllowance {
+							spender: *spender,
+							allowance: *allowance,
+							needed: *value,
+						}
+						.into(),
+					),
+					_ => None,
+				})
+			},
+			_ => None,
+		}
+		.unwrap_or_else(|| e.into())
+	}
+}
+
+// Encoding of custom errors via `Error(String)`.
+impl_from_sol_error! {
+	IERC20::ERC20InsufficientAllowance,
+	IERC20::ERC20InsufficientBalance,
 }
 
 #[cfg(test)]
@@ -266,6 +341,31 @@ mod tests {
 				ERC20InsufficientValue
 			);
 		});
+	}
+
+	#[test]
+	fn transfer_reverts_with_insufficient_balance() {
+		let token = 1;
+		let origin = ALICE;
+		let endowment = 10_000_000;
+		let to = BOB;
+		ExtBuilder::new()
+			.with_assets(vec![(token, CHARLIE, true, 1)])
+			.with_asset_balances(vec![(token, origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				let value = U256::from(endowment + 1);
+				let call = transferCall { to: to_address(&to).0.into(), value };
+				let transfer = IERC20Calls::transfer(call);
+				assert_revert!(
+					call_precompile::<()>(&origin, token, &transfer),
+					ERC20InsufficientBalance {
+						sender: to_address(&origin).0.into(),
+						balance: U256::from(endowment),
+						needed: value
+					}
+				);
+			});
 	}
 
 	#[test]
@@ -439,6 +539,45 @@ mod tests {
 				ERC20InsufficientValue
 			);
 		});
+	}
+
+	#[test]
+	fn transfer_from_reverts_with_insufficient_allowance() {
+		let token = 1;
+		let origin = BOB;
+		let from = ALICE;
+		let endowment = 10_000_000;
+		let to = CHARLIE;
+		let allowance = endowment / 2;
+		ExtBuilder::new()
+			.with_balances(vec![(from.clone(), UNIT)])
+			.with_assets(vec![(token, CHARLIE, true, 1)])
+			.with_asset_balances(vec![(token, from.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				assert_ok!(approve::<Test, ()>(
+					RuntimeOrigin::signed(from.clone()),
+					token,
+					origin.clone(),
+					allowance
+				));
+
+				let value = U256::from(allowance + 1);
+				let call = transferFromCall {
+					from: to_address(&from).0.into(),
+					to: to_address(&to).0.into(),
+					value,
+				};
+				let transfer_from = IERC20Calls::transferFrom(call);
+				assert_revert!(
+					call_precompile::<()>(&origin, token, &transfer_from),
+					ERC20InsufficientAllowance {
+						spender: to_address(&origin).0.into(),
+						allowance: U256::from(allowance),
+						needed: value
+					}
+				);
+			});
 	}
 
 	#[test]

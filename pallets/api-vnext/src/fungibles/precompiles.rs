@@ -1,5 +1,10 @@
 use alloc::string::String;
 
+use codec::Decode;
+use frame_support::{
+	sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError},
+	traits::PalletInfo,
+};
 pub(super) use pallet_revive::precompiles::alloy::{
 	primitives::{Address, U256},
 	sol_types::SolCall,

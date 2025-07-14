@@ -38,7 +38,6 @@ use {
 	},
 };
 
-#[macro_use]
 mod errors;
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
