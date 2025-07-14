@@ -1,4 +1,4 @@
-pub use ink::{abi::Sol, primitives::sol::SolErrorDecode, SolEncode};
+pub use ink::{abi::Sol, prelude::string::String, primitives::sol::SolErrorDecode, SolEncode};
 
 /// Reverts the current contract execution, rolling back any changes and returning the specified
 /// `error`.
@@ -8,3 +8,13 @@ pub fn revert(error: &impl for<'a> SolEncode<'a>) -> ! {
 	use ink::env::{return_value_solidity, ReturnFlags};
 	return_value_solidity(ReturnFlags::REVERT, error)
 }
+
+// Decoding of an error from a precompile, where custom errors have been base64 encoded.
+pub(crate) trait PrecompileError: Sized {
+	fn decode(data: &[u8]) -> Result<Self, ink::sol::Error>;
+}
+
+pub(crate) const ERROR: [u8; 4] = ink::sol_error_selector!("Error", (String,));
+
+#[derive(ink::SolErrorDecode)]
+pub(crate) struct Error(pub(crate) String);

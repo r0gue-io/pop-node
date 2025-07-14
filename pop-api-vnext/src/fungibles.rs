@@ -3,7 +3,7 @@ use ink::{
 	prelude::{string::String, vec::Vec},
 	U256,
 };
-use sol::*;
+use sol::Sol;
 pub use v0::*;
 
 use super::*;

@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
 use ink::{prelude::string::String, U256};
-use pop_api::fungibles::{self as api, *};
+use pop_api::fungibles::{self as api, Error, *};
 
 #[ink::contract]
 pub mod fungibles {
@@ -90,21 +90,30 @@ pub mod fungibles {
 		}
 
 		#[ink(message)]
-		fn startDestroy(&self, token: TokenId) {
-			api::start_destroy(token);
+		fn startDestroy(&self, token: TokenId) -> Result<(), Error> {
+			api::start_destroy(token)?;
 			self.env().emit_event(DestroyStarted { token });
+			Ok(())
 		}
 
 		#[ink(message)]
-		fn setMetadata(&self, token: TokenId, name: String, symbol: String, decimals: u8) {
-			api::set_metadata(token, name.clone(), symbol.clone(), decimals);
+		fn setMetadata(
+			&self,
+			token: TokenId,
+			name: String,
+			symbol: String,
+			decimals: u8,
+		) -> Result<(), Error> {
+			api::set_metadata(token, name.clone(), symbol.clone(), decimals)?;
 			self.env().emit_event(MetadataSet { token, name, symbol, decimals });
+			Ok(())
 		}
 
 		#[ink(message)]
-		fn clearMetadata(&self, token: TokenId) {
-			api::clear_metadata(token);
+		fn clearMetadata(&self, token: TokenId) -> Result<(), Error> {
+			api::clear_metadata(token)?;
 			self.env().emit_event(MetadataCleared { token });
+			Ok(())
 		}
 
 		#[ink(message)]

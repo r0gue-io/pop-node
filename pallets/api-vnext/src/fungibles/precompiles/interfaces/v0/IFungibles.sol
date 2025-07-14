@@ -197,10 +197,28 @@ interface IFungibles {
      */
     event Created(uint32 id, address creator, address admin);
 
+    /// @dev The metadata provided is invalid.
+    error BadMetadata();
+    /// @dev Account cannot exist with the funds that would be given.
+    error BelowMinimum();
+    /// @dev Account cannot be created.
+    error CannotCreate();
+    /// @dev The account balance is insufficient.
+    error InsufficientBalance();
     /// @dev The token recipient is invalid.
     error InvalidRecipient(address);
     /// @dev The minimum balance should be non-zero.
     error MinBalanceZero();
+    /// @dev The signing account has no permission to do the operation.
+    error NoPermission();
+    /// @dev The token is not live, and likely being destroyed..
+    error NotLive();
+    /// @dev The token balance overflowed.
+    error Overflow();
+    /// @dev No approval exists that would allow the transfer.
+    error Unapproved();
+    /// @dev The given token identifier is unknown.
+    error Unknown();
     /// @dev The `admin` address cannot be the zero address.
     error ZeroAdminAddress();
     /// @dev The recipient cannot be the zero address.

@@ -5,10 +5,7 @@ use std::path::Path;
 use frame_support::{assert_ok, weights::Weight};
 use pallet_assets::{Instance1, NextAssetId};
 use pallet_revive::{
-	precompiles::alloy::{
-		primitives as alloy,
-		sol_types::{SolCall, SolType, SolValue},
-	},
+	precompiles::alloy::{primitives as alloy, sol_types::SolCall},
 	test_utils::{ALICE, BOB, CHARLIE},
 	AccountId32Mapper, AddressMapper, Code, DepositLimit, ExecReturnValue, H160, U256,
 };
@@ -62,10 +59,6 @@ fn blake_selector(input: &str) -> [u8; 4] {
 	sp_io::hashing::blake2_256(input.as_bytes())[0..4]
 		.try_into()
 		.expect("hash length > 4")
-}
-
-fn decode<T: SolValue + From<<T::SolType as SolType>::RustType>>(data: &[u8]) -> T {
-	T::abi_decode(data).expect("unable to decode")
 }
 
 // Deploy, instantiate and return contract address.

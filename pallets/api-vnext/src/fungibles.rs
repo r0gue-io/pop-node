@@ -244,7 +244,12 @@ fn transfer<T: pallet_assets::Config<I>, I>(
 	to: AccountIdOf<T>,
 	value: BalanceOf<T, I>,
 ) -> DispatchResult {
-	<Assets<T, I>>::transfer(origin, asset.into(), T::Lookup::unlookup(to.clone()), value)
+	<Assets<T, I>>::transfer_keep_alive(
+		origin,
+		asset.into(),
+		T::Lookup::unlookup(to.clone()),
+		value,
+	)
 }
 
 fn transfer_from<T: pallet_assets::Config<I>, I>(

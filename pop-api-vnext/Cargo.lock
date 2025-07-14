@@ -3535,7 +3535,7 @@ dependencies = [
 name = "pop-api"
 version = "0.1.0"
 dependencies = [
- "alloy-sol-types 1.2.1",
+ "base64",
  "hex",
  "ink",
  "pop-primitives",

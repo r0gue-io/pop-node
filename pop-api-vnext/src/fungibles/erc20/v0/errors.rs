@@ -3,7 +3,7 @@ use ink::sol::SolErrorEncode;
 use super::*;
 
 #[derive(ink::SolErrorDecode, ink::SolErrorEncode)]
-#[ink::scale_derive(Decode, Encode, TypeInfo)]
+#[ink::scale_derive(Decode, Encode, TypeInfo)] // TODO: check removal
 pub enum Error {
 	/// Indicates a failure with the `spender`’s `allowance`.
 	ERC20InsufficientAllowance(Address, U256, U256),
@@ -37,24 +37,24 @@ impl<'a> ink::SolEncode<'a> for Error {
 fn error_encoding_works() {
 	for (result, expected) in [
 		    (
-				ERC20InsufficientAllowance([255u8; 20].into(), U256::MAX, U256::MAX).abi_encode(),
+				ERC20InsufficientAllowance([255u8; 20].into(), U256::MAX, U256::MAX).encode(),
 				"fb8f41b2000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 			),
 			(
-			    ERC20InsufficientBalance([255u8; 20].into(), U256::MAX, U256::MAX).abi_encode(),
+			    ERC20InsufficientBalance([255u8; 20].into(), U256::MAX, U256::MAX).encode(),
 				"e450d38c000000000000000000000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
 			),
-			(ERC20InsufficientValue.abi_encode(),"bffe98ad"),
+			(ERC20InsufficientValue.encode(),"bffe98ad"),
 			(
-			    ERC20InvalidApprover([255u8; 20].into()).abi_encode(),
+			    ERC20InvalidApprover([255u8; 20].into()).encode(),
 				"e602df05000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
 			),
 			(
-			    ERC20InvalidReceiver([255u8; 20].into()).abi_encode(),
+			    ERC20InvalidReceiver([255u8; 20].into()).encode(),
 				"ec442f05000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
 			),
 			(
-			    ERC20InvalidSender([255u8; 20].into()).abi_encode(),
+			    ERC20InvalidSender([255u8; 20].into()).encode(),
 				"96c6fd1e000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
 			),
 		] {

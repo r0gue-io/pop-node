@@ -37,3 +37,24 @@ macro_rules! ensure {
 		}
 	}};
 }
+
+/// Implement [`From`] for Solidity errors, which converts the error into a [`Revert`] error with
+/// the reason containing a base64-encoding of the specified Solidity error.
+macro_rules! impl_from_sol_error {
+    ($($error_type:path),+ $(,)?) => {
+        $(
+            impl From<$error_type> for Error {
+                fn from(error: $error_type) -> Self {
+                    use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
+                    use pallet_revive::precompiles::{
+             			alloy::sol_types::{Revert, SolError},
+             			Error,
+              		};
+
+                    let reason = BASE64.encode(error.abi_encode().as_slice());
+                    Error::Revert(Revert { reason })
+                }
+            }
+        )+
+    };
+}

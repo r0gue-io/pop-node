@@ -1,3 +1,8 @@
+use codec::Decode;
+use frame_support::{
+	sp_runtime::{ArithmeticError, DispatchError, ModuleError, TokenError},
+	traits::PalletInfo,
+};
 pub(crate) use IFungibles::*;
 
 use super::*;
@@ -18,7 +23,8 @@ impl<
 				I,
 				AssetId: Default + From<u32> + Into<u32>,
 				Balance: TryConvert<U256, Error = Error>,
-			> + pallet_revive::Config
+			> + pallet_balances::Config
+			+ pallet_revive::Config
 			+ Config<I>,
 		I: 'static,
 	> Precompile for Fungibles<FIXED, T, I>
@@ -49,7 +55,8 @@ where
 					(*token).into(),
 					env.to_account_id(&(*to.0).into()),
 					(*value).try_convert()?,
-				)?;
+				)
+				.map_err(Self::map_err)?;
 
 				deposit_event(env, Transfer { token: *token, from, to: *to, value: *value })?;
 				Ok(transferCall::abi_encode_returns(&transferReturn {}))
@@ -67,7 +74,8 @@ where
 					env.to_account_id(&(*from.0).into()),
 					env.to_account_id(&(*to.0).into()),
 					(*value).try_convert()?,
-				)?;
+				)
+				.map_err(Self::map_err)?;
 
 				let event = Transfer { token: *token, from: *from, to: *to, value: *value };
 				deposit_event(env, event)?;
@@ -102,7 +110,7 @@ where
 							env.gas_meter_mut()
 								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 						}
-						return Err(e.error.into())
+						return Err(Self::map_err(e.error));
 					},
 				};
 
@@ -131,7 +139,8 @@ where
 							.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 					}
 					e.error
-				})?
+				})
+				.map_err(Self::map_err)?
 				.try_convert()?;
 
 				let spender = *spender;
@@ -168,7 +177,7 @@ where
 							env.gas_meter_mut()
 								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 						}
-						return Err(e.error.into())
+						return Err(Self::map_err(e.error))
 					},
 				};
 
@@ -186,7 +195,8 @@ where
 					to_runtime_origin(env.caller()),
 					env.to_account_id(&(*admin.0).into()),
 					(*minBalance).try_convert()?,
-				)?
+				)
+				.map_err(Self::map_err)?
 				.into();
 
 				deposit_event(env, Created { id, creator, admin: *admin })?;
@@ -195,7 +205,8 @@ where
 			IFungiblesCalls::startDestroy(startDestroyCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::start_destroy())?;
 
-				start_destroy::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
+				start_destroy::<T, I>(to_runtime_origin(env.caller()), (*token).into())
+					.map_err(Self::map_err)?;
 
 				Ok(startDestroyCall::abi_encode_returns(&startDestroyReturn {}))
 			},
@@ -208,14 +219,16 @@ where
 					name.as_bytes().to_vec(),
 					symbol.as_bytes().to_vec(),
 					*decimals,
-				)?;
+				)
+				.map_err(Self::map_err)?;
 
 				Ok(setMetadataCall::abi_encode_returns(&setMetadataReturn {}))
 			},
 			IFungiblesCalls::clearMetadata(clearMetadataCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::clear_metadata())?;
 
-				clear_metadata::<T, I>(to_runtime_origin(env.caller()), (*token).into())?;
+				clear_metadata::<T, I>(to_runtime_origin(env.caller()), (*token).into())
+					.map_err(Self::map_err)?;
 
 				Ok(clearMetadataCall::abi_encode_returns(&clearMetadataReturn {}))
 			},
@@ -229,7 +242,8 @@ where
 					(*token).into(),
 					env.to_account_id(&(*account.0).into()),
 					(*value).try_convert()?,
-				)?;
+				)
+				.map_err(Self::map_err)?;
 
 				let from = Address::default();
 				let to = *account;
@@ -256,7 +270,8 @@ where
 							.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 					}
 					e.error
-				})?;
+				})
+				.map_err(Self::map_err)?;
 
 				let to = Address::default();
 				let event = Transfer { token: *token, from: *account, to, value: *value };
@@ -322,11 +337,80 @@ where
 	}
 }
 
-impl<const FIXED: u16, T: pallet_assets::Config<I>, I: 'static> Fungibles<FIXED, T, I> {
+impl<const FIXED: u16, T: pallet_assets::Config<I> + pallet_balances::Config, I: 'static>
+	Fungibles<FIXED, T, I>
+{
 	/// The address of the precompile.
 	pub const fn address() -> [u8; 20] {
 		fixed_address(FIXED)
 	}
+
+	// Maps select, domain-specific dispatch errors to fungibles errors. Anything not mapped results
+	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
+	fn map_err(e: DispatchError) -> Error {
+		use DispatchError::*;
+		match e {
+			Arithmetic(error) => match error {
+				ArithmeticError::Overflow => IFungibles::Overflow.into(),
+				_ => e.into(),
+			},
+			ConsumerRemaining => IFungibles::InsufficientBalance.into(),
+			Module(ModuleError { index, error, .. }) => {
+				let index = Some(index as usize);
+				if index == T::PalletInfo::index::<pallet_balances::Pallet<T>>() {
+					use pallet_balances::{Error, Error::*};
+
+					match Error::<T>::decode(&mut error.as_slice()) {
+						Ok(error) => match error {
+							InsufficientBalance => IFungibles::InsufficientBalance.into(),
+							_ => e.into(),
+						},
+						_ => e.into(),
+					}
+				} else if index == T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() {
+					use pallet_assets::{Error, Error::*};
+
+					match Error::<T, I>::decode(&mut error.as_slice()) {
+						Ok(error) => match error {
+							AssetNotLive | IncorrectStatus => IFungibles::NotLive.into(),
+							BalanceLow => IFungibles::InsufficientBalance.into(),
+							BadMetadata => IFungibles::BadMetadata.into(),
+							NoPermission => IFungibles::NoPermission.into(),
+							Unapproved => IFungibles::Unapproved.into(),
+							Unknown => IFungibles::Unknown.into(),
+							_ => e.into(),
+						},
+						_ => e.into(),
+					}
+				} else {
+					e.into()
+				}
+			},
+			Token(error) => {
+				use TokenError::*;
+				match error {
+					BelowMinimum => IFungibles::BelowMinimum.into(),
+					CannotCreate => IFungibles::CannotCreate.into(),
+					UnknownAsset => IFungibles::Unknown.into(),
+					_ => e.into(),
+				}
+			},
+			_ => e.into(),
+		}
+	}
+}
+
+// Encoding of custom errors via `Error(String)`.
+impl_from_sol_error! {
+	IFungibles::BadMetadata,
+	IFungibles::BelowMinimum,
+	IFungibles::CannotCreate,
+	IFungibles::InsufficientBalance,
+	IFungibles::NoPermission,
+	IFungibles::NotLive,
+	IFungibles::Overflow,
+	IFungibles::Unapproved,
+	IFungibles::Unknown,
 }
 
 #[cfg(test)]
@@ -374,6 +458,23 @@ mod tests {
 			let transfer = IFungiblesCalls::transfer(call);
 			assert_revert!(call_precompile::<()>(&origin, &transfer), ZeroValue);
 		});
+	}
+
+	#[test]
+	fn transfer_reverts_with_unknown() {
+		let token = 1;
+		let origin = ALICE;
+		let to = [255; 20].into();
+		ExtBuilder::new()
+			.with_assets(vec![(0, CHARLIE, true, 1)])
+			.build()
+			.execute_with(|| {
+				let call = transferCall { token, to, value: U256::from(1) };
+				let transfer = IFungiblesCalls::transfer(call);
+				let Error::Revert(revert) = Error::from(Unknown) else { panic!() };
+				println!("{:?}", revert.abi_encode());
+				assert_revert!(call_precompile::<()>(&origin, &transfer), Unknown);
+			});
 	}
 
 	#[test]
@@ -526,6 +627,27 @@ mod tests {
 			let approve = IFungiblesCalls::approve(call);
 			assert_revert!(call_precompile::<()>(&origin, &approve), ZeroValue);
 		});
+	}
+
+	#[test]
+	fn approve_reverts_with_insufficient_balance() {
+		let token = 1;
+		let origin = ALICE;
+		let spender = BOB;
+		let value = 10_000_000;
+		ExtBuilder::new()
+			.with_assets(vec![(token, origin.clone(), false, 1)])
+			.with_asset_balances(vec![(token, origin.clone(), value)])
+			.build()
+			.execute_with(|| {
+				let call = approveCall {
+					token,
+					spender: to_address(&spender).0.into(),
+					value: U256::from(value),
+				};
+				let approve = IFungiblesCalls::approve(call);
+				assert_revert!(call_precompile::<()>(&origin, &approve), InsufficientBalance);
+			});
 	}
 
 	#[test]
@@ -873,6 +995,18 @@ mod tests {
 	}
 
 	#[test]
+	fn mint_reverts_with_unknown() {
+		let token = 1;
+		let origin = ALICE;
+		let account = [255; 20].into();
+		ExtBuilder::new().build().execute_with(|| {
+			let call = mintCall { token, account, value: U256::from(1) };
+			let mint = IFungiblesCalls::mint(call);
+			assert_revert!(call_precompile::<()>(&origin, &mint), Unknown);
+		});
+	}
+
+	#[test]
 	fn mint_works() {
 		let token = 1;
 		let origin = ALICE;
@@ -920,6 +1054,19 @@ mod tests {
 			let call = burnCall { token, account, value: U256::ZERO };
 			let burn = IFungiblesCalls::burn(call);
 			assert_revert!(call_precompile::<()>(&origin, &burn), ZeroValue);
+		});
+	}
+
+	#[test]
+	fn burn_reverts_with_insufficient_balance() {
+		let token = 1;
+		let origin = ALICE;
+		let account = [255; 20].into();
+		let endowment = 10_000_000;
+		ExtBuilder::new().build().execute_with(|| {
+			let call = burnCall { token, account, value: U256::from(endowment) };
+			let burn = IFungiblesCalls::burn(call);
+			assert_revert!(call_precompile::<()>(&origin, &burn), InsufficientBalance);
 		});
 	}
 

@@ -18,6 +18,7 @@ frame-benchmarking.workspace = true
 frame-support.workspace = true
 frame-system.workspace = true
 pallet-assets = { workspace = true, default-features = false, optional = true }
+pallet-balances = { workspace = true, default-features = false, optional = true }
 pallet-revive = { workspace = true, default-features = false }
 scale-info.workspace = true
 
@@ -28,7 +29,7 @@ sp-io.workspace = true
 
 [features]
 default = [ "fungibles", "std" ]
-fungibles = [ "pallet-assets" ]
+fungibles = [ "dep:pallet-assets", "dep:pallet-balances" ]
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"frame-support/runtime-benchmarks",

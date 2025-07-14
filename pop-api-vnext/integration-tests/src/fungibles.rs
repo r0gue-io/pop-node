@@ -121,27 +121,23 @@ fn transfer_works() {
 			let mut contract = Contract::new(&owner, 0);
 
 			// Token does not exist.
-			// assert_eq!(transfer(&addr, 1, BOB, amount), Err(Module { index: 52, error: [3, 0]
-			// }));
+			assert_noop!(contract.transfer(TokenId::MAX, to_address(&to), 1.into()), Unknown);
 			// Mint `amount` to contract address.
 			mint(&owner, token, &contract.account_id(), amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
-			// assert_eq!(
-			// 	transfer(&addr, token, BOB, amount),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(contract.transfer(token, to_address(&to), amount.into()), NotLive);
 			thaw(&owner, token);
 			// Not enough balance.
-			// assert_eq!(
-			// 	transfer(&addr, token, BOB, amount + 1 * UNIT),
-			// 	Err(Module { index: 52, error: [0, 0] })
-			// );
+			assert_noop!(
+				contract.transfer(token, to_address(&to), (amount + 1 * UNIT).into()),
+				InsufficientBalance
+			);
 			// Not enough balance due to ED.
-			// assert_eq!(
-			// 	transfer(&addr, token, BOB, amount),
-			// 	Err(Module { index: 52, error: [0, 0] })
-			// );
+			assert_noop!(
+				contract.transfer(token, to_address(&to), amount.into()),
+				InsufficientBalance
+			);
 			assert_noop!(contract.transfer(token, H160::zero(), 0.into()), ZeroRecipientAddress);
 			assert_noop!(contract.transfer(token, to_address(&to), 0.into()), ZeroValue);
 			// Successful transfer.
@@ -155,16 +151,13 @@ fn transfer_works() {
 			let expected = Transfer { from, to, value: (amount / 2).into() }.encode();
 			assert_eq!(contract.last_event(), expected);
 			// Transfer token to account that does not exist.
-			// assert_eq!(
-			// 	contract.transfer(token, to_address(&CHARLIE), (amount / 4).into()),
-			// 	Err(Token(CannotCreate))
-			// );
+			assert_noop!(
+				contract.transfer(token, [255; 20].into(), (amount / 4).into()),
+				CannotCreate
+			);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
-			// assert_eq!(
-			// 	contract.transfer(token, BOB, amount / 4),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(contract.transfer(token, to, amount.into()), NotLive);
 		});
 }
 
@@ -182,34 +175,34 @@ fn transfer_from_works() {
 			let mut contract = Contract::new(&owner, 0);
 
 			// Token does not exist.
-			// assert_eq!(
-			// 	transfer_from(&addr, 1, ALICE, BOB, amount / 2),
-			// 	Err(Module { index: 52, error: [3, 0] }),
-			// );
+			let from = to_address(&owner);
+			assert_noop!(
+				contract.transfer_from(TokenId::MAX, from, to_address(&to), 1.into()),
+				Unknown
+			);
 			// Unapproved transfer.
-			// assert_eq!(
-			// 	transfer_from(&addr, token, ALICE, BOB, amount / 2),
-			// 	Err(Module { index: 52, error: [10, 0] })
-			// );
+			assert_noop!(
+				contract.transfer_from(token, from, to_address(&to), amount.into()),
+				Unapproved
+			);
 			// Approve the contract to transfer on behalf of owner.
 			approve(&owner, token, &contract.account_id(), amount + 1 * UNIT);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
-			// assert_eq!(
-			// 	transfer_from(&addr, token, ALICE, BOB, amount),
-			// 	Err(Module { index: 52, error: [16, 0] }),
-			// );
+			assert_noop!(
+				contract.transfer_from(token, from, to_address(&to), amount.into()),
+				NotLive
+			);
 			thaw(&owner, token);
 			// Not enough balance.
-			// assert_eq!(
-			// 	transfer_from(&addr, token, ALICE, BOB, amount + 1 * UNIT),
-			// 	Err(Module { index: 52, error: [0, 0] }),
-			// );
+			assert_noop!(
+				contract.transfer_from(token, from, to_address(&to), (amount + 1).into()),
+				InsufficientBalance
+			);
 			assert_noop!(
 				contract.transfer_from(token, H160::zero(), H160::zero(), 0.into()),
 				ZeroSenderAddress
 			);
-			let from = to_address(&owner);
 			assert_noop!(
 				contract.transfer_from(token, from, H160::zero(), 0.into()),
 				ZeroRecipientAddress
@@ -244,24 +237,27 @@ fn approve_works() {
 	let amount: Balance = 100 * UNIT;
 	ExtBuilder::new()
 		.with_assets(vec![(token, owner.clone(), false, 1)])
-		//.with_asset_balances(vec![(token, owner.clone(), amount)])
+		.with_asset_balances(vec![(token, owner.clone(), amount)])
 		.build()
 		.execute_with(|| {
-			let contract = Contract::new(&owner, 0);
+			let mut contract = Contract::new(&owner, 0);
 
 			// Token does not exist.
-			// assert_eq!(contract.approve(&addr, TokenId::MAX, &BOB, amount), Err(Module { index:
-			// 52, error: [3, 0] }));
-			// assert_eq!(contract.approve(&addr, token, &BOB, amount), Err(ConsumerRemaining));
+			assert_noop!(
+				contract.approve(TokenId::MAX, to_address(&spender), amount.into()),
+				Unknown
+			);
+			// Insufficient contract balance for approval deposit.
+			assert_noop!(
+				contract.approve(token, to_address(&spender), amount.into()),
+				InsufficientBalance
+			);
 			let mut contract = Contract::new(&owner, INIT_VALUE);
 			// Mint `amount` to contract address.
 			mint(&owner, token, &contract.account_id(), amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
-			// assert_eq!(
-			// 	contract.approve(&addr, token, &BOB, amount),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(contract.approve(token, to_address(&spender), amount.into()), NotLive);
 			thaw(&owner, token);
 			assert_noop!(contract.approve(token, H160::zero(), 0.into()), ZeroRecipientAddress);
 			assert_noop!(contract.approve(token, to_address(&spender), 0.into()), ZeroValue);
@@ -275,7 +271,7 @@ fn approve_works() {
 				Approval { owner: contract.address, spender, value: amount.into() }.encode();
 			assert_eq!(contract.last_event(), expected);
 			// Non-additive, sets new value.
-			assert_ok!(contract.approve( token, spender, (amount / 2).into()));
+			assert_ok!(contract.approve(token, spender, (amount / 2).into()));
 			assert_eq!(
 				Assets::allowance(token, &contract.account_id(), &to_account_id(&spender)),
 				amount / 2
@@ -286,10 +282,7 @@ fn approve_works() {
 			assert_eq!(contract.last_event(), expected);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
-			// assert_eq!(
-			// 	approve(&addr, token, &BOB, amount),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(contract.approve(token, spender, amount.into()), NotLive);
 		});
 }
 
@@ -304,15 +297,18 @@ fn increase_allowance_works() {
 		.build()
 		.execute_with(|| {
 			// Instantiate a contract without balance - test `ConsumerRemaining.
-			let contract = Contract::new(&owner, 0);
+			let mut contract = Contract::new(&owner, 0);
 			// Token does not exist.
-			// assert_eq!(
-			// 	increase_allowance(&addr, 0, &BOB, amount),
-			// 	Err(Module { index: 52, error: [3, 0] })
-			// );
+			assert_noop!(
+				contract.increase_allowance(TokenId::MAX, to_address(&spender), 1.into()),
+				Unknown
+			);
 			mint(&owner, token, &contract.account_id(), amount);
-			// assert_eq!(contract.increase_allowance(&owner, token, &delegate, amount),
-			// Err(ConsumerRemaining));
+			// Insufficient contract balance for approval deposit.
+			assert_noop!(
+				contract.increase_allowance(token, to_address(&spender), amount.into()),
+				InsufficientBalance
+			);
 
 			// Instantiate a contract with balance.
 			let mut contract = Contract::new(&owner, INIT_VALUE);
@@ -320,10 +316,10 @@ fn increase_allowance_works() {
 			mint(&owner, token, &contract.account_id(), amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
-			// assert_eq!(
-			// 	contract.increase_allowance(&addr, token, &BOB, amount),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(
+				contract.increase_allowance(token, to_address(&spender), amount.into()),
+				NotLive
+			);
 			thaw(&owner, token);
 			assert_noop!(
 				contract.increase_allowance(token, H160::zero(), 0.into()),
@@ -348,10 +344,10 @@ fn increase_allowance_works() {
 			assert_eq!(Assets::allowance(token, &contract.account_id(), &spender), amount * 2);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
-			// assert_eq!(
-			// 	contract.increase_allowance(&addr, token, &BOB, amount),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(
+				contract.increase_allowance(token, to_address(&spender), amount.into()),
+				NotLive
+			);
 		});
 }
 
@@ -372,16 +368,16 @@ fn decrease_allowance_works() {
 			approve(&contract.account_id(), token, &spender, amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
-			// assert_eq!(
-			// 	decrease_allowance(&addr, token, &BOB, amount),
-			// 	Err(Module { index: 52, error: [16, 0] }),
-			// );
+			assert_noop!(
+				contract.decrease_allowance(token, to_address(&spender), amount.into()),
+				NotLive
+			);
 			thaw(&owner, token);
 			// "Unapproved" error is returned if the current allowance is less than `value`.
-			// assert_eq!(
-			// 	decrease_allowance(&addr, token, &BOB, amount * 2),
-			// 	Err(Module { index: 52, error: [10, 0] }),
-			// );
+			assert_noop!(
+				contract.decrease_allowance(token, to_address(&spender), (amount * 2).into()),
+				Unapproved
+			);
 			assert_noop!(
 				contract.decrease_allowance(token, H160::zero(), 0.into()),
 				ZeroRecipientAddress
@@ -401,10 +397,10 @@ fn decrease_allowance_works() {
 			assert_eq!(allowance_before - allowance_after, amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
-			// assert_eq!(
-			// 	contract.decrease_allowance(&addr, token, &delegate, 1 * UNIT),
-			// 	Err(Module { index: 52, error: [16, 0] }),
-			// );
+			assert_noop!(
+				contract.decrease_allowance(token, to_address(&spender), amount.into()),
+				NotLive
+			);
 		});
 }
 
@@ -443,21 +439,19 @@ fn create_works() {
 	let owner = ALICE;
 	ExtBuilder::new().build().execute_with(|| {
 		// Instantiate a contract without balance for fees.
-		let contract = Contract::new(&owner, 0);
+		let mut contract = Contract::new(&owner, 0);
 		// No balance to pay for fees.
-		// assert_eq!(contract.create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2,
-		// 0] }),);
+		let admin = to_address(&owner);
+		assert_noop!(contract.create(admin, 1.into()), InsufficientBalance);
 
 		// Instantiate a contract with insufficient balance for deposit.
-		let contract = Contract::new(&owner, 100);
+		let mut contract = Contract::new(&owner, 100);
 		// No balance to pay the deposit.
-		// assert_eq!(contract.create(&addr, TOKEN_ID, &addr, 1), Err(Module { index: 10, error: [2,
-		// 0] }),);
+		assert_noop!(contract.create(admin, 1.into()), InsufficientBalance);
 
 		// Instantiate a contract with enough balance.
 		let mut contract = Contract::new(&owner, INIT_VALUE);
 		assert_noop!(contract.create(H160::zero(), 0.into()), ZeroAdminAddress);
-		let admin = to_address(&owner);
 		// The minimal balance for a token must be non zero.
 		assert_noop!(contract.create(admin, 0.into()), MinBalanceZero);
 		// Create token successfully.
@@ -466,11 +460,6 @@ fn create_works() {
 		// Successfully emit event.
 		let expected = Created { id: token, creator: contract.address, admin }.encode();
 		assert_eq!(contract.last_event(), expected);
-		// Token ID is already taken.
-		// assert_eq!(
-		// 	contract.create(&addr, TOKEN_ID, &BOB, 1),
-		// 	Err(Module { index: 52, error: [5, 0] }),
-		// );
 	});
 }
 
@@ -483,7 +472,7 @@ fn instantiate_and_create_fungible_works() {
 		assert!(!Assets::asset_exists(token));
 
 		// Successfully create a token when instantiating the contract.
-		let mut contract = Contract::new_with_create(&owner, INIT_VALUE, 1.into());
+		let contract = Contract::new_with_create(&owner, INIT_VALUE, 1.into());
 		assert_eq!(Assets::owner(token), Some(contract.account_id()));
 		assert!(Assets::asset_exists(token));
 		// Successfully emit event.
@@ -495,78 +484,77 @@ fn instantiate_and_create_fungible_works() {
 
 #[test]
 fn start_destroy_works() {
+	let token = 0;
 	let owner = ALICE;
-	ExtBuilder::new().build().execute_with(|| {
-		let mut contract = Contract::new(&owner, INIT_VALUE);
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new(&owner, INIT_VALUE);
 
-		// Token does not exist.
-		// assert_eq!(
-		// 	contract.start_destroy(&creator, TokenId::MAX),
-		// 	Err(Module { index: 52, error: [3, 0] }),
-		// );
-		// No Permission.
-		// assert_eq!(
-		// 	contract.start_destroy(&creator, token),
-		// 	Err(Module { index: 52, error: [2, 0] }),
-		// );
-		let token = contract.create(to_address(&owner), 1.into()).unwrap();
-		contract.start_destroy(token);
-		// Successfully emit event.
-		let expected = DestroyStarted { token }.encode();
-		assert_eq!(contract.last_event(), expected);
-	});
+			// Token does not exist.
+			assert_noop!(contract.start_destroy(TokenId::MAX), Unknown);
+			// No Permission.
+			assert_noop!(contract.start_destroy(token), NoPermission);
+			let token = contract.create(to_address(&owner), 1.into()).unwrap();
+			assert_ok!(contract.start_destroy(token));
+			// Successfully emit event.
+			let expected = DestroyStarted { token }.encode();
+			assert_eq!(contract.last_event(), expected);
+		});
 }
 
 #[test]
 fn set_metadata_works() {
+	let token = 0;
 	let owner = ALICE;
 	let name = "name".to_string();
 	let symbol = "symbol".to_string();
 	let decimals: u8 = 69;
-	ExtBuilder::new().build().execute_with(|| {
-		let mut contract = Contract::new(&owner, INIT_VALUE);
+	ExtBuilder::new()
+		.with_assets(vec![(token, owner.clone(), false, 1)])
+		.build()
+		.execute_with(|| {
+			let mut contract = Contract::new(&owner, INIT_VALUE);
 
-		// Token does not exist.
-		// assert_eq!(
-		// 	set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0u8),
-		// 	Err(Module { index: 52, error: [3, 0] }),
-		// );
-		// No Permission.
-		// assert_eq!(
-		// 	set_metadata(&addr, token, vec![0], vec![0], 0u8),
-		// 	Err(Module { index: 52, error: [2, 0] }),
-		// );
-		let token = contract.create(to_address(&owner), 1.into()).unwrap();
-		// Token is not live, i.e. frozen or being destroyed.
-		freeze(&owner, token);
-		// assert_eq!(
-		// 	set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0u8),
-		// 	Err(Module { index: 52, error: [16, 0] }),
-		// );
-		thaw(&owner, token);
-		// TODO: calling the below with a vector of length `100_000` errors in pallet contracts
-		//  `OutputBufferTooSmall. Added to security analysis issue #131 to revisit.
-		// Set bad metadata - too large values.
-		// assert_eq!(
-		// 	set_metadata(&addr, TOKEN_ID, vec![0; 1000], vec![0; 1000], 0u8),
-		// 	Err(Module { index: 52, error: [9, 0] }),
-		// );
-		// Set metadata successfully.
-		contract.set_metadata(token, name.clone(), symbol.clone(), decimals);
-		assert_eq!(
-			(&contract.name(token), &contract.symbol(token), &contract.decimals(token)),
-			(&name, &symbol, &decimals)
-		);
-		// Successfully emit event.
-		let expected = MetadataSet { token, name, symbol, decimals }.encode();
-		assert_eq!(contract.last_event(), expected);
-		// Token is not live, i.e. frozen or being destroyed.
-		start_destroy(&contract.account_id(), token);
-		// assert_eq!(
-		// 	set_metadata(&addr, TOKEN_ID, vec![0], vec![0], 0),
-		// 	Err(Module { index: 52, error: [16, 0] }),
-		// );
-	});
+			// Token does not exist.
+			assert_noop!(
+				contract.set_metadata(TokenId::MAX, name.clone(), symbol.clone(), decimals),
+				Unknown
+			);
+			// No Permission.
+			assert_noop!(
+				contract.set_metadata(token, name.clone(), symbol.clone(), decimals),
+				NoPermission
+			);
+			let token = contract.create(to_address(&owner), 1.into()).unwrap();
+			// Token is not live, i.e. frozen or being destroyed.
+			freeze(&owner, token);
+			assert_noop!(
+				contract.set_metadata(token, name.clone(), symbol.clone(), decimals),
+				NotLive
+			);
+			thaw(&owner, token);
+			// TODO: calling the below with a vector of length `100_000` errors in pallet contracts
+			//  `OutputBufferTooSmall. Added to security analysis issue #131 to revisit.
+			// Set bad metadata - too large values.
+			assert_noop!(
+				contract.set_metadata(token, "n".repeat(1_00), "s".repeat(1_00), decimals),
+				BadMetadata
+			);
+			// Set metadata successfully.
+			assert_ok!(contract.set_metadata(token, name.clone(), symbol.clone(), decimals));
+			assert_eq!(
+				(&contract.name(token), &contract.symbol(token), &contract.decimals(token)),
+				(&name, &symbol, &decimals)
+			);
+			// Successfully emit event.
+			let expected = MetadataSet { token, name, symbol, decimals }.encode();
+			assert_eq!(contract.last_event(), expected);
+			// Token is not live, i.e. frozen or being destroyed.
+			start_destroy(&contract.account_id(), token);
+			assert_noop!(contract.set_metadata(token, "".into(), "".into(), decimals), NotLive);
+		});
 }
 
 #[test]
@@ -583,36 +571,25 @@ fn clear_metadata_works() {
 			let mut contract = Contract::new(&owner, INIT_VALUE);
 
 			// Token does not exist.
-			// assert_eq!(contract.clear_metadata(TokenId::MAX), Err(Module { index: 52, error: [3,
-			// 0] }),);
+			assert_noop!(contract.clear_metadata(TokenId::MAX), Unknown);
 			// No Permission.
-			// assert_eq!(contract.clear_metadata(token), Err(Module { index: 52, error: [2, 0]
-			// }),);
+			assert_noop!(contract.clear_metadata(token), NoPermission);
 			let token = contract.create(to_address(&owner), 1.into()).unwrap();
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&owner, token);
-			// assert_eq!(
-			// 	contract.clear_metadata(&addr, token),
-			// 	Err(Module { index: 52, error: [16, 0] }),
-			// );
+			assert_noop!(contract.clear_metadata(token), NotLive);
 			thaw(&owner, token);
 			// No metadata set.
-			// assert_eq!(
-			// 	contract.clear_metadata(&addr, token),
-			// 	Err(Module { index: 52, error: [3, 0] }),
-			// );
-			contract.set_metadata(token, name, symbol, decimals);
+			assert_noop!(contract.clear_metadata(token), Unknown);
+			assert_ok!(contract.set_metadata(token, name, symbol, decimals));
 			// Clear metadata successfully.
-			contract.clear_metadata(token);
+			assert_ok!(contract.clear_metadata(token));
 			// Successfully emit event.
 			let expected = MetadataCleared { token }.encode();
 			assert_eq!(contract.last_event(), expected);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&contract.account_id(), token);
-			// assert_eq!(
-			// 	contract.set_metadata(&addr, TOKEN_ID, vec![0], vec![0], decimals),
-			// 	Err(Module { index: 52, error: [16, 0] }),
-			// );
+			assert_noop!(contract.clear_metadata(token), NotLive);
 		});
 }
 
@@ -648,22 +625,16 @@ fn mint_works() {
 			let mut contract = Contract::new(&owner, INIT_VALUE);
 
 			// Token does not exist.
-			// assert_eq!(mint(&addr, TokenId::MAX, &BOB, amount), Err(Token(UnknownAsset)));
+			assert_noop!(contract.mint(TokenId::MAX, to_address(&account), amount.into()), Unknown);
 			// Minting can only be done by the owner.
-			// assert_eq!(
-			// 	contract.mint(token, &to_address(&account), 1.into()),
-			// 	Err(Module { index: 52, error: [2, 0] })
-			// );
+			assert_noop!(contract.mint(token, to_address(&account), amount.into()), NoPermission);
 			// Contract must be admin in order to be able to mint.
 			let token = contract.create(contract.address, 2.into()).unwrap();
 			// Minimum balance of a token can not be zero.
-			// assert_eq!(contract.mint(token, &account, 1.into()), Err(Token(BelowMinimum)));
+			assert_noop!(contract.mint(token, to_address(&account), 1.into()), BelowMinimum);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&contract.account_id(), token);
-			// assert_eq!(
-			// 	contract.mint(token, to_address(&account), amount),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(contract.mint(token, to_address(&account), amount.into()), NotLive);
 			thaw(&contract.account_id(), token);
 			assert_noop!(contract.mint(token, H160::zero(), 0.into()), ZeroRecipientAddress);
 			assert_noop!(contract.mint(token, to_address(&account), 0.into()), ZeroValue);
@@ -673,16 +644,10 @@ fn mint_works() {
 			let balance_after_mint = Assets::balance(token, &account);
 			assert_eq!(balance_after_mint, balance_before_mint + amount);
 			// Account can not hold more tokens than Balance::MAX.
-			// assert_eq!(
-			// 	contract.mint(token, to_address(&account), Balance::MAX.into()),
-			// 	Err(Arithmetic(Overflow))
-			// );
+			assert_noop!(contract.mint(token, to_address(&account), Balance::MAX.into()), Overflow);
 			// Token is being destroyed.
 			start_destroy(&contract.account_id(), token);
-			// assert_eq!(
-			// 	contract.mint(token, to_address(&account), amount.into()),
-			// 	Err(Token(UnknownAsset))
-			// );
+			assert_noop!(contract.mint(token, to_address(&account), amount.into()), Unknown);
 		});
 }
 
@@ -700,29 +665,23 @@ fn burn_works() {
 			let mut contract = Contract::new(&owner, INIT_VALUE);
 
 			// Token does not exist.
-			// assert_eq!(
-			// 	contract.burn(&addr, TokenId::MAX, &account, 0.into()),
-			// 	Err(Module { index: 52, error: [3, 0] })
-			// );
+			assert_noop!(
+				contract.burn(TokenId::MAX, to_address(&account), amount.into()),
+				InsufficientBalance // Balance is checked before burn attempt
+			);
 			// Account has no tokens.
-			// assert_eq!(
-			// 	contract.burn(token, to_address(&account), amount.into()),
-			// 	Err(Module { index: 52, error: [0, 0] })
-			// );
+			assert_noop!(
+				contract.burn(token, to_address(&owner), amount.into()),
+				InsufficientBalance
+			);
 			// Burning can only be done by the manager.
-			// assert_eq!(
-			// 	contract.burn(token, to_address(&account), 1.into()),
-			// 	Err(Module { index: 52, error: [2, 0] })
-			// );
+			assert_noop!(contract.burn(token, to_address(&account), amount.into()), NoPermission);
 			// Contract must be admin in order to be able to burn.
 			let token = contract.create(contract.address, 1.into()).unwrap();
 			assert_ok!(contract.mint(token, to_address(&account), (amount * 2).into()));
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&contract.account_id(), token);
-			// assert_eq!(
-			// 	contract.burn(token, to_address(&account), amount.into()),
-			// 	Err(Module { index: 52, error: [16, 0] })
-			// );
+			assert_noop!(contract.burn(token, to_address(&account), amount.into()), NotLive);
 			thaw(&contract.account_id(), token);
 			assert_noop!(contract.burn(token, H160::zero(), 0.into()), ZeroSenderAddress);
 			assert_noop!(contract.burn(token, to_address(&account), 0.into()), ZeroValue);
@@ -733,10 +692,7 @@ fn burn_works() {
 			assert_eq!(balance_after_burn, balance_before_burn - amount);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&contract.account_id(), token);
-			// assert_eq!(
-			// 	contract.burn(token, to_address(&account), amount),
-			// 	Err(Module { index: 52, error: [17, 0] })
-			// );
+			assert_noop!(contract.burn(token, to_address(&account), amount.into()), NotLive);
 		});
 }
 
@@ -799,9 +755,10 @@ impl Contract {
 		Ok(())
 	}
 
-	fn clear_metadata(&mut self, token: TokenId) {
+	fn clear_metadata(&mut self, token: TokenId) -> Result<(), Error> {
 		let call = clearMetadataCall { token };
-		self.call::<_, Error>(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
 	fn create(&mut self, admin: H160, min_balance: U256) -> Result<TokenId, Error> {
@@ -858,14 +815,22 @@ impl Contract {
 		self.call::<_, Error>(&self.creator, call, 0).unwrap()
 	}
 
-	fn set_metadata(&mut self, token: TokenId, name: String, symbol: String, decimals: u8) {
+	fn set_metadata(
+		&mut self,
+		token: TokenId,
+		name: String,
+		symbol: String,
+		decimals: u8,
+	) -> Result<(), Error> {
 		let call = setMetadataCall { token, name, symbol, decimals };
-		self.call::<_, Error>(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
-	fn start_destroy(&mut self, token: TokenId) {
+	fn start_destroy(&mut self, token: TokenId) -> Result<(), Error> {
 		let call = startDestroyCall { token };
-		self.call::<_, Error>(&self.creator, call, 0).unwrap();
+		self.call(&self.creator, call, 0)?;
+		Ok(())
 	}
 
 	fn symbol(&self, token: TokenId) -> String {
@@ -919,7 +884,10 @@ impl Contract {
 		let result = bare_call(origin, dest, value, GAS_LIMIT, STORAGE_DEPOSIT_LIMIT, data)
 			.expect("should work");
 		match result.did_revert() {
-			true => Err(E::decode(&result.data).expect("unable to decode error value")),
+			true => Err(E::decode(&result.data).expect(&format!(
+				"unable to decode error value from '{:?}'",
+				String::from_utf8_lossy(&result.data)
+			))),
 			false =>
 				Ok(T::abi_decode_returns(&result.data).expect("unable to decode success value")),
 		}

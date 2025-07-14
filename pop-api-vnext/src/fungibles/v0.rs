@@ -98,7 +98,7 @@ pub trait Fungibles {
 	/// - `token` - The token to be destroyed.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn startDestroy(&self, token: TokenId);
+	fn startDestroy(&self, token: TokenId) -> Result<(), Error>;
 
 	/// Set the metadata for a token.
 	///
@@ -109,7 +109,13 @@ pub trait Fungibles {
 	/// - `decimals`: The number of decimals this token uses to represent one unit.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn setMetadata(&self, token: TokenId, name: String, symbol: String, decimals: u8);
+	fn setMetadata(
+		&self,
+		token: TokenId,
+		name: String,
+		symbol: String,
+		decimals: u8,
+	) -> Result<(), Error>;
 
 	/// Clear the metadata for a token.
 	///
@@ -117,7 +123,7 @@ pub trait Fungibles {
 	/// - `token` - The token to update.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn clearMetadata(&self, token: TokenId);
+	fn clearMetadata(&self, token: TokenId) -> Result<(), Error>;
 
 	/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
 	/// supply.
@@ -255,7 +261,7 @@ pub fn burn(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 /// # Parameters
 /// - `token` - The token to update.
 #[inline]
-pub fn clear_metadata(token: TokenId) {
+pub fn clear_metadata(token: TokenId) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.clearMetadata(token)
@@ -366,7 +372,12 @@ pub fn name(token: TokenId) -> String {
 /// - `symbol`: The exchange symbol for this token.
 /// - `decimals`: The number of decimals this token uses to represent one unit.
 #[inline]
-pub fn set_metadata(token: TokenId, name: String, symbol: String, decimals: u8) {
+pub fn set_metadata(
+	token: TokenId,
+	name: String,
+	symbol: String,
+	decimals: u8,
+) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.setMetadata(token, name, symbol, decimals)
@@ -377,7 +388,7 @@ pub fn set_metadata(token: TokenId, name: String, symbol: String, decimals: u8) 
 /// # Parameters
 /// - `token` - The token to be destroyed.
 #[inline]
-pub fn start_destroy(token: TokenId) {
+pub fn start_destroy(token: TokenId) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
 	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.startDestroy(token)
