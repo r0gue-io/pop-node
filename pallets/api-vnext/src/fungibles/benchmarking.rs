@@ -70,6 +70,7 @@ mod benchmarks {
 		let token = super::create::<T, I>(owner.clone());
 		let to = <AddressMapper<T>>::to_account_id(&BOB_ADDR);
 		let value: AssetsBalance<T, I> = u32::MAX.into();
+		let min_balance = <Assets<T, I>>::minimum_balance(token);
 
 		let mut call_setup = set_up_call();
 		call_setup.set_origin(Origin::Signed(owner.clone()));
@@ -80,8 +81,8 @@ mod benchmarks {
 			value: value.try_convert().unwrap(),
 		});
 
-		<Assets<T, I>>::set_balance(token, &owner, value);
-		assert_eq!(<Assets<T, I>>::balance(token, &owner), value);
+		<Assets<T, I>>::set_balance(token, &owner, value + min_balance);
+		assert_eq!(<Assets<T, I>>::balance(token, &owner), value + min_balance);
 		assert_eq!(<Assets<T, I>>::balance(token, &to), 0u8.into());
 
 		#[block]
@@ -89,7 +90,7 @@ mod benchmarks {
 			assert_ok!(call_precompile::<Fungibles<T, I>, _, ()>(&mut ext, &ADDRESS, &input));
 		}
 
-		assert_eq!(<Assets<T, I>>::balance(token, &owner), 0u8.into());
+		assert_eq!(<Assets<T, I>>::balance(token, &owner), min_balance);
 		assert_eq!(<Assets<T, I>>::balance(token, &to), value);
 	}
 
