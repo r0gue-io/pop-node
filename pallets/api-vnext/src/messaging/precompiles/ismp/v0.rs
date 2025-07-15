@@ -302,7 +302,11 @@ impl From<&Weight> for super::Weight {
 #[cfg(test)]
 mod tests {
 	use ::ismp::router::{GetRequest, PostRequest, Request};
-	use frame_support::{assert_ok, traits::UnixTime, weights::Weight};
+	use frame_support::{
+		assert_ok,
+		traits::{Get, UnixTime},
+		weights::Weight,
+	};
 	use mock::{ExtBuilder, *};
 	use pallet_revive::{
 		precompiles::{
@@ -320,10 +324,63 @@ mod tests {
 		*,
 	};
 
+	type MaxContextLen = <Test as Config>::MaxContextLen;
+	type MaxDataLen = <Test as Config>::MaxDataLen;
+	type MaxKeyLen = <Test as Config>::MaxKeyLen;
+	type MaxKeys = <Test as Config>::MaxKeys;
+	type MaxRemovals = <Test as Config>::MaxRemovals;
 	type Messages = crate::messaging::Messages<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(ISMP);
 	const MESSAGE_DEPOSIT: u128 = 129_540;
+
+	#[test]
+	fn get_reverts_when_max_context_exceeded() {
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let request = IISMP::Get {
+				destination: 0,
+				height: u64::default(),
+				timeout: u64::default(),
+				context: vec![255u8; <MaxContextLen as Get<u32>>::get() as usize + 1].into(),
+				keys: Vec::default(),
+			};
+			let input = get_0(get_0Call { request, fee: U256::ZERO });
+			assert_revert!(call_precompile::<MessageId>(&origin, &input), MaxContextExceeded);
+		});
+	}
+
+	#[test]
+	fn get_reverts_when_max_keys_exceeded() {
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let request = IISMP::Get {
+				destination: 0,
+				height: u64::default(),
+				timeout: u64::default(),
+				context: Vec::default().into(),
+				keys: vec![vec![].into(); <MaxKeys as Get<u32>>::get() as usize + 1],
+			};
+			let input = get_0(get_0Call { request, fee: U256::ZERO });
+			assert_revert!(call_precompile::<MessageId>(&origin, &input), MaxKeysExceeded);
+		});
+	}
+
+	#[test]
+	fn get_reverts_when_max_key_exceeded() {
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let request = IISMP::Get {
+				destination: 0,
+				height: u64::default(),
+				timeout: u64::default(),
+				context: Vec::default().into(),
+				keys: vec![vec![0u8; <MaxKeyLen as Get<u32>>::get() as usize + 1].into()],
+			};
+			let input = get_0(get_0Call { request, fee: U256::ZERO });
+			assert_revert!(call_precompile::<MessageId>(&origin, &input), MaxKeyExceeded);
+		});
+	}
 
 	#[test]
 	fn get_works() {
@@ -465,6 +522,21 @@ mod tests {
 	}
 
 	#[test]
+	fn post_reverts_when_max_data_exceeded() {
+		let origin = ALICE;
+		let request = IISMP::Post {
+			destination: 0,
+			timeout: u64::default(),
+			data: vec![255u8; <MaxDataLen as Get<u32>>::get() as usize + 1].into(),
+		};
+		let fee = U256::from(100);
+		ExtBuilder::new().build().execute_with(|| {
+			let input = post_0(post_0Call { request, fee });
+			assert_revert!(call_precompile::<MessageId>(&origin, &input), MaxDataExceeded);
+		});
+	}
+
+	#[test]
 	fn post_works() {
 		let origin = ALICE;
 		let message = 1;
@@ -529,6 +601,37 @@ mod tests {
 	}
 
 	#[test]
+	fn remove_reverts_when_message_pending() {
+		let origin = ALICE;
+		let message = 1;
+		ExtBuilder::new()
+			.with_messages(vec![(
+				origin.clone(),
+				message,
+				XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+			)])
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
+					RequestPending
+				);
+			});
+	}
+
+	#[test]
+	fn remove_reverts_when_message_not_found() {
+		let origin = ALICE;
+		let message = 1;
+		ExtBuilder::new().build().execute_with(|| {
+			assert_revert!(
+				call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
+				MessageNotFound
+			);
+		});
+	}
+
+	#[test]
 	fn remove_works() {
 		let origin = ALICE;
 		let message = 1;
@@ -549,6 +652,70 @@ mod tests {
 				let account = to_address(&origin).0.into();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_message_pending() {
+		let origin = ALICE;
+		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let messages = <MaxRemovals as Get<u32>>::get() as u64;
+		ExtBuilder::new()
+			.with_messages(
+				(0..messages - 1)
+					.map(|i| (origin.clone(), i, message.clone()))
+					.chain(vec![(
+						origin.clone(),
+						messages,
+						XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+					)])
+					.collect(),
+			)
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(
+						&origin,
+						&remove_1(remove_1Call { messages: (0..messages).collect() })
+					),
+					MessageNotFound
+				);
+			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_message_not_found() {
+		let origin = ALICE;
+		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let messages = <MaxRemovals as Get<u32>>::get() as u64;
+		ExtBuilder::new()
+			.with_messages(
+				(0..messages - 1).map(|i| (origin.clone(), i, message.clone())).collect(),
+			)
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(
+						&origin,
+						&remove_1(remove_1Call { messages: (0..messages).collect() })
+					),
+					MessageNotFound
+				);
+			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_too_many_messages() {
+		let origin = ALICE;
+		let messages = <MaxRemovals as Get<u32>>::get() as u64 + 1;
+		ExtBuilder::new().build().execute_with(|| {
+			assert_revert!(
+				call_precompile::<()>(
+					&origin,
+					&remove_1(remove_1Call { messages: (0..messages).collect() })
+				),
+				TooManyMessages
+			);
+		});
 	}
 
 	#[test]

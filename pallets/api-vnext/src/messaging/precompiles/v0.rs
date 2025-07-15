@@ -149,6 +149,8 @@ mod tests {
 
 	const ADDRESS: [u8; 20] = fixed_address(MESSAGING);
 
+	type MaxRemovals = <Test as Config>::MaxRemovals;
+
 	#[test]
 	fn get_response_works() {
 		let origin = ALICE;
@@ -222,6 +224,18 @@ mod tests {
 	}
 
 	#[test]
+	fn remove_reverts_when_message_not_found() {
+		let origin = ALICE;
+		let message = 1;
+		ExtBuilder::new().build().execute_with(|| {
+			assert_revert!(
+				call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
+				MessageNotFound
+			);
+		});
+	}
+
+	#[test]
 	fn remove_works() {
 		let origin = ALICE;
 		let message = 1;
@@ -238,6 +252,70 @@ mod tests {
 				let account = to_address(&origin).0.into();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_message_pending() {
+		let origin = ALICE;
+		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let messages = <MaxRemovals as Get<u32>>::get() as u64;
+		ExtBuilder::new()
+			.with_messages(
+				(0..messages - 1)
+					.map(|i| (origin.clone(), i, message.clone()))
+					.chain(vec![(
+						origin.clone(),
+						messages,
+						XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+					)])
+					.collect(),
+			)
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(
+						&origin,
+						&remove_1(remove_1Call { messages: (0..messages).collect() })
+					),
+					MessageNotFound
+				);
+			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_message_not_found() {
+		let origin = ALICE;
+		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let messages = <MaxRemovals as Get<u32>>::get() as u64;
+		ExtBuilder::new()
+			.with_messages(
+				(0..messages - 1).map(|i| (origin.clone(), i, message.clone())).collect(),
+			)
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(
+						&origin,
+						&remove_1(remove_1Call { messages: (0..messages).collect() })
+					),
+					MessageNotFound
+				);
+			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_too_many_messages() {
+		let origin = ALICE;
+		let messages = <MaxRemovals as Get<u32>>::get() as u64 + 1;
+		ExtBuilder::new().build().execute_with(|| {
+			assert_revert!(
+				call_precompile::<()>(
+					&origin,
+					&remove_1(remove_1Call { messages: (0..messages).collect() })
+				),
+				TooManyMessages
+			);
+		});
 	}
 
 	#[test]

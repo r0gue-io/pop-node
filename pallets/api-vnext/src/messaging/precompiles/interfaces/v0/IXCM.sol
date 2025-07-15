@@ -112,6 +112,8 @@ interface IXCM {
     error DecodingFailed();
     /// @dev Timeouts must be in the future.
     error FutureTimeoutMandatory();
+    /// @dev Timeouts must be in the future.
+    error FundsUnavailable();
     /// @dev Message block limit has been reached for this expiry block. Try a different timeout.
     error MaxMessageTimeoutPerBlockReached();
     /// @dev Failed to convert origin.

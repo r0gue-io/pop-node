@@ -1,7 +1,10 @@
 use ::xcm::{VersionedLocation, VersionedXcm, MAX_XCM_DECODE_DEPTH};
 use codec::{DecodeAll, DecodeLimit};
 use pallet_xcm::WeightInfo as _;
-use sp_runtime::traits::{Block, Header};
+use sp_runtime::{
+	traits::{Block, Header},
+	TokenError,
+};
 pub(crate) use IXCM::*;
 
 use super::*;
@@ -91,7 +94,8 @@ where
 				let location = Location::decode(&mut &responder[..])
 					.map_err(|_| Error::from(IXCM::DecodingFailed))?;
 
-				let (id, query_id) = new_query::<T>(origin, location, (*timeout).into(), None)?;
+				let (id, query_id) = new_query::<T>(origin, location, (*timeout).into(), None)
+					.map_err(Self::map_err)?;
 
 				let account = AddressMapper::<T>::to_address(origin).0.into();
 				deposit_event(env, QueryCreated_0 { account, id, queryId: query_id })?;
@@ -206,6 +210,7 @@ impl<const FIXED: u16, T: frame_system::Config> Xcm<FIXED, T> {
 					e.into()
 				}
 			},
+			Token(TokenError::FundsUnavailable) => IXCM::FundsUnavailable.into(),
 			_ => e.into(),
 		}
 	}
@@ -214,6 +219,7 @@ impl<const FIXED: u16, T: frame_system::Config> Xcm<FIXED, T> {
 // Encoding of custom errors via `Error(String)`.
 impl_from_sol_error! {
 	IXCM::DecodingFailed,
+	IXCM::FundsUnavailable,
 	IXCM::FutureTimeoutMandatory,
 	IXCM::MaxMessageTimeoutPerBlockReached,
 	IXCM::OriginConversionFailed,
@@ -287,7 +293,10 @@ mod tests {
 
 	use super::{super::Message::*, IXCMCalls::*, MessageStatus::*, *};
 
+	type MaxXcmQueryTimeoutsPerBlock = <Test as Config>::MaxXcmQueryTimeoutsPerBlock;
+	type MaxRemovals = <Test as Config>::MaxRemovals;
 	type Messages = crate::messaging::Messages<Test>;
+	type XcmQueryTimeouts = crate::messaging::XcmQueryTimeouts<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(XCM);
 	const MESSAGE_DEPOSIT: u128 = 129_720;
@@ -301,6 +310,17 @@ mod tests {
 				call_precompile::<u32>(&origin, &blockNumber(blockNumberCall {})).unwrap(),
 				block_number
 			);
+		});
+	}
+
+	#[test]
+	fn execute_reverts_when_decoding_failed() {
+		let origin = ALICE;
+		let message = Vec::default().into();
+		let weight = Weight::default().into();
+		ExtBuilder::new().build().execute_with(|| {
+			let input = execute(executeCall { message, weight });
+			assert_revert!(call_precompile::<()>(&origin, &input), DecodingFailed);
 		});
 	}
 
@@ -363,6 +383,61 @@ mod tests {
 	}
 
 	#[test]
+	fn new_query_reverts_when_decoding_failed() {
+		let origin = ALICE;
+		let responder = Vec::default().into();
+		let timeout = 100;
+		ExtBuilder::new().build().execute_with(|| {
+			let input = newQuery_0(newQuery_0Call { responder, timeout });
+			assert_revert!(call_precompile::<()>(&origin, &input), DecodingFailed);
+		});
+	}
+
+	#[test]
+	fn new_query_reverts_when_timeout_passed() {
+		let origin = ALICE;
+		let responder = RESPONSE_LOCATION.encode().into();
+		let timeout = 0;
+		ExtBuilder::new().build().execute_with(|| {
+			let input = newQuery_0(newQuery_0Call { responder, timeout });
+			assert_revert!(call_precompile::<()>(&origin, &input), FutureTimeoutMandatory);
+		});
+	}
+
+	#[test]
+	fn new_query_reverts_when_max_query_timeouts_reached() {
+		let origin = ALICE;
+		let responder = RESPONSE_LOCATION.encode().into();
+		let timeout = 2;
+		ExtBuilder::new().build().execute_with(|| {
+			let current_block = frame_system::Pallet::<Test>::block_number();
+			XcmQueryTimeouts::set(
+				current_block + timeout,
+				vec![(origin.clone(), 0); MaxXcmQueryTimeoutsPerBlock::get() as usize]
+					.try_into()
+					.unwrap(),
+			);
+
+			let input = newQuery_0(newQuery_0Call { responder, timeout });
+			assert_revert!(
+				call_precompile::<()>(&origin, &input),
+				MaxMessageTimeoutPerBlockReached
+			);
+		});
+	}
+
+	#[test]
+	fn new_query_reverts_when_funds_unavailable() {
+		let origin = ALICE;
+		let responder = RESPONSE_LOCATION.encode().into();
+		let timeout = 2;
+		ExtBuilder::new().build().execute_with(|| {
+			let input = newQuery_0(newQuery_0Call { responder, timeout });
+			assert_revert!(call_precompile::<()>(&origin, &input), FundsUnavailable);
+		});
+	}
+
+	#[test]
 	fn new_query_works() {
 		let origin = ALICE;
 		let responder = RESPONSE_LOCATION.encode().into();
@@ -390,6 +465,85 @@ mod tests {
 					    if id == query_id && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
+	}
+
+	#[test]
+	fn new_query_with_callback_reverts_when_decoding_failed() {
+		let origin = ALICE;
+		let responder = Vec::default().into();
+		let timeout = 100;
+		let callback = Callback {
+			destination: [255u8; 20].into(),
+			encoding: super::Encoding::Scale,
+			selector: [255u8; 4].into(),
+			weight: super::Weight { refTime: 100, proofSize: 10 },
+		};
+		ExtBuilder::new().build().execute_with(|| {
+			let input = newQuery_1(newQuery_1Call { responder, timeout, callback });
+			assert_revert!(call_precompile::<()>(&origin, &input), DecodingFailed);
+		});
+	}
+
+	#[test]
+	fn new_query_with_callback_reverts_when_timeout_passed() {
+		let origin = ALICE;
+		let responder = RESPONSE_LOCATION.encode().into();
+		let timeout = 0;
+		let callback = Callback {
+			destination: [255u8; 20].into(),
+			encoding: super::Encoding::Scale,
+			selector: [255u8; 4].into(),
+			weight: super::Weight { refTime: 100, proofSize: 10 },
+		};
+		ExtBuilder::new().build().execute_with(|| {
+			let input = newQuery_1(newQuery_1Call { responder, timeout, callback });
+			assert_revert!(call_precompile::<()>(&origin, &input), FutureTimeoutMandatory);
+		});
+	}
+
+	#[test]
+	fn new_query_with_callback_reverts_when_max_query_timeouts_reached() {
+		let origin = ALICE;
+		let responder = RESPONSE_LOCATION.encode().into();
+		let timeout = 2;
+		let callback = Callback {
+			destination: [255u8; 20].into(),
+			encoding: super::Encoding::Scale,
+			selector: [255u8; 4].into(),
+			weight: super::Weight { refTime: 100, proofSize: 10 },
+		};
+		ExtBuilder::new().build().execute_with(|| {
+			let current_block = frame_system::Pallet::<Test>::block_number();
+			XcmQueryTimeouts::set(
+				current_block + timeout,
+				vec![(origin.clone(), 0); MaxXcmQueryTimeoutsPerBlock::get() as usize]
+					.try_into()
+					.unwrap(),
+			);
+
+			let input = newQuery_1(newQuery_1Call { responder, timeout, callback });
+			assert_revert!(
+				call_precompile::<()>(&origin, &input),
+				MaxMessageTimeoutPerBlockReached
+			);
+		});
+	}
+
+	#[test]
+	fn new_query_with_callback_reverts_when_funds_unavailable() {
+		let origin = ALICE;
+		let responder = RESPONSE_LOCATION.encode().into();
+		let timeout = 2;
+		let callback = Callback {
+			destination: [255u8; 20].into(),
+			encoding: super::Encoding::Scale,
+			selector: [255u8; 4].into(),
+			weight: super::Weight { refTime: 100, proofSize: 10 },
+		};
+		ExtBuilder::new().build().execute_with(|| {
+			let input = newQuery_1(newQuery_1Call { responder, timeout, callback });
+			assert_revert!(call_precompile::<()>(&origin, &input), FundsUnavailable);
+		});
 	}
 
 	#[test]
@@ -455,6 +609,37 @@ mod tests {
 	}
 
 	#[test]
+	fn remove_reverts_when_message_pending() {
+		let origin = ALICE;
+		let message = 1;
+		ExtBuilder::new()
+			.with_messages(vec![(
+				origin.clone(),
+				message,
+				XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+			)])
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
+					RequestPending
+				);
+			});
+	}
+
+	#[test]
+	fn remove_reverts_when_message_not_found() {
+		let origin = ALICE;
+		let message = 1;
+		ExtBuilder::new().build().execute_with(|| {
+			assert_revert!(
+				call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
+				MessageNotFound
+			);
+		});
+	}
+
+	#[test]
 	fn remove_works() {
 		let origin = ALICE;
 		let message = 1;
@@ -471,6 +656,70 @@ mod tests {
 				let account = to_address(&origin).0.into();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_message_pending() {
+		let origin = ALICE;
+		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let messages = <MaxRemovals as Get<u32>>::get() as u64;
+		ExtBuilder::new()
+			.with_messages(
+				(0..messages - 1)
+					.map(|i| (origin.clone(), i, message.clone()))
+					.chain(vec![(
+						origin.clone(),
+						messages,
+						XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+					)])
+					.collect(),
+			)
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(
+						&origin,
+						&remove_1(remove_1Call { messages: (0..messages).collect() })
+					),
+					MessageNotFound
+				);
+			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_message_not_found() {
+		let origin = ALICE;
+		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let messages = <MaxRemovals as Get<u32>>::get() as u64;
+		ExtBuilder::new()
+			.with_messages(
+				(0..messages - 1).map(|i| (origin.clone(), i, message.clone())).collect(),
+			)
+			.build()
+			.execute_with(|| {
+				assert_revert!(
+					call_precompile::<()>(
+						&origin,
+						&remove_1(remove_1Call { messages: (0..messages).collect() })
+					),
+					MessageNotFound
+				);
+			});
+	}
+
+	#[test]
+	fn remove_many_reverts_when_too_many_messages() {
+		let origin = ALICE;
+		let messages = <MaxRemovals as Get<u32>>::get() as u64 + 1;
+		ExtBuilder::new().build().execute_with(|| {
+			assert_revert!(
+				call_precompile::<()>(
+					&origin,
+					&remove_1(remove_1Call { messages: (0..messages).collect() })
+				),
+				TooManyMessages
+			);
+		});
 	}
 
 	#[test]
@@ -491,6 +740,24 @@ mod tests {
 				let account = to_address(&origin).0.into();
 				assert_last_event(ADDRESS, Removed { account, messages });
 			});
+	}
+
+	#[test]
+	fn send_reverts_when_decoding_failed() {
+		let origin = ALICE;
+		let destination = Location::new(1, [Parachain(1000).into()]);
+		let versioned_location = VersionedLocation::V5(destination);
+		let destination = versioned_location.encode().into();
+		ExtBuilder::new().build().execute_with(|| {
+			let input = send(sendCall {
+				destination: Vec::default().into(),
+				message: Vec::default().into(),
+			});
+			assert_revert!(call_precompile::<()>(&origin, &input), DecodingFailed);
+
+			let input = send(sendCall { destination, message: Vec::default().into() });
+			assert_revert!(call_precompile::<()>(&origin, &input), DecodingFailed);
+		});
 	}
 
 	#[test]
