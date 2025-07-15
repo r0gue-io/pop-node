@@ -470,6 +470,7 @@ mod tests {
 					message_deposit: 0,
 					response: BoundedVec::truncate_from(response.clone()),
 				},
+				0,
 			)])
 			.build()
 			.execute_with(|| {
@@ -505,7 +506,7 @@ mod tests {
 			),
 		];
 		ExtBuilder::new()
-			.with_messages(messages.map(|(i, m)| (origin.clone(), i, m)).to_vec())
+			.with_messages(messages.map(|(i, m)| (origin.clone(), i, m, 0)).to_vec())
 			.build()
 			.execute_with(|| {
 				for (message, expected) in expected {
@@ -609,6 +610,7 @@ mod tests {
 				origin.clone(),
 				message,
 				XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+				0,
 			)])
 			.build()
 			.execute_with(|| {
@@ -644,6 +646,7 @@ mod tests {
 					message_deposit: 0,
 					response: BoundedVec::default(),
 				},
+				0,
 			)])
 			.build()
 			.execute_with(|| {
@@ -662,11 +665,12 @@ mod tests {
 		ExtBuilder::new()
 			.with_messages(
 				(0..messages - 1)
-					.map(|i| (origin.clone(), i, message.clone()))
+					.map(|i| (origin.clone(), i, message.clone(), 0))
 					.chain(vec![(
 						origin.clone(),
 						messages,
 						XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+						0,
 					)])
 					.collect(),
 			)
@@ -689,7 +693,7 @@ mod tests {
 		let messages = <MaxRemovals as Get<u32>>::get() as u64;
 		ExtBuilder::new()
 			.with_messages(
-				(0..messages - 1).map(|i| (origin.clone(), i, message.clone())).collect(),
+				(0..messages - 1).map(|i| (origin.clone(), i, message.clone(), 0)).collect(),
 			)
 			.build()
 			.execute_with(|| {
@@ -728,7 +732,7 @@ mod tests {
 			response: BoundedVec::default(),
 		};
 		ExtBuilder::new()
-			.with_messages((0..messages).map(|i| (origin.clone(), i, message.clone())).collect())
+			.with_messages((0..messages).map(|i| (origin.clone(), i, message.clone(), 0)).collect())
 			.build()
 			.execute_with(|| {
 				let messages: Vec<_> = (0..messages).collect();

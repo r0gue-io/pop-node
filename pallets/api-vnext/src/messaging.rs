@@ -33,6 +33,8 @@ mod benchmarking;
 mod deposits;
 /// The messaging precompiles offer a streamlined interface for cross-chain messaging.
 pub mod precompiles;
+#[cfg(test)]
+mod tests;
 /// Messaging transports.
 pub mod transports;
 mod weights;
@@ -826,6 +828,16 @@ pub(crate) enum Message<T: Config> {
 		message_deposit: BalanceOf<T>,
 		callback_deposit: Option<BalanceOf<T>>,
 	},
+}
+
+impl<T: Config> Message<T> {
+	fn ismp_response(
+		commitment: H256,
+		message_deposit: BalanceOf<T>,
+		response: BoundedVec<u8, T::MaxResponseLen>,
+	) -> Self {
+		Self::IsmpResponse { commitment, message_deposit, response }
+	}
 }
 
 /// The related message status of a Message.

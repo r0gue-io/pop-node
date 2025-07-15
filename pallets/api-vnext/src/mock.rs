@@ -1,6 +1,6 @@
 use codec::Compact;
 use frame_support::{
-	derive_impl,
+	assert_ok, derive_impl,
 	pallet_prelude::ConstU32,
 	parameter_types,
 	sp_runtime::{traits::AccountIdLookup, AccountId32, BuildStorage},
@@ -324,7 +324,7 @@ pub(crate) struct ExtBuilder {
 	asset_metadata: Option<Vec<(TokenId, Vec<u8>, Vec<u8>, u8)>>,
 	balances: Vec<(AccountId, Balance)>,
 	#[cfg(feature = "messaging")]
-	messages: Option<Vec<(AccountId, messaging::MessageId, messaging::Message<Test>)>>,
+	messages: Option<Vec<(AccountId, messaging::MessageId, messaging::Message<Test>, Balance)>>,
 	#[cfg(feature = "messaging")]
 	next_message_id: Option<(AccountId, messaging::MessageId)>,
 	#[cfg(feature = "messaging")]
@@ -375,7 +375,7 @@ impl ExtBuilder {
 	#[cfg(feature = "messaging")]
 	pub(crate) fn with_messages(
 		mut self,
-		messages: Vec<(AccountId, messaging::MessageId, messaging::Message<Test>)>,
+		messages: Vec<(AccountId, messaging::MessageId, messaging::Message<Test>, Balance)>,
 	) -> Self {
 		self.messages = Some(messages);
 		self
@@ -416,8 +416,16 @@ impl ExtBuilder {
 			#[cfg(feature = "messaging")]
 			{
 				if let Some(messages) = self.messages.take() {
-					for (account, id, message) in messages {
-						messaging::Messages::<Test>::insert(account, id, message);
+					for (account, id, message, deposit) in messages {
+						messaging::Messages::<Test>::insert(&account, id, message);
+
+						use frame_support::traits::fungible::MutateHold;
+						use messaging::HoldReason;
+						assert_ok!(<Test as messaging::Config>::Fungibles::hold(
+							&HoldReason::Messaging.into(),
+							&account,
+							deposit
+						));
 					}
 				}
 
