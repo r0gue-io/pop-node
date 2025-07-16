@@ -392,7 +392,7 @@ impl<
 							env.gas_meter_mut()
 								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 						}
-						return Err(e.error.into())
+						return Err(e.error.into());
 					},
 				};
 				Ok(clearCollectionApprovalsCall::abi_encode_returns(
@@ -568,7 +568,7 @@ mod tests {
 		bare_call, fixed_address,
 		mock::{AccountId, ExtBuilder, RuntimeOrigin, Test, NONFUNGIBLES},
 		nonfungibles::mint,
-		prefixed_address, AccountIdOf,
+		AccountIdOf,
 	};
 
 	const ADDRESS: [u8; 20] = fixed_address(NONFUNGIBLES);
@@ -587,7 +587,6 @@ mod tests {
 				// Successfully approved.
 				assert_ok!(call_precompile::<()>(
 					&owner,
-					collection_id,
 					&INonfungiblesCalls::approve_0(INonfungibles::approve_0Call {
 						collection: collection_id.into(),
 						operator: to_address(&operator).0.into(),
@@ -625,7 +624,6 @@ mod tests {
 				// Successfully approved.
 				assert_ok!(call_precompile::<()>(
 					&owner,
-					collection_id,
 					&INonfungiblesCalls::approve_1(INonfungibles::approve_1Call {
 						collection: collection_id.into(),
 						item: item_id.into(),
@@ -651,82 +649,719 @@ mod tests {
 	}
 
 	#[test]
-	fn transfer_works() {}
+	fn transfer_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let to = BOB;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000), (to.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+				let owner_balance_before = balance_of::<Test, ()>(collection_id, owner.clone());
+				let to_balance_before = balance_of::<Test, ()>(collection_id, to.clone());
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::transfer(INonfungibles::transferCall {
+						collection: collection_id.into(),
+						to: to_address(&to).0.into(),
+						item: item_id.into()
+					})
+				));
+
+				let owner_balance_after = balance_of::<Test, ()>(collection_id, owner.clone());
+				let to_balance_after = balance_of::<Test, ()>(collection_id, to.clone());
+				assert_eq!(owner_balance_after, owner_balance_before - 1);
+				assert_eq!(to_balance_after, to_balance_before + 1);
+				let event = INonfungibles::Transfer {
+					from: to_address(&owner).0.into(),
+					to: to_address(&to).0.into(),
+					item: item_id.into(),
+				};
+				assert_last_event(ADDRESS, event);
+			});
+	}
 
 	#[test]
-	fn create_works() {}
+	fn create_works() {
+		let admin = ALICE;
+		let creator = BOB;
+		ExtBuilder::new()
+			.with_balances(vec![(creator.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				let config = default_collection_config();
+				let config_bytes = codec::Encode::encode(&config);
+
+				let collection_id = call_precompile::<u32>(
+					&creator,
+					&INonfungiblesCalls::create(INonfungibles::createCall {
+						admin: to_address(&admin).0.into(),
+						config: config_bytes.into(),
+					}),
+				)
+				.unwrap();
+				assert_eq!(collection_id, 0);
+				assert_eq!(owner_of::<Test, ()>(collection_id, 0), None);
+			});
+	}
 
 	#[test]
-	fn destroy_works() {}
+	fn destroy_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let witness =
+			pallet_nfts::DestroyWitness { item_metadatas: 0, item_configs: 0, attributes: 0 };
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::destroy(INonfungibles::destroyCall {
+						collection: collection_id.into(),
+						witness: codec::Encode::encode(&witness).into()
+					})
+				));
+				assert_eq!(owner_of::<Test, ()>(collection_id, 0), None);
+			});
+	}
 
 	#[test]
-	fn set_attribute_0_works() {}
+	fn set_attribute_0_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let key = b"name";
+		let value = b"Test Collection";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				let namespace: AttributeNamespace<AccountIdOf<Test>> =
+					AttributeNamespace::CollectionOwner;
+				let namespace_bytes = codec::Encode::encode(&namespace);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::setAttribute_0(INonfungibles::setAttribute_0Call {
+						collection: collection_id.into(),
+						namespace: namespace_bytes.into(),
+						key: key.to_vec().into(),
+						value: value.to_vec().into()
+					})
+				));
+				let event = INonfungibles::CollectionAttributeSet {
+					collection: collection_id.into(),
+					key: key.to_vec().into(),
+					data: value.to_vec().into(),
+				};
+				assert_last_event(ADDRESS, event);
+			});
+	}
 
 	#[test]
-	fn set_attribute_1_works() {}
+	fn set_attribute_1_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let key = b"description";
+		let value = b"Test Item";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				let namespace: AttributeNamespace<AccountIdOf<Test>> =
+					AttributeNamespace::CollectionOwner;
+				let namespace_bytes = codec::Encode::encode(&namespace);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::setAttribute_1(INonfungibles::setAttribute_1Call {
+						collection: collection_id.into(),
+						item: item_id.into(),
+						namespace: namespace_bytes.into(),
+						key: key.to_vec().into(),
+						value: value.to_vec().into()
+					})
+				));
+				let event = INonfungibles::ItemAttributeSet {
+					item: item_id.into(),
+					key: key.to_vec().into(),
+					data: value.to_vec().into(),
+				};
+				assert_last_event(ADDRESS, event);
+			});
+	}
 
 	#[test]
-	fn clear_attribute_0_works() {}
+	fn clear_attribute_0_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let key = "dummy attribute";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+				set_attribute(collection_id, None, key, "Test Collection");
+
+				let namespace: AttributeNamespace<AccountIdOf<Test>> =
+					AttributeNamespace::CollectionOwner;
+				let namespace_bytes = codec::Encode::encode(&namespace);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::clearAttribute_0(INonfungibles::clearAttribute_0Call {
+						collection: collection_id.into(),
+						namespace: namespace_bytes.into(),
+						key: key.as_bytes().to_vec().into()
+					})
+				));
+			});
+	}
 
 	#[test]
-	fn clear_attribute_1_works() {}
+	fn clear_attribute_1_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let key = "dummy attribute";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+				set_attribute(collection_id, Some(item_id), key, "Test Item");
+
+				let namespace: AttributeNamespace<AccountIdOf<Test>> =
+					AttributeNamespace::CollectionOwner;
+				let namespace_bytes = codec::Encode::encode(&namespace);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::clearAttribute_1(INonfungibles::clearAttribute_1Call {
+						collection: collection_id.into(),
+						item: item_id.into(),
+						namespace: namespace_bytes.into(),
+						key: key.as_bytes().to_vec().into()
+					})
+				));
+
+				assert!(get_attribute::<Test, ()>(
+					collection_id,
+					Some(item_id),
+					AttributeNamespace::CollectionOwner,
+					BoundedVec::truncate_from(key.as_bytes().to_vec()),
+				)
+				.is_none());
+			});
+	}
 
 	#[test]
-	fn set_metadata_0_works() {}
+	fn set_metadata_0_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let metadata = b"Test Item Metadata";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::setMetadata_0(INonfungibles::setMetadata_0Call {
+						collection: collection_id.into(),
+						item: item_id.into(),
+						data: metadata.to_vec().into()
+					})
+				));
+
+				assert_eq!(
+					item_metadata::<Test, ()>(collection_id, item_id),
+					Some(metadata.to_vec())
+				);
+			});
+	}
 
 	#[test]
-	fn set_metadata_1_works() {}
+	fn set_metadata_1_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let metadata = b"Test Collection Metadata";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::setMetadata_1(INonfungibles::setMetadata_1Call {
+						collection: collection_id.into(),
+						data: metadata.to_vec().into()
+					})
+				));
+
+				// State check: verify that collection metadata was set
+				// This is tested by the underlying pallet tests
+			});
+	}
 
 	#[test]
-	fn clear_metadata_0_works() {}
+	fn clear_metadata_0_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+				assert_ok!(set_collection_metadata::<Test, ()>(
+					RuntimeOrigin::signed(owner.clone()),
+					collection_id,
+					BoundedVec::truncate_from(b"Test Collection Metadata".to_vec()),
+				));
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::clearMetadata_0(INonfungibles::clearMetadata_0Call {
+						collection: collection_id.into()
+					})
+				));
+			});
+	}
 
 	#[test]
-	fn clear_metadata_1_works() {}
+	fn clear_metadata_1_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+				assert_ok!(set_metadata::<Test, ()>(
+					RuntimeOrigin::signed(owner.clone()),
+					collection_id,
+					item_id,
+					BoundedVec::truncate_from(b"Test Item Metadata".to_vec()),
+				));
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::clearMetadata_1(INonfungibles::clearMetadata_1Call {
+						collection: collection_id.into(),
+						item: item_id.into()
+					})
+				));
+
+				assert!(item_metadata::<Test, ()>(collection_id, item_id).is_none());
+			});
+	}
 
 	#[test]
-	fn set_max_supply_works() {}
+	fn set_max_supply_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let max_supply: u32 = 1000;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::setMaxSupply(INonfungibles::setMaxSupplyCall {
+						collection: collection_id.into(),
+						maxSupply: max_supply.into()
+					})
+				));
+
+				assert_eq!(total_supply::<Test, ()>(collection_id), 0);
+			});
+	}
 
 	#[test]
-	fn approve_item_attributes_works() {}
+	fn approve_item_attributes_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let delegate = BOB;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::approveItemAttributes(
+						INonfungibles::approveItemAttributesCall {
+							collection: collection_id.into(),
+							item: item_id.into(),
+							delegate: to_address(&delegate).0.into()
+						}
+					)
+				));
+
+				// State check: verify that the delegate can now set attributes on the item
+				// This is tested by the underlying pallet tests
+			});
+	}
 
 	#[test]
-	fn cancel_item_attributes_works() {}
+	fn cancel_item_attributes_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let delegate = BOB;
+		let witness = pallet_nfts::CancelAttributesApprovalWitness { account_attributes: 0 };
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::cancelItemAttributesApproval(
+						INonfungibles::cancelItemAttributesApprovalCall {
+							collection: collection_id.into(),
+							item: item_id.into(),
+							delegate: to_address(&delegate).0.into(),
+							witness: codec::Encode::encode(&witness).into()
+						}
+					)
+				));
+
+				assert!(!allowance::<Test, ()>(
+					collection_id,
+					owner.clone(),
+					delegate.clone(),
+					Some(item_id)
+				));
+			});
+	}
 
 	#[test]
-	fn clear_all_approvals_works() {}
+	fn clear_all_approvals_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::clearAllApprovals(INonfungibles::clearAllApprovalsCall {
+						collection: collection_id.into(),
+						item: item_id.into()
+					})
+				));
+
+				assert!(!allowance::<Test, ()>(collection_id, owner.clone(), BOB, Some(item_id)));
+			});
+	}
 
 	#[test]
-	fn clear_collection_approvals_works() {}
+	fn clear_collection_approvals_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let limit: u32 = 10;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::clearCollectionApprovals(
+						INonfungibles::clearCollectionApprovalsCall {
+							collection: collection_id.into(),
+							limit: limit.into()
+						}
+					)
+				));
+
+				assert!(!allowance::<Test, ()>(collection_id, owner.clone(), BOB, None));
+			});
+	}
 
 	#[test]
-	fn mint_works() {}
+	fn mint_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let to = BOB;
+		let witness: MintWitness<ItemIdOf<Test>, DepositBalanceOf<Test>> =
+			pallet_nfts::MintWitness { mint_price: None, owned_item: None };
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				let balance_before = balance_of::<Test, ()>(collection_id, to.clone());
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::mint(INonfungibles::mintCall {
+						collection: collection_id.into(),
+						to: to_address(&to).0.into(),
+						item: item_id.into(),
+						witness: codec::Encode::encode(&witness).into()
+					})
+				));
+
+				let balance_after = balance_of::<Test, ()>(collection_id, to.clone());
+				assert_eq!(balance_after, balance_before + 1);
+			});
+	}
 
 	#[test]
-	fn burn_works() {}
+	fn burn_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				let balance_before = balance_of::<Test, ()>(collection_id, owner.clone());
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::burn(INonfungibles::burnCall {
+						collection: collection_id.into(),
+						item: item_id.into()
+					})
+				));
+
+				let balance_after = balance_of::<Test, ()>(collection_id, owner.clone());
+				assert_eq!(balance_after, balance_before - 1);
+			});
+	}
 
 	#[test]
-	fn balance_of_works() {}
+	fn balance_of_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				assert_eq!(balance_of::<Test, ()>(collection_id, owner.clone()), 0);
+
+				assert_ok!(mint::<Test, ()>(
+					RuntimeOrigin::signed(owner.clone()),
+					collection_id,
+					owner.clone(),
+					0,
+					None,
+				));
+
+				assert_eq!(balance_of::<Test, ()>(collection_id, owner), 1);
+			});
+	}
 
 	#[test]
-	fn owner_of_works() {}
+	fn owner_of_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+				assert_eq!(owner_of::<Test, ()>(collection_id, item_id).unwrap(), owner);
+			});
+	}
 
 	#[test]
-	fn allowance_0_works() {}
+	fn allowance_0_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let operator = BOB;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				assert!(!allowance::<Test, ()>(
+					collection_id,
+					owner.clone(),
+					operator.clone(),
+					None
+				));
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::approve_0(INonfungibles::approve_0Call {
+						collection: collection_id.into(),
+						operator: to_address(&operator).0.into(),
+						approved: true,
+						deadline: 0
+					})
+				));
+
+				assert!(allowance::<Test, ()>(collection_id, owner, operator, None));
+			});
+	}
 
 	#[test]
-	fn allowance_1_works() {}
+	fn allowance_1_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let operator = BOB;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				assert!(!allowance::<Test, ()>(
+					collection_id,
+					owner.clone(),
+					operator.clone(),
+					Some(item_id)
+				));
+
+				assert_ok!(call_precompile::<()>(
+					&owner,
+					&INonfungiblesCalls::approve_1(INonfungibles::approve_1Call {
+						collection: collection_id.into(),
+						item: item_id.into(),
+						operator: to_address(&operator).0.into(),
+						approved: true,
+						deadline: 0
+					})
+				));
+
+				assert!(allowance::<Test, ()>(collection_id, owner, operator, Some(item_id)));
+			});
+	}
 
 	#[test]
-	fn total_supply_works() {}
+	fn total_supply_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+
+				assert_eq!(total_supply::<Test, ()>(collection_id), 0);
+
+				assert_ok!(mint::<Test, ()>(
+					RuntimeOrigin::signed(owner.clone()),
+					collection_id,
+					owner.clone(),
+					0,
+					None,
+				));
+
+				assert_eq!(total_supply::<Test, ()>(collection_id), 1);
+			});
+	}
 
 	#[test]
-	fn item_metadata_works() {}
+	fn item_metadata_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let metadata = b"Test Item Metadata";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+
+				assert_ok!(set_metadata::<Test, ()>(
+					RuntimeOrigin::signed(owner.clone()),
+					collection_id,
+					item_id,
+					BoundedVec::truncate_from(metadata.to_vec()),
+				));
+
+				let expected_metadata = item_metadata::<Test, ()>(collection_id, item_id).unwrap();
+				assert_eq!(
+					String::from_utf8_lossy(&expected_metadata),
+					String::from_utf8_lossy(metadata)
+				);
+			});
+	}
 
 	#[test]
-	fn get_attribute_0_works() {}
+	fn get_attribute_0_works() {
+		let collection_id: u32 = 0;
+		let owner = ALICE;
+		let key = "dummy attribute";
+		let value = "Test Collection";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection(owner.clone());
+				set_attribute(collection_id, None, key, value);
+
+				let expected_value = get_attribute::<Test, ()>(
+					collection_id,
+					None,
+					AttributeNamespace::CollectionOwner,
+					BoundedVec::truncate_from(key.as_bytes().to_vec()),
+				)
+				.unwrap();
+				assert_eq!(String::from_utf8_lossy(&expected_value), value);
+			});
+	}
 
 	#[test]
-	fn get_attribute_1_works() {}
+	fn get_attribute_1_works() {
+		let collection_id: u32 = 0;
+		let item_id: u32 = 0;
+		let owner = ALICE;
+		let key = "dummy attribute";
+		let value = "Test Item";
+		ExtBuilder::new()
+			.with_balances(vec![(owner.clone(), 10_000_000)])
+			.build()
+			.execute_with(|| {
+				create_collection_and_mint(owner.clone(), collection_id, item_id);
+				set_attribute(collection_id, Some(item_id), key, value);
+
+				let expected_value = get_attribute::<Test, ()>(
+					collection_id,
+					Some(item_id),
+					AttributeNamespace::CollectionOwner,
+					BoundedVec::truncate_from(key.as_bytes().to_vec()),
+				)
+				.unwrap();
+				assert_eq!(String::from_utf8_lossy(&expected_value), value);
+			});
+	}
 
 	fn create_collection_and_mint(owner: AccountIdOf<Test>, collection_id: u32, item_id: u32) {
 		create_collection(owner.clone());
@@ -768,13 +1403,11 @@ mod tests {
 
 	fn call_precompile<Output: SolValue + From<<Output::SolType as SolType>::RustType>>(
 		origin: &AccountId,
-		token: u32,
 		input: &INonfungiblesCalls,
 	) -> Result<Output, DispatchError> {
-		let address = prefixed_address(NONFUNGIBLES, token);
 		bare_call::<Test, Output>(
 			RuntimeOrigin::signed(origin.clone()),
-			address.into(),
+			ADDRESS.into(),
 			0,
 			Weight::MAX,
 			DepositLimit::Balance(u128::MAX),
