@@ -132,6 +132,8 @@ impl pallet_nfts::Config for Test {
 	type StringLimit = ConstU32<50>;
 	type ValueLimit = ConstU32<50>;
 	type WeightInfo = ();
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 }
 
 #[derive_impl(pallet_revive::config_preludes::TestDefaultConfig)]

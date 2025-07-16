@@ -12,6 +12,8 @@ use pallet_nfts::{
 
 use super::*;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 pub mod precompiles;
 #[cfg(test)]
 mod tests;
@@ -20,6 +22,20 @@ type BlockNumberFor<T, I = ()> = pallet_nfts::BlockNumberFor<T, I>;
 type CollectionIdOf<T, I = ()> =
 	<Nfts<T, I> as Inspect<<T as frame_system::Config>::AccountId>>::CollectionId;
 type ItemIdOf<T, I = ()> = <Nfts<T, I> as Inspect<<T as frame_system::Config>::AccountId>>::ItemId;
+
+#[frame_support::pallet]
+pub mod pallet {
+	use super::*;
+
+	#[pallet::config]
+	pub trait Config<I: 'static = ()>: frame_system::Config {
+		/// Weight information for precompiles in this pallet.
+		type WeightInfo: WeightInfo;
+	}
+
+	#[pallet::pallet]
+	pub struct Pallet<T, I = ()>(_);
+}
 
 fn approve<T: Config<I>, I>(
 	origin: OriginFor<T>,
