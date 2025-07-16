@@ -118,6 +118,8 @@ impl pallet_nfts::Config for Test {
 	type DepositPerByte = ConstU128<1>;
 	type Features = NftsPalletFeatures;
 	type ForceOrigin = frame_system::EnsureRoot<Self::AccountId>;
+	#[cfg(feature = "runtime-benchmarks")]
+	type Helper = ();
 	type ItemAttributesApprovalsLimit = ConstU32<2>;
 	type ItemDeposit = ConstU128<1>;
 	type ItemId = u32;
@@ -132,8 +134,6 @@ impl pallet_nfts::Config for Test {
 	type StringLimit = ConstU32<50>;
 	type ValueLimit = ConstU32<50>;
 	type WeightInfo = ();
-	#[cfg(feature = "runtime-benchmarks")]
-	type Helper = ();
 }
 
 #[derive_impl(pallet_revive::config_preludes::TestDefaultConfig)]
