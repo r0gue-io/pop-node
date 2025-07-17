@@ -4,7 +4,7 @@ use frame_support::{
 	pallet_prelude::ConstU32,
 	parameter_types,
 	sp_runtime::{traits::AccountIdLookup, AccountId32, BuildStorage},
-	traits::{AsEnsureOriginWithArg, Get},
+	traits::{AsEnsureOriginWithArg, Get, OnInitialize},
 	PalletId,
 };
 use frame_system::{EnsureRoot, EnsureSigned};
@@ -460,14 +460,24 @@ impl ExtBuilder {
 	}
 }
 
-pub(crate) fn signed(account: AccountId) -> RuntimeOrigin {
-	RuntimeOrigin::signed(account)
-}
-
-pub(crate) fn root() -> RuntimeOrigin {
-	RuntimeOrigin::root()
+pub(crate) fn next_block() {
+	let next_block: u32 = System::block_number() + 1;
+	System::set_block_number(next_block);
+	Messaging::on_initialize(next_block);
 }
 
 pub(crate) fn none() -> RuntimeOrigin {
 	RuntimeOrigin::none()
+}
+
+pub(crate) fn run_to(block_number: u32) {
+	while System::block_number() < block_number {
+		next_block();
+	}
+}
+pub(crate) fn root() -> RuntimeOrigin {
+	RuntimeOrigin::root()
+}
+pub(crate) fn signed(account: AccountId) -> RuntimeOrigin {
+	RuntimeOrigin::signed(account)
 }

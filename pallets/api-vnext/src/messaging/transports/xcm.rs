@@ -94,3 +94,261 @@ pub trait NotifyQueryHandler<T: Config> {
 		match_querier: impl Into<Location>,
 	) -> QueryId;
 }
+
+#[cfg(test)]
+mod tests {
+	use frame_support::{
+		assert_noop, assert_ok,
+		storage::{with_transaction, TransactionOutcome},
+		traits::fungible::InspectHold,
+		weights::WeightToFee as _,
+	};
+
+	use super::{
+		super::{Callback, Encoding, HoldReason::*},
+		mock::{messaging::*, *},
+		CallbackExecutor as _, WeightInfo as _, *,
+	};
+
+	type CallbackExecutor = <Test as Config>::CallbackExecutor;
+	type Error = super::Error<Test>;
+	type Event = super::Event<Test>;
+	type Fungibles = <Test as Config>::Fungibles;
+	type Messages = super::Messages<Test>;
+	type OnChainByteFee = <Test as Config>::OnChainByteFee;
+	type WeightInfo = <Test as Config>::WeightInfo;
+	type WeightToFee = <Test as Config>::WeightToFee;
+	type XcmQueries = super::XcmQueries<Test>;
+
+	#[test]
+	fn ensure_xcm_response_has_weight() {
+		assert_ne!(
+			WeightInfo::xcm_response(),
+			Weight::zero(),
+			"Please set a weight for xcm_response to run these tests."
+		);
+	}
+
+	#[test]
+	fn ensure_xcm_response_fee() {
+		assert_ne!(WeightToFee::weight_to_fee(&(WeightInfo::xcm_response())), 0);
+		assert_ne!(WeightToFee::weight_to_fee(&(CallbackExecutor::execution_weight())), 0);
+	}
+
+	#[test]
+	fn ensure_callback_executor_has_weight() {
+		assert_ne!(
+			CallbackExecutor::execution_weight(),
+			Weight::zero(),
+			"Please set a weight for CallbackExecutor::execution_weight to run these tests."
+		);
+	}
+
+	#[test]
+	fn takes_response_fee_no_callback() {
+		let origin = ALICE;
+		let response_fee = WeightToFee::weight_to_fee(&(WeightInfo::xcm_response()));
+		let callback = None;
+		let endowment = existential_deposit() + deposit() + response_fee;
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+				let balance_pre_transfer = Balances::free_balance(&origin);
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, callback));
+
+				let balance_post_transfer = Balances::free_balance(&origin);
+				let total_balance_on_hold = Balances::total_balance_on_hold(&origin);
+				assert_eq!(
+					balance_pre_transfer - balance_post_transfer - total_balance_on_hold,
+					response_fee
+				);
+			})
+	}
+
+	#[test]
+	fn takes_response_fee_with_callback() {
+		let origin = ALICE;
+		let response_fee = xcm_response_fee();
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Weight::zero());
+		let endowment = existential_deposit() + deposit() + response_fee;
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+				assert_ne!(response_fee, 0);
+				let balance_pre_query = Balances::free_balance(&ALICE);
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback),));
+
+				let balance_post_query = Balances::free_balance(&ALICE);
+				let total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
+
+				assert_eq!(
+					balance_pre_query - balance_post_query - total_balance_on_hold,
+					response_fee
+				);
+			})
+	}
+
+	#[test]
+	fn takes_callback_hold() {
+		let origin = ALICE;
+		let weight = Weight::from_parts(100_000_000, 100_000_000);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+		let callback_deposit = WeightToFee::weight_to_fee(&weight);
+		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_deposit;
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+				let held_balance_pre_query =
+					Fungibles::balance_on_hold(&CallbackGas.into(), &origin);
+				assert_eq!(held_balance_pre_query, 0);
+				assert_ne!(callback_deposit, 0);
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+
+				let held_balance_post_query =
+					Fungibles::balance_on_hold(&CallbackGas.into(), &origin);
+				assert_eq!(held_balance_post_query, callback_deposit);
+			})
+	}
+
+	#[test]
+	fn takes_messaging_hold() {
+		let origin = ALICE;
+		let expected_deposit = deposit();
+		let endowment = existential_deposit() + deposit() + xcm_response_fee();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+				let held_balance_pre_hold = Fungibles::balance_on_hold(&Messaging.into(), &origin);
+				assert_ne!(
+					expected_deposit, 0,
+					"set an onchain byte fee with T::OnChainByteFee to run this test."
+				);
+				assert_eq!(held_balance_pre_hold, 0);
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None,));
+
+				let held_balance_post_hold = Fungibles::balance_on_hold(&Messaging.into(), &origin);
+				assert_eq!(held_balance_post_hold, expected_deposit);
+			});
+	}
+
+	#[test]
+	fn assert_state() {
+		let origin = ALICE;
+		let weight = Weight::from_parts(100_000_000, 100_000_000);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+		let callback_deposit = WeightToFee::weight_to_fee(&weight);
+		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_deposit;
+		let id = 1;
+		let query_id = 42;
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_message_id(&origin.clone(), id)
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+
+				let message =
+					Messages::get(&origin, id).expect("should exist after xcm_new_query.");
+				let Message::XcmQuery { query_id: qid, callback: c, .. } = message else {
+					panic!("Wrong message type.")
+				};
+				assert_eq!(qid, query_id);
+				assert_eq!(c, Some(callback));
+				assert_eq!(XcmQueries::get(query_id), Some((origin, id)));
+			})
+	}
+
+	#[test]
+	fn xcm_timeouts_must_be_in_the_future() {
+		let origin = ALICE;
+		let endowment = existential_deposit() + deposit() + xcm_response_fee();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number();
+
+				assert_noop!(
+					new_query(&origin, RESPONSE_LOCATION, timeout, None),
+					Error::FutureTimeoutMandatory
+				);
+			})
+	}
+
+	#[test]
+	fn xcm_queries_expire_on_expiry_block() {
+		let origin = ALICE;
+		let messages = 2;
+		let query_id = 42;
+		let endowment =
+			existential_deposit() + (deposit() + xcm_response_fee()) * messages as Balance;
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 10;
+				for _ in 0..messages {
+					assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+				}
+
+				run_to(timeout + 1);
+
+				for id in 0..messages {
+					let Some(Message::XcmTimeout { .. }) = Messages::get(&origin, id) else {
+						panic!("Message should be timed out!")
+					};
+				}
+				let query_ids = (0..messages).map(|id| query_id + id).collect();
+				System::assert_has_event(Event::XcmQueriesTimedOut { query_ids }.into());
+			})
+	}
+
+	fn deposit() -> Balance {
+		calculate_protocol_deposit::<Test, OnChainByteFee>(ProtocolStorageDeposit::XcmQueries) +
+			calculate_message_deposit::<Test, OnChainByteFee>()
+	}
+
+	fn existential_deposit() -> Balance {
+		<ExistentialDeposit as Get<Balance>>::get()
+	}
+
+	// `new_query` is no longer a dispatchable and only callable via a precompile, hence we simply
+	// wrap calls to it in a transaction to simulate. See additional precompiles tests for
+	// further assurances.
+	fn new_query(
+		origin: &AccountId,
+		responder: Location,
+		timeout: u32,
+		callback: Option<Callback>,
+	) -> Result<(MessageId, QueryId), DispatchError> {
+		with_transaction(|| {
+			let result = super::new_query::<Test>(origin, responder, timeout, callback);
+			match &result {
+				Ok(_) => TransactionOutcome::Commit(result),
+				Err(_) => TransactionOutcome::Rollback(result),
+			}
+		})
+	}
+
+	fn xcm_response_fee() -> Balance {
+		WeightToFee::weight_to_fee(
+			&(WeightInfo::xcm_response() + CallbackExecutor::execution_weight()),
+		)
+	}
+}
