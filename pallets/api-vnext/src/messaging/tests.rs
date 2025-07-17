@@ -2,7 +2,9 @@ use frame_support::{
 	assert_noop, assert_ok,
 	storage::{with_transaction, TransactionOutcome},
 	traits::fungible::InspectHold,
+	weights::WeightToFee as _,
 };
+use sp_runtime::TokenError::FundsUnavailable;
 use HoldReason::*;
 
 use super::*;
@@ -324,6 +326,61 @@ mod remove {
 				Err(_) => TransactionOutcome::Rollback(result),
 			}
 		})
+	}
+}
+
+mod call {
+	use super::*;
+
+	type BlockWeight = frame_system::pallet::BlockWeight<Test>;
+
+	#[test]
+	fn assert_error_event() {
+		let origin = ALICE;
+		let weight = Weight::from_parts(100_000, 100_000);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight);
+		let message_id = 1;
+		let data = [100u8; 5];
+		ExtBuilder::new().build().execute_with(|| {
+			assert_ok!(call::<Test>(&origin, callback, &message_id, &data));
+
+			System::assert_last_event(
+				Event::WeightRefundErrored {
+					message_id,
+					error: DispatchError::Token(FundsUnavailable),
+				}
+				.into(),
+			);
+		})
+	}
+
+	// AlwaysSuccessfullCallbackExecutor should return half the weight of the callback.weight
+	// TODO: there may be a better way of handling this case.
+	#[test]
+	fn block_weight_mutation_happens() {
+		let origin = ALICE;
+		let weight = Weight::from_parts(10_000_000, 10_000_000);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight);
+		let id = 1;
+		let data = [100u8; 5];
+		let callback_fee = <Test as Config>::WeightToFee::weight_to_fee(&weight);
+		let endowment = existential_deposit() + callback_fee;
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				let block_weight_pre_call =
+					BlockWeight::get().get(DispatchClass::Normal).to_owned();
+				assert_ok!(Fungibles::hold(&CallbackGas.into(), &origin, callback_fee));
+
+				assert_ok!(call::<Test>(&origin, callback, &id, &data));
+
+				let block_weight_post_call =
+					BlockWeight::get().get(DispatchClass::Normal).to_owned();
+				assert_ne!(block_weight_post_call, Zero::zero());
+				// callback weight used in tests is total / 2.
+				assert_eq!(block_weight_post_call - block_weight_pre_call, weight / 2);
+			})
 	}
 }
 
