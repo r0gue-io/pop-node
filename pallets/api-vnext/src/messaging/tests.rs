@@ -467,6 +467,54 @@ mod deposit_callback_event {
 	}
 }
 
+mod manage_fees {
+	use mock::messaging::Treasury;
+
+	use super::*;
+
+	type WeightToFee = <Test as Config>::WeightToFee;
+
+	#[test]
+	fn assert_payback_when_execution_weight_is_less_than_deposit_held() {
+		let origin = ALICE;
+		let actual_weight_executed = Weight::from_parts(50_000_000, 70_000_000);
+		let callback_weight_reserved = Weight::from_parts(100_000_000, 100_000_000);
+		let deposit = WeightToFee::weight_to_fee(&callback_weight_reserved);
+		assert!(deposit != 0, "Please set an appropriate weight to fee implementation.");
+		let endowment = existential_deposit() + deposit;
+		let fee_account = Treasury::get();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.build()
+			.execute_with(|| {
+				// Artificially take the deposit
+				assert_ok!(Fungibles::hold(&CallbackGas.into(), &origin, deposit));
+
+				let expected_refund = deposit - WeightToFee::weight_to_fee(&actual_weight_executed);
+				assert!(expected_refund != 0);
+
+				let fee_pot_payment = deposit - expected_refund;
+
+				let fee_account_pre_handle = Balances::free_balance(&fee_account);
+				let origin_balance_pre_handle = Balances::free_balance(&origin);
+
+				assert_ok!(manage_fees::<Test>(
+					&origin,
+					actual_weight_executed,
+					callback_weight_reserved
+				));
+
+				// origin should have been refunded by the tune of expected refund.
+				// the fee pot should have been increased by fee_pot_payment.
+				let fee_account_post_handle = Balances::free_balance(&fee_account);
+				let origin_balance_post_handle = Balances::free_balance(&origin);
+
+				assert_eq!(origin_balance_post_handle - origin_balance_pre_handle, expected_refund);
+				assert_eq!(fee_account_post_handle, fee_account_pre_handle + fee_pot_payment);
+			})
+	}
+}
+
 fn existential_deposit() -> Balance {
 	<ExistentialDeposit as Get<Balance>>::get()
 }
