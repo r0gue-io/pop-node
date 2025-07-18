@@ -1,5 +1,6 @@
 use frame_support::{
 	assert_noop, assert_ok,
+	dispatch::PostDispatchInfo,
 	storage::{with_transaction, TransactionOutcome},
 	traits::fungible::InspectHold,
 	weights::WeightToFee as _,
@@ -381,6 +382,41 @@ mod call {
 				// callback weight used in tests is total / 2.
 				assert_eq!(block_weight_post_call - block_weight_pre_call, weight / 2);
 			})
+	}
+}
+
+mod process_callback_weight {
+	use super::*;
+
+	#[test]
+	fn ok_with_weight_returns_weight() {
+		let weight = Weight::from_parts(100_000, 100_000);
+		let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+			actual_weight: Some(weight),
+			pays_fee: Pays::Yes,
+		});
+		let max_weight = Weight::zero();
+		assert_eq!(process_callback_weight(&result, max_weight), weight);
+	}
+
+	#[test]
+	fn ok_without_weight_returns_max_weight() {
+		let result = DispatchResultWithPostInfo::Ok(PostDispatchInfo {
+			actual_weight: None,
+			pays_fee: Pays::Yes,
+		});
+		let max_weight = Weight::from_parts(200_000, 200_000);
+		assert_eq!(process_callback_weight(&result, max_weight), max_weight);
+	}
+
+	#[test]
+	fn err_returns_max_weight() {
+		let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
+			post_info: Default::default(),
+			error: Error::InvalidMessage.into(),
+		});
+		let max_weight = Weight::from_parts(200_000, 200_000);
+		assert_eq!(process_callback_weight(&result, max_weight), max_weight);
 	}
 }
 
