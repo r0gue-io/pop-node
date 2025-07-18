@@ -420,6 +420,53 @@ mod process_callback_weight {
 	}
 }
 
+mod deposit_callback_event {
+	use super::*;
+
+	#[test]
+	fn emits_callback_executed_event_on_success() {
+		let origin = ALICE;
+		let message_id = 1;
+		let weight = Weight::from_parts(100_000, 100_000);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0; 4], weight);
+		let result: DispatchResultWithPostInfo = Ok(PostDispatchInfo {
+			actual_weight: Some(Weight::from_parts(1_000, 0)),
+			pays_fee: Default::default(),
+		});
+		ExtBuilder::new().build().execute_with(|| {
+			deposit_callback_event::<Test>(&origin, message_id, &callback, &result);
+			System::assert_last_event(
+				Event::<Test>::CallbackExecuted { origin, id: message_id, callback }.into(),
+			);
+		});
+	}
+
+	#[test]
+	fn emits_callback_failed_event_on_error() {
+		let origin = BOB;
+		let message_id = 2;
+		let weight = Weight::from_parts(100_000, 100_000);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0; 4], weight);
+		let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
+			post_info: Default::default(),
+			error: Error::InvalidMessage.into(),
+		});
+		ExtBuilder::new().build().execute_with(|| {
+			deposit_callback_event::<Test>(&origin, message_id, &callback, &result);
+
+			System::assert_last_event(
+				Event::CallbackFailed {
+					origin,
+					id: message_id,
+					callback,
+					error: result.unwrap_err(),
+				}
+				.into(),
+			);
+		});
+	}
+}
+
 fn existential_deposit() -> Balance {
 	<ExistentialDeposit as Get<Balance>>::get()
 }
