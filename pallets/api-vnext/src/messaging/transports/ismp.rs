@@ -285,3 +285,377 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())
 	}
 }
+
+#[cfg(test)]
+mod tests {
+	use ::ismp::{host::StateMachine, module::IsmpModule, Error as IsmpError};
+	use frame_support::{assert_ok, traits::fungible::InspectHold, weights::WeightToFee as _};
+
+	use super::{super::tests::events, messaging::HoldReason::*, mock::*, *};
+
+	type Fungibles = <Test as Config>::Fungibles;
+	type IsmpRequests = super::IsmpRequests<Test>;
+	type MaxResponseLen = <Test as Config>::MaxResponseLen;
+	type Messages = super::Messages<Test>;
+	type OnChainByteFee = <Test as Config>::OnChainByteFee;
+	type WeightToFee = <Test as Config>::WeightToFee;
+
+	mod get {
+		use super::*;
+
+		#[test]
+		fn takes_deposit() {
+			let origin = ALICE;
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+			let callback_deposit = WeightToFee::weight_to_fee(&weight);
+			let fee: Balance = u32::MAX.into();
+			let expected_deposit = calculate_protocol_deposit::<Test, OnChainByteFee>(
+				ProtocolStorageDeposit::IsmpRequests,
+			) + calculate_message_deposit::<Test, OnChainByteFee>() +
+				// TODO
+				//	calculate_deposit_of::<Test, OffChainByteFee, ismp::Get<Test>>() +
+				callback_deposit;
+			let endowment = existential_deposit() + expected_deposit + fee;
+			ExtBuilder::new()
+				.with_balances(vec![(origin.clone(), endowment)])
+				.build()
+				.execute_with(|| {
+					let held_balance_pre_hold = Balances::total_balance_on_hold(&ALICE);
+					assert_eq!(held_balance_pre_hold, 0);
+					assert!(expected_deposit != 0);
+
+					assert_ok!(get::<Test>(&origin, message(), fee, Some(callback)));
+
+					let held_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
+					assert_eq!(held_balance_post_hold, expected_deposit);
+				})
+		}
+
+		#[test]
+		fn assert_state() {
+			let origin = ALICE;
+			let id = 1;
+			let fee: Balance = u32::MAX.into();
+			let callback = None;
+			let deposit = calculate_protocol_deposit::<Test, OnChainByteFee>(
+				ProtocolStorageDeposit::IsmpRequests,
+			) + calculate_message_deposit::<Test, OnChainByteFee>();
+			let endowment = existential_deposit() + deposit + fee;
+			ExtBuilder::new()
+				.with_balances(vec![(origin.clone(), endowment)])
+				.with_message_id(&origin, id)
+				.build()
+				.execute_with(|| {
+					let (id, commitment) = get::<Test>(&origin, message(), fee, callback).unwrap();
+
+					assert_eq!(IsmpRequests::get(commitment), Some((origin.clone(), id)));
+					let Some(Message::Ismp { commitment: c, callback: cb, message_deposit: d }) =
+						Messages::get(origin, id)
+					else {
+						panic!("wrong message type");
+					};
+					assert_eq!((c, cb, d), (commitment, callback, deposit))
+				})
+		}
+
+		fn message() -> DispatchGet {
+			DispatchGet {
+				dest: StateMachine::Polkadot(2_000),
+				from: ID.to_vec(),
+				keys: Vec::default(),
+				height: 10,
+				context: Vec::default(),
+				timeout: 100,
+			}
+		}
+	}
+
+	mod post {
+		use super::*;
+
+		#[test]
+		fn takes_deposit() {
+			let origin = ALICE;
+			let weight = Weight::from_parts(100_000_000, 100_000_000);
+			let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
+			let fee: Balance = u32::MAX.into();
+			let expected_deposit = calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
+					ProtocolStorageDeposit::IsmpRequests,
+				) + calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
+				    // TODO
+					//calculate_deposit_of::<Test, OffChainByteFee, ismp::Post<Test>>() +
+					callback_deposit;
+			let endowment = existential_deposit() + expected_deposit + fee;
+			ExtBuilder::new()
+				.with_balances(vec![(origin.clone(), endowment)])
+				.build()
+				.execute_with(|| {
+					let held_balance_pre_hold = Balances::total_balance_on_hold(&origin);
+					assert_eq!(held_balance_pre_hold, 0);
+					assert_ne!(callback_deposit, 0);
+					assert_ne!(expected_deposit, 0);
+
+					assert_ok!(post::<Test>(&origin, message(), fee, Some(callback)));
+
+					let held_balance_post_hold = Balances::total_balance_on_hold(&origin);
+					assert_eq!(held_balance_post_hold, expected_deposit);
+				})
+		}
+
+		#[test]
+		fn assert_state() {
+			let origin = ALICE;
+			let id = 1;
+			let fee: Balance = u32::MAX.into();
+			let callback = None;
+			let deposit = calculate_protocol_deposit::<Test, OnChainByteFee>(
+				ProtocolStorageDeposit::IsmpRequests,
+			) + calculate_message_deposit::<Test, OnChainByteFee>();
+			let endowment = existential_deposit() + deposit + fee;
+			ExtBuilder::new()
+				.with_balances(vec![(origin.clone(), endowment)])
+				.with_message_id(&origin, id)
+				.build()
+				.execute_with(|| {
+					let (id, commitment) = post::<Test>(&origin, message(), fee, callback).unwrap();
+
+					assert_eq!(IsmpRequests::get(commitment).unwrap(), (origin.clone(), id));
+					let Some(Message::Ismp { commitment: c, callback: cb, message_deposit: d }) =
+						Messages::get(origin, id)
+					else {
+						panic!("wrong message type");
+					};
+					assert_eq!((c, cb, d), (commitment, callback, deposit))
+				})
+		}
+
+		fn message() -> DispatchPost {
+			DispatchPost {
+				dest: StateMachine::Polkadot(2_000),
+				from: ID.to_vec(),
+				to: ID.to_vec(),
+				timeout: 100,
+				body: Vec::default(),
+			}
+		}
+	}
+
+	mod ismp_hooks {
+		use super::*;
+
+		mod on_accept {
+			use super::*;
+
+			/// The on_accept must return Ok even when not in use.
+			/// If an error is returned the receipt is not removed and a replay attack is possible.
+			#[test]
+			fn is_ok() {
+				let handler = handler();
+				ExtBuilder::new()
+					.build()
+					.execute_with(|| assert!(handler.on_accept(post_request(100usize)).is_ok()))
+			}
+		}
+
+		mod timeout_commitment {
+			use super::*;
+
+			#[test]
+			fn request_not_found() {
+				ExtBuilder::new().build().execute_with(|| {
+					let err = timeout_commitment::<Test>(&Default::default()).unwrap_err();
+					assert_eq!(
+						err.downcast::<IsmpError>().unwrap(),
+						IsmpError::Custom(
+							"Request commitment not found while processing timeout.".into()
+						)
+					)
+				})
+			}
+
+			#[test]
+			fn invalid_request() {
+				let origin = ALICE;
+				let id = 1;
+				let commitment: H256 = [1u8; 32].into();
+				let message =
+					Message::XcmQuery { query_id: 0, callback: None, message_deposit: 100 };
+				ExtBuilder::new().build().execute_with(|| {
+					IsmpRequests::insert(commitment, (&origin, id));
+					Messages::insert(origin, id, &message);
+
+					let err = timeout_commitment::<Test>(&commitment).unwrap_err();
+					assert_eq!(
+						err.downcast::<IsmpError>().unwrap(),
+						IsmpError::Custom("Invalid message".into())
+					)
+				})
+			}
+
+			#[test]
+			fn actually_timesout_assert_event() {
+				let origin = ALICE;
+				let id = 1;
+				let commitment: H256 = [1u8; 32].into();
+				let message_deposit = 100;
+				let message = Message::Ismp { commitment, callback: None, message_deposit };
+				ExtBuilder::new().build().execute_with(|| {
+					IsmpRequests::insert(commitment, (&origin, id));
+					Messages::insert(&origin, id, &message);
+
+					let res = timeout_commitment::<Test>(&commitment);
+
+					assert!(res.is_ok(), "{:?}", res.unwrap_err().downcast::<IsmpError>().unwrap());
+
+					if let Some(Message::IsmpTimeout { commitment, .. }) =
+						Messages::get(&origin, id)
+					{
+						assert!(events().contains(&Event::IsmpTimedOut { commitment }))
+					} else {
+						panic!("Message not timed out.")
+					}
+				})
+			}
+
+			#[test]
+			fn success_callback_releases_deposit() {
+				let origin = ALICE;
+				let response = vec![1u8];
+				let commitment = H256::default();
+				let id = 1;
+				let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], 100.into());
+				let message_deposit = 100;
+				let message =
+					Message::Ismp { commitment, callback: Some(callback), message_deposit };
+				ExtBuilder::new()
+					.with_balances(vec![(origin.clone(), existential_deposit() + message_deposit)])
+					.build()
+					.execute_with(|| {
+						assert_ok!(Fungibles::hold(&Messaging.into(), &origin, message_deposit));
+						let post_hold = Balances::free_balance(&origin);
+
+						IsmpRequests::insert(commitment, (origin.clone(), id));
+						Messages::insert(&origin, id, message);
+
+						let res = process_response::<Test>(&commitment, &response, |dest, id| {
+							Event::IsmpGetResponseReceived { dest, id, commitment }
+						});
+
+						assert!(res.is_ok(), "process_response failed");
+
+						let post_process = Balances::free_balance(&origin);
+						assert_eq!(post_process - message_deposit, post_hold);
+					})
+			}
+		}
+
+		mod process_response {
+			use sp_runtime::bounded_vec;
+
+			use super::*;
+
+			#[test]
+			fn response_exceeds_max_encoded_len_limit() {
+				let commitment = H256::zero();
+				let response = vec![1u8; <MaxResponseLen as Get<u32>>::get() as usize + 1usize];
+				ExtBuilder::new().build().execute_with(|| {
+					let err = process_response::<Test>(&commitment, &response, |dest, id| {
+						Event::IsmpGetResponseReceived { dest, id, commitment }
+					})
+					.unwrap_err();
+
+					assert_eq!(
+						err.downcast::<IsmpError>().unwrap(),
+						IsmpError::Custom(
+							"Response length exceeds maximum allowed length.".to_string()
+						)
+					);
+				})
+			}
+
+			#[test]
+			fn request_not_found() {
+				let commitment = H256::zero();
+				let response = vec![1u8];
+				ExtBuilder::new().build().execute_with(|| {
+					let err = process_response::<Test>(&commitment, &response, |dest, id| {
+						Event::IsmpGetResponseReceived { dest, id, commitment }
+					})
+					.unwrap_err();
+
+					assert_eq!(
+						err.downcast::<IsmpError>().unwrap(),
+						IsmpError::Custom("Request not found.".to_string())
+					);
+				})
+			}
+
+			#[test]
+			fn message_must_be_ismp_request() {
+				let origin = ALICE;
+				let response = bounded_vec![1u8];
+				let commitment = H256::default();
+				let id = 1;
+				let message = Message::ismp_response(commitment, 100, response);
+				ExtBuilder::new().build().execute_with(|| {
+					IsmpRequests::insert(commitment, (&origin, id));
+					Messages::insert(&origin, id, message);
+
+					let err = process_response::<Test>(&commitment, &vec![1u8], |dest, id| {
+						Event::IsmpGetResponseReceived { dest, id, commitment }
+					})
+					.unwrap_err();
+					assert_eq!(
+						err.downcast::<IsmpError>().unwrap(),
+						IsmpError::Custom("Message must be an ismp request.".to_string())
+					);
+				})
+			}
+
+			#[test]
+			fn no_callback_saves_response() {
+				let origin = ALICE;
+				let response = vec![1u8];
+				let commitment = H256::default();
+				let id = 1;
+				let message = Message::Ismp { commitment, callback: None, message_deposit: 100 };
+				ExtBuilder::new().build().execute_with(|| {
+					IsmpRequests::insert(commitment, (origin.clone(), id));
+					Messages::insert(&origin, id, message);
+
+					let res = process_response::<Test>(&commitment, &response, |dest, id| {
+						Event::IsmpGetResponseReceived { dest, id, commitment }
+					});
+
+					assert!(res.is_ok(), "process_response failed");
+
+					let Some(Message::IsmpResponse { .. }) = Messages::get(&origin, id) else {
+						panic!("wrong message type.")
+					};
+				})
+			}
+		}
+
+		fn handler() -> ismp::Handler<Test> {
+			ismp::Handler::<Test>::new()
+		}
+
+		fn post_request(body_len: usize) -> PostRequest {
+			PostRequest {
+				source: StateMachine::Polkadot(2000),
+				dest: StateMachine::Polkadot(2001),
+				nonce: 100u64,
+				from: [1u8; 32].to_vec(),
+				to: [1u8; 32].to_vec(),
+				timeout_timestamp: 100_000,
+				body: vec![1u8; body_len],
+			}
+		}
+	}
+
+	fn existential_deposit() -> Balance {
+		<ExistentialDeposit as Get<Balance>>::get()
+	}
+}
