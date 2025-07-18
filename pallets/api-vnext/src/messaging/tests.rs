@@ -8,13 +8,17 @@ use frame_support::{
 use sp_runtime::TokenError::FundsUnavailable;
 use HoldReason::*;
 
-use super::*;
+use super::{CallbackExecutor as _, WeightInfo as _, *};
 use crate::mock::*;
 
+type CallbackExecutor = <Test as Config>::CallbackExecutor;
 type Error = super::Error<Test>;
 type Fungibles = <Test as Config>::Fungibles;
 type IsmpRequests = super::IsmpRequests<Test>;
+type Message = super::Message<Test>;
 type Messages = super::Messages<Test>;
+type WeightInfo = <Test as Config>::WeightInfo;
+type WeightToFee = <Test as Config>::WeightToFee;
 type XcmQueries = super::XcmQueries<Test>;
 
 mod remove {
@@ -330,6 +334,219 @@ mod remove {
 	}
 }
 
+mod xcm_response {
+	use transports::xcm::tests::{deposit, new_query, xcm_response_fee};
+
+	use super::{
+		mock::{messaging::*, Messaging},
+		*,
+	};
+
+	type BlockWeight = frame_system::BlockWeight<Test>;
+	type Pallet = Messaging;
+
+	#[test]
+	fn message_not_found() {
+		ExtBuilder::new().build().execute_with(|| {
+			assert_noop!(
+				Pallet::xcm_response(root(), 0, Default::default()),
+				Error::MessageNotFound
+			);
+		})
+	}
+
+	#[test]
+	fn timeout_messages_are_noop() {
+		let origin = ALICE;
+		let message_id = 1;
+		let query_id = 42;
+		let endowment = existential_deposit() + deposit() + xcm_response_fee();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_message_id(&origin, message_id)
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+
+				// Update the message to XcmTimedOut
+				Messages::mutate(ALICE, message_id, |message| {
+					let Some(Message::XcmQuery { query_id, message_deposit, .. }): &mut Option<
+						Message,
+					> = message
+					else {
+						panic!("No message!");
+					};
+					*message = Some(Message::XcmTimeout {
+						query_id: *query_id,
+						message_deposit: *message_deposit,
+						callback_deposit: None,
+					});
+				});
+
+				assert_noop!(
+					Pallet::xcm_response(root(), query_id, Default::default()),
+					Error::RequestTimedOut
+				);
+			})
+	}
+
+	#[test]
+	fn assert_event_no_callback() {
+		let origin = ALICE;
+		let id = 1;
+		let query_id = 42;
+		let response = Response::Null;
+		let endowment = existential_deposit() + deposit() + xcm_response_fee();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_message_id(&origin, id)
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+
+				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
+
+				assert!(events().contains(&Event::XcmResponseReceived {
+					dest: origin,
+					id,
+					query_id,
+					response
+				}));
+			})
+	}
+
+	#[test]
+	fn assert_message_is_stored_for_polling_no_callback() {
+		let origin = ALICE;
+		let id = 1;
+		let query_id = 42;
+		let response = Response::ExecutionResult(None);
+		let endowment = existential_deposit() + deposit() + xcm_response_fee();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_message_id(&origin, id)
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+
+				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
+
+				let Some(Message::XcmResponse { query_id: q, response: r, .. }): Option<Message> =
+					Messages::get(&origin, id)
+				else {
+					panic!("wrong message type");
+				};
+
+				assert_eq!(q, query_id);
+				assert_eq!(r, response);
+			})
+	}
+
+	#[test]
+	fn message_is_removed_after_successfull_callback_execution() {
+		let origin = ALICE;
+		let id = 1;
+		let query_id = 42;
+		let response = Response::ExecutionResult(None);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], 100.into());
+		let callback_fee = WeightToFee::weight_to_fee(&callback.weight);
+		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_fee;
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_message_id(&origin, id)
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+
+				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
+
+				assert!(Messages::get(&origin, id).is_none());
+				assert!(XcmQueries::get(query_id).is_none());
+			})
+	}
+
+	#[test]
+	fn message_deposit_returned_after_successfull_callback_execution() {
+		let origin = ALICE;
+		let id = 1;
+		let query_id = 42;
+		let response = Response::ExecutionResult(None);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Zero::zero());
+		let endowment = existential_deposit() + deposit() + xcm_response_fee();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_message_id(&origin, id)
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+
+				let held_balance_pre_release = Balances::total_balance_on_hold(&origin);
+				assert_ne!(held_balance_pre_release, 0);
+
+				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
+
+				let held_balance_post_release = Balances::total_balance_on_hold(&origin);
+				assert_eq!(held_balance_post_release, 0);
+			})
+	}
+
+	// Dont include any callback weight so we can test the xcm_response blockweight mutation.
+	#[test]
+	fn assert_blockweight_mutation_no_callback() {
+		let origin = ALICE;
+		let id = 1;
+		let query_id = 42;
+		let xcm_response = Response::ExecutionResult(None);
+		let endowment = existential_deposit() + deposit() + xcm_response_fee();
+		ExtBuilder::new()
+			.with_balances(vec![(origin.clone(), endowment)])
+			.with_message_id(&origin, id)
+			.with_query_id(query_id)
+			.build()
+			.execute_with(|| {
+				let timeout = System::block_number() + 1;
+
+				let block_weight_pre_call =
+					BlockWeight::get().get(DispatchClass::Normal).to_owned();
+
+				assert_ne!(
+					CallbackExecutor::execution_weight(),
+					Zero::zero(),
+					"Please set a callback executor execution_weight to run this test."
+				);
+				assert_ne!(
+					WeightInfo::xcm_response(),
+					Zero::zero(),
+					"Please set an T::WeightInfo::xcm_response() to run this test."
+				);
+				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+
+				assert_ok!(Pallet::xcm_response(root(), query_id, xcm_response.clone()));
+
+				let block_weight_post_call =
+					BlockWeight::get().get(DispatchClass::Normal).to_owned();
+
+				assert_eq!(
+					block_weight_post_call - block_weight_pre_call,
+					WeightInfo::xcm_response() + CallbackExecutor::execution_weight()
+				)
+			})
+	}
+}
+
 mod call {
 	use super::*;
 
@@ -472,8 +689,6 @@ mod manage_fees {
 
 	use super::*;
 
-	type WeightToFee = <Test as Config>::WeightToFee;
-
 	#[test]
 	fn assert_payback_when_execution_weight_is_less_than_deposit_held() {
 		let origin = ALICE;
@@ -513,6 +728,17 @@ mod manage_fees {
 				assert_eq!(fee_account_post_handle, fee_account_pre_handle + fee_pot_payment);
 			})
 	}
+}
+
+pub fn events() -> Vec<Event<Test>> {
+	let result = System::events()
+		.into_iter()
+		.map(|r| r.event)
+		.filter_map(|e| if let RuntimeEvent::Messaging(inner) = e { Some(inner) } else { None })
+		.collect();
+
+	System::reset_events();
+	result
 }
 
 fn existential_deposit() -> Balance {

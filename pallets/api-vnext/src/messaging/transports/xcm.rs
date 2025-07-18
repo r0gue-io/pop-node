@@ -96,7 +96,7 @@ pub trait NotifyQueryHandler<T: Config> {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
 	use frame_support::{
 		assert_noop, assert_ok,
 		storage::{with_transaction, TransactionOutcome},
@@ -319,7 +319,7 @@ mod tests {
 			})
 	}
 
-	fn deposit() -> Balance {
+	pub(crate) fn deposit() -> Balance {
 		calculate_protocol_deposit::<Test, OnChainByteFee>(ProtocolStorageDeposit::XcmQueries) +
 			calculate_message_deposit::<Test, OnChainByteFee>()
 	}
@@ -331,7 +331,7 @@ mod tests {
 	// `new_query` is no longer a dispatchable and only callable via a precompile, hence we simply
 	// wrap calls to it in a transaction to simulate. See additional precompiles tests for
 	// further assurances.
-	fn new_query(
+	pub(crate) fn new_query(
 		origin: &AccountId,
 		responder: Location,
 		timeout: u32,
@@ -346,7 +346,7 @@ mod tests {
 		})
 	}
 
-	fn xcm_response_fee() -> Balance {
+	pub(crate) fn xcm_response_fee() -> Balance {
 		WeightToFee::weight_to_fee(
 			&(WeightInfo::xcm_response() + CallbackExecutor::execution_weight()),
 		)
