@@ -831,6 +831,7 @@ pub(crate) enum Message<T: Config> {
 }
 
 impl<T: Config> Message<T> {
+	#[cfg(test)]
 	fn ismp_response(
 		commitment: H256,
 		message_deposit: BalanceOf<T>,
