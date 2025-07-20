@@ -27,6 +27,7 @@ use pallet_revive::{
 	precompiles::{
 		alloy::primitives as alloy,
 		run::{H256, U256},
+		Error,
 	},
 	test_utils::ALICE_ADDR,
 	AddressMapper as _, Origin,
@@ -49,9 +50,9 @@ use super::{
 	Call, Callback, Config, Encoding, Event, HoldReason, IsmpRequests, Message, MessageId,
 	Messages, Pallet,
 };
-use crate::messaging::BalanceOf;
 #[cfg(test)]
 use crate::mock::{ExtBuilder, Test};
+use crate::{messaging::BalanceOf, TryConvert};
 
 type AddressMapper<T> = <T as pallet_revive::Config>::AddressMapper;
 type Balances<T> = <T as Config>::Fungibles;
@@ -69,7 +70,8 @@ type Xcm<T> = super::precompiles::xcm::v0::Xcm<5, T>;
             Time: Time<Moment: Into<U256>>
         >,
         // Messaging
-        BalanceOf<T>: Bounded + TryFrom<alloy::U256> + TryInto<alloy::U256>,
+        T: Config<Fungibles: Inspect<T::AccountId, Balance: Bounded + TryConvert<alloy::U256, Error = Error>>>,
+        alloy::U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = Error>,
         T: pallet_ismp::Config + pallet_xcm::Config,
         u32: From<BlockNumberOf<T>>,
         // Timestamp
@@ -150,7 +152,7 @@ mod benchmarks {
 			keys: vec![vec![255u8; T::MaxKeyLen::get() as usize].into(); y as usize].into(),
 		};
 		let fee = <Balances<T>>::minimum_balance()
-			.try_into()
+			.try_convert()
 			.map_err(|_| BenchmarkError::Stop("failed to convert minimum balance to fee"))?;
 
 		silence_timestamp_genesis_warnings::<T>();
@@ -289,7 +291,7 @@ mod benchmarks {
 			data: vec![255; x as usize].into(),
 		};
 		let fee = <Balances<T>>::minimum_balance()
-			.try_into()
+			.try_convert()
 			.map_err(|_| BenchmarkError::Stop("failed to convert minimum balance to fee"))?;
 
 		silence_timestamp_genesis_warnings::<T>();

@@ -2,11 +2,17 @@ use ::ismp::{
 	dispatcher::{DispatchGet, DispatchPost},
 	host::StateMachine,
 };
-use frame_support::{ensure, traits::Get as _};
+use frame_support::{
+	ensure,
+	traits::{tokens::fungible::Inspect, Get as _},
+};
 pub(crate) use IISMP::{Get, *};
 
 use super::*;
-use crate::messaging::transports::ismp::{get, post, ID};
+use crate::{
+	messaging::transports::ismp::{get, post, ID},
+	TryConvert,
+};
 
 sol!(
 	#![sol(extra_derives(Debug, PartialEq))]
@@ -16,10 +22,14 @@ sol!(
 /// The ISMP precompile offers a streamlined interface for messaging using the Interoperable State
 /// Machine Protocol.
 pub struct Ismp<const FIXED: u16, T>(PhantomData<T>);
-impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config> Precompile
-	for Ismp<FIXED, T>
+impl<
+		const FIXED: u16,
+		T: frame_system::Config
+			+ pallet_revive::Config
+			+ Config<Fungibles: Inspect<T::AccountId, Balance: TryConvert<U256, Error = Error>>>,
+	> Precompile for Ismp<FIXED, T>
 where
-	BalanceOf<T>: TryFrom<U256>,
+	U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = Error>,
 {
 	type Interface = IISMPCalls;
 	type T = T;
@@ -51,9 +61,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_get::<T>(request)?;
-				let fee = (*fee)
-					.try_into()
-					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
+				let fee = (*fee).try_convert()?;
 
 				let (id, commitment) =
 					get::<T>(origin, message, fee, None).map_err(Self::map_err)?;
@@ -80,9 +88,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_get::<T>(request)?;
-				let fee = (*fee)
-					.try_into()
-					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
+				let fee = (*fee).try_convert()?;
 
 				let (id, commitment) =
 					get::<T>(origin, message, fee, Some(callback.into())).map_err(Self::map_err)?;
@@ -119,9 +125,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_post::<T>(request)?;
-				let fee = (*fee)
-					.try_into()
-					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
+				let fee = (*fee).try_convert()?;
 
 				let (id, commitment) =
 					post::<T>(origin, message, fee, None).map_err(Self::map_err)?;
@@ -143,9 +147,7 @@ where
 				let origin = env.caller();
 				let origin = origin.account_id()?;
 				let message = try_post::<T>(request)?;
-				let fee = (*fee)
-					.try_into()
-					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
+				let fee = (*fee).try_convert()?;
 
 				let (id, commitment) =
 					post::<T>(env.caller().account_id()?, message, fee, Some(callback.into()))
