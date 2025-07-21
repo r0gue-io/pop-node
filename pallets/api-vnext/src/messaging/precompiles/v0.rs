@@ -35,26 +35,26 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 			IMessagingCalls::getResponse(getResponseCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::get_response())?;
 
-				let response = get::<T>((env.caller().account_id()?, message)).into();
+				let response = get::<T>(message).into();
 
 				Ok(getResponseCall::abi_encode_returns(&response))
 			},
 			IMessagingCalls::pollStatus(pollStatusCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::poll_status())?;
 
-				let status = poll_status::<T>((env.caller().account_id()?, message)).into();
+				let status = poll_status::<T>(message).into();
 
 				Ok(pollStatusCall::abi_encode_returns(&status))
 			},
 			IMessagingCalls::remove_0(remove_0Call { message }) => {
 				env.charge(<T as Config>::WeightInfo::remove(1))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin = Origin::try_from(env.caller())?;
+				let address = origin.address;
 
 				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
-				let account = AddressMapper::<T>::to_address(origin).0.into();
+				let account = address.0.into();
 				deposit_event(env, Removed { account, messages: vec![*message] })?;
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
@@ -64,13 +64,13 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin = Origin::try_from(env.caller())?;
+				let address = origin.address;
 
 				remove::<T>(origin, messages).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
-				let account = AddressMapper::<T>::to_address(origin).0.into();
+				let account = address.0.into();
 				deposit_event(env, Removed { account, messages: messages.clone() })?;
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
 			},
@@ -131,7 +131,7 @@ impl From<messaging::MessageStatus> for IMessaging::MessageStatus {
 #[cfg(test)]
 mod tests {
 	use ::xcm::latest::Response;
-	use frame_support::{assert_ok, weights::Weight, BoundedVec};
+	use frame_support::{assert_ok, weights::Weight};
 	use mock::{ExtBuilder, *};
 	use pallet_revive::{
 		precompiles::{
@@ -141,11 +141,7 @@ mod tests {
 		test_utils::ALICE,
 	};
 
-	use super::{
-		super::{Message::*, MessageStatus::*},
-		IMessagingCalls::*,
-		*,
-	};
+	use super::{super::MessageStatus::*, IMessagingCalls::*, *};
 
 	const ADDRESS: [u8; 20] = fixed_address(MESSAGING);
 
@@ -153,48 +149,52 @@ mod tests {
 
 	#[test]
 	fn get_response_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let expected =
 			[(0, Vec::default()), (1, b"ismp response".to_vec()), (2, Response::Null.encode())];
 		let messages = [
 			(
 				1,
-				IsmpResponse {
-					commitment: H256::default(),
-					message_deposit: 0,
-					response: BoundedVec::truncate_from(b"ismp response".to_vec()),
-				},
+				Message::ismp_response(
+					origin.address,
+					H256::default(),
+					0,
+					b"ismp response".to_vec().try_into().unwrap(),
+				),
 			),
-			(2, XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null }),
+			(2, Message::xcm_response(origin.address, 0, 0, Response::Null)),
 		];
 		ExtBuilder::new()
-			.with_messages(messages.map(|(i, m)| (origin.clone(), i, m, 0)).to_vec())
+			.with_messages(messages.map(|(i, m)| (origin.account.clone(), i, m, 0)).to_vec())
 			.build()
 			.execute_with(|| {
 				for (message, expected) in expected {
 					let input = getResponse(getResponseCall { message });
-					assert_eq!(call_precompile::<Vec<u8>>(&origin, &input).unwrap(), expected);
+					assert_eq!(
+						call_precompile::<Vec<u8>>(&origin.account, &input).unwrap(),
+						expected
+					);
 				}
 			});
 	}
 
 	#[test]
 	fn poll_status_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let expected = [(0, NotFound), (1, Pending), (2, Complete), (3, Timeout)];
 		let messages = [
-			(1, XcmQuery { query_id: 0, callback: None, message_deposit: 0 }),
-			(2, XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null }),
-			(3, XcmTimeout { query_id: 0, message_deposit: 0, callback_deposit: None }),
+			(1, Message::xcm_query(origin.clone(), 0, None, 0)),
+			(2, Message::xcm_response(origin.address, 0, 0, Response::Null)),
+			(3, Message::xcm_timeout(origin.address, 0, 0, None)),
 		];
 		ExtBuilder::new()
-			.with_messages(messages.map(|(i, m)| (origin.clone(), i, m, 0)).to_vec())
+			.with_messages(messages.map(|(i, m)| (origin.account.clone(), i, m, 0)).to_vec())
 			.build()
 			.execute_with(|| {
 				for (message, expected) in expected {
 					assert_eq!(
 						call_precompile::<IMessaging::MessageStatus>(
-							&origin,
+							&origin.account,
 							&pollStatus(pollStatusCall { message })
 						)
 						.unwrap(),
@@ -206,19 +206,19 @@ mod tests {
 
 	#[test]
 	fn remove_reverts_when_message_pending() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		ExtBuilder::new()
 			.with_messages(vec![(
-				origin.clone(),
+				origin.account.clone(),
 				message,
-				XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+				Message::xcm_query(origin.clone(), 0, None, 0),
 				0,
 			)])
 			.build()
 			.execute_with(|| {
 				assert_revert!(
-					call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
+					call_precompile::<()>(&origin.account, &remove_0(remove_0Call { message })),
 					RequestPending
 				);
 			});
@@ -238,37 +238,40 @@ mod tests {
 
 	#[test]
 	fn remove_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		ExtBuilder::new()
 			.with_messages(vec![(
-				origin.clone(),
+				origin.account.clone(),
 				message,
-				XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null },
+				Message::xcm_response(origin.address, 0, 0, Response::Null),
 				0,
 			)])
 			.build()
 			.execute_with(|| {
-				assert_ok!(call_precompile::<()>(&origin, &remove_0(remove_0Call { message })));
+				assert_ok!(call_precompile::<()>(
+					&origin.account,
+					&remove_0(remove_0Call { message })
+				));
 
-				let account = to_address(&origin).0.into();
+				let account = origin.address.0.into();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
 	}
 
 	#[test]
 	fn remove_many_reverts_when_message_pending() {
-		let origin = ALICE;
-		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let origin = Origin::from((ALICE_ADDR, ALICE));
+		let message = Message::xcm_response(origin.address, 0, 0, Response::Null);
 		let messages = <MaxRemovals as Get<u32>>::get() as u64;
 		ExtBuilder::new()
 			.with_messages(
 				(0..messages - 1)
-					.map(|i| (origin.clone(), i, message.clone(), 0))
+					.map(|i| (origin.account.clone(), i, message.clone(), 0))
 					.chain(vec![(
-						origin.clone(),
+						origin.account.clone(),
 						messages,
-						XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+						Message::xcm_query(origin.clone(), 0, None, 0),
 						0,
 					)])
 					.collect(),
@@ -277,7 +280,7 @@ mod tests {
 			.execute_with(|| {
 				assert_revert!(
 					call_precompile::<()>(
-						&origin,
+						&origin.account,
 						&remove_1(remove_1Call { messages: (0..messages).collect() })
 					),
 					MessageNotFound
@@ -287,18 +290,20 @@ mod tests {
 
 	#[test]
 	fn remove_many_reverts_when_message_not_found() {
-		let origin = ALICE;
-		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let origin = Origin::from((ALICE_ADDR, ALICE));
+		let message = Message::xcm_response(origin.address, 0, 0, Response::Null);
 		let messages = <MaxRemovals as Get<u32>>::get() as u64;
 		ExtBuilder::new()
 			.with_messages(
-				(0..messages - 1).map(|i| (origin.clone(), i, message.clone(), 0)).collect(),
+				(0..messages - 1)
+					.map(|i| (origin.account.clone(), i, message.clone(), 0))
+					.collect(),
 			)
 			.build()
 			.execute_with(|| {
 				assert_revert!(
 					call_precompile::<()>(
-						&origin,
+						&origin.account,
 						&remove_1(remove_1Call { messages: (0..messages).collect() })
 					),
 					MessageNotFound
@@ -323,20 +328,22 @@ mod tests {
 
 	#[test]
 	fn remove_many_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let messages = 10;
-		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let message = Message::xcm_response(origin.address, 0, 0, Response::Null);
 		ExtBuilder::new()
-			.with_messages((0..messages).map(|i| (origin.clone(), i, message.clone(), 0)).collect())
+			.with_messages(
+				(0..messages).map(|i| (origin.account.clone(), i, message.clone(), 0)).collect(),
+			)
 			.build()
 			.execute_with(|| {
 				let messages: Vec<_> = (0..messages).collect();
 				assert_ok!(call_precompile::<()>(
-					&origin,
+					&origin.account,
 					&remove_1(remove_1Call { messages: messages.clone() })
 				));
 
-				let account = to_address(&origin).0.into();
+				let account = origin.address.0.into();
 				assert_last_event(ADDRESS, Removed { account, messages });
 			});
 	}

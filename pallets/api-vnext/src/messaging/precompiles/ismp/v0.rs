@@ -58,15 +58,15 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					0,
 				))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin = Origin::try_from(env.caller())?;
 				let message = try_get::<T>(request)?;
 				let fee = (*fee).try_convert()?;
+				let address = origin.address;
 
 				let (id, commitment) =
 					get::<T>(origin, message, fee, None).map_err(Self::map_err)?;
 
-				let origin = AddressMapper::<T>::to_address(origin).0.into();
+				let origin = address.0.into();
 				let event = GetDispatched_0 { origin, id, commitment: commitment.0.into() };
 				deposit_event(env, event)?;
 				Ok(get_0Call::abi_encode_returns(&id))
@@ -85,15 +85,15 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					1,
 				))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin = Origin::try_from(env.caller())?;
 				let message = try_get::<T>(request)?;
 				let fee = (*fee).try_convert()?;
+				let address = origin.address;
 
 				let (id, commitment) =
 					get::<T>(origin, message, fee, Some(callback.into())).map_err(Self::map_err)?;
 
-				let origin = AddressMapper::<T>::to_address(origin).0.into();
+				let origin = address.0.into();
 				let commitment = commitment.0.into();
 				let event = GetDispatched_1 { origin, id, commitment, callback: callback.clone() };
 				deposit_event(env, event)?;
@@ -102,14 +102,14 @@ where
 			IISMPCalls::getResponse(getResponseCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::get_response())?;
 
-				let response = super::get::<T>((env.caller().account_id()?, message)).into();
+				let response = super::get::<T>(message).into();
 
 				Ok(getResponseCall::abi_encode_returns(&response))
 			},
 			IISMPCalls::pollStatus(pollStatusCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::poll_status())?;
 
-				let status = poll_status::<T>((env.caller().account_id()?, message)).into();
+				let status = poll_status::<T>(message).into();
 
 				Ok(pollStatusCall::abi_encode_returns(&status))
 			},
@@ -122,15 +122,15 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					0,
 				))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin: Origin<_> = env.caller().try_into()?;
 				let message = try_post::<T>(request)?;
 				let fee = (*fee).try_convert()?;
+				let address = origin.address;
 
 				let (id, commitment) =
 					post::<T>(origin, message, fee, None).map_err(Self::map_err)?;
 
-				let origin = AddressMapper::<T>::to_address(origin).0.into();
+				let origin = address.0.into();
 				let event = PostDispatched_0 { origin, id, commitment: commitment.0.into() };
 				deposit_event(env, event)?;
 				Ok(post_0Call::abi_encode_returns(&id))
@@ -144,16 +144,15 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					1,
 				))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin: Origin<_> = env.caller().try_into()?;
 				let message = try_post::<T>(request)?;
 				let fee = (*fee).try_convert()?;
+				let address = origin.address;
 
-				let (id, commitment) =
-					post::<T>(env.caller().account_id()?, message, fee, Some(callback.into()))
-						.map_err(Self::map_err)?;
+				let (id, commitment) = post::<T>(origin, message, fee, Some(callback.into()))
+					.map_err(Self::map_err)?;
 
-				let origin = AddressMapper::<T>::to_address(origin).0.into();
+				let origin = address.0.into();
 				let commitment = commitment.0.into();
 				let event = PostDispatched_1 { origin, id, commitment, callback: callback.clone() };
 				deposit_event(env, event)?;
@@ -161,13 +160,13 @@ where
 			},
 			IISMPCalls::remove_0(remove_0Call { message }) => {
 				env.charge(<T as Config>::WeightInfo::remove(1))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin = Origin::try_from(env.caller())?;
+				let address = origin.address;
 
 				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
-				let account = AddressMapper::<T>::to_address(origin).0.into();
+				let account = address.0.into();
 				deposit_event(env, Removed { account, messages: vec![*message] })?;
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
@@ -177,13 +176,13 @@ where
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
-				let origin = env.caller();
-				let origin = origin.account_id()?;
+				let origin = Origin::try_from(env.caller())?;
+				let address = origin.address;
 
 				remove::<T>(origin, messages).map_err(Self::map_err)?;
 
 				// TODO: is the precompile emitting the event, or the pallet
-				let account = AddressMapper::<T>::to_address(origin).0.into();
+				let account = address.0.into();
 				deposit_event(env, Removed { account, messages: messages.clone() })?;
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
 			},
@@ -315,16 +314,11 @@ mod tests {
 			alloy::sol_types::{SolInterface, SolType},
 			Error,
 		},
-		test_utils::ALICE,
+		test_utils::{ALICE, ALICE_ADDR},
 	};
 	use sp_io::hashing::keccak_256;
 
-	use super::{
-		super::Message::{Ismp, *},
-		IISMPCalls::*,
-		MessageStatus::*,
-		*,
-	};
+	use super::{super::messaging::Origin, IISMPCalls::*, MessageStatus::*, *};
 
 	type MaxContextLen = <Test as Config>::MaxContextLen;
 	type MaxDataLen = <Test as Config>::MaxDataLen;
@@ -334,7 +328,7 @@ mod tests {
 	type Messages = crate::messaging::Messages<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(ISMP);
-	const MESSAGE_DEPOSIT: u128 = 129_540;
+	const MESSAGE_DEPOSIT: u128 = 129_180;
 
 	#[test]
 	fn get_reverts_when_max_context_exceeded() {
@@ -386,7 +380,7 @@ mod tests {
 
 	#[test]
 	fn get_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		let request = IISMP::Get {
 			destination: 1_000,
@@ -397,30 +391,30 @@ mod tests {
 		};
 		let fee = U256::from(100);
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), 1 * UNIT)]) // message deposit
-			.with_message_id(&origin, message)
+			.with_balances(vec![(origin.account.clone(), 1 * UNIT)]) // message deposit
+			.with_message_id(message)
 			.build()
 			.execute_with(|| {
 				let commitment = get_hash(&request);
 
 				assert_eq!(
-					call_precompile::<MessageId>(&origin, &get_0(get_0Call { request, fee })).unwrap(),
+					call_precompile::<MessageId>(&origin.account, &get_0(get_0Call { request, fee })).unwrap(),
 					message
 				);
 
-				let event = GetDispatched_0 { origin: to_address(&origin).0.into(), id: message, commitment: commitment.0.into() };
+				let event = GetDispatched_0 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
-					Messages::get(&origin, message),
-					Some(Message::Ismp { commitment: c, callback, message_deposit })
-					    if c == commitment && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
+					Messages::get(message),
+					Some(Message::Ismp { origin: o, commitment: c, callback, message_deposit })
+					    if o == origin && c == commitment && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
 	}
 
 	#[test]
 	fn get_with_callback_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		let request = IISMP::Get {
 			destination: 1_000,
@@ -437,48 +431,52 @@ mod tests {
 			weight: super::Weight { refTime: 100, proofSize: 10 },
 		};
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), 1 * UNIT)]) // message deposit
-			.with_message_id(&origin, message)
+			.with_balances(vec![(origin.account.clone(), 1 * UNIT)]) // message deposit
+			.with_message_id(message)
 			.build()
 			.execute_with(|| {
 				let commitment = get_hash(&request);
 
 				assert_eq!(
-					call_precompile::<MessageId>(&origin, &get_1(get_1Call { request, fee, callback: callback.clone() })).unwrap(),
+					call_precompile::<MessageId>(&origin.account, &get_1(get_1Call { request, fee, callback: callback.clone() })).unwrap(),
 					message
 				);
 
-				let event = GetDispatched_1 { origin: to_address(&origin).0.into(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
+				let event = GetDispatched_1 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
-					Messages::get(&origin, message),
-					Some(Message::Ismp { commitment: c, callback: cb, message_deposit })
-					    if c == commitment && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
+					Messages::get(message),
+					Some(Message::Ismp { origin: o, commitment: c, callback: cb, message_deposit })
+					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
 	}
 
 	#[test]
 	fn get_response_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		let response = b"ismp response".to_vec();
 		ExtBuilder::new()
 			.with_messages(vec![(
-				origin.clone(),
+				origin.account.clone(),
 				message,
-				IsmpResponse {
-					commitment: H256::default(),
-					message_deposit: 0,
-					response: BoundedVec::truncate_from(response.clone()),
-				},
+				Message::ismp_response(
+					origin.address,
+					H256::default(),
+					0,
+					response.clone().try_into().unwrap(),
+				),
 				0,
 			)])
 			.build()
 			.execute_with(|| {
 				assert_eq!(
-					call_precompile::<Vec<u8>>(&origin, &getResponse(getResponseCall { message }))
-						.unwrap(),
+					call_precompile::<Vec<u8>>(
+						&origin.account,
+						&getResponse(getResponseCall { message })
+					)
+					.unwrap(),
 					response
 				);
 			});
@@ -486,35 +484,21 @@ mod tests {
 
 	#[test]
 	fn poll_status_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let expected = [(0, NotFound), (1, Pending), (2, Complete), (3, Timeout)];
 		let messages = [
-			(1, Ismp { commitment: H256::default(), callback: None, message_deposit: 0 }),
-			(
-				2,
-				IsmpResponse {
-					commitment: H256::default(),
-					message_deposit: 0,
-					response: BoundedVec::default(),
-				},
-			),
-			(
-				3,
-				IsmpTimeout {
-					commitment: H256::default(),
-					message_deposit: 0,
-					callback_deposit: None,
-				},
-			),
+			(1, Message::ismp(origin.clone(), H256::default(), None, 0)),
+			(2, Message::ismp_response(origin.address, H256::default(), 0, BoundedVec::default())),
+			(3, Message::ismp_timeout(origin.address, H256::default(), 0, None)),
 		];
 		ExtBuilder::new()
-			.with_messages(messages.map(|(i, m)| (origin.clone(), i, m, 0)).to_vec())
+			.with_messages(messages.map(|(i, m)| (origin.account.clone(), i, m, 0)).to_vec())
 			.build()
 			.execute_with(|| {
 				for (message, expected) in expected {
 					assert_eq!(
 						call_precompile::<MessageStatus>(
-							&origin,
+							&origin.account,
 							&pollStatus(pollStatusCall { message })
 						)
 						.unwrap(),
@@ -541,36 +525,36 @@ mod tests {
 
 	#[test]
 	fn post_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		let request =
 			IISMP::Post { destination: 1_000, timeout: u64::MAX, data: vec![255u8; 1024].into() };
 		let fee = U256::from(100);
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), 1 * UNIT)]) // message deposit
-			.with_message_id(&origin, message)
+			.with_balances(vec![(origin.account.clone(), 1 * UNIT)]) // message deposit
+			.with_message_id(message)
 			.build()
 			.execute_with(|| {
 				let commitment = post_hash(&request);
 
 				assert_eq!(
-					call_precompile::<MessageId>(&origin, &post_0(post_0Call { request, fee })).unwrap(),
+					call_precompile::<MessageId>(&origin.account, &post_0(post_0Call { request, fee })).unwrap(),
 					message
 				);
 
-				let event = PostDispatched_0 { origin: to_address(&origin).0.into(), id: message, commitment: commitment.0.into() };
+				let event = PostDispatched_0 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
-					Messages::get(&origin, message),
-					Some(Message::Ismp { commitment: c, callback, message_deposit })
-					    if c == commitment && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
+					Messages::get( message),
+					Some(Message::Ismp { origin: o, commitment: c, callback, message_deposit })
+					    if o == origin && c == commitment && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
 	}
 
 	#[test]
 	fn post_with_callback_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		let request =
 			IISMP::Post { destination: 1_000, timeout: u64::MAX, data: vec![255u8; 1024].into() };
@@ -582,42 +566,42 @@ mod tests {
 			weight: super::Weight { refTime: 100, proofSize: 10 },
 		};
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), 1 * UNIT)]) // message deposit
-			.with_message_id(&origin, message)
+			.with_balances(vec![(origin.account.clone(), 1 * UNIT)]) // message deposit
+			.with_message_id(message)
 			.build()
 			.execute_with(|| {
 				let commitment = post_hash(&request);
 
 				assert_eq!(
-					call_precompile::<MessageId>(&origin, &post_1(post_1Call { request, fee, callback: callback.clone() })).unwrap(),
+					call_precompile::<MessageId>(&origin.account, &post_1(post_1Call { request, fee, callback: callback.clone() })).unwrap(),
 					message
 				);
 
-				let event = PostDispatched_1 { origin: to_address(&origin).0.into(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
+				let event = PostDispatched_1 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
-					Messages::get(&origin, message),
-					Some(Message::Ismp { commitment: c, callback: cb, message_deposit })
-					    if c == commitment && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
+					Messages::get(message),
+					Some(Message::Ismp { origin: o, commitment: c, callback: cb, message_deposit })
+					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
 	}
 
 	#[test]
 	fn remove_reverts_when_message_pending() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		ExtBuilder::new()
 			.with_messages(vec![(
-				origin.clone(),
+				origin.account.clone(),
 				message,
-				XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+				Message::xcm_query(origin.clone(), 0, None, 0),
 				0,
 			)])
 			.build()
 			.execute_with(|| {
 				assert_revert!(
-					call_precompile::<()>(&origin, &remove_0(remove_0Call { message })),
+					call_precompile::<()>(&origin.account, &remove_0(remove_0Call { message })),
 					RequestPending
 				);
 			});
@@ -637,41 +621,40 @@ mod tests {
 
 	#[test]
 	fn remove_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
 		ExtBuilder::new()
 			.with_messages(vec![(
-				origin.clone(),
+				origin.account.clone(),
 				message,
-				IsmpResponse {
-					commitment: H256::default(),
-					message_deposit: 0,
-					response: BoundedVec::default(),
-				},
+				Message::ismp_response(origin.address, H256::default(), 0, BoundedVec::default()),
 				0,
 			)])
 			.build()
 			.execute_with(|| {
-				assert_ok!(call_precompile::<()>(&origin, &remove_0(remove_0Call { message })));
+				assert_ok!(call_precompile::<()>(
+					&origin.account,
+					&remove_0(remove_0Call { message })
+				));
 
-				let account = to_address(&origin).0.into();
+				let account = origin.address.0.into();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
 	}
 
 	#[test]
 	fn remove_many_reverts_when_message_pending() {
-		let origin = ALICE;
-		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let origin = Origin::from((ALICE_ADDR, ALICE));
+		let message = Message::xcm_response(origin.address, 0, 0, Response::Null);
 		let messages = <MaxRemovals as Get<u32>>::get() as u64;
 		ExtBuilder::new()
 			.with_messages(
 				(0..messages - 1)
-					.map(|i| (origin.clone(), i, message.clone(), 0))
+					.map(|i| (origin.account.clone(), i, message.clone(), 0))
 					.chain(vec![(
-						origin.clone(),
+						origin.account.clone(),
 						messages,
-						XcmQuery { query_id: 0, callback: None, message_deposit: 0 },
+						Message::xcm_query(origin.clone(), 0, None, 0),
 						0,
 					)])
 					.collect(),
@@ -680,7 +663,7 @@ mod tests {
 			.execute_with(|| {
 				assert_revert!(
 					call_precompile::<()>(
-						&origin,
+						&origin.account,
 						&remove_1(remove_1Call { messages: (0..messages).collect() })
 					),
 					MessageNotFound
@@ -690,18 +673,20 @@ mod tests {
 
 	#[test]
 	fn remove_many_reverts_when_message_not_found() {
-		let origin = ALICE;
-		let message = XcmResponse { query_id: 0, message_deposit: 0, response: Response::Null };
+		let origin = Origin::from((ALICE_ADDR, ALICE));
+		let message = Message::xcm_response(origin.address, 0, 0, Response::Null);
 		let messages = <MaxRemovals as Get<u32>>::get() as u64;
 		ExtBuilder::new()
 			.with_messages(
-				(0..messages - 1).map(|i| (origin.clone(), i, message.clone(), 0)).collect(),
+				(0..messages - 1)
+					.map(|i| (origin.account.clone(), i, message.clone(), 0))
+					.collect(),
 			)
 			.build()
 			.execute_with(|| {
 				assert_revert!(
 					call_precompile::<()>(
-						&origin,
+						&origin.account,
 						&remove_1(remove_1Call { messages: (0..messages).collect() })
 					),
 					MessageNotFound
@@ -726,24 +711,23 @@ mod tests {
 
 	#[test]
 	fn remove_many_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let messages = 10;
-		let message = IsmpResponse {
-			commitment: H256::default(),
-			message_deposit: 0,
-			response: BoundedVec::default(),
-		};
+		let message =
+			Message::ismp_response(origin.address, H256::default(), 0, BoundedVec::default());
 		ExtBuilder::new()
-			.with_messages((0..messages).map(|i| (origin.clone(), i, message.clone(), 0)).collect())
+			.with_messages(
+				(0..messages).map(|i| (origin.account.clone(), i, message.clone(), 0)).collect(),
+			)
 			.build()
 			.execute_with(|| {
 				let messages: Vec<_> = (0..messages).collect();
 				assert_ok!(call_precompile::<()>(
-					&origin,
+					&origin.account,
 					&remove_1(remove_1Call { messages: messages.clone() })
 				));
 
-				let account = to_address(&origin).0.into();
+				let account = origin.address.0.into();
 				assert_last_event(ADDRESS, Removed { account, messages });
 			});
 	}

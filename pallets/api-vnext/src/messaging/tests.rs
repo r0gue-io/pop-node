@@ -26,131 +26,161 @@ mod remove {
 
 	#[test]
 	fn message_not_found() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 0;
 		ExtBuilder::new().build().execute_with(|| {
-			assert_noop!(remove(&origin, &[message]), Error::MessageNotFound);
+			assert_noop!(remove(origin, &[message]), Error::MessageNotFound);
 		})
 	}
 
 	#[test]
+	fn only_originator_can_remove() {
+		let origin = Origin::from((ALICE_ADDR, ALICE));
+		let messages = [
+			Message::ismp_response(origin.address, H256::zero(), 0, BoundedVec::default()),
+			Message::ismp_timeout(origin.address, H256::zero(), 0, None),
+			Message::xcm_response(origin.address, 0, 0, Response::Null),
+			Message::xcm_timeout(origin.address, 0, 0, None),
+		];
+		let messages_len = messages.len();
+		let caller = Origin::from((BOB_ADDR, BOB));
+		ExtBuilder::new()
+			.with_messages(
+				messages
+					.into_iter()
+					.enumerate()
+					.map(|(i, m)| (origin.account.clone(), i as MessageId, m, 0))
+					.collect(),
+			)
+			.build()
+			.execute_with(|| {
+				for message in 0..messages_len {
+					assert_noop!(
+						remove(caller.clone(), &[message as MessageId]),
+						DispatchError::BadOrigin
+					);
+				}
+			})
+	}
+
+	#[test]
 	fn multiple_messages_remove_works() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let deposit: Balance = 100;
 		// An ismp response can always be removed.
-		let message = Message::ismp_response(H256::default(), deposit, BoundedVec::default());
+		let message =
+			Message::ismp_response(origin.address, H256::default(), deposit, BoundedVec::default());
 		let messages = 3;
 		let endowment = existential_deposit() + deposit * messages as Balance;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.with_messages(
-				(0..messages).map(|i| (origin.clone(), i, message.clone(), deposit)).collect(),
+				(0..messages)
+					.map(|i| (origin.account.clone(), i, message.clone(), deposit))
+					.collect(),
 			)
 			.build()
 			.execute_with(|| {
 				let messages = (0..messages).collect::<Vec<_>>();
-				assert_ok!(remove(&origin, &messages));
+				assert_ok!(remove(origin, &messages));
 
 				for id in messages {
-					assert!(
-						Messages::get(&origin, id).is_none(),
-						"message should have been removed."
-					);
+					assert!(Messages::get(id).is_none(), "message should have been removed.");
 				}
 			});
 	}
 
 	#[test]
 	fn deposit_is_returned_if_try_remove_is_ok() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let deposit: Balance = 100;
 		// An ismp response can always be removed.
-		let message = Message::ismp_response(H256::default(), deposit, BoundedVec::default());
+		let message =
+			Message::ismp_response(origin.address, H256::default(), deposit, BoundedVec::default());
 		let id = 1;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), existential_deposit() + deposit)])
-			.with_messages(vec![(origin.clone(), id, message, deposit)])
+			.with_balances(vec![(origin.account.clone(), existential_deposit() + deposit)])
+			.with_messages(vec![(origin.account.clone(), id, message, deposit)])
 			.build()
 			.execute_with(|| {
-				let free_balance = Balances::free_balance(&origin);
+				let free_balance = Balances::free_balance(&origin.account);
 
-				assert_ok!(remove(&origin, &[id]));
+				assert_ok!(remove(origin.clone(), &[id]));
 
-				assert_eq!(Balances::free_balance(&origin), free_balance + deposit);
+				assert_eq!(Balances::free_balance(&origin.account), free_balance + deposit);
 			});
 	}
 
 	#[test]
 	fn deposit_is_not_returned_if_try_remove_is_noop() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let deposit: Balance = 100;
-		let message =
-			Message::Ismp { commitment: H256::default(), callback: None, message_deposit: deposit };
+		let message = Message::ismp(origin.clone(), H256::default(), None, deposit);
 		let id = 1;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), existential_deposit() + deposit)])
-			.with_messages(vec![(origin.clone(), id, message, deposit)])
+			.with_balances(vec![(origin.account.clone(), existential_deposit() + deposit)])
+			.with_messages(vec![(origin.account.clone(), id, message, deposit)])
 			.build()
 			.execute_with(|| {
-				let free_balance = Balances::free_balance(&origin);
+				let free_balance = Balances::free_balance(&origin.account);
 
-				assert_noop!(remove(&origin, &[id]), Error::RequestPending);
+				assert_noop!(remove(origin.clone(), &[id]), Error::RequestPending);
 
-				assert_eq!(Balances::free_balance(&origin), free_balance);
+				assert_eq!(Balances::free_balance(&origin.account), free_balance);
 			});
 	}
 
 	#[test]
 	fn multiple_messages_rolls_back_if_one_fails() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let deposit: Balance = 100;
-		let good_message = Message::ismp_response(H256::default(), deposit, BoundedVec::default());
-		let erroneous_message =
-			Message::Ismp { commitment: H256::default(), callback: None, message_deposit: deposit };
+		let good_message =
+			Message::ismp_response(origin.address, H256::default(), deposit, BoundedVec::default());
+		let erroneous_message = Message::ismp(origin.clone(), H256::default(), None, deposit);
 		let messages = 5;
 		let endowment = existential_deposit() + deposit * messages as Balance;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.with_messages(
 				(0..messages - 1)
-					.map(|i| (origin.clone(), i, good_message.clone(), deposit))
-					.chain([(origin.clone(), messages - 1, erroneous_message, deposit)])
+					.map(|i| (origin.account.clone(), i, good_message.clone(), deposit))
+					.chain([(origin.account.clone(), messages - 1, erroneous_message, deposit)])
 					.collect(),
 			)
 			.build()
 			.execute_with(|| {
 				let messages = (0..messages).collect::<Vec<_>>();
-				let free_balance = Balances::free_balance(&origin);
+				let free_balance = Balances::free_balance(&origin.account);
 
-				assert_noop!(remove(&origin, &messages), Error::RequestPending);
+				assert_noop!(remove(origin.clone(), &messages), Error::RequestPending);
 
 				for message in messages {
-					assert!(Messages::get(&origin, message).is_some());
+					assert!(Messages::get(message).is_some());
 				}
-				assert_eq!(Balances::free_balance(&origin), free_balance);
+				assert_eq!(Balances::free_balance(&origin.account), free_balance);
 			});
 	}
 
 	// Basic remove tests to ensure storage is cleaned.
 	#[test]
 	fn remove_ismp_message() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let commitment = H256::default();
 		let id = 1;
 		let deposit = 100;
-		let message = Message::Ismp { commitment, callback: None, message_deposit: deposit };
+		let message = Message::ismp(origin.clone(), commitment, None, deposit);
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), existential_deposit() + deposit)])
+			.with_balances(vec![(origin.account.clone(), existential_deposit() + deposit)])
 			.build()
 			.execute_with(|| {
-				Messages::insert(&origin, id, &message);
-				IsmpRequests::insert(commitment, (&origin, &id));
-				assert_ok!(Fungibles::hold(&Messaging.into(), &origin, deposit));
+				Messages::insert(id, &message);
+				IsmpRequests::insert(commitment, &id);
+				assert_ok!(Fungibles::hold(&Messaging.into(), &origin.account, deposit));
 
-				assert_noop!(remove(&origin, &[id]), Error::RequestPending);
+				assert_noop!(remove(origin.clone(), &[id]), Error::RequestPending);
 
 				assert!(
-					Messages::get(origin, id).is_some(),
+					Messages::get(id).is_some(),
 					"Message should not have been removed but has."
 				);
 				assert!(
@@ -162,25 +192,23 @@ mod remove {
 
 	#[test]
 	fn remove_ismp_response() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let commitment = H256::default();
 		let id = 1;
 		let deposit = 100;
-		let message = Message::ismp_response(commitment, deposit, BoundedVec::default());
+		let message =
+			Message::ismp_response(origin.address, commitment, deposit, BoundedVec::default());
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), existential_deposit() + deposit)])
+			.with_balances(vec![(origin.account.clone(), existential_deposit() + deposit)])
 			.build()
 			.execute_with(|| {
-				Messages::insert(&origin, id, &message);
-				IsmpRequests::insert(commitment, (&origin, &id));
-				assert_ok!(Fungibles::hold(&Messaging.into(), &origin, deposit));
+				Messages::insert(id, &message);
+				IsmpRequests::insert(commitment, &id);
+				assert_ok!(Fungibles::hold(&Messaging.into(), &origin.account, deposit));
 
-				assert_ok!(remove(&origin, &[id]));
+				assert_ok!(remove(origin, &[id]));
 
-				assert!(
-					Messages::get(&origin, id).is_none(),
-					"Message should have been removed but hasnt."
-				);
+				assert!(Messages::get(id).is_none(), "Message should have been removed but hasnt.");
 				assert!(
 					IsmpRequests::get(commitment).is_none(),
 					"Request should have been removed but hasnt."
@@ -190,59 +218,53 @@ mod remove {
 
 	#[test]
 	fn remove_ismp_timeout() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let commitment = H256::default();
 		let deposit = 100;
 		let callback_deposit = 100_000;
 		let id = 1;
-		let message = Message::IsmpTimeout {
-			commitment,
-			message_deposit: deposit,
-			callback_deposit: Some(callback_deposit),
-		};
+		let message =
+			Message::ismp_timeout(origin.address, commitment, deposit, Some(callback_deposit));
 		let endowment = existential_deposit() + deposit + callback_deposit;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.build()
 			.execute_with(|| {
-				assert_ok!(Fungibles::hold(&Messaging.into(), &origin, deposit));
-				assert_ok!(Fungibles::hold(&CallbackGas.into(), &origin, callback_deposit));
+				assert_ok!(Fungibles::hold(&Messaging.into(), &origin.account, deposit));
+				assert_ok!(Fungibles::hold(&CallbackGas.into(), &origin.account, callback_deposit));
 
-				Messages::insert(&origin, id, &message);
-				IsmpRequests::insert(commitment, (&origin, &id));
+				Messages::insert(id, &message);
+				IsmpRequests::insert(commitment, id);
 
-				assert_ok!(remove(&origin, &[id]));
+				assert_ok!(remove(origin.clone(), &[id]));
 
-				assert!(
-					Messages::get(&origin, id).is_none(),
-					"Message should have been removed but hasnt."
-				);
+				assert!(Messages::get(id).is_none(), "Message should have been removed but hasnt.");
 				assert!(
 					IsmpRequests::get(commitment).is_none(),
 					"Request should have been removed but hasnt."
 				);
-				assert_eq!(Balances::total_balance_on_hold(&origin), 0);
+				assert_eq!(Balances::total_balance_on_hold(&origin.account), 0);
 			})
 	}
 
 	#[test]
 	fn remove_xcm_query() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let query_id = 42;
 		let id = 1;
 		let deposit = 100;
-		let message = Message::XcmQuery { query_id, callback: None, message_deposit: deposit };
+		let message = Message::xcm_query(origin.clone(), query_id, None, deposit);
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), existential_deposit() + deposit)])
+			.with_balances(vec![(origin.account.clone(), existential_deposit() + deposit)])
 			.build()
 			.execute_with(|| {
-				Messages::insert(&origin, id, &message);
-				XcmQueries::insert(query_id, (&origin, &id));
-				assert_ok!(Fungibles::hold(&Messaging.into(), &origin, deposit));
+				Messages::insert(id, &message);
+				XcmQueries::insert(query_id, &id);
+				assert_ok!(Fungibles::hold(&Messaging.into(), &origin.account, deposit));
 
-				assert_noop!(remove(&origin, &[id]), Error::RequestPending);
+				assert_noop!(remove(origin, &[id]), Error::RequestPending);
 				assert!(
-					Messages::get(&origin, id).is_some(),
+					Messages::get(id).is_some(),
 					"Message should not have been removed but has"
 				);
 				assert!(
@@ -254,26 +276,23 @@ mod remove {
 
 	#[test]
 	fn remove_xcm_response() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let query_id = 42;
 		let id = 1;
 		let message_deposit = 100;
 		let message =
-			Message::XcmResponse { query_id, message_deposit, response: Response::default() };
+			Message::xcm_response(origin.address, query_id, message_deposit, Response::default());
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), existential_deposit() + message_deposit)])
+			.with_balances(vec![(origin.account.clone(), existential_deposit() + message_deposit)])
 			.build()
 			.execute_with(|| {
-				Messages::insert(&origin, id, &message);
-				XcmQueries::insert(query_id, (&origin, &id));
-				assert_ok!(Fungibles::hold(&Messaging.into(), &origin, message_deposit));
+				Messages::insert(id, &message);
+				XcmQueries::insert(query_id, &id);
+				assert_ok!(Fungibles::hold(&Messaging.into(), &origin.account, message_deposit));
 
-				assert_ok!(remove(&origin, &[id]));
+				assert_ok!(remove(origin, &[id]));
 
-				assert!(
-					Messages::get(ALICE, id).is_none(),
-					"Message should have been removed but hasnt"
-				);
+				assert!(Messages::get(id).is_none(), "Message should have been removed but hasnt");
 				assert!(
 					XcmQueries::get(query_id).is_none(),
 					"Message should have been removed but hasnt."
@@ -283,47 +302,41 @@ mod remove {
 
 	#[test]
 	fn remove_xcm_timeout() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let query_id = 42;
 		let id = 1;
 		let message_deposit = 100;
 		let callback_deposit = 100_000;
-		let message = Message::XcmTimeout {
-			query_id,
-			message_deposit,
-			callback_deposit: Some(callback_deposit),
-		};
+		let message =
+			Message::xcm_timeout(origin.address, query_id, message_deposit, Some(callback_deposit));
 		let endowment = existential_deposit() + message_deposit + callback_deposit;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.build()
 			.execute_with(|| {
-				assert_ok!(Fungibles::hold(&Messaging.into(), &origin, message_deposit));
-				assert_ok!(Fungibles::hold(&CallbackGas.into(), &origin, callback_deposit));
+				assert_ok!(Fungibles::hold(&Messaging.into(), &origin.account, message_deposit));
+				assert_ok!(Fungibles::hold(&CallbackGas.into(), &origin.account, callback_deposit));
 
-				Messages::insert(&origin, id, &message);
-				XcmQueries::insert(query_id, (&origin, id));
+				Messages::insert(id, &message);
+				XcmQueries::insert(query_id, id);
 
-				assert_ok!(remove(&origin, &[id]));
+				assert_ok!(remove(origin.clone(), &[id]));
 
-				assert!(
-					Messages::get(ALICE, id).is_none(),
-					"Message should have been removed but hasnt"
-				);
+				assert!(Messages::get(id).is_none(), "Message should have been removed but hasnt");
 				assert!(
 					XcmQueries::get(query_id).is_none(),
 					"Message should have been removed but hasnt."
 				);
 
 				// Assert that all holds specified have been released
-				assert_eq!(Balances::total_balance_on_hold(&ALICE), 0);
+				assert_eq!(Balances::total_balance_on_hold(&origin.account), 0);
 			})
 	}
 
 	// `remove` is no longer a dispatchable and only callable via a precompile, hence we simply
 	// wrap calls to it in a transaction to simulate. See additional precompiles tests for
 	// further assurances.
-	fn remove(origin: &AccountId, messages: &[MessageId]) -> DispatchResult {
+	fn remove(origin: Origin<AccountId>, messages: &[MessageId]) -> DispatchResult {
 		with_transaction(|| -> TransactionOutcome<DispatchResult> {
 			let result = super::remove::<Test>(origin, messages);
 			match &result {
@@ -357,33 +370,34 @@ mod xcm_response {
 
 	#[test]
 	fn timeout_messages_are_noop() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message_id = 1;
 		let query_id = 42;
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
-			.with_message_id(&origin, message_id)
+			.with_balances(vec![(origin.account.clone(), endowment)])
+			.with_message_id(message_id)
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+				assert_ok!(new_query(origin, RESPONSE_LOCATION, timeout, None));
 
 				// Update the message to XcmTimedOut
-				Messages::mutate(ALICE, message_id, |message| {
-					let Some(Message::XcmQuery { query_id, message_deposit, .. }): &mut Option<
+				Messages::mutate(message_id, |message| {
+					let Some(Message::XcmQuery { origin, query_id, message_deposit, .. }): &mut Option<
 						Message,
 					> = message
 					else {
 						panic!("No message!");
 					};
-					*message = Some(Message::XcmTimeout {
-						query_id: *query_id,
-						message_deposit: *message_deposit,
-						callback_deposit: None,
-					});
+					*message = Some(Message::xcm_timeout(
+						origin.address,
+						*query_id,
+						*message_deposit,
+						None,
+					));
 				});
 
 				assert_noop!(
@@ -395,24 +409,24 @@ mod xcm_response {
 
 	#[test]
 	fn assert_event_no_callback() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let id = 1;
 		let query_id = 42;
 		let response = Response::Null;
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
-			.with_message_id(&origin, id)
+			.with_balances(vec![(origin.account.clone(), endowment)])
+			.with_message_id(id)
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+				assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, None));
 
 				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
 
 				assert!(events().contains(&Event::XcmResponseReceived {
-					dest: origin,
+					dest: origin.address,
 					id,
 					query_id,
 					response
@@ -422,24 +436,24 @@ mod xcm_response {
 
 	#[test]
 	fn assert_message_is_stored_for_polling_no_callback() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let id = 1;
 		let query_id = 42;
 		let response = Response::ExecutionResult(None);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
-			.with_message_id(&origin, id)
+			.with_balances(vec![(origin.account.clone(), endowment)])
+			.with_message_id(id)
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+				assert_ok!(new_query(origin, RESPONSE_LOCATION, timeout, None));
 
 				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
 
 				let Some(Message::XcmResponse { query_id: q, response: r, .. }): Option<Message> =
-					Messages::get(&origin, id)
+					Messages::get(id)
 				else {
 					panic!("wrong message type");
 				};
@@ -451,7 +465,7 @@ mod xcm_response {
 
 	#[test]
 	fn message_is_removed_after_successfull_callback_execution() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let id = 1;
 		let query_id = 42;
 		let response = Response::ExecutionResult(None);
@@ -459,46 +473,46 @@ mod xcm_response {
 		let callback_fee = WeightToFee::weight_to_fee(&callback.weight);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_fee;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
-			.with_message_id(&origin, id)
+			.with_balances(vec![(origin.account.clone(), endowment)])
+			.with_message_id(id)
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+				assert_ok!(new_query(origin, RESPONSE_LOCATION, timeout, Some(callback)));
 
 				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
 
-				assert!(Messages::get(&origin, id).is_none());
+				assert!(Messages::get(id).is_none());
 				assert!(XcmQueries::get(query_id).is_none());
 			})
 	}
 
 	#[test]
 	fn message_deposit_returned_after_successfull_callback_execution() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let id = 1;
 		let query_id = 42;
 		let response = Response::ExecutionResult(None);
 		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Zero::zero());
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
-			.with_message_id(&origin, id)
+			.with_balances(vec![(origin.account.clone(), endowment)])
+			.with_message_id(id)
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+				assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, Some(callback)));
 
-				let held_balance_pre_release = Balances::total_balance_on_hold(&origin);
+				let held_balance_pre_release = Balances::total_balance_on_hold(&origin.account);
 				assert_ne!(held_balance_pre_release, 0);
 
 				assert_ok!(Pallet::xcm_response(root(), query_id, response.clone()));
 
-				let held_balance_post_release = Balances::total_balance_on_hold(&origin);
+				let held_balance_post_release = Balances::total_balance_on_hold(&origin.account);
 				assert_eq!(held_balance_post_release, 0);
 			})
 	}
@@ -506,14 +520,14 @@ mod xcm_response {
 	// Dont include any callback weight so we can test the xcm_response blockweight mutation.
 	#[test]
 	fn assert_blockweight_mutation_no_callback() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let id = 1;
 		let query_id = 42;
 		let xcm_response = Response::ExecutionResult(None);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
-			.with_message_id(&origin, id)
+			.with_balances(vec![(origin.account.clone(), endowment)])
+			.with_message_id(id)
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
@@ -532,7 +546,7 @@ mod xcm_response {
 					Zero::zero(),
 					"Please set an T::WeightInfo::xcm_response() to run this test."
 				);
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+				assert_ok!(new_query(origin, RESPONSE_LOCATION, timeout, None));
 
 				assert_ok!(Pallet::xcm_response(root(), query_id, xcm_response.clone()));
 
@@ -651,7 +665,7 @@ mod deposit_callback_event {
 			pays_fee: Default::default(),
 		});
 		ExtBuilder::new().build().execute_with(|| {
-			deposit_callback_event::<Test>(&origin, message_id, &callback, &result);
+			deposit_callback_event::<Test>(origin.clone(), message_id, &callback, &result);
 			System::assert_last_event(
 				Event::<Test>::CallbackExecuted { origin, id: message_id, callback }.into(),
 			);
@@ -669,7 +683,7 @@ mod deposit_callback_event {
 			error: Error::InvalidMessage.into(),
 		});
 		ExtBuilder::new().build().execute_with(|| {
-			deposit_callback_event::<Test>(&origin, message_id, &callback, &result);
+			deposit_callback_event::<Test>(origin.clone(), message_id, &callback, &result);
 
 			System::assert_last_event(
 				Event::CallbackFailed {

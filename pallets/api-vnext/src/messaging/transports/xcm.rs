@@ -18,22 +18,22 @@ use crate::messaging::{pallet::Call, BlockNumberOf, Config};
 /// # Returns
 /// A unique identifier for the message.
 pub(crate) fn new_query<T: Config>(
-	origin: &T::AccountId,
+	origin: Origin<T::AccountId>,
 	responder: Location,
 	timeout: BlockNumberOf<T>,
 	callback: Option<Callback>,
 ) -> Result<(MessageId, QueryId), DispatchError> {
 	let querier_location =
-		T::OriginConverter::try_convert(T::RuntimeOrigin::signed(origin.clone()))
+		T::OriginConverter::try_convert(T::RuntimeOrigin::signed(origin.account.clone()))
 			.map_err(|_| Error::<T>::OriginConversionFailed)?;
 
 	let current_block = frame_system::Pallet::<T>::block_number();
 	ensure!(current_block < timeout, Error::<T>::FutureTimeoutMandatory);
 
-	let id = next_message_id::<T>(origin)?;
+	let id = next_message_id::<T>()?;
 	XcmQueryTimeouts::<T>::try_mutate(current_block.saturating_add(timeout), |bounded_vec| {
 		bounded_vec
-			.try_push((origin.clone(), id))
+			.try_push(id)
 			.map_err(|_| Error::<T>::MaxMessageTimeoutPerBlockReached)
 	})?;
 
@@ -41,14 +41,14 @@ pub(crate) fn new_query<T: Config>(
 	let message_deposit =
 		calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::XcmQueries)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>());
-	T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
+	T::Fungibles::hold(&HoldReason::Messaging.into(), &origin.account, message_deposit)?;
 
 	let mut callback_execution_weight = Weight::zero();
 
 	if let Some(cb) = callback.as_ref() {
 		T::Fungibles::hold(
 			&HoldReason::CallbackGas.into(),
-			&origin,
+			&origin.account,
 			T::WeightToFee::weight_to_fee(&cb.weight),
 		)?;
 
@@ -60,7 +60,7 @@ pub(crate) fn new_query<T: Config>(
 	);
 
 	let credit = T::Fungibles::withdraw(
-		&origin,
+		&origin.account,
 		response_prepayment_amount,
 		Precision::Exact,
 		Preservation::Preserve,
@@ -77,8 +77,8 @@ pub(crate) fn new_query<T: Config>(
 
 	// Store query id for later lookup on response, message for querying status,
 	// response/timeout handling.
-	XcmQueries::<T>::insert(query_id, (&origin, id));
-	Messages::<T>::insert(&origin, id, Message::XcmQuery { query_id, callback, message_deposit });
+	XcmQueries::<T>::insert(query_id, id);
+	Messages::<T>::insert(id, Message::XcmQuery { origin, query_id, callback, message_deposit });
 	Ok((id, query_id))
 }
 
@@ -146,21 +146,21 @@ pub(crate) mod tests {
 
 	#[test]
 	fn takes_response_fee_no_callback() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let response_fee = WeightToFee::weight_to_fee(&(WeightInfo::xcm_response()));
 		let callback = None;
 		let endowment = existential_deposit() + deposit() + response_fee;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
-				let balance_pre_transfer = Balances::free_balance(&origin);
+				let balance_pre_transfer = Balances::free_balance(&origin.account);
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, callback));
+				assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, callback));
 
-				let balance_post_transfer = Balances::free_balance(&origin);
-				let total_balance_on_hold = Balances::total_balance_on_hold(&origin);
+				let balance_post_transfer = Balances::free_balance(&origin.account);
+				let total_balance_on_hold = Balances::total_balance_on_hold(&origin.account);
 				assert_eq!(
 					balance_pre_transfer - balance_post_transfer - total_balance_on_hold,
 					response_fee
@@ -170,22 +170,22 @@ pub(crate) mod tests {
 
 	#[test]
 	fn takes_response_fee_with_callback() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let response_fee = xcm_response_fee();
 		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Weight::zero());
 		let endowment = existential_deposit() + deposit() + response_fee;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
 				assert_ne!(response_fee, 0);
-				let balance_pre_query = Balances::free_balance(&ALICE);
+				let balance_pre_query = Balances::free_balance(&origin.account);
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback),));
+				assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, Some(callback)));
 
-				let balance_post_query = Balances::free_balance(&ALICE);
-				let total_balance_on_hold = Balances::total_balance_on_hold(&ALICE);
+				let balance_post_query = Balances::free_balance(&origin.account);
+				let total_balance_on_hold = Balances::total_balance_on_hold(&origin.account);
 
 				assert_eq!(
 					balance_pre_query - balance_post_query - total_balance_on_hold,
@@ -196,56 +196,58 @@ pub(crate) mod tests {
 
 	#[test]
 	fn takes_callback_hold() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let weight = Weight::from_parts(100_000_000, 100_000_000);
 		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
 		let callback_deposit = WeightToFee::weight_to_fee(&weight);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_deposit;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
 				let held_balance_pre_query =
-					Fungibles::balance_on_hold(&CallbackGas.into(), &origin);
+					Fungibles::balance_on_hold(&CallbackGas.into(), &origin.account);
 				assert_eq!(held_balance_pre_query, 0);
 				assert_ne!(callback_deposit, 0);
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+				assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, Some(callback)));
 
 				let held_balance_post_query =
-					Fungibles::balance_on_hold(&CallbackGas.into(), &origin);
+					Fungibles::balance_on_hold(&CallbackGas.into(), &origin.account);
 				assert_eq!(held_balance_post_query, callback_deposit);
 			})
 	}
 
 	#[test]
 	fn takes_messaging_hold() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let expected_deposit = deposit();
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
-				let held_balance_pre_hold = Fungibles::balance_on_hold(&Messaging.into(), &origin);
+				let held_balance_pre_hold =
+					Fungibles::balance_on_hold(&Messaging.into(), &origin.account);
 				assert_ne!(
 					expected_deposit, 0,
 					"set an onchain byte fee with T::OnChainByteFee to run this test."
 				);
 				assert_eq!(held_balance_pre_hold, 0);
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None,));
+				assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, None));
 
-				let held_balance_post_hold = Fungibles::balance_on_hold(&Messaging.into(), &origin);
+				let held_balance_post_hold =
+					Fungibles::balance_on_hold(&Messaging.into(), &origin.account);
 				assert_eq!(held_balance_post_hold, expected_deposit);
 			});
 	}
 
 	#[test]
 	fn assert_state() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let weight = Weight::from_parts(100_000_000, 100_000_000);
 		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
 		let callback_deposit = WeightToFee::weight_to_fee(&weight);
@@ -253,38 +255,37 @@ pub(crate) mod tests {
 		let id = 1;
 		let query_id = 42;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
-			.with_message_id(&origin.clone(), id)
+			.with_balances(vec![(origin.account.clone(), endowment)])
+			.with_message_id(id)
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 1;
 
-				assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, Some(callback)));
+				assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, Some(callback)));
 
-				let message =
-					Messages::get(&origin, id).expect("should exist after xcm_new_query.");
+				let message = Messages::get(id).expect("should exist after xcm_new_query.");
 				let Message::XcmQuery { query_id: qid, callback: c, .. } = message else {
 					panic!("Wrong message type.")
 				};
 				assert_eq!(qid, query_id);
 				assert_eq!(c, Some(callback));
-				assert_eq!(XcmQueries::get(query_id), Some((origin, id)));
+				assert_eq!(XcmQueries::get(query_id), Some(id));
 			})
 	}
 
 	#[test]
 	fn xcm_timeouts_must_be_in_the_future() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number();
 
 				assert_noop!(
-					new_query(&origin, RESPONSE_LOCATION, timeout, None),
+					new_query(origin, RESPONSE_LOCATION, timeout, None),
 					Error::FutureTimeoutMandatory
 				);
 			})
@@ -292,25 +293,25 @@ pub(crate) mod tests {
 
 	#[test]
 	fn xcm_queries_expire_on_expiry_block() {
-		let origin = ALICE;
+		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let messages = 2;
 		let query_id = 42;
 		let endowment =
 			existential_deposit() + (deposit() + xcm_response_fee()) * messages as Balance;
 		ExtBuilder::new()
-			.with_balances(vec![(origin.clone(), endowment)])
+			.with_balances(vec![(origin.account.clone(), endowment)])
 			.with_query_id(query_id)
 			.build()
 			.execute_with(|| {
 				let timeout = System::block_number() + 10;
 				for _ in 0..messages {
-					assert_ok!(new_query(&origin, RESPONSE_LOCATION, timeout, None));
+					assert_ok!(new_query(origin.clone(), RESPONSE_LOCATION, timeout, None));
 				}
 
 				run_to(timeout + 1);
 
 				for id in 0..messages {
-					let Some(Message::XcmTimeout { .. }) = Messages::get(&origin, id) else {
+					let Some(Message::XcmTimeout { .. }) = Messages::get(id) else {
 						panic!("Message should be timed out!")
 					};
 				}
@@ -332,7 +333,7 @@ pub(crate) mod tests {
 	// wrap calls to it in a transaction to simulate. See additional precompiles tests for
 	// further assurances.
 	pub(crate) fn new_query(
-		origin: &AccountId,
+		origin: Origin<AccountId>,
 		responder: Location,
 		timeout: u32,
 		callback: Option<Callback>,

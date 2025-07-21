@@ -38,7 +38,7 @@ pub const ID: [u8; 3] = *b"pop";
 /// # Returns
 /// A unique identifier for the message.
 pub(crate) fn get<T: Config>(
-	origin: &T::AccountId,
+	origin: Origin<T::AccountId>,
 	message: DispatchGet,
 	fee: BalanceOf<T>,
 	callback: Option<Callback>,
@@ -51,20 +51,21 @@ pub(crate) fn get<T: Config>(
 		// 	.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, Get<T>>())
 		;
 
-	T::Fungibles::hold(&HoldReason::Messaging.into(), &origin, message_deposit)?;
+	T::Fungibles::hold(&HoldReason::Messaging.into(), &origin.account, message_deposit)?;
 
 	if let Some(cb) = callback.as_ref() {
 		T::Fungibles::hold(
 			&HoldReason::CallbackGas.into(),
-			&origin,
+			&origin.account,
 			T::WeightToFee::weight_to_fee(&cb.weight),
 		)?;
 	}
 
 	// Process message by dispatching request via ISMP.
-	let commitment = match T::IsmpDispatcher::default()
-		.dispatch_request(DispatchRequest::Get(message), FeeMetadata { payer: origin.clone(), fee })
-	{
+	let commitment = match T::IsmpDispatcher::default().dispatch_request(
+		DispatchRequest::Get(message),
+		FeeMetadata { payer: origin.account.clone(), fee },
+	) {
 		Ok(commitment) => Ok::<H256, DispatchError>(commitment),
 		Err(e) => {
 			if let Ok(err) = e.downcast::<::ismp::Error>() {
@@ -75,9 +76,9 @@ pub(crate) fn get<T: Config>(
 	}?;
 	// Store commitment for lookup on response, message for querying,
 	// response/timeout handling.
-	let id = next_message_id::<T>(origin)?;
-	IsmpRequests::<T>::insert(commitment, (&origin, id));
-	Messages::<T>::insert(&origin, id, Message::Ismp { commitment, callback, message_deposit });
+	let id = next_message_id::<T>()?;
+	IsmpRequests::<T>::insert(commitment, id);
+	Messages::<T>::insert(id, Message::Ismp { origin, commitment, callback, message_deposit });
 	Ok((id, commitment))
 }
 
@@ -94,7 +95,7 @@ pub(crate) fn get<T: Config>(
 /// # Returns
 /// A unique identifier for the message.
 pub(crate) fn post<T: Config>(
-	origin: &T::AccountId,
+	origin: Origin<T::AccountId>,
 	message: DispatchPost,
 	fee: BalanceOf<T>,
 	callback: Option<Callback>,
@@ -107,12 +108,12 @@ pub(crate) fn post<T: Config>(
 		//	.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>())
 		;
 
-	T::Fungibles::hold(&HoldReason::Messaging.into(), origin, message_deposit)?;
+	T::Fungibles::hold(&HoldReason::Messaging.into(), &origin.account, message_deposit)?;
 
 	if let Some(cb) = callback.as_ref() {
 		T::Fungibles::hold(
 			&HoldReason::CallbackGas.into(),
-			origin,
+			&origin.account,
 			T::WeightToFee::weight_to_fee(&cb.weight),
 		)?;
 	}
@@ -121,49 +122,49 @@ pub(crate) fn post<T: Config>(
 	let commitment = T::IsmpDispatcher::default()
 		.dispatch_request(
 			DispatchRequest::Post(message),
-			FeeMetadata { payer: origin.clone(), fee },
+			FeeMetadata { payer: origin.account.clone(), fee },
 		)
 		.map_err(|_| Error::<T>::IsmpDispatchFailed)?;
 
 	// Store commitment for lookup on response, message for querying,
 	// response/timeout handling.
-	let id = next_message_id::<T>(origin)?;
-	IsmpRequests::<T>::insert(commitment, (origin, id));
-	Messages::<T>::insert(origin, id, Message::Ismp { commitment, callback, message_deposit });
+	let id = next_message_id::<T>()?;
+	IsmpRequests::<T>::insert(commitment, id);
+	Messages::<T>::insert(id, Message::Ismp { origin, commitment, callback, message_deposit });
 	Ok((id, commitment))
 }
 
 pub(crate) fn process_response<T: Config>(
 	commitment: &H256,
 	response_data: &impl Encode,
-	event: impl Fn(AccountIdOf<T>, MessageId) -> Event<T>,
+	event: impl Fn(H160, MessageId) -> Event<T>,
 ) -> Result<(), anyhow::Error> {
 	ensure!(
 		response_data.encoded_size() <= T::MaxResponseLen::get() as usize,
 		::ismp::Error::Custom("Response length exceeds maximum allowed length.".into())
 	);
 
-	let (initiating_origin, id) = IsmpRequests::<T>::get(commitment)
+	let id = IsmpRequests::<T>::get(commitment)
 		.ok_or(::ismp::Error::Custom("Request not found.".into()))?;
 
-	let Some(Message::Ismp { commitment, callback, message_deposit }) =
-		Messages::<T>::get(&initiating_origin, id)
+	let Some(Message::Ismp { origin, commitment, callback, message_deposit }) =
+		Messages::<T>::get(id)
 	else {
 		return Err(::ismp::Error::Custom("Message must be an ismp request.".into()).into());
 	};
 
 	// Deposit that the message has been recieved before a potential callback execution.
-	Pallet::<T>::deposit_event(event(initiating_origin.clone(), id));
+	Pallet::<T>::deposit_event(event(origin.address, id));
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
-		if call::<T>(&initiating_origin, callback, &id, response_data).is_ok() {
+		if call::<T>(&origin.account, callback, &id, response_data).is_ok() {
 			// Clean storage, return deposit
-			Messages::<T>::remove(&initiating_origin, id);
+			Messages::<T>::remove(id);
 			IsmpRequests::<T>::remove(commitment);
 			T::Fungibles::release(
 				&HoldReason::Messaging.into(),
-				&initiating_origin,
+				&origin.account,
 				message_deposit,
 				Exact,
 			)
@@ -174,14 +175,13 @@ pub(crate) fn process_response<T: Config>(
 	}
 
 	// No callback or callback error: store response for manual retrieval and removal.
-	let encoded_response: BoundedVec<u8, T::MaxResponseLen> = response_data
+	let response: BoundedVec<u8, T::MaxResponseLen> = response_data
 		.encode()
 		.try_into()
 		.map_err(|_| ::ismp::Error::Custom("response exceeds max".into()))?;
 	Messages::<T>::insert(
-		&initiating_origin,
 		id,
-		Message::IsmpResponse { commitment, message_deposit, response: encoded_response },
+		Message::IsmpResponse { origin: origin.address, commitment, message_deposit, response },
 	);
 	Ok(())
 }
@@ -190,12 +190,13 @@ pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), any
 	let key = IsmpRequests::<T>::get(commitment).ok_or(::ismp::Error::Custom(
 		"Request commitment not found while processing timeout.".into(),
 	))?;
-	Messages::<T>::try_mutate(key.0, key.1, |message| {
-		let Some(Message::Ismp { commitment, message_deposit, callback }) = message else {
+	Messages::<T>::try_mutate(key, |message| {
+		let Some(Message::Ismp { origin, commitment, message_deposit, callback }) = message else {
 			return Err(::ismp::Error::Custom("Invalid message".into()));
 		};
 		let callback_deposit = callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
 		*message = Some(Message::IsmpTimeout {
+			origin: origin.address,
 			message_deposit: *message_deposit,
 			commitment: *commitment,
 			callback_deposit,
@@ -305,7 +306,7 @@ mod tests {
 
 		#[test]
 		fn takes_deposit() {
-			let origin = ALICE;
+			let origin = Origin::from((ALICE_ADDR, ALICE));
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
 			let callback_deposit = WeightToFee::weight_to_fee(&weight);
@@ -318,23 +319,23 @@ mod tests {
 				callback_deposit;
 			let endowment = existential_deposit() + expected_deposit + fee;
 			ExtBuilder::new()
-				.with_balances(vec![(origin.clone(), endowment)])
+				.with_balances(vec![(origin.account.clone(), endowment)])
 				.build()
 				.execute_with(|| {
-					let held_balance_pre_hold = Balances::total_balance_on_hold(&ALICE);
+					let held_balance_pre_hold = Balances::total_balance_on_hold(&origin.account);
 					assert_eq!(held_balance_pre_hold, 0);
 					assert!(expected_deposit != 0);
 
-					assert_ok!(get::<Test>(&origin, message(), fee, Some(callback)));
+					assert_ok!(get::<Test>(origin.clone(), message(), fee, Some(callback)));
 
-					let held_balance_post_hold = Balances::total_balance_on_hold(&ALICE);
+					let held_balance_post_hold = Balances::total_balance_on_hold(&origin.account);
 					assert_eq!(held_balance_post_hold, expected_deposit);
 				})
 		}
 
 		#[test]
 		fn assert_state() {
-			let origin = ALICE;
+			let origin = Origin::from((ALICE_ADDR, ALICE));
 			let id = 1;
 			let fee: Balance = u32::MAX.into();
 			let callback = None;
@@ -343,19 +344,24 @@ mod tests {
 			) + calculate_message_deposit::<Test, OnChainByteFee>();
 			let endowment = existential_deposit() + deposit + fee;
 			ExtBuilder::new()
-				.with_balances(vec![(origin.clone(), endowment)])
-				.with_message_id(&origin, id)
+				.with_balances(vec![(origin.account.clone(), endowment)])
+				.with_message_id(id)
 				.build()
 				.execute_with(|| {
-					let (id, commitment) = get::<Test>(&origin, message(), fee, callback).unwrap();
+					let (id, commitment) =
+						get::<Test>(origin.clone(), message(), fee, callback).unwrap();
 
-					assert_eq!(IsmpRequests::get(commitment), Some((origin.clone(), id)));
-					let Some(Message::Ismp { commitment: c, callback: cb, message_deposit: d }) =
-						Messages::get(origin, id)
+					assert_eq!(IsmpRequests::get(commitment), Some(id));
+					let Some(Message::Ismp {
+						origin: o,
+						commitment: c,
+						callback: cb,
+						message_deposit: d,
+					}) = Messages::get(id)
 					else {
 						panic!("wrong message type");
 					};
-					assert_eq!((c, cb, d), (commitment, callback, deposit))
+					assert_eq!((o, c, cb, d), (origin, commitment, callback, deposit))
 				})
 		}
 
@@ -376,7 +382,7 @@ mod tests {
 
 		#[test]
 		fn takes_deposit() {
-			let origin = ALICE;
+			let origin = Origin::from((ALICE_ADDR, ALICE));
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
 			let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
@@ -389,24 +395,24 @@ mod tests {
 					callback_deposit;
 			let endowment = existential_deposit() + expected_deposit + fee;
 			ExtBuilder::new()
-				.with_balances(vec![(origin.clone(), endowment)])
+				.with_balances(vec![(origin.account.clone(), endowment)])
 				.build()
 				.execute_with(|| {
-					let held_balance_pre_hold = Balances::total_balance_on_hold(&origin);
+					let held_balance_pre_hold = Balances::total_balance_on_hold(&origin.account);
 					assert_eq!(held_balance_pre_hold, 0);
 					assert_ne!(callback_deposit, 0);
 					assert_ne!(expected_deposit, 0);
 
-					assert_ok!(post::<Test>(&origin, message(), fee, Some(callback)));
+					assert_ok!(post::<Test>(origin.clone(), message(), fee, Some(callback)));
 
-					let held_balance_post_hold = Balances::total_balance_on_hold(&origin);
+					let held_balance_post_hold = Balances::total_balance_on_hold(&origin.account);
 					assert_eq!(held_balance_post_hold, expected_deposit);
 				})
 		}
 
 		#[test]
 		fn assert_state() {
-			let origin = ALICE;
+			let origin = Origin::from((ALICE_ADDR, ALICE));
 			let id = 1;
 			let fee: Balance = u32::MAX.into();
 			let callback = None;
@@ -415,19 +421,24 @@ mod tests {
 			) + calculate_message_deposit::<Test, OnChainByteFee>();
 			let endowment = existential_deposit() + deposit + fee;
 			ExtBuilder::new()
-				.with_balances(vec![(origin.clone(), endowment)])
-				.with_message_id(&origin, id)
+				.with_balances(vec![(origin.account.clone(), endowment)])
+				.with_message_id(id)
 				.build()
 				.execute_with(|| {
-					let (id, commitment) = post::<Test>(&origin, message(), fee, callback).unwrap();
+					let (id, commitment) =
+						post::<Test>(origin.clone(), message(), fee, callback).unwrap();
 
-					assert_eq!(IsmpRequests::get(commitment).unwrap(), (origin.clone(), id));
-					let Some(Message::Ismp { commitment: c, callback: cb, message_deposit: d }) =
-						Messages::get(origin, id)
+					assert_eq!(IsmpRequests::get(commitment), Some(id));
+					let Some(Message::Ismp {
+						origin: o,
+						commitment: c,
+						callback: cb,
+						message_deposit: d,
+					}) = Messages::get(id)
 					else {
 						panic!("wrong message type");
 					};
-					assert_eq!((c, cb, d), (commitment, callback, deposit))
+					assert_eq!((o, c, cb, d), (origin, commitment, callback, deposit))
 				})
 		}
 
@@ -477,14 +488,13 @@ mod tests {
 
 			#[test]
 			fn invalid_request() {
-				let origin = ALICE;
+				let origin = Origin::from((ALICE_ADDR, ALICE));
 				let id = 1;
 				let commitment: H256 = [1u8; 32].into();
-				let message =
-					Message::XcmQuery { query_id: 0, callback: None, message_deposit: 100 };
+				let message = Message::xcm_query(origin, 0, None, 100);
 				ExtBuilder::new().build().execute_with(|| {
-					IsmpRequests::insert(commitment, (&origin, id));
-					Messages::insert(origin, id, &message);
+					IsmpRequests::insert(commitment, id);
+					Messages::insert(id, &message);
 
 					let err = timeout_commitment::<Test>(&commitment).unwrap_err();
 					assert_eq!(
@@ -496,22 +506,20 @@ mod tests {
 
 			#[test]
 			fn actually_timesout_assert_event() {
-				let origin = ALICE;
+				let origin = Origin::from((ALICE_ADDR, ALICE));
 				let id = 1;
 				let commitment: H256 = [1u8; 32].into();
 				let message_deposit = 100;
-				let message = Message::Ismp { commitment, callback: None, message_deposit };
+				let message = Message::ismp(origin, commitment, None, message_deposit);
 				ExtBuilder::new().build().execute_with(|| {
-					IsmpRequests::insert(commitment, (&origin, id));
-					Messages::insert(&origin, id, &message);
+					IsmpRequests::insert(commitment, id);
+					Messages::insert(id, &message);
 
 					let res = timeout_commitment::<Test>(&commitment);
 
 					assert!(res.is_ok(), "{:?}", res.unwrap_err().downcast::<IsmpError>().unwrap());
 
-					if let Some(Message::IsmpTimeout { commitment, .. }) =
-						Messages::get(&origin, id)
-					{
+					if let Some(Message::IsmpTimeout { commitment, .. }) = Messages::get(id) {
 						assert!(events().contains(&Event::IsmpTimedOut { commitment }))
 					} else {
 						panic!("Message not timed out.")
@@ -521,23 +529,30 @@ mod tests {
 
 			#[test]
 			fn success_callback_releases_deposit() {
-				let origin = ALICE;
+				let origin = Origin::from((ALICE_ADDR, ALICE));
 				let response = vec![1u8];
 				let commitment = H256::default();
 				let id = 1;
 				let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], 100.into());
 				let message_deposit = 100;
 				let message =
-					Message::Ismp { commitment, callback: Some(callback), message_deposit };
+					Message::ismp(origin.clone(), commitment, Some(callback), message_deposit);
 				ExtBuilder::new()
-					.with_balances(vec![(origin.clone(), existential_deposit() + message_deposit)])
+					.with_balances(vec![(
+						origin.account.clone(),
+						existential_deposit() + message_deposit,
+					)])
 					.build()
 					.execute_with(|| {
-						assert_ok!(Fungibles::hold(&Messaging.into(), &origin, message_deposit));
-						let post_hold = Balances::free_balance(&origin);
+						assert_ok!(Fungibles::hold(
+							&Messaging.into(),
+							&origin.account,
+							message_deposit
+						));
+						let post_hold = Balances::free_balance(&origin.account);
 
-						IsmpRequests::insert(commitment, (origin.clone(), id));
-						Messages::insert(&origin, id, message);
+						IsmpRequests::insert(commitment, id);
+						Messages::insert(id, message);
 
 						let res = process_response::<Test>(&commitment, &response, |dest, id| {
 							Event::IsmpGetResponseReceived { dest, id, commitment }
@@ -545,7 +560,7 @@ mod tests {
 
 						assert!(res.is_ok(), "process_response failed");
 
-						let post_process = Balances::free_balance(&origin);
+						let post_process = Balances::free_balance(&origin.account);
 						assert_eq!(post_process - message_deposit, post_hold);
 					})
 			}
@@ -594,14 +609,14 @@ mod tests {
 
 			#[test]
 			fn message_must_be_ismp_request() {
-				let origin = ALICE;
+				let origin = (ALICE_ADDR, ALICE);
 				let response = bounded_vec![1u8];
 				let commitment = H256::default();
 				let id = 1;
-				let message = Message::ismp_response(commitment, 100, response);
+				let message = Message::ismp_response(origin.0, commitment, 100, response);
 				ExtBuilder::new().build().execute_with(|| {
-					IsmpRequests::insert(commitment, (&origin, id));
-					Messages::insert(&origin, id, message);
+					IsmpRequests::insert(commitment, id);
+					Messages::insert(id, message);
 
 					let err = process_response::<Test>(&commitment, &vec![1u8], |dest, id| {
 						Event::IsmpGetResponseReceived { dest, id, commitment }
@@ -616,14 +631,14 @@ mod tests {
 
 			#[test]
 			fn no_callback_saves_response() {
-				let origin = ALICE;
+				let origin = Origin::from((ALICE_ADDR, ALICE));
 				let response = vec![1u8];
 				let commitment = H256::default();
 				let id = 1;
-				let message = Message::Ismp { commitment, callback: None, message_deposit: 100 };
+				let message = Message::ismp(origin, commitment, None, 100);
 				ExtBuilder::new().build().execute_with(|| {
-					IsmpRequests::insert(commitment, (origin.clone(), id));
-					Messages::insert(&origin, id, message);
+					IsmpRequests::insert(commitment, id);
+					Messages::insert(id, message);
 
 					let res = process_response::<Test>(&commitment, &response, |dest, id| {
 						Event::IsmpGetResponseReceived { dest, id, commitment }
@@ -631,7 +646,7 @@ mod tests {
 
 					assert!(res.is_ok(), "process_response failed");
 
-					let Some(Message::IsmpResponse { .. }) = Messages::get(&origin, id) else {
+					let Some(Message::IsmpResponse { .. }) = Messages::get(id) else {
 						panic!("wrong message type.")
 					};
 				})

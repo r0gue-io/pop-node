@@ -18,6 +18,7 @@ use frame_benchmarking::v2::*;
 use frame_support::{
 	assert_ok,
 	pallet_prelude::{IsType, Weight},
+	testing_prelude::bounded_vec,
 	traits::{
 		fungible::{Inspect, Mutate, MutateHold},
 		EnsureOrigin, Get, Time,
@@ -30,10 +31,10 @@ use pallet_revive::{
 		Error,
 	},
 	test_utils::ALICE_ADDR,
-	AddressMapper as _, Origin,
+	Origin::Signed,
 };
 use sp_io::hashing::blake2_256;
-use sp_runtime::{traits::Bounded, BoundedVec};
+use sp_runtime::traits::Bounded;
 
 use super::{
 	call_precompile,
@@ -48,13 +49,12 @@ use super::{
 		xcm::new_query,
 	},
 	Call, Callback, Config, Encoding, Event, HoldReason, IsmpRequests, Message, MessageId,
-	Messages, Pallet,
+	Messages, Origin, Pallet,
 };
 #[cfg(test)]
 use crate::mock::{ExtBuilder, Test};
 use crate::{messaging::BalanceOf, TryConvert};
 
-type AddressMapper<T> = <T as pallet_revive::Config>::AddressMapper;
 type Balances<T> = <T as Config>::Fungibles;
 type HostStateMachine<T> = <T as pallet_ismp::Config>::HostStateMachine;
 type Ismp<T> = super::precompiles::ismp::v0::Ismp<4, T>;
@@ -94,22 +94,21 @@ mod benchmarks {
 
 	#[benchmark]
 	fn get_response() {
-		let origin: T::AccountId = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let message = 1;
 
 		Messages::<T>::insert(
-			&origin,
 			message,
-			Message::IsmpResponse {
-				commitment: [255; 32].into(),
-				message_deposit: BalanceOf::<T>::max_value(),
-				response: BoundedVec::try_from(vec![255; T::MaxResponseLen::get() as usize])
-					.unwrap(),
-			},
+			Message::ismp_response(
+				origin.address,
+				[255; 32].into(),
+				BalanceOf::<T>::max_value(),
+				bounded_vec![255; T::MaxResponseLen::get() as usize],
+			),
 		);
 
 		let mut call_setup = set_up_call();
-		call_setup.set_origin(Origin::Signed(origin));
+		call_setup.set_origin(Signed(origin.account));
 		let mut ext = call_setup.ext().0;
 		let input = IMessagingCalls::getResponse(IMessaging::getResponseCall { message });
 
@@ -143,7 +142,7 @@ mod benchmarks {
 		y: Linear<0, { T::MaxKeys::get() }>,
 		a: Linear<0, 1>,
 	) -> Result<(), BenchmarkError> {
-		let origin: T::AccountId = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let request = ismp::Get {
 			destination: u32::MAX,
 			height: u64::MAX,
@@ -156,10 +155,10 @@ mod benchmarks {
 			.map_err(|_| BenchmarkError::Stop("failed to convert minimum balance to fee"))?;
 
 		silence_timestamp_genesis_warnings::<T>();
-		<Balances<T>>::set_balance(&origin, <Balances<T>>::total_issuance() / 2u32.into());
+		<Balances<T>>::set_balance(&origin.account, <Balances<T>>::total_issuance() / 2u32.into());
 
 		let mut call_setup = set_up_call();
-		call_setup.set_origin(Origin::Signed(origin.clone()));
+		call_setup.set_origin(Signed(origin.account));
 		let mut ext = call_setup.ext().0;
 		let input = if x == 0 {
 			IISMPCalls::get_0(IISMP::get_0Call { request, fee })
@@ -189,7 +188,7 @@ mod benchmarks {
 	///   - `1`: `PostResponse`
 	#[benchmark]
 	fn ismp_on_response(x: Linear<0, 1>) {
-		let origin: T::AccountId = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let fee = <Balances<T>>::minimum_balance();
 		let callback = Callback::new(
 			[255; 20].into(),
@@ -200,9 +199,9 @@ mod benchmarks {
 		let handler = Handler::<T>::new();
 
 		silence_timestamp_genesis_warnings::<T>();
-		<Balances<T>>::set_balance(&origin, u32::MAX.into());
+		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
 
-		let (id, commitment, response) = ismp_request::<T>(x, &origin, fee, callback);
+		let (id, commitment, response) = ismp_request::<T>(x, origin.clone(), fee, callback);
 
 		#[block]
 		{
@@ -210,8 +209,8 @@ mod benchmarks {
 		}
 
 		let event = match x {
-			0 => Event::IsmpGetResponseReceived { dest: origin, id, commitment },
-			_ => Event::IsmpPostResponseReceived { dest: origin, id, commitment },
+			0 => Event::IsmpGetResponseReceived { dest: origin.address, id, commitment },
+			_ => Event::IsmpPostResponseReceived { dest: origin.address, id, commitment },
 		};
 		assert_has_event::<T>(event.into())
 	}
@@ -225,7 +224,7 @@ mod benchmarks {
 	///   - `2`: `PostResponse`
 	#[benchmark]
 	fn ismp_on_timeout(x: Linear<0, 2>) -> Result<(), BenchmarkError> {
-		let origin: T::AccountId = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let fee = <Balances<T>>::minimum_balance();
 		let callback = Callback::new(
 			[255; 20].into(),
@@ -236,9 +235,9 @@ mod benchmarks {
 		let handler = Handler::<T>::new();
 
 		silence_timestamp_genesis_warnings::<T>();
-		<Balances<T>>::set_balance(&origin, u32::MAX.into());
+		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
 
-		let (_, commitment, response) = ismp_request::<T>(x, &origin, fee, callback);
+		let (_, commitment, response) = ismp_request::<T>(x, origin, fee, callback);
 		let timeout = match x {
 			0 => {
 				let Response::Get(response) = response else {
@@ -284,7 +283,7 @@ mod benchmarks {
 		x: Linear<0, { T::MaxDataLen::get() }>,
 		y: Linear<0, 1>,
 	) -> Result<(), BenchmarkError> {
-		let origin: T::AccountId = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let request = ismp::Post {
 			destination: u32::MAX,
 			timeout: u64::MAX,
@@ -295,10 +294,10 @@ mod benchmarks {
 			.map_err(|_| BenchmarkError::Stop("failed to convert minimum balance to fee"))?;
 
 		silence_timestamp_genesis_warnings::<T>();
-		<Balances<T>>::set_balance(&origin, <Balances<T>>::total_issuance() / 2u32.into());
+		<Balances<T>>::set_balance(&origin.account, <Balances<T>>::total_issuance() / 2u32.into());
 
 		let mut call_setup = set_up_call();
-		call_setup.set_origin(Origin::Signed(origin));
+		call_setup.set_origin(Signed(origin.account));
 		let mut ext = call_setup.ext().0;
 		let input = if y == 0 {
 			IISMPCalls::post_0(IISMP::post_0Call { request, fee })
@@ -322,22 +321,21 @@ mod benchmarks {
 
 	#[benchmark]
 	fn poll_status() {
-		let origin: T::AccountId = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let message = 1;
 
 		Messages::<T>::insert(
-			&origin,
 			message,
-			Message::IsmpResponse {
-				commitment: [255; 32].into(),
-				message_deposit: BalanceOf::<T>::max_value(),
-				response: BoundedVec::try_from(vec![255; T::MaxResponseLen::get() as usize])
-					.unwrap(),
-			},
+			Message::ismp_response(
+				origin.address,
+				[255; 32].into(),
+				BalanceOf::<T>::max_value(),
+				bounded_vec![255; T::MaxResponseLen::get() as usize],
+			),
 		);
 
 		let mut call_setup = set_up_call();
-		call_setup.set_origin(Origin::Signed(origin));
+		call_setup.set_origin(Signed(origin.account));
 		let mut ext = call_setup.ext().0;
 		let input = IMessagingCalls::pollStatus(IMessaging::pollStatusCall { message });
 
@@ -358,29 +356,38 @@ mod benchmarks {
 	fn remove(x: Linear<1, { T::MaxRemovals::get() }>) {
 		let message_deposit = 50_000u32.into();
 		let callback_deposit = 100_000u32.into();
-		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let messages: Vec<MessageId> = (0..x as MessageId).collect();
 
 		let mut call_setup = set_up_call();
-		call_setup.set_origin(Origin::Signed(owner.clone()));
+		call_setup.set_origin(Signed(origin.account.clone()));
 		let mut ext = call_setup.ext().0;
 
-		<Balances<T>>::set_balance(&owner, u32::MAX.into());
+		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
 		for i in &messages {
-			T::Fungibles::hold(&HoldReason::Messaging.into(), &owner, message_deposit).unwrap();
-			T::Fungibles::hold(&HoldReason::CallbackGas.into(), &owner, callback_deposit).unwrap();
+			assert_ok!(T::Fungibles::hold(
+				&HoldReason::Messaging.into(),
+				&origin.account,
+				message_deposit
+			));
+			assert_ok!(T::Fungibles::hold(
+				&HoldReason::CallbackGas.into(),
+				&origin.account,
+				callback_deposit
+			));
 
 			let commitment = H256::from(blake2_256(&(i.to_le_bytes())));
 
 			// Timeout messages release callback deposit hence, are most expensive case for now.
-			let good_message = Message::IsmpTimeout {
-				commitment: commitment.clone(),
+			let good_message = Message::ismp_timeout(
+				origin.address,
+				commitment.clone(),
 				message_deposit,
-				callback_deposit: Some(callback_deposit),
-			};
+				Some(callback_deposit),
+			);
 
-			Messages::<T>::insert(&owner, &i, &good_message);
-			IsmpRequests::<T>::insert(&commitment, (&owner, i));
+			Messages::<T>::insert(&i, &good_message);
+			IsmpRequests::<T>::insert(&commitment, i);
 		}
 
 		let input =
@@ -404,14 +411,14 @@ mod benchmarks {
 	///   - `1`: Callback attached
 	#[benchmark]
 	fn xcm_new_query(x: Linear<0, 1>) {
-		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let responder = Location { parents: 1, interior: Junctions::Here }.encode().into();
 		let timeout = u32::from(frame_system::Pallet::<T>::block_number()) + 1_000;
 
-		<Balances<T>>::set_balance(&owner, u32::MAX.into());
+		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
 
 		let mut call_setup = set_up_call();
-		call_setup.set_origin(Origin::Signed(owner.clone()));
+		call_setup.set_origin(Signed(origin.account));
 		let mut ext = call_setup.ext().0;
 		let input = if x == 0 {
 			IXCMCalls::newQuery_0(IXCM::newQuery_0Call { responder, timeout })
@@ -436,7 +443,7 @@ mod benchmarks {
 	/// No benchmark input parameters. A mock response is created and processed.
 	#[benchmark]
 	fn xcm_response() {
-		let owner = <AddressMapper<T>>::to_account_id(&ALICE_ADDR);
+		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let responder = Location { parents: 1, interior: Junctions::Here };
 		let timeout = frame_system::Pallet::<T>::block_number() + 1u8.into();
 		let callback = Some(Callback {
@@ -448,15 +455,15 @@ mod benchmarks {
 		let response_origin = T::XcmResponseOrigin::try_successful_origin().unwrap();
 		let response = ExecutionResult(None);
 
-		<Balances<T>>::set_balance(&owner, u32::MAX.into());
+		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
 
-		let (id, query_id) = new_query::<T>(&owner, responder, timeout, callback).unwrap();
+		let (id, query_id) = new_query::<T>(origin.clone(), responder, timeout, callback).unwrap();
 
 		#[extrinsic_call]
 		Pallet::<T>::xcm_response(response_origin, query_id, response.clone());
 
 		assert_has_event::<T>(
-			Event::XcmResponseReceived { dest: owner.clone(), id, query_id, response }.into(),
+			Event::XcmResponseReceived { dest: origin.address, id, query_id, response }.into(),
 		);
 	}
 
@@ -470,7 +477,7 @@ fn assert_has_event<T: Config>(generic_event: <T as frame_system::Config>::Runti
 
 fn ismp_request<T: Config + pallet_ismp::Config>(
 	x: u32,
-	origin: &T::AccountId,
+	origin: Origin<T::AccountId>,
 	fee: BalanceOf<T>,
 	callback: Callback,
 ) -> (MessageId, H256, Response) {

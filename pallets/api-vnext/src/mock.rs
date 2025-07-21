@@ -9,7 +9,7 @@ use frame_support::{
 };
 use frame_system::{EnsureRoot, EnsureSigned};
 use pallet_assets::AutoIncAssetId;
-pub(crate) use pallet_revive::test_utils::{ALICE, BOB, CHARLIE};
+pub(crate) use pallet_revive::test_utils::{ALICE, ALICE_ADDR, BOB, BOB_ADDR, CHARLIE};
 
 use super::fungibles;
 
@@ -326,7 +326,7 @@ pub(crate) struct ExtBuilder {
 	#[cfg(feature = "messaging")]
 	messages: Option<Vec<(AccountId, messaging::MessageId, messaging::Message<Test>, Balance)>>,
 	#[cfg(feature = "messaging")]
-	next_message_id: Option<(AccountId, messaging::MessageId)>,
+	next_message_id: Option<messaging::MessageId>,
 	#[cfg(feature = "messaging")]
 	query_id: Option<xcm::latest::QueryId>,
 }
@@ -382,8 +382,8 @@ impl ExtBuilder {
 	}
 
 	#[cfg(feature = "messaging")]
-	pub(crate) fn with_message_id(mut self, origin: &AccountId, id: messaging::MessageId) -> Self {
-		self.next_message_id = Some((origin.clone(), id));
+	pub(crate) fn with_message_id(mut self, id: messaging::MessageId) -> Self {
+		self.next_message_id = Some(id);
 		self
 	}
 
@@ -417,7 +417,7 @@ impl ExtBuilder {
 			{
 				if let Some(messages) = self.messages.take() {
 					for (account, id, message, deposit) in messages {
-						messaging::Messages::<Test>::insert(&account, id, message);
+						messaging::Messages::<Test>::insert(id, message);
 
 						use frame_support::traits::fungible::MutateHold;
 						use messaging::HoldReason;
@@ -429,8 +429,8 @@ impl ExtBuilder {
 					}
 				}
 
-				if let Some((account, id)) = self.next_message_id.take() {
-					crate::messaging::NextMessageId::<Test>::set(account, id);
+				if let Some(id) = self.next_message_id.take() {
+					crate::messaging::NextMessageId::<Test>::set(id);
 				}
 
 				if let Some(query_id) = self.query_id.take() {
