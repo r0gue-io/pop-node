@@ -18,7 +18,6 @@ use frame_benchmarking::v2::*;
 use frame_support::{
 	assert_ok,
 	pallet_prelude::{IsType, Weight},
-	testing_prelude::bounded_vec,
 	traits::{
 		fungible::{Inspect, Mutate, MutateHold},
 		EnsureOrigin, Get, Time,
@@ -103,7 +102,7 @@ mod benchmarks {
 				origin.address,
 				[255; 32].into(),
 				BalanceOf::<T>::max_value(),
-				bounded_vec![255; T::MaxResponseLen::get() as usize],
+				vec![255; T::MaxResponseLen::get() as usize].try_into().unwrap(),
 			),
 		);
 
@@ -330,7 +329,7 @@ mod benchmarks {
 				origin.address,
 				[255; 32].into(),
 				BalanceOf::<T>::max_value(),
-				bounded_vec![255; T::MaxResponseLen::get() as usize],
+				vec![255; T::MaxResponseLen::get() as usize].try_into().unwrap(),
 			),
 		);
 
