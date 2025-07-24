@@ -400,7 +400,7 @@ mod tests {
 						&getResponse(getResponseCall { message })
 					)
 					.unwrap(),
-					response.encode()
+					Encode::encode(&response)
 				);
 			});
 	}

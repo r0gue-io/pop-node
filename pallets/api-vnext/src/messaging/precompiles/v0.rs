@@ -150,8 +150,11 @@ mod tests {
 	#[test]
 	fn get_response_works() {
 		let origin = Origin::from((ALICE_ADDR, ALICE));
-		let expected =
-			[(0, Vec::default()), (1, b"ismp response".to_vec()), (2, Response::Null.encode())];
+		let expected = [
+			(0, Vec::default()),
+			(1, b"ismp response".to_vec()),
+			(2, Encode::encode(&Response::Null)),
+		];
 		let messages = [
 			(
 				1,

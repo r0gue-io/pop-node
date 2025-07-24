@@ -572,7 +572,7 @@ mod call {
 		let weight = Weight::from_parts(100_000, 100_000);
 		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight);
 		let message_id = 1;
-		let data = [100u8; 5];
+		let data = vec![100u8; 5];
 		ExtBuilder::new().build().execute_with(|| {
 			assert_ok!(call::<Test>(&origin, callback, &message_id, &data));
 
@@ -594,7 +594,7 @@ mod call {
 		let weight = Weight::from_parts(10_000_000, 10_000_000);
 		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight);
 		let id = 1;
-		let data = [100u8; 5];
+		let data = vec![100u8; 5];
 		let callback_fee = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 		let endowment = existential_deposit() + callback_fee;
 		ExtBuilder::new()

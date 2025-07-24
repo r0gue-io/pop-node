@@ -554,7 +554,7 @@ mod tests {
 						IsmpRequests::insert(commitment, id);
 						Messages::insert(id, message);
 
-						let res = process_response::<Test>(&commitment, &response, |dest, id| {
+						let res = process_response::<Test>(&commitment, response, |dest, id| {
 							Event::IsmpGetResponseReceived { dest, id, commitment }
 						});
 
@@ -576,7 +576,7 @@ mod tests {
 				let commitment = H256::zero();
 				let response = vec![1u8; <MaxResponseLen as Get<u32>>::get() as usize + 1usize];
 				ExtBuilder::new().build().execute_with(|| {
-					let err = process_response::<Test>(&commitment, &response, |dest, id| {
+					let err = process_response::<Test>(&commitment, response, |dest, id| {
 						Event::IsmpGetResponseReceived { dest, id, commitment }
 					})
 					.unwrap_err();
@@ -595,7 +595,7 @@ mod tests {
 				let commitment = H256::zero();
 				let response = vec![1u8];
 				ExtBuilder::new().build().execute_with(|| {
-					let err = process_response::<Test>(&commitment, &response, |dest, id| {
+					let err = process_response::<Test>(&commitment, response, |dest, id| {
 						Event::IsmpGetResponseReceived { dest, id, commitment }
 					})
 					.unwrap_err();
@@ -618,7 +618,7 @@ mod tests {
 					IsmpRequests::insert(commitment, id);
 					Messages::insert(id, message);
 
-					let err = process_response::<Test>(&commitment, &vec![1u8], |dest, id| {
+					let err = process_response::<Test>(&commitment, vec![1u8], |dest, id| {
 						Event::IsmpGetResponseReceived { dest, id, commitment }
 					})
 					.unwrap_err();
@@ -640,7 +640,7 @@ mod tests {
 					IsmpRequests::insert(commitment, id);
 					Messages::insert(id, message);
 
-					let res = process_response::<Test>(&commitment, &response, |dest, id| {
+					let res = process_response::<Test>(&commitment, response, |dest, id| {
 						Event::IsmpGetResponseReceived { dest, id, commitment }
 					});
 
