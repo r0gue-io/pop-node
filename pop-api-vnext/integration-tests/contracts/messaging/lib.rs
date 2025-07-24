@@ -81,14 +81,14 @@ pub mod messaging {
 
 	impl api::ismp::OnGetResponse for Messaging {
 		#[ink(message)]
-		fn onResponse(&mut self, id: MessageId, response: Vec<StorageValue>) {
+		fn onGetResponse(&mut self, id: MessageId, response: Vec<StorageValue>) {
 			self.env().emit_event(IsmpGetCompleted { id, response });
 		}
 	}
 
 	impl api::ismp::OnPostResponse for Messaging {
 		#[ink(message)]
-		fn onResponse(&mut self, id: MessageId, response: Bytes) {
+		fn onPostResponse(&mut self, id: MessageId, response: Bytes) {
 			self.env().emit_event(IsmpPostCompleted { id, response });
 		}
 	}
@@ -100,21 +100,10 @@ pub mod messaging {
 			precompile.execute(message, weight)
 		}
 
-		#[ink(message, selector = 0x5a8db3bd)]
-		fn new_query(&self, responder: Bytes, timeout: BlockNumber) -> (MessageId, QueryId) {
+		#[ink(message)]
+		fn newQuery(&self, responder: Bytes, timeout: BlockNumber) -> (MessageId, QueryId) {
 			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
-			precompile.new_query(responder, timeout)
-		}
-
-		#[ink(message, selector = 0xc0ca060b)]
-		fn new_query_with_callback(
-			&self,
-			responder: Bytes,
-			timeout: BlockNumber,
-			callback: Callback,
-		) -> (MessageId, QueryId) {
-			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
-			precompile.new_query_with_callback(responder, timeout, callback)
+			precompile.newQuery(responder, timeout)
 		}
 
 		#[ink(message)]
@@ -124,17 +113,23 @@ pub mod messaging {
 		}
 	}
 
-	// impl api::xcm::OnQueryResponse for Messaging {
-	// 	#[ink(message)]
-	// 	fn onResponse(&mut self, id: MessageId, response: Bytes) {
-	// 		self.env().emit_event(XcmCompleted { id, result: response });
-	// 	}
-	// }
+	impl xcm::XcmCallback for Messaging {
+		#[ink(message)]
+		fn newQuery(
+			&self,
+			responder: Bytes,
+			timeout: BlockNumber,
+			callback: Callback,
+		) -> (MessageId, QueryId) {
+			let precompile: contract_ref!(XcmCallback, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
+			precompile.newQuery(responder, timeout, callback)
+		}
+	}
 
-	#[ink::event]
-	pub struct XcmCompleted {
-		#[ink(topic)]
-		pub id: MessageId,
-		pub result: Bytes,
+	impl api::xcm::OnQueryResponse for Messaging {
+		#[ink(message)]
+		fn onQueryResponse(&mut self, id: MessageId, response: Bytes) {
+			self.env().emit_event(XcmCompleted { id, result: response });
+		}
 	}
 }

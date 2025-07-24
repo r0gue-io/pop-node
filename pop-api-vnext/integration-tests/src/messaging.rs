@@ -93,7 +93,7 @@ mod ismp {
 			);
 
 			assert_eq!(contract.poll_status(id), MessageStatus::Complete);
-			assert_eq!(contract.get_response(id), SolBytes(response.encode()));
+			assert_eq!(contract.get_response(id).0, response.encode());
 			assert_ok!(contract.remove(id));
 		});
 	}
@@ -121,7 +121,7 @@ mod ismp {
 			let callback = Callback {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
-				selector: 0x7c3a1c0c.into(),
+				selector: 0x9bf78ffbu32.into(),
 				weight: Weight { refTime: 900_000_000, proofSize: 150_000 },
 			};
 			let id = contract.get(request, U256::zero(), Some(callback.clone())).unwrap();
@@ -225,7 +225,7 @@ mod ismp {
 			);
 
 			assert_eq!(contract.poll_status(id), MessageStatus::Complete);
-			assert_eq!(contract.get_response(id), SolBytes(response.encode()));
+			assert_eq!(contract.get_response(id).0, response.encode());
 			assert_ok!(contract.remove(id));
 		});
 	}
@@ -246,7 +246,7 @@ mod ismp {
             let callback = Callback {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
-				selector: 0x5f99cc34.into(),
+				selector: 0xbe910d67u32.into(),
 				weight: Weight { refTime: 900_000_000, proofSize: 150_000 },
 			};
             let id = contract.post(request,  U256::zero(), Some(callback.clone())).unwrap();
@@ -370,6 +370,133 @@ mod ismp {
 		// Ensure the request matches the commitment.
 		assert_eq!(commitment.0, keccak_256(&request.encode()));
 		request
+	}
+}
+
+mod xcm {
+	use ::xcm::prelude::{Junction, Location, MaybeErrorCode::Success, NetworkId, Response};
+	use pallet_api_vnext::messaging::precompiles::xcm::v0::{
+		Callback, Encoding, Weight,
+		IXCM::{newQuery_0Call, newQuery_1Call, QueryCreated_0, QueryCreated_1},
+	};
+	use pop_api::messaging::xcm::{QueryId, XcmCompleted, PRECOMPILE_ADDRESS};
+	use xcm_executor::traits::OnResponse;
+
+	use super::*;
+
+	#[test]
+	fn query_works() {
+		let origin = ALICE;
+		let responder = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
+		let timeout = 100;
+		let response = Response::DispatchResult(Success);
+		ExtBuilder::new().build().execute_with(|| {
+			let contract = Contract::new(&origin, INIT_VALUE);
+
+			// Create a new query and check its status
+			let (id, query_id) = contract.new_query(responder.encode(), timeout, None).unwrap();
+			assert_eq!(query_id, 0);
+			assert_eq!(contract.poll_status(id), MessageStatus::Pending);
+			let expected =
+				QueryCreated_0 { account: contract.address.0.into(), id, queryId: query_id }
+					.encode_data();
+			assert_eq!(last_contract_event(&PRECOMPILE_ADDRESS), expected);
+
+			// Provide a response.
+			let querier: Location = Junction::AccountId32 {
+				network: Some(NetworkId::Polkadot),
+				id: contract.account_id().into(),
+			}
+			.into();
+			assert!(PolkadotXcm::expecting_response(&responder, query_id, Some(&querier)));
+			assert_ok!(Messaging::xcm_response(
+				pallet_xcm::Origin::Response(responder).into(),
+				query_id,
+				response.clone()
+			));
+
+			assert_eq!(contract.poll_status(id), MessageStatus::Complete);
+			assert_eq!(contract.get_response(id).0, response.encode());
+			assert_ok!(contract.remove(id));
+		});
+	}
+
+	#[test]
+	fn query_with_callback_works() {
+		let origin = ALICE;
+		let responder = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
+		let timeout = 100;
+		let response = Response::DispatchResult(Success);
+		ExtBuilder::new().build().execute_with(|| {
+			let contract = Contract::new(&origin, INIT_VALUE);
+
+			// Create a new query and check its status
+			let callback = Callback {
+				destination: contract.address.0.into(),
+				encoding: Encoding::SolidityAbi,
+				selector: 0x97dbf9fbu32.into(),
+				weight: Weight { refTime: 900_000_000, proofSize: 150_000 },
+			};
+			let (id, query_id) =
+				contract.new_query(responder.encode(), timeout, Some(callback.clone())).unwrap();
+			assert_eq!(query_id, 0);
+			assert_eq!(contract.poll_status(id), MessageStatus::Pending);
+			let expected = QueryCreated_1 {
+				account: contract.address.0.into(),
+				id,
+				queryId: query_id,
+				callback,
+			}
+			.encode_data();
+			assert_eq!(last_contract_event(&PRECOMPILE_ADDRESS), expected);
+
+			// Provide a response.
+			let querier: Location = Junction::AccountId32 {
+				network: Some(NetworkId::Polkadot),
+				id: contract.account_id().into(),
+			}
+			.into();
+			assert!(PolkadotXcm::expecting_response(&responder, query_id, Some(&querier)));
+			assert_ok!(Messaging::xcm_response(
+				pallet_xcm::Origin::Response(responder).into(),
+				query_id,
+				response.clone()
+			));
+
+			assert_eq!(
+				contract.last_event(),
+				XcmCompleted { id, result: SolBytes(response.encode()) }.encode()
+			);
+			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
+			assert!(System::events().iter().any(|e| {
+				matches!(&e.event,
+				RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
+					if origin == &contract.account_id() && *message_id == id
+				)
+			}));
+		});
+	}
+
+	impl Contract {
+		fn new_query(
+			&self,
+			responder: Vec<u8>,
+			timeout: BlockNumber,
+			callback: Option<Callback>,
+		) -> Result<(MessageId, QueryId), xcm::Error> {
+			match callback {
+				None => {
+					let call = newQuery_0Call { responder: responder.into(), timeout };
+					let result = self.call(&self.creator, call, 0)?;
+					Ok((result.id, result.queryId))
+				},
+				Some(callback) => {
+					let call = newQuery_1Call { responder: responder.into(), timeout, callback };
+					let result = self.call(&self.creator, call, 0)?;
+					Ok((result.id, result.queryId))
+				},
+			}
+		}
 	}
 }
 
