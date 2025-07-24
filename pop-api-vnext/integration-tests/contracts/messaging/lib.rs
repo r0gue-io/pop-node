@@ -86,12 +86,12 @@ pub mod messaging {
 		}
 	}
 
-	// impl api::ismp::OnPostResponse for Messaging {
-	// 	#[ink(message)]
-	// 	fn onResponse(&mut self, id: MessageId, response: Bytes) {
-	// 		self.env().emit_event(IsmpPostCompleted { id, response });
-	// 	}
-	// }
+	impl api::ismp::OnPostResponse for Messaging {
+		#[ink(message)]
+		fn onResponse(&mut self, id: MessageId, response: Bytes) {
+			self.env().emit_event(IsmpPostCompleted { id, response });
+		}
+	}
 
 	impl xcm::Xcm for Messaging {
 		#[ink(message)]
