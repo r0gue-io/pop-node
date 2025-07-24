@@ -178,7 +178,7 @@ interface IGetResponse {
      * @param id The identifier of the originating message.
      * @param response The values derived from the state proof.
      */
-    function onResponse(uint64 id, IISMP.StorageValue[] memory response) external;
+    function onGetResponse(uint64 id, IISMP.StorageValue[] memory response) external;
 }
 
 /**
@@ -190,7 +190,7 @@ interface IPostResponse {
      * @param id The identifier of the originating message.
      * @param response The response message.
      */
-    function onResponse(uint64 id, bytes memory response) external;
+    function onPostResponse(uint64 id, bytes memory response) external;
 }
 
 /// @notice A message callback.

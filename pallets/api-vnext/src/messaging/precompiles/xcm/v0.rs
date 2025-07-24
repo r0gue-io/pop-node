@@ -236,7 +236,7 @@ impl EncodeCallback for Response {
 		match encoding {
 			Scale => [selector.to_vec(), (id, response).encode()].concat(),
 			SolidityAbi => {
-				let call = IQueryResponse::onResponseCall { id, response: response.into() };
+				let call = IQueryResponse::onQueryResponseCall { id, response: response.into() };
 				let mut data = call.abi_encode();
 				debug_assert_eq!(data[..4], selector);
 				// Replace selector with that provided at request

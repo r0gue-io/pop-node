@@ -267,7 +267,7 @@ impl EncodeCallback for Vec<::ismp::router::StorageValue> {
 			Scale => [selector.to_vec(), (id, self).encode()].concat(),
 			SolidityAbi => {
 				// Use interface to encode call data
-				let call = IGetResponse::onResponseCall {
+				let call = IGetResponse::onGetResponseCall {
 					id,
 					// TODO: address clones
 					response: self
@@ -299,7 +299,7 @@ impl EncodeCallback for Vec<u8> {
 			SolidityAbi => {
 				// Use interface to encode call data
 				// TODO: address clone
-				let call = IPostResponse::onResponseCall { id, response: self.clone().into() };
+				let call = IPostResponse::onPostResponseCall { id, response: self.clone().into() };
 				let mut data = call.abi_encode();
 				debug_assert_eq!(data[..4], selector);
 				// Replace selector with that provided at request

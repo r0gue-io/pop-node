@@ -129,7 +129,7 @@ interface IQueryResponse {
      * @param id The identifier of the originating message.
      * @param response The response message.
      */
-    function onResponse(uint64 id, bytes memory response) external;
+    function onQueryResponse(uint64 id, bytes memory response) external;
 }
 
 /// @notice A message callback.
