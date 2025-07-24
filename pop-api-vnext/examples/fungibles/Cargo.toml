@@ -11,7 +11,7 @@ abi = "sol"
 path = "lib.rs"
 
 [dependencies]
-ink = { git = "https://github.com/use-ink/ink", default-features = false, features = [ "unstable-hostfn" ] }
+ink = { git = "https://github.com/use-ink/ink", branch = "semakula/option-sol", default-features = false, features = [ "unstable-hostfn" ] }
 pop-api = { path = "../../../pop-api-vnext", default-features = false, features = [ "fungibles" ] }
 
 [dev-dependencies]
