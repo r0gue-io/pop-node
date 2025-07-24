@@ -17,6 +17,11 @@ type Erc20<const PREFIX: u16, I> =
 	pallet_api_vnext::fungibles::precompiles::erc20::v0::Erc20<PREFIX, Runtime, I>;
 type Fungibles<const FIXED: u16, I> =
 	pallet_api_vnext::fungibles::precompiles::v0::Fungibles<FIXED, Runtime, I>;
+type Ismp<const FIXED: u16> =
+	pallet_api_vnext::messaging::precompiles::ismp::v0::Ismp<FIXED, Runtime>;
+type Messaging<const FIXED: u16> =
+	pallet_api_vnext::messaging::precompiles::v0::Messaging<FIXED, Runtime>;
+type Xcm<const FIXED: u16> = pallet_api_vnext::messaging::precompiles::xcm::v0::Xcm<FIXED, Runtime>;
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
 	pallet_contracts::Schedule {
@@ -112,6 +117,12 @@ impl pallet_revive::Config for Runtime {
 		Fungibles<1, TrustBackedAssetsInstance>,
 		// 2: `Erc20` precompile v0 using `TrustBackedAssetsInstance` instances
 		Erc20<2, TrustBackedAssetsInstance>,
+		// 3: `Messaging` precompile v0
+		Messaging<3>,
+		// 4: `Ismp` precompile v0
+		Ismp<4>,
+		// 5: `Xcm` precompile v0
+		Xcm<5>,
 	);
 	type RuntimeCall = RuntimeCall;
 	type RuntimeEvent = RuntimeEvent;
