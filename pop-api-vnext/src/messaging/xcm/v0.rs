@@ -1,5 +1,5 @@
 pub use errors::{Error, Error::*};
-pub use ink::xcm::prelude::{VersionedLocation, VersionedResponse, VersionedXcm};
+pub use ink::xcm::prelude::{Location, VersionedLocation, VersionedResponse, VersionedXcm};
 use ink::{Address, SolBytes};
 
 use super::{super::v0::Callback, *};
@@ -38,27 +38,9 @@ pub trait Xcm {
 	///
 	/// # Returns
 	/// A unique query identifier.
-	#[ink(message, selector = 0x5a8db3bd)]
-	fn new_query(&self, responder: Bytes, timeout: BlockNumber) -> (MessageId, QueryId);
-
-	/// Initiate a new XCM query.
-	///
-	/// Starts a query using the XCM interface, specifying a responder and timeout block.
-	///
-	/// # Parameters
-	/// - `responder` - A SCALE-encoded versioned location of the XCM responder.
-	/// - `timeout` - Block number after which the query should timeout.
-	/// - `callback` - The callback to execute upon receiving a response.
-	///
-	/// # Returns
-	/// A unique query identifier.
-	#[ink(message, selector = 0xc0ca060b)]
-	fn new_query_with_callback(
-		&self,
-		responder: Bytes,
-		timeout: BlockNumber,
-		callback: Callback,
-	) -> (MessageId, QueryId);
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn newQuery(&self, responder: Bytes, timeout: BlockNumber) -> (MessageId, QueryId);
 
 	/// Send an XCM from a given origin.
 	///
@@ -70,6 +52,31 @@ pub trait Xcm {
 	/// A SCALE-encoded dispatch result.
 	#[ink(message)]
 	fn send(&self, destination: Bytes, message: Bytes) -> Bytes;
+}
+
+/// The XCM precompile offers a streamlined interface for messaging using Polkadot's Cross-Consensus
+/// Messaging (XCM).
+#[ink::trait_definition]
+pub trait XcmCallback {
+	/// Initiate a new XCM query.
+	///
+	/// Starts a query using the XCM interface, specifying a responder and timeout block.
+	///
+	/// # Parameters
+	/// - `responder` - A SCALE-encoded versioned location of the XCM responder.
+	/// - `timeout` - Block number after which the query should timeout.
+	/// - `callback` - The callback to execute upon receiving a response.
+	///
+	/// # Returns
+	/// A unique query identifier.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn newQuery(
+		&self,
+		responder: Bytes,
+		timeout: BlockNumber,
+		callback: Callback,
+	) -> (MessageId, QueryId);
 }
 
 /// The messaging interface of the XCM precompile offers a general interface for cross-chain
@@ -157,15 +164,20 @@ pub fn get_response(message: MessageId) -> Bytes {
 /// A unique query identifier.
 #[inline]
 pub fn new_query(
-	responder: VersionedLocation,
+	responder: Location,
 	timeout: BlockNumber,
 	callback: Option<Callback>,
 ) -> (MessageId, QueryId) {
-	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	let responder = SolBytes(responder.encode());
 	match callback {
-		None => precompile.new_query(responder, timeout),
-		Some(callback) => precompile.new_query_with_callback(responder, timeout, callback),
+		None => {
+			let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			precompile.newQuery(responder, timeout)
+		},
+		Some(callback) => {
+			let precompile: contract_ref!(XcmCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			precompile.newQuery(responder, timeout, callback)
+		},
 	}
 }
 
@@ -227,5 +239,15 @@ pub trait OnQueryResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onResponse(&mut self, id: MessageId, response: Bytes);
+	fn onQueryResponse(&mut self, id: MessageId, response: Bytes);
+}
+
+/// Event emitted when a XCM query is completed.
+#[ink::event]
+pub struct XcmCompleted {
+	/// The identifier of the originating message.
+	#[ink(topic)]
+	pub id: MessageId,
+	/// The response message.
+	pub result: Bytes,
 }

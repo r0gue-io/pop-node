@@ -295,7 +295,7 @@ pub trait OnGetResponse {
 	/// - `response` - The values derived from the state proof.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onResponse(&mut self, id: MessageId, response: Vec<StorageValue>);
+	fn onGetResponse(&mut self, id: MessageId, response: Vec<StorageValue>);
 }
 
 /// A callback for handling responses to ISMP `Post` requests.
@@ -308,7 +308,7 @@ pub trait OnPostResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onResponse(&mut self, id: MessageId, response: Bytes);
+	fn onPostResponse(&mut self, id: MessageId, response: Bytes);
 }
 
 /// Event emitted when a ISMP `Get` request is completed.
