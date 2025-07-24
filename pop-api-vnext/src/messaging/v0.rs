@@ -6,6 +6,8 @@ mod errors;
 
 // Precompile index within the runtime
 const PRECOMPILE: u16 = 3;
+/// The address of the messaging precompile.
+pub const PRECOMPILE_ADDRESS: Address = fixed_address(PRECOMPILE);
 
 /// The messaging precompile offers a general interface for cross-chain messaging operations.
 #[ink::trait_definition]
@@ -50,13 +52,14 @@ pub trait Messaging {
 
 /// A message callback.
 #[ink::scale_derive(Decode, Encode, TypeInfo)]
+#[derive(ink::SolDecode, ink::SolEncode)]
 pub struct Callback {
 	/// The contract address to which the callback should be sent.
 	destination: Address,
 	/// The encoding used for the data going to the contract.
 	encoding: Encoding,
 	/// The message selector to be used for the callback.
-	selector: [u8; 4],
+	selector: FixedBytes<4>,
 	/// The pre-paid weight used as a gas limit for the callback.
 	weight: Weight,
 }
@@ -70,37 +73,12 @@ impl Callback {
 	/// - `selector` - The message selector to be used for the callback.
 	/// - `weight` - The pre-paid weight used as a gas limit for the callback.
 	pub fn new(destination: Address, encoding: Encoding, selector: u32, weight: Weight) -> Self {
-		Self { destination, encoding, selector: selector.to_be_bytes(), weight }
-	}
-}
-
-impl SolDecode for Callback {
-	type SolType = ([u8; 20], u8, [u8; 4], (u64, u64));
-
-	fn from_sol_type(value: Self::SolType) -> Self {
-		Self {
-			destination: value.0.into(),
-			encoding: Encoding::from_sol_type(value.1),
-			selector: value.2,
-			weight: Weight::from_sol_type(value.3),
-		}
-	}
-}
-impl<'a> SolEncode<'a> for Callback {
-	type SolType = (&'a [u8; 20], u8, &'a [u8; 4], (u64, u64));
-
-	fn to_sol_type(&'a self) -> Self::SolType {
-		(
-			&self.destination.0,
-			self.encoding as u8,
-			&self.selector,
-			(self.weight.ref_time(), self.weight.proof_size()),
-		)
+		Self { destination, encoding, selector: SolBytes(selector.to_be_bytes()), weight }
 	}
 }
 
 /// The specificiation of how data must be encoded before being sent to a contract.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, ink::SolDecode, ink::SolEncode)]
 #[ink::scale_derive(Decode, Encode, TypeInfo)]
 #[repr(u8)]
 pub enum Encoding {
@@ -110,27 +88,8 @@ pub enum Encoding {
 	SolidityAbi,
 }
 
-impl SolDecode for Encoding {
-	type SolType = u8;
-
-	fn from_sol_type(value: Self::SolType) -> Self {
-		match value {
-			0 => Self::Scale,
-			1 => Self::SolidityAbi,
-			_ => unimplemented!(),
-		}
-	}
-}
-impl<'a> SolEncode<'a> for Encoding {
-	type SolType = u8;
-
-	fn to_sol_type(&'a self) -> Self::SolType {
-		*self as u8
-	}
-}
-
 /// The status of a message.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, ink::SolDecode, ink::SolEncode, PartialEq)]
 #[ink::scale_derive(Decode, Encode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Debug))]
 #[repr(u8)]
@@ -139,27 +98,6 @@ pub enum MessageStatus {
 	Pending = 1,
 	Complete = 2,
 	Timeout = 3,
-}
-
-impl SolDecode for MessageStatus {
-	type SolType = u8;
-
-	fn from_sol_type(value: Self::SolType) -> Self {
-		match value {
-			0 => Self::NotFound,
-			1 => Self::Pending,
-			2 => Self::Complete,
-			3 => Self::Timeout,
-			_ => unimplemented!(),
-		}
-	}
-}
-impl<'a> SolEncode<'a> for MessageStatus {
-	type SolType = u8;
-
-	fn to_sol_type(&'a self) -> Self::SolType {
-		*self as u8
-	}
 }
 
 /// One or more messages have been removed for the account.
@@ -183,8 +121,7 @@ pub struct Removed {
 /// - `message` - The message identifier.
 #[inline]
 pub fn get_response(message: MessageId) -> Bytes {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Messaging, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
 
@@ -194,8 +131,7 @@ pub fn get_response(message: MessageId) -> Bytes {
 /// - `message` - The message identifier to poll.
 #[inline]
 pub fn poll_status(message: MessageId) -> MessageStatus {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Messaging, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.pollStatus(message)
 }
 
@@ -207,8 +143,7 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 /// - `message` - The identifier of the message to remove.
 #[inline]
 pub fn remove(message: MessageId) -> Result<(), Error> {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Messaging, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove(message)
 }
 
@@ -220,7 +155,6 @@ pub fn remove(message: MessageId) -> Result<(), Error> {
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Messaging, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove_many(messages)
 }

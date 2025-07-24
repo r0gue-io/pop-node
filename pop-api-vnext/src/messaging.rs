@@ -5,9 +5,9 @@ use ink::{
 	prelude::vec::Vec,
 	primitives::AccountId,
 	scale::{Compact, Encode},
-	U256,
+	SolBytes, U256,
 };
-use sol::{Sol, SolDecode, SolEncode};
+use sol::Sol;
 pub use v0::*;
 
 use super::*;
@@ -20,7 +20,8 @@ pub mod xcm;
 /// The first version of the Messaging API.
 pub mod v0;
 
-pub type Bytes = Vec<u8>;
+pub type Bytes = SolBytes<Vec<u8>>;
+pub type FixedBytes<const N: usize> = SolBytes<[u8; N]>;
 pub type MessageId = u64;
 
 // todo: docs

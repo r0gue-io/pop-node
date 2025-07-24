@@ -1,5 +1,6 @@
 pub use errors::{Error, Error::*};
 pub use ink::xcm::prelude::{VersionedLocation, VersionedResponse, VersionedXcm};
+use ink::{Address, SolBytes};
 
 use super::{super::v0::Callback, *};
 
@@ -9,6 +10,8 @@ pub type QueryId = u64;
 
 // Precompile index within the runtime
 const PRECOMPILE: u16 = 5;
+/// The address of the XCM precompile.
+pub const PRECOMPILE_ADDRESS: Address = fixed_address(PRECOMPILE);
 
 /// The XCM precompile offers a streamlined interface for messaging using Polkadot's Cross-Consensus
 /// Messaging (XCM).
@@ -24,17 +27,6 @@ pub trait Xcm {
 	/// A SCALE-encoded dispatch result.
 	#[ink(message)]
 	fn execute(&self, message: Bytes, weight: Weight) -> Bytes;
-
-	/// Returns the response to a message.
-	///
-	/// A non-existent message identifier will return an empty response, which could also be a valid
-	/// response depending on the source message.
-	///
-	/// # Parameters
-	/// - `message` - The message identifier.
-	#[ink(message)]
-	#[allow(non_snake_case)]
-	fn getResponse(&self, message: MessageId) -> Bytes;
 
 	/// Initiate a new XCM query.
 	///
@@ -68,6 +60,36 @@ pub trait Xcm {
 		callback: Callback,
 	) -> (MessageId, QueryId);
 
+	/// Send an XCM from a given origin.
+	///
+	/// # Parameters
+	/// - `destination` - The SCALE-encoded versioned location for the destination of the message.
+	/// - `message` - A SCALE-encoded versioned XCM message.
+	///
+	/// # Returns
+	/// A SCALE-encoded dispatch result.
+	#[ink(message)]
+	fn send(&self, destination: Bytes, message: Bytes) -> Bytes;
+}
+
+/// The messaging interface of the XCM precompile offers a general interface for cross-chain
+/// messaging operations.
+///
+/// This convenience trait simply provides access to general cross-chain messaging operations via
+/// the XCM precompile, so that users need only use a single precompile if desired.
+#[ink::trait_definition]
+pub trait Messaging {
+	/// Returns the response to a message.
+	///
+	/// A non-existent message identifier will return an empty response, which could also be a valid
+	/// response depending on the source message.
+	///
+	/// # Parameters
+	/// - `message` - The message identifier.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn getResponse(&self, message: MessageId) -> Bytes;
+
 	/// Polls the status of a message.
 	///
 	/// # Parameters
@@ -93,17 +115,6 @@ pub trait Xcm {
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 	#[ink(message, selector = 0xcdd80f3b)]
 	fn remove_many(&self, messages: Vec<MessageId>);
-
-	/// Send an XCM from a given origin.
-	///
-	/// # Parameters
-	/// - `destination` - The SCALE-encoded versioned location for the destination of the message.
-	/// - `message` - A SCALE-encoded versioned XCM message.
-	///
-	/// # Returns
-	/// A SCALE-encoded dispatch result.
-	#[ink(message)]
-	fn send(&self, destination: Bytes, message: Bytes) -> Bytes;
 }
 
 /// Execute an XCM message from a local, signed, origin.
@@ -116,9 +127,8 @@ pub trait Xcm {
 /// A SCALE-encoded dispatch result.
 #[inline]
 pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Bytes {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
-	precompile.execute(message.encode(), weight)
+	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	precompile.execute(SolBytes(message.encode()), weight)
 }
 
 /// Returns the response to a message.
@@ -130,8 +140,7 @@ pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Byt
 /// - `message` - The message identifier.
 #[inline]
 pub fn get_response(message: MessageId) -> Bytes {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
 
@@ -152,11 +161,11 @@ pub fn new_query(
 	timeout: BlockNumber,
 	callback: Option<Callback>,
 ) -> (MessageId, QueryId) {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let responder = SolBytes(responder.encode());
 	match callback {
-		None => precompile.new_query(responder.encode(), timeout),
-		Some(callback) => precompile.new_query_with_callback(responder.encode(), timeout, callback),
+		None => precompile.new_query(responder, timeout),
+		Some(callback) => precompile.new_query_with_callback(responder, timeout, callback),
 	}
 }
 
@@ -166,8 +175,7 @@ pub fn new_query(
 /// - `message` - The message identifier to poll.
 #[inline]
 pub fn poll_status(message: MessageId) -> MessageStatus {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.pollStatus(message)
 }
 
@@ -179,8 +187,7 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 /// - `message` - The identifier of the message to remove.
 #[inline]
 pub fn remove(message: MessageId) {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove(message)
 }
 
@@ -192,8 +199,7 @@ pub fn remove(message: MessageId) {
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove_many(messages)
 }
 
@@ -207,14 +213,19 @@ pub fn remove_many(messages: Vec<MessageId>) {
 /// A SCALE-encoded dispatch result.
 #[inline]
 pub fn send<Call: Encode>(destination: VersionedLocation, message: VersionedXcm<Call>) -> Bytes {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Xcm, Pop, Sol) = address.into();
-	precompile.send(destination.encode(), message.encode())
+	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	precompile.send(SolBytes(destination.encode()), SolBytes(message.encode()))
 }
 
+/// A callback for handling responses to XCM queries.
 #[ink::trait_definition]
-pub trait OnResponse {
-	// pop-api::messaging::xcm::OnResponse::on_response
-	#[ink(message, selector = 0x641b0b03)]
-	fn on_response(&mut self, id: MessageId, response: Bytes);
+pub trait OnQueryResponse {
+	/// Handles a response to a XCM query.
+	///
+	/// # Parameters
+	/// - `id` - The identifier of the originating message.
+	/// - `response` - The response message.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn onResponse(&mut self, id: MessageId, response: Bytes);
 }

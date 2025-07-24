@@ -13,7 +13,8 @@ pub use sol::{revert, SolErrorDecode};
 
 /// An index to a block.
 pub type BlockNumber = u32;
-type Pop = ink::env::DefaultEnvironment;
+/// The onchain environment provided by Pop.
+pub type Pop = ink::env::DefaultEnvironment;
 
 /// The various general errors which may occur.
 pub mod errors;
@@ -23,7 +24,8 @@ pub mod fungibles;
 /// APIs for cross-chain messaging.
 #[cfg(feature = "messaging")]
 pub mod messaging;
-mod sol;
+/// Types and utilities for working with Solidity ABI encoding.
+pub mod sol;
 
 #[macro_export]
 macro_rules! ensure {
@@ -36,7 +38,7 @@ macro_rules! ensure {
 
 /// Calculates the address of a precompile at index `n`.
 #[inline]
-fn fixed_address(n: u16) -> Address {
+const fn fixed_address(n: u16) -> Address {
 	let shifted = (n as u32) << 16;
 
 	let suffix = shifted.to_be_bytes();
@@ -46,7 +48,7 @@ fn fixed_address(n: u16) -> Address {
 		address[i] = suffix[i - 16];
 		i = i + 1;
 	}
-	address.into()
+	ink::H160(address)
 }
 
 /// Calculates the address of a precompile at index `n` and with some additional prefix.

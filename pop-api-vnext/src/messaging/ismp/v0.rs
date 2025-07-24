@@ -1,4 +1,5 @@
 pub use errors::{Error, Error::*};
+use ink::{Address, SolBytes};
 
 use super::{super::v0::Callback, *};
 
@@ -6,6 +7,8 @@ mod errors;
 
 // Precompile index within the runtime
 const PRECOMPILE: u16 = 4;
+/// The address of the ISMP precompile.
+pub const PRECOMPILE_ADDRESS: Address = fixed_address(PRECOMPILE);
 
 /// The ISMP precompile offers a streamlined interface for messaging using the Interoperable State
 /// Machine Protocol.
@@ -22,6 +25,24 @@ pub trait Ismp {
 	#[ink(message)]
 	fn get(&self, request: Get, fee: U256) -> Result<MessageId, Error>;
 
+	/// Submit a new ISMP `Post` request.
+	///
+	/// Sends a `Post` message through ISMP with arbitrary data.
+	///
+	/// # Parameters
+	/// - `request` - The ISMP `Post` message containing the payload.
+	/// - `fee` - The fee to be paid to relayers.
+	///
+	/// # Returns
+	/// A unique message identifier.
+	#[ink(message)]
+	fn post(&self, request: Post, fee: U256) -> Result<MessageId, Error>;
+}
+
+/// The ISMP precompile offers a streamlined interface for messaging using the Interoperable State
+/// Machine Protocol.
+#[ink::trait_definition]
+pub trait IsmpCallback {
 	/// Submit a new ISMP `Get` request.
 	///
 	/// # Parameters
@@ -31,14 +52,31 @@ pub trait Ismp {
 	///
 	/// # Returns
 	/// A unique message identifier.
-	#[ink(message, selector = 0x39f75435)]
-	fn get_with_callback(
-		&self,
-		request: Get,
-		fee: U256,
-		callback: Callback,
-	) -> Result<MessageId, Error>;
+	#[ink(message)]
+	fn get(&self, request: Get, fee: U256, callback: Callback) -> Result<MessageId, Error>;
 
+	/// Submit a new ISMP `Post` request.
+	///
+	/// Sends a `Post` message through ISMP with arbitrary data.
+	///
+	/// # Parameters
+	/// - `request` - The ISMP `Post` message containing the payload.
+	/// - `fee` - The fee to be paid to relayers.
+	/// - `callback` - The callback to execute upon receiving a response.
+	///
+	/// # Returns
+	/// A unique message identifier.
+	#[ink(message)]
+	fn post(&self, request: Post, fee: U256, callback: Callback) -> Result<MessageId, Error>;
+}
+
+/// The messaging interface of the ISMP precompile offers a general interface for cross-chain
+/// messaging operations.
+///
+/// This convenience trait simply provides access to general cross-chain messaging operations via
+/// the ISMP precompile, so that users need only use a single precompile if desired.
+#[ink::trait_definition]
+pub trait Messaging {
 	/// Returns the response to a message.
 	///
 	/// A non-existent message identifier will return an empty response, which could also be a valid
@@ -56,38 +94,6 @@ pub trait Ismp {
 	#[ink(message)]
 	#[allow(non_snake_case)]
 	fn pollStatus(&self, message: MessageId) -> MessageStatus;
-
-	/// Submit a new ISMP `Post` request.
-	///
-	/// Sends a `Post` message through ISMP with arbitrary data.
-	///
-	/// # Parameters
-	/// - `request` - The ISMP `Post` message containing the payload.
-	/// - `fee` - The fee to be paid to relayers.
-	///
-	/// # Returns
-	/// A unique message identifier.
-	#[ink(message)]
-	fn post(&self, request: Post, fee: U256) -> Result<MessageId, Error>;
-
-	/// Submit a new ISMP `Post` request.
-	///
-	/// Sends a `Post` message through ISMP with arbitrary data.
-	///
-	/// # Parameters
-	/// - `request` - The ISMP `Post` message containing the payload.
-	/// - `fee` - The fee to be paid to relayers.
-	/// - `callback` - The callback to execute upon receiving a response.
-	///
-	/// # Returns
-	/// A unique message identifier.
-	#[ink(message, selector = 0xeb0f21f1)]
-	fn post_with_callback(
-		&self,
-		request: Post,
-		fee: U256,
-		callback: Callback,
-	) -> Result<MessageId, Error>;
 
 	/// Remove a completed or timed-out message.
 	///
@@ -119,11 +125,15 @@ pub trait Ismp {
 /// A unique message identifier.
 #[inline]
 pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
 	match callback {
-		None => precompile.get(request, fee),
-		Some(callback) => precompile.get_with_callback(request, fee, callback),
+		None => {
+			let precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			precompile.get(request, fee)
+		},
+		Some(callback) => {
+			let precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			precompile.get(request, fee, callback)
+		},
 	}
 }
 
@@ -136,8 +146,7 @@ pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<Messag
 /// - `message` - The message identifier.
 #[inline]
 pub fn get_response(message: MessageId) -> Bytes {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.get_response(message)
 }
 
@@ -147,8 +156,7 @@ pub fn get_response(message: MessageId) -> Bytes {
 /// - `message` - The message identifier to poll.
 #[inline]
 pub fn poll_status(message: MessageId) -> MessageStatus {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.pollStatus(message)
 }
 
@@ -165,11 +173,15 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 /// A unique message identifier.
 #[inline]
 pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
 	match callback {
-		None => precompile.post(request, fee),
-		Some(callback) => precompile.post_with_callback(request, fee, callback),
+		None => {
+			let precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			precompile.post(request, fee)
+		},
+		Some(callback) => {
+			let precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			precompile.post(request, fee, callback)
+		},
 	}
 }
 
@@ -181,8 +193,7 @@ pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> Result<Mess
 /// - `message` - The identifier of the message to remove.
 #[inline]
 pub fn remove(message: MessageId) -> Result<(), Error> {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove(message)
 }
 
@@ -194,13 +205,13 @@ pub fn remove(message: MessageId) -> Result<(), Error> {
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
-	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Ismp, Pop, Sol) = address.into();
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove_many(messages)
 }
 
 /// A GET request, intended to be used for sending outgoing requests
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[derive(ink::SolDecode, ink::SolEncode)]
 pub struct Get {
 	/// The destination state machine of this request.
 	pub destination: u32,
@@ -209,9 +220,9 @@ pub struct Get {
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Some application-specific metadata relating to this request.
-	pub context: Vec<u8>,
+	pub context: Bytes,
 	/// Raw Storage keys that would be used to fetch the values from the counterparty.
-	pub keys: Vec<Vec<u8>>,
+	pub keys: Vec<Bytes>,
 }
 
 impl Get {
@@ -223,33 +234,19 @@ impl Get {
 		context: Vec<u8>,
 		keys: Vec<Vec<u8>>,
 	) -> Self {
-		Self { destination, height, timeout, context, keys }
-	}
-}
-
-impl SolDecode for Get {
-	type SolType = (u32, u64, u64, Vec<u8>, Vec<Vec<u8>>);
-
-	fn from_sol_type(value: Self::SolType) -> Self {
 		Self {
-			destination: value.0,
-			height: value.1,
-			timeout: value.2,
-			context: value.3,
-			keys: value.4,
+			destination,
+			height,
+			timeout,
+			context: SolBytes(context),
+			keys: keys.into_iter().map(SolBytes).collect(),
 		}
-	}
-}
-impl<'a> SolEncode<'a> for Get {
-	type SolType = (&'a u32, &'a u64, &'a u64, &'a Vec<u8>, &'a Vec<Vec<u8>>);
-
-	fn to_sol_type(&'a self) -> Self::SolType {
-		(&self.destination, &self.height, &self.timeout, &self.context, &self.keys)
 	}
 }
 
 /// A POST request, intended to be used for sending outgoing requests.
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
+#[derive(ink::SolDecode, ink::SolEncode)]
 pub struct Post {
 	/// The destination state machine of this request.
 	pub destination: u32,
@@ -266,66 +263,58 @@ impl Post {
 	}
 }
 
-impl SolDecode for Post {
-	type SolType = (u32, u64, Vec<u8>);
-
-	fn from_sol_type(value: Self::SolType) -> Self {
-		Self { destination: value.0, timeout: value.1, data: value.2 }
-	}
-}
-impl<'a> SolEncode<'a> for Post {
-	type SolType = (&'a u32, &'a u64, &'a Vec<u8>);
-
-	fn to_sol_type(&'a self) -> Self::SolType {
-		(&self.destination, &self.timeout, &self.data)
-	}
-}
-
 /// A verified storage value.
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
-#[derive(Debug)]
+#[derive(Debug, ink::SolDecode, ink::SolEncode)]
 pub struct StorageValue {
 	/// The request storage key.
-	pub key: Vec<u8>,
+	pub key: Bytes,
 	/// The verified value.
-	pub value: Option<Vec<u8>>,
+	pub value: Option<Bytes>,
 }
 
-impl SolDecode for StorageValue {
-	type SolType = (Vec<u8>, (bool, Vec<u8>));
-
-	fn from_sol_type(value: Self::SolType) -> Self {
-		let key = value.0;
-		let value = match value.1 .0 {
-			true => Some(value.1 .1),
-			false => None,
-		};
-		Self { key, value }
-	}
-}
-impl<'a> SolEncode<'a> for StorageValue {
-	type SolType = (&'a Vec<u8>, bool, &'a [u8]);
-
-	fn to_sol_type(&'a self) -> Self::SolType {
-		const EMPTY: [u8; 0] = [];
-		(
-			&self.key,
-			self.value.is_some(),
-			&self.value.as_ref().map_or(EMPTY.as_slice(), |v| v.as_slice()),
-		)
-	}
-}
-
+/// A callback for handling responses to ISMP `Get` requests.
 #[ink::trait_definition]
 pub trait OnGetResponse {
-	// pop-api::messaging::ismp::OnGetResponse::on_response
-	#[ink(message, selector = 0x57ad942b)]
-	fn on_response(&mut self, id: MessageId, values: Vec<StorageValue>);
+	/// Handles a response to an ISMP `Get` request.
+	///
+	/// # Parameters
+	/// - `id` - The identifier of the originating message.
+	/// - `response` - The values derived from the state proof.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn onResponse(&mut self, id: MessageId, response: Vec<StorageValue>);
 }
 
+/// A callback for handling responses to ISMP `Post` requests.
 #[ink::trait_definition]
 pub trait OnPostResponse {
-	// pop-api::messaging::ismp::OnPostResponse::on_response
-	#[ink(message, selector = 0xcfb0a1d2)]
-	fn on_response(&mut self, id: MessageId, response: Vec<u8>);
+	/// Handles a response to an ISMP `Post` request.
+	///
+	/// # Parameters
+	/// - `id` - The identifier of the originating message.
+	/// - `response` - The response message.
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn onResponse(&mut self, id: MessageId, response: Bytes);
+}
+
+/// Event emitted when a ISMP `Get` request is completed.
+#[ink::event]
+pub struct IsmpGetCompleted {
+	/// The identifier of the originating message.
+	#[ink(topic)]
+	pub id: MessageId,
+	/// The values derived from the state proof.
+	pub response: Vec<StorageValue>,
+}
+
+/// Event emitted when a ISMP `Post` request is completed.
+#[ink::event]
+pub struct IsmpPostCompleted {
+	/// The identifier of the originating message.
+	#[ink(topic)]
+	pub id: MessageId,
+	/// The response message.
+	pub response: Bytes,
 }
