@@ -24,18 +24,21 @@ const HYPERBRIDGE: u32 = 4_009;
 mod ismp {
 	use ::ismp::{
 		host::StateMachine,
-		router::{GetResponse, IsmpRouter, Request, Response, StorageValue},
+		router::{GetResponse, IsmpRouter, PostResponse, Request, Response, StorageValue},
 	};
 	use pallet_api_vnext::messaging::{
 		precompiles::ismp::v0::{
 			Callback, Encoding, Weight,
-			IISMP::{get_0Call, get_1Call, Get, GetDispatched_0, GetDispatched_1},
+			IISMP::{
+				get_0Call, get_1Call, post_0Call, post_1Call, Get, GetDispatched_0,
+				GetDispatched_1, Post, PostDispatched_0, PostDispatched_1,
+			},
 		},
 		transports::ismp::ID as ISMP_MODULE_ID,
-		Event::IsmpGetResponseReceived,
+		Event::{IsmpGetResponseReceived, IsmpPostResponseReceived},
 	};
 	use pallet_ismp::offchain::Leaf;
-	use pop_api::messaging::ismp::{IsmpGetCompleted, PRECOMPILE_ADDRESS};
+	use pop_api::messaging::ismp::{IsmpGetCompleted, IsmpPostCompleted, PRECOMPILE_ADDRESS};
 	#[cfg(feature = "devnet")]
 	use pop_runtime_devnet::config::ismp::Router;
 	use sp_runtime::offchain::OffchainOverlayedChange;
@@ -82,9 +85,9 @@ mod ismp {
 		// Provide a response.
 		ext.execute_with(|| {
 			let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
-			module
-				.on_response(Response::Get(GetResponse { get, values: response.clone() }))
-				.unwrap();
+			assert_ok!(
+				module.on_response(Response::Get(GetResponse { get, values: response.clone() }))
+			);
 			System::assert_has_event(
 				IsmpGetResponseReceived { dest: contract.address, id, commitment }.into(),
 			);
@@ -147,10 +150,9 @@ mod ismp {
 		// Provide a response.
 		ext.execute_with(|| {
 			let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
-			// let commitment = H256::from(keccak_256(&Request::Get(get.clone()).encode()));
-			module
-				.on_response(Response::Get(GetResponse { get, values: response.clone() }))
-				.unwrap();
+			assert_ok!(
+				module.on_response(Response::Get(GetResponse { get, values: response.clone() }))
+			);
 			System::assert_has_event(
 				IsmpGetResponseReceived { dest: contract.address, id, commitment }.into(),
 			);
@@ -179,6 +181,117 @@ mod ismp {
 		});
 	}
 
+	#[test]
+	fn post_works() {
+		let origin = ALICE;
+		let timeout = 100_000u64;
+		let request =
+			Post { destination: HYPERBRIDGE, timeout, data: b"some_data".to_vec().into() };
+		let response = b"some_value".to_vec();
+
+		// Create a post request.
+		let mut ext = ExtBuilder::new().build();
+		let (contract, id, commitment) = ext.execute_with(|| {
+		    let contract = Contract::new(&origin, INIT_VALUE);
+
+            let id = contract.post(request,  U256::zero(), None).unwrap();
+            assert_eq!(contract.poll_status(id), MessageStatus::Pending);
+            let Some(Message::Ismp{ commitment, .. }) = Messaging::get(id) else { panic!() };
+            let expected = PostDispatched_0 { origin: contract.address.0.into(), id, commitment: commitment.0.into() }.encode_data();
+            assert_eq!(last_contract_event(&PRECOMPILE_ADDRESS), expected);
+            assert!(System::events().iter().any(|e| {
+                matches!(e.event,
+    				RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
+    					if dest_chain == StateMachine::Polkadot(HYPERBRIDGE) && source_chain == StateMachine::Polkadot(100)
+    				)
+            }));
+
+            (contract,id, commitment)
+        });
+
+		// Look up the request within offchain state in order to provide a response.
+		let Request::Post(post) = get_ismp_request(&mut ext) else { panic!() };
+
+		// Provide a response.
+		ext.execute_with(|| {
+			let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+			assert_ok!(module.on_response(Response::Post(PostResponse {
+				post,
+				response: response.clone(),
+				timeout_timestamp: timeout,
+			})));
+			System::assert_has_event(
+				IsmpPostResponseReceived { dest: contract.address, id, commitment }.into(),
+			);
+
+			assert_eq!(contract.poll_status(id), MessageStatus::Complete);
+			assert_eq!(contract.get_response(id), SolBytes(response.encode()));
+			assert_ok!(contract.remove(id));
+		});
+	}
+
+	#[test]
+	fn post_with_callback_works() {
+		let origin = ALICE;
+		let timeout = 100_000u64;
+		let request =
+			Post { destination: HYPERBRIDGE, timeout, data: b"some_data".to_vec().into() };
+		let response = b"some_value".to_vec();
+
+		// Create a post request with callback.
+		let mut ext = ExtBuilder::new().build();
+		let (contract, id, commitment) = ext.execute_with(|| {
+            let contract = Contract::new(&origin, INIT_VALUE);
+
+            let callback = Callback {
+				destination: contract.address.0.into(),
+				encoding: Encoding::SolidityAbi,
+				selector: 0x5f99cc34.into(),
+				weight: Weight { refTime: 900_000_000, proofSize: 150_000 },
+			};
+            let id = contract.post(request,  U256::zero(), Some(callback.clone())).unwrap();
+            assert_eq!(contract.poll_status(id), MessageStatus::Pending);
+            let Some(Message::Ismp{ commitment, .. }) = Messaging::get(id) else { panic!() };
+            let expected = PostDispatched_1 { origin: contract.address.0.into(), id, commitment: commitment.0.into(), callback }.encode_data();
+            assert_eq!(last_contract_event(&PRECOMPILE_ADDRESS), expected);
+            assert!(System::events().iter().any(|e| {
+                matches!(e.event,
+    				RuntimeEvent::Ismp(pallet_ismp::Event::Request { dest_chain, source_chain , ..})
+    					if dest_chain == StateMachine::Polkadot(HYPERBRIDGE) && source_chain == StateMachine::Polkadot(100)
+    				)
+            }));
+
+            (contract, id, commitment)
+        });
+
+		// Look up the request within offchain state in order to provide a response.
+		let Request::Post(post) = get_ismp_request(&mut ext) else { panic!() };
+
+		// Provide a response.
+		ext.execute_with(|| {
+			let module = Router::default().module_for_id(ISMP_MODULE_ID.to_vec()).unwrap();
+			assert_ok!(module.on_response(Response::Post(PostResponse {
+				post,
+				response: response.clone(),
+				timeout_timestamp: timeout,
+			})));
+			System::assert_has_event(
+				IsmpPostResponseReceived { dest: contract.address, id, commitment }.into(),
+			);
+			assert_eq!(
+				contract.last_event(),
+				IsmpPostCompleted { id, response: SolBytes(response) }.encode()
+			);
+			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
+			assert!(System::events().iter().any(|e| {
+				matches!(&e.event,
+				RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
+					if origin == &contract.account_id() && *message_id == id
+				)
+			}));
+		});
+	}
+
 	impl Contract {
 		fn get(
 			&self,
@@ -194,6 +307,25 @@ mod ismp {
 				},
 				Some(callback) => {
 					let call = get_1Call { request, fee, callback };
+					self.call(&self.creator, call, 0)
+				},
+			}
+		}
+
+		fn post(
+			&self,
+			request: Post,
+			fee: U256,
+			callback: Option<Callback>,
+		) -> Result<MessageId, ismp::Error> {
+			let fee = alloy::U256::from_be_bytes(fee.to_big_endian());
+			match callback {
+				None => {
+					let call = post_0Call { request, fee };
+					self.call(&self.creator, call, 0)
+				},
+				Some(callback) => {
+					let call = post_1Call { request, fee, callback };
 					self.call(&self.creator, call, 0)
 				},
 			}

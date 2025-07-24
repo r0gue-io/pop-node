@@ -209,7 +209,7 @@ pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
 	precompile.remove_many(messages)
 }
 
-/// A GET request, intended to be used for sending outgoing requests
+/// A GET request, intended to be used for sending outgoing requests.
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
 #[derive(ink::SolDecode, ink::SolEncode)]
 pub struct Get {
@@ -226,7 +226,14 @@ pub struct Get {
 }
 
 impl Get {
-	// TODO: docs
+	/// Creates a new GET request, intended to be used for sending outgoing requests.
+	///
+	/// # Parameters
+	/// - `destination` - The destination state machine of this request.
+	/// - `height` - Height at which to read the state machine.
+	/// - `timeout` - Relative from the current timestamp at which this request expires in seconds.
+	/// - `context` - Some application-specific metadata relating to this request.
+	/// - `keys` - Raw Storage keys that would be used to fetch the values from the counterparty.
 	pub fn new(
 		destination: u32,
 		height: u64,
@@ -253,13 +260,18 @@ pub struct Post {
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Encoded request data.
-	pub data: Vec<u8>,
+	pub data: Bytes,
 }
 
 impl Post {
-	// TODO: docs
+	/// Creates a new POST request, intended to be used for sending outgoing requests.
+	///
+	/// # Parameters
+	/// - `destination` - The destination state machine of this request.
+	/// - `timeout` - Relative from the current timestamp at which this request expires in seconds.
+	/// - `data` - Encoded request data.
 	pub fn new(destination: u32, timeout: u64, data: Vec<u8>) -> Self {
-		Self { destination, timeout, data }
+		Self { destination, timeout, data: SolBytes(data) }
 	}
 }
 
