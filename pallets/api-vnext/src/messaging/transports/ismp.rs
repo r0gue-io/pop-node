@@ -136,9 +136,10 @@ pub(crate) fn post<T: Config>(
 
 pub(crate) fn process_response<T: Config>(
 	commitment: &H256,
-	response_data: &impl Encode,
+	response_data: impl Encode + EncodeCallback,
 	event: impl Fn(H160, MessageId) -> Event<T>,
 ) -> Result<(), anyhow::Error> {
+	// TODO: handle Solidity encoding size
 	ensure!(
 		response_data.encoded_size() <= T::MaxResponseLen::get() as usize,
 		::ismp::Error::Custom("Response length exceeds maximum allowed length.".into())
@@ -158,7 +159,7 @@ pub(crate) fn process_response<T: Config>(
 
 	// Attempt callback with result if specified.
 	if let Some(callback) = callback {
-		if call::<T>(&origin.account, callback, &id, response_data).is_ok() {
+		if call::<T>(&origin.account, callback, &id, &response_data).is_ok() {
 			// Clean storage, return deposit
 			Messages::<T>::remove(id);
 			IsmpRequests::<T>::remove(commitment);
@@ -175,8 +176,7 @@ pub(crate) fn process_response<T: Config>(
 	}
 
 	// No callback or callback error: store response for manual retrieval and removal.
-	let response: BoundedVec<u8, T::MaxResponseLen> = response_data
-		.encode()
+	let response: BoundedVec<u8, T::MaxResponseLen> = codec::Encode::encode(&response_data)
 		.try_into()
 		.map_err(|_| ::ismp::Error::Custom("response exceeds max".into()))?;
 	Messages::<T>::insert(
@@ -232,13 +232,13 @@ impl<T: Config> IsmpModule for Handler<T> {
 			Response::Get(GetResponse { get, values }) => {
 				log::debug!(target: "pop-api::messaging::ismp", "StorageValue={:?}", values);
 				let commitment = hash_request::<T::Keccak256>(&Request::Get(get));
-				process_response(&commitment, &values, |dest, id| {
+				process_response(&commitment, values, |dest, id| {
 					Event::<T>::IsmpGetResponseReceived { dest, id, commitment }
 				})
 			},
 			Response::Post(PostResponse { post, response, .. }) => {
 				let commitment = hash_request::<T::Keccak256>(&Request::Post(post));
-				process_response(&commitment, &response, |dest, id| {
+				process_response(&commitment, response, |dest, id| {
 					Event::<T>::IsmpPostResponseReceived { dest, id, commitment }
 				})
 			},

@@ -369,6 +369,16 @@ pub mod pallet {
 	}
 }
 
+impl<T: Config> Pallet<T> {
+	/// Get a message by its identifier.
+	///
+	/// # Parameters
+	/// - `id`: The message identifier.
+	pub fn get(id: MessageId) -> Option<Message<T>> {
+		<Messages<T>>::get(id)
+	}
+}
+
 /// Executes a registered callback with the given input data and manually charges block
 /// weight.
 ///
@@ -399,7 +409,7 @@ pub(crate) fn call<T: Config>(
 	initiating_origin: &AccountIdOf<T>,
 	callback: Callback,
 	id: &MessageId,
-	data: &impl Encode,
+	data: &impl EncodeCallback,
 ) -> DispatchResult {
 	// This is the total weight that should be deducted from the blockspace for callback
 	// execution.
@@ -417,10 +427,7 @@ pub(crate) fn call<T: Config>(
 	// Its important to note that we must still ensure that the weight used is accounted for
 	// in frame_system. Hence all calls after this must not return an err and state
 	// should not be rolled back.
-	let data = match callback.encoding {
-		Encoding::Scale => [callback.selector.to_vec(), (id, data).encode()].concat(),
-		Encoding::SolidityAbi => todo!(),
-	};
+	let data = data.encode(callback.encoding, callback.selector, *id);
 	let result = T::CallbackExecutor::execute(
 		&initiating_origin,
 		callback.destination,
@@ -489,7 +496,7 @@ fn get<T: Config>(id: &MessageId) -> Vec<u8> {
 		.and_then(|m| match m {
 			Ismp { .. } | IsmpTimeout { .. } | XcmQuery { .. } | XcmTimeout { .. } => None,
 			IsmpResponse { response, .. } => Some(response.into_inner()),
-			XcmResponse { response, .. } => Some(response.encode()),
+			XcmResponse { response, .. } => Some(codec::Encode::encode(&response)),
 		})
 		.unwrap_or_default()
 }
@@ -757,6 +764,17 @@ pub enum Encoding {
 	SolidityAbi,
 }
 
+/// Trait for encoding a response callback.
+pub(crate) trait EncodeCallback {
+	/// Encodes the data using the specified encoding.
+	///
+	/// # Parameters
+	/// - `encoding`: The encoding to use.
+	/// - `selector`: The message selector to be used for the callback.
+	/// - `id`: The originating message identifier.
+	fn encode(&self, encoding: Encoding, selector: [u8; 4], id: MessageId) -> Vec<u8>;
+}
+
 /// Represents a cross-chain message in the system.
 ///
 /// Each variant of this enum captures a different state or type of message lifecycle:
@@ -768,7 +786,7 @@ pub enum Encoding {
 /// associated deposits and optional callback metadata.
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(T))]
-pub(crate) enum Message<T: Config> {
+pub enum Message<T: Config> {
 	/// Represents a pending ISMP request.
 	///
 	/// # Fields
@@ -939,7 +957,7 @@ impl<T: Config> From<&Message<T>> for MessageStatus {
 /// The origin of a request.
 #[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
 #[scale_info(skip_type_params(Account))]
-pub(super) struct Origin<Account> {
+pub struct Origin<Account> {
 	address: H160,
 	account: Account,
 }

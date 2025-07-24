@@ -120,6 +120,18 @@ interface IXCM {
     error OriginConversionFailed();
 }
 
+/**
+ * @title A callback for handling responses to XCM queries.
+ */
+interface IQueryResponse {
+    /**
+     * @notice Handles a response to an ISMP `Post` request.
+     * @param id The identifier of the originating message.
+     * @param response The response message.
+     */
+    function onResponse(uint64 id, bytes memory response) external;
+}
+
 /// @notice A message callback.
 struct Callback {
     /// @custom:property The contract address to which the callback should be sent.

@@ -260,6 +260,56 @@ fn try_post<T: Config>(value: &Post) -> Result<DispatchPost, Error> {
 	})
 }
 
+impl EncodeCallback for Vec<::ismp::router::StorageValue> {
+	fn encode(&self, encoding: messaging::Encoding, selector: [u8; 4], id: MessageId) -> Vec<u8> {
+		use messaging::Encoding::*;
+		match encoding {
+			Scale => [selector.to_vec(), (id, self).encode()].concat(),
+			SolidityAbi => {
+				// Use interface to encode call data
+				let call = IGetResponse::onResponseCall {
+					id,
+					// TODO: address clones
+					response: self
+						.into_iter()
+						.map(|v| IISMP::StorageValue {
+							key: v.key.clone().into(),
+							value: v.value.as_ref().map_or_else(
+								|| IISMP::Value { exists: false, value: Default::default() },
+								|v| IISMP::Value { exists: true, value: v.clone().into() },
+							),
+						})
+						.collect(),
+				};
+				let mut data = call.abi_encode();
+				debug_assert_eq!(data[..4], selector);
+				// Replace selector with that provided at request
+				data.splice(0..4, selector);
+				data
+			},
+		}
+	}
+}
+
+impl EncodeCallback for Vec<u8> {
+	fn encode(&self, encoding: messaging::Encoding, selector: [u8; 4], id: MessageId) -> Vec<u8> {
+		use messaging::Encoding::*;
+		match encoding {
+			Scale => [selector.to_vec(), (id, self).encode()].concat(),
+			SolidityAbi => {
+				// Use interface to encode call data
+				// TODO: address clone
+				let call = IPostResponse::onResponseCall { id, response: self.clone().into() };
+				let mut data = call.abi_encode();
+				debug_assert_eq!(data[..4], selector);
+				// Replace selector with that provided at request
+				data.splice(0..4, selector);
+				data
+			},
+		}
+	}
+}
+
 impl From<&Callback> for super::Callback {
 	fn from(callback: &Callback) -> Self {
 		Self::new(

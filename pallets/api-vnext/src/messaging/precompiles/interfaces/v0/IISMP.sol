@@ -109,6 +109,22 @@ interface IISMP {
         bytes data;
     }
 
+    /// @notice A verified storage value.
+    struct StorageValue{
+        /// @custom:property The request storage key.
+        bytes key;
+        /// @custom:property The verified value.
+        Value value;
+    }
+
+    /// @notice A verified storage value.
+    struct Value {
+        /// @custom:property Whether a value exists.
+        bool exists;
+        /// @custom:property The verified value.
+        bytes value;
+    }
+
     /**
      * @notice A GET has been dispatched via ISMP.
      * @param origin The origin of the request.
@@ -151,6 +167,30 @@ interface IISMP {
     error MaxKeyExceeded();
     /// @dev The number of keys exceeds the maximum allowed size.
     error MaxKeysExceeded();
+}
+
+/**
+ * @title A callback for handling responses to ISMP `Get` requests.
+ */
+interface IGetResponse {
+    /**
+     * @notice Handles a response to an ISMP `Get` request.
+     * @param id The identifier of the originating message.
+     * @param response The values derived from the state proof.
+     */
+    function onResponse(uint64 id, IISMP.StorageValue[] memory response) external;
+}
+
+/**
+ * @title A callback for handling responses to ISMP `Post` requests.
+ */
+interface IPostResponse {
+    /**
+     * @notice Handles a response to an ISMP `Post` request.
+     * @param id The identifier of the originating message.
+     * @param response The response message.
+     */
+    function onResponse(uint64 id, bytes memory response) external;
 }
 
 /// @notice A message callback.
