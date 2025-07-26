@@ -2683,8 +2683,7 @@ checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
 [[package]]
 name = "contract-build"
 version = "5.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e661897ab30bc0290628b2ea3ce18463c766a1264687a76aa8f5a36b6e75e78"
+source = "git+https://github.com/use-ink/cargo-contract?branch=v5-rust-stable#450334b069b939afc877a312647a601fedbfbe01"
 dependencies = [
  "anyhow",
  "blake2 0.10.6",
@@ -2724,8 +2723,7 @@ dependencies = [
 [[package]]
 name = "contract-metadata"
 version = "5.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3ce11bf540c9b154aca38e9d828ae7ea93ec7b4486c5dea87d553016b28af175"
+source = "git+https://github.com/use-ink/cargo-contract?branch=v5-rust-stable#450334b069b939afc877a312647a601fedbfbe01"
 dependencies = [
  "anyhow",
  "impl-serde 0.5.0",
