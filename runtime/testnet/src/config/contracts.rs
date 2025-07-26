@@ -9,8 +9,8 @@ use pop_runtime_common::{DepositPerByte, DepositPerItem, UNIT};
 
 use super::api::{self, Config};
 use crate::{
-	deposit, Balance, Balances, Perbill, PolkadotXcm, Runtime, RuntimeCall, RuntimeEvent,
-	RuntimeHoldReason, Timestamp, TransactionPayment,
+	deposit, Balance, Balances, Perbill, Runtime, RuntimeCall, RuntimeEvent, RuntimeHoldReason,
+	Timestamp, TransactionPayment,
 };
 
 fn schedule<T: pallet_contracts::Config>() -> pallet_contracts::Schedule<T> {
@@ -88,8 +88,6 @@ impl pallet_contracts::Config for Runtime {
 
 impl pallet_revive::Config for Runtime {
 	type AddressMapper = pallet_revive::AccountId32Mapper<Self>;
-	// No runtime dispatchables are callable from contracts.
-	type CallFilter = Nothing;
 	// EVM chain id. 3,395 is a unique ID still.
 	type ChainId = ConstU64<3_395>;
 	// 30 percent of storage deposit held for using a code hash.
@@ -116,7 +114,6 @@ impl pallet_revive::Config for Runtime {
 	type UploadOrigin = EnsureSigned<Self::AccountId>;
 	type WeightInfo = pallet_revive::weights::SubstrateWeight<Self>;
 	type WeightPrice = TransactionPayment;
-	type Xcm = PolkadotXcm;
 }
 
 impl TryFrom<RuntimeCall> for pallet_revive::Call<Runtime> {
