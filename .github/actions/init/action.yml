@@ -1,6 +1,9 @@
 name: Initialize
 description: This action initializes a runner for use in other actions.
 inputs:
+  cache:
+    description: Whether to enable Rust caching. Defaults to true.
+    default: "true"
   cache-all-crates:
     description: Whether all crates should be cached, or only dependent crates. Defaults to true.
     default: "true"
@@ -33,6 +36,7 @@ runs:
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
     - name: Rust Cache
+      if: ${{ inputs.cache == 'true' }}
       uses: Swatinem/rust-cache@v2.8.0
       with:
         cache-all-crates: ${{ inputs.cache-all-crates }}
