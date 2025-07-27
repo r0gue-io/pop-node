@@ -5,7 +5,7 @@ use crate::{impl_sol_encoding_for_precompile, sol::PrecompileError};
 
 #[cfg_attr(feature = "std", derive(Debug, PartialEq))]
 #[derive(ink::SolErrorEncode)]
-#[ink::scale_derive(Decode, Encode, TypeInfo)] // TODO: check removal
+#[ink::scale_derive(Decode, Encode, TypeInfo)]
 pub enum Error {
 	/// The metadata provided is invalid.
 	BadMetadata,

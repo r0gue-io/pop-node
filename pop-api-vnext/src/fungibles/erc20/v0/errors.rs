@@ -4,7 +4,7 @@ use super::*;
 use crate::{impl_sol_encoding_for_precompile, sol::PrecompileError};
 
 #[derive(ink::SolErrorEncode)]
-#[ink::scale_derive(Decode, Encode, TypeInfo)] // TODO: check removal
+#[ink::scale_derive(Decode, Encode, TypeInfo)]
 pub enum Error {
 	/// Indicates a failure with the `spender`’s `allowance`.
 	ERC20InsufficientAllowance(Address, U256, U256),
