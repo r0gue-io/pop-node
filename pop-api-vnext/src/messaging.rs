@@ -24,7 +24,11 @@ pub type Bytes = SolBytes<Vec<u8>>;
 pub type FixedBytes<const N: usize> = SolBytes<[u8; N]>;
 pub type MessageId = u64;
 
-// todo: docs
+/// Calculate the hashed account identifier for a given parachain and account.
+///
+/// # Parameters
+/// - `para_id`: The parachain identifier.
+/// - `account_id`: The account identifier.
 pub fn hashed_account(para_id: u32, account_id: AccountId) -> AccountId {
 	let location = (
 		b"SiblingChain",
