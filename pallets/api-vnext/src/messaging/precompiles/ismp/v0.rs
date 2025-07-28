@@ -275,7 +275,7 @@ impl EncodeCallback for Vec<::ismp::router::StorageValue> {
 				// Use interface to encode call data
 				let call = IGetResponse::onGetResponseCall {
 					id,
-					// TODO: address clones
+					// Clones required for ABI encoding of dynamic bytes type.
 					response: self
 						.into_iter()
 						.map(|v| IISMP::StorageValue {
@@ -303,8 +303,8 @@ impl EncodeCallback for Vec<u8> {
 		match encoding {
 			Scale => [selector.to_vec(), (id, self).encode()].concat(),
 			SolidityAbi => {
-				// Use interface to encode call data
-				// TODO: address clone
+				// Use interface to encode call data. Clone required for ABI encoding of dynamic
+				// bytes type.
 				let call = IPostResponse::onPostResponseCall { id, response: self.clone().into() };
 				let mut data = call.abi_encode();
 				debug_assert_eq!(data[..4], selector);
