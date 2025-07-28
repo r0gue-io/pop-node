@@ -91,8 +91,8 @@ where
 				let fee = (*fee).try_convert()?;
 				let address = origin.address;
 
-				let (id, commitment) =
-					get::<T>(origin, message, fee, Some(callback.into())).map_err(Self::map_err)?;
+				let (id, commitment) = get::<T>(origin, message, fee, Some(callback.try_into()?))
+					.map_err(Self::map_err)?;
 
 				let origin = address.0.into();
 				let commitment = commitment.0.into();
@@ -157,7 +157,7 @@ where
 				let fee = (*fee).try_convert()?;
 				let address = origin.address;
 
-				let (id, commitment) = post::<T>(origin, message, fee, Some(callback.into()))
+				let (id, commitment) = post::<T>(origin, message, fee, Some(callback.try_into()?))
 					.map_err(Self::map_err)?;
 
 				let origin = address.0.into();
@@ -233,6 +233,7 @@ impl_from_sol_error! {
 	IISMP::MaxDataExceeded,
 	IISMP::MaxKeyExceeded,
 	IISMP::MaxKeysExceeded,
+	InvalidEncoding,
 	MessageNotFound,
 	RequestPending,
 	TooManyMessages,
@@ -316,24 +317,27 @@ impl EncodeCallback for Vec<u8> {
 	}
 }
 
-impl From<&Callback> for super::Callback {
-	fn from(callback: &Callback) -> Self {
-		Self::new(
+impl TryFrom<&Callback> for super::Callback {
+	type Error = Error;
+
+	fn try_from(callback: &Callback) -> Result<Self, Self::Error> {
+		Ok(Self::new(
 			(*callback.destination.0).into(),
-			(&callback.encoding).into(),
+			(&callback.encoding).try_into()?,
 			callback.selector.0,
 			(&callback.weight).into(),
-		)
+		))
 	}
 }
 
-impl From<&Encoding> for super::Encoding {
-	fn from(encoding: &Encoding) -> Self {
+impl TryFrom<&Encoding> for super::Encoding {
+	type Error = Error;
+
+	fn try_from(encoding: &Encoding) -> Result<Self, Self::Error> {
 		match encoding {
-			Encoding::Scale => Self::Scale,
-			Encoding::SolidityAbi => Self::SolidityAbi,
-			// TODO
-			Encoding::__Invalid => unimplemented!(),
+			Encoding::Scale => Ok(Self::Scale),
+			Encoding::SolidityAbi => Ok(Self::SolidityAbi),
+			Encoding::__Invalid => Err(InvalidEncoding.into()),
 		}
 	}
 }
@@ -504,7 +508,7 @@ mod tests {
 				assert!(matches!(
 					Messages::get(message),
 					Some(Message::Ismp { origin: o, commitment: c, callback: cb, message_deposit })
-					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == GET_MESSAGE_DEPOSIT)
+					    if o == origin && c == commitment && cb == Some((&callback).try_into().unwrap()) && message_deposit == GET_MESSAGE_DEPOSIT)
 				);
 			});
 	}
@@ -639,7 +643,7 @@ mod tests {
 				assert!(matches!(
 					Messages::get(message),
 					Some(Message::Ismp { origin: o, commitment: c, callback: cb, message_deposit })
-					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == POST_MESSAGE_DEPOSIT)
+					    if o == origin && c == commitment && cb == Some((&callback).try_into().unwrap()) && message_deposit == POST_MESSAGE_DEPOSIT)
 				);
 			});
 	}

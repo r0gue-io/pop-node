@@ -183,6 +183,8 @@ struct Weight {
     uint64 proofSize;
 }
 
+/// @dev The specified encoding is invalid.
+error InvalidEncoding();
 /// @dev The message was not found.
 error MessageNotFound();
 /// @dev The request is pending.

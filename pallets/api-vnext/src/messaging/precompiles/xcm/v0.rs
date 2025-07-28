@@ -120,7 +120,7 @@ where
 				let address = origin.address;
 
 				let (id, query_id) =
-					new_query::<T>(origin, location, (*timeout).into(), Some(callback.into()))
+					new_query::<T>(origin, location, (*timeout).into(), Some(callback.try_into()?))
 						.map_err(Self::map_err)?;
 
 				let account = address.0.into();
@@ -232,6 +232,7 @@ impl_from_sol_error! {
 	IXCM::FutureTimeoutMandatory,
 	IXCM::MaxMessageTimeoutPerBlockReached,
 	IXCM::OriginConversionFailed,
+	InvalidEncoding,
 	MessageNotFound,
 	RequestPending,
 	TooManyMessages,
@@ -256,24 +257,27 @@ impl EncodeCallback for Response {
 	}
 }
 
-impl From<&Callback> for super::Callback {
-	fn from(callback: &Callback) -> Self {
-		Self::new(
+impl TryFrom<&Callback> for super::Callback {
+	type Error = Error;
+
+	fn try_from(callback: &Callback) -> Result<Self, Self::Error> {
+		Ok(Self::new(
 			(*callback.destination.0).into(),
-			(&callback.encoding).into(),
+			(&callback.encoding).try_into()?,
 			callback.selector.0,
 			(&callback.weight).into(),
-		)
+		))
 	}
 }
 
-impl From<&Encoding> for super::Encoding {
-	fn from(encoding: &Encoding) -> Self {
+impl TryFrom<&Encoding> for super::Encoding {
+	type Error = Error;
+
+	fn try_from(encoding: &Encoding) -> Result<Self, Self::Error> {
 		match encoding {
-			Encoding::Scale => Self::Scale,
-			Encoding::SolidityAbi => Self::SolidityAbi,
-			// TODO
-			Encoding::__Invalid => unimplemented!(),
+			Encoding::Scale => Ok(Self::Scale),
+			Encoding::SolidityAbi => Ok(Self::SolidityAbi),
+			Encoding::__Invalid => Err(InvalidEncoding.into()),
 		}
 	}
 }
@@ -617,7 +621,7 @@ mod tests {
 				assert!(matches!(
 					Messages::get(message),
 					Some(Message::XcmQuery { origin: o, query_id: qid, callback: cb, message_deposit })
-					    if o == origin && qid == query_id && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
+					    if o == origin && qid == query_id && cb == Some((&callback).try_into().unwrap()) && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
 	}
