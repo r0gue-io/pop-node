@@ -384,7 +384,8 @@ mod tests {
 	type Messages = crate::messaging::Messages<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(ISMP);
-	const MESSAGE_DEPOSIT: u128 = 129_180;
+	const GET_MESSAGE_DEPOSIT: u128 = 131_290;
+	const POST_MESSAGE_DEPOSIT: u128 = 134_415;
 
 	#[test]
 	fn get_reverts_when_max_context_exceeded() {
@@ -463,7 +464,7 @@ mod tests {
 				assert!(matches!(
 					Messages::get(message),
 					Some(Message::Ismp { origin: o, commitment: c, callback, message_deposit })
-					    if o == origin && c == commitment && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
+					    if o == origin && c == commitment && callback.is_none() && message_deposit == GET_MESSAGE_DEPOSIT)
 				);
 			});
 	}
@@ -503,7 +504,7 @@ mod tests {
 				assert!(matches!(
 					Messages::get(message),
 					Some(Message::Ismp { origin: o, commitment: c, callback: cb, message_deposit })
-					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
+					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == GET_MESSAGE_DEPOSIT)
 				);
 			});
 	}
@@ -603,7 +604,7 @@ mod tests {
 				assert!(matches!(
 					Messages::get( message),
 					Some(Message::Ismp { origin: o, commitment: c, callback, message_deposit })
-					    if o == origin && c == commitment && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
+					    if o == origin && c == commitment && callback.is_none() && message_deposit == POST_MESSAGE_DEPOSIT)
 				);
 			});
 	}
@@ -638,7 +639,7 @@ mod tests {
 				assert!(matches!(
 					Messages::get(message),
 					Some(Message::Ismp { origin: o, commitment: c, callback: cb, message_deposit })
-					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
+					    if o == origin && c == commitment && cb == Some((&callback).into()) && message_deposit == POST_MESSAGE_DEPOSIT)
 				);
 			});
 	}
