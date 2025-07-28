@@ -1,6 +1,6 @@
 pub use errors::{Error, Error::*};
 pub use ink::xcm::prelude::{Location, VersionedLocation, VersionedResponse, VersionedXcm};
-use ink::{Address, SolBytes};
+use ink::{scale::Decode, Address, SolBytes};
 
 use super::{super::v0::Callback, *};
 
@@ -141,9 +141,12 @@ pub trait Messaging {
 /// # Returns
 /// A SCALE-encoded dispatch result.
 #[inline]
-pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Bytes {
+pub fn execute<Call: Encode>(message: VersionedXcm<Call>, weight: Weight) -> Result<(), Error> {
 	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
-	precompile.execute(SolBytes(message.encode()), weight)
+	let result = precompile.execute(SolBytes(message.encode()), weight);
+	Result::<(), ()>::decode(&mut result.as_slice())
+		.map_err(|_| Error::DecodingFailed)?
+		.map_err(|_| Error::ExecutionFailed(result))
 }
 
 /// Returns the response to a message.
@@ -241,9 +244,15 @@ pub fn remove_many(messages: Vec<MessageId>) {
 /// # Returns
 /// A SCALE-encoded dispatch result.
 #[inline]
-pub fn send<Call: Encode>(destination: VersionedLocation, message: VersionedXcm<Call>) -> Bytes {
+pub fn send<Call: Encode>(
+	destination: VersionedLocation,
+	message: VersionedXcm<Call>,
+) -> Result<(), Error> {
 	let precompile: contract_ref!(Xcm, Pop, Sol) = PRECOMPILE_ADDRESS.into();
-	precompile.send(SolBytes(destination.encode()), SolBytes(message.encode()))
+	let result = precompile.send(SolBytes(destination.encode()), SolBytes(message.encode()));
+	Result::<(), ()>::decode(&mut result.as_slice())
+		.map_err(|_| Error::DecodingFailed)?
+		.map_err(|_| Error::SendingFailed(result))
 }
 
 /// A callback for handling responses to XCM queries.

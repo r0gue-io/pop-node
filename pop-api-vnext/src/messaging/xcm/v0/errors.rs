@@ -9,6 +9,8 @@ use crate::{impl_sol_encoding_for_precompile, sol::PrecompileError};
 pub enum Error {
 	/// The input failed to decode.
 	DecodingFailed,
+	/// The execution of a XCM message failed.
+	ExecutionFailed(Bytes),
 	/// Timeouts must be in the future.
 	FutureTimeoutMandatory,
 	/// Message block limit has been reached for this expiry block. Try a different timeout.
@@ -19,6 +21,8 @@ pub enum Error {
 	OriginConversionFailed,
 	/// The request is pending.
 	RequestPending,
+	/// The sending of a XCM message failed.
+	SendingFailed(Bytes),
 	/// The number of messages exceeds the limit.
 	TooManyMessages,
 }

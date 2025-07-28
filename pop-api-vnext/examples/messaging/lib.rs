@@ -98,9 +98,9 @@ mod messaging {
 						.build(),
 				)
 				.build();
-			let result = xcm::execute(VersionedXcm::V5(message), Weight::MAX);
-			// TODO: check result
-
+			if let Err(error) = xcm::execute(VersionedXcm::V5(message), Weight::MAX) {
+				revert(&error)
+			}
 			self.env().emit_event(Funded {
 				account_id: beneficiary,
 				value: self.env().transferred_value(),
@@ -136,8 +136,9 @@ mod messaging {
 			let message: Xcm<()> = self._transact(call, weight, fees, response);
 			let mut hash = [0u8; 32];
 			Blake2x256::hash(&message.encode(), &mut hash);
-			let result = api::xcm::send(dest.into_versioned(), VersionedXcm::V5(message));
-
+			if let Err(error) = xcm::send(dest.into_versioned(), VersionedXcm::V5(message)) {
+				revert(&error)
+			}
 			self.env().emit_event(XcmRequested { id, query_id, hash });
 			Ok(())
 		}
