@@ -17,10 +17,7 @@ use sp_runtime::{BuildStorage, DispatchError};
 
 mod fungibles;
 
-const GAS_LIMIT: Weight = Weight::from_parts(500_000_000_000, 3 * 1024 * 1024);
 const INIT_AMOUNT: Balance = 100_000_000 * UNIT;
-const INIT_VALUE: Balance = 100 * UNIT;
-const STORAGE_DEPOSIT_LIMIT: DepositLimit<Balance> = DepositLimit::Balance(Balance::MAX);
 
 type TokenId = u32;
 
@@ -66,6 +63,8 @@ fn instantiate(
 	origin: RuntimeOrigin,
 	contract: impl AsRef<Path>,
 	value: Balance,
+	gas_limit: Weight,
+	storage_deposit_limit: DepositLimit<Balance>,
 	data: Vec<u8>,
 	salt: Option<[u8; 32]>,
 ) -> H160 {
@@ -74,8 +73,8 @@ fn instantiate(
 	let result = Revive::bare_instantiate(
 		origin,
 		value,
-		GAS_LIMIT,
-		DepositLimit::Balance(Balance::MAX),
+		gas_limit,
+		storage_deposit_limit,
 		Code::Upload(binary),
 		data,
 		salt,

@@ -20,6 +20,9 @@ use sp_io::hashing::twox_256;
 use super::*;
 
 const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.polkavm";
+const GAS_LIMIT: Weight = Weight::from_parts(6_000_000_000, 100_000);
+const INIT_VALUE: Balance = 11 * UNIT;
+const STORAGE_DEPOSIT_LIMIT: DepositLimit<Balance> = DepositLimit::Balance(1 * UNIT);
 
 #[test]
 fn total_supply_works() {
@@ -707,8 +710,15 @@ impl Contract {
 		let data = vec![]; // Default solidity constructor
 		let salt = twox_256(&value.to_le_bytes());
 
-		let address =
-			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, data, Some(salt));
+		let address = instantiate(
+			RuntimeOrigin::signed(origin.clone()),
+			CONTRACT,
+			value,
+			GAS_LIMIT,
+			STORAGE_DEPOSIT_LIMIT,
+			data,
+			Some(salt),
+		);
 		Self { address, creator: origin.clone() }
 	}
 
@@ -716,8 +726,15 @@ impl Contract {
 	fn new_with_create(origin: &AccountId, value: Balance, min_balance: U256) -> Self {
 		let data = [blake_selector("create").to_vec(), min_balance.encode()].concat(); // Additional constructor via ink abi
 		let salt = twox_256(&value.to_le_bytes());
-		let address =
-			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, data, Some(salt));
+		let address = instantiate(
+			RuntimeOrigin::signed(origin.clone()),
+			CONTRACT,
+			value,
+			GAS_LIMIT,
+			STORAGE_DEPOSIT_LIMIT,
+			data,
+			Some(salt),
+		);
 		Self { address, creator: origin.clone() }
 	}
 
