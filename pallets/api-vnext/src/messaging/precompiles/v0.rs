@@ -53,7 +53,6 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 
 				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
 
-				// TODO: is the precompile emitting the event, or the pallet
 				let account = address.0.into();
 				deposit_event(env, Removed { account, messages: vec![*message] })?;
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
@@ -69,7 +68,6 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 
 				remove::<T>(origin, messages).map_err(Self::map_err)?;
 
-				// TODO: is the precompile emitting the event, or the pallet
 				let account = address.0.into();
 				deposit_event(env, Removed { account, messages: messages.clone() })?;
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
