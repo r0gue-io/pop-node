@@ -21,6 +21,17 @@ use super::{
 };
 
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
+type GetState<T> = (
+	StateMachine,
+	[u8; 4],
+	BoundedVec<BoundedVec<u8, <T as Config>::MaxKeyLen>, <T as Config>::MaxKeys>,
+	u64,
+	BoundedVec<u8, <T as Config>::MaxContextLen>,
+	u64,
+);
+type PostState<T> =
+	(StateMachine, [u8; 4], [u8; 4], u64, BoundedVec<u8, <T as Config>::MaxDataLen>);
+type StateMachine = (u8, u32);
 
 pub const ID: [u8; 3] = *b"pop";
 
@@ -47,9 +58,7 @@ pub(crate) fn get<T: Config>(
 	let message_deposit =
 		calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
-		// TODO: include length of `DispatchGet` as own `Get` no longer required
-		// 	.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, Get<T>>())
-		;
+			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, GetState<T>>());
 
 	T::Fungibles::hold(&HoldReason::Messaging.into(), &origin.account, message_deposit)?;
 
@@ -104,9 +113,7 @@ pub(crate) fn post<T: Config>(
 	let message_deposit =
 		calculate_protocol_deposit::<T, T::OnChainByteFee>(ProtocolStorageDeposit::IsmpRequests)
 			.saturating_add(calculate_message_deposit::<T, T::OnChainByteFee>())
-			// TODO: include length of `DispatchGet` as own `Get` no longer required
-		//	.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, ismp::Post<T>>())
-		;
+			.saturating_add(calculate_deposit_of::<T, T::OffChainByteFee, PostState<T>>());
 
 	T::Fungibles::hold(&HoldReason::Messaging.into(), &origin.account, message_deposit)?;
 
@@ -295,10 +302,17 @@ mod tests {
 	use super::{super::tests::events, messaging::HoldReason::*, mock::*, *};
 
 	type Fungibles = <Test as Config>::Fungibles;
+	type GetState = super::GetState<Test>;
 	type IsmpRequests = super::IsmpRequests<Test>;
+	type MaxContextLen = <Test as Config>::MaxContextLen;
+	type MaxDataLen = <Test as Config>::MaxDataLen;
+	type MaxKeyLen = <Test as Config>::MaxKeyLen;
+	type MaxKeys = <Test as Config>::MaxKeys;
 	type MaxResponseLen = <Test as Config>::MaxResponseLen;
 	type Messages = super::Messages<Test>;
+	type OffChainByteFee = <Test as Config>::OffChainByteFee;
 	type OnChainByteFee = <Test as Config>::OnChainByteFee;
+	type PostState = super::PostState<Test>;
 	type WeightToFee = <Test as Config>::WeightToFee;
 
 	mod get {
@@ -314,8 +328,7 @@ mod tests {
 			let expected_deposit = calculate_protocol_deposit::<Test, OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
 			) + calculate_message_deposit::<Test, OnChainByteFee>() +
-				// TODO
-				//	calculate_deposit_of::<Test, OffChainByteFee, ismp::Get<Test>>() +
+				calculate_deposit_of::<Test, OffChainByteFee, GetState>() +
 				callback_deposit;
 			let endowment = existential_deposit() + expected_deposit + fee;
 			ExtBuilder::new()
@@ -341,7 +354,8 @@ mod tests {
 			let callback = None;
 			let deposit = calculate_protocol_deposit::<Test, OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<Test, OnChainByteFee>();
+			) + calculate_message_deposit::<Test, OnChainByteFee>() +
+				calculate_deposit_of::<Test, OffChainByteFee, GetState>();
 			let endowment = existential_deposit() + deposit + fee;
 			ExtBuilder::new()
 				.with_balances(vec![(origin.account.clone(), endowment)])
@@ -365,14 +379,28 @@ mod tests {
 				})
 		}
 
+		#[test]
+		fn max_len_works() {
+			let get = message();
+			assert_eq!(
+				GetState::max_encoded_len(),
+				(get.dest, get.from, get.keys, get.height, get.context, get.timeout)
+					.encode()
+					.len()
+			)
+		}
+
 		fn message() -> DispatchGet {
 			DispatchGet {
-				dest: StateMachine::Polkadot(2_000),
-				from: ID.to_vec(),
-				keys: Vec::default(),
-				height: 10,
-				context: Vec::default(),
-				timeout: 100,
+				dest: StateMachine::Polkadot(u32::MAX),
+				from: ID.into(),
+				keys: vec![
+					vec![255; <MaxKeyLen as Get<u32>>::get() as usize];
+					<MaxKeys as Get<u32>>::get() as usize
+				],
+				height: u64::MAX,
+				context: vec![255; <MaxContextLen as Get<u32>>::get() as usize],
+				timeout: u64::MAX,
 			}
 		}
 	}
@@ -387,11 +415,11 @@ mod tests {
 			let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 			let fee: Balance = u32::MAX.into();
-			let expected_deposit = calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
+			let expected_deposit =
+				calculate_protocol_deposit::<Test, <Test as Config>::OnChainByteFee>(
 					ProtocolStorageDeposit::IsmpRequests,
 				) + calculate_message_deposit::<Test, <Test as Config>::OnChainByteFee>() +
-				    // TODO
-					//calculate_deposit_of::<Test, OffChainByteFee, ismp::Post<Test>>() +
+					calculate_deposit_of::<Test, OffChainByteFee, PostState>() +
 					callback_deposit;
 			let endowment = existential_deposit() + expected_deposit + fee;
 			ExtBuilder::new()
@@ -418,7 +446,8 @@ mod tests {
 			let callback = None;
 			let deposit = calculate_protocol_deposit::<Test, OnChainByteFee>(
 				ProtocolStorageDeposit::IsmpRequests,
-			) + calculate_message_deposit::<Test, OnChainByteFee>();
+			) + calculate_message_deposit::<Test, OnChainByteFee>() +
+				calculate_deposit_of::<Test, OffChainByteFee, PostState>();
 			let endowment = existential_deposit() + deposit + fee;
 			ExtBuilder::new()
 				.with_balances(vec![(origin.account.clone(), endowment)])
@@ -442,13 +471,22 @@ mod tests {
 				})
 		}
 
+		#[test]
+		fn max_len_works() {
+			let post = message();
+			assert_eq!(
+				PostState::max_encoded_len(),
+				(post.dest, post.from, post.to, post.timeout, post.body).encode().len()
+			)
+		}
+
 		fn message() -> DispatchPost {
 			DispatchPost {
-				dest: StateMachine::Polkadot(2_000),
+				dest: StateMachine::Polkadot(u32::MAX),
 				from: ID.to_vec(),
 				to: ID.to_vec(),
-				timeout: 100,
-				body: Vec::default(),
+				timeout: u64::MAX,
+				body: vec![255; <MaxDataLen as Get<u32>>::get() as usize],
 			}
 		}
 	}
