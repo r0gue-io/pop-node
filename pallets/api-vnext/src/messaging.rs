@@ -501,6 +501,10 @@ fn get<T: Config>(id: &MessageId) -> Vec<u8> {
 		.unwrap_or_default()
 }
 
+fn id<T: parachain_info::Config>() -> u32 {
+	parachain_info::Pallet::<T>::parachain_id().into()
+}
+
 /// Handles fee management and refund logic for callback execution.
 ///
 /// This function is intended to balance the fees collected upfront for a callback

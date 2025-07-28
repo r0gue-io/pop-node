@@ -16,8 +16,10 @@ sol!(
 );
 
 pub struct Messaging<const FIXED: u16, T>(PhantomData<T>);
-impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config> Precompile
-	for Messaging<FIXED, T>
+impl<
+		const FIXED: u16,
+		T: frame_system::Config + pallet_revive::Config + parachain_info::Config + Config,
+	> Precompile for Messaging<FIXED, T>
 {
 	type Interface = IMessagingCalls;
 	type T = T;
@@ -38,6 +40,13 @@ impl<const FIXED: u16, T: frame_system::Config + pallet_revive::Config + Config>
 				let response = get::<T>(message).into();
 
 				Ok(getResponseCall::abi_encode_returns(&response))
+			},
+			IMessagingCalls::id(idCall {}) => {
+				env.charge(<T as Config>::WeightInfo::id())?;
+
+				let id = id::<T>();
+
+				Ok(idCall::abi_encode_returns(&id))
 			},
 			IMessagingCalls::pollStatus(pollStatusCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::poll_status())?;
@@ -177,6 +186,18 @@ mod tests {
 					);
 				}
 			});
+	}
+
+	#[test]
+	fn id_works() {
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let para_id = u32::from(ParachainInfo::parachain_id());
+			assert_eq!(
+				call_precompile::<u32>(&origin, &IMessagingCalls::id(idCall {})).unwrap(),
+				para_id
+			);
+		});
 	}
 
 	#[test]

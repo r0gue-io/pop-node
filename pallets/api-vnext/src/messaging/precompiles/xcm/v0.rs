@@ -23,7 +23,11 @@ pub(crate) type BlockNumberOf<T> =
 pub struct Xcm<const FIXED: u16, T>(PhantomData<T>);
 impl<
 		const FIXED: u16,
-		T: frame_system::Config + pallet_revive::Config + pallet_xcm::Config + Config,
+		T: frame_system::Config
+			+ pallet_revive::Config
+			+ pallet_xcm::Config
+			+ parachain_info::Config
+			+ Config,
 	> Precompile for Xcm<FIXED, T>
 where
 	BlockNumberOf<T>: From<u32>,
@@ -86,6 +90,13 @@ where
 				let response = get::<T>(message).into();
 
 				Ok(getResponseCall::abi_encode_returns(&response))
+			},
+			IXCMCalls::id(idCall {}) => {
+				env.charge(<T as Config>::WeightInfo::id())?;
+
+				let id = id::<T>();
+
+				Ok(idCall::abi_encode_returns(&id))
 			},
 			IXCMCalls::newQuery_0(newQuery_0Call { responder, timeout }) => {
 				env.charge(<T as Config>::WeightInfo::xcm_new_query(0))?;
@@ -404,6 +415,18 @@ mod tests {
 	}
 
 	#[test]
+	fn id_works() {
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let para_id = u32::from(ParachainInfo::parachain_id());
+			assert_eq!(
+				call_precompile::<u32>(&origin, &IXCMCalls::id(idCall {})).unwrap(),
+				para_id
+			);
+		});
+	}
+
+	#[test]
 	fn new_query_reverts_when_decoding_failed() {
 		let origin = ALICE;
 		let responder = Vec::default().into();
@@ -480,8 +503,8 @@ mod tests {
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
 					Messages::get(message),
-					Some(Message::XcmQuery { origin: o, query_id: id, callback, message_deposit })
-					    if o == origin && id == query_id && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
+					Some(Message::XcmQuery { origin: o, query_id: qid, callback, message_deposit })
+					    if o == origin && qid == query_id && callback.is_none() && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
 	}
@@ -593,8 +616,8 @@ mod tests {
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
 					Messages::get(message),
-					Some(Message::XcmQuery { origin: o, query_id: id, callback: cb, message_deposit })
-					    if o == origin && id == query_id && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
+					Some(Message::XcmQuery { origin: o, query_id: qid, callback: cb, message_deposit })
+					    if o == origin && qid == query_id && cb == Some((&callback).into()) && message_deposit == MESSAGE_DEPOSIT)
 				);
 			});
 	}

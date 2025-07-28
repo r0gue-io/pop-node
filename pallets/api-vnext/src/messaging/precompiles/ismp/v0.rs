@@ -26,6 +26,7 @@ impl<
 		const FIXED: u16,
 		T: frame_system::Config
 			+ pallet_revive::Config
+			+ parachain_info::Config
 			+ Config<Fungibles: Inspect<T::AccountId, Balance: TryConvert<U256, Error = Error>>>,
 	> Precompile for Ismp<FIXED, T>
 where
@@ -105,6 +106,13 @@ where
 				let response = super::get::<T>(message).into();
 
 				Ok(getResponseCall::abi_encode_returns(&response))
+			},
+			IISMPCalls::id(idCall {}) => {
+				env.charge(<T as Config>::WeightInfo::id())?;
+
+				let id = id::<T>();
+
+				Ok(idCall::abi_encode_returns(&id))
 			},
 			IISMPCalls::pollStatus(pollStatusCall { message }) => {
 				env.charge(<T as Config>::WeightInfo::poll_status())?;

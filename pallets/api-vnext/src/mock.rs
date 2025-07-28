@@ -63,10 +63,12 @@ mod runtime {
 	#[cfg(feature = "messaging")]
 	pub type Messaging = crate::messaging::Pallet<Runtime>;
 	#[runtime::pallet_index(6)]
-	pub type System = frame_system::Pallet<Runtime>;
+	pub type ParachainInfo = parachain_info::Pallet<Runtime>;
 	#[runtime::pallet_index(7)]
-	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
+	pub type System = frame_system::Pallet<Runtime>;
 	#[runtime::pallet_index(8)]
+	pub type Timestamp = pallet_timestamp::Pallet<Runtime>;
+	#[runtime::pallet_index(9)]
 	#[cfg(feature = "messaging")]
 	pub type Xcm = pallet_xcm::Pallet<Runtime>;
 }
@@ -306,6 +308,8 @@ pub(super) mod messaging {
 		const VERSION_DISCOVERY_QUEUE_SIZE: u32 = 0;
 	}
 }
+
+impl parachain_info::Config for Test {}
 
 #[derive_impl(frame_system::config_preludes::TestDefaultConfig)]
 impl frame_system::Config for Test {

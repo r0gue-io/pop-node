@@ -32,6 +32,12 @@ interface IXCM {
     function getResponse(uint64 message) external returns (bytes memory response);
 
     /**
+     * @notice The identifier of this chain.
+     * @return id The identifier of this chain.
+     */
+    function id() external returns (uint32 id);
+
+    /**
      * @notice Initiate a new XCM query.
      * @dev Starts a query using the XCM interface, specifying a responder and timeout block.
      * @param responder A SCALE-encoded versioned location of the XCM responder.

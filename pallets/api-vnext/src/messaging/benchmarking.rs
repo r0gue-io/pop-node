@@ -71,7 +71,7 @@ type Xcm<T> = super::precompiles::xcm::v0::Xcm<5, T>;
         // Messaging
         T: Config<Fungibles: Inspect<T::AccountId, Balance: Bounded + TryConvert<alloy::U256, Error = Error>>>,
         alloy::U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = Error>,
-        T: pallet_ismp::Config + pallet_xcm::Config,
+        T: pallet_ismp::Config + pallet_xcm::Config + parachain_info::Config,
         u32: From<BlockNumberOf<T>>,
         // Timestamp
         T: pallet_timestamp::Config
@@ -110,6 +110,22 @@ mod benchmarks {
 		call_setup.set_origin(Signed(origin.account));
 		let mut ext = call_setup.ext().0;
 		let input = IMessagingCalls::getResponse(IMessaging::getResponseCall { message });
+
+		#[block]
+		{
+			assert_ok!(call_precompile::<Messaging<T>, _, u32>(
+				&mut ext,
+				&Messaging::<T>::address(),
+				&input
+			));
+		}
+	}
+
+	#[benchmark]
+	fn id() {
+		let mut call_setup = set_up_call();
+		let mut ext = call_setup.ext().0;
+		let input = IMessagingCalls::id(IMessaging::idCall {});
 
 		#[block]
 		{
@@ -200,7 +216,8 @@ mod benchmarks {
 		silence_timestamp_genesis_warnings::<T>();
 		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
 
-		let (id, commitment, response) = ismp_request::<T>(x, origin.clone(), fee, callback);
+		let (message_id, commitment, response) =
+			ismp_request::<T>(x, origin.clone(), fee, callback);
 
 		#[block]
 		{
@@ -208,8 +225,10 @@ mod benchmarks {
 		}
 
 		let event = match x {
-			0 => Event::IsmpGetResponseReceived { dest: origin.address, id, commitment },
-			_ => Event::IsmpPostResponseReceived { dest: origin.address, id, commitment },
+			0 =>
+				Event::IsmpGetResponseReceived { dest: origin.address, id: message_id, commitment },
+			_ =>
+				Event::IsmpPostResponseReceived { dest: origin.address, id: message_id, commitment },
 		};
 		assert_has_event::<T>(event.into())
 	}
@@ -456,13 +475,15 @@ mod benchmarks {
 
 		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
 
-		let (id, query_id) = new_query::<T>(origin.clone(), responder, timeout, callback).unwrap();
+		let (message_id, query_id) =
+			new_query::<T>(origin.clone(), responder, timeout, callback).unwrap();
 
 		#[extrinsic_call]
 		Pallet::<T>::xcm_response(response_origin, query_id, response.clone());
 
 		assert_has_event::<T>(
-			Event::XcmResponseReceived { dest: origin.address, id, query_id, response }.into(),
+			Event::XcmResponseReceived { dest: origin.address, id: message_id, query_id, response }
+				.into(),
 		);
 	}
 

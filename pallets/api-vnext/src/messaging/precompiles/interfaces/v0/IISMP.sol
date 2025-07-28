@@ -39,6 +39,12 @@ interface IISMP {
     function getResponse(uint64 message) external returns (bytes memory response);
 
     /**
+     * @notice The identifier of this chain.
+     * @return id The identifier of this chain.
+     */
+    function id() external returns (uint32 id);
+
+    /**
      * @notice Polls the status of a message.
      * @param message The message identifier to poll.
      * @return status The status of the message.

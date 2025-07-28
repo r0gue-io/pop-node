@@ -26,6 +26,7 @@ pallet-ismp = { workspace = true, optional = true }
 pallet-revive = { workspace = true, default-features = false }
 pallet-timestamp = { workspace = true, optional = true }
 pallet-xcm = { workspace = true, optional = true }
+parachain-info = { workspace = true, optional = true }
 scale-info.workspace = true
 sp-io = { workspace = true, optional = true }
 sp-runtime = { workspace = true, optional = true }
@@ -46,6 +47,7 @@ messaging = [
 	"dep:log",
 	"dep:pallet-ismp",
 	"dep:pallet-xcm",
+	"dep:parachain-info",
 	"dep:sp-runtime",
 	"dep:xcm",
 	"dep:xcm-builder",
@@ -72,6 +74,7 @@ std = [
 	"pallet-revive/std",
 	"pallet-timestamp/std",
 	"pallet-xcm?/std",
+	"parachain-info?/std",
 	"scale-info/std",
 	"sp-io/std",
 	"sp-runtime?/std",
