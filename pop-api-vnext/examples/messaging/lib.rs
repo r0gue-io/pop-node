@@ -34,8 +34,10 @@ mod messaging {
 	use self::Error::*;
 	use super::*;
 
-	// TODO: use manifest metadata to determine
+	#[cfg(ink_abi = "sol")]
 	const ENCODING: Encoding = Encoding::SolidityAbi;
+	#[cfg(any(ink_abi = "all", ink_abi = "ink"))]
+	const ENCODING: Encoding = Encoding::Scale;
 	const UNAUTHORIZED: u32 = u32::MAX;
 
 	/// A contract for interacting with chains.
