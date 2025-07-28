@@ -6,7 +6,6 @@ pragma solidity ^0.8.30;
  * tokens. The goal is to provide a simplified, consistent API that adheres to standards in the
  * smart contract space.
  */
-// TODO: consider size of id -> uint256 (word)
 interface IFungibles {
     /**
      * @notice Transfers `value` amount of tokens from the caller's account to account `to`.
