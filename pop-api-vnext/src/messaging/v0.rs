@@ -23,6 +23,13 @@ pub trait Messaging {
 	#[allow(non_snake_case)]
 	fn getResponse(&self, message: MessageId) -> Bytes;
 
+	/// The identifier of this chain.
+	///
+	/// # Returns
+	/// The identifier of this chain.
+	#[ink(message)]
+	fn id(&self) -> u32;
+
 	/// Polls the status of a message.
 	///
 	/// # Parameters
@@ -46,8 +53,9 @@ pub trait Messaging {
 	///
 	/// # Parameters
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
-	#[ink(message, selector = 0xcdd80f3b)]
-	fn remove_many(&self, messages: Vec<MessageId>) -> Result<(), Error>;
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error>;
 }
 
 /// A message callback.
@@ -125,6 +133,15 @@ pub fn get_response(message: MessageId) -> Bytes {
 	precompile.getResponse(message)
 }
 
+/// The identifier of this chain.
+///
+/// NOTE: this is a precompile call and therefore has associated costs.
+#[inline]
+pub fn id() -> u32 {
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	precompile.id()
+}
+
 /// Polls the status of a message.
 ///
 /// # Parameters
@@ -156,5 +173,5 @@ pub fn remove(message: MessageId) -> Result<(), Error> {
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
 	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
-	precompile.remove_many(messages)
+	precompile.removeMany(messages)
 }

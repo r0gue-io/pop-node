@@ -84,8 +84,16 @@ pub trait Messaging {
 	///
 	/// # Parameters
 	/// - `message` - The message identifier.
-	#[ink(message, selector = 0xada86798)]
-	fn get_response(&self, message: MessageId) -> Bytes;
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn getResponse(&self, message: MessageId) -> Bytes;
+
+	/// The identifier of this chain.
+	///
+	/// # Returns
+	/// The identifier of this chain.
+	#[ink(message)]
+	fn id(&self) -> u32;
 
 	/// Polls the status of a message.
 	///
@@ -110,8 +118,9 @@ pub trait Messaging {
 	///
 	/// # Parameters
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
-	#[ink(message, selector = 0xcdd80f3b)]
-	fn remove_many(&self, messages: Vec<MessageId>) -> Result<(), Error>;
+	#[ink(message)]
+	#[allow(non_snake_case)]
+	fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error>;
 }
 
 /// Submit a new ISMP `Get` request.
@@ -147,7 +156,16 @@ pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<Messag
 #[inline]
 pub fn get_response(message: MessageId) -> Bytes {
 	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
-	precompile.get_response(message)
+	precompile.getResponse(message)
+}
+
+/// The identifier of this chain.
+///
+/// NOTE: this is a precompile call and therefore has associated costs.
+#[inline]
+pub fn id() -> u32 {
+	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	precompile.id()
 }
 
 /// Polls the status of a message.
@@ -206,7 +224,7 @@ pub fn remove(message: MessageId) -> Result<(), Error> {
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
 	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
-	precompile.remove_many(messages)
+	precompile.removeMany(messages)
 }
 
 /// A GET request, intended to be used for sending outgoing requests.
@@ -238,16 +256,10 @@ impl Get {
 		destination: u32,
 		height: u64,
 		timeout: u64,
-		context: Vec<u8>,
-		keys: Vec<Vec<u8>>,
+		context: Bytes,
+		keys: Vec<Bytes>,
 	) -> Self {
-		Self {
-			destination,
-			height,
-			timeout,
-			context: SolBytes(context),
-			keys: keys.into_iter().map(SolBytes).collect(),
-		}
+		Self { destination, height, timeout, context, keys }
 	}
 }
 
