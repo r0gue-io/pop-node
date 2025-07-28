@@ -11,8 +11,8 @@ use pallet_revive::{
 };
 #[cfg(feature = "devnet")]
 use pop_runtime_devnet::{
-	AccountId, Assets, Balance, BlockNumber, Messaging, PolkadotXcm, Revive, Runtime, RuntimeEvent,
-	RuntimeOrigin, System, UNIT,
+	AccountId, Assets, Balance, BlockNumber, Messaging, ParachainInfo, PolkadotXcm, Revive,
+	Runtime, RuntimeEvent, RuntimeOrigin, System, UNIT,
 };
 use sp_runtime::{BuildStorage, DispatchError};
 

@@ -1,6 +1,8 @@
 use codec::{Decode, Encode};
 use pallet_api_vnext::messaging::{
-	precompiles::v0::IMessaging::{getResponseCall, pollStatusCall, remove_0Call, MessageStatus},
+	precompiles::v0::IMessaging::{
+		getResponseCall, idCall, pollStatusCall, remove_0Call, MessageStatus,
+	},
 	Event::CallbackExecuted,
 	Message, MessageId,
 };
@@ -385,6 +387,15 @@ mod xcm {
 	use super::*;
 
 	#[test]
+	fn id_works() {
+		let origin = ALICE;
+		ExtBuilder::new().build().execute_with(|| {
+			let contract = Contract::new(&origin, INIT_VALUE);
+			assert_eq!(contract.id(), u32::from(ParachainInfo::parachain_id()));
+		});
+	}
+
+	#[test]
 	fn query_works() {
 		let origin = ALICE;
 		let responder = Location::new(1, [Junction::Parachain(ASSET_HUB)]);
@@ -478,6 +489,10 @@ mod xcm {
 	}
 
 	impl Contract {
+		fn id(&self) -> u32 {
+			self.call::<_, Error>(&self.creator, idCall {}, 0).unwrap()
+		}
+
 		fn new_query(
 			&self,
 			responder: Vec<u8>,

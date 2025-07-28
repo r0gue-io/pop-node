@@ -2,14 +2,20 @@
 
 use ink::{abi::Sol, contract_ref, prelude::vec::Vec, U256};
 use pop_api::{
-	messaging::{self as api, ismp::*, xcm::*, Error, *},
+	messaging::{
+		self as api,
+		ismp::{
+			self, Get, Ismp, IsmpCallback, IsmpGetCompleted, IsmpPostCompleted, OnGetResponse,
+			OnPostResponse, Post, StorageValue,
+		},
+		xcm::{self, OnQueryResponse, QueryId, Xcm, XcmCallback, XcmCompleted},
+		Bytes, Callback, Error, MessageId, MessageStatus, Weight,
+	},
 	Pop,
 };
 
 #[ink::contract]
 pub mod messaging {
-	use pop_api::messaging::ismp::Ismp;
-
 	use super::*;
 
 	#[ink(storage)]
@@ -30,6 +36,11 @@ pub mod messaging {
 		}
 
 		#[ink(message)]
+		fn id(&self) -> u32 {
+			api::id()
+		}
+
+		#[ink(message)]
 		fn pollStatus(&self, message: MessageId) -> MessageStatus {
 			api::poll_status(message)
 		}
@@ -39,8 +50,8 @@ pub mod messaging {
 			api::remove(message)
 		}
 
-		#[ink(message, selector = 0xcdd80f3b)]
-		fn remove_many(&self, messages: Vec<MessageId>) -> Result<(), Error> {
+		#[ink(message)]
+		fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error> {
 			api::remove_many(messages)
 		}
 	}
@@ -79,21 +90,21 @@ pub mod messaging {
 		}
 	}
 
-	impl api::ismp::OnGetResponse for Messaging {
+	impl OnGetResponse for Messaging {
 		#[ink(message)]
 		fn onGetResponse(&mut self, id: MessageId, response: Vec<StorageValue>) {
 			self.env().emit_event(IsmpGetCompleted { id, response });
 		}
 	}
 
-	impl api::ismp::OnPostResponse for Messaging {
+	impl OnPostResponse for Messaging {
 		#[ink(message)]
 		fn onPostResponse(&mut self, id: MessageId, response: Bytes) {
 			self.env().emit_event(IsmpPostCompleted { id, response });
 		}
 	}
 
-	impl xcm::Xcm for Messaging {
+	impl Xcm for Messaging {
 		#[ink(message)]
 		fn execute(&self, message: Bytes, weight: Weight) -> Bytes {
 			let precompile: contract_ref!(Xcm, Pop, Sol) = xcm::PRECOMPILE_ADDRESS.into();
@@ -113,7 +124,7 @@ pub mod messaging {
 		}
 	}
 
-	impl xcm::XcmCallback for Messaging {
+	impl XcmCallback for Messaging {
 		#[ink(message)]
 		fn newQuery(
 			&self,
@@ -126,7 +137,7 @@ pub mod messaging {
 		}
 	}
 
-	impl api::xcm::OnQueryResponse for Messaging {
+	impl OnQueryResponse for Messaging {
 		#[ink(message)]
 		fn onQueryResponse(&mut self, id: MessageId, response: Bytes) {
 			self.env().emit_event(XcmCompleted { id, result: response });
