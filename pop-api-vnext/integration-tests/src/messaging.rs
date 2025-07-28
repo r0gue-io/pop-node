@@ -21,7 +21,10 @@ use super::*;
 
 const ASSET_HUB: u32 = 1_000;
 const CONTRACT: &str = "contracts/messaging/target/ink/messaging.polkavm";
+const GAS_LIMIT: Weight = Weight::from_parts(7_500_000_000, 200_000);
 const HYPERBRIDGE: u32 = 4_009;
+const INIT_VALUE: Balance = 1 * UNIT / 2;
+const STORAGE_DEPOSIT_LIMIT: DepositLimit<Balance> = DepositLimit::Balance(1 * UNIT);
 
 mod ismp {
 	use ::ismp::{
@@ -525,8 +528,15 @@ impl Contract {
 	fn new(origin: &AccountId, value: Balance) -> Self {
 		let data = vec![]; // Default solidity constructor
 		let salt = twox_256(&value.to_le_bytes());
-		let address =
-			instantiate(RuntimeOrigin::signed(origin.clone()), CONTRACT, value, data, Some(salt));
+		let address = instantiate(
+			RuntimeOrigin::signed(origin.clone()),
+			CONTRACT,
+			value,
+			GAS_LIMIT,
+			STORAGE_DEPOSIT_LIMIT,
+			data,
+			Some(salt),
+		);
 		Self { address, creator: origin.clone() }
 	}
 
