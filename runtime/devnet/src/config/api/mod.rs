@@ -17,8 +17,8 @@ use versioning::*;
 
 use crate::{
 	config::assets::{TrustBackedAssetsInstance, TrustBackedNftsInstance},
-	fungibles, nonfungibles, AccountId, Balances, BlockNumber, DealWithFees, Ismp, Runtime,
-	RuntimeCall, RuntimeHoldReason, TransactionByteFee, H160,
+	fungibles, nonfungibles, AccountId, Balance, Balances, BlockNumber, DealWithFees, Ismp,
+	Runtime, RuntimeCall, RuntimeHoldReason, TransactionByteFee, H160,
 };
 
 mod versioning;
@@ -272,7 +272,8 @@ mod messaging {
 			account: &AccountId,
 			contract: H160,
 			data: Vec<u8>,
-			weight: Weight,
+			gas_limit: Weight,
+			storage_deposit_limit: Balance,
 		) -> DispatchResultWithPostInfo {
 			use frame_support::dispatch::DispatchErrorWithPostInfo;
 			use pallet_revive::DepositLimit;
@@ -283,9 +284,8 @@ mod messaging {
 				RuntimeOrigin::signed(account.clone()),
 				contract,
 				Default::default(),
-				weight,
-				// TODO: expose?
-				DepositLimit::Balance(Default::default()),
+				gas_limit,
+				DepositLimit::Balance(storage_deposit_limit),
 				data,
 			);
 
@@ -319,10 +319,11 @@ mod messaging {
 			_account: &AccountId,
 			_contract: H160,
 			_data: Vec<u8>,
-			weight: sp_runtime::Weight,
+			gas_limit: Weight,
+			_storage_deposit_limit: Balance,
 		) -> frame_support::dispatch::DispatchResultWithPostInfo {
 			DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-				actual_weight: Some(weight / 2),
+				actual_weight: Some(gas_limit / 2),
 				pays_fee: Pays::Yes,
 			})
 		}
