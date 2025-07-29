@@ -42,7 +42,7 @@ mod weights;
 pub(crate) type BalanceOf<T> = <<T as Config>::Fungibles as Inspect<AccountIdOf<T>>>::Balance;
 type BlockNumberOf<T> = BlockNumberFor<T>;
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
-pub type MessageId = u64; // TODO: determine why this was changed to [u8; 32] - U256?;
+pub type MessageId = u64;
 
 #[frame_support::pallet]
 pub mod pallet {
