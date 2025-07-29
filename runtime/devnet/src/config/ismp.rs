@@ -47,9 +47,9 @@ impl Get<StateMachine> for HostStateMachine {
 pub struct Router;
 impl IsmpRouter for Router {
 	fn module_for_id(&self, id: Vec<u8>) -> Result<Box<dyn IsmpModule>, anyhow::Error> {
-		use pallet_api_vnext::messaging::transports::ismp::*;
+		use pallet_api_vnext::messaging::transports::ismp::{Module as Messaging, *};
 		if id == ID {
-			return Ok(Box::new(Handler::<Runtime>::new()));
+			return Ok(Box::new(Messaging::<Runtime>::new()));
 		}
 		Err(Error::ModuleNotFound(id).into())
 	}
