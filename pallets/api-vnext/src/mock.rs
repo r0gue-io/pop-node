@@ -189,6 +189,7 @@ pub(super) mod messaging {
 		type MaxDataLen = ConstU32<1024>;
 		type MaxKeyLen = ConstU32<32>;
 		type MaxKeys = ConstU32<10>;
+		type MaxRecipientLen = ConstU32<32>;
 		type MaxRemovals = ConstU32<1024>;
 		type MaxResponseLen = ConstU32<1024>;
 		type MaxXcmQueryTimeoutsPerBlock = MaxXcmQueryTimeoutsPerBlock;

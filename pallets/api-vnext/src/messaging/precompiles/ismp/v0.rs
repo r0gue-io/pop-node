@@ -124,6 +124,11 @@ where
 			IISMPCalls::post_0(post_0Call { request, fee }) => {
 				env.charge(<T as Config>::WeightInfo::ismp_post(
 					request
+						.to
+						.len()
+						.try_into()
+						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
+					request
 						.data
 						.len()
 						.try_into()
@@ -145,6 +150,11 @@ where
 			},
 			IISMPCalls::post_1(post_1Call { request, fee, callback }) => {
 				env.charge(<T as Config>::WeightInfo::ismp_post(
+					request
+						.to
+						.len()
+						.try_into()
+						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					request
 						.data
 						.len()
@@ -233,6 +243,7 @@ impl_from_sol_error! {
 	IISMP::MaxDataExceeded,
 	IISMP::MaxKeyExceeded,
 	IISMP::MaxKeysExceeded,
+	IISMP::MaxRecipientExceeded,
 	InvalidEncoding,
 	MessageNotFound,
 	RequestPending,
@@ -257,11 +268,12 @@ fn try_get<T: Config>(value: &Get) -> Result<DispatchGet, Error> {
 }
 
 fn try_post<T: Config>(value: &Post) -> Result<DispatchPost, Error> {
+	ensure!(value.to.len() as u32 <= T::MaxRecipientLen::get(), IISMP::MaxRecipientExceeded);
 	ensure!(value.data.len() as u32 <= T::MaxDataLen::get(), IISMP::MaxDataExceeded);
 	Ok(DispatchPost {
 		dest: StateMachine::Polkadot(value.destination),
 		from: ID.into(),
-		to: ID.into(),
+		to: value.to.to_vec(),
 		timeout: value.timeout,
 		body: value.data.to_vec(),
 	})
@@ -388,6 +400,7 @@ mod tests {
 	type MaxDataLen = <Test as Config>::MaxDataLen;
 	type MaxKeyLen = <Test as Config>::MaxKeyLen;
 	type MaxKeys = <Test as Config>::MaxKeys;
+	type MaxRecipientLen = <Test as Config>::MaxRecipientLen;
 	type MaxRemovals = <Test as Config>::MaxRemovals;
 	type Messages = crate::messaging::Messages<Test>;
 
@@ -575,10 +588,27 @@ mod tests {
 	}
 
 	#[test]
+	fn post_reverts_when_max_recipient_exceeded() {
+		let origin = ALICE;
+		let request = IISMP::Post {
+			destination: 0,
+			to: vec![255u8; <MaxRecipientLen as Get<u32>>::get() as usize + 1].into(),
+			timeout: u64::default(),
+			data: vec![255u8; <MaxDataLen as Get<u32>>::get() as usize].into(),
+		};
+		let fee = U256::from(100);
+		ExtBuilder::new().build().execute_with(|| {
+			let input = post_0(post_0Call { request, fee });
+			assert_revert!(call_precompile::<MessageId>(&origin, &input), MaxRecipientExceeded);
+		});
+	}
+
+	#[test]
 	fn post_reverts_when_max_data_exceeded() {
 		let origin = ALICE;
 		let request = IISMP::Post {
 			destination: 0,
+			to: vec![255u8; <MaxRecipientLen as Get<u32>>::get() as usize].into(),
 			timeout: u64::default(),
 			data: vec![255u8; <MaxDataLen as Get<u32>>::get() as usize + 1].into(),
 		};
@@ -593,8 +623,12 @@ mod tests {
 	fn post_works() {
 		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
-		let request =
-			IISMP::Post { destination: 1_000, timeout: u64::MAX, data: vec![255u8; 1024].into() };
+		let request = IISMP::Post {
+			destination: 1_000,
+			to: vec![255u8; 20].into(),
+			timeout: u64::MAX,
+			data: vec![255u8; 1024].into(),
+		};
 		let fee = U256::from(100);
 		ExtBuilder::new()
 			.with_balances(vec![(origin.account.clone(), 1 * UNIT)]) // message deposit
@@ -622,8 +656,12 @@ mod tests {
 	fn post_with_callback_works() {
 		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let message = 1;
-		let request =
-			IISMP::Post { destination: 1_000, timeout: u64::MAX, data: vec![255u8; 1024].into() };
+		let request = IISMP::Post {
+			destination: 1_000,
+			to: vec![255u8; 20].into(),
+			timeout: u64::MAX,
+			data: vec![255u8; 1024].into(),
+		};
 		let fee = U256::from(100);
 		let callback = Callback {
 			destination: [255u8; 20].into(),
@@ -838,8 +876,7 @@ mod tests {
 				dest: StateMachine::Polkadot(request.destination),
 				nonce: pallet_ismp::Nonce::<Test>::get(),
 				from: ID.to_vec(),
-				// TODO: check this is correct: https://github.com/r0gue-io/pop-node/blob/messaging-base/pallets/api/src/messaging/transports/ismp.rs#L105
-				to: ID.to_vec(),
+				to: request.to.to_vec(),
 				timeout_timestamp: Timestamp::now().as_secs() + request.timeout,
 				body: request.data.to_vec(),
 			})

@@ -80,6 +80,9 @@ pub mod pallet {
 		/// The maximum number of keys for an outbound request.
 		#[pallet::constant]
 		type MaxKeys: Get<u32>;
+		/// The maximum length of the receiving module identifier/address on a destination chain.
+		#[pallet::constant]
+		type MaxRecipientLen: Get<u32>;
 		/// The maximum number of messages which can be removed at a time.
 		#[pallet::constant]
 		type MaxRemovals: Get<u32>;

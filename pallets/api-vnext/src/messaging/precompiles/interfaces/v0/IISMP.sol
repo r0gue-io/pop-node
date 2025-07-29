@@ -109,6 +109,8 @@ interface IISMP {
     struct Post {
         /// @custom:property The destination state machine of this request.
         uint32 destination;
+        /// @custom:property The receiving module identifier/contract address on the destination chain.
+        bytes to;
         /// @custom:property Relative from the current timestamp at which this request expires in seconds.
         uint64 timeout;
         /// @custom:property Encoded request data.
@@ -173,6 +175,8 @@ interface IISMP {
     error MaxKeyExceeded();
     /// @dev The number of keys exceeds the maximum allowed size.
     error MaxKeysExceeded();
+    /// @dev The length of the receiving module identifier/address exceeds the maximum allowed size.
+    error MaxRecipientExceeded();
 }
 
 /**

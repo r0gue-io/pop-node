@@ -289,6 +289,7 @@ mod benchmarks {
 	/// Sends a `Post` request using ISMP with a variable-sized data payload.
 	///
 	/// # Parameters
+	/// - `t`: `Linear<0, { T::MaxRecipientLen::get() }>`   Length of the `to` field (in bytes).
 	/// - `x`: `Linear<0, { T::MaxDataLen::get() }>`   Length of the `data` field (in bytes).
 	/// - `y`: `Linear<0, 1>`   Whether a callback is attached:
 	///   - `0`: No callback
@@ -301,12 +302,14 @@ mod benchmarks {
 	// `pallet-revive` benchmarks for similar usage with contract child tries.
 	#[benchmark(skip_meta, pov_mode = Measured)]
 	fn ismp_post(
+		t: Linear<0, { T::MaxRecipientLen::get() }>,
 		x: Linear<0, { T::MaxDataLen::get() }>,
 		y: Linear<0, 1>,
 	) -> Result<(), BenchmarkError> {
 		let origin = Origin::from_address::<T>(ALICE_ADDR);
 		let request = ismp::Post {
 			destination: u32::MAX,
+			to: vec![255; t as usize].into(),
 			timeout: u64::MAX,
 			data: vec![255; x as usize].into(),
 		};
