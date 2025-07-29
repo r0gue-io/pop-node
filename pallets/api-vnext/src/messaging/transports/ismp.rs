@@ -281,7 +281,6 @@ impl<T: Config> IsmpModuleWeight for Module<T> {
 		T::WeightInfo::ismp_on_timeout(x)
 	}
 
-	// todo: test
 	fn on_response(&self, response: &Response) -> Weight {
 		let x = match response {
 			Response::Get(_) => 0,
