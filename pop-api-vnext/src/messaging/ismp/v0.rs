@@ -269,6 +269,8 @@ impl Get {
 pub struct Post {
 	/// The destination state machine of this request.
 	pub destination: u32,
+	/// The receiving module identifier/contract address on the destination chain.
+	pub to: Bytes,
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Encoded request data.
@@ -280,10 +282,11 @@ impl Post {
 	///
 	/// # Parameters
 	/// - `destination` - The destination state machine of this request.
+	/// - `to` - The receiving module identifier/contract address on the destination chain.
 	/// - `timeout` - Relative from the current timestamp at which this request expires in seconds.
 	/// - `data` - Encoded request data.
-	pub fn new(destination: u32, timeout: u64, data: Vec<u8>) -> Self {
-		Self { destination, timeout, data: SolBytes(data) }
+	pub fn new(destination: u32, to: Bytes, timeout: u64, data: Vec<u8>) -> Self {
+		Self { destination, to, timeout, data: SolBytes(data) }
 	}
 }
 
