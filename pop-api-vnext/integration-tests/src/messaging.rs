@@ -191,8 +191,12 @@ mod ismp {
 	fn post_works() {
 		let origin = ALICE;
 		let timeout = 100_000u64;
-		let request =
-			Post { destination: HYPERBRIDGE, timeout, data: b"some_data".to_vec().into() };
+		let request = Post {
+			destination: HYPERBRIDGE,
+			to: vec![255u8; 20].into(),
+			timeout,
+			data: b"some_data".to_vec().into(),
+		};
 		let response = b"some_value".to_vec();
 
 		// Create a post request.
@@ -240,8 +244,12 @@ mod ismp {
 	fn post_with_callback_works() {
 		let origin = ALICE;
 		let timeout = 100_000u64;
-		let request =
-			Post { destination: HYPERBRIDGE, timeout, data: b"some_data".to_vec().into() };
+		let request = Post {
+			destination: HYPERBRIDGE,
+			to: vec![255u8; 20].into(),
+			timeout,
+			data: b"some_data".to_vec().into(),
+		};
 		let response = b"some_value".to_vec();
 
 		// Create a post request with callback.
