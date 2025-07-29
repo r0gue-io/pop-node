@@ -4,6 +4,7 @@ use ink::{
 	env::hash::{Blake2x256, CryptoHash},
 	prelude::vec::Vec,
 	scale::{DecodeAll, Encode},
+	storage::Mapping,
 	xcm::{
 		prelude::{
 			AccountId32, All, Asset, OriginKind, Parachain, QueryId, QueryResponseInfo,
@@ -20,7 +21,7 @@ use pop_api::{
 		ismp::{self, Get, OnGetResponse, StorageValue},
 		xcm::{self, Location, OnQueryResponse},
 		Bytes, Callback, Encoding, MessageId,
-		MessageStatus::Complete,
+		MessageStatus::*,
 		Weight,
 	},
 	revert,
@@ -31,14 +32,13 @@ use pop_api::{
 #[ink::contract]
 mod messaging {
 
-	use self::Error::*;
 	use super::*;
+	use Error::{DecodingFailed, NoPermission, Overflow};
 
 	#[cfg(ink_abi = "sol")]
 	const ENCODING: Encoding = Encoding::SolidityAbi;
 	#[cfg(any(ink_abi = "all", ink_abi = "ink"))]
 	const ENCODING: Encoding = Encoding::Scale;
-	const UNAUTHORIZED: u32 = u32::MAX;
 
 	/// A contract for interacting with chains.
 	#[ink(storage)]
@@ -46,7 +46,11 @@ mod messaging {
 		/// The owner of the contract.
 		owner: Address,
 		/// The weight to be used for callback responses to this contract.
-		weight: Weight,
+		gas_limit: Weight,
+		/// The storage deposit limit for callback responses to this contract.
+		storage_deposit_limit: U256,
+		/// The local message queue.
+		messages: Mapping<MessageId, Address>,
 	}
 
 	impl Messaging {
@@ -54,7 +58,53 @@ mod messaging {
 		#[ink(constructor, payable)]
 		#[allow(clippy::new_without_default)]
 		pub fn new() -> Self {
-			Self { owner: Self::env().caller(), weight: Weight::from_parts(800_000_000, 500_000) }
+			Self {
+				owner: Self::env().caller(),
+				gas_limit: Weight::from_parts(800_000_000, 500_000),
+				storage_deposit_limit: U256::zero(), // Currently no storage changes on callback.
+				messages: Mapping::new(),
+			}
+		}
+
+		/// Complete a message.
+		///
+		/// # Parameters
+		/// - `id` - The identifier of the message.
+		///
+		/// NOTE: Only callable by the requestor of the message.
+		#[ink(message)]
+		pub fn complete(&mut self, id: MessageId) -> Result<Option<Bytes>, Error> {
+			match api::poll_status(id) {
+				NotFound => Err(Error::NotFound),
+				Pending => Err(Error::Pending),
+				Complete => {
+					// Only requestor can remove messages.
+					ensure!(
+						self.messages.get(&id).as_ref() == Some(&self.env().caller()),
+						NoPermission
+					);
+					let result = api::get_response(id);
+					if let Err(error) = api::remove(id) {
+						revert(&error)
+					}
+					self.messages.remove(&id);
+					self.env().emit_event(Completed { id, result: result.clone() });
+					Ok(Some(result))
+				},
+				Timeout => {
+					// Only requestor can remove messages.
+					ensure!(
+						self.messages.get(&id).as_ref() == Some(&self.env().caller()),
+						NoPermission
+					);
+					if let Err(error) = api::remove(id) {
+						revert(&error)
+					}
+					self.messages.remove(&id);
+					self.env().emit_event(TimedOut { id });
+					Ok(None)
+				},
+			}
 		}
 
 		/// Request some state from a chain at the specified keys and block height.
@@ -64,17 +114,29 @@ mod messaging {
 		/// - `keys` - The storage key(s) used to query state from the remote parachain.
 		/// - `height` - The block height at which to read the state.
 		#[ink(message)]
-		pub fn get(&mut self, dest: u32, keys: Vec<Bytes>, height: u64) -> Result<(), ismp::Error> {
+		pub fn get(
+			&mut self,
+			dest: u32,
+			keys: Vec<Bytes>,
+			height: u64,
+		) -> Result<MessageId, ismp::Error> {
 			let id = ismp::get(
 				Get::new(dest, height, 0, SolBytes(Vec::default()), keys.clone()),
 				U256::zero(),
-				Some(Callback::new(self.env().address(), ENCODING, 0x9bf78ffb, self.weight)),
+				Some(Callback::new(
+					self.env().address(),
+					ENCODING,
+					0x9bf78ffb,
+					self.gas_limit,
+					self.storage_deposit_limit,
+				)),
 			)?;
+			self.messages.insert(id, &self.env().caller());
 			self.env().emit_event(IsmpRequested { id, keys, height });
-			Ok(())
+			Ok(id)
 		}
 
-		/// Funds the contract's account on the destination chain.
+		/// Funds the contract's associated account on the destination chain.
 		///
 		/// # Parameters
 		/// - `dest` - The identifier of the destination chain.
@@ -110,8 +172,36 @@ mod messaging {
 			Ok(())
 		}
 
+		/// Sets the limits used for callback responses.
+		///
+		/// # Parameters
+		/// - `gas_limit` - The new gas limit.
+		/// - `storage_deposit_limit` - The new storage deposit limit.
+		#[ink(message)]
+		pub fn set_limits(
+			&mut self,
+			gas_limit: Weight,
+			storage_deposit_limit: U256,
+		) -> Result<(), Error> {
+			ensure!(self.env().caller() == self.owner, NoPermission);
+			self.gas_limit = gas_limit;
+			self.storage_deposit_limit = storage_deposit_limit;
+			Ok(())
+		}
+
+		/// Sends the provided encoded `call` to a destination chain for execution.
+		///
+		/// # Parameters
+		/// - `dest` - The identifier of the destination chain.
+		/// - `call` - The encoded call to be dispatched on the destination chain.
+		/// - `weight` - The weight limit for dispatching the call on the destination chain.
 		#[ink(message, payable)]
-		pub fn transact(&mut self, dest: u32, call: Vec<u8>, weight: Weight) -> Result<(), Error> {
+		pub fn transact(
+			&mut self,
+			dest: u32,
+			call: Vec<u8>,
+			weight: Weight,
+		) -> Result<MessageId, Error> {
 			let dest = Location::new(1, Parachain(dest));
 			let call =
 				DoubleEncoded::<()>::decode_all(&mut &call[..]).map_err(|_| DecodingFailed)?;
@@ -120,7 +210,13 @@ mod messaging {
 			let (id, query_id) = xcm::new_query(
 				dest.clone(),
 				self.env().block_number().saturating_add(100),
-				Some(Callback::new(self.env().address(), ENCODING, 0x97dbf9fb, self.weight)),
+				Some(Callback::new(
+					self.env().address(),
+					ENCODING,
+					0x97dbf9fb,
+					self.gas_limit,
+					self.storage_deposit_limit,
+				)),
 			);
 
 			// TODO: provide an api function for determining the max weight value for processing the
@@ -141,17 +237,23 @@ mod messaging {
 			if let Err(error) = xcm::send(dest.into_versioned(), VersionedXcm::V5(message)) {
 				revert(&error)
 			}
+			self.messages.insert(id, &self.env().caller());
 			self.env().emit_event(XcmRequested { id, query_id, hash });
-			Ok(())
+
+			Ok(id)
 		}
 
+		/// Transfer the ownership of the contract to another account.
+		///
+		/// # Parameters
+		/// - `owner` - New owner account.
+		///
+		/// NOTE: the specified owner account is not checked, allowing the zero address to be
+		/// specified if desired..
 		#[ink(message)]
-		pub fn complete(&mut self, id: MessageId) -> Result<(), api::Error> {
-			if api::poll_status(id) == Complete {
-				let result = api::get_response(id);
-				api::remove(id)?;
-				self.env().emit_event(Completed { id, result });
-			}
+		pub fn transfer_ownership(&mut self, owner: Address) -> Result<(), Error> {
+			ensure!(self.env().caller() == self.owner, NoPermission);
+			self.owner = owner;
 			Ok(())
 		}
 
@@ -180,41 +282,13 @@ mod messaging {
 				.report_transact_status(response)
 				.build()
 		}
-
-		/// Transfer the ownership of the contract to another account.
-		///
-		/// # Parameters
-		/// - `owner` - New owner account.
-		///
-		/// NOTE: the specified owner account is not checked, allowing the zero address to be
-		/// specified if desired..
-		#[ink(message)]
-		pub fn transfer_ownership(&mut self, owner: Address) -> Result<(), Error> {
-			ensure!(self.env().caller() == self.owner, NoPermission);
-			self.owner = owner;
-			Ok(())
-		}
-
-		/// Sets the weight used for callback responses.
-		///
-		/// # Parameters
-		/// - `owner` - New owner account.
-		///
-		/// NOTE: the specified owner account is not checked, allowing the zero address to be
-		/// specified if desired..
-		#[ink(message)]
-		pub fn set_weight(&mut self, weight: Weight) -> Result<(), Error> {
-			ensure!(self.env().caller() == self.owner, NoPermission);
-			self.weight = weight;
-			Ok(())
-		}
 	}
 
 	impl OnGetResponse for Messaging {
 		#[ink(message)]
 		fn onGetResponse(&mut self, id: MessageId, values: Vec<StorageValue>) {
 			if self.env().caller() != self.env().address() {
-				revert(&UNAUTHORIZED);
+				revert(&NoPermission);
 			}
 			self.env().emit_event(GetCompleted { id, values });
 		}
@@ -224,19 +298,33 @@ mod messaging {
 		#[ink(message)]
 		fn onQueryResponse(&mut self, id: MessageId, response: Bytes) {
 			if self.env().caller() != self.env().address() {
-				revert(&UNAUTHORIZED);
+				revert(&NoPermission);
 			}
 			self.env().emit_event(XcmCompleted { id, result: response });
 		}
 	}
 
-	#[cfg_attr(feature = "std", derive(Debug, PartialEq))]
 	#[derive(ink::SolErrorDecode, ink::SolErrorEncode)]
 	#[ink::scale_derive(Decode, Encode, TypeInfo)]
 	pub enum Error {
 		DecodingFailed,
 		NoPermission,
+		NotFound,
+		Pending,
 		Overflow,
+	}
+
+	// Implementing `SolEncode` for `Error` to use variants directly with `revert`.
+	impl<'a> ink::SolEncode<'a> for Error {
+		type SolType = ();
+
+		fn encode(&'a self) -> Vec<u8> {
+			ink::primitives::sol::SolErrorEncode::encode(self)
+		}
+
+		fn to_sol_type(&'a self) -> Self::SolType {
+			()
+		}
 	}
 
 	#[ink::event]
@@ -283,5 +371,11 @@ mod messaging {
 		#[ink(topic)]
 		pub id: MessageId,
 		pub values: Vec<StorageValue>,
+	}
+
+	#[ink::event]
+	pub struct TimedOut {
+		#[ink(topic)]
+		pub id: MessageId,
 	}
 }
