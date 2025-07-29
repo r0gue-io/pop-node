@@ -317,7 +317,10 @@ impl EncodeCallback for Vec<u8> {
 	}
 }
 
-impl TryFrom<&Callback> for super::Callback {
+impl<Balance> TryFrom<&Callback> for super::Callback<Balance>
+where
+	U256: TryConvert<Balance, Error = Error>,
+{
 	type Error = Error;
 
 	fn try_from(callback: &Callback) -> Result<Self, Self::Error> {
@@ -325,7 +328,8 @@ impl TryFrom<&Callback> for super::Callback {
 			(*callback.destination.0).into(),
 			(&callback.encoding).try_into()?,
 			callback.selector.0,
-			(&callback.weight).into(),
+			(&callback.gasLimit).into(),
+			callback.storageDepositLimit.try_convert()?,
 		))
 	}
 }
@@ -489,7 +493,8 @@ mod tests {
 			destination: [255u8; 20].into(),
 			encoding: super::Encoding::Scale,
 			selector: [255u8; 4].into(),
-			weight: super::Weight { refTime: 100, proofSize: 10 },
+			gasLimit: super::Weight { refTime: 100, proofSize: 10 },
+			storageDepositLimit: U256::from(100),
 		};
 		ExtBuilder::new()
 			.with_balances(vec![(origin.account.clone(), 1 * UNIT)]) // message deposit
@@ -624,7 +629,8 @@ mod tests {
 			destination: [255u8; 20].into(),
 			encoding: super::Encoding::Scale,
 			selector: [255u8; 4].into(),
-			weight: super::Weight { refTime: 100, proofSize: 10 },
+			gasLimit: super::Weight { refTime: 100, proofSize: 10 },
+			storageDepositLimit: U256::from(100),
 		};
 		ExtBuilder::new()
 			.with_balances(vec![(origin.account.clone(), 1 * UNIT)]) // message deposit

@@ -208,7 +208,9 @@ struct Callback {
     /// @custom:property The message selector to be used for the callback.
     bytes4 selector;
     /// @custom:property The pre-paid weight used as a gas limit for the callback.
-    Weight weight;
+    Weight gasLimit;
+    /// @custom:property The storage deposit limit for the callback.
+    uint256 storageDepositLimit;
 }
 
 /**

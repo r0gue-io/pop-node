@@ -39,7 +39,7 @@ mod tests;
 pub mod transports;
 mod weights;
 
-type BalanceOf<T> = <<T as Config>::Fungibles as Inspect<AccountIdOf<T>>>::Balance;
+pub(crate) type BalanceOf<T> = <<T as Config>::Fungibles as Inspect<AccountIdOf<T>>>::Balance;
 type BlockNumberOf<T> = BlockNumberFor<T>;
 type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 pub type MessageId = u64; // TODO: determine why this was changed to [u8; 32] - U256?;
@@ -170,7 +170,7 @@ pub mod pallet {
 						maybe_message.as_mut()
 					{
 						let callback_deposit =
-							callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
+							callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.gas_limit));
 						query_ids.push(*query_id);
 						*maybe_message = Some(Message::XcmTimeout {
 							origin: origin.address,
@@ -228,7 +228,7 @@ pub mod pallet {
 			/// The identifier specified for the request.
 			id: MessageId,
 			/// The successful callback.
-			callback: Callback,
+			callback: Callback<BalanceOf<T>>,
 		},
 		/// A callback has failed.
 		CallbackFailed {
@@ -237,7 +237,7 @@ pub mod pallet {
 			/// The identifier specified for the request.
 			id: MessageId,
 			/// The callback which failed.
-			callback: Callback,
+			callback: Callback<BalanceOf<T>>,
 			/// The error which occurred.
 			error: DispatchErrorWithPostInfo,
 		},
@@ -407,13 +407,13 @@ impl<T: Config> Pallet<T> {
 ///   [`frame_system::Pallet::<T>::register_extra_weight_unchecked`].
 pub(crate) fn call<T: Config>(
 	initiating_origin: &AccountIdOf<T>,
-	callback: Callback,
+	callback: Callback<BalanceOf<T>>,
 	id: &MessageId,
 	data: &impl EncodeCallback,
 ) -> DispatchResult {
 	// This is the total weight that should be deducted from the blockspace for callback
 	// execution.
-	let max_weight = callback.weight;
+	let max_weight = callback.gas_limit;
 
 	// Dont mutate state if blockspace will be saturated.
 	frame_support::ensure!(
@@ -432,12 +432,13 @@ pub(crate) fn call<T: Config>(
 		&initiating_origin,
 		callback.destination,
 		data,
-		callback.weight,
+		callback.gas_limit,
+		callback.storage_deposit_limit,
 	);
 
-	log::debug!(target: "pop-api::extension", "callback weight={:?}, result={result:?}", callback.weight);
+	log::debug!(target: "pop-api::extension", "callback gas_limit={:?}, storage_deposit_limit={:?}, result={result:?}", callback.gas_limit, callback.storage_deposit_limit);
 	deposit_callback_event::<T>(initiating_origin.clone(), *id, &callback, &result);
-	let callback_weight_used = process_callback_weight(&result, callback.weight);
+	let callback_weight_used = process_callback_weight(&result, callback.gas_limit);
 
 	// Manually adjust callback weight.
 	frame_system::Pallet::<T>::register_extra_weight_unchecked(
@@ -445,7 +446,7 @@ pub(crate) fn call<T: Config>(
 		DispatchClass::Normal,
 	);
 
-	match manage_fees::<T>(&initiating_origin, callback_weight_used, callback.weight) {
+	match manage_fees::<T>(&initiating_origin, callback_weight_used, callback.gas_limit) {
 		Ok(_) => (),
 		// Dont return early, we must register the weight used by the callback.
 		Err(error) =>
@@ -468,7 +469,7 @@ pub(crate) fn call<T: Config>(
 pub(crate) fn deposit_callback_event<T: Config>(
 	initiating_origin: T::AccountId,
 	message_id: MessageId,
-	callback: &Callback,
+	callback: &Callback<BalanceOf<T>>,
 	result: &DispatchResultWithPostInfo,
 ) {
 	match result {
@@ -689,8 +690,8 @@ fn remove<T: Config>(origin: Origin<T::AccountId>, messages: &[MessageId]) -> Di
 	PartialEq,
 	TypeInfo,
 )]
-#[scale_info(skip_type_params(T))]
-pub struct Callback {
+#[scale_info(skip_type_params(Balance))]
+pub struct Callback<Balance> {
 	/// The contract address to which the callback should be sent.
 	pub destination: H160,
 	/// The encoding used for the data going to the contract.
@@ -698,24 +699,28 @@ pub struct Callback {
 	/// The message selector to be used for the callback.
 	pub selector: [u8; 4],
 	/// The pre-paid weight used as a gas limit for the callback.
-	pub weight: Weight,
+	pub gas_limit: Weight,
+	/// The storage deposit limit for the callback.
+	pub storage_deposit_limit: Balance,
 }
 
-impl Callback {
+impl<Balance> Callback<Balance> {
 	/// A new message callback.
 	///
 	/// # Parameters
 	/// - `destination`: The contract address to which the callback should be sent.
 	/// - `encoding`: The encoding used for the data going to the contract.
 	/// - `selector`: The message selector to be used for the callback.
-	/// - `weight`: The pre-paid weight used as a gas limit for the callback.
+	/// - `gas_limit`: The pre-paid weight used as a gas limit for the callback.
+	/// - `storage_deposit_limit`: The storage deposit limit for the callback.
 	pub(crate) fn new(
 		destination: H160,
 		encoding: Encoding,
 		selector: [u8; 4],
-		weight: Weight,
+		gas_limit: Weight,
+		storage_deposit_limit: Balance,
 	) -> Self {
-		Self { destination, encoding, selector, weight }
+		Self { destination, encoding, selector, gas_limit, storage_deposit_limit }
 	}
 }
 
@@ -734,12 +739,15 @@ pub trait CallbackExecutor<T: Config> {
 	/// - `destination`: The contract address to which the callback should be sent.
 	/// - `data`: Encoded callback data, typically ABI-encoded input including selector and
 	///   parameters.
-	/// - `weight`: The maximum weight allowed for executing this callback.
+	/// - `gas_limit`: The gas limit allowed for executing this callback.
+	/// - `storage_deposit_limit`: The maximum amount of balance that can be charged from the caller
+	///   to pay for the storage consumed for this callback.
 	fn execute(
 		account: &T::AccountId,
 		destination: H160,
 		data: Vec<u8>,
-		weight: Weight,
+		gas_limit: Weight,
+		storage_deposit_limit: BalanceOf<T>,
 	) -> DispatchResultWithPostInfo;
 
 	/// Returns the baseline weight required for a single callback execution.
@@ -801,7 +809,7 @@ pub enum Message<T: Config> {
 	Ismp {
 		origin: Origin<T::AccountId>,
 		commitment: H256,
-		callback: Option<Callback>,
+		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
 	},
 
@@ -815,7 +823,7 @@ pub enum Message<T: Config> {
 	XcmQuery {
 		origin: Origin<T::AccountId>,
 		query_id: QueryId,
-		callback: Option<Callback>,
+		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
 	},
 
@@ -879,7 +887,7 @@ impl<T: Config> Message<T> {
 	fn ismp(
 		origin: Origin<T::AccountId>,
 		commitment: H256,
-		callback: Option<Callback>,
+		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
 	) -> Self {
 		Self::Ismp { origin, commitment, callback, message_deposit }
@@ -909,7 +917,7 @@ impl<T: Config> Message<T> {
 	fn xcm_query(
 		origin: Origin<T::AccountId>,
 		query_id: QueryId,
-		callback: Option<Callback>,
+		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
 	) -> Self {
 		Self::XcmQuery { origin, query_id, callback, message_deposit }

@@ -21,7 +21,7 @@ pub(crate) fn new_query<T: Config>(
 	origin: Origin<T::AccountId>,
 	responder: Location,
 	timeout: BlockNumberOf<T>,
-	callback: Option<Callback>,
+	callback: Option<Callback<BalanceOf<T>>>,
 ) -> Result<(MessageId, QueryId), DispatchError> {
 	let querier_location =
 		T::OriginConverter::try_convert(T::RuntimeOrigin::signed(origin.account.clone()))
@@ -49,7 +49,7 @@ pub(crate) fn new_query<T: Config>(
 		T::Fungibles::hold(
 			&HoldReason::CallbackGas.into(),
 			&origin.account,
-			T::WeightToFee::weight_to_fee(&cb.weight),
+			T::WeightToFee::weight_to_fee(&cb.gas_limit),
 		)?;
 
 		callback_execution_weight = T::CallbackExecutor::execution_weight();
@@ -172,7 +172,7 @@ pub(crate) mod tests {
 	fn takes_response_fee_with_callback() {
 		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let response_fee = xcm_response_fee();
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Weight::zero());
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Weight::zero(), 0);
 		let endowment = existential_deposit() + deposit() + response_fee;
 		ExtBuilder::new()
 			.with_balances(vec![(origin.account.clone(), endowment)])
@@ -198,7 +198,7 @@ pub(crate) mod tests {
 	fn takes_callback_hold() {
 		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let weight = Weight::from_parts(100_000_000, 100_000_000);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight, 100_000_000);
 		let callback_deposit = WeightToFee::weight_to_fee(&weight);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_deposit;
 		ExtBuilder::new()
@@ -249,7 +249,7 @@ pub(crate) mod tests {
 	fn assert_state() {
 		let origin = Origin::from((ALICE_ADDR, ALICE));
 		let weight = Weight::from_parts(100_000_000, 100_000_000);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight, 100_000_000);
 		let callback_deposit = WeightToFee::weight_to_fee(&weight);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_deposit;
 		let id = 1;
@@ -336,7 +336,7 @@ pub(crate) mod tests {
 		origin: Origin<AccountId>,
 		responder: Location,
 		timeout: u32,
-		callback: Option<Callback>,
+		callback: Option<Callback<Balance>>,
 	) -> Result<(MessageId, QueryId), DispatchError> {
 		with_transaction(|| {
 			let result = super::new_query::<Test>(origin, responder, timeout, callback);

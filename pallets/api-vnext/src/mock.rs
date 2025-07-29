@@ -223,10 +223,11 @@ pub(super) mod messaging {
 			_account: &<T as frame_system::Config>::AccountId,
 			_contract: H160,
 			_data: Vec<u8>,
-			weight: sp_runtime::Weight,
+			gas_limit: sp_runtime::Weight,
+			_storage_deposit_limit: BalanceOf<T>,
 		) -> frame_support::dispatch::DispatchResultWithPostInfo {
 			DispatchResultWithPostInfo::Ok(PostDispatchInfo {
-				actual_weight: Some(weight / 2),
+				actual_weight: Some(gas_limit / 2),
 				pays_fee: Pays::Yes,
 			})
 		}

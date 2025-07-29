@@ -8,7 +8,10 @@ use sp_runtime::{
 pub(crate) use IXCM::*;
 
 use super::*;
-use crate::messaging::{transports::xcm::new_query, Config};
+use crate::{
+	messaging::{transports::xcm::new_query, Config},
+	TryConvert,
+};
 
 sol!(
 	#![sol(extra_derives(Debug, PartialEq))]
@@ -32,6 +35,7 @@ impl<
 where
 	BlockNumberOf<T>: From<u32>,
 	u32: From<BlockNumberOf<T>>,
+	U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = Error>,
 {
 	type Interface = IXCMCalls;
 	type T = T;
@@ -257,7 +261,10 @@ impl EncodeCallback for Response {
 	}
 }
 
-impl TryFrom<&Callback> for super::Callback {
+impl<Balance> TryFrom<&Callback> for super::Callback<Balance>
+where
+	U256: TryConvert<Balance, Error = Error>,
+{
 	type Error = Error;
 
 	fn try_from(callback: &Callback) -> Result<Self, Self::Error> {
@@ -265,7 +272,8 @@ impl TryFrom<&Callback> for super::Callback {
 			(*callback.destination.0).into(),
 			(&callback.encoding).try_into()?,
 			callback.selector.0,
-			(&callback.weight).into(),
+			(&callback.gasLimit).into(),
+			callback.storageDepositLimit.try_convert()?,
 		))
 	}
 }
@@ -331,7 +339,7 @@ mod tests {
 	type XcmQueryTimeouts = crate::messaging::XcmQueryTimeouts<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(XCM);
-	const MESSAGE_DEPOSIT: u128 = 129_440;
+	const MESSAGE_DEPOSIT: u128 = 129_600;
 
 	#[test]
 	fn block_number_works() {
@@ -522,7 +530,8 @@ mod tests {
 			destination: [255u8; 20].into(),
 			encoding: super::Encoding::Scale,
 			selector: [255u8; 4].into(),
-			weight: super::Weight { refTime: 100, proofSize: 10 },
+			gasLimit: super::Weight { refTime: 100, proofSize: 10 },
+			storageDepositLimit: U256::from(100),
 		};
 		ExtBuilder::new().build().execute_with(|| {
 			let input = newQuery_1(newQuery_1Call { responder, timeout, callback });
@@ -539,7 +548,8 @@ mod tests {
 			destination: [255u8; 20].into(),
 			encoding: super::Encoding::Scale,
 			selector: [255u8; 4].into(),
-			weight: super::Weight { refTime: 100, proofSize: 10 },
+			gasLimit: super::Weight { refTime: 100, proofSize: 10 },
+			storageDepositLimit: U256::from(100),
 		};
 		ExtBuilder::new().build().execute_with(|| {
 			let input = newQuery_1(newQuery_1Call { responder, timeout, callback });
@@ -556,7 +566,8 @@ mod tests {
 			destination: [255u8; 20].into(),
 			encoding: super::Encoding::Scale,
 			selector: [255u8; 4].into(),
-			weight: super::Weight { refTime: 100, proofSize: 10 },
+			gasLimit: super::Weight { refTime: 100, proofSize: 10 },
+			storageDepositLimit: U256::from(100),
 		};
 		ExtBuilder::new().build().execute_with(|| {
 			let current_block = frame_system::Pallet::<Test>::block_number();
@@ -582,7 +593,8 @@ mod tests {
 			destination: [255u8; 20].into(),
 			encoding: super::Encoding::Scale,
 			selector: [255u8; 4].into(),
-			weight: super::Weight { refTime: 100, proofSize: 10 },
+			gasLimit: super::Weight { refTime: 100, proofSize: 10 },
+			storageDepositLimit: U256::from(100),
 		};
 		ExtBuilder::new().build().execute_with(|| {
 			let input = newQuery_1(newQuery_1Call { responder, timeout, callback });
@@ -599,7 +611,8 @@ mod tests {
 			destination: [255u8; 20].into(),
 			encoding: super::Encoding::Scale,
 			selector: [255u8; 4].into(),
-			weight: super::Weight { refTime: 100, proofSize: 10 },
+			gasLimit: super::Weight { refTime: 100, proofSize: 10 },
+			storageDepositLimit: U256::from(100),
 		};
 		let message = 1;
 		let query_id = 2;

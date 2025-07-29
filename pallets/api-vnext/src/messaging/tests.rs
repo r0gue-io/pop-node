@@ -469,8 +469,9 @@ mod xcm_response {
 		let id = 1;
 		let query_id = 42;
 		let response = Response::ExecutionResult(None);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], 100.into());
-		let callback_fee = WeightToFee::weight_to_fee(&callback.weight);
+		let callback =
+			Callback::new(H160::zero(), Encoding::Scale, [1; 4], 100.into(), 100u8.into());
+		let callback_fee = WeightToFee::weight_to_fee(&callback.gas_limit);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee() + callback_fee;
 		ExtBuilder::new()
 			.with_balances(vec![(origin.account.clone(), endowment)])
@@ -495,7 +496,7 @@ mod xcm_response {
 		let id = 1;
 		let query_id = 42;
 		let response = Response::ExecutionResult(None);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Zero::zero());
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], Zero::zero(), 0);
 		let endowment = existential_deposit() + deposit() + xcm_response_fee();
 		ExtBuilder::new()
 			.with_balances(vec![(origin.account.clone(), endowment)])
@@ -570,7 +571,7 @@ mod call {
 	fn assert_error_event() {
 		let origin = ALICE;
 		let weight = Weight::from_parts(100_000, 100_000);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight, 100_000);
 		let message_id = 1;
 		let data = vec![100u8; 5];
 		ExtBuilder::new().build().execute_with(|| {
@@ -592,7 +593,7 @@ mod call {
 	fn block_weight_mutation_happens() {
 		let origin = ALICE;
 		let weight = Weight::from_parts(10_000_000, 10_000_000);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0u8; 4], weight, 10_000_000);
 		let id = 1;
 		let data = vec![100u8; 5];
 		let callback_fee = <Test as Config>::WeightToFee::weight_to_fee(&weight);
@@ -659,7 +660,7 @@ mod deposit_callback_event {
 		let origin = ALICE;
 		let message_id = 1;
 		let weight = Weight::from_parts(100_000, 100_000);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [0; 4], weight);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0; 4], weight, 100_000);
 		let result: DispatchResultWithPostInfo = Ok(PostDispatchInfo {
 			actual_weight: Some(Weight::from_parts(1_000, 0)),
 			pays_fee: Default::default(),
@@ -677,7 +678,7 @@ mod deposit_callback_event {
 		let origin = BOB;
 		let message_id = 2;
 		let weight = Weight::from_parts(100_000, 100_000);
-		let callback = Callback::new(H160::zero(), Encoding::Scale, [0; 4], weight);
+		let callback = Callback::new(H160::zero(), Encoding::Scale, [0; 4], weight, 100_000);
 		let result = DispatchResultWithPostInfo::Err(DispatchErrorWithPostInfo {
 			post_info: Default::default(),
 			error: Error::InvalidMessage.into(),

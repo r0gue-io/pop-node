@@ -52,7 +52,7 @@ pub(crate) fn get<T: Config>(
 	origin: Origin<T::AccountId>,
 	message: DispatchGet,
 	fee: BalanceOf<T>,
-	callback: Option<Callback>,
+	callback: Option<Callback<BalanceOf<T>>>,
 ) -> Result<(MessageId, H256), DispatchError> {
 	// Take deposits and fees.
 	let message_deposit =
@@ -66,7 +66,7 @@ pub(crate) fn get<T: Config>(
 		T::Fungibles::hold(
 			&HoldReason::CallbackGas.into(),
 			&origin.account,
-			T::WeightToFee::weight_to_fee(&cb.weight),
+			T::WeightToFee::weight_to_fee(&cb.gas_limit),
 		)?;
 	}
 
@@ -107,7 +107,7 @@ pub(crate) fn post<T: Config>(
 	origin: Origin<T::AccountId>,
 	message: DispatchPost,
 	fee: BalanceOf<T>,
-	callback: Option<Callback>,
+	callback: Option<Callback<BalanceOf<T>>>,
 ) -> Result<(MessageId, H256), DispatchError> {
 	// Take deposits and fees.
 	let message_deposit =
@@ -121,7 +121,7 @@ pub(crate) fn post<T: Config>(
 		T::Fungibles::hold(
 			&HoldReason::CallbackGas.into(),
 			&origin.account,
-			T::WeightToFee::weight_to_fee(&cb.weight),
+			T::WeightToFee::weight_to_fee(&cb.gas_limit),
 		)?;
 	}
 
@@ -201,7 +201,7 @@ pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), any
 		let Some(Message::Ismp { origin, commitment, message_deposit, callback }) = message else {
 			return Err(::ismp::Error::Custom("Invalid message".into()));
 		};
-		let callback_deposit = callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.weight));
+		let callback_deposit = callback.map(|cb| T::WeightToFee::weight_to_fee(&cb.gas_limit));
 		*message = Some(Message::IsmpTimeout {
 			origin: origin.address,
 			message_deposit: *message_deposit,
@@ -322,7 +322,8 @@ mod tests {
 		fn takes_deposit() {
 			let origin = Origin::from((ALICE_ADDR, ALICE));
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
-			let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+			let callback =
+				Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight, 100_000_000);
 			let callback_deposit = WeightToFee::weight_to_fee(&weight);
 			let fee: Balance = u32::MAX.into();
 			let expected_deposit = calculate_protocol_deposit::<Test, OnChainByteFee>(
@@ -412,7 +413,8 @@ mod tests {
 		fn takes_deposit() {
 			let origin = Origin::from((ALICE_ADDR, ALICE));
 			let weight = Weight::from_parts(100_000_000, 100_000_000);
-			let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight);
+			let callback =
+				Callback::new(H160::zero(), Encoding::Scale, [1; 4], weight, 100_000_000);
 			let callback_deposit = <Test as Config>::WeightToFee::weight_to_fee(&weight);
 			let fee: Balance = u32::MAX.into();
 			let expected_deposit =
@@ -571,7 +573,8 @@ mod tests {
 				let response = vec![1u8];
 				let commitment = H256::default();
 				let id = 1;
-				let callback = Callback::new(H160::zero(), Encoding::Scale, [1; 4], 100.into());
+				let callback =
+					Callback::new(H160::zero(), Encoding::Scale, [1; 4], 100.into(), 100);
 				let message_deposit = 100;
 				let message =
 					Message::ismp(origin.clone(), commitment, Some(callback), message_deposit);

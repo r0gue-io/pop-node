@@ -182,7 +182,8 @@ mod benchmarks {
 				destination: [255; 20].into(),
 				encoding: ismp::Encoding::SolidityAbi,
 				selector: [255; 4].into(),
-				weight: ismp::Weight { refTime: 100_000, proofSize: 100_000 },
+				gasLimit: ismp::Weight { refTime: 100_000, proofSize: 100_000 },
+				storageDepositLimit: alloy::U256::from(100_000),
 			};
 			IISMPCalls::get_1(IISMP::get_1Call { request, fee, callback })
 		};
@@ -210,6 +211,7 @@ mod benchmarks {
 			Encoding::Scale,
 			[255; 4],
 			Weight::from_parts(100_000, 100_000),
+			100_000u32.into(),
 		);
 		let handler = Handler::<T>::new();
 
@@ -249,6 +251,7 @@ mod benchmarks {
 			Encoding::Scale,
 			[255; 4],
 			Weight::from_parts(100_000, 100_000),
+			100_000u32.into(),
 		);
 		let handler = Handler::<T>::new();
 
@@ -324,7 +327,8 @@ mod benchmarks {
 				destination: [255; 20].into(),
 				encoding: ismp::Encoding::SolidityAbi,
 				selector: [255; 4].into(),
-				weight: ismp::Weight { refTime: 100_000, proofSize: 100_000 },
+				gasLimit: ismp::Weight { refTime: 100_000, proofSize: 100_000 },
+				storageDepositLimit: alloy::U256::from(100_000),
 			};
 			IISMPCalls::post_1(IISMP::post_1Call { request, fee, callback })
 		};
@@ -445,7 +449,8 @@ mod benchmarks {
 				destination: [255; 20].into(),
 				encoding: xcm::Encoding::SolidityAbi,
 				selector: [0; 4].into(),
-				weight: xcm::Weight { refTime: 100, proofSize: 100 },
+				gasLimit: xcm::Weight { refTime: 100, proofSize: 100 },
+				storageDepositLimit: alloy::U256::from(100),
 			};
 			IXCMCalls::newQuery_1(IXCM::newQuery_1Call { responder, timeout, callback })
 		};
@@ -468,7 +473,8 @@ mod benchmarks {
 			destination: [255; 20].into(),
 			encoding: Encoding::Scale,
 			selector: [0; 4],
-			weight: Weight::from_parts(100, 100),
+			gas_limit: Weight::from_parts(100, 100),
+			storage_deposit_limit: 100u8.into(),
 		});
 		let response_origin = T::XcmResponseOrigin::try_successful_origin().unwrap();
 		let response = ExecutionResult(None);
@@ -499,7 +505,7 @@ fn ismp_request<T: Config + pallet_ismp::Config>(
 	x: u32,
 	origin: Origin<T::AccountId>,
 	fee: BalanceOf<T>,
-	callback: Callback,
+	callback: Callback<BalanceOf<T>>,
 ) -> (MessageId, H256, Response) {
 	if x == 0 {
 		// get response

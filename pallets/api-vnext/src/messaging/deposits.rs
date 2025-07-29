@@ -14,7 +14,7 @@ pub fn calculate_protocol_deposit<T: Config, ByteFee: Get<BalanceOf<T>>>(
 		ProtocolStorageDeposit::XcmQueries => (KeyLenOf::<XcmQueries<T>>::get() as usize)
 			.saturating_add(AccountIdOf::<T>::max_encoded_len())
 			.saturating_add(MessageId::max_encoded_len())
-			.saturating_add(Option::<Callback>::max_encoded_len()),
+			.saturating_add(Option::<Callback<BalanceOf<T>>>::max_encoded_len()),
 
 		ProtocolStorageDeposit::IsmpRequests => (KeyLenOf::<IsmpRequests<T>>::get() as usize)
 			.saturating_add(AccountIdOf::<T>::max_encoded_len())
