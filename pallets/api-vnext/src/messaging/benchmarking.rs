@@ -44,7 +44,7 @@ use super::{
 	},
 	set_up_call,
 	transports::{
-		ismp::{get, post, Handler, ID},
+		ismp::{get, post, Module, ID},
 		xcm::new_query,
 	},
 	Call, Callback, Config, Encoding, Event, HoldReason, IsmpRequests, Message, MessageId,
@@ -196,6 +196,28 @@ mod benchmarks {
 		Ok(())
 	}
 
+	/// Handles acceptance of an ISMP POST.
+	#[benchmark]
+	fn ismp_on_accept() {
+		let module = Module::<T>::new();
+		let request = PostRequest {
+			source: StateMachine::Polkadot(u32::MAX),
+			dest: StateMachine::Polkadot(u32::MAX),
+			nonce: u64::MAX,
+			from: [255u8; 32].to_vec(),
+			to: [255u8; 32].to_vec(),
+			timeout_timestamp: u64::MAX,
+			body: vec![255u8; T::MaxDataLen::get() as usize],
+		};
+
+		silence_timestamp_genesis_warnings::<T>();
+
+		#[block]
+		{
+			module.on_accept(request).unwrap()
+		}
+	}
+
 	/// Handles a response to a previously submitted ISMP request.
 	///
 	/// # Parameters
@@ -213,7 +235,7 @@ mod benchmarks {
 			Weight::from_parts(100_000, 100_000),
 			100_000u32.into(),
 		);
-		let handler = Handler::<T>::new();
+		let module = Module::<T>::new();
 
 		silence_timestamp_genesis_warnings::<T>();
 		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
@@ -223,7 +245,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			handler.on_response(response).unwrap()
+			module.on_response(response).unwrap()
 		}
 
 		let event = match x {
@@ -253,7 +275,7 @@ mod benchmarks {
 			Weight::from_parts(100_000, 100_000),
 			100_000u32.into(),
 		);
-		let handler = Handler::<T>::new();
+		let module = Module::<T>::new();
 
 		silence_timestamp_genesis_warnings::<T>();
 		<Balances<T>>::set_balance(&origin.account, u32::MAX.into());
@@ -279,7 +301,7 @@ mod benchmarks {
 
 		#[block]
 		{
-			handler.on_timeout(timeout).unwrap()
+			module.on_timeout(timeout).unwrap()
 		}
 
 		assert_has_event::<T>(Event::<T>::IsmpTimedOut { commitment }.into());

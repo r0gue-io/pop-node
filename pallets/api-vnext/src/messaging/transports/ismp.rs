@@ -20,7 +20,6 @@ use super::{
 	*,
 };
 
-type DbWeightOf<T> = <T as frame_system::Config>::DbWeight;
 type GetState<T> = (
 	StateMachine,
 	[u8; 4],
@@ -215,21 +214,22 @@ pub(crate) fn timeout_commitment<T: Config>(commitment: &H256) -> Result<(), any
 	Ok(())
 }
 
-pub struct Handler<T>(PhantomData<T>);
-impl<T> Default for Handler<T> {
+pub struct Module<T>(PhantomData<T>);
+impl<T> Default for Module<T> {
 	fn default() -> Self {
 		Self::new()
 	}
 }
 
-impl<T> Handler<T> {
+impl<T> Module<T> {
 	pub fn new() -> Self {
 		Self(PhantomData)
 	}
 }
 
-impl<T: Config> IsmpModule for Handler<T> {
+impl<T: Config> IsmpModule for Module<T> {
 	fn on_accept(&self, _request: PostRequest) -> Result<(), anyhow::Error> {
+		// ISMP POSTs are currently not supported.
 		Ok(())
 	}
 
@@ -267,10 +267,9 @@ impl<T: Config> IsmpModule for Handler<T> {
 	}
 }
 
-impl<T: Config> IsmpModuleWeight for Pallet<T> {
-	// Static as not in use.
+impl<T: Config> IsmpModuleWeight for Module<T> {
 	fn on_accept(&self, _request: &PostRequest) -> Weight {
-		DbWeightOf::<T>::get().reads_writes(1, 1)
+		T::WeightInfo::ismp_on_accept()
 	}
 
 	fn on_timeout(&self, timeout: &Timeout) -> Weight {
@@ -288,9 +287,9 @@ impl<T: Config> IsmpModuleWeight for Pallet<T> {
 			Response::Get(_) => 0,
 			Response::Post(_) => 1,
 		};
-
+		T::WeightInfo::ismp_on_response(x)
 		// Also add actual weight consumed by contract env.
-		T::WeightInfo::ismp_on_response(x).saturating_add(T::CallbackExecutor::execution_weight())
+		.saturating_add(T::CallbackExecutor::execution_weight())
 	}
 }
 
@@ -391,7 +390,7 @@ mod tests {
 			)
 		}
 
-		fn message() -> DispatchGet {
+		pub(super) fn message() -> DispatchGet {
 			DispatchGet {
 				dest: StateMachine::Polkadot(u32::MAX),
 				from: ID.into(),
@@ -482,7 +481,7 @@ mod tests {
 			)
 		}
 
-		fn message() -> DispatchPost {
+		pub(super) fn message() -> DispatchPost {
 			DispatchPost {
 				dest: StateMachine::Polkadot(u32::MAX),
 				from: ID.to_vec(),
@@ -503,10 +502,10 @@ mod tests {
 			/// If an error is returned the receipt is not removed and a replay attack is possible.
 			#[test]
 			fn is_ok() {
-				let handler = handler();
-				ExtBuilder::new()
-					.build()
-					.execute_with(|| assert!(handler.on_accept(post_request(100usize)).is_ok()))
+				let module = module();
+				ExtBuilder::new().build().execute_with(|| {
+					assert!(IsmpModule::on_accept(&module, post_request(100usize)).is_ok())
+				})
 			}
 		}
 
@@ -694,11 +693,11 @@ mod tests {
 			}
 		}
 
-		fn handler() -> ismp::Handler<Test> {
-			ismp::Handler::<Test>::new()
+		fn module() -> ismp::Module<Test> {
+			ismp::Module::<Test>::new()
 		}
 
-		fn post_request(body_len: usize) -> PostRequest {
+		pub(super) fn post_request(body_len: usize) -> PostRequest {
 			PostRequest {
 				source: StateMachine::Polkadot(2000),
 				dest: StateMachine::Polkadot(2001),
@@ -707,6 +706,78 @@ mod tests {
 				to: [1u8; 32].to_vec(),
 				timeout_timestamp: 100_000,
 				body: vec![1u8; body_len],
+			}
+		}
+	}
+
+	mod weight {
+		use ::ismp::router::GetRequest;
+
+		use super::{CallbackExecutor as _, WeightInfo as _, *};
+
+		type CallbackExecutor = <Test as Config>::CallbackExecutor;
+		type Module = super::Module<Test>;
+		type WeightInfo = <Test as Config>::WeightInfo;
+
+		#[test]
+		fn on_accept() {
+			assert_eq!(
+				IsmpModuleWeight::on_accept(&Module::new(), &ismp_hooks::post_request(100)),
+				WeightInfo::ismp_on_accept()
+			)
+		}
+
+		#[test]
+		fn on_response() {
+			let module = Module::new();
+			for (response, x) in
+				[(Response::Get(get_response()), 0), (Response::Post(post_response()), 1)]
+			{
+				assert_eq!(
+					IsmpModuleWeight::on_response(&module, &response),
+					WeightInfo::ismp_on_response(x)
+						.saturating_add(CallbackExecutor::execution_weight())
+				);
+			}
+		}
+
+		#[test]
+		fn on_timeout() {
+			let module = Module::new();
+			for (response, x) in [
+				(Timeout::Request(Request::Get(get_request())), 0),
+				(Timeout::Request(Request::Post(ismp_hooks::post_request(100))), 1),
+				(Timeout::Response(post_response()), 2),
+			] {
+				assert_eq!(
+					IsmpModuleWeight::on_timeout(&module, &response),
+					WeightInfo::ismp_on_timeout(x)
+				);
+			}
+		}
+
+		fn get_request() -> GetRequest {
+			GetRequest {
+				source: StateMachine::Polkadot(0),
+				dest: StateMachine::Polkadot(0),
+				nonce: 0,
+				from: Vec::default(),
+				keys: Vec::default(),
+				height: 0,
+				context: Vec::default(),
+				timeout_timestamp: 0,
+			}
+		}
+
+		fn get_response() -> GetResponse {
+			GetResponse { get: get_request(), values: Vec::default() }
+		}
+
+		fn post_response() -> PostResponse {
+			PostResponse {
+				post: ismp_hooks::post_request(100),
+				response: Vec::default(),
+				timeout_timestamp: 0,
 			}
 		}
 	}
