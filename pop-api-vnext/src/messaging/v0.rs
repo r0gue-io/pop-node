@@ -69,7 +69,9 @@ pub struct Callback {
 	/// The message selector to be used for the callback.
 	selector: FixedBytes<4>,
 	/// The pre-paid weight used as a gas limit for the callback.
-	weight: Weight,
+	gas_limit: Weight,
+	/// The storage deposit limit for the callback.
+	storage_deposit_limit: U256,
 }
 
 impl Callback {
@@ -79,9 +81,22 @@ impl Callback {
 	/// - `destination` - The contract address to which the callback should be sent.
 	/// - `encoding` - The encoding used for the data going to the contract.
 	/// - `selector` - The message selector to be used for the callback.
-	/// - `weight` - The pre-paid weight used as a gas limit for the callback.
-	pub fn new(destination: Address, encoding: Encoding, selector: u32, weight: Weight) -> Self {
-		Self { destination, encoding, selector: SolBytes(selector.to_be_bytes()), weight }
+	/// - `gas_limit` - The pre-paid weight used as a gas limit for the callback.
+	/// - `storage_deposit_limit` - The storage deposit limit for the callback.
+	pub fn new(
+		destination: Address,
+		encoding: Encoding,
+		selector: u32,
+		gas_limit: Weight,
+		storage_deposit_limit: U256,
+	) -> Self {
+		Self {
+			destination,
+			encoding,
+			selector: SolBytes(selector.to_be_bytes()),
+			gas_limit,
+			storage_deposit_limit,
+		}
 	}
 }
 

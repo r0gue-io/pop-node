@@ -289,7 +289,7 @@ impl Post {
 
 /// A verified storage value.
 #[ink::scale_derive(Encode, Decode, TypeInfo)]
-#[derive(Debug, ink::SolDecode, ink::SolEncode)]
+#[derive(Clone, Debug, ink::SolDecode, ink::SolEncode)]
 pub struct StorageValue {
 	/// The request storage key.
 	pub key: Bytes,
