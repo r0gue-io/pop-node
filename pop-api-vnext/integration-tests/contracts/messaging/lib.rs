@@ -1,6 +1,6 @@
 #![cfg_attr(not(feature = "std"), no_std, no_main)]
 
-use ink::{abi::Sol, contract_ref, prelude::vec::Vec, U256};
+use ink::{abi::Sol, contract_ref, prelude::vec::Vec, storage::Mapping, U256};
 use pop_api::{
 	messaging::{
 		self as api,
@@ -19,13 +19,16 @@ pub mod messaging {
 	use super::*;
 
 	#[ink(storage)]
-	pub struct Messaging;
+	pub struct Messaging {
+		/// Successful responses.
+		responses: Mapping<MessageId, Response>,
+	}
 
 	impl Messaging {
 		#[ink(constructor, default, payable)]
 		#[allow(clippy::new_without_default)]
 		pub fn new() -> Self {
-			Self {}
+			Self { responses: Mapping::new() }
 		}
 	}
 
@@ -47,12 +50,18 @@ pub mod messaging {
 
 		#[ink(message)]
 		fn remove(&self, message: MessageId) -> Result<(), Error> {
-			api::remove(message)
+			api::remove(message)?;
+			self.responses.remove(&message);
+			Ok(())
 		}
 
 		#[ink(message)]
 		fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error> {
-			api::remove_many(messages)
+			for message in &messages {
+				self.responses.remove(message);
+			}
+			api::remove_many(messages)?;
+			Ok(())
 		}
 	}
 
@@ -93,6 +102,10 @@ pub mod messaging {
 	impl OnGetResponse for Messaging {
 		#[ink(message)]
 		fn onGetResponse(&mut self, id: MessageId, response: Vec<StorageValue>) {
+			// Adding state requires storage deposit limit to be defined on callback. Deposit is
+			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
+			// removes state, so adequate controls should be implemented by contract as desired.
+			self.responses.insert(id, &Response::IsmpGet(response.clone()));
 			self.env().emit_event(IsmpGetCompleted { id, response });
 		}
 	}
@@ -100,6 +113,10 @@ pub mod messaging {
 	impl OnPostResponse for Messaging {
 		#[ink(message)]
 		fn onPostResponse(&mut self, id: MessageId, response: Bytes) {
+			// Adding state requires storage deposit limit to be defined on callback. Deposit is
+			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
+			// removes state, so adequate controls should be implemented by contract as desired.
+			self.responses.insert(id, &Response::IsmpPost(response.0.clone()));
 			self.env().emit_event(IsmpPostCompleted { id, response });
 		}
 	}
@@ -140,7 +157,18 @@ pub mod messaging {
 	impl OnQueryResponse for Messaging {
 		#[ink(message)]
 		fn onQueryResponse(&mut self, id: MessageId, response: Bytes) {
+			// Adding state requires storage deposit limit to be defined on callback. Deposit is
+			// moved from caller to contract and placed on hold. Deposit is claimed by anyone that
+			// removes state, so adequate controls should be implemented by contract as desired.
+			self.responses.insert(id, &Response::XcmQuery(response.0.clone()));
 			self.env().emit_event(XcmCompleted { id, result: response });
 		}
+	}
+
+	#[ink::scale_derive(Encode, Decode, TypeInfo)]
+	enum Response {
+		IsmpGet(Vec<StorageValue>),
+		IsmpPost(Vec<u8>),
+		XcmQuery(Vec<u8>),
 	}
 }

@@ -127,7 +127,8 @@ mod ismp {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
 				selector: 0x9bf78ffbu32.into(),
-				weight: Weight { refTime: 900_000_000, proofSize: 150_000 },
+				gasLimit: Weight { refTime: 1_100_000_000, proofSize: 110_000 },
+				storageDepositLimit: alloy::U256::from(1 * UNIT / 5)
 			};
 			let id = contract.get(request, U256::zero(), Some(callback.clone())).unwrap();
 			assert_eq!(contract.poll_status(id), MessageStatus::Pending);
@@ -161,6 +162,12 @@ mod ismp {
 			System::assert_has_event(
 				IsmpGetResponseReceived { dest: contract.address, id, commitment }.into(),
 			);
+			assert!(System::events().iter().any(|e| {
+				matches!(&e.event,
+				RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
+					if origin == &contract.account_id() && *message_id == id
+				)
+			}));
 
 			assert_eq!(
 				contract.last_event(),
@@ -177,12 +184,6 @@ mod ismp {
 				.encode()
 			);
 			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
-			assert!(System::events().iter().any(|e| {
-				matches!(&e.event,
-				RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
-					if origin == &contract.account_id() && *message_id == id
-				)
-			}));
 		});
 	}
 
@@ -252,7 +253,8 @@ mod ismp {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
 				selector: 0xbe910d67u32.into(),
-				weight: Weight { refTime: 900_000_000, proofSize: 150_000 },
+				gasLimit: Weight { refTime: 850_000_000, proofSize: 110_000 },
+				storageDepositLimit: alloy::U256::from(1 * UNIT / 5)
 			};
             let id = contract.post(request,  U256::zero(), Some(callback.clone())).unwrap();
             assert_eq!(contract.poll_status(id), MessageStatus::Pending);
@@ -283,17 +285,18 @@ mod ismp {
 			System::assert_has_event(
 				IsmpPostResponseReceived { dest: contract.address, id, commitment }.into(),
 			);
-			assert_eq!(
-				contract.last_event(),
-				IsmpPostCompleted { id, response: SolBytes(response) }.encode()
-			);
-			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
 			assert!(System::events().iter().any(|e| {
 				matches!(&e.event,
 				RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
 					if origin == &contract.account_id() && *message_id == id
 				)
 			}));
+
+			assert_eq!(
+				contract.last_event(),
+				IsmpPostCompleted { id, response: SolBytes(response) }.encode()
+			);
+			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
 		});
 	}
 
@@ -449,7 +452,8 @@ mod xcm {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
 				selector: 0x97dbf9fbu32.into(),
-				weight: Weight { refTime: 900_000_000, proofSize: 150_000 },
+				gasLimit: Weight { refTime: 850_000_000, proofSize: 110_000 },
+				storageDepositLimit: alloy::U256::from(1 * UNIT / 5),
 			};
 			let (id, query_id) =
 				contract.new_query(responder.encode(), timeout, Some(callback.clone())).unwrap();
@@ -476,18 +480,18 @@ mod xcm {
 				query_id,
 				response.clone()
 			));
-
-			assert_eq!(
-				contract.last_event(),
-				XcmCompleted { id, result: SolBytes(response.encode()) }.encode()
-			);
-			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
 			assert!(System::events().iter().any(|e| {
 				matches!(&e.event,
 				RuntimeEvent::Messaging(CallbackExecuted { origin, id: message_id, ..})
 					if origin == &contract.account_id() && *message_id == id
 				)
 			}));
+
+			assert_eq!(
+				contract.last_event(),
+				XcmCompleted { id, result: SolBytes(response.encode()) }.encode()
+			);
+			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
 		});
 	}
 
