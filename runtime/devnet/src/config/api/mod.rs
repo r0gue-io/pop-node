@@ -250,6 +250,7 @@ mod messaging {
 		type MaxDataLen = ConstU32<512>;
 		type MaxKeyLen = ConstU32<8>;
 		type MaxKeys = ConstU32<10>;
+		type MaxRecipientLen = ConstU32<32>;
 		// TODO: size appropriately
 		type MaxRemovals = ConstU32<100>;
 		// TODO: ensure within the contract buffer bounds
