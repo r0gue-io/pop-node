@@ -160,6 +160,14 @@ pub mod pallet {
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberOf<T>> for Pallet<T> {
+		fn integrity_test() {
+			assert!(
+				T::MaxResponseLen::get() as usize > Response::max_encoded_len(),
+				"MaxResponseLen should be greater than the maximum encoded length of a XCM \
+				 Response"
+			);
+		}
+
 		fn on_initialize(n: BlockNumberOf<T>) -> Weight {
 			// As of polkadot-2412 XCM timeouts are not handled by the implementation of OnResponse
 			// in pallet-xcm. As a result, we must handle timeouts in the pallet.
