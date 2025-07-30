@@ -11,6 +11,7 @@ use pallet_api_vnext::fungibles::precompiles::v0::IFungibles::{
 	setMetadataCall, startDestroyCall, symbolCall, totalSupplyCall, transferCall, transferFromCall,
 };
 use pop_api::{
+	errors::{ArithmeticError, TokenError},
 	fungibles::{Error::*, *},
 	SolErrorDecode,
 };
@@ -20,7 +21,7 @@ use sp_io::hashing::twox_256;
 use super::*;
 
 const CONTRACT: &str = "contracts/fungibles/target/ink/fungibles.polkavm";
-const GAS_LIMIT: Weight = Weight::from_parts(6_000_000_000, 100_000);
+const GAS_LIMIT: Weight = Weight::from_parts(6_000_000_000, 110_000);
 const INIT_VALUE: Balance = 11 * UNIT;
 const STORAGE_DEPOSIT_LIMIT: DepositLimit<Balance> = DepositLimit::Balance(1 * UNIT);
 
@@ -156,7 +157,7 @@ fn transfer_works() {
 			// Transfer token to account that does not exist.
 			assert_noop!(
 				contract.transfer(token, [255; 20].into(), (amount / 4).into()),
-				CannotCreate
+				Token(TokenError::CannotCreate)
 			);
 			// Token is not live, i.e. frozen or being destroyed.
 			start_destroy(&owner, token);
@@ -633,7 +634,10 @@ fn mint_works() {
 			// Contract must be admin in order to be able to mint.
 			let token = contract.create(contract.address, 2.into()).unwrap();
 			// Minimum balance of a token can not be zero.
-			assert_noop!(contract.mint(token, to_address(&account), 1.into()), BelowMinimum);
+			assert_noop!(
+				contract.mint(token, to_address(&account), 1.into()),
+				Token(TokenError::BelowMinimum)
+			);
 			// Token is not live, i.e. frozen or being destroyed.
 			freeze(&contract.account_id(), token);
 			assert_noop!(contract.mint(token, to_address(&account), amount.into()), NotLive);
@@ -646,7 +650,10 @@ fn mint_works() {
 			let balance_after_mint = Assets::balance(token, &account);
 			assert_eq!(balance_after_mint, balance_before_mint + amount);
 			// Account can not hold more tokens than Balance::MAX.
-			assert_noop!(contract.mint(token, to_address(&account), Balance::MAX.into()), Overflow);
+			assert_noop!(
+				contract.mint(token, to_address(&account), Balance::MAX.into()),
+				Arithmetic(ArithmeticError::Overflow)
+			);
 			// Token is being destroyed.
 			start_destroy(&contract.account_id(), token);
 			assert_noop!(contract.mint(token, to_address(&account), amount.into()), Unknown);
