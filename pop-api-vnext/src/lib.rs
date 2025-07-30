@@ -5,6 +5,8 @@ pub use sol::{revert, SolErrorDecode};
 
 type Pop = ink::env::DefaultEnvironment;
 
+/// The various general errors which may occur.
+pub mod errors;
 /// APIs for fungible tokens.
 #[cfg(feature = "fungibles")]
 pub mod fungibles;
