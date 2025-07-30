@@ -161,10 +161,12 @@ pub mod pallet {
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberOf<T>> for Pallet<T> {
 		fn integrity_test() {
+			let max_response_len = T::MaxResponseLen::get() as usize;
+			let response_max_encoded_len = Response::max_encoded_len();
 			assert!(
-				T::MaxResponseLen::get() as usize > Response::max_encoded_len(),
-				"MaxResponseLen should be greater than the maximum encoded length of a XCM \
-				 Response"
+				max_response_len > response_max_encoded_len,
+				"MaxResponseLen ({max_response_len}) should be greater than the maximum encoded \
+				 length of an XCM Response ({response_max_encoded_len})"
 			);
 		}
 
