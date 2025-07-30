@@ -196,34 +196,155 @@ interface IFungibles {
      */
     event Created(uint32 id, address creator, address admin);
 
-    /// @dev The metadata provided is invalid.
+    /// @notice The metadata provided is invalid.
     error BadMetadata();
-    /// @dev Account cannot exist with the funds that would be given.
-    error BelowMinimum();
-    /// @dev Account cannot be created.
-    error CannotCreate();
-    /// @dev The account balance is insufficient.
+    /// @notice The account balance is insufficient.
     error InsufficientBalance();
-    /// @dev The token recipient is invalid.
+    /// @notice The token recipient is invalid.
     error InvalidRecipient(address);
-    /// @dev The minimum balance should be non-zero.
+    /// @notice The minimum balance should be non-zero.
     error MinBalanceZero();
-    /// @dev The signing account has no permission to do the operation.
+    /// @notice The signing account has no permission to do the operation.
     error NoPermission();
-    /// @dev The token is not live, and likely being destroyed..
+    /// @notice The token is not live, and likely being destroyed..
     error NotLive();
-    /// @dev The token balance overflowed.
-    error Overflow();
-    /// @dev No approval exists that would allow the transfer.
+    /// @notice No approval exists that would allow the transfer.
     error Unapproved();
-    /// @dev The given token identifier is unknown.
+    /// @notice The given token identifier is unknown.
     error Unknown();
-    /// @dev The `admin` address cannot be the zero address.
+    /// @notice The `admin` address cannot be the zero address.
     error ZeroAdminAddress();
-    /// @dev The recipient cannot be the zero address.
+    /// @notice The recipient cannot be the zero address.
     error ZeroRecipientAddress();
-    /// @dev The sender cannot be the zero address.
+    /// @notice The sender cannot be the zero address.
     error ZeroSenderAddress();
-    /// @dev The specified `value` cannot be zero.
+    /// @notice The specified `value` cannot be zero.
     error ZeroValue();
+}
+
+/// @notice An arithmetic error.
+error Arithmetic(ArithmeticError);
+/// @title Arithmetic errors.
+enum ArithmeticError {
+    /// @notice Underflow.
+    Underflow,
+    /// @notice Overflow.
+    Overflow,
+    /// @notice Division by zero.
+    DivisionByZero
+}
+
+/// @notice Reason why a dispatch call failed.
+error Dispatch(DispatchError);
+/// @title Reason why a dispatch call failed.
+enum DispatchError {
+	/// @notice Some error occurred.
+	Other,
+	/// @notice Failed to lookup some data.
+	CannotLookup,
+	/// @notice A bad origin.
+	BadOrigin,
+	/// @notice A custom error in a module.
+	Module,
+	/// @notice At least one consumer is remaining so the account cannot be destroyed.
+	ConsumerRemaining,
+	/// @notice There are no providers so the account cannot be created.
+	NoProviders,
+	/// @notice There are too many consumers so the account cannot be created.
+	TooManyConsumers,
+	/// @notice An error to do with tokens.
+	Token,
+	/// @notice An arithmetic error.
+	Arithmetic,
+	/// @notice The number of transactional layers has been reached, or we are not in a
+	/// transactional layer.
+	Transactional,
+	/// @notice Resources exhausted, e.g. attempt to read/write data which is too large to manipulate.
+	Exhausted,
+	/// @notice The state is corrupt; this is generally not going to fix itself.
+	Corruption,
+	/// @notice Some resource (e.g. a preimage) is unavailable right now. This might fix itself later.
+	Unavailable,
+	/// @notice Root origin is not allowed.
+	RootNotAllowed,
+	/// @notice An error with tries.
+	Trie
+}
+
+/**
+ * @notice Reason why a pallet call failed.
+ * @param index Module index, matching the metadata module index.
+ * @param error Module specific error value.
+ */
+error Module(uint8 index, bytes4 error);
+
+/// @notice An error to do with tokens.
+error Token(TokenError);
+/// @title Description of what went wrong when trying to complete an operation on a token.
+enum TokenError {
+    /// @notice Funds are unavailable.
+    FundsUnavailable,
+    /// @notice Some part of the balance gives the only provider reference to the account and thus cannot be (re)moved.
+    OnlyProvider,
+    /// @notice Account cannot exist with the funds that would be given.
+    BelowMinimum,
+    /// @notice Account cannot be created.
+    CannotCreate,
+    /// @notice The token in question is unknown.
+    Unknown,
+    /// @notice Funds exist but are frozen.
+    Frozen,
+    /// @notice Operation is not supported by the token.
+    Unsupported,
+    /// @notice Account cannot be created for a held balance.
+    CannotCreateHold,
+    /// @notice Withdrawal would cause unwanted loss of account.
+    NotExpendable,
+    /// @notice Account cannot receive the tokens.
+    Blocked
+}
+
+/// @notice The number of transactional layers has been reached, or we are not in a transactional layer.
+error Transactional(TransactionalError);
+/// @title Errors related to transactional storage layers.
+enum TransactionalError {
+	/// @notice Too many transactional layers have been spawned.
+	LimitReached,
+	/// @notice A transactional layer was expected, but does not exist.
+	NoLayer
+}
+
+/// @notice An error with tries.
+error Trie(TrieError);
+/// @title A runtime friendly error type for tries.
+enum TrieError {
+	/// @notice Attempted to create a trie with a state root not in the DB.
+	InvalidStateRoot,
+	/// @notice Trie item not found in the database,
+	IncompleteDatabase,
+	/// @notice A value was found in the trie with a nibble key that was not byte-aligned.
+	ValueAtIncompleteKey,
+	/// @notice Corrupt Trie item.
+	DecoderError,
+	/// @notice Hash is not value.
+	InvalidHash,
+	/// @notice The statement being verified contains multiple key-value pairs with the same key.
+	DuplicateKey,
+	/// @notice The proof contains at least one extraneous node.
+	ExtraneousNode,
+	/// @notice The proof contains at least one extraneous value which should have been omitted from the
+	/// proof.
+	ExtraneousValue,
+	/// @notice The proof contains at least one extraneous hash reference the should have been omitted.
+	ExtraneousHashReference,
+	/// @notice The proof contains an invalid child reference that exceeds the hash length.
+	InvalidChildReference,
+	/// @notice The proof indicates that an expected value was not found in the trie.
+	ValueMismatch,
+	/// @notice The proof is missing trie nodes required to verify.
+	IncompleteProof,
+	/// @notice The root hash computed from the proof is incorrect.
+	RootMismatch,
+	/// @notice One of the proof nodes could not be decoded.
+	DecodeError,
 }

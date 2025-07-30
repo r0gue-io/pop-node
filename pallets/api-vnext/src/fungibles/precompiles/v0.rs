@@ -1,3 +1,4 @@
+use frame_support::pallet_prelude as frame;
 pub(crate) use IFungibles::*;
 
 use super::*;
@@ -17,14 +18,14 @@ impl<
 			+ pallet_assets::Config<
 				I,
 				AssetId: Default + From<u32> + Into<u32>,
-				Balance: TryConvert<U256, Error = Error>,
+				Balance: TryConvert<U256, Error = frame::DispatchError>,
 			> + pallet_balances::Config
 			+ pallet_revive::Config
 			+ Config<I>,
 		I: 'static,
 	> Precompile for Fungibles<FIXED, T, I>
 where
-	U256: TryConvert<<T as pallet_assets::Config<I>>::Balance, Error = Error>,
+	U256: TryConvert<<T as pallet_assets::Config<I>>::Balance, Error = frame::DispatchError>,
 {
 	type Interface = IFungiblesCalls;
 	type T = T;
@@ -41,16 +42,21 @@ where
 		match input {
 			IFungiblesCalls::transfer(transferCall { token, to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
-				let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 				ensure!(!to.is_zero(), ZeroRecipientAddress);
 				ensure!(!value.is_zero(), ZeroValue);
 
-				transfer::<T, I>(
-					to_runtime_origin(env.caller()),
-					(*token).into(),
-					env.to_account_id(&(*to.0).into()),
-					(*value).try_convert()?,
-				)
+				let from = (|| {
+					let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+
+					transfer::<T, I>(
+						to_runtime_origin(env.caller()),
+						(*token).into(),
+						env.to_account_id(&(*to.0).into()),
+						(*value).try_convert()?,
+					)?;
+
+					Ok(from)
+				})()
 				.map_err(Self::map_err)?;
 
 				deposit_event(env, Transfer { token: *token, from, to: *to, value: *value })?;
@@ -63,13 +69,15 @@ where
 				ensure!(to != from, InvalidRecipient(*to));
 				ensure!(!value.is_zero(), ZeroValue);
 
-				transfer_from::<T, I>(
-					to_runtime_origin(env.caller()),
-					(*token).into(),
-					env.to_account_id(&(*from.0).into()),
-					env.to_account_id(&(*to.0).into()),
-					(*value).try_convert()?,
-				)
+				(|| {
+					transfer_from::<T, I>(
+						to_runtime_origin(env.caller()),
+						(*token).into(),
+						env.to_account_id(&(*from.0).into()),
+						env.to_account_id(&(*to.0).into()),
+						(*value).try_convert()?,
+					)
+				})()
 				.map_err(Self::map_err)?;
 
 				let event = Transfer { token: *token, from: *from, to: *to, value: *value };
@@ -78,35 +86,41 @@ where
 			},
 			IFungiblesCalls::approve(approveCall { token, spender, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
-				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 				ensure!(!spender.is_zero(), ZeroRecipientAddress);
 
-				match approve::<T, I>(
-					to_runtime_origin(env.caller()),
-					(*token).into(),
-					env.to_account_id(&(*spender.0).into()),
-					(*value).try_convert()?,
-				) {
-					Ok(result) => {
-						// Adjust weight
-						if let Some(actual_weight) = result.actual_weight {
-							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-							// #8693 lands
-							env.gas_meter_mut()
-								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-						}
-					},
-					Err(e) => {
-						// Adjust weight
-						if let Some(actual_weight) = e.post_info.actual_weight {
-							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-							// #8693 lands
-							env.gas_meter_mut()
-								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-						}
-						return Err(Self::map_err(e.error));
-					},
-				};
+				let owner = (|| {
+					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+
+					match approve::<T, I>(
+						to_runtime_origin(env.caller()),
+						(*token).into(),
+						env.to_account_id(&(*spender.0).into()),
+						(*value).try_convert()?,
+					) {
+						Ok(result) => {
+							// Adjust weight
+							if let Some(actual_weight) = result.actual_weight {
+								// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+								// #8693 lands
+								env.gas_meter_mut()
+									.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+							}
+						},
+						Err(e) => {
+							// Adjust weight
+							if let Some(actual_weight) = e.post_info.actual_weight {
+								// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+								// #8693 lands
+								env.gas_meter_mut()
+									.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+							}
+							return Err(e.error);
+						},
+					};
+
+					Ok(owner)
+				})()
+				.map_err(Self::map_err)?;
 
 				let event = Approval { token: *token, owner, spender: *spender, value: *value };
 				deposit_event(env, event)?;
@@ -114,56 +128,19 @@ where
 			},
 			IFungiblesCalls::increaseAllowance(increaseAllowanceCall { token, spender, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 0))?;
-				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 				ensure!(!spender.is_zero(), ZeroRecipientAddress);
 				ensure!(!value.is_zero(), ZeroValue);
 
-				let value = increase_allowance::<T, I>(
-					to_runtime_origin(env.caller()),
-					(*token).into(),
-					env.to_account_id(&(*spender.0).into()),
-					(*value).try_convert()?,
-				)
-				.map_err(|e| {
-					// Adjust weight
-					if let Some(actual_weight) = e.post_info.actual_weight {
-						// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-						// #8693 lands
-						env.gas_meter_mut()
-							.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-					}
-					e.error
-				})
-				.map_err(Self::map_err)?
-				.try_convert()?;
+				let (owner, value) = (|| {
+					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 
-				let spender = *spender;
-				deposit_event(env, Approval { token: *token, owner, spender, value })?;
-				Ok(increaseAllowanceCall::abi_encode_returns(&value))
-			},
-			IFungiblesCalls::decreaseAllowance(decreaseAllowanceCall { token, spender, value }) => {
-				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
-				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
-				ensure!(!spender.is_zero(), ZeroRecipientAddress);
-				ensure!(!value.is_zero(), ZeroValue);
-
-				let value = match decrease_allowance::<T, I>(
-					to_runtime_origin(env.caller()),
-					(*token).into(),
-					env.to_account_id(&(*spender.0).into()),
-					(*value).try_convert()?,
-				) {
-					Ok((value, weight)) => {
-						// Adjust weight
-						if let Some(actual_weight) = weight {
-							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-							// #8693 lands
-							env.gas_meter_mut()
-								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-						}
-						value.try_convert()?
-					},
-					Err(e) => {
+					let value = increase_allowance::<T, I>(
+						to_runtime_origin(env.caller()),
+						(*token).into(),
+						env.to_account_id(&(*spender.0).into()),
+						(*value).try_convert()?,
+					)
+					.map_err(|e| {
 						// Adjust weight
 						if let Some(actual_weight) = e.post_info.actual_weight {
 							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
@@ -171,9 +148,57 @@ where
 							env.gas_meter_mut()
 								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
 						}
-						return Err(Self::map_err(e.error))
-					},
-				};
+						e.error
+					})?
+					.try_convert()?;
+
+					Ok((owner, value))
+				})()
+				.map_err(Self::map_err)?;
+
+				let spender = *spender;
+				deposit_event(env, Approval { token: *token, owner, spender, value })?;
+				Ok(increaseAllowanceCall::abi_encode_returns(&value))
+			},
+			IFungiblesCalls::decreaseAllowance(decreaseAllowanceCall { token, spender, value }) => {
+				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
+				ensure!(!spender.is_zero(), ZeroRecipientAddress);
+				ensure!(!value.is_zero(), ZeroValue);
+
+				let (owner, value) = (|| {
+					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+
+					let value = match decrease_allowance::<T, I>(
+						to_runtime_origin(env.caller()),
+						(*token).into(),
+						env.to_account_id(&(*spender.0).into()),
+						(*value).try_convert()?,
+					) {
+						Ok((value, weight)) => {
+							// Adjust weight
+							if let Some(actual_weight) = weight {
+								// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+								// #8693 lands
+								env.gas_meter_mut()
+									.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+							}
+							value.try_convert()?
+						},
+						Err(e) => {
+							// Adjust weight
+							if let Some(actual_weight) = e.post_info.actual_weight {
+								// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+								// #8693 lands
+								env.gas_meter_mut()
+									.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+							}
+							return Err(e.error)
+						},
+					};
+
+					Ok((owner, value))
+				})()
+				.map_err(Self::map_err)?;
 
 				let spender = *spender;
 				deposit_event(env, Approval { token: *token, owner, spender, value })?;
@@ -181,17 +206,23 @@ where
 			},
 			IFungiblesCalls::create(createCall { admin, minBalance }) => {
 				env.charge(<T as Config<I>>::WeightInfo::create())?;
-				let creator = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 				ensure!(!admin.is_zero(), ZeroAdminAddress);
 				ensure!(!minBalance.is_zero(), MinBalanceZero);
 
-				let id = create::<T, I>(
-					to_runtime_origin(env.caller()),
-					env.to_account_id(&(*admin.0).into()),
-					(*minBalance).try_convert()?,
-				)
-				.map_err(Self::map_err)?
-				.into();
+				let (creator, id) = (|| {
+					let creator =
+						<AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+
+					let id = create::<T, I>(
+						to_runtime_origin(env.caller()),
+						env.to_account_id(&(*admin.0).into()),
+						(*minBalance).try_convert()?,
+					)?
+					.into();
+
+					Ok((creator, id))
+				})()
+				.map_err(Self::map_err)?;
 
 				deposit_event(env, Created { id, creator, admin: *admin })?;
 				Ok(createCall::abi_encode_returns(&id))
@@ -231,12 +262,14 @@ where
 				ensure!(!account.is_zero(), ZeroRecipientAddress);
 				ensure!(!value.is_zero(), ZeroValue);
 
-				mint::<T, I>(
-					to_runtime_origin(env.caller()),
-					(*token).into(),
-					env.to_account_id(&(*account.0).into()),
-					(*value).try_convert()?,
-				)
+				(|| {
+					mint::<T, I>(
+						to_runtime_origin(env.caller()),
+						(*token).into(),
+						env.to_account_id(&(*account.0).into()),
+						(*value).try_convert()?,
+					)
+				})()
 				.map_err(Self::map_err)?;
 
 				let from = Address::default();
@@ -249,22 +282,24 @@ where
 				ensure!(!account.is_zero(), ZeroSenderAddress);
 				ensure!(!value.is_zero(), ZeroValue);
 
-				burn::<T, I>(
-					to_runtime_origin(env.caller()),
-					(*token).into(),
-					env.to_account_id(&(*account.0).into()),
-					(*value).try_convert()?,
-				)
-				.map_err(|e| {
-					// Adjust weight
-					if let Some(actual_weight) = e.post_info.actual_weight {
-						// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-						// #8693 lands
-						env.gas_meter_mut()
-							.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-					}
-					e.error
-				})
+				(|| {
+					burn::<T, I>(
+						to_runtime_origin(env.caller()),
+						(*token).into(),
+						env.to_account_id(&(*account.0).into()),
+						(*value).try_convert()?,
+					)
+					.map_err(|e| {
+						// Adjust weight
+						if let Some(actual_weight) = e.post_info.actual_weight {
+							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+							// #8693 lands
+							env.gas_meter_mut()
+								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+						}
+						e.error
+					})
+				})()
 				.map_err(Self::map_err)?;
 
 				let to = Address::default();
@@ -275,7 +310,8 @@ where
 			IFungiblesCalls::totalSupply(totalSupplyCall { token }) => {
 				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
 
-				let total_supply = total_supply::<T, I>((*token).into()).try_convert()?;
+				let total_supply =
+					total_supply::<T, I>((*token).into()).try_convert().map_err(Self::map_err)?;
 
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
@@ -283,7 +319,9 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
 
 				let account = env.to_account_id(&(*owner.0).into());
-				let balance = balance::<T, I>((*token).into(), &account).try_convert()?;
+				let balance = balance::<T, I>((*token).into(), &account)
+					.try_convert()
+					.map_err(Self::map_err)?;
 
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
@@ -293,7 +331,7 @@ where
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
 				let allowance = allowance::<T, I>((*token).into(), &owner, &spender);
-				let remaining = allowance.try_convert()?;
+				let remaining = allowance.try_convert().map_err(Self::map_err)?;
 
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
@@ -339,66 +377,161 @@ impl<const FIXED: u16, T: pallet_assets::Config<I> + pallet_balances::Config, I:
 		fixed_address(FIXED)
 	}
 
-	// Maps select, domain-specific dispatch errors to fungibles errors. Anything not mapped results
-	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
-	fn map_err(e: DispatchError) -> Error {
-		use DispatchError::*;
+	// Maps select, domain-specific dispatch errors to fungibles errors. All others are mapped to
+	// more generic runtime errors.
+	fn map_err(e: frame::DispatchError) -> Error {
+		use frame::DispatchError::*;
 		match e {
-			Arithmetic(ArithmeticError::Overflow) => IFungibles::Overflow.into(),
+			Arithmetic(error) => self::Arithmetic::from(error).into(),
 			ConsumerRemaining => IFungibles::InsufficientBalance.into(),
 			Module(ModuleError { index, error, .. }) => {
-				let index = Some(index as usize);
-				if index == T::PalletInfo::index::<pallet_balances::Pallet<T>>() {
-					use pallet_balances::{Error, Error::*};
+				{
+					let index = Some(index as usize);
+					if index == T::PalletInfo::index::<pallet_balances::Pallet<T>>() {
+						use pallet_balances::{Error, Error::*};
 
-					match Error::<T>::decode(&mut error.as_slice()) {
-						Ok(InsufficientBalance) => IFungibles::InsufficientBalance.into(),
-						_ => e.into(),
-					}
-				} else if index == T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() {
-					use pallet_assets::{Error, Error::*};
+						match Error::<T>::decode(&mut error.as_slice()) {
+							Ok(InsufficientBalance) =>
+								return IFungibles::InsufficientBalance.into(),
+							_ => {},
+						}
+					} else if index == T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() {
+						use pallet_assets::{Error, Error::*};
 
-					match Error::<T, I>::decode(&mut error.as_slice()) {
-						Ok(error) => match error {
-							AssetNotLive | IncorrectStatus => IFungibles::NotLive.into(),
-							BalanceLow => IFungibles::InsufficientBalance.into(),
-							BadMetadata => IFungibles::BadMetadata.into(),
-							NoPermission => IFungibles::NoPermission.into(),
-							Unapproved => IFungibles::Unapproved.into(),
-							Unknown => IFungibles::Unknown.into(),
-							_ => e.into(),
-						},
-						_ => e.into(),
+						match Error::<T, I>::decode(&mut error.as_slice()) {
+							Ok(error) => match error {
+								AssetNotLive | IncorrectStatus => return IFungibles::NotLive.into(),
+								BalanceLow => return IFungibles::InsufficientBalance.into(),
+								BadMetadata => return IFungibles::BadMetadata.into(),
+								NoPermission => return IFungibles::NoPermission.into(),
+								Unapproved => return IFungibles::Unapproved.into(),
+								Unknown => return IFungibles::Unknown.into(),
+								_ => {},
+							},
+							_ => {},
+						}
 					}
-				} else {
-					e.into()
 				}
+
+				self::Module { index, error: error.into() }.into()
 			},
-			Token(error) => {
-				use TokenError::*;
-				match error {
-					BelowMinimum => IFungibles::BelowMinimum.into(),
-					CannotCreate => IFungibles::CannotCreate.into(),
-					UnknownAsset => IFungibles::Unknown.into(),
-					_ => e.into(),
-				}
+			Token(error) => match error {
+				frame_support::sp_runtime::TokenError::UnknownAsset => IFungibles::Unknown.into(),
+				_ => self::Token::from(error).into(),
 			},
-			_ => e.into(),
+			Transactional(error) => self::Transactional::from(error).into(),
+			Trie(error) => self::Trie::from(error).into(),
+			other => self::Dispatch::from(other).into(),
 		}
 	}
 }
 
 // Encoding of custom errors via `Error(String)`.
 impl_from_sol_error! {
+	// Fungibles
 	IFungibles::BadMetadata,
-	IFungibles::BelowMinimum,
-	IFungibles::CannotCreate,
 	IFungibles::InsufficientBalance,
 	IFungibles::NoPermission,
 	IFungibles::NotLive,
-	IFungibles::Overflow,
 	IFungibles::Unapproved,
 	IFungibles::Unknown,
+	// Generic
+	Arithmetic,
+	Dispatch,
+	Module,
+	Token,
+	Transactional,
+	Trie
+}
+
+impl From<frame_support::sp_runtime::ArithmeticError> for Arithmetic {
+	fn from(error: frame_support::sp_runtime::ArithmeticError) -> Self {
+		use frame_support::sp_runtime::ArithmeticError::*;
+		Self(match error {
+			Underflow => ArithmeticError::Underflow,
+			Overflow => ArithmeticError::Overflow,
+			DivisionByZero => ArithmeticError::DivisionByZero,
+		})
+	}
+}
+
+impl From<frame::DispatchError> for Dispatch {
+	fn from(error: frame::DispatchError) -> Self {
+		use frame::DispatchError::*;
+		Self(match error {
+			Other(_) => DispatchError::Other,
+			CannotLookup => DispatchError::CannotLookup,
+			BadOrigin => DispatchError::BadOrigin,
+			Module(_) => DispatchError::Module,
+			ConsumerRemaining => DispatchError::ConsumerRemaining,
+			NoProviders => DispatchError::NoProviders,
+			TooManyConsumers => DispatchError::TooManyConsumers,
+			Token(_) => DispatchError::Token,
+			Arithmetic(_) => DispatchError::Arithmetic,
+			Transactional(_) => DispatchError::Transactional,
+			Exhausted => DispatchError::Exhausted,
+			Corruption => DispatchError::Corruption,
+			Unavailable => DispatchError::Unavailable,
+			RootNotAllowed => DispatchError::RootNotAllowed,
+			Trie(_) => DispatchError::Trie,
+		})
+	}
+}
+
+impl From<frame_support::sp_runtime::ModuleError> for Module {
+	fn from(error: frame_support::sp_runtime::ModuleError) -> Self {
+		Self { index: error.index, error: error.error.into() }
+	}
+}
+
+impl From<frame_support::sp_runtime::TokenError> for Token {
+	fn from(error: frame_support::sp_runtime::TokenError) -> Self {
+		use frame_support::sp_runtime::TokenError::*;
+		Self(match error {
+			FundsUnavailable => TokenError::FundsUnavailable,
+			OnlyProvider => TokenError::OnlyProvider,
+			BelowMinimum => TokenError::BelowMinimum,
+			CannotCreate => TokenError::CannotCreate,
+			UnknownAsset => TokenError::Unknown,
+			Frozen => TokenError::Frozen,
+			Unsupported => TokenError::Unsupported,
+			CannotCreateHold => TokenError::CannotCreateHold,
+			NotExpendable => TokenError::NotExpendable,
+			Blocked => TokenError::Blocked,
+		})
+	}
+}
+
+impl From<frame_support::sp_runtime::TransactionalError> for Transactional {
+	fn from(error: frame_support::sp_runtime::TransactionalError) -> Self {
+		use frame_support::sp_runtime::TransactionalError::*;
+		Self(match error {
+			LimitReached => TransactionalError::LimitReached,
+			NoLayer => TransactionalError::NoLayer,
+		})
+	}
+}
+
+impl From<frame_support::traits::TrieError> for Trie {
+	fn from(error: frame_support::traits::TrieError) -> Self {
+		use frame_support::traits::TrieError::*;
+		Self(match error {
+			InvalidStateRoot => TrieError::InvalidStateRoot,
+			IncompleteDatabase => TrieError::IncompleteDatabase,
+			ValueAtIncompleteKey => TrieError::ValueAtIncompleteKey,
+			DecoderError => TrieError::DecoderError,
+			InvalidHash => TrieError::InvalidHash,
+			DuplicateKey => TrieError::DuplicateKey,
+			ExtraneousNode => TrieError::ExtraneousNode,
+			ExtraneousValue => TrieError::ExtraneousValue,
+			ExtraneousHashReference => TrieError::ExtraneousHashReference,
+			InvalidChildReference => TrieError::InvalidChildReference,
+			ValueMismatch => TrieError::ValueMismatch,
+			IncompleteProof => TrieError::IncompleteProof,
+			RootMismatch => TrieError::RootMismatch,
+			DecodeError => TrieError::DecodeError,
+		})
+	}
 }
 
 #[cfg(test)]
@@ -459,7 +592,6 @@ mod tests {
 			.execute_with(|| {
 				let call = transferCall { token, to, value: U256::from(1) };
 				let transfer = IFungiblesCalls::transfer(call);
-				let Error::Revert(revert) = Error::from(Unknown) else { panic!() };
 				assert_revert!(call_precompile::<()>(&origin, &transfer), Unknown);
 			});
 	}

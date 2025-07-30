@@ -8,7 +8,7 @@ use alloc::{
 use frame_benchmarking::v2::*;
 use frame_support::{
 	assert_ok,
-	pallet_prelude::IsType,
+	pallet_prelude::{DispatchError, IsType},
 	traits::{
 		fungible::{Inspect, Mutate},
 		fungibles::{
@@ -24,7 +24,6 @@ use pallet_revive::{
 	precompiles::{
 		alloy::primitives as alloy,
 		run::{H256, U256},
-		Error,
 	},
 	test_utils::{ALICE_ADDR, BOB_ADDR, CHARLIE_ADDR},
 	AddressMapper as _, Origin,
@@ -58,8 +57,8 @@ type TokenId<T, I> = <T as pallet_assets::Config<I>>::AssetId;
             Time: Time<Moment: Into<U256>>
         >,
         // Fungibles
-        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32> + Copy, Balance: TryConvert<alloy::U256, Error = Error>> + pallet_balances::Config,
-        alloy::U256: TryConvert<AssetsBalance<T, I>, Error = Error>
+        T: pallet_assets::Config<I, AssetId: Default + From<u32> + Into<u32> + Copy, Balance: TryConvert<alloy::U256, Error = DispatchError>> + pallet_balances::Config,
+        alloy::U256: TryConvert<AssetsBalance<T, I>, Error = DispatchError>
 )]
 mod benchmarks {
 	use super::*;

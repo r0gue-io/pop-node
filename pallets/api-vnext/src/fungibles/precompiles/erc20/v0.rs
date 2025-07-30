@@ -1,6 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
-use frame_support::sp_runtime::traits::AtLeast32Bit;
+use frame_support::{pallet_prelude as frame, sp_runtime::traits::AtLeast32Bit};
 use pallet_assets::precompiles::{AssetIdExtractor, InlineAssetIdExtractor};
 use pallet_revive::{precompiles::RuntimeCosts, AddressMapper as _};
 use AddressMatcher::Prefix;
@@ -21,13 +21,13 @@ impl<
 			+ pallet_assets::Config<
 				I,
 				AssetId: AtLeast32Bit,
-				Balance: TryConvert<U256, Error = Error>,
+				Balance: TryConvert<U256, Error = frame::DispatchError>,
 			> + pallet_revive::Config
 			+ Config<I>,
 		I: 'static,
 	> Precompile for Erc20<PREFIX, T, I>
 where
-	U256: TryConvert<<T as pallet_assets::Config<I>>::Balance, Error = Error>,
+	U256: TryConvert<<T as pallet_assets::Config<I>>::Balance, Error = frame::DispatchError>,
 {
 	type Interface = IERC20Calls;
 	type T = T;
@@ -48,7 +48,8 @@ where
 			IERC20Calls::totalSupply(_) => {
 				env.charge(<T as Config<I>>::WeightInfo::total_supply())?;
 
-				let total_supply = total_supply::<T, I>(token).try_convert()?;
+				let total_supply =
+					total_supply::<T, I>(token).try_convert().map_err(Self::map_err)?;
 
 				Ok(totalSupplyCall::abi_encode_returns(&total_supply))
 			},
@@ -56,25 +57,27 @@ where
 				env.charge(<T as Config<I>>::WeightInfo::balance_of())?;
 
 				let account = env.to_account_id(&(*account.0).into());
-				let balance = balance::<T, I>(token, &account).try_convert()?;
+				let balance =
+					balance::<T, I>(token, &account).try_convert().map_err(Self::map_err)?;
 
 				Ok(balanceOfCall::abi_encode_returns(&balance))
 			},
 			IERC20Calls::transfer(transferCall { to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer())?;
-				let origin = env.caller();
-				let account = origin.account_id()?;
-				let from = <AddressMapper<T>>::to_address(account).0.into();
 				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
-				let balance = balance::<T, I>(token.clone(), account).try_convert()?;
+				let origin = env.caller();
+				let account = origin.account_id().map_err(Self::map_err)?;
+				let from = <AddressMapper<T>>::to_address(account).0.into();
+				let balance =
+					balance::<T, I>(token.clone(), account).try_convert().map_err(Self::map_err)?;
 
 				transfer::<T, I>(
 					to_runtime_origin(origin),
 					token,
 					env.to_account_id(&(*to.0).into()),
-					(*value).try_convert()?,
+					(*value).try_convert().map_err(Self::map_err)?,
 				)
 				.map_err(|e| Self::map_transfer_err(e, &from, value, &balance))?;
 
@@ -86,57 +89,67 @@ where
 
 				let owner = env.to_account_id(&(*owner.0).into());
 				let spender = env.to_account_id(&(*spender.0).into());
-				let remaining = allowance::<T, I>(token, &owner, &spender).try_convert()?;
+				let remaining = allowance::<T, I>(token, &owner, &spender)
+					.try_convert()
+					.map_err(Self::map_err)?;
 
 				Ok(allowanceCall::abi_encode_returns(&remaining))
 			},
 			IERC20Calls::approve(approveCall { spender, value }) => {
 				let charged = env.charge(<T as Config<I>>::WeightInfo::approve(1, 1))?;
-				let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
 				ensure!(!spender.is_zero(), ERC20InvalidSpender { spender: *spender });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
-				match approve::<T, I>(
-					to_runtime_origin(env.caller()),
-					token,
-					env.to_account_id(&(*spender.0).into()),
-					(*value).try_convert()?,
-				) {
-					Ok(result) => {
-						// Adjust weight
-						if let Some(actual_weight) = result.actual_weight {
-							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-							// #8693 lands
-							env.gas_meter_mut()
-								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-						}
-					},
-					Err(e) => {
-						// Adjust weight
-						if let Some(actual_weight) = e.post_info.actual_weight {
-							// TODO: replace with `env.adjust_gas(charged, result.weight);` once
-							// #8693 lands
-							env.gas_meter_mut()
-								.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
-						}
-						return Err(e.error.into())
-					},
-				};
+				let owner = (|| {
+					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+
+					match approve::<T, I>(
+						to_runtime_origin(env.caller()),
+						token,
+						env.to_account_id(&(*spender.0).into()),
+						(*value).try_convert()?,
+					) {
+						Ok(result) => {
+							// Adjust weight
+							if let Some(actual_weight) = result.actual_weight {
+								// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+								// #8693 lands
+								env.gas_meter_mut()
+									.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+							}
+						},
+						Err(e) => {
+							// Adjust weight
+							if let Some(actual_weight) = e.post_info.actual_weight {
+								// TODO: replace with `env.adjust_gas(charged, result.weight);` once
+								// #8693 lands
+								env.gas_meter_mut()
+									.adjust_gas(charged, RuntimeCosts::Precompile(actual_weight));
+							}
+							return Err(e.error)
+						},
+					};
+
+					Ok(owner)
+				})()
+				.map_err(Self::map_err)?;
 
 				deposit_event(env, Approval { owner, spender: *spender, value: *value })?;
 				Ok(approveCall::abi_encode_returns(&true))
 			},
 			IERC20Calls::transferFrom(transferFromCall { from, to, value }) => {
 				env.charge(<T as Config<I>>::WeightInfo::transfer_from())?;
-				let origin = env.caller();
-				let account = origin.account_id()?;
 				ensure!(!from.is_zero(), ERC20InvalidSender { sender: *from });
 				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
+				let origin = env.caller();
+				let account = origin.account_id().map_err(Self::map_err)?;
 				let owner = env.to_account_id(&(*from.0).into());
 				let spender = <AddressMapper<T>>::to_address(account).0.into();
-				let allowance = allowance::<T, I>(token.clone(), &owner, account).try_convert()?;
+				let allowance = allowance::<T, I>(token.clone(), &owner, account)
+					.try_convert()
+					.map_err(Self::map_err)?;
 
 				transfer_from::<T, I>(
 					to_runtime_origin(origin),
@@ -184,11 +197,30 @@ impl<const PREFIX: u16, T: pallet_assets::Config<I>, I: 'static> Erc20<PREFIX, T
 		prefixed_address(PREFIX, id)
 	}
 
-	// Maps select, domain-specific dispatch errors to ERC20 errors. Anything not mapped results
-	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
-	fn map_transfer_err(e: DispatchError, from: &Address, value: &U256, balance: &U256) -> Error {
+	// Maps generic runtime errors.
+	fn map_err(e: frame::DispatchError) -> Error {
+		use frame::DispatchError::*;
 		match e {
-			DispatchError::Module(ModuleError { index, error, .. })
+			Arithmetic(error) => self::Arithmetic::from(error).into(),
+			Module(ModuleError { index, error, .. }) =>
+				self::Module { index, error: error.into() }.into(),
+			Token(error) => self::Token::from(error).into(),
+			Transactional(error) => self::Transactional::from(error).into(),
+			Trie(error) => self::Trie::from(error).into(),
+			other => self::Dispatch::from(other).into(),
+		}
+	}
+
+	// Maps select, domain-specific dispatch errors to ERC20 errors. All others are mapped to
+	// more generic runtime errors.
+	fn map_transfer_err(
+		e: frame::DispatchError,
+		from: &Address,
+		value: &U256,
+		balance: &U256,
+	) -> Error {
+		match e {
+			frame::DispatchError::Module(ModuleError { index, error, .. })
 				if Some(index as usize) ==
 					T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() =>
 			{
@@ -207,19 +239,19 @@ impl<const PREFIX: u16, T: pallet_assets::Config<I>, I: 'static> Erc20<PREFIX, T
 			},
 			_ => None,
 		}
-		.unwrap_or_else(|| e.into())
+		.unwrap_or_else(|| Self::map_err(e))
 	}
 
-	// Maps select, domain-specific dispatch errors to ERC20 errors. Anything not mapped results
-	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
+	// Maps select, domain-specific dispatch errors to ERC20 errors. All others are mapped to
+	// more generic runtime errors.
 	fn map_transfer_from_err(
-		e: DispatchError,
+		e: frame::DispatchError,
 		spender: &Address,
 		value: &U256,
 		allowance: &U256,
 	) -> Error {
 		match e {
-			DispatchError::Module(ModuleError { index, error, .. })
+			frame::DispatchError::Module(ModuleError { index, error, .. })
 				if Some(index as usize) ==
 					T::PalletInfo::index::<pallet_assets::Pallet<T, I>>() =>
 			{
@@ -238,14 +270,112 @@ impl<const PREFIX: u16, T: pallet_assets::Config<I>, I: 'static> Erc20<PREFIX, T
 			},
 			_ => None,
 		}
-		.unwrap_or_else(|| e.into())
+		.unwrap_or_else(|| Self::map_err(e))
 	}
 }
 
 // Encoding of custom errors via `Error(String)`.
 impl_from_sol_error! {
+	// ERC20
 	IERC20::ERC20InsufficientAllowance,
 	IERC20::ERC20InsufficientBalance,
+	// Generic
+	Arithmetic,
+	Dispatch,
+	Module,
+	Token,
+	Transactional,
+	Trie
+}
+
+impl From<frame_support::sp_runtime::ArithmeticError> for Arithmetic {
+	fn from(error: frame_support::sp_runtime::ArithmeticError) -> Self {
+		use frame_support::sp_runtime::ArithmeticError::*;
+		Self(match error {
+			Underflow => ArithmeticError::Underflow,
+			Overflow => ArithmeticError::Overflow,
+			DivisionByZero => ArithmeticError::DivisionByZero,
+		})
+	}
+}
+
+impl From<frame::DispatchError> for Dispatch {
+	fn from(error: frame::DispatchError) -> Self {
+		use frame::DispatchError::*;
+		Self(match error {
+			Other(_) => DispatchError::Other,
+			CannotLookup => DispatchError::CannotLookup,
+			BadOrigin => DispatchError::BadOrigin,
+			Module(_) => DispatchError::Module,
+			ConsumerRemaining => DispatchError::ConsumerRemaining,
+			NoProviders => DispatchError::NoProviders,
+			TooManyConsumers => DispatchError::TooManyConsumers,
+			Token(_) => DispatchError::Token,
+			Arithmetic(_) => DispatchError::Arithmetic,
+			Transactional(_) => DispatchError::Transactional,
+			Exhausted => DispatchError::Exhausted,
+			Corruption => DispatchError::Corruption,
+			Unavailable => DispatchError::Unavailable,
+			RootNotAllowed => DispatchError::RootNotAllowed,
+			Trie(_) => DispatchError::Trie,
+		})
+	}
+}
+
+impl From<frame_support::sp_runtime::ModuleError> for Module {
+	fn from(error: frame_support::sp_runtime::ModuleError) -> Self {
+		Self { index: error.index, error: error.error.into() }
+	}
+}
+
+impl From<frame_support::sp_runtime::TokenError> for Token {
+	fn from(error: frame_support::sp_runtime::TokenError) -> Self {
+		use frame_support::sp_runtime::TokenError::*;
+		Self(match error {
+			FundsUnavailable => TokenError::FundsUnavailable,
+			OnlyProvider => TokenError::OnlyProvider,
+			BelowMinimum => TokenError::BelowMinimum,
+			CannotCreate => TokenError::CannotCreate,
+			UnknownAsset => TokenError::Unknown,
+			Frozen => TokenError::Frozen,
+			Unsupported => TokenError::Unsupported,
+			CannotCreateHold => TokenError::CannotCreateHold,
+			NotExpendable => TokenError::NotExpendable,
+			Blocked => TokenError::Blocked,
+		})
+	}
+}
+
+impl From<frame_support::sp_runtime::TransactionalError> for Transactional {
+	fn from(error: frame_support::sp_runtime::TransactionalError) -> Self {
+		use frame_support::sp_runtime::TransactionalError::*;
+		Self(match error {
+			LimitReached => TransactionalError::LimitReached,
+			NoLayer => TransactionalError::NoLayer,
+		})
+	}
+}
+
+impl From<frame_support::traits::TrieError> for Trie {
+	fn from(error: frame_support::traits::TrieError) -> Self {
+		use frame_support::traits::TrieError::*;
+		Self(match error {
+			InvalidStateRoot => TrieError::InvalidStateRoot,
+			IncompleteDatabase => TrieError::IncompleteDatabase,
+			ValueAtIncompleteKey => TrieError::ValueAtIncompleteKey,
+			DecoderError => TrieError::DecoderError,
+			InvalidHash => TrieError::InvalidHash,
+			DuplicateKey => TrieError::DuplicateKey,
+			ExtraneousNode => TrieError::ExtraneousNode,
+			ExtraneousValue => TrieError::ExtraneousValue,
+			ExtraneousHashReference => TrieError::ExtraneousHashReference,
+			InvalidChildReference => TrieError::InvalidChildReference,
+			ValueMismatch => TrieError::ValueMismatch,
+			IncompleteProof => TrieError::IncompleteProof,
+			RootMismatch => TrieError::RootMismatch,
+			DecodeError => TrieError::DecodeError,
+		})
+	}
 }
 
 #[cfg(test)]

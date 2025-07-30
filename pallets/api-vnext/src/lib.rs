@@ -196,19 +196,17 @@ pub trait TryConvert<T> {
 }
 
 impl TryConvert<alloy::U256> for u128 {
-	type Error = Error;
+	type Error = DispatchError;
 
 	fn try_convert(self) -> Result<alloy::U256, Self::Error> {
-		self.try_into()
-			.map_err(|_| DispatchError::from(ArithmeticError::Overflow).into())
+		self.try_into().map_err(|_| DispatchError::from(ArithmeticError::Overflow))
 	}
 }
 
 impl<T: TryFrom<alloy::U256>> TryConvert<T> for alloy::U256 {
-	type Error = Error;
+	type Error = DispatchError;
 
 	fn try_convert(self) -> Result<T, Self::Error> {
-		self.try_into()
-			.map_err(|_| DispatchError::from(ArithmeticError::Overflow).into())
+		self.try_into().map_err(|_| DispatchError::from(ArithmeticError::Overflow))
 	}
 }
