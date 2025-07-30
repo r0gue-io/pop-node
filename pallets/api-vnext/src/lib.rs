@@ -22,7 +22,7 @@ use pallet_revive::{
 		},
 		AddressMatcher, Error, Ext, Precompile,
 	},
-	AddressMapper as _, H256,
+	AddressMapper as _, H160, H256,
 };
 use scale_info::TypeInfo;
 #[cfg(feature = "runtime-benchmarks")]
@@ -37,7 +37,7 @@ use {
 	frame_system::pallet_prelude::OriginFor,
 	pallet_revive::{
 		precompiles::alloy::sol_types::{Revert, SolError},
-		BalanceOf, DepositLimit, MomentOf, H160,
+		BalanceOf, DepositLimit, MomentOf,
 	},
 };
 

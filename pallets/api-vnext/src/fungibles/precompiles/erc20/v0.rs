@@ -2,7 +2,7 @@ use alloc::{string::String, vec::Vec};
 
 use frame_support::{pallet_prelude as frame, sp_runtime::traits::AtLeast32Bit};
 use pallet_assets::precompiles::{AssetIdExtractor, InlineAssetIdExtractor};
-use pallet_revive::{precompiles::RuntimeCosts, AddressMapper as _};
+use pallet_revive::precompiles::RuntimeCosts;
 use AddressMatcher::Prefix;
 use IERC20::*;
 
