@@ -67,14 +67,14 @@ where
 				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
-				let origin = env.caller();
-				let account = origin.account_id().map_err(Self::map_err)?;
-				let from = <AddressMapper<T>>::to_address(account).0.into();
-				let balance =
-					balance::<T, I>(token.clone(), account).try_convert().map_err(Self::map_err)?;
+				let origin = Origin::try_from(env.caller()).map_err(Self::map_err)?;
+				let from = origin.address();
+				let balance = balance::<T, I>(token.clone(), &origin.account)
+					.try_convert()
+					.map_err(Self::map_err)?;
 
 				transfer::<T, I>(
-					to_runtime_origin(origin),
+					origin.into(),
 					token,
 					env.to_account_id(&(*to.0).into()),
 					(*value).try_convert().map_err(Self::map_err)?,
@@ -101,10 +101,11 @@ where
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
 				let owner = (|| {
-					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+					let origin = Origin::try_from(env.caller())?;
+					let owner = origin.address();
 
 					match approve::<T, I>(
-						to_runtime_origin(env.caller()),
+						origin.into(),
 						token,
 						env.to_account_id(&(*spender.0).into()),
 						(*value).try_convert()?,
@@ -143,16 +144,15 @@ where
 				ensure!(!to.is_zero(), ERC20InvalidReceiver { receiver: *to });
 				ensure!(!value.is_zero(), ERC20InsufficientValue);
 
-				let origin = env.caller();
-				let account = origin.account_id().map_err(Self::map_err)?;
+				let origin = Origin::try_from(env.caller()).map_err(Self::map_err)?;
 				let owner = env.to_account_id(&(*from.0).into());
-				let spender = <AddressMapper<T>>::to_address(account).0.into();
-				let allowance = allowance::<T, I>(token.clone(), &owner, account)
+				let spender = origin.address();
+				let allowance = allowance::<T, I>(token.clone(), &owner, &origin.account)
 					.try_convert()
 					.map_err(Self::map_err)?;
 
 				transfer_from::<T, I>(
-					to_runtime_origin(origin),
+					origin.into(),
 					token,
 					owner,
 					env.to_account_id(&(*to.0).into()),

@@ -5,6 +5,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::{convert::Into, marker::PhantomData, num::NonZero};
 
+use codec::{Decode, Encode, MaxEncodedLen};
 use frame_support::{
 	dispatch::RawOrigin,
 	pallet_prelude::DispatchError,
@@ -21,8 +22,9 @@ use pallet_revive::{
 		},
 		AddressMatcher, Error, Ext, Precompile,
 	},
-	AddressMapper as _, Origin, H256,
+	AddressMapper as _, H256,
 };
+use scale_info::TypeInfo;
 #[cfg(feature = "runtime-benchmarks")]
 use {
 	frame_support::{pallet_prelude::IsType, traits::fungible::Inspect},
@@ -178,11 +180,48 @@ fn topics(event: &impl SolEvent) -> Vec<H256> {
 	event.encode_topics().into_iter().map(|t| (*t.0).into()).collect()
 }
 
+/// The origin of a call.
+#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct Origin<T: frame_system::Config> {
+	address: H160,
+	account: T::AccountId,
+}
+
+impl<T: frame_system::Config> Origin<T> {
+	/// Returns the address of the origin.
+	pub fn address(&self) -> pallet_revive::precompiles::alloy::primitives::Address {
+		self.address.0.into()
+	}
+
+	/// Converts the origin into a `RuntimeOrigin`.
+	pub fn into(self) -> T::RuntimeOrigin {
+		frame_system::RawOrigin::Signed(self.account).into()
+	}
+}
+
+impl<T: pallet_revive::Config> TryFrom<pallet_revive::Origin<T>> for Origin<T> {
+	type Error = DispatchError;
+
+	fn try_from(origin: pallet_revive::Origin<T>) -> Result<Self, Self::Error> {
+		use pallet_revive::Origin::*;
+		let account = match origin {
+			Signed(id) => Ok(id),
+			Root => Err(DispatchError::RootNotAllowed),
+		}?;
+		let address = <T as pallet_revive::Config>::AddressMapper::to_address(&account);
+		Ok(Self { address, account })
+	}
+}
+
 /// Creates a new `RuntimeOrigin` from an ['Origin'].
-pub fn to_runtime_origin<T: pallet_revive::Config>(o: Origin<T>) -> T::RuntimeOrigin {
+pub fn to_runtime_origin<T: pallet_revive::Config>(
+	o: pallet_revive::Origin<T>,
+) -> T::RuntimeOrigin {
+	use pallet_revive::Origin::*;
 	match o {
-		Origin::Root => RawOrigin::Root.into(),
-		Origin::Signed(account) => RawOrigin::Signed(account).into(),
+		Root => RawOrigin::Root.into(),
+		Signed(account) => RawOrigin::Signed(account).into(),
 	}
 }
 

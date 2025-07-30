@@ -46,10 +46,11 @@ where
 				ensure!(!value.is_zero(), ZeroValue);
 
 				let from = (|| {
-					let from = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+					let origin = Origin::try_from(env.caller())?;
+					let from = origin.address();
 
 					transfer::<T, I>(
-						to_runtime_origin(env.caller()),
+						origin.into(),
 						(*token).into(),
 						env.to_account_id(&(*to.0).into()),
 						(*value).try_convert()?,
@@ -89,10 +90,11 @@ where
 				ensure!(!spender.is_zero(), ZeroRecipientAddress);
 
 				let owner = (|| {
-					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+					let origin = Origin::try_from(env.caller())?;
+					let owner = origin.address();
 
 					match approve::<T, I>(
-						to_runtime_origin(env.caller()),
+						origin.into(),
 						(*token).into(),
 						env.to_account_id(&(*spender.0).into()),
 						(*value).try_convert()?,
@@ -132,10 +134,11 @@ where
 				ensure!(!value.is_zero(), ZeroValue);
 
 				let (owner, value) = (|| {
-					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+					let origin = Origin::try_from(env.caller())?;
+					let owner = origin.address();
 
 					let value = increase_allowance::<T, I>(
-						to_runtime_origin(env.caller()),
+						origin.into(),
 						(*token).into(),
 						env.to_account_id(&(*spender.0).into()),
 						(*value).try_convert()?,
@@ -166,10 +169,11 @@ where
 				ensure!(!value.is_zero(), ZeroValue);
 
 				let (owner, value) = (|| {
-					let owner = <AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+					let origin = Origin::try_from(env.caller())?;
+					let owner = origin.address();
 
 					let value = match decrease_allowance::<T, I>(
-						to_runtime_origin(env.caller()),
+						origin.into(),
 						(*token).into(),
 						env.to_account_id(&(*spender.0).into()),
 						(*value).try_convert()?,
@@ -210,11 +214,11 @@ where
 				ensure!(!minBalance.is_zero(), MinBalanceZero);
 
 				let (creator, id) = (|| {
-					let creator =
-						<AddressMapper<T>>::to_address(env.caller().account_id()?).0.into();
+					let origin = Origin::try_from(env.caller())?;
+					let creator = origin.address();
 
 					let id = create::<T, I>(
-						to_runtime_origin(env.caller()),
+						origin.into(),
 						env.to_account_id(&(*admin.0).into()),
 						(*minBalance).try_convert()?,
 					)?
