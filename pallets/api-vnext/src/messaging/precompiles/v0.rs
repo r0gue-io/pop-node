@@ -57,12 +57,17 @@ impl<
 			},
 			IMessagingCalls::remove_0(remove_0Call { message }) => {
 				env.charge(<T as Config>::WeightInfo::remove(1))?;
-				let origin = Origin::try_from(env.caller())?;
-				let address = origin.address;
 
-				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
+				let account = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					remove::<T>(origin, &[*message])?;
+
+					Ok(address)
+				})()
+				.map_err(Self::map_err)?;
+
 				deposit_event(env, Removed { account, messages: vec![*message] })?;
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
@@ -72,12 +77,17 @@ impl<
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
-				let origin = Origin::try_from(env.caller())?;
-				let address = origin.address;
 
-				remove::<T>(origin, messages).map_err(Self::map_err)?;
+				let account = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					remove::<T>(origin, messages)?;
+
+					Ok(address)
+				})()
+				.map_err(Self::map_err)?;
+
 				deposit_event(env, Removed { account, messages: messages.clone() })?;
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
 			},

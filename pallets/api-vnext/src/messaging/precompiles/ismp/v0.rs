@@ -64,15 +64,19 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					0,
 				))?;
-				let origin = Origin::try_from(env.caller())?;
 				let message = try_get::<T>(request)?;
-				let fee = (*fee).try_convert()?;
-				let address = origin.address;
 
-				let (id, commitment) =
-					get::<T>(origin, message, fee, None).map_err(Self::map_err)?;
+				let (origin, id, commitment) = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let fee = (*fee).try_convert()?;
+					let address = origin.address();
 
-				let origin = address.0.into();
+					let (id, commitment) = get::<T>(origin, message, fee, None)?;
+
+					Ok((address, id, commitment))
+				})()
+				.map_err(Self::map_err)?;
+
 				let event = GetDispatched_0 { origin, id, commitment: commitment.0.into() };
 				deposit_event(env, event)?;
 				Ok(get_0Call::abi_encode_returns(&id))
@@ -91,15 +95,20 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					1,
 				))?;
-				let origin = Origin::try_from(env.caller())?;
 				let message = try_get::<T>(request)?;
-				let fee = (*fee).try_convert()?;
-				let address = origin.address;
+				let cb = callback.try_into()?;
 
-				let (id, commitment) = get::<T>(origin, message, fee, Some(callback.try_into()?))
-					.map_err(Self::map_err)?;
+				let (origin, id, commitment) = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let fee = (*fee).try_convert()?;
+					let address = origin.address();
 
-				let origin = address.0.into();
+					let (id, commitment) = get::<T>(origin, message, fee, Some(cb))?;
+
+					Ok((address, id, commitment))
+				})()
+				.map_err(Self::map_err)?;
+
 				let commitment = commitment.0.into();
 				let event = GetDispatched_1 { origin, id, commitment, callback: callback.clone() };
 				deposit_event(env, event)?;
@@ -140,15 +149,19 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					0,
 				))?;
-				let origin: Origin<_> = env.caller().try_into()?;
 				let message = try_post::<T>(request)?;
-				let fee = (*fee).try_convert()?;
-				let address = origin.address;
 
-				let (id, commitment) =
-					post::<T>(origin, message, fee, None).map_err(Self::map_err)?;
+				let (origin, id, commitment) = (|| {
+					let origin: Origin<_> = env.caller().try_into()?;
+					let fee = (*fee).try_convert()?;
+					let address = origin.address();
 
-				let origin = address.0.into();
+					let (id, commitment) = post::<T>(origin, message, fee, None)?;
+
+					Ok((address, id, commitment))
+				})()
+				.map_err(Self::map_err)?;
+
 				let event = PostDispatched_0 { origin, id, commitment: commitment.0.into() };
 				deposit_event(env, event)?;
 				Ok(post_0Call::abi_encode_returns(&id))
@@ -167,15 +180,20 @@ where
 						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
 					1,
 				))?;
-				let origin: Origin<_> = env.caller().try_into()?;
 				let message = try_post::<T>(request)?;
-				let fee = (*fee).try_convert()?;
-				let address = origin.address;
+				let cb = callback.try_into()?;
 
-				let (id, commitment) = post::<T>(origin, message, fee, Some(callback.try_into()?))
-					.map_err(Self::map_err)?;
+				let (origin, id, commitment) = (|| {
+					let origin: Origin<_> = env.caller().try_into()?;
+					let fee = (*fee).try_convert()?;
+					let address = origin.address();
 
-				let origin = address.0.into();
+					let (id, commitment) = post::<T>(origin, message, fee, Some(cb))?;
+
+					Ok((address, id, commitment))
+				})()
+				.map_err(Self::map_err)?;
+
 				let commitment = commitment.0.into();
 				let event = PostDispatched_1 { origin, id, commitment, callback: callback.clone() };
 				deposit_event(env, event)?;
@@ -183,12 +201,17 @@ where
 			},
 			IISMPCalls::remove_0(remove_0Call { message }) => {
 				env.charge(<T as Config>::WeightInfo::remove(1))?;
-				let origin = Origin::try_from(env.caller())?;
-				let address = origin.address;
 
-				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
+				let account = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					remove::<T>(origin, &[*message])?;
+
+					Ok(address)
+				})()
+				.map_err(Self::map_err)?;
+
 				deposit_event(env, Removed { account, messages: vec![*message] })?;
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
@@ -198,12 +221,17 @@ where
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
-				let origin = Origin::try_from(env.caller())?;
-				let address = origin.address;
 
-				remove::<T>(origin, messages).map_err(Self::map_err)?;
+				let account = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					remove::<T>(origin, messages)?;
+
+					Ok(address)
+				})()
+				.map_err(Self::map_err)?;
+
 				deposit_event(env, Removed { account, messages: messages.clone() })?;
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
 			},

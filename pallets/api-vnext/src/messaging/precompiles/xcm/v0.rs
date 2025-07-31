@@ -72,9 +72,7 @@ where
 				.into();
 
 				let result = <pallet_xcm::Pallet<T>>::execute(
-					<T as frame_system::Config>::RuntimeOrigin::signed(
-						env.caller().account_id()?.clone(),
-					),
+					to_runtime_origin(env.caller()),
 					message,
 					weight,
 				);
@@ -107,30 +105,39 @@ where
 			},
 			IXCMCalls::newQuery_0(newQuery_0Call { responder, timeout }) => {
 				env.charge(<T as Config>::WeightInfo::xcm_new_query(0))?;
-				let origin: Origin<_> = env.caller().try_into()?;
 				let location = Location::decode(&mut &responder[..])
 					.map_err(|_| Error::from(IXCM::DecodingFailed))?;
-				let address = origin.address;
 
-				let (id, query_id) = new_query::<T>(origin, location, (*timeout).into(), None)
-					.map_err(Self::map_err)?;
+				let (account, id, query_id) = (|| {
+					let origin: Origin<_> = env.caller().try_into()?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					let (id, query_id) = new_query::<T>(origin, location, (*timeout).into(), None)?;
+
+					Ok((address, id, query_id))
+				})()
+				.map_err(Self::map_err)?;
+
 				deposit_event(env, QueryCreated_0 { account, id, queryId: query_id })?;
 				Ok(newQuery_0Call::abi_encode_returns(&newQuery_0Return { id, queryId: query_id }))
 			},
 			IXCMCalls::newQuery_1(newQuery_1Call { responder, timeout, callback }) => {
 				env.charge(<T as Config>::WeightInfo::xcm_new_query(1))?;
-				let origin: Origin<_> = env.caller().try_into()?;
 				let location = Location::decode(&mut &responder[..])
 					.map_err(|_| Error::from(IXCM::DecodingFailed))?;
-				let address = origin.address;
+				let cb = callback.try_into()?;
 
-				let (id, query_id) =
-					new_query::<T>(origin, location, (*timeout).into(), Some(callback.try_into()?))
-						.map_err(Self::map_err)?;
+				let (account, id, query_id) = (|| {
+					let origin: Origin<_> = env.caller().try_into()?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					let (id, query_id) =
+						new_query::<T>(origin, location, (*timeout).into(), Some(cb))?;
+
+					Ok((address, id, query_id))
+				})()
+				.map_err(Self::map_err)?;
+
 				let event =
 					QueryCreated_1 { account, id, callback: callback.clone(), queryId: query_id };
 				deposit_event(env, event)?;
@@ -145,12 +152,17 @@ where
 			},
 			IXCMCalls::remove_0(remove_0Call { message }) => {
 				env.charge(<T as Config>::WeightInfo::remove(1))?;
-				let origin = Origin::try_from(env.caller())?;
-				let address = origin.address;
 
-				remove::<T>(origin, &[*message]).map_err(Self::map_err)?;
+				let account = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					remove::<T>(origin, &[*message])?;
+
+					Ok(address)
+				})()
+				.map_err(Self::map_err)?;
+
 				deposit_event(env, Removed { account, messages: vec![*message] })?;
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
@@ -160,12 +172,17 @@ where
 					.try_into()
 					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
-				let origin = Origin::try_from(env.caller())?;
-				let address = origin.address;
 
-				remove::<T>(origin, messages).map_err(Self::map_err)?;
+				let account = (|| {
+					let origin = Origin::try_from(env.caller())?;
+					let address = origin.address();
 
-				let account = address.0.into();
+					remove::<T>(origin, messages)?;
+
+					Ok(address)
+				})()
+				.map_err(Self::map_err)?;
+
 				deposit_event(env, Removed { account, messages: messages.clone() })?;
 				Ok(remove_1Call::abi_encode_returns(&remove_1Return {}))
 			},
@@ -183,9 +200,7 @@ where
 				.into();
 
 				let result = <pallet_xcm::Pallet<T>>::send(
-					<T as frame_system::Config>::RuntimeOrigin::signed(
-						env.caller().account_id()?.clone(),
-					),
+					to_runtime_origin(env.caller()),
 					destination,
 					message,
 				);
