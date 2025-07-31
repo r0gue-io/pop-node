@@ -35,7 +35,10 @@ impl<
 where
 	BlockNumberOf<T>: From<u32>,
 	u32: From<BlockNumberOf<T>>,
-	U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = Error>,
+	U256: TryConvert<
+		<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance,
+		Error = DispatchError,
+	>,
 {
 	type Interface = IXCMCalls;
 	type T = T;
@@ -263,7 +266,7 @@ impl EncodeCallback for Response {
 
 impl<Balance> TryFrom<&Callback> for super::Callback<Balance>
 where
-	U256: TryConvert<Balance, Error = Error>,
+	U256: TryConvert<Balance, Error = DispatchError>,
 {
 	type Error = Error;
 

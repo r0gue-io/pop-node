@@ -17,7 +17,7 @@ use codec::Encode;
 use frame_benchmarking::v2::*;
 use frame_support::{
 	assert_ok,
-	pallet_prelude::{IsType, Weight},
+	pallet_prelude::{DispatchError, IsType, Weight},
 	traits::{
 		fungible::{Inspect, Mutate, MutateHold},
 		EnsureOrigin, Get, Time,
@@ -27,7 +27,6 @@ use pallet_revive::{
 	precompiles::{
 		alloy::primitives as alloy,
 		run::{H256, U256},
-		Error,
 	},
 	test_utils::ALICE_ADDR,
 	Origin::Signed,
@@ -69,8 +68,8 @@ type Xcm<T> = super::precompiles::xcm::v0::Xcm<5, T>;
             Time: Time<Moment: Into<U256>>
         >,
         // Messaging
-        T: Config<Fungibles: Inspect<T::AccountId, Balance: Bounded + TryConvert<alloy::U256, Error = Error>>>,
-        alloy::U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = Error>,
+        T: Config<Fungibles: Inspect<T::AccountId, Balance: Bounded + TryConvert<alloy::U256, Error = DispatchError>>>,
+        alloy::U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = DispatchError>,
         T: pallet_ismp::Config + pallet_xcm::Config + parachain_info::Config,
         u32: From<BlockNumberOf<T>>,
         // Timestamp

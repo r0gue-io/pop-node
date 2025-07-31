@@ -50,7 +50,6 @@ pub mod messaging;
 mod mock;
 
 type AccountIdOf<T> = <T as frame_system::Config>::AccountId;
-type AddressMapper<T> = <T as pallet_revive::Config>::AddressMapper;
 type Assets<T, I> = pallet_assets::Pallet<T, I>;
 
 // A bare call to a contract.

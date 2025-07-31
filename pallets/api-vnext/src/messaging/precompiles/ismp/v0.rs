@@ -27,10 +27,15 @@ impl<
 		T: frame_system::Config
 			+ pallet_revive::Config
 			+ parachain_info::Config
-			+ Config<Fungibles: Inspect<T::AccountId, Balance: TryConvert<U256, Error = Error>>>,
+			+ Config<
+				Fungibles: Inspect<T::AccountId, Balance: TryConvert<U256, Error = DispatchError>>,
+			>,
 	> Precompile for Ismp<FIXED, T>
 where
-	U256: TryConvert<<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance, Error = Error>,
+	U256: TryConvert<
+		<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance,
+		Error = DispatchError,
+	>,
 {
 	type Interface = IISMPCalls;
 	type T = T;
@@ -331,7 +336,7 @@ impl EncodeCallback for Vec<u8> {
 
 impl<Balance> TryFrom<&Callback> for super::Callback<Balance>
 where
-	U256: TryConvert<Balance, Error = Error>,
+	U256: TryConvert<Balance, Error = DispatchError>,
 {
 	type Error = Error;
 
