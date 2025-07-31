@@ -1,7 +1,7 @@
 use alloc::vec;
 
 use frame_support::{
-	sp_runtime::{ArithmeticError, DispatchError, ModuleError},
+	sp_runtime::{DispatchError, ModuleError},
 	traits::PalletInfo,
 };
 pub(super) use pallet_revive::precompiles::{

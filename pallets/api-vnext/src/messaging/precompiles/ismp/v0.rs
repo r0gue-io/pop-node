@@ -52,16 +52,8 @@ where
 		match input {
 			IISMPCalls::get_0(get_0Call { request, fee }) => {
 				env.charge(<T as Config>::WeightInfo::ismp_get(
-					request
-						.context
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
-					request
-						.keys
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
+					request.context.len().try_convert()?,
+					request.keys.len().try_convert()?,
 					0,
 				))?;
 				let message = try_get::<T>(request)?;
@@ -83,16 +75,8 @@ where
 			},
 			IISMPCalls::get_1(get_1Call { request, fee, callback }) => {
 				env.charge(<T as Config>::WeightInfo::ismp_get(
-					request
-						.context
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
-					request
-						.keys
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
+					request.context.len().try_convert()?,
+					request.keys.len().try_convert()?,
 					1,
 				))?;
 				let message = try_get::<T>(request)?;
@@ -137,16 +121,8 @@ where
 			},
 			IISMPCalls::post_0(post_0Call { request, fee }) => {
 				env.charge(<T as Config>::WeightInfo::ismp_post(
-					request
-						.to
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
-					request
-						.data
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
+					request.to.len().try_convert()?,
+					request.data.len().try_convert()?,
 					0,
 				))?;
 				let message = try_post::<T>(request)?;
@@ -168,16 +144,8 @@ where
 			},
 			IISMPCalls::post_1(post_1Call { request, fee, callback }) => {
 				env.charge(<T as Config>::WeightInfo::ismp_post(
-					request
-						.to
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
-					request
-						.data
-						.len()
-						.try_into()
-						.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?,
+					request.to.len().try_convert()?,
+					request.data.len().try_convert()?,
 					1,
 				))?;
 				let message = try_post::<T>(request)?;
@@ -216,10 +184,7 @@ where
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
 			IISMPCalls::remove_1(remove_1Call { messages }) => {
-				let messages_len = messages
-					.len()
-					.try_into()
-					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
+				let messages_len = messages.len().try_convert()?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
 
 				let account = (|| {

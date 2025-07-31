@@ -265,3 +265,11 @@ impl<T: TryFrom<alloy::U256>> TryConvert<T> for alloy::U256 {
 		self.try_into().map_err(|_| DispatchError::from(ArithmeticError::Overflow))
 	}
 }
+
+impl TryConvert<u32> for usize {
+	type Error = DispatchError;
+
+	fn try_convert(self) -> Result<u32, Self::Error> {
+		self.try_into().map_err(|_| DispatchError::from(ArithmeticError::Overflow))
+	}
+}

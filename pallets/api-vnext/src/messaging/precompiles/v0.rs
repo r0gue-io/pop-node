@@ -2,12 +2,15 @@ pub(crate) use IMessaging::*;
 pub(crate) use IMessagingCalls;
 
 use super::*;
-use crate::messaging::{
-	self,
-	precompiles::v0::IMessaging::{
-		getResponseCall, pollStatusCall, remove_0Call, remove_0Return, remove_1Call,
+use crate::{
+	messaging::{
+		self,
+		precompiles::v0::IMessaging::{
+			getResponseCall, pollStatusCall, remove_0Call, remove_0Return, remove_1Call,
+		},
+		Config,
 	},
-	Config,
+	TryConvert,
 };
 
 sol!(
@@ -72,10 +75,7 @@ impl<
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
 			IMessagingCalls::remove_1(remove_1Call { messages }) => {
-				let messages_len = messages
-					.len()
-					.try_into()
-					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
+				let messages_len = messages.len().try_convert()?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
 
 				let account = (|| {

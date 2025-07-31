@@ -167,10 +167,7 @@ where
 				Ok(remove_0Call::abi_encode_returns(&remove_0Return {}))
 			},
 			IXCMCalls::remove_1(remove_1Call { messages }) => {
-				let messages_len = messages
-					.len()
-					.try_into()
-					.map_err(|_| DispatchError::from(ArithmeticError::Overflow))?;
+				let messages_len = messages.len().try_convert()?;
 				env.charge(<T as Config>::WeightInfo::remove(messages_len))?;
 
 				let account = (|| {
