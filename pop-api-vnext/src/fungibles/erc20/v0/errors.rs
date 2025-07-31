@@ -9,6 +9,7 @@ use crate::{
 		ArithmeticError, DispatchError, FixedBytes, ModuleError, TokenError, TransactionalError,
 		TrieError,
 	},
+	fungibles::v0::errors::{ARITHMETIC, DISPATCH, MODULE, TOKEN, TRANSACTIONAL, TRIE},
 	impl_sol_encoding_for_precompile,
 	sol::PrecompileError,
 };
@@ -108,8 +109,6 @@ impl PrecompileError for Error {
 	}
 }
 
-const ARITHMETIC: [u8; 4] = sol_error_selector!("Arithmetic", (u8,));
-const DISPATCH: [u8; 4] = sol_error_selector!("Dispatch", (u8,));
 const INSUFFICIENT_ALLOWANCE: [u8; 4] =
 	sol_error_selector!("ERC20InsufficientAllowance", (Address, U256, U256));
 const INSUFFICIENT_BALANCE: [u8; 4] =
@@ -118,10 +117,6 @@ const INSUFFICIENT_VALUE: [u8; 4] = sol_error_selector!("ERC20InsufficientValue"
 const INVALID_RECEIVER: [u8; 4] = sol_error_selector!("ERC20InvalidReceiver", (Address,));
 const INVALID_SENDER: [u8; 4] = sol_error_selector!("ERC20InvalidSender", (Address,));
 const INVALID_SPENDER: [u8; 4] = sol_error_selector!("ERC20InvalidSpender", (Address,));
-const MODULE: [u8; 4] = sol_error_selector!("Module", (u8, FixedBytes<4>));
-const TOKEN: [u8; 4] = sol_error_selector!("Token", (u8,));
-const TRANSACTIONAL: [u8; 4] = sol_error_selector!("Transactional", (u8,));
-const TRIE: [u8; 4] = sol_error_selector!("Trie", (u8,));
 
 #[test]
 fn error_decoding_works() {

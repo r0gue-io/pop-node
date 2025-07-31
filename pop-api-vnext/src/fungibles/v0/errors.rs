@@ -102,18 +102,18 @@ impl PrecompileError for Error {
 	}
 }
 
-const ARITHMETIC: [u8; 4] = sol_error_selector!("Arithmetic", (u8,));
+pub(crate) const ARITHMETIC: [u8; 4] = sol_error_selector!("Arithmetic", (u8,));
 const BAD_METADATA: [u8; 4] = sol_error_selector!("BadMetadata", ());
-const DISPATCH: [u8; 4] = sol_error_selector!("Dispatch", (u8,));
+pub(crate) const DISPATCH: [u8; 4] = sol_error_selector!("Dispatch", (u8,));
 const INSUFFICIENT_BALANCE: [u8; 4] = sol_error_selector!("InsufficientBalance", ());
 const INVALID_RECIPIENT: [u8; 4] = sol_error_selector!("InvalidRecipient", (Address,));
 const MIN_BALANCE_ZERO: [u8; 4] = sol_error_selector!("MinBalanceZero", ());
-const MODULE: [u8; 4] = sol_error_selector!("Module", (u8, FixedBytes<4>));
+pub(crate) const MODULE: [u8; 4] = sol_error_selector!("Module", (u8, FixedBytes<4>));
 const NO_PERMISSION: [u8; 4] = sol_error_selector!("NoPermission", ());
 const NOT_LIVE: [u8; 4] = sol_error_selector!("NotLive", ());
-const TOKEN: [u8; 4] = sol_error_selector!("Token", (u8,));
-const TRANSACTIONAL: [u8; 4] = sol_error_selector!("Transactional", (u8,));
-const TRIE: [u8; 4] = sol_error_selector!("Trie", (u8,));
+pub(crate) const TOKEN: [u8; 4] = sol_error_selector!("Token", (u8,));
+pub(crate) const TRANSACTIONAL: [u8; 4] = sol_error_selector!("Transactional", (u8,));
+pub(crate) const TRIE: [u8; 4] = sol_error_selector!("Trie", (u8,));
 const UNAPPROVED: [u8; 4] = sol_error_selector!("Unapproved", ());
 const UNKNOWN: [u8; 4] = sol_error_selector!("Unknown", ());
 const ZERO_ADMIN_ADDRESS: [u8; 4] = sol_error_selector!("ZeroAdminAddress", ());

@@ -6,7 +6,7 @@ use super::{
 	Vec, U256,
 };
 
-mod errors;
+pub(crate) mod errors;
 mod events;
 
 // Precompile index within the runtime
