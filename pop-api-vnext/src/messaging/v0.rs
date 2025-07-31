@@ -2,7 +2,7 @@ pub use errors::{Error, Error::*};
 
 use super::*;
 
-mod errors;
+pub(crate) mod errors;
 
 // Precompile index within the runtime
 const PRECOMPILE: u16 = 3;
