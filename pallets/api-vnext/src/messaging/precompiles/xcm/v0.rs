@@ -1,10 +1,7 @@
 use ::xcm::{VersionedLocation, VersionedXcm, MAX_XCM_DECODE_DEPTH};
 use codec::{DecodeAll, DecodeLimit};
 use pallet_xcm::WeightInfo as _;
-use sp_runtime::{
-	traits::{Block, Header},
-	TokenError,
-};
+use sp_runtime::traits::{Block, Header};
 pub(crate) use IXCM::*;
 
 use super::*;
@@ -37,7 +34,7 @@ where
 	u32: From<BlockNumberOf<T>>,
 	U256: TryConvert<
 		<<T as Config>::Fungibles as Inspect<T::AccountId>>::Balance,
-		Error = DispatchError,
+		Error = frame::DispatchError,
 	>,
 {
 	type Interface = IXCMCalls;
@@ -214,47 +211,58 @@ impl<const FIXED: u16, T: frame_system::Config> Xcm<FIXED, T> {
 		fixed_address(FIXED)
 	}
 
-	// Maps select, domain-specific dispatch errors to messaging errors. Anything not mapped results
-	// in a `Error::Error(ExecError::DispatchError)` which results in trap rather than a revert.
-	fn map_err(e: DispatchError) -> Error {
-		use DispatchError::*;
+	// Maps select, domain-specific dispatch errors to messaging errors. All others are mapped to
+	// more generic runtime errors.
+	fn map_err(e: frame::DispatchError) -> Error {
+		use frame::DispatchError::*;
 		match e {
+			Arithmetic(error) => self::Arithmetic::from(error).into(),
 			Module(ModuleError { index, error, .. }) => {
-				let index = Some(index as usize);
-				if index == T::PalletInfo::index::<Pallet<T>>() {
+				if Some(index as usize) == T::PalletInfo::index::<Pallet<T>>() {
 					use messaging::Error::{self, *};
-
 					match Error::<T>::decode(&mut error.as_slice()) {
-						Ok(FutureTimeoutMandatory) => IXCM::FutureTimeoutMandatory.into(),
+						Ok(FutureTimeoutMandatory) => return IXCM::FutureTimeoutMandatory.into(),
 						Ok(MaxMessageTimeoutPerBlockReached) =>
-							IXCM::MaxMessageTimeoutPerBlockReached.into(),
-						Ok(MessageNotFound) => self::MessageNotFound.into(),
+							return IXCM::MaxMessageTimeoutPerBlockReached.into(),
+						Ok(MessageNotFound) => return self::MessageNotFound.into(),
 						Ok(OriginConversionFailed) => IXCM::OriginConversionFailed.into(),
-						Ok(RequestPending) => self::RequestPending.into(),
-						Ok(TooManyMessages) => self::TooManyMessages.into(),
-						_ => e.into(),
+						Ok(RequestPending) => return self::RequestPending.into(),
+						Ok(TooManyMessages) => return self::TooManyMessages.into(),
+						_ => {},
 					}
-				} else {
-					e.into()
 				}
+
+				self::Module { index, error: error.into() }.into()
 			},
-			Token(TokenError::FundsUnavailable) => IXCM::FundsUnavailable.into(),
-			_ => e.into(),
+			Token(sp_runtime::TokenError::FundsUnavailable) => IXCM::FundsUnavailable.into(),
+			Token(error) => self::Token::from(error).into(),
+			Transactional(error) => self::Transactional::from(error).into(),
+			Trie(error) => self::Trie::from(error).into(),
+			other => self::Dispatch::from(other).into(),
 		}
 	}
 }
 
 // Encoding of custom errors via `Error(String)`.
 impl_from_sol_error! {
+	// XCM
 	IXCM::DecodingFailed,
 	IXCM::FundsUnavailable,
 	IXCM::FutureTimeoutMandatory,
 	IXCM::MaxMessageTimeoutPerBlockReached,
 	IXCM::OriginConversionFailed,
+	// Messaging
 	InvalidEncoding,
 	MessageNotFound,
 	RequestPending,
 	TooManyMessages,
+	// Generic
+	Arithmetic,
+	Dispatch,
+	Module,
+	Token,
+	Transactional,
+	Trie
 }
 
 impl EncodeCallback for Response {
@@ -278,7 +286,7 @@ impl EncodeCallback for Response {
 
 impl<Balance> TryFrom<&Callback> for super::Callback<Balance>
 where
-	U256: TryConvert<Balance, Error = DispatchError>,
+	U256: TryConvert<Balance, Error = frame::DispatchError>,
 {
 	type Error = Error;
 
@@ -302,6 +310,96 @@ impl TryFrom<&Encoding> for super::Encoding {
 			Encoding::SolidityAbi => Ok(Self::SolidityAbi),
 			Encoding::__Invalid => Err(InvalidEncoding.into()),
 		}
+	}
+}
+
+impl From<frame_support::sp_runtime::ArithmeticError> for Arithmetic {
+	fn from(error: frame_support::sp_runtime::ArithmeticError) -> Self {
+		use frame_support::sp_runtime::ArithmeticError::*;
+		Self(match error {
+			Underflow => ArithmeticError::Underflow,
+			Overflow => ArithmeticError::Overflow,
+			DivisionByZero => ArithmeticError::DivisionByZero,
+		})
+	}
+}
+
+impl From<frame::DispatchError> for Dispatch {
+	fn from(error: frame::DispatchError) -> Self {
+		use frame::DispatchError::*;
+		Self(match error {
+			Other(_) => DispatchError::Other,
+			CannotLookup => DispatchError::CannotLookup,
+			BadOrigin => DispatchError::BadOrigin,
+			Module(_) => DispatchError::Module,
+			ConsumerRemaining => DispatchError::ConsumerRemaining,
+			NoProviders => DispatchError::NoProviders,
+			TooManyConsumers => DispatchError::TooManyConsumers,
+			Token(_) => DispatchError::Token,
+			Arithmetic(_) => DispatchError::Arithmetic,
+			Transactional(_) => DispatchError::Transactional,
+			Exhausted => DispatchError::Exhausted,
+			Corruption => DispatchError::Corruption,
+			Unavailable => DispatchError::Unavailable,
+			RootNotAllowed => DispatchError::RootNotAllowed,
+			Trie(_) => DispatchError::Trie,
+		})
+	}
+}
+
+impl From<frame_support::sp_runtime::ModuleError> for Module {
+	fn from(error: frame_support::sp_runtime::ModuleError) -> Self {
+		Self { index: error.index, error: error.error.into() }
+	}
+}
+
+impl From<frame_support::sp_runtime::TokenError> for Token {
+	fn from(error: frame_support::sp_runtime::TokenError) -> Self {
+		use frame_support::sp_runtime::TokenError::*;
+		Self(match error {
+			FundsUnavailable => TokenError::FundsUnavailable,
+			OnlyProvider => TokenError::OnlyProvider,
+			BelowMinimum => TokenError::BelowMinimum,
+			CannotCreate => TokenError::CannotCreate,
+			UnknownAsset => TokenError::Unknown,
+			Frozen => TokenError::Frozen,
+			Unsupported => TokenError::Unsupported,
+			CannotCreateHold => TokenError::CannotCreateHold,
+			NotExpendable => TokenError::NotExpendable,
+			Blocked => TokenError::Blocked,
+		})
+	}
+}
+
+impl From<frame_support::sp_runtime::TransactionalError> for Transactional {
+	fn from(error: frame_support::sp_runtime::TransactionalError) -> Self {
+		use frame_support::sp_runtime::TransactionalError::*;
+		Self(match error {
+			LimitReached => TransactionalError::LimitReached,
+			NoLayer => TransactionalError::NoLayer,
+		})
+	}
+}
+
+impl From<frame_support::traits::TrieError> for Trie {
+	fn from(error: frame_support::traits::TrieError) -> Self {
+		use frame_support::traits::TrieError::*;
+		Self(match error {
+			InvalidStateRoot => TrieError::InvalidStateRoot,
+			IncompleteDatabase => TrieError::IncompleteDatabase,
+			ValueAtIncompleteKey => TrieError::ValueAtIncompleteKey,
+			DecoderError => TrieError::DecoderError,
+			InvalidHash => TrieError::InvalidHash,
+			DuplicateKey => TrieError::DuplicateKey,
+			ExtraneousNode => TrieError::ExtraneousNode,
+			ExtraneousValue => TrieError::ExtraneousValue,
+			ExtraneousHashReference => TrieError::ExtraneousHashReference,
+			InvalidChildReference => TrieError::InvalidChildReference,
+			ValueMismatch => TrieError::ValueMismatch,
+			IncompleteProof => TrieError::IncompleteProof,
+			RootMismatch => TrieError::RootMismatch,
+			DecodeError => TrieError::DecodeError,
+		})
 	}
 }
 
@@ -859,7 +957,8 @@ mod tests {
 		ExtBuilder::new().build().execute_with(|| {
 			let call = send(sendCall { destination, message });
 			let response = call_precompile::<Vec<u8>>(&origin, &call).unwrap();
-			let result = Result::<(), DispatchError>::decode(&mut response.as_slice()).unwrap();
+			let result =
+				Result::<(), frame::DispatchError>::decode(&mut response.as_slice()).unwrap();
 			// No xcm router currently configured in mock runtime
 			assert_eq!(result, Err(pallet_xcm::Error::<Test>::Unreachable.into()));
 		});

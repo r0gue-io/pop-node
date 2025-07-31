@@ -1,9 +1,6 @@
 use alloc::vec;
 
-use frame_support::{
-	sp_runtime::{DispatchError, ModuleError},
-	traits::PalletInfo,
-};
+use frame_support::{pallet_prelude as frame, sp_runtime::ModuleError, traits::PalletInfo};
 pub(super) use pallet_revive::precompiles::{
 	alloy::{primitives::U256, sol_types::SolCall},
 	AddressMatcher::Fixed,
@@ -18,4 +15,5 @@ pub mod ismp;
 pub mod xcm;
 
 /// The first version of the Messaging API.
+#[allow(ambiguous_associated_items)]
 pub mod v0;
