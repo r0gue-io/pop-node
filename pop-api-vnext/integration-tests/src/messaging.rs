@@ -127,7 +127,7 @@ mod ismp {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
 				selector: 0x9bf78ffbu32.into(),
-				gasLimit: Weight { refTime: 1_100_000_000, proofSize: 110_000 },
+				gasLimit: Weight { refTime: 1_100_000_000, proofSize: 120_000 },
 				storageDepositLimit: alloy::U256::from(1 * UNIT / 5)
 			};
 			let id = contract.get(request, U256::zero(), Some(callback.clone())).unwrap();
@@ -261,7 +261,7 @@ mod ismp {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
 				selector: 0xbe910d67u32.into(),
-				gasLimit: Weight { refTime: 850_000_000, proofSize: 110_000 },
+				gasLimit: Weight { refTime: 850_000_000, proofSize: 120_000 },
 				storageDepositLimit: alloy::U256::from(1 * UNIT / 5)
 			};
             let id = contract.post(request,  U256::zero(), Some(callback.clone())).unwrap();
@@ -460,7 +460,7 @@ mod xcm {
 				destination: contract.address.0.into(),
 				encoding: Encoding::SolidityAbi,
 				selector: 0x97dbf9fbu32.into(),
-				gasLimit: Weight { refTime: 850_000_000, proofSize: 110_000 },
+				gasLimit: Weight { refTime: 850_000_000, proofSize: 120_000 },
 				storageDepositLimit: alloy::U256::from(1 * UNIT / 5),
 			};
 			let (id, query_id) =
