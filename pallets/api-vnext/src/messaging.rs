@@ -1,3 +1,6 @@
+//! The messaging API offers a streamlined interface for cross-chain interactions. The
+//! goal is to provide a simplified API that unlocks the power of Polkadot for contracts.
+
 use deposits::*;
 use frame_support::{
 	dispatch::{DispatchErrorWithPostInfo, DispatchResult, DispatchResultWithPostInfo},
