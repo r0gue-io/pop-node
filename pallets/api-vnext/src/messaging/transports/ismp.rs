@@ -48,7 +48,7 @@ pub const ID: [u8; 3] = *b"pop";
 /// # Returns
 /// A unique identifier for the message.
 pub(crate) fn get<T: Config>(
-	origin: Origin<T::AccountId>,
+	origin: Origin<T>,
 	message: DispatchGet,
 	fee: BalanceOf<T>,
 	callback: Option<Callback<BalanceOf<T>>>,
@@ -103,7 +103,7 @@ pub(crate) fn get<T: Config>(
 /// # Returns
 /// A unique identifier for the message.
 pub(crate) fn post<T: Config>(
-	origin: Origin<T::AccountId>,
+	origin: Origin<T>,
 	message: DispatchPost,
 	fee: BalanceOf<T>,
 	callback: Option<Callback<BalanceOf<T>>>,
@@ -310,6 +310,7 @@ mod tests {
 	type Messages = super::Messages<Test>;
 	type OffChainByteFee = <Test as Config>::OffChainByteFee;
 	type OnChainByteFee = <Test as Config>::OnChainByteFee;
+	type Origin = super::Origin<Test>;
 	type PostState = super::PostState<Test>;
 	type WeightToFee = <Test as Config>::WeightToFee;
 

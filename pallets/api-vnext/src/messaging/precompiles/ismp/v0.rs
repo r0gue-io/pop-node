@@ -399,7 +399,7 @@ mod tests {
 	};
 	use sp_io::hashing::keccak_256;
 
-	use super::{super::messaging::Origin, IISMPCalls::*, MessageStatus::*, *};
+	use super::{IISMPCalls::*, MessageStatus::*, *};
 
 	type MaxContextLen = <Test as Config>::MaxContextLen;
 	type MaxDataLen = <Test as Config>::MaxDataLen;
@@ -408,6 +408,7 @@ mod tests {
 	type MaxRecipientLen = <Test as Config>::MaxRecipientLen;
 	type MaxRemovals = <Test as Config>::MaxRemovals;
 	type Messages = crate::messaging::Messages<Test>;
+	type Origin = super::Origin<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(ISMP);
 	const GET_MESSAGE_DEPOSIT: u128 = 131_290;
@@ -485,7 +486,7 @@ mod tests {
 					message
 				);
 
-				let event = GetDispatched_0 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into() };
+				let event = GetDispatched_0 { origin: origin.address(), id: message, commitment: commitment.0.into() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
 					Messages::get(message),
@@ -526,7 +527,7 @@ mod tests {
 					message
 				);
 
-				let event = GetDispatched_1 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
+				let event = GetDispatched_1 { origin: origin.address(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
 					Messages::get(message),
@@ -647,7 +648,7 @@ mod tests {
 					message
 				);
 
-				let event = PostDispatched_0 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into() };
+				let event = PostDispatched_0 { origin: origin.address(), id: message, commitment: commitment.0.into() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
 					Messages::get( message),
@@ -687,7 +688,7 @@ mod tests {
 					message
 				);
 
-				let event = PostDispatched_1 { origin: origin.address.0.into(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
+				let event = PostDispatched_1 { origin: origin.address(), id: message, commitment: commitment.0.into(), callback: callback.clone() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
 					Messages::get(message),
@@ -747,7 +748,7 @@ mod tests {
 					&remove_0(remove_0Call { message })
 				));
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
 	}
@@ -837,7 +838,7 @@ mod tests {
 					&remove_1(remove_1Call { messages: messages.clone() })
 				));
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				assert_last_event(ADDRESS, Removed { account, messages });
 			});
 	}

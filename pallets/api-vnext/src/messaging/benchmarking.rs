@@ -92,7 +92,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn get_response() {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let message = 1;
 
 		Messages::<T>::insert(
@@ -156,7 +156,7 @@ mod benchmarks {
 		y: Linear<0, { T::MaxKeys::get() }>,
 		a: Linear<0, 1>,
 	) -> Result<(), BenchmarkError> {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let request = ismp::Get {
 			destination: u32::MAX,
 			height: u64::MAX,
@@ -225,7 +225,7 @@ mod benchmarks {
 	///   - `1`: `PostResponse`
 	#[benchmark]
 	fn ismp_on_response(x: Linear<0, 1>) {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let fee = <Balances<T>>::minimum_balance();
 		let callback = Callback::new(
 			[255; 20].into(),
@@ -265,7 +265,7 @@ mod benchmarks {
 	///   - `2`: `PostResponse`
 	#[benchmark]
 	fn ismp_on_timeout(x: Linear<0, 2>) -> Result<(), BenchmarkError> {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let fee = <Balances<T>>::minimum_balance();
 		let callback = Callback::new(
 			[255; 20].into(),
@@ -327,7 +327,7 @@ mod benchmarks {
 		x: Linear<0, { T::MaxDataLen::get() }>,
 		y: Linear<0, 1>,
 	) -> Result<(), BenchmarkError> {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let request = ismp::Post {
 			destination: u32::MAX,
 			to: vec![255; t as usize].into(),
@@ -367,7 +367,7 @@ mod benchmarks {
 
 	#[benchmark]
 	fn poll_status() {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let message = 1;
 
 		Messages::<T>::insert(
@@ -402,7 +402,7 @@ mod benchmarks {
 	fn remove(x: Linear<1, { T::MaxRemovals::get() }>) {
 		let message_deposit = 50_000u32.into();
 		let callback_deposit = 100_000u32.into();
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let messages: Vec<MessageId> = (0..x as MessageId).collect();
 
 		let mut call_setup = set_up_call();
@@ -457,7 +457,7 @@ mod benchmarks {
 	///   - `1`: Callback attached
 	#[benchmark]
 	fn xcm_new_query(x: Linear<0, 1>) {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let responder = Location { parents: 1, interior: Junctions::Here }.encode().into();
 		let timeout = u32::from(frame_system::Pallet::<T>::block_number()) + 1_000;
 
@@ -490,7 +490,7 @@ mod benchmarks {
 	/// No benchmark input parameters. A mock response is created and processed.
 	#[benchmark]
 	fn xcm_response() {
-		let origin = Origin::from_address::<T>(ALICE_ADDR);
+		let origin = Origin::<T>::from_address(ALICE_ADDR);
 		let responder = Location { parents: 1, interior: Junctions::Here };
 		let timeout = frame_system::Pallet::<T>::block_number() + 1u8.into();
 		let callback = Some(Callback {
@@ -527,7 +527,7 @@ fn assert_has_event<T: Config>(generic_event: <T as frame_system::Config>::Runti
 
 fn ismp_request<T: Config + pallet_ismp::Config>(
 	x: u32,
-	origin: Origin<T::AccountId>,
+	origin: Origin<T>,
 	fee: BalanceOf<T>,
 	callback: Callback<BalanceOf<T>>,
 ) -> (MessageId, H256, Response) {

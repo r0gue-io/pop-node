@@ -215,6 +215,21 @@ impl<T: pallet_revive::Config> TryFrom<pallet_revive::Origin<T>> for Origin<T> {
 	}
 }
 
+#[cfg(test)]
+impl<T: frame_system::Config> From<(H160, T::AccountId)> for Origin<T> {
+	fn from((address, account): (H160, T::AccountId)) -> Self {
+		Self { address, account }
+	}
+}
+
+#[cfg(feature = "runtime-benchmarks")]
+impl<T: pallet_revive::Config> Origin<T> {
+	pub fn from_address(address: H160) -> Self {
+		let account = <T as pallet_revive::Config>::AddressMapper::to_account_id(&address);
+		Self { address, account }
+	}
+}
+
 /// Creates a new `RuntimeOrigin` from an ['Origin'].
 pub fn to_runtime_origin<T: pallet_revive::Config>(
 	o: pallet_revive::Origin<T>,

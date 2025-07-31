@@ -17,6 +17,7 @@ type Fungibles = <Test as Config>::Fungibles;
 type IsmpRequests = super::IsmpRequests<Test>;
 type Message = super::Message<Test>;
 type Messages = super::Messages<Test>;
+type Origin = super::Origin<Test>;
 type WeightInfo = <Test as Config>::WeightInfo;
 type WeightToFee = <Test as Config>::WeightToFee;
 type XcmQueries = super::XcmQueries<Test>;
@@ -336,7 +337,7 @@ mod remove {
 	// `remove` is no longer a dispatchable and only callable via a precompile, hence we simply
 	// wrap calls to it in a transaction to simulate. See additional precompiles tests for
 	// further assurances.
-	fn remove(origin: Origin<AccountId>, messages: &[MessageId]) -> DispatchResult {
+	fn remove(origin: Origin, messages: &[MessageId]) -> DispatchResult {
 		with_transaction(|| -> TransactionOutcome<DispatchResult> {
 			let result = super::remove::<Test>(origin, messages);
 			match &result {

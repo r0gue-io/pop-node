@@ -153,6 +153,7 @@ mod tests {
 	const ADDRESS: [u8; 20] = fixed_address(MESSAGING);
 
 	type MaxRemovals = <Test as Config>::MaxRemovals;
+	type Origin = super::Origin<Test>;
 
 	#[test]
 	fn get_response_works() {
@@ -276,7 +277,7 @@ mod tests {
 					&remove_0(remove_0Call { message })
 				));
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
 	}
@@ -365,7 +366,7 @@ mod tests {
 					&remove_1(remove_1Call { messages: messages.clone() })
 				));
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				assert_last_event(ADDRESS, Removed { account, messages });
 			});
 	}

@@ -339,6 +339,7 @@ mod tests {
 	type MaxXcmQueryTimeoutsPerBlock = <Test as Config>::MaxXcmQueryTimeoutsPerBlock;
 	type MaxRemovals = <Test as Config>::MaxRemovals;
 	type Messages = crate::messaging::Messages<Test>;
+	type Origin = super::Origin<Test>;
 	type XcmQueryTimeouts = crate::messaging::XcmQueryTimeouts<Test>;
 
 	const ADDRESS: [u8; 20] = fixed_address(XCM);
@@ -513,7 +514,7 @@ mod tests {
 					message
 				);
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				let event = QueryCreated_0 { account, id: message, queryId: query_id };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
@@ -631,7 +632,7 @@ mod tests {
 					message
 				);
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				let event = QueryCreated_1 { account, id: message, queryId: query_id, callback: callback.clone() };
 				assert_last_event(ADDRESS, event);
 				assert!(matches!(
@@ -718,7 +719,7 @@ mod tests {
 					&remove_0(remove_0Call { message })
 				));
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				assert_last_event(ADDRESS, Removed { account, messages: vec![message] });
 			});
 	}
@@ -807,7 +808,7 @@ mod tests {
 					&remove_1(remove_1Call { messages: messages.clone() })
 				));
 
-				let account = origin.address.0.into();
+				let account = origin.address();
 				assert_last_event(ADDRESS, Removed { account, messages });
 			});
 	}

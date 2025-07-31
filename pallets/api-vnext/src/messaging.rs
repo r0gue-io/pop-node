@@ -624,7 +624,7 @@ pub(crate) fn process_callback_weight(
 /// # Parameters
 /// - `origin`: The account removing its messages.
 /// - `messages`: List of message IDs to remove (bounded by `MaxRemovals`).
-fn remove<T: Config>(origin: Origin<T::AccountId>, messages: &[MessageId]) -> DispatchResult {
+fn remove<T: Config>(origin: Origin<T>, messages: &[MessageId]) -> DispatchResult {
 	for id in <BoundedSlice<_, T::MaxRemovals>>::try_from(messages)
 		.map_err(|_| <Error<T>>::TooManyMessages)?
 	{
@@ -820,7 +820,7 @@ pub enum Message<T: Config> {
 	/// - `callback`: An optional callback to invoke upon receiving a response.
 	/// - `deposit`: The total deposit held to cover message and callback fees.
 	Ismp {
-		origin: Origin<T::AccountId>,
+		origin: Origin<T>,
 		commitment: H256,
 		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
@@ -834,7 +834,7 @@ pub enum Message<T: Config> {
 	/// - `callback`: An optional callback for handling the response.
 	/// - `deposit`: The deposit held to cover fees for query execution and callback.
 	XcmQuery {
-		origin: Origin<T::AccountId>,
+		origin: Origin<T>,
 		query_id: QueryId,
 		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
@@ -898,7 +898,7 @@ pub enum Message<T: Config> {
 impl<T: Config> Message<T> {
 	#[cfg(test)]
 	fn ismp(
-		origin: Origin<T::AccountId>,
+		origin: Origin<T>,
 		commitment: H256,
 		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
@@ -928,7 +928,7 @@ impl<T: Config> Message<T> {
 
 	#[cfg(test)]
 	fn xcm_query(
-		origin: Origin<T::AccountId>,
+		origin: Origin<T>,
 		query_id: QueryId,
 		callback: Option<Callback<BalanceOf<T>>>,
 		message_deposit: BalanceOf<T>,
@@ -976,42 +976,5 @@ impl<T: Config> From<&Message<T>> for MessageStatus {
 			Message::IsmpTimeout { .. } => MessageStatus::Timeout,
 			Message::XcmTimeout { .. } => MessageStatus::Timeout,
 		}
-	}
-}
-
-/// The origin of a request.
-#[derive(Clone, Debug, Encode, Eq, Decode, MaxEncodedLen, PartialEq, TypeInfo)]
-#[scale_info(skip_type_params(Account))]
-pub struct Origin<Account> {
-	address: H160,
-	account: Account,
-}
-
-#[cfg(test)]
-impl<Account> From<(H160, Account)> for Origin<Account> {
-	fn from((address, account): (H160, Account)) -> Self {
-		Self { address, account }
-	}
-}
-
-#[cfg(feature = "runtime-benchmarks")]
-impl<Account> Origin<Account> {
-	pub fn from_address<T: pallet_revive::Config<AccountId = Account>>(address: H160) -> Self {
-		let account = <T as pallet_revive::Config>::AddressMapper::to_account_id(&address);
-		Self { address, account }
-	}
-}
-
-impl<T: pallet_revive::Config> TryFrom<pallet_revive::Origin<T>> for Origin<T::AccountId> {
-	type Error = pallet_revive::precompiles::Error;
-
-	fn try_from(origin: pallet_revive::Origin<T>) -> Result<Self, Self::Error> {
-		use pallet_revive::Origin::*;
-		let account = match origin {
-			Signed(id) => Ok(id),
-			Root => Err(DispatchError::RootNotAllowed),
-		}?;
-		let address = <T as pallet_revive::Config>::AddressMapper::to_address(&account);
-		Ok(Self { address, account })
 	}
 }

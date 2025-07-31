@@ -18,7 +18,7 @@ use crate::messaging::{pallet::Call, BlockNumberOf, Config};
 /// # Returns
 /// A unique identifier for the message.
 pub(crate) fn new_query<T: Config>(
-	origin: Origin<T::AccountId>,
+	origin: Origin<T>,
 	responder: Location,
 	timeout: BlockNumberOf<T>,
 	callback: Option<Callback<BalanceOf<T>>>,
@@ -116,6 +116,7 @@ pub(crate) mod tests {
 	type Fungibles = <Test as Config>::Fungibles;
 	type Messages = super::Messages<Test>;
 	type OnChainByteFee = <Test as Config>::OnChainByteFee;
+	type Origin = super::Origin<Test>;
 	type WeightInfo = <Test as Config>::WeightInfo;
 	type WeightToFee = <Test as Config>::WeightToFee;
 	type XcmQueries = super::XcmQueries<Test>;
@@ -333,7 +334,7 @@ pub(crate) mod tests {
 	// wrap calls to it in a transaction to simulate. See additional precompiles tests for
 	// further assurances.
 	pub(crate) fn new_query(
-		origin: Origin<AccountId>,
+		origin: Origin,
 		responder: Location,
 		timeout: u32,
 		callback: Option<Callback<Balance>>,
