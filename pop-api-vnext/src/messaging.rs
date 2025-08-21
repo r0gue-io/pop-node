@@ -1,12 +1,13 @@
-pub use ink::primitives::Weight;
 use ink::{
 	contract_ref,
 	env::hash::{Blake2x256, CryptoHash},
 	prelude::vec::Vec,
 	primitives::AccountId,
 	scale::{Compact, Encode},
-	SolBytes, U256,
+	sol::FixedBytes,
+	U256,
 };
+pub use ink::{primitives::Weight, sol::DynBytes};
 use sol::Sol;
 pub use v0::*;
 
@@ -20,8 +21,6 @@ pub mod xcm;
 /// The first version of the Messaging API.
 pub mod v0;
 
-pub type Bytes = SolBytes<Vec<u8>>;
-pub type FixedBytes<const N: usize> = SolBytes<[u8; N]>;
 pub type MessageId = u64;
 
 /// Calculate the hashed account identifier for a given parachain and account.

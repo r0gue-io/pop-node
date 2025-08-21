@@ -24,7 +24,7 @@ pub trait Fungibles {
 	/// - `to` - The recipient account.
 	/// - `value` - The number of tokens to transfer.
 	#[ink(message)]
-	fn transfer(&self, token: TokenId, to: Address, value: U256) -> Result<(), Error>;
+	fn transfer(&mut self, token: TokenId, to: Address, value: U256) -> Result<(), Error>;
 
 	/// Transfers `value` amount tokens on behalf of `from` to account `to`.
 	///
@@ -36,7 +36,7 @@ pub trait Fungibles {
 	#[ink(message)]
 	#[allow(non_snake_case)]
 	fn transferFrom(
-		&self,
+		&mut self,
 		token: TokenId,
 		from: Address,
 		to: Address,
@@ -50,7 +50,7 @@ pub trait Fungibles {
 	/// - `spender` - The account that is allowed to spend the tokens.
 	/// - `value` - The number of tokens to approve.
 	#[ink(message)]
-	fn approve(&self, token: TokenId, spender: Address, value: U256) -> Result<(), Error>;
+	fn approve(&mut self, token: TokenId, spender: Address, value: U256) -> Result<(), Error>;
 
 	/// Increases the allowance of `spender` by `value` amount of tokens.
 	///
@@ -61,7 +61,7 @@ pub trait Fungibles {
 	#[ink(message)]
 	#[allow(non_snake_case)]
 	fn increaseAllowance(
-		&self,
+		&mut self,
 		token: TokenId,
 		spender: Address,
 		value: U256,
@@ -76,7 +76,7 @@ pub trait Fungibles {
 	#[ink(message)]
 	#[allow(non_snake_case)]
 	fn decreaseAllowance(
-		&self,
+		&mut self,
 		token: TokenId,
 		spender: Address,
 		value: U256,
@@ -90,7 +90,7 @@ pub trait Fungibles {
 	///
 	/// NOTE: The minimum balance must be non-zero.
 	#[ink(message)]
-	fn create(&self, admin: Address, min_balance: U256) -> Result<TokenId, Error>;
+	fn create(&mut self, admin: Address, min_balance: U256) -> Result<TokenId, Error>;
 
 	/// Start the process of destroying a token.
 	///
@@ -98,7 +98,7 @@ pub trait Fungibles {
 	/// - `token` - The token to be destroyed.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn startDestroy(&self, token: TokenId) -> Result<(), Error>;
+	fn startDestroy(&mut self, token: TokenId) -> Result<(), Error>;
 
 	/// Set the metadata for a token.
 	///
@@ -110,7 +110,7 @@ pub trait Fungibles {
 	#[ink(message)]
 	#[allow(non_snake_case)]
 	fn setMetadata(
-		&self,
+		&mut self,
 		token: TokenId,
 		name: String,
 		symbol: String,
@@ -123,7 +123,7 @@ pub trait Fungibles {
 	/// - `token` - The token to update.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn clearMetadata(&self, token: TokenId) -> Result<(), Error>;
+	fn clearMetadata(&mut self, token: TokenId) -> Result<(), Error>;
 
 	/// Creates `value` amount of tokens and assigns them to `account`, increasing the total
 	/// supply.
@@ -133,7 +133,7 @@ pub trait Fungibles {
 	/// - `account` - The account to be credited with the created tokens.
 	/// - `value` - The number of tokens to mint.
 	#[ink(message)]
-	fn mint(&self, token: TokenId, account: Address, value: U256) -> Result<(), Error>;
+	fn mint(&mut self, token: TokenId, account: Address, value: U256) -> Result<(), Error>;
 
 	/// Destroys `value` amount of tokens from `account`, reducing the total supply.
 	///
@@ -142,7 +142,7 @@ pub trait Fungibles {
 	/// - `account` - The account from which the tokens will be destroyed.
 	/// - `value` - The number of tokens to destroy.
 	#[ink(message)]
-	fn burn(&self, token: TokenId, account: Address, value: U256) -> Result<(), Error>;
+	fn burn(&mut self, token: TokenId, account: Address, value: U256) -> Result<(), Error>;
 
 	/// Total token supply for a specified token.
 	///
@@ -223,7 +223,7 @@ pub fn approve(token: TokenId, spender: Address, value: U256) -> Result<(), Erro
 	ensure!(spender != Address::zero(), ZeroRecipientAddress);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.approve(token, spender, value)
 }
 
@@ -251,7 +251,7 @@ pub fn burn(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.burn(token, account, value)
 }
 
@@ -262,7 +262,7 @@ pub fn burn(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 #[inline]
 pub fn clear_metadata(token: TokenId) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.clearMetadata(token)
 }
 
@@ -279,7 +279,7 @@ pub fn create(admin: Address, min_balance: U256) -> Result<TokenId, Error> {
 	ensure!(min_balance != U256::zero(), MinBalanceZero);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.create(admin, min_balance)
 }
 
@@ -305,7 +305,7 @@ pub fn decrease_allowance(token: TokenId, spender: Address, value: U256) -> Resu
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.decreaseAllowance(token, spender, value)
 }
 
@@ -331,7 +331,7 @@ pub fn increase_allowance(token: TokenId, spender: Address, value: U256) -> Resu
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.increaseAllowance(token, spender, value)
 }
 
@@ -348,7 +348,7 @@ pub fn mint(token: TokenId, account: Address, value: U256) -> Result<(), Error> 
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.mint(token, account, value)
 }
 
@@ -378,7 +378,7 @@ pub fn set_metadata(
 	decimals: u8,
 ) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.setMetadata(token, name, symbol, decimals)
 }
 
@@ -389,7 +389,7 @@ pub fn set_metadata(
 #[inline]
 pub fn start_destroy(token: TokenId) -> Result<(), Error> {
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.startDestroy(token)
 }
 
@@ -427,7 +427,7 @@ pub fn transfer(token: TokenId, to: Address, value: U256) -> Result<(), Error> {
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.transfer(token, to, value)
 }
 
@@ -446,6 +446,6 @@ pub fn transfer_from(token: TokenId, from: Address, to: Address, value: U256) ->
 	ensure!(value != U256::zero(), ZeroValue);
 
 	let address = fixed_address(PRECOMPILE);
-	let precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
+	let mut precompile: contract_ref!(Fungibles, Pop, Sol) = address.into();
 	precompile.transferFrom(token, from, to, value)
 }

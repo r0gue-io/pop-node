@@ -25,7 +25,7 @@ pub enum Error {
 	/// Reason why a dispatch call failed.
 	Dispatch(DispatchError),
 	/// The execution of a XCM message failed.
-	ExecutionFailed(Bytes),
+	ExecutionFailed(DynBytes),
 	/// Timeouts must be in the future.
 	FutureTimeoutMandatory,
 	/// Message block limit has been reached for this expiry block. Try a different timeout.
@@ -44,7 +44,7 @@ pub enum Error {
 	/// The request is pending.
 	RequestPending,
 	/// The sending of a XCM message failed.
-	SendingFailed(Bytes),
+	SendingFailed(DynBytes),
 	/// An error to do with tokens.
 	Token(TokenError),
 	/// The number of messages exceeds the limit.
@@ -69,7 +69,7 @@ impl PrecompileError for Error {
 			DECODING_FAILED => Ok(Self::DecodingFailed),
 			DISPATCH => Ok(Self::Dispatch(<DispatchError as SolDecode>::decode(&data[4..])?)),
 			EXECUTION_FAILED =>
-				Ok(Self::ExecutionFailed(<Bytes as SolDecode>::decode(&data[4..])?)),
+				Ok(Self::ExecutionFailed(<DynBytes as SolDecode>::decode(&data[4..])?)),
 			FUTURE_TIMEOUT_MANDATORY => Ok(Self::FutureTimeoutMandatory),
 			MAX_MESSAGE_TIMEOUT_PER_BLOCK_REACHED => Ok(Self::MaxMessageTimeoutPerBlockReached),
 			MESSAGE_NOT_FOUND => Ok(Self::MessageNotFound),
@@ -79,7 +79,7 @@ impl PrecompileError for Error {
 			},
 			ORIGIN_CONVERSION_FAILED => Ok(Self::OriginConversionFailed),
 			REQUEST_PENDING => Ok(Self::RequestPending),
-			SENDING_FAILED => Ok(Self::SendingFailed(<Bytes as SolDecode>::decode(&data[4..])?)),
+			SENDING_FAILED => Ok(Self::SendingFailed(<DynBytes as SolDecode>::decode(&data[4..])?)),
 			TOKEN => Ok(Self::Token(<TokenError as SolDecode>::decode(&data[4..])?)),
 			TOO_MANY_MESSAGES => Ok(Self::TooManyMessages),
 			TRANSACTIONAL =>
@@ -91,16 +91,16 @@ impl PrecompileError for Error {
 }
 
 const DECODING_FAILED: [u8; 4] = sol_error_selector!("DecodingFailed", ());
-const EXECUTION_FAILED: [u8; 4] = sol_error_selector!("ExecutionFailed", (SolBytes<Vec<u8>>,));
+const EXECUTION_FAILED: [u8; 4] = sol_error_selector!("ExecutionFailed", (DynBytes,));
 const FUTURE_TIMEOUT_MANDATORY: [u8; 4] = sol_error_selector!("FutureTimeoutMandatory", ());
 const MAX_MESSAGE_TIMEOUT_PER_BLOCK_REACHED: [u8; 4] =
 	sol_error_selector!("MaxMessageTimeoutPerBlockReached", ());
 const ORIGIN_CONVERSION_FAILED: [u8; 4] = sol_error_selector!("OriginConversionFailed", ());
-const SENDING_FAILED: [u8; 4] = sol_error_selector!("SendingFailed", (SolBytes<Vec<u8>>,));
+const SENDING_FAILED: [u8; 4] = sol_error_selector!("SendingFailed", (DynBytes,));
 
 #[test]
 fn error_decoding_works() {
-	use ink::{sol::SolErrorDecode, SolBytes};
+	use ink::sol::SolErrorDecode;
 
 	for (encoded, expected) in [
 		(
@@ -114,20 +114,20 @@ fn error_decoding_works() {
 		),
 		(
 			"15fcd67500000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000",
-			ExecutionFailed(SolBytes(Vec::default()))
+			ExecutionFailed(DynBytes(Vec::default()))
 		),
 		("885a28b2", FutureTimeoutMandatory),
 		("fc952e0b", MaxMessageTimeoutPerBlockReached),
 		("28915ac7", MessageNotFound),
 		(
 			"3323f3c100000000000000000000000000000000000000000000000000000000000000ffffffffff00000000000000000000000000000000000000000000000000000000",
-			Module { index: 255, error: SolBytes([255; 4]) },
+			Module { index: 255, error: FixedBytes([255; 4]) },
 		),
 		("8926fba8", OriginConversionFailed),
 		("806d0f74", RequestPending),
 		(
 		    "0ff105a200000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000",
-			SendingFailed(SolBytes(Vec::default()))
+			SendingFailed(DynBytes(Vec::default()))
 		),
 		(
 			"57fdc3d80000000000000000000000000000000000000000000000000000000000000009",

@@ -8,8 +8,7 @@ use pallet_api_vnext::messaging::{
 };
 use pallet_revive::precompiles::alloy::sol_types::SolEvent;
 use pop_api::{
-	messaging::{Bytes, Error},
-	sol::SolBytes,
+	messaging::{DynBytes, Error},
 	SolErrorDecode,
 };
 use sp_io::{
@@ -176,8 +175,8 @@ mod ismp {
 					response: response
 						.into_iter()
 						.map(|v| pop_api::messaging::ismp::StorageValue {
-							key: SolBytes(v.key),
-							value: v.value.map(|v| SolBytes(v))
+							key: DynBytes(v.key),
+							value: v.value.map(|v| DynBytes(v))
 						})
 						.collect()
 				}
@@ -302,7 +301,7 @@ mod ismp {
 
 			assert_eq!(
 				contract.last_event(),
-				IsmpPostCompleted { id, response: SolBytes(response) }.encode()
+				IsmpPostCompleted { id, response: DynBytes(response) }.encode()
 			);
 			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
 		});
@@ -497,7 +496,7 @@ mod xcm {
 
 			assert_eq!(
 				contract.last_event(),
-				XcmCompleted { id, result: SolBytes(response.encode()) }.encode()
+				XcmCompleted { id, result: DynBytes(response.encode()) }.encode()
 			);
 			assert_eq!(contract.poll_status(id), MessageStatus::NotFound);
 		});
@@ -552,9 +551,9 @@ impl Contract {
 		Self { address, creator: origin.clone() }
 	}
 
-	fn get_response(&self, message: MessageId) -> Bytes {
+	fn get_response(&self, message: MessageId) -> DynBytes {
 		let call = getResponseCall { message };
-		SolBytes(self.call::<_, Error>(&self.creator, call, 0).unwrap().0.into())
+		DynBytes(self.call::<_, Error>(&self.creator, call, 0).unwrap().0.into())
 	}
 
 	fn poll_status(&self, message: MessageId) -> MessageStatus {

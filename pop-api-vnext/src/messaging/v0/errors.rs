@@ -77,8 +77,6 @@ pub(crate) const TRIE: [u8; 4] = sol_error_selector!("Trie", (u8,));
 
 #[test]
 fn error_decoding_works() {
-	use ink::SolBytes;
-
 	for (encoded, expected) in [
 		(
 			"7fdb06c50000000000000000000000000000000000000000000000000000000000000001",
@@ -91,7 +89,7 @@ fn error_decoding_works() {
 		("28915ac7", MessageNotFound),
 		(
 			"3323f3c100000000000000000000000000000000000000000000000000000000000000ffffffffff00000000000000000000000000000000000000000000000000000000",
-			Module { index: 255, error: SolBytes([255; 4]) },
+			Module { index: 255, error: FixedBytes([255; 4]) },
 		),
 		("806d0f74", RequestPending),
 		(

@@ -1,5 +1,5 @@
 pub use errors::{Error, Error::*};
-use ink::{Address, SolBytes};
+use ink::{sol::DynBytes, Address};
 
 use super::{super::v0::Callback, *};
 
@@ -23,7 +23,7 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn get(&self, request: Get, fee: U256) -> Result<MessageId, Error>;
+	fn get(&mut self, request: Get, fee: U256) -> Result<MessageId, Error>;
 
 	/// Submit a new ISMP `Post` request.
 	///
@@ -36,7 +36,7 @@ pub trait Ismp {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn post(&self, request: Post, fee: U256) -> Result<MessageId, Error>;
+	fn post(&mut self, request: Post, fee: U256) -> Result<MessageId, Error>;
 }
 
 /// The ISMP precompile offers a streamlined interface for messaging using the Interoperable State
@@ -53,7 +53,7 @@ pub trait IsmpCallback {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn get(&self, request: Get, fee: U256, callback: Callback) -> Result<MessageId, Error>;
+	fn get(&mut self, request: Get, fee: U256, callback: Callback) -> Result<MessageId, Error>;
 
 	/// Submit a new ISMP `Post` request.
 	///
@@ -67,7 +67,7 @@ pub trait IsmpCallback {
 	/// # Returns
 	/// A unique message identifier.
 	#[ink(message)]
-	fn post(&self, request: Post, fee: U256, callback: Callback) -> Result<MessageId, Error>;
+	fn post(&mut self, request: Post, fee: U256, callback: Callback) -> Result<MessageId, Error>;
 }
 
 /// The messaging interface of the ISMP precompile offers a general interface for cross-chain
@@ -86,7 +86,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn getResponse(&self, message: MessageId) -> Bytes;
+	fn getResponse(&mut self, message: MessageId) -> DynBytes;
 
 	/// The identifier of this chain.
 	///
@@ -101,7 +101,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier to poll.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn pollStatus(&self, message: MessageId) -> MessageStatus;
+	fn pollStatus(&mut self, message: MessageId) -> MessageStatus;
 
 	/// Remove a completed or timed-out message.
 	///
@@ -110,7 +110,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `message` - The identifier of the message to remove.
 	#[ink(message)]
-	fn remove(&self, message: MessageId) -> Result<(), Error>;
+	fn remove(&mut self, message: MessageId) -> Result<(), Error>;
 
 	/// Remove a batch of completed or timed-out messages.
 	///
@@ -120,7 +120,7 @@ pub trait Messaging {
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error>;
+	fn removeMany(&mut self, messages: Vec<MessageId>) -> Result<(), Error>;
 }
 
 /// Submit a new ISMP `Get` request.
@@ -136,11 +136,11 @@ pub trait Messaging {
 pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
 	match callback {
 		None => {
-			let precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let mut precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.get(request, fee)
 		},
 		Some(callback) => {
-			let precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let mut precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.get(request, fee, callback)
 		},
 	}
@@ -154,8 +154,8 @@ pub fn get(request: Get, fee: U256, callback: Option<Callback>) -> Result<Messag
 /// # Parameters
 /// - `message` - The message identifier.
 #[inline]
-pub fn get_response(message: MessageId) -> Bytes {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+pub fn get_response(message: MessageId) -> DynBytes {
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
 
@@ -174,7 +174,7 @@ pub fn id() -> u32 {
 /// - `message` - The message identifier to poll.
 #[inline]
 pub fn poll_status(message: MessageId) -> MessageStatus {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.pollStatus(message)
 }
 
@@ -193,11 +193,11 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> Result<MessageId, Error> {
 	match callback {
 		None => {
-			let precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let mut precompile: contract_ref!(Ismp, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.post(request, fee)
 		},
 		Some(callback) => {
-			let precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+			let mut precompile: contract_ref!(IsmpCallback, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 			precompile.post(request, fee, callback)
 		},
 	}
@@ -211,7 +211,7 @@ pub fn post(request: Post, fee: U256, callback: Option<Callback>) -> Result<Mess
 /// - `message` - The identifier of the message to remove.
 #[inline]
 pub fn remove(message: MessageId) -> Result<(), Error> {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove(message)
 }
 
@@ -223,7 +223,7 @@ pub fn remove(message: MessageId) -> Result<(), Error> {
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.removeMany(messages)
 }
 
@@ -238,9 +238,9 @@ pub struct Get {
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Some application-specific metadata relating to this request.
-	pub context: Bytes,
+	pub context: DynBytes,
 	/// Raw Storage keys that would be used to fetch the values from the counterparty.
-	pub keys: Vec<Bytes>,
+	pub keys: Vec<DynBytes>,
 }
 
 impl Get {
@@ -256,8 +256,8 @@ impl Get {
 		destination: u32,
 		height: u64,
 		timeout: u64,
-		context: Bytes,
-		keys: Vec<Bytes>,
+		context: DynBytes,
+		keys: Vec<DynBytes>,
 	) -> Self {
 		Self { destination, height, timeout, context, keys }
 	}
@@ -270,11 +270,11 @@ pub struct Post {
 	/// The destination state machine of this request.
 	pub destination: u32,
 	/// The receiving module identifier/contract address on the destination chain.
-	pub to: Bytes,
+	pub to: DynBytes,
 	/// Relative from the current timestamp at which this request expires in seconds.
 	pub timeout: u64,
 	/// Encoded request data.
-	pub data: Bytes,
+	pub data: DynBytes,
 }
 
 impl Post {
@@ -285,8 +285,8 @@ impl Post {
 	/// - `to` - The receiving module identifier/contract address on the destination chain.
 	/// - `timeout` - Relative from the current timestamp at which this request expires in seconds.
 	/// - `data` - Encoded request data.
-	pub fn new(destination: u32, to: Bytes, timeout: u64, data: Vec<u8>) -> Self {
-		Self { destination, to, timeout, data: SolBytes(data) }
+	pub fn new(destination: u32, to: DynBytes, timeout: u64, data: Vec<u8>) -> Self {
+		Self { destination, to, timeout, data: DynBytes(data) }
 	}
 }
 
@@ -295,9 +295,9 @@ impl Post {
 #[derive(Clone, Debug, ink::SolDecode, ink::SolEncode)]
 pub struct StorageValue {
 	/// The request storage key.
-	pub key: Bytes,
+	pub key: DynBytes,
 	/// The verified value.
-	pub value: Option<Bytes>,
+	pub value: Option<DynBytes>,
 }
 
 /// A callback for handling responses to ISMP `Get` requests.
@@ -323,7 +323,7 @@ pub trait OnPostResponse {
 	/// - `response` - The response message.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn onPostResponse(&mut self, id: MessageId, response: Bytes);
+	fn onPostResponse(&mut self, id: MessageId, response: DynBytes);
 }
 
 /// Event emitted when a ISMP `Get` request is completed.
@@ -343,5 +343,5 @@ pub struct IsmpPostCompleted {
 	#[ink(topic)]
 	pub id: MessageId,
 	/// The response message.
-	pub response: Bytes,
+	pub response: DynBytes,
 }

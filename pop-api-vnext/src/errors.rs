@@ -1,4 +1,4 @@
-pub type FixedBytes<const N: usize> = ink::SolBytes<[u8; N]>;
+pub use ink::sol::FixedBytes;
 
 /// Arithmetic errors.
 #[cfg_attr(feature = "std", derive(Debug, PartialEq))]

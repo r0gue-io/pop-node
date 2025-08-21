@@ -125,8 +125,6 @@ const TRIE: [u8; 4] = sol_error_selector!("Trie", (u8,));
 
 #[test]
 fn error_decoding_works() {
-	use ink::SolBytes;
-
 	for (encoded, expected) in [
 		(
 			"7fdb06c50000000000000000000000000000000000000000000000000000000000000001",
@@ -170,7 +168,7 @@ fn error_decoding_works() {
 		),
 		(
 			"3323f3c100000000000000000000000000000000000000000000000000000000000000ffffffffff00000000000000000000000000000000000000000000000000000000",
-			Module { index: 255, error: SolBytes([255; 4]) },
+			Module { index: 255, error: FixedBytes([255; 4]) },
 		),
 		(
 			"57fdc3d80000000000000000000000000000000000000000000000000000000000000009",
@@ -193,7 +191,7 @@ fn error_decoding_works() {
 
 #[test]
 fn error_encoding_works() {
-	use ink::{SolBytes, SolEncode};
+	use ink::SolEncode;
 
 	for (result, expected) in [
            	(
@@ -226,7 +224,7 @@ fn error_encoding_works() {
 				"94280d62000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
 			),
 			(
-				Module{ index: 255, error: SolBytes([255; 4]) }.encode(),
+				Module{ index: 255, error: FixedBytes([255; 4]) }.encode(),
 				"3323f3c100000000000000000000000000000000000000000000000000000000000000ffffffffff00000000000000000000000000000000000000000000000000000000",
 			),
 			(
@@ -252,7 +250,7 @@ fn error_encoding_works() {
 
 #[test]
 fn selectors_work() {
-	use ink::{SolBytes, SolEncode};
+	use ink::SolEncode;
 
 	for (encoded, expected) in [
 		(Error::Arithmetic(ArithmeticError::Overflow).encode()[..4].to_vec(), ARITHMETIC),
@@ -271,7 +269,7 @@ fn selectors_work() {
 		(Error::ERC20InvalidReceiver(Address::default()).encode(), INVALID_RECEIVER),
 		(Error::ERC20InvalidSender(Address::default()).encode(), INVALID_SENDER),
 		(Error::ERC20InvalidSpender(Address::default()).encode(), INVALID_SPENDER),
-		(Error::Module { index: 255, error: SolBytes([255; 4]) }.encode()[..4].to_vec(), MODULE),
+		(Error::Module { index: 255, error: FixedBytes([255; 4]) }.encode()[..4].to_vec(), MODULE),
 		(Error::Token(TokenError::Unknown).encode()[..4].to_vec(), TOKEN),
 		(
 			Error::Transactional(TransactionalError::LimitReached).encode()[..4].to_vec(),

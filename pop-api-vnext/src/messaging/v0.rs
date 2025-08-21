@@ -21,7 +21,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn getResponse(&self, message: MessageId) -> Bytes;
+	fn getResponse(&mut self, message: MessageId) -> DynBytes;
 
 	/// The identifier of this chain.
 	///
@@ -36,7 +36,7 @@ pub trait Messaging {
 	/// - `message` - The message identifier to poll.
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn pollStatus(&self, message: MessageId) -> MessageStatus;
+	fn pollStatus(&mut self, message: MessageId) -> MessageStatus;
 
 	/// Remove a completed or timed-out message.
 	///
@@ -45,7 +45,7 @@ pub trait Messaging {
 	/// # Parameters
 	/// - `message` - The identifier of the message to remove.
 	#[ink(message)]
-	fn remove(&self, message: MessageId) -> Result<(), Error>;
+	fn remove(&mut self, message: MessageId) -> Result<(), Error>;
 
 	/// Remove a batch of completed or timed-out messages.
 	///
@@ -55,7 +55,7 @@ pub trait Messaging {
 	/// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 	#[ink(message)]
 	#[allow(non_snake_case)]
-	fn removeMany(&self, messages: Vec<MessageId>) -> Result<(), Error>;
+	fn removeMany(&mut self, messages: Vec<MessageId>) -> Result<(), Error>;
 }
 
 /// A message callback.
@@ -93,7 +93,7 @@ impl Callback {
 		Self {
 			destination,
 			encoding,
-			selector: SolBytes(selector.to_be_bytes()),
+			selector: FixedBytes(selector.to_be_bytes()),
 			gas_limit,
 			storage_deposit_limit,
 		}
@@ -143,8 +143,8 @@ pub struct Removed {
 /// # Parameters
 /// - `message` - The message identifier.
 #[inline]
-pub fn get_response(message: MessageId) -> Bytes {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+pub fn get_response(message: MessageId) -> DynBytes {
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.getResponse(message)
 }
 
@@ -163,7 +163,7 @@ pub fn id() -> u32 {
 /// - `message` - The message identifier to poll.
 #[inline]
 pub fn poll_status(message: MessageId) -> MessageStatus {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.pollStatus(message)
 }
 
@@ -175,7 +175,7 @@ pub fn poll_status(message: MessageId) -> MessageStatus {
 /// - `message` - The identifier of the message to remove.
 #[inline]
 pub fn remove(message: MessageId) -> Result<(), Error> {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.remove(message)
 }
 
@@ -187,6 +187,6 @@ pub fn remove(message: MessageId) -> Result<(), Error> {
 /// - `messages` - A set of identifiers of messages to remove (bounded by `MaxRemovals`).
 #[inline]
 pub fn remove_many(messages: Vec<MessageId>) -> Result<(), Error> {
-	let precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
+	let mut precompile: contract_ref!(Messaging, Pop, Sol) = PRECOMPILE_ADDRESS.into();
 	precompile.removeMany(messages)
 }
