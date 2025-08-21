@@ -9,8 +9,8 @@ version = "0.1.0"
 abi = "sol"
 
 [dependencies]
-base64 = { version = "0.22.1", default-features = false, features = ["alloc"] }
-ink = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-alpha.1", default-features = false, features = ["unstable-hostfn"] }
+base64 = { version = "0.22.1", default-features = false, features = [ "alloc" ] }
+ink = { git = "https://github.com/use-ink/ink", tag = "v6.0.0-alpha.1", default-features = false, features = [ "unstable-hostfn" ] }
 pop-primitives = { path = "../primitives", default-features = false }
 
 [dev-dependencies]
@@ -18,20 +18,20 @@ hex = { version = "0.4.3" }
 scale-info = { version = "2" }
 
 [lib]
-crate-type = ["rlib"]
+crate-type = [ "rlib" ]
 name = "pop_api"
 path = "src/lib.rs"
 
 [features]
-default = ["std"]
-fungibles = []
-messaging = []
-nonfungibles = []
+default = [ "std" ]
+fungibles = [  ]
+messaging = [  ]
+nonfungibles = [  ]
 std = [
-    "ink/std",
-    "pop-primitives/std",
+	"ink/std",
+	"pop-primitives/std",
 ]
 
 [lints.rust.unexpected_cfgs]
-check-cfg = ['cfg(ink_abi, values("ink", "sol", "all"))']
+check-cfg = [ 'cfg(ink_abi, values("ink", "sol", "all"))' ]
 level = "warn"
